@@ -62,15 +62,21 @@ export default function Sheet({
 
   return (
     <View style={styles.scrim}>
-      <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }, sheetStyle]}>
-        {/* flexShrink permite o ScrollView encolher quando o maxHeight da
-            folha aperta (ativando a rolagem); sem flexGrow ele continua se
-            ajustando ao conteúdo quando a folha é curta. */}
+      <View
+        style={[
+          styles.sheet,
+          {
+            paddingBottom: keyboardHeight > 0 ? (Platform.OS === 'ios' ? keyboardHeight : Math.min(keyboardHeight, 180)) : spacing.xl,
+            maxHeight: keyboardHeight > 0 ? '95%' : '88%',
+          },
+          sheetStyle,
+        ]}
+      >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.content, contentStyle]}
+          contentContainerStyle={[styles.content, contentStyle, { paddingBottom: 24 }]}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
         >
           {children}
         </ScrollView>
@@ -80,15 +86,16 @@ export default function Sheet({
 }
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: theme.paperRaised,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.xl,
-    maxHeight: '88%',
+    width: '100%',
   },
   scroll: { flexShrink: 1 },
   content: { gap: spacing.md },
 });
+

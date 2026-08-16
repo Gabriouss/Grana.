@@ -392,9 +392,9 @@ export default function LancamentosScreen() {
                 keyboardType="decimal-pad"
                 value={amount}
                 onChangeText={setAmount}
-                autoFocus
               />
             </View>
+
 
             <AppPressable
               style={styles.fieldRow}

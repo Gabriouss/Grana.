@@ -902,9 +902,9 @@ export default function InicioScreen() {
                 keyboardType="decimal-pad"
                 value={billAmount}
                 onChangeText={setBillAmount}
-                autoFocus
               />
             </View>
+
 
             <AppPressable
               style={styles.fieldRow}
