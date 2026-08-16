@@ -24,8 +24,9 @@ import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import FabButton from '@/components/FabButton';
+import MonthSelector from '@/components/MonthSelector';
 import { addTransaction, deleteTransaction, fetchTransactions, updateTransaction } from '@/lib/data';
-import { formatDateLabel, formatMoney, parseAmount, todayISO } from '@/lib/format';
+import { formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO } from '@/lib/format';
 import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
@@ -38,6 +39,12 @@ export default function LancamentosScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<'tudo' | TxType>('tudo');
+
+  // Mês e Ano Selecionados (inicializa com o mês atual)
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+
 
   // New / Edit Transaction Modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -208,7 +215,14 @@ export default function LancamentosScreen() {
     }
   }
 
-  const visible = transactions.filter((t) => filter === 'tudo' || t.type === filter);
+  // Transações estritamente do mês selecionado
+  const monthTransactions = transactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
+  const monthIn = monthTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
+  const monthOut = monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
+  const monthBalance = monthIn - monthOut;
+
+  // Filtrado por tipo (Tudo / Entradas / Saídas) dentro do mês selecionado
+  const visible = monthTransactions.filter((t) => filter === 'tudo' || t.type === filter);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -233,9 +247,44 @@ export default function LancamentosScreen() {
           </View>
         </View>
 
+        <MonthSelector
+          year={selectedYear}
+          month={selectedMonth}
+          onChange={(y, m) => {
+            setSelectedYear(y);
+            setSelectedMonth(m);
+          }}
+        />
+
+        {/* Resumo Rápido do Mês Selecionado */}
+        <View style={styles.monthSummaryCard}>
+          <View style={styles.monthSummaryCol}>
+            <Text style={styles.monthSummaryLabel}>Entradas</Text>
+            <PrivacyValue>
+              <Text style={[styles.monthSummaryVal, { color: theme.up }]}>+ R$ {formatMoney(monthIn)}</Text>
+            </PrivacyValue>
+          </View>
+          <View style={styles.monthSummaryDivider} />
+          <View style={styles.monthSummaryCol}>
+            <Text style={styles.monthSummaryLabel}>Saídas</Text>
+            <PrivacyValue>
+              <Text style={[styles.monthSummaryVal, { color: theme.down }]}>− R$ {formatMoney(monthOut)}</Text>
+            </PrivacyValue>
+          </View>
+          <View style={styles.monthSummaryDivider} />
+          <View style={styles.monthSummaryCol}>
+            <Text style={styles.monthSummaryLabel}>Saldo</Text>
+            <PrivacyValue>
+              <Text style={[styles.monthSummaryVal, { color: monthBalance >= 0 ? theme.ink : theme.down }]}>
+                {monthBalance >= 0 ? '+' : '−'} R$ {formatMoney(Math.abs(monthBalance))}
+              </Text>
+            </PrivacyValue>
+          </View>
+        </View>
+
         <SegmentedTabs
           options={[
-            { key: 'tudo', label: 'Tudo' },
+            { key: 'tudo', label: `Tudo (${monthTransactions.length})` },
             { key: 'in', label: 'Entradas' },
             { key: 'out', label: 'Saídas' },
           ]}
@@ -243,6 +292,7 @@ export default function LancamentosScreen() {
           onChange={(f) => setFilter(f as 'tudo' | TxType)}
         />
       </View>
+
 
       {loading ? (
         <ActivityIndicator color={theme.ink} style={{ marginTop: 40 }} />
@@ -485,4 +535,21 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
+  monthSummaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: theme.rule,
+  },
+  monthSummaryCol: { flex: 1, alignItems: 'center' },
+  monthSummaryLabel: { color: theme.inkFaint, fontSize: 10.5, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  monthSummaryVal: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  monthSummaryDivider: { width: 1, height: 24, backgroundColor: theme.rule },
 });
+
+

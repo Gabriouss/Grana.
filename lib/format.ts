@@ -22,8 +22,34 @@ export function todayISO(): string {
   return `${y}-${m}-${day}`;
 }
 
+export const MONTH_NAMES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
+
+export function formatMonthYear(year: number, month: number): string {
+  return `${MONTH_NAMES[month]} ${year}`;
+}
+
+export function isSameMonth(isoDate: string, year: number, month: number): boolean {
+  if (!isoDate) return false;
+  const [y, m] = isoDate.split('-').map(Number);
+  return y === year && m === month + 1;
+}
+
 export function formatDateLabel(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   return `${String(d).padStart(2, '0')} ${months[m - 1]} ${y}`;
 }
+

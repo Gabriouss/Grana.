@@ -42,8 +42,11 @@ import FabButton from '@/components/FabButton';
 import FadeIn from '@/components/FadeIn';
 import Sheet from '@/components/Sheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
+import MonthSelector from '@/components/MonthSelector';
+import { isSameMonth } from '@/lib/format';
 
 type ChartView = 'in' | 'out' | 'both';
+
 
 export default function InicioScreen() {
   const router = useRouter();
@@ -57,6 +60,12 @@ export default function InicioScreen() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [chartView, setChartView] = useState<ChartView>('in');
+
+  // Mês e Ano Selecionados (inicializa com o mês atual)
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+
 
   // Modals state
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
@@ -171,8 +180,10 @@ export default function InicioScreen() {
     );
   }
 
-  const totalIn = transactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
-  const totalOut = transactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
+  // Transações estritamente do mês selecionado
+  const monthTransactions = transactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
+  const totalIn = monthTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
+  const totalOut = monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
   const flowSummary =
     chartView === 'in'
       ? { text: `+ R$ ${formatMoney(totalIn)}`, color: theme.up }
@@ -191,7 +202,7 @@ export default function InicioScreen() {
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const byCategory: Record<string, { amount: number; color: string }> = {};
-  transactions
+  monthTransactions
     .filter((t) => t.type === 'out')
     .forEach((t) => {
       if (!byCategory[t.category]) byCategory[t.category] = { amount: 0, color: t.color };
@@ -200,6 +211,7 @@ export default function InicioScreen() {
   const pieData: PieSlice[] = Object.entries(byCategory)
     .map(([name, info]) => ({ name, color: info.color, value: totalOut ? Math.round((info.amount / totalOut) * 100) : 0 }))
     .sort((a, b) => b.value - a.value);
+
 
   // Quick categories ordered by usage
   const expenseCounts: Record<string, number> = {};
@@ -468,7 +480,20 @@ export default function InicioScreen() {
           </View>
         </FadeIn>
 
+        {/* Seletor Mês a Mês */}
+        <FadeIn delay={30}>
+          <MonthSelector
+            year={selectedYear}
+            month={selectedMonth}
+            onChange={(y, m) => {
+              setSelectedYear(y);
+              setSelectedMonth(m);
+            }}
+          />
+        </FadeIn>
+
         {error && <Text style={styles.errorText}>{error}</Text>}
+
 
         {/* Atalhos Rápidos por Categoria */}
         <FadeIn delay={60} style={styles.quickChipsSection}>
