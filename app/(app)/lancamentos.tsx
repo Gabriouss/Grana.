@@ -107,10 +107,16 @@ export default function LancamentosScreen() {
     const catObj = CATEGORIES.find((c) => c.name === cName) ?? CATEGORIES[0];
     setCategory(catObj.name);
     setCatColor(catObj.color);
-    setOccurredOn(todayISO());
+
+    const isCurrent = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const initialDate = isCurrent ? todayISO() : `${selectedYear}-${pad(selectedMonth + 1)}-01`;
+    setOccurredOn(initialDate);
+
     setRecurring(false);
     setModalOpen(true);
   }
+
 
   function openEditModal(tx: Transaction) {
     setEditingTxId(tx.id);
@@ -398,16 +404,45 @@ export default function LancamentosScreen() {
               </View>
             </AppPressable>
 
-            <AppPressable
-              style={styles.fieldRow}
-              onPress={() => setDatePickerOpen(true)}
-            >
-              <Text style={styles.fieldKey}>Data</Text>
-              <View style={styles.fieldVal}>
-                <Text style={styles.fieldValText}>{formatDateLabel(occurredOn)}</Text>
-                <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
+            <View style={{ gap: 6 }}>
+              <AppPressable
+                style={styles.fieldRow}
+                onPress={() => setDatePickerOpen(true)}
+              >
+                <Text style={styles.fieldKey}>Data do lançamento</Text>
+                <View style={styles.fieldVal}>
+                  <Text style={styles.fieldValText}>{formatDateLabel(occurredOn)}</Text>
+                  <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
+                </View>
+              </AppPressable>
+
+              <View style={styles.dateQuickRow}>
+                <AppPressable
+                  style={[styles.dateQuickChip, occurredOn === todayISO() && styles.dateQuickChipActive]}
+                  onPress={() => setOccurredOn(todayISO())}
+                >
+                  <Text style={[styles.dateQuickText, occurredOn === todayISO() && styles.dateQuickTextActive]}>Hoje</Text>
+                </AppPressable>
+                <AppPressable
+                  style={styles.dateQuickChip}
+                  onPress={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    const pad = (n: number) => String(n).padStart(2, '0');
+                    setOccurredOn(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+                  }}
+                >
+                  <Text style={styles.dateQuickText}>Ontem</Text>
+                </AppPressable>
+                <AppPressable
+                  style={styles.dateQuickChip}
+                  onPress={() => setDatePickerOpen(true)}
+                >
+                  <Text style={styles.dateQuickText}>Calendário 📅</Text>
+                </AppPressable>
               </View>
-            </AppPressable>
+            </View>
+
 
             <View style={styles.fieldRow}>
               <Text style={styles.fieldKey}>Repetir mensalmente</Text>
@@ -550,6 +585,25 @@ const styles = StyleSheet.create({
   monthSummaryLabel: { color: theme.inkFaint, fontSize: 10.5, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
   monthSummaryVal: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   monthSummaryDivider: { width: 1, height: 24, backgroundColor: theme.rule },
+  dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
+  dateQuickChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    backgroundColor: theme.paper,
+    borderWidth: 1,
+    borderColor: theme.rule,
+  },
+  dateQuickChipActive: {
+    backgroundColor: theme.ink + '15',
+    borderColor: theme.ink,
+  },
+  dateQuickText: { color: theme.inkFaint, fontSize: 11, fontWeight: '500' },
+  dateQuickTextActive: { color: theme.ink, fontWeight: '600' },
 });
+
 
 

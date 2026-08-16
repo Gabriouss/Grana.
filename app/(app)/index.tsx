@@ -27,7 +27,7 @@ import { useSession } from '@/lib/auth-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Bill, Budget, Transaction, TxType } from '@/lib/types';
 import PieChart, { type PieSlice } from '@/components/PieChart';
-import FlowChart from '@/components/FlowChart';
+import FlowChart, { ChartPeriod } from '@/components/FlowChart';
 import CategoryChips from '@/components/CategoryChips';
 import AppPressable from '@/components/AppPressable';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
@@ -45,6 +45,7 @@ import SegmentedTabs from '@/components/SegmentedTabs';
 import MonthSelector from '@/components/MonthSelector';
 import { isSameMonth } from '@/lib/format';
 
+
 type ChartView = 'in' | 'out' | 'both';
 
 
@@ -60,6 +61,7 @@ export default function InicioScreen() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [chartView, setChartView] = useState<ChartView>('in');
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('month');
 
   // Mês e Ano Selecionados (inicializa com o mês atual)
   const now = new Date();
@@ -231,10 +233,16 @@ export default function InicioScreen() {
     const catObj = CATEGORIES.find((c) => c.name === cName) ?? CATEGORIES[0];
     setTxCategory(catObj.name);
     setTxCatColor(catObj.color);
-    setTxDate(todayISO());
+
+    const isCurrent = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const initialDate = isCurrent ? todayISO() : `${selectedYear}-${pad(selectedMonth + 1)}-01`;
+    setTxDate(initialDate);
+
     setTxRecurring(false);
     setTxSheetOpen(true);
   }
+
 
   function openTxEdit(tx: Transaction) {
     setEditingTxId(tx.id);
@@ -530,25 +538,51 @@ export default function InicioScreen() {
           </AppPressable>
         </FadeIn>
 
-        {/* Card Fluxo do Mês */}
+        {/* Card Fluxo Financeiro com Seletor de Período */}
         <FadeIn delay={140} style={styles.card}>
           <View style={styles.cardHeadRow}>
-            <Text style={styles.cardLabel}>Fluxo do mês</Text>
+            <Text style={styles.cardLabel}>Fluxo financeiro</Text>
             <PrivacyValue>
               <Text style={[styles.flowValue, { color: flowSummary.color }]}>{flowSummary.text}</Text>
             </PrivacyValue>
           </View>
-          <SegmentedTabs
-            options={[
-              { key: 'in', label: 'Entradas' },
-              { key: 'out', label: 'Saídas' },
-              { key: 'both', label: 'Ambos' },
-            ]}
-            value={chartView}
-            onChange={(v) => setChartView(v as ChartView)}
+
+          <View style={{ gap: 8 }}>
+            <SegmentedTabs
+              options={[
+                { key: 'month', label: 'Mês' },
+                { key: '7days', label: '7 Dias' },
+                { key: 'year', label: 'Ano' },
+              ]}
+              value={chartPeriod}
+              onChange={(p) => setChartPeriod(p as ChartPeriod)}
+            />
+
+            <SegmentedTabs
+              options={[
+                { key: 'in', label: 'Entradas' },
+                { key: 'out', label: 'Saídas' },
+                { key: 'both', label: 'Ambos' },
+              ]}
+              value={chartView}
+              onChange={(v) => setChartView(v as ChartView)}
+            />
+          </View>
+
+          <FlowChart
+            transactions={
+              chartView === 'in'
+                ? transactions.filter((t) => t.type === 'in')
+                : chartView === 'out'
+                ? transactions.filter((t) => t.type === 'out')
+                : transactions
+            }
+            period={chartPeriod}
+            year={selectedYear}
+            month={selectedMonth}
           />
-          <FlowChart transactions={chartView === 'in' ? transactions.filter((t) => t.type === 'in') : chartView === 'out' ? transactions.filter((t) => t.type === 'out') : transactions} />
         </FadeIn>
+
 
         {/* Card Gastos por Categoria (Gráfico de Rosca Explodido) */}
         <FadeIn delay={180} style={styles.card}>
@@ -769,19 +803,51 @@ export default function InicioScreen() {
               </View>
             </AppPressable>
 
-            <AppPressable
-              style={styles.fieldRow}
-              onPress={() => {
-                setDatePickerTarget('tx');
-                setDatePickerOpen(true);
-              }}
-            >
-              <Text style={styles.fieldKey}>Data</Text>
-              <View style={styles.fieldVal}>
-                <Text style={styles.fieldValText}>{formatDateLabel(txDate)}</Text>
-                <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
+            <View style={{ gap: 6 }}>
+              <AppPressable
+                style={styles.fieldRow}
+                onPress={() => {
+                  setDatePickerTarget('tx');
+                  setDatePickerOpen(true);
+                }}
+              >
+                <Text style={styles.fieldKey}>Data do lançamento</Text>
+                <View style={styles.fieldVal}>
+                  <Text style={styles.fieldValText}>{formatDateLabel(txDate)}</Text>
+                  <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
+                </View>
+              </AppPressable>
+
+              <View style={styles.dateQuickRow}>
+                <AppPressable
+                  style={[styles.dateQuickChip, txDate === todayISO() && styles.dateQuickChipActive]}
+                  onPress={() => setTxDate(todayISO())}
+                >
+                  <Text style={[styles.dateQuickText, txDate === todayISO() && styles.dateQuickTextActive]}>Hoje</Text>
+                </AppPressable>
+                <AppPressable
+                  style={styles.dateQuickChip}
+                  onPress={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    const pad = (n: number) => String(n).padStart(2, '0');
+                    setTxDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+                  }}
+                >
+                  <Text style={styles.dateQuickText}>Ontem</Text>
+                </AppPressable>
+                <AppPressable
+                  style={styles.dateQuickChip}
+                  onPress={() => {
+                    setDatePickerTarget('tx');
+                    setDatePickerOpen(true);
+                  }}
+                >
+                  <Text style={styles.dateQuickText}>Calendário 📅</Text>
+                </AppPressable>
               </View>
-            </AppPressable>
+            </View>
+
 
             <View style={styles.fieldRow}>
               <Text style={styles.fieldKey}>Repetir mensalmente</Text>
@@ -1115,4 +1181,23 @@ const styles = StyleSheet.create({
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
   removeBudgetText: { color: theme.inkFaint, fontSize: 12.5, textAlign: 'center', paddingVertical: 6 },
+  dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
+  dateQuickChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    backgroundColor: theme.paper,
+    borderWidth: 1,
+    borderColor: theme.rule,
+  },
+  dateQuickChipActive: {
+    backgroundColor: theme.ink + '15',
+    borderColor: theme.ink,
+  },
+  dateQuickText: { color: theme.inkFaint, fontSize: 11, fontWeight: '500' },
+  dateQuickTextActive: { color: theme.ink, fontWeight: '600' },
 });
+

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Modal,
   StyleSheet,
@@ -33,6 +33,17 @@ export default function DatePickerModal({
   const [calMonth, setCalMonth] = useState<number>(initialDate.getMonth() ?? 7);
   const [selectedDay, setSelectedDay] = useState<number>(initialDate.getDate() || 15);
 
+  useEffect(() => {
+    if (visible && currentISO) {
+      const parts = currentISO.split('-').map(Number);
+      if (parts.length === 3) {
+        setCalYear(parts[0]);
+        setCalMonth(parts[1] - 1);
+        setSelectedDay(parts[2]);
+      }
+    }
+  }, [visible, currentISO]);
+
   function handlePrevMonth() {
     if (calMonth === 0) {
       setCalMonth(11);
@@ -51,16 +62,22 @@ export default function DatePickerModal({
     }
   }
 
-  function handleGoToday() {
-    const today = new Date();
-    setCalYear(today.getFullYear());
-    setCalMonth(today.getMonth());
-    setSelectedDay(today.getDate());
+  function handleQuickDate(daysOffset: number) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysOffset);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const iso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     onSelectDate(iso);
     onClose();
   }
+
+  function handleFirstDayOfMonth() {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const iso = `${calYear}-${pad(calMonth + 1)}-01`;
+    onSelectDate(iso);
+    onClose();
+  }
+
 
   function handleSelect(year: number, month: number, day: number) {
     setSelectedDay(day);
@@ -193,7 +210,20 @@ export default function DatePickerModal({
             ))}
           </View>
 
-          <AppPressable onPress={handleGoToday}>
+          {/* Quick date chips */}
+          <View style={styles.quickDatesRow}>
+            <AppPressable style={styles.quickDateChip} onPress={() => handleQuickDate(0)}>
+              <Text style={styles.quickDateText}>Hoje</Text>
+            </AppPressable>
+            <AppPressable style={styles.quickDateChip} onPress={() => handleQuickDate(-1)}>
+              <Text style={styles.quickDateText}>Ontem</Text>
+            </AppPressable>
+            <AppPressable style={styles.quickDateChip} onPress={handleFirstDayOfMonth}>
+              <Text style={styles.quickDateText}>Dia 1º deste mês</Text>
+            </AppPressable>
+          </View>
+
+          <AppPressable onPress={() => handleQuickDate(0)}>
             <Text style={styles.todayLink}>Ir para hoje</Text>
           </AppPressable>
         </View>
@@ -213,6 +243,17 @@ const styles = StyleSheet.create({
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
+  quickDatesRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  quickDateChip: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+    backgroundColor: theme.paper,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    alignItems: 'center',
+  },
+  quickDateText: { color: theme.inkSoft, fontSize: 12, fontWeight: '500' },
   calHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 4 },
   calNav: {
     width: 34,
@@ -244,3 +285,4 @@ const styles = StyleSheet.create({
   dayTextSelected: { color: theme.paper, fontWeight: '600' },
   todayLink: { color: theme.inkSoft, fontSize: 12.5, textAlign: 'center', paddingVertical: 6 },
 });
+
