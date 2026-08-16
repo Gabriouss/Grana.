@@ -266,21 +266,21 @@ export default function LancamentosScreen() {
         <View style={styles.monthSummaryCard}>
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Entradas</Text>
-            <PrivacyValue>
+            <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, { color: theme.up }]}>+ R$ {formatMoney(monthIn)}</Text>
             </PrivacyValue>
           </View>
           <View style={styles.monthSummaryDivider} />
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Saídas</Text>
-            <PrivacyValue>
+            <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, { color: theme.down }]}>− R$ {formatMoney(monthOut)}</Text>
             </PrivacyValue>
           </View>
           <View style={styles.monthSummaryDivider} />
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Saldo</Text>
-            <PrivacyValue>
+            <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, { color: monthBalance >= 0 ? theme.ink : theme.down }]}>
                 {monthBalance >= 0 ? '+' : '−'} R$ {formatMoney(Math.abs(monthBalance))}
               </Text>
@@ -298,7 +298,6 @@ export default function LancamentosScreen() {
           onChange={(f) => setFilter(f as 'tudo' | TxType)}
         />
       </View>
-
 
       {loading ? (
         <ActivityIndicator color={theme.ink} style={{ marginTop: 40 }} />
@@ -318,13 +317,17 @@ export default function LancamentosScreen() {
                 setActionSheetOpen(true);
               }}
             >
-              <View style={[styles.icon, { backgroundColor: item.color + '30' }]}>
+              <View style={[styles.icon, { backgroundColor: item.color + '25' }]}>
                 <Text style={[styles.iconText, { color: item.color }]}>{item.category.slice(0, 2).toUpperCase()}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{item.category}</Text>
+                {/* Nome do lançamento em destaque principal */}
+                <Text style={styles.rowTitle} numberOfLines={1}>
+                  {item.description && item.description.trim() ? item.description : item.category}
+                </Text>
+                {/* Categoria em hierarquia mais baixa com a cor correspondente */}
                 <Text style={styles.rowSub}>
-                  {item.description}
+                  <Text style={{ color: item.color, fontWeight: '600' }}>{item.category}</Text>
                   {item.recurring ? ' · recorrente' : ''} · {formatDateLabel(item.occurred_on)}
                 </Text>
               </View>
@@ -342,6 +345,7 @@ export default function LancamentosScreen() {
           )}
         />
       )}
+
 
       {/* FAB — mesmo componente da Home, só sem a opção Boleto (isso fica em Contas) */}
       <FabButton onAddIncome={() => openNewModal('in')} onAddExpense={() => openNewModal('out')} />

@@ -119,12 +119,14 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
               <SvgText
                 x={labelX}
                 y={labelY}
-                fontSize={7}
+                fontSize={7.5}
+                fontWeight="600"
                 fill={theme.ink}
                 textAnchor={anchor}
                 alignmentBaseline="central"
+                letterSpacing={0}
               >
-                {seg.value}%
+                {`${Math.round(seg.value)}%`}
               </SvgText>
             )}
           </G>
@@ -133,5 +135,6 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({});

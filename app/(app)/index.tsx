@@ -693,12 +693,16 @@ export default function InicioScreen() {
                 setActionSheetOpen(true);
               }}
             >
-              <View style={[styles.recentIcon, { backgroundColor: t.color + '30' }]}>
+              <View style={[styles.recentIcon, { backgroundColor: t.color + '25' }]}>
                 <Text style={[styles.recentIconText, { color: t.color }]}>{t.category.slice(0, 2).toUpperCase()}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.recentRowTitle}>{t.category}</Text>
-                <Text style={styles.recentRowSub}>{t.description} · {formatDateLabel(t.occurred_on)}</Text>
+                <Text style={styles.recentRowTitle} numberOfLines={1}>
+                  {t.description && t.description.trim() ? t.description : t.category}
+                </Text>
+                <Text style={styles.recentRowSub}>
+                  <Text style={{ color: t.color, fontWeight: '600' }}>{t.category}</Text> · {formatDateLabel(t.occurred_on)}
+                </Text>
               </View>
               <View style={styles.recentAmountRow}>
                 <Text style={[styles.recentRowAmount, { color: t.type === 'in' ? theme.up : theme.down }]}>
@@ -710,6 +714,7 @@ export default function InicioScreen() {
                   </Text>
                 </PrivacyValue>
               </View>
+
             </AppPressable>
           ))
         )}

@@ -49,7 +49,7 @@ export default function PrivacyValue({ children, style }: { children: ReactNode;
 }
 
 const styles = StyleSheet.create({
-  base: { position: 'relative', alignSelf: 'flex-start' },
+  base: { position: 'relative' },
   clip: { overflow: 'hidden', borderRadius: 6 },
   scrim: {
     backgroundColor: 'rgba(5,34,41,0.72)',
@@ -58,3 +58,4 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 });
+
