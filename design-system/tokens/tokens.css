@@ -1,0 +1,112 @@
+/* Grana Design System v0.2.0
+ *
+ * Espelho em CSS de tokens/tokens.json, para superfícies web (previews,
+ * apresentações, landing). O app em React Native continua consumindo
+ * lib/theme.ts — este arquivo não o substitui nem o alimenta.
+ *
+ * Sufixo -prop  = token PROPOSTO, ainda não existe no app.
+ * Sem sufixo    = token EXTRAÍDO do app.
+ */
+:root {
+  /* ---- Identidade (extraída dos SVGs em marca/ — valores oficiais) ----
+   * O ponto do logotipo NÃO tem cor fixa: é sempre o contraste do texto.
+   * Texto escuro ou branco -> ponto menta. Texto menta -> ponto escuro.
+   * Na versão em gradiente, o ponto é absorvido pela rampa.
+   */
+  --grana-brand-dark: #08384b;   /* atenção: os SVGs de ícone usam #09384a */
+  --grana-brand-mint: #a9f8c8;
+  --grana-brand-cyan: #24a5c5;
+  --grana-brand-white: #ffffff;
+  --grana-brand-gradient-from: #b0f7c9;
+  --grana-brand-gradient-to: #22a1c1;
+  --grana-brand-gradient: linear-gradient(135deg, #b0f7c9, #22a1c1);
+
+  /* ---- Superfície ---- */
+  --grana-paper: #052229;
+  --grana-paper-raised: #0b2d35;
+
+  /* ---- Tinta ---- */
+  --grana-ink: #effffa;
+  --grana-ink-soft: #a6d9ce;
+  --grana-ink-faint: #7fa9a0;
+
+  /* ---- Traço (accent2 com alfa — não são cinza) ---- */
+  --grana-rule: rgba(175, 255, 227, 0.14);
+  --grana-rule-strong: rgba(175, 255, 227, 0.26);
+
+  /* ---- Acentos do tema ---- */
+  --grana-accent: #1fa98d;
+  --grana-accent-2: #aeffe3;
+  --grana-accent-deep: #04475c;
+
+  /* ---- Estado ---- */
+  --grana-positive: #74e291;
+  --grana-negative: #00a6ca;
+  --grana-danger-prop: #e08a7d;
+  --grana-tint-in-prop: rgba(79, 148, 131, 0.2);
+  --grana-tint-out-prop: rgba(187, 107, 96, 0.2);
+
+  /* ---- Categorias (escala categórica de dados) ---- */
+  --grana-cat-alimentacao: #bb6b60;
+  --grana-cat-moradia: #93739e;
+  --grana-cat-transporte: #6b9dc2;
+  --grana-cat-lazer: #c66f8e;
+  --grana-cat-saude: #74a17c;
+  --grana-cat-assinaturas: #d3b869;
+  --grana-cat-salario: #4f9483;
+  --grana-cat-outros: #8b9198;
+
+  /* ---- Tipografia ---- */
+  --grana-font: 'Neue Machina', system-ui, sans-serif;
+  --grana-weight-light: 300;
+  --grana-weight-regular: 400;
+
+  /* Escala PROPOSTA — consolida os 12 tamanhos avulsos do app em 9 degraus. */
+  --grana-size-micro-prop: 9px;
+  --grana-size-legenda-prop: 11px;
+  --grana-size-nota-prop: 12px;
+  --grana-size-apoio-prop: 13px;
+  --grana-size-corpo-prop: 14px;
+  --grana-size-titulo-prop: 17px;
+  --grana-size-destaque-prop: 20px;
+  --grana-size-marca-prop: 26px;
+  --grana-size-valor-prop: 30px;
+
+  /* ---- Espaçamento ---- */
+  --grana-space-xs: 4px;
+  --grana-space-sm: 8px;
+  --grana-space-md: 12px;
+  --grana-space-lg: 16px;
+  --grana-space-xl: 20px;
+  --grana-space-xxl: 28px;
+
+  /* ---- Raio (aninhados descontam 2 do pai) ---- */
+  --grana-radius-sm: 8px;
+  --grana-radius-md: 12px;
+  --grana-radius-lg: 16px;
+  --grana-radius-xl: 22px;
+  --grana-radius-pill: 999px;
+
+  /* ---- Elevação (só para o que flutua sobre o conteúdo) ---- */
+  --grana-shadow-menu: 0 6px 14px rgba(0, 0, 0, 0.2);
+  --grana-shadow-float: 0 6px 12px rgba(0, 0, 0, 0.3);
+  --grana-shadow-toast: 0 4px 10px rgba(0, 0, 0, 0.25);
+  --grana-scrim: rgba(0, 0, 0, 0.5);
+
+  /* ---- Movimento ----
+   * Os springs nativos usam speed/bounciness do Animated e não têm
+   * equivalente exato em CSS; a curva abaixo é a aproximação usada nas
+   * previews. Os valores reais estão em tokens.json.
+   */
+  --grana-spring-approx: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --grana-duration-exit: 140ms;
+  --grana-duration-toast: 250ms;
+  --grana-duration-toast-hold: 2000ms;
+  --grana-duration-hover-web: 150ms;
+  --grana-ease-hover-web: ease-out;
+}
+
+/* Quantias monetárias: sem isto os dígitos dançam a cada atualização. */
+.grana-numeric {
+  font-variant-numeric: tabular-nums;
+}

@@ -16,6 +16,7 @@ import { formatDateLabel, formatMoney } from '@/lib/format';
 import { addTransactionsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
 import AppPressable from './AppPressable';
+import { useKeyboardHeight } from './Sheet';
 
 export default function CsvImportModal({
   visible,
@@ -27,6 +28,7 @@ export default function CsvImportModal({
   onSuccess: () => void;
 }) {
   const { isDemoMode } = useDemo();
+  const keyboardHeight = useKeyboardHeight();
   const [csvContent, setCsvContent] = useState('');
   const [parsedRows, setParsedRows] = useState<ParsedCsvTransaction[]>([]);
   const [importing, setImporting] = useState(false);
@@ -87,7 +89,9 @@ export default function CsvImportModal({
       }}
     >
       <View style={styles.modalScrim}>
-        <View style={styles.sheet}>
+        {/* A prévia usa FlatList, então esta folha não entra no <Sheet> (que
+            rolaria por fora); aqui basta afastar o conteúdo do teclado. */}
+        <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>
               {parsedRows.length > 0 ? `Prévia: ${parsedRows.length} Lançamento(s)` : 'Importar Extrato CSV'}

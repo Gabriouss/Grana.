@@ -19,6 +19,7 @@ import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
+import Sheet from '@/components/Sheet';
 import { addBill, deleteBill, fetchBills, setBillStatus, updateBill } from '@/lib/data';
 import { formatDateLabel, formatMoney, parseAmount, todayISO } from '@/lib/format';
 import { theme, radius, spacing } from '@/lib/theme';
@@ -244,8 +245,7 @@ export default function ContasScreen() {
 
       {/* Sheet: Nova / Editar Conta */}
       <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={() => setModalOpen(false)}>
-        <View style={styles.modalScrim}>
-          <View style={styles.sheet}>
+        <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingBillId ? 'Editar conta a pagar' : 'Nova conta a pagar'}</Text>
               <AppPressable onPress={() => setModalOpen(false)} hitSlop={12}>
@@ -304,8 +304,7 @@ export default function ContasScreen() {
             >
               {saving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>{editingBillId ? 'Salvar alterações' : 'Salvar conta'}</Text>}
             </AppPressable>
-          </View>
-        </View>
+        </Sheet>
       </Modal>
 
       {/* Date Picker Modal */}
@@ -371,8 +370,6 @@ const styles = StyleSheet.create({
   pillLateText: { color: theme.paper, fontWeight: '700' },
   fab: { position: 'absolute', right: spacing.xl, bottom: 24, width: 52, height: 52, borderRadius: 26, backgroundColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
   fabHover: { opacity: 0.85 },
-  modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: theme.paperRaised, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.xl, gap: spacing.md, maxHeight: '88%' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: 17 },
   descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: 14, paddingVertical: 8 },

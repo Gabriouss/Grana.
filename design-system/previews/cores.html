@@ -1,0 +1,107 @@
+<!-- @dsCard group="Fundações" -->
+<meta charset="utf-8">
+<title>Cores Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:30px 0 4px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 14px;max-width:64ch}
+  .grid{display:flex;flex-wrap:wrap;gap:12px}
+  .sw{width:158px}
+  .chip{height:64px;border-radius:12px;border:1px solid var(--rule);margin-bottom:7px;
+        display:grid;place-items:center;font-size:11px}
+  .nm{font-size:12px;display:block}
+  .hex{font-size:11px;color:var(--inkFaint);font-variant-numeric:tabular-nums;display:block;margin-top:2px}
+  .use{font-size:10.5px;color:var(--inkFaint);line-height:1.45;display:block;margin-top:5px}
+  .tag{display:inline-block;font-size:9px;text-transform:uppercase;letter-spacing:.5px;
+       border:1px solid var(--ruleStrong);border-radius:999px;padding:1px 6px;color:var(--inkFaint);
+       margin-top:5px}
+  .prop{border-color:#e08a7d;color:#e08a7d}
+  .cats{display:flex;flex-wrap:wrap;gap:10px}
+  .cat{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 10px;
+       border:1px solid var(--rule);border-radius:999px;font-size:12px}
+  .dot{width:10px;height:10px;border-radius:5px}
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:660px;margin-bottom:16px}
+  .note p{margin:0;font-size:12.5px}
+  .note b{color:var(--ink);font-weight:400}
+</style>
+
+<div class="eyebrow">fundações</div>
+<h1>Cores</h1>
+
+<h2>Superfície</h2>
+<p>Duas camadas apenas. Tudo que se eleva sobre o fundo usa <b style="color:var(--ink)">paperRaised</b>;
+   trilhos e poços voltam a <b style="color:var(--ink)">paper</b>, criando profundidade sem sombra.</p>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#052229"></div><span class="nm">paper</span><span class="hex">#052229</span><span class="use">Fundo de tela. Também trilhos e poços.</span></div>
+  <div class="sw"><div class="chip" style="background:#0b2d35"></div><span class="nm">paperRaised</span><span class="hex">#0b2d35</span><span class="use">Cards, folhas, chips, menus.</span></div>
+</div>
+
+<h2>Tinta</h2>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#effffa;color:#052229">Aa</div><span class="nm">ink</span><span class="hex">#effffa</span><span class="use">Texto primário. Vira FUNDO em superfícies invertidas — botão salvar, FAB, toast.</span></div>
+  <div class="sw"><div class="chip" style="background:#a6d9ce;color:#052229">Aa</div><span class="nm">inkSoft</span><span class="hex">#a6d9ce</span><span class="use">Links e ações textuais discretas.</span></div>
+  <div class="sw"><div class="chip" style="background:#7fa9a0;color:#052229">Aa</div><span class="nm">inkFaint</span><span class="hex">#7fa9a0</span><span class="use">Texto secundário, placeholders, ícones inativos. ~5,6:1 sobre raised — AA.</span></div>
+</div>
+
+<h2>Traço</h2>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:rgba(175,255,227,.14)"></div><span class="nm">rule</span><span class="hex">alfa .14</span><span class="use">Bordas e divisórias em repouso.</span></div>
+  <div class="sw"><div class="chip" style="background:rgba(175,255,227,.26)"></div><span class="nm">ruleStrong</span><span class="hex">alfa .26</span><span class="use">Divisória enfatizada; trilho do switch desligado.</span></div>
+</div>
+<div class="note" style="margin-top:14px">
+  <p>As duas divisórias são o <b>accent2 (#aeffe3)</b> com alfa. Não são cinza — por isso a
+     interface inteira mantém a temperatura menta mesmo nas bordas.</p>
+</div>
+
+<h2>Marca (acentos do tema)</h2>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#1fa98d"></div><span class="nm">accent</span><span class="hex">#1fa98d</span></div>
+  <div class="sw"><div class="chip" style="background:#aeffe3"></div><span class="nm">accent2</span><span class="hex">#aeffe3</span><span class="use">Base das divisórias.</span></div>
+  <div class="sw"><div class="chip" style="background:#04475c"></div><span class="nm">accentDeep</span><span class="hex">#04475c</span></div>
+</div>
+
+<h2>Estado</h2>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#74e291;color:#052229">+</div><span class="nm">positivo</span><span class="hex">#74e291</span><span class="use">Entradas de dinheiro.</span><span class="tag">extraído</span></div>
+  <div class="sw"><div class="chip" style="background:#00a6ca;color:#052229">−</div><span class="nm">negativo</span><span class="hex">#00a6ca</span><span class="use">Saídas de dinheiro.</span><span class="tag">extraído</span></div>
+  <div class="sw"><div class="chip" style="background:#e08a7d;color:#052229">!</div><span class="nm">perigo</span><span class="hex">#e08a7d</span><span class="use">Mensagens de erro.</span><span class="tag prop">proposto</span></div>
+  <div class="sw"><div class="chip" style="background:rgba(79,148,131,.2);border-color:#4f9483"></div><span class="nm">entradaTint</span><span class="hex">#4f9483 · 20%</span><span class="use">Botão de tipo “Entrada” ativo.</span><span class="tag prop">proposto</span></div>
+  <div class="sw"><div class="chip" style="background:rgba(187,107,96,.2);border-color:#bb6b60"></div><span class="nm">saidaTint</span><span class="hex">#bb6b60 · 20%</span><span class="use">Botão de tipo “Saída” ativo.</span><span class="tag prop">proposto</span></div>
+</div>
+<div class="note" style="margin-top:16px">
+  <p><b>Saída é ciano, não vermelho.</b> A decisão mais interessante da paleta: gastar dinheiro
+     não é tratado como erro. O vermelho fica reservado para <b>perigo</b>, que hoje sequer é
+     um token — está fixo como <b>#e08a7d</b> dentro de index.tsx.</p>
+</div>
+
+<h2>Categorias</h2>
+<p>Escala categórica para dados, definida em <b style="color:var(--ink)">lib/types.ts</b> e não no tema.
+   Família cromática deliberadamente distinta: dessaturada, para que oito cores convivam num gráfico
+   sem competir com o ciano da interface.</p>
+<div class="cats">
+  <div class="cat"><div class="dot" style="background:#bb6b60"></div>Alimentação<span class="hex">#bb6b60</span></div>
+  <div class="cat"><div class="dot" style="background:#93739e"></div>Moradia<span class="hex">#93739e</span></div>
+  <div class="cat"><div class="dot" style="background:#6b9dc2"></div>Transporte<span class="hex">#6b9dc2</span></div>
+  <div class="cat"><div class="dot" style="background:#c66f8e"></div>Lazer<span class="hex">#c66f8e</span></div>
+  <div class="cat"><div class="dot" style="background:#74a17c"></div>Saúde<span class="hex">#74a17c</span></div>
+  <div class="cat"><div class="dot" style="background:#d3b869"></div>Assinaturas<span class="hex">#d3b869</span></div>
+  <div class="cat"><div class="dot" style="background:#4f9483"></div>Salário<span class="hex">#4f9483</span></div>
+  <div class="cat"><div class="dot" style="background:#8b9198"></div>Outros<span class="hex">#8b9198</span></div>
+</div>
+<div class="note" style="margin-top:16px">
+  <p><b>Duas dessas cores vazam para a interface.</b> Alimentação (#bb6b60) e Salário (#4f9483)
+     são reaproveitadas como fundo dos botões Saída/Entrada na folha de lançamento. Funciona,
+     mas amarra a interface ao catálogo de categorias: renomear ou recolorir uma categoria
+     mexeria num botão sem relação com ela.</p>
+</div>

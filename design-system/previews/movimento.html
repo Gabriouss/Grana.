@@ -1,0 +1,142 @@
+<!-- @dsCard group="Fundações" -->
+<meta charset="utf-8">
+<title>Movimento Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26);
+    --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:30px 0 12px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 14px;max-width:64ch}
+  b{color:var(--ink);font-weight:400}
+  .grid{display:flex;flex-wrap:wrap;gap:14px}
+  .card{background:var(--raised);border:1px solid var(--rule);border-radius:16px;
+        padding:18px;width:212px}
+  .stage{height:74px;display:grid;place-items:center;margin-bottom:12px;
+         background:var(--paper);border-radius:12px;overflow:hidden;position:relative}
+  .nm{font-size:12px}
+  .spec{font-size:10.5px;color:var(--inkFaint);line-height:1.55;margin-top:5px;
+        font-variant-numeric:tabular-nums}
+
+  .btn{background:var(--ink);color:var(--paper);font-size:12px;padding:9px 20px;
+       border-radius:12px;animation:press 2.2s var(--spring) infinite}
+  @keyframes press{0%,55%{transform:scale(1)}70%{transform:scale(.96)}100%{transform:scale(1)}}
+
+  .seg{display:flex;gap:3px;padding:3px;background:var(--paper);border-radius:8px;
+       position:relative;border:1px solid var(--rule)}
+  .segPill{position:absolute;top:3px;bottom:3px;left:3px;width:calc(33.33% - 2px);
+           background:var(--raised);border-radius:6px;animation:slide 3.6s var(--spring) infinite}
+  @keyframes slide{0%,25%{transform:translateX(0)}
+                   33%,58%{transform:translateX(100%)}
+                   66%,91%{transform:translateX(200%)}
+                   100%{transform:translateX(0)}}
+  .segBtn{flex:1;text-align:center;font-size:10px;padding:6px 8px;color:var(--inkFaint);
+          position:relative;z-index:1}
+
+  .track{width:44px;height:26px;border-radius:13px;padding:3px;background:var(--ruleStrong);
+         animation:trackOn 2.8s ease infinite}
+  .thumb{width:20px;height:20px;border-radius:10px;background:var(--raised);
+         animation:thumbOn 2.8s var(--spring) infinite}
+  @keyframes trackOn{0%,40%{background:var(--ruleStrong)}55%,95%{background:var(--ink)}100%{background:var(--ruleStrong)}}
+  @keyframes thumbOn{0%,40%{transform:translateX(0)}55%,95%{transform:translateX(18px)}100%{transform:translateX(0)}}
+
+  .toast{background:var(--ink);color:var(--paper);font-size:11px;padding:8px 16px;
+         border-radius:999px;animation:toast 4s ease infinite}
+  @keyframes toast{0%{opacity:0;transform:translateY(20px)}
+                   8%,58%{opacity:1;transform:translateY(0)}
+                   66%,100%{opacity:0;transform:translateY(20px)}}
+
+  .fab{width:46px;height:46px;border-radius:23px;background:var(--ink);color:var(--paper);
+       display:grid;place-items:center;font-size:22px;animation:rot 3s var(--spring) infinite}
+  @keyframes rot{0%,35%{transform:rotate(0)}50%,85%{transform:rotate(135deg)}100%{transform:rotate(0)}}
+
+  .pie{width:52px;height:52px;border-radius:26px;
+       background:conic-gradient(#bb6b60 0 35%,#93739e 0 60%,#6b9dc2 0 80%,#d3b869 0 100%);
+       animation:enter 3.4s var(--spring) infinite}
+  @keyframes enter{0%{opacity:0;transform:scale(.7)}22%,78%{opacity:1;transform:scale(1)}
+                   100%{opacity:0;transform:scale(.7)}}
+
+  table{border-collapse:collapse;width:100%;max-width:620px;margin-top:8px}
+  th,td{text-align:left;font-size:12px;padding:9px 12px;border-bottom:1px solid var(--rule)}
+  th{color:var(--inkFaint);font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td:first-child{color:var(--ink)}
+  td{color:var(--inkSoft);font-variant-numeric:tabular-nums}
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:660px;margin-top:16px}
+  .note p{margin:0;font-size:12.5px}
+</style>
+
+<div class="eyebrow">fundações</div>
+<h1>Movimento</h1>
+<p>O app já tem um vocabulário de movimento coerente — só não nomeado. Todo <b>spring</b> usa o par
+   speed/bounciness do Animated do React Native. As demonstrações abaixo aproximam essas curvas em CSS.</p>
+
+<h2>Springs</h2>
+<div class="grid">
+  <div class="card">
+    <div class="stage"><div class="btn">Salvar</div></div>
+    <div class="nm">toqueEntra / toqueSai</div>
+    <div class="spec">speed 40 · bounciness 6 (entra)<br>speed 20 · bounciness 8 (sai)<br>
+      Escala 1 → 0,96. A volta é mais lenta que a ida.</div>
+  </div>
+  <div class="card">
+    <div class="stage">
+      <div class="seg" style="width:80%">
+        <div class="segPill"></div>
+        <div class="segBtn">Entradas</div><div class="segBtn">Saídas</div><div class="segBtn">Ambos</div>
+      </div>
+    </div>
+    <div class="nm">desliza</div>
+    <div class="spec">speed 22 · bounciness 6<br>Pílula do segmented, bolinha do switch.</div>
+  </div>
+  <div class="card">
+    <div class="stage"><div class="track"><div class="thumb"></div></div></div>
+    <div class="nm">desliza <span style="color:var(--inkFaint)">(switch)</span></div>
+    <div class="spec">speed 22 · bounciness 8<br>A trilha esmaece de cor enquanto a bolinha corre.</div>
+  </div>
+  <div class="card">
+    <div class="stage"><div class="fab">+</div></div>
+    <div class="nm">menu</div>
+    <div class="spec">speed 24 · bounciness 8<br>Abertura do FAB. O “+” gira 135°, virando “×”.</div>
+  </div>
+  <div class="card">
+    <div class="stage"><div class="pie"></div></div>
+    <div class="nm">entrada</div>
+    <div class="spec">speed 14 · bounciness 7<br>Conteúdo pesado: o gráfico ao focar a aba.
+      O spring mais lento do app.</div>
+  </div>
+  <div class="card">
+    <div class="stage"><div class="toast">Lançamento salvo</div></div>
+    <div class="nm">toast</div>
+    <div class="spec">250ms · opacidade + 20px<br>Permanece 2000ms e sai sozinho.</div>
+  </div>
+</div>
+
+<h2>Durações</h2>
+<table>
+  <tr><th>Token</th><th>Valor</th><th>Onde</th></tr>
+  <tr><td>saida</td><td>140ms</td><td>Fechamento do menu do FAB</td></tr>
+  <tr><td>toast</td><td>250ms</td><td>Fade e translação do toast</td></tr>
+  <tr><td>permanenciaToast</td><td>2000ms</td><td>Tempo em tela antes do auto-dismiss</td></tr>
+  <tr><td>hoverWeb</td><td>150ms ease-out</td><td>Transição CSS do press na web</td></tr>
+</table>
+
+<div class="note">
+  <p><b>Sair é sempre mais rápido que entrar.</b> O menu abre com spring e fecha com timing de
+     140ms; o toque encolhe rápido (speed 40) e volta devagar (speed 20). A entrada tem peso,
+     a saída sai da frente.</p>
+</div>
+<div class="note">
+  <p><b>Na web o spring é abandonado de propósito.</b> Envolver o Pressable com Animated faz o
+     react-native-web vazar a prop interna <b>collapsable</b> para um atributo DOM inválido e
+     estourar erro em tela. Por isso a escala vira transform estático com transição CSS de 150ms.
+     A restrição está documentada em <b>components/AppPressable.tsx</b>.</p>
+</div>

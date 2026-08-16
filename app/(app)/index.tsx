@@ -1,5 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
   Alert,
@@ -17,10 +18,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { formatMoney, formatDateLabel, parseAmount, todayISO } from '@/lib/format';
 import PrivacyValue from '@/components/PrivacyValue';
+import BrandLogo from '@/components/BrandLogo';
 import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
+import { useSession } from '@/lib/auth-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Bill, Budget, Transaction, TxType } from '@/lib/types';
 import PieChart, { type PieSlice } from '@/components/PieChart';
@@ -37,6 +40,7 @@ import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import FabButton from '@/components/FabButton';
 import FadeIn from '@/components/FadeIn';
+import Sheet from '@/components/Sheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
 
 type ChartView = 'in' | 'out' | 'both';
@@ -45,6 +49,7 @@ export default function InicioScreen() {
   const router = useRouter();
   const { hidden, toggle } = usePrivacy();
   const { isDemoMode } = useDemo();
+  const { session } = useSession();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -103,6 +108,22 @@ export default function InicioScreen() {
   function triggerToast(msg: string) {
     setToastMsg(msg);
     setToastVisible(true);
+  }
+
+  // Diagnóstico inicial (onboarding) abre sozinho no primeiro login de cada
+  // conta neste aparelho — a flag fica salva localmente por usuário, então
+  // não repete depois que a pessoa já respondeu ou fechou uma vez.
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (isDemoMode || !userId) return;
+    (async () => {
+      const seen = await AsyncStorage.getItem(`grana_onboarding_seen_${userId}`);
+      if (!seen) setOnboardingOpen(true);
+    })();
+  }, [userId, isDemoMode]);
+
+  function markOnboardingSeen() {
+    if (userId) AsyncStorage.setItem(`grana_onboarding_seen_${userId}`, '1');
   }
 
   const load = useCallback(async () => {
@@ -430,10 +451,18 @@ export default function InicioScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={styles.eyebrow}>início</Text>
                 {isDemoMode && <Text style={styles.demoFlag}>exemplo</Text>}
+                {hidden && <Text style={styles.demoFlag}>oculto</Text>}
               </View>
-              <Text style={styles.title}>Grana.</Text>
+              <BrandLogo size={26} style={styles.title} />
             </View>
-            <AppPressable onPress={toggle} hitSlop={10} style={styles.privacyBtn}>
+            <AppPressable
+              onPress={() => {
+                toggle();
+                triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
+              }}
+              hitSlop={10}
+              style={styles.privacyBtn}
+            >
               <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.inkFaint} />
             </AppPressable>
           </View>
@@ -656,8 +685,7 @@ export default function InicioScreen() {
 
       {/* Sheet: Novo / Editar Lançamento */}
       <Modal visible={txSheetOpen} animationType="slide" transparent onRequestClose={() => setTxSheetOpen(false)}>
-        <View style={styles.modalScrim}>
-          <View style={styles.sheet}>
+        <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingTxId ? 'Editar lançamento' : 'Novo lançamento'}</Text>
               <AppPressable onPress={() => setTxSheetOpen(false)} hitSlop={12}>
@@ -748,14 +776,12 @@ export default function InicioScreen() {
             >
               {txSaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>{editingTxId ? 'Salvar alterações' : 'Salvar lançamento'}</Text>}
             </AppPressable>
-          </View>
-        </View>
+        </Sheet>
       </Modal>
 
       {/* Sheet: Novo Boleto */}
       <Modal visible={billSheetOpen} animationType="slide" transparent onRequestClose={() => setBillSheetOpen(false)}>
-        <View style={styles.modalScrim}>
-          <View style={styles.sheet}>
+        <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Nova conta a pagar</Text>
               <AppPressable onPress={() => setBillSheetOpen(false)} hitSlop={12}>
@@ -820,14 +846,12 @@ export default function InicioScreen() {
             >
               {billSaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Salvar conta</Text>}
             </AppPressable>
-          </View>
-        </View>
+        </Sheet>
       </Modal>
 
       {/* Modal de Orçamento */}
       <Modal visible={budgetModalOpen} animationType="slide" transparent onRequestClose={() => setBudgetModalOpen(false)}>
-        <View style={styles.modalScrim}>
-          <View style={styles.sheet}>
+        <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Orçamento — {budgetCategory}</Text>
               <AppPressable onPress={() => setBudgetModalOpen(false)} hitSlop={12}>
@@ -862,8 +886,7 @@ export default function InicioScreen() {
                 <Text style={styles.removeBudgetText}>Remover orçamento</Text>
               </AppPressable>
             )}
-          </View>
-        </View>
+        </Sheet>
       </Modal>
 
       {/* Date Picker Modal */}
@@ -940,10 +963,14 @@ export default function InicioScreen() {
       {/* Onboarding Diagnostic Modal */}
       <OnboardingModal
         visible={onboardingOpen}
-        onClose={() => setOnboardingOpen(false)}
+        onClose={() => {
+          setOnboardingOpen(false);
+          markOnboardingSeen();
+        }}
         onFinished={() => {
           triggerToast('Diagnóstico concluído');
           load();
+          markOnboardingSeen();
         }}
       />
 
@@ -971,7 +998,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  title: { color: theme.ink, fontSize: 26, fontWeight: '400', marginTop: 2, marginBottom: spacing.sm },
+  // Cor, tamanho e família vêm do BrandLogo — aqui fica só o encaixe no layout.
+  title: { marginTop: 2, marginBottom: spacing.sm },
   privacyBtn: { padding: 4 },
   errorText: { color: '#e08a7d', fontSize: 12.5 },
   quickChipsSection: { gap: 6 },
@@ -1038,8 +1066,6 @@ const styles = StyleSheet.create({
   dueName: { color: theme.ink, fontSize: 13 },
   dueDate: { color: theme.inkFaint, fontSize: 10.5, marginTop: 2 },
   dueAmount: { color: theme.ink, fontSize: 12.5, fontVariant: ['tabular-nums'] },
-  modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: theme.paperRaised, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.xl, gap: spacing.md, maxHeight: '88%' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: 17 },
   typeRow: { flexDirection: 'row', gap: spacing.xs },

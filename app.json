@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "grana-app",
+    "name": "Grana.",
     "slug": "grana-app",
     "scheme": "granaapp",
     "version": "1.0.0",
@@ -11,8 +11,9 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.gabriouss.grana",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#052229",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -23,7 +24,29 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      "expo-font",
+      "./plugins/withGradleSafeProjectName",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 280,
+          "resizeMode": "contain",
+          "backgroundColor": "#052229",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#052229"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9ef78d72-9cec-473a-98f8-5d8e67f01e70"
+      }
+    },
+    "owner": "gabriouss"
   }
 }

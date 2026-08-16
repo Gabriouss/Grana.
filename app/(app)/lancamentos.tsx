@@ -21,6 +21,7 @@ import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
+import Sheet from '@/components/Sheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import FabButton from '@/components/FabButton';
 import { addTransaction, deleteTransaction, fetchTransactions, updateTransaction } from '@/lib/data';
@@ -291,8 +292,7 @@ export default function LancamentosScreen() {
 
       {/* Sheet: Novo / Editar Lançamento */}
       <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={() => setModalOpen(false)}>
-        <View style={styles.modalScrim}>
-          <View style={styles.sheet}>
+        <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingTxId ? 'Editar lançamento' : type === 'in' ? 'Nova entrada' : 'Nova saída'}</Text>
               <AppPressable onPress={() => setModalOpen(false)} hitSlop={12}>
@@ -377,8 +377,7 @@ export default function LancamentosScreen() {
             >
               {saving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>{editingTxId ? 'Salvar alterações' : 'Salvar lançamento'}</Text>}
             </AppPressable>
-          </View>
-        </View>
+        </Sheet>
       </Modal>
 
       {/* Date Picker Modal */}
@@ -462,8 +461,6 @@ const styles = StyleSheet.create({
   rowSub: { color: theme.inkFaint, fontSize: 10.5, marginTop: 2 },
   rowAmount: { fontSize: 13, fontVariant: ['tabular-nums'] },
   rowAmountWrap: { flexDirection: 'row', alignItems: 'baseline' },
-  modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: theme.paperRaised, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.xl, gap: spacing.md, maxHeight: '88%' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: 17 },
   typeRow: { flexDirection: 'row', gap: spacing.xs },

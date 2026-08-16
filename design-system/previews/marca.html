@@ -1,0 +1,261 @@
+<!-- @dsCard group="Marca" -->
+<meta charset="utf-8">
+<title>Marca Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26);
+    --escuro:#08384b; --menta:#a9f8c8; --ciano:#24a5c5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:32px 0 12px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 12px;max-width:66ch}
+  b{color:var(--ink);font-weight:400}
+  .grid{display:flex;flex-wrap:wrap;gap:14px}
+  .tile{background:var(--raised);border:1px solid var(--rule);border-radius:16px;padding:18px;
+        display:flex;flex-direction:column;align-items:center;gap:12px;min-width:132px}
+  .cap{font-size:11px;color:var(--inkFaint);text-align:center;line-height:1.45}
+  .flat{background:var(--paper)}
+  .white{background:#fff}
+  .lock{border-radius:14px;padding:24px 28px;display:grid;place-items:center;overflow:hidden}
+  .sw{width:150px}
+  .chip{height:60px;border-radius:12px;border:1px solid var(--rule);margin-bottom:7px}
+  .nm{font-size:12px;display:block}
+  .hex{font-size:11px;color:var(--inkFaint);font-variant-numeric:tabular-nums;display:block;margin-top:2px}
+  .use{font-size:10.5px;color:var(--inkFaint);line-height:1.45;display:block;margin-top:5px}
+  table{border-collapse:collapse;width:100%;max-width:680px}
+  th,td{text-align:left;font-size:12px;padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--inkFaint);font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td{color:var(--inkSoft)}
+  td b{color:var(--ink);font-weight:400}
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:680px;margin-top:14px}
+  .note p{margin:0;font-size:12.5px}
+  .files{font-size:11.5px;color:var(--inkFaint);line-height:1.9;font-variant-numeric:tabular-nums}
+  .files b{color:var(--inkSoft);font-weight:400}
+</style>
+
+<!-- Geometria oficial, extraída dos SVGs em marca/. Definida uma vez e reutilizada via <use>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <!-- Um gradiente por peça, em userSpaceOnUse, com as coordenadas do arquivo
+       original. NUNCA objectBoundingBox: ele reinicia a rampa no bounding box de
+       cada elemento, dando uma rampa para o símbolo, outra para o texto e outra
+       para o ponto — em vez de uma só atravessando o conjunto. -->
+  <linearGradient id="gradSim" gradientUnits="userSpaceOnUse" x1="67.51" y1="67.51" x2="392.26" y2="392.26">
+    <stop offset="0" stop-color="#b0f7c9"/><stop offset="1" stop-color="#22a1c1"/>
+  </linearGradient>
+  <linearGradient id="gradLogo" gradientUnits="userSpaceOnUse" x1="333.91" y1="-198.88" x2="1375.52" y2="842.73">
+    <stop offset="0" stop-color="#b0f7c9"/><stop offset="1" stop-color="#22a1c1"/>
+  </linearGradient>
+  <linearGradient id="gradIcoG" gradientUnits="userSpaceOnUse" x1="237.73" y1="237.73" x2="562.48" y2="562.48">
+    <stop offset="0" stop-color="#b0f7c9"/><stop offset="1" stop-color="#22a1c1"/>
+  </linearGradient>
+  <linearGradient id="gradIcoBg" gradientUnits="userSpaceOnUse" x1="0" y1="400" x2="800" y2="400">
+    <stop offset="0" stop-color="#b0f7c9"/><stop offset="1" stop-color="#22a1c1"/>
+  </linearGradient>
+  <circle id="ponto" cx="426.09" cy="426.09" r="33.47"/>
+  <path id="sim" d="M459.56,229.78c0,19.55-2.44,38.53-7.04,56.66-25.23,99.5-115.39,173.12-222.74,173.12-48.1,0-92.76-14.78-129.66-40.05C40.79,378.88,1.47,311.14.04,234.14-2.38,104.34,104.35-2.38,234.14.04c72.25,1.35,136.33,36.04,177.53,89.32,4.63,5.99,4.09,14.5-1.26,19.85l-41.41,41.41c-6.66,6.66-17.64,5.58-23.04-2.13-25.2-35.94-66.64-59.66-113.67-60.47-79.81-1.39-145.65,64.45-144.27,144.27.93,53.56,31.56,99.88,76.12,123.2,19.63,10.26,41.96,16.07,65.64,16.07,48.5,0,91.31-24.35,116.87-61.49,6.89-10-.22-23.63-12.36-23.63h-64.78c-13.4,0-20.12-16.21-10.64-25.68l56.72-56.72c2.82-2.82,6.65-4.41,10.64-4.41h117.75c7.88,0,14.46,6.07,15.01,13.93.38,5.36.57,10.76.57,16.22Z"/>
+  <path id="simIco" d="M629.78,400c0,19.55-2.44,38.53-7.04,56.66-25.23,99.5-115.39,173.12-222.74,173.12-48.1,0-92.76-14.78-129.66-40.05-59.33-40.63-98.65-108.37-100.08-185.37-2.42-129.8,104.31-236.52,234.1-234.1,72.25,1.35,136.33,36.04,177.53,89.32,4.63,5.99,4.09,14.5-1.26,19.85l-41.41,41.41c-6.66,6.66-17.64,5.58-23.04-2.13-25.2-35.94-66.64-59.66-113.67-60.47-79.81-1.39-145.65,64.45-144.27,144.27.93,53.56,31.56,99.88,76.12,123.2,19.63,10.26,41.96,16.07,65.64,16.07,48.5,0,91.31-24.35,116.87-61.49,6.89-10-.22-23.63-12.36-23.63h-64.78c-13.4,0-20.12-16.21-10.64-25.68l56.72-56.72c2.82-2.82,6.65-4.41,10.64-4.41h117.75c7.88,0,14.46,6.07,15.01,13.93.38,5.36.57,10.76.57,16.22Z"/>
+  <g id="txt">
+    <path d="M486.02,233.96c0-28.26,15.93-43.68,44.19-43.17l150.85,3.65c10.71.26,19.25,9.01,19.25,19.72v32.5c0,11.08-9.12,19.98-20.19,19.72l-91.69-2.14c-11.07-.26-20.19,8.65-20.19,19.72v150.73c0,10.89-8.83,19.73-19.73,19.73h-42.77c-10.89,0-19.73-8.83-19.73-19.73v-200.73Z"/>
+    <path d="M819.53,301.8l77.8-10.76c2.31-.32,3.94-2.43,3.68-4.74-2.1-18.57-18.63-29.72-51.67-29.72-26.49,0-43.65,9-49.32,24.86-2.67,7.48-9.52,12.65-17.46,12.65h-40.95c-11.93,0-20.92-11.01-18.35-22.66,11.4-51.88,62.39-81.66,126.08-81.66,71.43,0,134.12,34.43,134.12,119.73v54.21c0,10.36,8.4,18.76,18.76,18.76h0c10.36,0,18.76,8.4,18.76,18.76v34.43c0,10.36-8.4,18.76-18.76,18.76h-34c-23.65,0-42.82-19.17-42.82-42.82h0c0-.57.11-1.13.33-1.65l10.05-24.11c1.18-2.82-.9-5.93-3.95-5.93h-10.73c-1.96,0-3.69,1.32-4.16,3.22-10.29,41.74-35.99,76.43-106.64,76.43-80.68,0-94.55-49.33-94.55-76.05,0-44.71,26.72-70.92,103.8-81.71ZM826.21,387.62c42.61,0,71.53-16.88,74.73-45.48.31-2.76-2.11-5.06-4.86-4.67l-61.14,8.53c-24.67,3.6-37,7.19-37,22.1s14.39,19.53,28.26,19.53Z"/>
+    <path d="M1134.02,358.32v76.42c0,10.86-8.81,19.67-19.67,19.67h-42.88c-10.86,0-19.67-8.81-19.67-19.67v-220.17c0-10.86,8.81-19.67,19.67-19.67h42.88c10.86,0,19.67,8.81,19.67,19.67v10.98c0,.46-.07.92-.22,1.35l-13.32,39.95c-.92,2.77,1.14,5.64,4.06,5.64h11.22c1.99,0,3.69-1.37,4.17-3.3,11.07-44.67,43.21-79.43,97.38-79.43,66.29,0,106.37,44.19,106.37,124.36v120.62c0,10.86-8.81,19.67-19.67,19.67h-42.88c-10.86,0-19.67-8.81-19.67-19.67v-107.77c0-47.28-13.88-65.26-53.44-65.26-44.71,0-74,23.64-74,96.61Z"/>
+    <path d="M1483.47,301.8l77.8-10.76c2.31-.32,3.94-2.43,3.68-4.74-2.1-18.57-18.63-29.72-51.67-29.72-26.49,0-43.65,9-49.32,24.86-2.67,7.48-9.52,12.65-17.46,12.65h-40.95c-11.93,0-20.91-11.01-18.35-22.66,11.4-51.88,62.39-81.66,126.08-81.66,71.43,0,134.12,34.43,134.12,119.73v54.22c0,10.36,8.4,18.76,18.76,18.76h0c10.36,0,18.76,8.4,18.76,18.76v34.43c0,10.36-8.4,18.76-18.76,18.76h-34c-23.65,0-42.82-19.17-42.82-42.82h0c0-.57.11-1.13.33-1.65l10.05-24.11c1.18-2.82-.9-5.93-3.95-5.93h-10.73c-1.96,0-3.69,1.32-4.16,3.22-10.29,41.74-35.99,76.43-106.64,76.43-80.68,0-94.56-49.33-94.56-76.05,0-44.71,26.72-70.92,103.81-81.71ZM1490.15,387.62c42.61,0,71.53-16.88,74.73-45.48.31-2.76-2.11-5.06-4.86-4.67l-61.14,8.53c-24.67,3.6-37,7.19-37,22.1s14.39,19.53,28.26,19.53Z"/>
+  </g>
+</defs></svg>
+
+<div class="eyebrow">identidade</div>
+<h1>Marca</h1>
+<p>Símbolo, ícone e logotipo. Toda a geometria e todas as cores desta página vêm dos SVGs
+   originais em <b>marca/</b> — são valores oficiais.</p>
+
+<div class="note">
+  <p><b>O símbolo é o “G”.</b> O logotipo completo é símbolo + “rana” + ponto; o G nunca é
+     tipografia. Por isso os arquivos de texto contêm apenas <b>rana</b> — sozinhos, não
+     significam nada.</p>
+</div>
+
+<h2>Símbolo</h2>
+<p>O símbolo é <b>“G.”</b> — anel <b>mais ponto</b>. O anel sozinho é peça incompleta.</p>
+<div class="grid">
+  <div class="tile flat">
+    <svg width="82" height="82" viewBox="0 0 459.56 459.56">
+      <use href="#sim" fill="url(#gradSim)"/><use href="#ponto" fill="#a9f8c8"/>
+    </svg>
+    <div class="cap">gradiente<br>ponto menta</div>
+  </div>
+  <div class="tile white">
+    <svg width="82" height="82" viewBox="0 0 459.56 459.56">
+      <use href="#sim" fill="#09384a"/><use href="#ponto" fill="#09384a"/>
+    </svg>
+    <div class="cap" style="color:#5b7683">escuro<br>#09384a</div>
+  </div>
+  <div class="tile flat">
+    <svg width="82" height="82" viewBox="0 0 459.56 459.56">
+      <use href="#sim" fill="#fefefe"/><use href="#ponto" fill="#fefefe"/>
+    </svg>
+    <div class="cap">branco<br>#fefefe</div>
+  </div>
+</div>
+<p style="margin-top:12px">Anel geométrico aberto no quadrante direito. A perna é uma barra
+   horizontal de <b>terminais cortados em diagonal</b> — corte que se repete na ponta superior
+   do anel e é a assinatura formal do desenho. O ponto ocupa a abertura, em
+   <b>cx 426,09 · cy 426,09 · r 33,47</b>.</p>
+<div class="note">
+  <p><b>Na versão em gradiente o ponto é menta chapado</b>, não gradiente — é o único elemento
+     que escapa da rampa, e é o que o mantém legível contra a ponta escura do anel.</p>
+</div>
+
+<h2>Símbolo sem ponto <span style="color:var(--inkFaint);text-transform:none;letter-spacing:0">— incompleto</span></h2>
+<div class="grid">
+  <div class="tile flat" style="opacity:.5"><svg width="60" height="60" viewBox="0 0 459.56 459.56"><use href="#sim" fill="#a9f8c8"/></svg><div class="cap">menta</div></div>
+  <div class="tile flat" style="opacity:.5"><svg width="60" height="60" viewBox="0 0 459.56 459.56"><use href="#sim" fill="#24a5c5"/></svg><div class="cap">ciano</div></div>
+</div>
+<div class="note">
+  <p>Estes dois arquivos trazem só o anel, sem ponto. São as únicas versões menta e ciano do
+     símbolo que existem — e por isso ficam aqui marcados, não apagados. <b>Não usar como
+     símbolo.</b> Falta exportar as duas com ponto.</p>
+</div>
+
+<h2>Ícone do app</h2>
+<div class="grid">
+  <div class="tile">
+    <svg width="96" height="96" viewBox="0 0 800 800">
+      <rect width="800" height="800" rx="149.22" fill="#09384a"/>
+      <use href="#simIco" fill="url(#gradIcoG)"/><circle cx="596.31" cy="596.31" r="33.47" fill="#a9f8c8"/>
+    </svg>
+    <div class="cap">Fundo escuro<br>G gradiente · ponto menta</div>
+  </div>
+  <div class="tile">
+    <svg width="96" height="96" viewBox="0 0 800 800">
+      <rect width="800" height="800" rx="149.22" fill="url(#gradIcoBg)"/>
+      <use href="#simIco" fill="#09384a"/><circle cx="596.31" cy="596.31" r="33.47" fill="#09384a"/>
+    </svg>
+    <div class="cap">Fundo gradiente<br>G escuro</div>
+  </div>
+  <div class="tile">
+    <svg width="96" height="96" viewBox="0 0 800 800">
+      <rect width="800" height="800" rx="149.22" fill="url(#gradIcoBg)"/>
+      <use href="#simIco" fill="#fefefe"/><circle cx="596.31" cy="596.31" r="33.47" fill="#fefefe"/>
+    </svg>
+    <div class="cap">Fundo gradiente<br>G branco</div>
+  </div>
+  <div class="tile">
+    <svg width="96" height="96" viewBox="0 0 800 800">
+      <rect width="800" height="800" rx="400" fill="#09384a"/>
+      <use href="#simIco" fill="url(#gradIcoG)"/><circle cx="596.31" cy="596.31" r="33.47" fill="#a9f8c8"/>
+    </svg>
+    <div class="cap">Circular<br>rx = 400</div>
+  </div>
+</div>
+<p style="margin-top:12px">Raio do squircle: <b>149,22</b> em 800 — <b>18,65%</b> do lado.
+   É forma de marca, não de componente: não deve ser reaproveitado nos raios da interface,
+   cujo maior valor é <b>xl (22px)</b>.</p>
+
+<h2>Logotipo</h2>
+<div class="grid" style="flex-direction:column;align-items:stretch;max-width:560px">
+  <div class="lock" style="background:var(--paper)">
+    <svg width="100%" viewBox="0 0 1778.3 459.56">
+      <use href="#sim" fill="url(#gradLogo)"/><use href="#txt" fill="url(#gradLogo)"/>
+      <circle cx="1744.83" cy="426.09" r="33.47" fill="url(#gradLogo)"/>
+    </svg>
+  </div>
+  <div class="lock" style="background:var(--paper)">
+    <svg width="100%" viewBox="0 0 1778.3 459.56">
+      <use href="#sim" fill="#a9f8c8"/><use href="#txt" fill="#a9f8c8"/>
+      <circle cx="1744.83" cy="426.09" r="33.47" fill="#08384b"/>
+    </svg>
+  </div>
+  <div class="lock" style="background:#08384b">
+    <svg width="100%" viewBox="0 0 1778.3 459.56">
+      <use href="#sim" fill="#fff"/><use href="#txt" fill="#fff"/>
+      <circle cx="1744.83" cy="426.09" r="33.47" fill="#a9f8c8"/>
+    </svg>
+  </div>
+  <div class="lock white">
+    <svg width="100%" viewBox="0 0 1778.3 459.56">
+      <use href="#sim" fill="#08384b"/><use href="#txt" fill="#08384b"/>
+      <circle cx="1744.83" cy="426.09" r="33.47" fill="#a9f8c8"/>
+    </svg>
+  </div>
+</div>
+
+<h2>A regra do ponto</h2>
+<p>O ponto <b>não tem cor fixa</b> — ele é sempre o contraste do texto.</p>
+<table>
+  <tr><th>Texto</th><th>Ponto</th><th>Leitura</th></tr>
+  <tr><td><b>Escuro</b> #08384b</td><td>Menta #a9f8c8</td><td>Ponto salta</td></tr>
+  <tr><td><b>Branco</b> #ffffff</td><td>Menta #a9f8c8</td><td>Ponto salta</td></tr>
+  <tr><td><b>Menta</b> #a9f8c8</td><td>Escuro #08384b</td><td>Inverte: o ponto recua</td></tr>
+  <tr><td><b>Gradiente</b></td><td>Gradiente</td><td>Sem destaque próprio</td></tr>
+</table>
+<div class="note">
+  <p>Na versão em gradiente o ponto é absorvido pela rampa e deixa de ter destaque. É a única
+     variante em que ele não se diferencia — vale saber que se está abrindo mão da assinatura
+     ao escolhê-la.</p>
+</div>
+
+<h2>Cores oficiais</h2>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#08384b"></div><span class="nm">escuroMarca</span><span class="hex">#08384b</span></div>
+  <div class="sw"><div class="chip" style="background:#a9f8c8"></div><span class="nm">menta</span><span class="hex">#a9f8c8</span></div>
+  <div class="sw"><div class="chip" style="background:#24a5c5"></div><span class="nm">ciano</span><span class="hex">#24a5c5</span></div>
+  <div class="sw"><div class="chip" style="background:#fff"></div><span class="nm">branco</span><span class="hex">#ffffff</span></div>
+  <div class="sw"><div class="chip" style="background:linear-gradient(135deg,#b0f7c9,#22a1c1)"></div><span class="nm">gradiente</span><span class="hex">#b0f7c9 → #22a1c1</span><span class="use">45° descendente à direita. Horizontal quando é fundo de ícone.</span></div>
+</div>
+<div class="note">
+  <p><b>Dois escuros convivem nos arquivos.</b> Os ícones usam <b>#09384a</b> e os logotipos
+     <b>#08384b</b> — diferença de 1 a 2 por canal, invisível a olho nu, mas são dois valores
+     distintos em circulação. Precisa eleger um antes que a divergência se espalhe.</p>
+</div>
+
+<h2>Divergências com os tokens do app</h2>
+<table>
+  <tr><th>Elemento</th><th>Marca</th><th>App hoje</th><th>Distância</th></tr>
+  <tr><td><b>Fundo escuro</b></td><td>#08384b</td><td>#052229 <span style="color:var(--inkFaint)">theme.paper</span></td><td>Grande — o app é bem mais escuro e verde</td></tr>
+  <tr><td><b>Menta</b></td><td>#a9f8c8</td><td>#aeffe3 <span style="color:var(--inkFaint)">theme.accent2</span></td><td>Pequena</td></tr>
+  <tr><td><b>Ciano</b></td><td>#24a5c5</td><td>#00a6ca <span style="color:var(--inkFaint)">theme.down</span></td><td>Pequena</td></tr>
+  <tr><td><b>Nome no cabeçalho</b></td><td>Logotipo desenhado</td><td>NeueMachina-Light</td><td>Famílias distintas</td></tr>
+</table>
+<div class="note">
+  <p><b>As duas cores de acento quase batem.</b> Menta e ciano da marca estão a um passo de
+     <b>accent2</b> e <b>down</b> do tema — unificá-las é barato. Já o fundo escuro é uma
+     decisão real: <b>#052229</b> e <b>#08384b</b> são ambientes diferentes.</p>
+</div>
+<div class="note">
+  <p><b>O “Grana.” do cabeçalho não é o logotipo.</b> Em <b>app/(app)/index.tsx</b> ele é texto
+     em Neue Machina — e o G ali é uma letra, não o símbolo. Ou o cabeçalho passa a usar o
+     logotipo real como imagem, ou se assume que ali é título de interface e não a marca.</p>
+</div>
+
+<h2>Arquivos</h2>
+<div class="files">
+  <b>marca/simbolo-</b>{gradiente, escuro, branco}<b>.svg</b> · 459,56² — com ponto<br>
+  <b>marca/simbolo-</b>{menta, ciano}<b>-sem-ponto.svg</b> · 459,56² — incompletos<br>
+  <b>marca/logotipo-</b>{gradiente, escuro, menta, branco}<b>.svg</b> · 1778,3 × 459,56<br>
+  <b>marca/texto-</b>{escuro, ciano, menta}<b>.svg</b> · 1198,89 × 269,79 — só “rana”<br>
+  <b>marca/icone-</b>{fundo-escuro, fundo-gradiente-escuro, fundo-gradiente-branco, circular}<b>.svg</b> · 800²
+</div>
+
+<h2>Geometria do gradiente</h2>
+<p>Cada peça tem suas próprias coordenadas, todas em <b>userSpaceOnUse</b>. Isso é o que faz a
+   rampa atravessar o conjunto inteiro como um objeto só.</p>
+<table>
+  <tr><th>Peça</th><th>Coordenadas</th><th>Ângulo</th></tr>
+  <tr><td><b>Símbolo</b></td><td>67,51 · 67,51 → 392,26 · 392,26</td><td>45° descendente</td></tr>
+  <tr><td><b>Logotipo</b></td><td>333,91 · −198,88 → 1375,52 · 842,73</td><td>45° descendente</td></tr>
+  <tr><td><b>G do ícone</b></td><td>237,73 · 237,73 → 562,48 · 562,48</td><td>45° descendente</td></tr>
+  <tr><td><b>Fundo do ícone</b></td><td>0 · 400 → 800 · 400</td><td>Horizontal</td></tr>
+</table>
+<div class="note">
+  <p><b>Nunca usar objectBoundingBox.</b> Ele reinicia a rampa no bounding box de cada elemento —
+     uma no símbolo, outra no texto, outra no ponto — em vez de uma só atravessando a peça.
+     No Illustrator o equivalente é unir em caminho composto (ou aplicar o preenchimento no
+     nível do grupo, pelo painel Aparência) antes de aplicar o gradiente.</p>
+</div>

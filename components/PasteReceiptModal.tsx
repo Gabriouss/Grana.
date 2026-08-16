@@ -21,6 +21,7 @@ import { addTransaction } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
 import CategoryChips from './CategoryChips';
 import AppPressable from './AppPressable';
+import Sheet from './Sheet';
 import type { TxType } from '@/lib/types';
 
 export default function PasteReceiptModal({
@@ -114,8 +115,7 @@ export default function PasteReceiptModal({
         onClose();
       }}
     >
-      <View style={styles.modalScrim}>
-        <View style={styles.sheet}>
+      <Sheet>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>
               {recognized ? 'Confirmar Lançamento' : 'Colar Comprovante / Pix'}
@@ -210,8 +210,7 @@ export default function PasteReceiptModal({
               </AppPressable>
             </>
           )}
-        </View>
-      </View>
+      </Sheet>
     </Modal>
   );
 }

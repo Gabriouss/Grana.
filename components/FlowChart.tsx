@@ -81,7 +81,7 @@ export default function FlowChart({ transactions }: { transactions: Transaction[
     progress.setValue(0);
     Animated.timing(progress, {
       toValue: 1,
-      duration: 700,
+      duration: 5000, // velocidade reduzida 70% em relação aos 1500ms anteriores
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();

@@ -1,0 +1,265 @@
+<!-- @dsCard group="Componentes" -->
+<meta charset="utf-8">
+<title>Conteúdo Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26);
+    --up:#74e291; --down:#00a6ca; --danger:#e08a7d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:32px 0 10px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 14px;max-width:66ch}
+  b{color:var(--ink);font-weight:400}
+  .spec{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .demo{background:var(--raised);border:1px solid var(--rule);border-radius:16px;padding:20px;
+        min-width:290px;display:flex;flex-direction:column;gap:12px}
+  .demo.plain{background:transparent;border:none;padding:0}
+  .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--inkFaint)}
+  .props{font-size:11px;color:var(--inkFaint);line-height:1.75;max-width:38ch;font-variant-numeric:tabular-nums}
+  .props b{color:var(--inkSoft);font-weight:400}
+  .tabnum{font-variant-numeric:tabular-nums}
+
+  .card{background:var(--raised);border:1px solid var(--rule);border-radius:16px;padding:16px;
+        display:flex;flex-direction:column;gap:12px}
+  .cardhead{display:flex;justify-content:space-between;align-items:center}
+  .cardlabel{font-size:13px}
+  .cardval{font-size:13px;font-variant-numeric:tabular-nums}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;
+        border:1px solid var(--rule);font-size:12px}
+  .chip.quick{background:var(--raised)}
+  .chip.sel{border-color:var(--ink);background:var(--raised);color:var(--ink)}
+  .chip.legend{padding:6px 10px}
+  .dot{width:8px;height:8px;border-radius:4px;flex:none}
+  .dot10{width:10px;height:10px;border-radius:5px}
+
+  .row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--rule)}
+  .rowicon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:11px;flex:none}
+  .rowtitle{font-size:13px}
+  .rowsub{font-size:10.5px;color:var(--inkFaint);margin-top:2px}
+  .rowamt{font-size:13px;font-variant-numeric:tabular-nums;margin-left:auto}
+
+  .budget{display:flex;flex-direction:column;gap:6px;padding:8px 0}
+  .budgettop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .btrack{height:6px;border-radius:3px;background:var(--paper);overflow:hidden}
+  .bfill{height:100%;border-radius:3px}
+  .catname{font-size:12px}
+  .catamt{font-size:11.5px;color:var(--inkFaint);font-variant-numeric:tabular-nums}
+
+  .toast{display:inline-block;background:var(--ink);color:var(--paper);font-size:12.5px;
+         font-weight:500;padding:10px 18px;border-radius:999px;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+  .empty{font-size:12.5px;color:var(--inkFaint);line-height:1.45}
+  .err{font-size:12.5px;color:var(--danger)}
+
+  .blur{filter:blur(7px)}
+  .tabbar{display:flex;background:var(--raised);border-top:1px solid var(--rule);border-radius:0 0 14px 14px}
+  .tab{flex:1;text-align:center;padding:10px 4px;font-size:10px;color:var(--inkFaint)}
+  .tab.on{color:var(--ink)}
+  .tabico{width:20px;height:20px;border:2px solid currentColor;border-radius:5px;margin:0 auto 4px}
+
+  .sheetdemo{position:relative;height:150px;border-radius:14px;overflow:hidden;border:1px solid var(--rule);min-width:250px}
+  .sheetbg{position:absolute;inset:0;background:var(--paper);display:grid;place-items:center;color:var(--inkFaint);font-size:11px}
+  .veil{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+  .sheetp{position:absolute;left:0;right:0;bottom:0;background:var(--raised);border-radius:22px 22px 0 0;
+          border-top:1px solid var(--rule);padding:16px}
+
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:680px;margin-top:14px}
+  .note p{margin:0;font-size:12.5px}
+  .warn{border-left-color:var(--danger)}
+</style>
+
+<div class="eyebrow">componentes</div>
+<h1>Conteúdo</h1>
+
+<h2>Card</h2>
+<div class="spec">
+  <div class="demo plain">
+    <div class="card" style="min-width:290px">
+      <div class="cardhead"><span class="cardlabel">Fluxo do mês</span>
+        <span class="cardval" style="color:var(--up)">+ R$ 4.820,00</span></div>
+      <div style="height:60px;border-radius:8px;background:var(--paper)"></div>
+    </div>
+  </div>
+  <div class="props">
+    <b>fundo</b> paperRaised · <b>borda</b> rule · <b>raio</b> lg 16px<br>
+    <b>padding</b> lg 16px · <b>gap</b> md 12px<br>
+    <b>sem sombra</b> — separa-se do fundo por cor e borda<br><br>
+    O cabeçalho é sempre rótulo à esquerda, valor à direita. Poços internos
+    (gráficos, trilhos) voltam para <b>paper</b>, criando profundidade sem elevação.
+  </div>
+</div>
+
+<h2>Folha</h2>
+<div class="spec">
+  <div class="sheetdemo">
+    <div class="sheetbg">tela</div><div class="veil"></div>
+    <div class="sheetp">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:17px">Novo lançamento</span><span style="color:var(--inkFaint)">×</span></div>
+      <div style="border-bottom:1px solid var(--rule);padding:8px 0;font-size:14px;color:var(--inkFaint)">Descrição</div>
+    </div>
+  </div>
+  <div class="props">
+    <b>véu</b> rgba(0,0,0,.5)<br>
+    <b>painel</b> paperRaised · raio xl 22px só no topo<br>
+    <b>padding</b> xl 20px · <b>altura máx</b> 88%<br>
+    <b>título</b> 17px<br><br>
+    A folha mede a altura do teclado à mão e se levanta acima dele. A partir do SDK 54 o
+    Expo liga edge-to-edge por padrão, e nesse modo a janela não é mais redimensionada
+    pelo sistema.
+  </div>
+</div>
+<div class="note warn">
+  <p><b>A folha está implementada quatro vezes.</b> Existe <b>components/Sheet.tsx</b>,
+     com a medição de teclado e o scroll resolvidos. Mas <b>ItemActionSheet</b>,
+     <b>DatePickerModal</b> e <b>CategoryPickerModal</b> não o usam: cada um repete os
+     estilos <b>modalScrim</b> e <b>sheet</b> por conta própria. Três cópias que não
+     herdam correção nenhuma feita no componente — e das três, só o CategoryPicker
+     lembrou de importar <b>useKeyboardHeight</b>.</p>
+</div>
+<div class="note warn">
+  <p><b>E o título da folha diverge junto.</b> 17px sem peso definido em index.tsx;
+     17px com <b>peso 500</b> nas três cópias. Mesma folha, dois títulos.</p>
+</div>
+
+<h2>Chips</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="lbl">lançamento rápido</div>
+    <div><span class="chip quick"><span class="dot" style="background:#bb6b60"></span>Alimentação</span>
+         <span class="chip quick"><span class="dot" style="background:#6b9dc2"></span>Transporte</span></div>
+    <div class="lbl">seleção de categoria</div>
+    <div><span class="chip sel"><span class="dot" style="background:#93739e"></span>Moradia</span>
+         <span class="chip" style="color:var(--inkSoft)"><span class="dot" style="background:#74a17c"></span>Saúde</span></div>
+    <div class="lbl">legenda de gráfico</div>
+    <div><span class="chip legend"><span class="dot" style="background:#c66f8e"></span>Lazer
+         <span class="catamt">18%</span></span></div>
+  </div>
+  <div class="props">
+    <b>forma</b> pílula · borda rule · ponto 8px<br>
+    <b>rápido</b> fundo paperRaised · texto ink 12px · hover ruleStrong<br>
+    <b>seleção</b> sem fundo em repouso · texto inkSoft <b>12,5px</b> · selecionado ganha
+    borda ink e fundo paperRaised<br>
+    <b>legenda</b> sem fundo · não é tocável<br><br>
+    Três variantes muito próximas, com <b>tamanhos de texto diferentes</b> (12 e 12,5) e
+    regras de hover distintas.
+  </div>
+</div>
+
+<h2>Linha de lançamento</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="row">
+      <span class="rowicon" style="background:#bb6b6030;color:#bb6b60">AL</span>
+      <span><span class="rowtitle">Alimentação</span><div class="rowsub">Supermercado · 14 de agosto</div></span>
+      <span class="rowamt" style="color:var(--down)">− R$ 284,90</span>
+    </div>
+    <div class="row" style="border:none">
+      <span class="rowicon" style="background:#4f948330;color:#4f9483">SA</span>
+      <span><span class="rowtitle">Salário</span><div class="rowsub">Pagamento · 5 de agosto</div></span>
+      <span class="rowamt" style="color:var(--up)">+ R$ 5.200,00</span>
+    </div>
+  </div>
+  <div class="props">
+    <b>ícone</b> 34px · raio 10 · cor da categoria a <b>30% de alfa</b>, sigla nas duas
+    primeiras letras em caixa alta<br>
+    <b>título</b> ink 13px = categoria<br>
+    <b>subtítulo</b> inkFaint 10,5px = descrição · data<br>
+    <b>valor</b> up ou down · tabular-nums<br>
+    <b>toque</b> edita · <b>toque longo</b> abre ações<br><br>
+    O sinal (+ / −) é um Text separado do valor, porque o valor pode ser borrado pelo
+    modo privacidade e o sinal não.
+  </div>
+</div>
+
+<h2>Barra de orçamento</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="budget">
+      <div class="budgettop">
+        <span style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#bb6b60"></span>
+          <span class="catname">Alimentação</span></span>
+        <span class="catamt">R$ 420,00 de R$ 800,00</span></div>
+      <div class="btrack"><div class="bfill" style="width:52%;background:#bb6b60"></div></div>
+    </div>
+    <div class="budget">
+      <div class="budgettop">
+        <span style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#6b9dc2"></span>
+          <span class="catname">Transporte</span></span>
+        <span class="catamt" style="color:var(--ink)">R$ 340,00 de R$ 300,00 · excedido</span></div>
+      <div class="btrack"><div class="bfill" style="width:100%;background:#6b9dc2"></div></div>
+    </div>
+  </div>
+  <div class="props">
+    <b>trilho</b> 6px · raio 3 · fundo paper<br>
+    <b>preenchimento</b> cor da categoria · limitado a 100%<br>
+    <b>excedido</b> os valores sobem de inkFaint para <b>ink</b> e ganham o sufixo
+    “· excedido”<br><br>
+    Estourar o orçamento <b>não muda a cor da barra</b> — só o peso do texto. A barra
+    continua na cor da categoria, cheia.
+  </div>
+</div>
+<div class="note">
+  <p>Vale notar o que <b>não</b> acontece: não há vermelho, alerta ou ícone ao estourar.
+     É coerente com a paleta — saída é ciano, gastar não é erro — mas significa que
+     estourar o orçamento é um sinal fraco, fácil de passar batido.</p>
+</div>
+
+<h2>Modo privacidade</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="lbl">visível</div>
+    <div class="tabnum" style="font-size:20px">R$ 1.284,90</div>
+    <div class="lbl">oculto</div>
+    <div class="tabnum blur" style="font-size:20px">R$ 1.284,90</div>
+  </div>
+  <div class="props">
+    <b>web e Android</b> filter: blur(7px) de verdade no elemento<br>
+    <b>iOS</b> BlurView do expo-blur + véu rgba(5,34,41,.72)<br><br>
+    Blur real, não retângulo opaco — o valor fica ilegível mas ainda se percebe que há um
+    número ali. Sem <b>overflow:hidden</b>, para o desfoque vazar um pouco além do texto e
+    parecer desfoque, não recorte.
+  </div>
+</div>
+
+<h2>Feedback</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="lbl">toast</div><div><span class="toast">Lançamento salvo</span></div>
+    <div class="lbl">vazio</div><div class="empty">Nenhum orçamento definido. Toque em “+ Definir” ou escolha “Templates”.</div>
+    <div class="lbl">erro</div><div class="err">Erro ao carregar dados</div>
+  </div>
+  <div class="props">
+    <b>toast</b> fundo ink · texto paper · pílula · sombra toast<br>
+    entra em 250ms, fica 2000ms, sai sozinho · <b>pointerEvents none</b><br>
+    posicionado a 90px da base, acima da tab bar<br><br>
+    <b>vazio</b> inkFaint 12,5px — sempre instrui a próxima ação, nunca só constata<br>
+    <b>erro</b> #e08a7d, fixo no código
+  </div>
+</div>
+
+<h2>Barra de abas</h2>
+<div class="spec">
+  <div class="demo plain" style="min-width:320px">
+    <div class="tabbar">
+      <div class="tab on"><div class="tabico"></div>Início</div>
+      <div class="tab"><div class="tabico"></div>Lançamentos</div>
+      <div class="tab"><div class="tabico"></div>Contas</div>
+      <div class="tab"><div class="tabico"></div>Perfil</div>
+    </div>
+  </div>
+  <div class="props">
+    <b>fundo</b> paperRaised · <b>borda superior</b> rule<br>
+    <b>ativo</b> ink · <b>inativo</b> inkFaint<br>
+    <b>ícones</b> Ionicons, todos na variante <b>-outline</b><br><br>
+    Quatro destinos, sem badge nem indicador além da cor.
+  </div>
+</div>

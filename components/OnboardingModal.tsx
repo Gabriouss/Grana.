@@ -16,6 +16,7 @@ import { formatMoney, parseAmount } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
 import AppPressable from './AppPressable';
+import { useKeyboardHeight } from './Sheet';
 
 export const ONB_GOALS = [
   { key: 'debt', label: 'Sair das dívidas', desc: 'Organizar o que sai todo mês e parar de usar o rotativo.' },
@@ -42,6 +43,7 @@ export default function OnboardingModal({
   onFinished: (profile: { goal: string; income: number; leak: string }) => void;
 }) {
   const { isDemoMode } = useDemo();
+  const keyboardHeight = useKeyboardHeight();
   const [step, setStep] = useState<number>(1);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [income, setIncome] = useState('');
@@ -110,7 +112,9 @@ export default function OnboardingModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
-      <View style={styles.container}>
+      {/* Tela cheia: o campo de renda no passo 3 ficaria atrás do teclado,
+          já que no modo edge-to-edge a janela não encolhe sozinha. */}
+      <View style={[styles.container, { paddingBottom: spacing.xl + keyboardHeight }]}>
         {/* Progress Bar */}
         <View style={styles.progressBar}>
           {[1, 2, 3].map((i) => (

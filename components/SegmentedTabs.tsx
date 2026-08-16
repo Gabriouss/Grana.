@@ -3,6 +3,13 @@ import { Animated, StyleSheet, Text, View, type LayoutChangeEvent, type StylePro
 import { theme, radius } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
+/* Recuo interno do trilho e espaço entre os botões. Ficam aqui como
+   constantes (e não soltos no StyleSheet) porque a posição da pílula é
+   calculada a partir deles — se os dois valores saírem de sincronia, a
+   pílula deixa de coincidir com o botão. */
+const PAD = 3;
+const GAP = 3;
+
 /** Segmentado com uma "pílula" que desliza suavemente até a opção
     selecionada, em vez de só trocar o estilo do botão na hora. */
 export default function SegmentedTabs<T extends string>({
@@ -19,17 +26,27 @@ export default function SegmentedTabs<T extends string>({
   const [containerWidth, setContainerWidth] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
   const index = Math.max(options.findIndex((o) => o.key === value), 0);
-  const segW = containerWidth / options.length;
+
+  /* A largura que o onLayout devolve inclui o padding do trilho, e os botões
+     ainda dividem entre si o espaço que sobra depois dos gaps. A pílula
+     precisa seguir exatamente essa mesma conta: usar containerWidth/n
+     deixava ela larga demais e, no último item, ultrapassando a borda
+     direita — que era o recuo sumindo em "Ambos". */
+  const n = options.length;
+  const segW = Math.max((containerWidth - PAD * 2 - GAP * (n - 1)) / n, 0);
+  const offsetFor = (i: number) => i * (segW + GAP);
 
   useEffect(() => {
     if (containerWidth === 0) return;
-    Animated.spring(translateX, { toValue: index * segW, useNativeDriver: true, speed: 22, bounciness: 6 }).start();
+    Animated.spring(translateX, { toValue: offsetFor(index), useNativeDriver: true, speed: 22, bounciness: 6 }).start();
   }, [index, containerWidth]);
 
   function handleLayout(e: LayoutChangeEvent) {
     const w = e.nativeEvent.layout.width;
+    if (w === containerWidth) return;
     setContainerWidth(w);
-    translateX.setValue(index * (w / options.length));
+    const nextSegW = Math.max((w - PAD * 2 - GAP * (n - 1)) / n, 0);
+    translateX.setValue(index * (nextSegW + GAP));
   }
 
   return (
@@ -55,12 +72,12 @@ export default function SegmentedTabs<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  segmented: { flexDirection: 'row', backgroundColor: theme.paper, borderRadius: radius.sm, padding: 3, gap: 3 },
+  segmented: { flexDirection: 'row', backgroundColor: theme.paper, borderRadius: radius.sm, padding: PAD, gap: GAP },
   pill: {
     position: 'absolute',
-    top: 3,
-    bottom: 3,
-    left: 3,
+    top: PAD,
+    bottom: PAD,
+    left: PAD,
     backgroundColor: theme.paperRaised,
     borderRadius: radius.sm - 2,
   },

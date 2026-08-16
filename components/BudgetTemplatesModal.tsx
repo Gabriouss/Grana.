@@ -17,6 +17,7 @@ import { parseAmount } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
 import AppPressable from './AppPressable';
+import { useKeyboardHeight } from './Sheet';
 
 export default function BudgetTemplatesModal({
   visible,
@@ -28,6 +29,7 @@ export default function BudgetTemplatesModal({
   onSuccess: () => void;
 }) {
   const { isDemoMode } = useDemo();
+  const keyboardHeight = useKeyboardHeight();
   const [income, setIncome] = useState('');
   const [selectedKey, setSelectedKey] = useState(BUDGET_TEMPLATES[0].key);
   const [saving, setSaving] = useState(false);
@@ -87,7 +89,9 @@ export default function BudgetTemplatesModal({
       }}
     >
       <View style={styles.modalScrim}>
-        <View style={styles.sheet}>
+        {/* Já tem ScrollView próprio para a lista de templates, então só
+            precisa se afastar do teclado. */}
+        <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Templates de Orçamento</Text>
             <AppPressable

@@ -13,6 +13,7 @@ import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { CAT_COLORS } from '@/lib/demo-data';
 import AppPressable from './AppPressable';
+import { useKeyboardHeight } from './Sheet';
 
 export default function CategoryPickerModal({
   visible,
@@ -25,6 +26,7 @@ export default function CategoryPickerModal({
   onClose: () => void;
   onSelectCategory: (category: { name: string; color: string }) => void;
 }) {
+  const keyboardHeight = useKeyboardHeight();
   const [categories, setCategories] = useState(CATEGORIES);
   const [creatingNew, setCreatingNew] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -48,7 +50,9 @@ export default function CategoryPickerModal({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalScrim}>
-        <View style={styles.sheet}>
+        {/* Lista de categorias já rola por conta própria; aqui só o
+            afastamento do teclado ao criar uma categoria nova. */}
+        <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Categoria</Text>
             <AppPressable onPress={onClose} hitSlop={12}>

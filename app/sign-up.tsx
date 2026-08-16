@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSession } from '@/lib/auth-context';
-import { theme, spacing, radius } from '@/lib/theme';
+import { theme, spacing, radius, fonts } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 
 export default function SignUp() {
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
-  title: { color: theme.ink, fontSize: 34, fontWeight: '400', marginTop: spacing.xs, marginBottom: spacing.sm },
+  title: { color: theme.ink, fontSize: 34, fontFamily: fonts.light, marginTop: spacing.xs, marginBottom: spacing.sm },
   subtitle: { color: theme.inkSoft, fontSize: 15, lineHeight: 21, marginBottom: spacing.xxl },
   field: { marginBottom: spacing.lg },
   label: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs },

@@ -1,0 +1,166 @@
+<!-- @dsCard group="Auditoria" -->
+<meta charset="utf-8">
+<title>Auditoria Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26);
+    --alta:#e08a7d; --media:#d3b869; --baixa:#7fa9a0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:32px 0 12px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 14px;max-width:68ch}
+  b{color:var(--ink);font-weight:400}
+  code{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--inkSoft)}
+
+  .item{border:1px solid var(--rule);border-radius:14px;padding:18px 20px;margin-bottom:12px;
+        background:var(--raised);max-width:720px}
+  .head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+  .sev{font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;
+       border-radius:999px;border:1px solid currentColor}
+  .alta{color:var(--alta)} .media{color:var(--media)} .baixa{color:var(--baixa)}
+  .title{font-size:14px}
+  .where{font-size:11px;color:var(--inkFaint);line-height:1.7;margin-top:8px;
+         padding-top:8px;border-top:1px solid var(--rule)}
+  .where b{color:var(--inkSoft);font-weight:400}
+  .body{font-size:12.5px;color:var(--inkSoft);line-height:1.6;margin:0}
+  .body + .body{margin-top:8px}
+
+  .sum{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+  .stat{background:var(--raised);border:1px solid var(--rule);border-radius:14px;
+        padding:14px 20px;min-width:104px}
+  .statn{font-size:26px;font-weight:300;font-variant-numeric:tabular-nums}
+  .statl{font-size:10.5px;color:var(--inkFaint);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:720px;margin-top:16px}
+  .note p{margin:0;font-size:12.5px}
+</style>
+
+<div class="eyebrow">auditoria</div>
+<h1>Inconsistências</h1>
+<p>O que apareceu ao catalogar os componentes. Nada aqui foi corrigido — o app não é
+   modificado por este projeto. É uma lista de decisões a tomar, ordenada por impacto.</p>
+
+<div class="sum">
+  <div class="stat"><div class="statn alta">3</div><div class="statl">Alta</div></div>
+  <div class="stat"><div class="statn media">4</div><div class="statl">Média</div></div>
+  <div class="stat"><div class="statn baixa">4</div><div class="statl">Baixa</div></div>
+</div>
+
+<h2>Alta</h2>
+
+<div class="item">
+  <div class="head"><span class="sev alta">alta</span><span class="title">A folha existe quatro vezes</span></div>
+  <p class="body">Existe <b>components/Sheet.tsx</b>, que resolve o véu, o painel, o scroll e
+     a medição da altura do teclado. Três modais não o usam e repetem os estilos
+     <code>modalScrim</code> e <code>sheet</code> por conta própria.</p>
+  <p class="body">Consequência prática: qualquer correção feita no Sheet — e a medição de
+     teclado foi uma correção difícil, motivada pelo edge-to-edge do SDK 54 — não chega
+     nas outras três. Das três cópias, só o CategoryPicker importou
+     <code>useKeyboardHeight</code>. O DatePicker e o ItemActionSheet não sobem com o
+     teclado.</p>
+  <div class="where"><b>Origem</b> components/Sheet.tsx<br>
+    <b>Cópias</b> ItemActionSheet.tsx · DatePickerModal.tsx · CategoryPickerModal.tsx</div>
+</div>
+
+<div class="item">
+  <div class="head"><span class="sev alta">alta</span><span class="title">Dois switches, um anima e o outro não</span></div>
+  <p class="body"><b>ToggleSwitch.tsx</b> anima a bolinha em spring e esmaece a cor da trilha.
+     A folha de lançamento traz uma cópia inline (<code>switchTrack</code> /
+     <code>switchThumb</code>) que troca de posição instantaneamente.</p>
+  <p class="body">São visualmente idênticos e comportamentalmente diferentes — e é a versão
+     sem animação que o usuário encontra ao criar ou editar um lançamento, que é o fluxo
+     mais usado do app.</p>
+  <div class="where"><b>Componente</b> components/ToggleSwitch.tsx<br>
+    <b>Cópia inline</b> app/(app)/index.tsx — styles.switchTrack, styles.switchThumb</div>
+</div>
+
+<div class="item">
+  <div class="head"><span class="sev alta">alta</span><span class="title">Nenhum campo tem estado de foco</span></div>
+  <p class="body">Nem borda, nem brilho, nem mudança de cor — só o cursor do sistema. Nas
+     telas de entrar e criar conta, com dois campos seguidos, nada indica onde se está
+     digitando. Na web, onde se navega por Tab, o problema é maior: não há indicação
+     visível de foco em nenhum alvo do app.</p>
+  <div class="where"><b>Afeta</b> todos os TextInput · sign-in.tsx · sign-up.tsx · folhas</div>
+</div>
+
+<h2>Média</h2>
+
+<div class="item">
+  <div class="head"><span class="sev media">média</span><span class="title">Cores de categoria vazando para a interface</span></div>
+  <p class="body">Três lugares usam cores do catálogo de categorias como cor de interface:
+     o botão “Saída” usa <code>#bb6b6033</code> (Alimentação), o botão “Entrada” usa
+     <code>#4f948333</code> (Salário), e a ação “Excluir” usa <code>#bb6b60</code> como
+     cor destrutiva.</p>
+  <p class="body">Isso amarra a interface ao catálogo: renomear, recolorir ou remover uma
+     categoria mexeria em botões sem relação nenhuma com ela.</p>
+  <div class="where"><b>Onde</b> index.tsx — typeBtnOut, typeBtnIn · ItemActionSheet.tsx — Excluir</div>
+</div>
+
+<div class="item">
+  <div class="head"><span class="sev media">média</span><span class="title">A validação aparece de duas formas</span></div>
+  <p class="body">No login, o erro é texto em <code>#e08a7d</code> dentro da tela. Nas folhas,
+     é <code>Alert.alert</code> — caixa nativa do sistema, fora do desenho do app.</p>
+  <p class="body">“Informe um valor válido” e “Preencha e-mail e senha” são a mesma classe de
+     falha e chegam ao usuário de formas completamente distintas.</p>
+  <div class="where"><b>Texto na tela</b> sign-in.tsx · sign-up.tsx<br>
+    <b>Alert do sistema</b> index.tsx · CategoryPickerModal.tsx</div>
+</div>
+
+<div class="item">
+  <div class="head"><span class="sev media">média</span><span class="title">Não existe estado desabilitado visual</span></div>
+  <p class="body">Os botões de salvar recebem <code>disabled</code> enquanto gravam, mas nada
+     muda além do spinner substituir o rótulo. Num toque duplo rápido, o segundo toque não
+     produz retorno nenhum — nem visual, nem tátil.</p>
+  <div class="where"><b>Afeta</b> saveBtn · addBtn · primaryBtn</div>
+</div>
+
+<div class="item">
+  <div class="head"><span class="sev media">média</span><span class="title">O botão primário tem três tamanhos</span></div>
+  <p class="body">15px no login, 14px nas folhas, 13px ao criar categoria — todos peso 600,
+     todos com o mesmo papel. Nada os distingue conceitualmente.</p>
+  <div class="where"><b>Onde</b> sign-in.tsx primaryBtnText · index.tsx saveBtnText ·
+    CategoryPickerModal.tsx addBtnText</div>
+</div>
+
+<h2>Baixa</h2>
+
+<div class="item">
+  <div class="head"><span class="sev baixa">baixa</span><span class="title">Título de folha com dois pesos</span></div>
+  <p class="body">17px sem peso definido em index.tsx; 17px com peso 500 nas três folhas
+     que copiaram a estrutura. Mesma peça, dois títulos.</p>
+</div>
+
+<div class="item">
+  <div class="head"><span class="sev baixa">baixa</span><span class="title">Chips com três tamanhos de texto</span></div>
+  <p class="body">O chip de lançamento rápido usa 12px; o de seleção de categoria, 12,5px; o
+     de legenda, 12px. As regras de hover também divergem — um muda o fundo, o outro muda
+     fundo e borda.</p>
+  <div class="where"><b>Onde</b> index.tsx quickChip · CategoryChips.tsx · index.tsx legendChip</div>
+</div>
+
+<div class="item">
+  <div class="head"><span class="sev baixa">baixa</span><span class="title">O ponto de categoria tem dois tamanhos</span></div>
+  <p class="body">8px em quase todo lugar, 10px na lista do CategoryPickerModal.</p>
+</div>
+
+<div class="item">
+  <div class="head"><span class="sev baixa">baixa</span><span class="title">A cor de erro está escrita duas vezes</span></div>
+  <p class="body"><code>#e08a7d</code> aparece fixo em sign-in.tsx e em index.tsx. Não é um
+     token — é uma string repetida, e nada garante que continuem iguais.</p>
+</div>
+
+<div class="note">
+  <p><b>Uma leitura sobre o conjunto:</b> quase toda inconsistência aqui é uma
+     <b>duplicação</b>, não uma decisão ruim. O app tem bom gosto e boas escolhas —
+     tokens semânticos, tabular-nums em toda quantia, saída em ciano em vez de vermelho,
+     a folha que mede o teclado à mão. O que falta é reaproveitar o que já foi resolvido
+     uma vez. As três de severidade alta são todas a mesma história: algo foi resolvido
+     bem num lugar e reescrito pior em outro.</p>
+</div>

@@ -1,0 +1,106 @@
+<!-- @dsCard group="Fundações" -->
+<meta charset="utf-8">
+<title>Espaço e forma Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26); --accent2:#aeffe3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:30px 0 12px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 14px;max-width:64ch}
+  b{color:var(--ink);font-weight:400}
+  .row{display:flex;align-items:center;gap:16px;padding:8px 0}
+  .lbl{width:56px;font-size:12px;flex:none}
+  .px{width:44px;font-size:11px;color:var(--inkFaint);font-variant-numeric:tabular-nums;flex:none}
+  .bar{height:22px;background:var(--accent2);opacity:.55;border-radius:3px}
+  .use{font-size:11px;color:var(--inkFaint)}
+  .grid{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  .rBox{background:var(--raised);border:1px solid var(--ruleStrong);width:92px;height:92px;
+        display:grid;place-items:center;font-size:11px;color:var(--inkFaint)}
+  .cap{font-size:11px;color:var(--inkFaint);text-align:center;margin-top:7px}
+  .eGrid{display:flex;flex-wrap:wrap;gap:18px}
+  .eCard{background:var(--raised);border:1px solid var(--rule);border-radius:16px;
+         padding:18px;width:186px}
+  .eDemo{height:64px;border-radius:12px;background:var(--raised);border:1px solid var(--rule);
+         margin-bottom:12px}
+  .eNm{font-size:12px}
+  .eSpec{font-size:10.5px;color:var(--inkFaint);line-height:1.5;margin-top:5px;
+         font-variant-numeric:tabular-nums}
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:660px;margin-top:16px}
+  .note p{margin:0;font-size:12.5px}
+  .scrimDemo{position:relative;height:120px;border-radius:14px;overflow:hidden;
+             border:1px solid var(--rule);max-width:300px}
+  .scrimBg{position:absolute;inset:0;background:var(--paper);
+           display:grid;place-items:center;color:var(--inkFaint);font-size:11px}
+  .scrimVeil{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+  .scrimSheet{position:absolute;left:0;right:0;bottom:0;height:56px;background:var(--raised);
+              border-radius:22px 22px 0 0;border-top:1px solid var(--rule)}
+</style>
+
+<div class="eyebrow">fundações</div>
+<h1>Espaço e forma</h1>
+
+<h2>Espaçamento</h2>
+<p>Seis passos. A escala não é geométrica — cresce de 4 em 4 até <b>md</b>, depois em saltos
+   maiores. <b>lg (16)</b> é o padding padrão de card e <b>xl (20)</b> o respiro externo das telas.</p>
+<div class="row"><span class="lbl">xs</span><span class="px">4px</span><div class="bar" style="width:4px"></div><span class="use">Gap entre botões de tipo</span></div>
+<div class="row"><span class="lbl">sm</span><span class="px">8px</span><div class="bar" style="width:8px"></div><span class="use">Gap entre chips e ações lado a lado</span></div>
+<div class="row"><span class="lbl">md</span><span class="px">12px</span><div class="bar" style="width:12px"></div><span class="use">Gap interno de card; conteúdo de folha</span></div>
+<div class="row"><span class="lbl">lg</span><span class="px">16px</span><div class="bar" style="width:16px"></div><span class="use">Padding de card; gap entre blocos da tela</span></div>
+<div class="row"><span class="lbl">xl</span><span class="px">20px</span><div class="bar" style="width:20px"></div><span class="use">Respiro externo da tela e das folhas</span></div>
+<div class="row"><span class="lbl">xxl</span><span class="px">28px</span><div class="bar" style="width:28px"></div><span class="use">Reservado — sem uso corrente no app</span></div>
+
+<h2>Raio</h2>
+<div class="grid">
+  <div><div class="rBox" style="border-radius:8px">sm</div><div class="cap">8px<br>trilhos, linhas</div></div>
+  <div><div class="rBox" style="border-radius:12px">md</div><div class="cap">12px<br>botões, itens de menu</div></div>
+  <div><div class="rBox" style="border-radius:16px">lg</div><div class="cap">16px<br>cards, menu do FAB</div></div>
+  <div><div class="rBox" style="border-radius:22px">xl</div><div class="cap">22px<br>topo das folhas</div></div>
+  <div><div class="rBox" style="border-radius:999px">pill</div><div class="cap">999px<br>chips, toast, selos</div></div>
+</div>
+<div class="note">
+  <p><b>Elementos aninhados descontam 2 do raio do pai.</b> A pílula do segmented usa
+     <b>sm − 2 = 6px</b> dentro de um trilho de <b>sm = 8px</b>, com 3px de recuo. Sem esse
+     desconto o canto interno parece mais quadrado que o externo.</p>
+</div>
+
+<h2>Elevação</h2>
+<p>Três receitas de sombra recorrem no app. Nomeá-las evita a quarta variação improvisada.</p>
+<div class="eGrid">
+  <div class="eCard">
+    <div class="eDemo" style="box-shadow:0 6px 14px rgba(0,0,0,.20)"></div>
+    <div class="eNm">menu</div>
+    <div class="eSpec">0 6px 14px · alfa .20<br>elevation 8 (Android)<br>Menu suspenso do FAB.</div>
+  </div>
+  <div class="eCard">
+    <div class="eDemo" style="box-shadow:0 6px 12px rgba(0,0,0,.30);background:#effffa"></div>
+    <div class="eNm">flutuante</div>
+    <div class="eSpec">0 6px 12px · alfa .30<br>elevation 6 (Android)<br>Botão de ação flutuante.</div>
+  </div>
+  <div class="eCard">
+    <div class="eDemo" style="box-shadow:0 4px 10px rgba(0,0,0,.25);background:#effffa"></div>
+    <div class="eNm">toast</div>
+    <div class="eSpec">0 4px 10px · alfa .25<br>elevation 6 (Android)<br>Toast.</div>
+  </div>
+  <div class="eCard">
+    <div class="scrimDemo" style="height:64px;margin-bottom:12px">
+      <div class="scrimBg">tela</div><div class="scrimVeil"></div>
+      <div class="scrimSheet" style="height:30px;border-radius:14px 14px 0 0"></div>
+    </div>
+    <div class="eNm">scrim</div>
+    <div class="eSpec">rgba(0,0,0,.5)<br>Véu atrás das folhas.</div>
+  </div>
+</div>
+<div class="note">
+  <p>Sombra só aparece no que <b>flutua sobre o conteúdo</b> — FAB, menu, toast. Cards e folhas
+     não usam sombra nenhuma: separam-se do fundo por cor de superfície e borda. É o que mantém
+     a tela plana e calma mesmo com muitos blocos empilhados.</p>
+</div>

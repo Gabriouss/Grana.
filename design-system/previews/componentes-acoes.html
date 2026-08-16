@@ -1,0 +1,201 @@
+<!-- @dsCard group="Componentes" -->
+<meta charset="utf-8">
+<title>Ações Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26);
+    --up:#74e291; --down:#00a6ca; --danger:#bb6b60;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:32px 0 10px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 14px;max-width:66ch}
+  b{color:var(--ink);font-weight:400}
+  .spec{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .demo{background:var(--raised);border:1px solid var(--rule);border-radius:16px;padding:20px;
+        min-width:240px;display:flex;flex-direction:column;gap:12px}
+  .demo.on-paper{background:var(--paper)}
+  .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--inkFaint)}
+  .props{font-size:11px;color:var(--inkFaint);line-height:1.75;font-variant-numeric:tabular-nums;
+         max-width:38ch}
+  .props b{color:var(--inkSoft);font-weight:400}
+
+  /* Botão primário — superfície invertida */
+  .btn-primary{background:var(--ink);color:var(--paper);border-radius:12px;padding:14px 20px;
+               text-align:center;font-size:14px;font-weight:600}
+  .btn-primary.hover{opacity:.88}
+  .btn-primary.pressed{transform:scale(.96)}
+  .btn-primary.loading{color:transparent;position:relative}
+  .btn-primary.loading::after{content:'';position:absolute;inset:0;margin:auto;width:16px;height:16px;
+    border:2px solid rgba(5,34,41,.3);border-top-color:#052229;border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .btn-secondary{padding:14px 20px;text-align:center;border-radius:12px;color:var(--inkSoft);font-size:14px}
+  .btn-secondary.hover{background:var(--raised)}
+
+  .btn-smart{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;
+             border-radius:12px;background:var(--raised);border:1px solid var(--rule);
+             font-size:11.5px;font-weight:500}
+  .btn-smart.hover{border-color:var(--ruleStrong)}
+
+  .fab{width:52px;height:52px;border-radius:26px;background:var(--ink);color:var(--paper);
+       display:grid;place-items:center;font-size:26px;box-shadow:0 6px 12px rgba(0,0,0,.3)}
+  .fab.open{background:var(--inkSoft);transform:rotate(135deg)}
+  .fab-menu{background:var(--raised);border:1px solid var(--rule);border-radius:16px;padding:6px;
+            min-width:140px;display:flex;flex-direction:column;gap:4px;box-shadow:0 6px 14px rgba(0,0,0,.2)}
+  .fab-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+            font-size:13px;font-weight:500}
+  .fab-item.hover{background:var(--paper)}
+  .ico{width:18px;height:18px;border-radius:9px;border:2px solid currentColor;flex:none}
+
+  .act-row{display:flex;align-items:center;gap:12px;padding:14px 8px;border-radius:12px;
+           font-size:14px;font-weight:500}
+  .act-row.hover{background:var(--paper)}
+
+  table{border-collapse:collapse;width:100%;max-width:680px;margin-top:6px}
+  th,td{text-align:left;font-size:12px;padding:8px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--inkFaint);font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td{color:var(--inkSoft)}
+  td:first-child{color:var(--ink)}
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:680px;margin-top:14px}
+  .note p{margin:0;font-size:12.5px}
+  .warn{border-left-color:var(--danger)}
+</style>
+
+<div class="eyebrow">componentes</div>
+<h1>Ações</h1>
+<p>Reconstruções em HTML dos componentes React Native, para documentar variantes e estados
+   lado a lado. A fonte de verdade continua sendo o código do app.</p>
+
+<div class="note">
+  <p><b>Todo alvo tocável passa por <code>AppPressable</code></b>, que dá duas coisas de graça:
+     estado <b>hovered</b> real na web (via onHoverIn/onHoverOut, inertes no nativo) e um
+     encolher de 1 → 0,96 no toque. Componentes que não podem oscilar de tamanho passam
+     <b>scaleOnPress={false}</b>.</p>
+</div>
+
+<h2>Botão primário</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="lbl">repouso</div><div class="btn-primary">Salvar lançamento</div>
+    <div class="lbl">hover (só web)</div><div class="btn-primary hover">Salvar lançamento</div>
+    <div class="lbl">pressionado</div><div class="btn-primary pressed">Salvar lançamento</div>
+    <div class="lbl">carregando</div><div class="btn-primary loading">Salvar lançamento</div>
+  </div>
+  <div class="props">
+    <b>fundo</b> ink #effffa — superfície invertida<br>
+    <b>texto</b> paper #052229 · peso 600<br>
+    <b>raio</b> md 12px<br>
+    <b>padding</b> 14px vertical<br>
+    <b>hover</b> opacidade .88<br>
+    <b>carregando</b> ActivityIndicator na cor paper, texto some<br><br>
+    O botão principal é a única superfície que <b>inverte</b> tinta e papel. É o que
+    o torna o elemento mais pesado da tela sem precisar de cor de marca.
+  </div>
+</div>
+<div class="note warn">
+  <p><b>Três tamanhos de texto para o mesmo botão.</b> <b>15px</b> no login,
+     <b>14px</b> nas folhas de lançamento, <b>13px</b> ao criar categoria — todos peso 600.
+     Nada os distingue conceitualmente; são decisões pontuais.</p>
+</div>
+
+<h2>Botão secundário</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="lbl">repouso</div><div class="btn-secondary">Não tem conta? Criar conta</div>
+    <div class="lbl">hover</div><div class="btn-secondary hover">Não tem conta? Criar conta</div>
+  </div>
+  <div class="props">
+    <b>fundo</b> nenhum em repouso<br>
+    <b>texto</b> inkSoft #a6d9ce · 14px<br>
+    <b>hover</b> ganha fundo paperRaised<br><br>
+    Sem borda e sem fundo: a hierarquia vem só da cor do texto. O hover é o
+    único momento em que ele materializa uma superfície.
+  </div>
+</div>
+
+<h2>Ação inteligente</h2>
+<div class="spec">
+  <div class="demo" style="min-width:300px">
+    <div class="lbl">par lado a lado</div>
+    <div style="display:flex;gap:8px">
+      <div class="btn-smart"><span class="ico"></span>Colar comprovante</div>
+      <div class="btn-smart hover"><span class="ico"></span>Importar CSV</div>
+    </div>
+  </div>
+  <div class="props">
+    <b>fundo</b> paperRaised · <b>borda</b> rule<br>
+    <b>texto</b> ink · 11,5px · peso 500<br>
+    <b>hover</b> só a borda muda para ruleStrong<br>
+    <b>layout</b> flex 1 — sempre dividem a largura<br><br>
+    Hover discreto de propósito: são atalhos, não ações principais.
+  </div>
+</div>
+
+<h2>Botão flutuante e menu</h2>
+<div class="spec">
+  <div class="demo" style="align-items:flex-end">
+    <div class="lbl" style="align-self:flex-start">aberto</div>
+    <div class="fab-menu">
+      <div class="fab-item"><span class="ico" style="color:var(--up)"></span>Entrada</div>
+      <div class="fab-item hover"><span class="ico" style="color:var(--down)"></span>Saída</div>
+      <div class="fab-item"><span class="ico"></span>Boleto</div>
+    </div>
+    <div class="fab open">+</div>
+  </div>
+  <div class="demo" style="align-items:flex-end;justify-content:flex-end">
+    <div class="lbl" style="align-self:flex-start">fechado</div>
+    <div class="fab">+</div>
+  </div>
+  <div class="props">
+    <b>botão</b> 52px · ink · sombra flutuante<br>
+    <b>aberto</b> fundo vira inkSoft, “+” gira 135° virando “×”<br>
+    <b>menu</b> paperRaised · raio lg · sombra menu<br>
+    <b>abre</b> spring speed 24 · bounciness 8<br>
+    <b>fecha</b> timing 140ms — sair é mais rápido<br><br>
+    O item <b>Boleto</b> só aparece quando <b>onAddBill</b> é informado; em
+    Lançamentos ele não existe.
+  </div>
+</div>
+
+<h2>Ação em folha</h2>
+<div class="spec">
+  <div class="demo on-paper" style="min-width:280px">
+    <div class="act-row"><span class="ico"></span>Editar</div>
+    <div class="act-row hover" style="color:var(--danger)"><span class="ico"></span>Excluir</div>
+  </div>
+  <div class="props">
+    <b>altura</b> 14px vertical — alvo generoso<br>
+    <b>texto</b> 14px · peso 500<br>
+    <b>hover</b> fundo paper<br>
+    <b>destrutivo</b> #bb6b60 no ícone e no texto<br><br>
+    Aberto por toque longo num lançamento.
+  </div>
+</div>
+<div class="note warn">
+  <p><b>O vermelho de “Excluir” é uma cor de categoria.</b> <b>#bb6b60</b> é a cor de
+     Alimentação, reaproveitada como destrutiva e escrita à mão no componente. Se a paleta
+     de categorias mudar, a ação de excluir muda junto — sem relação nenhuma entre as duas.</p>
+</div>
+
+<h2>Resumo dos estados</h2>
+<table>
+  <tr><th>Componente</th><th>Hover (web)</th><th>Pressionado</th><th>Desabilitado</th></tr>
+  <tr><td>Primário</td><td>opacidade .88</td><td>escala .96</td><td>só bloqueia — sem estilo</td></tr>
+  <tr><td>Secundário</td><td>fundo paperRaised</td><td>escala .96</td><td>—</td></tr>
+  <tr><td>Ação inteligente</td><td>borda ruleStrong</td><td>escala .96</td><td>—</td></tr>
+  <tr><td>FAB</td><td>opacidade .9</td><td>escala .96</td><td>—</td></tr>
+  <tr><td>Item de menu</td><td>fundo paper</td><td>escala .96</td><td>—</td></tr>
+</table>
+<div class="note warn">
+  <p><b>Não existe estado desabilitado visual.</b> Os botões de salvar recebem
+     <b>disabled</b> enquanto gravam, mas nada muda na aparência além do spinner substituir
+     o rótulo. Num toque duplo rápido, o segundo toque não dá retorno nenhum.</p>
+</div>
