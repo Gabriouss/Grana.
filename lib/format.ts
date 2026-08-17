@@ -48,6 +48,20 @@ export function isSameMonth(isoDate: string, year: number, month: number): boole
 }
 
 /**
+ * Soma N meses a uma data 'YYYY-MM-DD', preservando o dia quando o mês de
+ * destino tem dias suficientes (senão cai no último dia dele — ex: 31/jan +
+ * 1 mês vira 28/fev, não 3/mar).
+ */
+export function addMonthsToISO(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const next = new Date(y, m - 1 + months, 1);
+  const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+  next.setDate(Math.min(d, lastDay));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+}
+
+/**
  * Saudação de acordo com o horário: Bom dia até o meio-dia, Boa tarde até as
  * 18h, Boa noite dali até as 4h da manhã seguinte. Cai para só o período
  * (sem vírgula sobrando) quando não há nome para usar.

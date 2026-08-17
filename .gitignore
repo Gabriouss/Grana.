@@ -44,3 +44,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# metadados locais do `supabase link` (ref do projeto, URLs internas) — não é segredo, mas é estado da máquina, não do repositório
+supabase/.temp/

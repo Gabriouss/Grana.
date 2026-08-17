@@ -14,6 +14,8 @@ import AppLockGate from '@/components/AppLockGate';
 import { AppLockProvider } from '@/lib/app-lock-context';
 import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
+// Registra o handler de notificações (lembretes de contas) assim que o app abre.
+import '@/lib/notifications';
 
 /* Segura o splash nativo (o logotipo em gradiente, configurado pelo plugin
    expo-splash-screen no app.json) até a Neue Machina estar carregada. Sem

@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { CATEGORIES } from './types';
+import { addMonthsToISO } from './format';
 import type { Bill, BillStatus, Budget, Category, CategoryType, Transaction, TxType, WhatsappLink } from './types';
 
 async function currentUserId(): Promise<string> {
@@ -70,6 +71,75 @@ export async function deleteTransaction(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+}
+
+/**
+ * Lança uma compra parcelada como N saídas mensais, uma por parcela — a
+ * primeira na data informada, as demais um mês depois cada. O valor total é
+ * dividido em partes iguais (2 casas decimais); a diferença de arredondamento
+ * (ex: 100 / 3 = 33,33 repetindo) inteira vai pra última parcela, pra que a
+ * soma bata exatamente com o total da compra.
+ *
+ * As parcelas ficam ligadas via `parent_id`, apontando todas para o id da
+ * primeira — dá pra reconhecer o grupo depois sem precisar de uma tabela
+ * nova (o campo já existia em `transactions` e não tinha uso ainda).
+ */
+export async function addInstallmentPurchase(input: {
+  description: string;
+  totalAmount: number;
+  category: string;
+  color: string;
+  occurred_on: string;
+  installments: number;
+}): Promise<Transaction[]> {
+  const user_id = await currentUserId();
+  const n = Math.max(2, Math.round(input.installments));
+  const baseDesc = input.description || 'Compra parcelada';
+
+  const base = Math.round((input.totalAmount / n) * 100) / 100;
+  const lastAmount = Math.round((input.totalAmount - base * (n - 1)) * 100) / 100;
+
+  const rows: Transaction[] = [];
+  let parentId: string | null = null;
+
+  for (let i = 0; i < n; i++) {
+    const amount = i === n - 1 ? lastAmount : base;
+    const occurred_on = addMonthsToISO(input.occurred_on, i);
+    const description = `${baseDesc} (${i + 1}/${n})`;
+
+    if (i === 0) {
+      const first = await addTransaction({
+        type: 'out',
+        description,
+        amount,
+        category: input.category,
+        color: input.color,
+        occurred_on,
+      });
+      parentId = first.id;
+      rows.push(first);
+    } else {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert({
+          user_id,
+          type: 'out',
+          description,
+          amount,
+          category: input.category,
+          color: input.color,
+          occurred_on,
+          recurring: false,
+          parent_id: parentId,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      rows.push(data);
+    }
+  }
+
+  return rows;
 }
 
 /* ---- contas a pagar ---- */

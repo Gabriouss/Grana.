@@ -18,7 +18,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["SCHEDULE_EXACT_ALARM"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -45,6 +46,12 @@
         {
           "microphonePermission": "Permitir que o Grana. use o microfone para lançar despesas por voz.",
           "speechRecognitionPermission": "Permitir que o Grana. transcreva sua voz para preencher o lançamento."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#052229"
         }
       ]
     ],

@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO } from '@/lib/format';
+import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
 import { theme, radius, spacing, fonts } from '@/lib/theme';
@@ -456,11 +457,13 @@ export default function InicioScreen() {
     if (!selectedTx) return;
     if (isDemoMode) {
       setTransactions((prev) => prev.filter((t) => t.id !== selectedTx.id));
+      hapticDelete();
       triggerToast('Lançamento excluído (exemplo)');
       return;
     }
     try {
       await deleteTransaction(selectedTx.id);
+      hapticDelete();
       triggerToast('Lançamento excluído');
       load();
     } catch (e: any) {

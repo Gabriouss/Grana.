@@ -11,22 +11,21 @@
 //                                só no handshake de verificação do webhook.
 //   WHATSAPP_ACCESS_TOKEN     — token permanente do app da Meta (System User).
 //   WHATSAPP_PHONE_NUMBER_ID  — id do número de telefone no Meta Cloud API.
+//   OPENAI_API_KEY            — chave da OpenAI, usada só para transcrever
+//                                áudio (Whisper) recebido por WhatsApp.
 //   SUPABASE_SERVICE_ROLE_KEY — já disponível por padrão no ambiente da função.
 //
 // Depois de configurar os secrets, publique com:
 //   supabase functions deploy whatsapp-webhook --no-verify-jwt
 // e registre a URL pública como webhook do produto WhatsApp no Meta App
 // Dashboard, usando o mesmo WHATSAPP_VERIFY_TOKEN no campo "Verify Token".
-//
-// Transcrição de áudio: esta função ainda NÃO chama nenhum serviço de
-// speech-to-text — ver o comentário em transcribeAudio() mais abaixo antes de
-// usar o caminho de áudio em produção.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? '';
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN') ?? '';
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') ?? '';
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
@@ -128,32 +127,44 @@ async function sendWhatsappMessage(to: string, body: string): Promise<void> {
 }
 
 /**
- * Transcrição de áudio — NÃO IMPLEMENTADA.
- *
- * O item 4 (lançamento por voz dentro do app) usa reconhecimento de fala no
- * próprio aparelho, então não passa por aqui. Para o WhatsApp, o áudio chega
- * como arquivo .ogg/Opus no servidor, o que exige um serviço de
- * speech-to-text de nuvem (Whisper da OpenAI ou Gemini, como o pedido original
- * sugere) — e isso implica escolher o provedor e configurar a respectiva API
- * key como secret. Como essa escolha ainda não foi feita, esta função só
- * baixa a mídia e devolve null; plugue a chamada real aqui antes de contar
- * com o caminho de áudio em produção.
+ * Transcrição de áudio via Whisper (OpenAI). Baixa o .ogg/Opus da Meta e
+ * repassa os bytes pro endpoint de transcrição — sem isso, mensagens de
+ * áudio recebiam sempre um aviso pedindo texto (ver handleAudioMessage).
+ * Se OPENAI_API_KEY não estiver configurada, a chamada falha e cai no mesmo
+ * aviso de antes, sem quebrar o restante do webhook.
  */
 async function transcribeAudio(mediaId: string): Promise<string | null> {
-  const metaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
-    headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-  });
-  if (!metaRes.ok) return null;
-  const { url } = await metaRes.json();
+  try {
+    // 1. Pega a URL do áudio na Meta
+    const metaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+    });
+    if (!metaRes.ok) return null;
+    const { url } = await metaRes.json();
 
-  const mediaRes = await fetch(url, { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } });
-  if (!mediaRes.ok) return null;
-  const _audioBytes = await mediaRes.arrayBuffer();
+    // 2. Baixa os bytes do áudio
+    const mediaRes = await fetch(url, { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } });
+    if (!mediaRes.ok) return null;
+    const audioBytes = await mediaRes.arrayBuffer();
 
-  // TODO: enviar `_audioBytes` para Whisper (OpenAI) ou Gemini e retornar o
-  // texto transcrito. Sem isso, mensagens de áudio recebem um aviso pedindo
-  // texto (ver handleAudioMessage).
-  return null;
+    // 3. Envia para a API do Whisper (OpenAI)
+    const formData = new FormData();
+    formData.append('file', new Blob([audioBytes], { type: 'audio/ogg' }), 'audio.ogg');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'pt');
+
+    const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: formData,
+    });
+    if (!whisperRes.ok) return null;
+    const whisperData = await whisperRes.json();
+    return whisperData.text ?? null;
+  } catch (err) {
+    console.error('[transcribeAudio] erro:', err);
+    return null;
+  }
 }
 
 /* ---- fluxo principal ---- */

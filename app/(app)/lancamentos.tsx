@@ -1,11 +1,13 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   Modal,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -26,8 +28,17 @@ import Sheet from '@/components/Sheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import FabButton from '@/components/FabButton';
 import MonthSelector from '@/components/MonthSelector';
-import { addTransaction, deleteTransaction, fetchTransactions, updateTransaction } from '@/lib/data';
-import { formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO } from '@/lib/format';
+import { addInstallmentPurchase, addTransaction, deleteTransaction, fetchTransactions, updateTransaction } from '@/lib/data';
+import {
+  flushPendingQueue,
+  getCachedTransactions,
+  getPendingCount,
+  isLikelyNetworkError,
+  queuePendingTransaction,
+  setCachedTransactions,
+} from '@/lib/offline-cache';
+import { hapticDelete } from '@/lib/haptics';
+import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO } from '@/lib/format';
 import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
@@ -41,6 +52,12 @@ export default function LancamentosScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<'tudo' | TxType>('tudo');
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+
+  // Cache offline: true quando a última tentativa de buscar caiu pra cache local.
+  const [offline, setOffline] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   // Mês e Ano Selecionados (inicializa com o mês atual)
   const now = new Date();
@@ -58,6 +75,8 @@ export default function LancamentosScreen() {
   const [catColor, setCatColor] = useState(CATEGORIES[0].color);
   const [occurredOn, setOccurredOn] = useState(todayISO());
   const [recurring, setRecurring] = useState(false);
+  const [installment, setInstallment] = useState(false);
+  const [installmentCount, setInstallmentCount] = useState('2');
   const [saving, setSaving] = useState(false);
 
   // Aux Modals
@@ -83,16 +102,36 @@ export default function LancamentosScreen() {
   const load = useCallback(async () => {
     if (isDemoMode) {
       setTransactions(DEMO_TRANSACTIONS);
+      setOffline(false);
+      setPendingCount(0);
       setLoading(false);
       setRefreshing(false);
       return;
     }
 
     try {
-      const tx = await fetchTransactions();
+      let tx = await fetchTransactions();
+      setOffline(false);
+      await setCachedTransactions(tx);
+
+      // A rede respondeu — aproveita pra tentar sincronizar o que ficou pendente offline.
+      const { synced } = await flushPendingQueue();
+      if (synced > 0) {
+        tx = await fetchTransactions();
+        await setCachedTransactions(tx);
+        triggerToast(synced === 1 ? '1 lançamento sincronizado' : `${synced} lançamentos sincronizados`);
+      }
       setTransactions(tx);
+      setPendingCount(await getPendingCount());
     } catch (e: any) {
-      Alert.alert('Erro ao carregar lançamentos', e.message);
+      const cached = await getCachedTransactions();
+      if (cached) {
+        setTransactions(cached);
+        setOffline(true);
+        setPendingCount(await getPendingCount());
+      } else {
+        Alert.alert('Erro ao carregar lançamentos', e.message);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -100,6 +139,16 @@ export default function LancamentosScreen() {
   }, [isDemoMode]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Sem um detector de conectividade nativo, reagir a "voltar ao app" (ex: depois
+  // de reconectar o Wi-Fi em segundo plano) é o gatilho mais próximo disponível
+  // de uma sincronização automática assim que a rede volta.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') load();
+    });
+    return () => sub.remove();
+  }, [load]);
 
   function openNewModal(kind: TxType, prefillCat?: string) {
     setEditingTxId(null);
@@ -117,6 +166,8 @@ export default function LancamentosScreen() {
     setOccurredOn(initialDate);
 
     setRecurring(false);
+    setInstallment(false);
+    setInstallmentCount('2');
     setModalOpen(true);
   }
 
@@ -130,6 +181,9 @@ export default function LancamentosScreen() {
     setCatColor(tx.color);
     setOccurredOn(tx.occurred_on);
     setRecurring(!!tx.recurring);
+    // Parcelamento só se aplica à criação — editar uma parcela já existente edita só ela mesma.
+    setInstallment(false);
+    setInstallmentCount('2');
     setModalOpen(true);
   }
 
@@ -139,6 +193,10 @@ export default function LancamentosScreen() {
       Alert.alert('Informe um valor válido');
       return;
     }
+
+    // Só faz sentido parcelar uma saída nova (não uma edição, nem uma entrada).
+    const parcelas = Math.max(2, Math.round(Number(installmentCount) || 2));
+    const isInstallmentSave = installment && !editingTxId && type === 'out';
 
     if (isDemoMode) {
       // Modo de exemplo é só uma "lente" de exploração — nunca deve tocar o banco real.
@@ -151,6 +209,31 @@ export default function LancamentosScreen() {
           )
         );
         triggerToast('Lançamento atualizado (exemplo)');
+      } else if (isInstallmentSave) {
+        const baseDesc = desc.trim() || 'Compra parcelada';
+        const base = Math.round((value / parcelas) * 100) / 100;
+        const last = Math.round((value - base * (parcelas - 1)) * 100) / 100;
+        let parentId: string | null = null;
+        const novas: Transaction[] = [];
+        for (let i = 0; i < parcelas; i++) {
+          const id = `demo-local-${Date.now()}-${i}`;
+          if (i === 0) parentId = id;
+          novas.push({
+            id,
+            user_id: 'demo',
+            type: 'out',
+            description: `${baseDesc} (${i + 1}/${parcelas})`,
+            amount: i === parcelas - 1 ? last : base,
+            category,
+            color: catColor,
+            occurred_on: addMonthsToISO(occurredOn, i),
+            recurring: false,
+            parent_id: i === 0 ? null : parentId,
+            created_at: new Date().toISOString(),
+          });
+        }
+        setTransactions((prev) => [...novas, ...prev]);
+        triggerToast(`Compra parcelada em ${parcelas}x (exemplo)`);
       } else {
         setTransactions((prev) => [
           {
@@ -187,8 +270,18 @@ export default function LancamentosScreen() {
           recurring,
         });
         triggerToast('Lançamento atualizado');
+      } else if (isInstallmentSave) {
+        await addInstallmentPurchase({
+          description: desc.trim(),
+          totalAmount: value,
+          category,
+          color: catColor,
+          occurred_on: occurredOn,
+          installments: parcelas,
+        });
+        triggerToast(`Compra parcelada em ${parcelas}x`);
       } else {
-        await addTransaction({
+        const input = {
           type,
           description: desc.trim() || (type === 'in' ? 'Entrada' : 'Saída'),
           amount: value,
@@ -196,8 +289,17 @@ export default function LancamentosScreen() {
           color: catColor,
           occurred_on: occurredOn,
           recurring,
-        });
-        triggerToast('Lançamento salvo');
+        };
+        try {
+          await addTransaction(input);
+          triggerToast('Lançamento salvo');
+        } catch (innerErr) {
+          // Sem rede: guarda localmente em vez de perder o lançamento — sincroniza sozinho no próximo load() com sucesso.
+          if (!isLikelyNetworkError(innerErr)) throw innerErr;
+          await queuePendingTransaction(input);
+          setPendingCount(await getPendingCount());
+          triggerToast('Sem conexão — lançamento salvo localmente');
+        }
       }
       setModalOpen(false);
       load();
@@ -212,11 +314,13 @@ export default function LancamentosScreen() {
     if (!selectedTx) return;
     if (isDemoMode) {
       setTransactions((prev) => prev.filter((t) => t.id !== selectedTx.id));
+      hapticDelete();
       triggerToast('Lançamento excluído (exemplo)');
       return;
     }
     try {
       await deleteTransaction(selectedTx.id);
+      hapticDelete();
       triggerToast('Lançamento excluído');
       load();
     } catch (e: any) {
@@ -230,8 +334,19 @@ export default function LancamentosScreen() {
   const monthOut = monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
   const monthBalance = monthIn - monthOut;
 
-  // Filtrado por tipo (Tudo / Entradas / Saídas) dentro do mês selecionado
-  const visible = monthTransactions.filter((t) => filter === 'tudo' || t.type === filter);
+  // Categorias presentes no mês selecionado, pro filtro por categoria (cada uma com a cor do próprio lançamento).
+  const categoryOptions = Array.from(
+    monthTransactions.reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
+  ).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+
+  // Filtrado por tipo, categoria e busca textual (descrição ou categoria) — todos dentro do mês selecionado.
+  const searchQuery = search.trim().toLowerCase();
+  const visible = monthTransactions.filter((t) => {
+    if (filter !== 'tudo' && t.type !== filter) return false;
+    if (categoryFilter && t.category !== categoryFilter) return false;
+    if (searchQuery && !t.description.toLowerCase().includes(searchQuery) && !t.category.toLowerCase().includes(searchQuery)) return false;
+    return true;
+  });
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -264,12 +379,24 @@ export default function LancamentosScreen() {
           </View>
         </View>
 
+        {(offline || pendingCount > 0) && (
+          <View style={styles.offlineBanner}>
+            <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
+            <Text style={styles.offlineBannerText} numberOfLines={1}>
+              {offline
+                ? 'Sem conexão — mostrando dados salvos no aparelho'
+                : `${pendingCount} lançamento${pendingCount > 1 ? 's' : ''} aguardando conexão para sincronizar`}
+            </Text>
+          </View>
+        )}
+
         <MonthSelector
           year={selectedYear}
           month={selectedMonth}
           onChange={(y, m) => {
             setSelectedYear(y);
             setSelectedMonth(m);
+            setCategoryFilter(null);
           }}
         />
 
@@ -308,6 +435,47 @@ export default function LancamentosScreen() {
           value={filter}
           onChange={(f) => setFilter(f as 'tudo' | TxType)}
         />
+
+        <View style={styles.searchRow}>
+          <Ionicons name="search-outline" size={16} color={theme.inkFaint} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por descrição ou categoria"
+            placeholderTextColor={theme.inkFaint}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <AppPressable onPress={() => setSearch('')} hitSlop={10}>
+              <Ionicons name="close-circle" size={16} color={theme.inkFaint} />
+            </AppPressable>
+          )}
+        </View>
+
+        {categoryOptions.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow}>
+            <AppPressable
+              onPress={() => setCategoryFilter(null)}
+              style={[styles.categoryChip, !categoryFilter && styles.categoryChipActive]}
+            >
+              <Text style={[styles.categoryChipText, !categoryFilter && styles.categoryChipTextActive]}>Todas</Text>
+            </AppPressable>
+            {categoryOptions.map(([name, color]) => {
+              const active = categoryFilter === name;
+              return (
+                <AppPressable
+                  key={name}
+                  onPress={() => setCategoryFilter(active ? null : name)}
+                  style={[styles.categoryChip, active && styles.categoryChipActive]}
+                >
+                  <View style={[styles.categoryChipDot, { backgroundColor: color }]} />
+                  <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{name}</Text>
+                </AppPressable>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
 
       {loading ? (
@@ -318,7 +486,13 @@ export default function LancamentosScreen() {
           keyExtractor={(t) => t.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
-          ListEmptyComponent={<Text style={styles.emptyText}>Nenhum lançamento ainda. Toque no "+" para registrar o primeiro ou use os botões acima para colar comprovante ou importar CSV.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              {search || categoryFilter
+                ? 'Nenhum lançamento encontrado com esse filtro.'
+                : 'Nenhum lançamento ainda. Toque no "+" para registrar o primeiro ou use os botões acima para colar comprovante ou importar CSV.'}
+            </Text>
+          }
           renderItem={({ item }) => (
             <AppPressable
               style={({ hovered }) => [styles.row, hovered && styles.rowHover]}
@@ -466,16 +640,64 @@ export default function LancamentosScreen() {
 
 
 
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldKey}>Repetir mensalmente</Text>
-              <AppPressable
-                style={[styles.switchTrack, recurring && styles.switchTrackOn]}
-                onPress={() => setRecurring((p) => !p)}
-                hitSlop={12}
-              >
-                <View style={[styles.switchThumb, recurring && styles.switchThumbOn]} />
-              </AppPressable>
-            </View>
+            {!installment && (
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldKey}>Repetir mensalmente</Text>
+                <AppPressable
+                  style={[styles.switchTrack, recurring && styles.switchTrackOn]}
+                  onPress={() => setRecurring((p) => !p)}
+                  hitSlop={12}
+                >
+                  <View style={[styles.switchThumb, recurring && styles.switchThumbOn]} />
+                </AppPressable>
+              </View>
+            )}
+
+            {/* Parcelamento só faz sentido pra uma saída sendo criada — não pra edição nem pra entrada. */}
+            {!editingTxId && type === 'out' && !recurring && (
+              <View style={{ gap: 6 }}>
+                <View style={styles.fieldRow}>
+                  <Text style={styles.fieldKey}>Compra parcelada</Text>
+                  <AppPressable
+                    style={[styles.switchTrack, installment && styles.switchTrackOn]}
+                    onPress={() => setInstallment((p) => !p)}
+                    hitSlop={12}
+                  >
+                    <View style={[styles.switchThumb, installment && styles.switchThumbOn]} />
+                  </AppPressable>
+                </View>
+
+                {installment && (
+                  <View style={styles.installmentRow}>
+                    <Text style={styles.fieldKey}>Em quantas vezes</Text>
+                    <View style={styles.stepper}>
+                      <AppPressable
+                        style={styles.stepperBtn}
+                        onPress={() => setInstallmentCount((c) => String(Math.max(2, (Number(c) || 2) - 1)))}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="remove" size={16} color={theme.ink} />
+                      </AppPressable>
+                      <Text style={styles.stepperVal}>{Math.max(2, Math.round(Number(installmentCount) || 2))}x</Text>
+                      <AppPressable
+                        style={styles.stepperBtn}
+                        onPress={() => setInstallmentCount((c) => String(Math.min(60, (Number(c) || 2) + 1)))}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="add" size={16} color={theme.ink} />
+                      </AppPressable>
+                    </View>
+                  </View>
+                )}
+
+                {installment && !!parseAmount(amount) && (
+                  <Text style={styles.installmentHint}>
+                    {Math.max(2, Math.round(Number(installmentCount) || 2))}x de R${' '}
+                    {formatMoney(parseAmount(amount) / Math.max(2, Math.round(Number(installmentCount) || 2)))}
+                  </Text>
+                )}
+              </View>
+            )}
 
             <AppPressable
               style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
@@ -627,6 +849,59 @@ const styles = StyleSheet.create({
   },
   dateQuickText: { color: theme.inkFaint, fontSize: 11, fontWeight: '500' },
   dateQuickTextActive: { color: theme.ink, fontWeight: '600' },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  offlineBannerText: { color: theme.inkFaint, fontSize: 10.5, flexShrink: 1 },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+  },
+  searchInput: { flex: 1, color: theme.ink, fontSize: 13 },
+  categoryChipsRow: { gap: 6 },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: theme.rule,
+  },
+  categoryChipActive: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
+  categoryChipDot: { width: 7, height: 7, borderRadius: 3.5 },
+  categoryChipText: { color: theme.inkFaint, fontSize: 11.5 },
+  categoryChipTextActive: { color: theme.ink, fontWeight: '600' },
+  installmentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepperBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.rule,
+  },
+  stepperVal: { color: theme.ink, fontSize: 13, fontWeight: '600', minWidth: 26, textAlign: 'center' },
+  installmentHint: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
 });
 
 

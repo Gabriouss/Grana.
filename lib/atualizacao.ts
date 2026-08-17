@@ -6,16 +6,15 @@ import { supabase } from './supabase';
  * Aviso de atualização do APK.
  *
  * Como o Grana é distribuído fora da Play Store (build "internal" do EAS, um
- * link de APK direto), não existe nenhum mecanismo automático avisando quem
- * já instalou que uma versão nova saiu. Isto é o substituto: uma linha só na
- * tabela `app_release`, comparada com a versão do app.json embutida na build
- * instalada, e um aviso simples — nunca bloqueante — quando há algo mais
- * novo.
+ * link de APK direto), não existe nenhum mecanismo automático do sistema
+ * avisando quem já instalou que uma versão nova saiu. Isto é o substituto:
+ * uma linha só na tabela `app_release`, comparada com a versão do app.json
+ * embutida na build instalada, e um aviso simples — nunca bloqueante —
+ * quando há algo mais novo.
  *
- * A tabela não tem política de escrita para ninguém além do painel do
- * Supabase: depois de cada build novo, atualizar a linha é o próprio passo de
- * "publicar" a versão. Ver supabase/schema.sql para o SQL e o lembrete do
- * que rodar a cada release.
+ * A linha é escrita sozinha pela Edge Function eas-build-webhook sempre que
+ * um build termina (ver supabase/functions/eas-build-webhook/index.ts) — não
+ * precisa mais editar isto à mão a cada release.
  */
 
 const CHAVE_DISPENSADA = 'grana_versao_dispensada';
@@ -47,11 +46,15 @@ function compararVersoes(a: string, b: string): number {
 export async function verificarAtualizacao(): Promise<InfoAtualizacao | null> {
   const { data, error } = await supabase
     .from('app_release')
-    .select('version, apk_url, notes')
+    .select('version, apk_url, notes, apk_expires_at')
     .eq('id', 1)
     .maybeSingle();
   if (error || !data) return null;
   if (compararVersoes(data.version, versaoAtual()) <= 0) return null;
+
+  // Links de artefato do EAS expiram — melhor não anunciar uma versão nova
+  // cujo download já morreu do que mandar a pessoa pra um 404.
+  if (data.apk_expires_at && new Date(data.apk_expires_at).getTime() <= Date.now()) return null;
 
   const dispensada = await AsyncStorage.getItem(CHAVE_DISPENSADA);
   if (dispensada === data.version) return null;

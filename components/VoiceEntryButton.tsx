@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants, { AppOwnership } from 'expo-constants';
 import type * as SpeechRecognitionTypes from 'expo-speech-recognition';
 import { theme, radius } from '@/lib/theme';
+import { hapticSuccess } from '@/lib/haptics';
 import AppPressable from './AppPressable';
 
 /* expo-speech-recognition é um módulo nativo de terceiros: só existe dentro
@@ -58,7 +59,10 @@ export default function VoiceEntryButton({
   Speech?.useSpeechRecognitionEvent('end', () => setListening(false));
   Speech?.useSpeechRecognitionEvent('result', (event) => {
     const text = event.results[0]?.transcript?.trim();
-    if (text) onTranscribed(text);
+    if (text) {
+      hapticSuccess();
+      onTranscribed(text);
+    }
   });
   Speech?.useSpeechRecognitionEvent('error', (event) => {
     setListening(false);

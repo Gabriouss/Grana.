@@ -20,8 +20,11 @@ import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
+import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, payBill, reopenBill, updateBill } from '@/lib/data';
-import { formatDateLabel, formatMoney, parseAmount, todayISO } from '@/lib/format';
+import { scheduleBillReminders, cancelBillReminders } from '@/lib/notifications';
+import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
+import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO } from '@/lib/format';
 import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
@@ -34,6 +37,11 @@ export default function ContasScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bills, setBills] = useState<Bill[]>([]);
+
+  // Mês e Ano Selecionados (filtra as contas pelo vencimento, não pela criação)
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
 
   // Bill Sheet State
   const [modalOpen, setModalOpen] = useState(false);
@@ -72,6 +80,11 @@ export default function ContasScreen() {
     try {
       const b = await fetchBills();
       setBills(b);
+      /* Reagenda os lembretes de cada conta a cada carregamento — os ids são
+         determinísticos, então isso só substitui o que já existia (ou
+         cancela, se a conta estiver paga). Mantém os lembretes corretos
+         mesmo depois de reinstalar o app ou editar uma conta fora desta tela. */
+      b.forEach((bill) => { scheduleBillReminders(bill).catch(() => {}); });
     } catch (e: any) {
       Alert.alert('Erro ao carregar contas', e.message);
     } finally {
@@ -105,16 +118,8 @@ export default function ContasScreen() {
     setModalOpen(true);
   }
 
-  /** Soma um mês à data, preservando o dia quando o mês seguinte tem dias
-      suficientes (senão cai no último dia dele — ex: 31/jan recorrente vira
-      28/fev, não 3/mar). */
   function addOneMonth(iso: string): string {
-    const [y, m, d] = iso.split('-').map(Number);
-    const next = new Date(y, m, 1); // dia 1 do mês seguinte, evita overflow de mês
-    const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-    next.setDate(Math.min(d, lastDay));
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+    return addMonthsToISO(iso, 1);
   }
 
   async function handleSave() {
@@ -134,9 +139,22 @@ export default function ContasScreen() {
           due_date: dueDate,
           recurring,
         });
+        // updateBill não devolve a linha atualizada — remonta localmente pra reagendar os lembretes.
+        const original = bills.find((b) => b.id === editingBillId);
+        if (original) {
+          scheduleBillReminders({
+            ...original,
+            description: desc.trim() || 'Sem descrição',
+            amount: value,
+            category,
+            color: catColor,
+            due_date: dueDate,
+            recurring,
+          }).catch(() => {});
+        }
         triggerToast('Conta atualizada');
       } else {
-        await addBill({
+        const created = await addBill({
           description: desc.trim() || 'Sem descrição',
           amount: value,
           category,
@@ -144,6 +162,7 @@ export default function ContasScreen() {
           due_date: dueDate,
           recurring,
         });
+        scheduleBillReminders(created).catch(() => {});
         triggerToast('Conta salva');
       }
       setModalOpen(false);
@@ -176,6 +195,7 @@ export default function ContasScreen() {
         };
         return [...atualizado, proxima];
       });
+      if (newStatus === 'paid') hapticSuccess(); else hapticTap();
       triggerToast(proximaData ? `Conta paga. Próxima fatura em ${formatDateLabel(proximaData)}` : newStatus === 'paid' ? 'Conta marcada como paga' : 'Conta reaberta');
       return;
     }
@@ -194,6 +214,7 @@ export default function ContasScreen() {
             recurring: true,
           });
         }
+        hapticSuccess();
         triggerToast(
           proximaData
             ? `Conta paga. Próxima fatura em ${formatDateLabel(proximaData)}`
@@ -202,6 +223,7 @@ export default function ContasScreen() {
       } else {
         // reopenBill desfaz a saída lançada quando a conta foi paga, se houver.
         await reopenBill(bill);
+        hapticTap();
         triggerToast('Conta reaberta');
       }
       load();
@@ -214,12 +236,16 @@ export default function ContasScreen() {
     if (!selectedBill) return;
     if (isDemoMode) {
       setBills((prev) => prev.filter((b) => b.id !== selectedBill.id));
+      hapticDelete();
       triggerToast('Conta excluída');
       return;
     }
 
     try {
       await deleteBill(selectedBill.id);
+      // load() só resincroniza lembretes de contas que ainda existem — a excluída precisa ser cancelada à parte.
+      cancelBillReminders(selectedBill.id).catch(() => {});
+      hapticDelete();
       triggerToast('Conta excluída');
       load();
     } catch (e: any) {
@@ -236,7 +262,9 @@ export default function ContasScreen() {
     return { text: `vence em ${diffDays}d`, style: styles.pillWarn };
   }
 
-  const openTotal = bills.filter((b) => b.status !== 'paid').reduce((s, b) => s + Number(b.amount), 0);
+  // Contas cujo VENCIMENTO cai no mês selecionado — cada boleto pertence ao mês em que vence, não em que foi criado.
+  const monthBills = bills.filter((b) => isSameMonth(b.due_date, selectedYear, selectedMonth));
+  const openTotal = monthBills.filter((b) => b.status !== 'paid').reduce((s, b) => s + Number(b.amount), 0);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -248,17 +276,26 @@ export default function ContasScreen() {
           </PrivacyValue>
           <Text style={styles.subtitle}> em aberto</Text>
         </View>
+
+        <MonthSelector
+          year={selectedYear}
+          month={selectedMonth}
+          onChange={(y, m) => {
+            setSelectedYear(y);
+            setSelectedMonth(m);
+          }}
+        />
       </View>
 
       {loading ? (
         <ActivityIndicator color={theme.ink} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
-          data={bills}
+          data={monthBills}
           keyExtractor={(b) => b.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
-          ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma conta cadastrada ainda. Toque no botão "+" para registrar.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma conta vencendo neste mês. Toque no botão "+" para registrar.</Text>}
           renderItem={({ item }) => {
             const info = statusInfo(item);
             return (
@@ -416,7 +453,7 @@ export default function ContasScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  header: { padding: spacing.xl, paddingBottom: spacing.md, gap: 2 },
+  header: { padding: spacing.xl, paddingBottom: spacing.md, gap: spacing.md },
   title: { color: theme.ink, fontSize: 22 },
   subtitle: { color: theme.inkFaint, fontSize: 12.5 },
   subtitleRow: { flexDirection: 'row', alignItems: 'baseline' },

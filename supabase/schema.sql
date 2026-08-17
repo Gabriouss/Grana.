@@ -245,17 +245,29 @@ alter table budgets add constraint budgets_amount_max
 -- ninguém sozinha quando sai versão nova — esta é uma linha só, comparada
 -- pelo app com a versão do app.json embutida na build instalada.
 --
--- Sem política de insert/update/delete de propósito: só o painel do Supabase
--- escreve aqui. Nenhum client (nem autenticado) deve poder mudar a própria
--- versão "mais nova" reportada.
+-- Esta linha é escrita automaticamente pela Edge Function
+-- supabase/functions/eas-build-webhook, chamada pela própria Expo (EAS Build
+-- Webhooks) sempre que um build "preview"/"production" do Android termina —
+-- ver o cabeçalho daquele arquivo para o passo a passo de configuração. Não
+-- deveria ser necessário editar esta tabela à mão depois disso.
+--
+-- Sem política de insert/update/delete de propósito: só a Edge Function
+-- (com a service_role key, que ignora RLS) escreve aqui. Nenhum client comum
+-- (nem autenticado) deve poder mudar a própria versão "mais nova" reportada.
 create table if not exists app_release (
   id smallint primary key default 1,
   version text not null,
   apk_url text not null,
   notes text,
+  -- Links de artefato do EAS Build expiram (retenção padrão de ~30 dias) —
+  -- guardamos a data pra o app parar de anunciar um link que já morreu, em
+  -- vez de mandar quem clicar em "Atualizar" pra um 404.
+  apk_expires_at timestamptz,
   updated_at timestamptz not null default now(),
   constraint app_release_singleton check (id = 1)
 );
+
+alter table app_release add column if not exists apk_expires_at timestamptz;
 
 alter table app_release enable row level security;
 
@@ -265,9 +277,9 @@ create policy "logados leem a versao mais recente"
   to authenticated
   using (true);
 
--- Linha inicial — troque version/apk_url a cada novo build (é o "publicar"
--- desta feature). Rode isto, ou um update direto:
---   update app_release set version = '1.1.0', apk_url = '...', updated_at = now() where id = 1;
+-- Linha inicial — só usada até o primeiro build passar pelo webhook e
+-- sobrescrever isto sozinho. Dá pra editar à mão como fallback, se preciso:
+--   update app_release set version = '1.1.0', apk_url = '...', apk_expires_at = null, updated_at = now() where id = 1;
 insert into app_release (id, version, apk_url, notes)
 values (1, '1.0.0', 'https://expo.dev/artifacts/eas/qqwPOK6TNS7k2dPCvH6ZSKoSGPrwV4rTDSvtU-xq55I.apk', null)
 on conflict (id) do nothing;
