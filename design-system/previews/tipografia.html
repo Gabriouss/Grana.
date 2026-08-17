@@ -1,0 +1,96 @@
+<!-- @dsCard group="Fundações" -->
+<meta charset="utf-8">
+<title>Tipografia Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:30px 0 12px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 14px;max-width:64ch}
+  b{color:var(--ink);font-weight:400}
+  .fam{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:6px}
+  .famCard{background:var(--raised);border:1px solid var(--rule);border-radius:16px;
+           padding:20px 22px;min-width:250px;flex:1}
+  .famCard .spec{font-size:11px;color:var(--inkFaint);margin-top:8px;line-height:1.5}
+  .row{display:flex;align-items:baseline;gap:18px;padding:11px 0;border-bottom:1px solid var(--rule)}
+  .meta{width:190px;flex:none}
+  .nm{font-size:12px}
+  .px{font-size:11px;color:var(--inkFaint);font-variant-numeric:tabular-nums}
+  .was{font-size:10px;color:var(--inkFaint);display:block;margin-top:3px}
+  .samp{flex:1;line-height:1.25;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .treat{display:flex;flex-wrap:wrap;gap:14px}
+  .tCard{background:var(--raised);border:1px solid var(--rule);border-radius:14px;padding:16px 18px;min-width:200px;flex:1}
+  .tCard .lbl{font-size:11px;color:var(--inkFaint);margin-bottom:10px}
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:660px;margin-top:16px}
+  .note p{margin:0;font-size:12.5px}
+  .tabular{font-variant-numeric:tabular-nums}
+</style>
+
+<div class="eyebrow">fundações</div>
+<h1>Tipografia</h1>
+
+<h2>Família</h2>
+<div class="fam">
+  <div class="famCard">
+    <div style="font-size:30px;font-weight:400">Grana 1.234,56</div>
+    <div class="spec"><b>NeueMachina-Regular</b> · peso 400<br>Padrão global de todo texto do app.</div>
+  </div>
+  <div class="famCard">
+    <div style="font-size:30px;font-weight:300">Grana 1.234,56</div>
+    <div class="spec"><b>NeueMachina-Light</b> · peso 300<br>Pontual, em texto grande ou de marca.</div>
+  </div>
+</div>
+<div class="note">
+  <p>A Neue Machina é a fonte da <b>interface</b>, não da marca. O logotipo “Grana.” usa outra
+     família — ver a página Marca.</p>
+</div>
+
+<h2>Escala</h2>
+<p>Esta escala é <b>proposta</b>. O app hoje usa doze tamanhos decididos caso a caso
+   (9; 10,5; 11; 11,5; 12; 12,5; 13; 14; 17; 20; 26; 30). Os nove degraus abaixo consolidam
+   esses valores, cada um arredondado para o inteiro mais próximo do que já se usa — a mudança
+   visual é mínima e o vocabulário passa a existir.</p>
+
+<div class="row"><div class="meta"><span class="nm">micro</span> <span class="px">9px</span><span class="was">hoje: 9 · selos</span></div><div class="samp" style="font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint)">exemplo · oculto</div></div>
+<div class="row"><div class="meta"><span class="nm">legenda</span> <span class="px">11px</span><span class="was">hoje: 10,5 e 11</span></div><div class="samp" style="font-size:11px;color:var(--inkFaint)">Últimos lançamentos · vence esta semana</div></div>
+<div class="row"><div class="meta"><span class="nm">nota</span> <span class="px">12px</span><span class="was">hoje: 11,5 e 12</span></div><div class="samp" style="font-size:12px">Alimentação · Transporte · Moradia</div></div>
+<div class="row"><div class="meta"><span class="nm">apoio</span> <span class="px">13px</span><span class="was">hoje: 12,5 e 13</span></div><div class="samp" style="font-size:13px">Nenhum gasto registrado ainda.</div></div>
+<div class="row"><div class="meta"><span class="nm">corpo</span> <span class="px">14px</span><span class="was">hoje: 13 e 14</span></div><div class="samp" style="font-size:14px">Descrição — ex: Supermercado</div></div>
+<div class="row"><div class="meta"><span class="nm">título</span> <span class="px">17px</span><span class="was">hoje: 17</span></div><div class="samp" style="font-size:17px">Novo lançamento</div></div>
+<div class="row"><div class="meta"><span class="nm">destaque</span> <span class="px">20px</span><span class="was">hoje: 20</span></div><div class="samp" style="font-size:20px;color:var(--inkFaint)">R$</div></div>
+<div class="row"><div class="meta"><span class="nm">marca</span> <span class="px">26px</span><span class="was">hoje: 26 · sempre Light</span></div><div class="samp" style="font-size:26px;font-weight:300">Grana.</div></div>
+<div class="row" style="border-bottom:none"><div class="meta"><span class="nm">valor</span> <span class="px">30px</span><span class="was">hoje: 30</span></div><div class="samp tabular" style="font-size:30px">1.284,90</div></div>
+
+<h2>Tratamentos</h2>
+<div class="treat">
+  <div class="tCard">
+    <div class="lbl">eyebrow · 11px</div>
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)">início</div>
+    <div class="spec" style="font-size:11px;color:var(--inkFaint);margin-top:10px">Entreletras 1px, caixa alta, inkFaint.</div>
+  </div>
+  <div class="tCard">
+    <div class="lbl">rótulo de seção · 11px</div>
+    <div style="font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint)">Últimos lançamentos</div>
+    <div class="spec" style="font-size:11px;color:var(--inkFaint);margin-top:10px">Entreletras 0,5px, caixa alta, inkFaint.</div>
+  </div>
+  <div class="tCard">
+    <div class="lbl">numérico · tabular-nums</div>
+    <div class="tabular" style="font-size:17px">R$ 1.284,90<br>R$ 9.111,08</div>
+    <div class="spec" style="font-size:11px;color:var(--inkFaint);margin-top:10px">Obrigatório em toda quantia.</div>
+  </div>
+</div>
+<div class="note">
+  <p><b>Sem tabular-nums os valores dançam.</b> Como as quantias são atualizadas em tela
+     (pull-to-refresh, edição, alternância de privacidade), dígitos de largura variável fazem
+     a coluna inteira tremer a cada render. O app já acerta isso — está registrado aqui para
+     não se perder.</p>
+</div>

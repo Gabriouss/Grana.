@@ -1,0 +1,1004 @@
+<title>Grana Design System</title>
+<!--@FONTS@-->
+<style>
+  /* ============================================================
+     Grana Design System — página de referência
+     Dark-first: o :root nu carrega a paleta escura, que é o mundo
+     real do app. O tema claro é derivado do #08384b da marca.
+     ============================================================ */
+  :root{
+    --ground:#052229;
+    --surface:#0b2d35;
+    --surface-2:#0a2c34;
+    --ink:#effffa;
+    --ink-soft:#a6d9ce;
+    --ink-faint:#7fa9a0;
+    --rule:rgba(175,255,227,.14);
+    --rule-strong:rgba(175,255,227,.26);
+    --grad-a:#b0f7c9;
+    --grad-b:#22a1c1;
+    --sev-alta:#e08a7d;
+    --sev-media:#d3b869;
+    --sev-baixa:#7fa9a0;
+    --shadow:0 6px 20px rgba(0,0,0,.28);
+    --chk:rgba(175,255,227,.05);
+
+    --f-display:'Neue Machina',system-ui,sans-serif;
+    --f-body:'Neue Machina',system-ui,sans-serif;
+    --f-mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px;
+    --sp-5:24px; --sp-6:36px; --sp-7:56px; --sp-8:88px;
+    --rail:224px;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --ground:#f4faf8;
+      --surface:#ffffff;
+      --surface-2:#eaf4f1;
+      --ink:#08384b;
+      --ink-soft:#33606e;
+      --ink-faint:#5f8894;
+      --rule:rgba(8,56,75,.14);
+      --rule-strong:rgba(8,56,75,.26);
+      --sev-alta:#b8543f;
+      --sev-media:#8a6c1f;
+      --sev-baixa:#5f8894;
+      --shadow:0 6px 20px rgba(8,56,75,.10);
+      --chk:rgba(8,56,75,.04);
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#f4faf8;
+    --surface:#ffffff;
+    --surface-2:#eaf4f1;
+    --ink:#08384b;
+    --ink-soft:#33606e;
+    --ink-faint:#5f8894;
+    --rule:rgba(8,56,75,.14);
+    --rule-strong:rgba(8,56,75,.26);
+    --sev-alta:#b8543f;
+    --sev-media:#8a6c1f;
+    --sev-baixa:#5f8894;
+    --shadow:0 6px 20px rgba(8,56,75,.10);
+    --chk:rgba(8,56,75,.04);
+  }
+
+  *,*::before,*::after{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--f-body);
+    font-weight:400;
+    font-size:14px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  :focus-visible{outline:2px solid var(--grad-a);outline-offset:3px;border-radius:3px}
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;scroll-behavior:auto !important}
+  }
+
+  /* ---------- Estrutura ---------- */
+  .shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);gap:0;
+         max-width:1240px;margin:0 auto}
+  .rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+        padding:var(--sp-6) var(--sp-4) var(--sp-6) var(--sp-5);
+        border-right:1px solid var(--rule);display:flex;flex-direction:column;gap:var(--sp-5)}
+  .rail-mark{display:flex;align-items:center;gap:10px}
+  .rail-mark svg{width:30px;height:30px;flex:none}
+  .rail-name{font-family:var(--f-display);font-weight:300;font-size:19px;letter-spacing:-.2px}
+  nav{display:flex;flex-direction:column;gap:var(--sp-4)}
+  .nav-group{display:flex;flex-direction:column;gap:2px}
+  .nav-eyebrow{font-size:10px;letter-spacing:1.1px;text-transform:uppercase;
+               color:var(--ink-faint);margin-bottom:5px}
+  nav a{color:var(--ink-soft);text-decoration:none;font-size:12.5px;padding:4px 0 4px 11px;
+        border-left:2px solid transparent;transition:color .15s,border-color .15s}
+  nav a:hover{color:var(--ink)}
+  nav a.on{color:var(--ink);border-image:linear-gradient(180deg,var(--grad-a),var(--grad-b)) 1;
+           border-left-width:2px;border-left-style:solid}
+  .main{padding:0 var(--sp-6) var(--sp-8);min-width:0}
+
+  section{padding-top:var(--sp-7);scroll-margin-top:var(--sp-4)}
+  .eyebrow{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-faint);
+           margin-bottom:var(--sp-2)}
+  h2{font-family:var(--f-display);font-weight:300;font-size:30px;line-height:1.15;margin:0 0 var(--sp-3);
+     text-wrap:balance;letter-spacing:-.4px}
+  h3{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-faint);
+     font-weight:400;margin:var(--sp-5) 0 var(--sp-3)}
+  p{margin:0 0 var(--sp-3);color:var(--ink-soft);max-width:64ch}
+  p strong{color:var(--ink);font-weight:400}
+  code{font-family:var(--f-mono);font-size:12px;color:var(--ink-soft)}
+  .lede{font-size:15.5px;line-height:1.65}
+
+  /* ---------- Hero ---------- */
+  .hero{padding:var(--sp-8) 0 var(--sp-6);border-bottom:1px solid var(--rule);position:relative}
+  .hero::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;
+    background:linear-gradient(90deg,var(--grad-a),var(--grad-b));
+    -webkit-mask-image:linear-gradient(90deg,#000 0 34%,transparent 34%);
+            mask-image:linear-gradient(90deg,#000 0 34%,transparent 34%)}
+  .hero-mark{width:84px;height:84px;margin-bottom:var(--sp-5)}
+  .hero h1{font-family:var(--f-display);font-weight:300;font-size:clamp(38px,6.5vw,58px);
+           line-height:1.02;margin:0 0 var(--sp-3);letter-spacing:-1.4px;text-wrap:balance}
+  .hero .lede{max-width:56ch;color:var(--ink-soft)}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:var(--sp-5);margin-top:var(--sp-5);
+             font-size:11.5px;color:var(--ink-faint)}
+  .hero-meta div{display:flex;flex-direction:column;gap:1px}
+  .hero-meta b{color:var(--ink);font-weight:400;font-size:13px;font-variant-numeric:tabular-nums}
+
+  /* ---------- Blocos ---------- */
+  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+         padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3)}
+  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:var(--sp-3)}
+  .row-2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--sp-4);
+         align-items:start}
+  .lbl{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-faint)}
+  .props{font-size:11.5px;line-height:1.85;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+  .props b{color:var(--ink-soft);font-weight:400}
+  .props .k{font-family:var(--f-mono);font-size:11px}
+
+  .callout{border-left:2px solid var(--rule-strong);background:var(--surface);
+           border-radius:0 12px 12px 0;padding:var(--sp-3) var(--sp-4);max-width:70ch}
+  .callout p{margin:0;font-size:13px}
+  .callout.flag{border-left-color:var(--sev-alta)}
+
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  .tw{overflow-x:auto}
+  th,td{text-align:left;padding:9px 14px 9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-faint);font-weight:400}
+  td{color:var(--ink-soft)}
+  td:first-child{color:var(--ink)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- Marca ---------- */
+  .mark-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:var(--sp-3)}
+  .mark-tile{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+             padding:var(--sp-4);display:flex;flex-direction:column;align-items:center;gap:var(--sp-3)}
+  .mark-tile .cap{font-size:10.5px;color:var(--ink-faint);text-align:center;line-height:1.45}
+  .on-dark{background:#09384a;border-color:transparent}
+  .on-light{background:#fff;border-color:var(--rule)}
+  .on-light .cap{color:#5b7683}
+  .lockups{display:flex;flex-direction:column;gap:var(--sp-2);max-width:560px}
+  .lock{border-radius:12px;padding:var(--sp-5) var(--sp-5);display:grid;place-items:center}
+  .lock svg{width:100%;height:auto;display:block}
+  .faded{opacity:.45}
+
+  /* ---------- Cores ---------- */
+  .sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:var(--sp-3)}
+  .sw{display:flex;flex-direction:column;gap:6px}
+  .sw .chip{height:58px;border-radius:11px;border:1px solid var(--rule);
+            background-image:linear-gradient(45deg,var(--chk) 25%,transparent 25%,transparent 75%,var(--chk) 75%),
+                             linear-gradient(45deg,var(--chk) 25%,transparent 25%,transparent 75%,var(--chk) 75%);
+            background-size:12px 12px;background-position:0 0,6px 6px}
+  .sw .chip > span{display:block;height:100%;border-radius:10px}
+  .sw .nm{font-size:12px}
+  .sw .hex{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-faint)}
+  .sw .use{font-size:10.5px;color:var(--ink-faint);line-height:1.5}
+  .tag{display:inline-block;font-size:9px;letter-spacing:.6px;text-transform:uppercase;
+       border:1px solid var(--rule-strong);border-radius:999px;padding:1px 7px;color:var(--ink-faint)}
+  .tag.new{border-color:var(--sev-alta);color:var(--sev-alta)}
+  .cats{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+  .cat{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid var(--rule);
+       border-radius:999px;font-size:12px}
+  .dot{width:8px;height:8px;border-radius:4px;flex:none}
+
+  /* ---------- Tipografia ---------- */
+  .type-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:var(--sp-4);
+            align-items:baseline;padding:11px 0;border-bottom:1px solid var(--rule)}
+  .type-meta .nm{font-size:12px}
+  .type-meta .px{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-faint)}
+  .type-meta .was{display:block;font-size:10px;color:var(--ink-faint);margin-top:2px}
+  .type-samp{line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ---------- Espaço ---------- */
+  .sp-row{display:flex;align-items:center;gap:var(--sp-4);padding:7px 0}
+  .sp-row .k{width:44px;font-size:12px}
+  .sp-row .v{width:40px;font-family:var(--f-mono);font-size:10.5px;color:var(--ink-faint)}
+  .sp-bar{height:20px;border-radius:3px;background:linear-gradient(90deg,var(--grad-a),var(--grad-b));opacity:.5}
+  .sp-row .u{font-size:11px;color:var(--ink-faint)}
+  .rad-grid{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:flex-end}
+  .rad{width:84px;height:84px;background:var(--surface);border:1px solid var(--rule-strong);
+       display:grid;place-items:center;font-size:11px;color:var(--ink-faint)}
+  .rad-cap{font-size:10.5px;color:var(--ink-faint);text-align:center;margin-top:6px}
+  .elev{height:56px;border-radius:11px;background:var(--surface-2);border:1px solid var(--rule)}
+
+  /* ---------- Movimento ---------- */
+  .mo-stage{height:66px;display:grid;place-items:center;background:var(--surface-2);
+            border-radius:11px;overflow:hidden}
+  .spring{--e:cubic-bezier(.34,1.56,.64,1)}
+  .mo-btn{background:var(--ink);color:var(--ground);font-size:12px;padding:8px 18px;border-radius:11px;
+          animation:press 2.2s var(--e,ease) infinite}
+  @keyframes press{0%,55%{transform:scale(1)}70%{transform:scale(.96)}100%{transform:scale(1)}}
+  .mo-seg{display:flex;gap:3px;padding:3px;background:var(--ground);border-radius:8px;
+          position:relative;width:82%;border:1px solid var(--rule)}
+  .mo-pill{position:absolute;top:3px;bottom:3px;left:3px;width:calc(33.33% - 2px);
+           background:var(--surface);border-radius:6px;animation:slide 3.6s var(--e,ease) infinite}
+  @keyframes slide{0%,25%{transform:translateX(0)}33%,58%{transform:translateX(100%)}
+                   66%,91%{transform:translateX(200%)}100%{transform:translateX(0)}}
+  .mo-s{flex:1;text-align:center;font-size:10px;padding:5px 4px;color:var(--ink-faint);
+        position:relative;z-index:1}
+  .mo-fab{width:44px;height:44px;border-radius:22px;background:var(--ink);color:var(--ground);
+          display:grid;place-items:center;font-size:21px;animation:rot 3s var(--e,ease) infinite}
+  @keyframes rot{0%,35%{transform:rotate(0)}50%,85%{transform:rotate(135deg)}100%{transform:rotate(0)}}
+  .mo-toast{background:var(--ink);color:var(--ground);font-size:11px;padding:7px 15px;
+            border-radius:999px;animation:toast 4s ease infinite}
+  @keyframes toast{0%{opacity:0;transform:translateY(18px)}8%,58%{opacity:1;transform:translateY(0)}
+                   66%,100%{opacity:0;transform:translateY(18px)}}
+
+  /* ---------- Componentes ---------- */
+  .demo{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+        padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3)}
+  .btn-p{background:var(--ink);color:var(--ground);border-radius:11px;padding:13px 18px;
+         text-align:center;font-size:14px;font-weight:600}
+  .btn-p.hv{opacity:.88}
+  .btn-p.pr{transform:scale(.96)}
+  .btn-s{padding:13px 18px;text-align:center;border-radius:11px;color:var(--ink-soft);font-size:14px}
+  .btn-s.hv{background:var(--surface-2)}
+  .smart{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;
+         border-radius:11px;background:var(--surface-2);border:1px solid var(--rule);
+         font-size:11.5px;font-weight:500}
+  .ico{width:16px;height:16px;border:2px solid currentColor;border-radius:8px;flex:none}
+  .in-box{border:1px solid var(--rule);border-radius:11px;padding:11px;font-size:14px;
+          background:var(--surface-2)}
+  .in-line{border-bottom:1px solid var(--rule);padding:8px 0;font-size:14px}
+  .ph{color:var(--ink-faint)}
+  .amount{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--rule-strong);padding-bottom:9px}
+  .amount .pre{color:var(--ink-faint);font-size:19px}
+  .amount .val{font-size:28px;font-variant-numeric:tabular-nums}
+  .frow{display:flex;justify-content:space-between;align-items:center;padding:11px 0;
+        border-bottom:1px solid var(--rule);font-size:13px}
+  .frow .k{color:var(--ink-faint)}
+  .frow .v{display:flex;align-items:center;gap:8px}
+  .track{width:34px;height:20px;border-radius:10px;background:var(--rule-strong);padding:2px;flex:none}
+  .track.on{background:var(--ink)}
+  .thumb{width:16px;height:16px;border-radius:8px;background:var(--surface)}
+  .track.on .thumb{transform:translateX(14px);background:var(--surface)}
+  .txrow{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--rule)}
+  .txico{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:10.5px;flex:none}
+  .txsub{font-size:10.5px;color:var(--ink-faint);margin-top:1px}
+  .txamt{margin-left:auto;font-size:13px;font-variant-numeric:tabular-nums}
+  .btrack{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+  .bfill{height:100%;border-radius:3px}
+  .chip-c{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
+          border:1px solid var(--rule);font-size:12px}
+  .chip-c.sel{border-color:var(--ink);background:var(--surface-2);color:var(--ink)}
+  .blurred{filter:blur(7px)}
+
+  /* ---------- Auditoria ---------- */
+  .audit{display:flex;flex-direction:column;gap:var(--sp-2)}
+  .aud{background:var(--surface);border:1px solid var(--rule);border-radius:13px;
+       padding:var(--sp-4);display:grid;grid-template-columns:6px minmax(0,1fr);gap:var(--sp-4)}
+  .stripe{border-radius:3px;background:var(--sev-baixa)}
+  .aud.a .stripe{background:var(--sev-alta)}
+  .aud.m .stripe{background:var(--sev-media)}
+  .aud-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px}
+  .aud-title{font-size:14px;color:var(--ink)}
+  .pill{font-size:9px;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;
+        border-radius:999px;border:1px solid currentColor}
+  .aud.a .pill{color:var(--sev-alta)} .aud.m .pill{color:var(--sev-media)}
+  .aud.b .pill{color:var(--sev-baixa)}
+  .aud p{font-size:12.5px;margin:0 0 6px;max-width:72ch}
+  .aud .where{font-size:11px;color:var(--ink-faint);border-top:1px solid var(--rule);
+              padding-top:7px;margin-top:8px;line-height:1.7}
+  .aud .where b{color:var(--ink-soft);font-weight:400}
+  .tally{display:flex;gap:var(--sp-3);flex-wrap:wrap;margin-bottom:var(--sp-4)}
+  .tally div{background:var(--surface);border:1px solid var(--rule);border-radius:13px;
+             padding:12px 20px;min-width:96px}
+  .tally .n{font-family:var(--f-display);font-weight:300;font-size:28px;
+            font-variant-numeric:tabular-nums;line-height:1}
+  .tally .l{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+
+  footer{margin-top:var(--sp-8);padding-top:var(--sp-4);border-top:1px solid var(--rule);
+         font-size:11.5px;color:var(--ink-faint)}
+
+  /* ---------- Responsivo ---------- */
+  @media (max-width:920px){
+    .shell{grid-template-columns:1fr}
+    .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--rule);
+          padding:var(--sp-4) var(--sp-4) var(--sp-3)}
+    nav{flex-direction:row;flex-wrap:wrap;gap:var(--sp-4)}
+    .main{padding:0 var(--sp-4) var(--sp-7)}
+    .row-2{grid-template-columns:1fr}
+    .type-row{grid-template-columns:1fr;gap:2px}
+  }
+</style>
+
+<!-- Geometria oficial da marca, extraída dos SVGs originais -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gSim" gradientUnits="userSpaceOnUse" x1="67.51" y1="67.51" x2="392.26" y2="392.26">
+    <stop offset="0" stop-color="#b0f7c9"/><stop offset="1" stop-color="#22a1c1"/></linearGradient>
+  <linearGradient id="gLogo" gradientUnits="userSpaceOnUse" x1="333.91" y1="-198.88" x2="1375.52" y2="842.73">
+    <stop offset="0" stop-color="#b0f7c9"/><stop offset="1" stop-color="#22a1c1"/></linearGradient>
+  <linearGradient id="gIcoG" gradientUnits="userSpaceOnUse" x1="237.73" y1="237.73" x2="562.48" y2="562.48">
+    <stop offset="0" stop-color="#b0f7c9"/><stop offset="1" stop-color="#22a1c1"/></linearGradient>
+  <linearGradient id="gIcoBg" gradientUnits="userSpaceOnUse" x1="0" y1="400" x2="800" y2="400">
+    <stop offset="0" stop-color="#b0f7c9"/><stop offset="1" stop-color="#22a1c1"/></linearGradient>
+  <path id="sim" d="M459.56,229.78c0,19.55-2.44,38.53-7.04,56.66-25.23,99.5-115.39,173.12-222.74,173.12-48.1,0-92.76-14.78-129.66-40.05C40.79,378.88,1.47,311.14.04,234.14-2.38,104.34,104.35-2.38,234.14.04c72.25,1.35,136.33,36.04,177.53,89.32,4.63,5.99,4.09,14.5-1.26,19.85l-41.41,41.41c-6.66,6.66-17.64,5.58-23.04-2.13-25.2-35.94-66.64-59.66-113.67-60.47-79.81-1.39-145.65,64.45-144.27,144.27.93,53.56,31.56,99.88,76.12,123.2,19.63,10.26,41.96,16.07,65.64,16.07,48.5,0,91.31-24.35,116.87-61.49,6.89-10-.22-23.63-12.36-23.63h-64.78c-13.4,0-20.12-16.21-10.64-25.68l56.72-56.72c2.82-2.82,6.65-4.41,10.64-4.41h117.75c7.88,0,14.46,6.07,15.01,13.93.38,5.36.57,10.76.57,16.22Z"/>
+  <path id="simIco" d="M629.78,400c0,19.55-2.44,38.53-7.04,56.66-25.23,99.5-115.39,173.12-222.74,173.12-48.1,0-92.76-14.78-129.66-40.05-59.33-40.63-98.65-108.37-100.08-185.37-2.42-129.8,104.31-236.52,234.1-234.1,72.25,1.35,136.33,36.04,177.53,89.32,4.63,5.99,4.09,14.5-1.26,19.85l-41.41,41.41c-6.66,6.66-17.64,5.58-23.04-2.13-25.2-35.94-66.64-59.66-113.67-60.47-79.81-1.39-145.65,64.45-144.27,144.27.93,53.56,31.56,99.88,76.12,123.2,19.63,10.26,41.96,16.07,65.64,16.07,48.5,0,91.31-24.35,116.87-61.49,6.89-10-.22-23.63-12.36-23.63h-64.78c-13.4,0-20.12-16.21-10.64-25.68l56.72-56.72c2.82-2.82,6.65-4.41,10.64-4.41h117.75c7.88,0,14.46,6.07,15.01,13.93.38,5.36.57,10.76.57,16.22Z"/>
+  <circle id="pt" cx="426.09" cy="426.09" r="33.47"/>
+  <g id="txt">
+    <path d="M486.02,233.96c0-28.26,15.93-43.68,44.19-43.17l150.85,3.65c10.71.26,19.25,9.01,19.25,19.72v32.5c0,11.08-9.12,19.98-20.19,19.72l-91.69-2.14c-11.07-.26-20.19,8.65-20.19,19.72v150.73c0,10.89-8.83,19.73-19.73,19.73h-42.77c-10.89,0-19.73-8.83-19.73-19.73v-200.73Z"/>
+    <path d="M819.53,301.8l77.8-10.76c2.31-.32,3.94-2.43,3.68-4.74-2.1-18.57-18.63-29.72-51.67-29.72-26.49,0-43.65,9-49.32,24.86-2.67,7.48-9.52,12.65-17.46,12.65h-40.95c-11.93,0-20.92-11.01-18.35-22.66,11.4-51.88,62.39-81.66,126.08-81.66,71.43,0,134.12,34.43,134.12,119.73v54.21c0,10.36,8.4,18.76,18.76,18.76h0c10.36,0,18.76,8.4,18.76,18.76v34.43c0,10.36-8.4,18.76-18.76,18.76h-34c-23.65,0-42.82-19.17-42.82-42.82h0c0-.57.11-1.13.33-1.65l10.05-24.11c1.18-2.82-.9-5.93-3.95-5.93h-10.73c-1.96,0-3.69,1.32-4.16,3.22-10.29,41.74-35.99,76.43-106.64,76.43-80.68,0-94.55-49.33-94.55-76.05,0-44.71,26.72-70.92,103.8-81.71ZM826.21,387.62c42.61,0,71.53-16.88,74.73-45.48.31-2.76-2.11-5.06-4.86-4.67l-61.14,8.53c-24.67,3.6-37,7.19-37,22.1s14.39,19.53,28.26,19.53Z"/>
+    <path d="M1134.02,358.32v76.42c0,10.86-8.81,19.67-19.67,19.67h-42.88c-10.86,0-19.67-8.81-19.67-19.67v-220.17c0-10.86,8.81-19.67,19.67-19.67h42.88c10.86,0,19.67,8.81,19.67,19.67v10.98c0,.46-.07.92-.22,1.35l-13.32,39.95c-.92,2.77,1.14,5.64,4.06,5.64h11.22c1.99,0,3.69-1.37,4.17-3.3,11.07-44.67,43.21-79.43,97.38-79.43,66.29,0,106.37,44.19,106.37,124.36v120.62c0,10.86-8.81,19.67-19.67,19.67h-42.88c-10.86,0-19.67-8.81-19.67-19.67v-107.77c0-47.28-13.88-65.26-53.44-65.26-44.71,0-74,23.64-74,96.61Z"/>
+    <path d="M1483.47,301.8l77.8-10.76c2.31-.32,3.94-2.43,3.68-4.74-2.1-18.57-18.63-29.72-51.67-29.72-26.49,0-43.65,9-49.32,24.86-2.67,7.48-9.52,12.65-17.46,12.65h-40.95c-11.93,0-20.91-11.01-18.35-22.66,11.4-51.88,62.39-81.66,126.08-81.66,71.43,0,134.12,34.43,134.12,119.73v54.22c0,10.36,8.4,18.76,18.76,18.76h0c10.36,0,18.76,8.4,18.76,18.76v34.43c0,10.36-8.4,18.76-18.76,18.76h-34c-23.65,0-42.82-19.17-42.82-42.82h0c0-.57.11-1.13.33-1.65l10.05-24.11c1.18-2.82-.9-5.93-3.95-5.93h-10.73c-1.96,0-3.69,1.32-4.16,3.22-10.29,41.74-35.99,76.43-106.64,76.43-80.68,0-94.56-49.33-94.56-76.05,0-44.71,26.72-70.92,103.81-81.71ZM1490.15,387.62c42.61,0,71.53-16.88,74.73-45.48.31-2.76-2.11-5.06-4.86-4.67l-61.14,8.53c-24.67,3.6-37,7.19-37,22.1s14.39,19.53,28.26,19.53Z"/>
+  </g>
+</defs></svg>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-mark">
+      <svg viewBox="0 0 459.56 459.56" aria-hidden="true">
+        <use href="#sim" fill="url(#gSim)"/><use href="#pt" fill="#a9f8c8"/>
+      </svg>
+      <span class="rail-name">Grana.</span>
+    </div>
+    <nav id="nav">
+      <div class="nav-group">
+        <span class="nav-eyebrow">Identidade</span>
+        <a href="#marca">Marca</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-eyebrow">Fundações</span>
+        <a href="#cores">Cores</a>
+        <a href="#tipografia">Tipografia</a>
+        <a href="#espaco">Espaço e forma</a>
+        <a href="#movimento">Movimento</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-eyebrow">Componentes</span>
+        <a href="#acoes">Ações</a>
+        <a href="#formulario">Formulário</a>
+        <a href="#conteudo">Conteúdo</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-eyebrow">Estado</span>
+        <a href="#auditoria">Auditoria</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="hero">
+      <svg class="hero-mark" viewBox="0 0 459.56 459.56" aria-label="Símbolo Grana">
+        <use href="#sim" fill="url(#gSim)"/><use href="#pt" fill="#a9f8c8"/>
+      </svg>
+      <h1>Grana Design System</h1>
+      <p class="lede">A linguagem visual de um app de finanças pessoais — extraída do código
+         que já existe, não inventada por cima dele. Cada valor aqui aponta para um arquivo
+         real, e o que ainda não existe está marcado como proposta.</p>
+      <div class="hero-meta">
+        <div><b>0.2.0</b>Versão</div>
+        <div><b>Expo · React Native</b>Plataforma</div>
+        <div><b>Neue Machina</b>Tipografia</div>
+        <div><b>11</b>Inconsistências abertas</div>
+      </div>
+    </header>
+
+    <!-- ============ MARCA ============ -->
+    <section id="marca">
+      <div class="eyebrow">Identidade</div>
+      <h2>Marca</h2>
+      <p>O símbolo é <strong>“G.”</strong> — anel mais ponto. O anel sozinho é peça incompleta.
+         E o símbolo é também a letra G do logotipo: o conjunto é símbolo + “rana” + ponto,
+         então o G nunca é tipografia.</p>
+
+      <h3>Símbolo</h3>
+      <div class="mark-grid">
+        <div class="mark-tile">
+          <svg width="72" height="72" viewBox="0 0 459.56 459.56">
+            <use href="#sim" fill="url(#gSim)"/><use href="#pt" fill="#a9f8c8"/></svg>
+          <span class="cap">gradiente<br>ponto menta</span>
+        </div>
+        <div class="mark-tile on-light">
+          <svg width="72" height="72" viewBox="0 0 459.56 459.56">
+            <use href="#sim" fill="#09384a"/><use href="#pt" fill="#09384a"/></svg>
+          <span class="cap">escuro<br>#09384a</span>
+        </div>
+        <div class="mark-tile on-dark">
+          <svg width="72" height="72" viewBox="0 0 459.56 459.56">
+            <use href="#sim" fill="#fefefe"/><use href="#pt" fill="#fefefe"/></svg>
+          <span class="cap" style="color:#7fa9a0">branco<br>#fefefe</span>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p>Na versão em gradiente o ponto é <strong>menta chapado</strong>, fora da rampa. É o
+           único elemento que escapa do gradiente, e é o que o mantém legível contra a ponta
+           escura do anel.</p>
+      </div>
+
+      <h3>Ícone do app</h3>
+      <div class="mark-grid">
+        <div class="mark-tile">
+          <svg width="80" height="80" viewBox="0 0 800 800">
+            <rect width="800" height="800" rx="149.22" fill="#09384a"/>
+            <use href="#simIco" fill="url(#gIcoG)"/><circle cx="596.31" cy="596.31" r="33.47" fill="#a9f8c8"/></svg>
+          <span class="cap">Fundo escuro</span>
+        </div>
+        <div class="mark-tile">
+          <svg width="80" height="80" viewBox="0 0 800 800">
+            <rect width="800" height="800" rx="149.22" fill="url(#gIcoBg)"/>
+            <use href="#simIco" fill="#09384a"/><circle cx="596.31" cy="596.31" r="33.47" fill="#09384a"/></svg>
+          <span class="cap">G escuro</span>
+        </div>
+        <div class="mark-tile">
+          <svg width="80" height="80" viewBox="0 0 800 800">
+            <rect width="800" height="800" rx="149.22" fill="url(#gIcoBg)"/>
+            <use href="#simIco" fill="#fefefe"/><circle cx="596.31" cy="596.31" r="33.47" fill="#fefefe"/></svg>
+          <span class="cap">G branco</span>
+        </div>
+        <div class="mark-tile">
+          <svg width="80" height="80" viewBox="0 0 800 800">
+            <rect width="800" height="800" rx="400" fill="#09384a"/>
+            <use href="#simIco" fill="url(#gIcoG)"/><circle cx="596.31" cy="596.31" r="33.47" fill="#a9f8c8"/></svg>
+          <span class="cap">Circular</span>
+        </div>
+      </div>
+      <p style="margin-top:var(--sp-3)">Raio do squircle: <strong>149,22</strong> em 800 —
+         <strong>18,65%</strong> do lado. É forma de marca, não de componente, e não deve ser
+         reaproveitado nos raios da interface.</p>
+
+      <h3>Logotipo</h3>
+      <div class="lockups">
+        <div class="lock" style="background:#052229">
+          <svg viewBox="0 0 1778.3 459.56">
+            <use href="#sim" fill="url(#gLogo)"/><use href="#txt" fill="url(#gLogo)"/>
+            <circle cx="1744.83" cy="426.09" r="33.47" fill="url(#gLogo)"/></svg>
+        </div>
+        <div class="lock" style="background:#08384b">
+          <svg viewBox="0 0 1778.3 459.56">
+            <use href="#sim" fill="#fff"/><use href="#txt" fill="#fff"/>
+            <circle cx="1744.83" cy="426.09" r="33.47" fill="#a9f8c8"/></svg>
+        </div>
+        <div class="lock" style="background:#fff">
+          <svg viewBox="0 0 1778.3 459.56">
+            <use href="#sim" fill="#08384b"/><use href="#txt" fill="#08384b"/>
+            <circle cx="1744.83" cy="426.09" r="33.47" fill="#a9f8c8"/></svg>
+        </div>
+      </div>
+
+      <h3>A regra do ponto</h3>
+      <p>O ponto <strong>não tem cor fixa</strong> — é sempre o contraste do texto.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Texto</th><th>Ponto</th><th>Efeito</th></tr></thead>
+        <tbody>
+          <tr><td>Escuro <code>#08384b</code></td><td>Menta <code>#a9f8c8</code></td><td>O ponto salta</td></tr>
+          <tr><td>Branco <code>#ffffff</code></td><td>Menta <code>#a9f8c8</code></td><td>O ponto salta</td></tr>
+          <tr><td>Menta <code>#a9f8c8</code></td><td>Escuro <code>#08384b</code></td><td>Inverte: o ponto recua</td></tr>
+          <tr><td>Gradiente</td><td>Gradiente</td><td>Sem destaque próprio</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Geometria do gradiente</h3>
+      <p>Cada peça tem coordenadas próprias, sempre em <code>userSpaceOnUse</code>. É isso que
+         faz a rampa atravessar o conjunto inteiro como um objeto só.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Peça</th><th>Coordenadas</th><th>Ângulo</th></tr></thead>
+        <tbody>
+          <tr><td>Símbolo</td><td class="num">67,51 · 67,51 → 392,26 · 392,26</td><td>45° descendente</td></tr>
+          <tr><td>Logotipo</td><td class="num">333,91 · −198,88 → 1375,52 · 842,73</td><td>45° descendente</td></tr>
+          <tr><td>G do ícone</td><td class="num">237,73 · 237,73 → 562,48 · 562,48</td><td>45° descendente</td></tr>
+          <tr><td>Fundo do ícone</td><td class="num">0 · 400 → 800 · 400</td><td>Horizontal</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout flag" style="margin-top:var(--sp-3)">
+        <p><strong>Nunca usar <code>objectBoundingBox</code>.</strong> Ele reinicia a rampa no
+           bounding box de cada elemento — uma no símbolo, outra no texto, outra no ponto — em
+           vez de uma só atravessando a peça. No Illustrator o equivalente é unir em caminho
+           composto, ou aplicar o preenchimento no nível do grupo, antes de aplicar o gradiente.</p>
+      </div>
+    </section>
+
+    <!-- ============ CORES ============ -->
+    <section id="cores">
+      <div class="eyebrow">Fundações</div>
+      <h2>Cores</h2>
+      <p>Doze cores nomeadas semanticamente em <code>lib/theme.ts</code>, mais uma escala
+         categórica separada para dados.</p>
+
+      <h3>Superfície e tinta</h3>
+      <div class="sw-grid">
+        <div class="sw"><div class="chip"><span style="background:#052229"></span></div>
+          <span class="nm">paper</span><span class="hex">#052229</span>
+          <span class="use">Fundo de tela; também trilhos e poços.</span></div>
+        <div class="sw"><div class="chip"><span style="background:#0b2d35"></span></div>
+          <span class="nm">paperRaised</span><span class="hex">#0b2d35</span>
+          <span class="use">Cards, folhas, chips, menus.</span></div>
+        <div class="sw"><div class="chip"><span style="background:#effffa"></span></div>
+          <span class="nm">ink</span><span class="hex">#effffa</span>
+          <span class="use">Texto primário — e fundo em superfícies invertidas.</span></div>
+        <div class="sw"><div class="chip"><span style="background:#a6d9ce"></span></div>
+          <span class="nm">inkSoft</span><span class="hex">#a6d9ce</span>
+          <span class="use">Links e ações textuais discretas.</span></div>
+        <div class="sw"><div class="chip"><span style="background:#7fa9a0"></span></div>
+          <span class="nm">inkFaint</span><span class="hex">#7fa9a0</span>
+          <span class="use">Secundário e placeholders. ~5,6:1 — AA.</span></div>
+        <div class="sw"><div class="chip"><span style="background:rgba(175,255,227,.14)"></span></div>
+          <span class="nm">rule</span><span class="hex">accent2 · 14%</span>
+          <span class="use">Bordas e divisórias em repouso.</span></div>
+        <div class="sw"><div class="chip"><span style="background:rgba(175,255,227,.26)"></span></div>
+          <span class="nm">ruleStrong</span><span class="hex">accent2 · 26%</span>
+          <span class="use">Divisória enfatizada; trilho do switch.</span></div>
+      </div>
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p>As divisórias <strong>não são cinza</strong> — são o verde-menta <code>#aeffe3</code>
+           com alfa. É o que mantém a temperatura da interface até nas bordas.</p>
+      </div>
+
+      <h3>Estado</h3>
+      <div class="sw-grid">
+        <div class="sw"><div class="chip"><span style="background:#74e291"></span></div>
+          <span class="nm">positivo</span><span class="hex">#74e291</span>
+          <span class="use">Entradas de dinheiro.</span><span class="tag">extraído</span></div>
+        <div class="sw"><div class="chip"><span style="background:#00a6ca"></span></div>
+          <span class="nm">negativo</span><span class="hex">#00a6ca</span>
+          <span class="use">Saídas de dinheiro.</span><span class="tag">extraído</span></div>
+        <div class="sw"><div class="chip"><span style="background:#e08a7d"></span></div>
+          <span class="nm">perigo</span><span class="hex">#e08a7d</span>
+          <span class="use">Erros. Hoje fixo dentro de index.tsx.</span><span class="tag new">proposto</span></div>
+      </div>
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p><strong>Saída é ciano, não vermelho.</strong> A decisão mais interessante da paleta:
+           gastar dinheiro não é tratado como erro. O vermelho fica reservado para
+           <strong>perigo</strong> — que hoje sequer é um token.</p>
+      </div>
+
+      <h3>Categorias</h3>
+      <p>Escala categórica definida em <code>lib/types.ts</code>, e não no tema. Família cromática
+         deliberadamente distinta: dessaturada, para que oito cores convivam num gráfico sem
+         competir com o ciano da interface.</p>
+      <div class="cats">
+        <span class="cat"><span class="dot" style="background:#bb6b60"></span>Alimentação</span>
+        <span class="cat"><span class="dot" style="background:#93739e"></span>Moradia</span>
+        <span class="cat"><span class="dot" style="background:#6b9dc2"></span>Transporte</span>
+        <span class="cat"><span class="dot" style="background:#c66f8e"></span>Lazer</span>
+        <span class="cat"><span class="dot" style="background:#74a17c"></span>Saúde</span>
+        <span class="cat"><span class="dot" style="background:#d3b869"></span>Assinaturas</span>
+        <span class="cat"><span class="dot" style="background:#4f9483"></span>Salário</span>
+        <span class="cat"><span class="dot" style="background:#8b9198"></span>Outros</span>
+      </div>
+      <div class="callout flag" style="margin-top:var(--sp-3)">
+        <p><strong>Duas dessas cores vazam para a interface.</strong> Alimentação e Salário viram
+           fundo dos botões Saída e Entrada; Alimentação vira ainda a cor de “Excluir”. Renomear
+           ou recolorir uma categoria mexeria em botões sem relação com ela.</p>
+      </div>
+    </section>
+
+    <!-- ============ TIPOGRAFIA ============ -->
+    <section id="tipografia">
+      <div class="eyebrow">Fundações</div>
+      <h2>Tipografia</h2>
+      <p>Neue Machina em dois pesos. <strong>Regular</strong> é o padrão global de todo texto;
+         <strong>Light</strong> fica para texto grande e de marca.</p>
+
+      <h3>Escala <span class="tag new">proposta</span></h3>
+      <p>O app usa hoje doze tamanhos decididos caso a caso — 9; 10,5; 11; 11,5; 12; 12,5; 13;
+         14; 17; 20; 26; 30. Os nove degraus abaixo consolidam esses valores, cada um arredondado
+         para o inteiro mais próximo do que já se usa: a mudança visual é mínima e o vocabulário
+         passa a existir.</p>
+
+      <div class="type-row"><div class="type-meta"><span class="nm">micro</span>
+        <span class="px">9px</span><span class="was">hoje 9 · selos</span></div>
+        <div class="type-samp" style="font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-faint)">exemplo · oculto</div></div>
+      <div class="type-row"><div class="type-meta"><span class="nm">legenda</span>
+        <span class="px">11px</span><span class="was">hoje 10,5 e 11</span></div>
+        <div class="type-samp" style="font-size:11px;color:var(--ink-faint)">Últimos lançamentos · vence esta semana</div></div>
+      <div class="type-row"><div class="type-meta"><span class="nm">nota</span>
+        <span class="px">12px</span><span class="was">hoje 11,5 e 12</span></div>
+        <div class="type-samp" style="font-size:12px">Alimentação · Transporte · Moradia</div></div>
+      <div class="type-row"><div class="type-meta"><span class="nm">apoio</span>
+        <span class="px">13px</span><span class="was">hoje 12,5 e 13</span></div>
+        <div class="type-samp" style="font-size:13px">Nenhum gasto registrado ainda.</div></div>
+      <div class="type-row"><div class="type-meta"><span class="nm">corpo</span>
+        <span class="px">14px</span><span class="was">hoje 13 e 14</span></div>
+        <div class="type-samp" style="font-size:14px">Descrição — ex: Supermercado</div></div>
+      <div class="type-row"><div class="type-meta"><span class="nm">título</span>
+        <span class="px">17px</span><span class="was">hoje 17</span></div>
+        <div class="type-samp" style="font-size:17px">Novo lançamento</div></div>
+      <div class="type-row"><div class="type-meta"><span class="nm">destaque</span>
+        <span class="px">20px</span><span class="was">hoje 20</span></div>
+        <div class="type-samp" style="font-size:20px;color:var(--ink-faint)">R$</div></div>
+      <div class="type-row"><div class="type-meta"><span class="nm">marca</span>
+        <span class="px">26px</span><span class="was">hoje 26 · sempre Light</span></div>
+        <div class="type-samp" style="font-size:26px;font-weight:300">Grana.</div></div>
+      <div class="type-row"><div class="type-meta"><span class="nm">valor</span>
+        <span class="px">30px</span><span class="was">hoje 30</span></div>
+        <div class="type-samp num" style="font-size:30px">1.284,90</div></div>
+
+      <h3>Tratamentos</h3>
+      <div class="cols">
+        <div class="panel"><span class="lbl">eyebrow · 11px</span>
+          <span style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-faint)">início</span>
+          <span class="props">Entreletras 1px · caixa alta · inkFaint</span></div>
+        <div class="panel"><span class="lbl">rótulo de seção · 11px</span>
+          <span style="font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-faint)">Últimos lançamentos</span>
+          <span class="props">Entreletras 0,5px · caixa alta · inkFaint</span></div>
+        <div class="panel"><span class="lbl">numérico</span>
+          <span class="num" style="font-size:17px">R$ 1.284,90<br>R$ 9.111,08</span>
+          <span class="props">tabular-nums, obrigatório em toda quantia</span></div>
+      </div>
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p><strong>Sem tabular-nums os valores dançam.</strong> As quantias são atualizadas em
+           tela — pull-to-refresh, edição, alternância de privacidade — e dígitos de largura
+           variável fazem a coluna inteira tremer a cada render.</p>
+      </div>
+    </section>
+
+    <!-- ============ ESPAÇO ============ -->
+    <section id="espaco">
+      <div class="eyebrow">Fundações</div>
+      <h2>Espaço e forma</h2>
+
+      <h3>Espaçamento</h3>
+      <p>Seis passos. A escala não é geométrica: cresce de 4 em 4 até <strong>md</strong>, depois
+         em saltos maiores.</p>
+      <div class="sp-row"><span class="k">xs</span><span class="v">4px</span>
+        <span class="sp-bar" style="width:4px"></span><span class="u">Gap entre botões de tipo</span></div>
+      <div class="sp-row"><span class="k">sm</span><span class="v">8px</span>
+        <span class="sp-bar" style="width:8px"></span><span class="u">Chips e ações lado a lado</span></div>
+      <div class="sp-row"><span class="k">md</span><span class="v">12px</span>
+        <span class="sp-bar" style="width:12px"></span><span class="u">Gap interno de card</span></div>
+      <div class="sp-row"><span class="k">lg</span><span class="v">16px</span>
+        <span class="sp-bar" style="width:16px"></span><span class="u">Padding de card</span></div>
+      <div class="sp-row"><span class="k">xl</span><span class="v">20px</span>
+        <span class="sp-bar" style="width:20px"></span><span class="u">Respiro externo da tela</span></div>
+      <div class="sp-row"><span class="k">xxl</span><span class="v">28px</span>
+        <span class="sp-bar" style="width:28px"></span><span class="u">Reservado — sem uso corrente</span></div>
+
+      <h3>Raio</h3>
+      <div class="rad-grid">
+        <div><div class="rad" style="border-radius:8px">sm</div><div class="rad-cap">8px<br>trilhos</div></div>
+        <div><div class="rad" style="border-radius:12px">md</div><div class="rad-cap">12px<br>botões</div></div>
+        <div><div class="rad" style="border-radius:16px">lg</div><div class="rad-cap">16px<br>cards</div></div>
+        <div><div class="rad" style="border-radius:22px">xl</div><div class="rad-cap">22px<br>folhas</div></div>
+        <div><div class="rad" style="border-radius:999px">pill</div><div class="rad-cap">999px<br>chips</div></div>
+      </div>
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p><strong>Elementos aninhados descontam 2 do raio do pai.</strong> A pílula do segmentado
+           usa <code>sm − 2 = 6px</code> dentro de um trilho de <code>sm = 8px</code>. Sem o
+           desconto, o canto interno parece mais quadrado que o externo.</p>
+      </div>
+
+      <h3>Elevação</h3>
+      <div class="cols">
+        <div class="panel"><div class="elev" style="box-shadow:0 6px 14px rgba(0,0,0,.20)"></div>
+          <span class="lbl">menu</span><span class="props">0 6px 14px · alfa .20 · elevation 8</span></div>
+        <div class="panel"><div class="elev" style="box-shadow:0 6px 12px rgba(0,0,0,.30)"></div>
+          <span class="lbl">flutuante</span><span class="props">0 6px 12px · alfa .30 · elevation 6</span></div>
+        <div class="panel"><div class="elev" style="box-shadow:0 4px 10px rgba(0,0,0,.25)"></div>
+          <span class="lbl">toast</span><span class="props">0 4px 10px · alfa .25 · elevation 6</span></div>
+      </div>
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p>Sombra só no que <strong>flutua sobre o conteúdo</strong> — FAB, menu, toast. Cards e
+           folhas não usam sombra nenhuma: separam-se por cor de superfície e borda. É o que
+           mantém a tela plana mesmo com muitos blocos empilhados.</p>
+      </div>
+    </section>
+
+    <!-- ============ MOVIMENTO ============ -->
+    <section id="movimento">
+      <div class="eyebrow">Fundações</div>
+      <h2>Movimento</h2>
+      <p>O app já tem um vocabulário coerente — só não nomeado. Todo spring usa o par
+         speed/bounciness do Animated. As demonstrações aproximam essas curvas em CSS.</p>
+
+      <div class="cols">
+        <div class="panel spring"><div class="mo-stage"><span class="mo-btn">Salvar</span></div>
+          <span class="lbl">toqueEntra / toqueSai</span>
+          <span class="props">speed 40 · bounciness 6 (entra)<br>speed 20 · bounciness 8 (sai)<br>
+            Escala 1 → 0,96. A volta é mais lenta que a ida.</span></div>
+        <div class="panel spring"><div class="mo-stage">
+            <span class="mo-seg"><span class="mo-pill"></span>
+              <span class="mo-s">Entradas</span><span class="mo-s">Saídas</span><span class="mo-s">Ambos</span></span></div>
+          <span class="lbl">desliza</span>
+          <span class="props">speed 22 · bounciness 6<br>Pílula do segmentado e bolinha do switch.</span></div>
+        <div class="panel spring"><div class="mo-stage"><span class="mo-fab">+</span></div>
+          <span class="lbl">menu</span>
+          <span class="props">speed 24 · bounciness 8<br>O “+” gira 135°, virando “×”.</span></div>
+        <div class="panel"><div class="mo-stage"><span class="mo-toast">Lançamento salvo</span></div>
+          <span class="lbl">toast</span>
+          <span class="props">250ms · opacidade + 20px<br>Permanece 2000ms e sai sozinho.</span></div>
+      </div>
+
+      <h3>Durações</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Token</th><th>Valor</th><th>Onde</th></tr></thead>
+        <tbody>
+          <tr><td>saida</td><td class="num">140ms</td><td>Fechamento do menu do FAB</td></tr>
+          <tr><td>toast</td><td class="num">250ms</td><td>Fade e translação do toast</td></tr>
+          <tr><td>permanenciaToast</td><td class="num">2000ms</td><td>Tempo em tela antes do auto-dismiss</td></tr>
+          <tr><td>hoverWeb</td><td class="num">150ms</td><td>Transição CSS do press na web</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p><strong>Sair é sempre mais rápido que entrar.</strong> O menu abre em spring e fecha em
+           140ms; o toque encolhe rápido e volta devagar. A entrada tem peso, a saída sai da frente.</p>
+      </div>
+    </section>
+
+    <!-- ============ AÇÕES ============ -->
+    <section id="acoes">
+      <div class="eyebrow">Componentes</div>
+      <h2>Ações</h2>
+      <div class="callout">
+        <p>Todo alvo tocável passa por <code>AppPressable</code>, que dá duas coisas: estado
+           <strong>hovered</strong> real na web e um encolher de 1 → 0,96 no toque. Alvos que não
+           podem oscilar de tamanho passam <code>scaleOnPress={false}</code>.</p>
+      </div>
+
+      <div class="row-2" style="margin-top:var(--sp-4)">
+        <div class="demo">
+          <span class="lbl">repouso</span><div class="btn-p">Salvar lançamento</div>
+          <span class="lbl">hover — só web</span><div class="btn-p hv">Salvar lançamento</div>
+          <span class="lbl">pressionado</span><div class="btn-p pr">Salvar lançamento</div>
+          <span class="lbl">secundário</span><div class="btn-s">Não tem conta? Criar conta</div>
+          <span class="lbl">ações inteligentes</span>
+          <div style="display:flex;gap:8px">
+            <span class="smart"><span class="ico"></span>Colar comprovante</span>
+            <span class="smart"><span class="ico"></span>Importar CSV</span></div>
+        </div>
+        <div class="props">
+          <b class="k">Primário</b> fundo ink · texto paper · peso 600 · raio md<br>
+          hover opacidade .88 · o único elemento que <b>inverte</b> tinta e papel<br><br>
+          <b class="k">Secundário</b> sem fundo em repouso · texto inkSoft<br>
+          hover materializa uma superfície paperRaised<br><br>
+          <b class="k">Ação inteligente</b> paperRaised · borda rule · 11,5px peso 500<br>
+          hover muda só a borda — são atalhos, não ações principais
+        </div>
+      </div>
+
+      <h3>Estados por componente</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Componente</th><th>Hover</th><th>Pressionado</th><th>Desabilitado</th></tr></thead>
+        <tbody>
+          <tr><td>Primário</td><td>opacidade .88</td><td>escala .96</td><td>só bloqueia</td></tr>
+          <tr><td>Secundário</td><td>fundo paperRaised</td><td>escala .96</td><td>—</td></tr>
+          <tr><td>Ação inteligente</td><td>borda ruleStrong</td><td>escala .96</td><td>—</td></tr>
+          <tr><td>FAB</td><td>opacidade .9</td><td>escala .96</td><td>—</td></tr>
+          <tr><td>Item de menu</td><td>fundo paper</td><td>escala .96</td><td>—</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============ FORMULÁRIO ============ -->
+    <section id="formulario">
+      <div class="eyebrow">Componentes</div>
+      <h2>Formulário</h2>
+      <div class="row-2">
+        <div class="demo">
+          <span class="lbl">campo com caixa · autenticação</span>
+          <div class="in-box ph">voce@exemplo.com</div>
+          <span class="lbl">campo sublinhado · folhas</span>
+          <div class="in-line ph">Descrição — ex: Supermercado</div>
+          <span class="lbl">campo de valor</span>
+          <div class="amount"><span class="pre">R$</span><span class="val">1.284,90</span></div>
+          <span class="lbl">linhas de campo</span>
+          <div class="frow"><span class="k">Categoria</span>
+            <span class="v"><span class="dot" style="background:#bb6b60"></span>Alimentação ›</span></div>
+          <div class="frow" style="border:none"><span class="k">Repetir mensalmente</span>
+            <span class="track on"><span class="thumb"></span></span></div>
+        </div>
+        <div class="props">
+          <b class="k">Com caixa</b> borda rule · raio md · fundo paperRaised · 15px<br>
+          Só nas telas de entrar e criar conta, onde o campo é o conteúdo principal.<br><br>
+          <b class="k">Sublinhado</b> borda inferior · 14px · sem fundo<br>
+          Dentro das folhas, onde uma caixa dentro de outra caixa pesaria.<br><br>
+          <b class="k">Valor</b> prefixo em inkFaint 20px, valor 30px tabular-nums<br>
+          Único campo com a divisória enfatizada (ruleStrong). É o maior tipo da interface.<br><br>
+          <b class="k">Switch</b> trilho 34 × 20 · ligado vira ink · bolinha corre 14px
+        </div>
+      </div>
+      <div class="callout flag" style="margin-top:var(--sp-3)">
+        <p><strong>Nenhum campo tem estado de foco.</strong> Nem borda, nem brilho, nem mudança de
+           cor — só o cursor do sistema. Na web, onde se navega por Tab, não há indicação visível
+           de foco em alvo nenhum do app.</p>
+      </div>
+    </section>
+
+    <!-- ============ CONTEÚDO ============ -->
+    <section id="conteudo">
+      <div class="eyebrow">Componentes</div>
+      <h2>Conteúdo</h2>
+      <div class="row-2">
+        <div class="demo">
+          <span class="lbl">linha de lançamento</span>
+          <div class="txrow">
+            <span class="txico" style="background:#bb6b6030;color:#bb6b60">AL</span>
+            <span><span style="font-size:13px">Alimentação</span>
+              <div class="txsub">Supermercado · 14 de agosto</div></span>
+            <span class="txamt" style="color:#00a6ca">− R$ 284,90</span></div>
+          <div class="txrow" style="border:none">
+            <span class="txico" style="background:#4f948330;color:#4f9483">SA</span>
+            <span><span style="font-size:13px">Salário</span>
+              <div class="txsub">Pagamento · 5 de agosto</div></span>
+            <span class="txamt" style="color:#74e291">+ R$ 5.200,00</span></div>
+
+          <span class="lbl">barra de orçamento</span>
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-size:12px"><span class="dot" style="background:#6b9dc2;display:inline-block;margin-right:7px"></span>Transporte</span>
+            <span class="num" style="font-size:11.5px">R$ 340,00 de R$ 300,00 · excedido</span></div>
+          <div class="btrack"><div class="bfill" style="width:100%;background:#6b9dc2"></div></div>
+
+          <span class="lbl">modo privacidade</span>
+          <div style="display:flex;gap:20px;align-items:center">
+            <span class="num" style="font-size:19px">R$ 1.284,90</span>
+            <span class="num blurred" style="font-size:19px">R$ 1.284,90</span></div>
+
+          <span class="lbl">chips</span>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <span class="chip-c sel"><span class="dot" style="background:#93739e"></span>Moradia</span>
+            <span class="chip-c" style="color:var(--ink-soft)"><span class="dot" style="background:#74a17c"></span>Saúde</span></div>
+        </div>
+        <div class="props">
+          <b class="k">Linha de lançamento</b> ícone 32px com a cor da categoria a 30% de alfa e
+          a sigla nas duas primeiras letras<br>
+          O sinal + / − é um elemento separado do valor, porque o valor pode ser borrado pelo modo
+          privacidade e o sinal não<br><br>
+          <b class="k">Barra de orçamento</b> trilho 6px em paper · preenchimento na cor da
+          categoria, limitado a 100%<br>
+          Estourar <b>não muda a cor</b> — só o peso do texto e o sufixo “· excedido”<br><br>
+          <b class="k">Privacidade</b> blur(7px) real na web e Android; BlurView com véu no iOS<br>
+          Blur de verdade, não retângulo opaco<br><br>
+          <b class="k">Card</b> paperRaised · borda rule · raio lg · sem sombra
+        </div>
+      </div>
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p>Estourar o orçamento é um <strong>sinal fraco</strong>: não há vermelho, alerta ou
+           ícone. É coerente com a paleta — saída é ciano, gastar não é erro — mas é fácil passar
+           batido.</p>
+      </div>
+    </section>
+
+    <!-- ============ AUDITORIA ============ -->
+    <section id="auditoria">
+      <div class="eyebrow">Estado do sistema</div>
+      <h2>Auditoria</h2>
+      <p>O que apareceu ao catalogar os componentes. Nada foi corrigido — o app não é modificado
+         por este projeto. É uma lista de decisões a tomar.</p>
+
+      <div class="tally">
+        <div><div class="n" style="color:var(--sev-alta)">3</div><div class="l">Alta</div></div>
+        <div><div class="n" style="color:var(--sev-media)">4</div><div class="l">Média</div></div>
+        <div><div class="n" style="color:var(--sev-baixa)">4</div><div class="l">Baixa</div></div>
+      </div>
+
+      <div class="audit">
+        <article class="aud a"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">alta</span>
+            <span class="aud-title">A folha existe quatro vezes</span></div>
+          <p>Existe <code>components/Sheet.tsx</code>, que resolve o véu, o painel, o scroll e a
+             medição da altura do teclado. Três modais não o usam e repetem os estilos por conta
+             própria.</p>
+          <p>Qualquer correção feita no Sheet — e a medição de teclado foi difícil, motivada pelo
+             edge-to-edge do SDK 54 — não chega nas outras três. Das três cópias, só o
+             CategoryPicker importou <code>useKeyboardHeight</code>: o DatePicker e o
+             ItemActionSheet não sobem com o teclado.</p>
+          <div class="where"><b>Origem</b> components/Sheet.tsx ·
+            <b>Cópias</b> ItemActionSheet · DatePickerModal · CategoryPickerModal</div>
+        </div></article>
+
+        <article class="aud a"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">alta</span>
+            <span class="aud-title">Dois switches, e o pior é o mais usado</span></div>
+          <p><code>ToggleSwitch.tsx</code> anima a bolinha em spring e esmaece a cor da trilha. A
+             folha de lançamento traz uma cópia inline que troca de posição instantaneamente.</p>
+          <p>São visualmente idênticos e comportamentalmente diferentes — e é a versão sem
+             animação que aparece no fluxo mais frequente do app.</p>
+          <div class="where"><b>Componente</b> components/ToggleSwitch.tsx ·
+            <b>Cópia</b> index.tsx — switchTrack, switchThumb</div>
+        </div></article>
+
+        <article class="aud a"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">alta</span>
+            <span class="aud-title">Nenhum campo tem estado de foco</span></div>
+          <p>Nem borda, nem brilho, nem mudança de cor. Nas telas de autenticação, com dois campos
+             seguidos, nada indica onde se está digitando. Na web o problema é maior: não há
+             indicação visível de foco em nenhum alvo.</p>
+          <div class="where"><b>Afeta</b> todos os TextInput · sign-in · sign-up · folhas</div>
+        </div></article>
+
+        <article class="aud m"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">média</span>
+            <span class="aud-title">Cores de categoria vazando para a interface</span></div>
+          <p>O botão “Saída” usa <code>#bb6b6033</code> (Alimentação), o “Entrada” usa
+             <code>#4f948333</code> (Salário), e “Excluir” usa <code>#bb6b60</code> como cor
+             destrutiva. Isso amarra a interface ao catálogo de categorias.</p>
+          <div class="where"><b>Onde</b> index.tsx — typeBtnOut, typeBtnIn · ItemActionSheet.tsx</div>
+        </div></article>
+
+        <article class="aud m"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">média</span>
+            <span class="aud-title">A validação aparece de duas formas</span></div>
+          <p>No login, o erro é texto em <code>#e08a7d</code> dentro da tela. Nas folhas, é
+             <code>Alert.alert</code> — caixa nativa, fora do desenho do app. A mesma classe de
+             falha chega ao usuário de formas distintas.</p>
+          <div class="where"><b>Texto na tela</b> sign-in · sign-up ·
+            <b>Alert</b> index.tsx · CategoryPickerModal</div>
+        </div></article>
+
+        <article class="aud m"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">média</span>
+            <span class="aud-title">Não existe estado desabilitado visual</span></div>
+          <p>Os botões de salvar recebem <code>disabled</code> enquanto gravam, mas nada muda além
+             do spinner substituir o rótulo. Num toque duplo rápido, o segundo toque não dá
+             retorno nenhum.</p>
+          <div class="where"><b>Afeta</b> saveBtn · addBtn · primaryBtn</div>
+        </div></article>
+
+        <article class="aud m"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">média</span>
+            <span class="aud-title">O botão primário tem três tamanhos</span></div>
+          <p>15px no login, 14px nas folhas, 13px ao criar categoria — todos peso 600, todos com o
+             mesmo papel.</p>
+          <div class="where"><b>Onde</b> primaryBtnText · saveBtnText · addBtnText</div>
+        </div></article>
+
+        <article class="aud b"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">baixa</span>
+            <span class="aud-title">Título de folha com dois pesos</span></div>
+          <p>17px sem peso definido em index.tsx; 17px com peso 500 nas três folhas que copiaram a
+             estrutura.</p>
+        </div></article>
+
+        <article class="aud b"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">baixa</span>
+            <span class="aud-title">Chips com tamanhos e hovers divergentes</span></div>
+          <p>Lançamento rápido usa 12px, seleção de categoria 12,5px. Um muda o fundo no hover, o
+             outro muda fundo e borda.</p>
+        </div></article>
+
+        <article class="aud b"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">baixa</span>
+            <span class="aud-title">O ponto de categoria tem dois tamanhos</span></div>
+          <p>8px em quase todo lugar, 10px na lista do CategoryPickerModal.</p>
+        </div></article>
+
+        <article class="aud b"><div class="stripe"></div><div>
+          <div class="aud-head"><span class="pill">baixa</span>
+            <span class="aud-title">A cor de erro está escrita duas vezes</span></div>
+          <p><code>#e08a7d</code> aparece fixo em sign-in.tsx e em index.tsx. Não é um token — é
+             uma string repetida, e nada garante que continuem iguais.</p>
+        </div></article>
+      </div>
+
+      <div class="callout" style="margin-top:var(--sp-4)">
+        <p><strong>Uma leitura sobre o conjunto:</strong> quase toda inconsistência aqui é
+           <strong>duplicação</strong>, não decisão ruim. O app tem boas escolhas — tokens
+           semânticos, tabular-nums em toda quantia, saída em ciano, a folha que mede o teclado à
+           mão. O que falta é reaproveitar o que já foi resolvido uma vez. As três de severidade
+           alta são a mesma história: algo resolvido bem num lugar e reescrito pior em outro.</p>
+      </div>
+    </section>
+
+    <footer>
+      Extraído de <code>grana-app</code> — lib/theme.ts, lib/types.ts e os StyleSheet das telas.
+      Os vetores da marca vêm dos SVGs originais. Valores marcados como
+      <span class="tag new">proposto</span> ainda não existem no app.
+    </footer>
+  </main>
+</div>
+
+<script>
+  // Marca no trilho a seção visível. Só isso — a navegação é o único
+  // comportamento da página.
+  (function(){
+    var links = Array.prototype.slice.call(document.querySelectorAll('#nav a'));
+    var map = {};
+    links.forEach(function(a){
+      var el = document.querySelector(a.getAttribute('href'));
+      if (el) map[el.id] = a;
+    });
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (!e.isIntersecting) return;
+        links.forEach(function(a){ a.classList.remove('on'); });
+        if (map[e.target.id]) map[e.target.id].classList.add('on');
+      });
+    }, { rootMargin: '-10% 0px -75% 0px', threshold: 0 });
+    Object.keys(map).forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) obs.observe(el);
+    });
+  })();
+</script>

@@ -1,0 +1,78 @@
+import { Modal, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { theme, radius, spacing } from '@/lib/theme';
+import AppPressable from './AppPressable';
+
+export default function ItemActionSheet({
+  visible,
+  title,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalScrim}>
+        <View style={styles.sheet}>
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>{title}</Text>
+            <AppPressable onPress={onClose} hitSlop={12}>
+              <Ionicons name="close" size={22} color={theme.inkFaint} />
+            </AppPressable>
+          </View>
+
+          <AppPressable
+            style={({ hovered }) => [styles.actionBtn, hovered && styles.actionBtnHover]}
+            onPress={() => {
+              onClose();
+              onEdit();
+            }}
+          >
+            <Ionicons name="create-outline" size={20} color={theme.ink} />
+            <Text style={styles.actionText}>Editar</Text>
+          </AppPressable>
+
+          <AppPressable
+            style={({ hovered }) => [styles.actionBtn, hovered && styles.actionBtnHover]}
+            onPress={() => {
+              onClose();
+              onDelete();
+            }}
+          >
+            <Ionicons name="trash-outline" size={20} color="#bb6b60" />
+            <Text style={[styles.actionText, { color: '#bb6b60' }]}>Excluir</Text>
+          </AppPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: theme.paperRaised,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
+    gap: spacing.sm,
+  },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: radius.md,
+  },
+  actionBtnHover: { backgroundColor: theme.paper },
+  actionText: { color: theme.ink, fontSize: 14, fontWeight: '500' },
+});

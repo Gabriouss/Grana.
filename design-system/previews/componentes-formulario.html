@@ -1,0 +1,281 @@
+<!-- @dsCard group="Componentes" -->
+<meta charset="utf-8">
+<title>Formulário Grana</title>
+<!--@FONTS@-->
+<style>
+  :root{
+    --paper:#052229; --raised:#0b2d35; --ink:#effffa; --inkSoft:#a6d9ce; --inkFaint:#7fa9a0;
+    --rule:rgba(175,255,227,.14); --ruleStrong:rgba(175,255,227,.26);
+    --danger:#e08a7d; --in:#4f9483; --out:#bb6b60;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:var(--paper);color:var(--ink);
+       font-family:'Neue Machina',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1{font-size:26px;font-weight:300;margin:0 0 2px}
+  .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--inkFaint)}
+  h2{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--inkFaint);
+     margin:32px 0 10px;font-weight:400}
+  p{font-size:13px;line-height:1.55;color:var(--inkSoft);margin:0 0 14px;max-width:66ch}
+  b{color:var(--ink);font-weight:400}
+  .spec{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .demo{background:var(--raised);border:1px solid var(--rule);border-radius:16px;padding:20px;
+        min-width:270px;display:flex;flex-direction:column;gap:12px}
+  .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--inkFaint)}
+  .props{font-size:11px;color:var(--inkFaint);line-height:1.75;max-width:38ch;
+         font-variant-numeric:tabular-nums}
+  .props b{color:var(--inkSoft);font-weight:400}
+
+  .field-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--inkFaint);margin-bottom:4px}
+  .input-box{border:1px solid var(--rule);border-radius:12px;padding:12px;font-size:15px;
+             background:var(--raised);color:var(--ink)}
+  .input-box.on-raised{background:var(--paper)}
+  .input-box.ph{color:var(--inkFaint)}
+  .input-line{border-bottom:1px solid var(--rule);padding:8px 0;font-size:14px}
+  .input-line.ph{color:var(--inkFaint)}
+
+  .amount{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--ruleStrong);padding-bottom:10px}
+  .amount .pre{color:var(--inkFaint);font-size:20px}
+  .amount .val{font-size:30px;font-variant-numeric:tabular-nums}
+  .amount .val.ph{color:var(--inkFaint)}
+
+  .frow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;
+        border-bottom:1px solid var(--rule)}
+  .fkey{color:var(--inkFaint);font-size:13px}
+  .fval{display:flex;align-items:center;gap:8px;font-size:13px}
+  .dot{width:8px;height:8px;border-radius:4px}
+  .chev{color:var(--inkFaint);font-size:12px}
+
+  .track{width:34px;height:20px;border-radius:10px;background:var(--ruleStrong);padding:2px}
+  .track.on{background:var(--ink)}
+  .thumb{width:16px;height:16px;border-radius:8px;background:var(--raised)}
+  .track.on .thumb{transform:translateX(14px)}
+
+  .seg{display:flex;gap:3px;padding:3px;background:var(--paper);border-radius:8px;position:relative}
+  .seg .pill{position:absolute;top:3px;bottom:3px;left:3px;width:calc(33.33% - 2px);
+             background:var(--raised);border-radius:6px}
+  .seg .s{flex:1;text-align:center;font-size:11px;padding:7px 6px;color:var(--inkFaint);position:relative;z-index:1}
+  .seg .s.on{color:var(--ink)}
+
+  .types{display:flex;gap:4px}
+  .type{flex:1;text-align:center;padding:8px;border-radius:8px;background:var(--paper);
+        color:var(--inkFaint);font-size:12px;border:1px solid transparent}
+  .type.on-out{background:rgba(187,107,96,.2);border-color:var(--out);color:var(--ink);font-weight:500}
+  .type.on-in{background:rgba(79,148,131,.2);border-color:var(--in);color:var(--ink);font-weight:500}
+
+  .cal{display:flex;flex-direction:column;gap:4px}
+  .calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .calnav{width:34px;height:34px;border-radius:17px;background:var(--paper);display:grid;place-items:center;font-size:14px}
+  .calmy{font-size:15px;font-weight:500}
+  .wk{display:flex}
+  .wk div{flex:1;text-align:center;font-size:11px;color:var(--inkFaint);font-weight:500;padding:4px 0}
+  .wrow{display:flex}
+  .wrow > div{flex:1;display:grid;place-items:center}
+  .day{width:32px;height:32px;border-radius:16px;display:grid;place-items:center;font-size:13px;
+       font-variant-numeric:tabular-nums}
+  .day.muted{opacity:.35;color:var(--inkFaint)}
+  .day.today{border:1px solid var(--ruleStrong)}
+  .day.sel{background:var(--ink);color:var(--paper);font-weight:600}
+
+  .swatches{display:flex;flex-wrap:wrap;gap:7px}
+  .sw{width:28px;height:28px;border-radius:14px}
+  .sw.sel{border:2px solid var(--ink)}
+
+  .note{border-left:2px solid var(--ruleStrong);padding:12px 16px;background:var(--raised);
+        border-radius:0 12px 12px 0;max-width:680px;margin-top:14px}
+  .note p{margin:0;font-size:12.5px}
+  .warn{border-left-color:var(--danger)}
+  table{border-collapse:collapse;width:100%;max-width:680px;margin-top:6px}
+  th,td{text-align:left;font-size:12px;padding:8px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--inkFaint);font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td{color:var(--inkSoft)} td:first-child{color:var(--ink)}
+</style>
+
+<div class="eyebrow">componentes</div>
+<h1>Formulário</h1>
+
+<h2>Campo de texto — duas formas</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="lbl">com caixa · autenticação</div>
+    <div>
+      <div class="field-label">E-mail</div>
+      <div class="input-box ph">voce@exemplo.com</div>
+    </div>
+    <div>
+      <div class="field-label">Senha</div>
+      <div class="input-box">••••••••</div>
+    </div>
+  </div>
+  <div class="demo">
+    <div class="lbl">sublinhado · folhas</div>
+    <div class="input-line ph">Descrição — ex: Supermercado</div>
+    <div class="input-line">Supermercado</div>
+  </div>
+  <div class="props">
+    <b>Com caixa</b> · borda rule · raio md · fundo paperRaised · 15px<br>
+    Usado só nas telas de entrar e criar conta, onde o campo é o conteúdo principal.<br><br>
+    <b>Sublinhado</b> · borda inferior rule · 14px · sem fundo<br>
+    Usado dentro das folhas, onde já existe uma superfície elevada e uma caixa dentro de
+    outra caixa pesaria.<br><br>
+    Nenhum dos dois tem estado de <b>foco</b>.
+  </div>
+</div>
+<div class="note warn">
+  <p><b>Não existe estado de foco em nenhum campo do app.</b> Nem borda, nem brilho, nem
+     mudança de cor — só o cursor do sistema. Em formulários com vários campos seguidos,
+     nada indica onde se está digitando.</p>
+</div>
+
+<h2>Campo de valor</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="lbl">vazio</div>
+    <div class="amount"><span class="pre">R$</span><span class="val ph">0,00</span></div>
+    <div class="lbl">preenchido</div>
+    <div class="amount"><span class="pre">R$</span><span class="val">1.284,90</span></div>
+  </div>
+  <div class="props">
+    <b>prefixo</b> “R$” em inkFaint · 20px — nunca faz parte do valor digitado<br>
+    <b>valor</b> ink · 30px · tabular-nums<br>
+    <b>divisória</b> ruleStrong, e não rule — é o único campo que ganha a linha enfatizada<br>
+    <b>teclado</b> decimal-pad · autoFocus<br><br>
+    É o maior tipo da interface. A hierarquia da folha inteira se organiza em torno dele.
+  </div>
+</div>
+
+<h2>Linha de campo</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="frow"><span class="fkey">Categoria</span>
+      <span class="fval"><span class="dot" style="background:#bb6b60"></span>Alimentação<span class="chev">›</span></span></div>
+    <div class="frow"><span class="fkey">Data</span>
+      <span class="fval">15 de agosto<span class="chev">›</span></span></div>
+    <div class="frow" style="border:none"><span class="fkey">Repetir mensalmente</span>
+      <span class="track on"><span class="thumb"></span></span></div>
+  </div>
+  <div class="props">
+    <b>chave</b> inkFaint 13px · <b>valor</b> ink 13px<br>
+    <b>divisória</b> rule na base<br>
+    <b>navegável</b> ganha chevron; <b>alternável</b> ganha switch<br><br>
+    Padrão de folha: rótulo à esquerda, valor e affordance à direita.
+  </div>
+</div>
+
+<h2>Switch</h2>
+<div class="spec">
+  <div class="demo" style="min-width:200px">
+    <div class="lbl">desligado</div><span class="track"><span class="thumb"></span></span>
+    <div class="lbl">ligado</div><span class="track on"><span class="thumb"></span></span>
+  </div>
+  <div class="props">
+    <b>trilho</b> 34 × 20 · raio 10<br>
+    <b>desligado</b> ruleStrong · <b>ligado</b> ink<br>
+    <b>bolinha</b> 16px · paperRaised · corre 14px<br>
+    <b>animação</b> spring speed 22 · bounciness 8, com a trilha esmaecendo de cor<br>
+    <b>scaleOnPress</b> false — alvo pequeno não pode oscilar
+  </div>
+</div>
+<div class="note warn">
+  <p><b>Existem duas implementações do switch.</b> O componente
+     <b>ToggleSwitch.tsx</b> anima em spring. Mas a folha de lançamento em
+     <b>index.tsx</b> traz uma cópia inline (<b>switchTrack</b>/<b>switchThumb</b>) que
+     <b>troca de posição instantaneamente</b>, sem animação. São visualmente idênticos e
+     comportamentalmente diferentes — e é a versão sem animação que o usuário encontra
+     ao criar um lançamento.</p>
+</div>
+
+<h2>Segmentado</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="seg"><span class="pill"></span>
+      <span class="s on">Entradas</span><span class="s">Saídas</span><span class="s">Ambos</span></div>
+  </div>
+  <div class="props">
+    <b>trilho</b> paper · raio sm · recuo 3px · gap 3px<br>
+    <b>pílula</b> paperRaised · raio <b>sm − 2</b><br>
+    <b>desliza</b> spring speed 22 · bounciness 6<br>
+    <b>texto</b> inkFaint → ink quando ativo<br><br>
+    A largura da pílula é calculada como
+    <b>(largura − recuo×2 − gap×(n−1)) / n</b>. Usar largura/n a deixava
+    ultrapassando a borda no último item.
+  </div>
+</div>
+
+<h2>Seletor de tipo</h2>
+<div class="spec">
+  <div class="demo">
+    <div class="lbl">saída selecionada</div>
+    <div class="types"><span class="type on-out">Saída</span><span class="type">Entrada</span></div>
+    <div class="lbl">entrada selecionada</div>
+    <div class="types"><span class="type">Saída</span><span class="type on-in">Entrada</span></div>
+  </div>
+  <div class="props">
+    <b>repouso</b> fundo paper · texto inkFaint<br>
+    <b>saída ativa</b> #bb6b60 a 20% + borda #bb6b60<br>
+    <b>entrada ativa</b> #4f9483 a 20% + borda #4f9483<br><br>
+    As duas cores vêm do catálogo de <b>categorias</b> — Alimentação e Salário — e estão
+    escritas à mão como <b>'#bb6b6033'</b> e <b>'#4f948333'</b>.
+  </div>
+</div>
+
+<h2>Calendário</h2>
+<div class="spec">
+  <div class="demo" style="min-width:300px">
+    <div class="calhead"><span class="calnav">‹</span><span class="calmy">Agosto 2026</span><span class="calnav">›</span></div>
+    <div class="wk"><div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div></div>
+    <div class="cal">
+      <div class="wrow"><div><span class="day muted">26</span></div><div><span class="day muted">27</span></div><div><span class="day muted">28</span></div><div><span class="day muted">29</span></div><div><span class="day muted">30</span></div><div><span class="day muted">31</span></div><div><span class="day">1</span></div></div>
+      <div class="wrow"><div><span class="day">2</span></div><div><span class="day">3</span></div><div><span class="day">4</span></div><div><span class="day">5</span></div><div><span class="day">6</span></div><div><span class="day">7</span></div><div><span class="day">8</span></div></div>
+      <div class="wrow"><div><span class="day">9</span></div><div><span class="day">10</span></div><div><span class="day">11</span></div><div><span class="day">12</span></div><div><span class="day">13</span></div><div><span class="day">14</span></div><div><span class="day sel">15</span></div></div>
+      <div class="wrow"><div><span class="day today">16</span></div><div><span class="day">17</span></div><div><span class="day">18</span></div><div><span class="day">19</span></div><div><span class="day">20</span></div><div><span class="day">21</span></div><div><span class="day">22</span></div></div>
+    </div>
+  </div>
+  <div class="props">
+    <b>grade</b> 6 linhas fixas de 7 dias — sempre 42 células<br>
+    <b>dia</b> 36px · círculo<br>
+    <b>fora do mês</b> opacidade .35<br>
+    <b>hoje</b> borda ruleStrong<br>
+    <b>selecionado</b> fundo ink · texto paper · peso 600<br>
+    <b>navegação</b> círculos de 34px em fundo paper<br><br>
+    As linhas são fixas de propósito: com flexWrap, o número de dias por linha variava
+    conforme a largura e deixava de parecer um calendário.
+  </div>
+</div>
+<div class="note">
+  <p><b>Hoje e selecionado podem coincidir</b> — e aí o fundo ink vence a borda, que
+     desaparece. Não há um terceiro tratamento para “hoje e selecionado ao mesmo tempo”.</p>
+</div>
+
+<h2>Seletor de cor</h2>
+<div class="spec">
+  <div class="demo" style="min-width:280px">
+    <div class="swatches">
+      <span class="sw" style="background:#bb6b60"></span><span class="sw sel" style="background:#93739e"></span>
+      <span class="sw" style="background:#6b9dc2"></span><span class="sw" style="background:#c66f8e"></span>
+      <span class="sw" style="background:#74a17c"></span><span class="sw" style="background:#d3b869"></span>
+      <span class="sw" style="background:#4f9483"></span><span class="sw" style="background:#8b9198"></span>
+    </div>
+  </div>
+  <div class="props">
+    <b>amostra</b> 28px · círculo<br>
+    <b>selecionada</b> borda 2px ink<br>
+    <b>catálogo</b> 24 primeiras cores de CAT_COLORS<br><br>
+    Aparece só ao criar uma categoria nova.
+  </div>
+</div>
+
+<h2>Resumo</h2>
+<table>
+  <tr><th>Componente</th><th>Foco</th><th>Erro</th><th>Desabilitado</th></tr>
+  <tr><td>Campo com caixa</td><td>—</td><td>texto abaixo, #e08a7d</td><td>—</td></tr>
+  <tr><td>Campo sublinhado</td><td>—</td><td>Alert do sistema</td><td>—</td></tr>
+  <tr><td>Campo de valor</td><td>—</td><td>Alert do sistema</td><td>—</td></tr>
+  <tr><td>Switch</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td>Segmentado</td><td>—</td><td>—</td><td>—</td></tr>
+</table>
+<div class="note warn">
+  <p><b>A validação vive em dois lugares.</b> No login, o erro é texto em <b>#e08a7d</b>
+     dentro da tela. Nas folhas, é <b>Alert.alert</b> do sistema — caixa nativa, fora do
+     desenho do app. O mesmo tipo de falha (“informe um valor válido”) aparece de duas
+     formas completamente distintas.</p>
+</div>

@@ -1,0 +1,6 @@
+# Gerados por build.js — reconstruíveis com `node build.js`.
+# As fontes em base64 pesam ~155 KB e são embutidas em cada arquivo abaixo,
+# então versioná-los inflaria o repositório sem ganho nenhum.
+dist/
+fonts/neue-machina.css
+pagina/design-system.html
