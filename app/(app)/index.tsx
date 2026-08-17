@@ -45,6 +45,9 @@ import FadeIn from '@/components/FadeIn';
 import Sheet from '@/components/Sheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import MonthSelector from '@/components/MonthSelector';
+import StreakBanner from '@/components/StreakBanner';
+import GamificationModal from '@/components/GamificationModal';
+import { getGamificationState } from '@/lib/gamification';
 import { isSameMonth } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 
@@ -85,6 +88,7 @@ export default function InicioScreen() {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [gamificationModalOpen, setGamificationModalOpen] = useState(false);
 
   // New Transaction Sheet
   const [txSheetOpen, setTxSheetOpen] = useState(false);
@@ -512,6 +516,14 @@ export default function InicioScreen() {
               setSelectedYear(y);
               setSelectedMonth(m);
             }}
+          />
+        </FadeIn>
+
+        {/* Banner de Ofensiva & Score de Maestria */}
+        <FadeIn delay={45}>
+          <StreakBanner
+            state={getGamificationState(transactions, bills, budgets)}
+            onPress={() => setGamificationModalOpen(true)}
           />
         </FadeIn>
 
@@ -1119,6 +1131,13 @@ export default function InicioScreen() {
           load();
           markOnboardingSeen();
         }}
+      />
+
+      {/* Gamification Mastery & Badges Modal */}
+      <GamificationModal
+        visible={gamificationModalOpen}
+        onClose={() => setGamificationModalOpen(false)}
+        state={getGamificationState(transactions, bills, budgets)}
       />
 
       {/* Floating Animated Toast */}
