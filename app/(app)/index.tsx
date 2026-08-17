@@ -589,9 +589,10 @@ export default function InicioScreen() {
           <View style={styles.cardHeadRow}>
             <Text style={styles.cardLabel}>Gastos por categoria</Text>
             <PrivacyValue>
-              <Text style={styles.flowValue}>{`R$ ${formatMoney(totalOut)}`}</Text>
+              <Text style={[styles.flowValue, { color: theme.down }]}>{`− R$ ${formatMoney(totalOut)}`}</Text>
             </PrivacyValue>
           </View>
+
           {pieData.length === 0 ? (
             <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
           ) : (
@@ -1131,8 +1132,9 @@ const styles = StyleSheet.create({
   card: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, gap: spacing.md },
   cardHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: { color: theme.ink, fontSize: 13 },
-  flowValue: { fontSize: 13, fontVariant: ['tabular-nums'] },
+  flowValue: { color: theme.ink, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   emptyText: { color: theme.inkFaint, fontSize: 12.5, lineHeight: 18 },
+
   pieWrap: { alignItems: 'center', paddingVertical: spacing.sm },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
   legendChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule },
