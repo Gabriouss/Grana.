@@ -38,8 +38,12 @@ export async function addTransaction(input: {
   return data;
 }
 
+/* O filtro por user_id é redundante com a RLS — e é de propósito. Se uma
+   política for desabilitada por engano no painel do Supabase, estas chamadas
+   continuam escopadas ao dono em vez de virarem IDOR na hora. */
 export async function updateTransaction(id: string, changes: Partial<Transaction>): Promise<void> {
-  const { error } = await supabase.from('transactions').update(changes).eq('id', id);
+  const user_id = await currentUserId();
+  const { error } = await supabase.from('transactions').update(changes).eq('id', id).eq('user_id', user_id);
   if (error) throw error;
 }
 
@@ -62,7 +66,8 @@ export async function addTransactionsBatch(
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  const { error } = await supabase.from('transactions').delete().eq('id', id);
+  const user_id = await currentUserId();
+  const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
 }
 
@@ -92,7 +97,8 @@ export async function addBill(input: {
 }
 
 export async function updateBill(id: string, changes: Partial<Bill>): Promise<void> {
-  const { error } = await supabase.from('bills').update(changes).eq('id', id);
+  const user_id = await currentUserId();
+  const { error } = await supabase.from('bills').update(changes).eq('id', id).eq('user_id', user_id);
   if (error) throw error;
 }
 
@@ -101,7 +107,8 @@ export async function setBillStatus(id: string, status: BillStatus): Promise<voi
 }
 
 export async function deleteBill(id: string): Promise<void> {
-  const { error } = await supabase.from('bills').delete().eq('id', id);
+  const user_id = await currentUserId();
+  const { error } = await supabase.from('bills').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
 }
 
@@ -146,6 +153,28 @@ export async function deleteBudget(category: string): Promise<void> {
 
 /* ---- exclusão de conta (LGPD / Apple / Google Play) ---- */
 
+/**
+ * Confirma que quem está pedindo a ação é mesmo o dono da conta, revalidando a
+ * senha contra o Supabase.
+ *
+ * Existe porque excluir a conta é irreversível e apaga todo o histórico
+ * financeiro: sem isto, qualquer pessoa com o celular desbloqueado na mão
+ * destrói a conta do cliente em dois toques. Ter sessão ativa prova posse do
+ * aparelho, não identidade — e para uma ação destas a diferença importa.
+ *
+ * `signInWithPassword` com o e-mail da sessão atual é a forma suportada de
+ * revalidar: se a senha estiver errada devolve erro sem mexer na sessão.
+ */
+export async function reauthenticate(password: string): Promise<{ ok: boolean; error?: string }> {
+  const { data, error: userError } = await supabase.auth.getUser();
+  const email = data?.user?.email;
+  if (userError || !email) return { ok: false, error: 'Sessão expirada. Entre novamente.' };
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { ok: false, error: 'Senha incorreta.' };
+  return { ok: true };
+}
+
 export async function deleteUserAccount(): Promise<void> {
   const user_id = await currentUserId();
 
@@ -153,7 +182,9 @@ export async function deleteUserAccount(): Promise<void> {
   const { error: rpcError } = await supabase.rpc('delete_user_account');
 
   if (rpcError) {
-    console.warn('[deleteUserAccount] RPC indisponível no Supabase, apagando tabelas públicas:', rpcError.message);
+    // Sem o texto do erro do backend: o log do aparelho não é lugar de
+    // detalhe interno do banco.
+    console.warn('[deleteUserAccount] RPC indisponível; apagando apenas as tabelas públicas.');
     // Fallback caso a função ainda não tenha sido executada no SQL Editor
     await supabase.from('transactions').delete().eq('user_id', user_id);
     await supabase.from('bills').delete().eq('user_id', user_id);

@@ -13,6 +13,7 @@ import { useSession } from '@/lib/auth-context';
 import { theme, spacing, radius } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 import BrandLogo from '@/components/BrandLogo';
+import { LIMITS } from '@/lib/limits';
 
 export default function SignIn() {
   const { signIn } = useSession();
@@ -46,7 +47,7 @@ export default function SignIn() {
 
         <View style={styles.field}>
           <Text style={styles.label}>E-mail</Text>
-          <TextInput
+          <TextInput maxLength={LIMITS.email}
             style={styles.input}
             placeholder="voce@exemplo.com"
             placeholderTextColor={theme.inkFaint}
@@ -60,7 +61,7 @@ export default function SignIn() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Senha</Text>
-          <TextInput
+          <TextInput maxLength={LIMITS.password}
             style={styles.input}
             placeholder="••••••••"
             placeholderTextColor={theme.inkFaint}

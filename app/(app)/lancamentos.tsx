@@ -32,6 +32,7 @@ import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Transaction, TxType } from '@/lib/types';
+import { LIMITS } from '@/lib/limits';
 
 export default function LancamentosScreen() {
   const { isDemoMode } = useDemo();
@@ -375,7 +376,7 @@ export default function LancamentosScreen() {
               </AppPressable>
             </View>
 
-            <TextInput
+            <TextInput maxLength={LIMITS.description}
               style={styles.descInput}
               placeholder="Descrição"
               placeholderTextColor={theme.inkFaint}
@@ -385,7 +386,7 @@ export default function LancamentosScreen() {
 
             <View style={styles.amountRow}>
               <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput
+              <TextInput maxLength={LIMITS.amount}
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}

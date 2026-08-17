@@ -16,6 +16,7 @@ import { CATEGORIES } from '@/lib/types';
 import { parseAmount } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
+import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
 import { useKeyboardHeight } from './Sheet';
 
@@ -111,7 +112,7 @@ export default function BudgetTemplatesModal({
 
           <View style={styles.amountRow}>
             <Text style={styles.amountPrefix}>R$</Text>
-            <TextInput
+            <TextInput maxLength={LIMITS.amount}
               style={styles.amountInput}
               placeholder="5.000,00"
               placeholderTextColor={theme.inkFaint}

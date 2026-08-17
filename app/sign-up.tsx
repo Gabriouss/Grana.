@@ -12,6 +12,8 @@ import {
 import { useSession } from '@/lib/auth-context';
 import { theme, spacing, radius, fonts } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
+import { LIMITS, MIN_PASSWORD, validatePassword } from '@/lib/limits';
+import { checarSenhaVazada, mensagemSenhaVazada } from '@/lib/pwned';
 
 export default function SignUp() {
   const { signUp } = useSession();
@@ -29,15 +31,29 @@ export default function SignUp() {
       setError('Preencha e-mail e senha.');
       return;
     }
-    if (password.length < 6) {
-      setError('A senha precisa ter pelo menos 6 caracteres.');
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     if (password !== confirmPassword) {
       setError('As senhas não são iguais.');
       return;
     }
+
     setLoading(true);
+
+    /* Checagem de senha vazada. Roda depois das validações locais (que são
+       instantâneas) para não gastar uma ida à rede numa senha que já seria
+       recusada de qualquer forma. Se o serviço não responder, `indisponivel`
+       deixa o cadastro seguir — ver o comentário em lib/pwned.ts. */
+    const vazamento = await checarSenhaVazada(password);
+    if (vazamento.status === 'vazada') {
+      setLoading(false);
+      setError(mensagemSenhaVazada(vazamento.vezes));
+      return;
+    }
+
     const { error: signUpError, needsEmailConfirmation } = await signUp(email.trim(), password);
     setLoading(false);
     if (signUpError) {
@@ -86,7 +102,7 @@ export default function SignUp() {
 
         <View style={styles.field}>
           <Text style={styles.label}>E-mail</Text>
-          <TextInput
+          <TextInput maxLength={LIMITS.email}
             style={styles.input}
             placeholder="voce@exemplo.com"
             placeholderTextColor={theme.inkFaint}
@@ -100,9 +116,9 @@ export default function SignUp() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Senha</Text>
-          <TextInput
+          <TextInput maxLength={LIMITS.password}
             style={styles.input}
-            placeholder="mínimo 6 caracteres"
+            placeholder={`mínimo ${MIN_PASSWORD} caracteres, com número`}
             placeholderTextColor={theme.inkFaint}
             secureTextEntry
             autoComplete="password-new"
@@ -113,7 +129,7 @@ export default function SignUp() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Confirmar senha</Text>
-          <TextInput
+          <TextInput maxLength={LIMITS.password}
             style={styles.input}
             placeholder="digite a senha de novo"
             placeholderTextColor={theme.inkFaint}

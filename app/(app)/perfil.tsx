@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
+import { useAppLock } from '@/lib/app-lock-context';
 import { theme, radius, spacing } from '@/lib/theme';
-import { deleteUserAccount } from '@/lib/data';
+import { deleteUserAccount, reauthenticate } from '@/lib/data';
+import { LIMITS } from '@/lib/limits';
 import AppPressable from '@/components/AppPressable';
 import ToggleSwitch from '@/components/ToggleSwitch';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
@@ -17,11 +19,15 @@ export default function PerfilScreen() {
   const { session, signOut } = useSession();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode, toggleDemoMode } = useDemo();
+  const { ativo: lockAtivo, disponivel: lockDisponivel, alternar: alternarLock } = useAppLock();
   const router = useRouter();
 
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reauthOpen, setReauthOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
@@ -67,28 +73,32 @@ export default function PerfilScreen() {
     }
   }
 
+  /* A confirmação por si só não protege nada: quem está com o aparelho
+     desbloqueado toca em "Excluir" e pronto. Por isso o botão agora abre a
+     folha que pede a senha, e a exclusão só acontece depois que o Supabase
+     revalida a credencial. */
   function confirmDeleteAccount() {
-    if (Platform.OS === 'web') {
-      const ok = typeof window !== 'undefined'
-        ? window.confirm('ATENÇÃO: Deseja realmente excluir permanentemente sua conta e todos os seus lançamentos? Esta ação não poderá ser desfeita.')
-        : true;
-      if (ok) {
-        handlePerformDeleteAccount();
-      }
-    } else {
-      Alert.alert(
-        'Excluir Conta Permanentemente',
-        'Todos os seus lançamentos, contas cadastradas, categorias e orçamentos serão apagados permanentemente dos nossos servidores. Esta ação é irreversível.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Excluir definitivamente',
-            style: 'destructive',
-            onPress: handlePerformDeleteAccount,
-          },
-        ]
-      );
+    setDeleteError(null);
+    setDeletePassword('');
+    setReauthOpen(true);
+  }
+
+  async function handleConfirmDeleteWithPassword() {
+    if (!deletePassword) {
+      setDeleteError('Digite sua senha para confirmar.');
+      return;
     }
+    setDeleting(true);
+    setDeleteError(null);
+    const { ok, error } = await reauthenticate(deletePassword);
+    if (!ok) {
+      setDeleting(false);
+      setDeleteError(error ?? 'Não foi possível confirmar sua identidade.');
+      return;
+    }
+    setReauthOpen(false);
+    setDeletePassword('');
+    await handlePerformDeleteAccount();
   }
 
   const userEmail = session?.user.email || 'usuario@exemplo.com';
@@ -153,6 +163,15 @@ export default function PerfilScreen() {
             />
           </View>
 
+          {/* Só aparece em aparelho com biometria cadastrada: oferecer a trava
+              sem ter como vencê-la trancaria a pessoa para fora do app. */}
+          {lockDisponivel && (
+            <View style={styles.row}>
+              <Text style={styles.rowKey}>Bloqueio por biometria</Text>
+              <ToggleSwitch value={lockAtivo} onToggle={alternarLock} />
+            </View>
+          )}
+
           <View style={styles.row}>
             <Text style={styles.rowKey}>Dados de exemplo</Text>
             <ToggleSwitch
@@ -216,12 +235,79 @@ export default function PerfilScreen() {
       />
 
       {/* Toast */}
+      {/* Reautenticação antes de excluir a conta. */}
+      <Modal
+        visible={reauthOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setReauthOpen(false)}
+      >
+        <View style={styles.reauthScrim}>
+          <View style={styles.reauthCard}>
+            <Text style={styles.reauthTitle}>Confirme sua senha</Text>
+            <Text style={styles.reauthText}>
+              Todos os seus lançamentos, contas, categorias e orçamentos serão apagados
+              permanentemente. Esta ação é irreversível — digite sua senha para confirmar
+              que é você.
+            </Text>
+
+            <TextInput
+              maxLength={LIMITS.password}
+              style={styles.reauthInput}
+              placeholder="Sua senha"
+              placeholderTextColor={theme.inkFaint}
+              secureTextEntry
+              autoComplete="password"
+              autoFocus
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+            />
+
+            {deleteError && <Text style={styles.reauthError}>{deleteError}</Text>}
+
+            <AppPressable
+              style={({ hovered }) => [styles.reauthDanger, hovered && { opacity: 0.88 }]}
+              onPress={handleConfirmDeleteWithPassword}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator color={theme.ink} />
+              ) : (
+                <Text style={styles.reauthDangerText}>Excluir definitivamente</Text>
+              )}
+            </AppPressable>
+
+            <AppPressable
+              style={styles.reauthCancel}
+              onPress={() => {
+                setReauthOpen(false);
+                setDeletePassword('');
+                setDeleteError(null);
+              }}
+              disabled={deleting}
+            >
+              <Text style={styles.reauthCancelText}>Cancelar</Text>
+            </AppPressable>
+          </View>
+        </View>
+      </Modal>
+
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  reauthScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  reauthCard: { width: '100%', maxWidth: 400, backgroundColor: theme.paperRaised, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, borderWidth: 1, borderColor: theme.rule },
+  reauthTitle: { color: theme.ink, fontSize: 18, fontWeight: '600' },
+  reauthText: { color: theme.inkSoft, fontSize: 13.5, lineHeight: 19 },
+  reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: 15, color: theme.ink, backgroundColor: theme.paper },
+  reauthError: { color: '#e08a7d', fontSize: 13, lineHeight: 18 },
+  reauthDanger: { backgroundColor: '#e08a7d', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  reauthDangerText: { color: theme.paper, fontSize: 15, fontWeight: '600' },
+  reauthCancel: { paddingVertical: 12, alignItems: 'center' },
+  reauthCancelText: { color: theme.inkSoft, fontSize: 14 },
   container: { flex: 1, backgroundColor: theme.paper },
   content: { padding: spacing.xl, gap: spacing.lg, paddingBottom: 60 },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },

@@ -23,6 +23,7 @@ import CategoryChips from './CategoryChips';
 import AppPressable from './AppPressable';
 import Sheet from './Sheet';
 import type { TxType } from '@/lib/types';
+import { LIMITS } from '@/lib/limits';
 
 export default function PasteReceiptModal({
   visible,
@@ -137,6 +138,7 @@ export default function PasteReceiptModal({
                 Cole o texto copiado de um comprovante Pix, fatura ou recibo. Identificamos o valor, categoria e tipo automaticamente.
               </Text>
               <TextInput
+                maxLength={LIMITS.pastedText}
                 style={styles.textArea}
                 placeholder="Ex: Você transferiu R$ 45,90 para Restaurante Sabor da Terra..."
                 placeholderTextColor={theme.inkFaint}
@@ -171,7 +173,7 @@ export default function PasteReceiptModal({
                 </AppPressable>
               </View>
 
-              <TextInput
+              <TextInput maxLength={LIMITS.description}
                 style={styles.descInput}
                 placeholder="Descrição"
                 placeholderTextColor={theme.inkFaint}
@@ -181,7 +183,7 @@ export default function PasteReceiptModal({
 
               <View style={styles.amountRow}>
                 <Text style={styles.amountPrefix}>R$</Text>
-                <TextInput
+                <TextInput maxLength={LIMITS.amount}
                   style={styles.amountInput}
                   placeholder="0,00"
                   placeholderTextColor={theme.inkFaint}

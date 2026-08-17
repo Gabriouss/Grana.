@@ -1,5 +1,6 @@
 import { CATEGORIES, type TxType } from './types';
 import { parseAmount, todayISO } from './format';
+import { LIMITS } from './limits';
 
 export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Alimentação': ['ifood', 'restaurante', 'mercado', 'supermercado', 'padaria', 'lanchonete', 'pizza', 'burguer', 'hamburguer', 'açai', 'acai', 'mcdonalds', 'burger king', 'pao de acucar', 'carrefour', 'feira'],
@@ -101,9 +102,30 @@ function parseCsvDate(raw: string): string {
   return `${y}-${pad(mo)}-${pad(d)}`;
 }
 
+/* Resultado do parse, com o aviso de corte quando o arquivo passa do teto —
+   a tela precisa disso para não importar em silêncio só uma parte do extrato. */
+export type CsvParseResult = {
+  rows: ParsedCsvTransaction[];
+  /** Quantas linhas de dados o arquivo tinha antes de qualquer corte. */
+  totalLinhas: number;
+  /** true quando o arquivo passou de LIMITS.csvRows e foi truncado. */
+  truncado: boolean;
+};
+
 export function parseCsvText(text: string): ParsedCsvTransaction[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length === 0) return [];
+  return parseCsvTextDetalhado(text).rows;
+}
+
+export function parseCsvTextDetalhado(text: string): CsvParseResult {
+  const vazio: CsvParseResult = { rows: [], totalLinhas: 0, truncado: false };
+
+  /* Corta o texto antes de qualquer processamento. Sem isto, colar um arquivo
+     grande já estoura a memória no split, antes mesmo de chegar ao teto de
+     linhas. */
+  const texto = text.length > LIMITS.pastedText ? text.slice(0, LIMITS.pastedText) : text;
+
+  const lines = texto.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length === 0) return vazio;
 
   const header = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
   const hasHeader = header.some(
@@ -156,9 +178,18 @@ export function parseCsvText(text: string): ParsedCsvTransaction[] {
       color: catObj.color,
       occurred_on,
     });
+
+    /* Teto de linhas: o insert em lote vai numa requisição só, então sem isto
+       um extrato grande vira uma escrita em massa no banco e um array enorme
+       em memória. Para de acumular, mas segue contando para poder avisar. */
+    if (results.length >= LIMITS.csvRows) break;
   }
 
-  return results;
+  return {
+    rows: results,
+    totalLinhas: dataLines.length,
+    truncado: dataLines.length > results.length,
+  };
 }
 
 export type BudgetTemplate = {

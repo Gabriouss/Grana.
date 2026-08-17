@@ -15,6 +15,7 @@ import { CATEGORIES } from '@/lib/types';
 import { formatMoney, parseAmount } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
+import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
 import { useKeyboardHeight } from './Sheet';
 
@@ -154,7 +155,7 @@ export default function OnboardingModal({
             <Text style={styles.question}>Qual sua renda mensal aproximada?</Text>
             <View style={styles.incomeRow}>
               <Text style={styles.incomePrefix}>R$</Text>
-              <TextInput
+              <TextInput maxLength={LIMITS.amount}
                 style={styles.incomeInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}

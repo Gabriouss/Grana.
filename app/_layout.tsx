@@ -3,13 +3,16 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
 import { DemoProvider } from '@/lib/demo-context';
 import { theme } from '@/lib/theme';
 import WebPhoneFrame from '@/components/WebPhoneFrame';
+import AppLockGate from '@/components/AppLockGate';
+import { AppLockProvider } from '@/lib/app-lock-context';
+import * as ScreenCapture from 'expo-screen-capture';
 
 /* Segura o splash nativo (o logotipo em gradiente, configurado pelo plugin
    expo-splash-screen no app.json) até a Neue Machina estar carregada. Sem
@@ -17,7 +20,30 @@ import WebPhoneFrame from '@/components/WebPhoneFrame';
    depois. Vai no escopo global, sem await, como manda a doc do SDK 57. */
 SplashScreen.preventAutoHideAsync();
 
+/* O hook usePreventScreenCapture do expo-screen-capture lança na web —
+   não existe FLAG_SECURE num navegador. Por isso a chamada é imperativa e
+   guardada por plataforma, em vez do hook direto. */
+function useProtecaoDeCaptura() {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    ScreenCapture.preventScreenCaptureAsync().catch(() => {});
+    return () => {
+      ScreenCapture.allowScreenCaptureAsync().catch(() => {});
+    };
+  }, []);
+}
+
 export default function RootLayout() {
+  /* Bloqueia captura de tela. No Android isso liga o FLAG_SECURE, que além de
+     impedir o print também apaga a miniatura do app no alternador de tarefas —
+     que é onde os saldos vazavam para quem só pegasse o celular na mão. No iOS
+     o sistema não deixa impedir o print; lá o hook apenas detecta.
+
+     É sempre ligado, como nos apps de banco. Se um dia a pessoa precisar
+     printar o próprio orçamento, o caminho é transformar isto num ajuste no
+     Perfil — não em remover a proteção. */
+  useProtecaoDeCaptura();
+
   const [fontsLoaded] = useFonts({
     'NeueMachina-Light': require('../assets/fonts/NeueMachina-Light.otf'),
     'NeueMachina-Regular': require('../assets/fonts/NeueMachina-Regular.otf'),
@@ -45,10 +71,17 @@ export default function RootLayout() {
       <SessionProvider>
         <PrivacyProvider>
           <DemoProvider>
-            <StatusBar style="light" />
-            <WebPhoneFrame>
-              <RootNavigator />
-            </WebPhoneFrame>
+            <AppLockProvider>
+              <StatusBar style="light" />
+              {/* A trava fica por fora do WebPhoneFrame: cobrir só o miolo
+                  deixaria a moldura da web visível, e por dentro dela o
+                  conteúdo continuaria montado sob uma cobertura parcial. */}
+              <AppLockGate>
+                <WebPhoneFrame>
+                  <RootNavigator />
+                </WebPhoneFrame>
+              </AppLockGate>
+            </AppLockProvider>
           </DemoProvider>
         </PrivacyProvider>
       </SessionProvider>

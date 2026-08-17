@@ -21,8 +21,14 @@
  * é cortado por qualquer máscara redonda. Como o ponto faz parte do símbolo,
  * isso descaracteriza a marca.
  *
- * Daí a caixa de 462 px: 626 / 1,354. É o maior símbolo que sobrevive inteiro
- * a uma máscara circular.
+ * 626 / 1,354 = 462 px é, portanto, o MAIOR símbolo que sobrevive inteiro a uma
+ * máscara circular. Mas maior não é o certo: usar o teto deixava o "G." em 68%
+ * da área visível, enquanto a arte da marca o põe em 57,4% do disco. O ícone
+ * saía apertado, diferente de icone-circular.svg.
+ *
+ * Por isso a caixa sai da PROPORÇÃO do vetor, não do teto: 459,56 / 800 da
+ * área visível de 683 px = 392 px. Circunscrito dá 531 px, bem dentro dos
+ * 626 px seguros — o símbolo tem folga e a composição bate com o vetor.
  */
 const fs = require('fs');
 const path = require('path');
@@ -44,9 +50,25 @@ const CAIXA_SVG = 459.56;
 const PONTO_CX = 426.09;
 const PONTO_R = 33.47;
 
-const CIRCULO_SEGURO = Math.round((1024 * 66) / 108); // 626 px
+const CIRCULO_SEGURO = Math.round((1024 * 66) / 108); // 626 px — limite
+const AREA_VISIVEL = Math.round((1024 * 72) / 108); // 683 px — o que o launcher mostra
+
+/* Quanto o símbolo ocupa do quadro na arte oficial (icone-circular.svg):
+   459,56 de 800 = 57,4%. É essa proporção que o ícone do app precisa ter. */
+const CAIXA_ICONE_SVG = 800;
+const PROPORCAO = CAIXA_SVG / CAIXA_ICONE_SVG;
+const CAIXA_SIMBOLO = Math.round(AREA_VISIVEL * PROPORCAO); // 392 px
+
+/* O ponto fica no canto inferior direito, então o círculo que circunscreve a
+   peça é maior que a caixa dela. Este é o número que precisa caber nos 626. */
 const FATOR = (Math.hypot(PONTO_CX - CAIXA_SVG / 2, PONTO_CX - CAIXA_SVG / 2) + PONTO_R) / (CAIXA_SVG / 2);
-const CAIXA_SIMBOLO = Math.floor(CIRCULO_SEGURO / FATOR); // 462 px
+const CIRCUNSCRITO = Math.round(CAIXA_SIMBOLO * FATOR);
+if (CIRCUNSCRITO > CIRCULO_SEGURO) {
+  throw new Error(
+    `símbolo de ${CAIXA_SIMBOLO} px projeta um círculo de ${CIRCUNSCRITO} px, ` +
+      `além dos ${CIRCULO_SEGURO} px seguros — seria cortado em máscara redonda.`
+  );
+}
 
 const CHROMES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -80,11 +102,17 @@ svg{display:block}
 
 const alturaLogotipo = (larg) => Math.round((larg * 459.56) / 1778.3);
 
-const iconeMestre = svg('icone-fundo-escuro.svg')
+/* icone-circular.svg é a variante oficial do ícone do app. Os quatro arquivos
+   de ícone em marca/ têm a mesma arte e diferem só no raio do retângulo de
+   fundo, então o "G." aqui é idêntico ao das outras variantes.
+
+   O raio vai a zero: tanto o iOS quanto o launcher do Android aplicam a
+   própria máscara, e um recorte já embutido no arquivo viraria recorte duplo
+   com cantos pretos. Quem devolve o círculo é a máscara. */
+const iconeMestre = svg('icone-circular.svg')
   .replace(/fill:\s*#09384a/i, `fill: ${ESCURO}`)
-  // Full-bleed quadrado: o iOS aplica a própria máscara, e cantos já
-  // arredondados no arquivo viram arredondamento duplo com cantos pretos.
-  .replace(/rx="149\.22"\s*ry="149\.22"/, 'rx="0" ry="0"');
+  .replace(/rx="400"/, 'rx="0"')
+  .replace(/ry="400"/, 'ry="0"');
 
 const ALVOS = [
   {

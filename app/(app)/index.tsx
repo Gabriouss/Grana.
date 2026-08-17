@@ -44,6 +44,7 @@ import Sheet from '@/components/Sheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import MonthSelector from '@/components/MonthSelector';
 import { isSameMonth } from '@/lib/format';
+import { LIMITS } from '@/lib/limits';
 
 
 type ChartView = 'in' | 'out' | 'both';
@@ -773,7 +774,7 @@ export default function InicioScreen() {
               </AppPressable>
             </View>
 
-            <TextInput
+            <TextInput maxLength={LIMITS.description}
               style={styles.descInput}
               placeholder="Descrição — ex: Supermercado"
               placeholderTextColor={theme.inkFaint}
@@ -783,7 +784,7 @@ export default function InicioScreen() {
 
             <View style={styles.amountRow}>
               <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput
+              <TextInput maxLength={LIMITS.amount}
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}
@@ -893,7 +894,7 @@ export default function InicioScreen() {
               </AppPressable>
             </View>
 
-            <TextInput
+            <TextInput maxLength={LIMITS.description}
               style={styles.descInput}
               placeholder="Descrição — ex: Energia"
               placeholderTextColor={theme.inkFaint}
@@ -903,7 +904,7 @@ export default function InicioScreen() {
 
             <View style={styles.amountRow}>
               <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput
+              <TextInput maxLength={LIMITS.amount}
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}
@@ -967,7 +968,7 @@ export default function InicioScreen() {
 
             <View style={styles.amountRow}>
               <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput
+              <TextInput maxLength={LIMITS.amount}
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}

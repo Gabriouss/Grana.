@@ -70,10 +70,17 @@ create policy "usuário vê e edita só seus orçamentos"
   with check (auth.uid() = user_id);
 
 -- Função para permitir ao usuário logado excluir a própria conta e dados permanentemente (LGPD)
+-- SECURITY DEFINER faz esta função rodar com o papel do dono, que tem
+-- permissão de apagar de auth.users. Por isso o search_path é fixado: sem
+-- isso, quem conseguisse criar um objeto num schema que venha antes de public
+-- sequestraria as referências não-qualificadas e executaria código com esse
+-- privilégio. pg_temp vai por último de propósito — é o schema temporário da
+-- sessão, o vetor clássico desse ataque.
 create or replace function delete_user_account()
 returns void
 language plpgsql
 security definer
+set search_path = public, auth, pg_temp
 as $$
 declare
   current_user_id uuid;
@@ -93,6 +100,57 @@ begin
 end;
 $$;
 
--- Permite que usuários autenticados chamem essa função
-grant execute on function delete_user_account() to authenticated;
+-- Só usuários autenticados podem chamar. O revoke vem antes porque o Postgres
+-- concede execute a PUBLIC por padrão ao criar uma função — sem revogar, o
+-- papel anon (qualquer um com a chave pública do app) também poderia chamar.
+-- `anon` precisa ser nomeado explicitamente. O Supabase mantém um
+-- `alter default privileges ... grant execute on functions to anon,
+-- authenticated` no schema public, então toda função nova nasce com grant
+-- DIRETO ao papel anon — e revogar de PUBLIC não remove grant direto.
+-- Verificado na prática: só com o revoke de PUBLIC, uma chamada anônima ainda
+-- chegava ao corpo da função (P0001) em vez de bater em 42501.
+revoke all on function public.delete_user_account() from public, anon;
+grant execute on function public.delete_user_account() to authenticated;
+
+-- Limites de tamanho nos campos de texto livre. Sem isso um cliente (ou um
+-- script se passando por ele) grava megabytes por linha: incha o banco e trava
+-- a renderização da lista no aparelho. Os valores são folgados para uso real.
+alter table transactions drop constraint if exists transactions_description_len;
+alter table transactions add constraint transactions_description_len
+  check (char_length(description) <= 200);
+alter table transactions drop constraint if exists transactions_category_len;
+alter table transactions add constraint transactions_category_len
+  check (char_length(category) <= 60);
+alter table transactions drop constraint if exists transactions_color_len;
+alter table transactions add constraint transactions_color_len
+  check (char_length(color) <= 9);
+
+alter table bills drop constraint if exists bills_description_len;
+alter table bills add constraint bills_description_len
+  check (char_length(description) <= 200);
+alter table bills drop constraint if exists bills_category_len;
+alter table bills add constraint bills_category_len
+  check (char_length(category) <= 60);
+alter table bills drop constraint if exists bills_color_len;
+alter table bills add constraint bills_color_len
+  check (char_length(color) <= 9);
+
+alter table budgets drop constraint if exists budgets_category_len;
+alter table budgets add constraint budgets_category_len
+  check (char_length(category) <= 60);
+alter table budgets drop constraint if exists budgets_color_len;
+alter table budgets add constraint budgets_color_len
+  check (char_length(color) <= 9);
+
+-- Teto de valor: numeric(12,2) já limita a 10 dígitos inteiros, mas um check
+-- explícito deixa o erro legível em vez de estourar overflow no driver.
+alter table transactions drop constraint if exists transactions_amount_max;
+alter table transactions add constraint transactions_amount_max
+  check (amount <= 999999999.99);
+alter table bills drop constraint if exists bills_amount_max;
+alter table bills add constraint bills_amount_max
+  check (amount <= 999999999.99);
+alter table budgets drop constraint if exists budgets_amount_max;
+alter table budgets add constraint budgets_amount_max
+  check (amount <= 999999999.99);
 

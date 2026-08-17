@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing } from '@/lib/theme';
-import { parseCsvText, type ParsedCsvTransaction } from '@/lib/heuristics';
+import { parseCsvTextDetalhado, type ParsedCsvTransaction } from '@/lib/heuristics';
+import { LIMITS } from '@/lib/limits';
 import { formatDateLabel, formatMoney } from '@/lib/format';
 import { addTransactionsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
@@ -46,10 +47,20 @@ export default function CsvImportModal({
       return;
     }
 
-    const rows = parseCsvText(text);
+    const { rows, totalLinhas, truncado } = parseCsvTextDetalhado(text);
     if (rows.length === 0) {
       Alert.alert('Nenhum lançamento identificado', 'Verifique o formato das colunas (Data, Descrição, Valor).');
       return;
+    }
+
+    /* Truncar em silêncio seria pior que recusar: a pessoa acharia que o
+       extrato inteiro entrou e ficaria com o saldo errado sem saber por quê. */
+    if (truncado) {
+      Alert.alert(
+        'Extrato grande demais',
+        `O arquivo tem ${totalLinhas} linhas e importamos as primeiras ${rows.length}. ` +
+          'Separe o restante em outro arquivo e importe em seguida.'
+      );
     }
 
     setParsedRows(rows);
@@ -113,6 +124,7 @@ export default function CsvImportModal({
                 Cole as linhas do arquivo CSV exportado pelo seu banco (ex: Nubank, Itaú, Inter, Bradesco) ou planilha Excel.
               </Text>
               <TextInput
+                maxLength={LIMITS.pastedText}
                 style={styles.textArea}
                 placeholder="Data,Descrição,Valor&#10;15/08/2026,Supermercado Pão de Açúcar,-187.40&#10;14/08/2026,Empresa Salário,6200.00&#10;14/08/2026,Uber,-24.00"
                 placeholderTextColor={theme.inkFaint}

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { CAT_COLORS } from '@/lib/demo-data';
+import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
 import { useKeyboardHeight } from './Sheet';
 
@@ -92,7 +93,7 @@ export default function CategoryPickerModal({
             </AppPressable>
           ) : (
             <View style={styles.newForm}>
-              <TextInput
+              <TextInput maxLength={LIMITS.category}
                 style={styles.newInput}
                 placeholder="Nome da categoria"
                 placeholderTextColor={theme.inkFaint}
