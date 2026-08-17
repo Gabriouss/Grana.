@@ -150,11 +150,12 @@ export default function FlowChart({
     progress.setValue(0);
     Animated.timing(progress, {
       toValue: 1,
-      duration: 1200,
+      duration: 4000,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
   }, [signature]);
+
 
   const dashoffset = DASH_LEN - DASH_LEN * t;
   const outOpacity = t;
