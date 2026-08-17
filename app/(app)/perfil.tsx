@@ -1,15 +1,21 @@
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { useAppLock } from '@/lib/app-lock-context';
+import { useScreenCapture } from '@/lib/screen-capture-context';
 import { theme, radius, spacing } from '@/lib/theme';
 import { deleteUserAccount, reauthenticate } from '@/lib/data';
 import { LIMITS } from '@/lib/limits';
+import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
+import { carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import AppPressable from '@/components/AppPressable';
+import PasswordInput from '@/components/PasswordInput';
 import ToggleSwitch from '@/components/ToggleSwitch';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
 import OnboardingModal from '@/components/OnboardingModal';
@@ -20,6 +26,7 @@ export default function PerfilScreen() {
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode, toggleDemoMode } = useDemo();
   const { ativo: lockAtivo, disponivel: lockDisponivel, alternar: alternarLock } = useAppLock();
+  const { bloqueado: capturaBloqueada, disponivel: capturaDisponivel, alternar: alternarCaptura } = useScreenCapture();
   const router = useRouter();
 
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -28,6 +35,12 @@ export default function PerfilScreen() {
   const [reauthOpen, setReauthOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [nomeOpen, setNomeOpen] = useState(false);
+  const [nomeRascunho, setNomeRascunho] = useState('');
+  const [salvandoNome, setSalvandoNome] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
@@ -101,8 +114,89 @@ export default function PerfilScreen() {
     await handlePerformDeleteAccount();
   }
 
-  const userEmail = session?.user.email || 'usuario@exemplo.com';
-  const initial = userEmail[0]?.toUpperCase() ?? 'G';
+  const recarregarPerfil = useCallback(async () => {
+    setPerfil(await carregarPerfil());
+  }, []);
+
+  const recarregarDiagnostico = useCallback(async () => {
+    setDiagnostico(await carregarDiagnostico());
+  }, []);
+
+  useEffect(() => {
+    recarregarPerfil();
+    recarregarDiagnostico();
+  }, [recarregarPerfil, recarregarDiagnostico]);
+
+  function abrirEdicaoNome() {
+    setNomeRascunho(perfil?.nome ?? '');
+    setNomeOpen(true);
+  }
+
+  async function confirmarNome() {
+    setSalvandoNome(true);
+    const { ok, error } = await salvarNome(nomeRascunho);
+    setSalvandoNome(false);
+    if (!ok) {
+      Alert.alert('Não foi possível salvar', error ?? 'Tente novamente.');
+      return;
+    }
+    setNomeOpen(false);
+    await recarregarPerfil();
+    triggerToast('Nome atualizado');
+  }
+
+  async function escolherFoto() {
+    if (isDemoMode) {
+      Alert.alert('Modo de exemplo ativo', 'Desative "Dados de exemplo" no Perfil para alterar sua foto.');
+      return;
+    }
+
+    /* Sem requestMediaLibraryPermissionsAsync antes: no SDK 57 o próprio
+       launchImageLibraryAsync pede a permissão quando necessário, e pedir duas
+       vezes gera um diálogo a mais sem motivo. */
+    const escolha = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      // Quadrado, porque o avatar é redondo — deixar a pessoa recortar evita
+      // que o app corte a cabeça de uma foto em retrato.
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (escolha.canceled || !escolha.assets?.[0]) return;
+
+    setEnviandoFoto(true);
+    const { ok, error } = await salvarFoto(escolha.assets[0].uri);
+    setEnviandoFoto(false);
+    if (!ok) {
+      Alert.alert('Não foi possível enviar a foto', error ?? 'Tente novamente.');
+      return;
+    }
+    await recarregarPerfil();
+    triggerToast('Foto atualizada');
+  }
+
+  function confirmarRemocaoFoto() {
+    Alert.alert('Remover foto', 'Sua inicial volta a aparecer no lugar dela.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover',
+        style: 'destructive',
+        onPress: async () => {
+          const { ok, error } = await removerFoto();
+          if (!ok) {
+            Alert.alert('Não foi possível remover', error ?? 'Tente novamente.');
+            return;
+          }
+          await recarregarPerfil();
+          triggerToast('Foto removida');
+        },
+      },
+    ]);
+  }
+
+  const userEmail = perfil?.email || session?.user.email || 'usuario@exemplo.com';
+  const nomeExibido = nomeDeExibicao(perfil) || userEmail;
+  const initial = (perfil?.nome || userEmail)[0]?.toUpperCase() ?? 'G';
 
 
   return (
@@ -110,13 +204,29 @@ export default function PerfilScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Header com Avatar */}
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
+          <AppPressable onPress={escolherFoto} disabled={enviandoFoto}>
+            <View style={styles.avatar}>
+              {enviandoFoto ? (
+                <ActivityIndicator color={theme.paper} />
+              ) : perfil?.fotoUrl ? (
+                <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarFoto} />
+              ) : (
+                <Text style={styles.avatarText}>{initial}</Text>
+              )}
+              <View style={styles.avatarBadge}>
+                <Ionicons name="camera" size={12} color={theme.paper} />
+              </View>
+            </View>
+          </AppPressable>
+
           <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{userEmail}</Text>
-            <Text style={styles.sub}>{isDemoMode ? 'explorando dados de exemplo' : 'conta sincronizada na nuvem'}</Text>
+            <Text style={styles.name}>{nomeExibido}</Text>
+            <Text style={styles.sub}>{userEmail}</Text>
           </View>
+
+          <AppPressable onPress={abrirEdicaoNome} hitSlop={10}>
+            <Ionicons name="create-outline" size={20} color={theme.inkFaint} />
+          </AppPressable>
         </View>
 
         {/* Seção Conta */}
@@ -128,8 +238,14 @@ export default function PerfilScreen() {
           </View>
           <View style={styles.row}>
             <Text style={styles.rowKey}>Sincronização</Text>
-            <Text style={styles.rowValue}>{isDemoMode ? 'Modo Offline' : 'Conectado ao Supabase'}</Text>
+            <Text style={styles.rowValue}>{isDemoMode ? 'Desligada' : 'Ligada'}</Text>
           </View>
+          {perfil?.fotoUrl && (
+            <AppPressable style={styles.tappableRow} onPress={confirmarRemocaoFoto}>
+              <Text style={styles.rowKey}>Foto de perfil</Text>
+              <Text style={styles.rowValue}>Remover &gt;</Text>
+            </AppPressable>
+          )}
           <View style={styles.row}>
             <Text style={styles.rowKey}>Lembretes de vencimento</Text>
             <Text style={styles.rowValue}>Ativados</Text>
@@ -172,6 +288,20 @@ export default function PerfilScreen() {
             </View>
           )}
 
+          {capturaDisponivel && (
+            <View style={styles.rowColuna}>
+              <View style={styles.rowInterna}>
+                <Text style={styles.rowKey}>Bloquear captura de tela</Text>
+                <ToggleSwitch value={capturaBloqueada} onToggle={alternarCaptura} />
+              </View>
+              <Text style={styles.rowAjuda}>
+                {capturaBloqueada
+                  ? 'Prints ficam bloqueados e o app não aparece no alternador de tarefas.'
+                  : 'Você pode printar, mas seus saldos ficam visíveis no alternador de tarefas.'}
+              </Text>
+            </View>
+          )}
+
           <View style={styles.row}>
             <Text style={styles.rowKey}>Dados de exemplo</Text>
             <ToggleSwitch
@@ -188,9 +318,18 @@ export default function PerfilScreen() {
             <Text style={styles.rowValue}>Aplicar template &gt;</Text>
           </AppPressable>
 
+          {diagnostico && (
+            <View style={styles.row}>
+              <Text style={styles.rowKey}>Perfil financeiro</Text>
+              <Text style={styles.rowValue}>
+                {diagnostico.arquetipo.emoji} {diagnostico.arquetipo.nome}
+              </Text>
+            </View>
+          )}
+
           <AppPressable style={styles.tappableRow} onPress={() => setOnboardingOpen(true)}>
-            <Text style={styles.rowKey}>Diagnóstico inicial</Text>
-            <Text style={styles.rowValue}>Refazer &gt;</Text>
+            <Text style={styles.rowKey}>{diagnostico ? 'Diagnóstico financeiro' : 'Diagnóstico inicial'}</Text>
+            <Text style={styles.rowValue}>Refazer diagnóstico &gt;</Text>
           </AppPressable>
         </View>
 
@@ -231,10 +370,46 @@ export default function PerfilScreen() {
         onClose={() => setOnboardingOpen(false)}
         onFinished={() => {
           triggerToast('Diagnóstico atualizado');
+          recarregarDiagnostico();
         }}
       />
 
       {/* Toast */}
+      {/* Edição do nome de exibição. */}
+      <Modal visible={nomeOpen} animationType="fade" transparent onRequestClose={() => setNomeOpen(false)}>
+        <View style={styles.reauthScrim}>
+          <View style={styles.reauthCard}>
+            <Text style={styles.reauthTitle}>Como podemos te chamar?</Text>
+            <Text style={styles.reauthText}>
+              Usamos esse nome aqui no perfil e nas mensagens de lembrete de vencimento.
+            </Text>
+            <TextInput
+              maxLength={LIMITE_NOME}
+              style={styles.reauthInput}
+              placeholder="Seu nome"
+              placeholderTextColor={theme.inkFaint}
+              autoFocus
+              value={nomeRascunho}
+              onChangeText={setNomeRascunho}
+            />
+            <AppPressable
+              style={({ hovered }) => [styles.nomeSalvar, hovered && { opacity: 0.88 }]}
+              onPress={confirmarNome}
+              disabled={salvandoNome}
+            >
+              {salvandoNome ? (
+                <ActivityIndicator color={theme.paper} />
+              ) : (
+                <Text style={styles.nomeSalvarTexto}>Salvar</Text>
+              )}
+            </AppPressable>
+            <AppPressable style={styles.reauthCancel} onPress={() => setNomeOpen(false)} disabled={salvandoNome}>
+              <Text style={styles.reauthCancelText}>Cancelar</Text>
+            </AppPressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Reautenticação antes de excluir a conta. */}
       <Modal
         visible={reauthOpen}
@@ -251,12 +426,10 @@ export default function PerfilScreen() {
               que é você.
             </Text>
 
-            <TextInput
+            <PasswordInput
+              backgroundColor={theme.paper}
               maxLength={LIMITS.password}
-              style={styles.reauthInput}
               placeholder="Sua senha"
-              placeholderTextColor={theme.inkFaint}
-              secureTextEntry
               autoComplete="password"
               autoFocus
               value={deletePassword}
@@ -298,6 +471,19 @@ export default function PerfilScreen() {
 }
 
 const styles = StyleSheet.create({
+  rowColuna: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule, gap: 4 },
+  rowInterna: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rowAjuda: { color: theme.inkFaint, fontSize: 10.5, lineHeight: 14.5, paddingRight: 16 },
+  avatarFoto: { width: '100%', height: '100%', borderRadius: 999 },
+  avatarBadge: {
+    position: 'absolute', right: -2, bottom: -2,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: theme.accent,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: theme.paper,
+  },
+  nomeSalvar: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  nomeSalvarTexto: { color: theme.paper, fontSize: 15, fontWeight: '600' },
   reauthScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   reauthCard: { width: '100%', maxWidth: 400, backgroundColor: theme.paperRaised, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, borderWidth: 1, borderColor: theme.rule },
   reauthTitle: { color: theme.ink, fontSize: 18, fontWeight: '600' },

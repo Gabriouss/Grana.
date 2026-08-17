@@ -9,11 +9,32 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/lib/auth-context';
 import { theme, spacing, radius, fonts } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
+import PasswordInput from '@/components/PasswordInput';
 import { LIMITS, MIN_PASSWORD, validatePassword } from '@/lib/limits';
 import { checarSenhaVazada, mensagemSenhaVazada } from '@/lib/pwned';
+
+/**
+ * Critérios de senha exibidos sempre visíveis abaixo do campo — não só depois
+ * de um erro. `validatePassword()` em lib/limits.ts é a fonte de verdade das
+ * regras; isto só reflete visualmente o que ela já checa, então os dois
+ * precisam continuar dizendo a mesma coisa se a regra mudar.
+ */
+function RequisitoSenha({ atende, texto }: { atende: boolean; texto: string }) {
+  return (
+    <View style={styles.requisitoItem}>
+      <Ionicons
+        name={atende ? 'checkmark-circle' : 'ellipse-outline'}
+        size={14}
+        color={atende ? theme.accent2 : theme.inkFaint}
+      />
+      <Text style={[styles.requisitoTexto, atende && styles.requisitoTextoOk]}>{texto}</Text>
+    </View>
+  );
+}
 
 export default function SignUp() {
   const { signUp } = useSession();
@@ -77,7 +98,7 @@ export default function SignUp() {
           <Text style={styles.subtitle}>
             Enviamos um link de confirmação para{' '}
             <Text style={{ color: theme.ink }}>{confirmationSentTo}</Text>. Abra o e-mail e toque no link para
-            liberar o seu acesso — depois é só entrar com sua senha aqui no app.
+            confirmar — o Grana abre sozinho, já conectado.
           </Text>
           <AppPressable
             style={({ hovered }) => [styles.primaryBtn, hovered && styles.primaryBtnHover]}
@@ -116,24 +137,27 @@ export default function SignUp() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Senha</Text>
-          <TextInput maxLength={LIMITS.password}
-            style={styles.input}
+          <PasswordInput
+            maxLength={LIMITS.password}
             placeholder={`mínimo ${MIN_PASSWORD} caracteres, com número`}
-            placeholderTextColor={theme.inkFaint}
-            secureTextEntry
             autoComplete="password-new"
             value={password}
             onChangeText={setPassword}
           />
+          <View style={styles.requisitos}>
+            <RequisitoSenha atende={password.length >= MIN_PASSWORD} texto={`Pelo menos ${MIN_PASSWORD} caracteres`} />
+            <RequisitoSenha
+              atende={/[a-zA-Z]/.test(password) && /[0-9]/.test(password)}
+              texto="Letras e números misturados"
+            />
+          </View>
         </View>
 
         <View style={styles.field}>
           <Text style={styles.label}>Confirmar senha</Text>
-          <TextInput maxLength={LIMITS.password}
-            style={styles.input}
+          <PasswordInput
+            maxLength={LIMITS.password}
             placeholder="digite a senha de novo"
-            placeholderTextColor={theme.inkFaint}
-            secureTextEntry
             autoComplete="password-new"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -179,6 +203,10 @@ const styles = StyleSheet.create({
     color: theme.ink,
     backgroundColor: theme.paperRaised,
   },
+  requisitos: { gap: 5, marginTop: 8 },
+  requisitoItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  requisitoTexto: { color: theme.inkFaint, fontSize: 12 },
+  requisitoTextoOk: { color: theme.inkSoft },
   errorText: { color: '#e08a7d', fontSize: 13, marginBottom: spacing.sm, lineHeight: 18 },
   primaryBtn: {
     backgroundColor: theme.ink,

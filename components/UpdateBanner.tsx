@@ -1,0 +1,64 @@
+import { useEffect, useState } from 'react';
+import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { theme, radius, spacing } from '@/lib/theme';
+import { verificarAtualizacao, dispensarAtualizacao, type InfoAtualizacao } from '@/lib/atualizacao';
+import AppPressable from './AppPressable';
+
+/**
+ * Faixa fina no topo da área logada, avisando de uma versão nova do APK.
+ *
+ * Fica de propósito longe de qualquer coisa que pareça obrigatória: sem
+ * modal, sem travar telas, sem reaparecer depois de dispensada (a não ser que
+ * saia uma versão ainda mais nova). "Fácil, rápido, não desgastante" — é
+ * clicar em Atualizar ou no X, e seguir usando o app.
+ */
+export default function UpdateBanner() {
+  const [info, setInfo] = useState<InfoAtualizacao | null>(null);
+
+  useEffect(() => {
+    verificarAtualizacao().then(setInfo);
+  }, []);
+
+  if (!info) return null;
+
+  return (
+    <View style={styles.faixa}>
+      <Ionicons name="arrow-up-circle-outline" size={17} color={theme.accent2} />
+      <Text style={styles.texto} numberOfLines={1}>
+        Versão {info.versao} disponível
+      </Text>
+      <AppPressable
+        style={({ hovered }) => [styles.botaoBaixar, hovered && { opacity: 0.85 }]}
+        onPress={() => Linking.openURL(info.apkUrl)}
+      >
+        <Text style={styles.botaoBaixarTexto}>Atualizar</Text>
+      </AppPressable>
+      <AppPressable
+        onPress={() => {
+          dispensarAtualizacao(info.versao);
+          setInfo(null);
+        }}
+        hitSlop={10}
+      >
+        <Ionicons name="close" size={16} color={theme.inkFaint} />
+      </AppPressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  faixa: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.accentDeep,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.rule,
+  },
+  texto: { flex: 1, color: theme.ink, fontSize: 12.5 },
+  botaoBaixar: { backgroundColor: theme.accent2, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
+  botaoBaixarTexto: { color: theme.paper, fontSize: 12, fontWeight: '700' },
+});

@@ -12,7 +12,8 @@ import { theme } from '@/lib/theme';
 import WebPhoneFrame from '@/components/WebPhoneFrame';
 import AppLockGate from '@/components/AppLockGate';
 import { AppLockProvider } from '@/lib/app-lock-context';
-import * as ScreenCapture from 'expo-screen-capture';
+import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
+import UpdateBanner from '@/components/UpdateBanner';
 
 /* Segura o splash nativo (o logotipo em gradiente, configurado pelo plugin
    expo-splash-screen no app.json) até a Neue Machina estar carregada. Sem
@@ -20,18 +21,6 @@ import * as ScreenCapture from 'expo-screen-capture';
    depois. Vai no escopo global, sem await, como manda a doc do SDK 57. */
 SplashScreen.preventAutoHideAsync();
 
-/* O hook usePreventScreenCapture do expo-screen-capture lança na web —
-   não existe FLAG_SECURE num navegador. Por isso a chamada é imperativa e
-   guardada por plataforma, em vez do hook direto. */
-function useProtecaoDeCaptura() {
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    ScreenCapture.preventScreenCaptureAsync().catch(() => {});
-    return () => {
-      ScreenCapture.allowScreenCaptureAsync().catch(() => {});
-    };
-  }, []);
-}
 
 export default function RootLayout() {
   /* Bloqueia captura de tela. No Android isso liga o FLAG_SECURE, que além de
@@ -42,8 +31,6 @@ export default function RootLayout() {
      É sempre ligado, como nos apps de banco. Se um dia a pessoa precisar
      printar o próprio orçamento, o caminho é transformar isto num ajuste no
      Perfil — não em remover a proteção. */
-  useProtecaoDeCaptura();
-
   const [fontsLoaded] = useFonts({
     'NeueMachina-Light': require('../assets/fonts/NeueMachina-Light.otf'),
     'NeueMachina-Regular': require('../assets/fonts/NeueMachina-Regular.otf'),
@@ -72,6 +59,7 @@ export default function RootLayout() {
         <PrivacyProvider>
           <DemoProvider>
             <AppLockProvider>
+              <ScreenCaptureProvider>
               <StatusBar style="light" />
               {/* A trava fica por fora do WebPhoneFrame: cobrir só o miolo
                   deixaria a moldura da web visível, e por dentro dela o
@@ -81,6 +69,7 @@ export default function RootLayout() {
                   <RootNavigator />
                 </WebPhoneFrame>
               </AppLockGate>
+              </ScreenCaptureProvider>
             </AppLockProvider>
           </DemoProvider>
         </PrivacyProvider>
@@ -105,15 +94,20 @@ function RootNavigator() {
      antes do redirect disparar, porque a tela protegida nunca chega a
      montar quando o guard está fechado. */
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!session}>
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
-      <Stack.Protected guard={!session}>
-        <Stack.Screen name="sign-in" />
-        <Stack.Screen name="sign-up" />
-      </Stack.Protected>
-    </Stack>
+    <View style={{ flex: 1 }}>
+      {/* Só na área logada: avisar de atualização antes do login seria
+          atrito sem propósito pra quem ainda nem entrou no app. */}
+      {session && <UpdateBanner />}
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Protected guard={!!session}>
+          <Stack.Screen name="(app)" />
+        </Stack.Protected>
+        <Stack.Protected guard={!session}>
+          <Stack.Screen name="sign-in" />
+          <Stack.Screen name="sign-up" />
+        </Stack.Protected>
+      </Stack>
+    </View>
   );
 }
 

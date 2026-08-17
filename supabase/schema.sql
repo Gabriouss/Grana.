@@ -154,3 +154,34 @@ alter table budgets drop constraint if exists budgets_amount_max;
 alter table budgets add constraint budgets_amount_max
   check (amount <= 999999999.99);
 
+-- Aviso de atualização do APK. Distribuição fora da Play Store não avisa
+-- ninguém sozinha quando sai versão nova — esta é uma linha só, comparada
+-- pelo app com a versão do app.json embutida na build instalada.
+--
+-- Sem política de insert/update/delete de propósito: só o painel do Supabase
+-- escreve aqui. Nenhum client (nem autenticado) deve poder mudar a própria
+-- versão "mais nova" reportada.
+create table if not exists app_release (
+  id smallint primary key default 1,
+  version text not null,
+  apk_url text not null,
+  notes text,
+  updated_at timestamptz not null default now(),
+  constraint app_release_singleton check (id = 1)
+);
+
+alter table app_release enable row level security;
+
+drop policy if exists "logados leem a versao mais recente" on app_release;
+create policy "logados leem a versao mais recente"
+  on app_release for select
+  to authenticated
+  using (true);
+
+-- Linha inicial — troque version/apk_url a cada novo build (é o "publicar"
+-- desta feature). Rode isto, ou um update direto:
+--   update app_release set version = '1.1.0', apk_url = '...', updated_at = now() where id = 1;
+insert into app_release (id, version, apk_url, notes)
+values (1, '1.0.0', 'https://expo.dev/artifacts/eas/qqwPOK6TNS7k2dPCvH6ZSKoSGPrwV4rTDSvtU-xq55I.apk', null)
+on conflict (id) do nothing;
+

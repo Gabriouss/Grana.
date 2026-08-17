@@ -13,6 +13,7 @@ import { useSession } from '@/lib/auth-context';
 import { theme, spacing, radius } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 import BrandLogo from '@/components/BrandLogo';
+import PasswordInput from '@/components/PasswordInput';
 import { LIMITS } from '@/lib/limits';
 
 export default function SignIn() {
@@ -61,11 +62,9 @@ export default function SignIn() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Senha</Text>
-          <TextInput maxLength={LIMITS.password}
-            style={styles.input}
+          <PasswordInput
+            maxLength={LIMITS.password}
             placeholder="••••••••"
-            placeholderTextColor={theme.inkFaint}
-            secureTextEntry
             autoComplete="password"
             value={password}
             onChangeText={setPassword}
