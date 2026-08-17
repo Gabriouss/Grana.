@@ -149,24 +149,20 @@ export async function deleteBudget(category: string): Promise<void> {
 export async function deleteUserAccount(): Promise<void> {
   const user_id = await currentUserId();
 
-  // 1. Excluir todas as transações vinculadas
-  await supabase.from('transactions').delete().eq('user_id', user_id);
+  // 1. Tenta a RPC oficial de exclusão no Supabase (que apaga de auth.users com SECURITY DEFINER)
+  const { error: rpcError } = await supabase.rpc('delete_user_account');
 
-  // 2. Excluir todas as contas a pagar vinculadas
-  await supabase.from('bills').delete().eq('user_id', user_id);
-
-  // 3. Excluir todos os orçamentos vinculados
-  await supabase.from('budgets').delete().eq('user_id', user_id);
-
-  // 4. Tentar RPC se configurada no Supabase
-  try {
-    await supabase.rpc('delete_user_account');
-  } catch {
-    // Fallback silencioso se não houver RPC customizada
+  if (rpcError) {
+    console.warn('[deleteUserAccount] RPC indisponível no Supabase, apagando tabelas públicas:', rpcError.message);
+    // Fallback caso a função ainda não tenha sido executada no SQL Editor
+    await supabase.from('transactions').delete().eq('user_id', user_id);
+    await supabase.from('bills').delete().eq('user_id', user_id);
+    await supabase.from('budgets').delete().eq('user_id', user_id);
   }
 
-  // 5. Encerrar sessão
+  // 2. Encerrar sessão localmente
   await supabase.auth.signOut();
 }
+
 
 

@@ -68,3 +68,31 @@ create policy "usuário vê e edita só seus orçamentos"
   on budgets for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Função para permitir ao usuário logado excluir a própria conta e dados permanentemente (LGPD)
+create or replace function delete_user_account()
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  current_user_id uuid;
+begin
+  current_user_id := auth.uid();
+  if current_user_id is null then
+    raise exception 'Não autenticado';
+  end if;
+
+  -- 1. Exclui dados do usuário nas tabelas públicas
+  delete from public.transactions where user_id = current_user_id;
+  delete from public.bills where user_id = current_user_id;
+  delete from public.budgets where user_id = current_user_id;
+
+  -- 2. Exclui permanentemente o login da tabela de autenticação
+  delete from auth.users where id = current_user_id;
+end;
+$$;
+
+-- Permite que usuários autenticados chamem essa função
+grant execute on function delete_user_account() to authenticated;
+
