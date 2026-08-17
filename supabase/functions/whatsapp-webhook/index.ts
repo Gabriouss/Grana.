@@ -11,6 +11,16 @@
 //                                só no handshake de verificação do webhook.
 //   WHATSAPP_ACCESS_TOKEN     — token permanente do app da Meta (System User).
 //   WHATSAPP_PHONE_NUMBER_ID  — id do número de telefone no Meta Cloud API.
+//   WHATSAPP_APP_SECRET       — "Chave secreta do aplicativo" (App Secret) em
+//                                Configurações do app -> Básico, no painel da
+//                                Meta. Usada só para conferir a assinatura
+//                                (X-Hub-Signature-256) de cada mensagem
+//                                recebida — sem isso, qualquer pessoa que
+//                                descobrisse esta URL poderia forjar POSTs se
+//                                passando por um número já vinculado. Enquanto
+//                                este secret não estiver configurado, a
+//                                verificação fica desligada (com aviso no
+//                                log) em vez de derrubar o webhook inteiro.
 //   OPENAI_API_KEY            — chave da OpenAI, usada só para transcrever
 //                                áudio (Whisper) recebido por WhatsApp.
 //   SUPABASE_SERVICE_ROLE_KEY — já disponível por padrão no ambiente da função.
@@ -25,6 +35,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? '';
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN') ?? '';
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') ?? '';
+const WHATSAPP_APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET') ?? '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -47,7 +58,7 @@ const CATEGORIES: { name: string; color: string }[] = [
 ];
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Alimentação': ['ifood', 'restaurante', 'mercado', 'supermercado', 'padaria', 'lanchonete', 'pizza', 'burguer', 'hamburguer', 'açai', 'acai', 'mcdonalds', 'burger king', 'pao de acucar', 'carrefour', 'feira'],
+  'Alimentação': ['ifood', 'restaurante', 'mercado', 'supermercado', 'padaria', 'lanchonete', 'pizza', 'burguer', 'hamburguer', 'açai', 'acai', 'mcdonalds', 'burger king', 'pao de acucar', 'carrefour', 'feira', 'merenda', 'lanche', 'almoço', 'almoco', 'jantar'],
   'Transporte': ['uber', '99', 'taxi', 'táxi', 'posto', 'combustível', 'combustivel', 'estacionamento', 'pedágio', 'pedagio', 'gasolina', 'etanol', 'ipiranga', 'shell'],
   'Moradia': ['aluguel', 'condominio', 'condomínio', 'energia', 'enel', 'luz', 'agua', 'água', 'sabesp', 'internet', 'fibra', 'vivo', 'claro', 'tim', 'gas', 'gás', 'iptu'],
   'Lazer': ['cinema', 'cinemark', 'ingresso', 'show', 'bar', 'balada', 'viagem', 'hotel', 'airbnb', 'teatro'],
@@ -55,6 +66,8 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Assinaturas': ['netflix', 'spotify', 'amazon prime', 'prime video', 'hbo', 'max', 'disney', 'youtube', 'apple', 'assinatura', 'mensalidade', 'icloud', 'openai', 'chatgpt'],
   'Salário': ['salario', 'salário', 'folha', 'pagamento de salario', 'pro-labore', 'holerite', 'rendimento'],
 };
+
+const NOMES_CATEGORIAS = CATEGORIES.map((c) => c.name).join(', ');
 
 function parseAmount(raw: string): number {
   const trimmed = (raw || '').trim();
@@ -68,16 +81,23 @@ function parseAmount(raw: string): number {
   return parseFloat(intPart + '.' + decPart) || 0;
 }
 
-function guessCategoryFromText(text: string): { name: string; color: string } {
+/** Casa por palavra-chave, sem cair pra "Outros" — quem chama decide o que fazer com a incerteza. */
+function matchCategoryByKeyword(text: string): { name: string; color: string } | null {
   const lower = text.toLowerCase();
-  let bestName: string | null = null;
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     if (keywords.some((kw) => lower.includes(kw))) {
-      bestName = catName;
-      break;
+      return CATEGORIES.find((c) => c.name === catName) ?? null;
     }
   }
-  return CATEGORIES.find((c) => c.name === bestName) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
+  return null;
+}
+
+/** Casa a resposta de uma pergunta de esclarecimento: nome exato da categoria, ou uma palavra-chave conhecida. */
+function matchCategoryByReply(text: string): { name: string; color: string } | null {
+  const lower = text.trim().toLowerCase();
+  const exact = CATEGORIES.find((c) => c.name.toLowerCase() === lower);
+  if (exact) return exact;
+  return matchCategoryByKeyword(text);
 }
 
 function guessTypeFromText(text: string): 'in' | 'out' {
@@ -95,9 +115,16 @@ function guessAmountFromText(text: string): number {
 }
 
 function guessDescFromText(text: string, type: 'in' | 'out'): string {
-  const m = text.match(/(?:de|para)\s+([A-ZÀ-Úa-zà-ú0-9 .]{3,40})/);
-  if (m) {
-    const name = m[1].replace(/\s+em\s+.*$/i, '').trim();
+  // "Pizza para Maria" / "Presente de Maria" — o nome vem DEPOIS de "de"/"para".
+  const depois = text.match(/(?:de|para)\s+([A-ZÀ-Úa-zà-ú0-9 .]{3,40})/);
+  if (depois) {
+    const name = depois[1].replace(/\s+em\s+.*$/i, '').trim();
+    if (name) return name;
+  }
+  // "Merenda de R$ 38,00" / "Mercado de 120 reais" — o item vem ANTES de "de <valor>".
+  const antes = text.match(/^([A-ZÀ-Úa-zà-ú0-9 .]{3,40}?)\s+de\s+(?:r\$|\d)/i);
+  if (antes) {
+    const name = antes[1].trim();
     if (name) return name;
   }
   return type === 'in' ? 'Pix recebido' : 'Pagamento';
@@ -106,6 +133,40 @@ function guessDescFromText(text: string, type: 'in' | 'out'): string {
 function todayISO(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/* ---- assinatura da Meta (X-Hub-Signature-256) ---- */
+
+async function hmacSha256Hex(secret: string, body: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/** true = pode processar. Sem WHATSAPP_APP_SECRET configurado, deixa passar (com aviso) em vez de derrubar o webhook. */
+async function assinaturaValida(rawBody: string, header: string | null): Promise<boolean> {
+  if (!WHATSAPP_APP_SECRET) {
+    console.warn('[whatsapp-webhook] WHATSAPP_APP_SECRET não configurado — pulando verificação de assinatura.');
+    return true;
+  }
+  if (!header || !header.startsWith('sha256=')) return false;
+  const esperado = `sha256=${await hmacSha256Hex(WHATSAPP_APP_SECRET, rawBody)}`;
+  return timingSafeEqual(header, esperado);
 }
 
 /* ---- WhatsApp Cloud API ---- */
@@ -191,40 +252,122 @@ async function handlePairing(phone: string, text: string): Promise<boolean> {
   return true;
 }
 
-async function registrarLancamento(userId: string, phone: string, text: string) {
-  const amount = guessAmountFromText(text);
-  if (!amount || amount <= 0) {
-    await sendWhatsappMessage(phone, 'Não consegui identificar o valor. Tente algo como: "Almoço de 38 reais no débito hoje".');
-    return;
-  }
-  const type = guessTypeFromText(text);
-  const category = guessCategoryFromText(text);
-  const description = guessDescFromText(text, type);
+type Rascunho = {
+  phone: string;
+  user_id: string;
+  description: string;
+  amount: number;
+  type: 'in' | 'out';
+  occurred_on: string;
+  attempts: number;
+};
 
+async function buscarPendente(phone: string): Promise<Rascunho | null> {
+  const { data } = await supabase.from('whatsapp_pending').select('*').eq('phone', phone).maybeSingle();
+  return data as Rascunho | null;
+}
+
+async function limparPendente(phone: string): Promise<void> {
+  await supabase.from('whatsapp_pending').delete().eq('phone', phone);
+}
+
+/** Grava o lançamento de verdade e limpa qualquer rascunho pendente daquele número. */
+async function finalizarLancamento(
+  rascunho: Pick<Rascunho, 'user_id' | 'phone' | 'description' | 'amount' | 'type' | 'occurred_on'>,
+  categoria: { name: string; color: string }
+): Promise<void> {
   const { error } = await supabase.from('transactions').insert({
-    user_id: userId,
-    type,
-    description,
-    amount,
-    category: category.name,
-    color: category.color,
-    occurred_on: todayISO(),
+    user_id: rascunho.user_id,
+    type: rascunho.type,
+    description: rascunho.description,
+    amount: rascunho.amount,
+    category: categoria.name,
+    color: categoria.color,
+    occurred_on: rascunho.occurred_on,
     recurring: false,
   });
 
+  await limparPendente(rascunho.phone);
+
   if (error) {
-    await sendWhatsappMessage(phone, 'Deu erro ao salvar o lançamento. Tente de novo em instantes.');
+    await sendWhatsappMessage(rascunho.phone, 'Deu erro ao salvar o lançamento. Tente de novo em instantes.');
     return;
   }
 
-  const valorFmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  await sendWhatsappMessage(phone, `✅ Lançamento registrado: R$ ${valorFmt} em ${category.name}`);
+  const valorFmt = rascunho.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  await sendWhatsappMessage(
+    rascunho.phone,
+    `✅ Lançamento registrado: R$ ${valorFmt} em ${categoria.name} (${rascunho.description})`
+  );
 }
 
-async function handleTextMessage(phone: string, text: string) {
+/**
+ * Ponto de entrada de um texto que pode virar lançamento. Quando o valor não
+ * é identificado, pede pra reformular — não tem rascunho possível sem valor.
+ * Quando o valor é identificado mas a categoria não bate com nenhuma palavra-
+ * chave conhecida, guarda um rascunho pendente e PERGUNTA em vez de arquivar
+ * tudo em "Outros" sem avisar — essa era a reclamação original: falta de
+ * assertividade quando a mensagem é ambígua.
+ */
+async function registrarLancamento(userId: string, phone: string, text: string): Promise<void> {
+  const amount = guessAmountFromText(text);
+  if (!amount || amount <= 0) {
+    await sendWhatsappMessage(phone, 'Não consegui identificar o valor. Tente algo como: "Almoço de 38 reais" ou "R$ 38 em Alimentação".');
+    return;
+  }
+
+  const type = guessTypeFromText(text);
+  const description = guessDescFromText(text, type);
+  const occurred_on = todayISO();
+  const categoria = matchCategoryByKeyword(text);
+
+  if (categoria) {
+    await finalizarLancamento({ user_id: userId, phone, description, amount, type, occurred_on }, categoria);
+    return;
+  }
+
+  await supabase
+    .from('whatsapp_pending')
+    .upsert({ phone, user_id: userId, description, amount, type, occurred_on, attempts: 0 });
+
+  const valorFmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  await sendWhatsappMessage(
+    phone,
+    `Não identifiquei a categoria de "${description}" (R$ ${valorFmt}). Qual dessas se encaixa melhor?\n${NOMES_CATEGORIAS}`
+  );
+}
+
+/** Trata a resposta a uma pergunta de esclarecimento pendente. Devolve true se tratou (a mensagem não deve seguir o fluxo normal). */
+async function tratarRespostaPendente(phone: string, text: string): Promise<boolean> {
+  const pendente = await buscarPendente(phone);
+  if (!pendente) return false;
+
+  const categoria = matchCategoryByReply(text);
+  if (categoria) {
+    await finalizarLancamento(pendente, categoria);
+    return true;
+  }
+
+  const tentativas = pendente.attempts + 1;
+  if (tentativas >= 2) {
+    // Duas tentativas sem reconhecer — registra em "Outros" pra não travar o lançamento pra sempre, mas avisa que foi um chute.
+    const outros = CATEGORIES.find((c) => c.name === 'Outros')!;
+    await finalizarLancamento(pendente, outros);
+    await sendWhatsappMessage(phone, 'Não reconheci a categoria — registrei em "Outros" mesmo assim. Você pode trocar depois no app.');
+    return true;
+  }
+
+  await supabase.from('whatsapp_pending').update({ attempts: tentativas }).eq('phone', phone);
+  await sendWhatsappMessage(phone, `Não entendi. Responda só com o nome de uma destas categorias:\n${NOMES_CATEGORIAS}`);
+  return true;
+}
+
+async function handleTextMessage(phone: string, text: string): Promise<void> {
   const { data: link } = await supabase.from('whatsapp_links').select('*').eq('phone', phone).eq('verified', true).maybeSingle();
 
   if (link) {
+    const tratou = await tratarRespostaPendente(phone, text);
+    if (tratou) return;
     await registrarLancamento(link.user_id, phone, text);
     return;
   }
@@ -238,7 +381,7 @@ async function handleTextMessage(phone: string, text: string) {
   }
 }
 
-async function handleAudioMessage(phone: string, mediaId: string) {
+async function handleAudioMessage(phone: string, mediaId: string): Promise<void> {
   const { data: link } = await supabase.from('whatsapp_links').select('*').eq('phone', phone).eq('verified', true).maybeSingle();
   if (!link) {
     await sendWhatsappMessage(phone, 'Este número ainda não está vinculado. Gere um código de pareamento em Perfil → WhatsApp no app.');
@@ -250,6 +393,9 @@ async function handleAudioMessage(phone: string, mediaId: string) {
     await sendWhatsappMessage(phone, 'Ainda não consigo transcrever áudio — me conte o lançamento em texto, por favor (ex: "Mercado de 120 reais").');
     return;
   }
+
+  const tratou = await tratarRespostaPendente(phone, texto);
+  if (tratou) return;
   await registrarLancamento(link.user_id, phone, texto);
 }
 
@@ -268,8 +414,14 @@ Deno.serve(async (req: Request) => {
   }
 
   if (req.method === 'POST') {
+    const rawBody = await req.text();
+
+    if (!(await assinaturaValida(rawBody, req.headers.get('x-hub-signature-256')))) {
+      return new Response('Invalid signature', { status: 401 });
+    }
+
     try {
-      const payload = await req.json();
+      const payload = JSON.parse(rawBody);
       const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
       if (message) {

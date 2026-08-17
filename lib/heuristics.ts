@@ -3,7 +3,7 @@ import { parseAmount, todayISO } from './format';
 import { LIMITS } from './limits';
 
 export const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Alimentação': ['ifood', 'restaurante', 'mercado', 'supermercado', 'padaria', 'lanchonete', 'pizza', 'burguer', 'hamburguer', 'açai', 'acai', 'mcdonalds', 'burger king', 'pao de acucar', 'carrefour', 'feira'],
+  'Alimentação': ['ifood', 'restaurante', 'mercado', 'supermercado', 'padaria', 'lanchonete', 'pizza', 'burguer', 'hamburguer', 'açai', 'acai', 'mcdonalds', 'burger king', 'pao de acucar', 'carrefour', 'feira', 'merenda', 'lanche', 'almoço', 'almoco', 'jantar'],
   'Transporte': ['uber', '99', 'taxi', 'táxi', 'posto', 'combustível', 'combustivel', 'estacionamento', 'pedágio', 'pedagio', 'gasolina', 'etanol', 'ipiranga', 'shell'],
   'Moradia': ['aluguel', 'condominio', 'condomínio', 'energia', 'enel', 'luz', 'agua', 'água', 'sabesp', 'internet', 'fibra', 'vivo', 'claro', 'tim', 'gas', 'gás', 'iptu'],
   'Lazer': ['cinema', 'cinemark', 'ingresso', 'show', 'bar', 'balada', 'viagem', 'hotel', 'airbnb', 'teatro'],
@@ -64,9 +64,16 @@ export function guessAmountFromText(text: string): number {
 }
 
 export function guessDescFromText(text: string, type: TxType): string {
-  const m = text.match(/(?:de|para)\s+([A-ZÀ-Úa-zà-ú0-9 .]{3,40})/);
-  if (m) {
-    const name = m[1].replace(/\s+em\s+.*$/i, '').trim();
+  // "Pizza para Maria" / "Presente de Maria" — o nome vem DEPOIS de "de"/"para".
+  const depois = text.match(/(?:de|para)\s+([A-ZÀ-Úa-zà-ú0-9 .]{3,40})/);
+  if (depois) {
+    const name = depois[1].replace(/\s+em\s+.*$/i, '').trim();
+    if (name) return name;
+  }
+  // "Merenda de R$ 38,00" / "Mercado de 120 reais" — o item vem ANTES de "de <valor>".
+  const antes = text.match(/^([A-ZÀ-Úa-zà-ú0-9 .]{3,40}?)\s+de\s+(?:r\$|\d)/i);
+  if (antes) {
+    const name = antes[1].trim();
     if (name) return name;
   }
   return type === 'in' ? 'Pix recebido' : 'Pagamento';

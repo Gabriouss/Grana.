@@ -106,6 +106,25 @@ alter table whatsapp_links drop constraint if exists whatsapp_links_pairing_code
 alter table whatsapp_links add constraint whatsapp_links_pairing_code_len
   check (char_length(pairing_code) = 6);
 
+-- Rascunho de lançamento por WhatsApp aguardando resposta (ex: categoria
+-- ambígua) — no máximo um por número, sempre substituído pelo mais recente.
+-- Existe só para a Edge Function whatsapp-webhook lembrar "o que" estava
+-- perguntando quando a próxima mensagem daquele número chegar; não tem
+-- nenhum uso fora dali, por isso não tem política de RLS nenhuma (só
+-- service_role, que ignora RLS, deve tocar aqui).
+create table if not exists whatsapp_pending (
+  phone text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  description text not null,
+  amount numeric not null,
+  type text not null check (type in ('in', 'out')),
+  occurred_on date not null,
+  attempts smallint not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table whatsapp_pending enable row level security;
+
 -- Orçamento mensal sugerido/definido por categoria
 create table if not exists budgets (
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -174,6 +193,7 @@ begin
   delete from public.budgets where user_id = current_user_id;
   delete from public.categories where user_id = current_user_id;
   delete from public.whatsapp_links where user_id = current_user_id;
+  delete from public.whatsapp_pending where user_id = current_user_id;
 
   -- 2. Exclui permanentemente o login da tabela de autenticação
   delete from auth.users where id = current_user_id;
