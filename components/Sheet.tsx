@@ -66,17 +66,17 @@ export default function Sheet({
         style={[
           styles.sheet,
           {
-            paddingBottom: keyboardHeight > 0 ? (Platform.OS === 'ios' ? keyboardHeight : Math.min(keyboardHeight, 180)) : spacing.xl,
-            maxHeight: keyboardHeight > 0 ? '95%' : '88%',
+            paddingBottom: Platform.OS === 'ios' && keyboardHeight > 0 ? keyboardHeight + 8 : spacing.lg,
+            maxHeight: '92%',
           },
           sheetStyle,
         ]}
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.content, contentStyle, { paddingBottom: 24 }]}
+          contentContainerStyle={[styles.content, contentStyle]}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={true}
+          showsVerticalScrollIndicator={false}
         >
           {children}
         </ScrollView>
@@ -92,10 +92,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     width: '100%',
   },
   scroll: { flexShrink: 1 },
   content: { gap: spacing.md },
 });
+
 
