@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { theme, radius, spacing } from '@/lib/theme';
+import { deleteUserAccount } from '@/lib/data';
 import AppPressable from '@/components/AppPressable';
 import ToggleSwitch from '@/components/ToggleSwitch';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
@@ -20,8 +21,10 @@ export default function PerfilScreen() {
 
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+
 
   function triggerToast(msg: string) {
     setToastMsg(msg);
@@ -51,8 +54,46 @@ export default function PerfilScreen() {
     }
   }
 
+  async function handlePerformDeleteAccount() {
+    try {
+      setDeleting(true);
+      await deleteUserAccount();
+      await signOut();
+      router.replace('/sign-in');
+    } catch (err: any) {
+      Alert.alert('Erro ao excluir conta', err?.message || 'Tente novamente mais tarde.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function confirmDeleteAccount() {
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined'
+        ? window.confirm('ATENÇÃO: Deseja realmente excluir permanentemente sua conta e todos os seus lançamentos? Esta ação não poderá ser desfeita.')
+        : true;
+      if (ok) {
+        handlePerformDeleteAccount();
+      }
+    } else {
+      Alert.alert(
+        'Excluir Conta Permanentemente',
+        'Todos os seus lançamentos, contas cadastradas, categorias e orçamentos serão apagados permanentemente dos nossos servidores. Esta ação é irreversível.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Excluir definitivamente',
+            style: 'destructive',
+            onPress: handlePerformDeleteAccount,
+          },
+        ]
+      );
+    }
+  }
+
   const userEmail = session?.user.email || 'usuario@exemplo.com';
   const initial = userEmail[0]?.toUpperCase() ?? 'G';
+
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
@@ -134,13 +175,27 @@ export default function PerfilScreen() {
           </AppPressable>
         </View>
 
-        {/* Botão Sair da Conta */}
-        <AppPressable
-          style={({ hovered }) => [styles.signOutBtn, hovered && styles.signOutBtnHover]}
-          onPress={confirmSignOut}
-        >
-          <Text style={styles.signOutText}>Sair da conta</Text>
-        </AppPressable>
+        {/* Ações da Conta: Sair e Excluir */}
+        <View style={{ gap: 10, marginTop: spacing.md }}>
+          <AppPressable
+            style={({ hovered }) => [styles.signOutBtn, hovered && styles.signOutBtnHover]}
+            onPress={confirmSignOut}
+          >
+            <Text style={styles.signOutText}>Sair da conta</Text>
+          </AppPressable>
+
+          <AppPressable
+            style={({ hovered }) => [styles.deleteBtn, hovered && styles.deleteBtnHover]}
+            onPress={confirmDeleteAccount}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator color="#e08a7d" size="small" />
+            ) : (
+              <Text style={styles.deleteText}>Excluir conta e dados</Text>
+            )}
+          </AppPressable>
+        </View>
       </ScrollView>
 
       {/* Modais */}
@@ -180,7 +235,11 @@ const styles = StyleSheet.create({
   tappableRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
   rowKey: { color: theme.ink, fontSize: 13 },
   rowValue: { color: theme.inkFaint, fontSize: 12 },
-  signOutBtn: { marginTop: spacing.md, borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  signOutBtn: { borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   signOutBtnHover: { backgroundColor: theme.paperRaised },
   signOutText: { color: theme.ink, fontSize: 14, fontWeight: '500' },
+  deleteBtn: { borderWidth: 1, borderColor: '#bb6b6040', backgroundColor: '#bb6b6015', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  deleteBtnHover: { backgroundColor: '#bb6b6030' },
+  deleteText: { color: '#e08a7d', fontSize: 13.5, fontWeight: '500' },
 });
+
