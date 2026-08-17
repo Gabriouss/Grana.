@@ -831,28 +831,35 @@ export default function InicioScreen() {
                 >
                   <Text style={[styles.dateQuickText, txDate === todayISO() && styles.dateQuickTextActive]}>Hoje</Text>
                 </AppPressable>
-                <AppPressable
-                  style={styles.dateQuickChip}
-                  onPress={() => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - 1);
-                    const pad = (n: number) => String(n).padStart(2, '0');
-                    setTxDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
-                  }}
-                >
-                  <Text style={styles.dateQuickText}>Ontem</Text>
-                </AppPressable>
-                <AppPressable
-                  style={styles.dateQuickChip}
-                  onPress={() => {
-                    setDatePickerTarget('tx');
-                    setDatePickerOpen(true);
-                  }}
-                >
-                  <Text style={styles.dateQuickText}>Calendário 📅</Text>
-                </AppPressable>
+                {(() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - 1);
+                  const pad = (n: number) => String(n).padStart(2, '0');
+                  const yISO = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                  const isCustom = txDate !== todayISO() && txDate !== yISO;
+                  return (
+                    <>
+                      <AppPressable
+                        style={[styles.dateQuickChip, txDate === yISO && styles.dateQuickChipActive]}
+                        onPress={() => setTxDate(yISO)}
+                      >
+                        <Text style={[styles.dateQuickText, txDate === yISO && styles.dateQuickTextActive]}>Ontem</Text>
+                      </AppPressable>
+                      <AppPressable
+                        style={[styles.dateQuickChip, isCustom && styles.dateQuickChipActive]}
+                        onPress={() => {
+                          setDatePickerTarget('tx');
+                          setDatePickerOpen(true);
+                        }}
+                      >
+                        <Text style={[styles.dateQuickText, isCustom && styles.dateQuickTextActive]}>Calendário</Text>
+                      </AppPressable>
+                    </>
+                  );
+                })()}
               </View>
             </View>
+
 
 
             <View style={styles.fieldRow}>
