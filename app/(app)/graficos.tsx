@@ -9,6 +9,7 @@ import PieChart, { type PieSlice } from '@/components/PieChart';
 import PrivacyValue from '@/components/PrivacyValue';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import ExportPdfButton from '@/components/ExportPdfButton';
+import WalletPill from '@/components/WalletPill';
 import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -27,7 +28,7 @@ const MESES_ABREV = [
 ];
 
 export default function GraficosScreen() {
-  const { activeWalletId, activeWalletName, activeWalletColor } = useWallet();
+  const { activeWalletId, activeWalletName } = useWallet();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
 
@@ -207,17 +208,8 @@ export default function GraficosScreen() {
               />
             </AppPressable>
 
-            {/* Seletor de Carteiras */}
-            <AppPressable
-              onPress={() => setWalletModalVisible(true)}
-              style={styles.walletPill}
-            >
-              <View style={[styles.walletPillDot, { backgroundColor: activeWalletColor }]} />
-              <Text style={styles.walletPillText} numberOfLines={1}>
-                {activeWalletName}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={theme.inkFaint} />
-            </AppPressable>
+            {/* Seletor de Carteiras — sempre o último item da linha */}
+            <WalletPill onPress={() => setWalletModalVisible(true)} />
           </>
         }
       />
@@ -349,28 +341,6 @@ const styles = StyleSheet.create({
   headerBtn: {
     padding: 6,
     borderRadius: radius.sm,
-  },
-  walletPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: theme.paper,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  walletPillDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  walletPillText: {
-    color: theme.ink,
-    fontSize: type.apoio,
-    fontWeight: '600',
-    maxWidth: 90,
   },
   tabContainer: {
     flexDirection: 'row',

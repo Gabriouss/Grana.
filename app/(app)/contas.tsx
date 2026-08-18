@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
 import WalletPickerModal from '@/components/WalletPickerModal';
+import WalletPill from '@/components/WalletPill';
 import DatePickerModal from '@/components/DatePickerModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
@@ -37,7 +38,7 @@ import { LIMITS } from '@/lib/limits';
 
 export default function ContasScreen() {
   const { isDemoMode } = useDemo();
-  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor } = useWallet();
+  const { activeWalletId, activeWallet } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -281,15 +282,7 @@ export default function ContasScreen() {
       <ScreenHeader
         eyebrow="pagamentos"
         title="Contas a pagar"
-        right={
-          <AppPressable onPress={() => setWalletModalOpen(true)} style={styles.walletPill}>
-            <View style={[styles.walletPillDot, { backgroundColor: activeWalletColor }]} />
-            <Text style={styles.walletPillText} numberOfLines={1}>
-              {activeWalletName}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={theme.inkFaint} />
-          </AppPressable>
-        }
+        right={<WalletPill onPress={() => setWalletModalOpen(true)} />}
       >
         <View style={styles.subtitleRow}>
           <PrivacyValue>
@@ -478,20 +471,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
   subtitle: { color: theme.inkFaint, fontSize: 13 },
   subtitleRow: { flexDirection: 'row', alignItems: 'baseline' },
-  walletPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: theme.paperRaised,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    maxWidth: 110,
-  },
-  walletPillDot: { width: 8, height: 8, borderRadius: 4 },
-  walletPillText: { color: theme.ink, fontSize: 12, fontWeight: '600', flexShrink: 1 },
   listContent: { paddingHorizontal: spacing.xl, paddingBottom: 100, gap: spacing.sm },
   emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },
   card: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.sm },

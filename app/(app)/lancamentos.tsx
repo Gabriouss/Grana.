@@ -19,6 +19,7 @@ import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
 import ExportPdfButton from '@/components/ExportPdfButton';
 import WalletPickerModal from '@/components/WalletPickerModal';
+import WalletPill from '@/components/WalletPill';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import CsvImportModal from '@/components/CsvImportModal';
@@ -52,7 +53,7 @@ import { LIMITS } from '@/lib/limits';
 
 export default function LancamentosScreen() {
   const { isDemoMode } = useDemo();
-  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor } = useWallet();
+  const { activeWalletId, activeWallet, activeWalletName } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -366,7 +367,7 @@ export default function LancamentosScreen() {
         eyebrow="movimentações"
         title="Lançamentos"
         right={
-          <View style={styles.headerActions}>
+          <>
             <AppPressable
               style={({ hovered }) => [styles.headerBtn, hovered && styles.headerBtnHover]}
               onPress={() => setPasteModalOpen(true)}
@@ -389,17 +390,10 @@ export default function LancamentosScreen() {
                 setPasteModalOpen(true);
               }}
             />
-          </View>
+            <WalletPill onPress={() => setWalletModalOpen(true)} />
+          </>
         }
       >
-        <AppPressable onPress={() => setWalletModalOpen(true)} style={styles.walletPill}>
-          <View style={[styles.walletPillDot, { backgroundColor: activeWalletColor }]} />
-          <Text style={styles.walletPillText} numberOfLines={1}>
-            {activeWalletName}
-          </Text>
-          <Ionicons name="chevron-down" size={14} color={theme.inkFaint} />
-        </AppPressable>
-
         {(offline || pendingCount > 0) && (
           <View style={styles.offlineBanner}>
             <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
@@ -804,8 +798,7 @@ export default function LancamentosScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.paper },
-  headerActions: { flexDirection: 'row', gap: 8 },
+  container: { flex: 1, backgroundColor: theme.paper },
   headerBtn: {
     padding: 8,
     borderRadius: radius.pill,
@@ -814,20 +807,6 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   headerBtnHover: { borderColor: theme.ruleStrong },
-  walletPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: theme.paperRaised,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  walletPillDot: { width: 8, height: 8, borderRadius: 4 },
-  walletPillText: { color: theme.ink, fontSize: 12, fontWeight: '600' },
   listContent: { paddingHorizontal: spacing.xl, paddingBottom: 100 },
   exportWrap: { marginTop: spacing.xl },
   emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },

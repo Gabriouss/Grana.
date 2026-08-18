@@ -22,6 +22,8 @@ import BadgeCard from '@/components/BadgeCard';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
+import WalletPickerModal from '@/components/WalletPickerModal';
+import WalletPill from '@/components/WalletPill';
 
 type FilterType = 'all' | 'unlocked' | 'locked';
 
@@ -32,6 +34,7 @@ export default function DesafiosScreen() {
   const [state, setState] = useState<GamificationState | null>(null);
   const [level, setLevel] = useState<LevelState>(calcularLevelState(0));
   const [filter, setFilter] = useState<FilterType>('all');
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     if (isDemoMode) {
@@ -100,7 +103,13 @@ export default function DesafiosScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
-      <ScreenHeader eyebrow="saúde & consistência" title="Desafios" />
+      <ScreenHeader
+        eyebrow="saúde & consistência"
+        title="Desafios"
+        right={<WalletPill onPress={() => setWalletModalOpen(true)} />}
+      />
+
+      <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 
       <ScrollView
         style={styles.scroll}

@@ -39,6 +39,7 @@ import CategoryChips from '@/components/CategoryChips';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
 import WalletPickerModal from '@/components/WalletPickerModal';
+import WalletPill from '@/components/WalletPill';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import CsvImportModal from '@/components/CsvImportModal';
@@ -924,8 +925,17 @@ export default function InicioScreen() {
           </>
         }
         title={saudacaoDoDia(nomeExibicao)}
+        left={
+          <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn}>
+            {perfil?.fotoUrl ? (
+              <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} />
+            ) : (
+              <Ionicons name="person-circle-outline" size={34} color={theme.inkFaint} />
+            )}
+          </AppPressable>
+        }
         right={
-          <View style={styles.headerActions}>
+          <>
             <AppPressable
               onPress={() => {
                 toggle();
@@ -936,21 +946,8 @@ export default function InicioScreen() {
             >
               <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.inkFaint} />
             </AppPressable>
-            <AppPressable onPress={() => setWalletModalOpen(true)} style={styles.walletPill}>
-              <View style={[styles.walletPillDot, { backgroundColor: activeWalletColor }]} />
-              <Text style={styles.walletPillText} numberOfLines={1}>
-                {activeWalletName}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={theme.inkFaint} />
-            </AppPressable>
-            <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn}>
-              {perfil?.fotoUrl ? (
-                <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} />
-              ) : (
-                <Ionicons name="person-circle-outline" size={30} color={theme.inkFaint} />
-              )}
-            </AppPressable>
-          </View>
+            <WalletPill onPress={() => setWalletModalOpen(true)} />
+          </>
         }
       />
 
@@ -975,8 +972,18 @@ export default function InicioScreen() {
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
-        {/* Ações Inteligentes: Colar Comprovante & Importar CSV */}
-        <FadeIn delay={40} style={styles.smartActionsRow}>
+        {/* Ações Inteligentes: Colar Comprovante, CSV, Nota Fiscal e Voz.
+            Rolagem horizontal em vez de `flex: 1` dividindo a largura: com o
+            quarto botão (escanear nota) os rótulos passaram a quebrar em duas
+            linhas e a fileira ficou espremida. Assim cada botão ocupa a
+            largura do próprio texto e a fileira desliza quando não couber —
+            mesmo padrão dos chips de categoria logo abaixo. */}
+        <FadeIn delay={40}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.smartActionsRow}
+          >
           <AppPressable
             style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
             onPress={() => setPasteModalOpen(true)}
@@ -1008,6 +1015,7 @@ export default function InicioScreen() {
               setPasteModalOpen(true);
             }}
           />
+          </ScrollView>
         </FadeIn>
 
         {/* Blocos personalizáveis da Home — ordem e visibilidade vêm de
@@ -1439,24 +1447,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   customizeBtnText: { color: theme.inkSoft, fontSize: 12 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   privacyBtn: { padding: 4 },
-  walletPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: theme.paperRaised,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    maxWidth: 110,
-  },
-  walletPillDot: { width: 8, height: 8, borderRadius: 4 },
-  walletPillText: { color: theme.ink, fontSize: 12, fontWeight: '600', flexShrink: 1 },
   avatarBtn: { padding: 2 },
-  avatarImg: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: theme.rule },
+  avatarImg: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: theme.rule },
   errorText: { color: '#e08a7d', fontSize: 13 },
   quickChipsSection: { gap: 6 },
   quickChipsRow: { gap: 8, paddingVertical: 4 },
@@ -1473,14 +1466,14 @@ const styles = StyleSheet.create({
   },
   quickChipHover: { backgroundColor: theme.ruleStrong },
   quickChipText: { color: theme.ink, fontSize: 12 },
-  smartActionsRow: { flexDirection: 'row', gap: spacing.sm },
+  smartActionsRow: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.lg },
   smartActionBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.md,
     backgroundColor: theme.paperRaised,
     borderWidth: 1,

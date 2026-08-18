@@ -59,7 +59,13 @@ const styles = StyleSheet.create({
   leftCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
   texts: { flexShrink: 1 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  /* `flexShrink` nos dois lados, e nunca `flexWrap`: a regra do cabeçalho é
+     que os botões da tela e o seletor de carteira fiquem SEMPRE na mesma linha
+     do título, à direita. Com wrap, telas com muitos botões (Lançamentos tem
+     três mais a carteira) jogavam o seletor para uma segunda linha. Deixando
+     os dois lados encolherem, quem cede espaço primeiro é o título — que já
+     tem numberOfLines={1} e corta com reticências. */
+  right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
   eyebrow: {
     fontFamily: fonts.regular,
     fontSize: 11,
