@@ -2,22 +2,119 @@ import { BANKS, CATEGORIES, type BankInfo, type TxType } from './types';
 import { parseAmount, todayISO } from './format';
 import { LIMITS } from './limits';
 
-export const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Alimentação': ['ifood', 'restaurante', 'mercado', 'supermercado', 'padaria', 'lanchonete', 'pizza', 'burguer', 'hamburguer', 'açai', 'acai', 'mcdonalds', 'burger king', 'pao de acucar', 'carrefour', 'feira', 'merenda', 'lanche', 'almoço', 'almoco', 'jantar'],
-  'Transporte': ['uber', '99', 'taxi', 'táxi', 'posto', 'combustível', 'combustivel', 'estacionamento', 'pedágio', 'pedagio', 'gasolina', 'etanol', 'ipiranga', 'shell'],
-  'Moradia': ['aluguel', 'condominio', 'condomínio', 'energia', 'enel', 'luz', 'agua', 'água', 'sabesp', 'internet', 'fibra', 'vivo', 'claro', 'tim', 'gas', 'gás', 'iptu'],
-  'Lazer': ['cinema', 'cinemark', 'ingresso', 'show', 'bar', 'balada', 'viagem', 'hotel', 'airbnb', 'teatro'],
-  'Saúde': ['farmacia', 'farmácia', 'drogaria', 'drogasil', 'pacheco', 'clinica', 'clínica', 'consulta', 'medico', 'médico', 'dentista', 'academia', 'smart fit', 'laboratorio'],
-  'Assinaturas': ['netflix', 'spotify', 'amazon prime', 'prime video', 'hbo', 'max', 'disney', 'youtube', 'apple', 'assinatura', 'mensalidade', 'icloud', 'openai', 'chatgpt'],
-  'Salário': ['salario', 'salário', 'folha', 'pagamento de salario', 'pro-labore', 'holerite', 'rendimento'],
+/* ── Números falados por extenso ───────────────────────────────────────────
+ *
+ * Vale tanto para o lançamento por voz dentro do app quanto para o áudio
+ * recebido no WhatsApp: nos dois casos a transcrição devolve "cento e vinte
+ * reais" com a mesma frequência que "120 reais", e todo o resto da heurística
+ * só entende dígitos. Sem esta etapa, metade das falas caía em "não
+ * identifiquei o valor".
+ */
+
+const NUMERO_POR_EXTENSO: Record<string, number> = {
+  zero: 0, um: 1, uma: 1, dois: 2, duas: 2, tres: 3, três: 3, quatro: 4, cinco: 5,
+  seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13,
+  catorze: 14, quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18,
+  dezenove: 19, vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, cinqüenta: 50,
+  sessenta: 60, setenta: 70, oitenta: 80, noventa: 90, cem: 100, cento: 100,
+  duzentos: 200, trezentos: 300, quatrocentos: 400, quinhentos: 500, seiscentos: 600,
+  setecentos: 700, oitocentos: 800, novecentos: 900, mil: 1000,
 };
 
+function somarExtenso(palavras: string[]): number {
+  let total = 0;
+  let atual = 0;
+  for (const p of palavras) {
+    const v = NUMERO_POR_EXTENSO[p];
+    if (v === undefined) continue; // "e"
+    if (v === 1000) {
+      atual = (atual === 0 ? 1 : atual) * 1000;
+      total += atual;
+      atual = 0;
+    } else {
+      atual += v;
+    }
+  }
+  return total + atual;
+}
+
+/** Converte trechos numéricos por extenso em dígitos e junta "X reais e Y centavos". */
+export function normalizarTexto(texto: string): string {
+  const tokens = texto.split(/(\s+)/);
+  const saida: string[] = [];
+  let bloco: string[] = [];
+
+  const fecharBloco = () => {
+    if (bloco.length === 0) return;
+    // Um "e" solto no fim do bloco pertence à frase, não ao número.
+    while (bloco.length > 0 && NUMERO_POR_EXTENSO[bloco[bloco.length - 1]] === undefined) bloco.pop();
+    if (bloco.length > 0) saida.push(String(somarExtenso(bloco)));
+    bloco = [];
+  };
+
+  for (const token of tokens) {
+    if (/^\s+$/.test(token)) {
+      if (bloco.length === 0) saida.push(token);
+      continue;
+    }
+    const limpo = token.toLowerCase().replace(/[.,!?;:]+$/, '');
+    const pontuacao = token.slice(limpo.length);
+    const ehNumero = NUMERO_POR_EXTENSO[limpo] !== undefined;
+    // "e" só continua um bloco já começado (evita capturar o "e" de ligação).
+    const ehLigacao = limpo === 'e' && bloco.length > 0;
+
+    if (ehNumero || ehLigacao) {
+      bloco.push(limpo);
+      if (pontuacao) {
+        fecharBloco();
+        saida.push(pontuacao, ' ');
+      }
+      continue;
+    }
+    fecharBloco();
+    if (saida.length > 0 && !/\s$/.test(saida[saida.length - 1])) saida.push(' ');
+    saida.push(token);
+  }
+  fecharBloco();
+
+  return saida
+    .join('')
+    .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+export const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'Alimentação': ['ifood', 'rappi', 'restaurante', 'mercado', 'supermercado', 'mercadinho', 'hortifruti', 'sacolao', 'sacolão', 'padaria', 'lanchonete', 'pizza', 'pizzaria', 'burguer', 'hamburguer', 'hambúrguer', 'açai', 'acai', 'sorvete', 'mcdonalds', 'burger king', 'subway', 'bobs', 'habibs', 'pao de acucar', 'pão de açúcar', 'carrefour', 'assai', 'assaí', 'atacadao', 'atacadão', 'guanabara', 'extra', 'feira', 'merenda', 'lanche', 'lanchinho', 'almoço', 'almoco', 'janta', 'jantar', 'café', 'cafe', 'cafeteria', 'starbucks', 'marmita', 'comida', 'delivery', 'churrasco', 'espetinho', 'salgado', 'doceria', 'confeitaria', 'quentinha', 'rango'],
+  'Transporte': ['uber', '99', '99pop', 'indriver', 'cabify', 'taxi', 'táxi', 'posto', 'combustível', 'combustivel', 'estacionamento', 'zona azul', 'pedágio', 'pedagio', 'gasolina', 'etanol', 'alcool', 'álcool', 'diesel', 'ipiranga', 'shell', 'petrobras', 'br mania', 'onibus', 'ônibus', 'metro', 'metrô', 'passagem', 'bilhete unico', 'bilhete único', 'mecanico', 'mecânico', 'oficina', 'pneu', 'lavagem', 'lava jato', 'ipva', 'licenciamento', 'seguro do carro'],
+  'Moradia': ['aluguel', 'condominio', 'condomínio', 'energia', 'enel', 'cemig', 'light', 'coelba', 'celpe', 'equatorial', 'luz', 'conta de luz', 'agua', 'água', 'sabesp', 'cagece', 'embasa', 'saneamento', 'esgoto', 'internet', 'fibra', 'wifi', 'vivo', 'claro', 'tim', 'oi', 'net', 'telefone', 'celular', 'gas', 'gás', 'botijao', 'botijão', 'iptu', 'faxina', 'diarista', 'reforma', 'material de construcao', 'material de construção', 'movel', 'móvel', 'moveis', 'móveis', 'eletrodomestico', 'eletrodoméstico'],
+  'Lazer': ['cinema', 'cinemark', 'ingresso', 'show', 'festa', 'bar', 'boteco', 'cerveja', 'balada', 'viagem', 'passeio', 'hotel', 'pousada', 'airbnb', 'teatro', 'parque', 'jogo', 'game', 'steam', 'playstation', 'xbox', 'nintendo', 'livro', 'livraria', 'presente', 'praia'],
+  'Saúde': ['farmacia', 'farmácia', 'drogaria', 'drogasil', 'droga raia', 'raia', 'pacheco', 'pague menos', 'remedio', 'remédio', 'clinica', 'clínica', 'consulta', 'exame', 'medico', 'médico', 'dentista', 'psicologo', 'psicólogo', 'terapia', 'academia', 'smart fit', 'smartfit', 'gympass', 'laboratorio', 'laboratório', 'hospital', 'plano de saude', 'plano de saúde', 'unimed', 'hapvida', 'amil', 'vacina', 'oculos', 'óculos'],
+  'Assinaturas': ['netflix', 'spotify', 'deezer', 'amazon prime', 'prime video', 'hbo', 'hbo max', 'globoplay', 'paramount', 'disney', 'disney+', 'crunchyroll', 'youtube premium', 'assinatura', 'mensalidade', 'icloud', 'google one', 'dropbox', 'openai', 'chatgpt', 'claude', 'canva', 'adobe', 'office 365', 'microsoft 365'],
+  'Investimentos': ['investimento', 'investi', 'aporte', 'tesouro direto', 'tesouro selic', 'cdb', 'lci', 'lca', 'acoes', 'ações', 'fii', 'fundo imobiliario', 'fundo imobiliário', 'bitcoin', 'cripto', 'criptomoeda', 'nubank rendimento', 'poupanca', 'poupança', 'previdencia', 'previdência', 'corretora', 'clear', 'rico', 'xp investimentos', 'binance'],
+  'Salário': ['salario', 'salário', 'folha', 'pagamento de salario', 'pro-labore', 'holerite', 'contracheque', 'décimo terceiro', 'decimo terceiro', 'férias', 'ferias', 'freela', 'freelance', 'bico', 'comissao', 'comissão', 'bonificacao', 'bonificação', 'bonus', 'bônus', 'rendimento', 'dividendo', 'dividendos'],
+};
+
+/* Normaliza para comparar: minúsculas, pontuação vira espaço, e o texto fica
+   cercado por espaços. A comparação passa a ser por palavra inteira em vez de
+   `includes` cru — antes a keyword 'max' (de HBO Max) casava dentro de
+   "máxima", 'oi' dentro de "coisa" e '99' dentro de "1990", jogando o
+   lançamento na categoria errada. Espaço nas pontas faz a keyword de uma
+   palavra só casar no começo e no fim da frase. */
+function normalizarParaBusca(texto: string): string {
+  return ' ' + texto.toLowerCase().replace(/[^0-9a-zà-ÿ]+/gi, ' ').trim() + ' ';
+}
+
+function contemPalavra(textoNormalizado: string, keyword: string): boolean {
+  return textoNormalizado.includes(normalizarParaBusca(keyword));
+}
+
 export function guessCategoryFromText(text: string): { name: string; color: string } {
-  const lower = text.toLowerCase();
+  const alvo = normalizarParaBusca(text);
   let bestName: string | null = null;
 
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => lower.includes(kw))) {
+    if (keywords.some((kw) => contemPalavra(alvo, kw))) {
       bestName = catName;
       break;
     }
@@ -30,52 +127,141 @@ export function guessCategoryFromText(text: string): { name: string; color: stri
   );
 }
 
+/* Marcadores de saída, conferidos ANTES dos de entrada. A ordem importa:
+   "paguei o salário do estagiário" tem 'salário' (entrada) e 'paguei'
+   (saída) na mesma frase, e o verbo que a pessoa escolheu diz mais sobre a
+   direção do dinheiro do que o substantivo. */
+const MARCADORES_SAIDA = [
+  'gastei', 'gasto', 'paguei', 'pagamento de', 'comprei', 'compra', 'torrei',
+  'debitado', 'débito', 'debito', 'saiu', 'saída', 'saida', 'enviei', 'enviado',
+  'transferi', 'pix enviado', 'mandei', 'assinei', 'investi', 'apliquei',
+];
+
+const MARCADORES_ENTRADA = [
+  'recebi', 'recebeu', 'recebido', 'recebida', 'você recebeu', 'voce recebeu',
+  'entrou', 'entrada', 'caiu', 'creditado', 'crédito de', 'credito de',
+  'depósito', 'deposito', 'depositado', 'transferência recebida', 'transferencia recebida',
+  'pix recebido', 'estorno', 'reembolso', 'devolução', 'devolucao', 'me pagaram',
+  'ganhei', 'vendi', 'venda', 'salário', 'salario', 'freela', 'comissão', 'comissao',
+  'bonificação', 'bonificacao', 'bônus', 'bonus', 'rendimento', 'dividendo',
+];
+
 export function guessTypeFromText(text: string): TxType {
-  const lower = text.toLowerCase();
-  const inHints = [
-    'recebeu',
-    'recebido',
-    'você recebeu',
-    'voce recebeu',
-    'crédito de',
-    'credito de',
-    'depósito',
-    'deposito',
-    'transferência recebida',
-    'pix recebido',
-    'estorno',
-    'salário',
-    'salario',
-  ];
-  return inHints.some((h) => lower.includes(h)) ? 'in' : 'out';
+  const alvo = normalizarParaBusca(text);
+  if (MARCADORES_SAIDA.some((h) => contemPalavra(alvo, h))) return 'out';
+  if (MARCADORES_ENTRADA.some((h) => contemPalavra(alvo, h))) return 'in';
+  return 'out';
 }
 
 export function guessAmountFromText(text: string): number {
-  const match = text.match(/r\$?\s*([\d.,]+)/i);
-  if (match) {
-    return parseAmount(match[1]);
-  }
-  // Fallback: search for stand-alone currency numbers like 150,00 or 1.250,50
-  const fallbackMatch = text.match(/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
-  if (fallbackMatch) {
-    return parseAmount(fallbackMatch[1]);
-  }
+  const normalizado = normalizarTexto(text);
+
+  // "R$ 1.250,90" — quando o cifrão está lá, é o sinal mais confiável.
+  const comCifrao = normalizado.match(/r\$\s*([\d.,]+)/i);
+  if (comCifrao) return parseAmount(comCifrao[1]);
+
+  // "350 reais", "120 conto", "50 pila" — em fala e em mensagem informal o
+  // cifrão quase nunca aparece; a moeda vem por extenso depois do número.
+  const comMoeda = normalizado.match(/([\d.,]+)\s*(?:reais|real|conto|contos|pila|pau|mangos?)\b/i);
+  if (comMoeda) return parseAmount(comMoeda[1]);
+
+  // "150,00" / "1.250,50" — número com centavos explícitos.
+  const comCentavos = normalizado.match(/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
+  if (comCentavos) return parseAmount(comCentavos[1]);
+
+  // "mercado 50" / "50 no mercado" — último recurso: qualquer número solto.
+  // Fica por último de propósito, para não roubar a vez de "99" em "99 Pop"
+  // ou de um número que faça parte do nome do estabelecimento.
+  const solto = normalizado.match(/(?:^|\s)(\d[\d.]*)(?:\s|$)/);
+  if (solto) return parseAmount(solto[1]);
+
   return 0;
 }
 
+/* Verbos e locuções que abrem a frase sem descrever nada ("gastei 50 no bar",
+   "caiu 1500 do cliente"). Só valem no início — "vendi" no meio de uma frase
+   pode ser parte do nome. */
+const VERBOS_INICIAIS =
+  /^(?:me\s+pagaram|gastei|gasto|paguei|pagamento|comprei|compra|torrei|coloquei|investi|apliquei|recebi|recebido|ganhei|entrou|caiu|vendi|transferi|mandei|enviei|assinei|custou|saiu|foi|foram)\b\s*/i;
+/* Conectores que sobram grudados nas pontas depois que o valor sai. */
+const CONECTOR = '(?:de|do|da|dos|das|no|na|nos|nas|em|com|para|pra|pro|por|a|o|um|uma)';
+const CONECTOR_INICIAL = new RegExp(`^${CONECTOR}\\b\\s*`, 'i');
+const CONECTOR_FINAL = new RegExp(`\\s+${CONECTOR}$`, 'i');
+/* Restos de valor colados nas pontas: "luz 210" -> "luz", "350 reais x" -> "x". */
+const VALOR_INICIAL = /^(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?\b\s*/i;
+const VALOR_FINAL = /\s*(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?$/i;
+
+function limparSobra(bruto: string): string {
+  let s = bruto.replace(/\s+/g, ' ').trim();
+  let anterior = '';
+  while (s !== anterior) {
+    anterior = s;
+    s = s
+      .replace(VERBOS_INICIAIS, '')
+      .replace(VALOR_INICIAL, '')
+      .replace(VALOR_FINAL, '')
+      .replace(CONECTOR_INICIAL, '')
+      .replace(CONECTOR_FINAL, '')
+      .trim();
+  }
+  return s.replace(/^[-–—.,;:]+|[-–—.,;:]+$/g, '').trim();
+}
+
+function capitalizar(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Nome do lançamento a partir de texto livre (comprovante colado, transcrição
+ * de áudio, notificação de banco).
+ *
+ * A versão anterior procurava um nome logo depois de "de"/"para" e aceitava o
+ * primeiro que aparecesse. Em "energia de 350 reais" o "de" que casava era o
+ * do VALOR, então a descrição virava "350 reais." e o nome real ("energia")
+ * se perdia — relatado pelo autor num áudio de WhatsApp. Duas mudanças
+ * consertam isso: o padrão de "de/para" agora recusa um número logo em
+ * seguida, e existe um segundo caminho que simplesmente remove a expressão de
+ * valor e usa o que sobra, o que também cobre frases sem "de" nenhum
+ * ("paguei 47,90 na farmácia", "mercado").
+ */
+/* Expressão de valor: "R$ 350", "350 reais", "350,00", "350". Usada tanto
+   para reconhecer o padrão "<Nome> de <Valor>" quanto para apagar o valor do
+   texto e ficar só com o nome. */
+const EXPRESSAO_VALOR = /(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?/i;
+
 export function guessDescFromText(text: string, type: TxType): string {
-  // "Pizza para Maria" / "Presente de Maria" — o nome vem DEPOIS de "de"/"para".
-  const depois = text.match(/(?:de|para)\s+([A-ZÀ-Úa-zà-ú0-9 .]{3,40})/);
-  if (depois) {
-    const name = depois[1].replace(/\s+em\s+.*$/i, '').trim();
-    if (name) return name;
+  const texto = normalizarTexto(text);
+
+  /* 1º) "<Nome> de <Valor>" — "Energia de 350 reais", "Merenda de 31 reais",
+     "Mercado de 120 reais". Vem primeiro porque é o formato mais comum e o
+     mais inequívoco: o que está antes do "de" é sempre o nome. Antes esta
+     regra vinha DEPOIS da regra do "de <nome>", e o "de" do valor casava
+     primeiro — a descrição virava "350 reais" e o nome real se perdia. */
+  const nomeAntes = texto.match(new RegExp(`^\\s*(.{2,40}?)\\s+(?:de|por)\\s+${EXPRESSAO_VALOR.source}\\s*$`, 'i'));
+  if (nomeAntes) {
+    const nome = limparSobra(nomeAntes[1]);
+    if (nome.length >= 2) return capitalizar(nome);
   }
-  // "Merenda de R$ 38,00" / "Mercado de 120 reais" — o item vem ANTES de "de <valor>".
-  const antes = text.match(/^([A-ZÀ-Úa-zà-ú0-9 .]{3,40}?)\s+de\s+(?:r\$|\d)/i);
-  if (antes) {
-    const name = antes[1].trim();
-    if (name) return name;
+
+  /* 2º) "<algo> de/para <Nome>" — "Pizza para Maria", "transferiu para
+     Restaurante Sabor da Terra", "2000 reais de salário". O `(?!\d)` recusa
+     números logo depois do conector, para nunca capturar o próprio valor. */
+  const nomeDepois = texto.match(/\b(?:de|para)\b\s+((?!\d)[A-ZÀ-Úa-zà-ú0-9 .]{3,40})/i);
+  if (nomeDepois) {
+    const nome = limparSobra(nomeDepois[1].replace(/\s+em\s+.*$/i, ''));
+    if (nome.length >= 2) return capitalizar(nome);
   }
+
+  /* 3º) Sobra do texto sem o valor e sem o verbo — cobre as formas que não
+     têm conector nenhum: "paguei 47,90 na farmácia", "50 no mercado",
+     "mercado 120", "uber 25", ou só "mercado". */
+  const semValor = texto
+    .replace(/r\$\s*[\d.,]+/gi, ' ')
+    .replace(/[\d.,]+\s*(?:reais|real|conto|contos|pila|pau|mangos?)\b/gi, ' ')
+    .replace(/\d[\d.,]*/g, ' ');
+  const sobra = limparSobra(semValor);
+  if (sobra.length >= 2) return capitalizar(sobra.slice(0, 40));
+
   return type === 'in' ? 'Pix recebido' : 'Pagamento';
 }
 
