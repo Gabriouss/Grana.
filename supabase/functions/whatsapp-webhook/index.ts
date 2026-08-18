@@ -21,8 +21,13 @@
 //                                este secret não estiver configurado, a
 //                                verificação fica desligada (com aviso no
 //                                log) em vez de derrubar o webhook inteiro.
-//   OPENAI_API_KEY            — chave da OpenAI, usada só para transcrever
-//                                áudio (Whisper) recebido por WhatsApp.
+//   GROQ_API_KEY              — chave da Groq, provedor preferido para
+//                                transcrever áudio (whisper-large-v3). Ordem
+//                                de grandeza mais rápido e mais barato que a
+//                                OpenAI para o mesmo modelo.
+//   OPENAI_API_KEY            — opcional: fallback de transcrição (whisper-1)
+//                                usado só quando a Groq falha ou não está
+//                                configurada.
 //   SUPABASE_SERVICE_ROLE_KEY — já disponível por padrão no ambiente da função.
 //
 // Depois de configurar os secrets, publique com:
@@ -36,6 +41,7 @@ const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? '';
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN') ?? '';
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') ?? '';
 const WHATSAPP_APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET') ?? '';
+const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') ?? '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -107,11 +113,100 @@ function guessTypeFromText(text: string): 'in' | 'out' {
 }
 
 function guessAmountFromText(text: string): number {
-  const match = text.match(/r\$?\s*([\d.,]+)/i);
+  const match = text.match(/r\$\s*([\d.,]+)/i);
   if (match) return parseAmount(match[1]);
+  // "38 reais", "120 conto", "1.250,90 pila" — em áudio transcrito o "R$"
+  // quase nunca aparece; a moeda vem falada depois do número.
+  const porExtenso = text.match(/([\d.,]+)\s*(?:reais|real|conto|contos|pila|pau)\b/i);
+  if (porExtenso) return parseAmount(porExtenso[1]);
   const fallback = text.match(/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
   if (fallback) return parseAmount(fallback[1]);
   return 0;
+}
+
+/* ---- normalização de texto transcrito de áudio ---- */
+
+const NUMERO_POR_EXTENSO: Record<string, number> = {
+  zero: 0, um: 1, uma: 1, dois: 2, duas: 2, tres: 3, três: 3, quatro: 4, cinco: 5,
+  seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13,
+  catorze: 14, quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18,
+  dezenove: 19, vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, cinqüenta: 50,
+  sessenta: 60, setenta: 70, oitenta: 80, noventa: 90, cem: 100, cento: 100,
+  duzentos: 200, trezentos: 300, quatrocentos: 400, quinhentos: 500, seiscentos: 600,
+  setecentos: 700, oitocentos: 800, novecentos: 900, mil: 1000,
+};
+
+/** Soma um trecho já validado de palavras numéricas ("mil duzentos e cinquenta" → 1250). */
+function somarExtenso(palavras: string[]): number {
+  let total = 0;
+  let atual = 0;
+  for (const p of palavras) {
+    const v = NUMERO_POR_EXTENSO[p];
+    if (v === undefined) continue; // "e"
+    if (v === 1000) {
+      atual = (atual === 0 ? 1 : atual) * 1000;
+      total += atual;
+      atual = 0;
+    } else {
+      atual += v;
+    }
+  }
+  return total + atual;
+}
+
+/**
+ * Whisper transcreve valores falados por extenso ("trinta e oito reais") com
+ * a mesma frequência que em dígitos, e o parser de valor só entende dígitos.
+ * Esta normalização converte trechos numéricos por extenso em números e junta
+ * "X reais e Y centavos" num decimal único, antes do texto seguir pro mesmo
+ * fluxo de heurística usado nas mensagens escritas.
+ */
+function normalizarTextoTranscrito(texto: string): string {
+  const tokens = texto.split(/(\s+)/); // mantém os espaços para remontar o texto
+  const saida: string[] = [];
+  let bloco: string[] = [];
+
+  const fecharBloco = () => {
+    if (bloco.length === 0) return;
+    // Um "e" solto no fim do bloco pertence à frase, não ao número.
+    while (bloco.length > 0 && NUMERO_POR_EXTENSO[bloco[bloco.length - 1]] === undefined) {
+      bloco.pop();
+    }
+    if (bloco.length > 0) saida.push(String(somarExtenso(bloco)));
+    bloco = [];
+  };
+
+  for (const token of tokens) {
+    if (/^\s+$/.test(token)) {
+      if (bloco.length === 0) saida.push(token);
+      continue;
+    }
+    const limpo = token.toLowerCase().replace(/[.,!?;:]+$/, '');
+    const pontuacao = token.slice(limpo.length);
+    const ehNumero = NUMERO_POR_EXTENSO[limpo] !== undefined;
+    // "e" só continua um bloco que já começou (evita capturar o "e" de ligação da frase).
+    const ehLigacao = limpo === 'e' && bloco.length > 0;
+
+    if (ehNumero || ehLigacao) {
+      bloco.push(limpo);
+      if (pontuacao) {
+        fecharBloco();
+        saida.push(pontuacao, ' ');
+      }
+      continue;
+    }
+    fecharBloco();
+    if (saida.length > 0 && !/\s$/.test(saida[saida.length - 1])) saida.push(' ');
+    saida.push(token);
+  }
+  fecharBloco();
+
+  return saida
+    .join('')
+    // "38 reais e 50 centavos" → "38,50 reais"
+    .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 function guessDescFromText(text: string, type: 'in' | 'out'): string {
@@ -188,40 +283,86 @@ async function sendWhatsappMessage(to: string, body: string): Promise<void> {
 }
 
 /**
- * Transcrição de áudio via Whisper (OpenAI). Baixa o .ogg/Opus da Meta e
- * repassa os bytes pro endpoint de transcrição — sem isso, mensagens de
- * áudio recebiam sempre um aviso pedindo texto (ver handleAudioMessage).
- * Se OPENAI_API_KEY não estiver configurada, a chamada falha e cai no mesmo
- * aviso de antes, sem quebrar o restante do webhook.
+ * Provedores de transcrição, em ordem de preferência. Ambos falam o mesmo
+ * dialeto de API (a Groq expõe endpoints compatíveis com a OpenAI), então o
+ * corpo da requisição é idêntico — só mudam URL, modelo e chave. A Groq vem
+ * primeiro por ser ordens de grandeza mais rápida e barata no mesmo Whisper;
+ * a OpenAI fica como rede de segurança para quando a Groq estiver fora do ar
+ * ou com rate limit, situação em que perder o lançamento seria pior do que
+ * pagar alguns centavos.
+ */
+const PROVEDORES_TRANSCRICAO = [
+  { nome: 'groq', url: 'https://api.groq.com/openai/v1/audio/transcriptions', model: 'whisper-large-v3', key: () => GROQ_API_KEY },
+  { nome: 'openai', url: 'https://api.openai.com/v1/audio/transcriptions', model: 'whisper-1', key: () => OPENAI_API_KEY },
+];
+
+/** Baixa o .ogg/Opus da Meta. Devolve null se a mídia expirou ou o token não autoriza. */
+async function baixarAudioDaMeta(mediaId: string): Promise<ArrayBuffer | null> {
+  const metaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+    headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+  });
+  if (!metaRes.ok) {
+    console.error('[transcribeAudio] Meta recusou a consulta da mídia:', metaRes.status);
+    return null;
+  }
+  const { url } = await metaRes.json();
+  if (!url) return null;
+
+  const mediaRes = await fetch(url, { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } });
+  if (!mediaRes.ok) {
+    console.error('[transcribeAudio] falha ao baixar bytes do áudio:', mediaRes.status);
+    return null;
+  }
+  return await mediaRes.arrayBuffer();
+}
+
+/**
+ * Transcreve um áudio recebido por WhatsApp. Tenta cada provedor configurado
+ * na ordem e devolve a primeira transcrição não vazia, já normalizada (ver
+ * normalizarTextoTranscrito). Devolve null quando nenhum provedor está
+ * configurado, todos falharam, ou o áudio saiu inaudível — quem chama decide
+ * a mensagem de fallback.
  */
 async function transcribeAudio(mediaId: string): Promise<string | null> {
   try {
-    // 1. Pega a URL do áudio na Meta
-    const metaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
-      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-    });
-    if (!metaRes.ok) return null;
-    const { url } = await metaRes.json();
+    const audioBytes = await baixarAudioDaMeta(mediaId);
+    if (!audioBytes) return null;
 
-    // 2. Baixa os bytes do áudio
-    const mediaRes = await fetch(url, { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } });
-    if (!mediaRes.ok) return null;
-    const audioBytes = await mediaRes.arrayBuffer();
+    for (const provedor of PROVEDORES_TRANSCRICAO) {
+      const chave = provedor.key();
+      if (!chave) continue;
 
-    // 3. Envia para a API do Whisper (OpenAI)
-    const formData = new FormData();
-    formData.append('file', new Blob([audioBytes], { type: 'audio/ogg' }), 'audio.ogg');
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'pt');
+      try {
+        const formData = new FormData();
+        formData.append('file', new Blob([audioBytes], { type: 'audio/ogg' }), 'audio.ogg');
+        formData.append('model', provedor.model);
+        formData.append('language', 'pt');
+        formData.append('response_format', 'json');
 
-    const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-      body: formData,
-    });
-    if (!whisperRes.ok) return null;
-    const whisperData = await whisperRes.json();
-    return whisperData.text ?? null;
+        const res = await fetch(provedor.url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${chave}` },
+          body: formData,
+        });
+        if (!res.ok) {
+          console.error(`[transcribeAudio] ${provedor.nome} respondeu ${res.status}:`, await res.text());
+          continue;
+        }
+        const bruto = (await res.json())?.text;
+        if (typeof bruto !== 'string' || !bruto.trim()) continue;
+
+        const normalizado = normalizarTextoTranscrito(bruto);
+        console.log(`[transcribeAudio] ${provedor.nome} transcreveu: "${normalizado}"`);
+        return normalizado || null;
+      } catch (err) {
+        console.error(`[transcribeAudio] ${provedor.nome} lançou exceção:`, err);
+      }
+    }
+
+    if (!GROQ_API_KEY && !OPENAI_API_KEY) {
+      console.warn('[transcribeAudio] nenhuma chave de transcrição configurada (GROQ_API_KEY / OPENAI_API_KEY).');
+    }
+    return null;
   } catch (err) {
     console.error('[transcribeAudio] erro:', err);
     return null;
@@ -401,12 +542,24 @@ async function handleAudioMessage(phone: string, mediaId: string): Promise<void>
 
   const texto = await transcribeAudio(mediaId);
   if (!texto) {
-    await sendWhatsappMessage(phone, 'Ainda não consigo transcrever áudio — me conte o lançamento em texto, por favor (ex: "Mercado de 120 reais").');
+    await sendWhatsappMessage(phone, '🎙️ Não consegui entender esse áudio. Tente gravar de novo mais perto do microfone, ou me conte em texto (ex: "Mercado de 120 reais").');
     return;
   }
 
   const tratou = await tratarRespostaPendente(phone, texto);
   if (tratou) return;
+
+  // Sem valor identificado o áudio vira um beco sem saída silencioso: a pessoa
+  // não sabe se o problema foi a transcrição ou a frase. Ecoar o que foi
+  // entendido deixa o erro óbvio ("ouvi 'mercado' mas não ouvi o valor").
+  if (guessAmountFromText(texto) <= 0) {
+    await sendWhatsappMessage(
+      phone,
+      `🎙️ Entendi: "${texto}"\n\nMas não identifiquei o valor. Tente incluir o valor no áudio, tipo: "Mercado, cento e vinte reais".`
+    );
+    return;
+  }
+
   await registrarLancamento(link.user_id, phone, texto);
 }
 

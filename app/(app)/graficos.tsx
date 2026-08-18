@@ -8,6 +8,7 @@ import StackedBarChart, { type BarColumn } from '@/components/StackedBarChart';
 import PieChart, { type PieSlice } from '@/components/PieChart';
 import PrivacyValue from '@/components/PrivacyValue';
 import WalletPickerModal from '@/components/WalletPickerModal';
+import ExportPdfButton from '@/components/ExportPdfButton';
 import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -320,6 +321,15 @@ export default function GraficosScreen() {
             </View>
           </View>
         )}
+
+        <ExportPdfButton
+          ano={new Date().getFullYear()}
+          mes={new Date().getMonth()}
+          transactions={filteredTransactions}
+          carteira={activeWalletName}
+        />
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Modal de Seleção de Carteiras */}

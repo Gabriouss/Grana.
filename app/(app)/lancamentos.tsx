@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
+import ExportPdfButton from '@/components/ExportPdfButton';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
@@ -548,6 +549,18 @@ export default function LancamentosScreen() {
               </View>
             </AppPressable>
           )}
+          ListFooterComponent={
+            monthTransactions.length > 0 ? (
+              <View style={styles.exportWrap}>
+                <ExportPdfButton
+                  ano={selectedYear}
+                  mes={selectedMonth}
+                  transactions={monthTransactions}
+                  carteira={activeWalletName}
+                />
+              </View>
+            ) : null
+          }
         />
       )}
 
@@ -816,6 +829,7 @@ const styles = StyleSheet.create({
   walletPillDot: { width: 8, height: 8, borderRadius: 4 },
   walletPillText: { color: theme.ink, fontSize: 12, fontWeight: '600' },
   listContent: { paddingHorizontal: spacing.xl, paddingBottom: 100 },
+  exportWrap: { marginTop: spacing.xl },
   emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
   rowHover: { backgroundColor: theme.paperRaised },

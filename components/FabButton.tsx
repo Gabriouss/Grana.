@@ -8,11 +8,14 @@ export default function FabButton({
   onAddIncome,
   onAddExpense,
   onAddBill,
+  onScanNota,
 }: {
   onAddIncome: () => void;
   onAddExpense: () => void;
   /** Omitido em telas que não lidam com contas/boletos (ex: Lançamentos) — o item "Boleto" só aparece quando informado. */
   onAddBill?: () => void;
+  /** Abre o leitor de QR Code de nota fiscal. Omitido em telas onde não faz sentido. */
+  onScanNota?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -76,6 +79,19 @@ export default function FabButton({
             >
               <Ionicons name="card-outline" size={18} color={theme.ink} />
               <Text style={styles.menuText}>Boleto</Text>
+            </AppPressable>
+          )}
+
+          {onScanNota && (
+            <AppPressable
+              style={({ hovered }) => [styles.menuItem, hovered && styles.menuItemHover]}
+              onPress={() => {
+                setOpen(false);
+                onScanNota();
+              }}
+            >
+              <Ionicons name="qr-code-outline" size={18} color={theme.accent2} />
+              <Text style={styles.menuText}>Nota fiscal</Text>
             </AppPressable>
           )}
         </Animated.View>

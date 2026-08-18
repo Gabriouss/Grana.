@@ -1,8 +1,10 @@
 import { useEffect, useRef, type ComponentProps, type RefObject } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView, BlurTargetView } from 'expo-blur';
+import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
 import { theme, spacing } from '@/lib/theme';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
@@ -132,8 +134,34 @@ function TabButton({
   );
 }
 
+/**
+ * Roteia os deep links de atalho (grana://add-tx, scan-qr, safe-to-spend) para
+ * a Home, que é quem tem os modais de lançamento e de leitura de nota.
+ * Fica aqui, dentro da área logada, e não no layout raiz: um atalho só faz
+ * sentido depois da sessão existir, e o layout raiz já usa o mesmo canal de
+ * Linking para os links de confirmação de e-mail (parseDeepLink devolve null
+ * para esses, então os dois convivem sem disputar a URL).
+ */
+function useAtalhosDeepLink() {
+  const router = useRouter();
+
+  useEffect(() => {
+    function tratar(url: string | null) {
+      if (!url) return;
+      const acao = parseDeepLink(url);
+      if (!acao) return;
+      router.push({ pathname: '/(app)/', params: acaoParaParams(acao) });
+    }
+
+    Linking.getInitialURL().then(tratar);
+    const sub = Linking.addEventListener('url', ({ url }) => tratar(url));
+    return () => sub.remove();
+  }, [router]);
+}
+
 export default function AppTabsLayout() {
   const blurTarget = useRef<View>(null);
+  useAtalhosDeepLink();
 
   return (
     <WalletProvider>

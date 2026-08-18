@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
@@ -42,6 +42,14 @@ import WalletPickerModal from '@/components/WalletPickerModal';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import CsvImportModal from '@/components/CsvImportModal';
+import QrScannerModal from '@/components/QrScannerModal';
+import MonthlyWrappedModal from '@/components/MonthlyWrappedModal';
+import {
+  gerarMonthlyWrapped,
+  marcarWrappedVisto,
+  wrappedJaVisto,
+  type MonthlyWrapped,
+} from '@/lib/monthly-wrapped';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
 import OnboardingModal from '@/components/OnboardingModal';
 import DatePickerModal from '@/components/DatePickerModal';
@@ -107,6 +115,9 @@ export default function InicioScreen() {
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [voiceText, setVoiceText] = useState<string | undefined>(undefined);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [wrappedOpen, setWrappedOpen] = useState(false);
+  const [wrapped, setWrapped] = useState<MonthlyWrapped | null>(null);
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
@@ -217,6 +228,51 @@ export default function InicioScreen() {
       setRefreshing(false);
     }
   }, [isDemoMode]);
+
+  /* Atalhos por deep link (grana://add-tx, scan-qr, safe-to-spend). O
+     roteamento acontece em app/(app)/_layout.tsx, que empurra a ação para cá
+     como query param; aqui só executamos. Os params são limpos logo em
+     seguida com replace — sem isso, voltar para a Home reabriria o mesmo
+     modal, porque a rota continuaria carregando o parâmetro. */
+  const params = useLocalSearchParams<{
+    acao?: string; amount?: string; desc?: string; type?: string; category?: string;
+  }>();
+
+  useEffect(() => {
+    if (!params.acao) return;
+
+    if (params.acao === 'add-tx') {
+      openTxModal(params.type === 'in' ? 'in' : 'out', params.category);
+      if (params.amount) setTxAmount(params.amount);
+      if (params.desc) setTxDesc(params.desc);
+    } else if (params.acao === 'scan-qr') {
+      setQrModalOpen(true);
+    }
+    // 'safe-to-spend' já cumpriu o papel só de trazer o usuário para a Home,
+    // onde o card "Livre para gastar" mora.
+
+    router.replace('/(app)/');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.acao, params.amount, params.desc, params.type, params.category]);
+
+  /* Retrospectiva do mês fechado: monta a partir dos dados já carregados e
+     abre uma vez só por mês. Espera `loading` terminar para não gerar um
+     "resumo" de listas ainda vazias, e nunca abre no modo de exemplo — um
+     wrapped de dados fictícios não diz nada sobre o mês da pessoa. */
+  useEffect(() => {
+    if (loading || isDemoMode || onboardingOpen) return;
+    const w = gerarMonthlyWrapped(transactions, bills, budgets, lifetimeXp);
+    if (w.vazio) return;
+    let cancelado = false;
+    wrappedJaVisto(w.chave).then((visto) => {
+      if (cancelado || visto) return;
+      setWrapped(w);
+      setWrappedOpen(true);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [loading, isDemoMode, onboardingOpen, transactions, bills, budgets, lifetimeXp]);
 
   // Recalcula o saldo por carteira sempre que as transações mudam — o
   // WalletProvider guarda a lista de carteiras, mas não recalcula saldo
@@ -935,6 +991,13 @@ export default function InicioScreen() {
             <Ionicons name="document-text-outline" size={16} color={theme.ink} />
             <Text style={styles.smartActionText}>Importar CSV</Text>
           </AppPressable>
+          <AppPressable
+            style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+            onPress={() => setQrModalOpen(true)}
+          >
+            <Ionicons name="qr-code-outline" size={16} color={theme.ink} />
+            <Text style={styles.smartActionText}>Escanear nota</Text>
+          </AppPressable>
           <VoiceEntryButton
             label="Lançamento por voz"
             textStyle={styles.smartActionText}
@@ -970,6 +1033,7 @@ export default function InicioScreen() {
         onAddIncome={() => openTxModal('in')}
         onAddExpense={() => openTxModal('out')}
         onAddBill={openBillModal}
+        onScanNota={() => setQrModalOpen(true)}
       />
 
       {/* Sheet: Novo / Editar Lançamento */}
@@ -1277,6 +1341,26 @@ export default function InicioScreen() {
         onSuccess={() => {
           triggerToast('Lançamento reconhecido e salvo');
           setVoiceText(undefined);
+          load();
+        }}
+      />
+
+      {/* Retrospectiva do mês fechado (abre sozinha uma vez por mês) */}
+      <MonthlyWrappedModal
+        visible={wrappedOpen}
+        wrapped={wrapped}
+        onClose={() => {
+          setWrappedOpen(false);
+          if (wrapped) marcarWrappedVisto(wrapped.chave);
+        }}
+      />
+
+      {/* Leitor de QR Code de nota fiscal (NFC-e) */}
+      <QrScannerModal
+        visible={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        onSuccess={() => {
+          triggerToast('Nota fiscal lançada');
           load();
         }}
       />

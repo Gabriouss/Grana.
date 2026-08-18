@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth-context';
@@ -22,6 +23,17 @@ import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
 import OnboardingModal from '@/components/OnboardingModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import Toast from '@/components/Toast';
+
+/* Endereços que app/(app)/_layout.tsx sabe rotear — ver lib/deep-links.ts.
+   O `add-tx` vem com valor e descrição de exemplo já preenchidos: quem cola
+   isso num atalho quase sempre quer trocar os dois, e ver o formato completo
+   ensina mais do que uma URL nua. */
+const ATALHOS = [
+  { titulo: 'Novo gasto pré-preenchido', url: 'grana://add-tx?amount=50,00&desc=Almoco&type=out&category=Alimentação' },
+  { titulo: 'Nova entrada', url: 'grana://add-tx?type=in' },
+  { titulo: 'Escanear nota fiscal', url: 'grana://scan-qr' },
+  { titulo: 'Ver quanto tenho livre', url: 'grana://safe-to-spend' },
+];
 
 export default function PerfilScreen() {
   const { session, signOut } = useSession();
@@ -48,6 +60,7 @@ export default function PerfilScreen() {
   const [toastVisible, setToastVisible] = useState(false);
 
   const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [atalhosOpen, setAtalhosOpen] = useState(false);
   const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
   const [whatsappPhone, setWhatsappPhone] = useState('');
   const [whatsappSaving, setWhatsappSaving] = useState(false);
@@ -323,6 +336,10 @@ export default function PerfilScreen() {
               {whatsappLink?.verified ? 'Vinculado ✓' : whatsappLink ? 'Aguardando código' : 'Vincular'} &gt;
             </Text>
           </AppPressable>
+          <AppPressable style={styles.tappableRow} onPress={() => setAtalhosOpen(true)}>
+            <Text style={styles.rowKey}>Atalhos rápidos</Text>
+            <Text style={styles.rowValue}>Configurar &gt;</Text>
+          </AppPressable>
         </View>
 
         {/* Seção Preferências */}
@@ -545,6 +562,49 @@ export default function PerfilScreen() {
         </View>
       </Modal>
 
+      {/* Guia de atalhos rápidos (deep links) */}
+      <Modal visible={atalhosOpen} animationType="fade" transparent onRequestClose={() => setAtalhosOpen(false)}>
+        <View style={styles.reauthScrim}>
+          <View style={styles.reauthCard}>
+            <Text style={styles.reauthTitle}>Atalhos rápidos</Text>
+            <Text style={styles.reauthText}>
+              O Grana. responde a endereços {'grana://'} — dá para abrir uma ação direto da tela de
+              início do celular, sem passar pelo app.
+            </Text>
+
+            {ATALHOS.map((a) => (
+              <AppPressable
+                key={a.url}
+                style={styles.atalhoLinha}
+                onPress={() => {
+                  Clipboard.setStringAsync(a.url);
+                  triggerToast('Endereço copiado');
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.atalhoTitulo}>{a.titulo}</Text>
+                  <Text style={styles.atalhoUrl} numberOfLines={1}>{a.url}</Text>
+                </View>
+                <Ionicons name="copy-outline" size={16} color={theme.inkFaint} />
+              </AppPressable>
+            ))}
+
+            <Text style={styles.reauthText}>
+              {Platform.OS === 'ios'
+                ? 'No iPhone: app Atalhos → + → Adicionar ação → "Abrir URL" → cole o endereço → Adicionar à Tela de Início. Dá para disparar por automação também (ex: ao aproximar do Apple Pay).'
+                : 'No Android: qualquer app de atalhos que abra URLs (ou o próprio navegador) consegue disparar esses endereços. Cole em um atalho na tela inicial.'}
+            </Text>
+
+            <AppPressable
+              style={({ hovered }) => [styles.reauthCancel, hovered && { opacity: 0.88 }]}
+              onPress={() => setAtalhosOpen(false)}
+            >
+              <Text style={styles.reauthCancelText}>Fechar</Text>
+            </AppPressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Vínculo de WhatsApp */}
       <Modal visible={whatsappOpen} animationType="fade" transparent onRequestClose={() => setWhatsappOpen(false)}>
         <View style={styles.reauthScrim}>
@@ -662,6 +722,19 @@ const styles = StyleSheet.create({
   reauthDangerText: { color: theme.paper, fontSize: 15, fontWeight: '600' },
   reauthCancel: { paddingVertical: 12, alignItems: 'center' },
   reauthCancelText: { color: theme.inkSoft, fontSize: 14 },
+  atalhoLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: theme.paper,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+  },
+  atalhoTitulo: { color: theme.ink, fontSize: 13, fontWeight: '500' },
+  atalhoUrl: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
   container: { flex: 1, backgroundColor: theme.paper },
   content: { padding: spacing.xl, gap: spacing.lg, paddingBottom: 60 },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },

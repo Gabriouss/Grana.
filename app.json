@@ -2,7 +2,7 @@
   "expo": {
     "name": "Grana.",
     "slug": "grana-app",
-    "scheme": "granaapp",
+    "scheme": ["granaapp", "grana"],
     "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +19,9 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["SCHEDULE_EXACT_ALARM"]
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -49,12 +51,19 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que o Grana. use a câmera para ler o QR Code de notas fiscais."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#052229",
           "icon": "./assets/android-icon-monochrome.png"
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "router": {},
