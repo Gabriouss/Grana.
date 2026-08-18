@@ -37,6 +37,8 @@ export const LIMITS = {
    * escrita em massa no banco e um array enorme em memória.
    */
   csvRows: 500,
+  /** goals.title */
+  goalTitle: 100,
 };
 
 /**

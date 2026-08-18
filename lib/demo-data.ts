@@ -1,4 +1,4 @@
-import type { Bill, Budget, Transaction } from './types';
+import type { Bill, Budget, CreditCard, Goal, Transaction } from './types';
 
 export const CAT_COLORS = [
   /* paleta harmoniosa "Refreshing Aqua Tones" */
@@ -231,3 +231,58 @@ export const DEMO_BUDGETS: Budget[] = [
   { user_id: 'demo', category: 'Transporte', amount: 350, color: '#6b9dc2', updated_at: new Date().toISOString() },
   { user_id: 'demo', category: 'Lazer', amount: 250, color: '#c66f8e', updated_at: new Date().toISOString() },
 ];
+
+export const DEMO_GOALS: Goal[] = [
+  {
+    id: 'demo-goal-1',
+    user_id: 'demo',
+    title: 'Reserva de emergência',
+    target_amount: 10000,
+    current_amount: 4200,
+    color: '#1fa98d',
+    icon: 'shield-checkmark',
+    deadline: null,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-goal-2',
+    user_id: 'demo',
+    title: 'Viagem para a praia',
+    target_amount: 3000,
+    current_amount: 1150,
+    color: '#12a8de',
+    icon: 'airplane',
+    deadline: '2026-12-20',
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const DEMO_CREDIT_CARDS: CreditCard[] = [
+  {
+    id: 'demo-card-1',
+    user_id: 'demo',
+    name: 'Nubank Ultravioleta',
+    bank: 'nubank',
+    color: '#820ad1',
+    last_digits: '4092',
+    limit_amount: 8500,
+    closing_day: 18,
+    due_day: 25,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-card-2',
+    user_id: 'demo',
+    name: 'Itaú Personalité Black',
+    bank: 'itau',
+    color: '#ec7000',
+    last_digits: '8831',
+    limit_amount: 15000,
+    closing_day: 5,
+    due_day: 12,
+    created_at: new Date().toISOString(),
+  },
+];
+
+/** XP vitalício de exemplo — nível 5 (elo Construtor), o suficiente para mostrar o pill de nível sem já estar num elo avançado. */
+export const DEMO_LIFETIME_XP = 850;

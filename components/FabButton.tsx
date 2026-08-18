@@ -97,7 +97,11 @@ const styles = StyleSheet.create({
   fabContainer: {
     position: 'absolute',
     right: 20,
-    bottom: 24,
+    /* A barra de abas agora flutua (marginBottom: 30, height: 68 em
+       app/(app)/_layout.tsx, topo da barra ~98px do fundo) — o FAB precisa
+       ficar acima dela, não na mesma faixa, senão os dois se sobrepõem no
+       canto inferior direito. */
+    bottom: 112,
     alignItems: 'flex-end',
     zIndex: 40,
   },

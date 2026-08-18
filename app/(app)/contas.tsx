@@ -476,7 +476,9 @@ const styles = StyleSheet.create({
   // pillLate usa fundo claro (theme.ink) — precisa de texto escuro em vez do
   // pillText claro padrão, senão fica ilegível (claro sobre quase-branco).
   pillLateText: { color: theme.paper, fontWeight: '700' },
-  fab: { position: 'absolute', right: spacing.xl, bottom: 24, width: 52, height: 52, borderRadius: 26, backgroundColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
+  /* bottom:112 pra ficar acima da barra flutuante (app/(app)/_layout.tsx) —
+     mesma posição do FabButton usado nas outras telas (ver components/FabButton.tsx). */
+  fab: { position: 'absolute', right: spacing.xl, bottom: 112, width: 52, height: 52, borderRadius: 26, backgroundColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
   fabHover: { opacity: 0.85 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: 17 },

@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { CATEGORIES } from './types';
 import { addMonthsToISO } from './format';
-import type { Bill, BillStatus, Budget, Category, CategoryType, Transaction, TxType, WhatsappLink } from './types';
+import type { Bill, BillStatus, Budget, Category, CategoryType, CreditCard, Transaction, TxType, WhatsappLink } from './types';
 
 async function currentUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
@@ -29,6 +29,11 @@ export async function addTransaction(input: {
   color: string;
   occurred_on: string;
   recurring?: boolean;
+  payment_method?: string;
+  bank?: string;
+  card_id?: string | null;
+  installment_current?: number;
+  installment_total?: number;
 }): Promise<Transaction> {
   const user_id = await currentUserId();
   const { data, error } = await supabase
@@ -38,6 +43,46 @@ export async function addTransaction(input: {
     .single();
   if (error) throw error;
   return data;
+}
+
+/* ---- cartões de crédito ---- */
+
+export async function fetchCreditCards(): Promise<CreditCard[]> {
+  try {
+    const { data, error } = await supabase
+      .from('credit_cards')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addCreditCard(input: {
+  name: string;
+  bank: string;
+  color: string;
+  last_digits?: string;
+  limit_amount: number;
+  closing_day: number;
+  due_day: number;
+}): Promise<CreditCard> {
+  const user_id = await currentUserId();
+  const { data, error } = await supabase
+    .from('credit_cards')
+    .insert({ ...input, user_id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteCreditCard(id: string): Promise<void> {
+  const user_id = await currentUserId();
+  const { error } = await supabase.from('credit_cards').delete().eq('id', id).eq('user_id', user_id);
+  if (error) throw error;
 }
 
 /* O filtro por user_id é redundante com a RLS — e é de propósito. Se uma
@@ -91,6 +136,10 @@ export async function addInstallmentPurchase(input: {
   color: string;
   occurred_on: string;
   installments: number;
+  /** Compra no cartão (aba Crédito) — se ausente, é uma parcela "solta" (cartão de outra loja, carnê, etc.). */
+  payment_method?: string;
+  bank?: string;
+  card_id?: string | null;
 }): Promise<Transaction[]> {
   const user_id = await currentUserId();
   const n = Math.max(2, Math.round(input.installments));
@@ -108,16 +157,28 @@ export async function addInstallmentPurchase(input: {
     const description = `${baseDesc} (${i + 1}/${n})`;
 
     if (i === 0) {
-      const first = await addTransaction({
-        type: 'out',
-        description,
-        amount,
-        category: input.category,
-        color: input.color,
-        occurred_on,
-      });
-      parentId = first.id;
-      rows.push(first);
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert({
+          user_id,
+          type: 'out',
+          description,
+          amount,
+          category: input.category,
+          color: input.color,
+          occurred_on,
+          recurring: false,
+          payment_method: input.payment_method,
+          bank: input.bank,
+          card_id: input.card_id,
+          installment_current: i + 1,
+          installment_total: n,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      parentId = data.id;
+      rows.push(data);
     } else {
       const { data, error } = await supabase
         .from('transactions')
@@ -131,6 +192,11 @@ export async function addInstallmentPurchase(input: {
           occurred_on,
           recurring: false,
           parent_id: parentId,
+          payment_method: input.payment_method,
+          bank: input.bank,
+          card_id: input.card_id,
+          installment_current: i + 1,
+          installment_total: n,
         })
         .select()
         .single();
@@ -296,10 +362,16 @@ export async function fetchCategories(): Promise<Category[]> {
  * contar linhas faria elas reaparecerem sozinhas toda vez que a lista
  * ficasse vazia.
  */
+/**
+ * Roda sempre, mesmo para quem já tinha sido semeado antes — sem o antigo
+ * corte por `categorias_semeadas`, uma categoria padrão nova adicionada a
+ * CATEGORIES (ex: "Investimentos") nunca chegaria em quem já tinha aberto o
+ * gerenciador de categorias uma vez. É seguro repetir porque o upsert com
+ * `ignoreDuplicates` já não faz nada com as 8 categorias que a pessoa já tem.
+ */
 export async function seedDefaultCategories(): Promise<void> {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData.user) return;
-  if (userData.user.user_metadata?.categorias_semeadas) return;
 
   const user_id = userData.user.id;
   const rows = CATEGORIES.map((c) => ({
@@ -314,7 +386,6 @@ export async function seedDefaultCategories(): Promise<void> {
   // nome (ex: criada manualmente antes desta migração), pula em vez de falhar
   // o lote inteiro por causa da constraint unique (user_id, name).
   await supabase.from('categories').upsert(rows, { onConflict: 'user_id,name', ignoreDuplicates: true });
-  await supabase.auth.updateUser({ data: { categorias_semeadas: true } });
 }
 
 export async function addCategory(input: { name: string; color: string; type?: CategoryType }): Promise<Category> {
@@ -458,6 +529,10 @@ export async function deleteUserAccount(): Promise<void> {
     await supabase.from('budgets').delete().eq('user_id', user_id);
     await supabase.from('categories').delete().eq('user_id', user_id);
     await supabase.from('whatsapp_links').delete().eq('user_id', user_id);
+    await supabase.from('whatsapp_pending').delete().eq('user_id', user_id);
+    await supabase.from('goals').delete().eq('user_id', user_id);
+    await supabase.from('user_gamification').delete().eq('user_id', user_id);
+    await supabase.from('credit_cards').delete().eq('user_id', user_id);
   }
 
   // 2. Encerrar sessão localmente

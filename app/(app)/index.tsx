@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -15,18 +16,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
+import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
+import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
+import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals } from '@/lib/goals';
+import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
+import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO } from '@/lib/format';
 import { hapticDelete } from '@/lib/haptics';
-import { carregarPerfil, nomeDeExibicao } from '@/lib/profile';
+import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
 import { theme, radius, spacing, fonts } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { useSession } from '@/lib/auth-context';
-import { DEMO_BILLS, DEMO_BUDGETS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
-import type { Bill, Budget, Transaction, TxType } from '@/lib/types';
+import { DEMO_BILLS, DEMO_BUDGETS, DEMO_GOALS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@/lib/demo-data';
+import type { Bill, Budget, Goal, Transaction, TxType } from '@/lib/types';
 import PieChart, { type PieSlice } from '@/components/PieChart';
 import FlowChart, { ChartPeriod } from '@/components/FlowChart';
 import CategoryChips from '@/components/CategoryChips';
@@ -45,11 +50,15 @@ import FadeIn from '@/components/FadeIn';
 import Sheet from '@/components/Sheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import MonthSelector from '@/components/MonthSelector';
-import StreakBanner from '@/components/StreakBanner';
-import GamificationModal from '@/components/GamificationModal';
-import { getGamificationState } from '@/lib/gamification';
+import GoalsCarousel from '@/components/GoalsCarousel';
+import SafeToSpendCard from '@/components/SafeToSpendCard';
+import FutureTimelineChart from '@/components/FutureTimelineChart';
+import CreditSummaryCard from '@/components/CreditSummaryCard';
+import HomeCustomizerModal from '@/components/HomeCustomizerModal';
 import { isSameMonth } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
+import { DEMO_CREDIT_CARDS } from '@/lib/demo-data';
+import type { CreditCard } from '@/lib/types';
 
 
 type ChartView = 'in' | 'out' | 'both';
@@ -65,6 +74,13 @@ export default function InicioScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [lifetimeXp, setLifetimeXp] = useState(0);
+  const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
+  const [homeLayout, setHomeLayout] = useState<HomeBlockConfig[]>([]);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nomeExibicao, setNomeExibicao] = useState('');
   const [chartView, setChartView] = useState<ChartView>('in');
@@ -88,7 +104,6 @@ export default function InicioScreen() {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
-  const [gamificationModalOpen, setGamificationModalOpen] = useState(false);
 
   // New Transaction Sheet
   const [txSheetOpen, setTxSheetOpen] = useState(false);
@@ -152,6 +167,9 @@ export default function InicioScreen() {
       setTransactions(DEMO_TRANSACTIONS);
       setBills(DEMO_BILLS);
       setBudgets(DEMO_BUDGETS);
+      setGoals(DEMO_GOALS);
+      setLifetimeXp(DEMO_LIFETIME_XP);
+      setCreditCards(DEMO_CREDIT_CARDS);
       setError(null);
       setLoading(false);
       setRefreshing(false);
@@ -159,11 +177,34 @@ export default function InicioScreen() {
     }
 
     try {
-      const [tx, b, bg] = await Promise.all([fetchTransactions(), fetchBills(), fetchBudgets()]);
+      // Cofrinhos e XP vitalício (goals/user_gamification) são tabelas mais
+      // novas que podem ainda não existir num banco que não rodou o SQL
+      // mais recente. Buscados fora do Promise.all principal para que uma
+      // falha ali (tabela ausente, RLS não aplicada) nunca derrube os dados
+      // já estabelecidos — sem isso, um `throw` num `fetchGoals` zerava a
+      // Home inteira, inclusive lançamentos que já estavam funcionando.
+      const [tx, b, bg, cc] = await Promise.all([
+        fetchTransactions(),
+        fetchBills(),
+        fetchBudgets(),
+        fetchCreditCards(),
+      ]);
       setTransactions(tx);
       setBills(b);
       setBudgets(bg);
+      setCreditCards(cc);
       setError(null);
+
+      try {
+        setGoals(await fetchGoals());
+      } catch {
+        setGoals([]);
+      }
+      try {
+        setLifetimeXp((await fetchGamification()).lifetime_xp);
+      } catch {
+        setLifetimeXp(0);
+      }
     } catch (e: any) {
       setError(e.message ?? 'Erro ao carregar dados');
     } finally {
@@ -179,7 +220,12 @@ export default function InicioScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-      carregarPerfil().then((p) => setNomeExibicao(nomeDeExibicao(p)));
+      carregarPerfil().then((p) => {
+        setPerfil(p);
+        setNomeExibicao(nomeDeExibicao(p));
+      });
+      carregarDiagnostico().then(setDiagnostico);
+      carregarLayoutHome().then(setHomeLayout);
       pieAnim.setValue(0);
       Animated.spring(pieAnim, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 7 }).start();
     }, [load])
@@ -192,6 +238,13 @@ export default function InicioScreen() {
       </View>
     );
   }
+
+  const safeToSpend = calcularSafeToSpend(transactions, bills, goals);
+  const comprometimentoFuturo = projetarComprometimentoFuturo(transactions, bills);
+  const sugestaoEvolucao = diagnostico
+    ? sugerirEvolucaoArquetipo(transactions, bills, budgets, diagnostico.arquetipo.id)
+    : null;
+  const arquetipoSugerido = sugestaoEvolucao?.mudou ? ARQUETIPOS[sugestaoEvolucao.sugeridoId] : null;
 
   // Transações estritamente do mês selecionado
   const monthTransactions = transactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
@@ -475,6 +528,257 @@ export default function InicioScreen() {
     }
   }
 
+  async function handleCreateGoal(input: { title: string; target_amount: number; color: string; icon: string; deadline: string | null }) {
+    if (isDemoMode) {
+      setGoals((prev) => [
+        ...prev,
+        {
+          id: `demo-goal-${Date.now()}`,
+          user_id: 'demo',
+          current_amount: 0,
+          created_at: new Date().toISOString(),
+          ...input,
+        },
+      ]);
+      triggerToast('Meta criada (exemplo)');
+      return;
+    }
+    await createGoal(input);
+    triggerToast('Meta criada');
+    load();
+  }
+
+  async function handleDepositGoal(goal: Goal, delta: number) {
+    if (isDemoMode) {
+      setGoals((prev) =>
+        prev.map((g) => (g.id === goal.id ? { ...g, current_amount: Math.max(0, Number(g.current_amount) + delta) } : g))
+      );
+      triggerToast(delta >= 0 ? 'Guardado no cofrinho (exemplo)' : 'Resgatado do cofrinho (exemplo)');
+      return;
+    }
+    await depositToGoal(goal, delta);
+    triggerToast(delta >= 0 ? 'Guardado no cofrinho' : 'Resgatado do cofrinho');
+    load();
+  }
+
+  function handleLayoutChange(novo: HomeBlockConfig[]) {
+    setHomeLayout(novo);
+    salvarLayoutHome(novo);
+  }
+
+  async function handleDeleteGoal(goal: Goal) {
+    if (isDemoMode) {
+      setGoals((prev) => prev.filter((g) => g.id !== goal.id));
+      triggerToast('Meta removida (exemplo)');
+      return;
+    }
+    await deleteGoal(goal.id);
+    triggerToast('Meta removida');
+    load();
+  }
+
+  /* Conteúdo de cada bloco personalizável da Home (lib/home-layout.ts) —
+     um objeto em vez de um switch porque a ordem de exibição já vem pronta
+     de `homeLayout`; este objeto só precisa saber traduzir chave -> JSX. */
+  const HOME_BLOCOS: Record<HomeBlockConfig['key'], React.ReactNode> = {
+    saldo: <SafeToSpendCard data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />,
+    cofrinhos: (
+      <GoalsCarousel
+        goals={goals}
+        lifetimeXp={lifetimeXp}
+        onCreateGoal={handleCreateGoal}
+        onDeposit={handleDepositGoal}
+        onDeleteGoal={handleDeleteGoal}
+      />
+    ),
+    atalhos: (
+      <>
+        <Text style={styles.sectionLabel}>Lançamento rápido</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickChipsRow}>
+          {quickCategories.map((c) => (
+            <AppPressable
+              key={c.name}
+              style={({ hovered }) => [styles.quickChip, hovered && styles.quickChipHover]}
+              onPress={() => openTxModal('out', c.name)}
+            >
+              <View style={[styles.dot, { backgroundColor: c.color }]} />
+              <Text style={styles.quickChipText}>{c.name}</Text>
+            </AppPressable>
+          ))}
+        </ScrollView>
+      </>
+    ),
+    fluxo: (
+      <View style={styles.card}>
+        <View style={styles.cardHeadRow}>
+          <Text style={styles.cardLabel}>Fluxo financeiro</Text>
+          <PrivacyValue>
+            <Text style={[styles.flowValue, { color: flowSummary.color }]}>{flowSummary.text}</Text>
+          </PrivacyValue>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <SegmentedTabs
+            options={[
+              { key: 'month', label: 'Mês' },
+              { key: '7days', label: '7 Dias' },
+              { key: 'year', label: 'Ano' },
+            ]}
+            value={chartPeriod}
+            onChange={(p) => setChartPeriod(p as ChartPeriod)}
+          />
+
+          <SegmentedTabs
+            options={[
+              { key: 'in', label: 'Entradas' },
+              { key: 'out', label: 'Saídas' },
+              { key: 'both', label: 'Ambos' },
+            ]}
+            value={chartView}
+            onChange={(v) => setChartView(v as ChartView)}
+          />
+        </View>
+
+        <FlowChart
+          transactions={
+            chartView === 'in'
+              ? transactions.filter((t) => t.type === 'in')
+              : chartView === 'out'
+              ? transactions.filter((t) => t.type === 'out')
+              : transactions
+          }
+          period={chartPeriod}
+          year={selectedYear}
+          month={selectedMonth}
+        />
+      </View>
+    ),
+    categoria: (
+      <View style={styles.card}>
+        <View style={styles.cardHeadRow}>
+          <Text style={styles.cardLabel}>Gastos por categoria</Text>
+          <PrivacyValue>
+            <Text style={[styles.flowValue, { color: theme.down }]}>{`− R$ ${formatMoney(totalOut)}`}</Text>
+          </PrivacyValue>
+        </View>
+
+        {pieData.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
+        ) : (
+          <>
+            <Animated.View
+              style={[
+                styles.pieWrap,
+                {
+                  opacity: pieAnim,
+                  transform: [{ scale: pieAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }],
+                },
+              ]}
+            >
+              <PieChart data={pieData} />
+            </Animated.View>
+            <View style={styles.chipWrap}>
+              {pieData.map((seg) => (
+                <View key={seg.name} style={styles.legendChip}>
+                  <View style={[styles.dot, { backgroundColor: seg.color }]} />
+                  <Text style={styles.categoryName}>{seg.name}</Text>
+                  <Text style={styles.categoryAmount}>{seg.value}%</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+    ),
+    orcamento: (
+      <View style={styles.card}>
+        <View style={styles.cardHeadRow}>
+          <Text style={styles.cardLabel}>Orçamento do mês</Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <AppPressable onPress={() => setTemplatesModalOpen(true)}>
+              <Text style={styles.templateBudgetText}>Templates</Text>
+            </AppPressable>
+            <AppPressable onPress={() => openBudgetModal()}>
+              <Text style={styles.addBudgetText}>+ Definir</Text>
+            </AppPressable>
+          </View>
+        </View>
+        {budgets.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhum orçamento definido. Toque em "+ Definir" ou escolha "Templates".</Text>
+        ) : (
+          budgets.map((b) => {
+            const spent = byCategory[b.category]?.amount ?? 0;
+            const pct = Math.min((spent / Number(b.amount)) * 100, 100);
+            const over = spent > Number(b.amount);
+            const spentFormatted = `R$ ${formatMoney(spent)}`;
+            const limitFormatted = `R$ ${formatMoney(Number(b.amount))}`;
+            return (
+              <AppPressable
+                key={b.category}
+                style={({ hovered }) => [styles.budgetRow, hovered && styles.budgetRowHover]}
+                onPress={() => openBudgetModal(b)}
+              >
+                <View style={styles.budgetTopLine}>
+                  <View style={styles.categoryLeft}>
+                    <View style={[styles.dot, { backgroundColor: b.color }]} />
+                    <Text style={styles.categoryName}>{b.category}</Text>
+                  </View>
+                  <View style={styles.budgetAmountRow}>
+                    <PrivacyValue>
+                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{spentFormatted}</Text>
+                    </PrivacyValue>
+                    <Text style={[styles.categoryAmount, over && { color: theme.ink }]}> de </Text>
+                    <PrivacyValue>
+                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{limitFormatted}</Text>
+                    </PrivacyValue>
+                    {over && <Text style={[styles.categoryAmount, { color: theme.ink }]}> · excedido</Text>}
+                  </View>
+                </View>
+                <View style={styles.budgetTrack}>
+                  <View style={[styles.budgetFill, { width: `${pct}%`, backgroundColor: b.color }]} />
+                </View>
+              </AppPressable>
+            );
+          })
+        )}
+      </View>
+    ),
+    credito: (
+      <CreditSummaryCard
+        cards={creditCards}
+        transactions={transactions}
+        year={selectedYear}
+        month={selectedMonth}
+        onPress={() => router.push('/credito')}
+      />
+    ),
+    boletos: (
+      <View style={{ gap: spacing.sm }}>
+        <Text style={styles.sectionLabel}>Vence esta semana</Text>
+        {dueThisWeek.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhuma conta a vencer.</Text>
+        ) : (
+          dueThisWeek.map((b) => (
+            <View key={b.id} style={styles.dueRow}>
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.dueName}>{b.description}</Text>
+                  {b.recurring && (
+                    <Ionicons name="repeat-outline" size={11} color={theme.inkFaint} style={{ marginLeft: 4 }} />
+                  )}
+                </View>
+                <Text style={styles.dueDate}>vence {formatDateLabel(b.due_date)}</Text>
+              </View>
+              <PrivacyValue>
+                <Text style={styles.dueAmount}>{`R$ ${formatMoney(Number(b.amount))}`}</Text>
+              </PrivacyValue>
+            </View>
+          ))
+        )}
+      </View>
+    ),
+  };
+
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
       {/* Fora do ScrollView de propósito: a marca fica fixa na tela em vez de
@@ -489,16 +793,25 @@ export default function InicioScreen() {
             </View>
             <Text style={styles.title} numberOfLines={1}>{saudacaoDoDia(nomeExibicao)}</Text>
           </View>
-          <AppPressable
-            onPress={() => {
-              toggle();
-              triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
-            }}
-            hitSlop={10}
-            style={styles.privacyBtn}
-          >
-            <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.inkFaint} />
-          </AppPressable>
+          <View style={styles.headerActions}>
+            <AppPressable
+              onPress={() => {
+                toggle();
+                triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
+              }}
+              hitSlop={10}
+              style={styles.privacyBtn}
+            >
+              <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.inkFaint} />
+            </AppPressable>
+            <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn}>
+              {perfil?.fotoUrl ? (
+                <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} />
+              ) : (
+                <Ionicons name="person-circle-outline" size={30} color={theme.inkFaint} />
+              )}
+            </AppPressable>
+          </View>
         </View>
       </View>
 
@@ -519,36 +832,10 @@ export default function InicioScreen() {
           />
         </FadeIn>
 
-        {/* Banner de Ofensiva & Score de Maestria */}
-        <FadeIn delay={45}>
-          <StreakBanner
-            state={getGamificationState(transactions, bills, budgets)}
-            onPress={() => setGamificationModalOpen(true)}
-          />
-        </FadeIn>
-
         {error && <Text style={styles.errorText}>{error}</Text>}
 
-
-        {/* Atalhos Rápidos por Categoria */}
-        <FadeIn delay={60} style={styles.quickChipsSection}>
-          <Text style={styles.sectionLabel}>Lançamento rápido</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickChipsRow}>
-            {quickCategories.map((c) => (
-              <AppPressable
-                key={c.name}
-                style={({ hovered }) => [styles.quickChip, hovered && styles.quickChipHover]}
-                onPress={() => openTxModal('out', c.name)}
-              >
-                <View style={[styles.dot, { backgroundColor: c.color }]} />
-                <Text style={styles.quickChipText}>{c.name}</Text>
-              </AppPressable>
-            ))}
-          </ScrollView>
-        </FadeIn>
-
         {/* Ações Inteligentes: Colar Comprovante & Importar CSV */}
-        <FadeIn delay={100} style={styles.smartActionsRow}>
+        <FadeIn delay={40} style={styles.smartActionsRow}>
           <AppPressable
             style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
             onPress={() => setPasteModalOpen(true)}
@@ -575,140 +862,21 @@ export default function InicioScreen() {
           />
         </FadeIn>
 
-        {/* Card Fluxo Financeiro com Seletor de Período */}
-        <FadeIn delay={140} style={styles.card}>
+        {/* Blocos personalizáveis da Home — ordem e visibilidade vêm de
+            lib/home-layout.ts, editáveis pelo botão "Personalizar Início"
+            no rodapé. Ver HOME_BLOCOS logo acima do return(). */}
+        {homeLayout.filter((b) => b.visible).map((b) => (
+          <FadeIn key={b.key} delay={60} style={b.key === 'atalhos' ? styles.quickChipsSection : undefined}>
+            {HOME_BLOCOS[b.key]}
+          </FadeIn>
+        ))}
+
+        {/* Card Comprometimento Futuro — próximos 6 meses */}
+        <FadeIn delay={240} style={styles.card}>
           <View style={styles.cardHeadRow}>
-            <Text style={styles.cardLabel}>Fluxo financeiro</Text>
-            <PrivacyValue>
-              <Text style={[styles.flowValue, { color: flowSummary.color }]}>{flowSummary.text}</Text>
-            </PrivacyValue>
+            <Text style={styles.cardLabel}>Comprometimento futuro</Text>
           </View>
-
-          <View style={{ gap: 8 }}>
-            <SegmentedTabs
-              options={[
-                { key: 'month', label: 'Mês' },
-                { key: '7days', label: '7 Dias' },
-                { key: 'year', label: 'Ano' },
-              ]}
-              value={chartPeriod}
-              onChange={(p) => setChartPeriod(p as ChartPeriod)}
-            />
-
-            <SegmentedTabs
-              options={[
-                { key: 'in', label: 'Entradas' },
-                { key: 'out', label: 'Saídas' },
-                { key: 'both', label: 'Ambos' },
-              ]}
-              value={chartView}
-              onChange={(v) => setChartView(v as ChartView)}
-            />
-          </View>
-
-          <FlowChart
-            transactions={
-              chartView === 'in'
-                ? transactions.filter((t) => t.type === 'in')
-                : chartView === 'out'
-                ? transactions.filter((t) => t.type === 'out')
-                : transactions
-            }
-            period={chartPeriod}
-            year={selectedYear}
-            month={selectedMonth}
-          />
-        </FadeIn>
-
-
-        {/* Card Gastos por Categoria (Gráfico de Rosca Explodido) */}
-        <FadeIn delay={180} style={styles.card}>
-          <View style={styles.cardHeadRow}>
-            <Text style={styles.cardLabel}>Gastos por categoria</Text>
-            <PrivacyValue>
-              <Text style={[styles.flowValue, { color: theme.down }]}>{`− R$ ${formatMoney(totalOut)}`}</Text>
-            </PrivacyValue>
-          </View>
-
-          {pieData.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
-          ) : (
-            <>
-              <Animated.View
-                style={[
-                  styles.pieWrap,
-                  {
-                    opacity: pieAnim,
-                    transform: [{ scale: pieAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }],
-                  },
-                ]}
-              >
-                <PieChart data={pieData} />
-              </Animated.View>
-              <View style={styles.chipWrap}>
-                {pieData.map((seg) => (
-                  <View key={seg.name} style={styles.legendChip}>
-                    <View style={[styles.dot, { backgroundColor: seg.color }]} />
-                    <Text style={styles.categoryName}>{seg.name}</Text>
-                    <Text style={styles.categoryAmount}>{seg.value}%</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-        </FadeIn>
-
-        {/* Card Orçamento do Mês com Metas & Templates */}
-        <FadeIn delay={220} style={styles.card}>
-          <View style={styles.cardHeadRow}>
-            <Text style={styles.cardLabel}>Orçamento do mês</Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <AppPressable onPress={() => setTemplatesModalOpen(true)}>
-                <Text style={styles.templateBudgetText}>Templates</Text>
-              </AppPressable>
-              <AppPressable onPress={() => openBudgetModal()}>
-                <Text style={styles.addBudgetText}>+ Definir</Text>
-              </AppPressable>
-            </View>
-          </View>
-          {budgets.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhum orçamento definido. Toque em "+ Definir" ou escolha "Templates".</Text>
-          ) : (
-            budgets.map((b) => {
-              const spent = byCategory[b.category]?.amount ?? 0;
-              const pct = Math.min((spent / Number(b.amount)) * 100, 100);
-              const over = spent > Number(b.amount);
-              const spentFormatted = `R$ ${formatMoney(spent)}`;
-              const limitFormatted = `R$ ${formatMoney(Number(b.amount))}`;
-              return (
-                <AppPressable
-                  key={b.category}
-                  style={({ hovered }) => [styles.budgetRow, hovered && styles.budgetRowHover]}
-                  onPress={() => openBudgetModal(b)}
-                >
-                  <View style={styles.budgetTopLine}>
-                    <View style={styles.categoryLeft}>
-                      <View style={[styles.dot, { backgroundColor: b.color }]} />
-                      <Text style={styles.categoryName}>{b.category}</Text>
-                    </View>
-                    <View style={styles.budgetAmountRow}>
-                      <PrivacyValue>
-                        <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{spentFormatted}</Text>
-                      </PrivacyValue>
-                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}> de </Text>
-                      <PrivacyValue>
-                        <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{limitFormatted}</Text>
-                      </PrivacyValue>
-                      {over && <Text style={[styles.categoryAmount, { color: theme.ink }]}> · excedido</Text>}
-                    </View>
-                  </View>
-                  <View style={styles.budgetTrack}>
-                    <View style={[styles.budgetFill, { width: `${pct}%`, backgroundColor: b.color }]} />
-                  </View>
-                </AppPressable>
-              );
-            })
-          )}
+          <FutureTimelineChart meses={comprometimentoFuturo} />
         </FadeIn>
 
         {/* Últimos lançamentos — toque para editar, segure para excluir */}
@@ -757,30 +925,13 @@ export default function InicioScreen() {
           ))
         )}
 
-        {/* Vence Esta Semana */}
-        <Text style={styles.sectionLabel}>Vence esta semana</Text>
-        {dueThisWeek.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhuma conta a vencer.</Text>
-        ) : (
-          dueThisWeek.map((b) => (
-            <View key={b.id} style={styles.dueRow}>
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.dueName}>{b.description}</Text>
-                  {b.recurring && (
-                    <Ionicons name="repeat-outline" size={11} color={theme.inkFaint} style={{ marginLeft: 4 }} />
-                  )}
-                </View>
-                <Text style={styles.dueDate}>vence {formatDateLabel(b.due_date)}</Text>
-              </View>
-              <PrivacyValue>
-                <Text style={styles.dueAmount}>{`R$ ${formatMoney(Number(b.amount))}`}</Text>
-              </PrivacyValue>
-            </View>
-          ))
-        )}
+        {/* Personalizar Início */}
+        <AppPressable style={styles.customizeBtn} onPress={() => setCustomizerOpen(true)}>
+          <Ionicons name="options-outline" size={14} color={theme.inkSoft} />
+          <Text style={styles.customizeBtnText}>Personalizar Início</Text>
+        </AppPressable>
 
-        <View style={{ height: 60 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Floating Action Button */}
@@ -1133,11 +1284,12 @@ export default function InicioScreen() {
         }}
       />
 
-      {/* Gamification Mastery & Badges Modal */}
-      <GamificationModal
-        visible={gamificationModalOpen}
-        onClose={() => setGamificationModalOpen(false)}
-        state={getGamificationState(transactions, bills, budgets)}
+      {/* Personalizar Início */}
+      <HomeCustomizerModal
+        visible={customizerOpen}
+        config={homeLayout}
+        onChange={handleLayoutChange}
+        onClose={() => setCustomizerOpen(false)}
       />
 
       {/* Floating Animated Toast */}
@@ -1171,7 +1323,19 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   title: { color: theme.ink, fontFamily: fonts.light, fontSize: 22, marginTop: 2, marginBottom: spacing.sm },
+  customizeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    marginTop: spacing.sm,
+  },
+  customizeBtnText: { color: theme.inkSoft, fontSize: 12 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   privacyBtn: { padding: 4 },
+  avatarBtn: { padding: 2 },
+  avatarImg: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: theme.rule },
   errorText: { color: '#e08a7d', fontSize: 12.5 },
   quickChipsSection: { gap: 6 },
   quickChipsRow: { gap: 8, paddingVertical: 4 },

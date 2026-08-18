@@ -304,3 +304,202 @@ insert into app_release (id, version, apk_url, notes)
 values (1, '1.0.0', 'https://expo.dev/artifacts/eas/qqwPOK6TNS7k2dPCvH6ZSKoSGPrwV4rTDSvtU-xq55I.apk', null)
 on conflict (id) do nothing;
 
+-- ============================================================
+-- ÉPICO 1 do PLANO_DE_EVOLUCAO.md — Metas/Cofrinhos & Level Up Infinito
+-- ============================================================
+
+-- Cofrinhos / metas financeiras: reserva de emergência e objetivos com
+-- aportes e resgates manuais feitos pelo usuário na Home.
+create table if not exists goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  target_amount numeric(12,2) not null check (target_amount > 0),
+  current_amount numeric(12,2) not null default 0 check (current_amount >= 0),
+  color text not null default '#1fa98d',
+  icon text not null default 'flag',
+  deadline date,
+  created_at timestamptz not null default now()
+);
+
+alter table goals enable row level security;
+
+drop policy if exists "usuário vê e edita só suas metas" on goals;
+create policy "usuário vê e edita só suas metas"
+  on goals for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create index if not exists goals_user_id_idx on goals (user_id);
+
+alter table goals drop constraint if exists goals_title_len;
+alter table goals add constraint goals_title_len
+  check (char_length(title) <= 100);
+alter table goals drop constraint if exists goals_icon_len;
+alter table goals add constraint goals_icon_len
+  check (char_length(icon) <= 40);
+alter table goals drop constraint if exists goals_color_len;
+alter table goals add constraint goals_color_len
+  check (char_length(color) <= 9);
+alter table goals drop constraint if exists goals_target_amount_max;
+alter table goals add constraint goals_target_amount_max
+  check (target_amount <= 999999999.99);
+alter table goals drop constraint if exists goals_current_amount_max;
+alter table goals add constraint goals_current_amount_max
+  check (current_amount <= 999999999.99);
+
+-- Suporte a parcelamentos em transações — usado pelo Épico 2 (projeção de
+-- faturas futuras) para saber quantas parcelas de uma compra ainda faltam
+-- vencer. addInstallmentPurchase (lib/data.ts) já linkava as parcelas via
+-- parent_id; estas colunas guardam a posição "atual/total" de cada uma.
+alter table transactions add column if not exists installment_current smallint not null default 1;
+alter table transactions add column if not exists installment_total smallint not null default 1;
+
+-- Perfil de gamificação: XP vitalício (nunca é resetado, ao contrário do
+-- Score Grana de 0-1000 em lib/gamification.ts) e escudos de proteção de
+-- ofensiva (reservado para uso futuro).
+create table if not exists user_gamification (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  lifetime_xp integer not null default 0 check (lifetime_xp >= 0),
+  streak_shields smallint not null default 2,
+  updated_at timestamptz not null default now()
+);
+
+alter table user_gamification enable row level security;
+
+drop policy if exists "usuário vê e edita só seu xp" on user_gamification;
+create policy "usuário vê e edita só seu xp"
+  on user_gamification for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Concede XP de forma atômica. Existe como função em vez de um simples
+-- update client-side porque duas ações quase simultâneas (ex: dois aportes
+-- em cofrinhos diferentes em sequência rápida) fariam um "lê saldo -> soma
+-- -> grava" no cliente perder incremento por condição de corrida; o upsert
+-- com `lifetime_xp = lifetime_xp + delta` resolve isso dentro do próprio
+-- banco. Mesmo padrão de segurança de delete_user_account(): search_path
+-- fixado e revoke explícito de anon (ver comentário acima daquela função).
+create or replace function public.add_xp(delta integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  novo_xp integer;
+  usuario uuid;
+begin
+  usuario := auth.uid();
+  if usuario is null then
+    raise exception 'Não autenticado';
+  end if;
+
+  insert into public.user_gamification (user_id, lifetime_xp)
+  values (usuario, greatest(delta, 0))
+  on conflict (user_id) do update
+    set lifetime_xp = greatest(0, public.user_gamification.lifetime_xp + delta),
+        updated_at = now()
+  returning lifetime_xp into novo_xp;
+
+  return novo_xp;
+end;
+$$;
+
+revoke all on function public.add_xp(integer) from public, anon;
+grant execute on function public.add_xp(integer) to authenticated;
+
+-- ============================================================
+-- Reestruturação de navegação (5 abas) — aba Crédito
+-- ============================================================
+-- lib/data.ts (fetchCreditCards/addCreditCard/deleteCreditCard) e
+-- app/(app)/credito.tsx já esperavam esta tabela antes dela existir no
+-- banco — sem isto a aba Crédito falha em qualquer conta real.
+create table if not exists credit_cards (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  bank text not null,
+  color text not null default '#8b9198',
+  last_digits text,
+  limit_amount numeric(12,2) not null check (limit_amount > 0),
+  closing_day smallint not null check (closing_day between 1 and 31),
+  due_day smallint not null check (due_day between 1 and 31),
+  created_at timestamptz not null default now()
+);
+
+alter table credit_cards enable row level security;
+
+drop policy if exists "usuário vê e edita só seus cartões" on credit_cards;
+create policy "usuário vê e edita só seus cartões"
+  on credit_cards for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create index if not exists credit_cards_user_id_idx on credit_cards (user_id);
+
+alter table credit_cards drop constraint if exists credit_cards_name_len;
+alter table credit_cards add constraint credit_cards_name_len
+  check (char_length(name) <= 100);
+alter table credit_cards drop constraint if exists credit_cards_bank_len;
+alter table credit_cards add constraint credit_cards_bank_len
+  check (char_length(bank) <= 40);
+alter table credit_cards drop constraint if exists credit_cards_color_len;
+alter table credit_cards add constraint credit_cards_color_len
+  check (char_length(color) <= 9);
+alter table credit_cards drop constraint if exists credit_cards_last_digits_len;
+alter table credit_cards add constraint credit_cards_last_digits_len
+  check (last_digits is null or char_length(last_digits) <= 4);
+alter table credit_cards drop constraint if exists credit_cards_limit_max;
+alter table credit_cards add constraint credit_cards_limit_max
+  check (limit_amount <= 999999999.99);
+
+-- Classificação de forma de pagamento e vínculo com o cartão — usados pela
+-- aba Crédito para separar compras no cartão do restante das movimentações.
+alter table transactions add column if not exists payment_method text;
+alter table transactions drop constraint if exists transactions_payment_method_check;
+alter table transactions add constraint transactions_payment_method_check
+  check (payment_method is null or payment_method in ('debit', 'credit', 'pix', 'cash'));
+
+alter table transactions add column if not exists bank text;
+alter table transactions drop constraint if exists transactions_bank_len;
+alter table transactions add constraint transactions_bank_len
+  check (bank is null or char_length(bank) <= 40);
+
+alter table transactions add column if not exists card_id uuid references credit_cards(id) on delete set null;
+
+-- Reexecuta delete_user_account() para também apagar goals,
+-- user_gamification e credit_cards — sem isto, excluir a conta deixaria
+-- essas tabelas novas órfãs, contrariando a mesma exclusão total já
+-- garantida para o resto dos dados (LGPD / Apple / Google Play).
+create or replace function delete_user_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  current_user_id uuid;
+begin
+  current_user_id := auth.uid();
+  if current_user_id is null then
+    raise exception 'Não autenticado';
+  end if;
+
+  delete from public.transactions where user_id = current_user_id;
+  delete from public.bills where user_id = current_user_id;
+  delete from public.budgets where user_id = current_user_id;
+  delete from public.categories where user_id = current_user_id;
+  delete from public.whatsapp_links where user_id = current_user_id;
+  delete from public.whatsapp_pending where user_id = current_user_id;
+  delete from public.goals where user_id = current_user_id;
+  delete from public.user_gamification where user_id = current_user_id;
+  delete from public.credit_cards where user_id = current_user_id;
+
+  delete from auth.users where id = current_user_id;
+end;
+$$;
+
+revoke all on function public.delete_user_account() from public, anon;
+grant execute on function public.delete_user_account() to authenticated;
+

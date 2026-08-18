@@ -1,38 +1,84 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import type * as NotificationsModule from 'expo-notifications';
 import type { Bill } from './types';
 
 const CHANNEL_ID = 'lembretes-contas';
 
-/* Registrado no import (chamado a partir de app/_layout.tsx), pra garantir
-   que o handler exista assim que o app abre — não só quando a pessoa visita
-   a aba Contas, que é onde este módulo seria importado por acaso. */
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// No SDK 53+, expo-notifications lança erro ao rodar no Expo Go para Android.
+// Verificamos o ambiente para evitar que o módulo quebre a inicialização do app no Expo Go.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isNotificationsSupported = Platform.OS !== 'web' && !(isExpoGo && Platform.OS === 'android');
+
+/**
+ * `import * as Notifications from 'expo-notifications'` no topo do arquivo
+ * lança IMEDIATAMENTE ao carregar o módulo (não só ao chamar uma função dele)
+ * quando roda no Expo Go no Android — o próprio pacote faz essa checagem de
+ * ambiente na hora do import. Isso derrubava o app inteiro na inicialização,
+ * porque este arquivo é importado por app/_layout.tsx: um import estático
+ * quebrado aqui quebrava a tela raiz de todo mundo, mesmo quem nunca usa
+ * lembretes. `require()` adiado resolve porque só executa quando chamado —
+ * dá pra checar `isNotificationsSupported` ANTES de carregar o módulo.
+ */
+let cached: typeof NotificationsModule | null = null;
+let tentouCarregar = false;
+
+function getNotifications(): typeof NotificationsModule | null {
+  if (!isNotificationsSupported) return null;
+  if (!tentouCarregar) {
+    tentouCarregar = true;
+    try {
+      cached = require('expo-notifications');
+    } catch (e) {
+      cached = null;
+    }
+  }
+  return cached;
+}
+
+try {
+  const Notifications = getNotifications();
+  if (Notifications) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  }
+} catch (e) {
+  // Ignora erro em ambientes restritos (Expo Go)
+}
 
 let channelReady = false;
 
 async function ensureChannel(): Promise<void> {
-  if (Platform.OS !== 'android' || channelReady) return;
-  await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: 'Lembretes de contas',
-    importance: Notifications.AndroidImportance.HIGH,
-  });
-  channelReady = true;
+  const Notifications = getNotifications();
+  if (!Notifications || Platform.OS !== 'android' || channelReady) return;
+  try {
+    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+      name: 'Lembretes de contas',
+      importance: Notifications.AndroidImportance.HIGH,
+    });
+    channelReady = true;
+  } catch (e) {
+    // Falha silenciosa se o canal não puder ser criado
+  }
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (Platform.OS === 'web') return false;
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  if (existing === 'granted') return true;
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === 'granted';
+  const Notifications = getNotifications();
+  if (!Notifications) return false;
+  try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    if (existing === 'granted') return true;
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === 'granted';
+  } catch (e) {
+    return false;
+  }
 }
 
 type Etapa = '7d' | '3d' | 'venc' | 'atraso';
@@ -67,7 +113,8 @@ function dataComHora(iso: string, offsetDias: number): Date {
  * apontando pra data ou estado errados. Datas que já passaram são puladas.
  */
 export async function scheduleBillReminders(bill: Bill): Promise<void> {
-  if (Platform.OS === 'web') return;
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   await cancelBillReminders(bill.id);
   if (bill.status === 'paid') return;
 
@@ -80,26 +127,31 @@ export async function scheduleBillReminders(bill: Bill): Promise<void> {
   for (const { etapa, offsetDias, titulo, corpo } of ETAPAS) {
     const quando = dataComHora(bill.due_date, offsetDias);
     if (quando.getTime() <= now.getTime()) continue;
-    await Notifications.scheduleNotificationAsync({
-      identifier: idFor(bill.id, etapa),
-      content: {
-        title: titulo,
-        body: corpo(bill),
-        data: { billId: bill.id },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: quando,
-        channelId: CHANNEL_ID,
-      },
-    });
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: idFor(bill.id, etapa),
+        content: {
+          title: titulo,
+          body: corpo(bill),
+          data: { billId: bill.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: quando,
+          channelId: CHANNEL_ID,
+        },
+      });
+    } catch (e) {
+      // Ignora erro se agendamento local falhar
+    }
   }
 }
 
 export async function cancelBillReminders(billId: string): Promise<void> {
-  if (Platform.OS === 'web') return;
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   const etapas: Etapa[] = ['7d', '3d', 'venc', 'atraso'];
   await Promise.all(
-    etapas.map((etapa) => Notifications.cancelScheduledNotificationAsync(idFor(billId, etapa)).catch(() => {}))
+    etapas.map((etapa) => Notifications!.cancelScheduledNotificationAsync(idFor(billId, etapa)).catch(() => {}))
   );
 }

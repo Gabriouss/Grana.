@@ -1,4 +1,4 @@
-import { CATEGORIES, type TxType } from './types';
+import { BANKS, CATEGORIES, type BankInfo, type TxType } from './types';
 import { parseAmount, todayISO } from './format';
 import { LIMITS } from './limits';
 
@@ -264,3 +264,74 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
     },
   },
 ];
+
+/* ── Roteamento de notificações bancárias ──────────────────────────────────
+ *
+ * Etapa 5 do "Plano Mestre de Execução": dado o pacote Android de origem e o
+ * texto de uma notificação bancária, decidir automaticamente pra qual aba
+ * ela pertence (Crédito, Débito e Pix, ou baixa de Boleto).
+ *
+ * Isto é só a CLASSIFICAÇÃO — texto e pacote entram, um veredito determinístico
+ * sai. A captura de verdade das notificações do sistema (NotificationListenerService
+ * no Android) é um módulo nativo à parte, que não existe neste arquivo: não dá
+ * pra escrever nem testar código nativo sem um build de desenvolvimento (não
+ * funciona no Expo Go, e não há como validar aqui sem instalar esse build no
+ * aparelho). Quando esse listener existir, o texto e o pacote que ele captura
+ * alimentam exatamente esta função.
+ */
+
+export type DestinoNotificacao = 'credito' | 'debito_pix' | 'boleto';
+
+export type NotificacaoBancariaClassificada = {
+  banco: BankInfo;
+  destino: DestinoNotificacao;
+  type: TxType;
+  amount: number;
+  description: string;
+  category: string;
+  color: string;
+};
+
+/** Identifica o banco pelo pacote Android de origem — mais confiável que adivinhar pelo texto, já que não depende de como cada banco escreve a notificação. */
+export function identificarBancoPorPacote(packageName: string): BankInfo {
+  return BANKS.find((b) => b.packageNames?.includes(packageName)) ?? BANKS.find((b) => b.id === 'outro')!;
+}
+
+/* Ordem importa: boleto e crédito são checados antes do fallback de
+   débito/pix, que é deliberadamente o destino "pega tudo" — é o tipo de
+   movimentação bancária mais comum, e a maioria dos textos de notificação
+   não vai conter nenhuma destas palavras-chave explicitamente. */
+const PALAVRAS_BOLETO = ['boleto', 'conta paga', 'pagamento efetuado', 'fatura paga', 'conta de consumo', 'código de barras'];
+const PALAVRAS_CREDITO = ['cartão de crédito', 'crédito aprovada', 'compra aprovada', 'fatura', 'parcelado', 'parcela'];
+
+export function classificarDestinoNotificacao(texto: string): DestinoNotificacao {
+  const lower = texto.toLowerCase();
+  if (PALAVRAS_BOLETO.some((p) => lower.includes(p))) return 'boleto';
+  if (PALAVRAS_CREDITO.some((p) => lower.includes(p))) return 'credito';
+  return 'debito_pix';
+}
+
+/**
+ * Classifica uma notificação bancária inteira: banco de origem, destino
+ * (Crédito / Débito e Pix / Boleto), tipo, valor, descrição e categoria
+ * sugerida — pronta pra virar um lançamento de rascunho. Reaproveita os
+ * mesmos heurísticos já usados no colar de comprovante (guessTypeFromText /
+ * guessAmountFromText / guessDescFromText / guessCategoryFromText): o texto
+ * de uma notificação bancária tem a mesma natureza de "chute sobre dado
+ * sujo" que um comprovante colado à mão.
+ */
+export function classificarNotificacaoBancaria(
+  packageName: string,
+  titulo: string,
+  corpo: string
+): NotificacaoBancariaClassificada {
+  const texto = `${titulo} ${corpo}`;
+  const banco = identificarBancoPorPacote(packageName);
+  const destino = classificarDestinoNotificacao(texto);
+  const type = guessTypeFromText(texto);
+  const amount = guessAmountFromText(texto);
+  const description = guessDescFromText(texto, type);
+  const categoria = guessCategoryFromText(texto);
+
+  return { banco, destino, type, amount, description, category: categoria.name, color: categoria.color };
+}

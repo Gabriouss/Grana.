@@ -10,21 +10,20 @@ const CHART_X = [4, 48, 92, 136, 180, 224, 276];
 const TOP = 14, BASE = 80;
 const DASH_LEN = 900;
 
-function smoothPath(points: number[][]) {
+/**
+ * Antes disto era uma curva suave (Catmull-Rom → Bézier). Bonita, mas
+ * inventava movimento entre os pontos: um balde em R$0 seguido de um balde
+ * em R$2.675 virava uma subida gradual, como se o dinheiro tivesse entrado
+ * pouco a pouco ao longo do período — quando na real ele entrou tudo de uma
+ * vez, num lançamento só. Para um gráfico financeiro isso não é só estética,
+ * é literalmente mostrar um comportamento que não aconteceu (relatado pelo
+ * autor: "o gráfico não se comporta baseado nos lançamentos"). Linha reta
+ * entre os pontos é menos suave, mas nunca mostra uma curva que os
+ * lançamentos reais não sustentam.
+ */
+function linePath(points: number[][]) {
   if (!points || points.length === 0) return '';
-  let d = `M${points[0][0]},${points[0][1]} `;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i === 0 ? 0 : i - 1];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d += `C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2[0]},${p2[1]} `;
-  }
-  return d;
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ');
 }
 
 type Bucket = {
@@ -170,7 +169,7 @@ export default function FlowChart({
         
         {/* Linha de Entradas */}
         <Path
-          d={smoothPath(inPoints)}
+          d={linePath(inPoints)}
           fill="none"
           stroke={theme.up}
           strokeWidth={2}
@@ -179,10 +178,10 @@ export default function FlowChart({
           strokeDasharray={DASH_LEN}
           strokeDashoffset={dashoffset}
         />
-        
+
         {/* Linha de Saídas */}
         <Path
-          d={smoothPath(outPoints)}
+          d={linePath(outPoints)}
           fill="none"
           stroke={theme.down}
           strokeWidth={2}
@@ -191,6 +190,14 @@ export default function FlowChart({
           strokeLinejoin="round"
           opacity={outOpacity}
         />
+
+        {/* Marcador em cada balde real — reforça que são 7 somas discretas, não uma curva contínua */}
+        {inPoints.map((p, i) => (
+          <Circle key={`in-${i}`} cx={p[0]} cy={p[1]} r={2} fill={theme.up} opacity={dotOpacity * 0.8} />
+        ))}
+        {outPoints.map((p, i) => (
+          <Circle key={`out-${i}`} cx={p[0]} cy={p[1]} r={2} fill={theme.down} opacity={outOpacity * dotOpacity * 0.8} />
+        ))}
 
         <Circle cx={inPoints[6][0]} cy={inPoints[6][1]} r={3.2} fill={theme.up} opacity={dotOpacity} />
         <Circle cx={outPoints[6][0]} cy={outPoints[6][1]} r={3.2} fill={theme.down} opacity={dotOpacity} />
