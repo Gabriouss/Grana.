@@ -66,5 +66,5 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
-  toastText: { color: theme.paper, fontSize: 12.5, fontWeight: '500' },
+  toastText: { color: theme.paper, fontSize: 13, fontWeight: '500' },
 });

@@ -1,4 +1,4 @@
-import type { Bill, Budget, CreditCard, Goal, Transaction } from './types';
+import type { Bill, Budget, CreditCard, Goal, Transaction, Wallet } from './types';
 
 export const CAT_COLORS = [
   /* paleta harmoniosa "Refreshing Aqua Tones" */
@@ -11,7 +11,11 @@ export const CAT_COLORS = [
   '#cf7d8f', '#a3566a', '#93715f', '#83614f', '#78899a', '#8b9198',
 ];
 
-export const DEMO_TRANSACTIONS: Transaction[] = [
+/* wallet_id fixo em 'demo-wallet-1' via .map() no fim do array (ver abaixo),
+   em vez de repetir o campo em cada objeto — todas as transações demo caem
+   na carteira "Principal" por padrão, coerente com o comportamento real de
+   um lançamento sem carteira escolhida. */
+const DEMO_TRANSACTIONS_RAW: Transaction[] = [
   {
     id: 'demo-9001',
     user_id: 'demo',
@@ -156,8 +160,9 @@ export const DEMO_TRANSACTIONS: Transaction[] = [
     created_at: new Date().toISOString(),
   },
 ];
+export const DEMO_TRANSACTIONS: Transaction[] = DEMO_TRANSACTIONS_RAW.map((t) => ({ ...t, wallet_id: 'demo-wallet-1' }));
 
-export const DEMO_BILLS: Bill[] = [
+const DEMO_BILLS_RAW: Bill[] = [
   {
     id: 'demo-9101',
     user_id: 'demo',
@@ -224,6 +229,7 @@ export const DEMO_BILLS: Bill[] = [
     created_at: new Date().toISOString(),
   },
 ];
+export const DEMO_BILLS: Bill[] = DEMO_BILLS_RAW.map((b) => ({ ...b, wallet_id: 'demo-wallet-1' }));
 
 export const DEMO_BUDGETS: Budget[] = [
   { user_id: 'demo', category: 'Alimentação', amount: 700, color: '#bb6b60', updated_at: new Date().toISOString() },
@@ -232,7 +238,7 @@ export const DEMO_BUDGETS: Budget[] = [
   { user_id: 'demo', category: 'Lazer', amount: 250, color: '#c66f8e', updated_at: new Date().toISOString() },
 ];
 
-export const DEMO_GOALS: Goal[] = [
+const DEMO_GOALS_RAW: Goal[] = [
   {
     id: 'demo-goal-1',
     user_id: 'demo',
@@ -256,6 +262,40 @@ export const DEMO_GOALS: Goal[] = [
     created_at: new Date().toISOString(),
   },
 ];
+export const DEMO_GOALS: Goal[] = DEMO_GOALS_RAW.map((g) => ({ ...g, wallet_id: 'demo-wallet-1' }));
+
+export const DEMO_WALLETS: Wallet[] = [
+  {
+    id: 'demo-wallet-1',
+    user_id: 'demo',
+    name: 'Principal',
+    initial_balance: 1500,
+    color: '#1fa98d',
+    icon: 'wallet-outline',
+    is_default: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-wallet-2',
+    user_id: 'demo',
+    name: 'Casamento',
+    initial_balance: 5000,
+    color: '#c66f8e',
+    icon: 'heart-outline',
+    is_default: false,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-wallet-3',
+    user_id: 'demo',
+    name: 'Reserva & Mãe',
+    initial_balance: 2200,
+    color: '#6b9dc2',
+    icon: 'shield-checkmark-outline',
+    is_default: false,
+    created_at: new Date().toISOString(),
+  },
+];
 
 export const DEMO_CREDIT_CARDS: CreditCard[] = [
   {
@@ -268,6 +308,7 @@ export const DEMO_CREDIT_CARDS: CreditCard[] = [
     limit_amount: 8500,
     closing_day: 18,
     due_day: 25,
+    wallet_id: 'demo-wallet-1',
     created_at: new Date().toISOString(),
   },
   {
@@ -280,6 +321,7 @@ export const DEMO_CREDIT_CARDS: CreditCard[] = [
     limit_amount: 15000,
     closing_day: 5,
     due_day: 12,
+    wallet_id: 'demo-wallet-1',
     created_at: new Date().toISOString(),
   },
 ];

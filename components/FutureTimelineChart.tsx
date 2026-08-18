@@ -79,6 +79,6 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: 'row', gap: spacing.md, justifyContent: 'center' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 7, height: 7, borderRadius: 3.5 },
-  legendText: { color: theme.inkFaint, fontSize: 10.5 },
+  legendText: { color: theme.inkFaint, fontSize: 11 },
   totalText: { color: theme.inkFaint, fontSize: 11, textAlign: 'center' },
 });

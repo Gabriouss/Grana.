@@ -283,6 +283,6 @@ const styles = StyleSheet.create({
   dayText: { color: theme.ink, fontSize: 13, fontVariant: ['tabular-nums'] },
   dayTextMuted: { color: theme.inkFaint },
   dayTextSelected: { color: theme.paper, fontWeight: '600' },
-  todayLink: { color: theme.inkSoft, fontSize: 12.5, textAlign: 'center', paddingVertical: 6 },
+  todayLink: { color: theme.inkSoft, fontSize: 13, textAlign: 'center', paddingVertical: 6 },
 });
 

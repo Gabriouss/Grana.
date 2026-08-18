@@ -26,6 +26,7 @@ import {
   type Respostas,
   type UsoCartao,
 } from '@/lib/diagnostico';
+import { layoutDoPreset, salvarLayoutHome, type HomePreset } from '@/lib/home-layout';
 import AppPressable from './AppPressable';
 import { useKeyboardHeight } from './Sheet';
 
@@ -65,7 +66,33 @@ const OPCOES_AMBICAO: { key: Ambicao; label: string; desc: string }[] = [
   { key: 'equilibrar-primeiro', label: 'Só equilibrar as contas', desc: 'Zero a zero saudável, por enquanto.' },
 ];
 
-const TOTAL_ETAPAS = 4;
+export const OPCOES_PRESET_HOME: {
+  key: 'completo' | 'essencial' | 'metas';
+  label: string;
+  desc: string;
+  badge: string;
+}[] = [
+  {
+    key: 'completo',
+    label: '🌟 Completo & Analítico',
+    desc: 'Visão 360° da sua vida financeira com Safe-to-Spend diário, cofrinhos, projeções e faturas.',
+    badge: 'Recomendado',
+  },
+  {
+    key: 'essencial',
+    label: '⚡ Essencial & Clean',
+    desc: 'Painel enxuto e focado no essencial: Donut de gastos por categoria e registro rápido.',
+    badge: 'Mais Ágil',
+  },
+  {
+    key: 'metas',
+    label: '🎯 Foco em Metas & Limites',
+    desc: 'Destaque total para seus cofrinhos de economia, limites por categoria e boletos.',
+    badge: 'Construtor',
+  },
+];
+
+const TOTAL_ETAPAS = 5;
 
 function SeletorCard({
   label,
@@ -118,6 +145,7 @@ export default function OnboardingModal({
   const [cartao, setCartao] = useState<UsoCartao | null>(null);
   const [renda, setRenda] = useState('');
   const [ambicao, setAmbicao] = useState<Ambicao | null>(null);
+  const [presetHome, setPresetHome] = useState<HomePreset>('completo');
 
   const [salvandoDiagnostico, setSalvandoDiagnostico] = useState(false);
   const [diagnosticoSalvo, setDiagnosticoSalvo] = useState(false);
@@ -135,6 +163,7 @@ export default function OnboardingModal({
     setCartao(initial?.cartao ?? null);
     setRenda(initial && initial.rendaMensal > 0 ? String(initial.rendaMensal).replace('.', ',') : '');
     setAmbicao(initial?.ambicao ?? null);
+    setPresetHome('completo');
     setSalvandoDiagnostico(false);
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
@@ -148,6 +177,7 @@ export default function OnboardingModal({
     setCartao(null);
     setRenda('');
     setAmbicao(null);
+    setPresetHome('completo');
     setSalvandoDiagnostico(false);
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
@@ -163,13 +193,8 @@ export default function OnboardingModal({
   const orcamento = respostas && arquetipo ? calcularOrcamento(respostas, arquetipo) : null;
   const { rotulo: rotuloMeta } = respostas ? metaPoupanca(respostas.ambicao) : { rotulo: '' };
 
-  /* Persiste assim que o laudo é montado — não atrás de um botão. O laudo já
-     é o resultado; fazer a pessoa clicar de novo para "salvar o que acabou de
-     ver" seria um passo redundante. A aplicação do orçamento no banco de
-     lançamentos é que fica atrás de um botão, porque essa sim é uma ação com
-     efeito colateral que a pessoa deve decidir. */
   useEffect(() => {
-    if (step !== 5 || !respostas || !arquetipo || diagnosticoSalvo || salvandoDiagnostico) return;
+    if (step !== 6 || !respostas || !arquetipo || diagnosticoSalvo || salvandoDiagnostico) return;
     setSalvandoDiagnostico(true);
     salvarDiagnostico(respostas, arquetipo).finally(() => {
       setSalvandoDiagnostico(false);
@@ -187,7 +212,8 @@ export default function OnboardingModal({
     setCartao(r.cartao);
     setAmbicao(r.ambicao);
     setDiagnosticoSalvo(false);
-    setStep(5);
+    salvarLayoutHome(layoutDoPreset(presetHome));
+    setStep(6);
   }
 
   function handleNext() {
@@ -202,8 +228,17 @@ export default function OnboardingModal({
       setStep(4);
     } else if (step === 4) {
       if (!ambicao) return avisar('Escolha sua meta de economia mensal.');
-      finalizar({ organizacao: organizacao!, foco: foco!, cartao: cartao!, rendaMensal: parseAmount(renda), ambicao });
+      setStep(5);
+    } else if (step === 5) {
+      finalizar({
+        organizacao: organizacao!,
+        foco: foco!,
+        cartao: cartao!,
+        rendaMensal: parseAmount(renda),
+        ambicao: ambicao!,
+      });
     } else {
+      salvarLayoutHome(layoutDoPreset(presetHome));
       onFinished();
       resetState();
       onClose();
@@ -359,7 +394,29 @@ export default function OnboardingModal({
             </View>
           )}
 
-          {step === 5 && arquetipo && orcamento && respostas && (
+          {step === 5 && (
+            <View style={styles.stepContent}>
+              <Text style={styles.eyebrow}>5 de {TOTAL_ETAPAS} · personalização</Text>
+              <Text style={styles.question}>Como você prefere ver seu painel inicial?</Text>
+              <Text style={styles.hint}>
+                Escolha o modelo que mais combina com seu momento. Você poderá adicionar, remover ou
+                reorganizar qualquer bloco depois.
+              </Text>
+              <View style={styles.optionsList}>
+                {OPCOES_PRESET_HOME.map((p) => (
+                  <SeletorCard
+                    key={p.key}
+                    label={p.label}
+                    desc={p.desc}
+                    selecionado={presetHome === p.key}
+                    onPress={() => setPresetHome(p.key)}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {step === 6 && arquetipo && orcamento && respostas && (
             <View style={styles.stepContent}>
               <Text style={styles.eyebrow}>seu diagnóstico</Text>
 
@@ -461,10 +518,10 @@ export default function OnboardingModal({
             onPress={handleNext}
           >
             <Text style={styles.primaryBtnText}>
-              {step === 4 ? 'Ver meu diagnóstico' : step === 5 ? 'Começar a usar' : 'Continuar'}
+              {step === 5 ? 'Ver meu diagnóstico' : step === 6 ? 'Começar a usar o Grana' : 'Continuar'}
             </Text>
           </AppPressable>
-          {step <= 4 && (
+          {step <= 5 && (
             <AppPressable onPress={handleSkip}>
               <Text style={styles.skipBtnText}>Pular por agora</Text>
             </AppPressable>
@@ -569,11 +626,11 @@ const styles = StyleSheet.create({
   },
   applyBtnHover: { backgroundColor: theme.accentDeep },
   applyBtnDisabled: { borderColor: theme.rule, opacity: 0.7 },
-  applyBtnText: { color: theme.ink, fontSize: 13.5, fontWeight: '600' },
+  applyBtnText: { color: theme.ink, fontSize: 14, fontWeight: '600' },
 
   footer: { gap: 10, paddingTop: spacing.md },
   primaryBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 15, alignItems: 'center' },
   primaryBtnHover: { opacity: 0.88 },
   primaryBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
-  skipBtnText: { color: theme.inkFaint, fontSize: 12.5, textAlign: 'center', paddingVertical: 6 },
+  skipBtnText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', paddingVertical: 6 },
 });

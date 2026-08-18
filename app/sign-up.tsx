@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   primaryBtnHover: { opacity: 0.88 },
-  primaryBtnText: { color: theme.paper, fontSize: 15, fontWeight: '600' },
+  primaryBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
   secondaryBtn: { paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs, borderRadius: radius.md },
   secondaryBtnHover: { backgroundColor: theme.paperRaised },
   secondaryBtnText: { color: theme.inkSoft, fontSize: 14 },

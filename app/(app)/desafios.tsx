@@ -21,6 +21,7 @@ import { DEMO_BILLS, DEMO_BUDGETS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@
 import BadgeCard from '@/components/BadgeCard';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import AppPressable from '@/components/AppPressable';
+import ScreenHeader from '@/components/ScreenHeader';
 
 type FilterType = 'all' | 'unlocked' | 'locked';
 
@@ -43,7 +44,7 @@ export default function DesafiosScreen() {
     }
 
     try {
-      const [tx, b, bg] = await Promise.all([fetchTransactions(), fetchBills(), fetchBudgets()]);
+      const [tx, b, bg] = await Promise.all([fetchTransactions({ sinceDays: 35 }), fetchBills(), fetchBudgets()]);
       setState(getGamificationState(tx, b, bg));
     } catch {
       // Falha graciosa
@@ -99,12 +100,7 @@ export default function DesafiosScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>saúde & consistência</Text>
-          <Text style={styles.title}>Desafios</Text>
-        </View>
-      </View>
+      <ScreenHeader eyebrow="saúde & consistência" title="Desafios" />
 
       <ScrollView
         style={styles.scroll}
@@ -301,25 +297,6 @@ export default function DesafiosScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.paper },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.paper },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.rule,
-  },
-  eyebrow: {
-    fontFamily: fonts.regular,
-    fontSize: 11,
-    color: theme.accent2,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  title: {
-    fontFamily: fonts.regular,
-    fontSize: 22,
-    fontWeight: '700',
-    color: theme.ink,
-  },
   scroll: { flex: 1 },
   content: { padding: spacing.lg, gap: spacing.md },
   heroCard: {
@@ -353,7 +330,7 @@ const styles = StyleSheet.create({
   },
   scorePointsLabel: {
     fontFamily: fonts.regular,
-    fontSize: 8.5,
+    fontSize: 9,
     color: theme.inkSoft,
     textTransform: 'uppercase',
   },

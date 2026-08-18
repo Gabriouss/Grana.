@@ -341,6 +341,42 @@ alter table goals add constraint goals_icon_len
 alter table goals drop constraint if exists goals_color_len;
 alter table goals add constraint goals_color_len
   check (char_length(color) <= 9);
+
+-- Aporta/resgata de um cofrinho de forma atômica. Existe como função pelo
+-- mesmo motivo de add_xp() acima: um "lê current_amount -> soma delta ->
+-- grava" feito no cliente perde um dos dois aportes se disparados quase
+-- juntos (duplo toque, dois aparelhos). Mesmo padrão de segurança das
+-- funções acima: search_path fixado e revoke explícito de anon.
+create or replace function public.deposit_to_goal(p_goal_id uuid, p_delta numeric)
+returns goals
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  resultado goals;
+  usuario uuid;
+begin
+  usuario := auth.uid();
+  if usuario is null then
+    raise exception 'Não autenticado';
+  end if;
+
+  update public.goals
+  set current_amount = greatest(0, current_amount + p_delta)
+  where id = p_goal_id and user_id = usuario
+  returning * into resultado;
+
+  if resultado is null then
+    raise exception 'Meta não encontrada ou não pertence ao usuário';
+  end if;
+
+  return resultado;
+end;
+$$;
+
+revoke all on function public.deposit_to_goal(uuid, numeric) from public, anon;
+grant execute on function public.deposit_to_goal(uuid, numeric) to authenticated;
 alter table goals drop constraint if exists goals_target_amount_max;
 alter table goals add constraint goals_target_amount_max
   check (target_amount <= 999999999.99);
@@ -495,6 +531,7 @@ begin
   delete from public.goals where user_id = current_user_id;
   delete from public.user_gamification where user_id = current_user_id;
   delete from public.credit_cards where user_id = current_user_id;
+  delete from public.wallets where user_id = current_user_id;
 
   delete from auth.users where id = current_user_id;
 end;
@@ -502,4 +539,106 @@ $$;
 
 revoke all on function public.delete_user_account() from public, anon;
 grant execute on function public.delete_user_account() to authenticated;
+
+-- ============================================================
+-- Múltiplas Carteiras (Multi-Wallets)
+-- ============================================================
+
+create table if not exists wallets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  initial_balance numeric(12,2) not null default 0,
+  color text not null default '#1fa98d',
+  icon text not null default 'wallet-outline',
+  is_default boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table wallets enable row level security;
+
+drop policy if exists "usuário vê e edita só suas carteiras" on wallets;
+create policy "usuário vê e edita só suas carteiras"
+  on wallets for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create index if not exists wallets_user_id_idx on wallets (user_id);
+
+alter table wallets drop constraint if exists wallets_name_len;
+alter table wallets add constraint wallets_name_len
+  check (char_length(name) <= 60);
+alter table wallets drop constraint if exists wallets_icon_len;
+alter table wallets add constraint wallets_icon_len
+  check (char_length(icon) <= 40);
+alter table wallets drop constraint if exists wallets_color_len;
+alter table wallets add constraint wallets_color_len
+  check (char_length(color) <= 9);
+
+-- Vincular entidades à carteira
+alter table transactions add column if not exists wallet_id uuid references wallets(id) on delete set null;
+alter table credit_cards add column if not exists wallet_id uuid references wallets(id) on delete set null;
+alter table bills add column if not exists wallet_id uuid references wallets(id) on delete set null;
+alter table goals add column if not exists wallet_id uuid references wallets(id) on delete set null;
+
+-- A FK acima só garante que wallet_id aponta pra uma carteira que existe,
+-- não que ela pertence ao mesmo dono da linha (transação, conta, cartão ou
+-- meta). RLS já impede um usuário LER dados de outro, então isto não é uma
+-- brecha de vazamento — mas sem essa checagem seria possível gravar, por
+-- engano ou de propósito, uma referência a uma carteira alheia. O trigger
+-- abaixo barra isso na escrita, reaproveitado nas 4 tabelas.
+create or replace function public.validar_wallet_do_usuario()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.wallet_id is not null then
+    if not exists (
+      select 1 from public.wallets
+      where id = new.wallet_id and user_id = new.user_id
+    ) then
+      raise exception 'wallet_id não pertence ao usuário da linha';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists validar_wallet_transactions on transactions;
+create trigger validar_wallet_transactions
+  before insert or update of wallet_id, user_id on transactions
+  for each row execute procedure public.validar_wallet_do_usuario();
+
+drop trigger if exists validar_wallet_credit_cards on credit_cards;
+create trigger validar_wallet_credit_cards
+  before insert or update of wallet_id, user_id on credit_cards
+  for each row execute procedure public.validar_wallet_do_usuario();
+
+drop trigger if exists validar_wallet_bills on bills;
+create trigger validar_wallet_bills
+  before insert or update of wallet_id, user_id on bills
+  for each row execute procedure public.validar_wallet_do_usuario();
+
+drop trigger if exists validar_wallet_goals on goals;
+create trigger validar_wallet_goals
+  before insert or update of wallet_id, user_id on goals
+  for each row execute procedure public.validar_wallet_do_usuario();
+
+-- Trigger para criar carteira "Principal" automaticamente ao criar usuário
+create or replace function public.handle_new_user_wallet()
+returns trigger as $$
+begin
+  insert into public.wallets (user_id, name, is_default, color, icon)
+  values (new.id, 'Principal', true, '#1fa98d', 'wallet-outline');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created_wallet on auth.users;
+create trigger on_auth_user_created_wallet
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user_wallet();
+
 

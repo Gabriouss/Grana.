@@ -31,6 +31,10 @@ type AppLockValue = {
   bloqueado: boolean;
   /** false em aparelho sem leitor ou sem biometria cadastrada, e na web. */
   disponivel: boolean;
+  /** false enquanto a leitura assíncrona do AsyncStorage não terminou — usado
+      pra cobrir a tela durante esse instante, já que `bloqueado` começa falso
+      por padrão e só vira true depois de saber se a trava está ligada. */
+  pronto: boolean;
   alternar: () => Promise<void>;
   desbloquear: () => Promise<boolean>;
 };
@@ -39,6 +43,7 @@ const AppLockContext = createContext<AppLockValue>({
   ativo: false,
   bloqueado: false,
   disponivel: false,
+  pronto: false,
   alternar: async () => {},
   desbloquear: async () => false,
 });
@@ -59,6 +64,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
   const [ativo, setAtivo] = useState(false);
   const [disponivel, setDisponivel] = useState(false);
   const [bloqueado, setBloqueado] = useState(false);
+  const [pronto, setPronto] = useState(false);
   const saiuEm = useRef<number | null>(null);
 
   useEffect(() => {
@@ -70,6 +76,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
       setAtivo(ligado);
       // Abertura do app já entra bloqueada quando a trava está ligada.
       setBloqueado(ligado);
+      setPronto(true);
     })();
   }, []);
 
@@ -124,7 +131,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
   }, [ativo, disponivel]);
 
   return (
-    <AppLockContext value={{ ativo, bloqueado, disponivel, alternar, desbloquear }}>
+    <AppLockContext value={{ ativo, bloqueado, disponivel, pronto, alternar, desbloquear }}>
       {children}
     </AppLockContext>
   );

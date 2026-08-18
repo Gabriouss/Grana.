@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
-  texto: { flex: 1, color: theme.ink, fontSize: 12.5 },
+  texto: { flex: 1, color: theme.ink, fontSize: 13 },
   botaoBaixar: { backgroundColor: theme.accent2, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
   botaoBaixarTexto: { color: theme.paper, fontSize: 12, fontWeight: '700' },
 });

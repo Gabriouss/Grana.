@@ -35,6 +35,26 @@ export const PALETTE_30 = [
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 };
 export const radius = { sm: 8, md: 12, lg: 16, xl: 22, pill: 999 };
 
+/* Escala tipográfica, extraída de design-system/tokens/tokens.json
+   (tipografia.escala). Consolida os 12 tamanhos decididos caso a caso que o
+   app usava (9; 10,5; 11; 11,5; 12; 12,5; 13; 14; 17; 20; 26; 30) em 9
+   degraus nomeados, cada um o inteiro mais próximo do que já se usava — a
+   mudança visual é mínima, o vocabulário passa a existir. `cabecalho` (22) é
+   o degrau que faltava no token original: os cabeçalhos das telas
+   convergiram nele de forma independente antes de qualquer padronização. */
+export const type = {
+  micro: 9,
+  legenda: 11,
+  nota: 12,
+  apoio: 13,
+  corpo: 14,
+  titulo: 17,
+  destaque: 20,
+  cabecalho: 22,
+  marca: 26,
+  valor: 30,
+};
+
 /* Neue Machina (extraída de grana-prototype.html, que já trazia a fonte
    embutida em base64) carregada via expo-font em app/_layout.tsx. Regular
    é o padrão global de todo <Text>; Light fica pra uso pontual em texto

@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
+import ScreenHeader from '@/components/ScreenHeader';
+import WalletPickerModal from '@/components/WalletPickerModal';
 import DatePickerModal from '@/components/DatePickerModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
@@ -28,12 +30,15 @@ import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount,
 import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
+import { useWallet } from '@/lib/wallet-context';
 import { DEMO_BILLS } from '@/lib/demo-data';
 import type { Bill, BillStatus } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 
 export default function ContasScreen() {
   const { isDemoMode } = useDemo();
+  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor } = useWallet();
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bills, setBills] = useState<Bill[]>([]);
@@ -161,6 +166,7 @@ export default function ContasScreen() {
           color: catColor,
           due_date: dueDate,
           recurring,
+          wallet_id: activeWallet?.id ?? null,
         });
         scheduleBillReminders(created).catch(() => {});
         triggerToast('Conta salva');
@@ -212,6 +218,7 @@ export default function ContasScreen() {
             color: bill.color,
             due_date: proximaData,
             recurring: true,
+            wallet_id: bill.wallet_id,
           });
         }
         hapticSuccess();
@@ -262,14 +269,28 @@ export default function ContasScreen() {
     return { text: `vence em ${diffDays}d`, style: styles.pillWarn };
   }
 
+  // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado em index.tsx, lancamentos.tsx e graficos.tsx.
+  const walletBills = activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId);
+
   // Contas cujo VENCIMENTO cai no mês selecionado — cada boleto pertence ao mês em que vence, não em que foi criado.
-  const monthBills = bills.filter((b) => isSameMonth(b.due_date, selectedYear, selectedMonth));
+  const monthBills = walletBills.filter((b) => isSameMonth(b.due_date, selectedYear, selectedMonth));
   const openTotal = monthBills.filter((b) => b.status !== 'paid').reduce((s, b) => s + Number(b.amount), 0);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Contas a pagar</Text>
+      <ScreenHeader
+        eyebrow="pagamentos"
+        title="Contas a pagar"
+        right={
+          <AppPressable onPress={() => setWalletModalOpen(true)} style={styles.walletPill}>
+            <View style={[styles.walletPillDot, { backgroundColor: activeWalletColor }]} />
+            <Text style={styles.walletPillText} numberOfLines={1}>
+              {activeWalletName}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={theme.inkFaint} />
+          </AppPressable>
+        }
+      >
         <View style={styles.subtitleRow}>
           <PrivacyValue>
             <Text style={styles.subtitle}>{`R$ ${formatMoney(openTotal)}`}</Text>
@@ -285,7 +306,7 @@ export default function ContasScreen() {
             setSelectedMonth(m);
           }}
         />
-      </View>
+      </ScreenHeader>
 
       {loading ? (
         <ActivityIndicator color={theme.ink} style={{ marginTop: 40 }} />
@@ -447,32 +468,46 @@ export default function ContasScreen() {
 
       {/* Toast */}
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
+
+      <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  header: { padding: spacing.xl, paddingBottom: spacing.md, gap: spacing.md },
-  title: { color: theme.ink, fontSize: 22 },
-  subtitle: { color: theme.inkFaint, fontSize: 12.5 },
+  subtitle: { color: theme.inkFaint, fontSize: 13 },
   subtitleRow: { flexDirection: 'row', alignItems: 'baseline' },
+  walletPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    maxWidth: 110,
+  },
+  walletPillDot: { width: 8, height: 8, borderRadius: 4 },
+  walletPillText: { color: theme.ink, fontSize: 12, fontWeight: '600', flexShrink: 1 },
   listContent: { paddingHorizontal: spacing.xl, paddingBottom: 100, gap: spacing.sm },
-  emptyText: { color: theme.inkFaint, fontSize: 12.5, textAlign: 'center', marginTop: 30, lineHeight: 18 },
+  emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },
   card: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.sm },
   cardHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardNameRow: { flexDirection: 'row', alignItems: 'center' },
-  cardName: { color: theme.ink, fontSize: 13.5 },
-  cardCat: { color: theme.inkFaint, fontSize: 10.5, marginTop: 2 },
+  cardName: { color: theme.ink, fontSize: 14 },
+  cardCat: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardAmount: { color: theme.ink, fontSize: 15, fontVariant: ['tabular-nums'] },
-  cardDue: { color: theme.inkFaint, fontSize: 10.5 },
+  cardDue: { color: theme.inkFaint, fontSize: 11 },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
   pillOk: { backgroundColor: theme.rule },
   pillWarn: { borderWidth: 1, borderColor: theme.ruleStrong },
   pillLate: { backgroundColor: theme.ink },
-  pillText: { color: theme.inkSoft, fontSize: 9.5, textTransform: 'uppercase' },
+  pillText: { color: theme.inkSoft, fontSize: 9, textTransform: 'uppercase' },
   // pillLate usa fundo claro (theme.ink) — precisa de texto escuro em vez do
   // pillText claro padrão, senão fica ilegível (claro sobre quase-branco).
   pillLateText: { color: theme.paper, fontWeight: '700' },
@@ -481,7 +516,7 @@ const styles = StyleSheet.create({
   fab: { position: 'absolute', right: spacing.xl, bottom: 112, width: 52, height: 52, borderRadius: 26, backgroundColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
   fabHover: { opacity: 0.85 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17 },
+  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
   descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: 14, paddingVertical: 8 },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: 20 },

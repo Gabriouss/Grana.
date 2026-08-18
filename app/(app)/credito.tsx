@@ -21,9 +21,12 @@ import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
+import { useWallet } from '@/lib/wallet-context';
 import { DEMO_CREDIT_CARDS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from '@/components/AppPressable';
+import ScreenHeader from '@/components/ScreenHeader';
+import WalletPickerModal from '@/components/WalletPickerModal';
 import PrivacyValue from '@/components/PrivacyValue';
 import MonthSelector from '@/components/MonthSelector';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
@@ -36,6 +39,8 @@ export default function CreditoScreen() {
   const router = useRouter();
   const { hidden } = usePrivacy();
   const { isDemoMode } = useDemo();
+  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor } = useWallet();
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -108,8 +113,13 @@ export default function CreditoScreen() {
     }, [loadData])
   );
 
+  // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado nas outras telas principais.
+  const walletCards = activeWalletId === 'total' ? cards : cards.filter((c) => c.wallet_id === activeWalletId);
+  const walletTransactions =
+    activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
+
   // Filtra compras no cartão no mês selecionado
-  const creditTransactions = transactions.filter((t) => {
+  const creditTransactions = walletTransactions.filter((t) => {
     const isCredit = t.payment_method === 'credit' || t.card_id;
     const sameMonth = isSameMonth(t.occurred_on, selectedYear, selectedMonth);
     const cardMatch = selectedCardId === 'all' || t.card_id === selectedCardId;
@@ -157,6 +167,7 @@ export default function CreditoScreen() {
           limit_amount: limit,
           closing_day: Number(cardClosingDay) || 15,
           due_day: Number(cardDueDay) || 22,
+          wallet_id: activeWallet?.id ?? null,
         });
         await loadData();
       }
@@ -185,7 +196,7 @@ export default function CreditoScreen() {
       return;
     }
 
-    const targetCard = cards.find((c) => c.id === txCardId) || cards[0];
+    const targetCard = walletCards.find((c) => c.id === txCardId) || walletCards[0];
     const totalInst = Math.max(1, parseInt(txInstallments, 10) || 1);
 
     setTxSaving(true);
@@ -232,6 +243,7 @@ export default function CreditoScreen() {
           payment_method: 'credit',
           bank: targetCard?.bank || 'outro',
           card_id: targetCard?.id,
+          wallet_id: targetCard?.wallet_id ?? activeWallet?.id ?? null,
         });
         await loadData();
       } else {
@@ -248,6 +260,7 @@ export default function CreditoScreen() {
           card_id: targetCard?.id,
           installment_current: 1,
           installment_total: 1,
+          wallet_id: targetCard?.wallet_id ?? activeWallet?.id ?? null,
         });
         await loadData();
       }
@@ -326,23 +339,31 @@ export default function CreditoScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
-      {/* Header Fixo */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>cartões & faturas</Text>
-          <Text style={styles.title}>Crédito</Text>
-        </View>
-        <AppPressable
-          style={({ hovered }) => [styles.addCardBtn, hovered && styles.addCardBtnHover]}
-          onPress={() => {
-            hapticTap();
-            setNewCardOpen(true);
-          }}
-        >
-          <Ionicons name="card-outline" size={16} color={theme.accent2} />
-          <Text style={styles.addCardBtnText}>+ Cartão</Text>
-        </AppPressable>
-      </View>
+      <ScreenHeader
+        eyebrow="cartões & faturas"
+        title="Crédito"
+        right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <AppPressable onPress={() => setWalletModalOpen(true)} style={styles.walletPill}>
+              <View style={[styles.walletPillDot, { backgroundColor: activeWalletColor }]} />
+              <Text style={styles.walletPillText} numberOfLines={1}>
+                {activeWalletName}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={theme.inkFaint} />
+            </AppPressable>
+            <AppPressable
+              style={({ hovered }) => [styles.addCardBtn, hovered && styles.addCardBtnHover]}
+              onPress={() => {
+                hapticTap();
+                setNewCardOpen(true);
+              }}
+            >
+              <Ionicons name="card-outline" size={16} color={theme.accent2} />
+              <Text style={styles.addCardBtnText}>+ Cartão</Text>
+            </AppPressable>
+          </View>
+        }
+      />
 
       <ScrollView
         style={styles.scroll}
@@ -369,11 +390,11 @@ export default function CreditoScreen() {
         />
 
         {/* Carrossel de Cartões */}
-        {cards.length > 0 ? (
+        {walletCards.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardsRow}>
-            {cards.map((card) => {
+            {walletCards.map((card) => {
               const bankObj = BANKS.find((b) => b.id === card.bank);
-              const cardSpent = transactions
+              const cardSpent = walletTransactions
                 .filter((t) => t.card_id === card.id && isSameMonth(t.occurred_on, selectedYear, selectedMonth))
                 .reduce((s, t) => s + Number(t.amount), 0);
               const limitPct = Math.min(1, cardSpent / (card.limit_amount || 1));
@@ -451,7 +472,7 @@ export default function CreditoScreen() {
               style={styles.addPurchaseBtn}
               onPress={() => {
                 hapticTap();
-                if (cards.length > 0) setTxCardId(cards[0].id);
+                if (walletCards.length > 0) setTxCardId(walletCards[0].id);
                 setNewTxOpen(true);
               }}
             >
@@ -601,11 +622,11 @@ export default function CreditoScreen() {
           </View>
 
           {/* Seletor de Cartão */}
-          {cards.length > 0 && (
+          {walletCards.length > 0 && (
             <View style={{ gap: 4, marginTop: 4 }}>
               <Text style={styles.inputLabel}>Cartão / Banco</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.banksRow}>
-                {cards.map((c) => (
+                {walletCards.map((c) => (
                   <AppPressable
                     key={c.id}
                     style={[
@@ -692,6 +713,8 @@ export default function CreditoScreen() {
       />
 
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
+
+      <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -699,28 +722,20 @@ export default function CreditoScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.paper },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.paper },
-  header: {
+  walletPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.rule,
+    gap: 6,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    maxWidth: 100,
   },
-  eyebrow: {
-    fontFamily: fonts.regular,
-    fontSize: 11,
-    color: theme.accent2,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  title: {
-    fontFamily: fonts.regular,
-    fontSize: 22,
-    fontWeight: '700',
-    color: theme.ink,
-  },
+  walletPillDot: { width: 8, height: 8, borderRadius: 4 },
+  walletPillText: { color: theme.ink, fontSize: 12, fontWeight: '600', flexShrink: 1 },
   addCardBtn: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -133,12 +133,17 @@ const ALVOS = [
   },
   { arquivo: 'icon.png', w: 1024, h: 1024, fundo: ESCURO, conteudo: dimensionar(iconeMestre, 1024, 1024) },
   {
-    // Logotipo completo, a 70% da largura do quadro.
+    // Símbolo "G.", não o logotipo completo: a SplashScreen nativa do
+    // Android 12+ trata a imagem como um ícone central dentro de uma zona
+    // segura aproximadamente quadrada (a mesma lógica de CAIXA_SIMBOLO acima,
+    // já comprovada por não cortar o ponto do símbolo em máscara circular).
+    // Um wordmark largo como o logotipo completo estoura essa zona e é
+    // cortado nas laterais — por isso aqui é o símbolo, não o logotipo.
     arquivo: 'splash-icon.png',
     w: 1024,
     h: 1024,
     fundo: 'transparent',
-    conteudo: dimensionar(svg('logotipo-gradiente.svg'), 717, alturaLogotipo(717)),
+    conteudo: dimensionar(svg('simbolo-gradiente.svg'), CAIXA_SIMBOLO, CAIXA_SIMBOLO),
   },
   {
     // Rasterizado direto no tamanho final, sem reamostragem — é o que mantém

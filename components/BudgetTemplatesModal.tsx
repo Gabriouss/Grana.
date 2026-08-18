@@ -186,5 +186,5 @@ const styles = StyleSheet.create({
   templateCardHover: { borderColor: theme.ruleStrong },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   tplName: { color: theme.ink, fontSize: 14, fontWeight: '500' },
-  tplDesc: { color: theme.inkFaint, fontSize: 11.5, lineHeight: 16 },
+  tplDesc: { color: theme.inkFaint, fontSize: 12, lineHeight: 16 },
 });

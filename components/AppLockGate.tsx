@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppLock } from '@/lib/app-lock-context';
 import { theme, radius, spacing } from '@/lib/theme';
 import AppPressable from './AppPressable';
-import BrandLogo from './BrandLogo';
+import BrandLogotype from './BrandLogotype';
 
 /**
  * Cobre o app inteiro enquanto a trava não é vencida.
@@ -15,8 +15,13 @@ import BrandLogo from './BrandLogo';
  * daí a cobertura ser opaca e ocupar a tela toda.
  */
 export default function AppLockGate({ children }: PropsWithChildren) {
-  const { bloqueado, desbloquear } = useAppLock();
+  const { bloqueado, pronto, desbloquear } = useAppLock();
   const jaPediu = useRef(false);
+  /* Enquanto `pronto` é false ainda não sabemos se a trava está ligada —
+     `bloqueado` começa como false por padrão, então sem isso o conteúdo
+     financeiro pisca visível por um frame antes da leitura do AsyncStorage
+     terminar. Cobre com uma tela em branco até saber a resposta. */
+  const cobrindo = !pronto || bloqueado;
 
   /* Pede a biometria assim que a tela de bloqueio aparece, sem exigir um toque
      antes. Se a pessoa cancelar, o botão continua ali para tentar de novo. */
@@ -33,17 +38,21 @@ export default function AppLockGate({ children }: PropsWithChildren) {
   return (
     <View style={{ flex: 1 }}>
       {children}
-      {bloqueado && (
+      {cobrindo && (
         <View style={styles.cobertura}>
-          <BrandLogo size={34} />
-          <Text style={styles.texto}>Seus valores estão protegidos.</Text>
-          <AppPressable
-            style={({ hovered }) => [styles.botao, hovered && { opacity: 0.88 }]}
-            onPress={desbloquear}
-          >
-            <Ionicons name="finger-print-outline" size={18} color={theme.paper} />
-            <Text style={styles.botaoTexto}>Desbloquear</Text>
-          </AppPressable>
+          {bloqueado && (
+            <>
+              <BrandLogotype width={150} />
+              <Text style={styles.texto}>Seus valores estão protegidos.</Text>
+              <AppPressable
+                style={({ hovered }) => [styles.botao, hovered && { opacity: 0.88 }]}
+                onPress={desbloquear}
+              >
+                <Ionicons name="finger-print-outline" size={18} color={theme.paper} />
+                <Text style={styles.botaoTexto}>Desbloquear</Text>
+              </AppPressable>
+            </>
+          )}
         </View>
       )}
     </View>

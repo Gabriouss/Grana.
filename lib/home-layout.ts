@@ -14,7 +14,9 @@ export type HomeBlockKey =
   | 'categoria'
   | 'orcamento'
   | 'credito'
-  | 'boletos';
+  | 'boletos'
+  | 'timeline'
+  | 'lancamentos';
 
 export type HomeBlockConfig = { key: HomeBlockKey; visible: boolean };
 
@@ -27,11 +29,63 @@ export const HOME_BLOCK_LABELS: Record<HomeBlockKey, string> = {
   orcamento: 'Orçamentos do mês',
   credito: 'Resumo de faturas de crédito',
   boletos: 'Próximos boletos a vencer',
+  timeline: 'Comprometimento futuro (6 meses)',
+  lancamentos: 'Últimos lançamentos',
+};
+
+/* Ícone e descrição curta usados pelo customizador redesenhado
+   (components/HomeCustomizerModal.tsx). Vivem aqui, ao lado dos rótulos, para
+   que um bloco novo só precise ser descrito num lugar. */
+export const HOME_BLOCK_ICONS: Record<HomeBlockKey, keyof typeof import('@expo/vector-icons').Ionicons.glyphMap> = {
+  saldo: 'trending-up-outline',
+  cofrinhos: 'gift-outline',
+  atalhos: 'flash-outline',
+  fluxo: 'stats-chart-outline',
+  categoria: 'pie-chart-outline',
+  orcamento: 'speedometer-outline',
+  credito: 'card-outline',
+  boletos: 'receipt-outline',
+  timeline: 'calendar-outline',
+  lancamentos: 'list-outline',
+};
+
+export const HOME_BLOCK_DESCRIPTIONS: Record<HomeBlockKey, string> = {
+  saldo: 'Quanto ainda dá para gastar hoje, considerando contas e reservas.',
+  cofrinhos: 'Suas metas de economia, com progresso e atalho para guardar.',
+  atalhos: 'Chips de categoria para lançar uma saída em um toque.',
+  fluxo: 'Entradas e saídas ao longo do mês, da semana ou do ano.',
+  categoria: 'Donut com a fatia de cada categoria nos seus gastos.',
+  orcamento: 'Limite definido por categoria e o quanto já foi usado.',
+  credito: 'Fatura atual dos seus cartões, com atalho para o detalhe.',
+  boletos: 'Contas fixas que vencem nos próximos dias.',
+  timeline: 'Projeção dos próximos 6 meses, incluindo parcelas futuras.',
+  lancamentos: 'As 5 movimentações mais recentes, para editar ou excluir.',
 };
 
 const ORDEM_PADRAO: HomeBlockKey[] = [
-  'saldo', 'cofrinhos', 'atalhos', 'fluxo', 'categoria', 'orcamento', 'credito', 'boletos',
+  'saldo', 'cofrinhos', 'atalhos', 'fluxo', 'categoria', 'orcamento', 'credito', 'boletos', 'timeline', 'lancamentos',
 ];
+
+/**
+ * Templates de interface oferecidos no onboarding e como botões de 1 toque
+ * no customizador. A ordem de cada array É a ordem final dos blocos ativos;
+ * `layoutDoPreset` anexa os blocos não citados como ocultos, na ordem de
+ * `ORDEM_PADRAO`, para que a pessoa continue podendo reativá-los depois sem
+ * perder onde eles ficam na lista do customizador.
+ */
+export type HomePreset = 'essencial' | 'completo' | 'metas';
+
+export const HOME_PRESETS: Record<HomePreset, HomeBlockKey[]> = {
+  essencial: ['categoria', 'atalhos', 'lancamentos'],
+  completo: ['saldo', 'cofrinhos', 'timeline', 'credito', 'boletos', 'categoria', 'fluxo', 'orcamento', 'lancamentos'],
+  metas: ['saldo', 'cofrinhos', 'orcamento', 'categoria', 'boletos'],
+};
+
+export function layoutDoPreset(preset: HomePreset): HomeBlockConfig[] {
+  const ativos = HOME_PRESETS[preset];
+  const ocultos = ORDEM_PADRAO.filter((key) => !ativos.includes(key));
+  return [...ativos, ...ocultos].map((key) => ({ key, visible: ativos.includes(key) }));
+}
 
 const CHAVE = 'grana_home_layout_config';
 

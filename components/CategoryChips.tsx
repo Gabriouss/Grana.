@@ -47,5 +47,5 @@ const styles = StyleSheet.create({
   },
   chipHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  label: { color: theme.inkSoft, fontSize: 12.5 },
+  label: { color: theme.inkSoft, fontSize: 13 },
 });

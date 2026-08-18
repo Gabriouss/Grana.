@@ -28,6 +28,7 @@ export async function createGoal(input: {
   color: string;
   icon: string;
   deadline?: string | null;
+  wallet_id?: string | null;
 }): Promise<Goal> {
   const user_id = await currentUserId();
   const { data, error } = await supabase
@@ -53,21 +54,18 @@ export async function deleteGoal(id: string): Promise<void> {
  * resgates) e um bônus único na primeira vez que a meta é batida.
  */
 export async function depositToGoal(goal: Goal, delta: number): Promise<Goal> {
-  const user_id = await currentUserId();
   const valorAtual = Number(goal.current_amount);
   const alvo = Number(goal.target_amount);
-  const novoValor = Math.max(0, valorAtual + delta);
   const jaTinhaBatido = valorAtual >= alvo;
-  const bateAgora = novoValor >= alvo;
 
-  const { data, error } = await supabase
-    .from('goals')
-    .update({ current_amount: novoValor })
-    .eq('id', goal.id)
-    .eq('user_id', user_id)
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('deposit_to_goal', {
+    p_goal_id: goal.id,
+    p_delta: delta,
+  });
   if (error) throw error;
+
+  const novoValor = Number((data as Goal).current_amount);
+  const bateAgora = novoValor >= alvo;
 
   if (delta > 0) {
     const xp = Math.min(XP_POR_DEPOSITO_MAX, Math.max(XP_POR_DEPOSITO_MIN, Math.round(delta / 10)));

@@ -25,6 +25,17 @@ export const BANKS: BankInfo[] = [
   { id: 'outro', name: 'Outro Banco', color: '#8b9198', bgDark: '#2a2f35' },
 ];
 
+export type Wallet = {
+  id: string;
+  user_id: string;
+  name: string; // Ex: "Principal", "Casamento", "Coroa Aposentada", "Carteira"
+  initial_balance: number;
+  color: string;
+  icon: string;
+  is_default: boolean;
+  created_at: string;
+};
+
 export type CreditCard = {
   id: string;
   user_id: string;
@@ -35,6 +46,7 @@ export type CreditCard = {
   limit_amount: number; // Limite total
   closing_day: number; // Dia de fechamento da fatura (1 a 31)
   due_day: number; // Dia de vencimento da fatura (1 a 31)
+  wallet_id?: string | null;
   created_at: string;
 };
 
@@ -59,6 +71,8 @@ export type Transaction = {
   installment_current?: number;
   /** Total de parcelas da compra — 1 para lançamentos avulsos. */
   installment_total?: number;
+  /** Carteira / Conta à qual esta transação pertence */
+  wallet_id?: string | null;
   created_at: string;
 };
 
@@ -74,6 +88,8 @@ export type Bill = {
   recurring: boolean;
   /** Id da saída lançada automaticamente quando a conta foi paga */
   paid_transaction_id: string | null;
+  /** Carteira vinculada ao boleto/conta fixa */
+  wallet_id?: string | null;
   created_at: string;
 };
 
@@ -118,6 +134,8 @@ export type Goal = {
   color: string;
   icon: string;
   deadline: string | null;
+  /** Carteira associada */
+  wallet_id?: string | null;
   created_at: string;
 };
 

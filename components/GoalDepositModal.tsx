@@ -113,8 +113,8 @@ export default function GoalDepositModal({
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: theme.ink, fontSize: 17, flex: 1, marginRight: spacing.sm },
-  subtitle: { color: theme.inkFaint, fontSize: 12.5 },
+  title: { color: theme.ink, fontSize: 17, fontWeight: '500', flex: 1, marginRight: spacing.sm },
+  subtitle: { color: theme.inkFaint, fontSize: 13 },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnGuardar: { backgroundColor: '#4f948333', borderWidth: 1, borderColor: '#4f9483' },
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: 20 },
   amountInput: { color: theme.ink, fontSize: 30, flex: 1 },
-  errorText: { color: '#e08a7d', fontSize: 11.5 },
+  errorText: { color: '#e08a7d', fontSize: 12 },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },

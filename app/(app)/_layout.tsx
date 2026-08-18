@@ -4,7 +4,9 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView, BlurTargetView } from 'expo-blur';
 import { theme, spacing } from '@/lib/theme';
+import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
+// noop: força recarga do bundle no Expo Go após correções da auditoria
 
 /* expo-router não reexporta o tipo de `tabBar` publicamente (ele vive numa
    cópia interna do react-navigation dentro do próprio pacote) — em vez de um
@@ -134,24 +136,32 @@ export default function AppTabsLayout() {
   const blurTarget = useRef<View>(null);
 
   return (
-    <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
-      <Tabs
-        tabBar={(props) => <FloatingTabBar {...props} blurTarget={blurTarget} />}
-        screenOptions={{ headerShown: false }}
-      >
-        <Tabs.Screen name="index" options={{ title: 'Início' }} />
-        <Tabs.Screen name="lancamentos" options={{ title: 'Débito e Pix' }} />
-        <Tabs.Screen name="credito" options={{ title: 'Crédito' }} />
-        <Tabs.Screen name="contas" options={{ title: 'Boletos' }} />
-        <Tabs.Screen name="desafios" options={{ title: 'Desafios' }} />
-        <Tabs.Screen
-          name="perfil"
-          options={{
-            href: null, // Acessível pelo avatar no topo da Home
-          }}
-        />
-      </Tabs>
-    </BlurTargetView>
+    <WalletProvider>
+      <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
+        <Tabs
+          tabBar={(props) => <FloatingTabBar {...props} blurTarget={blurTarget} />}
+          screenOptions={{ headerShown: false }}
+        >
+          <Tabs.Screen name="index" options={{ title: 'Início' }} />
+          <Tabs.Screen name="lancamentos" options={{ title: 'Débito e Pix' }} />
+          <Tabs.Screen name="credito" options={{ title: 'Crédito' }} />
+          <Tabs.Screen name="contas" options={{ title: 'Boletos' }} />
+          <Tabs.Screen name="desafios" options={{ title: 'Desafios' }} />
+          <Tabs.Screen
+            name="graficos"
+            options={{
+              href: null,
+            }}
+          />
+          <Tabs.Screen
+            name="perfil"
+            options={{
+              href: null, // Acessível pelo avatar no topo da Home
+            }}
+          />
+        </Tabs>
+      </BlurTargetView>
+    </WalletProvider>
   );
 }
 

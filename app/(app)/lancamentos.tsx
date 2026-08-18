@@ -16,6 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
+import ScreenHeader from '@/components/ScreenHeader';
+import WalletPickerModal from '@/components/WalletPickerModal';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import CsvImportModal from '@/components/CsvImportModal';
@@ -42,12 +44,15 @@ import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount,
 import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
+import { useWallet } from '@/lib/wallet-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Transaction, TxType } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 
 export default function LancamentosScreen() {
   const { isDemoMode } = useDemo();
+  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor } = useWallet();
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -278,6 +283,7 @@ export default function LancamentosScreen() {
           color: catColor,
           occurred_on: occurredOn,
           installments: parcelas,
+          wallet_id: activeWallet?.id ?? null,
         });
         triggerToast(`Compra parcelada em ${parcelas}x`);
       } else {
@@ -289,6 +295,7 @@ export default function LancamentosScreen() {
           color: catColor,
           occurred_on: occurredOn,
           recurring,
+          wallet_id: activeWallet?.id ?? null,
         };
         try {
           await addTransaction(input);
@@ -328,8 +335,12 @@ export default function LancamentosScreen() {
     }
   }
 
+  // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado em index.tsx e graficos.tsx.
+  const walletTransactions =
+    activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
+
   // Transações estritamente do mês selecionado
-  const monthTransactions = transactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
+  const monthTransactions = walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
   const monthIn = monthTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
   const monthOut = monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
   const monthBalance = monthIn - monthOut;
@@ -350,9 +361,10 @@ export default function LancamentosScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Lançamentos</Text>
+      <ScreenHeader
+        eyebrow="movimentações"
+        title="Lançamentos"
+        right={
           <View style={styles.headerActions}>
             <AppPressable
               style={({ hovered }) => [styles.headerBtn, hovered && styles.headerBtnHover]}
@@ -377,7 +389,15 @@ export default function LancamentosScreen() {
               }}
             />
           </View>
-        </View>
+        }
+      >
+        <AppPressable onPress={() => setWalletModalOpen(true)} style={styles.walletPill}>
+          <View style={[styles.walletPillDot, { backgroundColor: activeWalletColor }]} />
+          <Text style={styles.walletPillText} numberOfLines={1}>
+            {activeWalletName}
+          </Text>
+          <Ionicons name="chevron-down" size={14} color={theme.inkFaint} />
+        </AppPressable>
 
         {(offline || pendingCount > 0) && (
           <View style={styles.offlineBanner}>
@@ -476,7 +496,7 @@ export default function LancamentosScreen() {
             })}
           </ScrollView>
         )}
-      </View>
+      </ScreenHeader>
 
       {loading ? (
         <ActivityIndicator color={theme.ink} style={{ marginTop: 40 }} />
@@ -764,14 +784,14 @@ export default function LancamentosScreen() {
 
       {/* Toast */}
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
+
+      <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  header: { padding: spacing.xl, paddingBottom: spacing.md, gap: spacing.md },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerActions: { flexDirection: 'row', gap: 8 },
   headerBtn: {
     padding: 8,
@@ -781,19 +801,32 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   headerBtnHover: { borderColor: theme.ruleStrong },
-  title: { color: theme.ink, fontSize: 22 },
+  walletPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  walletPillDot: { width: 8, height: 8, borderRadius: 4 },
+  walletPillText: { color: theme.ink, fontSize: 12, fontWeight: '600' },
   listContent: { paddingHorizontal: spacing.xl, paddingBottom: 100 },
-  emptyText: { color: theme.inkFaint, fontSize: 12.5, textAlign: 'center', marginTop: 30, lineHeight: 18 },
+  emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
   rowHover: { backgroundColor: theme.paperRaised },
   icon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 11 },
   rowTitle: { color: theme.ink, fontSize: 13 },
-  rowSub: { color: theme.inkFaint, fontSize: 10.5, marginTop: 2 },
+  rowSub: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
   rowAmount: { fontSize: 13, fontVariant: ['tabular-nums'] },
   rowAmountWrap: { flexDirection: 'row', alignItems: 'baseline' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17 },
+  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: '#bb6b6033', borderWidth: 1, borderColor: '#bb6b60' },
@@ -828,7 +861,7 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   monthSummaryCol: { flex: 1, alignItems: 'center' },
-  monthSummaryLabel: { color: theme.inkFaint, fontSize: 10.5, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  monthSummaryLabel: { color: theme.inkFaint, fontSize: 11, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
   monthSummaryVal: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   monthSummaryDivider: { width: 1, height: 24, backgroundColor: theme.rule },
   dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
@@ -860,7 +893,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
-  offlineBannerText: { color: theme.inkFaint, fontSize: 10.5, flexShrink: 1 },
+  offlineBannerText: { color: theme.inkFaint, fontSize: 11, flexShrink: 1 },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -886,7 +919,7 @@ const styles = StyleSheet.create({
   },
   categoryChipActive: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
   categoryChipDot: { width: 7, height: 7, borderRadius: 3.5 },
-  categoryChipText: { color: theme.inkFaint, fontSize: 11.5 },
+  categoryChipText: { color: theme.inkFaint, fontSize: 12 },
   categoryChipTextActive: { color: theme.ink, fontWeight: '600' },
   installmentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },

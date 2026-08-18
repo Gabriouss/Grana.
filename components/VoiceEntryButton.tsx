@@ -135,6 +135,6 @@ const styles = StyleSheet.create({
   },
   hover: { borderColor: theme.ruleStrong },
   active: { backgroundColor: '#bb6b60', borderColor: '#bb6b60' },
-  label: { color: theme.ink, fontSize: 12.5, fontWeight: '500' },
+  label: { color: theme.ink, fontSize: 13, fontWeight: '500' },
   labelActive: { color: theme.paper },
 });

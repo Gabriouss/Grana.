@@ -11,12 +11,25 @@ async function currentUserId(): Promise<string> {
 
 /* ---- transações ---- */
 
-export async function fetchTransactions(): Promise<Transaction[]> {
-  const { data, error } = await supabase
+/**
+ * `sinceDays`, quando informado, limita a busca a `occurred_on >= hoje -
+ * sinceDays`. Sem ele, busca o histórico inteiro — o padrão de que telas com
+ * navegação por mês (Início, Lançamentos) dependem. Existe para telas que só
+ * precisam de uma janela recente (ex.: Desafios, que calcula streak e score
+ * sobre no máximo os últimos 30 dias) evitarem escanear o histórico todo.
+ */
+export async function fetchTransactions(opts?: { sinceDays?: number }): Promise<Transaction[]> {
+  let query = supabase
     .from('transactions')
     .select('*')
     .order('occurred_on', { ascending: false })
     .order('created_at', { ascending: false });
+  if (opts?.sinceDays) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - opts.sinceDays);
+    query = query.gte('occurred_on', cutoff.toISOString().slice(0, 10));
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 }
@@ -34,6 +47,7 @@ export async function addTransaction(input: {
   card_id?: string | null;
   installment_current?: number;
   installment_total?: number;
+  wallet_id?: string | null;
 }): Promise<Transaction> {
   const user_id = await currentUserId();
   const { data, error } = await supabase
@@ -68,6 +82,7 @@ export async function addCreditCard(input: {
   limit_amount: number;
   closing_day: number;
   due_day: number;
+  wallet_id?: string | null;
 }): Promise<CreditCard> {
   const user_id = await currentUserId();
   const { data, error } = await supabase
@@ -103,6 +118,7 @@ export async function addTransactionsBatch(
     color: string;
     occurred_on: string;
     recurring?: boolean;
+    wallet_id?: string | null;
   }>
 ): Promise<void> {
   if (inputs.length === 0) return;
@@ -140,6 +156,7 @@ export async function addInstallmentPurchase(input: {
   payment_method?: string;
   bank?: string;
   card_id?: string | null;
+  wallet_id?: string | null;
 }): Promise<Transaction[]> {
   const user_id = await currentUserId();
   const n = Math.max(2, Math.round(input.installments));
@@ -173,6 +190,7 @@ export async function addInstallmentPurchase(input: {
           card_id: input.card_id,
           installment_current: i + 1,
           installment_total: n,
+          wallet_id: input.wallet_id,
         })
         .select()
         .single();
@@ -197,6 +215,7 @@ export async function addInstallmentPurchase(input: {
           card_id: input.card_id,
           installment_current: i + 1,
           installment_total: n,
+          wallet_id: input.wallet_id,
         })
         .select()
         .single();
@@ -223,6 +242,7 @@ export async function addBill(input: {
   color: string;
   due_date: string;
   recurring?: boolean;
+  wallet_id?: string | null;
 }): Promise<Bill> {
   const user_id = await currentUserId();
   const { data, error } = await supabase
@@ -259,6 +279,7 @@ export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
     category: bill.category,
     color: bill.color,
     occurred_on: paidOn,
+    wallet_id: bill.wallet_id,
   });
 
   const user_id = await currentUserId();
@@ -533,6 +554,7 @@ export async function deleteUserAccount(): Promise<void> {
     await supabase.from('goals').delete().eq('user_id', user_id);
     await supabase.from('user_gamification').delete().eq('user_id', user_id);
     await supabase.from('credit_cards').delete().eq('user_id', user_id);
+    await supabase.from('wallets').delete().eq('user_id', user_id);
   }
 
   // 2. Encerrar sessão localmente

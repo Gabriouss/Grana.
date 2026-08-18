@@ -230,15 +230,26 @@ async function transcribeAudio(mediaId: string): Promise<string | null> {
 
 /* ---- fluxo principal ---- */
 
+/* Janela de validade do código de pareamento — sem isso, um código de 6
+   dígitos gerado uma vez e nunca usado fica adivinhável para sempre (o app
+   sempre apaga o vínculo anterior ao gerar um novo, então `created_at`
+   reflete a geração mais recente). 15 minutos é folga suficiente para copiar
+   e colar no WhatsApp, e reduz a janela de tentativa de força bruta de
+   "indefinida" para alguns minutos. */
+const VALIDADE_PAREAMENTO_MS = 15 * 60 * 1000;
+
 async function handlePairing(phone: string, text: string): Promise<boolean> {
   const codigo = text.trim().replace(/\D/g, '');
   if (codigo.length !== 6) return false;
+
+  const cutoff = new Date(Date.now() - VALIDADE_PAREAMENTO_MS).toISOString();
 
   const { data: link } = await supabase
     .from('whatsapp_links')
     .select('*')
     .eq('pairing_code', codigo)
     .eq('verified', false)
+    .gt('created_at', cutoff)
     .maybeSingle();
 
   if (!link) return false;

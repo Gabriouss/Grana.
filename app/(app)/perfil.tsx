@@ -569,6 +569,7 @@ export default function PerfilScreen() {
                 <Text style={styles.reauthText}>
                   Envie o código abaixo pelo WhatsApp para {process.env.EXPO_PUBLIC_WHATSAPP_NUMBER ?? 'o número do Grana.'}{' '}
                   a partir de {whatsappLink.phone}. Assim que chegar, o número fica vinculado à sua conta.
+                  Válido por 15 minutos — depois disso, gere um novo código.
                 </Text>
                 <Text style={styles.whatsappCode}>{whatsappLink.pairing_code}</Text>
                 <AppPressable
@@ -576,6 +577,15 @@ export default function PerfilScreen() {
                   onPress={recarregarWhatsapp}
                 >
                   <Text style={styles.nomeSalvarTexto}>Já enviei — verificar</Text>
+                </AppPressable>
+                <AppPressable
+                  style={({ hovered }) => [styles.reauthCancel, hovered && { opacity: 0.88 }]}
+                  onPress={handleGerarPareamento}
+                  disabled={whatsappSaving}
+                >
+                  <Text style={styles.reauthCancelText}>
+                    {whatsappSaving ? 'Gerando...' : 'Código expirou? Gerar um novo'}
+                  </Text>
                 </AppPressable>
               </>
             ) : (
@@ -622,7 +632,7 @@ export default function PerfilScreen() {
 const styles = StyleSheet.create({
   rowColuna: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule, gap: 4 },
   rowInterna: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowAjuda: { color: theme.inkFaint, fontSize: 10.5, lineHeight: 14.5, paddingRight: 16 },
+  rowAjuda: { color: theme.inkFaint, fontSize: 11, lineHeight: 14.5, paddingRight: 16 },
   avatarFoto: { width: '100%', height: '100%', borderRadius: 999 },
   avatarBadge: {
     position: 'absolute', right: -2, bottom: -2,
@@ -645,7 +655,7 @@ const styles = StyleSheet.create({
   reauthScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   reauthCard: { width: '100%', maxWidth: 400, backgroundColor: theme.paperRaised, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, borderWidth: 1, borderColor: theme.rule },
   reauthTitle: { color: theme.ink, fontSize: 18, fontWeight: '600' },
-  reauthText: { color: theme.inkSoft, fontSize: 13.5, lineHeight: 19 },
+  reauthText: { color: theme.inkSoft, fontSize: 14, lineHeight: 19 },
   reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: 15, color: theme.ink, backgroundColor: theme.paper },
   reauthError: { color: '#e08a7d', fontSize: 13, lineHeight: 18 },
   reauthDanger: { backgroundColor: '#e08a7d', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
@@ -658,8 +668,8 @@ const styles = StyleSheet.create({
   avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: theme.paperRaised, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.rule },
   avatarText: { color: theme.ink, fontSize: 20, fontWeight: '500' },
   name: { color: theme.ink, fontSize: 14, fontWeight: '500' },
-  sub: { color: theme.inkFaint, fontSize: 11.5, marginTop: 2 },
-  sectionLabel: { color: theme.inkFaint, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.sm },
+  sub: { color: theme.inkFaint, fontSize: 12, marginTop: 2 },
+  sectionLabel: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.sm },
   sectionCard: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, paddingHorizontal: spacing.md },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
   tappableRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
@@ -670,6 +680,6 @@ const styles = StyleSheet.create({
   signOutText: { color: theme.ink, fontSize: 14, fontWeight: '500' },
   deleteBtn: { borderWidth: 1, borderColor: '#bb6b6040', backgroundColor: '#bb6b6015', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   deleteBtnHover: { backgroundColor: '#bb6b6030' },
-  deleteText: { color: '#e08a7d', fontSize: 13.5, fontWeight: '500' },
+  deleteText: { color: '#e08a7d', fontSize: 14, fontWeight: '500' },
 });
 

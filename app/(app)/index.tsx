@@ -25,17 +25,20 @@ import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO } fr
 import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
-import { theme, radius, spacing, fonts } from '@/lib/theme';
+import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { useSession } from '@/lib/auth-context';
+import { useWallet } from '@/lib/wallet-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_GOALS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Bill, Budget, Goal, Transaction, TxType } from '@/lib/types';
 import PieChart, { type PieSlice } from '@/components/PieChart';
 import FlowChart, { ChartPeriod } from '@/components/FlowChart';
 import CategoryChips from '@/components/CategoryChips';
 import AppPressable from '@/components/AppPressable';
+import ScreenHeader from '@/components/ScreenHeader';
+import WalletPickerModal from '@/components/WalletPickerModal';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import CsvImportModal from '@/components/CsvImportModal';
@@ -69,6 +72,8 @@ export default function InicioScreen() {
   const { hidden, toggle } = usePrivacy();
   const { isDemoMode } = useDemo();
   const { session } = useSession();
+  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, updateSaldosComTransacoes } = useWallet();
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -213,6 +218,13 @@ export default function InicioScreen() {
     }
   }, [isDemoMode]);
 
+  // Recalcula o saldo por carteira sempre que as transações mudam — o
+  // WalletProvider guarda a lista de carteiras, mas não recalcula saldo
+  // sozinho, então quem tem os dados de transação precisa empurrar.
+  useEffect(() => {
+    updateSaldosComTransacoes(transactions);
+  }, [transactions, updateSaldosComTransacoes]);
+
   // Entrada animada do gráfico de pizza toda vez que a aba Início ganha
   // foco (abrir o app ou tocar na tab), não só na primeira montagem.
   const pieAnim = useRef(new Animated.Value(0)).current;
@@ -239,15 +251,22 @@ export default function InicioScreen() {
     );
   }
 
-  const safeToSpend = calcularSafeToSpend(transactions, bills, goals);
-  const comprometimentoFuturo = projetarComprometimentoFuturo(transactions, bills);
+  // Views da Home respeitam a carteira ativa — "Total" mostra tudo, uma
+  // carteira específica filtra pelo wallet_id gravado no lançamento/conta.
+  // Mesmo filtro que app/(app)/graficos.tsx já usa.
+  const walletTransactions =
+    activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
+  const walletBills = activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId);
+
+  const safeToSpend = calcularSafeToSpend(walletTransactions, walletBills, goals);
+  const comprometimentoFuturo = projetarComprometimentoFuturo(walletTransactions, walletBills);
   const sugestaoEvolucao = diagnostico
-    ? sugerirEvolucaoArquetipo(transactions, bills, budgets, diagnostico.arquetipo.id)
+    ? sugerirEvolucaoArquetipo(walletTransactions, walletBills, budgets, diagnostico.arquetipo.id)
     : null;
   const arquetipoSugerido = sugestaoEvolucao?.mudou ? ARQUETIPOS[sugestaoEvolucao.sugeridoId] : null;
 
   // Transações estritamente do mês selecionado
-  const monthTransactions = transactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
+  const monthTransactions = walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
   const totalIn = monthTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
   const totalOut = monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
   const flowSummary =
@@ -259,7 +278,7 @@ export default function InicioScreen() {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dueThisWeek = bills
+  const dueThisWeek = walletBills
     .filter((b) => {
       if (b.status === 'paid') return false;
       const diffDays = Math.round((new Date(b.due_date + 'T00:00:00').getTime() - today.getTime()) / 86400000);
@@ -394,6 +413,7 @@ export default function InicioScreen() {
           color: txCatColor,
           occurred_on: txDate,
           recurring: txRecurring,
+          wallet_id: activeWallet?.id ?? null,
         });
         triggerToast('Lançamento salvo');
       }
@@ -444,6 +464,7 @@ export default function InicioScreen() {
         color: billCatColor,
         due_date: billDueDate,
         recurring: billRecurring,
+        wallet_id: activeWallet?.id ?? null,
       });
       setBillSheetOpen(false);
       triggerToast('Boleto / Conta salva');
@@ -543,9 +564,9 @@ export default function InicioScreen() {
       triggerToast('Meta criada (exemplo)');
       return;
     }
-    await createGoal(input);
+    const novaMeta = await createGoal({ ...input, wallet_id: activeWallet?.id ?? null });
+    setGoals((prev) => [...prev, novaMeta]);
     triggerToast('Meta criada');
-    load();
   }
 
   async function handleDepositGoal(goal: Goal, delta: number) {
@@ -642,10 +663,10 @@ export default function InicioScreen() {
         <FlowChart
           transactions={
             chartView === 'in'
-              ? transactions.filter((t) => t.type === 'in')
+              ? walletTransactions.filter((t) => t.type === 'in')
               : chartView === 'out'
-              ? transactions.filter((t) => t.type === 'out')
-              : transactions
+              ? walletTransactions.filter((t) => t.type === 'out')
+              : walletTransactions
           }
           period={chartPeriod}
           year={selectedYear}
@@ -745,8 +766,8 @@ export default function InicioScreen() {
     ),
     credito: (
       <CreditSummaryCard
-        cards={creditCards}
-        transactions={transactions}
+        cards={activeWalletId === 'total' ? creditCards : creditCards.filter((c) => c.wallet_id === activeWalletId)}
+        transactions={walletTransactions}
         year={selectedYear}
         month={selectedMonth}
         onPress={() => router.push('/credito')}
@@ -777,22 +798,77 @@ export default function InicioScreen() {
         )}
       </View>
     ),
+    timeline: (
+      <View style={styles.card}>
+        <View style={styles.cardHeadRow}>
+          <Text style={styles.cardLabel}>Comprometimento futuro</Text>
+        </View>
+        <FutureTimelineChart meses={comprometimentoFuturo} />
+      </View>
+    ),
+    lancamentos: (
+      <View style={{ gap: spacing.sm }}>
+        <View style={styles.cardHeadRow}>
+          <Text style={styles.sectionLabel}>Últimos lançamentos</Text>
+          <AppPressable onPress={() => router.push('/lancamentos')} hitSlop={8}>
+            <Text style={styles.seeAllText}>Ver todos</Text>
+          </AppPressable>
+        </View>
+        {walletTransactions.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhum lançamento ainda.</Text>
+        ) : (
+          walletTransactions.slice(0, 5).map((t) => (
+            <AppPressable
+              key={t.id}
+              style={({ hovered }) => [styles.recentRow, hovered && styles.recentRowHover]}
+              onPress={() => openTxEdit(t)}
+              onLongPress={() => {
+                setSelectedTx(t);
+                setActionSheetOpen(true);
+              }}
+            >
+              <View style={[styles.recentIcon, { backgroundColor: t.color + '25' }]}>
+                <Text style={[styles.recentIconText, { color: t.color }]}>{t.category.slice(0, 2).toUpperCase()}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.recentRowTitle} numberOfLines={1}>
+                  {t.description && t.description.trim() ? t.description : t.category}
+                </Text>
+                <Text style={styles.recentRowSub}>
+                  <Text style={{ color: t.color, fontWeight: '600' }}>{t.category}</Text> · {formatDateLabel(t.occurred_on)}
+                </Text>
+              </View>
+              <View style={styles.recentAmountRow}>
+                <Text style={[styles.recentRowAmount, { color: t.type === 'in' ? theme.up : theme.down }]}>
+                  {t.type === 'in' ? '+ ' : '− '}
+                </Text>
+                <PrivacyValue>
+                  <Text style={[styles.recentRowAmount, { color: t.type === 'in' ? theme.up : theme.down }]}>
+                    {`R$ ${formatMoney(Number(t.amount))}`}
+                  </Text>
+                </PrivacyValue>
+              </View>
+            </AppPressable>
+          ))
+        )}
+      </View>
+    ),
   };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
       {/* Fora do ScrollView de propósito: a marca fica fixa na tela em vez de
           rolar junto com o conteúdo, para reforçar a identidade visual. */}
-      <View style={styles.headerFixed}>
-        <View style={styles.headerRow}>
-          <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.eyebrow}>início</Text>
-              {isDemoMode && <Text style={styles.demoFlag}>exemplo</Text>}
-              {hidden && <Text style={styles.demoFlag}>oculto</Text>}
-            </View>
-            <Text style={styles.title} numberOfLines={1}>{saudacaoDoDia(nomeExibicao)}</Text>
-          </View>
+      <ScreenHeader
+        eyebrow="início"
+        eyebrowBadges={
+          <>
+            {isDemoMode && <Text style={styles.demoFlag}>exemplo</Text>}
+            {hidden && <Text style={styles.demoFlag}>oculto</Text>}
+          </>
+        }
+        title={saudacaoDoDia(nomeExibicao)}
+        right={
           <View style={styles.headerActions}>
             <AppPressable
               onPress={() => {
@@ -804,6 +880,13 @@ export default function InicioScreen() {
             >
               <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.inkFaint} />
             </AppPressable>
+            <AppPressable onPress={() => setWalletModalOpen(true)} style={styles.walletPill}>
+              <View style={[styles.walletPillDot, { backgroundColor: activeWalletColor }]} />
+              <Text style={styles.walletPillText} numberOfLines={1}>
+                {activeWalletName}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={theme.inkFaint} />
+            </AppPressable>
             <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn}>
               {perfil?.fotoUrl ? (
                 <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} />
@@ -812,8 +895,10 @@ export default function InicioScreen() {
               )}
             </AppPressable>
           </View>
-        </View>
-      </View>
+        }
+      />
+
+      <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 
       <ScrollView
         style={styles.container}
@@ -870,60 +955,6 @@ export default function InicioScreen() {
             {HOME_BLOCOS[b.key]}
           </FadeIn>
         ))}
-
-        {/* Card Comprometimento Futuro — próximos 6 meses */}
-        <FadeIn delay={240} style={styles.card}>
-          <View style={styles.cardHeadRow}>
-            <Text style={styles.cardLabel}>Comprometimento futuro</Text>
-          </View>
-          <FutureTimelineChart meses={comprometimentoFuturo} />
-        </FadeIn>
-
-        {/* Últimos lançamentos — toque para editar, segure para excluir */}
-        <FadeIn delay={260} style={styles.cardHeadRow}>
-          <Text style={styles.sectionLabel}>Últimos lançamentos</Text>
-          <AppPressable onPress={() => router.push('/lancamentos')} hitSlop={8}>
-            <Text style={styles.seeAllText}>Ver todos</Text>
-          </AppPressable>
-        </FadeIn>
-        {transactions.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum lançamento ainda.</Text>
-        ) : (
-          transactions.slice(0, 5).map((t) => (
-            <AppPressable
-              key={t.id}
-              style={({ hovered }) => [styles.recentRow, hovered && styles.recentRowHover]}
-              onPress={() => openTxEdit(t)}
-              onLongPress={() => {
-                setSelectedTx(t);
-                setActionSheetOpen(true);
-              }}
-            >
-              <View style={[styles.recentIcon, { backgroundColor: t.color + '25' }]}>
-                <Text style={[styles.recentIconText, { color: t.color }]}>{t.category.slice(0, 2).toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.recentRowTitle} numberOfLines={1}>
-                  {t.description && t.description.trim() ? t.description : t.category}
-                </Text>
-                <Text style={styles.recentRowSub}>
-                  <Text style={{ color: t.color, fontWeight: '600' }}>{t.category}</Text> · {formatDateLabel(t.occurred_on)}
-                </Text>
-              </View>
-              <View style={styles.recentAmountRow}>
-                <Text style={[styles.recentRowAmount, { color: t.type === 'in' ? theme.up : theme.down }]}>
-                  {t.type === 'in' ? '+ ' : '− '}
-                </Text>
-                <PrivacyValue>
-                  <Text style={[styles.recentRowAmount, { color: t.type === 'in' ? theme.up : theme.down }]}>
-                    {`R$ ${formatMoney(Number(t.amount))}`}
-                  </Text>
-                </PrivacyValue>
-              </View>
-
-            </AppPressable>
-          ))
-        )}
 
         {/* Personalizar Início */}
         <AppPressable style={styles.customizeBtn} onPress={() => setCustomizerOpen(true)}>
@@ -1280,6 +1311,7 @@ export default function InicioScreen() {
         onFinished={() => {
           triggerToast('Diagnóstico concluído');
           load();
+          carregarLayoutHome().then(setHomeLayout);
           markOnboardingSeen();
         }}
       />
@@ -1302,14 +1334,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
   content: { padding: spacing.xl, gap: spacing.lg },
   center: { flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' },
-  headerFixed: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: theme.paper,
-  },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  eyebrow: { color: theme.inkFaint, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
   demoFlag: {
     fontFamily: 'monospace',
     fontSize: 9,
@@ -1322,7 +1346,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  title: { color: theme.ink, fontFamily: fonts.light, fontSize: 22, marginTop: 2, marginBottom: spacing.sm },
   customizeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1334,9 +1357,23 @@ const styles = StyleSheet.create({
   customizeBtnText: { color: theme.inkSoft, fontSize: 12 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   privacyBtn: { padding: 4 },
+  walletPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    maxWidth: 110,
+  },
+  walletPillDot: { width: 8, height: 8, borderRadius: 4 },
+  walletPillText: { color: theme.ink, fontSize: 12, fontWeight: '600', flexShrink: 1 },
   avatarBtn: { padding: 2 },
   avatarImg: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: theme.rule },
-  errorText: { color: '#e08a7d', fontSize: 12.5 },
+  errorText: { color: '#e08a7d', fontSize: 13 },
   quickChipsSection: { gap: 6 },
   quickChipsRow: { gap: 8, paddingVertical: 4 },
   quickChip: {
@@ -1366,12 +1403,12 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   smartActionBtnHover: { borderColor: theme.ruleStrong },
-  smartActionText: { color: theme.ink, fontSize: 11.5, fontWeight: '500' },
+  smartActionText: { color: theme.ink, fontSize: 12, fontWeight: '500' },
   card: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, gap: spacing.md },
   cardHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: { color: theme.ink, fontSize: 13 },
   flowValue: { color: theme.ink, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  emptyText: { color: theme.inkFaint, fontSize: 12.5, lineHeight: 18 },
+  emptyText: { color: theme.inkFaint, fontSize: 13, lineHeight: 18 },
 
   pieWrap: { alignItems: 'center', paddingVertical: spacing.sm },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
@@ -1379,7 +1416,7 @@ const styles = StyleSheet.create({
   categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   categoryName: { color: theme.ink, fontSize: 12 },
-  categoryAmount: { color: theme.inkFaint, fontSize: 11.5, fontVariant: ['tabular-nums'] },
+  categoryAmount: { color: theme.inkFaint, fontSize: 12, fontVariant: ['tabular-nums'] },
   templateBudgetText: { color: theme.inkFaint, fontSize: 12 },
   addBudgetText: { color: theme.inkSoft, fontSize: 12 },
   budgetRow: { gap: 6, paddingVertical: 8, borderRadius: radius.sm },
@@ -1388,22 +1425,22 @@ const styles = StyleSheet.create({
   budgetAmountRow: { flexDirection: 'row', alignItems: 'baseline' },
   budgetTrack: { height: 6, borderRadius: 3, backgroundColor: theme.paper, overflow: 'hidden' },
   budgetFill: { height: '100%', borderRadius: 3 },
-  sectionLabel: { color: theme.inkFaint, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.sm },
+  sectionLabel: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.sm },
   seeAllText: { color: theme.inkSoft, fontSize: 12 },
   recentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
   recentRowHover: { backgroundColor: theme.paperRaised },
   recentIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   recentIconText: { fontSize: 11 },
   recentRowTitle: { color: theme.ink, fontSize: 13 },
-  recentRowSub: { color: theme.inkFaint, fontSize: 10.5, marginTop: 2 },
+  recentRowSub: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
   recentRowAmount: { fontSize: 13, fontVariant: ['tabular-nums'] },
   recentAmountRow: { flexDirection: 'row', alignItems: 'baseline' },
   dueRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: theme.rule },
   dueName: { color: theme.ink, fontSize: 13 },
-  dueDate: { color: theme.inkFaint, fontSize: 10.5, marginTop: 2 },
-  dueAmount: { color: theme.ink, fontSize: 12.5, fontVariant: ['tabular-nums'] },
+  dueDate: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
+  dueAmount: { color: theme.ink, fontSize: 13, fontVariant: ['tabular-nums'] },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17 },
+  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: '#bb6b6033', borderWidth: 1, borderColor: '#bb6b60' },
@@ -1425,7 +1462,7 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
-  removeBudgetText: { color: theme.inkFaint, fontSize: 12.5, textAlign: 'center', paddingVertical: 6 },
+  removeBudgetText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', paddingVertical: 6 },
   dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   dateQuickChip: {
     flex: 1,
