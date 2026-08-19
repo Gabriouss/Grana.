@@ -77,7 +77,7 @@ export default function Sheet({
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
-            { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 8 : spacing.lg },
+            { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 36 : spacing.lg },
             contentStyle,
           ]}
           keyboardShouldPersistTaps="handled"

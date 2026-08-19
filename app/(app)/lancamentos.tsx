@@ -44,7 +44,7 @@ import {
   setCachedTransactions,
 } from '@/lib/offline-cache';
 import { hapticDelete } from '@/lib/haptics';
-import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { theme, radius, spacing, screenRhythm } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
@@ -341,8 +341,12 @@ export default function LancamentosScreen() {
   }
 
   // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado em index.tsx e graficos.tsx.
+  // Compra no crédito não aparece aqui — só na aba Crédito — até a fatura ser
+  // paga, quando vira uma saída de caixa de verdade (ver lib/data.ts::payCardInvoice).
   const walletTransactions =
-    activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
+    (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)).filter(
+      (t) => !isCreditTx(t)
+    );
 
   // Transações estritamente do mês selecionado
   const monthTransactions = walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));

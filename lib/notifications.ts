@@ -1,7 +1,9 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type * as NotificationsModule from 'expo-notifications';
-import type { Bill } from './types';
+import { obterProximaMensagem } from './notification-messages';
+import type { Bill, CreditCard } from './types';
 
 const CHANNEL_ID = 'lembretes-contas';
 
@@ -154,4 +156,177 @@ export async function cancelBillReminders(billId: string): Promise<void> {
   await Promise.all(
     etapas.map((etapa) => Notifications!.cancelScheduledNotificationAsync(idFor(billId, etapa)).catch(() => {}))
   );
+}
+
+/* ---- lembretes de vencimento de fatura de cartão ---- */
+
+type EtapaFatura = '3d' | 'venc' | 'atraso';
+
+const ETAPAS_FATURA: { etapa: EtapaFatura; offsetDias: number; titulo: string }[] = [
+  { etapa: '3d', offsetDias: -3, titulo: 'Fatura vence em 3 dias' },
+  { etapa: 'venc', offsetDias: 0, titulo: 'Fatura vence hoje' },
+  { etapa: 'atraso', offsetDias: 1, titulo: 'Fatura atrasada' },
+];
+
+function idForFatura(cardId: string, year: number, month: number, etapa: EtapaFatura): string {
+  return `fatura-${cardId}-${year}-${month}-${etapa}`;
+}
+
+/**
+ * Dia de vencimento cai no mesmo mês da fatura quando due_day >= closing_day
+ * (o caso comum — ex: fecha dia 18, vence dia 25), senão no mês seguinte.
+ */
+function dataVencimentoFatura(card: CreditCard, year: number, month: number): Date {
+  const mesVencimento = card.due_day >= card.closing_day ? month : month + 1;
+  return new Date(year, mesVencimento, card.due_day, 9, 0, 0, 0);
+}
+
+export async function scheduleCardInvoiceReminders(
+  card: CreditCard,
+  year: number,
+  month: number,
+  amount: number
+): Promise<void> {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
+  await cancelCardInvoiceReminders(card.id, year, month);
+  if (amount <= 0) return;
+
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+
+  await ensureChannel();
+
+  const vencimento = dataVencimentoFatura(card, year, month);
+  const now = new Date();
+  for (const { etapa, offsetDias, titulo } of ETAPAS_FATURA) {
+    const quando = new Date(vencimento);
+    quando.setDate(quando.getDate() + offsetDias);
+    if (quando.getTime() <= now.getTime()) continue;
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: idForFatura(card.id, year, month, etapa),
+        content: {
+          title: titulo,
+          body: `Fatura do ${card.name}.`,
+          data: { cardId: card.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: quando,
+          channelId: CHANNEL_ID,
+        },
+      });
+    } catch (e) {
+      // Ignora erro se agendamento local falhar
+    }
+  }
+}
+
+export async function cancelCardInvoiceReminders(cardId: string, year: number, month: number): Promise<void> {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
+  const etapas: EtapaFatura[] = ['3d', 'venc', 'atraso'];
+  await Promise.all(
+    etapas.map((etapa) =>
+      Notifications!.cancelScheduledNotificationAsync(idForFatura(cardId, year, month, etapa)).catch(() => {})
+    )
+  );
+}
+
+/* ---- preferências de notificação ---- */
+
+export type NotifPrefs = {
+  lembreteDiarioAtivo: boolean;
+  horario: { hour: number; minute: number };
+  lembretesContasAtivo: boolean;
+};
+
+const PREFS_PADRAO: NotifPrefs = {
+  lembreteDiarioAtivo: true,
+  horario: { hour: 20, minute: 30 },
+  lembretesContasAtivo: true,
+};
+
+const CHAVE_PREFS = '@grana_notif_prefs';
+
+export async function carregarNotifPrefs(): Promise<NotifPrefs> {
+  try {
+    const raw = await AsyncStorage.getItem(CHAVE_PREFS);
+    if (!raw) return PREFS_PADRAO;
+    return { ...PREFS_PADRAO, ...JSON.parse(raw) };
+  } catch {
+    return PREFS_PADRAO;
+  }
+}
+
+export async function salvarNotifPrefs(prefs: NotifPrefs): Promise<void> {
+  await AsyncStorage.setItem(CHAVE_PREFS, JSON.stringify(prefs));
+}
+
+/* ---- lembrete diário de hábito ---- */
+
+const ID_HABITO_DIARIO = 'habito-diario';
+
+/**
+ * Agenda (ou reagenda) o lembrete diário de hábito. A mensagem é sorteada
+ * agora, no momento do agendamento — notificação local tem conteúdo fixo
+ * assim que agendada, então a "rotação" acontece a cada reagendamento
+ * (chamado no foco da Home, ver app/(app)/index.tsx), igual ao padrão de
+ * scheduleBillReminders/scheduleCardInvoiceReminders acima.
+ *
+ * Se já lançou algo hoje, silencia o lembrete de hoje e agenda direto para
+ * amanhã — repetir o pedido no mesmo dia depois que a pessoa já fez o que
+ * foi pedido só gera ruído.
+ */
+export async function scheduleDailyHabitReminder(opts: {
+  hour: number;
+  minute: number;
+  jaLancouHoje: boolean;
+  streak: number;
+  diasInativo: number;
+}): Promise<void> {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
+  await cancelDailyHabitReminder();
+
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+
+  await ensureChannel();
+
+  const agora = new Date();
+  let quando = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), opts.hour, opts.minute, 0, 0);
+  if (opts.jaLancouHoje || quando.getTime() <= agora.getTime()) {
+    quando = new Date(quando.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  const mensagem = await obterProximaMensagem({
+    streak: opts.streak,
+    diasInativo: opts.diasInativo,
+    diaSemana: quando.getDay(),
+  });
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: ID_HABITO_DIARIO,
+      content: {
+        title: mensagem.titulo,
+        body: mensagem.texto.replace('{streak}', String(opts.streak)),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: quando,
+        channelId: CHANNEL_ID,
+      },
+    });
+  } catch (e) {
+    // Ignora erro se agendamento local falhar
+  }
+}
+
+export async function cancelDailyHabitReminder(): Promise<void> {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
+  await Notifications.cancelScheduledNotificationAsync(ID_HABITO_DIARIO).catch(() => {});
 }

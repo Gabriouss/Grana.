@@ -1,7 +1,19 @@
 import { supabase } from './supabase';
 import { CATEGORIES } from './types';
 import { addMonthsToISO } from './format';
-import type { Bill, BillStatus, Budget, Category, CategoryType, CreditCard, Transaction, TxType, WhatsappLink } from './types';
+import { formatMonthYear } from './format';
+import type {
+  Bill,
+  BillStatus,
+  Budget,
+  Category,
+  CategoryType,
+  CreditCard,
+  CreditCardInvoicePayment,
+  Transaction,
+  TxType,
+  WhatsappLink,
+} from './types';
 
 async function currentUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
@@ -97,6 +109,72 @@ export async function addCreditCard(input: {
 export async function deleteCreditCard(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('credit_cards').delete().eq('id', id).eq('user_id', user_id);
+  if (error) throw error;
+}
+
+/* ---- pagamento de fatura de cartão ---- */
+
+export async function fetchCardInvoicePayments(): Promise<CreditCardInvoicePayment[]> {
+  const { data, error } = await supabase.from('credit_card_invoices').select('*');
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Paga a fatura de um cartão: lança a saída real na carteira escolhida (como
+ * payBill já faz para boletos) e guarda o registro de "paga" para aquele
+ * card+ano+mês. payment_method fica de fora (não é 'credit') de propósito —
+ * essa saída precisa continuar contando no saldo de caixa e nos totais do
+ * mês, diferente da compra original que ela está quitando.
+ */
+export async function payCardInvoice(input: {
+  card: CreditCard;
+  year: number;
+  month: number;
+  amount: number;
+  paid_on: string;
+  wallet_id: string | null;
+}): Promise<CreditCardInvoicePayment> {
+  const user_id = await currentUserId();
+  const tx = await addTransaction({
+    type: 'out',
+    description: `Pagamento fatura — ${input.card.name} (${formatMonthYear(input.year, input.month)})`,
+    amount: input.amount,
+    category: 'Cartão de crédito',
+    color: input.card.color,
+    occurred_on: input.paid_on,
+    wallet_id: input.wallet_id,
+  });
+
+  const { data, error } = await supabase
+    .from('credit_card_invoices')
+    .insert({
+      user_id,
+      card_id: input.card.id,
+      year: input.year,
+      month: input.month,
+      amount: input.amount,
+      paid_on: input.paid_on,
+      wallet_id: input.wallet_id,
+      paid_transaction_id: tx.id,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Desfaz o pagamento de uma fatura: apaga a saída que payCardInvoice lançou
+ * (mesmo raciocínio de reopenBill — sem isso, pagar de novo depois contaria
+ * a despesa duas vezes) e o próprio registro de "paga".
+ */
+export async function reopenCardInvoice(invoice: CreditCardInvoicePayment): Promise<void> {
+  if (invoice.paid_transaction_id) {
+    await deleteTransaction(invoice.paid_transaction_id).catch(() => {});
+  }
+  const user_id = await currentUserId();
+  const { error } = await supabase.from('credit_card_invoices').delete().eq('id', invoice.id).eq('user_id', user_id);
   if (error) throw error;
 }
 

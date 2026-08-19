@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { Transaction, Wallet } from './types';
 import { DEMO_WALLETS } from './demo-data';
+import { isCreditTx } from './format';
 
 export async function fetchWallets(): Promise<Wallet[]> {
   const {
@@ -141,6 +142,11 @@ export function calcularSaldosWallets(
   const defaultWallet = wallets.find((w) => w.is_default) || wallets[0];
 
   transactions.forEach((tx) => {
+    // Compra no crédito só sai do caixa quando a fatura é paga (essa saída
+    // vira uma transação própria, payment_method: 'debit') — não na hora da
+    // compra, senão o dinheiro "sairia" duas vezes.
+    if (isCreditTx(tx)) return;
+
     const val = Number(tx.amount || 0);
     const delta = tx.type === 'in' ? val : -val;
 

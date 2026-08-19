@@ -1,5 +1,16 @@
+import type { Transaction } from './types';
+
 export function formatMoney(n: number): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Compra no cartão de crédito não é saída de caixa na hora — só quando a
+ * fatura é paga (ver payCardInvoice em lib/data.ts). Mesmo critério que
+ * app/(app)/credito.tsx já usa para achar compras no crédito.
+ */
+export function isCreditTx(t: Pick<Transaction, 'payment_method' | 'card_id'>): boolean {
+  return t.payment_method === 'credit' || !!t.card_id;
 }
 
 export function parseAmount(raw: string): number {

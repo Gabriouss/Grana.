@@ -93,6 +93,20 @@ export type Bill = {
   created_at: string;
 };
 
+/** Registro de pagamento de fatura de cartão — existe só quando a fatura daquele mês já foi paga. */
+export type CreditCardInvoicePayment = {
+  id: string;
+  user_id: string;
+  card_id: string;
+  year: number;
+  month: number; // 0-based, mesma convenção de isSameMonth()
+  amount: number;
+  paid_on: string; // 'YYYY-MM-DD'
+  wallet_id: string | null;
+  paid_transaction_id: string | null;
+  created_at: string;
+};
+
 export type Budget = {
   user_id: string;
   category: string;

@@ -764,3 +764,48 @@ create policy "feedbacks: dono envia o próprio feedback"
   on feedbacks for insert
   to authenticated
   with check ((select auth.uid()) = user_id);
+
+-- ============================================================
+-- Pagamento de fatura de cartão de crédito
+-- ============================================================
+-- A fatura em aberto continua sendo calculada ao vivo (soma das transações
+-- do mês com payment_method = 'credit') — esta tabela só guarda o estado de
+-- "paga", que não dá para derivar das transações. Sem policy de update: como
+-- em bills/paid_transaction_id, desfazer o pagamento apaga a linha (e a
+-- saída ligada a ela) em vez de editar.
+create table if not exists credit_card_invoices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  card_id uuid not null references credit_cards(id) on delete cascade,
+  year int not null,
+  month int not null check (month between 0 and 11), -- mesma convenção 0-based de isSameMonth()
+  amount numeric not null check (amount >= 0),
+  paid_on date not null,
+  wallet_id uuid references wallets(id) on delete set null,
+  paid_transaction_id uuid references transactions(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (card_id, year, month)
+);
+
+create index if not exists credit_card_invoices_user_id_idx on credit_card_invoices (user_id);
+create index if not exists credit_card_invoices_card_id_idx on credit_card_invoices (card_id);
+
+alter table credit_card_invoices enable row level security;
+
+drop policy if exists "faturas: dono ve as proprias" on credit_card_invoices;
+create policy "faturas: dono ve as proprias"
+  on credit_card_invoices for select
+  to authenticated
+  using ((select auth.uid()) = user_id);
+
+drop policy if exists "faturas: dono paga a propria fatura" on credit_card_invoices;
+create policy "faturas: dono paga a propria fatura"
+  on credit_card_invoices for insert
+  to authenticated
+  with check ((select auth.uid()) = user_id);
+
+drop policy if exists "faturas: dono desfaz o proprio pagamento" on credit_card_invoices;
+create policy "faturas: dono desfaz o proprio pagamento"
+  on credit_card_invoices for delete
+  to authenticated
+  using ((select auth.uid()) = user_id);

@@ -26,7 +26,7 @@ import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
 import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, payBill, reopenBill, updateBill } from '@/lib/data';
-import { scheduleBillReminders, cancelBillReminders } from '@/lib/notifications';
+import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { theme, radius, spacing, screenRhythm } from '@/lib/theme';
@@ -92,7 +92,11 @@ export default function ContasScreen() {
          determinísticos, então isso só substitui o que já existia (ou
          cancela, se a conta estiver paga). Mantém os lembretes corretos
          mesmo depois de reinstalar o app ou editar uma conta fora desta tela. */
-      b.forEach((bill) => { scheduleBillReminders(bill).catch(() => {}); });
+      const { lembretesContasAtivo } = await carregarNotifPrefs();
+      b.forEach((bill) => {
+        if (lembretesContasAtivo) scheduleBillReminders(bill).catch(() => {});
+        else cancelBillReminders(bill.id).catch(() => {});
+      });
     } catch (e: any) {
       Alert.alert('Erro ao carregar contas', e.message);
     } finally {

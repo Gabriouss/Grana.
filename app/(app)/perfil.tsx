@@ -12,8 +12,33 @@ import { useDemo } from '@/lib/demo-context';
 import { useAppLock } from '@/lib/app-lock-context';
 import { useScreenCapture } from '@/lib/screen-capture-context';
 import { theme, radius, spacing } from '@/lib/theme';
-import { createWhatsappPairing, deleteUserAccount, fetchWhatsappLink, reauthenticate, unlinkWhatsapp } from '@/lib/data';
+import {
+  createWhatsappPairing,
+  deleteUserAccount,
+  fetchWhatsappLink,
+  reauthenticate,
+  unlinkWhatsapp,
+  fetchBills,
+  fetchCreditCards,
+  fetchCardInvoicePayments,
+  fetchTransactions,
+} from '@/lib/data';
 import type { WhatsappLink } from '@/lib/types';
+import {
+  carregarNotifPrefs,
+  salvarNotifPrefs,
+  requestNotificationPermission,
+  scheduleDailyHabitReminder,
+  cancelDailyHabitReminder,
+  scheduleBillReminders,
+  cancelBillReminders,
+  scheduleCardInvoiceReminders,
+  cancelCardInvoiceReminders,
+  type NotifPrefs,
+} from '@/lib/notifications';
+import { isSameMonth, todayISO } from '@/lib/format';
+import { calculateStreakAndWeek } from '@/lib/gamification';
+import SegmentedTabs from '@/components/SegmentedTabs';
 import { LIMITS } from '@/lib/limits';
 import { formatarTelefoneBR, telefoneBRValido, telefoneE164BR } from '@/lib/format';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
@@ -51,6 +76,7 @@ export default function PerfilScreen() {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [categoriasOpen, setCategoriasOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [reauthOpen, setReauthOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -161,7 +187,83 @@ export default function PerfilScreen() {
     recarregarPerfil();
     recarregarDiagnostico();
     recarregarWhatsapp();
+    carregarNotifPrefs().then(setNotifPrefs);
   }, [recarregarPerfil, recarregarDiagnostico, recarregarWhatsapp]);
+
+  /**
+   * Lembrete diário é 1 id determinístico só — reagenda na hora. Contas e
+   * faturas são N ids (um por boleto/cartão); pra ter efeito imediato sem
+   * esperar a pessoa abrir aquelas telas, busca tudo aqui uma vez e repete o
+   * mesmo laço de reagendamento que contas.tsx/credito.tsx já fazem no load.
+   */
+  async function alterarNotifPrefs(mudanca: Partial<NotifPrefs>) {
+    if (!notifPrefs || isDemoMode) return;
+    const novasPrefs = { ...notifPrefs, ...mudanca };
+    setNotifPrefs(novasPrefs);
+    await salvarNotifPrefs(novasPrefs);
+
+    if ('lembreteDiarioAtivo' in mudanca || 'horario' in mudanca) {
+      if (!novasPrefs.lembreteDiarioAtivo) {
+        await cancelDailyHabitReminder();
+      } else {
+        const granted = await requestNotificationPermission();
+        if (!granted) return;
+        try {
+          const transacoes = await fetchTransactions({ sinceDays: 35 });
+          const { streak } = calculateStreakAndWeek(transacoes);
+          const jaLancouHoje = transacoes.some((t) => t.occurred_on === todayISO());
+          const ultimaData = transacoes[0]?.occurred_on;
+          const diasInativo = ultimaData
+            ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
+            : 99;
+          await scheduleDailyHabitReminder({ ...novasPrefs.horario, jaLancouHoje, streak, diasInativo });
+        } catch {
+          // Falha graciosa — a próxima abertura da Home tenta de novo
+        }
+      }
+    }
+
+    if ('lembretesContasAtivo' in mudanca) {
+      try {
+        const [bills, cards, payments, transacoes] = await Promise.all([
+          fetchBills(),
+          fetchCreditCards(),
+          fetchCardInvoicePayments(),
+          fetchTransactions({ sinceDays: 35 }),
+        ]);
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth();
+
+        if (novasPrefs.lembretesContasAtivo) {
+          const granted = await requestNotificationPermission();
+          if (!granted) return;
+          bills.forEach((bill) => { scheduleBillReminders(bill).catch(() => {}); });
+          cards.forEach((card) => {
+            const valorFatura = transacoes
+              .filter(
+                (tx) =>
+                  (tx.payment_method === 'credit' || tx.card_id) &&
+                  tx.card_id === card.id &&
+                  isSameMonth(tx.occurred_on, anoAtual, mesAtual)
+              )
+              .reduce((s, tx) => s + Number(tx.amount), 0);
+            const jaPaga = payments.some((inv) => inv.card_id === card.id && inv.year === anoAtual && inv.month === mesAtual);
+            if (!jaPaga && valorFatura > 0) {
+              scheduleCardInvoiceReminders(card, anoAtual, mesAtual, valorFatura).catch(() => {});
+            } else {
+              cancelCardInvoiceReminders(card.id, anoAtual, mesAtual).catch(() => {});
+            }
+          });
+        } else {
+          bills.forEach((bill) => { cancelBillReminders(bill.id).catch(() => {}); });
+          cards.forEach((card) => { cancelCardInvoiceReminders(card.id, anoAtual, mesAtual).catch(() => {}); });
+        }
+      } catch {
+        // Falha graciosa — contas.tsx/credito.tsx reagendam certinho no próximo load
+      }
+    }
+  }
 
   function abrirWhatsapp() {
     if (isDemoMode) {
@@ -375,6 +477,46 @@ export default function PerfilScreen() {
           <View style={styles.row}>
             <Text style={styles.rowKey}>Tema</Text>
             <Text style={styles.rowValue}>Escuro (Dark Theme)</Text>
+          </View>
+        </View>
+
+        {/* Seção Notificações */}
+        <Text style={styles.sectionLabel}>Notificações</Text>
+        <View style={styles.sectionCard}>
+          <View style={notifPrefs?.lembreteDiarioAtivo ? styles.rowColuna : styles.row}>
+            <View style={styles.rowInterna}>
+              <Text style={styles.rowKey}>Lembrete diário de gastos</Text>
+              <ToggleSwitch
+                value={notifPrefs?.lembreteDiarioAtivo ?? true}
+                onToggle={() => alterarNotifPrefs({ lembreteDiarioAtivo: !notifPrefs?.lembreteDiarioAtivo })}
+                label="Lembrete diário de gastos"
+              />
+            </View>
+            {notifPrefs?.lembreteDiarioAtivo && (
+              <View style={{ marginTop: spacing.sm }}>
+                <SegmentedTabs
+                  options={[
+                    { key: '19:00', label: '19:00' },
+                    { key: '20:30', label: '20:30' },
+                    { key: '21:30', label: '21:30' },
+                  ]}
+                  value={`${String(notifPrefs.horario.hour).padStart(2, '0')}:${String(notifPrefs.horario.minute).padStart(2, '0')}`}
+                  onChange={(v) => {
+                    const [hour, minute] = v.split(':').map(Number);
+                    alterarNotifPrefs({ horario: { hour, minute } });
+                  }}
+                />
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.row, { borderBottomWidth: 0 }]}>
+            <Text style={styles.rowKey}>Lembretes de contas e faturas</Text>
+            <ToggleSwitch
+              value={notifPrefs?.lembretesContasAtivo ?? true}
+              onToggle={() => alterarNotifPrefs({ lembretesContasAtivo: !notifPrefs?.lembretesContasAtivo })}
+              label="Lembretes de contas e faturas"
+            />
           </View>
         </View>
 

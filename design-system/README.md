@@ -62,6 +62,7 @@ tokens/tokens.css           Espelho em CSS custom properties, para web
 marca/*.svg                 Vetores originais da marca
 previews/*.html             Fontes das previews, com o marcador <!--@FONTS@-->
 pagina/design-system.src.html   Fonte da página única de referência
+TOM_DE_VOZ.md               Identidade verbal, microcopy e catálogo de notificações
 build.js                    Gerador das páginas
 gerar-icones.js             Gerador dos PNGs de ../assets/ a partir de marca/
 ```

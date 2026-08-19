@@ -47,6 +47,8 @@ import VoiceEntryButton from '@/components/VoiceEntryButton';
 import CsvImportModal from '@/components/CsvImportModal';
 import QrScannerModal from '@/components/QrScannerModal';
 import MonthlyWrappedModal from '@/components/MonthlyWrappedModal';
+import { calculateStreakAndWeek } from '@/lib/gamification';
+import { carregarNotifPrefs, scheduleDailyHabitReminder, cancelDailyHabitReminder } from '@/lib/notifications';
 import {
   gerarMonthlyWrapped,
   marcarWrappedVisto,
@@ -69,7 +71,7 @@ import SafeToSpendCard from '@/components/SafeToSpendCard';
 import FutureTimelineChart from '@/components/FutureTimelineChart';
 import CreditSummaryCard from '@/components/CreditSummaryCard';
 import HomeCustomizerModal from '@/components/HomeCustomizerModal';
-import { isSameMonth } from '@/lib/format';
+import { isSameMonth, isCreditTx } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { DEMO_CREDIT_CARDS } from '@/lib/demo-data';
 import type { CreditCard } from '@/lib/types';
@@ -215,6 +217,23 @@ export default function InicioScreen() {
       setCreditCards(cc);
       setError(null);
 
+      // Reagenda o lembrete diário de hábito toda vez que a Home ganha foco
+      // (inclusive ao abrir o app) — mesmo padrão de "reagenda tudo a cada
+      // load" que contas.tsx/credito.tsx já usam pros próprios lembretes.
+      carregarNotifPrefs().then((prefs) => {
+        if (!prefs.lembreteDiarioAtivo) {
+          cancelDailyHabitReminder().catch(() => {});
+          return;
+        }
+        const { streak } = calculateStreakAndWeek(tx);
+        const jaLancouHoje = tx.some((t) => t.occurred_on === todayISO());
+        const ultimaData = tx[0]?.occurred_on;
+        const diasInativo = ultimaData
+          ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
+          : 99;
+        scheduleDailyHabitReminder({ ...prefs.horario, jaLancouHoje, streak, diasInativo }).catch(() => {});
+      });
+
       try {
         setGoals(await fetchGoals());
       } catch {
@@ -317,16 +336,20 @@ export default function InicioScreen() {
   const walletTransactions =
     activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
   const walletBills = activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId);
+  // Compra no crédito só vira saída de caixa quando a fatura é paga — some
+  // do saldo/fluxo/orçamento até lá (ver lib/wallets.ts::calcularSaldosWallets).
+  // walletTransactions continua com tudo, inclusive crédito, pro CreditSummaryCard.
+  const walletCashTransactions = walletTransactions.filter((t) => !isCreditTx(t));
 
-  const safeToSpend = calcularSafeToSpend(walletTransactions, walletBills, goals);
-  const comprometimentoFuturo = projetarComprometimentoFuturo(walletTransactions, walletBills);
+  const safeToSpend = calcularSafeToSpend(walletCashTransactions, walletBills, goals);
+  const comprometimentoFuturo = projetarComprometimentoFuturo(walletCashTransactions, walletBills);
   const sugestaoEvolucao = diagnostico
-    ? sugerirEvolucaoArquetipo(walletTransactions, walletBills, budgets, diagnostico.arquetipo.id)
+    ? sugerirEvolucaoArquetipo(walletCashTransactions, walletBills, budgets, diagnostico.arquetipo.id)
     : null;
   const arquetipoSugerido = sugestaoEvolucao?.mudou ? ARQUETIPOS[sugestaoEvolucao.sugeridoId] : null;
 
   // Transações estritamente do mês selecionado
-  const monthTransactions = walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
+  const monthTransactions = walletCashTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
   const totalIn = monthTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
   const totalOut = monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
   const flowSummary =
@@ -723,10 +746,10 @@ export default function InicioScreen() {
         <FlowChart
           transactions={
             chartView === 'in'
-              ? walletTransactions.filter((t) => t.type === 'in')
+              ? walletCashTransactions.filter((t) => t.type === 'in')
               : chartView === 'out'
-              ? walletTransactions.filter((t) => t.type === 'out')
-              : walletTransactions
+              ? walletCashTransactions.filter((t) => t.type === 'out')
+              : walletCashTransactions
           }
           period={chartPeriod}
           year={selectedYear}
@@ -874,10 +897,10 @@ export default function InicioScreen() {
             <Text style={styles.seeAllText}>Ver todos</Text>
           </AppPressable>
         </View>
-        {walletTransactions.length === 0 ? (
+        {walletCashTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum lançamento ainda.</Text>
         ) : (
-          walletTransactions.slice(0, 5).map((t) => (
+          walletCashTransactions.slice(0, 5).map((t) => (
             <AppPressable
               key={t.id}
               style={({ hovered }) => [styles.recentRow, hovered && styles.recentRowHover]}

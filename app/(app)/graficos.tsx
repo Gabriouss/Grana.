@@ -17,7 +17,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { fetchTransactions } from '@/lib/data';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, isCreditTx } from '@/lib/format';
 import { theme, radius, spacing, type, screenRhythm, card as cardTokens } from '@/lib/theme';
 import type { Transaction } from '@/lib/types';
 
@@ -68,10 +68,11 @@ export default function GraficosScreen() {
     carregarDados();
   }, [carregarDados]);
 
-  // Filtra transações pela carteira selecionada
+  // Filtra transações pela carteira selecionada. Compra no crédito fica de
+  // fora — só aparece na aba Crédito até a fatura ser paga (vira saída real).
   const filteredTransactions = useMemo(() => {
-    if (activeWalletId === 'total') return transactions;
-    return transactions.filter((tx) => tx.wallet_id === activeWalletId);
+    const base = activeWalletId === 'total' ? transactions : transactions.filter((tx) => tx.wallet_id === activeWalletId);
+    return base.filter((tx) => !isCreditTx(tx));
   }, [transactions, activeWalletId]);
 
   // Agrupamento Ano a Ano ou Mês a Mês
