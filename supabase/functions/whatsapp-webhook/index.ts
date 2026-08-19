@@ -100,21 +100,53 @@ function somarExtenso(palavras: string[]): number {
   return total + atual;
 }
 
+/* Palavra que, logo depois de um bloco numérico fechado, confirma que aquilo
+   era mesmo um valor em dinheiro (não um artigo indefinido). */
+const PALAVRA_MOEDA = /^(?:reais|real|contos?|pila|pau|mangos?)$/i;
+
 /** Converte trechos numéricos por extenso em dígitos e junta "X reais e Y centavos". */
 function normalizarTextoTranscrito(texto: string): string {
   const tokens = texto.split(/(\s+)/);
   const saida: string[] = [];
   let bloco: string[] = [];
 
-  const fecharBloco = () => {
+  /* "um"/"uma" sozinhos são o artigo indefinido na esmagadora maioria das
+     frases ("um pix", "uma compra", "um boleto") — só valem como número
+     quando vêm seguidos de palavra de moeda ("um real") ou fazem parte de
+     um bloco maior já em andamento ("vinte e um reais"). Sem essa distinção,
+     "fiz um pix de 50 pra Maria" virava "fiz 1 pix de 50 pra Maria", e a
+     regra de "número solto" (último recurso de guessAmountFromText) pegava
+     o "1" em vez do valor real 50 — um lançamento de R$1 registrado em
+     silêncio no lugar de R$50. `proximaPalavraRelevante` olha adiante no
+     texto ORIGINAL (não nos tokens já processados) para decidir. */
+  const proximaPalavraRelevante = (aPartirDe: number): string | null => {
+    for (let j = aPartirDe; j < tokens.length; j++) {
+      if (/^\s+$/.test(tokens[j])) continue;
+      return tokens[j].toLowerCase().replace(/[.,!?;:]+$/, '');
+    }
+    return null;
+  };
+
+  const fecharBloco = (indiceAtual: number) => {
     if (bloco.length === 0) return;
     // Um "e" solto no fim do bloco pertence à frase, não ao número.
     while (bloco.length > 0 && NUMERO_POR_EXTENSO[bloco[bloco.length - 1]] === undefined) bloco.pop();
+
+    if (bloco.length === 1 && (bloco[0] === 'um' || bloco[0] === 'uma')) {
+      const proxima = proximaPalavraRelevante(indiceAtual);
+      if (!proxima || !PALAVRA_MOEDA.test(proxima)) {
+        saida.push(bloco[0]);
+        bloco = [];
+        return;
+      }
+    }
+
     if (bloco.length > 0) saida.push(String(somarExtenso(bloco)));
     bloco = [];
   };
 
-  for (const token of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
     if (/^\s+$/.test(token)) {
       if (bloco.length === 0) saida.push(token);
       continue;
@@ -128,33 +160,42 @@ function normalizarTextoTranscrito(texto: string): string {
     if (ehNumero || ehLigacao) {
       bloco.push(limpo);
       if (pontuacao) {
-        fecharBloco();
+        fecharBloco(i + 1);
         saida.push(pontuacao, ' ');
       }
       continue;
     }
-    fecharBloco();
+    fecharBloco(i);
     if (saida.length > 0 && !/\s$/.test(saida[saida.length - 1])) saida.push(' ');
     saida.push(token);
   }
-  fecharBloco();
+  fecharBloco(tokens.length);
 
   return saida
     .join('')
     .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
+    /* Fala real quase nunca diz "centavos" ("trinta reais e cinquenta") — só
+       entra quando o número depois do "e" tem 1-2 dígitos e não é seguido de
+       outra palavra de moeda, pra não confundir com "50 reais e 30 mil" ou
+       frases com dois valores diferentes na mesma mensagem. */
+    .replace(
+      /(\d+)\s*(?:reais|real)\s*e\s*(\d{1,2})\b(?!\s*(?:mil|reais|real|conto|contos|pila|pau|mangos?))/gi,
+      (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`
+    )
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Alimentação': ['ifood', 'rappi', 'restaurante', 'mercado', 'supermercado', 'mercadinho', 'hortifruti', 'sacolao', 'sacolão', 'padaria', 'lanchonete', 'pizza', 'pizzaria', 'burguer', 'hamburguer', 'hambúrguer', 'açai', 'acai', 'sorvete', 'mcdonalds', 'burger king', 'subway', 'bobs', 'habibs', 'pao de acucar', 'pão de açúcar', 'carrefour', 'assai', 'assaí', 'atacadao', 'atacadão', 'guanabara', 'extra', 'feira', 'merenda', 'lanche', 'lanchinho', 'almoço', 'almoco', 'janta', 'jantar', 'café', 'cafe', 'cafeteria', 'starbucks', 'marmita', 'comida', 'delivery', 'churrasco', 'espetinho', 'salgado', 'doceria', 'confeitaria', 'quentinha', 'rango'],
-  'Transporte': ['uber', '99', '99pop', 'indriver', 'cabify', 'taxi', 'táxi', 'posto', 'combustível', 'combustivel', 'estacionamento', 'zona azul', 'pedágio', 'pedagio', 'gasolina', 'etanol', 'alcool', 'álcool', 'diesel', 'ipiranga', 'shell', 'petrobras', 'br mania', 'onibus', 'ônibus', 'metro', 'metrô', 'passagem', 'bilhete unico', 'bilhete único', 'mecanico', 'mecânico', 'oficina', 'pneu', 'lavagem', 'lava jato', 'ipva', 'licenciamento', 'seguro do carro'],
-  'Moradia': ['aluguel', 'condominio', 'condomínio', 'energia', 'enel', 'cemig', 'light', 'coelba', 'celpe', 'equatorial', 'luz', 'conta de luz', 'agua', 'água', 'sabesp', 'cagece', 'embasa', 'saneamento', 'esgoto', 'internet', 'fibra', 'wifi', 'vivo', 'claro', 'tim', 'oi', 'net', 'telefone', 'celular', 'gas', 'gás', 'botijao', 'botijão', 'iptu', 'faxina', 'diarista', 'reforma', 'material de construcao', 'material de construção', 'movel', 'móvel', 'moveis', 'móveis', 'eletrodomestico', 'eletrodoméstico'],
-  'Lazer': ['cinema', 'cinemark', 'ingresso', 'show', 'festa', 'bar', 'boteco', 'cerveja', 'balada', 'viagem', 'passeio', 'hotel', 'pousada', 'airbnb', 'teatro', 'parque', 'jogo', 'game', 'steam', 'playstation', 'xbox', 'nintendo', 'livro', 'livraria', 'presente', 'praia'],
-  'Saúde': ['farmacia', 'farmácia', 'drogaria', 'drogasil', 'droga raia', 'raia', 'pacheco', 'pague menos', 'remedio', 'remédio', 'clinica', 'clínica', 'consulta', 'exame', 'medico', 'médico', 'dentista', 'psicologo', 'psicólogo', 'terapia', 'academia', 'smart fit', 'smartfit', 'gympass', 'laboratorio', 'laboratório', 'hospital', 'plano de saude', 'plano de saúde', 'unimed', 'hapvida', 'amil', 'vacina', 'oculos', 'óculos'],
-  'Assinaturas': ['netflix', 'spotify', 'deezer', 'amazon prime', 'prime video', 'hbo', 'hbo max', 'globoplay', 'paramount', 'disney', 'disney+', 'crunchyroll', 'youtube premium', 'assinatura', 'mensalidade', 'icloud', 'google one', 'dropbox', 'openai', 'chatgpt', 'claude', 'canva', 'adobe', 'office 365', 'microsoft 365'],
-  'Investimentos': ['investimento', 'investi', 'aporte', 'tesouro direto', 'tesouro selic', 'cdb', 'lci', 'lca', 'acoes', 'ações', 'fii', 'fundo imobiliario', 'fundo imobiliário', 'bitcoin', 'cripto', 'criptomoeda', 'nubank rendimento', 'poupanca', 'poupança', 'previdencia', 'previdência', 'corretora', 'clear', 'rico', 'xp investimentos', 'binance'],
-  'Salário': ['salario', 'salário', 'folha', 'pagamento de salario', 'pro-labore', 'holerite', 'contracheque', 'décimo terceiro', 'decimo terceiro', 'férias', 'ferias', 'freela', 'freelance', 'bico', 'comissao', 'comissão', 'bonificacao', 'bonificação', 'bonus', 'bônus', 'rendimento', 'dividendo', 'dividendos'],
+  'Alimentação': ['alimentacao', 'alimentação', 'ifood', 'rappi', 'ze delivery', 'zé delivery', 'restaurante', 'mercado', 'supermercado', 'mercadinho', 'hortifruti', 'sacolao', 'sacolão', 'padaria', 'padoca', 'lanchonete', 'pizza', 'pizzaria', 'burguer', 'hamburguer', 'hambúrguer', 'açai', 'acai', 'sorvete', 'sorveteria', 'mcdonalds', 'burger king', 'subway', 'bobs', 'habibs', 'outback', 'giraffas', 'china in box', 'spoleto', 'pao de acucar', 'pão de açúcar', 'carrefour', 'assai', 'assaí', 'atacadao', 'atacadão', 'guanabara', 'feira', 'merenda', 'lanche', 'lanchinho', 'almoço', 'almoco', 'janta', 'jantar', 'café', 'cafe', 'cafeteria', 'cafe da manha', 'café da manhã', 'starbucks', 'marmita', 'quentinha', 'comida', 'delivery', 'churrasco', 'espetinho', 'salgado', 'doceria', 'confeitaria', 'buffet', 'self service', 'a quilo', 'petisco', 'petiscos', 'rango', 'sushi', 'japones', 'japonês', 'agua de coco', 'água de coco'],
+  'Transporte': ['transporte', 'uber', '99', '99pop', 'indriver', 'cabify', 'moto taxi', 'mototaxi', 'taxi', 'táxi', 'posto', 'combustível', 'combustivel', 'estacionamento', 'zona azul', 'pedágio', 'pedagio', 'gasolina', 'etanol', 'alcool', 'álcool', 'diesel', 'ipiranga', 'shell', 'petrobras', 'br mania', 'onibus', 'ônibus', 'passagem de onibus', 'metro', 'metrô', 'passagem', 'passagem aerea', 'passagem aérea', 'aviao', 'avião', 'voo', 'latam', 'gol linhas aereas', 'azul linhas aereas', 'bilhete unico', 'bilhete único', 'mecanico', 'mecânico', 'oficina', 'pneu', 'lavagem', 'lava jato', 'ipva', 'licenciamento', 'multa', 'detran', 'seguro do carro', 'seguro veicular', 'revisao', 'revisão', 'troca de oleo', 'troca de óleo', 'bike', 'patinete'],
+  'Moradia': ['moradia', 'aluguel', 'condominio', 'condomínio', 'energia', 'enel', 'cemig', 'light', 'coelba', 'celpe', 'equatorial', 'luz', 'conta de luz', 'agua', 'água', 'agua e esgoto', 'sabesp', 'cagece', 'embasa', 'saneamento', 'esgoto', 'internet', 'fibra', 'wifi', 'vivo', 'claro', 'tim', 'oi', 'net', 'telefone', 'celular', 'gas', 'gás', 'gas de cozinha', 'gás de cozinha', 'botijao', 'botijão', 'iptu', 'faxina', 'diarista', 'reforma', 'material de construcao', 'material de construção', 'material de limpeza', 'produtos de limpeza', 'movel', 'móvel', 'moveis', 'móveis', 'eletrodomestico', 'eletrodoméstico', 'seguro residencial', 'financiamento imobiliario', 'financiamento imobiliário', 'prestacao da casa', 'prestação da casa', 'tv a cabo', 'sky', 'directv'],
+  'Lazer': ['lazer', 'cinema', 'cinemark', 'ingresso', 'show', 'festa', 'bar', 'boteco', 'cerveja', 'balada', 'role', 'rolê', 'happy hour', 'viagem', 'passeio', 'hotel', 'pousada', 'airbnb', 'teatro', 'parque', 'parque de diversao', 'parque de diversão', 'shopping', 'jogo', 'game', 'steam', 'playstation', 'xbox', 'nintendo', 'livro', 'livraria', 'presente', 'praia', 'clube', 'futebol', 'estadio', 'estádio', 'aposta', 'apostas', 'bet', 'betano', 'sportingbet'],
+  'Saúde': ['saude', 'saúde', 'farmacia', 'farmácia', 'drogaria', 'drogasil', 'droga raia', 'raia', 'pacheco', 'pague menos', 'remedio', 'remédio', 'clinica', 'clínica', 'consulta', 'consulta medica', 'consulta médica', 'exame', 'exame de sangue', 'medico', 'médico', 'dentista', 'implante dentario', 'implante dentário', 'psicologo', 'psicólogo', 'terapia', 'fisioterapia', 'fisio', 'nutricionista', 'oftalmologista', 'dermatologista', 'ortopedista', 'ginecologista', 'pediatra', 'cardiologista', 'academia', 'smart fit', 'smartfit', 'gympass', 'laboratorio', 'laboratório', 'hospital', 'plano de saude', 'plano de saúde', 'plano odontologico', 'plano odontológico', 'convenio', 'convênio', 'unimed', 'hapvida', 'amil', 'vacina', 'oculos', 'óculos', 'suplemento', 'whey', 'vitamina'],
+  'Assinaturas': ['assinaturas', 'netflix', 'spotify', 'deezer', 'apple music', 'tidal', 'amazon prime', 'prime video', 'hbo', 'hbo max', 'globoplay', 'paramount', 'disney', 'disney+', 'star+', 'star plus', 'crunchyroll', 'youtube premium', 'telecine', 'looke', 'mubi', 'assinatura', 'mensalidade', 'icloud', 'google one', 'dropbox', 'kindle unlimited', 'audible', 'twitch', 'discord nitro', 'linkedin premium', 'xbox game pass', 'game pass', 'playstation plus', 'ps plus', 'notion', 'figma', 'github copilot', 'copilot', 'perplexity', 'openai', 'chatgpt', 'claude', 'canva', 'adobe', 'office 365', 'microsoft 365'],
+  'Investimentos': ['investimentos', 'investimento', 'investi', 'aporte', 'tesouro direto', 'tesouro selic', 'renda fixa', 'renda variavel', 'renda variável', 'cdb', 'lci', 'lca', 'debenture', 'debênture', 'acoes', 'ações', 'fii', 'fundo imobiliario', 'fundo imobiliário', 'day trade', 'swing trade', 'ibovespa', 'b3', 'bitcoin', 'ethereum', 'cripto', 'criptomoeda', 'binance', 'nubank rendimento', 'poupanca', 'poupança', 'previdencia', 'previdência', 'corretora', 'clear', 'rico', 'toro investimentos', 'warren', 'xp investimentos'],
+  'Salário': ['salario', 'salário', 'folha', 'pagamento de salario', 'pro-labore', 'holerite', 'contracheque', 'décimo terceiro', 'decimo terceiro', 'férias', 'ferias', 'freela', 'freelance', 'bico', 'comissao', 'comissão', 'bonificacao', 'bonificação', 'bonus', 'bônus', 'rendimento', 'dividendo', 'dividendos', 'auxilio', 'auxílio', 'beneficio', 'benefício', 'inss', 'aposentadoria', 'pensao', 'pensão', 'restituicao de imposto', 'restituição de imposto', 'fgts'],
+  'Outros': ['shein', 'renner', 'c&a', 'cea', 'zara', 'riachuelo', 'marisa', 'hering', 'centauro', 'netshoes', 'nike', 'adidas', 'roupa', 'roupas', 'calca', 'calça', 'camisa', 'camiseta', 'vestido', 'sapato', 'tenis', 'tênis', 'bolsa', 'mochila', 'shopee', 'aliexpress', 'mercado livre', 'americanas', 'magazine luiza', 'magalu', 'casas bahia', 'ponto frio', 'submarino', 'compras online', 'papelaria', 'pet shop', 'petshop', 'veterinario', 'veterinário', 'racao', 'ração', 'salao de beleza', 'salão de beleza', 'cabeleireiro', 'manicure', 'barbearia', 'estetica', 'estética'],
 };
 
 /* Normaliza para comparar: minúsculas, pontuação vira espaço, e o texto fica
@@ -197,18 +238,24 @@ function matchCategoryByReply(text: string): { name: string; color: string } | n
    (saída) na mesma frase, e o verbo que a pessoa escolheu diz mais sobre a
    direção do dinheiro do que o substantivo. */
 const MARCADORES_SAIDA = [
-  'gastei', 'gasto', 'paguei', 'pagamento de', 'comprei', 'compra', 'torrei',
-  'debitado', 'débito', 'debito', 'saiu', 'saída', 'saida', 'enviei', 'enviado',
-  'transferi', 'pix enviado', 'mandei', 'assinei', 'investi', 'apliquei',
+  'gastei', 'gastando', 'gasta', 'gasto', 'paguei', 'pagamento de', 'pagando',
+  'comprei', 'compra', 'comprando', 'torrei', 'queimei', 'desembolsei', 'desembolso',
+  'debitado', 'débito', 'debito', 'debitaram', 'saiu', 'saída', 'saida', 'saiu da conta',
+  'enviei', 'enviado', 'transferi', 'pix enviado', 'fiz um pix', 'dei um pix',
+  'mandei', 'assinei', 'investi', 'apliquei', 'financiei', 'financiamento',
+  'parcelei', 'quitei', 'quitação', 'boleto pago', 'paguei boleto', 'cobraram',
+  'cobrança', 'cobranca', 'rachei a conta', 'dividi a conta',
 ];
 
 const MARCADORES_ENTRADA = [
   'recebi', 'recebeu', 'recebido', 'recebida', 'você recebeu', 'voce recebeu',
-  'entrou', 'entrada', 'caiu', 'creditado', 'crédito de', 'credito de',
-  'depósito', 'deposito', 'depositado', 'transferência recebida', 'transferencia recebida',
-  'pix recebido', 'estorno', 'reembolso', 'devolução', 'devolucao', 'me pagaram',
-  'ganhei', 'vendi', 'venda', 'salário', 'salario', 'freela', 'comissão', 'comissao',
-  'bonificação', 'bonificacao', 'bônus', 'bonus', 'rendimento', 'dividendo',
+  'entrou', 'entrada', 'caiu', 'caiu na conta', 'pingou', 'creditado', 'crédito de', 'credito de',
+  'depósito', 'deposito', 'depositado', 'depositaram', 'transferência recebida', 'transferencia recebida',
+  'pix recebido', 'estorno', 'reembolso', 'reembolsaram', 'devolução', 'devolucao',
+  'devolveram', 'me devolveram', 'me pagaram', 'cashback', 'ganhei', 'ganhei na loteria',
+  'prêmio', 'premio', 'vendi', 'venda', 'salário', 'salario', 'freela', 'comissão', 'comissao',
+  'bonificação', 'bonificacao', 'bônus', 'bonus', 'rendimento', 'dividendo', 'restituição',
+  'restituicao', 'resgatei',
 ];
 
 function guessTypeFromText(text: string): 'in' | 'out' {
@@ -255,6 +302,10 @@ const CONECTOR_FINAL = new RegExp(`\\s+${CONECTOR}$`, 'i');
 /* Restos de valor colados nas pontas: "luz 210" -> "luz", "350 reais x" -> "x". */
 const VALOR_INICIAL = /^(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?\b\s*/i;
 const VALOR_FINAL = /\s*(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?$/i;
+/* Forma de pagamento mencionada solta no fim da frase — "Mercado 50 no pix",
+   "Farmácia 30 no débito" — não é parte do nome do lançamento. */
+const FORMA_PAGAMENTO_FINAL =
+  /\s+(?:no|na|via|em|de)\s+(?:pix|dinheiro|espécie|especie|cartão|cartao|débito|debito|crédito|credito|boleto)$/i;
 
 function limparSobra(bruto: string): string {
   let s = bruto.replace(/\s+/g, ' ').trim();
@@ -265,6 +316,7 @@ function limparSobra(bruto: string): string {
       .replace(VERBOS_INICIAIS, '')
       .replace(VALOR_INICIAL, '')
       .replace(VALOR_FINAL, '')
+      .replace(FORMA_PAGAMENTO_FINAL, '')
       .replace(CONECTOR_INICIAL, '')
       .replace(CONECTOR_FINAL, '')
       .trim();
@@ -302,7 +354,13 @@ function guessDescFromText(text: string, type: 'in' | 'out'): string {
      mais inequívoco: o que está antes do "de" é sempre o nome. Antes esta
      regra vinha DEPOIS da regra do "de <nome>", e o "de" do valor casava
      primeiro — a descrição virava "350 reais" e o nome real se perdia. */
-  const nomeAntes = texto.match(new RegExp(`^\\s*(.{2,40}?)\\s+(?:de|por)\\s+${EXPRESSAO_VALOR.source}\\s*$`, 'i'));
+  /* `(?:\s*,.*)?$` em vez de só `\s*$`: "Chip de 22 reais, outros" tem uma
+     categoria colada depois da vírgula (formato que o próprio app ensina —
+     ver o placeholder do lançamento por voz). Sem essa folga, o valor não
+     ficava no fim exato da frase, a regra 1 nunca casava, e a descrição
+     caía na regra 3 (sobra do texto), que deixava "de" e a vírgula soltos
+     no meio do nome ("Chip de , outros" em vez de "Chip"). */
+  const nomeAntes = texto.match(new RegExp(`^\\s*(.{2,40}?)\\s+(?:de|por)\\s+${EXPRESSAO_VALOR.source}(?:\\s*,.*)?\\s*$`, 'i'));
   if (nomeAntes) {
     const nome = limparSobra(nomeAntes[1]);
     if (nome.length >= 2) return capitalizar(nome);
@@ -544,6 +602,8 @@ type Rascunho = {
   type: 'in' | 'out';
   occurred_on: string;
   attempts: number;
+  card_id: string | null;
+  payment_method: string | null;
 };
 
 async function buscarPendente(phone: string): Promise<Rascunho | null> {
@@ -557,8 +617,9 @@ async function limparPendente(phone: string): Promise<void> {
 
 /** Grava o lançamento de verdade e limpa qualquer rascunho pendente daquele número. */
 async function finalizarLancamento(
-  rascunho: Pick<Rascunho, 'user_id' | 'phone' | 'description' | 'amount' | 'type' | 'occurred_on'>,
-  categoria: { name: string; color: string }
+  rascunho: Pick<Rascunho, 'user_id' | 'phone' | 'description' | 'amount' | 'type' | 'occurred_on' | 'card_id' | 'payment_method'>,
+  categoria: { name: string; color: string },
+  nomeCartao?: string | null
 ): Promise<void> {
   const { error } = await supabase.from('transactions').insert({
     user_id: rascunho.user_id,
@@ -569,6 +630,8 @@ async function finalizarLancamento(
     color: categoria.color,
     occurred_on: rascunho.occurred_on,
     recurring: false,
+    card_id: rascunho.card_id,
+    payment_method: rascunho.payment_method,
   });
 
   await limparPendente(rascunho.phone);
@@ -579,9 +642,115 @@ async function finalizarLancamento(
   }
 
   const valorFmt = rascunho.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sufixoCartao = nomeCartao ? ` no cartão ${nomeCartao}` : '';
   await sendWhatsappMessage(
     rascunho.phone,
-    `✅ Lançamento registrado: R$ ${valorFmt} em ${categoria.name} (${rascunho.description})`
+    `✅ Lançamento registrado: R$ ${valorFmt} em ${categoria.name} (${rascunho.description})${sufixoCartao}`
+  );
+}
+
+/* ---- crédito: reconhecer intenção e casar o cartão certo ---- */
+
+/** "no crédito", "cartão de crédito", "parcelei", "3x", "5 vezes" — sinais de que a compra foi no cartão, não em débito/pix. */
+function ehIntencaoCredito(text: string): boolean {
+  if (/\bno\s+(?:cr[eé]dito|cart[aã]o)\b/i.test(text)) return true;
+  if (/\bcart[aã]o\s+de\s+cr[eé]dito\b/i.test(text)) return true;
+  if (/\bparcel(?:ei|ado|ada|ar|a)\b/i.test(text)) return true;
+  if (/\b\d+\s*x\b/i.test(text)) return true;
+  if (/\b\d+\s*vezes\b/i.test(text)) return true;
+  return false;
+}
+
+type CartaoBusca = { id: string; name: string; bank: string };
+
+/** Acha o cartão citado no texto pelo nome que o usuário deu a ele ou pelo banco ("Nubank", "Itaú Click", "no Inter"). */
+function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null {
+  const alvo = normalizarParaBusca(text);
+  for (const c of cards) {
+    if (contemPalavra(alvo, c.name) || contemPalavra(alvo, c.bank)) return c;
+    const partes = c.name.split(/\s+/).filter((p) => p.length >= 4);
+    if (partes.some((p) => contemPalavra(alvo, p))) return c;
+  }
+  return null;
+}
+
+async function fetchCreditCardsDoUsuario(userId: string): Promise<CartaoBusca[]> {
+  const { data } = await supabase
+    .from('credit_cards')
+    .select('id, name, bank')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  return (data as CartaoBusca[] | null) ?? [];
+}
+
+/* ---- boleto: reconhecer intenção e a data de vencimento ---- */
+
+/** Só vira boleto se a pessoa disser explicitamente — "paguei a luz" sozinho continua sendo um lançamento normal, não uma conta a programar. */
+function ehIntencaoBoleto(text: string): boolean {
+  return (
+    /\bboletos?\b/i.test(text) ||
+    /\bvencimento\b/i.test(text) ||
+    /\bvence\s+(?:dia|em|no|dessa)\b/i.test(text) ||
+    /\bconta\s+a\s+pagar\b/i.test(text)
+  );
+}
+
+/** "vence dia 25", "vencimento 25/08", "vence 25/08/2026" — sem nada disso, vence em 5 dias por padrão (editável no app). */
+function parseDiaVencimento(text: string): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dataCompleta = text.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+  if (dataCompleta) {
+    const d = parseInt(dataCompleta[1], 10);
+    const m = parseInt(dataCompleta[2], 10);
+    let y = dataCompleta[3] ? parseInt(dataCompleta[3], 10) : new Date().getFullYear();
+    if (y < 100) y += 2000;
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return `${y}-${pad(m)}-${pad(d)}`;
+  }
+
+  const diaSolto = text.match(/\bdia\s+(\d{1,2})\b/i);
+  if (diaSolto) {
+    const dia = parseInt(diaSolto[1], 10);
+    if (dia >= 1 && dia <= 31) {
+      const hoje = new Date();
+      // Se o dia já passou neste mês, o vencimento só pode ser no mês seguinte.
+      const mesAlvo = dia < hoje.getDate() ? hoje.getMonth() + 1 : hoje.getMonth();
+      const venc = new Date(hoje.getFullYear(), mesAlvo, dia);
+      return `${venc.getFullYear()}-${pad(venc.getMonth() + 1)}-${pad(venc.getDate())}`;
+    }
+  }
+
+  const padrao = new Date();
+  padrao.setDate(padrao.getDate() + 5);
+  return `${padrao.getFullYear()}-${pad(padrao.getMonth() + 1)}-${pad(padrao.getDate())}`;
+}
+
+/** Cria a conta a pagar direto (sem passar por transactions — boleto só vira saída quando marcado como pago, igual no app). */
+async function registrarBoleto(userId: string, phone: string, text: string, amount: number): Promise<void> {
+  const description = guessDescFromText(text, 'out');
+  const due_date = parseDiaVencimento(text);
+  const categoria = matchCategoryByKeyword(text) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
+
+  const { error } = await supabase.from('bills').insert({
+    user_id: userId,
+    description,
+    amount,
+    category: categoria.name,
+    color: categoria.color,
+    due_date,
+    status: 'due',
+    recurring: false,
+  });
+
+  if (error) {
+    await sendWhatsappMessage(phone, 'Deu erro ao salvar o boleto. Tente de novo em instantes.');
+    return;
+  }
+
+  const valorFmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const vencFmt = due_date.split('-').reverse().join('/');
+  await sendWhatsappMessage(
+    phone,
+    `📄 Boleto registrado em Contas a pagar: R$ ${valorFmt} (${description}), vence ${vencFmt}.`
   );
 }
 
@@ -592,6 +761,10 @@ async function finalizarLancamento(
  * chave conhecida, guarda um rascunho pendente e PERGUNTA em vez de arquivar
  * tudo em "Outros" sem avisar — essa era a reclamação original: falta de
  * assertividade quando a mensagem é ambígua.
+ *
+ * Boleto ("vence dia 25", "boleto de luz") é desviado antes de tudo pra
+ * `bills`, não `transactions` — não tem categoria pendente a perguntar,
+ * então sai direto sem passar pelo rascunho.
  */
 async function registrarLancamento(userId: string, phone: string, text: string): Promise<void> {
   const amount = guessAmountFromText(text);
@@ -600,19 +773,40 @@ async function registrarLancamento(userId: string, phone: string, text: string):
     return;
   }
 
+  if (ehIntencaoBoleto(text)) {
+    await registrarBoleto(userId, phone, text, amount);
+    return;
+  }
+
   const type = guessTypeFromText(text);
   const description = guessDescFromText(text, type);
   const occurred_on = todayISO();
   const categoria = matchCategoryByKeyword(text);
 
+  let card_id: string | null = null;
+  let payment_method: string | null = null;
+  let nomeCartao: string | null = null;
+  if (ehIntencaoCredito(text)) {
+    const cartoes = await fetchCreditCardsDoUsuario(userId);
+    if (cartoes.length > 0) {
+      // Cita o cartão pelo nome/banco? usa esse. Senão, cai no primeiro
+      // cadastrado — na prática o único, pra maioria de quem usa 1 cartão —
+      // e avisa qual foi usado na confirmação, pra corrigir fácil se errou.
+      const achado = matchCardByText(text, cartoes) ?? cartoes[0];
+      card_id = achado.id;
+      payment_method = 'credit';
+      nomeCartao = achado.name;
+    }
+  }
+
   if (categoria) {
-    await finalizarLancamento({ user_id: userId, phone, description, amount, type, occurred_on }, categoria);
+    await finalizarLancamento({ user_id: userId, phone, description, amount, type, occurred_on, card_id, payment_method }, categoria, nomeCartao);
     return;
   }
 
   await supabase
     .from('whatsapp_pending')
-    .upsert({ phone, user_id: userId, description, amount, type, occurred_on, attempts: 0 });
+    .upsert({ phone, user_id: userId, description, amount, type, occurred_on, attempts: 0, card_id, payment_method });
 
   const valorFmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   await sendWhatsappMessage(

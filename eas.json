@@ -16,7 +16,7 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://cjnuzfbvfuauvlzfoutv.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqbnV6ZmJ2ZnVhdXZsemZvdXR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NDIzNTYsImV4cCI6MjEwMjQxODM1Nn0.Xgo7O6lV0_-djD1zr5nMhdrENGybaTCDttq0lqQnn7Y",
-        "EXPO_PUBLIC_WHATSAPP_NUMBER": "+1 555 196-3668"
+        "EXPO_PUBLIC_WHATSAPP_NUMBER": "+55 85 8198-9649"
       }
     },
     "production": {
@@ -24,7 +24,7 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://cjnuzfbvfuauvlzfoutv.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqbnV6ZmJ2ZnVhdXZsemZvdXR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NDIzNTYsImV4cCI6MjEwMjQxODM1Nn0.Xgo7O6lV0_-djD1zr5nMhdrENGybaTCDttq0lqQnn7Y",
-        "EXPO_PUBLIC_WHATSAPP_NUMBER": "+1 555 196-3668"
+        "EXPO_PUBLIC_WHATSAPP_NUMBER": "+55 85 8198-9649"
       }
     }
   },

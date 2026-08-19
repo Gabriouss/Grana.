@@ -39,20 +39,52 @@ function somarExtenso(palavras: string[]): number {
 }
 
 /** Converte trechos numéricos por extenso em dígitos e junta "X reais e Y centavos". */
+/* Palavra que, logo depois de um bloco numérico fechado, confirma que aquilo
+   era mesmo um valor em dinheiro (não um artigo indefinido). */
+const PALAVRA_MOEDA = /^(?:reais|real|contos?|pila|pau|mangos?)$/i;
+
 export function normalizarTexto(texto: string): string {
   const tokens = texto.split(/(\s+)/);
   const saida: string[] = [];
   let bloco: string[] = [];
 
-  const fecharBloco = () => {
+  /* "um"/"uma" sozinhos são o artigo indefinido na esmagadora maioria das
+     frases ("um pix", "uma compra", "um boleto") — só valem como número
+     quando vêm seguidos de palavra de moeda ("um real") ou fazem parte de
+     um bloco maior já em andamento ("vinte e um reais"). Sem essa distinção,
+     "fiz um pix de 50 pra Maria" virava "fiz 1 pix de 50 pra Maria", e a
+     regra de "número solto" (último recurso de guessAmountFromText) pegava
+     o "1" em vez do valor real 50 — um lançamento de R$1 registrado em
+     silêncio no lugar de R$50. `proximaPalavraRelevante` olha adiante no
+     texto ORIGINAL (não nos tokens já processados) para decidir. */
+  const proximaPalavraRelevante = (aPartirDe: number): string | null => {
+    for (let j = aPartirDe; j < tokens.length; j++) {
+      if (/^\s+$/.test(tokens[j])) continue;
+      return tokens[j].toLowerCase().replace(/[.,!?;:]+$/, '');
+    }
+    return null;
+  };
+
+  const fecharBloco = (indiceAtual: number) => {
     if (bloco.length === 0) return;
     // Um "e" solto no fim do bloco pertence à frase, não ao número.
     while (bloco.length > 0 && NUMERO_POR_EXTENSO[bloco[bloco.length - 1]] === undefined) bloco.pop();
+
+    if (bloco.length === 1 && (bloco[0] === 'um' || bloco[0] === 'uma')) {
+      const proxima = proximaPalavraRelevante(indiceAtual);
+      if (!proxima || !PALAVRA_MOEDA.test(proxima)) {
+        saida.push(bloco[0]);
+        bloco = [];
+        return;
+      }
+    }
+
     if (bloco.length > 0) saida.push(String(somarExtenso(bloco)));
     bloco = [];
   };
 
-  for (const token of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
     if (/^\s+$/.test(token)) {
       if (bloco.length === 0) saida.push(token);
       continue;
@@ -66,33 +98,42 @@ export function normalizarTexto(texto: string): string {
     if (ehNumero || ehLigacao) {
       bloco.push(limpo);
       if (pontuacao) {
-        fecharBloco();
+        fecharBloco(i + 1);
         saida.push(pontuacao, ' ');
       }
       continue;
     }
-    fecharBloco();
+    fecharBloco(i);
     if (saida.length > 0 && !/\s$/.test(saida[saida.length - 1])) saida.push(' ');
     saida.push(token);
   }
-  fecharBloco();
+  fecharBloco(tokens.length);
 
   return saida
     .join('')
     .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
+    /* Fala real quase nunca diz "centavos" ("trinta reais e cinquenta") — só
+       entra quando o número depois do "e" tem 1-2 dígitos e não é seguido de
+       outra palavra de moeda, pra não confundir com "50 reais e 30 mil" ou
+       frases com dois valores diferentes na mesma mensagem. */
+    .replace(
+      /(\d+)\s*(?:reais|real)\s*e\s*(\d{1,2})\b(?!\s*(?:mil|reais|real|conto|contos|pila|pau|mangos?))/gi,
+      (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`
+    )
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
 export const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Alimentação': ['ifood', 'rappi', 'restaurante', 'mercado', 'supermercado', 'mercadinho', 'hortifruti', 'sacolao', 'sacolão', 'padaria', 'lanchonete', 'pizza', 'pizzaria', 'burguer', 'hamburguer', 'hambúrguer', 'açai', 'acai', 'sorvete', 'mcdonalds', 'burger king', 'subway', 'bobs', 'habibs', 'pao de acucar', 'pão de açúcar', 'carrefour', 'assai', 'assaí', 'atacadao', 'atacadão', 'guanabara', 'extra', 'feira', 'merenda', 'lanche', 'lanchinho', 'almoço', 'almoco', 'janta', 'jantar', 'café', 'cafe', 'cafeteria', 'starbucks', 'marmita', 'comida', 'delivery', 'churrasco', 'espetinho', 'salgado', 'doceria', 'confeitaria', 'quentinha', 'rango'],
-  'Transporte': ['uber', '99', '99pop', 'indriver', 'cabify', 'taxi', 'táxi', 'posto', 'combustível', 'combustivel', 'estacionamento', 'zona azul', 'pedágio', 'pedagio', 'gasolina', 'etanol', 'alcool', 'álcool', 'diesel', 'ipiranga', 'shell', 'petrobras', 'br mania', 'onibus', 'ônibus', 'metro', 'metrô', 'passagem', 'bilhete unico', 'bilhete único', 'mecanico', 'mecânico', 'oficina', 'pneu', 'lavagem', 'lava jato', 'ipva', 'licenciamento', 'seguro do carro'],
-  'Moradia': ['aluguel', 'condominio', 'condomínio', 'energia', 'enel', 'cemig', 'light', 'coelba', 'celpe', 'equatorial', 'luz', 'conta de luz', 'agua', 'água', 'sabesp', 'cagece', 'embasa', 'saneamento', 'esgoto', 'internet', 'fibra', 'wifi', 'vivo', 'claro', 'tim', 'oi', 'net', 'telefone', 'celular', 'gas', 'gás', 'botijao', 'botijão', 'iptu', 'faxina', 'diarista', 'reforma', 'material de construcao', 'material de construção', 'movel', 'móvel', 'moveis', 'móveis', 'eletrodomestico', 'eletrodoméstico'],
-  'Lazer': ['cinema', 'cinemark', 'ingresso', 'show', 'festa', 'bar', 'boteco', 'cerveja', 'balada', 'viagem', 'passeio', 'hotel', 'pousada', 'airbnb', 'teatro', 'parque', 'jogo', 'game', 'steam', 'playstation', 'xbox', 'nintendo', 'livro', 'livraria', 'presente', 'praia'],
-  'Saúde': ['farmacia', 'farmácia', 'drogaria', 'drogasil', 'droga raia', 'raia', 'pacheco', 'pague menos', 'remedio', 'remédio', 'clinica', 'clínica', 'consulta', 'exame', 'medico', 'médico', 'dentista', 'psicologo', 'psicólogo', 'terapia', 'academia', 'smart fit', 'smartfit', 'gympass', 'laboratorio', 'laboratório', 'hospital', 'plano de saude', 'plano de saúde', 'unimed', 'hapvida', 'amil', 'vacina', 'oculos', 'óculos'],
-  'Assinaturas': ['netflix', 'spotify', 'deezer', 'amazon prime', 'prime video', 'hbo', 'hbo max', 'globoplay', 'paramount', 'disney', 'disney+', 'crunchyroll', 'youtube premium', 'assinatura', 'mensalidade', 'icloud', 'google one', 'dropbox', 'openai', 'chatgpt', 'claude', 'canva', 'adobe', 'office 365', 'microsoft 365'],
-  'Investimentos': ['investimento', 'investi', 'aporte', 'tesouro direto', 'tesouro selic', 'cdb', 'lci', 'lca', 'acoes', 'ações', 'fii', 'fundo imobiliario', 'fundo imobiliário', 'bitcoin', 'cripto', 'criptomoeda', 'nubank rendimento', 'poupanca', 'poupança', 'previdencia', 'previdência', 'corretora', 'clear', 'rico', 'xp investimentos', 'binance'],
-  'Salário': ['salario', 'salário', 'folha', 'pagamento de salario', 'pro-labore', 'holerite', 'contracheque', 'décimo terceiro', 'decimo terceiro', 'férias', 'ferias', 'freela', 'freelance', 'bico', 'comissao', 'comissão', 'bonificacao', 'bonificação', 'bonus', 'bônus', 'rendimento', 'dividendo', 'dividendos'],
+  'Alimentação': ['alimentacao', 'alimentação', 'ifood', 'rappi', 'ze delivery', 'zé delivery', 'restaurante', 'mercado', 'supermercado', 'mercadinho', 'hortifruti', 'sacolao', 'sacolão', 'padaria', 'padoca', 'lanchonete', 'pizza', 'pizzaria', 'burguer', 'hamburguer', 'hambúrguer', 'açai', 'acai', 'sorvete', 'sorveteria', 'mcdonalds', 'burger king', 'subway', 'bobs', 'habibs', 'outback', 'giraffas', 'china in box', 'spoleto', 'pao de acucar', 'pão de açúcar', 'carrefour', 'assai', 'assaí', 'atacadao', 'atacadão', 'guanabara', 'feira', 'merenda', 'lanche', 'lanchinho', 'almoço', 'almoco', 'janta', 'jantar', 'café', 'cafe', 'cafeteria', 'cafe da manha', 'café da manhã', 'starbucks', 'marmita', 'quentinha', 'comida', 'delivery', 'churrasco', 'espetinho', 'salgado', 'doceria', 'confeitaria', 'buffet', 'self service', 'a quilo', 'petisco', 'petiscos', 'rango', 'sushi', 'japones', 'japonês', 'agua de coco', 'água de coco'],
+  'Transporte': ['transporte', 'uber', '99', '99pop', 'indriver', 'cabify', 'moto taxi', 'mototaxi', 'taxi', 'táxi', 'posto', 'combustível', 'combustivel', 'estacionamento', 'zona azul', 'pedágio', 'pedagio', 'gasolina', 'etanol', 'alcool', 'álcool', 'diesel', 'ipiranga', 'shell', 'petrobras', 'br mania', 'onibus', 'ônibus', 'passagem de onibus', 'metro', 'metrô', 'passagem', 'passagem aerea', 'passagem aérea', 'aviao', 'avião', 'voo', 'latam', 'gol linhas aereas', 'azul linhas aereas', 'bilhete unico', 'bilhete único', 'mecanico', 'mecânico', 'oficina', 'pneu', 'lavagem', 'lava jato', 'ipva', 'licenciamento', 'multa', 'detran', 'seguro do carro', 'seguro veicular', 'revisao', 'revisão', 'troca de oleo', 'troca de óleo', 'bike', 'patinete'],
+  'Moradia': ['moradia', 'aluguel', 'condominio', 'condomínio', 'energia', 'enel', 'cemig', 'light', 'coelba', 'celpe', 'equatorial', 'luz', 'conta de luz', 'agua', 'água', 'agua e esgoto', 'sabesp', 'cagece', 'embasa', 'saneamento', 'esgoto', 'internet', 'fibra', 'wifi', 'vivo', 'claro', 'tim', 'oi', 'net', 'telefone', 'celular', 'gas', 'gás', 'gas de cozinha', 'gás de cozinha', 'botijao', 'botijão', 'iptu', 'faxina', 'diarista', 'reforma', 'material de construcao', 'material de construção', 'material de limpeza', 'produtos de limpeza', 'movel', 'móvel', 'moveis', 'móveis', 'eletrodomestico', 'eletrodoméstico', 'seguro residencial', 'financiamento imobiliario', 'financiamento imobiliário', 'prestacao da casa', 'prestação da casa', 'tv a cabo', 'sky', 'directv'],
+  'Lazer': ['lazer', 'cinema', 'cinemark', 'ingresso', 'show', 'festa', 'bar', 'boteco', 'cerveja', 'balada', 'role', 'rolê', 'happy hour', 'viagem', 'passeio', 'hotel', 'pousada', 'airbnb', 'teatro', 'parque', 'parque de diversao', 'parque de diversão', 'shopping', 'jogo', 'game', 'steam', 'playstation', 'xbox', 'nintendo', 'livro', 'livraria', 'presente', 'praia', 'clube', 'futebol', 'estadio', 'estádio', 'aposta', 'apostas', 'bet', 'betano', 'sportingbet'],
+  'Saúde': ['saude', 'saúde', 'farmacia', 'farmácia', 'drogaria', 'drogasil', 'droga raia', 'raia', 'pacheco', 'pague menos', 'remedio', 'remédio', 'clinica', 'clínica', 'consulta', 'consulta medica', 'consulta médica', 'exame', 'exame de sangue', 'medico', 'médico', 'dentista', 'implante dentario', 'implante dentário', 'psicologo', 'psicólogo', 'terapia', 'fisioterapia', 'fisio', 'nutricionista', 'oftalmologista', 'dermatologista', 'ortopedista', 'ginecologista', 'pediatra', 'cardiologista', 'academia', 'smart fit', 'smartfit', 'gympass', 'laboratorio', 'laboratório', 'hospital', 'plano de saude', 'plano de saúde', 'plano odontologico', 'plano odontológico', 'convenio', 'convênio', 'unimed', 'hapvida', 'amil', 'vacina', 'oculos', 'óculos', 'suplemento', 'whey', 'vitamina'],
+  'Assinaturas': ['assinaturas', 'netflix', 'spotify', 'deezer', 'apple music', 'tidal', 'amazon prime', 'prime video', 'hbo', 'hbo max', 'globoplay', 'paramount', 'disney', 'disney+', 'star+', 'star plus', 'crunchyroll', 'youtube premium', 'telecine', 'looke', 'mubi', 'assinatura', 'mensalidade', 'icloud', 'google one', 'dropbox', 'kindle unlimited', 'audible', 'twitch', 'discord nitro', 'linkedin premium', 'xbox game pass', 'game pass', 'playstation plus', 'ps plus', 'notion', 'figma', 'github copilot', 'copilot', 'perplexity', 'openai', 'chatgpt', 'claude', 'canva', 'adobe', 'office 365', 'microsoft 365'],
+  'Investimentos': ['investimentos', 'investimento', 'investi', 'aporte', 'tesouro direto', 'tesouro selic', 'renda fixa', 'renda variavel', 'renda variável', 'cdb', 'lci', 'lca', 'debenture', 'debênture', 'acoes', 'ações', 'fii', 'fundo imobiliario', 'fundo imobiliário', 'day trade', 'swing trade', 'ibovespa', 'b3', 'bitcoin', 'ethereum', 'cripto', 'criptomoeda', 'binance', 'nubank rendimento', 'poupanca', 'poupança', 'previdencia', 'previdência', 'corretora', 'clear', 'rico', 'toro investimentos', 'warren', 'xp investimentos'],
+  'Salário': ['salario', 'salário', 'folha', 'pagamento de salario', 'pro-labore', 'holerite', 'contracheque', 'décimo terceiro', 'decimo terceiro', 'férias', 'ferias', 'freela', 'freelance', 'bico', 'comissao', 'comissão', 'bonificacao', 'bonificação', 'bonus', 'bônus', 'rendimento', 'dividendo', 'dividendos', 'auxilio', 'auxílio', 'beneficio', 'benefício', 'inss', 'aposentadoria', 'pensao', 'pensão', 'restituicao de imposto', 'restituição de imposto', 'fgts'],
+  'Outros': ['shein', 'renner', 'c&a', 'cea', 'zara', 'riachuelo', 'marisa', 'hering', 'centauro', 'netshoes', 'nike', 'adidas', 'roupa', 'roupas', 'calca', 'calça', 'camisa', 'camiseta', 'vestido', 'sapato', 'tenis', 'tênis', 'bolsa', 'mochila', 'shopee', 'aliexpress', 'mercado livre', 'americanas', 'magazine luiza', 'magalu', 'casas bahia', 'ponto frio', 'submarino', 'compras online', 'papelaria', 'pet shop', 'petshop', 'veterinario', 'veterinário', 'racao', 'ração', 'salao de beleza', 'salão de beleza', 'cabeleireiro', 'manicure', 'barbearia', 'estetica', 'estética'],
 };
 
 /* Normaliza para comparar: minúsculas, pontuação vira espaço, e o texto fica
@@ -132,18 +173,24 @@ export function guessCategoryFromText(text: string): { name: string; color: stri
    (saída) na mesma frase, e o verbo que a pessoa escolheu diz mais sobre a
    direção do dinheiro do que o substantivo. */
 const MARCADORES_SAIDA = [
-  'gastei', 'gasto', 'paguei', 'pagamento de', 'comprei', 'compra', 'torrei',
-  'debitado', 'débito', 'debito', 'saiu', 'saída', 'saida', 'enviei', 'enviado',
-  'transferi', 'pix enviado', 'mandei', 'assinei', 'investi', 'apliquei',
+  'gastei', 'gastando', 'gasta', 'gasto', 'paguei', 'pagamento de', 'pagando',
+  'comprei', 'compra', 'comprando', 'torrei', 'queimei', 'desembolsei', 'desembolso',
+  'debitado', 'débito', 'debito', 'debitaram', 'saiu', 'saída', 'saida', 'saiu da conta',
+  'enviei', 'enviado', 'transferi', 'pix enviado', 'fiz um pix', 'dei um pix',
+  'mandei', 'assinei', 'investi', 'apliquei', 'financiei', 'financiamento',
+  'parcelei', 'quitei', 'quitação', 'boleto pago', 'paguei boleto', 'cobraram',
+  'cobrança', 'cobranca', 'rachei a conta', 'dividi a conta',
 ];
 
 const MARCADORES_ENTRADA = [
   'recebi', 'recebeu', 'recebido', 'recebida', 'você recebeu', 'voce recebeu',
-  'entrou', 'entrada', 'caiu', 'creditado', 'crédito de', 'credito de',
-  'depósito', 'deposito', 'depositado', 'transferência recebida', 'transferencia recebida',
-  'pix recebido', 'estorno', 'reembolso', 'devolução', 'devolucao', 'me pagaram',
-  'ganhei', 'vendi', 'venda', 'salário', 'salario', 'freela', 'comissão', 'comissao',
-  'bonificação', 'bonificacao', 'bônus', 'bonus', 'rendimento', 'dividendo',
+  'entrou', 'entrada', 'caiu', 'caiu na conta', 'pingou', 'creditado', 'crédito de', 'credito de',
+  'depósito', 'deposito', 'depositado', 'depositaram', 'transferência recebida', 'transferencia recebida',
+  'pix recebido', 'estorno', 'reembolso', 'reembolsaram', 'devolução', 'devolucao',
+  'devolveram', 'me devolveram', 'me pagaram', 'cashback', 'ganhei', 'ganhei na loteria',
+  'prêmio', 'premio', 'vendi', 'venda', 'salário', 'salario', 'freela', 'comissão', 'comissao',
+  'bonificação', 'bonificacao', 'bônus', 'bonus', 'rendimento', 'dividendo', 'restituição',
+  'restituicao', 'resgatei',
 ];
 
 export function guessTypeFromText(text: string): TxType {
@@ -190,6 +237,10 @@ const CONECTOR_FINAL = new RegExp(`\\s+${CONECTOR}$`, 'i');
 /* Restos de valor colados nas pontas: "luz 210" -> "luz", "350 reais x" -> "x". */
 const VALOR_INICIAL = /^(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?\b\s*/i;
 const VALOR_FINAL = /\s*(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?$/i;
+/* Forma de pagamento mencionada solta no fim da frase — "Mercado 50 no pix",
+   "Farmácia 30 no débito" — não é parte do nome do lançamento. */
+const FORMA_PAGAMENTO_FINAL =
+  /\s+(?:no|na|via|em|de)\s+(?:pix|dinheiro|espécie|especie|cartão|cartao|débito|debito|crédito|credito|boleto)$/i;
 
 function limparSobra(bruto: string): string {
   let s = bruto.replace(/\s+/g, ' ').trim();
@@ -200,6 +251,7 @@ function limparSobra(bruto: string): string {
       .replace(VERBOS_INICIAIS, '')
       .replace(VALOR_INICIAL, '')
       .replace(VALOR_FINAL, '')
+      .replace(FORMA_PAGAMENTO_FINAL, '')
       .replace(CONECTOR_INICIAL, '')
       .replace(CONECTOR_FINAL, '')
       .trim();
@@ -237,7 +289,13 @@ export function guessDescFromText(text: string, type: TxType): string {
      mais inequívoco: o que está antes do "de" é sempre o nome. Antes esta
      regra vinha DEPOIS da regra do "de <nome>", e o "de" do valor casava
      primeiro — a descrição virava "350 reais" e o nome real se perdia. */
-  const nomeAntes = texto.match(new RegExp(`^\\s*(.{2,40}?)\\s+(?:de|por)\\s+${EXPRESSAO_VALOR.source}\\s*$`, 'i'));
+  /* `(?:\s*,.*)?$` em vez de só `\s*$`: "Chip de 22 reais, outros" tem uma
+     categoria colada depois da vírgula (formato que o próprio app ensina —
+     ver o placeholder do lançamento por voz). Sem essa folga, o valor não
+     ficava no fim exato da frase, a regra 1 nunca casava, e a descrição
+     caía na regra 3 (sobra do texto), que deixava "de" e a vírgula soltos
+     no meio do nome ("Chip de , outros" em vez de "Chip"). */
+  const nomeAntes = texto.match(new RegExp(`^\\s*(.{2,40}?)\\s+(?:de|por)\\s+${EXPRESSAO_VALOR.source}(?:\\s*,.*)?\\s*$`, 'i'));
   if (nomeAntes) {
     const nome = limparSobra(nomeAntes[1]);
     if (nome.length >= 2) return capitalizar(nome);

@@ -123,6 +123,12 @@ create table if not exists whatsapp_pending (
   created_at timestamptz not null default now()
 );
 
+-- Carregam a intenção de "no crédito do cartão X" através da pergunta de
+-- esclarecimento de categoria, para o lançamento sair certo quando a
+-- resposta finalmente chegar (ver registrarLancamento no whatsapp-webhook).
+alter table whatsapp_pending add column if not exists card_id uuid references credit_cards(id) on delete set null;
+alter table whatsapp_pending add column if not exists payment_method text;
+
 alter table whatsapp_pending enable row level security;
 
 -- Orçamento mensal sugerido/definido por categoria
