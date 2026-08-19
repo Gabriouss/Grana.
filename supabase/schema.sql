@@ -431,6 +431,15 @@ begin
     raise exception 'Não autenticado';
   end if;
 
+  -- Teto por chamada. A RPC é exposta a `authenticated`, então nada impede
+  -- alguém de chamá-la direto pela API com delta = 2000000000 e estourar o
+  -- nível de uma vez. Não vaza dado de ninguém — só esvazia o sentido da
+  -- progressão — mas o limite custa uma linha. 10.000 é ordens de grandeza
+  -- acima de qualquer ação real do app.
+  if delta > 10000 or delta < -10000 then
+    raise exception 'Variação de XP fora do intervalo permitido';
+  end if;
+
   insert into public.user_gamification (user_id, lifetime_xp)
   values (usuario, greatest(delta, 0))
   on conflict (user_id) do update
@@ -626,15 +635,26 @@ create trigger validar_wallet_goals
   before insert or update of wallet_id, user_id on goals
   for each row execute procedure public.validar_wallet_do_usuario();
 
--- Trigger para criar carteira "Principal" automaticamente ao criar usuário
+-- Trigger para criar carteira "Principal" automaticamente ao criar usuário.
+--
+-- `set search_path` é obrigatório aqui, como em toda função SECURITY DEFINER
+-- deste arquivo: sem ele o search_path é o de quem dispara a função, e quem
+-- conseguir criar um objeto num schema que venha antes na busca faz esta
+-- função — que roda com os privilégios do dono — chamar o objeto dele em vez
+-- do nosso. Era a única definer function do schema sem essa trava; as outras
+-- quatro já tinham.
 create or replace function public.handle_new_user_wallet()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
   insert into public.wallets (user_id, name, is_default, color, icon)
   values (new.id, 'Principal', true, '#1fa98d', 'wallet-outline');
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 drop trigger if exists on_auth_user_created_wallet on auth.users;
 create trigger on_auth_user_created_wallet
@@ -642,3 +662,53 @@ create trigger on_auth_user_created_wallet
   for each row execute procedure public.handle_new_user_wallet();
 
 
+
+-- ============================================================
+-- Storage: bucket `avatars` (fotos de perfil)
+-- ============================================================
+--
+-- Estas políticas não existiam neste arquivo — a configuração do bucket vivia
+-- só no painel do Supabase, fora do controle de versão. Uma auditoria mostrou
+-- a consequência: com a chave anon (que é pública, embutida no APK), dava para
+-- LISTAR o bucket e obter a lista de user_ids de todo mundo que já subiu foto,
+-- sem estar logado. Os dados financeiros continuavam protegidos pelo RLS das
+-- tabelas, mas a enumeração da base de usuários e o download das fotos eram
+-- possíveis para qualquer um.
+--
+-- O caminho dos arquivos é `{user_id}/avatar.jpg` (ver lib/profile.ts), então
+-- a primeira pasta do caminho é a dona do arquivo — é isso que
+-- `storage.foldername(name)[1]` devolve.
+
+-- Leitura: só o próprio dono lista/consulta pelo endpoint autenticado.
+-- Atenção: enquanto o bucket estiver marcado como público no painel, a rota
+-- /object/public/... continua servindo o arquivo sem checar política nenhuma.
+-- Isto aqui fecha a ENUMERAÇÃO (o /object/list/), que é o problema maior.
+-- Para fechar também o acesso direto por URL, o bucket precisa virar privado
+-- e lib/profile.ts passar a usar createSignedUrl() em vez de getPublicUrl().
+drop policy if exists "avatars: dono lê o próprio arquivo" on storage.objects;
+create policy "avatars: dono lê o próprio arquivo"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Escrita: cada usuário só grava dentro da própria pasta. Sem isto, um
+-- usuário logado poderia sobrescrever a foto de outro escrevendo em
+-- `{user_id_alheio}/avatar.jpg`.
+drop policy if exists "avatars: dono grava na própria pasta" on storage.objects;
+create policy "avatars: dono grava na própria pasta"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "avatars: dono atualiza a própria foto" on storage.objects;
+create policy "avatars: dono atualiza a própria foto"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "avatars: dono apaga a própria foto" on storage.objects;
+create policy "avatars: dono apaga a própria foto"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);

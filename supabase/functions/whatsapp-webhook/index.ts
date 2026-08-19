@@ -376,8 +376,15 @@ function timingSafeEqual(a: string, b: string): boolean {
 /** true = pode processar. Sem WHATSAPP_APP_SECRET configurado, deixa passar (com aviso) em vez de derrubar o webhook. */
 async function assinaturaValida(rawBody: string, header: string | null): Promise<boolean> {
   if (!WHATSAPP_APP_SECRET) {
-    console.warn('[whatsapp-webhook] WHATSAPP_APP_SECRET não configurado — pulando verificação de assinatura.');
-    return true;
+    // Falha FECHADA. Antes esta função devolvia true com um aviso no log
+    // quando o secret não estava configurado, para não derrubar o webhook
+    // durante a configuração inicial. O efeito colateral é que um secret
+    // apagado por engano transformava silenciosamente o endpoint em aberto:
+    // qualquer um que descobrisse a URL poderia forjar lançamentos em nome
+    // de um número já vinculado. Recusar tudo é o mesmo comportamento da
+    // função eas-build-webhook, e a configuração inicial já está feita.
+    console.error('[whatsapp-webhook] WHATSAPP_APP_SECRET não configurado — recusando tudo.');
+    return false;
   }
   if (!header || !header.startsWith('sha256=')) return false;
   const esperado = `sha256=${await hmacSha256Hex(WHATSAPP_APP_SECRET, rawBody)}`;
@@ -472,7 +479,12 @@ async function transcribeAudio(mediaId: string): Promise<string | null> {
         if (typeof bruto !== 'string' || !bruto.trim()) continue;
 
         const normalizado = normalizarTextoTranscrito(bruto);
-        console.log(`[transcribeAudio] ${provedor.nome} transcreveu: "${normalizado}"`);
+        // Só o provedor e o tamanho. A transcrição em si é o extrato da
+        // pessoa ("mercado, 120 reais") e os logs da Edge Function ficam
+        // retidos e legíveis por qualquer um com acesso ao painel — não é
+        // lugar para dado financeiro. Para depurar, o que importa é saber se
+        // veio texto e de qual provedor.
+        console.log(`[transcribeAudio] ${provedor.nome} devolveu ${normalizado.length} caracteres`);
         return normalizado || null;
       } catch (err) {
         console.error(`[transcribeAudio] ${provedor.nome} lançou exceção:`, err);
