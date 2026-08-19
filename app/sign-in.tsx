@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
 import { theme, spacing, radius } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
@@ -19,6 +20,9 @@ import { LIMITS } from '@/lib/limits';
 export default function SignIn() {
   const { signIn } = useSession();
   const router = useRouter();
+  /* O conteúdo é centralizado, mas num aparelho baixo (ou com o teclado
+     aberto) ele encosta nas bordas — o inset garante o respiro mínimo. */
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,7 +45,7 @@ export default function SignIn() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Text style={styles.eyebrow}>bem-vinda de volta</Text>
         <BrandLogo size={42} style={styles.title} />
         <Text style={styles.subtitle}>Entre com sua conta para sincronizar seus lançamentos entre aparelhos.</Text>

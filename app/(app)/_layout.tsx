@@ -6,9 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView, BlurTargetView } from 'expo-blur';
 import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
 import { theme, spacing } from '@/lib/theme';
+import { useTabBarInset } from '@/lib/tab-bar';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
-// noop: força recarga do bundle no Expo Go após correções da auditoria
 
 /* expo-router não reexporta o tipo de `tabBar` publicamente (ele vive numa
    cópia interna do react-navigation dentro do próprio pacote) — em vez de um
@@ -35,9 +35,11 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
  * interno de terceiros.
  */
 function FloatingTabBar({ state, descriptors, navigation, blurTarget }: TabBarProps & { blurTarget: RefObject<View | null> }) {
+  const { margem } = useTabBarInset();
+
   return (
     <View pointerEvents="box-none" style={styles.floatWrap}>
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { marginBottom: margem }]}>
         {Platform.OS === 'web' ? (
           <View style={[StyleSheet.absoluteFill, styles.webGlass, { backdropFilter: 'blur(16px)' } as any]} />
         ) : (
@@ -210,7 +212,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     marginHorizontal: spacing.xl,
-    marginBottom: 30,
+    /* marginBottom vem do useTabBarInset() — depende da navegação do sistema
+       (gesture bar vs. 3 botões), então não pode ser fixo aqui. */
     height: 68,
     borderRadius: 999,
     borderWidth: 1,

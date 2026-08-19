@@ -57,7 +57,7 @@ export default function HomeCustomizerModal({
             <Text style={styles.title}>Personalizar Início</Text>
             <Text style={styles.hint}>Escolha quais ferramentas exibir e a ordem do seu painel.</Text>
           </View>
-          <AppPressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
+          <AppPressable onPress={onClose} hitSlop={12} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>
@@ -140,7 +140,11 @@ export default function HomeCustomizerModal({
                 </View>
 
                 {/* Switch Liga/Desliga */}
-                <ToggleSwitch value={bloco.visible} onToggle={() => alternar(index)} />
+                <ToggleSwitch
+                  value={bloco.visible}
+                  onToggle={() => alternar(index)}
+                  label={`Mostrar bloco ${HOME_BLOCK_LABELS[bloco.key]}`}
+                />
               </View>
             );
           })}

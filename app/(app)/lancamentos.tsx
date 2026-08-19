@@ -14,9 +14,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTabBarInset } from '@/lib/tab-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
+import HeaderAction from '@/components/HeaderAction';
 import ExportPdfButton from '@/components/ExportPdfButton';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
@@ -43,7 +45,7 @@ import {
 } from '@/lib/offline-cache';
 import { hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -52,6 +54,7 @@ import type { Transaction, TxType } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 
 export default function LancamentosScreen() {
+  const { paddingConteudo } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, activeWalletName } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -368,23 +371,19 @@ export default function LancamentosScreen() {
         title="Lançamentos"
         right={
           <>
-            <AppPressable
-              style={({ hovered }) => [styles.headerBtn, hovered && styles.headerBtnHover]}
+            <HeaderAction
+              icon="clipboard-outline"
               onPress={() => setPasteModalOpen(true)}
-              hitSlop={8}
-            >
-              <Ionicons name="clipboard-outline" size={18} color={theme.ink} />
-            </AppPressable>
-            <AppPressable
-              style={({ hovered }) => [styles.headerBtn, hovered && styles.headerBtnHover]}
+              accessibilityLabel="Colar comprovante"
+            />
+            <HeaderAction
+              icon="document-text-outline"
               onPress={() => setCsvModalOpen(true)}
-              hitSlop={8}
-            >
-              <Ionicons name="document-text-outline" size={18} color={theme.ink} />
-            </AppPressable>
+              accessibilityLabel="Importar CSV"
+            />
             <VoiceEntryButton
               style={styles.headerBtn}
-              iconSize={18}
+              iconSize={16}
               onTranscribed={(text) => {
                 setVoiceText(text);
                 setPasteModalOpen(true);
@@ -393,7 +392,12 @@ export default function LancamentosScreen() {
             <WalletPill onPress={() => setWalletModalOpen(true)} />
           </>
         }
-      >
+      />
+
+      {/* Filtros, resumo e seletor de mês ficam ABAIXO da borda do cabeçalho,
+          não dentro dele. O cabeçalho é só eyebrow + título + ações — mesmo
+          arranjo de Crédito, que é o padrão das telas. */}
+      <View style={styles.filtrosWrap}>
         {(offline || pendingCount > 0) && (
           <View style={styles.offlineBanner}>
             <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
@@ -491,7 +495,7 @@ export default function LancamentosScreen() {
             })}
           </ScrollView>
         )}
-      </ScreenHeader>
+      </View>
 
       {loading ? (
         <ActivityIndicator color={theme.ink} style={{ marginTop: 40 }} />
@@ -499,7 +503,7 @@ export default function LancamentosScreen() {
         <FlatList
           data={visible}
           keyExtractor={(t) => t.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: paddingConteudo }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
@@ -567,7 +571,7 @@ export default function LancamentosScreen() {
         <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingTxId ? 'Editar lançamento' : type === 'in' ? 'Nova entrada' : 'Nova saída'}</Text>
-              <AppPressable onPress={() => setModalOpen(false)} hitSlop={12}>
+              <AppPressable onPress={() => setModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
             </View>
@@ -674,6 +678,9 @@ export default function LancamentosScreen() {
                   style={[styles.switchTrack, recurring && styles.switchTrackOn]}
                   onPress={() => setRecurring((p) => !p)}
                   hitSlop={12}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: recurring }}
+                  accessibilityLabel="Repetir mensalmente"
                 >
                   <View style={[styles.switchThumb, recurring && styles.switchThumbOn]} />
                 </AppPressable>
@@ -689,6 +696,9 @@ export default function LancamentosScreen() {
                     style={[styles.switchTrack, installment && styles.switchTrackOn]}
                     onPress={() => setInstallment((p) => !p)}
                     hitSlop={12}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: installment }}
+                    accessibilityLabel="Compra parcelada"
                   >
                     <View style={[styles.switchThumb, installment && styles.switchThumbOn]} />
                   </AppPressable>
@@ -798,16 +808,24 @@ export default function LancamentosScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.paper },
+  container: { flex: 1, backgroundColor: theme.paper },
+  /* Bloco de filtros do corpo da tela: reproduz o espaçamento que o
+     ScreenHeader dava quando eles moravam dentro dele. */
+  filtrosWrap: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.padding, gap: screenRhythm.gap },
+  /* Mesma geometria do HeaderAction (components/HeaderAction.tsx) — o
+     VoiceEntryButton entra na mesma linha e precisa fechar na mesma altura
+     que as outras pílulas do cabeçalho. */
   headerBtn: {
-    padding: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     borderRadius: radius.pill,
     backgroundColor: theme.paperRaised,
     borderWidth: 1,
     borderColor: theme.rule,
   },
   headerBtnHover: { borderColor: theme.ruleStrong },
-  listContent: { paddingHorizontal: spacing.xl, paddingBottom: 100 },
+  /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
+  listContent: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.gap },
   exportWrap: { marginTop: spacing.xl },
   emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },

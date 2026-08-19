@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, type } from '@/lib/theme';
@@ -66,6 +67,9 @@ export default function QrScannerModal({
   const { isDemoMode } = useDemo();
   const { activeWalletId } = useWallet();
   const [permissao, pedirPermissao] = useCameraPermissions();
+  /* Overlay da câmera desenha até a borda física; sem o inset os botões de
+     fechar/lanterna ficam sob a barra de status em aparelhos de barra alta. */
+  const insets = useSafeAreaInsets();
 
   const [nota, setNota] = useState<NotaFiscal | null>(null);
   const [lanterna, setLanterna] = useState(false);
@@ -172,8 +176,14 @@ export default function QrScannerModal({
                 onBarcodeScanned={handleCodigoLido}
               />
 
-              <View style={styles.overlayTopo}>
-                <AppPressable onPress={fechar} hitSlop={12} style={styles.botaoRedondo}>
+              <View style={[styles.overlayTopo, { top: insets.top + spacing.md }]}>
+                <AppPressable
+                  onPress={fechar}
+                  hitSlop={12}
+                  style={styles.botaoRedondo}
+                  accessibilityRole="button"
+                  accessibilityLabel="Fechar leitor de QR Code"
+                >
                   <Ionicons name="close" size={22} color={theme.ink} />
                 </AppPressable>
                 <AppPressable
@@ -203,7 +213,7 @@ export default function QrScannerModal({
       <Sheet>
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle}>Nota fiscal lida</Text>
-          <AppPressable onPress={fechar} hitSlop={12}>
+          <AppPressable onPress={fechar} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>
@@ -297,7 +307,7 @@ const styles = StyleSheet.create({
 
   overlayTopo: {
     position: 'absolute',
-    top: 56,
+    /* `top` vem do inset no JSX. */
     left: spacing.xl,
     right: spacing.xl,
     flexDirection: 'row',

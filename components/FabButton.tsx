@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius } from '@/lib/theme';
+import { theme, radius, spacing } from '@/lib/theme';
+import { useTabBarInset } from '@/lib/tab-bar';
 import AppPressable from './AppPressable';
 
 export default function FabButton({
@@ -20,6 +21,7 @@ export default function FabButton({
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
+  const { total: tabBarTotal } = useTabBarInset();
 
   useEffect(() => {
     if (open) {
@@ -33,7 +35,7 @@ export default function FabButton({
   const rotate = progress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '135deg'] });
 
   return (
-    <View style={styles.fabContainer}>
+    <View style={[styles.fabContainer, { bottom: tabBarTotal + spacing.md }]}>
       {mounted && (
         <Animated.View
           style={[
@@ -100,6 +102,9 @@ export default function FabButton({
       <AppPressable
         style={({ hovered }) => [styles.fabBtn, open && styles.fabBtnOpen, hovered && styles.fabBtnHover]}
         onPress={() => setOpen((prev) => !prev)}
+        accessibilityRole="button"
+        accessibilityLabel="Novo lançamento"
+        accessibilityState={{ expanded: open }}
       >
         <Animated.View style={{ transform: [{ rotate }] }}>
           <Ionicons name="add" size={24} color={theme.paper} />
@@ -113,11 +118,8 @@ const styles = StyleSheet.create({
   fabContainer: {
     position: 'absolute',
     right: 20,
-    /* A barra de abas agora flutua (marginBottom: 30, height: 68 em
-       app/(app)/_layout.tsx, topo da barra ~98px do fundo) — o FAB precisa
-       ficar acima dela, não na mesma faixa, senão os dois se sobrepõem no
-       canto inferior direito. */
-    bottom: 112,
+    /* `bottom` vem do useTabBarInset() no JSX: o FAB precisa ficar acima da
+       barra flutuante, e a altura dela depende da navegação do sistema. */
     alignItems: 'flex-end',
     zIndex: 40,
   },

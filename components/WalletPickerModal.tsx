@@ -95,7 +95,7 @@ export default function WalletPickerModal({
       <Sheet>
         <View style={styles.header}>
           <Text style={styles.title}>Selecionar conta</Text>
-          <AppPressable onPress={onClose} hitSlop={12}>
+          <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>
@@ -103,7 +103,7 @@ export default function WalletPickerModal({
         {/* Toggle de Ocultar Saldo (Conforme print de referência do usuário) */}
         <View style={styles.privacyRow}>
           <Text style={styles.privacyLabel}>Ocultar saldo da Tela inicial</Text>
-          <ToggleSwitch value={hidden} onToggle={togglePrivacy} />
+          <ToggleSwitch value={hidden} onToggle={togglePrivacy} label="Ocultar saldo da Tela inicial" />
         </View>
 
         <ScrollView style={styles.list} contentContainerStyle={{ gap: 8 }}>

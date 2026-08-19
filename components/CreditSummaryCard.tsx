@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, card as cardTokens } from '@/lib/theme';
 import { formatMoney, isSameMonth } from '@/lib/format';
 import { BANKS, type CreditCard, type Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
@@ -74,10 +74,10 @@ export default function CreditSummaryCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.paperRaised,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    borderRadius: cardTokens.radius,
+    borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
-    padding: spacing.lg,
+    padding: cardTokens.padding,
     gap: spacing.sm,
   },
   cardHover: { borderColor: theme.ruleStrong },

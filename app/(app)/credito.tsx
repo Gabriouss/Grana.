@@ -13,11 +13,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTabBarInset } from '@/lib/tab-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { addCreditCard, addInstallmentPurchase, addTransaction, deleteCreditCard, deleteTransaction, fetchCreditCards, fetchTransactions } from '@/lib/data';
 import { formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
-import { fonts, radius, spacing, theme } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -26,6 +27,7 @@ import { DEMO_CREDIT_CARDS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
+import HeaderAction from '@/components/HeaderAction';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import PrivacyValue from '@/components/PrivacyValue';
@@ -37,6 +39,7 @@ import Sheet from '@/components/Sheet';
 import FadeIn from '@/components/FadeIn';
 
 export default function CreditoScreen() {
+  const { paddingConteudo } = useTabBarInset();
   const router = useRouter();
   const { hidden } = usePrivacy();
   const { isDemoMode } = useDemo();
@@ -345,16 +348,14 @@ export default function CreditoScreen() {
         title="Crédito"
         right={
           <>
-            <AppPressable
-              style={({ hovered }) => [styles.addCardBtn, hovered && styles.addCardBtnHover]}
+            <HeaderAction
+              icon="card-outline"
+              label="+ Cartão"
               onPress={() => {
                 hapticTap();
                 setNewCardOpen(true);
               }}
-            >
-              <Ionicons name="card-outline" size={16} color={theme.accent2} />
-              <Text style={styles.addCardBtnText}>+ Cartão</Text>
-            </AppPressable>
+            />
             <WalletPill onPress={() => setWalletModalOpen(true)} />
           </>
         }
@@ -362,7 +363,7 @@ export default function CreditoScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -514,7 +515,7 @@ export default function CreditoScreen() {
         <Sheet>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Novo Cartão de Crédito</Text>
-            <AppPressable onPress={() => setNewCardOpen(false)} hitSlop={12}>
+            <AppPressable onPress={() => setNewCardOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>
@@ -589,7 +590,7 @@ export default function CreditoScreen() {
         <Sheet>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Lançar Compra no Crédito</Text>
-            <AppPressable onPress={() => setNewTxOpen(false)} hitSlop={12}>
+            <AppPressable onPress={() => setNewTxOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>
@@ -738,7 +739,7 @@ const styles = StyleSheet.create({
     color: theme.accent2,
   },
   scroll: { flex: 1 },
-  content: { padding: spacing.lg, gap: spacing.md },
+  content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
   cardsRow: { gap: spacing.md, paddingVertical: 4 },
   creditCard: {
     width: 240,
@@ -819,11 +820,11 @@ const styles = StyleSheet.create({
   },
   emptyCardsCard: {
     backgroundColor: theme.paperRaised,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+    borderRadius: cardTokens.radius,
+    padding: cardTokens.padding,
     alignItems: 'center',
     gap: spacing.sm,
-    borderWidth: 1,
+    borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
   },
   emptyCardsTitle: {
@@ -854,9 +855,9 @@ const styles = StyleSheet.create({
   },
   invoiceSummaryCard: {
     backgroundColor: theme.paperRaised,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
+    borderRadius: cardTokens.radius,
+    padding: cardTokens.padding,
+    borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
   },
   invoiceHeadRow: {

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTabBarInset } from '@/lib/tab-bar';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth-context';
 import { usePrivacy } from '@/lib/privacy-context';
@@ -23,6 +24,7 @@ import ToggleSwitch from '@/components/ToggleSwitch';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
 import OnboardingModal from '@/components/OnboardingModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
+import FeedbackModal from '@/components/FeedbackModal';
 import Toast from '@/components/Toast';
 
 /* Endereços que app/(app)/_layout.tsx sabe rotear — ver lib/deep-links.ts.
@@ -37,6 +39,7 @@ const ATALHOS = [
 ];
 
 export default function PerfilScreen() {
+  const { paddingConteudo } = useTabBarInset();
   const { session, signOut } = useSession();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode, toggleDemoMode } = useDemo();
@@ -47,6 +50,7 @@ export default function PerfilScreen() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [categoriasOpen, setCategoriasOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reauthOpen, setReauthOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -283,10 +287,15 @@ export default function PerfilScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}>
         {/* Header com Avatar */}
         <View style={styles.header}>
-          <AppPressable onPress={escolherFoto} disabled={enviandoFoto}>
+          <AppPressable
+            onPress={escolherFoto}
+            disabled={enviandoFoto}
+            accessibilityRole="button"
+            accessibilityLabel="Trocar foto de perfil"
+          >
             <View style={styles.avatar}>
               {enviandoFoto ? (
                 <ActivityIndicator color={theme.paper} />
@@ -306,7 +315,12 @@ export default function PerfilScreen() {
             <Text style={styles.sub}>{userEmail}</Text>
           </View>
 
-          <AppPressable onPress={abrirEdicaoNome} hitSlop={10}>
+          <AppPressable
+            onPress={abrirEdicaoNome}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Editar nome"
+          >
             <Ionicons name="create-outline" size={20} color={theme.inkFaint} />
           </AppPressable>
         </View>
@@ -345,6 +359,10 @@ export default function PerfilScreen() {
             <Text style={styles.rowKey}>Atalhos rápidos</Text>
             <Text style={styles.rowValue}>Configurar &gt;</Text>
           </AppPressable>
+          <AppPressable style={[styles.tappableRow, { borderBottomWidth: 0 }]} onPress={() => setFeedbackOpen(true)}>
+            <Text style={styles.rowKey}>Enviar feedback ou sugestão</Text>
+            <Text style={styles.rowValue}>Abrir &gt;</Text>
+          </AppPressable>
         </View>
 
         {/* Seção Preferências */}
@@ -371,6 +389,7 @@ export default function PerfilScreen() {
                 togglePrivacy();
                 triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
               }}
+              label="Modo privacidade"
             />
           </View>
 
@@ -379,7 +398,7 @@ export default function PerfilScreen() {
           {lockDisponivel && (
             <View style={styles.row}>
               <Text style={styles.rowKey}>Bloqueio por biometria</Text>
-              <ToggleSwitch value={lockAtivo} onToggle={alternarLock} />
+              <ToggleSwitch value={lockAtivo} onToggle={alternarLock} label="Bloqueio por biometria" />
             </View>
           )}
 
@@ -387,7 +406,7 @@ export default function PerfilScreen() {
             <View style={styles.rowColuna}>
               <View style={styles.rowInterna}>
                 <Text style={styles.rowKey}>Bloquear captura de tela</Text>
-                <ToggleSwitch value={capturaBloqueada} onToggle={alternarCaptura} />
+                <ToggleSwitch value={capturaBloqueada} onToggle={alternarCaptura} label="Bloquear captura de tela" />
               </View>
               <Text style={styles.rowAjuda}>
                 {capturaBloqueada
@@ -405,6 +424,7 @@ export default function PerfilScreen() {
                 toggleDemoMode();
                 triggerToast(isDemoMode ? 'Voltando para seus dados' : 'Explorando dados de exemplo');
               }}
+              label="Dados de exemplo"
             />
           </View>
 
@@ -474,6 +494,12 @@ export default function PerfilScreen() {
         visible={categoriasOpen}
         mode="manage"
         onClose={() => setCategoriasOpen(false)}
+      />
+
+      <FeedbackModal
+        visible={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        onSuccess={() => triggerToast('Obrigado pelo seu feedback!')}
       />
 
       {/* Toast */}
@@ -760,7 +786,8 @@ const styles = StyleSheet.create({
   atalhoTitulo: { color: theme.ink, fontSize: 13, fontWeight: '500' },
   atalhoUrl: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
   container: { flex: 1, backgroundColor: theme.paper },
-  content: { padding: spacing.xl, gap: spacing.lg, paddingBottom: 60 },
+  /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
+  content: { padding: spacing.xl, gap: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
   avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: theme.paperRaised, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.rule },
   avatarText: { color: theme.ink, fontSize: 20, fontWeight: '500' },

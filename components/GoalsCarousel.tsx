@@ -161,7 +161,7 @@ export default function GoalsCarousel({
         <Sheet>
           <View style={styles.header}>
             <Text style={styles.sheetTitle}>Nova meta</Text>
-            <AppPressable onPress={() => setCreateOpen(false)} hitSlop={12}>
+            <AppPressable onPress={() => setCreateOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

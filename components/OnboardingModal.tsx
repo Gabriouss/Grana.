@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts } from '@/lib/theme';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
@@ -138,6 +139,10 @@ export default function OnboardingModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
+  /* O <Modal> desenha por baixo da barra de status no modo edge-to-edge — sem
+     este recuo a barra de progresso fica em cima do relógio e da bateria.
+     Mesmo tratamento do UpdateBanner. */
+  const insets = useSafeAreaInsets();
 
   const [step, setStep] = useState(1);
   const [organizacao, setOrganizacao] = useState<NivelOrganizacao | null>(null);
@@ -279,7 +284,12 @@ export default function OnboardingModal({
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       {/* Tela cheia: o campo de renda ficaria atrás do teclado, já que no
           modo edge-to-edge a janela não encolhe sozinha. */}
-      <View style={[styles.container, { paddingBottom: spacing.lg + keyboardHeight }]}>
+      <View
+        style={[
+          styles.container,
+          { paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg + keyboardHeight },
+        ]}
+      >
         <View style={styles.header}>
           {step > 1 ? (
             <AppPressable onPress={handleBack} hitSlop={10} style={styles.backBtn}>

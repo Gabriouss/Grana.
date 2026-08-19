@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTabBarInset } from '@/lib/tab-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -28,7 +29,7 @@ import { addBill, deleteBill, fetchBills, payBill, reopenBill, updateBill } from
 import { scheduleBillReminders, cancelBillReminders } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -37,6 +38,7 @@ import type { Bill, BillStatus } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 
 export default function ContasScreen() {
+  const { paddingConteudo, total: tabBarTotal } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -283,7 +285,11 @@ export default function ContasScreen() {
         eyebrow="pagamentos"
         title="Contas a pagar"
         right={<WalletPill onPress={() => setWalletModalOpen(true)} />}
-      >
+      />
+
+      {/* Resumo e seletor de mês ficam ABAIXO da borda do cabeçalho, não
+          dentro dele — mesmo arranjo de Crédito, que é o padrão das telas. */}
+      <View style={styles.filtrosWrap}>
         <View style={styles.subtitleRow}>
           <PrivacyValue>
             <Text style={styles.subtitle}>{`R$ ${formatMoney(openTotal)}`}</Text>
@@ -299,7 +305,7 @@ export default function ContasScreen() {
             setSelectedMonth(m);
           }}
         />
-      </ScreenHeader>
+      </View>
 
       {loading ? (
         <ActivityIndicator color={theme.ink} style={{ marginTop: 40 }} />
@@ -307,7 +313,7 @@ export default function ContasScreen() {
         <FlatList
           data={monthBills}
           keyExtractor={(b) => b.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: paddingConteudo }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma conta vencendo neste mês. Toque no botão "+" para registrar.</Text>}
           renderItem={({ item }) => {
@@ -349,7 +355,10 @@ export default function ContasScreen() {
         />
       )}
 
-      <AppPressable style={({ hovered }) => [styles.fab, hovered && styles.fabHover]} onPress={openNewModal}>
+      <AppPressable
+        style={({ hovered }) => [styles.fab, { bottom: tabBarTotal + spacing.md }, hovered && styles.fabHover]}
+        onPress={openNewModal}
+      >
         <Ionicons name="add" size={24} color={theme.paper} />
       </AppPressable>
 
@@ -358,7 +367,7 @@ export default function ContasScreen() {
         <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingBillId ? 'Editar conta a pagar' : 'Nova conta a pagar'}</Text>
-              <AppPressable onPress={() => setModalOpen(false)} hitSlop={12}>
+              <AppPressable onPress={() => setModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
             </View>
@@ -413,6 +422,9 @@ export default function ContasScreen() {
                 style={[styles.switchTrack, recurring && styles.switchTrackOn]}
                 onPress={() => setRecurring((p) => !p)}
                 hitSlop={12}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: recurring }}
+                accessibilityLabel="Conta recorrente"
               >
                 <View style={[styles.switchThumb, recurring && styles.switchThumbOn]} />
               </AppPressable>
@@ -471,9 +483,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
   subtitle: { color: theme.inkFaint, fontSize: 13 },
   subtitleRow: { flexDirection: 'row', alignItems: 'baseline' },
-  listContent: { paddingHorizontal: spacing.xl, paddingBottom: 100, gap: spacing.sm },
+  /* Bloco do corpo da tela: reproduz o espaçamento que o ScreenHeader dava
+     quando o resumo e o seletor de mês moravam dentro dele. */
+  filtrosWrap: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.padding, gap: screenRhythm.gap },
+  /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
+  listContent: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.gap, gap: screenRhythm.gap },
   emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },
-  card: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.sm },
+  /* Sem marginBottom aqui: o espaço entre itens já vem do `gap` de
+     styles.listContent — somar os dois dobraria a distância entre um card e
+     o próximo em relação à distância do primeiro card até o filtro acima. */
+  card: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
   cardHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardNameRow: { flexDirection: 'row', alignItems: 'center' },
@@ -490,9 +509,9 @@ const styles = StyleSheet.create({
   // pillLate usa fundo claro (theme.ink) — precisa de texto escuro em vez do
   // pillText claro padrão, senão fica ilegível (claro sobre quase-branco).
   pillLateText: { color: theme.paper, fontWeight: '700' },
-  /* bottom:112 pra ficar acima da barra flutuante (app/(app)/_layout.tsx) —
-     mesma posição do FabButton usado nas outras telas (ver components/FabButton.tsx). */
-  fab: { position: 'absolute', right: spacing.xl, bottom: 112, width: 52, height: 52, borderRadius: 26, backgroundColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
+  /* `bottom` vem do useTabBarInset() no JSX, pra ficar acima da barra
+     flutuante — mesma posição do FabButton usado nas outras telas. */
+  fab: { position: 'absolute', right: spacing.xl, width: 52, height: 52, borderRadius: 26, backgroundColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
   fabHover: { opacity: 0.85 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },

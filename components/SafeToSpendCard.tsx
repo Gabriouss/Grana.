@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, card as cardTokens } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { SafeToSpend } from '@/lib/projections';
 import type { Arquetipo } from '@/lib/diagnostico';
@@ -67,10 +67,10 @@ export default function SafeToSpendCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.paperRaised,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    borderRadius: cardTokens.radius,
+    borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
-    padding: spacing.lg,
+    padding: cardTokens.padding,
     gap: spacing.sm,
   },
   label: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },

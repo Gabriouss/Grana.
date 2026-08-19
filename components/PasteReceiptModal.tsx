@@ -141,6 +141,8 @@ export default function PasteReceiptModal({
                 onClose();
               }}
               hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar"
             >
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>

@@ -9,13 +9,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTabBarInset } from '@/lib/tab-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchBills, fetchBudgets, fetchTransactions } from '@/lib/data';
 import { getGamificationState, type BadgeCategory, type GamificationState } from '@/lib/gamification';
 import { fetchGamification } from '@/lib/goals';
 import { calcularLevelState, type LevelState } from '@/lib/gamification-infinite';
 import { hapticTap } from '@/lib/haptics';
-import { fonts, radius, spacing, theme } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens } from '@/lib/theme';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import BadgeCard from '@/components/BadgeCard';
@@ -28,6 +29,7 @@ import WalletPill from '@/components/WalletPill';
 type FilterType = 'all' | 'unlocked' | 'locked';
 
 export default function DesafiosScreen() {
+  const { paddingConteudo } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,7 +115,7 @@ export default function DesafiosScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -307,12 +309,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.paper },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.paper },
   scroll: { flex: 1 },
-  content: { padding: spacing.lg, gap: spacing.md },
+  content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
   heroCard: {
     backgroundColor: theme.paperRaised,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
+    borderRadius: cardTokens.radius,
+    padding: cardTokens.padding,
+    borderWidth: cardTokens.borderWidth,
     borderColor: 'rgba(174,255,227,0.25)',
     gap: spacing.md,
   },
@@ -415,9 +417,9 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: theme.paperRaised,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
+    borderRadius: cardTokens.radius,
+    padding: cardTokens.padding,
+    borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
     gap: spacing.md,
   },

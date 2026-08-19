@@ -39,6 +39,8 @@ export const LIMITS = {
   csvRows: 500,
   /** goals.title */
   goalTitle: 100,
+  /** feedbacks.message */
+  feedbackMessage: 2000,
 };
 
 /**

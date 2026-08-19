@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTabBarInset } from '@/lib/tab-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
@@ -25,7 +26,7 @@ import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, for
 import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, card as cardTokens } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -38,6 +39,7 @@ import FlowChart, { ChartPeriod } from '@/components/FlowChart';
 import CategoryChips from '@/components/CategoryChips';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
+import HeaderAction from '@/components/HeaderAction';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
@@ -77,6 +79,7 @@ type ChartView = 'in' | 'out' | 'both';
 
 
 export default function InicioScreen() {
+  const { paddingConteudo } = useTabBarInset();
   const router = useRouter();
   const { hidden, toggle } = usePrivacy();
   const { isDemoMode } = useDemo();
@@ -936,16 +939,14 @@ export default function InicioScreen() {
         }
         right={
           <>
-            <AppPressable
+            <HeaderAction
+              icon={hidden ? 'eye-off-outline' : 'eye-outline'}
               onPress={() => {
                 toggle();
                 triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
               }}
-              hitSlop={10}
-              style={styles.privacyBtn}
-            >
-              <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.inkFaint} />
-            </AppPressable>
+              accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
+            />
             <WalletPill onPress={() => setWalletModalOpen(true)} />
           </>
         }
@@ -955,7 +956,7 @@ export default function InicioScreen() {
 
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
       >
         {/* Seletor Mês a Mês */}
@@ -1049,7 +1050,7 @@ export default function InicioScreen() {
         <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingTxId ? 'Editar lançamento' : 'Novo lançamento'}</Text>
-              <AppPressable onPress={() => setTxSheetOpen(false)} hitSlop={12}>
+              <AppPressable onPress={() => setTxSheetOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
             </View>
@@ -1164,6 +1165,9 @@ export default function InicioScreen() {
                 style={[styles.switchTrack, txRecurring && styles.switchTrackOn]}
                 onPress={() => setTxRecurring((p) => !p)}
                 hitSlop={12}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: txRecurring }}
+                accessibilityLabel="Repetir mensalmente"
               >
                 <View style={[styles.switchThumb, txRecurring && styles.switchThumbOn]} />
               </AppPressable>
@@ -1184,7 +1188,7 @@ export default function InicioScreen() {
         <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Nova conta a pagar</Text>
-              <AppPressable onPress={() => setBillSheetOpen(false)} hitSlop={12}>
+              <AppPressable onPress={() => setBillSheetOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
             </View>
@@ -1245,6 +1249,9 @@ export default function InicioScreen() {
                 style={[styles.switchTrack, billRecurring && styles.switchTrackOn]}
                 onPress={() => setBillRecurring((p) => !p)}
                 hitSlop={12}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: billRecurring }}
+                accessibilityLabel="Conta recorrente"
               >
                 <View style={[styles.switchThumb, billRecurring && styles.switchThumbOn]} />
               </AppPressable>
@@ -1265,7 +1272,7 @@ export default function InicioScreen() {
         <Sheet>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Orçamento — {budgetCategory}</Text>
-              <AppPressable onPress={() => setBudgetModalOpen(false)} hitSlop={12}>
+              <AppPressable onPress={() => setBudgetModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
             </View>
@@ -1424,7 +1431,7 @@ export default function InicioScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  content: { padding: spacing.xl, gap: spacing.lg },
+  content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
   center: { flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' },
   demoFlag: {
     fontFamily: 'monospace',
@@ -1447,7 +1454,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   customizeBtnText: { color: theme.inkSoft, fontSize: 12 },
-  privacyBtn: { padding: 4 },
   avatarBtn: { padding: 2 },
   avatarImg: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: theme.rule },
   errorText: { color: '#e08a7d', fontSize: 13 },
@@ -1481,7 +1487,7 @@ const styles = StyleSheet.create({
   },
   smartActionBtnHover: { borderColor: theme.ruleStrong },
   smartActionText: { color: theme.ink, fontSize: 12, fontWeight: '500' },
-  card: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, gap: spacing.md },
+  card: { backgroundColor: theme.paperRaised, borderRadius: cardTokens.radius, borderWidth: cardTokens.borderWidth, borderColor: theme.rule, padding: cardTokens.padding, gap: spacing.md },
   cardHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: { color: theme.ink, fontSize: 13 },
   flowValue: { color: theme.ink, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },

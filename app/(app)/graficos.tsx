@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTabBarInset } from '@/lib/tab-bar';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '@/components/ScreenHeader';
+import HeaderAction from '@/components/HeaderAction';
 import AppPressable from '@/components/AppPressable';
 import StackedBarChart, { type BarColumn } from '@/components/StackedBarChart';
 import PieChart, { type PieSlice } from '@/components/PieChart';
@@ -16,7 +18,7 @@ import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { fetchTransactions } from '@/lib/data';
 import { formatMoney } from '@/lib/format';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, screenRhythm, card as cardTokens } from '@/lib/theme';
 import type { Transaction } from '@/lib/types';
 
 type TabModo = 'geral' | 'despesas' | 'renda';
@@ -28,6 +30,7 @@ const MESES_ABREV = [
 ];
 
 export default function GraficosScreen() {
+  const { paddingConteudo } = useTabBarInset();
   const { activeWalletId, activeWalletName } = useWallet();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
@@ -195,18 +198,15 @@ export default function GraficosScreen() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
       <ScreenHeader
-        eyebrow="RELATÓRIOS"
-        title="Gráficos e Histórico"
+        eyebrow="relatórios"
+        title="Gráficos"
         right={
           <>
-            {/* Botão de Privacidade */}
-            <AppPressable onPress={togglePrivacy} hitSlop={8} style={styles.headerBtn}>
-              <Ionicons
-                name={hidden ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color={theme.inkFaint}
-              />
-            </AppPressable>
+            <HeaderAction
+              icon={hidden ? 'eye-off-outline' : 'eye-outline'}
+              onPress={togglePrivacy}
+              accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
+            />
 
             {/* Seletor de Carteiras — sempre o último item da linha */}
             <WalletPill onPress={() => setWalletModalVisible(true)} />
@@ -215,7 +215,7 @@ export default function GraficosScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Abas Superiores (GERAL | DESPESAS | RENDA) */}
@@ -335,8 +335,8 @@ export default function GraficosScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    padding: spacing.md,
-    gap: spacing.md,
+    padding: screenRhythm.padding,
+    gap: screenRhythm.gap,
   },
   headerBtn: {
     padding: 6,
@@ -397,11 +397,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   summaryCard: {
-    backgroundColor: theme.paper,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    backgroundColor: theme.paperRaised,
+    borderRadius: cardTokens.radius,
+    borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
-    padding: spacing.md,
+    padding: cardTokens.padding,
     gap: 4,
   },
   summaryLabel: {
@@ -414,11 +414,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   donutCard: {
-    backgroundColor: theme.paper,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    backgroundColor: theme.paperRaised,
+    borderRadius: cardTokens.radius,
+    borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
-    padding: spacing.md,
+    padding: cardTokens.padding,
     gap: spacing.sm,
   },
   donutTitle: {

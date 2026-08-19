@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, type } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
@@ -117,6 +118,10 @@ export default function MonthlyWrappedModal({
   const { width } = useWindowDimensions();
   const [indice, setIndice] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
+  /* O <Modal> desenha sob a barra de status no modo edge-to-edge; o 56 fixo
+     que estava aqui acertava por acaso na maioria dos aparelhos e errava nos
+     de barra mais alta ou mais baixa. */
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) setIndice(0);
@@ -140,7 +145,7 @@ export default function MonthlyWrappedModal({
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onClose}>
-      <View style={styles.fundo}>
+      <View style={[styles.fundo, { paddingTop: insets.top + spacing.xl }]}>
         {/* Barra de progresso dos slides */}
         <View style={styles.progressoRow}>
           {slides.map((s, i) => (
@@ -152,7 +157,7 @@ export default function MonthlyWrappedModal({
 
         <View style={styles.topoRow}>
           <Text style={styles.rotulo}>{slide.rotulo}</Text>
-          <AppPressable onPress={onClose} hitSlop={12}>
+          <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>
@@ -199,7 +204,8 @@ export default function MonthlyWrappedModal({
 }
 
 const styles = StyleSheet.create({
-  fundo: { flex: 1, backgroundColor: theme.paper, paddingTop: 56, paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl },
+  /* paddingTop vem do inset no JSX. */
+  fundo: { flex: 1, backgroundColor: theme.paper, paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl },
 
   progressoRow: { flexDirection: 'row', gap: 4 },
   progressoTrilho: { flex: 1, height: 3, borderRadius: 2, backgroundColor: theme.rule, overflow: 'hidden' },

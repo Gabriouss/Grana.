@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
 import { theme, spacing, radius, fonts } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
@@ -39,6 +40,9 @@ function RequisitoSenha({ atende, texto }: { atende: boolean; texto: string }) {
 export default function SignUp() {
   const { signUp } = useSession();
   const router = useRouter();
+  /* Este formulário é o mais alto do app (lista de requisitos de senha); num
+     aparelho baixo ele encostava na barra de status sem o inset. */
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -92,7 +96,7 @@ export default function SignUp() {
   if (confirmationSentTo) {
     return (
       <View style={styles.container}>
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
           <Text style={styles.eyebrow}>quase lá</Text>
           <Text style={styles.title}>Confirme seu e-mail</Text>
           <Text style={styles.subtitle}>
@@ -116,7 +120,7 @@ export default function SignUp() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Text style={styles.eyebrow}>bem-vinda ao Grana.</Text>
         <Text style={styles.title}>Criar conta</Text>
         <Text style={styles.subtitle}>Seus lançamentos ficam salvos na nuvem e sincronizados entre aparelhos.</Text>

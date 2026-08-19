@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
-import { theme, radius } from '@/lib/theme';
+import { theme, radius, spacing } from '@/lib/theme';
+import { useTabBarInset } from '@/lib/tab-bar';
 
 export default function Toast({
   message,
@@ -13,6 +14,7 @@ export default function Toast({
 }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
+  const { total: tabBarTotal } = useTabBarInset();
 
   useEffect(() => {
     if (visible) {
@@ -39,6 +41,7 @@ export default function Toast({
       style={[
         styles.toastContainer,
         {
+          bottom: tabBarTotal + spacing.sm,
           opacity,
           transform: [{ translateY }],
         },
@@ -53,7 +56,8 @@ export default function Toast({
 const styles = StyleSheet.create({
   toastContainer: {
     position: 'absolute',
-    bottom: 90,
+    /* `bottom` vem do useTabBarInset() no JSX: com 90 fixo o toast aparecia
+       por cima da barra flutuante (que começa a ~98px do fundo). */
     alignSelf: 'center',
     backgroundColor: theme.ink,
     paddingHorizontal: 18,

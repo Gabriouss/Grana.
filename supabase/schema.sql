@@ -96,8 +96,8 @@ alter table whatsapp_links enable row level security;
 drop policy if exists "usuário vê e edita só seu vínculo de whatsapp" on whatsapp_links;
 create policy "usuário vê e edita só seu vínculo de whatsapp"
   on whatsapp_links for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 alter table whatsapp_links drop constraint if exists whatsapp_links_phone_len;
 alter table whatsapp_links add constraint whatsapp_links_phone_len
@@ -145,26 +145,26 @@ alter table categories enable row level security;
 drop policy if exists "usuário vê e edita só seus lançamentos" on transactions;
 create policy "usuário vê e edita só seus lançamentos"
   on transactions for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 drop policy if exists "usuário vê e edita só suas contas" on bills;
 create policy "usuário vê e edita só suas contas"
   on bills for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 drop policy if exists "usuário vê e edita só seus orçamentos" on budgets;
 create policy "usuário vê e edita só seus orçamentos"
   on budgets for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 drop policy if exists "usuário vê e edita só suas categorias" on categories;
 create policy "usuário vê e edita só suas categorias"
   on categories for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 -- Função para permitir ao usuário logado excluir a própria conta e dados permanentemente (LGPD)
 -- SECURITY DEFINER faz esta função rodar com o papel do dono, que tem
@@ -327,8 +327,8 @@ alter table goals enable row level security;
 drop policy if exists "usuário vê e edita só suas metas" on goals;
 create policy "usuário vê e edita só suas metas"
   on goals for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 create index if not exists goals_user_id_idx on goals (user_id);
 
@@ -406,8 +406,8 @@ alter table user_gamification enable row level security;
 drop policy if exists "usuário vê e edita só seu xp" on user_gamification;
 create policy "usuário vê e edita só seu xp"
   on user_gamification for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 -- Concede XP de forma atômica. Existe como função em vez de um simples
 -- update client-side porque duas ações quase simultâneas (ex: dois aportes
@@ -478,8 +478,8 @@ alter table credit_cards enable row level security;
 drop policy if exists "usuário vê e edita só seus cartões" on credit_cards;
 create policy "usuário vê e edita só seus cartões"
   on credit_cards for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 create index if not exists credit_cards_user_id_idx on credit_cards (user_id);
 
@@ -569,8 +569,8 @@ alter table wallets enable row level security;
 drop policy if exists "usuário vê e edita só suas carteiras" on wallets;
 create policy "usuário vê e edita só suas carteiras"
   on wallets for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 create index if not exists wallets_user_id_idx on wallets (user_id);
 
@@ -596,10 +596,15 @@ alter table goals add column if not exists wallet_id uuid references wallets(id)
 -- brecha de vazamento — mas sem essa checagem seria possível gravar, por
 -- engano ou de propósito, uma referência a uma carteira alheia. O trigger
 -- abaixo barra isso na escrita, reaproveitado nas 4 tabelas.
+--
+-- SECURITY INVOKER de propósito (não DEFINER): o SELECT abaixo só precisa
+-- enxergar a própria carteira de quem está gravando, e a RLS de `wallets`
+-- já garante exatamente isso pro dono da linha — rodar como definer bypassa
+-- essa RLS sem necessidade, contrariando o princípio de menor privilégio.
 create or replace function public.validar_wallet_do_usuario()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public, pg_temp
 as $$
 begin
@@ -689,7 +694,7 @@ drop policy if exists "avatars: dono lê o próprio arquivo" on storage.objects;
 create policy "avatars: dono lê o próprio arquivo"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 -- Escrita: cada usuário só grava dentro da própria pasta. Sem isto, um
 -- usuário logado poderia sobrescrever a foto de outro escrevendo em
@@ -698,17 +703,64 @@ drop policy if exists "avatars: dono grava na própria pasta" on storage.objects
 create policy "avatars: dono grava na própria pasta"
   on storage.objects for insert
   to authenticated
-  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 drop policy if exists "avatars: dono atualiza a própria foto" on storage.objects;
 create policy "avatars: dono atualiza a própria foto"
   on storage.objects for update
   to authenticated
-  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text)
-  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 drop policy if exists "avatars: dono apaga a própria foto" on storage.objects;
 create policy "avatars: dono apaga a própria foto"
   on storage.objects for delete
   to authenticated
-  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- ============================================================
+-- Índices de FK que faltavam (auditoria de performance)
+-- ============================================================
+-- Postgres não indexa coluna de FK automaticamente. Estas foram adicionadas
+-- em migrações sucessivas ao longo do projeto e ficaram sem índice — sem
+-- consequência hoje (poucas linhas por usuário), mas cada uma vira um
+-- sequential scan em JOIN/CASCADE conforme a tabela cresce.
+create index if not exists transactions_parent_id_idx on transactions (parent_id) where parent_id is not null;
+create index if not exists transactions_card_id_idx on transactions (card_id) where card_id is not null;
+create index if not exists transactions_wallet_id_idx on transactions (wallet_id) where wallet_id is not null;
+create index if not exists bills_paid_transaction_id_idx on bills (paid_transaction_id) where paid_transaction_id is not null;
+create index if not exists bills_wallet_id_idx on bills (wallet_id) where wallet_id is not null;
+create index if not exists goals_wallet_id_idx on goals (wallet_id) where wallet_id is not null;
+create index if not exists credit_cards_wallet_id_idx on credit_cards (wallet_id) where wallet_id is not null;
+create index if not exists whatsapp_links_user_id_idx on whatsapp_links (user_id);
+create index if not exists whatsapp_pending_user_id_idx on whatsapp_pending (user_id);
+
+-- ============================================================
+-- Feedback in-app
+-- ============================================================
+-- user_id em "set null" (não "cascade"): se a pessoa excluir a conta, o
+-- feedback já enviado continua útil para quem lê (é um retrato de um
+-- problema/sugestão real), só perde o vínculo com quem mandou.
+create table if not exists feedbacks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  type text not null check (type in ('suggestion', 'bug', 'praise', 'other')),
+  rating int check (rating between 1 and 5),
+  message text not null check (char_length(message) between 1 and 2000),
+  app_version text,
+  platform text,
+  device_info text,
+  screenshot_url text,
+  status text not null default 'pending' check (status in ('pending', 'reviewed', 'resolved')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists feedbacks_user_id_idx on feedbacks (user_id) where user_id is not null;
+
+alter table feedbacks enable row level security;
+
+drop policy if exists "feedbacks: dono envia o próprio feedback" on feedbacks;
+create policy "feedbacks: dono envia o próprio feedback"
+  on feedbacks for insert
+  to authenticated
+  with check ((select auth.uid()) = user_id);

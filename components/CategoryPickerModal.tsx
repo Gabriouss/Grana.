@@ -193,7 +193,7 @@ export default function CategoryPickerModal({
         <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{mode === 'manage' ? 'Gerenciar categorias' : 'Categoria'}</Text>
-            <AppPressable onPress={onClose} hitSlop={12}>
+            <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

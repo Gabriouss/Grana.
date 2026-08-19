@@ -35,6 +35,33 @@ export const PALETTE_30 = [
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 };
 export const radius = { sm: 8, md: 12, lg: 16, xl: 22, pill: 999 };
 
+/* Rítmica do corpo das telas principais (abaixo do ScreenHeader). Cada tela
+   tinha escolhido seu próprio padding/gap numa sessão diferente — Início
+   20/16, Lançamentos e Contas 12/8, Crédito e Desafios 16/12, Gráficos
+   12/12 — e o resultado era visível: o mesmo seletor de mês pousava a
+   distâncias diferentes do cabeçalho dependendo da aba. Crédito (16/12) foi
+   escolhida como referência por já ser o padrão adotado pro próprio
+   `ScreenHeader`. Import isto em vez de repetir os números. */
+export const screenRhythm = {
+  /** Distância da borda do cabeçalho até o primeiro card, e margem lateral do corpo. */
+  padding: spacing.lg,
+  /** Espaço entre um card/seção e o próximo. */
+  gap: spacing.md,
+};
+
+/* Card de destaque em largura cheia (um por seção da tela — "Fluxo
+   financeiro", "Gastos por categoria", "Level Up Infinito" etc.). Achei o
+   mesmo desenho reimplementado com dois paddings diferentes (16 em algumas
+   telas, 12 em outras) — o resultado é visível: o card de Crédito ficava
+   "mais apertado" que o de mesmo tipo na Início. Não cobre cards menores de
+   item de lista (uma conta, um lançamento) nem cards de carrossel horizontal
+   (uma meta, um cartão) — esses têm densidade própria de propósito. */
+export const card = {
+  radius: radius.lg,
+  padding: spacing.lg,
+  borderWidth: 1,
+};
+
 /* Escala tipográfica, extraída de design-system/tokens/tokens.json
    (tipografia.escala). Consolida os 12 tamanhos decididos caso a caso que o
    app usava (9; 10,5; 11; 11,5; 12; 12,5; 13; 14; 17; 20; 26; 30) em 9

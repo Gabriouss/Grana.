@@ -55,7 +55,7 @@ export default function GoalDepositModal({
       <Sheet>
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1}>{goal.title}</Text>
-          <AppPressable onPress={onClose} hitSlop={12}>
+          <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>

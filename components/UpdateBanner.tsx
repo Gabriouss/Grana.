@@ -48,6 +48,8 @@ export default function UpdateBanner() {
           setInfo(null);
         }}
         hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Dispensar aviso de atualização"
       >
         <Ionicons name="close" size={16} color={theme.inkFaint} />
       </AppPressable>
