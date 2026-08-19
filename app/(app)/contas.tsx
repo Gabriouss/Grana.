@@ -27,7 +27,7 @@ import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, payBill, reopenBill, updateBill } from '@/lib/data';
 import { scheduleBillReminders, cancelBillReminders } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
-import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO } from '@/lib/format';
+import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { theme, radius, spacing } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
@@ -377,9 +377,9 @@ export default function ContasScreen() {
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}
-                keyboardType="decimal-pad"
+                keyboardType="number-pad"
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(t) => setAmount(formatMoneyInput(t))}
                 autoFocus
               />
             </View>

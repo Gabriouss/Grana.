@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts } from '@/lib/theme';
-import { formatMoney, parseAmount } from '@/lib/format';
+import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
@@ -367,9 +367,9 @@ export default function OnboardingModal({
                   style={styles.incomeInput}
                   placeholder="0,00"
                   placeholderTextColor={theme.inkFaint}
-                  keyboardType="decimal-pad"
+                  keyboardType="number-pad"
                   value={renda}
-                  onChangeText={setRenda}
+                  onChangeText={(t) => setRenda(formatMoneyInput(t))}
                 />
               </View>
               <Text style={styles.hint}>

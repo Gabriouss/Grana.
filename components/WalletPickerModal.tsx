@@ -14,7 +14,7 @@ import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { createWallet } from '@/lib/wallets';
-import { formatMoney, parseAmount } from '@/lib/format';
+import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { theme, radius, spacing, type } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
 import AppPressable from './AppPressable';
@@ -177,9 +177,9 @@ export default function WalletPickerModal({
                 style={styles.input}
                 placeholder="Saldo inicial (R$ 0,00)"
                 placeholderTextColor={theme.inkFaint}
-                keyboardType="numeric"
+                keyboardType="number-pad"
                 value={newBalance}
-                onChangeText={setNewBalance}
+                onChangeText={(t) => setNewBalance(formatMoneyInput(t))}
               />
 
               <Text style={styles.colorLabel}>Cor do marcador</Text>

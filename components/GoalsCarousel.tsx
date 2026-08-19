@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts } from '@/lib/theme';
-import { formatMoney, formatDateLabel, parseAmount, todayISO } from '@/lib/format';
+import { formatMoney, formatDateLabel, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { calcularLevelState } from '@/lib/gamification-infinite';
 import { LIMITS } from '@/lib/limits';
 import { PALETTE_30 } from '@/lib/theme';
@@ -182,9 +182,9 @@ export default function GoalsCarousel({
               style={styles.amountInput}
               placeholder="0,00"
               placeholderTextColor={theme.inkFaint}
-              keyboardType="decimal-pad"
+              keyboardType="number-pad"
               value={targetAmount}
-              onChangeText={setTargetAmount}
+              onChangeText={(t) => setTargetAmount(formatMoneyInput(t))}
             />
           </View>
 

@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { addCreditCard, addInstallmentPurchase, addTransaction, deleteCreditCard, deleteTransaction, fetchCreditCards, fetchTransactions } from '@/lib/data';
-import { formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO } from '@/lib/format';
+import { formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type Transaction } from '@/lib/types';
@@ -567,9 +567,9 @@ export default function CreditoScreen() {
                 style={styles.input}
                 placeholder="5.000,00"
                 placeholderTextColor={theme.inkFaint}
-                keyboardType="decimal-pad"
+                keyboardType="number-pad"
                 value={cardLimit}
-                onChangeText={setCardLimit}
+                onChangeText={(t) => setCardLimit(formatMoneyInput(t))}
               />
             </View>
           </View>
@@ -610,9 +610,9 @@ export default function CreditoScreen() {
               style={styles.amountInput}
               placeholder="0,00"
               placeholderTextColor={theme.inkFaint}
-              keyboardType="decimal-pad"
+              keyboardType="number-pad"
               value={txAmount}
-              onChangeText={setTxAmount}
+              onChangeText={(t) => setTxAmount(formatMoneyInput(t))}
             />
           </View>
 

@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing } from '@/lib/theme';
 import { BUDGET_TEMPLATES, type BudgetTemplate } from '@/lib/heuristics';
 import { CATEGORIES } from '@/lib/types';
-import { parseAmount } from '@/lib/format';
+import { parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
@@ -116,9 +116,9 @@ export default function BudgetTemplatesModal({
               style={styles.amountInput}
               placeholder="5.000,00"
               placeholderTextColor={theme.inkFaint}
-              keyboardType="decimal-pad"
+              keyboardType="number-pad"
               value={income}
-              onChangeText={setIncome}
+              onChangeText={(t) => setIncome(formatMoneyInput(t))}
               autoFocus
             />
           </View>

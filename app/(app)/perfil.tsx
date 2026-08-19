@@ -14,6 +14,7 @@ import { theme, radius, spacing } from '@/lib/theme';
 import { createWhatsappPairing, deleteUserAccount, fetchWhatsappLink, reauthenticate, unlinkWhatsapp } from '@/lib/data';
 import type { WhatsappLink } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
+import { formatarTelefoneBR, telefoneBRValido, telefoneE164BR } from '@/lib/format';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
 import { carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import AppPressable from '@/components/AppPressable';
@@ -163,16 +164,20 @@ export default function PerfilScreen() {
       Alert.alert('Modo de exemplo ativo', 'Desative "Dados de exemplo" no Perfil para vincular um número de verdade.');
       return;
     }
-    setWhatsappPhone(whatsappLink?.phone ?? '');
+    // O banco guarda dígitos puros com o 55 na frente; a máscara tira o DDI
+    // (que já é exibido fixo ao lado) e devolve "(11) 91234-5678".
+    setWhatsappPhone(formatarTelefoneBR(whatsappLink?.phone ?? ''));
     setWhatsappOpen(true);
   }
 
   async function handleGerarPareamento() {
-    const phone = whatsappPhone.trim();
-    if (phone.length < 8) {
-      Alert.alert('Número inválido', 'Informe o número com DDI e DDD, ex: +55 11 91234-5678.');
+    if (!telefoneBRValido(whatsappPhone)) {
+      Alert.alert('Número inválido', 'Informe o DDD e o número, ex: (11) 91234-5678.');
       return;
     }
+    // Guarda só dígitos com o 55 na frente — é o formato exato em que a Meta
+    // manda o remetente, e é por ele que o webhook acha o dono do número.
+    const phone = telefoneE164BR(whatsappPhone);
     setWhatsappSaving(true);
     try {
       const link = await createWhatsappPairing(phone);
@@ -651,18 +656,26 @@ export default function PerfilScreen() {
             ) : (
               <>
                 <Text style={styles.reauthText}>
-                  Informe seu número com DDI e DDD. Vamos gerar um código de 6 dígitos para você
+                  Informe seu número com DDD. Vamos gerar um código de 6 dígitos para você
                   confirmar pelo próprio WhatsApp.
                 </Text>
-                <TextInput
-                  style={styles.reauthInput}
-                  placeholder="+55 11 91234-5678"
-                  placeholderTextColor={theme.inkFaint}
-                  keyboardType="phone-pad"
-                  autoFocus
-                  value={whatsappPhone}
-                  onChangeText={setWhatsappPhone}
-                />
+                {/* O +55 é fixo e não editável: o app é só para o Brasil, e um
+                    DDI digitado errado gera um vínculo que nunca casa com a
+                    mensagem que chega da Meta. */}
+                <View style={styles.telefoneRow}>
+                  <View style={styles.ddiFixo}>
+                    <Text style={styles.ddiTexto}>+55</Text>
+                  </View>
+                  <TextInput
+                    style={[styles.reauthInput, styles.telefoneInput]}
+                    placeholder="(11) 91234-5678"
+                    placeholderTextColor={theme.inkFaint}
+                    keyboardType="phone-pad"
+                    autoFocus
+                    value={whatsappPhone}
+                    onChangeText={(t) => setWhatsappPhone(formatarTelefoneBR(t))}
+                  />
+                </View>
                 <AppPressable
                   style={({ hovered }) => [styles.nomeSalvar, hovered && { opacity: 0.88 }]}
                   onPress={handleGerarPareamento}
@@ -722,6 +735,17 @@ const styles = StyleSheet.create({
   reauthDangerText: { color: theme.paper, fontSize: 15, fontWeight: '600' },
   reauthCancel: { paddingVertical: 12, alignItems: 'center' },
   reauthCancelText: { color: theme.inkSoft, fontSize: 14 },
+  telefoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  ddiFixo: {
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    backgroundColor: theme.paper,
+  },
+  ddiTexto: { color: theme.inkSoft, fontSize: 14, fontWeight: '600' },
+  telefoneInput: { flex: 1 },
   atalhoLinha: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Text, TextInput, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing } from '@/lib/theme';
-import { formatMoney, parseAmount } from '@/lib/format';
+import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import type { Goal } from '@/lib/types';
 import AppPressable from './AppPressable';
@@ -87,9 +87,9 @@ export default function GoalDepositModal({
             style={styles.amountInput}
             placeholder="0,00"
             placeholderTextColor={theme.inkFaint}
-            keyboardType="decimal-pad"
+            keyboardType="number-pad"
             value={valor}
-            onChangeText={setValor}
+            onChangeText={(t) => setValor(formatMoneyInput(t))}
             autoFocus
           />
         </View>

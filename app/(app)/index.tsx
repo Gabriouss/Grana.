@@ -21,7 +21,7 @@ import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/li
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals } from '@/lib/goals';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
 import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
-import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO } from '@/lib/format';
+import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, formatMoneyInput } from '@/lib/format';
 import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
@@ -1083,9 +1083,9 @@ export default function InicioScreen() {
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}
-                keyboardType="decimal-pad"
+                keyboardType="number-pad"
                 value={txAmount}
-                onChangeText={setTxAmount}
+                onChangeText={(t) => setTxAmount(formatMoneyInput(t))}
                 autoFocus
               />
             </View>
@@ -1203,9 +1203,9 @@ export default function InicioScreen() {
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}
-                keyboardType="decimal-pad"
+                keyboardType="number-pad"
                 value={billAmount}
-                onChangeText={setBillAmount}
+                onChangeText={(t) => setBillAmount(formatMoneyInput(t))}
               />
             </View>
 
@@ -1278,9 +1278,9 @@ export default function InicioScreen() {
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}
-                keyboardType="decimal-pad"
+                keyboardType="number-pad"
                 value={budgetAmount}
-                onChangeText={setBudgetAmount}
+                onChangeText={(t) => setBudgetAmount(formatMoneyInput(t))}
               />
             </View>
 

@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, type } from '@/lib/theme';
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
 import { guessCategoryFromText } from '@/lib/heuristics';
-import { formatMoney, parseAmount } from '@/lib/format';
+import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { addTransaction } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -254,9 +254,9 @@ export default function QrScannerModal({
             style={styles.amountInput}
             placeholder="0,00"
             placeholderTextColor={theme.inkFaint}
-            keyboardType="decimal-pad"
+            keyboardType="number-pad"
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(t) => setAmount(formatMoneyInput(t))}
             autoFocus={nota?.valorTotal === null}
           />
         </View>

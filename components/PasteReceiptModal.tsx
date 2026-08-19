@@ -16,7 +16,7 @@ import {
   guessDescFromText,
   guessTypeFromText,
 } from '@/lib/heuristics';
-import { formatMoney, parseAmount, todayISO } from '@/lib/format';
+import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { addTransaction } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
 import CategoryChips from './CategoryChips';
@@ -201,9 +201,9 @@ export default function PasteReceiptModal({
                   style={styles.amountInput}
                   placeholder="0,00"
                   placeholderTextColor={theme.inkFaint}
-                  keyboardType="decimal-pad"
+                  keyboardType="number-pad"
                   value={amount}
-                  onChangeText={setAmount}
+                  onChangeText={(t) => setAmount(formatMoneyInput(t))}
                 />
               </View>
 
