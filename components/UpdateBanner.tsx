@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing } from '@/lib/theme';
 import { verificarAtualizacao, dispensarAtualizacao, type InfoAtualizacao } from '@/lib/atualizacao';
@@ -15,6 +16,7 @@ import AppPressable from './AppPressable';
  */
 export default function UpdateBanner() {
   const [info, setInfo] = useState<InfoAtualizacao | null>(null);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     verificarAtualizacao().then(setInfo);
@@ -22,8 +24,14 @@ export default function UpdateBanner() {
 
   if (!info) return null;
 
+  /* O banner é o primeiro filho da área logada, acima do <Stack> — ou seja,
+     fica fora do SafeAreaView que cada tela monta por dentro, e no Android o
+     app desenha edge-to-edge por padrão. Sem somar o inset do topo, a faixa
+     era desenhada POR BAIXO da barra de status: o texto colidia com o relógio
+     e a bateria, e os toques em "Atualizar" e no "X" iam para o sistema em
+     vez de para o app — o banner aparecia mas não respondia a nada. */
   return (
-    <View style={styles.faixa}>
+    <View style={[styles.faixa, { paddingTop: insets.top + 8 }]}>
       <Ionicons name="arrow-up-circle-outline" size={17} color={theme.accent2} />
       <Text style={styles.texto} numberOfLines={1}>
         Versão {info.versao} disponível
@@ -54,7 +62,8 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: theme.accentDeep,
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    // paddingTop entra em linha, somado ao inset da barra de status.
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
