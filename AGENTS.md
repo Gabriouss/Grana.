@@ -31,3 +31,18 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    as duas máquinas.** Nunca dispare um build sem o autor pedir explicitamente
    nesta sessão — mesmo que uma sessão anterior, nesta ou noutra máquina,
    tenha pedido builds recentemente. Cada sessão pede de novo.
+
+5. **Suba `expo.version` no `app.json` ANTES de todo build de release.**
+   Não é burocracia de versionamento: é o que faz o aviso de atualização
+   funcionar. Quem já tem o app instalado só descobre que saiu versão nova
+   pelo banner de `lib/atualizacao.ts`, e ele compara a versão da linha
+   `app_release` com a versão embutida na build instalada. A linha
+   `app_release` é escrita pela Edge Function `eas-build-webhook`, que
+   **recusa** um build cuja versão não seja maior que a já anunciada
+   (responde `older version ignored`).
+
+   Ou seja, buildar sem subir a versão não gera erro nenhum — o build sai,
+   instala e funciona — mas ninguém é avisado, e o silêncio é
+   indistinguível de "não saiu build". Foi exatamente o que aconteceu entre
+   1.1.1 e 1.2.0: várias builds seguidas com a mesma versão, todas
+   ignoradas pelo webhook.
