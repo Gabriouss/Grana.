@@ -123,6 +123,7 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
       d: donutSlicePath(cx + dx, cy + dy, innerR, outerR, start, end),
       labelX,
       labelY: labelPt.y,
+      mid,
       anchor,
       /* Calculada aqui, não lida de `seg.value`: o valor de entrada pode ser
          reais. É esta a porcentagem que o rótulo deve mostrar. */
@@ -130,30 +131,48 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
     };
   });
 
+  /* Fatias pequenas espremidas lado a lado (ex: 5%, 2%, 2% seguidas) têm os
+     pontos médios angulares perto demais uma da outra — nesse raio fixo
+     (labelR), os textos caem em cima um do outro. Em vez de tentar acertar
+     uma posição melhor pra cada rótulo individualmente, esconde o rótulo
+     de qualquer fatia cujo ângulo médio esteja perto demais do último
+     rótulo já desenhado (as fatias continuam visíveis no anel e na legenda
+     abaixo — só o número por cima delas some quando não cabe). ~14° é o
+     espaço que "12%" (o rótulo mais largo plausível aqui) ocupa a este
+     raio sem encostar no vizinho. */
+  const MIN_LABEL_GAP_DEG = 14;
+  let ultimoMidComRotulo: number | null = null;
+
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox={VIEW_BOX}>
-        {slices.map(({ seg, d, labelX, labelY, anchor, pct }) => (
-          <G key={seg.name}>
-            <Path d={d} fill={seg.color} />
-            {pct >= 1 && (
-              <SvgText
-                x={labelX}
-                y={labelY}
-                /* Unidades do viewBox, não pixels: este texto escala junto com
-                   o desenho, então NÃO segue a escala tipográfica em pt. */
-                fontSize={7.5}
-                fontFamily={fonts.regular}
-                fill={theme.ink}
-                textAnchor={anchor}
-                alignmentBaseline="central"
-                letterSpacing={0}
-              >
-                {`${Math.round(pct)}%`}
-              </SvgText>
-            )}
-          </G>
-        ))}
+        {slices.map(({ seg, d, labelX, labelY, mid, anchor, pct }) => {
+          const cabe =
+            pct >= 1 &&
+            (ultimoMidComRotulo === null || Math.abs(mid - ultimoMidComRotulo) >= MIN_LABEL_GAP_DEG);
+          if (cabe) ultimoMidComRotulo = mid;
+          return (
+            <G key={seg.name}>
+              <Path d={d} fill={seg.color} />
+              {cabe && (
+                <SvgText
+                  x={labelX}
+                  y={labelY}
+                  /* Unidades do viewBox, não pixels: este texto escala junto com
+                     o desenho, então NÃO segue a escala tipográfica em pt. */
+                  fontSize={7.5}
+                  fontFamily={fonts.regular}
+                  fill={theme.ink}
+                  textAnchor={anchor}
+                  alignmentBaseline="central"
+                  letterSpacing={0}
+                >
+                  {`${Math.round(pct)}%`}
+                </SvgText>
+              )}
+            </G>
+          );
+        })}
       </Svg>
     </View>
   );
