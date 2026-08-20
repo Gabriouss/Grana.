@@ -1,4 +1,4 @@
-import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import {
@@ -51,7 +51,7 @@ export default function HomeCustomizerModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Sheet>
+      <Sheet onClose={onClose}>
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Personalizar Início</Text>

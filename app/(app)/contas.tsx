@@ -294,7 +294,7 @@ export default function ContasScreen() {
 
       {/* Resumo e seletor de mês ficam ABAIXO da borda do cabeçalho, não
           dentro dele — mesmo arranjo de Crédito, que é o padrão das telas. */}
-      <View style={styles.filtrosWrap}>
+      <View style={[styles.filtrosWrap, colunaConteudo]}>
         <View style={styles.subtitleRow}>
           <PrivacyValue>
             <Text style={styles.subtitle}>{`R$ ${formatMoney(openTotal)}`}</Text>
@@ -369,7 +369,7 @@ export default function ContasScreen() {
 
       {/* Sheet: Nova / Editar Conta */}
       <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={() => setModalOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setModalOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingBillId ? 'Editar conta a pagar' : 'Nova conta a pagar'}</Text>
               <AppPressable onPress={() => setModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

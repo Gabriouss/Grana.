@@ -130,7 +130,12 @@ export default function PasteReceiptModal({
         onClose();
       }}
     >
-      <Sheet>
+      <Sheet
+        onClose={() => {
+          resetState();
+          onClose();
+        }}
+      >
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>
               {recognized ? 'Confirmar Lançamento' : 'Colar Comprovante / Pix'}
@@ -254,7 +259,15 @@ const styles = StyleSheet.create({
     color: theme.ink,
     fontSize: type.apoio,
     padding: spacing.md,
-    minHeight: 110, fontFamily: fonts.regular },
+    minHeight: 110, fontFamily: fonts.regular,
+    /* Sem isso o navegador desenha o próprio anel de foco azul padrão em
+       cima do card — mantém o foco visível (acessibilidade), só troca a cor
+       pela identidade do app em vez do azul genérico do sistema. */
+    outlineColor: theme.accent2,
+    outlineStyle: 'solid',
+    outlineWidth: 2,
+    outlineOffset: -1,
+  },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: '#bb6b6033', borderWidth: 1, borderColor: '#bb6b60' },

@@ -92,7 +92,7 @@ export default function WalletPickerModal({
       onShow={handleOpen}
       onRequestClose={onClose}
     >
-      <Sheet>
+      <Sheet onClose={onClose}>
         <View style={styles.header}>
           <Text style={styles.title}>Selecionar conta</Text>
           <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

@@ -1,6 +1,7 @@
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { useSheetFlutuante } from '@/lib/breakpoints';
 import AppPressable from './AppPressable';
 
 export default function ItemActionSheet({
@@ -16,10 +17,11 @@ export default function ItemActionSheet({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { scrimStyle, sheetStyle } = useSheetFlutuante();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalScrim}>
-        <View style={styles.sheet}>
+      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
+        <Pressable style={[styles.sheet, sheetStyle]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -48,8 +50,8 @@ export default function ItemActionSheet({
             <Ionicons name="trash-outline" size={20} color="#bb6b60" />
             <Text style={[styles.actionText, { color: '#bb6b60' }]}>Excluir</Text>
           </AppPressable>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

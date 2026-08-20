@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { LIMITS } from '@/lib/limits';
 import { enviarFeedback, type FeedbackType } from '@/lib/feedback';
+import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { hapticTap } from '@/lib/haptics';
 import AppPressable from './AppPressable';
@@ -27,6 +28,7 @@ export default function FeedbackModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
+  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const [tipo, setTipo] = useState<FeedbackType>('suggestion');
   const [rating, setRating] = useState<number | null>(null);
   const [message, setMessage] = useState('');
@@ -64,8 +66,8 @@ export default function FeedbackModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <View style={styles.modalScrim}>
-        <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }]}>
+      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={handleClose}>
+        <Pressable style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Enviar feedback</Text>
             <AppPressable onPress={handleClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -148,8 +150,8 @@ export default function FeedbackModal({
               <Text style={styles.enviarTexto}>Enviar feedback</Text>
             )}
           </AppPressable>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

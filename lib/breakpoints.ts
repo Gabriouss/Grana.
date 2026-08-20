@@ -1,4 +1,5 @@
 import { Platform, useWindowDimensions } from 'react-native';
+import { radius } from './theme';
 
 /**
  * Classes de largura da janela, para a versão web do Grana.
@@ -89,6 +90,37 @@ export function classificarLargura(largura: number, ehWeb: boolean): ClasseLargu
   if (largura >= CORTES.medio) return 'medio';
   return 'compacto';
 }
+
+/**
+ * Toda folha modal do app (comprovante, categoria, data, orçamento etc.) usa
+ * o mesmo par `modalScrim`/`sheet`: fundo escurecido + painel ancorado
+ * embaixo, esticado `width: '100%'`. Faz sentido no celular — é a única
+ * largura que existe —, mas na web larga essa mesma folha esticava de
+ * ponta a ponta de um monitor de 1440px+, lendo como bug e não como janela.
+ * `medio` (768px) para cima ela passa a ser uma janela centralizada e
+ * estreita, do jeito que qualquer modal de desktop se comporta.
+ */
+export function useSheetFlutuante() {
+  const { ehCompacto } = useBreakpoint();
+  const flutuante = Platform.OS === 'web' && !ehCompacto;
+  return {
+    flutuante,
+    scrimStyle: flutuante ? sheetFlutuanteScrim : null,
+    sheetStyle: flutuante ? sheetFlutuantePainel : null,
+  };
+}
+
+const sheetFlutuanteScrim = { justifyContent: 'center', alignItems: 'center' } as const;
+
+/** 30% da largura da janela, com piso e teto para não virar uma fresta num
+    notebook de 1024px nem uma faixa fina demais num ultrawide. */
+const sheetFlutuantePainel = {
+  width: '30%',
+  minWidth: 420,
+  maxWidth: 560,
+  maxHeight: '85%',
+  borderRadius: radius.xl,
+} as const;
 
 export function useBreakpoint(): Breakpoint {
   const { width, height } = useWindowDimensions();

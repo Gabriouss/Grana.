@@ -52,7 +52,7 @@ export default function GoalDepositModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Sheet>
+      <Sheet onClose={onClose}>
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1}>{goal.title}</Text>
           <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
-import { colunaConteudo, controleCompacto, useBreakpoint } from '@/lib/breakpoints';
+import { colunaConteudo, controleCompacto, useBreakpoint, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '@/components/ScreenHeader';
 import HeaderAction from '@/components/HeaderAction';
 import AppPressable from '@/components/AppPressable';
-import StackedBarChart, { type BarColumn } from '@/components/StackedBarChart';
+import { type BarColumn } from '@/components/StackedBarChart';
+import LineAreaChart from '@/components/LineAreaChart';
 import PieChart, { type PieSlice } from '@/components/PieChart';
+import DatePickerModal from '@/components/DatePickerModal';
+import SegmentedTabs from '@/components/SegmentedTabs';
 import PrivacyValue from '@/components/PrivacyValue';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import ExportPdfButton from '@/components/ExportPdfButton';
@@ -18,12 +21,29 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { fetchTransactions } from '@/lib/data';
-import { formatMoney, isCreditTx } from '@/lib/format';
+import { formatMoney, isCreditTx, todayISO, formatDateLabel } from '@/lib/format';
 import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts } from '@/lib/theme';
 import type { Transaction } from '@/lib/types';
 
 type TabModo = 'geral' | 'despesas' | 'renda';
-type Granularidade = 'anos' | 'meses';
+type Granularidade = 'anos' | 'meses' | 'periodo';
+
+/** Diferença em meses inteiros entre dois "YYYY-MM-DD", inclusive nas pontas. */
+function mesesEntre(inicioISO: string, fimISO: string): { anoMes: string; label: string }[] {
+  const [anoIni, mesIni] = inicioISO.split('-').map(Number);
+  const [anoFim, mesFim] = fimISO.split('-').map(Number);
+  const totalMeses = Math.max((anoFim - anoIni) * 12 + (mesFim - mesIni), 0);
+  const lista: { anoMes: string; label: string }[] = [];
+  // Teto de 24 pontos: um período de anos inteiros não deveria virar uma
+  // régua ilegível de dezenas de rótulos espremidos no eixo X.
+  const passo = totalMeses > 24 ? Math.ceil((totalMeses + 1) / 24) : 1;
+  for (let i = 0; i <= totalMeses; i += passo) {
+    const d = new Date(anoIni, mesIni - 1 + i, 1);
+    const anoMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    lista.push({ anoMes, label: `${MESES_ABREV[d.getMonth()]}/${String(d.getFullYear()).slice(2)}` });
+  }
+  return lista;
+}
 
 const MESES_ABREV = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
@@ -37,8 +57,17 @@ export default function GraficosScreen() {
      card que agora tem mais de 1000px ele vira um detalhe no canto, com a
      legenda ocupando todo o resto — e é o donut que carrega a informação.
      Cresce com a janela, mantendo a legenda ao lado. */
-  const { ehAmplo, ehMedio } = useBreakpoint();
+  const { ehAmplo, ehMedio, ehCompacto, largura } = useBreakpoint();
   const tamanhoDonut = ehAmplo ? 280 : ehMedio ? 220 : 150;
+  /* Largura real do card do gráfico de linha, calculada em vez de medida por
+     onLayout — dentro do ScrollView largo da web, onLayout fica preso na
+     primeira medição (estreita, de antes do layout final assentar) e nunca
+     acompanha o card verdadeiro, deixando o desenho colado à esquerda de um
+     card muito mais largo. Mesmo padrão do `tamanhoDonut` acima: a tela já
+     sabe a largura disponível, então calcula e passa pronta. */
+  const sidebarLargura = ehAmplo ? 232 : ehMedio ? 76 : 0;
+  const larguraConteudo = Math.min(largura - sidebarLargura, LARGURA_MAXIMA_CONTEUDO);
+  const larguraGrafico = larguraConteudo - screenRhythm.padding * 2 - spacing.lg * 2;
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
 
@@ -49,6 +78,14 @@ export default function GraficosScreen() {
 
   const [tabModo, setTabModo] = useState<TabModo>('despesas');
   const [granularidade, setGranularidade] = useState<Granularidade>('anos');
+  const hoje = todayISO();
+  const [periodoInicio, setPeriodoInicio] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 5);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [periodoFim, setPeriodoFim] = useState(hoje);
+  const [pickerAberto, setPickerAberto] = useState<'inicio' | 'fim' | null>(null);
 
   const carregarDados = useCallback(async () => {
     try {
@@ -79,8 +116,12 @@ export default function GraficosScreen() {
   // fora — só aparece na aba Crédito até a fatura ser paga (vira saída real).
   const filteredTransactions = useMemo(() => {
     const base = activeWalletId === 'total' ? transactions : transactions.filter((tx) => tx.wallet_id === activeWalletId);
-    return base.filter((tx) => !isCreditTx(tx));
-  }, [transactions, activeWalletId]);
+    const semCredito = base.filter((tx) => !isCreditTx(tx));
+    // Só recorta pela data quando "Período" está ativo — Ano a Ano e Mês a
+    // Mês continuam olhando o histórico inteiro, do jeito que já era.
+    if (granularidade !== 'periodo') return semCredito;
+    return semCredito.filter((tx) => tx.occurred_on >= periodoInicio && tx.occurred_on <= periodoFim);
+  }, [transactions, activeWalletId, granularidade, periodoInicio, periodoFim]);
 
   // Agrupamento Ano a Ano ou Mês a Mês
   const barColumns: BarColumn[] = useMemo(() => {
@@ -110,7 +151,20 @@ export default function GraficosScreen() {
         porAno[ano][cat].amount += Number(tx.amount || 0);
       });
 
-      const anosOrdenados = Array.from(anosSet).sort();
+      /* Preenche os anos SEM lançamento no meio do intervalo (não só os que
+         têm dado) — sem isso, um ano em branco entre dois anos com
+         movimentação simplesmente sumia da lista, e a linha do gráfico
+         pulava direto de um pro outro como se o segundo tivesse "crescido
+         gradualmente" durante o ano vazio, quando na real não houve nada
+         ali. Mesmo raciocínio documentado em FlowChart.tsx pra não inventar
+         movimento entre pontos que os lançamentos não sustentam. */
+      const anosComDado = Array.from(anosSet).map(Number).sort((a, b) => a - b);
+      const anosOrdenados: string[] = [];
+      if (anosComDado.length > 0) {
+        for (let ano = anosComDado[0]; ano <= anosComDado[anosComDado.length - 1]; ano++) {
+          anosOrdenados.push(String(ano));
+        }
+      }
 
       return anosOrdenados.map((ano) => {
         const catMap = porAno[ano] || {};
@@ -132,15 +186,20 @@ export default function GraficosScreen() {
         };
       });
     } else {
-      // Agrupa pelos últimos 6 meses
-      const hoje = new Date();
-      const mesesLabels: { anoMes: string; label: string }[] = [];
+      let mesesLabels: { anoMes: string; label: string }[];
 
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-        const anoMes = d.toISOString().slice(0, 7);
-        const label = MESES_ABREV[d.getMonth()];
-        mesesLabels.push({ anoMes, label });
+      if (granularidade === 'periodo') {
+        mesesLabels = mesesEntre(periodoInicio, periodoFim);
+      } else {
+        // Agrupa pelos últimos 6 meses
+        const hojeD = new Date();
+        mesesLabels = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
+          const anoMes = d.toISOString().slice(0, 7);
+          const label = MESES_ABREV[d.getMonth()];
+          mesesLabels.push({ anoMes, label });
+        }
       }
 
       return mesesLabels.map(({ anoMes, label }) => {
@@ -172,7 +231,7 @@ export default function GraficosScreen() {
         };
       });
     }
-  }, [filteredTransactions, tabModo, granularidade]);
+  }, [filteredTransactions, tabModo, granularidade, periodoInicio, periodoFim]);
 
   // Fatias do Donut Totalizador do Período
   const pieSlices: PieSlice[] = useMemo(() => {
@@ -226,64 +285,72 @@ export default function GraficosScreen() {
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Abas Superiores (GERAL | DESPESAS | RENDA) */}
-        <View style={[styles.tabContainer, controleCompacto]}>
-          {(['despesas', 'renda', 'geral'] as TabModo[]).map((tab) => (
-            <AppPressable
-              key={tab}
-              style={[styles.tabBtn, tabModo === tab && styles.tabBtnActive]}
-              onPress={() => setTabModo(tab)}
-            >
-              <Text style={[styles.tabBtnText, tabModo === tab && styles.tabBtnTextActive]}>
-                {tab === 'despesas' ? 'Despesas' : tab === 'renda' ? 'Renda' : 'Geral'}
-              </Text>
+        {/* Em telas médias/amplas (web) as duas fileiras de filtro cabem numa
+            só, com Despesas/Renda/Geral ajustado à direita — a régua de
+            granularidade fica à esquerda, colada no gráfico logo abaixo. No
+            celular (`ehCompacto`) continuam empilhadas, cada uma ocupando a
+            linha inteira: é só a largura estreita que exige isso. */}
+        <View
+          style={[
+            styles.filtrosRow,
+            /* `column-reverse` no celular: o DOM abaixo lista granularidade
+               primeiro e as abas depois (pra "row" empurrar as abas pra
+               direita), mas a ordem visual do celular sempre foi abas em
+               cima, granularidade embaixo — reverter a coluna devolve essa
+               ordem sem duplicar o JSX pras duas larguras. Na versão em
+               linha (`filtrosRowLargo`) o `controleCompacto` NÃO entra: seu
+               teto de 460px é pensado pra um controle sozinho, e aqui
+               cortaria a régua inteira (grupo + abas) bem antes da borda do
+               card, matando o "ajustado à direita". */
+            ehCompacto ? [styles.filtrosColunaCompacta, controleCompacto] : styles.filtrosRowLargo,
+          ]}
+        >
+          {/* Filtro de Granularidade (Ano a Ano | Mês a Mês | Período) — mesmo
+              SegmentedTabs das abas à direita, pedido explícito de deixar os
+              dois grupos com a mesma linguagem visual (antes este usava
+              chips com borda e ícone, um estilo à parte). */}
+          <SegmentedTabs
+            options={[
+              { key: 'anos', label: 'Ano a Ano' },
+              { key: 'meses', label: 'Mês a Mês' },
+              { key: 'periodo', label: 'Período' },
+            ]}
+            value={granularidade}
+            onChange={setGranularidade}
+            style={ehCompacto ? controleCompacto : styles.granularityAutoWidth}
+          />
+
+          {/* Abas Superiores (GERAL | DESPESAS | RENDA) */}
+          <SegmentedTabs
+            options={[
+              { key: 'despesas', label: 'Despesas' },
+              { key: 'renda', label: 'Renda' },
+              { key: 'geral', label: 'Geral' },
+            ]}
+            value={tabModo}
+            onChange={setTabModo}
+            style={ehCompacto ? controleCompacto : styles.tabsAutoWidth}
+          />
+        </View>
+
+        {/* Data de início/fim — só aparece com "Período" selecionado. */}
+        {granularidade === 'periodo' && (
+          <View style={[styles.periodoRow, controleCompacto]}>
+            <AppPressable style={styles.periodoField} onPress={() => setPickerAberto('inicio')}>
+              <Text style={styles.periodoFieldLabel}>De</Text>
+              <Text style={styles.periodoFieldValue}>{formatDateLabel(periodoInicio)}</Text>
             </AppPressable>
-          ))}
-        </View>
+            <Ionicons name="arrow-forward" size={14} color={theme.inkFaint} />
+            <AppPressable style={styles.periodoField} onPress={() => setPickerAberto('fim')}>
+              <Text style={styles.periodoFieldLabel}>Até</Text>
+              <Text style={styles.periodoFieldValue}>{formatDateLabel(periodoFim)}</Text>
+            </AppPressable>
+          </View>
+        )}
 
-        {/* Filtro de Granularidade (Ano a Ano | Mês a Mês) */}
-        <View style={[styles.granularityRow, controleCompacto]}>
-          <AppPressable
-            style={[styles.granularityChip, granularidade === 'anos' && styles.granularityChipActive]}
-            onPress={() => setGranularidade('anos')}
-          >
-            <Ionicons
-              name="calendar-outline"
-              size={14}
-              color={granularidade === 'anos' ? '#052229' : theme.inkFaint}
-            />
-            <Text
-              style={[
-                styles.granularityChipText,
-                granularidade === 'anos' && styles.granularityChipTextActive,
-              ]}
-            >
-              Ano a Ano
-            </Text>
-          </AppPressable>
-
-          <AppPressable
-            style={[styles.granularityChip, granularidade === 'meses' && styles.granularityChipActive]}
-            onPress={() => setGranularidade('meses')}
-          >
-            <Ionicons
-              name="time-outline"
-              size={14}
-              color={granularidade === 'meses' ? '#052229' : theme.inkFaint}
-            />
-            <Text
-              style={[
-                styles.granularityChipText,
-                granularidade === 'meses' && styles.granularityChipTextActive,
-              ]}
-            >
-              Mês a Mês
-            </Text>
-          </AppPressable>
-        </View>
-
-        {/* Gráfico de Barras Empilhadas Categorizadas */}
-        <StackedBarChart columns={barColumns} height={220} />
+        {/* Gráfico de linha — total por período, com a composição por
+            categoria da coluna selecionada logo abaixo. */}
+        <LineAreaChart columns={barColumns} height={240} width={larguraGrafico} />
 
         {/* Total Consolidado do Período */}
         <View style={styles.summaryCard}>
@@ -303,9 +370,9 @@ export default function GraficosScreen() {
         {pieSlices.length > 0 && (
           <View style={styles.donutCard}>
             <Text style={styles.donutTitle}>Composição por Categorias</Text>
-            <View style={styles.donutRow}>
+            <View style={[styles.donutRow, !ehCompacto && styles.donutRowLargo]}>
               <PieChart data={pieSlices} size={tamanhoDonut} />
-              <View style={styles.legendCol}>
+              <View style={[styles.legendCol, !ehCompacto && styles.legendColLargo]}>
                 {pieSlices.slice(0, 5).map((slice, i) => (
                   <View key={i} style={styles.legendRow}>
                     <View style={[styles.legendDot, { backgroundColor: slice.color }]} />
@@ -337,6 +404,18 @@ export default function GraficosScreen() {
         visible={walletModalVisible}
         onClose={() => setWalletModalVisible(false)}
       />
+
+      {/* Seletor de data de início/fim do período customizado */}
+      <DatePickerModal
+        visible={pickerAberto !== null}
+        currentISO={pickerAberto === 'inicio' ? periodoInicio : periodoFim}
+        title={pickerAberto === 'inicio' ? 'Início do período' : 'Fim do período'}
+        onClose={() => setPickerAberto(null)}
+        onSelectDate={(iso) => {
+          if (pickerAberto === 'inicio') setPeriodoInicio(iso);
+          else setPeriodoFim(iso);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -358,46 +437,56 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
   },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: spacing.sm,
+  filtrosRow: {
     alignItems: 'center',
-    borderRadius: radius.pill,
-  },
-  tabBtnActive: {
-    backgroundColor: 'rgba(31,169,141,0.2)',
-  },
-  tabBtnText: {
-    color: theme.inkFaint,
-    fontSize: type.apoio, fontFamily: fonts.light },
-  tabBtnTextActive: {
-    color: theme.accent2,
-  },
-  granularityRow: {
-    flexDirection: 'row',
     gap: spacing.sm,
   },
-  granularityChip: {
+  filtrosRowLargo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    width: '100%',
+  },
+  filtrosColunaCompacta: {
+    flexDirection: 'column-reverse',
+    alignItems: 'stretch',
+  },
+  /* SegmentedTabs distribui os 3 botões com `flex:1` por dentro — precisa de
+     uma largura resolvida vinda de fora pra fazer essa conta. Numa linha com
+     `justifyContent:'space-between'` e sem largura própria, o container
+     ficava "auto" (0 de base) e os 3 rótulos colapsavam uns sobre os
+     outros. 240px é o suficiente pros três rótulos com folga, sem esticar
+     feito o controle sozinho no celular. */
+  tabsAutoWidth: {
+    width: 240,
+  },
+  /* "Ano a Ano / Mês a Mês / Período" tem rótulos mais longos que
+     "Despesas/Renda/Geral" — precisa de mais espaço que `tabsAutoWidth`
+     pra não repetir o mesmo colapso de largura que já aconteceu ali. */
+  granularityAutoWidth: {
+    width: 300,
+  },
+  periodoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
+  },
+  periodoField: {
+    flex: 1,
     backgroundColor: theme.paper,
     borderWidth: 1,
     borderColor: theme.rule,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 8,
+    gap: 2,
   },
-  granularityChipActive: {
-    backgroundColor: theme.accent2,
-    borderColor: theme.accent2,
-  },
-  granularityChipText: {
+  periodoFieldLabel: {
     color: theme.inkFaint,
-    fontSize: type.nota, fontFamily: fonts.light },
-  granularityChipTextActive: {
-    color: '#052229',
-  },
+    fontSize: type.legenda, fontFamily: fonts.light },
+  periodoFieldValue: {
+    color: theme.ink,
+    fontSize: type.apoio, fontFamily: fonts.regular },
   summaryCard: {
     backgroundColor: theme.paperRaised,
     borderRadius: cardTokens.radius,
@@ -418,20 +507,39 @@ const styles = StyleSheet.create({
     borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
     padding: cardTokens.padding,
-    gap: spacing.sm,
+    paddingVertical: spacing.xl,
+    gap: spacing.lg,
+    alignItems: 'center',
   },
   donutTitle: {
+    alignSelf: 'flex-start',
     color: theme.ink,
     fontSize: type.corpo, fontFamily: fonts.regular },
   donutRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     gap: spacing.md,
+    width: '100%',
+  },
+  /* O par donut+legenda forma um bloco só, centralizado dentro do card, em
+     vez de esticado ponta a ponta — num card com mais de 1000px de largura
+     (web média/ampla), "space-between" empurrava a legenda pro canto
+     direito e deixava um vão vazio enorme no meio. Só entra a partir de
+     `medio`: no celular (sempre `compacto`) a legenda já precisa de toda a
+     largura disponível, e um teto aqui era o que cortava "Salário" em
+     "Salár…". */
+  donutRowLargo: {
+    gap: spacing.xl,
+    maxWidth: 460,
+    alignSelf: 'center',
   },
   legendCol: {
     flex: 1,
-    gap: 6,
+    gap: 8,
+  },
+  legendColLargo: {
+    maxWidth: 220,
   },
   legendRow: {
     flexDirection: 'row',

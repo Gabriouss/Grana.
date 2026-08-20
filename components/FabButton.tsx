@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -9,14 +9,14 @@ export default function FabButton({
   onAddIncome,
   onAddExpense,
   onAddBill,
-  onScanNota,
+  onAddCredit,
 }: {
   onAddIncome: () => void;
   onAddExpense: () => void;
   /** Omitido em telas que não lidam com contas/boletos (ex: Lançamentos) — o item "Boleto" só aparece quando informado. */
   onAddBill?: () => void;
-  /** Abre o leitor de QR Code de nota fiscal. Omitido em telas onde não faz sentido. */
-  onScanNota?: () => void;
+  /** Abre o lançamento de uma compra no cartão de crédito. Omitido em telas onde não faz sentido. */
+  onAddCredit?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -34,8 +34,8 @@ export default function FabButton({
 
   const rotate = progress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '135deg'] });
 
-  return (
-    <View style={[styles.fabContainer, { bottom: tabBarTotal + spacing.md }]}>
+  const conteudo: ReactNode = (
+    <>
       {mounted && (
         <Animated.View
           style={[
@@ -84,16 +84,16 @@ export default function FabButton({
             </AppPressable>
           )}
 
-          {onScanNota && (
+          {onAddCredit && (
             <AppPressable
               style={({ hovered }) => [styles.menuItem, hovered && styles.menuItemHover]}
               onPress={() => {
                 setOpen(false);
-                onScanNota();
+                onAddCredit();
               }}
             >
-              <Ionicons name="qr-code-outline" size={18} color={theme.accent2} />
-              <Text style={styles.menuText}>Nota fiscal</Text>
+              <Ionicons name="card" size={18} color={theme.accent2} />
+              <Text style={styles.menuText}>Crédito</Text>
             </AppPressable>
           )}
         </Animated.View>
@@ -110,7 +110,35 @@ export default function FabButton({
           <Ionicons name="add" size={24} color={theme.paper} />
         </Animated.View>
       </AppPressable>
-    </View>
+    </>
+  );
+
+  const posicaoStyle = [styles.fabContainer, { bottom: tabBarTotal + spacing.md }];
+
+  /* Fechado: o botão vive direto na tela, como um View comum — é só o "+"
+     flutuante de sempre. Aberto: o mesmo bloco migra pra dentro de um
+     <Modal>, sobre um fundo transparente que cobre a tela inteira e fecha ao
+     toque nela.
+
+     Antes o menu não tinha nenhum fundo — só o próprio conteúdo boiando por
+     cima da tela, sem nada capturando o toque "de fora" pra fechar. A
+     primeira tentativa de corrigir isso envolveu um Pressable extra,
+     `flex:1`, só pra blindar o menu contra o fundo — mas `flex:1` faz esse
+     blindador esticar pela tela INTEIRA, então ele mesmo passava a capturar
+     qualquer toque (inclusive os que deveriam fechar o menu), e nada nunca
+     chegava até o fundo. A correção certa: o próprio `fabContainer` — que já
+     é do tamanho exato do menu+botão, não da tela — vira o blindador
+     (`Pressable` com `onPress` vazio) quando está dentro do Modal. */
+  return open || mounted ? (
+    <Modal visible transparent animationType="none" onRequestClose={() => setOpen(false)}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
+        <Pressable style={posicaoStyle} onPress={() => {}}>
+          {conteudo}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  ) : (
+    <View style={posicaoStyle}>{conteudo}</View>
   );
 }
 

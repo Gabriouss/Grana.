@@ -210,7 +210,7 @@ export default function QrScannerModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={fechar}>
-      <Sheet>
+      <Sheet onClose={fechar}>
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle}>Nota fiscal lida</Text>
           <AppPressable onPress={fechar} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

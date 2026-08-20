@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +15,7 @@ import { theme, radius, spacing, PALETTE_30, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import type { Category } from '@/lib/types';
 import { addCategory, deleteCategory, fetchCategories, seedDefaultCategories, updateCategory } from '@/lib/data';
+import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
@@ -41,6 +43,7 @@ export default function CategoryPickerModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
+  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
 
   const [loading, setLoading] = useState(false);
   const [custom, setCustom] = useState<Category[]>([]);
@@ -189,8 +192,8 @@ export default function CategoryPickerModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalScrim}>
-        <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }]}>
+      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
+        <Pressable style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{mode === 'manage' ? 'Gerenciar categorias' : 'Categoria'}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -302,8 +305,8 @@ export default function CategoryPickerModal({
               </AppPressable>
             </View>
           )}
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

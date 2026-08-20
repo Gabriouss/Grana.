@@ -104,7 +104,14 @@ function RootNavigator() {
           atrito sem propósito pra quem ainda nem entrou no app. */}
       {session && <UpdateBanner />}
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!!session}>
+        {/* O link de recuperação autentica de verdade — sem este guard a
+            pessoa cairia direto na Início, logada, com a senha antiga (a que
+            esqueceu) continuando ativa. `emRecuperacao` prende a navegação
+            aqui até `definirNovaSenha` ter sucesso (ver lib/auth-context.tsx). */}
+        <Stack.Protected guard={!!session && emRecuperacao}>
+          <Stack.Screen name="nova-senha" />
+        </Stack.Protected>
+        <Stack.Protected guard={!!session && !emRecuperacao}>
           <Stack.Screen name="(app)" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>

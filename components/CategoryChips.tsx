@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CATEGORIES } from '@/lib/types';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';

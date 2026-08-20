@@ -6,6 +6,7 @@ import {
   AppState,
   FlatList,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -402,7 +403,7 @@ export default function LancamentosScreen() {
       {/* Filtros, resumo e seletor de mês ficam ABAIXO da borda do cabeçalho,
           não dentro dele. O cabeçalho é só eyebrow + título + ações — mesmo
           arranjo de Crédito, que é o padrão das telas. */}
-      <View style={styles.filtrosWrap}>
+      <View style={[styles.filtrosWrap, colunaConteudo]}>
         {(offline || pendingCount > 0) && (
           <View style={styles.offlineBanner}>
             <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
@@ -573,7 +574,7 @@ export default function LancamentosScreen() {
 
       {/* Sheet: Novo / Editar Lançamento */}
       <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={() => setModalOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setModalOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingTxId ? 'Editar lançamento' : type === 'in' ? 'Nova entrada' : 'Nova saída'}</Text>
               <AppPressable onPress={() => setModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

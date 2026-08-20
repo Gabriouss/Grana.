@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -54,6 +55,7 @@ import FadeIn from '@/components/FadeIn';
 export default function CreditoScreen() {
   const { paddingConteudo } = useTabBarInset();
   const router = useRouter();
+  const { novaCompra } = useLocalSearchParams<{ novaCompra?: string }>();
   const { hidden } = usePrivacy();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, wallets } = useWallet();
@@ -169,6 +171,18 @@ export default function CreditoScreen() {
   const walletCards = activeWalletId === 'total' ? cards : cards.filter((c) => c.wallet_id === activeWalletId);
   const walletTransactions =
     activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
+
+  /* Chegando aqui via FabButton da Início (?novaCompra=1): abre o mesmo
+     modal do botão "Lançar no Crédito" — mas só depois que os cartões
+     carregarem, senão o seletor de cartão do modal abriria vazio.
+     `router.setParams` limpa o parâmetro depois de abrir, pra não reabrir
+     sozinho numa navegação de volta a esta tela. */
+  useEffect(() => {
+    if (novaCompra !== '1' || loading || newTxOpen) return;
+    if (walletCards.length > 0) setTxCardId(walletCards[0].id);
+    setNewTxOpen(true);
+    router.setParams({ novaCompra: undefined });
+  }, [novaCompra, loading, newTxOpen, walletCards]);
 
   // Filtra compras no cartão no mês selecionado
   const creditTransactions = walletTransactions.filter((t) => {
@@ -723,7 +737,7 @@ export default function CreditoScreen() {
 
       {/* Modal: Novo Cartão de Crédito */}
       <Modal visible={newCardOpen} animationType="slide" transparent onRequestClose={() => setNewCardOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setNewCardOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Novo Cartão de Crédito</Text>
             <AppPressable onPress={() => setNewCardOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -825,7 +839,7 @@ export default function CreditoScreen() {
 
       {/* Modal: Nova Compra no Crédito */}
       <Modal visible={newTxOpen} animationType="slide" transparent onRequestClose={() => setNewTxOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setNewTxOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Lançar Compra no Crédito</Text>
             <AppPressable onPress={() => setNewTxOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -925,7 +939,7 @@ export default function CreditoScreen() {
 
       {/* Modal: Pagar Fatura */}
       <Modal visible={payInvoiceOpen} animationType="slide" transparent onRequestClose={() => setPayInvoiceOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setPayInvoiceOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Pagar Fatura</Text>
             <AppPressable onPress={() => setPayInvoiceOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

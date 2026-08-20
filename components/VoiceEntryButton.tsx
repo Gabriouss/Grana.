@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants, { AppOwnership } from 'expo-constants';
 import type * as SpeechRecognitionTypes from 'expo-speech-recognition';
@@ -18,7 +18,19 @@ import AppPressable from './AppPressable';
    os dois caem juntos em `executionEnvironment: 'storeClient'`. */
 const isExpoGo = Constants.appOwnership === AppOwnership.Expo;
 
-const Speech: typeof SpeechRecognitionTypes | null = isExpoGo ? null : require('expo-speech-recognition');
+/* Na web o pacote depende da Web Speech API do navegador (`SpeechRecognition`
+   / `webkitSpeechRecognition`) — que só existe no Chrome/Edge/Safari, não no
+   Firefox. Sem essa checagem, `require('expo-speech-recognition')` era
+   avaliado em QUALQUER navegador, e o próprio pacote lançava
+   `SpeechRecognition is not defined` assim que tentava ler o global que não
+   existe — derrubando a tela inteira, não só o botão (mesmo raciocínio do
+   guard do Expo Go acima, um problema a mais de plataforma). */
+const speechIndisponivelNaWeb =
+  Platform.OS === 'web' &&
+  (typeof window === 'undefined' || !((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
+
+const Speech: typeof SpeechRecognitionTypes | null =
+  isExpoGo || speechIndisponivelNaWeb ? null : require('expo-speech-recognition');
 
 /**
  * Botão de lançamento por voz: toque para começar a falar (ex: "Almoço de 38

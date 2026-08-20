@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import { BUDGET_TEMPLATES, type BudgetTemplate } from '@/lib/heuristics';
 import { CATEGORIES } from '@/lib/types';
 import { parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
+import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
@@ -31,6 +33,7 @@ export default function BudgetTemplatesModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
+  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const [income, setIncome] = useState('');
   const [selectedKey, setSelectedKey] = useState(BUDGET_TEMPLATES[0].key);
   const [saving, setSaving] = useState(false);
@@ -89,10 +92,16 @@ export default function BudgetTemplatesModal({
         onClose();
       }}
     >
-      <View style={styles.modalScrim}>
+      <Pressable
+        style={[styles.modalScrim, scrimStyle]}
+        onPress={() => {
+          resetState();
+          onClose();
+        }}
+      >
         {/* Já tem ScrollView próprio para a lista de templates, então só
             precisa se afastar do teclado. */}
-        <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }]}>
+        <Pressable style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Templates de Orçamento</Text>
             <AppPressable
@@ -153,8 +162,8 @@ export default function BudgetTemplatesModal({
           </ScrollView>
 
           {saving && <ActivityIndicator color={theme.ink} style={{ paddingVertical: 10 }} />}
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

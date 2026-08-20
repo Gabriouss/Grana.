@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
 import { ESPACO_ALCA } from './WidgetGrid';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +33,13 @@ export default function GoalsCarousel({
   onDeleteGoal: (goal: Goal) => Promise<void>;
 }) {
   const level = calcularLevelState(lifetimeXp);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollX = useRef(0);
+  function scrollByCards(dir: 1 | -1) {
+    const delta = (CARD_WIDTH + spacing.sm) * 2 * dir;
+    scrollRef.current?.scrollTo({ x: Math.max(0, scrollX.current + delta), animated: true });
+  }
 
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -106,14 +113,54 @@ export default function GoalsCarousel({
     <View style={{ gap: spacing.sm }}>
       <View style={styles.headRow}>
         <Text style={styles.sectionLabel}>Cofrinhos & metas</Text>
-        <View style={styles.levelPill}>
-          <Text style={styles.levelPillText}>
-            {level.elo.emoji} Nível {level.level} · {level.elo.title}
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+          <View style={styles.levelPill}>
+            <Text style={styles.levelPillText}>
+              {level.elo.emoji} Nível {level.level} · {level.elo.title}
+            </Text>
+          </View>
+          {/* No toque (nativo e touch na web) arrastar a fileira já funciona
+              sozinho — é o padrão de ScrollView. No mouse da web não existe
+              gesto de "arrastar" nenhum, e um scrollbar do sistema por baixo
+              da fileira ficava fora da identidade visual do app (relatado
+              pelo autor) e sobrepunha as caixinhas. Duas setinhas, no mesmo
+              estilo do MonthSelector, dão a mesma pista sem nenhuma das
+              duas encrencas — só aparecem na web, onde o toque não existe. */}
+          {Platform.OS === 'web' && (
+            <View style={{ flexDirection: 'row', gap: 2 }}>
+              <AppPressable
+                style={({ hovered }) => [styles.carouselArrow, hovered && styles.carouselArrowHover]}
+                onPress={() => scrollByCards(-1)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Cofrinhos anteriores"
+              >
+                <Ionicons name="chevron-back" size={16} color={theme.inkSoft} />
+              </AppPressable>
+              <AppPressable
+                style={({ hovered }) => [styles.carouselArrow, hovered && styles.carouselArrowHover]}
+                onPress={() => scrollByCards(1)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Próximos cofrinhos"
+              >
+                <Ionicons name="chevron-forward" size={16} color={theme.inkSoft} />
+              </AppPressable>
+            </View>
+          )}
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        onScroll={(e) => {
+          scrollX.current = e.nativeEvent.contentOffset.x;
+        }}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.row}
+      >
         {goals.map((g) => {
           const atual = Number(g.current_amount);
           const alvo = Number(g.target_amount);
@@ -159,7 +206,7 @@ export default function GoalsCarousel({
 
       {/* Sheet: Nova Meta */}
       <Modal visible={createOpen} animationType="slide" transparent onRequestClose={() => setCreateOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setCreateOpen(false)}>
           <View style={styles.header}>
             <Text style={styles.sheetTitle}>Nova meta</Text>
             <AppPressable onPress={() => setCreateOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -263,6 +310,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   levelPillText: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
+  carouselArrow: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  carouselArrowHover: { backgroundColor: theme.hover },
   row: { gap: spacing.sm, paddingVertical: 4, paddingRight: spacing.sm },
   card: {
     width: CARD_WIDTH,

@@ -1095,12 +1095,12 @@ export default function InicioScreen() {
         onAddIncome={() => openTxModal('in')}
         onAddExpense={() => openTxModal('out')}
         onAddBill={openBillModal}
-        onScanNota={() => setQrModalOpen(true)}
+        onAddCredit={() => router.push('/(app)/credito?novaCompra=1')}
       />
 
       {/* Sheet: Novo / Editar Lançamento */}
       <Modal visible={txSheetOpen} animationType="slide" transparent onRequestClose={() => setTxSheetOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setTxSheetOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{editingTxId ? 'Editar lançamento' : 'Novo lançamento'}</Text>
               <AppPressable onPress={() => setTxSheetOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -1238,7 +1238,7 @@ export default function InicioScreen() {
 
       {/* Sheet: Novo Boleto */}
       <Modal visible={billSheetOpen} animationType="slide" transparent onRequestClose={() => setBillSheetOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setBillSheetOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Nova conta a pagar</Text>
               <AppPressable onPress={() => setBillSheetOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -1322,7 +1322,7 @@ export default function InicioScreen() {
 
       {/* Modal de Orçamento */}
       <Modal visible={budgetModalOpen} animationType="slide" transparent onRequestClose={() => setBudgetModalOpen(false)}>
-        <Sheet>
+        <Sheet onClose={() => setBudgetModalOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Orçamento — {budgetCategory}</Text>
               <AppPressable onPress={() => setBudgetModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

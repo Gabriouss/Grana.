@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +16,7 @@ import { parseCsvTextDetalhado, type ParsedCsvTransaction } from '@/lib/heuristi
 import { LIMITS } from '@/lib/limits';
 import { formatDateLabel, formatMoney } from '@/lib/format';
 import { addTransactionsBatch } from '@/lib/data';
+import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import AppPressable from './AppPressable';
 import { useKeyboardHeight } from './Sheet';
@@ -30,6 +32,7 @@ export default function CsvImportModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
+  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const [csvContent, setCsvContent] = useState('');
   const [parsedRows, setParsedRows] = useState<ParsedCsvTransaction[]>([]);
   const [importing, setImporting] = useState(false);
@@ -99,10 +102,16 @@ export default function CsvImportModal({
         onClose();
       }}
     >
-      <View style={styles.modalScrim}>
+      <Pressable
+        style={[styles.modalScrim, scrimStyle]}
+        onPress={() => {
+          resetState();
+          onClose();
+        }}
+      >
         {/* A prévia usa FlatList, então esta folha não entra no <Sheet> (que
             rolaria por fora); aqui basta afastar o conteúdo do teclado. */}
-        <View style={[styles.sheet, { paddingBottom: spacing.xl + keyboardHeight }]}>
+        <Pressable style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>
               {parsedRows.length > 0 ? `Prévia: ${parsedRows.length} Lançamento(s)` : 'Importar Extrato CSV'}
@@ -189,8 +198,8 @@ export default function CsvImportModal({
               </AppPressable>
             </>
           )}
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
@@ -218,6 +227,13 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     padding: spacing.md,
     minHeight: 140,
+    /* Sem isso o navegador desenha o próprio anel de foco azul padrão em
+       cima do card — mantém o foco visível (acessibilidade), só troca a cor
+       pela identidade do app em vez do azul genérico do sistema. */
+    outlineColor: theme.accent2,
+    outlineStyle: 'solid',
+    outlineWidth: 2,
+    outlineOffset: -1,
   },
   previewList: { maxHeight: 220, marginVertical: 4 },
   previewRow: {

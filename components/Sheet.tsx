@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import {
   Keyboard,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -9,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { theme, radius, spacing } from '@/lib/theme';
+import { useSheetFlutuante } from '@/lib/breakpoints';
 
 /**
  * Mede a altura do teclado para que as folhas (bottom sheets) possam se
@@ -62,17 +64,26 @@ export default function Sheet({
   children,
   contentStyle,
   sheetStyle,
+  onClose,
 }: {
   children: ReactNode;
   /** Estilo do container interno do conteúdo (o padrão já aplica o espaçamento entre campos). */
   contentStyle?: StyleProp<ViewStyle>;
   sheetStyle?: StyleProp<ViewStyle>;
+  /** Toca no fundo escurecido, fora do painel, para fechar — como em qualquer
+      modal. Opcional só para não quebrar quem ainda não passa essa prop; sem
+      ela o fundo continua inerte, do jeito que já era antes. */
+  onClose?: () => void;
 }) {
   const keyboardHeight = useKeyboardHeight();
+  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
 
   return (
-    <View style={styles.scrim}>
-      <View style={[styles.sheet, { maxHeight: '92%' }, sheetStyle]}>
+    <Pressable style={[styles.scrim, scrimStyle]} onPress={onClose}>
+      {/* onPress vazio: por ser um Pressable aninhado, ele assume o toque
+          antes que chegue ao fundo, então tocar dentro do painel nunca fecha
+          a folha — só o fundo escurecido em volta dele fecha. */}
+      <Pressable style={[styles.sheet, { maxHeight: '92%' }, flutuanteStyle, sheetStyle]} onPress={() => {}}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={[
@@ -85,8 +96,8 @@ export default function Sheet({
         >
           {children}
         </ScrollView>
-      </View>
-    </View>
+      </Pressable>
+    </Pressable>
   );
 }
 

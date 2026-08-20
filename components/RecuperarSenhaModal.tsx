@@ -58,7 +58,7 @@ export default function RecuperarSenhaModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={fechar}>
-      <Sheet>
+      <Sheet onClose={fechar}>
         <View style={styles.cabecalho}>
           <Text style={styles.titulo}>{enviado ? 'E-mail a caminho' : 'Recuperar senha'}</Text>
           <AppPressable onPress={fechar} hitSlop={12} accessibilityLabel="Fechar">
