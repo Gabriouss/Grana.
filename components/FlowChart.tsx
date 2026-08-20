@@ -22,8 +22,10 @@ export type ChartPeriod = 'month' | '7days' | 'year';
 
    AXIS_LEFT é só espaço reservado dentro do desenho — os NÚMEROS do eixo Y
    não vivem mais dentro do Svg (ver <Text> abaixo): mais legível que
-   <SvgText>, e sem risco de herdar qualquer distorção do desenho. */
-const AXIS_LEFT = 44;
+   <SvgText>, e sem risco de herdar qualquer distorção do desenho. 58px (não
+   44px) porque o rótulo mais largo ("R$ 6,5 mil") quase encostava na linha
+   guia sem nenhuma folga visível entre o número e o desenho. */
+const AXIS_LEFT = 58;
 const PAD_RIGHT = 6;
 const VIEW_H = 160;
 const TOP = 18, BASE = 128;
@@ -46,18 +48,50 @@ function formatEixo(n: number): string {
    "inventava" um crescimento gradual que os lançamentos não sustentavam;
    pedido explícito de reverter isso e igualar à estética de Gráficos). */
 function caminhoSuave(pts: number[][]): string {
-  if (pts.length === 0) return '';
-  if (pts.length === 1) return `M${pts[0][0]},${pts[0][1]}`;
+  const n = pts.length;
+  if (n === 0) return '';
+  if (n === 1) return `M${pts[0][0]},${pts[0][1]}`;
+
+  const dxSeg: number[] = [];
+  const slope: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const deltaX = pts[i + 1][0] - pts[i][0];
+    const deltaY = pts[i + 1][1] - pts[i][1];
+    dxSeg.push(deltaX);
+    slope.push(deltaX === 0 ? 0 : deltaY / deltaX);
+  }
+
+  const m: number[] = new Array(n);
+  m[0] = slope[0];
+  m[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2;
+  }
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) {
+      m[i] = 0;
+      m[i + 1] = 0;
+      continue;
+    }
+    const a = m[i] / slope[i];
+    const b = m[i + 1] / slope[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      const t = 3 / Math.sqrt(s);
+      m[i] = t * a * slope[i];
+      m[i + 1] = t * b * slope[i];
+    }
+  }
+
   let d = `M${pts[0][0]},${pts[0][1]}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i];
+  for (let i = 0; i < n - 1; i++) {
     const p1 = pts[i];
     const p2 = pts[i + 1];
-    const p3 = pts[i + 2] || p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    const seg = dxSeg[i];
+    const c1x = p1[0] + seg / 3;
+    const c1y = p1[1] + (m[i] * seg) / 3;
+    const c2x = p2[0] - seg / 3;
+    const c2y = p2[1] - (m[i + 1] * seg) / 3;
     d += ` C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`;
   }
   return d;
@@ -78,23 +112,17 @@ function generateBuckets(period: ChartPeriod, year: number, month: number): Buck
   const pad = (n: number) => String(n).padStart(2, '0');
 
   if (period === 'year') {
-    // 7 marcos ao longo dos 12 meses do ano
-    const monthPairs = [
-      { mStart: 0, mEnd: 1, name: 'Jan-Fev' },
-      { mStart: 2, mEnd: 3, name: 'Mar-Abr' },
-      { mStart: 4, mEnd: 5, name: 'Mai-Jun' },
-      { mStart: 6, mEnd: 7, name: 'Jul-Ago' },
-      { mStart: 8, mEnd: 9, name: 'Set-Out' },
-      { mStart: 10, mEnd: 10, name: 'Nov' },
-      { mStart: 11, mEnd: 11, name: 'Dez' },
-    ];
-    return monthPairs.map((p) => ({
+    // 12 pontos, um por mês do ano — cada ponto é o lançamento de 1 mês só,
+    // não uma soma de dois meses (isso inventava um valor que nenhum mês
+    // isolado teve de verdade quando exibido ao tocar no ponto).
+    const nomesMes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return nomesMes.map((nome, mIndex) => ({
       labelStart: 'Jan',
       labelEnd: 'Dez',
-      label: p.name,
+      label: nome,
       matches: (txDate: string) => {
         const [y, m] = txDate.split('-').map(Number);
-        return y === year && m - 1 >= p.mStart && m - 1 <= p.mEnd;
+        return y === year && m - 1 === mIndex;
       },
     }));
   }
@@ -158,15 +186,18 @@ export default function FlowChart({
     const w = e.nativeEvent.layout.width;
     if (w > 0) setViewW(w);
   }
-  const [selecionado, setSelecionado] = useState(6);
-  const chartX = [0, 1, 2, 3, 4, 5, 6].map(
-    (i) => AXIS_LEFT + (i / 6) * (viewW - AXIS_LEFT - PAD_RIGHT)
-  );
 
   const currentYear = year ?? new Date().getFullYear();
   const currentMonth = month ?? new Date().getMonth();
 
   const buckets = generateBuckets(period, currentYear, currentMonth);
+  const [selecionado, setSelecionado] = useState(buckets.length - 1);
+  // Número de pontos varia por período (12 no ano, 7 no mês/7 dias) — a
+  // posição de cada um no eixo X precisa acompanhar essa contagem, não um
+  // "6" fixo que só valia enquanto todo período tinha 7 marcos.
+  const chartX = buckets.map(
+    (_, i) => AXIS_LEFT + (i / (buckets.length - 1 || 1)) * (viewW - AXIS_LEFT - PAD_RIGHT)
+  );
 
   const inTotals = buckets.map((b) =>
     transactions
@@ -201,7 +232,8 @@ export default function FlowChart({
   }, []);
 
   useEffect(() => {
-    setSelecionado(6);
+    setSelecionado(buckets.length - 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, currentYear, currentMonth]);
 
   useEffect(() => {

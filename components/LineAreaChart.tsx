@@ -70,11 +70,11 @@ export default function LineAreaChart({
   const maxEixo = Math.max(Math.ceil(maxTotalBruto / passo) * passo, passo);
   const gridLines = [0, 1, 2, 3, 4].map((i) => (maxEixo / 4) * i);
 
-  /* 88px reserva espaço pra rótulo mais largo que aparece no eixo, tipo
-     "R$ 11,5 mil" (~80px em Neue Machina 13px) — um valor menor de padLeft
-     cabia rótulos curtos ("R$ 750") mas cortava a ponta esquerda de
-     qualquer valor de dois dígitos antes do "mil". */
-  const padLeft = 88;
+  /* 112px reserva espaço pro rótulo mais largo do eixo, tipo "R$ 11,5 mil"
+     (~80px em Neue Machina 13px), MAIS uma folga visível até o início do
+     desenho — com 88px o texto encostava quase direto na linha/grade,
+     sem respiro nenhum entre o número e o gráfico. */
+  const padLeft = 112;
   /* O último rótulo do eixo X ("Ago/26" etc.) é centralizado (textAnchor
      "middle") sobre o último ponto, que fica exatamente na borda direita do
      desenho — metade do texto sempre cairia fora do Svg sem essa folga. */
@@ -92,21 +92,57 @@ export default function LineAreaChart({
     return { x, y, col };
   });
 
-  /* Suaviza a quebra reta entre pontos com um Catmull-Rom convertido para
-     curvas de Bézier cúbicas — dá a mesma sensação de "onda" da referência
-     sem depender de biblioteca extra de charts. */
+  /* Interpolação cúbica MONÓTONA (Fritsch-Carlson, igual ao curveMonotoneX
+     do d3) — não um Catmull-Rom comum. Um Catmull-Rom pode "estourar" acima
+     ou abaixo dos dois pontos vizinhos ao suavizar a curva, desenhando um
+     pico ou vale que nenhum balde de dados teve de verdade. A versão
+     monótona fica igualmente suave mas nunca ultrapassa o valor dos pontos
+     vizinhos entre um balde e outro. */
   function caminhoSuave(pts: typeof pontos): string {
-    if (pts.length === 1) return `M${pts[0].x},${pts[0].y}`;
+    const n = pts.length;
+    if (n === 0) return '';
+    if (n === 1) return `M${pts[0].x},${pts[0].y}`;
+
+    const dxSeg: number[] = [];
+    const slope: number[] = [];
+    for (let i = 0; i < n - 1; i++) {
+      const deltaX = pts[i + 1].x - pts[i].x;
+      const deltaY = pts[i + 1].y - pts[i].y;
+      dxSeg.push(deltaX);
+      slope.push(deltaX === 0 ? 0 : deltaY / deltaX);
+    }
+
+    const m: number[] = new Array(n);
+    m[0] = slope[0];
+    m[n - 1] = slope[n - 2];
+    for (let i = 1; i < n - 1; i++) {
+      m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2;
+    }
+    for (let i = 0; i < n - 1; i++) {
+      if (slope[i] === 0) {
+        m[i] = 0;
+        m[i + 1] = 0;
+        continue;
+      }
+      const a = m[i] / slope[i];
+      const b = m[i + 1] / slope[i];
+      const s = a * a + b * b;
+      if (s > 9) {
+        const t = 3 / Math.sqrt(s);
+        m[i] = t * a * slope[i];
+        m[i + 1] = t * b * slope[i];
+      }
+    }
+
     let d = `M${pts[0].x},${pts[0].y}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i - 1] || pts[i];
+    for (let i = 0; i < n - 1; i++) {
       const p1 = pts[i];
       const p2 = pts[i + 1];
-      const p3 = pts[i + 2] || p2;
-      const c1x = p1.x + (p2.x - p0.x) / 6;
-      const c1y = p1.y + (p2.y - p0.y) / 6;
-      const c2x = p2.x - (p3.x - p1.x) / 6;
-      const c2y = p2.y - (p3.y - p1.y) / 6;
+      const seg = dxSeg[i];
+      const c1x = p1.x + seg / 3;
+      const c1y = p1.y + (m[i] * seg) / 3;
+      const c2x = p2.x - seg / 3;
+      const c2y = p2.y - (m[i + 1] * seg) / 3;
       d += ` C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
     }
     return d;
