@@ -15,7 +15,7 @@ import { theme, spacing, radius, fonts, type } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
 import type { ErroAuth } from '@/lib/auth-errors';
 import AppPressable from '@/components/AppPressable';
-import BrandLogo from '@/components/BrandLogo';
+import BrandLogotype from '@/components/BrandLogotype';
 import RecuperarSenhaModal from '@/components/RecuperarSenhaModal';
 import PasswordInput from '@/components/PasswordInput';
 import { LIMITS } from '@/lib/limits';
@@ -51,7 +51,9 @@ export default function SignIn() {
     >
       <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Text style={styles.eyebrow}>Bem-vinda de volta</Text>
-        <BrandLogo size={42} style={styles.title} />
+        <View style={styles.title}>
+          <BrandLogotype width={140} />
+        </View>
         <Text style={styles.subtitle}>Entre com sua conta para sincronizar seus lançamentos entre aparelhos.</Text>
 
         <View style={styles.field}>
@@ -129,7 +131,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light },
-  // Cor, tamanho e família vêm do BrandLogo — aqui fica só o encaixe no layout.
   title: { marginTop: spacing.xs, marginBottom: spacing.sm },
   subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 21, marginBottom: spacing.xxl, fontFamily: fonts.light },
   field: { marginBottom: spacing.lg },
