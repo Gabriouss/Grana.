@@ -7,11 +7,15 @@
  * quanto se gastou.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Bill, Budget, Transaction } from './types';
 import { calcularLevelState, type LevelState } from './gamification-infinite';
+import { supabase } from './supabase';
 
-const CHAVE_VISTO = '@grana_wrapped_visto';
+/* user_metadata do Supabase Auth, não AsyncStorage — mesmo motivo do
+   lib/home-layout.ts: era guardado só no aparelho, e a flag de "já visto"
+   nunca sobrevivia a deslogar/entrar de novo (ou trocar de aparelho), então
+   a retrospectiva reabria a cada login mesmo depois de fechada. */
+const CHAVE_METADATA = 'wrapped_visto';
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -75,16 +79,17 @@ export function chaveDoMes(ano: number, mes: number): string {
  */
 export async function wrappedJaVisto(chave: string): Promise<boolean> {
   try {
-    return (await AsyncStorage.getItem(CHAVE_VISTO)) === chave;
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return true; // sem sessão, o menos pior é não insistir num modal de tela cheia
+    return data.user.user_metadata?.[CHAVE_METADATA] === chave;
   } catch {
-    // Sem acesso ao storage, o menos pior é não insistir num modal de tela cheia.
     return true;
   }
 }
 
 export async function marcarWrappedVisto(chave: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(CHAVE_VISTO, chave);
+    await supabase.auth.updateUser({ data: { [CHAVE_METADATA]: chave } });
   } catch {
     // Se não deu para gravar, o modal reaparece no próximo acesso — irritante, não quebrado.
   }

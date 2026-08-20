@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
@@ -172,19 +172,17 @@ export default function InicioScreen() {
   }
 
   // Diagnóstico inicial (onboarding) abre sozinho no primeiro login de cada
-  // conta neste aparelho — a flag fica salva localmente por usuário, então
-  // não repete depois que a pessoa já respondeu ou fechou uma vez.
+  // conta — a flag fica em user_metadata do Supabase Auth (não AsyncStorage
+  // local), então não repete depois que a pessoa já respondeu ou fechou uma
+  // vez, em NENHUM aparelho/navegador da mesma conta.
   const userId = session?.user.id;
   useEffect(() => {
     if (isDemoMode || !userId) return;
-    (async () => {
-      const seen = await AsyncStorage.getItem(`grana_onboarding_seen_${userId}`);
-      if (!seen) setOnboardingOpen(true);
-    })();
-  }, [userId, isDemoMode]);
+    if (session?.user.user_metadata?.onboarding_seen !== true) setOnboardingOpen(true);
+  }, [userId, isDemoMode, session]);
 
   function markOnboardingSeen() {
-    if (userId) AsyncStorage.setItem(`grana_onboarding_seen_${userId}`, '1');
+    supabase.auth.updateUser({ data: { onboarding_seen: true } });
   }
 
   const load = useCallback(async () => {
@@ -310,6 +308,13 @@ export default function InicioScreen() {
   // Entrada animada do gráfico de pizza toda vez que a aba Início ganha
   // foco (abrir o app ou tocar na tab), não só na primeira montagem.
   const pieAnim = useRef(new Animated.Value(0)).current;
+
+  const quickChipsScrollRef = useRef<ScrollView>(null);
+  const quickChipsScrollX = useRef(0);
+  function scrollQuickChips(dir: 1 | -1) {
+    const delta = 220 * dir;
+    quickChipsScrollRef.current?.scrollTo({ x: Math.max(0, quickChipsScrollX.current + delta), animated: true });
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -713,8 +718,42 @@ export default function InicioScreen() {
     ),
     atalhos: (
       <>
-        <Text style={styles.sectionLabel}>Lançamento rápido</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickChipsRow}>
+        <View style={styles.quickChipsHeadRow}>
+          <Text style={styles.sectionLabel}>Lançamento rápido</Text>
+          {/* Mesma solução do carrossel de cofrinhos: sem scrollbar do
+              sistema (fora da identidade visual), setinhas só na web, onde
+              não existe gesto de arrastar com o mouse. */}
+          {Platform.OS === 'web' && (
+            <View style={{ flexDirection: 'row', gap: 2 }}>
+              <AppPressable
+                style={({ hovered }) => [styles.carouselArrow, hovered && styles.carouselArrowHover]}
+                onPress={() => scrollQuickChips(-1)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Categorias anteriores"
+              >
+                <Ionicons name="chevron-back" size={16} color={theme.inkSoft} />
+              </AppPressable>
+              <AppPressable
+                style={({ hovered }) => [styles.carouselArrow, hovered && styles.carouselArrowHover]}
+                onPress={() => scrollQuickChips(1)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Próximas categorias"
+              >
+                <Ionicons name="chevron-forward" size={16} color={theme.inkSoft} />
+              </AppPressable>
+            </View>
+          )}
+        </View>
+        <ScrollView
+          ref={quickChipsScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          onScroll={(e) => { quickChipsScrollX.current = e.nativeEvent.contentOffset.x; }}
+          scrollEventThrottle={16}
+          contentContainerStyle={styles.quickChipsRow}
+        >
           {quickCategories.map((c) => (
             <AppPressable
               key={c.name}
@@ -1510,6 +1549,9 @@ const styles = StyleSheet.create({
   avatarImg: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: theme.rule },
   errorText: { color: '#e08a7d', fontSize: type.apoio, fontFamily: fonts.regular },
   quickChipsSection: { gap: 6 },
+  quickChipsHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  carouselArrow: { width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  carouselArrowHover: { backgroundColor: theme.hover },
   quickChipsRow: { gap: 8, paddingVertical: 4 },
   quickChip: {
     flexDirection: 'row',
