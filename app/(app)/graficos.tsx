@@ -190,16 +190,21 @@ export default function GraficosScreen() {
 
       if (granularidade === 'periodo') {
         mesesLabels = mesesEntre(periodoInicio, periodoFim);
-      } else {
-        // Agrupa pelos últimos 6 meses
-        const hojeD = new Date();
+      } else if (txsToUse.length === 0) {
         mesesLabels = [];
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
-          const anoMes = d.toISOString().slice(0, 7);
-          const label = MESES_ABREV[d.getMonth()];
-          mesesLabels.push({ anoMes, label });
-        }
+      } else {
+        /* TODOS os meses com lançamento, do primeiro ao mais recente — não
+           mais um teto fixo dos "últimos 6 meses" a partir de hoje, que
+           escondia qualquer lançamento fora dessa janela (inclusive meses
+           mais antigos com movimentação real). Mesmo raciocínio do branch
+           'anos' acima: preenche os meses vazios NO MEIO do intervalo em
+           vez de escondê-los, e reaproveita o teto de 24 pontos já pronto
+           em mesesEntre() pra não virar uma régua ilegível quando o
+           intervalo é de anos inteiros. */
+        const anosMeses = txsToUse.map((t) => t.occurred_on.slice(0, 7)).sort();
+        const primeiro = anosMeses[0];
+        const ultimo = anosMeses[anosMeses.length - 1];
+        mesesLabels = mesesEntre(`${primeiro}-01`, `${ultimo}-01`);
       }
 
       return mesesLabels.map(({ anoMes, label }) => {
