@@ -403,6 +403,12 @@ const styles = StyleSheet.create({
   axisLabel: {
     position: 'absolute',
     left: 0,
+    // Largura travada terminando ANTES de AXIS_LEFT (não solto com só
+    // `left: 0`, que deixava o texto crescer livre e encostar na linha do
+    // gráfico conforme o valor). textAlign 'right' mantém o dígito mais
+    // próximo do eixo sempre no mesmo x, com respiro fixo até o desenho.
+    width: AXIS_LEFT - 8,
+    textAlign: 'right',
     color: theme.inkFaint,
     fontSize: type.legenda,
     fontFamily: fonts.light,
