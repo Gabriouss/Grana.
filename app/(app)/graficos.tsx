@@ -133,109 +133,58 @@ export default function GraficosScreen() {
         ? filteredTransactions
         : filteredTransactions.filter((t) => t.type === targetType);
 
-    if (granularidade === 'anos') {
-      // Agrupa por ano (ex: 2024, 2025, 2026)
-      const porAno: Record<string, Record<string, { amount: number; color: string }>> = {};
-      const anosSet = new Set<string>();
+    /* 'anos' e 'meses' mostram exatamente a mesma linha contínua — pedido
+       explícito do autor: "Ano a Ano" não agrega mais por ano, os dois
+       botões levam ao mesmo lugar (a distinção que existia antes, um ponto
+       por ano, foi removida de propósito). */
+    let mesesLabels: { anoMes: string; label: string }[];
 
-      txsToUse.forEach((tx) => {
-        const ano = tx.occurred_on.slice(0, 4);
-        anosSet.add(ano);
-        if (!porAno[ano]) porAno[ano] = {};
-
-        const cat = tx.category || 'Outros';
-        const cor = tx.color || '#1fa98d';
-        if (!porAno[ano][cat]) {
-          porAno[ano][cat] = { amount: 0, color: cor };
-        }
-        porAno[ano][cat].amount += Number(tx.amount || 0);
-      });
-
-      /* Preenche os anos SEM lançamento no meio do intervalo (não só os que
-         têm dado) — sem isso, um ano em branco entre dois anos com
-         movimentação simplesmente sumia da lista, e a linha do gráfico
-         pulava direto de um pro outro como se o segundo tivesse "crescido
-         gradualmente" durante o ano vazio, quando na real não houve nada
-         ali. Mesmo raciocínio documentado em FlowChart.tsx pra não inventar
-         movimento entre pontos que os lançamentos não sustentam. */
-      const anosComDado = Array.from(anosSet).map(Number).sort((a, b) => a - b);
-      const anosOrdenados: string[] = [];
-      if (anosComDado.length > 0) {
-        for (let ano = anosComDado[0]; ano <= anosComDado[anosComDado.length - 1]; ano++) {
-          anosOrdenados.push(String(ano));
-        }
-      }
-
-      return anosOrdenados.map((ano) => {
-        const catMap = porAno[ano] || {};
-        const segments = Object.entries(catMap)
-          .map(([cat, info]) => ({
-            category: cat,
-            amount: info.amount,
-            color: info.color,
-          }))
-          .sort((a, b) => b.amount - a.amount);
-
-        const total = segments.reduce((acc, s) => acc + s.amount, 0);
-
-        return {
-          label: ano,
-          sublabel: `${segments.length} categorias`,
-          total,
-          segments,
-        };
-      });
+    if (granularidade === 'periodo') {
+      mesesLabels = mesesEntre(periodoInicio, periodoFim);
+    } else if (txsToUse.length === 0) {
+      mesesLabels = [];
     } else {
-      let mesesLabels: { anoMes: string; label: string }[];
-
-      if (granularidade === 'periodo') {
-        mesesLabels = mesesEntre(periodoInicio, periodoFim);
-      } else if (txsToUse.length === 0) {
-        mesesLabels = [];
-      } else {
-        /* TODOS os meses com lançamento, do primeiro ao mais recente — não
-           mais um teto fixo dos "últimos 6 meses" a partir de hoje, que
-           escondia qualquer lançamento fora dessa janela (inclusive meses
-           mais antigos com movimentação real). Mesmo raciocínio do branch
-           'anos' acima: preenche os meses vazios NO MEIO do intervalo em
-           vez de escondê-los, e reaproveita o teto de 24 pontos já pronto
-           em mesesEntre() pra não virar uma régua ilegível quando o
-           intervalo é de anos inteiros. */
-        const anosMeses = txsToUse.map((t) => t.occurred_on.slice(0, 7)).sort();
-        const primeiro = anosMeses[0];
-        const ultimo = anosMeses[anosMeses.length - 1];
-        mesesLabels = mesesEntre(`${primeiro}-01`, `${ultimo}-01`);
-      }
-
-      return mesesLabels.map(({ anoMes, label }) => {
-        const txsMes = txsToUse.filter((t) => t.occurred_on.startsWith(anoMes));
-        const catMap: Record<string, { amount: number; color: string }> = {};
-
-        txsMes.forEach((t) => {
-          const cat = t.category || 'Outros';
-          const cor = t.color || '#1fa98d';
-          if (!catMap[cat]) catMap[cat] = { amount: 0, color: cor };
-          catMap[cat].amount += Number(t.amount || 0);
-        });
-
-        const segments = Object.entries(catMap)
-          .map(([cat, info]) => ({
-            category: cat,
-            amount: info.amount,
-            color: info.color,
-          }))
-          .sort((a, b) => b.amount - a.amount);
-
-        const total = segments.reduce((acc, s) => acc + s.amount, 0);
-
-        return {
-          label,
-          sublabel: anoMes,
-          total,
-          segments,
-        };
-      });
+      /* TODOS os meses com lançamento, do primeiro ao mais recente — não
+         mais um teto fixo dos "últimos 6 meses" a partir de hoje, que
+         escondia qualquer lançamento fora dessa janela (inclusive meses
+         mais antigos com movimentação real). Preenche os meses vazios NO
+         MEIO do intervalo em vez de escondê-los, e reaproveita o teto de 24
+         pontos já pronto em mesesEntre() pra não virar uma régua ilegível
+         quando o intervalo é de anos inteiros. */
+      const anosMeses = txsToUse.map((t) => t.occurred_on.slice(0, 7)).sort();
+      const primeiro = anosMeses[0];
+      const ultimo = anosMeses[anosMeses.length - 1];
+      mesesLabels = mesesEntre(`${primeiro}-01`, `${ultimo}-01`);
     }
+
+    return mesesLabels.map(({ anoMes, label }) => {
+      const txsMes = txsToUse.filter((t) => t.occurred_on.startsWith(anoMes));
+      const catMap: Record<string, { amount: number; color: string }> = {};
+
+      txsMes.forEach((t) => {
+        const cat = t.category || 'Outros';
+        const cor = t.color || '#1fa98d';
+        if (!catMap[cat]) catMap[cat] = { amount: 0, color: cor };
+        catMap[cat].amount += Number(t.amount || 0);
+      });
+
+      const segments = Object.entries(catMap)
+        .map(([cat, info]) => ({
+          category: cat,
+          amount: info.amount,
+          color: info.color,
+        }))
+        .sort((a, b) => b.amount - a.amount);
+
+      const total = segments.reduce((acc, s) => acc + s.amount, 0);
+
+      return {
+        label,
+        sublabel: anoMes,
+        total,
+        segments,
+      };
+    });
   }, [filteredTransactions, tabModo, granularidade, periodoInicio, periodoFim]);
 
   // Fatias do Donut Totalizador do Período

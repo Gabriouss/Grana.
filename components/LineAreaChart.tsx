@@ -245,11 +245,27 @@ export default function LineAreaChart({
           ))}
         </Svg>
 
-        {/* Áreas de toque — uma faixa vertical por ponto, centrada nele. */}
-        <View style={[StyleSheet.absoluteFill, { flexDirection: 'row' }]}>
-          {columns.map((_, idx) => (
-            <AppPressable key={`touch-${idx}`} style={{ flex: 1 }} onPress={() => setSelectedIndex(idx)} />
-          ))}
+        {/* Áreas de toque — uma faixa vertical por ponto, com o limite entre
+            duas faixas exatamente no meio dos dois pontos vizinhos (não uma
+            divisão igual do card em N fatias). Os pontos NÃO são espaçados
+            uniformemente pela largura toda: `padLeft` reserva espaço à
+            esquerda pro rótulo do eixo Y, então uma divisão igual jogava o
+            centro de cada faixa fora do ponto real — tocar bem em cima de
+            um ponto selecionava o vizinho. */}
+        <View style={StyleSheet.absoluteFill}>
+          {pontos.map((p, idx) => {
+            const anterior = pontos[idx - 1];
+            const proximo = pontos[idx + 1];
+            const inicio = anterior ? (anterior.x + p.x) / 2 : 0;
+            const fim = proximo ? (p.x + proximo.x) / 2 : containerWidth;
+            return (
+              <AppPressable
+                key={`touch-${idx}`}
+                style={{ position: 'absolute', left: inicio, width: fim - inicio, top: 0, bottom: 0 }}
+                onPress={() => setSelectedIndex(idx)}
+              />
+            );
+          })}
         </View>
       </View>
 

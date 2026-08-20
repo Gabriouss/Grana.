@@ -374,12 +374,27 @@ export default function FlowChart({
       <Text style={[styles.dateLabel, { left: AXIS_LEFT }]}>{startLabel}</Text>
       <Text style={[styles.dateLabel, { right: PAD_RIGHT, textAlign: 'right' }]}>{endLabel}</Text>
 
-      {/* Áreas de toque — uma faixa vertical por balde, centrada em cada
-          ponto. Cobre só a área do desenho (não o cabeçalho acima). */}
-      <View style={[StyleSheet.absoluteFill, { flexDirection: 'row' }]}>
-        {buckets.map((_, i) => (
-          <AppPressable key={`touch-${i}`} style={{ flex: 1 }} onPress={() => setSelecionado(i)} />
-        ))}
+      {/* Áreas de toque — o limite entre duas faixas cai exatamente no meio
+          dos dois pontos vizinhos, não numa divisão igual da largura toda.
+          `chartX` reserva AXIS_LEFT à esquerda pros números do eixo Y, então
+          os baldes não ficam espaçados uniformemente pelo card inteiro —
+          uma divisão igual (flex:1 por balde) jogava o centro de cada faixa
+          fora do ponto real, e tocar bem em cima de um ponto selecionava o
+          vizinho. */}
+      <View style={StyleSheet.absoluteFill}>
+        {chartX.map((x, i) => {
+          const anterior = chartX[i - 1];
+          const proximo = chartX[i + 1];
+          const inicio = anterior !== undefined ? (anterior + x) / 2 : 0;
+          const fim = proximo !== undefined ? (x + proximo) / 2 : viewW;
+          return (
+            <AppPressable
+              key={`touch-${i}`}
+              style={{ position: 'absolute', left: inicio, width: fim - inicio, top: 0, bottom: 0 }}
+              onPress={() => setSelecionado(i)}
+            />
+          );
+        })}
       </View>
     </View>
     </View>
