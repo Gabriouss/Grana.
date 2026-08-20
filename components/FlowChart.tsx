@@ -22,10 +22,11 @@ export type ChartPeriod = 'month' | '7days' | 'year';
 
    AXIS_LEFT é só espaço reservado dentro do desenho — os NÚMEROS do eixo Y
    não vivem mais dentro do Svg (ver <Text> abaixo): mais legível que
-   <SvgText>, e sem risco de herdar qualquer distorção do desenho. 58px (não
-   44px) porque o rótulo mais largo ("R$ 6,5 mil") quase encostava na linha
-   guia sem nenhuma folga visível entre o número e o desenho. */
-const AXIS_LEFT = 58;
+   <SvgText>, e sem risco de herdar qualquer distorção do desenho. 78px (não
+   58px) porque a caixa do rótulo ("R$ 1,4 mil") precisa de espaço pra caber
+   numa linha só — com menos que isso o texto quebrava em duas linhas e
+   invadia a linha guia de baixo. */
+const AXIS_LEFT = 78;
 const PAD_RIGHT = 6;
 const VIEW_H = 160;
 const TOP = 18, BASE = 128;
@@ -362,7 +363,7 @@ export default function FlowChart({
           o eixo horizontal é esticado; a altura do Svg é fixa (VIEW_H, em
           pixels reais) e nunca muda. */}
       {gridLines.map(({ y, valor }, i) => (
-        <Text key={`ylabel-${i}`} style={[styles.axisLabel, { top: y - 8 }]}>
+        <Text key={`ylabel-${i}`} style={[styles.axisLabel, { top: y - 8 }]} numberOfLines={1}>
           {formatEixo(valor)}
         </Text>
       ))}

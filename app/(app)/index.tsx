@@ -1549,7 +1549,14 @@ const styles = StyleSheet.create({
   avatarImg: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: theme.rule },
   errorText: { color: '#e08a7d', fontSize: type.apoio, fontFamily: fonts.regular },
   quickChipsSection: { gap: 6 },
-  quickChipsHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  quickChipsHeadRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    // Recuo pra alça de arrastar do WidgetGrid (aparece no hover em modo de
+    // edição) não cair em cima das setinhas — mesmo ajuste do GoalsCarousel.
+    ...(Platform.OS === 'web' ? { paddingRight: ESPACO_ALCA } : null),
+  },
   carouselArrow: { width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   carouselArrowHover: { backgroundColor: theme.hover },
   quickChipsRow: { gap: 8, paddingVertical: 4 },
