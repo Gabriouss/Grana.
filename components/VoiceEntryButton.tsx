@@ -85,10 +85,17 @@ export default function VoiceEntryButton({
 
   async function handlePress() {
     if (!Speech) {
-      Alert.alert(
-        'Indisponível no Expo Go',
-        'Lançamento por voz precisa de um development build (npx expo run:android ou uma build de dev no EAS) — o módulo de reconhecimento de fala não roda dentro do app Expo Go.'
-      );
+      if (speechIndisponivelNaWeb) {
+        Alert.alert(
+          'Navegador sem suporte a voz',
+          'Lançamento por voz depende do reconhecimento de fala do navegador, que o Firefox e alguns outros não oferecem. Tente pelo Chrome, Edge ou Safari.'
+        );
+      } else {
+        Alert.alert(
+          'Indisponível no Expo Go',
+          'Lançamento por voz precisa de um development build (npx expo run:android ou uma build de dev no EAS) — o módulo de reconhecimento de fala não roda dentro do app Expo Go.'
+        );
+      }
       return;
     }
     if (listening) {
