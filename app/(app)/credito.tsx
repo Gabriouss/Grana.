@@ -586,12 +586,19 @@ export default function CreditoScreen() {
                   }}
                   onLongPress={() => confirmDeleteCard(card)}
                 >
+                  {/* Dígitos EMBAIXO do apelido, não ao lado. Lado a lado, um
+                      apelido longo ("Itaú Personalité Black") empurrava até
+                      encostar nos números e os dois viravam uma palavra só —
+                      e o cartão do carrossel é estreito demais para caber os
+                      dois na mesma linha com folga confiável. */}
                   <View style={styles.cardTopRow}>
-                    <View style={styles.cardBankTag}>
-                      <View style={[styles.bankDot, { backgroundColor: card.color }]} />
+                    <View style={[styles.bankDot, { backgroundColor: card.color }]} />
+                    <View style={styles.cardIdentidade}>
                       <Text style={styles.cardBankName} numberOfLines={1}>{card.name}</Text>
+                      {card.last_digits ? (
+                        <Text style={styles.cardDigits}>{`•••• ${card.last_digits}`}</Text>
+                      ) : null}
                     </View>
-                    <Text style={styles.cardDigits}>{card.last_digits ? `•••• ${card.last_digits}` : ''}</Text>
                   </View>
 
                   <View style={styles.cardMidRow}>
@@ -1062,15 +1069,20 @@ const styles = StyleSheet.create({
   },
   cardTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    /* flex-start, e não center: a coluna ao lado tem duas linhas (apelido e
+       dígitos), então centralizar deixaria a bolinha flutuando entre elas em
+       vez de marcar o início. */
+    alignItems: 'flex-start',
+    gap: 6,
   },
+  cardIdentidade: { flexShrink: 1, gap: 2 },
   cardBankTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   bankDot: {
+    marginTop: 5,
     width: 8,
     height: 8,
     borderRadius: 4,
