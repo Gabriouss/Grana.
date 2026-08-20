@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabase';
 
 /**
  * Personalização Modular da Tela Inicial — item 2 do "Plano Mestre de
@@ -87,7 +87,12 @@ export function layoutDoPreset(preset: HomePreset): HomeBlockConfig[] {
   return [...ativos, ...ocultos].map((key) => ({ key, visible: ativos.includes(key) }));
 }
 
-const CHAVE = 'grana_home_layout_config';
+/* Guardado em user_metadata do Supabase Auth — mesmo padrão de
+   lib/diagnostico.ts e lib/profile.ts — em vez de AsyncStorage local. A
+   personalização é por CONTA, não por aparelho: guardar só localmente fazia
+   a organização dos cards sumir ao deslogar e entrar de novo (ou trocar de
+   aparelho/navegador), porque cada AsyncStorage é isolado por dispositivo. */
+const CHAVE_METADATA = 'home_layout';
 
 export function layoutPadrao(): HomeBlockConfig[] {
   return ORDEM_PADRAO.map((key) => ({ key, visible: true }));
@@ -101,23 +106,20 @@ export function layoutPadrao(): HomeBlockConfig[] {
  * configuração salva por uma versão antiga.
  */
 export async function carregarLayoutHome(): Promise<HomeBlockConfig[]> {
-  try {
-    const raw = await AsyncStorage.getItem(CHAVE);
-    if (!raw) return layoutPadrao();
-    const salvo = JSON.parse(raw) as HomeBlockConfig[];
-    if (!Array.isArray(salvo)) return layoutPadrao();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) return layoutPadrao();
 
-    const chavesSalvas = new Set(salvo.map((b) => b.key));
-    const resultado = salvo.filter((b) => ORDEM_PADRAO.includes(b.key));
-    ORDEM_PADRAO.forEach((key) => {
-      if (!chavesSalvas.has(key)) resultado.push({ key, visible: true });
-    });
-    return resultado.length > 0 ? resultado : layoutPadrao();
-  } catch {
-    return layoutPadrao();
-  }
+  const salvo = data.user.user_metadata?.[CHAVE_METADATA] as HomeBlockConfig[] | undefined;
+  if (!salvo || !Array.isArray(salvo)) return layoutPadrao();
+
+  const chavesSalvas = new Set(salvo.map((b) => b.key));
+  const resultado = salvo.filter((b) => ORDEM_PADRAO.includes(b.key));
+  ORDEM_PADRAO.forEach((key) => {
+    if (!chavesSalvas.has(key)) resultado.push({ key, visible: true });
+  });
+  return resultado.length > 0 ? resultado : layoutPadrao();
 }
 
 export async function salvarLayoutHome(config: HomeBlockConfig[]): Promise<void> {
-  await AsyncStorage.setItem(CHAVE, JSON.stringify(config));
+  await supabase.auth.updateUser({ data: { [CHAVE_METADATA]: config } });
 }
