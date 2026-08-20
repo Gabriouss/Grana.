@@ -367,8 +367,12 @@ export default function FlowChart({
           {formatEixo(valor)}
         </Text>
       ))}
-      <Text style={[styles.dateLabel, { left: 0 }]}>{startLabel}</Text>
-      <Text style={[styles.dateLabel, { right: 0, textAlign: 'right' }]}>{endLabel}</Text>
+      {/* left/right alinhados com AXIS_LEFT/PAD_RIGHT — onde a linha do
+          gráfico REALMENTE começa e termina, não a borda do card. Com
+          `left: 0` puro, "01/08" ficava embaixo dos números do eixo Y, não
+          embaixo do início de fato da linha. */}
+      <Text style={[styles.dateLabel, { left: AXIS_LEFT }]}>{startLabel}</Text>
+      <Text style={[styles.dateLabel, { right: PAD_RIGHT, textAlign: 'right' }]}>{endLabel}</Text>
 
       {/* Áreas de toque — uma faixa vertical por balde, centrada em cada
           ponto. Cobre só a área do desenho (não o cabeçalho acima). */}
@@ -404,12 +408,12 @@ const styles = StyleSheet.create({
   axisLabel: {
     position: 'absolute',
     left: 0,
-    // Largura travada terminando ANTES de AXIS_LEFT (não solto com só
-    // `left: 0`, que deixava o texto crescer livre e encostar na linha do
-    // gráfico conforme o valor). textAlign 'right' mantém o dígito mais
-    // próximo do eixo sempre no mesmo x, com respiro fixo até o desenho.
+    // Largura travada (não solto com só `left: 0`, que deixava o texto
+    // quebrar em duas linhas dependendo do valor). textAlign 'left' começa
+    // todo rótulo no mesmo x — pedido explícito de alinhar à esquerda,
+    // igual ao eixo Y do LineAreaChart (tela Gráficos).
     width: AXIS_LEFT - 8,
-    textAlign: 'right',
+    textAlign: 'left',
     color: theme.inkFaint,
     fontSize: type.legenda,
     fontFamily: fonts.light,
