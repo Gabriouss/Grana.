@@ -255,13 +255,14 @@ export default function OnboardingModal({
   }
 
   function handleSkip() {
-    finalizar({
-      organizacao: organizacao ?? 'buscando-metodo',
-      foco: foco ?? 'sobrar',
-      cartao: cartao ?? 'controlado',
-      rendaMensal: parseAmount(renda) || 0,
-      ambicao: ambicao ?? 'equilibrio',
-    });
+    // "Pular por agora" precisa sair de verdade, não só pular pro passo 6
+    // com respostas padrão — isso ainda deixava o diagnóstico em aberto, e
+    // se a pessoa fechasse o app dali (achando que já tinha pulado) o
+    // onboarding nunca era marcado como visto e voltava a abrir no próximo
+    // login. resetState() + onClose() fecham igual ao X do cabeçalho, que
+    // já marca como visto em app/(app)/index.tsx.
+    resetState();
+    onClose();
   }
 
   async function handleAplicarOrcamento() {
