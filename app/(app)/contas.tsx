@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { colunaConteudo } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -29,7 +30,7 @@ import { addBill, deleteBill, fetchBills, payBill, reopenBill, updateBill } from
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { theme, radius, spacing, screenRhythm } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -286,7 +287,7 @@ export default function ContasScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <ScreenHeader
-        eyebrow="pagamentos"
+        eyebrow="Pagamentos"
         title="Contas a pagar"
         right={<WalletPill onPress={() => setWalletModalOpen(true)} />}
       />
@@ -317,7 +318,7 @@ export default function ContasScreen() {
         <FlatList
           data={monthBills}
           keyExtractor={(b) => b.id}
-          contentContainerStyle={[styles.listContent, { paddingBottom: paddingConteudo }]}
+          contentContainerStyle={[styles.listContent, colunaConteudo, { paddingBottom: paddingConteudo }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma conta vencendo neste mês. Toque no botão "+" para registrar.</Text>}
           renderItem={({ item }) => {
@@ -485,14 +486,14 @@ export default function ContasScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  subtitle: { color: theme.inkFaint, fontSize: 13 },
+  subtitle: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   subtitleRow: { flexDirection: 'row', alignItems: 'baseline' },
   /* Bloco do corpo da tela: reproduz o espaçamento que o ScreenHeader dava
      quando o resumo e o seletor de mês moravam dentro dele. */
   filtrosWrap: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.padding, gap: screenRhythm.gap },
   /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
   listContent: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.gap, gap: screenRhythm.gap },
-  emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', marginTop: 30, lineHeight: 18, fontFamily: fonts.light },
   /* Sem marginBottom aqui: o espaço entre itens já vem do `gap` de
      styles.listContent — somar os dois dobraria a distância entre um card e
      o próximo em relação à distância do primeiro card até o filtro acima. */
@@ -500,33 +501,33 @@ const styles = StyleSheet.create({
   cardHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardNameRow: { flexDirection: 'row', alignItems: 'center' },
-  cardName: { color: theme.ink, fontSize: 14 },
-  cardCat: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
+  cardName: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  cardCat: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardAmount: { color: theme.ink, fontSize: 15, fontVariant: ['tabular-nums'] },
-  cardDue: { color: theme.inkFaint, fontSize: 11 },
+  cardAmount: { color: theme.ink, fontSize: type.corpo, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  cardDue: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
   pillOk: { backgroundColor: theme.rule },
   pillWarn: { borderWidth: 1, borderColor: theme.ruleStrong },
   pillLate: { backgroundColor: theme.ink },
-  pillText: { color: theme.inkSoft, fontSize: 9, textTransform: 'uppercase' },
+  pillText: { color: theme.inkSoft, fontSize: type.micro, fontFamily: fonts.light },
   // pillLate usa fundo claro (theme.ink) — precisa de texto escuro em vez do
   // pillText claro padrão, senão fica ilegível (claro sobre quase-branco).
-  pillLateText: { color: theme.paper, fontWeight: '700' },
+  pillLateText: { color: theme.paper},
   /* `bottom` vem do useTabBarInset() no JSX, pra ficar acima da barra
      flutuante — mesma posição do FabButton usado nas outras telas. */
   fab: { position: 'absolute', right: spacing.xl, width: 52, height: 52, borderRadius: 26, backgroundColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
   fabHover: { opacity: 0.85 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: 14, paddingVertical: 8 },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: 20 },
-  amountInput: { color: theme.ink, fontSize: 30, flex: 1 },
+  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  fieldKey: { color: theme.inkFaint, fontSize: 13 },
+  fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldValText: { color: theme.ink, fontSize: 13 },
+  fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   dot: { width: 8, height: 8, borderRadius: 4 },
   switchTrack: { width: 34, height: 20, borderRadius: 10, backgroundColor: theme.ruleStrong, padding: 2 },
   switchTrackOn: { backgroundColor: theme.ink },
@@ -534,5 +535,5 @@ const styles = StyleSheet.create({
   switchThumbOn: { transform: [{ translateX: 14 }] },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
+  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });

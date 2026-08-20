@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, spacing, PALETTE_30 } from '@/lib/theme';
+import { theme, spacing, PALETTE_30, fonts, type } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 export type ColorUsage = { color: string; label: string };
@@ -96,5 +96,5 @@ const styles = StyleSheet.create({
   swatchSelected: { borderColor: theme.ink },
   swatchHover: { borderColor: theme.ruleStrong },
   usedMark: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(5,34,41,0.55)' },
-  hint: { color: theme.inkFaint, fontSize: 11, lineHeight: 15 },
+  hint: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: 15, fontFamily: fonts.light },
 });

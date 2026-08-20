@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
 import { useDemo } from '@/lib/demo-context';
@@ -387,7 +387,7 @@ export default function OnboardingModal({
                 branco e ajustar tudo depois.
               </Text>
 
-              <Text style={[styles.question, { fontSize: 18, marginTop: spacing.lg }]}>
+              <Text style={[styles.question, { fontSize: type.titulo, marginTop: spacing.lg }]}>
                 Quanto você quer conseguir guardar por mês?
               </Text>
               <View style={styles.optionsList}>
@@ -428,7 +428,7 @@ export default function OnboardingModal({
 
           {step === 6 && arquetipo && orcamento && respostas && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>seu diagnóstico</Text>
+              <Text style={styles.eyebrow}>Seu diagnóstico</Text>
 
               <View style={styles.laudoCard}>
                 <Text style={styles.laudoEmoji}>{arquetipo.emoji}</Text>
@@ -551,8 +551,8 @@ const styles = StyleSheet.create({
   progressSegmentDone: { backgroundColor: theme.ink },
   scrollContent: { flexGrow: 1, paddingBottom: spacing.md },
   stepContent: { gap: 12 },
-  eyebrow: { color: theme.inkFaint, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
-  question: { color: theme.ink, fontSize: 23, fontFamily: fonts.light, lineHeight: 29, marginBottom: spacing.sm },
+  eyebrow: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.light },
+  question: { color: theme.ink, fontSize: type.cabecalho, fontFamily: fonts.light, lineHeight: 29, marginBottom: spacing.sm },
   optionsList: { gap: 10 },
   optionCard: {
     flexDirection: 'row',
@@ -566,8 +566,8 @@ const styles = StyleSheet.create({
   },
   optionCardSelected: { borderColor: theme.accent2, backgroundColor: theme.paperRaised },
   optionCardHover: { borderColor: theme.ruleStrong },
-  optionLabel: { color: theme.ink, fontSize: 14, fontWeight: '500' },
-  optionDesc: { color: theme.inkFaint, fontSize: 12, lineHeight: 16, marginTop: 2 },
+  optionLabel: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  optionDesc: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 16, marginTop: 2, fontFamily: fonts.light },
   /* Antes era só um traço embaixo (sem borda nem fundo), e ficava fácil de
      confundir com um rótulo estático em vez de campo editável — foi
      reportado como "não tem caixa de texto pra digitar". Agora tem a mesma
@@ -584,9 +584,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 14,
   },
-  incomePrefix: { color: theme.inkFaint, fontSize: 20 },
-  incomeInput: { color: theme.ink, fontSize: 26, flex: 1, fontVariant: ['tabular-nums'] },
-  hint: { color: theme.inkFaint, fontSize: 12, lineHeight: 18, marginTop: 8 },
+  incomePrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
+  incomeInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 18, marginTop: 8, fontFamily: fonts.light },
   hintLink: { color: theme.accent2, textDecorationLine: 'underline' },
 
   laudoCard: {
@@ -598,12 +598,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  laudoEmoji: { fontSize: 40 },
-  laudoNome: { color: theme.ink, fontSize: 21, fontFamily: fonts.light, textAlign: 'center' },
-  laudoRetrato: { color: theme.inkSoft, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 4 },
+  laudoEmoji: { fontSize: type.valor, fontFamily: fonts.regular },
+  laudoNome: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.light, textAlign: 'center' },
+  laudoRetrato: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, textAlign: 'center', marginTop: 4, fontFamily: fonts.light },
 
-  secaoTitulo: { color: theme.inkFaint, fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: spacing.md },
-  laudoMissao: { color: theme.ink, fontSize: 14, lineHeight: 20 },
+  secaoTitulo: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, marginTop: spacing.md, fontFamily: fonts.light },
+  laudoMissao: { color: theme.ink, fontSize: type.corpo, lineHeight: 20, fontFamily: fonts.regular },
 
   planoItem: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   planoNumero: {
@@ -612,18 +612,18 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginTop: 1,
   },
-  planoNumeroTexto: { color: theme.accent2, fontSize: 11, fontWeight: '700' },
-  planoTexto: { flex: 1, color: theme.inkSoft, fontSize: 13, lineHeight: 19 },
+  planoNumeroTexto: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
+  planoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, fontFamily: fonts.light },
 
   orcamentoBox: { backgroundColor: theme.paperRaised, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: 2 },
   orcamentoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.rule },
   orcamentoRotulo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  orcamentoNome: { color: theme.ink, fontSize: 13 },
-  orcamentoValor: { color: theme.inkSoft, fontSize: 13 },
+  orcamentoNome: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  orcamentoValor: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
   orcamentoTotal: { borderBottomWidth: 0, paddingTop: 10 },
-  orcamentoNomeTotal: { color: theme.ink, fontSize: 13, fontWeight: '600' },
-  orcamentoValorTotal: { color: theme.ink, fontSize: 14, fontWeight: '600' },
+  orcamentoNomeTotal: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  orcamentoValorTotal: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   tabular: { fontVariant: ['tabular-nums'] },
 
   applyBtn: {
@@ -636,11 +636,11 @@ const styles = StyleSheet.create({
   },
   applyBtnHover: { backgroundColor: theme.accentDeep },
   applyBtnDisabled: { borderColor: theme.rule, opacity: 0.7 },
-  applyBtnText: { color: theme.ink, fontSize: 14, fontWeight: '600' },
+  applyBtnText: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
 
   footer: { gap: 10, paddingTop: spacing.md },
   primaryBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 15, alignItems: 'center' },
   primaryBtnHover: { opacity: 0.88 },
-  primaryBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
-  skipBtnText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', paddingVertical: 6 },
+  primaryBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  skipBtnText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', paddingVertical: 6, fontFamily: fonts.light },
 });

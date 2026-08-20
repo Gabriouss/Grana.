@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { colunaConteudo, controleCompacto, useBreakpoint } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '@/components/ScreenHeader';
 import HeaderAction from '@/components/HeaderAction';
@@ -18,7 +19,7 @@ import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { fetchTransactions } from '@/lib/data';
 import { formatMoney, isCreditTx } from '@/lib/format';
-import { theme, radius, spacing, type, screenRhythm, card as cardTokens } from '@/lib/theme';
+import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts } from '@/lib/theme';
 import type { Transaction } from '@/lib/types';
 
 type TabModo = 'geral' | 'despesas' | 'renda';
@@ -32,6 +33,12 @@ const MESES_ABREV = [
 export default function GraficosScreen() {
   const { paddingConteudo } = useTabBarInset();
   const { activeWalletId, activeWalletName } = useWallet();
+  /* O donut nasceu com 150px, medida boa para a largura de um celular. Num
+     card que agora tem mais de 1000px ele vira um detalhe no canto, com a
+     legenda ocupando todo o resto — e é o donut que carrega a informação.
+     Cresce com a janela, mantendo a legenda ao lado. */
+  const { ehAmplo, ehMedio } = useBreakpoint();
+  const tamanhoDonut = ehAmplo ? 280 : ehMedio ? 220 : 150;
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
 
@@ -199,7 +206,7 @@ export default function GraficosScreen() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
       <ScreenHeader
-        eyebrow="relatórios"
+        eyebrow="Relatórios"
         title="Gráficos"
         right={
           <>
@@ -216,11 +223,11 @@ export default function GraficosScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}
+        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Abas Superiores (GERAL | DESPESAS | RENDA) */}
-        <View style={styles.tabContainer}>
+        <View style={[styles.tabContainer, controleCompacto]}>
           {(['despesas', 'renda', 'geral'] as TabModo[]).map((tab) => (
             <AppPressable
               key={tab}
@@ -235,7 +242,7 @@ export default function GraficosScreen() {
         </View>
 
         {/* Filtro de Granularidade (Ano a Ano | Mês a Mês) */}
-        <View style={styles.granularityRow}>
+        <View style={[styles.granularityRow, controleCompacto]}>
           <AppPressable
             style={[styles.granularityChip, granularidade === 'anos' && styles.granularityChipActive]}
             onPress={() => setGranularidade('anos')}
@@ -297,7 +304,7 @@ export default function GraficosScreen() {
           <View style={styles.donutCard}>
             <Text style={styles.donutTitle}>Composição por Categorias</Text>
             <View style={styles.donutRow}>
-              <PieChart data={pieSlices} size={150} />
+              <PieChart data={pieSlices} size={tamanhoDonut} />
               <View style={styles.legendCol}>
                 {pieSlices.slice(0, 5).map((slice, i) => (
                   <View key={i} style={styles.legendRow}>
@@ -362,12 +369,9 @@ const styles = StyleSheet.create({
   },
   tabBtnText: {
     color: theme.inkFaint,
-    fontSize: type.apoio,
-    fontWeight: '500',
-  },
+    fontSize: type.apoio, fontFamily: fonts.light },
   tabBtnTextActive: {
     color: theme.accent2,
-    fontWeight: '700',
   },
   granularityRow: {
     flexDirection: 'row',
@@ -390,12 +394,9 @@ const styles = StyleSheet.create({
   },
   granularityChipText: {
     color: theme.inkFaint,
-    fontSize: type.nota,
-    fontWeight: '500',
-  },
+    fontSize: type.nota, fontFamily: fonts.light },
   granularityChipTextActive: {
     color: '#052229',
-    fontWeight: '700',
   },
   summaryCard: {
     backgroundColor: theme.paperRaised,
@@ -407,13 +408,10 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     color: theme.inkFaint,
-    fontSize: type.nota,
-  },
+    fontSize: type.nota, fontFamily: fonts.light },
   summaryValue: {
     color: theme.ink,
-    fontSize: 22,
-    fontWeight: '700',
-  },
+    fontSize: type.cabecalho, fontFamily: fonts.regular },
   donutCard: {
     backgroundColor: theme.paperRaised,
     borderRadius: cardTokens.radius,
@@ -424,9 +422,7 @@ const styles = StyleSheet.create({
   },
   donutTitle: {
     color: theme.ink,
-    fontSize: type.corpo,
-    fontWeight: '600',
-  },
+    fontSize: type.corpo, fontFamily: fonts.regular },
   donutRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -450,11 +446,8 @@ const styles = StyleSheet.create({
   legendName: {
     flex: 1,
     color: theme.ink,
-    fontSize: type.nota,
-  },
+    fontSize: type.nota, fontFamily: fonts.regular },
   legendVal: {
     color: theme.inkFaint,
-    fontSize: type.nota,
-    fontWeight: '600',
-  },
+    fontSize: type.nota, fontFamily: fonts.light },
 });

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { colunaConteudo } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -45,7 +46,7 @@ import {
 } from '@/lib/offline-cache';
 import { hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { theme, radius, spacing, screenRhythm } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -371,7 +372,7 @@ export default function LancamentosScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <ScreenHeader
-        eyebrow="movimentações"
+        eyebrow="Movimentações"
         title="Lançamentos"
         right={
           <>
@@ -507,7 +508,7 @@ export default function LancamentosScreen() {
         <FlatList
           data={visible}
           keyExtractor={(t) => t.id}
-          contentContainerStyle={[styles.listContent, { paddingBottom: paddingConteudo }]}
+          contentContainerStyle={[styles.listContent, colunaConteudo, { paddingBottom: paddingConteudo }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
@@ -535,7 +536,7 @@ export default function LancamentosScreen() {
                 </Text>
                 {/* Categoria em hierarquia mais baixa com a cor correspondente */}
                 <Text style={styles.rowSub}>
-                  <Text style={{ color: item.color, fontWeight: '600' }}>{item.category}</Text>
+                  <Text style={{ color: item.color}}>{item.category}</Text>
                   {item.recurring ? ' · recorrente' : ''} · {formatDateLabel(item.occurred_on)}
                 </Text>
               </View>
@@ -831,31 +832,31 @@ const styles = StyleSheet.create({
   /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
   listContent: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.gap },
   exportWrap: { marginTop: spacing.xl },
-  emptyText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', marginTop: 30, lineHeight: 18 },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', marginTop: 30, lineHeight: 18, fontFamily: fonts.light },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
   rowHover: { backgroundColor: theme.paperRaised },
   icon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  iconText: { fontSize: 11 },
-  rowTitle: { color: theme.ink, fontSize: 13 },
-  rowSub: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
-  rowAmount: { fontSize: 13, fontVariant: ['tabular-nums'] },
+  iconText: { fontSize: type.legenda, fontFamily: fonts.regular },
+  rowTitle: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  rowSub: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
+  rowAmount: { fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   rowAmountWrap: { flexDirection: 'row', alignItems: 'baseline' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: '#bb6b6033', borderWidth: 1, borderColor: '#bb6b60' },
   typeBtnIn: { backgroundColor: '#4f948333', borderWidth: 1, borderColor: '#4f9483' },
-  typeText: { color: theme.inkFaint, fontSize: 12 },
-  typeTextOn: { color: theme.ink, fontWeight: '500' },
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: 14, paddingVertical: 8 },
+  typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  typeTextOn: { color: theme.ink},
+  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: 20 },
-  amountInput: { color: theme.ink, fontSize: 30, flex: 1 },
+  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  fieldKey: { color: theme.inkFaint, fontSize: 13 },
+  fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldValText: { color: theme.ink, fontSize: 13 },
+  fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   dot: { width: 8, height: 8, borderRadius: 4 },
   switchTrack: { width: 34, height: 20, borderRadius: 10, backgroundColor: theme.ruleStrong, padding: 2 },
   switchTrackOn: { backgroundColor: theme.ink },
@@ -863,7 +864,7 @@ const styles = StyleSheet.create({
   switchThumbOn: { transform: [{ translateX: 14 }] },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
+  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   monthSummaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -876,8 +877,8 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   monthSummaryCol: { flex: 1, alignItems: 'center' },
-  monthSummaryLabel: { color: theme.inkFaint, fontSize: 11, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  monthSummaryVal: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  monthSummaryLabel: { color: theme.inkFaint, fontSize: type.legenda, marginBottom: 2, letterSpacing: 0.5, fontFamily: fonts.light },
+  monthSummaryVal: { fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   monthSummaryDivider: { width: 1, height: 24, backgroundColor: theme.rule },
   dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   dateQuickChip: {
@@ -895,8 +896,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.ink + '15',
     borderColor: theme.ink,
   },
-  dateQuickText: { color: theme.inkFaint, fontSize: 11, fontWeight: '500' },
-  dateQuickTextActive: { color: theme.ink, fontWeight: '600' },
+  dateQuickText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  dateQuickTextActive: { color: theme.ink},
   offlineBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -908,7 +909,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
-  offlineBannerText: { color: theme.inkFaint, fontSize: 11, flexShrink: 1 },
+  offlineBannerText: { color: theme.inkFaint, fontSize: type.legenda, flexShrink: 1, fontFamily: fonts.light },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -920,7 +921,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 8,
   },
-  searchInput: { flex: 1, color: theme.ink, fontSize: 13 },
+  searchInput: { flex: 1, color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   categoryChipsRow: { gap: 6 },
   categoryChip: {
     flexDirection: 'row',
@@ -934,8 +935,8 @@ const styles = StyleSheet.create({
   },
   categoryChipActive: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
   categoryChipDot: { width: 7, height: 7, borderRadius: 3.5 },
-  categoryChipText: { color: theme.inkFaint, fontSize: 12 },
-  categoryChipTextActive: { color: theme.ink, fontWeight: '600' },
+  categoryChipText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  categoryChipTextActive: { color: theme.ink},
   installmentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stepperBtn: {
@@ -948,8 +949,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
   },
-  stepperVal: { color: theme.ink, fontSize: 13, fontWeight: '600', minWidth: 26, textAlign: 'center' },
-  installmentHint: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
+  stepperVal: { color: theme.ink, fontSize: type.apoio, minWidth: 26, textAlign: 'center', fontFamily: fonts.regular },
+  installmentHint: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
 });
 
 

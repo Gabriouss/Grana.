@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CATEGORIES } from '@/lib/types';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 
 export default function CategoryChips({
@@ -47,5 +47,5 @@ const styles = StyleSheet.create({
   },
   chipHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  label: { color: theme.inkSoft, fontSize: 13 },
+  label: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
 });

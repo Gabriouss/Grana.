@@ -5,13 +5,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { colunaConteudo } from '@/lib/breakpoints';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { useAppLock } from '@/lib/app-lock-context';
 import { useScreenCapture } from '@/lib/screen-capture-context';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import {
   createWhatsappPairing,
   deleteUserAccount,
@@ -389,7 +390,7 @@ export default function PerfilScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
-      <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}>
         {/* Header com Avatar */}
         <View style={styles.header}>
           <AppPressable
@@ -873,7 +874,7 @@ export default function PerfilScreen() {
 const styles = StyleSheet.create({
   rowColuna: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule, gap: 4 },
   rowInterna: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowAjuda: { color: theme.inkFaint, fontSize: 11, lineHeight: 14.5, paddingRight: 16 },
+  rowAjuda: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: 14.5, paddingRight: 16, fontFamily: fonts.light },
   avatarFoto: { width: '100%', height: '100%', borderRadius: 999 },
   avatarBadge: {
     position: 'absolute', right: -2, bottom: -2,
@@ -884,25 +885,23 @@ const styles = StyleSheet.create({
   },
   whatsappCode: {
     color: theme.ink,
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: type.valor,
     letterSpacing: 6,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
-    paddingVertical: 8,
-  },
+    paddingVertical: 8, fontFamily: fonts.regular },
   nomeSalvar: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
-  nomeSalvarTexto: { color: theme.paper, fontSize: 15, fontWeight: '600' },
+  nomeSalvarTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   reauthScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   reauthCard: { width: '100%', maxWidth: 400, backgroundColor: theme.paperRaised, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, borderWidth: 1, borderColor: theme.rule },
-  reauthTitle: { color: theme.ink, fontSize: 18, fontWeight: '600' },
-  reauthText: { color: theme.inkSoft, fontSize: 14, lineHeight: 19 },
-  reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: 15, color: theme.ink, backgroundColor: theme.paper },
-  reauthError: { color: '#e08a7d', fontSize: 13, lineHeight: 18 },
+  reauthTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  reauthText: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 19, fontFamily: fonts.light },
+  reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: type.corpo, color: theme.ink, backgroundColor: theme.paper, fontFamily: fonts.regular },
+  reauthError: { color: '#e08a7d', fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.regular },
   reauthDanger: { backgroundColor: '#e08a7d', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
-  reauthDangerText: { color: theme.paper, fontSize: 15, fontWeight: '600' },
+  reauthDangerText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   reauthCancel: { paddingVertical: 12, alignItems: 'center' },
-  reauthCancelText: { color: theme.inkSoft, fontSize: 14 },
+  reauthCancelText: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
   telefoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   ddiFixo: {
     paddingVertical: 10,
@@ -912,7 +911,7 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     backgroundColor: theme.paper,
   },
-  ddiTexto: { color: theme.inkSoft, fontSize: 14, fontWeight: '600' },
+  ddiTexto: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
   telefoneInput: { flex: 1 },
   atalhoLinha: {
     flexDirection: 'row',
@@ -925,27 +924,27 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: spacing.md,
   },
-  atalhoTitulo: { color: theme.ink, fontSize: 13, fontWeight: '500' },
-  atalhoUrl: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
+  atalhoTitulo: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  atalhoUrl: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
   container: { flex: 1, backgroundColor: theme.paper },
   /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
   content: { padding: spacing.xl, gap: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
   avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: theme.paperRaised, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.rule },
-  avatarText: { color: theme.ink, fontSize: 20, fontWeight: '500' },
-  name: { color: theme.ink, fontSize: 14, fontWeight: '500' },
-  sub: { color: theme.inkFaint, fontSize: 12, marginTop: 2 },
-  sectionLabel: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.sm },
+  avatarText: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular },
+  name: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  sub: { color: theme.inkFaint, fontSize: type.nota, marginTop: 2, fontFamily: fonts.light },
+  sectionLabel: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, marginTop: spacing.sm, fontFamily: fonts.light },
   sectionCard: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, paddingHorizontal: spacing.md },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
   tappableRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  rowKey: { color: theme.ink, fontSize: 13 },
-  rowValue: { color: theme.inkFaint, fontSize: 12 },
+  rowKey: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  rowValue: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   signOutBtn: { borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   signOutBtnHover: { backgroundColor: theme.paperRaised },
-  signOutText: { color: theme.ink, fontSize: 14, fontWeight: '500' },
+  signOutText: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   deleteBtn: { borderWidth: 1, borderColor: '#bb6b6040', backgroundColor: '#bb6b6015', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   deleteBtnHover: { backgroundColor: '#bb6b6030' },
-  deleteText: { color: '#e08a7d', fontSize: 14, fontWeight: '500' },
+  deleteText: { color: '#e08a7d', fontSize: type.corpo, fontFamily: fonts.regular },
 });
 

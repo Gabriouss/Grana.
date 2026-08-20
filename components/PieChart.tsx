@@ -1,6 +1,6 @@
 import { View, StyleSheet } from 'react-native';
 import Svg, { Path, G, Text as SvgText } from 'react-native-svg';
-import { theme } from '@/lib/theme';
+import { theme, fonts } from '@/lib/theme';
 
 export type PieSlice = { name: string; color: string; value: number };
 
@@ -76,9 +76,15 @@ function donutSlicePath(cx: number, cy: number, innerR: number, outerR: number, 
    de forma que os rótulos passem a estar *dentro* da área de desenho.
 
    Alcance máximo de um rótulo a partir do centro (50,50):
-     labelR (48) + EXPLODE (3) + recuo do texto (1.5) + largura de "50%" (~13)
-   ou seja ~115.5 — daí a margem de 16 unidades em volta. */
-const VIEW_MARGIN = 16;
+     labelR (48) + EXPLODE (3) + recuo do texto (1.5) + largura de "50%"
+   ou seja ~118 com a Neue Machina — daí a margem de 24 unidades em volta.
+
+   A margem era 16, calculada quando o rótulo ainda caía na fonte do sistema.
+   Ao passar a declarar `fontFamily` explicitamente (o padrão global via
+   Text.defaultProps não funcionava no React 19), o texto passou a sair na
+   Neue Machina, que é mais larga — e o "%" do rótulo da direita começou a ser
+   recortado na borda do viewBox. */
+const VIEW_MARGIN = 24;
 const VIEW_BOX = `${-VIEW_MARGIN} ${-VIEW_MARGIN} ${100 + VIEW_MARGIN * 2} ${100 + VIEW_MARGIN * 2}`;
 
 /** Donut "explodido" com rótulos de porcentagem sempre por fora do anel — mesma lógica do protótipo web. */
@@ -89,8 +95,20 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
   const GAP_DEG = 2.4, EXPLODE = 3;
   let angle = 0;
 
+  /* Normaliza pela soma em vez de assumir que `value` já é porcentagem.
+     A versão anterior fazia `(value / 100) * 360`, o que só funcionava se
+     quem chamasse tivesse convertido antes. A Início convertia; a tela de
+     Gráficos passa o valor em reais — e uma fatia de R$ 620 virava 2232°,
+     seis voltas no círculo, com o rótulo escrito "620%". As fatias se
+     empilhavam e as porcentagens saíam colididas.
+     Somando e dividindo aqui, os dois jeitos de chamar funcionam: quem já
+     manda porcentagens que somam 100 cai no mesmo resultado de antes. */
+  const total = data.reduce((s, seg) => s + Math.max(0, seg.value), 0);
+  if (total <= 0) return null;
+
   const slices = data.map((seg) => {
-    const span = (seg.value / 100) * 360;
+    const fracao = Math.max(0, seg.value) / total;
+    const span = fracao * 360;
     const start = angle + GAP_DEG / 2;
     const end = Math.max(angle + span - GAP_DEG / 2, start);
     const mid = (start + end) / 2;
@@ -106,27 +124,32 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
       labelX,
       labelY: labelPt.y,
       anchor,
+      /* Calculada aqui, não lida de `seg.value`: o valor de entrada pode ser
+         reais. É esta a porcentagem que o rótulo deve mostrar. */
+      pct: fracao * 100,
     };
   });
 
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox={VIEW_BOX}>
-        {slices.map(({ seg, d, labelX, labelY, anchor }) => (
+        {slices.map(({ seg, d, labelX, labelY, anchor, pct }) => (
           <G key={seg.name}>
             <Path d={d} fill={seg.color} />
-            {seg.value > 0 && (
+            {pct >= 1 && (
               <SvgText
                 x={labelX}
                 y={labelY}
+                /* Unidades do viewBox, não pixels: este texto escala junto com
+                   o desenho, então NÃO segue a escala tipográfica em pt. */
                 fontSize={7.5}
-                fontWeight="600"
+                fontFamily={fonts.regular}
                 fill={theme.ink}
                 textAnchor={anchor}
                 alignmentBaseline="central"
                 letterSpacing={0}
               >
-                {`${Math.round(seg.value)}%`}
+                {`${Math.round(pct)}%`}
               </SvgText>
             )}
           </G>

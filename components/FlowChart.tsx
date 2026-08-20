@@ -202,6 +202,8 @@ export default function FlowChart({
         <Circle cx={inPoints[6][0]} cy={inPoints[6][1]} r={3.2} fill={theme.up} opacity={dotOpacity} />
         <Circle cx={outPoints[6][0]} cy={outPoints[6][1]} r={3.2} fill={theme.down} opacity={dotOpacity} />
 
+        {/* unidades do viewBox, não pixels: o texto escala junto com o
+            desenho, então NÃO deve usar a escala tipográfica em pt. */}
         <SvgText x={4} y={94} fontSize={8} fill={theme.inkFaint}>
           {startLabel}
         </SvgText>

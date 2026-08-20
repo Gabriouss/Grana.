@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, card as cardTokens } from '@/lib/theme';
+import { theme, radius, spacing, card as cardTokens, fonts, type } from '@/lib/theme';
 import { formatMoney, isSameMonth } from '@/lib/format';
 import { BANKS, type CreditCard, type Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
@@ -82,12 +82,12 @@ const styles = StyleSheet.create({
   },
   cardHover: { borderColor: theme.ruleStrong },
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  label: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
-  total: { color: theme.down, fontSize: 20, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  emptyText: { color: theme.inkFaint, fontSize: 13, lineHeight: 18 },
+  label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
+  total: { color: theme.down, fontSize: type.destaque, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.light },
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
-  cardName: { color: theme.ink, fontSize: 12, flexShrink: 1 },
-  cardValue: { color: theme.inkFaint, fontSize: 12, fontVariant: ['tabular-nums'] },
+  cardName: { color: theme.ink, fontSize: type.nota, flexShrink: 1, fontFamily: fonts.regular },
+  cardValue: { color: theme.inkFaint, fontSize: type.nota, fontVariant: ['tabular-nums'], fontFamily: fonts.light },
 });

@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { parseCsvTextDetalhado, type ParsedCsvTransaction } from '@/lib/heuristics';
 import { LIMITS } from '@/lib/limits';
 import { formatDateLabel, formatMoney } from '@/lib/format';
@@ -206,15 +206,15 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
-  hint: { color: theme.inkFaint, fontSize: 12, lineHeight: 17 },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
   textArea: {
     backgroundColor: theme.paper,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: theme.rule,
     color: theme.ink,
-    fontSize: 13,
+    fontSize: type.apoio,
     fontFamily: 'monospace',
     padding: spacing.md,
     minHeight: 140,
@@ -228,11 +228,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
-  previewDesc: { color: theme.ink, fontSize: 13 },
-  previewSub: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
-  previewAmount: { fontSize: 13, fontVariant: ['tabular-nums'] },
+  previewDesc: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  previewSub: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
+  previewAmount: { fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
-  backLink: { color: theme.inkFaint, fontSize: 12, textAlign: 'center', paddingVertical: 4 },
+  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  backLink: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4, fontFamily: fonts.light },
 });

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import { hapticTap } from '@/lib/haptics';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
@@ -212,25 +212,25 @@ const styles = StyleSheet.create({
   progressoPreenchido: { height: 3, backgroundColor: theme.accent2, borderRadius: 2 },
 
   topoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.lg },
-  rotulo: { color: theme.inkFaint, fontSize: type.legenda, textTransform: 'uppercase', letterSpacing: 1 },
+  rotulo: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.light },
 
   conteudo: { flex: 1, justifyContent: 'center', gap: spacing.md },
   iconeCirculo: {
     width: 68, height: 68, borderRadius: 34, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm,
   },
-  titulo: { color: theme.ink, fontSize: type.cabecalho, fontWeight: '500', lineHeight: 30 },
-  destaque: { fontSize: 40, fontWeight: '600', letterSpacing: -1 },
-  apoio: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 22, marginTop: spacing.xs },
+  titulo: { color: theme.ink, fontSize: type.cabecalho, lineHeight: 30, fontFamily: fonts.regular },
+  destaque: { fontSize: type.valor, letterSpacing: -1, fontFamily: fonts.regular },
+  apoio: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 22, marginTop: spacing.xs, fontFamily: fonts.light },
 
   zonasToque: { position: 'absolute', left: 0, right: 0, top: 120, bottom: 110, flexDirection: 'row' },
   zona: { height: '100%' },
 
   rodape: { gap: spacing.md, alignItems: 'stretch' },
-  dica: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center' },
+  dica: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center', fontFamily: fonts.light },
   botaoFinal: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
     backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14,
   },
-  botaoFinalTexto: { color: theme.paper, fontSize: type.corpo, fontWeight: '600' },
+  botaoFinalTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });

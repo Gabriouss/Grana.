@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme, radius, spacing, card as cardTokens } from '@/lib/theme';
+import { theme, radius, spacing, card as cardTokens, fonts, type } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { SafeToSpend } from '@/lib/projections';
 import type { Arquetipo } from '@/lib/diagnostico';
@@ -73,14 +73,14 @@ const styles = StyleSheet.create({
     padding: cardTokens.padding,
     gap: spacing.sm,
   },
-  label: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
-  headline: { color: theme.ink, fontSize: 22, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  headlineSuffix: { color: theme.inkFaint, fontSize: 12, fontWeight: '400' },
-  zeroText: { color: theme.inkFaint, fontSize: 13, lineHeight: 18 },
+  label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
+  headline: { color: theme.ink, fontSize: type.cabecalho, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  headlineSuffix: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  zeroText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.light },
   breakdown: { gap: 4, marginTop: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowKey: { color: theme.inkFaint, fontSize: 12, flex: 1, marginRight: spacing.sm },
-  rowVal: { color: theme.inkFaint, fontSize: 12, fontVariant: ['tabular-nums'] },
-  rowValStrong: { color: theme.ink, fontWeight: '600' },
-  hint: { color: theme.accent2, fontSize: 11, lineHeight: 15, marginTop: 4 },
+  rowKey: { color: theme.inkFaint, fontSize: type.nota, flex: 1, marginRight: spacing.sm, fontFamily: fonts.light },
+  rowVal: { color: theme.inkFaint, fontSize: type.nota, fontVariant: ['tabular-nums'], fontFamily: fonts.light },
+  rowValStrong: { color: theme.ink},
+  hint: { color: theme.accent2, fontSize: type.legenda, lineHeight: 15, marginTop: 4, fontFamily: fonts.regular },
 });

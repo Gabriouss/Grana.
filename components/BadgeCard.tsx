@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import AppPressable from './AppPressable';
-import { fonts, radius, spacing, theme } from '@/lib/theme';
+import { fonts, radius, spacing, theme, type } from '@/lib/theme';
 import type { Badge } from '@/lib/gamification';
 
 type Props = {
@@ -90,8 +90,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   emoji: {
-    fontSize: 18,
-  },
+    fontSize: type.titulo, fontFamily: fonts.regular },
   emojiLocked: {
     opacity: 0.4,
   },
@@ -103,8 +102,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontFamily: fonts.regular,
-    fontSize: 9,
-    fontWeight: '600',
+    fontSize: type.micro,
   },
   statusUnlocked: {
     color: theme.accent2,
@@ -114,8 +112,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.regular,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: type.apoio,
     color: theme.ink,
   },
   titleLocked: {
@@ -123,7 +120,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
     lineHeight: 15,
   },

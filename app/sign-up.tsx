@@ -12,7 +12,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
-import { theme, spacing, radius, fonts } from '@/lib/theme';
+import { theme, spacing, radius, fonts, type } from '@/lib/theme';
+import { colunaFormulario } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import PasswordInput from '@/components/PasswordInput';
 import { LIMITS, MIN_PASSWORD, validatePassword } from '@/lib/limits';
@@ -82,7 +83,7 @@ export default function SignUp() {
     const { error: signUpError, needsEmailConfirmation } = await signUp(email.trim(), password);
     setLoading(false);
     if (signUpError) {
-      setError(signUpError);
+      setError(signUpError.mensagem);
       return;
     }
     if (needsEmailConfirmation) {
@@ -96,8 +97,8 @@ export default function SignUp() {
   if (confirmationSentTo) {
     return (
       <View style={styles.container}>
-        <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          <Text style={styles.eyebrow}>quase lá</Text>
+        <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+          <Text style={styles.eyebrow}>Quase lá</Text>
           <Text style={styles.title}>Confirme seu e-mail</Text>
           <Text style={styles.subtitle}>
             Enviamos um link de confirmação para{' '}
@@ -120,8 +121,8 @@ export default function SignUp() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <Text style={styles.eyebrow}>bem-vinda ao Grana.</Text>
+      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <Text style={styles.eyebrow}>Bem-vinda ao Grana.</Text>
         <Text style={styles.title}>Criar conta</Text>
         <Text style={styles.subtitle}>Seus lançamentos ficam salvos na nuvem e sincronizados entre aparelhos.</Text>
 
@@ -192,26 +193,25 @@ export default function SignUp() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
-  eyebrow: { color: theme.inkFaint, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
-  title: { color: theme.ink, fontSize: 34, fontFamily: fonts.light, marginTop: spacing.xs, marginBottom: spacing.sm },
-  subtitle: { color: theme.inkSoft, fontSize: 15, lineHeight: 21, marginBottom: spacing.xxl },
+  eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light },
+  title: { color: theme.ink, fontSize: type.valor, fontFamily: fonts.light, marginTop: spacing.xs, marginBottom: spacing.sm },
+  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 21, marginBottom: spacing.xxl, fontFamily: fonts.light },
   field: { marginBottom: spacing.lg },
-  label: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs },
+  label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, marginBottom: spacing.xs, fontFamily: fonts.light },
   input: {
     borderWidth: 1,
     borderColor: theme.rule,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    fontSize: 15,
+    fontSize: type.corpo,
     color: theme.ink,
-    backgroundColor: theme.paperRaised,
-  },
+    backgroundColor: theme.paperRaised, fontFamily: fonts.regular },
   requisitos: { gap: 5, marginTop: 8 },
   requisitoItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  requisitoTexto: { color: theme.inkFaint, fontSize: 12 },
+  requisitoTexto: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   requisitoTextoOk: { color: theme.inkSoft },
-  errorText: { color: '#e08a7d', fontSize: 13, marginBottom: spacing.sm, lineHeight: 18 },
+  errorText: { color: '#e08a7d', fontSize: type.apoio, marginBottom: spacing.sm, lineHeight: 18, fontFamily: fonts.regular },
   primaryBtn: {
     backgroundColor: theme.ink,
     borderRadius: radius.md,
@@ -220,8 +220,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   primaryBtnHover: { opacity: 0.88 },
-  primaryBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
+  primaryBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   secondaryBtn: { paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs, borderRadius: radius.md },
   secondaryBtnHover: { backgroundColor: theme.paperRaised },
-  secondaryBtnText: { color: theme.inkSoft, fontSize: 14 },
+  secondaryBtnText: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
 });

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMonthYear } from '@/lib/format';
 import AppPressable from './AppPressable';
 
@@ -101,10 +101,8 @@ const styles = StyleSheet.create({
   },
   monthText: {
     color: theme.ink,
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
+    fontSize: type.corpo,
+    letterSpacing: 0.3, fontFamily: fonts.regular },
   currentBadge: {
     backgroundColor: theme.accent + '25',
     paddingHorizontal: 6,
@@ -114,9 +112,6 @@ const styles = StyleSheet.create({
   },
   currentBadgeText: {
     color: theme.accent,
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
+    fontSize: type.micro, fontFamily: fonts.regular },
 });
 

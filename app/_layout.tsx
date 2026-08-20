@@ -40,12 +40,15 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!fontsLoaded) return;
-    // Aplica a fonte da marca como padrão em todo <Text> do app, sem precisar
-    // editar o fontFamily de cada estilo individualmente — qualquer style que
-    // já define fontFamily continua tendo prioridade sobre esse default.
-    const TextAny = Text as any;
-    TextAny.defaultProps = TextAny.defaultProps || {};
-    TextAny.defaultProps.style = [{ fontFamily: 'NeueMachina-Regular' }, TextAny.defaultProps.style];
+    /* Aqui havia um `Text.defaultProps.style = [{ fontFamily: ... }]` para
+       aplicar a fonte da marca em todo <Text> de uma vez. Não funcionava: o
+       React 19 REMOVEU defaultProps de componentes de função, e o <Text> do
+       React Native é um deles — a linha não tinha efeito nenhum desde a
+       migração. O sintoma media-se no navegador: 74 elementos caíam na fonte
+       do sistema e o "Grana." saía em Times New Roman.
+       A fonte agora é declarada explicitamente em cada estilo de texto
+       (fonts.regular / fonts.light), que é também o que o design system
+       exige — ver o memory tipografia-apenas-light-e-regular. */
     SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
@@ -81,7 +84,7 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { session, isLoading } = useSession();
+  const { session, isLoading, emRecuperacao } = useSession();
 
   if (isLoading) {
     return (

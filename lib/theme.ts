@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 /* Paleta petróleo → ciano → verde-menta. Dois pontos de retorno existem:
    lib/theme.petroleo-backup.ts guarda esta mesma paleta antes da
    sincronização com o design system, e lib/theme.classic-dark-backup.ts
@@ -17,6 +18,13 @@ export const theme = {
   accent: '#1fa98d',
   accent2: '#aeffe3',
   accentDeep: '#04475c',
+  /* Realce de hover, para superfícies. Um véu de menta a 7% funciona sobre
+     `paper` E sobre `paperRaised`, o que uma cor sólida não faz: o
+     `backgroundColor: paperRaised` que algumas linhas usavam era invisível
+     quando a própria seção já era paperRaised, e pesado demais quando não
+     era. Para botões, o padrão continua sendo `ruleStrong` na borda ou
+     opacidade — hover não precisa ser fundo em tudo. */
+  hover: 'rgba(174,255,227,0.07)',
 };
 
 /* Recorte de 30 cores da paleta "Refreshing Aqua Tones" (lib/demo-data.ts),
@@ -69,23 +77,40 @@ export const card = {
    mudança visual é mínima, o vocabulário passa a existir. `cabecalho` (22) é
    o degrau que faltava no token original: os cabeçalhos das telas
    convergiram nele de forma independente antes de qualquer padronização. */
+/**
+ * A escala inteira sobe 2pt na web.
+ *
+ * Os tamanhos foram calibrados para um celular, onde a tela fica a uns 30cm
+ * dos olhos. Um monitor fica a 60–70cm, e o mesmo corpo de 11pt que é
+ * confortável na mão vira letra miúda a essa distância — foi o que o autor
+ * relatou ao ler a tela de Desafios no desktop.
+ *
+ * Subir na escala, e não em cada estilo, mantém as proporções entre os
+ * degraus intactas: o que era hierarquia continua sendo hierarquia, só que
+ * legível de longe. E o app nativo não muda, porque o acréscimo é zero fora
+ * da web.
+ */
+const ACRESCIMO_WEB = Platform.OS === 'web' ? 2 : 0;
+
 export const type = {
-  micro: 9,
-  legenda: 11,
-  nota: 12,
-  apoio: 13,
-  corpo: 14,
-  titulo: 17,
-  destaque: 20,
-  cabecalho: 22,
-  marca: 26,
-  valor: 30,
+  micro: 9 + ACRESCIMO_WEB,
+  legenda: 11 + ACRESCIMO_WEB,
+  nota: 12 + ACRESCIMO_WEB,
+  apoio: 13 + ACRESCIMO_WEB,
+  corpo: 14 + ACRESCIMO_WEB,
+  titulo: 17 + ACRESCIMO_WEB,
+  destaque: 20 + ACRESCIMO_WEB,
+  cabecalho: 22 + ACRESCIMO_WEB,
+  marca: 26 + ACRESCIMO_WEB,
+  valor: 30 + ACRESCIMO_WEB,
 };
 
-/* Neue Machina (extraída de grana-prototype.html, que já trazia a fonte
-   embutida em base64) carregada via expo-font em app/_layout.tsx. Regular
-   é o padrão global de todo <Text>; Light fica pra uso pontual em texto
-   grande/de marca, como o "Grana." dos cabeçalhos. */
+/* Neue Machina, carregada via expo-font em app/_layout.tsx.
+   São os DOIS únicos pesos do app — não existe arquivo bold, e `fontWeight`
+   não deve ser usado em lugar nenhum: o React Native o ignora para família
+   customizada sem o arquivo correspondente, enquanto o navegador sintetiza um
+   falso negrito, e o mesmo texto saía diferente em cada plataforma.
+   A hierarquia é: Regular para o que tem peso, Light para texto secundário. */
 export const fonts = {
   regular: 'NeueMachina-Regular',
   light: 'NeueMachina-Light',

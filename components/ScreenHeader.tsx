@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { fonts, spacing, theme } from '@/lib/theme';
+import { fonts, spacing, theme, type } from '@/lib/theme';
 
 /**
  * Cabeçalho padrão das telas principais. Antes cada tela tinha seu próprio
@@ -68,15 +68,13 @@ const styles = StyleSheet.create({
   right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
   eyebrow: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.accent2,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
   title: {
     fontFamily: fonts.regular,
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: type.cabecalho,
     color: theme.ink,
   },
 });

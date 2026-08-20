@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
-import { theme, radius } from '@/lib/theme';
+import { theme, radius, fonts, type } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 /* Recuo interno do trilho e espaço entre os botões. Ficam aqui como
@@ -83,6 +83,6 @@ const styles = StyleSheet.create({
   },
   segmentBtn: { flex: 1, paddingVertical: 7, borderRadius: radius.sm - 2, alignItems: 'center' },
   segmentBtnHover: { backgroundColor: theme.rule },
-  segmentText: { color: theme.inkFaint, fontSize: 11 },
+  segmentText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   segmentTextOn: { color: theme.ink },
 });

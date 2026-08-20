@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 import AppPressable from './AppPressable';
 
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   menuItemHover: { backgroundColor: theme.paper },
-  menuText: { color: theme.ink, fontSize: 13, fontWeight: '500' },
+  menuText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   fabBtn: {
     width: 52,
     height: 52,

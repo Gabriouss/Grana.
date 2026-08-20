@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
+import { ESPACO_ALCA } from './WidgetGrid';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney, formatDateLabel, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { calcularLevelState } from '@/lib/gamification-infinite';
 import { LIMITS } from '@/lib/limits';
@@ -253,15 +254,15 @@ export default function GoalsCarousel({
 const CARD_WIDTH = 152;
 
 const styles = StyleSheet.create({
-  headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionLabel: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
+  headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...(Platform.OS === 'web' ? { paddingRight: ESPACO_ALCA } : null) },
+  sectionLabel: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
   levelPill: {
     backgroundColor: 'rgba(175,255,227,0.08)',
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: radius.pill,
   },
-  levelPillText: { color: theme.accent2, fontSize: 11, fontFamily: fonts.regular },
+  levelPillText: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
   row: { gap: spacing.sm, paddingVertical: 4, paddingRight: spacing.sm },
   card: {
     width: CARD_WIDTH,
@@ -275,24 +276,24 @@ const styles = StyleSheet.create({
   cardHover: { borderColor: theme.ruleStrong },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { color: theme.ink, fontSize: 13, fontWeight: '500' },
-  cardAmount: { color: theme.ink, fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  cardTarget: { color: theme.inkFaint, fontSize: 11, fontVariant: ['tabular-nums'] },
+  cardTitle: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  cardAmount: { color: theme.ink, fontSize: type.corpo, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  cardTarget: { color: theme.inkFaint, fontSize: type.legenda, fontVariant: ['tabular-nums'], fontFamily: fonts.light },
   track: { height: 5, borderRadius: 3, backgroundColor: theme.paper, overflow: 'hidden', marginTop: 2 },
   fill: { height: '100%', borderRadius: 3 },
   cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardPct: { color: theme.inkFaint, fontSize: 11 },
-  cardDeadline: { color: theme.inkFaint, fontSize: 11 },
+  cardPct: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  cardDeadline: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   addCard: { alignItems: 'center', justifyContent: 'center', gap: 6 },
-  addCardText: { color: theme.inkSoft, fontSize: 12 },
+  addCardText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
 
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: 14, paddingVertical: 8 },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: 20 },
-  amountInput: { color: theme.ink, fontSize: 30, flex: 1 },
-  fieldLabel: { color: theme.inkFaint, fontSize: 12 },
+  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
+  fieldLabel: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   iconRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   iconChip: {
     width: 38,
@@ -305,11 +306,11 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  fieldKey: { color: theme.inkFaint, fontSize: 13 },
+  fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldValText: { color: theme.ink, fontSize: 13 },
-  removeDeadlineText: { color: theme.inkFaint, fontSize: 12, paddingVertical: 2 },
+  fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  removeDeadlineText: { color: theme.inkFaint, fontSize: type.nota, paddingVertical: 2, fontFamily: fonts.light },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
+  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });

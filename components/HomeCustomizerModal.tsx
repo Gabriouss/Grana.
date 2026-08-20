@@ -1,6 +1,6 @@
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import {
   HOME_BLOCK_DESCRIPTIONS,
   HOME_BLOCK_ICONS,
@@ -169,14 +169,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.ink,
-    fontSize: type.titulo,
-    fontWeight: '700',
-  },
+    fontSize: type.titulo, fontFamily: fonts.regular },
   hint: {
     color: theme.inkFaint,
     fontSize: type.nota,
-    marginTop: 2,
-  },
+    marginTop: 2, fontFamily: fonts.light },
   closeBtn: {
     padding: spacing.xs,
   },
@@ -190,9 +187,7 @@ const styles = StyleSheet.create({
   presetTitle: {
     color: theme.inkFaint,
     fontSize: type.legenda,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+    letterSpacing: 0.5, fontFamily: fonts.light },
   presetRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -208,9 +203,7 @@ const styles = StyleSheet.create({
   },
   presetChipText: {
     color: theme.ink,
-    fontSize: type.apoio,
-    fontWeight: '500',
-  },
+    fontSize: type.apoio, fontFamily: fonts.regular },
   list: {
     maxHeight: 380,
   },
@@ -255,17 +248,14 @@ const styles = StyleSheet.create({
   },
   label: {
     color: theme.ink,
-    fontSize: type.apoio,
-    fontWeight: '600',
-  },
+    fontSize: type.apoio, fontFamily: fonts.regular },
   labelOff: {
     color: theme.inkFaint,
   },
   desc: {
     color: theme.inkFaint,
     fontSize: type.legenda,
-    lineHeight: 15,
-  },
+    lineHeight: 15, fontFamily: fonts.light },
   footer: {
     paddingTop: spacing.md,
     marginTop: spacing.xs,
@@ -281,7 +271,5 @@ const styles = StyleSheet.create({
   },
   doneBtnText: {
     color: '#052229',
-    fontSize: type.corpo,
-    fontWeight: '700',
-  },
+    fontSize: type.corpo, fontFamily: fonts.regular },
 });

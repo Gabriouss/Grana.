@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 /**
@@ -65,8 +65,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    fontSize: 15,
-    color: theme.ink,
-  },
+    fontSize: type.corpo,
+    color: theme.ink, fontFamily: fonts.regular },
   botao: { paddingHorizontal: spacing.md, paddingVertical: 12 },
 });

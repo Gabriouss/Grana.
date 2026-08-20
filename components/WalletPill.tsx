@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { useWallet } from '@/lib/wallet-context';
 import AppPressable from './AppPressable';
 
@@ -41,5 +41,5 @@ const styles = StyleSheet.create({
     maxWidth: 132,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  texto: { color: theme.inkSoft, fontSize: type.nota, flexShrink: 1 },
+  texto: { color: theme.inkSoft, fontSize: type.nota, flexShrink: 1, fontFamily: fonts.light },
 });

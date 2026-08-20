@@ -3,7 +3,7 @@ import { Alert, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle
 import { Ionicons } from '@expo/vector-icons';
 import Constants, { AppOwnership } from 'expo-constants';
 import type * as SpeechRecognitionTypes from 'expo-speech-recognition';
-import { theme, radius } from '@/lib/theme';
+import { theme, radius, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
 import AppPressable from './AppPressable';
 
@@ -135,6 +135,6 @@ const styles = StyleSheet.create({
   },
   hover: { borderColor: theme.ruleStrong },
   active: { backgroundColor: '#bb6b60', borderColor: '#bb6b60' },
-  label: { color: theme.ink, fontSize: 13, fontWeight: '500' },
+  label: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   labelActive: { color: theme.paper },
 });

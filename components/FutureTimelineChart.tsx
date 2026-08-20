@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { MesProjetado } from '@/lib/projections';
 import PrivacyValue from './PrivacyValue';
@@ -75,10 +75,10 @@ const styles = StyleSheet.create({
   track: { height: TRACK_HEIGHT, justifyContent: 'flex-end', width: 22 },
   bar: { width: '100%', borderRadius: radius.sm, overflow: 'hidden' },
   segment: { width: '100%' },
-  monthLabel: { color: theme.inkFaint, fontSize: 10 },
+  monthLabel: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
   legendRow: { flexDirection: 'row', gap: spacing.md, justifyContent: 'center' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 7, height: 7, borderRadius: 3.5 },
-  legendText: { color: theme.inkFaint, fontSize: 11 },
-  totalText: { color: theme.inkFaint, fontSize: 11, textAlign: 'center' },
+  legendText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  totalText: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center', fontFamily: fonts.light },
 });

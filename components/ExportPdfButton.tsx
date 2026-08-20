@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { MONTH_NAMES } from '@/lib/format';
 import { fetchBills } from '@/lib/data';
 import { gerarRelatorioPdf } from '@/lib/pdf-report';
@@ -83,5 +83,5 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     backgroundColor: theme.paperRaised,
   },
-  texto: { color: theme.inkSoft, fontSize: type.apoio, fontWeight: '500' },
+  texto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
 });

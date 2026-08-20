@@ -1,5 +1,6 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from './theme';
+import { useBreakpoint } from './breakpoints';
 
 /**
  * Medidas da barra de abas flutuante (`app/(app)/_layout.tsx`).
@@ -20,6 +21,16 @@ const MARGEM_MINIMA = 30;
 
 export function useTabBarInset() {
   const insets = useSafeAreaInsets();
+  const { temBarraLateral } = useBreakpoint();
+
+  /* A partir de 768px a navegação vira lateral e a barra flutuante deixa de
+     existir — não há nada no rodapé para desviar. Reservar os ~118px mesmo
+     assim abriria um vão morto no fim de todas as telas do desktop. Como as
+     oito telas já leem daqui, zerar neste ponto resolve todas de uma vez.
+     Sobra só a folga de respiro, que continua fazendo sentido. */
+  if (temBarraLateral) {
+    return { margem: 0, total: 0, paddingConteudo: spacing.xl };
+  }
 
   /* `floatWrap` ancora em bottom:0, que no modo edge-to-edge é a borda física
      da tela — por baixo da navegação do sistema. Com gesture bar (~24dp) a

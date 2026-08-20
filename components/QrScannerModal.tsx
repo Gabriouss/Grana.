@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
 import { guessCategoryFromText } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
@@ -299,11 +299,11 @@ const styles = StyleSheet.create({
   camWrap: { flex: 1, backgroundColor: '#000' },
 
   permissaoWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xxl, backgroundColor: theme.paper },
-  permissaoTitulo: { color: theme.ink, fontSize: type.titulo, fontWeight: '500' },
-  permissaoTexto: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 19, textAlign: 'center' },
+  permissaoTitulo: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  permissaoTexto: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 19, textAlign: 'center', fontFamily: fonts.light },
   botaoPrimario: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, paddingHorizontal: spacing.xxl, marginTop: spacing.sm },
-  botaoPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontWeight: '600' },
-  linkSecundario: { color: theme.inkFaint, fontSize: type.nota, paddingVertical: spacing.sm },
+  botaoPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  linkSecundario: { color: theme.inkFaint, fontSize: type.nota, paddingVertical: spacing.sm, fontFamily: fonts.light },
 
   overlayTopo: {
     position: 'absolute',
@@ -333,24 +333,24 @@ const styles = StyleSheet.create({
   cantoBaixoEsq: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.md },
   cantoBaixoDir: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: radius.md },
   linhaVarredura: { position: 'absolute', left: 6, right: 6, height: 2, backgroundColor: theme.accent2, opacity: 0.75 },
-  dicaMira: { color: theme.ink, fontSize: type.apoio, textAlign: 'center', paddingHorizontal: spacing.xxl },
+  dicaMira: { color: theme.ink, fontSize: type.apoio, textAlign: 'center', paddingHorizontal: spacing.xxl, fontFamily: fonts.regular },
 
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontWeight: '500' },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17 },
-  aviso: { color: '#d3b869', fontSize: type.nota, lineHeight: 17 },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
+  aviso: { color: '#d3b869', fontSize: type.nota, lineHeight: 17, fontFamily: fonts.regular },
 
   notaBox: { backgroundColor: theme.paper, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },
   notaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  notaRotulo: { color: theme.inkFaint, fontSize: type.legenda },
-  notaValor: { color: theme.inkSoft, fontSize: type.nota },
+  notaRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  notaValor: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
 
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8 },
+  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque },
-  amountInput: { color: theme.ink, fontSize: 28, flex: 1 },
+  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
+  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontWeight: '600' },
-  backLink: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4 },
+  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  backLink: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4, fontFamily: fonts.light },
 });

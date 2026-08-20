@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Rect, Line, Text as SvgText, G } from 'react-native-svg';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
@@ -48,7 +48,13 @@ export default function StackedBarChart({
   const chartHeight = height - 40; // reserva para labels do eixo X
   const paddingX = 16;
   const availableWidth = Math.max(containerWidth - paddingX * 2, 100);
-  const columnWidth = Math.min(Math.max(availableWidth / columns.length - 12, 18), 48);
+  /* O teto de largura acompanha quantas colunas existem. Com 48px fixos, um
+     único período virava um traço de 48px perdido no meio de um card de mais
+     de mil pixels — parecia defeito, não dado. Com poucas colunas há espaço
+     de sobra e a barra pode ocupá-lo; com muitas, 48px continua sendo o que
+     mantém o conjunto legível. */
+  const tetoLargura = columns.length === 1 ? 120 : columns.length <= 3 ? 72 : 48;
+  const columnWidth = Math.min(Math.max(availableWidth / columns.length - 12, 18), tetoLargura);
   const gap = (availableWidth - columnWidth * columns.length) / Math.max(columns.length - 1, 1);
 
   const selectedCol =
@@ -140,8 +146,8 @@ export default function StackedBarChart({
                   x={x + columnWidth / 2}
                   y={chartHeight + 18}
                   fill={isSelected ? theme.accent2 : theme.inkFaint}
-                  fontSize={11}
-                  fontWeight={isSelected ? 'bold' : 'normal'}
+                  fontSize={type.legenda}
+                  fontFamily={isSelected ? fonts.regular : fonts.light}
                   textAnchor="middle"
                 >
                   {col.label}
@@ -203,8 +209,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: theme.inkFaint,
-    fontSize: type.corpo,
-  },
+    fontSize: type.corpo, fontFamily: fonts.light },
   selectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -215,18 +220,13 @@ const styles = StyleSheet.create({
   },
   selectedLabel: {
     color: theme.ink,
-    fontSize: type.corpo,
-    fontWeight: '700',
-  },
+    fontSize: type.corpo, fontFamily: fonts.regular },
   selectedSublabel: {
     color: theme.inkFaint,
-    fontSize: type.nota,
-  },
+    fontSize: type.nota, fontFamily: fonts.light },
   selectedTotal: {
     color: theme.accent2,
-    fontSize: type.titulo,
-    fontWeight: '700',
-  },
+    fontSize: type.titulo, fontFamily: fonts.regular },
   breakdownList: {
     gap: 6,
     paddingTop: spacing.xs,
@@ -246,11 +246,8 @@ const styles = StyleSheet.create({
   breakdownCat: {
     flex: 1,
     color: theme.ink,
-    fontSize: type.apoio,
-  },
+    fontSize: type.apoio, fontFamily: fonts.regular },
   breakdownVal: {
     color: theme.ink,
-    fontSize: type.apoio,
-    fontWeight: '600',
-  },
+    fontSize: type.apoio, fontFamily: fonts.regular },
 });

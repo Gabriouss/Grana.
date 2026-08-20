@@ -15,7 +15,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { createWallet } from '@/lib/wallets';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
 import AppPressable from './AppPressable';
 import ToggleSwitch from './ToggleSwitch';
@@ -229,10 +229,10 @@ export default function WalletPickerModal({
         {/* Rodapé com Cancelar e Selecionar */}
         <View style={styles.footer}>
           <AppPressable style={styles.cancelBtn} onPress={onClose}>
-            <Text style={styles.cancelBtnText}>CANCELAR</Text>
+            <Text style={styles.cancelBtnText}>Cancelar</Text>
           </AppPressable>
           <AppPressable style={styles.selectBtn} onPress={handleSelect}>
-            <Text style={styles.selectBtnText}>SELECIONAR</Text>
+            <Text style={styles.selectBtnText}>Selecionar</Text>
           </AppPressable>
         </View>
       </Sheet>
@@ -249,9 +249,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.ink,
-    fontSize: type.titulo,
-    fontWeight: '600',
-  },
+    fontSize: type.titulo, fontFamily: fonts.regular },
   privacyRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -263,8 +261,7 @@ const styles = StyleSheet.create({
   },
   privacyLabel: {
     color: theme.inkFaint,
-    fontSize: type.corpo,
-  },
+    fontSize: type.corpo, fontFamily: fonts.light },
   list: {
     maxHeight: 380,
   },
@@ -307,14 +304,10 @@ const styles = StyleSheet.create({
   },
   walletName: {
     color: theme.ink,
-    fontSize: type.corpo,
-    fontWeight: '500',
-  },
+    fontSize: type.corpo, fontFamily: fonts.regular },
   walletBalance: {
     color: theme.ink,
-    fontSize: type.corpo,
-    fontWeight: '600',
-  },
+    fontSize: type.corpo, fontFamily: fonts.regular },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -329,9 +322,7 @@ const styles = StyleSheet.create({
   },
   addBtnText: {
     color: theme.accent2,
-    fontSize: type.corpo,
-    fontWeight: '500',
-  },
+    fontSize: type.corpo, fontFamily: fonts.regular },
   createBox: {
     backgroundColor: 'rgba(5,34,41,0.6)',
     borderRadius: radius.md,
@@ -343,9 +334,7 @@ const styles = StyleSheet.create({
   },
   createTitle: {
     color: theme.ink,
-    fontSize: type.corpo,
-    fontWeight: '600',
-  },
+    fontSize: type.corpo, fontFamily: fonts.regular },
   input: {
     backgroundColor: theme.paper,
     borderWidth: 1,
@@ -354,13 +343,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     color: theme.ink,
-    fontSize: type.corpo,
-  },
+    fontSize: type.corpo, fontFamily: fonts.regular },
   colorLabel: {
     color: theme.inkFaint,
     fontSize: type.nota,
-    marginTop: 2,
-  },
+    marginTop: 2, fontFamily: fonts.light },
   colorRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -387,8 +374,7 @@ const styles = StyleSheet.create({
   },
   createCancelText: {
     color: theme.inkFaint,
-    fontSize: type.apoio,
-  },
+    fontSize: type.apoio, fontFamily: fonts.light },
   createConfirmBtn: {
     backgroundColor: theme.accent2,
     paddingHorizontal: spacing.lg,
@@ -397,9 +383,7 @@ const styles = StyleSheet.create({
   },
   createConfirmText: {
     color: '#052229',
-    fontSize: type.apoio,
-    fontWeight: '600',
-  },
+    fontSize: type.apoio, fontFamily: fonts.regular },
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -416,9 +400,7 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     color: theme.inkFaint,
     fontSize: type.apoio,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
+    letterSpacing: 0.5, fontFamily: fonts.light },
   selectBtn: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
@@ -426,7 +408,5 @@ const styles = StyleSheet.create({
   selectBtnText: {
     color: theme.accent2,
     fontSize: type.apoio,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
+    letterSpacing: 0.5, fontFamily: fonts.regular },
 });

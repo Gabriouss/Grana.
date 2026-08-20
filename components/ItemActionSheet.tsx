@@ -1,6 +1,6 @@
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 export default function ItemActionSheet({
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -74,5 +74,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   actionBtnHover: { backgroundColor: theme.paper },
-  actionText: { color: theme.ink, fontSize: 14, fontWeight: '500' },
+  actionText: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
 });

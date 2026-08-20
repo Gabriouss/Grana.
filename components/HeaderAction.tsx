@@ -1,6 +1,6 @@
 import { StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 /**
@@ -59,5 +59,5 @@ const styles = StyleSheet.create({
   comRotulo: { paddingVertical: 6, paddingHorizontal: spacing.md },
   soIcone: { paddingVertical: 6, paddingHorizontal: 6 },
   hover: { borderColor: theme.accent2 },
-  texto: { color: theme.inkSoft, fontSize: type.nota },
+  texto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
 });

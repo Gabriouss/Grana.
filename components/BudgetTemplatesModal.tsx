@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { BUDGET_TEMPLATES, type BudgetTemplate } from '@/lib/heuristics';
 import { CATEGORIES } from '@/lib/types';
 import { parseAmount, formatMoneyInput } from '@/lib/format';
@@ -170,11 +170,11 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
-  hint: { color: theme.inkFaint, fontSize: 12, lineHeight: 17 },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 8 },
-  amountPrefix: { color: theme.inkFaint, fontSize: 20 },
-  amountInput: { color: theme.ink, fontSize: 26, flex: 1 },
+  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
+  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular },
   templateList: { maxHeight: 280 },
   templateCard: {
     backgroundColor: theme.paper,
@@ -187,6 +187,6 @@ const styles = StyleSheet.create({
   templateCardSelected: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
   templateCardHover: { borderColor: theme.ruleStrong },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tplName: { color: theme.ink, fontSize: 14, fontWeight: '500' },
-  tplDesc: { color: theme.inkFaint, fontSize: 12, lineHeight: 16 },
+  tplName: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  tplDesc: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 16, fontFamily: fonts.light },
 });

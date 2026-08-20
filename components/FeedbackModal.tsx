@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { LIMITS } from '@/lib/limits';
 import { enviarFeedback, type FeedbackType } from '@/lib/feedback';
 import { useDemo } from '@/lib/demo-context';
@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
-  hint: { color: theme.inkFaint, fontSize: 12, lineHeight: 17 },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
   tiposRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tipoChip: {
     flexDirection: 'row',
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   },
   tipoChipHover: { borderColor: theme.ruleStrong },
   tipoChipSelecionado: { backgroundColor: theme.ink, borderColor: theme.ink },
-  tipoLabel: { color: theme.inkFaint, fontSize: 13, fontWeight: '500' },
+  tipoLabel: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   tipoLabelSelecionado: { color: theme.paper },
   estrelasRow: { flexDirection: 'row', gap: 6 },
   mensagemWrap: {
@@ -191,8 +191,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paper,
     maxHeight: 140,
   },
-  mensagemInput: { color: theme.ink, fontSize: 14, lineHeight: 19, padding: spacing.md, minHeight: 100, textAlignVertical: 'top' },
-  contador: { color: theme.inkFaint, fontSize: 10, textAlign: 'right' },
+  mensagemInput: { color: theme.ink, fontSize: type.corpo, lineHeight: 19, padding: spacing.md, minHeight: 100, textAlignVertical: 'top', fontFamily: fonts.regular },
+  contador: { color: theme.inkFaint, fontSize: type.micro, textAlign: 'right', fontFamily: fonts.light },
   enviarBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
-  enviarTexto: { color: theme.paper, fontSize: 15, fontWeight: '600' },
+  enviarTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });

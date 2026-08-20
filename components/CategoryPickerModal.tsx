@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, PALETTE_30 } from '@/lib/theme';
+import { theme, radius, spacing, PALETTE_30, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import type { Category } from '@/lib/types';
 import { addCategory, deleteCategory, fetchCategories, seedDefaultCategories, updateCategory } from '@/lib/data';
@@ -222,7 +222,7 @@ export default function CategoryPickerModal({
                     }}
                   >
                     <View style={[styles.dot, { backgroundColor: item.color }]} />
-                    <Text style={[styles.catName, selected && { color: theme.ink, fontWeight: '500' }]}>
+                    <Text style={[styles.catName, selected && { color: theme.ink}]}>
                       {item.name}
                     </Text>
                     {selected && <Ionicons name="checkmark" size={16} color={theme.ink} />}
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   catList: { maxHeight: 280 },
   catListTall: { maxHeight: 420 },
   catRow: {
@@ -333,17 +333,17 @@ const styles = StyleSheet.create({
   catRowSelected: { backgroundColor: theme.paper },
   catRowHover: { backgroundColor: theme.paper },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  catName: { color: theme.inkSoft, fontSize: 13, flexShrink: 1 },
-  defaultTag: { color: theme.inkFaint, fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5 },
+  catName: { color: theme.inkSoft, fontSize: type.apoio, flexShrink: 1, fontFamily: fonts.light },
+  defaultTag: { color: theme.inkFaint, fontSize: type.micro, letterSpacing: 0.5, fontFamily: fonts.light },
   rowActions: { flexDirection: 'row', gap: 4, marginLeft: 'auto' },
   rowActionBtn: { padding: 4 },
-  createToggle: { color: theme.inkSoft, fontSize: 13, paddingVertical: 6 },
+  createToggle: { color: theme.inkSoft, fontSize: type.apoio, paddingVertical: 6, fontFamily: fonts.light },
   newForm: { gap: 10, paddingVertical: 10, paddingHorizontal: 4 },
-  newInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: 14, paddingVertical: 6 },
+  newInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 6, fontFamily: fonts.regular },
   formActionsRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   cancelBtn: { paddingVertical: 12, paddingHorizontal: 14 },
-  cancelBtnText: { color: theme.inkFaint, fontSize: 13 },
+  cancelBtnText: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   addBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 12, alignItems: 'center', marginTop: 4 },
   addBtnHover: { opacity: 0.88 },
-  addBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
+  addBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });

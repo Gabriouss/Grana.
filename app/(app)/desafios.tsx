@@ -10,13 +10,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { colunaConteudo } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchBills, fetchBudgets, fetchTransactions } from '@/lib/data';
 import { getGamificationState, type BadgeCategory, type GamificationState } from '@/lib/gamification';
 import { fetchGamification } from '@/lib/goals';
 import { calcularLevelState, type LevelState } from '@/lib/gamification-infinite';
 import { hapticTap } from '@/lib/haptics';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type } from '@/lib/theme';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import BadgeCard from '@/components/BadgeCard';
@@ -106,7 +107,7 @@ export default function DesafiosScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
       <ScreenHeader
-        eyebrow="saúde & consistência"
+        eyebrow="Saúde & consistência"
         title="Desafios"
         right={<WalletPill onPress={() => setWalletModalOpen(true)} />}
       />
@@ -115,7 +116,7 @@ export default function DesafiosScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}
+        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -335,15 +336,13 @@ const styles = StyleSheet.create({
   },
   scorePoints: {
     fontFamily: fonts.regular,
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: type.destaque,
     color: theme.accent2,
   },
   scorePointsLabel: {
     fontFamily: fonts.regular,
-    fontSize: 9,
+    fontSize: type.micro,
     color: theme.inkSoft,
-    textTransform: 'uppercase',
   },
   heroInfo: { flex: 1, gap: 2 },
   levelBadge: {
@@ -355,19 +354,17 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     fontFamily: fonts.regular,
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: type.micro,
     color: theme.accent2,
   },
   masteryTitle: {
     fontFamily: fonts.regular,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: type.titulo,
     color: theme.ink,
   },
   masteryDesc: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
     lineHeight: 15,
   },
@@ -383,13 +380,12 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkSoft,
   },
   progressPct: {
     fontFamily: fonts.regular,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: type.legenda,
     color: theme.accent2,
   },
   progressBarBg: {
@@ -405,12 +401,12 @@ const styles = StyleSheet.create({
   },
   remainingText: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: type.micro,
     color: theme.inkFaint,
   },
   levelHint: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: type.micro,
     color: theme.inkFaint,
     lineHeight: 14,
     marginTop: 2,
@@ -433,18 +429,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  fireEmoji: { fontSize: 16 },
+  fireEmoji: { fontSize: type.titulo, fontFamily: fonts.regular },
   cardTitle: {
     fontFamily: fonts.regular,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: type.corpo,
     color: theme.ink,
   },
   streakBadgeText: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.accent2,
-    fontWeight: '600',
     backgroundColor: 'rgba(174,255,227,0.1)',
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -452,15 +446,13 @@ const styles = StyleSheet.create({
   },
   scoreTotalLabel: {
     fontFamily: fonts.regular,
-    fontSize: 12,
+    fontSize: type.nota,
     color: theme.accent2,
-    fontWeight: '700',
   },
   badgeRatioText: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkSoft,
-    fontWeight: '600',
   },
   weekRow: {
     flexDirection: 'row',
@@ -497,16 +489,14 @@ const styles = StyleSheet.create({
   },
   dayName: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: type.micro,
     color: theme.inkFaint,
   },
   dayNameActive: {
     color: theme.accent2,
-    fontWeight: '700',
   },
   dayNameToday: {
     color: theme.ink,
-    fontWeight: '700',
   },
   factorsList: { gap: spacing.md },
   factorItem: { gap: 3 },
@@ -516,12 +506,12 @@ const styles = StyleSheet.create({
   },
   factorLabel: {
     fontFamily: fonts.regular,
-    fontSize: 12,
+    fontSize: type.nota,
     color: theme.ink,
   },
   factorPoints: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkSoft,
   },
   factorBarBg: {
@@ -536,7 +526,7 @@ const styles = StyleSheet.create({
   },
   factorDesc: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: type.micro,
     color: theme.inkFaint,
   },
   badgesGrid: {

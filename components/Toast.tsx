@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 
 export default function Toast({
@@ -70,5 +70,5 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
-  toastText: { color: theme.paper, fontSize: 13, fontWeight: '500' },
+  toastText: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
 });

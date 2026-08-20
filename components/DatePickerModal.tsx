@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 const MONTH_NAMES = [
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   quickDatesRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
   quickDateChip: {
     flex: 1,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     alignItems: 'center',
   },
-  quickDateText: { color: theme.inkSoft, fontSize: 12, fontWeight: '500' },
+  quickDateText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   calHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 4 },
   calNav: {
     width: 34,
@@ -263,10 +263,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  calMonthYear: { color: theme.ink, fontSize: 15, fontWeight: '500' },
+  calMonthYear: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   weekdaysRow: { flexDirection: 'row', paddingVertical: 4 },
   weekdayCell: { flex: 1, alignItems: 'center' },
-  weekdayText: { color: theme.inkFaint, fontSize: 11, fontWeight: '500', textAlign: 'center' },
+  weekdayText: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center', fontFamily: fonts.light },
   daysGrid: { gap: 4 },
   weekRow: { flexDirection: 'row' },
   dayCell: { flex: 1, alignItems: 'center' },
@@ -280,9 +280,9 @@ const styles = StyleSheet.create({
   dayBtnMuted: { opacity: 0.35 },
   dayBtnToday: { borderWidth: 1, borderColor: theme.ruleStrong },
   dayBtnSelected: { backgroundColor: theme.ink },
-  dayText: { color: theme.ink, fontSize: 13, fontVariant: ['tabular-nums'] },
+  dayText: { color: theme.ink, fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   dayTextMuted: { color: theme.inkFaint },
-  dayTextSelected: { color: theme.paper, fontWeight: '600' },
-  todayLink: { color: theme.inkSoft, fontSize: 13, textAlign: 'center', paddingVertical: 6 },
+  dayTextSelected: { color: theme.paper},
+  todayLink: { color: theme.inkSoft, fontSize: type.apoio, textAlign: 'center', paddingVertical: 6, fontFamily: fonts.light },
 });
 

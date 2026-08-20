@@ -7,6 +7,7 @@ import {
   Animated,
   Image,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -26,7 +27,7 @@ import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, for
 import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
-import { theme, radius, spacing, screenRhythm, card as cardTokens } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -42,6 +43,8 @@ import ScreenHeader from '@/components/ScreenHeader';
 import HeaderAction from '@/components/HeaderAction';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
+import WidgetGrid, { ESPACO_ALCA } from '@/components/WidgetGrid';
+import { colunaConteudo } from '@/lib/breakpoints';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import CsvImportModal from '@/components/CsvImportModal';
@@ -670,6 +673,19 @@ export default function InicioScreen() {
     salvarLayoutHome(novo);
   }
 
+  /* Arraste na grade da web. Recebe só as chaves VISÍVEIS na nova ordem; os
+     blocos ocultos são reinseridos depois, preservados, porque a lista salva
+     guarda a posição deles para quando forem reativados (ver
+     lib/home-layout.ts). Grava no mesmo lugar que o customizador, então as
+     duas formas de reordenar convergem para um estado só. */
+  function reordenarBlocos(chavesVisiveis: string[]) {
+    const visiveis = chavesVisiveis
+      .map((k) => homeLayout.find((b) => b.key === k))
+      .filter((b): b is HomeBlockConfig => !!b);
+    const ocultos = homeLayout.filter((b) => !b.visible);
+    handleLayoutChange([...visiveis, ...ocultos]);
+  }
+
   async function handleDeleteGoal(goal: Goal) {
     if (isDemoMode) {
       setGoals((prev) => prev.filter((g) => g.id !== goal.id));
@@ -918,7 +934,7 @@ export default function InicioScreen() {
                   {t.description && t.description.trim() ? t.description : t.category}
                 </Text>
                 <Text style={styles.recentRowSub}>
-                  <Text style={{ color: t.color, fontWeight: '600' }}>{t.category}</Text> · {formatDateLabel(t.occurred_on)}
+                  <Text style={{ color: t.color}}>{t.category}</Text> · {formatDateLabel(t.occurred_on)}
                 </Text>
               </View>
               <View style={styles.recentAmountRow}>
@@ -943,7 +959,7 @@ export default function InicioScreen() {
       {/* Fora do ScrollView de propósito: a marca fica fixa na tela em vez de
           rolar junto com o conteúdo, para reforçar a identidade visual. */}
       <ScreenHeader
-        eyebrow="início"
+        eyebrow="Início"
         eyebrowBadges={
           <>
             {isDemoMode && <Text style={styles.demoFlag}>exemplo</Text>}
@@ -979,7 +995,7 @@ export default function InicioScreen() {
 
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}
+        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
       >
         {/* Seletor Mês a Mês */}
@@ -1045,11 +1061,25 @@ export default function InicioScreen() {
         {/* Blocos personalizáveis da Home — ordem e visibilidade vêm de
             lib/home-layout.ts, editáveis pelo botão "Personalizar Início"
             no rodapé. Ver HOME_BLOCOS logo acima do return(). */}
-        {homeLayout.filter((b) => b.visible).map((b) => (
-          <FadeIn key={b.key} delay={60} style={b.key === 'atalhos' ? styles.quickChipsSection : undefined}>
-            {HOME_BLOCOS[b.key]}
-          </FadeIn>
-        ))}
+        <WidgetGrid
+          widgets={homeLayout
+            .filter((b) => b.visible)
+            .map((b) => ({
+              chave: b.key,
+              /* Estes quatro são seção com rótulo solto, não card com moldura:
+                 o texto começa no topo do bloco, então a alça sobe para a
+                 linha do rótulo. Ver `alcaTopo` em WidgetGrid. */
+              alcaTopo: (['cofrinhos', 'boletos', 'lancamentos', 'atalhos'] as const).includes(b.key as never)
+                ? -2
+                : undefined,
+              conteudo: (
+                <FadeIn delay={60} style={b.key === 'atalhos' ? styles.quickChipsSection : undefined}>
+                  {HOME_BLOCOS[b.key]}
+                </FadeIn>
+              ),
+            }))}
+          onReordenar={reordenarBlocos}
+        />
 
         {/* Personalizar Início */}
         <AppPressable style={styles.customizeBtn} onPress={() => setCustomizerOpen(true)}>
@@ -1458,9 +1488,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' },
   demoFlag: {
     fontFamily: 'monospace',
-    fontSize: 9,
+    fontSize: type.micro,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
     color: theme.inkFaint,
     borderWidth: 1,
     borderColor: theme.ruleStrong,
@@ -1476,10 +1505,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: spacing.sm,
   },
-  customizeBtnText: { color: theme.inkSoft, fontSize: 12 },
+  customizeBtnText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   avatarBtn: { padding: 2 },
   avatarImg: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: theme.rule },
-  errorText: { color: '#e08a7d', fontSize: 13 },
+  errorText: { color: '#e08a7d', fontSize: type.apoio, fontFamily: fonts.regular },
   quickChipsSection: { gap: 6 },
   quickChipsRow: { gap: 8, paddingVertical: 4 },
   quickChip: {
@@ -1493,8 +1522,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
   },
-  quickChipHover: { backgroundColor: theme.ruleStrong },
-  quickChipText: { color: theme.ink, fontSize: 12 },
+  quickChipHover: { backgroundColor: theme.hover },
+  quickChipText: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.regular },
   smartActionsRow: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.lg },
   smartActionBtn: {
     flexDirection: 'row',
@@ -1509,66 +1538,75 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   smartActionBtnHover: { borderColor: theme.ruleStrong },
-  smartActionText: { color: theme.ink, fontSize: 12, fontWeight: '500' },
+  smartActionText: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.regular },
   card: { backgroundColor: theme.paperRaised, borderRadius: cardTokens.radius, borderWidth: cardTokens.borderWidth, borderColor: theme.rule, padding: cardTokens.padding, gap: spacing.md },
-  cardHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardLabel: { color: theme.ink, fontSize: 13 },
-  flowValue: { color: theme.ink, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  emptyText: { color: theme.inkFaint, fontSize: 13, lineHeight: 18 },
+  /* paddingRight na web: a alça de arraste (components/WidgetGrid.tsx) pousa
+     no canto superior direito do card, e é exatamente onde estes cabeçalhos
+     colocam o "Ver todos", o "+ Definir" e os totais. Abrir o recuo aqui é o
+     que faz a alça caber AO LADO do controle em vez de por cima dele. */
+  cardHeadRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? { paddingRight: ESPACO_ALCA } : null),
+  },
+  cardLabel: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  flowValue: { color: theme.ink, fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.light },
 
   pieWrap: { alignItems: 'center', paddingVertical: spacing.sm },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
   legendChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule },
   categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  categoryName: { color: theme.ink, fontSize: 12 },
-  categoryAmount: { color: theme.inkFaint, fontSize: 12, fontVariant: ['tabular-nums'] },
-  templateBudgetText: { color: theme.inkFaint, fontSize: 12 },
-  addBudgetText: { color: theme.inkSoft, fontSize: 12 },
+  categoryName: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.regular },
+  categoryAmount: { color: theme.inkFaint, fontSize: type.nota, fontVariant: ['tabular-nums'], fontFamily: fonts.light },
+  templateBudgetText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  addBudgetText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   budgetRow: { gap: 6, paddingVertical: 8, borderRadius: radius.sm },
-  budgetRowHover: { backgroundColor: theme.paper },
+  budgetRowHover: { backgroundColor: theme.hover },
   budgetTopLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
   budgetAmountRow: { flexDirection: 'row', alignItems: 'baseline' },
   budgetTrack: { height: 6, borderRadius: 3, backgroundColor: theme.paper, overflow: 'hidden' },
   budgetFill: { height: '100%', borderRadius: 3 },
-  sectionLabel: { color: theme.inkFaint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.sm },
-  seeAllText: { color: theme.inkSoft, fontSize: 12 },
-  recentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  recentRowHover: { backgroundColor: theme.paperRaised },
+  sectionLabel: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, marginTop: spacing.sm, fontFamily: fonts.light },
+  seeAllText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
+  recentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.sm, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  recentRowHover: { backgroundColor: theme.hover },
   recentIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  recentIconText: { fontSize: 11 },
-  recentRowTitle: { color: theme.ink, fontSize: 13 },
-  recentRowSub: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
-  recentRowAmount: { fontSize: 13, fontVariant: ['tabular-nums'] },
+  recentIconText: { fontSize: type.legenda, fontFamily: fonts.regular },
+  recentRowTitle: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  recentRowSub: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
+  recentRowAmount: { fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   recentAmountRow: { flexDirection: 'row', alignItems: 'baseline' },
   dueRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  dueName: { color: theme.ink, fontSize: 13 },
-  dueDate: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
-  dueAmount: { color: theme.ink, fontSize: 13, fontVariant: ['tabular-nums'] },
+  dueName: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  dueDate: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
+  dueAmount: { color: theme.ink, fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: 17, fontWeight: '500' },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: '#bb6b6033', borderWidth: 1, borderColor: '#bb6b60' },
   typeBtnIn: { backgroundColor: '#4f948333', borderWidth: 1, borderColor: '#4f9483' },
-  typeText: { color: theme.inkFaint, fontSize: 12 },
-  typeTextOn: { color: theme.ink, fontWeight: '500' },
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: 14, paddingVertical: 8 },
+  typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  typeTextOn: { color: theme.ink},
+  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: 20 },
-  amountInput: { color: theme.ink, fontSize: 30, flex: 1 },
+  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  fieldKey: { color: theme.inkFaint, fontSize: 13 },
+  fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldValText: { color: theme.ink, fontSize: 13 },
+  fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   switchTrack: { width: 34, height: 20, borderRadius: 10, backgroundColor: theme.ruleStrong, padding: 2 },
   switchTrackOn: { backgroundColor: theme.ink },
   switchThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: theme.paperRaised },
   switchThumbOn: { transform: [{ translateX: 14 }] },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
-  removeBudgetText: { color: theme.inkFaint, fontSize: 13, textAlign: 'center', paddingVertical: 6 },
+  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  removeBudgetText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', paddingVertical: 6, fontFamily: fonts.light },
   dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   dateQuickChip: {
     flex: 1,
@@ -1585,7 +1623,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.ink + '15',
     borderColor: theme.ink,
   },
-  dateQuickText: { color: theme.inkFaint, fontSize: 11, fontWeight: '500' },
-  dateQuickTextActive: { color: theme.ink, fontWeight: '600' },
+  dateQuickText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  dateQuickTextActive: { color: theme.ink},
 });
 

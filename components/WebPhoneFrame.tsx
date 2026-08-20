@@ -3,42 +3,37 @@ import { Platform, View } from 'react-native';
 import { theme } from '@/lib/theme';
 
 /**
- * Só entra em ação quando Platform.OS === 'web' — no iOS/Android retorna os
- * filhos direto, sem nenhum container extra, então o build nativo não muda
- * em nada. Na web, simula uma "tela de celular" centralizada, com o resto
- * da janela do navegador preenchido por um fundo neutro.
+ * Preenche a janela do navegador na web e não faz nada no nativo.
+ *
+ * Antes isto desenhava uma "moldura de celular": o app inteiro espremido em
+ * 460px no centro da página, com o resto preenchido por cinza. Fazia sentido
+ * enquanto a web era só um espelho do app de celular — mostrar o layout
+ * mobile esticado até 2500px seria pior do que emoldurá-lo.
+ *
+ * Deixou de fazer quando o layout passou a ser responsivo de verdade (ver
+ * lib/breakpoints.ts): a partir de 768px a navegação vira lateral e o
+ * conteúdo se reorganiza em colunas. Manter a moldura agora seria travar o
+ * app abaixo do primeiro corte para sempre, e a versão desktop nunca
+ * apareceria. O componente continua existindo para segurar o fundo e a
+ * altura da viewport, que a web precisa e o nativo não.
  */
 export default function WebPhoneFrame({ children }: PropsWithChildren) {
   if (Platform.OS !== 'web') {
     return <>{children}</>;
   }
 
-  return (
-    <View style={webStyles.page as any}>
-      <View style={webStyles.phone as any}>{children}</View>
-    </View>
-  );
+  return <View style={webStyles.page as any}>{children}</View>;
 }
 
 const webStyles = {
   page: {
-    minHeight: '100vh',
+    /* 100dvh e não 100vh: no navegador de celular a barra de endereço some e
+       aparece conforme a rolagem, e 100vh continua valendo a altura da tela
+       com ela escondida — o rodapé fica cortado. `dvh` acompanha. */
+    height: '100dvh',
+    minHeight: '100dvh',
     width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#e5e5e3',
-  },
-  phone: {
-    width: '100%',
-    maxWidth: 460,
-    minWidth: 380,
-    height: '100vh',
-    maxHeight: 900,
     backgroundColor: theme.paper,
     overflow: 'hidden',
-    boxShadow: '0 24px 64px rgba(0,0,0,0.28)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
   },
 };

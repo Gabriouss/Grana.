@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Text, TextInput, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import type { Goal } from '@/lib/types';
@@ -113,19 +113,19 @@ export default function GoalDepositModal({
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: theme.ink, fontSize: 17, fontWeight: '500', flex: 1, marginRight: spacing.sm },
-  subtitle: { color: theme.inkFaint, fontSize: 13 },
+  title: { color: theme.ink, fontSize: type.titulo, flex: 1, marginRight: spacing.sm, fontFamily: fonts.regular },
+  subtitle: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnGuardar: { backgroundColor: '#4f948333', borderWidth: 1, borderColor: '#4f9483' },
   typeBtnResgatar: { backgroundColor: '#bb6b6033', borderWidth: 1, borderColor: '#bb6b60' },
-  typeText: { color: theme.inkFaint, fontSize: 12 },
-  typeTextOn: { color: theme.ink, fontWeight: '500' },
+  typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  typeTextOn: { color: theme.ink},
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: 20 },
-  amountInput: { color: theme.ink, fontSize: 30, flex: 1 },
-  errorText: { color: '#e08a7d', fontSize: 12 },
+  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
+  errorText: { color: '#e08a7d', fontSize: type.nota, fontFamily: fonts.regular },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: 14, fontWeight: '600' },
+  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });

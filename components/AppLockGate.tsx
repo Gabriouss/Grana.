@@ -2,7 +2,7 @@ import { useEffect, useRef, type PropsWithChildren } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppLock } from '@/lib/app-lock-context';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from './AppPressable';
 import BrandLogotype from './BrandLogotype';
 
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     zIndex: 999,
   },
-  texto: { color: theme.inkSoft, fontSize: 14 },
+  texto: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
   botao: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -83,5 +83,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     marginTop: spacing.sm,
   },
-  botaoTexto: { color: theme.paper, fontSize: 15, fontWeight: '600' },
+  botaoTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });

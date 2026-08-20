@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { verificarAtualizacao, dispensarAtualizacao, type InfoAtualizacao } from '@/lib/atualizacao';
 import AppPressable from './AppPressable';
 
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
-  texto: { flex: 1, color: theme.ink, fontSize: 13 },
+  texto: { flex: 1, color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   botaoBaixar: { backgroundColor: theme.accent2, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
-  botaoBaixarTexto: { color: theme.paper, fontSize: 12, fontWeight: '700' },
+  botaoBaixarTexto: { color: theme.paper, fontSize: type.nota, fontFamily: fonts.regular },
 });

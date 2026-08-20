@@ -3,13 +3,26 @@ import { Alert, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { traduzirErroAuth, type ErroAuth } from './auth-errors';
 
 type AuthContextValue = {
   session: Session | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
+  signIn: (email: string, password: string) => Promise<{ error: ErroAuth | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: ErroAuth | null; needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
+  /** Dispara o e-mail com o link para definir uma senha nova. */
+  recuperarSenha: (email: string) => Promise<{ error: ErroAuth | null }>;
+  /** Grava a senha nova. Só funciona com a sessão temporária que o link de recuperação cria. */
+  definirNovaSenha: (senha: string) => Promise<{ error: ErroAuth | null }>;
+  /**
+   * true entre abrir o link de recuperação e salvar a senha nova. O link
+   * autentica de verdade — sem esta marca a pessoa cairia direto na Início,
+   * logada, e a senha continuaria a antiga, que é justamente a que ela não
+   * lembra. O layout raiz usa isto para exigir a troca antes de seguir.
+   */
+  emRecuperacao: boolean;
+  cancelarRecuperacao: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -51,6 +64,7 @@ function extrairTokensDoCallback(
 export function SessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [emRecuperacao, setEmRecuperacao] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -58,8 +72,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
       setIsLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((evento, newSession) => {
       setSession(newSession);
+      /* Na web o cliente do Supabase consome a URL sozinho (detectSessionInUrl)
+         e avisa aqui qual e-mail originou a sessão. PASSWORD_RECOVERY é o
+         único caso em que estar logado NÃO significa que a pessoa pode seguir
+         para o app: ela chegou por um link justamente porque não sabe a senha. */
+      if (evento === 'PASSWORD_RECOVERY') setEmRecuperacao(true);
     });
 
     return () => listener.subscription.unsubscribe();
@@ -85,7 +104,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
       }
 
       const { error } = await supabase.auth.setSession(resultado);
-      if (error) Alert.alert('Não foi possível entrar', error.message);
+      if (error) {
+        Alert.alert('Não foi possível entrar', traduzirErroAuth(error)?.mensagem ?? error.message);
+        return;
+      }
+      /* No nativo não há detectSessionInUrl, então PASSWORD_RECOVERY nunca é
+         emitido — o tipo vem no próprio fragmento do link. */
+      if (url.includes('type=recovery')) setEmRecuperacao(true);
       // Em caso de sucesso, onAuthStateChange (acima) já atualiza `session`
       // sozinho — o Stack.Protected do _layout leva a pessoa pro app.
     }
@@ -100,9 +125,22 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const value: AuthContextValue = {
     session,
     isLoading,
+    emRecuperacao,
+    cancelarRecuperacao: () => setEmRecuperacao(false),
     async signIn(email, password) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error: error ? error.message : null };
+      return { error: traduzirErroAuth(error) };
+    },
+    async recuperarSenha(email) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: Linking.createURL('/'),
+      });
+      return { error: traduzirErroAuth(error) };
+    },
+    async definirNovaSenha(senha) {
+      const { error } = await supabase.auth.updateUser({ password: senha });
+      if (!error) setEmRecuperacao(false);
+      return { error: traduzirErroAuth(error) };
     },
     async signUp(email, password) {
       const { data, error } = await supabase.auth.signUp({
@@ -120,7 +158,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
           emailRedirectTo: Linking.createURL('/'),
         },
       });
-      return { error: error ? error.message : null, needsEmailConfirmation: !error && !data.session };
+      return { error: traduzirErroAuth(error), needsEmailConfirmation: !error && !data.session };
     },
     async signOut() {
       try {

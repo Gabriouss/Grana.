@@ -7,8 +7,10 @@ import { BlurView, BlurTargetView } from 'expo-blur';
 import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
 import { theme, spacing } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
+import SideNav, { type ItemNav } from '@/components/SideNav';
 
 /* expo-router não reexporta o tipo de `tabBar` publicamente (ele vive numa
    cópia interna do react-navigation dentro do próprio pacote) — em vez de um
@@ -161,34 +163,56 @@ function useAtalhosDeepLink() {
   }, [router]);
 }
 
+/* Destinos da barra lateral. As cinco primeiras são as mesmas abas do
+   celular; "Gráficos" e "Perfil" só existem aqui porque o limite de cinco
+   abas que as escondia é uma restrição de barra inferior, não do produto. */
+const ITENS_LATERAIS: ItemNav[] = [
+  { rota: 'index', rotulo: 'Início', icone: 'home-outline' },
+  { rota: 'lancamentos', rotulo: 'Débito e Pix', icone: 'wallet-outline' },
+  { rota: 'credito', rotulo: 'Crédito', icone: 'card-outline' },
+  { rota: 'contas', rotulo: 'Boletos', icone: 'receipt-outline' },
+  { rota: 'desafios', rotulo: 'Desafios', icone: 'trophy-outline' },
+  { rota: 'graficos', rotulo: 'Gráficos', icone: 'bar-chart-outline' },
+];
+
+const RODAPE_LATERAL: ItemNav[] = [{ rota: 'perfil', rotulo: 'Perfil', icone: 'person-circle-outline' }];
+
 export default function AppTabsLayout() {
   const blurTarget = useRef<View>(null);
+  const { temBarraLateral } = useBreakpoint();
   useAtalhosDeepLink();
 
+  /* `tabBarPosition: 'left'` faz o próprio BottomTabView virar a orientação
+     do container para linha e renderizar a barra ANTES das telas — ou seja,
+     a lateral entra no fluxo normal e as telas ocupam o que sobra, sem
+     posicionamento absoluto nem cálculo de margem manual. */
   return (
     <WalletProvider>
       <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
         <Tabs
-          tabBar={(props) => <FloatingTabBar {...props} blurTarget={blurTarget} />}
-          screenOptions={{ headerShown: false }}
+          tabBar={(props) =>
+            temBarraLateral ? (
+              <SideNav
+                itens={ITENS_LATERAIS}
+                rodape={RODAPE_LATERAL}
+                rotaAtiva={props.state.routes[props.state.index]?.name ?? 'index'}
+                onNavegar={(rota) => props.navigation.navigate(rota as never)}
+              />
+            ) : (
+              <FloatingTabBar {...props} blurTarget={blurTarget} />
+            )
+          }
+          screenOptions={{ headerShown: false, tabBarPosition: temBarraLateral ? 'left' : 'bottom' }}
         >
           <Tabs.Screen name="index" options={{ title: 'Início' }} />
           <Tabs.Screen name="lancamentos" options={{ title: 'Débito e Pix' }} />
           <Tabs.Screen name="credito" options={{ title: 'Crédito' }} />
           <Tabs.Screen name="contas" options={{ title: 'Boletos' }} />
           <Tabs.Screen name="desafios" options={{ title: 'Desafios' }} />
-          <Tabs.Screen
-            name="graficos"
-            options={{
-              href: null,
-            }}
-          />
-          <Tabs.Screen
-            name="perfil"
-            options={{
-              href: null, // Acessível pelo avatar no topo da Home
-            }}
-          />
+          {/* href: null tira da barra INFERIOR (que só comporta cinco). A
+              lateral monta a própria lista e inclui as duas. */}
+          <Tabs.Screen name="graficos" options={{ href: null }} />
+          <Tabs.Screen name="perfil" options={{ href: null }} />
         </Tabs>
       </BlurTargetView>
     </WalletProvider>

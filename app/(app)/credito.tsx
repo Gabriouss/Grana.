@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { colunaConteudo } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import {
   addCreditCard,
@@ -30,7 +31,7 @@ import {
 import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type CreditCardInvoicePayment, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -520,7 +521,7 @@ export default function CreditoScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
       <ScreenHeader
-        eyebrow="cartões & faturas"
+        eyebrow="Cartões & faturas"
         title="Crédito"
         right={
           <>
@@ -539,7 +540,7 @@ export default function CreditoScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: paddingConteudo }]}
+        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -588,7 +589,7 @@ export default function CreditoScreen() {
                   <View style={styles.cardTopRow}>
                     <View style={styles.cardBankTag}>
                       <View style={[styles.bankDot, { backgroundColor: card.color }]} />
-                      <Text style={styles.cardBankName}>{card.name}</Text>
+                      <Text style={styles.cardBankName} numberOfLines={1}>{card.name}</Text>
                     </View>
                     <Text style={styles.cardDigits}>{card.last_digits ? `•••• ${card.last_digits}` : ''}</Text>
                   </View>
@@ -744,7 +745,7 @@ export default function CreditoScreen() {
                 onPress={() => setCardBank(b.id)}
               >
                 <View style={[styles.bankDot, { backgroundColor: b.color }]} />
-                <Text style={[styles.bankChipText, cardBank === b.id && { color: theme.ink, fontWeight: '700' }]}>
+                <Text style={[styles.bankChipText, cardBank === b.id && { color: theme.ink}]}>
                   {b.name}
                 </Text>
               </AppPressable>
@@ -862,7 +863,7 @@ export default function CreditoScreen() {
                     onPress={() => setTxCardId(c.id)}
                   >
                     <View style={[styles.bankDot, { backgroundColor: c.color }]} />
-                    <Text style={[styles.bankChipText, txCardId === c.id && { color: theme.ink, fontWeight: '700' }]}>
+                    <Text style={[styles.bankChipText, txCardId === c.id && { color: theme.ink}]}>
                       {c.name}
                     </Text>
                   </AppPressable>
@@ -958,7 +959,7 @@ export default function CreditoScreen() {
                     onPress={() => setPayWalletId(w.id)}
                   >
                     <View style={[styles.bankDot, { backgroundColor: w.color }]} />
-                    <Text style={[styles.bankChipText, payWalletId === w.id && { color: theme.ink, fontWeight: '700' }]}>
+                    <Text style={[styles.bankChipText, payWalletId === w.id && { color: theme.ink}]}>
                       {w.name}
                     </Text>
                   </AppPressable>
@@ -1042,8 +1043,7 @@ const styles = StyleSheet.create({
   },
   addCardBtnText: {
     fontFamily: fonts.regular,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: type.legenda,
     color: theme.accent2,
   },
   scroll: { flex: 1 },
@@ -1077,26 +1077,23 @@ const styles = StyleSheet.create({
   },
   cardBankName: {
     fontFamily: fonts.regular,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: type.nota,
     color: theme.ink,
   },
   cardDigits: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: type.micro,
     color: theme.inkFaint,
   },
   cardMidRow: { gap: 2, marginVertical: 4 },
   cardInvoiceLabel: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: type.micro,
     color: theme.inkFaint,
-    textTransform: 'uppercase',
   },
   cardInvoiceValue: {
     fontFamily: fonts.regular,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: type.titulo,
     color: theme.down,
   },
   cardBottomRow: { gap: 4 },
@@ -1107,14 +1104,13 @@ const styles = StyleSheet.create({
   },
   cardLimitText: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: type.micro,
     color: theme.inkFaint,
   },
   cardLimitPct: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: type.micro,
     color: theme.accent2,
-    fontWeight: '600',
   },
   limitTrack: {
     height: 4,
@@ -1137,13 +1133,12 @@ const styles = StyleSheet.create({
   },
   emptyCardsTitle: {
     fontFamily: fonts.regular,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: type.corpo,
     color: theme.ink,
   },
   emptyCardsSub: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
     textAlign: 'center',
     lineHeight: 16,
@@ -1157,8 +1152,7 @@ const styles = StyleSheet.create({
   },
   emptyCardActionText: {
     fontFamily: fonts.regular,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: type.legenda,
     color: theme.accent2,
   },
   invoiceSummaryCard: {
@@ -1176,13 +1170,12 @@ const styles = StyleSheet.create({
   },
   invoiceLabel: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
   },
   invoiceTotal: {
     fontFamily: fonts.regular,
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: type.destaque,
     color: theme.down,
   },
   invoiceStatusRow: {
@@ -1193,7 +1186,7 @@ const styles = StyleSheet.create({
   },
   invoiceDueText: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
   },
   invoiceStatusBadge: {
@@ -1204,8 +1197,7 @@ const styles = StyleSheet.create({
   },
   invoiceStatusText: {
     fontFamily: fonts.regular,
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: type.micro,
   },
   payInvoiceBtn: {
     flexDirection: 'row',
@@ -1219,8 +1211,7 @@ const styles = StyleSheet.create({
   },
   payInvoiceBtnText: {
     fontFamily: fonts.regular,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: type.apoio,
     color: theme.paper,
   },
   undoPayBtn: {
@@ -1230,7 +1221,7 @@ const styles = StyleSheet.create({
   },
   undoPayBtnText: {
     fontFamily: fonts.regular,
-    fontSize: 12,
+    fontSize: type.nota,
     color: theme.inkFaint,
     textDecorationLine: 'underline',
   },
@@ -1245,21 +1236,19 @@ const styles = StyleSheet.create({
   },
   addPurchaseBtnText: {
     fontFamily: fonts.regular,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: type.legenda,
     color: '#052229',
   },
   sectionLabel: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: spacing.sm,
   },
   emptyText: {
     fontFamily: fonts.regular,
-    fontSize: 12,
+    fontSize: type.nota,
     color: theme.inkFaint,
     paddingVertical: spacing.md,
   },
@@ -1274,8 +1263,7 @@ const styles = StyleSheet.create({
   txInfo: { flex: 1, gap: 2 },
   txDesc: {
     fontFamily: fonts.regular,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: type.apoio,
     color: theme.ink,
   },
   instBadge: {
@@ -1286,19 +1274,17 @@ const styles = StyleSheet.create({
   },
   instBadgeText: {
     fontFamily: fonts.regular,
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: type.micro,
     color: theme.accent2,
   },
   txDate: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
   },
   txAmount: {
     fontFamily: fonts.regular,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: type.apoio,
     color: theme.down,
   },
   sheetHeader: {
@@ -1309,21 +1295,20 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontFamily: fonts.regular,
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: type.titulo,
     color: theme.ink,
   },
   input: {
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
     color: theme.ink,
-    fontSize: 13,
+    fontSize: type.apoio,
     paddingVertical: 8,
     fontFamily: fonts.regular,
   },
   inputLabel: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
     marginTop: spacing.xs,
   },
@@ -1345,7 +1330,7 @@ const styles = StyleSheet.create({
   },
   bankChipText: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkSoft,
   },
   row2Cols: {
@@ -1363,12 +1348,12 @@ const styles = StyleSheet.create({
   },
   amountPrefix: {
     color: theme.inkFaint,
-    fontSize: 20,
+    fontSize: type.destaque,
     fontFamily: fonts.regular,
   },
   amountInput: {
     color: theme.ink,
-    fontSize: 28,
+    fontSize: type.marca,
     flex: 1,
     fontFamily: fonts.regular,
   },
@@ -1381,7 +1366,7 @@ const styles = StyleSheet.create({
   },
   fieldKey: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: type.legenda,
     color: theme.inkFaint,
   },
   fieldVal: {
@@ -1391,7 +1376,7 @@ const styles = StyleSheet.create({
   },
   fieldValText: {
     fontFamily: fonts.regular,
-    fontSize: 12,
+    fontSize: type.nota,
     color: theme.ink,
   },
   saveBtn: {
@@ -1407,7 +1392,6 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: theme.paper,
     fontFamily: fonts.regular,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: type.apoio,
   },
 });
