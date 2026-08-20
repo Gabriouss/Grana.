@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -10,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { parseCsvTextDetalhado, type ParsedCsvTransaction } from '@/lib/heuristics';

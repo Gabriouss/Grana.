@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   RefreshControl,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';

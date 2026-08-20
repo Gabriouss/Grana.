@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   Modal,
@@ -14,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';

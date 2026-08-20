@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Platform,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';

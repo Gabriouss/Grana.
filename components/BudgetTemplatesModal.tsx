@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { BUDGET_TEMPLATES, type BudgetTemplate } from '@/lib/heuristics';

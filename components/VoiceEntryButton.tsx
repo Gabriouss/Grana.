@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Platform, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import Constants, { AppOwnership } from 'expo-constants';
 import type * as SpeechRecognitionTypes from 'expo-speech-recognition';
