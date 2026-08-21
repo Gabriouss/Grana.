@@ -39,9 +39,14 @@ function somarExtenso(palavras: string[]): number {
 }
 
 /** Converte trechos numéricos por extenso em dígitos e junta "X reais e Y centavos". */
+/* Fonte única das palavras que a pessoa usa no lugar de "reais". Toda regex
+   que precisa reconhecer moeda monta a partir daqui — a lista estava copiada
+   literalmente em sete pontos deste arquivo, o que só espera divergir. */
+const MOEDA = 'reais|real|contos?|pila|paus?|mangos?';
+
 /* Palavra que, logo depois de um bloco numérico fechado, confirma que aquilo
    era mesmo um valor em dinheiro (não um artigo indefinido). */
-const PALAVRA_MOEDA = /^(?:reais|real|contos?|pila|pau|mangos?)$/i;
+const PALAVRA_MOEDA = new RegExp(`^(?:${MOEDA})$`, 'i');
 
 export function normalizarTexto(texto: string): string {
   const tokens = texto.split(/(\s+)/);
@@ -117,8 +122,8 @@ export function normalizarTexto(texto: string): string {
        outra palavra de moeda, pra não confundir com "50 reais e 30 mil" ou
        frases com dois valores diferentes na mesma mensagem. */
     .replace(
-      /(\d+)\s*(?:reais|real)\s*e\s*(\d{1,2})\b(?!\s*(?:mil|reais|real|conto|contos|pila|pau|mangos?))/gi,
-      (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`
+      new RegExp(`(\\d+)\\s*(?:reais|real)\\s*e\\s*(\\d{1,2})\\b(?!\\s*(?:mil|${MOEDA}))`, 'gi'),
+      (_m: string, r: string, c: string) => `${r},${String(c).padStart(2, '0')} reais`
     )
     .replace(/\s{2,}/g, ' ')
     .trim();
@@ -209,7 +214,7 @@ export function guessAmountFromText(text: string): number {
 
   // "350 reais", "120 conto", "50 pila" — em fala e em mensagem informal o
   // cifrão quase nunca aparece; a moeda vem por extenso depois do número.
-  const comMoeda = normalizado.match(/([\d.,]+)\s*(?:reais|real|conto|contos|pila|pau|mangos?)\b/i);
+  const comMoeda = normalizado.match(new RegExp(`([\\d.,]+)\\s*(?:${MOEDA})\\b`, 'i'));
   if (comMoeda) return parseAmount(comMoeda[1]);
 
   // "150,00" / "1.250,50" — número com centavos explícitos.
@@ -242,8 +247,8 @@ const CONECTOR_FINAL = new RegExp(`\\s+${CONECTOR}$`, 'i');
    como se fosse um valor solto, mesmo colado numa letra que não tem nada a
    ver com dinheiro (mesma causa-raiz do bug já corrigido na regra 3 de
    guessDescFromText, só que nesta função, chamada por TODAS as regras). */
-const VALOR_INICIAL = /^(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?\b\s*/i;
-const VALOR_FINAL = /\s*(?:r\$\s*)?(?<![a-zà-ÿ])\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?$/i;
+const VALOR_INICIAL = new RegExp(`^(?:r\\$\\s*)?\\d[\\d.,]*\\s*(?:${MOEDA})?\\b\\s*`, 'i');
+const VALOR_FINAL = new RegExp(`\\s*(?:r\\$\\s*)?(?<![a-zà-ÿ\\d])\\d[\\d.,]*\\s*(?:${MOEDA})?$`, 'i');
 /* Forma de pagamento mencionada solta no fim da frase — "Mercado 50 no pix",
    "Farmácia 30 no débito" — não é parte do nome do lançamento. */
 const FORMA_PAGAMENTO_FINAL =
@@ -286,7 +291,7 @@ function capitalizar(s: string): string {
 /* Expressão de valor: "R$ 350", "350 reais", "350,00", "350". Usada tanto
    para reconhecer o padrão "<Nome> de <Valor>" quanto para apagar o valor do
    texto e ficar só com o nome. */
-const EXPRESSAO_VALOR = /(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?/i;
+const EXPRESSAO_VALOR = new RegExp(`(?:r\\$\\s*)?\\d[\\d.,]*\\s*(?:${MOEDA})?`, 'i');
 
 export function guessDescFromText(text: string, type: TxType): string {
   /* Pontuação de frase solta no fim ("Almoço de 20 reais.") vem principalmente
@@ -332,11 +337,18 @@ export function guessDescFromText(text: string, type: TxType): string {
      lookahead de letra faz ela só apagar números que estão SOZINHOS
      (separados por espaço/pontuação dos dois lados) — que é o caso real de
      "mercado 50" → "mercado" — e deixa "C6", "99" (de "99 Pop", já tratado
-     em CATEGORY_KEYWORDS) e afins intactos. */
+     em CATEGORY_KEYWORDS) e afins intactos.
+
+     Os `\d` dentro do lookbehind/lookahead não são decoração: sem eles a
+     regex ainda comia dígito colado em letra, por backtracking. Em "99pop",
+     `\d[\d.,]*` é guloso e pega "99"; o lookahead vê o "p" e reprova; aí o
+     motor RECUA pra só "9", cujo próximo caractere é "9" — não é letra, então
+     passa, e a descrição saía "9pop". Exigindo que não haja dígito de nenhum
+     dos lados, o recuo também é reprovado e "99pop" fica inteiro. */
   const semValor = texto
     .replace(/r\$\s*[\d.,]+/gi, ' ')
-    .replace(/[\d.,]+\s*(?:reais|real|conto|contos|pila|pau|mangos?)\b/gi, ' ')
-    .replace(/(?<![a-zà-ÿ])\d[\d.,]*(?![a-zà-ÿ])/gi, ' ');
+    .replace(new RegExp(`[\\d.,]+\\s*(?:${MOEDA})\\b`, 'gi'), ' ')
+    .replace(/(?<![a-zà-ÿ\d])\d[\d.,]*(?![a-zà-ÿ\d])/gi, ' ');
   const sobra = limparSobra(semValor);
   if (sobra.length >= 2) return capitalizar(sobra.slice(0, 40));
 

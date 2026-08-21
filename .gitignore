@@ -37,6 +37,11 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# material de suporte recebido de usuários (prints, relatos) — contém dado
+# financeiro de terceiro e o repositório é público: nunca versionar
+Feedbacks/
+Screenshots/
+
 # logs de sessão local do dev server
 .expo-start.log
 .expo-web.log
