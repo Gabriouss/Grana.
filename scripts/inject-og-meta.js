@@ -19,6 +19,7 @@ const DESCRICAO = 'Controle financeiro pessoal: lançamentos, cartões, orçamen
 
 const metaTags = `
     <meta name="description" content="${DESCRICAO}" />
+    <meta name="facebook-domain-verification" content="tmjp4xpzl7euabyjjdk0hfrvcgsi2i" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="${TITULO}" />
     <meta property="og:title" content="${TITULO}" />
