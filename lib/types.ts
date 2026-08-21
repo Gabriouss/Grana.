@@ -8,20 +8,19 @@ export type BankInfo = {
   color: string;
   bgDark: string;
   iconName?: string;
-  packageNames?: string[]; // IDs de pacotes Android para detecção de push
 };
 
 export const BANKS: BankInfo[] = [
-  { id: 'nubank', name: 'Nubank', color: '#820ad1', bgDark: '#3b045e', packageNames: ['com.nu.production'] },
-  { id: 'itau', name: 'Itaú', color: '#ec7000', bgDark: '#5e2d00', packageNames: ['com.itau', 'com.itau.personnalite'] },
-  { id: 'inter', name: 'Inter', color: '#ff7a00', bgDark: '#663100', packageNames: ['br.com.intermedium'] },
-  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', bgDark: '#540313', packageNames: ['com.bradesco'] },
-  { id: 'santander', name: 'Santander', color: '#ec0000', bgDark: '#590000', packageNames: ['com.santander.app'] },
-  { id: 'c6', name: 'C6 Bank', color: '#242424', bgDark: '#121212', packageNames: ['com.c6bank.app'] },
-  { id: 'mercadopago', name: 'Mercado Pago', color: '#009ee3', bgDark: '#00405c', packageNames: ['com.mercadopago.wallet'] },
-  { id: 'caixa', name: 'Caixa', color: '#0066b3', bgDark: '#002c4d', packageNames: ['br.com.gabba.Caixa'] },
-  { id: 'bb', name: 'Banco do Brasil', color: '#f8d117', bgDark: '#5e4e00', packageNames: ['br.com.bb.android'] },
-  { id: 'btg', name: 'BTG Pactual', color: '#001e62', bgDark: '#000f30', packageNames: ['com.btg.pactual.banking'] },
+  { id: 'nubank', name: 'Nubank', color: '#820ad1', bgDark: '#3b045e' },
+  { id: 'itau', name: 'Itaú', color: '#ec7000', bgDark: '#5e2d00' },
+  { id: 'inter', name: 'Inter', color: '#ff7a00', bgDark: '#663100' },
+  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', bgDark: '#540313' },
+  { id: 'santander', name: 'Santander', color: '#ec0000', bgDark: '#590000' },
+  { id: 'c6', name: 'C6 Bank', color: '#242424', bgDark: '#121212' },
+  { id: 'mercadopago', name: 'Mercado Pago', color: '#009ee3', bgDark: '#00405c' },
+  { id: 'caixa', name: 'Caixa', color: '#0066b3', bgDark: '#002c4d' },
+  { id: 'bb', name: 'Banco do Brasil', color: '#f8d117', bgDark: '#5e4e00' },
+  { id: 'btg', name: 'BTG Pactual', color: '#001e62', bgDark: '#000f30' },
   { id: 'outro', name: 'Outro Banco', color: '#8b9198', bgDark: '#2a2f35' },
 ];
 

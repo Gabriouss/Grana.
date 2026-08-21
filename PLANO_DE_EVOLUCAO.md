@@ -89,10 +89,25 @@ create policy "usuario acessa proprio xp" on user_gamification for all
 
 ## 🎙️ ÉPICO 3: Entrada Ultrarrápida de Dados
 
-### 3.1. Leitura Automática de Notificações de Bancos (Android)
-- **Plugin Expo / Config Plugin**: Implementação de `NotificationListenerService` nativo em Android.
-- **Lista de Bancos Monitorados**: Nubank, Inter, Itaú, Bradesco, Santander, C6, Mercado Pago, PicPay, Caixa, Banco do Brasil, BTG Pactual.
-- **Integração com Heurística**: Extração automática de valores de Pix, Débito e Crédito para lançar em background.
+### 3.1. ~~Leitura Automática de Notificações de Bancos (Android)~~ — CANCELADO (20/08/2026)
+
+**Não implementar. Decisão do dono do produto.**
+
+Exigiria `NotificationListenerService`, a permissão mais invasiva do Android: o app
+passaria a ler TODA notificação do aparelho — WhatsApp, e-mail, códigos 2FA — e não só
+as dos bancos, porque filtrar por pacote acontece depois da captura. Custo de
+privacidade alto demais para o ganho, que era poupar alguns toques por lançamento.
+
+Some-se a isso: só funciona com build de desenvolvimento, dependeria de uma biblioteca
+nova e de mantenedor único para o acesso mais sensível do sistema, e o Google Play
+revisa esse tipo de acesso com lupa.
+
+As outras entradas rápidas já cobrem o caso de uso: WhatsApp (3.2), QR Code de nota
+fiscal (3.3), voz e colar comprovante.
+
+> As funções `identificarBancoPorPacote`, `classificarDestinoNotificacao` e
+> `classificarNotificacaoBancaria` em `lib/heuristics.ts`, mais o campo `packageNames`
+> em `lib/types.ts`, existiam só para alimentar este épico e não têm outro consumidor.
 
 ### 3.2. Áudio no Webhook do WhatsApp (Whisper AI)
 - **Atualização na Edge Function `supabase/functions/whatsapp-webhook`**:
@@ -163,7 +178,6 @@ Por favor, implemente o Épico 2 do PLANO_DE_EVOLUCAO.md no Grana.:
 Por favor, implemente o Épico 3 do PLANO_DE_EVOLUCAO.md:
 1. Atualize a Edge Function `supabase/functions/whatsapp-webhook` para processar áudios via Whisper AI.
 2. Crie o componente de Leitura de QR Code NFC-e `components/QrScannerModal.tsx`.
-3. Configure o listener nativo de notificações bancárias para Android.
 ```
 
 ### Passo 4: Executar Épico 4 (Wrapped Mensal & Relatório PDF)
