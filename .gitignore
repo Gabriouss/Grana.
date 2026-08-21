@@ -42,6 +42,11 @@ yarn-error.*
 Feedbacks/
 Screenshots/
 
+# subproduto de rodar `deno check` nas Edge Functions localmente — o deploy
+# pelo CLI do Supabase não usa este arquivo, então versioná-lo só cria ruído
+# e risco de conflito quando as duas máquinas checarem em versões diferentes
+deno.lock
+
 # logs de sessão local do dev server
 .expo-start.log
 .expo-web.log
