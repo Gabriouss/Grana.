@@ -9,6 +9,7 @@ import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
 import { DemoProvider } from '@/lib/demo-context';
 import { theme } from '@/lib/theme';
+import { instalarAnelDeFoco } from '@/lib/foco-web';
 import WebPhoneFrame from '@/components/WebPhoneFrame';
 import AppLockGate from '@/components/AppLockGate';
 import { AppLockProvider } from '@/lib/app-lock-context';
@@ -37,6 +38,13 @@ export default function RootLayout() {
     'NeueMachina-Light': require('../assets/fonts/NeueMachina-Light.otf'),
     'NeueMachina-Regular': require('../assets/fonts/NeueMachina-Regular.otf'),
   });
+
+  /* Anel de foco do teclado, só na web. Fora do efeito das fontes de
+     propósito: não depende delas e precisa valer desde o primeiro render,
+     inclusive na tela de carregamento. */
+  useEffect(() => {
+    instalarAnelDeFoco();
+  }, []);
 
   useEffect(() => {
     if (!fontsLoaded) return;

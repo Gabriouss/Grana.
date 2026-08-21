@@ -78,6 +78,20 @@ export default function Sheet({
   const keyboardHeight = useKeyboardHeight();
   const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
 
+  /* Esc fecha, na web. No celular o gesto equivalente é o botão voltar, que o
+     <Modal> já trata por `onRequestClose`; no navegador não há equivalente —
+     sem isto, quem navega por teclado abre uma folha e fica preso nela, tendo
+     de encontrar o X com Tab. Vale só quando `onClose` existe: sem ele não há
+     o que fazer com a tecla. */
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !onClose || typeof document === 'undefined') return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', aoTeclar);
+    return () => document.removeEventListener('keydown', aoTeclar);
+  }, [onClose]);
+
   return (
     <Pressable style={[styles.scrim, scrimStyle]} onPress={onClose}>
       {/* onPress vazio: por ser um Pressable aninhado, ele assume o toque
