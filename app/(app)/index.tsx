@@ -1106,6 +1106,10 @@ export default function InicioScreen() {
           <VoiceEntryButton
             label="Lançamento por voz"
             textStyle={styles.smartActionText}
+            /* Os três vizinhos desta fileira usam theme.ink no ícone — aqui a
+               vizinhança não é a do cabeçalho, é esta. */
+            iconColor={theme.ink}
+            iconSize={16}
             style={styles.smartActionBtn}
             hoverStyle={styles.smartActionBtnHover}
             onTranscribed={(text) => {

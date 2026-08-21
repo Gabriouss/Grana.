@@ -4,7 +4,7 @@ import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import Constants, { AppOwnership } from 'expo-constants';
 import type * as SpeechRecognitionTypes from 'expo-speech-recognition';
-import { theme, radius, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
 import AppPressable from './AppPressable';
 
@@ -51,6 +51,7 @@ export default function VoiceEntryButton({
   hoverStyle,
   textStyle,
   iconSize = 17,
+  iconColor = theme.accent2,
 }: {
   onTranscribed: (text: string) => void;
   /** Com rótulo, vira uma pílula (ex: ao lado de "Colar comprovante" no Início). Sem rótulo, vira só o ícone (ex: cabeçalho de Lançamentos). */
@@ -61,6 +62,12 @@ export default function VoiceEntryButton({
   hoverStyle?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   iconSize?: number;
+  /** Cor do ícone parado. O padrão é o menta do HeaderAction, que é a
+   *  vizinhança mais comum deste botão (cabeçalho do Lançamentos). Na Início
+   *  ele entra numa fileira cujos ícones são `theme.ink`, e lá esta prop
+   *  precisa ser passada — foi exatamente por fixar a cor no componente que
+   *  o botão passou a destoar de um lado ao ser acertado do outro. */
+  iconColor?: string;
 }) {
   const [listening, setListening] = useState(false);
 
@@ -124,10 +131,9 @@ export default function VoiceEntryButton({
       ]}
       hitSlop={8}
     >
-      {/* Parado, o ícone usa o mesmo menta do HeaderAction — este botão mora
-          lado a lado com eles no cabeçalho, e a tinta branca fazia ele
-          destoar dos vizinhos. Gravando, inverte para o fundo escuro. */}
-      <Ionicons name={listening ? 'mic' : 'mic-outline'} size={iconSize} color={listening ? theme.paper : theme.accent2} />
+      {/* Parado, a cor vem da prop `iconColor` (menta por padrão).
+          Gravando, inverte para o fundo escuro. */}
+      <Ionicons name={listening ? 'mic' : 'mic-outline'} size={iconSize} color={listening ? theme.paper : iconColor} />
       {label && (
         <Text style={[styles.label, textStyle, listening && styles.labelActive]}>{listening ? 'Ouvindo…' : label}</Text>
       )}
@@ -136,12 +142,16 @@ export default function VoiceEntryButton({
 }
 
 const styles = StyleSheet.create({
+  /* Espelha HeaderAction.base + comRotulo. Este botão fica lado a lado com
+     eles na barra de ações do Lançamentos, e cada valor que divergia — gap,
+     padding, e no rótulo a cor, o tamanho e o peso — somava uma diferença
+     visível: a pílula da voz saía mais alta e o texto mais claro e pesado. */
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: theme.rule,
@@ -158,6 +168,6 @@ const styles = StyleSheet.create({
   },
   hover: { borderColor: theme.ruleStrong },
   active: { backgroundColor: '#bb6b60', borderColor: '#bb6b60' },
-  label: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  label: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   labelActive: { color: theme.paper },
 });
