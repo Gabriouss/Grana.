@@ -42,60 +42,15 @@ function formatEixo(n: number): string {
   return `R$ ${Math.round(n)}`;
 }
 
-/* Mesma suavização Catmull-Rom → Bézier do gráfico da tela Gráficos — a
-   linha reta foi deliberadamente removida a pedido do autor, que preferiu
-   recuperar a curva suave mesmo sabendo que ela interpola visualmente entre
-   os baldes (ver histórico: uma versão anterior usava reta porque a curva
-   "inventava" um crescimento gradual que os lançamentos não sustentavam;
-   pedido explícito de reverter isso e igualar à estética de Gráficos). */
-function caminhoSuave(pts: number[][]): string {
-  const n = pts.length;
-  if (n === 0) return '';
-  if (n === 1) return `M${pts[0][0]},${pts[0][1]}`;
-
-  const dxSeg: number[] = [];
-  const slope: number[] = [];
-  for (let i = 0; i < n - 1; i++) {
-    const deltaX = pts[i + 1][0] - pts[i][0];
-    const deltaY = pts[i + 1][1] - pts[i][1];
-    dxSeg.push(deltaX);
-    slope.push(deltaX === 0 ? 0 : deltaY / deltaX);
-  }
-
-  const m: number[] = new Array(n);
-  m[0] = slope[0];
-  m[n - 1] = slope[n - 2];
-  for (let i = 1; i < n - 1; i++) {
-    m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2;
-  }
-  for (let i = 0; i < n - 1; i++) {
-    if (slope[i] === 0) {
-      m[i] = 0;
-      m[i + 1] = 0;
-      continue;
-    }
-    const a = m[i] / slope[i];
-    const b = m[i + 1] / slope[i];
-    const s = a * a + b * b;
-    if (s > 9) {
-      const t = 3 / Math.sqrt(s);
-      m[i] = t * a * slope[i];
-      m[i + 1] = t * b * slope[i];
-    }
-  }
-
-  let d = `M${pts[0][0]},${pts[0][1]}`;
-  for (let i = 0; i < n - 1; i++) {
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const seg = dxSeg[i];
-    const c1x = p1[0] + seg / 3;
-    const c1y = p1[1] + (m[i] * seg) / 3;
-    const c2x = p2[0] - seg / 3;
-    const c2y = p2[1] - (m[i + 1] * seg) / 3;
-    d += ` C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`;
-  }
-  return d;
+/* Linha reta entre os baldes, de propósito: uma curva suave (mesmo a
+   monótona que nunca ultrapassa os pontos vizinhos) ainda interpola um
+   crescimento gradual ao longo do segmento inteiro entre um balde zerado e
+   um balde com valor — e a maioria dos meses tem só 1 balde real (o dia do
+   salário) cercado de zeros. Isso desenhava uma "colina" suave que nenhum
+   lançamento sustentava. Reta mostra o degrau como ele é. */
+function caminhoReto(pts: number[][]): string {
+  if (pts.length === 0) return '';
+  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' ');
 }
 
 type Bucket = {
@@ -252,8 +207,8 @@ export default function FlowChart({
   const outOpacity = t;
   const dotOpacity = t > 0.9 ? (t - 0.9) / 0.1 : 0;
 
-  const inPath = caminhoSuave(inPoints);
-  const outPath = caminhoSuave(outPoints);
+  const inPath = caminhoReto(inPoints);
+  const outPath = caminhoReto(outPoints);
   const areaPath = `${inPath} L${inPoints[inPoints.length - 1][0]},${BASE} L${inPoints[0][0]},${BASE} Z`;
 
   const gridLines = [0, 1, 2, 3, 4].map((i) => ({

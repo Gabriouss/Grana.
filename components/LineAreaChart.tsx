@@ -92,63 +92,20 @@ export default function LineAreaChart({
     return { x, y, col };
   });
 
-  /* Interpolação cúbica MONÓTONA (Fritsch-Carlson, igual ao curveMonotoneX
-     do d3) — não um Catmull-Rom comum. Um Catmull-Rom pode "estourar" acima
-     ou abaixo dos dois pontos vizinhos ao suavizar a curva, desenhando um
-     pico ou vale que nenhum balde de dados teve de verdade. A versão
-     monótona fica igualmente suave mas nunca ultrapassa o valor dos pontos
-     vizinhos entre um balde e outro. */
-  function caminhoSuave(pts: typeof pontos): string {
-    const n = pts.length;
-    if (n === 0) return '';
-    if (n === 1) return `M${pts[0].x},${pts[0].y}`;
-
-    const dxSeg: number[] = [];
-    const slope: number[] = [];
-    for (let i = 0; i < n - 1; i++) {
-      const deltaX = pts[i + 1].x - pts[i].x;
-      const deltaY = pts[i + 1].y - pts[i].y;
-      dxSeg.push(deltaX);
-      slope.push(deltaX === 0 ? 0 : deltaY / deltaX);
-    }
-
-    const m: number[] = new Array(n);
-    m[0] = slope[0];
-    m[n - 1] = slope[n - 2];
-    for (let i = 1; i < n - 1; i++) {
-      m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2;
-    }
-    for (let i = 0; i < n - 1; i++) {
-      if (slope[i] === 0) {
-        m[i] = 0;
-        m[i + 1] = 0;
-        continue;
-      }
-      const a = m[i] / slope[i];
-      const b = m[i + 1] / slope[i];
-      const s = a * a + b * b;
-      if (s > 9) {
-        const t = 3 / Math.sqrt(s);
-        m[i] = t * a * slope[i];
-        m[i + 1] = t * b * slope[i];
-      }
-    }
-
-    let d = `M${pts[0].x},${pts[0].y}`;
-    for (let i = 0; i < n - 1; i++) {
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const seg = dxSeg[i];
-      const c1x = p1.x + seg / 3;
-      const c1y = p1.y + (m[i] * seg) / 3;
-      const c2x = p2.x - seg / 3;
-      const c2y = p2.y - (m[i + 1] * seg) / 3;
-      d += ` C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
-    }
-    return d;
+  /* Linha reta entre os baldes — a curva monótona anterior nunca "estourava"
+     acima dos pontos vizinhos, mas ainda interpolava um crescimento gradual
+     ao longo do segmento inteiro entre um balde zerado e um balde com
+     valor. Com a maioria dos meses tendo só 1 balde real (o dia do salário)
+     cercado de zeros, isso desenhava uma "colina" suave que nenhum
+     lançamento sustentava. Reta mostra o degrau como ele é — e mantém este
+     gráfico igual ao de FlowChart.tsx (Início), que passou pela mesma troca
+     pelo mesmo motivo. */
+  function caminhoReto(pts: typeof pontos): string {
+    if (pts.length === 0) return '';
+    return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
   }
 
-  const linhaPath = caminhoSuave(pontos);
+  const linhaPath = caminhoReto(pontos);
   const baseY = padTop + plotHeight;
   const areaPath = `${linhaPath} L${pontos[pontos.length - 1].x},${baseY} L${pontos[0].x},${baseY} Z`;
 
