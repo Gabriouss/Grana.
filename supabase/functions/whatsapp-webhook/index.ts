@@ -490,20 +490,36 @@ async function assinaturaValida(rawBody: string, header: string | null): Promise
 
 /* ---- WhatsApp Cloud API ---- */
 
+/* A resposta da Meta nunca era conferida — `await fetch(...)` sozinho só
+   verifica se a REQUISIÇÃO saiu, não se a Meta aceitou o envio. Um token de
+   acesso vencido, número não autorizado ou payload rejeitado voltava um
+   corpo de erro no JSON com HTTP 200/4xx que o código simplesmente
+   ignorava: o lançamento era salvo no banco, mas a pessoa nunca recebia a
+   confirmação nem um aviso de erro — parecia que o bot não respondia mais
+   nada, sem nenhum rastro no log pra investigar. Agora loga status e corpo
+   da resposta sempre que a Meta recusar. */
 async function sendWhatsappMessage(to: string, body: string): Promise<void> {
-  await fetch(`https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to,
-      type: 'text',
-      text: { body },
-    }),
-  });
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body },
+      }),
+    });
+    if (!res.ok) {
+      const detalhe = await res.text().catch(() => '(sem corpo)');
+      console.error(`[sendWhatsappMessage] Meta recusou o envio (HTTP ${res.status}) para ${to}:`, detalhe);
+    }
+  } catch (e) {
+    console.error('[sendWhatsappMessage] Falha de rede ao chamar a Meta:', e);
+  }
 }
 
 /**
