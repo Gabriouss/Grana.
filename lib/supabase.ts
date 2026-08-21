@@ -70,7 +70,51 @@ if (!supabaseUrl || !supabaseAnonKey) {
    navegador) — lá a própria Supabase recomenda usar o localStorage do
    navegador. No nativo (iOS/Android), onde os dados realmente moram no
    aparelho do usuário, seguimos com o LargeSecureStore (criptografado). */
+/**
+ * Repete uma vez quando o servidor recusa o token por relógio.
+ *
+ * O `supabase-js` renova o token de acesso sozinho; o GoTrue o emite com
+ * `iat` = agora pelo relógio DELE, e o PostgREST que valida roda noutra
+ * máquina. Quando esses dois relógios estão a um ou dois segundos de
+ * distância, o primeiro pedido feito com um token recém-emitido é recusado
+ * com "JWT issued at future" — e o mesmo token passa instantes depois, sem
+ * nada ter mudado.
+ *
+ * O sintoma para quem usa é um erro que aparece sozinho e some ao trocar de
+ * janela e voltar (porque voltar refaz o pedido). Como a condição é sabidamente
+ * temporária e some com o tempo passando, tentar de novo depois de uma pausa
+ * curta é a resposta certa — e é melhor que mostrar à pessoa uma mensagem em
+ * inglês sobre JWT, que não sugere nenhuma ação possível.
+ *
+ * Uma tentativa só, e apenas para este erro: se o token estivesse de fato
+ * inválido, repetir em laço só adiaria o erro real e esconderia a causa.
+ */
+const RECUSA_POR_RELOGIO = /issued at future|jwt.*(not yet valid|iat)/i;
+
+async function fetchComRetentativaDeRelogio(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Response> {
+  const resposta = await fetch(input, init);
+  if (resposta.status !== 401) return resposta;
+
+  /* O corpo só pode ser lido uma vez; o clone preserva a resposta original
+     para quem chamou, caso não seja este caso e ela precise seguir adiante. */
+  const copia = resposta.clone();
+  let corpo = '';
+  try {
+    corpo = await copia.text();
+  } catch {
+    return resposta;
+  }
+  if (!RECUSA_POR_RELOGIO.test(corpo)) return resposta;
+
+  await new Promise((r) => setTimeout(r, 1200));
+  return fetch(input, init);
+}
+
 export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
+  global: { fetch: fetchComRetentativaDeRelogio },
   auth: {
     storage: Platform.OS === 'web' ? globalThis.localStorage : new LargeSecureStore(),
     autoRefreshToken: true,
