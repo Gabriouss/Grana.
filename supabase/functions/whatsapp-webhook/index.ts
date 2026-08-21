@@ -187,6 +187,29 @@ function normalizarTextoTranscrito(texto: string): string {
       new RegExp(`(\\d+)\\s*(?:reais|real)\\s*e\\s*(\\d{1,2})\\b(?!\\s*(?:mil|${MOEDA}))`, 'gi'),
       (_m: string, r: string, c: string) => `${r},${String(c).padStart(2, '0')} reais`
     )
+    /* A forma mais comum de todas não diz "reais" em lugar nenhum: "Monster
+       10 e 79" é como se lê um preço em voz alta, e antes disto o "79"
+       simplesmente desaparecia — nenhuma regra de moeda ligava os dois
+       números, e o extrator de valor pegava só o primeiro (ou só o
+       segundo, se "reais" viesse solto no fim da frase). Sem exigir a
+       palavra de moeda perto, "10 e 79" vira "10,79" direto — os regexes de
+       moeda mais abaixo (`comCentavos`) reconhecem o decimal normalmente,
+       com ou sem "reais" sobrando por perto.
+       As exclusões existem pra não confundir com hora falada ("são 10 e
+       30", "às 8 e 15") e com contagem que nada tem a ver com dinheiro
+       ("2 e 3 pessoas", "10 e 20 km").
+
+       Dois lookbehinds, não um: `(?<!\d)` impede o motor de recuar pro MEIO
+       de um número quando a checagem de hora barra o início — mesmo recuo
+       que já mordeu "99pop" antes de virar "9pop" num bug anterior, aqui
+       reencarnado em cima de "10" (barrado por "são ") virando só "0". E a
+       checagem de hora usa `(?:^|\s)` em vez de `\b`: `\b` no JS só enxerga
+       [A-Za-z0-9_] como letra — diante de "à" (não-ASCII) ele nunca fecha
+       fronteira nenhuma, então "às 10 e 30" escapava do bloqueio inteiro. */
+    .replace(
+      /(?<!\d)(?<!(?:^|\s)(?:s[aã]o|era|eram|[àa]s?)\s)(\d+)\s+e\s+(\d{1,2})\b(?!\s*(?:mil|horas?|km|quil[oô]metros?|anos?|meses?|dias?|semanas?|vezes|pessoas?|unidades?|itens?))/gi,
+      (_m: string, r: string, c: string) => `${r},${String(c).padStart(2, '0')}`
+    )
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
