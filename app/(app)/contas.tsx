@@ -19,9 +19,8 @@ import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
-import DatePickerModal from '@/components/DatePickerModal';
-import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
+import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
@@ -64,8 +63,6 @@ export default function ContasScreen() {
   const [saving, setSaving] = useState(false);
 
   // Aux Pickers & Sheets
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [catPickerOpen, setCatPickerOpen] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
 
@@ -135,8 +132,8 @@ export default function ContasScreen() {
     return addMonthsToISO(iso, 1);
   }
 
-  async function handleSave() {
-    const value = parseAmount(amount);
+  async function handleSave(v: ValoresLancamento) {
+    const value = parseAmount(v.amount);
     if (!value || value <= 0) {
       Alert.alert('Informe um valor válido');
       return;
@@ -145,35 +142,35 @@ export default function ContasScreen() {
     try {
       if (editingBillId) {
         await updateBill(editingBillId, {
-          description: desc.trim() || 'Sem descrição',
+          description: v.description.trim() || 'Sem descrição',
           amount: value,
-          category,
-          color: catColor,
-          due_date: dueDate,
-          recurring,
+          category: v.category,
+          color: v.color,
+          due_date: v.occurred_on,
+          recurring: v.recurring,
         });
         // updateBill não devolve a linha atualizada — remonta localmente pra reagendar os lembretes.
         const original = bills.find((b) => b.id === editingBillId);
         if (original) {
           scheduleBillReminders({
             ...original,
-            description: desc.trim() || 'Sem descrição',
+            description: v.description.trim() || 'Sem descrição',
             amount: value,
-            category,
-            color: catColor,
-            due_date: dueDate,
-            recurring,
+            category: v.category,
+            color: v.color,
+            due_date: v.occurred_on,
+            recurring: v.recurring,
           }).catch(() => {});
         }
         triggerToast('Conta atualizada');
       } else {
         const created = await addBill({
-          description: desc.trim() || 'Sem descrição',
+          description: v.description.trim() || 'Sem descrição',
           amount: value,
-          category,
-          color: catColor,
-          due_date: dueDate,
-          recurring,
+          category: v.category,
+          color: v.color,
+          due_date: v.occurred_on,
+          recurring: v.recurring,
           wallet_id: activeWallet?.id ?? null,
         });
         scheduleBillReminders(created).catch(() => {});
@@ -367,102 +364,25 @@ export default function ContasScreen() {
         <Ionicons name="add" size={24} color={theme.paper} />
       </AppPressable>
 
-      {/* Sheet: Nova / Editar Conta */}
-      <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={() => setModalOpen(false)}>
-        <Sheet onClose={() => setModalOpen(false)}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{editingBillId ? 'Editar conta a pagar' : 'Nova conta a pagar'}</Text>
-              <AppPressable onPress={() => setModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
-                <Ionicons name="close" size={22} color={theme.inkFaint} />
-              </AppPressable>
-            </View>
-
-            <TextInput maxLength={LIMITS.description}
-              style={styles.descInput}
-              placeholder="Descrição — ex: Energia"
-              placeholderTextColor={theme.inkFaint}
-              value={desc}
-              onChangeText={setDesc}
-            />
-
-            <View style={styles.amountRow}>
-              <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput maxLength={LIMITS.amount}
-                style={styles.amountInput}
-                placeholder="0,00"
-                placeholderTextColor={theme.inkFaint}
-                keyboardType="number-pad"
-                value={amount}
-                onChangeText={(t) => setAmount(formatMoneyInput(t))}
-                autoFocus
-              />
-            </View>
-
-            <AppPressable
-              style={styles.fieldRow}
-              onPress={() => setCatPickerOpen(true)}
-            >
-              <Text style={styles.fieldKey}>Categoria</Text>
-              <View style={styles.fieldVal}>
-                <View style={[styles.dot, { backgroundColor: catColor }]} />
-                <Text style={styles.fieldValText}>{category}</Text>
-                <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
-              </View>
-            </AppPressable>
-
-            <AppPressable
-              style={styles.fieldRow}
-              onPress={() => setDatePickerOpen(true)}
-            >
-              <Text style={styles.fieldKey}>Vencimento</Text>
-              <View style={styles.fieldVal}>
-                <Text style={styles.fieldValText}>{formatDateLabel(dueDate)}</Text>
-                <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
-              </View>
-            </AppPressable>
-
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldKey}>Conta recorrente (todo mês)</Text>
-              <AppPressable
-                style={[styles.switchTrack, recurring && styles.switchTrackOn]}
-                onPress={() => setRecurring((p) => !p)}
-                hitSlop={12}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: recurring }}
-                accessibilityLabel="Conta recorrente"
-              >
-                <View style={[styles.switchThumb, recurring && styles.switchThumbOn]} />
-              </AppPressable>
-            </View>
-
-            <AppPressable
-              style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              {saving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>{editingBillId ? 'Salvar alterações' : 'Salvar conta'}</Text>}
-            </AppPressable>
-        </Sheet>
-      </Modal>
-
-      {/* Date Picker Modal */}
-      <DatePickerModal
-        visible={datePickerOpen}
-        currentISO={dueDate}
-        title="Vencimento da conta"
-        onClose={() => setDatePickerOpen(false)}
-        onSelectDate={(iso) => setDueDate(iso)}
-      />
-
-      {/* Category Picker Modal */}
-      <CategoryPickerModal
-        visible={catPickerOpen}
-        currentCategory={category}
-        onClose={() => setCatPickerOpen(false)}
-        onSelectCategory={(cat) => {
-          setCategory(cat.name);
-          setCatColor(cat.color);
+      {/* Sheet da conta a pagar — mesmo componente das outras telas. */}
+      <TransactionSheet
+        visible={modalOpen}
+        onClose={() => setModalOpen(false)}
+        modo="boleto"
+        editando={!!editingBillId}
+        salvando={saving}
+        inicial={{
+          type: 'out',
+          description: desc,
+          amount,
+          category,
+          color: catColor,
+          occurred_on: dueDate,
+          recurring,
+          installments: 1,
+          card_id: null,
         }}
+        onSalvar={handleSave}
       />
 
       {/* Item Action Sheet (Editar / Excluir) */}

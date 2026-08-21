@@ -40,7 +40,7 @@ export type ValoresLancamento = {
 type Props = {
   visible: boolean;
   onClose: () => void;
-  modo: 'carteira' | 'credito';
+  modo: 'carteira' | 'credito' | 'boleto';
   editando: boolean;
   inicial: ValoresLancamento;
   /** Obrigatório no modo crédito: cartões entre os quais escolher. */
@@ -100,22 +100,28 @@ export default function TransactionSheet({
 
   const parcelas = Math.max(2, Math.round(Number(installmentCount) || 2));
   const ehCredito = modo === 'credito';
+  const ehBoleto = modo === 'boleto';
 
   /* Parcelar só faz sentido criando uma saída: cada parcela é uma transação
-     própria, então editar uma delas edita aquela linha, não o parcelamento. */
-  const podeParcelar = !editando && type === 'out' && !recurring;
+     própria, então editar uma delas edita aquela linha, não o parcelamento.
+     Boleto não parcela: quem paga em parcelas cadastra uma conta por mês. */
+  const podeParcelar = !editando && !ehBoleto && type === 'out' && !recurring;
 
   const titulo = editando
-    ? 'Editar lançamento'
-    : ehCredito
-      ? 'Lançar compra no crédito'
-      : type === 'in'
-        ? 'Nova entrada'
-        : 'Nova saída';
+    ? ehBoleto
+      ? 'Editar conta a pagar'
+      : 'Editar lançamento'
+    : ehBoleto
+      ? 'Nova conta a pagar'
+      : ehCredito
+        ? 'Lançar compra no crédito'
+        : type === 'in'
+          ? 'Nova entrada'
+          : 'Nova saída';
 
   function salvar() {
     onSalvar({
-      type: ehCredito ? 'out' : type,
+      type: ehCredito || ehBoleto ? 'out' : type,
       description: desc,
       amount,
       category,
@@ -142,7 +148,7 @@ export default function TransactionSheet({
           </View>
 
           {/* No crédito não existe "entrada": uma fatura só acumula gastos. */}
-          {!ehCredito && (
+          {!ehCredito && !ehBoleto && (
             <View style={styles.typeRow}>
               <AppPressable onPress={() => setType('out')} style={[styles.typeBtn, type === 'out' && styles.typeBtnOut]}>
                 <Text style={[styles.typeText, type === 'out' && styles.typeTextOn]}>Saída</Text>
@@ -156,7 +162,7 @@ export default function TransactionSheet({
           <TextInput
             maxLength={LIMITS.description}
             style={styles.descInput}
-            placeholder={ehCredito ? 'Descrição — ex: Supermercado' : 'Descrição'}
+            placeholder={ehBoleto ? 'Descrição — ex: Energia' : ehCredito ? 'Descrição — ex: Supermercado' : 'Descrição'}
             placeholderTextColor={theme.inkFaint}
             value={desc}
             onChangeText={setDesc}
@@ -204,7 +210,7 @@ export default function TransactionSheet({
 
           <View style={{ gap: 6 }}>
             <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)}>
-              <Text style={styles.fieldKey}>Data do lançamento</Text>
+              <Text style={styles.fieldKey}>{ehBoleto ? 'Vencimento' : 'Data do lançamento'}</Text>
               <View style={styles.fieldVal}>
                 <Text style={styles.fieldValText}>{formatDateLabel(occurredOn)}</Text>
                 <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
@@ -253,7 +259,9 @@ export default function TransactionSheet({
             <Text style={styles.installmentHint}>
               {ehCredito
                 ? 'A cobrança reaparece sozinha na fatura de cada mês, até você desligar isto.'
-                : 'O lançamento se repete todo mês, até você desligar isto.'}
+                : ehBoleto
+                  ? 'Ao marcar esta conta como paga, a do mês seguinte é criada sozinha.'
+                  : 'O lançamento se repete todo mês, até você desligar isto.'}
             </Text>
           )}
 
@@ -312,7 +320,7 @@ export default function TransactionSheet({
             {salvando ? (
               <ActivityIndicator color={theme.paper} />
             ) : (
-              <Text style={styles.saveBtnText}>{editando ? 'Salvar alterações' : 'Salvar lançamento'}</Text>
+              <Text style={styles.saveBtnText}>{editando ? 'Salvar alterações' : ehBoleto ? 'Salvar conta' : 'Salvar lançamento'}</Text>
             )}
           </AppPressable>
         </Sheet>
@@ -321,7 +329,7 @@ export default function TransactionSheet({
       <DatePickerModal
         visible={datePickerOpen}
         currentISO={occurredOn}
-        title="Data do lançamento"
+        title={ehBoleto ? 'Vencimento' : 'Data do lançamento'}
         onSelectDate={(iso) => setOccurredOn(iso)}
         onClose={() => setDatePickerOpen(false)}
       />

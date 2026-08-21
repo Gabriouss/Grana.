@@ -108,9 +108,9 @@ export default function CreditoScreen() {
   const [txInstallments, setTxInstallments] = useState('1');
   const [txRecurring, setTxRecurring] = useState(false);
 
-  /* Menu de ação da linha da fatura — mesmo componente e mesmo gesto da tela
-     de Lançamentos: tocar abre "Editar / Excluir", em vez de tocar editar e
-     segurar excluir, que era um gesto que só quem leu o rótulo descobria. */
+  /* Menu de ação da linha — mesmo componente e mesmo gesto das outras telas:
+     tocar edita, segurar abre "Editar / Excluir". Antes daqui, segurar
+     excluía direto, sem passar por menu nenhum. */
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [txSaving, setTxSaving] = useState(false);
@@ -791,7 +791,7 @@ export default function CreditoScreen() {
         </View>
 
         {/* Lista de Compras no Crédito */}
-        <Text style={styles.sectionLabel}>Lançamentos da Fatura · toque para editar ou excluir</Text>
+        <Text style={styles.sectionLabel}>Lançamentos da Fatura · segure para editar ou excluir</Text>
         {creditTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhuma compra no crédito neste mês.</Text>
         ) : (
@@ -799,7 +799,7 @@ export default function CreditoScreen() {
             <AppPressable
               key={tx.id}
               style={({ hovered }) => [styles.txRow, hovered && { backgroundColor: 'rgba(255,255,255,0.03)' }]}
-              onPress={() => {
+              onLongPress={() => {
                 setSelectedTx(tx);
                 setActionSheetOpen(true);
               }}

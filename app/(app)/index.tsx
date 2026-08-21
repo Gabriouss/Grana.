@@ -63,6 +63,7 @@ import OnboardingModal from '@/components/OnboardingModal';
 import DatePickerModal from '@/components/DatePickerModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
+import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
 import Toast from '@/components/Toast';
 import FabButton from '@/components/FabButton';
 import FadeIn from '@/components/FadeIn';
@@ -441,8 +442,8 @@ export default function InicioScreen() {
     setBillSheetOpen(true);
   }
 
-  async function handleSaveTx() {
-    const val = parseAmount(txAmount);
+  async function handleSaveTx(v: ValoresLancamento) {
+    const val = parseAmount(v.amount);
     if (!val || val <= 0) {
       Alert.alert('Informe um valor válido');
       return;
@@ -454,7 +455,7 @@ export default function InicioScreen() {
         setTransactions((prev) =>
           prev.map((t) =>
             t.id === editingTxId
-              ? { ...t, type: txType, description: txDesc.trim() || 'Sem descrição', amount: val, category: txCategory, color: txCatColor, occurred_on: txDate, recurring: txRecurring }
+              ? { ...t, type: v.type, description: v.description.trim() || 'Sem descrição', amount: val, category: v.category, color: v.color, occurred_on: v.occurred_on, recurring: v.recurring }
               : t
           )
         );
@@ -464,13 +465,13 @@ export default function InicioScreen() {
           {
             id: `demo-local-${Date.now()}`,
             user_id: 'demo',
-            type: txType,
-            description: txDesc.trim() || (txType === 'in' ? 'Entrada' : 'Saída'),
+            type: v.type,
+            description: v.description.trim() || (v.type === 'in' ? 'Entrada' : 'Saída'),
             amount: val,
-            category: txCategory,
-            color: txCatColor,
-            occurred_on: txDate,
-            recurring: txRecurring,
+            category: v.category,
+            color: v.color,
+            occurred_on: v.occurred_on,
+            recurring: v.recurring,
             parent_id: null,
             created_at: new Date().toISOString(),
           },
@@ -486,24 +487,24 @@ export default function InicioScreen() {
     try {
       if (editingTxId) {
         await updateTransaction(editingTxId, {
-          type: txType,
-          description: txDesc.trim() || 'Sem descrição',
+          type: v.type,
+          description: v.description.trim() || 'Sem descrição',
           amount: val,
-          category: txCategory,
-          color: txCatColor,
-          occurred_on: txDate,
-          recurring: txRecurring,
+          category: v.category,
+          color: v.color,
+          occurred_on: v.occurred_on,
+          recurring: v.recurring,
         });
         triggerToast('Lançamento atualizado');
       } else {
         await addTransaction({
-          type: txType,
-          description: txDesc.trim() || (txType === 'in' ? 'Entrada' : 'Saída'),
+          type: v.type,
+          description: v.description.trim() || (v.type === 'in' ? 'Entrada' : 'Saída'),
           amount: val,
-          category: txCategory,
-          color: txCatColor,
-          occurred_on: txDate,
-          recurring: txRecurring,
+          category: v.category,
+          color: v.color,
+          occurred_on: v.occurred_on,
+          recurring: v.recurring,
           wallet_id: activeWallet?.id ?? null,
         });
         triggerToast('Lançamento salvo');
@@ -959,7 +960,6 @@ export default function InicioScreen() {
             <AppPressable
               key={t.id}
               style={({ hovered }) => [styles.recentRow, hovered && styles.recentRowHover]}
-              onPress={() => openTxEdit(t)}
               onLongPress={() => {
                 setSelectedTx(t);
                 setActionSheetOpen(true);
@@ -1137,143 +1137,26 @@ export default function InicioScreen() {
         onAddCredit={() => router.push('/(app)/credito?novaCompra=1')}
       />
 
-      {/* Sheet: Novo / Editar Lançamento */}
-      <Modal visible={txSheetOpen} animationType="slide" transparent onRequestClose={() => setTxSheetOpen(false)}>
-        <Sheet onClose={() => setTxSheetOpen(false)}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{editingTxId ? 'Editar lançamento' : 'Novo lançamento'}</Text>
-              <AppPressable onPress={() => setTxSheetOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
-                <Ionicons name="close" size={22} color={theme.inkFaint} />
-              </AppPressable>
-            </View>
-
-            <View style={styles.typeRow}>
-              <AppPressable
-                onPress={() => setTxType('out')}
-                style={[styles.typeBtn, txType === 'out' && styles.typeBtnOut]}
-              >
-                <Text style={[styles.typeText, txType === 'out' && styles.typeTextOn]}>Saída</Text>
-              </AppPressable>
-              <AppPressable
-                onPress={() => setTxType('in')}
-                style={[styles.typeBtn, txType === 'in' && styles.typeBtnIn]}
-              >
-                <Text style={[styles.typeText, txType === 'in' && styles.typeTextOn]}>Entrada</Text>
-              </AppPressable>
-            </View>
-
-            <TextInput maxLength={LIMITS.description}
-              style={styles.descInput}
-              placeholder="Descrição — ex: Supermercado"
-              placeholderTextColor={theme.inkFaint}
-              value={txDesc}
-              onChangeText={setTxDesc}
-            />
-
-            <View style={styles.amountRow}>
-              <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput maxLength={LIMITS.amount}
-                style={styles.amountInput}
-                placeholder="0,00"
-                placeholderTextColor={theme.inkFaint}
-                keyboardType="number-pad"
-                value={txAmount}
-                onChangeText={(t) => setTxAmount(formatMoneyInput(t))}
-                autoFocus
-              />
-            </View>
-
-            <AppPressable
-              style={styles.fieldRow}
-              onPress={() => {
-                setCatPickerTarget('tx');
-                setCatPickerOpen(true);
-              }}
-            >
-              <Text style={styles.fieldKey}>Categoria</Text>
-              <View style={styles.fieldVal}>
-                <View style={[styles.dot, { backgroundColor: txCatColor }]} />
-                <Text style={styles.fieldValText}>{txCategory}</Text>
-                <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
-              </View>
-            </AppPressable>
-
-            <View style={{ gap: 6 }}>
-              <AppPressable
-                style={styles.fieldRow}
-                onPress={() => {
-                  setDatePickerTarget('tx');
-                  setDatePickerOpen(true);
-                }}
-              >
-                <Text style={styles.fieldKey}>Data do lançamento</Text>
-                <View style={styles.fieldVal}>
-                  <Text style={styles.fieldValText}>{formatDateLabel(txDate)}</Text>
-                  <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
-                </View>
-              </AppPressable>
-
-              <View style={styles.dateQuickRow}>
-                <AppPressable
-                  style={[styles.dateQuickChip, txDate === todayISO() && styles.dateQuickChipActive]}
-                  onPress={() => setTxDate(todayISO())}
-                >
-                  <Text style={[styles.dateQuickText, txDate === todayISO() && styles.dateQuickTextActive]}>Hoje</Text>
-                </AppPressable>
-                {(() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() - 1);
-                  const pad = (n: number) => String(n).padStart(2, '0');
-                  const yISO = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-                  const isCustom = txDate !== todayISO() && txDate !== yISO;
-                  return (
-                    <>
-                      <AppPressable
-                        style={[styles.dateQuickChip, txDate === yISO && styles.dateQuickChipActive]}
-                        onPress={() => setTxDate(yISO)}
-                      >
-                        <Text style={[styles.dateQuickText, txDate === yISO && styles.dateQuickTextActive]}>Ontem</Text>
-                      </AppPressable>
-                      <AppPressable
-                        style={[styles.dateQuickChip, isCustom && styles.dateQuickChipActive]}
-                        onPress={() => {
-                          setDatePickerTarget('tx');
-                          setDatePickerOpen(true);
-                        }}
-                      >
-                        <Text style={[styles.dateQuickText, isCustom && styles.dateQuickTextActive]}>Calendário</Text>
-                      </AppPressable>
-                    </>
-                  );
-                })()}
-              </View>
-            </View>
-
-
-
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldKey}>Repetir mensalmente</Text>
-              <AppPressable
-                style={[styles.switchTrack, txRecurring && styles.switchTrackOn]}
-                onPress={() => setTxRecurring((p) => !p)}
-                hitSlop={12}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: txRecurring }}
-                accessibilityLabel="Repetir mensalmente"
-              >
-                <View style={[styles.switchThumb, txRecurring && styles.switchThumbOn]} />
-              </AppPressable>
-            </View>
-
-            <AppPressable
-              style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
-              onPress={handleSaveTx}
-              disabled={txSaving}
-            >
-              {txSaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>{editingTxId ? 'Salvar alterações' : 'Salvar lançamento'}</Text>}
-            </AppPressable>
-        </Sheet>
-      </Modal>
+      {/* Sheet de lançamento — mesmo componente das telas de Lançamentos e Crédito. */}
+      <TransactionSheet
+        visible={txSheetOpen}
+        onClose={() => setTxSheetOpen(false)}
+        modo="carteira"
+        editando={!!editingTxId}
+        salvando={txSaving}
+        inicial={{
+          type: txType,
+          description: txDesc,
+          amount: txAmount,
+          category: txCategory,
+          color: txCatColor,
+          occurred_on: txDate,
+          recurring: txRecurring,
+          installments: 1,
+          card_id: null,
+        }}
+        onSalvar={handleSaveTx}
+      />
 
       {/* Sheet: Novo Boleto */}
       <Modal visible={billSheetOpen} animationType="slide" transparent onRequestClose={() => setBillSheetOpen(false)}>

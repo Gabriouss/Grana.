@@ -529,7 +529,6 @@ export default function LancamentosScreen() {
           renderItem={({ item }) => (
             <AppPressable
               style={({ hovered }) => [styles.row, hovered && styles.rowHover]}
-              onPress={() => openEditModal(item)}
               onLongPress={() => {
                 setSelectedTx(item);
                 setActionSheetOpen(true);
