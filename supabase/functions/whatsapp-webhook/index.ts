@@ -347,7 +347,12 @@ function capitalizar(s: string): string {
 const EXPRESSAO_VALOR = /(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?/i;
 
 function guessDescFromText(text: string, type: 'in' | 'out'): string {
-  const texto = normalizarTextoTranscrito(text);
+  /* Pontuação de frase solta no fim ("Almoço de 20 reais.") vem principalmente
+     de transcrição de áudio, que costuma fechar a frase com ponto final —
+     sem tirar isso aqui, a regra 1 abaixo nunca casava (o `$` dela não aceita
+     nada depois do valor além de uma categoria com vírgula), a descrição caía
+     na regra 3 e saía "Almoço de" em vez de só "Almoço". */
+  const texto = normalizarTextoTranscrito(text).replace(/[.!?]+\s*$/, '');
 
   /* 1º) "<Nome> de <Valor>" — "Energia de 350 reais", "Merenda de 31 reais",
      "Mercado de 120 reais". Vem primeiro porque é o formato mais comum e o
@@ -378,10 +383,18 @@ function guessDescFromText(text: string, type: 'in' | 'out'): string {
   /* 3º) Sobra do texto sem o valor e sem o verbo — cobre as formas que não
      têm conector nenhum: "paguei 47,90 na farmácia", "50 no mercado",
      "mercado 120", "uber 25", ou só "mercado". */
+  /* A última limpeza era um `\d[\d.,]*` cego — apagava QUALQUER dígito
+     restante, inclusive um colado numa letra que não tem nada a ver com
+     valor: "no crédito da C6" virava "no crédito da C" (o "6" some), porque
+     pra essa regex "C6" é só um "6" com uma letra do lado. O lookbehind/
+     lookahead de letra faz ela só apagar números que estão SOZINHOS
+     (separados por espaço/pontuação dos dois lados) — que é o caso real de
+     "mercado 50" → "mercado" — e deixa "C6", "99" (de "99 Pop", já tratado
+     em CATEGORY_KEYWORDS) e afins intactos. */
   const semValor = texto
     .replace(/r\$\s*[\d.,]+/gi, ' ')
     .replace(/[\d.,]+\s*(?:reais|real|conto|contos|pila|pau|mangos?)\b/gi, ' ')
-    .replace(/\d[\d.,]*/g, ' ');
+    .replace(/(?<![a-zà-ÿ])\d[\d.,]*(?![a-zà-ÿ])/gi, ' ');
   const sobra = limparSobra(semValor);
   if (sobra.length >= 2) return capitalizar(sobra.slice(0, 40));
 
