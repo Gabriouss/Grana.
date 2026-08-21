@@ -678,7 +678,19 @@ async function handlePairing(phone: string, text: string): Promise<boolean> {
     .update({ phone, verified: true, verified_at: new Date().toISOString() })
     .eq('id', link.id);
 
-  await sendWhatsappMessage(phone, '✅ WhatsApp vinculado ao Grana. Agora é só me contar seus lançamentos por aqui.');
+  /* Exemplos, e não uma lista de comandos: o bot entende linguagem natural, e
+     falar em "comando" faz a pessoa procurar uma sintaxe que não existe —
+     escreve "/gasto 20", não funciona, e desiste. Três frases soltas ensinam
+     o formato sem prometer regra nenhuma. */
+  await sendWhatsappMessage(
+    phone,
+    '✅ WhatsApp vinculado ao Grana.\n\n' +
+      'Agora é só me contar seus gastos como você falaria com alguém:\n\n' +
+      '• Almoço 25 reais\n' +
+      '• Uber 18 no crédito da C6\n' +
+      '• Mercado 230 parcelado em 3x\n\n' +
+      'Pode mandar áudio também — eu escuto e lanço igual.'
+  );
   return true;
 }
 

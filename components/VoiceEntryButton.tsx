@@ -124,7 +124,10 @@ export default function VoiceEntryButton({
       ]}
       hitSlop={8}
     >
-      <Ionicons name={listening ? 'mic' : 'mic-outline'} size={iconSize} color={listening ? theme.paper : theme.ink} />
+      {/* Parado, o ícone usa o mesmo menta do HeaderAction — este botão mora
+          lado a lado com eles no cabeçalho, e a tinta branca fazia ele
+          destoar dos vizinhos. Gravando, inverte para o fundo escuro. */}
+      <Ionicons name={listening ? 'mic' : 'mic-outline'} size={iconSize} color={listening ? theme.paper : theme.accent2} />
       {label && (
         <Text style={[styles.label, textStyle, listening && styles.labelActive]}>{listening ? 'Ouvindo…' : label}</Text>
       )}
