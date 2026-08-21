@@ -122,7 +122,7 @@ export default function SignUp() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <Text style={styles.eyebrow}>Bem-vinda ao Grana.</Text>
+        <Text style={styles.eyebrow}>Boas-vindas ao Grana.</Text>
         <Text style={styles.title}>Criar conta</Text>
         <Text style={styles.subtitle}>Seus lançamentos ficam salvos na nuvem e sincronizados entre aparelhos.</Text>
 

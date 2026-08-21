@@ -50,7 +50,7 @@ export default function SignIn() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <Text style={styles.eyebrow}>Bem-vinda de volta</Text>
+        <Text style={styles.eyebrow}>De volta</Text>
         <View style={styles.title}>
           <BrandLogotype width={140} />
         </View>
