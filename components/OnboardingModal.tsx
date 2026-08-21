@@ -12,8 +12,9 @@ import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
-import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
-import { upsertBudgetsBatch } from '@/lib/data';
+import { formatMoney, parseAmount, formatMoneyInput, formatarTelefoneBR, telefoneBRValido, telefoneE164BR } from '@/lib/format';
+import { upsertBudgetsBatch, createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
+import type { WhatsappLink } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
 import {
@@ -93,7 +94,7 @@ export const OPCOES_PRESET_HOME: {
   },
 ];
 
-const TOTAL_ETAPAS = 5;
+const TOTAL_ETAPAS = 6;
 
 function SeletorCard({
   label,
@@ -152,6 +153,10 @@ export default function OnboardingModal({
   const [ambicao, setAmbicao] = useState<Ambicao | null>(null);
   const [presetHome, setPresetHome] = useState<HomePreset>('completo');
 
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
+  const [whatsappSaving, setWhatsappSaving] = useState(false);
+
   const [salvandoDiagnostico, setSalvandoDiagnostico] = useState(false);
   const [diagnosticoSalvo, setDiagnosticoSalvo] = useState(false);
   const [aplicandoOrcamento, setAplicandoOrcamento] = useState(false);
@@ -169,10 +174,14 @@ export default function OnboardingModal({
     setRenda(initial && initial.rendaMensal > 0 ? String(initial.rendaMensal).replace('.', ',') : '');
     setAmbicao(initial?.ambicao ?? null);
     setPresetHome('completo');
+    setWhatsappPhone('');
     setSalvandoDiagnostico(false);
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
     setOrcamentoAplicado(false);
+    // Se a pessoa já vinculou o WhatsApp antes (ex: refazendo o diagnóstico),
+    // o passo mostra o estado atual em vez de fingir que nunca foi feito.
+    fetchWhatsappLink().then(setWhatsappLink).catch(() => setWhatsappLink(null));
   }, [visible, initial]);
 
   function resetState() {
@@ -183,6 +192,7 @@ export default function OnboardingModal({
     setRenda('');
     setAmbicao(null);
     setPresetHome('completo');
+    setWhatsappPhone('');
     setSalvandoDiagnostico(false);
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
@@ -199,7 +209,7 @@ export default function OnboardingModal({
   const { rotulo: rotuloMeta } = respostas ? metaPoupanca(respostas.ambicao) : { rotulo: '' };
 
   useEffect(() => {
-    if (step !== 6 || !respostas || !arquetipo || diagnosticoSalvo || salvandoDiagnostico) return;
+    if (step !== 7 || !respostas || !arquetipo || diagnosticoSalvo || salvandoDiagnostico) return;
     setSalvandoDiagnostico(true);
     salvarDiagnostico(respostas, arquetipo).finally(() => {
       setSalvandoDiagnostico(false);
@@ -218,7 +228,7 @@ export default function OnboardingModal({
     setAmbicao(r.ambicao);
     setDiagnosticoSalvo(false);
     salvarLayoutHome(layoutDoPreset(presetHome));
-    setStep(6);
+    setStep(7);
   }
 
   function handleNext() {
@@ -235,6 +245,8 @@ export default function OnboardingModal({
       if (!ambicao) return avisar('Escolha sua meta de economia mensal.');
       setStep(5);
     } else if (step === 5) {
+      setStep(6);
+    } else if (step === 6) {
       finalizar({
         organizacao: organizacao!,
         foco: foco!,
@@ -275,6 +287,32 @@ export default function OnboardingModal({
       Alert.alert('Erro ao aplicar orçamento', e.message);
     } finally {
       setAplicandoOrcamento(false);
+    }
+  }
+
+  async function handleGerarPareamento() {
+    if (!telefoneBRValido(whatsappPhone)) {
+      Alert.alert('Número inválido', 'Informe o DDD e o número, ex: (11) 91234-5678.');
+      return;
+    }
+    const phone = telefoneE164BR(whatsappPhone);
+    setWhatsappSaving(true);
+    try {
+      const link = await createWhatsappPairing(phone);
+      setWhatsappLink(link);
+    } catch (e: any) {
+      Alert.alert('Erro ao gerar código', e.message);
+    } finally {
+      setWhatsappSaving(false);
+    }
+  }
+
+  async function handleVerificarWhatsapp() {
+    setWhatsappSaving(true);
+    try {
+      setWhatsappLink(await fetchWhatsappLink());
+    } finally {
+      setWhatsappSaving(false);
     }
   }
 
@@ -427,7 +465,79 @@ export default function OnboardingModal({
             </View>
           )}
 
-          {step === 6 && arquetipo && orcamento && respostas && (
+          {step === 6 && (
+            <View style={styles.stepContent}>
+              <Text style={styles.eyebrow}>6 de {TOTAL_ETAPAS} · opcional</Text>
+              <Text style={styles.question}>Quer lançar gastos direto pelo WhatsApp?</Text>
+              <Text style={styles.hint}>
+                Vincule seu número e mande uma mensagem como "Mercado de 120 reais" — o Grana.
+                identifica valor, categoria e registra sozinho. Dá pra configurar depois no Perfil
+                também, se preferir pular agora.
+              </Text>
+
+              {isDemoMode ? (
+                <Text style={[styles.hint, { marginTop: spacing.sm }]}>
+                  Indisponível no modo de exemplo — desative "Dados de exemplo" no Perfil para vincular um número de verdade.
+                </Text>
+              ) : whatsappLink?.verified ? (
+                <View style={styles.whatsappCard}>
+                  <Ionicons name="checkmark-circle" size={22} color={theme.accent2} />
+                  <Text style={styles.whatsappCardText}>
+                    Vinculado ao número {whatsappLink.phone}. Pode mandar seu primeiro lançamento
+                    assim que quiser.
+                  </Text>
+                </View>
+              ) : whatsappLink ? (
+                <View style={styles.whatsappCard}>
+                  <Text style={styles.whatsappCardText}>
+                    Envie o código abaixo pelo WhatsApp para {process.env.EXPO_PUBLIC_WHATSAPP_NUMBER ?? 'o número do Grana.'}{' '}
+                    a partir de {whatsappLink.phone}. Válido por 15 minutos.
+                  </Text>
+                  <Text style={styles.whatsappCode}>{whatsappLink.pairing_code}</Text>
+                  <AppPressable
+                    style={({ hovered }) => [styles.applyBtn, hovered && styles.applyBtnHover]}
+                    onPress={handleVerificarWhatsapp}
+                    disabled={whatsappSaving}
+                  >
+                    {whatsappSaving ? (
+                      <ActivityIndicator color={theme.ink} />
+                    ) : (
+                      <Text style={styles.applyBtnText}>Já enviei — verificar</Text>
+                    )}
+                  </AppPressable>
+                </View>
+              ) : (
+                <View style={styles.whatsappCard}>
+                  <View style={styles.telefoneRow}>
+                    <View style={styles.ddiFixo}>
+                      <Text style={styles.ddiTexto}>+55</Text>
+                    </View>
+                    <TextInput
+                      style={[styles.telefoneInputCampo, styles.telefoneInput]}
+                      placeholder="(11) 91234-5678"
+                      placeholderTextColor={theme.inkFaint}
+                      keyboardType="phone-pad"
+                      value={whatsappPhone}
+                      onChangeText={(t) => setWhatsappPhone(formatarTelefoneBR(t))}
+                    />
+                  </View>
+                  <AppPressable
+                    style={({ hovered }) => [styles.applyBtn, hovered && styles.applyBtnHover]}
+                    onPress={handleGerarPareamento}
+                    disabled={whatsappSaving}
+                  >
+                    {whatsappSaving ? (
+                      <ActivityIndicator color={theme.ink} />
+                    ) : (
+                      <Text style={styles.applyBtnText}>Gerar código de pareamento</Text>
+                    )}
+                  </AppPressable>
+                </View>
+              )}
+            </View>
+          )}
+
+          {step === 7 && arquetipo && orcamento && respostas && (
             <View style={styles.stepContent}>
               <Text style={styles.eyebrow}>Seu diagnóstico</Text>
 
@@ -529,10 +639,10 @@ export default function OnboardingModal({
             onPress={handleNext}
           >
             <Text style={styles.primaryBtnText}>
-              {step === 5 ? 'Ver meu diagnóstico' : step === 6 ? 'Começar a usar o Grana' : 'Continuar'}
+              {step === 6 ? 'Ver meu diagnóstico' : step === 7 ? 'Começar a usar o Grana' : 'Continuar'}
             </Text>
           </AppPressable>
-          {step <= 5 && (
+          {step <= 6 && (
             <AppPressable onPress={handleSkip}>
               <Text style={styles.skipBtnText}>Pular por agora</Text>
             </AppPressable>
@@ -616,6 +726,47 @@ const styles = StyleSheet.create({
   planoNumeroTexto: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
   planoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, fontFamily: fonts.light },
 
+  whatsappCard: {
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  whatsappCardText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, fontFamily: fonts.light },
+  whatsappCode: {
+    color: theme.ink,
+    fontSize: type.valor,
+    letterSpacing: 6,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+    paddingVertical: 8,
+    fontFamily: fonts.regular,
+  },
+  telefoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  ddiFixo: {
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: theme.rule,
+    backgroundColor: theme.paper,
+  },
+  ddiTexto: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
+  telefoneInput: { flex: 1 },
+  telefoneInputCampo: {
+    borderWidth: 1.5,
+    borderColor: theme.rule,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    fontSize: type.corpo,
+    color: theme.ink,
+    backgroundColor: theme.paper,
+    fontFamily: fonts.regular,
+  },
   orcamentoBox: { backgroundColor: theme.paperRaised, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: 2 },
   orcamentoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.rule },
   orcamentoRotulo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
