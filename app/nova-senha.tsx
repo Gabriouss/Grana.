@@ -8,7 +8,7 @@ import { LIMITS, validatePassword } from '@/lib/limits';
 import { checarSenhaVazada, mensagemSenhaVazada } from '@/lib/pwned';
 import AppPressable from '@/components/AppPressable';
 import PasswordInput from '@/components/PasswordInput';
-import BrandLogo from '@/components/BrandLogo';
+import BrandLogotype from '@/components/BrandLogotype';
 
 /**
  * Definição da senha nova, ao voltar do link de recuperação.
@@ -73,7 +73,9 @@ export default function NovaSenhaScreen() {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Text style={styles.eyebrow}>Quase lá</Text>
-        <BrandLogo size={38} style={styles.title} />
+        <View style={styles.title}>
+          <BrandLogotype width={140} />
+        </View>
         <Text style={styles.subtitle}>
           Crie uma senha nova para sua conta. Depois de salvar, use ela para entrar em qualquer aparelho.
         </Text>
