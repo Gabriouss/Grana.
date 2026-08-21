@@ -28,6 +28,7 @@ import {
   fetchCardInvoicePayments,
   payCardInvoice,
   reopenCardInvoice,
+  updateTransaction,
 } from '@/lib/data';
 import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
@@ -46,8 +47,8 @@ import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import PrivacyValue from '@/components/PrivacyValue';
 import MonthSelector from '@/components/MonthSelector';
-import CategoryPickerModal from '@/components/CategoryPickerModal';
 import DatePickerModal from '@/components/DatePickerModal';
+import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
 import Toast from '@/components/Toast';
 import Sheet from '@/components/Sheet';
 import FadeIn from '@/components/FadeIn';
@@ -92,6 +93,9 @@ export default function CreditoScreen() {
 
   // Modais de Lançamento no Crédito
   const [newTxOpen, setNewTxOpen] = useState(false);
+  /* Mesmo sheet serve pra criar e pra editar — quando isto tem id, o salvar
+     atualiza aquele lançamento em vez de criar um novo. */
+  const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [txDesc, setTxDesc] = useState('');
   const [txAmount, setTxAmount] = useState('');
   const [txCardId, setTxCardId] = useState<string>('');
@@ -101,9 +105,6 @@ export default function CreditoScreen() {
   const [txInstallments, setTxInstallments] = useState('1');
   const [txSaving, setTxSaving] = useState(false);
 
-  // Pickers auxiliares
-  const [catPickerOpen, setCatPickerOpen] = useState(false);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Pagamento de fatura
   const [invoicePayments, setInvoicePayments] = useState<CreditCardInvoicePayment[]>([]);
@@ -179,8 +180,7 @@ export default function CreditoScreen() {
      sozinho numa navegação de volta a esta tela. */
   useEffect(() => {
     if (novaCompra !== '1' || loading || newTxOpen) return;
-    if (walletCards.length > 0) setTxCardId(walletCards[0].id);
-    setNewTxOpen(true);
+    abrirNovaCompra();
     router.setParams({ novaCompra: undefined });
   }, [novaCompra, loading, newTxOpen, walletCards]);
 
@@ -379,23 +379,84 @@ export default function CreditoScreen() {
     }
   }
 
-  // Salvar compra no cartão
-  async function handleSaveCreditTx() {
-    if (!txDesc.trim()) {
+  /* Abrir o sheet em branco. Precisa limpar campo por campo porque o mesmo
+     sheet pode ter acabado de ser usado pra editar — sem isto, "Lançar no
+     Crédito" abriria com os dados do último lançamento aberto. */
+  function abrirNovaCompra() {
+    setEditingTxId(null);
+    setTxDesc('');
+    setTxAmount('');
+    setTxInstallments('1');
+    setTxDate(todayISO());
+    setTxCategory(CATEGORIES[0].name);
+    setTxCatColor(CATEGORIES[0].color);
+    if (walletCards.length > 0) setTxCardId(walletCards[0].id);
+    setNewTxOpen(true);
+  }
+
+  /* Abrir o sheet já preenchido com um lançamento existente. */
+  function abrirEdicaoCompra(tx: Transaction) {
+    setEditingTxId(tx.id);
+    setTxDesc(tx.description);
+    setTxAmount(formatMoney(Number(tx.amount)));
+    setTxCardId(tx.card_id || walletCards[0]?.id || '');
+    setTxCategory(tx.category);
+    setTxCatColor(tx.color);
+    setTxDate(tx.occurred_on);
+    setTxInstallments('1');
+    setNewTxOpen(true);
+  }
+
+  // Salvar compra no cartão (criação ou edição — o sheet devolve os valores)
+  async function handleSaveCreditTx(valores: ValoresLancamento) {
+    if (!valores.description.trim()) {
       Alert.alert('Descrição obrigatória', 'Informe onde o gasto foi feito.');
       return;
     }
-    const amount = parseAmount(txAmount);
+    const amount = parseAmount(valores.amount);
     if (!amount || amount <= 0) {
       Alert.alert('Valor inválido', 'Informe o valor da compra.');
       return;
     }
 
-    const targetCard = walletCards.find((c) => c.id === txCardId) || walletCards[0];
-    const totalInst = Math.max(1, parseInt(txInstallments, 10) || 1);
+
+    const targetCard = walletCards.find((c) => c.id === valores.card_id) || walletCards[0];
+    const totalInst = Math.max(1, valores.installments);
 
     setTxSaving(true);
     try {
+      if (editingTxId) {
+        /* Editar não mexe em parcelamento: alterar o número de parcelas de
+           uma compra já lançada significaria apagar e recriar N linhas, e
+           cada parcela é uma transação própria. Aqui edita-se só a linha
+           aberta — mesma regra que o Lançamentos já aplica. */
+        const alteracoes = {
+          description: valores.description.trim(),
+          amount,
+          category: valores.category,
+          color: valores.color,
+          occurred_on: valores.occurred_on,
+          card_id: targetCard?.id,
+          bank: targetCard?.bank || 'outro',
+        };
+        if (isDemoMode) {
+          setTransactions((prev) =>
+            prev.map((t) => (t.id === editingTxId ? { ...t, ...alteracoes } : t))
+          );
+        } else {
+          await updateTransaction(editingTxId, alteracoes);
+          await loadData();
+        }
+        hapticSuccess();
+        triggerToast('Lançamento atualizado');
+        setNewTxOpen(false);
+        setEditingTxId(null);
+        setTxDesc('');
+        setTxAmount('');
+        setTxInstallments('1');
+        return;
+      }
+
       if (isDemoMode) {
         /* Mesmo critério do caminho real: parcelado vira N lançamentos, um
            por mês, cada um com a fração do valor — senão a fatura do mês da
@@ -404,17 +465,17 @@ export default function CreditoScreen() {
         const base = Math.round((amount / n) * 100) / 100;
         const lastAmount = Math.round((amount - base * (n - 1)) * 100) / 100;
         const fakeRows: Transaction[] = Array.from({ length: n }, (_, i) => {
-          const d = new Date(txDate + 'T00:00:00');
+          const d = new Date(valores.occurred_on + 'T00:00:00');
           d.setMonth(d.getMonth() + i);
           const pad = (v: number) => String(v).padStart(2, '0');
           return {
             id: `tx-${Date.now()}-${i}`,
             user_id: 'demo',
             type: 'out',
-            description: n > 1 ? `${txDesc.trim()} (${i + 1}/${n})` : txDesc.trim(),
+            description: n > 1 ? `${valores.description.trim()} (${i + 1}/${n})` : valores.description.trim(),
             amount: i === n - 1 ? lastAmount : base,
-            category: txCategory,
-            color: txCatColor,
+            category: valores.category,
+            color: valores.color,
             occurred_on: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
             recurring: false,
             parent_id: null,
@@ -429,11 +490,11 @@ export default function CreditoScreen() {
         setTransactions((prev) => [...fakeRows, ...prev]);
       } else if (totalInst > 1) {
         await addInstallmentPurchase({
-          description: txDesc.trim(),
+          description: valores.description.trim(),
           totalAmount: amount,
-          category: txCategory,
-          color: txCatColor,
-          occurred_on: txDate,
+          category: valores.category,
+          color: valores.color,
+          occurred_on: valores.occurred_on,
           installments: totalInst,
           payment_method: 'credit',
           bank: targetCard?.bank || 'outro',
@@ -444,11 +505,11 @@ export default function CreditoScreen() {
       } else {
         await addTransaction({
           type: 'out',
-          description: txDesc.trim(),
+          description: valores.description.trim(),
           amount,
-          category: txCategory,
-          color: txCatColor,
-          occurred_on: txDate,
+          category: valores.category,
+          color: valores.color,
+          occurred_on: valores.occurred_on,
           recurring: false,
           payment_method: 'credit',
           bank: targetCard?.bank || 'outro',
@@ -680,8 +741,7 @@ export default function CreditoScreen() {
               style={styles.addPurchaseBtn}
               onPress={() => {
                 hapticTap();
-                if (walletCards.length > 0) setTxCardId(walletCards[0].id);
-                setNewTxOpen(true);
+                abrirNovaCompra();
               }}
             >
               <Ionicons name="add" size={18} color="#052229" />
@@ -704,7 +764,7 @@ export default function CreditoScreen() {
         </View>
 
         {/* Lista de Compras no Crédito */}
-        <Text style={styles.sectionLabel}>Lançamentos da Fatura · segure para excluir</Text>
+        <Text style={styles.sectionLabel}>Lançamentos da Fatura · toque para editar, segure para excluir</Text>
         {creditTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhuma compra no crédito neste mês.</Text>
         ) : (
@@ -712,6 +772,7 @@ export default function CreditoScreen() {
             <AppPressable
               key={tx.id}
               style={({ hovered }) => [styles.txRow, hovered && { backgroundColor: 'rgba(255,255,255,0.03)' }]}
+              onPress={() => abrirEdicaoCompra(tx)}
               onLongPress={() => confirmDeleteTx(tx)}
             >
               <View style={styles.txInfo}>
@@ -837,105 +898,27 @@ export default function CreditoScreen() {
         </Sheet>
       </Modal>
 
-      {/* Modal: Nova Compra no Crédito */}
-      <Modal visible={newTxOpen} animationType="slide" transparent onRequestClose={() => setNewTxOpen(false)}>
-        <Sheet onClose={() => setNewTxOpen(false)}>
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Lançar Compra no Crédito</Text>
-            <AppPressable onPress={() => setNewTxOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
-              <Ionicons name="close" size={22} color={theme.inkFaint} />
-            </AppPressable>
-          </View>
-
-          <TextInput
-            maxLength={LIMITS.description}
-            style={styles.input}
-            placeholder="Descrição — ex: Supermercado"
-            placeholderTextColor={theme.inkFaint}
-            value={txDesc}
-            onChangeText={setTxDesc}
-          />
-
-          <View style={styles.amountRow}>
-            <Text style={styles.amountPrefix}>R$</Text>
-            <TextInput
-              maxLength={LIMITS.amount}
-              style={styles.amountInput}
-              placeholder="0,00"
-              placeholderTextColor={theme.inkFaint}
-              keyboardType="number-pad"
-              value={txAmount}
-              onChangeText={(t) => setTxAmount(formatMoneyInput(t))}
-            />
-          </View>
-
-          {/* Seletor de Cartão */}
-          {walletCards.length > 0 && (
-            <View style={{ gap: 4, marginTop: 4 }}>
-              <Text style={styles.inputLabel}>Cartão / Banco</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.banksRow}>
-                {walletCards.map((c) => (
-                  <AppPressable
-                    key={c.id}
-                    style={[
-                      styles.bankChip,
-                      txCardId === c.id && { borderColor: c.color, backgroundColor: 'rgba(255,255,255,0.08)' },
-                    ]}
-                    onPress={() => setTxCardId(c.id)}
-                  >
-                    <View style={[styles.bankDot, { backgroundColor: c.color }]} />
-                    <Text style={[styles.bankChipText, txCardId === c.id && { color: theme.ink}]}>
-                      {c.name}
-                    </Text>
-                  </AppPressable>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          <View style={styles.row2Cols}>
-            <AppPressable
-              style={styles.fieldRow}
-              onPress={() => setCatPickerOpen(true)}
-            >
-              <Text style={styles.fieldKey}>Categoria</Text>
-              <View style={styles.fieldVal}>
-                <View style={[styles.bankDot, { backgroundColor: txCatColor }]} />
-                <Text style={styles.fieldValText}>{txCategory}</Text>
-              </View>
-            </AppPressable>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldKey}>Parcelas</Text>
-              <TextInput
-                maxLength={2}
-                style={[styles.input, { paddingVertical: 4 }]}
-                placeholder="1"
-                placeholderTextColor={theme.inkFaint}
-                keyboardType="number-pad"
-                value={txInstallments}
-                onChangeText={setTxInstallments}
-              />
-            </View>
-          </View>
-
-          <AppPressable
-            style={styles.fieldRow}
-            onPress={() => setDatePickerOpen(true)}
-          >
-            <Text style={styles.fieldKey}>Data da Compra</Text>
-            <Text style={styles.fieldValText}>{formatDateLabel(txDate)}</Text>
-          </AppPressable>
-
-          <AppPressable
-            style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
-            onPress={handleSaveCreditTx}
-            disabled={txSaving}
-          >
-            {txSaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Confirmar Gasto no Crédito</Text>}
-          </AppPressable>
-        </Sheet>
-      </Modal>
+      {/* Sheet de lançamento — mesmo componente da tela de Lançamentos. */}
+      <TransactionSheet
+        visible={newTxOpen}
+        onClose={() => setNewTxOpen(false)}
+        modo="credito"
+        editando={!!editingTxId}
+        cartoes={walletCards}
+        salvando={txSaving}
+        inicial={{
+          type: 'out',
+          description: txDesc,
+          amount: txAmount,
+          category: txCategory,
+          color: txCatColor,
+          occurred_on: txDate,
+          recurring: false,
+          installments: Math.max(1, parseInt(txInstallments, 10) || 1),
+          card_id: txCardId || walletCards[0]?.id || null,
+        }}
+        onSalvar={handleSaveCreditTx}
+      />
 
       {/* Modal: Pagar Fatura */}
       <Modal visible={payInvoiceOpen} animationType="slide" transparent onRequestClose={() => setPayInvoiceOpen(false)}>
@@ -1012,29 +995,6 @@ export default function CreditoScreen() {
         onSelectDate={(iso) => {
           setPayDate(iso);
           setPayDatePickerOpen(false);
-        }}
-      />
-
-      {/* Pickers */}
-      <CategoryPickerModal
-        visible={catPickerOpen}
-        currentCategory={txCategory}
-        onClose={() => setCatPickerOpen(false)}
-        onSelectCategory={(cat) => {
-          setTxCategory(cat.name);
-          setTxCatColor(cat.color);
-          setCatPickerOpen(false);
-        }}
-      />
-
-      <DatePickerModal
-        visible={datePickerOpen}
-        currentISO={txDate}
-        title="Data da compra"
-        onClose={() => setDatePickerOpen(false)}
-        onSelectDate={(iso) => {
-          setTxDate(iso);
-          setDatePickerOpen(false);
         }}
       />
 

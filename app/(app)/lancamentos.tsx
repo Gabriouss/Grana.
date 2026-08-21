@@ -27,12 +27,11 @@ import WalletPill from '@/components/WalletPill';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import CsvImportModal from '@/components/CsvImportModal';
-import DatePickerModal from '@/components/DatePickerModal';
-import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
+import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import FabButton from '@/components/FabButton';
 import MonthSelector from '@/components/MonthSelector';
@@ -46,14 +45,13 @@ import {
   setCachedTransactions,
 } from '@/lib/offline-cache';
 import { hapticDelete } from '@/lib/haptics';
-import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO } from '@/lib/format';
 import { theme, radius, spacing, screenRhythm, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Transaction, TxType } from '@/lib/types';
-import { LIMITS } from '@/lib/limits';
 
 export default function LancamentosScreen() {
   const { paddingConteudo } = useTabBarInset();
@@ -95,8 +93,6 @@ export default function LancamentosScreen() {
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [voiceText, setVoiceText] = useState<string | undefined>(undefined);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [catPickerOpen, setCatPickerOpen] = useState(false);
 
   // Action Sheet
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
@@ -199,16 +195,16 @@ export default function LancamentosScreen() {
     setModalOpen(true);
   }
 
-  async function handleSave() {
-    const value = parseAmount(amount);
+  async function handleSave(v: ValoresLancamento) {
+    const value = parseAmount(v.amount);
     if (!value || value <= 0) {
       Alert.alert('Informe um valor válido');
       return;
     }
 
     // Só faz sentido parcelar uma saída nova (não uma edição, nem uma entrada).
-    const parcelas = Math.max(2, Math.round(Number(installmentCount) || 2));
-    const isInstallmentSave = installment && !editingTxId && type === 'out';
+    const parcelas = Math.max(2, v.installments);
+    const isInstallmentSave = v.installments > 1 && !editingTxId && v.type === 'out';
 
     if (isDemoMode) {
       // Modo de exemplo é só uma "lente" de exploração — nunca deve tocar o banco real.
@@ -216,13 +212,13 @@ export default function LancamentosScreen() {
         setTransactions((prev) =>
           prev.map((t) =>
             t.id === editingTxId
-              ? { ...t, type, description: desc.trim() || 'Sem descrição', amount: value, category, color: catColor, occurred_on: occurredOn, recurring }
+              ? { ...t, type: v.type, description: v.description.trim() || 'Sem descrição', amount: value, category: v.category, color: v.color, occurred_on: v.occurred_on, recurring: v.recurring }
               : t
           )
         );
         triggerToast('Lançamento atualizado (exemplo)');
       } else if (isInstallmentSave) {
-        const baseDesc = desc.trim() || 'Compra parcelada';
+        const baseDesc = v.description.trim() || 'Compra parcelada';
         const base = Math.round((value / parcelas) * 100) / 100;
         const last = Math.round((value - base * (parcelas - 1)) * 100) / 100;
         let parentId: string | null = null;
@@ -236,9 +232,9 @@ export default function LancamentosScreen() {
             type: 'out',
             description: `${baseDesc} (${i + 1}/${parcelas})`,
             amount: i === parcelas - 1 ? last : base,
-            category,
-            color: catColor,
-            occurred_on: addMonthsToISO(occurredOn, i),
+            category: v.category,
+            color: v.color,
+            occurred_on: addMonthsToISO(v.occurred_on, i),
             recurring: false,
             parent_id: i === 0 ? null : parentId,
             created_at: new Date().toISOString(),
@@ -251,13 +247,13 @@ export default function LancamentosScreen() {
           {
             id: `demo-local-${Date.now()}`,
             user_id: 'demo',
-            type,
-            description: desc.trim() || (type === 'in' ? 'Entrada' : 'Saída'),
+            type: v.type,
+            description: v.description.trim() || (v.type === 'in' ? 'Entrada' : 'Saída'),
             amount: value,
-            category,
-            color: catColor,
-            occurred_on: occurredOn,
-            recurring,
+            category: v.category,
+            color: v.color,
+            occurred_on: v.occurred_on,
+            recurring: v.recurring,
             parent_id: null,
             created_at: new Date().toISOString(),
           },
@@ -273,35 +269,35 @@ export default function LancamentosScreen() {
     try {
       if (editingTxId) {
         await updateTransaction(editingTxId, {
-          type,
-          description: desc.trim() || 'Sem descrição',
+          type: v.type,
+          description: v.description.trim() || 'Sem descrição',
           amount: value,
-          category,
-          color: catColor,
-          occurred_on: occurredOn,
-          recurring,
+          category: v.category,
+          color: v.color,
+          occurred_on: v.occurred_on,
+          recurring: v.recurring,
         });
         triggerToast('Lançamento atualizado');
       } else if (isInstallmentSave) {
         await addInstallmentPurchase({
-          description: desc.trim(),
+          description: v.description.trim(),
           totalAmount: value,
-          category,
-          color: catColor,
-          occurred_on: occurredOn,
+          category: v.category,
+          color: v.color,
+          occurred_on: v.occurred_on,
           installments: parcelas,
           wallet_id: activeWallet?.id ?? null,
         });
         triggerToast(`Compra parcelada em ${parcelas}x`);
       } else {
         const input = {
-          type,
-          description: desc.trim() || (type === 'in' ? 'Entrada' : 'Saída'),
+          type: v.type,
+          description: v.description.trim() || (v.type === 'in' ? 'Entrada' : 'Saída'),
           amount: value,
-          category,
-          color: catColor,
-          occurred_on: occurredOn,
-          recurring,
+          category: v.category,
+          color: v.color,
+          occurred_on: v.occurred_on,
+          recurring: v.recurring,
           wallet_id: activeWallet?.id ?? null,
         };
         try {
@@ -572,206 +568,27 @@ export default function LancamentosScreen() {
       {/* FAB — mesmo componente da Home, só sem a opção Boleto (isso fica em Contas) */}
       <FabButton onAddIncome={() => openNewModal('in')} onAddExpense={() => openNewModal('out')} />
 
-      {/* Sheet: Novo / Editar Lançamento */}
-      <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={() => setModalOpen(false)}>
-        <Sheet onClose={() => setModalOpen(false)}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{editingTxId ? 'Editar lançamento' : type === 'in' ? 'Nova entrada' : 'Nova saída'}</Text>
-              <AppPressable onPress={() => setModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
-                <Ionicons name="close" size={22} color={theme.inkFaint} />
-              </AppPressable>
-            </View>
-
-            <View style={styles.typeRow}>
-              <AppPressable
-                onPress={() => setType('out')}
-                style={[styles.typeBtn, type === 'out' && styles.typeBtnOut]}
-              >
-                <Text style={[styles.typeText, type === 'out' && styles.typeTextOn]}>Saída</Text>
-              </AppPressable>
-              <AppPressable
-                onPress={() => setType('in')}
-                style={[styles.typeBtn, type === 'in' && styles.typeBtnIn]}
-              >
-                <Text style={[styles.typeText, type === 'in' && styles.typeTextOn]}>Entrada</Text>
-              </AppPressable>
-            </View>
-
-            <TextInput maxLength={LIMITS.description}
-              style={styles.descInput}
-              placeholder="Descrição"
-              placeholderTextColor={theme.inkFaint}
-              value={desc}
-              onChangeText={setDesc}
-            />
-
-            <View style={styles.amountRow}>
-              <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput maxLength={LIMITS.amount}
-                style={styles.amountInput}
-                placeholder="0,00"
-                placeholderTextColor={theme.inkFaint}
-                keyboardType="number-pad"
-                value={amount}
-                onChangeText={(t) => setAmount(formatMoneyInput(t))}
-              />
-            </View>
-
-
-            <AppPressable
-              style={styles.fieldRow}
-              onPress={() => setCatPickerOpen(true)}
-            >
-              <Text style={styles.fieldKey}>Categoria</Text>
-              <View style={styles.fieldVal}>
-                <View style={[styles.dot, { backgroundColor: catColor }]} />
-                <Text style={styles.fieldValText}>{category}</Text>
-                <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
-              </View>
-            </AppPressable>
-
-            <View style={{ gap: 6 }}>
-              <AppPressable
-                style={styles.fieldRow}
-                onPress={() => setDatePickerOpen(true)}
-              >
-                <Text style={styles.fieldKey}>Data do lançamento</Text>
-                <View style={styles.fieldVal}>
-                  <Text style={styles.fieldValText}>{formatDateLabel(occurredOn)}</Text>
-                  <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
-                </View>
-              </AppPressable>
-
-              <View style={styles.dateQuickRow}>
-                <AppPressable
-                  style={[styles.dateQuickChip, occurredOn === todayISO() && styles.dateQuickChipActive]}
-                  onPress={() => setOccurredOn(todayISO())}
-                >
-                  <Text style={[styles.dateQuickText, occurredOn === todayISO() && styles.dateQuickTextActive]}>Hoje</Text>
-                </AppPressable>
-                {(() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() - 1);
-                  const pad = (n: number) => String(n).padStart(2, '0');
-                  const yISO = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-                  const isCustom = occurredOn !== todayISO() && occurredOn !== yISO;
-                  return (
-                    <>
-                      <AppPressable
-                        style={[styles.dateQuickChip, occurredOn === yISO && styles.dateQuickChipActive]}
-                        onPress={() => setOccurredOn(yISO)}
-                      >
-                        <Text style={[styles.dateQuickText, occurredOn === yISO && styles.dateQuickTextActive]}>Ontem</Text>
-                      </AppPressable>
-                      <AppPressable
-                        style={[styles.dateQuickChip, isCustom && styles.dateQuickChipActive]}
-                        onPress={() => setDatePickerOpen(true)}
-                      >
-                        <Text style={[styles.dateQuickText, isCustom && styles.dateQuickTextActive]}>Calendário</Text>
-                      </AppPressable>
-                    </>
-                  );
-                })()}
-              </View>
-            </View>
-
-
-
-            {!installment && (
-              <View style={styles.fieldRow}>
-                <Text style={styles.fieldKey}>Repetir mensalmente</Text>
-                <AppPressable
-                  style={[styles.switchTrack, recurring && styles.switchTrackOn]}
-                  onPress={() => setRecurring((p) => !p)}
-                  hitSlop={12}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: recurring }}
-                  accessibilityLabel="Repetir mensalmente"
-                >
-                  <View style={[styles.switchThumb, recurring && styles.switchThumbOn]} />
-                </AppPressable>
-              </View>
-            )}
-
-            {/* Parcelamento só faz sentido pra uma saída sendo criada — não pra edição nem pra entrada. */}
-            {!editingTxId && type === 'out' && !recurring && (
-              <View style={{ gap: 6 }}>
-                <View style={styles.fieldRow}>
-                  <Text style={styles.fieldKey}>Compra parcelada</Text>
-                  <AppPressable
-                    style={[styles.switchTrack, installment && styles.switchTrackOn]}
-                    onPress={() => setInstallment((p) => !p)}
-                    hitSlop={12}
-                    accessibilityRole="switch"
-                    accessibilityState={{ checked: installment }}
-                    accessibilityLabel="Compra parcelada"
-                  >
-                    <View style={[styles.switchThumb, installment && styles.switchThumbOn]} />
-                  </AppPressable>
-                </View>
-
-                {installment && (
-                  <View style={styles.installmentRow}>
-                    <Text style={styles.fieldKey}>Em quantas vezes</Text>
-                    <View style={styles.stepper}>
-                      <AppPressable
-                        style={styles.stepperBtn}
-                        onPress={() => setInstallmentCount((c) => String(Math.max(2, (Number(c) || 2) - 1)))}
-                        hitSlop={8}
-                      >
-                        <Ionicons name="remove" size={16} color={theme.ink} />
-                      </AppPressable>
-                      <Text style={styles.stepperVal}>{Math.max(2, Math.round(Number(installmentCount) || 2))}x</Text>
-                      <AppPressable
-                        style={styles.stepperBtn}
-                        onPress={() => setInstallmentCount((c) => String(Math.min(60, (Number(c) || 2) + 1)))}
-                        hitSlop={8}
-                      >
-                        <Ionicons name="add" size={16} color={theme.ink} />
-                      </AppPressable>
-                    </View>
-                  </View>
-                )}
-
-                {installment && !!parseAmount(amount) && (
-                  <Text style={styles.installmentHint}>
-                    {Math.max(2, Math.round(Number(installmentCount) || 2))}x de R${' '}
-                    {formatMoney(parseAmount(amount) / Math.max(2, Math.round(Number(installmentCount) || 2)))}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            <AppPressable
-              style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              {saving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>{editingTxId ? 'Salvar alterações' : 'Salvar lançamento'}</Text>}
-            </AppPressable>
-        </Sheet>
-      </Modal>
-
-      {/* Date Picker Modal */}
-      <DatePickerModal
-        visible={datePickerOpen}
-        currentISO={occurredOn}
-        title="Data do lançamento"
-        onClose={() => setDatePickerOpen(false)}
-        onSelectDate={(iso) => setOccurredOn(iso)}
-      />
-
-      {/* Category Picker Modal */}
-      <CategoryPickerModal
-        visible={catPickerOpen}
-        currentCategory={category}
-        onClose={() => setCatPickerOpen(false)}
-        onSelectCategory={(cat) => {
-          setCategory(cat.name);
-          setCatColor(cat.color);
+      {/* Sheet de lançamento — mesmo componente da tela de Crédito. */}
+      <TransactionSheet
+        visible={modalOpen}
+        onClose={() => setModalOpen(false)}
+        modo="carteira"
+        editando={!!editingTxId}
+        salvando={saving}
+        inicial={{
+          type,
+          description: desc,
+          amount,
+          category,
+          color: catColor,
+          occurred_on: occurredOn,
+          recurring,
+          installments: installment ? Math.max(2, Math.round(Number(installmentCount) || 2)) : 1,
+          card_id: null,
         }}
-      />
+        onSalvar={handleSave}
 
+      />
       {/* Item Action Sheet (Editar / Excluir) */}
       <ItemActionSheet
         visible={actionSheetOpen}
