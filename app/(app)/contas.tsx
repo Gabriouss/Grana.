@@ -17,8 +17,10 @@ import { colunaConteudo } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
+import HeaderAction from '@/components/HeaderAction';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
+import { usePrivacy } from '@/lib/privacy-context';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
 import Toast from '@/components/Toast';
@@ -65,6 +67,7 @@ export default function ContasScreen() {
   // Aux Pickers & Sheets
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const { hidden, toggle: togglePrivacy } = usePrivacy();
 
   // Toast
   const [toastMsg, setToastMsg] = useState('');
@@ -286,7 +289,19 @@ export default function ContasScreen() {
       <ScreenHeader
         eyebrow="Pagamentos"
         title="Contas a pagar"
-        right={<WalletPill onPress={() => setWalletModalOpen(true)} />}
+        right={
+          <>
+            <HeaderAction
+              icon={hidden ? 'eye-off-outline' : 'eye-outline'}
+              onPress={() => {
+                togglePrivacy();
+                triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
+              }}
+              accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
+            />
+            <WalletPill onPress={() => setWalletModalOpen(true)} />
+          </>
+        }
       />
 
       {/* Resumo e seletor de mês ficam ABAIXO da borda do cabeçalho, não

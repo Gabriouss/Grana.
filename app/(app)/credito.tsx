@@ -60,7 +60,7 @@ export default function CreditoScreen() {
   const { paddingConteudo } = useTabBarInset();
   const router = useRouter();
   const { novaCompra } = useLocalSearchParams<{ novaCompra?: string }>();
-  const { hidden } = usePrivacy();
+  const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, wallets } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -634,6 +634,14 @@ export default function CreditoScreen() {
                 hapticTap();
                 setNewCardOpen(true);
               }}
+            />
+            <HeaderAction
+              icon={hidden ? 'eye-off-outline' : 'eye-outline'}
+              onPress={() => {
+                togglePrivacy();
+                triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
+              }}
+              accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
             />
             <WalletPill onPress={() => setWalletModalOpen(true)} />
           </>

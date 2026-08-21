@@ -30,6 +30,7 @@ import CsvImportModal from '@/components/CsvImportModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
+import { usePrivacy } from '@/lib/privacy-context';
 import Sheet from '@/components/Sheet';
 import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
 import SegmentedTabs from '@/components/SegmentedTabs';
@@ -58,6 +59,7 @@ export default function LancamentosScreen() {
   const { paddingConteudo } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, activeWalletName } = useWallet();
+  const { hidden, toggle: togglePrivacy } = usePrivacy();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -402,6 +404,14 @@ export default function LancamentosScreen() {
                 setVoiceText(text);
                 setPasteModalOpen(true);
               }}
+            />
+            <HeaderAction
+              icon={hidden ? 'eye-off-outline' : 'eye-outline'}
+              onPress={() => {
+                togglePrivacy();
+                triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
+              }}
+              accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
             />
             <WalletPill onPress={() => setWalletModalOpen(true)} />
           </>
