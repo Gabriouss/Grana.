@@ -408,6 +408,25 @@ function guessDescFromText(text: string, type: 'in' | 'out'): string {
   return type === 'in' ? 'Pix recebido' : 'Pagamento';
 }
 
+/**
+ * Tira da descrição o nome do cartão e a menção solta a "crédito"/"débito" —
+ * essa informação já foi extraída pra `card_id`/`payment_method` em
+ * registrarLancamento(), então repeti-la no nome do lançamento é ruído (e foi
+ * exatamente o bug relatado: "Almoço pago no crédito da C6" ficava com "da
+ * C6" grudado na descrição). Roda DEPOIS de guessDescFromText, só quando um
+ * cartão foi de fato identificado — reaproveita limparSobra() pra tirar o
+ * conector que sobra pendurado ("da", "no") depois que o nome do cartão sai.
+ */
+function limparReferenciaCartao(descricao: string, nomeCartao: string): string {
+  const escapado = nomeCartao.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const semReferencia = descricao
+    .replace(new RegExp(`\\b${escapado}\\b`, 'i'), ' ')
+    .replace(/\bcr[eé]dito\b/i, ' ')
+    .replace(/\bd[eé]bito\b/i, ' ');
+  const limpo = limparSobra(semReferencia);
+  return limpo.length >= 2 ? capitalizar(limpo) : descricao;
+}
+
 const NOMES_CATEGORIAS = CATEGORIES.map((c) => c.name).join(', ');
 
 function parseAmount(raw: string): number {
@@ -799,7 +818,7 @@ async function registrarLancamento(userId: string, phone: string, text: string):
   }
 
   const type = guessTypeFromText(text);
-  const description = guessDescFromText(text, type);
+  let description = guessDescFromText(text, type);
   const occurred_on = todayISO();
   const categoria = matchCategoryByKeyword(text);
 
@@ -816,6 +835,12 @@ async function registrarLancamento(userId: string, phone: string, text: string):
       card_id = achado.id;
       payment_method = 'credit';
       nomeCartao = achado.name;
+      /* "C6" (ou o nome que a pessoa deu ao cartão) identifica ONDE lançar,
+         não faz parte do nome do gasto — "Almoço pago no crédito da C6"
+         virava a descrição "Almoço pago no crédito da C6" (relatado pelo
+         autor), quando o esperado é só "Almoço pago", com o cartão indo
+         para `card_id` separadamente. */
+      description = limparReferenciaCartao(description, nomeCartao);
     }
   }
 
