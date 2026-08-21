@@ -234,9 +234,16 @@ const VERBOS_INICIAIS =
 const CONECTOR = '(?:de|do|da|dos|das|no|na|nos|nas|em|com|para|pra|pro|por|a|o|um|uma)';
 const CONECTOR_INICIAL = new RegExp(`^${CONECTOR}\\b\\s*`, 'i');
 const CONECTOR_FINAL = new RegExp(`\\s+${CONECTOR}$`, 'i');
-/* Restos de valor colados nas pontas: "luz 210" -> "luz", "350 reais x" -> "x". */
+/* Restos de valor colados nas pontas: "luz 210" -> "luz", "350 reais x" -> "x".
+   VALOR_FINAL tem um `(?<![a-zà-ÿ])` antes do dígito que VALOR_INICIAL não
+   precisa: âncorado em `^`, nunca há uma letra antes pra checar. Sem esse
+   lookbehind, "...da C6," virava "...da C" — `[\d.,]` inclui vírgula (pensada
+   pra grupo de milhar tipo "1.234,56"), então o "6," no fim de "C6," casava
+   como se fosse um valor solto, mesmo colado numa letra que não tem nada a
+   ver com dinheiro (mesma causa-raiz do bug já corrigido na regra 3 de
+   guessDescFromText, só que nesta função, chamada por TODAS as regras). */
 const VALOR_INICIAL = /^(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?\b\s*/i;
-const VALOR_FINAL = /\s*(?:r\$\s*)?\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?$/i;
+const VALOR_FINAL = /\s*(?:r\$\s*)?(?<![a-zà-ÿ])\d[\d.,]*\s*(?:reais|real|conto|contos|pila|pau|mangos?)?$/i;
 /* Forma de pagamento mencionada solta no fim da frase — "Mercado 50 no pix",
    "Farmácia 30 no débito" — não é parte do nome do lançamento. */
 const FORMA_PAGAMENTO_FINAL =
