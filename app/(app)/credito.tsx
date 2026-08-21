@@ -29,8 +29,10 @@ import {
   payCardInvoice,
   reopenCardInvoice,
   updateTransaction,
+  criarOcorrenciasRecorrentes,
 } from '@/lib/data';
 import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type } from '@/lib/theme';
@@ -103,6 +105,7 @@ export default function CreditoScreen() {
   const [txCatColor, setTxCatColor] = useState(CATEGORIES[0].color);
   const [txDate, setTxDate] = useState(todayISO());
   const [txInstallments, setTxInstallments] = useState('1');
+  const [txRecurring, setTxRecurring] = useState(false);
   const [txSaving, setTxSaving] = useState(false);
 
 
@@ -126,7 +129,18 @@ export default function CreditoScreen() {
     }
 
     try {
-      const [c, t, p] = await Promise.all([fetchCreditCards(), fetchTransactions(), fetchCardInvoicePayments()]);
+      const [c, tBruto, p] = await Promise.all([fetchCreditCards(), fetchTransactions(), fetchCardInvoicePayments()]);
+
+      /* Assinaturas no cartão ("repete a cada mês") só entram na fatura do mês
+         novo se alguém criar a ocorrência — é aqui que isso acontece, tanto
+         pras compras no crédito quanto pras saídas da carteira. */
+      let t = tBruto;
+      const faltantes = ocorrenciasFaltantes(t, todayISO());
+      if (faltantes.length > 0) {
+        await criarOcorrenciasRecorrentes(faltantes);
+        t = await fetchTransactions();
+      }
+
       setCards(c);
       setTransactions(t);
       setInvoicePayments(p);
@@ -387,6 +401,7 @@ export default function CreditoScreen() {
     setTxDesc('');
     setTxAmount('');
     setTxInstallments('1');
+    setTxRecurring(false);
     setTxDate(todayISO());
     setTxCategory(CATEGORIES[0].name);
     setTxCatColor(CATEGORIES[0].color);
@@ -404,6 +419,7 @@ export default function CreditoScreen() {
     setTxCatColor(tx.color);
     setTxDate(tx.occurred_on);
     setTxInstallments('1');
+    setTxRecurring(!!tx.recurring);
     setNewTxOpen(true);
   }
 
@@ -438,6 +454,10 @@ export default function CreditoScreen() {
           occurred_on: valores.occurred_on,
           card_id: targetCard?.id,
           bank: targetCard?.bank || 'outro',
+          /* Desligar aqui encerra a série: a geração olha `recurring` da
+             cabeça, então o mês que vem simplesmente não nasce — sem apagar
+             nada do que já foi cobrado. */
+          recurring: valores.recurring,
         };
         if (isDemoMode) {
           setTransactions((prev) =>
@@ -477,7 +497,7 @@ export default function CreditoScreen() {
             category: valores.category,
             color: valores.color,
             occurred_on: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-            recurring: false,
+            recurring: n > 1 ? false : valores.recurring,
             parent_id: null,
             payment_method: 'credit',
             bank: targetCard?.bank || 'outro',
@@ -510,7 +530,7 @@ export default function CreditoScreen() {
           category: valores.category,
           color: valores.color,
           occurred_on: valores.occurred_on,
-          recurring: false,
+          recurring: valores.recurring,
           payment_method: 'credit',
           bank: targetCard?.bank || 'outro',
           card_id: targetCard?.id,
@@ -783,6 +803,9 @@ export default function CreditoScreen() {
                       <Text style={styles.instBadgeText}>{`${tx.installment_current || 1}/${tx.installment_total}x`}</Text>
                     </View>
                   ) : null}
+                  {tx.recurring ? (
+                    <Ionicons name="repeat" size={13} color={theme.inkFaint} accessibilityLabel="Cobrança recorrente" />
+                  ) : null}
                 </View>
                 <Text style={styles.txDate}>{`${formatDateLabel(tx.occurred_on)} • ${tx.category}`}</Text>
               </View>
@@ -913,7 +936,7 @@ export default function CreditoScreen() {
           category: txCategory,
           color: txCatColor,
           occurred_on: txDate,
-          recurring: false,
+          recurring: txRecurring,
           installments: Math.max(1, parseInt(txInstallments, 10) || 1),
           card_id: txCardId || walletCards[0]?.id || null,
         }}

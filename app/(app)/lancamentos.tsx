@@ -35,7 +35,8 @@ import TransactionSheet, { type ValoresLancamento } from '@/components/Transacti
 import SegmentedTabs from '@/components/SegmentedTabs';
 import FabButton from '@/components/FabButton';
 import MonthSelector from '@/components/MonthSelector';
-import { addInstallmentPurchase, addTransaction, deleteTransaction, fetchTransactions, updateTransaction } from '@/lib/data';
+import { addInstallmentPurchase, addTransaction, criarOcorrenciasRecorrentes, deleteTransaction, fetchTransactions, updateTransaction } from '@/lib/data';
+import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import {
   flushPendingQueue,
   getCachedTransactions,
@@ -129,6 +130,17 @@ export default function LancamentosScreen() {
         await setCachedTransactions(tx);
         triggerToast(synced === 1 ? '1 lançamento sincronizado' : `${synced} lançamentos sincronizados`);
       }
+
+      /* Assinaturas ("repetir mensalmente") só existem no mês seguinte se
+         alguém as criar — é aqui que isso acontece. Na esmagadora maioria das
+         vezes não há nada a criar e não custa nenhuma ida ao banco. */
+      const faltantes = ocorrenciasFaltantes(tx, todayISO());
+      if (faltantes.length > 0) {
+        await criarOcorrenciasRecorrentes(faltantes);
+        tx = await fetchTransactions();
+        await setCachedTransactions(tx);
+      }
+
       setTransactions(tx);
       setPendingCount(await getPendingCount());
     } catch (e: any) {

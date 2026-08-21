@@ -121,7 +121,7 @@ export default function TransactionSheet({
       category,
       color: catColor,
       occurred_on: occurredOn,
-      recurring: ehCredito ? false : recurring,
+      recurring,
       installments: podeParcelar && installment ? parcelas : 1,
       card_id: ehCredito ? cardId : null,
     });
@@ -233,20 +233,28 @@ export default function TransactionSheet({
             </View>
           </View>
 
-          {!ehCredito && !installment && (
+          {!installment && (
             <View style={styles.fieldRow}>
-              <Text style={styles.fieldKey}>Repetir mensalmente</Text>
+              <Text style={styles.fieldKey}>{ehCredito ? 'Cobrança recorrente' : 'Repetir mensalmente'}</Text>
               <AppPressable
                 style={[styles.switchTrack, recurring && styles.switchTrackOn]}
                 onPress={() => setRecurring((p) => !p)}
                 hitSlop={12}
                 accessibilityRole="switch"
                 accessibilityState={{ checked: recurring }}
-                accessibilityLabel="Repetir mensalmente"
+                accessibilityLabel={ehCredito ? 'Cobrança recorrente' : 'Repetir mensalmente'}
               >
                 <View style={[styles.switchThumb, recurring && styles.switchThumbOn]} />
               </AppPressable>
             </View>
+          )}
+
+          {recurring && (
+            <Text style={styles.installmentHint}>
+              {ehCredito
+                ? 'A cobrança reaparece sozinha na fatura de cada mês, até você desligar isto.'
+                : 'O lançamento se repete todo mês, até você desligar isto.'}
+            </Text>
           )}
 
           {podeParcelar && (

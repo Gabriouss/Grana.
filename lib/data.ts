@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { CATEGORIES } from './types';
 import { addMonthsToISO } from './format';
 import { formatMonthYear } from './format';
+import type { OcorrenciaFaltante } from './recorrencia';
 import type {
   Bill,
   BillStatus,
@@ -204,6 +205,39 @@ export async function addTransactionsBatch(
   const rows = inputs.map((item) => ({ ...item, user_id }));
   const { error } = await supabase.from('transactions').insert(rows);
   if (error) throw error;
+}
+
+/**
+ * Cria as ocorrências mensais que faltam para as séries recorrentes.
+ *
+ * Quem decide o que falta é `ocorrenciasFaltantes` em lib/recorrencia.ts —
+ * aqui só se escreve. Devolve quantas linhas foram criadas, para a tela saber
+ * se precisa recarregar (zero é o caso normal, várias vezes por dia).
+ */
+export async function criarOcorrenciasRecorrentes(faltantes: OcorrenciaFaltante[]): Promise<number> {
+  if (faltantes.length === 0) return 0;
+  const user_id = await currentUserId();
+  const rows = faltantes.map(({ cabeca, occurred_on }) => ({
+    user_id,
+    type: cabeca.type,
+    description: cabeca.description,
+    amount: cabeca.amount,
+    category: cabeca.category,
+    color: cabeca.color,
+    occurred_on,
+    /* A ocorrência herda o "· recorrente" na lista, mas não vira cabeça de
+       série nova: parent_id aponta pra original, e é isso que impede a
+       geração de se multiplicar a cada mês. */
+    recurring: true,
+    parent_id: cabeca.id,
+    payment_method: cabeca.payment_method,
+    bank: cabeca.bank,
+    card_id: cabeca.card_id,
+    wallet_id: cabeca.wallet_id,
+  }));
+  const { error } = await supabase.from('transactions').insert(rows);
+  if (error) throw error;
+  return rows.length;
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
