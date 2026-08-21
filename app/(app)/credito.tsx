@@ -51,6 +51,7 @@ import PrivacyValue from '@/components/PrivacyValue';
 import MonthSelector from '@/components/MonthSelector';
 import DatePickerModal from '@/components/DatePickerModal';
 import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
+import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import Sheet from '@/components/Sheet';
 import FadeIn from '@/components/FadeIn';
@@ -106,6 +107,12 @@ export default function CreditoScreen() {
   const [txDate, setTxDate] = useState(todayISO());
   const [txInstallments, setTxInstallments] = useState('1');
   const [txRecurring, setTxRecurring] = useState(false);
+
+  /* Menu de ação da linha da fatura — mesmo componente e mesmo gesto da tela
+     de Lançamentos: tocar abre "Editar / Excluir", em vez de tocar editar e
+     segurar excluir, que era um gesto que só quem leu o rótulo descobria. */
+  const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [txSaving, setTxSaving] = useState(false);
 
 
@@ -784,7 +791,7 @@ export default function CreditoScreen() {
         </View>
 
         {/* Lista de Compras no Crédito */}
-        <Text style={styles.sectionLabel}>Lançamentos da Fatura · toque para editar, segure para excluir</Text>
+        <Text style={styles.sectionLabel}>Lançamentos da Fatura · toque para editar ou excluir</Text>
         {creditTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhuma compra no crédito neste mês.</Text>
         ) : (
@@ -792,8 +799,10 @@ export default function CreditoScreen() {
             <AppPressable
               key={tx.id}
               style={({ hovered }) => [styles.txRow, hovered && { backgroundColor: 'rgba(255,255,255,0.03)' }]}
-              onPress={() => abrirEdicaoCompra(tx)}
-              onLongPress={() => confirmDeleteTx(tx)}
+              onPress={() => {
+                setSelectedTx(tx);
+                setActionSheetOpen(true);
+              }}
             >
               <View style={styles.txInfo}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -920,6 +929,20 @@ export default function CreditoScreen() {
           </AppPressable>
         </Sheet>
       </Modal>
+
+      <ItemActionSheet
+        visible={actionSheetOpen}
+        title="Lançamento"
+        onClose={() => setActionSheetOpen(false)}
+        onEdit={() => {
+          if (selectedTx) abrirEdicaoCompra(selectedTx);
+        }}
+        /* Excluir daqui mantém a confirmação que a tela já tinha: o menu
+           aproxima os dois botões, então a pergunta continua valendo. */
+        onDelete={() => {
+          if (selectedTx) confirmDeleteTx(selectedTx);
+        }}
+      />
 
       {/* Sheet de lançamento — mesmo componente da tela de Lançamentos. */}
       <TransactionSheet
