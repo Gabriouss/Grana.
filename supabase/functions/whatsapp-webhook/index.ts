@@ -741,6 +741,18 @@ async function finalizarLancamento(
 
 /** "no crédito", "cartão de crédito", "parcelei", "3x", "5 vezes" — sinais de que a compra foi no cartão, não em débito/pix. */
 function ehIntencaoCredito(text: string): boolean {
+  /* Débito dito com todas as letras encerra a conversa antes de qualquer
+     outra regra: "no cartão de débito" casava com a regra de "no cartão" e
+     ia parar na fatura do crédito. */
+  if (/\bd[eé]bito\b/i.test(text)) return false;
+
+  /* A palavra "crédito" sozinha basta. A regra antiga exigia a preposição
+     "no" grudada nela, e por isso mandava pro débito as formas mais curtas,
+     que são justamente as que a pessoa usa quando manda áudio ou escreve com
+     pressa: "Almoço crédito C6", "Chip de 22 reais, Crédito, C6",
+     "Crédito Almoço 20 reais". Todas foram lançadas errado. */
+  if (/\bcr[eé]dito\b/i.test(text)) return true;
+
   if (/\bno\s+(?:cr[eé]dito|cart[aã]o)\b/i.test(text)) return true;
   if (/\bcart[aã]o\s+de\s+cr[eé]dito\b/i.test(text)) return true;
   if (/\bparcel(?:ei|ado|ada|ar|a)\b/i.test(text)) return true;
@@ -874,7 +886,10 @@ async function registrarLancamento(userId: string, phone: string, text: string):
   let card_id: string | null = null;
   let payment_method: string | null = null;
   let nomeCartao: string | null = null;
-  if (ehIntencaoCredito(text)) {
+  /* Só saída vai pra fatura. Agora que a palavra "crédito" sozinha aciona a
+     regra, "recebi um crédito de 500" — que é dinheiro entrando — cairia num
+     cartão sem esta trava. */
+  if (type === 'out' && ehIntencaoCredito(text)) {
     const cartoes = await fetchCreditCardsDoUsuario(userId);
     if (cartoes.length > 0) {
       // Cita o cartão pelo nome/banco? usa esse. Senão, cai no primeiro
