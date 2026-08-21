@@ -13,16 +13,54 @@ export function isCreditTx(t: Pick<Transaction, 'payment_method' | 'card_id'>): 
   return t.payment_method === 'credit' || !!t.card_id;
 }
 
+/**
+ * Lê um valor em dinheiro escrito do jeito que brasileiro escreve.
+ *
+ * A versão anterior tomava o ÚLTIMO separador como decimal, fosse ele vírgula
+ * ou ponto. Isso acertava "1.234,56" e errava feio o caso mais comum de todos:
+ * "1.500" virava um real e cinquenta centavos. Dentro do app o estrago era
+ * invisível, porque o campo de valor usa `formatMoneyInput` e sempre entrega
+ * duas casas decimais — mas lançamento por WhatsApp, por voz, por planilha e
+ * por nota fiscal passam texto livre por aqui, e "Aluguel 1.500 reais"
+ * entrava como R$ 1,50.
+ *
+ * A regra agora separa os dois papéis do ponto:
+ *  - Existe vírgula? Então ela é o decimal e todo ponto é milhar (pt-BR).
+ *  - Só ponto, seguido de exatamente três dígitos? É milhar — ninguém escreve
+ *    preço com três casas decimais, mas todo mundo escreve "1.500".
+ *  - Só ponto, com uma ou duas casas? É decimal, para aceitar "10.50" de quem
+ *    digitou no formato americano ou colou de uma planilha.
+ */
 export function parseAmount(raw: string): number {
-  const trimmed = (raw || '').trim();
-  if (!trimmed) return 0;
-  const lastComma = trimmed.lastIndexOf(',');
-  const lastDot = trimmed.lastIndexOf('.');
-  const decimalPos = Math.max(lastComma, lastDot);
-  if (decimalPos === -1) return parseFloat(trimmed.replace(/[^0-9-]/g, '')) || 0;
-  const intPart = trimmed.slice(0, decimalPos).replace(/[^0-9-]/g, '');
-  const decPart = trimmed.slice(decimalPos + 1).replace(/[^0-9]/g, '');
-  return parseFloat(intPart + '.' + decPart) || 0;
+  const bruto = (raw || '').trim();
+  if (!bruto) return 0;
+
+  const soDigitos = (s: string) => s.replace(/[^0-9]/g, '');
+  const sinal = bruto.includes('-') ? -1 : 1;
+
+  const ultimaVirgula = bruto.lastIndexOf(',');
+  const ultimoPonto = bruto.lastIndexOf('.');
+
+  let posDecimal: number;
+
+  if (ultimaVirgula !== -1) {
+    posDecimal = ultimaVirgula;
+  } else if (ultimoPonto !== -1) {
+    const depois = soDigitos(bruto.slice(ultimoPonto + 1));
+    const antes = soDigitos(bruto.slice(0, ultimoPonto));
+    /* "0.999" continua decimal: o teste de `antes` diferente de zero evita
+       transformar um valor abaixo de um real em novecentos e noventa e nove. */
+    if (depois.length === 3 && antes !== '' && antes !== '0') {
+      return sinal * (parseFloat(antes + depois) || 0);
+    }
+    posDecimal = ultimoPonto;
+  } else {
+    return sinal * (parseFloat(soDigitos(bruto)) || 0);
+  }
+
+  const inteiro = soDigitos(bruto.slice(0, posDecimal));
+  const decimal = soDigitos(bruto.slice(posDecimal + 1));
+  return sinal * (parseFloat(`${inteiro || '0'}.${decimal || '0'}`) || 0);
 }
 
 /**

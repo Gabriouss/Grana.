@@ -441,16 +441,37 @@ function limparReferenciaCartao(descricao: string, nomeCartao: string): string {
 
 const NOMES_CATEGORIAS = CATEGORIES.map((c) => c.name).join(', ');
 
+/* Cópia sincronizada de parseAmount em lib/format.ts — ver o comentário longo
+   lá sobre por que o ponto tem dois papéis. Este é o caminho que atende o
+   WhatsApp, onde o bug de "1.500" virando R$ 1,50 era visível de verdade. */
 function parseAmount(raw: string): number {
-  const trimmed = (raw || '').trim();
-  if (!trimmed) return 0;
-  const lastComma = trimmed.lastIndexOf(',');
-  const lastDot = trimmed.lastIndexOf('.');
-  const decimalPos = Math.max(lastComma, lastDot);
-  if (decimalPos === -1) return parseFloat(trimmed.replace(/[^0-9-]/g, '')) || 0;
-  const intPart = trimmed.slice(0, decimalPos).replace(/[^0-9-]/g, '');
-  const decPart = trimmed.slice(decimalPos + 1).replace(/[^0-9]/g, '');
-  return parseFloat(intPart + '.' + decPart) || 0;
+  const bruto = (raw || '').trim();
+  if (!bruto) return 0;
+
+  const soDigitos = (s: string) => s.replace(/[^0-9]/g, '');
+  const sinal = bruto.includes('-') ? -1 : 1;
+
+  const ultimaVirgula = bruto.lastIndexOf(',');
+  const ultimoPonto = bruto.lastIndexOf('.');
+
+  let posDecimal: number;
+
+  if (ultimaVirgula !== -1) {
+    posDecimal = ultimaVirgula;
+  } else if (ultimoPonto !== -1) {
+    const depois = soDigitos(bruto.slice(ultimoPonto + 1));
+    const antes = soDigitos(bruto.slice(0, ultimoPonto));
+    if (depois.length === 3 && antes !== '' && antes !== '0') {
+      return sinal * (parseFloat(antes + depois) || 0);
+    }
+    posDecimal = ultimoPonto;
+  } else {
+    return sinal * (parseFloat(soDigitos(bruto)) || 0);
+  }
+
+  const inteiro = soDigitos(bruto.slice(0, posDecimal));
+  const decimal = soDigitos(bruto.slice(posDecimal + 1));
+  return sinal * (parseFloat(`${inteiro || '0'}.${decimal || '0'}`) || 0);
 }
 
 /** Casa por palavra-chave, sem cair pra "Outros" — quem chama decide o que fazer com a incerteza. */
