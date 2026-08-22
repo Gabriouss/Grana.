@@ -840,6 +840,10 @@ type Rascunho = {
   attempts: number;
   card_id: string | null;
   payment_method: string | null;
+  /* Atravessa a pergunta de categoria junto do resto do rascunho — sem isto,
+     "mercado 300 em 3x" cuja categoria o bot não reconhece perderia o
+     parcelamento no caminho e viraria um lançamento único de R$ 300. */
+  installments: number | null;
 };
 
 async function buscarPendente(phone: string): Promise<Rascunho | null> {
@@ -853,22 +857,62 @@ async function limparPendente(phone: string): Promise<void> {
 
 /** Grava o lançamento de verdade e limpa qualquer rascunho pendente daquele número. */
 async function finalizarLancamento(
-  rascunho: Pick<Rascunho, 'user_id' | 'phone' | 'description' | 'amount' | 'type' | 'occurred_on' | 'card_id' | 'payment_method'>,
+  rascunho: Pick<Rascunho, 'user_id' | 'phone' | 'description' | 'amount' | 'type' | 'occurred_on' | 'card_id' | 'payment_method'> & {
+    installments?: number | null;
+  },
   categoria: { name: string; color: string },
   nomeCartao?: string | null
 ): Promise<void> {
-  const { error } = await supabase.from('transactions').insert({
-    user_id: rascunho.user_id,
-    type: rascunho.type,
-    description: rascunho.description,
-    amount: rascunho.amount,
-    category: categoria.name,
-    color: categoria.color,
-    occurred_on: rascunho.occurred_on,
-    recurring: false,
-    card_id: rascunho.card_id,
-    payment_method: rascunho.payment_method,
-  });
+  const parcelas = rascunho.installments && rascunho.installments >= 2 ? rascunho.installments : null;
+  let error: unknown = null;
+
+  if (parcelas) {
+    /* Mesma divisão do app (lib/data.ts addInstallmentPurchase): as parcelas
+       são iguais e a ÚLTIMA absorve a sobra dos centavos, pra soma bater
+       exatamente com o total. Uma linha por mês, a primeira no mês da compra,
+       ligadas por parent_id — é assim que a tela de Crédito sabe agrupar. */
+    const base = Math.round((rascunho.amount / parcelas) * 100) / 100;
+    const ultima = Math.round((rascunho.amount - base * (parcelas - 1)) * 100) / 100;
+    let parentId: string | null = null;
+
+    for (let i = 0; i < parcelas; i++) {
+      const linha = {
+        user_id: rascunho.user_id,
+        type: rascunho.type,
+        description: `${rascunho.description} (${i + 1}/${parcelas})`,
+        amount: i === parcelas - 1 ? ultima : base,
+        category: categoria.name,
+        color: categoria.color,
+        occurred_on: somarMesesISO(rascunho.occurred_on, i),
+        recurring: false,
+        card_id: rascunho.card_id,
+        payment_method: rascunho.payment_method,
+        installment_current: i + 1,
+        installment_total: parcelas,
+        parent_id: parentId,
+      };
+      const { data, error: erroLinha } = await supabase.from('transactions').insert(linha).select().single();
+      if (erroLinha) {
+        error = erroLinha;
+        break;
+      }
+      if (i === 0) parentId = data.id;
+    }
+  } else {
+    const { error: erroUnico } = await supabase.from('transactions').insert({
+      user_id: rascunho.user_id,
+      type: rascunho.type,
+      description: rascunho.description,
+      amount: rascunho.amount,
+      category: categoria.name,
+      color: categoria.color,
+      occurred_on: rascunho.occurred_on,
+      recurring: false,
+      card_id: rascunho.card_id,
+      payment_method: rascunho.payment_method,
+    });
+    error = erroUnico;
+  }
 
   await limparPendente(rascunho.phone);
 
@@ -879,10 +923,55 @@ async function finalizarLancamento(
 
   const valorFmt = rascunho.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const sufixoCartao = nomeCartao ? ` no cartão ${nomeCartao}` : '';
+  const sufixoParcelas = parcelas ? ` em ${parcelas}x` : '';
   await sendWhatsappMessage(
     rascunho.phone,
-    `✅ Lançamento registrado: R$ ${valorFmt} em ${categoria.name} (${rascunho.description})${sufixoCartao}`
+    `✅ Lançamento registrado: R$ ${valorFmt}${sufixoParcelas} em ${categoria.name} (${rascunho.description})${sufixoCartao}`
   );
+}
+
+/* ---- parcelas ---- */
+
+/**
+ * Número de parcelas de uma compra no crédito: "3x", "em 3 vezes",
+ * "parcelado em 5", "10 parcelas".
+ *
+ * A mensagem de boas-vindas do bot sempre prometeu isto ("Mercado 230
+ * parcelado em 3x"), mas nada extraía o número: a compra ia pra fatura como
+ * um lançamento único do valor CHEIO, no mês da compra. Quem parcelou em 10x
+ * via a fatura do mês estourar e as dez seguintes vazias.
+ *
+ * Devolve null quando não há parcelamento (1x é o mesmo que não parcelar).
+ * O teto de 36 evita que um número solto grande vire mil parcelas.
+ */
+function parseParcelas(text: string): number | null {
+  const padroes = [
+    /\bem\s+(\d{1,2})\s*x\b/i,
+    /\b(\d{1,2})\s*x\b/i,
+    /\bem\s+(\d{1,2})\s+vezes\b/i,
+    /\b(\d{1,2})\s+vezes\b/i,
+    /\bem\s+(\d{1,2})\s+parcelas?\b/i,
+    /\b(\d{1,2})\s+parcelas?\b/i,
+    /\bparcel(?:ei|ado|ada|ar|a)\s+em\s+(\d{1,2})\b/i,
+  ];
+  for (const re of padroes) {
+    const m = text.match(re);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n >= 2 && n <= 36) return n;
+    }
+  }
+  return null;
+}
+
+/** Mesmo cálculo de data de lib/format.ts: soma meses preservando o dia, sem estourar em mês curto. */
+function somarMesesISO(iso: string, meses: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const alvo = new Date(y, m - 1 + meses, 1);
+  const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+  alvo.setDate(Math.min(d, ultimoDia));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${alvo.getFullYear()}-${pad(alvo.getMonth() + 1)}-${pad(alvo.getDate())}`;
 }
 
 /* ---- crédito: reconhecer intenção e casar o cartão certo ---- */
@@ -1034,6 +1123,9 @@ async function registrarLancamento(userId: string, phone: string, text: string):
   let card_id: string | null = null;
   let payment_method: string | null = null;
   let nomeCartao: string | null = null;
+  /* Só faz sentido parcelar saída no crédito — "recebi 300 em 3x" não existe,
+     e parcelar um pix/débito também não. Fica null fora desse caso. */
+  let installments: number | null = null;
   /* Só saída vai pra fatura. Agora que a palavra "crédito" sozinha aciona a
      regra, "recebi um crédito de 500" — que é dinheiro entrando — cairia num
      cartão sem esta trava. */
@@ -1053,17 +1145,22 @@ async function registrarLancamento(userId: string, phone: string, text: string):
          autor), quando o esperado é só "Almoço pago", com o cartão indo
          para `card_id` separadamente. */
       description = limparReferenciaCartao(description, nomeCartao);
+      installments = parseParcelas(text);
     }
   }
 
   if (categoria) {
-    await finalizarLancamento({ user_id: userId, phone, description, amount, type, occurred_on, card_id, payment_method }, categoria, nomeCartao);
+    await finalizarLancamento(
+      { user_id: userId, phone, description, amount, type, occurred_on, card_id, payment_method, installments },
+      categoria,
+      nomeCartao
+    );
     return;
   }
 
   await supabase
     .from('whatsapp_pending')
-    .upsert({ phone, user_id: userId, description, amount, type, occurred_on, attempts: 0, card_id, payment_method });
+    .upsert({ phone, user_id: userId, description, amount, type, occurred_on, attempts: 0, card_id, payment_method, installments });
 
   const valorFmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   await sendWhatsappMessage(

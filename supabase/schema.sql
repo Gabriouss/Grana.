@@ -129,6 +129,12 @@ create table if not exists whatsapp_pending (
 alter table whatsapp_pending add column if not exists card_id uuid references credit_cards(id) on delete set null;
 alter table whatsapp_pending add column if not exists payment_method text;
 
+-- Parcelas de compra no crédito ("3x", "em 5 vezes"). Pelo mesmo motivo do
+-- card_id acima: precisa atravessar a pergunta de categoria, senão "mercado
+-- 300 em 3x" com categoria desconhecida perderia o parcelamento no caminho e
+-- viraria um lançamento único de R$ 300.
+alter table whatsapp_pending add column if not exists installments smallint;
+
 alter table whatsapp_pending enable row level security;
 
 -- Orçamento mensal sugerido/definido por categoria
