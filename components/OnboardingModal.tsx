@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +19,7 @@ import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch, createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
 import { abrirPareamentoNoWhatsapp, numeroVinculadoParaExibir } from '@/lib/whatsapp';
 import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
+import { carregarPerfil, removerFoto, salvarFoto, salvarNome, LIMITE_NOME } from '@/lib/profile';
 import type { WhatsappLink } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
@@ -97,7 +100,12 @@ export const OPCOES_PRESET_HOME: {
   },
 ];
 
-const TOTAL_ETAPAS = 6;
+/* A apresentação (nome + foto) é o passo 0, e não o 1, por uma razão prática:
+   todos os `step === N` do diagnóstico já estavam escritos e renumerar sete
+   blocos à mão é convite pra errar um. O rótulo mostrado à pessoa é
+   `step + 1`, então ela lê "1 de 7" normalmente. */
+const TOTAL_ETAPAS = 7;
+const PRIMEIRA_ETAPA = 0;
 
 function SeletorCard({
   label,
@@ -148,7 +156,7 @@ export default function OnboardingModal({
      Mesmo tratamento do UpdateBanner. */
   const insets = useSafeAreaInsets();
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(PRIMEIRA_ETAPA);
   const [organizacao, setOrganizacao] = useState<NivelOrganizacao | null>(null);
   const [foco, setFoco] = useState<Foco | null>(null);
   const [cartao, setCartao] = useState<UsoCartao | null>(null);
@@ -165,6 +173,15 @@ export default function OnboardingModal({
   const [whatsappCarregado, setWhatsappCarregado] = useState(false);
   const [codigoCopiado, setCodigoCopiado] = useState(false);
 
+  /* Apresentação: nome e foto. O nome é salvo ao AVANÇAR, não a cada tecla —
+     cada `salvarNome` é uma ida ao Supabase Auth, e salvar por caractere
+     digitado transformaria um campo de texto numa enxurrada de requisições. A
+     foto é diferente: sobe na hora, porque o retorno visual É a confirmação
+     de que deu certo. */
+  const [nome, setNome] = useState('');
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+
   const [salvandoDiagnostico, setSalvandoDiagnostico] = useState(false);
   const [diagnosticoSalvo, setDiagnosticoSalvo] = useState(false);
   const [aplicandoOrcamento, setAplicandoOrcamento] = useState(false);
@@ -175,7 +192,7 @@ export default function OnboardingModal({
      primeira montagem nunca aparecia ao reabrir "Refazer diagnóstico". */
   useEffect(() => {
     if (!visible) return;
-    setStep(1);
+    setStep(PRIMEIRA_ETAPA);
     setOrganizacao(initial?.organizacao ?? null);
     setFoco(initial?.foco ?? null);
     setCartao(initial?.cartao ?? null);
@@ -190,6 +207,18 @@ export default function OnboardingModal({
     // o passo mostra o estado atual em vez de fingir que nunca foi feito.
     setWhatsappCarregado(false);
     setCodigoCopiado(false);
+    /* Quem já tem nome ou foto (refazendo o diagnóstico, ou voltando depois
+       de ter preenchido no Perfil) encontra os campos preenchidos em vez de
+       uma tela em branco pedindo tudo de novo. */
+    carregarPerfil()
+      .then((p) => {
+        setNome(p?.nome ?? '');
+        setFotoUrl(p?.fotoUrl ?? null);
+      })
+      .catch(() => {
+        setNome('');
+        setFotoUrl(null);
+      });
     fetchWhatsappLink()
       .then(setWhatsappLink)
       .catch(() => setWhatsappLink(null))
@@ -197,7 +226,7 @@ export default function OnboardingModal({
   }, [visible, initial]);
 
   function resetState() {
-    setStep(1);
+    setStep(PRIMEIRA_ETAPA);
     setOrganizacao(null);
     setFoco(null);
     setCartao(null);
@@ -243,7 +272,13 @@ export default function OnboardingModal({
   }
 
   function handleNext() {
-    if (step === 1) {
+    if (step === PRIMEIRA_ETAPA) {
+      /* Nome em branco não impede de seguir: é opcional, e transformar a
+         primeira tela do app numa barreira obrigatória é o jeito mais rápido
+         de perder alguém que só quer ver o que o app faz. */
+      void salvarIdentidade();
+      setStep(1);
+    } else if (step === 1) {
       if (!organizacao) return avisar('Escolha a opção que mais parece com você hoje.');
       setStep(2);
     } else if (step === 2) {
@@ -274,7 +309,7 @@ export default function OnboardingModal({
   }
 
   function handleBack() {
-    if (step > 1) setStep(step - 1);
+    if (step > PRIMEIRA_ETAPA) setStep(step - 1);
   }
 
   function handleSkip() {
@@ -284,6 +319,10 @@ export default function OnboardingModal({
     // onboarding nunca era marcado como visto e voltava a abrir no próximo
     // login. resetState() + onClose() fecham igual ao X do cabeçalho, que
     // já marca como visto em app/(app)/index.tsx.
+    /* O nome já digitado não se perde por pular o diagnóstico: são coisas
+       separadas, e quem escreveu o nome deixou claro que quer ser chamado
+       assim. */
+    void salvarIdentidade();
     resetState();
     onClose();
   }
@@ -298,6 +337,51 @@ export default function OnboardingModal({
       Alert.alert('Erro ao aplicar orçamento', e.message);
     } finally {
       setAplicandoOrcamento(false);
+    }
+  }
+
+  async function escolherFoto() {
+    if (isDemoMode) return;
+    /* Sem requestMediaLibraryPermissionsAsync antes: no SDK 57 o próprio
+       launchImageLibraryAsync pede a permissão quando necessário, e pedir
+       duas vezes gera um diálogo a mais sem motivo. */
+    const escolha = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      // Quadrado, porque o avatar é redondo — deixar recortar evita cortar a
+      // cabeça de uma foto em retrato.
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (escolha.canceled || !escolha.assets?.[0]) return;
+
+    setEnviandoFoto(true);
+    const { ok, url, error } = await salvarFoto(escolha.assets[0].uri);
+    setEnviandoFoto(false);
+    if (!ok) {
+      Alert.alert('Não foi possível enviar a foto', error ?? 'Tente novamente.');
+      return;
+    }
+    setFotoUrl(url ?? null);
+  }
+
+  async function tirarFoto() {
+    setEnviandoFoto(true);
+    await removerFoto();
+    setEnviandoFoto(false);
+    setFotoUrl(null);
+  }
+
+  /* Chamado ao sair da apresentação. Falhar aqui não pode travar o
+     diagnóstico: nome é conveniência, e barrar a pessoa na primeira tela por
+     causa de uma rede instável é o pior lugar possível pra ter um erro. */
+  async function salvarIdentidade() {
+    const limpo = nome.trim();
+    if (!limpo || isDemoMode) return;
+    try {
+      await salvarNome(limpo);
+    } catch {
+      /* segue o fluxo — dá pra ajustar depois no Perfil */
     }
   }
 
@@ -347,7 +431,10 @@ export default function OnboardingModal({
   }
 
   const rendaValida = parseAmount(renda) > 0;
-  const progresso = Math.min(step, TOTAL_ETAPAS);
+  /* +1 porque a apresentação é o passo 0: sem isso a primeira tela abriria
+     com a barra de progresso inteiramente vazia, como se nada tivesse
+     começado ainda. */
+  const progresso = Math.min(step + 1, TOTAL_ETAPAS);
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
@@ -381,9 +468,73 @@ export default function OnboardingModal({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {step === 1 && (
+          {step === PRIMEIRA_ETAPA && (
             <View style={styles.stepContent}>
               <Text style={styles.eyebrow}>1 de {TOTAL_ETAPAS} · bem-vindo ao Grana.</Text>
+              <Text style={styles.question}>Como você quer ser chamado?</Text>
+              <Text style={styles.hint}>
+                É o nome que aparece na saudação da tela inicial. A foto é opcional — sem ela fica
+                a sua inicial.
+              </Text>
+
+              <View style={styles.identidade}>
+                {/* Foto e nome na mesma linha: são a mesma decisão ("quem sou
+                    eu aqui"), e separar em dois passos transformaria trinta
+                    segundos de configuração em duas telas de formulário. */}
+                <AppPressable
+                  onPress={escolherFoto}
+                  disabled={enviandoFoto || isDemoMode}
+                  style={({ hovered }) => [styles.avatar, hovered && styles.avatarHover]}
+                  accessibilityRole="button"
+                  accessibilityLabel={fotoUrl ? 'Trocar a foto de perfil' : 'Escolher uma foto de perfil'}
+                >
+                  {enviandoFoto ? (
+                    <ActivityIndicator color={theme.ink} />
+                  ) : fotoUrl ? (
+                    <Image source={{ uri: fotoUrl }} style={styles.avatarImg} />
+                  ) : (
+                    <Text style={styles.avatarInicial}>
+                      {nome.trim() ? nome.trim().charAt(0).toUpperCase() : '?'}
+                    </Text>
+                  )}
+                  <View style={styles.avatarBadge}>
+                    <Ionicons name="camera" size={13} color={theme.paper} />
+                  </View>
+                </AppPressable>
+
+                <View style={{ flex: 1, gap: 6 }}>
+                  <TextInput
+                    style={styles.nomeCampo}
+                    placeholder="Seu nome ou apelido"
+                    placeholderTextColor={theme.inkFaint}
+                    value={nome}
+                    onChangeText={setNome}
+                    maxLength={LIMITE_NOME}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                  />
+                  {fotoUrl ? (
+                    <AppPressable onPress={tirarFoto} hitSlop={6}>
+                      <Text style={styles.removerFotoTexto}>Remover foto</Text>
+                    </AppPressable>
+                  ) : (
+                    <Text style={styles.identidadeAjuda}>Toque no círculo para escolher uma foto.</Text>
+                  )}
+                </View>
+              </View>
+
+              {isDemoMode && (
+                <Text style={styles.hint}>
+                  Indisponível no modo de exemplo — desative "Dados de exemplo" no Perfil.
+                </Text>
+              )}
+            </View>
+          )}
+
+          {step === 1 && (
+            <View style={styles.stepContent}>
+              <Text style={styles.eyebrow}>2 de {TOTAL_ETAPAS}</Text>
               <Text style={styles.question}>Como você cuida do seu dinheiro hoje?</Text>
               <View style={styles.optionsList}>
                 {OPCOES_ORGANIZACAO.map((o) => (
@@ -401,7 +552,7 @@ export default function OnboardingModal({
 
           {step === 2 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>2 de {TOTAL_ETAPAS}</Text>
+              <Text style={styles.eyebrow}>3 de {TOTAL_ETAPAS}</Text>
               <Text style={styles.question}>Qual o seu foco principal no Grana agora?</Text>
               <View style={styles.optionsList}>
                 {OPCOES_FOCO.map((o) => (
@@ -419,7 +570,7 @@ export default function OnboardingModal({
 
           {step === 3 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>3 de {TOTAL_ETAPAS}</Text>
+              <Text style={styles.eyebrow}>4 de {TOTAL_ETAPAS}</Text>
               <Text style={styles.question}>Como é o seu uso de cartão de crédito?</Text>
               <View style={styles.optionsList}>
                 {OPCOES_CARTAO.map((o) => (
@@ -437,7 +588,7 @@ export default function OnboardingModal({
 
           {step === 4 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>4 de {TOTAL_ETAPAS}</Text>
+              <Text style={styles.eyebrow}>5 de {TOTAL_ETAPAS}</Text>
               <Text style={styles.question}>Qual sua renda mensal aproximada?</Text>
               <View style={styles.incomeRow}>
                 <Text style={styles.incomePrefix}>R$</Text>
@@ -475,7 +626,7 @@ export default function OnboardingModal({
 
           {step === 5 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>5 de {TOTAL_ETAPAS} · personalização</Text>
+              <Text style={styles.eyebrow}>6 de {TOTAL_ETAPAS} · personalização</Text>
               <Text style={styles.question}>Como você prefere ver seu painel inicial?</Text>
               <Text style={styles.hint}>
                 Escolha o modelo que mais combina com seu momento. Você poderá adicionar, remover ou
@@ -497,7 +648,7 @@ export default function OnboardingModal({
 
           {step === 6 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>6 de {TOTAL_ETAPAS} · opcional</Text>
+              <Text style={styles.eyebrow}>7 de {TOTAL_ETAPAS} · opcional</Text>
               <Text style={styles.question}>Quer lançar gastos direto pelo WhatsApp?</Text>
               <Text style={styles.hint}>
                 Mande uma mensagem como "Mercado de 120 reais" — o Grana. identifica valor,
@@ -771,6 +922,48 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.sm,
   },
+  identidade: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
+  avatar: {
+    width: 76,
+    height: 76,
+    borderRadius: 999,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // O selo da câmera passa da borda de propósito; sem isto ele é recortado.
+    overflow: 'visible',
+  },
+  avatarHover: { borderColor: theme.ruleStrong },
+  avatarImg: { width: '100%', height: '100%', borderRadius: 999 },
+  avatarInicial: { color: theme.inkFaint, fontSize: 30, fontFamily: fonts.light },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    backgroundColor: theme.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.paper,
+  },
+  nomeCampo: {
+    borderWidth: 1.5,
+    borderColor: theme.rule,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    fontSize: type.corpo,
+    color: theme.ink,
+    backgroundColor: theme.paper,
+    fontFamily: fonts.regular,
+  },
+  identidadeAjuda: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  removerFotoTexto: { color: theme.inkSoft, fontSize: type.legenda, fontFamily: fonts.light },
   whatsappCardText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, fontFamily: fonts.light, flex: 1 },
   whatsappOk: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   /* Verde do WhatsApp de propósito: é o único lugar do app que empresta a cor
