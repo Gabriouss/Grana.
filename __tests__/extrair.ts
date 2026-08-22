@@ -22,9 +22,14 @@ import * as path from 'path';
 export const WEBHOOK = path.join(__dirname, '..', 'supabase', 'functions', 'whatsapp-webhook', 'index.ts');
 export const APP_WHATSAPP = path.join(__dirname, '..', 'lib', 'whatsapp.ts');
 
+/* Aceita `function` e `const`: regex e tabela costumam morar numa constante
+   de módulo, e uma função que depende dela não roda sozinha dentro do
+   `new Function`. Sem isso a saída era piorar o código de produção pra caber
+   na ferramenta — inlinar a constante dentro da função só pra o teste
+   conseguir lê-la. */
 export function corpoDaFuncao(nome: string, arquivo: string = WEBHOOK): string {
   const linhas = fs.readFileSync(arquivo, 'utf8').split(/\r?\n/);
-  const re = new RegExp('^(?:export )?(?:async )?function ' + nome + '(?![A-Za-z0-9_])');
+  const re = new RegExp('^(?:export )?(?:async )?(?:function|const) ' + nome + '(?![A-Za-z0-9_])');
   const i = linhas.findIndex((l) => re.test(l));
   if (i === -1) throw new Error(`não achei ${nome} em ${path.basename(arquivo)}`);
 
@@ -36,7 +41,10 @@ export function corpoDaFuncao(nome: string, arquivo: string = WEBHOOK): string {
       if (ch === '{') profundidade++;
       if (ch === '}') profundidade--;
     }
-    if (j > i && profundidade === 0) break;
+    /* A constante fecha em `;` na mesma linha ou na seguinte; a função fecha
+       em `}` com profundidade zerada. Exigir os dois sinais evita cortar uma
+       constante de duas linhas no meio. */
+    if (j > i && profundidade <= 0 && /[;}]\s*$/.test(linhas[j])) break;
   }
 
   return (

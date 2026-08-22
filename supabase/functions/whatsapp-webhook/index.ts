@@ -1283,11 +1283,20 @@ async function fetchCreditCardsDoUsuario(userId: string): Promise<CartaoBusca[]>
  */
 const VALIDADE_CANCELAMENTO_MS = 24 * 60 * 60 * 1000;
 
+/* Cada verbo entra pelo RADICAL, com as três terminações que a pessoa usa:
+   "cancela" (fala), "cancele" (imperativo escrito) e "cancelar" (infinitivo).
+   A primeira versão listava as formas uma a uma e esqueceu metade — "cancela"
+   e "cancelar" estavam lá, "cancele" não, e quem escreveu "Cancele o último
+   lançamento" recebeu de volta um pedido de valor.
+
+   Fronteiras por lookaround em vez de `\b`: no JavaScript o `\b` só enxerga
+   [A-Za-z0-9_], e "esqueça", "desfaça" e "não é isso" têm caractere fora
+   dessa faixa — é o mesmo `\b` que já mordeu três vezes neste projeto. */
+const CANCELAR =
+  /(?<![a-zà-ÿ0-9])(?:cancel(?:a|e|ar|amento)|apag(?:a|ue|ar)|exclu(?:i|a|ir)|delet(?:a|e|ar)|desfa(?:z|ça|zer)|desconsider(?:a|e|ar)|ignor(?:a|e|ar)|esque(?:ce|ça|cer)|remov(?:e|a|er)|anul(?:a|e|ar)|errei|errado|n[ãa]o\s+(?:era|[ée])\s+(?:isso|esse|essa))(?![a-zà-ÿ0-9])/i;
+
 function ehIntencaoCancelar(text: string): boolean {
-  const t = text.toLowerCase();
-  return /\b(?:cancela(?:r|mento)?|apaga(?:r)?|apague|exclui(?:r)?|deleta(?:r)?|desfaz(?:er)?|desconsidera(?:r)?|errei|ignora(?:r)?|esquece(?:r)?)\b/.test(
-    t
-  );
+  return CANCELAR.test(text);
 }
 
 /** Guarda o que foi criado por último, pra saber o que "cancela" desfaz. */

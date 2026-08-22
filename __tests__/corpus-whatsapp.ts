@@ -28,7 +28,7 @@ const doWebhook = funcoesDoWebhook<{
   parseRecorrencia: (t: string) => boolean;
   ehIntencaoCancelar: (t: string) => boolean;
 }>(['ehIntencaoCredito', 'ehIntencaoBoleto', 'parseDiaVencimento', 'parseParcelas',
-  'parseFormaPagamento', 'parseRecorrencia', 'ehIntencaoCancelar']);
+  'parseFormaPagamento', 'parseRecorrencia', 'CANCELAR', 'ehIntencaoCancelar']);
 
 /* ---------- casos ---------- */
 type Caso = {
@@ -146,6 +146,26 @@ const CANCELAMENTOS: [string, boolean][] = [
   ['cancelar', true],
   ['Cancela.', true],
   ['cancela isso', true],
+  /* As formas em -e (imperativo escrito) faltavam na primeira versão: quem
+     digitou "Cancele o último lançamento" recebeu de volta um pedido de
+     valor. Cada verbo entra agora pelo radical, com fala, imperativo e
+     infinitivo. */
+  ['cancele', true],
+  ['Cancele o último lançamento', true],
+  ['cancele esse aí', true],
+  ['apague', true],
+  ['exclua', true],
+  ['delete', true],
+  ['remove', true],
+  ['remova esse', true],
+  ['anule', true],
+  ['desfaça', true],
+  ['esqueça', true],
+  ['desconsidere', true],
+  ['ignore', true],
+  ['não era isso', true],
+  ['não é isso', true],
+  ['tá errado', true],
   ['apaga', true],
   ['apaga isso', true],
   ['apagar o último', true],
