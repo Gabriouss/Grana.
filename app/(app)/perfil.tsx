@@ -47,6 +47,7 @@ import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
 import { carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import AppPressable from '@/components/AppPressable';
+import PareamentoWhatsapp from '@/components/PareamentoWhatsapp';
 import PasswordInput from '@/components/PasswordInput';
 import ToggleSwitch from '@/components/ToggleSwitch';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
@@ -96,7 +97,6 @@ export default function PerfilScreen() {
   const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [atalhosOpen, setAtalhosOpen] = useState(false);
   const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
-  const [codigoCopiado, setCodigoCopiado] = useState(false);
   const [whatsappSaving, setWhatsappSaving] = useState(false);
 
 
@@ -280,7 +280,6 @@ export default function PerfilScreen() {
       Alert.alert('Modo de exemplo ativo', 'Desative "Dados de exemplo" no Perfil para vincular um número de verdade.');
       return;
     }
-    setCodigoCopiado(false);
     setWhatsappOpen(true);
   }
 
@@ -296,13 +295,6 @@ export default function PerfilScreen() {
     } finally {
       setWhatsappSaving(false);
     }
-  }
-
-  async function copiarCodigoPareamento() {
-    if (!whatsappLink) return;
-    await Clipboard.setStringAsync(whatsappLink.pairing_code);
-    setCodigoCopiado(true);
-    setTimeout(() => setCodigoCopiado(false), 2000);
   }
 
   function confirmarDesvincularWhatsapp() {
@@ -819,43 +811,10 @@ export default function PerfilScreen() {
               </>
             ) : whatsappLink ? (
               <>
-                <Text style={styles.reauthText}>
-                  Um toque e o WhatsApp abre na conversa do Grana. com o código já escrito — é só
-                  enviar. O número que enviar vira o número vinculado. Válido por 15 minutos.
-                </Text>
-                <AppPressable
-                  style={({ hovered }) => [styles.whatsappAbrir, hovered && { opacity: 0.88 }]}
-                  onPress={() => abrirPareamentoNoWhatsapp(whatsappLink.pairing_code)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Abrir a conversa do Grana. no WhatsApp com o código já escrito"
-                >
-                  <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
-                  <Text style={styles.whatsappAbrirTexto}>Abrir o WhatsApp e vincular</Text>
-                </AppPressable>
-                <AppPressable
-                  style={({ hovered }) => [styles.whatsappCodigoBtn, hovered && { opacity: 0.88 }]}
-                  onPress={copiarCodigoPareamento}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Copiar o código ${whatsappLink.pairing_code}`}
-                >
-                  <Text style={styles.whatsappCode}>{whatsappLink.pairing_code}</Text>
-                  <View style={styles.whatsappCopiar}>
-                    <Ionicons
-                      name={codigoCopiado ? 'checkmark' : 'copy-outline'}
-                      size={15}
-                      color={codigoCopiado ? theme.accent2 : theme.inkFaint}
-                    />
-                    <Text style={[styles.whatsappCopiarTexto, codigoCopiado && { color: theme.accent2 }]}>
-                      {codigoCopiado ? 'Copiado' : 'Copiar'}
-                    </Text>
-                  </View>
-                </AppPressable>
-                <AppPressable
-                  style={({ hovered }) => [styles.nomeSalvar, hovered && { opacity: 0.88 }]}
-                  onPress={recarregarWhatsapp}
-                >
-                  <Text style={styles.nomeSalvarTexto}>Já enviei — verificar</Text>
-                </AppPressable>
+                <PareamentoWhatsapp
+                  codigo={whatsappLink.pairing_code}
+                  chamada="O código vale por 15 minutos."
+                />
                 <AppPressable
                   style={({ hovered }) => [styles.reauthCancel, hovered && { opacity: 0.88 }]}
                   onPress={handleGerarPareamento}

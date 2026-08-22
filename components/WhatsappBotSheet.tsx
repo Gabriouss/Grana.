@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Clipboard from 'expo-clipboard';
 import { Alert } from '@/lib/alert';
 import AppPressable from '@/components/AppPressable';
 import Sheet from '@/components/Sheet';
+import PareamentoWhatsapp from '@/components/PareamentoWhatsapp';
 import { createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
 import { abrirConversaDoBot, abrirPareamentoNoWhatsapp, numeroVinculadoParaExibir } from '@/lib/whatsapp';
 import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
@@ -60,13 +60,11 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
   const [carregando, setCarregando] = useState(true);
   const [mostrandoExplicacao, setMostrandoExplicacao] = useState(explicar);
   const [salvando, setSalvando] = useState(false);
-  const [copiado, setCopiado] = useState(false);
   const [falhouAoCarregar, setFalhouAoCarregar] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setMostrandoExplicacao(explicar);
-    setCopiado(false);
     setCarregando(true);
     setFalhouAoCarregar(false);
     fetchWhatsappLink()
@@ -117,31 +115,6 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
     } catch {
       /* Sem código não dá pra parear, mas o sheet continua útil: o estado de
          carregando some e a tela mostra o caminho manual. */
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  async function copiarCodigo() {
-    if (!link) return;
-    await Clipboard.setStringAsync(link.pairing_code);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 2000);
-  }
-
-  async function conferirVinculo() {
-    setSalvando(true);
-    try {
-      const atual = await fetchWhatsappLink();
-      setLink(atual);
-      if (atual?.verified) {
-        onClose();
-        Alert.alert('Tudo certo', 'Seu WhatsApp está vinculado. Agora é só mandar seus gastos por lá.');
-      } else {
-        Alert.alert('Ainda não vinculado', 'Envie o código pelo WhatsApp e toque em conferir de novo.');
-      }
-    } catch (e: any) {
-      Alert.alert('Erro ao conferir', e.message);
     } finally {
       setSalvando(false);
     }
@@ -199,59 +172,7 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
             </AppPressable>
           </>
         ) : link ? (
-          <>
-            {/* Um toque: a conversa do Grana. abre com o código já escrito, e
-                o vínculo é do número que enviar. Nada de digitar o próprio
-                telefone, salvar contato ou copiar código na mão. */}
-            <AppPressable
-              style={({ hovered }) => [styles.botao, hovered && styles.botaoHover]}
-              onPress={() => abrirPareamentoNoWhatsapp(link.pairing_code)}
-              accessibilityRole="button"
-              accessibilityLabel="Abrir a conversa do Grana. no WhatsApp com o código já escrito"
-            >
-              <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
-              <Text style={styles.botaoTexto}>Abrir o WhatsApp e vincular</Text>
-            </AppPressable>
-
-            <View style={styles.esperando}>
-              <ActivityIndicator size="small" color={theme.inkFaint} />
-              <Text style={styles.esperandoTexto}>
-                A mensagem já vai escrita — é só enviar. Eu confirmo aqui sozinho.
-              </Text>
-            </View>
-
-            <Text style={styles.alternativa}>Ou mande este código para o Grana.:</Text>
-            <AppPressable
-              style={({ hovered }) => [styles.caixaCodigo, hovered && styles.botaoHover]}
-              onPress={copiarCodigo}
-              accessibilityRole="button"
-              accessibilityLabel={`Copiar o código ${link.pairing_code}`}
-            >
-              <Text style={styles.codigo}>{link.pairing_code}</Text>
-              <View style={styles.copiar}>
-                <Ionicons
-                  name={copiado ? 'checkmark' : 'copy-outline'}
-                  size={15}
-                  color={copiado ? theme.accent2 : theme.inkFaint}
-                />
-                <Text style={[styles.copiarTexto, copiado && { color: theme.accent2 }]}>
-                  {copiado ? 'Copiado' : 'Copiar'}
-                </Text>
-              </View>
-            </AppPressable>
-
-            <AppPressable
-              style={({ hovered }) => [styles.botaoSecundario, hovered && styles.botaoHover]}
-              onPress={conferirVinculo}
-              disabled={salvando}
-            >
-              {salvando ? (
-                <ActivityIndicator color={theme.ink} />
-              ) : (
-                <Text style={styles.botaoSecundarioTexto}>Já enviei — conferir</Text>
-              )}
-            </AppPressable>
-          </>
+          <PareamentoWhatsapp codigo={link.pairing_code} />
         ) : falhouAoCarregar ? (
           /* Sem saber se já existe vínculo, preparar um código novo apagaria
              um que talvez esteja lá. Melhor pedir pra tentar de novo. */

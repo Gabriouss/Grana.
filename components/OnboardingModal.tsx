@@ -17,7 +17,8 @@ import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import * as Clipboard from 'expo-clipboard';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch, createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
-import { abrirPareamentoNoWhatsapp, numeroVinculadoParaExibir } from '@/lib/whatsapp';
+
+import { numeroVinculadoParaExibir } from '@/lib/whatsapp';
 import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
 import { carregarPerfil, removerFoto, salvarFoto, salvarNome, LIMITE_NOME } from '@/lib/profile';
 import type { WhatsappLink } from '@/lib/types';
@@ -36,6 +37,7 @@ import {
 } from '@/lib/diagnostico';
 import { layoutDoPreset, salvarLayoutHome, type HomePreset } from '@/lib/home-layout';
 import AppPressable from './AppPressable';
+import PareamentoWhatsapp from './PareamentoWhatsapp';
 import { useKeyboardHeight } from './Sheet';
 
 /**
@@ -172,7 +174,6 @@ export default function OnboardingModal({
      começa por um delete do vínculo anterior, e uma falha de rede momentânea
      desligaria o WhatsApp de quem já usava, sem pedir nada e sem avisar. */
   const [whatsappEstado, setWhatsappEstado] = useState<'carregando' | 'ok' | 'erro'>('carregando');
-  const [codigoCopiado, setCodigoCopiado] = useState(false);
 
   /* Apresentação: nome e foto. O nome é salvo ao AVANÇAR, não a cada tecla —
      cada `salvarNome` é uma ida ao Supabase Auth, e salvar por caractere
@@ -207,7 +208,6 @@ export default function OnboardingModal({
     // Se a pessoa já vinculou o WhatsApp antes (ex: refazendo o diagnóstico),
     // o passo mostra o estado atual em vez de fingir que nunca foi feito.
     setWhatsappEstado('carregando');
-    setCodigoCopiado(false);
     /* Quem já tem nome ou foto (refazendo o diagnóstico, ou voltando depois
        de ter preenchido no Perfil) encontra os campos preenchidos em vez de
        uma tela em branco pedindo tudo de novo. */
@@ -440,18 +440,6 @@ export default function OnboardingModal({
     visible && step === 6 && !!whatsappLink && !whatsappLink.verified,
     setWhatsappLink
   );
-
-  async function handleAbrirWhatsapp() {
-    if (!whatsappLink) return;
-    await abrirPareamentoNoWhatsapp(whatsappLink.pairing_code);
-  }
-
-  async function handleCopiarCodigo() {
-    if (!whatsappLink) return;
-    await Clipboard.setStringAsync(whatsappLink.pairing_code);
-    setCodigoCopiado(true);
-    setTimeout(() => setCodigoCopiado(false), 2000);
-  }
 
   const rendaValida = parseAmount(renda) > 0;
   /* +1 porque a apresentação é o passo 0: sem isso a primeira tela abriria
@@ -697,47 +685,7 @@ export default function OnboardingModal({
                 </View>
               ) : whatsappLink ? (
                 <View style={styles.whatsappCard}>
-                  {/* Um toque: abre a conversa do Grana. com a mensagem já
-                      escrita. A pessoa só aperta enviar — nada de anotar
-                      número, salvar contato ou digitar código de cabeça. */}
-                  <AppPressable
-                    style={({ hovered }) => [styles.whatsappBtn, hovered && styles.whatsappBtnHover]}
-                    onPress={handleAbrirWhatsapp}
-                    accessibilityRole="button"
-                    accessibilityLabel="Abrir a conversa do Grana. no WhatsApp com o código já escrito"
-                  >
-                    <Ionicons name="logo-whatsapp" size={20} color={theme.paper} />
-                    <Text style={styles.whatsappBtnText}>Abrir o WhatsApp e vincular</Text>
-                  </AppPressable>
-
-                  <View style={styles.whatsappEsperando}>
-                    <ActivityIndicator size="small" color={theme.inkFaint} />
-                    <Text style={styles.whatsappEsperandoTexto}>
-                      É só tocar em enviar na conversa. Eu confirmo aqui sozinho.
-                    </Text>
-                  </View>
-
-                  {/* Saída manual pra quem vai enviar de outro aparelho ou
-                      está no computador sem WhatsApp Web conectado. */}
-                  <Text style={styles.whatsappAlternativa}>Ou mande este código para o Grana.:</Text>
-                  <AppPressable
-                    style={({ hovered }) => [styles.whatsappCodigoBtn, hovered && styles.applyBtnHover]}
-                    onPress={handleCopiarCodigo}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Copiar o código ${whatsappLink.pairing_code}`}
-                  >
-                    <Text style={styles.whatsappCode}>{whatsappLink.pairing_code}</Text>
-                    <View style={styles.whatsappCopiar}>
-                      <Ionicons
-                        name={codigoCopiado ? 'checkmark' : 'copy-outline'}
-                        size={15}
-                        color={codigoCopiado ? theme.accent2 : theme.inkFaint}
-                      />
-                      <Text style={[styles.whatsappCopiarTexto, codigoCopiado && { color: theme.accent2 }]}>
-                        {codigoCopiado ? 'Copiado' : 'Copiar'}
-                      </Text>
-                    </View>
-                  </AppPressable>
+                  <PareamentoWhatsapp codigo={whatsappLink.pairing_code} />
                 </View>
               ) : whatsappEstado === 'erro' ? (
                 /* Não dá pra preparar o código sem saber se já existe vínculo —
