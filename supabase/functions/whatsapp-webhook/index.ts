@@ -931,7 +931,8 @@ async function handlePairing(phone: string, text: string): Promise<boolean> {
       '• Almoço 25 reais\n' +
       '• Uber 18 no crédito da C6\n' +
       '• Mercado 230 parcelado em 3x\n\n' +
-      'Pode mandar áudio também — eu escuto e lanço igual.'
+      'Pode mandar áudio também — eu escuto e lanço igual.\n\n' +
+      'Errou? Responda "cancela" que eu desfaço o último.'
   );
   return true;
 }
@@ -1046,6 +1047,7 @@ async function finalizarLancamento(
 ): Promise<void> {
   const parcelas = rascunho.installments && rascunho.installments >= 2 ? rascunho.installments : null;
   let error: unknown = null;
+  let idCriado: string | null = null;
 
   if (parcelas) {
     /* Mesma divisão do app (lib/data.ts addInstallmentPurchase): as parcelas
@@ -1079,8 +1081,9 @@ async function finalizarLancamento(
       }
       if (i === 0) parentId = data.id;
     }
+    idCriado = parentId;
   } else {
-    const { error: erroUnico } = await supabase.from('transactions').insert({
+    const { data: criado, error: erroUnico } = await supabase.from('transactions').insert({
       user_id: rascunho.user_id,
       type: rascunho.type,
       description: rascunho.description,
@@ -1094,8 +1097,11 @@ async function finalizarLancamento(
       recurring: rascunho.recurring ?? false,
       card_id: rascunho.card_id,
       payment_method: rascunho.payment_method,
-    });
+    })
+      .select('id')
+      .single();
     error = erroUnico;
+    idCriado = criado?.id ?? null;
   }
 
   await limparPendente(rascunho.phone);
@@ -1104,6 +1110,8 @@ async function finalizarLancamento(
     await sendWhatsappMessage(rascunho.phone, 'Deu erro ao salvar o lançamento. Tente de novo em instantes.');
     return;
   }
+
+  await lembrarUltimoLancamento(rascunho.phone, 'transaction', idCriado);
 
   const valorFmt = rascunho.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const sufixoCartao = nomeCartao ? ` no cartão ${nomeCartao}` : '';
@@ -1252,6 +1260,49 @@ async function fetchCreditCardsDoUsuario(userId: string): Promise<CartaoBusca[]>
   return (data as CartaoBusca[] | null) ?? [];
 }
 
+/* ── Desfazer o último lançamento ──────────────────────────────────────────
+ *
+ * Errar um lançamento e ter que abrir o app pra corrigir quebra o motivo de o
+ * bot existir. Com "cancela", a pessoa desfaz e refaz sem sair da conversa.
+ *
+ * Três decisões que separam isto de uma arma apontada pro histórico:
+ *
+ *  1. Só o ÚLTIMO, e só o que saiu daqui. Apagar por descrição ("apaga o
+ *     mercado") acharia cinco lançamentos e escolheria um — o erro seria pior
+ *     que o original, porque ninguém percebe.
+ *  2. Só com a mensagem SEM VALOR. "Cancelamento de voo 200 reais" é uma
+ *     despesa de verdade, e "cancelei a Netflix 39,90" também: se veio número,
+ *     é lançamento, não comando. Este é o filtro que impede a palavra de
+ *     virar uma armadilha.
+ *  3. Janela de 24 horas. Sem limite, um "cancela" mandado dias depois apaga
+ *     algo que a pessoa já esqueceu que existia.
+ *
+ * Não pede confirmação de propósito: o bot já diz o que removeu, e refazer é
+ * um áudio de três segundos. Perguntar "tem certeza?" cobraria um toque a mais
+ * de todo mundo pra proteger de um erro que a própria resposta já revela.
+ */
+const VALIDADE_CANCELAMENTO_MS = 24 * 60 * 60 * 1000;
+
+function ehIntencaoCancelar(text: string): boolean {
+  const t = text.toLowerCase();
+  return /\b(?:cancela(?:r|mento)?|apaga(?:r)?|apague|exclui(?:r)?|deleta(?:r)?|desfaz(?:er)?|desconsidera(?:r)?|errei|ignora(?:r)?|esquece(?:r)?)\b/.test(
+    t
+  );
+}
+
+/** Guarda o que foi criado por último, pra saber o que "cancela" desfaz. */
+async function lembrarUltimoLancamento(
+  phone: string,
+  tipo: 'transaction' | 'bill',
+  id: string | null
+): Promise<void> {
+  if (!id) return;
+  await supabase
+    .from('whatsapp_links')
+    .update({ last_entry_kind: tipo, last_entry_id: id, last_entry_at: new Date().toISOString() })
+    .eq('phone', phone);
+}
+
 /* ---- forma de pagamento ---- */
 
 /**
@@ -1362,7 +1413,7 @@ async function registrarBoleto(userId: string, phone: string, text: string, amou
   const due_date = parseDiaVencimento(text);
   const categoria = matchCategoryByKeyword(text) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
 
-  const { error } = await supabase.from('bills').insert({
+  const { data: contaCriada, error } = await supabase.from('bills').insert({
     user_id: userId,
     description,
     amount,
@@ -1374,12 +1425,16 @@ async function registrarBoleto(userId: string, phone: string, text: string, amou
        internet, condomínio. A coluna existe em `bills` desde sempre e o bot
        gravava false fixo, então a pessoa recadastrava a mesma conta todo mês. */
     recurring: parseRecorrencia(text),
-  });
+  })
+    .select('id')
+    .single();
 
   if (error) {
     await sendWhatsappMessage(phone, 'Deu erro ao salvar o boleto. Tente de novo em instantes.');
     return;
   }
+
+  await lembrarUltimoLancamento(phone, 'bill', contaCriada?.id ?? null);
 
   const valorFmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const vencFmt = due_date.split('-').reverse().join('/');
@@ -1563,6 +1618,111 @@ async function tratarRespostaValor(pendente: Rascunho, text: string): Promise<bo
   return true;
 }
 
+/**
+ * Desfaz o último lançamento feito por este número. Devolve true se tratou.
+ *
+ * Compra parcelada some INTEIRA: "3x" gravou três linhas ligadas por
+ * parent_id, e apagar só a primeira deixaria duas parcelas órfãs na fatura de
+ * meses futuros — o tipo de resto que só aparece semanas depois.
+ */
+async function cancelarUltimoLancamento(phone: string): Promise<void> {
+  const { data: link } = await supabase
+    .from('whatsapp_links')
+    .select('last_entry_kind, last_entry_id, last_entry_at')
+    .eq('phone', phone)
+    .maybeSingle();
+
+  if (!link?.last_entry_id) {
+    await sendWhatsappMessage(phone, 'Não tenho nenhum lançamento recente deste número pra cancelar.');
+    return;
+  }
+
+  const quando = link.last_entry_at ? new Date(link.last_entry_at).getTime() : 0;
+  if (Date.now() - quando > VALIDADE_CANCELAMENTO_MS) {
+    await sendWhatsappMessage(
+      phone,
+      'Esse lançamento é de mais de um dia atrás — pra evitar apagar algo por engano, o cancelamento por aqui vale só nas primeiras 24 horas. Dá pra excluir pelo app.'
+    );
+    return;
+  }
+
+  if (link.last_entry_kind === 'bill') {
+    const { data: conta } = await supabase
+      .from('bills')
+      .select('description, amount')
+      .eq('id', link.last_entry_id)
+      .maybeSingle();
+    if (!conta) {
+      await sendWhatsappMessage(phone, 'Esse lançamento já não existe mais — deve ter sido removido pelo app.');
+      return;
+    }
+    await supabase.from('bills').delete().eq('id', link.last_entry_id);
+    await esquecerUltimoLancamento(phone);
+    await sendWhatsappMessage(
+      phone,
+      `🗑️ Removido de Contas a pagar: R$ ${formatarBRL(Number(conta.amount))} (${conta.description}).\n\nPode mandar o certo agora.`
+    );
+    return;
+  }
+
+  /* Pega a série toda: a linha-cabeça e as parcelas que apontam pra ela. */
+  const { data: linhas } = await supabase
+    .from('transactions')
+    .select('id, description, amount, category')
+    .or(`id.eq.${link.last_entry_id},parent_id.eq.${link.last_entry_id}`);
+
+  if (!linhas || linhas.length === 0) {
+    await sendWhatsappMessage(phone, 'Esse lançamento já não existe mais — deve ter sido removido pelo app.');
+    await esquecerUltimoLancamento(phone);
+    return;
+  }
+
+  const total = linhas.reduce((s, l) => s + Number(l.amount), 0);
+  await supabase.from('transactions').delete().or(`id.eq.${link.last_entry_id},parent_id.eq.${link.last_entry_id}`);
+  await esquecerUltimoLancamento(phone);
+
+  /* O nome da série vem com "(1/3)" colado; pra confirmação vale o nome puro. */
+  const nome = linhas[0].description.replace(/\s*\(\d+\/\d+\)\s*$/, '');
+  const sufixoParcelas = linhas.length > 1 ? ` — as ${linhas.length} parcelas` : '';
+  await sendWhatsappMessage(
+    phone,
+    `🗑️ Removido: R$ ${formatarBRL(total)} em ${linhas[0].category} (${nome})${sufixoParcelas}.\n\nPode mandar o certo agora.`
+  );
+}
+
+/**
+ * Ponto único de entrada do "cancela", para texto e áudio. Devolve true
+ * quando a mensagem era um comando e já foi respondida.
+ *
+ * A ordem importa: se existe uma pergunta no ar (categoria ou valor), o
+ * "cancela" se refere a ELA, não ao lançamento anterior já salvo. Quem
+ * desiste no meio da pergunta quer descartar o rascunho — apagar por cima
+ * disso um lançamento que estava certo seria o pior desfecho possível.
+ */
+async function tratarCancelamento(phone: string, text: string): Promise<boolean> {
+  if (!ehIntencaoCancelar(text)) return false;
+  /* Veio número junto? Então é lançamento, não comando: "cancelamento de voo
+     200 reais" é uma despesa. */
+  if (guessAmountFromText(text) > 0) return false;
+
+  const pendente = await buscarPendente(phone);
+  if (pendente) {
+    await limparPendente(phone);
+    await sendWhatsappMessage(phone, 'Beleza, descartei. Não registrei nada — pode mandar de novo quando quiser.');
+    return true;
+  }
+
+  await cancelarUltimoLancamento(phone);
+  return true;
+}
+
+async function esquecerUltimoLancamento(phone: string): Promise<void> {
+  await supabase
+    .from('whatsapp_links')
+    .update({ last_entry_kind: null, last_entry_id: null, last_entry_at: null })
+    .eq('phone', phone);
+}
+
 /** Trata a resposta a uma pergunta de esclarecimento pendente. Devolve true se tratou (a mensagem não deve seguir o fluxo normal). */
 async function tratarRespostaPendente(phone: string, text: string): Promise<boolean> {
   const pendente = await buscarPendente(phone);
@@ -1594,6 +1754,7 @@ async function handleTextMessage(phone: string, text: string): Promise<void> {
   const { data: link } = await supabase.from('whatsapp_links').select('*').eq('phone', phone).eq('verified', true).maybeSingle();
 
   if (link) {
+    if (await tratarCancelamento(phone, text)) return;
     const tratou = await tratarRespostaPendente(phone, text);
     if (tratou) return;
     await registrarLancamento(link.user_id, phone, text);
@@ -1621,6 +1782,8 @@ async function handleAudioMessage(phone: string, mediaId: string): Promise<void>
     await sendWhatsappMessage(phone, '🎙️ Não consegui entender esse áudio. Tente gravar de novo mais perto do microfone, ou me conte em texto (ex: "Mercado de 120 reais").');
     return;
   }
+
+  if (await tratarCancelamento(phone, texto)) return;
 
   const tratou = await tratarRespostaPendente(phone, texto);
   if (tratou) return;

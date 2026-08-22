@@ -26,8 +26,9 @@ const doWebhook = funcoesDoWebhook<{
   parseParcelas: (t: string) => number | null;
   parseFormaPagamento: (t: string) => string | null;
   parseRecorrencia: (t: string) => boolean;
+  ehIntencaoCancelar: (t: string) => boolean;
 }>(['ehIntencaoCredito', 'ehIntencaoBoleto', 'parseDiaVencimento', 'parseParcelas',
-  'parseFormaPagamento', 'parseRecorrencia']);
+  'parseFormaPagamento', 'parseRecorrencia', 'ehIntencaoCancelar']);
 
 /* ---------- casos ---------- */
 type Caso = {
@@ -132,6 +133,56 @@ const CASOS: Caso[] = [
   { txt: 'boleto 100 vencimento 05/03/2027', boleto: true, soTexto: true },
 ];
 
+/* ══════════ CANCELAMENTO ══════════
+ *
+ * A regra real do bot é a conjunção: palavra de cancelar E mensagem sem
+ * valor. Testar só `ehIntencaoCancelar` mediria menos do que ele faz — e
+ * mediria justamente o lado perigoso de menos, porque o filtro de valor é o
+ * que impede "cancelamento de voo 200 reais" de apagar o lançamento anterior.
+ */
+const CANCELAMENTOS: [string, boolean][] = [
+  // Comando: cancela mesmo.
+  ['cancela', true],
+  ['cancelar', true],
+  ['Cancela.', true],
+  ['cancela isso', true],
+  ['apaga', true],
+  ['apaga isso', true],
+  ['apagar o último', true],
+  ['errei', true],
+  ['errei, cancela', true],
+  ['desfaz', true],
+  ['desfazer', true],
+  ['desconsidera', true],
+  ['exclui esse', true],
+  ['deleta', true],
+  ['esquece', true],
+  ['ignora isso', true],
+
+  /* NÃO é comando: tem valor, logo é despesa. Este é o grupo que importa —
+     um falso positivo aqui apaga um lançamento certo. */
+  ['cancelamento de voo 200 reais', false],
+  ['cancelei a netflix 39,90', false],
+  ['multa de cancelamento 150', false],
+  ['taxa de cancelamento do hotel 89,90', false],
+  ['apaguei o quadro 45 reais', false],
+  ['errei e paguei 30 a mais', false],
+
+  // NÃO é comando: nem palavra de cancelar tem.
+  ['mercado 120', false],
+  ['oi', false],
+  ['almoço trinta reais', false],
+];
+
+let falhasCancel = 0;
+for (const [txt, esperado] of CANCELAMENTOS) {
+  const obtido = doWebhook.ehIntencaoCancelar(txt) && guessAmountFromText(txt) <= 0;
+  if (obtido !== esperado) {
+    falhasCancel++;
+    console.log(`FALHA [cancelar]  "${txt}" -> ${obtido} (esperado ${esperado})`);
+  }
+}
+
 /* ---------- execução ---------- */
 let falhas = 0;
 let checados = 0;
@@ -204,4 +255,6 @@ for (const c of CASOS) {
   }
 }
 
-console.log(`\n${checados - falhas}/${checados} passaram — ${falhas} falhas`);
+const totalGeral = checados + CANCELAMENTOS.length;
+const totalFalhas = falhas + falhasCancel;
+console.log(`\n${totalGeral - totalFalhas}/${totalGeral} passaram — ${totalFalhas} falhas`);

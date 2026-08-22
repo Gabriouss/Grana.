@@ -146,7 +146,10 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
               <Text style={styles.exemplo}>Uber 18 no crédito da C6</Text>
               <Text style={styles.exemplo}>Mercado 230 parcelado em 3x</Text>
             </View>
-            <Text style={styles.rodape}>Áudio também funciona — é só mandar um recado falado.</Text>
+            <Text style={styles.rodape}>
+              Áudio também funciona — é só mandar um recado falado. Errou? Responda "cancela" que
+              o último lançamento é desfeito.
+            </Text>
             <AppPressable style={({ hovered }) => [styles.botao, hovered && styles.botaoHover]} onPress={continuar}>
               <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
               <Text style={styles.botaoTexto}>{verificado ? 'Abrir conversa' : 'Abrir o WhatsApp e vincular'}</Text>

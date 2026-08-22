@@ -96,6 +96,16 @@ create table if not exists whatsapp_links (
 -- que qualquer marcador de texto violaria).
 alter table whatsapp_links alter column phone drop not null;
 
+-- Último lançamento feito por este número, para o "cancela" do bot saber o que
+-- desfazer. Guardado aqui, e não descoberto por consulta, porque "o último que
+-- SAIU DO WHATSAPP" não é o mesmo que "o último criado": quem lança pelo app
+-- no meio do caminho não pode ver o bot apagar aquilo. Para compra parcelada
+-- o id é o da linha-cabeça — as parcelas apontam pra ela via parent_id e somem
+-- junto.
+alter table whatsapp_links add column if not exists last_entry_kind text;
+alter table whatsapp_links add column if not exists last_entry_id uuid;
+alter table whatsapp_links add column if not exists last_entry_at timestamptz;
+
 alter table whatsapp_links enable row level security;
 
 -- O app (com a sessão do usuário) só vê e mexe no próprio vínculo. A Edge
