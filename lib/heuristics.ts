@@ -38,6 +38,50 @@ function somarExtenso(palavras: string[]): number {
   return total + atual;
 }
 
+/**
+ * Quebra uma sequência de números falados nos pontos onde ela deixa de ser UM
+ * numeral e passa a ser DOIS — que em fala é quase sempre reais e centavos.
+ *
+ * Numeral composto em português só decresce: "cento e vinte e cinco" (100 >
+ * 20 > 5) é um número; "onze e setenta e nove" não existe como numeral único,
+ * porque 70 não pode vir depois de 11. Quando alguém fala assim, está dizendo
+ * um preço: onze reais e setenta e nove centavos.
+ *
+ * Sem esta quebra, `somarExtenso` somava tudo — "onze e setenta e nove" virava
+ * 11+70+9 = R$ 90,00 no lugar de R$ 11,79, e "café cinco e cinquenta" virava
+ * R$ 55,00 no lugar de R$ 5,50. Era o jeito mais comum de falar preço em voz
+ * alta, e todo lançamento por voz saía com valor errado.
+ *
+ * Devolve os segmentos separados; quem chama junta com " e " de volta, para as
+ * regras de decimal mais abaixo ("11 e 79" -> "11,79") reconhecerem o par.
+ *
+ * "mil" nunca quebra: é multiplicador do que veio antes ("dois mil"), não um
+ * termo que precise ser menor que o anterior.
+ */
+function segmentarExtenso(palavras: string[]): number[] {
+  const segmentos: number[] = [];
+  let atual: string[] = [];
+  let anterior = Infinity;
+
+  for (const p of palavras) {
+    const v = NUMERO_POR_EXTENSO[p];
+    if (v === undefined) continue; // "e"
+    if (v !== 1000 && v >= anterior) {
+      if (atual.length) segmentos.push(somarExtenso(atual));
+      atual = [];
+      anterior = Infinity;
+    }
+    atual.push(p);
+    /* Depois de "mil" a referência passa a ser 1000, não o multiplicador que
+       veio antes: em "dois mil e quinhentos" o que segue precisa ser menor
+       que MIL (500 é), não menor que DOIS. Mantendo `anterior = 2` a regra
+       quebrava ali e o valor virava R$ 2.000 — quinhentos ia embora. */
+    anterior = v === 1000 ? 1000 : v;
+  }
+  if (atual.length) segmentos.push(somarExtenso(atual));
+  return segmentos;
+}
+
 /** Converte trechos numéricos por extenso em dígitos e junta "X reais e Y centavos". */
 /* Fonte única das palavras que a pessoa usa no lugar de "reais". Toda regex
    que precisa reconhecer moeda monta a partir daqui — a lista estava copiada
@@ -84,7 +128,10 @@ export function normalizarTexto(texto: string): string {
       }
     }
 
-    if (bloco.length > 0) saida.push(String(somarExtenso(bloco)));
+    /* Junta com " e " de volta: quando o bloco era um numeral só, sai um
+       número apenas ("125"); quando eram reais e centavos falados, sai
+       "11 e 79", que as regras de decimal abaixo transformam em "11,79". */
+    if (bloco.length > 0) saida.push(segmentarExtenso(bloco).join(' e '));
     bloco = [];
   };
 
@@ -274,8 +321,15 @@ const VALOR_INICIAL = new RegExp(`^(?:r\\$\\s*)?\\d[\\d.,]*\\s*(?:${MOEDA})?\\b\
 const VALOR_FINAL = new RegExp(`\\s*(?:r\\$\\s*)?(?<![a-zà-ÿ\\d])\\d[\\d.,]*\\s*(?:${MOEDA})?$`, 'i');
 /* Forma de pagamento mencionada solta no fim da frase — "Mercado 50 no pix",
    "Farmácia 30 no débito" — não é parte do nome do lançamento. */
+/* O `(?:\s+d[aeo]\s+\S+)?` no fim cobre "no crédito DA C6", "no cartão DO
+   Nubank" — a forma como se cita o cartão em voz alta. Sem isso a regra só
+   casava com a forma de pagamento no fim exato da frase, e "Almoço 30 no
+   crédito da C6" virava a descrição "Almoço no crédito da c6". No WhatsApp
+   isso ficava meio escondido porque `limparReferenciaCartao` apagava o nome
+   do cartão depois — mas só quando o cartão era encontrado no cadastro, e
+   nunca no lançamento por voz DENTRO do app, que não passa por lá. */
 const FORMA_PAGAMENTO_FINAL =
-  /\s+(?:no|na|via|em|de)\s+(?:pix|dinheiro|espécie|especie|cartão|cartao|débito|debito|crédito|credito|boleto)$/i;
+  /\s+(?:no|na|via|em|de)\s+(?:pix|dinheiro|espécie|especie|cartão|cartao|débito|debito|crédito|credito|boleto)(?:\s+d[aeo]\s+\S+)?$/i;
 
 function limparSobra(bruto: string): string {
   let s = bruto.replace(/\s+/g, ' ').trim();
@@ -331,7 +385,9 @@ export function guessDescFromText(text: string, type: TxType): string {
      que não tinham essa limpeza — a vírgula e "categoria alimentação"
      ficavam colados na descrição. Tirar isso ANTES das três regras corrige
      os três caminhos de uma vez, não só o primeiro. */
-  const NOMES_CATEGORIA = CATEGORIES.map((c) => c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const NOMES_CATEGORIA = CATEGORIES.map((c) => c.name)
+    .map((nome) => nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
   /* Duas formas: ", <categoria>" (vírgula, texto escrito/colado — "categoria"
      opcional) ou "categoria <categoria>" sem vírgula nenhuma (áudio
      transcrito raramente inclui pontuação; "categoria" aqui É a âncora,

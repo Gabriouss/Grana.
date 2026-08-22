@@ -47,7 +47,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test:parser": "tsx __tests__/corpus-voz.ts && node __tests__/sync-parser.js"
   },
   "private": true
 }
