@@ -399,7 +399,18 @@ function guessDescFromText(text: string, type: 'in' | 'out'): string {
   const NOMES_CATEGORIA = Object.keys(CATEGORY_KEYWORDS)
     .map((nome) => nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('|');
-  const DICA_CATEGORIA_FINAL = new RegExp(`,\\s*(?:categoria\\s+)?(?:${NOMES_CATEGORIA})\\s*$`, 'i');
+  /* Duas formas: ", <categoria>" (vírgula, texto escrito/colado — "categoria"
+     opcional) ou "categoria <categoria>" sem vírgula nenhuma (áudio
+     transcrito raramente inclui pontuação; "categoria" aqui É a âncora,
+     não dá pra soltar também, senão qualquer frase que termine com o nome
+     de uma categoria — "Presente para os outros" — perderia palavras à
+     toa). Achado num lançamento real por WhatsApp: "Monster no categoria
+     alimentação" (sem vírgula) ainda deixava "categoria alimentação" preso
+     na descrição, porque a versão anterior só cobria o caso com vírgula. */
+  const DICA_CATEGORIA_FINAL = new RegExp(
+    `(?:,\\s*(?:categoria\\s+)?|\\bcategoria\\s+)(?:${NOMES_CATEGORIA})\\s*$`,
+    'i'
+  );
 
   const texto = normalizarTextoTranscrito(text).replace(/[.!?]+\s*$/, '').replace(DICA_CATEGORIA_FINAL, '');
 
@@ -648,6 +659,19 @@ async function transcribeAudio(mediaId: string): Promise<string | null> {
         formData.append('model', provedor.model);
         formData.append('language', 'pt');
         formData.append('response_format', 'json');
+        /* Sem isso, "onze e setenta e nove" (forma comum de falar um preço:
+           reais e centavos, sem dizer "reais"/"centavos") às vezes sai
+           transcrito como "1179" — os dois números colados, sem vírgula nem
+           "e" entre eles. Nesse formato não tem como normalizarTextoTranscrito
+           recuperar depois: "1179" sozinho é ambíguo, pode ser R$1.179 de
+           verdade. O prompt não garante nada (Whisper não segue instrução à
+           risca), mas empurra o estilo de saída — é o mecanismo padrão da
+           API pra isso, mais barato que tentar advinhar depois do fato. */
+        formData.append(
+          'prompt',
+          'Transcrição de mensagens de WhatsApp sobre gastos pessoais, em português do Brasil. ' +
+            'Valores em reais usam vírgula como separador decimal, nunca ponto: 11,79 (não 11.79, não 1179).'
+        );
 
         const res = await fetch(provedor.url, {
           method: 'POST',

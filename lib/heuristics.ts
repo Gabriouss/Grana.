@@ -332,7 +332,18 @@ export function guessDescFromText(text: string, type: TxType): string {
      ficavam colados na descrição. Tirar isso ANTES das três regras corrige
      os três caminhos de uma vez, não só o primeiro. */
   const NOMES_CATEGORIA = CATEGORIES.map((c) => c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  const DICA_CATEGORIA_FINAL = new RegExp(`,\\s*(?:categoria\\s+)?(?:${NOMES_CATEGORIA})\\s*$`, 'i');
+  /* Duas formas: ", <categoria>" (vírgula, texto escrito/colado — "categoria"
+     opcional) ou "categoria <categoria>" sem vírgula nenhuma (áudio
+     transcrito raramente inclui pontuação; "categoria" aqui É a âncora,
+     não dá pra soltar também, senão qualquer frase que termine com o nome
+     de uma categoria — "Presente para os outros" — perderia palavras à
+     toa). Achado num lançamento real por WhatsApp: "Monster no categoria
+     alimentação" (sem vírgula) ainda deixava "categoria alimentação" preso
+     na descrição, porque a versão anterior só cobria o caso com vírgula. */
+  const DICA_CATEGORIA_FINAL = new RegExp(
+    `(?:,\\s*(?:categoria\\s+)?|\\bcategoria\\s+)(?:${NOMES_CATEGORIA})\\s*$`,
+    'i'
+  );
 
   const texto = normalizarTexto(text).replace(/[.!?]+\s*$/, '').replace(DICA_CATEGORIA_FINAL, '');
 
