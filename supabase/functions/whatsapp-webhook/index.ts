@@ -117,6 +117,33 @@ function somarExtenso(palavras: string[]): number {
  * Devolve os segmentos separados; quem chama junta com " e " de volta, para as
  * regras de decimal mais abaixo ("11 e 79" -> "11,79") reconhecerem o par.
  */
+/**
+ * O "e" que vem depois de `anterior` ainda pertence ao MESMO numeral?
+ *
+ * Português compõe numeral encaixando ordem grande + ordem menor, e cada
+ * ordem tem um teto para o que pode vir depois dela:
+ *
+ *   mil     + até 999   "mil e quinhentos"
+ *   centena + até 99    "cento e vinte e cinco"
+ *   dezena  + até 9     "vinte e cinco"
+ *   1 a 19  + NADA
+ *
+ * A última linha é a que importa aqui, e a regra anterior não a tinha: ela só
+ * perguntava se o número seguinte era menor que o anterior, então "dez e
+ * cinco" passava como numeral e virava 15. Mas 15 se diz "quinze" — de 1 a 19
+ * cada número tem palavra própria e nenhum deles aceita "e" depois. Quem fala
+ * "dez e cinco" está dizendo dez reais e cinco centavos, sempre.
+ *
+ * Eram 1.021 pares de reais-e-centavos lidos como um número só, todos com a
+ * parte inteira abaixo de 20 — a faixa de preço mais comum que existe.
+ */
+function podeContinuarNumeral(anterior: number, proximo: number): boolean {
+  if (anterior >= 1000) return proximo < 1000;
+  if (anterior >= 100) return proximo < 100;
+  if (anterior >= 20) return proximo < 10;
+  return false;
+}
+
 function segmentarExtenso(palavras: string[]): number[] {
   const segmentos: number[] = [];
   let atual: string[] = [];
@@ -125,7 +152,7 @@ function segmentarExtenso(palavras: string[]): number[] {
   for (const p of palavras) {
     const v = NUMERO_POR_EXTENSO[p];
     if (v === undefined) continue; // "e"
-    if (v !== 1000 && v >= anterior) {
+    if (v !== 1000 && !podeContinuarNumeral(anterior, v)) {
       if (atual.length) segmentos.push(somarExtenso(atual));
       atual = [];
       anterior = Infinity;
@@ -255,8 +282,11 @@ function normalizarTextoTranscrito(texto: string): string {
        checagem de hora usa `(?:^|\s)` em vez de `\b`: `\b` no JS só enxerga
        [A-Za-z0-9_] como letra — diante de "à" (não-ASCII) ele nunca fecha
        fronteira nenhuma, então "às 10 e 30" escapava do bloqueio inteiro. */
+    /* A vírgula opcional antes do "e" é o Whisper pontuando a pausa da fala:
+       "trinta e quatro, e sessenta e cinco" chega assim com frequência, e sem
+       essa folga o valor parava no 34 — os centavos sumiam calados. */
     .replace(
-      /(?<!\d)(?<!(?:^|\s)(?:s[aã]o|era|eram|[àa]s?)\s)(\d+)\s+e\s+(\d{1,2})\b(?!\s*(?:mil|horas?|km|quil[oô]metros?|anos?|meses?|dias?|semanas?|vezes|pessoas?|unidades?|itens?))/gi,
+      /(?<!\d)(?<!(?:^|\s)(?:s[aã]o|era|eram|[àa]s?)\s)(\d+)\s*,?\s+e\s+(\d{1,2})\b(?!\s*(?:mil|horas?|km|quil[oô]metros?|anos?|meses?|dias?|semanas?|vezes|pessoas?|unidades?|itens?))/gi,
       (_m: string, r: string, c: string) => `${r},${String(c).padStart(2, '0')}`
     )
     .replace(/\s{2,}/g, ' ')
@@ -1011,7 +1041,8 @@ async function finalizarLancamento(
     recurring?: boolean;
   },
   categoria: { name: string; color: string },
-  nomeCartao?: string | null
+  nomeCartao?: string | null,
+  ouvido?: string
 ): Promise<void> {
   const parcelas = rascunho.installments && rascunho.installments >= 2 ? rascunho.installments : null;
   let error: unknown = null;
@@ -1077,10 +1108,27 @@ async function finalizarLancamento(
   const valorFmt = rascunho.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const sufixoCartao = nomeCartao ? ` no cartão ${nomeCartao}` : '';
   const sufixoParcelas = parcelas ? ` em ${parcelas}x` : '';
+  const sufixoRecorrente = rascunho.recurring ? '\n🔁 Vai repetir todo mês.' : '';
   await sendWhatsappMessage(
     rascunho.phone,
-    `✅ Lançamento registrado: R$ ${valorFmt}${sufixoParcelas} em ${categoria.name} (${rascunho.description})${sufixoCartao}`
+    `✅ Lançamento registrado: R$ ${valorFmt}${sufixoParcelas} em ${categoria.name} (${rascunho.description})${sufixoCartao}` +
+      sufixoRecorrente +
+      linhaDoQueFoiOuvido(ouvido)
   );
+}
+
+/**
+ * O que o bot ouviu, ecoado na confirmação de lançamento por áudio.
+ *
+ * Só aparece em áudio, e a razão é que a transcrição é a única etapa do
+ * caminho que ninguém consegue ver. Quando um valor sai errado por causa dela,
+ * a pessoa não tem como saber se falou mal, se o Whisper ouviu mal ou se o bot
+ * interpretou mal — e quem for investigar depois também não, porque o texto
+ * transcrito não fica gravado em lugar nenhum. Com o eco, o erro se explica
+ * sozinho na hora: dá pra ler "ouvi: mercado quarenta" e reagir.
+ */
+function linhaDoQueFoiOuvido(ouvido?: string): string {
+  return ouvido ? `\n\n🎙️ Ouvi: "${ouvido}"` : '';
 }
 
 /* ---- parcelas ---- */
@@ -1309,7 +1357,7 @@ function parseDiaVencimento(text: string): string {
 }
 
 /** Cria a conta a pagar direto (sem passar por transactions — boleto só vira saída quando marcado como pago, igual no app). */
-async function registrarBoleto(userId: string, phone: string, text: string, amount: number): Promise<void> {
+async function registrarBoleto(userId: string, phone: string, text: string, amount: number, ouvido?: string): Promise<void> {
   const description = guessDescFromText(text, 'out');
   const due_date = parseDiaVencimento(text);
   const categoria = matchCategoryByKeyword(text) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
@@ -1337,7 +1385,7 @@ async function registrarBoleto(userId: string, phone: string, text: string, amou
   const vencFmt = due_date.split('-').reverse().join('/');
   await sendWhatsappMessage(
     phone,
-    `📄 Boleto registrado em Contas a pagar: R$ ${valorFmt} (${description}), vence ${vencFmt}.`
+    `📄 Boleto registrado em Contas a pagar: R$ ${valorFmt} (${description}), vence ${vencFmt}.` + linhaDoQueFoiOuvido(ouvido)
   );
 }
 
@@ -1358,7 +1406,7 @@ async function registrarBoleto(userId: string, phone: string, text: string, amou
    de remontar o lançamento a partir do rascunho) mantém crédito, cartão,
    parcelas, boleto e categoria funcionando exatamente igual ao caminho
    normal, sem uma segunda implementação pra divergir. */
-async function registrarLancamento(userId: string, phone: string, text: string, valorForcado?: number): Promise<void> {
+async function registrarLancamento(userId: string, phone: string, text: string, valorForcado?: number, ouvido?: string): Promise<void> {
   const amount = valorForcado ?? guessAmountFromText(text);
   if (!amount || amount <= 0) {
     await sendWhatsappMessage(phone, 'Não consegui identificar o valor. Tente algo como: "Almoço de 38 reais" ou "R$ 38 em Alimentação".');
@@ -1366,7 +1414,7 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
   }
 
   if (ehIntencaoBoleto(text)) {
-    await registrarBoleto(userId, phone, text, amount);
+    await registrarBoleto(userId, phone, text, amount, ouvido);
     return;
   }
 
@@ -1418,7 +1466,8 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
     await finalizarLancamento(
       { user_id: userId, phone, description, amount, type, occurred_on, card_id, payment_method, installments, recurring },
       categoria,
-      nomeCartao
+      nomeCartao,
+      ouvido
     );
     return;
   }
@@ -1438,7 +1487,9 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
   const valorFmt = formatarBRL(amount);
   await sendWhatsappMessage(
     phone,
-    `Não identifiquei a categoria de "${description}" (R$ ${valorFmt}). Qual dessas se encaixa melhor?\n${NOMES_CATEGORIAS}`
+    `Não identifiquei a categoria de "${description}" (R$ ${valorFmt}).` +
+      linhaDoQueFoiOuvido(ouvido) +
+      `\n\nQual dessas se encaixa melhor?\n${NOMES_CATEGORIAS}`
   );
 }
 
@@ -1480,7 +1531,13 @@ async function tratarRespostaValor(pendente: Rascunho, text: string): Promise<bo
 
   if (escolhido !== null) {
     await limparPendente(pendente.phone);
-    await registrarLancamento(pendente.user_id, pendente.phone, pendente.raw_text ?? pendente.description, escolhido);
+    await registrarLancamento(
+      pendente.user_id,
+      pendente.phone,
+      pendente.raw_text ?? pendente.description,
+      escolhido,
+      pendente.raw_text ?? undefined
+    );
     return true;
   }
 
@@ -1588,7 +1645,7 @@ async function handleAudioMessage(phone: string, mediaId: string): Promise<void>
     return;
   }
 
-  await registrarLancamento(link.user_id, phone, texto);
+  await registrarLancamento(link.user_id, phone, texto, undefined, texto);
 }
 
 Deno.serve(async (req: Request) => {

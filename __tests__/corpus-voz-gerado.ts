@@ -23,49 +23,7 @@
  * Imprime só falhas, agrupadas por assinatura.
  */
 import { guessAmountFromText, guessDescFromText, guessTypeFromText } from '../lib/heuristics';
-
-/* ---------- número -> por extenso ---------- */
-const UNIDADES = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove',
-  'dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
-const DEZENAS = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-const CENTENAS = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos',
-  'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
-
-function porExtenso(n: number): string {
-  if (n < 20) return UNIDADES[n];
-  if (n < 100) {
-    const d = Math.floor(n / 10), u = n % 10;
-    return u === 0 ? DEZENAS[d] : `${DEZENAS[d]} e ${UNIDADES[u]}`;
-  }
-  if (n === 100) return 'cem';
-  if (n < 1000) {
-    const c = Math.floor(n / 100), r = n % 100;
-    return r === 0 ? CENTENAS[c] : `${CENTENAS[c]} e ${porExtenso(r)}`;
-  }
-  const m = Math.floor(n / 1000), r = n % 1000;
-  const parteMil = m === 1 ? 'mil' : `${porExtenso(m)} mil`;
-  return r === 0 ? parteMil : `${parteMil} e ${porExtenso(r)}`;
-}
-
-/* Valor de cada palavra, pra saber se uma sequência falada é UM numeral ou
-   DOIS números (reais e centavos). Numeral composto em português só decresce:
-   "cento e vinte e cinco" é 125, mas "onze e setenta e nove" não existe como
-   numeral — é preço. */
-const VALOR_DA_PALAVRA: Record<string, number> = { cem: 100, mil: 1000 };
-UNIDADES.forEach((p, i) => { VALOR_DA_PALAVRA[p] = i; });
-DEZENAS.forEach((p, i) => { if (p) VALOR_DA_PALAVRA[p] = i * 10; });
-CENTENAS.forEach((p, i) => { if (p) VALOR_DA_PALAVRA[p] = i * 100; });
-
-function valoresDe(extenso: string): number[] {
-  return extenso.split(/\s+/).filter((p) => p !== 'e').map((p) => VALOR_DA_PALAVRA[p]);
-}
-
-/** A fala "X e Y" se parte em dois números? Só quando Y não pode continuar X. */
-function quebraEmDois(inteiro: number, centavos: number): boolean {
-  const dosReais = valoresDe(porExtenso(inteiro));
-  const dosCentavos = valoresDe(porExtenso(centavos));
-  return dosCentavos[0] >= dosReais[dosReais.length - 1];
-}
+import { porExtenso, quebraEmDois } from './extenso';
 
 /* ---------- coletor de falhas ---------- */
 type Falha = { exemplo: string; obtido: string; esperado: string; qtd: number };

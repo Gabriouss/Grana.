@@ -10,31 +10,7 @@
  * de linhas iguais).
  */
 import { guessAmountFromText, guessDescFromText, guessTypeFromText } from '../lib/heuristics';
-
-/* ---------- número -> por extenso (o inverso do que o parser faz) ---------- */
-const UNIDADES = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove',
-  'dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
-const DEZENAS = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-const CENTENAS = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos',
-  'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
-
-function porExtenso(n: number): string {
-  if (n < 20) return UNIDADES[n];
-  if (n < 100) {
-    const d = Math.floor(n / 10), u = n % 10;
-    return u === 0 ? DEZENAS[d] : `${DEZENAS[d]} e ${UNIDADES[u]}`;
-  }
-  if (n === 100) return 'cem';
-  if (n < 1000) {
-    const c = Math.floor(n / 100), r = n % 100;
-    return r === 0 ? CENTENAS[c] : `${CENTENAS[c]} e ${porExtenso(r)}`;
-  }
-  const m = Math.floor(n / 1000), r = n % 1000;
-  const parteMil = m === 1 ? 'mil' : `${porExtenso(m)} mil`;
-  if (r === 0) return parteMil;
-  // "mil e quinhentos" / "dois mil e duzentos e cinquenta"
-  return `${parteMil} e ${porExtenso(r)}`;
-}
+import { porExtenso } from './extenso';
 
 /* ---------- peças ---------- */
 const DESCRICOES = ['mercado', 'almoço', 'uber', 'farmácia', 'netflix', 'monster', 'padaria',

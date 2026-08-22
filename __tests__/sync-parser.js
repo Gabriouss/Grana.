@@ -54,8 +54,15 @@ function corpo(arquivo, nome) {
 const APP = 'lib/heuristics.ts';
 const WEB = 'supabase/functions/whatsapp-webhook/index.ts';
 
+/* Cada entrada é o nome da função; quando ela se chama diferente nos dois
+   arquivos, vira [nomeNoApp, nomeNoWebhook]. */
 const COMPARTILHADAS = [
   'NUMERO_POR_EXTENSO', 'somarExtenso', 'segmentarExtenso', 'MOEDA', 'PALAVRA_MOEDA',
+  /* A função mais importante do lançamento por voz — é ela que transforma
+     "trinta e quatro e sessenta e cinco" em "34,65". Ficou de fora desta
+     lista desde o começo, embora a normalização de nomes acima já existisse
+     pra ela: o guarda sabia traduzir o nome e nunca comparava o corpo. */
+  ['normalizarTexto', 'normalizarTextoTranscrito'],
   'VERBOS_INICIAIS', 'CONECTOR', 'CONECTOR_INICIAL', 'CONECTOR_FINAL',
   'MULETA_INICIAL', 'MULETA_FINAL', 'MARCA_RECORRENCIA',
   'VALOR_INICIAL', 'VALOR_FINAL', 'FORMA_PAGAMENTO_FINAL',
@@ -66,9 +73,11 @@ const COMPARTILHADAS = [
 let divergentes = 0;
 let ausentes = 0;
 
-for (const nome of COMPARTILHADAS) {
-  const a = corpo(APP, nome);
-  const w = corpo(WEB, nome);
+for (const entrada of COMPARTILHADAS) {
+  const [nomeApp, nomeWeb] = Array.isArray(entrada) ? entrada : [entrada, entrada];
+  const nome = nomeApp;
+  const a = corpo(APP, nomeApp);
+  const w = corpo(WEB, nomeWeb);
   if (a === null || w === null) {
     ausentes++;
     const onde = [a === null ? 'app' : null, w === null ? 'webhook' : null].filter(Boolean).join(' e ');

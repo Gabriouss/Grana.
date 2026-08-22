@@ -99,6 +99,28 @@ const CASOS: Caso[] = [
   { txt: 'bota trinta reais de gasolina', val: 30, cat: 'Transporte' },
   { txt: 'foi cinquenta reais no ifood', val: 50, cat: 'Alimentação' },
 
+  // ---------- "X e Y": de 1 a 19 o "e" é SEMPRE vírgula ----------
+  /* 1 a 19 têm palavra própria e nunca recebem "e": 15 é "quinze", não "dez e
+     cinco". Antes o parser somava, e toda a faixa de preço mais comum saía
+     errada — relatado em produção com "mercado trinta e quatro e sessenta e
+     cinco". */
+  { txt: 'mercado trinta e quatro e sessenta e cinco', val: 34.65, desc: 'Mercado' },
+  { txt: 'mercado trinta e quatro, e sessenta e cinco', val: 34.65, nota: 'Whisper pontua a pausa da fala' },
+  { txt: 'mercado trinta e quatro reais e sessenta e cinco centavos', val: 34.65 },
+  { txt: 'mil cento e treze e quarenta e quatro', val: 1113.44 },
+  { txt: 'dez e cinco', val: 10.05, nota: '15 se diz "quinze"; isto só pode ser 10,05' },
+  { txt: 'nove e três', val: 9.03 },
+  { txt: 'cinco e dois', val: 5.02 },
+  { txt: 'doze e sete', val: 12.07 },
+  { txt: 'dezenove e nove', val: 19.09 },
+  // ...mas dezena, centena e mil continuam compondo numeral de verdade.
+  { txt: 'vinte e cinco', val: 25 },
+  { txt: 'cento e cinco', val: 105 },
+  { txt: 'cem e cinquenta', val: 150 },
+  { txt: 'mil e quinhentos', val: 1500 },
+  { txt: 'cento e vinte e cinco', val: 125 },
+  { txt: 'noventa e nove', val: 99 },
+
   // ---------- Muleta de fala não pode virar nome ----------
   { txt: 'ah mercado cento e vinte reais né', val: 120, desc: 'Mercado' },
   { txt: 'então almoço vinte e cinco reais beleza', val: 25, desc: 'Almoço' },

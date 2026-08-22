@@ -40,11 +40,21 @@ export function valoresDe(extenso: string): number[] {
   return extenso.split(/\s+/).filter((p) => p !== 'e').map((p) => VALOR_DA_PALAVRA[p]);
 }
 
+/* Espelha `podeContinuarNumeral` do parser: cada ordem tem um teto para o que
+   pode vir depois dela, e 1 a 19 não recebem nada — "dez e cinco" não é 15,
+   porque 15 se diz "quinze". */
+function podeContinuarNumeral(anterior: number, proximo: number): boolean {
+  if (anterior >= 1000) return proximo < 1000;
+  if (anterior >= 100) return proximo < 100;
+  if (anterior >= 20) return proximo < 10;
+  return false;
+}
+
 /** A fala "X e Y" se parte em dois números? Só quando Y não pode continuar X. */
 export function quebraEmDois(inteiro: number, centavos: number): boolean {
   const dosReais = valoresDe(porExtenso(inteiro));
   const dosCentavos = valoresDe(porExtenso(centavos));
-  return dosCentavos[0] >= dosReais[dosReais.length - 1];
+  return !podeContinuarNumeral(dosReais[dosReais.length - 1], dosCentavos[0]);
 }
 
 /**

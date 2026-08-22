@@ -58,6 +58,33 @@ function somarExtenso(palavras: string[]): number {
  * "mil" nunca quebra: é multiplicador do que veio antes ("dois mil"), não um
  * termo que precise ser menor que o anterior.
  */
+/**
+ * O "e" que vem depois de `anterior` ainda pertence ao MESMO numeral?
+ *
+ * Português compõe numeral encaixando ordem grande + ordem menor, e cada
+ * ordem tem um teto para o que pode vir depois dela:
+ *
+ *   mil     + até 999   "mil e quinhentos"
+ *   centena + até 99    "cento e vinte e cinco"
+ *   dezena  + até 9     "vinte e cinco"
+ *   1 a 19  + NADA
+ *
+ * A última linha é a que importa aqui, e a regra anterior não a tinha: ela só
+ * perguntava se o número seguinte era menor que o anterior, então "dez e
+ * cinco" passava como numeral e virava 15. Mas 15 se diz "quinze" — de 1 a 19
+ * cada número tem palavra própria e nenhum deles aceita "e" depois. Quem fala
+ * "dez e cinco" está dizendo dez reais e cinco centavos, sempre.
+ *
+ * Eram 1.021 pares de reais-e-centavos lidos como um número só, todos com a
+ * parte inteira abaixo de 20 — a faixa de preço mais comum que existe.
+ */
+function podeContinuarNumeral(anterior: number, proximo: number): boolean {
+  if (anterior >= 1000) return proximo < 1000;
+  if (anterior >= 100) return proximo < 100;
+  if (anterior >= 20) return proximo < 10;
+  return false;
+}
+
 function segmentarExtenso(palavras: string[]): number[] {
   const segmentos: number[] = [];
   let atual: string[] = [];
@@ -66,7 +93,7 @@ function segmentarExtenso(palavras: string[]): number[] {
   for (const p of palavras) {
     const v = NUMERO_POR_EXTENSO[p];
     if (v === undefined) continue; // "e"
-    if (v !== 1000 && v >= anterior) {
+    if (v !== 1000 && !podeContinuarNumeral(anterior, v)) {
       if (atual.length) segmentos.push(somarExtenso(atual));
       atual = [];
       anterior = Infinity;
@@ -196,8 +223,11 @@ export function normalizarTexto(texto: string): string {
        checagem de hora usa `(?:^|\s)` em vez de `\b`: `\b` no JS só enxerga
        [A-Za-z0-9_] como letra — diante de "à" (não-ASCII) ele nunca fecha
        fronteira nenhuma, então "às 10 e 30" escapava do bloqueio inteiro. */
+    /* A vírgula opcional antes do "e" é o Whisper pontuando a pausa da fala:
+       "trinta e quatro, e sessenta e cinco" chega assim com frequência, e sem
+       essa folga o valor parava no 34 — os centavos sumiam calados. */
     .replace(
-      /(?<!\d)(?<!(?:^|\s)(?:s[aã]o|era|eram|[àa]s?)\s)(\d+)\s+e\s+(\d{1,2})\b(?!\s*(?:mil|horas?|km|quil[oô]metros?|anos?|meses?|dias?|semanas?|vezes|pessoas?|unidades?|itens?))/gi,
+      /(?<!\d)(?<!(?:^|\s)(?:s[aã]o|era|eram|[àa]s?)\s)(\d+)\s*,?\s+e\s+(\d{1,2})\b(?!\s*(?:mil|horas?|km|quil[oô]metros?|anos?|meses?|dias?|semanas?|vezes|pessoas?|unidades?|itens?))/gi,
       (_m: string, r: string, c: string) => `${r},${String(c).padStart(2, '0')}`
     )
     .replace(/\s{2,}/g, ' ')
