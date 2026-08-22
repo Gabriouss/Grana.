@@ -166,11 +166,12 @@ export default function OnboardingModal({
 
   const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
   const [whatsappSaving, setWhatsappSaving] = useState(false);
-  /* Distingue "ainda não sei se existe vínculo" de "não existe". Sem isso, o
-     preparo automático do código abaixo rodaria antes da consulta terminar e
-     APAGARIA um vínculo já verificado (createWhatsappPairing começa por um
-     delete do vínculo anterior). */
-  const [whatsappCarregado, setWhatsappCarregado] = useState(false);
+  /* Três estados, não dois. "Não existe vínculo" e "não consegui saber" levam
+     a decisões OPOSTAS: no primeiro caso o código pode ser preparado sozinho,
+     no segundo isso apagaria um vínculo verificado — createWhatsappPairing
+     começa por um delete do vínculo anterior, e uma falha de rede momentânea
+     desligaria o WhatsApp de quem já usava, sem pedir nada e sem avisar. */
+  const [whatsappEstado, setWhatsappEstado] = useState<'carregando' | 'ok' | 'erro'>('carregando');
   const [codigoCopiado, setCodigoCopiado] = useState(false);
 
   /* Apresentação: nome e foto. O nome é salvo ao AVANÇAR, não a cada tecla —
@@ -205,7 +206,7 @@ export default function OnboardingModal({
     setOrcamentoAplicado(false);
     // Se a pessoa já vinculou o WhatsApp antes (ex: refazendo o diagnóstico),
     // o passo mostra o estado atual em vez de fingir que nunca foi feito.
-    setWhatsappCarregado(false);
+    setWhatsappEstado('carregando');
     setCodigoCopiado(false);
     /* Quem já tem nome ou foto (refazendo o diagnóstico, ou voltando depois
        de ter preenchido no Perfil) encontra os campos preenchidos em vez de
@@ -220,9 +221,17 @@ export default function OnboardingModal({
         setFotoUrl(null);
       });
     fetchWhatsappLink()
-      .then(setWhatsappLink)
-      .catch(() => setWhatsappLink(null))
-      .finally(() => setWhatsappCarregado(true));
+      .then((l) => {
+        setWhatsappLink(l);
+        setWhatsappEstado('ok');
+      })
+      /* Sem `finally`: o estado 'ok' é uma AFIRMAÇÃO de que a consulta
+         respondeu. Marcar carregado no finally tratava a falha como
+         "não tem vínculo" — que é justamente a leitura perigosa. */
+      .catch(() => {
+        setWhatsappLink(null);
+        setWhatsappEstado('erro');
+      });
   }, [visible, initial]);
 
   function resetState() {
@@ -340,6 +349,19 @@ export default function OnboardingModal({
     }
   }
 
+  function recarregarVinculo() {
+    setWhatsappEstado('carregando');
+    fetchWhatsappLink()
+      .then((l) => {
+        setWhatsappLink(l);
+        setWhatsappEstado('ok');
+      })
+      .catch(() => {
+        setWhatsappLink(null);
+        setWhatsappEstado('erro');
+      });
+  }
+
   async function escolherFoto() {
     if (isDemoMode) return;
     /* Sem requestMediaLibraryPermissionsAsync antes: no SDK 57 o próprio
@@ -406,10 +428,11 @@ export default function OnboardingModal({
          falha, porque não deixa rastro nenhum na tela. */
   useEffect(() => {
     if (!visible || step !== 6 || isDemoMode) return;
-    if (!whatsappCarregado || whatsappLink || whatsappSaving) return;
+    // Só com resposta confirmada de que NÃO existe vínculo. Ver whatsappEstado.
+    if (whatsappEstado !== 'ok' || whatsappLink || whatsappSaving) return;
     void handleGerarPareamento();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, step, isDemoMode, whatsappCarregado, whatsappLink]);
+  }, [visible, step, isDemoMode, whatsappEstado, whatsappLink]);
 
   /* Enquanto o código está na tela, o app fica de olho sozinho: a pessoa
      manda a mensagem, volta, e o passo já mudou pra "vinculado". */
@@ -714,6 +737,21 @@ export default function OnboardingModal({
                         {codigoCopiado ? 'Copiado' : 'Copiar'}
                       </Text>
                     </View>
+                  </AppPressable>
+                </View>
+              ) : whatsappEstado === 'erro' ? (
+                /* Não dá pra preparar o código sem saber se já existe vínculo —
+                   tentar às cegas apagaria um vínculo que talvez esteja lá. */
+                <View style={styles.whatsappCard}>
+                  <Text style={styles.whatsappCardText}>
+                    Não consegui checar seu vínculo agora. Confira a conexão e tente de novo — dá
+                    pra fazer isso depois no Perfil também.
+                  </Text>
+                  <AppPressable
+                    style={({ hovered }) => [styles.applyBtn, hovered && styles.applyBtnHover]}
+                    onPress={recarregarVinculo}
+                  >
+                    <Text style={styles.applyBtnText}>Tentar de novo</Text>
                   </AppPressable>
                 </View>
               ) : (

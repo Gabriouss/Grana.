@@ -95,20 +95,18 @@ export async function abrirPareamentoNoWhatsapp(codigo: string): Promise<void> {
  * conta já vinculou fazia o pareamento falhar com erro de banco antes mesmo
  * de começar.
  *
- * Agora o pedido nasce sem número e o campo (que é `not null` no banco) fica
- * com este marcador até a mensagem chegar. É por conta do `unique` que o
- * user_id entra nele: dois pedidos em aberto ao mesmo tempo colidiriam se o
- * marcador fosse um texto fixo.
+ * Agora o pedido nasce com `phone` NULO, que é o que ele de fato é: um número
+ * ainda desconhecido. A primeira tentativa foi gravar um marcador de texto no
+ * lugar, e ela morreu contra um `check (char_length(phone) <= 20)` que eu não
+ * tinha conferido — de quebra, marcador exigia inventar unicidade à mão pra
+ * dois pedidos em aberto não colidirem no `unique`. Nulo resolve os dois: o
+ * Postgres aceita quantos nulos existirem num índice único, e continua
+ * impedindo duas contas de reivindicarem o MESMO número de verdade.
  */
-const PREFIXO_AGUARDANDO = 'aguardando:';
 
-export function marcadorDeNumeroPendente(userId: string): string {
-  return `${PREFIXO_AGUARDANDO}${userId}`;
-}
-
-/** O vínculo ainda não recebeu a mensagem, então `phone` não é um número de verdade. */
+/** O vínculo ainda não recebeu a mensagem, então não há número de verdade. */
 export function numeroAindaNaoConfirmado(phone: string | null | undefined): boolean {
-  return !phone || phone.startsWith(PREFIXO_AGUARDANDO);
+  return !phone;
 }
 
 /** Número do vínculo formatado pra leitura, ou null enquanto não houver um de verdade. */

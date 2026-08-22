@@ -2,7 +2,6 @@ import { supabase } from './supabase';
 import { CATEGORIES } from './types';
 import { addMonthsToISO } from './format';
 import { formatMonthYear } from './format';
-import { marcadorDeNumeroPendente } from './whatsapp';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
   Bill,
@@ -617,7 +616,10 @@ export async function createWhatsappPairing(phone?: string): Promise<WhatsappLin
     .from('whatsapp_links')
     .insert({
       user_id,
-      phone: phone && phone.length > 0 ? phone : marcadorDeNumeroPendente(user_id),
+      /* Nulo enquanto o número é desconhecido. O `unique (phone)` da tabela
+         aceita vários nulos, então dois pedidos em aberto convivem, e continua
+         barrando duas contas no mesmo número de verdade. */
+      phone: phone && phone.length > 0 ? phone : null,
       pairing_code,
       verified: false,
     })

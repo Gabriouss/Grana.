@@ -117,7 +117,9 @@ export type Budget = {
 export type WhatsappLink = {
   id: string;
   user_id: string;
-  phone: string;
+  /** Nulo até a mensagem de pareamento chegar: quem grava o número é o
+      webhook, com o telefone de quem realmente enviou. Ver lib/whatsapp.ts. */
+  phone: string | null;
   pairing_code: string;
   verified: boolean;
   verified_at: string | null;

@@ -61,15 +61,24 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
   const [mostrandoExplicacao, setMostrandoExplicacao] = useState(explicar);
   const [salvando, setSalvando] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [falhouAoCarregar, setFalhouAoCarregar] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setMostrandoExplicacao(explicar);
     setCopiado(false);
     setCarregando(true);
+    setFalhouAoCarregar(false);
     fetchWhatsappLink()
-      .then(setLink)
-      .catch(() => setLink(null))
+      .then((l) => setLink(l))
+      /* A falha precisa ficar marcada, e não virar "não tem vínculo": o
+         preparo automático logo abaixo chama createWhatsappPairing, que
+         começa APAGANDO o vínculo anterior. Tratar erro de rede como ausência
+         desligaria o WhatsApp de quem já usava, calado. */
+      .catch(() => {
+        setLink(null);
+        setFalhouAoCarregar(true);
+      })
       .finally(() => setCarregando(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -81,10 +90,10 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
      clique. Esperar a rede antes de abrir faria o bloqueador de pop-up comer
      a aba sem avisar ninguém. */
   useEffect(() => {
-    if (!visible || carregando || link || salvando) return;
+    if (!visible || carregando || falhouAoCarregar || link || salvando) return;
     void gerarCodigo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, carregando, link]);
+  }, [visible, carregando, falhouAoCarregar, link]);
 
   /* Enquanto o código está na tela o app confere sozinho — a pessoa manda a
      mensagem, volta, e já está vinculado. */
@@ -241,6 +250,30 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
               ) : (
                 <Text style={styles.botaoSecundarioTexto}>Já enviei — conferir</Text>
               )}
+            </AppPressable>
+          </>
+        ) : falhouAoCarregar ? (
+          /* Sem saber se já existe vínculo, preparar um código novo apagaria
+             um que talvez esteja lá. Melhor pedir pra tentar de novo. */
+          <>
+            <Text style={styles.texto}>
+              Não consegui checar seu vínculo agora. Confira a conexão e tente de novo.
+            </Text>
+            <AppPressable
+              style={({ hovered }) => [styles.botaoSecundario, hovered && styles.botaoHover]}
+              onPress={() => {
+                setFalhouAoCarregar(false);
+                setCarregando(true);
+                fetchWhatsappLink()
+                  .then((l) => setLink(l))
+                  .catch(() => {
+                    setLink(null);
+                    setFalhouAoCarregar(true);
+                  })
+                  .finally(() => setCarregando(false));
+              }}
+            >
+              <Text style={styles.botaoSecundarioTexto}>Tentar de novo</Text>
             </AppPressable>
           </>
         ) : (

@@ -79,13 +79,22 @@ create index if not exists categories_user_id_idx on categories (user_id);
 create table if not exists whatsapp_links (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  phone text not null,
+  -- Nulo até a mensagem de pareamento chegar: o app não pede o número, quem
+  -- grava é o webhook, com o telefone de quem realmente enviou. O `unique`
+  -- abaixo aceita quantos nulos existirem, então vários pedidos em aberto
+  -- convivem, e continua impedindo duas contas no mesmo número de verdade.
+  phone text,
   pairing_code text not null,
   verified boolean not null default false,
   verified_at timestamptz,
   created_at timestamptz not null default now(),
   unique (phone)
 );
+
+-- Bancos criados antes desta mudança tinham `phone not null`, e o pedido de
+-- pareamento sem número batia nele (e num `check (char_length(phone) <= 20)`
+-- que qualquer marcador de texto violaria).
+alter table whatsapp_links alter column phone drop not null;
 
 alter table whatsapp_links enable row level security;
 
