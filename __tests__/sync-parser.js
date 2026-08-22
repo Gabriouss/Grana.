@@ -57,7 +57,7 @@ const WEB = 'supabase/functions/whatsapp-webhook/index.ts';
 const COMPARTILHADAS = [
   'NUMERO_POR_EXTENSO', 'somarExtenso', 'segmentarExtenso', 'MOEDA', 'PALAVRA_MOEDA',
   'VERBOS_INICIAIS', 'CONECTOR', 'CONECTOR_INICIAL', 'CONECTOR_FINAL',
-  'MULETA_INICIAL', 'MULETA_FINAL',
+  'MULETA_INICIAL', 'MULETA_FINAL', 'MARCA_RECORRENCIA',
   'VALOR_INICIAL', 'VALOR_FINAL', 'FORMA_PAGAMENTO_FINAL',
   'limparSobra', 'capitalizar', 'EXPRESSAO_VALOR', 'guessDescFromText',
   'guessAmountFromText', 'normalizarParaBusca', 'contemPalavra',

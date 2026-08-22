@@ -393,12 +393,22 @@ const VALOR_FINAL = new RegExp(`\\s*(?:r\\$\\s*)?(?<![a-zà-ÿ\\d])\\d[\\d.,]*\\
 const FORMA_PAGAMENTO_FINAL =
   /\s+(?:no|na|via|em|de)\s+(?:pix|dinheiro|espécie|especie|cartão|cartao|débito|debito|crédito|credito|boleto)(?:\s+d[aeo]\s+\S+)?$/i;
 
+/* "Todo mês" diz COMO o lançamento se repete, não o que ele é — sem tirar
+   daqui, a série virava um gasto chamado "Aluguel todo mês", e o nome errado
+   se repetia em cada ocorrência gerada. Vale em qualquer posição da frase:
+   tanto "aluguel 1500 todo mês" quanto "todo mês pago aluguel 1500". */
+const MARCA_RECORRENCIA =
+  /(?:^|\s)(?:[ée]\s+)?(?:tod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?|cada\s+m[êe]s|mensalmente|recorrente|(?:que\s+)?se\s+repete|que\s+repete(?:\s+tod[oa]\s+m[êe]s)?)(?![a-zà-ÿ0-9])/gi;
+
 function limparSobra(bruto: string): string {
   let s = bruto.replace(/\s+/g, ' ').trim();
   let anterior = '';
   while (s !== anterior) {
     anterior = s;
     s = s
+      .replace(MARCA_RECORRENCIA, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
       .replace(MULETA_INICIAL, '')
       .replace(MULETA_FINAL, '')
       .replace(VERBOS_INICIAIS, '')

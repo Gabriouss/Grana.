@@ -142,6 +142,10 @@ alter table whatsapp_pending add column if not exists installments smallint;
 -- (`pending_kind`), qual é a outra leitura (`amount_alt`) e qual era o texto
 -- original (`raw_text`), pra reprocessar o lançamento inteiro depois da
 -- resposta em vez de remontá-lo pela metade.
+-- "Todo mês" também precisa sobreviver à pergunta de categoria, pelo mesmo
+-- motivo do card_id e do installments acima.
+alter table whatsapp_pending add column if not exists recurring boolean not null default false;
+
 alter table whatsapp_pending add column if not exists pending_kind text not null default 'categoria';
 alter table whatsapp_pending add column if not exists amount_alt numeric;
 alter table whatsapp_pending add column if not exists raw_text text;

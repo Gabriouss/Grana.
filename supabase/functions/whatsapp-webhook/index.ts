@@ -447,12 +447,22 @@ const VALOR_FINAL = new RegExp(`\\s*(?:r\\$\\s*)?(?<![a-zà-ÿ\\d])\\d[\\d.,]*\\
 const FORMA_PAGAMENTO_FINAL =
   /\s+(?:no|na|via|em|de)\s+(?:pix|dinheiro|espécie|especie|cartão|cartao|débito|debito|crédito|credito|boleto)(?:\s+d[aeo]\s+\S+)?$/i;
 
+/* "Todo mês" diz COMO o lançamento se repete, não o que ele é — sem tirar
+   daqui, a série virava um gasto chamado "Aluguel todo mês", e o nome errado
+   se repetia em cada ocorrência gerada. Vale em qualquer posição da frase:
+   tanto "aluguel 1500 todo mês" quanto "todo mês pago aluguel 1500". */
+const MARCA_RECORRENCIA =
+  /(?:^|\s)(?:[ée]\s+)?(?:tod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?|cada\s+m[êe]s|mensalmente|recorrente|(?:que\s+)?se\s+repete|que\s+repete(?:\s+tod[oa]\s+m[êe]s)?)(?![a-zà-ÿ0-9])/gi;
+
 function limparSobra(bruto: string): string {
   let s = bruto.replace(/\s+/g, ' ').trim();
   let anterior = '';
   while (s !== anterior) {
     anterior = s;
     s = s
+      .replace(MARCA_RECORRENCIA, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
       .replace(MULETA_INICIAL, '')
       .replace(MULETA_FINAL, '')
       .replace(VERBOS_INICIAIS, '')
@@ -910,6 +920,10 @@ type Rascunho = {
      "mercado 300 em 3x" cuja categoria o bot não reconhece perderia o
      parcelamento no caminho e viraria um lançamento único de R$ 300. */
   installments: number | null;
+  /* "Todo mês" também precisa atravessar a pergunta de categoria: sem isso,
+     "seguro 180 todo mês" com categoria desconhecida perderia a recorrência
+     e a pessoa redigitaria todo mês uma coisa que já tinha dito que repete. */
+  recurring: boolean;
   /* Que pergunta está no ar. 'categoria' é a original (qual categoria usar);
      'valor' é a desambiguação de áudio logo abaixo. Sem esse campo as duas
      perguntas dividiriam a mesma linha da tabela e a resposta "1" cairia no
@@ -994,6 +1008,7 @@ async function limparPendente(phone: string): Promise<void> {
 async function finalizarLancamento(
   rascunho: Pick<Rascunho, 'user_id' | 'phone' | 'description' | 'amount' | 'type' | 'occurred_on' | 'card_id' | 'payment_method'> & {
     installments?: number | null;
+    recurring?: boolean;
   },
   categoria: { name: string; color: string },
   nomeCartao?: string | null
@@ -1042,7 +1057,10 @@ async function finalizarLancamento(
       category: categoria.name,
       color: categoria.color,
       occurred_on: rascunho.occurred_on,
-      recurring: false,
+      /* Só a linha única pode ser série aberta. A compra parcelada acima nasce
+         fechada — três linhas, três meses — e marcar recorrência ali faria o
+         app gerar uma quarta parcela pra sempre. */
+      recurring: rascunho.recurring ?? false,
       card_id: rascunho.card_id,
       payment_method: rascunho.payment_method,
     });
@@ -1080,6 +1098,29 @@ async function finalizarLancamento(
  * O teto de 36 evita que um número solto grande vire mil parcelas.
  */
 function parseParcelas(text: string): number | null {
+  /* Falado, o número da parcela vem por extenso — "parcelei em oito", "em
+     três vezes" — e o resto desta função só enxerga dígito. Sem esta troca,
+     o parcelamento sumia calado em todo lançamento por áudio: virava uma
+     compra única pelo valor cheio, e a fatura do mês levava o tombo inteiro.
+     A tabela é local, e não uma constante de módulo, porque os testes
+     extraem esta função inteira do arquivo — uma constante de fora ficaria
+     para trás e o teste passaria medindo outra coisa. */
+  const EXTENSO: Record<string, number> = {
+    dois: 2, duas: 2, tres: 3, três: 3, quatro: 4, cinco: 5, seis: 6, sete: 7,
+    oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13, catorze: 14,
+    quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18,
+    dezenove: 19, vinte: 20, 'vinte e quatro': 24, trinta: 30, 'trinta e seis': 36,
+  };
+  /* Do mais longo pro mais curto: senão "vinte" casa antes e "vinte e quatro"
+     nunca chega a ser reconhecido. */
+  const palavras = Object.keys(EXTENSO)
+    .sort((a, b) => b.length - a.length)
+    .map((p) => p.replace(/ /g, '\\s+'))
+    .join('|');
+  const alvo = text.replace(new RegExp(`\\b(?:${palavras})\\b`, 'gi'), (m) =>
+    String(EXTENSO[m.toLowerCase().replace(/\s+/g, ' ')])
+  );
+
   const padroes = [
     /\bem\s+(\d{1,2})\s*x\b/i,
     /\b(\d{1,2})\s*x\b/i,
@@ -1090,7 +1131,7 @@ function parseParcelas(text: string): number | null {
     /\bparcel(?:ei|ado|ada|ar|a)\s+em\s+(\d{1,2})\b/i,
   ];
   for (const re of padroes) {
-    const m = text.match(re);
+    const m = alvo.match(re);
     if (m) {
       const n = parseInt(m[1], 10);
       if (n >= 2 && n <= 36) return n;
@@ -1130,6 +1171,14 @@ function ehIntencaoCredito(text: string): boolean {
   if (/\bparcel(?:ei|ado|ada|ar|a)\b/i.test(text)) return true;
   if (/\b\d+\s*x\b/i.test(text)) return true;
   if (/\b\d+\s*vezes\b/i.test(text)) return true;
+  /* Parcelamento só existe no crédito, então achar parcela JÁ é dizer que é
+     crédito. As regras acima cobriam "3x" e "em 3 vezes" mas não "em 12
+     parcelas" nem parcela falada por extenso — e como registrarLancamento só
+     procura parcelas DENTRO do ramo de crédito, o parcelamento era descartado
+     em silêncio: "TV 2500 em 12 parcelas" virava uma saída única de R$ 2.500
+     fora da fatura. Delegar pro parseParcelas mantém as duas decisões
+     concordando sempre, em vez de duas listas de padrões pra divergir. */
+  if (parseParcelas(text) !== null) return true;
   return false;
 }
 
@@ -1153,6 +1202,69 @@ async function fetchCreditCardsDoUsuario(userId: string): Promise<CartaoBusca[]>
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
   return (data as CartaoBusca[] | null) ?? [];
+}
+
+/* ---- forma de pagamento ---- */
+
+/**
+ * Pix, débito ou dinheiro dito na mensagem.
+ *
+ * `transactions.payment_method` aceita 'debit' | 'credit' | 'pix' | 'cash'
+ * desde sempre, mas o bot só sabia gravar 'credit' — dizer "no pix" não
+ * gravava nada, e o lançamento ficava sem forma de pagamento nenhuma. Quem
+ * lança pelo app escolhe num seletor; quem lança pelo WhatsApp dizia e era
+ * ignorado.
+ *
+ * Crédito NÃO sai daqui: quem decide é `ehIntencaoCredito`, que já sabe
+ * recusar "cartão de débito" e "recebi um crédito de 500". Misturar as duas
+ * decisões faria uma desfazer a outra.
+ */
+function parseFormaPagamento(text: string): string | null {
+  const t = text.toLowerCase();
+  /* Débito antes de pix: "paguei no débito e o resto no pix" é raro, mas
+     quando aparecem os dois vale o primeiro dito. */
+  const iDebito = t.search(/\bd[ée]bito\b/);
+  const iPix = t.search(/\bpix\b/);
+  const iDinheiro = t.search(/\b(?:dinheiro|esp[ée]cie)\b/);
+
+  const achados = [
+    { forma: 'debit', i: iDebito },
+    { forma: 'pix', i: iPix },
+    { forma: 'cash', i: iDinheiro },
+  ].filter((a) => a.i >= 0);
+
+  if (achados.length === 0) return null;
+  achados.sort((a, b) => a.i - b.i);
+  return achados[0].forma;
+}
+
+/* ---- recorrência ---- */
+
+/**
+ * "Todo mês" — a série que se repete sozinha (ver lib/recorrencia.ts).
+ *
+ * O bot gravava `recurring: false` fixo nos três lugares onde escreve, então
+ * "aluguel 1500 todo mês" virava um lançamento avulso e a pessoa redigitava
+ * todo mês uma coisa que ela já tinha dito que repetia.
+ *
+ * A lista é curta de propósito, e o motivo é assimetria de dano: marcar
+ * recorrência à toa cria dinheiro que não existe nos meses seguintes — o
+ * mesmo tipo de erro de um valor errado. Não marcar só custa redigitar. Por
+ * isso "mensalidade" e "assinatura" ficaram de fora: são substantivos que
+ * descrevem o gasto ("academia mensalidade 89,90"), não um pedido de repetir.
+ * Só entra quem disse com todas as letras que repete.
+ *
+ * Semana e dia também ficam de fora, e não por esquecimento: o modelo de
+ * recorrência do app é mensal. Marcar "toda semana" como mensal seria dar uma
+ * resposta errada em vez de nenhuma.
+ */
+function parseRecorrencia(text: string): boolean {
+  const t = text.toLowerCase();
+  /* "Parcelado em 3x" é uma série FECHADA de três linhas, criada de uma vez —
+     o oposto de uma série aberta. Dizer as duas coisas é contradição, e o
+     parcelamento é o mais específico dos dois. */
+  if (parseParcelas(text) !== null) return false;
+  return /\btod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?\b|\bcada\s+m[êe]s\b|\bmensalmente\b|\brecorrente\b|\bse\s+repete\b|\bque\s+repete\b|\brepete\s+tod[oa]\s+m[êe]s\b/.test(t);
 }
 
 /* ---- boleto: reconhecer intenção e a data de vencimento ---- */
@@ -1210,7 +1322,10 @@ async function registrarBoleto(userId: string, phone: string, text: string, amou
     color: categoria.color,
     due_date,
     status: 'due',
-    recurring: false,
+    /* Conta que vence todo mês é o caso NORMAL de boleto — luz, água,
+       internet, condomínio. A coluna existe em `bills` desde sempre e o bot
+       gravava false fixo, então a pessoa recadastrava a mesma conta todo mês. */
+    recurring: parseRecorrencia(text),
   });
 
   if (error) {
@@ -1261,7 +1376,10 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
   const categoria = matchCategoryByKeyword(text);
 
   let card_id: string | null = null;
-  let payment_method: string | null = null;
+  /* Pix, débito e dinheiro saem daqui; crédito é decidido logo abaixo e
+     sobrescreve. Antes disto o campo só era preenchido no crédito — dizer "no
+     pix" era ouvido pra tirar da descrição e jogado fora na hora de salvar. */
+  let payment_method: string | null = parseFormaPagamento(text);
   let nomeCartao: string | null = null;
   /* Só faz sentido parcelar saída no crédito — "recebi 300 em 3x" não existe,
      e parcelar um pix/débito também não. Fica null fora desse caso. */
@@ -1289,9 +1407,16 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
     }
   }
 
+  /* Parcelamento e recorrência são modelos que se excluem: 3x é uma série
+     FECHADA (três linhas criadas de uma vez), recorrência é uma série ABERTA
+     que o app vai preenchendo mês a mês. `parseRecorrencia` já recusa quando
+     acha parcela; a repetição aqui é só pra deixar a regra visível no ponto
+     onde o lançamento é montado. */
+  const recurring = installments ? false : parseRecorrencia(text);
+
   if (categoria) {
     await finalizarLancamento(
-      { user_id: userId, phone, description, amount, type, occurred_on, card_id, payment_method, installments },
+      { user_id: userId, phone, description, amount, type, occurred_on, card_id, payment_method, installments, recurring },
       categoria,
       nomeCartao
     );
@@ -1306,7 +1431,7 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
        na linha e a resposta de categoria cairia no ramo errado. */
     .upsert({
       phone, user_id: userId, description, amount, type, occurred_on, attempts: 0,
-      card_id, payment_method, installments,
+      card_id, payment_method, installments, recurring,
       pending_kind: 'categoria', amount_alt: null, raw_text: null,
     });
 

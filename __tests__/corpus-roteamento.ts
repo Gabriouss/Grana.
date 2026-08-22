@@ -11,77 +11,23 @@
  *
  * Roda: npx tsx __tests__/corpus-roteamento.ts
  */
-/* Este arquivo roda em Node (não no app), então precisa dos tipos do Node.
-   A referência fica aqui e não no tsconfig porque preencher `types` lá
-   restringe a lista global e derrubaria os tipos do React Native. */
-/// <reference types="node" />
-import * as fs from 'fs';
-import * as path from 'path';
 import { guessAmountFromText, guessTypeFromText } from '../lib/heuristics';
 
-/* ---------- extrai as funções puras do webhook ---------- */
-const WEBHOOK = path.join(__dirname, '..', 'supabase', 'functions', 'whatsapp-webhook', 'index.ts');
-/* lib/whatsapp.ts importa `react-native` no topo, então não dá pra fazer
-   `import` dele aqui — o Node não carrega o módulo. Extrair o texto da função
-   resolve, e de quebra o teste passa a ler o ARQUIVO REAL do app, do mesmo
-   jeito que já lê o do bot. */
-const APP_WHATSAPP = path.join(__dirname, '..', 'lib', 'whatsapp.ts');
+import { APP_WHATSAPP, corpoDaFuncao } from './extrair';
 
-function corpoDaFuncao(nome: string, arquivo: string = WEBHOOK): string {
-  const linhas = fs.readFileSync(arquivo, 'utf8').split(/\r?\n/);
-  const re = new RegExp('^(?:export )?(?:async )?function ' + nome + '(?![A-Za-z0-9_])');
-  const i = linhas.findIndex((l) => re.test(l));
-  if (i === -1) throw new Error('não achei ' + nome + ' no webhook');
-  let profundidade = 0;
-  const out: string[] = [];
-  for (let j = i; j < linhas.length; j++) {
-    out.push(linhas[j]);
-    for (const ch of linhas[j]) {
-      if (ch === '{') profundidade++;
-      if (ch === '}') profundidade--;
-    }
-    if (j > i && profundidade === 0) break;
-  }
-  /* Tira as anotações de tipo pra rodar como JS puro dentro de `new Function`.
-     São funções pequenas e só de regex, então esta limpeza simples basta —
-     e vale a pena para o teste ler o ARQUIVO REAL do bot em vez de uma cópia
-     que pode divergir sem ninguém notar. */
-  return (
-    out
-      .join('\n')
-      /* O app exporta suas funções; o webhook não. Dentro de `new Function`
-         não existe módulo, então o `export` precisa cair. */
-      .replace(/^export /, '')
-      /* O tipo de RETORNO sai primeiro: fazendo o contrário, `): number | null {`
-         perdia só o "number" e sobrava um `| null` solto, que não é JS válido. */
-      .replace(/\)\s*:\s*[A-Za-z<>[\]|'\s]+?\{/g, ') {')
-      /* O `[]` faz parte do tipo e precisa sair junto: sem ele,
-         `const candidatos: string[] = []` virava `const candidatos[] = []`,
-         que não é JS válido — e o erro só aparecia ao montar a função, longe
-         de qualquer pista de qual anotação tinha sobrado pela metade. */
-      .replace(/:\s*(?:string|number|boolean)(?:\[\])?(?![A-Za-z0-9_])/g, '')
-  );
-}
-
+/* As funções puras do bot vêm do ARQUIVO REAL — ver __tests__/extrair.ts.
+   `escolherValor` chama guessAmountFromText; a do webhook é a mesma do app
+   (sync-parser.js falha se divergirem), então injetar a do app testa a lógica
+   de escolha sem arrastar meio parser pra dentro do `new Function`. */
+const NOMES = ['ehIntencaoCredito', 'ehIntencaoBoleto', 'parseDiaVencimento', 'parseParcelas',
+  'somarMesesISO', 'leituraAlternativaDeAudio', 'escolherValor', 'codigosCandidatos'];
 const fonte = [
-  corpoDaFuncao('ehIntencaoCredito'),
-  corpoDaFuncao('ehIntencaoBoleto'),
-  corpoDaFuncao('parseDiaVencimento'),
-  corpoDaFuncao('parseParcelas'),
-  corpoDaFuncao('somarMesesISO'),
-  corpoDaFuncao('leituraAlternativaDeAudio'),
-  corpoDaFuncao('escolherValor'),
-  corpoDaFuncao('codigosCandidatos'),
+  ...NOMES.map((n) => corpoDaFuncao(n)),
   corpoDaFuncao('mensagemDePareamento', APP_WHATSAPP),
 ].join('\n\n');
-/* `escolherValor` chama guessAmountFromText. A do webhook é a mesma do app —
-   sync-parser.js falha se divergirem —, então injetar a do app aqui testa a
-   lógica de escolha sem arrastar meio parser pra dentro do `new Function`. */
 const doWebhook = new Function(
   'guessAmountFromText',
-  fonte +
-    '\nreturn { ehIntencaoCredito, ehIntencaoBoleto, parseDiaVencimento, parseParcelas, somarMesesISO,' +
-    ' leituraAlternativaDeAudio, escolherValor, codigosCandidatos, mensagemDePareamento };'
+  `${fonte}\nreturn { ${NOMES.join(', ')}, mensagemDePareamento };`
 )(guessAmountFromText) as {
   ehIntencaoCredito: (t: string) => boolean;
   ehIntencaoBoleto: (t: string) => boolean;
