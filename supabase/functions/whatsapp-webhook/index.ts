@@ -387,7 +387,21 @@ function guessDescFromText(text: string, type: 'in' | 'out'): string {
      sem tirar isso aqui, a regra 1 abaixo nunca casava (o `$` dela não aceita
      nada depois do valor além de uma categoria com vírgula), a descrição caía
      na regra 3 e saía "Almoço de" em vez de só "Almoço". */
-  const texto = normalizarTextoTranscrito(text).replace(/[.!?]+\s*$/, '');
+  /* Dica de categoria colada com vírgula no fim ("Chip de 22 reais,
+     assinaturas", "Monster no posto, alimentação") — formato que o próprio
+     app ensina (ver o placeholder do lançamento por voz). Só a regra 1
+     sabia descartar isso, e só quando o valor vem logo antes da vírgula com
+     "de"/"por" no meio; em qualquer outra forma ("Monster no posto,
+     categoria alimentação 10,79", sem conector) a frase caía nas regras 2/3,
+     que não tinham essa limpeza — a vírgula e "categoria alimentação"
+     ficavam colados na descrição. Tirar isso ANTES das três regras corrige
+     os três caminhos de uma vez, não só o primeiro. */
+  const NOMES_CATEGORIA = Object.keys(CATEGORY_KEYWORDS)
+    .map((nome) => nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  const DICA_CATEGORIA_FINAL = new RegExp(`,\\s*(?:categoria\\s+)?(?:${NOMES_CATEGORIA})\\s*$`, 'i');
+
+  const texto = normalizarTextoTranscrito(text).replace(/[.!?]+\s*$/, '').replace(DICA_CATEGORIA_FINAL, '');
 
   /* 1º) "<Nome> de <Valor>" — "Energia de 350 reais", "Merenda de 31 reais",
      "Mercado de 120 reais". Vem primeiro porque é o formato mais comum e o
