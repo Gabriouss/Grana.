@@ -48,7 +48,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test:parser": "npx --yes tsx __tests__/corpus-voz.ts && npx --yes tsx __tests__/corpus-gerado.ts && npx --yes tsx __tests__/corpus-roteamento.ts && node __tests__/sync-parser.js"
+    "test:parser": "npx --yes tsx __tests__/corpus-voz.ts && npx --yes tsx __tests__/corpus-gerado.ts && npx --yes tsx __tests__/corpus-voz-gerado.ts && npx --yes tsx __tests__/corpus-roteamento.ts && node __tests__/sync-parser.js"
   },
   "private": true
 }

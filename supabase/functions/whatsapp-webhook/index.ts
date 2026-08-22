@@ -147,8 +147,13 @@ function segmentarExtenso(palavras: string[]): number[] {
 const MOEDA = 'reais|real|contos?|pila|paus?|mangos?';
 
 /* Palavra que, logo depois de um bloco numérico fechado, confirma que aquilo
-   era mesmo um valor em dinheiro (não um artigo indefinido). */
-const PALAVRA_MOEDA = new RegExp(`^(?:${MOEDA})$`, 'i');
+   era mesmo um valor em dinheiro (não um artigo indefinido).
+   "centavo" entra junto porque é a única moeda que aparece depois do "um" na
+   parte decimal: sem ela, "um real e um centavo" perdia o centavo — o bloco
+   ["um"] caía na exceção do artigo, saía como a palavra "um" em vez de "1", e
+   a regra de reais-e-centavos logo abaixo não tinha dois números pra juntar.
+   R$ 1,01 virava R$ 1,00, calado. */
+const PALAVRA_MOEDA = new RegExp(`^(?:${MOEDA}|centavos?)$`, 'i');
 
 /** Converte trechos numéricos por extenso em dígitos e junta "X reais e Y centavos". */
 function normalizarTextoTranscrito(texto: string): string {
@@ -396,8 +401,37 @@ const VERBOS_INICIAIS =
   /^(?:me\s+pagaram|gastei|gasto|paguei|pagamento|comprei|compra|torrei|coloquei|investi|apliquei|recebi|recebido|ganhei|entrou|caiu|vendi|transferi|mandei|enviei|assinei|custou|saiu|foi|foram|(?:anota|anote|registra|registre|lan[çc]a|lance|adiciona|adicione)(?:\s+a[íi])?|(?:bota|bote|coloca|marca|marque|p[oõ]e)\s+a[íi])(?![a-zà-ÿ0-9])[\s,]*/i;
 /* Conectores que sobram grudados nas pontas depois que o valor sai. */
 const CONECTOR = '(?:de|do|da|dos|das|no|na|nos|nas|em|com|para|pra|pro|por|a|o|um|uma)';
-const CONECTOR_INICIAL = new RegExp(`^${CONECTOR}\\b\\s*`, 'i');
+/* `(?![a-zà-ÿ0-9])` e não `\b`, pela terceira vez neste arquivo: no JavaScript
+   o `\b` só enxerga [A-Za-z0-9_] como letra, então entre o "a" e o "ç" de
+   "açougue" ele acha uma fronteira que não existe. O conector "a" casava, era
+   removido, e "gastei 7 reais no açougue" virava um lançamento chamado
+   "Çougue". Vale pra toda descrição que comece com vogal seguida de letra
+   acentuada — açaí, ação, aí, ávido. */
+const CONECTOR_INICIAL = new RegExp(`^${CONECTOR}(?![a-zà-ÿ0-9])\\s*`, 'i');
 const CONECTOR_FINAL = new RegExp(`\\s+${CONECTOR}$`, 'i');
+
+/* ── Muletas de fala ───────────────────────────────────────────────────────
+ *
+ * Transcrição de áudio não vem limpa: o Whisper escreve o "é...", o "então" e
+ * o "né" junto com o lançamento. Nenhum deles descreve nada, e sem tirá-los o
+ * gasto era salvo com nome de conversa — "Ah mercado né", "Peraí mercado
+ * valeu". Num corpus de 16 mil frases faladas, era a causa de todas as falhas
+ * de descrição fora as duas acima.
+ *
+ * Só valem nas PONTAS. No meio da frase uma dessas palavras pode ser parte do
+ * nome, e a lista foi podada com o mesmo critério: "bom" ficou de fora por
+ * causa de "Bom Prato", "pera" por causa da fruta (só "peraí" entra), "beleza"
+ * só é muleta no fim.
+ *
+ * O vocativo ("mano", "véi", "cara") exige vírgula pra sumir. Sem essa
+ * exigência, "Mano do Açaí" — franquia de verdade — virava um lançamento
+ * chamado "Açaí". Mesmo critério que VERBOS_INICIAIS já usa pra "bota aí":
+ * a palavra ambígua só é comando quando vem na forma inequívoca.
+ */
+const MULETA_INICIAL =
+  /^(?:(?:[ée]|eh|ahn?|hum|hmm|ó|opa|olha(?:\s+s[óo])?|ent[aã]o|tipo(?:\s+assim)?|assim|enfim|deixa\s+eu\s+ver|pera[íi]|pera\s+a[íi])(?![a-zà-ÿ0-9'-])[\s,.:;]*|(?:mano|v[ée]i|cara)\s*[,.:;]\s*)/i;
+const MULETA_FINAL =
+  /[\s,.:;-]+(?:n[ée]|t[áa](?:\s+(?:ok|certo))?|ok(?:ay)?|beleza|blz|valeu|vlw|pronto|viu|certo|s[óo]\s+isso|[ée]\s+isso|obrigad[oa]|por\s+favor|pfv|a[íi]|ent[aã]o)(?![a-zà-ÿ0-9])$/i;
 /* Restos de valor colados nas pontas: "luz 210" -> "luz", "350 reais x" -> "x".
    VALOR_FINAL tem um `(?<![a-zà-ÿ])` antes do dígito que VALOR_INICIAL não
    precisa: âncorado em `^`, nunca há uma letra antes pra checar. Sem esse
@@ -419,6 +453,8 @@ function limparSobra(bruto: string): string {
   while (s !== anterior) {
     anterior = s;
     s = s
+      .replace(MULETA_INICIAL, '')
+      .replace(MULETA_FINAL, '')
       .replace(VERBOS_INICIAIS, '')
       .replace(VALOR_INICIAL, '')
       .replace(VALOR_FINAL, '')

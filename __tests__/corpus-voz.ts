@@ -99,6 +99,23 @@ const CASOS: Caso[] = [
   { txt: 'bota trinta reais de gasolina', val: 30, cat: 'Transporte' },
   { txt: 'foi cinquenta reais no ifood', val: 50, cat: 'Alimentação' },
 
+  // ---------- Muleta de fala não pode virar nome ----------
+  { txt: 'ah mercado cento e vinte reais né', val: 120, desc: 'Mercado' },
+  { txt: 'então almoço vinte e cinco reais beleza', val: 25, desc: 'Almoço' },
+  { txt: 'peraí gasolina cem reais valeu', val: 100, desc: 'Gasolina' },
+  { txt: 'tipo assim uber quinze reais', val: 15, desc: 'Uber' },
+  { txt: 'deixa eu ver padaria oito e cinquenta', val: 8.5, desc: 'Padaria' },
+  { txt: 'mercado 30, beleza', val: 30, desc: 'Mercado' },
+  { txt: 'mano, mercado trinta reais', val: 30, desc: 'Mercado' },
+  // ...mas quando a muleta faz parte do nome, ela FICA (franquia de verdade).
+  { txt: 'mano do açaí 12 reais', val: 12, desc: 'Mano do açaí' },
+  { txt: 'pronto socorro 200 reais', val: 200, desc: 'Pronto socorro' },
+
+  // ---------- Acento nas pontas (o `\b` do JS não fecha fronteira ali) ----------
+  { txt: 'açougue 45 reais', val: 45, desc: 'Açougue', nota: 'conector "a" comia o Ç: virava "Çougue"' },
+  { txt: 'gastei 7 reais no açougue', val: 7, desc: 'Açougue' },
+  { txt: 'um real e um centavo', val: 1.01, nota: 'o "um" dos centavos era lido como artigo e sumia' },
+
   // ---------- Valores altos ----------
   { txt: 'aluguel mil e oitocentos', val: 1800, cat: 'Moradia' },
   { txt: 'notebook três mil e duzentos', val: 3200 },
