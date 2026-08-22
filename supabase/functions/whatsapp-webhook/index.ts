@@ -880,7 +880,76 @@ type Rascunho = {
      "mercado 300 em 3x" cuja categoria o bot não reconhece perderia o
      parcelamento no caminho e viraria um lançamento único de R$ 300. */
   installments: number | null;
+  /* Que pergunta está no ar. 'categoria' é a original (qual categoria usar);
+     'valor' é a desambiguação de áudio logo abaixo. Sem esse campo as duas
+     perguntas dividiriam a mesma linha da tabela e a resposta "1" cairia no
+     lugar errado. */
+  pending_kind: 'categoria' | 'valor';
+  /* Só no rascunho de valor: a segunda leitura possível, e o texto original
+     do áudio pra reprocessar tudo (crédito, parcelas, boleto, categoria) com
+     o valor já resolvido, em vez de tentar remontar o lançamento pela metade. */
+  amount_alt: number | null;
+  raw_text: string | null;
 };
+
+/**
+ * A ambiguidade que o parser não tem como resolver sozinho: quando alguém
+ * fala "onze e setenta e nove", o Whisper às vezes transcreve "1179". Aí o
+ * parser está CERTO em ler R$ 1.179 — o erro aconteceu antes dele, e nenhuma
+ * regra de gramática recupera o que foi perdido na transcrição.
+ *
+ * A saída é o bot desconfiar e perguntar. Mas perguntar sempre torraria a
+ * paciência de quem fala valor redondo, então os filtros aqui são estreitos
+ * de propósito:
+ *
+ *  - só quando o número aparece em DÍGITOS no áudio transcrito. Se veio por
+ *    extenso ("mil cento e setenta e nove"), a fala já era inequívoca e
+ *    segmentarExtenso resolveu — não há o que perguntar.
+ *  - só de R$ 1.000 pra cima. Abaixo disso a leitura literal quase sempre é a
+ *    certa ("cento e cinquenta" -> 150), e perguntar seria puro atrito.
+ *  - nunca quando termina em 00: "mil e quinhentos" vira 1500, e ninguém fala
+ *    centavos zerados em voz alta ("onze reais" sai como "11 reais", não
+ *    "1100").
+ *  - e o número tem que estar solto, sem separador nenhum. "1.179" com ponto
+ *    de milhar é o Whisper afirmando que são mil e cento e setenta e nove.
+ *
+ * Devolve a leitura alternativa (em centavos) ou null quando não há dúvida.
+ */
+function leituraAlternativaDeAudio(texto: string, amount: number): number | null {
+  if (!Number.isInteger(amount)) return null;
+  if (amount < 1000 || amount > 99999) return null;
+  if (amount % 100 === 0) return null;
+  const solto = new RegExp(`(?<![\\d.,])${amount}(?![\\d.,])`);
+  if (!solto.test(texto)) return null;
+  return amount / 100;
+}
+
+/**
+ * Lê a resposta da pergunta de valor. Aceita o número da opção, o ordinal por
+ * extenso (a pessoa pode responder por áudio) ou o próprio valor repetido —
+ * quem responde "11,79" está sendo mais claro que quem responde "1".
+ */
+function escolherValor(text: string, literal: number, alternativa: number): number | null {
+  /* Tira acento, emoji e pontuação: a resposta pode vir como "1", "1️⃣",
+     "1.", "primeiro" ou " Um ". */
+  const so = (text || '').toLowerCase().replace(/[^0-9a-zà-ÿ]/g, '');
+  if (so === '1' || so === 'um' || so === 'primeiro' || so === 'primeira') return alternativa;
+  if (so === '2' || so === 'dois' || so === 'segundo' || so === 'segunda') return literal;
+
+  const dito = guessAmountFromText(text);
+  if (Math.abs(dito - alternativa) < 0.005) return alternativa;
+  if (Math.abs(dito - literal) < 0.005) return literal;
+  return null;
+}
+
+function formatarBRL(n: number): string {
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** As duas opções, do jeito que aparecem na pergunta e na repetição dela. */
+function textoDasOpcoes(literal: number, alternativa: number): string {
+  return `1️⃣ R$ ${formatarBRL(alternativa)}\n2️⃣ R$ ${formatarBRL(literal)}`;
+}
 
 async function buscarPendente(phone: string): Promise<Rascunho | null> {
   const { data } = await supabase.from('whatsapp_pending').select('*').eq('phone', phone).maybeSingle();
@@ -1139,8 +1208,13 @@ async function registrarBoleto(userId: string, phone: string, text: string, amou
  * `bills`, não `transactions` — não tem categoria pendente a perguntar,
  * então sai direto sem passar pelo rascunho.
  */
-async function registrarLancamento(userId: string, phone: string, text: string): Promise<void> {
-  const amount = guessAmountFromText(text);
+/* `valorForcado` chega quando o valor já foi decidido fora daqui — hoje só
+   pela desambiguação de áudio. Reprocessar o texto original inteiro (em vez
+   de remontar o lançamento a partir do rascunho) mantém crédito, cartão,
+   parcelas, boleto e categoria funcionando exatamente igual ao caminho
+   normal, sem uma segunda implementação pra divergir. */
+async function registrarLancamento(userId: string, phone: string, text: string, valorForcado?: number): Promise<void> {
+  const amount = valorForcado ?? guessAmountFromText(text);
   if (!amount || amount <= 0) {
     await sendWhatsappMessage(phone, 'Não consegui identificar o valor. Tente algo como: "Almoço de 38 reais" ou "R$ 38 em Alimentação".');
     return;
@@ -1196,19 +1270,93 @@ async function registrarLancamento(userId: string, phone: string, text: string):
 
   await supabase
     .from('whatsapp_pending')
-    .upsert({ phone, user_id: userId, description, amount, type, occurred_on, attempts: 0, card_id, payment_method, installments });
+    /* `pending_kind`, `amount_alt` e `raw_text` vão explícitos mesmo valendo o
+       default: o upsert só sobrescreve as colunas que recebe, então um
+       rascunho de valor abandonado deixaria `pending_kind = 'valor'` grudado
+       na linha e a resposta de categoria cairia no ramo errado. */
+    .upsert({
+      phone, user_id: userId, description, amount, type, occurred_on, attempts: 0,
+      card_id, payment_method, installments,
+      pending_kind: 'categoria', amount_alt: null, raw_text: null,
+    });
 
-  const valorFmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const valorFmt = formatarBRL(amount);
   await sendWhatsappMessage(
     phone,
     `Não identifiquei a categoria de "${description}" (R$ ${valorFmt}). Qual dessas se encaixa melhor?\n${NOMES_CATEGORIAS}`
   );
 }
 
+/** Guarda o áudio inteiro e pergunta qual das duas leituras é a certa. */
+async function perguntarValorAmbiguo(
+  userId: string,
+  phone: string,
+  texto: string,
+  literal: number,
+  alternativa: number
+): Promise<void> {
+  const type = guessTypeFromText(texto);
+  await supabase.from('whatsapp_pending').upsert({
+    phone,
+    user_id: userId,
+    description: guessDescFromText(texto, type),
+    amount: literal,
+    type,
+    occurred_on: todayISO(),
+    attempts: 0,
+    card_id: null,
+    payment_method: null,
+    installments: null,
+    pending_kind: 'valor',
+    amount_alt: alternativa,
+    raw_text: texto,
+  });
+
+  await sendWhatsappMessage(
+    phone,
+    `🎙️ Ouvi "${literal}" — e isso pode ser duas coisas:\n\n${textoDasOpcoes(literal, alternativa)}\n\nQual foi? Responde 1 ou 2.`
+  );
+}
+
+/** Resposta à pergunta de valor. Resolvido o valor, o áudio original é reprocessado inteiro. */
+async function tratarRespostaValor(pendente: Rascunho, text: string): Promise<boolean> {
+  const alternativa = pendente.amount_alt ?? pendente.amount;
+  const escolhido = escolherValor(text, pendente.amount, alternativa);
+
+  if (escolhido !== null) {
+    await limparPendente(pendente.phone);
+    await registrarLancamento(pendente.user_id, pendente.phone, pendente.raw_text ?? pendente.description, escolhido);
+    return true;
+  }
+
+  const tentativas = pendente.attempts + 1;
+  /* Sem palpite possível aqui: errar o valor é o erro que a pessoa não
+     perdoa, então na dúvida o rascunho é descartado e ela manda de novo —
+     ao contrário da pergunta de categoria, que cai em "Outros" pra não
+     travar o lançamento. */
+  if (tentativas >= 2) {
+    await limparPendente(pendente.phone);
+    await sendWhatsappMessage(
+      pendente.phone,
+      'Não consegui confirmar o valor, então não registrei nada. Manda o lançamento de novo — se ficar mais fácil, pode ser em texto.'
+    );
+    return true;
+  }
+
+  await supabase.from('whatsapp_pending').update({ attempts: tentativas }).eq('phone', pendente.phone);
+  await sendWhatsappMessage(
+    pendente.phone,
+    `Não entendi. Responde só 1 ou 2:\n\n${textoDasOpcoes(pendente.amount, alternativa)}`
+  );
+  return true;
+}
+
 /** Trata a resposta a uma pergunta de esclarecimento pendente. Devolve true se tratou (a mensagem não deve seguir o fluxo normal). */
 async function tratarRespostaPendente(phone: string, text: string): Promise<boolean> {
   const pendente = await buscarPendente(phone);
   if (!pendente) return false;
+
+  if (pendente.pending_kind === 'valor') return await tratarRespostaValor(pendente, text);
 
   const categoria = matchCategoryByReply(text);
   if (categoria) {
@@ -1268,11 +1416,20 @@ async function handleAudioMessage(phone: string, mediaId: string): Promise<void>
   // Sem valor identificado o áudio vira um beco sem saída silencioso: a pessoa
   // não sabe se o problema foi a transcrição ou a frase. Ecoar o que foi
   // entendido deixa o erro óbvio ("ouvi 'mercado' mas não ouvi o valor").
-  if (guessAmountFromText(texto) <= 0) {
+  const valor = guessAmountFromText(texto);
+  if (valor <= 0) {
     await sendWhatsappMessage(
       phone,
       `🎙️ Entendi: "${texto}"\n\nMas não identifiquei o valor. Tente incluir o valor no áudio, tipo: "Mercado, cento e vinte reais".`
     );
+    return;
+  }
+
+  /* Só o áudio passa por aqui. Em texto, "1179" é o que a pessoa digitou e
+     não há dúvida nenhuma a levantar — a ambiguidade nasce da transcrição. */
+  const alternativa = leituraAlternativaDeAudio(texto, valor);
+  if (alternativa !== null) {
+    await perguntarValorAmbiguo(link.user_id, phone, texto, valor, alternativa);
     return;
   }
 

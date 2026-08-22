@@ -17,7 +17,7 @@
 /// <reference types="node" />
 import * as fs from 'fs';
 import * as path from 'path';
-import { guessTypeFromText } from '../lib/heuristics';
+import { guessAmountFromText, guessTypeFromText } from '../lib/heuristics';
 
 /* ---------- extrai as funções puras do webhook ---------- */
 const WEBHOOK = path.join(__dirname, '..', 'supabase', 'functions', 'whatsapp-webhook', 'index.ts');
@@ -57,15 +57,25 @@ const fonte = [
   corpoDaFuncao('parseDiaVencimento'),
   corpoDaFuncao('parseParcelas'),
   corpoDaFuncao('somarMesesISO'),
+  corpoDaFuncao('leituraAlternativaDeAudio'),
+  corpoDaFuncao('escolherValor'),
 ].join('\n\n');
+/* `escolherValor` chama guessAmountFromText. A do webhook é a mesma do app —
+   sync-parser.js falha se divergirem —, então injetar a do app aqui testa a
+   lógica de escolha sem arrastar meio parser pra dentro do `new Function`. */
 const doWebhook = new Function(
-  fonte + '\nreturn { ehIntencaoCredito, ehIntencaoBoleto, parseDiaVencimento, parseParcelas, somarMesesISO };'
-)() as {
+  'guessAmountFromText',
+  fonte +
+    '\nreturn { ehIntencaoCredito, ehIntencaoBoleto, parseDiaVencimento, parseParcelas, somarMesesISO,' +
+    ' leituraAlternativaDeAudio, escolherValor };'
+)(guessAmountFromText) as {
   ehIntencaoCredito: (t: string) => boolean;
   ehIntencaoBoleto: (t: string) => boolean;
   parseDiaVencimento: (t: string) => string;
   parseParcelas: (t: string) => number | null;
   somarMesesISO: (iso: string, meses: number) => string;
+  leituraAlternativaDeAudio: (texto: string, amount: number) => number | null;
+  escolherValor: (texto: string, literal: number, alternativa: number) => number | null;
 };
 
 /* ---------- casos ---------- */
@@ -225,6 +235,76 @@ for (const [inicio, meses, esperado] of DATAS) {
   }
 }
 
-const totalChecagens = CASOS.length + DIVISOES.length + DATAS.length;
-const totalFalhas = falhas + falhasDivisao;
+/* Desambiguação de valor falado. Dois lados a proteger: levantar a dúvida
+   quando ela existe, e — mais importante pro atrito diário — ficar CALADO
+   quando não existe. Um bot que pergunta a cada áudio é pior que um bot que
+   erra de vez em quando. */
+const AMBIGUOS: [string, number, number | null][] = [
+  // Pergunta: o número veio em dígitos, tem 4+ casas e não termina em 00.
+  ['monster 1179', 1179, 11.79],
+  ['monster 1179 reais', 1179, 11.79],
+  ['notebook 3499', 3499, 34.99],
+  ['almoço 12990', 12990, 129.9],
+  ['uber 99 pop 1234', 1234, 12.34],
+
+  // Cala a boca: valor redondo, "mil e quinhentos" não vira "quinze reais".
+  ['aluguel 1500', 1500, null],
+  ['salário 3200', 3200, null],
+  // Abaixo de mil a leitura literal quase sempre é a certa.
+  ['mercado 150', 150, null],
+  ['café 550', 550, null],
+  // Separador é o Whisper afirmando que são mil e cento e setenta e nove.
+  ['aluguel 1.179', 1179, null],
+  ['mercado 1179,00', 1179, null],
+  // Veio por extenso: a fala já era inequívoca, segmentarExtenso resolveu.
+  ['mercado mil cento e setenta e nove reais', 1179, null],
+  ['monster onze e setenta e nove', 11.79, null],
+  // Grande demais pra ser centavo de compra do dia a dia.
+  ['carro 150000', 150000, null],
+];
+
+let falhasAmbiguo = 0;
+for (const [txt, amount, esperado] of AMBIGUOS) {
+  const obtido = doWebhook.leituraAlternativaDeAudio(txt, amount);
+  const bate = esperado === null ? obtido === null : obtido !== null && Math.abs(obtido - esperado) < 0.005;
+  if (!bate) {
+    falhasAmbiguo++;
+    console.log(`FALHA  leituraAlternativaDeAudio("${txt}", ${amount}) = ${obtido} (esperado ${esperado})`);
+  }
+}
+
+/* A resposta da pergunta. O par é sempre (literal 1179, alternativa 11,79):
+   a opção 1 é a leitura em centavos porque é a mais provável de ser a certa. */
+const RESPOSTAS: [string, number | null][] = [
+  ['1', 11.79],
+  ['2', 1179],
+  ['1️⃣', 11.79],
+  ['2️⃣', 1179],
+  [' 1. ', 11.79],
+  ['um', 11.79],
+  ['dois', 1179],
+  ['primeiro', 11.79],
+  ['Segunda', 1179],
+  // Repetir o valor é uma resposta mais clara que o número da opção.
+  ['11,79', 11.79],
+  ['R$ 11,79', 11.79],
+  ['1179', 1179],
+  ['onze e setenta e nove', 11.79],
+  // Não dá pra deduzir: melhor perguntar de novo que chutar o valor.
+  ['mercado 50', null],
+  ['sei lá', null],
+  ['', null],
+];
+
+for (const [txt, esperado] of RESPOSTAS) {
+  const obtido = doWebhook.escolherValor(txt, 1179, 11.79);
+  const bate = esperado === null ? obtido === null : obtido !== null && Math.abs(obtido - esperado) < 0.005;
+  if (!bate) {
+    falhasAmbiguo++;
+    console.log(`FALHA  escolherValor("${txt}") = ${obtido} (esperado ${esperado})`);
+  }
+}
+
+const totalChecagens = CASOS.length + DIVISOES.length + DATAS.length + AMBIGUOS.length + RESPOSTAS.length;
+const totalFalhas = falhas + falhasDivisao + falhasAmbiguo;
 console.log(`\n${totalChecagens - totalFalhas}/${totalChecagens} passaram — ${totalFalhas} falhas`);

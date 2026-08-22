@@ -135,6 +135,17 @@ alter table whatsapp_pending add column if not exists payment_method text;
 -- viraria um lançamento único de R$ 300.
 alter table whatsapp_pending add column if not exists installments smallint;
 
+-- Desambiguação de valor falado. O Whisper às vezes transcreve "onze e setenta
+-- e nove" como "1179", e aí o parser lê R$ 1.179 corretamente — o erro veio da
+-- transcrição, não da interpretação. Nesse caso o bot pergunta em vez de
+-- adivinhar, e a linha pendente precisa saber QUAL pergunta está no ar
+-- (`pending_kind`), qual é a outra leitura (`amount_alt`) e qual era o texto
+-- original (`raw_text`), pra reprocessar o lançamento inteiro depois da
+-- resposta em vez de remontá-lo pela metade.
+alter table whatsapp_pending add column if not exists pending_kind text not null default 'categoria';
+alter table whatsapp_pending add column if not exists amount_alt numeric;
+alter table whatsapp_pending add column if not exists raw_text text;
+
 alter table whatsapp_pending enable row level security;
 
 -- Orçamento mensal sugerido/definido por categoria
