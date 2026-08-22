@@ -32,7 +32,13 @@ export function isCreditTx(t: Pick<Transaction, 'payment_method' | 'card_id'>): 
  *    digitou no formato americano ou colou de uma planilha.
  */
 export function parseAmount(raw: string): number {
-  const bruto = (raw || '').trim();
+  /* Pontuação de frase nas pontas não faz parte do número. Sem isso, um
+     "5,50," (a vírgula que separa o valor do resto da frase entrando junto
+     na captura de quem chamou) era lido com a ÚLTIMA vírgula como separador
+     decimal: R$ 5,50 virava R$ 550,00. Os chamadores em lib/heuristics.ts já
+     capturam terminando em dígito, mas a limpeza fica aqui também porque
+     esta função é o funil por onde todo valor do app passa. */
+  const bruto = (raw || '').trim().replace(/^[^\d\-]+|[^\d]+$/g, '');
   if (!bruto) return 0;
 
   const soDigitos = (s: string) => s.replace(/[^0-9]/g, '');

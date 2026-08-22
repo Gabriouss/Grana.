@@ -278,13 +278,19 @@ export function guessTypeFromText(text: string): TxType {
 export function guessAmountFromText(text: string): number {
   const normalizado = normalizarTexto(text);
 
+  /* Os grupos de captura terminam em `\d` de propósito (`[\d.,]*\d`, não
+     `[\d.,]+`). Com `+` a captura era gulosa e engolia a vírgula da FRASE
+     que vinha logo depois do valor: em "mercado R$ 5,50, alimentação" ela
+     capturava "5,50," e o parseAmount lia a ÚLTIMA vírgula como separador
+     decimal — R$ 5,50 virava R$ 550,00, cem vezes o valor certo. */
+
   // "R$ 1.250,90" — quando o cifrão está lá, é o sinal mais confiável.
-  const comCifrao = normalizado.match(/r\$\s*([\d.,]+)/i);
+  const comCifrao = normalizado.match(/r\$\s*([\d.,]*\d)/i);
   if (comCifrao) return parseAmount(comCifrao[1]);
 
   // "350 reais", "120 conto", "50 pila" — em fala e em mensagem informal o
   // cifrão quase nunca aparece; a moeda vem por extenso depois do número.
-  const comMoeda = normalizado.match(new RegExp(`([\\d.,]+)\\s*(?:${MOEDA})\\b`, 'i'));
+  const comMoeda = normalizado.match(new RegExp(`([\\d.,]*\\d)\\s*(?:${MOEDA})\\b`, 'i'));
   if (comMoeda) return parseAmount(comMoeda[1]);
 
   // "150,00" / "1.250,50" — número com centavos explícitos.
@@ -294,7 +300,14 @@ export function guessAmountFromText(text: string): number {
   // "mercado 50" / "50 no mercado" — último recurso: qualquer número solto.
   // Fica por último de propósito, para não roubar a vez de "99" em "99 Pop"
   // ou de um número que faça parte do nome do estabelecimento.
-  const solto = normalizado.match(/(?:^|\s)(\d[\d.]*)(?:\s|$)/);
+  /* O fim do número é reconhecido por lookahead, e pontuação também fecha.
+     Antes exigia espaço ou fim de frase (`(?:\s|$)`), então um número colado
+     numa vírgula não era valor nenhum: "mercado 30, alimentação" — que é
+     exatamente o formato que o app ensina no lançamento por voz — devolvia
+     R$ 0 e o lançamento morria pedindo o valor de novo. Continua sendo
+     lookahead (não consumo) pra não atrapalhar outra regra que venha depois.
+     O grupo termina em `\d` pela mesma razão das capturas acima. */
+  const solto = normalizado.match(/(?:^|\s)(\d[\d.]*\d|\d)(?=[\s,;:!?]|$)/);
   if (solto) return parseAmount(solto[1]);
 
   return 0;
@@ -303,8 +316,23 @@ export function guessAmountFromText(text: string): number {
 /* Verbos e locuções que abrem a frase sem descrever nada ("gastei 50 no bar",
    "caiu 1500 do cliente"). Só valem no início — "vendi" no meio de uma frase
    pode ser parte do nome. */
+/* Duas famílias aqui:
+   1. Verbos que descrevem o gasto sem nomeá-lo ("gastei 50 no bar").
+   2. Aberturas IMPERATIVAS, que é como se dita pro app em voz alta
+      ("anota aí, mercado 30", "registra 50 de gasolina"). Sem elas o
+      lançamento saía chamado "Anota aí mercado" — apareceu em 50 mil casos
+      do corpus gerado, um quinto de tudo que foi testado.
+
+   As ambíguas exigem o "aí" pra serem removidas: "bota" e "marca" também são
+   substantivos ("bota 200 reais" pode ser o calçado que custou 200), então
+   só somem quando vêm no formato inequívoco de comando.
+
+   Termina em `(?![a-zà-ÿ0-9])` e não em `\b`: no JavaScript o `\b` só enxerga
+   [A-Za-z0-9_] como letra, então depois do "í" de "aí" ele não fecha
+   fronteira nenhuma. Com `\b` a regra casava só "anota", sobrava " aí", o
+   CONECTOR_INICIAL comia o "a" solto, e a descrição saía "Í mercado". */
 const VERBOS_INICIAIS =
-  /^(?:me\s+pagaram|gastei|gasto|paguei|pagamento|comprei|compra|torrei|coloquei|investi|apliquei|recebi|recebido|ganhei|entrou|caiu|vendi|transferi|mandei|enviei|assinei|custou|saiu|foi|foram)\b\s*/i;
+  /^(?:me\s+pagaram|gastei|gasto|paguei|pagamento|comprei|compra|torrei|coloquei|investi|apliquei|recebi|recebido|ganhei|entrou|caiu|vendi|transferi|mandei|enviei|assinei|custou|saiu|foi|foram|(?:anota|anote|registra|registre|lan[çc]a|lance|adiciona|adicione)(?:\s+a[íi])?|(?:bota|bote|coloca|marca|marque|p[oõ]e)\s+a[íi])(?![a-zà-ÿ0-9])[\s,]*/i;
 /* Conectores que sobram grudados nas pontas depois que o valor sai. */
 const CONECTOR = '(?:de|do|da|dos|das|no|na|nos|nas|em|com|para|pra|pro|por|a|o|um|uma)';
 const CONECTOR_INICIAL = new RegExp(`^${CONECTOR}\\b\\s*`, 'i');
