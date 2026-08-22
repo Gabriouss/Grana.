@@ -829,18 +829,48 @@ async function transcribeAudio(mediaId: string): Promise<string | null> {
    "indefinida" para alguns minutos. */
 const VALIDADE_PAREAMENTO_MS = 15 * 60 * 1000;
 
+/**
+ * Códigos de pareamento que a mensagem pode conter.
+ *
+ * Antes exigia que a mensagem INTEIRA reduzisse a seis dígitos, o que só
+ * funcionava com a pessoa mandando "123456" e nada mais. Agora o app abre o
+ * WhatsApp com a frase pronta ("...Meu código é 123456"), e quem escreve à mão
+ * costuma acompanhar de um "oi" ou de um "aqui está" — nenhum dos dois pode
+ * custar o vínculo. As duas leituras entram como candidatas:
+ *
+ *  - tudo que não é dígito removido, se sobrarem exatamente seis. Cobre o
+ *    formato antigo e quem separa os dígitos ("12 34 56", "123-456");
+ *  - qualquer sequência isolada de seis dígitos dentro da frase.
+ *
+ * É seguro tentar as duas: só vira vínculo se o código existir, estiver
+ * pendente e dentro da validade — um número solto qualquer não casa com nada.
+ */
+function codigosCandidatos(text: string): string[] {
+  const candidatos: string[] = [];
+  const soDigitos = text.replace(/\D/g, '');
+  if (soDigitos.length === 6) candidatos.push(soDigitos);
+  for (const m of text.matchAll(/(?<!\d)(\d{6})(?!\d)/g)) {
+    if (!candidatos.includes(m[1])) candidatos.push(m[1]);
+  }
+  return candidatos;
+}
+
 async function handlePairing(phone: string, text: string): Promise<boolean> {
-  const codigo = text.trim().replace(/\D/g, '');
-  if (codigo.length !== 6) return false;
+  const candidatos = codigosCandidatos(text);
+  if (candidatos.length === 0) return false;
 
   const cutoff = new Date(Date.now() - VALIDADE_PAREAMENTO_MS).toISOString();
 
   const { data: link } = await supabase
     .from('whatsapp_links')
     .select('*')
-    .eq('pairing_code', codigo)
+    .in('pairing_code', candidatos)
     .eq('verified', false)
     .gt('created_at', cutoff)
+    /* `maybeSingle` devolve erro (e nenhum dado) se vier mais de uma linha, e
+       com dois candidatos na busca isso deixaria de ser impossível. Um
+       pareamento falhando calado é pior que escolher qualquer um dos dois. */
+    .limit(1)
     .maybeSingle();
 
   if (!link) return false;

@@ -21,9 +21,14 @@ import { guessAmountFromText, guessTypeFromText } from '../lib/heuristics';
 
 /* ---------- extrai as funções puras do webhook ---------- */
 const WEBHOOK = path.join(__dirname, '..', 'supabase', 'functions', 'whatsapp-webhook', 'index.ts');
+/* lib/whatsapp.ts importa `react-native` no topo, então não dá pra fazer
+   `import` dele aqui — o Node não carrega o módulo. Extrair o texto da função
+   resolve, e de quebra o teste passa a ler o ARQUIVO REAL do app, do mesmo
+   jeito que já lê o do bot. */
+const APP_WHATSAPP = path.join(__dirname, '..', 'lib', 'whatsapp.ts');
 
-function corpoDaFuncao(nome: string): string {
-  const linhas = fs.readFileSync(WEBHOOK, 'utf8').split(/\r?\n/);
+function corpoDaFuncao(nome: string, arquivo: string = WEBHOOK): string {
+  const linhas = fs.readFileSync(arquivo, 'utf8').split(/\r?\n/);
   const re = new RegExp('^(?:export )?(?:async )?function ' + nome + '(?![A-Za-z0-9_])');
   const i = linhas.findIndex((l) => re.test(l));
   if (i === -1) throw new Error('não achei ' + nome + ' no webhook');
@@ -44,10 +49,17 @@ function corpoDaFuncao(nome: string): string {
   return (
     out
       .join('\n')
+      /* O app exporta suas funções; o webhook não. Dentro de `new Function`
+         não existe módulo, então o `export` precisa cair. */
+      .replace(/^export /, '')
       /* O tipo de RETORNO sai primeiro: fazendo o contrário, `): number | null {`
          perdia só o "number" e sobrava um `| null` solto, que não é JS válido. */
       .replace(/\)\s*:\s*[A-Za-z<>[\]|'\s]+?\{/g, ') {')
-      .replace(/:\s*(?:string|number|boolean)\b/g, '')
+      /* O `[]` faz parte do tipo e precisa sair junto: sem ele,
+         `const candidatos: string[] = []` virava `const candidatos[] = []`,
+         que não é JS válido — e o erro só aparecia ao montar a função, longe
+         de qualquer pista de qual anotação tinha sobrado pela metade. */
+      .replace(/:\s*(?:string|number|boolean)(?:\[\])?(?![A-Za-z0-9_])/g, '')
   );
 }
 
@@ -59,6 +71,8 @@ const fonte = [
   corpoDaFuncao('somarMesesISO'),
   corpoDaFuncao('leituraAlternativaDeAudio'),
   corpoDaFuncao('escolherValor'),
+  corpoDaFuncao('codigosCandidatos'),
+  corpoDaFuncao('mensagemDePareamento', APP_WHATSAPP),
 ].join('\n\n');
 /* `escolherValor` chama guessAmountFromText. A do webhook é a mesma do app —
    sync-parser.js falha se divergirem —, então injetar a do app aqui testa a
@@ -67,7 +81,7 @@ const doWebhook = new Function(
   'guessAmountFromText',
   fonte +
     '\nreturn { ehIntencaoCredito, ehIntencaoBoleto, parseDiaVencimento, parseParcelas, somarMesesISO,' +
-    ' leituraAlternativaDeAudio, escolherValor };'
+    ' leituraAlternativaDeAudio, escolherValor, codigosCandidatos, mensagemDePareamento };'
 )(guessAmountFromText) as {
   ehIntencaoCredito: (t: string) => boolean;
   ehIntencaoBoleto: (t: string) => boolean;
@@ -76,6 +90,8 @@ const doWebhook = new Function(
   somarMesesISO: (iso: string, meses: number) => string;
   leituraAlternativaDeAudio: (texto: string, amount: number) => number | null;
   escolherValor: (texto: string, literal: number, alternativa: number) => number | null;
+  codigosCandidatos: (texto: string) => string[];
+  mensagemDePareamento: (codigo: string) => string;
 };
 
 /* ---------- casos ---------- */
@@ -305,6 +321,71 @@ for (const [txt, esperado] of RESPOSTAS) {
   }
 }
 
-const totalChecagens = CASOS.length + DIVISOES.length + DATAS.length + AMBIGUOS.length + RESPOSTAS.length;
-const totalFalhas = falhas + falhasDivisao + falhasAmbiguo;
+/* Código de pareamento dentro da mensagem.
+   O app abre o WhatsApp com a frase pronta, então o bot precisa achar o
+   código no meio dela — e não pode deixar de achar quando a pessoa escreve à
+   mão do jeito dela. O contrato é: o código tem que estar na lista. */
+const PAREAMENTO: [string, string | null][] = [
+  // A frase que o próprio app escreve.
+  ['Oi! Quero vincular meu WhatsApp ao Grana. Meu código é 123456', '123456'],
+  // Formato antigo, que precisa continuar valendo.
+  ['123456', '123456'],
+  ['  123456  ', '123456'],
+  // Do jeito que gente escreve.
+  ['oi, meu código é 123456', '123456'],
+  ['123456 é o código', '123456'],
+  ['Aqui está: 123456, obrigado!', '123456'],
+  ['código 123456', '123456'],
+  // Dígitos separados: só a leitura "tira tudo que não é dígito" pega.
+  ['12 34 56', '123456'],
+  ['123-456', '123456'],
+  // Não é código nenhum: não pode virar candidato a esmo.
+  ['oi', null],
+  ['mercado 120 reais', null],
+  ['12345', null],
+  ['1234567', null],
+];
+
+let falhasPareamento = 0;
+for (const [txt, esperado] of PAREAMENTO) {
+  const obtidos = doWebhook.codigosCandidatos(txt);
+  const achou = esperado === null ? obtidos.length === 0 : obtidos.includes(esperado);
+  if (!achou) {
+    falhasPareamento++;
+    console.log(`FALHA  codigosCandidatos("${txt}") = [${obtidos}] (esperado ${esperado ?? 'nenhum'})`);
+  }
+}
+
+/* A costura entre os dois lados: o app escreve a mensagem, o bot lê o código.
+   Se alguém mexer no texto de `mensagemDePareamento` e enfiar outro número
+   nele ("vincular em 2 toques", "Grana 2.0"), a soma de dígitos deixa de ser
+   seis e o vínculo para de funcionar — sem erro nenhum na tela, só um
+   "aguardando" eterno. Este teste é o que faz esse acidente falhar aqui. */
+let falhasCostura = 0;
+const CODIGOS_AMOSTRA = ['000001', '123456', '909948', '111111', '999999', '100000', '654321', '505050'];
+for (const codigo of CODIGOS_AMOSTRA) {
+  const msg = doWebhook.mensagemDePareamento(codigo);
+  const candidatos = doWebhook.codigosCandidatos(msg);
+  if (!candidatos.includes(codigo)) {
+    falhasCostura++;
+    console.log(`FALHA  o bot não acha o código em "${msg}" — candidatos: [${candidatos}]`);
+  }
+  /* O código também tem que sobreviver ao link: é assim que ele chega no
+     WhatsApp, passando por encodeURIComponent e voltando. */
+  const voltaDaUrl = decodeURIComponent(encodeURIComponent(msg));
+  if (!doWebhook.codigosCandidatos(voltaDaUrl).includes(codigo)) {
+    falhasCostura++;
+    console.log(`FALHA  o código não sobreviveu à URL: "${voltaDaUrl}"`);
+  }
+}
+
+const totalChecagens =
+  CASOS.length +
+  DIVISOES.length +
+  DATAS.length +
+  AMBIGUOS.length +
+  RESPOSTAS.length +
+  PAREAMENTO.length +
+  CODIGOS_AMOSTRA.length;
+const totalFalhas = falhas + falhasDivisao + falhasAmbiguo + falhasPareamento + falhasCostura;
 console.log(`\n${totalChecagens - totalFalhas}/${totalChecagens} passaram — ${totalFalhas} falhas`);

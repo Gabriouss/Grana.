@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { CATEGORIES } from './types';
 import { addMonthsToISO } from './format';
 import { formatMonthYear } from './format';
+import { marcadorDeNumeroPendente } from './whatsapp';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
   Bill,
@@ -598,7 +599,12 @@ function gerarCodigoPareamento(): string {
  * para o número do Grana., e supabase/functions/whatsapp-webhook marca
  * `verified = true` ao reconhecer o código.
  */
-export async function createWhatsappPairing(phone: string): Promise<WhatsappLink> {
+/* `phone` é opcional porque na prática ele nunca foi necessário: o webhook
+   grava o número de quem mandou a mensagem por cima deste valor. Pedir o
+   número antes só criava trabalho e duas formas de falhar — digitar errado, e
+   esbarrar no `unique (phone)` com um número que outra conta já usou. Ver
+   lib/whatsapp.ts. */
+export async function createWhatsappPairing(phone?: string): Promise<WhatsappLink> {
   const user_id = await currentUserId();
   const pairing_code = gerarCodigoPareamento();
 
@@ -609,7 +615,12 @@ export async function createWhatsappPairing(phone: string): Promise<WhatsappLink
 
   const { data, error } = await supabase
     .from('whatsapp_links')
-    .insert({ user_id, phone, pairing_code, verified: false })
+    .insert({
+      user_id,
+      phone: phone && phone.length > 0 ? phone : marcadorDeNumeroPendente(user_id),
+      pairing_code,
+      verified: false,
+    })
     .select()
     .single();
   if (error) throw error;

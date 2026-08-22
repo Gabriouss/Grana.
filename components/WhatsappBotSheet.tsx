@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
 import { Alert } from '@/lib/alert';
 import AppPressable from '@/components/AppPressable';
 import Sheet from '@/components/Sheet';
 import { createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
-import { formatarTelefoneBR, telefoneBRValido, telefoneE164BR } from '@/lib/format';
+import { abrirConversaDoBot, abrirPareamentoNoWhatsapp, numeroVinculadoParaExibir } from '@/lib/whatsapp';
+import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import type { WhatsappLink } from '@/lib/types';
+
+export { abrirConversaDoBot };
 
 /* Atalho para o bot de lançamento por WhatsApp.
  *
@@ -22,8 +26,6 @@ import type { WhatsappLink } from '@/lib/types';
  * A explicação do que é o bot aparece só na estreia. Repetir todo dia um
  * aviso que a pessoa já leu é pedágio, não ajuda.
  */
-
-const NUMERO_BOT = process.env.EXPO_PUBLIC_WHATSAPP_NUMBER ?? '';
 
 const CHAVE_EXPLICACAO = '@grana_whatsapp_explicado';
 
@@ -45,25 +47,6 @@ export async function marcarExplicacaoDoBotVista(): Promise<void> {
   }
 }
 
-/** wa.me exige só dígitos, com DDI e sem sinais. */
-function linkDoBot(): string {
-  const digitos = NUMERO_BOT.replace(/\D/g, '');
-  return digitos ? `https://wa.me/${digitos}` : '';
-}
-
-export async function abrirConversaDoBot(): Promise<void> {
-  const url = linkDoBot();
-  if (!url) {
-    Alert.alert('Número indisponível', 'O número do WhatsApp do Grana. não está configurado neste app.');
-    return;
-  }
-  try {
-    await Linking.openURL(url);
-  } catch {
-    Alert.alert('Não foi possível abrir o WhatsApp', `Procure pelo número ${NUMERO_BOT} no seu WhatsApp.`);
-  }
-}
-
 type Props = {
   visible: boolean;
   onClose: () => void;
@@ -76,13 +59,13 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
   const [link, setLink] = useState<WhatsappLink | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [mostrandoExplicacao, setMostrandoExplicacao] = useState(explicar);
-  const [telefone, setTelefone] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setMostrandoExplicacao(explicar);
-    setTelefone('');
+    setCopiado(false);
     setCarregando(true);
     fetchWhatsappLink()
       .then(setLink)
@@ -93,28 +76,48 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
 
   const verificado = !!link?.verified;
 
+  /* Código pronto assim que o sheet abre, e não ao tocar no botão: na web,
+     `Linking.openURL` vira `window.open`, que o navegador só libera durante o
+     clique. Esperar a rede antes de abrir faria o bloqueador de pop-up comer
+     a aba sem avisar ninguém. */
+  useEffect(() => {
+    if (!visible || carregando || link || salvando) return;
+    void gerarCodigo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, carregando, link]);
+
+  /* Enquanto o código está na tela o app confere sozinho — a pessoa manda a
+     mensagem, volta, e já está vinculado. */
+  useAguardarVinculoWhatsapp(visible && !!link && !link.verified, setLink);
+
   async function continuar() {
     setMostrandoExplicacao(false);
     onExplicacaoVista();
     if (verificado) {
       onClose();
       await abrirConversaDoBot();
+    } else if (link) {
+      await abrirPareamentoNoWhatsapp(link.pairing_code);
     }
   }
 
   async function gerarCodigo() {
-    if (!telefoneBRValido(telefone)) {
-      Alert.alert('Número inválido', 'Informe o DDD e o número, ex: (11) 91234-5678.');
-      return;
-    }
     setSalvando(true);
     try {
-      setLink(await createWhatsappPairing(telefoneE164BR(telefone)));
-    } catch (e: any) {
-      Alert.alert('Erro ao gerar código', e.message);
+      setLink(await createWhatsappPairing());
+    } catch {
+      /* Sem código não dá pra parear, mas o sheet continua útil: o estado de
+         carregando some e a tela mostra o caminho manual. */
     } finally {
       setSalvando(false);
     }
+  }
+
+  async function copiarCodigo() {
+    if (!link) return;
+    await Clipboard.setStringAsync(link.pairing_code);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
   }
 
   async function conferirVinculo() {
@@ -163,12 +166,18 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
             </View>
             <Text style={styles.rodape}>Áudio também funciona — é só mandar um recado falado.</Text>
             <AppPressable style={({ hovered }) => [styles.botao, hovered && styles.botaoHover]} onPress={continuar}>
-              <Text style={styles.botaoTexto}>{verificado ? 'Abrir conversa' : 'Vincular meu número'}</Text>
+              <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
+              <Text style={styles.botaoTexto}>{verificado ? 'Abrir conversa' : 'Abrir o WhatsApp e vincular'}</Text>
             </AppPressable>
           </>
         ) : verificado ? (
           <>
-            <Text style={styles.texto}>Seu número já está vinculado. É só mandar mensagem.</Text>
+            <Text style={styles.texto}>
+              {numeroVinculadoParaExibir(link!.phone)
+                ? `${numeroVinculadoParaExibir(link!.phone)} está vinculado.`
+                : 'Seu número está vinculado.'}{' '}
+              É só mandar mensagem.
+            </Text>
             <AppPressable
               style={({ hovered }) => [styles.botao, hovered && styles.botaoHover]}
               onPress={async () => {
@@ -176,24 +185,52 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
                 await abrirConversaDoBot();
               }}
             >
+              <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
               <Text style={styles.botaoTexto}>Abrir conversa</Text>
             </AppPressable>
           </>
         ) : link ? (
           <>
-            <Text style={styles.texto}>
-              Falta um passo: envie o código abaixo para {NUMERO_BOT || 'o número do Grana.'} pelo
-              WhatsApp. É assim que o bot descobre que aquele número é seu.
-            </Text>
-            <View style={styles.caixaCodigo}>
-              <Text style={styles.codigo}>{link.pairing_code}</Text>
-            </View>
+            {/* Um toque: a conversa do Grana. abre com o código já escrito, e
+                o vínculo é do número que enviar. Nada de digitar o próprio
+                telefone, salvar contato ou copiar código na mão. */}
             <AppPressable
               style={({ hovered }) => [styles.botao, hovered && styles.botaoHover]}
-              onPress={abrirConversaDoBot}
+              onPress={() => abrirPareamentoNoWhatsapp(link.pairing_code)}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir a conversa do Grana. no WhatsApp com o código já escrito"
             >
-              <Text style={styles.botaoTexto}>Abrir o WhatsApp para enviar</Text>
+              <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
+              <Text style={styles.botaoTexto}>Abrir o WhatsApp e vincular</Text>
             </AppPressable>
+
+            <View style={styles.esperando}>
+              <ActivityIndicator size="small" color={theme.inkFaint} />
+              <Text style={styles.esperandoTexto}>
+                A mensagem já vai escrita — é só enviar. Eu confirmo aqui sozinho.
+              </Text>
+            </View>
+
+            <Text style={styles.alternativa}>Ou mande este código para o Grana.:</Text>
+            <AppPressable
+              style={({ hovered }) => [styles.caixaCodigo, hovered && styles.botaoHover]}
+              onPress={copiarCodigo}
+              accessibilityRole="button"
+              accessibilityLabel={`Copiar o código ${link.pairing_code}`}
+            >
+              <Text style={styles.codigo}>{link.pairing_code}</Text>
+              <View style={styles.copiar}>
+                <Ionicons
+                  name={copiado ? 'checkmark' : 'copy-outline'}
+                  size={15}
+                  color={copiado ? theme.accent2 : theme.inkFaint}
+                />
+                <Text style={[styles.copiarTexto, copiado && { color: theme.accent2 }]}>
+                  {copiado ? 'Copiado' : 'Copiar'}
+                </Text>
+              </View>
+            </AppPressable>
+
             <AppPressable
               style={({ hovered }) => [styles.botaoSecundario, hovered && styles.botaoHover]}
               onPress={conferirVinculo}
@@ -207,37 +244,7 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
             </AppPressable>
           </>
         ) : (
-          <>
-            <Text style={styles.texto}>
-              Informe o número que você usa no WhatsApp. Geramos um código para você enviar ao
-              bot, e é só isso.
-            </Text>
-            <View style={styles.telefoneLinha}>
-              <View style={styles.ddi}>
-                <Text style={styles.ddiTexto}>+55</Text>
-              </View>
-              <TextInput
-                style={styles.telefoneCampo}
-                placeholder="(11) 91234-5678"
-                placeholderTextColor={theme.inkFaint}
-                keyboardType="phone-pad"
-                value={telefone}
-                onChangeText={(t) => setTelefone(formatarTelefoneBR(t))}
-                maxLength={16}
-              />
-            </View>
-            <AppPressable
-              style={({ hovered }) => [styles.botao, hovered && styles.botaoHover]}
-              onPress={gerarCodigo}
-              disabled={salvando}
-            >
-              {salvando ? (
-                <ActivityIndicator color={theme.paper} />
-              ) : (
-                <Text style={styles.botaoTexto}>Gerar código</Text>
-              )}
-            </AppPressable>
-          </>
+          <ActivityIndicator color={theme.ink} style={{ marginVertical: spacing.lg }} />
         )}
       </Sheet>
     </Modal>
@@ -260,12 +267,16 @@ const styles = StyleSheet.create({
   exemplo: { color: theme.accent2, fontSize: type.apoio, fontFamily: fonts.regular },
   rodape: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   caixaCodigo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: theme.paper,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: theme.ruleStrong,
     paddingVertical: spacing.sm,
-    alignItems: 'center',
+    paddingHorizontal: spacing.md,
   },
   codigo: {
     color: theme.accent2,
@@ -273,33 +284,27 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     letterSpacing: 6,
   },
-  telefoneLinha: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  ddi: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderRadius: radius.sm,
-    backgroundColor: theme.paper,
-    borderWidth: 1,
-    borderColor: theme.rule,
-  },
-  ddiTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.regular },
-  telefoneCampo: {
+  copiar: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  copiarTexto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
+  esperando: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  esperandoTexto: {
+    color: theme.inkFaint,
+    fontSize: type.legenda,
+    lineHeight: 17,
+    fontFamily: fonts.light,
     flex: 1,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    backgroundColor: theme.paper,
-    color: theme.ink,
-    fontSize: type.apoio,
-    fontFamily: fonts.regular,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
   },
+  alternativa: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.xs },
+  /* Verde do WhatsApp: é a única cor emprestada de outra marca no app, e aqui
+     ela informa — diz pra onde o toque leva antes de a pessoa ler o rótulo. */
   botao: {
-    backgroundColor: theme.ink,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    backgroundColor: '#25D366',
     borderRadius: radius.md,
     paddingVertical: 14,
     alignItems: 'center',
+    gap: spacing.sm,
     marginTop: spacing.xs,
   },
   botaoHover: { opacity: 0.88 },

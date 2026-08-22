@@ -12,8 +12,11 @@ import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
-import { formatMoney, parseAmount, formatMoneyInput, formatarTelefoneBR, telefoneBRValido, telefoneE164BR } from '@/lib/format';
+import * as Clipboard from 'expo-clipboard';
+import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch, createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
+import { abrirPareamentoNoWhatsapp, numeroVinculadoParaExibir } from '@/lib/whatsapp';
+import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
 import type { WhatsappLink } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
@@ -153,9 +156,14 @@ export default function OnboardingModal({
   const [ambicao, setAmbicao] = useState<Ambicao | null>(null);
   const [presetHome, setPresetHome] = useState<HomePreset>('completo');
 
-  const [whatsappPhone, setWhatsappPhone] = useState('');
   const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
   const [whatsappSaving, setWhatsappSaving] = useState(false);
+  /* Distingue "ainda não sei se existe vínculo" de "não existe". Sem isso, o
+     preparo automático do código abaixo rodaria antes da consulta terminar e
+     APAGARIA um vínculo já verificado (createWhatsappPairing começa por um
+     delete do vínculo anterior). */
+  const [whatsappCarregado, setWhatsappCarregado] = useState(false);
+  const [codigoCopiado, setCodigoCopiado] = useState(false);
 
   const [salvandoDiagnostico, setSalvandoDiagnostico] = useState(false);
   const [diagnosticoSalvo, setDiagnosticoSalvo] = useState(false);
@@ -174,14 +182,18 @@ export default function OnboardingModal({
     setRenda(initial && initial.rendaMensal > 0 ? String(initial.rendaMensal).replace('.', ',') : '');
     setAmbicao(initial?.ambicao ?? null);
     setPresetHome('completo');
-    setWhatsappPhone('');
     setSalvandoDiagnostico(false);
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
     setOrcamentoAplicado(false);
     // Se a pessoa já vinculou o WhatsApp antes (ex: refazendo o diagnóstico),
     // o passo mostra o estado atual em vez de fingir que nunca foi feito.
-    fetchWhatsappLink().then(setWhatsappLink).catch(() => setWhatsappLink(null));
+    setWhatsappCarregado(false);
+    setCodigoCopiado(false);
+    fetchWhatsappLink()
+      .then(setWhatsappLink)
+      .catch(() => setWhatsappLink(null))
+      .finally(() => setWhatsappCarregado(true));
   }, [visible, initial]);
 
   function resetState() {
@@ -192,7 +204,6 @@ export default function OnboardingModal({
     setRenda('');
     setAmbicao(null);
     setPresetHome('completo');
-    setWhatsappPhone('');
     setSalvandoDiagnostico(false);
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
@@ -291,15 +302,9 @@ export default function OnboardingModal({
   }
 
   async function handleGerarPareamento() {
-    if (!telefoneBRValido(whatsappPhone)) {
-      Alert.alert('Número inválido', 'Informe o DDD e o número, ex: (11) 91234-5678.');
-      return;
-    }
-    const phone = telefoneE164BR(whatsappPhone);
     setWhatsappSaving(true);
     try {
-      const link = await createWhatsappPairing(phone);
-      setWhatsappLink(link);
+      setWhatsappLink(await createWhatsappPairing());
     } catch (e: any) {
       Alert.alert('Erro ao gerar código', e.message);
     } finally {
@@ -307,13 +312,38 @@ export default function OnboardingModal({
     }
   }
 
-  async function handleVerificarWhatsapp() {
-    setWhatsappSaving(true);
-    try {
-      setWhatsappLink(await fetchWhatsappLink());
-    } finally {
-      setWhatsappSaving(false);
-    }
+  /* O código é preparado ao CHEGAR no passo, não ao tocar no botão.
+     Duas razões, e a segunda é a que obriga:
+      1. quando a pessoa chega, já está tudo pronto — um toque e acabou;
+      2. na web, `Linking.openURL` vira `window.open`, que o navegador só
+         libera enquanto o clique ainda está sendo processado. Se o botão
+         precisasse esperar a rede criar o código antes de abrir, o
+         bloqueador de pop-up comeria a aba em silêncio — o pior tipo de
+         falha, porque não deixa rastro nenhum na tela. */
+  useEffect(() => {
+    if (!visible || step !== 6 || isDemoMode) return;
+    if (!whatsappCarregado || whatsappLink || whatsappSaving) return;
+    void handleGerarPareamento();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, step, isDemoMode, whatsappCarregado, whatsappLink]);
+
+  /* Enquanto o código está na tela, o app fica de olho sozinho: a pessoa
+     manda a mensagem, volta, e o passo já mudou pra "vinculado". */
+  useAguardarVinculoWhatsapp(
+    visible && step === 6 && !!whatsappLink && !whatsappLink.verified,
+    setWhatsappLink
+  );
+
+  async function handleAbrirWhatsapp() {
+    if (!whatsappLink) return;
+    await abrirPareamentoNoWhatsapp(whatsappLink.pairing_code);
+  }
+
+  async function handleCopiarCodigo() {
+    if (!whatsappLink) return;
+    await Clipboard.setStringAsync(whatsappLink.pairing_code);
+    setCodigoCopiado(true);
+    setTimeout(() => setCodigoCopiado(false), 2000);
   }
 
   const rendaValida = parseAmount(renda) > 0;
@@ -470,9 +500,9 @@ export default function OnboardingModal({
               <Text style={styles.eyebrow}>6 de {TOTAL_ETAPAS} · opcional</Text>
               <Text style={styles.question}>Quer lançar gastos direto pelo WhatsApp?</Text>
               <Text style={styles.hint}>
-                Vincule seu número e mande uma mensagem como "Mercado de 120 reais" — o Grana.
-                identifica valor, categoria e registra sozinho. Dá pra configurar depois no Perfil
-                também, se preferir pular agora.
+                Mande uma mensagem como "Mercado de 120 reais" — o Grana. identifica valor,
+                categoria e registra sozinho. Dá pra configurar depois no Perfil também, se
+                preferir pular agora.
               </Text>
 
               {isDemoMode ? (
@@ -481,57 +511,63 @@ export default function OnboardingModal({
                 </Text>
               ) : whatsappLink?.verified ? (
                 <View style={styles.whatsappCard}>
-                  <Ionicons name="checkmark-circle" size={22} color={theme.accent2} />
-                  <Text style={styles.whatsappCardText}>
-                    Vinculado ao número {whatsappLink.phone}. Pode mandar seu primeiro lançamento
-                    assim que quiser.
-                  </Text>
+                  <View style={styles.whatsappOk}>
+                    <Ionicons name="checkmark-circle" size={22} color={theme.accent2} />
+                    <Text style={styles.whatsappCardText}>
+                      {numeroVinculadoParaExibir(whatsappLink.phone)
+                        ? `Pronto — ${numeroVinculadoParaExibir(whatsappLink.phone)} está vinculado.`
+                        : 'Pronto — seu WhatsApp está vinculado.'}{' '}
+                      Pode mandar seu primeiro lançamento assim que quiser.
+                    </Text>
+                  </View>
                 </View>
               ) : whatsappLink ? (
                 <View style={styles.whatsappCard}>
-                  <Text style={styles.whatsappCardText}>
-                    Envie o código abaixo pelo WhatsApp para {process.env.EXPO_PUBLIC_WHATSAPP_NUMBER ?? 'o número do Grana.'}{' '}
-                    a partir de {whatsappLink.phone}. Válido por 15 minutos.
-                  </Text>
-                  <Text style={styles.whatsappCode}>{whatsappLink.pairing_code}</Text>
+                  {/* Um toque: abre a conversa do Grana. com a mensagem já
+                      escrita. A pessoa só aperta enviar — nada de anotar
+                      número, salvar contato ou digitar código de cabeça. */}
                   <AppPressable
-                    style={({ hovered }) => [styles.applyBtn, hovered && styles.applyBtnHover]}
-                    onPress={handleVerificarWhatsapp}
-                    disabled={whatsappSaving}
+                    style={({ hovered }) => [styles.whatsappBtn, hovered && styles.whatsappBtnHover]}
+                    onPress={handleAbrirWhatsapp}
+                    accessibilityRole="button"
+                    accessibilityLabel="Abrir a conversa do Grana. no WhatsApp com o código já escrito"
                   >
-                    {whatsappSaving ? (
-                      <ActivityIndicator color={theme.ink} />
-                    ) : (
-                      <Text style={styles.applyBtnText}>Já enviei — verificar</Text>
-                    )}
+                    <Ionicons name="logo-whatsapp" size={20} color={theme.paper} />
+                    <Text style={styles.whatsappBtnText}>Abrir o WhatsApp e vincular</Text>
+                  </AppPressable>
+
+                  <View style={styles.whatsappEsperando}>
+                    <ActivityIndicator size="small" color={theme.inkFaint} />
+                    <Text style={styles.whatsappEsperandoTexto}>
+                      É só tocar em enviar na conversa. Eu confirmo aqui sozinho.
+                    </Text>
+                  </View>
+
+                  {/* Saída manual pra quem vai enviar de outro aparelho ou
+                      está no computador sem WhatsApp Web conectado. */}
+                  <Text style={styles.whatsappAlternativa}>Ou mande este código para o Grana.:</Text>
+                  <AppPressable
+                    style={({ hovered }) => [styles.whatsappCodigoBtn, hovered && styles.applyBtnHover]}
+                    onPress={handleCopiarCodigo}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Copiar o código ${whatsappLink.pairing_code}`}
+                  >
+                    <Text style={styles.whatsappCode}>{whatsappLink.pairing_code}</Text>
+                    <View style={styles.whatsappCopiar}>
+                      <Ionicons
+                        name={codigoCopiado ? 'checkmark' : 'copy-outline'}
+                        size={15}
+                        color={codigoCopiado ? theme.accent2 : theme.inkFaint}
+                      />
+                      <Text style={[styles.whatsappCopiarTexto, codigoCopiado && { color: theme.accent2 }]}>
+                        {codigoCopiado ? 'Copiado' : 'Copiar'}
+                      </Text>
+                    </View>
                   </AppPressable>
                 </View>
               ) : (
                 <View style={styles.whatsappCard}>
-                  <View style={styles.telefoneRow}>
-                    <View style={styles.ddiFixo}>
-                      <Text style={styles.ddiTexto}>+55</Text>
-                    </View>
-                    <TextInput
-                      style={[styles.telefoneInputCampo, styles.telefoneInput]}
-                      placeholder="(11) 91234-5678"
-                      placeholderTextColor={theme.inkFaint}
-                      keyboardType="phone-pad"
-                      value={whatsappPhone}
-                      onChangeText={(t) => setWhatsappPhone(formatarTelefoneBR(t))}
-                    />
-                  </View>
-                  <AppPressable
-                    style={({ hovered }) => [styles.applyBtn, hovered && styles.applyBtnHover]}
-                    onPress={handleGerarPareamento}
-                    disabled={whatsappSaving}
-                  >
-                    {whatsappSaving ? (
-                      <ActivityIndicator color={theme.ink} />
-                    ) : (
-                      <Text style={styles.applyBtnText}>Gerar código de pareamento</Text>
-                    )}
-                  </AppPressable>
+                  <ActivityIndicator color={theme.ink} />
                 </View>
               )}
             </View>
@@ -735,7 +771,49 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.sm,
   },
-  whatsappCardText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, fontFamily: fonts.light },
+  whatsappCardText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, fontFamily: fonts.light, flex: 1 },
+  whatsappOk: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  /* Verde do WhatsApp de propósito: é o único lugar do app que empresta a cor
+     de outra marca, e aqui ela carrega a informação — diz pra onde o toque
+     leva antes de a pessoa ler o rótulo. */
+  whatsappBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#25D366',
+    borderRadius: radius.md,
+    paddingVertical: 14,
+  },
+  whatsappBtnHover: { opacity: 0.88 },
+  whatsappBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  whatsappEsperando: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  whatsappEsperandoTexto: {
+    color: theme.inkFaint,
+    fontSize: type.apoio,
+    lineHeight: 18,
+    fontFamily: fonts.light,
+    flex: 1,
+  },
+  whatsappAlternativa: {
+    color: theme.inkFaint,
+    fontSize: type.apoio,
+    fontFamily: fonts.light,
+    marginTop: spacing.xs,
+  },
+  whatsappCodigoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    borderRadius: radius.md,
+    backgroundColor: theme.paper,
+    paddingHorizontal: spacing.md,
+  },
+  whatsappCopiar: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  whatsappCopiarTexto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   whatsappCode: {
     color: theme.ink,
     fontSize: type.valor,

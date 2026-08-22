@@ -42,7 +42,8 @@ import { isSameMonth, todayISO } from '@/lib/format';
 import { calculateStreakAndWeek } from '@/lib/gamification';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import { LIMITS } from '@/lib/limits';
-import { formatarTelefoneBR, telefoneBRValido, telefoneE164BR } from '@/lib/format';
+import { abrirConversaDoBot, abrirPareamentoNoWhatsapp, numeroVinculadoParaExibir } from '@/lib/whatsapp';
+import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
 import { carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import AppPressable from '@/components/AppPressable';
@@ -95,7 +96,7 @@ export default function PerfilScreen() {
   const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [atalhosOpen, setAtalhosOpen] = useState(false);
   const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
-  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [codigoCopiado, setCodigoCopiado] = useState(false);
   const [whatsappSaving, setWhatsappSaving] = useState(false);
 
 
@@ -192,6 +193,13 @@ export default function PerfilScreen() {
     carregarNotifPrefs().then(setNotifPrefs);
   }, [recarregarPerfil, recarregarDiagnostico, recarregarWhatsapp]);
 
+  /* Com o código na tela, o app confere sozinho: a pessoa manda a mensagem,
+     volta pro app e já encontra o vínculo feito, sem apertar "verificar". */
+  useAguardarVinculoWhatsapp(
+    whatsappOpen && !!whatsappLink && !whatsappLink.verified,
+    setWhatsappLink
+  );
+
   /**
    * Lembrete diário é 1 id determinístico só — reagenda na hora. Contas e
    * faturas são N ids (um por boleto/cartão); pra ter efeito imediato sem
@@ -272,29 +280,29 @@ export default function PerfilScreen() {
       Alert.alert('Modo de exemplo ativo', 'Desative "Dados de exemplo" no Perfil para vincular um número de verdade.');
       return;
     }
-    // O banco guarda dígitos puros com o 55 na frente; a máscara tira o DDI
-    // (que já é exibido fixo ao lado) e devolve "(11) 91234-5678".
-    setWhatsappPhone(formatarTelefoneBR(whatsappLink?.phone ?? ''));
+    setCodigoCopiado(false);
     setWhatsappOpen(true);
   }
 
+  /* Sem pedir o número: quem confirma o vínculo é o webhook, e ele grava o
+     telefone de quem REALMENTE mandou a mensagem por cima do que fosse
+     digitado aqui. Ver lib/whatsapp.ts. */
   async function handleGerarPareamento() {
-    if (!telefoneBRValido(whatsappPhone)) {
-      Alert.alert('Número inválido', 'Informe o DDD e o número, ex: (11) 91234-5678.');
-      return;
-    }
-    // Guarda só dígitos com o 55 na frente — é o formato exato em que a Meta
-    // manda o remetente, e é por ele que o webhook acha o dono do número.
-    const phone = telefoneE164BR(whatsappPhone);
     setWhatsappSaving(true);
     try {
-      const link = await createWhatsappPairing(phone);
-      setWhatsappLink(link);
+      setWhatsappLink(await createWhatsappPairing());
     } catch (e: any) {
       Alert.alert('Erro ao gerar código', e.message);
     } finally {
       setWhatsappSaving(false);
     }
+  }
+
+  async function copiarCodigoPareamento() {
+    if (!whatsappLink) return;
+    await Clipboard.setStringAsync(whatsappLink.pairing_code);
+    setCodigoCopiado(true);
+    setTimeout(() => setCodigoCopiado(false), 2000);
   }
 
   function confirmarDesvincularWhatsapp() {
@@ -789,9 +797,19 @@ export default function PerfilScreen() {
             {whatsappLink?.verified ? (
               <>
                 <Text style={styles.reauthText}>
-                  Vinculado ao número {whatsappLink.phone}. Mande uma mensagem descrevendo o
-                  lançamento (ex: "Mercado de 120 reais") que o Grana. registra automaticamente.
+                  Vinculado ao número {numeroVinculadoParaExibir(whatsappLink.phone) ?? whatsappLink.phone}.
+                  Mande uma mensagem descrevendo o lançamento (ex: "Mercado de 120 reais") que o
+                  Grana. registra automaticamente.
                 </Text>
+                <AppPressable
+                  style={({ hovered }) => [styles.whatsappAbrir, hovered && { opacity: 0.88 }]}
+                  onPress={() => abrirConversaDoBot()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir a conversa do Grana. no WhatsApp"
+                >
+                  <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
+                  <Text style={styles.whatsappAbrirTexto}>Abrir conversa</Text>
+                </AppPressable>
                 <AppPressable
                   style={({ hovered }) => [styles.reauthDanger, hovered && { opacity: 0.88 }]}
                   onPress={confirmarDesvincularWhatsapp}
@@ -802,11 +820,36 @@ export default function PerfilScreen() {
             ) : whatsappLink ? (
               <>
                 <Text style={styles.reauthText}>
-                  Envie o código abaixo pelo WhatsApp para {process.env.EXPO_PUBLIC_WHATSAPP_NUMBER ?? 'o número do Grana.'}{' '}
-                  a partir de {whatsappLink.phone}. Assim que chegar, o número fica vinculado à sua conta.
-                  Válido por 15 minutos — depois disso, gere um novo código.
+                  Um toque e o WhatsApp abre na conversa do Grana. com o código já escrito — é só
+                  enviar. O número que enviar vira o número vinculado. Válido por 15 minutos.
                 </Text>
-                <Text style={styles.whatsappCode}>{whatsappLink.pairing_code}</Text>
+                <AppPressable
+                  style={({ hovered }) => [styles.whatsappAbrir, hovered && { opacity: 0.88 }]}
+                  onPress={() => abrirPareamentoNoWhatsapp(whatsappLink.pairing_code)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir a conversa do Grana. no WhatsApp com o código já escrito"
+                >
+                  <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
+                  <Text style={styles.whatsappAbrirTexto}>Abrir o WhatsApp e vincular</Text>
+                </AppPressable>
+                <AppPressable
+                  style={({ hovered }) => [styles.whatsappCodigoBtn, hovered && { opacity: 0.88 }]}
+                  onPress={copiarCodigoPareamento}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Copiar o código ${whatsappLink.pairing_code}`}
+                >
+                  <Text style={styles.whatsappCode}>{whatsappLink.pairing_code}</Text>
+                  <View style={styles.whatsappCopiar}>
+                    <Ionicons
+                      name={codigoCopiado ? 'checkmark' : 'copy-outline'}
+                      size={15}
+                      color={codigoCopiado ? theme.accent2 : theme.inkFaint}
+                    />
+                    <Text style={[styles.whatsappCopiarTexto, codigoCopiado && { color: theme.accent2 }]}>
+                      {codigoCopiado ? 'Copiado' : 'Copiar'}
+                    </Text>
+                  </View>
+                </AppPressable>
                 <AppPressable
                   style={({ hovered }) => [styles.nomeSalvar, hovered && { opacity: 0.88 }]}
                   onPress={recarregarWhatsapp}
@@ -829,23 +872,6 @@ export default function PerfilScreen() {
                   Informe seu número com DDD. Vamos gerar um código de 6 dígitos para você
                   confirmar pelo próprio WhatsApp.
                 </Text>
-                {/* O +55 é fixo e não editável: o app é só para o Brasil, e um
-                    DDI digitado errado gera um vínculo que nunca casa com a
-                    mensagem que chega da Meta. */}
-                <View style={styles.telefoneRow}>
-                  <View style={styles.ddiFixo}>
-                    <Text style={styles.ddiTexto}>+55</Text>
-                  </View>
-                  <TextInput
-                    style={[styles.reauthInput, styles.telefoneInput]}
-                    placeholder="(11) 91234-5678"
-                    placeholderTextColor={theme.inkFaint}
-                    keyboardType="phone-pad"
-                    autoFocus
-                    value={whatsappPhone}
-                    onChangeText={(t) => setWhatsappPhone(formatarTelefoneBR(t))}
-                  />
-                </View>
                 <AppPressable
                   style={({ hovered }) => [styles.nomeSalvar, hovered && { opacity: 0.88 }]}
                   onPress={handleGerarPareamento}
@@ -903,17 +929,31 @@ const styles = StyleSheet.create({
   reauthDangerText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   reauthCancel: { paddingVertical: 12, alignItems: 'center' },
   reauthCancelText: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
-  telefoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  ddiFixo: {
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
+  /* Verde do WhatsApp: única cor emprestada de outra marca no app, e aqui ela
+     informa — diz pra onde o toque leva antes de a pessoa ler o rótulo. */
+  whatsappAbrir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#25D366',
     borderRadius: radius.md,
+    paddingVertical: 14,
+  },
+  whatsappAbrirTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  whatsappCodigoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
     borderWidth: 1,
     borderColor: theme.rule,
+    borderRadius: radius.md,
     backgroundColor: theme.paper,
+    paddingHorizontal: spacing.md,
   },
-  ddiTexto: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
-  telefoneInput: { flex: 1 },
+  whatsappCopiar: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  whatsappCopiarTexto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   atalhoLinha: {
     flexDirection: 'row',
     alignItems: 'center',
