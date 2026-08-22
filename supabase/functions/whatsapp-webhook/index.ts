@@ -1299,6 +1299,26 @@ function ehIntencaoCancelar(text: string): boolean {
   return CANCELAR.test(text);
 }
 
+/**
+ * Verbo de comando no FIM da mensagem — vale como cancelamento mesmo tendo
+ * valor junto.
+ *
+ * A regra "tem valor, então é lançamento" sozinha produziu isto: quem escreveu
+ * "Mercado 10,05 cancele" ganhou um lançamento NOVO chamado "Mercado cancele".
+ * O oposto do que pediu, com a palavra de comando virando parte do nome.
+ *
+ * O que separa este caso de "cancelamento de voo 200 reais" é a posição e a
+ * forma do verbo: imperativo/infinitivo no fim é ordem, substantivo no meio é
+ * descrição. Por isso a lista aqui é menor que a de cima e exclui de
+ * propósito:
+ *  - "cancelamento" — substantivo, aparece em despesa real (multa, taxa);
+ *  - "cancelei", "errei" — passado em primeira pessoa, conta o que a pessoa
+ *    fez, não o que ela quer que o bot faça. "Netflix 39,90 cancelei" é o
+ *    registro da última cobrança de quem cancelou a assinatura.
+ */
+const COMANDO_CANCELAR_FINAL =
+  /[\s,.;:!-]+(?:cancel(?:a|e|ar)|apag(?:a|ue|ar)|exclu(?:i|a|ir)|delet(?:a|e|ar)|desfa(?:z|ça|zer)|remov(?:e|a|er)|anul(?:a|e|ar))[\s.!]*$/i;
+
 /** Guarda o que foi criado por último, pra saber o que "cancela" desfaz. */
 async function lembrarUltimoLancamento(
   phone: string,
@@ -1642,7 +1662,10 @@ async function cancelarUltimoLancamento(phone: string): Promise<void> {
     .maybeSingle();
 
   if (!link?.last_entry_id) {
-    await sendWhatsappMessage(phone, 'Não tenho nenhum lançamento recente deste número pra cancelar.');
+    await sendWhatsappMessage(
+      phone,
+      'Não tenho nenhum lançamento recente deste número pra cancelar. Consigo desfazer só o último feito por aqui, e dentro de 24 horas — o resto dá pra excluir pelo app.'
+    );
     return;
   }
 
@@ -1709,10 +1732,12 @@ async function cancelarUltimoLancamento(phone: string): Promise<void> {
  * disso um lançamento que estava certo seria o pior desfecho possível.
  */
 async function tratarCancelamento(phone: string, text: string): Promise<boolean> {
-  if (!ehIntencaoCancelar(text)) return false;
-  /* Veio número junto? Então é lançamento, não comando: "cancelamento de voo
-     200 reais" é uma despesa. */
-  if (guessAmountFromText(text) > 0) return false;
+  /* Com valor junto a barra sobe: só conta como comando o verbo imperativo no
+     FIM da frase, porque "cancelamento de voo 200 reais" é uma despesa de
+     verdade e não pode apagar nada. Sem valor, qualquer palavra da família
+     serve — não há lançamento possível ali pra confundir. */
+  const comando = guessAmountFromText(text) > 0 ? COMANDO_CANCELAR_FINAL.test(text) : ehIntencaoCancelar(text);
+  if (!comando) return false;
 
   const pendente = await buscarPendente(phone);
   if (pendente) {

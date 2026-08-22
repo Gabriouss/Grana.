@@ -27,8 +27,9 @@ const doWebhook = funcoesDoWebhook<{
   parseFormaPagamento: (t: string) => string | null;
   parseRecorrencia: (t: string) => boolean;
   ehIntencaoCancelar: (t: string) => boolean;
+  COMANDO_CANCELAR_FINAL: RegExp;
 }>(['ehIntencaoCredito', 'ehIntencaoBoleto', 'parseDiaVencimento', 'parseParcelas',
-  'parseFormaPagamento', 'parseRecorrencia', 'CANCELAR', 'ehIntencaoCancelar']);
+  'parseFormaPagamento', 'parseRecorrencia', 'CANCELAR', 'ehIntencaoCancelar', 'COMANDO_CANCELAR_FINAL']);
 
 /* ---------- casos ---------- */
 type Caso = {
@@ -194,9 +195,42 @@ const CANCELAMENTOS: [string, boolean][] = [
   ['almoço trinta reais', false],
 ];
 
+/* Com valor junto, só vale o verbo imperativo no FIM. Estes casos são o
+   contrário do grupo acima: TÊM número e mesmo assim são comando. */
+const CANCELAMENTOS_COM_VALOR: [string, boolean][] = [
+  // Ordem no fim da frase: cancela.
+  ['Mercado 10,05 cancele', true],
+  ['mercado 10,05 cancela', true],
+  ['almoço 30 apaga', true],
+  ['uber 25 apague', true],
+  ['netflix 39,90 exclua', true],
+  ['pousada 175 remove', true],
+  ['mercado 120 cancelar.', true],
+
+  // Substantivo no meio: é despesa de verdade.
+  ['cancelamento de voo 200 reais', false],
+  ['multa de cancelamento 150', false],
+  ['taxa de cancelamento do hotel 89,90', false],
+  // Passado em primeira pessoa: conta o que a pessoa fez, não uma ordem.
+  ['netflix 39,90 cancelei', false],
+  ['cancelei a netflix 39,90', false],
+  ['errei e paguei 30 a mais', false],
+  // Sem verbo nenhum.
+  ['mercado 120', false],
+  ['almoço 30 no crédito', false],
+];
+
 let falhasCancel = 0;
-for (const [txt, esperado] of CANCELAMENTOS) {
-  const obtido = doWebhook.ehIntencaoCancelar(txt) && guessAmountFromText(txt) <= 0;
+
+/** A decisão real do bot: sem valor vale a família toda, com valor só o fim. */
+function comandoDeCancelar(txt: string): boolean {
+  return guessAmountFromText(txt) > 0
+    ? doWebhook.COMANDO_CANCELAR_FINAL.test(txt)
+    : doWebhook.ehIntencaoCancelar(txt);
+}
+
+for (const [txt, esperado] of [...CANCELAMENTOS, ...CANCELAMENTOS_COM_VALOR]) {
+  const obtido = comandoDeCancelar(txt);
   if (obtido !== esperado) {
     falhasCancel++;
     console.log(`FALHA [cancelar]  "${txt}" -> ${obtido} (esperado ${esperado})`);
@@ -275,6 +309,6 @@ for (const c of CASOS) {
   }
 }
 
-const totalGeral = checados + CANCELAMENTOS.length;
+const totalGeral = checados + CANCELAMENTOS.length + CANCELAMENTOS_COM_VALOR.length;
 const totalFalhas = falhas + falhasCancel;
 console.log(`\n${totalGeral - totalFalhas}/${totalGeral} passaram — ${totalFalhas} falhas`);
