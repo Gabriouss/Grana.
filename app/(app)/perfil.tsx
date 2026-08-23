@@ -592,6 +592,23 @@ export default function PerfilScreen() {
           </AppPressable>
         </View>
 
+        {/* Seção Legal */}
+        <Text style={styles.sectionLabel}>Legal</Text>
+        <View style={styles.sectionCard}>
+          <AppPressable style={styles.tappableRow} onPress={() => router.push('/termos')}>
+            <Text style={styles.rowKey}>Termos de Uso</Text>
+            <Text style={styles.rowValue}>&gt;</Text>
+          </AppPressable>
+          <AppPressable style={styles.tappableRow} onPress={() => router.push('/privacidade')}>
+            <Text style={styles.rowKey}>Política de Privacidade</Text>
+            <Text style={styles.rowValue}>&gt;</Text>
+          </AppPressable>
+          <AppPressable style={[styles.tappableRow, { borderBottomWidth: 0 }]} onPress={() => router.push('/exclusao-de-dados')}>
+            <Text style={styles.rowKey}>Como excluir meus dados</Text>
+            <Text style={styles.rowValue}>&gt;</Text>
+          </AppPressable>
+        </View>
+
         {/* Ações da Conta: Sair e Excluir */}
         <View style={{ gap: 10, marginTop: spacing.md }}>
           <AppPressable

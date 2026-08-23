@@ -130,6 +130,13 @@ function RootNavigator() {
             (ver app/ativar.tsx) precisa funcionar tanto logado quanto
             deslogado — os dois casos são tratados dentro da própria tela. */}
         <Stack.Screen name="ativar" />
+        {/* Também sem Stack.Protected: Termos, Privacidade e Exclusão de
+            dados precisam abrir de qualquer lugar — do cadastro (antes de
+            existir conta), do Perfil (já logado), e de fora do app (link do
+            checkout da Kiwify, painel da Meta, ficha da Play Store). */}
+        <Stack.Screen name="termos" />
+        <Stack.Screen name="privacidade" />
+        <Stack.Screen name="exclusao-de-dados" />
       </Stack>
     </View>
   );

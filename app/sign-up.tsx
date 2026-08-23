@@ -16,6 +16,7 @@ import { theme, spacing, radius, fonts, type } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import PasswordInput from '@/components/PasswordInput';
+import TextoComLinks from '@/components/TextoComLinks';
 import { LIMITS, MIN_PASSWORD, validatePassword } from '@/lib/limits';
 import { checarSenhaVazada, mensagemSenhaVazada } from '@/lib/pwned';
 
@@ -50,11 +51,16 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(null);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   async function handleSignUp() {
     setError(null);
     if (!email.trim() || !password) {
       setError('Preencha e-mail e senha.');
+      return;
+    }
+    if (!aceitouTermos) {
+      setError('Para criar sua conta, você precisa aceitar os Termos de Uso e a Política de Privacidade.');
       return;
     }
     const passwordError = validatePassword(password);
@@ -169,6 +175,24 @@ export default function SignUp() {
           />
         </View>
 
+        <AppPressable
+          style={styles.consentimentoRow}
+          onPress={() => setAceitouTermos((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: aceitouTermos }}
+        >
+          <Ionicons
+            name={aceitouTermos ? 'checkbox' : 'square-outline'}
+            size={20}
+            color={aceitouTermos ? theme.accent2 : theme.inkFaint}
+          />
+          <TextoComLinks
+            style={styles.consentimentoTexto}
+            linkStyle={styles.consentimentoLink}
+            texto="Li e concordo com os [Termos de Uso](/termos) e a [Política de Privacidade](/privacidade)."
+          />
+        </AppPressable>
+
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <AppPressable
@@ -212,6 +236,9 @@ const styles = StyleSheet.create({
   requisitoTexto: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   requisitoTextoOk: { color: theme.inkSoft },
   errorText: { color: '#e08a7d', fontSize: type.apoio, marginBottom: spacing.sm, lineHeight: 18, fontFamily: fonts.regular },
+  consentimentoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: spacing.md },
+  consentimentoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.nota, lineHeight: 18, fontFamily: fonts.light },
+  consentimentoLink: { color: theme.accent2, fontFamily: fonts.regular },
   primaryBtn: {
     backgroundColor: theme.ink,
     borderRadius: radius.md,
