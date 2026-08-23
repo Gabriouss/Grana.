@@ -123,6 +123,10 @@ function RootNavigator() {
           <Stack.Screen name="(app)" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
+          {/* Primeiro da lista de propósito: sem isso, `/` cai no primeiro
+              nome declarado — hoje "sign-in" — em vez da landing page
+              (app/index.tsx), que é quem deve receber quem chega de fora. */}
+          <Stack.Screen name="index" />
           <Stack.Screen name="sign-in" />
           <Stack.Screen name="sign-up" />
         </Stack.Protected>

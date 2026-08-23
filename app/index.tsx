@@ -1,0 +1,350 @@
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Redirect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { theme, spacing, radius, fonts, type } from '@/lib/theme';
+import { colunaConteudo, colunaLeitura, useBreakpoint } from '@/lib/breakpoints';
+import AppPressable from '@/components/AppPressable';
+import BrandLogotype from '@/components/BrandLogotype';
+import LandingHeroDemo from '@/components/LandingHeroDemo';
+import { FaqItem } from '@/components/FaqItem';
+import RevealOnScroll from '@/components/RevealOnScroll';
+
+/**
+ * Página pública em `/` — recebe quem nunca ouviu falar do Grana.: clique de
+ * anúncio, link compartilhado, busca no Google. É por isso que ela existe
+ * separada da tela de login: `sign-in.tsx` pressupõe que a pessoa já sabe o
+ * que é o Grana. e só quer entrar; quem chega aqui de fora não sabe nada
+ * disso, e uma tela de e-mail/senha sem contexto não converte ninguém.
+ *
+ * Só existe na web — no nativo o app sempre abre direto pra dentro (login ou
+ * a própria conta já logada), porque quem tem o app instalado já passou
+ * dessa etapa. Antes desta tela existir, `/` no nativo já caía em sign-in
+ * por não haver rota nenhuma cadastrada pra raiz — o redirect abaixo só
+ * torna esse comportamento explícito, sem mudar nada do que já acontecia.
+ */
+export default function LandingPage() {
+  if (Platform.OS !== 'web') {
+    return <Redirect href="/sign-in" />;
+  }
+  return <ConteudoWeb />;
+}
+
+function ConteudoWeb() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { classe, ehCompacto } = useBreakpoint();
+  const largura2 = ehCompacto ? '100%' : classe === 'medio' ? '48%' : '31%';
+
+  return (
+    <ScrollView style={styles.pagina} contentContainerStyle={{ paddingBottom: insets.bottom }}>
+      {/* ───────── Cabeçalho ───────── */}
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.lg }]}>
+          <BrandLogotype width={104} />
+          <AppPressable onPress={() => router.push('/sign-in')} hitSlop={12}>
+            <Text style={styles.entrarTexto}>Entrar</Text>
+          </AppPressable>
+        </View>
+      </View>
+
+      {/* ───────── Hero ───────── */}
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={[styles.hero, ehCompacto && styles.heroCompacto]}>
+          <View style={[colunaLeitura, !ehCompacto && styles.heroTexto, ehCompacto && { alignItems: 'flex-start' }]}>
+            <Text style={styles.eyebrow}>Lançamento sem fricção</Text>
+            <Text style={styles.headline}>Fala com o Grana.{'\n'}como fala com um amigo.</Text>
+            <Text style={styles.subheadline}>
+              Manda um áudio no WhatsApp, fala em voz alta ou aponta a câmera pra nota — o Grana. organiza
+              sozinho. Sem digitar, sem escolher categoria, sem planilha.
+            </Text>
+            <AppPressable
+              style={({ hovered }) => [styles.ctaPrimario, hovered && styles.ctaPrimarioHover]}
+              onPress={() => router.push('/sign-up')}
+            >
+              <Text style={styles.ctaPrimarioTexto}>Criar minha conta</Text>
+              <Ionicons name="arrow-forward" size={16} color={theme.paper} />
+            </AppPressable>
+          </View>
+
+          <View style={styles.heroDemoCard}>
+            <Text style={styles.heroDemoRotulo}>o que acontece quando você fala</Text>
+            <LandingHeroDemo />
+          </View>
+        </View>
+      </View>
+
+      {/* ───────── Como entra o lançamento ───────── */}
+      <RevealOnScroll>
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={styles.secao}>
+          <Text style={styles.secaoEyebrow}>Três jeitos de registrar</Text>
+          <Text style={styles.secaoTitulo}>Nenhum deles é digitar num formulário</Text>
+
+          <View style={styles.grid}>
+            {[
+              {
+                icone: 'mic-outline' as const,
+                titulo: 'Voz, dentro do app',
+                texto: 'Toque no microfone e fale como fala com alguém: "gastei 30 no mercado". O Grana. entende valor, nome e categoria sozinho.',
+              },
+              {
+                icone: 'logo-whatsapp' as const,
+                titulo: 'Texto ou áudio no WhatsApp',
+                texto: 'Manda uma mensagem — escrita ou falada — pro número do Grana. e o lançamento aparece no app. Sem abrir nada.',
+              },
+              {
+                icone: 'qr-code-outline' as const,
+                titulo: 'Foto da nota fiscal',
+                texto: 'Aponta a câmera pro QR Code da nota (NFC-e) e cada item da compra vira lançamento, já categorizado.',
+              },
+            ].map((f) => (
+              <View key={f.titulo} style={[styles.cardFeature, { flexBasis: largura2 }]}>
+                <View style={styles.featureIconeCirculo}>
+                  <Ionicons name={f.icone} size={18} color={theme.accent2} />
+                </View>
+                <Text style={styles.featureTitulo}>{f.titulo}</Text>
+                <Text style={styles.featureTexto}>{f.texto}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+      </RevealOnScroll>
+
+      {/* ───────── Inteligência financeira ───────── */}
+      <RevealOnScroll>
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={[styles.secao, styles.secaoComCartao]}>
+          <View style={colunaLeitura}>
+            <Text style={styles.secaoEyebrow}>Depois que o lançamento existe</Text>
+            <Text style={styles.secaoTitulo}>Ele te diz o que fazer com essa informação</Text>
+            <Text style={styles.secaoTexto}>
+              Não é só uma lista de gastos. O card de <Text style={styles.destaqueInline}>Livre para Gastar</Text>{' '}
+              soma o que ainda falta pagar no mês e mostra quanto sobra por dia, sem susto. A linha do tempo de
+              compromissos futuros junta parcelas do cartão e contas fixas, pra nada pegar de surpresa lá na
+              frente.
+            </Text>
+          </View>
+
+          <View style={styles.mockSafeToSpend}>
+            <Text style={styles.mockRotulo}>Livre para gastar hoje</Text>
+            <Text style={styles.mockValor}>R$ 48,00</Text>
+            <Text style={styles.mockLegenda}>até o fim do mês, considerando contas e parcelas já agendadas</Text>
+          </View>
+        </View>
+      </View>
+      </RevealOnScroll>
+
+      {/* ───────── Segurança e confiança ───────── */}
+      <RevealOnScroll>
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={styles.secao}>
+          <Text style={styles.secaoEyebrow}>Antes de perguntar</Text>
+          <Text style={styles.secaoTitulo}>O que o Grana. faz e o que ele nunca faz</Text>
+
+          <View style={styles.grid}>
+            {[
+              { icone: 'lock-closed-outline' as const, texto: 'Cada conta só enxerga os próprios dados — reforçado no banco, não só na tela.' },
+              { icone: 'finger-print-outline' as const, texto: 'Bloqueio por biometria ou senha do aparelho, se você ativar.' },
+              { icone: 'eye-off-outline' as const, texto: 'Modo privacidade oculta os valores da tela com um toque.' },
+              { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida contra vazamentos conhecidos no cadastro.' },
+              { icone: 'ban-outline' as const, texto: 'O Grana. não movimenta dinheiro de verdade — é registro, não pagamento.' },
+              { icone: 'megaphone-outline' as const, texto: 'Sem anúncio, sem venda de dado. O que você registra é seu.' },
+            ].map((s) => (
+              <View key={s.texto} style={[styles.cardSeguranca, { flexBasis: largura2 }]}>
+                <Ionicons name={s.icone} size={18} color={theme.inkSoft} />
+                <Text style={styles.segurancaTexto}>{s.texto}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+      </RevealOnScroll>
+
+      {/* ───────── FAQ ───────── */}
+      <RevealOnScroll>
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={[styles.secao, colunaLeitura]}>
+          <Text style={styles.secaoEyebrow}>Perguntas diretas</Text>
+          <Text style={styles.secaoTitulo}>Sem letra miúda</Text>
+
+          <View style={styles.faqLista}>
+            <FaqItem
+              pergunta="O Grana. puxa meu extrato do banco sozinho?"
+              resposta="Não. O Grana. não se conecta ao seu banco — você registra por voz, por texto, pelo WhatsApp ou apontando a câmera pra nota, e ele organiza. É mais rápido de registrar do que de conectar uma conta bancária, e você nunca compartilha senha de banco com ninguém."
+            />
+            <FaqItem
+              pergunta="O Grana. movimenta meu dinheiro?"
+              resposta="Não. O Grana. é um registro — não é uma instituição financeira, não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele."
+            />
+            <FaqItem
+              pergunta="É seguro?"
+              resposta="Cada conta só acessa os próprios dados, reforçado no banco de dados (não só na tela). A sessão fica criptografada no aparelho, e telas com valor bloqueiam print. Detalhes completos na Política de Privacidade."
+            />
+            <FaqItem
+              pergunta="Preciso instalar alguma coisa?"
+              resposta="Não pra começar — o Grana. roda no navegador, neste mesmo endereço. Uma versão para Android e iOS está a caminho."
+            />
+            <FaqItem
+              pergunta="É pago?"
+              resposta="O Grana. está em fase de acesso antecipado — criar conta é livre agora. Um plano pago está a caminho; quem já usa é avisado antes de qualquer cobrança começar."
+            />
+          </View>
+        </View>
+      </View>
+      </RevealOnScroll>
+
+      {/* ───────── CTA final ───────── */}
+      <RevealOnScroll>
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={[styles.ctaFinal, colunaLeitura]}>
+          <Text style={styles.ctaFinalTitulo}>Seu próximo gasto pode ser o primeiro que você registra sem esforço.</Text>
+          <AppPressable
+            style={({ hovered }) => [styles.ctaPrimario, styles.ctaFinalBotao, hovered && styles.ctaPrimarioHover]}
+            onPress={() => router.push('/sign-up')}
+          >
+            <Text style={styles.ctaPrimarioTexto}>Criar minha conta</Text>
+            <Ionicons name="arrow-forward" size={16} color={theme.paper} />
+          </AppPressable>
+        </View>
+      </View>
+      </RevealOnScroll>
+
+      {/* ───────── Rodapé ───────── */}
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={styles.rodape}>
+          <BrandLogotype width={72} />
+          <View style={styles.rodapeLinks}>
+            <AppPressable onPress={() => router.push('/termos')}>
+              <Text style={styles.rodapeLink}>Termos de Uso</Text>
+            </AppPressable>
+            <AppPressable onPress={() => router.push('/privacidade')}>
+              <Text style={styles.rodapeLink}>Privacidade</Text>
+            </AppPressable>
+            <AppPressable onPress={() => router.push('/exclusao-de-dados')}>
+              <Text style={styles.rodapeLink}>Excluir dados</Text>
+            </AppPressable>
+          </View>
+          <Text style={styles.rodapeContato}>gbr.design30@gmail.com</Text>
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  pagina: { flex: 1, backgroundColor: theme.paper },
+  faixa: { paddingHorizontal: spacing.xl },
+
+  cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: spacing.lg },
+  entrarTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
+
+  hero: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, paddingTop: spacing.xxl, paddingBottom: spacing.xxl },
+  heroCompacto: { flexDirection: 'column', alignItems: 'stretch' },
+  /* Só entra quando o hero está em linha (lado a lado com o card de demo) —
+     `flex: 1` reparte a largura entre os dois. Empilhado (ehCompacto), o
+     mesmo flex passaria a valer para a ALTURA dentro do ScrollView, que não
+     tem altura definida no eixo de rolagem — o texto cortava no meio da
+     frase e o botão "Criar minha conta" desaparecia, sem erro nenhum. */
+  heroTexto: { flex: 1 },
+  eyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, marginBottom: spacing.md, textTransform: 'uppercase' },
+  headline: { color: theme.ink, fontSize: type.valor + 10, lineHeight: (type.valor + 10) * 1.12, fontFamily: fonts.regular, marginBottom: spacing.lg },
+  subheadline: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 520 },
+
+  ctaPrimario: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: theme.accent,
+    borderRadius: radius.pill,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xl,
+  },
+  ctaPrimarioHover: { opacity: 0.88 },
+  ctaPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+
+  heroDemoCard: {
+    flex: 1,
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    padding: spacing.xl,
+    minWidth: 300,
+  },
+  heroDemoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginBottom: spacing.lg },
+
+  secao: { paddingVertical: spacing.xxl },
+  secaoComCartao: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, flexWrap: 'wrap' },
+  secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.xs },
+  secaoTitulo: { color: theme.ink, fontSize: type.cabecalho, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
+  secaoTexto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 23, fontFamily: fonts.light },
+  destaqueInline: { color: theme.accent2, fontFamily: fonts.regular },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, marginTop: spacing.sm },
+
+  cardFeature: {
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    padding: spacing.lg,
+  },
+  featureIconeCirculo: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.accentDeep,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  featureTitulo: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular, marginBottom: spacing.xs },
+  featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
+
+  mockSafeToSpend: {
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    padding: spacing.xl,
+    minWidth: 260,
+    flexGrow: 1,
+  },
+  mockRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginBottom: spacing.xs },
+  mockValor: { color: theme.up, fontSize: type.valor + 6, fontFamily: fonts.regular, marginBottom: spacing.xs },
+  mockLegenda: { color: theme.inkSoft, fontSize: type.legenda, lineHeight: 17, fontFamily: fonts.light },
+
+  cardSeguranca: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.rule,
+  },
+  segurancaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
+
+  faqLista: { marginTop: spacing.sm },
+
+  ctaFinal: { alignSelf: 'center', alignItems: 'center', paddingVertical: spacing.xxl * 1.5, gap: spacing.xl },
+  ctaFinalTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.35, fontFamily: fonts.regular, textAlign: 'center' },
+  ctaFinalBotao: { alignSelf: 'center' },
+
+  rodape: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    paddingVertical: spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: theme.rule,
+  },
+  rodapeLinks: { flexDirection: 'row', gap: spacing.lg },
+  rodapeLink: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  rodapeContato: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+});
