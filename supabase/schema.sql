@@ -855,3 +855,160 @@ create policy "faturas: dono desfaz o proprio pagamento"
   on credit_card_invoices for delete
   to authenticated
   using ((select auth.uid()) = user_id);
+
+-- ============================================================
+-- Assinatura paga (Kiwify) — controla o acesso ao Grana.
+-- ============================================================
+-- Só o webhook escreve aqui, com a service_role key (que ignora RLS) — não
+-- existe policy de insert/update/delete pro dono. Se existisse, bastaria
+-- abrir o DevTools na versão web e dar UPDATE em access_until pra se
+-- autoliberar de graça; a compra tem que continuar sendo a única porta.
+--
+-- `access_until` é o único campo que decide acesso — não `status`. `status`
+-- é o retrato do último evento recebido, pra depuração e pro app explicar o
+-- que aconteceu ("seu pagamento atrasou"). Compra aprovada empurra
+-- `access_until` pra frente; reembolso e chargeback zeram na hora, não
+-- importa quanto faltava. Cancelamento (fim de assinatura futura) NÃO mexe
+-- em `access_until` — quem pagou até tal dia continua com acesso até tal
+-- dia, só não renova depois.
+create table if not exists subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  -- Nulo até alguém logar com o e-mail da compra, ou usar o link de
+  -- ativação — a compra chega pelo webhook antes de qualquer conta existir
+  -- no Grana. Ver vincular_assinatura_automatica() e
+  -- vincular_assinatura_por_token() logo abaixo.
+  user_id uuid references auth.users(id) on delete cascade,
+  provider text not null default 'kiwify' check (provider in ('kiwify')),
+  -- Id do pedido/assinatura na Kiwify. `unique` com `provider` faz o upsert
+  -- do webhook ser idempotente — reenvio do mesmo evento (retry deles) não
+  -- duplica a linha.
+  provider_order_id text not null,
+  email_compra text not null,
+  plan text,
+  status text not null default 'active'
+    check (status in ('active', 'past_due', 'canceled', 'refunded', 'chargeback', 'expired')),
+  access_until timestamptz not null,
+  -- Só usado quando status = 'past_due': até quando o app ainda libera
+  -- mesmo com a cobrança atrasada, pra não cortar quem só trocou de cartão.
+  grace_until timestamptz,
+  -- Token de uso único pra vincular quando o e-mail da compra é diferente do
+  -- e-mail da conta no Grana. (presente, apelido de Gmail, erro de digitação).
+  activation_token text not null default encode(gen_random_bytes(16), 'hex'),
+  activated_at timestamptz,
+  -- Payload cru do último evento recebido — auditoria e depuração. Nunca
+  -- lido por regra de negócio nenhuma, só por humano investigando.
+  raw_last_event jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider, provider_order_id),
+  unique (activation_token)
+);
+
+create index if not exists subscriptions_user_id_idx on subscriptions (user_id);
+create index if not exists subscriptions_email_idx on subscriptions (lower(email_compra));
+
+alter table subscriptions enable row level security;
+
+drop policy if exists "assinatura: dono ve a propria" on subscriptions;
+create policy "assinatura: dono ve a propria"
+  on subscriptions for select
+  to authenticated
+  using ((select auth.uid()) = user_id);
+
+-- Log bruto de toda chamada recebida no webhook, autenticada ou não,
+-- reconhecida ou não. Existe separado de `subscriptions.raw_last_event`
+-- porque um evento não reconhecido não tem em qual linha gravar — e é
+-- justamente o que permite fechar o mapeamento de campo da Kiwify a partir
+-- do primeiro evento real (ver comentário no topo do webhook).
+create table if not exists webhook_raw_log (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null,
+  headers jsonb,
+  body jsonb,
+  resolvido boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table webhook_raw_log enable row level security;
+-- Sem nenhuma policy: só a service_role (que ignora RLS) lê e escreve aqui.
+-- Não é dado de usuário final, é log operacional — ninguém autenticado
+-- deveria enxergar esta tabela.
+
+/** Libera acesso: cobre o período pago, OU a carência de uma cobrança
+    atrasada ainda não resolvida. Sempre sobre o PRÓPRIO usuário — nunca
+    recebe um id de fora, pra não virar uma forma de consultar a assinatura
+    de outra pessoa pelo RPC. */
+create or replace function public.tem_assinatura_ativa()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from subscriptions
+    where user_id = (select auth.uid())
+      and (access_until >= now() or (status = 'past_due' and grace_until >= now()))
+  );
+$$;
+
+revoke execute on function public.tem_assinatura_ativa() from public;
+grant execute on function public.tem_assinatura_ativa() to authenticated;
+
+/**
+ * Roda depois de login: vincula automaticamente qualquer assinatura comprada
+ * com o MESMO e-mail da conta. Cobre o caminho feliz — a maioria — sem a
+ * pessoa precisar fazer nada. `security definer` porque `auth.users` não é
+ * legível por `authenticated`.
+ */
+create or replace function public.vincular_assinatura_automatica()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_email text;
+begin
+  select email into v_email from auth.users where id = auth.uid();
+  if v_email is null then
+    return;
+  end if;
+
+  update subscriptions
+    set user_id = auth.uid(), activated_at = coalesce(activated_at, now())
+    where user_id is null
+      and lower(email_compra) = lower(v_email);
+end;
+$$;
+
+revoke execute on function public.vincular_assinatura_automatica() from public;
+grant execute on function public.vincular_assinatura_automatica() to authenticated;
+
+/**
+ * Vincula pelo token do link de ativação — cobre compra com e-mail diferente
+ * do cadastro (presente, apelido de Gmail, erro de digitação no checkout).
+ * Idempotente: chamar de novo com o token já vinculado À MESMA conta não dá
+ * erro; só falha (devolve false) se o token não existe ou já pertence a
+ * outra conta.
+ */
+create or replace function public.vincular_assinatura_por_token(p_token text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_linhas int;
+begin
+  update subscriptions
+    set user_id = auth.uid(), activated_at = coalesce(activated_at, now())
+    where activation_token = p_token
+      and (user_id is null or user_id = auth.uid());
+  get diagnostics v_linhas = row_count;
+  return v_linhas > 0;
+end;
+$$;
+
+revoke execute on function public.vincular_assinatura_por_token(text) from public;
+grant execute on function public.vincular_assinatura_por_token(text) to authenticated;

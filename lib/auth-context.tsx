@@ -5,6 +5,7 @@ import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { traduzirErroAuth, type ErroAuth } from './auth-errors';
+import { vincularAssinaturasPendentes } from './assinatura';
 
 type AuthContextValue = {
   session: Session | null;
@@ -71,6 +72,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setIsLoading(false);
+      /* Cobre o caso de a assinatura ter sido comprada (ou renovada) DEPOIS
+         da última vez que a pessoa logou neste aparelho — sem isto, quem
+         abre o app já logado só teria a assinatura vinculada no PRÓXIMO
+         login, que pode nunca acontecer num app que guarda sessão. */
+      if (data.session) void vincularAssinaturasPendentes();
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((evento, newSession) => {
@@ -80,6 +86,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
          único caso em que estar logado NÃO significa que a pessoa pode seguir
          para o app: ela chegou por um link justamente porque não sabe a senha. */
       if (evento === 'PASSWORD_RECOVERY') setEmRecuperacao(true);
+      // Vale tanto pro cadastro quanto pro login: os dois emitem SIGNED_IN.
+      if (evento === 'SIGNED_IN') void vincularAssinaturasPendentes();
     });
 
     return () => listener.subscription.unsubscribe();

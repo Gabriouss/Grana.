@@ -126,6 +126,10 @@ function RootNavigator() {
           <Stack.Screen name="sign-in" />
           <Stack.Screen name="sign-up" />
         </Stack.Protected>
+        {/* Sem Stack.Protected de propósito: o link de ativação da compra
+            (ver app/ativar.tsx) precisa funcionar tanto logado quanto
+            deslogado — os dois casos são tratados dentro da própria tela. */}
+        <Stack.Screen name="ativar" />
       </Stack>
     </View>
   );
