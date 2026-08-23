@@ -1,24 +1,21 @@
 /**
  * Conteúdo de Termos de Uso, Política de Privacidade e Exclusão de Dados.
  *
- * Transcrito de supabase/functions/{privacy-policy,terms-of-service,
- * data-deletion}/index.ts — que continuam publicadas e no ar (a Meta e a Play
- * Store apontam pra elas), mas não tinham link nenhum DENTRO do app. Esta
- * cópia é o texto renderizado nas telas app/termos.tsx, app/privacidade.tsx e
- * app/exclusao-de-dados.tsx, pra quem compra pela Kiwify — e qualquer outra
- * pessoa — conseguir achar e ler sem sair do produto.
+ * Esta é a ÚNICA fonte de verdade destes documentos. Até 23/08/2026 o texto
+ * vivia em três Edge Functions (supabase/functions/{privacy-policy,
+ * terms-of-service,data-deletion}), publicadas em *.supabase.co — mas sem
+ * link nenhum DENTRO do app, e sem controle de estilo (HTML solto). A Meta
+ * (Configurações do app → Privacy Policy URL / Terms of Service URL /
+ * Exclusão de dados do usuário) já foi atualizada para apontar pras rotas
+ * novas (granaponto.com.br/privacidade, /termos, /exclusao-de-dados) e as
+ * três Edge Functions antigas foram removidas — as URLs *.supabase.co não
+ * respondem mais.
  *
- * A SUBSTÂNCIA não foi alterada nesta transcrição — só o formato (de HTML
- * solto pra dado estruturado) e os links cruzados (de URL completa do
- * supabase.co pra rota interna do app). Um link cruzado em texto usa a
- * sintaxe `[rótulo](destino)`, lida por TextoComLinks em
- * components/LegalDocScreen.tsx; `destino` começando com "/" navega dentro
- * do app, e-mail e URL externa abrem por Linking.
- *
- * Se as cláusulas mudarem de verdade (não só onde o texto mora), atualize
- * aqui — as Edge Functions antigas não são mais a fonte de verdade depois
- * desta migração e podem ser removidas quando a Meta/Play Store apontarem
- * pra estas rotas novas.
+ * Renderizado por app/termos.tsx, app/privacidade.tsx e
+ * app/exclusao-de-dados.tsx, via components/LegalDocScreen.tsx. Um link
+ * cruzado em texto usa a sintaxe `[rótulo](destino)`, lida por
+ * TextoComLinks; `destino` começando com "/" navega dentro do app, e-mail e
+ * URL externa abrem por Linking.
  */
 
 export type BlocoLegal =
