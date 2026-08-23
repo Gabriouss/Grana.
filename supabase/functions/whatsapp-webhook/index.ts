@@ -474,8 +474,27 @@ const VALOR_INICIAL = new RegExp(`^(?:r\\$\\s*)?\\d[\\d.,]*\\s*(?:${MOEDA})?\\b\
 const VALOR_FINAL = new RegExp(`\\s*(?:r\\$\\s*)?(?<![a-zà-ÿ\\d])\\d[\\d.,]*\\s*(?:${MOEDA})?$`, 'i');
 /* Forma de pagamento mencionada solta no fim da frase — "Mercado 50 no pix",
    "Farmácia 30 no débito" — não é parte do nome do lançamento. */
+/* A preposição é OPCIONAL, e essa foi a maior fonte de nome sujo do corpus
+   gerado: "Academia 39,90 pix", "Cinema 89,90 débito", "Mercado 120 crédito"
+   — a forma mais curta, que é justamente a que se digita com pressa e a que
+   sai de transcrição de áudio — não casava com nada e ia inteira pro nome do
+   lançamento ("Academia pix"). Junto entram o "é" ("Chaveiro 120 é boleto") e
+   "conta a pagar", pelo mesmo motivo: já viraram `payment_method` ou uma
+   linha em `bills`, então repetir no nome é ruído. */
 const FORMA_PAGAMENTO_FINAL =
-  /\s+(?:no|na|via|em|de)\s+(?:pix|dinheiro|espécie|especie|cartão|cartao|débito|debito|crédito|credito|boleto)(?:\s+d[aeo]\s+\S+)?$/i;
+  /\s+(?:[ée]\s+)?(?:(?:no|na|via|em|de|pago\s+(?:no|na|em|com))\s+)?(?:pix|dinheiro|esp[ée]cie|cart[aã]o|d[ée]bito|cr[ée]dito|boletos?|conta\s+a\s+pagar)(?:\s+d[aeo]\s+\S+)?$/i;
+
+/* "Parcelado em 3x", "em 12 parcelas" — o número de parcelas já foi extraído
+   pra `installments`, e a série de linhas criada a partir dele. Sem tirar
+   daqui, cada uma das três parcelas nascia chamada "Mercado parcelado em 3x". */
+const PARCELAMENTO_FINAL =
+  /\s+(?:parcel(?:ei|ado|ada|ar|a)(?:\s+em)?\s+\d{1,2}(?:\s*x)?|(?:em\s+)?\d{1,2}\s*(?:x|vezes|parcelas?))\s*$/i;
+
+/* "Vence dia 10", "vencimento 25/12" — a data já foi extraída pra `due_date`
+   pelo parseDiaVencimento logo abaixo. Sem tirar daqui, a conta a pagar
+   nascia chamada "Conta de luz boleto que vence dia". */
+const VENCIMENTO_FINAL =
+  /\s+(?:(?:que|e)\s+)?(?:vencimento|vencendo|vence|venc\.?)\s*(?:em|no|na|dia|pro\s+dia)?\s*(?:\d{1,2}(?:[\/-]\d{1,2}(?:[\/-]\d{2,4})?)?)?\s*$/i;
 
 /* "Todo mês" diz COMO o lançamento se repete, não o que ele é — sem tirar
    daqui, a série virava um gasto chamado "Aluguel todo mês", e o nome errado
@@ -484,8 +503,19 @@ const FORMA_PAGAMENTO_FINAL =
 const MARCA_RECORRENCIA =
   /(?:^|\s)(?:[ée]\s+)?(?:tod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?|cada\s+m[êe]s|mensalmente|recorrente|(?:que\s+)?se\s+repete|que\s+repete(?:\s+tod[oa]\s+m[êe]s)?)(?![a-zà-ÿ0-9])/gi;
 
-function limparSobra(bruto: string): string {
-  let s = bruto.replace(/\s+/g, ' ').trim();
+/**
+ * Tira o que JÁ FOI EXTRAÍDO para outro campo: recorrência, forma de
+ * pagamento e vencimento.
+ *
+ * Existe separada de `limparSobra` porque precisa rodar ANTES das três regras
+ * de nome, e não só depois. A regra 2 ("<algo> de <Nome>") casa com o
+ * primeiro "de" da frase — e em "gastei estacionamento 120 no cartão de
+ * débito" esse "de" é o de "cartão de débito". A regra sequestrava o nome
+ * inteiro e devolvia "Débito"; o nome real do gasto simplesmente sumia.
+ * Limpando a cauda antes, não sobra "de" nenhum para ela morder.
+ */
+function limparCaudaDeMetadado(bruto: string): string {
+  let s = bruto.trim();
   let anterior = '';
   while (s !== anterior) {
     anterior = s;
@@ -493,12 +523,25 @@ function limparSobra(bruto: string): string {
       .replace(MARCA_RECORRENCIA, ' ')
       .replace(/\s{2,}/g, ' ')
       .trim()
+      .replace(PARCELAMENTO_FINAL, '')
+      .replace(VENCIMENTO_FINAL, '')
+      .replace(FORMA_PAGAMENTO_FINAL, '')
+      .trim();
+  }
+  return s;
+}
+
+function limparSobra(bruto: string): string {
+  let s = bruto.replace(/\s+/g, ' ').trim();
+  let anterior = '';
+  while (s !== anterior) {
+    anterior = s;
+    s = limparCaudaDeMetadado(s)
       .replace(MULETA_INICIAL, '')
       .replace(MULETA_FINAL, '')
       .replace(VERBOS_INICIAIS, '')
       .replace(VALOR_INICIAL, '')
       .replace(VALOR_FINAL, '')
-      .replace(FORMA_PAGAMENTO_FINAL, '')
       .replace(CONECTOR_INICIAL, '')
       .replace(CONECTOR_FINAL, '')
       .trim();
@@ -559,7 +602,9 @@ function guessDescFromText(text: string, type: 'in' | 'out'): string {
     'i'
   );
 
-  const texto = normalizarTextoTranscrito(text).replace(/[.!?]+\s*$/, '').replace(DICA_CATEGORIA_FINAL, '');
+  const texto = limparCaudaDeMetadado(
+    normalizarTextoTranscrito(text).replace(/[.!?]+\s*$/, '').replace(DICA_CATEGORIA_FINAL, '')
+  );
 
   /* 1º) "<Nome> de <Valor>" — "Energia de 350 reais", "Merenda de 31 reais",
      "Mercado de 120 reais". Vem primeiro porque é o formato mais comum e o

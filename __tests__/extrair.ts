@@ -54,8 +54,13 @@ export function corpoDaFuncao(nome: string, arquivo: string = WEBHOOK): string {
          não existe módulo, então o `export` precisa cair. */
       .replace(/^export /, '')
       /* O tipo de RETORNO sai primeiro: fazendo o contrário, `): number | null {`
-         perdia só o "number" e sobrava um `| null` solto, que não é JS válido. */
-      .replace(/\)\s*:\s*[A-Za-z<>[\]|',\s]+?\{/g, ') {')
+         perdia só o "number" e sobrava um `| null` solto, que não é JS válido.
+
+         A alternativa `\{[^{}]*\}` existe porque o tipo de retorno pode ser um
+         objeto literal — `): { name: string; color: string } | null {`. Sem
+         ela, o não-guloso parava na PRIMEIRA chave, que é a do tipo e não a do
+         corpo, e sobrava `{ name; color } | null {` na assinatura. */
+      .replace(/\)\s*:\s*(?:\{[^{}]*\}|[A-Za-z<>[\]|',\s])+?\s*\{/g, ') {')
       /* Genérico (`Record<string, number>`) antes do tipo simples: o simples
          casaria com o "string" de dentro dos sinais de maior e menor e
          deixaria `Record<, number>` para trás. */

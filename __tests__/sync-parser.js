@@ -65,8 +65,8 @@ const COMPARTILHADAS = [
   ['normalizarTexto', 'normalizarTextoTranscrito'],
   'VERBOS_INICIAIS', 'CONECTOR', 'CONECTOR_INICIAL', 'CONECTOR_FINAL',
   'MULETA_INICIAL', 'MULETA_FINAL', 'MARCA_RECORRENCIA',
-  'VALOR_INICIAL', 'VALOR_FINAL', 'FORMA_PAGAMENTO_FINAL',
-  'limparSobra', 'capitalizar', 'EXPRESSAO_VALOR', 'guessDescFromText',
+  'VALOR_INICIAL', 'VALOR_FINAL', 'FORMA_PAGAMENTO_FINAL', 'VENCIMENTO_FINAL', 'PARCELAMENTO_FINAL',
+  'limparCaudaDeMetadado', 'limparSobra', 'capitalizar', 'EXPRESSAO_VALOR', 'guessDescFromText',
   'guessAmountFromText', 'normalizarParaBusca', 'contemPalavra',
 ];
 
