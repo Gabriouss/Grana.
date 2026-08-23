@@ -53,6 +53,19 @@ export const colunaFormulario = Platform.OS === 'web'
   ? ({ width: '100%', maxWidth: 420, alignSelf: 'center' } as const)
   : null;
 
+/**
+ * Coluna para PROSA longa — Termos, Privacidade, texto corrido em geral —
+ * e não para formulário. 420px (colunaFormulario) é a largura de um campo de
+ * e-mail; esticar um parágrafo de política de privacidade nessa largura
+ * quebra a linha a cada 4-5 palavras e lê como coluna de jornal encolhida
+ * demais, não como página. ~65-75 caracteres por linha é o alvo de
+ * legibilidade de texto corrido; 720px cobre isso na escala tipográfica do
+ * app mesmo com a fonte maior da web (ver ACRESCIMO_WEB em lib/theme.ts).
+ */
+export const colunaLeitura = Platform.OS === 'web'
+  ? ({ width: '100%', maxWidth: 720, alignSelf: 'center' } as const)
+  : null;
+
 export const colunaConteudo = Platform.OS === 'web'
   ? ({ width: '100%', maxWidth: LARGURA_MAXIMA_CONTEUDO, alignSelf: 'center' } as const)
   : null;
