@@ -9,6 +9,8 @@ import BrandLogotype from '@/components/BrandLogotype';
 import LandingHeroDemo from '@/components/LandingHeroDemo';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
+import EntradaEscalonada from '@/components/EntradaEscalonada';
+import GlowOrb from '@/components/GlowOrb';
 
 /**
  * Página pública em `/` — recebe quem nunca ouviu falar do Grana.: clique de
@@ -38,6 +40,11 @@ export default function LandingPage() {
  * cliquei" no fechamento — mas o texto do BOTÃO em si fica igual nos três,
  * de propósito: repetição do mesmo verbo de ação reforça a ação, variar a
  * cada seção só confunde o que a pessoa está prestes a fazer.
+ *
+ * O brilho por trás do botão (boxShadow colorido, não borda) é deliberado: o
+ * CTA precisa ser a coisa mais "clicável" da tela em qualquer seção onde
+ * aparece — se um card de recurso e o botão de ação têm a mesma presença
+ * visual, a hierarquia não está fazendo o trabalho dela.
  */
 function BotaoCTA({ microcopy, estiloExtra }: { microcopy: string; estiloExtra?: object }) {
   const router = useRouter();
@@ -48,9 +55,24 @@ function BotaoCTA({ microcopy, estiloExtra }: { microcopy: string; estiloExtra?:
         onPress={() => router.push('/sign-up')}
       >
         <Text style={styles.ctaPrimarioTexto}>Criar conta grátis</Text>
-        <Ionicons name="arrow-forward" size={16} color={theme.paper} />
+        <Ionicons name="arrow-forward" size={17} color={theme.paper} />
       </AppPressable>
       <Text style={styles.ctaMicrocopy}>{microcopy}</Text>
+    </View>
+  );
+}
+
+/**
+ * Faixa de largura cheia atrás de uma seção — o jeito de dar ritmo pra uma
+ * página inteira na mesma cor de fundo sem inventar cor nova: alterna entre
+ * o `paper` base e o `paperRaised` que todo card já usa, igual zebra de
+ * tabela. `colunaConteudo` continua limitando o CONTEÚDO; é só o FUNDO que
+ * vai de ponta a ponta da janela.
+ */
+function FaixaFundo({ levantada, children }: { levantada?: boolean; children: React.ReactNode }) {
+  return (
+    <View style={levantada && styles.bandaLevantada}>
+      <View style={[colunaConteudo, styles.faixa]}>{children}</View>
     </View>
   );
 }
@@ -85,33 +107,49 @@ function ConteudoWeb() {
         </View>
       </View>
 
-      {/* ───────── Hero ───────── */}
-      <View style={[colunaConteudo, styles.faixa]}>
-        <View style={[styles.hero, ehCompacto && styles.heroCompacto]}>
-          <View style={[colunaLeitura, !ehCompacto && styles.heroTexto, ehCompacto && { alignItems: 'flex-start' }]}>
-            <Text style={styles.eyebrow}>Acesso antecipado</Text>
-            <Text style={styles.headline}>Cadê meu dinheiro?</Text>
-            <Text style={styles.subheadline}>
-              Todo mês a mesma cena: o extrato fecha e você não faz ideia de pra onde foi. O Grana. resolve
-              isso antes de virar problema — fala ou manda um áudio no WhatsApp, e o lançamento aparece
-              organizado sozinho.
-            </Text>
+      {/* ───────── Hero — o momento de assinatura da página ───────── */}
+      <View style={styles.palcoHero}>
+        <GlowOrb cor="rgba(31,169,141,0.35)" tamanho={720} top={-260} left={-160} />
+        <GlowOrb cor="rgba(174,255,227,0.16)" tamanho={520} top={-80} right={-120} />
+        <View style={[colunaConteudo, styles.faixa]}>
+          <View style={[styles.hero, ehCompacto && styles.heroCompacto]}>
+            <View style={[colunaLeitura, !ehCompacto && styles.heroTexto, ehCompacto && { alignItems: 'flex-start' }]}>
+              <EntradaEscalonada atraso={0}>
+                <Text style={styles.eyebrow}>Acesso antecipado</Text>
+              </EntradaEscalonada>
+              <EntradaEscalonada atraso={70}>
+                <Text style={[styles.headline, ehCompacto && styles.headlineCompacto]}>Cadê meu dinheiro?</Text>
+              </EntradaEscalonada>
+              <EntradaEscalonada atraso={150}>
+                <Text style={styles.subheadline}>
+                  Todo mês a mesma cena: o extrato fecha e você não faz ideia de pra onde foi. O Grana.
+                  resolve isso antes de virar problema — fala ou manda um áudio no WhatsApp, e o
+                  lançamento aparece organizado sozinho.
+                </Text>
+              </EntradaEscalonada>
 
-            <View style={styles.listaBeneficios}>
-              {BENEFICIOS_HERO.map((b) => (
-                <View key={b} style={styles.itemBeneficio}>
-                  <Ionicons name="checkmark" size={16} color={theme.accent2} />
-                  <Text style={styles.textoBeneficio}>{b}</Text>
+              <EntradaEscalonada atraso={230}>
+                <View style={styles.listaBeneficios}>
+                  {BENEFICIOS_HERO.map((b) => (
+                    <View key={b} style={styles.itemBeneficio}>
+                      <Ionicons name="checkmark" size={16} color={theme.accent2} />
+                      <Text style={styles.textoBeneficio}>{b}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
+              </EntradaEscalonada>
+
+              <EntradaEscalonada atraso={310}>
+                <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />
+              </EntradaEscalonada>
             </View>
 
-            <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />
-          </View>
-
-          <View style={styles.heroDemoCard}>
-            <Text style={styles.heroDemoRotulo}>o que acontece quando você fala</Text>
-            <LandingHeroDemo />
+            <EntradaEscalonada atraso={200} style={!ehCompacto && styles.heroDemoWrap}>
+              <View style={styles.heroDemoCard}>
+                <Text style={styles.heroDemoRotulo}>o que acontece quando você fala</Text>
+                <LandingHeroDemo />
+              </View>
+            </EntradaEscalonada>
           </View>
         </View>
       </View>
@@ -137,7 +175,7 @@ function ConteudoWeb() {
 
       {/* ───────── Como entra o lançamento ───────── */}
       <RevealOnScroll>
-      <View style={[colunaConteudo, styles.faixa]}>
+      <FaixaFundo levantada>
         <View style={styles.secao}>
           <Text style={styles.secaoEyebrow}>A parte que você não vai adiar</Text>
           <Text style={styles.secaoTitulo}>O único esforço é lembrar que o gasto existe</Text>
@@ -175,7 +213,7 @@ function ConteudoWeb() {
             <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." />
           </View>
         </View>
-      </View>
+      </FaixaFundo>
       </RevealOnScroll>
 
       {/* ───────── Inteligência financeira ───────── */}
@@ -204,7 +242,7 @@ function ConteudoWeb() {
 
       {/* ───────── Segurança e confiança ───────── */}
       <RevealOnScroll>
-      <View style={[colunaConteudo, styles.faixa]}>
+      <FaixaFundo levantada>
         <View style={styles.secao}>
           <Text style={styles.secaoEyebrow}>A pergunta que todo mundo faz</Text>
           <Text style={styles.secaoTitulo}>"Tá, mas é seguro dar meus gastos pra um app?"</Text>
@@ -228,7 +266,7 @@ function ConteudoWeb() {
             ))}
           </View>
         </View>
-      </View>
+      </FaixaFundo>
       </RevealOnScroll>
 
       {/* ───────── FAQ ───────── */}
@@ -266,10 +304,13 @@ function ConteudoWeb() {
 
       {/* ───────── CTA final ───────── */}
       <RevealOnScroll>
-      <View style={[colunaConteudo, styles.faixa]}>
-        <View style={[styles.ctaFinal, colunaLeitura]}>
-          <Text style={styles.ctaFinalTitulo}>Você vai continuar se perguntando "cadê meu dinheiro" até quando?</Text>
-          <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." estiloExtra={styles.ctaFinalBotao} />
+      <View style={styles.palcoCtaFinal}>
+        <GlowOrb cor="rgba(31,169,141,0.22)" tamanho={620} top={-200} left="50%" />
+        <View style={[colunaConteudo, styles.faixa]}>
+          <View style={[styles.ctaFinal, colunaLeitura]}>
+            <Text style={styles.ctaFinalTitulo}>Você vai continuar se perguntando "cadê meu dinheiro" até quando?</Text>
+            <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." estiloExtra={styles.ctaFinalBotao} />
+          </View>
         </View>
       </View>
       </RevealOnScroll>
@@ -296,13 +337,26 @@ function ConteudoWeb() {
   );
 }
 
+/* Sombra de verdade (boxShadow), não só borda — `as any` porque `boxShadow`
+   não existe no tipo ViewStyle do React Native, só no CSS que o
+   react-native-web gera. Esta página só renderiza na web (ver o redirect no
+   topo do arquivo), então não há caminho nativo perdendo o efeito. */
+const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
+const sombraHero = { boxShadow: '0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)' } as any;
+
 const styles = StyleSheet.create({
   pagina: { flex: 1, backgroundColor: theme.paper },
   faixa: { paddingHorizontal: spacing.xl },
+  bandaLevantada: { backgroundColor: theme.paperRaised },
 
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: spacing.lg },
   entrarTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
 
+  // `overflow: hidden` prende os GlowOrb dentro do herói — sem isso, o brilho
+  // borrado vazaria por baixo das seções seguintes e criaria uma faixa de luz
+  // fantasma na altura errada da página.
+  palcoHero: { position: 'relative', overflow: 'hidden' },
+  palcoCtaFinal: { position: 'relative', overflow: 'hidden' },
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, paddingTop: spacing.xxl, paddingBottom: spacing.xxl },
   heroCompacto: { flexDirection: 'column', alignItems: 'stretch' },
   /* Só entra quando o hero está em linha (lado a lado com o card de demo) —
@@ -312,7 +366,11 @@ const styles = StyleSheet.create({
      frase e o botão "Criar minha conta" desaparecia, sem erro nenhum. */
   heroTexto: { flex: 1 },
   eyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, marginBottom: spacing.md, textTransform: 'uppercase' },
-  headline: { color: theme.ink, fontSize: type.valor + 10, lineHeight: (type.valor + 10) * 1.12, fontFamily: fonts.regular, marginBottom: spacing.lg },
+  // Escala bem acima do resto da tipografia do app de propósito — esta é a
+  // única frase que precisa ser lida antes de qualquer outra coisa na
+  // página, e o tamanho tem que dizer isso antes mesmo do conteúdo.
+  headline: { color: theme.ink, fontSize: 80, lineHeight: 80, letterSpacing: -2, fontFamily: fonts.regular, marginBottom: spacing.lg },
+  headlineCompacto: { fontSize: 44, lineHeight: 46, letterSpacing: -1 },
   subheadline: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 520 },
 
   ctaPrimario: {
@@ -322,10 +380,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     backgroundColor: theme.accent,
     borderRadius: radius.pill,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.xl,
+    paddingVertical: 16,
+    paddingHorizontal: spacing.xl + spacing.xs,
+    ...({ boxShadow: '0 10px 32px -8px rgba(31,169,141,0.6)', transitionProperty: 'box-shadow, transform', transitionDuration: '180ms' } as any),
   },
-  ctaPrimarioHover: { opacity: 0.88 },
+  ctaPrimarioHover: {
+    ...({ boxShadow: '0 14px 40px -6px rgba(31,169,141,0.8)', transform: [{ translateY: -2 }] } as any),
+  },
   ctaPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   // Fica sob TODO botão de CTA — reduz a maior fricção não dita ("quanto
   // tempo vou perder", "vão me cobrar") no exato instante em que a pessoa
@@ -343,43 +404,44 @@ const styles = StyleSheet.create({
   // "down" (a mesma cor de saída/gasto usada no resto do app) marca a dor;
   // a ponte de volta pra solução já usa o accent2 da marca — a paleta muda
   // de tom no exato lugar onde a copy muda de tom.
-  pontePergunta: { color: theme.accent2, fontSize: type.corpo, fontFamily: fonts.regular },
+  pontePergunta: { color: theme.accent2, fontSize: type.destaque, fontFamily: fonts.regular },
 
   ctaMeio: {
     marginTop: spacing.xxl,
     alignItems: 'center',
     paddingTop: spacing.xxl,
     borderTopWidth: 1,
-    borderTopColor: theme.rule,
+    borderTopColor: theme.ruleStrong,
   },
   ctaMeioTitulo: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular, marginBottom: spacing.lg, textAlign: 'center' },
 
+  heroDemoWrap: { flex: 1, minWidth: 300 },
   heroDemoCard: {
-    flex: 1,
     backgroundColor: theme.paperRaised,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: theme.ruleStrong,
     padding: spacing.xl,
-    minWidth: 300,
+    ...sombraHero,
   },
   heroDemoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginBottom: spacing.lg },
 
   secao: { paddingVertical: spacing.xxl },
   secaoComCartao: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, flexWrap: 'wrap' },
   secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.xs },
-  secaoTitulo: { color: theme.ink, fontSize: type.cabecalho, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
+  secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
   secaoTexto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 23, fontFamily: fonts.light },
   destaqueInline: { color: theme.accent2, fontFamily: fonts.regular },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, marginTop: spacing.sm },
 
   cardFeature: {
-    backgroundColor: theme.paperRaised,
+    backgroundColor: theme.paper,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: theme.rule,
     padding: spacing.lg,
+    ...sombraCard,
   },
   featureIconeCirculo: {
     width: 36,
@@ -401,6 +463,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     minWidth: 260,
     flexGrow: 1,
+    ...sombraCard,
   },
   mockRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginBottom: spacing.xs },
   mockValor: { color: theme.up, fontSize: type.valor + 6, fontFamily: fonts.regular, marginBottom: spacing.xs },
@@ -412,6 +475,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
     borderRadius: radius.lg,
+    backgroundColor: theme.paper,
     borderWidth: 1,
     borderColor: theme.rule,
   },
@@ -420,7 +484,7 @@ const styles = StyleSheet.create({
   faqLista: { marginTop: spacing.sm },
 
   ctaFinal: { alignSelf: 'center', alignItems: 'center', paddingVertical: spacing.xxl * 1.5, gap: spacing.xl },
-  ctaFinalTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.35, fontFamily: fonts.regular, textAlign: 'center' },
+  ctaFinalTitulo: { color: theme.ink, fontSize: type.destaque + 4, lineHeight: (type.destaque + 4) * 1.3, fontFamily: fonts.regular, textAlign: 'center' },
   ctaFinalBotao: { alignSelf: 'center' },
 
   rodape: {
