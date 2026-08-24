@@ -46,6 +46,14 @@ export default function PasteReceiptModal({
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Alimentação');
   const [saving, setSaving] = useState(false);
+  /* Só true quando o texto veio do reconhecimento de voz — quem colou o
+     próprio comprovante já viu o que digitou/colou na textarea, então
+     repetir o texto na tela de confirmação seria eco redundante. Voz é o
+     caso oposto: a pessoa nunca viu o texto, só ouviu a própria fala, e o
+     app tinha ZERO jeito de checar se o reconhecimento entendeu certo antes
+     de confiar cegamente no valor preenchido — o mesmo problema que o
+     "🎙️ Ouvi: ..." do bot de WhatsApp existe pra resolver. */
+  const [origemVoz, setOrigemVoz] = useState(false);
 
   function resetState() {
     setRawText('');
@@ -54,6 +62,7 @@ export default function PasteReceiptModal({
     setAmount('');
     setType('out');
     setSaving(false);
+    setOrigemVoz(false);
   }
 
   function processText(text: string) {
@@ -81,6 +90,7 @@ export default function PasteReceiptModal({
   useEffect(() => {
     if (!visible || !initialText) return;
     setRawText(initialText);
+    setOrigemVoz(true);
     processText(initialText);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialText]);
@@ -179,6 +189,13 @@ export default function PasteReceiptModal({
             </>
           ) : (
             <>
+              {origemVoz && (
+                <View style={styles.ecoVoz}>
+                  <Ionicons name="mic-outline" size={13} color={theme.inkFaint} />
+                  <Text style={styles.ecoVozTexto}>Ouvi: "{rawText}"</Text>
+                </View>
+              )}
+
               <View style={styles.typeRow}>
                 <AppPressable
                   onPress={() => setType('out')}
@@ -228,7 +245,14 @@ export default function PasteReceiptModal({
                 )}
               </AppPressable>
 
-              <AppPressable onPress={() => setRecognized(false)}>
+              <AppPressable
+                onPress={() => {
+                  // Volta pra textarea editável — a pessoa vai VER o texto ali,
+                  // então o eco acima perde a razão de existir a partir daqui.
+                  setOrigemVoz(false);
+                  setRecognized(false);
+                }}
+              >
                 <Text style={styles.backLink}>Colar outro texto</Text>
               </AppPressable>
             </>
@@ -268,6 +292,18 @@ const styles = StyleSheet.create({
     outlineWidth: 2,
     outlineOffset: -1,
   },
+  ecoVoz: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: theme.paper,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
+  },
+  ecoVozTexto: { flex: 1, color: theme.inkFaint, fontSize: type.nota, lineHeight: 16, fontFamily: fonts.light },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: '#bb6b6033', borderWidth: 1, borderColor: '#bb6b60' },
