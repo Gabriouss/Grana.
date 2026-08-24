@@ -134,7 +134,11 @@ export default function WidgetGrid({
         const de = ordem.indexOf(chave);
         const para = ordem.indexOf(destino);
         if (de < 0 || para < 0) return;
-        ordem.splice(para, 0, ordem.splice(de, 1)[0]);
+        // Troca de verdade — só os dois índices envolvidos mudam. A versão
+        // anterior (splice tira-e-insere) empurrava todo mundo entre os dois
+        // pontos uma posição, então soltar o card 0 sobre o card 3 também
+        // deslocava os cards 1 e 2, que não tinham nada a ver com o gesto.
+        [ordem[de], ordem[para]] = [ordem[para], ordem[de]];
         onReordenar(ordem);
       },
       onPanResponderTerminate: () => {
