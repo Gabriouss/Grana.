@@ -1,5 +1,20 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { AccessibilityInfo, Platform, View } from 'react-native';
+import { AccessibilityInfo, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
+
+type Props = PropsWithChildren<{
+  /** Milissegundos extras de espera depois que o elemento entra na tela,
+      antes de começar a subir/aparecer — o que faz uma fileira de cards
+      revelar em cascata (cada um com um `atraso` maior) em vez de todos ao
+      mesmo tempo. Sem isso (padrão 0) o comportamento é idêntico ao de antes. */
+  atraso?: number;
+  /** Repassado ao `View` que envolve o conteúdo — necessário quando este
+      componente é usado como filho direto de um `flexWrap`/grade, porque
+      `flexBasis` só funciona no filho DIRETO do container flex; sem este
+      prop, embrulhar um card de grade aqui faria a grade perder a largura
+      calculada (mesma classe de bug do `flex:1` em coluna já visto nesta
+      página). */
+  style?: StyleProp<ViewStyle>;
+}>;
 
 /**
  * Revela a seção com um fade + leve subida quando ela entra na tela ao
@@ -16,7 +31,7 @@ import { AccessibilityInfo, Platform, View } from 'react-native';
  * aparece direto, sem transição — a seção nunca fica invisível esperando
  * uma rolagem que não existe fora do navegador.
  */
-export default function RevealOnScroll({ children }: PropsWithChildren) {
+export default function RevealOnScroll({ children, atraso = 0, style }: Props) {
   const ref = useRef<View>(null);
   const [visivel, setVisivel] = useState(Platform.OS !== 'web');
 
@@ -26,6 +41,7 @@ export default function RevealOnScroll({ children }: PropsWithChildren) {
     }
 
     let cancelado = false;
+    let temporizador: ReturnType<typeof setTimeout> | undefined;
     AccessibilityInfo.isReduceMotionEnabled?.()
       .then((reduzir) => {
         if (cancelado) return;
@@ -39,7 +55,7 @@ export default function RevealOnScroll({ children }: PropsWithChildren) {
         const observador = new IntersectionObserver(
           ([entrada]) => {
             if (entrada.isIntersecting) {
-              setVisivel(true);
+              temporizador = setTimeout(() => setVisivel(true), atraso);
               observador.disconnect();
             }
           },
@@ -52,8 +68,9 @@ export default function RevealOnScroll({ children }: PropsWithChildren) {
 
     return () => {
       cancelado = true;
+      if (temporizador) clearTimeout(temporizador);
     };
-  }, []);
+  }, [atraso]);
 
   // Propriedades de transição CSS não existem no tipo ViewStyle do RN — só o
   // react-native-web as reconhece, no nativo (onde este componente nem monta
@@ -69,7 +86,7 @@ export default function RevealOnScroll({ children }: PropsWithChildren) {
   } as any;
 
   return (
-    <View ref={ref} style={estiloWeb}>
+    <View ref={ref} style={[style, estiloWeb]}>
       {children}
     </View>
   );

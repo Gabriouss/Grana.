@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   cardTextos: { flex: 1 },
   cardNome: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   cardCategoria: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: 1 },
-  cardValor: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  cardValor: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   checkSelo: {
     width: 22,
     height: 22,
