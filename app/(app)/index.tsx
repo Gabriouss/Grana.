@@ -60,6 +60,8 @@ import {
 } from '@/lib/monthly-wrapped';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
 import OnboardingModal from '@/components/OnboardingModal';
+import HomeTourOverlay, { type Rect } from '@/components/HomeTourOverlay';
+import { HOME_TOUR_STEPS, homeTourJaVisto, marcarHomeTourVisto, type HomeTourStepId } from '@/lib/home-tour';
 import DatePickerModal from '@/components/DatePickerModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
@@ -192,6 +194,45 @@ export default function InicioScreen() {
   function markOnboardingSeen() {
     supabase.auth.updateUser({ data: { onboarding_seen: true } });
   }
+
+  // Tour essencial da Início: 5 pontos tocáveis sobre elementos reais da
+  // tela. Nunca simultâneo com o OnboardingModal — só considera abrir depois
+  // que onboarding_seen já é true, o que também cobre o caso de acabar de
+  // fechar o onboarding nesta mesma sessão: markOnboardingSeen() dispara
+  // USER_UPDATED, o listener em lib/auth-context.tsx atualiza `session`, e
+  // este efeito roda de novo com a flag já true.
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourTargets, setTourTargets] = useState<Partial<Record<HomeTourStepId, Rect>>>({});
+  const tourRefs = useRef<Partial<Record<HomeTourStepId, View | null>>>({});
+
+  function medirTour(): Promise<void> {
+    const pendentes = HOME_TOUR_STEPS.map(
+      (s) =>
+        new Promise<void>((resolve) => {
+          const node = tourRefs.current[s.id];
+          if (!node) return resolve();
+          node.measureInWindow((x, y, width, height) => {
+            setTourTargets((prev) => ({ ...prev, [s.id]: { x, y, width, height } }));
+            resolve();
+          });
+        })
+    );
+    return Promise.all(pendentes).then(() => undefined);
+  }
+
+  useEffect(() => {
+    if (isDemoMode || !userId || loading || onboardingOpen) return;
+    if (session?.user.user_metadata?.onboarding_seen !== true) return;
+    homeTourJaVisto().then((visto) => {
+      if (visto) return;
+      // Espera o próximo frame pra medir depois que a grade de widgets já
+      // fez o primeiro layout — mesmo raciocínio de medirTudo() em
+      // components/WidgetGrid.tsx.
+      requestAnimationFrame(() => {
+        medirTour().then(() => setTourOpen(true));
+      });
+    });
+  }, [isDemoMode, userId, loading, onboardingOpen, session]);
 
   const load = useCallback(async () => {
     if (isDemoMode) {
@@ -721,7 +762,16 @@ export default function InicioScreen() {
      um objeto em vez de um switch porque a ordem de exibição já vem pronta
      de `homeLayout`; este objeto só precisa saber traduzir chave -> JSX. */
   const HOME_BLOCOS: Record<HomeBlockConfig['key'], React.ReactNode> = {
-    saldo: <SafeToSpendCard data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />,
+    saldo: (
+      <View
+        ref={(n) => {
+          tourRefs.current.saldo = n;
+        }}
+        collapsable={false}
+      >
+        <SafeToSpendCard data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
+      </View>
+    ),
     cofrinhos: (
       <GoalsCarousel
         goals={goals}
@@ -828,7 +878,13 @@ export default function InicioScreen() {
       </View>
     ),
     categoria: (
-      <View style={styles.card}>
+      <View
+        style={styles.card}
+        ref={(n) => {
+          tourRefs.current.graficos = n;
+        }}
+        collapsable={false}
+      >
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Gastos por categoria</Text>
           <PrivacyValue>
@@ -918,13 +974,20 @@ export default function InicioScreen() {
       </View>
     ),
     credito: (
-      <CreditSummaryCard
-        cards={activeWalletId === 'total' ? creditCards : creditCards.filter((c) => c.wallet_id === activeWalletId)}
-        transactions={walletTransactions}
-        year={selectedYear}
-        month={selectedMonth}
-        onPress={() => router.push('/credito')}
-      />
+      <View
+        ref={(n) => {
+          tourRefs.current.credito = n;
+        }}
+        collapsable={false}
+      >
+        <CreditSummaryCard
+          cards={activeWalletId === 'total' ? creditCards : creditCards.filter((c) => c.wallet_id === activeWalletId)}
+          transactions={walletTransactions}
+          year={selectedYear}
+          month={selectedMonth}
+          onPress={() => router.push('/credito')}
+        />
+      </View>
     ),
     boletos: (
       <View style={{ gap: spacing.sm }}>
@@ -1031,11 +1094,18 @@ export default function InicioScreen() {
         }
         right={
           <>
-            <HeaderAction
-              icon="logo-whatsapp"
-              onPress={abrirWhatsappBot}
-              accessibilityLabel="Lançar gastos pelo WhatsApp"
-            />
+            <View
+              ref={(n) => {
+                tourRefs.current.whatsapp = n;
+              }}
+              collapsable={false}
+            >
+              <HeaderAction
+                icon="logo-whatsapp"
+                onPress={abrirWhatsappBot}
+                accessibilityLabel="Lançar gastos pelo WhatsApp"
+              />
+            </View>
             <HeaderAction
               icon={hidden ? 'eye-off-outline' : 'eye-outline'}
               onPress={() => {
@@ -1077,6 +1147,12 @@ export default function InicioScreen() {
             largura do próprio texto e a fileira desliza quando não couber —
             mesmo padrão dos chips de categoria logo abaixo. */}
         <FadeIn delay={40}>
+          <View
+            ref={(n) => {
+              tourRefs.current.lancar = n;
+            }}
+            collapsable={false}
+          >
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -1118,6 +1194,7 @@ export default function InicioScreen() {
             }}
           />
           </ScrollView>
+          </View>
         </FadeIn>
 
         {/* Blocos personalizáveis da Home — ordem e visibilidade vêm de
@@ -1420,6 +1497,16 @@ export default function InicioScreen() {
           load();
           carregarLayoutHome().then(setHomeLayout);
           markOnboardingSeen();
+        }}
+      />
+
+      <HomeTourOverlay
+        visible={tourOpen}
+        steps={HOME_TOUR_STEPS}
+        targets={tourTargets}
+        onFinish={() => {
+          setTourOpen(false);
+          marcarHomeTourVisto();
         }}
       />
 
