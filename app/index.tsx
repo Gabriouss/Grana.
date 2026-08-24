@@ -450,6 +450,19 @@ function ConteudoWeb() {
      REAL pra primeira dobra fechar em 16:9 exatos. */
   const [alturaCabecalho, setAlturaCabecalho] = useState(0);
 
+  // Âncoras das abas do cabeçalho — cada uma envolve a seção-alvo inteira
+  // (ver mais abaixo), não fica dentro do RevealOnScroll: o próprio
+  // RevealOnScroll documenta que style/posicionamento precisa estar no
+  // filho direto do flex, e a mesma restrição vale pra uma ref de scroll.
+  const refProduto = useRef<View>(null);
+  const refPrecos = useRef<View>(null);
+
+  function rolarPara(ref: React.RefObject<View | null>) {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const no = ref.current as unknown as HTMLElement | null;
+    no?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   const FEATURES = [
     {
       icone: 'mic-outline' as const,
@@ -494,9 +507,18 @@ function ConteudoWeb() {
       >
         <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.lg }]}>
           <BrandLogotype width={104} />
-          <AppPressable onPress={() => router.push('/sign-in')} hitSlop={12}>
-            <Text style={styles.entrarTexto}>Entrar</Text>
-          </AppPressable>
+          {/* "Entrar" saiu daqui — esta página é pra converter quem chega de
+              fora, não pra logar quem já é cliente (esse link continua
+              existindo, só que discreto no rodapé). No lugar, abas que rolam
+              pra dentro da própria página. */}
+          <View style={styles.navAbas}>
+            <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={12}>
+              <Text style={styles.entrarTexto}>Produto</Text>
+            </AppPressable>
+            <AppPressable onPress={() => rolarPara(refPrecos)} hitSlop={12}>
+              <Text style={styles.entrarTexto}>Preços</Text>
+            </AppPressable>
+          </View>
         </View>
       </View>
 
@@ -512,29 +534,31 @@ function ConteudoWeb() {
       </View>
 
       {/* ───────── Reconhece isso? (dor, antes da solução) ───────── */}
-      <Dobra>
-        <View style={styles.secao}>
-          <RevealOnScroll>
-            <Text style={styles.secaoEyebrow}>Reconhece isso?</Text>
-            <TituloSecao>Não é falta de disciplina. É que anotar dá trabalho.</TituloSecao>
-          </RevealOnScroll>
+      <View ref={refProduto}>
+        <Dobra>
+          <View style={styles.secao}>
+            <RevealOnScroll>
+              <Text style={styles.secaoEyebrow}>Reconhece isso?</Text>
+              <TituloSecao>Não é falta de disciplina. É que anotar dá trabalho.</TituloSecao>
+            </RevealOnScroll>
 
-          <View style={styles.grid}>
-            {CENAS_DOR.map((c, i) => (
-              <RevealOnScroll key={c.texto} atraso={i * 90} style={{ flexBasis: largura2 }}>
-                <View style={styles.cardCena}>
-                  <Ionicons name={c.icone} size={22} color={theme.down} aria-hidden />
-                  <Text style={styles.textoCena}>{c.texto}</Text>
-                </View>
-              </RevealOnScroll>
-            ))}
+            <View style={styles.grid}>
+              {CENAS_DOR.map((c, i) => (
+                <RevealOnScroll key={c.texto} atraso={i * 90} style={{ flexBasis: largura2 }}>
+                  <View style={styles.cardCena}>
+                    <Ionicons name={c.icone} size={22} color={theme.down} aria-hidden />
+                    <Text style={styles.textoCena}>{c.texto}</Text>
+                  </View>
+                </RevealOnScroll>
+              ))}
+            </View>
+
+            <RevealOnScroll atraso={280}>
+              <Text style={styles.pontePergunta}>O Grana. não pede mais disciplina. Pede só que você fale.</Text>
+            </RevealOnScroll>
           </View>
-
-          <RevealOnScroll atraso={280}>
-            <Text style={styles.pontePergunta}>O Grana. não pede mais disciplina. Pede só que você fale.</Text>
-          </RevealOnScroll>
-        </View>
-      </Dobra>
+        </Dobra>
+      </View>
 
       {/* ───────── Como entra o lançamento ───────── */}
       <Dobra levantada>
@@ -627,6 +651,40 @@ function ConteudoWeb() {
         </View>
       </Dobra>
 
+      {/* ───────── Preços ───────── */}
+      <View ref={refPrecos}>
+        <Dobra>
+          <View style={styles.secao}>
+            <RevealOnScroll>
+              <Text style={styles.secaoEyebrow}>Quanto custa</Text>
+              <TituloSecao>Grátis por enquanto. Sem letra miúda escondida.</TituloSecao>
+              <Text style={styles.secaoTexto}>
+                O Grana. está em acesso antecipado — criar conta não custa nada agora. Quando existir um
+                plano pago, quem já usa é avisado antes de qualquer cobrança começar.
+              </Text>
+            </RevealOnScroll>
+
+            <RevealOnScroll atraso={90} style={styles.cardPrecoWrap}>
+              <View style={[styles.cardFeature, styles.cardPreco]}>
+                <Text style={styles.precoRotulo}>Plano único</Text>
+                <View style={styles.precoLinha}>
+                  <Text style={styles.precoValor}>R$ —,—</Text>
+                  <Text style={styles.precoPeriodo}>/mês</Text>
+                </View>
+                {/* O rótulo abaixo não é decoração da cor apagada do valor —
+                    é o que garante que a mensagem "isto não é um preço real"
+                    chegue mesmo pra quem não distingue bem o tom do verde. */}
+                <Text style={styles.precoEmDefinicao}>Preço em definição</Text>
+                <Text style={styles.featureTexto}>
+                  Enquanto isso, acesso completo é grátis. Sem cartão, sem cobrança surpresa.
+                </Text>
+                <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." />
+              </View>
+            </RevealOnScroll>
+          </View>
+        </Dobra>
+      </View>
+
       {/* ───────── FAQ ───────── */}
       <Dobra>
         <RevealOnScroll>
@@ -687,6 +745,11 @@ function ConteudoWeb() {
             <AppPressable onPress={() => router.push('/exclusao-de-dados')} hitSlop={8}>
               <Text style={styles.rodapeLink}>Excluir dados</Text>
             </AppPressable>
+            {/* Único link de AÇÃO no meio de três links legais — por isso
+                por último, sem se misturar com Termos/Privacidade/Excluir. */}
+            <AppPressable onPress={() => router.push('/sign-in')} hitSlop={8}>
+              <Text style={styles.rodapeLink}>Entrar</Text>
+            </AppPressable>
           </View>
           {/* Sem e-mail solto aqui de propósito — esta é a página que mais
               recebe clique frio de anúncio/busca, o pior lugar pra deixar um
@@ -712,6 +775,7 @@ const styles = StyleSheet.create({
 
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: spacing.lg },
   entrarTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
+  navAbas: { flexDirection: 'row', gap: spacing.xl },
 
   palcoHero: { position: 'relative' },
   /* O recorte dos GlowOrb vive nesta camada, não no `palcoHero` — sem isso o
@@ -818,6 +882,26 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     padding: spacing.lg,
     ...sombraCard,
+  },
+
+  // Card único, não grade — some do fluxo "3-por-linha" das outras seções.
+  // Alinhado à ESQUERDA, junto do título/texto acima (não centralizado na
+  // largura da seção inteira, que ficava visualmente solto à direita do
+  // resto do conteúdo, que é sempre alinhado à esquerda nesta página).
+  cardPrecoWrap: { alignSelf: 'flex-start', width: '100%', maxWidth: 380 },
+  cardPreco: { alignItems: 'flex-start', gap: spacing.sm },
+  precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
+  // Não usa theme.up (a cor viva dos valores reais no mock da página) de
+  // propósito — apagado é o sinal visual de que isto não é um preço real.
+  precoValor: { color: theme.inkFaint, fontSize: type.valor + 6, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  precoPeriodo: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
+  precoEmDefinicao: {
+    color: theme.inkFaint,
+    fontSize: type.legenda,
+    fontFamily: fonts.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   // Aplica-se tanto ao card de recurso quanto ao de segurança — nenhum dos
   // dois leva a lugar nenhum (não são clicáveis), então o "levantar" no
