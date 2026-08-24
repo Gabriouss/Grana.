@@ -330,7 +330,11 @@ function ConteudoWeb() {
               <Text style={styles.rodapeLink}>Excluir dados</Text>
             </AppPressable>
           </View>
-          <Text style={styles.rodapeContato}>gbr.design30@gmail.com</Text>
+          {/* Sem e-mail solto aqui de propósito — esta é a página que mais
+              recebe clique frio de anúncio/busca, o pior lugar pra deixar um
+              endereço pessoal exposto a bot de spam. O contato exigido pela
+              LGPD já está um clique de distância, na Política de
+              Privacidade (ver lib/legal-content.ts). */}
         </View>
       </View>
     </ScrollView>
@@ -499,5 +503,4 @@ const styles = StyleSheet.create({
   },
   rodapeLinks: { flexDirection: 'row', gap: spacing.lg },
   rodapeLink: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
-  rodapeContato: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
 });
