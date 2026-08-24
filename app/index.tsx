@@ -232,8 +232,15 @@ const FATIAS_CATEGORIA: PieSlice[] = [
 ];
 
 function TelaSafeToSpend() {
+  /* O card deste mock é o próprio capítulo compacto do herói, que já não tem
+     a largura do notebook desktop — e a rosca tem 188px FIXOS. Lado a lado
+     (flexDirection: 'row'), o texto ficava só com o resto: ~100px numa tela
+     de 390px, estreito demais pro "R$ 48,00" em fonte grande, que quebrava
+     em três linhas ("R$" / "48,0" / "0"). Empilhado, o texto recebe a
+     largura do card inteiro e a rosca sai centralizada abaixo dele. */
+  const { ehCompacto } = useBreakpoint();
   return (
-    <View style={styles.mockPainel}>
+    <View style={[styles.mockPainel, ehCompacto && styles.mockPainelCompacto]}>
       <View style={styles.mockPainelTexto}>
         <Text style={styles.mockRotulo}>Livre para gastar hoje</Text>
         <Text style={styles.mockValor}>R$ 48,00</Text>
@@ -249,7 +256,9 @@ function TelaSafeToSpend() {
       </View>
       {/* O gráfico de rosca REAL da tela de Gráficos, com as cores reais das
           categorias — não um desenho de gráfico feito pra landing page. */}
-      <PieChart data={FATIAS_CATEGORIA} size={188} />
+      <View style={ehCompacto && styles.mockPainelGraficoCompacto}>
+        <PieChart data={FATIAS_CATEGORIA} size={188} />
+      </View>
     </View>
   );
 }
@@ -946,6 +955,11 @@ const styles = StyleSheet.create({
   mockLinhaValor: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
 
   mockPainel: { flexDirection: 'row', alignItems: 'center', gap: spacing.xl },
+  /* Ver o comentário em TelaSafeToSpend — some o `flex:1` do texto (que
+     dividia à força a linha com a rosca de 188px) e centraliza a rosca
+     abaixo, com respiro. */
+  mockPainelCompacto: { flexDirection: 'column', alignItems: 'stretch', gap: spacing.lg },
+  mockPainelGraficoCompacto: { alignItems: 'center' },
   mockPainelTexto: { flex: 1 },
   mockLegendaCategorias: { gap: 6, marginTop: spacing.lg },
   mockLegendaLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
