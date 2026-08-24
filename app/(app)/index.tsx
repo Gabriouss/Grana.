@@ -205,19 +205,41 @@ export default function InicioScreen() {
   const [tourTargets, setTourTargets] = useState<Partial<Record<HomeTourStepId, Rect>>>({});
   const tourRefs = useRef<Partial<Record<HomeTourStepId, View | null>>>({});
 
+  function medirUmTour(id: HomeTourStepId): Promise<void> {
+    return new Promise((resolve) => {
+      const node = tourRefs.current[id];
+      if (!node) return resolve();
+      node.measureInWindow((x, y, width, height) => {
+        setTourTargets((prev) => ({ ...prev, [id]: { x, y, width, height } }));
+        resolve();
+      });
+    });
+  }
+
   function medirTour(): Promise<void> {
-    const pendentes = HOME_TOUR_STEPS.map(
-      (s) =>
-        new Promise<void>((resolve) => {
-          const node = tourRefs.current[s.id];
-          if (!node) return resolve();
-          node.measureInWindow((x, y, width, height) => {
-            setTourTargets((prev) => ({ ...prev, [s.id]: { x, y, width, height } }));
-            resolve();
-          });
-        })
-    );
-    return Promise.all(pendentes).then(() => undefined);
+    return Promise.all(HOME_TOUR_STEPS.map((s) => medirUmTour(s.id))).then(() => undefined);
+  }
+
+  /* Rola até o alvo do passo atual ficar visível, e remede depois. Sem isso,
+     um alvo abaixo da dobra (comum em tela de celular, onde a Início é bem
+     mais alta que a viewport) deixava o destaque E O PRÓPRIO TOOLTIP fora da
+     área visível — os botões Pular/Concluir ficavam atrás da barra de
+     navegação, sem jeito de tocar. HomeTourOverlay também tem um clamp de
+     segurança pra esse caso, mas rolar até o alvo é a correção de verdade —
+     o clamp só evita a pior consequência se o scroll não rolar a tempo.
+     Só web: `scrollIntoView` é DOM puro, e é onde o problema foi visto (o
+     relato foi "no navegador do celular"). Sem guarda equivalente no app
+     nativo, o clamp do overlay é quem segura a peteca lá. */
+  function aoMudarPassoTour(id: HomeTourStepId) {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const no = tourRefs.current[id] as unknown as HTMLElement | null;
+    if (!no) return;
+    no.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // A rolagem é suave (animada) — remedir cedo demais pegaria a posição de
+    // antes de rolar. 400ms cobre a duração típica do scrollIntoView.
+    setTimeout(() => {
+      medirUmTour(id);
+    }, 400);
   }
 
   useEffect(() => {
@@ -1504,6 +1526,7 @@ export default function InicioScreen() {
         visible={tourOpen}
         steps={HOME_TOUR_STEPS}
         targets={tourTargets}
+        onStepChange={aoMudarPassoTour}
         onFinish={() => {
           setTourOpen(false);
           marcarHomeTourVisto();

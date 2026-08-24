@@ -14,6 +14,13 @@ type Props = {
       silenciosamente descartado da sequência. */
   targets: Partial<Record<HomeTourStepId, Rect>>;
   onFinish: () => void;
+  /** Chamado sempre que o passo exibido muda (inclusive na abertura do
+      primeiro passo) — quem usa aproveita pra rolar a tela até o alvo antes
+      de medir de novo. Sem isso, um alvo abaixo da dobra (comum em telas de
+      celular, onde a Início é bem mais alta que a tela) fazia o destaque e
+      até o próprio tooltip saírem da área visível — o "travamento sem botão
+      pra apertar" relatado. */
+  onStepChange?: (id: HomeTourStepId) => void;
 };
 
 /* Sem recorte real (buraco/máscara) no fundo escurecido — a borda de
@@ -22,7 +29,13 @@ type Props = {
    instalado no projeto), não necessária agora. */
 const FOLGA_DESTAQUE = 6;
 
-export default function HomeTourOverlay({ visible, steps, targets, onFinish }: Props) {
+/* Altura estimada do tooltip, só pra decidir o fallback de segurança abaixo
+   — não precisa ser exata, só grande o bastante pra a estimativa de "cabe
+   ali" ser conservadora. Título + 2-3 linhas de texto + botões, no
+   `type.apoio`/`type.corpo` deste tema, não passa disso na prática. */
+const ALTURA_TOOLTIP_ESTIMADA = 190;
+
+export default function HomeTourOverlay({ visible, steps, targets, onFinish, onStepChange }: Props) {
   const { width: larguraJanela, height: alturaTela } = useWindowDimensions();
   const passosValidos = steps.filter((s) => targets[s.id]);
   const [passo, setPasso] = useState(0);
@@ -45,6 +58,13 @@ export default function HomeTourOverlay({ visible, steps, targets, onFinish }: P
     Animated.spring(anim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
   }, [passo, visible, passosValidos.length]);
 
+  // Avisa quem está de fora qual passo está ativo agora — é o gancho pra
+  // rolar a tela até o alvo (ver comentário na prop, e app/(app)/index.tsx).
+  useEffect(() => {
+    if (!visible || passosValidos.length === 0) return;
+    onStepChange?.(passosValidos[passo].id);
+  }, [visible, passo, passosValidos.length]);
+
   if (!visible || passosValidos.length === 0) return null;
 
   const atual = passosValidos[passo];
@@ -59,11 +79,30 @@ export default function HomeTourOverlay({ visible, steps, targets, onFinish }: P
     height: alvo.height + FOLGA_DESTAQUE * 2,
   };
 
-  // Abaixo do alvo se houver espaço, senão acima — heurística simples pra 5
-  // pontos fixos, não um sistema de posicionamento genérico.
-  const abaixo = alvo.y < alturaTela / 2;
-  const tooltipTop = abaixo ? destino.top + destino.height + spacing.md : undefined;
-  const tooltipBottom = abaixo ? undefined : alturaTela - destino.top + spacing.md;
+  /* O alvo real pode estar fora da área visível — quem chama tenta rolar até
+     ele (onStepChange), mas isso é assíncrono (scroll animado, ou nem existe
+     no nativo) e não pode ser a única garantia. Sem este clamp, um alvo
+     abaixo da dobra fazia a conta `alturaTela - destino.top` dar um número
+     tão grande que o tooltip inteiro saía por baixo da tela — os botões
+     Pular/Concluir ficavam atrás da barra de navegação, inacessíveis: era
+     exatamente o "trava sem indicação de onde apertar" relatado. Quando o
+     alvo está total ou quase totalmente fora da tela, cai num fallback fixo
+     e sempre visível — o destaque pode não aparecer nesse instante, mas o
+     tooltip com os botões nunca fica preso fora do alcance do toque. */
+  const alvoForaDaTela = destino.top + destino.height < spacing.xl || destino.top > alturaTela - spacing.xl;
+
+  const abaixo = !alvoForaDaTela && alvo.y < alturaTela / 2;
+  let tooltipTop: number | undefined;
+  let tooltipBottom: number | undefined;
+
+  if (alvoForaDaTela) {
+    tooltipTop = Math.max(spacing.xl, alturaTela / 2 - ALTURA_TOOLTIP_ESTIMADA / 2);
+  } else if (abaixo) {
+    tooltipTop = Math.min(destino.top + destino.height + spacing.md, alturaTela - ALTURA_TOOLTIP_ESTIMADA - spacing.xl);
+  } else {
+    tooltipBottom = Math.min(alturaTela - destino.top + spacing.md, alturaTela - ALTURA_TOOLTIP_ESTIMADA - spacing.xl);
+  }
+  tooltipBottom = tooltipBottom !== undefined ? Math.max(tooltipBottom, spacing.xl) : undefined;
 
   function avancar() {
     if (ultimo) {
