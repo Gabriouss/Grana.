@@ -30,6 +30,43 @@ export default function LandingPage() {
   return <ConteudoWeb />;
 }
 
+/**
+ * Botão + microcópia de fricção logo abaixo — repetido três vezes na página
+ * de propósito (herói, meio, fechamento). Cada CTA de resposta direta reduz
+ * uma objeção diferente que ainda não foi vencida: "quanto tempo leva" no
+ * herói, "e agora, depois de ver como funciona" no meio, "por que ainda não
+ * cliquei" no fechamento — mas o texto do BOTÃO em si fica igual nos três,
+ * de propósito: repetição do mesmo verbo de ação reforça a ação, variar a
+ * cada seção só confunde o que a pessoa está prestes a fazer.
+ */
+function BotaoCTA({ microcopy, estiloExtra }: { microcopy: string; estiloExtra?: object }) {
+  const router = useRouter();
+  return (
+    <View>
+      <AppPressable
+        style={({ hovered }) => [styles.ctaPrimario, estiloExtra, hovered && styles.ctaPrimarioHover]}
+        onPress={() => router.push('/sign-up')}
+      >
+        <Text style={styles.ctaPrimarioTexto}>Criar conta grátis</Text>
+        <Ionicons name="arrow-forward" size={16} color={theme.paper} />
+      </AppPressable>
+      <Text style={styles.ctaMicrocopy}>{microcopy}</Text>
+    </View>
+  );
+}
+
+const BENEFICIOS_HERO = [
+  'Fala ou manda áudio — nada de digitar',
+  'Categoriza sozinho, na hora',
+  'Mostra quanto sobra pra gastar hoje',
+];
+
+const CENAS_DOR = [
+  'Sexta ao meio-dia, e você não sabe se sobra dinheiro pra sair à noite.',
+  'A fatura chega com um valor que você jura não lembrar de ter gasto.',
+  'Baixou uma planilha pra controlar tudo. Durou quatro dias.',
+];
+
 function ConteudoWeb() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -52,19 +89,24 @@ function ConteudoWeb() {
       <View style={[colunaConteudo, styles.faixa]}>
         <View style={[styles.hero, ehCompacto && styles.heroCompacto]}>
           <View style={[colunaLeitura, !ehCompacto && styles.heroTexto, ehCompacto && { alignItems: 'flex-start' }]}>
-            <Text style={styles.eyebrow}>Lançamento sem fricção</Text>
-            <Text style={styles.headline}>Fala com o Grana.{'\n'}como fala com um amigo.</Text>
+            <Text style={styles.eyebrow}>Acesso antecipado</Text>
+            <Text style={styles.headline}>Cadê meu dinheiro?</Text>
             <Text style={styles.subheadline}>
-              Manda um áudio no WhatsApp, fala em voz alta ou aponta a câmera pra nota — o Grana. organiza
-              sozinho. Sem digitar, sem escolher categoria, sem planilha.
+              Todo mês a mesma cena: o extrato fecha e você não faz ideia de pra onde foi. O Grana. resolve
+              isso antes de virar problema — fala ou manda um áudio no WhatsApp, e o lançamento aparece
+              organizado sozinho.
             </Text>
-            <AppPressable
-              style={({ hovered }) => [styles.ctaPrimario, hovered && styles.ctaPrimarioHover]}
-              onPress={() => router.push('/sign-up')}
-            >
-              <Text style={styles.ctaPrimarioTexto}>Criar minha conta</Text>
-              <Ionicons name="arrow-forward" size={16} color={theme.paper} />
-            </AppPressable>
+
+            <View style={styles.listaBeneficios}>
+              {BENEFICIOS_HERO.map((b) => (
+                <View key={b} style={styles.itemBeneficio}>
+                  <Ionicons name="checkmark" size={16} color={theme.accent2} />
+                  <Text style={styles.textoBeneficio}>{b}</Text>
+                </View>
+              ))}
+            </View>
+
+            <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />
           </View>
 
           <View style={styles.heroDemoCard}>
@@ -74,12 +116,31 @@ function ConteudoWeb() {
         </View>
       </View>
 
+      {/* ───────── Reconhece isso? (dor, antes da solução) ───────── */}
+      <RevealOnScroll>
+      <View style={[colunaConteudo, styles.faixa]}>
+        <View style={[styles.secao, colunaLeitura]}>
+          <Text style={styles.secaoEyebrow}>Reconhece isso?</Text>
+          <Text style={styles.secaoTitulo}>Não é falta de disciplina. É que anotar dá trabalho.</Text>
+          <View style={styles.listaCenas}>
+            {CENAS_DOR.map((c) => (
+              <View key={c} style={styles.itemCena}>
+                <View style={styles.marcadorCena} />
+                <Text style={styles.textoCena}>{c}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.pontePergunta}>O Grana. não pede mais disciplina. Pede só que você fale.</Text>
+        </View>
+      </View>
+      </RevealOnScroll>
+
       {/* ───────── Como entra o lançamento ───────── */}
       <RevealOnScroll>
       <View style={[colunaConteudo, styles.faixa]}>
         <View style={styles.secao}>
-          <Text style={styles.secaoEyebrow}>Três jeitos de registrar</Text>
-          <Text style={styles.secaoTitulo}>Nenhum deles é digitar num formulário</Text>
+          <Text style={styles.secaoEyebrow}>A parte que você não vai adiar</Text>
+          <Text style={styles.secaoTitulo}>O único esforço é lembrar que o gasto existe</Text>
 
           <View style={styles.grid}>
             {[
@@ -108,6 +169,11 @@ function ConteudoWeb() {
               </View>
             ))}
           </View>
+
+          <View style={styles.ctaMeio}>
+            <Text style={styles.ctaMeioTitulo}>Pronto pra parar de perder a conta?</Text>
+            <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." />
+          </View>
         </View>
       </View>
       </RevealOnScroll>
@@ -118,7 +184,7 @@ function ConteudoWeb() {
         <View style={[styles.secao, styles.secaoComCartao]}>
           <View style={colunaLeitura}>
             <Text style={styles.secaoEyebrow}>Depois que o lançamento existe</Text>
-            <Text style={styles.secaoTitulo}>Ele te diz o que fazer com essa informação</Text>
+            <Text style={styles.secaoTitulo}>Ele não só guarda. Avisa antes de você se apertar.</Text>
             <Text style={styles.secaoTexto}>
               Não é só uma lista de gastos. O card de <Text style={styles.destaqueInline}>Livre para Gastar</Text>{' '}
               soma o que ainda falta pagar no mês e mostra quanto sobra por dia, sem susto. A linha do tempo de
@@ -140,8 +206,11 @@ function ConteudoWeb() {
       <RevealOnScroll>
       <View style={[colunaConteudo, styles.faixa]}>
         <View style={styles.secao}>
-          <Text style={styles.secaoEyebrow}>Antes de perguntar</Text>
-          <Text style={styles.secaoTitulo}>O que o Grana. faz e o que ele nunca faz</Text>
+          <Text style={styles.secaoEyebrow}>A pergunta que todo mundo faz</Text>
+          <Text style={styles.secaoTitulo}>"Tá, mas é seguro dar meus gastos pra um app?"</Text>
+          <Text style={styles.secaoTexto}>
+            Faz sentido perguntar. Aqui está exatamente o que a gente faz — e o que a gente nunca faz.
+          </Text>
 
           <View style={styles.grid}>
             {[
@@ -199,14 +268,8 @@ function ConteudoWeb() {
       <RevealOnScroll>
       <View style={[colunaConteudo, styles.faixa]}>
         <View style={[styles.ctaFinal, colunaLeitura]}>
-          <Text style={styles.ctaFinalTitulo}>Seu próximo gasto pode ser o primeiro que você registra sem esforço.</Text>
-          <AppPressable
-            style={({ hovered }) => [styles.ctaPrimario, styles.ctaFinalBotao, hovered && styles.ctaPrimarioHover]}
-            onPress={() => router.push('/sign-up')}
-          >
-            <Text style={styles.ctaPrimarioTexto}>Criar minha conta</Text>
-            <Ionicons name="arrow-forward" size={16} color={theme.paper} />
-          </AppPressable>
+          <Text style={styles.ctaFinalTitulo}>Você vai continuar se perguntando "cadê meu dinheiro" até quando?</Text>
+          <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." estiloExtra={styles.ctaFinalBotao} />
         </View>
       </View>
       </RevealOnScroll>
@@ -264,6 +327,32 @@ const styles = StyleSheet.create({
   },
   ctaPrimarioHover: { opacity: 0.88 },
   ctaPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  // Fica sob TODO botão de CTA — reduz a maior fricção não dita ("quanto
+  // tempo vou perder", "vão me cobrar") no exato instante em que a pessoa
+  // está decidindo clicar, em vez de deixar a resposta só no FAQ lá embaixo.
+  ctaMicrocopy: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },
+
+  listaBeneficios: { gap: spacing.sm, marginBottom: spacing.xl },
+  itemBeneficio: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  textoBeneficio: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
+
+  listaCenas: { gap: spacing.md, marginTop: spacing.md, marginBottom: spacing.lg },
+  itemCena: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  marcadorCena: { width: 5, height: 5, borderRadius: 3, backgroundColor: theme.down, marginTop: 9 },
+  textoCena: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, lineHeight: 22, fontFamily: fonts.light },
+  // "down" (a mesma cor de saída/gasto usada no resto do app) marca a dor;
+  // a ponte de volta pra solução já usa o accent2 da marca — a paleta muda
+  // de tom no exato lugar onde a copy muda de tom.
+  pontePergunta: { color: theme.accent2, fontSize: type.corpo, fontFamily: fonts.regular },
+
+  ctaMeio: {
+    marginTop: spacing.xxl,
+    alignItems: 'center',
+    paddingTop: spacing.xxl,
+    borderTopWidth: 1,
+    borderTopColor: theme.rule,
+  },
+  ctaMeioTitulo: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular, marginBottom: spacing.lg, textAlign: 'center' },
 
   heroDemoCard: {
     flex: 1,
