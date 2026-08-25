@@ -116,7 +116,7 @@ export default function WalletPickerModal({
               {selectedId === 'total' && <View style={styles.radioInner} />}
             </View>
             <View style={[styles.walletIconWrap, { backgroundColor: 'rgba(31,169,141,0.16)' }]}>
-              <Ionicons name="cash-outline" size={20} color="#1fa98d" />
+              <Ionicons name="cash-outline" size={20} color={theme.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.walletName}>Total</Text>
@@ -143,13 +143,13 @@ export default function WalletPickerModal({
                 <View
                   style={[
                     styles.walletIconWrap,
-                    { backgroundColor: `${w.color || '#1fa98d'}26` },
+                    { backgroundColor: `${w.color || theme.accent}26` },
                   ]}
                 >
                   <Ionicons
                     name={(w.icon as any) || 'wallet-outline'}
                     size={20}
-                    color={w.color || '#1fa98d'}
+                    color={w.color || theme.accent}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -211,7 +211,7 @@ export default function WalletPickerModal({
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator size="small" color="#052229" />
+                    <ActivityIndicator size="small" color={theme.paper} />
                   ) : (
                     <Text style={styles.createConfirmText}>Criar Conta</Text>
                   )}
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   createConfirmText: {
-    color: '#052229',
+    color: theme.paper,
     fontSize: type.apoio, fontFamily: fonts.regular },
   footer: {
     flexDirection: 'row',

@@ -15,7 +15,13 @@ const PATH_D =
 export default function BrandLogotype({ width = 160 }: { width?: number }) {
   const height = (width * VIEWBOX_H) / VIEWBOX_W;
   return (
-    <Svg width={width} height={height} viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}>
+    <Svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+      accessibilityLabel="Grana."
+      role="img"
+    >
       <Defs>
         <LinearGradient id="grad" x1={333.91} y1={-198.88} x2={1375.52} y2={842.73} gradientUnits="userSpaceOnUse">
           <Stop offset="0" stopColor="#b0f7c9" />

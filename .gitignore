@@ -57,3 +57,7 @@ deno.lock
 
 # metadados locais do `supabase link` (ref do projeto, URLs internas) — não é segredo, mas é estado da máquina, não do repositório
 supabase/.temp/
+
+# configuração local do Claude Code (hooks, permissões) — por convenção do
+# próprio Claude Code é por-máquina, não compartilhada entre as duas máquinas
+.claude/settings.local.json

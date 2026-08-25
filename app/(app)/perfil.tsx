@@ -624,7 +624,7 @@ export default function PerfilScreen() {
             disabled={deleting}
           >
             {deleting ? (
-              <ActivityIndicator color="#e08a7d" size="small" />
+              <ActivityIndicator color={theme.danger} size="small" />
             ) : (
               <Text style={styles.deleteText}>Excluir conta e dados</Text>
             )}
@@ -900,8 +900,8 @@ const styles = StyleSheet.create({
   reauthTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   reauthText: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 19, fontFamily: fonts.light },
   reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: type.corpo, color: theme.ink, backgroundColor: theme.paper, fontFamily: fonts.regular },
-  reauthError: { color: '#e08a7d', fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.regular },
-  reauthDanger: { backgroundColor: '#e08a7d', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  reauthError: { color: theme.danger, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.regular },
+  reauthDanger: { backgroundColor: theme.danger, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   reauthDangerText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   reauthCancel: { paddingVertical: 12, alignItems: 'center' },
   reauthCancelText: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
@@ -960,8 +960,8 @@ const styles = StyleSheet.create({
   signOutBtn: { borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   signOutBtnHover: { backgroundColor: theme.paperRaised },
   signOutText: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
-  deleteBtn: { borderWidth: 1, borderColor: '#bb6b6040', backgroundColor: '#bb6b6015', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
-  deleteBtnHover: { backgroundColor: '#bb6b6030' },
-  deleteText: { color: '#e08a7d', fontSize: type.corpo, fontFamily: fonts.regular },
+  deleteBtn: { borderWidth: 1, borderColor: `${theme.danger}40`, backgroundColor: `${theme.danger}15`, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  deleteBtnHover: { backgroundColor: `${theme.danger}30` },
+  deleteText: { color: theme.danger, fontSize: type.corpo, fontFamily: fonts.regular },
 });
 

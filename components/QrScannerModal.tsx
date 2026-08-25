@@ -18,6 +18,7 @@ import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parse
 import { guessCategoryFromText } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { addTransaction } from '@/lib/data';
+import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { hapticSuccess, hapticTap } from '@/lib/haptics';
@@ -77,6 +78,11 @@ export default function QrScannerModal({
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Alimentação');
   const [saving, setSaving] = useState(false);
+  /* Mesmo raciocínio de PasteReceiptModal.tsx: `saving` (estado) só
+     desabilita o botão depois de um re-render, e um toque duplo rápido
+     pode disparar `handleSave` duas vezes antes disso — o ref bloqueia de
+     forma síncrona, sem esperar o React repintar nada. */
+  const savingRef = useRef(false);
 
   function resetState() {
     setNota(null);
@@ -106,7 +112,7 @@ export default function QrScannerModal({
   }
 
   async function handleSave() {
-    if (!nota) return;
+    if (!nota || savingRef.current) return;
     const val = parseAmount(amount);
     if (!val || val <= 0) {
       Alert.alert('Valor inválido', 'Informe o valor total da nota em R$.');
@@ -121,6 +127,7 @@ export default function QrScannerModal({
     }
 
     const catObj = guessCategoryFromText(category);
+    savingRef.current = true;
     setSaving(true);
     try {
       await addTransaction({
@@ -137,8 +144,9 @@ export default function QrScannerModal({
       onClose();
       onSuccess();
     } catch (e: any) {
-      Alert.alert('Erro ao salvar', e.message);
+      Alert.alert('Erro ao salvar', mensagemErro(e));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -190,6 +198,9 @@ export default function QrScannerModal({
                   onPress={() => setLanterna((v) => !v)}
                   hitSlop={12}
                   style={[styles.botaoRedondo, lanterna && styles.botaoRedondoAtivo]}
+                  accessibilityRole="switch"
+                  accessibilityLabel="Lanterna"
+                  accessibilityState={{ checked: lanterna }}
                 >
                   <Ionicons name={lanterna ? 'flashlight' : 'flashlight-outline'} size={20} color={lanterna ? theme.paper : theme.ink} />
                 </AppPressable>

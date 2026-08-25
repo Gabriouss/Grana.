@@ -25,6 +25,19 @@ export const theme = {
      era. Para botões, o padrão continua sendo `ruleStrong` na borda ou
      opacidade — hover não precisa ser fundo em tudo. */
   hover: 'rgba(174,255,227,0.07)',
+  /* Cor de perigo/atenção — excluir conta, fatura atrasada, erro de
+     reautenticação. Já era usada assim em `app/(app)/perfil.tsx` e
+     `app/(app)/credito.tsx`, só nunca tinha virado token: cada tela
+     escrevia o hex cru, e uma delas (o botão "Excluir conta") chegou a
+     reaproveitar por engano a cor da categoria "Alimentação" pro mesmo
+     papel. Valor já catalogado como "proposto" em
+     design-system/tokens/tokens.json antes deste token existir de verdade. */
+  danger: '#e08a7d',
+  /* Tom do cartão de crédito selecionado em app/(app)/credito.tsx — mais
+     claro que `paperRaised` de propósito, pra distinguir visualmente do
+     estado não selecionado. Só usado ali; nomeado aqui pra não ficar como
+     hex solto competindo com o resto da paleta de superfície. */
+  paperSelected: '#0c353e',
 };
 
 /* Recorte de 30 cores da paleta "Refreshing Aqua Tones" (lib/demo-data.ts),

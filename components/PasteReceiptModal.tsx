@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -18,6 +18,7 @@ import {
 } from '@/lib/heuristics';
 import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { addTransaction } from '@/lib/data';
+import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
 import CategoryChips from './CategoryChips';
 import AppPressable from './AppPressable';
@@ -46,6 +47,13 @@ export default function PasteReceiptModal({
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Alimentação');
   const [saving, setSaving] = useState(false);
+  /* `saving` (estado) já desabilita o botão visualmente, mas o próprio
+     `AppPressable` só reflete o novo valor de `disabled` depois de um
+     re-render — um toque duplo rápido o bastante pode disparar `handleSave`
+     duas vezes antes desse re-render acontecer, criando dois lançamentos
+     idênticos. O ref é síncrono: barra a segunda chamada no mesmo instante
+     em que a primeira entra, sem esperar o React repintar nada. */
+  const savingRef = useRef(false);
   /* Só true quando o texto veio do reconhecimento de voz — quem colou o
      próprio comprovante já viu o que digitou/colou na textarea, então
      repetir o texto na tela de confirmação seria eco redundante. Voz é o
@@ -96,6 +104,8 @@ export default function PasteReceiptModal({
   }, [visible, initialText]);
 
   async function handleSave() {
+    if (savingRef.current) return;
+
     const val = parseAmount(amount);
     if (!val || val <= 0) {
       Alert.alert('Valor inválido', 'Informe um valor válido em R$.');
@@ -110,6 +120,7 @@ export default function PasteReceiptModal({
     }
 
     const catObj = guessCategoryFromText(category);
+    savingRef.current = true;
     setSaving(true);
     try {
       await addTransaction({
@@ -124,8 +135,9 @@ export default function PasteReceiptModal({
       onClose();
       onSuccess();
     } catch (e: any) {
-      Alert.alert('Erro ao salvar', e.message);
+      Alert.alert('Erro ao salvar', mensagemErro(e));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }

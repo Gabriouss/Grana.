@@ -245,7 +245,7 @@ export default function CreditoScreen() {
       })();
   const INVOICE_STATUS_LABEL: Record<'paga' | 'atrasada' | 'vence-hoje' | 'aberta', { texto: string; cor: string }> = {
     paga: { texto: 'Paga ✓', cor: theme.up },
-    atrasada: { texto: 'Atrasada', cor: '#e08a7d' },
+    atrasada: { texto: 'Atrasada', cor: theme.danger },
     'vence-hoje': { texto: 'Vence hoje', cor: theme.accent2 },
     aberta: { texto: 'Aberta', cor: theme.inkFaint },
   };
@@ -779,7 +779,7 @@ export default function CreditoScreen() {
                 abrirNovaCompra();
               }}
             >
-              <Ionicons name="add" size={18} color="#052229" />
+              <Ionicons name="add" size={18} color={theme.paper} />
               <Text style={styles.addPurchaseBtnText}>Lançar no Crédito</Text>
             </AppPressable>
           </View>
@@ -1093,7 +1093,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   creditCardSelected: {
-    backgroundColor: '#0c353e',
+    backgroundColor: theme.paperSelected,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -1277,7 +1277,7 @@ const styles = StyleSheet.create({
   addPurchaseBtnText: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
-    color: '#052229',
+    color: theme.paper,
   },
   sectionLabel: {
     fontFamily: fonts.regular,

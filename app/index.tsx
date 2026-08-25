@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -112,11 +112,127 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
   );
 }
 
+/* As 3 cenas de dor + a linha de virada, juntas numa sequência só de texto
+   puro (sem card, sem borda, sem ícone) — cada linha acende de apagada pra
+   brilhante conforme cruza o centro da tela durante o scroll, no mesmo
+   espírito do bloco de texto com scrub de brilho que o usuário indicou
+   gostar numa referência (Fora). A última linha (virada pra solução) é
+   sempre a cor de destaque da marca no pico, não a cor neutra das outras 3. */
 const CENAS_DOR = [
-  { icone: 'calendar-outline' as const, texto: 'Sexta ao meio-dia, e você não sabe se sobra dinheiro pra sair à noite.' },
-  { icone: 'card-outline' as const, texto: 'A fatura chega com um valor que você jura não lembrar de ter gasto.' },
-  { icone: 'grid-outline' as const, texto: 'Baixou uma planilha pra controlar tudo. Durou quatro dias.' },
+  'Sexta ao meio-dia, e você não sabe se sobra dinheiro pra sair à noite.',
+  'A fatura chega com um valor que você jura não lembrar de ter gasto.',
+  'Baixou uma planilha pra controlar tudo. Durou quatro dias.',
 ];
+
+const PONTE_PERGUNTA = 'Aqui, contar um gasto leva o mesmo tempo que mandar um áudio pra um amigo.';
+
+/* Acha o ancestral que realmente rola — o `ScrollView` da página renderiza,
+   na web, como uma div com overflow próprio; nem sempre é a `window` que
+   rola (não é, aqui: a `window` fica parada, quem rola é essa div). Mesmo
+   critério (scrollHeight bem maior que clientHeight) já usado nesta sessão
+   pra achar esse elemento via inspeção direta do DOM. */
+function encontrarAncestralRolavel(no: HTMLElement | null): HTMLElement | null {
+  let atual = no?.parentElement ?? null;
+  while (atual) {
+    if (atual.scrollHeight > atual.clientHeight + 40) return atual;
+    atual = atual.parentElement;
+  }
+  return null;
+}
+
+/** Posição Y de um elemento relativa ao CONTEÚDO do próprio contêiner que
+    rola — mesmo espaço de coordenadas que `scrollY` (alimentado pelo
+    `contentOffset` do ScrollView) já usa, o que permite comparar os dois
+    diretamente numa interpolação. */
+function medirYAbsoluto(ref: React.RefObject<View | null>): number | null {
+  if (Platform.OS !== 'web') return null;
+  const no = ref.current as unknown as HTMLElement | null;
+  if (!no) return null;
+  const scrollNo = encontrarAncestralRolavel(no);
+  if (!scrollNo) return null;
+  const retanguloElemento = no.getBoundingClientRect();
+  const retanguloRolagem = scrollNo.getBoundingClientRect();
+  return retanguloElemento.top - retanguloRolagem.top + scrollNo.scrollTop;
+}
+
+/**
+ * "Reconhece isso?" em texto corrido com scrub de brilho ligado ao scroll —
+ * cada linha (3 cenas de dor + a virada) acende de `inkFaint` pra sua cor de
+ * pico conforme cruza o centro vertical da tela, e apaga de novo depois,
+ * numa transição contínua em vez do fade binário de `RevealOnScroll`. A
+ * posição de cada linha é medida uma vez, depois do primeiro layout — texto
+ * estático, não deveria remedir sozinho.
+ */
+function SecaoReconheceIsso({ scrollY }: { scrollY: Animated.Value }) {
+  const { height: alturaJanela } = useWindowDimensions();
+  const [reduzirMovimento, setReduzirMovimento] = useState(false);
+  const ref0 = useRef<View>(null);
+  const ref1 = useRef<View>(null);
+  const ref2 = useRef<View>(null);
+  const ref3 = useRef<View>(null);
+  const refsLinhas = [ref0, ref1, ref2, ref3];
+  const [posicoes, setPosicoes] = useState<(number | null)[]>([null, null, null, null]);
+
+  useEffect(() => {
+    let ativo = true;
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((v) => ativo && setReduzirMovimento(v))
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof requestAnimationFrame === 'undefined') return;
+
+    function remedir() {
+      setPosicoes(refsLinhas.map((r) => medirYAbsoluto(r)));
+    }
+
+    const id = requestAnimationFrame(remedir);
+    /* Sem isso, redimensionar a janela (ou girar um tablet) deixa a posição
+       medida presa ao layout de antes do resize — as linhas reflowam pra um
+       Y novo, mas o centro de brilho calculado continua apontando pro Y
+       antigo, e o scrub desalinha do texto até recarregar a página. */
+    window.addEventListener?.('resize', remedir);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener?.('resize', remedir);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const textos = [...CENAS_DOR, PONTE_PERGUNTA];
+
+  return (
+    <View style={styles.listaCenas}>
+      {textos.map((texto, i) => {
+        const ultima = i === textos.length - 1;
+        const corPico = ultima ? theme.accent2 : theme.ink;
+        const y = posicoes[i];
+        let cor: string | Animated.AnimatedInterpolation<string> = corPico;
+        if (!reduzirMovimento && y !== null) {
+          const centro = y - alturaJanela / 2;
+          cor = scrollY.interpolate({
+            inputRange: [centro - alturaJanela * 0.55, centro - alturaJanela * 0.2, centro + alturaJanela * 0.15],
+            outputRange: [theme.inkFaint, corPico, theme.inkFaint],
+            extrapolate: 'clamp',
+          });
+        }
+        return (
+          <Animated.Text
+            key={i}
+            ref={refsLinhas[i]}
+            style={[styles.textoCena, ultima && styles.pontePergunta, { color: cor }]}
+          >
+            {texto}
+          </Animated.Text>
+        );
+      })}
+    </View>
+  );
+}
 
 /* Os compromissos futuros que a própria copy desta seção promete ("junta
    parcelas do cartão e contas fixas"). Antes ela mostrava o card de Livre
@@ -190,7 +306,7 @@ function TelaWhatsapp() {
       </View>
       <View style={styles.mockBolhaRecebida}>
         <Ionicons name="checkmark-circle" size={14} color={theme.accent2} aria-hidden />
-        <Text style={styles.mockTextoRecebido}>Lançamento registrado: Mercado — R$ 34,65</Text>
+        <Text style={styles.mockTextoRecebido}>Lançamento registrado: Mercado, R$ 34,65</Text>
       </View>
     </View>
   );
@@ -277,12 +393,29 @@ type Capitulo = { titulo: string; subtitulo: string; tela: React.ReactNode };
  * nada. Rolar revela os outros três como uma sequência de "hero slides": o
  * título principal muda a cada capítulo, não só uma legenda pequena ao lado.
  */
+/* Título de abertura do capítulo 1 — usado tanto no array de capítulos
+   quanto pra semear o estado inicial das letras animadas, sem depender da
+   ordem de declaração dentro do componente. */
+const TITULO_CAPITULO_1 = 'Cadê meu dinheiro?';
+
+function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
+  return [...texto].map(() => new Animated.Value(valorInicial));
+}
+
 function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean; alturaCabecalho: number }) {
   const alturaDobra = useAlturaDobra();
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
   const [capituloExibido, setCapituloExibido] = useState(0);
   const capituloAtivoRef = useRef(0);
   const fade = useRef(new Animated.Value(1)).current;
+  /* Cada letra do título resolve de apagada pra branca, com um atraso
+     pequeno entre elas, no lugar do crossfade de bloco inteiro — técnica de
+     revelação por caractere que o usuário pediu, numa versão sutil (sem
+     scramble de caractere aleatório). Reconstruído a cada troca de capítulo
+     porque o título muda de comprimento; `[...texto]` em vez de
+     `.split('')` porque letra acentuada composta ("Cadê", "áudio") quebraria
+     em unidades erradas com split cru. */
+  const [letras, setLetras] = useState<Animated.Value[]>(() => criarLetras(TITULO_CAPITULO_1, 1));
   const gatilhoRefs = useRef<Record<number, View | null>>({});
 
   useEffect(() => {
@@ -297,20 +430,18 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
 
   const CAPITULOS: Capitulo[] = [
     {
-      titulo: 'Cadê meu dinheiro?',
-      subtitulo:
-        'Fala com o Grana. como fala com um amigo — ele entende o valor, o nome e a categoria sozinho.',
+      titulo: TITULO_CAPITULO_1,
+      subtitulo: 'Fala com o Grana. como fala com um amigo. Ele entende o valor, o nome e a categoria sozinho.',
       tela: <TelaVoz />,
     },
     {
       titulo: 'Manda um áudio. Pronto.',
-      subtitulo:
-        'Sem abrir o app: escreve ou fala pro número do Grana. no WhatsApp, e o lançamento aparece organizado.',
+      subtitulo: 'Sem abrir o app. Escreve ou fala pro número do Grana. no WhatsApp e o lançamento aparece organizado.',
       tela: <TelaWhatsapp />,
     },
     {
       titulo: 'Aponta a câmera. Acabou.',
-      subtitulo: 'O QR Code da nota vira lançamento — cada item, já categorizado, sem digitar nada.',
+      subtitulo: 'O QR Code da nota vira lançamento. Cada item já categorizado, sem digitar nada.',
       tela: <TelaNota />,
     },
     {
@@ -326,6 +457,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
     capituloAtivoRef.current = indice;
     if (reduzirMovimento) {
       setCapituloExibido(indice);
+      setLetras(criarLetras(CAPITULOS[indice].titulo, 1));
       return;
     }
     Animated.timing(fade, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {
@@ -336,7 +468,16 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
          (rolagem rápida, ou salto direto no scrollTop), o callback de uma
          chamada antiga chegava depois e voltava a tela pro capítulo anterior. */
       if (!finished) return;
-      setCapituloExibido(capituloAtivoRef.current);
+      const atual = capituloAtivoRef.current;
+      setCapituloExibido(atual);
+      const novasLetras = criarLetras(CAPITULOS[atual].titulo, 0);
+      setLetras(novasLetras);
+      Animated.stagger(
+        18,
+        novasLetras.map((valor) =>
+          Animated.timing(valor, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false })
+        )
+      ).start();
       Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     });
   }
@@ -374,13 +515,13 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
             <Text
               role="heading"
               aria-level={i === 0 ? 1 : 2}
-              style={[styles.headline, styles.headlineCompacto]}
+              style={styles.headline}
             >
               {c.titulo}
             </Text>
             <Text style={styles.subheadline}>{c.subtitulo}</Text>
             <View style={styles.heroTelaCompacta}>
-              <LaptopMockup moldura={false}>{c.tela}</LaptopMockup>
+              <LaptopMockup>{c.tela}</LaptopMockup>
             </View>
             {i === 0 && <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />}
           </View>
@@ -404,7 +545,17 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
           <Text style={styles.eyebrow}>Acesso antecipado</Text>
           <Animated.View style={{ opacity: fade }}>
             <Text role="heading" aria-level={1} style={styles.headline}>
-              {capitulo.titulo}
+              {[...capitulo.titulo].map((letra, i) => {
+                const valor = letras[i];
+                const cor = valor
+                  ? valor.interpolate({ inputRange: [0, 1], outputRange: [theme.inkFaint, theme.ink] })
+                  : theme.ink;
+                return (
+                  <Animated.Text key={i} style={{ color: cor }}>
+                    {letra}
+                  </Animated.Text>
+                );
+              })}
             </Text>
             <Text style={styles.subheadline}>{capitulo.subtitulo}</Text>
           </Animated.View>
@@ -473,7 +624,7 @@ function ConteudoWeb() {
     {
       icone: 'logo-whatsapp' as const,
       titulo: 'Texto ou áudio no WhatsApp',
-      texto: 'Manda uma mensagem — escrita ou falada — pro número do Grana. e o lançamento aparece no app. Sem abrir nada.',
+      texto: 'Manda uma mensagem, escrita ou falada, pro número do Grana. e o lançamento aparece no app. Sem abrir nada.',
     },
     {
       icone: 'qr-code-outline' as const,
@@ -483,11 +634,11 @@ function ConteudoWeb() {
   ];
 
   const SEGURANCA = [
-    { icone: 'lock-closed-outline' as const, texto: 'Cada conta só enxerga os próprios dados — reforçado no banco, não só na tela.' },
+    { icone: 'lock-closed-outline' as const, texto: 'Cada conta só enxerga os próprios dados, reforçado no banco, não só na tela.' },
     { icone: 'finger-print-outline' as const, texto: 'Bloqueio por biometria ou senha do aparelho, se você ativar.' },
     { icone: 'eye-off-outline' as const, texto: 'Modo privacidade oculta os valores da tela com um toque.' },
     { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida contra vazamentos conhecidos no cadastro.' },
-    { icone: 'ban-outline' as const, texto: 'O Grana. não movimenta dinheiro de verdade — é registro, não pagamento.' },
+    { icone: 'ban-outline' as const, texto: 'O Grana. é só registro. Ele nunca movimenta dinheiro de verdade.' },
     { icone: 'megaphone-outline' as const, texto: 'Sem anúncio, sem venda de dado. O que você registra é seu.' },
   ];
 
@@ -539,23 +690,10 @@ function ConteudoWeb() {
           <View style={styles.secao}>
             <RevealOnScroll>
               <Text style={styles.secaoEyebrow}>Reconhece isso?</Text>
-              <TituloSecao>Não é falta de disciplina. É que anotar dá trabalho.</TituloSecao>
+              <TituloSecao>Anotar gastos dá trabalho. Por isso você para.</TituloSecao>
             </RevealOnScroll>
 
-            <View style={styles.grid}>
-              {CENAS_DOR.map((c, i) => (
-                <RevealOnScroll key={c.texto} atraso={i * 90} style={{ flexBasis: largura2 }}>
-                  <View style={styles.cardCena}>
-                    <Ionicons name={c.icone} size={22} color={theme.down} aria-hidden />
-                    <Text style={styles.textoCena}>{c.texto}</Text>
-                  </View>
-                </RevealOnScroll>
-              ))}
-            </View>
-
-            <RevealOnScroll atraso={280}>
-              <Text style={styles.pontePergunta}>O Grana. não pede mais disciplina. Pede só que você fale.</Text>
-            </RevealOnScroll>
+            <SecaoReconheceIsso scrollY={scrollY} />
           </View>
         </Dobra>
       </View>
@@ -597,12 +735,11 @@ function ConteudoWeb() {
           <View style={[styles.secao, styles.secaoComCartao]}>
             <View style={styles.colunaTextoSecao}>
               <Text style={styles.secaoEyebrow}>Depois que o lançamento existe</Text>
-              <TituloSecao>Ele não só guarda. Avisa antes de você se apertar.</TituloSecao>
+              <TituloSecao>Ele soma o que ainda vai vir, antes de você se apertar.</TituloSecao>
               <Text style={styles.secaoTexto}>
-                Não é só uma lista de gastos. A linha do tempo de compromissos futuros junta parcelas do cartão e
-                contas fixas num lugar só — e é dela que sai o{' '}
-                <Text style={styles.destaqueInline}>Livre para Gastar</Text> do dia. Nada pega de surpresa lá na
-                frente.
+                A linha do tempo de compromissos futuros junta parcelas do cartão e contas fixas num lugar só. É
+                dela que sai o <Text style={styles.destaqueInline}>Livre para Gastar</Text> do dia, que já considera
+                o que ainda vem. Nada pega de surpresa lá na frente.
               </Text>
             </View>
 
@@ -634,7 +771,7 @@ function ConteudoWeb() {
             <Text style={styles.secaoEyebrow}>A pergunta que todo mundo faz</Text>
             <TituloSecao>"Tá, mas é seguro dar meus gastos pra um app?"</TituloSecao>
             <Text style={styles.secaoTexto}>
-              Faz sentido perguntar. Aqui está exatamente o que a gente faz — e o que a gente nunca faz.
+              Faz sentido perguntar. Aqui está exatamente o que a gente faz, e o que a gente nunca faz.
             </Text>
           </RevealOnScroll>
 
@@ -659,7 +796,7 @@ function ConteudoWeb() {
               <Text style={styles.secaoEyebrow}>Quanto custa</Text>
               <TituloSecao>Grátis por enquanto. Sem letra miúda escondida.</TituloSecao>
               <Text style={styles.secaoTexto}>
-                O Grana. está em acesso antecipado — criar conta não custa nada agora. Quando existir um
+                O Grana. está em acesso antecipado. Criar conta não custa nada agora. Quando existir um
                 plano pago, quem já usa é avisado antes de qualquer cobrança começar.
               </Text>
             </RevealOnScroll>
@@ -695,11 +832,11 @@ function ConteudoWeb() {
           <View style={styles.faqLista}>
             <FaqItem
               pergunta="O Grana. puxa meu extrato do banco sozinho?"
-              resposta="Não. O Grana. não se conecta ao seu banco — você registra por voz, por texto, pelo WhatsApp ou apontando a câmera pra nota, e ele organiza. É mais rápido de registrar do que de conectar uma conta bancária, e você nunca compartilha senha de banco com ninguém."
+              resposta="Não. O Grana. não se conecta ao seu banco. Você registra por voz, por texto, pelo WhatsApp ou apontando a câmera pra nota, e ele organiza. É mais rápido de registrar do que de conectar uma conta bancária, e você nunca compartilha senha de banco com ninguém."
             />
             <FaqItem
               pergunta="O Grana. movimenta meu dinheiro?"
-              resposta="Não. O Grana. é um registro — não é uma instituição financeira, não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele."
+              resposta="Não. O Grana. é um registro. Não é uma instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele."
             />
             <FaqItem
               pergunta="É seguro?"
@@ -707,11 +844,11 @@ function ConteudoWeb() {
             />
             <FaqItem
               pergunta="Preciso instalar alguma coisa?"
-              resposta="Não pra começar — o Grana. roda no navegador, neste mesmo endereço. Uma versão para Android e iOS está a caminho."
+              resposta="Não pra começar. O Grana. roda no navegador, neste mesmo endereço. Uma versão para Android e iOS está a caminho."
             />
             <FaqItem
               pergunta="É pago?"
-              resposta="O Grana. está em fase de acesso antecipado — criar conta é livre agora. Um plano pago está a caminho; quem já usa é avisado antes de qualquer cobrança começar."
+              resposta="O Grana. está em fase de acesso antecipado. Criar conta é livre agora. Um plano pago está a caminho; quem já usa é avisado antes de qualquer cobrança começar."
             />
           </View>
         </View>
@@ -770,7 +907,14 @@ const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
 
 const styles = StyleSheet.create({
   pagina: { flex: 1, backgroundColor: theme.paper },
-  faixa: { paddingHorizontal: spacing.xl },
+  // `colunaConteudo` (lib/breakpoints.ts) centraliza por padrão, pensado
+  // pras telas internas do app. Nesta página o conteúdo é sempre alinhado
+  // à esquerda de propósito (ver comentário de `cardPrecoWrap` mais abaixo)
+  // — sem este `alignSelf`, uma janela acima de 1440px sobrava dos dois
+  // lados igualmente, e o recuo esquerdo crescia junto com a largura da
+  // janela em vez de ficar fixo, fazendo a página parecer desalinhada de
+  // um jeito diferente em cada tamanho de tela.
+  faixa: { paddingHorizontal: spacing.xl, alignSelf: 'flex-start', width: '100%' },
   bandaLevantada: { backgroundColor: theme.paperRaised },
 
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: spacing.lg },
@@ -793,8 +937,17 @@ const styles = StyleSheet.create({
   // Escala bem acima do resto da tipografia do app de propósito — esta é a
   // única frase que precisa ser lida antes de qualquer outra coisa na
   // página, e o tamanho tem que dizer isso antes mesmo do conteúdo.
-  headline: { color: theme.ink, fontSize: 80, lineHeight: 80, letterSpacing: -2, fontFamily: fonts.regular, marginBottom: spacing.lg },
-  headlineCompacto: { fontSize: 44, lineHeight: 46, letterSpacing: -1 },
+  //
+  // `clamp()` em vez de dois tamanhos fixos alternados por breakpoint — antes
+  // o título pulava de 44px pra 80px de uma vez só na borda de `medio`; agora
+  // escala fluido com a largura da janela, sem o salto.
+  headline: {
+    color: theme.ink,
+    ...({ fontSize: 'clamp(44px, 4vw + 24px, 80px)', lineHeight: 'clamp(46px, 4vw + 26px, 80px)' } as any),
+    letterSpacing: -2,
+    fontFamily: fonts.regular,
+    marginBottom: spacing.lg,
+  },
   subheadline: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 520 },
 
   ctaPrimario: {
@@ -817,15 +970,8 @@ const styles = StyleSheet.create({
   // está decidindo clicar, em vez de deixar a resposta só no FAQ lá embaixo.
   ctaMicrocopy: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },
 
-  cardCena: {
-    gap: spacing.md,
-    padding: spacing.xl,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    backgroundColor: theme.paperRaised,
-  },
-  textoCena: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 23, fontFamily: fonts.light },
+  listaCenas: { gap: spacing.lg, marginTop: spacing.lg, maxWidth: 640 },
+  textoCena: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.4, fontFamily: fonts.light },
   // "down" (a mesma cor de saída/gasto usada no resto do app) marca a dor;
   // a ponte de volta pra solução já usa o accent2 da marca — a paleta muda
   // de tom no exato lugar onde a copy muda de tom.

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 
@@ -20,6 +20,13 @@ const FALA = '"mercado, trinta e quatro e sessenta e cinco"';
 export default function LandingHeroDemo() {
   const progresso = useRef(new Animated.Value(0)).current;
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
+  const ref = useRef<View>(null);
+  /* Fora de tela (rolou pro FAQ, pra Segurança etc.) o loop continua rodando
+     pra sempre se nada o observar — CPU/GPU gastos animando um card que
+     ninguém está vendo. Mesmo padrão de IntersectionObserver já usado em
+     RevealOnScroll.tsx; começa `true` pra não atrasar o primeiro frame no
+     capítulo 1, que já nasce visível sem rolar nada. */
+  const [visivel, setVisivel] = useState(true);
 
   useEffect(() => {
     let ativo = true;
@@ -34,12 +41,27 @@ export default function LandingHeroDemo() {
   }, []);
 
   useEffect(() => {
+    if (Platform.OS !== 'web' || typeof IntersectionObserver === 'undefined') return;
+    const no = ref.current as unknown as HTMLElement | null;
+    if (!no) return;
+    const observador = new IntersectionObserver(([entrada]) => setVisivel(entrada.isIntersecting), {
+      threshold: 0.01,
+    });
+    observador.observe(no);
+    return () => observador.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (reduzirMovimento) {
       // Preferência de acessibilidade respeitada: fica parado no quadro final
       // (o lançamento já organizado), sem o loop de transição.
       progresso.setValue(1);
       return;
     }
+    if (!visivel) return;
+    // Volta sempre do quadro inicial — sem isso, reaparecer na tela retoma o
+    // valor onde `loop.stop()` congelou, no meio de uma transição antiga.
+    progresso.setValue(0);
     const ciclo = Animated.sequence([
       Animated.delay(900),
       Animated.timing(progresso, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
@@ -49,7 +71,7 @@ export default function LandingHeroDemo() {
     const loop = Animated.loop(ciclo);
     loop.start();
     return () => loop.stop();
-  }, [progresso, reduzirMovimento]);
+  }, [progresso, reduzirMovimento, visivel]);
 
   const falaOpacidade = progresso.interpolate({ inputRange: [0, 0.4, 1], outputRange: [1, 0, 0] });
   const falaTranslado = progresso.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
@@ -58,7 +80,7 @@ export default function LandingHeroDemo() {
   const checkEscala = progresso.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0, 0, 1] });
 
   return (
-    <View style={styles.palco}>
+    <View ref={ref} style={styles.palco}>
       <Animated.View
         style={[styles.faixaFala, { opacity: falaOpacidade, transform: [{ translateY: falaTranslado }] }]}
       >
