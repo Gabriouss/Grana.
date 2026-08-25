@@ -4,14 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 
-type Props = { pergunta: string; resposta: string };
+type Props = { pergunta: string; resposta: string; estiloExtra?: object };
 
 /** Uma linha de FAQ que abre sozinha — mantém a página de entrada curta pra quem só quer ler o essencial. */
-export function FaqItem({ pergunta, resposta }: Props) {
+export function FaqItem({ pergunta, resposta, estiloExtra }: Props) {
   const [aberto, setAberto] = useState(false);
 
   return (
-    <View style={styles.linha}>
+    <View style={[styles.linha, estiloExtra]}>
       <AppPressable
         style={styles.cabecalho}
         onPress={() => setAberto((v) => !v)}

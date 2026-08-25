@@ -13,6 +13,8 @@ import PieChart, { type PieSlice } from '@/components/PieChart';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import GlowOrb from '@/components/GlowOrb';
+import TrustMarquee from '@/components/TrustMarquee';
+import FloatingIcon from '@/components/FloatingIcon';
 
 /**
  * Página pública em `/` — recebe quem nunca ouviu falar do Grana.: clique de
@@ -48,18 +50,26 @@ export default function LandingPage() {
  * aparece — se um card de recurso e o botão de ação têm a mesma presença
  * visual, a hierarquia não está fazendo o trabalho dela.
  */
-function BotaoCTA({ microcopy, estiloExtra }: { microcopy: string; estiloExtra?: object }) {
+function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado?: boolean }) {
   const router = useRouter();
   return (
+    // Sem `centralizado`, o botão (`ctaPrimario` tem `alignSelf:'flex-start'`
+    // fixo) e a microcopy (texto normal, sem textAlign) ficam os dois
+    // encostados na borda esquerda desta View — correto nos contextos
+    // já alinhados à esquerda (herói, card de preço). Num contexto que
+    // CENTRALIZA este bloco inteiro (`alignItems:'center'` no pai, como
+    // ctaMeio/ctaFinal), isso deixava o botão visivelmente deslocado da
+    // microcopy mais larga abaixo dele — os dois precisam centralizar
+    // JUNTOS, não só a caixa que os envolve.
     <View>
       <AppPressable
-        style={({ hovered }) => [styles.ctaPrimario, estiloExtra, hovered && styles.ctaPrimarioHover]}
+        style={({ hovered }) => [styles.ctaPrimario, centralizado && styles.ctaPrimarioCentralizado, hovered && styles.ctaPrimarioHover]}
         onPress={() => router.push('/sign-up')}
       >
         <Text style={styles.ctaPrimarioTexto}>Criar conta grátis</Text>
         <Ionicons name="arrow-forward" size={17} color={theme.paper} aria-hidden />
       </AppPressable>
-      <Text style={styles.ctaMicrocopy}>{microcopy}</Text>
+      <Text style={[styles.ctaMicrocopy, centralizado && styles.ctaMicrocopyCentralizada]}>{microcopy}</Text>
     </View>
   );
 }
@@ -88,23 +98,30 @@ function useAlturaDobra(): number | null {
 }
 
 /**
- * Uma seção do tamanho de uma tela, com o conteúdo centralizado nela.
- * `levantada` alterna o fundo entre o `paper` base e o `paperRaised` que todo
- * card já usa, igual zebra de tabela — é o que dá ritmo a uma página inteira
- * na mesma cor sem inventar cor nova. `colunaConteudo` continua limitando o
- * CONTEÚDO; é só o FUNDO que vai de ponta a ponta da janela.
+ * Uma seção da página, do tamanho de uma tela (16:9) — decisão final do
+ * autor depois de comparar: tirar a altura cheia deixava as seções mais
+ * curtas (Preços, FAQ, compromissos) coladas umas nas outras, sem sensação
+ * de capítulo. `scroll-snap-align` (aplicado aqui, com `scroll-snap-type`
+ * no `ScrollView` — ver `styles.pagina`) é o que resolve a sensação de
+ * "scroll travado" que a tela cheia sozinha causava: a rolagem passa a
+ * ENCAIXAR na seção inteira em vez de poder parar em qualquer ponto no meio
+ * de um vazio, então cada gesto de rolagem sempre termina num lugar
+ * previsível.
  *
- * `minHeight`, não `height`: uma seção que precise de mais espaço que a dobra
- * (o FAQ com todas as respostas abertas, por exemplo) cresce em vez de cortar
- * o próprio conteúdo.
+ * `levantada` alterna o fundo entre o `paper` base e o `paperRaised` que
+ * todo card já usa, igual zebra de tabela — dá ritmo à página sem inventar
+ * cor nova. `colunaConteudo` continua limitando o CONTEÚDO; é só o FUNDO
+ * que vai de ponta a ponta da janela.
  */
 function Dobra({ levantada, children }: { levantada?: boolean; children: React.ReactNode }) {
   const alturaDobra = useAlturaDobra();
+  const cheia = alturaDobra !== null;
   return (
     <View
       style={[
         levantada && styles.bandaLevantada,
-        alturaDobra !== null && { minHeight: alturaDobra, justifyContent: 'center' },
+        cheia && { minHeight: alturaDobra!, justifyContent: 'center' },
+        cheia && styles.dobraSnap,
       ]}
     >
       <View style={[colunaConteudo, styles.faixa]}>{children}</View>
@@ -240,10 +257,39 @@ function SecaoReconheceIsso({ scrollY }: { scrollY: Animated.Value }) {
    duas vezes na mesma página, e a promessa da linha do tempo sem nenhuma
    prova visual. */
 const COMPROMISSOS = [
-  { dia: '05', nome: 'Aluguel', tipo: 'Conta fixa', valor: 'R$ 1.450,00' },
-  { dia: '12', nome: 'Fatura do cartão', tipo: 'Cartão', valor: 'R$ 830,20' },
-  { dia: '18', nome: 'Celular 3/12', tipo: 'Parcela', valor: 'R$ 249,90' },
-  { dia: '25', nome: 'Internet', tipo: 'Conta fixa', valor: 'R$ 99,90' },
+  { dia: '05', mes: 'SET', nome: 'Aluguel', tipo: 'Conta fixa', valor: 'R$ 1.450,00' },
+  { dia: '12', mes: 'SET', nome: 'Fatura do cartão', tipo: 'Cartão', valor: 'R$ 830,20' },
+  { dia: '18', mes: 'SET', nome: 'Celular 3/12', tipo: 'Parcela', valor: 'R$ 249,90' },
+  { dia: '25', mes: 'SET', nome: 'Internet', tipo: 'Conta fixa', valor: 'R$ 99,90' },
+];
+
+/* Array, não JSX solto — precisa do índice pra alternar o escalonamento
+   visual dos cards (ver `faqGrade`/`faqCardPos` no render). */
+const PERGUNTAS_FAQ = [
+  {
+    pergunta: 'O Grana. puxa meu extrato do banco sozinho?',
+    resposta:
+      'Não. O Grana. não se conecta ao seu banco. Você registra por voz, por texto, pelo WhatsApp ou apontando a câmera pra nota, e ele organiza. É mais rápido de registrar do que de conectar uma conta bancária, e você nunca compartilha senha de banco com ninguém.',
+  },
+  {
+    pergunta: 'O Grana. movimenta meu dinheiro?',
+    resposta:
+      'Não. O Grana. é um registro. Não é uma instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele.',
+  },
+  {
+    pergunta: 'É seguro?',
+    resposta:
+      'Cada conta só acessa os próprios dados, reforçado no banco de dados (não só na tela). A sessão fica criptografada no aparelho, e telas com valor bloqueiam print. Detalhes completos na Política de Privacidade.',
+  },
+  {
+    pergunta: 'Preciso instalar alguma coisa?',
+    resposta: 'Não pra começar. O Grana. roda no navegador, neste mesmo endereço. Uma versão para Android e iOS está a caminho.',
+  },
+  {
+    pergunta: 'É pago?',
+    resposta:
+      'O Grana. está em fase de acesso antecipado. Criar conta é livre agora. Um plano pago está a caminho; quem já usa é avisado antes de qualquer cobrança começar.',
+  },
 ];
 
 /**
@@ -642,9 +688,19 @@ function ConteudoWeb() {
     { icone: 'megaphone-outline' as const, texto: 'Sem anúncio, sem venda de dado. O que você registra é seu.' },
   ];
 
+  // Só o que já é dito em algum outro ponto desta mesma página — nenhum
+  // benefício novo inventado pro checklist de Preços.
+  const BENEFICIOS_PRECO = [
+    'Voz, WhatsApp (texto ou áudio) ou foto da nota pra lançar',
+    'Livre para Gastar calculado sozinho, considerando o que ainda vem',
+    'Biometria, senha e modo privacidade pra ocultar valores',
+    'Dados isolados por conta, nunca vendidos ou usados em anúncio',
+    'Acesso completo, grátis, enquanto durar o acesso antecipado',
+  ];
+
   return (
     <ScrollView
-      style={styles.pagina}
+      style={[styles.pagina, styles.paginaSnap]}
       contentContainerStyle={{ paddingBottom: insets.bottom }}
       onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
         useNativeDriver: true,
@@ -673,6 +729,14 @@ function ConteudoWeb() {
         </View>
       </View>
 
+      {/* ───────── Faixa de confiança ─────────
+          Fica sob o cabeçalho, antes do hero — o único ponto da página que já
+          está "fora" do ritmo de dobras de tela cheia (useAlturaDobra). Uma
+          faixa fina no meio de duas Dobra quebraria essa métrica. */}
+      <TrustMarquee
+        itens={['Grátis em acesso antecipado', 'Sem banco conectado', 'Sem cartão pra começar', 'Sem letra miúda']}
+      />
+
       {/* ───────── Hero-storytelling — o momento de assinatura da página ───────── */}
       <View style={styles.palcoHero}>
         <View style={styles.camadaBrilho}>
@@ -684,8 +748,33 @@ function ConteudoWeb() {
         </View>
       </View>
 
-      {/* ───────── Reconhece isso? (dor, antes da solução) ───────── */}
-      <View ref={refProduto}>
+      {/* ───────── Reconhece isso? (dor, antes da solução) ─────────
+          Seção só de texto por escolha deliberada (mimetiza a técnica de
+          scrub da referência Fora) — mas ficou sem NENHUM apoio visual, o
+          que o autor apontou. Dois ícones bem discretos (não um mockup
+          cheio, que quebraria o minimalismo do scrub) reforçam o tema sem
+          competir com o texto. */}
+      <View ref={refProduto} style={styles.palcoComIcones}>
+        <FloatingIcon
+          icone="help-circle-outline"
+          tamanho={52}
+          cor={`${theme.accent2}14`}
+          top={32}
+          right="10%"
+          rotacao="6deg"
+          scrollY={scrollY}
+          fatorParallax={0.05}
+        />
+        <FloatingIcon
+          icone="document-text-outline"
+          tamanho={40}
+          cor={`${theme.accent2}1F`}
+          bottom={40}
+          left="4%"
+          rotacao="-8deg"
+          scrollY={scrollY}
+          fatorParallax={0.08}
+        />
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll>
@@ -723,14 +812,35 @@ function ConteudoWeb() {
           <RevealOnScroll>
             <View style={styles.ctaMeio}>
               <Text style={styles.ctaMeioTitulo}>Pronto pra parar de perder a conta?</Text>
-              <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." />
+              <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." centralizado />
             </View>
           </RevealOnScroll>
         </View>
       </Dobra>
 
       {/* ───────── Inteligência financeira ───────── */}
-      <Dobra>
+      <View style={styles.palcoComIcones}>
+        <FloatingIcon
+          icone="trending-up-outline"
+          tamanho={64}
+          cor={`${theme.accent2}14`}
+          top={40}
+          right="8%"
+          rotacao="-8deg"
+          scrollY={scrollY}
+          fatorParallax={0.06}
+        />
+        <FloatingIcon
+          icone="wallet-outline"
+          tamanho={44}
+          cor={`${theme.accent2}1F`}
+          bottom={24}
+          left="4%"
+          rotacao="6deg"
+          scrollY={scrollY}
+          fatorParallax={0.1}
+        />
+        <Dobra>
         <RevealOnScroll>
           <View style={[styles.secao, styles.secaoComCartao]}>
             <View style={styles.colunaTextoSecao}>
@@ -748,10 +858,15 @@ function ConteudoWeb() {
               {COMPROMISSOS.map((c, i) => (
                 <View key={c.nome} style={styles.compromissoLinha}>
                   <View style={styles.compromissoTrilho}>
-                    <View style={styles.compromissoPonto} />
+                    {/* Selo de calendário (mês pequeno + dia grande), não só
+                        um número solto — é o que faz o "05" ler como DATA de
+                        vencimento, não como índice de lista. */}
+                    <View style={styles.compromissoDiaChip}>
+                      <Text style={styles.compromissoDiaChipMes}>{c.mes}</Text>
+                      <Text style={styles.compromissoDiaChipNumero}>{c.dia}</Text>
+                    </View>
                     {i < COMPROMISSOS.length - 1 && <View style={styles.compromissoFio} />}
                   </View>
-                  <Text style={styles.compromissoDia}>{c.dia}</Text>
                   <View style={styles.compromissoTextos}>
                     <Text style={styles.compromissoNome}>{c.nome}</Text>
                     <Text style={styles.compromissoTipo}>{c.tipo}</Text>
@@ -762,7 +877,8 @@ function ConteudoWeb() {
             </View>
           </View>
         </RevealOnScroll>
-      </Dobra>
+        </Dobra>
+      </View>
 
       {/* ───────── Segurança e confiança ───────── */}
       <Dobra levantada>
@@ -789,7 +905,27 @@ function ConteudoWeb() {
       </Dobra>
 
       {/* ───────── Preços ───────── */}
-      <View ref={refPrecos}>
+      <View ref={refPrecos} style={styles.palcoComIcones}>
+        <FloatingIcon
+          icone="cash-outline"
+          tamanho={56}
+          cor={`${theme.accent2}14`}
+          top={24}
+          left="6%"
+          rotacao="-6deg"
+          scrollY={scrollY}
+          fatorParallax={0.05}
+        />
+        <FloatingIcon
+          icone="receipt-outline"
+          tamanho={40}
+          cor={`${theme.accent2}1F`}
+          bottom={32}
+          right="10%"
+          rotacao="8deg"
+          scrollY={scrollY}
+          fatorParallax={0.09}
+        />
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll>
@@ -801,68 +937,104 @@ function ConteudoWeb() {
               </Text>
             </RevealOnScroll>
 
-            <RevealOnScroll atraso={90} style={styles.cardPrecoWrap}>
-              <View style={[styles.cardFeature, styles.cardPreco]}>
-                <Text style={styles.precoRotulo}>Plano único</Text>
-                <View style={styles.precoLinha}>
-                  <Text style={styles.precoValor}>R$ —,—</Text>
-                  <Text style={styles.precoPeriodo}>/mês</Text>
+            <View style={styles.precoColunas}>
+              <RevealOnScroll style={styles.precoChecklistCol}>
+                <Text style={styles.precoChecklistTitulo}>Tudo que você recebe</Text>
+                <View style={styles.precoChecklist}>
+                  {BENEFICIOS_PRECO.map((b) => (
+                    <View key={b} style={styles.precoChecklistLinha}>
+                      <Ionicons name="checkmark-circle" size={18} color={theme.up} aria-hidden />
+                      <Text style={styles.precoChecklistTexto}>{b}</Text>
+                    </View>
+                  ))}
                 </View>
-                {/* O rótulo abaixo não é decoração da cor apagada do valor —
-                    é o que garante que a mensagem "isto não é um preço real"
-                    chegue mesmo pra quem não distingue bem o tom do verde. */}
-                <Text style={styles.precoEmDefinicao}>Preço em definição</Text>
-                <Text style={styles.featureTexto}>
-                  Enquanto isso, acesso completo é grátis. Sem cartão, sem cobrança surpresa.
-                </Text>
-                <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." />
-              </View>
-            </RevealOnScroll>
+              </RevealOnScroll>
+
+              <RevealOnScroll atraso={90} style={styles.cardPrecoWrap}>
+                <View style={[styles.cardFeature, styles.cardPreco]}>
+                  <Text style={styles.precoRotulo}>Plano único</Text>
+                  <View style={styles.precoLinha}>
+                    <Text style={styles.precoValor}>R$ —,—</Text>
+                    <Text style={styles.precoPeriodo}>/mês</Text>
+                  </View>
+                  {/* O rótulo abaixo não é decoração da cor apagada do valor —
+                      é o que garante que a mensagem "isto não é um preço real"
+                      chegue mesmo pra quem não distingue bem o tom do verde. */}
+                  <Text style={styles.precoEmDefinicao}>Preço em definição</Text>
+                  <Text style={styles.featureTexto}>
+                    Sem cartão pra testar. Sem cobrança surpresa depois. Você é avisado antes de
+                    qualquer plano pago começar.
+                  </Text>
+                  <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." />
+                </View>
+              </RevealOnScroll>
+            </View>
           </View>
         </Dobra>
       </View>
 
-      {/* ───────── FAQ ───────── */}
-      <Dobra>
-        <RevealOnScroll>
-        <View style={[styles.secao, colunaLeitura]}>
-          <Text style={styles.secaoEyebrow}>Perguntas diretas</Text>
-          <TituloSecao>Sem letra miúda</TituloSecao>
+      {/* ───────── FAQ ─────────
+          Texto-âncora + cards sobre uma grade sutil. A rodada anterior tinha
+          escalonamento em zigue-zague + rotação leve nos cards — revertido:
+          o autor pediu alinhamento rigoroso entre texto e elementos em toda
+          a página, e o escalonamento lia como "desalinhado", não como
+          "intencional". Cards em grade limpa, todos com o topo alinhado. */}
+      <View style={styles.palcoComIcones}>
+        <View style={styles.camadaGradeFaq} pointerEvents="none" />
+        <Dobra>
+          <View style={styles.secao}>
+            <View style={styles.faqLayout}>
+              <RevealOnScroll style={styles.colunaTextoSecao}>
+                <Text style={styles.secaoEyebrow}>Perguntas diretas</Text>
+                <TituloSecao>Sem letra miúda</TituloSecao>
+                <Text style={styles.secaoTexto}>
+                  Respostas rápidas para as dúvidas que travam muita gente antes de entrar.
+                </Text>
+              </RevealOnScroll>
 
-          <View style={styles.faqLista}>
-            <FaqItem
-              pergunta="O Grana. puxa meu extrato do banco sozinho?"
-              resposta="Não. O Grana. não se conecta ao seu banco. Você registra por voz, por texto, pelo WhatsApp ou apontando a câmera pra nota, e ele organiza. É mais rápido de registrar do que de conectar uma conta bancária, e você nunca compartilha senha de banco com ninguém."
-            />
-            <FaqItem
-              pergunta="O Grana. movimenta meu dinheiro?"
-              resposta="Não. O Grana. é um registro. Não é uma instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele."
-            />
-            <FaqItem
-              pergunta="É seguro?"
-              resposta="Cada conta só acessa os próprios dados, reforçado no banco de dados (não só na tela). A sessão fica criptografada no aparelho, e telas com valor bloqueiam print. Detalhes completos na Política de Privacidade."
-            />
-            <FaqItem
-              pergunta="Preciso instalar alguma coisa?"
-              resposta="Não pra começar. O Grana. roda no navegador, neste mesmo endereço. Uma versão para Android e iOS está a caminho."
-            />
-            <FaqItem
-              pergunta="É pago?"
-              resposta="O Grana. está em fase de acesso antecipado. Criar conta é livre agora. Um plano pago está a caminho; quem já usa é avisado antes de qualquer cobrança começar."
-            />
+              <View style={styles.faqGrade}>
+                {PERGUNTAS_FAQ.map((f, i) => (
+                  <RevealOnScroll
+                    key={f.pergunta}
+                    atraso={i * 70}
+                    style={[styles.faqCardPos, ehCompacto && styles.faqCardPosCompacto]}
+                  >
+                    <View style={styles.faqCard}>
+                      <FaqItem pergunta={f.pergunta} resposta={f.resposta} estiloExtra={styles.faqItemSemBorda} />
+                    </View>
+                  </RevealOnScroll>
+                ))}
+              </View>
+            </View>
           </View>
-        </View>
-        </RevealOnScroll>
-      </Dobra>
+        </Dobra>
+      </View>
 
       {/* ───────── CTA final ───────── */}
-      <View style={[styles.palcoCtaFinal, alturaDobra !== null && { minHeight: alturaDobra, justifyContent: 'center' }]}>
+      <View
+        style={[
+          styles.palcoCtaFinal,
+          alturaDobra !== null && { minHeight: alturaDobra, justifyContent: 'center' },
+          alturaDobra !== null && styles.dobraSnap,
+        ]}
+      >
         <GlowOrb cor="rgba(31,169,141,0.22)" tamanho={620} top={-200} left="50%" scrollY={scrollY} fatorParallax={0.08} />
         <RevealOnScroll>
           <View style={[colunaConteudo, styles.faixa]}>
             <View style={[styles.ctaFinal, colunaLeitura]}>
-              <Text role="heading" aria-level={2} style={styles.ctaFinalTitulo}>Você vai continuar se perguntando "cadê meu dinheiro" até quando?</Text>
-              <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." estiloExtra={styles.ctaFinalBotao} />
+              {/* Um heading só (não dois) — duas frases de contraste
+                  aninhadas em <Text> de cor diferente dentro dele, mesmo
+                  padrão de destaqueInline já usado na seção de Inteligência
+                  financeira. Fecha o ciclo com o "Cadê meu dinheiro?" do
+                  herói, agora como pergunta que já tem resposta. */}
+              <Text role="heading" aria-level={2} style={styles.ctaFinalTitulo}>
+                <Text style={styles.ctaFinalTituloForte}>
+                  Daqui a 30 dias você pode saber pra onde foi cada real.
+                </Text>
+                {'\n'}
+                <Text style={styles.ctaFinalTituloFraca}>Ou continuar perguntando "cadê meu dinheiro".</Text>
+              </Text>
+              <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." centralizado />
             </View>
           </View>
         </RevealOnScroll>
@@ -907,14 +1079,22 @@ const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
 
 const styles = StyleSheet.create({
   pagina: { flex: 1, backgroundColor: theme.paper },
-  // `colunaConteudo` (lib/breakpoints.ts) centraliza por padrão, pensado
-  // pras telas internas do app. Nesta página o conteúdo é sempre alinhado
-  // à esquerda de propósito (ver comentário de `cardPrecoWrap` mais abaixo)
-  // — sem este `alignSelf`, uma janela acima de 1440px sobrava dos dois
-  // lados igualmente, e o recuo esquerdo crescia junto com a largura da
-  // janela em vez de ficar fixo, fazendo a página parecer desalinhada de
-  // um jeito diferente em cada tamanho de tela.
-  faixa: { paddingHorizontal: spacing.xl, alignSelf: 'flex-start', width: '100%' },
+  // CSS web-only, mesmo padrão `as any` de GlowOrb — faz a rolagem encaixar
+  // em cada `Dobra` (`dobraSnap` abaixo) em vez de poder parar em qualquer
+  // ponto no meio de uma seção de tela cheia.
+  // `proximity`, não `mandatory` — testado e `mandatory` sequestrava até
+  // rolagem PROGRAMÁTICA (o `scrollIntoView` das abas "Produto"/"Preços" do
+  // cabeçalho parava de funcionar, sempre reencaixando na seção errada).
+  // `proximity` só puxa pra alinhar quando a rolagem do usuário já vai
+  // terminar perto de uma borda — não briga com navegação por código.
+  paginaSnap: ({ scrollSnapType: 'y proximity' } as any),
+  dobraSnap: ({ scrollSnapAlign: 'start' } as any),
+  // `colunaConteudo` (lib/breakpoints.ts) já centraliza com teto de 1440px —
+  // mesmo padrão usado no resto do app. Uma tentativa anterior de travar o
+  // conteúdo à esquerda (`alignSelf: 'flex-start'`) grudava a página inteira
+  // no canto esquerdo em qualquer tela larga, com um vão vazio enorme à
+  // direita — pior que a margem simétrica crescente que tentava evitar.
+  faixa: { paddingHorizontal: spacing.xl, width: '100%' },
   bandaLevantada: { backgroundColor: theme.paperRaised },
 
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: spacing.lg },
@@ -932,6 +1112,7 @@ const styles = StyleSheet.create({
      avançavam, sem erro nenhum no console. */
   camadaBrilho: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
   palcoCtaFinal: { position: 'relative', overflow: 'hidden' },
+  palcoComIcones: { position: 'relative', overflow: 'hidden' },
 
   eyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, marginBottom: spacing.md, textTransform: 'uppercase' },
   // Escala bem acima do resto da tipografia do app de propósito — esta é a
@@ -965,10 +1146,12 @@ const styles = StyleSheet.create({
     ...({ boxShadow: '0 14px 40px -6px rgba(31,169,141,0.8)', transform: [{ translateY: -2 }] } as any),
   },
   ctaPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  ctaPrimarioCentralizado: { alignSelf: 'center' },
   // Fica sob TODO botão de CTA — reduz a maior fricção não dita ("quanto
   // tempo vou perder", "vão me cobrar") no exato instante em que a pessoa
   // está decidindo clicar, em vez de deixar a resposta só no FAQ lá embaixo.
   ctaMicrocopy: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },
+  ctaMicrocopyCentralizada: { textAlign: 'center' },
 
   listaCenas: { gap: spacing.lg, marginTop: spacing.lg, maxWidth: 640 },
   textoCena: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.4, fontFamily: fonts.light },
@@ -986,7 +1169,10 @@ const styles = StyleSheet.create({
   },
   ctaMeioTitulo: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular, marginBottom: spacing.lg, textAlign: 'center' },
 
-  secao: { paddingVertical: spacing.xxl },
+  // `spacing.xxl` (28px) sozinho ficava apertado demais dentro da dobra de
+  // tela cheia — pouco respiro ao redor do conteúdo centralizado. `xxl * 2.5`
+  // dá ar de verdade sem competir com o `justifyContent:'center'` da Dobra.
+  secao: { paddingVertical: spacing.xxl * 2.5 },
   secaoComCartao: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, flexWrap: 'wrap' },
   secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.xs },
   secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
@@ -1007,12 +1193,28 @@ const styles = StyleSheet.create({
   },
   compromissoLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   /* O trilho é desenhado por linha, não como uma barra única atrás da lista:
-     assim o fio nasce e morre junto com os pontos e nunca sobra abaixo do
-     último item, que é onde uma barra de altura fixa sempre erra. */
-  compromissoTrilho: { width: 9, alignItems: 'center', alignSelf: 'stretch' },
-  compromissoPonto: { width: 9, height: 9, borderRadius: 5, borderWidth: 2, borderColor: theme.accent2, backgroundColor: theme.paperRaised },
-  compromissoFio: { flex: 1, width: 1, backgroundColor: theme.rule, marginTop: 2 },
-  compromissoDia: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'], width: 22 },
+     assim o fio nasce e morre junto com o selo de cada linha e nunca sobra
+     abaixo do último item, que é onde uma barra de altura fixa sempre erra.
+     Largura fixa em 40 (não mais 9) pra caber o selo de calendário abaixo —
+     ela também é o que garante todo selo alinhado na mesma coluna,
+     independente de "05" ou "18" terem a mesma largura de dígito. */
+  compromissoTrilho: { width: 40, alignItems: 'center', alignSelf: 'stretch' },
+  // Selo de calendário — mês pequeno em cima, dia grande embaixo, o mesmo
+  // padrão visual de "folhinha" que qualquer agenda usa pra um dia em
+  // destaque. É isto (não um número solto) que comunica "data de
+  // vencimento" à primeira vista.
+  compromissoDiaChip: {
+    width: 40,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: theme.accentDeep,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+  },
+  compromissoDiaChipMes: { color: theme.accent2, fontSize: 9, fontFamily: fonts.regular, letterSpacing: 0.5, textTransform: 'uppercase' },
+  compromissoDiaChipNumero: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  compromissoFio: { flex: 1, width: 1, backgroundColor: theme.rule, marginTop: spacing.xs },
   compromissoTextos: { flex: 1 },
   compromissoNome: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   compromissoTipo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: 1 },
@@ -1030,12 +1232,25 @@ const styles = StyleSheet.create({
     ...sombraCard,
   },
 
-  // Card único, não grade — some do fluxo "3-por-linha" das outras seções.
-  // Alinhado à ESQUERDA, junto do título/texto acima (não centralizado na
-  // largura da seção inteira, que ficava visualmente solto à direita do
-  // resto do conteúdo, que é sempre alinhado à esquerda nesta página).
-  cardPrecoWrap: { alignSelf: 'flex-start', width: '100%', maxWidth: 380 },
-  cardPreco: { alignItems: 'flex-start', gap: spacing.sm },
+  precoColunas: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xxl, flexWrap: 'wrap', marginTop: spacing.xl },
+  // `maxWidth`, não só `flex:1` — sem teto, esta coluna esticava até
+  // preencher todo o espaço que sobrava do card de preço (que TEM teto,
+  // `cardPrecoWrap` abaixo), e como o texto em si nunca chegava a ocupar
+  // essa largura toda, sobrava um vão enorme e vazio entre a lista e o
+  // card — os dois liam como desconectados, não como uma composição de
+  // duas colunas.
+  precoChecklistCol: { flex: 1, minWidth: 300, maxWidth: 480 },
+  precoChecklistTitulo: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular, marginBottom: spacing.md },
+  precoChecklist: { gap: spacing.xs },
+  precoChecklistLinha: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: spacing.xs },
+  precoChecklistTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
+  // Coluna do card de valor — largura própria dentro de `precoColunas`, não
+  // mais "card único solto"; o checklist ao lado é quem preenche o resto.
+  cardPrecoWrap: { flex: 1, minWidth: 300, maxWidth: 400 },
+  // Fundo `paperSelected` (primeiro uso fora de credito.tsx) em vez do
+  // `theme.paper` herdado de `cardFeature` — é o que faz este card ler como
+  // o elemento distinto/elevado da seção, ao lado do checklist mais neutro.
+  cardPreco: { alignItems: 'flex-start', gap: spacing.sm, backgroundColor: theme.paperSelected, borderColor: theme.ruleStrong },
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
   // Não usa theme.up (a cor viva dos valores reais no mock da página) de
@@ -1084,11 +1299,49 @@ const styles = StyleSheet.create({
   },
   segurancaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
 
-  faqLista: { marginTop: spacing.sm },
+  // Grade de pontinhos bem sutil atrás do FAQ — camada separada, ANTES do
+  // <Dobra>, mesmo raciocínio de `camadaBrilho`: overflow:hidden numa
+  // ancestral de algo `position:sticky` quebraria a grudagem, então a
+  // camada decorativa fica isolada por si. `theme.rule` já é translúcido,
+  // sem precisar de sufixo de alfa.
+  camadaGradeFaq: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    ...({
+      // Linha bem mais apagada que `theme.rule` (14%) — é textura de fundo,
+      // não conteúdo, não pode competir com o texto dos cards por atenção.
+      // Mesma faixa baixa que `theme.hover` (7%) já usa na paleta.
+      backgroundImage:
+        'linear-gradient(rgba(175,255,227,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(175,255,227,0.05) 1px, transparent 1px)',
+      backgroundSize: '32px 32px',
+      // `farthest-side`, não um raio em %: o raio bate exatamente nas
+      // bordas REAIS da caixa (independente da proporção largura/altura),
+      // em vez de um valor calibrado a olho pra um tamanho de tela só. A
+      // seção é uma dobra de tela cheia com o conteúdo centralizado — sobra
+      // margem vazia acima/abaixo dele, e é isso que o degradê concentra a
+      // grade pra longe de.
+      maskImage: 'radial-gradient(ellipse farthest-side at 50% 50%, black 0%, transparent 65%)',
+      WebkitMaskImage: 'radial-gradient(ellipse farthest-side at 50% 50%, black 0%, transparent 65%)',
+    } as any),
+  },
+  faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl, marginTop: spacing.sm },
+  faqGrade: { flex: 1, minWidth: 320, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xl },
+  faqCardPos: { flexBasis: '46%', minWidth: 280 },
+  faqCardPosCompacto: { flexBasis: '100%' },
+  faqCard: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, ...sombraCard },
+  // Suprime a borda/padding próprios de FaqItem — o card por fora já
+  // fornece os dois, dobrar deixaria espaçamento duplicado e uma linha
+  // divisória órfã cortando o card ao meio.
+  faqItemSemBorda: { borderBottomWidth: 0, paddingVertical: 0 },
 
   ctaFinal: { alignSelf: 'center', alignItems: 'center', paddingVertical: spacing.xxl * 1.5, gap: spacing.xl },
-  ctaFinalTitulo: { color: theme.ink, fontSize: type.destaque + 4, lineHeight: (type.destaque + 4) * 1.3, fontFamily: fonts.regular, textAlign: 'center' },
-  ctaFinalBotao: { alignSelf: 'center' },
+  ctaFinalTitulo: { fontSize: type.destaque + 4, lineHeight: (type.destaque + 4) * 1.3, textAlign: 'center' },
+  ctaFinalTituloForte: { color: theme.ink, fontFamily: fonts.regular },
+  // Mesmo sinal de "secundário" já usado no valor apagado do card de preço.
+  ctaFinalTituloFraca: { color: theme.inkFaint, fontFamily: fonts.light },
 
   rodape: {
     flexDirection: 'row',
@@ -1119,6 +1372,14 @@ const styles = StyleSheet.create({
      produto, ficava pequeno demais pra ancorar uma tela inteira. */
   heroColunaTexto: { flex: 1, maxWidth: 540 },
   heroColunaNotebook: { flex: 1, minWidth: 360, maxWidth: 780 },
+  // Chegou a levar `scrollSnapAlign` (pra dar ao herói pontos de encaixe e
+  // reduzir o risco de um scroll rápido pular ele inteiro) — revertido:
+  // quebrou de novo a navegação por clique das abas do cabeçalho (mesmo
+  // sintoma do `mandatory`, mesmo em `proximity`). Entre "herói pode ser
+  // pulado num flick forte" (característica normal de página em cenas de
+  // tela cheia, presente nas próprias referências que inspiraram este
+  // layout) e "clique no menu não funciona direito", a segunda é o bug
+  // real — fica sem ponto de encaixe aqui.
   heroGatilho: { position: 'absolute', left: 0, right: 0 },
   heroMarcadores: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xl },
   heroMarcador: {
