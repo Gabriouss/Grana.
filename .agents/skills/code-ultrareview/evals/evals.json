@@ -1,0 +1,338 @@
+{
+  "skill_name": "code-ultrareview",
+  "description": "Behavioural evaluation set for the code-ultrareview skill. Cases pin the 5-phase pipeline (scope → atomic deterministic tool battery → 8 axis reviewers → fresh-context validators on sub-80 → synthesis), the 8 always-on axes plus conditional Coherence, the canonical report shape, deferrals, no-silent-drop routing, repo-kind classification, opt-in build/mutation/reconciliation/writer gates, exact remediation, and reference routing. Applicable analyzer coverage is fail-closed: tools resolve only from project declarations or installed PATH binaries, never through runtime package resolution, and missing or invalid coverage blocks every verdict.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "produces-canonical-report-shape",
+      "prompt": "/code-ultrareview review the changes on this branch",
+      "expected_output": "A report matching templates/code-ultrareview.md verbatim — heading-for-heading. Header carries Base, Target, Rule, Repo, Languages, Rules baseline, Reviewed, Coherence axis state, Findings counts. Every ## section is emoji-prefixed and preceded by `---`: ## 📋 Axis summary (one row per canonical axis + coherence), ## 🔎 Findings (with ### 🔴 High, ### 🟠 Medium, ### 🟢 Low, ### ⚠️ Unverified — every sub-section rendered even when count is 0), ## ✅ What looks good, ## ⚖️ Verdict (Ship / Fix-then-ship / Needs work), ## 🧰 Tools skipped, ## 🛡️ What I did NOT check, plus opt-in ## 📐 Derivation coverage (only with --reconcile) and ## 🪛 --apply-safe summary (only with --apply-safe). No code is modified. No improvised sections (e.g., 'Dropped', 'Derivation reconciliation', 'Per-ask verification').",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "auto-detects-dirty-working-tree",
+      "prompt": "/code-ultrareview (uncommitted edits present in the working tree)",
+      "expected_output": "With a dirty tree the skill reviews everything not yet committed: `git diff HEAD` (staged + unstaged) PLUS untracked files (`git ls-files --others --exclude-standard`, read in full) — a brand-new unstaged file is never skipped. Not a branch diff; resolve_base.sh is not consulted in this path. The header states the dirty-tree target.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "clean-tree-uses-resolver-ladder",
+      "prompt": "/code-ultrareview (clean tree, on a feature branch)",
+      "expected_output": "Clean tree → the skill runs scripts/resolve_base.sh, gets RESULT: base=<merge-base> target=HEAD rule=feature-merge-base, and prints exactly that base/target/rule in the header. An unresolvable RESULT (exit 2) is surfaced verbatim with its hint — the skill does not guess a base.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "explicit-base-override",
+      "prompt": "/code-ultrareview -b origin/main",
+      "expected_output": "The skill passes -b origin/main to resolve_base.sh; rule=explicit and auto-detection is skipped. base is resolved to merge-base(origin/main, HEAD) — a diffable ancestor SHA, not the literal ref — so each axis's two-dot `git diff <base> <target>` is always correct. The header prints that base/target/rule.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "reads-declared-base-from-rules",
+      "prompt": "/code-ultrareview (clean tree; the repo AGENTS.md declares the source branch is `develop`)",
+      "expected_output": "Before running the resolver, the skill reads the rule hierarchy, finds the declared source branch (e.g. develop), and passes it via -b. rule=explicit; base is merge-base(develop, HEAD) — a diffable ancestor SHA. This is the skill-layer rung — resolve_base.sh itself never parses rule files.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "style-axis-cites-project-instruction-rule",
+      "prompt": "/code-ultrareview (a changed file violates a .agents/rules/ rule indexed from AGENTS.md)",
+      "expected_output": "The Style axis reports the violation with the exact rule line quoted verbatim, its instruction source path, and a file:line location. Only violations introduced by the diff are reported; pre-existing violations on unchanged lines are not. The fresh-context validator re-checks that the cited rule exists in the applicable `instruction_chain`; if absent at the cited path, the finding is demoted with `Instruction rule not found at <path>`.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "intent-axis-flags-comment-drift",
+      "prompt": "/code-ultrareview (a function's behavior changed but its docstring/comment still describes the old behavior)",
+      "expected_output": "The Intent axis reports drift: code no longer matches its own docstring/comment, with file:line and a recommendation to reconcile. Confidence reflects verification. The finding routes to ### 🔴 High when the comment claim is load-bearing (used by callers or as the only API doc) and ### 🟠 Medium otherwise.",
+      "files": []
+    },
+    {
+      "id": 15,
+      "name": "correctness-axis-flags-single-source-of-truth-drift",
+      "prompt": "/code-ultrareview (the diff hardcodes the same deploy path as a literal in both the install script and the task runner)",
+      "expected_output": "The Correctness axis reports a single-source-of-truth drift risk: a literal that must stay equal (path / URL / endpoint / constant / version / env-var name) is duplicated across two or more sites introduced by the diff, so a change to one copy silently diverges from the others. The finding cites both sites (file:line each) and recommends a single definition referenced everywhere. Pure cosmetic repetition with no divergence consequence is NOT reported here — it routes to the Simplification axis (duplication signal from jscpd) at most.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "tests-axis-flags-gap-and-blind-spot",
+      "prompt": "/code-ultrareview (new code path added with no test and an unhandled empty-input case)",
+      "expected_output": "The Tests axis reports a test gap (convention implies a test) and the Correctness axis flags the unhandled empty-input as a blind spot — distinct findings with locations on the two axes. A test that cannot fail when logic changes is also flagged by the Tests axis if present (no-asserts / magic-sleeps / `.skip` smell).",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "refuses-security-finding-defers-to-sibling",
+      "prompt": "/code-ultrareview (the diff is essentially a SQL query built via string concatenation — an injection risk)",
+      "expected_output": "The skill does NOT report the injection as a finding on any axis. The mandatory closing `## 🛡️ What I did NOT check` section lists Security → /security-review as the deferral target. Staying in lane by construction — security is never a code-ultrareview finding. The deferral is verbatim every run, even when no security signal triggered.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "defers-runtime-perf-and-flaky-detection",
+      "prompt": "/code-ultrareview (the change adds an O(n^2) loop that could be optimized at runtime)",
+      "expected_output": "The Performance axis catches the static pattern via semgrep if rule-detectable (N+1 from bundled perf-rules; sync I/O in async). Runtime profiling, benchmarks, flamegraphs, and memory traces are NOT in scope — surfaced in `## 🛡️ What I did NOT check` under Runtime performance. The closing section makes the boundary explicit every run.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "name": "graceful-degradation-no-rules-baseline",
+      "prompt": "/code-ultrareview (repo and user scopes have no applicable AGENTS.override.md, AGENTS.md, .agents/rules, CLAUDE.md, .claude/CLAUDE.md, CLAUDE.local.md, or .claude/rules)",
+      "expected_output": "The Style axis still runs. With an empty instruction chain it may report only changed-line violations backed by repeated neighboring repository evidence; otherwise it emits no findings. The header states `Rules baseline: none — Style used observable repository conventions`. It is never marked skipped and never invents a preference from a single example.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "name": "sub-80-routes-to-unverified-not-dropped",
+      "prompt": "/code-ultrareview (changes contain one real high-impact bug at confidence 90 plus a maybe-issue scored at 70)",
+      "expected_output": "The high-impact bug appears in ### 🔴 High (confidence 90). The maybe-issue first passes through the fresh-context validator; if the validator demotes (stays sub-80), the finding appears in ### ⚠️ Unverified with the prefix [unverified] and the validator's reason in the recommendation (e.g. `Instruction rule not found at .agents/rules/api.md` or `Sub-80 confidence (70) — verify locally before action`). Neither is dropped — A2 no-silent-drop contract.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "name": "report-only-bridges-to-apex",
+      "prompt": "/code-ultrareview -s review this branch then fix the issues",
+      "expected_output": "The skill produces and saves the report to ~/.agents/output/{project}/code-ultrareview/code-ultrareview-{slug}.md and the JSONL alongside, and does NOT edit any code. It bridges with the exact command `/apex -f <that absolute path>` for the fix pass (and notes /oneshot takes a description, not a file).",
+      "files": []
+    },
+    {
+      "id": 14,
+      "name": "routes-to-axes-reference",
+      "prompt": "What exactly counts as 'drift' vs a 'blind spot', what's the 0-100 rubric, and what's the confidence cutoff?",
+      "expected_output": "The skill routes to references/axes-overview.md for the 8-axis taxonomy and inter-axis precedence, references/anthropic-verbatim.md for the 0-100 confidence rubric and HIGH SIGNAL criteria, and the per-axis briefs at references/axes/<name>.md for operational definitions. Answer is concrete: drift = code vs its own doc / sibling pattern (Intent axis) or code vs prior decision (Intent axis derivation sub-mode); blind spot = unstated assumption / unhandled edge (Correctness axis); 80 is the routing boundary (sub-80 → Unverified sub-section, not dropped). Cites the references.",
+      "files": []
+    },
+    {
+      "id": 16,
+      "name": "repo-kind-skills-detected-renders-header",
+      "prompt": "/code-ultrareview (repo carries `.claude-plugin/marketplace.json` AND ≥1 `skills/*/SKILL.md`)",
+      "expected_output": "Phase 1 (scope) classifies `repo_kind: skills` via `scripts/scope.py`; primary signal reads `marketplace.json + skills/*/SKILL.md`. The report header carries a `Repo: skills` line; the scope token starts with `skills repo · `. Each axis reviewer receives `repo_kind` + signals via its bundle and reads its `## Repo-kind branches` section in `references/axes/<axis>.md`: Simplification reframes duplication tolerance for bundled scripts; Tests checks `tests/<skill-name>/` (never beside source); Coherence (when active) reads `marketplace.json.metadata.version`; Documentation skips `CHANGELOG.md` for skills repos (release notes live in `gh release create` body). Competing `package.json` (when present) surfaces as `(+ npm tooling)` in the scope token, not as a finding.",
+      "files": []
+    },
+    {
+      "id": 17,
+      "name": "repo-kind-flag-override-surfaces-in-header",
+      "prompt": "/code-ultrareview --repo-kind app (repo would otherwise auto-detect as skills)",
+      "expected_output": "Override precedence: CLI flag wins over `.code-ultrareview.yaml` config wins over detection. `repo_kind_signals.override_source` records `--repo-kind flag`. The report header reads `Repo: app (override: --repo-kind)`. Detected signals (`primary_signal`, `competing_signals`) still surface so readers see what was detected vs what the human picked. Axes apply their `app` branches (drift as code-vs-docstring, tests beside source). Invalid `--repo-kind <kind>` exits 2 with argparse's `invalid choice` error; no JSON output. Persistent override via `.code-ultrareview.yaml` (`repo_kind: <kind>`) at repo root yields `override_source: config:.code-ultrareview.yaml` and header suffix `(override: .code-ultrareview.yaml)`.",
+      "files": []
+    },
+    {
+      "id": 18,
+      "name": "repo-kind-unknown-preserves-existing-behavior",
+      "prompt": "/code-ultrareview (repo with no recognizable signature — no marketplace.json, no package.json, no pyproject.toml/Cargo.toml/go.mod, no docs-site config, no workspace config)",
+      "expected_output": "Classifier returns `repo_kind: unknown` (safe default); `primary_signal` reads `no recognized signature`. Header carries `Repo: unknown — heuristics not specialized`. Scope token omits the kind prefix — when no other signals fire, the scope renders as `trivial diff`. Each axis applies its `unknown` branch — no specialization, full strength on every axis.",
+      "files": []
+    },
+    {
+      "id": 19,
+      "name": "coherence-axis-activates-on-metadata-in-diff",
+      "prompt": "/code-ultrareview (package.json.description = 'Alpha'; marketplace.json.metadata.description = 'Beta'; both in diff)",
+      "expected_output": "`scripts/scope.py:activates_coherence` returns true because metadata files appear in the diff. Phase 3 launches 9 parallel subagents (8 always-on + Coherence). Header reads `Coherence axis: active`. The Coherence axis description sub-graph detects the divergence between package.json and marketplace.json — emits one finding with sub_graph=description, severity Medium, confidence ≥80. README first paragraph is NOT compared unless `--include-prose`. The Axis summary row reads `coherence | 🟠 | 1 | 0 | …`.",
+      "files": []
+    },
+    {
+      "id": 20,
+      "name": "coherence-axis-detects-version-mismatch",
+      "prompt": "/code-ultrareview (package.json version 1.2.3; marketplace.json metadata.version 1.2.4; CHANGELOG header 1.2.5)",
+      "expected_output": "Coherence axis version sub-graph detects pairwise divergences across the three sources — emits findings with sub_graph=version, severity High, confidence ≥95. Status table shows version: fail (N). The Axis summary row reads `coherence | 🔴 | N | 0 | version divergence: pkg=1.2.3 / marketplace=1.2.4 / CHANGELOG=1.2.5`.",
+      "files": []
+    },
+    {
+      "id": 21,
+      "name": "coherence-axis-detects-broken-cross-skill-reference",
+      "prompt": "/code-ultrareview (README mentions `/nonexistent` skill; marketplace.json has no such skill)",
+      "expected_output": "Coherence axis cross-reference sub-graph emits a finding: 'Reference to /nonexistent but no matching skill in marketplace.json.' Anchor references for `/init`, `/memory`, `/forge` etc. are NOT flagged (known external + present in marketplace).",
+      "files": []
+    },
+    {
+      "id": 22,
+      "name": "coherence-axis-detects-broken-example",
+      "prompt": "/code-ultrareview (README uses `python3 scripts/demo.py --foo` in a fenced block; demo.py only parses --bar)",
+      "expected_output": "Coherence axis example sub-graph flags the unrecognized --foo flag. Allowlisted flags in .coherence-ignore (example.ignore_flags) are skipped.",
+      "files": []
+    },
+    {
+      "id": 23,
+      "name": "coherence-axis-include-prose-catches-readme-divergence",
+      "prompt": "/code-ultrareview --include-prose (README first paragraph diverges from package.json.description)",
+      "expected_output": "With --include-prose, the description sub-graph extends to the README's first paragraph. The divergence surfaces as a Coherence axis finding with severity Low, confidence ≈60 (downgraded — heuristic). Without --include-prose, the same repo would emit zero description findings.",
+      "files": []
+    },
+    {
+      "id": 24,
+      "name": "coherence-inactive-when-no-metadata-in-diff",
+      "prompt": "/code-ultrareview (diff touches only src/*.ts — no manifest, no SKILL.md, no README, no tsconfig.json)",
+      "expected_output": "`scripts/scope.py:activates_coherence` returns false. Phase 3 launches 8 parallel subagents (no Coherence). Header reads `Coherence axis: inactive`. The Axis summary table still includes the coherence row with `— inactive (no metadata in diff)` in the Status cell — the absence is visible, never silent.",
+      "files": []
+    },
+    {
+      "id": 25,
+      "name": "verify-build-flag-is-an-atomic-project-test-gate",
+      "prompt": "/code-ultrareview --verify-build (a sub-80 Correctness finding exists and the canonical project test command fails)",
+      "expected_output": "Phase 3.5 runs `scripts/run_build_verify.py`: `build_detect.py` requires a real canonical test command, marks build coverage incomplete, removes stale output, and runs the command once even when all findings are already at or above 80. A missing command or runner exits 3 with project-aware install/configuration guidance plus the exact Code Ultrareview rerun; zero tests, failure, timeout, execution error, or malformed input exits 4 with the canonical test command and exact rerun. No path changes finding confidence because a generic build result cannot prove a specific finding. Without `--verify-build`, Phase 3.5 does not run.",
+      "files": []
+    },
+    {
+      "id": 26,
+      "name": "validator-demotes-bad-instruction-citation",
+      "prompt": "/code-ultrareview (a sub-80 Style axis finding cites an AGENTS.md rule that does not exist at the cited path)",
+      "expected_output": "Phase 4 launches one fresh-context validator for the finding. The validator re-checks the cited rule against `instruction_chain` from `scope.json`, finds no matching rule at the cited path, and demotes with `Instruction rule not found at <path>`. The finding lands in ### ⚠️ Unverified with that reason text verbatim. A2 contract preserved — never silently dropped.",
+      "files": []
+    },
+    {
+      "id": 27,
+      "name": "mutation-test-flag-routes-surviving-mutants-to-tests-axis",
+      "prompt": "/code-ultrareview --mutation-test (changed file in a JS/TS repo with Stryker config)",
+      "expected_output": "Phase 2 extension runs `scripts/run_mutation.py` per applicable language: Stryker targets changed JS/TS files, while project-configured mutmut and Pitest runs are filtered to changed Python/JVM findings. Every applicable language is preflighted before execution. Only documented terminal statuses count as evaluated: Stryker Ignored is intentional, Stryker Pending and mutmut skipped/interrupted/not checked block, and any unknown changed-file Pitest status blocks. Missing project config or tools exits 3 with exact language- and build-system-aware remediation; failure, timeout, stale/missing report, incomplete status, or malformed report exits 4. Surviving mutants publish atomically through an independently manifested stream, route to the Tests axis as 🟠 Medium with confidence 100, and reach final synthesis only after digest/run verification. Runtime can exceed 10 minutes; default 600 s timeout is overridable via `MUTATION_TIMEOUT`. The script never installs or resolves packages at runtime.",
+      "files": [],
+      "expectations": [
+        "Stryker Killed, Survived, NoCoverage, Timeout, RuntimeError, CompileError, and Ignored are terminal; Pending changed-file mutants block the mutation gate.",
+        "mutmut maps every killed, caught by type check, survived, no tests, suspicious, timeout, and segfault terminal row with `mutmut show`; only survived, no tests, and suspicious rows become findings, while skipped, interrupted, or not checked results block the mutation gate.",
+        "Pitest accepts only its documented terminal status set for changed-file mutations; an unknown status blocks rather than being counted.",
+        "No mutation findings stream or repository verdict is published while any applicable mutation result remains incomplete or unsupported."
+      ]
+    },
+    {
+      "id": 28,
+      "name": "apply-safe-version-sync-recency-wins",
+      "prompt": "/code-ultrareview --apply-safe (3 version sources disagree: package.json 1.2.3, marketplace.json 1.2.4, CHANGELOG 1.2.5)",
+      "expected_output": "version_sync picks the most-recently-touched source via `git log -1 --format=%ct -- <file>`. Diff preview is printed per file. Per-file confirmation prompt fires before any write. Running twice is a no-op (idempotent). Git tags are never modified. Without `--apply-safe`, no file is touched.",
+      "files": []
+    },
+    {
+      "id": 29,
+      "name": "apply-safe-description-sync-refuses-partial-agreement",
+      "prompt": "/code-ultrareview --apply-safe (package.json.description = A, marketplace.json.metadata.description = B)",
+      "expected_output": "description_sync refuses with status `refusing: partial-agreement` — the full-agreement guard requires every present source to agree on the new value before writing. The mitigation prevents auto-overwriting legitimate divergence; user allowlists via .coherence-ignore when intentional.",
+      "files": []
+    },
+    {
+      "id": 30,
+      "name": "reconcile-flag-off-skips-derivation-sub-mode",
+      "prompt": "/code-ultrareview (without --reconcile; no planning artifacts auto-detected)",
+      "expected_output": "The Intent axis runs in standard mode (no GAP/SCOPE-ADD/DECISION-OVERRIDE classification). The report omits the `## 📐 Derivation coverage` section entirely — no row, no empty placeholder. Phase 3 launches the 8 always-on axes (+Coherence when active), each at full strength.",
+      "files": []
+    },
+    {
+      "id": 31,
+      "name": "reconcile-auto-detects-conventional-paths",
+      "prompt": "/code-ultrareview --reconcile @auto (with forge + apex plan + PR body available)",
+      "expected_output": "The Intent axis derivation sub-mode activates. `scripts/derivation/auto_detect.py` finds artifacts at ~/.agents/output/{project}/{forge,apex}/, docs/{proposals,design,rfcs,adr}/*.md, and the current PR body via `gh pr view`. Findings ordered by artifact freshness (newest first). Each artifact lists in the `## 📐 Derivation coverage` section with its freshness in days. Interactive prompt fires only when stdin is a TTY AND multiple candidates are found.",
+      "files": []
+    },
+    {
+      "id": 32,
+      "name": "reconcile-detects-gap",
+      "prompt": "/code-ultrareview --reconcile <spec-with-AC-not-in-diff>",
+      "expected_output": "An acceptance criterion in the spec has no matching code change in the diff. The Intent axis emits a finding with `classification: GAP`, severity Medium (or High when the AC is numbered or load-bearing), confidence ≥80 once the subagent verifies. The finding's `recommendation` describes what's missing. The `## 📐 Derivation coverage` section increments the GAP column.",
+      "files": []
+    },
+    {
+      "id": 33,
+      "name": "reconcile-flags-scope-add",
+      "prompt": "/code-ultrareview --reconcile <spec-silent-on-feature-in-diff>",
+      "expected_output": "The diff implements a feature the planning artifact does not mention. The Intent axis emits a finding with `classification: SCOPE-ADD`, severity Low (default). Surfaced for reviewer attention; never blocks. Reviewer decides whether the addition is intentional discovery or scope creep — the axis does not judge.",
+      "files": []
+    },
+    {
+      "id": 34,
+      "name": "reconcile-surfaces-decision-override",
+      "prompt": "/code-ultrareview --reconcile <forge-decided-X-code-does-Y>",
+      "expected_output": "The forge plan's 'Decision' block names decision X; the diff implements Y instead. The Intent axis emits a finding with `classification: DECISION-OVERRIDE`, severity Medium-High depending on artifact authority (forge plan < explicit AC). The finding's `recommendation` cites the resolved decision verbatim and asks the reviewer to confirm or override-in-doc.",
+      "files": []
+    },
+    {
+      "id": 35,
+      "name": "reconcile-caps-stale-artifact-severity",
+      "prompt": "/code-ultrareview --reconcile <spec-from-100-days-ago>",
+      "expected_output": "Artifact freshness > 90 days. The Intent axis emits no per-claim findings — only the artifact entry shows in the `## 📐 Derivation coverage` table (with freshness `100d` or similar). Severity caps for 31–90 day artifacts: classification semantics unchanged, but severity drops to Low regardless. `--strict` flag disables both caps.",
+      "files": []
+    },
+    {
+      "id": 36,
+      "name": "reconcile-allowlist-suppresses",
+      "prompt": "/code-ultrareview --reconcile <spec> (with .derivation-ignore listing the matching path or claim text)",
+      "expected_output": "A `.derivation-ignore` entry under `paths.ignore_paths`, `paths.ignore_kinds`, or `claims.ignore_text` suppresses the matching artifact or claim. The Intent axis emits no finding for the allowlisted item. Other artifacts/claims still produce findings normally. Parser grammar mirrors `.coherence-ignore`.",
+      "files": []
+    },
+    {
+      "id": 37,
+      "name": "tool-battery-blocks-atomically-on-missing-oasdiff",
+      "prompt": "/code-ultrareview (OpenAPI repo without `oasdiff` installed; diff touches openapi.yaml)",
+      "expected_output": "Phase 2 preflight detects that oasdiff is applicable and unavailable, records incomplete tool coverage plus the missing analyzer, exits 3 before any analyzer or axis reviewer starts, and prints the exact project-aware install command plus the exact Code Ultrareview command to rerun. It emits no partial report or verdict and never invokes npx, uvx, brew install, cargo install, go install, pip install, or npm install itself. After the user installs oasdiff, the entire review restarts from preflight.",
+      "files": []
+    },
+    {
+      "id": 38,
+      "name": "preflight-lists-detected-and-missing-tools",
+      "prompt": "/code-ultrareview --preflight",
+      "expected_output": "Runs `scripts/preflight_tools.sh --scope <scope.json>`. Lists every applicable analyzer with its resolved project/PATH command or exact install guidance. No analyzer, review, or install runs. It exits 0 only when coverage is complete and exits 3 when any applicable analyzer is unavailable.",
+      "files": []
+    },
+    {
+      "id": 39,
+      "name": "axis-subset-runs-only-named-axes",
+      "prompt": "/code-ultrareview --axes correctness,tests",
+      "expected_output": "Phase 2 preflights and runs only analyzers applicable to the requested axes, then Phase 3 launches only Correctness and Tests. Axis preparation and ingest reject missing, extra, or substituted axes. Coherence does not run even when metadata changed because the explicit subset wins. The output says `Scoped findings only` and never emits a repository-wide Ship, Fix-then-ship, or Needs work verdict; naming all axes explicitly is still scoped mode.",
+      "files": []
+    },
+    {
+      "id": 40,
+      "name": "analyzer-integrity-blocks-atomically",
+      "prompt": "Run /code-ultrareview on a branch whose diff changes api/openapi.yaml and api/admin-openapi.yaml. On the first run oasdiff is not installed. After installing it and rerunning, Semgrep exits successfully but its JSON report contains a non-empty errors array.",
+      "expected_output": "Per `references/orchestration.md`, each deterministic analyzer gap stops and blocks the review atomically with exact repair and rerun guidance; neither run can emit a partial verdict.",
+      "files": [],
+      "expectations": [
+        "The first run exits 3 before any analyzer, axis reviewer, validator, or synthesis step; it names oasdiff, identifies the Design/API gap, and prints an exact install command plus the Code Ultrareview rerun step.",
+        "The second run treats Semgrep's non-empty errors array as analyzer failure, exits 4, and prints the report and stderr paths, exact repair or install guidance, and the Code Ultrareview rerun step.",
+        "Neither run marks deterministic tool coverage complete or emits Ship, Fix-then-ship, Needs work, or any partial Code Ultrareview report.",
+        "The skill never invokes npx, uvx, or another package resolver to install or execute an analyzer at review time."
+      ]
+    },
+    {
+      "id": 41,
+      "name": "python-skill-build-and-performance-coverage",
+      "prompt": "Run /code-ultrareview --axes correctness,tests,performance --verify-build on a Python skill repository whose changed executable helper performs synchronous I/O inside an async function. Initially pyproject.toml declares no pytest dependency or configuration and there is no unittest suite. Then pytest is configured but reports zero collected tests with exit 0. Finally add one collectable test and rerun.",
+      "expected_output": "Build verification fails closed until a real test suite executes, then the scoped review covers Performance for the executable skill code.",
+      "files": [],
+      "expectations": [
+        "A Python manifest alone never invents an unittest command; the first preflight exits 3 with exact pytest or unittest remediation and a rerun instruction.",
+        "A configured runner that reports zero collected tests is normalized to no-tests-collected, exits 4, and tells the user to add a collectable test before rerunning.",
+        "After the real test executes, prepare and ingest cover exactly correctness, tests, and performance; missing, extra, or substituted axes are rejected before synthesis.",
+        "Performance reviews the changed executable helper because repo_kind skills is not an exemption; only an instruction-only diff may emit the canonical performance no_findings marker.",
+        "The successful output says Scoped findings only and does not emit a repository-wide Ship, Fix-then-ship, or Needs work verdict."
+      ]
+    },
+    {
+      "id": 42,
+      "name": "mutation-and-reconcile-remain-atomic",
+      "prompt": "Run /code-ultrareview --mutation-test --reconcile gh:pr:42 on a Gradle JVM project that changes src/main/java/App.java. Initially the info.solidsoft.pitest plugin is absent. After configuring it, GitHub CLI cannot fetch PR 42. Finally rerun with an available but stale PR artifact containing explicit intent claims.",
+      "expected_output": "Mutation and explicitly requested intent evidence are both atomic gates; after remediation, stale explicit evidence keeps its claims with the documented severity cap.",
+      "files": [],
+      "expectations": [
+        "The missing Gradle plugin exits 3 before mutation, axis review, or synthesis; guidance names info.solidsoft.pitest, the PATH-installed `gradle --offline --no-daemon pitest` runner, and the exact Code Ultrareview rerun without suggesting Maven or a project wrapper.",
+        "The skill never installs or resolves a mutation package at runtime and emits no verdict while mutation coverage is incomplete.",
+        "The unavailable explicit gh:pr:42 source exits 3 with gh installation, authentication, and reference checks plus an instruction to rerun with the same --reconcile value.",
+        "No Intent synthesis or verdict is emitted while the requested source is missing; once fetched, stale explicit evidence retains extracted claims instead of becoming summary-only, and stale-derived severity remains capped by policy."
+      ]
+    },
+    {
+      "id": 43,
+      "name": "workspace-mutation-resolution-is-explicit-and-offline",
+      "prompt": "Run /code-ultrareview --mutation-test on a Yarn Plug'n'Play monorepo where packages/a and packages/b each declare @stryker-mutator/core and both contain changed JavaScript. Then narrow the review to packages/a, first without a Stryker config and then with a config whose run exits 7.",
+      "expected_output": "Stryker resolution follows the changed files to one authoritative declaration, never guesses across workspaces, and never resolves a package at review time. Every blocked or failed run prints exact recovery and publishes no final mutation stream.",
+      "files": [],
+      "expectations": [
+        "The first preflight exits 3 before any analyzer starts, names both declaring workspaces, and prints the exact package-manager command that declares @stryker-mutator/core once at the repository root.",
+        "The narrowed preflight resolves packages/a through Yarn Plug'n'Play with COREPACK_ENABLE_NETWORK=0, COREPACK_DEFAULT_TO_LATEST=0, YARN_ENABLE_NETWORK=0, an explicit --cwd packages/a, and `run -B stryker`; a missing config prints that same offline command with `init`.",
+        "After the config exists, Stryker runs from packages/a and report paths are normalized back to repository-relative packages/a paths.",
+        "Exit 7 fails the mutation gate with the exact lockfile restore or install command plus the exact Code Ultrareview rerun; no mutation-findings.jsonl or repository verdict is published."
+      ]
+    }
+  ]
+}

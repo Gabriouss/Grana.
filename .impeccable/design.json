@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-24T00:00:00Z",
+  "title": "Design System: Grana.",
+  "extensions": {
+    "colorMeta": {
+      "deep-petroleum": { "role": "neutral", "displayName": "Deep Petroleum", "canonical": "#052229", "tonalRamp": ["#01090b", "#031318", "#052229", "#0b2d35", "#173e46", "#2c5a62", "#5c8a90", "#a6c7ca"] },
+      "raised-tide": { "role": "neutral", "displayName": "Raised Tide", "canonical": "#0b2d35", "tonalRamp": ["#020a0c", "#061a1f", "#0b2d35", "#123f49", "#1e5560", "#3a7681", "#6fa3ac", "#b3d6da"] },
+      "sea-foam-white": { "role": "neutral", "displayName": "Sea Foam White", "canonical": "#effffa", "tonalRamp": ["#284a45", "#4d726c", "#7a9d97", "#a9c9c3", "#cfe8e2", "#e2f5ef", "#effffa", "#f8fffd"] },
+      "soft-kelp": { "role": "neutral", "displayName": "Soft Kelp", "canonical": "#a6d9ce", "tonalRamp": ["#153630", "#2a5a4f", "#417d70", "#659c8f", "#8bbdb0", "#a6d9ce", "#c5ebe2", "#e4f7f1"] },
+      "faint-kelp": { "role": "neutral", "displayName": "Faint Kelp", "canonical": "#7fa9a0", "tonalRamp": ["#16211f", "#2c433f", "#43645d", "#5c847c", "#7fa9a0", "#a3c4bd", "#c6ded9", "#e5f1ee"] },
+      "working-teal": { "role": "primary", "displayName": "Working Teal", "canonical": "#1fa98d", "tonalRamp": ["#052a22", "#0a4d3f", "#0f7060", "#149381", "#1fa98d", "#4fc0a9", "#89d7c6", "#c5ede3"] },
+      "instrument-mint": { "role": "primary", "displayName": "Instrument Mint", "canonical": "#aeffe3", "tonalRamp": ["#0d3327", "#1c5b45", "#2c8567", "#57ab8c", "#82cdb2", "#aeffe3", "#cbffec", "#e8fff6"] },
+      "abyss-teal": { "role": "secondary", "displayName": "Abyss Teal", "canonical": "#04475c", "tonalRamp": ["#01141a", "#032230", "#04475c", "#0a6684", "#1888ab", "#4aabc9", "#89cde0", "#c7ecf3"] },
+      "clear-green": { "role": "state-positive", "displayName": "Clear Green", "canonical": "#74e291", "tonalRamp": ["#12331d", "#215a34", "#328350", "#4bab6d", "#74e291", "#9aeeae", "#c1f6cb", "#e6fbe9"] },
+      "calm-cyan": { "role": "state-negative", "displayName": "Calm Cyan", "canonical": "#00a6ca", "tonalRamp": ["#00272f", "#004556", "#00677f", "#008ba8", "#00a6ca", "#3fc4e3", "#82dcef", "#c4f0f7"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "A assinatura \"Grana.\" no cabeçalho de tela — sempre Light, nunca Regular." },
+      "title": { "displayName": "Title", "purpose": "Título de folha/modal." },
+      "body": { "displayName": "Body", "purpose": "Corpo padrão, campo de entrada, rótulo de botão." },
+      "label": { "displayName": "Label", "purpose": "Rótulo de seção, eyebrow, subtítulo de linha — sempre uppercase." }
+    },
+    "shadows": [
+      { "name": "menu", "value": "0 6px 14px rgba(0,0,0,0.20)", "purpose": "Menu suspenso do FAB (Operar)." },
+      { "name": "flutuante", "value": "0 6px 12px rgba(0,0,0,0.30)", "purpose": "O botão de ação flutuante em si (Operar)." },
+      { "name": "toast", "value": "0 4px 10px rgba(0,0,0,0.25)", "purpose": "Notificação toast (Operar)." },
+      { "name": "card-persuasao", "value": "0 16px 40px -12px rgba(0,0,0,0.5)", "purpose": "Cards de recurso na landing page (Persuadir, web only)." },
+      { "name": "card-heroi", "value": "0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)", "purpose": "O cartão de maior destaque numa página persuasiva — herói, notebook mockup (Persuadir, web only)." },
+      { "name": "cta-glow", "value": "0 10px 32px -8px rgba(31,169,141,0.6)", "purpose": "Brilho colorido atrás do botão de CTA na landing — o único botão do sistema com glow de cor." }
+    ],
+    "motion": [
+      { "name": "toque-entra", "value": "spring(speed: 40, bounciness: 6)", "purpose": "Press-in: encolhe para 0,96." },
+      { "name": "toque-sai", "value": "spring(speed: 20, bounciness: 8)", "purpose": "Press-out: volta a 1, mais lento que a ida." },
+      { "name": "desliza", "value": "spring(speed: 22, bounciness: 6)", "purpose": "Pílula do segmented, bolinha do switch." },
+      { "name": "menu-abre", "value": "spring(speed: 24, bounciness: 8)", "purpose": "Abertura do menu do FAB." },
+      { "name": "entrada-pesada", "value": "spring(speed: 14, bounciness: 7)", "purpose": "Entrada de conteúdo pesado — gráfico de pizza ao focar a aba." },
+      { "name": "hover-web", "value": "150ms ease-out", "purpose": "Transição CSS do hover/press na web, onde Animated não se aplica." }
+    ],
+    "breakpoints": [
+      { "name": "compacto", "value": "< 768px" },
+      { "name": "medio", "value": "768px" },
+      { "name": "amplo", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button — Primary (Operar)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Botão de ação principal dentro do app — salvar, confirmar. Superfície invertida: fundo claro, texto escuro.",
+      "html": "<button class=\"ds-btn-primary\">Salvar</button>",
+      "css": ".ds-btn-primary { background: #effffa; color: #052229; font-family: 'NeueMachina-Regular', sans-serif; font-size: 14px; padding: 14px 20px; border: none; border-radius: 12px; transition: opacity 150ms ease-out; } .ds-btn-primary:hover { opacity: 0.88; } .ds-btn-primary:focus-visible { outline: 2px solid #aeffe3; outline-offset: 2px; }"
+    },
+    {
+      "name": "Button — CTA (Persuadir)",
+      "kind": "button",
+      "refersTo": "button-cta",
+      "description": "Botão de call-to-action da landing page — único botão do sistema com brilho colorido, pílula, e elevação no hover.",
+      "html": "<button class=\"ds-btn-cta\">Criar conta grátis</button>",
+      "css": ".ds-btn-cta { background: #1fa98d; color: #052229; font-family: 'NeueMachina-Regular', sans-serif; font-size: 14px; padding: 16px 28px; border: none; border-radius: 999px; box-shadow: 0 10px 32px -8px rgba(31,169,141,0.6); transition: box-shadow 180ms, transform 180ms; } .ds-btn-cta:hover { box-shadow: 0 14px 40px -6px rgba(31,169,141,0.8); transform: translateY(-2px); } .ds-btn-cta:focus-visible { outline: 2px solid #aeffe3; outline-offset: 2px; }"
+    },
+    {
+      "name": "Card — Raised",
+      "kind": "card",
+      "refersTo": "card-raised",
+      "description": "Card elevado por cor de fundo (não por sombra) — o padrão em telas de app (modo Operar).",
+      "html": "<div class=\"ds-card-raised\"><p class=\"ds-card-label\">Livre para gastar hoje</p><p class=\"ds-card-value\">R$ 48,00</p></div>",
+      "css": ".ds-card-raised { background: #0b2d35; border: 1px solid rgba(175,255,227,0.26); border-radius: 22px; padding: 20px; } .ds-card-label { color: #7fa9a0; font-family: 'NeueMachina-Light', sans-serif; font-size: 11px; margin: 0 0 4px; } .ds-card-value { color: #74e291; font-family: 'NeueMachina-Regular', sans-serif; font-size: 30px; font-variant-numeric: tabular-nums; margin: 0; }"
+    },
+    {
+      "name": "Field — Underline Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de texto sem moldura fechada — só linha inferior. O padrão pra maioria dos campos do app.",
+      "html": "<input class=\"ds-field\" placeholder=\"Descrição\" />",
+      "css": ".ds-field { background: transparent; border: none; border-bottom: 1px solid rgba(175,255,227,0.14); color: #effffa; font-family: 'NeueMachina-Regular', sans-serif; font-size: 14px; padding: 8px 0; width: 100%; } .ds-field::placeholder { color: #7fa9a0; } .ds-field:focus { outline: none; border-bottom-color: #aeffe3; }"
+    },
+    {
+      "name": "Chip — Category Dot",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Marcador de categoria — ponto de cor mais nome, o padrão que aparece em toda lista de lançamento.",
+      "html": "<div class=\"ds-chip\"><span class=\"ds-chip-dot\"></span><span class=\"ds-chip-label\">Alimentação</span></div>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 8px; } .ds-chip-dot { width: 8px; height: 8px; border-radius: 4px; background: #bb6b60; } .ds-chip-label { color: #a6d9ce; font-family: 'NeueMachina-Light', sans-serif; font-size: 12px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Confessional Ledger",
+    "overview": "Você conta o que aconteceu com seu dinheiro — falando, mandando um áudio no WhatsApp, apontando a câmera pra uma nota — e o Grana. escuta sem julgar. Não existe vermelho de alarme pra gasto, não existe tom de erro pra ter saído dinheiro da conta: \"saída\" usa ciano, a mesma família cromática de \"entrada\", porque gastar não é um erro a ser sinalizado. A superfície é água escura e calma — petróleo profundo, quase preto — com um brilho menta pontual fazendo o papel de agulha de bússola: aparece exatamente onde a atenção precisa ir (marca, ação primária, valor em foco) e some no resto.\n\nO sistema é deliberadamente contido. Não é uma planilha utilitária — a personalidade entra pela tipografia de marca (Neue Machina) e pelo ritmo generoso de espaço, não por densidade de dado. E não é um banco tradicional nem um fintech gamificado: sem confete, sem selo, sem urgência fabricada. Confiança aqui vem de consistência silenciosa, não de efeito.",
+    "keyCharacteristics": [
+      "Fundo quase preto, petróleo profundo — nunca branco, nunca cinza neutro.",
+      "Menta e ciano carregam toda a marca; vermelho não existe no vocabulário.",
+      "Números monetários sempre tabulares — não podem \"dançar\" ao atualizar.",
+      "Peso tipográfico é binário: Light pra marca/destaque, Regular pra tudo o mais.",
+      "Superfícies ficam chapadas por padrão; sombra é reservada pra sinalizar algo genuinamente flutuando."
+    ],
+    "rules": [
+      { "name": "The No-Red Rule", "body": "Vermelho não existe no vocabulário de cor do produto. Saída de dinheiro usa Calm Cyan, não uma cor de alerta. A única exceção documentada é o verde do WhatsApp, usado só no botão que abre o WhatsApp de verdade.", "section": "colors" },
+      { "name": "The Mint-Is-Rare Rule", "body": "Instrument Mint é a cor mais chamativa da paleta e a mais restrita — marca, ação em foco, valor em destaque. Mais de um ou dois usos na mesma tela é sinal de drift.", "section": "colors" },
+      { "name": "The Two-Weight Rule", "body": "Só existem dois pesos tipográficos: Light e Regular. `fontWeight` nunca é usado — a fonte não tem arquivo bold, e sintetizar um diverge entre nativo e web.", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "Todo valor monetário usa fontVariant tabular-nums, sem exceção.", "section": "typography" },
+      { "name": "The Floating-Only Rule", "body": "Em modo Operar, sombra existe só pra objetos genuinamente flutuando sobre o conteúdo (menu, FAB, toast) — nunca num card no fluxo normal da tela.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar Calm Cyan pra saída de dinheiro, nunca vermelho.",
+      "Do manter sombra fora de cards de tela de app; reservar pra menu/FAB/toast.",
+      "Do aplicar fontVariant tabular-nums em todo valor monetário, sem exceção.",
+      "Do usar Instrument Mint com parcimônia — marca, ação em foco, valor em destaque, nunca decoração de fundo.",
+      "Do deixar a landing page (Persuadir) mais pesada visualmente que o app (Operar) — é intencional, não drift."
+    ],
+    "donts": [
+      "Don't usar fontWeight em lugar nenhum — a fonte não tem arquivo bold.",
+      "Don't clonar a identidade visual de outro banco/fintech — sem vermelho de alarme, sem gamificação, sem urgência fabricada.",
+      "Don't desenhar a interface como planilha utilitária — voz e WhatsApp são a entrada principal.",
+      "Don't inventar uma sombra ad hoc nova — as seis receitas catalogadas cobrem todo caso real.",
+      "Don't emprestar cor de marca de terceiro sem necessidade funcional."
+    ]
+  }
+}
