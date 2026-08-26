@@ -46,3 +46,9 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    indistinguível de "não saiu build". Foi exatamente o que aconteceu entre
    1.1.1 e 1.2.0: várias builds seguidas com a mesma versão, todas
    ignoradas pelo webhook.
+
+6. **Ao iniciar o trabalho numa sessão, leia o `context.md` primeiro.** Ele é
+   a visão técnica/operacional do projeto e o estado de onde a última sessão
+   parou. Ao encerrar uma sessão que mexeu em código, atualize o `context.md`
+   com o que mudou e o estado atual, e suba isso no GitHub junto com o resto
+   do commit — é assim que a outra máquina fica sabendo o que aconteceu aqui.
