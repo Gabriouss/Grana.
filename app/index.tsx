@@ -7,8 +7,8 @@ import { theme, spacing, radius, fonts, type } from '@/lib/theme';
 import { colunaConteudo, colunaLeitura, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
-import NotebookVideo from '@/components/NotebookVideo';
 import NotebookAnimado from '@/components/NotebookAnimado';
+import IconeMetaAtingida from '@/components/IconeMetaAtingida';
 import GradeInterativa from '@/components/GradeInterativa';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
@@ -407,18 +407,22 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
             <Text
               role="heading"
               aria-level={i === 0 ? 1 : 2}
-              style={styles.headline}
+              style={styles.headlineCompacto}
             >
               {c.titulo}
             </Text>
             <Text style={styles.subheadline}>{c.subtitulo}</Text>
-            {/* O vídeo é o visual único do herói — mostrado uma vez só, no
-                capítulo 1, não repetido atrás de cada bloco de texto (eram 4
-                cópias do mesmo <video> autoplay, pesado e redundante). Os
-                capítulos 2-4 seguem só com título/subtítulo. */}
+            {/* O notebook animado (composto de PNGs, mesmo componente do
+                herói largo, variante="caixa") é o visual único do herói —
+                mostrado uma vez só, no capítulo 1, não repetido atrás de
+                cada bloco de texto. Antes disso era o <NotebookVideo> (mp4)
+                aqui, único lugar que tinha ficado pra trás quando o herói
+                largo trocou pro composto animado — mesma nitidez sem perda
+                de compressão de vídeo, agora nos dois. Os capítulos 2-4
+                seguem só com título/subtítulo. */}
             {i === 0 && (
               <View style={styles.heroTelaCompacta}>
-                <NotebookVideo />
+                <NotebookAnimado variante="caixa" />
               </View>
             )}
             {i === 0 && <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />}
@@ -983,6 +987,7 @@ function ConteudoWeb() {
         <RevealOnScroll>
           <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
             <View style={[styles.ctaFinal, colunaLeitura]}>
+              <IconeMetaAtingida />
               {/* Um heading só (não dois) — duas frases de contraste
                   aninhadas em <Text> de cor diferente dentro dele, mesmo
                   padrão de destaqueInline já usado na seção de Inteligência
@@ -1100,6 +1105,18 @@ const styles = StyleSheet.create({
     color: theme.ink,
     ...({ fontSize: 'clamp(44px, 4vw + 24px, 80px)', lineHeight: 'clamp(46px, 4vw + 26px, 80px)' } as any),
     letterSpacing: -2,
+    fontFamily: fonts.regular,
+    marginBottom: spacing.lg,
+  },
+  // `headline` (acima) tem piso de 44px — pensado pra UM título só, na
+  // primeira dobra do herói largo. No compacto o mesmo título se repete 4
+  // vezes empilhado (um por capítulo); 44px+ repetido 4 vezes numa rolagem
+  // curta lia como "gigante" (relato direto do autor, com print do site no
+  // ar), não como impacto — daqui vem um piso bem menor, dedicado.
+  headlineCompacto: {
+    color: theme.ink,
+    ...({ fontSize: 'clamp(28px, 7vw, 36px)', lineHeight: 'clamp(31px, 7.5vw, 39px)' } as any),
+    letterSpacing: -1,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
   },

@@ -181,6 +181,24 @@ retrabalho recentes:
   dando a cada capítulo 2-4 um ícone próprio (`Capitulo.icone`, mesmo
   círculo de `featureIconeCirculo`) no lugar da legenda repetida — WhatsApp,
   QR code, carteira. Chamado a atenção por print real do site publicado.
+- Duas correções extras no herói compacto, também via print real do site
+  publicado: (1) `styles.headline` tinha piso de 44px pensado pra UM título
+  só (primeira dobra do herói largo) — repetido 4× empilhado no compacto lia
+  como "gigante"; criado `headlineCompacto` com piso bem menor, dedicado.
+  (2) O capítulo 1 do herói compacto ainda usava `<NotebookVideo>` (mp4) —
+  único lugar que tinha ficado pra trás quando o herói largo trocou pro
+  composto animado em PNG; `NotebookAnimado` ganhou uma prop `variante`
+  (`'fundo'` = herói largo, absoluto+cover; `'caixa'` = herói compacto,
+  `width:'100%'` + `aspectRatio` real do RN, sem `onLayout`/medição — a
+  caixa JÁ tem a proporção do canvas, não precisa do recorte tipo `cover`
+  que o modo `fundo` calcula). `NotebookVideo.tsx` ficou sem uso (mantido no
+  repo, não apagado).
+- Ícone "Meta atingida" (troféu com faíscas, `components/IconeMetaAtingida.tsx`)
+  importado de um projeto Claude Design (`claude.ai/design`, MCP
+  `claude_design`) e adicionado, só a peça animada (sem o texto de estado
+  vazio que a acompanhava na origem), no CTA final da landing — markup SVG
+  embutido via `dangerouslySetInnerHTML`, não recriado em `react-native-svg`,
+  pra não divergir de pixel do original.
 
 ## Como testar
 

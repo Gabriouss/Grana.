@@ -55,7 +55,22 @@ const CANVAS_ASPECT = CANVAS_W / CANVAS_H;
  * imitando o objeto se afastando/aproximando do chão, não dois elementos
  * flutuando cada um por conta própria.
  */
-export default function NotebookAnimado() {
+type Props = {
+  /** 'fundo' (padrão): preenche o painel-pai inteiro (`position:absolute,
+      inset:0`), com o recorte tipo `cover` calculado em JS (ver comentário
+      grande da função). Para o herói largo, onde este componente É o plano
+      de fundo atrás do texto. 'caixa': fica NO FLUXO normal, largura 100%
+      do pai e altura proporcional (`aspectRatio`) — para o herói compacto,
+      onde é um bloco entre parágrafos, não um fundo de painel. Sem recorte
+      `cover` nesse modo: a caixa É o canvas (2752:1536), então bg/sombra/
+      notebook usam as MESMAS porcentagens de sempre sem precisar medir nada
+      em JS — o problema que o modo 'fundo' resolve (painel com proporção
+      diferente do canvas) não existe quando a caixa TEM a proporção do
+      canvas por definição. */
+  variante?: 'fundo' | 'caixa';
+};
+
+export default function NotebookAnimado({ variante = 'fundo' }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
   const [painel, setPainel] = useState({ width: 0, height: 0 });
   const idBruto = useId();
@@ -134,47 +149,61 @@ export default function NotebookAnimado() {
         willChange: 'transform, opacity',
       };
 
+  const camadas = (
+    <>
+      {createElement('img', {
+        src: '/notebook/bg.png',
+        alt: '',
+        'aria-hidden': true,
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' },
+      })}
+      {createElement('img', {
+        src: '/notebook/sombra.png',
+        alt: '',
+        'aria-hidden': true,
+        style: {
+          position: 'absolute',
+          left: '32.267%',
+          top: '62.044%',
+          width: '68.125%',
+          height: '30.99%',
+          objectFit: 'contain',
+          display: 'block',
+          transformOrigin: '50% 50%',
+          ...animSombra,
+        },
+      })}
+      {createElement('img', {
+        src: '/notebook/notebook.png',
+        alt: 'Notebook exibindo o painel do Grana.',
+        style: {
+          position: 'absolute',
+          left: '40.843%',
+          top: '21.94%',
+          width: '50.981%',
+          height: '59.505%',
+          objectFit: 'contain',
+          display: 'block',
+          transformOrigin: '50% 50%',
+          ...animNotebook,
+        },
+      })}
+    </>
+  );
+
+  if (variante === 'caixa') {
+    return (
+      <View style={styles.caixa} pointerEvents="none">
+        {camadas}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.painel} pointerEvents="none" onLayout={aoMedir}>
       {painel.width > 0 && (
         <View style={{ position: 'absolute', left: telaLeft, top: telaTop, width: telaW, height: telaH }}>
-          {createElement('img', {
-            src: '/notebook/bg.png',
-            alt: '',
-            'aria-hidden': true,
-            style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' },
-          })}
-          {createElement('img', {
-            src: '/notebook/sombra.png',
-            alt: '',
-            'aria-hidden': true,
-            style: {
-              position: 'absolute',
-              left: '32.267%',
-              top: '62.044%',
-              width: '68.125%',
-              height: '30.99%',
-              objectFit: 'contain',
-              display: 'block',
-              transformOrigin: '50% 50%',
-              ...animSombra,
-            },
-          })}
-          {createElement('img', {
-            src: '/notebook/notebook.png',
-            alt: 'Notebook exibindo o painel do Grana.',
-            style: {
-              position: 'absolute',
-              left: '40.843%',
-              top: '21.94%',
-              width: '50.981%',
-              height: '59.505%',
-              objectFit: 'contain',
-              display: 'block',
-              transformOrigin: '50% 50%',
-              ...animNotebook,
-            },
-          })}
+          {camadas}
         </View>
       )}
     </View>
@@ -183,4 +212,8 @@ export default function NotebookAnimado() {
 
 const styles = {
   painel: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
+  // `aspectRatio` é uma propriedade real do React Native (não CSS web-only,
+  // sem precisar de `as any`) — a altura vira uma função da largura
+  // renderizada sozinha, sem `onLayout`/medição nenhuma.
+  caixa: { position: 'relative', width: '100%', aspectRatio: CANVAS_ASPECT, overflow: 'hidden' },
 } as const;
