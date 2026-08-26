@@ -7,6 +7,13 @@ type Props = Omit<PressableProps, 'style'> & {
   style?: StyleProp<ViewStyle> | ((state: HoverState) => StyleProp<ViewStyle>);
   /** Ativa o leve "encolher" de toque (padrão true). Desative se o alvo não pode oscilar de tamanho. */
   scaleOnPress?: boolean;
+  /** Só web: repassado até o `View` por baixo do Pressable, que o
+      react-native-web reconhece e usa pra renderizar o nó como uma tag `<a
+      href>` de verdade (mantendo todo o resto do componente — estilo função,
+      hover, encolher no toque) em vez de um `<div>` clicável só por JS. Sem
+      efeito nenhum no nativo (a prop não é lida) — não precisa de guarda de
+      Platform aqui, quem decide passar ou não é a tela que usa. */
+  href?: string;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);

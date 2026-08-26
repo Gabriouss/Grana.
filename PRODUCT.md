@@ -63,10 +63,9 @@ passa por revisão da Meta como app do WhatsApp Business.
 - Não movimenta dinheiro nem processa pagamento — é só registro.
 - Monetização planejada: infoproduto vendido por uma plataforma tipo
   Kiwify/Hotmart, com acesso por período fixo (não é assinatura recorrente
-  direta) — outorga controlada por `subscriptions.access_until`. Ainda não
-  lançado: preço em definição (a própria landing mostra "Preço em
-  definição"), e o produto/webhook da Kiwify ainda não está totalmente
-  configurado.
+  direta) — outorga controlada por `subscriptions.access_until`. Preço
+  decidido em R$ 19,99/mês, já exibido na landing page. O produto/webhook da
+  Kiwify ainda não está totalmente configurado.
 - Backend Supabase no plano Free — soluções não podem depender de recurso
   exclusivo do plano Pro.
 - Repositório trabalhado em duas máquinas diferentes pelo mesmo autor —
@@ -94,8 +93,8 @@ passa por revisão da Meta como app do WhatsApp Business.
   `PieChart` real e as cores reais de categoria de `lib/heuristics.ts`) —
   tratar a UI real do app como fonte de verdade pra qualquer mock de
   landing page, não inventar uma versão mais bonita e fictícia.
-- Preço ainda não decidido; a landing atual mostra "Preço em definição" em
-  vez de um número.
+- Preço decidido: R$ 19,99/mês, exibido como número real na seção "Quanto
+  custa" da landing page.
 
 ## Product Principles
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, fonts, type } from '@/lib/theme';
@@ -14,6 +14,8 @@ import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import GlowOrb from '@/components/GlowOrb';
 import TrustMarquee from '@/components/TrustMarquee';
+import MolduraCelular from '@/components/MolduraCelular';
+import MolduraNavegador from '@/components/MolduraNavegador';
 
 /**
  * Página pública em `/` — recebe quem nunca ouviu falar do Grana.: clique de
@@ -50,7 +52,6 @@ export default function LandingPage() {
  * visual, a hierarquia não está fazendo o trabalho dela.
  */
 function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado?: boolean }) {
-  const router = useRouter();
   return (
     // Sem `centralizado`, o botão (`ctaPrimario` tem `alignSelf:'flex-start'`
     // fixo) e a microcopy (texto normal, sem textAlign) ficam os dois
@@ -61,9 +62,19 @@ function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado
     // microcopy mais larga abaixo dele — os dois precisam centralizar
     // JUNTOS, não só a caixa que os envolve.
     <View>
+      {/* `href` direto no AppPressable (não `Link asChild`) — o
+          `Link asChild` do expo-router quebrava o botão: seu `Slot` interno
+          mescla `style` fazendo spread num objeto, e o `style` do
+          AppPressable aqui é uma FUNÇÃO (`({hovered}) => [...]`) — o spread
+          zera a função e o botão renderiza sem nenhum estilo. Passar `href`
+          direto aproveita o suporte nativo do react-native-web: qualquer
+          View (o que o Pressable renderiza por baixo) com uma prop `href`
+          vira uma tag `<a>` de verdade — clique do meio, "abrir em nova
+          aba" e rastreamento por crawler de busca funcionam — sem tocar no
+          `style` função que já funcionava. */}
       <AppPressable
+        href="/sign-up"
         style={({ hovered }) => [styles.ctaPrimario, centralizado && styles.ctaPrimarioCentralizado, hovered && styles.ctaPrimarioHover]}
-        onPress={() => router.push('/sign-up')}
       >
         <Text style={styles.ctaPrimarioTexto}>Criar conta</Text>
         <Ionicons name="arrow-forward" size={17} color={theme.paper} aria-hidden />
@@ -487,10 +498,8 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
 }
 
 function ConteudoWeb() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { classe, ehCompacto } = useBreakpoint();
-  const largura2 = ehCompacto ? '100%' : classe === 'medio' ? '48%' : '31%';
+  const { ehCompacto } = useBreakpoint();
   const scrollY = useRef(new Animated.Value(0)).current;
   const alturaDobra = useAlturaDobra();
   /* Medido em vez de constante: o cabeçalho muda de altura com o `insets.top`
@@ -511,6 +520,11 @@ function ConteudoWeb() {
     no?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // 6 recursos, não mais 3 — metade fica de cada lado da tela do app no
+  // centro (ver `styles.gradeRecursos`), estilo "recursos flanqueando um
+  // celular" (referência: Organizze). Os 3 primeiros já existiam (entrada);
+  // os 3 últimos são recursos reais do produto que a landing nunca tinha
+  // mostrado (metas, comprometimento futuro, gráficos).
   const FEATURES = [
     {
       icone: 'mic-outline' as const,
@@ -528,6 +542,36 @@ function ConteudoWeb() {
       titulo: 'Foto da nota fiscal',
       texto: 'Aponta a câmera pro QR Code da nota (NFC-e) e cada item da compra vira lançamento, já categorizado.',
     },
+    {
+      icone: 'flag-outline' as const,
+      titulo: 'Cofrinhos e metas',
+      texto: 'Separe dinheiro pra um objetivo — viagem, reserva de emergência — e acompanhe o progresso sem sair do app.',
+    },
+    {
+      icone: 'calendar-outline' as const,
+      titulo: 'Comprometimento futuro',
+      texto: 'Veja parcelas e contas dos próximos meses antes de se apertar, não só o que já venceu.',
+    },
+    {
+      icone: 'stats-chart-outline' as const,
+      titulo: 'Gráficos automáticos',
+      texto: 'Composição por categoria, mês a mês, gerada sozinha a partir do que você já lançou.',
+    },
+  ];
+
+  // Os 4 passos da seção "Guia" — a sequência importa de verdade (é uma
+  // ordem de uso, não uma lista solta), por isso os números fazem parte da
+  // informação e não são só decoração.
+  // Passos 03/04 eram réplicas do capítulo 4 do Herói e da seção
+  // "Inteligência financeira" logo abaixo (mesma promessa de Livre para
+  // Gastar/compromissos futuros, três vezes em duas dobras) — reescritos
+  // pra fechar o arco do guia (resultado imediato, hábito) sem repetir o
+  // mecanismo específico que as outras duas seções já explicam.
+  const GUIA = [
+    { numero: '01', titulo: 'Fale, mande áudio ou foto da nota', texto: 'Sem formulário: um jeito só de contar o que aconteceu com o dinheiro.' },
+    { numero: '02', titulo: 'O Grana. categoriza sozinho', texto: 'Valor, nome e categoria reconhecidos automaticamente, sem revisar linha por linha.' },
+    { numero: '03', titulo: 'O resultado aparece na hora', texto: 'Sem esperar o fim do mês pra saber pra onde o dinheiro foi.' },
+    { numero: '04', titulo: 'Vira hábito, não tarefa', texto: 'Cada lançamento leva segundos — por isso dá pra manter todo mês.' },
   ];
 
   // `tipo` escolhe a cor do ícone: 'faz' usa a mesma cor de lançamento
@@ -576,10 +620,10 @@ function ConteudoWeb() {
               existindo, só que discreto no rodapé). No lugar, abas que rolam
               pra dentro da própria página. */}
           <View style={styles.navAbas}>
-            <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={12}>
+            <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
               <Text style={styles.entrarTexto}>Produto</Text>
             </AppPressable>
-            <AppPressable onPress={() => rolarPara(refPrecos)} hitSlop={12}>
+            <AppPressable onPress={() => rolarPara(refPrecos)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
               <Text style={styles.entrarTexto}>Preços</Text>
             </AppPressable>
           </View>
@@ -630,6 +674,48 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
+      {/* ───────── Guia — 4 passos numerados ─────────
+          Tela real (conta de exemplo, dado fictício — nunca uma conta de
+          verdade, ver `public/telas/`) numa moldura de navegador de um lado,
+          a sequência de uso do outro. Os números (01-04) carregam
+          informação de verdade aqui — é uma ORDEM de uso, não decoração —
+          por isso não contam como o "número de seção" que craft-floor.md
+          normalmente evita. */}
+      <View style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra levantada>
+          <RevealOnScroll>
+            <View style={[styles.secao, styles.secaoComCartao]}>
+              <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
+                {/* Largura menor no compacto — diferente de Recursos/Segurança
+                    (que escondem a moldura inteira no celular), esta é a
+                    única moldura que também aparece no compacto, então
+                    precisa de uma largura que caiba nos ~340px de coluna que
+                    sobram ali (a moldura não é fluida, é largura fixa por
+                    design, igual `largura2` já fazia por breakpoint discreto
+                    no resto da página). */}
+                <MolduraNavegador src="/telas/graficos-web.png" legenda="Tela de Gráficos do Grana., com composição de gastos por categoria" largura={ehCompacto ? 320 : 520} />
+              </View>
+              <View style={styles.colunaTextoSecao}>
+                <Text style={styles.secaoEyebrow}>Do primeiro lançamento ao hábito</Text>
+                <TituloSecao>O guia pro seu controle financeiro</TituloSecao>
+                <View style={styles.guiaLista}>
+                  {GUIA.map((passo) => (
+                    <View key={passo.numero} style={styles.guiaPasso}>
+                      <Text style={styles.guiaNumero}>{passo.numero}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.guiaPassoTitulo}>{passo.titulo}</Text>
+                        <Text style={styles.guiaPassoTexto}>{passo.texto}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+          </RevealOnScroll>
+        </Dobra>
+      </View>
+
       {/* ───────── Como entra o lançamento ───────── */}
       <View style={styles.palcoComCamada}>
         <GradeInterativa invertida />
@@ -640,18 +726,40 @@ function ConteudoWeb() {
             <TituloSecao>O único esforço é lembrar que o gasto existe</TituloSecao>
           </RevealOnScroll>
 
-          <View style={styles.grid}>
-            {FEATURES.map((f, i) => (
-              <RevealOnScroll key={f.titulo} atraso={i * 90} style={{ flexBasis: largura2 }}>
-                <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cardFeature, hovered && styles.cardComHover]}>
-                  <View style={styles.featureIconeCirculo} aria-hidden>
-                    <Ionicons name={f.icone} size={18} color={theme.accent2} />
-                  </View>
-                  <Text style={styles.featureTitulo}>{f.titulo}</Text>
-                  <Text style={styles.featureTexto}>{f.texto}</Text>
-                </AppPressable>
-              </RevealOnScroll>
-            ))}
+          <View style={styles.gradeRecursos}>
+            <View style={styles.colunaRecursos}>
+              {FEATURES.slice(0, 3).map((f, i) => (
+                <RevealOnScroll key={f.titulo} atraso={i * 90}>
+                  <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cardFeature, hovered && styles.cardComHover]}>
+                    <View style={styles.featureIconeCirculo} aria-hidden>
+                      <Ionicons name={f.icone} size={18} color={theme.accent2} />
+                    </View>
+                    <Text style={styles.featureTitulo}>{f.titulo}</Text>
+                    <Text style={styles.featureTexto}>{f.texto}</Text>
+                  </AppPressable>
+                </RevealOnScroll>
+              ))}
+            </View>
+
+            {!ehCompacto && (
+              <View style={styles.celularCentral}>
+                <MolduraCelular src="/telas/inicio-mobile.png" legenda="Tela de Início do Grana. no celular, com Livre para Gastar e metas" largura={240} />
+              </View>
+            )}
+
+            <View style={styles.colunaRecursos}>
+              {FEATURES.slice(3).map((f, i) => (
+                <RevealOnScroll key={f.titulo} atraso={(i + 3) * 90}>
+                  <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cardFeature, hovered && styles.cardComHover]}>
+                    <View style={styles.featureIconeCirculo} aria-hidden>
+                      <Ionicons name={f.icone} size={18} color={theme.accent2} />
+                    </View>
+                    <Text style={styles.featureTitulo}>{f.titulo}</Text>
+                    <Text style={styles.featureTexto}>{f.texto}</Text>
+                  </AppPressable>
+                </RevealOnScroll>
+              ))}
+            </View>
           </View>
 
           <RevealOnScroll>
@@ -707,31 +815,49 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Segurança e confiança ───────── */}
+      {/* ───────── Segurança e confiança ─────────
+          Antes era uma grade de 6 cards de ícone. Trocado por bullets +
+          uma composição de telas reais (desktop atrás, celular sobreposto
+          na frente) — reforça "acesse do celular ou do computador"
+          (Multiplataforma, já citado em PRODUCT.md), que os cards de ícone
+          não mostravam visualmente. */}
       <View style={styles.palcoComCamada}>
         <GradeInterativa invertida />
         <Dobra levantada>
-        <View style={styles.secao}>
-          <RevealOnScroll style={styles.precoIntroCentralizada}>
-            <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>A pergunta que todo mundo faz</Text>
-            <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
-              {'"É seguro informar meus\ngastos para um aplicativo?"'}
-            </TituloSecao>
-            <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
-              {'Faz sentido perguntar. Aqui está exatamente\no que a gente faz, e o que a gente nunca faz.'}
-            </Text>
-          </RevealOnScroll>
+        <View style={[styles.secao, styles.secaoComCartao]}>
+          <View style={styles.colunaTextoSecao}>
+            <RevealOnScroll>
+              <Text style={styles.secaoEyebrow}>A pergunta que todo mundo faz</Text>
+              <TituloSecao>{'"É seguro informar meus\ngastos para um aplicativo?"'}</TituloSecao>
+              <Text style={styles.secaoTexto}>
+                {'Faz sentido perguntar. Aqui está exatamente\no que a gente faz, e o que a gente nunca faz.'}
+              </Text>
+            </RevealOnScroll>
 
-          <View style={styles.grid}>
-            {SEGURANCA.map((s, i) => (
-              <RevealOnScroll key={s.texto} atraso={i * 70} style={{ flexBasis: largura2 }}>
-                <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cardSeguranca, hovered && styles.cardComHover]}>
-                  <Ionicons name={s.icone} size={18} color={s.tipo === 'faz' ? theme.up : theme.down} aria-hidden />
-                  <Text style={styles.segurancaTexto}>{s.texto}</Text>
-                </AppPressable>
-              </RevealOnScroll>
-            ))}
+            <View style={styles.segurancaLista}>
+              {SEGURANCA.map((s, i) => (
+                <RevealOnScroll key={s.texto} atraso={i * 60}>
+                  <View style={styles.segurancaLinha}>
+                    <Ionicons name={s.icone} size={16} color={s.tipo === 'faz' ? theme.up : theme.down} aria-hidden />
+                    <Text style={styles.segurancaLinhaTexto}>{s.texto.replace(/\n/g, ' ')}</Text>
+                  </View>
+                </RevealOnScroll>
+              ))}
+            </View>
+
+            <RevealOnScroll>
+              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." />
+            </RevealOnScroll>
           </View>
+
+          {!ehCompacto && (
+            <RevealOnScroll style={styles.composicaoTelas}>
+              <MolduraNavegador src="/telas/inicio-web.png" legenda="Tela de Início do Grana. no computador" largura={420} />
+              <View style={styles.composicaoCelular}>
+                <MolduraCelular src="/telas/inicio-mobile.png" legenda="A mesma tela de Início do Grana. no celular" largura={160} />
+              </View>
+            </RevealOnScroll>
+          )}
         </View>
         </Dobra>
       </View>
@@ -773,7 +899,7 @@ function ConteudoWeb() {
                 <View style={[styles.cardPreco, ehCompacto && styles.cardPrecoCompacto]}>
                   <Text style={styles.precoRotulo}>Plano único</Text>
                   <View style={styles.precoLinha}>
-                    <Text style={styles.precoValor}>R$ 0,01</Text>
+                    <Text style={styles.precoValor}>R$ 19,99</Text>
                     <Text style={styles.precoPeriodo}>/mês</Text>
                   </View>
                   <Text style={styles.featureTexto}>
@@ -864,18 +990,26 @@ function ConteudoWeb() {
         <View style={styles.rodape}>
           <BrandLogotype width={72} />
           <View style={styles.rodapeLinks}>
-            <AppPressable onPress={() => router.push('/termos')} hitSlop={8}>
+            {/* `href` direto no AppPressable (ver comentário maior em
+                BotaoCTA sobre por que não `Link asChild`) — o
+                react-native-web usa a `href` recebida pra renderizar uma
+                tag `<a>` de verdade — clique do meio, "abrir em nova aba" e
+                rastreamento por crawler de busca voltam a funcionar, coisa
+                que um `onPress` em JS puro nunca ofereceu. `hitSlop` maior
+                (era 8) porque o texto de rodapé sozinho fica bem abaixo do
+                alvo de toque mínimo de 44px. */}
+            <AppPressable href="/termos" hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Termos de Uso</Text>
             </AppPressable>
-            <AppPressable onPress={() => router.push('/privacidade')} hitSlop={8}>
+            <AppPressable href="/privacidade" hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Privacidade</Text>
             </AppPressable>
-            <AppPressable onPress={() => router.push('/exclusao-de-dados')} hitSlop={8}>
+            <AppPressable href="/exclusao-de-dados" hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Excluir dados</Text>
             </AppPressable>
             {/* Único link de AÇÃO no meio de três links legais — por isso
                 por último, sem se misturar com Termos/Privacidade/Excluir. */}
-            <AppPressable onPress={() => router.push('/sign-in')} hitSlop={8}>
+            <AppPressable href="/sign-in" hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Entrar</Text>
             </AppPressable>
           </View>
@@ -1022,6 +1156,27 @@ const styles = StyleSheet.create({
   precoTextoCentralizado: { textAlign: 'center', maxWidth: 820 },
   colunaTextoSecao: { flex: 1, minWidth: 320, maxWidth: 620 },
 
+  molduraCentralizada: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center' },
+  // No compacto o `minWidth: 380` acima passa da coluna disponível
+  // (~342px, viewport de 390px menos o padding de `faixaCompacta`) e
+  // estourava largura, cortado pelo `overflow:hidden` da seção.
+  molduraCentralizadaCompacta: { minWidth: 0, width: '100%' },
+  guiaLista: { gap: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.lg },
+  guiaPasso: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  // O número É a marcação de passo — não tem círculo/fundo por trás porque
+  // já é grande e destacado o bastante sozinho; um círculo ao redor
+  // competiria com o próprio dígito em vez de reforçá-lo.
+  guiaNumero: { color: theme.accent2, fontSize: 22, fontFamily: fonts.light, fontVariant: ['tabular-nums'], minWidth: 36 },
+  guiaPassoTitulo: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular, marginBottom: 2 },
+  guiaPassoTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
+
+  // Recursos flanqueando a tela do app no centro — 3 de cada lado no
+  // amplo/médio; no compacto vira uma coluna só (sem o celular central, que
+  // já aparece grande no herói logo acima).
+  gradeRecursos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxl, marginTop: spacing.lg, alignItems: 'center', justifyContent: 'center' },
+  colunaRecursos: { flex: 1, minWidth: 260, maxWidth: 340, gap: spacing.lg },
+  celularCentral: { alignItems: 'center', paddingHorizontal: spacing.lg },
+
   cardLinhaTempo: {
     flex: 1,
     minWidth: 320,
@@ -1062,8 +1217,6 @@ const styles = StyleSheet.create({
   compromissoTipo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: 1 },
   compromissoValor: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   destaqueInline: { color: theme.accent2, fontFamily: fonts.regular },
-
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, marginTop: spacing.sm },
 
   cardFeature: {
     backgroundColor: theme.paper,
@@ -1109,11 +1262,17 @@ const styles = StyleSheet.create({
   precoChecklistTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.45, fontFamily: fonts.light },
   // Painel de preço — metade com destaque visual (`paperSelected`) do card
   // único, separada da metade do checklist por uma borda, não por um vão.
+  // `justifyContent: 'center'` — o painel de preço é sempre mais curto que
+  // o checklist ao lado (menos linhas de conteúdo), mas `alignItems:
+  // 'stretch'` do pai (`precoColunas`) estica os dois pra mesma altura;
+  // sem centralizar, o conteúdo ficava todo colado no topo com um vão vazio
+  // grande embaixo, em vez de ocupar a caixa inteira.
   cardPreco: {
     flex: 1,
     minWidth: 320,
     maxWidth: 440,
     alignItems: 'flex-start',
+    justifyContent: 'center',
     gap: spacing.sm,
     padding: spacing.xxl,
     backgroundColor: theme.paperSelected,
@@ -1126,10 +1285,9 @@ const styles = StyleSheet.create({
   cardPrecoCompacto: { maxWidth: '100%', borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: theme.ruleStrong },
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
-  // Valor de PROTOTIPAGEM (R$ 0,01) — não é um preço real. Usa `theme.ink`
-  // (não mais `inkFaint`) porque agora é um valor definido, não um "a
+  // Usa `theme.ink` (não `inkFaint`) porque é um valor definido, não um "a
   // definir": o apagado era o sinal visual de "isto não é um preço real",
-  // e não faz mais sentido com um número de verdade no lugar.
+  // e não se aplica mais com o valor de lançamento (R$ 19,99) no lugar.
   precoValor: { color: theme.ink, fontSize: type.valor + 6, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   precoPeriodo: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   // Aplica-se tanto ao card de recurso quanto ao de segurança — nenhum dos
@@ -1157,20 +1315,28 @@ const styles = StyleSheet.create({
   // vídeo do notebook passou a ser o visual único do herói.
   mockRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginBottom: spacing.xs },
 
-  // Coluna, não linha — ícone em cima, texto embaixo, os dois centralizados.
-  // Só faz sentido com `segurancaTexto` também centralizado; um texto de
-  // várias linhas alinhado à esquerda dentro de uma caixa centralizada lia
-  // como desalinhado, não como intencional.
-  cardSeguranca: {
+  segurancaLista: { gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.xl },
+  // Cada linha na própria caixa (voltou a pedido do autor) — não mais um
+  // bullet solto: fundo, borda e raio pequeno, a mesma receita de
+  // `cardFeature`/`cardSeguranca` antigo, só com padding mais enxuto porque
+  // agora é uma coluna vertical de 6, não uma grade 2×3.
+  segurancaLinha: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderRadius: radius.md,
     backgroundColor: theme.paper,
     borderWidth: 1,
     borderColor: theme.rule,
   },
-  segurancaTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light, textAlign: 'center' },
+  segurancaLinhaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
+
+  // Navegador atrás, maior; celular na frente, menor, sobreposto no canto
+  // inferior — a mesma composição "duas telas, um produto só" que o
+  // Organizze usa pra provar multiplataforma sem precisar de duas seções.
+  composicaoTelas: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center', position: 'relative', paddingVertical: spacing.xxl },
+  composicaoCelular: { position: 'absolute', right: '6%', bottom: 0 },
 
   faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl, marginTop: spacing.sm },
   faqGrade: { flex: 1, minWidth: 320, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl * 1.8 },
