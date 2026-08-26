@@ -254,7 +254,7 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
   );
 }
 
-type Capitulo = { titulo: string; subtitulo: string };
+type Capitulo = { titulo: string; subtitulo: string; icone: keyof typeof Ionicons.glyphMap };
 
 /**
  * O herói da página — e a própria demonstração do produto, ao mesmo tempo.
@@ -307,19 +307,23 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
     {
       titulo: TITULO_CAPITULO_1,
       subtitulo: 'Fala com o Grana. como fala com um amigo. Ele entende o valor, o nome e a categoria sozinho.',
+      icone: 'mic-outline',
     },
     {
       titulo: 'Manda um áudio. Pronto.',
       subtitulo: 'Sem abrir o app. Escreve ou fala pro número do Grana. no WhatsApp e o lançamento aparece organizado.',
+      icone: 'logo-whatsapp',
     },
     {
       titulo: 'Aponta a câmera. Acabou.',
       subtitulo: 'O QR Code da nota vira lançamento. Cada item já categorizado, sem digitar nada.',
+      icone: 'qr-code-outline',
     },
     {
       titulo: 'Sabe quanto sobra, sem calcular.',
       subtitulo:
         'Depois que o lançamento existe, o Grana. soma tudo e avisa quanto você tem livre pra gastar hoje.',
+      icone: 'wallet-outline',
     },
   ];
 
@@ -387,7 +391,19 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
       <View style={[colunaConteudo, styles.faixa, styles.faixaCompacta, styles.heroTrilhaCompacta]}>
         {CAPITULOS.map((c, i) => (
           <View key={c.titulo} style={styles.heroBlocoCompacto}>
-            <Text style={styles.eyebrow}>Acesso antecipado</Text>
+            {/* "Acesso antecipado" só no capítulo 1 — repetido idêntico nos
+                4 blocos lia como ruído (mesma legenda 4 vezes numa rolagem
+                curta), não como reforço. Os capítulos 2-4 ganham um ícone
+                próprio no lugar — mesma missão do eyebrow (dar ao bloco uma
+                âncora visual antes do título), mas cada um com a cara do
+                próprio recurso, não um rótulo repetido. */}
+            {i === 0 ? (
+              <Text style={styles.eyebrow}>Acesso antecipado</Text>
+            ) : (
+              <View style={styles.heroIconeCirculoCompacto} aria-hidden>
+                <Ionicons name={c.icone} size={20} color={theme.accent2} />
+              </View>
+            )}
             <Text
               role="heading"
               aria-level={i === 0 ? 1 : 2}
@@ -1459,6 +1475,18 @@ const styles = StyleSheet.create({
   heroTrilhaCompacta: { paddingTop: spacing.xl, gap: spacing.xxl * 1.5 },
   heroBlocoCompacto: { alignItems: 'flex-start', paddingBottom: spacing.xxl, borderBottomWidth: 1, borderBottomColor: theme.rule },
   heroTelaCompacta: { width: '100%', marginBottom: spacing.xl },
+  // Mesma missão do `eyebrow` (âncora visual antes do título, capítulos 2-4
+  // do herói compacto) — `marginBottom` igual ao dele, pra não mudar o
+  // ritmo vertical entre os blocos.
+  heroIconeCirculoCompacto: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.accentDeep,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
 
   /* ───────── Telas do notebook (capítulos 2 e 3) ───────── */
   mockChat: { gap: spacing.sm },

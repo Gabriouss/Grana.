@@ -174,6 +174,13 @@ retrabalho recentes:
   tela real.
 - Preço decidido: R$ 19,99/mês, já exibido de verdade na seção de preços
   (antes havia um valor de prototipagem ao vivo — corrigido).
+- Herói compacto (mobile): capítulos 2-4 repetiam a legenda "Acesso
+  antecipado" idêntica 4 vezes numa rolagem curta, sem nenhum apoio visual
+  (o vídeo do notebook só aparece uma vez, no capítulo 1, de propósito —
+  4 cópias do mesmo `<video>` autoplay era pesado e redundante). Corrigido
+  dando a cada capítulo 2-4 um ícone próprio (`Capitulo.icone`, mesmo
+  círculo de `featureIconeCirculo`) no lugar da legenda repetida — WhatsApp,
+  QR code, carteira. Chamado a atenção por print real do site publicado.
 
 ## Como testar
 
