@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,14 +7,13 @@ import { theme, spacing, radius, fonts, type } from '@/lib/theme';
 import { colunaConteudo, colunaLeitura, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
-import LandingHeroDemo from '@/components/LandingHeroDemo';
-import LaptopMockup from '@/components/LaptopMockup';
-import PieChart, { type PieSlice } from '@/components/PieChart';
+import NotebookVideo from '@/components/NotebookVideo';
+import NotebookAnimado from '@/components/NotebookAnimado';
+import GradeInterativa from '@/components/GradeInterativa';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import GlowOrb from '@/components/GlowOrb';
 import TrustMarquee from '@/components/TrustMarquee';
-import FloatingIcon from '@/components/FloatingIcon';
 
 /**
  * Página pública em `/` — recebe quem nunca ouviu falar do Grana.: clique de
@@ -66,7 +65,7 @@ function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado
         style={({ hovered }) => [styles.ctaPrimario, centralizado && styles.ctaPrimarioCentralizado, hovered && styles.ctaPrimarioHover]}
         onPress={() => router.push('/sign-up')}
       >
-        <Text style={styles.ctaPrimarioTexto}>Criar conta grátis</Text>
+        <Text style={styles.ctaPrimarioTexto}>Criar conta</Text>
         <Ionicons name="arrow-forward" size={17} color={theme.paper} aria-hidden />
       </AppPressable>
       <Text style={[styles.ctaMicrocopy, centralizado && styles.ctaMicrocopyCentralizada]}>{microcopy}</Text>
@@ -115,6 +114,7 @@ function useAlturaDobra(): number | null {
  */
 function Dobra({ levantada, children }: { levantada?: boolean; children: React.ReactNode }) {
   const alturaDobra = useAlturaDobra();
+  const { ehCompacto } = useBreakpoint();
   const cheia = alturaDobra !== null;
   return (
     <View
@@ -124,129 +124,58 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
         cheia && styles.dobraSnap,
       ]}
     >
-      <View style={[colunaConteudo, styles.faixa]}>{children}</View>
+      <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>{children}</View>
     </View>
   );
 }
 
-/* As 3 cenas de dor + a linha de virada, juntas numa sequência só de texto
-   puro (sem card, sem borda, sem ícone) — cada linha acende de apagada pra
-   brilhante conforme cruza o centro da tela durante o scroll, no mesmo
-   espírito do bloco de texto com scrub de brilho que o usuário indicou
-   gostar numa referência (Fora). A última linha (virada pra solução) é
-   sempre a cor de destaque da marca no pico, não a cor neutra das outras 3. */
+// As 3 cenas de dor, cada uma em 3 linhas fixas (`\n` explícito) — mesma
+// disciplina do resto da página: quebra escolhida, não deixada pro acaso do
+// wrap automático em cada largura de tela.
 const CENAS_DOR = [
-  'Sexta ao meio-dia, e você não sabe se sobra dinheiro pra sair à noite.',
-  'A fatura chega com um valor que você jura não lembrar de ter gasto.',
-  'Baixou uma planilha pra controlar tudo. Durou quatro dias.',
+  'Sexta ao meio-dia,\ne você não sabe se sobra\ndinheiro pra sair à noite.',
+  'A fatura chega com\num valor que você jura\nnão lembrar de ter gasto.',
+  'Baixou uma planilha\npra controlar tudo.\nDurou quatro dias.',
 ];
 
 const PONTE_PERGUNTA = 'Aqui, contar um gasto leva o mesmo tempo que mandar um áudio pra um amigo.';
 
-/* Acha o ancestral que realmente rola — o `ScrollView` da página renderiza,
-   na web, como uma div com overflow próprio; nem sempre é a `window` que
-   rola (não é, aqui: a `window` fica parada, quem rola é essa div). Mesmo
-   critério (scrollHeight bem maior que clientHeight) já usado nesta sessão
-   pra achar esse elemento via inspeção direta do DOM. */
-function encontrarAncestralRolavel(no: HTMLElement | null): HTMLElement | null {
-  let atual = no?.parentElement ?? null;
-  while (atual) {
-    if (atual.scrollHeight > atual.clientHeight + 40) return atual;
-    atual = atual.parentElement;
-  }
-  return null;
-}
-
-/** Posição Y de um elemento relativa ao CONTEÚDO do próprio contêiner que
-    rola — mesmo espaço de coordenadas que `scrollY` (alimentado pelo
-    `contentOffset` do ScrollView) já usa, o que permite comparar os dois
-    diretamente numa interpolação. */
-function medirYAbsoluto(ref: React.RefObject<View | null>): number | null {
-  if (Platform.OS !== 'web') return null;
-  const no = ref.current as unknown as HTMLElement | null;
-  if (!no) return null;
-  const scrollNo = encontrarAncestralRolavel(no);
-  if (!scrollNo) return null;
-  const retanguloElemento = no.getBoundingClientRect();
-  const retanguloRolagem = scrollNo.getBoundingClientRect();
-  return retanguloElemento.top - retanguloRolagem.top + scrollNo.scrollTop;
-}
+/* Mesmo escalonamento vertical do FAQ (ver DESALINHO_FAQ) — valores fixos,
+   não aleatórios de verdade, pra não "pular" a cada re-render. Só 3 cenas
+   aqui, então um array próprio, mais curto. */
+const DESALINHO_DOR = [0, 26, -14];
 
 /**
- * "Reconhece isso?" em texto corrido com scrub de brilho ligado ao scroll —
- * cada linha (3 cenas de dor + a virada) acende de `inkFaint` pra sua cor de
- * pico conforme cruza o centro vertical da tela, e apaga de novo depois,
- * numa transição contínua em vez do fade binário de `RevealOnScroll`. A
- * posição de cada linha é medida uma vez, depois do primeiro layout — texto
- * estático, não deveria remedir sozinho.
+ * "Reconhece isso?" — cada cena de dor numa caixa própria, desalinhadas
+ * entre si (referência: os cards do workshop que o autor mandou), no lugar
+ * do scrub de brilho contínuo ligado ao scroll que a página tinha antes. A
+ * pergunta de virada (`PONTE_PERGUNTA`) fica fora das caixas, como o
+ * parágrafo de saída da seção — ela é a resposta, não mais uma dor.
  */
-function SecaoReconheceIsso({ scrollY }: { scrollY: Animated.Value }) {
-  const { height: alturaJanela } = useWindowDimensions();
-  const [reduzirMovimento, setReduzirMovimento] = useState(false);
-  const ref0 = useRef<View>(null);
-  const ref1 = useRef<View>(null);
-  const ref2 = useRef<View>(null);
-  const ref3 = useRef<View>(null);
-  const refsLinhas = [ref0, ref1, ref2, ref3];
-  const [posicoes, setPosicoes] = useState<(number | null)[]>([null, null, null, null]);
-
-  useEffect(() => {
-    let ativo = true;
-    AccessibilityInfo.isReduceMotionEnabled?.()
-      .then((v) => ativo && setReduzirMovimento(v))
-      .catch(() => {});
-    return () => {
-      ativo = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof requestAnimationFrame === 'undefined') return;
-
-    function remedir() {
-      setPosicoes(refsLinhas.map((r) => medirYAbsoluto(r)));
-    }
-
-    const id = requestAnimationFrame(remedir);
-    /* Sem isso, redimensionar a janela (ou girar um tablet) deixa a posição
-       medida presa ao layout de antes do resize — as linhas reflowam pra um
-       Y novo, mas o centro de brilho calculado continua apontando pro Y
-       antigo, e o scrub desalinha do texto até recarregar a página. */
-    window.addEventListener?.('resize', remedir);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener?.('resize', remedir);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const textos = [...CENAS_DOR, PONTE_PERGUNTA];
-
+function SecaoReconheceIsso() {
+  const { ehCompacto } = useBreakpoint();
   return (
-    <View style={styles.listaCenas}>
-      {textos.map((texto, i) => {
-        const ultima = i === textos.length - 1;
-        const corPico = ultima ? theme.accent2 : theme.ink;
-        const y = posicoes[i];
-        let cor: string | Animated.AnimatedInterpolation<string> = corPico;
-        if (!reduzirMovimento && y !== null) {
-          const centro = y - alturaJanela / 2;
-          cor = scrollY.interpolate({
-            inputRange: [centro - alturaJanela * 0.55, centro - alturaJanela * 0.2, centro + alturaJanela * 0.15],
-            outputRange: [theme.inkFaint, corPico, theme.inkFaint],
-            extrapolate: 'clamp',
-          });
-        }
-        return (
-          <Animated.Text
-            key={i}
-            ref={refsLinhas[i]}
-            style={[styles.textoCena, ultima && styles.pontePergunta, { color: cor }]}
+    <View>
+      <View style={styles.gradeCenas}>
+        {CENAS_DOR.map((texto, i) => (
+          <RevealOnScroll
+            key={texto}
+            atraso={i * 90}
+            style={[
+              styles.cenaCaixaPos,
+              ehCompacto && styles.cenaCaixaPosCompacta,
+              !ehCompacto && { transform: [{ translateY: DESALINHO_DOR[i % DESALINHO_DOR.length] }] },
+            ]}
           >
-            {texto}
-          </Animated.Text>
-        );
-      })}
+            <View style={styles.cenaCaixa}>
+              <Text style={[styles.textoCena, styles.precoTextoCentralizado]}>{texto}</Text>
+            </View>
+          </RevealOnScroll>
+        ))}
+      </View>
+      <RevealOnScroll atraso={CENAS_DOR.length * 90} style={styles.precoIntroCentralizada}>
+        <Text style={[styles.pontePergunta, styles.precoTextoCentralizado]}>{PONTE_PERGUNTA}</Text>
+      </RevealOnScroll>
     </View>
   );
 }
@@ -262,6 +191,14 @@ const COMPROMISSOS = [
   { dia: '18', mes: 'SET', nome: 'Celular 3/12', tipo: 'Parcela', valor: 'R$ 249,90' },
   { dia: '25', mes: 'SET', nome: 'Internet', tipo: 'Conta fixa', valor: 'R$ 99,90' },
 ];
+
+/* Escalonamento vertical dos cards do FAQ (referência: agent.humanacademy.ai)
+   — decisão deliberada de voltar atrás de uma rodada anterior que tinha
+   revertido isso pro alinhamento rígido. Valores fixos, não aleatórios de
+   verdade: precisam ser os mesmos a cada render (senão o layout "pula" a
+   cada re-render) e continuar parecendo desenhado, não just bagunçado. */
+const DESALINHO_FAQ = [0, 56, -30, 38, 14];
+const LARGURAS_FAQ = ['44%', '48%', '42%', '46%', '44%'] as const;
 
 /* Array, não JSX solto — precisa do índice pra alternar o escalonamento
    visual dos cards (ver `faqGrade`/`faqCardPos` no render). */
@@ -287,8 +224,7 @@ const PERGUNTAS_FAQ = [
   },
   {
     pergunta: 'É pago?',
-    resposta:
-      'O Grana. está em fase de acesso antecipado. Criar conta é livre agora. Um plano pago está a caminho; quem já usa é avisado antes de qualquer cobrança começar.',
+    resposta: 'Sim, um plano único e simples, sem letra miúda. Você sabe exatamente quanto vai pagar antes de criar a conta.',
   },
 ];
 
@@ -298,134 +234,16 @@ const PERGUNTAS_FAQ = [
  * 1080px — a escala precisa acompanhar o tamanho do palco. No compacto, onde
  * a dobra não existe, continua sendo o mesmo de antes.
  */
-function TituloSecao({ children }: { children: React.ReactNode }) {
+function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; estiloExtra?: StyleProp<TextStyle> }) {
   const { ehCompacto } = useBreakpoint();
   return (
-    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande]}>
+    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, estiloExtra]}>
       {children}
     </Text>
   );
 }
 
-/* ───────── Telas do notebook do herói-storytelling ─────────
-   Capítulo 1 reaproveita LandingHeroDemo (já existia); capítulo 4 reaproveita
-   o texto do card "Livre para Gastar" que também aparece em "Inteligência
-   financeira" mais abaixo — mesmo valor de exemplo, dois lugares diferentes
-   da página. Capítulos 2 e 3 são novos, nos mesmos tokens de cor/tipografia
-   do resto do app. */
-
-/* Lançamentos que JÁ estavam na conta antes da fala — existem pra que a tela
-   do notebook pareça um app em uso, não um card único flutuando no vazio. As
-   cores são as reais das categorias em lib/heuristics.ts. */
-const LANCAMENTOS_ANTERIORES = [
-  { nome: 'Uber', categoria: 'Transporte', valor: 'R$ 18,40', cor: '#4f9bab' },
-  { nome: 'Farmácia', categoria: 'Saúde', valor: 'R$ 62,00', cor: '#5aa79b' },
-  { nome: 'Netflix', categoria: 'Lazer', valor: 'R$ 44,90', cor: '#ab8bc2' },
-];
-
-function TelaVoz() {
-  return (
-    <View style={styles.mockTelaApp}>
-      <Text style={styles.mockTelaTitulo}>Hoje</Text>
-      <LandingHeroDemo />
-      <View style={styles.mockListaAnteriores}>
-        {LANCAMENTOS_ANTERIORES.map((l) => (
-          <View key={l.nome} style={styles.mockLinhaAnterior}>
-            <View style={[styles.mockPontoCategoria, { backgroundColor: l.cor }]} />
-            <View style={styles.mockLinhaTextos}>
-              <Text style={styles.mockLinhaNome}>{l.nome}</Text>
-              <Text style={styles.mockLinhaCategoria}>{l.categoria}</Text>
-            </View>
-            <Text style={styles.mockLinhaValor}>{l.valor}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function TelaWhatsapp() {
-  return (
-    <View style={styles.mockChat}>
-      <View style={styles.mockBolhaEnviada}>
-        <Text style={styles.mockTextoEnviado}>mercado 34,65</Text>
-      </View>
-      <View style={styles.mockBolhaRecebida}>
-        <Ionicons name="checkmark-circle" size={14} color={theme.accent2} aria-hidden />
-        <Text style={styles.mockTextoRecebido}>Lançamento registrado: Mercado, R$ 34,65</Text>
-      </View>
-    </View>
-  );
-}
-
-const ITENS_NOTA = [
-  { nome: 'Arroz 5kg', valor: 'R$ 24,90' },
-  { nome: 'Detergente', valor: 'R$ 3,20' },
-  { nome: 'Frango kg', valor: 'R$ 18,50' },
-];
-
-function TelaNota() {
-  return (
-    <View>
-      <View style={styles.mockNotaCabecalho}>
-        <Ionicons name="qr-code" size={20} color={theme.accent2} aria-hidden />
-        <Text style={styles.mockNotaRotulo}>Nota reconhecida</Text>
-      </View>
-      <View style={styles.mockNotaLista}>
-        {ITENS_NOTA.map((item) => (
-          <View key={item.nome} style={styles.mockNotaLinha}>
-            <Text style={styles.mockNotaNome}>{item.nome}</Text>
-            <Text style={styles.mockNotaValor}>{item.valor}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/* Cores reais das categorias em CATEGORY_KEYWORDS (lib/heuristics.ts) — a
-   rosca mostra a paleta que a pessoa vai ver na conta dela, não uma
-   decorativa. */
-const FATIAS_CATEGORIA: PieSlice[] = [
-  { name: 'Alimentação', color: '#bb6b60', value: 642 },
-  { name: 'Transporte', color: '#4f9bab', value: 318 },
-  { name: 'Casa', color: '#93aa7e', value: 274 },
-  { name: 'Lazer', color: '#ab8bc2', value: 186 },
-];
-
-function TelaSafeToSpend() {
-  /* O card deste mock é o próprio capítulo compacto do herói, que já não tem
-     a largura do notebook desktop — e a rosca tem 188px FIXOS. Lado a lado
-     (flexDirection: 'row'), o texto ficava só com o resto: ~100px numa tela
-     de 390px, estreito demais pro "R$ 48,00" em fonte grande, que quebrava
-     em três linhas ("R$" / "48,0" / "0"). Empilhado, o texto recebe a
-     largura do card inteiro e a rosca sai centralizada abaixo dele. */
-  const { ehCompacto } = useBreakpoint();
-  return (
-    <View style={[styles.mockPainel, ehCompacto && styles.mockPainelCompacto]}>
-      <View style={styles.mockPainelTexto}>
-        <Text style={styles.mockRotulo}>Livre para gastar hoje</Text>
-        <Text style={styles.mockValor}>R$ 48,00</Text>
-        <Text style={styles.mockLegenda}>até o fim do mês, considerando contas e parcelas já agendadas</Text>
-        <View style={styles.mockLegendaCategorias}>
-          {FATIAS_CATEGORIA.map((f) => (
-            <View key={f.name} style={styles.mockLegendaLinha}>
-              <View style={[styles.mockLegendaPonto, { backgroundColor: f.color }]} />
-              <Text style={styles.mockLegendaNome}>{f.name}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-      {/* O gráfico de rosca REAL da tela de Gráficos, com as cores reais das
-          categorias — não um desenho de gráfico feito pra landing page. */}
-      <View style={ehCompacto && styles.mockPainelGraficoCompacto}>
-        <PieChart data={FATIAS_CATEGORIA} size={188} />
-      </View>
-    </View>
-  );
-}
-
-type Capitulo = { titulo: string; subtitulo: string; tela: React.ReactNode };
+type Capitulo = { titulo: string; subtitulo: string };
 
 /**
  * O herói da página — e a própria demonstração do produto, ao mesmo tempo.
@@ -478,23 +296,19 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
     {
       titulo: TITULO_CAPITULO_1,
       subtitulo: 'Fala com o Grana. como fala com um amigo. Ele entende o valor, o nome e a categoria sozinho.',
-      tela: <TelaVoz />,
     },
     {
       titulo: 'Manda um áudio. Pronto.',
       subtitulo: 'Sem abrir o app. Escreve ou fala pro número do Grana. no WhatsApp e o lançamento aparece organizado.',
-      tela: <TelaWhatsapp />,
     },
     {
       titulo: 'Aponta a câmera. Acabou.',
       subtitulo: 'O QR Code da nota vira lançamento. Cada item já categorizado, sem digitar nada.',
-      tela: <TelaNota />,
     },
     {
       titulo: 'Sabe quanto sobra, sem calcular.',
       subtitulo:
         'Depois que o lançamento existe, o Grana. soma tudo e avisa quanto você tem livre pra gastar hoje.',
-      tela: <TelaSafeToSpend />,
     },
   ];
 
@@ -554,7 +368,12 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
 
   if (ehCompacto) {
     return (
-      <View style={styles.heroTrilhaCompacta}>
+      // O chamador (`ConteudoWeb`) não envolve mais o herói em
+      // `[colunaConteudo, faixa]` — o painel largo precisa sangrar até a
+      // borda do viewport, então esse wrapper move pra dentro daqui,
+      // condicional por variante. É o mesmo par que `faixaCompacta` sempre
+      // aplicou nesta faixa, só que declarado aqui em vez de no chamador.
+      <View style={[colunaConteudo, styles.faixa, styles.faixaCompacta, styles.heroTrilhaCompacta]}>
         {CAPITULOS.map((c, i) => (
           <View key={c.titulo} style={styles.heroBlocoCompacto}>
             <Text style={styles.eyebrow}>Acesso antecipado</Text>
@@ -566,9 +385,15 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
               {c.titulo}
             </Text>
             <Text style={styles.subheadline}>{c.subtitulo}</Text>
-            <View style={styles.heroTelaCompacta}>
-              <LaptopMockup>{c.tela}</LaptopMockup>
-            </View>
+            {/* O vídeo é o visual único do herói — mostrado uma vez só, no
+                capítulo 1, não repetido atrás de cada bloco de texto (eram 4
+                cópias do mesmo <video> autoplay, pesado e redundante). Os
+                capítulos 2-4 seguem só com título/subtítulo. */}
+            {i === 0 && (
+              <View style={styles.heroTelaCompacta}>
+                <NotebookVideo />
+              </View>
+            )}
             {i === 0 && <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />}
           </View>
         ))}
@@ -586,38 +411,64 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
 
   return (
     <View style={[styles.heroTrilhaGatilhos, { height: alturaCapitulo * CAPITULOS.length }]}>
-      <View style={[styles.heroLinhaSticky, { height: alturaSticky }]}>
-        <View style={styles.heroColunaTexto}>
-          <Text style={styles.eyebrow}>Acesso antecipado</Text>
-          <Animated.View style={{ opacity: fade }}>
-            <Text role="heading" aria-level={1} style={styles.headline}>
-              {[...capitulo.titulo].map((letra, i) => {
-                const valor = letras[i];
-                const cor = valor
-                  ? valor.interpolate({ inputRange: [0, 1], outputRange: [theme.inkFaint, theme.ink] })
-                  : theme.ink;
-                return (
-                  <Animated.Text key={i} style={{ color: cor }}>
-                    {letra}
-                  </Animated.Text>
-                );
-              })}
-            </Text>
-            <Text style={styles.subheadline}>{capitulo.subtitulo}</Text>
-          </Animated.View>
-          <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />
-          <View style={styles.heroMarcadores} aria-hidden>
-            {CAPITULOS.map((_, i) => (
-              <View key={i} style={[styles.heroMarcador, i === capituloExibido && styles.heroMarcadorAtivo]} />
-            ))}
+      <View style={[styles.heroLinhaSticky, { minHeight: alturaSticky }]}>
+        {/* Fundo do painel inteiro — montado a partir de 3 camadas soltas
+            (bg/sombra/notebook, ver comentário em NotebookAnimado.tsx), não
+            mais um vídeo: nenhuma recompressão por frame, o notebook fica
+            pixel a pixel igual ao PNG original em qualquer tamanho de tela.
+            O componente já é `position:absolute, inset:0` por conta própria
+            — sem wrapper extra aqui. Sem `fade`, ao contrário do texto: é o
+            visual único e constante do herói (mesmo notebook flutuando nos
+            4 capítulos), então não há por que apagar/reacender a cada troca. */}
+        <NotebookAnimado />
+        {/* Escurece a metade esquerda (onde o texto fica por cima) e some
+            gradualmente até o notebook, do mesmo jeito que a referência da
+            Apple/AirPods usava um degradê branco->transparente sobre o
+            vídeo — aqui em tom `paper` (o fundo escuro do próprio app), não
+            branco, pra continuar lendo como "página escura", não "vinheta
+            clara por cima de vídeo". */}
+        <View style={styles.heroGradienteFundo} pointerEvents="none" aria-hidden />
+        {/* Funde a base do painel na cor da página (`theme.paper`, a mesma
+            que a seção seguinte usa por herdar o fundo de `pagina`) — sem
+            isso o corte entre o composto (bg/sombra/notebook) e o resto da
+            página aparecia como uma linha reta nítida bem onde `bg.png`
+            termina, lendo como bug de camada, não como transição. */}
+        <View style={styles.heroGradienteInferior} pointerEvents="none" aria-hidden />
+
+        {/* `colunaConteudo` recentraliza o texto no mesmo teto de 1440px (e
+            `heroConteudoCentralizado` repete o `paddingHorizontal` que
+            `faixa` usa) que o resto da página — sem isso o texto ficaria
+            colado na borda VERDADEIRA do viewport, já que o painel em volta
+            (`heroLinhaSticky`) agora estica até lá. O vídeo sangra até a
+            borda; o texto continua alinhado com o cabeçalho e as seções
+            abaixo. */}
+        <View style={[colunaConteudo, styles.heroConteudoCentralizado]}>
+          <View style={styles.heroColunaTexto}>
+            <Text style={styles.eyebrow}>Acesso antecipado</Text>
+            <Animated.View style={{ opacity: fade }}>
+              <Text role="heading" aria-level={1} style={styles.headline}>
+                {[...capitulo.titulo].map((letra, i) => {
+                  const valor = letras[i];
+                  const cor = valor
+                    ? valor.interpolate({ inputRange: [0, 1], outputRange: [theme.inkFaint, theme.ink] })
+                    : theme.ink;
+                  return (
+                    <Animated.Text key={i} style={{ color: cor }}>
+                      {letra}
+                    </Animated.Text>
+                  );
+                })}
+              </Text>
+              <Text style={styles.subheadline}>{capitulo.subtitulo}</Text>
+            </Animated.View>
+            <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />
+            <View style={styles.heroMarcadores} aria-hidden>
+              {CAPITULOS.map((_, i) => (
+                <View key={i} style={[styles.heroMarcador, i === capituloExibido && styles.heroMarcadorAtivo]} />
+              ))}
+            </View>
           </View>
         </View>
-
-        <Animated.View style={[styles.heroColunaNotebook, { opacity: fade }]}>
-          {/* Metade da altura grudada: o notebook cresce junto com a dobra em
-              vez de virar um selinho no meio de uma tela de 1080px. */}
-          <LaptopMockup alturaTela={Math.round(alturaSticky * 0.5)}>{capitulo.tela}</LaptopMockup>
-        </Animated.View>
       </View>
 
       {CAPITULOS.map((_, i) => (
@@ -679,23 +530,29 @@ function ConteudoWeb() {
     },
   ];
 
+  // `tipo` escolhe a cor do ícone: 'faz' usa a mesma cor de lançamento
+  // positivo (`theme.up`, verde) já usada pros valores de entrada no mock da
+  // página; 'nao' usa a de lançamento negativo (`theme.down`, ciano) — as
+  // mesmas duas cores que o resto do app já usa pra "dinheiro entrando" vs.
+  // "dinheiro saindo", aqui emprestadas pra "o que o Grana. faz" vs. "o que
+  // ele nunca faz", em vez de inventar um terceiro par de cores novo.
   const SEGURANCA = [
-    { icone: 'lock-closed-outline' as const, texto: 'Cada conta só enxerga os próprios dados, reforçado no banco, não só na tela.' },
-    { icone: 'finger-print-outline' as const, texto: 'Bloqueio por biometria ou senha do aparelho, se você ativar.' },
-    { icone: 'eye-off-outline' as const, texto: 'Modo privacidade oculta os valores da tela com um toque.' },
-    { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida contra vazamentos conhecidos no cadastro.' },
-    { icone: 'ban-outline' as const, texto: 'O Grana. é só registro. Ele nunca movimenta dinheiro de verdade.' },
-    { icone: 'megaphone-outline' as const, texto: 'Sem anúncio, sem venda de dado. O que você registra é seu.' },
+    { icone: 'lock-closed-outline' as const, texto: 'Cada conta só enxerga\nos próprios dados, reforçado\nno banco, não só na tela.', tipo: 'faz' as const },
+    { icone: 'finger-print-outline' as const, texto: 'Bloqueio por biometria\nou senha do aparelho,\nse você ativar.', tipo: 'faz' as const },
+    { icone: 'eye-off-outline' as const, texto: 'Modo privacidade oculta\nos valores da tela\ncom um toque.', tipo: 'faz' as const },
+    { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida\ncontra vazamentos conhecidos\nno cadastro.', tipo: 'faz' as const },
+    { icone: 'ban-outline' as const, texto: 'O Grana. é só registro.\nEle nunca movimenta\ndinheiro de verdade.', tipo: 'nao' as const },
+    { icone: 'megaphone-outline' as const, texto: 'Sem anúncio, sem venda\nde dado. O que você\nregistra é seu.', tipo: 'nao' as const },
   ];
 
   // Só o que já é dito em algum outro ponto desta mesma página — nenhum
   // benefício novo inventado pro checklist de Preços.
   const BENEFICIOS_PRECO = [
-    'Voz, WhatsApp (texto ou áudio) ou foto da nota pra lançar',
-    'Livre para Gastar calculado sozinho, considerando o que ainda vem',
-    'Biometria, senha e modo privacidade pra ocultar valores',
-    'Dados isolados por conta, nunca vendidos ou usados em anúncio',
-    'Acesso completo, grátis, enquanto durar o acesso antecipado',
+    'Voz, WhatsApp (texto ou áudio)\nou foto da nota pra lançar',
+    'Livre para Gastar calculado sozinho,\nconsiderando o que ainda vem',
+    'Biometria, senha e modo\nprivacidade pra ocultar valores',
+    'Dados isolados por conta, nunca\nvendidos ou usados em anúncio',
+    'Acesso completo a todos\nos recursos, sem plano limitado',
   ];
 
   return (
@@ -709,7 +566,7 @@ function ConteudoWeb() {
     >
       {/* ───────── Cabeçalho ───────── */}
       <View
-        style={[colunaConteudo, styles.faixa]}
+        style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
         <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.lg }]}>
@@ -734,7 +591,7 @@ function ConteudoWeb() {
           está "fora" do ritmo de dobras de tela cheia (useAlturaDobra). Uma
           faixa fina no meio de duas Dobra quebraria essa métrica. */}
       <TrustMarquee
-        itens={['Grátis em acesso antecipado', 'Sem banco conectado', 'Sem cartão pra começar', 'Sem letra miúda']}
+        itens={['Sem banco conectado', 'Sem burocracia pra começar', 'Sem letra miúda', 'Preço simples e fixo']}
       />
 
       {/* ───────── Hero-storytelling — o momento de assinatura da página ───────── */}
@@ -743,52 +600,40 @@ function ConteudoWeb() {
           <GlowOrb cor="rgba(31,169,141,0.35)" tamanho={720} top={-260} left={-160} scrollY={scrollY} fatorParallax={0.12} />
           <GlowOrb cor="rgba(174,255,227,0.16)" tamanho={520} top={-80} right={-120} scrollY={scrollY} fatorParallax={0.2} />
         </View>
-        <View style={[colunaConteudo, styles.faixa]}>
-          <HeroStorytelling ehCompacto={ehCompacto} alturaCabecalho={alturaCabecalho} />
-        </View>
+        {/* Sem o wrapper `[colunaConteudo, faixa]` que as outras seções usam:
+            o painel largo do herói precisa sangrar até a borda VERDADEIRA do
+            viewport (vídeo de fundo), então é a própria `HeroStorytelling`
+            que decide seu próprio limite de largura por variante — o
+            compacto aplica `colunaConteudo/faixa` nele mesmo (mesmo efeito
+            de antes), o largo não aplica nenhum, e só o texto por cima do
+            vídeo fica preso a 1440px (`heroConteudoCentralizado`). */}
+        <HeroStorytelling ehCompacto={ehCompacto} alturaCabecalho={alturaCabecalho} />
       </View>
 
       {/* ───────── Reconhece isso? (dor, antes da solução) ─────────
-          Seção só de texto por escolha deliberada (mimetiza a técnica de
-          scrub da referência Fora) — mas ficou sem NENHUM apoio visual, o
-          que o autor apontou. Dois ícones bem discretos (não um mockup
-          cheio, que quebraria o minimalismo do scrub) reforçam o tema sem
-          competir com o texto. */}
-      <View ref={refProduto} style={styles.palcoComIcones}>
-        <FloatingIcon
-          icone="help-circle-outline"
-          tamanho={52}
-          cor={`${theme.accent2}14`}
-          top={32}
-          right="10%"
-          rotacao="6deg"
-          scrollY={scrollY}
-          fatorParallax={0.05}
-        />
-        <FloatingIcon
-          icone="document-text-outline"
-          tamanho={40}
-          cor={`${theme.accent2}1F`}
-          bottom={40}
-          left="4%"
-          rotacao="-8deg"
-          scrollY={scrollY}
-          fatorParallax={0.08}
-        />
+          Cada cena de dor em caixa própria, desalinhadas entre si
+          (referência: cards do workshop) — trocou o scrub de brilho
+          contínuo que a seção tinha antes. */}
+      <View ref={refProduto} style={styles.palcoComCamada}>
+        <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
-            <RevealOnScroll>
-              <Text style={styles.secaoEyebrow}>Reconhece isso?</Text>
-              <TituloSecao>Anotar gastos dá trabalho. Por isso você para.</TituloSecao>
+            <RevealOnScroll style={styles.precoIntroCentralizada}>
+              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Reconhece isso?</Text>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
+                {'Anotar gastos dá trabalho.\nPor isso você não dá continuidade.'}
+              </TituloSecao>
             </RevealOnScroll>
 
-            <SecaoReconheceIsso scrollY={scrollY} />
+            <SecaoReconheceIsso />
           </View>
         </Dobra>
       </View>
 
       {/* ───────── Como entra o lançamento ───────── */}
-      <Dobra levantada>
+      <View style={styles.palcoComCamada}>
+        <GradeInterativa invertida />
+        <Dobra levantada>
         <View style={styles.secao}>
           <RevealOnScroll>
             <Text style={styles.secaoEyebrow}>A parte que você não vai adiar</Text>
@@ -812,44 +657,26 @@ function ConteudoWeb() {
           <RevealOnScroll>
             <View style={styles.ctaMeio}>
               <Text style={styles.ctaMeioTitulo}>Pronto pra parar de perder a conta?</Text>
-              <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." centralizado />
+              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado />
             </View>
           </RevealOnScroll>
         </View>
-      </Dobra>
+        </Dobra>
+      </View>
 
       {/* ───────── Inteligência financeira ───────── */}
-      <View style={styles.palcoComIcones}>
-        <FloatingIcon
-          icone="trending-up-outline"
-          tamanho={64}
-          cor={`${theme.accent2}14`}
-          top={40}
-          right="8%"
-          rotacao="-8deg"
-          scrollY={scrollY}
-          fatorParallax={0.06}
-        />
-        <FloatingIcon
-          icone="wallet-outline"
-          tamanho={44}
-          cor={`${theme.accent2}1F`}
-          bottom={24}
-          left="4%"
-          rotacao="6deg"
-          scrollY={scrollY}
-          fatorParallax={0.1}
-        />
+      <View style={styles.palcoComCamada}>
+        <GradeInterativa />
         <Dobra>
         <RevealOnScroll>
           <View style={[styles.secao, styles.secaoComCartao]}>
             <View style={styles.colunaTextoSecao}>
               <Text style={styles.secaoEyebrow}>Depois que o lançamento existe</Text>
-              <TituloSecao>Ele soma o que ainda vai vir, antes de você se apertar.</TituloSecao>
+              <TituloSecao>{'Ele soma o que\nainda vai vir, antes\nde você se apertar.'}</TituloSecao>
               <Text style={styles.secaoTexto}>
-                A linha do tempo de compromissos futuros junta parcelas do cartão e contas fixas num lugar só. É
-                dela que sai o <Text style={styles.destaqueInline}>Livre para Gastar</Text> do dia, que já considera
-                o que ainda vem. Nada pega de surpresa lá na frente.
+                {'A linha do tempo de compromissos futuros junta\nparcelas do cartão e contas fixas num lugar só.\nÉ dela que sai o '}
+                <Text style={styles.destaqueInline}>Livre para Gastar</Text>
+                {' do dia, que já\nconsidera o que ainda vem. Nada pega de surpresa lá na frente.'}
               </Text>
             </View>
 
@@ -881,13 +708,17 @@ function ConteudoWeb() {
       </View>
 
       {/* ───────── Segurança e confiança ───────── */}
-      <Dobra levantada>
+      <View style={styles.palcoComCamada}>
+        <GradeInterativa invertida />
+        <Dobra levantada>
         <View style={styles.secao}>
-          <RevealOnScroll>
-            <Text style={styles.secaoEyebrow}>A pergunta que todo mundo faz</Text>
-            <TituloSecao>"Tá, mas é seguro dar meus gastos pra um app?"</TituloSecao>
-            <Text style={styles.secaoTexto}>
-              Faz sentido perguntar. Aqui está exatamente o que a gente faz, e o que a gente nunca faz.
+          <RevealOnScroll style={styles.precoIntroCentralizada}>
+            <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>A pergunta que todo mundo faz</Text>
+            <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
+              {'"É seguro informar meus\ngastos para um aplicativo?"'}
+            </TituloSecao>
+            <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
+              {'Faz sentido perguntar. Aqui está exatamente\no que a gente faz, e o que a gente nunca faz.'}
             </Text>
           </RevealOnScroll>
 
@@ -895,80 +726,63 @@ function ConteudoWeb() {
             {SEGURANCA.map((s, i) => (
               <RevealOnScroll key={s.texto} atraso={i * 70} style={{ flexBasis: largura2 }}>
                 <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cardSeguranca, hovered && styles.cardComHover]}>
-                  <Ionicons name={s.icone} size={18} color={theme.inkSoft} aria-hidden />
+                  <Ionicons name={s.icone} size={18} color={s.tipo === 'faz' ? theme.up : theme.down} aria-hidden />
                   <Text style={styles.segurancaTexto}>{s.texto}</Text>
                 </AppPressable>
               </RevealOnScroll>
             ))}
           </View>
         </View>
-      </Dobra>
+        </Dobra>
+      </View>
 
       {/* ───────── Preços ───────── */}
-      <View ref={refPrecos} style={styles.palcoComIcones}>
-        <FloatingIcon
-          icone="cash-outline"
-          tamanho={56}
-          cor={`${theme.accent2}14`}
-          top={24}
-          left="6%"
-          rotacao="-6deg"
-          scrollY={scrollY}
-          fatorParallax={0.05}
-        />
-        <FloatingIcon
-          icone="receipt-outline"
-          tamanho={40}
-          cor={`${theme.accent2}1F`}
-          bottom={32}
-          right="10%"
-          rotacao="8deg"
-          scrollY={scrollY}
-          fatorParallax={0.09}
-        />
+      <View ref={refPrecos} style={styles.palcoComCamada}>
+        <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
-            <RevealOnScroll>
-              <Text style={styles.secaoEyebrow}>Quanto custa</Text>
-              <TituloSecao>Grátis por enquanto. Sem letra miúda escondida.</TituloSecao>
-              <Text style={styles.secaoTexto}>
-                O Grana. está em acesso antecipado. Criar conta não custa nada agora. Quando existir um
-                plano pago, quem já usa é avisado antes de qualquer cobrança começar.
+            <RevealOnScroll style={styles.precoIntroCentralizada}>
+              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Quanto custa</Text>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
+                {'Um plano só.\nSem letra miúda escondida.'}
+              </TituloSecao>
+              <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
+                {'Um preço simples, sem pegadinha.\nVocê sabe exatamente quanto vai pagar, todo mês.'}
               </Text>
             </RevealOnScroll>
 
-            <View style={styles.precoColunas}>
-              <RevealOnScroll style={styles.precoChecklistCol}>
-                <Text style={styles.precoChecklistTitulo}>Tudo que você recebe</Text>
-                <View style={styles.precoChecklist}>
-                  {BENEFICIOS_PRECO.map((b) => (
-                    <View key={b} style={styles.precoChecklistLinha}>
-                      <Ionicons name="checkmark-circle" size={18} color={theme.up} aria-hidden />
-                      <Text style={styles.precoChecklistTexto}>{b}</Text>
-                    </View>
-                  ))}
+            {/* Um card só, dividido ao meio — não dois cards soltos lado a
+                lado. O checklist (linhas simples, sem caixa individual) fica
+                no lado neutro; o painel de preço é o lado com destaque
+                visual (`paperSelected`), separado por uma borda em vez de um
+                vão entre dois elementos. */}
+            <RevealOnScroll style={styles.precoCardUnico}>
+              <View style={styles.precoColunas}>
+                <View style={styles.precoChecklistCol}>
+                  <Text style={styles.precoChecklistTitulo}>Tudo que você recebe</Text>
+                  <View style={styles.precoChecklist}>
+                    {BENEFICIOS_PRECO.map((b) => (
+                      <View key={b} style={styles.precoChecklistLinha}>
+                        <Ionicons name="checkmark-circle" size={22} color={theme.up} aria-hidden />
+                        <Text style={styles.precoChecklistTexto}>{b}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </RevealOnScroll>
 
-              <RevealOnScroll atraso={90} style={styles.cardPrecoWrap}>
-                <View style={[styles.cardFeature, styles.cardPreco]}>
+                <View style={[styles.cardPreco, ehCompacto && styles.cardPrecoCompacto]}>
                   <Text style={styles.precoRotulo}>Plano único</Text>
                   <View style={styles.precoLinha}>
-                    <Text style={styles.precoValor}>R$ —,—</Text>
+                    <Text style={styles.precoValor}>R$ 0,01</Text>
                     <Text style={styles.precoPeriodo}>/mês</Text>
                   </View>
-                  {/* O rótulo abaixo não é decoração da cor apagada do valor —
-                      é o que garante que a mensagem "isto não é um preço real"
-                      chegue mesmo pra quem não distingue bem o tom do verde. */}
-                  <Text style={styles.precoEmDefinicao}>Preço em definição</Text>
                   <Text style={styles.featureTexto}>
-                    Sem cartão pra testar. Sem cobrança surpresa depois. Você é avisado antes de
-                    qualquer plano pago começar.
+                    Cobrança simples, sem letra miúda. Cancele quando quiser, sem burocracia.
                   </Text>
-                  <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." />
+                  <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." />
                 </View>
-              </RevealOnScroll>
-            </View>
+              </View>
+            </RevealOnScroll>
           </View>
         </Dobra>
       </View>
@@ -979,8 +793,8 @@ function ConteudoWeb() {
           o autor pediu alinhamento rigoroso entre texto e elementos em toda
           a página, e o escalonamento lia como "desalinhado", não como
           "intencional". Cards em grade limpa, todos com o topo alinhado. */}
-      <View style={styles.palcoComIcones}>
-        <View style={styles.camadaGradeFaq} pointerEvents="none" />
+      <View style={styles.palcoComCamada}>
+        <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
             <View style={styles.faqLayout}>
@@ -997,7 +811,12 @@ function ConteudoWeb() {
                   <RevealOnScroll
                     key={f.pergunta}
                     atraso={i * 70}
-                    style={[styles.faqCardPos, ehCompacto && styles.faqCardPosCompacto]}
+                    style={[
+                      styles.faqCardPos,
+                      { flexBasis: LARGURAS_FAQ[i % LARGURAS_FAQ.length] },
+                      !ehCompacto && { transform: [{ translateY: DESALINHO_FAQ[i % DESALINHO_FAQ.length] }] },
+                      ehCompacto && styles.faqCardPosCompacto,
+                    ]}
                   >
                     <View style={styles.faqCard}>
                       <FaqItem pergunta={f.pergunta} resposta={f.resposta} estiloExtra={styles.faqItemSemBorda} />
@@ -1020,7 +839,7 @@ function ConteudoWeb() {
       >
         <GlowOrb cor="rgba(31,169,141,0.22)" tamanho={620} top={-200} left="50%" scrollY={scrollY} fatorParallax={0.08} />
         <RevealOnScroll>
-          <View style={[colunaConteudo, styles.faixa]}>
+          <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
             <View style={[styles.ctaFinal, colunaLeitura]}>
               {/* Um heading só (não dois) — duas frases de contraste
                   aninhadas em <Text> de cor diferente dentro dele, mesmo
@@ -1034,14 +853,14 @@ function ConteudoWeb() {
                 {'\n'}
                 <Text style={styles.ctaFinalTituloFraca}>Ou continuar perguntando "cadê meu dinheiro".</Text>
               </Text>
-              <BotaoCTA microcopy="Grátis enquanto o Grana. está em acesso antecipado." centralizado />
+              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado />
             </View>
           </View>
         </RevealOnScroll>
       </View>
 
       {/* ───────── Rodapé ───────── */}
-      <View style={[colunaConteudo, styles.faixa]}>
+      <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
         <View style={styles.rodape}>
           <BrandLogotype width={72} />
           <View style={styles.rodapeLinks}>
@@ -1095,6 +914,11 @@ const styles = StyleSheet.create({
   // no canto esquerdo em qualquer tela larga, com um vão vazio enorme à
   // direita — pior que a margem simétrica crescente que tentava evitar.
   faixa: { paddingHorizontal: spacing.xl, width: '100%' },
+  // No celular a coluna já ocupa a tela inteira (sem sobra de `colunaConteudo`
+  // pra "respirar" como acontece numa janela larga), então a mesma margem de
+  // 20 usada em todo o resto lia como grudada na borda. Só no compacto a
+  // margem sobe pra 24.
+  faixaCompacta: { paddingHorizontal: spacing.xl + spacing.xs },
   bandaLevantada: { backgroundColor: theme.paperRaised },
 
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: spacing.lg },
@@ -1112,7 +936,7 @@ const styles = StyleSheet.create({
      avançavam, sem erro nenhum no console. */
   camadaBrilho: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
   palcoCtaFinal: { position: 'relative', overflow: 'hidden' },
-  palcoComIcones: { position: 'relative', overflow: 'hidden' },
+  palcoComCamada: { position: 'relative', overflow: 'hidden' },
 
   eyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, marginBottom: spacing.md, textTransform: 'uppercase' },
   // Escala bem acima do resto da tipografia do app de propósito — esta é a
@@ -1153,12 +977,16 @@ const styles = StyleSheet.create({
   ctaMicrocopy: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },
   ctaMicrocopyCentralizada: { textAlign: 'center' },
 
-  listaCenas: { gap: spacing.lg, marginTop: spacing.lg, maxWidth: 640 },
-  textoCena: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.4, fontFamily: fonts.light },
-  // "down" (a mesma cor de saída/gasto usada no resto do app) marca a dor;
-  // a ponte de volta pra solução já usa o accent2 da marca — a paleta muda
-  // de tom no exato lugar onde a copy muda de tom.
-  pontePergunta: { color: theme.accent2, fontSize: type.destaque, fontFamily: fonts.regular },
+  // Mesmo padrão de grade desalinhada do FAQ (`faqGrade`/`faqCardPos`) — só
+  // 3 caixas aqui, então largura própria em vez de reaproveitar a do FAQ.
+  gradeCenas: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center', gap: spacing.xl, marginTop: spacing.lg, width: '100%' },
+  cenaCaixaPos: { flexBasis: '30%', minWidth: 260 },
+  cenaCaixaPosCompacta: { flexBasis: '100%' },
+  cenaCaixa: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, ...sombraCard },
+  textoCena: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.light },
+  // A ponte de volta pra solução usa o accent2 da marca — a paleta muda de
+  // tom no exato lugar onde a copy muda de tom, saindo das caixas de dor.
+  pontePergunta: { color: theme.accent2, fontSize: type.destaque, fontFamily: fonts.regular, marginTop: spacing.xl, maxWidth: 640 },
 
   ctaMeio: {
     marginTop: spacing.xxl,
@@ -1178,6 +1006,20 @@ const styles = StyleSheet.create({
   secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
   secaoTituloGrande: { fontSize: 50, lineHeight: 54, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
   secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560 },
+  // Só o parágrafo de Preços — as duas frases quebram uma por linha (`\n`
+  // explícito) e o bloco centraliza na coluna, diferente do resto das
+  // seções, onde o texto de apoio fica alinhado à esquerda junto do título.
+  // O bloco inteiro (eyebrow + título + parágrafo) centraliza na coluna —
+  // diferente do resto das seções, onde esse bloco fica alinhado à esquerda
+  // junto do card ao lado. `alignItems: 'center'` no wrapper é o que faz
+  // cada filho (de largura própria) se posicionar centralizado; o
+  // `textAlign: 'center'` de cada um cuida de dentro do próprio texto.
+  precoIntroCentralizada: { alignItems: 'center', width: '100%' },
+  precoTituloCentralizado: { textAlign: 'center' },
+  // `maxWidth` generoso o bastante pra "Criar conta não custa nada agora."
+  // caber inteira numa linha só — um teto mais apertado quebrava só essa
+  // frase sozinha no meio, separando "agora" do resto por conta própria.
+  precoTextoCentralizado: { textAlign: 'center', maxWidth: 820 },
   colunaTextoSecao: { flex: 1, minWidth: 320, maxWidth: 620 },
 
   cardLinhaTempo: {
@@ -1232,38 +1074,64 @@ const styles = StyleSheet.create({
     ...sombraCard,
   },
 
-  precoColunas: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xxl, flexWrap: 'wrap', marginTop: spacing.xl },
-  // `maxWidth`, não só `flex:1` — sem teto, esta coluna esticava até
-  // preencher todo o espaço que sobrava do card de preço (que TEM teto,
-  // `cardPrecoWrap` abaixo), e como o texto em si nunca chegava a ocupar
-  // essa largura toda, sobrava um vão enorme e vazio entre a lista e o
-  // card — os dois liam como desconectados, não como uma composição de
-  // duas colunas.
-  precoChecklistCol: { flex: 1, minWidth: 300, maxWidth: 480 },
-  precoChecklistTitulo: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular, marginBottom: spacing.md },
-  precoChecklist: { gap: spacing.xs },
-  precoChecklistLinha: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: spacing.xs },
-  precoChecklistTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
-  // Coluna do card de valor — largura própria dentro de `precoColunas`, não
-  // mais "card único solto"; o checklist ao lado é quem preenche o resto.
-  cardPrecoWrap: { flex: 1, minWidth: 300, maxWidth: 400 },
-  // Fundo `paperSelected` (primeiro uso fora de credito.tsx) em vez do
-  // `theme.paper` herdado de `cardFeature` — é o que faz este card ler como
-  // o elemento distinto/elevado da seção, ao lado do checklist mais neutro.
-  cardPreco: { alignItems: 'flex-start', gap: spacing.sm, backgroundColor: theme.paperSelected, borderColor: theme.ruleStrong },
+  // O card único — a borda/raio/sombra que antes viviam em cada metade
+  // separada (`cardFeature`) agora vivem só aqui; `overflow: hidden` é o que
+  // faz o fundo `paperSelected` do painel de preço respeitar o raio do card
+  // inteiro em vez de fazer um canto quadrado saindo de um canto arredondado.
+  precoCardUnico: {
+    marginTop: spacing.xl,
+    // Depois de limitar a largura do checklist (`precoChecklistCol`) pra
+    // aproximar as duas metades, o card inteiro (que antes esticava até
+    // `colunaConteudo`) sobrava com um vão vazio à direita do painel de
+    // preço. Um teto aqui, centralizado, mantém as duas metades juntas sem
+    // deixar a composição inteira desbalanceada pra esquerda.
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    backgroundColor: theme.paper,
+    overflow: 'hidden',
+    ...sombraCard,
+  },
+  precoColunas: { flexDirection: 'row', alignItems: 'stretch', flexWrap: 'wrap' },
+  // `maxWidth` — sem teto, o `flex: 1` deste lado crescia bem além do
+  // próprio texto (o painel de preço tem largura fixa do outro lado), e
+  // sobrava um vão vazio enorme entre o fim das linhas e a borda do painel.
+  precoChecklistCol: { flex: 1, minWidth: 320, maxWidth: 520, padding: spacing.xxl },
+  precoChecklistTitulo: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular, marginBottom: spacing.lg },
+  // Linhas simples, sem caixa própria por item — o card único inteiro já é
+  // o contêiner; uma caixa por linha aqui dentro de outra caixa lia como
+  // aninhamento redundante.
+  precoChecklist: { gap: spacing.md },
+  precoChecklistLinha: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.xs },
+  precoChecklistTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.45, fontFamily: fonts.light },
+  // Painel de preço — metade com destaque visual (`paperSelected`) do card
+  // único, separada da metade do checklist por uma borda, não por um vão.
+  cardPreco: {
+    flex: 1,
+    minWidth: 320,
+    maxWidth: 440,
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.xxl,
+    backgroundColor: theme.paperSelected,
+    borderLeftWidth: 1,
+    borderLeftColor: theme.ruleStrong,
+  },
+  // No compacto as duas metades empilham — a borda precisa migrar de
+  // esquerda pra cima, senão fica uma linha vertical solta encostada no
+  // topo de um painel que agora está embaixo, não ao lado.
+  cardPrecoCompacto: { maxWidth: '100%', borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: theme.ruleStrong },
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
-  // Não usa theme.up (a cor viva dos valores reais no mock da página) de
-  // propósito — apagado é o sinal visual de que isto não é um preço real.
-  precoValor: { color: theme.inkFaint, fontSize: type.valor + 6, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  // Valor de PROTOTIPAGEM (R$ 0,01) — não é um preço real. Usa `theme.ink`
+  // (não mais `inkFaint`) porque agora é um valor definido, não um "a
+  // definir": o apagado era o sinal visual de "isto não é um preço real",
+  // e não faz mais sentido com um número de verdade no lugar.
+  precoValor: { color: theme.ink, fontSize: type.valor + 6, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   precoPeriodo: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
-  precoEmDefinicao: {
-    color: theme.inkFaint,
-    fontSize: type.legenda,
-    fontFamily: fonts.regular,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
   // Aplica-se tanto ao card de recurso quanto ao de segurança — nenhum dos
   // dois leva a lugar nenhum (não são clicáveis), então o "levantar" no
   // hover é só presença ambiente: sem cursor de mão, sem virar alvo de tab.
@@ -1283,13 +1151,18 @@ const styles = StyleSheet.create({
   featureTitulo: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular, marginBottom: spacing.xs },
   featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
 
+  // Reaproveitado só por "Próximos compromissos" — os outros mockRotulo*
+  // (mockValor, mockLegenda) que existiam junto pertenciam às antigas telas
+  // mockadas do herói (voz/WhatsApp/nota/saldo livre), aposentadas quando o
+  // vídeo do notebook passou a ser o visual único do herói.
   mockRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginBottom: spacing.xs },
-  mockValor: { color: theme.up, fontSize: type.valor + 6, fontFamily: fonts.regular, marginBottom: spacing.xs, fontVariant: ['tabular-nums'] },
-  mockLegenda: { color: theme.inkSoft, fontSize: type.legenda, lineHeight: 17, fontFamily: fonts.light },
 
+  // Coluna, não linha — ícone em cima, texto embaixo, os dois centralizados.
+  // Só faz sentido com `segurancaTexto` também centralizado; um texto de
+  // várias linhas alinhado à esquerda dentro de uma caixa centralizada lia
+  // como desalinhado, não como intencional.
   cardSeguranca: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: spacing.md,
     padding: spacing.lg,
     borderRadius: radius.lg,
@@ -1297,39 +1170,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
   },
-  segurancaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
+  segurancaTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light, textAlign: 'center' },
 
-  // Grade de pontinhos bem sutil atrás do FAQ — camada separada, ANTES do
-  // <Dobra>, mesmo raciocínio de `camadaBrilho`: overflow:hidden numa
-  // ancestral de algo `position:sticky` quebraria a grudagem, então a
-  // camada decorativa fica isolada por si. `theme.rule` já é translúcido,
-  // sem precisar de sufixo de alfa.
-  camadaGradeFaq: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    ...({
-      // Linha bem mais apagada que `theme.rule` (14%) — é textura de fundo,
-      // não conteúdo, não pode competir com o texto dos cards por atenção.
-      // Mesma faixa baixa que `theme.hover` (7%) já usa na paleta.
-      backgroundImage:
-        'linear-gradient(rgba(175,255,227,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(175,255,227,0.05) 1px, transparent 1px)',
-      backgroundSize: '32px 32px',
-      // `farthest-side`, não um raio em %: o raio bate exatamente nas
-      // bordas REAIS da caixa (independente da proporção largura/altura),
-      // em vez de um valor calibrado a olho pra um tamanho de tela só. A
-      // seção é uma dobra de tela cheia com o conteúdo centralizado — sobra
-      // margem vazia acima/abaixo dele, e é isso que o degradê concentra a
-      // grade pra longe de.
-      maskImage: 'radial-gradient(ellipse farthest-side at 50% 50%, black 0%, transparent 65%)',
-      WebkitMaskImage: 'radial-gradient(ellipse farthest-side at 50% 50%, black 0%, transparent 65%)',
-    } as any),
-  },
   faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl, marginTop: spacing.sm },
-  faqGrade: { flex: 1, minWidth: 320, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xl },
-  faqCardPos: { flexBasis: '46%', minWidth: 280 },
+  faqGrade: { flex: 1, minWidth: 320, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl * 1.8 },
+  faqCardPos: { flexBasis: '40%', minWidth: 280 },
   faqCardPosCompacto: { flexBasis: '100%' },
   faqCard: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, ...sombraCard },
   // Suprime a borda/padding próprios de FaqItem — o card por fora já
@@ -1358,20 +1203,74 @@ const styles = StyleSheet.create({
 
   /* ───────── Herói-storytelling ───────── */
   heroTrilhaGatilhos: { position: 'relative' },
+  // Painel de sangria total: chegar até a borda VERDADEIRA do viewport não é
+  // mais um truque de CSS (`width:100vw` + `marginLeft:calc(50% - 50vw)`) —
+  // essa versão anterior desalinhava o texto (a centralização de
+  // `colunaConteudo`, mais abaixo, dependia do navegador calcular a
+  // largura de um `position:sticky` com `width:100vw` corretamente, o que
+  // não aconteceu de forma confiável) e deixava uma borda visível ao iniciar
+  // o scroll (`100vw` inclui a largura da barra de rolagem, `%` não —
+  // 1-2 dígitos de diferença que bastam pra um vão aparecer). A correção
+  // real foi no chamador (`ConteudoWeb`): o herói largo simplesmente não é
+  // mais envolvido por `colunaConteudo/faixa` lá em cima, então este painel
+  // já NASCE com a largura total do pai (`palcoHero`, sem teto nem padding
+  // próprios) — sem hack nenhum. Sem `borderRadius`: um canto arredondado
+  // bem na borda do navegador lê como recorte quebrado, não como painel.
   heroLinhaSticky: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.xxl,
+    overflow: 'hidden',
     ...({ position: 'sticky', top: 0 } as any),
   },
-  /* Somados (mais o gap) ocupam quase toda a coluna de conteúdo — 1400px
-     úteis tanto num monitor de 1440 quanto num de 1920, porque
-     `colunaConteudo` limita os dois no mesmo teto. Deixar sobra aqui abria
-     um vão morto no meio da dobra, e o notebook, que é a prova visual do
-     produto, ficava pequeno demais pra ancorar uma tela inteira. */
+  // Recentraliza o conteúdo no mesmo teto de 1440px do resto da página — o
+  // vídeo sangra até a borda do viewport (estilo acima), mas o TEXTO não
+  // pode: precisa continuar alinhado com o cabeçalho e as seções abaixo, que
+  // seguem `colunaConteudo` normalmente. `paddingHorizontal` repete o mesmo
+  // valor de `faixa` (linha ~942) de propósito, pela mesma razão. `zIndex`
+  // fica aqui, não em `heroColunaTexto`, porque é este nível que precisa
+  // ficar por cima do vídeo/degradê (ambos `position:absolute`, que pintam
+  // por cima de qualquer irmão sem posicionamento próprio, independente da
+  // ordem no JSX).
+  heroConteudoCentralizado: {
+    // `flex:1` é o que faltava: sem ele, esta View só tinha a altura do
+    // próprio conteúdo (texto) e ficava presa no topo do painel — o
+    // `alignItems:'center'` abaixo só centraliza o filho DENTRO da altura
+    // desta View, que precisa primeiro esticar até preencher `heroLinhaSticky`
+    // inteiro (o `minHeight: alturaSticky` aplicado hoje). Com `flex:1`, esta
+    // View passa a ocupar o painel inteiro, e o texto centraliza de verdade.
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+    zIndex: 2,
+    ...({ position: 'relative' } as any),
+  },
   heroColunaTexto: { flex: 1, maxWidth: 540 },
-  heroColunaNotebook: { flex: 1, minWidth: 360, maxWidth: 780 },
+  // Escurece a área onde o texto fica (a metade esquerda) e some antes de
+  // chegar no notebook, à direita — mesma ideia do degradê branco->
+  // transparente da referência (Apple/AirPods) por cima do vídeo, mas em
+  // `#052229` (o hex de `theme.paper`; `backgroundImage` não aceita o token
+  // direto porque o degradê precisa da variação de alfa, que o token sozinho
+  // não carrega) pra continuar lendo como página escura, não vinheta clara.
+  heroGradienteFundo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    ...({ backgroundImage: 'linear-gradient(90deg, #052229 0%, rgba(5,34,41,0.86) 34%, rgba(5,34,41,0) 76%)' } as any),
+  },
+  // Só a faixa de baixo do painel — o resto do composto (bg/sombra/notebook)
+  // fica intocado. `theme.paper` sólido no fim, não um `rgba` que dependeria
+  // do que está atrás: a View seguinte (a página) já é opaca nessa mesma
+  // cor, então o degradê só precisa terminar exatamente nela.
+  heroGradienteInferior: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '22%',
+    ...({ backgroundImage: `linear-gradient(180deg, rgba(5,34,41,0) 0%, ${theme.paper} 100%)` } as any),
+  },
   // Chegou a levar `scrollSnapAlign` (pra dar ao herói pontos de encaixe e
   // reduzir o risco de um scroll rápido pular ele inteiro) — revertido:
   // quebrou de novo a navegação por clique das abas do cabeçalho (mesmo

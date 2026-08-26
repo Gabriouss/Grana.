@@ -469,6 +469,12 @@
       "skillPath": "pm-product-strategy/skills/value-proposition/SKILL.md",
       "computedHash": "b9bfc23451e23a465a2192e612fe8f8da4e45f615ec6385758b3487ff73f0e9d"
     },
+    "web-animation-design": {
+      "source": "vercel-labs/open-agents",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/web-animation-design/SKILL.md",
+      "computedHash": "dcd3f6da245643cd00ef93ad73ea62edc3ae925c6d7763c0675892441d6ba6c3"
+    },
     "webapp-testing": {
       "source": "anthropics/skills",
       "sourceType": "github",
