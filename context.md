@@ -161,6 +161,19 @@ retrabalho recentes:
   `app/index.tsx` — os comentários no arquivo documentam o raciocínio de
   cada decisão (por que dobra de tela cheia, por que `proximity` e não
   `mandatory`, etc.) com mais detalhe do que cabe aqui.
+- Três seções inspiradas no Organizze, adaptadas à identidade visual do
+  Grana. (sessão mais recente): um "Guia" de 4 passos numerados, a grade
+  de recursos com o app centralizado, e a seção de Segurança com uma
+  composição navegador+celular sobrepostos — todas usando
+  `components/MolduraCelular.tsx`/`MolduraNavegador.tsx` (bezel desenhado
+  em CSS, sem asset de imagem; flutuam sozinhas e pausam via
+  `IntersectionObserver` quando saem da tela) com capturas reais em
+  `public/telas/` de uma conta de exemplo com dado 100% fictício — nunca
+  logar numa conta de verdade (nem de demonstração) pra gerar material de
+  marketing, só dado inventado, mesmo que a intenção seja reproduzir uma
+  tela real.
+- Preço decidido: R$ 19,99/mês, já exibido de verdade na seção de preços
+  (antes havia um valor de prototipagem ao vivo — corrigido).
 
 ## Como testar
 
@@ -188,11 +201,12 @@ build, não repetida aqui pra não divergir da fonte única.
 
 ## Estado no momento deste documento
 
-- Landing page (`app/index.tsx`) reformulada em duas sessões recentes
+- Landing page (`app/index.tsx`) reformulada em três sessões recentes
   (FAQ/Preços/CTA/marquee numa, herói com notebook animado + grade
-  interativa noutra) — ambas já publicadas em `main`.
-- Preço do produto ainda não definido; nenhuma trava de acesso por
-  assinatura implementada.
+  interativa noutra, e a mais recente com preço real + três seções novas
+  com molduras de celular/navegador) — todas já publicadas em `main`.
+- Preço decidido em R$ 19,99/mês; nenhuma trava de acesso por assinatura
+  implementada ainda (toda conta logada tem acesso completo).
 - Épicos de `PLANO_DE_EVOLUCAO.md` (metas/cofrinhos, gamificação, projeção
   de fatura) majoritariamente já implementados — conferir `lib/goals.ts`,
   `lib/gamification*.ts`, `lib/projections.ts` antes de assumir que é
