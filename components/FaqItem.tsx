@@ -4,22 +4,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 
-type Props = { pergunta: string; resposta: string; estiloExtra?: object };
+type Props = {
+  pergunta: string;
+  resposta: string;
+  estiloExtra?: object;
+  abertoInicial?: boolean;
+};
 
 /** Uma linha de FAQ que abre sozinha — mantém a página de entrada curta pra quem só quer ler o essencial. */
-export function FaqItem({ pergunta, resposta, estiloExtra }: Props) {
-  const [aberto, setAberto] = useState(false);
+export function FaqItem({ pergunta, resposta, estiloExtra, abertoInicial = false }: Props) {
+  const [aberto, setAberto] = useState(abertoInicial);
 
   return (
     <View style={[styles.linha, estiloExtra]}>
       <AppPressable
-        style={styles.cabecalho}
+        style={({ hovered }) => [styles.cabecalho, hovered && styles.cabecalhoHover]}
         onPress={() => setAberto((v) => !v)}
         accessibilityRole="button"
         accessibilityState={{ expanded: aberto }}
       >
         <Text style={styles.pergunta}>{pergunta}</Text>
-        <Ionicons name={aberto ? 'remove' : 'add'} size={18} color={theme.inkSoft} />
+        <View style={styles.iconeWrapper}>
+          <Ionicons name={aberto ? 'remove' : 'add'} size={18} color={aberto ? theme.accent2 : theme.inkSoft} />
+        </View>
       </AppPressable>
       {aberto && <Text style={styles.resposta}>{resposta}</Text>}
     </View>
@@ -28,7 +35,29 @@ export function FaqItem({ pergunta, resposta, estiloExtra }: Props) {
 
 const styles = StyleSheet.create({
   linha: { borderBottomWidth: 1, borderBottomColor: theme.rule, paddingVertical: spacing.md },
-  cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
+  cabecalho: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.md,
+    ...({ cursor: 'pointer', transition: 'opacity 150ms ease' } as any),
+  },
+  cabecalhoHover: { opacity: 0.85 },
+  iconeWrapper: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.hover,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pergunta: { flex: 1, color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
-  resposta: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 21, fontFamily: fonts.light, marginTop: spacing.sm, paddingRight: spacing.xl },
+  resposta: {
+    color: theme.inkSoft,
+    fontSize: type.apoio,
+    lineHeight: 21,
+    fontFamily: fonts.light,
+    marginTop: spacing.md,
+    paddingRight: spacing.sm,
+  },
 });

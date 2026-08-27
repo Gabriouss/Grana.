@@ -1,6 +1,7 @@
 import { createElement, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
+import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, fonts, type } from '@/lib/theme';
@@ -178,9 +179,9 @@ function SecaoReconheceIsso() {
               !ehCompacto && { transform: [{ translateY: DESALINHO_DOR[i % DESALINHO_DOR.length] }] },
             ]}
           >
-            <View style={styles.cenaCaixa}>
+            <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cenaCaixa, hovered && styles.cardComHover]}>
               <Text style={[styles.textoCena, styles.precoTextoCentralizado]}>{texto}</Text>
-            </View>
+            </AppPressable>
           </RevealOnScroll>
         ))}
       </View>
@@ -411,7 +412,9 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
               createElement('img', {
                 src: '/notebook/tela-mobile-2.png',
                 alt: 'Painel do Grana. mostrando saldo, orçamento e gastos por categoria.',
-                style: { width: '100%', aspectRatio: 3437 / 2071, objectFit: 'contain', display: 'block', marginBottom: -spacing.xxl },
+                width: 3437,
+                height: 2071,
+                style: { width: '100%', maxWidth: 420, aspectRatio: 3437 / 2071, objectFit: 'contain', display: 'block', marginBottom: -spacing.xxl },
               })}
             {/* "Acesso antecipado" só no capítulo 1 — repetido idêntico nos
                 4 blocos lia como ruído (mesma legenda 4 vezes numa rolagem
@@ -434,7 +437,12 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
               {c.titulo}
             </Text>
             <Text style={[styles.subheadline, styles.precoTextoCentralizado]}>{c.subtitulo}</Text>
-            {i === 0 && <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." centralizado />}
+            {/* CTA em TODOS os capítulos no mobile — no desktop o botão é
+                fixo na coluna esquerda (herói sticky), mas no mobile cada
+                capítulo é um bloco separado e quem se convence no capítulo 3
+                ou 4 não tinha botão por perto. Microcopy só no primeiro
+                ("Leva 30 segundos"), nos demais o botão basta. */}
+            <BotaoCTA microcopy={i === 0 ? 'Leva 30 segundos. Sem cartão de crédito.' : 'Gratuito por 7 dias.'} centralizado />
           </View>
         ))}
       </View>
@@ -507,6 +515,13 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
                 <View key={i} style={[styles.heroMarcador, i === capituloExibido && styles.heroMarcadorAtivo]} />
               ))}
             </View>
+            {/* Indicador de scroll — só no capítulo 1 (a entrada da página),
+                some ao rolar pro capítulo 2+ pra não competir com o conteúdo. */}
+            {capituloExibido === 0 && (
+              <Animated.View style={[styles.heroScrollHint, { opacity: fade }]} pointerEvents="none">
+                <Ionicons name="chevron-down" size={20} color={theme.inkFaint} />
+              </Animated.View>
+            )}
           </View>
         </View>
       </View>
@@ -535,6 +550,18 @@ function ConteudoWeb() {
      e com a escala tipográfica da web, e o herói precisa descontar o valor
      REAL pra primeira dobra fechar em 16:9 exatos. */
   const [alturaCabecalho, setAlturaCabecalho] = useState(0);
+
+  // Garante idioma pt-BR no HTML e injeta keyframe do scroll hint
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    document.documentElement.lang = 'pt-BR';
+    const tag = document.createElement('style');
+    tag.textContent = `@keyframes heroScrollBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }`;
+    document.head.appendChild(tag);
+    return () => {
+      document.head.removeChild(tag);
+    };
+  }, []);
 
   // Âncoras das abas do cabeçalho — cada uma envolve a seção-alvo inteira
   // (ver mais abaixo), não fica dentro do RevealOnScroll: o próprio
@@ -637,24 +664,40 @@ function ConteudoWeb() {
       })}
       scrollEventThrottle={16}
     >
-      {/* ───────── Cabeçalho ───────── */}
+      {/* ───────── SEO meta tags ───────── */}
+      <Head>
+        <title>Grana. — Controle financeiro por voz, WhatsApp e foto da nota</title>
+        <meta name="description" content="O Grana. é o jeito mais rápido de saber pra onde vai seu dinheiro. Lança por voz, WhatsApp ou foto da nota fiscal. Sem planilha, sem banco conectado." />
+        <meta property="og:title" content="Grana. — Controle financeiro pessoal" />
+        <meta property="og:description" content="Lança por voz, WhatsApp ou foto da nota fiscal. Sem planilha, sem banco conectado." />
+        <meta property="og:image" content="/og-image.png" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Head>
+
+      {/* ───────── Cabeçalho (sticky com blur) ───────── */}
       <View
-        style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}
+        style={[styles.cabecalhoSticky, { paddingTop: insets.top }]}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
-        <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.lg }]}>
-          <BrandLogotype width={104} />
-          {/* "Entrar" saiu daqui — esta página é pra converter quem chega de
-              fora, não pra logar quem já é cliente (esse link continua
-              existindo, só que discreto no rodapé). No lugar, abas que rolam
-              pra dentro da própria página. */}
-          <View style={styles.navAbas}>
-            <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
-              <Text style={styles.entrarTexto}>Produto</Text>
-            </AppPressable>
-            <AppPressable onPress={() => rolarPara(refPrecos)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
-              <Text style={styles.entrarTexto}>Preços</Text>
-            </AppPressable>
+        <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
+          <View style={styles.cabecalho}>
+            <BrandLogotype width={104} />
+            <View style={styles.navAbas}>
+              <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+                <Text style={styles.entrarTexto}>Produto</Text>
+              </AppPressable>
+              <AppPressable onPress={() => rolarPara(refPrecos)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+                <Text style={styles.entrarTexto}>Preços</Text>
+              </AppPressable>
+              {/* "Entrar" de volta no cabeçalho, discreto — quem já é cliente
+                  e chega na landing por engano não precisa rolar até o rodapé
+                  pra achar o login. Cor `inkFaint` pra não competir com os
+                  CTAs verdes da página. */}
+              <AppPressable href="/sign-in" hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+                <Text style={styles.entrarTextoDiscreto}>Entrar</Text>
+              </AppPressable>
+            </View>
           </View>
         </View>
       </View>
@@ -828,11 +871,15 @@ function ConteudoWeb() {
           <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
             <View style={styles.colunaTextoSecao}>
               <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Depois que o lançamento existe</Text>
-              <TituloSecao>{'Ele soma o que\nainda vai vir, antes\nde você se apertar.'}</TituloSecao>
+              <TituloSecao>{ehCompacto ? 'Ele soma o que ainda vai vir, antes de você se apertar.' : 'Ele soma o que\nainda vai vir, antes\nde você se apertar.'}</TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                {'A linha do tempo de compromissos futuros junta\nparcelas do cartão e contas fixas num lugar só.\nÉ dela que sai o '}
+                {ehCompacto
+                  ? 'A linha do tempo de compromissos futuros junta parcelas do cartão e contas fixas num lugar só. É dela que sai o '
+                  : 'A linha do tempo de compromissos futuros junta\nparcelas do cartão e contas fixas num lugar só.\nÉ dela que sai o '}
                 <Text style={styles.destaqueInline}>Livre para Gastar</Text>
-                {' do dia, que já\nconsidera o que ainda vem. Nada pega de surpresa lá na frente.'}
+                {ehCompacto
+                  ? ' do dia, que já considera o que ainda vem. Nada pega de surpresa lá na frente.'
+                  : ' do dia, que já\nconsidera o que ainda vem. Nada pega de surpresa lá na frente.'}
               </Text>
             </View>
 
@@ -876,9 +923,11 @@ function ConteudoWeb() {
           <View style={styles.colunaTextoSecao}>
             <RevealOnScroll>
               <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>A pergunta que todo mundo faz</Text>
-              <TituloSecao>{'"É seguro informar meus\ngastos para um aplicativo?"'}</TituloSecao>
+              <TituloSecao>{ehCompacto ? '"É seguro informar meus gastos para um aplicativo?"' : '"É seguro informar meus\ngastos para um aplicativo?"'}</TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                {'Faz sentido perguntar. Aqui está exatamente\no que a gente faz, e o que a gente nunca faz.'}
+                {ehCompacto
+                  ? 'Faz sentido perguntar. Aqui está exatamente o que a gente faz, e o que a gente nunca faz.'
+                  : 'Faz sentido perguntar. Aqui está exatamente\no que a gente faz, e o que a gente nunca faz.'}
               </Text>
             </RevealOnScroll>
 
@@ -898,12 +947,19 @@ function ConteudoWeb() {
             </RevealOnScroll>
           </View>
 
-          {!ehCompacto && (
+          {!ehCompacto ? (
             <RevealOnScroll style={styles.composicaoTelas}>
               <MolduraNavegador src="/telas/inicio-web.png" legenda="Tela de Início do Grana. no computador" largura={420} />
               <View style={styles.composicaoCelular}>
                 <MolduraCelular src="/telas/inicio-mobile.png" legenda="A mesma tela de Início do Grana. no celular" largura={160} />
               </View>
+            </RevealOnScroll>
+          ) : (
+            /* No mobile a composição navegador+celular não cabe, mas a moldura
+               de celular sozinha sim — mantém a prova visual de
+               "multiplataforma" que a seção promete. */
+            <RevealOnScroll style={styles.celularSoloCompacto}>
+              <MolduraCelular src="/telas/inicio-mobile.png" legenda="Tela de Início do Grana. no celular" largura={200} />
             </RevealOnScroll>
           )}
         </View>
@@ -953,7 +1009,7 @@ function ConteudoWeb() {
                   <Text style={styles.featureTexto}>
                     Cobrança simples, sem letra miúda. Cancele quando quiser, sem burocracia.
                   </Text>
-                  <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." />
+                  <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado={ehCompacto} />
                 </View>
               </View>
             </RevealOnScroll>
@@ -993,7 +1049,7 @@ function ConteudoWeb() {
                     ]}
                   >
                     <View style={styles.faqCard}>
-                      <FaqItem pergunta={f.pergunta} resposta={f.resposta} estiloExtra={styles.faqItemSemBorda} />
+                      <FaqItem pergunta={f.pergunta} resposta={f.resposta} estiloExtra={styles.faqItemSemBorda} abertoInicial={i === 0} />
                     </View>
                   </RevealOnScroll>
                 ))}
@@ -1036,9 +1092,9 @@ function ConteudoWeb() {
 
       {/* ───────── Rodapé ───────── */}
       <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
-        <View style={styles.rodape}>
+        <View style={[styles.rodape, ehCompacto && styles.rodapeCompacto]}>
           <BrandLogotype width={72} />
-          <View style={styles.rodapeLinks}>
+          <View style={[styles.rodapeLinks, ehCompacto && styles.rodapeLinksCompacto]}>
             {/* `href` direto no AppPressable (ver comentário maior em
                 BotaoCTA sobre por que não `Link asChild`) — o
                 react-native-web usa a `href` recebida pra renderizar uma
@@ -1104,8 +1160,21 @@ const styles = StyleSheet.create({
   faixaCompacta: { paddingHorizontal: spacing.xl + spacing.xs },
   bandaLevantada: { backgroundColor: theme.paperRaised },
 
-  cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: spacing.lg },
+  // Cabeçalho sticky com blur — fica fixo no topo durante toda a rolagem,
+  // com um backdrop-filter que deixa o conteúdo por baixo visível de forma
+  // sutil. `zIndex: 10` garante que fique acima de todas as seções (que
+  // têm `zIndex` implícito, nunca explícito).
+  cabecalhoSticky: {
+    ...({ position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)' } as any),
+    backgroundColor: 'rgba(5,34,41,0.82)',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.rule,
+  },
+  cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md },
   entrarTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
+  // Discreto pra não competir com os CTAs da página — quem já é cliente
+  // reconhece, quem é novo não se distrai.
+  entrarTextoDiscreto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   navAbas: { flexDirection: 'row', gap: spacing.xl },
 
   palcoHero: { position: 'relative' },
@@ -1441,6 +1510,10 @@ const styles = StyleSheet.create({
   // Organizze usa pra provar multiplataforma sem precisar de duas seções.
   composicaoTelas: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center', position: 'relative', paddingVertical: spacing.xxl },
   composicaoCelular: { position: 'absolute', right: '6%', bottom: 0 },
+  // Moldura de celular sozinha no mobile — a composição
+  // navegador+celular não cabe, mas mostrar pelo menos a moldura de
+  // celular mantém a prova visual de multiplataforma.
+  celularSoloCompacto: { alignItems: 'center', marginTop: spacing.xl },
 
   faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl, marginTop: spacing.sm },
   // Mesmo bug/correção de `secaoComCartaoCompacta` — `flex:1` + `minWidth`
@@ -1475,6 +1548,11 @@ const styles = StyleSheet.create({
     borderTopColor: theme.rule,
   },
   rodapeLinks: { flexDirection: 'row', gap: spacing.lg },
+  // No mobile o rodapé empilha verticalmente — os 4 links quebram de forma
+  // desigual em `flexWrap:'wrap'` com `flexDirection:'row'` numa tela de
+  // ~390px. Centralizar tudo resolve sem inventar media-query.
+  rodapeCompacto: { flexDirection: 'column', alignItems: 'center', gap: spacing.lg },
+  rodapeLinksCompacto: { flexWrap: 'wrap', justifyContent: 'center' },
   rodapeLink: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
 
   /* ───────── Herói-storytelling ───────── */
@@ -1559,12 +1637,20 @@ const styles = StyleSheet.create({
   heroMarcadores: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xl },
   heroMarcador: {
     width: 20,
-    height: 3,
+    height: 4,
     borderRadius: 2,
     backgroundColor: theme.rule,
     ...({ transitionProperty: 'width, background-color', transitionDuration: '250ms' } as any),
   },
   heroMarcadorAtivo: { backgroundColor: theme.accent2, width: 32 },
+  // Seta animada de "continue rolando" — só aparece no capítulo 1 do herói,
+  // some ao rolar, pra não competir com o conteúdo. CSS @keyframes próprio
+  // via `as any` (web-only, como tudo nesta página).
+  heroScrollHint: {
+    marginTop: spacing.lg,
+    alignSelf: 'flex-start',
+    ...({ animationName: 'heroScrollBounce', animationDuration: '2s', animationIterationCount: 'infinite', animationTimingFunction: 'ease-in-out' } as any),
+  },
 
   heroTrilhaCompacta: { paddingTop: spacing.xl, gap: spacing.xxl * 1.5 },
   // `center`, não mais `flex-start` — pedido do autor pra todo H1/H2 (e o

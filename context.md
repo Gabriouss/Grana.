@@ -226,10 +226,18 @@ build, não repetida aqui pra não divergir da fonte única.
 
 ## Estado no momento deste documento
 
-- Landing page (`app/index.tsx`) reformulada em três sessões recentes
-  (FAQ/Preços/CTA/marquee numa, herói com notebook animado + grade
-  interativa noutra, e a mais recente com preço real + três seções novas
-  com molduras de celular/navegador) — todas já publicadas em `main`.
+- Landing page (`app/index.tsx`) passou por auditoria completa e recebeu melhorias estruturais:
+  - Cabeçalho sticky com `backdrop-filter: blur` + link discreto "Entrar" no topo.
+  - Meta tags SEO com `<Head>` (título, descrição, OG image) e `lang="pt-BR"` garantido no HTML.
+  - Indicador visual de scroll no herói (seta animada) e marcadores de capítulo mais nítidos.
+  - Capítulos 2-4 do herói no mobile agora têm CTA direto.
+  - Quebras de linha `\n` manuais tornadas condicionais ao desktop.
+  - Seção Segurança no mobile agora exibe a moldura de celular individual.
+  - Cards de dor ("Reconhece isso?") com efeito hover unificado com os cards de feature.
+  - Botão CTA do card de preço centralizado no layout mobile.
+  - Rodapé empilhado e centralizado no mobile evitando desalinhamento dos links legais.
+  - `NotebookAnimado`: pausa de animação via `IntersectionObserver` ao sair da tela, `fetchpriority="high"` e dimensões explícitas para otimização de LCP/CLS.
+  - `FaqItem`: hover interativo nos botões e primeiro item aberto por padrão como affordance visual.
 - Preço decidido em R$ 19,99/mês; nenhuma trava de acesso por assinatura
   implementada ainda (toda conta logada tem acesso completo).
 - Épicos de `PLANO_DE_EVOLUCAO.md` (metas/cofrinhos, gamificação, projeção

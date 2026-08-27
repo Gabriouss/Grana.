@@ -1,4 +1,4 @@
-import { createElement, useEffect, useId, useState } from 'react';
+import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, View, type LayoutChangeEvent } from 'react-native';
 
 // Canvas original dos 3 PNGs (bg.png define o tamanho de referência) — todo
@@ -72,7 +72,9 @@ type Props = {
 
 export default function NotebookAnimado({ variante = 'fundo' }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
+  const [naTela, setNaTela] = useState(true);
   const [painel, setPainel] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<View>(null);
   const idBruto = useId();
   const prefixo = `notebookAnimado_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
 
@@ -84,6 +86,17 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     return () => {
       ativo = false;
     };
+  }, []);
+
+  // Pausa a animação quando o herói rola pra fora da tela — evita processamento
+  // de GPU contínuo em seções posteriores da página.
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const no = containerRef.current as unknown as HTMLElement | null;
+    if (!no) return;
+    const observador = new IntersectionObserver(([entrada]) => setNaTela(entrada.isIntersecting), { rootMargin: '200px 0px' });
+    observador.observe(no);
+    return () => observador.disconnect();
   }, []);
 
   useEffect(() => {
@@ -129,7 +142,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
   const telaLeft = (painel.width - telaW) / 2;
   const telaTop = (painel.height - telaH) / 2;
 
-  const animNotebook = reduzirMovimento
+  const animNotebook = reduzirMovimento || !naTela
     ? {}
     : {
         animationName: `${prefixo}_notebook`,
@@ -139,7 +152,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         willChange: 'transform',
       };
 
-  const animSombra = reduzirMovimento
+  const animSombra = reduzirMovimento || !naTela
     ? {}
     : {
         animationName: `${prefixo}_sombra`,
@@ -162,12 +175,17 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         src: '/notebook/bg-opacidade.png',
         alt: '',
         'aria-hidden': true,
+        width: 2523,
+        height: 2523,
+        fetchpriority: 'high',
         style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
       })}
       {createElement('img', {
         src: '/notebook/sombra.png',
         alt: '',
         'aria-hidden': true,
+        width: 1875,
+        height: 476,
         style: {
           position: 'absolute',
           left: '32.267%',
@@ -183,6 +201,9 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
       {createElement('img', {
         src: '/notebook/notebook.png',
         alt: 'Notebook exibindo o painel do Grana.',
+        width: 1403,
+        height: 914,
+        fetchpriority: 'high',
         style: {
           position: 'absolute',
           left: '40.843%',
@@ -200,14 +221,14 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
 
   if (variante === 'caixa') {
     return (
-      <View style={styles.caixa} pointerEvents="none">
+      <View ref={containerRef} style={styles.caixa} pointerEvents="none">
         {camadas}
       </View>
     );
   }
 
   return (
-    <View style={styles.painel} pointerEvents="none" onLayout={aoMedir}>
+    <View ref={containerRef} style={styles.painel} pointerEvents="none" onLayout={aoMedir}>
       {painel.width > 0 && (
         <View style={{ position: 'absolute', left: telaLeft, top: telaTop, width: telaW, height: telaH }}>
           {camadas}
