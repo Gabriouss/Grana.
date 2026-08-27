@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -247,8 +247,14 @@ const PERGUNTAS_FAQ = [
  */
 function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; estiloExtra?: StyleProp<TextStyle> }) {
   const { ehCompacto } = useBreakpoint();
+  // Todo H2 fora de caixa de texto centralizado no compacto — pedido do
+  // autor pra toda a página, aplicado aqui, num lugar só, porque TODA
+  // seção de texto solto (não em card) usa este componente pro próprio
+  // título. `ehCompacto && precoTituloCentralizado` é seguro mesmo nas
+  // seções que já centralizavam antes (Preços, Reconhece isso): a mesma
+  // regra `textAlign:'center'` aplicada duas vezes não muda nada.
   return (
-    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, estiloExtra]}>
+    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, ehCompacto && styles.precoTituloCentralizado, estiloExtra]}>
       {children}
     </Text>
   );
@@ -391,6 +397,22 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
       <View style={[colunaConteudo, styles.faixa, styles.faixaCompacta, styles.heroTrilhaCompacta]}>
         {CAPITULOS.map((c, i) => (
           <View key={c.titulo} style={styles.heroBlocoCompacto}>
+            {/* Print real da tela "Início" (modo Dados de exemplo), não mais
+                o composto animado (bg/sombra/notebook) — só no mobile, só no
+                capítulo 1, ACIMA do texto: é a primeira coisa vista antes do
+                título, não um encerramento depois dele. O PNG já vem com
+                alfa de verdade esmaecendo pro transparente a partir de ~30%
+                de altura (ver `Notebook-assets/interface-app` + `Tela de
+                Notebook 2.png` de origem) — por isso nenhum degradê extra em
+                CSS aqui: some
+                sozinho sobre `theme.paper`, o mesmo fundo da página inteira,
+                e o título embaixo já nasce dentro da parte apagada. */}
+            {i === 0 &&
+              createElement('img', {
+                src: '/notebook/tela-mobile-2.png',
+                alt: 'Painel do Grana. mostrando saldo, orçamento e gastos por categoria.',
+                style: { width: '100%', aspectRatio: 3437 / 2071, objectFit: 'contain', display: 'block', marginBottom: -spacing.xxl },
+              })}
             {/* "Acesso antecipado" só no capítulo 1 — repetido idêntico nos
                 4 blocos lia como ruído (mesma legenda 4 vezes numa rolagem
                 curta), não como reforço. Os capítulos 2-4 ganham um ícone
@@ -398,7 +420,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
                 âncora visual antes do título), mas cada um com a cara do
                 próprio recurso, não um rótulo repetido. */}
             {i === 0 ? (
-              <Text style={styles.eyebrow}>Acesso antecipado</Text>
+              <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>Acesso antecipado</Text>
             ) : (
               <View style={styles.heroIconeCirculoCompacto} aria-hidden>
                 <Ionicons name={c.icone} size={20} color={theme.accent2} />
@@ -407,25 +429,12 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
             <Text
               role="heading"
               aria-level={i === 0 ? 1 : 2}
-              style={styles.headlineCompacto}
+              style={[styles.headlineCompacto, styles.precoTituloCentralizado]}
             >
               {c.titulo}
             </Text>
-            <Text style={styles.subheadline}>{c.subtitulo}</Text>
-            {/* O notebook animado (composto de PNGs, mesmo componente do
-                herói largo, variante="caixa") é o visual único do herói —
-                mostrado uma vez só, no capítulo 1, não repetido atrás de
-                cada bloco de texto. Antes disso era o <NotebookVideo> (mp4)
-                aqui, único lugar que tinha ficado pra trás quando o herói
-                largo trocou pro composto animado — mesma nitidez sem perda
-                de compressão de vídeo, agora nos dois. Os capítulos 2-4
-                seguem só com título/subtítulo. */}
-            {i === 0 && (
-              <View style={styles.heroTelaCompacta}>
-                <NotebookAnimado variante="caixa" />
-              </View>
-            )}
-            {i === 0 && <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />}
+            <Text style={[styles.subheadline, styles.precoTextoCentralizado]}>{c.subtitulo}</Text>
+            {i === 0 && <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." centralizado />}
           </View>
         ))}
       </View>
@@ -705,7 +714,7 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra levantada>
           <RevealOnScroll>
-            <View style={[styles.secao, styles.secaoComCartao]}>
+            <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
               <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
                 {/* Largura menor no compacto — diferente de Recursos/Segurança
                     (que escondem a moldura inteira no celular), esta é a
@@ -714,10 +723,29 @@ function ConteudoWeb() {
                     sobram ali (a moldura não é fluida, é largura fixa por
                     design, igual `largura2` já fazia por breakpoint discreto
                     no resto da página). */}
-                <MolduraNavegador src="/telas/graficos-web.png" legenda="Tela de Gráficos do Grana., com composição de gastos por categoria" largura={ehCompacto ? 320 : 520} />
+                {/* Grupo com largura/altura FIXA (não `left/top` soltos
+                    direto dentro de `molduraCentralizada`) — só assim o
+                    `alignItems:'center'` do pai centraliza o PAR inteiro como
+                    uma unidade. Com posicionamento solto, centralizava só a
+                    moldura de Gráficos (a única no fluxo normal) e a de
+                    Conquistas, saindo por fora à esquerda, puxava o centro
+                    visual do conjunto pra fora do centro real da seção. */}
+                <View style={[styles.guiaComposicao, ehCompacto && styles.guiaComposicaoCompacta]}>
+                  {/* Mural de Conquistas atrás, espiando pelo canto superior
+                      esquerdo, levemente torta — quebra de padrão de
+                      propósito (todo o resto da página é ortogonal) — e
+                      ANTES da moldura de Gráficos no JSX, sem `zIndex`, só
+                      ordem de pintura, pra ficar por baixo dela. */}
+                  <View style={[styles.guiaMolduraConquistas, ehCompacto && styles.guiaMolduraConquistasCompacta]}>
+                    <MolduraNavegador src="/telas/conquistas-web.png" legenda="Mural de Conquistas do Grana., com selos obtidos e pendentes" largura={ehCompacto ? 160 : 300} />
+                  </View>
+                  <View style={styles.guiaMolduraGraficos}>
+                    <MolduraNavegador src="/telas/graficos-web.png" legenda="Tela de Gráficos do Grana., com composição de gastos por categoria" largura={ehCompacto ? 260 : 520} />
+                  </View>
+                </View>
               </View>
               <View style={styles.colunaTextoSecao}>
-                <Text style={styles.secaoEyebrow}>Do primeiro lançamento ao hábito</Text>
+                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Do primeiro lançamento ao hábito</Text>
                 <TituloSecao>O guia pro seu controle financeiro</TituloSecao>
                 <View style={styles.guiaLista}>
                   {GUIA.map((passo) => (
@@ -742,7 +770,7 @@ function ConteudoWeb() {
         <Dobra levantada>
         <View style={styles.secao}>
           <RevealOnScroll>
-            <Text style={styles.secaoEyebrow}>A parte que você não vai adiar</Text>
+            <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>A parte que você não vai adiar</Text>
             <TituloSecao>O único esforço é lembrar que o gasto existe</TituloSecao>
           </RevealOnScroll>
 
@@ -797,11 +825,11 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra>
         <RevealOnScroll>
-          <View style={[styles.secao, styles.secaoComCartao]}>
+          <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
             <View style={styles.colunaTextoSecao}>
-              <Text style={styles.secaoEyebrow}>Depois que o lançamento existe</Text>
+              <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Depois que o lançamento existe</Text>
               <TituloSecao>{'Ele soma o que\nainda vai vir, antes\nde você se apertar.'}</TituloSecao>
-              <Text style={styles.secaoTexto}>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                 {'A linha do tempo de compromissos futuros junta\nparcelas do cartão e contas fixas num lugar só.\nÉ dela que sai o '}
                 <Text style={styles.destaqueInline}>Livre para Gastar</Text>
                 {' do dia, que já\nconsidera o que ainda vem. Nada pega de surpresa lá na frente.'}
@@ -844,12 +872,12 @@ function ConteudoWeb() {
       <View style={styles.palcoComCamada}>
         <GradeInterativa invertida />
         <Dobra levantada>
-        <View style={[styles.secao, styles.secaoComCartao]}>
+        <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
           <View style={styles.colunaTextoSecao}>
             <RevealOnScroll>
-              <Text style={styles.secaoEyebrow}>A pergunta que todo mundo faz</Text>
+              <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>A pergunta que todo mundo faz</Text>
               <TituloSecao>{'"É seguro informar meus\ngastos para um aplicativo?"'}</TituloSecao>
-              <Text style={styles.secaoTexto}>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                 {'Faz sentido perguntar. Aqui está exatamente\no que a gente faz, e o que a gente nunca faz.'}
               </Text>
             </RevealOnScroll>
@@ -943,11 +971,11 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
-            <View style={styles.faqLayout}>
+            <View style={[styles.faqLayout, ehCompacto && styles.faqLayoutCompacta]}>
               <RevealOnScroll style={styles.colunaTextoSecao}>
-                <Text style={styles.secaoEyebrow}>Perguntas diretas</Text>
+                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Perguntas diretas</Text>
                 <TituloSecao>Sem letra miúda</TituloSecao>
-                <Text style={styles.secaoTexto}>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                   Respostas rápidas para as dúvidas que travam muita gente antes de entrar.
                 </Text>
               </RevealOnScroll>
@@ -1169,6 +1197,18 @@ const styles = StyleSheet.create({
   // dá ar de verdade sem competir com o `justifyContent:'center'` da Dobra.
   secao: { paddingVertical: spacing.xxl * 2.5 },
   secaoComCartao: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, flexWrap: 'wrap' },
+  // `flex:1` + `minWidth` nos dois filhos (`molduraCentralizada`/
+  // `colunaTextoSecao` etc.) não força a quebra de linha de forma confiável
+  // numa largura intermediária — `flex-basis:0%` (o que `flex:1` define)
+  // faz o navegador ignorar o `minWidth` na hora de decidir se quebra ou
+  // encolhe, então entre ~700-767px os dois itens encolhiam ABAIXO do
+  // próprio mínimo em vez de quebrar linha — a imagem chegava a renderizar
+  // com `left` negativo, parcialmente fora da tela (bug real, visto no site
+  // publicado). `ehCompacto` já é a MESMA largura de corte (768px) usada em
+  // todo o resto da página — usar o boolean explícito aqui, em vez de
+  // confiar no `flexWrap` automático, garante que o empilhamento aconteça
+  // exatamente na mesma borda que o resto do layout já respeita.
+  secaoComCartaoCompacta: { flexDirection: 'column' },
   secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.xs },
   secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
   secaoTituloGrande: { fontSize: 50, lineHeight: 54, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
@@ -1189,11 +1229,42 @@ const styles = StyleSheet.create({
   precoTextoCentralizado: { textAlign: 'center', maxWidth: 820 },
   colunaTextoSecao: { flex: 1, minWidth: 320, maxWidth: 620 },
 
-  molduraCentralizada: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center' },
+  // `paddingVertical` dá o respiro vertical pra moldura de trás espiar por
+  // cima sem cortar no `overflow:hidden` da seção (mesma razão do
+  // `paddingVertical` em `composicaoTelas`, a composição navegador+celular
+  // mais abaixo na página).
+  molduraCentralizada: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xxl },
   // No compacto o `minWidth: 380` acima passa da coluna disponível
   // (~342px, viewport de 390px menos o padding de `faixaCompacta`) e
   // estourava largura, cortado pelo `overflow:hidden` da seção.
   molduraCentralizadaCompacta: { minWidth: 0, width: '100%' },
+  // Largura/altura FIXA (não flexível) — é o que permite o
+  // `alignItems:'center'` do pai centralizar o PAR de molduras como uma
+  // ÚNICA unidade visual, com a moldura de Gráficos (à frente, à direita)
+  // e a de Conquistas (atrás, à esquerda) somadas. `width` = largura da
+  // moldura de Gráficos + o quanto a de Conquistas escapa pra fora à
+  // esquerda (`guiaMolduraConquistas.left`, negativo). `height` = altura da
+  // moldura de Gráficos (a mais alta das duas nas contas de proporção
+  // 1440:900 usadas aqui — a de trás sempre cabe dentro por baixo dela).
+  guiaComposicao: { position: 'relative', width: 655, height: 325 },
+  // Moldura de Gráficos MENOR aqui (260, não 320 como antes de haver uma
+  // segunda tela) — o par precisa de espaço pra uma fatia de verdade da
+  // moldura de trás sobrar visível na coluna de ~342px do compacto; com a
+  // moldura da frente ainda em 320 não sobrava quase nada (só uma tira de
+  // ~16px), o que lia como "moldura cortada", não como composição.
+  guiaComposicaoCompacta: { width: 324, height: 163 },
+  // Moldura de trás: fora do fluxo normal (`position:'absolute'`, ANTES da
+  // de Gráficos no JSX — sem `zIndex`, só ordem de pintura, pra ficar por
+  // baixo), deslocada pra fora à esquerda/cima, e levemente torta
+  // (`rotate`) — quebra de padrão de propósito: o resto da página inteira é
+  // ortogonal, então uma moldura não-alinhada aqui chama o olho sem
+  // precisar de nenhum texto novo.
+  guiaMolduraConquistas: { position: 'absolute', left: 0, top: 24, transform: [{ rotate: '-5deg' }] },
+  guiaMolduraConquistasCompacta: { top: 16 },
+  // Moldura de Gráficos: normal-flow removido pro canto direito do grupo
+  // (`right:0`), não mais centralizada sozinha — dentro de `guiaComposicao`
+  // ela É a âncora que define a largura/altura do grupo inteiro.
+  guiaMolduraGraficos: { position: 'absolute', right: 0, top: 0 },
   guiaLista: { gap: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.lg },
   guiaPasso: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   // O número É a marcação de passo — não tem círculo/fundo por trás porque
@@ -1372,6 +1443,12 @@ const styles = StyleSheet.create({
   composicaoCelular: { position: 'absolute', right: '6%', bottom: 0 },
 
   faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl, marginTop: spacing.sm },
+  // Mesmo bug/correção de `secaoComCartaoCompacta` — `flex:1` + `minWidth`
+  // nos dois filhos (`colunaTextoSecao`/`faqGrade`) não quebra linha de
+  // forma confiável numa largura intermediária. `alignItems:'center'` só
+  // no compacto: centraliza o bloco de texto (eyebrow/título/parágrafo)
+  // empilhado, sem afetar `faqGrade` (os cards já ocupam a largura toda).
+  faqLayoutCompacta: { flexDirection: 'column', alignItems: 'center' },
   faqGrade: { flex: 1, minWidth: 320, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl * 1.8 },
   faqCardPos: { flexBasis: '40%', minWidth: 280 },
   faqCardPosCompacto: { flexBasis: '100%' },
@@ -1490,8 +1567,10 @@ const styles = StyleSheet.create({
   heroMarcadorAtivo: { backgroundColor: theme.accent2, width: 32 },
 
   heroTrilhaCompacta: { paddingTop: spacing.xl, gap: spacing.xxl * 1.5 },
-  heroBlocoCompacto: { alignItems: 'flex-start', paddingBottom: spacing.xxl, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  heroTelaCompacta: { width: '100%', marginBottom: spacing.xl },
+  // `center`, não mais `flex-start` — pedido do autor pra todo H1/H2 (e o
+  // texto ao redor) fora de caixa ficar centralizado no compacto; o herói é
+  // a PRIMEIRA seção da página nesse padrão, não uma exceção.
+  heroBlocoCompacto: { alignItems: 'center', paddingBottom: spacing.xxl, borderBottomWidth: 1, borderBottomColor: theme.rule },
   // Mesma missão do `eyebrow` (âncora visual antes do título, capítulos 2-4
   // do herói compacto) — `marginBottom` igual ao dele, pra não mudar o
   // ritmo vertical entre os blocos.

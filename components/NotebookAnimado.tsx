@@ -152,10 +152,17 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
   const camadas = (
     <>
       {createElement('img', {
-        src: '/notebook/bg.png',
+        // TESTE: `bg-opacidade.png` no lugar de `bg.png` — quadrado
+        // (2523×2523, não 2752×1536) e com alfa de verdade nas bordas
+        // (transparente nos cantos, opaco só no centro/topo), ao contrário
+        // do `bg.png` original, opaco em toda a extensão. `objectFit:
+        // 'cover'` porque a proporção não bate mais com a do canvas — sem
+        // isso a imagem esticaria/achataria pra caber exatamente na caixa
+        // larga, deformando o brilho redondo numa oval.
+        src: '/notebook/bg-opacidade.png',
         alt: '',
         'aria-hidden': true,
-        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' },
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
       })}
       {createElement('img', {
         src: '/notebook/sombra.png',
