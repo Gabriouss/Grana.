@@ -427,7 +427,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
                 alt: 'Painel do Grana. mostrando saldo, orçamento e gastos por categoria.',
                 width: 3437,
                 height: 2071,
-                style: { width: '100%', maxWidth: 420, aspectRatio: 3437 / 2071, objectFit: 'contain', display: 'block', marginBottom: -spacing.xxl },
+                style: { width: '100%', maxWidth: 400, aspectRatio: 3437 / 2071, objectFit: 'contain', display: 'block', marginBottom: -spacing.xl },
               })}
             {/* "Acesso antecipado" só no capítulo 1 — repetido idêntico nos
                 4 blocos lia como ruído (mesma legenda 4 vezes numa rolagem
@@ -699,7 +699,7 @@ function ConteudoWeb() {
         style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
-        <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.lg }]}>
+        <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
           <BrandLogotype width={104} />
           <View style={styles.navAbas}>
             <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
@@ -1187,7 +1187,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
-  cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md },
+  cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
   entrarTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
   // Discreto pra não competir com os CTAs da página — quem já é cliente
   // reconhece, quem é novo não se distrai.
@@ -1207,7 +1207,7 @@ const styles = StyleSheet.create({
   palcoCtaFinal: { position: 'relative', overflow: 'hidden' },
   palcoComCamada: { position: 'relative', overflow: 'hidden' },
 
-  eyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, marginBottom: spacing.md, textTransform: 'uppercase' },
+  eyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, marginBottom: spacing.xs, textTransform: 'uppercase' },
   // Escala bem acima do resto da tipografia do app de propósito — esta é a
   // única frase que precisa ser lida antes de qualquer outra coisa na
   // página, e o tamanho tem que dizer isso antes mesmo do conteúdo.
@@ -1666,11 +1666,11 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
 
-  heroTrilhaCompacta: { paddingTop: spacing.xl, gap: spacing.xxl * 1.5 },
+  heroTrilhaCompacta: { paddingTop: spacing.xs, gap: spacing.xl },
   // `center`, não mais `flex-start` — pedido do autor pra todo H1/H2 (e o
   // texto ao redor) fora de caixa ficar centralizado no compacto; o herói é
   // a PRIMEIRA seção da página nesse padrão, não uma exceção.
-  heroBlocoCompacto: { alignItems: 'center', paddingBottom: spacing.xxl, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  heroBlocoCompacto: { alignItems: 'center', paddingBottom: spacing.xl, borderBottomWidth: 1, borderBottomColor: theme.rule },
   // Mesma missão do `eyebrow` (âncora visual antes do título, capítulos 2-4
   // do herói compacto) — `marginBottom` igual ao dele, pra não mudar o
   // ritmo vertical entre os blocos.

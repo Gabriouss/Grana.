@@ -145,7 +145,7 @@ function TrustMarqueeFaixa({
 const styles = StyleSheet.create({
   faixa: {
     backgroundColor: theme.paperRaised,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.xs,
     overflow: 'hidden',
   },
   // `flexShrink: 0` nos filhos — sem isso, numa tela mais estreita que o
