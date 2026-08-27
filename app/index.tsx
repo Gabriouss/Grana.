@@ -103,9 +103,9 @@ function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado
  * sendo a do conteúdo, como sempre foi.
  */
 function useAlturaDobra(): number | null {
-  const { largura, altura, ehCompacto } = useBreakpoint();
+  const { altura, ehCompacto } = useBreakpoint();
   if (ehCompacto) return null;
-  return Math.min(Math.round((largura * 9) / 16), altura);
+  return altura;
 }
 
 /**
@@ -299,6 +299,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
      em unidades erradas com split cru. */
   const [letras, setLetras] = useState<Animated.Value[]>(() => criarLetras(TITULO_CAPITULO_1, 1));
   const gatilhoRefs = useRef<Record<number, View | null>>({});
+  const scrollBounce = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let ativo = true;
@@ -309,6 +310,18 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
       ativo = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (reduzirMovimento) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scrollBounce, { toValue: 6, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(scrollBounce, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [reduzirMovimento, scrollBounce]);
 
   const CAPITULOS: Capitulo[] = [
     {
@@ -518,7 +531,13 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
             {/* Indicador de scroll — só no capítulo 1 (a entrada da página),
                 some ao rolar pro capítulo 2+ pra não competir com o conteúdo. */}
             {capituloExibido === 0 && (
-              <Animated.View style={[styles.heroScrollHint, { opacity: fade }]} pointerEvents="none">
+              <Animated.View
+                style={[
+                  styles.heroScrollHint,
+                  { opacity: fade, transform: [{ translateY: scrollBounce }] },
+                ]}
+                pointerEvents="none"
+              >
                 <Ionicons name="chevron-down" size={20} color={theme.inkFaint} />
               </Animated.View>
             )}
@@ -1642,13 +1661,9 @@ const styles = StyleSheet.create({
     ...({ transitionProperty: 'width, background-color', transitionDuration: '250ms' } as any),
   },
   heroMarcadorAtivo: { backgroundColor: theme.accent2, width: 32 },
-  // Seta animada de "continue rolando" — só aparece no capítulo 1 do herói,
-  // some ao rolar, pra não competir com o conteúdo. CSS @keyframes próprio
-  // via `as any` (web-only, como tudo nesta página).
   heroScrollHint: {
     marginTop: spacing.lg,
     alignSelf: 'flex-start',
-    ...({ animationName: 'heroScrollBounce', animationDuration: '2s', animationIterationCount: 'infinite', animationTimingFunction: 'ease-in-out' } as any),
   },
 
   heroTrilhaCompacta: { paddingTop: spacing.xl, gap: spacing.xxl * 1.5 },

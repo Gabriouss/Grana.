@@ -126,13 +126,8 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     }
   }
 
-  // Mesma matemática do `background-size: cover`: cresce o retângulo do
-  // tamanho do canvas original até cobrir o painel inteiro, sempre mantendo
-  // a proporção 2752:1536 — o excedente (que `overflow:hidden` do pai corta)
-  // é o mesmo excedente que `objectFit:'cover'` cortaria de uma imagem só.
-  const fallbackH = Math.min(Math.round((winW * 9) / 16), winH);
   const larguraPainel = painel.width > 0 ? painel.width : winW;
-  const alturaPainel = painel.height > 0 ? Math.min(painel.height, winH) : fallbackH;
+  const alturaPainel = painel.height > 0 ? painel.height : winH;
 
   const painelAspect = larguraPainel / (alturaPainel || 1);
   let telaW = larguraPainel;
