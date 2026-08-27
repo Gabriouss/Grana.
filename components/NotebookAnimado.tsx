@@ -1,5 +1,5 @@
 import { createElement, useEffect, useId, useRef, useState } from 'react';
-import { AccessibilityInfo, View, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 
 // Canvas original dos 3 PNGs (bg.png define o tamanho de referência) — todo
 // o posicionamento por porcentagem abaixo é relativo a ESTE espaço, nunca ao
@@ -74,6 +74,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
   const [naTela, setNaTela] = useState(true);
   const [painel, setPainel] = useState({ width: 0, height: 0 });
+  const { width: winW, height: winH } = useWindowDimensions();
   const containerRef = useRef<View>(null);
   const idBruto = useId();
   const prefixo = `notebookAnimado_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -120,27 +121,31 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
 
   function aoMedir(e: LayoutChangeEvent) {
     const { width, height } = e.nativeEvent.layout;
-    setPainel({ width, height });
+    if (width > 0 && height > 0) {
+      setPainel({ width, height });
+    }
   }
 
   // Mesma matemática do `background-size: cover`: cresce o retângulo do
   // tamanho do canvas original até cobrir o painel inteiro, sempre mantendo
   // a proporção 2752:1536 — o excedente (que `overflow:hidden` do pai corta)
   // é o mesmo excedente que `objectFit:'cover'` cortaria de uma imagem só.
-  const painelAspect = painel.width / (painel.height || 1);
-  let telaW = painel.width;
-  let telaH = painel.height;
-  if (painel.width > 0 && painel.height > 0) {
-    if (painelAspect > CANVAS_ASPECT) {
-      telaW = painel.width;
-      telaH = telaW / CANVAS_ASPECT;
-    } else {
-      telaH = painel.height;
-      telaW = telaH * CANVAS_ASPECT;
-    }
+  const fallbackH = Math.min(Math.round((winW * 9) / 16), winH);
+  const larguraPainel = painel.width > 0 ? painel.width : winW;
+  const alturaPainel = painel.height > 0 ? Math.min(painel.height, winH) : fallbackH;
+
+  const painelAspect = larguraPainel / (alturaPainel || 1);
+  let telaW = larguraPainel;
+  let telaH = alturaPainel;
+  if (painelAspect > CANVAS_ASPECT) {
+    telaW = larguraPainel;
+    telaH = telaW / CANVAS_ASPECT;
+  } else {
+    telaH = alturaPainel;
+    telaW = telaH * CANVAS_ASPECT;
   }
-  const telaLeft = (painel.width - telaW) / 2;
-  const telaTop = (painel.height - telaH) / 2;
+  const telaLeft = (larguraPainel - telaW) / 2;
+  const telaTop = (alturaPainel - telaH) / 2;
 
   const animNotebook = reduzirMovimento || !naTela
     ? {}

@@ -459,7 +459,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
 
   return (
     <View style={[styles.heroTrilhaGatilhos, { height: alturaCapitulo * CAPITULOS.length }]}>
-      <View style={[styles.heroLinhaSticky, { minHeight: alturaSticky }]}>
+      <View style={[styles.heroLinhaSticky, { height: alturaSticky, minHeight: alturaSticky }]}>
         {/* Fundo do painel inteiro — montado a partir de 3 camadas soltas
             (bg/sombra/notebook, ver comentário em NotebookAnimado.tsx), não
             mais um vídeo: nenhuma recompressão por frame, o notebook fica
@@ -675,29 +675,27 @@ function ConteudoWeb() {
         <meta name="twitter:card" content="summary_large_image" />
       </Head>
 
-      {/* ───────── Cabeçalho (sticky com blur) ───────── */}
+      {/* ───────── Cabeçalho ───────── */}
       <View
-        style={[styles.cabecalhoSticky, { paddingTop: insets.top }]}
+        style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
-        <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
-          <View style={styles.cabecalho}>
-            <BrandLogotype width={104} />
-            <View style={styles.navAbas}>
-              <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
-                <Text style={styles.entrarTexto}>Produto</Text>
-              </AppPressable>
-              <AppPressable onPress={() => rolarPara(refPrecos)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
-                <Text style={styles.entrarTexto}>Preços</Text>
-              </AppPressable>
-              {/* "Entrar" de volta no cabeçalho, discreto — quem já é cliente
-                  e chega na landing por engano não precisa rolar até o rodapé
-                  pra achar o login. Cor `inkFaint` pra não competir com os
-                  CTAs verdes da página. */}
-              <AppPressable href="/sign-in" hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
-                <Text style={styles.entrarTextoDiscreto}>Entrar</Text>
-              </AppPressable>
-            </View>
+        <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.lg }]}>
+          <BrandLogotype width={104} />
+          <View style={styles.navAbas}>
+            <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+              <Text style={styles.entrarTexto}>Produto</Text>
+            </AppPressable>
+            <AppPressable onPress={() => rolarPara(refPrecos)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+              <Text style={styles.entrarTexto}>Preços</Text>
+            </AppPressable>
+            {/* "Entrar" de volta no cabeçalho, discreto — quem já é cliente
+                e chega na landing por engano não precisa rolar até o rodapé
+                pra achar o login. Cor `inkFaint` pra não competir com os
+                CTAs verdes da página. */}
+            <AppPressable href="/sign-in" hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+              <Text style={styles.entrarTextoDiscreto}>Entrar</Text>
+            </AppPressable>
           </View>
         </View>
       </View>
@@ -1571,6 +1569,7 @@ const styles = StyleSheet.create({
   // próprios) — sem hack nenhum. Sem `borderRadius`: um canto arredondado
   // bem na borda do navegador lê como recorte quebrado, não como painel.
   heroLinhaSticky: {
+    position: 'relative',
     overflow: 'hidden',
     ...({ position: 'sticky', top: 0 } as any),
   },
