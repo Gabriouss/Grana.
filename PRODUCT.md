@@ -45,7 +45,9 @@ Code (NFC-e) de uma nota fiscal. Roda em Expo (iOS e Android) e web
 uma landing page pública separada (`app/index.tsx`, só web), voltada a
 quem ainda não conhece o produto, distinta da tela de entrada de quem já
 tem conta. Fase atual: acesso antecipado ("acesso antecipado" na própria
-landing page, criar conta é livre por enquanto). A integração de WhatsApp
+landing page, criar conta é gratuito por enquanto). O modelo comercial
+definido para depois dessa fase é uma assinatura recorrente de R$ 19,99/mês,
+cancelável a qualquer momento. A integração de WhatsApp
 passa por revisão da Meta como app do WhatsApp Business.
 
 ## Capabilities and Constraints
@@ -61,11 +63,12 @@ passa por revisão da Meta como app do WhatsApp Business.
   que oculta valores, senha conferida contra vazamentos, bloqueio de
   print em tela com valor).
 - Não movimenta dinheiro nem processa pagamento — é só registro.
-- Monetização planejada: infoproduto vendido por uma plataforma tipo
-  Kiwify/Hotmart, com acesso por período fixo (não é assinatura recorrente
-  direta) — outorga controlada por `subscriptions.access_until`. Preço
-  decidido em R$ 19,99/mês, já exibido na landing page. O produto/webhook da
-  Kiwify ainda não está totalmente configurado.
+- Monetização definida: assinatura recorrente de R$ 19,99/mês, vendida por
+  uma plataforma como Kiwify/Hotmart e cancelável a qualquer momento. A
+  vigência continua controlada por `subscriptions.access_until`; cancelamento
+  interrompe renovações futuras sem retirar o período que já foi pago. O
+  checkout e o webhook comercial ainda não estão totalmente operacionais, por
+  isso toda conta segue com acesso antecipado gratuito e completo por enquanto.
 - Backend Supabase no plano Free — soluções não podem depender de recurso
   exclusivo do plano Pro.
 - Repositório trabalhado em duas máquinas diferentes pelo mesmo autor —

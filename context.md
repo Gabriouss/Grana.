@@ -22,8 +22,10 @@ WhatsApp (texto ou áudio), ou fotografa o QR Code de uma nota fiscal — sem
 nunca conectar a uma conta bancária. Ver `PRODUCT.md` para a proposta de
 valor completa. Nome sempre "Grana." com o ponto.
 
-**Fase atual**: acesso antecipado, gratuito, preço ainda em definição.
-Integração de WhatsApp em revisão pela Meta.
+**Fase atual**: acesso antecipado gratuito. O modelo comercial para depois
+dessa fase está definido como assinatura recorrente de R$ 19,99/mês,
+cancelável a qualquer momento; checkout e bloqueio de acesso ainda não estão
+operacionais. Integração de WhatsApp em revisão pela Meta.
 
 ## Stack
 
@@ -86,9 +88,9 @@ Tabelas principais (`supabase/schema.sql`): `transactions`, `bills`,
 `user_gamification`, `feedbacks`, `app_release`, `webhook_raw_log`. RLS
 habilitado em todas — cada usuário só acessa as próprias linhas.
 
-**Assinatura/acesso**: `subscriptions.access_until` — outorga por período
-fixo (infoproduto vendido por plataforma tipo Kiwify), não assinatura
-recorrente. `lib/assinatura.ts` cuida do vínculo automático (email/token) e
+**Assinatura/acesso**: `subscriptions.access_until` controla até quando uma
+assinatura recorrente está vigente. `lib/assinatura.ts` cuida do vínculo
+automático (email/token) e
 `app/ativar.tsx` processa o link pós-checkout. Hoje **não há bloqueio de
 acesso** por assinatura — toda conta logada tem acesso total, decisão
 deliberada enquanto o preço não é definido.
@@ -172,8 +174,9 @@ retrabalho recentes:
   logar numa conta de verdade (nem de demonstração) pra gerar material de
   marketing, só dado inventado, mesmo que a intenção seja reproduzir uma
   tela real.
-- Preço decidido: R$ 19,99/mês, já exibido de verdade na seção de preços
-  (antes havia um valor de prototipagem ao vivo — corrigido).
+- Assinatura definida em R$ 19,99/mês, já exibida na seção de preços. O
+  acesso antecipado permanece gratuito enquanto o checkout não entra em
+  operação.
 - Herói compacto (mobile): capítulos 2-4 repetiam a legenda "Acesso
   antecipado" idêntica 4 vezes numa rolagem curta, sem nenhum apoio visual
   (o vídeo do notebook só aparece uma vez, no capítulo 1, de propósito —
@@ -195,10 +198,12 @@ retrabalho recentes:
   repo, não apagado).
 - Ícone "Meta atingida" (troféu com faíscas, `components/IconeMetaAtingida.tsx`)
   importado de um projeto Claude Design (`claude.ai/design`, MCP
-  `claude_design`) e adicionado, só a peça animada (sem o texto de estado
-  vazio que a acompanhava na origem), no CTA final da landing — markup SVG
-  embutido via `dangerouslySetInnerHTML`, não recriado em `react-native-svg`,
-  pra não divergir de pixel do original.
+  `claude_design`), só a peça animada (sem o texto de estado vazio que a
+  acompanhava na origem) — markup SVG embutido via `dangerouslySetInnerHTML`,
+  não recriado em `react-native-svg`, pra não divergir de pixel do original.
+  Chegou a ficar no CTA final da landing; removido de lá na rodada de
+  simplificação da seção, mas o componente ficou sem uso no repo, não
+  apagado (mesmo critério do `NotebookVideo.tsx` acima).
 
 ## Como testar
 
@@ -238,8 +243,9 @@ build, não repetida aqui pra não divergir da fonte única.
   - Rodapé empilhado e centralizado no mobile evitando desalinhamento dos links legais.
   - `NotebookAnimado`: pausa de animação via `IntersectionObserver` ao sair da tela, `fetchpriority="high"` e dimensões explícitas para otimização de LCP/CLS.
   - `FaqItem`: hover interativo nos botões e primeiro item aberto por padrão como affordance visual.
-- Preço decidido em R$ 19,99/mês; nenhuma trava de acesso por assinatura
-  implementada ainda (toda conta logada tem acesso completo).
+- Assinatura recorrente definida em R$ 19,99/mês; nenhuma trava de acesso
+  implementada ainda (toda conta logada tem acesso antecipado completo e
+  gratuito).
 - Épicos de `PLANO_DE_EVOLUCAO.md` (metas/cofrinhos, gamificação, projeção
   de fatura) majoritariamente já implementados — conferir `lib/goals.ts`,
   `lib/gamification*.ts`, `lib/projections.ts` antes de assumir que é

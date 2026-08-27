@@ -24,7 +24,9 @@ type Props = {
  * celular ficaria estranha aqui.
  */
 export default function MolduraNavegador({ src, legenda, largura = 520, proporcao = 1440 / 900 }: Props) {
-  const [reduzirMovimento, setReduzirMovimento] = useState(false);
+  const [reduzirMovimento, setReduzirMovimento] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
   const [naTela, setNaTela] = useState(true);
   const ref = useRef<View>(null);
   const idBruto = useId();
@@ -74,7 +76,7 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
       ? null
       : ({
           animationName: prefixo,
-          animationDuration: '5.5s',
+          animationDuration: '4.8s',
           animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
           animationIterationCount: 'infinite',
           willChange: 'transform',
@@ -127,6 +129,8 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
         {createElement('img', {
           src,
           alt: legenda,
+          width: 1440,
+          height: Math.round(1440 / proporcao),
           loading: 'lazy',
           style: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
         })}

@@ -71,7 +71,9 @@ type Props = {
 };
 
 export default function NotebookAnimado({ variante = 'fundo' }: Props) {
-  const [reduzirMovimento, setReduzirMovimento] = useState(false);
+  const [reduzirMovimento, setReduzirMovimento] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
   const [naTela, setNaTela] = useState(true);
   const [painel, setPainel] = useState({ width: 0, height: 0 });
   const { width: winW, height: winH } = useWindowDimensions();
@@ -146,7 +148,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     ? {}
     : {
         animationName: `${prefixo}_notebook`,
-        animationDuration: '5.5s',
+        animationDuration: '4.8s',
         animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
         animationIterationCount: 'infinite',
         willChange: 'transform',
@@ -158,7 +160,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     ? {}
     : {
         animationName: `${prefixo}_sombra`,
-        animationDuration: '5.5s',
+        animationDuration: '4.8s',
         animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
         animationIterationCount: 'infinite',
         willChange: 'transform, opacity',
@@ -181,7 +183,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         'aria-hidden': true,
         width: 2523,
         height: 2523,
-        fetchpriority: 'high',
+        fetchPriority: 'high',
         style: {
           position: 'absolute',
           inset: 0,
@@ -218,7 +220,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         alt: 'Notebook exibindo o painel do Grana.',
         width: 1403,
         height: 914,
-        fetchpriority: 'high',
+        fetchPriority: 'high',
         style: {
           position: 'absolute',
           left: '40.843%',

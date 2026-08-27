@@ -43,10 +43,21 @@ export async function vincularAssinaturasPendentes(): Promise<void> {
   if (!token) return;
 
   try {
-    await supabase.rpc('vincular_assinatura_por_token', { p_token: token });
+    // `supabase.rpc` só REJEITA a Promise por falha de transporte (rede
+    // fora do ar, RPC inexistente) — uma falha LÓGICA (token
+    // inválido/expirado/já vinculado a outra conta) resolve normalmente,
+    // sem lançar: `error` continua nulo, e é o próprio RETORNO da função
+    // (`data`, um boolean) que diz se vinculou de verdade — ver
+    // `vincular_assinatura_por_token` em supabase/schema.sql, que devolve
+    // `false` nesse caso em vez de lançar. Checar só `error` (como antes)
+    // não bastava: uma chamada que chegou ao servidor mas voltou `data:
+    // false` já era tratada como sucesso e apagava o token, deixando a
+    // pessoa sem assinatura vinculada e sem chance de tentar de novo.
+    const { data, error } = await supabase.rpc('vincular_assinatura_por_token', { p_token: token });
+    if (error || data !== true) return; // mantém o token guardado pra tentar de novo no próximo login.
     await AsyncStorage.removeItem(CHAVE_TOKEN_PENDENTE);
   } catch {
-    // Mantém o token guardado pra tentar de novo no próximo login.
+    // Falha de transporte — mantém o token guardado pra tentar de novo no próximo login.
   }
 }
 

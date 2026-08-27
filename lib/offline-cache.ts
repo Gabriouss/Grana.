@@ -36,6 +36,16 @@ type PendingInput = {
   color: string;
   occurred_on: string;
   recurring?: boolean;
+  /** Carteira/método selecionados no formulário — sem eles aqui, o tipo
+      TypeScript não refletia o que `lancamentos.tsx` já enviava de verdade
+      (o valor sobrevivia por acidente, porque JS não apaga propriedade
+      extra que o tipo não declara), e o item OTIMISTA (`optimistic`,
+      abaixo) simplesmente não os carregava — enquanto o lançamento ficava
+      pendente, ele aparecia sem carteira/método na tela. */
+  wallet_id?: string | null;
+  payment_method?: string;
+  bank?: string;
+  card_id?: string | null;
 };
 
 type PendingItem = { localId: string; input: PendingInput };
@@ -91,6 +101,10 @@ export async function queuePendingTransaction(input: PendingInput): Promise<Tran
     occurred_on: input.occurred_on,
     recurring: !!input.recurring,
     parent_id: null,
+    wallet_id: input.wallet_id ?? null,
+    payment_method: input.payment_method as Transaction['payment_method'],
+    bank: input.bank,
+    card_id: input.card_id ?? null,
     created_at: new Date().toISOString(),
   };
 

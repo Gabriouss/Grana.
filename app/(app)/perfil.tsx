@@ -131,8 +131,19 @@ export default function PerfilScreen() {
   async function handlePerformDeleteAccount() {
     try {
       setDeleting(true);
-      await deleteUserAccount();
+      const { completo } = await deleteUserAccount();
       await signOut();
+      if (!completo) {
+        // `deleteUserAccount` já apagou todos os dados que conseguiu — só o
+        // encerramento total da conta de login não terminou (depende de uma
+        // função no servidor). Avisa em vez de fingir que terminou 100%.
+        Alert.alert(
+          'Dados apagados',
+          'Seus dados foram removidos, mas não foi possível concluir o encerramento total da conta agora. Se precisar, fale com o suporte.',
+          [{ text: 'OK', onPress: () => router.replace('/sign-in') }]
+        );
+        return;
+      }
       router.replace('/sign-in');
     } catch (err: any) {
       Alert.alert('Erro ao excluir conta', err?.message || 'Tente novamente mais tarde.');

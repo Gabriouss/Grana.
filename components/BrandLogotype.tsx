@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
 const VIEWBOX_W = 1778.3;
@@ -14,6 +15,7 @@ const PATH_D =
  */
 export default function BrandLogotype({ width = 160 }: { width?: number }) {
   const height = (width * VIEWBOX_H) / VIEWBOX_W;
+  const gradientId = `brand-gradient-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   return (
     <Svg
       width={width}
@@ -23,12 +25,12 @@ export default function BrandLogotype({ width = 160 }: { width?: number }) {
       role="img"
     >
       <Defs>
-        <LinearGradient id="grad" x1={333.91} y1={-198.88} x2={1375.52} y2={842.73} gradientUnits="userSpaceOnUse">
+        <LinearGradient id={gradientId} x1={333.91} y1={-198.88} x2={1375.52} y2={842.73} gradientUnits="userSpaceOnUse">
           <Stop offset="0" stopColor="#b0f7c9" />
           <Stop offset="1" stopColor="#22a1c1" />
         </LinearGradient>
       </Defs>
-      <Path d={PATH_D} fill="url(#grad)" />
+      <Path d={PATH_D} fill={`url(#${gradientId})`} />
     </Svg>
   );
 }

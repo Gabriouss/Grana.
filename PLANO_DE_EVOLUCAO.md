@@ -2,6 +2,17 @@
 
 Este documento é o **plano mestre de implementação** para evoluir o **Grana.** para o próximo patamar de inteligência financeira, automação de dados e retenção de usuários. Está estruturado em **5 Épicos modulares**, prontos para serem executados em sessões sequenciais de desenvolvimento.
 
+> **Status:** Épicos 1-4 já foram implementados e estão em produção — as tabelas,
+> funções e componentes citados em cada um (`lib/goals.ts`,
+> `lib/gamification-infinite.ts`, `lib/projections.ts`, `components/SafeToSpendCard.tsx`,
+> `components/FutureTimelineChart.tsx`, `components/QrScannerModal.tsx`, a
+> transcrição de áudio via Whisper no webhook do WhatsApp,
+> `components/MonthlyWrappedModal.tsx`, `lib/pdf-report.ts` etc.) existem no
+> código hoje. O texto abaixo ficou como estava escrito ANTES da implementação
+> (histórico de planejamento), então lê como trabalho futuro — não é. Só o
+> **Épico 5 (widgets de tela inicial / Atalhos iOS)** continua pendente de
+> verdade.
+
 ---
 
 ## 🏛️ Visão Geral da Arquitetura de Expansão

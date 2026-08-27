@@ -659,17 +659,33 @@ export async function reauthenticate(password: string): Promise<{ ok: boolean; e
   return { ok: true };
 }
 
-export async function deleteUserAccount(): Promise<void> {
+/**
+ * `completo: false` significa que a RPC oficial (`delete_user_account`, com
+ * `SECURITY DEFINER`) não estava instalada no banco, e o fallback abaixo
+ * rodou no lugar dela. O fallback apaga os dados de TODAS as tabelas
+ * conhecidas, mas — diferente da RPC — não consegue apagar a própria linha
+ * de `auth.users`: isso exige privilégio de administrador que o cliente
+ * autenticado nunca tem, só uma função `SECURITY DEFINER` rodando no
+ * servidor. Ou seja, sem a RPC instalada, a exclusão nunca fica 100%
+ * completa — a pessoa continua existindo como login, só sem nenhum dado.
+ * O chamador precisa saber disso pra avisar a pessoa em vez de fingir
+ * sucesso total.
+ */
+export async function deleteUserAccount(): Promise<{ completo: boolean }> {
   const user_id = await currentUserId();
 
   // 1. Tenta a RPC oficial de exclusão no Supabase (que apaga de auth.users com SECURITY DEFINER)
   const { error: rpcError } = await supabase.rpc('delete_user_account');
 
+  let completo = true;
+
   if (rpcError) {
     // Sem o texto do erro do backend: o log do aparelho não é lugar de
     // detalhe interno do banco.
     console.warn('[deleteUserAccount] RPC indisponível; apagando apenas as tabelas públicas.');
-    // Fallback caso a função ainda não tenha sido executada no SQL Editor
+    completo = false;
+    // Fallback caso a função ainda não tenha sido executada no SQL Editor —
+    // mesma lista de tabelas que a RPC cobre hoje (ver supabase/schema.sql).
     await supabase.from('transactions').delete().eq('user_id', user_id);
     await supabase.from('bills').delete().eq('user_id', user_id);
     await supabase.from('budgets').delete().eq('user_id', user_id);
@@ -680,10 +696,19 @@ export async function deleteUserAccount(): Promise<void> {
     await supabase.from('user_gamification').delete().eq('user_id', user_id);
     await supabase.from('credit_cards').delete().eq('user_id', user_id);
     await supabase.from('wallets').delete().eq('user_id', user_id);
+    await supabase.from('credit_card_invoices').delete().eq('user_id', user_id);
+    await supabase.from('subscriptions').delete().eq('user_id', user_id);
+    // `feedbacks` nunca é apagado, nem pela RPC (que conta com o
+    // `on delete set null` da própria coluna) — só perde o vínculo com a
+    // conta, pra manter o feedback em si (útil pro produto) sem seguir
+    // identificando quem escreveu depois que a conta não existe mais.
+    await supabase.from('feedbacks').update({ user_id: null }).eq('user_id', user_id);
   }
 
   // 2. Encerrar sessão localmente
   await supabase.auth.signOut();
+
+  return { completo };
 }
 
 

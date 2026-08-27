@@ -78,12 +78,27 @@ export default function GradeInterativa({ invertida }: { invertida?: boolean }) 
     if (!container || !brilho || !pai) return;
 
     let cachedRect: DOMRect | null = null;
+    let dentro = false;
+    let ultimoPonteiro: { clientX: number; clientY: number } | null = null;
+
+    function agendarAplicacao() {
+      if (rafId.current === null) rafId.current = requestAnimationFrame(aplicar);
+    }
 
     function atualizarRect() {
-      if (container) cachedRect = container.getBoundingClientRect();
+      if (!container || !dentro) return;
+      cachedRect = container.getBoundingClientRect();
+      if (ultimoPonteiro) {
+        posPendente.current = {
+          x: ultimoPonteiro.clientX - cachedRect.left,
+          y: ultimoPonteiro.clientY - cachedRect.top,
+        };
+        agendarAplicacao();
+      }
     }
 
     function entrar() {
+      dentro = true;
       atualizarRect();
       if (brilho) brilho.style.opacity = '1';
     }
@@ -98,27 +113,50 @@ export default function GradeInterativa({ invertida }: { invertida?: boolean }) 
     function mover(e: MouseEvent) {
       if (!cachedRect) atualizarRect();
       if (!cachedRect) return;
+      ultimoPonteiro = { clientX: e.clientX, clientY: e.clientY };
       posPendente.current = { x: e.clientX - cachedRect.left, y: e.clientY - cachedRect.top };
-      if (rafId.current === null) rafId.current = requestAnimationFrame(aplicar);
+      agendarAplicacao();
     }
 
     function sair() {
+      dentro = false;
       cachedRect = null;
+      ultimoPonteiro = null;
       if (brilho) brilho.style.opacity = '0';
     }
+
+    // O scroll real desta página acontece numa div interna (o `ScrollView`
+    // do react-native-web renderiza como `overflow` numa div, não como
+    // rolagem da `window` — mesmo fato documentado em `context.md`), então
+    // um listener de `scroll` em `window` nunca dispara aqui. Sem ele, o
+    // retângulo cacheado do container ficava desatualizado assim que a
+    // seção se movia sob um cursor parado, dessincronizando o brilho da
+    // posição real do mouse. A correção: subir a árvore de `pai` até achar
+    // o ancestral que realmente rola, e escutar o scroll NELE.
+    function encontrarAncestralRolavel(no: HTMLElement | null): HTMLElement | Window {
+      let atual = no;
+      while (atual) {
+        const estilo = getComputedStyle(atual);
+        const rola = estilo.overflowY === 'auto' || estilo.overflowY === 'scroll';
+        if (rola && atual.scrollHeight > atual.clientHeight) return atual;
+        atual = atual.parentElement;
+      }
+      return window;
+    }
+    const ancestralRolavel = encontrarAncestralRolavel(pai);
 
     pai.addEventListener('mouseenter', entrar);
     pai.addEventListener('mousemove', mover);
     pai.addEventListener('mouseleave', sair);
     window.addEventListener('resize', atualizarRect, { passive: true });
-    window.addEventListener('scroll', atualizarRect, { passive: true });
+    ancestralRolavel.addEventListener('scroll', atualizarRect, { passive: true });
 
     return () => {
       pai.removeEventListener('mouseenter', entrar);
       pai.removeEventListener('mousemove', mover);
       pai.removeEventListener('mouseleave', sair);
       window.removeEventListener('resize', atualizarRect);
-      window.removeEventListener('scroll', atualizarRect);
+      ancestralRolavel.removeEventListener('scroll', atualizarRect);
       if (rafId.current !== null) cancelAnimationFrame(rafId.current);
     };
   }, []);

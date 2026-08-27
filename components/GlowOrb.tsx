@@ -1,4 +1,4 @@
-import { Animated, View } from 'react-native';
+import { View } from 'react-native';
 
 type Props = {
   /** Sempre em rgba com o alfa já embutido — nunca opacity separado, porque
@@ -10,14 +10,6 @@ type Props = {
   left?: number | string;
   right?: number;
   bottom?: number;
-  /** Valor de rolagem em pixels (`Animated.Value`), da ScrollView que contém
-      o orbe — presença opcional: sem ele o orbe fica parado, do jeito que
-      sempre foi. */
-  scrollY?: Animated.Value;
-  /** Fração do deslocamento de rolagem que vira deslocamento do orbe — 0.1
-      a 0.2 dá o efeito de profundidade (o brilho "atrasa" em relação ao
-      conteúdo) sem o orbe se descolar visivelmente da faixa onde nasceu. */
-  fatorParallax?: number;
 };
 
 /**
@@ -29,7 +21,7 @@ type Props = {
  * flutuante de _layout.tsx. Esta página inteira (app/index.tsx) só renderiza
  * na web, então não existe caminho nativo pra proteger aqui.
  */
-export default function GlowOrb({ cor, tamanho = 640, top, left, right, bottom, scrollY, fatorParallax }: Props) {
+export default function GlowOrb({ cor, tamanho = 640, top, left, right, bottom }: Props) {
   const estiloBase = {
     position: 'absolute',
     top,
@@ -46,23 +38,5 @@ export default function GlowOrb({ cor, tamanho = 640, top, left, right, bottom, 
     WebkitBackfaceVisibility: 'hidden',
   } as any;
 
-  if (!scrollY || !fatorParallax) {
-    return <View pointerEvents="none" style={estiloBase} />;
-  }
-
-  // `translateY` é transform, não `top` — por isso convive com o `top`/`left`
-  // absolutos acima sem precisar recalculá-los, e continua compatível com o
-  // driver nativo de animação (RN só permite native driver em transform/opacity).
-  const deslocamento = scrollY.interpolate({
-    inputRange: [-1, 0, 3000],
-    outputRange: [-1 * fatorParallax, 0, 3000 * fatorParallax],
-    extrapolate: 'extend',
-  });
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[estiloBase, { transform: [{ translateY: deslocamento }] }]}
-    />
-  );
+  return <View pointerEvents="none" style={estiloBase} />;
 }

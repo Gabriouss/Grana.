@@ -1,77 +1,93 @@
-// Roda depois de `expo export --platform web` (ver vercel.json).
-//
-// O export web deste projeto usa o modo "single" (SPA): um index.html só,
-// gerado pelo bundler do Expo, sem passar por app/+html.tsx — aquele arquivo
-// só é lido no modo "static". Não trocamos o modo de export pra não mudar
-// como as rotas são servidas; em vez disso, este script injeta as meta tags
-// direto no index.html já pronto.
-//
-// Sem og:image, WhatsApp/Facebook/etc. caem no favicon (48×48) esticado até
-// o tamanho do card de prévia — pixelizado. og:image PRECISA ser URL
-// absoluta: um raspador de link não carrega a página pra resolver caminho
-// relativo.
-//
-// Pelo mesmo motivo, injeta também um rodapé estático com a razão social:
-// a Verificação de Empresa da Meta rejeitou o domínio porque não achou o
-// nome do titular na página — e não ia achar mesmo, porque o app inteiro
-// é uma SPA. O HTML puro que sai do export é só um <div id="root"></div>
-// vazio; tudo o resto nasce depois, quando o JavaScript roda no navegador.
-// O rastreador da Meta não executa JavaScript, então ele nunca chegava a
-// ver nada — não importava onde dentro do app esse texto estivesse.
-//
-// O rodapé fica como IRMÃO de #root (nunca dentro), pra o React/Expo Router
-// nunca tocar nele. Continua no documento pra sempre — só não aparece pra
-// quem usa o app de verdade, porque o próprio reset do Expo Web deixa o
-// body com `overflow:hidden` e o #root ocupando 100% da altura por cima.
-// Não é conteúdo escondido de propósito (sem display:none) — é o raspador
-// que não roda CSS, então enxerga o texto igual a qualquer leitor de tela.
+// Complementa o HTML do export SPA com metadados que precisam existir antes
+// do JavaScript rodar. A mesma fonte (`landing-meta.json`) alimenta a rota e
+// este arquivo para impedir descrições divergentes entre navegador e crawler.
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const meta = require('../landing-meta.json');
 
-const URL_SITE = 'https://granaponto.com.br';
-const TITULO = 'Grana.';
-const DESCRICAO = 'Controle financeiro pessoal: lançamentos, cartões, orçamento e gráficos, sincronizados entre celular e computador.';
-const RAZAO_SOCIAL = 'Gabriel de Souza Magalhães';
+const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
+const vercelPath = path.join(__dirname, '..', 'vercel.json');
+const imagemAbsoluta = `${meta.siteUrl}${meta.ogImage}`;
 
-const rodapeIdentificacao = `
-    <footer style="font: 12px sans-serif; color: #7fa9a0; padding: 8px 16px;">
-      Grana. (${URL_SITE.replace('https://', '')}) é um produto de ${RAZAO_SOCIAL}.
-    </footer>
-  </body>`;
+const jsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Grana.',
+  url: `${meta.siteUrl}/`,
+  description: meta.description,
+  applicationCategory: 'FinanceApplication',
+  operatingSystem: 'Web, Android, iOS',
+  provider: {
+    '@type': 'Organization',
+    name: 'Grana.',
+  },
+}).replace(/</g, '\\u003c');
+
+const jsonLdHash = crypto.createHash('sha256').update(jsonLd).digest('base64');
+const vercel = JSON.parse(fs.readFileSync(vercelPath, 'utf8'));
+const csp = vercel.headers?.flatMap((item) => item.headers ?? []).find((header) => header.key === 'Content-Security-Policy')?.value ?? '';
+if (!csp.includes(`'sha256-${jsonLdHash}'`)) {
+  console.error(`[inject-og-meta] CSP sem o hash atual do JSON-LD: sha256-${jsonLdHash}`);
+  process.exit(1);
+}
 
 const metaTags = `
-    <meta name="description" content="${DESCRICAO}" />
+    <title>${meta.title}</title>
+    <meta name="description" content="${meta.description}" />
+    <meta name="theme-color" content="${meta.themeColor}" />
+    <meta name="color-scheme" content="dark" />
     <meta name="facebook-domain-verification" content="tmjp4xpzl7euabyjjdk0hfrvcgsi2i" />
+    <link rel="canonical" href="${meta.siteUrl}/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.png" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="${TITULO}" />
-    <meta property="og:title" content="${TITULO}" />
-    <meta property="og:description" content="${DESCRICAO}" />
-    <meta property="og:url" content="${URL_SITE}" />
-    <meta property="og:image" content="${URL_SITE}/og-image.png" />
+    <meta property="og:site_name" content="Grana." />
+    <meta property="og:title" content="${meta.ogTitle}" />
+    <meta property="og:description" content="${meta.ogDescription}" />
+    <meta property="og:url" content="${meta.siteUrl}/" />
+    <meta property="og:image" content="${imagemAbsoluta}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${TITULO}" />
-    <meta name="twitter:description" content="${DESCRICAO}" />
-    <meta name="twitter:image" content="${URL_SITE}/og-image.png" />
-  </head>`;
+    <meta name="twitter:title" content="${meta.ogTitle}" />
+    <meta name="twitter:description" content="${meta.ogDescription}" />
+    <meta name="twitter:image" content="${imagemAbsoluta}" />
+    <script type="application/ld+json">${jsonLd}</script>
+  `;
 
-const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
+const fallbackSemJavaScript = `
+    <noscript>
+      <main style="max-width:720px;margin:48px auto;padding:24px;font:16px sans-serif;color:#effffa;background:#052229">
+        <h1>Grana.</h1>
+        <p>${meta.description}</p>
+        <p>Ative o JavaScript para criar sua conta ou entrar no aplicativo.</p>
+      </main>
+    </noscript>
+  `;
+
 let html = fs.readFileSync(indexPath, 'utf8');
-
-if (!html.includes('</head>')) {
-  console.error('[inject-og-meta] dist/index.html sem </head> — export mudou de formato?');
+if (!html.includes('</head>') || !html.includes('</body>')) {
+  console.error('[inject-og-meta] o HTML exportado não contém </head> e </body>.');
   process.exit(1);
 }
 
-if (!html.includes('</body>')) {
-  console.error('[inject-og-meta] dist/index.html sem </body> — export mudou de formato?');
-  process.exit(1);
-}
+html = html.replace(/<html([^>]*?)\slang=(['"])[^'"]*\2/i, '<html$1 lang="pt-BR"');
+if (!/<html[^>]*\slang=/i.test(html)) html = html.replace(/<html/i, '<html lang="pt-BR"');
 
-html = html.replace('<html lang="en">', '<html lang="pt-BR">');
-html = html.replace('</head>', metaTags);
-html = html.replace('</body>', rodapeIdentificacao);
+html = html
+  .replace(/<title>[\s\S]*?<\/title>/gi, '')
+  .replace(/<link[^>]+rel=(['"])canonical\1[^>]*>/gi, '')
+  .replace(/<meta[^>]+(?:name|property)=(['"])(?:description|theme-color|color-scheme|facebook-domain-verification|og:type|og:site_name|og:title|og:description|og:url|og:image|og:image:width|og:image:height|twitter:card|twitter:title|twitter:description|twitter:image)\1[^>]*>/gi, '')
+  .replace('</head>', `${metaTags}</head>`)
+  .replace('</body>', `${fallbackSemJavaScript}</body>`);
+
+for (const esperado of [`<title>${meta.title}</title>`, `href="${meta.siteUrl}/"`, 'application/ld+json', '<html lang="pt-BR"']) {
+  if (!html.includes(esperado)) {
+    console.error(`[inject-og-meta] falha ao injetar: ${esperado}`);
+    process.exit(1);
+  }
+}
 
 fs.writeFileSync(indexPath, html);
-console.log('[inject-og-meta] meta tags Open Graph e rodapé de identificação injetados em dist/index.html');
+console.log('[inject-og-meta] SEO, JSON-LD e fallback sem JavaScript injetados.');

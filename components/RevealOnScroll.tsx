@@ -33,15 +33,22 @@ type Props = PropsWithChildren<{
  */
 export default function RevealOnScroll({ children, atraso = 0, style }: Props) {
   const ref = useRef<View>(null);
-  const [visivel, setVisivel] = useState(Platform.OS !== 'web');
+  const [visivel, setVisivel] = useState(() =>
+    Platform.OS !== 'web' ||
+    typeof window === 'undefined' ||
+    typeof IntersectionObserver === 'undefined' ||
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
+      setVisivel(true);
       return;
     }
 
     let cancelado = false;
     let temporizador: ReturnType<typeof setTimeout> | undefined;
+    let observador: IntersectionObserver | undefined;
     AccessibilityInfo.isReduceMotionEnabled?.()
       .then((reduzir) => {
         if (cancelado) return;
@@ -51,23 +58,34 @@ export default function RevealOnScroll({ children, atraso = 0, style }: Props) {
         }
         // No RN Web, o `ref` de uma View encaminha para o nó DOM real por baixo.
         const no = ref.current as unknown as HTMLElement | null;
-        if (!no) return;
-        const observador = new IntersectionObserver(
+        if (!no) {
+          setVisivel(true);
+          return;
+        }
+        // `const obs`, não a variável `observador` do escopo de fora: dentro
+        // do próprio callback, TS não consegue provar que `observador` (um
+        // `let` reatribuído logo depois de criado) já deixou de ser
+        // `undefined` no momento em que o callback roda — mesmo sendo
+        // sempre verdade em tempo de execução (o callback só dispara depois
+        // do `observe()`, que só roda depois da atribuição). Fechar sobre um
+        // `const` local resolve isso sem precisar de non-null assertion.
+        const obs = new IntersectionObserver(
           ([entrada]) => {
             if (entrada.isIntersecting) {
               temporizador = setTimeout(() => setVisivel(true), atraso);
-              observador.disconnect();
+              obs.disconnect();
             }
           },
           { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }
         );
-        observador.observe(no);
-        return () => observador.disconnect();
+        observador = obs;
+        obs.observe(no);
       })
       .catch(() => setVisivel(true));
 
     return () => {
       cancelado = true;
+      observador?.disconnect();
       if (temporizador) clearTimeout(temporizador);
     };
   }, [atraso]);

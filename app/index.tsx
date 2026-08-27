@@ -1,5 +1,5 @@
 import { createElement, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,6 @@ import { colunaConteudo, colunaLeitura, useBreakpoint } from '@/lib/breakpoints'
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
 import NotebookAnimado from '@/components/NotebookAnimado';
-import IconeMetaAtingida from '@/components/IconeMetaAtingida';
 import GradeInterativa from '@/components/GradeInterativa';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
@@ -17,6 +16,7 @@ import GlowOrb from '@/components/GlowOrb';
 import TrustMarquee from '@/components/TrustMarquee';
 import MolduraCelular from '@/components/MolduraCelular';
 import MolduraNavegador from '@/components/MolduraNavegador';
+import landingMeta from '@/landing-meta.json';
 
 /**
  * Página pública em `/` — recebe quem nunca ouviu falar do Grana.: clique de
@@ -52,6 +52,20 @@ export default function LandingPage() {
  * aparece — se um card de recurso e o botão de ação têm a mesma presença
  * visual, a hierarquia não está fazendo o trabalho dela.
  */
+const PARAMETROS_ATRIBUICAO = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
+
+function hrefCadastroComAtribuicao(): string {
+  if (typeof window === 'undefined') return '/sign-up';
+  const origem = new URLSearchParams(window.location.search);
+  const destino = new URLSearchParams();
+  for (const chave of PARAMETROS_ATRIBUICAO) {
+    const valor = origem.get(chave);
+    if (valor) destino.set(chave, valor);
+  }
+  const query = destino.toString();
+  return query ? `/sign-up?${query}` : '/sign-up';
+}
+
 function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado?: boolean }) {
   return (
     // Sem `centralizado`, o botão (`ctaPrimario` tem `alignSelf:'flex-start'`
@@ -74,11 +88,13 @@ function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado
           aba" e rastreamento por crawler de busca funcionam — sem tocar no
           `style` função que já funcionava. */}
       <AppPressable
-        href="/sign-up"
+        href={hrefCadastroComAtribuicao()}
         style={({ hovered }) => [styles.ctaPrimario, centralizado && styles.ctaPrimarioCentralizado, hovered && styles.ctaPrimarioHover]}
       >
         <Text style={styles.ctaPrimarioTexto}>Criar conta</Text>
-        <Ionicons name="arrow-forward" size={17} color={theme.paper} aria-hidden />
+        <View aria-hidden>
+          <Ionicons name="arrow-forward" size={17} color={theme.paper} />
+        </View>
       </AppPressable>
       <Text style={[styles.ctaMicrocopy, centralizado && styles.ctaMicrocopyCentralizada]}>{microcopy}</Text>
     </View>
@@ -204,16 +220,6 @@ const COMPROMISSOS = [
   { dia: '25', mes: 'SET', nome: 'Internet', tipo: 'Conta fixa', valor: 'R$ 99,90' },
 ];
 
-/* Escalonamento vertical dos cards do FAQ (referência: agent.humanacademy.ai)
-   — decisão deliberada de voltar atrás de uma rodada anterior que tinha
-   revertido isso pro alinhamento rígido. Valores fixos, não aleatórios de
-   verdade: precisam ser os mesmos a cada render (senão o layout "pula" a
-   cada re-render) e continuar parecendo desenhado, não just bagunçado. */
-const DESALINHO_FAQ = [0, 56, -30, 38, 14];
-const LARGURAS_FAQ = ['44%', '48%', '42%', '46%', '44%'] as const;
-
-/* Array, não JSX solto — precisa do índice pra alternar o escalonamento
-   visual dos cards (ver `faqGrade`/`faqCardPos` no render). */
 const PERGUNTAS_FAQ = [
   {
     pergunta: 'O Grana. puxa meu extrato do banco sozinho?',
@@ -228,7 +234,7 @@ const PERGUNTAS_FAQ = [
   {
     pergunta: 'É seguro?',
     resposta:
-      'Cada conta só acessa os próprios dados, reforçado no banco de dados (não só na tela). A sessão fica criptografada no aparelho, e telas com valor bloqueiam print. Detalhes completos na Política de Privacidade.',
+      'Cada conta só acessa os próprios dados, reforçado no banco de dados (não só na tela). No aplicativo móvel, a sessão fica criptografada no aparelho; no Android, você também pode bloquear prints das telas financeiras. Detalhes completos na Política de Privacidade.',
   },
   {
     pergunta: 'Preciso instalar alguma coisa?',
@@ -236,7 +242,7 @@ const PERGUNTAS_FAQ = [
   },
   {
     pergunta: 'É pago?',
-    resposta: 'Sim, um plano único e simples, sem letra miúda. Você sabe exatamente quanto vai pagar antes de criar a conta.',
+    resposta: 'Durante o acesso antecipado, criar a conta é gratuito. Quando a cobrança começar, será uma assinatura única de R$ 19,99 por mês, cancelável quando você quiser.',
   },
 ];
 
@@ -299,7 +305,6 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
      em unidades erradas com split cru. */
   const [letras, setLetras] = useState<Animated.Value[]>(() => criarLetras(TITULO_CAPITULO_1, 1));
   const gatilhoRefs = useRef<Record<number, View | null>>({});
-  const scrollBounce = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let ativo = true;
@@ -310,18 +315,6 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
       ativo = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (reduzirMovimento) return;
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scrollBounce, { toValue: 6, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(scrollBounce, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ])
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [reduzirMovimento, scrollBounce]);
 
   const CAPITULOS: Capitulo[] = [
     {
@@ -336,7 +329,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
     },
     {
       titulo: 'Aponta a câmera. Acabou.',
-      subtitulo: 'O QR Code da nota vira lançamento. Cada item já categorizado, sem digitar nada.',
+      subtitulo: 'O QR Code da nota vira um lançamento com o valor total da compra, sem digitar o valor.',
       icone: 'qr-code-outline',
     },
     {
@@ -423,11 +416,17 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
                 e o título embaixo já nasce dentro da parte apagada. */}
             {i === 0 &&
               createElement('img', {
-                src: '/notebook/tela-mobile-2.png',
+                src: '/notebook/tela-mobile-2-800.png',
                 alt: 'Painel do Grana. mostrando saldo, orçamento e gastos por categoria.',
-                width: 3437,
-                height: 2071,
-                style: { width: '100%', maxWidth: 400, aspectRatio: 3437 / 2071, objectFit: 'contain', display: 'block', marginBottom: -spacing.xl },
+                width: 800,
+                height: 482,
+                fetchPriority: 'high',
+                // `height:'auto'` explícito — sem isso o atributo HTML `height`
+                // (a dica de apresentação nativa do `<img>`) vence o `aspectRatio` abaixo,
+                // porque só entra em jogo quando width OU height do CSS está em 'auto'.
+                // Sem essa linha a imagem nasce na altura nativa do arquivo,
+                // empurrando o resto do herói pra muito abaixo da dobra.
+                style: { width: '100%', height: 'auto', maxWidth: 400, aspectRatio: 800 / 482, objectFit: 'contain', display: 'block', marginBottom: -spacing.xl },
               })}
             {/* "Acesso antecipado" só no capítulo 1 — repetido idêntico nos
                 4 blocos lia como ruído (mesma legenda 4 vezes numa rolagem
@@ -450,12 +449,16 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
               {c.titulo}
             </Text>
             <Text style={[styles.subheadline, styles.precoTextoCentralizado]}>{c.subtitulo}</Text>
-            {/* CTA em TODOS os capítulos no mobile — no desktop o botão é
-                fixo na coluna esquerda (herói sticky), mas no mobile cada
-                capítulo é um bloco separado e quem se convence no capítulo 3
-                ou 4 não tinha botão por perto. Microcopy só no primeiro
-                ("Leva 30 segundos"), nos demais o botão basta. */}
-            <BotaoCTA microcopy={i === 0 ? 'Leva 30 segundos. Sem cartão de crédito.' : 'Gratuito por 7 dias.'} centralizado />
+            {/* CTA só na entrada e no fechamento (capítulo 1 e último) — no
+                desktop o botão é fixo na coluna esquerda (herói sticky), mas
+                no mobile cada capítulo é um bloco separado. Repetir o botão
+                nos 4 lia como spam de venda numa rolagem curta; os capítulos
+                do meio ainda estão construindo o argumento, então só
+                precisam de um no início (primeira decisão) e um no fim
+                (quem chegou até ali já viu o argumento inteiro). */}
+            {(i === 0 || i === CAPITULOS.length - 1) && (
+              <BotaoCTA microcopy={i === 0 ? 'Leva 30 segundos. Sem cartão de crédito.' : 'Acesso antecipado gratuito por enquanto.'} centralizado />
+            )}
           </View>
         ))}
       </View>
@@ -534,11 +537,12 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
               <Animated.View
                 style={[
                   styles.heroScrollHint,
-                  { opacity: fade, transform: [{ translateY: scrollBounce }] },
+                  !reduzirMovimento && heroScrollHintAnimado,
+                  { opacity: fade },
                 ]}
                 pointerEvents="none"
               >
-                <Ionicons name="chevron-down" size={20} color={theme.inkFaint} />
+                <Ionicons name="chevron-down" size={22} color={theme.accent2} />
               </Animated.View>
             )}
           </View>
@@ -563,7 +567,6 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
 function ConteudoWeb() {
   const insets = useSafeAreaInsets();
   const { ehCompacto } = useBreakpoint();
-  const scrollY = useRef(new Animated.Value(0)).current;
   const alturaDobra = useAlturaDobra();
   /* Medido em vez de constante: o cabeçalho muda de altura com o `insets.top`
      e com a escala tipográfica da web, e o herói precisa descontar o valor
@@ -575,7 +578,14 @@ function ConteudoWeb() {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
     document.documentElement.lang = 'pt-BR';
     const tag = document.createElement('style');
-    tag.textContent = `@keyframes heroScrollBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }`;
+    tag.textContent = `
+      @keyframes hero-scroll-bounce {
+        0% { transform: translateY(0); opacity: 0.6; }
+        40% { transform: translateY(10px); opacity: 1; }
+        100% { transform: translateY(0); opacity: 0.6; }
+      }
+      #pular-conteudo:focus-visible { top: 16px !important; }
+    `;
     document.head.appendChild(tag);
     return () => {
       document.head.removeChild(tag);
@@ -586,15 +596,6 @@ function ConteudoWeb() {
   // (ver mais abaixo), não fica dentro do RevealOnScroll: o próprio
   // RevealOnScroll documenta que style/posicionamento precisa estar no
   // filho direto do flex, e a mesma restrição vale pra uma ref de scroll.
-  const refProduto = useRef<View>(null);
-  const refPrecos = useRef<View>(null);
-
-  function rolarPara(ref: React.RefObject<View | null>) {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-    const no = ref.current as unknown as HTMLElement | null;
-    no?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
   // 6 recursos, não mais 3 — metade fica de cada lado da tela do app no
   // centro (ver `styles.gradeRecursos`), estilo "recursos flanqueando um
   // celular" (referência: Organizze). Os 3 primeiros já existiam (entrada);
@@ -615,7 +616,7 @@ function ConteudoWeb() {
     {
       icone: 'qr-code-outline' as const,
       titulo: 'Foto da nota fiscal',
-      texto: 'Aponta a câmera pro QR Code da nota (NFC-e) e cada item da compra vira lançamento, já categorizado.',
+      texto: 'Aponta a câmera pro QR Code da nota (NFC-e) e o valor total da compra vira um lançamento, sem precisar digitar.',
     },
     {
       icone: 'flag-outline' as const,
@@ -657,7 +658,7 @@ function ConteudoWeb() {
   // ele nunca faz", em vez de inventar um terceiro par de cores novo.
   const SEGURANCA = [
     { icone: 'lock-closed-outline' as const, texto: 'Cada conta só enxerga\nos próprios dados, reforçado\nno banco, não só na tela.', tipo: 'faz' as const },
-    { icone: 'finger-print-outline' as const, texto: 'Bloqueio por biometria\nou senha do aparelho,\nse você ativar.', tipo: 'faz' as const },
+    { icone: 'finger-print-outline' as const, texto: 'No aplicativo móvel, bloqueio\npor biometria ou senha\ndo aparelho, se você ativar.', tipo: 'faz' as const },
     { icone: 'eye-off-outline' as const, texto: 'Modo privacidade oculta\nos valores da tela\ncom um toque.', tipo: 'faz' as const },
     { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida\ncontra vazamentos conhecidos\nno cadastro.', tipo: 'faz' as const },
     { icone: 'ban-outline' as const, texto: 'O Grana. é só registro.\nEle nunca movimenta\ndinheiro de verdade.', tipo: 'nao' as const },
@@ -669,7 +670,7 @@ function ConteudoWeb() {
   const BENEFICIOS_PRECO = [
     'Voz, WhatsApp (texto ou áudio)\nou foto da nota pra lançar',
     'Livre para Gastar calculado sozinho,\nconsiderando o que ainda vem',
-    'Biometria, senha e modo\nprivacidade pra ocultar valores',
+    'No app móvel, biometria e senha;\nem toda plataforma, modo privacidade',
     'Dados isolados por conta, nunca\nvendidos ou usados em anúncio',
     'Acesso completo a todos\nos recursos, sem plano limitado',
   ];
@@ -678,46 +679,65 @@ function ConteudoWeb() {
     <ScrollView
       style={[styles.pagina, styles.paginaSnap]}
       contentContainerStyle={{ paddingBottom: insets.bottom }}
-      onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-        useNativeDriver: true,
-      })}
-      scrollEventThrottle={16}
     >
       {/* ───────── SEO meta tags ───────── */}
       <Head>
-        <title>Grana. — Controle financeiro por voz, WhatsApp e foto da nota</title>
-        <meta name="description" content="O Grana. é o jeito mais rápido de saber pra onde vai seu dinheiro. Lança por voz, WhatsApp ou foto da nota fiscal. Sem planilha, sem banco conectado." />
-        <meta property="og:title" content="Grana. — Controle financeiro pessoal" />
-        <meta property="og:description" content="Lança por voz, WhatsApp ou foto da nota fiscal. Sem planilha, sem banco conectado." />
-        <meta property="og:image" content="/og-image.png" />
+        <title>{landingMeta.title}</title>
+        <meta name="description" content={landingMeta.description} />
+        <meta name="theme-color" content={landingMeta.themeColor} />
+        <meta name="color-scheme" content="dark" />
+        <link rel="canonical" href={`${landingMeta.siteUrl}/`} />
+        <meta property="og:site_name" content="Grana." />
+        <meta property="og:title" content={landingMeta.ogTitle} />
+        <meta property="og:description" content={landingMeta.ogDescription} />
+        <meta property="og:url" content={`${landingMeta.siteUrl}/`} />
+        <meta property="og:image" content={`${landingMeta.siteUrl}${landingMeta.ogImage}`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={landingMeta.ogTitle} />
+        <meta name="twitter:description" content={landingMeta.ogDescription} />
+        <meta name="twitter:image" content={`${landingMeta.siteUrl}${landingMeta.ogImage}`} />
       </Head>
 
-      {/* ───────── Cabeçalho ───────── */}
+      <AppPressable
+        nativeID="pular-conteudo"
+        href="#conteudo-principal"
+        style={styles.pularConteudo}
+      >
+        <Text style={styles.pularConteudoTexto}>Pular para o conteúdo</Text>
+      </AppPressable>
+
+      {/* ───────── Cabeçalho (sticky com blur) ───────── */}
       <View
-        style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}
+        role="banner"
+        style={styles.cabecalhoSticky}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
+        <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
         <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
           <BrandLogotype width={104} />
-          <View style={styles.navAbas}>
-            <AppPressable onPress={() => rolarPara(refProduto)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+          <View role="navigation" accessibilityLabel="Navegação principal" style={styles.navAbas}>
+            <AppPressable href="#produto" style={styles.navLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
               <Text style={styles.entrarTexto}>Produto</Text>
             </AppPressable>
-            <AppPressable onPress={() => rolarPara(refPrecos)} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+            <AppPressable href="#precos" style={styles.navLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
               <Text style={styles.entrarTexto}>Preços</Text>
             </AppPressable>
             {/* "Entrar" de volta no cabeçalho, discreto — quem já é cliente
                 e chega na landing por engano não precisa rolar até o rodapé
                 pra achar o login. Cor `inkFaint` pra não competir com os
                 CTAs verdes da página. */}
-            <AppPressable href="/sign-in" hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
+            <AppPressable href="/sign-in" style={styles.navLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
               <Text style={styles.entrarTextoDiscreto}>Entrar</Text>
             </AppPressable>
           </View>
         </View>
+        </View>
       </View>
+
+      <View role="main" nativeID="conteudo-principal">
 
       {/* ───────── Faixa de confiança ─────────
           Fica sob o cabeçalho, antes do hero — o único ponto da página que já
@@ -730,8 +750,8 @@ function ConteudoWeb() {
       {/* ───────── Hero-storytelling — o momento de assinatura da página ───────── */}
       <View style={styles.palcoHero}>
         <View style={styles.camadaBrilho}>
-          <GlowOrb cor="rgba(31,169,141,0.35)" tamanho={720} top={-260} left={-160} scrollY={scrollY} fatorParallax={0.12} />
-          <GlowOrb cor="rgba(174,255,227,0.16)" tamanho={520} top={-80} right={-120} scrollY={scrollY} fatorParallax={0.2} />
+          <GlowOrb cor="rgba(31,169,141,0.35)" tamanho={720} top={-260} left={-160} />
+          <GlowOrb cor="rgba(174,255,227,0.16)" tamanho={520} top={-80} right={-120} />
         </View>
         {/* Sem o wrapper `[colunaConteudo, faixa]` que as outras seções usam:
             o painel largo do herói precisa sangrar até a borda VERDADEIRA do
@@ -747,7 +767,11 @@ function ConteudoWeb() {
           Cada cena de dor em caixa própria, desalinhadas entre si
           (referência: cards do workshop) — trocou o scrub de brilho
           contínuo que a seção tinha antes. */}
-      <View ref={refProduto} style={styles.palcoComCamada}>
+      {/* `scrollMarginTop` compensa o cabeçalho sticky: sem isso, rolar até
+          aqui pelo clique da aba alinharia o topo desta seção exatamente
+          embaixo do cabeçalho fixo, escondendo o começo do conteúdo atrás
+          dele. */}
+      <View nativeID="produto" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
@@ -984,7 +1008,7 @@ function ConteudoWeb() {
       </View>
 
       {/* ───────── Preços ───────── */}
-      <View ref={refPrecos} style={styles.palcoComCamada}>
+      <View nativeID="precos" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
@@ -994,7 +1018,7 @@ function ConteudoWeb() {
                 {'Um plano só.\nSem letra miúda escondida.'}
               </TituloSecao>
               <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
-                {'Um preço simples, sem pegadinha.\nVocê sabe exatamente quanto vai pagar, todo mês.'}
+                {'O acesso antecipado é gratuito por enquanto.\nDepois, a assinatura custará R$ 19,99 por mês.'}
               </Text>
             </RevealOnScroll>
 
@@ -1018,15 +1042,15 @@ function ConteudoWeb() {
                 </View>
 
                 <View style={[styles.cardPreco, ehCompacto && styles.cardPrecoCompacto]}>
-                  <Text style={styles.precoRotulo}>Plano único</Text>
+                  <Text style={styles.precoRotulo}>Assinatura única</Text>
                   <View style={styles.precoLinha}>
                     <Text style={styles.precoValor}>R$ 19,99</Text>
                     <Text style={styles.precoPeriodo}>/mês</Text>
                   </View>
                   <Text style={styles.featureTexto}>
-                    Cobrança simples, sem letra miúda. Cancele quando quiser, sem burocracia.
+                    Quando a cobrança começar, será mensal e transparente. Cancele quando quiser, sem burocracia.
                   </Text>
-                  <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado={ehCompacto} />
+                  <BotaoCTA microcopy="Acesso antecipado gratuito por enquanto." centralizado={ehCompacto} />
                 </View>
               </View>
             </RevealOnScroll>
@@ -1045,7 +1069,7 @@ function ConteudoWeb() {
         <Dobra>
           <View style={styles.secao}>
             <View style={[styles.faqLayout, ehCompacto && styles.faqLayoutCompacta]}>
-              <RevealOnScroll style={styles.colunaTextoSecao}>
+              <RevealOnScroll style={[styles.colunaTextoSecao, ehCompacto && styles.faqCompactoSemFlex]}>
                 <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Perguntas diretas</Text>
                 <TituloSecao>Sem letra miúda</TituloSecao>
                 <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
@@ -1053,17 +1077,12 @@ function ConteudoWeb() {
                 </Text>
               </RevealOnScroll>
 
-              <View style={styles.faqGrade}>
+              <View style={[styles.faqGrade, ehCompacto && styles.faqCompactoSemFlex]}>
                 {PERGUNTAS_FAQ.map((f, i) => (
                   <RevealOnScroll
                     key={f.pergunta}
                     atraso={i * 70}
-                    style={[
-                      styles.faqCardPos,
-                      { flexBasis: LARGURAS_FAQ[i % LARGURAS_FAQ.length] },
-                      !ehCompacto && { transform: [{ translateY: DESALINHO_FAQ[i % DESALINHO_FAQ.length] }] },
-                      ehCompacto && styles.faqCardPosCompacto,
-                    ]}
+                    style={styles.faqCardPos}
                   >
                     <View style={styles.faqCard}>
                       <FaqItem pergunta={f.pergunta} resposta={f.resposta} estiloExtra={styles.faqItemSemBorda} abertoInicial={i === 0} />
@@ -1084,11 +1103,10 @@ function ConteudoWeb() {
           alturaDobra !== null && styles.dobraSnap,
         ]}
       >
-        <GlowOrb cor="rgba(31,169,141,0.22)" tamanho={620} top={-200} left="50%" scrollY={scrollY} fatorParallax={0.08} />
+        <GlowOrb cor="rgba(31,169,141,0.22)" tamanho={620} top={-200} left="50%" />
         <RevealOnScroll>
           <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
             <View style={[styles.ctaFinal, colunaLeitura]}>
-              <IconeMetaAtingida />
               {/* Um heading só (não dois) — duas frases de contraste
                   aninhadas em <Text> de cor diferente dentro dele, mesmo
                   padrão de destaqueInline já usado na seção de Inteligência
@@ -1096,7 +1114,7 @@ function ConteudoWeb() {
                   herói, agora como pergunta que já tem resposta. */}
               <Text role="heading" aria-level={2} style={styles.ctaFinalTitulo}>
                 <Text style={styles.ctaFinalTituloForte}>
-                  Daqui a 30 dias você pode saber pra onde foi cada real.
+                  Use o Grana. por 30 dias e descubra pra onde foi cada real.
                 </Text>
                 {'\n'}
                 <Text style={styles.ctaFinalTituloFraca}>Ou continuar perguntando "cadê meu dinheiro".</Text>
@@ -1107,9 +1125,11 @@ function ConteudoWeb() {
         </RevealOnScroll>
       </View>
 
+      </View>
+
       {/* ───────── Rodapé ───────── */}
       <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
-        <View style={[styles.rodape, ehCompacto && styles.rodapeCompacto]}>
+        <View role="contentinfo" style={[styles.rodape, ehCompacto && styles.rodapeCompacto]}>
           <BrandLogotype width={72} />
           <View style={[styles.rodapeLinks, ehCompacto && styles.rodapeLinksCompacto]}>
             {/* `href` direto no AppPressable (ver comentário maior em
@@ -1120,18 +1140,18 @@ function ConteudoWeb() {
                 que um `onPress` em JS puro nunca ofereceu. `hitSlop` maior
                 (era 8) porque o texto de rodapé sozinho fica bem abaixo do
                 alvo de toque mínimo de 44px. */}
-            <AppPressable href="/termos" hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
+            <AppPressable href="/termos" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Termos de Uso</Text>
             </AppPressable>
-            <AppPressable href="/privacidade" hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
+            <AppPressable href="/privacidade" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Privacidade</Text>
             </AppPressable>
-            <AppPressable href="/exclusao-de-dados" hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
+            <AppPressable href="/exclusao-de-dados" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Excluir dados</Text>
             </AppPressable>
             {/* Único link de AÇÃO no meio de três links legais — por isso
                 por último, sem se misturar com Termos/Privacidade/Excluir. */}
-            <AppPressable href="/sign-in" hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
+            <AppPressable href="/sign-in" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Entrar</Text>
             </AppPressable>
           </View>
@@ -1152,8 +1172,35 @@ function ConteudoWeb() {
    topo do arquivo), então não há caminho nativo perdendo o efeito. */
 const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
 
+/* Fica FORA do `StyleSheet.create` de propósito — dentro dele, o validador
+   de estilo do react-native-web (dev only) rejeita `animationName` com
+   "Invalid style property... Did you mean animationKeyframes?" (RNW espera
+   o objeto de keyframes ali, não o nome de um @keyframes CSS já injetado à
+   parte). Todo outro `animationName`/`animationDuration` desta base
+   (NotebookAnimado, MolduraCelular, MolduraNavegador, TrustMarquee) já
+   segue esse mesmo padrão — objeto solto, mesclado no array de `style`,
+   nunca uma chave dentro de `StyleSheet.create`. */
+const heroScrollHintAnimado = {
+  animationName: 'hero-scroll-bounce',
+  animationDuration: '1.3s',
+  animationTimingFunction: 'cubic-bezier(0.45, 0, 0.2, 1)',
+  animationIterationCount: 'infinite',
+} as any;
+
 const styles = StyleSheet.create({
   pagina: { flex: 1, backgroundColor: theme.paper },
+  pularConteudo: {
+    position: 'absolute',
+    top: -80,
+    left: spacing.lg,
+    zIndex: 100,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: theme.ink,
+  },
+  pularConteudoTexto: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
   // CSS web-only, mesmo padrão `as any` de GlowOrb — faz a rolagem encaixar
   // em cada `Dobra` (`dobraSnap` abaixo) em vez de poder parar em qualquer
   // ponto no meio de uma seção de tela cheia.
@@ -1193,6 +1240,7 @@ const styles = StyleSheet.create({
   // reconhece, quem é novo não se distrai.
   entrarTextoDiscreto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   navAbas: { flexDirection: 'row', gap: spacing.xl },
+  navLinkAlvo: { minHeight: 44, justifyContent: 'center' },
 
   palcoHero: { position: 'relative' },
   /* O recorte dos GlowOrb vive nesta camada, não no `palcoHero` — sem isso o
@@ -1484,8 +1532,12 @@ const styles = StyleSheet.create({
   // dois leva a lugar nenhum (não são clicáveis), então o "levantar" no
   // hover é só presença ambiente: sem cursor de mão, sem virar alvo de tab.
   // Ver AppPressable com focusable={false}/scaleOnPress={false} onde é usado.
+  // Reaproveita a receita "Card de persuasão" (`sombraCard`) já cadastrada
+  // em vez de inventar números novos — DESIGN.md proíbe uma 6ª sombra ad hoc.
+  // O "levantar" no hover vem do `translateY`, não de uma sombra maior.
   cardComHover: {
-    ...({ boxShadow: '0 24px 48px -16px rgba(0,0,0,0.6)', transform: [{ translateY: -4 }], cursor: 'default' } as any),
+    ...sombraCard,
+    ...({ transform: [{ translateY: -4 }], cursor: 'default' } as any),
   },
   featureIconeCirculo: {
     width: 36,
@@ -1539,9 +1591,28 @@ const styles = StyleSheet.create({
   // no compacto: centraliza o bloco de texto (eyebrow/título/parágrafo)
   // empilhado, sem afetar `faqGrade` (os cards já ocupam a largura toda).
   faqLayoutCompacta: { flexDirection: 'column', alignItems: 'center' },
-  faqGrade: { flex: 1, minWidth: 320, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl * 1.8 },
-  faqCardPos: { flexBasis: '40%', minWidth: 280 },
-  faqCardPosCompacto: { flexBasis: '100%' },
+  // No compacto, `colunaTextoSecao` E `faqGrade` chegam aqui com `flex:1`
+  // cada um (herdado do layout em linha do desktop, onde os dois dividem a
+  // largura). Numa coluna (`flexDirection:'column'`), dois `flex:1`
+  // concorrentes esticam ambos pra uma altura IGUAL um ao outro em vez de
+  // cada um respeitar a altura do próprio conteúdo — o texto (curto) ganhava
+  // uma caixa tão alta quanto a grade de cards inteira (comprovado medindo
+  // ao vivo: os dois fechavam em exatamente a mesma altura), sobrando um
+  // vão vazio enorme entre o parágrafo e o primeiro card. `flexGrow:0` +
+  // `flexBasis:'auto'` tiram os dois da disputa por espaço sobrando; cada
+  // um volta a ocupar só a altura do que tem dentro.
+  faqCompactoSemFlex: { flexGrow: 0, flexBasis: 'auto' },
+  faqGrade: { flex: 1, minWidth: 320, gap: spacing.lg },
+  // Sem `flexBasis` — `faqGrade` (abaixo) é `flexDirection:'column'` por
+  // padrão agora (a grade em zigue-zague antiga, que era `row`+`wrap`, foi
+  // simplificada pra uma lista empilhada). Um `faqCardPosCompacto` com
+  // `flexBasis:'100%'` sobrava de quando `flexBasis` ainda mirava o eixo
+  // HORIZONTAL (linha) — numa coluna, `flexBasis` mira o eixo VERTICAL, e
+  // "100% de altura" em CADA card ao mesmo tempo é o que causava aquele vão
+  // gigante entre eles (cada RevealOnScroll reservava a altura inteira do
+  // container pra si). `width:'100%'` já basta pro card ocupar a largura
+  // toda em qualquer largura de tela.
+  faqCardPos: { width: '100%', minWidth: 280 },
   faqCard: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, ...sombraCard },
   // Suprime a borda/padding próprios de FaqItem — o card por fora já
   // fornece os dois, dobrar deixaria espaçamento duplicado e uma linha
@@ -1565,6 +1636,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.rule,
   },
   rodapeLinks: { flexDirection: 'row', gap: spacing.lg },
+  rodapeLinkAlvo: { minHeight: 44, justifyContent: 'center' },
   // No mobile o rodapé empilha verticalmente — os 4 links quebram de forma
   // desigual em `flexWrap:'wrap'` com `flexDirection:'row'` numa tela de
   // ~390px. Centralizar tudo resolve sem inventar media-query.
@@ -1665,8 +1737,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     alignSelf: 'flex-start',
   },
-
-  heroTrilhaCompacta: { paddingTop: spacing.xs, gap: spacing.xl },
+  heroTrilhaCompacta: { paddingTop: spacing.lg, gap: spacing.xl },
   // `center`, não mais `flex-start` — pedido do autor pra todo H1/H2 (e o
   // texto ao redor) fora de caixa ficar centralizado no compacto; o herói é
   // a PRIMEIRA seção da página nesse padrão, não uma exceção.
@@ -1684,65 +1755,4 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
 
-  /* ───────── Telas do notebook (capítulos 2 e 3) ───────── */
-  mockChat: { gap: spacing.sm },
-  mockBolhaEnviada: {
-    alignSelf: 'flex-end',
-    backgroundColor: theme.accentDeep,
-    borderRadius: radius.lg,
-    borderBottomRightRadius: 4,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-  },
-  mockTextoEnviado: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
-  mockBolhaRecebida: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    alignSelf: 'flex-start',
-    backgroundColor: theme.paper,
-    borderWidth: 1,
-    borderColor: theme.ruleStrong,
-    borderRadius: radius.lg,
-    borderBottomLeftRadius: 4,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    maxWidth: '92%',
-  },
-  mockTextoRecebido: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.light },
-
-  mockNotaCabecalho: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  mockNotaRotulo: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
-  mockNotaLista: { gap: spacing.sm },
-  mockNotaLinha: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.rule,
-  },
-  mockNotaNome: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
-  mockNotaValor: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-
-  mockTelaApp: { gap: spacing.md },
-  mockTelaTitulo: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 1, textTransform: 'uppercase', fontFamily: fonts.regular },
-  mockListaAnteriores: { gap: 2, opacity: 0.55 },
-  mockLinhaAnterior: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9 },
-  mockPontoCategoria: { width: 8, height: 8, borderRadius: 4 },
-  mockLinhaTextos: { flex: 1 },
-  mockLinhaNome: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
-  mockLinhaCategoria: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: 1 },
-  mockLinhaValor: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-
-  mockPainel: { flexDirection: 'row', alignItems: 'center', gap: spacing.xl },
-  /* Ver o comentário em TelaSafeToSpend — some o `flex:1` do texto (que
-     dividia à força a linha com a rosca de 188px) e centraliza a rosca
-     abaixo, com respiro. */
-  mockPainelCompacto: { flexDirection: 'column', alignItems: 'stretch', gap: spacing.lg },
-  mockPainelGraficoCompacto: { alignItems: 'center' },
-  mockPainelTexto: { flex: 1 },
-  mockLegendaCategorias: { gap: 6, marginTop: spacing.lg },
-  mockLegendaLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  mockLegendaPonto: { width: 8, height: 8, borderRadius: 4 },
-  mockLegendaNome: { color: theme.inkSoft, fontSize: type.legenda, fontFamily: fonts.light },
 });

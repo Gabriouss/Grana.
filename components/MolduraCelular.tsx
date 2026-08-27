@@ -39,7 +39,9 @@ const PROPORCAO = 390 / 844;
  * ou duas.
  */
 export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
-  const [reduzirMovimento, setReduzirMovimento] = useState(false);
+  const [reduzirMovimento, setReduzirMovimento] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
   const [naTela, setNaTela] = useState(true);
   const ref = useRef<View>(null);
   const idBruto = useId();
@@ -132,6 +134,8 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
         {createElement('img', {
           src,
           alt: legenda,
+          width: 390,
+          height: 844,
           loading: 'lazy',
           style: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
         })}

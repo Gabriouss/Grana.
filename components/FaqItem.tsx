@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, fonts, type } from '@/lib/theme';
@@ -14,6 +14,7 @@ type Props = {
 /** Uma linha de FAQ que abre sozinha — mantém a página de entrada curta pra quem só quer ler o essencial. */
 export function FaqItem({ pergunta, resposta, estiloExtra, abertoInicial = false }: Props) {
   const [aberto, setAberto] = useState(abertoInicial);
+  const respostaId = `faq-resposta-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   return (
     <View style={[styles.linha, estiloExtra]}>
@@ -22,13 +23,20 @@ export function FaqItem({ pergunta, resposta, estiloExtra, abertoInicial = false
         onPress={() => setAberto((v) => !v)}
         accessibilityRole="button"
         accessibilityState={{ expanded: aberto }}
+        aria-expanded={aberto}
+        aria-controls={respostaId}
+        hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
       >
         <Text style={styles.pergunta}>{pergunta}</Text>
-        <View style={styles.iconeWrapper}>
+        <View style={styles.iconeWrapper} aria-hidden>
           <Ionicons name={aberto ? 'remove' : 'add'} size={18} color={aberto ? theme.accent2 : theme.inkSoft} />
         </View>
       </AppPressable>
-      {aberto && <Text style={styles.resposta}>{resposta}</Text>}
+      {aberto && (
+        <View nativeID={respostaId} role="region" accessibilityLabel={`Resposta: ${pergunta}`}>
+          <Text style={styles.resposta}>{resposta}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -39,6 +47,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: 44,
     gap: spacing.md,
     ...({ cursor: 'pointer', transition: 'opacity 150ms ease' } as any),
   },

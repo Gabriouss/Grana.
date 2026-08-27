@@ -1012,3 +1012,49 @@ $$;
 
 revoke execute on function public.vincular_assinatura_por_token(text) from public;
 grant execute on function public.vincular_assinatura_por_token(text) to authenticated;
+
+-- ============================================================
+-- Reexecuta delete_user_account() — cobre as tabelas criadas depois da
+-- última vez que esta função foi atualizada (credit_card_invoices,
+-- subscriptions, feedbacks). `credit_card_invoices` e `subscriptions` têm
+-- `on delete cascade` na FK de user_id, então `delete from auth.users`
+-- sozinho já apagaria as duas de qualquer jeito — as linhas explícitas
+-- abaixo são redundantes com o cascade, mas deixam a intenção legível sem
+-- precisar ir conferir a definição de cada FK. `feedbacks` é a exceção
+-- real: a FK ali é `on delete set null` de propósito (mantém o feedback
+-- em si, útil pro produto, só perde o vínculo com a conta que não existe
+-- mais) — por isso um UPDATE, não um DELETE.
+create or replace function delete_user_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  current_user_id uuid;
+begin
+  current_user_id := auth.uid();
+  if current_user_id is null then
+    raise exception 'Não autenticado';
+  end if;
+
+  delete from public.transactions where user_id = current_user_id;
+  delete from public.bills where user_id = current_user_id;
+  delete from public.budgets where user_id = current_user_id;
+  delete from public.categories where user_id = current_user_id;
+  delete from public.whatsapp_links where user_id = current_user_id;
+  delete from public.whatsapp_pending where user_id = current_user_id;
+  delete from public.goals where user_id = current_user_id;
+  delete from public.user_gamification where user_id = current_user_id;
+  delete from public.credit_cards where user_id = current_user_id;
+  delete from public.wallets where user_id = current_user_id;
+  delete from public.credit_card_invoices where user_id = current_user_id;
+  delete from public.subscriptions where user_id = current_user_id;
+  update public.feedbacks set user_id = null where user_id = current_user_id;
+
+  delete from auth.users where id = current_user_id;
+end;
+$$;
+
+revoke all on function public.delete_user_account() from public, anon;
+grant execute on function public.delete_user_account() to authenticated;

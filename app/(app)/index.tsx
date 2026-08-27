@@ -415,13 +415,23 @@ export default function InicioScreen() {
   const walletTransactions =
     activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
   const walletBills = activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId);
+  // `createGoal` (mais abaixo) já grava o `wallet_id` da carteira ativa no
+  // momento da criação — os cofrinhos são pensados como algo por carteira,
+  // igual lançamento/conta/cartão. Sem este filtro, o "Livre para Gastar" de
+  // uma carteira descontava o valor guardado em cofrinhos de OUTRA carteira.
+  const walletGoals = activeWalletId === 'total' ? goals : goals.filter((g) => g.wallet_id === activeWalletId);
   // Compra no crédito só vira saída de caixa quando a fatura é paga — some
   // do saldo/fluxo/orçamento até lá (ver lib/wallets.ts::calcularSaldosWallets).
   // walletTransactions continua com tudo, inclusive crédito, pro CreditSummaryCard.
   const walletCashTransactions = walletTransactions.filter((t) => !isCreditTx(t));
 
-  const safeToSpend = calcularSafeToSpend(walletCashTransactions, walletBills, goals);
-  const comprometimentoFuturo = projetarComprometimentoFuturo(walletCashTransactions, walletBills);
+  const safeToSpend = calcularSafeToSpend(walletCashTransactions, walletBills, walletGoals);
+  // `walletTransactions`, não `walletCashTransactions`: uma parcela de
+  // compra no crédito É um comprometimento futuro de verdade (a fatura vai
+  // vencer), mesmo não sendo saída de caixa HOJE — só essa projeção (e não o
+  // saldo atual) precisa enxergar o crédito, por isso não reaproveita a
+  // mesma lista "só caixa" usada acima.
+  const comprometimentoFuturo = projetarComprometimentoFuturo(walletTransactions, walletBills);
   const sugestaoEvolucao = diagnostico
     ? sugerirEvolucaoArquetipo(walletCashTransactions, walletBills, budgets, diagnostico.arquetipo.id)
     : null;
@@ -796,7 +806,7 @@ export default function InicioScreen() {
     ),
     cofrinhos: (
       <GoalsCarousel
-        goals={goals}
+        goals={walletGoals}
         lifetimeXp={lifetimeXp}
         onCreateGoal={handleCreateGoal}
         onDeposit={handleDepositGoal}

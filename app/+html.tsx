@@ -17,6 +17,8 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="theme-color" content="#052229" />
+        <meta name="color-scheme" content="dark" />
 
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         {/* Fallback pros poucos navegadores sem suporte a favicon em SVG. */}
@@ -45,6 +47,7 @@ export default function Root({ children }: PropsWithChildren) {
 const CSS_GLOBAL = `
 html {
   -webkit-text-size-adjust: 100%;
+  color-scheme: dark;
 }
 body {
   -webkit-font-smoothing: antialiased;

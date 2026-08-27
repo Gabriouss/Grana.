@@ -1,6 +1,8 @@
 import { useEffect, useId, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, fonts, type } from '@/lib/theme';
+import AppPressable from '@/components/AppPressable';
 
 type Props = { itens: string[] };
 
@@ -45,7 +47,10 @@ const SEPARADOR = '   ·   ';
  * em px travado nesse instante ficava errado depois que a fonte trocava).
  */
 export default function TrustMarquee({ itens }: Props) {
-  const [reduzirMovimento, setReduzirMovimento] = useState(false);
+  const [reduzirMovimento, setReduzirMovimento] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
+  const [pausado, setPausado] = useState(false);
   const [larguraUmaCopia, setLarguraUmaCopia] = useState(0);
   const { width: larguraJanela } = useWindowDimensions();
   const idBruto = useId();
@@ -82,7 +87,29 @@ export default function TrustMarquee({ itens }: Props) {
   const copias =
     larguraUmaCopia > 0 ? Math.max(2, Math.ceil((larguraJanela * 2) / larguraUmaCopia) + 1) : 6;
 
-  return <TrustMarqueeFaixa nomeKeyframe={nomeKeyframe} copias={copias} larguraUmaCopia={larguraUmaCopia} textoLoop={textoLoop} onMedir={setLarguraUmaCopia} />;
+  return (
+    <View style={styles.container}>
+      <TrustMarqueeFaixa
+        nomeKeyframe={nomeKeyframe}
+        copias={copias}
+        larguraUmaCopia={larguraUmaCopia}
+        textoLoop={textoLoop}
+        pausado={pausado}
+        onMedir={setLarguraUmaCopia}
+      />
+      <AppPressable
+        onPress={() => setPausado((v) => !v)}
+        accessibilityRole="button"
+        accessibilityLabel={pausado ? 'Retomar faixa de informações' : 'Pausar faixa de informações'}
+        accessibilityState={{ checked: pausado }}
+        style={({ hovered }) => [styles.controle, hovered && styles.controleHover]}
+      >
+        <View aria-hidden>
+          <Ionicons name={pausado ? 'play' : 'pause'} size={15} color={theme.inkSoft} />
+        </View>
+      </AppPressable>
+    </View>
+  );
 }
 
 function TrustMarqueeFaixa({
@@ -90,12 +117,14 @@ function TrustMarqueeFaixa({
   copias,
   larguraUmaCopia,
   textoLoop,
+  pausado,
   onMedir,
 }: {
   nomeKeyframe: string;
   copias: number;
   larguraUmaCopia: number;
   textoLoop: string;
+  pausado: boolean;
   onMedir: (largura: number) => void;
 }) {
   useEffect(() => {
@@ -124,6 +153,7 @@ function TrustMarqueeFaixa({
             animationDuration: `${duracaoSegundos}s`,
             animationTimingFunction: 'linear',
             animationIterationCount: 'infinite',
+            animationPlayState: pausado ? 'paused' : 'running',
           } as any,
         ]}
       >
@@ -143,11 +173,27 @@ function TrustMarqueeFaixa({
 }
 
 const styles = StyleSheet.create({
+  container: { position: 'relative', backgroundColor: theme.paperRaised },
   faixa: {
     backgroundColor: theme.paperRaised,
     paddingVertical: spacing.xs,
+    paddingRight: 52,
+    minHeight: 44,
+    justifyContent: 'center',
     overflow: 'hidden',
   },
+  controle: {
+    position: 'absolute',
+    right: spacing.xs,
+    top: 0,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: theme.paperRaised,
+  },
+  controleHover: { backgroundColor: theme.hover },
   // `flexShrink: 0` nos filhos — sem isso, numa tela mais estreita que o
   // texto inteiro, o flexbox encolhia as cópias pra caber na viewport,
   // cortando o texto em vez de deixar o trilho mais largo que a tela (que é
