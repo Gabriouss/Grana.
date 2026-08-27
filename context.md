@@ -243,6 +243,16 @@ build, não repetida aqui pra não divergir da fonte única.
   - Rodapé empilhado e centralizado no mobile evitando desalinhamento dos links legais.
   - `NotebookAnimado`: pausa de animação via `IntersectionObserver` ao sair da tela, `fetchpriority="high"` e dimensões explícitas para otimização de LCP/CLS.
   - `FaqItem`: hover interativo nos botões e primeiro item aberto por padrão como affordance visual.
+  - Correção do texto cortado na seção "O guia pro seu controle financeiro"
+    em larguras compactas/intermediárias: `colunaTextoSecao` usava `flex: 1`
+    no layout desktop e mantinha esse crescimento depois que o contêiner passava
+    para `flexDirection: 'column'`. O React Native Web resolvia uma altura menor
+    que o conteúdo, e o `overflow: hidden` da dobra ocultava o final do passo 04.
+    A landing agora aplica `colunaTextoSecaoCompacta` às três seções que usam
+    esse padrão, removendo o crescimento no eixo vertical (`flexGrow: 0`,
+    `flexBasis: 'auto'`), liberando largura total e fazendo o contêiner compacto
+    esticar os filhos. Validado sem recorte em 375, 720, 1024 e 1440 px, sem
+    erros no console, com `npx tsc --noEmit` e export web concluídos.
 - Assinatura recorrente definida em R$ 19,99/mês; nenhuma trava de acesso
   implementada ainda (toda conta logada tem acesso antecipado completo e
   gratuito).
