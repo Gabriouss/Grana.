@@ -146,7 +146,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     ? {}
     : {
         animationName: `${prefixo}_notebook`,
-        animationDuration: '8.5s',
+        animationDuration: '5.5s',
         animationTimingFunction: 'ease-in-out',
         animationIterationCount: 'infinite',
         willChange: 'transform',
@@ -156,7 +156,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     ? {}
     : {
         animationName: `${prefixo}_sombra`,
-        animationDuration: '8.5s',
+        animationDuration: '5.5s',
         animationTimingFunction: 'ease-in-out',
         animationIterationCount: 'infinite',
         willChange: 'transform, opacity',

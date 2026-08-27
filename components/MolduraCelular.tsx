@@ -95,7 +95,7 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
       ? null
       : ({
           animationName: prefixo,
-          animationDuration: '7s',
+          animationDuration: '4.8s',
           animationTimingFunction: 'ease-in-out',
           animationIterationCount: 'infinite',
           willChange: 'transform',

@@ -74,7 +74,7 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
       ? null
       : ({
           animationName: prefixo,
-          animationDuration: '8.5s',
+          animationDuration: '5.5s',
           animationTimingFunction: 'ease-in-out',
           animationIterationCount: 'infinite',
           willChange: 'transform',
