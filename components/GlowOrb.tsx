@@ -41,6 +41,9 @@ export default function GlowOrb({ cor, tamanho = 640, top, left, right, bottom, 
     borderRadius: tamanho / 2,
     backgroundImage: `radial-gradient(circle, ${cor} 0%, transparent 70%)`,
     filter: 'blur(70px)',
+    willChange: 'transform',
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
   } as any;
 
   if (!scrollY || !fatorParallax) {

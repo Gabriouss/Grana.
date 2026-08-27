@@ -104,12 +104,12 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     const tag = document.createElement('style');
     tag.textContent = `
       @keyframes ${prefixo}_notebook {
-        0%, 100% { transform: translateY(0) rotate(0deg); }
-        50% { transform: translateY(-4.5%) rotate(-1deg); }
+        0%, 100% { transform: translate3d(0, 0, 0) rotate3d(0, 0, 1, 0deg); }
+        50% { transform: translate3d(0, -18px, 0) rotate3d(0, 0, 1, -0.7deg); }
       }
       @keyframes ${prefixo}_sombra {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(0.88); opacity: 0.6; }
+        0%, 100% { transform: scale3d(1, 1, 1); opacity: 1; }
+        50% { transform: scale3d(0.9, 0.9, 1); opacity: 0.65; }
       }
     `;
     document.head.appendChild(tag);
@@ -147,9 +147,11 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     : {
         animationName: `${prefixo}_notebook`,
         animationDuration: '5.5s',
-        animationTimingFunction: 'ease-in-out',
+        animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
         animationIterationCount: 'infinite',
         willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
       };
 
   const animSombra = reduzirMovimento || !naTela
@@ -157,9 +159,11 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     : {
         animationName: `${prefixo}_sombra`,
         animationDuration: '5.5s',
-        animationTimingFunction: 'ease-in-out',
+        animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
         animationIterationCount: 'infinite',
         willChange: 'transform, opacity',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
       };
 
   const camadas = (
@@ -178,7 +182,17 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         width: 2523,
         height: 2523,
         fetchpriority: 'high',
-        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+        style: {
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+          transform: 'translate3d(0,0,0)',
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
+        },
       })}
       {createElement('img', {
         src: '/notebook/sombra.png',
@@ -195,6 +209,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
           objectFit: 'contain',
           display: 'block',
           transformOrigin: '50% 50%',
+          transform: 'translate3d(0,0,0)',
           ...animSombra,
         },
       })}
@@ -213,6 +228,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
           objectFit: 'contain',
           display: 'block',
           transformOrigin: '50% 50%',
+          transform: 'translate3d(0,0,0)',
           ...animNotebook,
         },
       })}

@@ -77,6 +77,17 @@ export default function GradeInterativa({ invertida }: { invertida?: boolean }) 
     const pai = container?.parentElement ?? null;
     if (!container || !brilho || !pai) return;
 
+    let cachedRect: DOMRect | null = null;
+
+    function atualizarRect() {
+      if (container) cachedRect = container.getBoundingClientRect();
+    }
+
+    function entrar() {
+      atualizarRect();
+      if (brilho) brilho.style.opacity = '1';
+    }
+
     function aplicar() {
       if (!brilho || !posPendente.current) return;
       brilho.style.setProperty('--mx', `${posPendente.current.x}px`);
@@ -85,21 +96,29 @@ export default function GradeInterativa({ invertida }: { invertida?: boolean }) 
     }
 
     function mover(e: MouseEvent) {
-      const rect = container!.getBoundingClientRect();
-      posPendente.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      if (!cachedRect) atualizarRect();
+      if (!cachedRect) return;
+      posPendente.current = { x: e.clientX - cachedRect.left, y: e.clientY - cachedRect.top };
       if (rafId.current === null) rafId.current = requestAnimationFrame(aplicar);
-      brilho!.style.opacity = '1';
     }
 
     function sair() {
-      brilho!.style.opacity = '0';
+      cachedRect = null;
+      if (brilho) brilho.style.opacity = '0';
     }
 
+    pai.addEventListener('mouseenter', entrar);
     pai.addEventListener('mousemove', mover);
     pai.addEventListener('mouseleave', sair);
+    window.addEventListener('resize', atualizarRect, { passive: true });
+    window.addEventListener('scroll', atualizarRect, { passive: true });
+
     return () => {
+      pai.removeEventListener('mouseenter', entrar);
       pai.removeEventListener('mousemove', mover);
       pai.removeEventListener('mouseleave', sair);
+      window.removeEventListener('resize', atualizarRect);
+      window.removeEventListener('scroll', atualizarRect);
       if (rafId.current !== null) cancelAnimationFrame(rafId.current);
     };
   }, []);

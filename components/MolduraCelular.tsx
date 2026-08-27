@@ -78,8 +78,8 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
     // porque o wrapper não tinha o mesmo `borderRadius`/tamanho do miolo).
     tag.textContent = `
       @keyframes ${prefixo} {
-        0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
-        50% { transform: translate3d(0, -3%, 0) rotate(0.6deg); }
+        0%, 100% { transform: translate3d(0, 0, 0); }
+        50% { transform: translate3d(0, -12px, 0); }
       }
     `;
     document.head.appendChild(tag);
@@ -96,10 +96,11 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
       : ({
           animationName: prefixo,
           animationDuration: '4.8s',
-          animationTimingFunction: 'ease-in-out',
+          animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
           animationIterationCount: 'infinite',
           willChange: 'transform',
           backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
         } as any);
 
   return (

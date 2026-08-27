@@ -58,7 +58,7 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
     tag.textContent = `
       @keyframes ${prefixo} {
         0%, 100% { transform: translate3d(0, 0, 0); }
-        50% { transform: translate3d(0, -2%, 0); }
+        50% { transform: translate3d(0, -12px, 0); }
       }
     `;
     document.head.appendChild(tag);
@@ -75,10 +75,11 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
       : ({
           animationName: prefixo,
           animationDuration: '5.5s',
-          animationTimingFunction: 'ease-in-out',
+          animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
           animationIterationCount: 'infinite',
           willChange: 'transform',
           backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
         } as any);
 
   return (
