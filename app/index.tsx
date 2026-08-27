@@ -828,7 +828,7 @@ function ConteudoWeb() {
                   </View>
                 </View>
               </View>
-              <View style={styles.colunaTextoSecao}>
+              <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
                 <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Do primeiro lançamento ao hábito</Text>
                 <TituloSecao>O guia pro seu controle financeiro</TituloSecao>
                 <View style={styles.guiaLista}>
@@ -910,7 +910,7 @@ function ConteudoWeb() {
         <Dobra>
         <RevealOnScroll>
           <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-            <View style={styles.colunaTextoSecao}>
+            <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
               <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Depois que o lançamento existe</Text>
               <TituloSecao>{ehCompacto ? 'Ele soma o que ainda vai vir, antes de você se apertar.' : 'Ele soma o que\nainda vai vir, antes\nde você se apertar.'}</TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
@@ -961,7 +961,7 @@ function ConteudoWeb() {
         <GradeInterativa invertida />
         <Dobra levantada>
         <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-          <View style={styles.colunaTextoSecao}>
+          <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
             <RevealOnScroll>
               <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>A pergunta que todo mundo faz</Text>
               <TituloSecao>{ehCompacto ? '"É seguro informar meus gastos para um aplicativo?"' : '"É seguro informar meus\ngastos para um aplicativo?"'}</TituloSecao>
@@ -1342,7 +1342,7 @@ const styles = StyleSheet.create({
   // todo o resto da página — usar o boolean explícito aqui, em vez de
   // confiar no `flexWrap` automático, garante que o empilhamento aconteça
   // exatamente na mesma borda que o resto do layout já respeita.
-  secaoComCartaoCompacta: { flexDirection: 'column' },
+  secaoComCartaoCompacta: { flexDirection: 'column', alignItems: 'stretch' },
   secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.xs },
   secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
   secaoTituloGrande: { fontSize: 50, lineHeight: 54, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
@@ -1362,6 +1362,11 @@ const styles = StyleSheet.create({
   // frase sozinha no meio, separando "agora" do resto por conta própria.
   precoTextoCentralizado: { textAlign: 'center', maxWidth: 820 },
   colunaTextoSecao: { flex: 1, minWidth: 320, maxWidth: 620 },
+  // No desktop a coluna de texto divide espaço com uma moldura; no compacto
+  // ela passa a ficar empilhada. Manter `flex:1` nesse eixo fazia o pai
+  // resolver uma altura menor que o conteúdo e o recorte da seção escondia o
+  // fim da lista do Guia (especialmente o passo 04).
+  colunaTextoSecaoCompacta: { flexGrow: 0, flexBasis: 'auto', width: '100%', minWidth: 0, maxWidth: '100%' },
 
   // `paddingVertical` dá o respiro vertical pra moldura de trás espiar por
   // cima sem cortar no `overflow:hidden` da seção (mesma razão do
@@ -1371,7 +1376,7 @@ const styles = StyleSheet.create({
   // No compacto o `minWidth: 380` acima passa da coluna disponível
   // (~342px, viewport de 390px menos o padding de `faixaCompacta`) e
   // estourava largura, cortado pelo `overflow:hidden` da seção.
-  molduraCentralizadaCompacta: { minWidth: 0, width: '100%' },
+  molduraCentralizadaCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
   // Largura/altura FIXA (não flexível) — é o que permite o
   // `alignItems:'center'` do pai centralizar o PAR de molduras como uma
   // ÚNICA unidade visual, com a moldura de Gráficos (à frente, à direita)
