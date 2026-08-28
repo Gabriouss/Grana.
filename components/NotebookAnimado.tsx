@@ -68,9 +68,17 @@ type Props = {
       diferente do canvas) não existe quando a caixa TEM a proporção do
       canvas por definição. */
   variante?: 'fundo' | 'caixa';
+  /** Controla o enquadramento do canvas apenas no modo `fundo`.
+      `cobrir` preserva o recorte cinematográfico do desktop largo;
+      `pela-largura` impede que a altura de uma janela estreita aumente o
+      notebook desproporcionalmente. */
+  ajuste?: 'cobrir' | 'pela-largura';
+  /** Escala horizontal do canvas no modo `pela-largura`. O canvas continua
+      ancorado à direita, mantendo o notebook afastado da coluna de texto. */
+  escala?: number;
 };
 
-export default function NotebookAnimado({ variante = 'fundo' }: Props) {
+export default function NotebookAnimado({ variante = 'fundo', ajuste = 'cobrir', escala = 1 }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
@@ -131,17 +139,16 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
   const larguraPainel = painel.width > 0 ? painel.width : winW;
   const alturaPainel = painel.height > 0 ? painel.height : winH;
 
-  const painelAspect = larguraPainel / (alturaPainel || 1);
-  let telaW = larguraPainel;
-  let telaH = alturaPainel;
-  if (painelAspect > CANVAS_ASPECT) {
-    telaW = larguraPainel;
-    telaH = telaW / CANVAS_ASPECT;
-  } else {
+  let telaW = ajuste === 'pela-largura' ? larguraPainel * escala : larguraPainel;
+  let telaH = telaW / CANVAS_ASPECT;
+  if (ajuste === 'cobrir' && larguraPainel / (alturaPainel || 1) <= CANVAS_ASPECT) {
     telaH = alturaPainel;
     telaW = telaH * CANVAS_ASPECT;
+  } else if (ajuste === 'cobrir') {
+    telaW = larguraPainel;
+    telaH = telaW / CANVAS_ASPECT;
   }
-  const telaLeft = (larguraPainel - telaW) / 2;
+  const telaLeft = ajuste === 'pela-largura' ? larguraPainel - telaW : (larguraPainel - telaW) / 2;
   const telaTop = (alturaPainel - telaH) / 2;
 
   const animNotebook = reduzirMovimento || !naTela

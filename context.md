@@ -347,3 +347,37 @@ antes de qualquer lançamento oficial.
   branch contém somente os arquivos versionados para revisão; a URL de preview
   fica pendente de autorização explícita para esse upload ou do pipeline Git já
   configurado no projeto.
+
+## Sessão de 28/08/2026 — responsividade da landing em janelas redimensionadas
+
+Correção mantida no branch `preview/copy-landing`, sem lançamento oficial e sem
+alterar a composição específica da hero mobile (`< 768px`).
+
+- A causa do notebook desproporcional em janelas desktop altas/estreitas estava
+  no enquadramento `cover` de `NotebookAnimado`: quando a altura dominava a
+  proporção do painel, o canvas interno crescia a partir dela e ficava muito
+  mais largo que a viewport. O componente agora aceita `ajuste` e `escala`.
+  Em desktop amplo (a partir de 1440px) continua usando `cobrir`; abaixo disso
+  ou em orientação vertical usa `pela-largura`, escala o canvas para 80–90% e
+  o ancora à direita. Assim o notebook preserva proporção e não compete com a
+  coluna de copy.
+- A hero mobile continua passando pelo mesmo ramo dedicado, com imagem acima da
+  copy, conteúdo centralizado, capítulos empilhados, CTA, ícones e divisores.
+  Nenhuma regra do novo enquadramento é usada nesse ramo.
+- Em larguras intermediárias, títulos de seção passaram a usar `clamp()` entre
+  38 e 46px; o celular decorativo do grid de recursos só aparece a partir de
+  1100px; seções pareadas empilham de forma explícita abaixo de 960px, sem
+  transformar o desktop redimensionado na versão mobile.
+- A composição de telas da seção "Três passos" agora escala proporcionalmente
+  entre 768 e 1399px. As duas molduras, o canvas que as contém e os espaços
+  laterais usam a mesma razão, eliminando a invasão da coluna de texto vista em
+  1224 × 1800.
+- Foram preservadas as alterações já existentes do autor em `app/index.tsx`:
+  escala maior do headline, `subheadline` e `secaoTexto` com token
+  `type.destaque`, além do degradê horizontal da hero com paradas em pixels.
+- Validação concluída com TypeScript sem erros, `git diff --check`, export web
+  do Expo 57 e injeção de SEO/JSON-LD. A inspeção visual cobriu 1024 × 768,
+  1224 × 1800 e 1440 × 900; em 390px o documento mediu exatamente 390px de
+  largura, sem overflow horizontal. A versão desktop permaneceu ativa nas
+  janelas redimensionadas e a versão mobile permaneceu separada pelo breakpoint
+  real de 768px.

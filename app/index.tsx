@@ -283,7 +283,7 @@ const PERGUNTAS_FAQ = [
  * a dobra não existe, continua sendo o mesmo de antes.
  */
 function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; estiloExtra?: StyleProp<TextStyle> }) {
-  const { ehCompacto } = useBreakpoint();
+  const { largura, ehCompacto } = useBreakpoint();
   // Todo H2 fora de caixa de texto centralizado no compacto — pedido do
   // autor pra toda a página, aplicado aqui, num lugar só, porque TODA
   // seção de texto solto (não em card) usa este componente pro próprio
@@ -291,7 +291,7 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
   // seções que já centralizavam antes (Preços, Reconhece isso): a mesma
   // regra `textAlign:'center'` aplicada duas vezes não muda nada.
   return (
-    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, ehCompacto && styles.precoTituloCentralizado, textoBalanceado, estiloExtra]}>
+    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, !ehCompacto && largura < 1400 && styles.secaoTituloIntermediario, ehCompacto && styles.precoTituloCentralizado, textoBalanceado, estiloExtra]}>
       {children}
     </Text>
   );
@@ -324,6 +324,7 @@ function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
 
 function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean; alturaCabecalho: number }) {
   const alturaDobra = useAlturaDobra();
+  const { largura, altura } = useBreakpoint();
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
   const [capituloExibido, setCapituloExibido] = useState(0);
   const capituloAtivoRef = useRef(0);
@@ -515,7 +516,10 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
             — sem wrapper extra aqui. Sem `fade`, ao contrário do texto: é o
             visual único e constante do herói (mesmo notebook flutuando nos
             4 capítulos), então não há por que apagar/reacender a cada troca. */}
-        <NotebookAnimado />
+        <NotebookAnimado
+          ajuste={largura < 1440 || altura > largura ? 'pela-largura' : 'cobrir'}
+          escala={largura < 1100 ? 0.8 : largura < 1400 ? 0.9 : 1}
+        />
         {/* Escurece a metade esquerda (onde o texto fica por cima) e some
             gradualmente até o notebook, do mesmo jeito que a referência da
             Apple/AirPods usava um degradê branco->transparente sobre o
@@ -597,8 +601,15 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
 
 function ConteudoWeb() {
   const insets = useSafeAreaInsets();
-  const { ehCompacto } = useBreakpoint();
+  const { largura, ehCompacto } = useBreakpoint();
   const alturaDobra = useAlturaDobra();
+  const ehIntermediario = !ehCompacto && largura < 1400;
+  const empilharSecoes = !ehCompacto && largura < 960;
+  const layoutUmaColuna = ehCompacto || empilharSecoes;
+  const larguraGraficoGuia = ehCompacto ? 260 : ehIntermediario ? Math.max(340, Math.min(440, largura * 0.36)) : 520;
+  const larguraConquistasGuia = ehCompacto ? 160 : Math.round(larguraGraficoGuia * (300 / 520));
+  const larguraComposicaoGuia = ehCompacto ? 324 : Math.round(larguraGraficoGuia * (655 / 520));
+  const alturaComposicaoGuia = ehCompacto ? 163 : Math.round(larguraGraficoGuia * (325 / 520));
   /* Medido em vez de constante: o cabeçalho muda de altura com o `insets.top`
      e com a escala tipográfica da web, e o herói precisa descontar o valor
      REAL pra primeira dobra fechar em 16:9 exatos. */
@@ -828,8 +839,8 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra levantada>
           <RevealOnScroll>
-            <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-              <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
+            <View style={[styles.secao, styles.secaoComCartao, ehIntermediario && styles.secaoComCartaoIntermediaria, layoutUmaColuna && styles.secaoComCartaoCompacta]}>
+              <View style={[styles.molduraCentralizada, layoutUmaColuna && styles.molduraCentralizadaCompacta]}>
                 {/* Largura menor no compacto — diferente de Recursos/Segurança
                     (que escondem a moldura inteira no celular), esta é a
                     única moldura que também aparece no compacto, então
@@ -844,21 +855,21 @@ function ConteudoWeb() {
                     moldura de Gráficos (a única no fluxo normal) e a de
                     Conquistas, saindo por fora à esquerda, puxava o centro
                     visual do conjunto pra fora do centro real da seção. */}
-                <View style={[styles.guiaComposicao, ehCompacto && styles.guiaComposicaoCompacta]}>
+                <View style={[styles.guiaComposicao, ehCompacto && styles.guiaComposicaoCompacta, !ehCompacto && ehIntermediario && { width: larguraComposicaoGuia, height: alturaComposicaoGuia }]}>
                   {/* Mural de Conquistas atrás, espiando pelo canto superior
                       esquerdo, levemente torta — quebra de padrão de
                       propósito (todo o resto da página é ortogonal) — e
                       ANTES da moldura de Gráficos no JSX, sem `zIndex`, só
                       ordem de pintura, pra ficar por baixo dela. */}
                   <View style={[styles.guiaMolduraConquistas, ehCompacto && styles.guiaMolduraConquistasCompacta]}>
-                    <MolduraNavegador src="/telas/conquistas-web.png" legenda="Mural de Conquistas do Grana., com selos obtidos e pendentes" largura={ehCompacto ? 160 : 300} />
+                    <MolduraNavegador src="/telas/conquistas-web.png" legenda="Mural de Conquistas do Grana., com selos obtidos e pendentes" largura={larguraConquistasGuia} />
                   </View>
                   <View style={styles.guiaMolduraGraficos}>
-                    <MolduraNavegador src="/telas/graficos-web.png" legenda="Tela de Gráficos do Grana., com composição de gastos por categoria" largura={ehCompacto ? 260 : 520} />
+                    <MolduraNavegador src="/telas/graficos-web.png" legenda="Tela de Gráficos do Grana., com composição de gastos por categoria" largura={larguraGraficoGuia} />
                   </View>
                 </View>
               </View>
-              <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+              <View style={[styles.colunaTextoSecao, layoutUmaColuna && styles.colunaTextoSecaoCompacta]}>
                 <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Do primeiro gasto à visão do mês</Text>
                 <TituloSecao>Três passos. Nenhum formulário para preencher.</TituloSecao>
                 <View style={styles.guiaLista}>
@@ -903,7 +914,7 @@ function ConteudoWeb() {
               ))}
             </View>
 
-            {!ehCompacto && (
+            {largura >= 1100 && (
               <View style={styles.celularCentral}>
                 <MolduraCelular src="/telas/inicio-mobile.png" legenda="Tela de Início do Grana. no celular, com Livre para Gastar e metas" largura={240} />
               </View>
@@ -939,8 +950,8 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra>
         <RevealOnScroll>
-          <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-            <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+          <View style={[styles.secao, styles.secaoComCartao, ehIntermediario && styles.secaoComCartaoIntermediaria, layoutUmaColuna && styles.secaoComCartaoCompacta]}>
+            <View style={[styles.colunaTextoSecao, layoutUmaColuna && styles.colunaTextoSecaoCompacta]}>
               <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Uma referência para hoje</Text>
               <TituloSecao>Entenda o que está livre, com base no que você registrou.</TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
@@ -984,8 +995,8 @@ function ConteudoWeb() {
       <View style={styles.palcoComCamada}>
         <GradeInterativa invertida />
         <Dobra levantada>
-        <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-          <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+        <View style={[styles.secao, styles.secaoComCartao, ehIntermediario && styles.secaoComCartaoIntermediaria, layoutUmaColuna && styles.secaoComCartaoCompacta]}>
+          <View style={[styles.colunaTextoSecao, layoutUmaColuna && styles.colunaTextoSecaoCompacta]}>
             <RevealOnScroll>
               <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Privacidade sem acesso ao banco</Text>
               <TituloSecao>Seus gastos são pessoais. Seus dados também.</TituloSecao>
@@ -1095,8 +1106,8 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
-            <View style={[styles.faqLayout, ehCompacto && styles.faqLayoutCompacta]}>
-              <RevealOnScroll style={[styles.colunaTextoSecao, ehCompacto && styles.faqCompactoSemFlex]}>
+            <View style={[styles.faqLayout, ehIntermediario && styles.secaoComCartaoIntermediaria, layoutUmaColuna && styles.faqLayoutCompacta]}>
+              <RevealOnScroll style={[styles.colunaTextoSecao, layoutUmaColuna && styles.faqCompactoSemFlex]}>
                 <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Antes de começar</Text>
                 <TituloSecao>Tudo claro antes de criar sua conta.</TituloSecao>
                 <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
@@ -1104,7 +1115,7 @@ function ConteudoWeb() {
                 </Text>
               </RevealOnScroll>
 
-              <View style={[styles.faqGrade, ehCompacto && styles.faqCompactoSemFlex]}>
+              <View style={[styles.faqGrade, layoutUmaColuna && styles.faqCompactoSemFlex]}>
                 {PERGUNTAS_FAQ.map((f, i) => (
                   <RevealOnScroll
                     key={f.pergunta}
@@ -1295,7 +1306,7 @@ const styles = StyleSheet.create({
     // teto) — títulos de 2+ linhas (a maioria dos 4 capítulos do herói)
     // liam como texto colado, sem respiro entre as linhas. Agora ~1.14x o
     // tamanho da letra em vez de ~1.0x.
-    ...({ fontSize: 'clamp(42px, 3.4vw + 18px, 72px)', lineHeight: 'clamp(48px, 3.8vw + 20px, 82px)' } as any),
+    ...({ fontSize: 'clamp(44px, 4vw + 24px, 80px)', lineHeight: 'clamp(52px, 4vw + 32px, 90px)' } as any),
     letterSpacing: -2,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
@@ -1315,7 +1326,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
   },
-  subheadline: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.6, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 620 },
+  subheadline: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.6, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 620 },
 
   ctaPrimario: {
     flexDirection: 'row',
@@ -1368,6 +1379,7 @@ const styles = StyleSheet.create({
   // dá ar de verdade sem competir com o `justifyContent:'center'` da Dobra.
   secao: { paddingVertical: spacing.xxl * 2.5 },
   secaoComCartao: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, flexWrap: 'wrap' },
+  secaoComCartaoIntermediaria: { gap: spacing.xl },
   // `flex:1` + `minWidth` nos dois filhos (`molduraCentralizada`/
   // `colunaTextoSecao` etc.) não força a quebra de linha de forma confiável
   // numa largura intermediária — `flex-basis:0%` (o que `flex:1` define)
@@ -1386,7 +1398,8 @@ const styles = StyleSheet.create({
   secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.lg },
   secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, lineHeight: (type.cabecalho + 4) * 1.2, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
   secaoTituloGrande: { fontSize: 50, lineHeight: 58, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
-  secaoTexto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.6, fontFamily: fonts.light, maxWidth: 680 },
+  secaoTituloIntermediario: { ...({ fontSize: 'clamp(38px, 4vw, 46px)', lineHeight: 'clamp(46px, 4.8vw, 54px)' } as any), maxWidth: 780 },
+  secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.6, fontFamily: fonts.light, maxWidth: 680 },
   secaoTextoCompacto: { textAlign: 'left', maxWidth: 520, alignSelf: 'center' },
   // O bloco inteiro de Preços (eyebrow + título + parágrafo) centraliza na coluna —
   // diferente do resto das seções, onde esse bloco fica alinhado à esquerda
@@ -1752,13 +1765,20 @@ const styles = StyleSheet.create({
   // `#052229` (o hex de `theme.paper`; `backgroundImage` não aceita o token
   // direto porque o degradê precisa da variação de alfa, que o token sozinho
   // não carrega) pra continuar lendo como página escura, não vinheta clara.
+  // Paradas em PIXELS fixos, não porcentagem do painel — `heroColunaTexto`
+  // tem largura fixa (540px + os 20px de `paddingHorizontal` antes dela).
+  // Com paradas em `%`, a mesma proporção (34%/76%) cobria bem o texto num
+  // painel de 1440px, mas encolhia proporcionalmente na faixa "médio"
+  // (768-1050px, onde o painel some inteiro perto de 540px de largura) — o
+  // texto passava a ocupar quase o painel todo e saía da área escurecida,
+  // brigando visualmente com o notebook claro atrás dele.
   heroGradienteFundo: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    ...({ backgroundImage: 'linear-gradient(90deg, #052229 0%, rgba(5,34,41,0.86) 34%, rgba(5,34,41,0) 76%)' } as any),
+    ...({ backgroundImage: 'linear-gradient(90deg, #052229 0px, rgba(5,34,41,0.86) 420px, rgba(5,34,41,0) 700px)' } as any),
   },
   // Só a faixa de baixo do painel — o resto do composto (bg/sombra/notebook)
   // fica intocado. `theme.paper` sólido no fim, não um `rgba` que dependeria
