@@ -13,6 +13,7 @@ import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
 import SideNav, { type ItemNav } from '@/components/SideNav';
 import { useReducedMotion } from '@/lib/motion';
+import { abasNativasDisponiveis } from '@/lib/navegacao-nativa';
 
 /* expo-router não reexporta o tipo de `tabBar` publicamente (ele vive numa
    cópia interna do react-navigation dentro do próprio pacote) — em vez de um
@@ -196,9 +197,14 @@ const RODAPE_LATERAL: ItemNav[] = [{ rota: 'perfil', rotulo: 'Perfil', icone: 'p
 export default function AppTabsLayout() {
   useAtalhosDeepLink();
 
+  /* Não é `Platform.OS === 'web'`: as abas nativas dependem de componentes
+     Fabric compilados que o Expo Go não tem, e ali elas renderizam uma tela
+     branca sem lançar erro nenhum. `abasNativasDisponiveis()` explica o
+     porquê em detalhe — no Expo Go o app cai na mesma barra em JavaScript
+     que a web usa, que funciona em qualquer runtime. */
   return (
     <WalletProvider>
-      {Platform.OS === 'web' ? <WebTabsLayout /> : <NativeTabsLayout />}
+      {abasNativasDisponiveis() ? <NativeTabsLayout /> : <AbasEmJavaScript />}
     </WalletProvider>
   );
 }
@@ -260,8 +266,17 @@ function NativeTab({
   );
 }
 
-/** Web mantém navegação própria: ali não existe um componente de sistema. */
-function WebTabsLayout() {
+/**
+ * Navegação desenhada em JavaScript — barra flutuante no compacto, trilho
+ * lateral a partir de 768px.
+ *
+ * Serve dois casos, não só a web: o navegador (onde não existe componente de
+ * abas do sistema) e o Expo Go (onde as abas nativas existem no código mas
+ * não no binário — ver `lib/navegacao-nativa.ts`). Por isso o nome não é mais
+ * "Web...": num celular Android aberto pelo Expo Go é exatamente esta barra
+ * que aparece.
+ */
+function AbasEmJavaScript() {
   const blurTarget = useRef<View>(null);
   const { temBarraLateral } = useBreakpoint();
 
