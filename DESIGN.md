@@ -24,11 +24,11 @@ typography:
     fontSize: "20px"
     lineHeight: 1.25
   body:
-    fontFamily: "system-ui, -apple-system, Roboto, sans-serif"
+    fontFamily: "NeueMachina-Regular, sans-serif"
     fontSize: "16px"
     lineHeight: 1.45
   label:
-    fontFamily: "system-ui, -apple-system, Roboto, sans-serif"
+    fontFamily: "NeueMachina-Regular, sans-serif"
     fontSize: "14px"
     lineHeight: 1.35
     letterSpacing: "0.5px"
@@ -98,8 +98,9 @@ Confiança aqui vem de consistência silenciosa, não de efeito.
 - Fundo quase preto, petróleo profundo — nunca branco, nunca cinza neutro.
 - Menta e ciano carregam toda a marca; vermelho não existe no vocabulário.
 - Números monetários sempre tabulares — não podem "dançar" ao atualizar.
-- Neue Machina assina marca e títulos; a fonte do sistema carrega leitura,
-  controles e dados com Dynamic Type/sp.
+- Neue Machina é a ÚNICA fonte do produto, ponto a ponto — marca, títulos,
+  corpo, campos, controles, valores. Nunca a fonte do sistema, nunca outra
+  família em lugar nenhum, em plataforma nenhuma.
 - Superfícies ficam chapadas por padrão; sombra é reservada pra sinalizar
   algo genuinamente flutuando sobre o resto (ver Elevation & Depth).
 
@@ -134,21 +135,32 @@ secundário é um verde-água dessaturado, não um cinza.
 
 ## Typography
 
-**Display Font:** NeueMachina-Regular (com sans-serif de fallback)
-**Body/Label Font:** fonte do sistema — San Francisco/System no iOS, Roboto/sans-serif no Android, `system-ui` na web
+**Única fonte do produto:** Neue Machina — Light e Regular, os dois únicos
+pesos que existem como arquivo (`NeueMachina-Light.otf`,
+`NeueMachina-Regular.otf`, carregados via `expo-font` em `app/_layout.tsx`).
+Isto vale em TODO texto do app, em toda plataforma, sem exceção: marca,
+títulos, corpo, campo, controle, rótulo, metadado, valor monetário.
 
-**Character:** Neue Machina preserva a voz geométrica do Grana. nos momentos de assinatura. O conteúdo operacional usa a tipografia familiar da plataforma, com melhor leitura, expansão de texto e métricas nativas.
+**Character:** a voz geométrica do Grana. é a interface inteira, não um
+acento reservado a momentos de assinatura. Nenhum papel tipográfico usa
+fonte do sistema (San Francisco, Roboto, `system-ui`) — essa era uma
+decisão de uma rodada anterior, revertida a pedido explícito do autor, e a
+regra agora é permanente: **proibido qualquer fonte que não seja Neue
+Machina**, em qualquer papel, em qualquer plataforma. Dynamic Type/sp
+continuam funcionando normalmente com fonte customizada — o React Native
+escala texto de qualquer família — então não há trade-off de acessibilidade
+nessa escolha.
 
 ### Hierarchy
 - **Headline** (Neue Machina Regular, 24px nativo, lh 1.2): título principal de tela.
 - **Title** (Neue Machina Regular, 20px, lh 1.25): título de folha, modal ou card autoral.
-- **Body** (System/Roboto, 17pt iOS · 16sp Android · 18px web, lh 1.45): corpo, campo e botão; respeita o aumento de texto do sistema.
-- **Label** (System Medium/Roboto Medium, 15pt iOS · 14sp Android · 16px web, lh 1.35): rótulos e controles.
-- **Metadata** (System/Roboto, piso 11pt iOS · 12sp Android): subtítulo de linha e informação auxiliar; nada interativo abaixo desse piso.
-- **Valor monetário** (System Medium/Roboto Medium, 32px, tabular): degrau próprio para quantias em foco.
+- **Body** (Neue Machina Regular, 17pt iOS · 16sp Android · 18px web, lh 1.45): corpo, campo e botão.
+- **Label** (Neue Machina Regular, 15pt iOS · 14sp Android · 16px web, lh 1.35): rótulos e controles.
+- **Metadata** (Neue Machina Light, piso 11pt iOS · 12sp Android): subtítulo de linha e informação auxiliar; nada interativo abaixo desse piso.
+- **Valor monetário** (Neue Machina Regular, 32px, tabular): degrau próprio para quantias em foco.
 
 ### Named Rules
-**The Brand-Is-An-Accent Rule.** Neue Machina aparece em marca e títulos, não em parágrafos, campos ou controles. A interface operacional usa os papéis tipográficos do sistema; nunca sintetize peso inexistente nos arquivos da marca.
+**The Only-Font Rule.** Neue Machina é a única fonte do produto — sem exceção, sem "fonte de sistema pro corpo", sem fallback que vaze pra tela. Qualquer PR/edição que introduza `fontFamily: 'System'`, `'sans-serif'`, `'system-ui'`, `Platform.select` de fonte, ou qualquer nome de família que não seja `NeueMachina-Light`/`NeueMachina-Regular` em `lib/theme.ts` está quebrando a marca, não fazendo acessibilidade — reverta, não documente como aceito. Só existem DOIS pesos (Light/Regular); não existe um terceiro degrau nem arquivo bold, e `fontWeight` nunca deve ser usado (o nativo ignora, a web sintetiza um falso negrito).
 
 **The Tabular Rule.** Todo valor monetário usa `fontVariant: ['tabular-nums']`. Sem isso, dígitos de largura variável fazem o número "dançar" visualmente a cada atualização — inaceitável numa tela que existe pra mostrar dinheiro.
 
@@ -221,7 +233,7 @@ Sequência de 4 "capítulos" em scroll — a tela do capítulo (sem moldura de d
 - **Do** deixar a landing page (Persuadir) mais pesada visualmente que o app (Operar) — é intencional, não drift.
 
 ### Don't:
-- **Don't** aplicar Neue Machina a corpo, metadados, campos ou controles; e não sintetizar `fontWeight` nos arquivos Light/Regular da marca.
+- **Don't** usar fonte do sistema (ou qualquer fonte que não seja Neue Machina) em lugar nenhum — nem corpo, nem controle, nem campo, nem metadado. E não sintetizar `fontWeight` nos arquivos Light/Regular da marca.
 - **Don't** clonar a identidade visual de outro banco/fintech — sem vermelho de alarme, sem badge/confete de gamificação, sem urgência fabricada.
 - **Don't** desenhar a interface como planilha utilitária — voz e WhatsApp são a entrada principal; a tela nunca deveria parecer uma ferramenta de contador.
 - **Don't** inventar uma nova sombra ad hoc — as cinco receitas catalogadas em Elevation & Depth cobrem todo caso real; uma sexta variação é sinal de que a tela deveria reaproveitar uma das cinco.

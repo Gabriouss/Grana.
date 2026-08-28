@@ -115,10 +115,14 @@ nenhum. Versão atual: `1.4.0`.
 - **Comentários só pra WHY não-óbvio** — restrição, bug histórico,
   decisão que parece estranha sem contexto. Nunca "o que" o código já diz
   sozinho.
-- **Tipografia semântica** — Neue Machina só em marca/títulos; corpo,
-  metadados e controles usam fonte do sistema via `fonts`/`textStyles` em
-  `lib/theme.ts`, preservando Dynamic Type/sp. Não sintetizar bold na fonte
-  da marca.
+- **Neue Machina é a única fonte do produto** — `fonts.regular`/`fonts.light`
+  em `lib/theme.ts` apontam pra `NeueMachina-Regular`/`NeueMachina-Light` em
+  TODO texto (marca, títulos, corpo, campo, controle, valor), em toda
+  plataforma. Regra permanente do autor: proibido usar fonte do sistema em
+  qualquer papel — uma rodada anterior trocou o corpo do app pra fonte do
+  sistema achando que era exigência de Dynamic Type/sp (não era: texto de
+  fonte customizada já escala normalmente), e foi revertida em 27/08/2026.
+  Não sintetizar bold na fonte da marca (só existem Light e Regular).
 - **Valor monetário sempre com `fontVariant: ['tabular-nums']`** — dígitos
   não podem "dançar" ao atualizar.
 - **Sem vermelho** em nenhuma superfície de estado — saída de dinheiro usa

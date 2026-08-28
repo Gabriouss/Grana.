@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     color: theme.ink,
     backgroundColor: theme.paperRaised, fontFamily: fonts.regular },
   erroBloco: { marginBottom: spacing.sm, gap: 2 },
-  errorText: { color: '#e08a7d', fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.regular },
+  errorText: { color: theme.danger, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.regular },
   erroAcao: { color: theme.accent2, fontSize: type.apoio, paddingVertical: 4, fontFamily: fonts.regular },
   esqueciBtn: { alignItems: 'center', paddingVertical: spacing.md },
   esqueciTexto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },

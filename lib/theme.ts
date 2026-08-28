@@ -38,6 +38,19 @@ export const theme = {
      estado não selecionado. Só usado ali; nomeado aqui pra não ficar como
      hex solto competindo com o resto da paleta de superfície. */
   paperSelected: '#0c353e',
+  /* Par do seletor entrada/saída (os botões "Entrada"/"Saída" da Início e de
+     Lançamentos, e "Guardar"/"Resgatar" do cofrinho). Não são `up`/`down`:
+     aqueles pintam o VALOR de um lançamento já existente, estes pintam o
+     estado selecionado de um BOTÃO de formulário, e usar o verde/ciano de
+     valor aqui faria o botão competir visualmente com as quantias da mesma
+     tela. Vinham repetidos como hex cru em 3 arquivos — viraram token porque
+     é exatamente o tipo de par que sai de sincronia quando alguém ajusta um
+     lado e esquece os outros dois. O sufixo `Fundo` é o mesmo tom com alfa
+     `33` (20%), como o hex cru já fazia. */
+  entradaBorda: '#4f9483',
+  entradaFundo: '#4f948333',
+  saidaBorda: '#bb6b60',
+  saidaFundo: '#bb6b6033',
 };
 
 /* Recorte de 30 cores da paleta "Refreshing Aqua Tones" (lib/demo-data.ts),
@@ -102,13 +115,23 @@ export const type = Platform.select({
   },
 })!;
 
-/* A interface operacional usa a família do sistema: ela preserva Dynamic
-   Type no iOS, os papéis Roboto/sp no Android e as métricas familiares do
-   desktop. Neue Machina fica reservada para assinatura e títulos de marca. */
+/* Neue Machina, carregada via expo-font em app/_layout.tsx — em todo o
+   texto operacional, não só em título/assinatura. São os DOIS únicos pesos
+   do app (Light/Regular); não existe um terceiro degrau nem arquivo bold, e
+   `fontWeight` nunca deve ser usado (o nativo ignora, a web sintetiza um
+   falso negrito). Uma rodada anterior trocou este token para a fonte do
+   sistema em busca de Dynamic Type/sp — mas isso silenciosamente tirou a
+   marca de ~470 pontos de uso no app inteiro (a decisão real de
+   acessibilidade era escala de TAMANHO, não de FAMÍLIA — o React Native já
+   escala texto de fonte customizada normalmente). Revertido a pedido do
+   autor. `brandRegular`/`brandLight` continuam existindo como alias, iguais
+   a `regular`/`light` — nada mais no app depende de uma fonte "de marca"
+   separada de uma fonte "de sistema", porque essa distinção nunca existiu
+   aqui. */
 export const fonts = {
-  regular: Platform.select({ ios: 'System', android: 'sans-serif', default: 'system-ui' })!,
-  light: Platform.select({ ios: 'System', android: 'sans-serif-light', default: 'system-ui' })!,
-  medium: Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'system-ui' })!,
+  regular: 'NeueMachina-Regular',
+  light: 'NeueMachina-Light',
+  medium: 'NeueMachina-Regular',
   brandRegular: 'NeueMachina-Regular',
   brandLight: 'NeueMachina-Light',
 };

@@ -37,7 +37,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
     rotulo: w.label,
     titulo: superavit ? 'Você fechou o mês no azul' : 'Você fechou o mês no vermelho',
     destaque: `${superavit ? '+' : '−'} R$ ${formatMoney(Math.abs(w.saldo))}`,
-    destaqueCor: superavit ? theme.up : '#e08b7f',
+    destaqueCor: superavit ? theme.up : theme.danger,
     apoio:
       `Entraram R$ ${formatMoney(w.entradas)} e saíram R$ ${formatMoney(w.saidas)} em ${w.totalLancamentos} lançamentos.` +
       (w.taxaPoupanca !== null && w.taxaPoupanca > 0
@@ -98,7 +98,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
     rotulo: 'Resumo de ' + w.label,
     titulo: superavit ? 'Mês fechado com sobra' : 'Mês fechado com aperto',
     destaque: `${superavit ? '+' : '−'} R$ ${formatMoney(Math.abs(w.saldo))}`,
-    destaqueCor: superavit ? theme.up : '#e08b7f',
+    destaqueCor: superavit ? theme.up : theme.danger,
     apoio: `${w.totalLancamentos} lançamentos · ${w.boletosPagos} ${
       w.boletosPagos === 1 ? 'boleto quitado' : 'boletos quitados'
     } (R$ ${formatMoney(w.valorBoletosPagos)}) · Nível ${w.level.level}, ${w.level.elo.title}.`,

@@ -346,8 +346,8 @@ const styles = StyleSheet.create({
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
-  typeBtnOut: { backgroundColor: '#bb6b6033', borderWidth: 1, borderColor: '#bb6b60' },
-  typeBtnIn: { backgroundColor: '#4f948333', borderWidth: 1, borderColor: '#4f9483' },
+  typeBtnOut: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },
+  typeBtnIn: { backgroundColor: theme.entradaFundo, borderWidth: 1, borderColor: theme.entradaBorda },
   typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   typeTextOn: { color: theme.ink },
   descInput: {

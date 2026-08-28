@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     color: theme.ink,
     fontSize: type.corpo,
     marginBottom: spacing.md, fontFamily: fonts.regular },
-  erro: { color: '#e08a7d', fontSize: type.apoio, marginBottom: spacing.md, fontFamily: fonts.regular },
+  erro: { color: theme.danger, fontSize: type.apoio, marginBottom: spacing.md, fontFamily: fonts.regular },
   botao: {
     backgroundColor: theme.accent2,
     borderRadius: radius.md,

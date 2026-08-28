@@ -170,6 +170,13 @@ export default function FlowChart({
   );
 
   const maxVal = Math.max(...inTotals, ...outTotals, 1);
+  /* Sem nenhum lançamento no período, `maxVal` cai no piso de 1 e as cinco
+     linhas-guia viram 0 / 0,25 / 0,5 / 0,75 / 1 — que `formatEixo` arredonda
+     para "R$ 0, R$ 0, R$ 1, R$ 1, R$ 1", um eixo que repete valores e sugere
+     movimentação onde não houve nenhuma. É a primeira coisa que toda conta
+     nova vê. Aqui a escala inteira é suprimida: a grade continua desenhada
+     (dá forma ao card vazio), sem números inventados. */
+  const semMovimentacao = maxVal <= 1;
 
   const toPoints = (totals: number[]) =>
     totals.map((v, i) => [chartX[i], BASE - (v / maxVal) * (BASE - TOP)]);
@@ -331,7 +338,7 @@ export default function FlowChart({
           junto — a forma da curva continua visível, sem os valores. */}
       {gridLines.map(({ y, valor }, i) => (
         <Text key={`ylabel-${i}`} style={[styles.axisLabel, { top: y - 8 }]} numberOfLines={1}>
-          {hidden ? '' : formatEixo(valor)}
+          {hidden || semMovimentacao ? '' : formatEixo(valor)}
         </Text>
       ))}
       {/* left/right alinhados com AXIS_LEFT/PAD_RIGHT — onde a linha do

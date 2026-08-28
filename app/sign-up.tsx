@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   requisitoItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   requisitoTexto: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   requisitoTextoOk: { color: theme.inkSoft },
-  errorText: { color: '#e08a7d', fontSize: type.apoio, marginBottom: spacing.sm, lineHeight: 18, fontFamily: fonts.regular },
+  errorText: { color: theme.danger, fontSize: type.apoio, marginBottom: spacing.sm, lineHeight: 18, fontFamily: fonts.regular },
   consentimentoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: spacing.md },
   consentimentoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.nota, lineHeight: 18, fontFamily: fonts.light },
   consentimentoLink: { color: theme.accent2, fontFamily: fonts.regular },

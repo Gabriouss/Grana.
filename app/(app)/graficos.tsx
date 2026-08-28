@@ -163,7 +163,7 @@ export default function GraficosScreen() {
 
       txsMes.forEach((t) => {
         const cat = t.category || 'Outros';
-        const cor = t.color || '#1fa98d';
+        const cor = t.color || theme.accent;
         if (!catMap[cat]) catMap[cat] = { amount: 0, color: cor };
         catMap[cat].amount += Number(t.amount || 0);
       });
@@ -198,7 +198,7 @@ export default function GraficosScreen() {
     const catMap: Record<string, { amount: number; color: string }> = {};
     txsToUse.forEach((t) => {
       const cat = t.category || 'Outros';
-      const cor = t.color || '#1fa98d';
+      const cor = t.color || theme.accent;
       if (!catMap[cat]) catMap[cat] = { amount: 0, color: cor };
       catMap[cat].amount += Number(t.amount || 0);
     });

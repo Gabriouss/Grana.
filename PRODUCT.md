@@ -78,9 +78,13 @@ passa por revisão da Meta como app do WhatsApp Business.
 ## Brand Commitments
 
 - Nome "Grana." — o ponto final faz parte da marca, sempre incluído.
-- Neue Machina é a assinatura tipográfica da marca, só em Light e Regular;
-  corpo, controles e dados usam a fonte do sistema para respeitar Dynamic
-  Type/sp. Nunca sintetizar bold nos arquivos Neue Machina.
+- Neue Machina é a ÚNICA fonte do produto — marca, títulos, corpo,
+  controles, campos e dados, sem exceção e em toda plataforma. Só em Light
+  e Regular; nunca sintetizar bold nos arquivos Neue Machina. Proibido usar
+  fonte do sistema (San Francisco, Roboto, `system-ui`) em qualquer papel —
+  uma rodada anterior trocou o corpo do app pra fonte do sistema achando
+  que era exigência de Dynamic Type/sp, e foi revertida: texto de fonte
+  customizada já escala normalmente, não havia troca nenhuma a fazer.
 - Paleta petróleo/menta escura (`lib/theme.ts`) é a paleta fixa da marca.
 - O símbolo da marca inclui o ponto; o gradiente atravessa a peça inteira
   como um objeto único (nunca reinicia por elemento); o ícone do app usa a
@@ -112,6 +116,8 @@ passa por revisão da Meta como app do WhatsApp Business.
 4. Verdade do produto acima de invenção decorativa — superfícies de
    marketing (landing page) reaproveitam telas/cores/componentes reais em
    vez de inventar versões fictícias mais bonitas.
-5. Uma identidade só, expressa no idioma de cada plataforma — paleta, voz e
-   marca fazem web, iOS e Android lerem como o mesmo produto; navegação,
-   tipografia de interface e controles respeitam as convenções do sistema.
+5. Uma identidade só, expressa no idioma de cada plataforma — paleta, voz,
+   marca e tipografia (sempre Neue Machina) fazem web, iOS e Android lerem
+   como o mesmo produto; só navegação e controles nativos (tab bar, switch,
+   gestos do sistema) respeitam as convenções de cada plataforma. Tipografia
+   nunca é uma dessas convenções — ver Brand Commitments.

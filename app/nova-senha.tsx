@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     fontSize: type.legenda,
     letterSpacing: 0.5,
     marginBottom: spacing.xs, fontFamily: fonts.light },
-  erro: { color: '#e08a7d', fontSize: type.apoio, marginBottom: spacing.md, fontFamily: fonts.regular },
+  erro: { color: theme.danger, fontSize: type.apoio, marginBottom: spacing.md, fontFamily: fonts.regular },
   primaryBtn: {
     backgroundColor: theme.accent2,
     borderRadius: radius.md,

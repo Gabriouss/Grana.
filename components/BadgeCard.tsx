@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   cardUnlocked: {
     borderColor: 'rgba(174,255,227,0.3)',
-    backgroundColor: '#0c353e',
+    backgroundColor: theme.paperSelected,
   },
   cardLocked: {
     borderColor: theme.rule,

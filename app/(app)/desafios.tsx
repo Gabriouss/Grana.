@@ -223,7 +223,7 @@ export default function DesafiosScreen() {
                   ]}
                 >
                   {day.active ? (
-                    <Ionicons name="checkmark" size={12} color="#052229" />
+                    <Ionicons name="checkmark" size={12} color={theme.paper} />
                   ) : (
                     <View style={[styles.dayDot, day.isToday && styles.dayDotToday]} />
                   )}
