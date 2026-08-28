@@ -25,7 +25,9 @@ valor completa. Nome sempre "Grana." com o ponto.
 **Fase atual**: acesso antecipado gratuito. O modelo comercial para depois
 dessa fase está definido como assinatura recorrente de R$ 19,99/mês,
 cancelável a qualquer momento; checkout e bloqueio de acesso ainda não estão
-operacionais. Integração de WhatsApp em revisão pela Meta.
+operacionais. Empresa verificada pela Meta e WhatsApp como canal oficial em
+operação desde 28/08/2026 — a revisão terminou (ver `PRODUCT.md` para o que a
+verificação permite e o que ela não significa na copy).
 
 ## Stack
 

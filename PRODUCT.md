@@ -47,8 +47,14 @@ quem ainda não conhece o produto, distinta da tela de entrada de quem já
 tem conta. Fase atual: acesso antecipado ("acesso antecipado" na própria
 landing page, criar conta é gratuito por enquanto). O modelo comercial
 definido para depois dessa fase é uma assinatura recorrente de R$ 19,99/mês,
-cancelável a qualquer momento. A integração de WhatsApp
-passa por revisão da Meta como app do WhatsApp Business.
+cancelável a qualquer momento. A empresa Grana. está **verificada pela Meta**
+e o WhatsApp é um canal oficial e operacional (confirmado pelo autor em
+28/08/2026); a revisão terminou, não está mais pendente.
+
+Como usar isso publicamente: "WhatsApp oficial, verificado pela Meta" é fato
+verificável e pode aparecer na landing. O que a verificação NÃO é: endosso do
+produto, selo de segurança financeira ou garantia de resultado — nunca
+apresentá-la perto do bloco de segurança de um jeito que insinue isso.
 
 ## Capabilities and Constraints
 

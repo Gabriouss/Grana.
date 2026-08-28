@@ -33,10 +33,13 @@ Estas premissas devem orientar toda a reescrita:
 - O Grana. não se conecta a banco e não usa Open Finance.
 - Voz dentro do produto, WhatsApp por texto/áudio e QR Code de NFC-e são
   mecanismos reais de entrada.
-- A empresa Grana. já foi verificada e aprovada pela Meta. O WhatsApp não está
-  mais em revisão e pode permanecer como diferencial central da página.
-- A aprovação da Meta não deve ser apresentada como certificação geral de
-  segurança, endosso comercial ou garantia do produto.
+- A empresa Grana. está verificada pela Meta e o WhatsApp é canal oficial e
+  operacional (confirmado pelo autor em 28/08/2026). Pode permanecer como
+  diferencial central da página.
+- A verificação da Meta não deve ser apresentada como certificação geral de
+  segurança, endosso comercial ou garantia do produto. A formulação segura é
+  "WhatsApp oficial, verificado pela Meta"; um "aprovado pela Meta" solto ao
+  lado do bloco de segurança insinua endosso e não deve ser usado.
 - O QR Code gera um lançamento com o valor total da compra; não categoriza
   item por item.
 - As heurísticas de reconhecimento e categorização podem errar. A pessoa pode
@@ -51,12 +54,12 @@ Estas premissas devem orientar toda a reescrita:
   validados que possam ser usados como prova social.
 - O Grana. não vende dados nem os usa para publicidade.
 
-### Documentação que precisa ser alinhada
+### Documentação alinhada (28/08/2026)
 
-`PRODUCT.md` e `context.md` ainda dizem que a integração do WhatsApp está em
-revisão pela Meta. Na implementação do plano, esses documentos devem ser
-atualizados para registrar a aprovação, a data conhecida e o estado real de
-disponibilidade do canal.
+**Resolvido.** A verificação da empresa pela Meta foi confirmada pelo autor em
+28/08/2026, e `PRODUCT.md` e `context.md` — que ainda diziam "em revisão" —
+foram atualizados com o estado real do canal e com a distinção entre o que a
+verificação permite afirmar e o que ela não significa.
 
 ## 3. Diagnóstico priorizado
 
@@ -215,13 +218,15 @@ cinco afirmações genéricas.
 
 **Problema:** atribui a falha à pessoa.
 
-**Direção:**
-
-> Você não abandona o controle por falta de disciplina. Abandona porque registrar tudo dá trabalho.
-
-Alternativa mais curta:
+**Direção recomendada:**
 
 > Controle financeiro não devia virar mais uma tarefa.
+
+Ela tira a culpa da pessoa sem usar a estrutura de contraste que a marca não
+aceita (ver "Regra de estilo obrigatória" na seção 8). A versão
+"Você não abandona o controle por falta de disciplina. Abandona porque
+registrar tudo dá trabalho." resolve o mesmo problema de tom, mas é
+exatamente o padrão "não é X, é Y" que está proibido — foi descartada.
 
 As cenas de sexta-feira, fatura inesperada e planilha abandonada são
 reconhecíveis e podem permanecer, desde que a saída da seção apresente o
@@ -269,7 +274,7 @@ tratadas separadamente na projeção futura.
 
 **Mensagem de confiança:**
 
-> É uma referência baseada no que você registra — você continua no controle.
+> É uma referência baseada no que você registra. Você continua no controle.
 
 Se o produto passar a incorporar parcelas futuras no cálculo, a copy poderá
 evoluir depois de testes da fórmula e da interface.
@@ -385,6 +390,24 @@ precisa ser medido antes de virar promessa.
 
 ## 8. Voz e critérios editoriais
 
+### Regra de estilo obrigatória (vale para todo texto do Grana.)
+
+Duas construções são **proibidas** em qualquer copy do produto, não só nesta
+rodada:
+
+1. **Travessão (—).** Usar ponto, vírgula ou dois pontos. Em vez de
+   "É uma referência baseada no que você registra — você continua no
+   controle", escrever duas frases.
+2. **Contraste "não é X, é Y"** (e variantes: "não por X, mas por Y",
+   "o problema não é X, é Y"). Afirmar direto o que se quer dizer.
+
+Exceção conhecida: o travessão do título de marca
+("Grana. — Controle financeiro por voz, WhatsApp e nota fiscal"), que já é o
+padrão vigente em `landing-meta.json` e não muda.
+
+Esta regra já custou duas frases desta primeira versão do plano. Passar toda
+copy nova por ela antes de propor.
+
 ### A voz desejada
 
 - Conversa como uma pessoa brasileira, sem formalidade desnecessária.
@@ -410,7 +433,44 @@ precisa ser medido antes de virar promessa.
 - urgência fabricada;
 - jargão técnico;
 - estatísticas, depoimentos ou selos sem fonte verificável;
-- usar aprovação da Meta como sinônimo de segurança financeira.
+- usar a verificação da Meta como sinônimo de segurança financeira;
+- travessão e a construção "não é X, é Y" (ver regra obrigatória acima).
+
+## 8.1 Leitura do concorrente Graniq (graniq.com.br)
+
+Analisado em 28/08/2026. Produto adjacente, com WhatsApp, categorização
+automática, metas, simuladores e um "Niq Score".
+
+**A diferença que define o posicionamento:** o Graniq é construído sobre
+**Open Finance** — "mais de 210 bancos conectados em tempo real", "regulado
+pelo Banco Central", "segurança de nível bancário". É exatamente a troca que
+o Grana. recusa por princípio (ver `PRODUCT.md`, princípio 1). Os dois
+resolvem o mesmo problema com trocas opostas, e isso é vantagem de
+posicionamento. **A copy nova não deve tentar parecer com a deles.** A
+resposta direta ao "regulado pelo Banco Central" deles é o par de fatos
+"WhatsApp oficial verificado pela Meta" e "sem conectar banco".
+
+**O que eles têm e não pode ser copiado:** "mais de 500 mil brasileiros",
+sete depoimentos nominais com profissão e valores ("Economizei R$ 1.200 no
+primeiro mês"), além de estatísticas de abertura ("78% dos brasileiros têm
+dificuldades financeiras"). É a parte que faz a página deles parecer mais
+convincente e é justamente a que o Grana. não pode reproduzir hoje. Não
+tentar empatar aí; a saída é a prova do mecanismo da seção 9.
+
+**O que vale aprender:**
+
+1. O bloco de WhatsApp deles mostra a conversa real acontecendo
+   ("Gastei R$ 45 no Uber" → "Registrado! R$ 45 em Transporte. Seu gasto com
+   transporte este mês: R$ 312"). É a prova do mecanismo que a seção 9 propõe,
+   executada melhor do que a landing do Grana. faz hoje. Técnica a copiar, com
+   dado fictício.
+2. A headline deles entrega resultado, o que reforça o achado P1 do hero. Mas
+   é genérica e serviria a qualquer fintech; "Cadê meu dinheiro?" é mais
+   memorável. Reforça a direção já adotada: manter o gancho e subir uma
+   promessa completa ao lado, sem trocar uma pela outra.
+3. Doze "diferenciais" com peso igual diluem o argumento — a mesma doença que
+   a seção de Recursos tem com seis. Serve de evidência de que agrupar em três
+   é a decisão certa.
 
 ## 9. Prova e confiança sem depoimentos inventados
 
