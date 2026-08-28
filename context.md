@@ -234,6 +234,50 @@ código, nunca disparar `eas build` sem pedido explícito na sessão atual)
 estão em `AGENTS.md` — leitura obrigatória antes de qualquer commit ou
 build, não repetida aqui pra não divergir da fonte única.
 
+## Sessão de 28/08/2026 — fonte, tokens e bug do Expo Go
+
+Publicado em `origin/main` (commits `80b143d` e `83d0c2a`), com deploy da
+Vercel confirmado no ar em granaponto.com.br.
+
+- **Fonte da marca revertida.** Uma rodada anterior trocou `fonts.regular`/
+  `fonts.light` pela fonte do sistema em ~472 pontos de uso, alegando
+  Dynamic Type/sp. Texto de fonte customizada já escala no React Native, então
+  não havia troca a fazer. Neue Machina voltou a ser a única fonte do produto e
+  a regra virou permanente ("The Only-Font Rule" em `DESIGN.md`); `PRODUCT.md`,
+  este arquivo e `.impeccable/design.json` também descreviam o split
+  marca/sistema como válido e foram corrigidos.
+- **Token drift fechado.** `theme.danger` no lugar de `#e08a7d` (6 arquivos) e
+  fim do quase-duplicado `#e08b7f`; `paperSelected`/`accent` em `BadgeCard` e
+  Gráficos; novo par `entradaBorda`/`entradaFundo`/`saidaBorda`/`saidaFundo`
+  substituindo hex repetido em 5 arquivos.
+- **Eixo do `FlowChart` no estado vazio.** Sem movimentação, `maxVal` caía no
+  piso de 1 e o eixo imprimia "R$ 0, R$ 0, R$ 1, R$ 1, R$ 1". A escala agora é
+  suprimida; a grade continua.
+- **Tela branca no Expo Go depois da trava por digital** (regressão do commit
+  `b34be61`). `NativeTabs` usa componentes Fabric compilados que o Expo Go não
+  tem — a view não registra, nada renderiza e nenhum erro sobe pro JS. Agora
+  `lib/navegacao-nativa.ts:abasNativasDisponiveis()` decide por AMBIENTE DE
+  EXECUÇÃO, não por `Platform.OS`; `useTabBarInset` usa a mesma função, e
+  `WebTabsLayout` virou `AbasEmJavaScript` (atende navegador e Expo Go).
+
+**Pendente para a próxima sessão:**
+
+1. **As abas nativas nunca rodaram em aparelho.** O Expo Go agora desvia delas,
+   então o teste de 28/08 não validou esse caminho — ele só entra numa build do
+   EAS. Validar antes de publicar release.
+2. **`app.json` ainda em `1.4.0`**, mesma versão da build que a cota barrou.
+   Subir antes do próximo build de release, senão o webhook recusa e ninguém é
+   avisado da atualização (ver regra 5 do `AGENTS.md`).
+3. **Cota do EAS.** 24 builds em agosto/2026, 15 concluídas — exatamente o teto
+   do plano free. Conferir a renovação em
+   https://expo.dev/accounts/gabriouss/settings/billing antes de disparar.
+4. **P2 de performance em aberto**, com o porquê detalhado em
+   `IMPECCABLE_AUDIT.md`: Início, Gráficos e Lançamentos baixam o histórico
+   inteiro de transações. Não é só janelar — o saldo depende do histórico
+   completo (janela curta daria saldo ERRADO, não mais lento) e a navegação por
+   mês/ano precisa de dados arbitrários. Exige agregação aplicada no banco e
+   busca por período sob demanda.
+
 ## Estado no momento deste documento
 
 - Landing page (`app/index.tsx`) passou por auditoria completa e recebeu melhorias estruturais:
