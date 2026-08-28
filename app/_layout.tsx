@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
@@ -23,6 +24,7 @@ import '@/lib/notifications';
    isso o app aparecia por um instante com a fonte do sistema e trocava
    depois. Vai no escopo global, sem await, como manda a doc do SDK 57. */
 SplashScreen.preventAutoHideAsync();
+SystemUI.setBackgroundColorAsync(theme.paper);
 
 
 export default function RootLayout() {
@@ -48,15 +50,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!fontsLoaded) return;
-    /* Aqui havia um `Text.defaultProps.style = [{ fontFamily: ... }]` para
-       aplicar a fonte da marca em todo <Text> de uma vez. Não funcionava: o
-       React 19 REMOVEU defaultProps de componentes de função, e o <Text> do
-       React Native é um deles — a linha não tinha efeito nenhum desde a
-       migração. O sintoma media-se no navegador: 74 elementos caíam na fonte
-       do sistema e o "Grana." saía em Times New Roman.
-       A fonte agora é declarada explicitamente em cada estilo de texto
-       (fonts.regular / fonts.light), que é também o que o design system
-       exige — ver o memory tipografia-apenas-light-e-regular. */
+    /* Neue Machina é carregada para marca e títulos. Corpo/controles usam a
+       fonte do sistema, preservando Dynamic Type e as métricas nativas. */
     SplashScreen.hideAsync();
   }, [fontsLoaded]);
 

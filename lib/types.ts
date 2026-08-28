@@ -46,6 +46,8 @@ export type CreditCard = {
   closing_day: number; // Dia de fechamento da fatura (1 a 31)
   due_day: number; // Dia de vencimento da fatura (1 a 31)
   wallet_id?: string | null;
+  /** Maior degrau (0/50/70/90/100) de uso do limite já notificado — ver lib/creditLimitAlert.ts. */
+  last_notified_threshold?: number;
   created_at: string;
 };
 

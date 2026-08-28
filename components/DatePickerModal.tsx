@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import AppModal from './AppModal';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import AppPressable from './AppPressable';
+import AccessibleModalPanel from './AccessibleModalPanel';
 
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -146,9 +147,9 @@ export default function DatePickerModal({
 
   const { scrimStyle, sheetStyle } = useSheetFlutuante();
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
-        <Pressable style={[styles.sheet, sheetStyle]} onPress={() => {}}>
+        <AccessibleModalPanel ativo={visible} style={[styles.sheet, sheetStyle]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -158,13 +159,13 @@ export default function DatePickerModal({
 
           {/* Month/Year Header */}
           <View style={styles.calHead}>
-            <AppPressable style={styles.calNav} onPress={handlePrevMonth} hitSlop={6}>
+            <AppPressable style={styles.calNav} onPress={handlePrevMonth} hitSlop={6} accessibilityLabel="Mês anterior">
               <Ionicons name="chevron-back" size={18} color={theme.ink} />
             </AppPressable>
             <Text style={styles.calMonthYear}>
               {MONTH_NAMES[calMonth]} {calYear}
             </Text>
-            <AppPressable style={styles.calNav} onPress={handleNextMonth} hitSlop={6}>
+            <AppPressable style={styles.calNav} onPress={handleNextMonth} hitSlop={6} accessibilityLabel="Próximo mês">
               <Ionicons name="chevron-forward" size={18} color={theme.ink} />
             </AppPressable>
           </View>
@@ -229,9 +230,9 @@ export default function DatePickerModal({
           <AppPressable onPress={() => handleQuickDate(0)}>
             <Text style={styles.todayLink}>Ir para hoje</Text>
           </AppPressable>
-        </Pressable>
+        </AccessibleModalPanel>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 
@@ -259,8 +260,8 @@ const styles = StyleSheet.create({
   quickDateText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   calHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 4 },
   calNav: {
-    width: 34,
-    height: 34,
+    width: touchTarget,
+    height: touchTarget,
     borderRadius: 17,
     backgroundColor: theme.paper,
     alignItems: 'center',
@@ -274,8 +275,8 @@ const styles = StyleSheet.create({
   weekRow: { flexDirection: 'row' },
   dayCell: { flex: 1, alignItems: 'center' },
   dayBtn: {
-    width: 36,
-    height: 36,
+    width: touchTarget,
+    height: touchTarget,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',

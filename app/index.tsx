@@ -4,7 +4,7 @@ import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, spacing, radius, fonts, type } from '@/lib/theme';
+import { theme, spacing, radius, fonts as uiFonts, type } from '@/lib/theme';
 import { colunaConteudo, colunaLeitura, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
@@ -17,6 +17,10 @@ import TrustMarquee from '@/components/TrustMarquee';
 import MolduraCelular from '@/components/MolduraCelular';
 import MolduraNavegador from '@/components/MolduraNavegador';
 import landingMeta from '@/landing-meta.json';
+
+// A landing é uma superfície de marca. O produto logado usa a família do
+// sistema; aqui a Neue Machina continua sendo a voz editorial do Grana.
+const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
 /**
  * Página pública em `/` — recebe quem nunca ouviu falar do Grana.: clique de
@@ -984,7 +988,12 @@ function ConteudoWeb() {
             </View>
 
             <RevealOnScroll>
-              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." />
+              {/* Sem `centralizado` antes — no compacto o botão ficava
+                  encostado na borda esquerda enquanto o resto da coluna virou
+                  um bloco de largura cheia (relato direto do autor, com print
+                  do site no celular). No desktop a coluna continua alinhada
+                  à esquerda, então `ehCompacto` mantém o comportamento de lá. */}
+              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado={ehCompacto} />
             </RevealOnScroll>
           </View>
 
@@ -1029,11 +1038,11 @@ function ConteudoWeb() {
                 vão entre dois elementos. */}
             <RevealOnScroll style={styles.precoCardUnico}>
               <View style={styles.precoColunas}>
-                <View style={styles.precoChecklistCol}>
-                  <Text style={styles.precoChecklistTitulo}>Tudo que você recebe</Text>
+                <View style={[styles.precoChecklistCol, ehCompacto && styles.precoChecklistColCompacta]}>
+                  <Text style={[styles.precoChecklistTitulo, ehCompacto && styles.precoTituloCentralizado]}>Tudo que você recebe</Text>
                   <View style={styles.precoChecklist}>
                     {BENEFICIOS_PRECO.map((b) => (
-                      <View key={b} style={styles.precoChecklistLinha}>
+                      <View key={b} style={[styles.precoChecklistLinha, ehCompacto && styles.precoChecklistLinhaCompacta]}>
                         <Ionicons name="checkmark-circle" size={22} color={theme.up} aria-hidden />
                         <Text style={styles.precoChecklistTexto}>{b}</Text>
                       </View>
@@ -1042,12 +1051,12 @@ function ConteudoWeb() {
                 </View>
 
                 <View style={[styles.cardPreco, ehCompacto && styles.cardPrecoCompacto]}>
-                  <Text style={styles.precoRotulo}>Assinatura única</Text>
-                  <View style={styles.precoLinha}>
+                  <Text style={[styles.precoRotulo, ehCompacto && styles.precoTituloCentralizado]}>Assinatura única</Text>
+                  <View style={[styles.precoLinha, ehCompacto && styles.precoLinhaCompacta]}>
                     <Text style={styles.precoValor}>R$ 19,99</Text>
                     <Text style={styles.precoPeriodo}>/mês</Text>
                   </View>
-                  <Text style={styles.featureTexto}>
+                  <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
                     Quando a cobrança começar, será mensal e transparente. Cancele quando quiser, sem burocracia.
                   </Text>
                   <BotaoCTA microcopy="Acesso antecipado gratuito por enquanto." centralizado={ehCompacto} />
@@ -1149,11 +1158,9 @@ function ConteudoWeb() {
             <AppPressable href="/exclusao-de-dados" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
               <Text style={styles.rodapeLink}>Excluir dados</Text>
             </AppPressable>
-            {/* Único link de AÇÃO no meio de três links legais — por isso
-                por último, sem se misturar com Termos/Privacidade/Excluir. */}
-            <AppPressable href="/sign-in" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
-              <Text style={styles.rodapeLink}>Entrar</Text>
-            </AppPressable>
+            {/* "Entrar" removido daqui — voltou pro cabeçalho (ver navAbas),
+                que já fica visível em qualquer ponto da rolagem. Repeti-lo
+                aqui embaixo também virou redundância, não reforço. */}
           </View>
           {/* Sem e-mail solto aqui de propósito — esta é a página que mais
               recebe clique frio de anúncio/busca, o pior lugar pra deixar um
@@ -1220,8 +1227,9 @@ const styles = StyleSheet.create({
   // No celular a coluna já ocupa a tela inteira (sem sobra de `colunaConteudo`
   // pra "respirar" como acontece numa janela larga), então a mesma margem de
   // 20 usada em todo o resto lia como grudada na borda. Só no compacto a
-  // margem sobe pra 24.
-  faixaCompacta: { paddingHorizontal: spacing.xl + spacing.xs },
+  // margem sobe — 32, não mais 24: com 24 o conteúdo ainda lia como colado
+  // na borda em teste real de celular (relato direto do autor).
+  faixaCompacta: { paddingHorizontal: spacing.xl + spacing.md },
   bandaLevantada: { backgroundColor: theme.paperRaised },
 
   // Cabeçalho sticky com blur — fica fixo no topo durante toda a rolagem,
@@ -1265,7 +1273,11 @@ const styles = StyleSheet.create({
   // escala fluido com a largura da janela, sem o salto.
   headline: {
     color: theme.ink,
-    ...({ fontSize: 'clamp(44px, 4vw + 24px, 80px)', lineHeight: 'clamp(46px, 4vw + 26px, 80px)' } as any),
+    // `lineHeight` era quase igual ao `fontSize` (2px de folga no piso, 0 no
+    // teto) — títulos de 2+ linhas (a maioria dos 4 capítulos do herói)
+    // liam como texto colado, sem respiro entre as linhas. Agora ~1.14x o
+    // tamanho da letra em vez de ~1.0x.
+    ...({ fontSize: 'clamp(44px, 4vw + 24px, 80px)', lineHeight: 'clamp(52px, 4vw + 32px, 90px)' } as any),
     letterSpacing: -2,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
@@ -1277,7 +1289,10 @@ const styles = StyleSheet.create({
   // ar), não como impacto — daqui vem um piso bem menor, dedicado.
   headlineCompacto: {
     color: theme.ink,
-    ...({ fontSize: 'clamp(28px, 7vw, 36px)', lineHeight: 'clamp(31px, 7.5vw, 39px)' } as any),
+    // Mesmo ajuste de respiro entre linhas de `headline`, na escala do
+    // compacto — títulos de 2 linhas como "Sabe quanto sobra, sem
+    // calcular." liam apertados no celular.
+    ...({ fontSize: 'clamp(28px, 7vw, 36px)', lineHeight: 'clamp(36px, 8.5vw, 46px)' } as any),
     letterSpacing: -1,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
@@ -1315,7 +1330,11 @@ const styles = StyleSheet.create({
   textoCena: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.light },
   // A ponte de volta pra solução usa o accent2 da marca — a paleta muda de
   // tom no exato lugar onde a copy muda de tom, saindo das caixas de dor.
-  pontePergunta: { color: theme.accent2, fontSize: type.destaque, fontFamily: fonts.regular, marginTop: spacing.xl, maxWidth: 640 },
+  // `type.corpo` (não `type.destaque`, usado antes) — no tamanho de título
+  // essa frase de transição competia com o H2 da própria seção logo acima
+  // em vez de ler como uma frase de apoio; `type.corpo` é o degrau de texto
+  // corrido da escala do design system, não um valor ad hoc.
+  pontePergunta: { color: theme.accent2, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.regular, marginTop: spacing.xl, maxWidth: 640 },
 
   ctaMeio: {
     marginTop: spacing.xxl,
@@ -1343,7 +1362,10 @@ const styles = StyleSheet.create({
   // confiar no `flexWrap` automático, garante que o empilhamento aconteça
   // exatamente na mesma borda que o resto do layout já respeita.
   secaoComCartaoCompacta: { flexDirection: 'column', alignItems: 'stretch' },
-  secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.xs },
+  // `marginBottom` era `spacing.xs` (4) — grudava o eyebrow direto no título
+  // seguinte em toda dobra da página, sem respiro nenhum entre os dois
+  // (relato direto do autor, com print do site no celular).
+  secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.lg },
   secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
   secaoTituloGrande: { fontSize: 50, lineHeight: 54, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
   secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560 },
@@ -1496,12 +1518,23 @@ const styles = StyleSheet.create({
   // próprio texto (o painel de preço tem largura fixa do outro lado), e
   // sobrava um vão vazio enorme entre o fim das linhas e a borda do painel.
   precoChecklistCol: { flex: 1, minWidth: 320, maxWidth: 520, padding: spacing.xxl },
+  // Pedido do autor: a dobra de Preços inteira alinhada ao centro no
+  // compacto — antes só o eyebrow/título (via `precoIntroCentralizada`, fora
+  // deste card) centralizavam; o card do checklist e o de preço abaixo dele
+  // ficavam colados na borda esquerda.
+  precoChecklistColCompacta: { alignItems: 'center' },
   precoChecklistTitulo: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular, marginBottom: spacing.lg },
   // Linhas simples, sem caixa própria por item — o card único inteiro já é
   // o contêiner; uma caixa por linha aqui dentro de outra caixa lia como
   // aninhamento redundante.
   precoChecklist: { gap: spacing.md },
   precoChecklistLinha: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.xs },
+  // Cada linha vira um bloco de largura limitada, centralizado pelo pai
+  // (`precoChecklistColCompacta`) — o ÍCONE e o TEXTO continuam alinhados à
+  // esquerda um do outro dentro do bloco (lê melhor que centralizar cada
+  // linha de texto individualmente), só o bloco inteiro passa a ficar no
+  // centro da coluna em vez de esticado até a borda.
+  precoChecklistLinhaCompacta: { width: '100%', maxWidth: 340, alignSelf: 'center' },
   precoChecklistTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.45, fontFamily: fonts.light },
   // Painel de preço — metade com destaque visual (`paperSelected`) do card
   // único, separada da metade do checklist por uma borda, não por um vão.
@@ -1524,10 +1557,13 @@ const styles = StyleSheet.create({
   },
   // No compacto as duas metades empilham — a borda precisa migrar de
   // esquerda pra cima, senão fica uma linha vertical solta encostada no
-  // topo de um painel que agora está embaixo, não ao lado.
-  cardPrecoCompacto: { maxWidth: '100%', borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: theme.ruleStrong },
+  // topo de um painel que agora está embaixo, não ao lado. `alignItems:
+  // 'center'` sobrescreve o `flex-start` de `cardPreco` — pedido do autor
+  // pra Preços inteiro centralizado no compacto (rótulo, valor e descrição).
+  cardPrecoCompacto: { maxWidth: '100%', alignItems: 'center', borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: theme.ruleStrong },
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
+  precoLinhaCompacta: { justifyContent: 'center' },
   // Usa `theme.ink` (não `inkFaint`) porque é um valor definido, não um "a
   // definir": o apagado era o sinal visual de "isto não é um preço real",
   // e não se aplica mais com o valor de lançamento (R$ 19,99) no lugar.

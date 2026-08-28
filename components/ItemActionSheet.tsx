@@ -1,8 +1,10 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import AppModal from './AppModal';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import AppPressable from './AppPressable';
+import AccessibleModalPanel from './AccessibleModalPanel';
 
 export default function ItemActionSheet({
   visible,
@@ -19,9 +21,9 @@ export default function ItemActionSheet({
 }) {
   const { scrimStyle, sheetStyle } = useSheetFlutuante();
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
-        <Pressable style={[styles.sheet, sheetStyle]} onPress={() => {}}>
+        <AccessibleModalPanel ativo={visible} style={[styles.sheet, sheetStyle]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -50,9 +52,9 @@ export default function ItemActionSheet({
             <Ionicons name="trash-outline" size={20} color="#bb6b60" />
             <Text style={[styles.actionText, { color: '#bb6b60' }]}>Excluir</Text>
           </AppPressable>
-        </Pressable>
+        </AccessibleModalPanel>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 

@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Animated,
   Image,
-  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AppModal from '@/components/AppModal';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -27,7 +27,7 @@ import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, for
 import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
-import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type, touchTarget } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -78,10 +78,12 @@ import SafeToSpendCard from '@/components/SafeToSpendCard';
 import FutureTimelineChart from '@/components/FutureTimelineChart';
 import CreditSummaryCard from '@/components/CreditSummaryCard';
 import HomeCustomizerModal from '@/components/HomeCustomizerModal';
+import ToggleSwitch from '@/components/ToggleSwitch';
 import { isSameMonth, isCreditTx } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { DEMO_CREDIT_CARDS } from '@/lib/demo-data';
 import type { CreditCard } from '@/lib/types';
+import { useReducedMotion } from '@/lib/motion';
 
 
 type ChartView = 'in' | 'out' | 'both';
@@ -91,6 +93,7 @@ export default function InicioScreen() {
   const { paddingConteudo } = useTabBarInset();
   const router = useRouter();
   const { hidden, toggle } = usePrivacy();
+  const reduzirMovimento = useReducedMotion();
   const { isDemoMode } = useDemo();
   const { session } = useSession();
   const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, updateSaldosComTransacoes } = useWallet();
@@ -397,8 +400,12 @@ export default function InicioScreen() {
       carregarDiagnostico().then(setDiagnostico);
       carregarLayoutHome().then(setHomeLayout);
       pieAnim.setValue(0);
+      if (reduzirMovimento) {
+        pieAnim.setValue(1);
+        return;
+      }
       Animated.spring(pieAnim, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 7 }).start();
-    }, [load])
+    }, [load, pieAnim, reduzirMovimento])
   );
 
   if (loading) {
@@ -1116,7 +1123,7 @@ export default function InicioScreen() {
         }
         title={saudacaoDoDia(nomeExibicao)}
         left={
-          <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn}>
+          <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn} accessibilityLabel="Abrir perfil">
             {perfil?.fotoUrl ? (
               <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} />
             ) : (
@@ -1185,11 +1192,7 @@ export default function InicioScreen() {
             }}
             collapsable={false}
           >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.smartActionsRow}
-          >
+          <View style={styles.smartActionsRow}>
           <AppPressable
             style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
             onPress={() => setPasteModalOpen(true)}
@@ -1225,7 +1228,7 @@ export default function InicioScreen() {
               setPasteModalOpen(true);
             }}
           />
-          </ScrollView>
+          </View>
           </View>
         </FadeIn>
 
@@ -1301,7 +1304,7 @@ export default function InicioScreen() {
       />
 
       {/* Sheet: Novo Boleto */}
-      <Modal visible={billSheetOpen} animationType="slide" transparent onRequestClose={() => setBillSheetOpen(false)}>
+      <AppModal visible={billSheetOpen} animationType="slide" transparent onRequestClose={() => setBillSheetOpen(false)}>
         <Sheet onClose={() => setBillSheetOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Nova conta a pagar</Text>
@@ -1362,16 +1365,11 @@ export default function InicioScreen() {
 
             <View style={styles.fieldRow}>
               <Text style={styles.fieldKey}>Conta recorrente (todo mês)</Text>
-              <AppPressable
-                style={[styles.switchTrack, billRecurring && styles.switchTrackOn]}
-                onPress={() => setBillRecurring((p) => !p)}
-                hitSlop={12}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: billRecurring }}
-                accessibilityLabel="Conta recorrente"
-              >
-                <View style={[styles.switchThumb, billRecurring && styles.switchThumbOn]} />
-              </AppPressable>
+              <ToggleSwitch
+                value={billRecurring}
+                onToggle={() => setBillRecurring((p) => !p)}
+                label="Conta recorrente"
+              />
             </View>
 
             <AppPressable
@@ -1382,10 +1380,10 @@ export default function InicioScreen() {
               {billSaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Salvar conta</Text>}
             </AppPressable>
         </Sheet>
-      </Modal>
+      </AppModal>
 
       {/* Modal de Orçamento */}
-      <Modal visible={budgetModalOpen} animationType="slide" transparent onRequestClose={() => setBudgetModalOpen(false)}>
+      <AppModal visible={budgetModalOpen} animationType="slide" transparent onRequestClose={() => setBudgetModalOpen(false)}>
         <Sheet onClose={() => setBudgetModalOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Orçamento — {budgetCategory}</Text>
@@ -1422,7 +1420,7 @@ export default function InicioScreen() {
               </AppPressable>
             )}
         </Sheet>
-      </Modal>
+      </AppModal>
 
       {/* Date Picker Modal */}
       <DatePickerModal
@@ -1593,7 +1591,7 @@ const styles = StyleSheet.create({
     // edição) não cair em cima das setinhas — mesmo ajuste do GoalsCarousel.
     ...(Platform.OS === 'web' ? { paddingRight: ESPACO_ALCA } : null),
   },
-  carouselArrow: { width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  carouselArrow: { width: touchTarget, height: touchTarget, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   carouselArrowHover: { backgroundColor: theme.hover },
   quickChipsRow: { gap: 8, paddingVertical: 4 },
   quickChip: {
@@ -1609,11 +1607,12 @@ const styles = StyleSheet.create({
   },
   quickChipHover: { backgroundColor: theme.hover },
   quickChipText: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.regular },
-  smartActionsRow: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.lg },
+  smartActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   smartActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: touchTarget,
     gap: 6,
     paddingVertical: 10,
     paddingHorizontal: spacing.md,
@@ -1684,10 +1683,6 @@ const styles = StyleSheet.create({
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
-  switchTrack: { width: 34, height: 20, borderRadius: 10, backgroundColor: theme.ruleStrong, padding: 2 },
-  switchTrackOn: { backgroundColor: theme.ink },
-  switchThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: theme.paperRaised },
-  switchThumbOn: { transform: [{ translateX: 14 }] },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },

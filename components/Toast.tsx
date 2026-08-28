@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { useReducedMotion } from '@/lib/motion';
 
 export default function Toast({
   message,
@@ -15,9 +16,16 @@ export default function Toast({
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
   const { total: tabBarTotal } = useTabBarInset();
+  const reduzirMovimento = useReducedMotion();
 
   useEffect(() => {
     if (visible) {
+      if (reduzirMovimento) {
+        opacity.setValue(1);
+        translateY.setValue(0);
+        const timer = setTimeout(onHide, 2000);
+        return () => clearTimeout(timer);
+      }
       Animated.parallel([
         Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }),
         Animated.timing(translateY, { toValue: 0, duration: 250, useNativeDriver: true }),
@@ -32,7 +40,7 @@ export default function Toast({
 
       return () => clearTimeout(timer);
     }
-  }, [visible]);
+  }, [onHide, opacity, reduzirMovimento, translateY, visible]);
 
   if (!visible) return null;
 

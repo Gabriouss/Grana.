@@ -47,6 +47,34 @@ alter table bills add column if not exists paid_transaction_id uuid references t
 create index if not exists bills_user_id_due_date_idx
   on bills (user_id, due_date);
 
+-- Resumo cumulativo usado por Desafios. SECURITY INVOKER mantém a RLS ativa;
+-- o filtro explícito por auth.uid() evita qualquer agregado entre locatários.
+create or replace function public.get_gamification_summary()
+returns table (
+  transaction_count bigint,
+  income_count bigint,
+  expense_count bigint,
+  income_total numeric,
+  expense_category_count bigint,
+  paid_bill_count bigint
+)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    (select count(*) from public.transactions t where t.user_id = (select auth.uid())),
+    (select count(*) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'in'),
+    (select count(*) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'out'),
+    (select coalesce(sum(t.amount), 0) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'in'),
+    (select count(distinct t.category) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'out'),
+    (select count(*) from public.bills b where b.user_id = (select auth.uid()) and b.status = 'paid');
+$$;
+
+revoke all on function public.get_gamification_summary() from public, anon;
+grant execute on function public.get_gamification_summary() to authenticated, service_role;
+
 -- Categorias por usuário. As 8 categorias padrão (Alimentação, Moradia etc.)
 -- continuam também fixas em lib/types.ts — é o vocabulário que o diagnóstico
 -- financeiro (lib/diagnostico.ts) e as heurísticas de texto
@@ -518,6 +546,12 @@ create table if not exists credit_cards (
   due_day smallint not null check (due_day between 1 and 31),
   created_at timestamptz not null default now()
 );
+
+-- Maior degrau (0/50/70/90/100) de uso do limite já notificado neste
+-- cartão — evita notificar de novo o mesmo degrau a cada novo lançamento no
+-- crédito. Só sobe (nunca reseta sozinho num estorno/pagamento de fatura;
+-- reset automático fica pra uma rodada futura, ver lib/creditLimitAlert.ts).
+alter table credit_cards add column if not exists last_notified_threshold smallint not null default 0;
 
 alter table credit_cards enable row level security;
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { fonts, spacing, theme, type } from '@/lib/theme';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { fonts, spacing, theme, type, textStyles } from '@/lib/theme';
 
 /**
  * Cabeçalho padrão das telas principais. Antes cada tela tinha seu próprio
@@ -25,22 +25,24 @@ export default function ScreenHeader({
   right?: ReactNode;
   children?: ReactNode;
 }) {
+  const compacto = useWindowDimensions().width < 480;
+
   return (
     <View style={styles.header}>
-      <View style={styles.row}>
-        <View style={styles.leftCol}>
+      <View style={[styles.row, compacto && styles.rowCompacta]}>
+        <View style={[styles.leftCol, compacto && styles.leftColCompacta]}>
           {left}
           <View style={styles.texts}>
             <View style={styles.eyebrowRow}>
               <Text style={styles.eyebrow}>{eyebrow}</Text>
               {eyebrowBadges}
             </View>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={styles.title} numberOfLines={2}>
               {title}
             </Text>
           </View>
         </View>
-        {right ? <View style={styles.right}>{right}</View> : null}
+        {right ? <View style={[styles.right, compacto && styles.rightCompacta]}>{right}</View> : null}
       </View>
       {children}
     </View>
@@ -66,6 +68,9 @@ const styles = StyleSheet.create({
      os dois lados encolherem, quem cede espaço primeiro é o título — que já
      tem numberOfLines={1} e corta com reticências. */
   right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
+  rowCompacta: { flexWrap: 'wrap', alignItems: 'stretch' },
+  leftColCompacta: { width: '100%' },
+  rightCompacta: { width: '100%', justifyContent: 'flex-end', flexShrink: 0 },
   eyebrow: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
@@ -73,8 +78,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   title: {
-    fontFamily: fonts.regular,
-    fontSize: type.cabecalho,
+    ...textStyles.headline,
     color: theme.ink,
   },
 });

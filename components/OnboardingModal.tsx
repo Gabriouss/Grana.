@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import * as Clipboard from 'expo-clipboard';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch, createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
@@ -23,6 +23,8 @@ import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
 import { carregarPerfil, removerFoto, salvarFoto, salvarNome, LIMITE_NOME } from '@/lib/profile';
 import type { WhatsappLink } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
+import { useModalAccessibility } from '@/lib/modal-accessibility';
+import { useReducedMotion } from '@/lib/motion';
 import { LIMITS } from '@/lib/limits';
 import {
   calcularArquetipo,
@@ -151,6 +153,9 @@ export default function OnboardingModal({
       questionário sempre voltava em branco e não dava pra simplesmente corrigir a renda. */
   initial?: Respostas;
 }) {
+  const modalRef = useRef<View>(null);
+  const reduzirMovimento = useReducedMotion();
+  useModalAccessibility(modalRef, visible);
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
   /* O <Modal> desenha por baixo da barra de status no modo edge-to-edge — sem
@@ -448,10 +453,14 @@ export default function OnboardingModal({
   const progresso = Math.min(step + 1, TOTAL_ETAPAS);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent={false} onRequestClose={onClose}>
       {/* Tela cheia: o campo de renda ficaria atrás do teclado, já que no
           modo edge-to-edge a janela não encolhe sozinha. */}
       <View
+        ref={modalRef}
+        accessibilityViewIsModal
+        role="dialog"
+        focusable
         style={[
           styles.container,
           { paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg + keyboardHeight },
@@ -459,7 +468,7 @@ export default function OnboardingModal({
       >
         <View style={styles.header}>
           {step > 1 ? (
-            <AppPressable onPress={handleBack} hitSlop={10} style={styles.backBtn}>
+            <AppPressable onPress={handleBack} hitSlop={10} style={styles.backBtn} accessibilityLabel="Voltar para a etapa anterior">
               <Ionicons name="chevron-back" size={20} color={theme.inkFaint} />
             </AppPressable>
           ) : (
@@ -829,7 +838,7 @@ export default function OnboardingModal({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
-  backBtn: { width: 28, alignItems: 'flex-start' },
+  backBtn: { width: touchTarget, height: touchTarget, alignItems: 'flex-start', justifyContent: 'center' },
   progressBar: { flex: 1, flexDirection: 'row', gap: 6 },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: theme.rule },
   progressSegmentDone: { backgroundColor: theme.ink },

@@ -5,6 +5,8 @@ import { theme, spacing, type, fonts } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
+import { useReducedMotion } from '@/lib/motion';
+import { usePrivacy } from '@/lib/privacy-context';
 
 export type ChartPeriod = 'month' | '7days' | 'year';
 
@@ -180,6 +182,8 @@ export default function FlowChart({
 
   const progress = useRef(new Animated.Value(0)).current;
   const [t, setT] = useState(0);
+  const reduzirMovimento = useReducedMotion();
+  const { hidden } = usePrivacy();
   const signature = JSON.stringify([inPoints, outPoints, period, currentYear, currentMonth]);
 
   useEffect(() => {
@@ -194,13 +198,17 @@ export default function FlowChart({
 
   useEffect(() => {
     progress.setValue(0);
+    if (reduzirMovimento) {
+      progress.setValue(1);
+      return;
+    }
     Animated.timing(progress, {
       toValue: 1,
       duration: 4000,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, [signature]);
+  }, [progress, reduzirMovimento, signature]);
 
 
   const dashoffset = DASH_LEN - DASH_LEN * t;
@@ -230,7 +238,7 @@ export default function FlowChart({
       {labelSelecionado ? (
         <View style={styles.selectionHeader}>
           <Text style={styles.selectionLabel}>{labelSelecionado}</Text>
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <View style={styles.selectionValues}>
             {inSelecionado > 0 && (
               <Text style={[styles.selectionValor, { color: theme.up }]}>+ R$ {formatMoney(inSelecionado)}</Text>
             )}
@@ -317,9 +325,13 @@ export default function FlowChart({
           tamanho. `top`/`y` continuam batendo com as linhas-guia porque só
           o eixo horizontal é esticado; a altura do Svg é fixa (VIEW_H, em
           pixels reais) e nunca muda. */}
+      {/* O modo privacidade esconde o TOTAL do card, mas o eixo Y continuava
+          dizendo a ordem de grandeza do mês (um eixo que vai até R$ 8 mil
+          entrega quase tanto quanto o número em si). Aqui a escala some
+          junto — a forma da curva continua visível, sem os valores. */}
       {gridLines.map(({ y, valor }, i) => (
         <Text key={`ylabel-${i}`} style={[styles.axisLabel, { top: y - 8 }]} numberOfLines={1}>
-          {formatEixo(valor)}
+          {hidden ? '' : formatEixo(valor)}
         </Text>
       ))}
       {/* left/right alinhados com AXIS_LEFT/PAD_RIGHT — onde a linha do
@@ -347,6 +359,18 @@ export default function FlowChart({
               key={`touch-${i}`}
               style={{ position: 'absolute', left: inicio, width: fim - inicio, top: 0, bottom: 0 }}
               onPress={() => setSelecionado(i)}
+              /* A faixa de toque é uma View vazia por cima do SVG — sem
+                 rótulo, um leitor de tela anuncia só "botão" repetido uma vez
+                 por balde, e o gráfico inteiro fica ilegível fora da visão.
+                 O rótulo carrega o mesmo que o cabeçalho de seleção mostra
+                 ao tocar, que é justamente o dado que a curva esconde. */
+              accessibilityRole="button"
+              accessibilityState={{ selected: selecionado === i }}
+              accessibilityLabel={
+                hidden
+                  ? `${buckets[i]?.label ?? ''}: valores ocultos`
+                  : `${buckets[i]?.label ?? ''}: entradas R$ ${formatMoney(inTotals[i] ?? 0)}, saídas R$ ${formatMoney(outTotals[i] ?? 0)}`
+              }
             />
           );
         })}
@@ -359,6 +383,7 @@ export default function FlowChart({
 const styles = StyleSheet.create({
   selectionHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingBottom: spacing.xs,
@@ -366,6 +391,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
+  selectionValues: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: spacing.sm, flexShrink: 1 },
   selectionLabel: {
     color: theme.ink,
     fontSize: type.nota,

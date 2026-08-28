@@ -28,6 +28,7 @@
     "expo-speech-recognition": "^56.0.1",
     "expo-splash-screen": "~57.0.6",
     "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
@@ -48,7 +49,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test:parser": "npx --yes tsx __tests__/corpus-voz.ts && npx --yes tsx __tests__/corpus-gerado.ts && npx --yes tsx __tests__/corpus-voz-gerado.ts && npx --yes tsx __tests__/corpus-whatsapp.ts && npx --yes tsx __tests__/corpus-whatsapp-gerado.ts && npx --yes tsx __tests__/corpus-roteamento.ts && node __tests__/sync-parser.js"
+    "test:parser": "npx --yes tsx __tests__/corpus-voz.ts && npx --yes tsx __tests__/corpus-gerado.ts && npx --yes tsx __tests__/corpus-voz-gerado.ts && npx --yes tsx __tests__/corpus-whatsapp.ts && npx --yes tsx __tests__/corpus-whatsapp-gerado.ts && npx --yes tsx __tests__/corpus-roteamento.ts && npx --yes tsx __tests__/corpus-categorias-custom.ts && npx --yes tsx __tests__/corpus-consulta.ts && npx --yes tsx __tests__/corpus-limite-cartao.ts && node __tests__/sync-parser.js"
   },
   "private": true
 }

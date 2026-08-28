@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
@@ -21,6 +21,7 @@ import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
 import { useKeyboardHeight } from './Sheet';
+import AccessibleModalPanel from './AccessibleModalPanel';
 
 export default function BudgetTemplatesModal({
   visible,
@@ -83,7 +84,7 @@ export default function BudgetTemplatesModal({
   }
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       animationType="slide"
       transparent
@@ -101,7 +102,7 @@ export default function BudgetTemplatesModal({
       >
         {/* Já tem ScrollView próprio para a lista de templates, então só
             precisa se afastar do teclado. */}
-        <Pressable style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]} onPress={() => {}}>
+        <AccessibleModalPanel ativo={visible} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Templates de Orçamento</Text>
             <AppPressable
@@ -162,9 +163,9 @@ export default function BudgetTemplatesModal({
           </ScrollView>
 
           {saving && <ActivityIndicator color={theme.ink} style={{ paddingVertical: 10 }} />}
-        </Pressable>
+        </AccessibleModalPanel>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 

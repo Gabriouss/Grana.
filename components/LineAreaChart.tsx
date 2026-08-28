@@ -5,6 +5,7 @@ import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
+import { usePrivacy } from '@/lib/privacy-context';
 import type { BarColumn } from './StackedBarChart';
 
 /* Rótulo compacto do eixo Y ("R$ 3 mil" em vez de "R$ 3.000,00") — o valor
@@ -46,6 +47,7 @@ export default function LineAreaChart({
   width?: number;
 }) {
   const [medida, setMedida] = useState(320);
+  const { hidden } = usePrivacy();
   const containerWidth = width ?? medida;
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
     columns.length > 0 ? columns.length - 1 : null
@@ -70,15 +72,21 @@ export default function LineAreaChart({
   const maxEixo = Math.max(Math.ceil(maxTotalBruto / passo) * passo, passo);
   const gridLines = [0, 1, 2, 3, 4].map((i) => (maxEixo / 4) * i);
 
-  /* 112px reserva espaço pro rótulo mais largo do eixo, tipo "R$ 11,5 mil"
-     (~80px em Neue Machina 13px), MAIS uma folga visível até o início do
-     desenho — com 88px o texto encostava quase direto na linha/grade,
-     sem respiro nenhum entre o número e o gráfico. */
-  const padLeft = 112;
   /* O último rótulo do eixo X ("Ago/26" etc.) é centralizado (textAnchor
      "middle") sobre o último ponto, que fica exatamente na borda direita do
      desenho — metade do texto sempre cairia fora do Svg sem essa folga. */
   const padRight = 26;
+  /* 112px reserva espaço pro rótulo mais largo do eixo Y, tipo "R$ 11,5 mil"
+     (~80px em Neue Machina 13px), MAIS uma folga visível até o início do
+     desenho — com 88px o texto encostava quase direto na linha/grade,
+     sem respiro nenhum entre o número e o gráfico.
+     No modo privacidade não há rótulo de eixo Y nenhum pra caber ali: manter
+     os 112px deixava um vão morto ocupando quase um terço da largura num
+     celular, com a curva espremida à direita. Mas não cai a zero — o PRIMEIRO
+     rótulo do eixo X também é centralizado sobre o primeiro ponto, então
+     precisa da mesma folga que `padRight` reserva pro último; com 4px ele
+     saía cortado ("i/26" em vez de "Mai/26"). */
+  const padLeft = hidden ? padRight : 112;
   const padTop = 16;
   const padBottom = 34;
   const plotWidth = Math.max(containerWidth - padLeft - padRight, 40);
@@ -155,6 +163,9 @@ export default function LineAreaChart({
                     conforme o comprimento do próprio texto — pedido
                     explícito pra alinhar à esquerda, igual ao cabeçalho de
                     seleção acima. */}
+                {/* Some no modo privacidade junto com os valores: uma escala
+                    que vai até R$ 8 mil entrega quase tanto quanto o número
+                    escondido. Mesma regra do eixo de FlowChart. */}
                 <SvgText
                   x={0}
                   y={y + 3}
@@ -163,7 +174,7 @@ export default function LineAreaChart({
                   fontFamily={fonts.light}
                   textAnchor="start"
                 >
-                  {formatEixo(val)}
+                  {hidden ? '' : formatEixo(val)}
                 </SvgText>
               </G>
             );
@@ -220,6 +231,16 @@ export default function LineAreaChart({
                 key={`touch-${idx}`}
                 style={{ position: 'absolute', left: inicio, width: fim - inicio, top: 0, bottom: 0 }}
                 onPress={() => setSelectedIndex(idx)}
+                /* Faixa de toque vazia por cima do SVG: sem rótulo o leitor
+                   de tela anuncia só "botão" uma vez por coluna. Ver a mesma
+                   correção em FlowChart. */
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedIndex === idx }}
+                accessibilityLabel={
+                  hidden
+                    ? `${columns[idx]?.label ?? ''}: valor oculto`
+                    : `${columns[idx]?.label ?? ''}: R$ ${formatMoney(columns[idx]?.total ?? 0)}`
+                }
               />
             );
           })}

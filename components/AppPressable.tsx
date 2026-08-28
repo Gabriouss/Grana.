@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, type GestureResponderEvent, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { useReducedMotion } from '@/lib/motion';
 
 type HoverState = { pressed: boolean; hovered: boolean };
 
@@ -37,10 +38,17 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  * por uma transição CSS (`transitionProperty`), que o react-native-web
  * já traduz nativamente.
  */
-export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, onPressOut, scaleOnPress = true, ...rest }: Props) {
+export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, onPressOut, scaleOnPress = true, accessibilityRole, ...rest }: Props) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  const reduzirMovimento = useReducedMotion();
+  const animarPressao = scaleOnPress && !reduzirMovimento;
+  const papel = accessibilityRole ?? (rest.href ? 'link' : rest.onPress ? 'button' : undefined);
+
+  useEffect(() => {
+    if (reduzirMovimento) scale.setValue(1);
+  }, [reduzirMovimento, scale]);
 
   const merged: HoverState = { pressed, hovered: Platform.OS === 'web' && hovered };
   const resolvedStyle = typeof style === 'function' ? style(merged) : style;
@@ -55,21 +63,21 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
   }
   function handlePressIn(e: GestureResponderEvent) {
     setPressed(true);
-    if (scaleOnPress && Platform.OS !== 'web') {
+    if (animarPressao && Platform.OS !== 'web') {
       Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
     }
     onPressIn?.(e);
   }
   function handlePressOut(e: GestureResponderEvent) {
     setPressed(false);
-    if (scaleOnPress && Platform.OS !== 'web') {
+    if (animarPressao && Platform.OS !== 'web') {
       Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
     }
     onPressOut?.(e);
   }
 
   if (Platform.OS === 'web') {
-    const webTransition: any = scaleOnPress
+    const webTransition: any = animarPressao
       ? {
           transform: [{ scale: pressed ? 0.96 : 1 }],
           transitionProperty: 'transform',
@@ -80,6 +88,7 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
     return (
       <Pressable
         {...rest}
+        accessibilityRole={papel}
         onHoverIn={handleHoverIn}
         onHoverOut={handleHoverOut}
         onPressIn={handlePressIn}
@@ -92,6 +101,7 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
   return (
     <AnimatedPressable
       {...rest}
+      accessibilityRole={papel}
       onHoverIn={handleHoverIn}
       onHoverOut={handleHoverOut}
       onPressIn={handlePressIn}

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, PALETTE_30, fonts, type } from '@/lib/theme';
@@ -19,6 +19,7 @@ import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
+import AccessibleModalPanel from './AccessibleModalPanel';
 import ColorGridPicker from './ColorGridPicker';
 import { useKeyboardHeight } from './Sheet';
 
@@ -191,9 +192,9 @@ export default function CategoryPickerModal({
     items.filter((i) => i.name !== exceptName).map((i) => ({ color: i.color, label: i.name }));
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
-        <Pressable style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]} onPress={() => {}}>
+        <AccessibleModalPanel ativo={visible} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{mode === 'manage' ? 'Gerenciar categorias' : 'Categoria'}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -231,10 +232,20 @@ export default function CategoryPickerModal({
                     {selected && <Ionicons name="checkmark" size={16} color={theme.ink} />}
                     {item.isDefault && <Text style={styles.defaultTag}>padrão</Text>}
                     <View style={styles.rowActions}>
-                      <AppPressable onPress={() => openEdit(item)} hitSlop={8} style={styles.rowActionBtn}>
+                      <AppPressable
+                        onPress={() => openEdit(item)}
+                        hitSlop={8}
+                        style={styles.rowActionBtn}
+                        accessibilityLabel={`Editar categoria ${item.name}`}
+                      >
                         <Ionicons name="pencil-outline" size={15} color={theme.inkFaint} />
                       </AppPressable>
-                      <AppPressable onPress={() => confirmDelete(item)} hitSlop={8} style={styles.rowActionBtn}>
+                      <AppPressable
+                        onPress={() => confirmDelete(item)}
+                        hitSlop={8}
+                        style={styles.rowActionBtn}
+                        accessibilityLabel={`Excluir categoria ${item.name}`}
+                      >
                         <Ionicons name="trash-outline" size={15} color={theme.inkFaint} />
                       </AppPressable>
                     </View>
@@ -305,9 +316,9 @@ export default function CategoryPickerModal({
               </AppPressable>
             </View>
           )}
-        </Pressable>
+        </AccessibleModalPanel>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 

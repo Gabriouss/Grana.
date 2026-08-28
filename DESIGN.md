@@ -16,25 +16,21 @@ colors:
   rule-strong: "rgba(175,255,227,0.26)"
 typography:
   display:
-    fontFamily: "NeueMachina-Light, sans-serif"
-    fontSize: "26px"
-    fontWeight: 300
-    lineHeight: 1.1
+    fontFamily: "NeueMachina-Regular, sans-serif"
+    fontSize: "24px"
+    lineHeight: 1.2
   title:
     fontFamily: "NeueMachina-Regular, sans-serif"
-    fontSize: "17px"
-    fontWeight: 400
-    lineHeight: 1.3
+    fontSize: "20px"
+    lineHeight: 1.25
   body:
-    fontFamily: "NeueMachina-Regular, sans-serif"
-    fontSize: "14px"
-    fontWeight: 400
-    lineHeight: 1.4
+    fontFamily: "system-ui, -apple-system, Roboto, sans-serif"
+    fontSize: "16px"
+    lineHeight: 1.45
   label:
-    fontFamily: "NeueMachina-Regular, sans-serif"
-    fontSize: "11px"
-    fontWeight: 400
-    lineHeight: 1.3
+    fontFamily: "system-ui, -apple-system, Roboto, sans-serif"
+    fontSize: "14px"
+    lineHeight: 1.35
     letterSpacing: "0.5px"
 rounded:
   sm: "8px"
@@ -102,8 +98,8 @@ Confiança aqui vem de consistência silenciosa, não de efeito.
 - Fundo quase preto, petróleo profundo — nunca branco, nunca cinza neutro.
 - Menta e ciano carregam toda a marca; vermelho não existe no vocabulário.
 - Números monetários sempre tabulares — não podem "dançar" ao atualizar.
-- Peso tipográfico é binário: Light pra marca/destaque, Regular pra tudo o
-  mais. Não existe um terceiro degrau.
+- Neue Machina assina marca e títulos; a fonte do sistema carrega leitura,
+  controles e dados com Dynamic Type/sp.
 - Superfícies ficam chapadas por padrão; sombra é reservada pra sinalizar
   algo genuinamente flutuando sobre o resto (ver Elevation & Depth).
 
@@ -138,26 +134,27 @@ secundário é um verde-água dessaturado, não um cinza.
 
 ## Typography
 
-**Display/Label Font:** NeueMachina-Light (300)
-**Body/Title Font:** NeueMachina-Regular (400)
+**Display Font:** NeueMachina-Regular (com sans-serif de fallback)
+**Body/Label Font:** fonte do sistema — San Francisco/System no iOS, Roboto/sans-serif no Android, `system-ui` na web
 
-**Character:** Uma família só, dois pesos, sem meio-termo. Light carrega peso de marca em texto grande (a assinatura "Grana.", headlines de página); Regular é o piso pra tudo que precisa ser lido rápido — corpo, campo, botão, título de folha.
+**Character:** Neue Machina preserva a voz geométrica do Grana. nos momentos de assinatura. O conteúdo operacional usa a tipografia familiar da plataforma, com melhor leitura, expansão de texto e métricas nativas.
 
 ### Hierarchy
-- **Display** (Light 300, 26px, lh 1.1): a assinatura "Grana." no cabeçalho de tela — sempre Light, nunca Regular.
-- **Title** (Regular 400, 17px, lh 1.3): título de folha e de modal.
-- **Body** (Regular 400, 14px, lh 1.4): corpo padrão, campo de entrada, rótulo de botão.
-- **Label** (Regular 400, 11px, entreletras 0,5px, uppercase): rótulo de seção, eyebrow, subtítulo de linha.
-- **Valor monetário** (Regular 400, 30px): degrau próprio, maior que Display — a entrada de quantia é a única coisa na tela maior que a marca.
+- **Headline** (Neue Machina Regular, 24px nativo, lh 1.2): título principal de tela.
+- **Title** (Neue Machina Regular, 20px, lh 1.25): título de folha, modal ou card autoral.
+- **Body** (System/Roboto, 17pt iOS · 16sp Android · 18px web, lh 1.45): corpo, campo e botão; respeita o aumento de texto do sistema.
+- **Label** (System Medium/Roboto Medium, 15pt iOS · 14sp Android · 16px web, lh 1.35): rótulos e controles.
+- **Metadata** (System/Roboto, piso 11pt iOS · 12sp Android): subtítulo de linha e informação auxiliar; nada interativo abaixo desse piso.
+- **Valor monetário** (System Medium/Roboto Medium, 32px, tabular): degrau próprio para quantias em foco.
 
 ### Named Rules
-**The Two-Weight Rule.** Só existem dois pesos no app inteiro: Light e Regular. `fontWeight` nunca é usado em lugar nenhum do código — a fonte não tem arquivo bold, e sintetizar um (como o navegador faz por padrão) diverge entre nativo e web. Zero ocorrências verificadas em 76 arquivos.
+**The Brand-Is-An-Accent Rule.** Neue Machina aparece em marca e títulos, não em parágrafos, campos ou controles. A interface operacional usa os papéis tipográficos do sistema; nunca sintetize peso inexistente nos arquivos da marca.
 
 **The Tabular Rule.** Todo valor monetário usa `fontVariant: ['tabular-nums']`. Sem isso, dígitos de largura variável fazem o número "dançar" visualmente a cada atualização — inaceitável numa tela que existe pra mostrar dinheiro.
 
 ## Layout
 
-O app usa uma coluna só, largura total, em qualquer tamanho de tela — inclusive na web, onde o app "de dentro" (pós-login) não ganha layout alternativo por design explícito (é o mesmo produto, a mesma decisão em qualquer tamanho). A landing page pública é a única exceção: só ela ganha breakpoints reais (`compacto` <768px, `medio` 768–1279px, `amplo` ≥1280px), porque é a única superfície pensada pra ser vista num monitor por alguém que ainda não é usuário.
+Toda plataforma usa classes de janela (`compacto` <768px, `medio` 768–1279px, `amplo` ≥1280px), inclusive iPad Split View, Android multiwindow e aparelhos dobráveis. Compacto permanece em uma coluna; médio pode reestruturar cards em duas colunas ou modal central; amplo comporta até três colunas. A web usa SideNav em médio/amplo. No nativo, a própria navegação do sistema decide tab bar, Navigation Bar ou sidebar adaptável.
 
 Ritmo padrão do corpo de tela: `padding` 16px, `gap` entre cards 12px (token `screenRhythm`). Card de destaque em largura cheia usa `padding` 16px, borda 1px — a mesma receita em toda tela principal, depois de uma consolidação que unificou paddings de 12/16/20 que cada tela tinha herdado de sessões diferentes.
 
@@ -206,8 +203,9 @@ Botão de ação primária dentro do fluxo do app usa raio `md` (12px); o CTA da
 - **Prefixo monetário:** "R$" em Faint Kelp, tamanho `destaque` (20px), ao lado do valor em si — nunca dentro do mesmo campo de texto que o número.
 
 ### Navigation
-- **App (nativo/web estreito):** barra flutuante inferior.
-- **App (web largo):** trilho lateral só de ícones (`medio`) ou barra lateral com rótulo (`amplo`) — a única adaptação de navegação que existe fora da landing page.
+- **iOS/iPadOS:** Native Tabs do Expo Router, com materiais e sidebar adaptável fornecidos pelo UIKit.
+- **Android:** Native Tabs do Expo Router, com Navigation Bar, indicador, ripple e Predictive Back do sistema.
+- **Web compacto:** barra inferior de vidro do Grana.; **web médio/amplo:** trilho/barra lateral customizada.
 - **Landing:** cabeçalho simples, logotipo + link de entrada; sem barra de navegação persistente.
 
 ### Herói-storytelling (assinatura da landing page)
@@ -223,7 +221,7 @@ Sequência de 4 "capítulos" em scroll — a tela do capítulo (sem moldura de d
 - **Do** deixar a landing page (Persuadir) mais pesada visualmente que o app (Operar) — é intencional, não drift.
 
 ### Don't:
-- **Don't** usar `fontWeight` em lugar nenhum — a fonte não tem arquivo bold; o resultado diverge entre nativo e web.
+- **Don't** aplicar Neue Machina a corpo, metadados, campos ou controles; e não sintetizar `fontWeight` nos arquivos Light/Regular da marca.
 - **Don't** clonar a identidade visual de outro banco/fintech — sem vermelho de alarme, sem badge/confete de gamificação, sem urgência fabricada.
 - **Don't** desenhar a interface como planilha utilitária — voz e WhatsApp são a entrada principal; a tela nunca deveria parecer uma ferramenta de contador.
 - **Don't** inventar uma nova sombra ad hoc — as cinco receitas catalogadas em Elevation & Depth cobrem todo caso real; uma sexta variação é sinal de que a tela deveria reaproveitar uma das cinco.

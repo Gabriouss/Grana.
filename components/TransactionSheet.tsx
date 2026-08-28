@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import AppModal from './AppModal';
+import ToggleSwitch from './ToggleSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import Sheet from '@/components/Sheet';
@@ -7,7 +9,7 @@ import DatePickerModal from '@/components/DatePickerModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount, todayISO } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import type { CreditCard, TxType } from '@/lib/types';
 
 /* Sheet de lançamento — um só, usado pela tela de Lançamentos e pela de
@@ -138,7 +140,7 @@ export default function TransactionSheet({
 
   return (
     <>
-      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
         <Sheet onClose={onClose}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{titulo}</Text>
@@ -242,16 +244,11 @@ export default function TransactionSheet({
           {!installment && (
             <View style={styles.fieldRow}>
               <Text style={styles.fieldKey}>{ehCredito ? 'Cobrança recorrente' : 'Repetir mensalmente'}</Text>
-              <AppPressable
-                style={[styles.switchTrack, recurring && styles.switchTrackOn]}
-                onPress={() => setRecurring((p) => !p)}
-                hitSlop={12}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: recurring }}
-                accessibilityLabel={ehCredito ? 'Cobrança recorrente' : 'Repetir mensalmente'}
-              >
-                <View style={[styles.switchThumb, recurring && styles.switchThumbOn]} />
-              </AppPressable>
+              <ToggleSwitch
+                value={recurring}
+                onToggle={() => setRecurring((p) => !p)}
+                label={ehCredito ? 'Cobrança recorrente' : 'Repetir mensalmente'}
+              />
             </View>
           )}
 
@@ -269,16 +266,11 @@ export default function TransactionSheet({
             <View style={{ gap: 6 }}>
               <View style={styles.fieldRow}>
                 <Text style={styles.fieldKey}>Compra parcelada</Text>
-                <AppPressable
-                  style={[styles.switchTrack, installment && styles.switchTrackOn]}
-                  onPress={() => setInstallment((p) => !p)}
-                  hitSlop={12}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: installment }}
-                  accessibilityLabel="Compra parcelada"
-                >
-                  <View style={[styles.switchThumb, installment && styles.switchThumbOn]} />
-                </AppPressable>
+                <ToggleSwitch
+                  value={installment}
+                  onToggle={() => setInstallment((p) => !p)}
+                  label="Compra parcelada"
+                />
               </View>
 
               {installment && (
@@ -289,6 +281,7 @@ export default function TransactionSheet({
                       style={styles.stepperBtn}
                       onPress={() => setInstallmentCount((c) => String(Math.max(2, (Number(c) || 2) - 1)))}
                       hitSlop={8}
+                      accessibilityLabel="Menos uma parcela"
                     >
                       <Ionicons name="remove" size={16} color={theme.ink} />
                     </AppPressable>
@@ -297,6 +290,7 @@ export default function TransactionSheet({
                       style={styles.stepperBtn}
                       onPress={() => setInstallmentCount((c) => String(Math.min(60, (Number(c) || 2) + 1)))}
                       hitSlop={8}
+                      accessibilityLabel="Mais uma parcela"
                     >
                       <Ionicons name="add" size={16} color={theme.ink} />
                     </AppPressable>
@@ -324,7 +318,7 @@ export default function TransactionSheet({
             )}
           </AppPressable>
         </Sheet>
-      </Modal>
+      </AppModal>
 
       <DatePickerModal
         visible={datePickerOpen}
@@ -416,16 +410,12 @@ const styles = StyleSheet.create({
   dateQuickChipActive: { backgroundColor: theme.ink + '15', borderColor: theme.ink },
   dateQuickText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   dateQuickTextActive: { color: theme.ink },
-  switchTrack: { width: 34, height: 20, borderRadius: 10, backgroundColor: theme.ruleStrong, padding: 2 },
-  switchTrackOn: { backgroundColor: theme.ink },
-  switchThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: theme.paperRaised },
-  switchThumbOn: { transform: [{ translateX: 14 }] },
   installmentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stepperBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.paperRaised,

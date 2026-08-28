@@ -490,7 +490,7 @@ export default function LancamentosScreen() {
             returnKeyType="search"
           />
           {search.length > 0 && (
-            <AppPressable onPress={() => setSearch('')} hitSlop={10}>
+            <AppPressable onPress={() => setSearch('')} hitSlop={10} accessibilityLabel="Limpar busca">
               <Ionicons name="close-circle" size={16} color={theme.inkFaint} />
             </AppPressable>
           )}
@@ -697,10 +697,6 @@ const styles = StyleSheet.create({
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  switchTrack: { width: 34, height: 20, borderRadius: 10, backgroundColor: theme.ruleStrong, padding: 2 },
-  switchTrackOn: { backgroundColor: theme.ink },
-  switchThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: theme.paperRaised },
-  switchThumbOn: { transform: [{ translateX: 14 }] },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
@@ -776,20 +772,6 @@ const styles = StyleSheet.create({
   categoryChipDot: { width: 7, height: 7, borderRadius: 3.5 },
   categoryChipText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   categoryChipTextActive: { color: theme.ink},
-  installmentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stepperBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.paperRaised,
-    borderWidth: 1,
-    borderColor: theme.rule,
-  },
-  stepperVal: { color: theme.ink, fontSize: type.apoio, minWidth: 26, textAlign: 'center', fontFamily: fonts.regular },
-  installmentHint: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
 });
 
 

@@ -7,6 +7,8 @@ import { formatMoney } from '@/lib/format';
 import { hapticTap } from '@/lib/haptics';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
 import AppPressable from './AppPressable';
+import { useModalAccessibility } from '@/lib/modal-accessibility';
+import { useReducedMotion } from '@/lib/motion';
 
 /**
  * Retrospectiva mensal em formato Stories. A navegação é só por toque
@@ -118,6 +120,9 @@ export default function MonthlyWrappedModal({
   const { width } = useWindowDimensions();
   const [indice, setIndice] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
+  const modalRef = useRef<View>(null);
+  const reduzirMovimento = useReducedMotion();
+  useModalAccessibility(modalRef, visible);
   /* O <Modal> desenha sob a barra de status no modo edge-to-edge; o 56 fixo
      que estava aqui acertava por acaso na maioria dos aparelhos e errava nos
      de barra mais alta ou mais baixa. */
@@ -140,12 +145,16 @@ export default function MonthlyWrappedModal({
     hapticTap();
     fade.setValue(0);
     setIndice(novo);
+    if (reduzirMovimento) {
+      fade.setValue(1);
+      return;
+    }
     Animated.timing(fade, { toValue: 1, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
   }
 
   return (
-    <Modal visible={visible} animationType="fade" onRequestClose={onClose}>
-      <View style={[styles.fundo, { paddingTop: insets.top + spacing.xl }]}>
+    <Modal visible={visible} animationType={reduzirMovimento ? 'none' : 'fade'} onRequestClose={onClose}>
+      <View ref={modalRef} style={[styles.fundo, { paddingTop: insets.top + spacing.xl }]} accessibilityViewIsModal role="dialog" focusable>
         {/* Barra de progresso dos slides */}
         <View style={styles.progressoRow}>
           {slides.map((s, i) => (
@@ -171,18 +180,27 @@ export default function MonthlyWrappedModal({
           <Text style={styles.apoio}>{slide.apoio}</Text>
         </Animated.View>
 
-        {/* Zonas de toque: metade esquerda volta, metade direita avança. */}
+        {/* Zonas de toque: metade esquerda volta, metade direita avança.
+            `android_ripple` transparente aqui é deliberado e NÃO é o mesmo
+            caso das abas: um ripple do Material espalhando por 40% da tela
+            não é retorno de toque, é um flash de tela inteira. Visualizador
+            em capítulos (o padrão de "stories") não desenha feedback nessas
+            zonas em plataforma nenhuma — o feedback é o capítulo virar.
+            Os rótulos existem porque, sem texto nem ícone dentro, um leitor
+            de tela anunciaria dois "botão" sem nome cobrindo a tela toda. */}
         <View style={styles.zonasToque} pointerEvents="box-none">
           <AppPressable
             style={[styles.zona, { width: width * 0.4 }]}
             scaleOnPress={false}
             android_ripple={{ color: 'transparent' }}
+            accessibilityLabel="Capítulo anterior"
             onPress={() => irPara(indice - 1)}
           />
           <AppPressable
             style={[styles.zona, { width: width * 0.6 }]}
             scaleOnPress={false}
             android_ripple={{ color: 'transparent' }}
+            accessibilityLabel="Próximo capítulo"
             onPress={() => irPara(indice + 1)}
           />
         </View>

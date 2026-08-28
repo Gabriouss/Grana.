@@ -46,7 +46,12 @@ export default function PasswordInput({
         value={value}
         onChangeText={onChangeText}
       />
-      <AppPressable onPress={() => setVisivel((v) => !v)} hitSlop={10} style={styles.botao}>
+      <AppPressable
+        onPress={() => setVisivel((v) => !v)}
+        hitSlop={10}
+        style={styles.botao}
+        accessibilityLabel={visivel ? 'Ocultar senha' : 'Mostrar senha'}
+      >
         <Ionicons name={visivel ? 'eye-off-outline' : 'eye-outline'} size={18} color={theme.inkFaint} />
       </AppPressable>
     </View>

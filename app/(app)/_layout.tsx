@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ComponentProps, type RefObject } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView, BlurTargetView } from 'expo-blur';
@@ -11,11 +12,15 @@ import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
 import SideNav, { type ItemNav } from '@/components/SideNav';
+import { useReducedMotion } from '@/lib/motion';
 
 /* expo-router não reexporta o tipo de `tabBar` publicamente (ele vive numa
    cópia interna do react-navigation dentro do próprio pacote) — em vez de um
    import profundo e frágil, o tipo é extraído da própria prop do `<Tabs>`. */
 type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (props: infer P) => any ? P : never;
+type NativeIconProps = ComponentProps<typeof NativeTabs.Trigger.Icon>;
+type NativeSfIcon = Extract<NonNullable<Extract<NativeIconProps, { sf?: unknown }>['sf']>, string>;
+type NativeMaterialIcon = Extract<NonNullable<Extract<NativeIconProps, { md?: unknown }>['md']>, string>;
 
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'home-outline',
@@ -107,22 +112,33 @@ function TabButton({
   onPress: () => void;
 }) {
   const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const reduzirMovimento = useReducedMotion();
 
   useEffect(() => {
-    Animated.spring(progress, { toValue: focused ? 1 : 0, useNativeDriver: true, speed: 14, bounciness: 6 }).start();
-  }, [focused]);
+    if (reduzirMovimento) {
+      progress.setValue(focused ? 1 : 0);
+      return;
+    }
+    Animated.spring(progress, { toValue: focused ? 1 : 0, useNativeDriver: Platform.OS !== 'web', speed: 14, bounciness: 6 }).start();
+  }, [focused, progress, reduzirMovimento]);
 
   const color = focused ? theme.accent2 : theme.inkFaint;
 
   return (
     <AppPressable
       onPress={onPress}
-      accessibilityRole="button"
+      accessibilityRole="tab"
       accessibilityState={focused ? { selected: true } : {}}
       accessibilityLabel={label}
       style={styles.tabItem}
       scaleOnPress={false}
-      android_ripple={{ color: 'transparent' }}
+      /* O ripple era `transparent` — o retângulo padrão do sistema vazava por
+         cima da pílula circular ativa (o "quadrado grosseiro" ao trocar de
+         aba). Zerar resolvia o visual removendo o retorno tátil que todo
+         usuário de Android espera de um toque. `borderless` + `radius` recorta
+         o ripple no mesmo círculo da pílula (44px de `iconWrap`, raio 22):
+         some o vazamento E o feedback volta. */
+      android_ripple={{ color: theme.hover, borderless: true, radius: 22 }}
     >
       <View style={styles.iconWrap}>
         <Animated.View
@@ -178,18 +194,85 @@ const ITENS_LATERAIS: ItemNav[] = [
 const RODAPE_LATERAL: ItemNav[] = [{ rota: 'perfil', rotulo: 'Perfil', icone: 'person-circle-outline' }];
 
 export default function AppTabsLayout() {
+  useAtalhosDeepLink();
+
+  return (
+    <WalletProvider>
+      {Platform.OS === 'web' ? <WebTabsLayout /> : <NativeTabsLayout />}
+    </WalletProvider>
+  );
+}
+
+/**
+ * No iOS e Android a estrutura de navegação pertence ao sistema: UIKit
+ * fornece tab bar/sidebar adaptável no iPad e o Android fornece Navigation
+ * Bar, indicador e ripple Material. A cor continua sendo do Grana., mas
+ * medidas, insets, semântica e interação deixam de ser uma imitação em JS.
+ */
+function NativeTabsLayout() {
+  return (
+    <NativeTabs
+      backgroundColor={theme.paperRaised}
+      iconColor={{ default: theme.inkFaint, selected: theme.accent2 }}
+      tintColor={theme.accent2}
+      indicatorColor="rgba(174,255,227,0.16)"
+      rippleColor={theme.hover}
+      labelVisibilityMode="selected"
+      backBehavior="history"
+      blurEffect="systemChromeMaterialDark"
+      shadowColor={theme.ruleStrong}
+      sidebarAdaptable
+      disableTransparentOnScrollEdge
+      tabBarRespectsIMEInsets
+    >
+      <NativeTab name="index" label="Início" sf="house" sfSelected="house.fill" md="home" />
+      <NativeTab name="lancamentos" label="Débito e Pix" sf="wallet.pass" sfSelected="wallet.pass.fill" md="account_balance_wallet" />
+      <NativeTab name="credito" label="Crédito" sf="creditcard" sfSelected="creditcard.fill" md="credit_card" />
+      <NativeTab name="contas" label="Boletos" sf="doc.text" sfSelected="doc.text.fill" md="receipt_long" />
+      <NativeTab name="desafios" label="Desafios" sf="trophy" sfSelected="trophy.fill" md="emoji_events" />
+      <NativeTabs.Trigger name="graficos" hidden />
+      <NativeTabs.Trigger name="perfil" hidden />
+    </NativeTabs>
+  );
+}
+
+function NativeTab({
+  name,
+  label,
+  sf,
+  sfSelected,
+  md,
+}: {
+  name: string;
+  label: string;
+  sf: NativeSfIcon;
+  sfSelected: NativeSfIcon;
+  md: NativeMaterialIcon;
+}) {
+  return (
+    <NativeTabs.Trigger name={name} accessibilityLabel={label}>
+      <NativeTabs.Trigger.Label>{label}</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger.Icon
+        sf={{ default: sf, selected: sfSelected }}
+        md={{ default: md, selected: md }}
+      />
+    </NativeTabs.Trigger>
+  );
+}
+
+/** Web mantém navegação própria: ali não existe um componente de sistema. */
+function WebTabsLayout() {
   const blurTarget = useRef<View>(null);
   const { temBarraLateral } = useBreakpoint();
-  useAtalhosDeepLink();
 
   /* `tabBarPosition: 'left'` faz o próprio BottomTabView virar a orientação
      do container para linha e renderizar a barra ANTES das telas — ou seja,
      a lateral entra no fluxo normal e as telas ocupam o que sobra, sem
      posicionamento absoluto nem cálculo de margem manual. */
   return (
-    <WalletProvider>
-      <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
+    <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
         <Tabs
+          detachInactiveScreens
           tabBar={(props) =>
             temBarraLateral ? (
               <SideNav
@@ -202,7 +285,7 @@ export default function AppTabsLayout() {
               <FloatingTabBar {...props} blurTarget={blurTarget} />
             )
           }
-          screenOptions={{ headerShown: false, tabBarPosition: temBarraLateral ? 'left' : 'bottom' }}
+          screenOptions={{ headerShown: false, freezeOnBlur: true, lazy: true, tabBarPosition: temBarraLateral ? 'left' : 'bottom' }}
         >
           <Tabs.Screen name="index" options={{ title: 'Início' }} />
           <Tabs.Screen name="lancamentos" options={{ title: 'Débito e Pix' }} />
@@ -214,8 +297,7 @@ export default function AppTabsLayout() {
           <Tabs.Screen name="graficos" options={{ href: null }} />
           <Tabs.Screen name="perfil" options={{ href: null }} />
         </Tabs>
-      </BlurTargetView>
-    </WalletProvider>
+    </BlurTargetView>
   );
 }
 

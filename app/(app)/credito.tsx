@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AppModal from '@/components/AppModal';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -23,8 +23,9 @@ import {
   addTransaction,
   deleteCreditCard,
   deleteTransaction,
+  fetchCreditTransactionsForMonth,
   fetchCreditCards,
-  fetchTransactions,
+  fetchRecurrenceContext,
   fetchCardInvoicePayments,
   payCardInvoice,
   reopenCardInvoice,
@@ -35,7 +36,7 @@ import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, touchTarget } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type CreditCardInvoicePayment, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -136,20 +137,25 @@ export default function CreditoScreen() {
     }
 
     try {
-      const [c, tBruto, p] = await Promise.all([fetchCreditCards(), fetchTransactions(), fetchCardInvoicePayments()]);
+      const [c, recurrenceContext, selectedTransactionsInitial, p] = await Promise.all([
+        fetchCreditCards(),
+        fetchRecurrenceContext(),
+        fetchCreditTransactionsForMonth(selectedYear, selectedMonth),
+        fetchCardInvoicePayments(),
+      ]);
 
       /* Assinaturas no cartão ("repete a cada mês") só entram na fatura do mês
          novo se alguém criar a ocorrência — é aqui que isso acontece, tanto
          pras compras no crédito quanto pras saídas da carteira. */
-      let t = tBruto;
-      const faltantes = ocorrenciasFaltantes(t, todayISO());
+      let selectedTransactions = selectedTransactionsInitial;
+      const faltantes = ocorrenciasFaltantes(recurrenceContext, todayISO());
       if (faltantes.length > 0) {
         await criarOcorrenciasRecorrentes(faltantes);
-        t = await fetchTransactions();
+        selectedTransactions = await fetchCreditTransactionsForMonth(selectedYear, selectedMonth);
       }
 
       setCards(c);
-      setTransactions(t);
+      setTransactions(selectedTransactions);
       setInvoicePayments(p);
 
       // Lembretes de vencimento da fatura do mês corrente real (não o mês
@@ -159,8 +165,11 @@ export default function CreditoScreen() {
       const anoAtual = hoje.getFullYear();
       const mesAtual = hoje.getMonth();
       const { lembretesContasAtivo } = await carregarNotifPrefs();
+      const currentTransactions = selectedYear === anoAtual && selectedMonth === mesAtual
+        ? selectedTransactions
+        : await fetchCreditTransactionsForMonth(anoAtual, mesAtual);
       for (const card of c) {
-        const valorFatura = t
+        const valorFatura = currentTransactions
           .filter(
             (tx) =>
               (tx.payment_method === 'credit' || tx.card_id) &&
@@ -181,7 +190,7 @@ export default function CreditoScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, selectedMonth, selectedYear]);
 
   useFocusEffect(
     useCallback(() => {
@@ -648,8 +657,23 @@ export default function CreditoScreen() {
         }
       />
 
-      <ScrollView
+      <FlatList
         style={styles.scroll}
+        data={creditTransactions}
+        keyExtractor={(tx) => tx.id}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
+        renderItem={({ item }) => (
+          <CreditTransactionRow
+            tx={item}
+            onLongPress={() => {
+              setSelectedTx(item);
+              setActionSheetOpen(true);
+            }}
+          />
+        )}
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
         refreshControl={
           <RefreshControl
@@ -661,7 +685,8 @@ export default function CreditoScreen() {
             tintColor={theme.ink}
           />
         }
-      >
+        ListHeaderComponent={
+          <>
         {/* Seletor de Mês */}
         <MonthSelector
           year={selectedYear}
@@ -674,8 +699,15 @@ export default function CreditoScreen() {
 
         {/* Carrossel de Cartões */}
         {walletCards.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardsRow}>
-            {walletCards.map((card) => {
+          <FlatList
+            horizontal
+            data={walletCards}
+            keyExtractor={(card) => card.id}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.cardsRow}
+            initialNumToRender={4}
+            windowSize={5}
+            renderItem={({ item: card }) => {
               const bankObj = BANKS.find((b) => b.id === card.bank);
               const cardSpent = walletTransactions
                 .filter((t) => t.card_id === card.id && isSameMonth(t.occurred_on, selectedYear, selectedMonth))
@@ -729,8 +761,8 @@ export default function CreditoScreen() {
                   </View>
                 </AppPressable>
               );
-            })}
-          </ScrollView>
+            }}
+          />
         ) : (
           <View style={styles.emptyCardsCard}>
             <Ionicons name="card-outline" size={32} color={theme.inkFaint} />
@@ -750,7 +782,7 @@ export default function CreditoScreen() {
         {/* Resumo da Fatura Consolidada */}
         <View style={styles.invoiceSummaryCard}>
           <View style={styles.invoiceHeadRow}>
-            <View>
+            <View style={styles.invoiceInfo}>
               <Text style={styles.invoiceLabel}>
                 {selectedCardId === 'all' ? 'Total em Faturas (Todos os Cartões)' : 'Fatura do Cartão Selecionado'}
               </Text>
@@ -802,42 +834,14 @@ export default function CreditoScreen() {
         <Text style={styles.sectionLabel}>Lançamentos da Fatura · segure para editar ou excluir</Text>
         {creditTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhuma compra no crédito neste mês.</Text>
-        ) : (
-          creditTransactions.map((tx) => (
-            <AppPressable
-              key={tx.id}
-              style={({ hovered }) => [styles.txRow, hovered && { backgroundColor: 'rgba(255,255,255,0.03)' }]}
-              onLongPress={() => {
-                setSelectedTx(tx);
-                setActionSheetOpen(true);
-              }}
-            >
-              <View style={styles.txInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.txDesc}>{tx.description}</Text>
-                  {tx.installment_total && tx.installment_total > 1 ? (
-                    <View style={styles.instBadge}>
-                      <Text style={styles.instBadgeText}>{`${tx.installment_current || 1}/${tx.installment_total}x`}</Text>
-                    </View>
-                  ) : null}
-                  {tx.recurring ? (
-                    <Ionicons name="repeat" size={13} color={theme.inkFaint} accessibilityLabel="Cobrança recorrente" />
-                  ) : null}
-                </View>
-                <Text style={styles.txDate}>{`${formatDateLabel(tx.occurred_on)} • ${tx.category}`}</Text>
-              </View>
-              <PrivacyValue>
-                <Text style={styles.txAmount}>{`− R$ ${formatMoney(Number(tx.amount))}`}</Text>
-              </PrivacyValue>
-            </AppPressable>
-          ))
-        )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+        ) : null}
+          </>
+        }
+        ListFooterComponent={<View style={{ height: 100 }} />}
+      />
 
       {/* Modal: Novo Cartão de Crédito */}
-      <Modal visible={newCardOpen} animationType="slide" transparent onRequestClose={() => setNewCardOpen(false)}>
+      <AppModal visible={newCardOpen} animationType="slide" transparent onRequestClose={() => setNewCardOpen(false)}>
         <Sheet onClose={() => setNewCardOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Novo Cartão de Crédito</Text>
@@ -936,7 +940,7 @@ export default function CreditoScreen() {
             {cardSaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Salvar Cartão</Text>}
           </AppPressable>
         </Sheet>
-      </Modal>
+      </AppModal>
 
       <ItemActionSheet
         visible={actionSheetOpen}
@@ -975,7 +979,7 @@ export default function CreditoScreen() {
       />
 
       {/* Modal: Pagar Fatura */}
-      <Modal visible={payInvoiceOpen} animationType="slide" transparent onRequestClose={() => setPayInvoiceOpen(false)}>
+      <AppModal visible={payInvoiceOpen} animationType="slide" transparent onRequestClose={() => setPayInvoiceOpen(false)}>
         <Sheet onClose={() => setPayInvoiceOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Pagar Fatura</Text>
@@ -1039,7 +1043,7 @@ export default function CreditoScreen() {
             {paySaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Confirmar Pagamento</Text>}
           </AppPressable>
         </Sheet>
-      </Modal>
+      </AppModal>
 
       <DatePickerModal
         visible={payDatePickerOpen}
@@ -1058,6 +1062,39 @@ export default function CreditoScreen() {
     </SafeAreaView>
   );
 }
+
+const CreditTransactionRow = memo(function CreditTransactionRow({
+  tx,
+  onLongPress,
+}: {
+  tx: Transaction;
+  onLongPress: () => void;
+}) {
+  return (
+    <AppPressable
+      style={({ hovered }) => [styles.txRow, hovered && { backgroundColor: theme.hover }]}
+      onLongPress={onLongPress}
+    >
+      <View style={styles.txInfo}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={styles.txDesc}>{tx.description}</Text>
+          {tx.installment_total && tx.installment_total > 1 ? (
+            <View style={styles.instBadge}>
+              <Text style={styles.instBadgeText}>{`${tx.installment_current || 1}/${tx.installment_total}x`}</Text>
+            </View>
+          ) : null}
+          {tx.recurring ? (
+            <Ionicons name="repeat" size={13} color={theme.inkFaint} accessibilityLabel="Cobrança recorrente" />
+          ) : null}
+        </View>
+        <Text style={styles.txDate}>{`${formatDateLabel(tx.occurred_on)} • ${tx.category}`}</Text>
+      </View>
+      <PrivacyValue>
+        <Text style={styles.txAmount}>{`− R$ ${formatMoney(Number(tx.amount))}`}</Text>
+      </PrivacyValue>
+    </AppPressable>
+  );
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.paper },
@@ -1204,10 +1241,12 @@ const styles = StyleSheet.create({
   },
   invoiceHeadRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: spacing.sm,
   },
+  invoiceInfo: { flex: 1, minWidth: 168 },
   invoiceLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
@@ -1273,6 +1312,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.md,
+    justifyContent: 'center',
+    flexGrow: 1,
+    minHeight: touchTarget,
   },
   addPurchaseBtnText: {
     fontFamily: fonts.regular,

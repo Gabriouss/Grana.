@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,8 @@ import {
   fetchTransactions,
 } from '@/lib/data';
 import type { WhatsappLink } from '@/lib/types';
+import { useModalAccessibility } from '@/lib/modal-accessibility';
+import { useReducedMotion } from '@/lib/motion';
 import {
   carregarNotifPrefs,
   salvarNotifPrefs,
@@ -98,6 +100,15 @@ export default function PerfilScreen() {
   const [atalhosOpen, setAtalhosOpen] = useState(false);
   const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
   const [whatsappSaving, setWhatsappSaving] = useState(false);
+  const nomeModalRef = useRef<View>(null);
+  const reauthModalRef = useRef<View>(null);
+  const atalhosModalRef = useRef<View>(null);
+  const whatsappModalRef = useRef<View>(null);
+  const reduzirMovimento = useReducedMotion();
+  useModalAccessibility(nomeModalRef, nomeOpen);
+  useModalAccessibility(reauthModalRef, reauthOpen);
+  useModalAccessibility(atalhosModalRef, atalhosOpen);
+  useModalAccessibility(whatsappModalRef, whatsappOpen);
 
 
   function triggerToast(msg: string) {
@@ -676,9 +687,9 @@ export default function PerfilScreen() {
 
       {/* Toast */}
       {/* Edição do nome de exibição. */}
-      <Modal visible={nomeOpen} animationType="fade" transparent onRequestClose={() => setNomeOpen(false)}>
+      <Modal visible={nomeOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setNomeOpen(false)}>
         <View style={styles.reauthScrim}>
-          <View style={styles.reauthCard}>
+          <View ref={nomeModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Como podemos te chamar?</Text>
             <Text style={styles.reauthText}>
               Usamos esse nome aqui no perfil e nas mensagens de lembrete de vencimento.
@@ -713,12 +724,12 @@ export default function PerfilScreen() {
       {/* Reautenticação antes de excluir a conta. */}
       <Modal
         visible={reauthOpen}
-        animationType="fade"
+        animationType={reduzirMovimento ? 'none' : 'fade'}
         transparent
         onRequestClose={() => setReauthOpen(false)}
       >
         <View style={styles.reauthScrim}>
-          <View style={styles.reauthCard}>
+          <View ref={reauthModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Confirme sua senha</Text>
             <Text style={styles.reauthText}>
               Todos os seus lançamentos, contas, categorias e orçamentos serão apagados
@@ -766,9 +777,9 @@ export default function PerfilScreen() {
       </Modal>
 
       {/* Guia de atalhos rápidos (deep links) */}
-      <Modal visible={atalhosOpen} animationType="fade" transparent onRequestClose={() => setAtalhosOpen(false)}>
+      <Modal visible={atalhosOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setAtalhosOpen(false)}>
         <View style={styles.reauthScrim}>
-          <View style={styles.reauthCard}>
+          <View ref={atalhosModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Atalhos rápidos</Text>
             <Text style={styles.reauthText}>
               O Grana. responde a endereços {'grana://'} — dá para abrir uma ação direto da tela de
@@ -809,9 +820,9 @@ export default function PerfilScreen() {
       </Modal>
 
       {/* Vínculo de WhatsApp */}
-      <Modal visible={whatsappOpen} animationType="fade" transparent onRequestClose={() => setWhatsappOpen(false)}>
+      <Modal visible={whatsappOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setWhatsappOpen(false)}>
         <View style={styles.reauthScrim}>
-          <View style={styles.reauthCard}>
+          <View ref={whatsappModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Lançar pelo WhatsApp</Text>
 
             {whatsappLink?.verified ? (

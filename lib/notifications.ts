@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type * as NotificationsModule from 'expo-notifications';
 import { obterProximaMensagem } from './notification-messages';
+import { formatMoney } from './format';
 import type { Bill, CreditCard } from './types';
 
 const CHANNEL_ID = 'lembretes-contas';
@@ -232,6 +233,47 @@ export async function cancelCardInvoiceReminders(cardId: string, year: number, m
       Notifications!.cancelScheduledNotificationAsync(idForFatura(cardId, year, month, etapa)).catch(() => {})
     )
   );
+}
+
+/* ---- alerta de %-do-limite do cartão ---- */
+
+/**
+ * Notificação IMEDIATA — diferente de todos os lembretes acima (sempre
+ * agendados por DATA futura), esta é orientada a EVENTO: dispara na hora em
+ * que `checarLimiteCartao` (lib/creditLimitAlert.ts) detecta que um cartão
+ * acabou de cruzar um degrau de 50/70/90/100% do limite, chamada de dentro
+ * de `addTransaction` (lib/data.ts) logo depois de salvar um gasto no
+ * crédito — só cobre lançamento feito PELO APP, de propósito (decisão do
+ * autor: nada de notificação de limite pra gasto que entra pelo WhatsApp).
+ *
+ * `trigger: { seconds: 1, channelId }`, não `trigger: null`: o disparo
+ * imediato "puro" do expo-notifications não aceita `channelId` junto (só os
+ * gatilhos por tempo aceitam), e sem canal explícito o Android pode não
+ * mostrar a notificação com a importância HIGH que `ensureChannel` configura.
+ * Um segundo de atraso é imperceptível e continua sendo "na hora" pro que a
+ * pessoa pediu — só não é usa o caminho sem canal, que arrisca não aparecer.
+ */
+export async function notifyCreditLimitThreshold(card: CreditCard, threshold: number, spent: number): Promise<void> {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
+
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+
+  await ensureChannel();
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `${card.name} chegou a ${threshold}% do limite`,
+        body: `R$ ${formatMoney(spent)} de R$ ${formatMoney(card.limit_amount)} gastos neste mês.`,
+        data: { cardId: card.id, threshold },
+      },
+      trigger: { seconds: 1, channelId: CHANNEL_ID } as any,
+    });
+  } catch (e) {
+    // Ignora erro se a notificação local falhar
+  }
 }
 
 /* ---- preferências de notificação ---- */

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Keyboard,
   Platform,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { theme, radius, spacing } from '@/lib/theme';
 import { useSheetFlutuante } from '@/lib/breakpoints';
+import { useModalAccessibility } from '@/lib/modal-accessibility';
 
 /**
  * Mede a altura do teclado para que as folhas (bottom sheets) possam se
@@ -77,6 +78,8 @@ export default function Sheet({
 }) {
   const keyboardHeight = useKeyboardHeight();
   const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
+  const painelRef = useRef<View>(null);
+  useModalAccessibility(painelRef);
 
   /* Esc fecha, na web. No celular o gesto equivalente é o botão voltar, que o
      <Modal> já trata por `onRequestClose`; no navegador não há equivalente —
@@ -93,11 +96,20 @@ export default function Sheet({
   }, [onClose]);
 
   return (
-    <Pressable style={[styles.scrim, scrimStyle]} onPress={onClose}>
+    <Pressable style={[styles.scrim, scrimStyle]} onPress={onClose} accessible={false}>
       {/* onPress vazio: por ser um Pressable aninhado, ele assume o toque
           antes que chegue ao fundo, então tocar dentro do painel nunca fecha
           a folha — só o fundo escurecido em volta dele fecha. */}
-      <Pressable style={[styles.sheet, { maxHeight: '92%' }, flutuanteStyle, sheetStyle]} onPress={() => {}}>
+      <Pressable
+        ref={painelRef}
+        style={[styles.sheet, { maxHeight: '92%' }, flutuanteStyle, sheetStyle]}
+        onPress={() => {}}
+        accessibilityViewIsModal
+        importantForAccessibility="yes"
+        role="dialog"
+        focusable
+      >
+        {Platform.OS !== 'web' ? <View style={styles.handle} accessible={false} /> : null}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={[
@@ -119,11 +131,20 @@ const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: theme.paperRaised,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderTopLeftRadius: Platform.OS === 'android' ? 28 : radius.xl,
+    borderTopRightRadius: Platform.OS === 'android' ? 28 : radius.xl,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
     width: '100%',
+    ...(Platform.OS === 'android' ? { elevation: 8 } : null),
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.ruleStrong,
+    alignSelf: 'center',
+    marginBottom: spacing.sm,
   },
   scroll: { flexShrink: 1 },
   content: { gap: spacing.md },

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, type, fonts } from '@/lib/theme';
 import { useBreakpoint } from '@/lib/breakpoints';
@@ -13,9 +14,9 @@ export type ItemNav = {
 };
 
 /**
- * Navegação lateral da versão desktop/tablet.
+ * Navegação lateral da versão web em janela média/ampla.
  *
- * Substitui a barra flutuante quando a janela passa de 768px — não por
+ * Substitui a barra flutuante web quando a janela passa de 768px — não por
  * preferência estética, mas porque as premissas mudam. Uma barra colada no
  * rodapé existe para ficar ao alcance do polegar; num monitor ela vira uma
  * faixa distante no canto inferior, longe de onde o olho e o cursor estão.
@@ -26,7 +27,8 @@ export type ItemNav = {
  * "Gráficos" (hoje `href: null`, alcançável só por navegação direta) e
  * "Perfil" (hoje só pelo avatar na Início). No desktop as duas viram
  * destinos de primeira classe, porque o limite de cinco abas que as
- * escondia é uma restrição de celular, não do produto.
+ * escondia é uma restrição de espaço, não do produto. No nativo, o Expo
+ * Router fornece tab bar/sidebar/Navigation Bar diretamente pelo sistema.
  */
 export default function SideNav({
   itens,
@@ -42,9 +44,22 @@ export default function SideNav({
 }) {
   const { ehAmplo } = useBreakpoint();
   const mostrarRotulos = ehAmplo;
+  /* O SideNav é exclusivo da web larga. Os insets permanecem aqui porque a
+     web instalada/PWA também pode ocupar uma janela edge-to-edge. */
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.barra, { width: mostrarRotulos ? 232 : 76 }]}>
+    <View
+      style={[
+        styles.barra,
+        {
+          width: (mostrarRotulos ? 232 : 76) + insets.left,
+          paddingLeft: spacing.md + insets.left,
+          paddingTop: spacing.lg + insets.top,
+          paddingBottom: spacing.lg + insets.bottom,
+        },
+      ]}
+    >
       <View style={[styles.marca, !mostrarRotulos && styles.marcaCompacta]}>
         {mostrarRotulos ? (
           <BrandLogotype width={104} />
@@ -122,13 +137,16 @@ function ItemBarra({
 }
 
 const styles = StyleSheet.create({
+  /* `paddingLeft`/`paddingTop`/`paddingBottom` e a largura vêm do componente,
+     somados aos insets — ver o comentário lá. Aqui fica só o `paddingRight`,
+     que nunca encosta em recorte de tela (o trilho está colado na borda
+     esquerda; a direita dele é conteúdo do app). */
   barra: {
     height: '100%',
     backgroundColor: theme.paperRaised,
     borderRightWidth: 1,
     borderRightColor: theme.rule,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
+    paddingRight: spacing.md,
     gap: spacing.xl,
   },
   marca: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xs },

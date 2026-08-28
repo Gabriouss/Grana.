@@ -78,9 +78,9 @@ passa por revisão da Meta como app do WhatsApp Business.
 ## Brand Commitments
 
 - Nome "Grana." — o ponto final faz parte da marca, sempre incluído.
-- Tipografia Neue Machina, só Light e Regular — não existe peso bold;
-  `fontWeight` nunca deve ser usado (o nativo ignora, a web sintetiza um
-  falso negrito, e as duas plataformas divergiam visualmente).
+- Neue Machina é a assinatura tipográfica da marca, só em Light e Regular;
+  corpo, controles e dados usam a fonte do sistema para respeitar Dynamic
+  Type/sp. Nunca sintetizar bold nos arquivos Neue Machina.
 - Paleta petróleo/menta escura (`lib/theme.ts`) é a paleta fixa da marca.
 - O símbolo da marca inclui o ponto; o gradiente atravessa a peça inteira
   como um objeto único (nunca reinicia por elemento); o ícone do app usa a
@@ -112,6 +112,6 @@ passa por revisão da Meta como app do WhatsApp Business.
 4. Verdade do produto acima de invenção decorativa — superfícies de
    marketing (landing page) reaproveitam telas/cores/componentes reais em
    vez de inventar versões fictícias mais bonitas.
-5. Uma linguagem de design só, em toda plataforma — web, iOS e Android
-   leem como o mesmo produto; diferença de plataforma é detalhe de
-   implementação, não decisão de design.
+5. Uma identidade só, expressa no idioma de cada plataforma — paleta, voz e
+   marca fazem web, iOS e Android lerem como o mesmo produto; navegação,
+   tipografia de interface e controles respeitam as convenções do sistema.

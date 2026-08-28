@@ -115,9 +115,10 @@ nenhum. Versão atual: `1.4.0`.
 - **Comentários só pra WHY não-óbvio** — restrição, bug histórico,
   decisão que parece estranha sem contexto. Nunca "o que" o código já diz
   sozinho.
-- **`fontWeight` nunca é usado** — a fonte (Neue Machina) só tem Light e
-  Regular como arquivos reais; não existe negrito. Ver "The Two-Weight
-  Rule" em `DESIGN.md`.
+- **Tipografia semântica** — Neue Machina só em marca/títulos; corpo,
+  metadados e controles usam fonte do sistema via `fonts`/`textStyles` em
+  `lib/theme.ts`, preservando Dynamic Type/sp. Não sintetizar bold na fonte
+  da marca.
 - **Valor monetário sempre com `fontVariant: ['tabular-nums']`** — dígitos
   não podem "dançar" ao atualizar.
 - **Sem vermelho** em nenhuma superfície de estado — saída de dinheiro usa
@@ -129,10 +130,10 @@ nenhum. Versão atual: `1.4.0`.
   com `as any` no ponto de uso (`GlowOrb.tsx` é a referência mais citada
   pro padrão). Sempre guardado por `Platform.OS === 'web'` quando o
   componente também roda nativo.
-- **`lib/breakpoints.ts`** — a landing page e as poucas telas com layout
-  largo usam `colunaConteudo`/`colunaLeitura`/`useBreakpoint()`; o app
-  logado é intencionalmente uma coluna só em qualquer tamanho de tela
-  (decisão de design documentada em `DESIGN.md`), a landing é a exceção.
+- **`lib/breakpoints.ts`** — classes de janela valem em web e nativo. O app
+  reestrutura grades/modais em médio e amplo; a web troca para SideNav,
+  enquanto iOS/Android usam Native Tabs e deixam tab bar/sidebar/Navigation
+  Bar sob responsabilidade do sistema.
 - **Alinhamento rigoroso** — instrução permanente do autor: todo texto e
   elemento de uma mesma página precisa compartilhar a mesma margem/grade,
   auditado de verdade (medição, não olhômetro) antes de considerar uma

@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
+import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { ESPACO_ALCA } from './WidgetGrid';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import { formatMoney, formatDateLabel, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { calcularLevelState } from '@/lib/gamification-infinite';
 import { LIMITS } from '@/lib/limits';
@@ -17,6 +18,19 @@ import PrivacyValue from './PrivacyValue';
 import Sheet from './Sheet';
 
 const ICONES: string[] = ['flag', 'airplane', 'car-sport', 'home', 'gift', 'shield-checkmark', 'school', 'heart'];
+
+/* O nome do ícone é a única informação que cada bolinha do seletor carrega —
+   um leitor de tela anunciando "car-sport" (o id do Ionicons) não ajuda. */
+const NOME_ICONE: Record<string, string> = {
+  flag: 'Meta',
+  airplane: 'Viagem',
+  'car-sport': 'Carro',
+  home: 'Casa',
+  gift: 'Presente',
+  'shield-checkmark': 'Reserva de emergência',
+  school: 'Estudos',
+  heart: 'Saúde',
+};
 
 type NovaMeta = { title: string; target_amount: number; color: string; icon: string; deadline: string | null };
 
@@ -114,9 +128,9 @@ export default function GoalsCarousel({
     <View style={{ gap: spacing.sm }}>
       <View style={styles.headRow}>
         <Text style={styles.sectionLabel}>Cofrinhos & metas</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+        <View style={styles.levelActions}>
           <View style={styles.levelPill}>
-            <Text style={styles.levelPillText}>
+            <Text style={styles.levelPillText} numberOfLines={1}>
               {level.elo.emoji} Nível {level.level} · {level.elo.title}
             </Text>
           </View>
@@ -206,7 +220,7 @@ export default function GoalsCarousel({
       </ScrollView>
 
       {/* Sheet: Nova Meta */}
-      <Modal visible={createOpen} animationType="slide" transparent onRequestClose={() => setCreateOpen(false)}>
+      <AppModal visible={createOpen} animationType="slide" transparent onRequestClose={() => setCreateOpen(false)}>
         <Sheet onClose={() => setCreateOpen(false)}>
           <View style={styles.header}>
             <Text style={styles.sheetTitle}>Nova meta</Text>
@@ -245,6 +259,9 @@ export default function GoalsCarousel({
                   key={i}
                   onPress={() => setIcon(i)}
                   style={[styles.iconChip, icon === i && { borderColor: color, backgroundColor: color + '25' }]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: icon === i }}
+                  accessibilityLabel={NOME_ICONE[i] ?? i}
                 >
                   <Ionicons name={i as any} size={18} color={icon === i ? color : theme.inkFaint} />
                 </AppPressable>
@@ -278,7 +295,7 @@ export default function GoalsCarousel({
             <Text style={styles.saveBtnText}>{creating ? 'Salvando...' : 'Criar meta'}</Text>
           </AppPressable>
         </Sheet>
-      </Modal>
+      </AppModal>
 
       <DatePickerModal
         visible={datePickerOpen}
@@ -302,9 +319,11 @@ export default function GoalsCarousel({
 const CARD_WIDTH = 152;
 
 const styles = StyleSheet.create({
-  headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...(Platform.OS === 'web' ? { paddingRight: ESPACO_ALCA } : null) },
+  headRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: spacing.xs, ...(Platform.OS === 'web' ? { paddingRight: ESPACO_ALCA } : null) },
+  levelActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.xs, flexShrink: 1, maxWidth: '70%' },
   sectionLabel: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
   levelPill: {
+    flexShrink: 1,
     backgroundColor: 'rgba(175,255,227,0.08)',
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
@@ -312,8 +331,8 @@ const styles = StyleSheet.create({
   },
   levelPillText: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
   carouselArrow: {
-    width: 26,
-    height: 26,
+    width: touchTarget,
+    height: touchTarget,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -352,8 +371,8 @@ const styles = StyleSheet.create({
   fieldLabel: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   iconRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   iconChip: {
-    width: 38,
-    height: 38,
+    width: touchTarget,
+    height: touchTarget,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',

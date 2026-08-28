@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import AppModal from './AppModal';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from '@/lib/alert';
@@ -121,7 +122,7 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Sheet onClose={onClose}>
         <View style={styles.cabecalho}>
           <View style={styles.tituloLinha}>
@@ -204,7 +205,7 @@ export default function WhatsappBotSheet({ visible, onClose, explicar, onExplica
           <ActivityIndicator color={theme.ink} style={{ marginVertical: spacing.lg }} />
         )}
       </Sheet>
-    </Modal>
+    </AppModal>
   );
 }
 

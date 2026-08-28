@@ -4,6 +4,7 @@ import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { MesProjetado } from '@/lib/projections';
 import PrivacyValue from './PrivacyValue';
+import { useReducedMotion } from '@/lib/motion';
 
 const TRACK_HEIGHT = 84;
 
@@ -17,6 +18,7 @@ export default function FutureTimelineChart({ meses }: { meses: MesProjetado[] }
 
   const progress = useRef(new Animated.Value(0)).current;
   const [t, setT] = useState(0);
+  const reduzirMovimento = useReducedMotion();
 
   useEffect(() => {
     const id = progress.addListener(({ value }) => setT(value));
@@ -25,8 +27,12 @@ export default function FutureTimelineChart({ meses }: { meses: MesProjetado[] }
 
   useEffect(() => {
     progress.setValue(0);
+    if (reduzirMovimento) {
+      progress.setValue(1);
+      return;
+    }
     Animated.timing(progress, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-  }, [meses.length, maxVal]);
+  }, [maxVal, meses.length, progress, reduzirMovimento]);
 
   return (
     <View style={{ gap: spacing.sm }}>

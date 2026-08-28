@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
@@ -17,7 +17,7 @@ import {
   guessTypeFromText,
 } from '@/lib/heuristics';
 import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { addTransaction } from '@/lib/data';
+import { addTransaction, fetchCategories } from '@/lib/data';
 import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
 import CategoryChips from './CategoryChips';
@@ -62,6 +62,17 @@ export default function PasteReceiptModal({
      de confiar cegamente no valor preenchido — o mesmo problema que o
      "🎙️ Ouvi: ..." do bot de WhatsApp existe pra resolver. */
   const [origemVoz, setOrigemVoz] = useState(false);
+  /* Categorias criadas pelo usuário (fora das 9 padrão) — sem isso,
+     guessCategoryFromText nunca reconhecia uma categoria custom no texto
+     colado, só as fixas. Buscada quando o modal abre, não a cada tecla. */
+  const [categoriasExtras, setCategoriasExtras] = useState<{ name: string; color: string }[]>([]);
+
+  useEffect(() => {
+    if (!visible) return;
+    fetchCategories()
+      .then((cats) => setCategoriasExtras(cats.filter((c) => !c.is_default)))
+      .catch(() => {});
+  }, [visible]);
 
   function resetState() {
     setRawText('');
@@ -76,7 +87,7 @@ export default function PasteReceiptModal({
   function processText(text: string) {
     const guessedAmount = guessAmountFromText(text);
     const guessedType = guessTypeFromText(text);
-    const guessedCat = guessCategoryFromText(text);
+    const guessedCat = guessCategoryFromText(text, categoriasExtras);
     const guessedDesc = guessDescFromText(text, guessedType);
 
     setType(guessedType);
@@ -143,7 +154,7 @@ export default function PasteReceiptModal({
   }
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       animationType="slide"
       transparent
@@ -270,7 +281,7 @@ export default function PasteReceiptModal({
             </>
           )}
       </Sheet>
-    </Modal>
+    </AppModal>
   );
 }
 

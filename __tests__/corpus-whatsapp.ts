@@ -64,6 +64,34 @@ const CASOS: Caso[] = [
   { txt: 'aluguel 1500', cat: 'Moradia', val: 1500 },
   { txt: 'cinema 32', cat: 'Lazer', val: 32 },
 
+  // ══════ ALUCINAÇÃO DE TRANSCRIÇÃO (bug real, relatado por print do WhatsApp) ══════
+  // `soTexto: true` nos dois — não faz sentido gerar uma "versão falada" de um
+  // texto que JÁ É o artefato de uma transcrição de áudio corrompida.
+  {
+    txt: 'Merenda da tarde, 5h90 crédito.', val: 5.9, cat: 'Alimentação', soTexto: true,
+    nota: 'Whisper transcreveu "5,90" (falado) como "5h90" — a vírgula virou "h" de hora. Sem o fix, nenhuma das 4 regras de guessAmountFromText batia e o bot pedia o valor de novo, mesmo a pessoa já tendo dito.',
+  },
+  {
+    txt: '5,90 украї', val: 5.9, cat: 'Outros', soTexto: true,
+    nota: 'áudio curto/impreciso: Whisper acertou o valor mas alucinou lixo em cirílico depois dele. Sem o fix esse lixo sobrava na descrição e era ecoado de volta pro usuário ("Não identifiquei a categoria de \'Украї\'").',
+  },
+  {
+    txt: 'café café café 10 reais', val: 10, cat: 'Alimentação', desc: 'Café café café', soTexto: true,
+    nota: 'Whisper repete um trecho curto 2-3x em áudio com eco/ruído de fundo — a repetição não é fala de verdade, mas também não é lixo de script pra remover: precisa continuar como nome do lançamento, só não pode confundir o extrator de valor.',
+  },
+  {
+    txt: 'farmácia αβγ 25,50', val: 25.5, cat: 'Saúde', desc: 'Farmácia', soTexto: true,
+    nota: 'lixo de alucinação NO MEIO da frase, não só na ponta — confirma que o strip de caractere (fora de Latin-1/Latin Extended) funciona em qualquer posição, não só quando a alucinação vem depois do valor.',
+  },
+  {
+    txt: 'Cartão C6 40,00 crédito', val: 40, desc: 'Cartão C6', soTexto: true,
+    nota: 'guarda contra falso-positivo dos dois fixes desta rodada: "C6" (letra+dígito colados, nome de cartão real) precisa sobreviver ao strip de caractere E ao fix de "Xh YY" sem virar "C,6" ou sumir.',
+  },
+  {
+    txt: 'Cheguei 14h45 e paguei 80 reais na farmácia', val: 80, cat: 'Saúde', soTexto: true,
+    nota: 'segundo caso de hora REAL (além de "5h30" já coberto alhures) — minuto de 2 dígitos válido (45 ≤ 59) tem que ficar intocado; só "h" seguido de minuto IMPOSSÍVEL (60+) é tratado como vírgula decimal.',
+  },
+
   // ══════ FORMA DE PAGAMENTO ══════
   { txt: 'almoço 30 no pix', forma: 'pix', credito: false, desc: 'Almoço', val: 30 },
   { txt: 'mercado 120 pelo pix', forma: 'pix', val: 120 },

@@ -375,6 +375,7 @@ export default function ContasScreen() {
       <AppPressable
         style={({ hovered }) => [styles.fab, { bottom: tabBarTotal + spacing.md }, hovered && styles.fabHover]}
         onPress={openNewModal}
+        accessibilityLabel="Nova conta a pagar"
       >
         <Ionicons name="add" size={24} color={theme.paper} />
       </AppPressable>
@@ -464,10 +465,6 @@ const styles = StyleSheet.create({
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  switchTrack: { width: 34, height: 20, borderRadius: 10, backgroundColor: theme.ruleStrong, padding: 2 },
-  switchTrackOn: { backgroundColor: theme.ink },
-  switchThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: theme.paperRaised },
-  switchThumbOn: { transform: [{ translateX: 14 }] },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },

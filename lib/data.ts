@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { CATEGORIES } from './types';
 import { addMonthsToISO } from './format';
 import { formatMonthYear } from './format';
+import { checarLimiteCartao } from './creditLimitAlert';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
   Bill,
@@ -69,6 +70,18 @@ export async function addTransaction(input: {
     .select()
     .single();
   if (error) throw error;
+
+  /* Só saída no crédito — sem `await`/sem propagar erro: checarLimiteCartao
+     é fire-and-forget de propósito, uma notificação de limite atrasada ou
+     perdida não pode fazer o próprio lançamento falhar. Único ponto de
+     entrada pra TODOS os caminhos do app (manual, colar comprovante, QR,
+     voz, CSV) — todos passam por addTransaction. Lançamento pelo WhatsApp
+     não passa por aqui (a Edge Function não importa de lib/), então nunca
+     dispara — comportamento esperado, ver lib/creditLimitAlert.ts. */
+  if (input.type === 'out' && input.card_id) {
+    checarLimiteCartao(input.card_id).catch(() => {});
+  }
+
   return data;
 }
 
@@ -336,15 +349,87 @@ export async function addInstallmentPurchase(input: {
     }
   }
 
+  // Mesmo gatilho de addTransaction — parcelamento não passa por lá (insere
+  // direto, ver comentário no topo desta função), então precisa da própria
+  // chamada. Só a PRIMEIRA parcela conta pro mês corrente na maioria dos
+  // casos (as seguintes caem em meses futuros), mas checarLimiteCartao já
+  // soma só o que é deste mês — chamar aqui cobre tanto uma compra à vista
+  // quanto o efeito imediato da 1ª parcela.
+  if (input.card_id) {
+    checarLimiteCartao(input.card_id).catch(() => {});
+  }
+
   return rows;
 }
 
 /* ---- contas a pagar ---- */
 
-export async function fetchBills(): Promise<Bill[]> {
-  const { data, error } = await supabase.from('bills').select('*').order('due_date', { ascending: true });
+export async function fetchBills(opts?: { status?: BillStatus }): Promise<Bill[]> {
+  let query = supabase.from('bills').select('*').order('due_date', { ascending: true });
+  if (opts?.status) query = query.eq('status', opts.status);
+  const { data, error } = await query;
   if (error) throw error;
   return data;
+}
+
+/** Janela mensal indexável; evita baixar o histórico inteiro em faturas. */
+export async function fetchCreditTransactionsForMonth(year: number, month: number): Promise<Transaction[]> {
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 1);
+  const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .gte('occurred_on', iso(start))
+    .lt('occurred_on', iso(end))
+    .or('payment_method.eq.credit,card_id.not.is.null')
+    .order('occurred_on', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Contexto limitado para catch-up de recorrências: cabeças ativas + filhos
+ * dos últimos 24 meses (o mesmo teto aplicado por ocorrenciasFaltantes).
+ */
+export async function fetchRecurrenceContext(): Promise<Transaction[]> {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 24);
+  const cutoffISO = cutoff.toISOString().slice(0, 10);
+  const [headsResult, childrenResult] = await Promise.all([
+    supabase.from('transactions').select('*').eq('recurring', true).is('parent_id', null),
+    supabase.from('transactions').select('*').not('parent_id', 'is', null).gte('occurred_on', cutoffISO),
+  ]);
+  if (headsResult.error) throw headsResult.error;
+  if (childrenResult.error) throw childrenResult.error;
+  const byId = new Map<string, Transaction>();
+  for (const tx of [...(headsResult.data || []), ...(childrenResult.data || [])]) byId.set(tx.id, tx);
+  return [...byId.values()];
+}
+
+export type GamificationHistoricalSummary = {
+  transaction_count: number;
+  income_count: number;
+  expense_count: number;
+  income_total: number;
+  expense_category_count: number;
+  paid_bill_count: number;
+};
+
+/** Agregados cumulativos calculados no Postgres, sem baixar toda a vida financeira. */
+export async function fetchGamificationHistoricalSummary(): Promise<GamificationHistoricalSummary> {
+  const { data, error } = await supabase.rpc('get_gamification_summary').single();
+  if (error) throw error;
+  const row = data as Record<string, number | string>;
+  return {
+    transaction_count: Number(row.transaction_count || 0),
+    income_count: Number(row.income_count || 0),
+    expense_count: Number(row.expense_count || 0),
+    income_total: Number(row.income_total || 0),
+    expense_category_count: Number(row.expense_category_count || 0),
+    paid_bill_count: Number(row.paid_bill_count || 0),
+  };
 }
 
 export async function addBill(input: {

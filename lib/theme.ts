@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 /* Paleta petróleo → ciano → verde-menta. Dois pontos de retorno existem:
    lib/theme.petroleo-backup.ts guarda esta mesma paleta antes da
    sincronização com o design system, e lib/theme.classic-dark-backup.ts
@@ -83,51 +83,48 @@ export const card = {
   borderWidth: 1,
 };
 
-/* Escala tipográfica, extraída de design-system/tokens/tokens.json
-   (tipografia.escala). Consolida os 12 tamanhos decididos caso a caso que o
-   app usava (9; 10,5; 11; 11,5; 12; 12,5; 13; 14; 17; 20; 26; 30) em 9
-   degraus nomeados, cada um o inteiro mais próximo do que já se usava — a
-   mudança visual é mínima, o vocabulário passa a existir. `cabecalho` (22) é
-   o degrau que faltava no token original: os cabeçalhos das telas
-   convergiram nele de forma independente antes de qualquer padronização. */
-/**
- * A escala inteira sobe 2pt na web.
- *
- * Os tamanhos foram calibrados para um celular, onde a tela fica a uns 30cm
- * dos olhos. Um monitor fica a 60–70cm, e o mesmo corpo de 11pt que é
- * confortável na mão vira letra miúda a essa distância — foi o que o autor
- * relatou ao ler a tela de Desafios no desktop.
- *
- * Subir na escala, e não em cada estilo, mantém as proporções entre os
- * degraus intactas: o que era hierarquia continua sendo hierarquia, só que
- * legível de longe. E o app nativo não muda, porque o acréscimo é zero fora
- * da web.
- */
-const ACRESCIMO_WEB = Platform.OS === 'web' ? 2 : 0;
+/* Papéis tipográficos semânticos calibrados por plataforma. iOS parte do
+   corpo de 17pt e piso de 11pt; Android usa os equivalentes em sp; web sobe
+   a densidade de leitura para a distância de monitor. Text continua com
+   font scaling habilitado, portanto estes valores são base, não teto. */
+export const type = Platform.select({
+  ios: {
+    micro: 11, legenda: 12, nota: 13, apoio: 15, corpo: 17,
+    titulo: 20, destaque: 22, cabecalho: 24, marca: 28, valor: 32,
+  },
+  android: {
+    micro: 12, legenda: 12, nota: 14, apoio: 14, corpo: 16,
+    titulo: 20, destaque: 22, cabecalho: 24, marca: 28, valor: 32,
+  },
+  default: {
+    micro: 12, legenda: 14, nota: 15, apoio: 16, corpo: 18,
+    titulo: 20, destaque: 22, cabecalho: 24, marca: 28, valor: 32,
+  },
+})!;
 
-export const type = {
-  micro: 9 + ACRESCIMO_WEB,
-  legenda: 11 + ACRESCIMO_WEB,
-  nota: 12 + ACRESCIMO_WEB,
-  apoio: 13 + ACRESCIMO_WEB,
-  corpo: 14 + ACRESCIMO_WEB,
-  titulo: 17 + ACRESCIMO_WEB,
-  destaque: 20 + ACRESCIMO_WEB,
-  cabecalho: 22 + ACRESCIMO_WEB,
-  marca: 26 + ACRESCIMO_WEB,
-  valor: 30 + ACRESCIMO_WEB,
-};
-
-/* Neue Machina, carregada via expo-font em app/_layout.tsx.
-   São os DOIS únicos pesos do app — não existe arquivo bold, e `fontWeight`
-   não deve ser usado em lugar nenhum: o React Native o ignora para família
-   customizada sem o arquivo correspondente, enquanto o navegador sintetiza um
-   falso negrito, e o mesmo texto saía diferente em cada plataforma.
-   A hierarquia é: Regular para o que tem peso, Light para texto secundário. */
+/* A interface operacional usa a família do sistema: ela preserva Dynamic
+   Type no iOS, os papéis Roboto/sp no Android e as métricas familiares do
+   desktop. Neue Machina fica reservada para assinatura e títulos de marca. */
 export const fonts = {
-  regular: 'NeueMachina-Regular',
-  light: 'NeueMachina-Light',
+  regular: Platform.select({ ios: 'System', android: 'sans-serif', default: 'system-ui' })!,
+  light: Platform.select({ ios: 'System', android: 'sans-serif-light', default: 'system-ui' })!,
+  medium: Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'system-ui' })!,
+  brandRegular: 'NeueMachina-Regular',
+  brandLight: 'NeueMachina-Light',
 };
+
+/** Papéis completos para componentes-base; nomes descrevem função, não valor. */
+export const textStyles = {
+  metadata: { fontFamily: fonts.light, fontSize: type.nota, lineHeight: Math.round(type.nota * 1.4) },
+  label: { fontFamily: fonts.medium, fontSize: type.apoio, lineHeight: Math.round(type.apoio * 1.35) },
+  body: { fontFamily: fonts.regular, fontSize: type.corpo, lineHeight: Math.round(type.corpo * 1.45) },
+  title: { fontFamily: fonts.brandRegular, fontSize: type.titulo, lineHeight: Math.round(type.titulo * 1.25) },
+  headline: { fontFamily: fonts.brandRegular, fontSize: type.cabecalho, lineHeight: Math.round(type.cabecalho * 1.2) },
+  amount: { fontFamily: fonts.medium, fontSize: type.valor, lineHeight: Math.round(type.valor * 1.15), fontVariant: ['tabular-nums'] },
+} satisfies Record<string, TextStyle>;
+
+/** Área física mínima dos controles, preservando a métrica de cada sistema. */
+export const touchTarget = Platform.OS === 'android' ? 48 : 44;
 
 /* Tokens da marca, extraídos dos vetores de design-system/marca/.
    Valem para peças de marca — ícone, splash, logotipo — e não para a

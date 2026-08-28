@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Text, TextInput, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, Text, TextInput, View, StyleSheet } from 'react-native';
+import AppModal from './AppModal';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
@@ -51,7 +52,7 @@ export default function GoalDepositModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Sheet onClose={onClose}>
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1}>{goal.title}</Text>
@@ -107,7 +108,7 @@ export default function GoalDepositModal({
           )}
         </AppPressable>
       </Sheet>
-    </Modal>
+    </AppModal>
   );
 }
 

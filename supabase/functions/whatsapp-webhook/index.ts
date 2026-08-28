@@ -254,6 +254,32 @@ function normalizarTextoTranscrito(texto: string): string {
 
   return saida
     .join('')
+    /* Ruído de alucinação do Whisper em áudio curto ou impreciso: sem sinal
+       de fala suficiente pra reconhecer, o modelo às vezes "termina" a
+       frase em outro alfabeto (cirílico, CJK etc.) em vez de admitir
+       silêncio — mesmo com `language:'pt'` forçado na chamada (é uma dica
+       pro modelo, não uma garantia). Português nunca usa nada fora de
+       Latin-1/Latin Extended, então qualquer caractere fora desse conjunto
+       é ruído de transcrição, nunca fala de verdade. Remove o CARACTERE,
+       não a palavra/frase inteira, pra não perder o resto de uma mensagem
+       real que só teve uma alucinação colada na ponta (caso real: "5,90
+       украї" — o valor tinha vindo certo, só a categoria que sobrou virou
+       lixo cirílico e a pessoa via isso ecoado de volta). */
+    .replace(/[^a-zA-Z0-9À-ÿ\s.,!?;:'"()$%&\-+/]/g, '')
+    /* "5h90": outra forma do mesmo problema, mas nos DÍGITOS em vez de nas
+       letras. Um valor falado com vírgula decimal ("cinco e noventa", "5
+       reais e 90") às vezes sai transcrito com "h" no lugar da vírgula,
+       como se fosse hora do relógio — mas hora de verdade nunca passa de
+       59 minutos, então "h" seguido de 60+ (ou de 3+ dígitos) não pode ser
+       hora nenhuma; só pode ser a vírgula que o Whisper confundiu com
+       marcador de hora. "5h30" (hora real, minuto válido) fica intocado de
+       propósito — só reescreve quando o "minuto" é matematicamente
+       impossível. Sem isso "5h90" não batia em nenhuma das 4 regras de
+       `guessAmountFromText` (não tem vírgula nem "reais" colado) e o
+       lançamento morria pedindo repetição, mesmo a pessoa já tendo dito o
+       valor certo. */
+    .replace(/(\d{1,3})h(\d{2,})/gi, (m: string, h: string, mm: string) => (mm.length > 2 || Number(mm) > 59 ? `${h},${mm}` : m))
+    .replace(/\s{2,}/g, ' ')
     .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
     /* Fala real quase nunca diz "centavos" ("trinta reais e cinquenta") — só
        entra quando o número depois do "e" tem 1-2 dígitos e não é seguido de
@@ -321,23 +347,49 @@ function contemPalavra(textoNormalizado: string, keyword: string): boolean {
 
 /* Diferente do guessCategoryFromText do app, que cai em "Outros": aqui um
    não-reconhecimento devolve null de propósito, para o webhook PERGUNTAR a
-   categoria em vez de arquivar em "Outros" sem avisar. */
-function matchCategoryByKeyword(text: string): { name: string; color: string } | null {
+   categoria em vez de arquivar em "Outros" sem avisar.
+
+   `extras` são as categorias que o PRÓPRIO usuário criou no gerenciador do
+   app (tabela `categories`, `is_default = false`) — sem isso, o bot só
+   conhecia as 9 categorias fixas de sempre, e uma categoria nova cadastrada
+   no app (ex: "Pet", "Filhos") nunca era reconhecida por voz/texto no
+   WhatsApp, mesmo a pessoa dizendo o nome dela exatamente. As 9 fixas
+   continuam checadas PRIMEIRO — têm listas de palavra-chave ricas (uma
+   categoria custom só tem o próprio nome pra casar), e renomear uma
+   categoria padrão no app não muda esse vocabulário de propósito (ver
+   comentário em supabase/schema.sql sobre `categories`).
+
+   `extras` SEM anotação de tipo de propósito, nem `as` de cast (seria
+   `: { name: string; color: string }[]`): __tests__/extrair.ts lê esta
+   função direto do arquivo pra testar contra o código real (ver
+   __tests__/corpus-whatsapp-gerado.ts), e a limpeza de tipo ali só sabe
+   remover `string`/`number`/`boolean` de PARÂMETRO — QUALQUER outra sintaxe
+   de TypeScript sobrando (tipo objeto literal, `as`) quebra o `new
+   Function` com `SyntaxError`, porque o resultado precisa ser JS puro
+   (mesmo problema que já existe pra CATEGORIES, documentado em
+   corpus-whatsapp-gerado.ts:32-37). O tipo de retorno continua anotado
+   normalmente: esse SIM o extrator sabe limpar (regex própria pra objeto
+   literal depois de `):`). */
+function matchCategoryByKeyword(text: string, extras = []): { name: string; color: string } | null {
   const alvo = normalizarParaBusca(text);
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     if (keywords.some((kw) => contemPalavra(alvo, kw))) {
       return CATEGORIES.find((c) => c.name === catName) ?? null;
     }
   }
+  for (const extra of extras) {
+    if (contemPalavra(alvo, extra.name)) return extra;
+  }
   return null;
 }
 
-/** Casa a resposta de uma pergunta de esclarecimento: nome exato da categoria, ou uma palavra-chave conhecida. */
-function matchCategoryByReply(text: string): { name: string; color: string } | null {
+/** Casa a resposta de uma pergunta de esclarecimento: nome exato da categoria, ou uma palavra-chave conhecida.
+    `extras` sem anotação de tipo — mesma razão de matchCategoryByKeyword logo acima. */
+function matchCategoryByReply(text: string, extras = []): { name: string; color: string } | null {
   const lower = text.trim().toLowerCase();
-  const exact = CATEGORIES.find((c) => c.name.toLowerCase() === lower);
+  const exact = CATEGORIES.find((c) => c.name.toLowerCase() === lower) ?? extras.find((c) => c.name.toLowerCase() === lower);
   if (exact) return exact;
-  return matchCategoryByKeyword(text);
+  return matchCategoryByKeyword(text, extras);
 }
 
 /* Marcadores de saída, conferidos ANTES dos de entrada. A ordem importa:
@@ -680,6 +732,16 @@ function limparReferenciaCartao(descricao: string, nomeCartao: string): string {
 }
 
 const NOMES_CATEGORIAS = CATEGORIES.map((c) => c.name).join(', ');
+
+/* Lista de categorias mostrada na pergunta de esclarecimento — as 9 fixas
+   mais as que o usuário criou no app (`extras`, já filtradas por
+   `is_default = false` em fetchCategoriasDoUsuario). Sem isso a pergunta
+   listava só as 9 fixas mesmo quando a categoria certa era uma custom que a
+   pessoa acabou de citar — ela nunca aparecia como opção pra responder. */
+function listaCategoriasPara(extras: { name: string; color: string }[]): string {
+  if (extras.length === 0) return NOMES_CATEGORIAS;
+  return `${NOMES_CATEGORIAS}, ${extras.map((c) => c.name).join(', ')}`;
+}
 
 /* Cópia sincronizada de parseAmount em lib/format.ts — ver o comentário longo
    lá sobre por que o ponto tem dois papéis. Este é o caminho que atende o
@@ -1305,6 +1367,21 @@ async function fetchCreditCardsDoUsuario(userId: string): Promise<CartaoBusca[]>
   return (data as CartaoBusca[] | null) ?? [];
 }
 
+/* `is_default = false`: as 9 categorias padrão já são cobertas pelas
+   keywords ricas de CATEGORY_KEYWORDS acima — buscar elas de novo aqui só
+   duplicaria a checagem contra o mesmo nome (a seed em lib/data.ts grava as
+   padrão como linhas reais, `is_default = true`, na primeira vez que o
+   usuário abre o gerenciador de categorias no app). O que falta cobrir são
+   só as categorias que a pessoa criou do zero. */
+async function fetchCategoriasDoUsuario(userId: string): Promise<{ name: string; color: string }[]> {
+  const { data } = await supabase
+    .from('categories')
+    .select('name, color')
+    .eq('user_id', userId)
+    .eq('is_default', false);
+  return (data as { name: string; color: string }[] | null) ?? [];
+}
+
 /* ── Desfazer o último lançamento ──────────────────────────────────────────
  *
  * Errar um lançamento e ter que abrir o app pra corrigir quebra o motivo de o
@@ -1452,6 +1529,117 @@ function ehIntencaoBoleto(text: string): boolean {
   );
 }
 
+/* ── Perguntas de gasto ("quanto eu gastei em X?") ──────────────────────────
+ *
+ * Antes desta função, o bot só sabia REGISTRAR (lançamento) ou responder às
+ * próprias perguntas de esclarecimento (categoria/valor pendente) — nunca
+ * respondia uma pergunta informativa. Uma pergunta sem valor numérico dito
+ * ("quanto eu gastei em alimentação esse mês?") caía direto na resposta
+ * genérica de `registrarLancamento` ("Não consegui identificar o valor"),
+ * porque perguntar "quanto" nunca vem acompanhado de um número — é o bot
+ * quem devolve o número. Por isso esta checagem roda ANTES do fallthrough
+ * pra `registrarLancamento`, não depois.
+ *
+ * Só reconhece o FORMATO de pergunta de gasto (`/quanto|qual.../`) — dentro
+ * disso, decide qual das três consultas é: boletos e crédito são checados
+ * ANTES de categoria porque "cartão"/"boleto" são sinais mais específicos
+ * que uma palavra-chave de categoria solta no meio da frase. Sem reconhecer
+ * nenhum dos três, devolve `null` — a mensagem segue o fluxo normal (mesmo
+ * comportamento de antes desta função existir). */
+type ResultadoConsulta =
+  | { tipo: 'categoria'; categoria: { name: string; color: string } }
+  | { tipo: 'boletos' }
+  | { tipo: 'credito' };
+
+/* `categoriasDoUsuario` sem anotação de tipo — mesma razão de
+   matchCategoryByKeyword: __tests__/corpus-consulta.ts extrai esta função
+   direto do arquivo real, e a limpeza de tipo do extrator não sabe remover
+   tipo objeto literal de parâmetro (só o de retorno). */
+function interpretarConsulta(text: string, categoriasDoUsuario = []): ResultadoConsulta | null {
+  if (!/\b(?:quanto|qual)\b[\s\S]*\b(?:gastei|gasto|tenho|falta|foi\s+gasto|j[aá]\s+gastei)\b/i.test(text)) return null;
+
+  if (/\bboletos?\b|\bconta[s]?\s+a\s+pagar\b|\bvencer\b/i.test(text)) return { tipo: 'boletos' };
+  if (/\bcr[eé]dito\b|\bcart[aã]o\b/i.test(text)) return { tipo: 'credito' };
+
+  const categoria = matchCategoryByKeyword(text, categoriasDoUsuario);
+  if (categoria) return { tipo: 'categoria', categoria };
+
+  return null;
+}
+
+/** Primeiro e último dia do mês corrente, em ISO — `new Date(ano, mes, 0)` pega o último dia certo (28/29/30/31) sem tabela de exceção. */
+function janelaDoMesCorrente(): { inicio: string; fim: string; nomeMes: string } {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = hoje.getMonth(); // 0-based
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+  return {
+    inicio: `${ano}-${pad(mes + 1)}-01`,
+    fim: `${ano}-${pad(mes + 1)}-${pad(ultimoDia)}`,
+    nomeMes: hoje.toLocaleDateString('pt-BR', { month: 'long' }),
+  };
+}
+
+/** Responde uma consulta informativa — só leitura, não deixa rascunho pendente nenhum. */
+async function responderConsulta(userId: string, phone: string, resultado: ResultadoConsulta): Promise<void> {
+  const { inicio, fim, nomeMes } = janelaDoMesCorrente();
+
+  if (resultado.tipo === 'categoria') {
+    const { data } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('type', 'out')
+      .eq('category', resultado.categoria.name)
+      .gte('occurred_on', inicio)
+      .lte('occurred_on', fim);
+    const total = (data ?? []).reduce((s, t) => s + Number(t.amount), 0);
+    await sendWhatsappMessage(phone, `💸 Você gastou R$ ${formatarBRL(total)} em ${resultado.categoria.name} em ${nomeMes}.`);
+    return;
+  }
+
+  if (resultado.tipo === 'boletos') {
+    /* Mesma janela/filtro que lib/projections.ts usa pro Safe-to-Spend do
+       app (`calcularSafeToSpend`) — status 'due' e vencimento dentro do mês
+       corrente. Portado, não importado: Deno não importa de lib/. */
+    const { data } = await supabase
+      .from('bills')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('status', 'due')
+      .gte('due_date', inicio)
+      .lte('due_date', fim);
+    const total = (data ?? []).reduce((s, b) => s + Number(b.amount), 0);
+    await sendWhatsappMessage(phone, `🧾 Você tem R$ ${formatarBRL(total)} em boletos pra pagar em ${nomeMes}.`);
+    return;
+  }
+
+  // credito — mesma fórmula de app/(app)/credito.tsx (soma de transactions do
+  // mês por payment_method='credit'), com detalhamento por cartão quando o
+  // usuário tem mais de um (senão a soma sozinha já responde a pergunta).
+  const [cartoes, { data: gastos }] = await Promise.all([
+    fetchCreditCardsDoUsuario(userId),
+    supabase
+      .from('transactions')
+      .select('amount, card_id')
+      .eq('user_id', userId)
+      .eq('payment_method', 'credit')
+      .gte('occurred_on', inicio)
+      .lte('occurred_on', fim),
+  ]);
+  const linhas = gastos ?? [];
+  const total = linhas.reduce((s, t) => s + Number(t.amount), 0);
+  if (cartoes.length <= 1) {
+    await sendWhatsappMessage(phone, `💳 Você já gastou R$ ${formatarBRL(total)} no crédito em ${nomeMes}.`);
+    return;
+  }
+  const porCartao = cartoes
+    .map((c) => `${c.name}: R$ ${formatarBRL(linhas.filter((t) => t.card_id === c.id).reduce((s, t) => s + Number(t.amount), 0))}`)
+    .join('\n');
+  await sendWhatsappMessage(phone, `💳 Você já gastou R$ ${formatarBRL(total)} no crédito em ${nomeMes}:\n${porCartao}`);
+}
+
 /** "vence dia 25", "vencimento 25/08", "vence 25/08/2026" — sem nada disso, vence em 5 dias por padrão (editável no app). */
 function parseDiaVencimento(text: string): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -1482,10 +1670,10 @@ function parseDiaVencimento(text: string): string {
 }
 
 /** Cria a conta a pagar direto (sem passar por transactions — boleto só vira saída quando marcado como pago, igual no app). */
-async function registrarBoleto(userId: string, phone: string, text: string, amount: number, ouvido?: string): Promise<void> {
+async function registrarBoleto(userId: string, phone: string, text: string, amount: number, ouvido?: string, categoriasDoUsuario = []): Promise<void> {
   const description = guessDescFromText(text, 'out');
   const due_date = parseDiaVencimento(text);
-  const categoria = matchCategoryByKeyword(text) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
+  const categoria = matchCategoryByKeyword(text, categoriasDoUsuario) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
 
   const { data: contaCriada, error } = await supabase.from('bills').insert({
     user_id: userId,
@@ -1542,15 +1730,20 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
     return;
   }
 
+  /* Buscada uma vez só aqui e repassada adiante (pro boleto e pro match
+     principal) — evita duas idas ao banco pro mesmo dado dentro da mesma
+     mensagem. Ver comentário completo em fetchCategoriasDoUsuario. */
+  const categoriasDoUsuario = await fetchCategoriasDoUsuario(userId);
+
   if (ehIntencaoBoleto(text)) {
-    await registrarBoleto(userId, phone, text, amount, ouvido);
+    await registrarBoleto(userId, phone, text, amount, ouvido, categoriasDoUsuario);
     return;
   }
 
   const type = guessTypeFromText(text);
   let description = guessDescFromText(text, type);
   const occurred_on = todayISO();
-  const categoria = matchCategoryByKeyword(text);
+  const categoria = matchCategoryByKeyword(text, categoriasDoUsuario);
 
   let card_id: string | null = null;
   /* Pix, débito e dinheiro saem daqui; crédito é decidido logo abaixo e
@@ -1618,7 +1811,7 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
     phone,
     `Não identifiquei a categoria de "${description}" (R$ ${valorFmt}).` +
       linhaDoQueFoiOuvido(ouvido) +
-      `\n\nQual dessas se encaixa melhor?\n${NOMES_CATEGORIAS}`
+      `\n\nQual dessas se encaixa melhor?\n${listaCategoriasPara(categoriasDoUsuario)}`
   );
 }
 
@@ -1809,7 +2002,13 @@ async function tratarRespostaPendente(phone: string, text: string): Promise<bool
 
   if (pendente.pending_kind === 'valor') return await tratarRespostaValor(pendente, text);
 
-  const categoria = matchCategoryByReply(text);
+  /* Recarregada aqui porque esta função roda numa mensagem SEPARADA da que
+     criou o rascunho pendente (a resposta à pergunta de categoria) — não dá
+     pra reaproveitar a lista já buscada em registrarLancamento, que rodou
+     numa invocação anterior da function. */
+  const categoriasDoUsuario = await fetchCategoriasDoUsuario(pendente.user_id);
+
+  const categoria = matchCategoryByReply(text, categoriasDoUsuario);
   if (categoria) {
     await finalizarLancamento(pendente, categoria);
     return true;
@@ -1825,7 +2024,7 @@ async function tratarRespostaPendente(phone: string, text: string): Promise<bool
   }
 
   await supabase.from('whatsapp_pending').update({ attempts: tentativas }).eq('phone', phone);
-  await sendWhatsappMessage(phone, `Não entendi. Responda só com o nome de uma destas categorias:\n${NOMES_CATEGORIAS}`);
+  await sendWhatsappMessage(phone, `Não entendi. Responda só com o nome de uma destas categorias:\n${listaCategoriasPara(categoriasDoUsuario)}`);
   return true;
 }
 
@@ -1836,6 +2035,13 @@ async function handleTextMessage(phone: string, text: string): Promise<void> {
     if (await tratarCancelamento(phone, text)) return;
     const tratou = await tratarRespostaPendente(phone, text);
     if (tratou) return;
+    /* Antes de registrarLancamento de propósito — ver comentário completo
+       em interpretarConsulta sobre por que a ordem importa aqui. */
+    const consulta = interpretarConsulta(text, await fetchCategoriasDoUsuario(link.user_id));
+    if (consulta) {
+      await responderConsulta(link.user_id, phone, consulta);
+      return;
+    }
     await registrarLancamento(link.user_id, phone, text);
     return;
   }
@@ -1866,6 +2072,15 @@ async function handleAudioMessage(phone: string, mediaId: string): Promise<void>
 
   const tratou = await tratarRespostaPendente(phone, texto);
   if (tratou) return;
+
+  /* Antes da checagem de valor de propósito — uma pergunta falada nunca tem
+     valor numérico dito, então cairia direto na mensagem de "não identifiquei
+     o valor" logo abaixo se checada depois. Ver interpretarConsulta. */
+  const consulta = interpretarConsulta(texto, await fetchCategoriasDoUsuario(link.user_id));
+  if (consulta) {
+    await responderConsulta(link.user_id, phone, consulta);
+    return;
+  }
 
   // Sem valor identificado o áudio vira um beco sem saída silencioso: a pessoa
   // não sabe se o problema foi a transcrição ou a frase. Ecoar o que foi

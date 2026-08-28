@@ -2,27 +2,19 @@ import { Platform, useWindowDimensions } from 'react-native';
 import { radius } from './theme';
 
 /**
- * Classes de largura da janela, para a versão web do Grana.
- *
- * **O app nativo não muda.** O layout alternativo é deliberadamente travado em
- * `Platform.OS === 'web'`, e não apenas na largura da janela. A versão só por
- * largura seria tecnicamente mais elegante — um tablet Android em paisagem
- * passa dos 768px e ganharia a barra lateral de graça — mas isso alteraria o
- * app publicado, que precisa seguir exatamente como está. Web é uma variante;
- * iOS e Android continuam com barra flutuante e uma coluna em qualquer
- * tamanho de tela.
- *
- * Dentro da web, quem decide é a largura, nunca a plataforma: o mesmo
- * navegador abre num celular de 360px e num monitor de 2560px, então uma
- * janela estreitada no meio da sessão volta sozinha ao layout compacto.
+ * Classes de largura da janela em web, iOS e Android. O tamanho da janela —
+ * inclusive Split View, multiwindow e aparelho dobrável — decide a estrutura;
+ * nunca o modelo físico do dispositivo.
  *
  * Os cortes seguem os tamanhos de teste recomendados (320/375/414/768/1024/
  * 1440), escolhendo os dois que mudam de verdade a forma da tela:
  *
- *  - `compacto` (< 768, ou qualquer tamanho no nativo): barra flutuante
- *    embaixo, uma coluna.
- *  - `medio` (768–1279, só web): trilho lateral só de ícones, duas colunas.
- *  - `amplo` (>= 1280, só web): barra lateral com rótulos, até três colunas.
+ *  - `compacto` (< 768): navegação inferior e uma coluna.
+ *  - `medio` (768–1279): estrutura de duas colunas quando a superfície suporta.
+ *  - `amplo` (>= 1280): até três colunas.
+ *
+ * A navegação nativa adapta sua própria forma (tab bar/sidebar no iOS e
+ * Navigation Bar no Android). O trilho customizado existe somente na web.
  */
 
 export type ClasseLargura = 'compacto' | 'medio' | 'amplo';
@@ -60,7 +52,7 @@ export const colunaFormulario = Platform.OS === 'web'
  * quebra a linha a cada 4-5 palavras e lê como coluna de jornal encolhida
  * demais, não como página. ~65-75 caracteres por linha é o alvo de
  * legibilidade de texto corrido; 720px cobre isso na escala tipográfica do
- * app mesmo com a fonte maior da web (ver ACRESCIMO_WEB em lib/theme.ts).
+ * app mesmo com a escala de leitura maior da web (ver `type` em lib/theme.ts).
  */
 export const colunaLeitura = Platform.OS === 'web'
   ? ({ width: '100%', maxWidth: 720, alignSelf: 'center' } as const)
@@ -90,15 +82,14 @@ export type Breakpoint = {
   ehCompacto: boolean;
   ehMedio: boolean;
   ehAmplo: boolean;
-  /** true de `medio` para cima: usa navegação lateral em vez da barra flutuante. */
+  /** true apenas na web de `medio` para cima: usa o SideNav customizado. */
   temBarraLateral: boolean;
   /** Colunas sugeridas para grades de cards. */
   colunas: 1 | 2 | 3;
 };
 
-/** Só a largura. `ehWeb` existe como parâmetro para esta função ser testável fora do React. */
-export function classificarLargura(largura: number, ehWeb: boolean): ClasseLargura {
-  if (!ehWeb) return 'compacto'; // nativo nunca sai do layout de celular
+/** Classificação pura por largura, testável fora do React. */
+export function classificarLargura(largura: number): ClasseLargura {
   if (largura >= CORTES.amplo) return 'amplo';
   if (largura >= CORTES.medio) return 'medio';
   return 'compacto';
@@ -115,7 +106,7 @@ export function classificarLargura(largura: number, ehWeb: boolean): ClasseLargu
  */
 export function useSheetFlutuante() {
   const { ehCompacto } = useBreakpoint();
-  const flutuante = Platform.OS === 'web' && !ehCompacto;
+  const flutuante = !ehCompacto;
   return {
     flutuante,
     scrimStyle: flutuante ? sheetFlutuanteScrim : null,
@@ -137,7 +128,7 @@ const sheetFlutuantePainel = {
 
 export function useBreakpoint(): Breakpoint {
   const { width, height } = useWindowDimensions();
-  const classe = classificarLargura(width, Platform.OS === 'web');
+  const classe = classificarLargura(width);
 
   return {
     largura: width,
@@ -146,7 +137,7 @@ export function useBreakpoint(): Breakpoint {
     ehCompacto: classe === 'compacto',
     ehMedio: classe === 'medio',
     ehAmplo: classe === 'amplo',
-    temBarraLateral: classe !== 'compacto',
+    temBarraLateral: Platform.OS === 'web' && classe !== 'compacto',
     colunas: classe === 'amplo' ? 3 : classe === 'medio' ? 2 : 1,
   };
 }

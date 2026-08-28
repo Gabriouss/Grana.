@@ -4,9 +4,10 @@
     "slug": "grana-app",
     "scheme": ["granaapp", "grana"],
     "version": "1.4.0",
-    "orientation": "portrait",
+    "orientation": "default",
+    "backgroundColor": "#052229",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
     },
@@ -18,7 +19,7 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
+      "predictiveBackGestureEnabled": true,
       "permissions": [
         "SCHEDULE_EXACT_ALARM"
       ]
@@ -29,6 +30,7 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      "expo-system-ui",
       "./plugins/withGradleSafeProjectName",
       [
         "expo-splash-screen",

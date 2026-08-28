@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
@@ -9,6 +10,7 @@ import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { hapticTap } from '@/lib/haptics';
 import AppPressable from './AppPressable';
+import AccessibleModalPanel from './AccessibleModalPanel';
 import { useKeyboardHeight } from './Sheet';
 
 const TIPOS: { key: FeedbackType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -66,9 +68,9 @@ export default function FeedbackModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <Pressable style={[styles.modalScrim, scrimStyle]} onPress={handleClose}>
-        <Pressable style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]} onPress={() => {}}>
+        <AccessibleModalPanel ativo={visible} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Enviar feedback</Text>
             <AppPressable onPress={handleClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -151,9 +153,9 @@ export default function FeedbackModal({
               <Text style={styles.enviarTexto}>Enviar feedback</Text>
             )}
           </AppPressable>
-        </Pressable>
+        </AccessibleModalPanel>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 

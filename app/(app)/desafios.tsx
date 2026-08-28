@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchBills, fetchBudgets, fetchTransactions } from '@/lib/data';
+import { fetchBills, fetchBudgets, fetchGamificationHistoricalSummary, fetchTransactions } from '@/lib/data';
 import { getGamificationState, type BadgeCategory, type GamificationState } from '@/lib/gamification';
 import { fetchGamification } from '@/lib/goals';
 import { calcularLevelState, type LevelState } from '@/lib/gamification-infinite';
@@ -50,8 +50,19 @@ export default function DesafiosScreen() {
     }
 
     try {
-      const [tx, b, bg] = await Promise.all([fetchTransactions({ sinceDays: 35 }), fetchBills(), fetchBudgets()]);
-      setState(getGamificationState(tx, b, bg));
+      const [tx, b, bg, historical] = await Promise.all([
+        fetchTransactions({ sinceDays: 45 }),
+        fetchBills({ status: 'due' }),
+        fetchBudgets(),
+        fetchGamificationHistoricalSummary().catch(() => null),
+      ]);
+      if (historical) {
+        setState(getGamificationState(tx, b, bg, historical));
+      } else {
+        // Compatibilidade temporária com bancos ainda sem a função nova.
+        const [allTx, allBills] = await Promise.all([fetchTransactions(), fetchBills()]);
+        setState(getGamificationState(allTx, allBills, bg));
+      }
     } catch {
       // Falha graciosa
     }
@@ -138,7 +149,7 @@ export default function DesafiosScreen() {
             </View>
             <View style={styles.heroInfo}>
               <View style={styles.levelBadge}>
-                <Text style={styles.levelBadgeText}>NÍVEL {mastery.level}</Text>
+                <Text style={styles.levelBadgeText}>FAIXA {mastery.level}</Text>
               </View>
               <Text style={styles.masteryTitle}>{mastery.title}</Text>
               <Text style={styles.masteryDesc}>{mastery.description}</Text>
@@ -158,7 +169,7 @@ export default function DesafiosScreen() {
             </View>
             {nextMastery && (
               <Text style={styles.remainingText}>
-                Faltam {nextMastery.minScore - score} pontos para o Nível {nextMastery.level}
+                Faltam {nextMastery.minScore - score} pontos para a Faixa {nextMastery.level}
               </Text>
             )}
           </View>
@@ -169,7 +180,7 @@ export default function DesafiosScreen() {
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
               <Text style={styles.fireEmoji}>{level.elo.emoji}</Text>
-              <Text style={styles.cardTitle}>Level Up Infinito</Text>
+              <Text style={styles.cardTitle}>Progresso de metas</Text>
             </View>
             <Text style={styles.scoreTotalLabel}>{`${level.xp} XP`}</Text>
           </View>
@@ -186,7 +197,7 @@ export default function DesafiosScreen() {
           {level.nextElo && (
             <Text style={styles.remainingText}>{`Rumo ao elo ${level.nextElo.title}`}</Text>
           )}
-          <Text style={styles.levelHint}>XP vem de criar cofrinhos, guardar dinheiro e bater metas — nunca diminui.</Text>
+          <Text style={styles.levelHint}>Este nível é separado da saúde financeira acima. O XP vem de criar cofrinhos, guardar dinheiro e bater metas — nunca diminui.</Text>
         </View>
 
         {/* Ritmo Semanal */}

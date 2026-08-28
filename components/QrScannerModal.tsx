@@ -13,7 +13,7 @@ import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type, fonts } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
 import { guessCategoryFromText } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
@@ -26,13 +26,16 @@ import { LIMITS } from '@/lib/limits';
 import CategoryChips from './CategoryChips';
 import AppPressable from './AppPressable';
 import Sheet from './Sheet';
+import { useModalAccessibility } from '@/lib/modal-accessibility';
+import { useReducedMotion } from '@/lib/motion';
 
 /** Moldura central com uma linha que varre de cima a baixo enquanto procura o código. */
 function MolduraDeMira({ ativa }: { ativa: boolean }) {
   const varredura = useRef(new Animated.Value(0)).current;
+  const reduzirMovimento = useReducedMotion();
 
   useEffect(() => {
-    if (!ativa) return;
+    if (!ativa || reduzirMovimento) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(varredura, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
@@ -41,7 +44,7 @@ function MolduraDeMira({ ativa }: { ativa: boolean }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [ativa, varredura]);
+  }, [ativa, reduzirMovimento, varredura]);
 
   const y = varredura.interpolate({ inputRange: [0, 1], outputRange: [0, 228] });
 
@@ -51,7 +54,7 @@ function MolduraDeMira({ ativa }: { ativa: boolean }) {
       <View style={[styles.cantoBase, styles.cantoTopoDir]} />
       <View style={[styles.cantoBase, styles.cantoBaixoEsq]} />
       <View style={[styles.cantoBase, styles.cantoBaixoDir]} />
-      {ativa && <Animated.View style={[styles.linhaVarredura, { transform: [{ translateY: y }] }]} />}
+      {ativa && !reduzirMovimento && <Animated.View style={[styles.linhaVarredura, { transform: [{ translateY: y }] }]} />}
     </View>
   );
 }
@@ -65,6 +68,8 @@ export default function QrScannerModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const modalRef = useRef<View>(null);
+  const reduzirMovimento = useReducedMotion();
   const { isDemoMode } = useDemo();
   const { activeWalletId } = useWallet();
   const [permissao, pedirPermissao] = useCameraPermissions();
@@ -73,6 +78,7 @@ export default function QrScannerModal({
   const insets = useSafeAreaInsets();
 
   const [nota, setNota] = useState<NotaFiscal | null>(null);
+  useModalAccessibility(modalRef, visible && !nota);
   const [lanterna, setLanterna] = useState(false);
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('');
@@ -157,8 +163,8 @@ export default function QrScannerModal({
     const semPermissao = !permissao?.granted;
 
     return (
-      <Modal visible={visible} animationType="slide" onRequestClose={fechar}>
-        <View style={styles.camWrap}>
+      <Modal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} onRequestClose={fechar}>
+        <View ref={modalRef} style={styles.camWrap} accessibilityViewIsModal role="dialog" focusable>
           {semPermissao ? (
             <View style={styles.permissaoWrap}>
               <Ionicons name="camera-outline" size={44} color={theme.inkFaint} />
@@ -220,7 +226,7 @@ export default function QrScannerModal({
   /* ---- etapa 2: confirmação do lançamento ---- */
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={fechar}>
+    <Modal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent onRequestClose={fechar}>
       <Sheet onClose={fechar}>
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle}>Nota fiscal lida</Text>
@@ -325,9 +331,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   botaoRedondo: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(5,34,41,0.66)',

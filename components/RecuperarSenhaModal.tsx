@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import AppModal from './AppModal';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, type, fonts } from '@/lib/theme';
 import { useSession } from '@/lib/auth-context';
@@ -57,7 +58,7 @@ export default function RecuperarSenhaModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={fechar}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={fechar}>
       <Sheet onClose={fechar}>
         <View style={styles.cabecalho}>
           <Text style={styles.titulo}>{enviado ? 'E-mail a caminho' : 'Recuperar senha'}</Text>
@@ -105,7 +106,7 @@ export default function RecuperarSenhaModal({
           </>
         )}
       </Sheet>
-    </Modal>
+    </AppModal>
   );
 }
 

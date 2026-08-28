@@ -1,4 +1,5 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 import { spacing } from './theme';
 import { useBreakpoint } from './breakpoints';
 
@@ -23,7 +24,13 @@ export function useTabBarInset() {
   const insets = useSafeAreaInsets();
   const { temBarraLateral } = useBreakpoint();
 
-  /* A partir de 768px a navegação vira lateral e a barra flutuante deixa de
+  /* Native Tabs já aplica os insets do sistema ao conteúdo. Esta reserva é
+     exclusiva da barra absoluta desenhada pela versão web compacta. */
+  if (Platform.OS !== 'web') {
+    return { margem: 0, total: 0, paddingConteudo: spacing.xl };
+  }
+
+  /* Na web, a partir de 768px a navegação vira lateral e a barra flutuante deixa de
      existir — não há nada no rodapé para desviar. Reservar os ~118px mesmo
      assim abriria um vão morto no fim de todas as telas do desktop. Como as
      oito telas já leem daqui, zerar neste ponto resolve todas de uma vez.

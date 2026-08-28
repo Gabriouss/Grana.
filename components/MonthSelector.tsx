@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import { formatMonthYear } from '@/lib/format';
 import AppPressable from './AppPressable';
 
@@ -40,6 +40,7 @@ export default function MonthSelector({ year, month, onChange }: MonthSelectorPr
         style={({ hovered }) => [styles.arrowBtn, hovered && styles.btnHover]}
         onPress={handlePrev}
         hitSlop={12}
+        accessibilityLabel="Mês anterior"
       >
         <Ionicons name="chevron-back" size={20} color={theme.ink} />
       </AppPressable>
@@ -47,6 +48,7 @@ export default function MonthSelector({ year, month, onChange }: MonthSelectorPr
       <AppPressable
         style={({ hovered }) => [styles.centerPill, hovered && styles.btnHover]}
         onPress={handleResetCurrent}
+        accessibilityLabel={`${formatMonthYear(year, month)}. Voltar para o mês atual`}
       >
         <Text style={styles.monthText}>{formatMonthYear(year, month)}</Text>
         {isCurrentMonth ? (
@@ -62,6 +64,7 @@ export default function MonthSelector({ year, month, onChange }: MonthSelectorPr
         style={({ hovered }) => [styles.arrowBtn, hovered && styles.btnHover]}
         onPress={handleNext}
         hitSlop={12}
+        accessibilityLabel="Próximo mês"
       >
         <Ionicons name="chevron-forward" size={20} color={theme.ink} />
       </AppPressable>
@@ -83,8 +86,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   arrowBtn: {
-    width: 36,
-    height: 36,
+    width: touchTarget,
+    height: touchTarget,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -114,4 +117,3 @@ const styles = StyleSheet.create({
     color: theme.accent,
     fontSize: type.micro, fontFamily: fonts.regular },
 });
-

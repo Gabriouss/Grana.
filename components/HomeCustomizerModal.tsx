@@ -1,6 +1,7 @@
-import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import AppModal from './AppModal';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type, fonts } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import {
   HOME_BLOCK_DESCRIPTIONS,
   HOME_BLOCK_ICONS,
@@ -50,7 +51,7 @@ export default function HomeCustomizerModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Sheet onClose={onClose}>
         <View style={styles.header}>
           <View>
@@ -92,6 +93,8 @@ export default function HomeCustomizerModal({
                     disabled={index === 0}
                     hitSlop={6}
                     style={styles.arrowBtn}
+                    accessibilityLabel={`Mover ${HOME_BLOCK_LABELS[bloco.key]} para cima`}
+                    accessibilityState={{ disabled: index === 0 }}
                   >
                     <Ionicons
                       name="chevron-up"
@@ -104,6 +107,8 @@ export default function HomeCustomizerModal({
                     disabled={index === config.length - 1}
                     hitSlop={6}
                     style={styles.arrowBtn}
+                    accessibilityLabel={`Mover ${HOME_BLOCK_LABELS[bloco.key]} para baixo`}
+                    accessibilityState={{ disabled: index === config.length - 1 }}
                   >
                     <Ionicons
                       name="chevron-down"
@@ -156,7 +161,7 @@ export default function HomeCustomizerModal({
           </AppPressable>
         </View>
       </Sheet>
-    </Modal>
+    </AppModal>
   );
 }
 
@@ -175,7 +180,10 @@ const styles = StyleSheet.create({
     fontSize: type.nota,
     marginTop: 2, fontFamily: fonts.light },
   closeBtn: {
-    padding: spacing.xs,
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   presetSection: {
     paddingVertical: spacing.sm,
@@ -227,7 +235,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   arrowBtn: {
-    padding: 2,
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconWrap: {
     width: 34,

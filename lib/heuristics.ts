@@ -195,6 +195,17 @@ export function normalizarTexto(texto: string): string {
 
   return saida
     .join('')
+    /* Cópia sincronizada do mesmo fix em supabase/functions/whatsapp-webhook
+       — ver o comentário completo lá. Resumo: ruído de alucinação do
+       Whisper em áudio curto (termina a frase em outro alfabeto em vez de
+       admitir silêncio) — remove qualquer caractere fora de Latin-1/Latin
+       Extended, o único conjunto que português de verdade usa. */
+    .replace(/[^a-zA-Z0-9À-ÿ\s.,!?;:'"()$%&\-+/]/g, '')
+    /* "5h90" — mesmo fix, mesma razão: "h" seguido de minuto impossível
+       (60+) só pode ser a vírgula decimal que o Whisper confundiu com
+       marcador de hora. "5h30" (hora real) fica intocado. */
+    .replace(/(\d{1,3})h(\d{2,})/gi, (m: string, h: string, mm: string) => (mm.length > 2 || Number(mm) > 59 ? `${h},${mm}` : m))
+    .replace(/\s{2,}/g, ' ')
     .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
     /* Fala real quase nunca diz "centavos" ("trinta reais e cinquenta") — só
        entra quando o número depois do "e" tem 1-2 dígitos e não é seguido de
@@ -260,7 +271,16 @@ function contemPalavra(textoNormalizado: string, keyword: string): boolean {
   return textoNormalizado.includes(normalizarParaBusca(keyword));
 }
 
-export function guessCategoryFromText(text: string): { name: string; color: string } {
+/* `extras` são as categorias que o usuário criou no gerenciador do app
+   (fetchCategories(), filtradas por `!is_default`) — sem isso, colar
+   comprovante/escanear nota nunca reconhecia uma categoria custom, só as 9
+   fixas. Cópia da mesma extensão em supabase/functions/whatsapp-webhook —
+   ver o comentário completo lá sobre por que as 9 fixas continuam checadas
+   primeiro. */
+export function guessCategoryFromText(
+  text: string,
+  extras: { name: string; color: string }[] = []
+): { name: string; color: string } {
   const alvo = normalizarParaBusca(text);
   let bestName: string | null = null;
 
@@ -269,6 +289,11 @@ export function guessCategoryFromText(text: string): { name: string; color: stri
       bestName = catName;
       break;
     }
+  }
+
+  if (!bestName) {
+    const extra = extras.find((c) => contemPalavra(alvo, c.name));
+    if (extra) return extra;
   }
 
   return (

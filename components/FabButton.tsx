@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 import AppPressable from './AppPressable';
+import { useReducedMotion } from '@/lib/motion';
+import { useModalAccessibility } from '@/lib/modal-accessibility';
 
 export default function FabButton({
   onAddIncome,
@@ -21,16 +23,28 @@ export default function FabButton({
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
+  const painelRef = useRef<View>(null);
+  const reduzirMovimento = useReducedMotion();
   const { total: tabBarTotal } = useTabBarInset();
+  useModalAccessibility(painelRef, mounted);
 
   useEffect(() => {
     if (open) {
       setMounted(true);
+      if (reduzirMovimento) {
+        progress.setValue(1);
+        return;
+      }
       Animated.spring(progress, { toValue: 1, useNativeDriver: true, speed: 24, bounciness: 8 }).start();
     } else if (mounted) {
+      if (reduzirMovimento) {
+        progress.setValue(0);
+        setMounted(false);
+        return;
+      }
       Animated.timing(progress, { toValue: 0, duration: 140, useNativeDriver: true }).start(() => setMounted(false));
     }
-  }, [open]);
+  }, [mounted, open, progress, reduzirMovimento]);
 
   const rotate = progress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '135deg'] });
 
@@ -132,7 +146,7 @@ export default function FabButton({
   return open || mounted ? (
     <Modal visible transparent animationType="none" onRequestClose={() => setOpen(false)}>
       <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
-        <Pressable style={posicaoStyle} onPress={() => {}}>
+        <Pressable ref={painelRef} style={posicaoStyle} onPress={() => {}} accessibilityViewIsModal role="dialog" focusable>
           {conteudo}
         </Pressable>
       </Pressable>

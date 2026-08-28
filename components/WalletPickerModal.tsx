@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { useWallet } from '@/lib/wallet-context';
@@ -15,7 +15,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { createWallet } from '@/lib/wallets';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
-import { theme, radius, spacing, type, fonts } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
 import AppPressable from './AppPressable';
 import ToggleSwitch from './ToggleSwitch';
@@ -85,7 +85,7 @@ export default function WalletPickerModal({
   }
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       animationType="slide"
       transparent
@@ -193,6 +193,8 @@ export default function WalletPickerModal({
                       newColor === c && styles.colorDotSelected,
                     ]}
                     onPress={() => setNewColor(c)}
+                    accessibilityLabel={`Selecionar cor ${c}`}
+                    accessibilityState={{ selected: newColor === c }}
                   />
                 ))}
               </View>
@@ -236,7 +238,7 @@ export default function WalletPickerModal({
           </AppPressable>
         </View>
       </Sheet>
-    </Modal>
+    </AppModal>
   );
 }
 
@@ -353,9 +355,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   colorDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: touchTarget / 2,
   },
   colorDotSelected: {
     borderWidth: 2,

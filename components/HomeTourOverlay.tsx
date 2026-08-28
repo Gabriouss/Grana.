@@ -3,6 +3,8 @@ import { Animated, Modal, StyleSheet, Text, View, useWindowDimensions } from 're
 import AppPressable from '@/components/AppPressable';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import type { HomeTourStep, HomeTourStepId } from '@/lib/home-tour';
+import { useModalAccessibility } from '@/lib/modal-accessibility';
+import { useReducedMotion } from '@/lib/motion';
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
@@ -40,6 +42,9 @@ export default function HomeTourOverlay({ visible, steps, targets, onFinish, onS
   const passosValidos = steps.filter((s) => targets[s.id]);
   const [passo, setPasso] = useState(0);
   const anim = useRef(new Animated.Value(0)).current;
+  const modalRef = useRef<View>(null);
+  const reduzirMovimento = useReducedMotion();
+  useModalAccessibility(modalRef, visible);
 
   useEffect(() => {
     if (!visible) return;
@@ -55,8 +60,12 @@ export default function HomeTourOverlay({ visible, steps, targets, onFinish, onS
   useEffect(() => {
     if (!visible || passosValidos.length === 0) return;
     anim.setValue(0);
+    if (reduzirMovimento) {
+      anim.setValue(1);
+      return;
+    }
     Animated.spring(anim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
-  }, [passo, visible, passosValidos.length]);
+  }, [anim, passo, passosValidos.length, reduzirMovimento, visible]);
 
   // Avisa quem está de fora qual passo está ativo agora — é o gancho pra
   // rolar a tela até o alvo (ver comentário na prop, e app/(app)/index.tsx).
@@ -113,8 +122,8 @@ export default function HomeTourOverlay({ visible, steps, targets, onFinish, onS
   }
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onFinish}>
-      <View style={styles.fundo}>
+    <Modal visible transparent animationType={reduzirMovimento ? 'none' : 'fade'} onRequestClose={onFinish}>
+      <View ref={modalRef} style={styles.fundo} accessibilityViewIsModal role="dialog" focusable>
         <View
           style={[
             styles.destaque,

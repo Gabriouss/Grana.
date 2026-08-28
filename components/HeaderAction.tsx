@@ -1,6 +1,6 @@
 import { StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type, fonts } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 /**
@@ -53,6 +53,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
     backgroundColor: theme.paperRaised,
+    minHeight: touchTarget,
+    justifyContent: 'center',
   },
   /* Mesmo paddingVertical do WalletPill: as duas pílulas precisam fechar na
      mesma altura, senão a linha do cabeçalho fica desalinhada. */

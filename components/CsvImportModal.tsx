@@ -2,13 +2,13 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
@@ -20,6 +20,7 @@ import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import AppPressable from './AppPressable';
 import { useKeyboardHeight } from './Sheet';
+import AccessibleModalPanel from './AccessibleModalPanel';
 
 export default function CsvImportModal({
   visible,
@@ -93,7 +94,7 @@ export default function CsvImportModal({
   }
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
       animationType="slide"
       transparent
@@ -111,7 +112,7 @@ export default function CsvImportModal({
       >
         {/* A prévia usa FlatList, então esta folha não entra no <Sheet> (que
             rolaria por fora); aqui basta afastar o conteúdo do teclado. */}
-        <Pressable style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]} onPress={() => {}}>
+        <AccessibleModalPanel ativo={visible} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>
               {parsedRows.length > 0 ? `Prévia: ${parsedRows.length} Lançamento(s)` : 'Importar Extrato CSV'}
@@ -198,9 +199,9 @@ export default function CsvImportModal({
               </AppPressable>
             </>
           )}
-        </Pressable>
+        </AccessibleModalPanel>
       </Pressable>
-    </Modal>
+    </AppModal>
   );
 }
 

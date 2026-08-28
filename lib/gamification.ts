@@ -1,5 +1,6 @@
 import { isSameMonth, todayISO } from './format';
 import type { Bill, Budget, Transaction } from './types';
+import type { GamificationHistoricalSummary } from './data';
 
 export type MasteryLevel = {
   level: number;
@@ -233,12 +234,16 @@ export function evaluateBadges(
   transactions: Transaction[],
   bills: Bill[],
   budgets: Budget[],
-  streak: number
+  streak: number,
+  historical?: GamificationHistoricalSummary
 ): Badge[] {
-  const totalTxCount = transactions.length;
-  const inTxCount = transactions.filter((t) => t.type === 'in').length;
-  const outTxCount = transactions.filter((t) => t.type === 'out').length;
-  const paidBillsCount = bills.filter((b) => b.status === 'paid').length;
+  const totalTxCount = historical?.transaction_count ?? transactions.length;
+  const inTxCount = historical?.income_count ?? transactions.filter((t) => t.type === 'in').length;
+  const outTxCount = historical?.expense_count ?? transactions.filter((t) => t.type === 'out').length;
+  const paidBillsCount = historical?.paid_bill_count ?? bills.filter((b) => b.status === 'paid').length;
+  const incomeTotal = historical?.income_total ?? transactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
+  const expenseCategoryCount = historical?.expense_category_count
+    ?? new Set(transactions.filter((t) => t.type === 'out').map((t) => t.category)).size;
   const hasBudgets = budgets.length >= 3;
 
   const now = new Date();
@@ -349,8 +354,8 @@ export function evaluateBadges(
       description: 'Acumulou mais de R$ 5.000,00 em receitas registradas.',
       emoji: '🏦',
       category: 'saving',
-      unlocked: transactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0) >= 5000,
-      progress: Math.min(1, transactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0) / 5000),
+      unlocked: incomeTotal >= 5000,
+      progress: Math.min(1, incomeTotal / 5000),
       progressLabel: 'R$ 5.000',
     },
 
@@ -371,9 +376,9 @@ export function evaluateBadges(
       description: 'Registrou despesas em pelo menos 5 categorias diferentes.',
       emoji: '🧭',
       category: 'speed',
-      unlocked: new Set(transactions.filter((t) => t.type === 'out').map((t) => t.category)).size >= 5,
-      progress: Math.min(1, new Set(transactions.filter((t) => t.type === 'out').map((t) => t.category)).size / 5),
-      progressLabel: `${Math.min(5, new Set(transactions.filter((t) => t.type === 'out').map((t) => t.category)).size)}/5 categorias`,
+      unlocked: expenseCategoryCount >= 5,
+      progress: Math.min(1, expenseCategoryCount / 5),
+      progressLabel: `${Math.min(5, expenseCategoryCount)}/5 categorias`,
     },
   ];
 }
@@ -384,11 +389,12 @@ export function evaluateBadges(
 export function getGamificationState(
   transactions: Transaction[],
   bills: Bill[],
-  budgets: Budget[]
+  budgets: Budget[],
+  historical?: GamificationHistoricalSummary
 ): GamificationState {
   const { streak, weekActivity } = calculateStreakAndWeek(transactions);
   const { score, factors } = calculateScoreBreakdown(transactions, bills, budgets, streak);
-  const badges = evaluateBadges(transactions, bills, budgets, streak);
+  const badges = evaluateBadges(transactions, bills, budgets, streak, historical);
 
   const mastery = MASTERY_LEVELS.find((m) => score >= m.minScore && score <= m.maxScore) || MASTERY_LEVELS[0];
   const nextMastery = MASTERY_LEVELS.find((m) => m.level === mastery.level + 1) || null;
