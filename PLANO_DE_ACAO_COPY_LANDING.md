@@ -174,7 +174,7 @@ Headline:
 
 Subheadline:
 
-> Fale no app, mande texto ou áudio pelo WhatsApp ou leia o QR Code da nota. O Grana. organiza seus lançamentos sem conectar à sua conta bancária.
+> Fale no app, mande texto ou áudio pelo WhatsApp ou leia o QR Code da nota. O Grana. organiza seus lançamentos sem conectar sua conta bancária.
 
 CTA:
 

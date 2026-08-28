@@ -60,13 +60,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pergunta: { flex: 1, color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  pergunta: { flex: 1, color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.4, fontFamily: fonts.regular },
   resposta: {
     color: theme.inkSoft,
     fontSize: type.apoio,
-    lineHeight: 21,
+    lineHeight: type.apoio * 1.6,
     fontFamily: fonts.light,
-    marginTop: spacing.md,
+    marginTop: spacing.sm + spacing.xs,
     paddingRight: spacing.sm,
   },
 });

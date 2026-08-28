@@ -25,7 +25,8 @@ valor completa. Nome sempre "Grana." com o ponto.
 **Fase atual**: acesso antecipado gratuito. O modelo comercial para depois
 dessa fase está definido como assinatura recorrente de R$ 19,99/mês,
 cancelável a qualquer momento; checkout e bloqueio de acesso ainda não estão
-operacionais. Integração de WhatsApp em revisão pela Meta.
+operacionais. A empresa Grana. já foi verificada e aprovada pela Meta, e a
+integração com o WhatsApp Business está operacional.
 
 ## Stack
 
@@ -309,3 +310,40 @@ Vercel confirmado no ar em granaponto.com.br.
   de fatura) majoritariamente já implementados — conferir `lib/goals.ts`,
   `lib/gamification*.ts`, `lib/projections.ts` antes de assumir que é
   trabalho futuro.
+
+## Sessão de 28/08/2026 — preview da nova copy da landing
+
+Trabalho mantido fora de `main`, no branch `preview/copy-landing`, para revisão
+antes de qualquer lançamento oficial.
+
+- A landing foi reescrita com proposta de valor completa na primeira dobra,
+  tom sem culpa, menos repetição entre seções e CTAs específicos por contexto.
+- A oferta agora distingue sem ambiguidade o acesso antecipado gratuito, sem
+  cartão ou cobrança automática, da futura assinatura recorrente de
+  R$ 19,99/mês, cancelável quando o cliente quiser.
+- A explicação de **Livre para Gastar** foi alinhada à implementação real de
+  `calcularSafeToSpend`: saldo dos lançamentos do mês, contas pendentes do mês,
+  valores separados para metas e dias restantes. Compromissos futuros aparecem
+  como projeção separada, não como parte direta desse cálculo.
+- O WhatsApp passou a ser documentado como aprovado e operacional; a aprovação
+  não é usada como endosso geral de segurança. O FAQ também deixa explícito que
+  reconhecimento e categorização são sugestões editáveis e podem errar.
+- A tipografia da landing recebeu uma revisão completa de ritmo: títulos usam
+  entrelinha de aproximadamente 1,14–1,20; textos corridos, cards e respostas
+  usam 1,50–1,60; microcopy usa 1,45. Quebras manuais foram removidas dos textos
+  editoriais, títulos usam balanceamento no navegador e parágrafos longos ficam
+  alinhados à esquerda no mobile.
+- `FaqItem` ganhou entrelinha adequada tanto na pergunta quanto na resposta.
+  O guia foi consolidado em três passos e permanece inteiro em largura compacta,
+  sem reproduzir o corte que existia no antigo passo 04.
+- `landing-meta.json` foi alinhado à nova promessa. A mudança da descrição
+  alterou o JSON-LD; por isso o hash permitido em `vercel.json` também foi
+  atualizado para que a CSP não bloqueie os dados estruturados.
+- Validação concluída com `npx tsc --noEmit`, export web de produção, injeção de
+  SEO/JSON-LD, auditoria WCAG sem violações, teste de FAQ e links e inspeção nos
+  breakpoints 390, 720, 1024 e 1440 px, todos sem overflow horizontal.
+- O envio direto pela CLI da Vercel não foi executado: o ambiente bloqueou o
+  upload do diretório local por risco de incluir arquivos não rastreados. O
+  branch contém somente os arquivos versionados para revisão; a URL de preview
+  fica pendente de autorização explícita para esse upload ou do pipeline Git já
+  configurado no projeto.

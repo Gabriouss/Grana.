@@ -47,9 +47,8 @@ export default function LandingPage() {
  * de propósito (herói, meio, fechamento). Cada CTA de resposta direta reduz
  * uma objeção diferente que ainda não foi vencida: "quanto tempo leva" no
  * herói, "e agora, depois de ver como funciona" no meio, "por que ainda não
- * cliquei" no fechamento — mas o texto do BOTÃO em si fica igual nos três,
- * de propósito: repetição do mesmo verbo de ação reforça a ação, variar a
- * cada seção só confunde o que a pessoa está prestes a fazer.
+ * cliquei" no fechamento. O texto pode ser específico quando a seção pede
+ * uma ação mais concreta; o padrão continua sendo "Começar grátis".
  *
  * O brilho por trás do botão (boxShadow colorido, não borda) é deliberado: o
  * CTA precisa ser a coisa mais "clicável" da tela em qualquer seção onde
@@ -70,7 +69,15 @@ function hrefCadastroComAtribuicao(): string {
   return query ? `/sign-up?${query}` : '/sign-up';
 }
 
-function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado?: boolean }) {
+function BotaoCTA({
+  microcopy,
+  centralizado,
+  texto = 'Começar grátis',
+}: {
+  microcopy: string;
+  centralizado?: boolean;
+  texto?: string;
+}) {
   return (
     // Sem `centralizado`, o botão (`ctaPrimario` tem `alignSelf:'flex-start'`
     // fixo) e a microcopy (texto normal, sem textAlign) ficam os dois
@@ -95,7 +102,7 @@ function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado
         href={hrefCadastroComAtribuicao()}
         style={({ hovered }) => [styles.ctaPrimario, centralizado && styles.ctaPrimarioCentralizado, hovered && styles.ctaPrimarioHover]}
       >
-        <Text style={styles.ctaPrimarioTexto}>Criar conta</Text>
+        <Text style={styles.ctaPrimarioTexto}>{texto}</Text>
         <View aria-hidden>
           <Ionicons name="arrow-forward" size={17} color={theme.paper} />
         </View>
@@ -161,16 +168,13 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
   );
 }
 
-// As 3 cenas de dor, cada uma em 3 linhas fixas (`\n` explícito) — mesma
-// disciplina do resto da página: quebra escolhida, não deixada pro acaso do
-// wrap automático em cada largura de tela.
 const CENAS_DOR = [
-  'Sexta ao meio-dia,\ne você não sabe se sobra\ndinheiro pra sair à noite.',
-  'A fatura chega com\num valor que você jura\nnão lembrar de ter gasto.',
-  'Baixou uma planilha\npra controlar tudo.\nDurou quatro dias.',
+  'Sexta-feira chega e você ainda não sabe se dá para sair sem apertar o resto do mês.',
+  'A fatura fecha com gastos que você não lembra quando aconteceram.',
+  'A planilha parecia uma boa ideia, até registrar tudo virar mais uma tarefa.',
 ];
 
-const PONTE_PERGUNTA = 'Aqui, contar um gasto leva o mesmo tempo que mandar um áudio pra um amigo.';
+const PONTE_PERGUNTA = 'Quando registrar leva poucos segundos, manter o controle deixa de pesar.';
 
 /* Mesmo escalonamento vertical do FAQ (ver DESALINHO_FAQ) — valores fixos,
    não aleatórios de verdade, pra não "pular" a cada re-render. Só 3 cenas
@@ -226,27 +230,49 @@ const COMPROMISSOS = [
 
 const PERGUNTAS_FAQ = [
   {
-    pergunta: 'O Grana. puxa meu extrato do banco sozinho?',
+    pergunta: 'O Grana. acessa minha conta bancária?',
     resposta:
-      'Não. O Grana. não se conecta ao seu banco. Você registra por voz, por texto, pelo WhatsApp ou apontando a câmera pra nota, e ele organiza. É mais rápido de registrar do que de conectar uma conta bancária, e você nunca compartilha senha de banco com ninguém.',
+      'Não. O Grana. não usa Open Finance, não pede sua senha bancária e não movimenta dinheiro. Ele organiza apenas o que você registra.',
   },
   {
-    pergunta: 'O Grana. movimenta meu dinheiro?',
+    pergunta: 'O que já está disponível no acesso antecipado?',
     resposta:
-      'Não. O Grana. é um registro. Não é uma instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele.',
+      'O acesso já é completo: lançamentos por voz, WhatsApp e QR Code da nota, gráficos, orçamentos, contas, parcelas, metas e a estimativa de Livre para Gastar.',
   },
   {
-    pergunta: 'É seguro?',
+    pergunta: 'Como funciona o lançamento pelo WhatsApp?',
     resposta:
-      'Cada conta só acessa os próprios dados, reforçado no banco de dados (não só na tela). No aplicativo móvel, a sessão fica criptografada no aparelho; no Android, você também pode bloquear prints das telas financeiras. Detalhes completos na Política de Privacidade.',
+      'O canal do Grana. está aprovado e operacional. Você manda texto ou áudio para o número do Grana. no WhatsApp, e o lançamento aparece organizado na sua conta.',
   },
   {
-    pergunta: 'Preciso instalar alguma coisa?',
-    resposta: 'Não pra começar. O Grana. roda no navegador, neste mesmo endereço. Uma versão para Android e iOS está a caminho.',
+    pergunta: 'E se o Grana. entender um lançamento errado?',
+    resposta:
+      'O reconhecimento e a categoria são sugestões automáticas e podem errar. Você pode conferir e editar valor, descrição, categoria ou data sempre que precisar.',
   },
   {
-    pergunta: 'É pago?',
-    resposta: 'Durante o acesso antecipado, criar a conta é gratuito. Quando a cobrança começar, será uma assinatura única de R$ 19,99 por mês, cancelável quando você quiser.',
+    pergunta: 'Como o Livre para Gastar é calculado?',
+    resposta:
+      'É uma estimativa baseada no saldo dos lançamentos do mês, nas contas pendentes do mês e no valor separado para metas, distribuída pelos dias restantes. Quanto mais completos estiverem seus registros, mais útil fica a referência.',
+  },
+  {
+    pergunta: 'O acesso gratuito vai gerar cobrança automática?',
+    resposta:
+      'Não. O acesso antecipado não pede cartão e não gera cobrança automática. Quando a assinatura começar, você será avisado e decidirá se quer continuar.',
+  },
+  {
+    pergunta: 'Posso editar ou excluir meus dados?',
+    resposta:
+      'Sim. Você controla seus lançamentos e pode solicitar a exclusão da conta e dos dados vinculados a ela.',
+  },
+  {
+    pergunta: 'Como meus dados são protegidos?',
+    resposta:
+      'Cada conta só acessa os próprios dados. No aplicativo móvel, você também pode ativar biometria ou senha do aparelho e ocultar valores com o modo privacidade. O Grana. não vende seus dados nem os usa para anúncios.',
+  },
+  {
+    pergunta: 'Quanto custará depois?',
+    resposta:
+      'Depois do acesso antecipado, o plano previsto é uma assinatura de R$ 19,99 por mês, cancelável quando você quiser.',
   },
 ];
 
@@ -265,11 +291,13 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
   // seções que já centralizavam antes (Preços, Reconhece isso): a mesma
   // regra `textAlign:'center'` aplicada duas vezes não muda nada.
   return (
-    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, ehCompacto && styles.precoTituloCentralizado, estiloExtra]}>
+    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, ehCompacto && styles.precoTituloCentralizado, textoBalanceado, estiloExtra]}>
       {children}
     </Text>
   );
 }
+
+const textoBalanceado = Platform.OS === 'web' ? ({ textWrap: 'balance' } as any) : undefined;
 
 type Capitulo = { titulo: string; subtitulo: string; icone: keyof typeof Ionicons.glyphMap };
 
@@ -288,7 +316,7 @@ type Capitulo = { titulo: string; subtitulo: string; icone: keyof typeof Ionicon
 /* Título de abertura do capítulo 1 — usado tanto no array de capítulos
    quanto pra semear o estado inicial das letras animadas, sem depender da
    ordem de declaração dentro do componente. */
-const TITULO_CAPITULO_1 = 'Cadê meu dinheiro?';
+const TITULO_CAPITULO_1 = 'Registre seus gastos em segundos.';
 
 function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
   return [...texto].map(() => new Animated.Value(valorInicial));
@@ -323,12 +351,12 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
   const CAPITULOS: Capitulo[] = [
     {
       titulo: TITULO_CAPITULO_1,
-      subtitulo: 'Fala com o Grana. como fala com um amigo. Ele entende o valor, o nome e a categoria sozinho.',
+      subtitulo: 'Fale no app, mande texto ou áudio pelo WhatsApp ou leia o QR Code da nota. O Grana. organiza seus lançamentos sem conectar sua conta bancária.',
       icone: 'mic-outline',
     },
     {
-      titulo: 'Manda um áudio. Pronto.',
-      subtitulo: 'Sem abrir o app. Escreve ou fala pro número do Grana. no WhatsApp e o lançamento aparece organizado.',
+      titulo: 'Mande no WhatsApp. Pronto.',
+      subtitulo: 'Texto ou áudio vira um lançamento organizado sem formulário. Você confere e ajusta se precisar.',
       icone: 'logo-whatsapp',
     },
     {
@@ -337,9 +365,8 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
       icone: 'qr-code-outline',
     },
     {
-      titulo: 'Sabe quanto sobra, sem calcular.',
-      subtitulo:
-        'Depois que o lançamento existe, o Grana. soma tudo e avisa quanto você tem livre pra gastar hoje.',
+      titulo: 'Entenda o que está livre hoje.',
+      subtitulo: 'O Grana. estima uma referência diária com base no que você registrou no mês, nas contas pendentes e nas metas.',
       icone: 'wallet-outline',
     },
   ];
@@ -439,7 +466,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
                 âncora visual antes do título), mas cada um com a cara do
                 próprio recurso, não um rótulo repetido. */}
             {i === 0 ? (
-              <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>Acesso antecipado</Text>
+              <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>Controle financeiro sem planilha</Text>
             ) : (
               <View style={styles.heroIconeCirculoCompacto} aria-hidden>
                 <Ionicons name={c.icone} size={20} color={theme.accent2} />
@@ -448,7 +475,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
             <Text
               role="heading"
               aria-level={i === 0 ? 1 : 2}
-              style={[styles.headlineCompacto, styles.precoTituloCentralizado]}
+              style={[styles.headlineCompacto, styles.precoTituloCentralizado, textoBalanceado]}
             >
               {c.titulo}
             </Text>
@@ -461,7 +488,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
                 precisam de um no início (primeira decisão) e um no fim
                 (quem chegou até ali já viu o argumento inteiro). */}
             {(i === 0 || i === CAPITULOS.length - 1) && (
-              <BotaoCTA microcopy={i === 0 ? 'Leva 30 segundos. Sem cartão de crédito.' : 'Acesso antecipado gratuito por enquanto.'} centralizado />
+              <BotaoCTA microcopy="Acesso antecipado gratuito. Sem cartão." centralizado />
             )}
           </View>
         ))}
@@ -512,9 +539,9 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
             abaixo. */}
         <View style={[colunaConteudo, styles.heroConteudoCentralizado]}>
           <View style={styles.heroColunaTexto}>
-            <Text style={styles.eyebrow}>Acesso antecipado</Text>
+            <Text style={styles.eyebrow}>Controle financeiro sem planilha</Text>
             <Animated.View style={{ opacity: fade }}>
-              <Text role="heading" aria-level={1} style={styles.headline}>
+              <Text role="heading" aria-level={1} style={[styles.headline, textoBalanceado]}>
                 {[...capitulo.titulo].map((letra, i) => {
                   const valor = letras[i];
                   const cor = valor
@@ -529,7 +556,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
               </Text>
               <Text style={styles.subheadline}>{capitulo.subtitulo}</Text>
             </Animated.View>
-            <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />
+            <BotaoCTA microcopy="Acesso antecipado gratuito. Sem cartão." />
             <View style={styles.heroMarcadores} aria-hidden>
               {CAPITULOS.map((_, i) => (
                 <View key={i} style={[styles.heroMarcador, i === capituloExibido && styles.heroMarcadorAtivo]} />
@@ -607,51 +634,49 @@ function ConteudoWeb() {
   // mostrado (metas, comprometimento futuro, gráficos).
   const FEATURES = [
     {
-      icone: 'mic-outline' as const,
-      titulo: 'Voz, dentro do app',
-      texto:
-        'Toque no microfone e fale como fala com alguém: "gastei 30 no mercado". O Grana. entende valor, nome e categoria sozinho.',
+      icone: 'list-outline' as const,
+      titulo: 'Histórico organizado',
+      texto: 'Encontre seus lançamentos por data, descrição e categoria e ajuste qualquer informação quando precisar.',
     },
     {
-      icone: 'logo-whatsapp' as const,
-      titulo: 'Texto ou áudio no WhatsApp',
-      texto: 'Manda uma mensagem, escrita ou falada, pro número do Grana. e o lançamento aparece no app. Sem abrir nada.',
+      icone: 'stats-chart-outline' as const,
+      titulo: 'Gráficos do mês',
+      texto: 'Veja como seus gastos se distribuem por categoria e compare a evolução mês a mês.',
     },
     {
-      icone: 'qr-code-outline' as const,
-      titulo: 'Foto da nota fiscal',
-      texto: 'Aponta a câmera pro QR Code da nota (NFC-e) e o valor total da compra vira um lançamento, sem precisar digitar.',
+      icone: 'pie-chart-outline' as const,
+      titulo: 'Orçamentos por categoria',
+      texto: 'Defina limites para as categorias que mais pesam e acompanhe quanto ainda cabe no orçamento.',
+    },
+    {
+      icone: 'calendar-outline' as const,
+      titulo: 'Contas e parcelas',
+      texto: 'Organize vencimentos e acompanhe os compromissos que ainda vão chegar nos próximos meses.',
     },
     {
       icone: 'flag-outline' as const,
       titulo: 'Cofrinhos e metas',
-      texto: 'Separe dinheiro pra um objetivo — viagem, reserva de emergência — e acompanhe o progresso sem sair do app.',
+      texto: 'Separe dinheiro para seus objetivos e acompanhe o progresso sem misturar essa reserva com o mês.',
     },
     {
-      icone: 'calendar-outline' as const,
-      titulo: 'Comprometimento futuro',
-      texto: 'Veja parcelas e contas dos próximos meses antes de se apertar, não só o que já venceu.',
-    },
-    {
-      icone: 'stats-chart-outline' as const,
-      titulo: 'Gráficos automáticos',
-      texto: 'Composição por categoria, mês a mês, gerada sozinha a partir do que você já lançou.',
+      icone: 'trophy-outline' as const,
+      titulo: 'Conquistas do hábito',
+      texto: 'Acompanhe marcos que reconhecem sua constância sem transformar finanças em cobrança.',
     },
   ];
 
-  // Os 4 passos da seção "Guia" — a sequência importa de verdade (é uma
+  // Os 3 passos da seção "Guia" — a sequência importa de verdade (é uma
   // ordem de uso, não uma lista solta), por isso os números fazem parte da
   // informação e não são só decoração.
-  // Passos 03/04 eram réplicas do capítulo 4 do Herói e da seção
+  // O antigo passo 04 repetia o capítulo 4 do Herói e a seção
   // "Inteligência financeira" logo abaixo (mesma promessa de Livre para
   // Gastar/compromissos futuros, três vezes em duas dobras) — reescritos
   // pra fechar o arco do guia (resultado imediato, hábito) sem repetir o
   // mecanismo específico que as outras duas seções já explicam.
   const GUIA = [
-    { numero: '01', titulo: 'Fale, mande áudio ou foto da nota', texto: 'Sem formulário: um jeito só de contar o que aconteceu com o dinheiro.' },
-    { numero: '02', titulo: 'O Grana. categoriza sozinho', texto: 'Valor, nome e categoria reconhecidos automaticamente, sem revisar linha por linha.' },
-    { numero: '03', titulo: 'O resultado aparece na hora', texto: 'Sem esperar o fim do mês pra saber pra onde o dinheiro foi.' },
-    { numero: '04', titulo: 'Vira hábito, não tarefa', texto: 'Cada lançamento leva segundos — por isso dá pra manter todo mês.' },
+    { numero: '01', titulo: 'Conte do jeito mais fácil', texto: 'Fale no app, mande uma mensagem pelo WhatsApp ou leia o QR Code da nota.' },
+    { numero: '02', titulo: 'Confira o lançamento organizado', texto: 'O Grana. reconhece valor e descrição e sugere uma categoria. Você ajusta se precisar.' },
+    { numero: '03', titulo: 'Veja o mês com mais clareza', texto: 'Seus registros alimentam gráficos, metas e a estimativa do que está livre.' },
   ];
 
   // `tipo` escolhe a cor do ícone: 'faz' usa a mesma cor de lançamento
@@ -661,22 +686,23 @@ function ConteudoWeb() {
   // "dinheiro saindo", aqui emprestadas pra "o que o Grana. faz" vs. "o que
   // ele nunca faz", em vez de inventar um terceiro par de cores novo.
   const SEGURANCA = [
-    { icone: 'lock-closed-outline' as const, texto: 'Cada conta só enxerga\nos próprios dados, reforçado\nno banco, não só na tela.', tipo: 'faz' as const },
-    { icone: 'finger-print-outline' as const, texto: 'No aplicativo móvel, bloqueio\npor biometria ou senha\ndo aparelho, se você ativar.', tipo: 'faz' as const },
-    { icone: 'eye-off-outline' as const, texto: 'Modo privacidade oculta\nos valores da tela\ncom um toque.', tipo: 'faz' as const },
-    { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida\ncontra vazamentos conhecidos\nno cadastro.', tipo: 'faz' as const },
-    { icone: 'ban-outline' as const, texto: 'O Grana. é só registro.\nEle nunca movimenta\ndinheiro de verdade.', tipo: 'nao' as const },
-    { icone: 'megaphone-outline' as const, texto: 'Sem anúncio, sem venda\nde dado. O que você\nregistra é seu.', tipo: 'nao' as const },
+    { icone: 'lock-closed-outline' as const, texto: 'Só você acessa os dados da sua conta.', tipo: 'faz' as const },
+    { icone: 'finger-print-outline' as const, texto: 'No aplicativo móvel, ative biometria ou senha do aparelho.', tipo: 'faz' as const },
+    { icone: 'eye-off-outline' as const, texto: 'O modo privacidade oculta os valores da tela com um toque.', tipo: 'faz' as const },
+    { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida contra vazamentos conhecidos no cadastro.', tipo: 'faz' as const },
+    { icone: 'ban-outline' as const, texto: 'O Grana. só registra: nunca movimenta seu dinheiro.', tipo: 'nao' as const },
+    { icone: 'megaphone-outline' as const, texto: 'Sem anúncios e sem venda de dados.', tipo: 'nao' as const },
   ];
 
   // Só o que já é dito em algum outro ponto desta mesma página — nenhum
   // benefício novo inventado pro checklist de Preços.
   const BENEFICIOS_PRECO = [
-    'Voz, WhatsApp (texto ou áudio)\nou foto da nota pra lançar',
-    'Livre para Gastar calculado sozinho,\nconsiderando o que ainda vem',
-    'No app móvel, biometria e senha;\nem toda plataforma, modo privacidade',
-    'Dados isolados por conta, nunca\nvendidos ou usados em anúncio',
-    'Acesso completo a todos\nos recursos, sem plano limitado',
+    'Lançamentos por voz, WhatsApp e QR Code com o valor total da nota',
+    'Histórico organizado e gráficos do mês',
+    'Estimativa diária baseada nos registros, contas pendentes e metas',
+    'Metas, contas, parcelas e linha do tempo dos próximos meses',
+    'Privacidade sem conexão bancária e sem venda de dados',
+    'Acesso completo, sem plano limitado',
   ];
 
   return (
@@ -748,7 +774,7 @@ function ConteudoWeb() {
           está "fora" do ritmo de dobras de tela cheia (useAlturaDobra). Uma
           faixa fina no meio de duas Dobra quebraria essa métrica. */}
       <TrustMarquee
-        itens={['Sem banco conectado', 'Sem burocracia pra começar', 'Sem letra miúda', 'Preço simples e fixo']}
+        itens={['Sem conectar banco', 'Texto e áudio pelo WhatsApp', 'Funciona no navegador', 'Dados nunca vendidos', 'Acesso antecipado gratuito']}
       />
 
       {/* ───────── Hero-storytelling — o momento de assinatura da página ───────── */}
@@ -782,7 +808,7 @@ function ConteudoWeb() {
             <RevealOnScroll style={styles.precoIntroCentralizada}>
               <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Reconhece isso?</Text>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
-                {'Anotar gastos dá trabalho.\nPor isso você não dá continuidade.'}
+                O problema não é disciplina. É o trabalho de registrar tudo.
               </TituloSecao>
             </RevealOnScroll>
 
@@ -791,7 +817,7 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Guia — 4 passos numerados ─────────
+      {/* ───────── Guia — 3 passos numerados ─────────
           Tela real (conta de exemplo, dado fictício — nunca uma conta de
           verdade, ver `public/telas/`) numa moldura de navegador de um lado,
           a sequência de uso do outro. Os números (01-04) carregam
@@ -833,8 +859,8 @@ function ConteudoWeb() {
                 </View>
               </View>
               <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
-                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Do primeiro lançamento ao hábito</Text>
-                <TituloSecao>O guia pro seu controle financeiro</TituloSecao>
+                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Do primeiro gasto à visão do mês</Text>
+                <TituloSecao>Três passos. Nenhum formulário para preencher.</TituloSecao>
                 <View style={styles.guiaLista}>
                   {GUIA.map((passo) => (
                     <View key={passo.numero} style={styles.guiaPasso}>
@@ -858,8 +884,8 @@ function ConteudoWeb() {
         <Dobra levantada>
         <View style={styles.secao}>
           <RevealOnScroll>
-            <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>A parte que você não vai adiar</Text>
-            <TituloSecao>O único esforço é lembrar que o gasto existe</TituloSecao>
+            <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Depois do primeiro gasto</Text>
+            <TituloSecao>Tudo que você registra vira clareza para o mês.</TituloSecao>
           </RevealOnScroll>
 
           <View style={styles.gradeRecursos}>
@@ -900,8 +926,8 @@ function ConteudoWeb() {
 
           <RevealOnScroll>
             <View style={styles.ctaMeio}>
-              <Text style={styles.ctaMeioTitulo}>Pronto pra parar de perder a conta?</Text>
-              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado />
+              <Text style={[styles.ctaMeioTitulo, textoBalanceado]}>Pronto para registrar sem transformar isso em tarefa?</Text>
+              <BotaoCTA texto="Registrar meu primeiro gasto" microcopy="Comece direto pelo navegador." centralizado />
             </View>
           </RevealOnScroll>
         </View>
@@ -915,16 +941,10 @@ function ConteudoWeb() {
         <RevealOnScroll>
           <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
             <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
-              <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Depois que o lançamento existe</Text>
-              <TituloSecao>{ehCompacto ? 'Ele soma o que ainda vai vir, antes de você se apertar.' : 'Ele soma o que\nainda vai vir, antes\nde você se apertar.'}</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                {ehCompacto
-                  ? 'A linha do tempo de compromissos futuros junta parcelas do cartão e contas fixas num lugar só. É dela que sai o '
-                  : 'A linha do tempo de compromissos futuros junta\nparcelas do cartão e contas fixas num lugar só.\nÉ dela que sai o '}
-                <Text style={styles.destaqueInline}>Livre para Gastar</Text>
-                {ehCompacto
-                  ? ' do dia, que já considera o que ainda vem. Nada pega de surpresa lá na frente.'
-                  : ' do dia, que já\nconsidera o que ainda vem. Nada pega de surpresa lá na frente.'}
+              <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Uma referência para hoje</Text>
+              <TituloSecao>Entenda o que está livre, com base no que você registrou.</TituloSecao>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
+                Para estimar o <Text style={styles.destaqueInline}>Livre para Gastar</Text> do dia, o Grana. considera os lançamentos do mês, as contas pendentes e o que você separou para metas. A linha do tempo ao lado mostra, separadamente, contas e parcelas que ainda vão chegar.
               </Text>
             </View>
 
@@ -967,12 +987,10 @@ function ConteudoWeb() {
         <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
           <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
             <RevealOnScroll>
-              <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>A pergunta que todo mundo faz</Text>
-              <TituloSecao>{ehCompacto ? '"É seguro informar meus gastos para um aplicativo?"' : '"É seguro informar meus\ngastos para um aplicativo?"'}</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                {ehCompacto
-                  ? 'Faz sentido perguntar. Aqui está exatamente o que a gente faz, e o que a gente nunca faz.'
-                  : 'Faz sentido perguntar. Aqui está exatamente\no que a gente faz, e o que a gente nunca faz.'}
+              <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Privacidade sem acesso ao banco</Text>
+              <TituloSecao>Seus gastos são pessoais. Seus dados também.</TituloSecao>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
+                O Grana. organiza o que você registra sem pedir senha bancária. Você continua no controle dos lançamentos e da conta.
               </Text>
             </RevealOnScroll>
 
@@ -981,7 +999,7 @@ function ConteudoWeb() {
                 <RevealOnScroll key={s.texto} atraso={i * 60}>
                   <View style={styles.segurancaLinha}>
                     <Ionicons name={s.icone} size={16} color={s.tipo === 'faz' ? theme.up : theme.down} aria-hidden />
-                    <Text style={styles.segurancaLinhaTexto}>{s.texto.replace(/\n/g, ' ')}</Text>
+                    <Text style={styles.segurancaLinhaTexto}>{s.texto}</Text>
                   </View>
                 </RevealOnScroll>
               ))}
@@ -993,7 +1011,7 @@ function ConteudoWeb() {
                   um bloco de largura cheia (relato direto do autor, com print
                   do site no celular). No desktop a coluna continua alinhada
                   à esquerda, então `ehCompacto` mantém o comportamento de lá. */}
-              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado={ehCompacto} />
+              <BotaoCTA microcopy="Você pode excluir sua conta e seus dados quando quiser." centralizado={ehCompacto} />
             </RevealOnScroll>
           </View>
 
@@ -1022,12 +1040,12 @@ function ConteudoWeb() {
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll style={styles.precoIntroCentralizada}>
-              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Quanto custa</Text>
+              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Acesso antecipado</Text>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
-                {'Um plano só.\nSem letra miúda escondida.'}
+                Comece grátis. Decida depois se quer continuar.
               </TituloSecao>
               <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
-                {'O acesso antecipado é gratuito por enquanto.\nDepois, a assinatura custará R$ 19,99 por mês.'}
+                Durante o acesso antecipado, você usa todos os recursos sem pagar e sem cadastrar cartão.
               </Text>
             </RevealOnScroll>
 
@@ -1051,15 +1069,15 @@ function ConteudoWeb() {
                 </View>
 
                 <View style={[styles.cardPreco, ehCompacto && styles.cardPrecoCompacto]}>
-                  <Text style={[styles.precoRotulo, ehCompacto && styles.precoTituloCentralizado]}>Assinatura única</Text>
+                  <Text style={[styles.precoRotulo, ehCompacto && styles.precoTituloCentralizado]}>Plano mensal depois do acesso antecipado</Text>
                   <View style={[styles.precoLinha, ehCompacto && styles.precoLinhaCompacta]}>
                     <Text style={styles.precoValor}>R$ 19,99</Text>
                     <Text style={styles.precoPeriodo}>/mês</Text>
                   </View>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                    Quando a cobrança começar, será mensal e transparente. Cancele quando quiser, sem burocracia.
+                    Quando a assinatura começar, você será avisado e escolherá se quer continuar por R$ 19,99 por mês. Cancele quando quiser.
                   </Text>
-                  <BotaoCTA microcopy="Acesso antecipado gratuito por enquanto." centralizado={ehCompacto} />
+                  <BotaoCTA texto="Entrar no acesso antecipado" microcopy="Grátis agora. Sem cobrança automática." centralizado={ehCompacto} />
                 </View>
               </View>
             </RevealOnScroll>
@@ -1079,10 +1097,10 @@ function ConteudoWeb() {
           <View style={styles.secao}>
             <View style={[styles.faqLayout, ehCompacto && styles.faqLayoutCompacta]}>
               <RevealOnScroll style={[styles.colunaTextoSecao, ehCompacto && styles.faqCompactoSemFlex]}>
-                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Perguntas diretas</Text>
-                <TituloSecao>Sem letra miúda</TituloSecao>
-                <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                  Respostas rápidas para as dúvidas que travam muita gente antes de entrar.
+                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Antes de começar</Text>
+                <TituloSecao>Tudo claro antes de criar sua conta.</TituloSecao>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
+                  Respostas diretas para as dúvidas mais comuns sobre uso, privacidade e cobrança.
                 </Text>
               </RevealOnScroll>
 
@@ -1119,16 +1137,16 @@ function ConteudoWeb() {
               {/* Um heading só (não dois) — duas frases de contraste
                   aninhadas em <Text> de cor diferente dentro dele, mesmo
                   padrão de destaqueInline já usado na seção de Inteligência
-                  financeira. Fecha o ciclo com o "Cadê meu dinheiro?" do
-                  herói, agora como pergunta que já tem resposta. */}
-              <Text role="heading" aria-level={2} style={styles.ctaFinalTitulo}>
+                  financeira. Fecha a página com uma próxima ação pequena e
+                  concreta, sem voltar a pressionar pela dor. */}
+              <Text role="heading" aria-level={2} style={[styles.ctaFinalTitulo, textoBalanceado]}>
                 <Text style={styles.ctaFinalTituloForte}>
-                  Use o Grana. por 30 dias e descubra pra onde foi cada real.
+                  Comece pelo próximo gasto.
                 </Text>
                 {'\n'}
-                <Text style={styles.ctaFinalTituloFraca}>Ou continuar perguntando "cadê meu dinheiro".</Text>
+                <Text style={styles.ctaFinalTituloFraca}>O resto fica mais claro.</Text>
               </Text>
-              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado />
+              <BotaoCTA microcopy="Acesso antecipado gratuito. Sem cartão." centralizado />
             </View>
           </View>
         </RevealOnScroll>
@@ -1277,7 +1295,7 @@ const styles = StyleSheet.create({
     // teto) — títulos de 2+ linhas (a maioria dos 4 capítulos do herói)
     // liam como texto colado, sem respiro entre as linhas. Agora ~1.14x o
     // tamanho da letra em vez de ~1.0x.
-    ...({ fontSize: 'clamp(44px, 4vw + 24px, 80px)', lineHeight: 'clamp(52px, 4vw + 32px, 90px)' } as any),
+    ...({ fontSize: 'clamp(42px, 3.4vw + 18px, 72px)', lineHeight: 'clamp(48px, 3.8vw + 20px, 82px)' } as any),
     letterSpacing: -2,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
@@ -1292,12 +1310,12 @@ const styles = StyleSheet.create({
     // Mesmo ajuste de respiro entre linhas de `headline`, na escala do
     // compacto — títulos de 2 linhas como "Sabe quanto sobra, sem
     // calcular." liam apertados no celular.
-    ...({ fontSize: 'clamp(28px, 7vw, 36px)', lineHeight: 'clamp(36px, 8.5vw, 46px)' } as any),
+    ...({ fontSize: 'clamp(28px, 7vw, 36px)', lineHeight: 'clamp(32px, 7.8vw, 41px)' } as any),
     letterSpacing: -1,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
   },
-  subheadline: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 520 },
+  subheadline: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.6, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 620 },
 
   ctaPrimario: {
     flexDirection: 'row',
@@ -1318,7 +1336,7 @@ const styles = StyleSheet.create({
   // Fica sob TODO botão de CTA — reduz a maior fricção não dita ("quanto
   // tempo vou perder", "vão me cobrar") no exato instante em que a pessoa
   // está decidindo clicar, em vez de deixar a resposta só no FAQ lá embaixo.
-  ctaMicrocopy: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },
+  ctaMicrocopy: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: type.legenda * 1.45, fontFamily: fonts.light, marginTop: spacing.sm, maxWidth: 360 },
   ctaMicrocopyCentralizada: { textAlign: 'center' },
 
   // Mesmo padrão de grade desalinhada do FAQ (`faqGrade`/`faqCardPos`) — só
@@ -1343,7 +1361,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.ruleStrong,
   },
-  ctaMeioTitulo: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular, marginBottom: spacing.lg, textAlign: 'center' },
+  ctaMeioTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.3, fontFamily: fonts.regular, marginBottom: spacing.lg, textAlign: 'center', maxWidth: 620 },
 
   // `spacing.xxl` (28px) sozinho ficava apertado demais dentro da dobra de
   // tela cheia — pouco respiro ao redor do conteúdo centralizado. `xxl * 2.5`
@@ -1366,13 +1384,11 @@ const styles = StyleSheet.create({
   // seguinte em toda dobra da página, sem respiro nenhum entre os dois
   // (relato direto do autor, com print do site no celular).
   secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.lg },
-  secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
-  secaoTituloGrande: { fontSize: 50, lineHeight: 54, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
-  secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560 },
-  // Só o parágrafo de Preços — as duas frases quebram uma por linha (`\n`
-  // explícito) e o bloco centraliza na coluna, diferente do resto das
-  // seções, onde o texto de apoio fica alinhado à esquerda junto do título.
-  // O bloco inteiro (eyebrow + título + parágrafo) centraliza na coluna —
+  secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, lineHeight: (type.cabecalho + 4) * 1.2, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
+  secaoTituloGrande: { fontSize: 50, lineHeight: 58, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
+  secaoTexto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.6, fontFamily: fonts.light, maxWidth: 680 },
+  secaoTextoCompacto: { textAlign: 'left', maxWidth: 520, alignSelf: 'center' },
+  // O bloco inteiro de Preços (eyebrow + título + parágrafo) centraliza na coluna —
   // diferente do resto das seções, onde esse bloco fica alinhado à esquerda
   // junto do card ao lado. `alignItems: 'center'` no wrapper é o que faz
   // cada filho (de largura própria) se posicionar centralizado; o
@@ -1432,8 +1448,8 @@ const styles = StyleSheet.create({
   // já é grande e destacado o bastante sozinho; um círculo ao redor
   // competiria com o próprio dígito em vez de reforçá-lo.
   guiaNumero: { color: theme.accent2, fontSize: 22, fontFamily: fonts.light, fontVariant: ['tabular-nums'], minWidth: 36 },
-  guiaPassoTitulo: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular, marginBottom: 2 },
-  guiaPassoTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
+  guiaPassoTitulo: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.35, fontFamily: fonts.regular, marginBottom: spacing.xs },
+  guiaPassoTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.55, fontFamily: fonts.light },
 
   // Recursos flanqueando a tela do app no centro — 3 de cada lado no
   // amplo/médio; no compacto vira uma coluna só (sem o celular central, que
@@ -1589,8 +1605,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  featureTitulo: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular, marginBottom: spacing.xs },
-  featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
+  featureTitulo: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.35, fontFamily: fonts.regular, marginBottom: spacing.xs },
+  featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.55, fontFamily: fonts.light },
 
   // Reaproveitado só por "Próximos compromissos" — os outros mockRotulo*
   // (mockValor, mockLegenda) que existiam junto pertenciam às antigas telas
@@ -1613,7 +1629,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
   },
-  segurancaLinhaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
+  segurancaLinhaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.light },
 
   // Navegador atrás, maior; celular na frente, menor, sobreposto no canto
   // inferior — a mesma composição "duas telas, um produto só" que o

@@ -47,8 +47,8 @@ quem ainda não conhece o produto, distinta da tela de entrada de quem já
 tem conta. Fase atual: acesso antecipado ("acesso antecipado" na própria
 landing page, criar conta é gratuito por enquanto). O modelo comercial
 definido para depois dessa fase é uma assinatura recorrente de R$ 19,99/mês,
-cancelável a qualquer momento. A integração de WhatsApp
-passa por revisão da Meta como app do WhatsApp Business.
+cancelável a qualquer momento. A empresa Grana. já foi verificada e aprovada
+pela Meta, e a integração com o WhatsApp Business está operacional.
 
 ## Capabilities and Constraints
 
@@ -58,7 +58,9 @@ passa por revisão da Meta como app do WhatsApp Business.
   na mesma heurística de categorização (`lib/heuristics.ts`, espelhada no
   webhook do WhatsApp).
 - Funcionalidades centrais: lançamentos com valor/categoria/data, cálculo
-  de "Livre para Gastar" (desconta contas e parcelas futuras já agendadas),
+  de "Livre para Gastar" (estima uma referência diária a partir do saldo dos
+  lançamentos do mês, das contas pendentes do mês e dos valores separados
+  para metas), além de uma projeção separada de compromissos futuros,
   segurança (bloqueio por biometria/senha do aparelho, modo privacidade
   que oculta valores, senha conferida contra vazamentos, bloqueio de
   print em tela com valor).
