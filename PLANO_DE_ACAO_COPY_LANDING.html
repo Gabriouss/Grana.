@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#052229">
+  <title>Plano de ação — Copy da landing page do Grana.</title>
+  <style>
+    @font-face {
+      font-family: "Neue Machina";
+      src: url("./assets/fonts/NeueMachina-Light.otf") format("opentype");
+      font-weight: 300;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Neue Machina";
+      src: url("./assets/fonts/NeueMachina-Regular.otf") format("opentype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --paper: #052229;
+      --raised: #0b2d35;
+      --raised-strong: #103740;
+      --ink: #effffa;
+      --soft: #a6d9ce;
+      --faint: #7fa9a0;
+      --accent: #aeffe3;
+      --cta: #1fa98d;
+      --cyan: #00a6ca;
+      --green: #74e291;
+      --rule: rgba(174, 255, 227, 0.14);
+      --rule-strong: rgba(174, 255, 227, 0.28);
+      --shadow: 0 24px 70px -34px rgba(0, 0, 0, 0.72);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --content: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(31, 169, 141, 0.14), transparent 30rem),
+        radial-gradient(circle at 86% 30%, rgba(0, 166, 202, 0.09), transparent 28rem),
+        var(--paper);
+      font-family: "Neue Machina", sans-serif;
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 1.65;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    p, li { overflow-wrap: anywhere; }
+
+    a { color: var(--accent); }
+
+    a:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+
+    .skip-link {
+      position: fixed;
+      z-index: 20;
+      top: 12px;
+      left: 12px;
+      transform: translateY(-160%);
+      padding: 10px 14px;
+      color: var(--paper);
+      background: var(--accent);
+      border-radius: var(--radius-sm);
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .hero {
+      border-bottom: 1px solid var(--rule);
+      padding: 72px 28px 56px;
+    }
+
+    .hero-inner {
+      width: 100%;
+      max-width: var(--content);
+      margin: 0 auto;
+      min-width: 0;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 52px;
+      color: var(--accent);
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: -0.04em;
+    }
+
+    .brand-dot {
+      width: 8px;
+      height: 8px;
+      margin-top: 12px;
+      border-radius: 50%;
+      background: var(--cta);
+      box-shadow: 0 0 20px rgba(31, 169, 141, 0.8);
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, h4 {
+      margin-top: 0;
+      font-weight: 400;
+      line-height: 1.18;
+      text-wrap: balance;
+    }
+
+    h1 {
+      max-width: 920px;
+      margin-bottom: 22px;
+      font-size: clamp(38px, 6vw, 78px);
+      letter-spacing: -0.055em;
+    }
+
+    h2 {
+      margin-bottom: 26px;
+      font-size: clamp(28px, 4vw, 46px);
+      letter-spacing: -0.035em;
+    }
+
+    h3 {
+      margin-bottom: 14px;
+      font-size: 23px;
+      letter-spacing: -0.02em;
+    }
+
+    h4 {
+      margin-bottom: 8px;
+      font-size: 17px;
+    }
+
+    p { margin: 0 0 18px; }
+
+    .hero-summary {
+      width: 100%;
+      max-width: 780px;
+      color: var(--soft);
+      font-size: clamp(18px, 2vw, 22px);
+      overflow-wrap: anywhere;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 32px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid var(--rule-strong);
+      border-radius: 999px;
+      color: var(--soft);
+      background: rgba(11, 45, 53, 0.72);
+      font-size: 13px;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 56px;
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 52px 28px 100px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 28px;
+      align-self: start;
+      max-height: calc(100vh - 56px);
+      overflow: auto;
+      padding: 20px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      background: rgba(11, 45, 53, 0.78);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .toc-title {
+      margin-bottom: 14px;
+      color: var(--faint);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .toc ol {
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .toc a {
+      display: block;
+      padding: 7px 8px;
+      border-radius: 7px;
+      color: var(--soft);
+      font-size: 13px;
+      line-height: 1.35;
+      text-decoration: none;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      background: rgba(174, 255, 227, 0.06);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      scroll-margin-top: 28px;
+      margin-bottom: 78px;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .lead {
+      max-width: 780px;
+      color: var(--soft);
+      font-size: 18px;
+    }
+
+    .card {
+      padding: 24px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      background: var(--raised);
+      box-shadow: var(--shadow);
+    }
+
+    .card + .card { margin-top: 16px; }
+
+    .card p:last-child,
+    .callout p:last-child { margin-bottom: 0; }
+
+    .callout {
+      margin: 28px 0;
+      padding: 20px 22px;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      color: var(--soft);
+      background: rgba(174, 255, 227, 0.055);
+    }
+
+    .callout strong { color: var(--ink); font-weight: 400; }
+
+    .quote {
+      margin: 16px 0;
+      padding: 18px 20px;
+      border: 1px solid var(--rule-strong);
+      border-radius: var(--radius-md);
+      color: var(--ink);
+      background: var(--raised-strong);
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.45;
+    }
+
+    .quote.small { font-size: 15px; font-weight: 300; }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .number {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 16px;
+      border-radius: 50%;
+      color: var(--paper);
+      background: var(--accent);
+      font-size: 13px;
+      font-weight: 400;
+    }
+
+    ul, ol { padding-left: 1.25em; }
+    li { margin: 7px 0; }
+    li::marker { color: var(--accent); }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 26px 0;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--raised);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    th, td {
+      padding: 16px;
+      border-bottom: 1px solid var(--rule);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent);
+      background: rgba(174, 255, 227, 0.035);
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .priority {
+      display: inline-flex;
+      min-width: 38px;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .p0 { color: var(--paper); background: var(--accent); }
+    .p1 { color: var(--paper); background: var(--green); }
+    .p2 { color: var(--ink); background: var(--cyan); }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+      margin: 20px 0;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+    }
+
+    .comparison > div { padding: 22px; }
+    .comparison > div:first-child { background: rgba(0, 166, 202, 0.07); }
+    .comparison > div:last-child { background: rgba(116, 226, 145, 0.07); }
+
+    .label {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--faint);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 10px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .checklist li {
+      position: relative;
+      margin: 0;
+      padding: 14px 14px 14px 44px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-md);
+      background: var(--raised);
+    }
+
+    .checklist li::before {
+      content: "✓";
+      position: absolute;
+      top: 13px;
+      left: 16px;
+      color: var(--green);
+      font-weight: 400;
+    }
+
+    .footer {
+      padding: 32px 28px 46px;
+      border-top: 1px solid var(--rule);
+      color: var(--faint);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: relative; top: 0; max-height: none; }
+      .toc ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      body { font-size: 15px; }
+      .hero { padding: 40px 20px; }
+      .brand { margin-bottom: 34px; }
+      .layout { gap: 34px; padding: 32px 20px 72px; }
+      .toc ol, .grid-2, .grid-3, .comparison { grid-template-columns: 1fr; }
+      section { margin-bottom: 58px; }
+      .card, .comparison > div { padding: 18px; }
+      th, td { min-width: 160px; padding: 13px; }
+    }
+
+    @media print {
+      :root {
+        --paper: #ffffff;
+        --raised: #f4f7f6;
+        --raised-strong: #e9f3f0;
+        --ink: #10282b;
+        --soft: #31575a;
+        --faint: #557174;
+        --accent: #087b68;
+        --rule: rgba(16, 40, 43, 0.16);
+        --rule-strong: rgba(16, 40, 43, 0.28);
+        --shadow: none;
+      }
+
+      body { background: #fff; }
+      .hero { padding-top: 28px; }
+      .layout { display: block; padding-top: 32px; }
+      .toc, .skip-link { display: none; }
+      section { break-inside: avoid; margin-bottom: 42px; }
+      .card, .table-wrap, .comparison { box-shadow: none; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="brand" aria-label="Grana.">Grana<span class="brand-dot" aria-hidden="true"></span></div>
+      <p class="eyebrow">Plano de ação · 28 de agosto de 2026</p>
+      <h1>Copy consistente, humana e orientada à conversão.</h1>
+      <p class="hero-summary">
+        Uma reforma editorial da landing pública do Grana. para transformar
+        visitantes frios em contas criadas sem exagerar promessas, esconder
+        condições comerciais ou abandonar a voz acolhedora da marca.
+      </p>
+      <div class="meta-row" aria-label="Resumo do escopo">
+        <span class="chip">Escopo: app/index.tsx</span>
+        <span class="chip">Oferta: acesso antecipado gratuito</span>
+        <span class="chip">Preço futuro: R$ 19,99/mês</span>
+        <span class="chip">WhatsApp aprovado pela Meta</span>
+        <span class="chip">Landing ainda não alterada</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Índice do documento">
+      <div class="toc-title">Neste plano</div>
+      <ol>
+        <li><a href="#resumo">Resumo executivo</a></li>
+        <li><a href="#verdades">Verdade do produto</a></li>
+        <li><a href="#diagnostico">Diagnóstico</a></li>
+        <li><a href="#posicionamento">Posicionamento</a></li>
+        <li><a href="#arquitetura">Nova narrativa</a></li>
+        <li><a href="#secoes">Plano por seção</a></li>
+        <li><a href="#ctas">Sistema de CTAs</a></li>
+        <li><a href="#voz">Voz editorial</a></li>
+        <li><a href="#prova">Prova e confiança</a></li>
+        <li><a href="#seo">SEO</a></li>
+        <li><a href="#medicao">Medição</a></li>
+        <li><a href="#execucao">Execução</a></li>
+        <li><a href="#aprovacao">Critérios de aprovação</a></li>
+      </ol>
+    </nav>
+
+    <main id="conteudo">
+      <section id="resumo">
+        <p class="eyebrow">01 · Resumo executivo</p>
+        <h2>Menos ruído. Mais certeza para começar.</h2>
+        <p class="lead">
+          A landing já fala a língua do público, mostra dores reconhecíveis e
+          sustenta uma diferença forte: registrar por voz, WhatsApp ou QR Code
+          sem conectar conta bancária. O próximo salto de conversão vem de
+          organizar melhor essa verdade.
+        </p>
+        <div class="callout">
+          <strong>Problema central:</strong> a página não separa com nitidez o
+          que a pessoa recebe agora, o que depende dos dados registrados e o
+          que será cobrado no futuro. Ao mesmo tempo, repete mecanismos e usa
+          absolutos que uma heurística não pode garantir.
+        </div>
+        <p>
+          A reforma proposta encurta o argumento, torna a oferta inequívoca e
+          preserva a personalidade do Grana.: direta, calma e sem julgamento.
+        </p>
+      </section>
+
+      <section id="verdades">
+        <p class="eyebrow">02 · Verdade do produto</p>
+        <h2>O limite da copy é o que o produto sustenta.</h2>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Disponível e comprovável</h3>
+            <ul>
+              <li>Sem conexão bancária ou Open Finance.</li>
+              <li>Voz, WhatsApp por texto/áudio e QR Code de NFC-e.</li>
+              <li>Empresa verificada e aprovada pela Meta.</li>
+              <li>QR Code gera um lançamento pelo total da compra.</li>
+              <li>Acesso antecipado gratuito e completo.</li>
+              <li>Sem venda de dados e sem publicidade baseada neles.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Limites que precisam aparecer</h3>
+            <ul>
+              <li>Reconhecimento e categorização podem errar.</li>
+              <li>Resultados dependem do que a pessoa registra.</li>
+              <li>R$ 19,99/mês é o modelo futuro, não cobrança atual.</li>
+              <li>Não há depoimentos, métricas ou cases validados.</li>
+              <li>A aprovação da Meta não é endosso geral de segurança.</li>
+            </ul>
+          </article>
+        </div>
+        <div class="callout">
+          <strong>Documentação desatualizada:</strong> PRODUCT.md e context.md
+          ainda informam que o WhatsApp está em revisão. A implementação deste
+          plano deve alinhar esses documentos ao estado aprovado e operacional.
+        </div>
+      </section>
+
+      <section id="diagnostico">
+        <p class="eyebrow">03 · Diagnóstico priorizado</p>
+        <h2>O que corrigir primeiro.</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Prioridade</th>
+                <th>Achado</th>
+                <th>Risco</th>
+                <th>Direção</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="priority p0">P0</span></td>
+                <td>Gratuidade, preço futuro e “use por 30 dias” convivem sem regra explícita.</td>
+                <td>Parece compra, acesso grátis e trial ao mesmo tempo.</td>
+                <td>Vender o acesso antecipado e enquadrar o preço como condição futura.</td>
+              </tr>
+              <tr>
+                <td><span class="priority p0">P0</span></td>
+                <td>A projeção de parcelas futuras é apresentada como origem do “Livre para Gastar”.</td>
+                <td>A promessa descreve um cálculo diferente do atual.</td>
+                <td>Explicar a fórmula real ou evoluir o produto antes da promessa ampla.</td>
+              </tr>
+              <tr>
+                <td><span class="priority p0">P0</span></td>
+                <td>“Categoriza sozinho”, “cada real”, “na hora” e “nada pega de surpresa”.</td>
+                <td>Erros normais parecem quebra de promessa.</td>
+                <td>Automação com conferência e ajuste.</td>
+              </tr>
+              <tr>
+                <td><span class="priority p1">P1</span></td>
+                <td>O hero apresenta a dor antes da proposta completa.</td>
+                <td>Visitante frio precisa interpretar demais.</td>
+                <td>Resultado, mecanismo e diferencial na primeira dobra.</td>
+              </tr>
+              <tr>
+                <td><span class="priority p1">P1</span></td>
+                <td>Hero, guia e grade repetem os mesmos canais de entrada.</td>
+                <td>Página longa sem avanço argumentativo.</td>
+                <td>Consolidar demonstração e “como funciona”.</td>
+              </tr>
+              <tr>
+                <td><span class="priority p1">P1</span></td>
+                <td>Frases culpabilizam ou desafiam a pessoa.</td>
+                <td>Conflito com a marca sem julgamento.</td>
+                <td>Tratar a fricção como vilã, não o usuário.</td>
+              </tr>
+              <tr>
+                <td><span class="priority p1">P1</span></td>
+                <td>CTA genérico e microcopy de 30 segundos repetida.</td>
+                <td>Ação sem benefício e tempo não comprovado.</td>
+                <td>CTA de valor e microcopy por objeção.</td>
+              </tr>
+              <tr>
+                <td><span class="priority p2">P2</span></td>
+                <td>Jargão técnico e FAQ incompleto.</td>
+                <td>Compreensão e confiança menores.</td>
+                <td>Linguagem cotidiana e objeções reais.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="posicionamento">
+        <p class="eyebrow">04 · Posicionamento</p>
+        <h2>O controle falha antes do gráfico.</h2>
+        <p class="lead">
+          Ele falha quando registrar um gasto vira mais uma tarefa. O Grana.
+          reduz essa fricção e devolve uma visão mais realista do mês sem pedir
+          credencial bancária.
+        </p>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Público</h3>
+            <p>Quem já tentou planilha ou app tradicional e não sustentou o hábito por causa do trabalho manual.</p>
+          </article>
+          <article class="card">
+            <h3>Diferencial</h3>
+            <p>Voz, WhatsApp e QR Code alimentam o mesmo registro organizado, sem conexão com o banco.</p>
+          </article>
+        </div>
+        <div class="quote">Registre seus gastos em segundos. Entenda quanto está livre para gastar.</div>
+        <p>Próximo à promessa, sempre explicitar: <strong>“Com base no que você registra no Grana.”</strong></p>
+      </section>
+
+      <section id="arquitetura">
+        <p class="eyebrow">05 · Nova arquitetura narrativa</p>
+        <h2>Cada seção precisa avançar o argumento.</h2>
+        <div class="grid-2">
+          <article class="card"><span class="number">1</span><h3>Hero</h3><p>Resultado, mecanismo, diferencial e condição gratuita.</p></article>
+          <article class="card"><span class="number">2</span><h3>Prova do mecanismo</h3><p>Uma entrada real virando lançamento organizado.</p></article>
+          <article class="card"><span class="number">3</span><h3>Problema</h3><p>Empatia: a fricção é o problema, não a disciplina.</p></article>
+          <article class="card"><span class="number">4</span><h3>Como funciona</h3><p>Três passos que reduzem o esforço percebido.</p></article>
+          <article class="card"><span class="number">5</span><h3>Resultado</h3><p>Visão do mês e Livre para Gastar explicado corretamente.</p></article>
+          <article class="card"><span class="number">6</span><h3>Privacidade</h3><p>Sem banco, sem venda de dados, com controle do usuário.</p></article>
+          <article class="card"><span class="number">7</span><h3>Recursos complementares</h3><p>Metas, gráficos, contas e parcelas depois do diferencial.</p></article>
+          <article class="card"><span class="number">8</span><h3>Oferta e FAQ</h3><p>Gratuidade agora, preço futuro e objeções respondidas.</p></article>
+        </div>
+      </section>
+
+      <section id="secoes">
+        <p class="eyebrow">06 · Plano por seção</p>
+        <h2>Direções concretas de reescrita.</h2>
+
+        <article class="card">
+          <h3>Hero</h3>
+          <p>Manter “Cadê meu dinheiro?” como gancho secundário e apresentar a proposta completa antes da rolagem.</p>
+          <span class="label">Eyebrow</span>
+          <div class="quote small">Controle financeiro sem planilha</div>
+          <span class="label">Headline recomendada</span>
+          <div class="quote">Registre seus gastos em segundos. Saiba quanto está livre para gastar.</div>
+          <span class="label">Subheadline</span>
+          <div class="quote small">Fale no app, mande texto ou áudio pelo WhatsApp ou leia o QR Code da nota. O Grana. organiza seus lançamentos sem conectar à sua conta bancária.</div>
+          <span class="label">Ação</span>
+          <p><strong>Começar grátis</strong> · Acesso antecipado gratuito. Sem cartão.</p>
+        </article>
+
+        <article class="card">
+          <h3>Faixa de confiança</h3>
+          <p>Trocar autoavaliações por três fatos fortes:</p>
+          <ul>
+            <li>Sem conectar conta bancária.</li>
+            <li>Texto e áudio pelo WhatsApp.</li>
+            <li>Dados não são vendidos.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h3>Dor sem culpa</h3>
+          <div class="comparison">
+            <div><span class="label">Atual</span><p>Anotar gastos dá trabalho. Por isso você não dá continuidade.</p></div>
+            <div><span class="label">Direção</span><p>Você não abandona o controle por falta de disciplina. Abandona porque registrar tudo dá trabalho.</p></div>
+          </div>
+          <div class="quote small">Controle financeiro não devia virar mais uma tarefa.</div>
+        </article>
+
+        <article class="card">
+          <h3>Guia e entrada em três passos</h3>
+          <ol>
+            <li><strong>Conte do jeito mais fácil.</strong> Fale, mande uma mensagem pelo WhatsApp ou leia o QR Code da nota.</li>
+            <li><strong>Confira o lançamento organizado.</strong> O Grana. reconhece valor e descrição e sugere uma categoria; você ajusta se precisar.</li>
+            <li><strong>Veja o mês com mais clareza.</strong> Os lançamentos alimentam gráficos, metas e a estimativa do que está livre.</li>
+          </ol>
+        </article>
+
+        <article class="card">
+          <h3>Recursos em três benefícios</h3>
+          <div class="grid-3">
+            <div><h4>Registre sem formulário</h4><p>Voz, WhatsApp e QR Code.</p></div>
+            <div><h4>Entenda o mês</h4><p>Gastos organizados, gráficos e estimativa diária.</p></div>
+            <div><h4>Planeje o que vem</h4><p>Contas, parcelas e metas num só lugar.</p></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>Livre para Gastar</h3>
+          <p>A copy precisa acompanhar a fórmula atual, que não usa a projeção de parcelas futuras como entrada direta.</p>
+          <div class="quote">Com base nos lançamentos do mês, nas contas pendentes e no que você separou para suas metas, o Grana. estima quanto está livre para gastar por dia.</div>
+          <p>Mensagem de confiança: <strong>“É uma referência baseada no que você registra — você continua no controle.”</strong></p>
+        </article>
+
+        <article class="card">
+          <h3>Segurança e privacidade</h3>
+          <ul>
+            <li>“Dados isolados por conta” → “Só você acessa os dados da sua conta.”</li>
+            <li>“Modo privacidade oculta valores” → “Oculte seus valores com um toque quando houver alguém por perto.”</li>
+            <li>Adicionar: “Você pode editar seus lançamentos e excluir sua conta e seus dados quando quiser.”</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h3>Oferta e preço</h3>
+          <div class="quote">Comece grátis. Decida depois se quer continuar.</div>
+          <p>
+            Durante o acesso antecipado, você usa todos os recursos sem pagar e
+            sem cadastrar cartão. Quando a assinatura começar, o plano será de
+            R$ 19,99 por mês. Você será avisado e escolherá se quer assinar.
+          </p>
+          <ul>
+            <li>“Assinatura única” → “Plano mensal”.</li>
+            <li>CTA → “Entrar no acesso antecipado”.</li>
+            <li>Microcopy → “Grátis agora. Sem cobrança automática.”</li>
+          </ul>
+          <p><small>Esta redação depende da confirmação formal do fluxo de transição comercial.</small></p>
+        </article>
+
+        <article class="card">
+          <h3>FAQ orientado à decisão</h3>
+          <ol>
+            <li>O Grana. acessa minha conta bancária?</li>
+            <li>O que já está disponível no acesso antecipado?</li>
+            <li>Como funciona o lançamento pelo WhatsApp?</li>
+            <li>E se o Grana. entender um lançamento errado?</li>
+            <li>Como o Livre para Gastar é calculado?</li>
+            <li>O acesso gratuito vai gerar cobrança automática?</li>
+            <li>Posso editar ou excluir meus dados?</li>
+            <li>Como meus dados são protegidos?</li>
+            <li>Quanto custará depois?</li>
+          </ol>
+        </article>
+
+        <article class="card">
+          <h3>CTA final</h3>
+          <p>Remover o falso sentido de trial de 30 dias e o encerramento confrontativo.</p>
+          <div class="comparison">
+            <div><span class="label">Remover</span><p>Use o Grana. por 30 dias e descubra pra onde foi cada real. Ou continuar perguntando “cadê meu dinheiro”.</p></div>
+            <div><span class="label">Direção</span><p>Comece pelo próximo gasto. O resto fica mais claro.</p></div>
+          </div>
+          <p><strong>CTA:</strong> Começar grátis · <strong>Microcopy:</strong> Acesso antecipado gratuito. Sem cartão.</p>
+        </article>
+      </section>
+
+      <section id="ctas">
+        <p class="eyebrow">07 · Sistema de CTAs</p>
+        <h2>Uma ação principal, razões diferentes para agir.</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Contexto</th><th>CTA</th><th>Microcopy</th></tr></thead>
+            <tbody>
+              <tr><td>Hero</td><td>Começar grátis</td><td>Acesso antecipado gratuito. Sem cartão.</td></tr>
+              <tr><td>Demonstração</td><td>Registrar meu primeiro gasto</td><td>Comece direto pelo navegador.</td></tr>
+              <tr><td>Segurança</td><td>Criar minha conta</td><td>Você pode excluir sua conta e seus dados quando quiser.</td></tr>
+              <tr><td>Preço</td><td>Entrar no acesso antecipado</td><td>Grátis agora. Sem cobrança automática.</td></tr>
+              <tr><td>Final</td><td>Começar grátis</td><td>Leva poucos passos para começar.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          Remover “Leva 30 segundos” até que o tempo real do fluxo — incluindo
+          senha, aceite legal e confirmação de e-mail — seja medido.
+        </div>
+      </section>
+
+      <section id="voz">
+        <p class="eyebrow">08 · Voz editorial</p>
+        <h2>Direta sem pressionar. Humana sem ser vaga.</h2>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Preferir</h3>
+            <ul>
+              <li>O que ainda vai chegar.</li>
+              <li>Veja onde gastou mais.</li>
+              <li>Só você acessa seus dados.</li>
+              <li>O Grana. sugere uma categoria.</li>
+              <li>Com base no que você registrou.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Evitar</h3>
+            <ul>
+              <li>Culpa e provocação.</li>
+              <li>“Cada real”, “na hora”, “sozinho”.</li>
+              <li>Urgência fabricada.</li>
+              <li>Jargão de fintech.</li>
+              <li>Prova ou selo sem fonte.</li>
+              <li>Aprovação da Meta como garantia financeira.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="prova">
+        <p class="eyebrow">09 · Prova e confiança</p>
+        <h2>Mostrar o mecanismo antes de pedir confiança.</h2>
+        <div class="grid-3">
+          <article class="card"><span class="number">1</span><h3>Entrada</h3><p>“Gastei 30 no mercado.”</p></article>
+          <article class="card"><span class="number">2</span><h3>Organização</h3><p>Mercado · R$ 30 · categoria sugerida.</p></article>
+          <article class="card"><span class="number">3</span><h3>Resultado</h3><p>O lançamento aparece no mês e alimenta a visão financeira.</p></article>
+        </div>
+        <p>
+          Usar capturas reais com dados fictícios. Enquanto não houver prova
+          social validada, não inventar avaliações, estatísticas ou cases.
+        </p>
+      </section>
+
+      <section id="seo">
+        <p class="eyebrow">10 · SEO e compartilhamento</p>
+        <h2>A mesma promessa em todos os pontos de entrada.</h2>
+        <div class="card">
+          <span class="label">Título</span>
+          <div class="quote small">Grana. — Controle financeiro por voz, WhatsApp e nota fiscal</div>
+          <span class="label">Descrição</span>
+          <div class="quote small">Registre gastos por voz, WhatsApp ou QR Code da nota e acompanhe seu mês sem planilha e sem conectar a conta bancária.</div>
+          <p>Evitar que metadados prometam um valor financeiro exato ou “seguro” para gastar.</p>
+        </div>
+      </section>
+
+      <section id="medicao">
+        <p class="eyebrow">11 · Medição e experimentos</p>
+        <h2>Alta performance precisa aparecer no comportamento.</h2>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Funil mínimo</h3>
+            <ol>
+              <li>Visualização da landing.</li>
+              <li>Clique no CTA.</li>
+              <li>Início do cadastro.</li>
+              <li>Conta criada.</li>
+              <li>E-mail confirmado.</li>
+              <li>Primeiro lançamento.</li>
+              <li>Retorno na primeira semana.</li>
+            </ol>
+          </article>
+          <article class="card">
+            <h3>Ordem dos testes</h3>
+            <ol>
+              <li>Hero de resultado × “Cadê meu dinheiro?”.</li>
+              <li>Começar grátis × Criar conta grátis.</li>
+              <li>Gratuidade primeiro × preço futuro primeiro.</li>
+              <li>Demonstração × grade de recursos.</li>
+              <li>CTA acolhedor × CTA centrado na dor.</li>
+            </ol>
+          </article>
+        </div>
+        <div class="callout">
+          Testar uma variável por vez e preservar message match: tráfego de
+          voz vê voz; tráfego de WhatsApp vê a conversa; tráfego de
+          privacidade vê “sem conectar banco”.
+        </div>
+      </section>
+
+      <section id="execucao">
+        <p class="eyebrow">12 · Ordem de execução</p>
+        <h2>Da verdade à medição.</h2>
+        <div class="grid-2">
+          <article class="card"><span class="number">1</span><h3>Verdade e oferta</h3><p>Atualizar status do WhatsApp, confirmar transição comercial e fixar a definição pública do Livre para Gastar.</p></article>
+          <article class="card"><span class="number">2</span><h3>Reescrita estrutural</h3><p>Aprovar hero, consolidar seções, reordenar benefícios e reescrever a oferta.</p></article>
+          <article class="card"><span class="number">3</span><h3>Consistência</h3><p>Conferir landing, documentação, legal, SEO, promessas absolutas e tom.</p></article>
+          <article class="card"><span class="number">4</span><h3>Implementação e QA</h3><p>Aplicar copy, testar breakpoints e validar o fluxo até o primeiro lançamento.</p></article>
+          <article class="card"><span class="number">5</span><h3>Medição</h3><p>Instrumentar funil, obter baseline e executar experimentos isolados.</p></article>
+        </div>
+      </section>
+
+      <section id="aprovacao">
+        <p class="eyebrow">13 · Critérios de aprovação</p>
+        <h2>Quando a nova copy estará pronta.</h2>
+        <ul class="checklist">
+          <li>A primeira dobra explica o que é, como funciona e por que não conecta banco.</li>
+          <li>Gratuidade atual e preço futuro estão claramente separados.</li>
+          <li>Nenhuma frase parece trial automático de 30 dias.</li>
+          <li>WhatsApp aparece como aprovado e operacional, sem falso endosso.</li>
+          <li>O Livre para Gastar acompanha a fórmula real.</li>
+          <li>A possibilidade de ajuste não é escondida.</li>
+          <li>Cada seção avança um argumento diferente.</li>
+          <li>O tom acolhe em vez de culpar.</li>
+          <li>O CTA comunica benefício e gratuidade.</li>
+          <li>Nenhuma estatística, prova ou urgência é inventada.</li>
+          <li>Landing, SEO, documentação e páginas legais dizem a mesma coisa.</li>
+        </ul>
+        <div class="callout">
+          <strong>Resultado esperado:</strong> uma landing menos repetitiva e
+          mais confiável, na qual começar parece simples porque a pessoa
+          entende o valor, os limites, a oferta e o próximo passo.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    Plano de ação de copy · Grana. · Documento de planejamento — nenhuma alteração aplicada à landing.
+  </footer>
+</body>
+</html>
