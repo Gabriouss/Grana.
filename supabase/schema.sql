@@ -1092,3 +1092,33 @@ $$;
 
 revoke all on function public.delete_user_account() from public, anon;
 grant execute on function public.delete_user_account() to authenticated;
+
+-- ── Importação de extrato OFX ───────────────────────────────────────────────
+--
+-- `fitid` é o identificador único que a instituição financeira dá a cada
+-- transação dentro de um arquivo OFX. Guardar isso é o que permite reimportar
+-- o mesmo extrato (ou um extrato que se sobrepõe ao anterior) sem duplicar
+-- lançamento nenhum — e reimportar é o erro mais comum de quem usa importação
+-- de extrato, porque os períodos que os bancos oferecem se sobrepõem.
+--
+-- O índice NÃO pode ser parcial, e isso não é detalhe de estilo. Uma primeira
+-- versão criou `... where fitid is not null`, imaginando que sem o filtro os
+-- lançamentos de voz/WhatsApp/manual (todos com fitid nulo) colidiriam entre
+-- si. Duas coisas estavam erradas:
+--
+--  1. O Postgres trata NULL como DISTINTO num índice único (NULLS DISTINCT é o
+--     padrão), então quantos lançamentos sem fitid se quiser convivem sem
+--     conflito. Verificado: duas linhas com fitid nulo entram normalmente.
+--
+--  2. `ON CONFLICT (user_id, fitid)` NÃO consegue inferir um índice parcial —
+--     a inferência exige que a instrução repita o predicado do índice, o que o
+--     PostgREST não emite. Com o índice parcial, o upsert da importação
+--     falhava com erro em vez de ignorar duplicado, ou seja, o índice quebrava
+--     exatamente a dedup que existia para garantir.
+alter table transactions add column if not exists fitid text;
+alter table transactions drop constraint if exists transactions_fitid_len;
+alter table transactions add constraint transactions_fitid_len
+  check (fitid is null or char_length(fitid) <= 255);
+
+create unique index if not exists transactions_user_fitid_uniq
+  on transactions (user_id, fitid);

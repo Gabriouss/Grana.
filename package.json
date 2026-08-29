@@ -13,6 +13,8 @@
     "expo-clipboard": "~57.0.1",
     "expo-constants": "~57.0.11",
     "expo-crypto": "~57.0.1",
+    "expo-document-picker": "~57.0.1",
+    "expo-file-system": "~57.0.6",
     "expo-font": "~57.0.1",
     "expo-haptics": "~57.0.1",
     "expo-image-manipulator": "~57.0.10",
@@ -49,7 +51,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test:parser": "npx --yes tsx __tests__/corpus-voz.ts && npx --yes tsx __tests__/corpus-gerado.ts && npx --yes tsx __tests__/corpus-voz-gerado.ts && npx --yes tsx __tests__/corpus-whatsapp.ts && npx --yes tsx __tests__/corpus-whatsapp-gerado.ts && npx --yes tsx __tests__/corpus-roteamento.ts && npx --yes tsx __tests__/corpus-categorias-custom.ts && npx --yes tsx __tests__/corpus-consulta.ts && npx --yes tsx __tests__/corpus-limite-cartao.ts && node __tests__/sync-parser.js"
+    "test:parser": "npx --yes tsx __tests__/corpus-voz.ts && npx --yes tsx __tests__/corpus-gerado.ts && npx --yes tsx __tests__/corpus-voz-gerado.ts && npx --yes tsx __tests__/corpus-whatsapp.ts && npx --yes tsx __tests__/corpus-whatsapp-gerado.ts && npx --yes tsx __tests__/corpus-roteamento.ts && npx --yes tsx __tests__/corpus-categorias-custom.ts && npx --yes tsx __tests__/corpus-consulta.ts && npx --yes tsx __tests__/corpus-ofx.ts && npx --yes tsx __tests__/corpus-limite-cartao.ts && node __tests__/sync-parser.js"
   },
   "private": true
 }

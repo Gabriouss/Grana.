@@ -23,7 +23,7 @@ nunca conectar a uma conta bancária. Ver `PRODUCT.md` para a proposta de
 valor completa. Nome sempre "Grana." com o ponto.
 
 **Fase atual**: preparação do lançamento comercial. O produto será **pago
-desde o primeiro dia, R$ 9,99/mês, sem período de teste** (decisão de
+desde o primeiro dia, R$ 9,90/mês, sem período de teste** (decisão de
 28/08/2026). A landing já anuncia o preço; o checkout da Kiwify e o bloqueio
 de acesso ainda não existem, então quem cria conta hoje segue com acesso
 completo. Empresa verificada pela Meta e WhatsApp como canal oficial em
@@ -182,7 +182,7 @@ retrabalho recentes:
   logar numa conta de verdade (nem de demonstração) pra gerar material de
   marketing, só dado inventado, mesmo que a intenção seja reproduzir uma
   tela real.
-- Assinatura definida em R$ 9,99/mês, já exibida na seção de preços. Sem
+- Assinatura definida em R$ 9,90/mês, já exibida na seção de preços. Sem
   período de teste: o lançamento é pago desde o primeiro dia. O acesso segue
   liberado só porque o checkout ainda não entrou em operação.
 - Herói compacto (mobile): capítulos 2-4 repetiam a legenda "Acesso
@@ -305,7 +305,7 @@ Vercel confirmado no ar em granaponto.com.br.
     `flexBasis: 'auto'`), liberando largura total e fazendo o contêiner compacto
     esticar os filhos. Validado sem recorte em 375, 720, 1024 e 1440 px, sem
     erros no console, com `npx tsc --noEmit` e export web concluídos.
-- Assinatura recorrente definida em R$ 9,99/mês, sem período de teste; nenhuma
+- Assinatura recorrente definida em R$ 9,90/mês, sem período de teste; nenhuma
   trava de acesso implementada ainda (toda conta logada tem acesso completo).
 - Épicos de `PLANO_DE_EVOLUCAO.md` (metas/cofrinhos, gamificação, projeção
   de fatura) majoritariamente já implementados — conferir `lib/goals.ts`,
@@ -455,3 +455,27 @@ entre si. O XP vem exclusivamente de cofrinho (`lib/goals.ts`): registrar
 lançamento, cumprir orçamento e pagar boleto não geram XP nenhum. Conquistas
 não são persistidas, então as de sequência voltam a bloquear quando a condição
 deixa de valer.
+
+## Sessão de 29/08/2026 — correções da auditoria da landing
+
+- Eliminados os overflows de Preços, FAQ e Segurança em 320 px. Os filhos
+  compactos agora anulam os `minWidth` de desktop, ocupam 100% da largura útil
+  e não criam rolagem horizontal.
+- Hábitos permanece empilhado abaixo de 1080 px; o mockup de 560 px não invade
+  mais a coluna textual em 768/1024. O herói também usa a variante compacta
+  abaixo de 960 px ou 600 px de altura, evitando colisão em paisagem curta.
+- A navegação por seções vive SÓ no botão flutuante, em qualquer largura. Uma
+  rodada intermediária a devolveu ao cabeçalho acima de 1280 px e restringiu o
+  flutuante a compacto/médio; foi revertido a pedido do autor, que tirou a
+  fileira de atalhos do topo justamente por achá-la amontoada. O cabeçalho
+  carrega marca e "Entrar", e nada além disso.
+- O menu flutuante foca o primeiro link ao abrir e devolve o foco ao gatilho ao
+  fechar. Seus sete links usam a referência real do `ScrollView` para rolar ao
+  destino e compensar o cabeçalho sticky; todos foram medidos com destino em
+  49 px e cabeçalho terminando nos mesmos 49 px.
+- Os 3 cards de dor e os 6 cards de benefícios deixaram de usar `AppPressable`:
+  são informativos, portanto não entram mais na ordem de teclado nem expõem
+  semântica de controle sem ação.
+- Validado no Chrome em 320×800, 375×812, 390×844, 768×1024, 844×390,
+  1280×800 e 1440×1000. Axe-core: 0 violações; `prefers-reduced-motion`:
+  0 animações em execução; `npx tsc --noEmit`: aprovado.

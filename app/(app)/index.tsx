@@ -28,6 +28,7 @@ import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
 import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type, touchTarget, lh } from '@/lib/theme';
+import { prepararFatias } from '@/lib/chart-colors';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -47,7 +48,7 @@ import WidgetGrid, { ESPACO_ALCA } from '@/components/WidgetGrid';
 import { colunaConteudo } from '@/lib/breakpoints';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
-import CsvImportModal from '@/components/CsvImportModal';
+import ImportarExtratoModal from '@/components/ImportarExtratoModal';
 import QrScannerModal from '@/components/QrScannerModal';
 import MonthlyWrappedModal from '@/components/MonthlyWrappedModal';
 import { calculateStreakAndWeek } from '@/lib/gamification';
@@ -472,9 +473,15 @@ export default function InicioScreen() {
       if (!byCategory[t.category]) byCategory[t.category] = { amount: 0, color: t.color };
       byCategory[t.category].amount += Number(t.amount);
     });
-  const pieData: PieSlice[] = Object.entries(byCategory)
-    .map(([name, info]) => ({ name, color: info.color, value: totalOut ? Math.round((info.amount / totalOut) * 100) : 0 }))
-    .sort((a, b) => b.value - a.value);
+  /* Mesmo tratamento do donut de Gráficos: paleta validada por nome de
+     categoria e cauda dobrada em "Outros", com teto de seis fatias. */
+  const pieData: PieSlice[] = prepararFatias(
+    Object.entries(byCategory).map(([name, info]) => ({
+      name,
+      color: info.color,
+      value: totalOut ? Math.round((info.amount / totalOut) * 100) : 0,
+    }))
+  );
 
 
   // Quick categories ordered by usage
@@ -1127,7 +1134,7 @@ export default function InicioScreen() {
             {perfil?.fotoUrl ? (
               <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} />
             ) : (
-              <Ionicons name="person-circle-outline" size={34} color={theme.inkFaint} />
+              <Ionicons name="person-circle-outline" size={44} color={theme.inkFaint} />
             )}
           </AppPressable>
         }
@@ -1205,7 +1212,7 @@ export default function InicioScreen() {
             onPress={() => setCsvModalOpen(true)}
           >
             <Ionicons name="document-text-outline" size={16} color={theme.ink} />
-            <Text style={styles.smartActionText}>Importar CSV</Text>
+            <Text style={styles.smartActionText}>Importar extrato</Text>
           </AppPressable>
           <AppPressable
             style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
@@ -1264,11 +1271,21 @@ export default function InicioScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button.
+
+          Todo item leva para a tela dona daquele tipo de lançamento e abre o
+          formulário lá, em vez de abrir um sheet aqui na Início. É o
+          comportamento que o Crédito já tinha: além de ficar consistente, a
+          pessoa termina o lançamento já olhando a lista onde ele acabou de
+          entrar, e não numa tela que não mostra o resultado.
+
+          Entrada e Saída vão para Movimentações (débito e Pix), Boleto para
+          Contas, Crédito para Cartões. Cada destino lê o parâmetro e abre o
+          próprio formulário — ver o efeito de trava única em cada tela. */}
       <FabButton
-        onAddIncome={() => openTxModal('in')}
-        onAddExpense={() => openTxModal('out')}
-        onAddBill={openBillModal}
+        onAddIncome={() => router.push('/(app)/lancamentos?novoLancamento=in')}
+        onAddExpense={() => router.push('/(app)/lancamentos?novoLancamento=out')}
+        onAddBill={() => router.push('/(app)/contas?novaConta=1')}
         onAddCredit={() => router.push('/(app)/credito?novaCompra=1')}
       />
 
@@ -1496,7 +1513,7 @@ export default function InicioScreen() {
       />
 
       {/* CSV Import Modal */}
-      <CsvImportModal
+      <ImportarExtratoModal
         visible={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
         onSuccess={() => {
@@ -1580,7 +1597,10 @@ const styles = StyleSheet.create({
   },
   customizeBtnText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   avatarBtn: { padding: 2 },
-  avatarImg: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: theme.rule },
+  /* 44, não 34: a foto é a identidade da pessoa na tela e estava menor que
+     os botões de ação ao lado. Passa a ser o maior elemento circular do
+     cabeçalho, com os botões de ícone em 36. */
+  avatarImg: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.rule },
   errorText: { color: theme.danger, fontSize: type.apoio, fontFamily: fonts.regular },
   quickChipsSection: { gap: 6 },
   quickChipsHeadRow: {

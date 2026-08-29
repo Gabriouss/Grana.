@@ -12,6 +12,7 @@ import type {
   CategoryType,
   CreditCard,
   CreditCardInvoicePayment,
+  PaymentMethod,
   Transaction,
   TxType,
   WhatsappLink,
@@ -211,13 +212,46 @@ export async function addTransactionsBatch(
     occurred_on: string;
     recurring?: boolean;
     wallet_id?: string | null;
-  }>
-): Promise<void> {
-  if (inputs.length === 0) return;
+    payment_method?: PaymentMethod;
+    card_id?: string | null;
+    /** Identificador da transação no arquivo OFX. Ver `ignorarDuplicados`. */
+    fitid?: string | null;
+  }>,
+  /**
+   * Quando true, linhas cujo `(user_id, fitid)` já existe são DESCARTADAS em
+   * vez de causar erro. É o que faz reimportar um extrato ser seguro: os
+   * períodos que os bancos oferecem se sobrepõem, então a segunda importação
+   * quase sempre repete parte da primeira.
+   *
+   * Depende do índice único `transactions_user_fitid_uniq`
+   * (supabase/schema.sql), que precisa ser NÃO parcial: `ON CONFLICT` não
+   * infere índice parcial sem repetir o predicado, e o PostgREST não emite
+   * isso — com índice parcial este upsert falha com erro em vez de ignorar
+   * duplicado. Ver o comentário longo na migração.
+   */
+  ignorarDuplicados = false
+): Promise<{ inseridos: number; ignorados: number }> {
+  if (inputs.length === 0) return { inseridos: 0, ignorados: 0 };
   const user_id = await currentUserId();
   const rows = inputs.map((item) => ({ ...item, user_id }));
-  const { error } = await supabase.from('transactions').insert(rows);
+
+  if (!ignorarDuplicados) {
+    const { error } = await supabase.from('transactions').insert(rows);
+    if (error) throw error;
+    return { inseridos: rows.length, ignorados: 0 };
+  }
+
+  /* `ignoreDuplicates` transforma o upsert num "insert ... on conflict do
+     nothing". O `select()` devolve só o que entrou de fato, e a diferença
+     para o total enviado é quanto o arquivo repetia. */
+  const { data, error } = await supabase
+    .from('transactions')
+    .upsert(rows, { onConflict: 'user_id,fitid', ignoreDuplicates: true })
+    .select('id');
   if (error) throw error;
+
+  const inseridos = data?.length ?? 0;
+  return { inseridos, ignorados: rows.length - inseridos };
 }
 
 /**

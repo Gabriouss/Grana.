@@ -45,7 +45,7 @@ Code (NFC-e) de uma nota fiscal. Roda em Expo (iOS e Android) e web
 uma landing page pública separada (`app/index.tsx`, só web), voltada a
 quem ainda não conhece o produto, distinta da tela de entrada de quem já
 tem conta. Fase atual: preparação do lançamento comercial. **O produto será pago desde
-o primeiro dia: assinatura de R$ 9,99/mês, sem período de teste gratuito**
+o primeiro dia: assinatura de R$ 9,90/mês, sem período de teste gratuito**
 (decisão do autor em 28/08/2026, que encerra a fase de acesso antecipado).
 A landing já anuncia o preço. O checkout da Kiwify ainda não existe e não há
 bloqueio de acesso no app, então quem cria conta hoje continua com acesso
@@ -72,7 +72,7 @@ apresentá-la perto do bloco de segurança de um jeito que insinue isso.
   que oculta valores, senha conferida contra vazamentos, bloqueio de
   print em tela com valor).
 - Não movimenta dinheiro nem processa pagamento — é só registro.
-- Monetização definida: assinatura recorrente de R$ 9,99/mês, vendida por
+- Monetização definida: assinatura recorrente de R$ 9,90/mês, vendida por
   uma plataforma como Kiwify/Hotmart e cancelável a qualquer momento. A
   vigência continua controlada por `subscriptions.access_until`; cancelamento
   interrompe renovações futuras sem retirar o período que já foi pago. O
@@ -110,7 +110,7 @@ apresentá-la perto do bloco de segurança de um jeito que insinue isso.
   `PieChart` real e as cores reais de categoria de `lib/heuristics.ts`) —
   tratar a UI real do app como fonte de verdade pra qualquer mock de
   landing page, não inventar uma versão mais bonita e fictícia.
-- Preço decidido: R$ 9,99/mês, exibido como número real na seção "Quanto
+- Preço decidido: R$ 9,90/mês, exibido como número real na seção "Quanto
   custa" da landing page.
 
 ## Product Principles

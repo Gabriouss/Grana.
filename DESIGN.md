@@ -231,7 +231,9 @@ Botão de ação primária dentro do fluxo do app usa raio `md` (12px); o CTA da
 - **iOS/iPadOS:** Native Tabs do Expo Router, com materiais e sidebar adaptável fornecidos pelo UIKit.
 - **Android:** Native Tabs do Expo Router, com Navigation Bar, indicador, ripple e Predictive Back do sistema.
 - **Web compacto:** barra inferior de vidro do Grana.; **web médio/amplo:** trilho/barra lateral customizada.
-- **Landing:** cabeçalho fixo com blur, logotipo à esquerda e navegação persistente pelas dobras (Como funciona, Granabô, Hábitos, Benefícios, Segurança, Preços, Dúvidas) mais o link de entrada. No compacto a mesma lista vira um trilho de rolagem horizontal e o "Entrar" sobe para a linha do logotipo. Rodapé em colunas (Produto, Conta, Transparência) com botão de ícone do Instagram.
+- **Landing:** cabeçalho fixo com blur, logotipo à esquerda e o link "Entrar" à direita. Nada mais mora ali. A navegação pelas dobras (Como funciona, Granabô, Hábitos, Benefícios, Segurança, Preços, Dúvidas) fica num botão flutuante no canto inferior direito, em TODAS as larguras, no mesmo espírito do FAB de lançamentos do app. Rodapé em colunas (Produto, Conta, Transparência) com botão de ícone do Instagram.
+
+  A fileira de atalhos no topo foi retirada por decisão do autor e não volta. Ela existiu, virou um amontoado de sete botões colados uns nos outros, e depois voltou uma vez condicionada a `ehAmplo`, o que a trouxe de volta inteira no desktop. O rodapé é quem cobre a descoberta das seções para quem prefere links persistentes.
 
 ### Herói da landing page (assinatura da página)
 Uma cena só, de tela cheia: o título principal à esquerda sobre a composição do notebook (três camadas WebP soltas, animadas em `transform`/`opacity`), sem moldura de dispositivo. O título é revelado letra por letra na entrada (revelação progressiva, não um crossfade de bloco inteiro nem scramble de caractere), decisão deliberada pra maximizar impacto na primeira dobra, e `prefers-reduced-motion` faz as letras nascerem visíveis.

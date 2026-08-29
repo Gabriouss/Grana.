@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -45,6 +46,34 @@ export default function FabButton({
       Animated.timing(progress, { toValue: 0, duration: 140, useNativeDriver: true }).start(() => setMounted(false));
     }
   }, [mounted, open, progress, reduzirMovimento]);
+
+  /* Fecha o menu à força quando a tela perde o foco.
+   *
+   * Sem isto, um item do menu que NAVEGA (hoje só o "Crédito", que leva pra
+   * tela de Cartões) deixava este componente num estado impossível de sair:
+   * `setMounted(false)` só acontece no callback da animação de saída, e a
+   * navegação parte no mesmo toque. Se o callback não roda — e no nativo ele
+   * não roda de forma confiável quando a tela sai de foco no meio da
+   * animação — `mounted` fica preso em `true`.
+   *
+   * O estrago disso é grande porque, com `mounted` verdadeiro, este
+   * componente devolve um <Modal> de tela cheia, e no React Native um Modal
+   * aparece por cima de TUDO, inclusive de outra tela da pilha. O
+   * `Pressable` com `StyleSheet.absoluteFill` lá dentro passa a interceptar
+   * cada toque da tela seguinte: a pessoa chega em Cartões e nenhum botão
+   * responde, sem nada visível explicando o porquê.
+   *
+   * A limpeza do `useFocusEffect` roda no blur, ou seja exatamente quando a
+   * navegação acontece, e zera os três estados de uma vez. */
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setOpen(false);
+        setMounted(false);
+        progress.setValue(0);
+      };
+    }, [progress])
+  );
 
   const rotate = progress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '135deg'] });
 

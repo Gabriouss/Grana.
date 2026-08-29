@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
   ActivityIndicator,
   AppState,
@@ -26,7 +27,7 @@ import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
-import CsvImportModal from '@/components/CsvImportModal';
+import ImportarExtratoModal from '@/components/ImportarExtratoModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
@@ -56,6 +57,8 @@ import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Transaction, TxType } from '@/lib/types';
 
 export default function LancamentosScreen() {
+  const router = useRouter();
+  const { novoLancamento } = useLocalSearchParams<{ novoLancamento?: string }>();
   const { paddingConteudo } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, activeWalletName } = useWallet();
@@ -161,6 +164,14 @@ export default function LancamentosScreen() {
   }, [isDemoMode]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  /* Chegando pelo FAB da Início (?novoLancamento=in|out): abre o mesmo
+     formulário do "+" desta tela, já com o tipo escolhido lá. Ver o hook para
+     as duas armadilhas que ele resolve. */
+  useAberturaPorParametro(novoLancamento === 'in' || novoLancamento === 'out', () => {
+    openNewModal(novoLancamento as TxType);
+    router.setParams({ novoLancamento: undefined });
+  });
 
   // Sem um detector de conectividade nativo, reagir a "voltar ao app" (ex: depois
   // de reconectar o Wi-Fi em segundo plano) é o gatilho mais próximo disponível
@@ -395,7 +406,7 @@ export default function LancamentosScreen() {
             <HeaderAction
               icon="document-text-outline"
               onPress={() => setCsvModalOpen(true)}
-              accessibilityLabel="Importar CSV"
+              accessibilityLabel="Importar extrato"
             />
             {/* Sem `style`: a geometria do círculo mora no próprio
                 VoiceEntryButton (styles.iconBtn), igual à do HeaderAction.
@@ -637,7 +648,7 @@ export default function LancamentosScreen() {
       />
 
       {/* CSV Import Modal */}
-      <CsvImportModal
+      <ImportarExtratoModal
         visible={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
         onSuccess={() => {

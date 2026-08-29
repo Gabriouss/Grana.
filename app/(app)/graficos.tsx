@@ -23,6 +23,7 @@ import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { fetchTransactions } from '@/lib/data';
 import { formatMoney, isCreditTx, todayISO, formatDateLabel } from '@/lib/format';
 import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts } from '@/lib/theme';
+import { prepararFatias } from '@/lib/chart-colors';
 import type { Transaction } from '@/lib/types';
 
 type TabModo = 'geral' | 'despesas' | 'renda';
@@ -203,13 +204,18 @@ export default function GraficosScreen() {
       catMap[cat].amount += Number(t.amount || 0);
     });
 
-    return Object.entries(catMap)
-      .map(([name, info]) => ({
+    /* `prepararFatias` ordena, aplica a paleta validada por NOME de categoria
+       e dobra a cauda em "Outros", limitando o donut a seis fatias. A cor
+       gravada em `transactions.color` continua valendo em chip e etiqueta;
+       dentro do gráfico, onde as cores aparecem encostadas umas nas outras,
+       vale a paleta que passa nos testes de separação (ver lib/chart-colors.ts). */
+    return prepararFatias(
+      Object.entries(catMap).map(([name, info]) => ({
         name,
         color: info.color,
         value: info.amount,
       }))
-      .sort((a, b) => b.value - a.value);
+    );
   }, [filteredTransactions, tabModo]);
 
   const totalPeriodo = useMemo(() => {
@@ -327,11 +333,20 @@ export default function GraficosScreen() {
             <View style={[styles.donutRow, ehCompacto && styles.donutRowCompacta, !ehCompacto && styles.donutRowLargo]}>
               <PieChart data={pieSlices} size={tamanhoDonut} />
               <View style={[styles.legendCol, ehCompacto && styles.legendColCompacta, !ehCompacto && styles.legendColLargo]}>
-                {pieSlices.slice(0, 5).map((slice, i) => (
+                {/* Todas as fatias, não só cinco: agora que o donut tem teto de
+                    seis, a legenda consegue espelhá-lo por inteiro. Antes ela
+                    cortava em cinco e as fatias restantes ficavam no anel sem
+                    nome nenhum. A porcentagem entra aqui porque só uma parte
+                    das fatias ganha rótulo direto — sem ela, a identidade das
+                    fatias pequenas dependeria só da cor. */}
+                {pieSlices.map((slice, i) => (
                   <View key={i} style={styles.legendRow}>
                     <View style={[styles.legendDot, { backgroundColor: slice.color }]} />
                     <Text style={styles.legendName} numberOfLines={1}>
                       {slice.name}
+                    </Text>
+                    <Text style={styles.legendPct} numberOfLines={1}>
+                      {totalPeriodo > 0 ? `${Math.round((slice.value / totalPeriodo) * 100)}%` : '0%'}
                     </Text>
                     <PrivacyValue>
                       <Text style={styles.legendVal}>R$ {formatMoney(slice.value)}</Text>
@@ -483,16 +498,18 @@ const styles = StyleSheet.create({
      `medio`: no celular (sempre `compacto`) a legenda já precisa de toda a
      largura disponível, e um teto aqui era o que cortava "Salário" em
      "Salár…". */
-  /* 520 = donut (280 no amplo) + gap (20) + legenda (220). Estava em 460,
-     um teto herdado de quando o donut media 220: no amplo ele cresceu pra 280
-     e a conta passou a sobrar só 160 pra legenda, dos quais o valor em reais
-     come ~80 — o nome da categoria ficava com uns 60px e virava "Morad…",
-     "Alime…". O `maxWidth: 220` de `legendColLargo` nunca chegava a valer,
-     porque o teto da LINHA apertava antes. No médio o donut volta a 220 e o
-     conjunto fecha em 460 sozinho, centralizado, como antes. */
+  /* 580 = donut (280 no amplo) + gap (20) + legenda (280).
+   *
+   * A legenda precisa de 280 porque cada linha carrega quatro coisas: ponto
+   * de cor (6), nome da categoria (~110 para caber "Alimentação" inteiro),
+   * porcentagem (44) e valor em reais (~85), mais os vãos. O teto anterior
+   * era 460, herdado de quando o donut media 220 e a legenda não tinha coluna
+   * de porcentagem — com o donut em 280 sobravam 160, o nome ficava com uns
+   * 60px e virava "Morad…", "Alime…". O `maxWidth` de `legendColLargo` nunca
+   * chegava a valer, porque o teto da LINHA apertava antes dele. */
   donutRowLargo: {
     gap: spacing.xl,
-    maxWidth: 520,
+    maxWidth: 580,
     alignSelf: 'center',
   },
   /* No celular donut e legenda empilham. Lado a lado, o donut de 150 mais o
@@ -508,7 +525,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   legendColLargo: {
-    maxWidth: 220,
+    maxWidth: 280,
   },
   /* Empilhada, a legenda precisa vencer o `alignItems:'center'` do
      `donutRow`, que senão a encolheria até a largura do conteúdo e deixaria
@@ -531,6 +548,26 @@ const styles = StyleSheet.create({
     flex: 1,
     color: theme.ink,
     fontSize: type.nota, fontFamily: fonts.regular },
+  /* `minWidth` + `flexShrink: 0`, nunca `width` fixo.
+   *
+   * Uma primeira versão desta coluna usava `width: 34`. Não cabia: em
+   * `type.nota` a Neue Machina escreve "61%" em ~38px, e o texto quebrava
+   * dentro da caixa — o número ficava numa linha e o "%" na de baixo, que na
+   * tela lia como se os caracteres da porcentagem estivessem espaçados.
+   *
+   * A Neue Machina também não tem conjunto de algarismos tabulares: aplicar
+   * `font-variant-numeric: tabular-nums` nela não muda largura nenhuma
+   * (medido no navegador). Então o alinhamento da coluna vem do `minWidth` e
+   * do `textAlign`, não do recurso da fonte. Isso vale para toda coluna de
+   * número deste app. */
+  legendPct: {
+    minWidth: 44,
+    flexShrink: 0,
+    textAlign: 'right',
+    color: theme.inkSoft,
+    fontSize: type.nota,
+    fontFamily: fonts.regular,
+  },
   legendVal: {
     color: theme.inkFaint,
     fontSize: type.nota, fontFamily: fonts.light },

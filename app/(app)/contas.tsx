@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
   ActivityIndicator,
   FlatList,
@@ -40,6 +41,8 @@ import type { Bill, BillStatus } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 
 export default function ContasScreen() {
+  const router = useRouter();
+  const { novaConta } = useLocalSearchParams<{ novaConta?: string }>();
   const { paddingConteudo, total: tabBarTotal } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet } = useWallet();
@@ -107,6 +110,13 @@ export default function ContasScreen() {
   }, [isDemoMode]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  /* Chegando pelo FAB da Início (?novaConta=1): abre o mesmo formulário do
+     "+" desta tela. Ver o hook para as duas armadilhas que ele resolve. */
+  useAberturaPorParametro(novaConta === '1', () => {
+    openNewModal();
+    router.setParams({ novaConta: undefined });
+  });
 
   function openNewModal() {
     setEditingBillId(null);

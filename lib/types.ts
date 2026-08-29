@@ -74,6 +74,12 @@ export type Transaction = {
   installment_total?: number;
   /** Carteira / Conta à qual esta transação pertence */
   wallet_id?: string | null;
+  /** Identificador da transação no arquivo OFX de origem, quando veio de
+   *  importação de extrato. É o que impede duplicar ao reimportar (índice
+   *  único `transactions_user_fitid_uniq`). Null em tudo que foi lançado por
+   *  voz, WhatsApp, QR ou à mão — e nulos não colidem entre si, porque o
+   *  Postgres trata NULL como distinto num índice único. */
+  fitid?: string | null;
   created_at: string;
 };
 

@@ -131,24 +131,40 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
     };
   });
 
-  /* Fatias pequenas espremidas lado a lado (ex: 5%, 2%, 2% seguidas) têm os
-     pontos médios angulares perto demais uma da outra — nesse raio fixo
-     (labelR), os textos caem em cima um do outro. Em vez de tentar acertar
-     uma posição melhor pra cada rótulo individualmente, esconde o rótulo
-     de qualquer fatia cujo ângulo médio esteja perto demais do último
-     rótulo já desenhado (as fatias continuam visíveis no anel e na legenda
-     abaixo — só o número por cima delas some quando não cabe). ~14° é o
-     espaço que "12%" (o rótulo mais largo plausível aqui) ocupa a este
-     raio sem encostar no vizinho. */
-  const MIN_LABEL_GAP_DEG = 14;
+  /* ── Quais fatias ganham rótulo ──────────────────────────────────────────
+   *
+   * Duas regras, e as duas existem porque escrever um número em TODA fatia é
+   * o jeito clássico de tornar um donut ilegível: os rótulos das fatias
+   * pequenas se empilham na borda de cima e deixam de dizer a qual fatia
+   * pertencem. Rótulo direto é seletivo; quem carrega o resto é a legenda.
+   *
+   * 1. Piso de tamanho. Abaixo de 8% a fatia é fina demais para o número
+   *    ancorar nela visualmente, e o leitor acaba tendo que adivinhar a
+   *    associação. Antes o piso era 1%, o que na prática rotulava tudo.
+   *
+   * 2. Distância angular mínima. O rótulo mede ~13 unidades do viewBox; no
+   *    raio 48 são necessários ~20° para dois rótulos não se tocarem
+   *    (16 unidades de arco ÷ 48 × 180/π). Os 14° anteriores davam ~11,7
+   *    unidades de arco, menos que a largura do próprio texto — por isso
+   *    fatias de 5% e 3% seguidas apareciam rotuladas e sobrepostas.
+   *
+   * A fatia continua no anel e na legenda; o que some é só o número por cima
+   * dela. */
+  const MIN_PCT_ROTULO = 8;
+  const MIN_LABEL_GAP_DEG = 20;
   let ultimoMidComRotulo: number | null = null;
+
+  /* O miolo do donut fica VAZIO, por decisão de marca do autor. Uma rodada
+     anterior escreveu ali a categoria líder e a porcentagem dela; foi
+     revertido. O anel já carrega a composição, e o buraco é respiro, não
+     espaço a ser preenchido. */
 
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox={VIEW_BOX}>
         {slices.map(({ seg, d, labelX, labelY, mid, anchor, pct }) => {
           const cabe =
-            pct >= 1 &&
+            pct >= MIN_PCT_ROTULO &&
             (ultimoMidComRotulo === null || Math.abs(mid - ultimoMidComRotulo) >= MIN_LABEL_GAP_DEG);
           if (cabe) ultimoMidComRotulo = mid;
           return (
@@ -173,6 +189,7 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
             </G>
           );
         })}
+
       </Svg>
     </View>
   );

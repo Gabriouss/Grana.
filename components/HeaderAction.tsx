@@ -61,12 +61,19 @@ const styles = StyleSheet.create({
   comRotulo: { paddingVertical: 6, paddingHorizontal: spacing.md },
   /* Sem rótulo o botão é um CÍRCULO, e círculo exige largura igual à altura.
      Antes eram só paddings de 6: o ícone de 16 dava 28 de largura, enquanto o
-     `minHeight: touchTarget` do `base` esticava a altura para 44 — com
-     `borderRadius: pill` o resultado era uma cápsula vertical de 28×44, não um
-     círculo. Fixar os dois lados em `touchTarget` resolve a forma e o alvo de
-     toque de uma vez; o padding sai porque `alignItems`/`justifyContent` do
-     `base` já centralizam o ícone. */
-  soIcone: { width: touchTarget, height: touchTarget, paddingVertical: 0, paddingHorizontal: 0 },
+     `minHeight: touchTarget` do `base` esticava a altura para 44 — o resultado
+     era uma cápsula vertical de 28×44, não um círculo.
+
+     O DIÂMETRO é 36, não `touchTarget`. Amarrar o desenho ao alvo de toque
+     fazia círculos de 48 no Android, e três deles na mesma linha roubavam
+     tanta largura do título que "Boa tarde, Gabriel" e "Lançamentos" passavam
+     a quebrar em duas linhas. Alvo de toque e tamanho visual são coisas
+     separadas: o `hitSlop` de 8 no componente leva a área tocável a 52, acima
+     dos 48 do Android, sem inflar o desenho.
+
+     `minHeight` volta a 36 aqui porque o `base` o fixa em `touchTarget`, e sem
+     sobrescrever a altura venceria a largura de novo. */
+  soIcone: { width: 36, height: 36, minHeight: 36, paddingVertical: 0, paddingHorizontal: 0 },
   hover: { borderColor: theme.accent2 },
   texto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
 });

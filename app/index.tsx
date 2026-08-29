@@ -1,4 +1,4 @@
-import { createElement, useEffect, useState } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
@@ -17,6 +17,7 @@ import ConversaGranabo from '@/components/ConversaGranabo';
 import CardLivreParaGastar from '@/components/CardLivreParaGastar';
 import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';
 import TrustMarquee from '@/components/TrustMarquee';
+import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
 import MolduraNavegador from '@/components/MolduraNavegador';
 import landingMeta from '@/landing-meta.json';
 
@@ -65,15 +66,25 @@ export default function LandingPage() {
    período de teste. */
 const PARAMETROS_ATRIBUICAO = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
 
+/* Em compacto/médio, a navegação mora no botão flutuante; no amplo, os mesmos
+   destinos ficam persistentes no cabeçalho. Cada ícone é mnemônico da seção,
+   não decoração: permite reconhecer o item pela forma antes do rótulo. */
 const NAVEGACAO_LANDING = [
-  { rotulo: 'Como funciona', href: '#produto' },
-  { rotulo: 'Granabô', href: '#granabo' },
-  { rotulo: 'Hábitos', href: '#habitos' },
-  { rotulo: 'Benefícios', href: '#beneficios' },
-  { rotulo: 'Segurança', href: '#seguranca' },
-  { rotulo: 'Preços', href: '#precos' },
-  { rotulo: 'Dúvidas', href: '#faq' },
+  { rotulo: 'Como funciona', href: '#produto', icone: 'play-circle-outline' },
+  { rotulo: 'Granabô', href: '#granabo', icone: 'logo-whatsapp' },
+  { rotulo: 'Hábitos', href: '#habitos', icone: 'flame-outline' },
+  { rotulo: 'Benefícios', href: '#beneficios', icone: 'grid-outline' },
+  { rotulo: 'Segurança', href: '#seguranca', icone: 'shield-checkmark-outline' },
+  { rotulo: 'Preços', href: '#precos', icone: 'pricetag-outline' },
+  { rotulo: 'Dúvidas', href: '#faq', icone: 'help-circle-outline' },
 ] as const;
+
+/* 560px do mockup + 320px da coluna textual + gap e margens da dobra. A
+   composição só vira duas colunas quando essa soma cabe sem encolher nenhum
+   dos lados abaixo do próprio conteúdo. */
+const LARGURA_MINIMA_HABITOS_EM_LINHA = 1080;
+const LARGURA_MINIMA_HERO_LARGO = 960;
+const ALTURA_MINIMA_HERO_LARGO = 600;
 
 function hrefCadastroComAtribuicao(): string {
   if (typeof window === 'undefined') return '/sign-up';
@@ -194,10 +205,24 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
 // As 3 cenas de dor, cada uma em 3 linhas fixas (`\n` explícito) — mesma
 // disciplina do resto da página: quebra escolhida, não deixada pro acaso do
 // wrap automático em cada largura de tela.
+/* Cada cena ganha um ícone que nomeia a SITUAÇÃO, não a emoção: o calendário
+   é a sexta-feira, o cartão é a fatura, a grade é a planilha. Ícone que
+   repete o que o texto já diz seria decoração; estes três dão ao olho um
+   ponto de entrada em cada card antes da leitura, que é o que faltava numa
+   seção de três blocos de texto quase idênticos em forma. */
 const CENAS_DOR = [
-  'Chega sexta-feira e você\nainda não sabe se o dinheiro\ndá para sair à noite.',
-  'A fatura chega com gastos\nque você mal se lembra\nde ter feito.',
-  'A planilha começou\norganizada. Poucos dias\ndepois, ficou para trás.',
+  {
+    icone: 'calendar-outline' as const,
+    texto: 'Chega sexta-feira e você ainda não sabe se o dinheiro dá para sair à noite.',
+  },
+  {
+    icone: 'card-outline' as const,
+    texto: 'A fatura chega com gastos que você mal se lembra de ter feito.',
+  },
+  {
+    icone: 'grid-outline' as const,
+    texto: 'A planilha começou organizada. Poucos dias depois, ficou para trás.',
+  },
 ];
 
 const PONTE_PERGUNTA = 'No Grana., registrar um gasto leva o mesmo tempo que mandar um áudio para um amigo.';
@@ -219,9 +244,9 @@ function SecaoReconheceIsso() {
   return (
     <View>
       <View style={styles.gradeCenas}>
-        {CENAS_DOR.map((texto, i) => (
+        {CENAS_DOR.map((cena, i) => (
           <RevealOnScroll
-            key={texto}
+            key={cena.texto}
             atraso={i * 90}
             style={[
               styles.cenaCaixaPos,
@@ -229,14 +254,24 @@ function SecaoReconheceIsso() {
               !ehCompacto && { transform: [{ translateY: DESALINHO_DOR[i % DESALINHO_DOR.length] }] },
             ]}
           >
-            <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cenaCaixa, hovered && styles.cardComHover]}>
-              <Text style={[styles.textoCena, styles.precoTextoCentralizado]}>{texto}</Text>
-            </AppPressable>
+            <View style={styles.cenaCaixa}>
+              <View style={styles.cenaIcone} aria-hidden>
+                <Ionicons name={cena.icone} size={19} color={theme.accent2} />
+              </View>
+              <Text style={[styles.textoCena, styles.precoTextoCentralizado]}>{cena.texto}</Text>
+            </View>
           </RevealOnScroll>
         ))}
       </View>
+      {/* A ponte fecha a seção e o botão vem logo abaixo dela. Antes a pessoa
+          lia a virada ("é rápido assim") e precisava rolar cinco dobras até
+          encontrar um botão — o momento de maior interesse da página não
+          tinha para onde ir. */}
       <RevealOnScroll atraso={CENAS_DOR.length * 90} style={styles.precoIntroCentralizada}>
         <Text style={[styles.pontePergunta, styles.precoTextoCentralizado]}>{PONTE_PERGUNTA}</Text>
+        <View style={styles.cenaCta}>
+          <BotaoCTA centralizado />
+        </View>
       </RevealOnScroll>
     </View>
   );
@@ -379,7 +414,7 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
   // seções que já centralizavam antes (Preços, Reconhece isso): a mesma
   // regra `textAlign:'center'` aplicada duas vezes não muda nada.
   return (
-    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, ehCompacto && styles.precoTituloCentralizado, estiloExtra]}>
+    <Text role="heading" aria-level={2} style={[styles.secaoTitulo, !ehCompacto && styles.secaoTituloGrande, ehCompacto && styles.secaoTituloCompacto, ehCompacto && styles.precoTituloCentralizado, estiloExtra]}>
       {children}
     </Text>
   );
@@ -503,15 +538,165 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
   );
 }
 
+/**
+ * Um elemento só "rola" se tiver overflow rolável E conteúdo sobrando. Os dois
+ * juntos, nunca um só: o ScrollView do react-native-web empilha várias Views
+ * uma dentro da outra, e as de fora têm `scrollHeight` grande com
+ * `overflow: visible` — parecem o contêiner de rolagem e não são.
+ */
+function rolaDeVerdade(elemento: HTMLElement | null | undefined): boolean {
+  if (!elemento || typeof getComputedStyle !== 'function') return false;
+  const estilo = getComputedStyle(elemento);
+  return /(auto|scroll)/.test(estilo.overflowY) && elemento.scrollHeight > elemento.clientHeight + 1;
+}
+
+/** O contêiner que realmente rola acima de um elemento, subindo a árvore. */
+function containerRolavel(elemento: HTMLElement): HTMLElement | null {
+  let atual: HTMLElement | null = elemento.parentElement;
+  while (atual) {
+    if (rolaDeVerdade(atual)) return atual;
+    atual = atual.parentElement;
+  }
+  return null;
+}
+
+/**
+ * Rola até o alvo descontando o cabeçalho fixo. Devolve `false` quando não
+ * conseguiu rolar por nenhum dos três caminhos — e é esse `false` que autoriza
+ * quem chamou a deixar a âncora nativa agir em vez de cancelá-la.
+ */
+function rolarAte(alvo: HTMLElement, alturaCabecalho: number, rolagem: ScrollView | null): boolean {
+  /* `getScrollableNode()` é usado só se ele REALMENTE rolar.
+   *
+   * O nó devolvido por ele nesta tela é uma View intermediária com
+   * `overflow: visible`, não o contêiner de rolagem. Chamar `scrollTo` nela
+   * não move nada e também não lança erro: a página fica parada enquanto a URL
+   * troca para `#habitos`, que é uma forma silenciosa de botão morto. Medido:
+   * o scroller de verdade é três níveis acima, com 13727px de conteúdo para
+   * 915px de janela. */
+  const candidato = (rolagem as any)?.getScrollableNode?.() as HTMLElement | undefined;
+  const container = rolaDeVerdade(candidato) ? candidato : containerRolavel(alvo);
+
+  if (container) {
+    const topo =
+      container.scrollTop + alvo.getBoundingClientRect().top - container.getBoundingClientRect().top - alturaCabecalho;
+    /* Inteiro: `scrollTop` fracionário é arredondado pelo navegador ao ser
+       guardado, e a diferença resultante já disparou uma vez a rede de
+       segurança logo abaixo. */
+    const destino = Math.max(0, Math.round(topo));
+
+    /* O `scroll-snap` sai do caminho durante o salto, por precaução e não por
+       diagnóstico: o defeito relatado vinha do `scrollTo` trocado, logo
+       abaixo, e não daqui. Medido em 412px de largura, com o encaixe ligado o
+       salto pousa e permanece no destino.
+
+       A precaução vale mesmo assim porque as dobras só ganham
+       `scroll-snap-align` em telas altas o bastante (`alturaDobra`), então
+       existem larguras em que há pontos de encaixe de verdade e o navegador
+       pode reancorar um salto programático. Desligar, saltar e religar cobre
+       essas telas sem tirar o encaixe da rolagem normal, que é para o que ele
+       existe.
+
+       A rolagem em si é INSTANTÂNEA por medição: com `behavior: 'smooth'`
+       este contêiner ignora o pedido em silêncio e não sai do lugar. */
+    const snapOriginal = container.style.scrollSnapType;
+    container.style.scrollSnapType = 'none';
+    container.scrollTop = destino;
+
+    /* A rede de segurança usa `Element.prototype.scrollTo` pelo nome completo,
+       e é obrigatório que seja assim.
+
+       O react-native-web pendura o `scrollTo` DELE no nó do DOM do ScrollView,
+       por cima do método do navegador. Os dois têm o mesmo nome e assinaturas
+       incompatíveis: o do navegador recebe `{ top, behavior }`, o do RNW recebe
+       `{ x, y, animated }`. Chamar `container.scrollTo({ top, behavior })` cai
+       no do RNW, que lê `y` como indefinido e vira 0, e `animated` como
+       indefinido e vira suave.
+
+       Era esse o bug relatado, e o rastro de pilha o mostra inteiro:
+       `Element.scroll({top: 0, left: 0, behavior: "smooth"})` saindo de
+       `ScrollView.scrollResponderScrollTo` chamado daqui. O salto acertava o
+       destino e logo depois a página voltava sozinha ao topo numa animação de
+       cerca de um segundo. Medido: 3614 no quadro do toque, decaindo por 3251,
+       2007, 593 até 0. Da tela, a leitura é "apertei e continuei no herói".
+
+       A comparação também precisa de tolerância. `destino` sai de
+       `getBoundingClientRect()` e é fracionário; o navegador arredonda ao
+       guardar. Um `!==` cru dava diferente TODA vez e disparava a rede de
+       segurança em todo toque, que é por que a falha nunca parecia
+       intermitente. */
+    if (Math.abs(container.scrollTop - destino) > 1) {
+      const rolarNativo = Element.prototype.scrollTo as (this: Element, opcoes: ScrollToOptions) => void;
+      rolarNativo.call(container, { top: destino, behavior: 'auto' });
+    }
+    /* Religa o encaixe depois de o navegador assentar na posição nova. O
+       atraso curto deixa a posição virar a "atual" antes de o encaixe voltar a
+       valer, e é imperceptível porque o salto em si é instantâneo. */
+    setTimeout(() => {
+      container.style.scrollSnapType = snapOriginal;
+    }, 250);
+    return true;
+  }
+
+  /* Último recurso: o próprio alvo se aproxima. O `scrollMarginTop` que cada
+     seção já declara é o que mantém o título fora de baixo do cabeçalho aqui. */
+  if (typeof alvo.scrollIntoView === 'function') {
+    alvo.scrollIntoView({ behavior: 'auto', block: 'start' });
+    return true;
+  }
+
+  return false;
+}
+
 function ConteudoWeb() {
   const insets = useSafeAreaInsets();
-  const { ehCompacto, largura } = useBreakpoint();
-  const cabecalhoEmDuasLinhas = largura < 1100;
+  const { ehCompacto, largura, altura } = useBreakpoint();
+  const habitosEmpilhados = largura < LARGURA_MINIMA_HABITOS_EM_LINHA;
+  const heroCompacto = largura < LARGURA_MINIMA_HERO_LARGO || altura < ALTURA_MINIMA_HERO_LARGO;
   const alturaDobra = useAlturaDobra();
+  const rolagemRef = useRef<ScrollView>(null);
   /* Medido em vez de constante: o cabeçalho muda de altura com o `insets.top`
      e com a escala tipográfica da web, e o herói precisa descontar o valor
      REAL pra primeira dobra fechar em 16:9 exatos. */
   const [alturaCabecalho, setAlturaCabecalho] = useState(0);
+
+  /**
+   * Leva até a seção por rolagem calculada.
+   *
+   * Existe porque o `href="#secao"` sozinho não basta nesta página: se a URL já
+   * está naquele hash (a pessoa foi para Hábitos, voltou ao topo e tocou em
+   * Hábitos de novo), o navegador entende que já chegou e não rola. Somando o
+   * `scroll-snap` das dobras e o cabeçalho fixo, o salto nativo vira o pedaço
+   * menos previsível da navegação.
+   *
+   * **A regra de ouro daqui: nunca cancelar a âncora sem rolar no lugar dela.**
+   * Uma versão anterior chamava `preventDefault()` LOGO NO INÍCIO e depois
+   * desistia com `return` se o nó de rolagem não fosse encontrado. Quando isso
+   * acontecia, o toque virava um no-op perfeito: o comportamento nativo tinha
+   * sido cancelado e nada assumia o lugar. Da tela, é exatamente o sintoma de
+   * "aperto e a página não sai do herói", sem erro nenhum no console.
+   *
+   * Agora o `preventDefault` só é chamado DEPOIS de a rolagem ter acontecido, e
+   * há três caminhos em cascata: o nó do ScrollView, o contêiner rolável
+   * encontrado subindo a árvore, e por fim o `scrollIntoView` do próprio alvo.
+   * Se os três falharem, a função não cancela nada e o navegador faz o salto
+   * nativo — pior alinhado, mas funcionando.
+   */
+  function navegarParaSecao(href: string, evento?: { preventDefault?: () => void }) {
+    if (Platform.OS !== 'web' || typeof document === 'undefined' || typeof window === 'undefined') return;
+
+    const alvo = document.getElementById(href.replace(/^#/, ''));
+    if (!alvo) return;
+
+    const rolou = rolarAte(alvo, alturaCabecalho, rolagemRef.current);
+    if (!rolou) return; // sem cancelar: o salto nativo da âncora ainda resolve
+
+    evento?.preventDefault?.();
+
+    const destino = `${window.location.pathname}${window.location.search}${href}`;
+    if (window.location.hash === href) window.history.replaceState(null, '', destino);
+    else window.history.pushState(null, '', destino);
+  }
 
   // Garante idioma pt-BR no HTML e injeta keyframe do scroll hint
   useEffect(() => {
@@ -578,8 +763,10 @@ function ConteudoWeb() {
   ];
 
   return (
+    <>
     <ScrollView
-      style={[styles.pagina, styles.paginaSnap]}
+      ref={rolagemRef}
+      style={[styles.pagina, styles.paginaSnap, { scrollPaddingTop: alturaCabecalho } as any]}
       contentContainerStyle={{ paddingBottom: insets.bottom }}
     >
       {/* ───────── SEO meta tags ───────── */}
@@ -617,11 +804,14 @@ function ConteudoWeb() {
         style={styles.cabecalhoSticky}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
+        {/* O cabeçalho carrega a marca e "Entrar", e só. A navegação pelas
+            seções mora no botão flutuante em TODAS as larguras: a fileira de
+            atalhos aqui em cima é o que o autor pediu para tirar, e devolvê-la
+            no amplo devolve junto o amontoado que motivou o pedido. */}
         <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
-        <View style={[styles.cabecalho, cabecalhoEmDuasLinhas && styles.cabecalhoCompacto, { paddingTop: insets.top + spacing.sm }]}>
-          <View style={[styles.cabecalhoLinhaPrincipal, cabecalhoEmDuasLinhas && styles.cabecalhoLinhaPrincipalCompacta]}>
+          <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
             <BrandLogotype width={104} />
-            {cabecalhoEmDuasLinhas ? (
+            <View style={styles.cabecalhoAcoes}>
               <AppPressable
                 href="/sign-in"
                 scaleOnPress={false}
@@ -631,54 +821,8 @@ function ConteudoWeb() {
                 <Text style={styles.navEntrarTexto}>Entrar</Text>
                 <Ionicons name="arrow-forward" size={14} color={theme.paper} aria-hidden />
               </AppPressable>
-            ) : null}
-          </View>
-
-          {cabecalhoEmDuasLinhas ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.navScrollCompacta}
-              contentContainerStyle={styles.navAbasCompactas}
-              role="navigation"
-              accessibilityLabel="Navegação pelas seções da página"
-            >
-              {NAVEGACAO_LANDING.map((item) => (
-                <AppPressable
-                  key={item.href}
-                  href={item.href}
-                  scaleOnPress={false}
-                  style={({ hovered }) => [styles.navLinkAlvo, hovered && styles.navLinkAlvoHover]}
-                >
-                  <Text style={styles.navLinkTexto}>{item.rotulo}</Text>
-                </AppPressable>
-              ))}
-            </ScrollView>
-          ) : (
-            <View role="navigation" accessibilityLabel="Navegação principal" style={styles.navAbas}>
-              {NAVEGACAO_LANDING.map((item) => (
-                <AppPressable
-                  key={item.href}
-                  href={item.href}
-                  scaleOnPress={false}
-                  style={({ hovered }) => [styles.navLinkAlvo, hovered && styles.navLinkAlvoHover]}
-                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-                >
-                  <Text style={styles.navLinkTexto}>{item.rotulo}</Text>
-                </AppPressable>
-              ))}
-              <AppPressable
-                href="/sign-in"
-                scaleOnPress={false}
-                style={({ hovered }) => [styles.navLinkAlvo, styles.navEntrarAlvo, hovered && styles.navEntrarAlvoHover]}
-                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-              >
-                <Text style={styles.navEntrarTexto}>Entrar</Text>
-                <Ionicons name="arrow-forward" size={14} color={theme.paper} aria-hidden />
-              </AppPressable>
             </View>
-          )}
-        </View>
+          </View>
         </View>
       </View>
 
@@ -717,18 +861,17 @@ function ConteudoWeb() {
             compacto aplica `colunaConteudo/faixa` nele mesmo (mesmo efeito
             de antes), o largo não aplica nenhum, e só o texto por cima do
             vídeo fica preso a 1440px (`heroConteudoCentralizado`). */}
-        <HeroStorytelling ehCompacto={ehCompacto} alturaCabecalho={alturaCabecalho} />
+        <HeroStorytelling ehCompacto={heroCompacto} alturaCabecalho={alturaCabecalho} />
       </View>
 
       {/* ───────── Reconhece isso? (dor, antes da solução) ─────────
           Cada cena de dor em caixa própria, desalinhadas entre si
           (referência: cards do workshop) — trocou o scrub de brilho
           contínuo que a seção tinha antes. */}
-      {/* `scrollMarginTop` compensa o cabeçalho sticky: sem isso, rolar até
-          aqui pelo clique da aba alinharia o topo desta seção exatamente
-          embaixo do cabeçalho fixo, escondendo o começo do conteúdo atrás
-          dele. */}
-      <View nativeID="produto" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+      {/* O offset das âncoras vive no ScrollView (`scrollPaddingTop`) e em
+          `navegarParaSecao`, porque `scrollMarginTop` por seção era ignorado
+          de forma intermitente pelo navegador junto com scroll-snap. */}
+      <View nativeID="produto" style={styles.palcoComCamada}>
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
@@ -740,7 +883,13 @@ function ConteudoWeb() {
                     marca que escuta sem julgar. Agora a fricção do processo é
                     a vilã. Não usa a construção "não é X, é Y", que a marca
                     não aceita. */}
-                {'Controle financeiro precisa caber\nna rotina para continuar funcionando.'}
+                {/* Sem quebra fixa: a que existia aqui cortava depois de
+                    "caber", e no celular a primeira metade já quebrava
+                    sozinha antes disso — sobrava a palavra "caber" isolada
+                    numa linha só. Quem equilibra as linhas agora é o
+                    `textWrap: balance` de `secaoTitulo`, que faz isso na
+                    largura real, seja ela qual for. */}
+                Controle financeiro precisa caber na rotina para continuar funcionando.
               </TituloSecao>
             </RevealOnScroll>
 
@@ -778,7 +927,7 @@ function ConteudoWeb() {
           descrito. A conversa mostra o Granabô devolvendo MAIS do que
           recebeu (registra e depois responde quanto já foi gasto na
           categoria) — as duas coisas que a Edge Function realmente faz. */}
-      <View nativeID="granabo" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+      <View nativeID="granabo" style={styles.palcoComCamada}>
         <Dobra>
           <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
             <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
@@ -815,12 +964,12 @@ function ConteudoWeb() {
 
 
       {/* ───────── Construção do hábito (dobra 5) ───────── */}
-      <View nativeID="habitos" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+      <View nativeID="habitos" style={styles.palcoComCamada}>
         <GradeInterativa />
         <Dobra levantada>
           <RevealOnScroll>
-            <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-              <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
+            <View style={[styles.secao, styles.secaoComCartao, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
+              <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
                 <MolduraNavegador
                   src="/telas/conquistas-web.webp"
                   legenda="Tela de Desafios do Grana., com sequência, Score e mural de conquistas"
@@ -853,7 +1002,7 @@ function ConteudoWeb() {
       </View>
 
       {/* ───────── Inteligência financeira ───────── */}
-      <View nativeID="livre" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+      <View nativeID="livre" style={styles.palcoComCamada}>
         <GradeInterativa />
         <Dobra>
         <RevealOnScroll>
@@ -880,7 +1029,7 @@ function ConteudoWeb() {
       {/* ───────── Tudo que o Grana. faz (dobra 8) ─────────
           Cada card mostra o benefício acontecendo. Os mini-mocks substituem
           ícones genéricos e usam somente dados fictícios. */}
-      <View nativeID="beneficios" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+      <View nativeID="beneficios" style={styles.palcoComCamada}>
         <GradeInterativa invertida />
         <Dobra levantada>
           <View style={styles.secao}>
@@ -895,15 +1044,11 @@ function ConteudoWeb() {
             <View style={styles.beneficiosGrade}>
               {BENEFICIOS_LANDING.map((beneficio, indice) => (
                 <RevealOnScroll key={beneficio.variante} atraso={indice * 70} style={styles.beneficioPosicao}>
-                  <AppPressable
-                    focusable={false}
-                    scaleOnPress={false}
-                    style={({ hovered }) => [styles.beneficioCard, hovered && styles.cardComHover]}
-                  >
+                  <View style={styles.beneficioCard}>
                     <MiniMockBeneficio variante={beneficio.variante} />
                     <Text style={styles.beneficioTitulo}>{beneficio.titulo}</Text>
                     <Text style={styles.beneficioTexto}>{beneficio.texto}</Text>
-                  </AppPressable>
+                  </View>
                 </RevealOnScroll>
               ))}
             </View>
@@ -914,7 +1059,7 @@ function ConteudoWeb() {
       {/* ───────── Segurança e confiança (dobra 9) ─────────
           As duas metades são deliberadamente separadas: a Meta confirma a
           identidade do canal; as proteções do produto cuidam dos dados. */}
-      <View nativeID="seguranca" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+      <View nativeID="seguranca" style={styles.palcoComCamada}>
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll style={styles.precoIntroCentralizada}>
@@ -926,7 +1071,7 @@ function ConteudoWeb() {
             </RevealOnScroll>
 
             <View style={styles.segurancaDupla}>
-              <RevealOnScroll style={styles.segurancaPainel}>
+              <RevealOnScroll style={[styles.segurancaPainel, ehCompacto && styles.segurancaPainelCompacto]}>
                 <View style={styles.segurancaPainelTopo}>
                   <View style={styles.whatsappIconeFundo} aria-hidden>
                     <Ionicons name="logo-whatsapp" size={20} color={theme.accent2} />
@@ -951,7 +1096,7 @@ function ConteudoWeb() {
                 </View>
               </RevealOnScroll>
 
-              <RevealOnScroll atraso={90} style={styles.segurancaPainel}>
+              <RevealOnScroll atraso={90} style={[styles.segurancaPainel, ehCompacto && styles.segurancaPainelCompacto]}>
                 <View style={styles.segurancaPainelTopo}>
                   <View style={styles.segurancaIconeFundo} aria-hidden>
                     <Ionicons name="shield-checkmark-outline" size={20} color={theme.accent2} />
@@ -978,18 +1123,23 @@ function ConteudoWeb() {
       </View>
 
       {/* ───────── Preços ───────── */}
-      <View nativeID="precos" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+      <View nativeID="precos" style={styles.palcoComCamada}>
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll style={styles.precoIntroCentralizada}>
               {/* Sem período de teste: o produto é pago desde o primeiro dia. */}
               <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Assinatura mensal</Text>
-              {/* "menos de R$ 0,33" saiu porque não é verdade em mês de 30 dias
-                  (9,99 ÷ 30 = 0,333). R$ 0,33 por dia é a leitura arredondada e
-                  honesta dos R$ 9,99 do card ao lado. */}
+              {/* O preço por dia em destaque de cor é o gatilho desta dobra: o
+                  número mensal está logo abaixo, no card, e aqui em cima ele
+                  aparece na escala que a pessoa consegue comparar com um café.
+
+                  Com R$ 9,90 a conta fecha redonda: 9,90 ÷ 30 = 0,33 exatos, e
+                  "menos de R$ 0,34" vale em todo mês de 30 e 31 dias. Fevereiro
+                  é a única exceção (9,90 ÷ 28 = 0,354). */}
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
-                {'Controle financeiro\npor R$ 0,33 por dia.'}
+                Seu assistente financeiro por{' '}
+                <Text style={styles.destaqueInline}>menos de R$ 0,34 por dia!</Text>
               </TituloSecao>
               <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
                 {'Todos os recursos financeiros do Grana. em uma assinatura mensal simples.'}
@@ -1023,7 +1173,7 @@ function ConteudoWeb() {
                       dentro de `precoLinha` (flex row) ele espremia o valor e
                       o preço quebrava em duas linhas. */}
                   <View style={[styles.precoLinha, ehCompacto && styles.precoLinhaCompacta]}>
-                    <Text style={styles.precoValor}>R$ 9,99</Text>
+                    <Text style={styles.precoValor}>R$ 9,90</Text>
                     <Text style={styles.precoPeriodo}>/mês</Text>
                   </View>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
@@ -1043,7 +1193,7 @@ function ConteudoWeb() {
           o autor pediu alinhamento rigoroso entre texto e elementos em toda
           a página, e o escalonamento lia como "desalinhado", não como
           "intencional". Cards em grade limpa, todos com o topo alinhado. */}
-      <View nativeID="faq" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+      <View nativeID="faq" style={styles.palcoComCamada}>
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
@@ -1061,7 +1211,7 @@ function ConteudoWeb() {
                   <RevealOnScroll
                     key={f.pergunta}
                     atraso={i * 70}
-                    style={styles.faqCardPos}
+                    style={[styles.faqCardPos, ehCompacto && styles.faqCardPosCompacto]}
                   >
                     <View style={styles.faqCard}>
                       <FaqItem pergunta={f.pergunta} resposta={f.resposta} estiloExtra={styles.faqItemSemBorda} abertoInicial={i === 0} />
@@ -1134,10 +1284,10 @@ function ConteudoWeb() {
             <View role="navigation" accessibilityLabel="Navegação do rodapé" style={[styles.rodapeColunas, ehCompacto && styles.rodapeColunasCompactas]}>
               <View style={styles.rodapeColuna}>
                 <Text style={styles.rodapeTitulo}>Produto</Text>
-                <AppPressable href="#produto" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Como funciona</Text></AppPressable>
-                <AppPressable href="#granabo" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Granabô</Text></AppPressable>
-                <AppPressable href="#precos" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Preços</Text></AppPressable>
-                <AppPressable href="#faq" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Perguntas frequentes</Text></AppPressable>
+                <AppPressable href="#produto" onPress={(evento) => navegarParaSecao('#produto', evento)} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Como funciona</Text></AppPressable>
+                <AppPressable href="#granabo" onPress={(evento) => navegarParaSecao('#granabo', evento)} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Granabô</Text></AppPressable>
+                <AppPressable href="#precos" onPress={(evento) => navegarParaSecao('#precos', evento)} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Preços</Text></AppPressable>
+                <AppPressable href="#faq" onPress={(evento) => navegarParaSecao('#faq', evento)} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Perguntas frequentes</Text></AppPressable>
               </View>
               <View style={styles.rodapeColuna}>
                 <Text style={styles.rodapeTitulo}>Conta</Text>
@@ -1155,6 +1305,12 @@ function ConteudoWeb() {
         </View>
       </View>
     </ScrollView>
+
+    {/* Fora do ScrollView de propósito:  precisa se ancorar
+        na janela, e um elemento fixo dentro do contêiner que rola fica
+        sujeito ao recorte dele. */}
+    <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} />
+    </>
   );
 }
 
@@ -1228,12 +1384,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.rule,
   },
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
-  cabecalhoCompacto: { flexDirection: 'column', alignItems: 'stretch', gap: spacing.xs },
-  cabecalhoLinhaPrincipal: { alignItems: 'center' },
-  cabecalhoLinhaPrincipalCompacta: { width: '100%', flexDirection: 'row', justifyContent: 'space-between' },
-  navAbas: { flexDirection: 'row', gap: spacing.sm },
-  navScrollCompacta: { width: '100%', maxHeight: 40 },
-  navAbasCompactas: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingRight: spacing.xl },
+  cabecalhoAcoes: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.md, flex: 1 },
   navLinkAlvo: {
     minHeight: 36,
     paddingHorizontal: spacing.md,
@@ -1247,8 +1398,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paperRaised,
     ...({ transitionProperty: 'border-color, background-color, box-shadow', transitionDuration: '180ms' } as any),
   },
-  navLinkAlvoHover: { borderColor: theme.ruleStrong, backgroundColor: theme.hover },
-  navLinkTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   navEntrarAlvo: {
     borderColor: theme.accent,
     backgroundColor: theme.accent,
@@ -1289,7 +1438,7 @@ const styles = StyleSheet.create({
     // teto) — títulos de 2+ linhas (a maioria dos 4 capítulos do herói)
     // liam como texto colado, sem respiro entre as linhas. Agora ~1.14x o
     // tamanho da letra em vez de ~1.0x.
-    ...({ fontSize: 'clamp(34px, 2.6vw + 16px, 56px)', lineHeight: 'clamp(40px, 2.8vw + 20px, 64px)' } as any),
+    ...({ fontSize: 'clamp(34px, 2.6vw + 16px, 56px)', lineHeight: 'clamp(40px, 2.8vw + 20px, 64px)', textWrap: 'balance' } as any),
     letterSpacing: -2,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
@@ -1304,7 +1453,8 @@ const styles = StyleSheet.create({
     // Mesmo ajuste de respiro entre linhas de `headline`, na escala do
     // compacto — títulos de 2 linhas como "Sabe quanto sobra, sem
     // calcular." liam apertados no celular.
-    ...({ fontSize: 'clamp(26px, 6vw, 32px)', lineHeight: 'clamp(33px, 7.4vw, 41px)' } as any),
+    /*  também aqui: sem ele o H1 do celular terminava com uma palavra sozinha na última linha ("dia!"). */
+    ...({ fontSize: 'clamp(26px, 6vw, 32px)', lineHeight: 'clamp(33px, 7.4vw, 41px)', textWrap: 'balance' } as any),
     letterSpacing: -1,
     fontFamily: fonts.regular,
     textAlign: 'center',
@@ -1339,7 +1489,16 @@ const styles = StyleSheet.create({
   gradeCenas: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center', gap: spacing.xl, marginTop: spacing.lg, width: '100%' },
   cenaCaixaPos: { flexBasis: '30%', minWidth: 260 },
   cenaCaixaPosCompacta: { flexBasis: '100%' },
-  cenaCaixa: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, ...sombraCard },
+  cenaCaixa: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, alignItems: 'center', gap: spacing.md, ...sombraCard },
+  cenaIcone: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.accentDeep,
+  },
+  cenaCta: { marginTop: spacing.xxl, alignItems: 'center' },
   textoCena: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.light },
   // A ponte de volta pra solução usa o accent2 da marca — a paleta muda de
   // tom no exato lugar onde a copy muda de tom, saindo das caixas de dor.
@@ -1370,8 +1529,21 @@ const styles = StyleSheet.create({
   // seguinte em toda dobra da página, sem respiro nenhum entre os dois
   // (relato direto do autor, com print do site no celular).
   secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.lg },
-  secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640 },
+  /* `textWrap: balance` distribui as linhas de um título sozinho, na largura
+     real de cada tela. É o que substitui as quebras fixas (`\n`) que a página
+     usava: quebra escolhida à mão acerta numa largura e erra em todas as
+     outras, deixando palavra órfã no celular. Web-only, mesmo padrão `as any`
+     do resto do arquivo; onde não houver suporte, o texto só quebra do jeito
+     normal. */
+  secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640, ...({ textWrap: 'balance' } as any) },
   secaoTituloGrande: { fontSize: 50, lineHeight: 54, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
+  /* No celular o título de seção cai de 28 para 23px. Não é preciosismo de
+     escala: numa coluna de ~348px, 28px fazia um título como "Controle
+     financeiro precisa caber na rotina para continuar funcionando" ocupar
+     quatro linhas curtas e irregulares, e nenhuma quebra (fixa ou
+     balanceada) conserta um texto que simplesmente não cabe na largura. Com
+     23px o mesmo título fecha em três linhas cheias. */
+  secaoTituloCompacto: { fontSize: type.cabecalho - 1, lineHeight: (type.cabecalho - 1) * 1.28, letterSpacing: -0.4 },
   secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560 },
   // Só o parágrafo de Preços — as duas frases quebram uma por linha (`\n`
   // explícito) e o bloco centraliza na coluna, diferente do resto das
@@ -1477,7 +1649,7 @@ const styles = StyleSheet.create({
   // compacto — antes só o eyebrow/título (via `precoIntroCentralizada`, fora
   // deste card) centralizavam; o card do checklist e o de preço abaixo dele
   // ficavam colados na borda esquerda.
-  precoChecklistColCompacta: { alignItems: 'center' },
+  precoChecklistColCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%', alignItems: 'center' },
   precoChecklistTitulo: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular, marginBottom: spacing.lg },
   // Linhas simples, sem caixa própria por item — o card único inteiro já é
   // o contêiner; uma caixa por linha aqui dentro de outra caixa lia como
@@ -1515,7 +1687,7 @@ const styles = StyleSheet.create({
   // topo de um painel que agora está embaixo, não ao lado. `alignItems:
   // 'center'` sobrescreve o `flex-start` de `cardPreco` — pedido do autor
   // pra Preços inteiro centralizado no compacto (rótulo, valor e descrição).
-  cardPrecoCompacto: { maxWidth: '100%', alignItems: 'center', borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: theme.ruleStrong },
+  cardPrecoCompacto: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%', alignItems: 'center', borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: theme.ruleStrong },
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
   precoLinhaCompacta: { justifyContent: 'center' },
@@ -1523,17 +1695,6 @@ const styles = StyleSheet.create({
   // um valor "a definir" — o apagado era o sinal de que ainda não valia.
   precoValor: { color: theme.ink, fontSize: type.valor + 6, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   precoPeriodo: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
-  // Aplica-se tanto ao card de recurso quanto ao de segurança — nenhum dos
-  // dois leva a lugar nenhum (não são clicáveis), então o "levantar" no
-  // hover é só presença ambiente: sem cursor de mão, sem virar alvo de tab.
-  // Ver AppPressable com focusable={false}/scaleOnPress={false} onde é usado.
-  // Reaproveita a receita "Card de persuasão" (`sombraCard`) já cadastrada
-  // em vez de inventar números novos — DESIGN.md proíbe uma 6ª sombra ad hoc.
-  // O "levantar" no hover vem do `translateY`, não de uma sombra maior.
-  cardComHover: {
-    ...sombraCard,
-    ...({ transform: [{ translateY: -4 }], cursor: 'default' } as any),
-  },
   featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
 
   segurancaLista: { gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.xl },
@@ -1564,6 +1725,7 @@ const styles = StyleSheet.create({
     borderColor: theme.ruleStrong,
     ...sombraCard,
   },
+  segurancaPainelCompacto: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%' },
   segurancaPainelTopo: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
   /* `accentDeep`, não o verde `#25D366` do WhatsApp. O DESIGN.md libera a cor
      de marca de terceiro só com necessidade FUNCIONAL — o caso documentado é
@@ -1606,7 +1768,7 @@ const styles = StyleSheet.create({
   // vão vazio enorme entre o parágrafo e o primeiro card. `flexGrow:0` +
   // `flexBasis:'auto'` tiram os dois da disputa por espaço sobrando; cada
   // um volta a ocupar só a altura do que tem dentro.
-  faqCompactoSemFlex: { flexGrow: 0, flexBasis: 'auto' },
+  faqCompactoSemFlex: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%' },
   faqGrade: { flex: 1, minWidth: 320, gap: spacing.lg },
   // Sem `flexBasis` — `faqGrade` (abaixo) é `flexDirection:'column'` por
   // padrão agora (a grade em zigue-zague antiga, que era `row`+`wrap`, foi
@@ -1618,6 +1780,7 @@ const styles = StyleSheet.create({
   // container pra si). `width:'100%'` já basta pro card ocupar a largura
   // toda em qualquer largura de tela.
   faqCardPos: { width: '100%', minWidth: 280 },
+  faqCardPosCompacto: { minWidth: 0, maxWidth: '100%' },
   faqCard: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, ...sombraCard },
   // Suprime a borda/padding próprios de FaqItem — o card por fora já
   // fornece os dois, dobrar deixaria espaçamento duplicado e uma linha

@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
   ActivityIndicator,
   FlatList,
@@ -208,11 +209,14 @@ export default function CreditoScreen() {
      carregarem, senão o seletor de cartão do modal abriria vazio.
      `router.setParams` limpa o parâmetro depois de abrir, pra não reabrir
      sozinho numa navegação de volta a esta tela. */
-  useEffect(() => {
-    if (novaCompra !== '1' || loading || newTxOpen) return;
+  /* Chegando pelo FAB da Início (?novaCompra=1). Espera `loading` acabar
+     porque, diferente das outras duas telas, aqui o formulário tem um seletor
+     de cartão que abriria vazio antes dos cartões chegarem. Ver o hook para as
+     duas armadilhas que ele resolve. */
+  useAberturaPorParametro(novaCompra === '1' && !loading, () => {
     abrirNovaCompra();
     router.setParams({ novaCompra: undefined });
-  }, [novaCompra, loading, newTxOpen, walletCards]);
+  });
 
   // Filtra compras no cartão no mês selecionado
   const creditTransactions = walletTransactions.filter((t) => {
