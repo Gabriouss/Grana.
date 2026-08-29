@@ -4,7 +4,7 @@ import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import Constants, { AppOwnership } from 'expo-constants';
 import type * as SpeechRecognitionTypes from 'expo-speech-recognition';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
 import AppPressable from './AppPressable';
 
@@ -157,8 +157,13 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     backgroundColor: theme.paperRaised,
   },
+  /* Espelha HeaderAction.soIcone: círculo de `touchTarget` de lado. O padding
+     de 8 que ficava aqui deixava este botão com um diâmetro próprio, e na
+     barra do Lançamentos ele divide a linha com três HeaderAction — três
+     círculos de 44 e um de 32 lado a lado. */
   iconBtn: {
-    padding: 8,
+    width: touchTarget,
+    height: touchTarget,
     borderRadius: radius.pill,
     backgroundColor: theme.paperRaised,
     borderWidth: 1,

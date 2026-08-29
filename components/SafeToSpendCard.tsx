@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme, radius, spacing, card as cardTokens, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { SafeToSpend } from '@/lib/projections';
 import type { Arquetipo } from '@/lib/diagnostico';
@@ -76,11 +76,11 @@ const styles = StyleSheet.create({
   label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
   headline: { color: theme.ink, fontSize: type.cabecalho, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   headlineSuffix: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
-  zeroText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.light },
+  zeroText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
   breakdown: { gap: 4, marginTop: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowKey: { color: theme.inkFaint, fontSize: type.nota, flex: 1, marginRight: spacing.sm, fontFamily: fonts.light },
   rowVal: { color: theme.inkFaint, fontSize: type.nota, fontVariant: ['tabular-nums'], fontFamily: fonts.light },
   rowValStrong: { color: theme.ink},
-  hint: { color: theme.accent2, fontSize: type.legenda, lineHeight: 15, marginTop: 4, fontFamily: fonts.regular },
+  hint: { color: theme.accent2, fontSize: type.legenda, lineHeight: lh(type.legenda, 'corpo'), marginTop: 4, fontFamily: fonts.regular },
 });

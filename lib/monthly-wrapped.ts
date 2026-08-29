@@ -51,6 +51,14 @@ export type MonthlyWrapped = {
   categoriaCampea: CategoriaCampea | null;
   boletosPagos: number;
   valorBoletosPagos: number;
+  /** Saídas do mês ANTERIOR ao retratado, ou null quando não há registro lá. */
+  saidasMesAnterior: number | null;
+  /** Saídas que vieram de lançamentos recorrentes mais boletos quitados. */
+  comprometidoFixo: number;
+  /** Dias distintos com pelo menos um lançamento. */
+  diasComRegistro: number;
+  /** Dias que o mês retratado tem. */
+  diasNoMes: number;
   level: LevelState;
   /** true quando não houve movimentação nenhuma — a retrospectiva não deve ser exibida. */
   vazio: boolean;
@@ -143,6 +151,22 @@ export function gerarMonthlyWrapped(
      e também a mais intuitiva — "as contas de julho". */
   const boletosDoMes = bills.filter((b) => b.status === 'paid' && ehDoMes(b.due_date, ano, mes));
 
+  /* Mês anterior ao retratado, para a retrospectiva poder dizer se o mês foi
+     mais leve ou mais pesado que o de antes — a pergunta que um resumo de mês
+     naturalmente levanta e que a versão anterior deixava sem resposta. `null`
+     quando não há registro nenhum lá: sem isso, um mês ausente viraria uma
+     queda de 100% que nunca aconteceu. */
+  const refAnterior = new Date(ano, mes - 1, 1);
+  const anoAnterior = refAnterior.getFullYear();
+  const mesAnterior = refAnterior.getMonth();
+  const doMesAnterior = transactions.filter((t) => ehDoMes(t.occurred_on, anoAnterior, mesAnterior));
+  const saidasMesAnterior = doMesAnterior.length
+    ? doMesAnterior.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0)
+    : null;
+
+  const recorrentes = saidasTx.filter((t) => t.recurring).reduce((s, t) => s + Number(t.amount), 0);
+  const valorBoletos = boletosDoMes.reduce((s, b) => s + Number(b.amount), 0);
+
   return {
     ano,
     mes,
@@ -156,7 +180,11 @@ export function gerarMonthlyWrapped(
     maiorDespesa,
     categoriaCampea,
     boletosPagos: boletosDoMes.length,
-    valorBoletosPagos: boletosDoMes.reduce((s, b) => s + Number(b.amount), 0),
+    valorBoletosPagos: valorBoletos,
+    saidasMesAnterior,
+    comprometidoFixo: recorrentes + valorBoletos,
+    diasComRegistro: new Set(doMes.map((t) => t.occurred_on)).size,
+    diasNoMes: new Date(ano, mes + 1, 0).getDate(),
     level: calcularLevelState(lifetimeXp),
     vazio: doMes.length === 0,
   };

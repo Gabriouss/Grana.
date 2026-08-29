@@ -78,6 +78,15 @@ if (!/<html[^>]*\slang=/i.test(html)) html = html.replace(/<html/i, '<html lang=
 html = html
   .replace(/<title>[\s\S]*?<\/title>/gi, '')
   .replace(/<link[^>]+rel=(['"])canonical\1[^>]*>/gi, '')
+  /* O Expo emite o seu próprio <link rel="icon" href="/favicon.ico">, e sem
+     remover isto a página ficava declarando DOIS ícones primários. O Chrome
+     prefere o que traz type="image/svg+xml", o Safari e o histórico de
+     favoritos costumam ficar com o .ico — então o mesmo site aparecia com
+     dois ícones diferentes dependendo de onde era visto. Um ícone primário
+     só (o SVG), com o PNG como `alternate icon`, é o que mantém a marca
+     igual em todo lugar. A remoção acontece ANTES da injeção logo abaixo,
+     então não apaga as tags que este script escreve. */
+  .replace(/<link[^>]+rel=(['"])(?:shortcut )?icon\1[^>]*>/gi, '')
   .replace(/<meta[^>]+(?:name|property)=(['"])(?:description|theme-color|color-scheme|facebook-domain-verification|og:type|og:site_name|og:title|og:description|og:url|og:image|og:image:width|og:image:height|twitter:card|twitter:title|twitter:description|twitter:image)\1[^>]*>/gi, '')
   .replace('</head>', `${metaTags}</head>`)
   .replace('</body>', `${fallbackSemJavaScript}</body>`);

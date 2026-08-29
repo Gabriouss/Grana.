@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type, fonts } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, lh } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import { hapticTap } from '@/lib/haptics';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
@@ -32,12 +32,18 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
   const slides: Slide[] = [];
   const superavit = w.saldo >= 0;
 
+  /* `theme.down` (ciano) no déficit, nunca `theme.danger`. Vermelho não existe
+     no vocabulário de cor do produto, e a regra vale especialmente aqui: a
+     retrospectiva é o momento em que o app fala sobre o mês da pessoa, e
+     pintar um mês apertado de vermelho de alarme é exatamente o julgamento
+     que a estrela guia do DESIGN.md descarta. "No vermelho" saiu da copy pelo
+     mesmo motivo. */
   slides.push({
     key: 'balanco',
     rotulo: w.label,
-    titulo: superavit ? 'Você fechou o mês no azul' : 'Você fechou o mês no vermelho',
+    titulo: superavit ? 'Você fechou o mês com sobra' : 'Você gastou mais do que entrou',
     destaque: `${superavit ? '+' : '−'} R$ ${formatMoney(Math.abs(w.saldo))}`,
-    destaqueCor: superavit ? theme.up : theme.danger,
+    destaqueCor: superavit ? theme.up : theme.down,
     apoio:
       `Entraram R$ ${formatMoney(w.entradas)} e saíram R$ ${formatMoney(w.saidas)} em ${w.totalLancamentos} lançamentos.` +
       (w.taxaPoupanca !== null && w.taxaPoupanca > 0
@@ -45,6 +51,42 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
         : ''),
     icone: superavit ? 'trending-up-outline' : 'trending-down-outline',
   });
+
+  /* Comparação com o mês de antes. É a leitura que um resumo de mês pede
+     naturalmente ("foi melhor ou pior que o anterior?") e que a versão
+     anterior não respondia — ela descrevia o mês isolado, sem régua. */
+  if (w.saidasMesAnterior !== null && w.saidasMesAnterior > 0 && w.saidas > 0) {
+    const variacao = ((w.saidas - w.saidasMesAnterior) / w.saidasMesAnterior) * 100;
+    const estavel = Math.abs(variacao) < 5;
+    slides.push({
+      key: 'comparacao',
+      rotulo: 'Contra o mês anterior',
+      titulo: estavel ? 'Um mês parecido com o anterior' : variacao > 0 ? 'Um mês mais pesado' : 'Um mês mais leve',
+      destaque: `${variacao > 0 ? '+' : '−'} ${Math.abs(variacao).toFixed(0)}%`,
+      destaqueCor: variacao > 0 ? theme.down : theme.up,
+      apoio: `As saídas foram de R$ ${formatMoney(w.saidasMesAnterior)} para R$ ${formatMoney(w.saidas)}. ${
+        estavel ? 'Praticamente o mesmo ritmo dos dois meses.' : 'A diferença aparece na divisão por categoria, na tela de Gráficos.'
+      }`,
+      icone: variacao > 0 ? 'arrow-up-outline' : 'arrow-down-outline',
+    });
+  }
+
+  /* Quanto do mês já estava decidido antes de ele começar. Separar custo fixo
+     de gasto escolhido é o que transforma "gastei muito" em algo acionável. */
+  if (w.saidas > 0 && w.comprometidoFixo > 0) {
+    const fatia = Math.round((w.comprometidoFixo / w.saidas) * 100);
+    slides.push({
+      key: 'comprometido',
+      rotulo: 'Fixo e variável',
+      titulo: 'Parte do mês já estava decidida',
+      destaque: `${fatia}%`,
+      destaqueCor: theme.accent2,
+      apoio: `R$ ${formatMoney(w.comprometidoFixo)} saíram de contas recorrentes e boletos. Os outros R$ ${formatMoney(
+        w.saidas - w.comprometidoFixo
+      )} foram decididos ao longo do mês.`,
+      icone: 'repeat-outline',
+    });
+  }
 
   if (w.maiorDespesa) {
     slides.push({
@@ -98,8 +140,8 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
     rotulo: 'Resumo de ' + w.label,
     titulo: superavit ? 'Mês fechado com sobra' : 'Mês fechado com aperto',
     destaque: `${superavit ? '+' : '−'} R$ ${formatMoney(Math.abs(w.saldo))}`,
-    destaqueCor: superavit ? theme.up : theme.danger,
-    apoio: `${w.totalLancamentos} lançamentos · ${w.boletosPagos} ${
+    destaqueCor: superavit ? theme.up : theme.down,
+    apoio: `${w.totalLancamentos} lançamentos em ${w.diasComRegistro} de ${w.diasNoMes} dias · ${w.boletosPagos} ${
       w.boletosPagos === 1 ? 'boleto quitado' : 'boletos quitados'
     } (R$ ${formatMoney(w.valorBoletosPagos)}) · Nível ${w.level.level}, ${w.level.elo.title}.`,
     icone: 'sparkles-outline',
@@ -239,7 +281,7 @@ const styles = StyleSheet.create({
   },
   titulo: { color: theme.ink, fontSize: type.cabecalho, lineHeight: 30, fontFamily: fonts.regular },
   destaque: { fontSize: type.valor, letterSpacing: -1, fontFamily: fonts.regular },
-  apoio: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 22, marginTop: spacing.xs, fontFamily: fonts.light },
+  apoio: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginTop: spacing.xs, fontFamily: fonts.light },
 
   zonasToque: { position: 'absolute', left: 0, right: 0, top: 120, bottom: 110, flexDirection: 'row' },
   zona: { height: '100%' },

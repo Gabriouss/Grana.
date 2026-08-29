@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
-import { theme, spacing, radius, fonts, type } from '@/lib/theme';
+import { theme, spacing, radius, fonts, type, lh } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import PasswordInput from '@/components/PasswordInput';
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light },
   title: { color: theme.ink, fontSize: type.valor, fontFamily: fonts.light, marginTop: spacing.xs, marginBottom: spacing.sm },
-  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 21, marginBottom: spacing.xxl, fontFamily: fonts.light },
+  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.xxl, fontFamily: fonts.light },
   field: { marginBottom: spacing.lg },
   label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, marginBottom: spacing.xs, fontFamily: fonts.light },
   input: {
@@ -235,9 +235,9 @@ const styles = StyleSheet.create({
   requisitoItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   requisitoTexto: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   requisitoTextoOk: { color: theme.inkSoft },
-  errorText: { color: theme.danger, fontSize: type.apoio, marginBottom: spacing.sm, lineHeight: 18, fontFamily: fonts.regular },
+  errorText: { color: theme.danger, fontSize: type.apoio, marginBottom: spacing.sm, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.regular },
   consentimentoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: spacing.md },
-  consentimentoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.nota, lineHeight: 18, fontFamily: fonts.light },
+  consentimentoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   consentimentoLink: { color: theme.accent2, fontFamily: fonts.regular },
   primaryBtn: {
     backgroundColor: theme.ink,

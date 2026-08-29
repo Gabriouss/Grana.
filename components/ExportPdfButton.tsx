@@ -47,7 +47,10 @@ export default function ExportPdfButton({
       }
 
       const { compartilhado, uri } = await gerarRelatorioPdf({ ano, mes, transactions, bills: contas, carteira });
-      if (!compartilhado) {
+      /* `uri` vazio é o caminho da web, onde o relatório abre numa janela
+         própria e quem salva o PDF é a caixa de impressão do navegador — não
+         existe arquivo local pra citar num alerta. */
+      if (!compartilhado && uri) {
         Alert.alert('Relatório gerado', `O compartilhamento não está disponível neste aparelho. O arquivo ficou em:\n${uri}`);
       }
     } catch (e: any) {

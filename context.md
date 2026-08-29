@@ -390,3 +390,68 @@ layout dele foi tocado.
   compacto passou a centralizar também o texto, não apenas a própria caixa.
 - Validado visualmente em 320×800 e 390×844 no Chrome, sem sobreposição e sem
   erros de página; `npx tsc --noEmit` passou após a alteração inicial.
+
+## Sessão de 29/08/2026 — ícone da web, botões, entrelinha, privacidade e relatórios
+
+Rodada de correções pedida pelo autor em seis pontos, mais uma regressão de
+marca detectada durante o trabalho.
+
+**Ícone da web (regressão em produção).** `public/favicon.svg` desenhava o
+símbolo chapado numa cor só, alternando por `prefers-color-scheme`, sem
+gradiente e com o ponto na mesma cor do G. Como o `<link>` dele declara
+`type="image/svg+xml"`, o Chrome o preferia ao `.ico` e o site aparecia com
+dois ícones diferentes dependendo de onde era visto. Refeito a partir de
+`design-system/marca/simbolo-gradiente.svg`: gradiente de 45° atravessando o
+símbolo inteiro, ponto em menta sólida, fundo transparente. `favicon.png` e o
+`.ico` (que o Expo gera de `assets/favicon.png`) foram regerados do mesmo
+vetor, e `scripts/inject-og-meta.js` passou a remover o `<link rel="icon">`
+que o Expo emite, para a página declarar um ícone primário só.
+
+**Botões de ícone do cabeçalho.** `HeaderAction` sem rótulo saía 28×44: o
+ícone de 16 com padding de 6 dava 28 de largura, e o `minHeight: touchTarget`
+esticava a altura. Com `borderRadius: pill` isso é uma cápsula vertical, não um
+círculo. Os dois lados passaram a valer `touchTarget`, e `VoiceEntryButton`
+(que tinha diâmetro próprio de 32) foi alinhado ao mesmo tamanho.
+
+**Entrelinha.** `lib/theme.ts` ganhou `leading` e `lh()`, com os mesmos ratios
+que `textStyles` já usava. Foram convertidos 38 estilos cuja entrelinha era
+menor que 1.25 do corpo da letra, incluindo um 14/14 em `perfil.tsx`. Seguem
+~405 estilos sem `lineHeight` declarado, que caem no leading intrínseco da
+Neue Machina; usar `lh()` neles é o trabalho seguinte.
+
+**Modo privacidade.** O blur voltou sem o vazamento que o motivou a sair. O
+valor real não é mais renderizado quando o modo está ligado: entra uma máscara
+falsa e de largura fixa (`R$ 0.000,00`), injetada dentro do próprio `<Text>`
+filho por `cloneElement` para herdar a tipografia da tela, e é ela que recebe o
+`blur(7px)`. Inspecionar, copiar ou desligar o CSS devolve a máscara.
+
+**Relatório PDF.** Na web ele nunca era usado: o shim de web do `expo-print`
+faz `printToFileAsync()` ser `window.print()`, ignorando o HTML — o botão
+imprimia a tela. Agora a web abre janela própria com o relatório (janela e não
+iframe, porque a CSP não declara `frame-src`). O template saiu da fonte do
+sistema e do `font-weight: 600`: na web reaproveita as `@font-face` que o
+react-native-web já injetou, sem custo de bundle. Ganhou a seção "Leitura do
+mês", com sete insights que só aparecem quando o dado os sustenta.
+
+**Retrospectiva do Mês.** Usava `theme.danger` e dizia "você fechou o mês no
+vermelho" — vermelho não existe na paleta e a copy julga, contra a estrela guia
+do DESIGN.md. Trocado para `theme.down` e reescrito, mais dois slides novos
+(variação contra o mês anterior, e fixo contra variável).
+
+**Gráficos.** A linha do donut era limitada a 460 px, teto herdado de quando o
+donut media 220; no amplo ele cresceu para 280 e sobravam 160 para a legenda,
+o que cortava o nome da categoria em "Morad…". Teto passou a 520, e no celular
+donut e legenda empilham em vez de dividir a linha.
+
+**Aberto, para a próxima sessão:** o ritmo geral das telas (`screenRhythm`) e o
+espaçamento interno de modais e folhas seguem sem revisão. As duas exigem ver o
+app logado para calibrar, e mudar `screenRhythm` no escuro afeta seis telas de
+uma vez.
+
+**Análise do sistema de progressão.** São três sistemas independentes com
+vocabulário colidente: Faixa (por Score 0–1000), Elo (por XP) e Arquétipo (por
+questionário). "Estrategista" nomeia os três, ganho por mecânicas sem relação
+entre si. O XP vem exclusivamente de cofrinho (`lib/goals.ts`): registrar
+lançamento, cumprir orçamento e pagar boleto não geram XP nenhum. Conquistas
+não são persistidas, então as de sequência voltam a bloquear quando a condição
+deixa de valer.

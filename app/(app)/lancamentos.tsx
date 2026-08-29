@@ -48,7 +48,7 @@ import {
 } from '@/lib/offline-cache';
 import { hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO } from '@/lib/format';
-import { theme, radius, spacing, screenRhythm, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, fonts, type, lh } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -397,8 +397,11 @@ export default function LancamentosScreen() {
               onPress={() => setCsvModalOpen(true)}
               accessibilityLabel="Importar CSV"
             />
+            {/* Sem `style`: a geometria do círculo mora no próprio
+                VoiceEntryButton (styles.iconBtn), igual à do HeaderAction.
+                O `headerBtn` local existia pra replicar essa geometria à mão
+                e só servia pra ela sair de sincronia. */}
             <VoiceEntryButton
-              style={styles.headerBtn}
               iconSize={16}
               onTranscribed={(text) => {
                 setVoiceText(text);
@@ -656,28 +659,19 @@ const styles = StyleSheet.create({
   /* Bloco de filtros do corpo da tela: reproduz o espaçamento que o
      ScreenHeader dava quando eles moravam dentro dele. */
   filtrosWrap: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.padding, gap: screenRhythm.gap },
-  /* Mesma geometria do HeaderAction (components/HeaderAction.tsx) — o
-     VoiceEntryButton entra na mesma linha e precisa fechar na mesma altura
-     que as outras pílulas do cabeçalho. */
-  headerBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    borderRadius: radius.pill,
-    backgroundColor: theme.paperRaised,
-    borderWidth: 1,
-    borderColor: theme.rule,
-  },
-  headerBtnHover: { borderColor: theme.ruleStrong },
   /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
   listContent: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.gap },
   exportWrap: { marginTop: spacing.xl },
-  emptyText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', marginTop: 30, lineHeight: 18, fontFamily: fonts.light },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', marginTop: 30, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
   rowHover: { backgroundColor: theme.paperRaised },
   icon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: type.legenda, fontFamily: fonts.regular },
-  rowTitle: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
-  rowSub: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
+  /* `lineHeight` explícito: sem ele a Neue Machina entrega o leading
+     intrínseco dela, curto, e a descendente do título encostava na linha de
+     baixo — o que fazia a lista inteira parecer emendada. */
+  rowTitle: { color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
+  rowSub: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), marginTop: 2, fontFamily: fonts.light },
   rowAmount: { fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   rowAmountWrap: { flexDirection: 'row', alignItems: 'baseline' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

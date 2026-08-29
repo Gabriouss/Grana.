@@ -27,7 +27,7 @@ import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, for
 import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
-import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type, touchTarget, lh } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -1636,7 +1636,7 @@ const styles = StyleSheet.create({
   },
   cardLabel: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   flowValue: { color: theme.ink, fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
-  emptyText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.light },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
 
   pieWrap: { alignItems: 'center', paddingVertical: spacing.sm },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },

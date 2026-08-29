@@ -11,7 +11,7 @@ import {
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { BUDGET_TEMPLATES, type BudgetTemplate } from '@/lib/heuristics';
 import { CATEGORIES } from '@/lib/types';
 import { parseAmount, formatMoneyInput } from '@/lib/format';
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 8 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
   amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular },
@@ -198,5 +198,5 @@ const styles = StyleSheet.create({
   templateCardHover: { borderColor: theme.ruleStrong },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   tplName: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
-  tplDesc: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 16, fontFamily: fonts.light },
+  tplDesc: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
 });

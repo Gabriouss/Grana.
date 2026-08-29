@@ -9,7 +9,7 @@ import {
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import {
   guessAmountFromText,
   guessCategoryFromText,
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   textArea: {
     backgroundColor: theme.paper,
     borderRadius: radius.md,
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: spacing.sm,
   },
-  ecoVozTexto: { flex: 1, color: theme.inkFaint, fontSize: type.nota, lineHeight: 16, fontFamily: fonts.light },
+  ecoVozTexto: { flex: 1, color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },

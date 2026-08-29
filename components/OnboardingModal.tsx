@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget, lh } from '@/lib/theme';
 import * as Clipboard from 'expo-clipboard';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { upsertBudgetsBatch, createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
@@ -845,7 +845,7 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingBottom: spacing.md },
   stepContent: { gap: 12 },
   eyebrow: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.light },
-  question: { color: theme.ink, fontSize: type.cabecalho, fontFamily: fonts.light, lineHeight: 29, marginBottom: spacing.sm },
+  question: { color: theme.ink, fontSize: type.cabecalho, fontFamily: fonts.light, lineHeight: lh(type.cabecalho, 'titulo'), marginBottom: spacing.sm },
   optionsList: { gap: 10 },
   optionCard: {
     flexDirection: 'row',
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
   optionCardSelected: { borderColor: theme.accent2, backgroundColor: theme.paperRaised },
   optionCardHover: { borderColor: theme.ruleStrong },
   optionLabel: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
-  optionDesc: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 16, marginTop: 2, fontFamily: fonts.light },
+  optionDesc: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), marginTop: 2, fontFamily: fonts.light },
   /* Antes era só um traço embaixo (sem borda nem fundo), e ficava fácil de
      confundir com um rótulo estático em vez de campo editável — foi
      reportado como "não tem caixa de texto pra digitar". Agora tem a mesma
@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
   },
   incomePrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
   incomeInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 18, marginTop: 8, fontFamily: fonts.light },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), marginTop: 8, fontFamily: fonts.light },
   hintLink: { color: theme.accent2, textDecorationLine: 'underline' },
 
   laudoCard: {
@@ -893,10 +893,10 @@ const styles = StyleSheet.create({
   },
   laudoEmoji: { fontSize: type.valor, fontFamily: fonts.regular },
   laudoNome: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.light, textAlign: 'center' },
-  laudoRetrato: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, textAlign: 'center', marginTop: 4, fontFamily: fonts.light },
+  laudoRetrato: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), textAlign: 'center', marginTop: 4, fontFamily: fonts.light },
 
   secaoTitulo: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, marginTop: spacing.md, fontFamily: fonts.light },
-  laudoMissao: { color: theme.ink, fontSize: type.corpo, lineHeight: 20, fontFamily: fonts.regular },
+  laudoMissao: { color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
 
   planoItem: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   planoNumero: {
@@ -906,7 +906,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   planoNumeroTexto: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
-  planoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, fontFamily: fonts.light },
+  planoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
 
   whatsappCard: {
     backgroundColor: theme.paperRaised,
@@ -959,7 +959,7 @@ const styles = StyleSheet.create({
   },
   identidadeAjuda: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   removerFotoTexto: { color: theme.inkSoft, fontSize: type.legenda, fontFamily: fonts.light },
-  whatsappCardText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 19, fontFamily: fonts.light, flex: 1 },
+  whatsappCardText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light, flex: 1 },
   whatsappOk: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   /* Verde do WhatsApp de propósito: é o único lugar do app que empresta a cor
      de outra marca, e aqui ela carrega a informação — diz pra onde o toque

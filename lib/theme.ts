@@ -137,6 +137,36 @@ export const fonts = {
 };
 
 /** Papéis completos para componentes-base; nomes descrevem função, não valor. */
+/* Entrelinha por papel do texto.
+ *
+ * A Neue Machina é geométrica e tem leading intrínseco curto: um `<Text>` sem
+ * `lineHeight` explícito sai com as linhas quase encostadas, e é isso que
+ * deixava blocos de duas ou três linhas com aparência "embolada" pelo app.
+ * Pior ainda eram os estilos que declaravam um `lineHeight` menor que o
+ * necessário — havia um caso de 14/14, ou seja, entrelinha IGUAL ao corpo da
+ * letra, onde descendente de uma linha tocava ascendente da seguinte.
+ *
+ * Os ratios abaixo são os mesmos que `textStyles` já usava; ficam expostos
+ * aqui para que qualquer estilo solto aplique o mesmo ritmo em vez de inventar
+ * um número. Preferir `textStyles` quando o papel do texto já existir lá;
+ * `lh()` é para os estilos locais que só precisam da entrelinha certa.
+ */
+export const leading = {
+  /** Texto corrido e descrições de duas linhas ou mais. O caso comum. */
+  corpo: 1.45,
+  /** Rótulo, metadado e legenda: linha curta, ainda precisa de respiro. */
+  apoio: 1.4,
+  /** Título: o corpo grande já dá presença, a entrelinha fecha um pouco. */
+  titulo: 1.25,
+  /** Valor monetário: quase sempre uma linha só. */
+  valor: 1.15,
+};
+
+/** Entrelinha arredondada para um tamanho de fonte e um papel. */
+export function lh(fontSize: number, papel: keyof typeof leading = 'corpo'): number {
+  return Math.round(fontSize * leading[papel]);
+}
+
 export const textStyles = {
   metadata: { fontFamily: fonts.light, fontSize: type.nota, lineHeight: Math.round(type.nota * 1.4) },
   label: { fontFamily: fonts.medium, fontSize: type.apoio, lineHeight: Math.round(type.apoio * 1.35) },

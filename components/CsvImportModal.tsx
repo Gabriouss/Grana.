@@ -11,7 +11,7 @@ import {
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { parseCsvTextDetalhado, type ParsedCsvTransaction } from '@/lib/heuristics';
 import { LIMITS } from '@/lib/limits';
 import { formatDateLabel, formatMoney } from '@/lib/format';
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   textArea: {
     backgroundColor: theme.paper,
     borderRadius: radius.md,

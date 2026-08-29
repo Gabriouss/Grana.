@@ -3,7 +3,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, Vi
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
 import { colunaFormulario } from '@/lib/breakpoints';
-import { theme, spacing, radius, type, fonts } from '@/lib/theme';
+import { theme, spacing, radius, type, fonts, lh } from '@/lib/theme';
 import { LIMITS, validatePassword } from '@/lib/limits';
 import { checarSenhaVazada, mensagemSenhaVazada } from '@/lib/pwned';
 import AppPressable from '@/components/AppPressable';
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light },
   title: { marginTop: spacing.xs, marginBottom: spacing.sm },
-  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 21, marginBottom: spacing.xxl, fontFamily: fonts.light },
+  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.xxl, fontFamily: fonts.light },
   field: { marginBottom: spacing.lg },
   label: {
     color: theme.inkFaint,

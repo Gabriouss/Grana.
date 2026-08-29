@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
 import { guardarTokenAtivacaoPendente } from '@/lib/assinatura';
 import { supabase } from '@/lib/supabase';
-import { theme, spacing, radius, fonts, type } from '@/lib/theme';
+import { theme, spacing, radius, fonts, type, lh } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
   title: { marginBottom: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light, marginBottom: spacing.xs },
-  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 21, marginBottom: spacing.xl, fontFamily: fonts.light },
+  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.xl, fontFamily: fonts.light },
   primaryBtn: {
     backgroundColor: theme.ink,
     borderRadius: radius.md,

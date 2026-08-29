@@ -13,7 +13,7 @@ import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
 import { guessCategoryFromText } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
 
   permissaoWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xxl, backgroundColor: theme.paper },
   permissaoTitulo: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  permissaoTexto: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 19, textAlign: 'center', fontFamily: fonts.light },
+  permissaoTexto: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), textAlign: 'center', fontFamily: fonts.light },
   botaoPrimario: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, paddingHorizontal: spacing.xxl, marginTop: spacing.sm },
   botaoPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   linkSecundario: { color: theme.inkFaint, fontSize: type.nota, paddingVertical: spacing.sm, fontFamily: fonts.light },
@@ -354,8 +354,8 @@ const styles = StyleSheet.create({
 
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
-  aviso: { color: '#d3b869', fontSize: type.nota, lineHeight: 17, fontFamily: fonts.regular },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
+  aviso: { color: '#d3b869', fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.regular },
 
   notaBox: { backgroundColor: theme.paper, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },
   notaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

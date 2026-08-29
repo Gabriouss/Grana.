@@ -13,7 +13,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { useAppLock } from '@/lib/app-lock-context';
 import { useScreenCapture } from '@/lib/screen-capture-context';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import {
   createWhatsappPairing,
   deleteUserAccount,
@@ -899,7 +899,7 @@ export default function PerfilScreen() {
 const styles = StyleSheet.create({
   rowColuna: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule, gap: 4 },
   rowInterna: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowAjuda: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: 14.5, paddingRight: 16, fontFamily: fonts.light },
+  rowAjuda: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda), paddingRight: 16, fontFamily: fonts.light },
   avatarFoto: { width: '100%', height: '100%', borderRadius: 999 },
   avatarBadge: {
     position: 'absolute', right: -2, bottom: -2,
@@ -920,9 +920,9 @@ const styles = StyleSheet.create({
   reauthScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   reauthCard: { width: '100%', maxWidth: 400, backgroundColor: theme.paperRaised, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, borderWidth: 1, borderColor: theme.rule },
   reauthTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  reauthText: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 19, fontFamily: fonts.light },
+  reauthText: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.light },
   reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: type.corpo, color: theme.ink, backgroundColor: theme.paper, fontFamily: fonts.regular },
-  reauthError: { color: theme.danger, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.regular },
+  reauthError: { color: theme.danger, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.regular },
   reauthDanger: { backgroundColor: theme.danger, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   reauthDangerText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   reauthCancel: { paddingVertical: 12, alignItems: 'center' },

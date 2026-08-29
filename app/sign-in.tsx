@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
-import { theme, spacing, radius, fonts, type } from '@/lib/theme';
+import { theme, spacing, radius, fonts, type, lh } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
 import type { ErroAuth } from '@/lib/auth-errors';
 import AppPressable from '@/components/AppPressable';
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light },
   title: { marginTop: spacing.xs, marginBottom: spacing.sm },
-  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 21, marginBottom: spacing.xxl, fontFamily: fonts.light },
+  subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.xxl, fontFamily: fonts.light },
   field: { marginBottom: spacing.lg },
   label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, marginBottom: spacing.xs, fontFamily: fonts.light },
   input: {
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     color: theme.ink,
     backgroundColor: theme.paperRaised, fontFamily: fonts.regular },
   erroBloco: { marginBottom: spacing.sm, gap: 2 },
-  errorText: { color: theme.danger, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.regular },
+  errorText: { color: theme.danger, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.regular },
   erroAcao: { color: theme.accent2, fontSize: type.apoio, paddingVertical: 4, fontFamily: fonts.regular },
   esqueciBtn: { alignItems: 'center', paddingVertical: spacing.md },
   esqueciTexto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },

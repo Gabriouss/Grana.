@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, card as cardTokens, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
 import { formatMoney, isSameMonth } from '@/lib/format';
 import { BANKS, type CreditCard, type Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
   total: { color: theme.down, fontSize: type.destaque, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
-  emptyText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: 18, fontFamily: fonts.light },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
   dot: { width: 7, height: 7, borderRadius: 3.5 },

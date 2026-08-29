@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import AppPressable from '@/components/AppPressable';
 import { abrirPareamentoNoWhatsapp, NUMERO_BOT_EXIBICAO } from '@/lib/whatsapp';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 
 /* O cartão de vínculo do WhatsApp, um só para as três telas que o mostram
  * (estreia, sheet do app e Perfil). Três cópias do mesmo cartão é como as
@@ -137,7 +137,7 @@ function LinhaCopiavel({
 
 const styles = StyleSheet.create({
   card: { gap: spacing.sm },
-  chamada: { color: theme.ink, fontSize: type.corpo, lineHeight: 20, fontFamily: fonts.regular },
+  chamada: { color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
   /* Verde do WhatsApp: única cor emprestada de outra marca no app, e aqui ela
      informa — diz pra onde o toque leva antes de a pessoa ler o rótulo. */
   botao: {
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     marginTop: spacing.xs,
   },
-  esperaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.legenda, lineHeight: 17, fontFamily: fonts.light },
+  esperaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.legenda, lineHeight: lh(type.legenda, 'corpo'), fontFamily: fonts.light },
   divisor: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   linha: { flex: 1, height: 1, backgroundColor: theme.rule },
   divisorTexto: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },

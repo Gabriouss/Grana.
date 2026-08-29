@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { LIMITS } from '@/lib/limits';
 import { enviarFeedback, type FeedbackType } from '@/lib/feedback';
 import { useSheetFlutuante } from '@/lib/breakpoints';
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: 17, fontFamily: fonts.light },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   tiposRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tipoChip: {
     flexDirection: 'row',
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paper,
     maxHeight: 140,
   },
-  mensagemInput: { color: theme.ink, fontSize: type.corpo, lineHeight: 19, padding: spacing.md, minHeight: 100, textAlignVertical: 'top', fontFamily: fonts.regular },
+  mensagemInput: { color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), padding: spacing.md, minHeight: 100, textAlignVertical: 'top', fontFamily: fonts.regular },
   contador: { color: theme.inkFaint, fontSize: type.micro, textAlign: 'right', fontFamily: fonts.light },
   enviarBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   enviarTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },

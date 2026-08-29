@@ -324,9 +324,9 @@ export default function GraficosScreen() {
         {pieSlices.length > 0 && (
           <View style={styles.donutCard}>
             <Text style={styles.donutTitle}>Composição por Categorias</Text>
-            <View style={[styles.donutRow, !ehCompacto && styles.donutRowLargo]}>
+            <View style={[styles.donutRow, ehCompacto && styles.donutRowCompacta, !ehCompacto && styles.donutRowLargo]}>
               <PieChart data={pieSlices} size={tamanhoDonut} />
-              <View style={[styles.legendCol, !ehCompacto && styles.legendColLargo]}>
+              <View style={[styles.legendCol, ehCompacto && styles.legendColCompacta, !ehCompacto && styles.legendColLargo]}>
                 {pieSlices.slice(0, 5).map((slice, i) => (
                   <View key={i} style={styles.legendRow}>
                     <View style={[styles.legendDot, { backgroundColor: slice.color }]} />
@@ -483,10 +483,25 @@ const styles = StyleSheet.create({
      `medio`: no celular (sempre `compacto`) a legenda já precisa de toda a
      largura disponível, e um teto aqui era o que cortava "Salário" em
      "Salár…". */
+  /* 520 = donut (280 no amplo) + gap (20) + legenda (220). Estava em 460,
+     um teto herdado de quando o donut media 220: no amplo ele cresceu pra 280
+     e a conta passou a sobrar só 160 pra legenda, dos quais o valor em reais
+     come ~80 — o nome da categoria ficava com uns 60px e virava "Morad…",
+     "Alime…". O `maxWidth: 220` de `legendColLargo` nunca chegava a valer,
+     porque o teto da LINHA apertava antes. No médio o donut volta a 220 e o
+     conjunto fecha em 460 sozinho, centralizado, como antes. */
   donutRowLargo: {
     gap: spacing.xl,
-    maxWidth: 460,
+    maxWidth: 520,
     alignSelf: 'center',
+  },
+  /* No celular donut e legenda empilham. Lado a lado, o donut de 150 mais o
+     respiro deixavam a legenda com ~164px numa tela de 390 — o mesmo nome
+     cortado do desktop, e sem teto nenhum pra culpar. Empilhado, a legenda
+     usa a largura inteira do card. */
+  donutRowCompacta: {
+    flexDirection: 'column',
+    gap: spacing.lg,
   },
   legendCol: {
     flex: 1,
@@ -494,6 +509,13 @@ const styles = StyleSheet.create({
   },
   legendColLargo: {
     maxWidth: 220,
+  },
+  /* Empilhada, a legenda precisa vencer o `alignItems:'center'` do
+     `donutRow`, que senão a encolheria até a largura do conteúdo e deixaria
+     as linhas desalinhadas entre si. */
+  legendColCompacta: {
+    alignSelf: 'stretch',
+    flex: 0,
   },
   legendRow: {
     flexDirection: 'row',

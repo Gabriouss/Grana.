@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, spacing, radius, type, fonts } from '@/lib/theme';
+import { theme, spacing, radius, type, fonts, lh } from '@/lib/theme';
 import { useSession } from '@/lib/auth-context';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
@@ -113,7 +113,7 @@ export default function RecuperarSenhaModal({
 const styles = StyleSheet.create({
   cabecalho: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
   titulo: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  texto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: 20, marginBottom: spacing.lg, fontFamily: fonts.light },
+  texto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.lg, fontFamily: fonts.light },
   destaque: { color: theme.ink},
   nota: { color: theme.inkFaint, fontSize: type.nota, marginBottom: spacing.lg, fontFamily: fonts.light },
   input: {

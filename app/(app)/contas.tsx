@@ -31,7 +31,7 @@ import { addBill, deleteBill, fetchBills, payBill, reopenBill, updateBill } from
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { theme, radius, spacing, screenRhythm, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, fonts, type, lh } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   filtrosWrap: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.padding, gap: screenRhythm.gap },
   /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
   listContent: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.gap, gap: screenRhythm.gap },
-  emptyText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', marginTop: 30, lineHeight: 18, fontFamily: fonts.light },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', marginTop: 30, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
   /* Sem marginBottom aqui: o espaço entre itens já vem do `gap` de
      styles.listContent — somar os dois dobraria a distância entre um card e
      o próximo em relação à distância do primeiro card até o filtro acima. */
