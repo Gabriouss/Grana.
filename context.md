@@ -379,3 +379,14 @@ layout dele foi tocado.
 - Medido no export de produção servido localmente: as duas requisições da
   Neue Machina que o servidor de desenvolvimento fazia pela rede são, em
   produção, uma da rede e uma do cache (`transferSize: 0`). Não é defeito.
+
+## Sessão de 29/08/2026 — ritmo vertical do herói mobile
+
+- O herói compacto deixou de sobrepor a copy ao mockup com uma margem inferior
+  negativa. Imagem, bloco de mensagem e CTA agora usam `gap` de 20 px no
+  contêiner; eyebrow, H1 e apoio usam `gap` interno de 12 px e têm as margens
+  individuais neutralizadas nessa variante.
+- O bloco ganhou respiro explícito de 16 px no topo e 28 px na base. O H1
+  compacto passou a centralizar também o texto, não apenas a própria caixa.
+- Validado visualmente em 320×800 e 390×844 no Chrome, sem sobreposição e sem
+  erros de página; `npx tsc --noEmit` passou após a alteração inicial.

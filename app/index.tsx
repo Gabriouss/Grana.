@@ -439,7 +439,11 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
   }, [letras, reduzirMovimento]);
 
   const titulo = (
-    <Text role="heading" aria-level={1} style={ehCompacto ? styles.headlineCompacto : styles.headline}>
+    <Text
+      role="heading"
+      aria-level={1}
+      style={ehCompacto ? [styles.headlineCompacto, styles.heroTextoSemMargem] : styles.headline}
+    >
       {[...TITULO_HERO].map((letra, i) => {
         const valor = letras[i];
         const cor = valor ? valor.interpolate({ inputRange: [0, 1], outputRange: [theme.inkFaint, theme.ink] }) : theme.ink;
@@ -461,11 +465,13 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
           width: 800,
           height: 482,
           fetchPriority: 'high',
-          style: { width: '100%', height: 'auto', maxWidth: 400, aspectRatio: 800 / 482, objectFit: 'contain', display: 'block', marginBottom: -spacing.xl },
+          style: { width: '100%', height: 'auto', maxWidth: 400, aspectRatio: 800 / 482, objectFit: 'contain', display: 'block' },
         })}
-        <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>{GANCHO_HERO}</Text>
-        {titulo}
-        <Text style={[styles.subheadline, styles.precoTextoCentralizado]}>{APOIO_HERO}</Text>
+        <View style={styles.heroTextoCompacto}>
+          <Text style={[styles.eyebrow, styles.precoTextoCentralizado, styles.heroTextoSemMargem]}>{GANCHO_HERO}</Text>
+          {titulo}
+          <Text style={[styles.subheadline, styles.precoTextoCentralizado, styles.heroTextoSemMargem]}>{APOIO_HERO}</Text>
+        </View>
         <BotaoCTA centralizado />
       </View>
     );
@@ -1301,6 +1307,7 @@ const styles = StyleSheet.create({
     ...({ fontSize: 'clamp(26px, 6vw, 32px)', lineHeight: 'clamp(33px, 7.4vw, 41px)' } as any),
     letterSpacing: -1,
     fontFamily: fonts.regular,
+    textAlign: 'center',
     marginBottom: spacing.lg,
   },
   subheadline: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 520 },
@@ -1737,5 +1744,17 @@ const styles = StyleSheet.create({
   // `center`, não mais `flex-start` — pedido do autor pra todo H1/H2 (e o
   // texto ao redor) fora de caixa ficar centralizado no compacto; o herói é
   // a PRIMEIRA seção da página nesse padrão, não uma exceção.
-  heroBlocoCompacto: { alignItems: 'center', paddingBottom: spacing.xl, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  // O ritmo compacto vive no contêiner, não em margens independentes de
+  // imagem, eyebrow, H1 e parágrafo. Assim nenhuma margem negativa sobrepõe
+  // o texto ao mockup e a distância entre os três grupos fica previsível.
+  heroBlocoCompacto: {
+    alignItems: 'center',
+    gap: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.rule,
+  },
+  heroTextoCompacto: { width: '100%', alignItems: 'center', gap: spacing.md },
+  heroTextoSemMargem: { marginBottom: 0 },
 });
