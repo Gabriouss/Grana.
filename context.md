@@ -22,10 +22,11 @@ WhatsApp (texto ou áudio), ou fotografa o QR Code de uma nota fiscal — sem
 nunca conectar a uma conta bancária. Ver `PRODUCT.md` para a proposta de
 valor completa. Nome sempre "Grana." com o ponto.
 
-**Fase atual**: acesso antecipado gratuito. O modelo comercial para depois
-dessa fase está definido como assinatura recorrente de R$ 19,99/mês,
-cancelável a qualquer momento; checkout e bloqueio de acesso ainda não estão
-operacionais. Empresa verificada pela Meta e WhatsApp como canal oficial em
+**Fase atual**: preparação do lançamento comercial. O produto será **pago
+desde o primeiro dia, R$ 9,99/mês, sem período de teste** (decisão de
+28/08/2026). A landing já anuncia o preço; o checkout da Kiwify e o bloqueio
+de acesso ainda não existem, então quem cria conta hoje segue com acesso
+completo. Empresa verificada pela Meta e WhatsApp como canal oficial em
 operação desde 28/08/2026 — a revisão terminou (ver `PRODUCT.md` para o que a
 verificação permite e o que ela não significa na copy).
 
@@ -181,9 +182,9 @@ retrabalho recentes:
   logar numa conta de verdade (nem de demonstração) pra gerar material de
   marketing, só dado inventado, mesmo que a intenção seja reproduzir uma
   tela real.
-- Assinatura definida em R$ 19,99/mês, já exibida na seção de preços. O
-  acesso antecipado permanece gratuito enquanto o checkout não entra em
-  operação.
+- Assinatura definida em R$ 9,99/mês, já exibida na seção de preços. Sem
+  período de teste: o lançamento é pago desde o primeiro dia. O acesso segue
+  liberado só porque o checkout ainda não entrou em operação.
 - Herói compacto (mobile): capítulos 2-4 repetiam a legenda "Acesso
   antecipado" idêntica 4 vezes numa rolagem curta, sem nenhum apoio visual
   (o vídeo do notebook só aparece uma vez, no capítulo 1, de propósito —
@@ -304,10 +305,77 @@ Vercel confirmado no ar em granaponto.com.br.
     `flexBasis: 'auto'`), liberando largura total e fazendo o contêiner compacto
     esticar os filhos. Validado sem recorte em 375, 720, 1024 e 1440 px, sem
     erros no console, com `npx tsc --noEmit` e export web concluídos.
-- Assinatura recorrente definida em R$ 19,99/mês; nenhuma trava de acesso
-  implementada ainda (toda conta logada tem acesso antecipado completo e
-  gratuito).
+- Assinatura recorrente definida em R$ 9,99/mês, sem período de teste; nenhuma
+  trava de acesso implementada ainda (toda conta logada tem acesso completo).
 - Épicos de `PLANO_DE_EVOLUCAO.md` (metas/cofrinhos, gamificação, projeção
   de fatura) majoritariamente já implementados — conferir `lib/goals.ts`,
   `lib/gamification*.ts`, `lib/projections.ts` antes de assumir que é
   trabalho futuro.
+
+## Sessão de 28/08/2026 — continuidade da nova landing
+
+- Concluídas em `app/index.tsx` as dobras de hábito, Livre para Gastar,
+  benefícios, segurança, CTA final e rodapé previstas em
+  `HANDOFF_LANDING_CODEX.md`.
+- **A dobra de voz NÃO existe.** Uma versão anterior deste registro dizia que
+  ela tinha sido concluída e que `components/DemonstracaoVoz.tsx` fora criado;
+  nenhum dos dois está na árvore. A seção "Como entra o lançamento", que era
+  onde voz/WhatsApp/QR viviam, foi removida sem substituta, então hoje a voz
+  no app só aparece numa bullet do card "Lance do jeito que for mais fácil" e
+  no FAQ. É o item aberto mais relevante da landing.
+- Adicionado `MiniMockBeneficio.tsx`; integrados `ConversaGranabo.tsx` e
+  `CardLivreParaGastar.tsx` com dados fictícios.
+- `AppPressable` agora encaminha `target` e `rel` por `hrefAttrs` na web, para
+  os links externos preservarem o comportamento e a proteção esperados.
+- QA local concluído em 390×844 e 1440×1000. TypeScript e corpus completo
+  do parser passaram; axe-core reportou zero violações confirmadas.
+- Sem commit, push ou publicação nesta rodada. A landing aguarda revisão ao
+  vivo do autor antes de qualquer entrega externa.
+
+## Sessão de 29/08/2026 — auditoria técnica da landing e correções
+
+Auditoria `/impeccable audit` sobre `app/index.tsx`, com detector empacotado
+mais inspeção ao vivo em 390, 834, 1264 e 1440. Herói preservado por decisão
+do autor ("a sessão hero nova está aprovada"), então nada de design, copy ou
+layout dele foi tocado.
+
+- **Imagens do herói em WebP sem perdas.** As três camadas do notebook saíram
+  de 1.170 KB de PNG para 581 KB, mais a tela do herói compacto (187→129 KB) e
+  a captura de Conquistas (126→48 KB). Verificado pixel a pixel: alpha idêntico
+  em 100% dos pixels e RGB idêntico em 100% dos pixels VISÍVEIS; a única
+  diferença está no RGB sob `alpha=0`, que nenhum compositor desenha. Os PNGs
+  substituídos foram removidos de `public/` (recuperáveis pelo git).
+- **Fonte do sistema eliminada da landing.** `MolduraNavegador` renderizava
+  `granaponto.com.br` sem `fontFamily`, e o react-native-web entregava
+  `-apple-system, Segoe UI, Roboto…` — era o único texto visível da página
+  fora da Neue Machina.
+- Contraste do chip de categoria em `MiniMockBeneficio` estava em 4,25:1
+  (WCAG AA pede 4,5:1); a cor da categoria ficou na borda e no fundo, o
+  rótulo passou a usar `theme.ink`.
+- `#25D366` decorativo saiu do painel de segurança em `app/index.tsx`. A
+  exceção de cor de terceiro do DESIGN.md vale só com necessidade funcional,
+  que é o caso da bolha em `ConversaGranabo`, não de um fundo de ícone.
+- `landing-meta.json` ainda anunciava "Acesso antecipado gratuito" no
+  `ogDescription`, ou seja, no card de compartilhamento.
+- `will-change: transform` removido do `GlowOrb`: três elementos estáticos com
+  `blur(70px)` mantinham camada de composição própria pela vida da página.
+- `vercel.json` ganhou `Cache-Control`: `immutable` em `/assets/` e
+  `/_expo/static/` (nomes com hash de conteúdo, confirmado no export) e
+  `max-age=86400, stale-while-revalidate` em `/notebook/` e `/telas/`.
+- Quebras de linha forçadas (`\n`) saíram do checklist de Preços, onde viravam
+  quatro linhas irregulares por item em 390px, e da lista de segurança, onde
+  já eram string morta apagada em tempo de render.
+- Limpeza: 39 chaves de estilo órfãs removidas de `app/index.tsx` (180→141),
+  mais os imports `useRef` e `colunaLeitura`, e os assets não referenciados
+  `tela-mobile-2.png`, `graficos-web.png`, `inicio-web.png`,
+  `inicio-mobile.png`.
+- **Aberto, para decisão do autor:** `public/videos/` (2,6 MB, incluindo um
+  MP4 de 2,4 MB) e os componentes `NotebookVideo.tsx`,
+  `NotebookFloatEstatico.tsx`, `LaptopMockup.tsx` e `MolduraCelular.tsx` estão
+  todos órfãos desde que a composição de três camadas substituiu o vídeo do
+  herói. Nada os importa. Também segue aberto o `Ionicons.ttf` (199 KB
+  comprimidos em produção) carregado por volta de vinte glifos: reduzir exige
+  trocar todo ícone da página por SVG inline, inclusive o do herói.
+- Medido no export de produção servido localmente: as duas requisições da
+  Neue Machina que o servidor de desenvolvimento fazia pela rede são, em
+  produção, uma da rede e uma do cache (`transferSize: 0`). Não é defeito.

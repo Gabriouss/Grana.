@@ -41,7 +41,10 @@ export const HOME_TOUR_STEPS: HomeTourStep[] = [
   {
     id: 'whatsapp',
     titulo: 'Ou pelo WhatsApp',
-    texto: 'Manda um áudio ou uma foto da nota pro bot do Grana. e ele lança pra você — sem nem abrir o app.',
+    /* Não citar foto/imagem: o webhook responde que só entende texto ou áudio
+       (supabase/functions/whatsapp-webhook/index.ts). O texto antigo prometia
+       "foto da nota", que nunca funcionou por esse canal. */
+    texto: 'Manda um texto ou um áudio pro Granabô no WhatsApp e ele lança pra você, sem nem abrir o app.',
   },
   {
     id: 'credito',

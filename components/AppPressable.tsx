@@ -15,6 +15,9 @@ type Props = Omit<PressableProps, 'style'> & {
       efeito nenhum no nativo (a prop não é lida) — não precisa de guarda de
       Platform aqui, quem decide passar ou não é a tela que usa. */
   href?: string;
+  /** Só web: atributos do link externo renderizado pelo react-native-web. */
+  target?: '_self' | '_blank' | '_parent' | '_top';
+  rel?: string;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -38,7 +41,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  * por uma transição CSS (`transitionProperty`), que o react-native-web
  * já traduz nativamente.
  */
-export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, onPressOut, scaleOnPress = true, accessibilityRole, ...rest }: Props) {
+export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, onPressOut, scaleOnPress = true, accessibilityRole, target, rel, ...rest }: Props) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
@@ -88,6 +91,7 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
     return (
       <Pressable
         {...rest}
+        {...(rest.href && (target || rel) ? ({ hrefAttrs: { target, rel } } as any) : null)}
         accessibilityRole={papel}
         onHoverIn={handleHoverIn}
         onHoverOut={handleHoverOut}

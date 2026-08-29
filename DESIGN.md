@@ -32,6 +32,18 @@ typography:
     fontSize: "14px"
     lineHeight: 1.35
     letterSpacing: "0.5px"
+  display-persuasao:
+    fontFamily: "NeueMachina-Regular, sans-serif"
+    fontSize: "clamp(34px, 2.6vw + 16px, 56px)"
+    lineHeight: "clamp(40px, 2.8vw + 20px, 64px)"
+  display-persuasao-compacto:
+    fontFamily: "NeueMachina-Regular, sans-serif"
+    fontSize: "clamp(26px, 6vw, 32px)"
+    lineHeight: "clamp(33px, 7.4vw, 41px)"
+  display-fechamento:
+    fontFamily: "NeueMachina-Regular, sans-serif"
+    fontSize: "clamp(32px, 3.2vw, 52px)"
+    lineHeight: 1.08
 rounded:
   sm: "8px"
   md: "12px"
@@ -158,6 +170,7 @@ nessa escolha.
 - **Label** (Neue Machina Regular, 15pt iOS · 14sp Android · 16px web, lh 1.35): rótulos e controles.
 - **Metadata** (Neue Machina Light, piso 11pt iOS · 12sp Android): subtítulo de linha e informação auxiliar; nada interativo abaixo desse piso.
 - **Valor monetário** (Neue Machina Regular, 32px, tabular): degrau próprio para quantias em foco.
+- **Display de persuasão** (Neue Machina Regular, fluido, só na landing page): três degraus acima de tudo o que o app usa, porque uma dobra de tela cheia precisa de um título que ocupe a cena, e o corpo de 24px vira um bloquinho perdido no meio de 1080px. `clamp(34px, 2.6vw + 16px, 56px)` no H1 do herói amplo, `clamp(26px, 6vw, 32px)` na variante compacta dele, `clamp(32px, 3.2vw, 52px)` no título do fechamento. Fora da landing este degrau não existe: numa tela de app ele seria drift, não escala.
 
 ### Named Rules
 **The Only-Font Rule.** Neue Machina é a única fonte do produto — sem exceção, sem "fonte de sistema pro corpo", sem fallback que vaze pra tela. Qualquer PR/edição que introduza `fontFamily: 'System'`, `'sans-serif'`, `'system-ui'`, `Platform.select` de fonte, ou qualquer nome de família que não seja `NeueMachina-Light`/`NeueMachina-Regular` em `lib/theme.ts` está quebrando a marca, não fazendo acessibilidade — reverta, não documente como aceito. Só existem DOIS pesos (Light/Regular); não existe um terceiro degrau nem arquivo bold, e `fontWeight` nunca deve ser usado (o nativo ignora, a web sintetiza um falso negrito).
@@ -183,7 +196,7 @@ Duas filosofias coexistem, por modo — e isso é decisão, não inconsistência
 - **Flutuante** (`0 6px 12px rgba(0,0,0,0.30)`, Android elevation 6): o botão de ação flutuante em si.
 - **Toast** (`0 4px 10px rgba(0,0,0,0.25)`, Android elevation 6): notificação toast.
 - **Card de persuasão** (`0 16px 40px -12px rgba(0,0,0,0.5)`, web only): cards de recurso na landing page.
-- **Card de herói** (`0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)`, web only): o card de maior destaque de uma página persuasiva — a tela de cada capítulo do herói-storytelling, flutuando sem moldura de dispositivo (referência: como a Linear expõe telas reais do próprio produto).
+- **Card de herói** (`0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)`, web only): o card de maior destaque de uma página persuasiva, flutuando sem moldura de dispositivo (referência: como a Linear expõe telas reais do próprio produto).
 
 ### Named Rules
 **The Floating-Only Rule.** Em modo Operar, sombra existe só pra objetos que estão literalmente sobre o conteúdo (menu, FAB, toast) — nunca em um card no fluxo normal da tela. Ver um card comum com sombra numa tela do app é sinal de drift, não de estilo.
@@ -218,10 +231,12 @@ Botão de ação primária dentro do fluxo do app usa raio `md` (12px); o CTA da
 - **iOS/iPadOS:** Native Tabs do Expo Router, com materiais e sidebar adaptável fornecidos pelo UIKit.
 - **Android:** Native Tabs do Expo Router, com Navigation Bar, indicador, ripple e Predictive Back do sistema.
 - **Web compacto:** barra inferior de vidro do Grana.; **web médio/amplo:** trilho/barra lateral customizada.
-- **Landing:** cabeçalho simples, logotipo + link de entrada; sem barra de navegação persistente.
+- **Landing:** cabeçalho fixo com blur, logotipo à esquerda e navegação persistente pelas dobras (Como funciona, Granabô, Hábitos, Benefícios, Segurança, Preços, Dúvidas) mais o link de entrada. No compacto a mesma lista vira um trilho de rolagem horizontal e o "Entrar" sobe para a linha do logotipo. Rodapé em colunas (Produto, Conta, Transparência) com botão de ícone do Instagram.
 
-### Herói-storytelling (assinatura da landing page)
-Sequência de 4 "capítulos" em scroll — a tela do capítulo (sem moldura de dispositivo, flutuando com sombra) e o título principal trocam juntos conforme a pessoa rola, cada capítulo mostrando um jeito real de registrar (voz, WhatsApp, nota fiscal, Livre para Gastar). O título muda a cada capítulo, letra por letra (revelação progressiva, não um crossfade de bloco inteiro nem scramble de caractere), decisão deliberada pra maximizar impacto na primeira dobra.
+### Herói da landing page (assinatura da página)
+Uma cena só, de tela cheia: o título principal à esquerda sobre a composição do notebook (três camadas WebP soltas, animadas em `transform`/`opacity`), sem moldura de dispositivo. O título é revelado letra por letra na entrada (revelação progressiva, não um crossfade de bloco inteiro nem scramble de caractere), decisão deliberada pra maximizar impacto na primeira dobra, e `prefers-reduced-motion` faz as letras nascerem visíveis.
+
+Substituiu uma sequência de 4 "capítulos" trocados por scroll, cada um mostrando um canal de registro (voz, WhatsApp, nota fiscal, Livre para Gastar). Os capítulos foram aposentados quando cada canal ganhou dobra própria mais abaixo: a pessoa lia a mesma informação três vezes antes de chegar a qualquer argumento novo. O herói de hoje faz só o trabalho que só ele pode fazer, que é prometer o resultado.
 
 ## Do's and Don'ts
 

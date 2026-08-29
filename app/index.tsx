@@ -1,11 +1,11 @@
-import { createElement, useEffect, useRef, useState } from 'react';
+import { createElement, useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, fonts as uiFonts, type } from '@/lib/theme';
-import { colunaConteudo, colunaLeitura, useBreakpoint } from '@/lib/breakpoints';
+import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
 import NotebookAnimado from '@/components/NotebookAnimado';
@@ -13,8 +13,10 @@ import GradeInterativa from '@/components/GradeInterativa';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import GlowOrb from '@/components/GlowOrb';
+import ConversaGranabo from '@/components/ConversaGranabo';
+import CardLivreParaGastar from '@/components/CardLivreParaGastar';
+import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';
 import TrustMarquee from '@/components/TrustMarquee';
-import MolduraCelular from '@/components/MolduraCelular';
 import MolduraNavegador from '@/components/MolduraNavegador';
 import landingMeta from '@/landing-meta.json';
 
@@ -56,7 +58,22 @@ export default function LandingPage() {
  * aparece — se um card de recurso e o botão de ação têm a mesma presença
  * visual, a hierarquia não está fazendo o trabalho dela.
  */
+/* Microcopy padrão sob o CTA. O botão diz "Criar minha conta" e NÃO promete
+   compra: o checkout da Kiwify ainda não existe e não há paywall no app
+   (temAssinaturaAtiva em lib/assinatura.ts não é chamada em tela nenhuma).
+   O preço aparece porque o lançamento é pago desde o primeiro dia, sem
+   período de teste. */
 const PARAMETROS_ATRIBUICAO = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
+
+const NAVEGACAO_LANDING = [
+  { rotulo: 'Como funciona', href: '#produto' },
+  { rotulo: 'Granabô', href: '#granabo' },
+  { rotulo: 'Hábitos', href: '#habitos' },
+  { rotulo: 'Benefícios', href: '#beneficios' },
+  { rotulo: 'Segurança', href: '#seguranca' },
+  { rotulo: 'Preços', href: '#precos' },
+  { rotulo: 'Dúvidas', href: '#faq' },
+] as const;
 
 function hrefCadastroComAtribuicao(): string {
   if (typeof window === 'undefined') return '/sign-up';
@@ -70,7 +87,20 @@ function hrefCadastroComAtribuicao(): string {
   return query ? `/sign-up?${query}` : '/sign-up';
 }
 
-function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado?: boolean }) {
+/* `rotulo` permite variar o texto do botão por seção. O padrão é
+   "Criar minha conta", que é a ação REAL: o checkout da Kiwify ainda não
+   existe e `temAssinaturaAtiva()` não é chamada em tela nenhuma, então
+   nenhum botão pode prometer uma compra. `microcopy` é opcional e fica
+   reservada aos pontos em que realmente esclarece uma condição. */
+function BotaoCTA({
+  microcopy,
+  centralizado,
+  rotulo = 'Criar minha conta',
+}: {
+  microcopy?: string;
+  centralizado?: boolean;
+  rotulo?: string;
+}) {
   return (
     // Sem `centralizado`, o botão (`ctaPrimario` tem `alignSelf:'flex-start'`
     // fixo) e a microcopy (texto normal, sem textAlign) ficam os dois
@@ -95,12 +125,12 @@ function BotaoCTA({ microcopy, centralizado }: { microcopy: string; centralizado
         href={hrefCadastroComAtribuicao()}
         style={({ hovered }) => [styles.ctaPrimario, centralizado && styles.ctaPrimarioCentralizado, hovered && styles.ctaPrimarioHover]}
       >
-        <Text style={styles.ctaPrimarioTexto}>Criar conta</Text>
+        <Text style={styles.ctaPrimarioTexto}>{rotulo}</Text>
         <View aria-hidden>
           <Ionicons name="arrow-forward" size={17} color={theme.paper} />
         </View>
       </AppPressable>
-      <Text style={[styles.ctaMicrocopy, centralizado && styles.ctaMicrocopyCentralizada]}>{microcopy}</Text>
+      {microcopy ? <Text style={[styles.ctaMicrocopy, centralizado && styles.ctaMicrocopyCentralizada]}>{microcopy}</Text> : null}
     </View>
   );
 }
@@ -165,12 +195,12 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
 // disciplina do resto da página: quebra escolhida, não deixada pro acaso do
 // wrap automático em cada largura de tela.
 const CENAS_DOR = [
-  'Sexta ao meio-dia,\ne você não sabe se sobra\ndinheiro pra sair à noite.',
-  'A fatura chega com\num valor que você jura\nnão lembrar de ter gasto.',
-  'Baixou uma planilha\npra controlar tudo.\nDurou quatro dias.',
+  'Chega sexta-feira e você\nainda não sabe se o dinheiro\ndá para sair à noite.',
+  'A fatura chega com gastos\nque você mal se lembra\nde ter feito.',
+  'A planilha começou\norganizada. Poucos dias\ndepois, ficou para trás.',
 ];
 
-const PONTE_PERGUNTA = 'Aqui, contar um gasto leva o mesmo tempo que mandar um áudio pra um amigo.';
+const PONTE_PERGUNTA = 'No Grana., registrar um gasto leva o mesmo tempo que mandar um áudio para um amigo.';
 
 /* Mesmo escalonamento vertical do FAQ (ver DESALINHO_FAQ) — valores fixos,
    não aleatórios de verdade, pra não "pular" a cada re-render. Só 3 cenas
@@ -212,23 +242,116 @@ function SecaoReconheceIsso() {
   );
 }
 
-/* Os compromissos futuros que a própria copy desta seção promete ("junta
-   parcelas do cartão e contas fixas"). Antes ela mostrava o card de Livre
-   para Gastar, que agora é o capítulo 4 do herói logo acima — a mesma peça
-   duas vezes na mesma página, e a promessa da linha do tempo sem nenhuma
-   prova visual. */
-const COMPROMISSOS = [
-  { dia: '05', mes: 'SET', nome: 'Aluguel', tipo: 'Conta fixa', valor: 'R$ 1.450,00' },
-  { dia: '12', mes: 'SET', nome: 'Fatura do cartão', tipo: 'Cartão', valor: 'R$ 830,20' },
-  { dia: '18', mes: 'SET', nome: 'Celular 3/12', tipo: 'Parcela', valor: 'R$ 249,90' },
-  { dia: '25', mes: 'SET', nome: 'Internet', tipo: 'Conta fixa', valor: 'R$ 99,90' },
+/* Elementos do produto que ajudam o registro a se tornar um hábito. */
+const PILARES_HABITO = [
+  {
+    icone: 'flame-outline' as const,
+    titulo: 'Veja sua constância',
+    texto: 'O Ritmo da Semana acompanha os dias em que você registrou e deixa a sequência visível.',
+  },
+  {
+    icone: 'trophy-outline' as const,
+    titulo: 'Acompanhe conquistas',
+    texto: 'Do Primeiro Registro ao Mapeador 360°, você enxerga quais comportamentos já fazem parte da sua rotina.',
+  },
+  {
+    icone: 'notifications-outline' as const,
+    titulo: 'Escolha um lembrete',
+    texto: 'No aplicativo móvel, você define um horário para lembrar dos lançamentos que ainda não fez.',
+  },
+  {
+    icone: 'speedometer-outline' as const,
+    titulo: 'Entenda sua evolução',
+    texto: 'O Score Grana reúne quatro fatores numa escala de 0 a 1000 e ajuda a acompanhar seu progresso.',
+  },
 ];
 
+type BeneficioLanding = {
+  variante: VarianteMock;
+  titulo: string;
+  texto: string;
+};
+
+const BENEFICIOS_LANDING: BeneficioLanding[] = [
+  {
+    variante: 'lancar',
+    titulo: 'Lance do jeito que for mais fácil',
+    texto: 'Use voz no app, Granabô, QR Code, comprovante Pix, CSV com até 500 linhas ou formulário manual. Se a conexão cair, a fila offline guarda o lançamento para sincronizar depois.',
+  },
+  {
+    variante: 'cartao',
+    titulo: 'Acompanhe cartão, fatura e limite',
+    texto: 'Veja cada cartão, transforme compras parceladas em lançamentos reais e pague a fatura pela carteira escolhida. Alertas mostram quando o uso cruza 50%, 70%, 90% e 100% do limite.',
+  },
+  {
+    variante: 'boletos',
+    titulo: 'Organize contas e boletos recorrentes',
+    texto: 'Marque uma conta como paga para criar a saída e preparar a próxima ocorrência. Os lembretes acompanham a aproximação do vencimento no aplicativo móvel.',
+  },
+  {
+    variante: 'mes',
+    titulo: 'Veja o mês por vários ângulos',
+    texto: 'Acompanhe fluxo financeiro, gastos por categoria, períodos personalizados e os compromissos dos próximos seis meses. Quando precisar, exporte um relatório em PDF.',
+  },
+  {
+    variante: 'organizar',
+    titulo: 'Separe o dinheiro com intenção',
+    texto: 'Crie carteiras, cofrinhos com prazo, orçamentos por categoria e categorias próprias. O Grana. ajuda a distinguir o que está disponível do que já tem destino.',
+  },
+  {
+    variante: 'personalizar',
+    titulo: 'Monte o Grana. do seu jeito',
+    texto: 'Escolha e reorganize até dez blocos na tela inicial, use atalhos diretos e explore o modo de exemplo com dados fictícios antes de registrar os seus.',
+  },
+];
+
+/* Ordenado por risco percebido, não por curiosidade: a conexão bancária vem
+   primeiro porque é a objeção que trava mais gente, e as três últimas tratam
+   de dinheiro (cobrança, controle dos dados). Três perguntas são novas e
+   cobrem objeções decisivas que a página não respondia: o que acontece quando
+   o reconhecimento erra, como o Livre para Gastar é calculado, e quem é o
+   Granabô. A resposta comercial aponta para a seção de Preços, que concentra
+   valor e forma de pagamento. */
 const PERGUNTAS_FAQ = [
   {
-    pergunta: 'O Grana. puxa meu extrato do banco sozinho?',
+    pergunta: 'O Grana. acessa minha conta bancária?',
     resposta:
-      'Não. O Grana. não se conecta ao seu banco. Você registra por voz, por texto, pelo WhatsApp ou apontando a câmera pra nota, e ele organiza. É mais rápido de registrar do que de conectar uma conta bancária, e você nunca compartilha senha de banco com ninguém.',
+      'Não. O Grana. não se conecta ao seu banco e não usa Open Finance. Você registra por voz, por texto ou áudio no WhatsApp, ou apontando a câmera pro QR Code da nota, e ele organiza. Você nunca compartilha senha de banco com ninguém.',
+  },
+  {
+    pergunta: 'Quem é o Granabô?',
+    resposta:
+      'É o assistente do Grana. no WhatsApp. Você vincula seu número uma vez, pelo próprio app, e depois é só mandar um texto ou um áudio para ele. Ele identifica o valor e a descrição, sugere uma categoria e cria o lançamento no Grana. Você só ajusta se precisar.',
+  },
+  {
+    pergunta: 'E se o Grana. entender um lançamento errado?',
+    resposta:
+      'Acontece. O reconhecimento de valor, descrição e categoria é automático e acerta na maioria das vezes, mas pode errar. Todo lançamento pode ser editado ou excluído no app, e a categoria sugerida pode ser trocada a qualquer momento.',
+  },
+  {
+    pergunta: 'Como o Livre para Gastar é calculado?',
+    resposta:
+      'A partir do saldo dos seus lançamentos do mês, o Grana. desconta as contas que ainda vencem no mês e o valor que você já separou em metas, e divide o que sobra pelos dias que faltam. É uma estimativa baseada no que você registrou, para servir de referência no dia a dia.',
+  },
+  {
+    pergunta: 'Como funciona a assinatura?',
+    resposta:
+      'O Grana. funciona por assinatura mensal e não oferece período de teste. Você encontra o valor e a forma de pagamento na seção de Preços desta página.',
+  },
+  {
+    pergunta: 'Posso enviar áudio para o Granabô?',
+    resposta:
+      'Pode. Ele entende texto e áudio. Imagem ainda não: se você mandar uma foto, ele avisa que por enquanto só entende mensagem de texto ou áudio.',
+  },
+  {
+    pergunta: 'Posso editar ou excluir meus dados?',
+    resposta:
+      'Pode. Todo lançamento é editável, e você pode excluir sua conta e seus dados quando quiser, pelo próprio aplicativo.',
+  },
+  {
+    pergunta: 'Como meus dados são protegidos?',
+    resposta:
+      'Só você acessa os dados da sua conta, e isso é reforçado no banco de dados, não só na tela. No aplicativo móvel, a sessão fica criptografada no aparelho e você pode ativar bloqueio por biometria; no Android, também dá pra bloquear prints das telas com valores. Detalhes completos na Política de Privacidade.',
   },
   {
     pergunta: 'O Grana. movimenta meu dinheiro?',
@@ -236,17 +359,8 @@ const PERGUNTAS_FAQ = [
       'Não. O Grana. é um registro. Não é uma instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele.',
   },
   {
-    pergunta: 'É seguro?',
-    resposta:
-      'Cada conta só acessa os próprios dados, reforçado no banco de dados (não só na tela). No aplicativo móvel, a sessão fica criptografada no aparelho; no Android, você também pode bloquear prints das telas financeiras. Detalhes completos na Política de Privacidade.',
-  },
-  {
     pergunta: 'Preciso instalar alguma coisa?',
     resposta: 'Não pra começar. O Grana. roda no navegador, neste mesmo endereço. Uma versão para Android e iOS está a caminho.',
-  },
-  {
-    pergunta: 'É pago?',
-    resposta: 'Durante o acesso antecipado, criar a conta é gratuito. Quando a cobrança começar, será uma assinatura única de R$ 19,99 por mês, cancelável quando você quiser.',
   },
 ];
 
@@ -271,24 +385,24 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
   );
 }
 
-type Capitulo = { titulo: string; subtitulo: string; icone: keyof typeof Ionicons.glyphMap };
-
 /**
- * O herói da página — e a própria demonstração do produto, ao mesmo tempo.
- * Em tela larga, duas colunas ficam grudadas (`position: sticky`) enquanto
- * quatro zonas de gatilho, empilhadas atrás, avançam o capítulo ativo
- * conforme a pessoa rola — mesma técnica de `IntersectionObserver` que o
- * sumário de `LegalDocScreen.tsx` usa pra saber qual seção está visível,
- * aplicada aqui a marcadores invisíveis em vez de seções de texto de verdade.
+ * O herói da página. Uma cena só, não mais uma sequência de capítulos.
  *
- * O capítulo 1 (voz) já é, sozinho, a primeira dobra — visível sem rolar
- * nada. Rolar revela os outros três como uma sequência de "hero slides": o
- * título principal muda a cada capítulo, não só uma legenda pequena ao lado.
+ * Até aqui eram quatro "hero slides" avançados por `IntersectionObserver`, e
+ * dois deles explicavam WhatsApp e QR Code — os mesmos canais que agora têm
+ * dobra própria mais abaixo. Era a repetição que o autor apontou na revisão
+ * ao vivo: a pessoa lia a mesma informação três vezes antes de chegar a
+ * qualquer argumento novo. Com uma cena só, o herói faz o trabalho que só ele
+ * pode fazer (prometer o resultado) e entrega o resto para as dobras
+ * seguintes.
+ *
+ * A revelação letra a letra do título fica, porque é a assinatura da página
+ * registrada no DESIGN.md e não dependia da troca de capítulos.
  */
-/* Título de abertura do capítulo 1 — usado tanto no array de capítulos
-   quanto pra semear o estado inicial das letras animadas, sem depender da
-   ordem de declaração dentro do componente. */
-const TITULO_CAPITULO_1 = 'Cadê meu dinheiro?';
+const TITULO_HERO = 'Grana. um aplicativo que ajuda você a visualizar seu mês.';
+const GANCHO_HERO = 'Cadê meu dinheiro?';
+const APOIO_HERO =
+  'Registre seus gastos em segundos. O Grana. organiza seus lançamentos sem a necessidade de conectar sua conta bancária.';
 
 function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
   return [...texto].map(() => new Animated.Value(valorInicial));
@@ -297,18 +411,7 @@ function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
 function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean; alturaCabecalho: number }) {
   const alturaDobra = useAlturaDobra();
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
-  const [capituloExibido, setCapituloExibido] = useState(0);
-  const capituloAtivoRef = useRef(0);
-  const fade = useRef(new Animated.Value(1)).current;
-  /* Cada letra do título resolve de apagada pra branca, com um atraso
-     pequeno entre elas, no lugar do crossfade de bloco inteiro — técnica de
-     revelação por caractere que o usuário pediu, numa versão sutil (sem
-     scramble de caractere aleatório). Reconstruído a cada troca de capítulo
-     porque o título muda de comprimento; `[...texto]` em vez de
-     `.split('')` porque letra acentuada composta ("Cadê", "áudio") quebraria
-     em unidades erradas com split cru. */
-  const [letras, setLetras] = useState<Animated.Value[]>(() => criarLetras(TITULO_CAPITULO_1, 1));
-  const gatilhoRefs = useRef<Record<number, View | null>>({});
+  const [letras] = useState<Animated.Value[]>(() => criarLetras(TITULO_HERO, 0));
 
   useEffect(() => {
     let ativo = true;
@@ -320,257 +423,84 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
     };
   }, []);
 
-  const CAPITULOS: Capitulo[] = [
-    {
-      titulo: TITULO_CAPITULO_1,
-      subtitulo: 'Fala com o Grana. como fala com um amigo. Ele entende o valor, o nome e a categoria sozinho.',
-      icone: 'mic-outline',
-    },
-    {
-      titulo: 'Manda um áudio. Pronto.',
-      subtitulo: 'Sem abrir o app. Escreve ou fala pro número do Grana. no WhatsApp e o lançamento aparece organizado.',
-      icone: 'logo-whatsapp',
-    },
-    {
-      titulo: 'Aponta a câmera. Acabou.',
-      subtitulo: 'O QR Code da nota vira um lançamento com o valor total da compra, sem digitar o valor.',
-      icone: 'qr-code-outline',
-    },
-    {
-      titulo: 'Sabe quanto sobra, sem calcular.',
-      subtitulo:
-        'Depois que o lançamento existe, o Grana. soma tudo e avisa quanto você tem livre pra gastar hoje.',
-      icone: 'wallet-outline',
-    },
-  ];
-
-  function irParaCapitulo(indice: number) {
-    if (indice === capituloAtivoRef.current) return;
-    capituloAtivoRef.current = indice;
+  /* A revelação roda uma vez, na entrada. Com `prefers-reduced-motion` as
+     letras já nascem visíveis, sem animação nenhuma. */
+  useEffect(() => {
     if (reduzirMovimento) {
-      setCapituloExibido(indice);
-      setLetras(criarLetras(CAPITULOS[indice].titulo, 1));
+      letras.forEach((v) => v.setValue(1));
       return;
     }
-    Animated.timing(fade, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {
-      /* Interrompida por uma troca mais nova: quem interrompeu já começou o
-         próprio fade e vai concluir a troca — seguir aqui exibiria o capítulo
-         VELHO por cima do novo. E o que se exibe é sempre o ref, nunca o
-         `indice` capturado no closure: com dois gatilhos disparando juntos
-         (rolagem rápida, ou salto direto no scrollTop), o callback de uma
-         chamada antiga chegava depois e voltava a tela pro capítulo anterior. */
-      if (!finished) return;
-      const atual = capituloAtivoRef.current;
-      setCapituloExibido(atual);
-      const novasLetras = criarLetras(CAPITULOS[atual].titulo, 0);
-      setLetras(novasLetras);
-      Animated.stagger(
-        18,
-        novasLetras.map((valor) =>
-          Animated.timing(valor, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false })
-        )
-      ).start();
-      Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-    });
-  }
+    Animated.stagger(
+      18,
+      letras.map((valor) =>
+        Animated.timing(valor, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false })
+      )
+    ).start();
+  }, [letras, reduzirMovimento]);
 
-  useEffect(() => {
-    if (ehCompacto || Platform.OS !== 'web' || typeof IntersectionObserver === 'undefined') return;
-
-    const observador = new IntersectionObserver(
-      (entradas) => {
-        for (const entrada of entradas) {
-          if (!entrada.isIntersecting) continue;
-          const indice = Number((entrada.target as HTMLElement).getAttribute('data-capitulo'));
-          if (!Number.isNaN(indice)) irParaCapitulo(indice);
-        }
-      },
-      // Faixa fina no centro vertical da tela — o gatilho que estiver
-      // cruzando essa faixa é o capítulo "atual", como um leitor de slide.
-      { rootMargin: '-45% 0px -45% 0px', threshold: 0 }
-    );
-
-    for (let i = 0; i < CAPITULOS.length; i++) {
-      const no = gatilhoRefs.current[i] as unknown as HTMLElement | null;
-      if (no) observador.observe(no);
-    }
-    return () => observador.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ehCompacto, reduzirMovimento]);
+  const titulo = (
+    <Text role="heading" aria-level={1} style={ehCompacto ? styles.headlineCompacto : styles.headline}>
+      {[...TITULO_HERO].map((letra, i) => {
+        const valor = letras[i];
+        const cor = valor ? valor.interpolate({ inputRange: [0, 1], outputRange: [theme.inkFaint, theme.ink] }) : theme.ink;
+        return (
+          <Animated.Text key={i} style={{ color: cor }}>
+            {letra}
+          </Animated.Text>
+        );
+      })}
+    </Text>
+  );
 
   if (ehCompacto) {
     return (
-      // O chamador (`ConteudoWeb`) não envolve mais o herói em
-      // `[colunaConteudo, faixa]` — o painel largo precisa sangrar até a
-      // borda do viewport, então esse wrapper move pra dentro daqui,
-      // condicional por variante. É o mesmo par que `faixaCompacta` sempre
-      // aplicou nesta faixa, só que declarado aqui em vez de no chamador.
-      <View style={[colunaConteudo, styles.faixa, styles.faixaCompacta, styles.heroTrilhaCompacta]}>
-        {CAPITULOS.map((c, i) => (
-          <View key={c.titulo} style={styles.heroBlocoCompacto}>
-            {/* Print real da tela "Início" (modo Dados de exemplo), não mais
-                o composto animado (bg/sombra/notebook) — só no mobile, só no
-                capítulo 1, ACIMA do texto: é a primeira coisa vista antes do
-                título, não um encerramento depois dele. O PNG já vem com
-                alfa de verdade esmaecendo pro transparente a partir de ~30%
-                de altura (ver `Notebook-assets/interface-app` + `Tela de
-                Notebook 2.png` de origem) — por isso nenhum degradê extra em
-                CSS aqui: some
-                sozinho sobre `theme.paper`, o mesmo fundo da página inteira,
-                e o título embaixo já nasce dentro da parte apagada. */}
-            {i === 0 &&
-              createElement('img', {
-                src: '/notebook/tela-mobile-2-800.png',
-                alt: 'Painel do Grana. mostrando saldo, orçamento e gastos por categoria.',
-                width: 800,
-                height: 482,
-                fetchPriority: 'high',
-                // `height:'auto'` explícito — sem isso o atributo HTML `height`
-                // (a dica de apresentação nativa do `<img>`) vence o `aspectRatio` abaixo,
-                // porque só entra em jogo quando width OU height do CSS está em 'auto'.
-                // Sem essa linha a imagem nasce na altura nativa do arquivo,
-                // empurrando o resto do herói pra muito abaixo da dobra.
-                style: { width: '100%', height: 'auto', maxWidth: 400, aspectRatio: 800 / 482, objectFit: 'contain', display: 'block', marginBottom: -spacing.xl },
-              })}
-            {/* "Acesso antecipado" só no capítulo 1 — repetido idêntico nos
-                4 blocos lia como ruído (mesma legenda 4 vezes numa rolagem
-                curta), não como reforço. Os capítulos 2-4 ganham um ícone
-                próprio no lugar — mesma missão do eyebrow (dar ao bloco uma
-                âncora visual antes do título), mas cada um com a cara do
-                próprio recurso, não um rótulo repetido. */}
-            {i === 0 ? (
-              <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>Acesso antecipado</Text>
-            ) : (
-              <View style={styles.heroIconeCirculoCompacto} aria-hidden>
-                <Ionicons name={c.icone} size={20} color={theme.accent2} />
-              </View>
-            )}
-            <Text
-              role="heading"
-              aria-level={i === 0 ? 1 : 2}
-              style={[styles.headlineCompacto, styles.precoTituloCentralizado]}
-            >
-              {c.titulo}
-            </Text>
-            <Text style={[styles.subheadline, styles.precoTextoCentralizado]}>{c.subtitulo}</Text>
-            {/* CTA só na entrada e no fechamento (capítulo 1 e último) — no
-                desktop o botão é fixo na coluna esquerda (herói sticky), mas
-                no mobile cada capítulo é um bloco separado. Repetir o botão
-                nos 4 lia como spam de venda numa rolagem curta; os capítulos
-                do meio ainda estão construindo o argumento, então só
-                precisam de um no início (primeira decisão) e um no fim
-                (quem chegou até ali já viu o argumento inteiro). */}
-            {(i === 0 || i === CAPITULOS.length - 1) && (
-              <BotaoCTA microcopy={i === 0 ? 'Leva 30 segundos. Sem cartão de crédito.' : 'Acesso antecipado gratuito por enquanto.'} centralizado />
-            )}
-          </View>
-        ))}
+      <View style={[colunaConteudo, styles.faixa, styles.faixaCompacta, styles.heroBlocoCompacto]}>
+        {createElement('img', {
+          src: '/notebook/tela-mobile-2-800.webp',
+          alt: 'Painel do Grana. mostrando saldo, orçamento e gastos por categoria.',
+          width: 800,
+          height: 482,
+          fetchPriority: 'high',
+          style: { width: '100%', height: 'auto', maxWidth: 400, aspectRatio: 800 / 482, objectFit: 'contain', display: 'block', marginBottom: -spacing.xl },
+        })}
+        <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>{GANCHO_HERO}</Text>
+        {titulo}
+        <Text style={[styles.subheadline, styles.precoTextoCentralizado]}>{APOIO_HERO}</Text>
+        <BotaoCTA centralizado />
       </View>
     );
   }
 
-  /* Cada capítulo é uma dobra inteira. O bloco grudado desconta a altura do
-     cabeçalho pra que a PRIMEIRA dobra — cabeçalho + capítulo 1, o que a
-     pessoa vê sem rolar nada — feche exatamente em 16:9, e não transborde
-     pro começo do capítulo 2. */
-  const alturaCapitulo = alturaDobra ?? 640;
-  const alturaSticky = Math.max(360, alturaCapitulo - alturaCabecalho);
-  const capitulo = CAPITULOS[capituloExibido];
+  const alturaCena = alturaDobra ?? 640;
+  const alturaSticky = Math.max(360, alturaCena - alturaCabecalho);
 
   return (
-    <View style={[styles.heroTrilhaGatilhos, { height: alturaCapitulo * CAPITULOS.length }]}>
-      <View style={[styles.heroLinhaSticky, { height: alturaSticky, minHeight: alturaSticky }]}>
-        {/* Fundo do painel inteiro — montado a partir de 3 camadas soltas
-            (bg/sombra/notebook, ver comentário em NotebookAnimado.tsx), não
-            mais um vídeo: nenhuma recompressão por frame, o notebook fica
-            pixel a pixel igual ao PNG original em qualquer tamanho de tela.
-            O componente já é `position:absolute, inset:0` por conta própria
-            — sem wrapper extra aqui. Sem `fade`, ao contrário do texto: é o
-            visual único e constante do herói (mesmo notebook flutuando nos
-            4 capítulos), então não há por que apagar/reacender a cada troca. */}
-        <NotebookAnimado />
-        {/* Escurece a metade esquerda (onde o texto fica por cima) e some
-            gradualmente até o notebook, do mesmo jeito que a referência da
-            Apple/AirPods usava um degradê branco->transparente sobre o
-            vídeo — aqui em tom `paper` (o fundo escuro do próprio app), não
-            branco, pra continuar lendo como "página escura", não "vinheta
-            clara por cima de vídeo". */}
-        <View style={styles.heroGradienteFundo} pointerEvents="none" aria-hidden />
-        {/* Funde a base do painel na cor da página (`theme.paper`, a mesma
-            que a seção seguinte usa por herdar o fundo de `pagina`) — sem
-            isso o corte entre o composto (bg/sombra/notebook) e o resto da
-            página aparecia como uma linha reta nítida bem onde `bg.png`
-            termina, lendo como bug de camada, não como transição. */}
-        <View style={styles.heroGradienteInferior} pointerEvents="none" aria-hidden />
+    <View style={[styles.heroLinhaSticky, { height: alturaSticky, minHeight: alturaSticky }]}>
+      <NotebookAnimado />
+      <View style={styles.heroGradienteFundo} pointerEvents="none" aria-hidden />
+      <View style={styles.heroGradienteInferior} pointerEvents="none" aria-hidden />
 
-        {/* `colunaConteudo` recentraliza o texto no mesmo teto de 1440px (e
-            `heroConteudoCentralizado` repete o `paddingHorizontal` que
-            `faixa` usa) que o resto da página — sem isso o texto ficaria
-            colado na borda VERDADEIRA do viewport, já que o painel em volta
-            (`heroLinhaSticky`) agora estica até lá. O vídeo sangra até a
-            borda; o texto continua alinhado com o cabeçalho e as seções
-            abaixo. */}
-        <View style={[colunaConteudo, styles.heroConteudoCentralizado]}>
-          <View style={styles.heroColunaTexto}>
-            <Text style={styles.eyebrow}>Acesso antecipado</Text>
-            <Animated.View style={{ opacity: fade }}>
-              <Text role="heading" aria-level={1} style={styles.headline}>
-                {[...capitulo.titulo].map((letra, i) => {
-                  const valor = letras[i];
-                  const cor = valor
-                    ? valor.interpolate({ inputRange: [0, 1], outputRange: [theme.inkFaint, theme.ink] })
-                    : theme.ink;
-                  return (
-                    <Animated.Text key={i} style={{ color: cor }}>
-                      {letra}
-                    </Animated.Text>
-                  );
-                })}
-              </Text>
-              <Text style={styles.subheadline}>{capitulo.subtitulo}</Text>
+      <View style={[colunaConteudo, styles.heroConteudoCentralizado]}>
+        <View style={styles.heroColunaTexto}>
+          <Text style={styles.eyebrow}>{GANCHO_HERO}</Text>
+          {titulo}
+          <Text style={styles.subheadline}>{APOIO_HERO}</Text>
+          <BotaoCTA />
+          {!reduzirMovimento && (
+            <Animated.View style={[styles.heroScrollHint, heroScrollHintAnimado]} pointerEvents="none">
+              <Ionicons name="chevron-down" size={22} color={theme.accent2} />
             </Animated.View>
-            <BotaoCTA microcopy="Leva 30 segundos. Sem cartão de crédito." />
-            <View style={styles.heroMarcadores} aria-hidden>
-              {CAPITULOS.map((_, i) => (
-                <View key={i} style={[styles.heroMarcador, i === capituloExibido && styles.heroMarcadorAtivo]} />
-              ))}
-            </View>
-            {/* Indicador de scroll — só no capítulo 1 (a entrada da página),
-                some ao rolar pro capítulo 2+ pra não competir com o conteúdo. */}
-            {capituloExibido === 0 && (
-              <Animated.View
-                style={[
-                  styles.heroScrollHint,
-                  !reduzirMovimento && heroScrollHintAnimado,
-                  { opacity: fade },
-                ]}
-                pointerEvents="none"
-              >
-                <Ionicons name="chevron-down" size={22} color={theme.accent2} />
-              </Animated.View>
-            )}
-          </View>
+          )}
         </View>
       </View>
-
-      {CAPITULOS.map((_, i) => (
-        <View
-          key={i}
-          ref={(no) => {
-            gatilhoRefs.current[i] = no;
-          }}
-          // @ts-expect-error — atributo web puro, só pra o IntersectionObserver identificar o capítulo.
-          dataSet={{ capitulo: i }}
-          style={[styles.heroGatilho, { top: i * alturaCapitulo, height: alturaCapitulo }]}
-        />
-      ))}
     </View>
   );
 }
 
 function ConteudoWeb() {
   const insets = useSafeAreaInsets();
-  const { ehCompacto } = useBreakpoint();
+  const { ehCompacto, largura } = useBreakpoint();
+  const cabecalhoEmDuasLinhas = largura < 1100;
   const alturaDobra = useAlturaDobra();
   /* Medido em vez de constante: o cabeçalho muda de altura com o `insets.top`
      e com a escala tipográfica da web, e o herói precisa descontar o valor
@@ -596,64 +526,6 @@ function ConteudoWeb() {
     };
   }, []);
 
-  // Âncoras das abas do cabeçalho — cada uma envolve a seção-alvo inteira
-  // (ver mais abaixo), não fica dentro do RevealOnScroll: o próprio
-  // RevealOnScroll documenta que style/posicionamento precisa estar no
-  // filho direto do flex, e a mesma restrição vale pra uma ref de scroll.
-  // 6 recursos, não mais 3 — metade fica de cada lado da tela do app no
-  // centro (ver `styles.gradeRecursos`), estilo "recursos flanqueando um
-  // celular" (referência: Organizze). Os 3 primeiros já existiam (entrada);
-  // os 3 últimos são recursos reais do produto que a landing nunca tinha
-  // mostrado (metas, comprometimento futuro, gráficos).
-  const FEATURES = [
-    {
-      icone: 'mic-outline' as const,
-      titulo: 'Voz, dentro do app',
-      texto:
-        'Toque no microfone e fale como fala com alguém: "gastei 30 no mercado". O Grana. entende valor, nome e categoria sozinho.',
-    },
-    {
-      icone: 'logo-whatsapp' as const,
-      titulo: 'Texto ou áudio no WhatsApp',
-      texto: 'Manda uma mensagem, escrita ou falada, pro número do Grana. e o lançamento aparece no app. Sem abrir nada.',
-    },
-    {
-      icone: 'qr-code-outline' as const,
-      titulo: 'Foto da nota fiscal',
-      texto: 'Aponta a câmera pro QR Code da nota (NFC-e) e o valor total da compra vira um lançamento, sem precisar digitar.',
-    },
-    {
-      icone: 'flag-outline' as const,
-      titulo: 'Cofrinhos e metas',
-      texto: 'Separe dinheiro pra um objetivo — viagem, reserva de emergência — e acompanhe o progresso sem sair do app.',
-    },
-    {
-      icone: 'calendar-outline' as const,
-      titulo: 'Comprometimento futuro',
-      texto: 'Veja parcelas e contas dos próximos meses antes de se apertar, não só o que já venceu.',
-    },
-    {
-      icone: 'stats-chart-outline' as const,
-      titulo: 'Gráficos automáticos',
-      texto: 'Composição por categoria, mês a mês, gerada sozinha a partir do que você já lançou.',
-    },
-  ];
-
-  // Os 4 passos da seção "Guia" — a sequência importa de verdade (é uma
-  // ordem de uso, não uma lista solta), por isso os números fazem parte da
-  // informação e não são só decoração.
-  // Passos 03/04 eram réplicas do capítulo 4 do Herói e da seção
-  // "Inteligência financeira" logo abaixo (mesma promessa de Livre para
-  // Gastar/compromissos futuros, três vezes em duas dobras) — reescritos
-  // pra fechar o arco do guia (resultado imediato, hábito) sem repetir o
-  // mecanismo específico que as outras duas seções já explicam.
-  const GUIA = [
-    { numero: '01', titulo: 'Fale, mande áudio ou foto da nota', texto: 'Sem formulário: um jeito só de contar o que aconteceu com o dinheiro.' },
-    { numero: '02', titulo: 'O Grana. categoriza sozinho', texto: 'Valor, nome e categoria reconhecidos automaticamente, sem revisar linha por linha.' },
-    { numero: '03', titulo: 'O resultado aparece na hora', texto: 'Sem esperar o fim do mês pra saber pra onde o dinheiro foi.' },
-    { numero: '04', titulo: 'Vira hábito, não tarefa', texto: 'Cada lançamento leva segundos — por isso dá pra manter todo mês.' },
-  ];
-
   // `tipo` escolhe a cor do ícone: 'faz' usa a mesma cor de lançamento
   // positivo (`theme.up`, verde) já usada pros valores de entrada no mock da
   // página; 'nao' usa a de lançamento negativo (`theme.down`, ciano) — as
@@ -661,22 +533,42 @@ function ConteudoWeb() {
   // "dinheiro saindo", aqui emprestadas pra "o que o Grana. faz" vs. "o que
   // ele nunca faz", em vez de inventar um terceiro par de cores novo.
   const SEGURANCA = [
-    { icone: 'lock-closed-outline' as const, texto: 'Cada conta só enxerga\nos próprios dados, reforçado\nno banco, não só na tela.', tipo: 'faz' as const },
-    { icone: 'finger-print-outline' as const, texto: 'No aplicativo móvel, bloqueio\npor biometria ou senha\ndo aparelho, se você ativar.', tipo: 'faz' as const },
-    { icone: 'eye-off-outline' as const, texto: 'Modo privacidade oculta\nos valores da tela\ncom um toque.', tipo: 'faz' as const },
-    { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida\ncontra vazamentos conhecidos\nno cadastro.', tipo: 'faz' as const },
-    { icone: 'ban-outline' as const, texto: 'O Grana. é só registro.\nEle nunca movimenta\ndinheiro de verdade.', tipo: 'nao' as const },
-    { icone: 'megaphone-outline' as const, texto: 'Sem anúncio, sem venda\nde dado. O que você\nregistra é seu.', tipo: 'nao' as const },
+    /* Termos técnicos traduzidos para o que a pessoa faz ou vê: "dados
+       isolados por conta, reforçado no banco" virou "só você acessa"; o modo
+       privacidade ganhou a SITUAÇÃO em que ele serve, que é o que faz a
+       função ser entendida. O item de editar/excluir dados é novo: devolve
+       controle explícito, que é a objeção real de quem hesita em informar
+       gasto para um aplicativo. */
+    /* Sem `\n`: estas quebras vinham do layout antigo em cards, e a lista de
+       segurança de hoje as apagava em tempo de render. Eram string morta que
+       enganava quem lesse daqui achando que controlava a quebra na tela. */
+    { icone: 'lock-closed-outline' as const, texto: 'Só você acessa os dados da sua conta.', tipo: 'faz' as const },
+    { icone: 'finger-print-outline' as const, texto: 'No aplicativo móvel, bloqueio por biometria ou senha do aparelho, se você ativar.', tipo: 'faz' as const },
+    { icone: 'eye-off-outline' as const, texto: 'Oculte seus valores com um toque quando tiver alguém por perto.', tipo: 'faz' as const },
+    { icone: 'create-outline' as const, texto: 'Edite seus lançamentos e exclua sua conta e seus dados quando quiser.', tipo: 'faz' as const },
+    { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida contra vazamentos conhecidos no cadastro.', tipo: 'faz' as const },
+    { icone: 'ban-outline' as const, texto: 'O Grana. é só registro. Ele nunca movimenta dinheiro de verdade.', tipo: 'nao' as const },
   ];
 
   // Só o que já é dito em algum outro ponto desta mesma página — nenhum
   // benefício novo inventado pro checklist de Preços.
+  //
+  // SEM `\n` aqui, de propósito. A quebra fixa funcionava na coluna larga do
+  // desktop e destruía o bloco no celular: em 390px cada item cai numa coluna
+  // de 234px, então a primeira metade já quebrava sozinha, a quebra forçada
+  // entrava no meio e a segunda metade quebrava de novo — quatro linhas
+  // irregulares por item, 104px de altura cada. Texto que precisa caber em
+  // duas larguras muito diferentes deixa o wrap natural decidir; quebra
+  // escolhida à mão só vale onde a largura é previsível (título de dobra).
   const BENEFICIOS_PRECO = [
-    'Voz, WhatsApp (texto ou áudio)\nou foto da nota pra lançar',
-    'Livre para Gastar calculado sozinho,\nconsiderando o que ainda vem',
-    'No app móvel, biometria e senha;\nem toda plataforma, modo privacidade',
-    'Dados isolados por conta, nunca\nvendidos ou usados em anúncio',
-    'Acesso completo a todos\nos recursos, sem plano limitado',
+    'Voz, WhatsApp (texto ou áudio) ou QR Code da nota para lançar',
+    /* Não repete mais "calculado sozinho, considerando o que ainda vem" —
+       mesma correção da seção de inteligência financeira: a conta usa o mês
+       corrente, não parcelas futuras. */
+    'Estimativa do Livre para Gastar com base no que você registra',
+    'No app móvel, biometria e senha; em toda plataforma, modo privacidade',
+    'Edite seus lançamentos e exclua seus dados pelo próprio aplicativo',
+    'Acesso completo a todos os recursos, sem plano limitado',
   ];
 
   return (
@@ -720,23 +612,66 @@ function ConteudoWeb() {
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
         <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
-        <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
-          <BrandLogotype width={104} />
-          <View role="navigation" accessibilityLabel="Navegação principal" style={styles.navAbas}>
-            <AppPressable href="#produto" style={styles.navLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
-              <Text style={styles.entrarTexto}>Produto</Text>
-            </AppPressable>
-            <AppPressable href="#precos" style={styles.navLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
-              <Text style={styles.entrarTexto}>Preços</Text>
-            </AppPressable>
-            {/* "Entrar" de volta no cabeçalho, discreto — quem já é cliente
-                e chega na landing por engano não precisa rolar até o rodapé
-                pra achar o login. Cor `inkFaint` pra não competir com os
-                CTAs verdes da página. */}
-            <AppPressable href="/sign-in" style={styles.navLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 10, right: 10 }}>
-              <Text style={styles.entrarTextoDiscreto}>Entrar</Text>
-            </AppPressable>
+        <View style={[styles.cabecalho, cabecalhoEmDuasLinhas && styles.cabecalhoCompacto, { paddingTop: insets.top + spacing.sm }]}>
+          <View style={[styles.cabecalhoLinhaPrincipal, cabecalhoEmDuasLinhas && styles.cabecalhoLinhaPrincipalCompacta]}>
+            <BrandLogotype width={104} />
+            {cabecalhoEmDuasLinhas ? (
+              <AppPressable
+                href="/sign-in"
+                scaleOnPress={false}
+                style={({ hovered }) => [styles.navLinkAlvo, styles.navEntrarAlvo, hovered && styles.navEntrarAlvoHover]}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.navEntrarTexto}>Entrar</Text>
+                <Ionicons name="arrow-forward" size={14} color={theme.paper} aria-hidden />
+              </AppPressable>
+            ) : null}
           </View>
+
+          {cabecalhoEmDuasLinhas ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.navScrollCompacta}
+              contentContainerStyle={styles.navAbasCompactas}
+              role="navigation"
+              accessibilityLabel="Navegação pelas seções da página"
+            >
+              {NAVEGACAO_LANDING.map((item) => (
+                <AppPressable
+                  key={item.href}
+                  href={item.href}
+                  scaleOnPress={false}
+                  style={({ hovered }) => [styles.navLinkAlvo, hovered && styles.navLinkAlvoHover]}
+                >
+                  <Text style={styles.navLinkTexto}>{item.rotulo}</Text>
+                </AppPressable>
+              ))}
+            </ScrollView>
+          ) : (
+            <View role="navigation" accessibilityLabel="Navegação principal" style={styles.navAbas}>
+              {NAVEGACAO_LANDING.map((item) => (
+                <AppPressable
+                  key={item.href}
+                  href={item.href}
+                  scaleOnPress={false}
+                  style={({ hovered }) => [styles.navLinkAlvo, hovered && styles.navLinkAlvoHover]}
+                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                >
+                  <Text style={styles.navLinkTexto}>{item.rotulo}</Text>
+                </AppPressable>
+              ))}
+              <AppPressable
+                href="/sign-in"
+                scaleOnPress={false}
+                style={({ hovered }) => [styles.navLinkAlvo, styles.navEntrarAlvo, hovered && styles.navEntrarAlvoHover]}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+              >
+                <Text style={styles.navEntrarTexto}>Entrar</Text>
+                <Ionicons name="arrow-forward" size={14} color={theme.paper} aria-hidden />
+              </AppPressable>
+            </View>
+          )}
         </View>
         </View>
       </View>
@@ -747,8 +682,20 @@ function ConteudoWeb() {
           Fica sob o cabeçalho, antes do hero — o único ponto da página que já
           está "fora" do ritmo de dobras de tela cheia (useAlturaDobra). Uma
           faixa fina no meio de duas Dobra quebraria essa métrica. */}
+      {/* Fatos verificáveis, não autoavaliação. "Sem burocracia", "Sem letra
+          miúda" e "Preço simples e fixo" eram opinião da própria empresa sobre
+          si mesma, que não funciona como prova. Cada item aqui é checável:
+          o WhatsApp é canal oficial (empresa verificada pela Meta), não existe
+          conexão bancária e o app roda no navegador. "Verificado pela Meta"
+          fala do CANAL — nunca aparece perto
+          do bloco de segurança, onde insinuaria endosso do produto. */}
       <TrustMarquee
-        itens={['Sem banco conectado', 'Sem burocracia pra começar', 'Sem letra miúda', 'Preço simples e fixo']}
+        itens={[
+          'Sem conectar conta bancária',
+          'WhatsApp oficial, verificado pela Meta',
+          'Funciona direto no navegador',
+          'Controle no celular e no computador',
+        ]}
       />
 
       {/* ───────── Hero-storytelling — o momento de assinatura da página ───────── */}
@@ -780,9 +727,14 @@ function ConteudoWeb() {
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll style={styles.precoIntroCentralizada}>
-              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Reconhece isso?</Text>
+              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Quando controlar os gastos fica pelo caminho</Text>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
-                {'Anotar gastos dá trabalho.\nPor isso você não dá continuidade.'}
+                {/* Antes: "Anotar gastos dá trabalho. Por isso você não dá
+                    continuidade." — atribuía a falha à pessoa, o oposto de uma
+                    marca que escuta sem julgar. Agora a fricção do processo é
+                    a vilã. Não usa a construção "não é X, é Y", que a marca
+                    não aceita. */}
+                {'Controle financeiro precisa caber\nna rotina para continuar funcionando.'}
               </TituloSecao>
             </RevealOnScroll>
 
@@ -791,57 +743,99 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Guia — 4 passos numerados ─────────
-          Tela real (conta de exemplo, dado fictício — nunca uma conta de
-          verdade, ver `public/telas/`) numa moldura de navegador de um lado,
-          a sequência de uso do outro. Os números (01-04) carregam
-          informação de verdade aqui — é uma ORDEM de uso, não decoração —
-          por isso não contam como o "número de seção" que craft-floor.md
-          normalmente evita. */}
+      {/* ───────── Lançar é esforço quase zero (dobra 3) ─────────
+          A facilidade é o diferencial central e antes só aparecia diluída
+          entre os canais. Vira argumento próprio, respondendo a frustração
+          que a dobra anterior acabou de nomear. Título em três tempos, com o
+          terceiro destacado em COR (a Neue Machina não tem itálico, e
+          sintetizar quebraria a regra de fonte da marca). */}
       <View style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra levantada>
+          <View style={styles.secao}>
+            <RevealOnScroll style={styles.precoIntroCentralizada}>
+              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>A parte que você não vai adiar</Text>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
+                {'Você fala e o Grana. organiza.\n'}
+                <Text style={styles.destaqueInline}>Esforço quase zero.</Text>
+              </TituloSecao>
+              <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
+                Sem formulário e sem planilha. Você diz o que gastou do jeito que falaria para um amigo, e o lançamento já nasce organizado.
+              </Text>
+            </RevealOnScroll>
+          </View>
+        </Dobra>
+      </View>
+
+      {/* ───────── Granabô no WhatsApp (dobra 4) ─────────
+          A dobra mais importante da página: é o diferencial demonstrado, não
+          descrito. A conversa mostra o Granabô devolvendo MAIS do que
+          recebeu (registra e depois responde quanto já foi gasto na
+          categoria) — as duas coisas que a Edge Function realmente faz. */}
+      <View nativeID="granabo" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+        <Dobra>
+          <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
+            <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+              <RevealOnScroll>
+                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Conheça o Granabô</Text>
+                <TituloSecao>Seu controle também cabe numa conversa no WhatsApp.</TituloSecao>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
+                  Depois de vincular seu número uma vez, envie um texto ou áudio para o Granabô, o assistente do Grana. no WhatsApp. Ele identifica o valor e a descrição, sugere uma categoria e cria o lançamento no Grana. Você só ajusta se precisar.
+                </Text>
+              </RevealOnScroll>
+
+              <View style={styles.segurancaLista}>
+                {['Funciona com texto ou áudio', 'O número fica vinculado só à sua conta', 'Todo lançamento pode ser editado ou excluído no app'].map((f, i) => (
+                  <RevealOnScroll key={f} atraso={i * 60}>
+                    <View style={styles.segurancaLinha}>
+                      <Ionicons name="checkmark-circle" size={16} color={theme.up} aria-hidden />
+                      <Text style={styles.segurancaLinhaTexto}>{f}</Text>
+                    </View>
+                  </RevealOnScroll>
+                ))}
+              </View>
+
+              <RevealOnScroll>
+                <BotaoCTA centralizado={ehCompacto} />
+              </RevealOnScroll>
+            </View>
+
+            <RevealOnScroll style={[styles.composicaoTelas, ehCompacto && styles.composicaoTelasCompacta]}>
+              <ConversaGranabo compacto={ehCompacto} />
+            </RevealOnScroll>
+          </View>
+        </Dobra>
+      </View>
+
+
+      {/* ───────── Construção do hábito (dobra 5) ───────── */}
+      <View nativeID="habitos" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
         <GradeInterativa />
         <Dobra levantada>
           <RevealOnScroll>
             <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
               <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
-                {/* Largura menor no compacto — diferente de Recursos/Segurança
-                    (que escondem a moldura inteira no celular), esta é a
-                    única moldura que também aparece no compacto, então
-                    precisa de uma largura que caiba nos ~340px de coluna que
-                    sobram ali (a moldura não é fluida, é largura fixa por
-                    design, igual `largura2` já fazia por breakpoint discreto
-                    no resto da página). */}
-                {/* Grupo com largura/altura FIXA (não `left/top` soltos
-                    direto dentro de `molduraCentralizada`) — só assim o
-                    `alignItems:'center'` do pai centraliza o PAR inteiro como
-                    uma unidade. Com posicionamento solto, centralizava só a
-                    moldura de Gráficos (a única no fluxo normal) e a de
-                    Conquistas, saindo por fora à esquerda, puxava o centro
-                    visual do conjunto pra fora do centro real da seção. */}
-                <View style={[styles.guiaComposicao, ehCompacto && styles.guiaComposicaoCompacta]}>
-                  {/* Mural de Conquistas atrás, espiando pelo canto superior
-                      esquerdo, levemente torta — quebra de padrão de
-                      propósito (todo o resto da página é ortogonal) — e
-                      ANTES da moldura de Gráficos no JSX, sem `zIndex`, só
-                      ordem de pintura, pra ficar por baixo dela. */}
-                  <View style={[styles.guiaMolduraConquistas, ehCompacto && styles.guiaMolduraConquistasCompacta]}>
-                    <MolduraNavegador src="/telas/conquistas-web.png" legenda="Mural de Conquistas do Grana., com selos obtidos e pendentes" largura={ehCompacto ? 160 : 300} />
-                  </View>
-                  <View style={styles.guiaMolduraGraficos}>
-                    <MolduraNavegador src="/telas/graficos-web.png" legenda="Tela de Gráficos do Grana., com composição de gastos por categoria" largura={ehCompacto ? 260 : 520} />
-                  </View>
-                </View>
+                <MolduraNavegador
+                  src="/telas/conquistas-web.webp"
+                  legenda="Tela de Desafios do Grana., com sequência, Score e mural de conquistas"
+                  largura={ehCompacto ? 300 : 560}
+                />
               </View>
               <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
                 <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Do primeiro lançamento ao hábito</Text>
-                <TituloSecao>O guia pro seu controle financeiro</TituloSecao>
-                <View style={styles.guiaLista}>
-                  {GUIA.map((passo) => (
-                    <View key={passo.numero} style={styles.guiaPasso}>
-                      <Text style={styles.guiaNumero}>{passo.numero}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.guiaPassoTitulo}>{passo.titulo}</Text>
-                        <Text style={styles.guiaPassoTexto}>{passo.texto}</Text>
+                <TituloSecao>O Grana. ajuda o controle a virar hábito.</TituloSecao>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
+                  A experiência é apoiada em princípios de formação de hábito: um registro fácil de começar, sinais para lembrar e progresso que você consegue enxergar.
+                </Text>
+                <View style={styles.habitoGrade}>
+                  {PILARES_HABITO.map((pilar) => (
+                    <View key={pilar.titulo} style={styles.habitoItem}>
+                      <View style={styles.habitoIcone} aria-hidden>
+                        <Ionicons name={pilar.icone} size={17} color={theme.accent2} />
+                      </View>
+                      <View style={styles.habitoTexto}>
+                        <Text style={styles.habitoTitulo}>{pilar.titulo}</Text>
+                        <Text style={styles.habitoDescricao}>{pilar.texto}</Text>
                       </View>
                     </View>
                   ))}
@@ -852,167 +846,128 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Como entra o lançamento ───────── */}
-      <View style={styles.palcoComCamada}>
-        <GradeInterativa invertida />
-        <Dobra levantada>
-        <View style={styles.secao}>
-          <RevealOnScroll>
-            <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>A parte que você não vai adiar</Text>
-            <TituloSecao>O único esforço é lembrar que o gasto existe</TituloSecao>
-          </RevealOnScroll>
-
-          <View style={styles.gradeRecursos}>
-            <View style={styles.colunaRecursos}>
-              {FEATURES.slice(0, 3).map((f, i) => (
-                <RevealOnScroll key={f.titulo} atraso={i * 90}>
-                  <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cardFeature, hovered && styles.cardComHover]}>
-                    <View style={styles.featureIconeCirculo} aria-hidden>
-                      <Ionicons name={f.icone} size={18} color={theme.accent2} />
-                    </View>
-                    <Text style={styles.featureTitulo}>{f.titulo}</Text>
-                    <Text style={styles.featureTexto}>{f.texto}</Text>
-                  </AppPressable>
-                </RevealOnScroll>
-              ))}
-            </View>
-
-            {!ehCompacto && (
-              <View style={styles.celularCentral}>
-                <MolduraCelular src="/telas/inicio-mobile.png" legenda="Tela de Início do Grana. no celular, com Livre para Gastar e metas" largura={240} />
-              </View>
-            )}
-
-            <View style={styles.colunaRecursos}>
-              {FEATURES.slice(3).map((f, i) => (
-                <RevealOnScroll key={f.titulo} atraso={(i + 3) * 90}>
-                  <AppPressable focusable={false} scaleOnPress={false} style={({ hovered }) => [styles.cardFeature, hovered && styles.cardComHover]}>
-                    <View style={styles.featureIconeCirculo} aria-hidden>
-                      <Ionicons name={f.icone} size={18} color={theme.accent2} />
-                    </View>
-                    <Text style={styles.featureTitulo}>{f.titulo}</Text>
-                    <Text style={styles.featureTexto}>{f.texto}</Text>
-                  </AppPressable>
-                </RevealOnScroll>
-              ))}
-            </View>
-          </View>
-
-          <RevealOnScroll>
-            <View style={styles.ctaMeio}>
-              <Text style={styles.ctaMeioTitulo}>Pronto pra parar de perder a conta?</Text>
-              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado />
-            </View>
-          </RevealOnScroll>
-        </View>
-        </Dobra>
-      </View>
-
       {/* ───────── Inteligência financeira ───────── */}
-      <View style={styles.palcoComCamada}>
+      <View nativeID="livre" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
         <GradeInterativa />
         <Dobra>
         <RevealOnScroll>
           <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
             <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+              {/* Copy e visual agora descrevem a mesma fórmula real. */}
               <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Depois que o lançamento existe</Text>
-              <TituloSecao>{ehCompacto ? 'Ele soma o que ainda vai vir, antes de você se apertar.' : 'Ele soma o que\nainda vai vir, antes\nde você se apertar.'}</TituloSecao>
+              <TituloSecao>Saiba quanto dá pra gastar hoje, sem fazer conta.</TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                {ehCompacto
-                  ? 'A linha do tempo de compromissos futuros junta parcelas do cartão e contas fixas num lugar só. É dela que sai o '
-                  : 'A linha do tempo de compromissos futuros junta\nparcelas do cartão e contas fixas num lugar só.\nÉ dela que sai o '}
+                Com base nos seus lançamentos do mês, nas contas que ainda vencem e no que você separou para as metas, o Grana. estima o{' '}
                 <Text style={styles.destaqueInline}>Livre para Gastar</Text>
-                {ehCompacto
-                  ? ' do dia, que já considera o que ainda vem. Nada pega de surpresa lá na frente.'
-                  : ' do dia, que já\nconsidera o que ainda vem. Nada pega de surpresa lá na frente.'}
+                {' '}por dia. É uma referência baseada no que você registra. Você continua no controle.
               </Text>
             </View>
 
-            <View style={styles.cardLinhaTempo}>
-              <Text style={styles.mockRotulo}>Próximos compromissos</Text>
-              {COMPROMISSOS.map((c, i) => (
-                <View key={c.nome} style={styles.compromissoLinha}>
-                  <View style={styles.compromissoTrilho}>
-                    {/* Selo de calendário (mês pequeno + dia grande), não só
-                        um número solto — é o que faz o "05" ler como DATA de
-                        vencimento, não como índice de lista. */}
-                    <View style={styles.compromissoDiaChip}>
-                      <Text style={styles.compromissoDiaChipMes}>{c.mes}</Text>
-                      <Text style={styles.compromissoDiaChipNumero}>{c.dia}</Text>
-                    </View>
-                    {i < COMPROMISSOS.length - 1 && <View style={styles.compromissoFio} />}
-                  </View>
-                  <View style={styles.compromissoTextos}>
-                    <Text style={styles.compromissoNome}>{c.nome}</Text>
-                    <Text style={styles.compromissoTipo}>{c.tipo}</Text>
-                  </View>
-                  <Text style={styles.compromissoValor}>{c.valor}</Text>
-                </View>
-              ))}
+            <View style={[styles.composicaoTelas, ehCompacto && styles.composicaoTelasCompacta]}>
+              <CardLivreParaGastar compacto={ehCompacto} />
             </View>
           </View>
         </RevealOnScroll>
         </Dobra>
       </View>
 
-      {/* ───────── Segurança e confiança ─────────
-          Antes era uma grade de 6 cards de ícone. Trocado por bullets +
-          uma composição de telas reais (desktop atrás, celular sobreposto
-          na frente) — reforça "acesse do celular ou do computador"
-          (Multiplataforma, já citado em PRODUCT.md), que os cards de ícone
-          não mostravam visualmente. */}
-      <View style={styles.palcoComCamada}>
+      {/* ───────── Tudo que o Grana. faz (dobra 8) ─────────
+          Cada card mostra o benefício acontecendo. Os mini-mocks substituem
+          ícones genéricos e usam somente dados fictícios. */}
+      <View nativeID="beneficios" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
         <GradeInterativa invertida />
         <Dobra levantada>
-        <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-          <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
-            <RevealOnScroll>
-              <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>A pergunta que todo mundo faz</Text>
-              <TituloSecao>{ehCompacto ? '"É seguro informar meus gastos para um aplicativo?"' : '"É seguro informar meus\ngastos para um aplicativo?"'}</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                {ehCompacto
-                  ? 'Faz sentido perguntar. Aqui está exatamente o que a gente faz, e o que a gente nunca faz.'
-                  : 'Faz sentido perguntar. Aqui está exatamente\no que a gente faz, e o que a gente nunca faz.'}
+          <View style={styles.secao}>
+            <RevealOnScroll style={styles.precoIntroCentralizada}>
+              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Do lançamento ao planejamento</Text>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>Tudo que o Grana. faz pela sua saúde financeira.</TituloSecao>
+              <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
+                Lançamentos, cartões, contas, gráficos e metas ficam conectados numa visão que você consegue acompanhar no dia a dia.
               </Text>
             </RevealOnScroll>
 
-            <View style={styles.segurancaLista}>
-              {SEGURANCA.map((s, i) => (
-                <RevealOnScroll key={s.texto} atraso={i * 60}>
-                  <View style={styles.segurancaLinha}>
-                    <Ionicons name={s.icone} size={16} color={s.tipo === 'faz' ? theme.up : theme.down} aria-hidden />
-                    <Text style={styles.segurancaLinhaTexto}>{s.texto.replace(/\n/g, ' ')}</Text>
-                  </View>
+            <View style={styles.beneficiosGrade}>
+              {BENEFICIOS_LANDING.map((beneficio, indice) => (
+                <RevealOnScroll key={beneficio.variante} atraso={indice * 70} style={styles.beneficioPosicao}>
+                  <AppPressable
+                    focusable={false}
+                    scaleOnPress={false}
+                    style={({ hovered }) => [styles.beneficioCard, hovered && styles.cardComHover]}
+                  >
+                    <MiniMockBeneficio variante={beneficio.variante} />
+                    <Text style={styles.beneficioTitulo}>{beneficio.titulo}</Text>
+                    <Text style={styles.beneficioTexto}>{beneficio.texto}</Text>
+                  </AppPressable>
                 </RevealOnScroll>
               ))}
             </View>
+          </View>
+        </Dobra>
+      </View>
 
-            <RevealOnScroll>
-              {/* Sem `centralizado` antes — no compacto o botão ficava
-                  encostado na borda esquerda enquanto o resto da coluna virou
-                  um bloco de largura cheia (relato direto do autor, com print
-                  do site no celular). No desktop a coluna continua alinhada
-                  à esquerda, então `ehCompacto` mantém o comportamento de lá. */}
-              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado={ehCompacto} />
+      {/* ───────── Segurança e confiança (dobra 9) ─────────
+          As duas metades são deliberadamente separadas: a Meta confirma a
+          identidade do canal; as proteções do produto cuidam dos dados. */}
+      <View nativeID="seguranca" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
+        <Dobra>
+          <View style={styles.secao}>
+            <RevealOnScroll style={styles.precoIntroCentralizada}>
+              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Identidade do canal e controle dos dados</Text>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>É seguro informar meus gastos para um aplicativo?</TituloSecao>
+              <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
+                Faz sentido perguntar. Aqui estão os fatos que ajudam você a decidir com clareza.
+              </Text>
+            </RevealOnScroll>
+
+            <View style={styles.segurancaDupla}>
+              <RevealOnScroll style={styles.segurancaPainel}>
+                <View style={styles.segurancaPainelTopo}>
+                  <View style={styles.whatsappIconeFundo} aria-hidden>
+                    <Ionicons name="logo-whatsapp" size={20} color={theme.accent2} />
+                  </View>
+                  <Text style={styles.segurancaPainelRotulo}>Com quem você está falando</Text>
+                </View>
+                <Text style={styles.segurancaPainelTitulo}>Um canal oficial do Grana. no WhatsApp.</Text>
+                <Text style={styles.segurancaPainelTexto}>
+                  A verificação da Meta confirma a identidade da empresa e do canal do WhatsApp Business.
+                </Text>
+                <View style={styles.segurancaListaCompacta}>
+                  {[
+                    'Seu número é vinculado por um código de 6 dígitos válido por 15 minutos.',
+                    'As chamadas recebidas da Meta passam por validação de assinatura.',
+                    'O texto transcrito dos áudios não é gravado nos logs do Granabô.',
+                  ].map((texto) => (
+                    <View key={texto} style={styles.segurancaLinhaLimpa}>
+                      <Ionicons name="checkmark-circle" size={16} color={theme.up} aria-hidden />
+                      <Text style={styles.segurancaLinhaTextoCompacto}>{texto}</Text>
+                    </View>
+                  ))}
+                </View>
+              </RevealOnScroll>
+
+              <RevealOnScroll atraso={90} style={styles.segurancaPainel}>
+                <View style={styles.segurancaPainelTopo}>
+                  <View style={styles.segurancaIconeFundo} aria-hidden>
+                    <Ionicons name="shield-checkmark-outline" size={20} color={theme.accent2} />
+                  </View>
+                  <Text style={styles.segurancaPainelRotulo}>O que acontece com seus dados</Text>
+                </View>
+                <Text style={styles.segurancaPainelTitulo}>Você escolhe o que registrar e mantém o controle.</Text>
+                <View style={styles.segurancaListaCompacta}>
+                  {SEGURANCA.map((s) => (
+                    <View key={s.texto} style={styles.segurancaLinhaLimpa}>
+                      <Ionicons name={s.icone} size={16} color={s.tipo === 'faz' ? theme.up : theme.down} aria-hidden />
+                      <Text style={styles.segurancaLinhaTextoCompacto}>{s.texto}</Text>
+                    </View>
+                  ))}
+                </View>
+              </RevealOnScroll>
+            </View>
+
+            <RevealOnScroll style={styles.segurancaCta}>
+              <BotaoCTA microcopy="Você pode excluir sua conta e seus dados quando quiser." centralizado />
             </RevealOnScroll>
           </View>
-
-          {!ehCompacto ? (
-            <RevealOnScroll style={styles.composicaoTelas}>
-              <MolduraNavegador src="/telas/inicio-web.png" legenda="Tela de Início do Grana. no computador" largura={420} />
-              <View style={styles.composicaoCelular}>
-                <MolduraCelular src="/telas/inicio-mobile.png" legenda="A mesma tela de Início do Grana. no celular" largura={160} />
-              </View>
-            </RevealOnScroll>
-          ) : (
-            /* No mobile a composição navegador+celular não cabe, mas a moldura
-               de celular sozinha sim — mantém a prova visual de
-               "multiplataforma" que a seção promete. */
-            <RevealOnScroll style={styles.celularSoloCompacto}>
-              <MolduraCelular src="/telas/inicio-mobile.png" legenda="Tela de Início do Grana. no celular" largura={200} />
-            </RevealOnScroll>
-          )}
-        </View>
         </Dobra>
       </View>
 
@@ -1022,12 +977,16 @@ function ConteudoWeb() {
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll style={styles.precoIntroCentralizada}>
-              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Quanto custa</Text>
+              {/* Sem período de teste: o produto é pago desde o primeiro dia. */}
+              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Assinatura mensal</Text>
+              {/* "menos de R$ 0,33" saiu porque não é verdade em mês de 30 dias
+                  (9,99 ÷ 30 = 0,333). R$ 0,33 por dia é a leitura arredondada e
+                  honesta dos R$ 9,99 do card ao lado. */}
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
-                {'Um plano só.\nSem letra miúda escondida.'}
+                {'Controle financeiro\npor R$ 0,33 por dia.'}
               </TituloSecao>
               <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
-                {'O acesso antecipado é gratuito por enquanto.\nDepois, a assinatura custará R$ 19,99 por mês.'}
+                {'Todos os recursos financeiros do Grana. em uma assinatura mensal simples.'}
               </Text>
             </RevealOnScroll>
 
@@ -1051,15 +1010,20 @@ function ConteudoWeb() {
                 </View>
 
                 <View style={[styles.cardPreco, ehCompacto && styles.cardPrecoCompacto]}>
-                  <Text style={[styles.precoRotulo, ehCompacto && styles.precoTituloCentralizado]}>Assinatura única</Text>
+                  {/* "Assinatura única" saiu: lido rápido, sugere pagamento
+                      único em vez de mensalidade. "Grana. mensal" diz o que é. */}
+                  <Text style={[styles.precoRotulo, ehCompacto && styles.precoTituloCentralizado]}>Grana. mensal</Text>
+                  {/* Qualificador em linha própria, nunca colado no "/mês":
+                      dentro de `precoLinha` (flex row) ele espremia o valor e
+                      o preço quebrava em duas linhas. */}
                   <View style={[styles.precoLinha, ehCompacto && styles.precoLinhaCompacta]}>
-                    <Text style={styles.precoValor}>R$ 19,99</Text>
+                    <Text style={styles.precoValor}>R$ 9,99</Text>
                     <Text style={styles.precoPeriodo}>/mês</Text>
                   </View>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                    Quando a cobrança começar, será mensal e transparente. Cancele quando quiser, sem burocracia.
+                    Registre com facilidade, acompanhe seu mês e planeje o que vem pela frente.
                   </Text>
-                  <BotaoCTA microcopy="Acesso antecipado gratuito por enquanto." centralizado={ehCompacto} />
+                  <BotaoCTA microcopy="Pagamento processado pela Kiwify." centralizado={ehCompacto} />
                 </View>
               </View>
             </RevealOnScroll>
@@ -1073,7 +1037,7 @@ function ConteudoWeb() {
           o autor pediu alinhamento rigoroso entre texto e elementos em toda
           a página, e o escalonamento lia como "desalinhado", não como
           "intencional". Cards em grade limpa, todos com o topo alinhado. */}
-      <View style={styles.palcoComCamada}>
+      <View nativeID="faq" style={[styles.palcoComCamada, { scrollMarginTop: alturaCabecalho } as any]}>
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
@@ -1115,20 +1079,25 @@ function ConteudoWeb() {
         <GlowOrb cor="rgba(31,169,141,0.22)" tamanho={620} top={-200} left="50%" />
         <RevealOnScroll>
           <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
-            <View style={[styles.ctaFinal, colunaLeitura]}>
-              {/* Um heading só (não dois) — duas frases de contraste
-                  aninhadas em <Text> de cor diferente dentro dele, mesmo
-                  padrão de destaqueInline já usado na seção de Inteligência
-                  financeira. Fecha o ciclo com o "Cadê meu dinheiro?" do
-                  herói, agora como pergunta que já tem resposta. */}
-              <Text role="heading" aria-level={2} style={styles.ctaFinalTitulo}>
-                <Text style={styles.ctaFinalTituloForte}>
-                  Use o Grana. por 30 dias e descubra pra onde foi cada real.
+            <View style={[styles.ctaFinalLayout, ehCompacto && styles.ctaFinalLayoutCompacto]}>
+              <View style={[styles.ctaFinalConteudo, ehCompacto && styles.ctaFinalConteudoCompacto]}>
+                <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>A clareza do fim do mês começa hoje</Text>
+                <Text role="heading" aria-level={2} style={[styles.ctaFinalTitulo, styles.precoTextoCentralizado]}>
+                  Nunca é tarde para começar a organizar suas finanças. Comece hoje.
                 </Text>
-                {'\n'}
-                <Text style={styles.ctaFinalTituloFraca}>Ou continuar perguntando "cadê meu dinheiro".</Text>
-              </Text>
-              <BotaoCTA microcopy="Leva 30 segundos pra criar sua conta." centralizado />
+                <Text style={[styles.ctaFinalTexto, styles.precoTextoCentralizado]}>
+                  Comece pelos gastos de hoje. O Grana. organiza seus lançamentos e ajuda você a construir um controle que cabe na sua rotina.
+                </Text>
+                <View style={[styles.ctaFinalFatos, styles.ctaFinalFatosCompacto]}>
+                  {['Sem conectar banco', 'Lançamentos organizados', 'Celular e computador'].map((fato) => (
+                    <View key={fato} style={styles.ctaFinalFato}>
+                      <Ionicons name="checkmark-circle" size={15} color={theme.up} aria-hidden />
+                      <Text style={styles.ctaFinalFatoTexto}>{fato}</Text>
+                    </View>
+                  ))}
+                </View>
+                <BotaoCTA centralizado />
+              </View>
             </View>
           </View>
         </RevealOnScroll>
@@ -1137,36 +1106,46 @@ function ConteudoWeb() {
       </View>
 
       {/* ───────── Rodapé ───────── */}
-      <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
-        <View role="contentinfo" style={[styles.rodape, ehCompacto && styles.rodapeCompacto]}>
-          <BrandLogotype width={72} />
-          <View style={[styles.rodapeLinks, ehCompacto && styles.rodapeLinksCompacto]}>
-            {/* `href` direto no AppPressable (ver comentário maior em
-                BotaoCTA sobre por que não `Link asChild`) — o
-                react-native-web usa a `href` recebida pra renderizar uma
-                tag `<a>` de verdade — clique do meio, "abrir em nova aba" e
-                rastreamento por crawler de busca voltam a funcionar, coisa
-                que um `onPress` em JS puro nunca ofereceu. `hitSlop` maior
-                (era 8) porque o texto de rodapé sozinho fica bem abaixo do
-                alvo de toque mínimo de 44px. */}
-            <AppPressable href="/termos" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
-              <Text style={styles.rodapeLink}>Termos de Uso</Text>
-            </AppPressable>
-            <AppPressable href="/privacidade" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
-              <Text style={styles.rodapeLink}>Privacidade</Text>
-            </AppPressable>
-            <AppPressable href="/exclusao-de-dados" style={styles.rodapeLinkAlvo} hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}>
-              <Text style={styles.rodapeLink}>Excluir dados</Text>
-            </AppPressable>
-            {/* "Entrar" removido daqui — voltou pro cabeçalho (ver navAbas),
-                que já fica visível em qualquer ponto da rolagem. Repeti-lo
-                aqui embaixo também virou redundância, não reforço. */}
+      <View style={styles.rodapeFundo}>
+        <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
+          <View role="contentinfo" style={[styles.rodape, ehCompacto && styles.rodapeCompacto]}>
+            <View style={[styles.rodapeMarca, ehCompacto && styles.rodapeMarcaCompacta]}>
+              <BrandLogotype width={96} />
+              <Text style={[styles.rodapeDescricao, ehCompacto && styles.precoTextoCentralizado]}>
+                Controle financeiro que cabe na sua rotina.
+              </Text>
+              <AppPressable
+                href="https://www.instagram.com/granaponto/"
+                target="_blank"
+                rel="noopener noreferrer"
+                accessibilityLabel="Abrir Instagram do Grana. em nova aba"
+                style={({ hovered }) => [styles.instagramRodape, hovered && styles.instagramCabecalhoHover]}
+              >
+                <Ionicons name="logo-instagram" size={19} color={theme.inkSoft} aria-hidden />
+              </AppPressable>
+            </View>
+
+            <View role="navigation" accessibilityLabel="Navegação do rodapé" style={[styles.rodapeColunas, ehCompacto && styles.rodapeColunasCompactas]}>
+              <View style={styles.rodapeColuna}>
+                <Text style={styles.rodapeTitulo}>Produto</Text>
+                <AppPressable href="#produto" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Como funciona</Text></AppPressable>
+                <AppPressable href="#granabo" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Granabô</Text></AppPressable>
+                <AppPressable href="#precos" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Preços</Text></AppPressable>
+                <AppPressable href="#faq" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Perguntas frequentes</Text></AppPressable>
+              </View>
+              <View style={styles.rodapeColuna}>
+                <Text style={styles.rodapeTitulo}>Conta</Text>
+                <AppPressable href="/sign-up" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Criar conta</Text></AppPressable>
+                <AppPressable href="/sign-in" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Entrar</Text></AppPressable>
+              </View>
+              <View style={styles.rodapeColuna}>
+                <Text style={styles.rodapeTitulo}>Transparência</Text>
+                <AppPressable href="/termos" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Termos de Uso</Text></AppPressable>
+                <AppPressable href="/privacidade" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Privacidade</Text></AppPressable>
+                <AppPressable href="/exclusao-de-dados" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Excluir dados</Text></AppPressable>
+              </View>
+            </View>
           </View>
-          {/* Sem e-mail solto aqui de propósito — esta é a página que mais
-              recebe clique frio de anúncio/busca, o pior lugar pra deixar um
-              endereço pessoal exposto a bot de spam. O contato exigido pela
-              LGPD já está um clique de distância, na Política de
-              Privacidade (ver lib/legal-content.ts). */}
         </View>
       </View>
     </ScrollView>
@@ -1243,12 +1222,39 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.rule,
   },
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
-  entrarTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
-  // Discreto pra não competir com os CTAs da página — quem já é cliente
-  // reconhece, quem é novo não se distrai.
-  entrarTextoDiscreto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
-  navAbas: { flexDirection: 'row', gap: spacing.xl },
-  navLinkAlvo: { minHeight: 44, justifyContent: 'center' },
+  cabecalhoCompacto: { flexDirection: 'column', alignItems: 'stretch', gap: spacing.xs },
+  cabecalhoLinhaPrincipal: { alignItems: 'center' },
+  cabecalhoLinhaPrincipalCompacta: { width: '100%', flexDirection: 'row', justifyContent: 'space-between' },
+  navAbas: { flexDirection: 'row', gap: spacing.sm },
+  navScrollCompacta: { width: '100%', maxHeight: 40 },
+  navAbasCompactas: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingRight: spacing.xl },
+  navLinkAlvo: {
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    backgroundColor: theme.paperRaised,
+    ...({ transitionProperty: 'border-color, background-color, box-shadow', transitionDuration: '180ms' } as any),
+  },
+  navLinkAlvoHover: { borderColor: theme.ruleStrong, backgroundColor: theme.hover },
+  navLinkTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
+  navEntrarAlvo: {
+    borderColor: theme.accent,
+    backgroundColor: theme.accent,
+    ...({ boxShadow: '0 8px 22px -10px rgba(31,169,141,0.8)' } as any),
+  },
+  navEntrarAlvoHover: {
+    borderColor: theme.accent2,
+    backgroundColor: theme.accent2,
+    ...({ boxShadow: '0 10px 28px -9px rgba(174,255,227,0.55)' } as any),
+  },
+  navEntrarTexto: { color: theme.paper, fontSize: type.nota, fontFamily: fonts.regular },
+  instagramCabecalhoHover: { borderColor: theme.ruleStrong, backgroundColor: theme.hover },
 
   palcoHero: { position: 'relative' },
   /* O recorte dos GlowOrb vive nesta camada, não no `palcoHero` — sem isso o
@@ -1277,7 +1283,7 @@ const styles = StyleSheet.create({
     // teto) — títulos de 2+ linhas (a maioria dos 4 capítulos do herói)
     // liam como texto colado, sem respiro entre as linhas. Agora ~1.14x o
     // tamanho da letra em vez de ~1.0x.
-    ...({ fontSize: 'clamp(44px, 4vw + 24px, 80px)', lineHeight: 'clamp(52px, 4vw + 32px, 90px)' } as any),
+    ...({ fontSize: 'clamp(34px, 2.6vw + 16px, 56px)', lineHeight: 'clamp(40px, 2.8vw + 20px, 64px)' } as any),
     letterSpacing: -2,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
@@ -1292,7 +1298,7 @@ const styles = StyleSheet.create({
     // Mesmo ajuste de respiro entre linhas de `headline`, na escala do
     // compacto — títulos de 2 linhas como "Sabe quanto sobra, sem
     // calcular." liam apertados no celular.
-    ...({ fontSize: 'clamp(28px, 7vw, 36px)', lineHeight: 'clamp(36px, 8.5vw, 46px)' } as any),
+    ...({ fontSize: 'clamp(26px, 6vw, 32px)', lineHeight: 'clamp(33px, 7.4vw, 41px)' } as any),
     letterSpacing: -1,
     fontFamily: fonts.regular,
     marginBottom: spacing.lg,
@@ -1335,15 +1341,6 @@ const styles = StyleSheet.create({
   // em vez de ler como uma frase de apoio; `type.corpo` é o degrau de texto
   // corrido da escala do design system, não um valor ad hoc.
   pontePergunta: { color: theme.accent2, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.regular, marginTop: spacing.xl, maxWidth: 640 },
-
-  ctaMeio: {
-    marginTop: spacing.xxl,
-    alignItems: 'center',
-    paddingTop: spacing.xxl,
-    borderTopWidth: 1,
-    borderTopColor: theme.ruleStrong,
-  },
-  ctaMeioTitulo: { color: theme.ink, fontSize: type.destaque, fontFamily: fonts.regular, marginBottom: spacing.lg, textAlign: 'center' },
 
   // `spacing.xxl` (28px) sozinho ficava apertado demais dentro da dobra de
   // tela cheia — pouco respiro ao redor do conteúdo centralizado. `xxl * 2.5`
@@ -1399,98 +1396,49 @@ const styles = StyleSheet.create({
   // (~342px, viewport de 390px menos o padding de `faixaCompacta`) e
   // estourava largura, cortado pelo `overflow:hidden` da seção.
   molduraCentralizadaCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
-  // Largura/altura FIXA (não flexível) — é o que permite o
-  // `alignItems:'center'` do pai centralizar o PAR de molduras como uma
-  // ÚNICA unidade visual, com a moldura de Gráficos (à frente, à direita)
-  // e a de Conquistas (atrás, à esquerda) somadas. `width` = largura da
-  // moldura de Gráficos + o quanto a de Conquistas escapa pra fora à
-  // esquerda (`guiaMolduraConquistas.left`, negativo). `height` = altura da
-  // moldura de Gráficos (a mais alta das duas nas contas de proporção
-  // 1440:900 usadas aqui — a de trás sempre cabe dentro por baixo dela).
-  guiaComposicao: { position: 'relative', width: 655, height: 325 },
-  // Moldura de Gráficos MENOR aqui (260, não 320 como antes de haver uma
-  // segunda tela) — o par precisa de espaço pra uma fatia de verdade da
-  // moldura de trás sobrar visível na coluna de ~342px do compacto; com a
-  // moldura da frente ainda em 320 não sobrava quase nada (só uma tira de
-  // ~16px), o que lia como "moldura cortada", não como composição.
-  guiaComposicaoCompacta: { width: 324, height: 163 },
-  // Moldura de trás: fora do fluxo normal (`position:'absolute'`, ANTES da
-  // de Gráficos no JSX — sem `zIndex`, só ordem de pintura, pra ficar por
-  // baixo), deslocada pra fora à esquerda/cima, e levemente torta
-  // (`rotate`) — quebra de padrão de propósito: o resto da página inteira é
-  // ortogonal, então uma moldura não-alinhada aqui chama o olho sem
-  // precisar de nenhum texto novo.
-  guiaMolduraConquistas: { position: 'absolute', left: 0, top: 24, transform: [{ rotate: '-5deg' }] },
-  guiaMolduraConquistasCompacta: { top: 16 },
-  // Moldura de Gráficos: normal-flow removido pro canto direito do grupo
-  // (`right:0`), não mais centralizada sozinha — dentro de `guiaComposicao`
-  // ela É a âncora que define a largura/altura do grupo inteiro.
-  guiaMolduraGraficos: { position: 'absolute', right: 0, top: 0 },
-  guiaLista: { gap: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.lg },
-  guiaPasso: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  // O número É a marcação de passo — não tem círculo/fundo por trás porque
-  // já é grande e destacado o bastante sozinho; um círculo ao redor
-  // competiria com o próprio dígito em vez de reforçá-lo.
-  guiaNumero: { color: theme.accent2, fontSize: 22, fontFamily: fonts.light, fontVariant: ['tabular-nums'], minWidth: 36 },
-  guiaPassoTitulo: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular, marginBottom: 2 },
-  guiaPassoTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
-
-  // Recursos flanqueando a tela do app no centro — 3 de cada lado no
-  // amplo/médio; no compacto vira uma coluna só (sem o celular central, que
-  // já aparece grande no herói logo acima).
-  gradeRecursos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxl, marginTop: spacing.lg, alignItems: 'center', justifyContent: 'center' },
-  colunaRecursos: { flex: 1, minWidth: 260, maxWidth: 340, gap: spacing.lg },
-  celularCentral: { alignItems: 'center', paddingHorizontal: spacing.lg },
-
-  cardLinhaTempo: {
-    flex: 1,
-    minWidth: 320,
-    maxWidth: 620,
-    backgroundColor: theme.paperRaised,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: theme.ruleStrong,
-    padding: spacing.xl,
-    ...sombraCard,
-  },
-  compromissoLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
-  /* O trilho é desenhado por linha, não como uma barra única atrás da lista:
-     assim o fio nasce e morre junto com o selo de cada linha e nunca sobra
-     abaixo do último item, que é onde uma barra de altura fixa sempre erra.
-     Largura fixa em 40 (não mais 9) pra caber o selo de calendário abaixo —
-     ela também é o que garante todo selo alinhado na mesma coluna,
-     independente de "05" ou "18" terem a mesma largura de dígito. */
-  compromissoTrilho: { width: 40, alignItems: 'center', alignSelf: 'stretch' },
-  // Selo de calendário — mês pequeno em cima, dia grande embaixo, o mesmo
-  // padrão visual de "folhinha" que qualquer agenda usa pra um dia em
-  // destaque. É isto (não um número solto) que comunica "data de
-  // vencimento" à primeira vista.
-  compromissoDiaChip: {
-    width: 40,
-    height: 44,
-    borderRadius: radius.sm,
-    backgroundColor: theme.accentDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 1,
-  },
-  compromissoDiaChipMes: { color: theme.accent2, fontSize: 9, fontFamily: fonts.regular, letterSpacing: 0.5, textTransform: 'uppercase' },
-  compromissoDiaChipNumero: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  compromissoFio: { flex: 1, width: 1, backgroundColor: theme.rule, marginTop: spacing.xs },
-  compromissoTextos: { flex: 1 },
-  compromissoNome: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
-  compromissoTipo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: 1 },
-  compromissoValor: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  destaqueInline: { color: theme.accent2, fontFamily: fonts.regular },
-
-  cardFeature: {
+  habitoGrade: { gap: spacing.sm, marginTop: spacing.xl },
+  habitoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
     backgroundColor: theme.paper,
-    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: theme.rule,
+  },
+  habitoIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.accentDeep,
+  },
+  habitoTexto: { flex: 1 },
+  habitoTitulo: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, marginBottom: 2 },
+  habitoDescricao: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.4, fontFamily: fonts.light },
+  beneficiosGrade: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+    gap: spacing.lg,
+    marginTop: spacing.xxl,
+  },
+  beneficioPosicao: { flexGrow: 1, flexBasis: '31%', minWidth: 280 },
+  beneficioCard: {
+    height: '100%',
     padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.rule,
     ...sombraCard,
   },
+  beneficioTitulo: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular, marginBottom: spacing.sm },
+  beneficioTexto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.5, fontFamily: fonts.light },
+
+  destaqueInline: { color: theme.accent2, fontFamily: fonts.regular },
 
   // O card único — a borda/raio/sombra que antes viviam em cada metade
   // separada (`cardFeature`) agora vivem só aqui; `overflow: hidden` é o que
@@ -1564,9 +1512,8 @@ const styles = StyleSheet.create({
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
   precoLinhaCompacta: { justifyContent: 'center' },
-  // Usa `theme.ink` (não `inkFaint`) porque é um valor definido, não um "a
-  // definir": o apagado era o sinal visual de "isto não é um preço real",
-  // e não se aplica mais com o valor de lançamento (R$ 19,99) no lugar.
+  // Usa `theme.ink` (não `inkFaint`) porque é um preço real e cobrado, não
+  // um valor "a definir" — o apagado era o sinal de que ainda não valia.
   precoValor: { color: theme.ink, fontSize: type.valor + 6, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   precoPeriodo: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   // Aplica-se tanto ao card de recurso quanto ao de segurança — nenhum dos
@@ -1580,23 +1527,7 @@ const styles = StyleSheet.create({
     ...sombraCard,
     ...({ transform: [{ translateY: -4 }], cursor: 'default' } as any),
   },
-  featureIconeCirculo: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.accentDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  featureTitulo: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular, marginBottom: spacing.xs },
   featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
-
-  // Reaproveitado só por "Próximos compromissos" — os outros mockRotulo*
-  // (mockValor, mockLegenda) que existiam junto pertenciam às antigas telas
-  // mockadas do herói (voz/WhatsApp/nota/saldo livre), aposentadas quando o
-  // vídeo do notebook passou a ser o visual único do herói.
-  mockRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginBottom: spacing.xs },
 
   segurancaLista: { gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.xl },
   // Cada linha na própria caixa (voltou a pedido do autor) — não mais um
@@ -1615,15 +1546,41 @@ const styles = StyleSheet.create({
   },
   segurancaLinhaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
 
-  // Navegador atrás, maior; celular na frente, menor, sobreposto no canto
-  // inferior — a mesma composição "duas telas, um produto só" que o
-  // Organizze usa pra provar multiplataforma sem precisar de duas seções.
+  segurancaDupla: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.xl, marginTop: spacing.xxl },
+  segurancaPainel: {
+    flex: 1,
+    minWidth: 300,
+    padding: spacing.xl,
+    borderRadius: radius.xl,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    ...sombraCard,
+  },
+  segurancaPainelTopo: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
+  /* `accentDeep`, não o verde `#25D366` do WhatsApp. O DESIGN.md libera a cor
+     de marca de terceiro só com necessidade FUNCIONAL — o caso documentado é
+     um elemento que representa literalmente o WhatsApp (a bolha da conversa
+     em `ConversaGranabo`, que traz a exceção comentada no próprio arquivo).
+     Aqui era fundo decorativo de ícone num painel de segurança, e o glifo
+     `logo-whatsapp` já identifica o canal sozinho. De quebra os dois painéis
+     desta dobra viram um par visual, que é o que eles são. */
+  whatsappIconeFundo: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep },
+  segurancaIconeFundo: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep },
+  segurancaPainelRotulo: { flex: 1, color: theme.accent2, fontSize: type.legenda, lineHeight: type.legenda * 1.35, fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.7 },
+  segurancaPainelTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.3, fontFamily: fonts.regular, marginBottom: spacing.md },
+  segurancaPainelTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light },
+  segurancaListaCompacta: { gap: spacing.sm, marginTop: spacing.lg },
+  segurancaLinhaLimpa: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  segurancaLinhaTextoCompacto: { flex: 1, color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.45, fontFamily: fonts.light },
+  segurancaCta: { alignItems: 'center', marginTop: spacing.xxl },
+
+  // Coluna que hospeda a prova visual ao lado do texto da seção (a conversa
+  // do Granabô, o card de Livre para Gastar). Herdou o nome de quando era
+  // uma composição de navegador + celular sobrepostos; hoje centraliza um
+  // elemento só.
   composicaoTelas: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center', position: 'relative', paddingVertical: spacing.xxl },
-  composicaoCelular: { position: 'absolute', right: '6%', bottom: 0 },
-  // Moldura de celular sozinha no mobile — a composição
-  // navegador+celular não cabe, mas mostrar pelo menos a moldura de
-  // celular mantém a prova visual de multiplataforma.
-  celularSoloCompacto: { alignItems: 'center', marginTop: spacing.xl },
+  composicaoTelasCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
 
   faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl, marginTop: spacing.sm },
   // Mesmo bug/correção de `secaoComCartaoCompacta` — `flex:1` + `minWidth`
@@ -1660,33 +1617,42 @@ const styles = StyleSheet.create({
   // divisória órfã cortando o card ao meio.
   faqItemSemBorda: { borderBottomWidth: 0, paddingVertical: 0 },
 
-  ctaFinal: { alignSelf: 'center', alignItems: 'center', paddingVertical: spacing.xxl * 1.5, gap: spacing.xl },
-  ctaFinalTitulo: { fontSize: type.destaque + 4, lineHeight: (type.destaque + 4) * 1.3, textAlign: 'center' },
-  ctaFinalTituloForte: { color: theme.ink, fontFamily: fonts.regular },
-  // Mesmo sinal de "secundário" já usado no valor apagado do card de preço.
-  ctaFinalTituloFraca: { color: theme.inkFaint, fontFamily: fonts.light },
+  ctaFinalLayout: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xxl * 2 },
+  ctaFinalLayoutCompacto: { flexDirection: 'column', gap: spacing.xxl },
+  ctaFinalConteudo: { width: '100%', maxWidth: 760, alignItems: 'center' },
+  ctaFinalConteudoCompacto: { minWidth: 0, width: '100%', alignItems: 'center' },
+  ctaFinalTitulo: { color: theme.ink, ...({ fontSize: 'clamp(32px, 3.2vw, 52px)', lineHeight: '1.08' } as any), letterSpacing: -1.2, fontFamily: fonts.regular, marginBottom: spacing.lg },
+  ctaFinalTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 540 },
+  ctaFinalFatos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginVertical: spacing.xl },
+  ctaFinalFatosCompacto: { justifyContent: 'center' },
+  ctaFinalFato: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule, backgroundColor: theme.paperRaised },
+  ctaFinalFatoTexto: { color: theme.inkSoft, fontSize: type.micro, fontFamily: fonts.light },
 
+  rodapeFundo: { backgroundColor: theme.paperRaised, borderTopWidth: 1, borderTopColor: theme.rule },
   rodape: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingVertical: spacing.xl,
-    borderTopWidth: 1,
-    borderTopColor: theme.rule,
+    gap: spacing.xxl * 2,
+    paddingVertical: spacing.xxl * 2,
   },
-  rodapeLinks: { flexDirection: 'row', gap: spacing.lg },
+  rodapeMarca: { width: 240, alignItems: 'flex-start', gap: spacing.lg },
+  rodapeMarcaCompacta: { width: '100%', alignItems: 'center' },
+  rodapeDescricao: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light },
+  instagramRodape: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.ruleStrong, backgroundColor: theme.paper },
+  rodapeColunas: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xxl * 2 },
+  rodapeColunasCompactas: { width: '100%', justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.xl },
+  rodapeColuna: { minWidth: 150 },
+  rodapeTitulo: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, marginBottom: spacing.md },
   rodapeLinkAlvo: { minHeight: 44, justifyContent: 'center' },
-  // No mobile o rodapé empilha verticalmente — os 4 links quebram de forma
-  // desigual em `flexWrap:'wrap'` com `flexDirection:'row'` numa tela de
-  // ~390px. Centralizar tudo resolve sem inventar media-query.
-  rodapeCompacto: { flexDirection: 'column', alignItems: 'center', gap: spacing.lg },
-  rodapeLinksCompacto: { flexWrap: 'wrap', justifyContent: 'center' },
-  rodapeLink: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  rodapeCompacto: { flexDirection: 'column', alignItems: 'stretch', gap: spacing.xxl },
+  rodapeLink: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, ...({ textDecorationLine: 'none' } as any) },
 
-  /* ───────── Herói-storytelling ───────── */
-  heroTrilhaGatilhos: { position: 'relative' },
+  /* ───────── Herói ─────────
+     As chaves de trilha de gatilhos, marcadores de capítulo e ícone circular
+     dos capítulos saíram junto com o herói de 4 capítulos que a reescrita
+     aposentou. O herói atual é uma cena só e usa as chaves abaixo. */
   // Painel de sangria total: chegar até a borda VERDADEIRA do viewport não é
   // mais um truque de CSS (`width:100vw` + `marginLeft:calc(50% - 50vw)`) —
   // essa versão anterior desalinhava o texto (a centralização de
@@ -1764,36 +1730,12 @@ const styles = StyleSheet.create({
   // tela cheia, presente nas próprias referências que inspiraram este
   // layout) e "clique no menu não funciona direito", a segunda é o bug
   // real — fica sem ponto de encaixe aqui.
-  heroGatilho: { position: 'absolute', left: 0, right: 0 },
-  heroMarcadores: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xl },
-  heroMarcador: {
-    width: 20,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.rule,
-    ...({ transitionProperty: 'width, background-color', transitionDuration: '250ms' } as any),
-  },
-  heroMarcadorAtivo: { backgroundColor: theme.accent2, width: 32 },
   heroScrollHint: {
     marginTop: spacing.lg,
     alignSelf: 'flex-start',
   },
-  heroTrilhaCompacta: { paddingTop: spacing.lg, gap: spacing.xl },
   // `center`, não mais `flex-start` — pedido do autor pra todo H1/H2 (e o
   // texto ao redor) fora de caixa ficar centralizado no compacto; o herói é
   // a PRIMEIRA seção da página nesse padrão, não uma exceção.
   heroBlocoCompacto: { alignItems: 'center', paddingBottom: spacing.xl, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  // Mesma missão do `eyebrow` (âncora visual antes do título, capítulos 2-4
-  // do herói compacto) — `marginBottom` igual ao dele, pra não mudar o
-  // ritmo vertical entre os blocos.
-  heroIconeCirculoCompacto: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.accentDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-
 });

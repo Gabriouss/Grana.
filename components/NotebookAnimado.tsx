@@ -178,7 +178,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         // 'cover'` porque a proporção não bate mais com a do canvas — sem
         // isso a imagem esticaria/achataria pra caber exatamente na caixa
         // larga, deformando o brilho redondo numa oval.
-        src: '/notebook/bg-opacidade.png',
+        src: '/notebook/bg-opacidade.webp',
         alt: '',
         'aria-hidden': true,
         width: 2523,
@@ -197,7 +197,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         },
       })}
       {createElement('img', {
-        src: '/notebook/sombra.png',
+        src: '/notebook/sombra.webp',
         alt: '',
         'aria-hidden': true,
         width: 1875,
@@ -216,7 +216,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         },
       })}
       {createElement('img', {
-        src: '/notebook/notebook.png',
+        src: '/notebook/notebook.webp',
         alt: 'Notebook exibindo o painel do Grana.',
         width: 1403,
         height: 914,

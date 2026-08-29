@@ -44,10 +44,13 @@ Code (NFC-e) de uma nota fiscal. Roda em Expo (iOS e Android) e web
 (react-native-web) a partir do mesmo código e do mesmo design system — mais
 uma landing page pública separada (`app/index.tsx`, só web), voltada a
 quem ainda não conhece o produto, distinta da tela de entrada de quem já
-tem conta. Fase atual: acesso antecipado ("acesso antecipado" na própria
-landing page, criar conta é gratuito por enquanto). O modelo comercial
-definido para depois dessa fase é uma assinatura recorrente de R$ 19,99/mês,
-cancelável a qualquer momento. A empresa Grana. está **verificada pela Meta**
+tem conta. Fase atual: preparação do lançamento comercial. **O produto será pago desde
+o primeiro dia: assinatura de R$ 9,99/mês, sem período de teste gratuito**
+(decisão do autor em 28/08/2026, que encerra a fase de acesso antecipado).
+A landing já anuncia o preço. O checkout da Kiwify ainda não existe e não há
+bloqueio de acesso no app, então quem cria conta hoje continua com acesso
+completo; por isso o CTA da landing é "Criar minha conta", nunca uma promessa
+de compra. A empresa Grana. está **verificada pela Meta**
 e o WhatsApp é um canal oficial e operacional (confirmado pelo autor em
 28/08/2026); a revisão terminou, não está mais pendente.
 
@@ -69,12 +72,13 @@ apresentá-la perto do bloco de segurança de um jeito que insinue isso.
   que oculta valores, senha conferida contra vazamentos, bloqueio de
   print em tela com valor).
 - Não movimenta dinheiro nem processa pagamento — é só registro.
-- Monetização definida: assinatura recorrente de R$ 19,99/mês, vendida por
+- Monetização definida: assinatura recorrente de R$ 9,99/mês, vendida por
   uma plataforma como Kiwify/Hotmart e cancelável a qualquer momento. A
   vigência continua controlada por `subscriptions.access_until`; cancelamento
   interrompe renovações futuras sem retirar o período que já foi pago. O
-  checkout e o webhook comercial ainda não estão totalmente operacionais, por
-  isso toda conta segue com acesso antecipado gratuito e completo por enquanto.
+  checkout e o webhook comercial ainda não estão operacionais e
+  `temAssinaturaAtiva()` (`lib/assinatura.ts`) não é chamada em tela nenhuma,
+  então na prática ainda não existe paywall.
 - Backend Supabase no plano Free — soluções não podem depender de recurso
   exclusivo do plano Pro.
 - Repositório trabalhado em duas máquinas diferentes pelo mesmo autor —
@@ -98,15 +102,15 @@ apresentá-la perto do bloco de segurança de um jeito que insinue isso.
 
 ## Evidence on Hand
 
-- Sem depoimento, case ou imprensa reais ainda — produto pré-lançamento
-  ("acesso antecipado"); não inventar nenhum.
+- Sem depoimento, case ou imprensa reais ainda — produto pré-lançamento; não
+  inventar nenhum.
 - Telas reais do produto já são usadas como prova visual na landing page
   (o mock do herói reaproveita a linguagem visual real da lista de
   lançamentos, o mock de "Livre para Gastar" reaproveita o componente
   `PieChart` real e as cores reais de categoria de `lib/heuristics.ts`) —
   tratar a UI real do app como fonte de verdade pra qualquer mock de
   landing page, não inventar uma versão mais bonita e fictícia.
-- Preço decidido: R$ 19,99/mês, exibido como número real na seção "Quanto
+- Preço decidido: R$ 9,99/mês, exibido como número real na seção "Quanto
   custa" da landing page.
 
 ## Product Principles

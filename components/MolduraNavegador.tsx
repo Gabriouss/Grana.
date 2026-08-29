@@ -1,6 +1,6 @@
 import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, Text, View } from 'react-native';
-import { theme, spacing } from '@/lib/theme';
+import { theme, spacing, fonts } from '@/lib/theme';
 
 type Props = {
   src: string;
@@ -119,7 +119,12 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
         </View>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <View style={{ paddingVertical: 3, paddingHorizontal: spacing.md, borderRadius: 999, backgroundColor: theme.paper }}>
-            <Text style={{ color: theme.inkFaint, fontSize: 10 }}>granaponto.com.br</Text>
+            {/* `fontFamily` explícito: sem ele o react-native-web entrega a
+                pilha do sistema (`-apple-system, Segoe UI, Roboto…`) e este
+                vira o único texto visível da página fora da marca — a
+                Only-Font Rule do DESIGN.md não abre exceção nem pra
+                decoração de 10px. */}
+            <Text style={{ color: theme.inkFaint, fontSize: 10, fontFamily: fonts.light }}>granaponto.com.br</Text>
           </View>
         </View>
       </View>

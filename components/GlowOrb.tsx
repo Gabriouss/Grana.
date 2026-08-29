@@ -33,7 +33,14 @@ export default function GlowOrb({ cor, tamanho = 640, top, left, right, bottom }
     borderRadius: tamanho / 2,
     backgroundImage: `radial-gradient(circle, ${cor} 0%, transparent 70%)`,
     filter: 'blur(70px)',
-    willChange: 'transform',
+    /* Sem `willChange: 'transform'`. O orb nunca anima — é um gradiente
+       parado — então a dica não tinha transform nenhum pra otimizar, e o
+       custo era real: `will-change` permanente promove cada orb a uma camada
+       de composição própria, retida pela vida inteira da página, com um
+       buffer offscreen do tamanho do blur de 70px. São três orbs. A regra
+       do `will-change` é anunciar mudança que vai acontecer, não marcar
+       elemento estático. `backfaceVisibility` fica: essa continua sendo a
+       dica que evita o blur serrilhar em alguns navegadores. */
     backfaceVisibility: 'hidden',
     WebkitBackfaceVisibility: 'hidden',
   } as any;
