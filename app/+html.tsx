@@ -5,10 +5,8 @@ import { type PropsWithChildren } from 'react';
  * Personalização do `<html>` raiz na web — expo-router usa este arquivo
  * como está, no lugar do documento padrão que ele geraria sozinho. Existia
  * zero customização até agora: nenhum CSS global de legibilidade de fonte,
- * e o favicon era só o PNG estático do `app.json` (fundo fixo, errado num
- * dos dois temas do sistema operacional). Ver public/favicon.svg — o mesmo
- * símbolo "G.", trocando de cor via `prefers-color-scheme` dentro do
- * próprio SVG.
+ * e o favicon era só o PNG estático do `app.json`. Ver public/favicon.svg —
+ * o símbolo oficial "G." com o gradiente contínuo e o ponto em menta.
  */
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -20,9 +18,10 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="theme-color" content="#052229" />
         <meta name="color-scheme" content="dark" />
 
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=grana-gradiente-20260830" />
         {/* Fallback pros poucos navegadores sem suporte a favicon em SVG. */}
-        <link rel="alternate icon" href="/favicon.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png?v=grana-gradiente-20260830" />
+        <link rel="apple-touch-icon" href="/favicon.png?v=grana-gradiente-20260830" />
 
         {/*
           `-webkit-font-smoothing`/`text-rendering`: legibilidade da Neue

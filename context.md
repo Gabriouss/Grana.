@@ -479,3 +479,20 @@ deixa de valer.
 - Validado no Chrome em 320×800, 375×812, 390×844, 768×1024, 844×390,
   1280×800 e 1440×1000. Axe-core: 0 violações; `prefers-reduced-motion`:
   0 animações em execução; `npx tsc --noEmit`: aprovado.
+
+## Sessão de 30/08/2026 — favicon oficial em todas as rotas web
+
+- A landing já declarava o símbolo oficial “G.” com gradiente, mas o HTML
+  inicial servido pelo Metro para a área de membros não incluía favicon. O
+  navegador caía no ícone antigo em cache, com fundo azul e “G” chapado.
+- `app/_layout.tsx` agora injeta pelo `expo-router/head`, em todas as rotas
+  web, o SVG canônico `public/favicon.svg`, o PNG oficial como fallback e o
+  `apple-touch-icon`. As URLs receberam a versão
+  `grana-gradiente-20260830` para invalidar o cache persistente do navegador.
+- `app/+html.tsx` e `scripts/inject-og-meta.js` usam exatamente as mesmas
+  declarações, cobrindo tanto renderização estática futura quanto o export SPA
+  atualmente publicado pela Vercel. O PNG de `assets/favicon.png` usado pelo
+  Expo e o de `public/favicon.png` são binariamente idênticos.
+- Validado no DOM hidratado das rotas `/`, `/sign-in` e `/lancamentos`, no
+  export web de produção após a injeção de metadados e com
+  `npx tsc --noEmit`, todos aprovados.

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
+import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -21,6 +22,9 @@ import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
 // Registra o handler de notificações (lembretes de contas) assim que o app abre.
 import '@/lib/notifications';
+
+const FAVICON_SVG = '/favicon.svg?v=grana-gradiente-20260830';
+const FAVICON_PNG = '/favicon.png?v=grana-gradiente-20260830';
 
 /* Segura o splash nativo (o logotipo em gradiente, configurado pelo plugin
    expo-splash-screen no app.json) até a Neue Machina estar carregada. Sem
@@ -66,36 +70,57 @@ export default function RootLayout() {
     SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
+  /* `+html.tsx` cobre o export estático, mas o Metro não o injeta no HTML
+     inicial durante o desenvolvimento. Manter o Head no layout raiz faz o
+     mesmo ícone oficial acompanhar todas as rotas, inclusive a área logada,
+     e a versão na URL invalida o favicon antigo que o navegador guarda com
+     cache especialmente agressivo. */
+  const identidadeWeb = Platform.OS === 'web' ? (
+    <Head>
+      <link rel="icon" type="image/svg+xml" sizes="any" href={FAVICON_SVG} />
+      <link rel="icon" type="image/png" sizes="512x512" href={FAVICON_PNG} />
+      <link rel="apple-touch-icon" href={FAVICON_PNG} />
+    </Head>
+  ) : null;
+
   if (!fontsLoaded) {
     // O splash nativo ainda está por cima; esta view é só o fundo por baixo
     // dele, na mesma cor, pra não haver um flash claro entre um e outro.
-    return <View style={{ flex: 1, backgroundColor: theme.paper }} />;
+    return (
+      <>
+        {identidadeWeb}
+        <View style={{ flex: 1, backgroundColor: theme.paper }} />
+      </>
+    );
   }
 
   return (
-    <SafeAreaProvider>
-      <SessionProvider>
-        <EntitlementProvider>
-          <PrivacyProvider>
-            <DemoProvider>
-              <AppLockProvider>
-                <ScreenCaptureProvider>
-              <StatusBar style="light" />
-              {/* A trava fica por fora do WebPhoneFrame: cobrir só o miolo
-                  deixaria a moldura da web visível, e por dentro dela o
-                  conteúdo continuaria montado sob uma cobertura parcial. */}
-              <AppLockGate>
-                <WebPhoneFrame>
-                  <RootNavigator />
-                </WebPhoneFrame>
-              </AppLockGate>
-                </ScreenCaptureProvider>
-              </AppLockProvider>
-            </DemoProvider>
-          </PrivacyProvider>
-        </EntitlementProvider>
-      </SessionProvider>
-    </SafeAreaProvider>
+    <>
+      {identidadeWeb}
+      <SafeAreaProvider>
+        <SessionProvider>
+          <EntitlementProvider>
+            <PrivacyProvider>
+              <DemoProvider>
+                <AppLockProvider>
+                  <ScreenCaptureProvider>
+                    <StatusBar style="light" />
+                    {/* A trava fica por fora do WebPhoneFrame: cobrir só o miolo
+                        deixaria a moldura da web visível, e por dentro dela o
+                        conteúdo continuaria montado sob uma cobertura parcial. */}
+                    <AppLockGate>
+                      <WebPhoneFrame>
+                        <RootNavigator />
+                      </WebPhoneFrame>
+                    </AppLockGate>
+                  </ScreenCaptureProvider>
+                </AppLockProvider>
+              </DemoProvider>
+            </PrivacyProvider>
+          </EntitlementProvider>
+        </SessionProvider>
+      </SafeAreaProvider>
+    </>
   );
 }
 

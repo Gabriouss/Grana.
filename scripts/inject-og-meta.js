@@ -39,8 +39,9 @@ const metaTags = `
     <meta name="color-scheme" content="dark" />
     <meta name="facebook-domain-verification" content="tmjp4xpzl7euabyjjdk0hfrvcgsi2i" />
     <link rel="canonical" href="${meta.siteUrl}/" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="alternate icon" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=grana-gradiente-20260830" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png?v=grana-gradiente-20260830" />
+    <link rel="apple-touch-icon" href="/favicon.png?v=grana-gradiente-20260830" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Grana." />
     <meta property="og:title" content="${meta.ogTitle}" />
@@ -82,11 +83,11 @@ html = html
      remover isto a página ficava declarando DOIS ícones primários. O Chrome
      prefere o que traz type="image/svg+xml", o Safari e o histórico de
      favoritos costumam ficar com o .ico — então o mesmo site aparecia com
-     dois ícones diferentes dependendo de onde era visto. Um ícone primário
-     só (o SVG), com o PNG como `alternate icon`, é o que mantém a marca
-     igual em todo lugar. A remoção acontece ANTES da injeção logo abaixo,
-     então não apaga as tags que este script escreve. */
-  .replace(/<link[^>]+rel=(['"])(?:shortcut )?icon\1[^>]*>/gi, '')
+     dois ícones diferentes dependendo de onde era visto. O SVG oficial fica
+     primeiro, com o PNG oficial como fallback para navegadores antigos. A
+     remoção acontece ANTES da injeção logo abaixo, então não apaga as tags
+     que este script escreve. */
+  .replace(/<link[^>]+rel=(['"])(?:shortcut icon|alternate icon|apple-touch-icon|icon)\1[^>]*>/gi, '')
   .replace(/<meta[^>]+(?:name|property)=(['"])(?:description|theme-color|color-scheme|facebook-domain-verification|og:type|og:site_name|og:title|og:description|og:url|og:image|og:image:width|og:image:height|twitter:card|twitter:title|twitter:description|twitter:image)\1[^>]*>/gi, '')
   .replace('</head>', `${metaTags}</head>`)
   .replace('</body>', `${fallbackSemJavaScript}</body>`);
