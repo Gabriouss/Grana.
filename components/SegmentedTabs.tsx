@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import { theme, radius, fonts, type, touchTarget } from '@/lib/theme';
 import AppPressable from './AppPressable';
 import { useReducedMotion } from '@/lib/motion';
@@ -56,10 +56,10 @@ export default function SegmentedTabs<T extends string>({
   }
 
   return (
-    <View style={[styles.segmented, Platform.OS === 'android' && styles.segmentedAndroid, style]} onLayout={handleLayout}>
+    <View style={[styles.segmented, style]} onLayout={handleLayout}>
       {containerWidth > 0 && (
         <Animated.View
-          style={[styles.pill, Platform.OS === 'android' && styles.pillAndroid, { width: segW, transform: [{ translateX }], pointerEvents: 'none' }]}
+          style={[styles.pill, { width: segW, transform: [{ translateX }], pointerEvents: 'none' }]}
         />
       )}
       {options.map((opt) => (
@@ -70,7 +70,7 @@ export default function SegmentedTabs<T extends string>({
           accessibilityRole="tab"
           accessibilityState={{ selected: value === opt.key }}
           android_ripple={{ color: theme.hover, borderless: false }}
-          style={({ hovered }) => [styles.segmentBtn, Platform.OS === 'android' && styles.segmentBtnAndroid, hovered && value !== opt.key && styles.segmentBtnHover]}
+          style={({ hovered }) => [styles.segmentBtn, hovered && value !== opt.key && styles.segmentBtnHover]}
         >
           <Text style={[styles.segmentText, value === opt.key && styles.segmentTextOn]}>{opt.label}</Text>
         </AppPressable>
@@ -81,7 +81,6 @@ export default function SegmentedTabs<T extends string>({
 
 const styles = StyleSheet.create({
   segmented: { flexDirection: 'row', backgroundColor: theme.paper, borderRadius: radius.sm, padding: PAD, gap: GAP },
-  segmentedAndroid: { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: radius.pill },
   pill: {
     position: 'absolute',
     top: PAD,
@@ -90,9 +89,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paperRaised,
     borderRadius: radius.sm - 2,
   },
-  pillAndroid: { borderRadius: radius.pill, backgroundColor: 'rgba(174,255,227,0.16)' },
   segmentBtn: { flex: 1, minHeight: touchTarget, paddingVertical: 7, borderRadius: radius.sm - 2, alignItems: 'center', justifyContent: 'center' },
-  segmentBtnAndroid: { borderRadius: radius.pill },
   segmentBtnHover: { backgroundColor: theme.rule },
   segmentText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   segmentTextOn: { color: theme.ink },

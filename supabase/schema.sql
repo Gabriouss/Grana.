@@ -1324,7 +1324,7 @@ alter table public.subscriptions add column if not exists activation_expires_at 
 update public.subscriptions
 set activation_token_hash = coalesce(
       activation_token_hash,
-      encode(digest(activation_token, 'sha256'), 'hex')
+      encode(extensions.digest(activation_token, 'sha256'), 'hex')
     ),
     activation_expires_at = coalesce(activation_expires_at, created_at + interval '7 days')
 where activation_token is not null;
@@ -2349,7 +2349,7 @@ begin
       activation_expires_at = null,
       updated_at = statement_timestamp()
   where s.user_id is null
-    and s.activation_token_hash = encode(digest(p_token, 'sha256'), 'hex')
+    and s.activation_token_hash = encode(extensions.digest(p_token, 'sha256'), 'hex')
     and s.activation_expires_at >= statement_timestamp();
   get diagnostics v_rows = row_count;
   return v_rows = 1;
@@ -2565,7 +2565,7 @@ begin
 
   loop
     v_attempt := v_attempt + 1;
-    v_bytes := gen_random_bytes(4);
+    v_bytes := extensions.gen_random_bytes(4);
     v_code := lpad((
       100000 + (
         (
@@ -2576,7 +2576,7 @@ begin
         ) % 900000
       )
     )::text, 6, '0');
-    v_hash := encode(digest(v_code, 'sha256'), 'hex');
+    v_hash := encode(extensions.digest(v_code, 'sha256'), 'hex');
     exit when not exists (
       select 1 from public.whatsapp_links l where l.pairing_code = v_hash
     );
@@ -2643,7 +2643,7 @@ begin
     where phone = v_phone;
   end if;
 
-  v_hash := encode(digest(p_code, 'sha256'), 'hex');
+  v_hash := encode(extensions.digest(p_code, 'sha256'), 'hex');
   select * into v_link
   from public.whatsapp_links l
   where l.pairing_code = v_hash
@@ -3076,7 +3076,7 @@ begin
       'kiwify', coalesce(nullif(p_order_id, ''), p_subscription_id),
       nullif(p_subscription_id, ''), lower(trim(p_email)), p_plan, 'active',
       v_access_until, null, null,
-      encode(digest(encode(gen_random_bytes(32), 'hex'), 'sha256'), 'hex'),
+      encode(extensions.digest(encode(extensions.gen_random_bytes(32), 'hex'), 'sha256'), 'hex'),
       statement_timestamp() + interval '7 days', p_event_at, p_event_id,
       jsonb_build_object(
         'event_type', p_event_type,

@@ -329,6 +329,9 @@ const styles = StyleSheet.create({
   levelActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.xs, flexShrink: 1, maxWidth: '70%' },
   sectionLabel: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
   levelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     flexShrink: 1,
     backgroundColor: 'rgba(175,255,227,0.08)',
     paddingHorizontal: spacing.sm,
