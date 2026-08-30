@@ -2,13 +2,14 @@
   "expo": {
     "name": "Grana.",
     "slug": "grana-app",
-    "scheme": ["granaapp", "grana"],
+    "scheme": "com.gabriouss.grana",
     "version": "1.4.0",
     "orientation": "default",
     "backgroundColor": "#052229",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
+      "bundleIdentifier": "com.gabriouss.grana",
       "supportsTablet": true
     },
     "android": {
@@ -65,7 +66,8 @@
           "icon": "./assets/android-icon-monochrome.png"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-secure-store"
     ],
     "extra": {
       "router": {},

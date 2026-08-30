@@ -45,5 +45,5 @@ export default function GlowOrb({ cor, tamanho = 640, top, left, right, bottom }
     WebkitBackfaceVisibility: 'hidden',
   } as any;
 
-  return <View pointerEvents="none" style={estiloBase} />;
+  return <View style={[estiloBase, { pointerEvents: 'none' }]} />;
 }

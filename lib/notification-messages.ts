@@ -38,7 +38,7 @@ export const MENSAGENS: MensagemNotif[] = [
   { id: 'streak-1', categoria: 'streak_protecao', titulo: 'Não deixa apagar!', texto: 'Não deixa o fogo apagar! 🔥 Você tá com {streak} dias seguidos. Registre 1 gasto pra manter a chama viva!' },
   { id: 'streak-2', categoria: 'streak_protecao', titulo: 'Sua sequência te espera', texto: '{streak} dias de sequência não se constroem sozinhos — falta só o de hoje 🔥' },
   { id: 'streak-3', categoria: 'streak_protecao', titulo: 'Quase lá hoje', texto: 'Você chegou até aqui: {streak} dias seguidos. Não vai deixar hoje quebrar a corrente, vai? 💪' },
-  { id: 'streak-4', categoria: 'streak_protecao', titulo: 'Protege sua ofensiva', texto: 'Sua ofensiva de {streak} dias tá em jogo. Um lançamento rápido resolve 🔥' },
+  { id: 'streak-4', categoria: 'streak_protecao', titulo: 'Protege sua sequência', texto: 'Sua sequência de {streak} dias está de pé. Um lançamento rápido mantém.' },
   { id: 'streak-5', categoria: 'streak_protecao', titulo: 'Não jogue fora', texto: '{streak} dias de esforço por um lançamento de 10 segundos? Vale a pena manter 🔥' },
   { id: 'streak-6', categoria: 'streak_protecao', titulo: 'Ainda dá tempo', texto: 'Ainda dá tempo de manter os {streak} dias seguidos. Bora lá! ⏳' },
   { id: 'streak-7', categoria: 'streak_protecao', titulo: 'Recorde à vista', texto: 'Mais um dia e sua sequência de {streak} dias fica ainda mais forte 🔥' },

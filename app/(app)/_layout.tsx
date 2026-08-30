@@ -46,7 +46,7 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget }: TabBarPr
   const { margem } = useTabBarInset();
 
   return (
-    <View pointerEvents="box-none" style={styles.floatWrap}>
+    <View style={[styles.floatWrap, { pointerEvents: 'box-none' }]}>
       <View style={[styles.tabBar, { marginBottom: margem }]}>
         {Platform.OS === 'web' ? (
           <View style={[StyleSheet.absoluteFill, styles.webGlass, { backdropFilter: 'blur(16px)' } as any]} />
@@ -340,11 +340,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(175,255,227,0.22)',
     backgroundColor: 'rgba(5,34,41,0.65)',
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 12,
+    ...({ boxShadow: '0 6px 16px rgba(0,0,0,0.35)' } as any),
     overflow: 'hidden',
   },
   tabItem: {

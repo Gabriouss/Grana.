@@ -22,7 +22,7 @@ type Props = {
  * Um ícone do domínio (moeda, recibo) flutuando bem apagado atrás do
  * conteúdo — puro reforço temático, nunca compete com card/CTA em destaque.
  * Modelado exatamente em GlowOrb: mesma mecânica de paralaxe transform-only
- * (compatível com native driver), mesmo `pointerEvents="none"`, mesma regra
+ * (compatível com native driver), mesmo `style={{ pointerEvents: 'none' }}`, mesma regra
  * de cor-com-alfa-embutido em vez de `opacity` separado (aqui não tem blur
  * pra proteger, mas mantém os dois componentes com a mesma forma de prop).
  */
@@ -49,7 +49,7 @@ export default function FloatingIcon({
 
   if (!scrollY || !fatorParallax) {
     return (
-      <View pointerEvents="none" style={estiloBase}>
+      <View style={[estiloBase, { pointerEvents: 'none' }]}>
         <Ionicons name={icone} size={tamanho} color={cor} />
       </View>
     );
@@ -66,7 +66,7 @@ export default function FloatingIcon({
     : [{ translateY: deslocamento }];
 
   return (
-    <Animated.View pointerEvents="none" style={[estiloBase, { transform: transformParallax }]}>
+    <Animated.View style={[[estiloBase, { transform: transformParallax }], { pointerEvents: 'none' }]}>
       <Ionicons name={icone} size={tamanho} color={cor} />
     </Animated.View>
   );

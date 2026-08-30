@@ -142,8 +142,7 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
       </View>
       {/* Notch centralizado no topo — só decoração, por cima da tela. */}
       <View
-        pointerEvents="none"
-        style={{
+        style={[{
           position: 'absolute',
           top: espessuraBezel,
           left: '50%',
@@ -153,12 +152,11 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
           borderBottomLeftRadius: radius.md,
           borderBottomRightRadius: radius.md,
           backgroundColor: '#02141a',
-        }}
+        }, { pointerEvents: 'none' }]}
       />
       {/* Home indicator — traço neutro, nunca uma cor semântica. */}
       <View
-        pointerEvents="none"
-        style={{
+        style={[{
           position: 'absolute',
           bottom: espessuraBezel * 0.45,
           left: '50%',
@@ -168,7 +166,7 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
           borderRadius: 2,
           backgroundColor: theme.inkFaint,
           opacity: 0.5,
-        }}
+        }, { pointerEvents: 'none' }]}
       />
     </View>
   );

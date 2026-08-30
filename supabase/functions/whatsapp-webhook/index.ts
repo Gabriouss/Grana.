@@ -35,7 +35,7 @@
 // e registre a URL pública como webhook do produto WhatsApp no Meta App
 // Dashboard, usando o mesmo WHATSAPP_VERIFY_TOKEN no campo "Verify Token".
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 
 const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? '';
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN') ?? '';
@@ -48,7 +48,20 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '
 
 // service_role: ignora RLS de propósito — a função precisa achar o dono de um
 // número de telefone sem ter uma sessão de usuário autenticada.
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+const MAX_BODY_BYTES = 512 * 1024;
+
+async function fetchComTimeout(url: string, init: RequestInit = {}, timeoutMs = 20_000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 /* ---- heurísticas (cópia mínima de lib/heuristics.ts e lib/types.ts) ---- */
 
@@ -838,26 +851,22 @@ async function assinaturaValida(rawBody: string, header: string | null): Promise
    nada, sem nenhum rastro no log pra investigar. Agora loga status e corpo
    da resposta sempre que a Meta recusar. */
 async function sendWhatsappMessage(to: string, body: string): Promise<void> {
-  try {
-    const res = await fetch(`https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to,
-        type: 'text',
-        text: { body },
-      }),
-    });
-    if (!res.ok) {
-      const detalhe = await res.text().catch(() => '(sem corpo)');
-      console.error(`[sendWhatsappMessage] Meta recusou o envio (HTTP ${res.status}) para ${to}:`, detalhe);
-    }
-  } catch (e) {
-    console.error('[sendWhatsappMessage] Falha de rede ao chamar a Meta:', e);
+  const res = await fetchComTimeout(`https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'text',
+      text: { body },
+    }),
+  });
+  if (!res.ok) {
+    console.error('[sendWhatsappMessage] Meta recusou o envio', { status: res.status });
+    throw Object.assign(new Error('Falha ao enviar confirmação pela Meta'), { code: 'meta_send_failed' });
   }
 }
 
@@ -877,7 +886,7 @@ const PROVEDORES_TRANSCRICAO = [
 
 /** Baixa o .ogg/Opus da Meta. Devolve null se a mídia expirou ou o token não autoriza. */
 async function baixarAudioDaMeta(mediaId: string): Promise<ArrayBuffer | null> {
-  const metaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+  const metaRes = await fetchComTimeout(`https://graph.facebook.com/v20.0/${mediaId}`, {
     headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
   });
   if (!metaRes.ok) {
@@ -887,7 +896,7 @@ async function baixarAudioDaMeta(mediaId: string): Promise<ArrayBuffer | null> {
   const { url } = await metaRes.json();
   if (!url) return null;
 
-  const mediaRes = await fetch(url, { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } });
+  const mediaRes = await fetchComTimeout(url, { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } });
   if (!mediaRes.ok) {
     console.error('[transcribeAudio] falha ao baixar bytes do áudio:', mediaRes.status);
     return null;
@@ -931,7 +940,7 @@ async function transcribeAudio(mediaId: string): Promise<string | null> {
             'Valores em reais usam vírgula como separador decimal, nunca ponto: 11,79 (não 11.79, não 1179).'
         );
 
-        const res = await fetch(provedor.url, {
+        const res = await fetchComTimeout(provedor.url, {
           method: 'POST',
           headers: { Authorization: `Bearer ${chave}` },
           body: formData,
@@ -968,14 +977,6 @@ async function transcribeAudio(mediaId: string): Promise<string | null> {
 
 /* ---- fluxo principal ---- */
 
-/* Janela de validade do código de pareamento — sem isso, um código de 6
-   dígitos gerado uma vez e nunca usado fica adivinhável para sempre (o app
-   sempre apaga o vínculo anterior ao gerar um novo, então `created_at`
-   reflete a geração mais recente). 15 minutos é folga suficiente para copiar
-   e colar no WhatsApp, e reduz a janela de tentativa de força bruta de
-   "indefinida" para alguns minutos. */
-const VALIDADE_PAREAMENTO_MS = 15 * 60 * 1000;
-
 /**
  * Códigos de pareamento que a mensagem pode conter.
  *
@@ -1006,26 +1007,26 @@ async function handlePairing(phone: string, text: string): Promise<boolean> {
   const candidatos = codigosCandidatos(text);
   if (candidatos.length === 0) return false;
 
-  const cutoff = new Date(Date.now() - VALIDADE_PAREAMENTO_MS).toISOString();
+  let status = 'invalid';
+  for (const candidato of candidatos) {
+    const { data, error } = await supabase.rpc('confirmar_pareamento_whatsapp', {
+      p_phone: phone,
+      p_code: candidato,
+    });
+    if (error) throw error;
+    status = typeof data?.status === 'string' ? data.status : 'invalid';
+    if (status !== 'invalid') break;
+  }
 
-  const { data: link } = await supabase
-    .from('whatsapp_links')
-    .select('*')
-    .in('pairing_code', candidatos)
-    .eq('verified', false)
-    .gt('created_at', cutoff)
-    /* `maybeSingle` devolve erro (e nenhum dado) se vier mais de uma linha, e
-       com dois candidatos na busca isso deixaria de ser impossível. Um
-       pareamento falhando calado é pior que escolher qualquer um dos dois. */
-    .limit(1)
-    .maybeSingle();
-
-  if (!link) return false;
-
-  await supabase
-    .from('whatsapp_links')
-    .update({ phone, verified: true, verified_at: new Date().toISOString() })
-    .eq('id', link.id);
+  if (status === 'rate_limited') {
+    await sendWhatsappMessage(phone, 'Muitas tentativas de código. Aguarde 15 minutos e gere um novo código no app.');
+    return true;
+  }
+  if (status === 'phone_in_use') {
+    await sendWhatsappMessage(phone, 'Este número já está vinculado a outra conta do Grana. Remova o vínculo anterior pelo app.');
+    return true;
+  }
+  if (status !== 'confirmed') return false;
 
   /* Exemplos, e não uma lista de comandos: o bot entende linguagem natural, e
      falar em "comando" faz a pessoa procurar uma sintaxe que não existe —
@@ -1134,12 +1135,14 @@ function textoDasOpcoes(literal: number, alternativa: number): string {
 }
 
 async function buscarPendente(phone: string): Promise<Rascunho | null> {
-  const { data } = await supabase.from('whatsapp_pending').select('*').eq('phone', phone).maybeSingle();
+  const { data, error } = await supabase.from('whatsapp_pending').select('*').eq('phone', phone).maybeSingle();
+  if (error) throw error;
   return data as Rascunho | null;
 }
 
 async function limparPendente(phone: string): Promise<void> {
-  await supabase.from('whatsapp_pending').delete().eq('phone', phone);
+  const { error } = await supabase.from('whatsapp_pending').delete().eq('phone', phone);
+  if (error) throw error;
 }
 
 /** Grava o lançamento de verdade e limpa qualquer rascunho pendente daquele número. */
@@ -1149,76 +1152,27 @@ async function finalizarLancamento(
     recurring?: boolean;
   },
   categoria: { name: string; color: string },
+  eventId: string,
   nomeCartao?: string | null,
   ouvido?: string
 ): Promise<void> {
   const parcelas = rascunho.installments && rascunho.installments >= 2 ? rascunho.installments : null;
-  let error: unknown = null;
-  let idCriado: string | null = null;
-
-  if (parcelas) {
-    /* Mesma divisão do app (lib/data.ts addInstallmentPurchase): as parcelas
-       são iguais e a ÚLTIMA absorve a sobra dos centavos, pra soma bater
-       exatamente com o total. Uma linha por mês, a primeira no mês da compra,
-       ligadas por parent_id — é assim que a tela de Crédito sabe agrupar. */
-    const base = Math.round((rascunho.amount / parcelas) * 100) / 100;
-    const ultima = Math.round((rascunho.amount - base * (parcelas - 1)) * 100) / 100;
-    let parentId: string | null = null;
-
-    for (let i = 0; i < parcelas; i++) {
-      const linha = {
-        user_id: rascunho.user_id,
-        type: rascunho.type,
-        description: `${rascunho.description} (${i + 1}/${parcelas})`,
-        amount: i === parcelas - 1 ? ultima : base,
-        category: categoria.name,
-        color: categoria.color,
-        occurred_on: somarMesesISO(rascunho.occurred_on, i),
-        recurring: false,
-        card_id: rascunho.card_id,
-        payment_method: rascunho.payment_method,
-        installment_current: i + 1,
-        installment_total: parcelas,
-        parent_id: parentId,
-      };
-      const { data, error: erroLinha } = await supabase.from('transactions').insert(linha).select().single();
-      if (erroLinha) {
-        error = erroLinha;
-        break;
-      }
-      if (i === 0) parentId = data.id;
-    }
-    idCriado = parentId;
-  } else {
-    const { data: criado, error: erroUnico } = await supabase.from('transactions').insert({
-      user_id: rascunho.user_id,
-      type: rascunho.type,
-      description: rascunho.description,
-      amount: rascunho.amount,
-      category: categoria.name,
-      color: categoria.color,
-      occurred_on: rascunho.occurred_on,
-      /* Só a linha única pode ser série aberta. A compra parcelada acima nasce
-         fechada — três linhas, três meses — e marcar recorrência ali faria o
-         app gerar uma quarta parcela pra sempre. */
-      recurring: rascunho.recurring ?? false,
-      card_id: rascunho.card_id,
-      payment_method: rascunho.payment_method,
-    })
-      .select('id')
-      .single();
-    error = erroUnico;
-    idCriado = criado?.id ?? null;
-  }
-
-  await limparPendente(rascunho.phone);
-
-  if (error) {
-    await sendWhatsappMessage(rascunho.phone, 'Deu erro ao salvar o lançamento. Tente de novo em instantes.');
-    return;
-  }
-
-  await lembrarUltimoLancamento(rascunho.phone, 'transaction', idCriado);
+  const { error } = await supabase.rpc('registrar_lancamento_whatsapp', {
+    p_user_id: rascunho.user_id,
+    p_phone: rascunho.phone,
+    p_event_id: eventId,
+    p_type: rascunho.type,
+    p_description: rascunho.description,
+    p_amount: rascunho.amount,
+    p_category: categoria.name,
+    p_color: categoria.color,
+    p_occurred_on: rascunho.occurred_on,
+    p_card_id: rascunho.card_id,
+    p_payment_method: rascunho.payment_method,
+    p_installments: parcelas,
+    p_recurring: rascunho.recurring ?? false,
+  });
+  if (error) throw error;
 
   const valorFmt = rascunho.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const sufixoCartao = nomeCartao ? ` no cartão ${nomeCartao}` : '';
@@ -1303,16 +1257,6 @@ function parseParcelas(text: string): number | null {
   return null;
 }
 
-/** Mesmo cálculo de data de lib/format.ts: soma meses preservando o dia, sem estourar em mês curto. */
-function somarMesesISO(iso: string, meses: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const alvo = new Date(y, m - 1 + meses, 1);
-  const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
-  alvo.setDate(Math.min(d, ultimoDia));
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${alvo.getFullYear()}-${pad(alvo.getMonth() + 1)}-${pad(alvo.getDate())}`;
-}
-
 /* ---- crédito: reconhecer intenção e casar o cartão certo ---- */
 
 /** "no crédito", "cartão de crédito", "parcelei", "3x", "5 vezes" — sinais de que a compra foi no cartão, não em débito/pix. */
@@ -1359,11 +1303,12 @@ function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null
 }
 
 async function fetchCreditCardsDoUsuario(userId: string): Promise<CartaoBusca[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('credit_cards')
     .select('id, name, bank')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
+  if (error) throw error;
   return (data as CartaoBusca[] | null) ?? [];
 }
 
@@ -1374,11 +1319,12 @@ async function fetchCreditCardsDoUsuario(userId: string): Promise<CartaoBusca[]>
    usuário abre o gerenciador de categorias no app). O que falta cobrir são
    só as categorias que a pessoa criou do zero. */
 async function fetchCategoriasDoUsuario(userId: string): Promise<{ name: string; color: string }[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('categories')
     .select('name, color')
     .eq('user_id', userId)
     .eq('is_default', false);
+  if (error) throw error;
   return (data as { name: string; color: string }[] | null) ?? [];
 }
 
@@ -1403,8 +1349,6 @@ async function fetchCategoriasDoUsuario(userId: string): Promise<{ name: string;
  * um áudio de três segundos. Perguntar "tem certeza?" cobraria um toque a mais
  * de todo mundo pra proteger de um erro que a própria resposta já revela.
  */
-const VALIDADE_CANCELAMENTO_MS = 24 * 60 * 60 * 1000;
-
 /* Cada verbo entra pelo RADICAL, com as três terminações que a pessoa usa:
    "cancela" (fala), "cancele" (imperativo escrito) e "cancelar" (infinitivo).
    A primeira versão listava as formas uma a uma e esqueceu metade — "cancela"
@@ -1440,19 +1384,6 @@ function ehIntencaoCancelar(text: string): boolean {
  */
 const COMANDO_CANCELAR_FINAL =
   /[\s,.;:!-]+(?:cancel(?:a|e|ar)|apag(?:a|ue|ar)|exclu(?:i|a|ir)|delet(?:a|e|ar)|desfa(?:z|ça|zer)|remov(?:e|a|er)|anul(?:a|e|ar))[\s.!]*$/i;
-
-/** Guarda o que foi criado por último, pra saber o que "cancela" desfaz. */
-async function lembrarUltimoLancamento(
-  phone: string,
-  tipo: 'transaction' | 'bill',
-  id: string | null
-): Promise<void> {
-  if (!id) return;
-  await supabase
-    .from('whatsapp_links')
-    .update({ last_entry_kind: tipo, last_entry_id: id, last_entry_at: new Date().toISOString() })
-    .eq('phone', phone);
-}
 
 /* ---- forma de pagamento ---- */
 
@@ -1586,7 +1517,7 @@ async function responderConsulta(userId: string, phone: string, resultado: Resul
   const { inicio, fim, nomeMes } = janelaDoMesCorrente();
 
   if (resultado.tipo === 'categoria') {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('transactions')
       .select('amount')
       .eq('user_id', userId)
@@ -1594,6 +1525,7 @@ async function responderConsulta(userId: string, phone: string, resultado: Resul
       .eq('category', resultado.categoria.name)
       .gte('occurred_on', inicio)
       .lte('occurred_on', fim);
+    if (error) throw error;
     const total = (data ?? []).reduce((s, t) => s + Number(t.amount), 0);
     await sendWhatsappMessage(phone, `💸 Você gastou R$ ${formatarBRL(total)} em ${resultado.categoria.name} em ${nomeMes}.`);
     return;
@@ -1603,13 +1535,14 @@ async function responderConsulta(userId: string, phone: string, resultado: Resul
     /* Mesma janela/filtro que lib/projections.ts usa pro Safe-to-Spend do
        app (`calcularSafeToSpend`) — status 'due' e vencimento dentro do mês
        corrente. Portado, não importado: Deno não importa de lib/. */
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bills')
       .select('amount')
       .eq('user_id', userId)
       .eq('status', 'due')
       .gte('due_date', inicio)
       .lte('due_date', fim);
+    if (error) throw error;
     const total = (data ?? []).reduce((s, b) => s + Number(b.amount), 0);
     await sendWhatsappMessage(phone, `🧾 Você tem R$ ${formatarBRL(total)} em boletos pra pagar em ${nomeMes}.`);
     return;
@@ -1618,7 +1551,7 @@ async function responderConsulta(userId: string, phone: string, resultado: Resul
   // credito — mesma fórmula de app/(app)/credito.tsx (soma de transactions do
   // mês por payment_method='credit'), com detalhamento por cartão quando o
   // usuário tem mais de um (senão a soma sozinha já responde a pergunta).
-  const [cartoes, { data: gastos }] = await Promise.all([
+  const [cartoes, gastosResult] = await Promise.all([
     fetchCreditCardsDoUsuario(userId),
     supabase
       .from('transactions')
@@ -1628,6 +1561,8 @@ async function responderConsulta(userId: string, phone: string, resultado: Resul
       .gte('occurred_on', inicio)
       .lte('occurred_on', fim),
   ]);
+  if (gastosResult.error) throw gastosResult.error;
+  const gastos = gastosResult.data;
   const linhas = gastos ?? [];
   const total = linhas.reduce((s, t) => s + Number(t.amount), 0);
   if (cartoes.length <= 1) {
@@ -1670,33 +1605,31 @@ function parseDiaVencimento(text: string): string {
 }
 
 /** Cria a conta a pagar direto (sem passar por transactions — boleto só vira saída quando marcado como pago, igual no app). */
-async function registrarBoleto(userId: string, phone: string, text: string, amount: number, ouvido?: string, categoriasDoUsuario = []): Promise<void> {
+async function registrarBoleto(
+  userId: string,
+  phone: string,
+  text: string,
+  amount: number,
+  eventId: string,
+  ouvido?: string,
+  categoriasDoUsuario = []
+): Promise<void> {
   const description = guessDescFromText(text, 'out');
   const due_date = parseDiaVencimento(text);
   const categoria = matchCategoryByKeyword(text, categoriasDoUsuario) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
 
-  const { data: contaCriada, error } = await supabase.from('bills').insert({
-    user_id: userId,
-    description,
-    amount,
-    category: categoria.name,
-    color: categoria.color,
-    due_date,
-    status: 'due',
-    /* Conta que vence todo mês é o caso NORMAL de boleto — luz, água,
-       internet, condomínio. A coluna existe em `bills` desde sempre e o bot
-       gravava false fixo, então a pessoa recadastrava a mesma conta todo mês. */
-    recurring: parseRecorrencia(text),
-  })
-    .select('id')
-    .single();
-
-  if (error) {
-    await sendWhatsappMessage(phone, 'Deu erro ao salvar o boleto. Tente de novo em instantes.');
-    return;
-  }
-
-  await lembrarUltimoLancamento(phone, 'bill', contaCriada?.id ?? null);
+  const { error } = await supabase.rpc('registrar_boleto_whatsapp', {
+    p_user_id: userId,
+    p_phone: phone,
+    p_event_id: eventId,
+    p_description: description,
+    p_amount: amount,
+    p_category: categoria.name,
+    p_color: categoria.color,
+    p_due_date: due_date,
+    p_recurring: parseRecorrencia(text),
+  });
+  if (error) throw error;
 
   const valorFmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const vencFmt = due_date.split('-').reverse().join('/');
@@ -1723,7 +1656,14 @@ async function registrarBoleto(userId: string, phone: string, text: string, amou
    de remontar o lançamento a partir do rascunho) mantém crédito, cartão,
    parcelas, boleto e categoria funcionando exatamente igual ao caminho
    normal, sem uma segunda implementação pra divergir. */
-async function registrarLancamento(userId: string, phone: string, text: string, valorForcado?: number, ouvido?: string): Promise<void> {
+async function registrarLancamento(
+  userId: string,
+  phone: string,
+  text: string,
+  eventId: string,
+  valorForcado?: number,
+  ouvido?: string
+): Promise<void> {
   const amount = valorForcado ?? guessAmountFromText(text);
   if (!amount || amount <= 0) {
     await sendWhatsappMessage(phone, 'Não consegui identificar o valor. Tente algo como: "Almoço de 38 reais" ou "R$ 38 em Alimentação".');
@@ -1736,7 +1676,7 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
   const categoriasDoUsuario = await fetchCategoriasDoUsuario(userId);
 
   if (ehIntencaoBoleto(text)) {
-    await registrarBoleto(userId, phone, text, amount, ouvido, categoriasDoUsuario);
+    await registrarBoleto(userId, phone, text, amount, eventId, ouvido, categoriasDoUsuario);
     return;
   }
 
@@ -1788,13 +1728,14 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
     await finalizarLancamento(
       { user_id: userId, phone, description, amount, type, occurred_on, card_id, payment_method, installments, recurring },
       categoria,
+      eventId,
       nomeCartao,
       ouvido
     );
     return;
   }
 
-  await supabase
+  const { error: pendingError } = await supabase
     .from('whatsapp_pending')
     /* `pending_kind`, `amount_alt` e `raw_text` vão explícitos mesmo valendo o
        default: o upsert só sobrescreve as colunas que recebe, então um
@@ -1805,6 +1746,7 @@ async function registrarLancamento(userId: string, phone: string, text: string, 
       card_id, payment_method, installments, recurring,
       pending_kind: 'categoria', amount_alt: null, raw_text: null,
     });
+  if (pendingError) throw pendingError;
 
   const valorFmt = formatarBRL(amount);
   await sendWhatsappMessage(
@@ -1824,7 +1766,7 @@ async function perguntarValorAmbiguo(
   alternativa: number
 ): Promise<void> {
   const type = guessTypeFromText(texto);
-  await supabase.from('whatsapp_pending').upsert({
+  const { error } = await supabase.from('whatsapp_pending').upsert({
     phone,
     user_id: userId,
     description: guessDescFromText(texto, type),
@@ -1839,6 +1781,7 @@ async function perguntarValorAmbiguo(
     amount_alt: alternativa,
     raw_text: texto,
   });
+  if (error) throw error;
 
   await sendWhatsappMessage(
     phone,
@@ -1847,7 +1790,7 @@ async function perguntarValorAmbiguo(
 }
 
 /** Resposta à pergunta de valor. Resolvido o valor, o áudio original é reprocessado inteiro. */
-async function tratarRespostaValor(pendente: Rascunho, text: string): Promise<boolean> {
+async function tratarRespostaValor(pendente: Rascunho, text: string, eventId: string): Promise<boolean> {
   const alternativa = pendente.amount_alt ?? pendente.amount;
   const escolhido = escolherValor(text, pendente.amount, alternativa);
 
@@ -1857,6 +1800,7 @@ async function tratarRespostaValor(pendente: Rascunho, text: string): Promise<bo
       pendente.user_id,
       pendente.phone,
       pendente.raw_text ?? pendente.description,
+      eventId,
       escolhido,
       pendente.raw_text ?? undefined
     );
@@ -1877,7 +1821,8 @@ async function tratarRespostaValor(pendente: Rascunho, text: string): Promise<bo
     return true;
   }
 
-  await supabase.from('whatsapp_pending').update({ attempts: tentativas }).eq('phone', pendente.phone);
+  const { error } = await supabase.from('whatsapp_pending').update({ attempts: tentativas }).eq('phone', pendente.phone);
+  if (error) throw error;
   await sendWhatsappMessage(
     pendente.phone,
     `Não entendi. Responde só 1 ou 2:\n\n${textoDasOpcoes(pendente.amount, alternativa)}`
@@ -1893,70 +1838,46 @@ async function tratarRespostaValor(pendente: Rascunho, text: string): Promise<bo
  * meses futuros — o tipo de resto que só aparece semanas depois.
  */
 async function cancelarUltimoLancamento(phone: string): Promise<void> {
-  const { data: link } = await supabase
-    .from('whatsapp_links')
-    .select('last_entry_kind, last_entry_id, last_entry_at')
-    .eq('phone', phone)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('cancelar_ultimo_whatsapp', { p_phone: phone });
+  if (error) throw error;
+  const resultado = data as {
+    status?: string;
+    kind?: string;
+    count?: number;
+    amount?: number;
+    description?: string;
+    category?: string;
+  };
 
-  if (!link?.last_entry_id) {
+  if (resultado.status === 'none') {
     await sendWhatsappMessage(
       phone,
       'Não tenho nenhum lançamento recente deste número pra cancelar. Consigo desfazer só o último feito por aqui, e dentro de 24 horas — o resto dá pra excluir pelo app.'
     );
     return;
   }
-
-  const quando = link.last_entry_at ? new Date(link.last_entry_at).getTime() : 0;
-  if (Date.now() - quando > VALIDADE_CANCELAMENTO_MS) {
+  if (resultado.status === 'expired') {
     await sendWhatsappMessage(
       phone,
       'Esse lançamento é de mais de um dia atrás — pra evitar apagar algo por engano, o cancelamento por aqui vale só nas primeiras 24 horas. Dá pra excluir pelo app.'
     );
     return;
   }
-
-  if (link.last_entry_kind === 'bill') {
-    const { data: conta } = await supabase
-      .from('bills')
-      .select('description, amount')
-      .eq('id', link.last_entry_id)
-      .maybeSingle();
-    if (!conta) {
-      await sendWhatsappMessage(phone, 'Esse lançamento já não existe mais — deve ter sido removido pelo app.');
-      return;
-    }
-    await supabase.from('bills').delete().eq('id', link.last_entry_id);
-    await esquecerUltimoLancamento(phone);
+  if (resultado.status === 'missing') {
+    await sendWhatsappMessage(phone, 'Esse lançamento já não existe mais — deve ter sido removido pelo app.');
+    return;
+  }
+  if (resultado.kind === 'bill') {
     await sendWhatsappMessage(
       phone,
-      `🗑️ Removido de Contas a pagar: R$ ${formatarBRL(Number(conta.amount))} (${conta.description}).\n\nPode mandar o certo agora.`
+      `🗑️ Removido de Contas a pagar: R$ ${formatarBRL(Number(resultado.amount))} (${resultado.description}).\n\nPode mandar o certo agora.`
     );
     return;
   }
-
-  /* Pega a série toda: a linha-cabeça e as parcelas que apontam pra ela. */
-  const { data: linhas } = await supabase
-    .from('transactions')
-    .select('id, description, amount, category')
-    .or(`id.eq.${link.last_entry_id},parent_id.eq.${link.last_entry_id}`);
-
-  if (!linhas || linhas.length === 0) {
-    await sendWhatsappMessage(phone, 'Esse lançamento já não existe mais — deve ter sido removido pelo app.');
-    await esquecerUltimoLancamento(phone);
-    return;
-  }
-
-  const total = linhas.reduce((s, l) => s + Number(l.amount), 0);
-  await supabase.from('transactions').delete().or(`id.eq.${link.last_entry_id},parent_id.eq.${link.last_entry_id}`);
-  await esquecerUltimoLancamento(phone);
-
-  /* O nome da série vem com "(1/3)" colado; pra confirmação vale o nome puro. */
-  const nome = linhas[0].description.replace(/\s*\(\d+\/\d+\)\s*$/, '');
-  const sufixoParcelas = linhas.length > 1 ? ` — as ${linhas.length} parcelas` : '';
+  const sufixoParcelas = Number(resultado.count) > 1 ? ` — as ${resultado.count} parcelas` : '';
   await sendWhatsappMessage(
     phone,
-    `🗑️ Removido: R$ ${formatarBRL(total)} em ${linhas[0].category} (${nome})${sufixoParcelas}.\n\nPode mandar o certo agora.`
+    `🗑️ Removido: R$ ${formatarBRL(Number(resultado.amount))} em ${resultado.category} (${resultado.description})${sufixoParcelas}.\n\nPode mandar o certo agora.`
   );
 }
 
@@ -1988,19 +1909,12 @@ async function tratarCancelamento(phone: string, text: string): Promise<boolean>
   return true;
 }
 
-async function esquecerUltimoLancamento(phone: string): Promise<void> {
-  await supabase
-    .from('whatsapp_links')
-    .update({ last_entry_kind: null, last_entry_id: null, last_entry_at: null })
-    .eq('phone', phone);
-}
-
 /** Trata a resposta a uma pergunta de esclarecimento pendente. Devolve true se tratou (a mensagem não deve seguir o fluxo normal). */
-async function tratarRespostaPendente(phone: string, text: string): Promise<boolean> {
+async function tratarRespostaPendente(phone: string, text: string, eventId: string): Promise<boolean> {
   const pendente = await buscarPendente(phone);
   if (!pendente) return false;
 
-  if (pendente.pending_kind === 'valor') return await tratarRespostaValor(pendente, text);
+  if (pendente.pending_kind === 'valor') return await tratarRespostaValor(pendente, text, eventId);
 
   /* Recarregada aqui porque esta função roda numa mensagem SEPARADA da que
      criou o rascunho pendente (a resposta à pergunta de categoria) — não dá
@@ -2010,7 +1924,7 @@ async function tratarRespostaPendente(phone: string, text: string): Promise<bool
 
   const categoria = matchCategoryByReply(text, categoriasDoUsuario);
   if (categoria) {
-    await finalizarLancamento(pendente, categoria);
+    await finalizarLancamento(pendente, categoria, eventId);
     return true;
   }
 
@@ -2018,22 +1932,33 @@ async function tratarRespostaPendente(phone: string, text: string): Promise<bool
   if (tentativas >= 2) {
     // Duas tentativas sem reconhecer — registra em "Outros" pra não travar o lançamento pra sempre, mas avisa que foi um chute.
     const outros = CATEGORIES.find((c) => c.name === 'Outros')!;
-    await finalizarLancamento(pendente, outros);
+    await finalizarLancamento(pendente, outros, eventId);
     await sendWhatsappMessage(phone, 'Não reconheci a categoria — registrei em "Outros" mesmo assim. Você pode trocar depois no app.');
     return true;
   }
 
-  await supabase.from('whatsapp_pending').update({ attempts: tentativas }).eq('phone', phone);
+  const { error } = await supabase.from('whatsapp_pending').update({ attempts: tentativas }).eq('phone', phone);
+  if (error) throw error;
   await sendWhatsappMessage(phone, `Não entendi. Responda só com o nome de uma destas categorias:\n${listaCategoriasPara(categoriasDoUsuario)}`);
   return true;
 }
 
-async function handleTextMessage(phone: string, text: string): Promise<void> {
-  const { data: link } = await supabase.from('whatsapp_links').select('*').eq('phone', phone).eq('verified', true).maybeSingle();
+async function handleTextMessage(phone: string, text: string, eventId: string): Promise<void> {
+  const { data: link, error: linkError } = await supabase
+    .from('whatsapp_links').select('*').eq('phone', phone).eq('verified', true).maybeSingle();
+  if (linkError) throw linkError;
 
   if (link) {
+    const { data: allowed, error: accessError } = await supabase.rpc('usuario_tem_direito', {
+      p_user_id: link.user_id,
+    });
+    if (accessError) throw accessError;
+    if (!allowed) {
+      await sendWhatsappMessage(phone, 'Sua assinatura do Grana. precisa ser renovada para continuar lançando pelo WhatsApp. Abra o app para regularizar.');
+      return;
+    }
     if (await tratarCancelamento(phone, text)) return;
-    const tratou = await tratarRespostaPendente(phone, text);
+    const tratou = await tratarRespostaPendente(phone, text, eventId);
     if (tratou) return;
     /* Antes de registrarLancamento de propósito — ver comentário completo
        em interpretarConsulta sobre por que a ordem importa aqui. */
@@ -2042,7 +1967,7 @@ async function handleTextMessage(phone: string, text: string): Promise<void> {
       await responderConsulta(link.user_id, phone, consulta);
       return;
     }
-    await registrarLancamento(link.user_id, phone, text);
+    await registrarLancamento(link.user_id, phone, text, eventId);
     return;
   }
 
@@ -2055,10 +1980,20 @@ async function handleTextMessage(phone: string, text: string): Promise<void> {
   }
 }
 
-async function handleAudioMessage(phone: string, mediaId: string): Promise<void> {
-  const { data: link } = await supabase.from('whatsapp_links').select('*').eq('phone', phone).eq('verified', true).maybeSingle();
+async function handleAudioMessage(phone: string, mediaId: string, eventId: string): Promise<void> {
+  const { data: link, error: linkError } = await supabase
+    .from('whatsapp_links').select('*').eq('phone', phone).eq('verified', true).maybeSingle();
+  if (linkError) throw linkError;
   if (!link) {
     await sendWhatsappMessage(phone, 'Este número ainda não está vinculado. Gere um código de pareamento em Perfil → WhatsApp no app.');
+    return;
+  }
+  const { data: allowed, error: accessError } = await supabase.rpc('usuario_tem_direito', {
+    p_user_id: link.user_id,
+  });
+  if (accessError) throw accessError;
+  if (!allowed) {
+    await sendWhatsappMessage(phone, 'Sua assinatura do Grana. precisa ser renovada para continuar lançando pelo WhatsApp. Abra o app para regularizar.');
     return;
   }
 
@@ -2070,7 +2005,7 @@ async function handleAudioMessage(phone: string, mediaId: string): Promise<void>
 
   if (await tratarCancelamento(phone, texto)) return;
 
-  const tratou = await tratarRespostaPendente(phone, texto);
+  const tratou = await tratarRespostaPendente(phone, texto, eventId);
   if (tratou) return;
 
   /* Antes da checagem de valor de propósito — uma pergunta falada nunca tem
@@ -2102,7 +2037,7 @@ async function handleAudioMessage(phone: string, mediaId: string): Promise<void>
     return;
   }
 
-  await registrarLancamento(link.user_id, phone, texto, undefined, texto);
+  await registrarLancamento(link.user_id, phone, texto, eventId, undefined, texto);
 }
 
 Deno.serve(async (req: Request) => {
@@ -2120,32 +2055,114 @@ Deno.serve(async (req: Request) => {
   }
 
   if (req.method === 'POST') {
+    const contentLength = Number(req.headers.get('content-length') ?? 0);
+    if (contentLength > MAX_BODY_BYTES) return new Response('Payload too large', { status: 413 });
     const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
+      return new Response('Payload too large', { status: 413 });
+    }
 
     if (!(await assinaturaValida(rawBody, req.headers.get('x-hub-signature-256')))) {
       return new Response('Invalid signature', { status: 401 });
     }
 
+    let payload: Record<string, unknown>;
     try {
-      const payload = JSON.parse(rawBody);
-      const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+      payload = JSON.parse(rawBody);
+    } catch {
+      return new Response('Invalid JSON', { status: 400 });
+    }
 
-      if (message) {
-        const phone = String(message.from);
+    const mensagens: Array<{
+      id?: string;
+      from?: string;
+      type?: string;
+      text?: { body?: string };
+      audio?: { id?: string };
+    }> = [];
+    const entries = Array.isArray(payload.entry) ? payload.entry : [];
+    for (const entry of entries) {
+      const changes = Array.isArray(entry?.changes) ? entry.changes : [];
+      for (const change of changes) {
+        const batch = Array.isArray(change?.value?.messages) ? change.value.messages : [];
+        mensagens.push(...batch);
+      }
+    }
+    if (mensagens.length === 0) return new Response('ok', { status: 200 });
+
+    let houveFalha = false;
+
+    for (const message of mensagens) {
+      const eventId = String(message.id ?? '').slice(0, 255);
+      const phone = String(message.from ?? '').replace(/\D/g, '');
+      if (!eventId || !phone) {
+        houveFalha = true;
+        continue;
+      }
+      const messageHashBuffer = await crypto.subtle.digest(
+        'SHA-256', new TextEncoder().encode(JSON.stringify(message))
+      );
+      const payloadHash = Array.from(
+        new Uint8Array(messageHashBuffer), (b) => b.toString(16).padStart(2, '0')
+      ).join('');
+
+      const { data: claim, error: claimError } = await supabase.rpc('reivindicar_webhook_evento', {
+        p_provider: 'whatsapp',
+        p_event_id: eventId,
+        p_event_type: message.type ?? 'unknown',
+        p_payload_hash: payloadHash,
+      });
+      if (claimError) {
+        houveFalha = true;
+        continue;
+      }
+      if (claim === 'done') continue;
+      if (claim === 'busy') {
+        houveFalha = true;
+        continue;
+      }
+
+      const holder = `${eventId}:${crypto.randomUUID()}`;
+      const { data: lock, error: lockError } = await supabase.rpc('adquirir_webhook_lock', {
+        p_resource_key: `whatsapp:${phone}`,
+        p_holder: holder,
+        p_ttl_seconds: 120,
+      });
+      if (lockError || lock !== true) {
+        houveFalha = true;
+        await supabase.rpc('falhar_webhook_evento', {
+          p_provider: 'whatsapp', p_event_id: eventId, p_error_code: 'phone_busy',
+        });
+        continue;
+      }
+
+      try {
         if (message.type === 'text') {
-          await handleTextMessage(phone, message.text?.body ?? '');
-        } else if (message.type === 'audio') {
-          await handleAudioMessage(phone, message.audio?.id);
+          await handleTextMessage(phone, message.text?.body ?? '', eventId);
+        } else if (message.type === 'audio' && message.audio?.id) {
+          await handleAudioMessage(phone, message.audio.id, eventId);
         } else {
           await sendWhatsappMessage(phone, 'Por enquanto só entendo mensagens de texto ou áudio.');
         }
+        const { error: finishError } = await supabase.rpc('finalizar_webhook_evento', {
+          p_provider: 'whatsapp', p_event_id: eventId,
+        });
+        if (finishError) throw finishError;
+      } catch (err) {
+        houveFalha = true;
+        const code = typeof err === 'object' && err && 'code' in err ? String(err.code) : 'processing_error';
+        await supabase.rpc('falhar_webhook_evento', {
+          p_provider: 'whatsapp', p_event_id: eventId, p_error_code: code,
+        });
+        console.error('[whatsapp-webhook] falha ao processar evento', { eventId, code });
+      } finally {
+        await supabase.rpc('liberar_webhook_lock', {
+          p_resource_key: `whatsapp:${phone}`, p_holder: holder,
+        });
       }
-    } catch (err) {
-      console.error('[whatsapp-webhook] erro ao processar mensagem:', err);
     }
-    // A Meta reenvia o webhook em retry se não receber 200 — sempre respondemos
-    // ok mesmo quando o processamento interno falhou (o erro já foi logado).
-    return new Response('ok', { status: 200 });
+
+    return new Response(houveFalha ? 'retry' : 'ok', { status: houveFalha ? 500 : 200 });
   }
 
   return new Response('Method not allowed', { status: 405 });

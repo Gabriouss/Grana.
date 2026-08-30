@@ -1,7 +1,6 @@
 import { supabase } from './supabase';
+import { buscarTodasAsPaginas } from './paginacao';
 import { CATEGORIES } from './types';
-import { addMonthsToISO } from './format';
-import { formatMonthYear } from './format';
 import { checarLimiteCartao } from './creditLimitAlert';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
@@ -34,19 +33,71 @@ async function currentUserId(): Promise<string> {
  * sobre no máximo os últimos 30 dias) evitarem escanear o histórico todo.
  */
 export async function fetchTransactions(opts?: { sinceDays?: number }): Promise<Transaction[]> {
-  let query = supabase
-    .from('transactions')
-    .select('*')
-    .order('occurred_on', { ascending: false })
-    .order('created_at', { ascending: false });
-  if (opts?.sinceDays) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - opts.sinceDays);
-    query = query.gte('occurred_on', cutoff.toISOString().slice(0, 10));
-  }
-  const { data, error } = await query;
+  return buscarTodasAsPaginas<Transaction>((de, ate) => {
+    let query = supabase
+      .from('transactions')
+      .select('*')
+      .order('occurred_on', { ascending: false })
+      .order('created_at', { ascending: false })
+      /* Desempate estável: sem ele a paginação pode repetir uma linha e
+         perder outra quando data e criação coincidem. */
+      .order('id', { ascending: false })
+      .range(de, ate);
+    if (opts?.sinceDays) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - opts.sinceDays);
+      query = query.gte('occurred_on', cutoff.toISOString().slice(0, 10));
+    }
+    return query;
+  });
+}
+
+/**
+ * Lançamentos de uma janela de datas, inclusive nas duas pontas.
+ *
+ * Para telas que mostram um período de cada vez, como Lançamentos, que
+ * navega mês a mês e deriva tudo do mês visível. Baixar o histórico inteiro
+ * para exibir trinta dias é trabalho jogado fora, e cresce sem teto.
+ *
+ * ⚠ NÃO alimente `ocorrenciasFaltantes` com o resultado desta função. A
+ * geração de recorrência decide o que CRIAR comparando os meses já ocupados
+ * de cada série, então um recorte faz todo mês ausente parecer um mês a
+ * preencher, e o estrago é lançamento duplicado no extrato de quem usa o app.
+ * Para esse caso existe `fetchRecurrenceContext()`, logo abaixo, e o corpus
+ * `__tests__/corpus-recorrencia.ts` guarda a armadilha com um caso próprio.
+ */
+export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: string): Promise<Transaction[]> {
+  return buscarTodasAsPaginas<Transaction>((de, ate) =>
+    supabase
+      .from('transactions')
+      .select('*')
+      .gte('occurred_on', inicioISO)
+      .lte('occurred_on', fimISO)
+      .order('occurred_on', { ascending: false })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(de, ate)
+  );
+}
+
+/**
+ * Saldo de cada carteira somado no banco, sem trazer lançamento nenhum.
+ *
+ * Devolve a variação (entradas menos saídas, ignorando crédito) por carteira,
+ * com a chave `null` para o que não tem carteira definida. O saldo inicial
+ * NÃO vem daqui: quem soma é `calcularSaldosWallets`, que também conhece a
+ * carteira padrão para onde vão os lançamentos sem `wallet_id`.
+ *
+ * A função SQL `saldos_por_carteira()` foi conferida contra a regra do app
+ * sobre os dados reais, usuário a usuário, e bate no centavo.
+ */
+export async function fetchSaldosPorCarteira(): Promise<{ wallet_id: string | null; delta: number }[]> {
+  const { data, error } = await supabase.rpc('saldos_por_carteira');
   if (error) throw error;
-  return data;
+  return (data ?? []).map((linha: { wallet_id: string | null; delta: number | string }) => ({
+    wallet_id: linha.wallet_id,
+    delta: Number(linha.delta),
+  }));
 }
 
 export async function addTransaction(input: {
@@ -130,9 +181,11 @@ export async function deleteCreditCard(id: string): Promise<void> {
 /* ---- pagamento de fatura de cartão ---- */
 
 export async function fetchCardInvoicePayments(): Promise<CreditCardInvoicePayment[]> {
-  const { data, error } = await supabase.from('credit_card_invoices').select('*');
-  if (error) throw error;
-  return data;
+  /* Uma linha por fatura paga, por cartão, por mês: cresce devagar, mas
+     cresce sem teto, então pagina como o resto. */
+  return buscarTodasAsPaginas<CreditCardInvoicePayment>((de, ate) =>
+    supabase.from('credit_card_invoices').select('*').order('id', { ascending: true }).range(de, ate)
+  );
 }
 
 /**
@@ -150,33 +203,17 @@ export async function payCardInvoice(input: {
   paid_on: string;
   wallet_id: string | null;
 }): Promise<CreditCardInvoicePayment> {
-  const user_id = await currentUserId();
-  const tx = await addTransaction({
-    type: 'out',
-    description: `Pagamento fatura — ${input.card.name} (${formatMonthYear(input.year, input.month)})`,
-    amount: input.amount,
-    category: 'Cartão de crédito',
-    color: input.card.color,
-    occurred_on: input.paid_on,
-    wallet_id: input.wallet_id,
-  });
-
   const { data, error } = await supabase
-    .from('credit_card_invoices')
-    .insert({
-      user_id,
-      card_id: input.card.id,
-      year: input.year,
-      month: input.month,
-      amount: input.amount,
-      paid_on: input.paid_on,
-      wallet_id: input.wallet_id,
-      paid_transaction_id: tx.id,
-    })
-    .select()
-    .single();
+    .rpc('pagar_fatura_cartao', {
+      p_card_id: input.card.id,
+      p_year: input.year,
+      p_month: input.month,
+      p_amount: input.amount,
+      p_paid_on: input.paid_on,
+      p_wallet_id: input.wallet_id,
+    });
   if (error) throw error;
-  return data;
+  return data as unknown as CreditCardInvoicePayment;
 }
 
 /**
@@ -185,11 +222,7 @@ export async function payCardInvoice(input: {
  * a despesa duas vezes) e o próprio registro de "paga".
  */
 export async function reopenCardInvoice(invoice: CreditCardInvoicePayment): Promise<void> {
-  if (invoice.paid_transaction_id) {
-    await deleteTransaction(invoice.paid_transaction_id).catch(() => {});
-  }
-  const user_id = await currentUserId();
-  const { error } = await supabase.from('credit_card_invoices').delete().eq('id', invoice.id).eq('user_id', user_id);
+  const { error } = await supabase.rpc('reabrir_fatura_cartao', { p_invoice_id: invoice.id });
   if (error) throw error;
 }
 
@@ -282,9 +315,15 @@ export async function criarOcorrenciasRecorrentes(faltantes: OcorrenciaFaltante[
     card_id: cabeca.card_id,
     wallet_id: cabeca.wallet_id,
   }));
-  const { error } = await supabase.from('transactions').insert(rows);
+  const { data, error } = await supabase
+    .from('transactions')
+    .upsert(rows, {
+      onConflict: 'user_id,parent_id,occurred_on',
+      ignoreDuplicates: true,
+    })
+    .select('id');
   if (error) throw error;
-  return rows.length;
+  return data?.length ?? 0;
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
@@ -317,71 +356,21 @@ export async function addInstallmentPurchase(input: {
   card_id?: string | null;
   wallet_id?: string | null;
 }): Promise<Transaction[]> {
-  const user_id = await currentUserId();
   const n = Math.max(2, Math.round(input.installments));
-  const baseDesc = input.description || 'Compra parcelada';
-
-  const base = Math.round((input.totalAmount / n) * 100) / 100;
-  const lastAmount = Math.round((input.totalAmount - base * (n - 1)) * 100) / 100;
-
-  const rows: Transaction[] = [];
-  let parentId: string | null = null;
-
-  for (let i = 0; i < n; i++) {
-    const amount = i === n - 1 ? lastAmount : base;
-    const occurred_on = addMonthsToISO(input.occurred_on, i);
-    const description = `${baseDesc} (${i + 1}/${n})`;
-
-    if (i === 0) {
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id,
-          type: 'out',
-          description,
-          amount,
-          category: input.category,
-          color: input.color,
-          occurred_on,
-          recurring: false,
-          payment_method: input.payment_method,
-          bank: input.bank,
-          card_id: input.card_id,
-          installment_current: i + 1,
-          installment_total: n,
-          wallet_id: input.wallet_id,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      parentId = data.id;
-      rows.push(data);
-    } else {
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id,
-          type: 'out',
-          description,
-          amount,
-          category: input.category,
-          color: input.color,
-          occurred_on,
-          recurring: false,
-          parent_id: parentId,
-          payment_method: input.payment_method,
-          bank: input.bank,
-          card_id: input.card_id,
-          installment_current: i + 1,
-          installment_total: n,
-          wallet_id: input.wallet_id,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      rows.push(data);
-    }
-  }
+  const { data, error } = await supabase.rpc('adicionar_compra_parcelada', {
+    p_description: input.description || 'Compra parcelada',
+    p_total_amount: input.totalAmount,
+    p_category: input.category,
+    p_color: input.color,
+    p_occurred_on: input.occurred_on,
+    p_installments: n,
+    p_payment_method: input.payment_method ?? null,
+    p_bank: input.bank ?? null,
+    p_card_id: input.card_id ?? null,
+    p_wallet_id: input.wallet_id ?? null,
+  });
+  if (error) throw error;
+  const rows = (data ?? []) as Transaction[];
 
   // Mesmo gatilho de addTransaction — parcelamento não passa por lá (insere
   // direto, ver comentário no topo desta função), então precisa da própria
@@ -396,14 +385,52 @@ export async function addInstallmentPurchase(input: {
   return rows;
 }
 
+/* ---- conquistas ---- */
+
+/**
+ * Ids das medalhas que a pessoa já conquistou algum dia.
+ *
+ * As medalhas eram booleanos derivados do estado ATUAL, então podiam ser
+ * RETIRADAS: "Hábito Inquebrável" sumia no primeiro dia perdido, "Mês Verde"
+ * sumia quando um gasto virava o mês. Guardar o desbloqueio como evento é o
+ * que faz conquista ser conquista.
+ */
+export async function fetchConquistas(): Promise<string[]> {
+  const linhas = await buscarTodasAsPaginas<{ badge_id: string }>((de, ate) =>
+    supabase.from('user_achievements').select('badge_id').order('badge_id', { ascending: true }).range(de, ate)
+  );
+  return linhas.map((l) => l.badge_id);
+}
+
+/**
+ * Grava conquistas novas. Idempotente pela chave primária composta
+ * (user_id, badge_id): reavaliar as medalhas a cada carregamento tenta
+ * inserir de novo e não duplica nada.
+ */
+export async function registrarConquistas(badgeIds: string[]): Promise<void> {
+  if (badgeIds.length === 0) return;
+  const user_id = await currentUserId();
+  const { error } = await supabase
+    .from('user_achievements')
+    .upsert(badgeIds.map((badge_id) => ({ user_id, badge_id })), { onConflict: 'user_id,badge_id', ignoreDuplicates: true });
+  if (error) throw error;
+}
+
 /* ---- contas a pagar ---- */
 
 export async function fetchBills(opts?: { status?: BillStatus }): Promise<Bill[]> {
-  let query = supabase.from('bills').select('*').order('due_date', { ascending: true });
-  if (opts?.status) query = query.eq('status', opts.status);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
+  /* Paginado pelo mesmo motivo das transações: conta recorrente gera uma
+     linha por mês e cresce sem teto ao longo dos anos. */
+  return buscarTodasAsPaginas<Bill>((de, ate) => {
+    let query = supabase
+      .from('bills')
+      .select('*')
+      .order('due_date', { ascending: true })
+      .order('id', { ascending: true })
+      .range(de, ate);
+    if (opts?.status) query = query.eq('status', opts.status);
+    return query;
+  });
 }
 
 /** Janela mensal indexável; evita baixar o histórico inteiro em faturas. */
@@ -431,14 +458,30 @@ export async function fetchRecurrenceContext(): Promise<Transaction[]> {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - 24);
   const cutoffISO = cutoff.toISOString().slice(0, 10);
-  const [headsResult, childrenResult] = await Promise.all([
-    supabase.from('transactions').select('*').eq('recurring', true).is('parent_id', null),
-    supabase.from('transactions').select('*').not('parent_id', 'is', null).gte('occurred_on', cutoffISO),
+  /* As duas consultas paginam: a de filhos cobre 24 meses de recorrências e
+     passa de 1000 linhas em quem tem muitas contas fixas. */
+  const [heads, children] = await Promise.all([
+    buscarTodasAsPaginas<Transaction>((de, ate) =>
+      supabase
+        .from('transactions')
+        .select('*')
+        .eq('recurring', true)
+        .is('parent_id', null)
+        .order('id', { ascending: true })
+        .range(de, ate)
+    ),
+    buscarTodasAsPaginas<Transaction>((de, ate) =>
+      supabase
+        .from('transactions')
+        .select('*')
+        .not('parent_id', 'is', null)
+        .gte('occurred_on', cutoffISO)
+        .order('id', { ascending: true })
+        .range(de, ate)
+    ),
   ]);
-  if (headsResult.error) throw headsResult.error;
-  if (childrenResult.error) throw childrenResult.error;
   const byId = new Map<string, Transaction>();
-  for (const tx of [...(headsResult.data || []), ...(childrenResult.data || [])]) byId.set(tx.id, tx);
+  for (const tx of [...heads, ...children]) byId.set(tx.id, tx);
   return [...byId.values()];
 }
 
@@ -503,26 +546,12 @@ export async function setBillStatus(id: string, status: BillStatus): Promise<voi
  * exatamente qual desfazer se a conta for reaberta depois.
  */
 export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
-  const tx = await addTransaction({
-    type: 'out',
-    description: bill.description,
-    amount: Number(bill.amount),
-    category: bill.category,
-    color: bill.color,
-    occurred_on: paidOn,
-    wallet_id: bill.wallet_id,
+  const { data, error } = await supabase.rpc('pagar_conta', {
+    p_bill_id: bill.id,
+    p_paid_on: paidOn,
   });
-
-  const user_id = await currentUserId();
-  const { data, error } = await supabase
-    .from('bills')
-    .update({ status: 'paid', paid_transaction_id: tx.id })
-    .eq('id', bill.id)
-    .eq('user_id', user_id)
-    .select()
-    .single();
   if (error) throw error;
-  return data;
+  return data as unknown as Bill;
 }
 
 /**
@@ -531,20 +560,9 @@ export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
  * contaria a despesa duas vezes se a conta fosse paga de novo depois.
  */
 export async function reopenBill(bill: Bill): Promise<Bill> {
-  if (bill.paid_transaction_id) {
-    await deleteTransaction(bill.paid_transaction_id).catch(() => {});
-  }
-
-  const user_id = await currentUserId();
-  const { data, error } = await supabase
-    .from('bills')
-    .update({ status: 'due', paid_transaction_id: null })
-    .eq('id', bill.id)
-    .eq('user_id', user_id)
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('reabrir_conta', { p_bill_id: bill.id });
   if (error) throw error;
-  return data;
+  return data as unknown as Bill;
 }
 
 export async function deleteBill(id: string): Promise<void> {
@@ -662,19 +680,13 @@ export async function updateCategory(
   oldName: string,
   changes: { name: string; color: string }
 ): Promise<void> {
-  const user_id = await currentUserId();
-  const { error } = await supabase
-    .from('categories')
-    .update({ name: changes.name, color: changes.color })
-    .eq('id', id)
-    .eq('user_id', user_id);
+  const { error } = await supabase.rpc('atualizar_categoria', {
+    p_category_id: id,
+    p_old_name: oldName,
+    p_new_name: changes.name,
+    p_color: changes.color,
+  });
   if (error) throw error;
-
-  await Promise.all([
-    supabase.from('transactions').update({ category: changes.name, color: changes.color }).eq('user_id', user_id).eq('category', oldName),
-    supabase.from('bills').update({ category: changes.name, color: changes.color }).eq('user_id', user_id).eq('category', oldName),
-    supabase.from('budgets').update({ category: changes.name, color: changes.color }).eq('user_id', user_id).eq('category', oldName),
-  ]);
 }
 
 /**
@@ -684,16 +696,13 @@ export async function updateCategory(
  * existe mais em lugar nenhum da lista.
  */
 export async function deleteCategory(id: string, name: string): Promise<void> {
-  const user_id = await currentUserId();
   const outros = CATEGORIES.find((c) => c.name === 'Outros')!;
-
-  await Promise.all([
-    supabase.from('transactions').update({ category: outros.name, color: outros.color }).eq('user_id', user_id).eq('category', name),
-    supabase.from('bills').update({ category: outros.name, color: outros.color }).eq('user_id', user_id).eq('category', name),
-    supabase.from('budgets').update({ category: outros.name, color: outros.color }).eq('user_id', user_id).eq('category', name),
-  ]);
-
-  const { error } = await supabase.from('categories').delete().eq('id', id).eq('user_id', user_id);
+  const { error } = await supabase.rpc('excluir_categoria', {
+    p_category_id: id,
+    p_name: name,
+    p_fallback_name: outros.name,
+    p_fallback_color: outros.color,
+  });
   if (error) throw error;
 }
 
@@ -704,10 +713,6 @@ export async function fetchWhatsappLink(): Promise<WhatsappLink | null> {
   const { data, error } = await supabase.from('whatsapp_links').select('*').eq('user_id', user_id).maybeSingle();
   if (error) throw error;
   return data;
-}
-
-function gerarCodigoPareamento(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 /**
@@ -723,29 +728,10 @@ function gerarCodigoPareamento(): string {
    esbarrar no `unique (phone)` com um número que outra conta já usou. Ver
    lib/whatsapp.ts. */
 export async function createWhatsappPairing(phone?: string): Promise<WhatsappLink> {
-  const user_id = await currentUserId();
-  const pairing_code = gerarCodigoPareamento();
-
-  // Remove qualquer vínculo anterior do usuário antes de criar outro — só um
-  // número por conta, e o `unique (phone)` da tabela impede reusar um número
-  // já vinculado a outra pessoa.
-  await supabase.from('whatsapp_links').delete().eq('user_id', user_id);
-
-  const { data, error } = await supabase
-    .from('whatsapp_links')
-    .insert({
-      user_id,
-      /* Nulo enquanto o número é desconhecido. O `unique (phone)` da tabela
-         aceita vários nulos, então dois pedidos em aberto convivem, e continua
-         barrando duas contas no mesmo número de verdade. */
-      phone: phone && phone.length > 0 ? phone : null,
-      pairing_code,
-      verified: false,
-    })
-    .select()
-    .single();
+  void phone;
+  const { data, error } = await supabase.rpc('criar_pareamento_whatsapp');
   if (error) throw error;
-  return data;
+  return data as unknown as WhatsappLink;
 }
 
 export async function unlinkWhatsapp(): Promise<void> {
@@ -791,43 +777,10 @@ export async function reauthenticate(password: string): Promise<{ ok: boolean; e
  * sucesso total.
  */
 export async function deleteUserAccount(): Promise<{ completo: boolean }> {
-  const user_id = await currentUserId();
-
-  // 1. Tenta a RPC oficial de exclusão no Supabase (que apaga de auth.users com SECURITY DEFINER)
-  const { error: rpcError } = await supabase.rpc('delete_user_account');
-
-  let completo = true;
-
-  if (rpcError) {
-    // Sem o texto do erro do backend: o log do aparelho não é lugar de
-    // detalhe interno do banco.
-    console.warn('[deleteUserAccount] RPC indisponível; apagando apenas as tabelas públicas.');
-    completo = false;
-    // Fallback caso a função ainda não tenha sido executada no SQL Editor —
-    // mesma lista de tabelas que a RPC cobre hoje (ver supabase/schema.sql).
-    await supabase.from('transactions').delete().eq('user_id', user_id);
-    await supabase.from('bills').delete().eq('user_id', user_id);
-    await supabase.from('budgets').delete().eq('user_id', user_id);
-    await supabase.from('categories').delete().eq('user_id', user_id);
-    await supabase.from('whatsapp_links').delete().eq('user_id', user_id);
-    await supabase.from('whatsapp_pending').delete().eq('user_id', user_id);
-    await supabase.from('goals').delete().eq('user_id', user_id);
-    await supabase.from('user_gamification').delete().eq('user_id', user_id);
-    await supabase.from('credit_cards').delete().eq('user_id', user_id);
-    await supabase.from('wallets').delete().eq('user_id', user_id);
-    await supabase.from('credit_card_invoices').delete().eq('user_id', user_id);
-    await supabase.from('subscriptions').delete().eq('user_id', user_id);
-    // `feedbacks` nunca é apagado, nem pela RPC (que conta com o
-    // `on delete set null` da própria coluna) — só perde o vínculo com a
-    // conta, pra manter o feedback em si (útil pro produto) sem seguir
-    // identificando quem escreveu depois que a conta não existe mais.
-    await supabase.from('feedbacks').update({ user_id: null }).eq('user_id', user_id);
-  }
-
-  // 2. Encerrar sessão localmente
+  const { error } = await supabase.functions.invoke('delete-account', { body: {} });
+  if (error) throw error;
   await supabase.auth.signOut();
-
-  return { completo };
+  return { completo: true };
 }
 
 

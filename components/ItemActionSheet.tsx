@@ -49,8 +49,14 @@ export default function ItemActionSheet({
               onDelete();
             }}
           >
-            <Ionicons name="trash-outline" size={20} color="#bb6b60" />
-            <Text style={[styles.actionText, { color: '#bb6b60' }]}>Excluir</Text>
+            <Ionicons name="trash-outline" size={20} color={theme.danger} />
+            {/* `theme.danger`, não o hex cru que estava aqui. `#bb6b60` é a cor
+                da categoria Alimentação e também o `saidaBorda` do seletor, e
+                dava 3,74:1 sobre esta superfície, abaixo do AA. O token de
+                perigo entrega 5,62:1 e existe exatamente para este papel: o
+                comentário que o criou em lib/theme.ts conta que ele nasceu
+                porque uma tela já tinha cometido esta mesma troca. */}
+            <Text style={[styles.actionText, { color: theme.danger }]}>Excluir</Text>
           </AppPressable>
         </AccessibleModalPanel>
       </Pressable>

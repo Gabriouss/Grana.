@@ -2,8 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDemo } from './demo-context';
 import { DEMO_WALLETS } from './demo-data';
-import { fetchWallets, calcularSaldosWallets } from './wallets';
-import { fetchTransactions } from './data';
+import { fetchWallets, calcularSaldosWallets, calcularSaldosComAgregado } from './wallets';
+import { fetchTransactions, fetchSaldosPorCarteira } from './data';
 import type { Transaction, Wallet } from './types';
 
 const STORAGE_KEY = '@grana_active_wallet_id';
@@ -22,6 +22,8 @@ type WalletContextType = {
   setActiveWalletId: (id: string) => void;
   refreshWallets: () => Promise<void>;
   updateSaldosComTransacoes: (txs: Transaction[]) => void;
+  /** Recarrega o saldo pelo agregado do banco. Use este no app real. */
+  refreshSaldos: () => Promise<void>;
 };
 
 const WalletContext = createContext<WalletContextType | null>(null);
@@ -97,6 +99,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return activeWallet ? activeWallet.color : '#1fa98d';
   }, [activeWalletId, activeWallet]);
 
+  /* Só o modo de exemplo, que não tem banco atrás, ainda soma percorrendo a
+     lista em memória. */
   const updateSaldosComTransacoes = useCallback(
     (txs: Transaction[]) => {
       const calculados = calcularSaldosWallets(wallets, txs);
@@ -104,6 +108,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     },
     [wallets]
   );
+
+  /**
+   * Pede o saldo ao banco.
+   *
+   * Uma linha por carteira, em vez do histórico inteiro: é o que impede o
+   * saldo de ser calculado sobre as 1000 linhas que o PostgREST devolve no
+   * máximo. Também é barato o bastante para rodar depois de cada alteração.
+   */
+  const refreshSaldos = useCallback(async () => {
+    if (isDemoMode) return;
+    try {
+      const agregado = await fetchSaldosPorCarteira();
+      setSaldos(calcularSaldosComAgregado(wallets, agregado));
+    } catch (e) {
+      console.warn('Erro ao carregar saldos:', e);
+    }
+  }, [isDemoMode, wallets]);
 
   return (
     <WalletContext.Provider
@@ -118,6 +139,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         setActiveWalletId,
         refreshWallets: loadWallets,
         updateSaldosComTransacoes,
+        refreshSaldos,
       }}
     >
       {children}

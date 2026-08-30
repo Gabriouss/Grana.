@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
+import { AccessibilityInfo, Animated, Platform, StyleSheet, Text } from 'react-native';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { useReducedMotion } from '@/lib/motion';
@@ -17,6 +17,18 @@ export default function Toast({
   const translateY = useRef(new Animated.Value(20)).current;
   const { total: tabBarTotal } = useTabBarInset();
   const reduzirMovimento = useReducedMotion();
+
+  /* O toast some sozinho em 2 segundos. Sem anúncio, confirmações de
+     sincronização, salvamento e alteração passavam despercebidas por quem usa
+     leitor de tela: o `Animated.View` não tinha região viva, papel de status
+     nem chamada de anúncio.
+     Na web quem faz o trabalho é o `role="status"` da própria caixa, abaixo.
+     No nativo o anúncio é explícito, porque o componente é desmontado e
+     remontado a cada mensagem e a região viva nem sempre é relida. */
+  useEffect(() => {
+    if (!visible || !message || Platform.OS === 'web') return;
+    AccessibilityInfo.announceForAccessibility(message);
+  }, [visible, message]);
 
   useEffect(() => {
     if (visible) {
@@ -52,9 +64,11 @@ export default function Toast({
           bottom: tabBarTotal + spacing.sm,
           opacity,
           transform: [{ translateY }],
+          pointerEvents: 'none',
         },
       ]}
-      pointerEvents="none"
+      role="status"
+      accessibilityLiveRegion="polite"
     >
       <Text style={styles.toastText}>{message}</Text>
     </Animated.View>
@@ -72,11 +86,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radius.pill,
     zIndex: 99,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
+    ...({ boxShadow: '0 4px 10px rgba(0,0,0,0.25)' } as any),
   },
   toastText: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
 });

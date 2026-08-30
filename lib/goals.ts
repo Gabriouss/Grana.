@@ -1,15 +1,6 @@
 import { supabase } from './supabase';
 import type { Goal } from './types';
 
-/* XP concedido por ações em cofrinhos — única fonte de XP vitalício
-   implementada neste épico. Épicos futuros (streaks, projeções) devem somar
-   novas fontes aqui, não substituir esta. */
-const XP_NOVA_META = 25;
-const XP_META_BATIDA = 150;
-/** 1 XP a cada R$10 guardados, entre um piso e um teto por depósito. */
-const XP_POR_DEPOSITO_MIN = 5;
-const XP_POR_DEPOSITO_MAX = 200;
-
 async function currentUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new Error('Usuário não autenticado');
@@ -30,15 +21,16 @@ export async function createGoal(input: {
   deadline?: string | null;
   wallet_id?: string | null;
 }): Promise<Goal> {
-  const user_id = await currentUserId();
-  const { data, error } = await supabase
-    .from('goals')
-    .insert({ ...input, user_id, deadline: input.deadline ?? null })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('criar_meta', {
+    p_title: input.title,
+    p_target_amount: input.target_amount,
+    p_color: input.color,
+    p_icon: input.icon,
+    p_deadline: input.deadline ?? null,
+    p_wallet_id: input.wallet_id ?? null,
+  });
   if (error) throw error;
-  await awardXp(XP_NOVA_META).catch(() => {});
-  return data;
+  return data as unknown as Goal;
 }
 
 export async function deleteGoal(id: string): Promise<void> {
@@ -54,28 +46,12 @@ export async function deleteGoal(id: string): Promise<void> {
  * resgates) e um bônus único na primeira vez que a meta é batida.
  */
 export async function depositToGoal(goal: Goal, delta: number): Promise<Goal> {
-  const valorAtual = Number(goal.current_amount);
-  const alvo = Number(goal.target_amount);
-  const jaTinhaBatido = valorAtual >= alvo;
-
   const { data, error } = await supabase.rpc('deposit_to_goal', {
     p_goal_id: goal.id,
     p_delta: delta,
   });
   if (error) throw error;
-
-  const novoValor = Number((data as Goal).current_amount);
-  const bateAgora = novoValor >= alvo;
-
-  if (delta > 0) {
-    const xp = Math.min(XP_POR_DEPOSITO_MAX, Math.max(XP_POR_DEPOSITO_MIN, Math.round(delta / 10)));
-    await awardXp(xp).catch(() => {});
-  }
-  if (bateAgora && !jaTinhaBatido) {
-    await awardXp(XP_META_BATIDA).catch(() => {});
-  }
-
-  return data;
+  return data as unknown as Goal;
 }
 
 export async function fetchGamification(): Promise<{ lifetime_xp: number; streak_shields: number }> {
@@ -89,9 +65,3 @@ export async function fetchGamification(): Promise<{ lifetime_xp: number; streak
   return data ?? { lifetime_xp: 0, streak_shields: 2 };
 }
 
-/** Concede XP de forma atômica via RPC (evita corrida entre depósitos quase simultâneos). Retorna o novo total. */
-export async function awardXp(delta: number): Promise<number> {
-  const { data, error } = await supabase.rpc('add_xp', { delta });
-  if (error) throw error;
-  return data as number;
-}

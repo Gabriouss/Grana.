@@ -4,43 +4,252 @@
   "title": "Design System: Grana.",
   "extensions": {
     "colorMeta": {
-      "deep-petroleum": { "role": "neutral", "displayName": "Deep Petroleum", "canonical": "#052229", "tonalRamp": ["#01090b", "#031318", "#052229", "#0b2d35", "#173e46", "#2c5a62", "#5c8a90", "#a6c7ca"] },
-      "raised-tide": { "role": "neutral", "displayName": "Raised Tide", "canonical": "#0b2d35", "tonalRamp": ["#020a0c", "#061a1f", "#0b2d35", "#123f49", "#1e5560", "#3a7681", "#6fa3ac", "#b3d6da"] },
-      "sea-foam-white": { "role": "neutral", "displayName": "Sea Foam White", "canonical": "#effffa", "tonalRamp": ["#284a45", "#4d726c", "#7a9d97", "#a9c9c3", "#cfe8e2", "#e2f5ef", "#effffa", "#f8fffd"] },
-      "soft-kelp": { "role": "neutral", "displayName": "Soft Kelp", "canonical": "#a6d9ce", "tonalRamp": ["#153630", "#2a5a4f", "#417d70", "#659c8f", "#8bbdb0", "#a6d9ce", "#c5ebe2", "#e4f7f1"] },
-      "faint-kelp": { "role": "neutral", "displayName": "Faint Kelp", "canonical": "#7fa9a0", "tonalRamp": ["#16211f", "#2c433f", "#43645d", "#5c847c", "#7fa9a0", "#a3c4bd", "#c6ded9", "#e5f1ee"] },
-      "working-teal": { "role": "primary", "displayName": "Working Teal", "canonical": "#1fa98d", "tonalRamp": ["#052a22", "#0a4d3f", "#0f7060", "#149381", "#1fa98d", "#4fc0a9", "#89d7c6", "#c5ede3"] },
-      "instrument-mint": { "role": "primary", "displayName": "Instrument Mint", "canonical": "#aeffe3", "tonalRamp": ["#0d3327", "#1c5b45", "#2c8567", "#57ab8c", "#82cdb2", "#aeffe3", "#cbffec", "#e8fff6"] },
-      "abyss-teal": { "role": "secondary", "displayName": "Abyss Teal", "canonical": "#04475c", "tonalRamp": ["#01141a", "#032230", "#04475c", "#0a6684", "#1888ab", "#4aabc9", "#89cde0", "#c7ecf3"] },
-      "clear-green": { "role": "state-positive", "displayName": "Clear Green", "canonical": "#74e291", "tonalRamp": ["#12331d", "#215a34", "#328350", "#4bab6d", "#74e291", "#9aeeae", "#c1f6cb", "#e6fbe9"] },
-      "calm-cyan": { "role": "state-negative", "displayName": "Calm Cyan", "canonical": "#00a6ca", "tonalRamp": ["#00272f", "#004556", "#00677f", "#008ba8", "#00a6ca", "#3fc4e3", "#82dcef", "#c4f0f7"] }
+      "deep-petroleum": {
+        "role": "neutral",
+        "displayName": "Deep Petroleum",
+        "canonical": "#052229",
+        "tonalRamp": [
+          "#01090b",
+          "#031318",
+          "#052229",
+          "#0b2d35",
+          "#173e46",
+          "#2c5a62",
+          "#5c8a90",
+          "#a6c7ca"
+        ]
+      },
+      "raised-tide": {
+        "role": "neutral",
+        "displayName": "Raised Tide",
+        "canonical": "#0b2d35",
+        "tonalRamp": [
+          "#020a0c",
+          "#061a1f",
+          "#0b2d35",
+          "#123f49",
+          "#1e5560",
+          "#3a7681",
+          "#6fa3ac",
+          "#b3d6da"
+        ]
+      },
+      "sea-foam-white": {
+        "role": "neutral",
+        "displayName": "Sea Foam White",
+        "canonical": "#effffa",
+        "tonalRamp": [
+          "#284a45",
+          "#4d726c",
+          "#7a9d97",
+          "#a9c9c3",
+          "#cfe8e2",
+          "#e2f5ef",
+          "#effffa",
+          "#f8fffd"
+        ]
+      },
+      "soft-kelp": {
+        "role": "neutral",
+        "displayName": "Soft Kelp",
+        "canonical": "#a6d9ce",
+        "tonalRamp": [
+          "#153630",
+          "#2a5a4f",
+          "#417d70",
+          "#659c8f",
+          "#8bbdb0",
+          "#a6d9ce",
+          "#c5ebe2",
+          "#e4f7f1"
+        ]
+      },
+      "faint-kelp": {
+        "role": "neutral",
+        "displayName": "Faint Kelp",
+        "canonical": "#7fa9a0",
+        "tonalRamp": [
+          "#16211f",
+          "#2c433f",
+          "#43645d",
+          "#5c847c",
+          "#7fa9a0",
+          "#a3c4bd",
+          "#c6ded9",
+          "#e5f1ee"
+        ]
+      },
+      "working-teal": {
+        "role": "primary",
+        "displayName": "Working Teal",
+        "canonical": "#1fa98d",
+        "tonalRamp": [
+          "#052a22",
+          "#0a4d3f",
+          "#0f7060",
+          "#149381",
+          "#1fa98d",
+          "#4fc0a9",
+          "#89d7c6",
+          "#c5ede3"
+        ]
+      },
+      "instrument-mint": {
+        "role": "primary",
+        "displayName": "Instrument Mint",
+        "canonical": "#aeffe3",
+        "tonalRamp": [
+          "#0d3327",
+          "#1c5b45",
+          "#2c8567",
+          "#57ab8c",
+          "#82cdb2",
+          "#aeffe3",
+          "#cbffec",
+          "#e8fff6"
+        ]
+      },
+      "abyss-teal": {
+        "role": "secondary",
+        "displayName": "Abyss Teal",
+        "canonical": "#04475c",
+        "tonalRamp": [
+          "#01141a",
+          "#032230",
+          "#04475c",
+          "#0a6684",
+          "#1888ab",
+          "#4aabc9",
+          "#89cde0",
+          "#c7ecf3"
+        ]
+      },
+      "clear-green": {
+        "role": "state-positive",
+        "displayName": "Clear Green",
+        "canonical": "#74e291",
+        "tonalRamp": [
+          "#12331d",
+          "#215a34",
+          "#328350",
+          "#4bab6d",
+          "#74e291",
+          "#9aeeae",
+          "#c1f6cb",
+          "#e6fbe9"
+        ]
+      },
+      "calm-cyan": {
+        "role": "state-negative",
+        "displayName": "Calm Cyan",
+        "canonical": "#00a6ca",
+        "tonalRamp": [
+          "#00272f",
+          "#004556",
+          "#00677f",
+          "#008ba8",
+          "#00a6ca",
+          "#3fc4e3",
+          "#82dcef",
+          "#c4f0f7"
+        ]
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Headline de marca", "purpose": "Neue Machina em títulos principais e assinatura." },
-      "title": { "displayName": "Title", "purpose": "Neue Machina em título de folha/modal autoral." },
-      "body": { "displayName": "Body", "purpose": "Neue Machina em corpo, campo e botão — única fonte do produto, sem exceção." },
-      "label": { "displayName": "Label", "purpose": "Neue Machina Regular em rótulos e controles." }
+      "display": {
+        "displayName": "Headline de marca",
+        "purpose": "Neue Machina em títulos principais e assinatura."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Neue Machina em título de folha/modal autoral."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Neue Machina em corpo, campo e botão — única fonte do produto, sem exceção."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Neue Machina Regular em rótulos e controles."
+      }
     },
     "shadows": [
-      { "name": "menu", "value": "0 6px 14px rgba(0,0,0,0.20)", "purpose": "Menu suspenso do FAB (Operar)." },
-      { "name": "flutuante", "value": "0 6px 12px rgba(0,0,0,0.30)", "purpose": "O botão de ação flutuante em si (Operar)." },
-      { "name": "toast", "value": "0 4px 10px rgba(0,0,0,0.25)", "purpose": "Notificação toast (Operar)." },
-      { "name": "card-persuasao", "value": "0 16px 40px -12px rgba(0,0,0,0.5)", "purpose": "Cards de recurso na landing page (Persuadir, web only)." },
-      { "name": "card-heroi", "value": "0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)", "purpose": "O cartão de maior destaque numa página persuasiva — herói, notebook mockup (Persuadir, web only)." },
-      { "name": "cta-glow", "value": "0 10px 32px -8px rgba(31,169,141,0.6)", "purpose": "Brilho colorido atrás do botão de CTA na landing — o único botão do sistema com glow de cor." }
+      {
+        "name": "menu",
+        "value": "0 6px 14px rgba(0,0,0,0.20)",
+        "purpose": "Menu suspenso do FAB (Operar)."
+      },
+      {
+        "name": "flutuante",
+        "value": "0 6px 12px rgba(0,0,0,0.30)",
+        "purpose": "O botão de ação flutuante em si (Operar)."
+      },
+      {
+        "name": "toast",
+        "value": "0 4px 10px rgba(0,0,0,0.25)",
+        "purpose": "Notificação toast (Operar)."
+      },
+      {
+        "name": "card-persuasao",
+        "value": "0 16px 40px -12px rgba(0,0,0,0.5)",
+        "purpose": "Cards de recurso na landing page (Persuadir, web only)."
+      },
+      {
+        "name": "card-heroi",
+        "value": "0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)",
+        "purpose": "O cartão de maior destaque numa página persuasiva — herói, notebook mockup (Persuadir, web only)."
+      },
+      {
+        "name": "cta-glow",
+        "value": "0 10px 32px -8px rgba(31,169,141,0.6)",
+        "purpose": "Brilho colorido atrás do botão de CTA na landing — o único botão do sistema com glow de cor."
+      }
     ],
     "motion": [
-      { "name": "toque-entra", "value": "spring(speed: 40, bounciness: 6)", "purpose": "Press-in: encolhe para 0,96." },
-      { "name": "toque-sai", "value": "spring(speed: 20, bounciness: 8)", "purpose": "Press-out: volta a 1, mais lento que a ida." },
-      { "name": "desliza", "value": "spring(speed: 22, bounciness: 6)", "purpose": "Pílula do segmented, bolinha do switch." },
-      { "name": "menu-abre", "value": "spring(speed: 24, bounciness: 8)", "purpose": "Abertura do menu do FAB." },
-      { "name": "entrada-pesada", "value": "spring(speed: 14, bounciness: 7)", "purpose": "Entrada de conteúdo pesado — gráfico de pizza ao focar a aba." },
-      { "name": "hover-web", "value": "150ms ease-out", "purpose": "Transição CSS do hover/press na web, onde Animated não se aplica." }
+      {
+        "name": "toque-entra",
+        "value": "spring(speed: 40, bounciness: 6)",
+        "purpose": "Press-in: encolhe para 0,96."
+      },
+      {
+        "name": "toque-sai",
+        "value": "spring(speed: 20, bounciness: 8)",
+        "purpose": "Press-out: volta a 1, mais lento que a ida."
+      },
+      {
+        "name": "desliza",
+        "value": "spring(speed: 22, bounciness: 6)",
+        "purpose": "Pílula do segmented, bolinha do switch."
+      },
+      {
+        "name": "menu-abre",
+        "value": "spring(speed: 24, bounciness: 8)",
+        "purpose": "Abertura do menu do FAB."
+      },
+      {
+        "name": "entrada-pesada",
+        "value": "spring(speed: 14, bounciness: 7)",
+        "purpose": "Entrada de conteúdo pesado — gráfico de pizza ao focar a aba."
+      },
+      {
+        "name": "hover-web",
+        "value": "150ms ease-out",
+        "purpose": "Transição CSS do hover/press na web, onde Animated não se aplica."
+      }
     ],
     "breakpoints": [
-      { "name": "compacto", "value": "< 768px" },
-      { "name": "medio", "value": "768px" },
-      { "name": "amplo", "value": "1280px" }
+      {
+        "name": "compacto",
+        "value": "< 768px"
+      },
+      {
+        "name": "medio",
+        "value": "768px"
+      },
+      {
+        "name": "amplo",
+        "value": "1280px"
+      }
     ]
   },
   "components": [
@@ -92,15 +301,35 @@
       "Fundo quase preto, petróleo profundo — nunca branco, nunca cinza neutro.",
       "Menta e ciano carregam toda a marca; vermelho não existe no vocabulário.",
       "Números monetários sempre tabulares — não podem \"dançar\" ao atualizar.",
-      "Neue Machina assina marca e títulos; a fonte do sistema carrega leitura, controles e dados.",
+      "Neue Machina é a ÚNICA fonte do produto: marca, títulos, corpo, campos, controles e valores, em toda plataforma. Nunca a fonte do sistema, nunca outra família em papel nenhum. Só Light e Regular; nunca sintetizar peso que os arquivos não têm.",
       "Superfícies ficam chapadas por padrão; sombra é reservada pra sinalizar algo genuinamente flutuando."
     ],
     "rules": [
-      { "name": "The No-Red Rule", "body": "Vermelho não existe no vocabulário de cor do produto. Saída de dinheiro usa Calm Cyan, não uma cor de alerta. A única exceção documentada é o verde do WhatsApp, usado só no botão que abre o WhatsApp de verdade.", "section": "colors" },
-      { "name": "The Mint-Is-Rare Rule", "body": "Instrument Mint é a cor mais chamativa da paleta e a mais restrita — marca, ação em foco, valor em destaque. Mais de um ou dois usos na mesma tela é sinal de drift.", "section": "colors" },
-      { "name": "The Brand-Is-An-Accent Rule", "body": "Neue Machina aparece em marca e títulos, não em parágrafos, campos ou controles. Nunca sintetize peso inexistente nos arquivos da marca.", "section": "typography" },
-      { "name": "The Tabular Rule", "body": "Todo valor monetário usa fontVariant tabular-nums, sem exceção.", "section": "typography" },
-      { "name": "The Floating-Only Rule", "body": "Em modo Operar, sombra existe só pra objetos genuinamente flutuando sobre o conteúdo (menu, FAB, toast) — nunca num card no fluxo normal da tela.", "section": "elevation" }
+      {
+        "name": "The No-Red Rule",
+        "body": "Vermelho não existe no vocabulário de cor do produto. Saída de dinheiro usa Calm Cyan, não uma cor de alerta. A única exceção documentada é o verde do WhatsApp, usado só no botão que abre o WhatsApp de verdade.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mint-Is-Rare Rule",
+        "body": "Instrument Mint é a cor mais chamativa da paleta e a mais restrita — marca, ação em foco, valor em destaque. Mais de um ou dois usos na mesma tela é sinal de drift.",
+        "section": "colors"
+      },
+      {
+        "name": "The Only-Font Rule",
+        "body": "Neue Machina é a ÚNICA fonte do produto: marca, títulos, corpo, campos, controles e valores, em toda plataforma. Nunca a fonte do sistema, nunca outra família em papel nenhum. Só Light e Regular; nunca sintetizar peso que os arquivos não têm. A regra anterior deste lugar (\"The Brand-Is-An-Accent Rule\") dizia o oposto e contradizia DESIGN.md, PRODUCT.md e lib/theme.ts. Ela já causou uma regressão real: uma rodada trocou o corpo do app pela fonte do sistema achando que Dynamic Type exigia isso, e precisou ser revertida. Texto de fonte customizada escala normalmente.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Todo valor monetário usa fontVariant tabular-nums, sem exceção.",
+        "section": "typography"
+      },
+      {
+        "name": "The Floating-Only Rule",
+        "body": "Em modo Operar, sombra existe só pra objetos genuinamente flutuando sobre o conteúdo (menu, FAB, toast) — nunca num card no fluxo normal da tela.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do usar Calm Cyan pra saída de dinheiro, nunca vermelho.",
@@ -110,7 +339,7 @@
       "Do deixar a landing page (Persuadir) mais pesada visualmente que o app (Operar) — é intencional, não drift."
     ],
     "donts": [
-      "Don't aplicar Neue Machina a corpo, metadados, campos ou controles; nem sintetizar peso nos arquivos da marca.",
+      "Don't usar fonte do sistema (San Francisco, Roboto, system-ui) em papel nenhum; nem sintetizar peso nos arquivos da marca.",
       "Don't clonar a identidade visual de outro banco/fintech — sem vermelho de alarme, sem gamificação, sem urgência fabricada.",
       "Don't desenhar a interface como planilha utilitária — voz e WhatsApp são a entrada principal.",
       "Don't inventar uma sombra ad hoc nova — as seis receitas catalogadas cobrem todo caso real.",

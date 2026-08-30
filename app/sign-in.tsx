@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -31,11 +32,18 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErroAuth | null>(null);
   const [recuperarAberto, setRecuperarAberto] = useState(false);
+  const campoEmail = useRef<TextInput>(null);
+  const campoSenha = useRef<TextInput>(null);
 
   async function handleSignIn() {
     setError(null);
     if (!email.trim() || !password) {
       setError({ mensagem: 'Preencha e-mail e senha.' });
+      /* Levar o foco ao primeiro campo vazio. Sem isto o foco continuava no
+         botão "Entrar" e a mensagem aparecia longe de onde a pessoa está: quem
+         navega por teclado ou leitor de tela ficava sem saber o que corrigir. */
+      if (!email.trim()) campoEmail.current?.focus();
+      else campoSenha.current?.focus();
       return;
     }
     setLoading(true);
@@ -49,7 +57,20 @@ export default function SignIn() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      {/* A rolagem não é enfeite: sem ela, `content` tinha `flex: 1` com
+          `justifyContent: 'center'`, ou seja, uma caixa da altura exata da
+          janela centralizando um formulário mais alto que ela. Medido em
+          844×390, o título ficava em `top: -104` e o botão "Criar conta" em
+          `top: 424` numa janela de 390, com `scrollHeight` igual a 390 e
+          nenhum contêiner rolável: criar conta era impossível em paisagem.
+          `flexGrow` no contêiner de conteúdo mantém a centralização quando há
+          espaço e libera a rolagem quando não há. */}
+      <ScrollView
+        style={styles.rolagem}
+        contentContainerStyle={styles.rolagemConteudo}
+        keyboardShouldPersistTaps="handled"
+      >
+      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
         <Text style={styles.eyebrow}>De volta</Text>
         <View style={styles.title}>
           <BrandLogotype width={140} />
@@ -58,7 +79,14 @@ export default function SignIn() {
 
         <View style={styles.field}>
           <Text style={styles.label}>E-mail</Text>
-          <TextInput maxLength={LIMITS.email}
+          <TextInput
+            ref={campoEmail}
+            /* O "E-mail" acima é um `Text` irmão: não vira `<label>` na web nem
+               nome acessível no nativo. Medido antes desta correção, a tela
+               tinha zero `label`, zero `aria-label` e zero `id`, e o leitor de
+               tela anunciava os dois campos como "campo de edição". */
+            accessibilityLabel="E-mail"
+            maxLength={LIMITS.email}
             style={styles.input}
             placeholder="voce@exemplo.com"
             placeholderTextColor={theme.inkFaint}
@@ -73,6 +101,8 @@ export default function SignIn() {
         <View style={styles.field}>
           <Text style={styles.label}>Senha</Text>
           <PasswordInput
+            ref={campoSenha}
+            accessibilityLabel="Senha"
             maxLength={LIMITS.password}
             placeholder="••••••••"
             autoComplete="password"
@@ -82,7 +112,10 @@ export default function SignIn() {
         </View>
 
         {error && (
-          <View style={styles.erroBloco}>
+          /* Região de alerta: a mensagem nascia visível mas silenciosa, sem
+             `role="alert"` nem região viva, então quem usa leitor de tela não
+             era avisado de que o envio falhou. */
+          <View style={styles.erroBloco} role="alert" accessibilityLiveRegion="assertive">
             <Text style={styles.errorText}>{error.mensagem}</Text>
             {/* A ação vem do próprio erro: quem tem senha errada precisa de
                 recuperação, quem não confirmou precisa de outro e-mail. Um
@@ -117,6 +150,7 @@ export default function SignIn() {
           <Text style={styles.secondaryBtnText}>Não tem conta? Criar conta</Text>
         </AppPressable>
       </View>
+      </ScrollView>
 
       <RecuperarSenhaModal
         visible={recuperarAberto}
@@ -129,7 +163,11 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
+  rolagem: { flex: 1 },
+  /* `flexGrow` em vez de `flex`: o conteúdo continua centralizado enquanto
+     couber e passa a rolar quando não couber. */
+  rolagemConteudo: { flexGrow: 1, justifyContent: 'center' },
+  content: { width: '100%', paddingHorizontal: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light },
   title: { marginTop: spacing.xs, marginBottom: spacing.sm },
   subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.xxl, fontFamily: fonts.light },

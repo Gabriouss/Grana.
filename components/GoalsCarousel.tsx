@@ -11,6 +11,7 @@ import { LIMITS } from '@/lib/limits';
 import { PALETTE_30 } from '@/lib/theme';
 import type { Goal } from '@/lib/types';
 import AppPressable from './AppPressable';
+import BotaoOpcoesItem from './BotaoOpcoesItem';
 import ColorGridPicker from './ColorGridPicker';
 import DatePickerModal from './DatePickerModal';
 import GoalDepositModal from './GoalDepositModal';
@@ -130,8 +131,9 @@ export default function GoalsCarousel({
         <Text style={styles.sectionLabel}>Cofrinhos & metas</Text>
         <View style={styles.levelActions}>
           <View style={styles.levelPill}>
+            <Ionicons name={level.elo.icone as any} size={13} color={theme.accent2} />
             <Text style={styles.levelPillText} numberOfLines={1}>
-              {level.elo.emoji} Nível {level.level} · {level.elo.title}
+              Nível {level.level} · {level.elo.title}
             </Text>
           </View>
           {/* No toque (nativo e touch na web) arrastar a fileira já funciona
@@ -187,12 +189,16 @@ export default function GoalsCarousel({
               style={({ hovered }) => [styles.card, hovered && styles.cardHover]}
               onPress={() => setDepositTarget(g)}
               onLongPress={() => confirmDelete(g)}
+              accessibilityHint="Abre o depósito neste cofrinho. Para excluir, use o botão de opções."
             >
               <View style={styles.cardTop}>
                 <View style={[styles.iconCircle, { backgroundColor: g.color + '30' }]}>
                   <Ionicons name={g.icon as any} size={18} color={g.color} />
                 </View>
-                {batida && <Ionicons name="checkmark-circle" size={16} color={theme.up} />}
+                <View style={styles.cardTopFim}>
+                  {batida && <Ionicons name="checkmark-circle" size={16} color={theme.up} />}
+                  <BotaoOpcoesItem accessibilityLabel={`Opções de ${g.title}`} onPress={() => confirmDelete(g)} />
+                </View>
               </View>
               <Text style={styles.cardTitle} numberOfLines={1}>{g.title}</Text>
               <PrivacyValue>
@@ -349,6 +355,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardHover: { borderColor: theme.ruleStrong },
+  cardTopFim: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },

@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AppPressable from './AppPressable';
 import { fonts, radius, spacing, theme, type } from '@/lib/theme';
 import type { Badge } from '@/lib/gamification';
@@ -10,7 +11,7 @@ type Props = {
 };
 
 export default function BadgeCard({ badge, onPress }: Props) {
-  const { title, description, emoji, unlocked, progress, progressLabel } = badge;
+  const { title, description, icone, unlocked, progress, progressLabel } = badge;
 
   return (
     <AppPressable
@@ -23,7 +24,16 @@ export default function BadgeCard({ badge, onPress }: Props) {
     >
       <View style={styles.topRow}>
         <View style={[styles.iconContainer, unlocked ? styles.iconUnlocked : styles.iconLocked]}>
-          <Text style={[styles.emoji, !unlocked && styles.emojiLocked]}>{emoji}</Text>
+          {/* Ícone desenhado no lugar do emoji: mesmo traço do resto do app,
+              cor do tema, e o mesmo desenho em qualquer sistema. Trancada, a
+              medalha perde a cor de destaque mas mantém a forma, para a pessoa
+              reconhecer o que está por vir. */}
+          <Ionicons
+            name={icone as any}
+            size={20}
+            color={unlocked ? theme.accent2 : theme.inkFaint}
+            aria-hidden
+          />
         </View>
         <View style={styles.badgeStatus}>
           <Text style={[styles.statusText, unlocked ? styles.statusUnlocked : styles.statusLocked]}>
@@ -88,11 +98,6 @@ const styles = StyleSheet.create({
   },
   iconLocked: {
     backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  emoji: {
-    fontSize: type.titulo, fontFamily: fonts.regular },
-  emojiLocked: {
-    opacity: 0.4,
   },
   badgeStatus: {
     paddingHorizontal: 6,

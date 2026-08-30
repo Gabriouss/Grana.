@@ -59,8 +59,7 @@ export default function SegmentedTabs<T extends string>({
     <View style={[styles.segmented, Platform.OS === 'android' && styles.segmentedAndroid, style]} onLayout={handleLayout}>
       {containerWidth > 0 && (
         <Animated.View
-          pointerEvents="none"
-          style={[styles.pill, Platform.OS === 'android' && styles.pillAndroid, { width: segW, transform: [{ translateX }] }]}
+          style={[styles.pill, Platform.OS === 'android' && styles.pillAndroid, { width: segW, transform: [{ translateX }], pointerEvents: 'none' }]}
         />
       )}
       {options.map((opt) => (

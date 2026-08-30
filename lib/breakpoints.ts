@@ -32,18 +32,23 @@ export const LARGURA_MAXIMA_CONTEUDO = 1440;
  * Colunas de largura limitada, para usar em array de estilo:
  * `style={[styles.content, colunaFormulario]}`.
  *
- * Valem `null` no nativo — passar `null` num array de estilo é válido no React
- * Native e não altera nada, o que mantém a promessa de o app não mudar. Um
- * iPhone Pro Max tem 430px de largura e seria recortado pelos 420 do
- * formulário; no navegador esse recorte é justamente o que se quer.
- *
  * Sem eles, num monitor de 1440px o campo de e-mail da tela de login estica
- * até 1244px — a linha fica longa demais para o olho seguir e o formulário
+ * até 1244px: a linha fica longa demais para o olho seguir e o formulário
  * perde a aparência de formulário.
+ *
+ * ── Por que deixaram de ser só web ────────────────────────────────────────
+ *
+ * Valiam `null` no nativo, e o `app.json` declara `supportsTablet: true`.
+ * O resultado é que num iPad em paisagem o campo de e-mail atravessava mais
+ * de 1.300 pontos e a Política de Privacidade corria com linha longa demais,
+ * que é a interface de iPhone esticada que a HIG pede para evitar.
+ *
+ * O teto não muda nada em celular, porque nenhum aparelho chega perto de 720
+ * ou 1440, e o de 420 só encosta nos maiores: num iPhone Pro Max de 430pt o
+ * formulário fica 10pt mais estreito e CENTRALIZADO, nunca recortado, porque
+ * `alignSelf: 'center'` divide a sobra entre os dois lados.
  */
-export const colunaFormulario = Platform.OS === 'web'
-  ? ({ width: '100%', maxWidth: 420, alignSelf: 'center' } as const)
-  : null;
+export const colunaFormulario = { width: '100%', maxWidth: 420, alignSelf: 'center' } as const;
 
 /**
  * Coluna para PROSA longa — Termos, Privacidade, texto corrido em geral —
@@ -54,13 +59,9 @@ export const colunaFormulario = Platform.OS === 'web'
  * legibilidade de texto corrido; 720px cobre isso na escala tipográfica do
  * app mesmo com a escala de leitura maior da web (ver `type` em lib/theme.ts).
  */
-export const colunaLeitura = Platform.OS === 'web'
-  ? ({ width: '100%', maxWidth: 720, alignSelf: 'center' } as const)
-  : null;
+export const colunaLeitura = { width: '100%', maxWidth: 720, alignSelf: 'center' } as const;
 
-export const colunaConteudo = Platform.OS === 'web'
-  ? ({ width: '100%', maxWidth: LARGURA_MAXIMA_CONTEUDO, alignSelf: 'center' } as const)
-  : null;
+export const colunaConteudo = { width: '100%', maxWidth: LARGURA_MAXIMA_CONTEUDO, alignSelf: 'center' } as const;
 
 /**
  * Controles que no celular ocupam a linha inteira porque a linha é estreita —
@@ -70,9 +71,7 @@ export const colunaConteudo = Platform.OS === 'web'
  * parecer um controle. Aqui ele volta a ter o tamanho do seu conteúdo,
  * ancorado à esquerda junto com o resto da coluna.
  */
-export const controleCompacto = Platform.OS === 'web'
-  ? ({ alignSelf: 'flex-start', width: '100%', maxWidth: 460 } as const)
-  : null;
+export const controleCompacto = { alignSelf: 'flex-start', width: '100%', maxWidth: 460 } as const;
 
 export type Breakpoint = {
   largura: number;
@@ -137,6 +136,11 @@ export function useBreakpoint(): Breakpoint {
     ehCompacto: classe === 'compacto',
     ehMedio: classe === 'medio',
     ehAmplo: classe === 'amplo',
+    /* Continua só na web de propósito, e esta é a única trava de plataforma
+       que sobrou aqui. No iOS e no Android quem adapta a navegação em tela
+       larga é o sistema: `sidebarAdaptable` nas Native Tabs entrega a sidebar
+       do iPad. Ligar o trilho customizado junto daria DUAS navegações
+       laterais na mesma tela. */
     temBarraLateral: Platform.OS === 'web' && classe !== 'compacto',
     colunas: classe === 'amplo' ? 3 : classe === 'medio' ? 2 : 1,
   };

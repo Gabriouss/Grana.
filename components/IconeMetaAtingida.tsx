@@ -62,7 +62,7 @@ export default function IconeMetaAtingida() {
   `;
 
   return (
-    <View aria-hidden pointerEvents="none">
+    <View aria-hidden style={{ pointerEvents: 'none' }}>
       {createElement('div', { dangerouslySetInnerHTML: { __html: html } })}
     </View>
   );

@@ -142,12 +142,27 @@ export function telefoneBRValido(raw: string): boolean {
   return d.length === 10 || d.length === 11;
 }
 
-export function todayISO(): string {
-  const d = new Date();
+/**
+ * Data de um `Date` no fuso de QUEM ESTÁ OLHANDO, no formato do banco.
+ *
+ * Existe porque `toISOString().slice(0, 10)` devolve a data em UTC, e no
+ * Brasil isso vira o dia seguinte a partir das 21h. Misturar as duas formas
+ * foi o que zerava a sequência de dias todas as noites: o "hoje" vinha daqui,
+ * em horário local, e o laço que caminhava para trás comparava com datas UTC,
+ * então ele procurava um dia que ainda não existia e desistia na primeira
+ * volta. Quem tinha 30 dias seguidos via zero, das 21h à meia-noite.
+ *
+ * Toda data que for comparada com `occurred_on` precisa passar por aqui.
+ */
+export function isoLocal(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+export function todayISO(): string {
+  return isoLocal(new Date());
 }
 
 export const MONTH_NAMES = [

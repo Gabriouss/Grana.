@@ -42,8 +42,23 @@ export default function FutureTimelineChart({ meses }: { meses: MesProjetado[] }
           const alturaParcelas = m.total > 0 ? (m.parcelasFuturas / m.total) * alturaTotal : 0;
           const alturaRecorrentes = alturaTotal - alturaParcelas;
           return (
-            <View key={`${m.ano}-${m.mes}`} style={styles.col}>
-              <View style={styles.track}>
+            <View
+              key={`${m.ano}-${m.mes}`}
+              style={styles.col}
+              /* O valor de cada mês, e a divisão entre recorrentes e parcelas,
+                 existiam SÓ como altura de barra: os irmãos `FlowChart` e
+                 `LineAreaChart` já traziam alternativa textual, este não, e
+                 quem usa leitor de tela não conseguia recuperar o dado
+                 principal do gráfico. A coluna vira um item legível com o mês
+                 e as duas parcelas do valor. */
+              accessibilityRole="text"
+              accessibilityLabel={
+                m.total > 0
+                  ? `${m.label}: R$ ${formatMoney(m.total)} no total, sendo R$ ${formatMoney(m.total - m.parcelasFuturas)} em contas recorrentes e R$ ${formatMoney(m.parcelasFuturas)} em parcelas futuras.`
+                  : `${m.label}: nada comprometido.`
+              }
+            >
+              <View style={styles.track} aria-hidden>
                 <View style={styles.bar}>
                   {alturaParcelas > 0 && <View style={[styles.segment, { height: alturaParcelas, backgroundColor: theme.down }]} />}
                   {alturaRecorrentes > 0 && <View style={[styles.segment, { height: alturaRecorrentes, backgroundColor: theme.accent }]} />}

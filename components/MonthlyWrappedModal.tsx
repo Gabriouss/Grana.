@@ -8,6 +8,8 @@ import { hapticTap } from '@/lib/haptics';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
 import AppPressable from './AppPressable';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
+import ExportPdfButton from './ExportPdfButton';
+import type { Bill, Transaction } from '@/lib/types';
 import { useReducedMotion } from '@/lib/motion';
 
 /**
@@ -124,7 +126,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
   slides.push({
     key: 'level',
     rotulo: 'Sua evolução',
-    titulo: `${w.level.elo.emoji} ${w.level.elo.title}`,
+    titulo: w.level.elo.title,
     destaque: `Nível ${w.level.level}`,
     destaqueCor: theme.accent2,
     apoio:
@@ -154,10 +156,19 @@ export default function MonthlyWrappedModal({
   visible,
   wrapped,
   onClose,
+  transactions,
+  bills,
+  carteira,
 }: {
   visible: boolean;
   wrapped: MonthlyWrapped | null;
   onClose: () => void;
+  /* Os três abaixo existem só para o PDF do último capítulo. Vêm de fora
+     porque a Início já tem tudo carregado: pedir de novo aqui seria uma ida
+     ao banco para repetir o que está na memória a um componente de distância. */
+  transactions?: Transaction[];
+  bills?: Bill[];
+  carteira?: string;
 }) {
   const { width } = useWindowDimensions();
   const [indice, setIndice] = useState(0);
@@ -230,7 +241,7 @@ export default function MonthlyWrappedModal({
             zonas em plataforma nenhuma — o feedback é o capítulo virar.
             Os rótulos existem porque, sem texto nem ícone dentro, um leitor
             de tela anunciaria dois "botão" sem nome cobrindo a tela toda. */}
-        <View style={styles.zonasToque} pointerEvents="box-none">
+        <View style={[styles.zonasToque, { pointerEvents: 'box-none' }]} >
           <AppPressable
             style={[styles.zona, { width: width * 0.4 }]}
             scaleOnPress={false}
@@ -248,6 +259,20 @@ export default function MonthlyWrappedModal({
         </View>
 
         <View style={styles.rodape}>
+          {/* A oferta do documento fica no ÚLTIMO capítulo, e só nele. A
+              história termina e então pergunta se você quer levá-la; oferecer
+              um download no meio interrompe a leitura para propor um arquivo. */}
+          {indice === slides.length - 1 && wrapped && transactions && (
+            <ExportPdfButton
+              ano={wrapped.ano}
+              mes={wrapped.mes}
+              transactions={transactions}
+              bills={bills}
+              carteira={carteira ?? 'Total'}
+              wrapped={wrapped}
+              rotulo={`Baixar o PDF de ${wrapped.label}`}
+            />
+          )}
           <Text style={styles.dica}>
             {indice === slides.length - 1 ? 'Toque à direita para fechar' : 'Toque para avançar'}
           </Text>

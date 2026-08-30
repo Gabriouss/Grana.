@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -11,6 +11,9 @@ import { PrivacyProvider } from '@/lib/privacy-context';
 import { DemoProvider } from '@/lib/demo-context';
 import { theme } from '@/lib/theme';
 import { instalarAnelDeFoco } from '@/lib/foco-web';
+import { acompanharFocoParaModais } from '@/lib/modal-accessibility';
+import { capturarDestinoProtegido, consumirDestinoPosLogin } from '@/lib/destino-pos-login';
+import { EntitlementProvider, useEntitlement } from '@/lib/entitlement-context';
 import WebPhoneFrame from '@/components/WebPhoneFrame';
 import AppLockGate from '@/components/AppLockGate';
 import { AppLockProvider } from '@/lib/app-lock-context';
@@ -46,12 +49,20 @@ export default function RootLayout() {
      inclusive na tela de carregamento. */
   useEffect(() => {
     instalarAnelDeFoco();
+    acompanharFocoParaModais();
+    /* Antes de o roteador reescrever a URL: quem abriu /credito deslogado
+       precisa voltar para /credito depois de entrar. */
+    capturarDestinoProtegido();
   }, []);
 
   useEffect(() => {
     if (!fontsLoaded) return;
-    /* Neue Machina é carregada para marca e títulos. Corpo/controles usam a
-       fonte do sistema, preservando Dynamic Type e as métricas nativas. */
+    /* Neue Machina é a ÚNICA fonte do produto: marca, títulos, corpo,
+       controles, campos e dados, em toda plataforma. Este comentário já disse
+       o contrário ("corpo/controles usam a fonte do sistema"), sobra de uma
+       rodada que trocou o corpo pela fonte do sistema achando que Dynamic Type
+       exigia isso, e que foi revertida. Texto de fonte customizada escala
+       normalmente; não havia troca a fazer. */
     SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
@@ -64,10 +75,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
-        <PrivacyProvider>
-          <DemoProvider>
-            <AppLockProvider>
-              <ScreenCaptureProvider>
+        <EntitlementProvider>
+          <PrivacyProvider>
+            <DemoProvider>
+              <AppLockProvider>
+                <ScreenCaptureProvider>
               <StatusBar style="light" />
               {/* A trava fica por fora do WebPhoneFrame: cobrir só o miolo
                   deixaria a moldura da web visível, e por dentro dela o
@@ -77,10 +89,11 @@ export default function RootLayout() {
                   <RootNavigator />
                 </WebPhoneFrame>
               </AppLockGate>
-              </ScreenCaptureProvider>
-            </AppLockProvider>
-          </DemoProvider>
-        </PrivacyProvider>
+                </ScreenCaptureProvider>
+              </AppLockProvider>
+            </DemoProvider>
+          </PrivacyProvider>
+        </EntitlementProvider>
       </SessionProvider>
     </SafeAreaProvider>
   );
@@ -88,8 +101,25 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { session, isLoading, emRecuperacao } = useSession();
+  const { estado: estadoAcesso, carregando: carregandoAcesso } = useEntitlement();
+  const router = useRouter();
 
-  if (isLoading) {
+  /* Link protegido aberto sem sessão vai para o login, não para a página de
+     marketing. Sem isto o expo-router caía na landing e o destino sumia. */
+  useEffect(() => {
+    if (isLoading || session || Platform.OS !== 'web') return;
+    if (!capturarDestinoProtegido()) return;
+    router.replace('/sign-in');
+  }, [isLoading, session, router]);
+
+  /* Já com sessão: volta ao destino que a pessoa tinha pedido. */
+  useEffect(() => {
+    if (isLoading || !session || emRecuperacao) return;
+    const destino = consumirDestinoPosLogin();
+    if (destino) router.replace(destino as never);
+  }, [isLoading, session, emRecuperacao, router]);
+
+  if (isLoading || (!!session && carregandoAcesso && !estadoAcesso)) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={theme.ink} />
@@ -114,8 +144,11 @@ function RootNavigator() {
         <Stack.Protected guard={!!session && emRecuperacao}>
           <Stack.Screen name="nova-senha" />
         </Stack.Protected>
-        <Stack.Protected guard={!!session && !emRecuperacao}>
+        <Stack.Protected guard={!!session && !emRecuperacao && !!estadoAcesso?.allowed}>
           <Stack.Screen name="(app)" />
+        </Stack.Protected>
+        <Stack.Protected guard={!!session && !emRecuperacao && estadoAcesso?.allowed === false}>
+          <Stack.Screen name="assinar" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           {/* Primeiro da lista de propósito: sem isso, `/` cai no primeiro
@@ -129,6 +162,9 @@ function RootNavigator() {
             (ver app/ativar.tsx) precisa funcionar tanto logado quanto
             deslogado — os dois casos são tratados dentro da própria tela. */}
         <Stack.Screen name="ativar" />
+        {/* Callback PKCE dedicado: recebe somente um código curto e de uso
+            único; a troca pela sessão acontece em auth-context. */}
+        <Stack.Screen name="auth/callback" />
         {/* Também sem Stack.Protected: Termos, Privacidade e Exclusão de
             dados precisam abrir de qualquer lugar — do cadastro (antes de
             existir conta), do Perfil (já logado), e de fora do app (link do

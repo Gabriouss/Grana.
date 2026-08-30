@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
@@ -18,7 +18,10 @@ import AppPressable from './AppPressable';
  * reautenticação já é um card `paperRaised`, então a caixa dele precisa ser
  * `theme.paper` pra continuar havendo contraste entre os dois.
  */
-export default function PasswordInput({
+const PasswordInput = forwardRef<TextInput, Pick<
+  TextInputProps,
+  'maxLength' | 'placeholder' | 'placeholderTextColor' | 'autoComplete' | 'autoFocus' | 'value' | 'onChangeText' | 'accessibilityLabel' | 'onSubmitEditing' | 'returnKeyType'
+> & { backgroundColor?: string }>(function PasswordInput({
   backgroundColor = theme.paperRaised,
   maxLength,
   placeholder,
@@ -27,15 +30,23 @@ export default function PasswordInput({
   autoFocus,
   value,
   onChangeText,
-}: Pick<
-  TextInputProps,
-  'maxLength' | 'placeholder' | 'placeholderTextColor' | 'autoComplete' | 'autoFocus' | 'value' | 'onChangeText'
-> & { backgroundColor?: string }) {
+  /* O rótulo visível "Senha" é um `Text` irmão, que não vira `<label>` na web
+     nem nome acessível no nativo. Sem isto, o leitor de tela anunciava só
+     "campo de edição", e o marcador de senha (••••••••) não ajuda: ele é
+     placeholder, não nome. */
+  accessibilityLabel,
+  onSubmitEditing,
+  returnKeyType,
+}, ref) {
   const [visivel, setVisivel] = useState(false);
 
   return (
     <View style={[styles.caixa, { backgroundColor }]}>
       <TextInput
+        ref={ref}
+        accessibilityLabel={accessibilityLabel}
+        onSubmitEditing={onSubmitEditing}
+        returnKeyType={returnKeyType}
         style={styles.input}
         placeholder={placeholder}
         placeholderTextColor={placeholderTextColor ?? theme.inkFaint}
@@ -56,7 +67,9 @@ export default function PasswordInput({
       </AppPressable>
     </View>
   );
-}
+});
+
+export default PasswordInput;
 
 const styles = StyleSheet.create({
   caixa: {

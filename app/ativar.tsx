@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
 import { guardarTokenAtivacaoPendente } from '@/lib/assinatura';
@@ -61,7 +61,20 @@ export default function Ativar() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      {/* A rolagem não é enfeite: sem ela, `content` tinha `flex: 1` com
+          `justifyContent: 'center'`, ou seja, uma caixa da altura exata da
+          janela centralizando um formulário mais alto que ela. Medido em
+          844×390, o título ficava em `top: -104` e o botão "Criar conta" em
+          `top: 424` numa janela de 390, com `scrollHeight` igual a 390 e
+          nenhum contêiner rolável: criar conta era impossível em paisagem.
+          `flexGrow` no contêiner de conteúdo mantém a centralização quando há
+          espaço e libera a rolagem quando não há. */}
+      <ScrollView
+        style={styles.rolagem}
+        contentContainerStyle={styles.rolagemConteudo}
+        keyboardShouldPersistTaps="handled"
+      >
+      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
         <View style={styles.title}>
           <BrandLogotype width={140} />
         </View>
@@ -127,13 +140,18 @@ export default function Ativar() {
           </>
         )}
       </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
+  rolagem: { flex: 1 },
+  /* `flexGrow` em vez de `flex`: o conteúdo continua centralizado enquanto
+     couber e passa a rolar quando não couber. */
+  rolagemConteudo: { flexGrow: 1, justifyContent: 'center' },
+  content: { width: '100%', paddingHorizontal: spacing.xl },
   title: { marginBottom: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light, marginBottom: spacing.xs },
   subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.xl, fontFamily: fonts.light },

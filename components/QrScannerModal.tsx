@@ -212,7 +212,7 @@ export default function QrScannerModal({
                 </AppPressable>
               </View>
 
-              <View style={styles.overlayCentro} pointerEvents="none">
+              <View style={[styles.overlayCentro, { pointerEvents: 'none' }]} >
                 <MolduraDeMira ativa />
                 <Text style={styles.dicaMira}>Aponte para o QR Code da nota fiscal</Text>
               </View>

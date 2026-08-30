@@ -119,12 +119,11 @@ export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
     storage: Platform.OS === 'web' ? globalThis.localStorage : new LargeSecureStore(),
     autoRefreshToken: true,
     persistSession: true,
-    /* O link de confirmação de e-mail devolve o usuário com access_token e
-       refresh_token no fragmento (#) da URL de redirecionamento. Na web isso
-       é `window.location.hash`, e o próprio supabase-js sabe extrair dali e
-       chamar setSession — daí ligar aqui. No nativo não existe URL de
-       navegador para detectar (RN não tem window.location); lá quem trata o
-       deep link é o listener em lib/auth-context.tsx, manualmente. */
+    /* PKCE devolve somente um código curto, de uso único e com validade de
+       minutos. Access/refresh tokens nunca atravessam a URL do navegador ou
+       um custom scheme; o callback troca o código usando o verifier guardado
+       localmente por este cliente. */
+    flowType: 'pkce',
     detectSessionInUrl: Platform.OS === 'web',
   },
 });

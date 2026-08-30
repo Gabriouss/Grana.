@@ -162,7 +162,7 @@ export default function GradeInterativa({ invertida }: { invertida?: boolean }) 
   }, []);
 
   return (
-    <View ref={containerRef} style={estiloAbsoluto} pointerEvents="none">
+    <View ref={containerRef} style={[estiloAbsoluto, { pointerEvents: 'none' }]} >
       <View
         style={[
           estiloAbsoluto,

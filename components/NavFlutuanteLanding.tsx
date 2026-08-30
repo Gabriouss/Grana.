@@ -81,7 +81,7 @@ export default function NavFlutuanteLanding({
           diálogo que exige decisão. */}
       {aberto && <Pressable style={styles.veu} onPress={() => setAberto(false)} accessibilityLabel="Fechar menu de seções" />}
 
-      <View style={styles.ancora} pointerEvents="box-none">
+      <View style={[styles.ancora, { pointerEvents: 'box-none' }]} >
         {aberto && (
           <Animated.View
             nativeID={ID_PAINEL}

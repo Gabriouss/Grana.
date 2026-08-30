@@ -19,8 +19,13 @@ import { APP_WHATSAPP, corpoDaFuncao } from './extrair';
    `escolherValor` chama guessAmountFromText; a do webhook é a mesma do app
    (sync-parser.js falha se divergirem), então injetar a do app testa a lógica
    de escolha sem arrastar meio parser pra dentro do `new Function`. */
+/* `somarMesesISO` saiu desta lista porque saiu do webhook: a criação das
+   parcelas passou a acontecer no banco, e a aritmética de meses agora é
+   `public.somar_meses_data(date, integer)` em supabase/schema.sql. Os casos
+   que viviam aqui (inclusive 31/01 + 1 mês = 28/02) valem para lá, e é lá que
+   precisam ser verificados: um teste offline não alcança função de banco. */
 const NOMES = ['ehIntencaoCredito', 'ehIntencaoBoleto', 'parseDiaVencimento', 'parseParcelas',
-  'somarMesesISO', 'leituraAlternativaDeAudio', 'escolherValor', 'codigosCandidatos'];
+  'leituraAlternativaDeAudio', 'escolherValor', 'codigosCandidatos'];
 const fonte = [
   ...NOMES.map((n) => corpoDaFuncao(n)),
   corpoDaFuncao('mensagemDePareamento', APP_WHATSAPP),
@@ -33,7 +38,6 @@ const doWebhook = new Function(
   ehIntencaoBoleto: (t: string) => boolean;
   parseDiaVencimento: (t: string) => string;
   parseParcelas: (t: string) => number | null;
-  somarMesesISO: (iso: string, meses: number) => string;
   leituraAlternativaDeAudio: (texto: string, amount: number) => number | null;
   escolherValor: (texto: string, literal: number, alternativa: number) => number | null;
   codigosCandidatos: (texto: string) => string[];
@@ -181,22 +185,6 @@ for (const { total, n } of DIVISOES) {
   }
 }
 
-/* As datas das parcelas: uma por mês, a partir do mês da compra, sem estourar
-   em mês curto (31/01 + 1 mês = 28/02, não 03/03). */
-const DATAS: [string, number, string][] = [
-  ['2026-08-21', 0, '2026-08-21'],
-  ['2026-08-21', 1, '2026-09-21'],
-  ['2026-01-31', 1, '2026-02-28'],
-  ['2026-12-15', 3, '2027-03-15'],
-];
-for (const [inicio, meses, esperado] of DATAS) {
-  const obtido = doWebhook.somarMesesISO(inicio, meses);
-  if (obtido !== esperado) {
-    falhasDivisao++;
-    console.log(`FALHA  ${inicio} + ${meses} mês(es) = ${obtido} (esperado ${esperado})`);
-  }
-}
-
 /* Desambiguação de valor falado. Dois lados a proteger: levantar a dúvida
    quando ela existe, e — mais importante pro atrito diário — ficar CALADO
    quando não existe. Um bot que pergunta a cada áudio é pior que um bot que
@@ -328,7 +316,6 @@ for (const codigo of CODIGOS_AMOSTRA) {
 const totalChecagens =
   CASOS.length +
   DIVISOES.length +
-  DATAS.length +
   AMBIGUOS.length +
   RESPOSTAS.length +
   PAREAMENTO.length +

@@ -37,30 +37,30 @@ export function useSession() {
   return value;
 }
 
-/**
- * Extrai access_token/refresh_token do fragmento de uma URL de callback do
- * Supabase (ex.: `granaapp:///#access_token=...&refresh_token=...&type=signup`).
- *
- * O Supabase manda os tokens no FRAGMENTO (depois do #), não na query string
- * — por isso não dá para usar `Linking.parse()`, que só lê query params.
- * Também é onde vem `error_description` quando o link expirou ou já foi
- * usado, daí os dois casos de retorno.
- */
-function extrairTokensDoCallback(
+const SCHEME_NATIVO = 'com.gabriouss.grana';
+const ROTA_CALLBACK = 'auth/callback';
+
+function extrairCallbackSeguro(
   url: string
-): { access_token: string; refresh_token: string } | { erro: string } | null {
-  const hashIdx = url.indexOf('#');
-  if (hashIdx === -1) return null;
+): { code: string; recuperacao: boolean; flowId?: string } | { erro: string } | null {
+  const parsed = Linking.parse(url);
+  const schemePermitido = parsed.scheme === SCHEME_NATIVO || (__DEV__ && parsed.scheme === 'exp');
+  if (!schemePermitido || parsed.path !== ROTA_CALLBACK) return null;
 
-  const params = new URLSearchParams(url.slice(hashIdx + 1));
-  const erro = params.get('error_description');
-  if (erro) return { erro: erro.replace(/\+/g, ' ') };
+  const erro = parsed.queryParams?.error_description;
+  if (typeof erro === 'string' && erro) {
+    return { erro: decodeURIComponent(erro.replace(/\+/g, ' ')) };
+  }
 
-  const access_token = params.get('access_token');
-  const refresh_token = params.get('refresh_token');
-  if (access_token && refresh_token) return { access_token, refresh_token };
-
-  return null;
+  const code = parsed.queryParams?.code;
+  if (typeof code !== 'string' || code.length < 10 || code.length > 2048) return null;
+  const type = parsed.queryParams?.type;
+  const flowId = parsed.queryParams?.sb_flow_id;
+  return {
+    code,
+    recuperacao: type === 'recovery',
+    flowId: typeof flowId === 'string' ? flowId : undefined,
+  };
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
@@ -95,7 +95,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   /* Trata o retorno do link de confirmação de e-mail (e de qualquer outro
      e-mail de auth — recuperação de senha, magic link) quando o app é aberto
-     via deep link `granaapp://`.
+     pelo callback dedicado do Grana.
      Só roda no nativo: na web o próprio cliente Supabase já faz isso sozinho
      via `detectSessionInUrl` (lib/supabase.ts), e rodar os dois ao mesmo
      tempo processaria a mesma URL duas vezes. */
@@ -104,7 +104,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     async function tratarUrl(url: string | null) {
       if (!url) return;
-      const resultado = extrairTokensDoCallback(url);
+      const resultado = extrairCallbackSeguro(url);
       if (!resultado) return;
 
       if ('erro' in resultado) {
@@ -112,14 +112,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      const { error } = await supabase.auth.setSession(resultado);
+      const { error } = await supabase.auth.exchangeCodeForSession(
+        resultado.code,
+        resultado.flowId ? { flowId: resultado.flowId } : undefined
+      );
       if (error) {
         Alert.alert('Não foi possível entrar', traduzirErroAuth(error)?.mensagem ?? error.message);
         return;
       }
-      /* No nativo não há detectSessionInUrl, então PASSWORD_RECOVERY nunca é
-         emitido — o tipo vem no próprio fragmento do link. */
-      if (url.includes('type=recovery')) setEmRecuperacao(true);
+      if (resultado.recuperacao) setEmRecuperacao(true);
       // Em caso de sucesso, onAuthStateChange (acima) já atualiza `session`
       // sozinho — o Stack.Protected do _layout leva a pessoa pro app.
     }
@@ -142,7 +143,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     },
     async recuperarSenha(email) {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: Linking.createURL('/'),
+        redirectTo: Linking.createURL(`/${ROTA_CALLBACK}`),
       });
       return { error: traduzirErroAuth(error) };
     },
@@ -164,7 +165,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
              existir) na web. Ainda assim essa URL precisa estar cadastrada
              em Authentication → URL Configuration → Redirect URLs no painel
              do Supabase, ou a confirmação é recusada mesmo assim. */
-          emailRedirectTo: Linking.createURL('/'),
+          emailRedirectTo: Linking.createURL(`/${ROTA_CALLBACK}`),
         },
       });
       return { error: traduzirErroAuth(error), needsEmailConfirmation: !error && !data.session };

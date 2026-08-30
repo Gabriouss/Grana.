@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
 import { colunaFormulario } from '@/lib/breakpoints';
@@ -71,7 +71,20 @@ export default function NovaSenhaScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      {/* A rolagem não é enfeite: sem ela, `content` tinha `flex: 1` com
+          `justifyContent: 'center'`, ou seja, uma caixa da altura exata da
+          janela centralizando um formulário mais alto que ela. Medido em
+          844×390, o título ficava em `top: -104` e o botão "Criar conta" em
+          `top: 424` numa janela de 390, com `scrollHeight` igual a 390 e
+          nenhum contêiner rolável: criar conta era impossível em paisagem.
+          `flexGrow` no contêiner de conteúdo mantém a centralização quando há
+          espaço e libera a rolagem quando não há. */}
+      <ScrollView
+        style={styles.rolagem}
+        contentContainerStyle={styles.rolagemConteudo}
+        keyboardShouldPersistTaps="handled"
+      >
+      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
         <Text style={styles.eyebrow}>Quase lá</Text>
         <View style={styles.title}>
           <BrandLogotype width={140} />
@@ -120,13 +133,18 @@ export default function NovaSenhaScreen() {
           <Text style={styles.cancelarTexto}>Cancelar e sair</Text>
         </AppPressable>
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
+  rolagem: { flex: 1 },
+  /* `flexGrow` em vez de `flex`: o conteúdo continua centralizado enquanto
+     couber e passa a rolar quando não couber. */
+  rolagemConteudo: { flexGrow: 1, justifyContent: 'center' },
+  content: { width: '100%', paddingHorizontal: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light },
   title: { marginTop: spacing.xs, marginBottom: spacing.sm },
   subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.xxl, fontFamily: fonts.light },

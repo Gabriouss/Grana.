@@ -97,7 +97,7 @@ export default function InicioScreen() {
   const reduzirMovimento = useReducedMotion();
   const { isDemoMode } = useDemo();
   const { session } = useSession();
-  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, updateSaldosComTransacoes } = useWallet();
+  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, updateSaldosComTransacoes, refreshSaldos } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -373,12 +373,22 @@ export default function InicioScreen() {
     };
   }, [loading, isDemoMode, onboardingOpen, transactions, bills, budgets, lifetimeXp]);
 
-  // Recalcula o saldo por carteira sempre que as transações mudam — o
-  // WalletProvider guarda a lista de carteiras, mas não recalcula saldo
-  // sozinho, então quem tem os dados de transação precisa empurrar.
+  /* Saldo por carteira depois de cada mudança nas transações.
+   *
+   * No app real quem soma é o banco (`saldos_por_carteira()`), e o cliente
+   * recebe uma linha por carteira. Antes a soma percorria a lista baixada, o
+   * que ficava errado assim que o histórico passasse das 1000 linhas que o
+   * PostgREST devolve por requisição.
+   *
+   * O modo de exemplo continua somando em memória: ali os dados são fictícios
+   * e não existe banco para consultar. */
   useEffect(() => {
-    updateSaldosComTransacoes(transactions);
-  }, [transactions, updateSaldosComTransacoes]);
+    if (isDemoMode) {
+      updateSaldosComTransacoes(transactions);
+      return;
+    }
+    void refreshSaldos();
+  }, [transactions, isDemoMode, updateSaldosComTransacoes, refreshSaldos]);
 
   // Entrada animada do gráfico de pizza toda vez que a aba Início ganha
   // foco (abrir o app ou tocar na tab), não só na primeira montagem.
@@ -1083,20 +1093,34 @@ export default function InicioScreen() {
             <AppPressable
               key={t.id}
               style={({ hovered }) => [styles.recentRow, hovered && styles.recentRowHover]}
+              /* Ver o comentário equivalente em lancamentos.tsx: o toque longo
+                 sozinho deixava editar e excluir fora do alcance de leitor de
+                 tela e de teclado. */
+              onPress={() => {
+                setSelectedTx(t);
+                setActionSheetOpen(true);
+              }}
               onLongPress={() => {
                 setSelectedTx(t);
                 setActionSheetOpen(true);
               }}
+              accessibilityHint="Abre as opções de editar e excluir este lançamento."
             >
               <View style={[styles.recentIcon, { backgroundColor: t.color + '25' }]}>
-                <Text style={[styles.recentIconText, { color: t.color }]}>{t.category.slice(0, 2).toUpperCase()}</Text>
+                <Text style={styles.recentIconText}>{t.category.slice(0, 2).toUpperCase()}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.recentRowTitle} numberOfLines={1}>
                   {t.description && t.description.trim() ? t.description : t.category}
                 </Text>
+                {/* Nome da categoria em cor de tinta, não na cor da categoria.
+                    Medido: a cor da categoria em 12px sobre esta superfície dá
+                    de 3,60:1 (Moradia) a 4,21:1 (Lazer), abaixo dos 4,5:1 da
+                    WCAG AA, e reprovava em sete das nove categorias. Quem
+                    carrega a identidade da categoria na linha é o avatar
+                    colorido à esquerda, que não depende de leitura. */}
                 <Text style={styles.recentRowSub}>
-                  <Text style={{ color: t.color}}>{t.category}</Text> · {formatDateLabel(t.occurred_on)}
+                  {t.category} · {formatDateLabel(t.occurred_on)}
                 </Text>
               </View>
               <View style={styles.recentAmountRow}>
@@ -1500,6 +1524,13 @@ export default function InicioScreen() {
           setWrappedOpen(false);
           if (wrapped) marcarWrappedVisto(wrapped.chave);
         }}
+        /* Para o PDF do último capítulo. A retrospectiva é gerada a partir da
+           lista sem filtro de carteira (ver gerarMonthlyWrapped acima), então o
+           documento também sai como Total: os dois precisam falar do mesmo
+           recorte, senão o PDF contradiz a história que a pessoa acabou de ler. */
+        transactions={transactions}
+        bills={bills}
+        carteira="Total"
       />
 
       {/* Leitor de QR Code de nota fiscal (NFC-e) */}
@@ -1678,7 +1709,7 @@ const styles = StyleSheet.create({
   recentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.sm, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
   recentRowHover: { backgroundColor: theme.hover },
   recentIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  recentIconText: { fontSize: type.legenda, fontFamily: fonts.regular },
+  recentIconText: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular },
   recentRowTitle: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   recentRowSub: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
   recentRowAmount: { fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },

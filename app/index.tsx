@@ -518,8 +518,8 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
   return (
     <View style={[styles.heroLinhaSticky, { height: alturaSticky, minHeight: alturaSticky }]}>
       <NotebookAnimado />
-      <View style={styles.heroGradienteFundo} pointerEvents="none" aria-hidden />
-      <View style={styles.heroGradienteInferior} pointerEvents="none" aria-hidden />
+      <View style={[styles.heroGradienteFundo, { pointerEvents: 'none' }]}  aria-hidden />
+      <View style={[styles.heroGradienteInferior, { pointerEvents: 'none' }]}  aria-hidden />
 
       <View style={[colunaConteudo, styles.heroConteudoCentralizado]}>
         <View style={styles.heroColunaTexto}>
@@ -528,7 +528,7 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
           <Text style={styles.subheadline}>{APOIO_HERO}</Text>
           <BotaoCTA />
           {!reduzirMovimento && (
-            <Animated.View style={[styles.heroScrollHint, heroScrollHintAnimado]} pointerEvents="none">
+            <Animated.View style={[[styles.heroScrollHint, heroScrollHintAnimado], { pointerEvents: 'none' }]} >
               <Ionicons name="chevron-down" size={22} color={theme.accent2} />
             </Animated.View>
           )}

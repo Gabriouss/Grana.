@@ -8,6 +8,7 @@ import { fetchBills } from '@/lib/data';
 import { gerarRelatorioPdf } from '@/lib/pdf-report';
 import { useDemo } from '@/lib/demo-context';
 import type { Bill, Transaction } from '@/lib/types';
+import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
 import AppPressable from './AppPressable';
 
 /**
@@ -23,6 +24,8 @@ export default function ExportPdfButton({
   transactions,
   carteira,
   bills,
+  wrapped,
+  rotulo,
 }: {
   ano: number;
   mes: number; // 0-11
@@ -30,6 +33,12 @@ export default function ExportPdfButton({
   carteira: string;
   /** Quando a tela já tem os boletos carregados, passe-os para evitar a busca extra. */
   bills?: Bill[];
+  /** Retrospectiva do mês, quando o pedido vem de dentro dela: acrescenta ao
+   *  documento a seção com taxa de poupança, campeã contra o próprio teto,
+   *  comparação com o mês anterior e nível alcançado. */
+  wrapped?: MonthlyWrapped | null;
+  /** Texto do botão. O padrão serve às telas de Gráficos e Lançamentos. */
+  rotulo?: string;
 }) {
   const { isDemoMode } = useDemo();
   const [gerando, setGerando] = useState(false);
@@ -46,7 +55,7 @@ export default function ExportPdfButton({
         }
       }
 
-      const { compartilhado, uri } = await gerarRelatorioPdf({ ano, mes, transactions, bills: contas, carteira });
+      const { compartilhado, uri } = await gerarRelatorioPdf({ ano, mes, transactions, bills: contas, carteira, wrapped });
       /* `uri` vazio é o caminho da web, onde o relatório abre numa janela
          própria e quem salva o PDF é a caixa de impressão do navegador — não
          existe arquivo local pra citar num alerta. */
@@ -68,7 +77,7 @@ export default function ExportPdfButton({
         <Ionicons name="document-outline" size={16} color={theme.inkSoft} />
       )}
       <Text style={styles.texto}>
-        {gerando ? 'Gerando PDF…' : `Exportar relatório de ${MONTH_NAMES[mes]}`}
+        {gerando ? 'Gerando PDF…' : (rotulo ?? `Exportar relatório de ${MONTH_NAMES[mes]}`)}
       </Text>
     </AppPressable>
   );

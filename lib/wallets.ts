@@ -123,6 +123,41 @@ export async function deleteWallet(id: string): Promise<void> {
  * Calcula os saldos individuais de cada carteira e o saldo consolidado total
  * considerando o saldo inicial cadastrado + todas as transações realizadas.
  */
+/**
+ * Mesmo saldo, a partir do agregado que o banco já somou.
+ *
+ * `calcularSaldosWallets` abaixo precisa da lista inteira de lançamentos em
+ * memória, e é justamente isso que não escala: o PostgREST corta a resposta em
+ * 1000 linhas e o saldo passaria a ser calculado sobre um recorte. Esta versão
+ * recebe uma linha por carteira, vinda de `saldos_por_carteira()`.
+ *
+ * As duas dividem as mesmas duas regras, e é por isso que ficam lado a lado:
+ * a carteira padrão recebe o que não tem `wallet_id`, e o total consolidado
+ * soma os saldos iniciais no fim. O crédito já foi excluído no banco.
+ */
+export function calcularSaldosComAgregado(
+  wallets: Wallet[],
+  agregado: { wallet_id: string | null; delta: number }[]
+): { porCarteira: Record<string, number>; total: number } {
+  const porCarteira: Record<string, number> = {};
+  wallets.forEach((w) => {
+    porCarteira[w.id] = Number(w.initial_balance || 0);
+  });
+
+  const defaultWallet = wallets.find((w) => w.is_default) || wallets[0];
+  let total = 0;
+
+  agregado.forEach(({ wallet_id, delta }) => {
+    const valor = Number(delta || 0);
+    const alvo = wallet_id || (defaultWallet ? defaultWallet.id : null);
+    if (alvo && porCarteira[alvo] !== undefined) porCarteira[alvo] += valor;
+    total += valor;
+  });
+
+  total += wallets.reduce((acc, w) => acc + Number(w.initial_balance || 0), 0);
+  return { porCarteira, total };
+}
+
 export function calcularSaldosWallets(
   wallets: Wallet[],
   transactions: Transaction[]

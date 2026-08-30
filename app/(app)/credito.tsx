@@ -54,6 +54,7 @@ import MonthSelector from '@/components/MonthSelector';
 import DatePickerModal from '@/components/DatePickerModal';
 import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
 import ItemActionSheet from '@/components/ItemActionSheet';
+import BotaoOpcoesItem from '@/components/BotaoOpcoesItem';
 import Toast from '@/components/Toast';
 import Sheet from '@/components/Sheet';
 import FadeIn from '@/components/FadeIn';
@@ -730,6 +731,7 @@ export default function CreditoScreen() {
                     hapticTap();
                     setSelectedCardId((curr) => (curr === card.id ? 'all' : card.id));
                   }}
+                  accessibilityHint="Filtra os lançamentos por este cartão. Toque de novo para ver todos."
                   onLongPress={() => confirmDeleteCard(card)}
                 >
                   {/* Dígitos EMBAIXO do apelido, não ao lado. Lado a lado, um
@@ -745,6 +747,17 @@ export default function CreditoScreen() {
                         <Text style={styles.cardDigits}>{`•••• ${card.last_digits}`}</Text>
                       ) : null}
                     </View>
+                    {/* Excluir cartão morava só no toque longo, e o toque
+                        simples já tem dono (seleciona o cartão). Era o mesmo
+                        defeito das linhas de lançamento, com agravante: é a
+                        ÚNICA forma de excluir um cartão em todo o app, e
+                        `confirmDeleteCard` tinha um único chamador. Gesto
+                        invisível para leitor de tela e para teclado. */}
+                    <BotaoOpcoesItem
+                      icone="trash-outline"
+                      accessibilityLabel={`Excluir cartão ${card.name}`}
+                      onPress={() => confirmDeleteCard(card)}
+                    />
                   </View>
 
                   <View style={styles.cardMidRow}>
@@ -1072,11 +1085,14 @@ const CreditTransactionRow = memo(function CreditTransactionRow({
   onLongPress,
 }: {
   tx: Transaction;
+  /** Abre a folha de ações do lançamento. Ligada ao toque simples E ao longo:
+   *  o gesto longo sozinho não é exposto a leitor de tela nem ao teclado. */
   onLongPress: () => void;
 }) {
   return (
     <AppPressable
       style={({ hovered }) => [styles.txRow, hovered && { backgroundColor: theme.hover }]}
+      onPress={onLongPress}
       onLongPress={onLongPress}
     >
       <View style={styles.txInfo}>

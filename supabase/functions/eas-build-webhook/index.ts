@@ -1,55 +1,13 @@
-// Grana. — recebe o webhook de build da EAS e publica a versão nova sozinho.
-//
-// Isto é o que elimina o passo manual de "depois de cada build, atualizar a
-// linha app_release à mão": a própria Expo chama esta função sempre que um
-// build termina (sucesso, erro ou cancelamento), e aqui a gente decide o que
-// fazer com isso.
-//
-// Configuração (uma vez só, por projeto):
-//
-//   1. Gere um segredo aleatório (qualquer string com 16+ caracteres) e
-//      configure em dois lugares com o MESMO valor:
-//
-//        supabase secrets set EAS_WEBHOOK_SECRET="<segredo>"
-//
-//        eas webhook:create --event BUILD \
-//          --url https://<seu-projeto-id>.supabase.co/functions/v1/eas-build-webhook \
-//          --secret "<segredo>"
-//
-//   2. Publique esta função:
-//
-//        supabase functions deploy eas-build-webhook --no-verify-jwt
-//
-// Depois disso, publicar uma versão nova do app volta a ser só:
-//   1. Suba a versão em app.json ("version").
-//   2. Rode `eas build --profile preview --platform android`.
-// Quando o build terminar, esta função atualiza `app_release` sozinha — quem
-// já tem o app instalado passa a ver o aviso de atualização automaticamente,
-// sem precisar reenviar o APK manualmente pra ninguém.
-//
-// SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já vêm prontos no ambiente da
-// função — não precisam ser configurados à mão.
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const EAS_WEBHOOK_SECRET = Deno.env.get('EAS_WEBHOOK_SECRET') ?? '';
+const MAX_BODY_BYTES = 64 * 1024;
 
-// service_role: só assim a função escreve em app_release, que não tem
-// política de insert/update para ninguém além dela (ver supabase/schema.sql).
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-/** Compara "1.2.3" com "1.10.0" numericamente (cópia mínima de lib/atualizacao.ts — Deno não importa do app Expo). */
-function compareVersions(a: string, b: string): number {
-  const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
-  const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
-}
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 async function hmacSha1Hex(secret: string, body: string): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -60,14 +18,14 @@ async function hmacSha1Hex(secret: string, body: string): Promise<string> {
     ['sign']
   );
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  return Array.from(new Uint8Array(signature), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/* Comparação em tempo constante — sem isso, um `!==` normal vaza (por
-   timing) quantos caracteres do hash já acertaram, o que é exatamente o tipo
-   de brecha que um endpoint público e não autenticado não pode ter. */
+async function sha256Hex(body: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -77,21 +35,24 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
-
-  if (!EAS_WEBHOOK_SECRET) {
-    console.error('[eas-build-webhook] EAS_WEBHOOK_SECRET não configurado — recusando tudo.');
+  if (!EAS_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('[eas-build-webhook] configuração obrigatória ausente');
     return new Response('Not configured', { status: 500 });
   }
 
+  const contentLength = Number(req.headers.get('content-length') ?? 0);
+  if (contentLength > MAX_BODY_BYTES) return new Response('Payload too large', { status: 413 });
   const rawBody = await req.text();
-  const signatureHeader = req.headers.get('expo-signature') ?? '';
-  const expected = `sha1=${await hmacSha1Hex(EAS_WEBHOOK_SECRET, rawBody)}`;
-
-  if (!timingSafeEqual(signatureHeader, expected)) {
-    return new Response('Invalid signature', { status: 401 });
+  if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
+    return new Response('Payload too large', { status: 413 });
   }
 
+  const signature = req.headers.get('expo-signature') ?? '';
+  const expected = `sha1=${await hmacSha1Hex(EAS_WEBHOOK_SECRET, rawBody)}`;
+  if (!timingSafeEqual(signature, expected)) return new Response('Invalid signature', { status: 401 });
+
   let payload: {
+    id?: string;
     status?: string;
     platform?: string;
     expirationDate?: string;
@@ -104,44 +65,42 @@ Deno.serve(async (req: Request) => {
     return new Response('Invalid JSON', { status: 400 });
   }
 
-  const status = payload.status;
-  const platform = payload.platform;
-  const profile = payload.metadata?.buildProfile;
   const version = payload.metadata?.appVersion;
   const apkUrl = payload.artifacts?.buildUrl;
-  const expiresAt = payload.expirationDate ?? null;
-
-  /* O app só é distribuído como APK Android fora da Play Store (ver
-     lib/atualizacao.ts) — builds de iOS, "development" (client de dev, não
-     pra usuário final) ou sem sucesso não devem virar um anúncio de
-     atualização pra ninguém. */
   const relevante =
-    status === 'finished' &&
-    platform === 'android' &&
-    profile !== 'development' &&
-    !!version &&
-    !!apkUrl &&
-    /^https:\/\/expo\.dev\//.test(apkUrl);
+    payload.status === 'finished'
+    && payload.platform === 'android'
+    && payload.metadata?.buildProfile !== 'development'
+    && !!version
+    && !!apkUrl
+    && /^https:\/\/expo\.dev\//.test(apkUrl);
+  if (!relevante) return new Response('ignored', { status: 200 });
 
-  if (!relevante) {
-    return new Response('ignored', { status: 200 });
-  }
+  const payloadHash = await sha256Hex(rawBody);
+  const eventId = (payload.id ?? payloadHash).slice(0, 255);
+  const { data: claim, error: claimError } = await supabase.rpc('reivindicar_webhook_evento', {
+    p_provider: 'eas',
+    p_event_id: eventId,
+    p_event_type: 'build_finished',
+    p_payload_hash: payloadHash,
+  });
+  if (claimError) return new Response('Inbox error', { status: 500 });
+  if (claim === 'done') return new Response('ok', { status: 200 });
+  if (claim === 'busy') return new Response('busy', { status: 503 });
 
-  const { data: atual } = await supabase.from('app_release').select('version').eq('id', 1).maybeSingle();
-  if (atual && compareVersions(version!, atual.version) <= 0) {
-    // Builds em paralelo podem terminar fora de ordem — nunca regredir a versão anunciada.
-    return new Response('older version ignored', { status: 200 });
-  }
-
-  const { error } = await supabase
-    .from('app_release')
-    .update({ version, apk_url: apkUrl, apk_expires_at: expiresAt, updated_at: new Date().toISOString() })
-    .eq('id', 1);
-
+  const { data: result, error } = await supabase.rpc('publicar_app_release', {
+    p_version: version,
+    p_apk_url: apkUrl,
+    p_expires_at: payload.expirationDate ?? null,
+  });
   if (error) {
-    console.error('[eas-build-webhook] erro ao atualizar app_release:', error);
+    await supabase.rpc('falhar_webhook_evento', {
+      p_provider: 'eas', p_event_id: eventId, p_error_code: error.code ?? 'db_error',
+    });
+    console.error('[eas-build-webhook] falha transacional', { code: error.code });
     return new Response('db error', { status: 500 });
   }
 
-  return new Response('ok', { status: 200 });
+  await supabase.rpc('finalizar_webhook_evento', { p_provider: 'eas', p_event_id: eventId });
+  return new Response(result === 'older' ? 'older version ignored' : 'ok', { status: 200 });
 });

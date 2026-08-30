@@ -23,6 +23,7 @@ import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import { usePrivacy } from '@/lib/privacy-context';
 import ItemActionSheet from '@/components/ItemActionSheet';
+import BotaoOpcoesItem from '@/components/BotaoOpcoesItem';
 import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
@@ -228,17 +229,6 @@ export default function ContasScreen() {
       if (newStatus === 'paid') {
         // payBill já lança a saída correspondente em transactions, na data de hoje.
         await payBill(bill, todayISO());
-        if (proximaData) {
-          await addBill({
-            description: bill.description,
-            amount: Number(bill.amount),
-            category: bill.category,
-            color: bill.color,
-            due_date: proximaData,
-            recurring: true,
-            wallet_id: bill.wallet_id,
-          });
-        }
         hapticSuccess();
         triggerToast(
           proximaData
@@ -349,6 +339,7 @@ export default function ContasScreen() {
               <AppPressable
                 style={({ hovered }) => [styles.card, hovered && styles.cardHover]}
                 onPress={() => toggleStatus(item)}
+                accessibilityHint="Alterna entre paga e em aberto. Para editar ou excluir, use o botão de opções."
                 onLongPress={() => {
                   setSelectedBill(item);
                   setActionSheetOpen(true);
@@ -364,8 +355,17 @@ export default function ContasScreen() {
                     </View>
                     <Text style={styles.cardCat}>{item.category}</Text>
                   </View>
-                  <View style={[styles.pill, info.style]}>
-                    <Text style={[styles.pillText, info.style === styles.pillLate && styles.pillLateText]}>{info.text}</Text>
+                  <View style={styles.cardTopAcoes}>
+                    <View style={[styles.pill, info.style]}>
+                      <Text style={[styles.pillText, info.style === styles.pillLate && styles.pillLateText]}>{info.text}</Text>
+                    </View>
+                    <BotaoOpcoesItem
+                      accessibilityLabel={`Opções de ${item.description}`}
+                      onPress={() => {
+                        setSelectedBill(item);
+                        setActionSheetOpen(true);
+                      }}
+                    />
                   </View>
                 </View>
                 <View style={styles.cardBottom}>
@@ -447,6 +447,8 @@ const styles = StyleSheet.create({
   cardHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardNameRow: { flexDirection: 'row', alignItems: 'center' },
+  /* Pílula de status e botão de opções na mesma coluna direita do card. */
+  cardTopAcoes: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   cardName: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   cardCat: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

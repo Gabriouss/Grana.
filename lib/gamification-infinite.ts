@@ -7,16 +7,24 @@
  * add_xp em supabase/schema.sql) e nunca reseta. O nível não tem teto.
  */
 
-export type Elo = { key: string; title: string; minLevel: number; emoji: string };
+/**
+ * `icone` é um nome do Ionicons, não emoji.
+ *
+ * Emoji fazendo papel de sistema de ícones é justamente o que o DESIGN.md pede
+ * para evitar, e o desenho de cada um muda conforme o sistema operacional de
+ * quem olha: a mesma tela vira outra coisa entre um iPhone e um Android. Com
+ * ícone desenhado, o traço é o mesmo do resto do app e a cor é do tema.
+ */
+export type Elo = { key: string; title: string; minLevel: number; icone: string };
 
 export const ELOS: Elo[] = [
-  { key: 'aprendiz', title: 'Aprendiz', minLevel: 1, emoji: '🌱' },
-  { key: 'construtor', title: 'Construtor', minLevel: 5, emoji: '🧱' },
-  { key: 'gestor', title: 'Gestor', minLevel: 10, emoji: '📊' },
-  { key: 'estrategista', title: 'Estrategista', minLevel: 16, emoji: '♟️' },
-  { key: 'mestre', title: 'Mestre', minLevel: 24, emoji: '🏆' },
-  { key: 'grao_mestre', title: 'Grão-Mestre', minLevel: 34, emoji: '💠' },
-  { key: 'lenda', title: 'Lenda Financeira', minLevel: 46, emoji: '👑' },
+  { key: 'aprendiz', title: 'Aprendiz', minLevel: 1, icone: 'leaf-outline' },
+  { key: 'construtor', title: 'Construtor', minLevel: 5, icone: 'construct-outline' },
+  { key: 'gestor', title: 'Gestor', minLevel: 10, icone: 'bar-chart-outline' },
+  { key: 'estrategista', title: 'Estrategista', minLevel: 16, icone: 'compass-outline' },
+  { key: 'mestre', title: 'Mestre', minLevel: 24, icone: 'ribbon-outline' },
+  { key: 'grao_mestre', title: 'Grão-Mestre', minLevel: 34, icone: 'diamond-outline' },
+  { key: 'lenda', title: 'Lenda Financeira', minLevel: 46, icone: 'sparkles-outline' },
 ];
 
 /** Level = ⌊(XP / 100) ^ (1/1.4)⌋ + 1 — curva de progressão do PLANO_DE_EVOLUCAO.md. */

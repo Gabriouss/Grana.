@@ -12,8 +12,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchBills, fetchBudgets, fetchGamificationHistoricalSummary, fetchTransactions } from '@/lib/data';
-import { getGamificationState, type BadgeCategory, type GamificationState } from '@/lib/gamification';
+import {
+  fetchBills,
+  fetchBudgets,
+  fetchConquistas,
+  fetchGamificationHistoricalSummary,
+  fetchTransactions,
+  registrarConquistas,
+} from '@/lib/data';
+import { conquistasNovas, getGamificationState, type Badge, type BadgeCategory, type GamificationState } from '@/lib/gamification';
 import { fetchGamification } from '@/lib/goals';
 import { calcularLevelState, type LevelState } from '@/lib/gamification-infinite';
 import { hapticTap } from '@/lib/haptics';
@@ -23,6 +30,7 @@ import { DEMO_BILLS, DEMO_BUDGETS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@
 import BadgeCard from '@/components/BadgeCard';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import AppPressable from '@/components/AppPressable';
+import ConquistaDesbloqueada from '@/components/ConquistaDesbloqueada';
 import ScreenHeader from '@/components/ScreenHeader';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
@@ -38,6 +46,7 @@ export default function DesafiosScreen() {
   const [level, setLevel] = useState<LevelState>(calcularLevelState(0));
   const [filter, setFilter] = useState<FilterType>('all');
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [conquistaNova, setConquistaNova] = useState<Badge | null>(null);
 
   const loadData = useCallback(async () => {
     if (isDemoMode) {
@@ -50,18 +59,31 @@ export default function DesafiosScreen() {
     }
 
     try {
-      const [tx, b, bg, historical] = await Promise.all([
+      const [tx, b, bg, historical, conquistadas] = await Promise.all([
         fetchTransactions({ sinceDays: 45 }),
         fetchBills({ status: 'due' }),
         fetchBudgets(),
         fetchGamificationHistoricalSummary().catch(() => null),
+        fetchConquistas().catch(() => [] as string[]),
       ]);
+      let gState: GamificationState;
       if (historical) {
-        setState(getGamificationState(tx, b, bg, historical));
+        gState = getGamificationState(tx, b, bg, historical, conquistadas);
       } else {
         // Compatibilidade temporária com bancos ainda sem a função nova.
         const [allTx, allBills] = await Promise.all([fetchTransactions(), fetchBills()]);
-        setState(getGamificationState(allTx, allBills, bg));
+        gState = getGamificationState(allTx, allBills, bg, undefined, conquistadas);
+      }
+      setState(gState);
+
+      /* O desbloqueio vira evento gravado, e ganha um momento.
+         Antes não havia nenhum: a medalha simplesmente passava a aparecer
+         acesa se a pessoa voltasse a esta aba e reparasse. Esforço sem
+         entrega não reforça hábito nenhum. */
+      const novas = conquistasNovas(gState.badges, conquistadas);
+      if (novas.length > 0) {
+        registrarConquistas(novas.map((b) => b.id)).catch(() => {});
+        setConquistaNova(novas[0]);
       }
     } catch {
       // Falha graciosa
@@ -106,6 +128,7 @@ export default function DesafiosScreen() {
     weekActivity,
     badges,
     unlockedBadgesCount,
+    indicadores,
     totalBadgesCount,
   } = state;
 
@@ -140,6 +163,16 @@ export default function DesafiosScreen() {
           />
         }
       >
+        {/* O reconhecimento vem ANTES do painel de números: quem acabou de
+            conquistar algo precisa ver isso primeiro, não o Score. */}
+        {conquistaNova && (
+          <ConquistaDesbloqueada
+            titulo={conquistaNova.title}
+            descricao={conquistaNova.description}
+            onFechar={() => setConquistaNova(null)}
+          />
+        )}
+
         {/* Card Principal de Score & Nível */}
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
@@ -179,7 +212,7 @@ export default function DesafiosScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
-              <Text style={styles.fireEmoji}>{level.elo.emoji}</Text>
+              <Ionicons name={level.elo.icone as any} size={17} color={theme.accent2} />
               <Text style={styles.cardTitle}>Progresso de metas</Text>
             </View>
             <Text style={styles.scoreTotalLabel}>{`${level.xp} XP`}</Text>
@@ -204,7 +237,7 @@ export default function DesafiosScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
-              <Text style={styles.fireEmoji}>🔥</Text>
+              <Ionicons name="flame-outline" size={17} color={theme.accent2} />
               <Text style={styles.cardTitle}>Ritmo da Semana</Text>
             </View>
             <Text style={styles.streakBadgeText}>
@@ -246,7 +279,7 @@ export default function DesafiosScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
-              <Text style={styles.fireEmoji}>📊</Text>
+              <Ionicons name="stats-chart-outline" size={17} color={theme.accent2} />
               <Text style={styles.cardTitle}>Composição do seu Score</Text>
             </View>
             <Text style={styles.scoreTotalLabel}>{score}/1000 pts</Text>
@@ -277,11 +310,48 @@ export default function DesafiosScreen() {
           </View>
         </View>
 
+        {/* Retrato do mês — informação, não nota.
+            Superávit, tetos e vencimentos moravam DENTRO do Score e o
+            transformavam num julgamento sobre a vida financeira da pessoa. Um
+            mês apertado derrubava a nota de quem mais precisa do app, e
+            definir um teto e estourá-lo custava mais pontos do que nunca ter
+            definido nenhum. Continuam visíveis, porque são informação útil, e
+            sem pontuação, porque mês apertado não é falha de hábito. */}
+        {indicadores.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardHeadRow}>
+              <View style={styles.titleWithIcon}>
+                <Ionicons name="eye-outline" size={17} color={theme.accent2} />
+                <Text style={styles.cardTitle}>Retrato do mês</Text>
+              </View>
+            </View>
+            <View style={styles.factorsList}>
+              {indicadores.map((ind, i) => (
+                <View key={i} style={styles.indicadorItem}>
+                  <View style={styles.factorTop}>
+                    <Text style={styles.factorLabel}>{ind.label}</Text>
+                    <Text
+                      style={[
+                        styles.indicadorValor,
+                        ind.tom === 'alta' && { color: theme.up },
+                        ind.tom === 'baixa' && { color: theme.down },
+                      ]}
+                    >
+                      {ind.valor}
+                    </Text>
+                  </View>
+                  <Text style={styles.factorDesc}>{ind.descricao}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Mural de Conquistas */}
         <View style={styles.card}>
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
-              <Text style={styles.fireEmoji}>🏆</Text>
+              <Ionicons name="ribbon-outline" size={17} color={theme.accent2} />
               <Text style={styles.cardTitle}>Mural de Conquistas</Text>
             </View>
             <Text style={styles.badgeRatioText}>{`${unlockedBadgesCount} de ${totalBadgesCount}`}</Text>
@@ -440,7 +510,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  fireEmoji: { fontSize: type.titulo, fontFamily: fonts.regular },
+  indicadorItem: { gap: 2 },
+  indicadorValor: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   cardTitle: {
     fontFamily: fonts.regular,
     fontSize: type.corpo,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -37,7 +37,15 @@ import TransactionSheet, { type ValoresLancamento } from '@/components/Transacti
 import SegmentedTabs from '@/components/SegmentedTabs';
 import FabButton from '@/components/FabButton';
 import MonthSelector from '@/components/MonthSelector';
-import { addInstallmentPurchase, addTransaction, criarOcorrenciasRecorrentes, deleteTransaction, fetchTransactions, updateTransaction } from '@/lib/data';
+import {
+  addInstallmentPurchase,
+  addTransaction,
+  criarOcorrenciasRecorrentes,
+  deleteTransaction,
+  fetchRecurrenceContext,
+  fetchTransactionsDoPeriodo,
+  updateTransaction,
+} from '@/lib/data';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import {
   flushPendingQueue,
@@ -55,6 +63,65 @@ import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Transaction, TxType } from '@/lib/types';
+
+/**
+ * Uma linha da lista, memorizada.
+ *
+ * O `renderItem` era uma função criada dentro do render, na mesma tela onde
+ * moram `search` e `categoryFilter`. Cada caractere digitado na busca
+ * recriava a função e redesenhava TODAS as linhas montadas, num aparelho
+ * modesto com histórico grande. Com a linha memorizada e o `renderItem`
+ * estável, só as linhas cujo lançamento mudou são redesenhadas.
+ */
+const LinhaLancamento = memo(function LinhaLancamento({
+  item,
+  aoAbrirAcoes,
+}: {
+  item: Transaction;
+  aoAbrirAcoes: (tx: Transaction) => void;
+}) {
+  const abrir = () => aoAbrirAcoes(item);
+  return (
+    <AppPressable
+      style={({ hovered }) => [styles.row, hovered && styles.rowHover]}
+      /* Toque simples abre a folha, e o toque longo continua como atalho.
+         Antes só existia o toque longo: um gesto que leitor de tela não expõe,
+         teclado não alcança e, no computador, ninguém descobre. Editar ou
+         apagar um lançamento errado é tarefa central deste app, não pode morar
+         num gesto invisível. */
+      onPress={abrir}
+      onLongPress={abrir}
+      accessibilityHint="Abre as opções de editar e excluir este lançamento."
+    >
+      <View style={[styles.icon, { backgroundColor: item.color + '25' }]}>
+        <Text style={styles.iconText}>{item.category.slice(0, 2).toUpperCase()}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        {/* Nome do lançamento em destaque principal */}
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {item.description && item.description.trim() ? item.description : item.category}
+        </Text>
+        {/* Ver o comentário equivalente na Início: a cor da categoria
+            reprovava no contraste AA como texto de 12px, então o nome fica em
+            cor de tinta e quem carrega a identidade é o avatar. */}
+        <Text style={styles.rowSub}>
+          {item.category}
+          {item.recurring ? ' · recorrente' : ''} · {formatDateLabel(item.occurred_on)}
+        </Text>
+      </View>
+      <View style={styles.rowAmountWrap}>
+        <Text style={[styles.rowAmount, { color: item.type === 'in' ? theme.up : theme.down }]}>
+          {item.type === 'in' ? '+ ' : '− '}
+        </Text>
+        <PrivacyValue>
+          <Text style={[styles.rowAmount, { color: item.type === 'in' ? theme.up : theme.down }]}>
+            {`R$ ${formatMoney(Number(item.amount))}`}
+          </Text>
+        </PrivacyValue>
+      </View>
+    </AppPressable>
+  );
+});
 
 export default function LancamentosScreen() {
   const router = useRouter();
@@ -113,6 +180,26 @@ export default function LancamentosScreen() {
     setToastVisible(true);
   }
 
+  /* Limites do mês visível, no formato de data do banco. `0` no dia do mês
+     seguinte devolve o último dia deste — inclusive em fevereiro bissexto. */
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const inicioDoMes = `${selectedYear}-${pad(selectedMonth + 1)}-01`;
+  const fimDoMes = `${selectedYear}-${pad(selectedMonth + 1)}-${pad(new Date(selectedYear, selectedMonth + 1, 0).getDate())}`;
+
+  /* O cache é a UNIÃO dos meses já baixados, não só o último. Sem isso,
+     navegar para outro mês apagaria da memória offline o mês anterior. */
+  const guardarNoCache = useCallback(async (doMes: Transaction[]) => {
+    const anterior = (await getCachedTransactions()) ?? [];
+    const porId = new Map(anterior.map((t) => [t.id, t]));
+    /* O mês recém-baixado é a verdade para o período dele: remove o que sumiu
+       (excluído em outro aparelho) antes de reinserir o que veio agora. */
+    for (const t of anterior) {
+      if (t.occurred_on >= inicioDoMes && t.occurred_on <= fimDoMes) porId.delete(t.id);
+    }
+    for (const t of doMes) porId.set(t.id, t);
+    await setCachedTransactions([...porId.values()]);
+  }, [inicioDoMes, fimDoMes]);
+
   const load = useCallback(async () => {
     if (isDemoMode) {
       setTransactions(DEMO_TRANSACTIONS);
@@ -124,26 +211,34 @@ export default function LancamentosScreen() {
     }
 
     try {
-      let tx = await fetchTransactions();
+      /* Só o mês visível. A tela deriva TUDO de `monthTransactions`: totais,
+         chips de categoria, busca e filtro. Baixar o histórico inteiro para
+         mostrar trinta dias era trabalho jogado fora que crescia sem teto. */
+      let tx = await fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes);
       setOffline(false);
-      await setCachedTransactions(tx);
+      await guardarNoCache(tx);
 
       // A rede respondeu — aproveita pra tentar sincronizar o que ficou pendente offline.
       const { synced } = await flushPendingQueue();
       if (synced > 0) {
-        tx = await fetchTransactions();
-        await setCachedTransactions(tx);
+        tx = await fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes);
+        await guardarNoCache(tx);
         triggerToast(synced === 1 ? '1 lançamento sincronizado' : `${synced} lançamentos sincronizados`);
       }
 
       /* Assinaturas ("repetir mensalmente") só existem no mês seguinte se
-         alguém as criar — é aqui que isso acontece. Na esmagadora maioria das
-         vezes não há nada a criar e não custa nenhuma ida ao banco. */
-      const faltantes = ocorrenciasFaltantes(tx, todayISO());
+         alguém as criar — é aqui que isso acontece.
+ 
+         O contexto vem de `fetchRecurrenceContext()`, e NÃO do mês carregado
+         acima: a decisão de criar compara os meses já ocupados de cada série,
+         então alimentar isto com um recorte faria todo mês ausente parecer um
+         mês a preencher, e o estrago seria lançamento duplicado no extrato.
+         `__tests__/corpus-recorrencia.ts` guarda exatamente esse caso. */
+      const faltantes = ocorrenciasFaltantes(await fetchRecurrenceContext(), todayISO());
       if (faltantes.length > 0) {
         await criarOcorrenciasRecorrentes(faltantes);
-        tx = await fetchTransactions();
-        await setCachedTransactions(tx);
+        tx = await fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes);
+        await guardarNoCache(tx);
       }
 
       setTransactions(tx);
@@ -151,6 +246,8 @@ export default function LancamentosScreen() {
     } catch (e: any) {
       const cached = await getCachedTransactions();
       if (cached) {
+        /* O cache guarda a união dos meses já visitados, então offline ainda
+           dá para navegar entre os meses que a pessoa abriu com rede. */
         setTransactions(cached);
         setOffline(true);
         setPendingCount(await getPendingCount());
@@ -161,9 +258,19 @@ export default function LancamentosScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, inicioDoMes, fimDoMes, guardarNoCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  /* Estáveis entre renders: é o que permite ao `memo` da linha funcionar. */
+  const abrirAcoesDoLancamento = useCallback((tx: Transaction) => {
+    setSelectedTx(tx);
+    setActionSheetOpen(true);
+  }, []);
+  const renderizarLinha = useCallback(
+    ({ item }: { item: Transaction }) => <LinhaLancamento item={item} aoAbrirAcoes={abrirAcoesDoLancamento} />,
+    [abrirAcoesDoLancamento]
+  );
 
   /* Chegando pelo FAB da Início (?novoLancamento=in|out): abre o mesmo
      formulário do "+" desta tela, já com o tipo escolhido lá. Ver o hook para
@@ -550,40 +657,7 @@ export default function LancamentosScreen() {
                 : 'Nenhum lançamento ainda. Toque no "+" para registrar o primeiro ou use os botões acima para colar comprovante ou importar CSV.'}
             </Text>
           }
-          renderItem={({ item }) => (
-            <AppPressable
-              style={({ hovered }) => [styles.row, hovered && styles.rowHover]}
-              onLongPress={() => {
-                setSelectedTx(item);
-                setActionSheetOpen(true);
-              }}
-            >
-              <View style={[styles.icon, { backgroundColor: item.color + '25' }]}>
-                <Text style={[styles.iconText, { color: item.color }]}>{item.category.slice(0, 2).toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                {/* Nome do lançamento em destaque principal */}
-                <Text style={styles.rowTitle} numberOfLines={1}>
-                  {item.description && item.description.trim() ? item.description : item.category}
-                </Text>
-                {/* Categoria em hierarquia mais baixa com a cor correspondente */}
-                <Text style={styles.rowSub}>
-                  <Text style={{ color: item.color}}>{item.category}</Text>
-                  {item.recurring ? ' · recorrente' : ''} · {formatDateLabel(item.occurred_on)}
-                </Text>
-              </View>
-              <View style={styles.rowAmountWrap}>
-                <Text style={[styles.rowAmount, { color: item.type === 'in' ? theme.up : theme.down }]}>
-                  {item.type === 'in' ? '+ ' : '− '}
-                </Text>
-                <PrivacyValue>
-                  <Text style={[styles.rowAmount, { color: item.type === 'in' ? theme.up : theme.down }]}>
-                    {`R$ ${formatMoney(Number(item.amount))}`}
-                  </Text>
-                </PrivacyValue>
-              </View>
-            </AppPressable>
-          )}
+          renderItem={renderizarLinha}
           ListFooterComponent={
             monthTransactions.length > 0 ? (
               <View style={styles.exportWrap}>
@@ -677,7 +751,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
   rowHover: { backgroundColor: theme.paperRaised },
   icon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  iconText: { fontSize: type.legenda, fontFamily: fonts.regular },
+  iconText: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular },
   /* `lineHeight` explícito: sem ele a Neue Machina entrega o leading
      intrínseco dela, curto, e a descendente do título encostava na linha de
      baixo — o que fazia a lista inteira parecer emendada. */

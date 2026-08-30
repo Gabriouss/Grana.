@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -53,10 +54,19 @@ export default function SignUp() {
   const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(null);
   const [aceitouTermos, setAceitouTermos] = useState(false);
 
+  const campoEmail = useRef<TextInput>(null);
+  const campoSenha = useRef<TextInput>(null);
+  const campoConfirmar = useRef<TextInput>(null);
+
   async function handleSignUp() {
     setError(null);
+    /* Cada recusa leva o foco ao campo que precisa de conserto. Sem isto o
+        foco ficava no botão e a mensagem aparecia longe de onde a pessoa
+        está, o que deixa quem navega por teclado sem saber o que corrigir. */
     if (!email.trim() || !password) {
       setError('Preencha e-mail e senha.');
+      if (!email.trim()) campoEmail.current?.focus();
+      else campoSenha.current?.focus();
       return;
     }
     if (!aceitouTermos) {
@@ -66,10 +76,12 @@ export default function SignUp() {
     const passwordError = validatePassword(password);
     if (passwordError) {
       setError(passwordError);
+      campoSenha.current?.focus();
       return;
     }
     if (password !== confirmPassword) {
       setError('As senhas não são iguais.');
+      campoConfirmar.current?.focus();
       return;
     }
 
@@ -103,7 +115,20 @@ export default function SignUp() {
   if (confirmationSentTo) {
     return (
       <View style={styles.container}>
-        <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        {/* A rolagem não é enfeite: sem ela, `content` tinha `flex: 1` com
+          `justifyContent: 'center'`, ou seja, uma caixa da altura exata da
+          janela centralizando um formulário mais alto que ela. Medido em
+          844×390, o título ficava em `top: -104` e o botão "Criar conta" em
+          `top: 424` numa janela de 390, com `scrollHeight` igual a 390 e
+          nenhum contêiner rolável: criar conta era impossível em paisagem.
+          `flexGrow` no contêiner de conteúdo mantém a centralização quando há
+          espaço e libera a rolagem quando não há. */}
+      <ScrollView
+        style={styles.rolagem}
+        contentContainerStyle={styles.rolagemConteudo}
+        keyboardShouldPersistTaps="handled"
+      >
+      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
           <Text style={styles.eyebrow}>Quase lá</Text>
           <Text style={styles.title}>Confirme seu e-mail</Text>
           <Text style={styles.subtitle}>
@@ -118,6 +143,7 @@ export default function SignUp() {
             <Text style={styles.primaryBtnText}>Voltar para o login</Text>
           </AppPressable>
         </View>
+      </ScrollView>
       </View>
     );
   }
@@ -127,14 +153,26 @@ export default function SignUp() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      {/* Mesma correção da tela de confirmação acima: sem rolagem, o
+          formulário de cadastro ficava cortado nos dois sentidos em paisagem. */}
+      <ScrollView
+        style={styles.rolagem}
+        contentContainerStyle={styles.rolagemConteudo}
+        keyboardShouldPersistTaps="handled"
+      >
+      <View style={[styles.content, colunaFormulario, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
         <Text style={styles.eyebrow}>Boas-vindas ao Grana.</Text>
         <Text style={styles.title}>Criar conta</Text>
         <Text style={styles.subtitle}>Seus lançamentos ficam salvos na nuvem e sincronizados entre aparelhos.</Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>E-mail</Text>
-          <TextInput maxLength={LIMITS.email}
+          <TextInput
+            ref={campoEmail}
+            /* Nome acessível: o "E-mail" acima é um `Text` irmão e não vira
+               `<label>` na web nem nome no nativo. */
+            accessibilityLabel="E-mail"
+            maxLength={LIMITS.email}
             style={styles.input}
             placeholder="voce@exemplo.com"
             placeholderTextColor={theme.inkFaint}
@@ -149,6 +187,8 @@ export default function SignUp() {
         <View style={styles.field}>
           <Text style={styles.label}>Senha</Text>
           <PasswordInput
+            ref={campoSenha}
+            accessibilityLabel="Senha"
             maxLength={LIMITS.password}
             placeholder={`mínimo ${MIN_PASSWORD} caracteres, com número`}
             autoComplete="password-new"
@@ -167,6 +207,8 @@ export default function SignUp() {
         <View style={styles.field}>
           <Text style={styles.label}>Confirmar senha</Text>
           <PasswordInput
+            ref={campoConfirmar}
+            accessibilityLabel="Confirmar senha"
             maxLength={LIMITS.password}
             placeholder="digite a senha de novo"
             autoComplete="password-new"
@@ -193,7 +235,12 @@ export default function SignUp() {
           />
         </AppPressable>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {/* Região de alerta: a mensagem nascia visível e silenciosa. */}
+        {error && (
+          <Text style={styles.errorText} role="alert" accessibilityLiveRegion="assertive">
+            {error}
+          </Text>
+        )}
 
         <AppPressable
           style={({ hovered }) => [styles.primaryBtn, hovered && styles.primaryBtnHover]}
@@ -210,13 +257,18 @@ export default function SignUp() {
           <Text style={styles.secondaryBtnText}>Já tem conta? Entrar</Text>
         </AppPressable>
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl },
+  rolagem: { flex: 1 },
+  /* `flexGrow` em vez de `flex`: o conteúdo continua centralizado enquanto
+     couber e passa a rolar quando não couber. */
+  rolagemConteudo: { flexGrow: 1, justifyContent: 'center' },
+  content: { width: '100%', paddingHorizontal: spacing.xl },
   eyebrow: { color: theme.inkFaint, fontSize: type.nota, letterSpacing: 1, fontFamily: fonts.light },
   title: { color: theme.ink, fontSize: type.valor, fontFamily: fonts.light, marginTop: spacing.xs, marginBottom: spacing.sm },
   subtitle: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginBottom: spacing.xxl, fontFamily: fonts.light },

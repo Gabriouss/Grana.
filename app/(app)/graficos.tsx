@@ -20,7 +20,7 @@ import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
-import { fetchTransactions } from '@/lib/data';
+import { fetchTransactions, fetchTransactionsDoPeriodo } from '@/lib/data';
 import { formatMoney, isCreditTx, todayISO, formatDateLabel } from '@/lib/format';
 import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts } from '@/lib/theme';
 import { prepararFatias } from '@/lib/chart-colors';
@@ -94,7 +94,16 @@ export default function GraficosScreen() {
         setTransactions(DEMO_TRANSACTIONS);
         return;
       }
-      const data = await fetchTransactions();
+      /* Em "Período" a tela já descarta tudo fora do intervalo (ver
+          `filteredTransactions`), então buscar o histórico inteiro para jogar
+          fora em seguida é trabalho perdido. Nos outros dois modos o recorte
+          NÃO pode acontecer: "Ano a Ano" e "Mês a Mês" montam a régua a partir
+          do primeiro e do último lançamento existentes, e um recorte mudaria o
+          que aparece no eixo. */
+      const data =
+        granularidade === 'periodo'
+          ? await fetchTransactionsDoPeriodo(periodoInicio, periodoFim)
+          : await fetchTransactions();
       setTransactions(data || []);
     } catch (e) {
       console.warn('Erro ao carregar transações para gráficos:', e);
@@ -102,7 +111,7 @@ export default function GraficosScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, granularidade, periodoInicio, periodoFim]);
 
   useEffect(() => {
     carregarDados();

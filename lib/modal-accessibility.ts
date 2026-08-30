@@ -42,6 +42,96 @@ function liberar(elemento: HTMLElement) {
   else elemento.setAttribute('aria-hidden', registro.ariaHidden);
 }
 
+/* ── Quem tinha o foco antes do diálogo ────────────────────────────────────
+ *
+ * O hook não pode simplesmente ler `document.activeElement` quando roda: um
+ * campo com `autoFocus` dentro do modal é focado em `commitMount`, que
+ * acontece ANTES de qualquer `useEffect`. Medido no modal "Recuperar senha":
+ * o que o hook guardava como "foco anterior" era o campo de e-mail do próprio
+ * modal, e na hora de devolver esse campo já tinha saído do documento, então
+ * a devolução não acontecia e o foco ficava no `body`.
+ *
+ * A saída é acompanhar o foco continuamente e ignorar o que acontece dentro de
+ * um diálogo. O último foco de FORA é o gatilho de verdade. */
+let ultimoFocoExterno: HTMLElement | null = null;
+let acompanhando = false;
+
+export function acompanharFocoParaModais(): void {
+  if (Platform.OS !== 'web' || typeof document === 'undefined' || acompanhando) return;
+  acompanhando = true;
+  document.addEventListener(
+    'focusin',
+    (evento) => {
+      const alvo = evento.target as HTMLElement | null;
+      if (!alvo || typeof alvo.closest !== 'function') return;
+      if (alvo.closest('[role="dialog"]')) return;
+      ultimoFocoExterno = alvo;
+    },
+    true
+  );
+}
+
+/** O gatilho provável: o foco atual, se estiver fora de um diálogo; senão o
+ *  último foco registrado fora. */
+function focoDeOrigem(): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  const atual = document.activeElement as HTMLElement | null;
+  if (atual && atual !== document.body && typeof atual.closest === 'function' && !atual.closest('[role="dialog"]')) {
+    return atual;
+  }
+  return ultimoFocoExterno;
+}
+
+/**
+ * Devolve o foco ao controle que abriu o modal.
+ *
+ * Duas precauções que a chamada direta não tinha:
+ *
+ * `preventScroll` porque `focus()` sem ele pede ao navegador que role até o
+ * elemento, e o gatilho pode estar numa tela que rolou enquanto o modal
+ * estava aberto. Rolar a página como efeito colateral de fechar um diálogo é
+ * exatamente o tipo de salto que ninguém pediu.
+ *
+ * E um segundo quadro, porque fechar um modal é animado: a limpeza do efeito
+ * roda quando `ativo` cai, mas o painel só sai do documento depois, e essa
+ * remoção joga o foco para o `body`. Medido na tela de login, abrindo
+ * "Esqueci minha senha" e fechando com Escape: o foco terminava em BODY
+ * mesmo com a restauração já chamada. Repetir no quadro seguinte cobre o
+ * caso sem depender de quando cada modal termina sua saída.
+ */
+function devolverFoco(alvo: HTMLElement | null) {
+  if (!alvo || typeof alvo.focus !== 'function' || typeof document === 'undefined') return;
+
+  /* A primeira tentativa é incondicional: neste instante o foco ainda está
+     DENTRO do modal que está fechando, e trazê-lo de volta é justamente o
+     trabalho. Uma versão anterior desta função checava "o foco está perdido?"
+     já aqui, via que ele estava no painel, concluía que não havia nada a
+     fazer e desistia. */
+  if (alvo.isConnected) alvo.focus({ preventScroll: true });
+
+  /* As tentativas seguintes só agem com o foco PERDIDO, para nunca roubá-lo de
+     onde a pessoa, ou a tela seguinte, já o tenha posto. */
+  const tentar = () => {
+    if (!alvo.isConnected) return true;
+    const atual = document.activeElement;
+    if (atual && atual !== document.body) return true;
+    alvo.focus({ preventScroll: true });
+    return document.activeElement === alvo;
+  };
+
+  /* Insiste por alguns quadros porque o fechamento é animado: a limpeza do
+     efeito roda quando `ativo` cai, e só depois o painel sai do documento,
+     levando o foco para o `body` junto. Medido no login, com o gravador de
+     eventos de foco: depois do Escape não vinha nenhum `focusout`, o painel
+     era removido em silêncio e a restauração que já tinha rodado era desfeita.
+     A janela cobre a saída do modal e para assim que o foco pousa. */
+  let tentativas = 0;
+  const timer = setInterval(() => {
+    tentativas += 1;
+    if (tentar() || tentativas >= 12) clearInterval(timer);
+  }, 30);
+}
+
 /** Isola foco e leitura no modal e devolve o foco ao controle de origem. */
 export function useModalAccessibility(ref: RefObject<View | null>, ativo = true) {
   useEffect(() => {
@@ -56,7 +146,7 @@ export function useModalAccessibility(ref: RefObject<View | null>, ativo = true)
     }
 
     if (typeof document === 'undefined') return;
-    const focoAnterior = document.activeElement as HTMLElement | null;
+    const focoAnterior = focoDeOrigem();
     /* Só os elementos que ESTA instância isolou — é o que ela pode devolver. */
     const meus: HTMLElement[] = [];
     let removerEventos = () => {};
@@ -151,7 +241,7 @@ export function useModalAccessibility(ref: RefObject<View | null>, ativo = true)
       removerEventos();
       observador.disconnect();
       restaurar();
-      focoAnterior?.focus?.();
+      devolverFoco(focoAnterior);
     };
   }, [ativo, ref]);
 }

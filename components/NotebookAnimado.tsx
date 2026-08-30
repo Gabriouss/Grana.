@@ -239,14 +239,14 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
 
   if (variante === 'caixa') {
     return (
-      <View ref={containerRef} style={styles.caixa} pointerEvents="none">
+      <View ref={containerRef} style={[styles.caixa, { pointerEvents: 'none' }]} >
         {camadas}
       </View>
     );
   }
 
   return (
-    <View ref={containerRef} style={styles.painel} pointerEvents="none" onLayout={aoMedir}>
+    <View ref={containerRef} style={[styles.painel, { pointerEvents: 'none' }]}  onLayout={aoMedir}>
       {painel.width > 0 && (
         <View style={{ position: 'absolute', left: telaLeft, top: telaTop, width: telaW, height: telaH }}>
           {camadas}

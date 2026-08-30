@@ -81,13 +81,12 @@ export default function PrivacyValue({ children, style }: { children: ReactNode;
       aria-hidden
     >
       <View
-        pointerEvents="none"
-        style={[styles.camada, SUPORTA_CSS_BLUR && ({ filter: CSS_BLUR } as ViewStyle)]}
+        style={[[styles.camada, SUPORTA_CSS_BLUR && ({ filter: CSS_BLUR } as ViewStyle)], { pointerEvents: 'none' }]}
       >
         {mascarado}
       </View>
       {!SUPORTA_CSS_BLUR && (
-        <BlurView intensity={26} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <BlurView intensity={26} tint="dark" style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}  />
       )}
     </View>
   );
