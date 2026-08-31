@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { fonts, spacing, theme, type, textStyles } from '@/lib/theme';
-import { useBreakpoint } from '@/lib/breakpoints';
 
 /**
  * Cabeçalho padrão das telas principais. Antes cada tela tinha seu próprio
@@ -26,32 +25,22 @@ export default function ScreenHeader({
   right?: ReactNode;
   children?: ReactNode;
 }) {
-  /* Era um limiar próprio (`width < 480`), diferente do resto do app — que
-     usa 768 (lib/breakpoints.ts) pra decidir o que vira "uma coluna,
-     empilhado". Num celular grande com zoom/densidade de tela reduzida (comum
-     em aparelhos Android maiores), a largura CSS relatada passa de 480 sem
-     chegar a 768: o cabeçalho ficava no modo "linha única" achando que tinha
-     tela de tablet, e o seletor de carteira estourava a borda direita da
-     tela — reportado por usuário via print. Unificado com o mesmo corte que
-     toda folha, sidebar e navegação do app já usa. */
-  const { ehCompacto: compacto } = useBreakpoint();
-
   return (
     <View style={styles.header}>
-      <View style={[styles.row, compacto && styles.rowCompacta]}>
-        <View style={[styles.leftCol, compacto && styles.leftColCompacta]}>
+      <View style={styles.row}>
+        <View style={styles.leftCol}>
           {left}
           <View style={styles.texts}>
             <View style={styles.eyebrowRow}>
               <Text style={styles.eyebrow}>{eyebrow}</Text>
               {eyebrowBadges}
             </View>
-            <Text style={styles.title} numberOfLines={2}>
+            <Text style={styles.title} numberOfLines={1}>
               {title}
             </Text>
           </View>
         </View>
-        {right ? <View style={[styles.right, compacto && styles.rightCompacta]}>{right}</View> : null}
+        {right ? <View style={styles.right}>{right}</View> : null}
       </View>
       {children}
     </View>
@@ -67,27 +56,36 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  leftCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
-  texts: { flexShrink: 1 },
+  /* Regra dura, não negociável: o seletor de carteira e os botões de ação
+     NUNCA encolhem e NUNCA saem da tela — só o título/saudação cede espaço,
+     até truncar com reticências se precisar. Por isso `right` tem
+     `flexShrink: 0` (nem tenta encolher, então nunca corre risco de perder a
+     briga por espaço e ficar cortado) e só `leftCol`/`texts` têm
+     `flexShrink: 1`.
+
+     `minWidth: 0` em `leftCol`/`texts` é o que faz esse encolhimento
+     funcionar de verdade na web: sem ele, o padrão do CSS flexbox é um item
+     nunca encolher abaixo do tamanho intrínseco do próprio conteúdo (aqui, o
+     texto do título por extenso) — `flexShrink: 1` sozinho não é suficiente,
+     e é exatamente essa lacuna que fazia a pílula de carteira estourar a
+     borda da tela em celular grande antes desta correção. */
+  leftCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1, minWidth: 0 },
+  texts: { flexShrink: 1, minWidth: 0 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  /* `flexShrink` nos dois lados, e nunca `flexWrap`: a regra do cabeçalho é
-     que os botões da tela e o seletor de carteira fiquem SEMPRE na mesma linha
-     do título, à direita. Com wrap, telas com muitos botões (Lançamentos tem
-     três mais a carteira) jogavam o seletor para uma segunda linha. Deixando
-     os dois lados encolherem, quem cede espaço primeiro é o título — que já
-     tem numberOfLines={1} e corta com reticências. */
-  right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
-  rowCompacta: { flexWrap: 'wrap', alignItems: 'stretch' },
-  leftColCompacta: { width: '100%' },
-  rightCompacta: { width: '100%', justifyContent: 'flex-end', flexShrink: 0 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 0 },
   eyebrow: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
     color: theme.accent2,
     letterSpacing: 0.5,
   },
+  /* Era textStyles.headline (24) — grande demais pro papel que essa linha
+     cumpre (é uma saudação/rótulo de tela, não um valor em destaque), e ficava
+     ainda mais evidente ao lado dos ícones e da pílula de carteira, que são
+     pequenos por design. textStyles.title (20) já existe pra esse papel
+     intermediário — reaproveitado em vez de inventar um tamanho novo. */
   title: {
-    ...textStyles.headline,
+    ...textStyles.title,
     color: theme.ink,
   },
 });
