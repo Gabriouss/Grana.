@@ -496,3 +496,51 @@ deixa de valer.
 - Validado no DOM hidratado das rotas `/`, `/sign-in` e `/lancamentos`, no
   export web de produção após a injeção de metadados e com
   `npx tsc --noEmit`, todos aprovados.
+
+## Sessão de 31/08/2026 — pop-up de novidades por versão
+
+Pedido do autor: avisar, dentro do app, o que mudou (correções/features)
+quando a pessoa abre uma versão recém-instalada — diferente do
+`UpdateBanner`, que avisa de uma versão *futura* disponível pra baixar.
+
+- **`components/NovidadesModal.tsx`** — folha (mesmo padrão visual do
+  `FeedbackModal`: `AppModal` + `AccessibleModalPanel` + `useSheetFlutuante`)
+  com a lista de novidades da versão instalada. Montada em `app/_layout.tsx`
+  ao lado do `UpdateBanner`, só na área logada (`session && <NovidadesModal
+  />`).
+- **`lib/atualizacao.ts`** ganhou `verificarNovidades()`/
+  `marcarNovidadesVistas()`. A checagem compara a versão instalada
+  (`Constants.expoConfig.version`) com a última versão cujas novidades já
+  foram vistas neste aparelho (`AsyncStorage`, chave
+  `grana_novidades_versao_vista`) — device-local de propósito, mesmo
+  critério do `grana_versao_dispensada` já existente, não `user_metadata`.
+  Na primeira abertura de sempre (instalação nova, sem baseline salva) só
+  grava a versão atual e fica muda — não é atualização, não tem novidade
+  pra mostrar. `buscarAppRelease()` foi extraída pra ser a leitura única da
+  linha singleton `app_release`, compartilhada com `verificarAtualizacao()`
+  (evita duas idas à rede quando as duas checagens rodam juntas).
+- **Fonte do texto**: `app_release.notes`, um item por linha. Antes desta
+  sessão a coluna existia no schema mas nada nunca escrevia nela.
+  `publicar_app_release` (SQL) ganhou o parâmetro opcional `p_notes`, e
+  `eas-build-webhook` passa `payload.metadata?.message` — a mensagem do
+  build EAS (`eas build --message "..."`, ou a mensagem do commit quando
+  nenhuma é passada explicitamente). Decisão do autor: preferiu automação
+  via mensagem do build a editar a tabela manualmente a cada release, pelo
+  mesmo motivo do bump de versão da regra 5 do `AGENTS.md` — um passo
+  manual extra é um passo que uma hora vai ser esquecido em silêncio.
+- O pop-up só aparece quando `app_release.version` bate exatamente com a
+  versão instalada e há `notes` não vazias — nunca inventa novidade a
+  partir de nada, e nunca mostra nota de uma versão que não é a que está
+  rodando.
+- `npx tsc --noEmit` e `npm run test:parser` (incluindo
+  `corpus-schema-guardas.ts` e o `sync-parser.js`) passaram depois da
+  mudança.
+
+**Pendente para a próxima sessão:** a alteração em `supabase/schema.sql`
+(`publicar_app_release` com o novo parâmetro `p_notes`) ainda não foi
+aplicada ao banco de produção — precisa rodar essa função atualizada no
+SQL Editor do Supabase (ou via CLI) antes do próximo build, senão o
+webhook chama a função com um parâmetro que a versão em produção ainda não
+aceita. Ao rodar o próximo `eas build`, escrever `--message` pensando em
+quem usa o app, não em changelog técnico — é isso que vira o texto do
+pop-up.
