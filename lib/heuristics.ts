@@ -638,7 +638,32 @@ export type ParsedCsvTransaction = {
   category: string;
   color: string;
   occurred_on: string; // 'YYYY-MM-DD'
+  /** Chave sintética de deduplicação — ver gerarFitidSintetico(). */
+  fitid: string;
 };
+
+/**
+ * CSV não tem identificador de transação (diferente do OFX, que traz FITID
+ * da própria instituição). Sem isso, reimportar o mesmo arquivo — bem comum
+ * numa migração grande, quando a pessoa reabre o app depois de uma falha de
+ * rede no meio do lote e não sabe até onde chegou — duplicava tudo de novo.
+ *
+ * Gera uma chave determinística a partir do conteúdo da própria linha (data +
+ * tipo + valor + descrição) e reaproveita a coluna `fitid` e o índice único
+ * `(user_id, fitid)` que já existem para o OFX — mesma infraestrutura de
+ * upsert, sem migração de banco. Cabe dentro do teto de 255 caracteres da
+ * coluna porque `description` já é truncada a LIMITS.description (200) antes
+ * de chegar aqui.
+ */
+function gerarFitidSintetico(
+  occurred_on: string,
+  type: TxType,
+  amount: number,
+  description: string
+): string {
+  const chave = `csv:${occurred_on}:${type}:${amount}:${description.trim().toLowerCase()}`;
+  return chave.slice(0, 255);
+}
 
 function splitCsvLine(line: string): string[] {
   const delim = line.split(';').length > line.split(',').length ? ';' : ',';
@@ -712,7 +737,11 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
     const amount = Math.abs(parseAmount(rawAmount));
     if (!amount) continue;
 
-    const desc = (cols[idxDesc] || 'Sem descrição').trim() || 'Sem descrição';
+    /* Truncado aqui, e não só no momento de salvar: o banco recusa descrição
+       acima de LIMITS.description (check de char_length em schema.sql), e sem
+       cortar antes a chave de dedup abaixo ficaria maior do que o texto que
+       de fato entra no banco. */
+    const desc = ((cols[idxDesc] || 'Sem descrição').trim() || 'Sem descrição').slice(0, LIMITS.description);
     const typeRaw = (idxType !== -1 ? cols[idxType] : '') || '';
     const isIncome =
       /entrada|receita|credito|crédito|\+/i.test(typeRaw) ||
@@ -736,6 +765,7 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
       category: catObj.name,
       color: catObj.color,
       occurred_on,
+      fitid: gerarFitidSintetico(occurred_on, type, amount, desc),
     });
 
     /* Teto de linhas: o insert em lote vai numa requisição só, então sem isto

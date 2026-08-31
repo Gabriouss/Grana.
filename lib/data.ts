@@ -262,29 +262,55 @@ export async function addTransactionsBatch(
    * isso — com índice parcial este upsert falha com erro em vez de ignorar
    * duplicado. Ver o comentário longo na migração.
    */
-  ignorarDuplicados = false
+  ignorarDuplicados = false,
+  /** Chamado depois de cada lote, com o total já processado — a tela usa
+      isto pra mostrar progresso numa importação de milhares de linhas, que
+      agora pode levar alguns segundos em vez de ser instantânea. */
+  onProgress?: (processados: number, total: number) => void
 ): Promise<{ inseridos: number; ignorados: number }> {
   if (inputs.length === 0) return { inseridos: 0, ignorados: 0 };
   const user_id = await currentUserId();
   const rows = inputs.map((item) => ({ ...item, user_id }));
 
-  if (!ignorarDuplicados) {
-    const { error } = await supabase.from('transactions').insert(rows);
-    if (error) throw error;
-    return { inseridos: rows.length, ignorados: 0 };
+  /* Uma migração de anos de histórico pode chegar a milhares de linhas —
+     numa requisição só isso vira um payload grande e um risco de timeout.
+     Em lotes sequenciais (nunca em paralelo: a ordem importa para o upsert
+     abaixo enxergar, no lote seguinte, o que o lote anterior já gravou) cada
+     requisição fica do tamanho que sempre foi. Uma falha de rede no meio do
+     caminho perde só o que ainda não foi gravado — os lotes de antes já
+     estão no banco, e por isso o dedup de `ignorarDuplicados` (que agora
+     também cobre CSV, via chave sintética em gerarFitidSintetico) é o que
+     torna seguro simplesmente tentar de novo. */
+  const TAMANHO_LOTE = 500;
+  let inseridos = 0;
+  let ignorados = 0;
+
+  for (let inicio = 0; inicio < rows.length; inicio += TAMANHO_LOTE) {
+    const lote = rows.slice(inicio, inicio + TAMANHO_LOTE);
+
+    if (!ignorarDuplicados) {
+      const { error } = await supabase.from('transactions').insert(lote);
+      if (error) throw error;
+      inseridos += lote.length;
+    } else {
+      /* `ignoreDuplicates` transforma o upsert num "insert ... on conflict do
+         nothing". O `select()` devolve só o que entrou de fato, e a diferença
+         para o total enviado é quanto o arquivo repetia. */
+      const { data, error } = await supabase
+        .from('transactions')
+        .upsert(lote, { onConflict: 'user_id,fitid', ignoreDuplicates: true })
+        .select('id');
+      if (error) throw error;
+
+      const inseridosNoLote = data?.length ?? 0;
+      inseridos += inseridosNoLote;
+      ignorados += lote.length - inseridosNoLote;
+    }
+
+    onProgress?.(Math.min(inicio + TAMANHO_LOTE, rows.length), rows.length);
   }
 
-  /* `ignoreDuplicates` transforma o upsert num "insert ... on conflict do
-     nothing". O `select()` devolve só o que entrou de fato, e a diferença
-     para o total enviado é quanto o arquivo repetia. */
-  const { data, error } = await supabase
-    .from('transactions')
-    .upsert(rows, { onConflict: 'user_id,fitid', ignoreDuplicates: true })
-    .select('id');
-  if (error) throw error;
-
-  const inseridos = data?.length ?? 0;
-  return { inseridos, ignorados: rows.length - inseridos };
+  return { inseridos, ignorados };
 }
 
 /**
