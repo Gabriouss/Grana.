@@ -56,23 +56,23 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  /* `flexShrink` nos dois lados, e nunca `flexWrap`: a regra do cabeçalho é
-     que os botões da tela e o seletor de carteira fiquem SEMPRE na mesma linha
-     do título, à direita. Com wrap, telas com muitos botões (Lançamentos tem
-     três mais a carteira) jogavam o seletor para uma segunda linha. Deixando
-     os dois lados encolherem, quem cede espaço primeiro é o título — que já
-     tem numberOfLines={1} e corta com reticências.
+  /* Regra dura, não negociável: o seletor de carteira e os botões de ação
+     NUNCA encolhem e NUNCA saem da tela — só o título/saudação cede espaço,
+     até truncar com reticências se precisar. Por isso `right` tem
+     `flexShrink: 0` (nem tenta encolher, então nunca corre risco de perder a
+     briga por espaço e ficar cortado) e só `leftCol`/`texts` têm
+     `flexShrink: 1`.
 
-     `minWidth: 0` é o que faz esse encolhimento funcionar de verdade na web:
-     sem ele, o padrão do CSS flexbox é um item nunca encolher abaixo do
-     tamanho intrínseco do próprio conteúdo (aqui, o texto do título por
-     extenso) — `flexShrink: 1` sozinho não é suficiente, e é exatamente essa
-     lacuna que fazia a pílula de carteira estourar a borda da tela em
-     celular grande, mesmo com os dois lados já "encolhendo" no papel. */
+     `minWidth: 0` em `leftCol`/`texts` é o que faz esse encolhimento
+     funcionar de verdade na web: sem ele, o padrão do CSS flexbox é um item
+     nunca encolher abaixo do tamanho intrínseco do próprio conteúdo (aqui, o
+     texto do título por extenso) — `flexShrink: 1` sozinho não é suficiente,
+     e é exatamente essa lacuna que fazia a pílula de carteira estourar a
+     borda da tela em celular grande antes desta correção. */
   leftCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1, minWidth: 0 },
   texts: { flexShrink: 1, minWidth: 0 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1, minWidth: 0 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 0 },
   eyebrow: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
