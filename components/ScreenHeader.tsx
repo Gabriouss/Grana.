@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { fonts, spacing, theme, type, textStyles } from '@/lib/theme';
+import { useBreakpoint } from '@/lib/breakpoints';
 
 /**
  * Cabeçalho padrão das telas principais. Antes cada tela tinha seu próprio
@@ -25,7 +26,15 @@ export default function ScreenHeader({
   right?: ReactNode;
   children?: ReactNode;
 }) {
-  const compacto = useWindowDimensions().width < 480;
+  /* Era um limiar próprio (`width < 480`), diferente do resto do app — que
+     usa 768 (lib/breakpoints.ts) pra decidir o que vira "uma coluna,
+     empilhado". Num celular grande com zoom/densidade de tela reduzida (comum
+     em aparelhos Android maiores), a largura CSS relatada passa de 480 sem
+     chegar a 768: o cabeçalho ficava no modo "linha única" achando que tinha
+     tela de tablet, e o seletor de carteira estourava a borda direita da
+     tela — reportado por usuário via print. Unificado com o mesmo corte que
+     toda folha, sidebar e navegação do app já usa. */
+  const { ehCompacto: compacto } = useBreakpoint();
 
   return (
     <View style={styles.header}>
