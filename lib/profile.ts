@@ -19,6 +19,23 @@ import { supabase } from './supabase';
  * ela compara `auth.uid()` com o primeiro segmento do caminho. Ver o SQL em
  * supabase/schema.sql.
  *
+ * ── Bucket privado, URL assinada ────────────────────────────────────────────
+ *
+ * O bucket `avatars` estava marcado PÚBLICO no painel do Supabase — uma
+ * auditoria de backend confirmou isso direto em `storage.buckets`, não só
+ * suspeitou. Bucket público serve qualquer objeto pela rota
+ * `/object/public/...` sem checar RLS nenhuma, e o caminho contém o
+ * `user_id` em claro, então dava para acessar (e enumerar) foto de qualquer
+ * pessoa sem estar logado.
+ *
+ * Por isso o metadata `foto_url` NÃO guarda mais a URL: guarda só um sinal de
+ * "existe foto" (qualquer valor verdadeiro — o valor antigo, uma URL pública
+ * de antes desta mudança, também é verdadeiro, então contas existentes não
+ * precisam de migração). A URL de verdade é pedida de novo a cada
+ * `carregarPerfil()`, via `createSignedUrl`, válida por 1 hora — tempo de
+ * sobra para uma sessão, e a política de SELECT do bucket (dono vê a própria
+ * pasta) garante que só o dono consegue gerar essa URL.
+ *
  * A imagem é reduzida para 512px e recomprimida antes de subir. Sem isso, uma
  * foto de câmera moderna sobe com 4 a 8 MB — o plano gratuito tem 1 GB de
  * Storage, que se esgotaria em ~150 usuários. A 512px o arquivo fica em torno
@@ -76,14 +93,36 @@ export type Perfil = {
   email: string;
 };
 
+/** Validade da URL assinada da foto. Uma sessão inteira cabe folgada, e cada
+ *  tela que chama `carregarPerfil()` pede uma nova ao montar. */
+const VALIDADE_URL_FOTO_SEGUNDOS = 60 * 60;
+
 export async function carregarPerfil(): Promise<Perfil | null> {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
 
   const meta = data.user.user_metadata ?? {};
+  const userId = data.user.id;
+
+  /* `foto_url` é só o sinal de "existe foto" — pode ser o `true` que
+     `salvarFoto` grava hoje, ou a URL pública que ficava lá antes desta
+     mudança (também verdadeira, então contas antigas continuam funcionando
+     sem precisar de migração). O valor em si nunca é usado como URL. */
+  let fotoUrl: string | null = null;
+  if (meta.foto_url) {
+    const { data: assinada } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(`${userId}/avatar.jpg`, VALIDADE_URL_FOTO_SEGUNDOS);
+    /* Sem o `?v=` a URL fica igual entre chamadas dentro da mesma hora, o que
+       é exatamente o que se quer: trocar de foto gera um caminho assinado
+       novo por natureza (parâmetros de assinatura mudam), então não existe o
+       problema de cache de foto antiga que o `getPublicUrl` tinha. */
+    fotoUrl = assinada?.signedUrl ?? null;
+  }
+
   return {
     nome: typeof meta.nome === 'string' ? meta.nome : '',
-    fotoUrl: typeof meta.foto_url === 'string' ? meta.foto_url : null,
+    fotoUrl,
     email: data.user.email ?? '',
   };
 }
@@ -133,16 +172,18 @@ export async function salvarFoto(uriLocal: string): Promise<{ ok: boolean; url?:
     });
     if (upErro) return { ok: false, error: upErro.message };
 
-    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(caminho);
+    const { data: assinada, error: assinaturaErro } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(caminho, VALIDADE_URL_FOTO_SEGUNDOS);
+    if (assinaturaErro || !assinada) return { ok: false, error: assinaturaErro?.message ?? 'Não foi possível gerar a URL da foto.' };
 
-    /* O sufixo com timestamp existe para furar cache: o caminho é sempre o
-       mesmo, então sem ele o app continuaria exibindo a foto antiga. */
-    const url = `${pub.publicUrl}?v=${Date.now()}`;
-
-    const { error: metaErro } = await supabase.auth.updateUser({ data: { foto_url: url } });
+    /* `foto_url` guarda só o sinal de que existe foto, não a URL: bucket
+       privado, então a URL de verdade precisa ser pedida de novo a cada
+       carregamento (ver comentário de carregarPerfil, acima). */
+    const { error: metaErro } = await supabase.auth.updateUser({ data: { foto_url: true } });
     if (metaErro) return { ok: false, error: metaErro.message };
 
-    return { ok: true, url };
+    return { ok: true, url: assinada.signedUrl };
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'Não foi possível enviar a foto.' };
   }

@@ -1,0 +1,40 @@
+name: CI
+
+# GRN-BE-012 da auditoria de backend: não havia workflow nenhum, e um push
+# direto podia publicar regressão de tipo ou de parser sem ninguém perceber
+# antes de chegar em produção — foi exatamente essa falta de rede que deixou
+# passar, em sessões anteriores, código que quebrava só quando executado de
+# verdade.
+#
+# Escopo deliberadamente pequeno: só o que já roda limpo localmente hoje,
+# `tsc` e a suíte de corpus (`npm run test:parser`), que juntas cobrem tipos,
+# paginação, recorrência, sequência de dias, relatório em PDF, Score e os
+# guardas de texto sobre supabase/schema.sql. Checagem de Edge Function (Deno)
+# e de aplicação limpa do schema num banco novo (GRN-BE-008) ficam de fora
+# porque exigem Docker/Supabase local, que não foi possível verificar
+# funcionando neste ambiente — melhor um workflow pequeno e confiável do que
+# um grande que ninguém sabe se roda.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verificação de tipos
+        run: npx tsc --noEmit
+
+      - name: Corpus de testes (parser, paginação, recorrência, sequência, relatório, Score, schema)
+        run: npm run test:parser

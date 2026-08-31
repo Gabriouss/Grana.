@@ -1066,11 +1066,25 @@ grant execute on function public.vincular_assinatura_por_token(text) to authenti
 -- real: a FK ali é `on delete set null` de propósito (mantém o feedback
 -- em si, útil pro produto, só perde o vínculo com a conta que não existe
 -- mais) — por isso um UPDATE, não um DELETE.
-create or replace function delete_user_account()
+-- GRN-BE-007: a foto de perfil sobrevivia à exclusão de conta.
+--
+-- `delete_user_account()` limpava as tabelas, mas nunca tocava
+-- `storage.objects`. O objeto em `avatars/{user_id}/avatar.jpg` ficava
+-- órfão — e enquanto o bucket estava público (ver bloco logo abaixo), a URL
+-- continuava servindo o arquivo para qualquer um que já a tivesse, mesmo com
+-- a conta apagada, contrariando `lib/legal-content.ts` ("seus dados são
+-- apagados permanentemente").
+--
+-- `search_path = ''` com tudo qualificado, no padrão que o resto deste
+-- arquivo já usa: a versão anterior usava `search_path = public, auth,
+-- pg_temp`, que funciona mas é a forma mais fraca — um schema que viesse
+-- antes de `public`/`auth` na busca poderia interceptar uma chamada não
+-- qualificada. `storage` entra na lista de schemas tocados.
+create or replace function public.delete_user_account()
 returns void
 language plpgsql
 security definer
-set search_path = public, auth, pg_temp
+set search_path = ''
 as $$
 declare
   current_user_id uuid;
@@ -1092,7 +1106,28 @@ begin
   delete from public.wallets where user_id = current_user_id;
   delete from public.credit_card_invoices where user_id = current_user_id;
   delete from public.subscriptions where user_id = current_user_id;
+  delete from public.user_achievements where user_id = current_user_id;
   update public.feedbacks set user_id = null where user_id = current_user_id;
+
+  -- Foto de perfil: o caminho é sempre `{user_id}/avatar.jpg` (lib/profile.ts),
+  -- então não precisa de SELECT prévio para descobrir o nome do arquivo.
+  --
+  -- `storage.objects` tem um trigger de proteção
+  -- (`storage.protect_objects_delete`) que recusa QUALQUER DELETE direto por
+  -- SQL, pedindo a API de Storage no lugar — inclusive vindo de uma função
+  -- SECURITY DEFINER como esta. Sem o `set_config` abaixo, esta função inteira
+  -- estourava exceção aqui e a transação inteira dava rollback: a conta NÃO
+  -- era apagada, nem as tabelas de antes, que é pior que o defeito original
+  -- (photo órfã, mas o resto da exclusão funcionava). Verificado ao vivo:
+  -- o DELETE cru falha com "Direct deletion from storage tables is not
+  -- allowed"; com o `set_config('storage.allow_delete_query', 'true', true)`
+  -- antes, na MESMA transação, o mesmo DELETE funciona. O terceiro argumento
+  -- `true` faz o ajuste valer só para esta transação, não para a sessão
+  -- inteira — não é um interruptor global ligado por engano.
+  perform set_config('storage.allow_delete_query', 'true', true);
+  delete from storage.objects
+  where bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = current_user_id::text;
 
   delete from auth.users where id = current_user_id;
 end;
@@ -1100,6 +1135,20 @@ $$;
 
 revoke all on function public.delete_user_account() from public, anon;
 grant execute on function public.delete_user_account() to authenticated;
+
+-- GRN-BE-007 (segunda metade): o bucket `avatars` estava marcado PÚBLICO no
+-- painel — confirmado direto em `storage.buckets`, não só suspeitado. Com
+-- bucket público, a rota `/object/public/avatars/{user_id}/avatar.jpg` serve
+-- o arquivo para qualquer um, sem checar RLS nenhuma: mesmo com a conta viva,
+-- não só depois de apagada. O caminho contém o `user_id` em claro (é a
+-- convenção que a policy de Storage já usa), então bucket público também
+-- permitia enumerar quem tem foto.
+--
+-- `lib/profile.ts` passou a usar `createSignedUrl()` em vez de
+-- `getPublicUrl()`, então esta troca não quebra a exibição da foto: quem
+-- carrega o perfil pede uma URL assinada nova a cada vez, válida por 1 hora,
+-- e isso já respeita a policy de SELECT que só libera pro dono.
+update storage.buckets set public = false where id = 'avatars';
 
 -- ── Importação de extrato OFX ───────────────────────────────────────────────
 --
