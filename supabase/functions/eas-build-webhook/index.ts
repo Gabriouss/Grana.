@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
     platform?: string;
     expirationDate?: string;
     artifacts?: { buildUrl?: string };
-    metadata?: { appVersion?: string; buildProfile?: string };
+    metadata?: { appVersion?: string; buildProfile?: string; message?: string };
   };
   try {
     payload = JSON.parse(rawBody);
@@ -88,10 +88,17 @@ Deno.serve(async (req: Request) => {
   if (claim === 'done') return new Response('ok', { status: 200 });
   if (claim === 'busy') return new Response('busy', { status: 503 });
 
+  // Mensagem do build vira o texto do pop-up de novidades (lib/atualizacao.ts).
+  // Sem `--message` na hora do `eas build`, o EAS preenche sozinho com a
+  // mensagem do commit — aceitável como notas, mas escrever a mensagem
+  // pensando em quem usa o app rende um pop-up melhor do que um commit técnico.
+  const notes = payload.metadata?.message?.trim().slice(0, 2000) || null;
+
   const { data: result, error } = await supabase.rpc('publicar_app_release', {
     p_version: version,
     p_apk_url: apkUrl,
     p_expires_at: payload.expirationDate ?? null,
+    p_notes: notes,
   });
   if (error) {
     await supabase.rpc('falhar_webhook_evento', {

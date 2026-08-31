@@ -9,6 +9,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, radius, spacing } from '@/lib/theme';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
@@ -77,6 +78,7 @@ export default function Sheet({
   onClose?: () => void;
 }) {
   const keyboardHeight = useKeyboardHeight();
+  const insets = useSafeAreaInsets();
   const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const painelRef = useRef<View>(null);
   useModalAccessibility(painelRef);
@@ -114,7 +116,15 @@ export default function Sheet({
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
-            { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 36 : spacing.lg },
+            /* Sem somar insets.bottom, o fim da folha (em geral um rodapé de
+               ação, como "Cancelar"/"Selecionar") encostava na barra de
+               navegação do Android em aparelho com os 3 botões físicos — modo
+               edge-to-edge não reserva essa faixa sozinho, e só o teclado
+               empurrava o conteúdo pra cima. Reportado como "os botões ficam
+               em cima da barra do Android, preciso arrastar pra ver". Com
+               teclado aberto o próprio teclado já cobre essa área, então o
+               inset não soma de novo ali. */
+            { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 36 : insets.bottom + spacing.lg },
             contentStyle,
           ]}
           keyboardShouldPersistTaps="handled"

@@ -2995,7 +2995,13 @@ grant execute on function public.cancelar_ultimo_whatsapp(text) to service_role;
 create or replace function public.publicar_app_release(
   p_version text,
   p_apk_url text,
-  p_expires_at timestamptz default null
+  p_expires_at timestamptz default null,
+  -- Texto de "o que mudou", uma linha por item, mostrado no pop-up de
+  -- novidades ao abrir a versão instalada (ver lib/atualizacao.ts). Vem da
+  -- mensagem do build (`eas build --message "..."`, ou a mensagem do commit
+  -- quando nenhuma é passada) — null é um valor normal, não um erro: sem
+  -- nota o pop-up simplesmente não aparece pra essa versão.
+  p_notes text default null
 )
 returns text
 language plpgsql
@@ -3012,8 +3018,8 @@ begin
     raise exception 'Release inválida' using errcode = '22023';
   end if;
 
-  insert into public.app_release (id, version, apk_url, apk_expires_at)
-  values (1, p_version, p_apk_url, p_expires_at)
+  insert into public.app_release (id, version, apk_url, apk_expires_at, notes)
+  values (1, p_version, p_apk_url, p_expires_at, p_notes)
   on conflict (id) do nothing;
 
   select r.version into v_current
@@ -3031,14 +3037,15 @@ begin
   set version = p_version,
       apk_url = p_apk_url,
       apk_expires_at = p_expires_at,
+      notes = p_notes,
       updated_at = statement_timestamp()
   where id = 1;
   return 'updated';
 end;
 $$;
 
-revoke all on function public.publicar_app_release(text, text, timestamptz) from public, anon, authenticated;
-grant execute on function public.publicar_app_release(text, text, timestamptz) to service_role;
+revoke all on function public.publicar_app_release(text, text, timestamptz, text) from public, anon, authenticated;
+grant execute on function public.publicar_app_release(text, text, timestamptz, text) to service_role;
 
 create or replace function public.processar_evento_kiwify(
   p_event_id text,
