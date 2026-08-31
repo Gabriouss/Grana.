@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { verificarNovidades, marcarNovidadesVistas, type Novidades } from '@/lib/atualizacao';
-import { useSheetFlutuante } from '@/lib/breakpoints';
 import AppModal from './AppModal';
 import AppPressable from './AppPressable';
 import AccessibleModalPanel from './AccessibleModalPanel';
@@ -13,10 +12,14 @@ import AccessibleModalPanel from './AccessibleModalPanel';
  * abertura do app depois de uma atualização de verdade (nunca numa
  * instalação nova — ver o comentário em verificarNovidades). Nunca bloqueia
  * nada: some sozinho se não houver nota publicada pra versão instalada.
+ *
+ * Centralizado em qualquer largura de tela, ao contrário da maioria dos
+ * modais do app (que usam `useSheetFlutuante` e viram folha-de-baixo no
+ * compacto) — é um aviso informativo curto, não um formulário/ação, então
+ * não faz sentido ancorar embaixo nem ocupar a tela inteira no celular.
  */
 export default function NovidadesModal() {
   const [novidades, setNovidades] = useState<Novidades | null>(null);
-  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
 
   useEffect(() => {
     verificarNovidades().then(setNovidades);
@@ -31,8 +34,8 @@ export default function NovidadesModal() {
 
   return (
     <AppModal visible animationType="fade" transparent onRequestClose={fechar}>
-      <Pressable style={[styles.scrim, scrimStyle]} onPress={fechar}>
-        <AccessibleModalPanel ativo style={[styles.sheet, flutuanteStyle]}>
+      <Pressable style={styles.scrim} onPress={fechar}>
+        <AccessibleModalPanel ativo style={styles.sheet}>
           <View style={styles.icone}>
             <Ionicons name="sparkles" size={22} color={theme.accent2} />
           </View>
@@ -62,11 +65,22 @@ export default function NovidadesModal() {
 }
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  scrim: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
   sheet: {
+    width: '100%',
+    // Mesmo teto de largura do painel flutuante que os outros modais usam
+    // em tela ampla — no celular, `width: '100%'` some contra o padding do
+    // scrim, então o card nunca vira uma faixa fina nem uma parede no
+    // desktop.
+    maxWidth: 420,
     backgroundColor: theme.paperRaised,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderRadius: radius.xl,
     padding: spacing.xl,
     gap: spacing.sm,
     maxHeight: '80%',
