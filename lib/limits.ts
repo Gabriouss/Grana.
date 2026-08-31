@@ -32,11 +32,14 @@ export const LIMITS = {
    */
   pastedText: 200_000,
   /**
-   * Máximo de linhas que uma importação de CSV cria de uma vez. O insert em
-   * lote vai numa requisição só, então sem teto um arquivo grande vira uma
-   * escrita em massa no banco e um array enorme em memória.
+   * Máximo de linhas que uma importação de extrato (OFX ou CSV) processa de
+   * uma vez. Pensado para migração de histórico de anos vindo de outro app —
+   * `addTransactionsBatch` (lib/data.ts) já fatia o insert em lotes de 500
+   * por requisição, então o teto aqui não é mais sobre uma escrita em massa
+   * numa requisição só; é só um limite de bom senso pra memória do aparelho
+   * ao processar o arquivo (um array de 10 mil objetos ainda é leve).
    */
-  csvRows: 500,
+  csvRows: 10_000,
   /** goals.title */
   goalTitle: 100,
   /** feedbacks.message */

@@ -69,6 +69,11 @@ export default function ImportarExtratoModal({
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
   const [lendo, setLendo] = useState(false);
   const [importando, setImportando] = useState(false);
+  /** Progresso do insert em lote (lib/data.ts) — null enquanto não começou.
+      Só chega a aparecer de verdade num arquivo grande: cada lote é de 500
+      linhas, então uma importação pequena termina antes do primeiro
+      callback de progresso ser útil de mostrar. */
+  const [progresso, setProgresso] = useState<{ processados: number; total: number } | null>(null);
   const [cartoes, setCartoes] = useState<CreditCard[]>([]);
   const [cartaoId, setCartaoId] = useState<string | null>(null);
 
@@ -91,6 +96,7 @@ export default function ImportarExtratoModal({
     setNomeArquivo(null);
     setLendo(false);
     setImportando(false);
+    setProgresso(null);
   }
 
   function fechar() {
@@ -141,10 +147,12 @@ export default function ImportarExtratoModal({
       );
     }
     setOrigem('conta');
-    /* CSV não tem identificador de transação: sem FITID, estas linhas entram
-       pelo insert comum e reimportar o mesmo arquivo duplica. É a diferença
-       prática entre os dois formatos, e o aviso na tela diz isso. */
-    setLinhas(rows.map((r) => ({ ...r, fitid: null })));
+    /* CSV não traz um identificador de transação dado por uma instituição,
+       diferente do OFX — mas cada linha já vem com uma chave sintética de
+       gerarFitidSintetico() (lib/heuristics.ts), derivada do próprio
+       conteúdo. Reimportar o mesmo arquivo é reconhecido como duplicado do
+       mesmo jeito que um FITID de banco. */
+    setLinhas(rows);
     setNomeArquivo(nome);
   }
 
@@ -198,7 +206,11 @@ export default function ImportarExtratoModal({
 
       /* Só pede para ignorar duplicados quando há FITID para comparar. Num
          arquivo sem identificador o upsert não teria em que se apoiar. */
-      const { inseridos, ignorados } = await addTransactionsBatch(prontos, comFitid > 0);
+      const { inseridos, ignorados } = await addTransactionsBatch(
+        prontos,
+        comFitid > 0,
+        (processados, total) => setProgresso({ processados, total })
+      );
 
       Alert.alert(
         'Importação concluída',
@@ -365,7 +377,14 @@ export default function ImportarExtratoModal({
                 disabled={importando}
               >
                 {importando ? (
-                  <ActivityIndicator color={theme.paper} />
+                  <View style={styles.progressoRow}>
+                    <ActivityIndicator color={theme.paper} />
+                    {progresso ? (
+                      <Text style={styles.saveBtnText}>
+                        Importando {progresso.processados} de {progresso.total}...
+                      </Text>
+                    ) : null}
+                  </View>
                 ) : (
                   <Text style={styles.saveBtnText}>Importar {linhas.length} lançamento(s)</Text>
                 )}
@@ -487,5 +506,6 @@ const styles = StyleSheet.create({
   },
   saveBtnHover: { opacity: 0.9 },
   saveBtnText: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
+  progressoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   backLink: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, textAlign: 'center', marginTop: spacing.sm },
 });
