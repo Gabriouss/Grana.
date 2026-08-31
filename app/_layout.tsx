@@ -20,6 +20,7 @@ import AppLockGate from '@/components/AppLockGate';
 import { AppLockProvider } from '@/lib/app-lock-context';
 import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
+import NovidadesModal from '@/components/NovidadesModal';
 // Registra o handler de notificações (lembretes de contas) assim que o app abre.
 import '@/lib/notifications';
 
@@ -161,6 +162,7 @@ function RootNavigator() {
       {/* Só na área logada: avisar de atualização antes do login seria
           atrito sem propósito pra quem ainda nem entrou no app. */}
       {session && <UpdateBanner />}
+      {session && <NovidadesModal />}
       <Stack screenOptions={{ headerShown: false }}>
         {/* O link de recuperação autentica de verdade — sem este guard a
             pessoa cairia direto na Início, logada, com a senha antiga (a que
