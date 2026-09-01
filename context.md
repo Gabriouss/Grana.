@@ -567,3 +567,27 @@ paleta, Neue Machina e visuais existentes do Grana. foram preservados.
   `git diff --check` passaram. Axe-core: 0 violações automáticas em 390 e
   1440 px; contraste ficou marcado como revisão manual pelo motor. Com
   `prefers-reduced-motion`, 0 animações permanecem em execução.
+
+## Sessão de 01/09/2026 - tela branca após desbloqueio biométrico
+
+O defeito reapareceu numa build Android real: depois de autenticar com a
+digital, a tarefa continuava viva no seletor de apps, mas todo o conteúdo
+ficava branco e nenhum erro chegava ao JavaScript.
+
+- A correção anterior protegia apenas o Expo Go. A causa real era a própria
+  `expo-router/unstable-native-tabs`, que pode falhar silenciosamente ao
+  remontar seus componentes Fabric depois que o Android recria a Activity na
+  volta do prompt biométrico.
+- `app/(app)/_layout.tsx` deixou de importar ou montar `NativeTabs` em qualquer
+  ambiente. Web, Expo Go, development build e APK de release agora usam a
+  mesma navegação estável em JavaScript (`Tabs`).
+- `lib/navegacao-nativa.ts` foi removido porque não existe mais caminho de
+  navegação experimental a selecionar. `lib/tab-bar.ts` sempre reserva o
+  espaço da barra flutuante no celular, inclusive em build real.
+- `app.json` passou de `1.4.0` para `1.4.1` antes da nova build, preservando o
+  mecanismo de aviso de atualização. O perfil EAS `preview` agora incrementa o
+  `versionCode` automaticamente para o APK instalar sobre a build anterior.
+  `.easignore` exclui ferramentas locais, logs do Expo e mockups de trabalho do
+  pacote enviado ao EAS.
+- Verificações locais: `npx tsc --noEmit`, `git diff --check` e
+  `npm run test:parser` aprovados; a suíte reportou todas as checagens verdes.

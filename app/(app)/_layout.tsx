@@ -1,7 +1,6 @@
 import { useEffect, useRef, type ComponentProps, type RefObject } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView, BlurTargetView } from 'expo-blur';
@@ -13,15 +12,11 @@ import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
 import SideNav, { type ItemNav } from '@/components/SideNav';
 import { useReducedMotion } from '@/lib/motion';
-import { abasNativasDisponiveis } from '@/lib/navegacao-nativa';
 
 /* expo-router não reexporta o tipo de `tabBar` publicamente (ele vive numa
    cópia interna do react-navigation dentro do próprio pacote) — em vez de um
    import profundo e frágil, o tipo é extraído da própria prop do `<Tabs>`. */
 type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (props: infer P) => any ? P : never;
-type NativeIconProps = ComponentProps<typeof NativeTabs.Trigger.Icon>;
-type NativeSfIcon = Extract<NonNullable<Extract<NativeIconProps, { sf?: unknown }>['sf']>, string>;
-type NativeMaterialIcon = Extract<NonNullable<Extract<NativeIconProps, { md?: unknown }>['md']>, string>;
 
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'home-outline',
@@ -197,72 +192,10 @@ const RODAPE_LATERAL: ItemNav[] = [{ rota: 'perfil', rotulo: 'Perfil', icone: 'p
 export default function AppTabsLayout() {
   useAtalhosDeepLink();
 
-  /* Não é `Platform.OS === 'web'`: as abas nativas dependem de componentes
-     Fabric compilados que o Expo Go não tem, e ali elas renderizam uma tela
-     branca sem lançar erro nenhum. `abasNativasDisponiveis()` explica o
-     porquê em detalhe — no Expo Go o app cai na mesma barra em JavaScript
-     que a web usa, que funciona em qualquer runtime. */
   return (
     <WalletProvider>
-      {abasNativasDisponiveis() ? <NativeTabsLayout /> : <AbasEmJavaScript />}
+      <AbasEmJavaScript />
     </WalletProvider>
-  );
-}
-
-/**
- * No iOS e Android a estrutura de navegação pertence ao sistema: UIKit
- * fornece tab bar/sidebar adaptável no iPad e o Android fornece Navigation
- * Bar, indicador e ripple Material. A cor continua sendo do Grana., mas
- * medidas, insets, semântica e interação deixam de ser uma imitação em JS.
- */
-function NativeTabsLayout() {
-  return (
-    <NativeTabs
-      backgroundColor={theme.paperRaised}
-      iconColor={{ default: theme.inkFaint, selected: theme.accent2 }}
-      tintColor={theme.accent2}
-      indicatorColor="rgba(174,255,227,0.16)"
-      rippleColor={theme.hover}
-      labelVisibilityMode="selected"
-      backBehavior="history"
-      blurEffect="systemChromeMaterialDark"
-      shadowColor={theme.ruleStrong}
-      sidebarAdaptable
-      disableTransparentOnScrollEdge
-      tabBarRespectsIMEInsets
-    >
-      <NativeTab name="index" label="Início" sf="house" sfSelected="house.fill" md="home" />
-      <NativeTab name="lancamentos" label="Débito e Pix" sf="wallet.pass" sfSelected="wallet.pass.fill" md="account_balance_wallet" />
-      <NativeTab name="credito" label="Crédito" sf="creditcard" sfSelected="creditcard.fill" md="credit_card" />
-      <NativeTab name="contas" label="Boletos" sf="doc.text" sfSelected="doc.text.fill" md="receipt_long" />
-      <NativeTab name="desafios" label="Desafios" sf="trophy" sfSelected="trophy.fill" md="emoji_events" />
-      <NativeTabs.Trigger name="graficos" hidden />
-      <NativeTabs.Trigger name="perfil" hidden />
-    </NativeTabs>
-  );
-}
-
-function NativeTab({
-  name,
-  label,
-  sf,
-  sfSelected,
-  md,
-}: {
-  name: string;
-  label: string;
-  sf: NativeSfIcon;
-  sfSelected: NativeSfIcon;
-  md: NativeMaterialIcon;
-}) {
-  return (
-    <NativeTabs.Trigger name={name} accessibilityLabel={label}>
-      <NativeTabs.Trigger.Label>{label}</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon
-        sf={{ default: sf, selected: sfSelected }}
-        md={{ default: md, selected: md }}
-      />
-    </NativeTabs.Trigger>
   );
 }
 
@@ -270,12 +203,16 @@ function NativeTab({
  * Navegação desenhada em JavaScript — barra flutuante no compacto, trilho
  * lateral a partir de 768px.
  *
- * Serve dois casos, não só a web: o navegador (onde não existe componente de
- * abas do sistema) e o Expo Go (onde as abas nativas existem no código mas
- * não no binário — ver `lib/navegacao-nativa.ts`). Por isso o nome não é mais
- * "Web...": num celular Android aberto pelo Expo Go é exatamente esta barra
- * que aparece.
- */
+ * Já existiu uma variante com `expo-router/unstable-native-tabs` (abas de
+ * verdade do sistema, UIKit/Navigation Bar) em builds reais, com esta barra
+ * reservada só pra web e Expo Go. Foi abandonada: a API é experimental (o
+ * próprio nome já avisa) e, quando o componente Fabric falha ao (re)montar,
+ * NADA renderiza e NENHUM erro sobe pro JavaScript — tela branca muda. Já
+ * aconteceu duas vezes, a segunda numa build de release de verdade, bem no
+ * momento em que o Android recria a Activity ao voltar do desbloqueio por
+ * digital. Preferível perder um pouco do acabamento nativo (ripple/Material
+ * puro) a correr esse risco de novo — esta barra em JS agora é usada em
+ * QUALQUER runtime não-web: build de release, dev build e Expo Go. */
 function AbasEmJavaScript() {
   const blurTarget = useRef<View>(null);
   const { temBarraLateral } = useBreakpoint();

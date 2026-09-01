@@ -1,0 +1,9 @@
+# Ferramentas de desenvolvimento locais — nunca precisam ir pro pacote que o
+# EAS Build sobe pro servidor. `.agents/skills/` guarda symlinks pra dentro de
+# `.claude/skills/`, e o Windows recusa copiar esses links durante o
+# empacotamento (`EPERM: operation not permitted, symlink`), derrubando a
+# build antes mesmo de consumir a cota.
+.agents/
+.claude/
+.expo-start*.log
+design-system/marketing-mockups/

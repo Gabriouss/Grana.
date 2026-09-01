@@ -1,7 +1,6 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from './theme';
 import { useBreakpoint } from './breakpoints';
-import { abasNativasDisponiveis } from './navegacao-nativa';
 
 /**
  * Medidas da barra de abas flutuante (`app/(app)/_layout.tsx`).
@@ -23,15 +22,6 @@ const MARGEM_MINIMA = 30;
 export function useTabBarInset() {
   const insets = useSafeAreaInsets();
   const { temBarraLateral } = useBreakpoint();
-
-  /* Native Tabs já aplica os insets do sistema ao conteúdo, então ali não há
-     o que reservar. A condição é `abasNativasDisponiveis()` e não
-     `Platform.OS !== 'web'` porque no Expo Go as abas nativas não existem e o
-     app volta pra barra flutuante em JavaScript — com a reserva zerada, o
-     último item de cada lista ficaria escondido atrás dela. */
-  if (abasNativasDisponiveis()) {
-    return { margem: 0, total: 0, paddingConteudo: spacing.xl };
-  }
 
   /* Na web, a partir de 768px a navegação vira lateral e a barra flutuante deixa de
      existir — não há nada no rodapé para desviar. Reservar os ~118px mesmo
