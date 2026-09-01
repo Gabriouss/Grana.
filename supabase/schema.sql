@@ -2992,6 +2992,10 @@ $$;
 revoke all on function public.cancelar_ultimo_whatsapp(text) from public, anon, authenticated;
 grant execute on function public.cancelar_ultimo_whatsapp(text) to service_role;
 
+-- Remove a assinatura anterior para o PostgREST nunca precisar resolver uma
+-- chamada ambigua entre a versao de 3 parametros e a atual, que inclui notas.
+drop function if exists public.publicar_app_release(text, text, timestamptz);
+
 create or replace function public.publicar_app_release(
   p_version text,
   p_apk_url text,

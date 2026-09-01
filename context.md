@@ -536,14 +536,10 @@ quando a pessoa abre uma versão recém-instalada — diferente do
   `corpus-schema-guardas.ts` e o `sync-parser.js`) passaram depois da
   mudança.
 
-**Pendente para a próxima sessão:** a alteração em `supabase/schema.sql`
-(`publicar_app_release` com o novo parâmetro `p_notes`) ainda não foi
-aplicada ao banco de produção — precisa rodar essa função atualizada no
-SQL Editor do Supabase (ou via CLI) antes do próximo build, senão o
-webhook chama a função com um parâmetro que a versão em produção ainda não
-aceita. Ao rodar o próximo `eas build`, escrever `--message` pensando em
-quem usa o app, não em changelog técnico — é isso que vira o texto do
-pop-up.
+**Resolvido em 01/09/2026:** `publicar_app_release` com o parâmetro `p_notes`
+foi aplicada ao banco de produção. Ao rodar `eas build`, continuar escrevendo
+`--message` pensando em quem usa o app, não em changelog técnico — é isso que
+vira o texto do pop-up.
 
 ## Sessão de 31/08/2026 - refinamento local da landing com referência Portfolite
 
@@ -594,3 +590,20 @@ ficava branco e nenhum erro chegava ao JavaScript.
 - Build Android interna concluída com sucesso no EAS: versão `1.4.1`,
   `versionCode 2`, ID `b2605153-7cdf-4903-986f-80c14d14caf4`. APK disponível em
   https://expo.dev/accounts/gabriouss/projects/grana-app/builds/b2605153-7cdf-4903-986f-80c14d14caf4
+
+## Sessão de 01/09/2026 - automação de release e update notes em produção
+
+- A auditoria inicial encontrou `app_release` parada na `1.3.0` e apenas a
+  assinatura antiga de `publicar_app_release`, sem `p_notes`.
+- A função de quatro parâmetros foi aplicada em produção dentro de transação;
+  a assinatura antiga foi removida e a execução continua restrita a
+  `service_role`.
+- A Edge Function `eas-build-webhook` atual foi implantada com verificação JWT
+  desativada no gateway e autenticação própria por assinatura HMAC.
+- O secret HMAC foi rotacionado e sincronizado entre EAS e Supabase. Antes da
+  correção, as oito tentativas da build `1.4.1` retornaram HTTP 401.
+- Um payload assinado e deliberadamente irrelevante retornou HTTP 200 com
+  `ignored`, confirmando a integração sem publicar uma release fictícia.
+- `app_release` foi atualizada para `1.4.1`, com o APK da build
+  `b2605153-7cdf-4903-986f-80c14d14caf4`, expiração em 15/09/2026 e a nota
+  `Corrige tela branca apos desbloqueio por digital`.
