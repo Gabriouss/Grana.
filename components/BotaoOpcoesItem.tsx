@@ -19,6 +19,16 @@ import AppPressable from './AppPressable';
  *
  * O desenho é discreto de propósito. É ação secundária numa lista densa, então
  * carrega peso de metadado (`inkFaint`), e não de controle primário.
+ *
+ * Sempre usado como IRMÃO da linha pressionável (posicionado por cima via
+ * `position:'absolute'` num wrapper com `pointerEvents:'box-none'`), nunca
+ * como filho dela — react-native-web mapeia `accessibilityRole="button"` pra
+ * uma tag `<button>` de verdade, e um `<button>` dentro de outro `<button>`
+ * é HTML inválido: o navegador conserta a árvore fechando o de fora antes da
+ * hora, o que quebrava o toque de verdade, não só emitia um aviso no
+ * console. Como consequência, o clique aqui nunca sobe pra linha por baixo —
+ * não são mais ancestral e descendente — então não precisa de
+ * `stopPropagation`.
  */
 export default function BotaoOpcoesItem({
   onPress,
@@ -36,14 +46,7 @@ export default function BotaoOpcoesItem({
 }) {
   return (
     <AppPressable
-      onPress={(evento) => {
-        /* O botão fica DENTRO de uma linha que também é pressionável. No
-           nativo o sistema de responder já entrega o toque só ao filho, mas na
-           web o clique sobe, e sem isto tocar em "opções" também marcaria a
-           conta como paga. */
-        (evento as unknown as { stopPropagation?: () => void })?.stopPropagation?.();
-        onPress();
-      }}
+      onPress={onPress}
       hitSlop={8}
       scaleOnPress={false}
       accessibilityRole="button"

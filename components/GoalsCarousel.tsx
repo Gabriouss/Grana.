@@ -184,35 +184,46 @@ export default function GoalsCarousel({
           const pct = alvo > 0 ? Math.min(100, Math.round((atual / alvo) * 100)) : 0;
           const batida = atual >= alvo;
           return (
-            <AppPressable
-              key={g.id}
-              style={({ hovered }) => [styles.card, hovered && styles.cardHover]}
-              onPress={() => setDepositTarget(g)}
-              onLongPress={() => confirmDelete(g)}
-              accessibilityHint="Abre o depósito neste cofrinho. Para excluir, use o botão de opções."
-            >
-              <View style={styles.cardTop}>
-                <View style={[styles.iconCircle, { backgroundColor: g.color + '30' }]}>
-                  <Ionicons name={g.icon as any} size={18} color={g.color} />
+            // `BotaoOpcoesItem` é `<button>` de verdade na web (react-native-web
+            // mapeia accessibilityRole="button" pra a tag nativa) e não pode
+            // morar DENTRO de outro `<button>` (esta `AppPressable` do cofrinho)
+            // — `<button><button>` é inválido, e o navegador conserta a árvore
+            // fechando o de fora antes da hora. Vira irmão, por cima.
+            <View key={g.id} style={{ position: 'relative', width: CARD_WIDTH }}>
+              <AppPressable
+                style={({ hovered }) => [styles.card, hovered && styles.cardHover]}
+                onPress={() => setDepositTarget(g)}
+                onLongPress={() => confirmDelete(g)}
+                accessibilityHint="Abre o depósito neste cofrinho. Para excluir, use o botão de opções."
+              >
+                <View style={styles.cardTop}>
+                  <View style={[styles.iconCircle, { backgroundColor: g.color + '30' }]}>
+                    <Ionicons name={g.icon as any} size={18} color={g.color} />
+                  </View>
+                  <View style={styles.cardTopFim}>
+                    {batida && <Ionicons name="checkmark-circle" size={16} color={theme.up} />}
+                    {/* Espaço reservado do tamanho do botão real (28×28), que
+                        agora fica fora desta árvore — ver abaixo. */}
+                    <View style={{ width: 28, height: 28 }} />
+                  </View>
                 </View>
-                <View style={styles.cardTopFim}>
-                  {batida && <Ionicons name="checkmark-circle" size={16} color={theme.up} />}
-                  <BotaoOpcoesItem accessibilityLabel={`Opções de ${g.title}`} onPress={() => confirmDelete(g)} />
+                <Text style={styles.cardTitle} numberOfLines={1}>{g.title}</Text>
+                <PrivacyValue>
+                  <Text style={styles.cardAmount}>{`R$ ${formatMoney(atual)}`}</Text>
+                </PrivacyValue>
+                <Text style={styles.cardTarget}>{`de R$ ${formatMoney(alvo)}`}</Text>
+                <View style={styles.track}>
+                  <View style={[styles.fill, { width: `${pct}%`, backgroundColor: g.color }]} />
                 </View>
+                <View style={styles.cardBottomRow}>
+                  <Text style={styles.cardPct}>{pct}%</Text>
+                  {g.deadline && <Text style={styles.cardDeadline}>{formatDateLabel(g.deadline)}</Text>}
+                </View>
+              </AppPressable>
+              <View style={styles.botaoOpcoesFlutuante}>
+                <BotaoOpcoesItem accessibilityLabel={`Opções de ${g.title}`} onPress={() => confirmDelete(g)} />
               </View>
-              <Text style={styles.cardTitle} numberOfLines={1}>{g.title}</Text>
-              <PrivacyValue>
-                <Text style={styles.cardAmount}>{`R$ ${formatMoney(atual)}`}</Text>
-              </PrivacyValue>
-              <Text style={styles.cardTarget}>{`de R$ ${formatMoney(alvo)}`}</Text>
-              <View style={styles.track}>
-                <View style={[styles.fill, { width: `${pct}%`, backgroundColor: g.color }]} />
-              </View>
-              <View style={styles.cardBottomRow}>
-                <Text style={styles.cardPct}>{pct}%</Text>
-                {g.deadline && <Text style={styles.cardDeadline}>{formatDateLabel(g.deadline)}</Text>}
-              </View>
-            </AppPressable>
+            </View>
           );
         })}
 
@@ -358,6 +369,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardHover: { borderColor: theme.ruleStrong },
+  botaoOpcoesFlutuante: { position: 'absolute', top: spacing.md, right: spacing.md, pointerEvents: 'box-none' },
   cardTopFim: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },

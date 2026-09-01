@@ -720,63 +720,74 @@ export default function CreditoScreen() {
               const limitPct = Math.min(1, cardSpent / (card.limit_amount || 1));
 
               return (
-                <AppPressable
-                  key={card.id}
-                  style={[
-                    styles.creditCard,
-                    { borderColor: card.color || theme.rule },
-                    selectedCardId === card.id && styles.creditCardSelected,
-                  ]}
-                  onPress={() => {
-                    hapticTap();
-                    setSelectedCardId((curr) => (curr === card.id ? 'all' : card.id));
-                  }}
-                  accessibilityHint="Filtra os lançamentos por este cartão. Toque de novo para ver todos."
-                  onLongPress={() => confirmDeleteCard(card)}
-                >
-                  {/* Dígitos EMBAIXO do apelido, não ao lado. Lado a lado, um
-                      apelido longo ("Itaú Personalité Black") empurrava até
-                      encostar nos números e os dois viravam uma palavra só —
-                      e o cartão do carrossel é estreito demais para caber os
-                      dois na mesma linha com folga confiável. */}
-                  <View style={styles.cardTopRow}>
-                    <View style={[styles.bankDot, { backgroundColor: card.color }]} />
-                    <View style={styles.cardIdentidade}>
-                      <Text style={styles.cardBankName} numberOfLines={1}>{card.name}</Text>
-                      {card.last_digits ? (
-                        <Text style={styles.cardDigits}>{`•••• ${card.last_digits}`}</Text>
-                      ) : null}
+                // Mesmo motivo do card de conta em contas.tsx: `BotaoOpcoesItem`
+                // é `<button>` de verdade na web (react-native-web mapeia
+                // accessibilityRole="button" pra a tag nativa), e não pode
+                // morar DENTRO de outro `<button>` (esta `AppPressable` do
+                // cartão). Vira irmão, posicionado por cima.
+                <View key={card.id} style={{ position: 'relative', width: 240 }}>
+                  <AppPressable
+                    style={[
+                      styles.creditCard,
+                      { borderColor: card.color || theme.rule },
+                      selectedCardId === card.id && styles.creditCardSelected,
+                    ]}
+                    onPress={() => {
+                      hapticTap();
+                      setSelectedCardId((curr) => (curr === card.id ? 'all' : card.id));
+                    }}
+                    accessibilityHint="Filtra os lançamentos por este cartão. Toque de novo para ver todos."
+                    onLongPress={() => confirmDeleteCard(card)}
+                  >
+                    {/* Dígitos EMBAIXO do apelido, não ao lado. Lado a lado, um
+                        apelido longo ("Itaú Personalité Black") empurrava até
+                        encostar nos números e os dois viravam uma palavra só —
+                        e o cartão do carrossel é estreito demais para caber os
+                        dois na mesma linha com folga confiável. */}
+                    <View style={styles.cardTopRow}>
+                      <View style={[styles.bankDot, { backgroundColor: card.color }]} />
+                      <View style={styles.cardIdentidade}>
+                        <Text style={styles.cardBankName} numberOfLines={1}>{card.name}</Text>
+                        {card.last_digits ? (
+                          <Text style={styles.cardDigits}>{`•••• ${card.last_digits}`}</Text>
+                        ) : null}
+                      </View>
+                      {/* Espaço reservado do tamanho do botão real (28×28),
+                          que agora fica fora desta árvore — ver abaixo. */}
+                      <View style={{ width: 28, height: 28 }} />
                     </View>
-                    {/* Excluir cartão morava só no toque longo, e o toque
-                        simples já tem dono (seleciona o cartão). Era o mesmo
-                        defeito das linhas de lançamento, com agravante: é a
-                        ÚNICA forma de excluir um cartão em todo o app, e
-                        `confirmDeleteCard` tinha um único chamador. Gesto
-                        invisível para leitor de tela e para teclado. */}
+
+                    <View style={styles.cardMidRow}>
+                      <Text style={styles.cardInvoiceLabel}>Fatura atual</Text>
+                      <PrivacyValue>
+                        <Text style={styles.cardInvoiceValue}>{`R$ ${formatMoney(cardSpent)}`}</Text>
+                      </PrivacyValue>
+                    </View>
+
+                    <View style={styles.cardBottomRow}>
+                      <View style={styles.cardLimitRow}>
+                        <Text style={styles.cardLimitText}>{`Limite: R$ ${formatMoney(card.limit_amount)}`}</Text>
+                        <Text style={styles.cardLimitPct}>{`${Math.round(limitPct * 100)}%`}</Text>
+                      </View>
+                      <View style={styles.limitTrack}>
+                        <View style={[styles.limitFill, { width: `${limitPct * 100}%`, backgroundColor: card.color }]} />
+                      </View>
+                    </View>
+                  </AppPressable>
+                  {/* Excluir cartão morava só no toque longo, e o toque simples
+                      já tem dono (seleciona o cartão). Era o mesmo defeito das
+                      linhas de lançamento, com agravante: é a ÚNICA forma de
+                      excluir um cartão em todo o app, e `confirmDeleteCard`
+                      tinha um único chamador. Gesto invisível para leitor de
+                      tela e para teclado. */}
+                  <View style={styles.botaoOpcoesFlutuanteCartao}>
                     <BotaoOpcoesItem
                       icone="trash-outline"
                       accessibilityLabel={`Excluir cartão ${card.name}`}
                       onPress={() => confirmDeleteCard(card)}
                     />
                   </View>
-
-                  <View style={styles.cardMidRow}>
-                    <Text style={styles.cardInvoiceLabel}>Fatura atual</Text>
-                    <PrivacyValue>
-                      <Text style={styles.cardInvoiceValue}>{`R$ ${formatMoney(cardSpent)}`}</Text>
-                    </PrivacyValue>
-                  </View>
-
-                  <View style={styles.cardBottomRow}>
-                    <View style={styles.cardLimitRow}>
-                      <Text style={styles.cardLimitText}>{`Limite: R$ ${formatMoney(card.limit_amount)}`}</Text>
-                      <Text style={styles.cardLimitPct}>{`${Math.round(limitPct * 100)}%`}</Text>
-                    </View>
-                    <View style={styles.limitTrack}>
-                      <View style={[styles.limitFill, { width: `${limitPct * 100}%`, backgroundColor: card.color }]} />
-                    </View>
-                  </View>
-                </AppPressable>
+                </View>
               );
             }}
           />
@@ -1152,6 +1163,7 @@ const styles = StyleSheet.create({
   creditCardSelected: {
     backgroundColor: theme.paperSelected,
   },
+  botaoOpcoesFlutuanteCartao: { position: 'absolute', top: spacing.md, right: spacing.md, pointerEvents: 'box-none' },
   cardTopRow: {
     flexDirection: 'row',
     /* flex-start, e não center: a coluna ao lado tem duas linhas (apelido e

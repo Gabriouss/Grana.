@@ -336,47 +336,67 @@ export default function ContasScreen() {
           renderItem={({ item }) => {
             const info = statusInfo(item);
             return (
-              <AppPressable
-                style={({ hovered }) => [styles.card, hovered && styles.cardHover]}
-                onPress={() => toggleStatus(item)}
-                accessibilityHint="Alterna entre paga e em aberto. Para editar ou excluir, use o botão de opções."
-                onLongPress={() => {
-                  setSelectedBill(item);
-                  setActionSheetOpen(true);
-                }}
-              >
-                <View style={styles.cardTop}>
-                  <View>
-                    <View style={styles.cardNameRow}>
-                      <Text style={styles.cardName}>{item.description}</Text>
-                      {item.recurring && (
-                        <Ionicons name="repeat-outline" size={12} color={theme.inkFaint} style={{ marginLeft: 4 }} />
-                      )}
+              // `position:'relative'` aqui, não na própria AppPressable: o botão de
+              // opções precisa ser IRMÃO do card na árvore do DOM, nunca filho dele.
+              // O `AppPressable` (com onPress) vira um `<button>` de verdade na web
+              // (react-native-web mapeia accessibilityRole="button" pra a tag nativa,
+              // não um `<div role="button">` como um comentário antigo achava) — um
+              // `BotaoOpcoesItem` (também `<button>`) dentro dele seria
+              // `<button><button>...` inválido, e o navegador conserta a árvore
+              // fechando o botão de fora antes da hora, quebrando o toque de verdade,
+              // não só um aviso no console.
+              <View style={{ position: 'relative' }}>
+                <AppPressable
+                  style={({ hovered }) => [styles.card, hovered && styles.cardHover]}
+                  onPress={() => toggleStatus(item)}
+                  accessibilityHint="Alterna entre paga e em aberto. Para editar ou excluir, use o botão de opções."
+                  onLongPress={() => {
+                    setSelectedBill(item);
+                    setActionSheetOpen(true);
+                  }}
+                >
+                  <View style={styles.cardTop}>
+                    <View>
+                      <View style={styles.cardNameRow}>
+                        <Text style={styles.cardName}>{item.description}</Text>
+                        {item.recurring && (
+                          <Ionicons name="repeat-outline" size={12} color={theme.inkFaint} style={{ marginLeft: 4 }} />
+                        )}
+                      </View>
+                      <Text style={styles.cardCat}>{item.category}</Text>
                     </View>
-                    <Text style={styles.cardCat}>{item.category}</Text>
-                  </View>
-                  <View style={styles.cardTopAcoes}>
-                    <View style={[styles.pill, info.style]}>
-                      <Text style={[styles.pillText, info.style === styles.pillLate && styles.pillLateText]}>{info.text}</Text>
+                    <View style={styles.cardTopAcoes}>
+                      <View style={[styles.pill, info.style]}>
+                        <Text style={[styles.pillText, info.style === styles.pillLate && styles.pillLateText]}>{info.text}</Text>
+                      </View>
+                      {/* Espaço reservado do mesmo tamanho do botão real (28×28,
+                          ver `BotaoOpcoesItem`), só pra a pílula não esticar pro
+                          lugar que o botão flutuante por cima vai ocupar. */}
+                      <View style={{ width: 28, height: 28 }} />
                     </View>
-                    <BotaoOpcoesItem
-                      accessibilityLabel={`Opções de ${item.description}`}
-                      onPress={() => {
-                        setSelectedBill(item);
-                        setActionSheetOpen(true);
-                      }}
-                    />
                   </View>
+                  <View style={styles.cardBottom}>
+                    <PrivacyValue>
+                      <Text style={styles.cardAmount}>{`R$ ${formatMoney(Number(item.amount))}`}</Text>
+                    </PrivacyValue>
+                    <Text style={styles.cardDue}>
+                      {formatDateLabel(item.due_date)} · {item.status === 'paid' ? 'toque para reabrir' : 'toque para pagar'}
+                    </Text>
+                  </View>
+                </AppPressable>
+                {/* `box-none`: a própria View não captura toque nenhum, só o
+                    `BotaoOpcoesItem` dentro dela — o resto da área do card continua
+                    chegando à `AppPressable` por baixo normalmente. */}
+                <View style={styles.botaoOpcoesFlutuante}>
+                  <BotaoOpcoesItem
+                    accessibilityLabel={`Opções de ${item.description}`}
+                    onPress={() => {
+                      setSelectedBill(item);
+                      setActionSheetOpen(true);
+                    }}
+                  />
                 </View>
-                <View style={styles.cardBottom}>
-                  <PrivacyValue>
-                    <Text style={styles.cardAmount}>{`R$ ${formatMoney(Number(item.amount))}`}</Text>
-                  </PrivacyValue>
-                  <Text style={styles.cardDue}>
-                    {formatDateLabel(item.due_date)} · {item.status === 'paid' ? 'toque para reabrir' : 'toque para pagar'}
-                  </Text>
-                </View>
-              </AppPressable>
+              </View>
             );
           }}
         />
@@ -449,6 +469,10 @@ const styles = StyleSheet.create({
   cardNameRow: { flexDirection: 'row', alignItems: 'center' },
   /* Pílula de status e botão de opções na mesma coluna direita do card. */
   cardTopAcoes: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  // Mesma posição visual que o botão sempre teve dentro de `cardTopAcoes`
+  // (canto superior direito do card, respeitando o padding do card) — só que
+  // agora fora da árvore da `AppPressable`, ver comentário acima do card.
+  botaoOpcoesFlutuante: { position: 'absolute', top: spacing.md, right: spacing.md, pointerEvents: 'box-none' },
   cardName: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   cardCat: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
