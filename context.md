@@ -591,3 +591,6 @@ ficava branco e nenhum erro chegava ao JavaScript.
   pacote enviado ao EAS.
 - Verificações locais: `npx tsc --noEmit`, `git diff --check` e
   `npm run test:parser` aprovados; a suíte reportou todas as checagens verdes.
+- Build Android interna concluída com sucesso no EAS: versão `1.4.1`,
+  `versionCode 2`, ID `b2605153-7cdf-4903-986f-80c14d14caf4`. APK disponível em
+  https://expo.dev/accounts/gabriouss/projects/grana-app/builds/b2605153-7cdf-4903-986f-80c14d14caf4
