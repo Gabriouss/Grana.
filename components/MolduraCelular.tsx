@@ -2,17 +2,30 @@ import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, View } from 'react-native';
 import { theme, radius } from '@/lib/theme';
 
+type Quadro = { src: string; legenda: string };
+
 type Props = {
-  src: string;
+  src?: string;
   /** Legenda pra leitor de tela — a imagem em si é decorativa (moldura +
       captura de tela), o texto real já existe em volta na seção. */
-  legenda: string;
+  legenda?: string;
+  /** Duas ou mais capturas reais, alternadas em crossfade dentro da mesma
+      moldura — o "app sendo usado" em vez de uma tela parada. Se vier só
+      uma (ou nenhuma, com `src` preenchido), o comportamento é o de sempre:
+      uma imagem só, sem crossfade. */
+  quadros?: Quadro[];
   largura?: number;
 };
 
 /* Proporção real da captura (390×844, um iPhone padrão) — a moldura herda
    essa proporção pra nunca esticar/distorcer a tela por dentro. */
 const PROPORCAO = 390 / 844;
+
+/* Quanto tempo cada tela fica no ar (contando a própria transição de
+   entrada/saída) quando há mais de um `quadro`. Rápido o bastante pra não
+   parecer um slide de apresentação, devagar o bastante pra dar tempo de ler
+   o que mudou na tela. */
+const DURACAO_POR_TELA_S = 3.6;
 
 /**
  * Moldura de celular desenhada em CSS (bezel + notch + home indicator), sem
@@ -38,7 +51,7 @@ const PROPORCAO = 390 / 844;
  * que faz o total de animações rodando ao mesmo tempo nunca passar de uma
  * ou duas.
  */
-export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
+export default function MolduraCelular({ src, legenda, quadros, largura = 280 }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
@@ -46,6 +59,9 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
   const ref = useRef<View>(null);
   const idBruto = useId();
   const prefixo = `molduraCelular_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+  const listaQuadros: Quadro[] = quadros && quadros.length > 0 ? quadros : [{ src: src ?? '', legenda: legenda ?? '' }];
+  const cicloDeTelas = listaQuadros.length > 1;
 
   useEffect(() => {
     let ativo = true;
@@ -78,17 +94,38 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
     // sem precisar separar a sombra num wrapper à parte (uma tentativa
     // anterior fez isso e criou um retângulo visível atrás da moldura,
     // porque o wrapper não tinha o mesmo `borderRadius`/tamanho do miolo).
-    tag.textContent = `
+    let texto = `
       @keyframes ${prefixo} {
         0%, 100% { transform: translate3d(0, 0, 0); }
         50% { transform: translate3d(0, -12px, 0); }
       }
     `;
+    // Crossfade entre telas: TODAS as camadas usam o MESMO keyframe (um
+    // único "pulso" de opacidade dentro do primeiro slot do ciclo) e a
+    // MESMA duração igual ao ciclo inteiro; o que muda por camada é só o
+    // `animation-delay` NEGATIVO (aplicado abaixo, por camada), que
+    // desloca cada uma pra seu próprio slot. É o mesmo truque de slideshow
+    // só-CSS de sempre — sem JS trocando `src`, sem estado de "tela atual".
+    if (cicloDeTelas) {
+      const n = listaQuadros.length;
+      const fatia = 100 / n;
+      const entrada = (fatia * 0.16).toFixed(2);
+      const saida = (fatia * 0.84).toFixed(2);
+      texto += `
+        @keyframes ${prefixo}_tela {
+          0% { opacity: 0; }
+          ${entrada}% { opacity: 1; }
+          ${saida}% { opacity: 1; }
+          ${fatia.toFixed(2)}%, 100% { opacity: 0; }
+        }
+      `;
+    }
+    tag.textContent = texto;
     document.head.appendChild(tag);
     return () => {
       document.head.removeChild(tag);
     };
-  }, [prefixo, reduzirMovimento]);
+  }, [prefixo, reduzirMovimento, cicloDeTelas, listaQuadros.length]);
 
   const altura = largura / PROPORCAO;
   const espessuraBezel = Math.max(10, largura * 0.045);
@@ -122,7 +159,16 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
         },
       ]}
     >
-      <View style={{ width: largura, height: altura, borderRadius: largura * 0.11, overflow: 'hidden', backgroundColor: theme.paper }}>
+      <View
+        style={{
+          width: largura,
+          height: altura,
+          borderRadius: largura * 0.11,
+          overflow: 'hidden',
+          backgroundColor: theme.paper,
+          position: 'relative',
+        }}
+      >
         {/* `createElement('img', ...)`, não o `Image` do RN — só assim
             `loading="lazy"` chega de verdade no elemento `<img>` real; o
             componente `Image` do react-native-web não expõe essa prop. Sem
@@ -131,13 +177,44 @@ export default function MolduraCelular({ src, legenda, largura = 280 }: Props) {
             rola até ver. Mesmo padrão de `createElement` já usado em
             `NotebookAnimado`/`NotebookVideo` pra sair do conjunto de
             primitivos do RN nesta página web-only. */}
-        {createElement('img', {
-          src,
-          alt: legenda,
-          width: 390,
-          height: 844,
-          loading: 'lazy',
-          style: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+        {listaQuadros.map((quadro, indice) => {
+          const duracaoCiclo = listaQuadros.length * DURACAO_POR_TELA_S;
+          const animacaoTela =
+            cicloDeTelas && !reduzirMovimento && naTela
+              ? ({
+                  animationName: `${prefixo}_tela`,
+                  animationDuration: `${duracaoCiclo}s`,
+                  // Delay NEGATIVO: cada camada começa a animação já
+                  // "adiantada" no próprio ciclo compartilhado, o que
+                  // desloca o pulso de opacidade dela pro seu slot — só a
+                  // primeira (índice 0) some visualmente ativa no instante
+                  // `t=0`, exatamente como se cada uma tivesse seu próprio
+                  // temporizador começando em momentos diferentes.
+                  animationDelay: `${-(indice * DURACAO_POR_TELA_S)}s`,
+                  animationTimingFunction: 'ease-in-out',
+                  animationIterationCount: 'infinite',
+                } as any)
+              : null;
+          return createElement('img', {
+            key: quadro.src || indice,
+            src: quadro.src,
+            alt: quadro.legenda,
+            width: 390,
+            height: 844,
+            loading: 'lazy',
+            style: cicloDeTelas
+              ? {
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  opacity: indice === 0 ? 1 : 0,
+                  ...animacaoTela,
+                }
+              : { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+          });
         })}
       </View>
       {/* Notch centralizado no topo — só decoração, por cima da tela. */}

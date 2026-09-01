@@ -1,24 +1,24 @@
-import { createElement, useEffect, useRef, useState } from 'react';
+import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, fonts as uiFonts, type } from '@/lib/theme';
-import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
+import { CORTES, colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
 import NotebookAnimado from '@/components/NotebookAnimado';
 import GradeInterativa from '@/components/GradeInterativa';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
-import GlowOrb from '@/components/GlowOrb';
+import FogBackground from '@/components/FogBackground';
 import ConversaGranabo from '@/components/ConversaGranabo';
 import CardLivreParaGastar from '@/components/CardLivreParaGastar';
 import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';
 import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
-import MolduraNavegador from '@/components/MolduraNavegador';
+import MolduraCelular from '@/components/MolduraCelular';
 import landingMeta from '@/landing-meta.json';
 
 // A landing é uma superfície de marca. O produto logado usa a família do
@@ -82,7 +82,7 @@ const NAVEGACAO_LANDING = [
 /* 560px do mockup + 320px da coluna textual + gap e margens da dobra. A
    composição só vira duas colunas quando essa soma cabe sem encolher nenhum
    dos lados abaixo do próprio conteúdo. */
-const LARGURA_MINIMA_HABITOS_EM_LINHA = 1080;
+const LARGURA_MINIMA_HABITOS_EM_LINHA = 960;
 const LARGURA_MINIMA_HERO_LARGO = 960;
 const ALTURA_MINIMA_HERO_LARGO = 600;
 
@@ -112,6 +112,41 @@ function BotaoCTA({
   centralizado?: boolean;
   rotulo?: string;
 }) {
+  const { ehCompacto } = useBreakpoint();
+  const [reduzirMovimento, setReduzirMovimento] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
+  const idBruto = useId();
+  const prefixoReflexo = `ctaReflexo_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+  useEffect(() => {
+    let ativo = true;
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((v) => ativo && setReduzirMovimento(v))
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  // O reflexo passa rápido (10% do ciclo) e fica parado, fora da área
+  // visível, no resto — é isso que dá o efeito "de tempos em tempos" em vez
+  // de um brilho constante indo e voltando.
+  useEffect(() => {
+    if (reduzirMovimento) return;
+    const tag = document.createElement('style');
+    tag.textContent = `
+      @keyframes ${prefixoReflexo} {
+        0% { transform: translateX(-160%) skewX(-18deg); }
+        10%, 100% { transform: translateX(360%) skewX(-18deg); }
+      }
+    `;
+    document.head.appendChild(tag);
+    return () => {
+      document.head.removeChild(tag);
+    };
+  }, [prefixoReflexo, reduzirMovimento]);
+
   return (
     // Sem `centralizado`, o botão (`ctaPrimario` tem `alignSelf:'flex-start'`
     // fixo) e a microcopy (texto normal, sem textAlign) ficam os dois
@@ -134,11 +169,31 @@ function BotaoCTA({
           `style` função que já funcionava. */}
       <AppPressable
         href={hrefCadastroComAtribuicao()}
-        style={({ hovered }) => [styles.ctaPrimario, centralizado && styles.ctaPrimarioCentralizado, hovered && styles.ctaPrimarioHover]}
+        style={({ hovered }) => [
+          styles.ctaPrimario,
+          ehCompacto && styles.ctaPrimarioCompacto,
+          centralizado && styles.ctaPrimarioCentralizado,
+          hovered && styles.ctaPrimarioHover,
+        ]}
       >
+        {!reduzirMovimento && (
+          <View style={styles.ctaReflexo} aria-hidden pointerEvents="none">
+            <View
+              style={[
+                styles.ctaReflexoFaixa,
+                {
+                  animationName: prefixoReflexo,
+                  animationDuration: '9.35s',
+                  animationTimingFunction: 'ease-in-out',
+                  animationIterationCount: 'infinite',
+                } as any,
+              ]}
+            />
+          </View>
+        )}
         <Text style={styles.ctaPrimarioTexto}>{rotulo}</Text>
         <View aria-hidden>
-          <Ionicons name="arrow-forward" size={17} color={theme.paper} />
+          <Ionicons name="arrow-forward" size={17} color={theme.accent2} />
         </View>
       </AppPressable>
       {microcopy ? <Text style={[styles.ctaMicrocopy, centralizado && styles.ctaMicrocopyCentralizada]}>{microcopy}</Text> : null}
@@ -301,8 +356,32 @@ const PILARES_HABITO = [
   },
 ];
 
+const RECURSOS_GRANABO = [
+  {
+    icone: 'mic-outline' as const,
+    titulo: 'Texto ou áudio',
+    texto: 'Fale do seu jeito. O Granabô identifica valor e descrição sem formulário.',
+  },
+  {
+    icone: 'sparkles-outline' as const,
+    titulo: 'Categoria sugerida',
+    texto: 'O lançamento já chega organizado e continua editável no aplicativo.',
+  },
+  {
+    icone: 'search-outline' as const,
+    titulo: 'Consulta na conversa',
+    texto: 'Pergunte quanto já gastou e receba uma resposta baseada nos seus registros.',
+  },
+  {
+    icone: 'shield-checkmark-outline' as const,
+    titulo: 'Controle continua seu',
+    texto: 'O número fica vinculado à sua conta e cada lançamento pode ser ajustado ou excluído.',
+  },
+];
+
 type BeneficioLanding = {
   variante: VarianteMock;
+  rotulo: string;
   titulo: string;
   texto: string;
 };
@@ -310,31 +389,37 @@ type BeneficioLanding = {
 const BENEFICIOS_LANDING: BeneficioLanding[] = [
   {
     variante: 'lancar',
+    rotulo: 'Registro',
     titulo: 'Lance do jeito que for mais fácil',
-    texto: 'Use voz no app, Granabô, QR Code, comprovante Pix, CSV com até 500 linhas ou formulário manual. Se a conexão cair, a fila offline guarda o lançamento para sincronizar depois.',
+    texto: 'Use voz no app, Granabô, QR Code, comprovante Pix, CSV com até 10 mil linhas ou formulário manual. Se a conexão cair, a fila offline guarda o lançamento para sincronizar depois.',
   },
   {
     variante: 'cartao',
+    rotulo: 'Cartões',
     titulo: 'Acompanhe cartão, fatura e limite',
     texto: 'Veja cada cartão, transforme compras parceladas em lançamentos reais e pague a fatura pela carteira escolhida. Alertas mostram quando o uso cruza 50%, 70%, 90% e 100% do limite.',
   },
   {
     variante: 'boletos',
+    rotulo: 'Contas',
     titulo: 'Organize contas e boletos recorrentes',
     texto: 'Marque uma conta como paga para criar a saída e preparar a próxima ocorrência. Os lembretes acompanham a aproximação do vencimento no aplicativo móvel.',
   },
   {
     variante: 'mes',
+    rotulo: 'Análises',
     titulo: 'Veja o mês por vários ângulos',
     texto: 'Acompanhe fluxo financeiro, gastos por categoria, períodos personalizados e os compromissos dos próximos seis meses. Quando precisar, exporte um relatório em PDF.',
   },
   {
     variante: 'organizar',
+    rotulo: 'Planejamento',
     titulo: 'Separe o dinheiro com intenção',
     texto: 'Crie carteiras, cofrinhos com prazo, orçamentos por categoria e categorias próprias. O Grana. ajuda a distinguir o que está disponível do que já tem destino.',
   },
   {
     variante: 'personalizar',
+    rotulo: 'Personalização',
     titulo: 'Monte o Grana. do seu jeito',
     texto: 'Escolha e reorganize até dez blocos na tela inicial, use atalhos diretos e explore o modo de exemplo com dados fictícios antes de registrar os seus.',
   },
@@ -652,6 +737,9 @@ function ConteudoWeb() {
   const insets = useSafeAreaInsets();
   const { ehCompacto, largura, altura } = useBreakpoint();
   const habitosEmpilhados = largura < LARGURA_MINIMA_HABITOS_EM_LINHA;
+  const granaboEmpilhado = largura < 1040;
+  const faqEmpilhado = largura < 980;
+  const faqComNavLateral = largura >= CORTES.medio && largura < CORTES.amplo;
   const heroCompacto = largura < LARGURA_MINIMA_HERO_LARGO || altura < ALTURA_MINIMA_HERO_LARGO;
   const alturaDobra = useAlturaDobra();
   const rolagemRef = useRef<ScrollView>(null);
@@ -850,10 +938,6 @@ function ConteudoWeb() {
 
       {/* ───────── Hero-storytelling — o momento de assinatura da página ───────── */}
       <View style={styles.palcoHero}>
-        <View style={styles.camadaBrilho}>
-          <GlowOrb cor="rgba(31,169,141,0.35)" tamanho={720} top={-260} left={-160} />
-          <GlowOrb cor="rgba(174,255,227,0.16)" tamanho={520} top={-80} right={-120} />
-        </View>
         {/* Sem o wrapper `[colunaConteudo, faixa]` que as outras seções usam:
             o painel largo do herói precisa sangrar até a borda VERDADEIRA do
             viewport (vídeo de fundo), então é a própria `HeroStorytelling`
@@ -928,9 +1012,11 @@ function ConteudoWeb() {
           recebeu (registra e depois responde quanto já foi gasto na
           categoria) — as duas coisas que a Edge Function realmente faz. */}
       <View nativeID="granabo" style={styles.palcoComCamada}>
+        <FogBackground compacto={granaboEmpilhado} />
         <Dobra>
-          <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-            <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+          <View style={styles.secao}>
+            <View style={[styles.granaboTopo, granaboEmpilhado && styles.granaboTopoEmpilhado]}>
+              <View style={[styles.colunaTextoSecao, granaboEmpilhado && styles.colunaTextoSecaoCompacta]}>
               <RevealOnScroll>
                 <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Conheça o Granabô</Text>
                 <TituloSecao>Seu controle também cabe numa conversa no WhatsApp.</TituloSecao>
@@ -938,26 +1024,31 @@ function ConteudoWeb() {
                   Depois de vincular seu número uma vez, envie um texto ou áudio para o Granabô, o assistente do Grana. no WhatsApp. Ele identifica o valor e a descrição, sugere uma categoria e cria o lançamento no Grana. Você só ajusta se precisar.
                 </Text>
               </RevealOnScroll>
-
-              <View style={styles.segurancaLista}>
-                {['Funciona com texto ou áudio', 'O número fica vinculado só à sua conta', 'Todo lançamento pode ser editado ou excluído no app'].map((f, i) => (
-                  <RevealOnScroll key={f} atraso={i * 60}>
-                    <View style={styles.segurancaLinha}>
-                      <Ionicons name="checkmark-circle" size={16} color={theme.up} aria-hidden />
-                      <Text style={styles.segurancaLinhaTexto}>{f}</Text>
-                    </View>
-                  </RevealOnScroll>
-                ))}
-              </View>
-
               <RevealOnScroll>
                 <BotaoCTA centralizado={ehCompacto} />
               </RevealOnScroll>
+              </View>
+
+              <RevealOnScroll style={[styles.composicaoTelas, granaboEmpilhado && styles.composicaoTelasCompacta]}>
+                <ConversaGranabo compacto={granaboEmpilhado} />
+              </RevealOnScroll>
             </View>
 
-            <RevealOnScroll style={[styles.composicaoTelas, ehCompacto && styles.composicaoTelasCompacta]}>
-              <ConversaGranabo compacto={ehCompacto} />
-            </RevealOnScroll>
+            <View style={styles.granaboRecursosGrade}>
+              {RECURSOS_GRANABO.map((recurso, indice) => (
+                <RevealOnScroll
+                  key={recurso.titulo}
+                  atraso={indice * 60}
+                  style={[styles.granaboRecursoPos, ehCompacto && styles.granaboRecursoPosCompacto]}
+                >
+                  <View style={styles.granaboRecurso}>
+                    <Ionicons name={recurso.icone} size={20} color={theme.accent2} aria-hidden />
+                    <Text style={styles.granaboRecursoTitulo}>{recurso.titulo}</Text>
+                    <Text style={styles.granaboRecursoTexto}>{recurso.texto}</Text>
+                  </View>
+                </RevealOnScroll>
+              ))}
+            </View>
           </View>
         </Dobra>
       </View>
@@ -970,20 +1061,28 @@ function ConteudoWeb() {
           <RevealOnScroll>
             <View style={[styles.secao, styles.secaoComCartao, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
               <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
-                <MolduraNavegador
-                  src="/telas/conquistas-web.webp"
-                  legenda="Tela de Desafios do Grana., com sequência, Score e mural de conquistas"
-                  largura={ehCompacto ? 300 : 560}
+                <MolduraCelular
+                  quadros={[
+                    {
+                      src: '/telas/inicio-mobile.png',
+                      legenda: 'Tela de Início do Grana. no celular, com Livre para Gastar, cofrinhos e compromissos futuros',
+                    },
+                    {
+                      src: '/telas/desafios-mobile.png',
+                      legenda: 'Tela de Desafios do Grana. no celular, com sequência, Score e mural de conquistas',
+                    },
+                  ]}
+                  largura={ehCompacto ? 200 : 260}
                 />
               </View>
-              <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+              <View style={[styles.colunaTextoSecao, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
                 <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Do primeiro lançamento ao hábito</Text>
                 <TituloSecao>O Grana. ajuda o controle a virar hábito.</TituloSecao>
                 <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                   A experiência é apoiada em princípios de formação de hábito: um registro fácil de começar, sinais para lembrar e progresso que você consegue enxergar.
                 </Text>
                 <View style={styles.habitoGrade}>
-                  {PILARES_HABITO.map((pilar) => (
+                  {PILARES_HABITO.map((pilar, indice) => (
                     <View key={pilar.titulo} style={styles.habitoItem}>
                       <View style={styles.habitoIcone} aria-hidden>
                         <Ionicons name={pilar.icone} size={17} color={theme.accent2} />
@@ -992,6 +1091,7 @@ function ConteudoWeb() {
                         <Text style={styles.habitoTitulo}>{pilar.titulo}</Text>
                         <Text style={styles.habitoDescricao}>{pilar.texto}</Text>
                       </View>
+                      <Text style={styles.processoPassoNumero}>{String(indice + 1).padStart(2, '0')}</Text>
                     </View>
                   ))}
                 </View>
@@ -1042,15 +1142,23 @@ function ConteudoWeb() {
             </RevealOnScroll>
 
             <View style={styles.beneficiosGrade}>
-              {BENEFICIOS_LANDING.map((beneficio, indice) => (
-                <RevealOnScroll key={beneficio.variante} atraso={indice * 70} style={styles.beneficioPosicao}>
-                  <View style={styles.beneficioCard}>
-                    <MiniMockBeneficio variante={beneficio.variante} />
-                    <Text style={styles.beneficioTitulo}>{beneficio.titulo}</Text>
-                    <Text style={styles.beneficioTexto}>{beneficio.texto}</Text>
-                  </View>
-                </RevealOnScroll>
-              ))}
+              {BENEFICIOS_LANDING.map((beneficio, indice) => {
+                const destaque = largura >= CORTES.amplo && [0, 3, 4].includes(indice);
+                return (
+                  <RevealOnScroll
+                    key={beneficio.variante}
+                    atraso={indice * 70}
+                    style={[styles.beneficioPosicao, destaque && styles.beneficioPosicaoDestaque]}
+                  >
+                    <View style={[styles.beneficioCard, destaque && styles.beneficioCardDestaque]}>
+                      <MiniMockBeneficio variante={beneficio.variante} destaque={destaque} />
+                      <Text style={styles.beneficioRotulo}>{beneficio.rotulo}</Text>
+                      <Text style={styles.beneficioTitulo}>{beneficio.titulo}</Text>
+                      <Text style={styles.beneficioTexto}>{beneficio.texto}</Text>
+                    </View>
+                  </RevealOnScroll>
+                );
+              })}
             </View>
           </View>
         </Dobra>
@@ -1197,16 +1305,19 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
-            <View style={[styles.faqLayout, ehCompacto && styles.faqLayoutCompacta]}>
-              <RevealOnScroll style={[styles.colunaTextoSecao, ehCompacto && styles.faqCompactoSemFlex]}>
+            <View style={[styles.faqLayout, faqEmpilhado && styles.faqLayoutCompacta]}>
+              <RevealOnScroll style={[styles.faqColunaEditorial, faqEmpilhado && styles.faqCompactoSemFlex]}>
                 <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Perguntas diretas</Text>
                 <TituloSecao>Sem letra miúda</TituloSecao>
                 <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                   Respostas rápidas para as dúvidas que travam muita gente antes de entrar.
                 </Text>
+                <View style={styles.faqVisual}>
+                  <CardLivreParaGastar compacto={faqEmpilhado} />
+                </View>
               </RevealOnScroll>
 
-              <View style={[styles.faqGrade, ehCompacto && styles.faqCompactoSemFlex]}>
+              <View style={[styles.faqGrade, faqEmpilhado && styles.faqCompactoSemFlex, faqComNavLateral && styles.faqGradeComNavLateral]}>
                 {PERGUNTAS_FAQ.map((f, i) => (
                   <RevealOnScroll
                     key={f.pergunta}
@@ -1232,7 +1343,7 @@ function ConteudoWeb() {
           alturaDobra !== null && styles.dobraSnap,
         ]}
       >
-        <GlowOrb cor="rgba(31,169,141,0.22)" tamanho={620} top={-200} left="50%" />
+        <FogBackground compacto={ehCompacto} intensidade="presente" />
         <RevealOnScroll>
           <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
             <View style={[styles.ctaFinalLayout, ehCompacto && styles.ctaFinalLayoutCompacto]}>
@@ -1325,7 +1436,7 @@ const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
    "Invalid style property... Did you mean animationKeyframes?" (RNW espera
    o objeto de keyframes ali, não o nome de um @keyframes CSS já injetado à
    parte). Todo outro `animationName`/`animationDuration` desta base
-   (NotebookAnimado, MolduraCelular, MolduraNavegador, TrustMarquee) já
+   (NotebookAnimado, MolduraCelular, FogBackground, TrustMarquee) já
    segue esse mesmo padrão — objeto solto, mesclado no array de `style`,
    nunca uma chave dentro de `StyleSheet.create`. */
 const heroScrollHintAnimado = {
@@ -1412,15 +1523,6 @@ const styles = StyleSheet.create({
   instagramCabecalhoHover: { borderColor: theme.ruleStrong, backgroundColor: theme.hover },
 
   palcoHero: { position: 'relative' },
-  /* O recorte dos GlowOrb vive nesta camada, não no `palcoHero` — sem isso o
-     brilho borrado vazaria por baixo das seções seguintes. E precisa ser uma
-     camada separada porque `overflow: hidden` em QUALQUER ancestral mata o
-     `position: sticky` dos descendentes: o navegador passa a considerar esse
-     ancestral o "scrollport" da grudagem, e como ele não rola, nada gruda.
-     Foi exatamente o que aconteceu com o herói-storytelling — o bloco de
-     texto e o notebook rolavam pra fora da tela enquanto os capítulos
-     avançavam, sem erro nenhum no console. */
-  camadaBrilho: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
   palcoCtaFinal: { position: 'relative', overflow: 'hidden' },
   palcoComCamada: { position: 'relative', overflow: 'hidden' },
 
@@ -1467,16 +1569,50 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: theme.accent,
-    borderRadius: radius.pill,
+    backgroundColor: 'rgba(5,34,41,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(174,255,227,0.72)',
+    borderRadius: radius.md,
     paddingVertical: 16,
     paddingHorizontal: spacing.xl + spacing.xs,
-    ...({ boxShadow: '0 10px 32px -8px rgba(31,169,141,0.6)', transitionProperty: 'box-shadow, transform', transitionDuration: '180ms' } as any),
+    position: 'relative',
+    overflow: 'hidden',
+    ...({
+      boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 10px 28px -12px rgba(174,255,227,0.65)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      transitionProperty: 'border-color, background-color, box-shadow, transform',
+      transitionDuration: '180ms',
+    } as any),
   },
+  // Tira fina de luz cor de menta que atravessa o botão de tempos em tempos —
+  // pedido do autor. `overflow:'hidden'` do pai corta a faixa nas bordas
+  // arredondadas; a faixa em si é bem mais larga que alta e girada
+  // (`skewX`), pra cruzar na diagonal em vez de subir reta. A maior parte do
+  // ciclo ela fica parada FORA da área visível (0% até a passagem, depois
+  // parada de novo no fim) — é isso que faz o reflexo parecer periódico em
+  // vez de um brilho constante andando de um lado a outro.
+  ctaReflexo: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  // Sem `transform` estático aqui de propósito: `skewX` não é uma função de
+  // transform que o React Native tipa (é conceito só de CSS/web), então todo
+  // o posicionamento — incluindo o estado inicial — vem só do
+  // `@keyframes` (CSS puro, injetado à parte) referenciado por
+  // `animationName`, nunca de um `transform` escrito aqui.
+  ctaReflexoFaixa: {
+    position: 'absolute',
+    top: -20,
+    bottom: -20,
+    left: 0,
+    width: '35%',
+    backgroundImage: 'linear-gradient(90deg, transparent, rgba(174,255,227,0.55), transparent)',
+  } as any,
   ctaPrimarioHover: {
-    ...({ boxShadow: '0 14px 40px -6px rgba(31,169,141,0.8)', transform: [{ translateY: -2 }] } as any),
+    borderColor: theme.accent2,
+    backgroundColor: 'rgba(11,45,53,0.9)',
+    ...({ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 34px -10px rgba(174,255,227,0.8)', transform: [{ translateY: -2 }] } as any),
   },
-  ctaPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  ctaPrimarioTexto: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  ctaPrimarioCompacto: { paddingVertical: 14, paddingHorizontal: spacing.md },
   ctaPrimarioCentralizado: { alignSelf: 'center' },
   // Fica sob TODO botão de CTA — reduz a maior fricção não dita ("quanto
   // tempo vou perder", "vão me cobrar") no exato instante em que a pessoa
@@ -1585,6 +1721,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paper,
     borderWidth: 1,
     borderColor: theme.rule,
+    position: 'relative',
   },
   habitoIcone: {
     width: 36,
@@ -1597,6 +1734,7 @@ const styles = StyleSheet.create({
   habitoTexto: { flex: 1 },
   habitoTitulo: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, marginBottom: 2 },
   habitoDescricao: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.4, fontFamily: fonts.light },
+  processoPassoNumero: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   beneficiosGrade: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1605,6 +1743,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxl,
   },
   beneficioPosicao: { flexGrow: 1, flexBasis: '31%', minWidth: 280 },
+  beneficioPosicaoDestaque: { flexBasis: '64%' },
   beneficioCard: {
     height: '100%',
     padding: spacing.lg,
@@ -1613,6 +1752,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
     ...sombraCard,
+  },
+  beneficioCardDestaque: { padding: spacing.xl, borderColor: theme.ruleStrong },
+  beneficioRotulo: {
+    color: theme.accent2,
+    fontSize: type.micro,
+    lineHeight: type.micro * 1.4,
+    fontFamily: fonts.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginBottom: spacing.xs,
   },
   beneficioTitulo: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular, marginBottom: spacing.sm },
   beneficioTexto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.5, fontFamily: fonts.light },
@@ -1744,6 +1893,24 @@ const styles = StyleSheet.create({
   segurancaLinhaTextoCompacto: { flex: 1, color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.45, fontFamily: fonts.light },
   segurancaCta: { alignItems: 'center', marginTop: spacing.xxl },
 
+  granaboTopo: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl * 2 },
+  granaboTopoEmpilhado: { flexDirection: 'column', alignItems: 'stretch' },
+  granaboRecursosGrade: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.lg, marginTop: spacing.xxl },
+  granaboRecursoPos: { flexGrow: 1, flexBasis: '22%', minWidth: 240 },
+  granaboRecursoPosCompacto: { flexBasis: '100%', minWidth: 0 },
+  granaboRecurso: {
+    height: '100%',
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    backgroundColor: 'rgba(11,45,53,0.78)',
+    ...({ backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' } as any),
+  },
+  granaboRecursoTitulo: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular },
+  granaboRecursoTexto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.45, fontFamily: fonts.light },
+
   // Coluna que hospeda a prova visual ao lado do texto da seção (a conversa
   // do Granabô, o card de Livre para Gastar). Herdou o nome de quando era
   // uma composição de navegador + celular sobrepostos; hoje centraliza um
@@ -1752,6 +1919,8 @@ const styles = StyleSheet.create({
   composicaoTelasCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
 
   faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl, marginTop: spacing.sm },
+  faqColunaEditorial: { flex: 1, minWidth: 320, maxWidth: 520 },
+  faqVisual: { width: '100%', marginTop: spacing.xl, marginBottom: spacing.lg },
   // Mesmo bug/correção de `secaoComCartaoCompacta` — `flex:1` + `minWidth`
   // nos dois filhos (`colunaTextoSecao`/`faqGrade`) não quebra linha de
   // forma confiável numa largura intermediária. `alignItems:'center'` só
@@ -1770,6 +1939,7 @@ const styles = StyleSheet.create({
   // um volta a ocupar só a altura do que tem dentro.
   faqCompactoSemFlex: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%' },
   faqGrade: { flex: 1, minWidth: 320, gap: spacing.lg },
+  faqGradeComNavLateral: { paddingRight: 64 },
   // Sem `flexBasis` — `faqGrade` (abaixo) é `flexDirection:'column'` por
   // padrão agora (a grade em zigue-zague antiga, que era `row`+`wrap`, foi
   // simplificada pra uma lista empilhada). Um `faqCardPosCompacto` com
@@ -1791,7 +1961,7 @@ const styles = StyleSheet.create({
   ctaFinalLayoutCompacto: { flexDirection: 'column', gap: spacing.xxl },
   ctaFinalConteudo: { width: '100%', maxWidth: 760, alignItems: 'center' },
   ctaFinalConteudoCompacto: { minWidth: 0, width: '100%', alignItems: 'center' },
-  ctaFinalTitulo: { color: theme.ink, ...({ fontSize: 'clamp(32px, 3.2vw, 52px)', lineHeight: '1.08' } as any), letterSpacing: -1.2, fontFamily: fonts.regular, marginBottom: spacing.lg },
+  ctaFinalTitulo: { color: theme.ink, ...({ fontSize: 'clamp(32px, 3.2vw, 52px)', lineHeight: '1.08' } as any), fontFamily: fonts.regular, marginBottom: spacing.lg },
   ctaFinalTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 540 },
   ctaFinalFatos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginVertical: spacing.xl },
   ctaFinalFatosCompacto: { justifyContent: 'center' },

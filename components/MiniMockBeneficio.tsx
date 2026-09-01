@@ -21,8 +21,8 @@ export type VarianteMock =
   | 'organizar'
   | 'personalizar';
 
-export default function MiniMockBeneficio({ variante }: { variante: VarianteMock }) {
-  return <View style={styles.palco}>{conteudo(variante)}</View>;
+export default function MiniMockBeneficio({ variante, destaque = false }: { variante: VarianteMock; destaque?: boolean }) {
+  return <View style={[styles.palco, destaque && styles.palcoDestaque]}>{conteudo(variante)}</View>;
 }
 
 /* ---- variantes ---- */
@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     overflow: 'hidden',
   },
+  palcoDestaque: { height: 132, paddingHorizontal: spacing.xl },
   frase: { color: theme.inkSoft, fontSize: type.legenda, fontFamily: fonts.light },
   linhaLancamento: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   valor: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },

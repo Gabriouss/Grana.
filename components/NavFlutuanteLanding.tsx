@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { CORTES } from '@/lib/breakpoints';
 import { useReducedMotion } from '@/lib/motion';
 import AppPressable from './AppPressable';
 
@@ -20,6 +21,9 @@ export default function NavFlutuanteLanding({
   const progresso = useRef(new Animated.Value(0)).current;
   const menuJaAbriu = useRef(false);
   const reduzirMovimento = useReducedMotion();
+  const largura = useWindowDimensions().width;
+  const ehAmplo = largura >= CORTES.amplo;
+  const ehCompacto = largura < CORTES.medio;
 
   useEffect(() => {
     if (reduzirMovimento) {
@@ -81,7 +85,7 @@ export default function NavFlutuanteLanding({
           diálogo que exige decisão. */}
       {aberto && <Pressable style={styles.veu} onPress={() => setAberto(false)} accessibilityLabel="Fechar menu de seções" />}
 
-      <View style={[styles.ancora, { pointerEvents: 'box-none' }]} >
+      <View style={[styles.ancora, ehCompacto && styles.ancoraCompacta, { pointerEvents: 'box-none' }]} >
         {aberto && (
           <Animated.View
             nativeID={ID_PAINEL}
@@ -123,11 +127,14 @@ export default function NavFlutuanteLanding({
           accessibilityState={{ expanded: aberto }}
           aria-controls={ID_PAINEL}
           aria-expanded={aberto}
-          style={({ hovered }) => [styles.botao, hovered && styles.botaoHover]}
+          style={({ hovered }) => [styles.botao, ehCompacto && styles.botaoCompacto, ehAmplo && styles.botaoAmplo, hovered && styles.botaoHover]}
         >
-          <Animated.View style={{ transform: [{ rotate: rotacao }] }}>
-            <Ionicons name={aberto ? 'close' : 'menu'} size={24} color={theme.paper} />
-          </Animated.View>
+          <View style={styles.botaoConteudo}>
+            <Animated.View style={{ transform: [{ rotate: rotacao }] }}>
+              <Ionicons name={aberto ? 'close' : 'menu'} size={22} color={theme.paper} aria-hidden />
+            </Animated.View>
+            {ehAmplo ? <Text style={styles.botaoTexto}>{aberto ? 'Fechar' : 'Explorar'}</Text> : null}
+          </View>
         </AppPressable>
       </View>
     </>
@@ -145,6 +152,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     zIndex: 49,
   },
+  ancoraCompacta: { right: spacing.xs, bottom: spacing.sm },
   painel: {
     marginBottom: spacing.md,
     backgroundColor: theme.paperRaised,
@@ -176,6 +184,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...({ boxShadow: '0 10px 30px -8px rgba(31,169,141,0.75)', transitionProperty: 'box-shadow, transform', transitionDuration: '180ms' } as any),
   },
+  botaoCompacto: { width: 44, height: 44, borderRadius: 22 },
+  botaoAmplo: { width: 128, borderRadius: radius.pill },
+  botaoConteudo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  botaoTexto: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
   botaoHover: {
     ...({ boxShadow: '0 14px 38px -6px rgba(31,169,141,0.95)', transform: [{ translateY: -2 }] } as any),
   },

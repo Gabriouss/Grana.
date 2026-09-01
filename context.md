@@ -544,3 +544,26 @@ webhook chama a função com um parâmetro que a versão em produção ainda nã
 aceita. Ao rodar o próximo `eas build`, escrever `--message` pensando em
 quem usa o app, não em changelog técnico — é isso que vira o texto do
 pop-up.
+
+## Sessão de 31/08/2026 - refinamento local da landing com referência Portfolite
+
+Primeira passagem feita somente no ambiente local, aguardando aprovação do
+autor antes de qualquer commit, push ou publicação. O Portfolite foi usado
+apenas como referência de ritmo editorial e hierarquia; identidade, copy,
+paleta, Neue Machina e visuais existentes do Grana. foram preservados.
+
+- Os novos PNGs de notebook/celular em `design-system/marketing-mockups/` não
+  foram usados. A landing continua usando apenas os visuais que já possuía.
+- `TrustMarquee` virou uma linha de fatos estática no breakpoint amplo e com
+  movimento reduzido. Em larguras menores, onde os quatro fatos nao cabem, o
+  ticker e o controle de pausa continuam disponíveis.
+- O gatilho de `NavFlutuanteLanding` mostra "Explorar"/"Fechar" no amplo e
+  permanece circular e somente com ícone nas larguras menores.
+- A grade de benefícios ganhou composição assimétrica no amplo, rótulos de
+  categoria e mais presença para os mini-visuais já existentes. Compacto e
+  medio mantem a estrutura anterior. A copy do CSV foi atualizada de 500 para
+  10 mil linhas, acompanhando o limite real do importador.
+- Validado em 320, 390, 768 e 1440 px sem overflow novo. `npx tsc --noEmit` e
+  `git diff --check` passaram. Axe-core: 0 violações automáticas em 390 e
+  1440 px; contraste ficou marcado como revisão manual pelo motor. Com
+  `prefers-reduced-motion`, 0 animações permanecem em execução.

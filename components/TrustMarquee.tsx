@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, fonts, type } from '@/lib/theme';
+import { CORTES, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 
 type Props = { itens: string[] };
@@ -68,12 +69,20 @@ export default function TrustMarquee({ itens }: Props) {
 
   const textoBase = itens.join(SEPARADOR);
 
-  // Reduced motion: uma cópia só, parada — nunca deixar a faixa duplicada
-  // congelada, que pareceria bug (texto repetido sem razão aparente).
+  // Reduced motion: uma lista parada, nunca a faixa duplicada congelada,
+  // que pareceria bug (texto repetido sem razão aparente).
   if (reduzirMovimento) {
+    const compacto = larguraJanela < CORTES.medio;
     return (
-      <View style={styles.faixa}>
-        <Text style={styles.texto}>{textoBase}</Text>
+      <View style={styles.faixaEstatica}>
+        <View style={[styles.listaEstatica, compacto && styles.listaEstaticaCompacta]}>
+          {itens.map((item) => (
+            <View key={item} style={[styles.itemEstatico, compacto && styles.itemEstaticoCompacto]}>
+              <View style={styles.pontoEstatico} aria-hidden />
+              <Text style={styles.textoEstatico}>{item}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     );
   }
@@ -101,7 +110,7 @@ export default function TrustMarquee({ itens }: Props) {
         onPress={() => setPausado((v) => !v)}
         accessibilityRole="button"
         accessibilityLabel={pausado ? 'Retomar faixa de informações' : 'Pausar faixa de informações'}
-        accessibilityState={{ checked: pausado }}
+        aria-pressed={pausado}
         style={({ hovered }) => [styles.controle, hovered && styles.controleHover]}
       >
         <View aria-hidden>
@@ -174,6 +183,37 @@ function TrustMarqueeFaixa({
 
 const styles = StyleSheet.create({
   container: { position: 'relative', backgroundColor: theme.paperRaised },
+  faixaEstatica: {
+    minHeight: 44,
+    justifyContent: 'center',
+    backgroundColor: theme.paperRaised,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.rule,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+  },
+  listaEstatica: {
+    width: '100%',
+    maxWidth: LARGURA_MAXIMA_CONTEUDO,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xl,
+  },
+  listaEstaticaCompacta: { flexWrap: 'wrap', gap: spacing.sm },
+  itemEstatico: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
+  itemEstaticoCompacto: { width: '48%', alignItems: 'flex-start' },
+  pontoEstatico: { width: 5, height: 5, borderRadius: 3, backgroundColor: theme.accent2, marginTop: 1 },
+  textoEstatico: {
+    flexShrink: 1,
+    color: theme.inkSoft,
+    fontSize: type.micro,
+    lineHeight: type.micro * 1.4,
+    fontFamily: fonts.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   faixa: {
     backgroundColor: theme.paperRaised,
     paddingVertical: spacing.xs,
@@ -207,15 +247,6 @@ const styles = StyleSheet.create({
   // bem maior). Sem isso o loop andava só uma fração do que devia e
   // "saltava" de volta antes de completar uma cópia inteira.
   trilho: { flexDirection: 'row', flexShrink: 0, ...({ width: 'max-content' } as any) },
-  texto: {
-    flexShrink: 0,
-    color: theme.inkSoft,
-    fontSize: type.legenda,
-    fontFamily: fonts.light,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    ...({ whiteSpace: 'nowrap' } as any),
-  },
   // Igual a `texto`, mas sem `marginRight`: o separador "·" que fecha cada
   // cópia já está dentro da própria string (`textoLoop`), então um gap
   // extra aqui duplicaria o espaçamento só nas costuras.
