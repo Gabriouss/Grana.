@@ -821,3 +821,47 @@ Verificações: `tsc --noEmit`, `test:parser` completo, bundle web compilando no
 Metro (HTTP 200) e verificador de ordem de hook nas 8 telas. Sem validação
 visual — não há login nesta sessão. Nenhuma build disparada; `app.json` em
 1.4.1.
+
+## Sessão de 02/09/2026 - terceira auditoria: a correção que se perdeu
+
+Reauditoria logo após as correções da segunda rodada. Achado principal: **uma
+correção que eu declarei feita não estava feita.**
+
+A segunda rodada trocou `fontFamily: 'monospace'` por `fonts.regular` no estilo
+`demoFlag` de `app/(app)/index.tsx` (badges "exemplo"/"oculto" do cabeçalho da
+Início, única violação da Only-Font Rule no repositório). Logo depois, um
+`git checkout --` no mesmo arquivo — feito para desfazer um script de entrelinha
+bugado — levou a correção junto. O passe de entrelinha foi refeito por cima; a
+troca da fonte, não. O relatório e a mensagem de commit saíram afirmando que
+estava resolvido, e foi para a `main` assim.
+
+`tsc` não pega. O corpus não pegava. Só releitura pegou — e depender de
+releitura é o mesmo que não ter garantia.
+
+Correção estrutural: `__tests__/corpus-design-system.ts`, dentro do
+`test:parser`, verifica por máquina as Named Rules absolutas do `DESIGN.md`:
+
+- nenhum `fontFamily` com literal de string em `app/` ou `components/`;
+- nenhum `fontWeight` (só existem Light e Regular como arquivo);
+- nenhuma fonte de sistema citada em linha de `fontFamily`;
+- `lib/theme.ts` declara as duas famílias que existem, e os `.otf` existem.
+
+294 guardas. Comentários ficam de fora de propósito — os arquivos que explicam
+as regras citam as grafias proibidas. Verificado que REPROVA: reintroduzindo o
+`monospace`, duas regras disparam com arquivo e linha e o processo sai com
+código 1, quebrando o `test:parser`.
+
+Nota segue 16/20. A segunda rodada já tinha anunciado esse número, mas ele
+estava certo por sorte: uma das correções que o compunham não existia.
+
+Achados novos (os dois P3, não corrigidos): avatares usam o `<Image>` do React
+Native com uri remoto, sem `expo-image`, sem cache em disco no Android e
+decodificados em tamanho cheio para exibir a 44px; e o ajuste fino das listas é
+parcial — todas as 10 `FlatList` têm `keyExtractor`, mas só 5 pontos usam
+`getItemLayout`/`windowSize`/`initialNumToRender`, sendo que Lançamentos e
+Crédito têm altura de linha fixa e ganhariam com `getItemLayout`.
+
+Positivos confirmados: arranque correto para o SDK 57 (`preventAutoHideAsync`
+em escopo global sem await), escala de fonte do sistema intacta (zero
+`allowFontScaling`, ou seja, padrão ligado), e as correções da segunda rodada
+se sustentaram.

@@ -662,7 +662,15 @@ inteiro), teclado tratado de forma centralizada no `Sheet.tsx`.
 
 ## Achados
 
-### P1 — Only-Font Rule violada, em produção · `CORRIGIDO`
+### P1 — Only-Font Rule violada, em produção · `CORRIGIDO NA TERCEIRA RODADA`
+
+> **Esta seção afirmou "CORRIGIDO" e estava ERRADA.** A correção foi aplicada,
+> depois perdida por um `git checkout --` que desfazia outro script no mesmo
+> arquivo, e o relatório foi escrito sem reconferir. A terceira rodada de
+> auditoria (abaixo) pegou o `monospace` ainda vivo em produção. Corrigido de
+> verdade e, agora, coberto por teste.
+
+### P1 — Only-Font Rule violada, em produção · (registro original)
 `app/(app)/index.tsx:1670` tinha `fontFamily: 'monospace'` no estilo `demoFlag`
 — **vivo**, nos badges "exemplo" e "oculto" do cabeçalho da Início. Única
 violação da regra em todo o repositório. Trocado por `fonts.regular`: a largura
@@ -798,3 +806,120 @@ esta sessão fez no Crédito, e o que esta rodada corrigiu.
    humano confirmando.
 4. **[P3]** Remover os 9 componentes órfãos.
 5. **[final]** `/impeccable polish` depois de 1 e 2.
+
+---
+
+# Auditoria: 02 de setembro de 2026 (terceira rodada)
+
+Rodada de reauditoria logo após as correções da segunda. Método igual: leitura
+de fonte, `tsc`, corpus, sem simulador nem aparelho.
+
+## O que esta rodada existe para registrar
+
+**Uma correção que eu declarei feita não estava feita.** A segunda rodada
+trocou o `fontFamily: 'monospace'` de `demoFlag` (`app/(app)/index.tsx`) por
+`fonts.regular` — e logo depois um `git checkout --` no mesmo arquivo, para
+desfazer um script de entrelinha bugado, levou a correção junto. O passe de
+entrelinha foi refeito por cima; a troca da fonte, não. O relatório e a
+mensagem de commit saíram afirmando que a violação estava resolvida.
+
+O `tsc` não pega isso. O corpus não pegava isso. Só uma releitura pegou — e
+depender de releitura é o mesmo que não ter garantia.
+
+## A correção estrutural
+
+`__tests__/corpus-design-system.ts`, dentro de `npm run test:parser`, verifica
+por máquina as Named Rules absolutas do `DESIGN.md`:
+
+- **The Only-Font Rule** — nenhum `fontFamily` com literal de string em
+  `app/` ou `components/`; só `fonts.regular`/`fonts.light`.
+- **Sem peso sintético** — nenhum `fontWeight` (só existem Light e Regular como
+  arquivo; o nativo ignora e a web sintetiza um falso negrito).
+- **Fonte de sistema nunca vaza** — nenhuma linha de `fontFamily` citando
+  System, system-ui, Roboto, Helvetica, sans-serif, monospace e afins.
+- `lib/theme.ts` declara exatamente as duas famílias que existem, e os dois
+  arquivos `.otf` existem mesmo em `assets/fonts`.
+
+294 guardas. Comentários são ignorados de propósito: os arquivos que explicam
+as regras citam as grafias proibidas, e acusar isso seria acusar a
+documentação.
+
+**Verificado que reprova**: reintroduzindo o `monospace`, duas regras disparam
+nomeando arquivo e linha, e o processo sai com código 1 — ou seja, quebra o
+`test:parser`, não passa batido. Restaurado, volta a 294/294.
+
+O que NÃO entrou: heurística do tipo "este estilo parece dinheiro, logo precisa
+de `tabular-nums`". Regra que acusa código correto é regra que alguém desliga —
+o mesmo princípio que guiou o corpus da guarda ortográfica.
+
+## Audit Health Score
+
+| # | Dimensão | Nota | Observação |
+|---|---|---:|---|
+| 1 | Acessibilidade | **4/4** | Mantida |
+| 2 | Performance | **3/4** | Memoização completa; paginação segue aberta |
+| 3 | Aparência & Tema | **4/4** | Agora com guarda mecânica, não só intenção |
+| 4 | Conformidade de Plataforma | **1/4** | Inalterada, por decisão |
+| 5 | Adaptividade | **4/4** | Mantida |
+| **Total** | | **16/20 — Bom** | O mesmo número da rodada anterior, mas agora verdadeiro |
+
+A segunda rodada já tinha anunciado 16/20. O número estava certo por sorte: uma
+das correções que o compunham não existia. Agora existe, e existe com teste.
+
+## Achados novos desta rodada
+
+### P3 — Avatares carregados sem cache nem redimensionamento
+- **Local**: `app/(app)/perfil.tsx:429`, `app/(app)/index.tsx:1214`,
+  `components/OnboardingModal.tsx:514`
+- **Categoria**: Performance
+- **Impacto**: os três usam o `<Image>` do React Native com `source={{ uri }}`
+  remoto. O projeto não usa `expo-image` em lugar nenhum. A foto de perfil é
+  rebaixada nos estilos para 44×44 (Início) e maior no Perfil, mas o arquivo
+  de origem é a foto que a pessoa subiu — decodificada em tamanho cheio para
+  ser exibida como miniatura, e rebaixada de novo a cada montagem de tela, sem
+  cache em disco no Android.
+- **Recomendação**: `expo-image` com `cachePolicy` e `contentFit`. Impacto real
+  é modesto (é um avatar por tela), por isso P3 e não P2.
+- **Comando sugerido**: `/impeccable optimize`
+
+### P3 — Ajuste fino das listas é parcial
+- **Local**: 10 usos de `FlatList` em `app/(app)` e `components`
+- **Todas têm `keyExtractor`** — verificado, nenhuma faltando. Mas só 5 pontos
+  no repositório usam `initialNumToRender`, `windowSize`,
+  `removeClippedSubviews` ou `getItemLayout`. Com a importação em massa
+  aceitando 10 mil lançamentos, as listas de Lançamentos e Crédito são as que
+  mais ganhariam com `getItemLayout` (altura de linha é fixa nas duas).
+- **Comando sugerido**: `/impeccable optimize`
+
+## Pontos positivos novos
+
+- **Arranque correto para o SDK 57**: `SplashScreen.preventAutoHideAsync()` em
+  escopo global sem `await`, `hideAsync()` depois que fontes e sessão
+  resolvem — exatamente o que a documentação da versão pede, com o motivo
+  escrito no arquivo.
+- **Escala de fonte do sistema intacta**: zero uso de `allowFontScaling` ou
+  `maxFontSizeMultiplier` em todo o app, ou seja, o padrão (ligado) vale em
+  todo texto. Confirma na prática o que o `DESIGN.md` afirma — fonte
+  customizada não custa Dynamic Type.
+- **Todas as `FlatList` com `keyExtractor`.**
+- As correções da segunda rodada **se sustentaram**: entrelinha alta nas 8
+  telas, `useMemo` presente em todas as telas que precisam, `perfil` seguindo
+  em zero porque de fato não tem valor derivado sobre lista.
+
+## Padrão sistêmico (atualizado)
+
+A segunda rodada identificou "o projeto cria a ferramenta certa e aplica em um
+lugar só". Esta rodada acrescenta a versão mais perigosa disso: **a correção
+aplicada e depois perdida sem ninguém notar.** A diferença entre as duas é que
+a primeira aparece numa leitura atenta e a segunda não aparece em leitura
+nenhuma — só em teste. Por isso a resposta aqui não foi corrigir de novo e
+seguir, foi escrever a guarda.
+
+## Ações recomendadas
+
+1. **[P1, precisa do banco]** Agregação no banco pro saldo (paginação).
+2. **[P1, precisa de hardware]** Native Tabs validadas em aparelho físico.
+3. **[P3]** `/impeccable optimize` — `expo-image` nos avatares e `getItemLayout`
+   nas listas de altura fixa.
+4. **[P3]** `/impeccable layout` — `perfil.tsx` no `screenRhythm`.
+5. **[P3]** Remover os 9 componentes órfãos.

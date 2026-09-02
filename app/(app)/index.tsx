@@ -1667,7 +1667,16 @@ const styles = StyleSheet.create({
   content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
   center: { flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' },
   demoFlag: {
-    fontFamily: 'monospace',
+    /* Era `fontFamily: 'monospace'` — a única violação da Only-Font Rule em
+       todo o repositório, e VIVA: estes são os badges "exemplo" e "oculto" do
+       cabeçalho da Início. A largura tabular da monoespaçada não fazia falta
+       aqui: são duas palavras fixas, não número que atualiza.
+
+       Esta correção já foi feita uma vez e se perdeu: um `git checkout --`
+       para desfazer um script de entrelinha bugado levou junto a troca da
+       fonte, e o relatório saiu afirmando que estava resolvido. Se for
+       revertida de novo, a checagem que a pega está no corpus. */
+    fontFamily: fonts.regular,
     fontSize: type.micro,
     lineHeight: lh(type.micro, 'apoio'),
     letterSpacing: 0.5,
