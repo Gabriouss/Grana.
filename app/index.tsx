@@ -805,28 +805,22 @@ function ConteudoWeb() {
     };
   }, []);
 
-  // `tipo` escolhe a cor do ícone: 'faz' usa a mesma cor de lançamento
-  // positivo (`theme.up`, verde) já usada pros valores de entrada no mock da
-  // página; 'nao' usa a de lançamento negativo (`theme.down`, ciano) — as
-  // mesmas duas cores que o resto do app já usa pra "dinheiro entrando" vs.
-  // "dinheiro saindo", aqui emprestadas pra "o que o Grana. faz" vs. "o que
-  // ele nunca faz", em vez de inventar um terceiro par de cores novo.
-  const SEGURANCA = [
-    /* Termos técnicos traduzidos para o que a pessoa faz ou vê: "dados
-       isolados por conta, reforçado no banco" virou "só você acessa"; o modo
-       privacidade ganhou a SITUAÇÃO em que ele serve, que é o que faz a
-       função ser entendida. O item de editar/excluir dados é novo: devolve
-       controle explícito, que é a objeção real de quem hesita em informar
-       gasto para um aplicativo. */
-    /* Sem `\n`: estas quebras vinham do layout antigo em cards, e a lista de
-       segurança de hoje as apagava em tempo de render. Eram string morta que
-       enganava quem lesse daqui achando que controlava a quebra na tela. */
-    { icone: 'lock-closed-outline' as const, texto: 'Só você acessa os dados da sua conta.', tipo: 'faz' as const },
-    { icone: 'finger-print-outline' as const, texto: 'No aplicativo móvel, bloqueio por biometria ou senha do aparelho, se você ativar.', tipo: 'faz' as const },
-    { icone: 'eye-off-outline' as const, texto: 'Oculte seus valores com um toque quando tiver alguém por perto.', tipo: 'faz' as const },
-    { icone: 'create-outline' as const, texto: 'Edite seus lançamentos e exclua sua conta e seus dados quando quiser.', tipo: 'faz' as const },
-    { icone: 'shield-checkmark-outline' as const, texto: 'Sua senha é conferida contra vazamentos conhecidos no cadastro.', tipo: 'faz' as const },
-    { icone: 'ban-outline' as const, texto: 'O Grana. é só registro. Ele nunca movimenta dinheiro de verdade.', tipo: 'nao' as const },
+  const PROVAS_SEGURANCA = [
+    {
+      icone: 'logo-whatsapp' as const,
+      titulo: 'Canal oficial',
+      texto: 'A Meta confirma a identidade do Grana. e cada chamada recebida passa por validação.',
+    },
+    {
+      icone: 'finger-print-outline' as const,
+      titulo: 'Proteção no aparelho',
+      texto: 'No celular, você pode bloquear o acesso com biometria ou com a senha do próprio aparelho.',
+    },
+    {
+      icone: 'shield-checkmark-outline' as const,
+      titulo: 'Controle continua seu',
+      texto: 'Só você acessa sua conta. Seus lançamentos podem ser editados e seus dados, excluídos pelo app.',
+    },
   ];
 
   // Só o que já é dito em algum outro ponto desta mesma página — nenhum
@@ -959,8 +953,7 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
-            <RevealOnScroll style={styles.precoIntroCentralizada}>
-              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Quando controlar os gastos fica pelo caminho</Text>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
                 {/* Antes: "Anotar gastos dá trabalho. Por isso você não dá
                     continuidade." — atribuía a falha à pessoa, o oposto de uma
@@ -992,8 +985,7 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra levantada>
           <View style={styles.secao}>
-            <RevealOnScroll style={styles.precoIntroCentralizada}>
-              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>A parte que você não vai adiar</Text>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
                 {'Você fala e o Grana. organiza.\n'}
                 <Text style={styles.destaqueInline}>Esforço quase zero.</Text>
@@ -1017,14 +1009,13 @@ function ConteudoWeb() {
           <View style={styles.secao}>
             <View style={[styles.granaboTopo, granaboEmpilhado && styles.granaboTopoEmpilhado]}>
               <View style={[styles.colunaTextoSecao, granaboEmpilhado && styles.colunaTextoSecaoCompacta]}>
-              <RevealOnScroll>
-                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Conheça o Granabô</Text>
+              <RevealOnScroll variante="titulo">
                 <TituloSecao>Seu controle também cabe numa conversa no WhatsApp.</TituloSecao>
                 <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                   Depois de vincular seu número uma vez, envie um texto ou áudio para o Granabô, o assistente do Grana. no WhatsApp. Ele identifica o valor e a descrição, sugere uma categoria e cria o lançamento no Grana. Você só ajusta se precisar.
                 </Text>
               </RevealOnScroll>
-              <RevealOnScroll>
+              <RevealOnScroll style={styles.ctaAposTexto}>
                 <BotaoCTA centralizado={ehCompacto} />
               </RevealOnScroll>
               </View>
@@ -1076,13 +1067,12 @@ function ConteudoWeb() {
                 />
               </View>
               <View style={[styles.colunaTextoSecao, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
-                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Do primeiro lançamento ao hábito</Text>
                 <TituloSecao>O Grana. ajuda o controle a virar hábito.</TituloSecao>
                 <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                   A experiência é apoiada em princípios de formação de hábito: um registro fácil de começar, sinais para lembrar e progresso que você consegue enxergar.
                 </Text>
                 <View style={styles.habitoGrade}>
-                  {PILARES_HABITO.map((pilar, indice) => (
+                  {PILARES_HABITO.map((pilar) => (
                     <View key={pilar.titulo} style={styles.habitoItem}>
                       <View style={styles.habitoIcone} aria-hidden>
                         <Ionicons name={pilar.icone} size={17} color={theme.accent2} />
@@ -1091,7 +1081,6 @@ function ConteudoWeb() {
                         <Text style={styles.habitoTitulo}>{pilar.titulo}</Text>
                         <Text style={styles.habitoDescricao}>{pilar.texto}</Text>
                       </View>
-                      <Text style={styles.processoPassoNumero}>{String(indice + 1).padStart(2, '0')}</Text>
                     </View>
                   ))}
                 </View>
@@ -1109,7 +1098,6 @@ function ConteudoWeb() {
           <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
             <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
               {/* Copy e visual agora descrevem a mesma fórmula real. */}
-              <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Depois que o lançamento existe</Text>
               <TituloSecao>Saiba quanto dá pra gastar hoje, sem fazer conta.</TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                 Com base nos seus lançamentos do mês, nas contas que ainda vencem e no que você separou para as metas, o Grana. estima o{' '}
@@ -1133,8 +1121,7 @@ function ConteudoWeb() {
         <GradeInterativa invertida />
         <Dobra levantada>
           <View style={styles.secao}>
-            <RevealOnScroll style={styles.precoIntroCentralizada}>
-              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Do lançamento ao planejamento</Text>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>Tudo que o Grana. faz pela sua saúde financeira.</TituloSecao>
               <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
                 Lançamentos, cartões, contas, gráficos e metas ficam conectados numa visão que você consegue acompanhar no dia a dia.
@@ -1148,6 +1135,7 @@ function ConteudoWeb() {
                   <RevealOnScroll
                     key={beneficio.variante}
                     atraso={indice * 70}
+                    variante="card"
                     style={[styles.beneficioPosicao, destaque && styles.beneficioPosicaoDestaque]}
                   >
                     <View style={[styles.beneficioCard, destaque && styles.beneficioCardDestaque]}>
@@ -1170,61 +1158,34 @@ function ConteudoWeb() {
       <View nativeID="seguranca" style={styles.palcoComCamada}>
         <Dobra>
           <View style={styles.secao}>
-            <RevealOnScroll style={styles.precoIntroCentralizada}>
-              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Identidade do canal e controle dos dados</Text>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>É seguro informar meus gastos para um aplicativo?</TituloSecao>
               <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
                 Faz sentido perguntar. Aqui estão os fatos que ajudam você a decidir com clareza.
               </Text>
             </RevealOnScroll>
 
-            <View style={styles.segurancaDupla}>
-              <RevealOnScroll style={[styles.segurancaPainel, ehCompacto && styles.segurancaPainelCompacto]}>
-                <View style={styles.segurancaPainelTopo}>
-                  <View style={styles.whatsappIconeFundo} aria-hidden>
-                    <Ionicons name="logo-whatsapp" size={20} color={theme.accent2} />
-                  </View>
-                  <Text style={styles.segurancaPainelRotulo}>Com quem você está falando</Text>
-                </View>
-                <Text style={styles.segurancaPainelTitulo}>Um canal oficial do Grana. no WhatsApp.</Text>
-                <Text style={styles.segurancaPainelTexto}>
-                  A verificação da Meta confirma a identidade da empresa e do canal do WhatsApp Business.
-                </Text>
-                <View style={styles.segurancaListaCompacta}>
-                  {[
-                    'Seu número é vinculado por um código de 6 dígitos válido por 15 minutos.',
-                    'As chamadas recebidas da Meta passam por validação de assinatura.',
-                    'O texto transcrito dos áudios não é gravado nos logs do Granabô.',
-                  ].map((texto) => (
-                    <View key={texto} style={styles.segurancaLinhaLimpa}>
-                      <Ionicons name="checkmark-circle" size={16} color={theme.up} aria-hidden />
-                      <Text style={styles.segurancaLinhaTextoCompacto}>{texto}</Text>
+            <View style={styles.segurancaProvas}>
+              {PROVAS_SEGURANCA.map((prova, indice) => (
+                <RevealOnScroll key={prova.titulo} atraso={indice * 80} variante="card" style={styles.segurancaProvaPosicao}>
+                  <View style={styles.segurancaProva}>
+                    <View style={styles.segurancaProvaIcone} aria-hidden>
+                      <Ionicons name={prova.icone} size={22} color={theme.accent2} />
                     </View>
-                  ))}
-                </View>
-              </RevealOnScroll>
-
-              <RevealOnScroll atraso={90} style={[styles.segurancaPainel, ehCompacto && styles.segurancaPainelCompacto]}>
-                <View style={styles.segurancaPainelTopo}>
-                  <View style={styles.segurancaIconeFundo} aria-hidden>
-                    <Ionicons name="shield-checkmark-outline" size={20} color={theme.accent2} />
+                    <Text style={styles.segurancaProvaTitulo}>{prova.titulo}</Text>
+                    <Text style={styles.segurancaProvaTexto}>{prova.texto}</Text>
                   </View>
-                  <Text style={styles.segurancaPainelRotulo}>O que acontece com seus dados</Text>
-                </View>
-                <Text style={styles.segurancaPainelTitulo}>Você escolhe o que registrar e mantém o controle.</Text>
-                <View style={styles.segurancaListaCompacta}>
-                  {SEGURANCA.map((s) => (
-                    <View key={s.texto} style={styles.segurancaLinhaLimpa}>
-                      <Ionicons name={s.icone} size={16} color={s.tipo === 'faz' ? theme.up : theme.down} aria-hidden />
-                      <Text style={styles.segurancaLinhaTextoCompacto}>{s.texto}</Text>
-                    </View>
-                  ))}
-                </View>
-              </RevealOnScroll>
+                </RevealOnScroll>
+              ))}
             </View>
 
+            <RevealOnScroll style={styles.segurancaLimite}>
+              <Ionicons name="remove-circle-outline" size={18} color={theme.down} aria-hidden />
+              <Text style={styles.segurancaLimiteTexto}>O Grana. organiza registros. Nunca movimenta seu dinheiro.</Text>
+            </RevealOnScroll>
+
             <RevealOnScroll style={styles.segurancaCta}>
-              <BotaoCTA microcopy="Você pode excluir sua conta e seus dados quando quiser." centralizado />
+              <BotaoCTA centralizado />
             </RevealOnScroll>
           </View>
         </Dobra>
@@ -1235,9 +1196,8 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra>
           <View style={styles.secao}>
-            <RevealOnScroll style={styles.precoIntroCentralizada}>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
               {/* Sem período de teste: o produto é pago desde o primeiro dia. */}
-              <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>Assinatura mensal</Text>
               {/* O preço por dia em destaque de cor é o gatilho desta dobra: o
                   número mensal está logo abaixo, no card, e aqui em cima ele
                   aparece na escala que a pessoa consegue comparar com um café.
@@ -1265,7 +1225,10 @@ function ConteudoWeb() {
                   <Text style={[styles.precoChecklistTitulo, ehCompacto && styles.precoTituloCentralizado]}>Tudo que você recebe</Text>
                   <View style={styles.precoChecklist}>
                     {BENEFICIOS_PRECO.map((b) => (
-                      <View key={b} style={[styles.precoChecklistLinha, ehCompacto && styles.precoChecklistLinhaCompacta]}>
+                      <View
+                        key={b}
+                        style={[styles.precoChecklistLinha, ehCompacto && styles.precoChecklistLinhaCompacta]}
+                      >
                         <Ionicons name="checkmark-circle" size={22} color={theme.up} aria-hidden />
                         <Text style={styles.precoChecklistTexto}>{b}</Text>
                       </View>
@@ -1281,13 +1244,15 @@ function ConteudoWeb() {
                       dentro de `precoLinha` (flex row) ele espremia o valor e
                       o preço quebrava em duas linhas. */}
                   <View style={[styles.precoLinha, ehCompacto && styles.precoLinhaCompacta]}>
-                    <Text style={styles.precoValor}>R$ 9,90</Text>
+                    <Text style={[styles.precoValor, ehCompacto && styles.precoValorCompacto]}>R$ 9,90</Text>
                     <Text style={styles.precoPeriodo}>/mês</Text>
                   </View>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
                     Registre com facilidade, acompanhe seu mês e planeje o que vem pela frente.
                   </Text>
-                  <BotaoCTA microcopy="Pagamento processado pela Kiwify." centralizado={ehCompacto} />
+                  <View style={styles.precoCta}>
+                    <BotaoCTA centralizado={ehCompacto} />
+                  </View>
                 </View>
               </View>
             </RevealOnScroll>
@@ -1306,15 +1271,11 @@ function ConteudoWeb() {
         <Dobra>
           <View style={styles.secao}>
             <View style={[styles.faqLayout, faqEmpilhado && styles.faqLayoutCompacta]}>
-              <RevealOnScroll style={[styles.faqColunaEditorial, faqEmpilhado && styles.faqCompactoSemFlex]}>
-                <Text style={[styles.secaoEyebrow, ehCompacto && styles.precoTextoCentralizado]}>Perguntas diretas</Text>
+              <RevealOnScroll variante="titulo" style={[styles.faqColunaEditorial, faqEmpilhado && styles.faqCompactoSemFlex]}>
                 <TituloSecao>Sem letra miúda</TituloSecao>
                 <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
                   Respostas rápidas para as dúvidas que travam muita gente antes de entrar.
                 </Text>
-                <View style={styles.faqVisual}>
-                  <CardLivreParaGastar compacto={faqEmpilhado} />
-                </View>
               </RevealOnScroll>
 
               <View style={[styles.faqGrade, faqEmpilhado && styles.faqCompactoSemFlex, faqComNavLateral && styles.faqGradeComNavLateral]}>
@@ -1322,6 +1283,7 @@ function ConteudoWeb() {
                   <RevealOnScroll
                     key={f.pergunta}
                     atraso={i * 70}
+                    variante="card"
                     style={[styles.faqCardPos, ehCompacto && styles.faqCardPosCompacto]}
                   >
                     <View style={styles.faqCard}>
@@ -1344,11 +1306,16 @@ function ConteudoWeb() {
         ]}
       >
         <FogBackground compacto={ehCompacto} intensidade="presente" />
-        <RevealOnScroll>
+        {/* O fechamento da página é o momento de maior intenção de decisão
+            (regra peak-end) — a auditoria de 02/09/2026 apontou que ele
+            recebia o mesmo fade genérico de qualquer card secundário.
+            `titulo` é a variante de maior amplitude/duração do sistema,
+            reservada pro elemento que assina a dobra; aqui ela assina a
+            página inteira. */}
+        <RevealOnScroll variante="titulo">
           <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
             <View style={[styles.ctaFinalLayout, ehCompacto && styles.ctaFinalLayoutCompacto]}>
               <View style={[styles.ctaFinalConteudo, ehCompacto && styles.ctaFinalConteudoCompacto]}>
-                <Text style={[styles.secaoEyebrow, styles.precoTextoCentralizado]}>A clareza do fim do mês começa hoje</Text>
                 <Text role="heading" aria-level={2} style={[styles.ctaFinalTitulo, styles.precoTextoCentralizado]}>
                   Nunca é tarde para começar a organizar suas finanças. Comece hoje.
                 </Text>
@@ -1661,10 +1628,6 @@ const styles = StyleSheet.create({
   // confiar no `flexWrap` automático, garante que o empilhamento aconteça
   // exatamente na mesma borda que o resto do layout já respeita.
   secaoComCartaoCompacta: { flexDirection: 'column', alignItems: 'stretch' },
-  // `marginBottom` era `spacing.xs` (4) — grudava o eyebrow direto no título
-  // seguinte em toda dobra da página, sem respiro nenhum entre os dois
-  // (relato direto do autor, com print do site no celular).
-  secaoEyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, textTransform: 'uppercase', marginBottom: spacing.lg },
   /* `textWrap: balance` distribui as linhas de um título sozinho, na largura
      real de cada tela. É o que substitui as quebras fixas (`\n`) que a página
      usava: quebra escolhida à mão acerta numa largura e erra em todas as
@@ -1696,6 +1659,10 @@ const styles = StyleSheet.create({
   // frase sozinha no meio, separando "agora" do resto por conta própria.
   precoTextoCentralizado: { textAlign: 'center', maxWidth: 820 },
   colunaTextoSecao: { flex: 1, minWidth: 320, maxWidth: 620 },
+  // CTAs que vêm depois de texto corrido ganham um intervalo próprio. O
+  // componente do botão não conhece o contexto anterior e, sem este bloco,
+  // acabava encostado na última linha do parágrafo do Granabô.
+  ctaAposTexto: { marginTop: spacing.xxl + spacing.xs },
   // No desktop a coluna de texto divide espaço com uma moldura; no compacto
   // ela passa a ficar empilhada. Manter `flex:1` nesse eixo fazia o pai
   // resolver uma altura menor que o conteúdo e o recorte da seção escondia o
@@ -1734,13 +1701,12 @@ const styles = StyleSheet.create({
   habitoTexto: { flex: 1 },
   habitoTitulo: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, marginBottom: 2 },
   habitoDescricao: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.4, fontFamily: fonts.light },
-  processoPassoNumero: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   beneficiosGrade: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'stretch',
     gap: spacing.lg,
-    marginTop: spacing.xxl,
+    marginTop: spacing.xxl + spacing.sm,
   },
   beneficioPosicao: { flexGrow: 1, flexBasis: '31%', minWidth: 280 },
   beneficioPosicaoDestaque: { flexBasis: '64%' },
@@ -1773,7 +1739,7 @@ const styles = StyleSheet.create({
   // faz o fundo `paperSelected` do painel de preço respeitar o raio do card
   // inteiro em vez de fazer um canto quadrado saindo de um canto arredondado.
   precoCardUnico: {
-    marginTop: spacing.xl,
+    marginTop: spacing.xxl + spacing.sm,
     // Depois de limitar a largura do checklist (`precoChecklistCol`) pra
     // aproximar as duas metades, o card inteiro (que antes esticava até
     // `colunaConteudo`) sobrava com um vão vazio à direita do painel de
@@ -1804,7 +1770,12 @@ const styles = StyleSheet.create({
   // o contêiner; uma caixa por linha aqui dentro de outra caixa lia como
   // aninhamento redundante.
   precoChecklist: { gap: spacing.md },
-  precoChecklistLinha: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.xs },
+  precoChecklistLinha: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
   // Cada linha vira um bloco de largura limitada, centralizado pelo pai
   // (`precoChecklistColCompacta`) — o ÍCONE e o TEXTO continuam alinhados à
   // esquerda um do outro dentro do bloco (lê melhor que centralizar cada
@@ -1825,7 +1796,7 @@ const styles = StyleSheet.create({
     maxWidth: 440,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
     padding: spacing.xxl,
     backgroundColor: theme.paperSelected,
     borderLeftWidth: 1,
@@ -1842,56 +1813,21 @@ const styles = StyleSheet.create({
   precoLinhaCompacta: { justifyContent: 'center' },
   // Usa `theme.ink` (não `inkFaint`) porque é um preço real e cobrado, não
   // um valor "a definir" — o apagado era o sinal de que ainda não valia.
-  precoValor: { color: theme.ink, fontSize: type.valor + 6, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  precoPeriodo: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
+  precoValor: { color: theme.ink, fontSize: 56, lineHeight: 60, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  precoValorCompacto: { fontSize: 46, lineHeight: 50 },
+  precoPeriodo: { color: theme.inkFaint, fontSize: type.corpo, fontFamily: fonts.light },
   featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
+  precoCta: { marginTop: spacing.lg },
 
-  segurancaLista: { gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.xl },
-  // Cada linha na própria caixa (voltou a pedido do autor) — não mais um
-  // bullet solto: fundo, borda e raio pequeno, a mesma receita de
-  // `cardFeature`/`cardSeguranca` antigo, só com padding mais enxuto porque
-  // agora é uma coluna vertical de 6, não uma grade 2×3.
-  segurancaLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: theme.paper,
-    borderWidth: 1,
-    borderColor: theme.rule,
-  },
-  segurancaLinhaTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
-
-  segurancaDupla: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.xl, marginTop: spacing.xxl },
-  segurancaPainel: {
-    flex: 1,
-    minWidth: 300,
-    padding: spacing.xl,
-    borderRadius: radius.xl,
-    backgroundColor: theme.paperRaised,
-    borderWidth: 1,
-    borderColor: theme.ruleStrong,
-    ...sombraCard,
-  },
-  segurancaPainelCompacto: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%' },
-  segurancaPainelTopo: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
-  /* `accentDeep`, não o verde `#25D366` do WhatsApp. O DESIGN.md libera a cor
-     de marca de terceiro só com necessidade FUNCIONAL — o caso documentado é
-     um elemento que representa literalmente o WhatsApp (a bolha da conversa
-     em `ConversaGranabo`, que traz a exceção comentada no próprio arquivo).
-     Aqui era fundo decorativo de ícone num painel de segurança, e o glifo
-     `logo-whatsapp` já identifica o canal sozinho. De quebra os dois painéis
-     desta dobra viram um par visual, que é o que eles são. */
-  whatsappIconeFundo: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep },
-  segurancaIconeFundo: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep },
-  segurancaPainelRotulo: { flex: 1, color: theme.accent2, fontSize: type.legenda, lineHeight: type.legenda * 1.35, fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.7 },
-  segurancaPainelTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.3, fontFamily: fonts.regular, marginBottom: spacing.md },
-  segurancaPainelTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light },
-  segurancaListaCompacta: { gap: spacing.sm, marginTop: spacing.lg },
-  segurancaLinhaLimpa: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  segurancaLinhaTextoCompacto: { flex: 1, color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.45, fontFamily: fonts.light },
-  segurancaCta: { alignItems: 'center', marginTop: spacing.xxl },
+  segurancaProvas: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.xxl, marginTop: spacing.xxl + spacing.sm },
+  segurancaProvaPosicao: { flexGrow: 1, flexBasis: '29%', minWidth: 260 },
+  segurancaProva: { height: '100%', paddingVertical: spacing.xl, borderTopWidth: 2, borderTopColor: theme.ruleStrong },
+  segurancaProvaIcone: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep, marginBottom: spacing.xl },
+  segurancaProvaTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.3, fontFamily: fonts.regular, marginBottom: spacing.sm },
+  segurancaProvaTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light, maxWidth: 360 },
+  segurancaLimite: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: spacing.sm, marginTop: spacing.xxl + spacing.sm },
+  segurancaLimiteTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.45, fontFamily: fonts.light, textAlign: 'center' },
+  segurancaCta: { alignItems: 'center', marginTop: spacing.xxl + spacing.xs },
 
   granaboTopo: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl * 2 },
   granaboTopoEmpilhado: { flexDirection: 'column', alignItems: 'stretch' },
@@ -1918,9 +1854,8 @@ const styles = StyleSheet.create({
   composicaoTelas: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center', position: 'relative', paddingVertical: spacing.xxl },
   composicaoTelasCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
 
-  faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl, marginTop: spacing.sm },
-  faqColunaEditorial: { flex: 1, minWidth: 320, maxWidth: 520 },
-  faqVisual: { width: '100%', marginTop: spacing.xl, marginBottom: spacing.lg },
+  faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl * 2, marginTop: spacing.sm },
+  faqColunaEditorial: { flex: 1, minWidth: 320, maxWidth: 440 },
   // Mesmo bug/correção de `secaoComCartaoCompacta` — `flex:1` + `minWidth`
   // nos dois filhos (`colunaTextoSecao`/`faqGrade`) não quebra linha de
   // forma confiável numa largura intermediária. `alignItems:'center'` só
@@ -1951,7 +1886,14 @@ const styles = StyleSheet.create({
   // toda em qualquer largura de tela.
   faqCardPos: { width: '100%', minWidth: 280 },
   faqCardPosCompacto: { minWidth: 0, maxWidth: '100%' },
-  faqCard: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, ...sombraCard },
+  faqCard: {
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    padding: spacing.lg,
+    ...sombraCard,
+  },
   // Suprime a borda/padding próprios de FaqItem — o card por fora já
   // fornece os dois, dobrar deixaria espaçamento duplicado e uma linha
   // divisória órfã cortando o card ao meio.

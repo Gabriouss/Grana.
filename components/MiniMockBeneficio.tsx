@@ -27,19 +27,6 @@ export default function MiniMockBeneficio({ variante, destaque = false }: { vari
 
 /* ---- variantes ---- */
 
-/* A cor da categoria fica na BORDA e no fundo tingido; o rótulo usa `theme.ink`.
-   Pintar o texto com a própria cor da categoria derrubava o contraste pra
-   4,25:1 (`#bb6b60` a 12px sobre `paperRaised`), abaixo dos 4,5:1 da WCAG AA —
-   e as cores de categoria de `lib/demo-data.ts` são escolhidas pra distinguir
-   fatias de gráfico, não pra carregar texto pequeno. É a mesma divisão que o
-   app já usa nos seletores de entrada/saída (`typeBtnIn`/`typeBtnOut`) e que a
-   própria landing usa no ponto de categoria de `LandingHeroDemo`. */
-const CategoriaChip = ({ nome, cor }: { nome: string; cor: string }) => (
-  <View style={[styles.chip, { borderColor: cor, backgroundColor: cor + '22' }]}>
-    <Text style={styles.chipTexto}>{nome}</Text>
-  </View>
-);
-
 /** Barra de progresso genérica, na mesma receita do limite de cartão e do orçamento. */
 const Barra = ({ pct, cor }: { pct: number; cor: string }) => (
   <View style={styles.trilho}>
@@ -52,14 +39,25 @@ const Barra = ({ pct, cor }: { pct: number; cor: string }) => (
    uso antes da declaração. */
 function conteudo(variante: VarianteMock): React.ReactNode {
   const mapa: Record<VarianteMock, React.ReactNode> = {
-  /* Reconhecimento: o texto vira valor + categoria sugerida. */
+  /* A fala e o lançamento usam padrões reconhecíveis do app: entrada curta
+     acima, transação completa abaixo. Não há seta ou chip solto para o leitor
+     precisar adivinhar a relação entre as duas informações. */
   lancar: (
-    <View style={{ gap: spacing.sm, alignItems: 'center' }}>
-      <Text style={styles.frase}>"almoço 32 no mercado"</Text>
-      <Ionicons name="arrow-down" size={14} color={theme.inkFaint} aria-hidden />
-      <View style={styles.linhaLancamento}>
-        <Text style={styles.valor}>R$ 32,00</Text>
-        <CategoriaChip nome="Alimentação" cor="#bb6b60" />
+    <View style={styles.mockColuna}>
+      <View style={styles.entradaVoz}>
+        <View style={styles.entradaVozIcone} aria-hidden>
+          <Ionicons name="mic-outline" size={15} color={theme.accent2} />
+        </View>
+        <Text style={styles.entradaVozTexto}>“Almoço 32 no mercado”</Text>
+      </View>
+      <View style={styles.divisor} />
+      <View style={styles.transacaoLinha}>
+        <View style={[styles.categoriaPonto, { backgroundColor: '#bb6b60' }]} />
+        <View style={styles.transacaoDescricao}>
+          <Text style={styles.transacaoTitulo}>Almoço no mercado</Text>
+          <Text style={styles.transacaoMeta}>Alimentação · agora</Text>
+        </View>
+        <Text style={styles.transacaoValor}>− R$ 32,00</Text>
       </View>
     </View>
   ),
@@ -91,43 +89,86 @@ function conteudo(variante: VarianteMock): React.ReactNode {
     </View>
   ),
 
-  /* Composição por categoria, como a Home mostra. */
+  /* Categorias com nome e valor: a barra continua ajudando na comparação,
+     mas deixa de ser um conjunto de cores sem legenda. */
   mes: (
-    <View style={{ gap: spacing.xs, width: '100%' }}>
-      <Text style={styles.rotulo}>Gastos por categoria</Text>
-      <View style={{ gap: 4 }}>
-        <Barra pct={62} cor="#bb6b60" />
-        <Barra pct={38} cor="#6b9dc2" />
-        <Barra pct={21} cor="#d3b869" />
-      </View>
-    </View>
-  ),
-
-  /* Cofrinho com progresso. */
-  organizar: (
-    <View style={{ gap: spacing.xs, width: '100%' }}>
+    <View style={styles.mockColuna}>
       <View style={styles.linhaTopo}>
-        <Text style={styles.rotulo}>Reserva de emergência</Text>
-        <Text style={styles.rotuloForte}>45%</Text>
+        <Text style={styles.rotulo}>Gastos deste mês</Text>
+        <Text style={styles.valorResumo}>R$ 1.210</Text>
       </View>
-      <Barra pct={45} cor={theme.accent2} />
-      <Text style={styles.aviso}>R$ 1.800 de R$ 4.000</Text>
+      <CategoriaResumo nome="Alimentação" valor="R$ 620" pct={62} cor="#bb6b60" />
+      <CategoriaResumo nome="Casa" valor="R$ 380" pct={38} cor="#6b9dc2" />
+      <CategoriaResumo nome="Lazer" valor="R$ 210" pct={21} cor="#d3b869" />
     </View>
   ),
 
-  /* Blocos da Home, que a pessoa reordena. */
-  personalizar: (
-    <View style={{ gap: 6, width: '100%' }}>
-      {['Livre para gastar', 'Cofrinhos', 'Boletos'].map((b) => (
-        <View key={b} style={styles.blocoHome}>
-          <Ionicons name="reorder-three-outline" size={13} color={theme.inkFaint} aria-hidden />
-          <Text style={styles.blocoTexto}>{b}</Text>
+  /* Mesma anatomia do card real de cofrinho em GoalsCarousel: ícone, título,
+     valor atual, alvo, trilho e rodapé com percentual/prazo. */
+  organizar: (
+    <View style={styles.metaResumo}>
+      <View style={styles.linhaTopo}>
+        <View style={styles.metaIdentidade}>
+          <View style={styles.metaIcone} aria-hidden>
+            <Ionicons name="shield-checkmark-outline" size={15} color={theme.accent2} />
+          </View>
+          <Text style={styles.metaTitulo}>Reserva de emergência</Text>
         </View>
-      ))}
+      </View>
+      <Text style={styles.metaValor}>R$ 1.800</Text>
+      <Text style={styles.metaAlvo}>de R$ 4.000</Text>
+      <Barra pct={45} cor={theme.accent2} />
+      <View style={styles.linhaTopo}>
+        <Text style={styles.aviso}>45% guardado</Text>
+        <Text style={styles.aviso}>até dezembro</Text>
+      </View>
+    </View>
+  ),
+
+  /* Uma mini Home em grade comunica composição e reorganização melhor que
+     três linhas idênticas com alças soltas. */
+  personalizar: (
+    <View style={styles.mockColuna}>
+      <View style={styles.linhaTopo}>
+        <Text style={styles.rotulo}>Sua tela inicial</Text>
+        <View style={styles.reordenarDica}>
+          <Ionicons name="move-outline" size={12} color={theme.accent2} aria-hidden />
+          <Text style={styles.reordenarTexto}>reorganize</Text>
+        </View>
+      </View>
+      <View style={styles.blocoGrade}>
+        <BlocoHome icone="wallet-outline" texto="Livre" largo />
+        <BlocoHome icone="archive-outline" texto="Cofrinhos" />
+        <BlocoHome icone="receipt-outline" texto="Boletos" />
+      </View>
     </View>
   ),
   };
   return mapa[variante];
+}
+
+function CategoriaResumo({ nome, valor, pct, cor }: { nome: string; valor: string; pct: number; cor: string }) {
+  return (
+    <View style={styles.categoriaResumo}>
+      <View style={styles.categoriaCabecalho}>
+        <View style={styles.categoriaNome}>
+          <View style={[styles.categoriaPonto, { backgroundColor: cor }]} />
+          <Text style={styles.categoriaTexto}>{nome}</Text>
+        </View>
+        <Text style={styles.categoriaValor}>{valor}</Text>
+      </View>
+      <Barra pct={pct} cor={cor} />
+    </View>
+  );
+}
+
+function BlocoHome({ icone, texto, largo }: { icone: React.ComponentProps<typeof Ionicons>['name']; texto: string; largo?: boolean }) {
+  return (
+    <View style={[styles.blocoHome, largo && styles.blocoHomeLargo]}>
+      <Ionicons name={icone} size={14} color={theme.accent2} aria-hidden />
+      <Text style={styles.blocoTexto}>{texto}</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -144,22 +185,47 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   palcoDestaque: { height: 132, paddingHorizontal: spacing.xl },
-  frase: { color: theme.inkSoft, fontSize: type.legenda, fontFamily: fonts.light },
-  linhaLancamento: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  valor: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2 },
-  chipTexto: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular },
+  mockColuna: { gap: spacing.xs, width: '100%' },
+  metaResumo: { gap: spacing.xs, width: '100%', maxWidth: 320, alignSelf: 'center' },
+  entradaVoz: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  entradaVozIcone: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep },
+  entradaVozTexto: { flex: 1, color: theme.inkSoft, fontSize: type.micro, fontFamily: fonts.light },
+  divisor: { height: 1, backgroundColor: theme.rule, marginVertical: spacing.xs },
+  transacaoLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  transacaoDescricao: { flex: 1, minWidth: 0 },
+  transacaoTitulo: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular },
+  transacaoMeta: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light, marginTop: 2 },
+  transacaoValor: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  categoriaPonto: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   linhaTopo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rotulo: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
   rotuloForte: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  valorResumo: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   trilho: { height: 6, borderRadius: 3, backgroundColor: theme.paperRaised, overflow: 'hidden' },
   preenchido: { height: 6, borderRadius: 3 },
   aviso: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
   linhaBoleto: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   selo: { width: 30, height: 34, borderRadius: radius.sm, backgroundColor: theme.accentDeep, alignItems: 'center', justifyContent: 'center' },
-  seloMes: { color: theme.accent2, fontSize: 8, fontFamily: fonts.regular },
+  // `type.micro` (11-12px, conforme a escala) é o piso de legibilidade do
+  // sistema — achado da auditoria de 02/09/2026: este selo usava 8px fixo,
+  // abaixo de qualquer token de tipografia da página.
+  seloMes: { color: theme.accent2, fontSize: type.micro, lineHeight: type.micro, fontFamily: fonts.regular },
   seloDia: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   boletoNome: { flex: 1, color: theme.inkSoft, fontSize: type.micro, fontFamily: fonts.light },
-  blocoHome: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: theme.paperRaised, borderRadius: radius.sm, paddingVertical: 5, paddingHorizontal: spacing.sm },
+  categoriaResumo: { gap: 3 },
+  categoriaCabecalho: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  categoriaNome: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  categoriaTexto: { color: theme.inkSoft, fontSize: type.micro, fontFamily: fonts.light },
+  categoriaValor: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  metaIdentidade: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  metaIcone: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep },
+  metaTitulo: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular },
+  metaValor: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  metaAlvo: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light, marginTop: -2 },
+  reordenarDica: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  reordenarTexto: { color: theme.accent2, fontSize: type.micro, fontFamily: fonts.light },
+  blocoGrade: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  blocoHome: { flexGrow: 1, flexBasis: '35%', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.paperRaised, borderRadius: radius.sm, paddingVertical: 7, paddingHorizontal: spacing.sm, borderWidth: 1, borderColor: theme.rule },
+  blocoHomeLargo: { flexBasis: '55%' },
   blocoTexto: { color: theme.inkSoft, fontSize: type.micro, fontFamily: fonts.light },
 });

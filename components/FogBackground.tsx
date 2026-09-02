@@ -63,7 +63,11 @@ export default function FogBackground({ compacto = false, intensidade = 'sutil' 
   }, [prefixo, reduzirMovimento]);
 
   const pausado = reduzirMovimento || !naTela;
-  const opacidade = intensidade === 'presente' ? (compacto ? 0.78 : 0.86) : compacto ? 0.44 : 0.56;
+  // Reduzido na auditoria de 02/09/2026: o detector automático flagou o
+  // glow ciano/menta sobre fundo escuro como `ai-color-palette` — um dos
+  // clichês mais associados a design gerado por IA. A paleta petróleo/menta
+  // continua, mas em intensidade de atmosfera, não de letreiro.
+  const opacidade = intensidade === 'presente' ? (compacto ? 0.5 : 0.58) : compacto ? 0.28 : 0.36;
   const animacao = (nome: string, duracao: string) =>
     pausado
       ? null

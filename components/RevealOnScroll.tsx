@@ -1,12 +1,43 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { AccessibilityInfo, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 
+/**
+ * Cada variante é uma FORMA de entrada diferente, não só um número trocado —
+ * achado da auditoria de 02/09/2026: as 25+ chamadas deste componente usavam
+ * a mesma forma (fade + 16px + 600ms) para título de seção, card secundário
+ * e prova ao vivo do produto, o que achata a hierarquia visual da página
+ * inteira num só gesto repetido.
+ *
+ * - `padrao`: a forma original, para conteúdo de apoio (texto corrido,
+ *   itens de lista) — nunca o protagonista da dobra.
+ * - `titulo`: deslocamento maior e mais lento. Reservado ao título/eyebrow
+ *   de cada seção, o elemento que assina a dobra.
+ * - `card`: leve escala junto do fade+subida — para grades de card, onde o
+ *   `atraso` (stagger) já existe; a escala reforça a cascata em vez de só
+ *   mover o card inteiro em bloco.
+ * - `prova`: escala mais perceptível, deslocamento mínimo — para o momento
+ *   em que o PRODUTO aparece de verdade (ConversaGranabo, CardLivreParaGastar,
+ *   MolduraCelular): o efeito precisa parecer o objeto ganhando presença, não
+ *   subindo na tela.
+ */
+type Variante = 'padrao' | 'titulo' | 'card' | 'prova';
+
+const RECEITAS: Record<Variante, { deslocamento: number; escala: number; duracao: string }> = {
+  padrao: { deslocamento: 16, escala: 1, duracao: '600ms' },
+  titulo: { deslocamento: 30, escala: 1, duracao: '780ms' },
+  card: { deslocamento: 18, escala: 0.96, duracao: '560ms' },
+  prova: { deslocamento: 10, escala: 0.94, duracao: '700ms' },
+};
+
 type Props = PropsWithChildren<{
   /** Milissegundos extras de espera depois que o elemento entra na tela,
       antes de começar a subir/aparecer — o que faz uma fileira de cards
       revelar em cascata (cada um com um `atraso` maior) em vez de todos ao
       mesmo tempo. Sem isso (padrão 0) o comportamento é idêntico ao de antes. */
   atraso?: number;
+  /** Ver a documentação de `Variante` acima. Padrão `'padrao'` — quem não
+      passa nada continua vendo o comportamento de sempre. */
+  variante?: Variante;
   /** Repassado ao `View` que envolve o conteúdo — necessário quando este
       componente é usado como filho direto de um `flexWrap`/grade, porque
       `flexBasis` só funciona no filho DIRETO do container flex; sem este
@@ -31,7 +62,7 @@ type Props = PropsWithChildren<{
  * aparece direto, sem transição — a seção nunca fica invisível esperando
  * uma rolagem que não existe fora do navegador.
  */
-export default function RevealOnScroll({ children, atraso = 0, style }: Props) {
+export default function RevealOnScroll({ children, atraso = 0, variante = 'padrao', style }: Props) {
   const ref = useRef<View>(null);
   const [visivel, setVisivel] = useState(() =>
     Platform.OS !== 'web' ||
@@ -95,11 +126,15 @@ export default function RevealOnScroll({ children, atraso = 0, style }: Props) {
   // com efeito, dado o `visivel` inicial acima) seriam ignoradas de qualquer
   // forma. Mesmo padrão de `as any` já usado em WebPhoneFrame/_layout.tsx
   // para o mesmo tipo de propriedade exclusiva da web.
+  const receita = RECEITAS[variante];
   const estiloWeb = {
     opacity: visivel ? 1 : 0,
-    transform: [{ translateY: visivel ? 0 : 16 }],
+    transform: [
+      { translateY: visivel ? 0 : receita.deslocamento },
+      { scale: visivel ? 1 : receita.escala },
+    ],
     transitionProperty: 'opacity, transform',
-    transitionDuration: '600ms',
+    transitionDuration: receita.duracao,
     transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
   } as any;
 

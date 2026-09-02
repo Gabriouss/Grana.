@@ -1161,3 +1161,19 @@ descritos — nenhum falso positivo. Ordem de prioridade recomendada, revisada:
 
 **Nenhuma correção foi implementada ainda** — só verificação. Autor ainda não
 apontou por qual começar.
+
+## Revisão visual da landing (02/09/2026, somente local)
+
+Aplicadas as nove correções solicitadas na landing: o CTA do Granabô passou a
+ter 32 px de respiro após o texto; as numerações 01–04 foram removidas; os
+mini-mocks de lançamento por voz, análise mensal, personalização e cofrinho
+foram redesenhados com informação reconhecível e anatomia próxima do app; a
+seção de segurança virou três provas curtas; o preço de R$ 9,90 ganhou destaque
+e perdeu a menção interna à Kiwify; e o card de Livre para Gastar saiu do FAQ.
+
+Os cards puramente informativos também deixaram de usar `AppPressable`, para
+não aparecerem como controles sem ação. Verificação local em 1440×900,
+768×1024 e 390×844: sem sobreposição ou texto escapando. `tsc --noEmit` limpo,
+297/297 guardas do design system passaram, auditoria axe/WCAG com zero
+violações e console do navegador sem erros. Nada foi publicado ou enviado à
+web nesta revisão; o servidor de aprovação local usa `http://127.0.0.1:8082`.
