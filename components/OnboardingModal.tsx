@@ -41,6 +41,7 @@ import { layoutDoPreset, salvarLayoutHome, type HomePreset } from '@/lib/home-la
 import AppPressable from './AppPressable';
 import PareamentoWhatsapp from './PareamentoWhatsapp';
 import { useKeyboardHeight } from './Sheet';
+import { useFlags } from '@/lib/feature-flags';
 
 /**
  * Diagnóstico financeiro em 5 etapas: consciência, foco, cartão, renda +
@@ -153,6 +154,7 @@ export default function OnboardingModal({
       questionário sempre voltava em branco e não dava pra simplesmente corrigir a renda. */
   initial?: Respostas;
 }) {
+  const { ligado } = useFlags();
   const modalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
   useModalAccessibility(modalRef, visible);
@@ -693,9 +695,14 @@ export default function OnboardingModal({
                   </View>
                 </View>
               ) : whatsappLink ? (
+                /* Na criação de conta o passo some INTEIRO quando o
+                   WhatsApp está fora do ar — um passo travado com explicação
+                   de instabilidade é a primeira impressão do produto. */
+                ligado('whatsapp') ? (
                 <View style={styles.whatsappCard}>
                   <PareamentoWhatsapp codigo={whatsappLink.pairing_code} />
                 </View>
+                ) : null
               ) : whatsappEstado === 'erro' ? (
                 /* Não dá pra preparar o código sem saber se já existe vínculo —
                    tentar às cegas apagaria um vínculo que talvez esteja lá. */

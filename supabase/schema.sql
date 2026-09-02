@@ -3376,3 +3376,74 @@ grant execute on function public.listar_acessos_cortesia() to service_role;
 
 comment on function public.listar_acessos_cortesia() is
   'ADMIN. Lista os acessos de cortesia ativos e o motivo de cada um.';
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- feature_flags: interruptores remotos de funcionalidade.
+--
+-- Uma linha por ferramenta. `enabled = false` faz o app esconder ou
+-- desabilitar a entrada correspondente SEM build nova — o app lê esta tabela
+-- na entrada e a cada volta do background.
+--
+-- Por que existe: o WhatsApp caiu em 02/09/2026 e não havia como esconder o
+-- botão sem publicar uma versão nova só pra isso. Daqui em diante, qualquer
+-- ferramenta que entre em instabilidade se desliga por UPDATE, em segundos.
+--
+-- `titulo`/`mensagem` são COPY DE PRODUTO: aparecem no lugar do botão e no
+-- pop-up de aviso. Escrever pensando em quem usa, não em changelog técnico.
+-- ─────────────────────────────────────────────────────────────────────────
+create table if not exists feature_flags (
+  key          text primary key,
+  enabled      boolean not null default true,
+  titulo       text,
+  mensagem     text,
+  -- 'info' | 'aviso' | 'critico' — decide se o pop-up abre e com que insistência.
+  severidade   text not null default 'aviso',
+  -- Religa sozinho nesta data, mesmo que ninguém rode o UPDATE de volta.
+  -- Desligamento sem prazo é o que vira permanente por esquecimento.
+  reativa_em   timestamptz,
+  -- Bump manual para o pop-up reaparecer a quem já dispensou.
+  aviso_versao integer not null default 1,
+  -- Escopo: instabilidade quase nunca atinge as duas plataformas igual, e um
+  -- defeito já corrigido não deve desligar nada para quem atualizou.
+  -- NULL = todas. Ex: '{android}'.
+  plataformas  text[],
+  versao_min   text,
+  versao_max   text,
+  updated_at   timestamptz not null default now(),
+  constraint feature_flags_severidade_valida
+    check (severidade in ('info', 'aviso', 'critico')),
+  -- Desligar sem explicar faz a pessoa achar que quebrou ou que a
+  -- funcionalidade acabou. Se está desligado, tem que ter mensagem.
+  constraint feature_flags_desligado_tem_mensagem
+    check (enabled or (mensagem is not null and length(trim(mensagem)) > 0))
+);
+
+alter table feature_flags enable row level security;
+
+drop policy if exists "logados leem os flags" on feature_flags;
+create policy "logados leem os flags"
+  on feature_flags for select
+  to authenticated
+  using (true);
+
+-- Escrita nunca pelo app: só service_role (SQL Editor).
+
+-- TODAS as ferramentas nascem ligadas. Semear todas de uma vez é o ponto: uma
+-- chave criada só no dia do incidente é uma chave que não existe justamente
+-- quando você precisa dela às pressas. Manter em sincronia com ChaveFlag em
+-- lib/feature-flags.tsx — __tests__/corpus-flags.ts compara as duas listas.
+insert into feature_flags (key, enabled) values
+  ('whatsapp',            true),
+  ('importar_extrato',    true),
+  ('colar_comprovante',   true),
+  ('qr_nota',             true),
+  ('lancamento_voz',      true),
+  ('relatorio_pdf',       true),
+  ('foto_perfil',         true),
+  ('lembretes',           true),
+  ('assinatura_checkout', true),
+  ('orcamento_sugerido',  true),
+  ('diagnostico',         true),
+  ('cofrinhos',           true),
+  ('desafios',            true)
+on conflict (key) do nothing;

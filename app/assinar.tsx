@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useEntitlement } from '@/lib/entitlement-context';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
+import { useFlags } from '@/lib/feature-flags';
 
 const checkoutConfigurado = process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
 const destinoCompra = checkoutConfigurado?.startsWith('https://')
@@ -10,6 +11,7 @@ const destinoCompra = checkoutConfigurado?.startsWith('https://')
   : 'https://granaponto.com.br/#precos';
 
 export default function AssinarScreen() {
+  const { ligado } = useFlags();
   const { estado, recarregar } = useEntitlement();
   const [verificando, setVerificando] = useState(false);
 
@@ -33,12 +35,24 @@ export default function AssinarScreen() {
         {estado?.status === 'past_due' && (
           <Text style={styles.notice}>O pagamento está pendente. Atualize a cobrança para manter o acesso.</Text>
         )}
+        {/* Desabilitado, não escondido: sumir com o botão de compra numa tela
+            de assinatura deixaria a pessoa sem entender o que fazer ali. O
+            rótulo passa a dizer o motivo — dinheiro entra por este caminho, e
+            mandar alguém para um checkout instável é pior que fazê-lo esperar. */}
         <Pressable
           accessibilityRole="button"
+          disabled={!ligado('assinatura_checkout')}
+          accessibilityState={{ disabled: !ligado('assinatura_checkout') }}
           onPress={() => Linking.openURL(destinoCompra)}
-          style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.primary,
+            pressed && styles.pressed,
+            !ligado('assinatura_checkout') && { opacity: 0.5 },
+          ]}
         >
-          <Text style={styles.primaryText}>Assinar o Grana.</Text>
+          <Text style={styles.primaryText}>
+            {ligado('assinatura_checkout') ? 'Assinar o Grana.' : 'Pagamento indisponível no momento'}
+          </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"

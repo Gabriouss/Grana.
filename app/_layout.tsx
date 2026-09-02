@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
 import { DemoProvider } from '@/lib/demo-context';
+import { FlagsProvider } from '@/lib/feature-flags';
 import { theme } from '@/lib/theme';
 import { instalarAnelDeFoco } from '@/lib/foco-web';
 import { acompanharFocoParaModais } from '@/lib/modal-accessibility';
@@ -21,6 +22,7 @@ import { AppLockProvider } from '@/lib/app-lock-context';
 import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
 import NovidadesModal from '@/components/NovidadesModal';
+import AvisoFlagModal from '@/components/AvisoFlagModal';
 // Registra o handler de notificações (lembretes de contas) assim que o app abre.
 import '@/lib/notifications';
 
@@ -100,6 +102,10 @@ export default function RootLayout() {
       {identidadeWeb}
       <SafeAreaProvider>
         <SessionProvider>
+          {/* Dentro do SessionProvider porque a leitura de `feature_flags`
+              passa por RLS e exige sessão; por fora do resto porque qualquer
+              tela pode precisar perguntar se uma ferramenta está no ar. */}
+          <FlagsProvider>
           <EntitlementProvider>
             <PrivacyProvider>
               <DemoProvider>
@@ -119,6 +125,7 @@ export default function RootLayout() {
               </DemoProvider>
             </PrivacyProvider>
           </EntitlementProvider>
+          </FlagsProvider>
         </SessionProvider>
       </SafeAreaProvider>
     </>
@@ -163,6 +170,11 @@ function RootNavigator() {
           atrito sem propósito pra quem ainda nem entrou no app. */}
       {session && <UpdateBanner />}
       {session && <NovidadesModal />}
+      {/* Depois do NovidadesModal na árvore, mas os dois são independentes:
+          quando as duas condições valem, quem estiver por cima ganha a vez e o
+          outro aparece na próxima abertura. Empilhar dois pop-ups na primeira
+          abertura seria pior que atrasar um deles. */}
+      {session && <AvisoFlagModal />}
       <Stack screenOptions={{ headerShown: false }}>
         {/* O link de recuperação autentica de verdade — sem este guard a
             pessoa cairia direto na Início, logada, com a senha antiga (a que

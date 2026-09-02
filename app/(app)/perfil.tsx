@@ -50,6 +50,7 @@ import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LI
 import { carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import AppPressable from '@/components/AppPressable';
 import PareamentoWhatsapp from '@/components/PareamentoWhatsapp';
+import { useFlags } from '@/lib/feature-flags';
 import PasswordInput from '@/components/PasswordInput';
 import ToggleSwitch from '@/components/ToggleSwitch';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
@@ -70,6 +71,7 @@ const ATALHOS = [
 ];
 
 export default function PerfilScreen() {
+  const { ligado, flag } = useFlags();
   const { paddingConteudo } = useTabBarInset();
   const { session, signOut } = useSession();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
@@ -358,6 +360,19 @@ export default function PerfilScreen() {
   }
 
   async function escolherFoto() {
+    /* Guarda no ponto de AÇÃO, não só no botão: `escolherFoto` também é
+       chamada de outros lugares, e o upload é o que depende do Storage do
+       Supabase. Bloquear aqui cobre todos os caminhos de uma vez. A REMOÇÃO
+       de foto continua liberada — é ação de saída. */
+    if (!ligado('foto_perfil')) {
+      const f = flag('foto_perfil');
+      Alert.alert(
+        f?.titulo ?? 'Foto de perfil indisponível',
+        f?.mensagem ?? 'O envio de foto está passando por instabilidade e voltará em breve.'
+      );
+      return;
+    }
+
     if (isDemoMode) {
       Alert.alert('Modo de exemplo ativo', 'Desative "Dados de exemplo" no Perfil para alterar sua foto.');
       return;
@@ -465,6 +480,10 @@ export default function PerfilScreen() {
             <Text style={styles.rowKey}>Sincronização</Text>
             <Text style={styles.rowValue}>{isDemoMode ? 'Desligada' : 'Ligada'}</Text>
           </View>
+          {/* Só a REMOÇÃO mora aqui, e ela continua liberada mesmo com o
+              interruptor desligado: é ação de saída, e travar isso prenderia a
+              pessoa num estado que ela quer desfazer. O que o flag bloqueia é
+              o envio de foto nova (ver OnboardingModal). */}
           {perfil?.fotoUrl && (
             <AppPressable style={styles.tappableRow} onPress={confirmarRemocaoFoto}>
               <Text style={styles.rowKey}>Foto de perfil</Text>
@@ -472,13 +491,29 @@ export default function PerfilScreen() {
             </AppPressable>
           )}
           <View style={styles.row}>
-            <Text style={styles.rowKey}>Lembretes de vencimento</Text>
-            <Text style={styles.rowValue}>Ativados</Text>
+            <Text style={[styles.rowKey, !ligado('lembretes') && styles.rowKeyDesativado]}>
+              Lembretes de vencimento
+            </Text>
+            <Text style={styles.rowValue}>{ligado('lembretes') ? 'Ativados' : 'Instável'}</Text>
           </View>
-          <AppPressable style={styles.tappableRow} onPress={abrirWhatsapp}>
-            <Text style={styles.rowKey}>Lançar pelo WhatsApp</Text>
+          {/* Diferente do ícone no cabeçalho da Início, aqui a linha CONTINUA
+              visível e só fica desabilitada: no Perfil ela tem rótulo, então
+              cabe explicar. Sumir daria a impressão de que a funcionalidade
+              acabou, e o vínculo de quem já pareou continua intacto — o
+              interruptor esconde a entrada, nunca apaga dado. */}
+          <AppPressable
+            style={styles.tappableRow}
+            onPress={abrirWhatsapp}
+            disabled={!ligado('whatsapp')}
+            accessibilityState={{ disabled: !ligado('whatsapp') }}
+          >
+            <Text style={[styles.rowKey, !ligado('whatsapp') && styles.rowKeyDesativado]}>
+              Lançar pelo WhatsApp
+            </Text>
             <Text style={styles.rowValue}>
-              {whatsappLink?.verified ? 'Vinculado ✓' : whatsappLink ? 'Aguardando código' : 'Vincular'} &gt;
+              {!ligado('whatsapp')
+                ? 'Instável'
+                : whatsappLink?.verified ? 'Vinculado ✓' : whatsappLink ? 'Aguardando código' : 'Vincular'} &gt;
             </Text>
           </AppPressable>
           <AppPressable style={styles.tappableRow} onPress={() => setAtalhosOpen(true)}>
@@ -594,10 +629,12 @@ export default function PerfilScreen() {
             />
           </View>
 
-          <AppPressable style={styles.tappableRow} onPress={() => setTemplatesOpen(true)}>
-            <Text style={styles.rowKey}>Orçamento sugerido</Text>
-            <Text style={styles.rowValue}>Aplicar template &gt;</Text>
-          </AppPressable>
+          {ligado('orcamento_sugerido') && (
+            <AppPressable style={styles.tappableRow} onPress={() => setTemplatesOpen(true)}>
+              <Text style={styles.rowKey}>Orçamento sugerido</Text>
+              <Text style={styles.rowValue}>Aplicar template &gt;</Text>
+            </AppPressable>
+          )}
 
           {diagnostico && (
             <View style={styles.row}>
@@ -608,10 +645,12 @@ export default function PerfilScreen() {
             </View>
           )}
 
-          <AppPressable style={styles.tappableRow} onPress={() => setOnboardingOpen(true)}>
-            <Text style={styles.rowKey}>{diagnostico ? 'Diagnóstico financeiro' : 'Diagnóstico inicial'}</Text>
-            <Text style={styles.rowValue}>Refazer diagnóstico &gt;</Text>
-          </AppPressable>
+          {ligado('diagnostico') && (
+            <AppPressable style={styles.tappableRow} onPress={() => setOnboardingOpen(true)}>
+              <Text style={styles.rowKey}>{diagnostico ? 'Diagnóstico financeiro' : 'Diagnóstico inicial'}</Text>
+              <Text style={styles.rowValue}>Refazer diagnóstico &gt;</Text>
+            </AppPressable>
+          )}
         </View>
 
         {/* Seção Legal */}
@@ -850,10 +889,12 @@ export default function PerfilScreen() {
               </>
             ) : whatsappLink ? (
               <>
-                <PareamentoWhatsapp
-                  codigo={whatsappLink.pairing_code}
-                  chamada="O código vale por 15 minutos."
-                />
+                {ligado('whatsapp') && (
+                  <PareamentoWhatsapp
+                    codigo={whatsappLink.pairing_code}
+                    chamada="O código vale por 15 minutos."
+                  />
+                )}
                 <AppPressable
                   style={({ hovered }) => [styles.reauthCancel, hovered && { opacity: 0.88 }]}
                   onPress={handleGerarPareamento}
@@ -897,6 +938,10 @@ export default function PerfilScreen() {
 }
 
 const styles = StyleSheet.create({
+  /* Rótulo de linha desativada por interruptor remoto: mesma família e
+     tamanho, só recuado em cor — a linha continua legível, e o motivo vem do
+     valor à direita ("Instável") e do pop-up de aviso. */
+  rowKeyDesativado: { color: theme.inkFaint },
   rowColuna: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule, gap: 4 },
   rowInterna: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowAjuda: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda), paddingRight: 16, fontFamily: fonts.light },

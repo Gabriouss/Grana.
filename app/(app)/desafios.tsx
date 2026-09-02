@@ -34,10 +34,12 @@ import ConquistaDesbloqueada from '@/components/ConquistaDesbloqueada';
 import ScreenHeader from '@/components/ScreenHeader';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
+import { useFlags } from '@/lib/feature-flags';
 
 type FilterType = 'all' | 'unlocked' | 'locked';
 
 export default function DesafiosScreen() {
+  const { ligado, flag } = useFlags();
   const { paddingConteudo } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const [loading, setLoading] = useState(true);
@@ -132,6 +134,23 @@ export default function DesafiosScreen() {
       }),
     [state?.badges, filter]
   );
+
+  /* Desafios desligado troca a tela inteira pelo aviso, em vez de esconder a
+     aba: a aba é navegação, e sumir com ela no meio de uma sessão moveria o
+     resto da barra debaixo do dedo de quem já sabe onde as coisas ficam. */
+  if (!ligado('desafios')) {
+    const f = flag('desafios');
+    return (
+      <SafeAreaView edges={['top']} style={styles.screen}>
+        <View style={styles.center}>
+          <Text style={styles.emptyTitulo}>{f?.titulo ?? 'Desafios indisponíveis'}</Text>
+          <Text style={styles.emptyTexto}>
+            {f?.mensagem ?? 'Esta seção está passando por instabilidade e voltará em breve.'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading || !state) {
     return (
@@ -405,6 +424,22 @@ export default function DesafiosScreen() {
 }
 
 const styles = StyleSheet.create({
+  emptyTitulo: {
+    color: theme.ink,
+    fontSize: type.titulo,
+    lineHeight: lh(type.titulo, 'titulo'),
+    fontFamily: fonts.light,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptyTexto: {
+    color: theme.inkSoft,
+    fontSize: type.apoio,
+    lineHeight: lh(type.apoio, 'corpo'),
+    fontFamily: fonts.light,
+    textAlign: 'center',
+    maxWidth: 420,
+  },
   screen: { flex: 1, backgroundColor: theme.paper },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.paper },
   scroll: { flex: 1 },

@@ -45,6 +45,7 @@ import HeaderAction from '@/components/HeaderAction';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import WidgetGrid, { ESPACO_ALCA } from '@/components/WidgetGrid';
+import { useFlags } from '@/lib/feature-flags';
 import { colunaConteudo } from '@/lib/breakpoints';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
@@ -91,6 +92,7 @@ type ChartView = 'in' | 'out' | 'both';
 
 
 export default function InicioScreen() {
+  const { ligado } = useFlags();
   const { paddingConteudo } = useTabBarInset();
   const router = useRouter();
   const { hidden, toggle } = usePrivacy();
@@ -1225,11 +1227,18 @@ export default function InicioScreen() {
               }}
               collapsable={false}
             >
-              <HeaderAction
-                icon="logo-whatsapp"
-                onPress={abrirWhatsappBot}
-                accessibilityLabel="Lançar gastos pelo WhatsApp"
-              />
+              {/* Some quando o interruptor remoto desliga o WhatsApp. No
+                  cabeçalho é botão de ícone sem rótulo: desabilitado ele
+                  viraria um enfeite cinza sem explicação nenhuma, então
+                  esconder é mais honesto que mostrar quebrado. A explicação
+                  aparece no Perfil, onde a linha tem texto, e no pop-up. */}
+              {ligado('whatsapp') && (
+                <HeaderAction
+                  icon="logo-whatsapp"
+                  onPress={abrirWhatsappBot}
+                  accessibilityLabel="Lançar gastos pelo WhatsApp"
+                />
+              )}
             </View>
             <HeaderAction
               icon={hidden ? 'eye-off-outline' : 'eye-outline'}
@@ -1283,27 +1292,34 @@ export default function InicioScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.smartActionsRow}
           >
-          <AppPressable
-            style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-            onPress={() => setPasteModalOpen(true)}
-          >
-            <Ionicons name="clipboard-outline" size={16} color={theme.ink} />
-            <Text style={styles.smartActionText}>Colar comprovante</Text>
-          </AppPressable>
-          <AppPressable
-            style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-            onPress={() => setCsvModalOpen(true)}
-          >
-            <Ionicons name="document-text-outline" size={16} color={theme.ink} />
-            <Text style={styles.smartActionText}>Importar extrato</Text>
-          </AppPressable>
-          <AppPressable
-            style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-            onPress={() => setQrModalOpen(true)}
-          >
-            <Ionicons name="qr-code-outline" size={16} color={theme.ink} />
-            <Text style={styles.smartActionText}>Escanear nota</Text>
-          </AppPressable>
+          {ligado('colar_comprovante') && (
+            <AppPressable
+              style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+              onPress={() => setPasteModalOpen(true)}
+            >
+              <Ionicons name="clipboard-outline" size={16} color={theme.ink} />
+              <Text style={styles.smartActionText}>Colar comprovante</Text>
+            </AppPressable>
+          )}
+          {ligado('importar_extrato') && (
+            <AppPressable
+              style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+              onPress={() => setCsvModalOpen(true)}
+            >
+              <Ionicons name="document-text-outline" size={16} color={theme.ink} />
+              <Text style={styles.smartActionText}>Importar extrato</Text>
+            </AppPressable>
+          )}
+          {ligado('qr_nota') && (
+            <AppPressable
+              style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+              onPress={() => setQrModalOpen(true)}
+            >
+              <Ionicons name="qr-code-outline" size={16} color={theme.ink} />
+              <Text style={styles.smartActionText}>Escanear nota</Text>
+            </AppPressable>
+          )}
+          {ligado('lancamento_voz') && (
           <VoiceEntryButton
             label="Lançamento por voz"
             textStyle={styles.smartActionText}
@@ -1318,6 +1334,7 @@ export default function InicioScreen() {
               setPasteModalOpen(true);
             }}
           />
+          )}
           </ScrollView>
           </View>
         </FadeIn>

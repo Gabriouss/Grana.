@@ -17,6 +17,7 @@ import DatePickerModal from './DatePickerModal';
 import GoalDepositModal from './GoalDepositModal';
 import PrivacyValue from './PrivacyValue';
 import Sheet from './Sheet';
+import { useFlags } from '@/lib/feature-flags';
 
 const ICONES: string[] = ['flag', 'airplane', 'car-sport', 'home', 'gift', 'shield-checkmark', 'school', 'heart'];
 
@@ -48,6 +49,7 @@ export default function GoalsCarousel({
   onDeposit: (goal: Goal, delta: number) => Promise<void>;
   onDeleteGoal: (goal: Goal) => Promise<void>;
 }) {
+  const { ligado } = useFlags();
   const level = calcularLevelState(lifetimeXp);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -124,6 +126,11 @@ export default function GoalsCarousel({
       },
     ]);
   }
+
+  /* Cofrinhos desligado esconde o carrossel inteiro da Início. O dinheiro
+     guardado continua no banco e volta a aparecer quando religar — o
+     interruptor esconde a entrada, nunca apaga dado. */
+  if (!ligado('cofrinhos')) return null;
 
   return (
     <View style={{ gap: spacing.sm }}>

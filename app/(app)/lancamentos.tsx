@@ -27,6 +27,7 @@ import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
+import { useFlags } from '@/lib/feature-flags';
 import ImportarExtratoModal from '@/components/ImportarExtratoModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
@@ -124,6 +125,7 @@ const LinhaLancamento = memo(function LinhaLancamento({
 });
 
 export default function LancamentosScreen() {
+  const { ligado } = useFlags();
   const router = useRouter();
   const { novoLancamento } = useLocalSearchParams<{ novoLancamento?: string }>();
   const { paddingConteudo } = useTabBarInset();
@@ -550,6 +552,7 @@ export default function LancamentosScreen() {
                 VoiceEntryButton (styles.iconBtn), igual à do HeaderAction.
                 O `headerBtn` local existia pra replicar essa geometria à mão
                 e só servia pra ela sair de sincronia. */}
+            {ligado('lancamento_voz') && (
             <VoiceEntryButton
               iconSize={16}
               onTranscribed={(text) => {
@@ -557,6 +560,7 @@ export default function LancamentosScreen() {
                 setPasteModalOpen(true);
               }}
             />
+            )}
             <HeaderAction
               icon={hidden ? 'eye-off-outline' : 'eye-outline'}
               onPress={() => {

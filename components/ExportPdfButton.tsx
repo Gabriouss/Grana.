@@ -10,6 +10,7 @@ import { useDemo } from '@/lib/demo-context';
 import type { Bill, Transaction } from '@/lib/types';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
 import AppPressable from './AppPressable';
+import { useFlags } from '@/lib/feature-flags';
 
 /**
  * Exporta o relatório executivo do mês informado. Os boletos são buscados
@@ -40,6 +41,7 @@ export default function ExportPdfButton({
   /** Texto do botão. O padrão serve às telas de Gráficos e Lançamentos. */
   rotulo?: string;
 }) {
+  const { ligado } = useFlags();
   const { isDemoMode } = useDemo();
   const [gerando, setGerando] = useState(false);
 
@@ -68,6 +70,11 @@ export default function ExportPdfButton({
       setGerando(false);
     }
   }
+
+  /* Some quando o relatório está desligado remotamente. É um botão de ação
+     única: desabilitado, viraria um botão morto sem explicação — e o pop-up de
+     aviso já conta o motivo. */
+  if (!ligado('relatorio_pdf')) return null;
 
   return (
     <AppPressable style={styles.botao} onPress={exportar} disabled={gerando}>

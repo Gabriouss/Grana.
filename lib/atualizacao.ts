@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { compararVersoes } from './versao';
 
 /**
  * Aviso de atualização do APK.
@@ -43,17 +44,6 @@ async function buscarAppRelease(): Promise<LinhaAppRelease | null> {
   return data;
 }
 
-/** Compara "1.2.3" com "1.10.0" numericamente, não como texto — string
-    compararia "10" < "2". Retorna positivo se `a` for mais nova que `b`. */
-function compararVersoes(a: string, b: string): number {
-  const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
-  const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
-}
 
 /**
  * Retorna a atualização pendente, ou null quando não há nada novo, ou quando

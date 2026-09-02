@@ -937,3 +937,55 @@ permanentes do `AGENTS.md` resumidas.
 
 Nenhuma linha de código do app foi alterada nesta sessão desde a terceira
 auditoria — só documentação.
+
+## Sessão de 02/09/2026 - interruptores remotos IMPLEMENTADOS (cliente)
+
+O Bloco 3 do `PENDENCIAS.md` foi executado. Todo o lado do cliente está
+pronto; **falta aplicar o SQL no Supabase**, que esta máquina não alcança.
+
+- `lib/versao.ts` — `compararVersoes` saiu de `lib/atualizacao.ts` para um
+  módulo SEM nenhum import. Motivo: `atualizacao.ts` puxa expo-constants,
+  AsyncStorage e o cliente Supabase, e os corpus rodam em node puro.
+- `lib/feature-flags-regras.ts` — tipos, as 13 chaves e `efetivamenteLigado`,
+  sem React nem React Native, para o corpus poder testar a decisão.
+- `lib/feature-flags.tsx` — o provider: lê na entrada e a cada volta do
+  background (`AppState`), montado em `app/_layout.tsx` dentro do
+  `SessionProvider` (a leitura passa por RLS).
+- `components/AvisoFlagModal.tsx` — pop-up de instabilidade, modelado no
+  `NovidadesModal`. `info` não abre pop-up, `aviso` abre uma vez, `critico`
+  abre sempre. Um aviso por vez, com `critico` na frente.
+- `supabase/schema.sql` — tabela `feature_flags` com RLS, as duas constraints
+  (severidade válida; desligado exige mensagem) e as 13 chaves semeadas.
+- `__tests__/corpus-flags.ts` — 17 checagens, dentro do `test:parser`.
+
+As 13 ferramentas ligadas ao interruptor, com o padrão escolhido por contexto:
+
+| ferramenta | comportamento quando desligada |
+|---|---|
+| whatsapp | ícone da Início SOME; linha do Perfil fica visível e desabilitada; pareamento some no Perfil e no onboarding; **desvincular continua funcionando** |
+| importar_extrato, colar_comprovante, qr_nota, lancamento_voz | somem da fileira de ações (ela desliza, então some sem buraco) |
+| relatorio_pdf, cofrinhos | componente retorna null |
+| desafios | a TELA vira aviso; a aba continua na barra, porque sumir com ela moveria o resto da navegação debaixo do dedo |
+| assinatura_checkout | botão desabilitado com rótulo trocado, nunca escondido — some numa tela de assinatura deixaria a pessoa sem saber o que fazer |
+| foto_perfil | guarda no ponto de AÇÃO (`escolherFoto`), não só no botão; remover foto continua liberado |
+| lembretes, orcamento_sugerido, diagnostico | linha desabilitada ou escondida no Perfil |
+
+Regra que valeu para todos: **o interruptor esconde a ENTRADA, nunca apaga
+dado**, e ação de saída (desvincular, remover foto) nunca é bloqueada.
+
+Achado registrado e NÃO corrigido: `components/ToggleSwitch.tsx` tem violação
+das Rules of Hooks pré-existente — `if (Platform.OS !== 'web') return` na linha
+21, com `useReducedMotion` e `useEffect` depois. Não quebra em runtime porque
+`Platform.OS` é invariante entre renders, então o ramo é sempre o mesmo. Foi
+achado pelo verificador de ordem de hook desta sessão; corrigir é mexer em
+código fora do escopo desta tarefa.
+
+Verificações: `tsc --noEmit`, `test:parser` completo (17/17 nos interruptores),
+verificador de ordem de hook em 0 violações, bundle web compilando (HTTP 200) e
+app renderizando no Chromium com o FlagsProvider na árvore, zero erro de
+runtime. Sem validação visual das telas logadas: não há login nesta máquina.
+
+**Pendente e só possível aí:** aplicar o SQL de `feature_flags` (está pronto no
+fim do `supabase/schema.sql`, é copiar e colar no SQL Editor). Enquanto a
+tabela não existir, a leitura falha e cai na FALHA ABERTA — tudo continua
+ligado, nada quebra. Push (Parte 5 do plano) não foi implementado.
