@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
-import { colunaConteudo } from '@/lib/breakpoints';
+import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import {
   fetchBills,
@@ -24,7 +24,7 @@ import { conquistasNovas, getGamificationState, type Badge, type BadgeCategory, 
 import { fetchGamification } from '@/lib/goals';
 import { calcularLevelState, type LevelState } from '@/lib/gamification-infinite';
 import { hapticTap } from '@/lib/haptics';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh } from '@/lib/theme';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import BadgeCard from '@/components/BadgeCard';
@@ -110,6 +110,29 @@ export default function DesafiosScreen() {
     }, [loadData])
   );
 
+  /* Estes dois hooks moram ACIMA do `if (loading)` porque hook não pode vir
+     depois de early return: na primeira renderização (carregando) eles não
+     rodariam, na seguinte sim, e o React quebra com "rendered more hooks than
+     during the previous render". Por isso `filteredBadges` lê de `state?.` em
+     vez do `badges` desestruturado, que só existe depois da guarda.
+
+     As badges ficavam em `width: '48%'` fixo — duas colunas em QUALQUER
+     largura. Com o teto de conteúdo em 1440px, num monitor cada badge esticava
+     para ~690px: o "layout de celular esticado" que o Material cita como erro
+     de tablet. As larguras deixam folga pro `gap` de 8px entre colunas. */
+  const { ehAmplo, ehMedio } = useBreakpoint();
+  const larguraBadge = ehAmplo ? '23.5%' : ehMedio ? '32%' : '48%';
+
+  const filteredBadges = useMemo(
+    () =>
+      (state?.badges ?? []).filter((b) => {
+        if (filter === 'unlocked') return b.unlocked;
+        if (filter === 'locked') return !b.unlocked;
+        return true;
+      }),
+    [state?.badges, filter]
+  );
+
   if (loading || !state) {
     return (
       <View style={styles.center}>
@@ -126,17 +149,11 @@ export default function DesafiosScreen() {
     masteryProgress,
     factors,
     weekActivity,
-    badges,
     unlockedBadgesCount,
     indicadores,
     totalBadgesCount,
   } = state;
 
-  const filteredBadges = badges.filter((b) => {
-    if (filter === 'unlocked') return b.unlocked;
-    if (filter === 'locked') return !b.unlocked;
-    return true;
-  });
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
@@ -374,7 +391,7 @@ export default function DesafiosScreen() {
 
           <View style={styles.badgesGrid}>
             {filteredBadges.map((b) => (
-              <View key={b.id} style={styles.badgeWrapper}>
+              <View key={b.id} style={[styles.badgeWrapper, { width: larguraBadge }]}>
                 <BadgeCard badge={b} />
               </View>
             ))}
@@ -418,11 +435,13 @@ const styles = StyleSheet.create({
   scorePoints: {
     fontFamily: fonts.regular,
     fontSize: type.destaque,
+    lineHeight: lh(type.destaque, 'valor'),
     color: theme.accent2,
   },
   scorePointsLabel: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkSoft,
   },
   heroInfo: { flex: 1, gap: 2 },
@@ -436,11 +455,13 @@ const styles = StyleSheet.create({
   levelBadgeText: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.accent2,
   },
   masteryTitle: {
     fontFamily: fonts.regular,
     fontSize: type.titulo,
+    lineHeight: lh(type.titulo, 'titulo'),
     color: theme.ink,
   },
   masteryDesc: {
@@ -462,11 +483,13 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkSoft,
   },
   progressPct: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.accent2,
   },
   progressBarBg: {
@@ -483,6 +506,7 @@ const styles = StyleSheet.create({
   remainingText: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkFaint,
   },
   levelHint: {
@@ -511,15 +535,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   indicadorItem: { gap: 2 },
-  indicadorValor: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  indicadorValor: { color: theme.ink, fontSize: type.apoio,
+  lineHeight: lh(type.apoio, 'valor'), fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   cardTitle: {
     fontFamily: fonts.regular,
     fontSize: type.corpo,
+    lineHeight: lh(type.corpo, 'corpo'),
     color: theme.ink,
   },
   streakBadgeText: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.accent2,
     backgroundColor: 'rgba(174,255,227,0.1)',
     paddingHorizontal: 8,
@@ -529,11 +556,13 @@ const styles = StyleSheet.create({
   scoreTotalLabel: {
     fontFamily: fonts.regular,
     fontSize: type.nota,
+    lineHeight: lh(type.nota, 'valor'),
     color: theme.accent2,
   },
   badgeRatioText: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkSoft,
   },
   weekRow: {
@@ -572,6 +601,7 @@ const styles = StyleSheet.create({
   dayName: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkFaint,
   },
   dayNameActive: {
@@ -589,11 +619,13 @@ const styles = StyleSheet.create({
   factorLabel: {
     fontFamily: fonts.regular,
     fontSize: type.nota,
+    lineHeight: lh(type.nota, 'apoio'),
     color: theme.ink,
   },
   factorPoints: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkSoft,
   },
   factorBarBg: {
@@ -609,6 +641,7 @@ const styles = StyleSheet.create({
   factorDesc: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'corpo'),
     color: theme.inkFaint,
   },
   badgesGrid: {
@@ -616,8 +649,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  /* `width` vem do componente (larguraBadge), não daqui: depende da classe de
+     janela. `flexGrow` mantém a última fileira preenchendo a linha. */
   badgeWrapper: {
-    width: '48%',
     flexGrow: 1,
   },
 });

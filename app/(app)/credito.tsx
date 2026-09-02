@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -201,9 +201,14 @@ export default function CreditoScreen() {
   );
 
   // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado nas outras telas principais.
-  const walletCards = activeWalletId === 'total' ? cards : cards.filter((c) => c.wallet_id === activeWalletId);
-  const walletTransactions =
-    activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
+  const walletCards = useMemo(
+    () => (activeWalletId === 'total' ? cards : cards.filter((c) => c.wallet_id === activeWalletId)),
+    [activeWalletId, cards]
+  );
+  const walletTransactions = useMemo(
+    () => (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)),
+    [activeWalletId, transactions]
+  );
 
   /* Chegando aqui via FabButton da Início (?novaCompra=1): abre o mesmo
      modal do botão "Lançar no Crédito" — mas só depois que os cartões
@@ -219,15 +224,26 @@ export default function CreditoScreen() {
     router.setParams({ novaCompra: undefined });
   });
 
+  /* Esta tela renderiza um carrossel de cartões e uma FlatList de compras;
+     qualquer toque que mexa em estado (selecionar cartão, abrir folha, digitar
+     no modal) refazia esta cadeia inteira sobre o histórico. Ela só muda de
+     verdade quando muda a carteira, o mês ou o cartão selecionado. */
   // Filtra compras no cartão no mês selecionado
-  const creditTransactions = walletTransactions.filter((t) => {
-    const isCredit = t.payment_method === 'credit' || t.card_id;
-    const sameMonth = isSameMonth(t.occurred_on, selectedYear, selectedMonth);
-    const cardMatch = selectedCardId === 'all' || t.card_id === selectedCardId;
-    return isCredit && sameMonth && cardMatch;
-  });
+  const creditTransactions = useMemo(
+    () =>
+      walletTransactions.filter((t) => {
+        const isCredit = t.payment_method === 'credit' || t.card_id;
+        const sameMonth = isSameMonth(t.occurred_on, selectedYear, selectedMonth);
+        const cardMatch = selectedCardId === 'all' || t.card_id === selectedCardId;
+        return isCredit && sameMonth && cardMatch;
+      }),
+    [selectedCardId, selectedMonth, selectedYear, walletTransactions]
+  );
 
-  const totalInvoice = creditTransactions.reduce((s, t) => s + Number(t.amount), 0);
+  const totalInvoice = useMemo(
+    () => creditTransactions.reduce((s, t) => s + Number(t.amount), 0),
+    [creditTransactions]
+  );
 
   // Vencimento/status só fazem sentido para um cartão específico — "Total"
   // agrega cartões com dias de vencimento diferentes.

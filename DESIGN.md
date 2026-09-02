@@ -14,6 +14,7 @@ colors:
   calm-cyan: "#00a6ca"
   rule: "rgba(175,255,227,0.14)"
   rule-strong: "rgba(175,255,227,0.26)"
+  danger: "#e08a7d"
 typography:
   display:
     fontFamily: "NeueMachina-Regular, sans-serif"
@@ -141,7 +142,12 @@ secundário é um verde-água dessaturado, não um cinza.
 - **Calm Cyan** (#00a6ca): saída de dinheiro. Deliberadamente ciano — não vermelho. Ver a Regra abaixo.
 
 ### Named Rules
-**The No-Red Rule.** Vermelho não existe no vocabulário de cor do produto. Saída de dinheiro usa Calm Cyan, não uma cor de alerta — o produto nunca trata "você gastou" como um evento negativo a ser sinalizado. A única exceção documentada no código inteiro é o verde do WhatsApp (`#25D366`) num botão que abre o WhatsApp de verdade — uma cor emprestada com propósito funcional, não decorativo, e citada como exceção explícita no próprio comentário do código.
+**The No-Red Rule.** Vermelho não existe no vocabulário de **dado financeiro**. Saída de dinheiro usa Calm Cyan, não uma cor de alerta — o produto nunca trata "você gastou" como um evento negativo a ser sinalizado.
+
+Duas cores ficam fora dessa regra, as duas por função e não por decoração:
+
+- **Danger** (#e08a7d): ação destrutiva e estado de atraso — excluir conta, excluir cartão, erro de reautenticação, fatura "Atrasada". É um salmão dessaturado, não um vermelho de alarme, e mede 6,39:1 sobre Deep Petroleum e 5,62:1 sobre Raised Tide. Nunca aparece em valor de gasto: a fronteira é "isto vai destruir algo ou já venceu", não "isto é dinheiro saindo". Substituiu um `#bb6b60` cru (a cor da categoria Alimentação, reaproveitada por engano) que dava 3,74:1, abaixo do AA.
+- **Verde do WhatsApp** (#25D366): num botão que abre o WhatsApp de verdade — cor emprestada com propósito funcional, citada como exceção no próprio comentário do código.
 
 **The Mint-Is-Rare Rule.** Instrument Mint é a cor mais chamativa da paleta e por isso a mais restrita — marca, ação em foco, valor em destaque. Se ela aparece em mais de um ou dois lugares na mesma tela, algo que devia ser silencioso está gritando.
 
@@ -197,6 +203,11 @@ Duas filosofias coexistem, por modo — e isso é decisão, não inconsistência
 - **Toast** (`0 4px 10px rgba(0,0,0,0.25)`, Android elevation 6): notificação toast.
 - **Card de persuasão** (`0 16px 40px -12px rgba(0,0,0,0.5)`, web only): cards de recurso na landing page.
 - **Card de herói** (`0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)`, web only): o card de maior destaque de uma página persuasiva, flutuando sem moldura de dispositivo (referência: como a Linear expõe telas reais do próprio produto).
+- **Barra de abas** (`0 6px 16px rgba(0,0,0,0.35)`): a barra flutuante de navegação (`app/(app)/_layout.tsx`). Mais forte que a receita "Flutuante" do FAB porque ela atravessa a largura toda da tela e passa por cima de conteúdo de contraste variável.
+- **Conquista** (`0 10px 28px -12px rgba(0,0,0,0.55)`): o cartão de conquista desbloqueada, que entra por cima de tudo.
+- **Nav flutuante da landing** (`0 18px 44px -14px rgba(0,0,0,0.65)` no painel; `0 10px 30px -8px rgba(31,169,141,0.75)` no gatilho, subindo para `0 14px 38px -6px rgba(31,169,141,0.95)` no hover): só na landing (Persuadir), o único lugar do sistema onde um controle de navegação usa glow de cor.
+
+Estas quatro últimas não existiam neste catálogo e foram encontradas por auditoria em 02/09/2026 — o código tinha dez receitas contra as cinco documentadas. Foram catalogadas em vez de consolidadas porque cada uma cobre um objeto genuinamente flutuante e distinto; o que estava errado era o documento, não a tela.
 
 ### Named Rules
 **The Floating-Only Rule.** Em modo Operar, sombra existe só pra objetos que estão literalmente sobre o conteúdo (menu, FAB, toast) — nunca em um card no fluxo normal da tela. Ver um card comum com sombra numa tela do app é sinal de drift, não de estilo.
@@ -228,9 +239,25 @@ Botão de ação primária dentro do fluxo do app usa raio `md` (12px); o CTA da
 - **Prefixo monetário:** "R$" em Faint Kelp, tamanho `destaque` (20px), ao lado do valor em si — nunca dentro do mesmo campo de texto que o número.
 
 ### Navigation
-- **iOS/iPadOS:** Native Tabs do Expo Router, com materiais e sidebar adaptável fornecidos pelo UIKit.
-- **Android:** Native Tabs do Expo Router, com Navigation Bar, indicador, ripple e Predictive Back do sistema.
-- **Web compacto:** barra inferior de vidro do Grana.; **web médio/amplo:** trilho/barra lateral customizada.
+- **iOS, Android e web compacto:** barra inferior de vidro do Grana., desenhada
+  em JavaScript. **Não é a navegação do sistema** — e isso é uma dívida
+  conhecida, não uma escolha estética. As Native Tabs do Expo Router
+  (`expo-router/unstable-native-tabs`) foram usadas até 01/09/2026 e removidas
+  depois de causarem tela branca muda: quando o componente Fabric falha ao
+  remontar, nada renderiza e nenhum erro sobe pro JavaScript. Aconteceu duas
+  vezes, a segunda numa build de release, no momento em que o Android recria a
+  Activity ao voltar do desbloqueio por digital. Perder ripple e materiais do
+  sistema é melhor que repetir aquilo. Reabrir exige validação em aparelho
+  físico, nunca inferência de API.
+- **Médio/amplo (web E tablet nativo):** trilho lateral customizado (`SideNav`).
+  Passou a valer também em iPad e tablet Android quando as Native Tabs saíram —
+  antes a trava era `Platform.OS === 'web'`, porque o `sidebarAdaptable` do
+  UIKit já entregava a sidebar e ligar as duas daria navegação lateral em
+  dobro. Sem concorrente, a trava virou o bug: num iPad a barra flutuante era a
+  única navegação, esticada de ponta a ponta com cinco itens `flex: 1`.
+- **Iconografia:** Ionicons em toda plataforma — consequência direta da
+  remoção acima. Com as Native Tabs, cada aba declarava `sf`/`md` (SF Symbols e
+  Material Symbols reais). Volta junto com elas, não antes.
 - **Landing:** cabeçalho fixo com blur, logotipo à esquerda e o link "Entrar" à direita. Nada mais mora ali. A navegação pelas dobras (Como funciona, Granabô, Hábitos, Benefícios, Segurança, Preços, Dúvidas) fica num botão flutuante no canto inferior direito, em TODAS as larguras, no mesmo espírito do FAB de lançamentos do app. Rodapé em colunas (Produto, Conta, Transparência) com botão de ícone do Instagram.
 
   A fileira de atalhos no topo foi retirada por decisão do autor e não volta. Ela existiu, virou um amontoado de sete botões colados uns nos outros, e depois voltou uma vez condicionada a `ehAmplo`, o que a trouxe de volta inteira no desktop. O rodapé é quem cobre a descoberta das seções para quem prefere links persistentes.

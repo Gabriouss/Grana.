@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -473,30 +473,61 @@ export default function LancamentosScreen() {
   // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado em index.tsx e graficos.tsx.
   // Compra no crédito não aparece aqui — só na aba Crédito — até a fatura ser
   // paga, quando vira uma saída de caixa de verdade (ver lib/data.ts::payCardInvoice).
-  const walletTransactions =
-    (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)).filter(
-      (t) => !isCreditTx(t)
-    );
+  /* Toda esta cadeia era recalculada a cada render — e o render mais frequente
+     desta tela é o da BUSCA, que dispara a cada tecla. Digitar "mercado"
+     refazia sete vezes o filtro de carteira, o filtro de mês, as duas somas e
+     a montagem do mapa de categorias, sobre o histórico inteiro, para produzir
+     resultados idênticos: nada disso depende do texto buscado, só `visible`
+     depende. Agora cada elo tem as dependências que realmente o mudam, e uma
+     tecla só reexecuta o último. */
+  const walletTransactions = useMemo(
+    () =>
+      (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)).filter(
+        (t) => !isCreditTx(t)
+      ),
+    [activeWalletId, transactions]
+  );
 
   // Transações estritamente do mês selecionado
-  const monthTransactions = walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
-  const monthIn = monthTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
-  const monthOut = monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
+  const monthTransactions = useMemo(
+    () => walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth)),
+    [selectedMonth, selectedYear, walletTransactions]
+  );
+
+  const { monthIn, monthOut } = useMemo(() => {
+    let entrada = 0;
+    let saida = 0;
+    /* Uma passada só. Eram três (dois filter + dois reduce) sobre a mesma
+       lista para chegar nos mesmos dois números. */
+    for (const t of monthTransactions) {
+      if (t.type === 'in') entrada += Number(t.amount);
+      else saida += Number(t.amount);
+    }
+    return { monthIn: entrada, monthOut: saida };
+  }, [monthTransactions]);
   const monthBalance = monthIn - monthOut;
 
   // Categorias presentes no mês selecionado, pro filtro por categoria (cada uma com a cor do próprio lançamento).
-  const categoryOptions = Array.from(
-    monthTransactions.reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
-  ).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+  const categoryOptions = useMemo(
+    () =>
+      Array.from(
+        monthTransactions.reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
+      ).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')),
+    [monthTransactions]
+  );
 
   // Filtrado por tipo, categoria e busca textual (descrição ou categoria) — todos dentro do mês selecionado.
   const searchQuery = search.trim().toLowerCase();
-  const visible = monthTransactions.filter((t) => {
-    if (filter !== 'tudo' && t.type !== filter) return false;
-    if (categoryFilter && t.category !== categoryFilter) return false;
-    if (searchQuery && !t.description.toLowerCase().includes(searchQuery) && !t.category.toLowerCase().includes(searchQuery)) return false;
-    return true;
-  });
+  const visible = useMemo(
+    () =>
+      monthTransactions.filter((t) => {
+        if (filter !== 'tudo' && t.type !== filter) return false;
+        if (categoryFilter && t.category !== categoryFilter) return false;
+        if (searchQuery && !t.description.toLowerCase().includes(searchQuery) && !t.category.toLowerCase().includes(searchQuery)) return false;
+        return true;
+      }),
+    [categoryFilter, filter, monthTransactions, searchQuery]
+  );
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -751,30 +782,36 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.xs, borderRadius: radius.sm, borderBottomWidth: 1, borderBottomColor: theme.rule },
   rowHover: { backgroundColor: theme.paperRaised },
   icon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  iconText: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular },
+  iconText: { color: theme.ink, fontSize: type.legenda,
+  lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.regular },
   /* `lineHeight` explícito: sem ele a Neue Machina entrega o leading
      intrínseco dela, curto, e a descendente do título encostava na linha de
      baixo — o que fazia a lista inteira parecer emendada. */
   rowTitle: { color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   rowSub: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), marginTop: 2, fontFamily: fonts.light },
-  rowAmount: { fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  rowAmount: { fontSize: type.apoio,
+  lineHeight: lh(type.apoio, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   rowAmountWrap: { flexDirection: 'row', alignItems: 'baseline' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo,
+  lineHeight: lh(type.titulo, 'titulo'), fontFamily: fonts.regular },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },
   typeBtnIn: { backgroundColor: theme.entradaFundo, borderWidth: 1, borderColor: theme.entradaBorda },
-  typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  typeText: { color: theme.inkFaint, fontSize: type.nota,
+  lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   typeTextOn: { color: theme.ink},
   descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
   amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
+  fieldKey: { color: theme.inkFaint, fontSize: type.apoio,
+  lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  fieldValText: { color: theme.ink, fontSize: type.apoio,
+  lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   dot: { width: 8, height: 8, borderRadius: 4 },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
@@ -791,8 +828,10 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   monthSummaryCol: { flex: 1, alignItems: 'center' },
-  monthSummaryLabel: { color: theme.inkFaint, fontSize: type.legenda, marginBottom: 2, letterSpacing: 0.5, fontFamily: fonts.light },
-  monthSummaryVal: { fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  monthSummaryLabel: { color: theme.inkFaint, fontSize: type.legenda,
+  lineHeight: lh(type.legenda, 'apoio'), marginBottom: 2, letterSpacing: 0.5, fontFamily: fonts.light },
+  monthSummaryVal: { fontSize: type.apoio,
+  lineHeight: lh(type.apoio, 'apoio'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   monthSummaryDivider: { width: 1, height: 24, backgroundColor: theme.rule },
   dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   dateQuickChip: {
@@ -810,7 +849,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.ink + '15',
     borderColor: theme.ink,
   },
-  dateQuickText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  dateQuickText: { color: theme.inkFaint, fontSize: type.legenda,
+  lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
   dateQuickTextActive: { color: theme.ink},
   offlineBanner: {
     flexDirection: 'row',
@@ -823,7 +863,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
-  offlineBannerText: { color: theme.inkFaint, fontSize: type.legenda, flexShrink: 1, fontFamily: fonts.light },
+  offlineBannerText: { color: theme.inkFaint, fontSize: type.legenda,
+  lineHeight: lh(type.legenda, 'apoio'), flexShrink: 1, fontFamily: fonts.light },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -849,7 +890,8 @@ const styles = StyleSheet.create({
   },
   categoryChipActive: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
   categoryChipDot: { width: 7, height: 7, borderRadius: 3.5 },
-  categoryChipText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  categoryChipText: { color: theme.inkFaint, fontSize: type.nota,
+  lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   categoryChipTextActive: { color: theme.ink},
 });
 

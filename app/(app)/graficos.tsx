@@ -22,7 +22,7 @@ import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { fetchTransactions, fetchTransactionsDoPeriodo } from '@/lib/data';
 import { formatMoney, isCreditTx, todayISO, formatDateLabel } from '@/lib/format';
-import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts } from '@/lib/theme';
+import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts, lh } from '@/lib/theme';
 import { prepararFatias } from '@/lib/chart-colors';
 import type { Transaction } from '@/lib/types';
 
@@ -461,10 +461,12 @@ const styles = StyleSheet.create({
   },
   periodoFieldLabel: {
     color: theme.inkFaint,
-    fontSize: type.legenda, fontFamily: fonts.light },
+    fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
   periodoFieldValue: {
     color: theme.ink,
-    fontSize: type.apoio, fontFamily: fonts.regular },
+    fontSize: type.apoio,
+    lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   summaryCard: {
     backgroundColor: theme.paperRaised,
     borderRadius: cardTokens.radius,
@@ -475,10 +477,12 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     color: theme.inkFaint,
-    fontSize: type.nota, fontFamily: fonts.light },
+    fontSize: type.nota,
+    lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   summaryValue: {
     color: theme.ink,
-    fontSize: type.cabecalho, fontFamily: fonts.regular },
+    fontSize: type.cabecalho,
+    lineHeight: lh(type.cabecalho, 'titulo'), fontFamily: fonts.regular },
   donutCard: {
     backgroundColor: theme.paperRaised,
     borderRadius: cardTokens.radius,
@@ -492,7 +496,8 @@ const styles = StyleSheet.create({
   donutTitle: {
     alignSelf: 'flex-start',
     color: theme.ink,
-    fontSize: type.corpo, fontFamily: fonts.regular },
+    fontSize: type.corpo,
+    lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
   donutRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -556,7 +561,8 @@ const styles = StyleSheet.create({
   legendName: {
     flex: 1,
     color: theme.ink,
-    fontSize: type.nota, fontFamily: fonts.regular },
+    fontSize: type.nota,
+    lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.regular },
   /* `minWidth` + `flexShrink: 0`, nunca `width` fixo.
    *
    * Uma primeira versão desta coluna usava `width: 34`. Não cabia: em
@@ -575,9 +581,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: theme.inkSoft,
     fontSize: type.nota,
+    lineHeight: lh(type.nota, 'corpo'),
     fontFamily: fonts.regular,
   },
   legendVal: {
     color: theme.inkFaint,
-    fontSize: type.nota, fontFamily: fonts.light },
+    fontSize: type.nota,
+    lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
 });

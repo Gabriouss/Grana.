@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -278,11 +278,23 @@ export default function ContasScreen() {
   }
 
   // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado em index.tsx, lancamentos.tsx e graficos.tsx.
-  const walletBills = activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId);
+  const walletBills = useMemo(
+    () => (activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId)),
+    [activeWalletId, bills]
+  );
 
   // Contas cujo VENCIMENTO cai no mês selecionado — cada boleto pertence ao mês em que vence, não em que foi criado.
-  const monthBills = walletBills.filter((b) => isSameMonth(b.due_date, selectedYear, selectedMonth));
-  const openTotal = monthBills.filter((b) => b.status !== 'paid').reduce((s, b) => s + Number(b.amount), 0);
+  const monthBills = useMemo(
+    () => walletBills.filter((b) => isSameMonth(b.due_date, selectedYear, selectedMonth)),
+    [selectedMonth, selectedYear, walletBills]
+  );
+  /* Uma passada só, em vez de filter + reduce encadeados: a lista já é
+     percorrida por inteiro nas duas versões, mas a anterior alocava um array
+     intermediário a cada render só pra somar. */
+  const openTotal = useMemo(
+    () => monthBills.reduce((s, b) => (b.status !== 'paid' ? s + Number(b.amount) : s), 0),
+    [monthBills]
+  );
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -452,7 +464,8 @@ export default function ContasScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.paper },
-  subtitle: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
+  subtitle: { color: theme.inkFaint, fontSize: type.apoio,
+  lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
   subtitleRow: { flexDirection: 'row', alignItems: 'baseline' },
   /* Bloco do corpo da tela: reproduz o espaçamento que o ScreenHeader dava
      quando o resumo e o seletor de mês moravam dentro dele. */
@@ -473,16 +486,21 @@ const styles = StyleSheet.create({
   // (canto superior direito do card, respeitando o padding do card) — só que
   // agora fora da árvore da `AppPressable`, ver comentário acima do card.
   botaoOpcoesFlutuante: { position: 'absolute', top: spacing.md, right: spacing.md, pointerEvents: 'box-none' },
-  cardName: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
-  cardCat: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
+  cardName: { color: theme.ink, fontSize: type.corpo,
+  lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
+  cardCat: { color: theme.inkFaint, fontSize: type.legenda,
+  lineHeight: lh(type.legenda, 'apoio'), marginTop: 2, fontFamily: fonts.light },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardAmount: { color: theme.ink, fontSize: type.corpo, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
-  cardDue: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  cardAmount: { color: theme.ink, fontSize: type.corpo,
+  lineHeight: lh(type.corpo, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  cardDue: { color: theme.inkFaint, fontSize: type.legenda,
+  lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
   pillOk: { backgroundColor: theme.rule },
   pillWarn: { borderWidth: 1, borderColor: theme.ruleStrong },
   pillLate: { backgroundColor: theme.ink },
-  pillText: { color: theme.inkSoft, fontSize: type.micro, fontFamily: fonts.light },
+  pillText: { color: theme.inkSoft, fontSize: type.micro,
+  lineHeight: lh(type.micro, 'apoio'), fontFamily: fonts.light },
   // pillLate usa fundo claro (theme.ink) — precisa de texto escuro em vez do
   // pillText claro padrão, senão fica ilegível (claro sobre quase-branco).
   pillLateText: { color: theme.paper},
@@ -491,15 +509,18 @@ const styles = StyleSheet.create({
   fab: { position: 'absolute', right: spacing.xl, width: 52, height: 52, borderRadius: 26, backgroundColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
   fabHover: { opacity: 0.85 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo,
+  lineHeight: lh(type.titulo, 'titulo'), fontFamily: fonts.regular },
   descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
   amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
+  fieldKey: { color: theme.inkFaint, fontSize: type.apoio,
+  lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  fieldValText: { color: theme.ink, fontSize: type.apoio,
+  lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   dot: { width: 8, height: 8, borderRadius: 4 },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },

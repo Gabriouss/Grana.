@@ -1,5 +1,9 @@
 # Impeccable Audit — Grana.
 
+> **A SEÇÃO MAIS RECENTE É "Auditoria: 02/09/2026 (segunda rodada)", NO FIM
+> DO ARQUIVO.** Ela corrige, com evidência, duas notas que a primeira rodada
+> de 02/09 deu alto demais.
+>
 > **ATUALIZADO EM 02/09/2026 — a auditoria de 28/08 abaixo ficou parcialmente
 > desatualizada.** A nota de Conformidade de Plataforma (4/4) e o Veredito
 > logo a seguir descrevem Native Tabs (`expo-router/unstable-native-tabs`)
@@ -601,3 +605,196 @@ regressão passar duas vezes.
 
 Rode `/impeccable audit app` de novo depois dos itens 1 e 2 — são os dois que
 seguram a nota em 15/20.
+
+---
+
+# Auditoria: 02 de setembro de 2026 (segunda rodada)
+
+Escopo: `app/(app)/*` (8 telas), `components/*`, `lib/theme.ts`, `DESIGN.md`.
+Plataformas: `adaptive` · Modo: **Operate**
+Método: leitura de fonte, `tsc --noEmit`, `npm run test:parser`, compilação do
+bundle web pelo Metro, e cálculo próprio de contraste WCAG. Sem simulador nem
+aparelho físico.
+
+> **Nota de método.** Três varreduras paralelas em subagente (acessibilidade,
+> performance, conformidade) morreram no limite de sessão da API. Foram
+> refeitas em thread com greps direcionados, abrindo cada arquivo para
+> confirmar toda suspeita antes de reportar.
+
+## Por que a nota CAIU de 15/20 para 12/20
+
+**Não houve regressão.** A primeira rodada de 02/09 deu notas altas demais
+porque não olhou onde esta olhou. Duas correções de placar, ambas erro meu:
+
+- **Performance 3/4 era overclaim.** Memoizei `index.tsx` e dei a nota sem
+  abrir as outras cinco telas. Quatro delas tinham o defeito idêntico.
+- **Aparência 4/4 era overclaim.** Nunca medi cobertura de `lineHeight` fora
+  do Crédito, nem procurei violação da Only-Font Rule.
+
+## Audit Health Score
+
+| # | Dimensão | Achado | Depois das correções |
+|---|---|---:|---:|
+| 1 | Acessibilidade | **4/4** | **4/4** |
+| 2 | Performance | **2/4** | **3/4** |
+| 3 | Aparência & Tema | **2/4** | **4/4** |
+| 4 | Conformidade de Plataforma | **1/4** | **1/4** |
+| 5 | Adaptividade | **3/4** | **4/4** |
+| **Total** | | **12/20 — Aceitável** | **16/20 — Bom** |
+
+Histórico: 8/20 → 13/20 → 18/20 → 19/20 (28/08, inflada) → 10/20 (01/09) →
+12/20 (02/09, medida com rigor) → **16/20** (02/09, pós-correção).
+
+## Veredito de Conformidade de Plataforma
+
+**Falha, concentrada, e por decisão consciente — inalterada.** iOS e Android
+usam a mesma barra de abas em JavaScript que a web usa, com Ionicons em vez de
+SF Symbols/Material Symbols. É o tell clássico de "app portado de site".
+
+A troca é deliberada e está agora documentada no `DESIGN.md`: as Native Tabs
+causaram tela branca muda numa build de release. Perder ripple e materiais do
+sistema é melhor que repetir aquilo. **Continua 1/4**, e reabrir exige
+validação em aparelho físico — nunca inferência de API.
+
+Fora da navegação a cidadania é boa: `ToggleSwitch` embrulha o `Switch` nativo,
+nenhum gesto do sistema é sequestrado (`grep gestureEnabled` vazio no repo
+inteiro), teclado tratado de forma centralizada no `Sheet.tsx`.
+
+## Achados
+
+### P1 — Only-Font Rule violada, em produção · `CORRIGIDO`
+`app/(app)/index.tsx:1670` tinha `fontFamily: 'monospace'` no estilo `demoFlag`
+— **vivo**, nos badges "exemplo" e "oculto" do cabeçalho da Início. Única
+violação da regra em todo o repositório. Trocado por `fonts.regular`: a largura
+tabular da monoespaçada não fazia falta, são duas palavras fixas.
+
+### P1 — Entrelinha existia em 1 de 8 telas · `CORRIGIDO`
+O `lib/theme.ts` documenta que a Neue Machina tem leading intrínseco curto e
+oferece `lh()` — que vivia em duas telas de auth. A correção de entrelinha do
+Crédito (pedida pelo autor) foi aplicada só na tela apontada.
+
+| tela | `fontSize` | `lineHeight` antes | depois |
+|---|---:|---:|---:|
+| index.tsx | 31 | 1 | 25 |
+| perfil.tsx | 21 | 3 | 20 |
+| lancamentos.tsx | 19 | 4 | 15 |
+| desafios.tsx | 18 | 2 | 18 |
+| contas.tsx | 14 | 1 | 10 |
+| graficos.tsx | 8 | 0 | 8 |
+
+85 estilos, papel escolhido por token e por nome (`corpo` no que quebra em
+várias linhas, `apoio` em rótulo, `valor` em dinheiro, `titulo` em título).
+Rótulo de botão e campo de digitação ficaram de fora de propósito: no botão a
+entrelinha muda a geometria, e em `TextInput` no Android corta o texto.
+
+Validado por script: **114 blocos** conferidos, cada `lineHeight` referenciando
+o `fontSize` do próprio bloco, zero descasado.
+
+### P1 — Memoização aplicada em uma tela, não no padrão · `CORRIGIDO`
+`credito`, `lancamentos`, `contas` e `desafios` tinham **zero** `useMemo`,
+refazendo cadeias de filter/reduce sobre o histórico a cada render.
+
+O pior era `lancamentos.tsx:482-500`: quatro passadas sobre a lista
+(`monthTransactions` → `monthIn` → `monthOut` → `visible`) **a cada tecla
+digitada na busca**, sendo que só `visible` depende do texto buscado. Agora
+cada elo tem as dependências que de fato o mudam, e as duas somas viraram uma
+passada só em vez de dois `filter` + dois `reduce`.
+
+`perfil.tsx` continua com zero `useMemo`, e está **certo**: não tem nenhum
+valor derivado sobre lista. A primeira redação deste achado o incluía — era
+falso positivo.
+
+### P1 — Busca sem paginação em 3 telas · `ABERTO, POR DECISÃO`
+`index.tsx:285`, `graficos.tsx:106`, `desafios.tsx:74` baixam o histórico
+inteiro. **Janelar deixa o saldo ERRADO, não lento** — a conta depende do
+histórico completo. A correção certa é agregação no banco, que exige migração
+validada contra o banco de verdade; a auditoria de 28/08 já tentou e reverteu.
+`perfil.tsx:244,264` e `desafios.tsx:63` já fazem certo com `sinceDays`.
+
+### P2 — Badges travadas em duas colunas · `CORRIGIDO`
+`desafios.tsx` usava `width: '48%'` fixo: duas colunas em qualquer largura, e
+com o teto de conteúdo em 1440px cada badge esticava para ~690px. Agora segue a
+classe de janela — 2 colunas no compacto, 3 no médio, 4 no amplo.
+
+### P2 — Reflow em tela larga · `EM GRANDE PARTE FALSO POSITIVO`
+A primeira redação dizia "6 de 7 telas não refluem", contando quem chama
+`useBreakpoint` diretamente. Verificado depois: **`index.tsx` reflui** via
+`components/WidgetGrid.tsx`, que distribui os cards em `colunas` do
+breakpoint. `graficos.tsx` reflui direto, e as telas legais via
+`LegalDocScreen`.
+
+Das restantes, `contas`, `credito` e `lancamentos` são telas de **lista**
+(`FlatList`) e `perfil` é tela de **ajustes**: coluna única com teto de largura
+é o padrão certo dessas superfícies nas duas plataformas, não defeito. Espalhar
+uma lista de lançamentos em duas colunas seria regressão. Só `desafios` era
+caso real, e foi corrigido acima.
+
+### P3 — DESIGN.md fora de sincronia com o código · `CORRIGIDO`
+- Descrevia Native Tabs no iOS e Android, removidas no `00de222`. Reescrito com
+  o motivo da remoção e a condição pra reabrir.
+- `theme.danger` (#e08a7d) é usado em `credito.tsx` e em 5 pontos de
+  `perfil.tsx` e **não existia no documento**, que afirmava ter uma exceção só
+  de cor. Documentado com a fronteira ("isto vai destruir algo ou já venceu",
+  nunca valor de gasto) e o contraste medido.
+- O código tinha **10 receitas de sombra** contra 5 catalogadas. As 4 novas
+  foram catalogadas, não consolidadas: cada uma cobre um objeto genuinamente
+  flutuante e distinto. O errado era o documento.
+
+### P3 — Não corrigido, registrado
+- `perfil.tsx:970` usa `padding: spacing.xl, gap: spacing.lg` em vez de
+  `screenRhythm` — o drift que o token foi criado pra eliminar. Fica de fora
+  porque mudar o ritmo de uma tela inteira sem poder vê-la é o tipo de
+  alteração que precisa de olho humano.
+- 9 componentes órfãos (~614 linhas), entre eles `FloatingIcon.tsx`, que faz
+  parallax sem checar Reduce Motion. Latente, não ativo — nada o importa.
+
+## Pontos positivos
+
+- **Acessibilidade 4/4, e testada contra falso positivo.** Um scanner apontou 3
+  botões só-de-ícone sem nome; abri os três e os três tinham `<Text>` filho
+  fora da janela do scanner. Zero controle sem nome.
+- **Reduce Motion cobre 100% do código vivo.** O único arquivo que anima sem
+  checar é órfão.
+- **O DESIGN.md não mentiu sobre contraste.** Calculei: faint-kelp dá 6,38:1
+  sobre Deep Petroleum e 5,61:1 sobre Raised Tide, contra os "~6,4 e ~5,6"
+  afirmados. As 8 cores do tema passam AA nas duas superfícies.
+- **Zero tamanho de fonte em px cru** nas 8 telas — tudo pela escala `type`.
+  Zero fonte de sistema. Zero `fontWeight`.
+- Alvos de toque de 36px compensados com `hitSlop={8}` → 52pt, acima dos dois
+  mínimos, com o motivo escrito no código.
+- Listas longas em `FlatList`. Nenhum `.map()` ilimitado dentro de `ScrollView`.
+
+## Padrão sistêmico
+
+Os três achados mais caros têm a mesma forma: **o projeto cria a ferramenta
+certa e a aplica em um lugar só.** `lh()` existia e vivia em 2 telas de auth.
+`useMemo` era padrão em `graficos.tsx` e não saiu de lá. `screenRhythm` foi
+criado pra unificar e `perfil.tsx` ficou fora. Não é falta de conhecimento do
+padrão — é falta de aplicá-lo além da tela que o motivou. Foi exatamente o que
+esta sessão fez no Crédito, e o que esta rodada corrigiu.
+
+## Verificações executadas
+
+- `npx tsc --noEmit`: **passou** após cada etapa.
+- `npm run test:parser`: **passou** — corpus completo, 94/94 nas notas de
+  release, 32/32 em sincronia.
+- Bundle web compilado pelo Metro: **HTTP 200**, resolução e transformação
+  reais, mais fortes que `tsc` sozinho.
+- **Ordem de hooks verificada por script nas 8 telas.** Isto pegou um bug que
+  eu mesmo tinha acabado de introduzir: em `desafios.tsx` o `useBreakpoint` e o
+  `useMemo` novos ficaram DEPOIS do `if (loading || !state) return`, o que
+  quebraria em runtime com "rendered more hooks than during the previous
+  render". `tsc` não pega isso. Movidos pra antes da guarda, lendo de
+  `state?.badges`.
+- Sem validação visual: não há login disponível nesta sessão.
+
+## Ações recomendadas
+
+1. **[P1, precisa do banco]** Agregação no banco pro saldo, pra tirar a busca
+   sem paginação de Início/Gráficos/Desafios sem quebrar a conta.
+2. **[P1, precisa de hardware]** Reimplementar Native Tabs e validar em
+   aparelho físico. Resolve junto a iconografia por plataforma.
+3. **[P3]** `/impeccable layout` — `perfil.tsx` no `screenRhythm`, com olho
+   humano confirmando.
+4. **[P3]** Remover os 9 componentes órfãos.
+5. **[final]** `/impeccable polish` depois de 1 e 2.

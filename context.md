@@ -765,3 +765,59 @@ Verificações: `npx tsc --noEmit`, `git diff --check` e `npm run test:parser`
 completo aprovados. Sem validação visual em aparelho ou navegador nesta
 sessão — não há login disponível aqui, então as duas mudanças são de leitura
 de estilo, não de observação da tela renderizada.
+
+## Sessão de 02/09/2026 - segunda auditoria e correções
+
+`/impeccable audit` rodado de novo, com mais rigor que a rodada anterior do
+mesmo dia. Nota medida: 12/20; depois das correções: 16/20. Relatório completo
+em `IMPECCABLE_AUDIT.md`, seção "Auditoria: 02/09/2026 (segunda rodada)".
+
+**A nota caiu de 15 para 12 sem haver regressão** — a rodada anterior tinha
+dado alto demais em duas dimensões: eu memoizei só a Início e dei Performance
+3/4 sem abrir as outras cinco telas, e dei Aparência 4/4 sem nunca medir
+cobertura de entrelinha fora do Crédito.
+
+Corrigido:
+
+- **Only-Font Rule violada em produção.** `index.tsx:1670` tinha
+  `fontFamily: 'monospace'` nos badges "exemplo"/"oculto" do cabeçalho da
+  Início — única violação no repositório inteiro. Trocado por `fonts.regular`.
+- **Entrelinha em 85 estilos, nas 6 telas restantes.** O `lh()` existia e vivia
+  em duas telas de auth; a correção do Crédito tinha ficado só na tela apontada
+  pelo autor. Rótulo de botão e campo de digitação ficaram de fora de propósito.
+  Validado por script: 114 blocos, cada `lineHeight` casando com o `fontSize`
+  do próprio bloco.
+- **Memoização em `credito`, `lancamentos`, `contas` e `desafios`**, que tinham
+  zero. O pior era `lancamentos`: quatro passadas sobre a lista a cada tecla
+  digitada na busca, sendo que só a última depende do texto. `perfil` segue em
+  zero e está certo — não tem valor derivado sobre lista.
+- **Badges do Desafios** saíram de `width: '48%'` fixo (duas colunas em
+  qualquer largura, ~690px cada num monitor) pra largura por classe de janela.
+- **DESIGN.md reconciliado**: Native Tabs (removidas), `theme.danger` (existia
+  no código e não no documento) e o vocabulário de sombra (10 receitas no
+  código contra 5 catalogadas — as 4 novas foram catalogadas, não consolidadas).
+
+Dois erros meus, pegos e corrigidos dentro da própria sessão, que valem registro:
+
+1. O primeiro script de entrelinha iterava sobre posições calculadas no texto
+   original enquanto mutava a string — todas as inserções depois da primeira
+   caíam deslocadas. `tsc` passou mesmo assim. Revertido e refeito inserindo de
+   trás pra frente, com validador conferindo bloco a bloco.
+2. Em `desafios.tsx` coloquei `useBreakpoint` e `useMemo` DEPOIS do
+   `if (loading || !state) return`, o que quebraria em runtime com "rendered
+   more hooks than during the previous render". `tsc` não pega isso. Escrevi um
+   verificador de ordem de hook que roda nas 8 telas e agora acusa zero.
+
+Achados deixados abertos, com motivo: busca sem paginação (janelar deixa o
+saldo errado, exige agregação no banco), navegação/ícones nativos (exige
+aparelho físico), `perfil.tsx` fora do `screenRhythm` e 9 componentes órfãos.
+
+Um achado da primeira redação era **falso positivo**: "6 de 7 telas não
+refluem". A Início reflui via `WidgetGrid`, e `contas`/`credito`/`lancamentos`
+são telas de lista e `perfil` é tela de ajustes — coluna única com teto de
+largura é o padrão certo dessas superfícies, não defeito.
+
+Verificações: `tsc --noEmit`, `test:parser` completo, bundle web compilando no
+Metro (HTTP 200) e verificador de ordem de hook nas 8 telas. Sem validação
+visual — não há login nesta sessão. Nenhuma build disparada; `app.json` em
+1.4.1.
