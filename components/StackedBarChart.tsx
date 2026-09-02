@@ -81,7 +81,16 @@ export default function StackedBarChart({
 
       {/* SVG Canvas com Barras */}
       <View style={{ height, width: '100%' }}>
-        <Svg width={containerWidth} height={height}>
+        {/* O desenho em si é decorativo pro leitor de tela: quem carrega a
+            informação são os botões de coluna (logo abaixo) e a lista de
+            categorias. Sem esconder, o SVG anuncia nós soltos de eixo e
+            rótulo no meio da navegação. */}
+        <Svg
+          width={containerWidth}
+          height={height}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           {/* Linha guia de base */}
           <Line
             x1={paddingX}
@@ -157,13 +166,23 @@ export default function StackedBarChart({
           })}
         </Svg>
 
-        {/* Áreas de Toque Transparentes por Cima das Colunas */}
+        {/* Áreas de Toque Transparentes por Cima das Colunas.
+            São a ÚNICA forma de selecionar um período, e estavam sem nome
+            nenhum: no leitor de tela viravam alvos anônimos, impossíveis de
+            distinguir. O rótulo NÃO inclui o valor de propósito — quem
+            anuncia dinheiro é a lista abaixo, que passa por `PrivacyValue` e
+            respeita o modo privacidade; repetir o total aqui vazaria o valor
+            justamente pelo canal que o modo privacidade fecha. */}
         <View style={[StyleSheet.absoluteFill, { flexDirection: 'row' }]}>
-          {columns.map((_, idx) => (
+          {columns.map((col, idx) => (
             <AppPressable
               key={`touch-${idx}`}
               style={{ flex: 1 }}
               onPress={() => setSelectedColumnIndex(idx)}
+              accessibilityRole="button"
+              accessibilityLabel={col.sublabel ? `${col.label}, ${col.sublabel}` : col.label}
+              accessibilityHint="Mostra o detalhamento por categoria deste período."
+              accessibilityState={{ selected: selectedColumnIndex === idx }}
             />
           ))}
         </View>

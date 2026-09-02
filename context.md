@@ -607,3 +607,161 @@ ficava branco e nenhum erro chegava ao JavaScript.
 - `app_release` foi atualizada para `1.4.1`, com o APK da build
   `b2605153-7cdf-4903-986f-80c14d14caf4`, expiração em 15/09/2026 e a nota
   `Corrige tela branca apos desbloqueio por digital`.
+
+## Sessão de 02/09/2026 - correções da auditoria `/impeccable audit app`
+
+Rodada de auditoria nas cinco dimensões (acessibilidade, performance,
+aparência, conformidade de plataforma, adaptividade) sobre `app/(app)/*` e os
+componentes compartilhados, seguida das correções. Nota saiu de 10/20 para
+15/20. O relatório completo, com o estado achado a achado, está em
+`IMPECCABLE_AUDIT.md`, na seção "Auditoria: 02 de setembro de 2026".
+
+Corrigido:
+
+- **Gráficos eram mudos para leitor de tela.** `PieChart` virou um único
+  elemento com `accessibilityRole="image"` e a composição lida por extenso
+  ("Gastos por categoria: Mercado 32%, ..."); as áreas de toque das colunas do
+  `StackedBarChart`, que são a única forma de selecionar um período, ganharam
+  papel, rótulo, dica e estado de seleção. Os dois `<Svg>` saíram da árvore de
+  acessibilidade para não anunciar nós soltos de fatia e eixo. Os rótulos das
+  colunas não incluem valor de propósito: quem anuncia dinheiro é a lista
+  abaixo, que passa por `PrivacyValue` e respeita o modo privacidade.
+- **`app/(app)/index.tsx` não tinha nenhum `useMemo`** — 1760 linhas, 44
+  `useState`, e todos os derivados (`pieData`, `byCategory`, totais,
+  comprometimento futuro, safe-to-spend) recalculados a cada tecla digitada,
+  sobre o histórico inteiro. Passe completo de memoização; as contas subiram
+  para antes do `if (loading)`, porque hook não pode vir depois de early
+  return. `PieChart`, `FutureTimelineChart` e `LineAreaChart` viraram `memo`.
+  `StackedBarChart` não, porque tem estado interno de seleção.
+- **Tablet nativo nunca ganhava o trilho lateral.** `temBarraLateral` exigia
+  `Platform.OS === 'web'` — trava que fazia sentido quando o `sidebarAdaptable`
+  das Native Tabs entregava a sidebar do sistema no iPad (ligar as duas daria
+  navegação lateral em dobro). Com as Native Tabs removidas na sessão
+  anterior, não há concorrente e a trava virou o bug: num iPad a barra
+  flutuante era a única navegação, esticada de ponta a ponta com cinco itens
+  `flex: 1`. Agora vale `classe !== 'compacto' && (web || altura >= 600)`. O
+  piso de altura mira tablet e não celular deitado — iPhone em paisagem tem
+  ~844 de largura mas ~400 de altura; tablet tem 744+ nos dois eixos.
+- **`fontVariant: ['tabular-nums']` faltando** nos campos de digitação de
+  valor de Início, Contas, Lançamentos e Crédito, contra a regra do próprio
+  projeto — e justamente onde a dança de dígitos mais aparece.
+- Comentários que ainda descreviam o mundo pré-`00de222` foram corrigidos
+  (`lib/tab-bar.ts`, `components/SideNav.tsx`, o doc de `Breakpoint`):
+  `SideNav` não é mais "exclusivo da web larga".
+
+Deixado aberto de propósito, com o motivo registrado no relatório:
+
+- **Histórico sem paginação em Início, Gráficos e Desafios.** Janelar a busca
+  não deixa a tela mais lenta, deixa o SALDO ERRADO — a conta depende do
+  histórico completo. A correção certa é agregação no banco, que exige
+  migração aplicada e validada contra o banco de verdade. A auditoria de 28/08
+  já tentou e reverteu pelo mesmo motivo.
+- **Navegação e ícones nativos** (nota 1/4 em conformidade de plataforma).
+  Reimplementar Native Tabs exige validação em aparelho físico antes de ir pra
+  loja — foi a falta disso que deixou a tela branca passar duas vezes.
+- **Reflow em telas largas** nas seis telas que ainda são layout de celular
+  esticado. É decisão de design por tela, não correção pontual — e agora com
+  mais superfície, já que o trilho lateral passou a aparecer em tablet.
+
+Verificações: `npx tsc --noEmit` limpo após cada etapa e `npm run test:parser`
+completo aprovado (34.093 checagens do corpus mais OFX, dedup de CSV, limite
+de cartão, paginação, recorrência, sequência, relatório, Score, guardas de
+schema e `sync-parser` 26/26 em sincronia). Nenhuma build disparada nesta
+sessão e `app.json` segue em `1.4.1` — as mudanças são todas de código do app,
+sem migração de banco.
+
+## Sessão de 02/09/2026 - guarda ortográfica das notas de versão
+
+A 1.4.1 publicou "Corrige tela branca **apos** desbloqueio por digital" no
+pop-up de novidades, sem acento, na cara de todo mundo que atualizou.
+
+A causa não foi distração, era estrutural: os commits deste repositório são
+escritos sem acento por convenção ("fix: estabiliza navegacao apos
+biometria"); quando o `eas build` roda sem `--message`, o EAS preenche a
+mensagem do build com a mensagem do commit; o `eas-build-webhook` copia essa
+mensagem verbatim para `app_release.notes`; e o app renderiza `notes` sem
+tocar em nada. O caminho padrão do pipeline publicava texto interno como copy
+de produto — ia acontecer de novo.
+
+- `lib/notas-release.ts` é a guarda. Ela **reprova**, não conserta: acento é
+  ambíguo demais em português para adivinhar ("esta"/"está", "e"/"é",
+  "pais"/"país") e um conserto errado é pior que o erro original.
+- Duas camadas de detecção. Um dicionário de palavras que sem acento não
+  existem, e regras por TERMINAÇÃO (`-ao`, `-oes`, `-encia`, `-avel`,
+  `-ivel`, `-ario`, `-orio`...), que são o que dá garantia de verdade: lista
+  envelhece, "nenhuma palavra termina em -cao sem til" continua valendo para
+  palavras que ninguém previu. `-oria` e `-aria` ficaram de fora de propósito
+  — "categoria", "padaria" e "faria" estão certas sem acento.
+- Também reprova nota que começa com prefixo de commit (`fix:`, `feat:`...),
+  que é o sinal de que o build rodou sem `--message`. Vale mesmo quando o
+  texto está ortograficamente perfeito: continua sendo changelog técnico.
+- Três pontos de uso: `npm run notas:check "<mensagem>"` antes do build;
+  a Edge Function `eas-build-webhook` como rede de segurança; e
+  `__tests__/corpus-notas-release.ts` dentro de `npm run test:parser`.
+- Reprovada no webhook, a versão é publicada **mesmo assim, sem notas**. O
+  aviso de atualização da regra 5 do AGENTS.md não pode depender de
+  ortografia: perder o pop-up é arranhão, perder o aviso de versão faz a
+  build inteira passar despercebida. A recusa vai pro log da função e pro
+  corpo da resposta, que aparece na tela de webhooks do EAS.
+- A cópia dentro da Edge Function (Deno não importa do app) entrou no
+  `__tests__/sync-parser.js`, que passou a comparar dois pares de arquivos em
+  vez de um. Verificado que ele reprova de verdade quando as cópias divergem.
+- Regra 6 nova no `AGENTS.md`; a antiga regra 6 (ler o `context.md`) virou 7.
+- Metade do corpus de teste é de FALSO POSITIVO ("categoria", "padaria",
+  "faria", "moradia"). Um verificador de acento que acusa palavra certa trava
+  build por frase correta, perde a confiança e alguém desliga — e aí volta a
+  passar erro de verdade.
+
+**Pendente, precisa de service_role:** o texto errado ainda está no banco.
+Esta sessão só tem a chave anon. Rodar no SQL editor do Supabase:
+
+```sql
+update app_release
+   set notes = 'Corrige tela branca após desbloqueio por digital',
+       updated_at = now()
+ where id = 1 and version = '1.4.1';
+```
+
+Quem já abriu o app e viu o pop-up não vai vê-lo de novo (o
+`grana_novidades_versao_vista` local já está em 1.4.1); a correção vale para
+quem ainda não atualizou ou não abriu.
+
+Verificações: `npx tsc --noEmit` limpo e `npm run test:parser` completo
+aprovado — 94/94 nas notas de release e 32/32 em sincronia. Nenhuma build
+disparada; `app.json` segue em `1.4.1`.
+
+## Sessão de 02/09/2026 - carrossel de ações e entrelinha da tela de Crédito
+
+Dois pedidos do autor, a partir de prints do app em produção.
+
+**Ações da Início voltaram a deslizar.** Os quatro botões ("Colar
+comprovante", "Importar extrato", "Escanear nota", "Lançamento por voz")
+estavam empilhados em duas fileiras. O `b34be61` (passe de auditoria) trocou
+o `ScrollView horizontal` por `flexWrap: 'wrap'` e não atualizou o comentário
+logo acima, que continuava descrevendo a rolagem — código e comentário
+estavam se contradizendo desde então. Revertido para o `ScrollView
+horizontal` original; o `minHeight: touchTarget` que veio no mesmo commit
+ficou, porque é alvo de toque e não layout.
+
+**Entrelinha da tela de Crédito.** A tela tinha 31 estilos de texto com
+`fontSize` e apenas 1 com `lineHeight`. O `lib/theme.ts` já documenta por que
+isso embola: a Neue Machina tem leading intrínseco curto, então `<Text>` sem
+`lineHeight` explícito sai com as linhas quase encostadas — e existe o helper
+`lh(tamanho, papel)` justamente pra isso, usado até então só em duas telas de
+auth.
+
+- 22 estilos passaram a usar `lh()`, pelo papel do texto: `corpo` (1.45) no
+  que quebra em duas linhas de verdade, `apoio` (1.4) em rótulo e metadado,
+  `valor` (1.15) em dinheiro, `titulo` (1.25) no título de folha.
+- Ficaram de fora de propósito: rótulos de botão (mudar a caixa de texto muda
+  a geometria do botão) e campos de digitação (`lineHeight` em `TextInput` no
+  Android corta o texto verticalmente).
+- `invoiceInfo` ganhou `gap: 2`. Era o único bloco empilhado da tela sem folga
+  nenhuma: "Total em Faturas (Todos os Cartões)" quebra em duas linhas e a
+  segunda encostava no "R$ 0,00" logo abaixo. Os vizinhos já tinham folga
+  (`cardIdentidade` 2, `cardMidRow` 2, `cardBottomRow` 4, `txInfo` 2).
+
+Verificações: `npx tsc --noEmit`, `git diff --check` e `npm run test:parser`
+completo aprovados. Sem validação visual em aparelho ou navegador nesta
+sessão — não há login disponível aqui, então as duas mudanças são de leitura
+de estilo, não de observação da tela renderizada.

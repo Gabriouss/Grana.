@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -419,46 +419,76 @@ export default function InicioScreen() {
     }, [load, pieAnim, reduzirMovimento])
   );
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={theme.ink} />
-      </View>
-    );
-  }
+  /* ── Valores derivados ──────────────────────────────────────────────────
+     Ficam ANTES do `if (loading)` porque agora são `useMemo`, e hook não
+     pode ficar depois de um return antecipado. Antes eram consts soltas aqui
+     embaixo, recalculadas a cada render — inclusive a cada tecla digitada num
+     campo de modal, sobre o histórico de lançamentos INTEIRO (a busca desta
+     tela não pagina; ver IMPECCABLE_AUDIT.md). Com 5 anos de uso importados
+     de outro app, isso é a diferença entre a tela responder e engasgar.
+     `graficos.tsx` já fazia assim; esta tela era a exceção. */
 
   // Views da Home respeitam a carteira ativa — "Total" mostra tudo, uma
   // carteira específica filtra pelo wallet_id gravado no lançamento/conta.
   // Mesmo filtro que app/(app)/graficos.tsx já usa.
-  const walletTransactions =
-    activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId);
-  const walletBills = activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId);
+  const walletTransactions = useMemo(
+    () => (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)),
+    [activeWalletId, transactions]
+  );
+  const walletBills = useMemo(
+    () => (activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId)),
+    [activeWalletId, bills]
+  );
   // `createGoal` (mais abaixo) já grava o `wallet_id` da carteira ativa no
   // momento da criação — os cofrinhos são pensados como algo por carteira,
   // igual lançamento/conta/cartão. Sem este filtro, o "Livre para Gastar" de
   // uma carteira descontava o valor guardado em cofrinhos de OUTRA carteira.
-  const walletGoals = activeWalletId === 'total' ? goals : goals.filter((g) => g.wallet_id === activeWalletId);
+  const walletGoals = useMemo(
+    () => (activeWalletId === 'total' ? goals : goals.filter((g) => g.wallet_id === activeWalletId)),
+    [activeWalletId, goals]
+  );
   // Compra no crédito só vira saída de caixa quando a fatura é paga — some
   // do saldo/fluxo/orçamento até lá (ver lib/wallets.ts::calcularSaldosWallets).
   // walletTransactions continua com tudo, inclusive crédito, pro CreditSummaryCard.
-  const walletCashTransactions = walletTransactions.filter((t) => !isCreditTx(t));
+  const walletCashTransactions = useMemo(
+    () => walletTransactions.filter((t) => !isCreditTx(t)),
+    [walletTransactions]
+  );
 
-  const safeToSpend = calcularSafeToSpend(walletCashTransactions, walletBills, walletGoals);
+  const safeToSpend = useMemo(
+    () => calcularSafeToSpend(walletCashTransactions, walletBills, walletGoals),
+    [walletCashTransactions, walletBills, walletGoals]
+  );
   // `walletTransactions`, não `walletCashTransactions`: uma parcela de
   // compra no crédito É um comprometimento futuro de verdade (a fatura vai
   // vencer), mesmo não sendo saída de caixa HOJE — só essa projeção (e não o
   // saldo atual) precisa enxergar o crédito, por isso não reaproveita a
   // mesma lista "só caixa" usada acima.
-  const comprometimentoFuturo = projetarComprometimentoFuturo(walletTransactions, walletBills);
-  const sugestaoEvolucao = diagnostico
-    ? sugerirEvolucaoArquetipo(walletCashTransactions, walletBills, budgets, diagnostico.arquetipo.id)
-    : null;
+  const comprometimentoFuturo = useMemo(
+    () => projetarComprometimentoFuturo(walletTransactions, walletBills),
+    [walletTransactions, walletBills]
+  );
+  const sugestaoEvolucao = useMemo(
+    () =>
+      diagnostico
+        ? sugerirEvolucaoArquetipo(walletCashTransactions, walletBills, budgets, diagnostico.arquetipo.id)
+        : null,
+    [diagnostico, walletCashTransactions, walletBills, budgets]
+  );
   const arquetipoSugerido = sugestaoEvolucao?.mudou ? ARQUETIPOS[sugestaoEvolucao.sugeridoId] : null;
 
   // Transações estritamente do mês selecionado
-  const monthTransactions = walletCashTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth));
-  const totalIn = monthTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
-  const totalOut = monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
+  const monthTransactions = useMemo(
+    () => walletCashTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth)),
+    [walletCashTransactions, selectedYear, selectedMonth]
+  );
+  const { totalIn, totalOut } = useMemo(
+    () => ({
+      totalIn: monthTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0),
+      totalOut: monthTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0),
+    }),
+    [monthTransactions]
+  );
   const flowSummary =
     chartView === 'in'
       ? { text: `+ R$ ${formatMoney(totalIn)}`, color: theme.up }
@@ -466,42 +496,67 @@ export default function InicioScreen() {
       ? { text: `− R$ ${formatMoney(totalOut)}`, color: theme.down }
       : { text: `saldo ${totalIn - totalOut >= 0 ? '+' : '−'} R$ ${formatMoney(Math.abs(totalIn - totalOut))}`, color: theme.inkFaint };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dueThisWeek = walletBills
-    .filter((b) => {
-      if (b.status === 'paid') return false;
-      const diffDays = Math.round((new Date(b.due_date + 'T00:00:00').getTime() - today.getTime()) / 86400000);
-      return diffDays >= 0 && diffDays <= 6;
-    })
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  /* `today` entra no memo em vez de ser recalculado a cada render: a tela
+     recarrega `bills` a cada foco (useFocusEffect → load()), então a virada
+     de dia sempre chega junto com dado novo. */
+  const dueThisWeek = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return walletBills
+      .filter((b) => {
+        if (b.status === 'paid') return false;
+        const diffDays = Math.round((new Date(b.due_date + 'T00:00:00').getTime() - today.getTime()) / 86400000);
+        return diffDays >= 0 && diffDays <= 6;
+      })
+      .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  }, [walletBills]);
 
-  const byCategory: Record<string, { amount: number; color: string }> = {};
-  monthTransactions
-    .filter((t) => t.type === 'out')
-    .forEach((t) => {
-      if (!byCategory[t.category]) byCategory[t.category] = { amount: 0, color: t.color };
-      byCategory[t.category].amount += Number(t.amount);
-    });
+  /* Gasto por categoria do mês. Alimenta DUAS seções — o donut e a barra de
+     progresso de cada orçamento —, por isso é memo próprio em vez de ficar
+     dentro do cálculo do donut. */
+  const byCategory = useMemo(() => {
+    const acc: Record<string, { amount: number; color: string }> = {};
+    monthTransactions
+      .filter((t) => t.type === 'out')
+      .forEach((t) => {
+        if (!acc[t.category]) acc[t.category] = { amount: 0, color: t.color };
+        acc[t.category].amount += Number(t.amount);
+      });
+    return acc;
+  }, [monthTransactions]);
+
   /* Mesmo tratamento do donut de Gráficos: paleta validada por nome de
      categoria e cauda dobrada em "Outros", com teto de seis fatias. */
-  const pieData: PieSlice[] = prepararFatias(
-    Object.entries(byCategory).map(([name, info]) => ({
-      name,
-      color: info.color,
-      value: totalOut ? Math.round((info.amount / totalOut) * 100) : 0,
-    }))
+  const pieData: PieSlice[] = useMemo(
+    () =>
+      prepararFatias(
+        Object.entries(byCategory).map(([name, info]) => ({
+          name,
+          color: info.color,
+          value: totalOut ? Math.round((info.amount / totalOut) * 100) : 0,
+        }))
+      ),
+    [byCategory, totalOut]
   );
 
-
   // Quick categories ordered by usage
-  const expenseCounts: Record<string, number> = {};
-  transactions.filter((t) => t.type === 'out').forEach((t) => {
-    expenseCounts[t.category] = (expenseCounts[t.category] || 0) + 1;
-  });
-  const quickCategories = CATEGORIES.filter((c) => c.name !== 'Salário')
-    .slice()
-    .sort((a, b) => (expenseCounts[b.name] || 0) - (expenseCounts[a.name] || 0));
+  const quickCategories = useMemo(() => {
+    const expenseCounts: Record<string, number> = {};
+    transactions.filter((t) => t.type === 'out').forEach((t) => {
+      expenseCounts[t.category] = (expenseCounts[t.category] || 0) + 1;
+    });
+    return CATEGORIES.filter((c) => c.name !== 'Salário')
+      .slice()
+      .sort((a, b) => (expenseCounts[b.name] || 0) - (expenseCounts[a.name] || 0));
+  }, [transactions]);
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={theme.ink} />
+      </View>
+    );
+  }
 
   function openTxModal(type: TxType, prefillCat?: string) {
     setEditingTxId(null);
@@ -1223,7 +1278,11 @@ export default function InicioScreen() {
             }}
             collapsable={false}
           >
-          <View style={styles.smartActionsRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.smartActionsRow}
+          >
           <AppPressable
             style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
             onPress={() => setPasteModalOpen(true)}
@@ -1259,7 +1318,7 @@ export default function InicioScreen() {
               setPasteModalOpen(true);
             }}
           />
-          </View>
+          </ScrollView>
           </View>
         </FadeIn>
 
@@ -1658,7 +1717,12 @@ const styles = StyleSheet.create({
   },
   quickChipHover: { backgroundColor: theme.hover },
   quickChipText: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.regular },
-  smartActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  /* Sem `flexWrap`: a fileira desliza, não empilha. Um passe de auditoria
+     (b34be61) trocou isto por `flexWrap: 'wrap'` e os quatro botões viraram
+     duas fileiras empilhadas, empurrando todo o resto da Início para baixo —
+     revertido a pedido do autor. O `paddingRight` é o respiro do fim da
+     rolagem, pra o último botão não colar na borda da tela. */
+  smartActionsRow: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.lg },
   smartActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1729,7 +1793,7 @@ const styles = StyleSheet.create({
   descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },

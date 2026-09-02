@@ -81,7 +81,8 @@ export type Breakpoint = {
   ehCompacto: boolean;
   ehMedio: boolean;
   ehAmplo: boolean;
-  /** true apenas na web de `medio` para cima: usa o SideNav customizado. */
+  /** `medio` para cima: usa o SideNav customizado. No nativo exige também
+      altura >= 600, pra pegar tablet e não celular deitado — ver useBreakpoint. */
   temBarraLateral: boolean;
   /** Colunas sugeridas para grades de cards. */
   colunas: 1 | 2 | 3;
@@ -136,12 +137,26 @@ export function useBreakpoint(): Breakpoint {
     ehCompacto: classe === 'compacto',
     ehMedio: classe === 'medio',
     ehAmplo: classe === 'amplo',
-    /* Continua só na web de propósito, e esta é a única trava de plataforma
-       que sobrou aqui. No iOS e no Android quem adapta a navegação em tela
-       larga é o sistema: `sidebarAdaptable` nas Native Tabs entrega a sidebar
-       do iPad. Ligar o trilho customizado junto daria DUAS navegações
-       laterais na mesma tela. */
-    temBarraLateral: Platform.OS === 'web' && classe !== 'compacto',
+    /* Já foi `Platform.OS === 'web' && classe !== 'compacto'`, e a
+       justificativa era real na época: no iPad quem entregava a sidebar era o
+       `sidebarAdaptable` das Native Tabs, e ligar o trilho customizado junto
+       daria DUAS navegações laterais na mesma tela.
+
+       As Native Tabs foram removidas (tela branca pós-biometria, ver o
+       histórico em `app/(app)/_layout.tsx`), então não existe mais sidebar do
+       sistema pra competir — e a trava virou o problema: num iPad ou tablet
+       Android a barra flutuante passou a ser a única navegação, esticada de
+       ponta a ponta com cinco itens `flex: 1` numa tela de 1024pt+. É o
+       "phone bottom-bar num tablet" que o Material cita como erro.
+
+       O piso de altura existe pra mirar TABLET e não celular deitado: um
+       iPhone em paisagem passa dos 768 de largura (~844) mas tem ~400 de
+       altura, enquanto qualquer tablet tem 744+ nos dois eixos em qualquer
+       orientação. Trocar a navegação do celular ao girar a tela seria uma
+       mudança de comportamento que ninguém pediu e que não foi validada em
+       aparelho — fica de fora até alguém ver rodando. Na web o critério
+       segue só a largura, exatamente como era antes. */
+    temBarraLateral: classe !== 'compacto' && (Platform.OS === 'web' || height >= 600),
     colunas: classe === 'amplo' ? 3 : classe === 'medio' ? 2 : 1,
   };
 }

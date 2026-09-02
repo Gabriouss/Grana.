@@ -44,8 +44,11 @@ export default function SideNav({
 }) {
   const { ehAmplo } = useBreakpoint();
   const mostrarRotulos = ehAmplo;
-  /* O SideNav é exclusivo da web larga. Os insets permanecem aqui porque a
-     web instalada/PWA também pode ocupar uma janela edge-to-edge. */
+  /* Vale em janela larga de qualquer plataforma — web e, desde a remoção das
+     Native Tabs, também tablet nativo (ver `temBarraLateral` em
+     lib/breakpoints.ts). Os insets importam nos dois casos: a web
+     instalada/PWA ocupa janela edge-to-edge, e no tablet o inset esquerdo
+     cobre o notch em paisagem. */
   const insets = useSafeAreaInsets();
 
   return (

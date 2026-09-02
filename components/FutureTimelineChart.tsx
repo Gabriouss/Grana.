@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
@@ -13,7 +13,7 @@ const TRACK_HEIGHT = 84;
  * já lançadas) para os próximos meses — Épico 2 do PLANO_DE_EVOLUCAO.md.
  * Barra empilhada: base = contas recorrentes, topo = parcelas futuras.
  */
-export default function FutureTimelineChart({ meses }: { meses: MesProjetado[] }) {
+function FutureTimelineChart({ meses }: { meses: MesProjetado[] }) {
   const maxVal = Math.max(...meses.map((m) => m.total), 1);
 
   const progress = useRef(new Animated.Value(0)).current;
@@ -103,3 +103,7 @@ const styles = StyleSheet.create({
   legendText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   totalText: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center', fontFamily: fonts.light },
 });
+
+/* `memo` pelo mesmo motivo do PieChart: a Início re-renderiza por estado que
+   não tem relação com a projeção, e `meses` já chega memoizado de lá. */
+export default memo(FutureTimelineChart);

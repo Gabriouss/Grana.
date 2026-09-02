@@ -770,7 +770,7 @@ const styles = StyleSheet.create({
   descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },

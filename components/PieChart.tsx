@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Path, G, Text as SvgText } from 'react-native-svg';
 import { theme, fonts } from '@/lib/theme';
@@ -88,7 +89,7 @@ const VIEW_MARGIN = 24;
 const VIEW_BOX = `${-VIEW_MARGIN} ${-VIEW_MARGIN} ${100 + VIEW_MARGIN * 2} ${100 + VIEW_MARGIN * 2}`;
 
 /** Donut "explodido" com rótulos de porcentagem sempre por fora do anel — mesma lógica do protótipo web. */
-export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?: number }) {
+function PieChart({ data, size = 216 }: { data: PieSlice[]; size?: number }) {
   if (data.length === 0) return null;
 
   const cx = 50, cy = 50, innerR = 22, outerR = 40, labelR = outerR + 8;
@@ -159,9 +160,30 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
      revertido. O anel já carrega a composição, e o buraco é respiro, não
      espaço a ser preenchido. */
 
+  /* Leitor de tela: um SVG de fatias não diz nada sozinho — sem isto, o
+     donut simplesmente não existe pra quem usa VoiceOver/TalkBack, e ele
+     carrega justamente a informação central do app ("pra onde foi o
+     dinheiro"). O gráfico inteiro vira UM elemento com a composição lida por
+     extenso, e as fatias somem da árvore de acessibilidade pra não anunciar
+     nós soltos e sem sentido no meio. */
+  const resumoAcessivel = slices
+    .map(({ seg, pct }) => `${seg.name} ${Math.round(pct)}%`)
+    .join(', ');
+
   return (
-    <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size} viewBox={VIEW_BOX}>
+    <View
+      style={{ width: size, height: size }}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Gastos por categoria: ${resumoAcessivel}.`}
+    >
+      <Svg
+        width={size}
+        height={size}
+        viewBox={VIEW_BOX}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         {slices.map(({ seg, d, labelX, labelY, mid, anchor, pct }) => {
           const cabe =
             pct >= MIN_PCT_ROTULO &&
@@ -197,3 +219,9 @@ export default function PieChart({ data, size = 216 }: { data: PieSlice[]; size?
 
 
 const styles = StyleSheet.create({});
+
+/* `memo` porque o donut refaz trigonometria de todas as fatias a cada render,
+   e as telas que o usam (Início, Gráficos) re-renderizam por motivos que não
+   têm nada a ver com ele — uma tecla digitada num modal, por exemplo. Só vale
+   porque quem chama já passa `data` memoizado dos dois lados. */
+export default memo(PieChart);

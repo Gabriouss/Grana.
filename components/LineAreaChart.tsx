@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { theme, radius, spacing, type, fonts } from '@/lib/theme';
@@ -32,7 +32,7 @@ function passoRedondo(maxValor: number, divisoes: number): number {
   return passo * pot;
 }
 
-export default function LineAreaChart({
+function LineAreaChart({
   columns,
   height = 240,
   width,
@@ -328,3 +328,7 @@ const styles = StyleSheet.create({
     color: theme.ink,
     fontSize: type.apoio, fontFamily: fonts.regular },
 });
+
+/* `memo`: Gráficos já passa `columns` memoizado, e redesenhar o path a cada
+   render da tela é trabalho jogado fora. */
+export default memo(LineAreaChart);
