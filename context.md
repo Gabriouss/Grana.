@@ -1161,3 +1161,66 @@ descritos — nenhum falso positivo. Ordem de prioridade recomendada, revisada:
 
 **Nenhuma correção foi implementada ainda** — só verificação. Autor ainda não
 apontou por qual começar.
+
+## Sessão de 02/09/2026 - auditoria de motion e composição visual da landing
+
+Pedido do autor: usar as skills `impeccable` e `web-animation-design` (via
+`SuggestSkills`/`SearchSkills`, que não trouxeram nada novo além dessas duas
+já habilitadas) pra levantar oportunidades de motion e composição visual na
+landing. **Só auditoria, nenhuma linha de código mudou nesta sessão.**
+
+**Achado central: um único gesto de motion, repetido 25+ vezes.**
+`RevealOnScroll` (fade + `translateY: 16→0`, `cubic-bezier(0.16,1,0.3,1)`,
+600ms) é chamado 25 vezes em `app/index.tsx` — Preços, Segurança, FAQ,
+Hábitos, Benefícios, guia numerado, todos com o mesmo gesto, mesma direção,
+mesmo tempo. É o antipadrão que o `impeccable` nomeia em `reference/animate.md`:
+*"A generic fade-and-rise, hover lift, parallax layer, or scroll reveal is
+not a thesis."* A sensação de "falta de motion de qualidade" relatada pelo
+autor provavelmente vem daqui — não é falta de quantidade, é falta de
+variedade com propósito; a repetição faz a mente parar de notar.
+
+**O que já funciona (preservar):**
+- Hero com stagger de letras (`Animated.stagger`, `app/index.tsx:553-556`) —
+  único momento realmente autoral da página.
+- `NotebookAnimado` — composição de camadas PNG, ideia de material específica
+  do produto.
+- `TrustMarquee` — loop CSS puro (`@keyframes` + `animationIterationCount:
+  infinite`), contornando corretamente o bug do `Animated.loop` no RN Web
+  (já documentado nas Convenções de código acima).
+
+**Vocabulário de interação quase inexistente.** Hover só existe em 3
+elementos da página inteira: CTA primário, link "Entrar" do cabeçalho, ícone
+do Instagram no rodapé (`app/index.tsx:1517-1523,1609`) — e nos três casos é
+só troca de `borderColor`/`backgroundColor`. Cards de dor, cards de benefício
+e os passos do guia numerado não respondem a hover nenhum.
+
+**Findings priorizados:**
+
+1. **[P1] Reveal genérico sem hierarquia de distância/consequência** — as 25
+   chamadas de `RevealOnScroll`. A tabela de timing do `web-animation-design`
+   associa duração a distância/importância (300-500ms layout/overlay,
+   500-800ms só pro momento autoral); usar 600ms uniforme nivela seções que
+   deveriam ter peso diferente. Direção: reservar motion mais lento/expressivo
+   pra 1-2 seções que carregam a proposta de valor (Segurança, virada pra
+   Preços) e acelerar/suavizar o resto (translateY menor, ~200-300ms).
+   Comando sugerido: `/impeccable animate`.
+2. **[P1] Composições de card sem resposta a hover/proximidade** — cards de
+   dor, benefícios, guia numerado. Direção: elevação sutil (`translateY:
+   -2/-4px` + sombra, só transform+opacity) em ~150ms `ease`. Comando
+   sugerido: `/impeccable delight` ou `/impeccable animate`.
+3. **[P2] Nenhum material além de opacity/translateY na página inteira** —
+   `animate.md` lista blur/mask/clip-path/movimento espacial como paleta pra
+   "foco e profundidade" ou "reveal e composição"; a Segurança
+   (`MolduraCelular`/`MolduraNavegador` sobrepostos) é a candidata óbvia pra
+   um reveal por máscara/clip em vez de fade genérico, já que a composição em
+   si é o argumento visual da seção.
+4. **[P3] `.impeccable/design.json` desatualizado** — `context.mjs` do
+   `impeccable` sinalizou que o sidecar de tokens (inclusive motion tokens)
+   foi gerado antes da última edição do `DESIGN.md`. Rodar
+   `/impeccable document` antes de qualquer trabalho de motion, pra não
+   trabalhar com tokens defasados.
+
+**Ordem recomendada pro autor, quando decidir avançar:** `/impeccable animate`
+na seção Segurança → `/impeccable animate`/`delight` nos cards → variar o
+timing do `RevealOnScroll` por peso de seção → `/impeccable polish` como
+passe final.
