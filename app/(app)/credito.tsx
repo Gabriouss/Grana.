@@ -1470,6 +1470,7 @@ const styles = StyleSheet.create({
     fontSize: type.marca,
     flex: 1,
     fontFamily: fonts.regular,
+    fontVariant: ['tabular-nums'],
   },
   fieldRow: {
     flex: 1,

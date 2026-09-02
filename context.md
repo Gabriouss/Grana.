@@ -607,3 +607,65 @@ ficava branco e nenhum erro chegava ao JavaScript.
 - `app_release` foi atualizada para `1.4.1`, com o APK da build
   `b2605153-7cdf-4903-986f-80c14d14caf4`, expiração em 15/09/2026 e a nota
   `Corrige tela branca apos desbloqueio por digital`.
+
+## Sessão de 02/09/2026 - correções da auditoria `/impeccable audit app`
+
+Rodada de auditoria nas cinco dimensões (acessibilidade, performance,
+aparência, conformidade de plataforma, adaptividade) sobre `app/(app)/*` e os
+componentes compartilhados, seguida das correções. Nota saiu de 10/20 para
+15/20. O relatório completo, com o estado achado a achado, está em
+`IMPECCABLE_AUDIT.md`, na seção "Auditoria: 02 de setembro de 2026".
+
+Corrigido:
+
+- **Gráficos eram mudos para leitor de tela.** `PieChart` virou um único
+  elemento com `accessibilityRole="image"` e a composição lida por extenso
+  ("Gastos por categoria: Mercado 32%, ..."); as áreas de toque das colunas do
+  `StackedBarChart`, que são a única forma de selecionar um período, ganharam
+  papel, rótulo, dica e estado de seleção. Os dois `<Svg>` saíram da árvore de
+  acessibilidade para não anunciar nós soltos de fatia e eixo. Os rótulos das
+  colunas não incluem valor de propósito: quem anuncia dinheiro é a lista
+  abaixo, que passa por `PrivacyValue` e respeita o modo privacidade.
+- **`app/(app)/index.tsx` não tinha nenhum `useMemo`** — 1760 linhas, 44
+  `useState`, e todos os derivados (`pieData`, `byCategory`, totais,
+  comprometimento futuro, safe-to-spend) recalculados a cada tecla digitada,
+  sobre o histórico inteiro. Passe completo de memoização; as contas subiram
+  para antes do `if (loading)`, porque hook não pode vir depois de early
+  return. `PieChart`, `FutureTimelineChart` e `LineAreaChart` viraram `memo`.
+  `StackedBarChart` não, porque tem estado interno de seleção.
+- **Tablet nativo nunca ganhava o trilho lateral.** `temBarraLateral` exigia
+  `Platform.OS === 'web'` — trava que fazia sentido quando o `sidebarAdaptable`
+  das Native Tabs entregava a sidebar do sistema no iPad (ligar as duas daria
+  navegação lateral em dobro). Com as Native Tabs removidas na sessão
+  anterior, não há concorrente e a trava virou o bug: num iPad a barra
+  flutuante era a única navegação, esticada de ponta a ponta com cinco itens
+  `flex: 1`. Agora vale `classe !== 'compacto' && (web || altura >= 600)`. O
+  piso de altura mira tablet e não celular deitado — iPhone em paisagem tem
+  ~844 de largura mas ~400 de altura; tablet tem 744+ nos dois eixos.
+- **`fontVariant: ['tabular-nums']` faltando** nos campos de digitação de
+  valor de Início, Contas, Lançamentos e Crédito, contra a regra do próprio
+  projeto — e justamente onde a dança de dígitos mais aparece.
+- Comentários que ainda descreviam o mundo pré-`00de222` foram corrigidos
+  (`lib/tab-bar.ts`, `components/SideNav.tsx`, o doc de `Breakpoint`):
+  `SideNav` não é mais "exclusivo da web larga".
+
+Deixado aberto de propósito, com o motivo registrado no relatório:
+
+- **Histórico sem paginação em Início, Gráficos e Desafios.** Janelar a busca
+  não deixa a tela mais lenta, deixa o SALDO ERRADO — a conta depende do
+  histórico completo. A correção certa é agregação no banco, que exige
+  migração aplicada e validada contra o banco de verdade. A auditoria de 28/08
+  já tentou e reverteu pelo mesmo motivo.
+- **Navegação e ícones nativos** (nota 1/4 em conformidade de plataforma).
+  Reimplementar Native Tabs exige validação em aparelho físico antes de ir pra
+  loja — foi a falta disso que deixou a tela branca passar duas vezes.
+- **Reflow em telas largas** nas seis telas que ainda são layout de celular
+  esticado. É decisão de design por tela, não correção pontual — e agora com
+  mais superfície, já que o trilho lateral passou a aparecer em tablet.
+
+Verificações: `npx tsc --noEmit` limpo após cada etapa e `npm run test:parser`
+completo aprovado (34.093 checagens do corpus mais OFX, dedup de CSV, limite
+de cartão, paginação, recorrência, sequência, relatório, Score, guardas de
+schema e `sync-parser` 26/26 em sincronia). Nenhuma build disparada nesta
+sessão e `app.json` segue em `1.4.1` — as mudanças são todas de código do app,
+sem migração de banco.

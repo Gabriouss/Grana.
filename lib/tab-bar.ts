@@ -23,11 +23,11 @@ export function useTabBarInset() {
   const insets = useSafeAreaInsets();
   const { temBarraLateral } = useBreakpoint();
 
-  /* Na web, a partir de 768px a navegação vira lateral e a barra flutuante deixa de
-     existir — não há nada no rodapé para desviar. Reservar os ~118px mesmo
-     assim abriria um vão morto no fim de todas as telas do desktop. Como as
-     oito telas já leem daqui, zerar neste ponto resolve todas de uma vez.
-     Sobra só a folga de respiro, que continua fazendo sentido. */
+  /* Em janela larga (desktop e tablet nativo) a navegação vira lateral e a
+     barra flutuante deixa de existir — não há nada no rodapé para desviar.
+     Reservar os ~118px mesmo assim abriria um vão morto no fim de todas as
+     telas. Como as oito telas já leem daqui, zerar neste ponto resolve todas
+     de uma vez. Sobra só a folga de respiro, que continua fazendo sentido. */
   if (temBarraLateral) {
     return { margem: 0, total: 0, paddingConteudo: spacing.xl };
   }

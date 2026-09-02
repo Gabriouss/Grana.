@@ -1,5 +1,18 @@
 # Impeccable Audit — Grana.
 
+> **ATUALIZADO EM 02/09/2026 — a auditoria de 28/08 abaixo ficou parcialmente
+> desatualizada.** A nota de Conformidade de Plataforma (4/4) e o Veredito
+> logo a seguir descrevem Native Tabs (`expo-router/unstable-native-tabs`)
+> funcionando nas duas plataformas — nunca tinha sido validado em hardware de
+> verdade, só inferido da API. Não funcionava: causou tela branca pós-
+> desbloqueio por digital tanto no Expo Go quanto numa build de release
+> instalada, e o código foi REMOVIDO do repositório (commit `00de222`,
+> `lib/navegacao-nativa.ts` apagado). **A seção "Auditoria: 02/09/2026", no
+> fim deste arquivo, é o estado atual — leia essa primeiro.** O conteúdo
+> abaixo (28/08) fica como registro histórico do que segue válido
+> (Acessibilidade, Aparência, a regra de fonte, o P2 de histórico sem
+> paginação).
+
 Auditoria: 28 de agosto de 2026
 Escopo: aplicativo autenticado Expo/React Native (iOS, Android e web)
 Plataformas: `adaptive` · Modo: **Operate**
@@ -13,11 +26,13 @@ Método: análise de fonte + sessão autenticada real verificada ao vivo em
 | 1 | Acessibilidade | **4/4** | 0 controles sem nome nas 6 telas; isolamento de modal medido; Reduce Motion completo |
 | 2 | Performance | **3/4** | Virtualização e agregação resolvidas, mas 3 telas ainda baixam o histórico inteiro |
 | 3 | Aparência e temas | **4/4** | Tema escuro integrado; token drift fechado em 28/08 (ver achado abaixo) |
-| 4 | Conformidade de plataforma | **4/4** | Native Tabs com SF Symbols/Material Symbols, Switch nativo, Predictive Back |
+| 4 | Conformidade de plataforma | ~~**4/4**~~ **ver 02/09** | ~~Native Tabs com SF Symbols/Material Symbols~~ Nunca validado em hardware; causou tela branca e foi removido |
 | 5 | Adaptatividade | **4/4** | Classes de janela em toda plataforma, orientação livre, insets corretos |
-| **Total** | | **19/20 — Excellent** | Só Performance segue em 3/4; nenhum P0/P1 aberto |
+| **Total** | | ~~**19/20**~~ **ver 02/09** | Nota de 28/08 não vale mais — Conformidade de Plataforma regrediu |
 
-Histórico: 8/20 (auditoria inicial) → 13/20 → 18/20 → **19/20** (28/08).
+Histórico: 8/20 (auditoria inicial) → 13/20 → 18/20 → 19/20 (28/08) → 10/20
+(01/09, regressão deliberada de Conformidade de Plataforma) → **15/20**
+(02/09, depois das correções — ver seção final).
 
 O ponto que falta para 20/20 é **um só**: as três telas que baixam o
 histórico inteiro. Ele continua aberto de propósito — a correção exige
@@ -274,3 +289,315 @@ release, não como defeito identificado:
   no Android) nunca foi exercitada. O código não tem caixas de altura fixa
   contendo texto, e `allowFontScaling` continua no padrão (ligado), então o
   risco é baixo — mas é inferência, não medição.
+
+---
+
+# Auditoria: 02 de setembro de 2026
+
+Escopo: `app/` (rotas expo-router da área autenticada — `app/(app)/*.tsx` e
+`app/(app)/_layout.tsx`) mais os componentes compartilhados que essas telas
+usam direto (`PieChart`, `StackedBarChart`, `FutureTimelineChart`,
+`LineAreaChart`, `Sheet`, `ScreenHeader`, `WalletPill`, `HeaderAction`,
+`ToggleSwitch`, `AppPressable`).
+Plataformas: `adaptive` · Modo: **Operate**
+Método: leitura de fonte (sem simulador nem aparelho conectado nesta sessão)
++ `npx tsc --noEmit` + `npm run test:parser`.
+Motivo da rodada: as Native Tabs foram REMOVIDAS do repositório
+(commit `00de222`) depois de a tela branca pós-desbloqueio por digital se
+repetir numa build de release instalada — não só no Expo Go, como a correção
+de 28/08 assumia. Mudança estrutural na navegação, então as 5 dimensões
+foram reauditadas do zero em vez de só remendar o sintoma.
+
+**Esta seção já registra as CORREÇÕES aplicadas na mesma sessão.** Cada
+achado traz o estado atual: `CORRIGIDO`, `ABERTO` ou `ACEITO`.
+
+## Audit Health Score
+
+| # | Dimensão | Antes | Depois | Achado que restou |
+|---|---|---:|---:|---|
+| 1 | Acessibilidade | 2/4 | **4/4** | Gráficos ganharam nome e resumo; só falta forçar o padrão em modais novos |
+| 2 | Performance | 2/4 | **3/4** | Memoização feita; histórico sem paginação segue aberto de propósito |
+| 3 | Aparência & Tema | 3/4 | **4/4** | `tabular-nums` fechado nos 4 campos |
+| 4 | Conformidade de Plataforma | 1/4 | **1/4** | Barra de abas em JavaScript em toda plataforma — aceito, ver veredito |
+| 5 | Adaptividade | 2/4 | **3/4** | Tablet nativo ganhou o trilho lateral; telas ainda não refluem em colunas |
+| **Total** | | **10/20** | **15/20 — Bom** | O que trava a nota é Conformidade, e é uma troca deliberada |
+
+## Veredito de Conformidade de Plataforma
+
+**Falha, concentrada, por um motivo real — e agora permanente por decisão.**
+`app/(app)/_layout.tsx` tem uma única implementação de navegação:
+`AbasEmJavaScript`, uma barra "vidro líquido" desenhada à mão, usada em
+QUALQUER runtime não-web (build de release, dev build, Expo Go). A variante
+com `expo-router/unstable-native-tabs` não está mais desligada por flag —
+foi apagada, junto com `lib/navegacao-nativa.ts`.
+
+O motivo está registrado no próprio arquivo (`_layout.tsx:206-215`): a API é
+experimental, e quando o componente Fabric falha ao (re)montar, NADA
+renderiza e NENHUM erro sobe pro JavaScript — tela branca muda. Aconteceu
+duas vezes, a segunda numa build de release, no momento em que o Android
+recria a Activity ao voltar do desbloqueio por digital.
+
+Ou seja: **iOS e Android usam hoje a mesma barra de abas em JavaScript que a
+web usa** — o tell clássico de "app portado de site" (nav global custom,
+ícones de um conjunto único cross-platform em vez de SF Symbols/Material
+Symbols, sem os materiais e a elevação do sistema). É 1/4, e continua 1/4.
+
+Fora da navegação a citizenship de plataforma segue razoável: `ToggleSwitch`
+embrulha o `Switch` nativo de verdade em vez de redesenhar
+(`components/ToggleSwitch.tsx:23`); nenhuma tela desativa o gesto de voltar
+por borda (`grep gestureEnabled` vazio no repo inteiro); `Sheet.tsx` trata
+teclado/IME de forma centralizada. Por isso **1/4** (violação pesada
+concentrada numa área) e não **0/4** (nada nativo).
+
+Trocar acabamento nativo por não voltar a ter tela branca é a escolha certa
+com a informação que existe. Reabrir isso exige **validação em aparelho
+físico**, não inferência de API — foi exatamente a falta disso que deixou a
+regressão passar duas vezes.
+
+## Resumo Executivo
+
+- **Nota: 10/20 → 15/20 (Bom)** depois das correções desta sessão
+- 5 achados P1, 4 P2, 2 P3 — nenhum P0
+- **Corrigidos**: 3 dos 5 P1 e 1 P2 (a11y de gráficos, memoização da Início,
+  trilho lateral em tablet nativo, `tabular-nums`)
+- **Não corrigidos por decisão**: navegação/ícones nativos (exige hardware) e
+  histórico sem paginação (exige agregação no banco validada contra o banco
+  de verdade — a auditoria de 28/08 já tentou e reverteu)
+- Uma causa raiz explica 2 dos achados abertos: a barra em JavaScript
+
+## Achados Detalhados
+
+### P1 — Navegação global customizada em toda plataforma nativa · `ACEITO`
+
+- **Local**: `app/(app)/_layout.tsx:216-255` (`AbasEmJavaScript`,
+  `FloatingTabBar`)
+- **Categoria**: Conformidade de Plataforma
+- **Impacto**: iOS e Android perdem a tab bar do sistema, os materiais
+  nativos e, por consequência, SF Symbols/Material Symbols reais — o app lê
+  como a mesma coisa em toda plataforma, o oposto do princípio 5 do
+  `PRODUCT.md`.
+- **Guideline**: HIG "System navigation... no custom global nav" / Material
+  "Material navigation, matched to size"
+- **Por que não foi corrigido**: é troca deliberada e documentada, não
+  esquecimento — tela branca muda numa build de release é pior que perder
+  ripple. O código nativo nem existe mais pra ser religado por flag. A
+  correção de verdade é reimplementar Native Tabs e validar em aparelho
+  físico antes de mandar pra loja. **Não reabilitar sem esse teste.**
+- **Comando sugerido**: `/impeccable adapt`
+
+### P1 — Barra flutuante não se adapta a tablet nativo · `CORRIGIDO`
+
+- **Local**: `lib/breakpoints.ts:159` (`temBarraLateral`),
+  `app/(app)/_layout.tsx:229`
+- **Categoria**: Adaptividade + Conformidade
+- **Era**: `temBarraLateral` valia `Platform.OS === 'web' && classe !==
+  'compacto'`. Um iPad ou tablet Android de verdade nunca ganhava o
+  `SideNav` — caía sempre na `FloatingTabBar`, que só tem
+  `marginHorizontal: spacing.xl` (20pt) e nenhum `maxWidth`. Numa tela de
+  1024pt+ a pílula esticava de ponta a ponta com 5 itens `flex: 1`.
+- **A trava fazia sentido na época**: quem entregava sidebar no iPad era o
+  `sidebarAdaptable` das Native Tabs, e ligar o trilho custom junto daria
+  DUAS navegações laterais na mesma tela. Com as Native Tabs removidas não
+  existe mais concorrente — e a trava virou o bug.
+- **Correção**: `classe !== 'compacto' && (Platform.OS === 'web' || height
+  >= 600)`. O piso de altura mira TABLET e não celular deitado: um iPhone em
+  paisagem passa de 768 de largura (~844) mas tem ~400 de altura, enquanto
+  qualquer tablet tem 744+ nos dois eixos em qualquer orientação. Trocar a
+  navegação do celular ao girar a tela seria mudança de comportamento que
+  ninguém pediu e que não foi validada em aparelho. Na web o critério segue
+  só a largura, exatamente como era antes.
+- **Guideline**: Material "Never ship a phone bottom-bar untouched on a
+  tablet"
+
+### P1 — Gráficos sem nenhum rótulo de acessibilidade · `CORRIGIDO`
+
+- **Local**: `components/PieChart.tsx`, `components/StackedBarChart.tsx`
+  (usados em `app/(app)/graficos.tsx` e `app/(app)/index.tsx`)
+- **Categoria**: Acessibilidade · **WCAG 1.1.1 (Non-text Content), nível A**
+- **Era**: `grep accessib` nos dois arquivos não retornava nada — pra quem
+  usa VoiceOver/TalkBack, o donut de "gastos por categoria" e o gráfico de
+  barras simplesmente não existiam.
+- **Correção, `PieChart`**: o gráfico inteiro virou UM elemento com
+  `accessibilityRole="image"` e a composição lida por extenso
+  (`"Gastos por categoria: Mercado 32%, Transporte 18%..."`), e o `<Svg>`
+  saiu da árvore de acessibilidade (`accessibilityElementsHidden` +
+  `importantForAccessibility="no-hide-descendants"`) pra não anunciar nós
+  soltos de fatia e rótulo no meio da navegação.
+- **Correção, `StackedBarChart`**: as áreas de toque por cima das colunas são
+  a ÚNICA forma de selecionar um período e eram alvos anônimos; ganharam
+  `accessibilityRole`, `accessibilityLabel` (rótulo + sublabel da coluna),
+  `accessibilityHint` e `accessibilityState={{ selected }}`. O `<Svg>`
+  também saiu da árvore.
+- **Detalhe que importa**: o rótulo das colunas NÃO inclui o valor, de
+  propósito. Quem anuncia dinheiro é a lista abaixo, que passa por
+  `PrivacyValue` e respeita o modo privacidade — repetir o total no rótulo
+  vazaria o valor justamente pelo canal que o modo privacidade fecha.
+
+### P1 — Início sem memoização nenhuma · `CORRIGIDO` (parte de performance)
+
+- **Local**: `app/(app)/index.tsx`
+- **Categoria**: Performance
+- **Era**: 1760 linhas, 44 `useState`, **zero** `useMemo`. `pieData`,
+  `byCategory`, `totalIn`/`totalOut`, `comprometimentoFuturo`,
+  `safeToSpend` e os demais derivados eram recalculados a cada render —
+  inclusive por uma tecla digitada num campo sem relação — sobre o histórico
+  financeiro inteiro. Agravado agora que a importação em massa aceita até 10
+  mil lançamentos de uma vez. E nenhum dos gráficos que recebem esses
+  valores era `React.memo`, então re-renderizavam de qualquer jeito.
+- **Correção**: passe completo de `useMemo` nos valores derivados, seguindo o
+  padrão já correto de `graficos.tsx`. As contas foram movidas para ACIMA do
+  `if (loading)` — hook não pode vir depois de early return —, `byCategory`
+  virou memo próprio (a seção de orçamentos também consome) e `pieData`
+  passou a derivar dele. `PieChart`, `FutureTimelineChart` e `LineAreaChart`
+  foram embrulhados em `memo`; `StackedBarChart` não, porque tem estado
+  interno de seleção e recebe `columns` já memoizado do lado de fora.
+- **Não corrigido junto**: a busca sem paginação que alimenta a tela — ver o
+  achado seguinte.
+
+### P1 — Busca sem paginação em Início, Gráficos e Desafios · `ABERTO`
+
+- **Local**: `app/(app)/index.tsx` via `lib/data.ts` `fetchTransactions()`
+  sem `sinceDays`; `app/(app)/graficos.tsx:105-106`;
+  `app/(app)/desafios.tsx:74`
+- **Categoria**: Performance
+- **Por que continua aberto**: **a conta de saldo depende do histórico
+  completo.** Janelar a busca não deixa a tela mais lenta — deixa o saldo
+  ERRADO, que é infinitamente pior. A correção certa é agregação no banco
+  (o padrão de `get_gamification_summary()` já usado em Desafios), e isso
+  exige migração aplicada e validada contra o banco de verdade, o que não dá
+  pra fazer desta sessão. A auditoria de 28/08 já tentou e reverteu por
+  exatamente esse motivo; repetir a tentativa às cegas seria arriscar
+  dinheiro errado na tela do usuário.
+- **Nota**: `app/(app)/lancamentos.tsx` já está certo — usa
+  `fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes)`, escopado ao mês
+  visível, com o motivo documentado no código. É a referência quando a
+  agregação existir. `desafios.tsx:63` também já tem um `sinceDays: 45`
+  correto pra streak/score; a chamada sem escopo da linha 74 é separada.
+- **Comando sugerido**: `/impeccable optimize`
+
+### P2 — `tabular-nums` faltando em 4 campos de valor editável · `CORRIGIDO`
+
+- **Local**: `app/(app)/index.tsx`, `app/(app)/contas.tsx`,
+  `app/(app)/lancamentos.tsx`, `app/(app)/credito.tsx` (estilo `amountInput`)
+- **Categoria**: Aparência / Tema
+- **Era**: violava a regra própria e explícita do projeto ("valor monetário
+  sempre com `fontVariant: ['tabular-nums']`, dígitos não podem dançar") —
+  e justamente no campo onde a pessoa está digitando o valor, que é onde a
+  dança de dígitos mais aparece.
+- **Correção**: `fontVariant: ['tabular-nums']` nos quatro `amountInput`,
+  alinhando com `textStyles.amount` (`lib/theme.ts:176`) e com os displays
+  que já estavam certos.
+
+### P2 — Ícones de navegação não-nativos · `ACEITO`
+
+- **Local**: `app/(app)/_layout.tsx:21` (`ICONS`, todos Ionicons)
+- **Categoria**: Conformidade de Plataforma
+- **Impacto**: consequência direta do primeiro P1 — com `NativeTabsLayout`
+  cada aba declarava `sf`/`md` (SF Symbols e Material Symbols reais); a
+  barra em JavaScript usa só Ionicons.
+- **Por que não foi corrigido**: só volta a fazer sentido junto com a
+  navegação nativa. Mapear SF/Material à mão dentro de uma barra custom é
+  trabalho descartável se as Native Tabs voltarem.
+
+### P2 — Padrão de acessibilidade de modal inconsistente · `ABERTO`
+
+- **Local**: `app/(app)/perfil.tsx` chama `useModalAccessibility` na mão pros
+  seus 4 `<Modal>` próprios; toda outra tela depende do `Sheet.tsx` fazer
+  isso por dentro
+- **Categoria**: Acessibilidade
+- **Impacto**: funciona hoje (`grep '<Modal' app/(app)` só acerta
+  `perfil.tsx`), mas nada força isso num modal novo construído fora do
+  `Sheet`. É risco de processo, não bug ativo — por isso não entrou nesta
+  rodada de correção: mexer aqui é refatorar `perfil.tsx` sem defeito
+  observável pra corrigir.
+- **Comando sugerido**: `/impeccable harden`
+
+### P2 — Maioria das telas não reflui em telas largas · `ABERTO`
+
+- **Local**: `grep useBreakpoint app/(app)/*.tsx` só acerta `_layout.tsx` e
+  `graficos.tsx`
+- **Categoria**: Adaptividade
+- **Impacto**: `index.tsx`, `lancamentos.tsx`, `contas.tsx`, `credito.tsx`,
+  `desafios.tsx` e `perfil.tsx` só aplicam `colunaConteudo` (teto de largura
+  + centralização) — trava o esticamento em telas ultra-largas, mas não
+  reorganiza em colunas. Continuam layout de celular esticado em `medio` e
+  `amplo`.
+- **Por que continua aberto**: são seis telas de reflow, cada uma com decisão
+  de produto sobre o que vira coluna lateral. É trabalho de design, não de
+  correção — e agora com MAIS superfície, porque o trilho lateral passou a
+  aparecer em tablet nativo também.
+- **Comando sugerido**: `/impeccable adapt`
+
+### P3 — Polimento
+
+- Cobertura de `useReducedMotion` só em 3 dos 8 arquivos de tela
+  (`index.tsx`, `perfil.tsx`, `_layout.tsx`). `ABERTO` e não é bug hoje — as
+  outras 5 não animam nada direto —, mas é risco latente se alguém animar
+  algo sem essa checagem.
+- ~~`lib/tab-bar.ts` mantém um branch morto checando
+  `abasNativasDisponiveis()`~~ — `CORRIGIDO` no `00de222` (outra máquina),
+  que removeu o branch junto com o arquivo. Os comentários que ainda
+  descreviam o mundo antigo (`lib/tab-bar.ts`, `components/SideNav.tsx`,
+  o doc de `Breakpoint` em `lib/breakpoints.ts`) foram atualizados nesta
+  sessão — `SideNav` não é mais "exclusivo da web larga".
+
+## Padrões & Problemas Sistêmicos
+
+- **A remoção das abas nativas tem custo de conformidade em cascata**:
+  navegação não-nativa → ícones não-nativos. Dois achados, uma causa raiz;
+  resolver a raiz (reimplementar e validar em hardware) resolve os dois de
+  uma vez, e remendar cada um dentro da barra em JavaScript é trabalho que
+  provavelmente vira descartável.
+- **A memoização era desigual entre telas**, não desconhecida: `graficos.tsx`
+  fazia certo em 4 pontos, `index.tsx` — a tela mais visitada — não fazia
+  nenhum. Corrigido nesta rodada; vale como padrão pra próxima tela.
+- **O limite real desta e da rodada anterior é o mesmo**: sem simulador nem
+  aparelho, tudo de Conformidade e Adaptividade é leitura de fonte. Foi
+  exatamente isso que deixou a regressão de Native Tabs passar duas vezes.
+
+## Pontos Positivos
+
+- Listas de lançamentos/contas/faturas já usam `FlatList` corretamente —
+  nenhum `.map()` de lista ilimitada dentro de `ScrollView`.
+- Disciplina de tokens quase perfeita: um único hex fora do sistema em todo o
+  escopo (`app/(app)/perfil.tsx`, `#25D366` do WhatsApp), exceção já
+  documentada no próprio código.
+- Ações só-por-toque-longo já tinham `onPress` alternativo +
+  `accessibilityHint`, porque toque longo é inalcançável por leitor de tela.
+- Teclado tratado de forma central e documentada (`components/Sheet.tsx`),
+  com o bug histórico que motivou isso registrado em comentário.
+- Nenhum `Dimensions.get()` congelado — tudo passa por
+  `useWindowDimensions`/`useBreakpoint`, que recalcula em rotação e resize.
+- `ToggleSwitch` embrulha o `Switch` nativo de verdade — o oposto do
+  "Cupertino-shaped switch on Android" que os guidelines citam como sinal de
+  app não-nativo.
+- `lancamentos.tsx` já modela o padrão certo de busca escopada por período,
+  com o motivo no próprio código.
+
+## Verificações executadas
+
+- `npx tsc --noEmit`: **passou** (rodado após cada etapa de correção).
+- `npm run test:parser`: **passou** — 34.093 checagens do corpus, mais OFX,
+  dedup de CSV, limite de cartão, paginação, recorrência, sequência,
+  relatório, Score, guardas de schema e `sync-parser` (26/26 em sincronia).
+- Sem simulador iOS, emulador Android ou hardware físico nesta sessão. Todos
+  os achados de Conformidade e Adaptividade vêm de leitura de fonte.
+
+## Ações Recomendadas, em ordem
+
+1. **[P1, precisa de hardware]** Reimplementar Native Tabs e validar em
+   aparelho físico — desbloqueio por digital, recriação de Activity no
+   Android, retorno de background. Só depois mandar pra loja. Resolve junto
+   o P2 dos ícones.
+2. **[P1, precisa do banco]** Agregação no banco pro saldo, pra tirar a busca
+   sem paginação de Início/Gráficos/Desafios sem quebrar a conta de saldo.
+   Aplicar e validar a migração contra o banco de verdade.
+3. **[P2]** `/impeccable adapt` — reflow em telas largas nas 6 telas que
+   ainda são layout de celular esticado (agora também visível em tablet).
+4. **[P2]** `/impeccable harden` — padronizar acessibilidade de modal, pra
+   um `<Modal>` novo fora do `Sheet` não nascer sem isolamento.
+5. **[P3]** `useReducedMotion` como parte do checklist de qualquer animação
+   nova.
+
+Rode `/impeccable audit app` de novo depois dos itens 1 e 2 — são os dois que
+seguram a nota em 15/20.
