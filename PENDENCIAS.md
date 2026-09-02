@@ -1,8 +1,133 @@
-# Plano: interruptores remotos + avisos (dentro e fora do app)
+# Pendências do Grana. — instruções para a outra máquina
 
-> Documento de execução. Escrito em 02/09/2026 na máquina remota, **sem
-> nenhuma alteração de código**, para ser implementado na outra máquina.
-> Nada aqui foi aplicado ao projeto — é tudo plano.
+> **Documento único.** Tudo o que está em aberto no projeto está aqui: o que
+> corrigir, em que ordem, e por quê. Escrito em 02/09/2026 na máquina remota,
+> onde não há login no app, nem acesso ao banco de produção, nem aparelho
+> físico — as três limitações que definem o que sobrou para ser feito aí.
+>
+> Substitui o antigo `PLANO-INTERRUPTORES-REMOTOS.md`, que foi absorvido
+> integralmente pelo Bloco 3 e apagado: dois documentos sobre o mesmo assunto
+> viram duas fontes de verdade que divergem.
+
+## Ordem recomendada
+
+| # | O quê | Custo | Por que nesta ordem |
+|---|---|---|---|
+| 1 | SQL do acento no banco | 2 min | Único erro **visível ao usuário** ainda no ar |
+| 2 | Validar visualmente o que mudou | 10 min | Muita coisa foi alterada sem ninguém ver; cada dia empilha mais código por cima |
+| 3 | Interruptores remotos | ~1 dia | Cada dia sem isso é um dia sem controle sobre 13 ferramentas |
+| 4 | Dívidas que exigem banco/aparelho | variável | Precisam de ambiente que a máquina remota não tem |
+| 5 | Pequenos (P3) | ~2 h | Sem impacto real; fazer quando sobrar tempo |
+
+Os blocos 1 e 2 são de minutos e destravam tudo. O 3 é o pedido do autor. O 4
+e o 5 podem esperar.
+
+---
+
+# Bloco 1 — Agora (2 minutos)
+
+## 1.1 O erro de acento ainda está no banco
+
+A versão 1.4.1 publicou no pop-up de novidades: *"Corrige tela branca **apos**
+desbloqueio por digital"*, sem acento, na cara de todo mundo que atualizou.
+
+O código que **impede isso de acontecer de novo** já está na `main` (guarda
+ortográfica em `lib/notas-release.ts` + `npm run notas:check`). Mas o texto
+errado continua gravado na linha `app_release`, e corrigi-lo exige
+`service_role` — a máquina remota só tem a chave anon.
+
+**No SQL Editor do Supabase:**
+
+```sql
+update app_release
+   set notes = 'Corrige tela branca após desbloqueio por digital',
+       updated_at = now()
+ where id = 1 and version = '1.4.1';
+```
+
+Quem já abriu o app e dispensou o pop-up não o verá de novo (o marcador local
+`grana_novidades_versao_vista` já está em 1.4.1). A correção vale para quem
+ainda não atualizou ou não abriu.
+
+## 1.2 A partir do próximo build, existe um passo novo
+
+Antes de qualquer `eas build`:
+
+```
+npm run notas:check "Sua mensagem, com acentuação de português de verdade"
+```
+
+Reprovado, ele diz palavra por palavra o que está errado e sai com código 1. Se
+esquecer de rodar, a Edge Function `eas-build-webhook` faz a mesma checagem e
+**recusa a nota** — publicando a versão assim mesmo, sem notas, porque o aviso
+de atualização não pode depender de ortografia. A recusa aparece no log da
+função e na tela de webhooks do EAS.
+
+---
+
+# Bloco 2 — Validar visualmente (10 minutos)
+
+**Este é o maior risco em aberto.** A sessão remota alterou muita coisa de
+aparência e **nada foi visto rodando**: não há login disponível lá (o `.env` do
+container é placeholder e o proxy bloqueia o Supabase por política).
+
+`npx expo start --web` na sua máquina, e confira nesta ordem:
+
+### 2.1 Entrelinha — 85 estilos em 6 telas
+
+O maior volume, e o de maior risco de ficar estranho.
+
+- **Início** — o bloco "Livre para gastar": as 4 linhas de saldo / contas a
+  vencer / reservado / livre. Era o mais apertado depois do Crédito.
+- **Lançamentos** e **Contas** — linhas da lista: descrição em cima,
+  data e categoria embaixo.
+- **Perfil** — os textos de ajuda abaixo de cada opção.
+- **Desafios** e **Gráficos** — rótulos e legendas.
+
+**Sinal de que passou do ponto:** algo espaçado demais, ou um bloco que cresceu
+e empurrou o resto da tela.
+
+Botões e campos de digitação ficaram **de fora de propósito**: no botão a
+entrelinha muda a geometria, e em `TextInput` no Android corta o texto
+verticalmente.
+
+### 2.2 Início, cabeçalho — badges "exemplo" e "oculto"
+
+Saíram de fonte monoespaçada para Neue Machina (era a única violação da
+Only-Font Rule no repositório). Devem parecer parte da interface agora, não
+etiqueta de debug.
+
+### 2.3 Desafios — badges
+
+No **celular** deve continuar 2 colunas, igual antes. No **navegador largo** é
+onde muda: 3 ou 4 colunas, em vez de duas esticadas até ~690px cada.
+
+### 2.4 Início — botões de ação
+
+"Colar comprovante / Importar extrato / Escanear nota / Lançamento por voz"
+voltaram a **deslizar para o lado**, em vez de empilhar em duas fileiras.
+
+### 2.5 Busca de Lançamentos — digite rápido
+
+Deve ficar mais responsivo. Era o pior caso de performance do app: quatro
+passadas sobre a lista inteira **a cada tecla**, sendo que só a última depende
+do texto buscado.
+
+### 2.6 O que NÃO deve mudar
+
+A memoização (Crédito, Lançamentos, Contas, Desafios) é pura performance e
+**não deve alterar um pixel**. Se alterar, é bug — vale reportar.
+
+### 2.7 Se algo ficar ruim
+
+Os commits estão separados por tipo de mudança, então dá para reverter a
+entrelinha sem perder a memoização, e vice-versa. Commits relevantes na `main`:
+`fb45249` (auditoria), `93529ca` (UI), `a88fdf6` (segunda auditoria),
+`b985bc9` (guarda do design system).
+
+---
+
+# Bloco 3 — Interruptores remotos de funcionalidade
 
 ## O escopo
 
@@ -12,35 +137,20 @@ instabilidade precisa poder ser desligada remotamente no aplicativo de todo
 mundo, com aviso, e religada remotamente quando resolver. Nenhuma ferramenta
 pode ficar de fora — uma que fique é exatamente a que vai cair.
 
-A seção "Inventário completo" abaixo lista todas, com chave e pontos de
-entrada, e a Parte 7 traz o teste que impede uma ferramenta nova nascer sem
-interruptor.
-
-## O problema
-
-O WhatsApp do Grana. caiu. Hoje não existe jeito de desligar o botão: quem
-abre o app continua vendo "Lançar pelo WhatsApp", tenta, e não funciona. A
-única saída seria uma build nova só pra esconder um botão.
-
-O objetivo é inverter isso: **desligar funcionalidade por `UPDATE` no banco, em
-segundos, sem build** — e avisar a pessoa do porquê.
-
 ## A ressalva que decide o cronograma
 
 **Isto NÃO resolve o apagão de hoje.** O app instalado (1.4.1) não tem código
 que procure por flags. Para o interruptor existir é preciso **uma build**; dela
-em diante, todo apagão futuro se resolve por SQL.
+em diante, todo apagão futuro se resolve por SQL, em segundos.
 
 Nenhum sistema de flags alcança um app que não sabe procurar por flags. Quem
-ficar na 1.4.1 continua vendo o botão do WhatsApp normalmente, para sempre.
+ficar na 1.4.1 continua vendo o botão do WhatsApp para sempre.
 
 Consequência prática: **priorize subir a build com o interruptor**, mesmo com o
 WhatsApp ainda fora do ar. É a build que compra o controle de todas as
 próximas vezes.
 
----
-
-## Arquitetura
+### Arquitetura
 
 Três peças, na ordem em que devem ser construídas:
 
@@ -65,7 +175,7 @@ invertido.
 
 ---
 
-## Parte 1 — Banco
+### Parte 1 — Banco
 
 Acrescentar ao fim de `supabase/schema.sql` e aplicar no SQL Editor.
 
@@ -148,7 +258,7 @@ on conflict (key) do nothing;
 
 ---
 
-## Parte 2 — Cliente: `lib/feature-flags.tsx`
+### Parte 2 — Cliente: `lib/feature-flags.tsx`
 
 Espelha `lib/entitlement-context.tsx`, que já é um provider alimentado pelo
 Supabase e já está montado em `app/_layout.tsx`.
@@ -275,7 +385,7 @@ export function FlagsProvider({ children }: PropsWithChildren) {
 
 ---
 
-## Inventário completo das ferramentas
+### Inventário completo das ferramentas
 
 Levantado do código em 02/09/2026. **O WhatsApp é uma linha desta tabela, não
 o assunto dela.** A coluna "risco" é o que pode dar errado depois de publicado,
@@ -305,7 +415,7 @@ status, não um flag. Segurança (biometria, bloqueio de captura) nunca deve ter
 interruptor remoto: seria um jeito de desligar a proteção de todo mundo por
 `UPDATE`.
 
-## Parte 3 — Exemplo trabalhado: os quatro pontos do WhatsApp
+### Parte 3 — Exemplo trabalhado: os quatro pontos do WhatsApp
 
 O WhatsApp é o caso mais espalhado do inventário (quatro pontos de entrada em
 três arquivos), por isso serve de modelo. **O mesmo padrão vale para todas as
@@ -363,7 +473,7 @@ const wa = flag('whatsapp');
 
 ---
 
-## Parte 4 — Aviso dentro do app
+### Parte 4 — Aviso dentro do app
 
 **Componente novo:** `components/AvisoFlagModal.tsx`, modelado em
 `components/NovidadesModal.tsx`, que já resolve pop-up centralizado, foco de
@@ -396,7 +506,7 @@ e oferece o caminho alternativo. As três importam.
 
 ---
 
-## Parte 5 — Notificação push (Android e iOS)
+### Parte 5 — Notificação push (Android e iOS)
 
 Esta é a parte grande. `expo-notifications` já está instalado
 (`~57.0.15`) e configurado como plugin no `app.json`, mas hoje é usado **só
@@ -548,7 +658,7 @@ descobre pelo app. O flag no banco é a verdade; o push é um empurrão.
 
 ---
 
-## Parte 6 — Como operar (o que rodar no dia)
+### Parte 6 — Como operar (o que rodar no dia)
 
 Vale para **qualquer** chave do inventário — troque o `where key`.
 
@@ -616,7 +726,7 @@ from feature_flags where not enabled order by updated_at desc;
 
 ---
 
-## Parte 7 — Testes e guardas
+### Parte 7 — Testes e guardas
 
 O projeto tem o hábito de virar regra em teste (`corpus-schema-guardas.ts`,
 `corpus-design-system.ts`). Seguir:
@@ -660,7 +770,7 @@ O projeto tem o hábito de virar regra em teste (`corpus-schema-guardas.ts`,
 
 ---
 
-## Checklist de execução, na ordem
+### Checklist de execução, na ordem
 
 - [ ] 1. Aplicar o SQL da Parte 1 no Supabase e acrescentar ao `schema.sql`
 - [ ] 2. Criar `lib/feature-flags.tsx` e montar o provider em `app/_layout.tsx`
@@ -689,7 +799,7 @@ melhoria de alcance, não pré-requisito.
 
 ---
 
-## Armadilhas específicas deste projeto
+### Armadilhas ao implementar os interruptores
 
 1. **Build sem subir `expo.version` não avisa ninguém** — a Edge Function
    `eas-build-webhook` recusa versão que não seja maior (`older version
@@ -715,7 +825,7 @@ melhoria de alcance, não pré-requisito.
 
 ---
 
-## Estimativa honesta
+### Estimativa honesta
 
 - **Partes 1–4 e 6 (interruptor + aviso no app):** um dia. Meio dia era a conta
   para o WhatsApp sozinho; cobrir as 13 ferramentas do inventário dobra a
@@ -725,3 +835,160 @@ melhoria de alcance, não pré-requisito.
   APNs) e teste em aparelho — não código.
 - **Parte 7 (testes):** duas a três horas, e é o que impede o quinto ponto de
   entrada do WhatsApp nascer sem interruptor.
+
+---
+
+# Bloco 4 — Dívidas que exigem ambiente que a máquina remota não tem
+
+Estas foram deliberadamente **não** corrigidas, e o motivo importa tanto quanto
+o achado. Todas estão detalhadas no `IMPECCABLE_AUDIT.md`.
+
+## 4.1 Histórico sem paginação (Início, Gráficos, Desafios) — P1
+
+`app/(app)/index.tsx:285`, `graficos.tsx:106` e `desafios.tsx:74` baixam o
+histórico financeiro **inteiro**, sem limite.
+
+**Por que ninguém simplesmente janelou a busca:** janelar não deixa a tela mais
+lenta, deixa o **saldo errado**. A conta de saldo depende do histórico
+completo. Uma tela lenta é um incômodo; um saldo errado num app de finanças é o
+fim da confiança no produto.
+
+A correção certa é **agregação no banco** — o padrão de
+`get_gamification_summary()`, que a tela de Desafios já usa. Exige migração
+aplicada e validada contra o banco de produção, o que a máquina remota não
+alcança. A auditoria de 28/08 já tentou e reverteu por este mesmo motivo; não
+tente de novo às cegas.
+
+`perfil.tsx:244,264` e `desafios.tsx:63` já fazem certo, com `sinceDays` — são
+a referência de como deve ficar.
+
+## 4.2 Navegação e ícones nativos — P1, trava a conformidade em 1/4
+
+Hoje iOS e Android usam a **mesma barra de abas em JavaScript** que a web usa,
+com Ionicons em vez de SF Symbols / Material Symbols. É o tell clássico de "app
+portado de site", e é o único motivo de a nota de Conformidade de Plataforma
+ser 1/4.
+
+As Native Tabs (`expo-router/unstable-native-tabs`) foram **removidas** em
+`00de222` porque causavam tela branca muda: quando o componente Fabric falha ao
+remontar, nada renderiza e nenhum erro sobe pro JavaScript. Aconteceu duas
+vezes, a segunda numa build de release, no momento em que o Android recria a
+Activity ao voltar do desbloqueio por digital.
+
+**Reabrir exige validação em aparelho físico** — desbloqueio por digital,
+recriação de Activity, retorno de background. Foi exatamente a falta desse
+teste que deixou a regressão passar duas vezes. **Não reabilite sem isso.**
+
+## 4.3 Verificação de dependências que não deu para rodar
+
+`npx expo install --check` foi **bloqueado pelo proxy** na máquina remota
+(`HTTP Proxy Network Error: Forbidden` — o egress bloqueia expo.dev).
+
+Vale rodar aí **antes do próximo build**: incompatibilidade de versão de
+pacote com o SDK 57 é o tipo de coisa que só aparece no EAS, depois de já ter
+gasto cota de build.
+
+---
+
+# Bloco 5 — Pequenos (P3, ~2 horas no total)
+
+Nenhum tem impacto real no usuário. Fazer quando sobrar tempo.
+
+## 5.1 `perfil.tsx` fora do ritmo unificado
+
+`app/(app)/perfil.tsx:970` usa `padding: spacing.xl, gap: spacing.lg` (20/16)
+enquanto todas as outras telas usam `screenRhythm` (16/12). É exatamente o
+drift que o token `screenRhythm` foi criado para eliminar — o comentário em
+`lib/theme.ts` conta a história.
+
+Ficou de fora da correção remota porque mudar o ritmo de uma tela inteira sem
+poder vê-la é o tipo de alteração que precisa de olho humano.
+
+## 5.2 Nove componentes órfãos — 614 linhas
+
+Ninguém importa nenhum destes:
+
+```
+components/BrandLogo.tsx               36 linhas
+components/EntradaEscalonada.tsx       60
+components/FloatingIcon.tsx            73
+components/GlowOrb.tsx                 49
+components/IconeMetaAtingida.tsx       69
+components/LandingHeroDemo.tsx        164
+components/LaptopMockup.tsx            39
+components/NotebookFloatEstatico.tsx   71
+components/NotebookVideo.tsx           53
+```
+
+Não custam bundle (o Metro não empacota o que ninguém importa), então é
+limpeza, não performance. **Confira antes de apagar** se algum é peça de
+marketing que você pretende voltar a usar na landing.
+
+Um detalhe: `FloatingIcon.tsx` faz parallax **sem checar `useReducedMotion`**.
+Hoje é inofensivo porque está morto; se for reaproveitado, é violação de
+acessibilidade.
+
+## 5.3 Avatares sem cache
+
+`perfil.tsx:429`, `index.tsx:1214` e `OnboardingModal.tsx:514` usam o `<Image>`
+do React Native com `uri` remoto. O projeto não usa `expo-image` em lugar
+nenhum. A foto que a pessoa subiu é decodificada em tamanho cheio para ser
+exibida a 44px, e rebaixada de novo a cada montagem de tela, sem cache em disco
+no Android.
+
+Correção: `expo-image` com `cachePolicy` e `contentFit`.
+
+## 5.4 `getItemLayout` nas listas de altura fixa
+
+As 10 `FlatList` do app têm todas `keyExtractor` (verificado), mas só 5 pontos
+usam `initialNumToRender` / `windowSize` / `removeClippedSubviews` /
+`getItemLayout`. **Lançamentos e Crédito** têm altura de linha fixa e são as que
+mais ganhariam — ainda mais com a importação em massa aceitando 10 mil
+lançamentos.
+
+---
+
+# O que NÃO está pendente (para não refazer trabalho)
+
+Coisas resolvidas nesta sessão e já na `main`:
+
+- Acessibilidade dos gráficos (`PieChart` e `StackedBarChart` eram mudos para
+  VoiceOver/TalkBack — WCAG 1.1.1)
+- Memoização da Início, Crédito, Lançamentos, Contas e Desafios
+- Entrelinha nas 8 telas (85 estilos)
+- Trilho lateral em tablet nativo (iPad caía na barra flutuante esticada)
+- `tabular-nums` nos campos de digitação de valor
+- Badges do Desafios refluindo por classe de janela
+- Botões de ação da Início voltando a deslizar
+- Guarda ortográfica das notas de versão (`lib/notas-release.ts` + CLI + webhook)
+- Guarda mecânica das Named Rules do DESIGN.md (`corpus-design-system.ts`)
+- `DESIGN.md` reconciliado com o código (Native Tabs, `theme.danger`, sombras)
+
+**`perfil.tsx` continuar com zero `useMemo` está CERTO** — ele não tem nenhum
+valor derivado sobre lista. Não "corrija" isso.
+
+---
+
+# Regras permanentes do projeto (valem para tudo acima)
+
+Do `AGENTS.md`, resumidas porque é fácil esquecer no meio do trabalho:
+
+1. **`git fetch origin` e comparar com `origin/main` antes de qualquer commit.**
+   Este repositório já sofreu reescrita acidental de histórico.
+2. **Nunca `git init` neste diretório.** Se o `.git` quebrar, o reparo é clonar
+   de novo — nunca reinicializar.
+3. **Commitar e publicar antes de encerrar a sessão**, mesmo trabalho
+   incompleto, para a outra máquina começar sincronizada.
+4. **Build do EAS consome cota mensal compartilhada** entre as duas máquinas —
+   pedir explicitamente antes de disparar.
+5. **Subir `expo.version` no `app.json` ANTES de todo build de release.** Sem
+   isso o webhook responde `older version ignored` e ninguém é avisado da
+   atualização — e o silêncio é indistinguível de "não saiu build".
+6. **A mensagem do build é copy de produto** e passa por verificador
+   (`npm run notas:check`).
+7. **Ler e atualizar o `context.md`** ao começar e ao terminar.
+
+Antes de qualquer commit: `npx tsc --noEmit` e `npm run test:parser` — a suíte
+hoje cobre corpus de voz/WhatsApp, OFX, dedup de CSV, limite de cartão,
+paginação, recorrência, sequência, relatório, Score, guardas de schema, guarda
+ortográfica das notas e guardas do design system.

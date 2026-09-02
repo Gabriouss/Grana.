@@ -875,7 +875,9 @@ push (Android/iOS).
 
 **Nenhuma linha de código foi alterada nesta sessão.** O pedido explícito foi
 montar o plano para executar na outra máquina. O plano está em
-`PLANO-INTERRUPTORES-REMOTOS.md`, na raiz, pronto para ser seguido: SQL
+`PENDENCIAS.md`, na raiz (o plano nasceu como
+`PLANO-INTERRUPTORES-REMOTOS.md` e foi absorvido por ele), pronto para ser
+seguido: SQL
 completo, o provider React inteiro, os quatro pontos de entrada do WhatsApp com
 arquivo e linha, o componente de aviso, a parte de push (tabela, registro,
 Edge Function remetente, credenciais FCM/APNs), o SQL de operação do dia do
@@ -903,3 +905,35 @@ boleto, fatura, limite de cartão em `lib/notifications.ts`) — não há regist
 de push token, tabela de token nem remetente, então push é trabalho novo de
 verdade. O `EntitlementProvider` serve de template para o provider de flags, e
 o `NovidadesModal` para o pop-up de aviso.
+
+## Sessão de 02/09/2026 - PENDENCIAS.md, documento único de handoff
+
+A pedido do autor, tudo o que está em aberto foi consolidado num arquivo só:
+`PENDENCIAS.md`, na raiz. O `PLANO-INTERRUPTORES-REMOTOS.md` foi absorvido
+por ele (virou o Bloco 3) e APAGADO — dois documentos sobre o mesmo assunto
+viram duas fontes de verdade que divergem, problema que este repositório já
+teve.
+
+Estrutura, em ordem de execução:
+
+- **Bloco 1 (2 min)** — o SQL do acento, que ainda está errado no banco de
+  produção e exige `service_role`; e o passo novo do `notas:check` antes de
+  todo build.
+- **Bloco 2 (10 min)** — validação visual das mudanças desta sessão, que é o
+  maior risco em aberto: 85 estilos de entrelinha, memoização em 4 telas,
+  reflow das badges e o carrossel de ações, tudo alterado sem ninguém ver
+  rodando. Traz o que olhar tela a tela e o que é sinal de que passou do ponto.
+- **Bloco 3 (~1 dia)** — os interruptores remotos, plano completo.
+- **Bloco 4** — as dívidas que exigem banco ou aparelho físico: paginação
+  (janelar deixa o saldo ERRADO, não lento), Native Tabs, e o
+  `expo install --check` que o proxy bloqueou aqui.
+- **Bloco 5 (~2 h)** — P3: `perfil.tsx` fora do `screenRhythm`, 9 componentes
+  órfãos com 614 linhas, avatares sem `expo-image`, `getItemLayout`.
+
+Duas seções finais que existem para evitar retrabalho: o que **não** está
+pendente (as correções já na `main`, com o aviso explícito de que `perfil.tsx`
+com zero `useMemo` está CERTO e não deve ser "corrigido"), e as regras
+permanentes do `AGENTS.md` resumidas.
+
+Nenhuma linha de código do app foi alterada nesta sessão desde a terceira
+auditoria — só documentação.
