@@ -1034,3 +1034,66 @@ divergente chegou a ser commitado.
 
 **Ainda pendente:** item 9 (build de teste, precisa ser pedido explicitamente)
 e item 10 (push, Parte 5, independente e não bloqueia).
+
+## Sessão de 02/09/2026 - seletor de categoria sem resposta a toque (achado e corrigido)
+
+Bug relatado pelo autor com print do navegador mobile em produção: em
+Lançamentos → "Nova saída/entrada" → Categoria, a lista abria mas nenhuma
+linha respondia a toque.
+
+**Investigação (reproduzida localmente, `agent-browser`):** clique simulado
+não disparava `onPress`, mas `elemento.click()` via JS funcionava — sinal de
+algo bloqueando entrada real sem afetar `.click()` programático. A hipótese
+inicial (botões de editar/excluir aninhados dentro do botão da linha —
+`<button>` dentro de `<button>`, inválido em HTML) foi eliminada por
+experimento: substituí por `Pressable` puro do RN, sem `AppPressable`, sem
+`hitSlop`, sem `scaleOnPress`, e o bug persistia idêntico.
+
+**Causa real**, achada capturando `pointerdown`/`mousedown`/`click` reais
+(não `elementFromPoint`, que se mostrou não confiável neste ambiente — retornava
+`BODY` em qualquer coordenada da página, inclusive fora de qualquer modal): o
+próprio wrapper do modal de Categoria — filho direto do `body` — estava
+`inert=true`. `lib/modal-accessibility.ts` marca `inert` em todo irmão de todo
+nível até o `body` pra isolar um modal aberto (`Sheet.tsx`, `FabButton.tsx` e
+`AccessibleModalPanel` chamam o mesmo hook); com dois modais abertos ao mesmo
+tempo — o formulário de lançamento e o seletor de categoria por cima dele — o
+portal do segundo virava "irmão" do primeiro na varredura e acabava marcado
+inert por engano. `inert` bloqueia toque e foco reais, mas não afeta
+`.click()` nem `elementFromPoint` — daí o sintoma exato.
+
+**Correção em `lib/modal-accessibility.ts`:** um registro (`paineisAtivos`,
+`Set` a nível de módulo) de todo painel de modal atualmente aberto, consultado
+antes de isolar qualquer elemento — nenhuma instância do hook pode marcar
+`inert` um painel que esteja neste registro. Registrado de forma SÍNCRONA (na
+fase de commit do efeito, não dentro do `setTimeout` que faz a varredura),
+porque a primeira versão do fix registrava dentro do próprio `setTimeout` e
+ainda falhava: outra instância podia varrer primeiro. Uma segunda camada,
+depois da varredura, limpa `inert`/`aria-hidden` de todo o caminho do PRÓPRIO
+painel até o body — rede de segurança pro caso de um `inert` já ter sido
+gravado por uma isolação anterior (o cenário que o comentário original do
+arquivo já descrevia pro FAB, só que numa variante nova).
+
+**Achado colateral, corrigido também:** os botões de editar/excluir categoria
+eram mesmo filhos do botão de selecionar a linha (`<button>` dentro de
+`<button>`) — bug real e separado, não a causa do clique quebrado (testado
+isolado), mas gerava erro no console e zerava a árvore de acessibilidade da
+lista inteira. Corrigido em `CategoryPickerModal.tsx`: os botões de ação
+viraram irmãos do botão de seleção, não mais filhos (contêiner `View` comum
+por linha, com o botão de seleção como `flex:1` e as ações ao lado).
+
+**Efeito colateral descoberto durante a investigação:** esse mesmo erro de
+console — com o toast do overlay de erro do React visível — estava capturado
+DENTRO de dois prints usados como material de marketing na landing, ao vivo em
+produção: `public/telas/inicio-mobile.png` e `desafios-mobile.png` (seção "Do
+primeiro lançamento ao hábito"). Ambos recapturados com o bug já corrigido,
+usando "Dados de exemplo" no Perfil (nunca conta de verdade, por política já
+registrada acima), na mesma resolução 390×844. A tag "exemplo" que aparece no
+cabeçalho da Início em modo de exemplo foi escondida só visualmente (CSS
+inline via `eval`, não no código) na hora de capturar — não deve aparecer em
+material de marketing.
+
+Commit `bc0eb62`, já publicado em `origin/main`. Verificado: `tsc --noEmit`
+limpo, `test:parser` completo, e a troca de categoria funcionando de verdade
+em 3 tentativas consecutivas depois da correção (antes, falhava 100% das
+vezes). O deploy da Vercel precisa rodar pra `granaponto.com.br` refletir
+isto — não confirmado nesta sessão se já rodou.
