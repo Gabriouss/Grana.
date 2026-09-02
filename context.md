@@ -1108,3 +1108,56 @@ deploy, migração ou escrita em produção. Foram documentados cinco achados
 brecha de tenant/IDOR nem XSS na revisão estática; a limitação principal é a
 ausência do código da Edge Function `delete-account` e de testes autenticados
 contra produção.
+
+### Verificação independente dos 5 achados (mesmo dia, outra máquina)
+
+Cada achado do PDF foi conferido linha a linha contra o código atual (não só
+aceito de olho no relatório). Os cinco se confirmaram exatamente como
+descritos — nenhum falso positivo. Ordem de prioridade recomendada, revisada:
+
+1. **GRN-SEC-002 (Kiwify, ALTA) — confirmado em
+   `supabase/functions/kiwify-webhook/index.ts:20-32`.** `tokenValido()`
+   aceita o segredo por header `x-kiwify-token`, por três campos do body
+   (`webhook_token`/`token`/`secret`) OU pela query string `?token=`. Query
+   string vaza em log de proxy/CDN e histórico de navegador. É o mais barato
+   de corrigir (remover os campos redundantes, manter só o header oficial) e
+   o mais barato de explorar se vazar. **Prioridade 1.**
+
+2. **GRN-SEC-004 (vínculo automático de assinatura, MÉDIA "condicional" no
+   relatório, mas pode ser ALTA na prática) — confirmado em
+   `supabase/schema.sql:2351-2374`.** `vincular_assinatura_automatica()` casa
+   e-mail sem checar `email_confirmed_at`. Confirmado também que o app já
+   sabe distinguir quando o Supabase exige confirmação
+   (`needsEmailConfirmation` em `lib/auth-context.tsx:171`), ou seja, o app
+   está preparado pro cenário perigoso: se "Confirm email" estiver **OFF** no
+   painel do Supabase (Authentication → Settings), qualquer um cria conta com
+   o e-mail de um comprador de verdade e herda a assinatura paga dele. **Isto
+   só dá pra confirmar olhando o painel do Supabase — nenhuma sessão até
+   agora teve esse acesso.** Checar isso é a ação de 5 minutos que mais muda
+   o quadro de risco real. **Prioridade 2, mas checar a config PRIMEIRO.**
+
+3. **GRN-SEC-001 (exclusão de conta, ALTA) — confirmado o lado do cliente em
+   `lib/data.ts:805-809`.** `deleteUserAccount()` chama a Edge Function
+   `delete-account` com `body: {}` — nenhuma prova de reautenticação é
+   enviada ao servidor; a senha só é conferida no cliente
+   (`reauthenticate()`), e essa checagem nunca atravessa a rede. A função em
+   si não existe neste repositório (só 3 Edge Functions:
+   `eas-build-webhook`, `kiwify-webhook`, `whatsapp-webhook` —
+   confirmado por `ls supabase/functions/`), então não dá pra saber se quem a
+   implantou compensou isso do lado do servidor. **Prioridade 3** — exige
+   achar a função na infra ou escrevê-la do zero com step-up de verdade.
+
+4. **GRN-SEC-003 (token de ativação em storage, MÉDIA) — confirmado em
+   `lib/assinatura.ts:37-61`.** O token só é removido do
+   `AsyncStorage`/`localStorage` em caso de SUCESSO (linha 58); se inválido,
+   expirado ou a rede falhar, fica gravado indefinidamente — decisão
+   deliberada pra permitir retry, com o efeito colateral que o relatório
+   aponta.
+
+5. **GRN-SEC-005 (conquistas fabricáveis, BAIXA) — confirmado em
+   `supabase/schema.sql:3247-3250`.** Política `for all` em
+   `user_achievements` sem checar `badge_id` nem `unlocked_at`. Baixo risco
+   real (não é dado financeiro), mas gamificação é fabricável pelo cliente.
+
+**Nenhuma correção foi implementada ainda** — só verificação. Autor ainda não
+apontou por qual começar.
