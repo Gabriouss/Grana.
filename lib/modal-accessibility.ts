@@ -20,6 +20,32 @@ type Registro = { usos: number; inert: boolean; ariaHidden: string | null };
 
 const isolados = new WeakMap<HTMLElement, Registro>();
 
+/**
+ * Painéis de modal atualmente abertos, de QUALQUER instância do hook.
+ *
+ * O bug que isto resolve: um segundo modal aberto POR CIMA do primeiro (ex.:
+ * o seletor de Categoria dentro do formulário de "Nova saída/entrada") vira
+ * IRMÃO do painel do primeiro modal lá no topo da árvore (ambos acabam como
+ * filhos diretos do body, um por `Modal` do React Native). A varredura do
+ * primeiro modal marca "todo irmão até o body" como `inert` — e o portal do
+ * segundo modal, que nasceu depois, cai nessa varredura como se fosse plateia
+ * comum, não um diálogo ativo. Resultado: o segundo modal renderiza normal,
+ * mas nenhum toque nele funciona (só `.click()` programático, que ignora
+ * `inert`) — foi exatamente o sintoma reportado (seletor de categoria sem
+ * resposta a toque). Consultar este registro antes de isolar qualquer
+ * elemento garante que nenhum painel ativo, de nenhuma instância, seja
+ * silenciado pela varredura de outra.
+ */
+const paineisAtivos = new Set<HTMLElement>();
+
+function contemPainelAtivo(elemento: HTMLElement): boolean {
+  if (paineisAtivos.has(elemento)) return true;
+  for (const painel of paineisAtivos) {
+    if (painel.isConnected && elemento.contains(painel)) return true;
+  }
+  return false;
+}
+
 function isolar(elemento: HTMLElement) {
   const registro = isolados.get(elemento);
   if (registro) {
@@ -152,12 +178,30 @@ export function useModalAccessibility(ref: RefObject<View | null>, ativo = true)
     let removerEventos = () => {};
     let restaurado = false;
 
+    /* Registro em `paineisAtivos` acontece AQUI, síncrono, na fase de commit
+       do efeito — não dentro do `setTimeout` de varredura logo abaixo.
+       Motivo: `Sheet.tsx`, `FabButton.tsx` e `AccessibleModalPanel` chamam
+       este MESMO hook, cada instância com seu próprio `setTimeout(.., 0)`.
+       Quando um modal abre por cima de outro (o seletor de Categoria sobre o
+       formulário de "Nova saída", que por sua vez pode ter sido aberto pelo
+       FAB), duas varreduras ficam na fila de macrotasks quase juntas — se o
+       registro também esperasse o próprio `setTimeout`, a varredura de UMA
+       instância podia rodar antes da OUTRA se registrar, e aí a proteção
+       chegava tarde demais: exatamente o que deixava o seletor de categoria
+       marcado `inert` por engano, sem nenhum toque nele funcionando (só
+       `.click()` programático, que ignora `inert`). Registrando de forma
+       síncrona aqui, o painel já está protegido antes de QUALQUER
+       `setTimeout(0)` — o dele ou o de outra instância — ter chance de rodar. */
+    const meuPainel = ref.current as unknown as HTMLElement | null;
+    if (meuPainel) paineisAtivos.add(meuPainel);
+
     /* Idempotente: é chamada da limpeza normal do efeito e também da rede de
        segurança logo abaixo. */
     const restaurar = () => {
       if (restaurado) return;
       restaurado = true;
       for (const elemento of meus) liberar(elemento);
+      if (meuPainel) paineisAtivos.delete(meuPainel);
     };
 
     /* Rede de segurança: solta tudo se o painel sair do documento.
@@ -193,11 +237,29 @@ export function useModalAccessibility(ref: RefObject<View | null>, ativo = true)
       while (atual?.parentElement) {
         for (const irmao of Array.from(atual.parentElement.children)) {
           if (irmao === atual || !(irmao instanceof HTMLElement)) continue;
+          if (contemPainelAtivo(irmao)) continue;
           isolar(irmao);
           meus.push(irmao);
         }
         atual = atual.parentElement;
         if (atual === document.body) break;
+      }
+
+      /* Rede de segurança adicional: nenhum ancestral do PRÓPRIO painel, até
+         o body, pode continuar `inert` depois desta varredura — não importa
+         quem o marcou. `contemPainelAtivo` acima cobre o caso comum (outra
+         instância varrendo agora), mas não cobre um `inert` que já estava
+         gravado ANTES desta instância sequer existir (o cenário original do
+         comentário no topo do arquivo: um isolamento anterior fotografou
+         `inert: true` como "estado prévio" de um nó que o React Native Web
+         reaproveita entre modais, e devolveu esse `true` ao fechar). Limpar
+         aqui não mexe no contador de `isolados` — só garante que o caminho
+         até ESTE painel nunca fica bloqueado enquanto ele está com `ativo`. */
+      let limpar: HTMLElement | null = painel;
+      while (limpar && limpar !== document.body) {
+        if (limpar.inert) limpar.inert = false;
+        if (limpar.getAttribute('aria-hidden') === 'true') limpar.removeAttribute('aria-hidden');
+        limpar = limpar.parentElement;
       }
 
       const focaveis = () =>

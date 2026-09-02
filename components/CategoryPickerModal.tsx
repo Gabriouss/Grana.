@@ -213,24 +213,30 @@ export default function CategoryPickerModal({
               const isEditing = editingId === item.id;
               return (
                 <View key={item.id}>
-                  <AppPressable
-                    style={({ hovered }) => [
-                      styles.catRow,
-                      selected && styles.catRowSelected,
-                      hovered && styles.catRowHover,
-                    ]}
-                    onPress={() => {
-                      if (mode === 'manage') return;
-                      onSelectCategory?.(item);
-                      onClose();
-                    }}
-                  >
-                    <View style={[styles.dot, { backgroundColor: item.color }]} />
-                    <Text style={[styles.catName, selected && { color: theme.ink}]}>
-                      {item.name}
-                    </Text>
-                    {selected && <Ionicons name="checkmark" size={16} color={theme.ink} />}
-                    {item.isDefault && <Text style={styles.defaultTag}>padrão</Text>}
+                  {/* Contêiner só de layout (não é Pressable): os botões de
+                      editar/excluir precisam ser IRMÃOS do botão de
+                      selecionar, não filhos dele. Um <button> HTML não pode
+                      conter outro <button> — react-native-web renderiza
+                      qualquer Pressable com papel de botão como <button>
+                      de verdade, e aninhar dois quebra o hit-test nativo
+                      do navegador (só `.click()` programático funcionava;
+                      toque/clique real não chegava a nenhum dos dois). */}
+                  <View style={[styles.catRow, selected && styles.catRowSelected]}>
+                    <AppPressable
+                      style={({ hovered }) => [styles.catRowMain, hovered && styles.catRowHover]}
+                      onPress={() => {
+                        if (mode === 'manage') return;
+                        onSelectCategory?.(item);
+                        onClose();
+                      }}
+                    >
+                      <View style={[styles.dot, { backgroundColor: item.color }]} />
+                      <Text style={[styles.catName, selected && { color: theme.ink}]}>
+                        {item.name}
+                      </Text>
+                      {selected && <Ionicons name="checkmark" size={16} color={theme.ink} />}
+                      {item.isDefault && <Text style={styles.defaultTag}>padrão</Text>}
+                    </AppPressable>
                     <View style={styles.rowActions}>
                       <AppPressable
                         onPress={() => openEdit(item)}
@@ -249,7 +255,7 @@ export default function CategoryPickerModal({
                         <Ionicons name="trash-outline" size={15} color={theme.inkFaint} />
                       </AppPressable>
                     </View>
-                  </AppPressable>
+                  </View>
 
                   {isEditing && (
                     <View style={styles.newForm}>
@@ -336,7 +342,16 @@ const styles = StyleSheet.create({
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   catList: { maxHeight: 280 },
   catListTall: { maxHeight: 420 },
+  /* Contêiner de layout — não é Pressable. Ver o comentário no ponto de uso
+     sobre por que os botões de ação não podem ser filhos do botão da linha. */
   catRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.sm,
+  },
+  catRowSelected: { backgroundColor: theme.paper },
+  catRowMain: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -344,12 +359,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: radius.sm,
   },
-  catRowSelected: { backgroundColor: theme.paper },
   catRowHover: { backgroundColor: theme.paper },
   dot: { width: 10, height: 10, borderRadius: 5 },
   catName: { color: theme.inkSoft, fontSize: type.apoio, flexShrink: 1, fontFamily: fonts.light },
   defaultTag: { color: theme.inkFaint, fontSize: type.micro, letterSpacing: 0.5, fontFamily: fonts.light },
-  rowActions: { flexDirection: 'row', gap: 4, marginLeft: 'auto' },
+  rowActions: { flexDirection: 'row', gap: 4, paddingRight: 8 },
   rowActionBtn: { padding: 4 },
   createToggle: { color: theme.inkSoft, fontSize: type.apoio, paddingVertical: 6, fontFamily: fonts.light },
   newForm: { gap: 10, paddingVertical: 10, paddingHorizontal: 4 },
