@@ -1,12 +1,15 @@
-/* O parser de lançamentos existe DUAS vezes: em lib/heuristics.ts (app: voz
- * dentro do app, colar comprovante) e copiado dentro de
- * supabase/functions/whatsapp-webhook/index.ts (bot do WhatsApp, que roda em
- * Deno e não importa do app).
+/* Código do app que também existe copiado dentro de uma Edge Function. As
+ * Edge Functions rodam em Deno e não importam do app, então o mesmo código
+ * vive em dois arquivos — e duas cópias que ninguém compara sempre divergem.
  *
- * Isso já causou bug real nesta sessão: uma correção aplicada só em
- * lib/heuristics.ts deixou o bot do WhatsApp quebrado, e só apareceu quando
- * um lançamento saiu errado em produção. Este script falha quando as duas
- * cópias divergem.
+ * Isso já causou bug real: uma correção aplicada só em lib/heuristics.ts
+ * deixou o bot do WhatsApp quebrado, e só apareceu quando um lançamento saiu
+ * errado em produção. Este script falha quando as cópias divergem.
+ *
+ * Hoje são dois pares:
+ *  - o parser de lançamentos (app: voz e colar comprovante / bot do WhatsApp);
+ *  - a guarda ortográfica das notas de versão (CLI pré-build e testes /
+ *    webhook do EAS, que é quem de fato escreve o texto no banco).
  *
  * Rode: node __tests__/sync-parser.js
  */
@@ -51,8 +54,6 @@ function corpo(arquivo, nome) {
   );
 }
 
-const APP = 'lib/heuristics.ts';
-const WEB = 'supabase/functions/whatsapp-webhook/index.ts';
 
 /* Cada entrada é o nome da função; quando ela se chama diferente nos dois
    arquivos, vira [nomeNoApp, nomeNoWebhook]. */
@@ -70,26 +71,42 @@ const COMPARTILHADAS = [
   'guessAmountFromText', 'normalizarParaBusca', 'contemPalavra',
 ];
 
+/* A guarda ortográfica das notas de versão. Divergir aqui é pior que no
+   parser: o webhook é quem escreve o texto que abre no pop-up de novidades,
+   então uma regra corrigida só no lado do app não protegeria nada. */
+const NOTAS_RELEASE = [
+  'ACENTUADAS_OBRIGATORIAS', 'REGRAS_DE_SUFIXO', 'PREFIXO_COMMIT',
+  'palavrasDe', 'validarNotaRelease', 'notaEhPublicavel',
+];
+
+const PARES = [
+  { app: 'lib/heuristics.ts', web: 'supabase/functions/whatsapp-webhook/index.ts', funcoes: COMPARTILHADAS },
+  { app: 'lib/notas-release.ts', web: 'supabase/functions/eas-build-webhook/index.ts', funcoes: NOTAS_RELEASE },
+];
+
 let divergentes = 0;
 let ausentes = 0;
+let total = 0;
 
-for (const entrada of COMPARTILHADAS) {
-  const [nomeApp, nomeWeb] = Array.isArray(entrada) ? entrada : [entrada, entrada];
-  const nome = nomeApp;
-  const a = corpo(APP, nomeApp);
-  const w = corpo(WEB, nomeWeb);
-  if (a === null || w === null) {
-    ausentes++;
-    const onde = [a === null ? 'app' : null, w === null ? 'webhook' : null].filter(Boolean).join(' e ');
-    console.log('AUSENTE   ' + nome + ' — não localizada em: ' + onde);
-    continue;
-  }
-  if (a !== w) {
-    divergentes++;
-    console.log('DIVERGE   ' + nome);
+for (const par of PARES) {
+  for (const entrada of par.funcoes) {
+    total++;
+    const [nomeApp, nomeWeb] = Array.isArray(entrada) ? entrada : [entrada, entrada];
+    const nome = nomeApp;
+    const a = corpo(par.app, nomeApp);
+    const w = corpo(par.web, nomeWeb);
+    if (a === null || w === null) {
+      ausentes++;
+      const onde = [a === null ? par.app : null, w === null ? par.web : null].filter(Boolean).join(' e ');
+      console.log('AUSENTE   ' + nome + ' — não localizada em: ' + onde);
+      continue;
+    }
+    if (a !== w) {
+      divergentes++;
+      console.log('DIVERGE   ' + nome + ' — ' + par.app + ' vs ' + par.web);
+    }
   }
 }
 
-const total = COMPARTILHADAS.length;
 console.log('\n' + (total - divergentes - ausentes) + '/' + total + ' em sincronia — ' + divergentes + ' divergentes, ' + ausentes + ' não localizadas');
 if (divergentes > 0 || ausentes > 0) process.exit(1);

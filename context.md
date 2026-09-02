@@ -669,3 +669,63 @@ de cartão, paginação, recorrência, sequência, relatório, Score, guardas de
 schema e `sync-parser` 26/26 em sincronia). Nenhuma build disparada nesta
 sessão e `app.json` segue em `1.4.1` — as mudanças são todas de código do app,
 sem migração de banco.
+
+## Sessão de 02/09/2026 - guarda ortográfica das notas de versão
+
+A 1.4.1 publicou "Corrige tela branca **apos** desbloqueio por digital" no
+pop-up de novidades, sem acento, na cara de todo mundo que atualizou.
+
+A causa não foi distração, era estrutural: os commits deste repositório são
+escritos sem acento por convenção ("fix: estabiliza navegacao apos
+biometria"); quando o `eas build` roda sem `--message`, o EAS preenche a
+mensagem do build com a mensagem do commit; o `eas-build-webhook` copia essa
+mensagem verbatim para `app_release.notes`; e o app renderiza `notes` sem
+tocar em nada. O caminho padrão do pipeline publicava texto interno como copy
+de produto — ia acontecer de novo.
+
+- `lib/notas-release.ts` é a guarda. Ela **reprova**, não conserta: acento é
+  ambíguo demais em português para adivinhar ("esta"/"está", "e"/"é",
+  "pais"/"país") e um conserto errado é pior que o erro original.
+- Duas camadas de detecção. Um dicionário de palavras que sem acento não
+  existem, e regras por TERMINAÇÃO (`-ao`, `-oes`, `-encia`, `-avel`,
+  `-ivel`, `-ario`, `-orio`...), que são o que dá garantia de verdade: lista
+  envelhece, "nenhuma palavra termina em -cao sem til" continua valendo para
+  palavras que ninguém previu. `-oria` e `-aria` ficaram de fora de propósito
+  — "categoria", "padaria" e "faria" estão certas sem acento.
+- Também reprova nota que começa com prefixo de commit (`fix:`, `feat:`...),
+  que é o sinal de que o build rodou sem `--message`. Vale mesmo quando o
+  texto está ortograficamente perfeito: continua sendo changelog técnico.
+- Três pontos de uso: `npm run notas:check "<mensagem>"` antes do build;
+  a Edge Function `eas-build-webhook` como rede de segurança; e
+  `__tests__/corpus-notas-release.ts` dentro de `npm run test:parser`.
+- Reprovada no webhook, a versão é publicada **mesmo assim, sem notas**. O
+  aviso de atualização da regra 5 do AGENTS.md não pode depender de
+  ortografia: perder o pop-up é arranhão, perder o aviso de versão faz a
+  build inteira passar despercebida. A recusa vai pro log da função e pro
+  corpo da resposta, que aparece na tela de webhooks do EAS.
+- A cópia dentro da Edge Function (Deno não importa do app) entrou no
+  `__tests__/sync-parser.js`, que passou a comparar dois pares de arquivos em
+  vez de um. Verificado que ele reprova de verdade quando as cópias divergem.
+- Regra 6 nova no `AGENTS.md`; a antiga regra 6 (ler o `context.md`) virou 7.
+- Metade do corpus de teste é de FALSO POSITIVO ("categoria", "padaria",
+  "faria", "moradia"). Um verificador de acento que acusa palavra certa trava
+  build por frase correta, perde a confiança e alguém desliga — e aí volta a
+  passar erro de verdade.
+
+**Pendente, precisa de service_role:** o texto errado ainda está no banco.
+Esta sessão só tem a chave anon. Rodar no SQL editor do Supabase:
+
+```sql
+update app_release
+   set notes = 'Corrige tela branca após desbloqueio por digital',
+       updated_at = now()
+ where id = 1 and version = '1.4.1';
+```
+
+Quem já abriu o app e viu o pop-up não vai vê-lo de novo (o
+`grana_novidades_versao_vista` local já está em 1.4.1); a correção vale para
+quem ainda não atualizou ou não abriu.
+
+Verificações: `npx tsc --noEmit` limpo e `npm run test:parser` completo
+aprovado — 94/94 nas notas de release e 32/32 em sincronia. Nenhuma build
+disparada; `app.json` segue em `1.4.1`.

@@ -47,7 +47,31 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    1.1.1 e 1.2.0: várias builds seguidas com a mesma versão, todas
    ignoradas pelo webhook.
 
-6. **Ao iniciar o trabalho numa sessão, leia o `context.md` primeiro.** Ele é
+6. **A mensagem do build é COPY DE PRODUTO, não changelog técnico — e tem
+   verificador.** O texto do `--message` vai literalmente para o pop-up "O que
+   mudou no Grana.", na cara de todo mundo que atualiza. Antes de buildar:
+
+   ```
+   npm run notas:check "Corrige tela branca após desbloqueio por digital"
+   ```
+
+   Reprovado, ele diz palavra por palavra o que está errado e sai com código 1.
+
+   Isto não é preciosismo: a 1.4.1 foi ao ar com "apos" sem acento no pop-up.
+   A causa não foi distração — é que os commits deste repositório são escritos
+   SEM ACENTO por convenção, e quando o `eas build` roda sem `--message` o EAS
+   preenche a mensagem do build com a mensagem do commit. Ou seja, o caminho
+   padrão publica texto interno como copy de produto. Escreva sempre
+   `--message`, com acentuação de português de verdade.
+
+   A Edge Function `eas-build-webhook` roda a mesma checagem
+   (`lib/notas-release.ts`, copiado lá dentro e vigiado por
+   `__tests__/sync-parser.js`). Se a nota for reprovada ela publica a versão
+   assim mesmo, porém SEM notas — o aviso de atualização da regra 5 nunca
+   pode depender de ortografia —, e a recusa aparece no log da função e na
+   tela de webhooks do EAS.
+
+7. **Ao iniciar o trabalho numa sessão, leia o `context.md` primeiro.** Ele é
    a visão técnica/operacional do projeto e o estado de onde a última sessão
    parou. Ao encerrar uma sessão que mexeu em código, atualize o `context.md`
    com o que mudou e o estado atual, e suba isso no GitHub junto com o resto
