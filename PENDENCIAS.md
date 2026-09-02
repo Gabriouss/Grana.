@@ -271,7 +271,24 @@ import { compararVersoes } from './atualizacao'; // exportar de lá; hoje é int
 import { useSession } from './auth-context';
 import { supabase } from './supabase';
 
-export type ChaveFlag = 'whatsapp' | 'importar_extrato' | 'qr_nota' | 'lancamento_voz';
+/* As 13 chaves do Inventário. Esta união e o `insert` da Parte 1 precisam
+   andar juntos: chave que existe no banco e não aqui não compila na chamada,
+   e chave aqui sem linha no banco cai no caminho "desconhecida = ligada" e
+   nunca desliga. O teste da Parte 7 compara as duas listas. */
+export type ChaveFlag =
+  | 'whatsapp'
+  | 'importar_extrato'
+  | 'colar_comprovante'
+  | 'qr_nota'
+  | 'lancamento_voz'
+  | 'relatorio_pdf'
+  | 'foto_perfil'
+  | 'lembretes'
+  | 'assinatura_checkout'
+  | 'orcamento_sugerido'
+  | 'diagnostico'
+  | 'cofrinhos'
+  | 'desafios';
 
 export type Flag = {
   key: string;
@@ -676,22 +693,6 @@ update feature_flags set
 where key = 'whatsapp';
 ```
 
-**Religar:**
-
-```sql
-update feature_flags set
-  enabled = true, titulo = null, mensagem = null,
-  reativa_em = null, plataformas = null,
-  versao_min = null, versao_max = null, updated_at = now()
-where key = 'whatsapp';   -- troque pela chave que quiser religar
-```
-
-Limpar `plataformas` e a faixa de versão junto é obrigatório: um flag religado
-com escopo antigo pendurado vira armadilha no próximo incidente.
-
-O `reativa_em` é rede de segurança: mesmo esquecendo de religar, volta sozinho
-em 7 dias. Se o incidente durar mais, é só empurrar a data.
-
 **Desligar só numa plataforma** (ex.: voz quebrada só no Android):
 
 ```sql
@@ -722,7 +723,23 @@ select key, plataformas, versao_min, versao_max, reativa_em, titulo
 from feature_flags where not enabled order by updated_at desc;
 ```
 
-**Religar (qualquer chave):**
+**Religar — vale para qualquer chave:**
+
+```sql
+update feature_flags set
+  enabled = true, titulo = null, mensagem = null,
+  reativa_em = null, plataformas = null,
+  versao_min = null, versao_max = null, updated_at = now()
+where key = 'whatsapp';   -- troque pela chave que quiser religar
+```
+
+Limpar `plataformas` e a faixa de versão junto é obrigatório: um flag religado
+com escopo antigo pendurado vira armadilha no próximo incidente.
+
+O `reativa_em` é a rede de segurança do religamento: mesmo esquecendo de rodar
+o UPDATE acima, o flag volta sozinho na data marcada. Se o incidente durar
+mais, é só empurrar a data — nunca deixar sem data, porque desligamento sem
+prazo é o que vira permanente por esquecimento.
 
 ---
 
@@ -745,19 +762,31 @@ O projeto tem o hábito de virar regra em teste (`corpus-schema-guardas.ts`,
    quando um marcador aparece num arquivo que não importa `useFlags`:
 
    ```ts
-   const COBERTURA: Record<string, string[]> = {
-     whatsapp:          ['logo-whatsapp', 'PareamentoWhatsapp', 'WhatsappBotSheet'],
-     importar_extrato:  ['ImportarExtratoModal'],
-     colar_comprovante: ['setPasteModalOpen'],
-     qr_nota:           ['QrScannerModal'],
-     lancamento_voz:    ['VoiceEntryButton'],
-     relatorio_pdf:     ['gerarRelatorioPdf'],
-     foto_perfil:       ['fotoUrl'],
-     lembretes:         ['scheduleBillReminders', 'scheduleCardInvoiceReminders'],
-     // ... uma linha por chave do inventário
+   /* As 13 chaves, com marcadores conferidos no código em 02/09/2026.
+      Nenhuma linha inventada: cada símbolo abaixo existe hoje no repositório. */
+   const COBERTURA: Record<ChaveFlag, string[]> = {
+     whatsapp:            ['logo-whatsapp', 'PareamentoWhatsapp', 'WhatsappBotSheet'],
+     importar_extrato:    ['ImportarExtratoModal'],
+     colar_comprovante:   ['setPasteModalOpen'],
+     qr_nota:             ['QrScannerModal'],
+     lancamento_voz:      ['VoiceEntryButton'],
+     relatorio_pdf:       ['gerarRelatorioPdf'],
+     foto_perfil:         ['fotoUrl'],
+     lembretes:           ['scheduleBillReminders', 'scheduleCardInvoiceReminders'],
+     assinatura_checkout: ['temAssinaturaAtiva', 'KIWIFY_CHECKOUT_URL'],
+     orcamento_sugerido:  ['BudgetTemplatesModal', 'upsertBudgetsBatch'],
+     diagnostico:         ['diagnostico'],
+     cofrinhos:           ['GoalsCarousel'],
+     desafios:            ['BadgeCard', 'get_gamification_summary'],
    };
-   // Para cada arquivo que contém um marcador: exigir import de useFlags.
-   // Para cada chave do banco: exigir pelo menos um marcador conhecido.
+
+   // Três asserções, e as três importam:
+   // 1. todo arquivo que contém um marcador importa `useFlags`;
+   // 2. toda chave de ChaveFlag tem pelo menos um marcador aqui;
+   // 3. o `insert` da Parte 1 e o tipo ChaveFlag têm exatamente as mesmas
+   //    chaves — foi justamente essa lista sair de sincronia (o tipo ficou com
+   //    4 chaves quando o inventário já tinha 13) o erro pego na revisão deste
+   //    documento.
    ```
 
    Isto ataca diretamente o padrão sistêmico já registrado no
