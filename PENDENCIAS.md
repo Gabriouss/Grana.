@@ -26,28 +26,27 @@ e o 5 podem esperar.
 
 # Bloco 1 — Agora (2 minutos)
 
-## 1.1 O erro de acento ainda está no banco
+## 1.1 O erro de acento ainda está no banco — RESOLVIDO em 02/09/2026
 
 A versão 1.4.1 publicou no pop-up de novidades: *"Corrige tela branca **apos**
 desbloqueio por digital"*, sem acento, na cara de todo mundo que atualizou.
 
 O código que **impede isso de acontecer de novo** já está na `main` (guarda
-ortográfica em `lib/notas-release.ts` + `npm run notas:check`). Mas o texto
-errado continua gravado na linha `app_release`, e corrigi-lo exige
-`service_role` — a máquina remota só tem a chave anon.
-
-**No SQL Editor do Supabase:**
-
-```sql
-update app_release
-   set notes = 'Corrige tela branca após desbloqueio por digital',
-       updated_at = now()
- where id = 1 and version = '1.4.1';
-```
+ortográfica em `lib/notas-release.ts` + `npm run notas:check`). O texto em
+`app_release.notes` (id 1, versão 1.4.1) foi corrigido via Management API do
+Supabase (Personal Access Token temporário fornecido pelo autor), verificado
+byte a byte (49 bytes, "ó" em UTF-8 `c3 b3`) e aprovado por `npm run
+notas:check`. **Não é preciso repetir este passo.**
 
 Quem já abriu o app e dispensou o pop-up não o verá de novo (o marcador local
 `grana_novidades_versao_vista` já está em 1.4.1). A correção vale para quem
 ainda não atualizou ou não abriu.
+
+Nota para quem repetir uma correção assim: passar a query SQL via arquivo
+(`curl --data-binary @arquivo.json`) em vez de string inline no shell —
+inline corrompeu o acento (virou U+FFFD) na primeira tentativa, porque o Git
+Bash no Windows não preserva UTF-8 em argumentos de linha de comando por
+padrão.
 
 ## 1.2 A partir do próximo build, existe um passo novo
 
@@ -175,9 +174,14 @@ invertido.
 
 ---
 
-### Parte 1 — Banco
+### Parte 1 — Banco — RESOLVIDO em 02/09/2026
 
-Acrescentar ao fim de `supabase/schema.sql` e aplicar no SQL Editor.
+Aplicada em produção via Management API do Supabase (Personal Access Token
+temporário) e já está no fim de `supabase/schema.sql`. Verificado depois de
+aplicar: `feature_flags` existe, `relrowsecurity = true`, a política
+`"logados leem os flags"` (SELECT, `authenticated`) está lá, e as 13 chaves do
+inventário estão semeadas com `enabled = true`. `__tests__/corpus-schema-guardas.ts`
+confirma RLS + política de select nesta tabela. **Não é preciso reaplicar.**
 
 ```sql
 -- ─────────────────────────────────────────────────────────────────────────
@@ -801,30 +805,43 @@ O projeto tem o hábito de virar regra em teste (`corpus-schema-guardas.ts`,
 
 ### Checklist de execução, na ordem
 
-- [ ] 1. Aplicar o SQL da Parte 1 no Supabase e acrescentar ao `schema.sql`
-- [ ] 2. Criar `lib/feature-flags.tsx` e montar o provider em `app/_layout.tsx`
-- [ ] 3. Ligar TODOS os pontos de entrada do Inventário, não só os do
+**Itens 1-6 e 11 verificados como concluídos em 02/09/2026** — duas sessões
+diferentes (uma sem acesso ao Supabase, outra com) trabalharam nisto em
+paralelo sem saber uma da outra; o resultado foi reconciliado nesta rodada:
+banco aplicado por uma sessão, código completo vindo da outra (commit
+`8c06a7e`). Confirmado por verificação direta, não só por o commit dizer que
+sim — `npx tsc --noEmit` limpo, `npm run test:parser` com 100% (incluindo
+17/17 em `corpus-flags.ts` e 11/11 nas guardas de schema), e checagem manual
+de que as 13 chaves aparecem em `ligado('<chave>')` nos arquivos certos.
+
+- [x] 1. Aplicar o SQL da Parte 1 no Supabase e acrescentar ao `schema.sql`
+- [x] 2. Criar `lib/feature-flags.tsx` e montar o provider em `app/_layout.tsx`
+- [x] 3. Ligar TODOS os pontos de entrada do Inventário, não só os do
        WhatsApp — a chave de tudo é não parar na ferramenta que motivou o
        pedido. Se o tempo apertar, o corte honesto é por ferramenta inteira
        (deixar `cofrinhos` para depois), nunca por "só metade dos pontos do
        WhatsApp": meio interruptor é pior que nenhum, porque dá a impressão
        de que está coberto
-- [ ] 4. Criar `components/AvisoFlagModal.tsx` e chamá-lo na área logada
-- [ ] 5. `npx tsc --noEmit` + `npm run test:parser`
-- [ ] 6. Escrever `__tests__/corpus-flags.ts` (Parte 7) e incluir no
+- [x] 4. Criar `components/AvisoFlagModal.tsx` e chamá-lo na área logada
+- [x] 5. `npx tsc --noEmit` + `npm run test:parser`
+- [x] 6. Escrever `__tests__/corpus-flags.ts` (Parte 7) e incluir no
        `test:parser`. **O item 3 da Parte 7 (guarda de cobertura) não é
        opcional** — é ele que garante que a próxima ferramenta do Grana. nasça
        com interruptor em vez de repetir este trabalho daqui a seis meses
-- [ ] 7. **Subir `expo.version` no `app.json`** (regra 5 do AGENTS.md)
-- [ ] 8. `npm run notas:check "<mensagem>"` (regra 6 do AGENTS.md)
+- [x] 7. **Subir `expo.version` no `app.json`** (regra 5 do AGENTS.md)
+- [x] 8. `npm run notas:check "<mensagem>"` (regra 6 do AGENTS.md)
 - [ ] 9. Build, e **testar o interruptor com o app instalado**: virar o flag no
-       SQL e confirmar que o botão some sem reinstalar nada
+       SQL e confirmar que o botão some sem reinstalar nada — **não disparado
+       nesta sessão**: regra 4 do AGENTS.md exige pedido explícito, e não
+       houve pedido de build, só de terminar o trabalho de código/banco
 - [ ] 10. Só então começar a Parte 5 (push), que é independente e não bloqueia
-- [ ] 11. Atualizar `context.md` e `DESIGN.md` (o estado desabilitado é um
+- [x] 11. Atualizar `context.md` e `DESIGN.md` (o estado desabilitado é um
        estado visual novo e o DESIGN.md não tem vocabulário para ele)
 
 Os passos 1 a 9 entregam o valor inteiro do interruptor. O push (10) é
-melhoria de alcance, não pré-requisito.
+melhoria de alcance, não pré-requisito. **Falta só o 9** (build) — peça
+explicitamente quando quiser disparar, e citar que já sabe do custo de cota
+compartilhada entre as duas máquinas.
 
 ---
 

@@ -989,3 +989,48 @@ runtime. Sem validação visual das telas logadas: não há login nesta máquina
 fim do `supabase/schema.sql`, é copiar e colar no SQL Editor). Enquanto a
 tabela não existir, a leitura falha e cai na FALHA ABERTA — tudo continua
 ligado, nada quebra. Push (Parte 5 do plano) não foi implementado.
+
+## Sessão de 02/09/2026 - reconciliação: duas sessões implementaram o Bloco 3 em paralelo
+
+Esta máquina, com acesso real ao Supabase, já tinha aplicado o SQL da Parte 1
+(tabela `feature_flags` em produção, verificada linha a linha) num commit
+separado, sem saber que a sessão descrita no bloco acima (rodando sem acesso
+ao Supabase) tinha, ao mesmo tempo, terminado e publicado o lado inteiro do
+cliente em `origin/main` (commit `8c06a7e`). As duas se desconheciam.
+
+Paralelamente, um agente Codex também chegou a começar uma **terceira**
+implementação do mesmo Bloco 3, com nomes de arquivo diferentes
+(`lib/feature-flags-core.ts`, `lib/versoes.ts`) mas resolvendo o mesmo
+problema — descoberta a tempo, antes de virar commit.
+
+**Resolução, nesta ordem:**
+
+1. O trabalho do Codex (não commitado) foi guardado com `git stash push -u`
+   em vez de descartado — recuperável via `git stash list` /
+   `git stash show -p stash@{0}` se algum pedaço dele for útil depois, mas
+   **não foi usado**: a implementação de `origin/main` já cobre o mesmo
+   escopo e está testada.
+2. `git pull` trouxe `8c06a7e` (fast-forward, sem conflito porque a árvore
+   estava limpa depois do stash).
+3. Verificado de verdade, não só aceito porque o commit dizia que sim:
+   `npx tsc --noEmit` limpo, `npm run test:parser` 100% (17/17 em
+   `corpus-flags.ts`, 11/11 nas guardas de schema — que agora exigem RLS e
+   política de select em `feature_flags`, batendo com o que já estava em
+   produção), e checagem manual de que as 13 chaves aparecem em
+   `ligado('<chave>')` nos arquivos certos (`grep -rn "ligado('"`).
+4. `app.json` subiu de `1.4.1` para `1.4.2` (regra 5 do `AGENTS.md`) e
+   `npm run notas:check` aprovou a mensagem candidata para o próximo build.
+   **Nenhum build foi disparado** — regra 4 do `AGENTS.md` exige pedido
+   explícito nesta sessão para consumir cota do EAS, e não houve esse pedido.
+5. `PENDENCIAS.md` atualizado: checklist do Bloco 3 marcado 1-8 e 11 como
+   concluídos e verificados; 9 (build + teste no aparelho) e 10 (push)
+   seguem em aberto.
+
+**Lição para as próximas sessões, registrada no `AGENTS.md` em espírito:**
+quando duas máquinas trabalham no mesmo `PENDENCIAS.md` ao mesmo tempo sem
+`git fetch` frequente, o resultado são implementações redundantes do mesmo
+plano. Isto só não virou conflito de merge feio porque nada da versão
+divergente chegou a ser commitado.
+
+**Ainda pendente:** item 9 (build de teste, precisa ser pedido explicitamente)
+e item 10 (push, Parte 5, independente e não bloqueia).
