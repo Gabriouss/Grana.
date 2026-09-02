@@ -4,6 +4,18 @@
 > nenhuma alteração de código**, para ser implementado na outra máquina.
 > Nada aqui foi aplicado ao projeto — é tudo plano.
 
+## O escopo
+
+**Toda ferramenta do Grana., não só o WhatsApp.** O WhatsApp é o incidente que
+motivou o pedido, mas o requisito é: qualquer funcionalidade que entre em
+instabilidade precisa poder ser desligada remotamente no aplicativo de todo
+mundo, com aviso, e religada remotamente quando resolver. Nenhuma ferramenta
+pode ficar de fora — uma que fique é exatamente a que vai cair.
+
+A seção "Inventário completo" abaixo lista todas, com chave e pontos de
+entrada, e a Parte 7 traz o teste que impede uma ferramenta nova nascer sem
+interruptor.
+
 ## O problema
 
 O WhatsApp do Grana. caiu. Hoje não existe jeito de desligar o botão: quem
@@ -80,9 +92,26 @@ create table if not exists feature_flags (
   reativa_em   timestamptz,
   -- Bump manual para forçar o pop-up a reaparecer para quem já dispensou.
   aviso_versao integer not null default 1,
+  -- ── Escopo do desligamento ──────────────────────────────────────────────
+  -- Instabilidade quase nunca atinge as duas plataformas igual: o
+  -- reconhecimento de voz quebra no Android e segue bom no iOS, a câmera
+  -- muda de comportamento numa versão do iOS. Desligar para todo mundo
+  -- quando só metade está afetada é punir quem está bem.
+  -- NULL = todas as plataformas. Ex: '{android}'.
+  plataformas  text[],
+  -- Mesma ideia no eixo da versão: um defeito que existe na 1.4.1 e já foi
+  -- corrigido na 1.5.0 não deve desligar nada para quem já atualizou.
+  -- Comparação numérica por segmento, feita no cliente (ver compararVersoes
+  -- em lib/atualizacao.ts, que já existe e faz exatamente isso).
+  versao_min   text,
+  versao_max   text,
   updated_at   timestamptz not null default now(),
   constraint feature_flags_severidade_valida
-    check (severidade in ('info', 'aviso', 'critico'))
+    check (severidade in ('info', 'aviso', 'critico')),
+  -- Desligar sem explicar é o pior dos mundos: a pessoa acha que quebrou ou
+  -- que a funcionalidade acabou. Se está desligado, tem que ter mensagem.
+  constraint feature_flags_desligado_tem_mensagem
+    check (enabled or (mensagem is not null and length(trim(mensagem)) > 0))
 );
 
 alter table feature_flags enable row level security;
@@ -95,11 +124,23 @@ create policy "logados leem os flags"
 
 -- Escrita nunca pelo app: só service_role (SQL Editor, Edge Function).
 
-insert into feature_flags (key, enabled, titulo, mensagem) values
-  ('whatsapp',        true, null, null),
-  ('importar_extrato',true, null, null),
-  ('qr_nota',         true, null, null),
-  ('lancamento_voz',  true, null, null)
+-- TODAS as ferramentas nascem ligadas. Semear todas de uma vez é o ponto:
+-- uma chave que só é criada no dia do incidente é uma chave que não existe
+-- justamente quando você precisa dela às pressas.
+insert into feature_flags (key, enabled) values
+  ('whatsapp'),            -- Meta Cloud API + Edge Function whatsapp-webhook
+  ('importar_extrato'),    -- CSV/OFX, até 10 mil linhas
+  ('colar_comprovante'),   -- parser de texto colado (lib/heuristics.ts)
+  ('qr_nota'),             -- expo-camera + QR da NFC-e
+  ('lancamento_voz'),      -- expo-speech-recognition
+  ('relatorio_pdf'),       -- expo-print + expo-sharing
+  ('foto_perfil'),         -- upload para o Storage do Supabase
+  ('lembretes'),           -- notificação local de boleto/fatura/limite
+  ('assinatura_checkout'), -- Kiwify + Edge Function kiwify-webhook
+  ('orcamento_sugerido'),  -- geração de orçamento por renda
+  ('diagnostico'),         -- diagnóstico/perfil financeiro
+  ('cofrinhos'),           -- metas e depósitos
+  ('desafios')             -- gamificação, streak e score
 on conflict (key) do nothing;
 ```
 
@@ -114,7 +155,9 @@ Supabase e já está montado em `app/_layout.tsx`.
 
 ```tsx
 import { createContext, use, useCallback, useEffect, useState, type PropsWithChildren } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
+import Constants from 'expo-constants';
+import { compararVersoes } from './atualizacao'; // exportar de lá; hoje é interna
 import { useSession } from './auth-context';
 import { supabase } from './supabase';
 
@@ -128,6 +171,9 @@ export type Flag = {
   severidade: 'info' | 'aviso' | 'critico';
   reativa_em: string | null;
   aviso_versao: number;
+  plataformas: string[] | null;
+  versao_min: string | null;
+  versao_max: string | null;
 };
 
 type FlagsContextValue = {
@@ -148,11 +194,27 @@ export function useFlags() {
   return value;
 }
 
-/* `reativa_em` no passado religa sozinho, sem depender de alguém lembrar de
-   rodar o UPDATE de volta depois que o incidente passou. */
+/* Um flag só desliga de verdade quando o desligamento se aplica A ESTE
+   aparelho: plataforma certa, versão dentro da faixa, e prazo não vencido.
+   Qualquer dúvida resolve para LIGADO — é a mesma falha aberta do provider. */
 function efetivamenteLigado(f: Flag): boolean {
   if (f.enabled) return true;
+
+  /* `reativa_em` no passado religa sozinho, sem depender de alguém lembrar de
+     rodar o UPDATE de volta depois que o incidente passou. */
   if (f.reativa_em && new Date(f.reativa_em).getTime() <= Date.now()) return true;
+
+  /* Instabilidade quase nunca atinge as duas plataformas igual. NULL/vazio
+     significa "todas". */
+  if (f.plataformas?.length && !f.plataformas.includes(Platform.OS)) return true;
+
+  /* Faixa de versão: um defeito já corrigido não deve desligar nada para quem
+     atualizou. `compararVersoes` é a de lib/atualizacao.ts, que já compara por
+     segmento numérico ("1.10.0" > "1.9.0", que como texto seria falso). */
+  const instalada = Constants.expoConfig?.version ?? '0.0.0';
+  if (f.versao_min && compararVersoes(instalada, f.versao_min) < 0) return true;
+  if (f.versao_max && compararVersoes(instalada, f.versao_max) > 0) return true;
+
   return false;
 }
 
@@ -165,7 +227,7 @@ export function FlagsProvider({ children }: PropsWithChildren) {
     try {
       const { data, error } = await supabase
         .from('feature_flags')
-        .select('key, enabled, titulo, mensagem, severidade, reativa_em, aviso_versao');
+        .select('key, enabled, titulo, mensagem, severidade, reativa_em, aviso_versao, plataformas, versao_min, versao_max');
       if (error) throw error;
       const mapa: Record<string, Flag> = {};
       for (const linha of (data ?? []) as Flag[]) mapa[linha.key] = linha;
@@ -213,9 +275,42 @@ export function FlagsProvider({ children }: PropsWithChildren) {
 
 ---
 
-## Parte 3 — Os quatro pontos do WhatsApp
+## Inventário completo das ferramentas
 
-Mapeados no código atual. São estes e só estes:
+Levantado do código em 02/09/2026. **O WhatsApp é uma linha desta tabela, não
+o assunto dela.** A coluna "risco" é o que pode dar errado depois de publicado,
+sem ninguém mexer no código — é esse o critério para existir interruptor.
+
+| Chave | Ferramenta | Pontos de entrada | Risco real |
+|---|---|---|---|
+| `whatsapp` | Lançar por mensagem | `index.tsx:1229` (ícone), `perfil.tsx:478` (linha), `perfil.tsx:853` (vínculo), `OnboardingModal.tsx:42` (vínculo) | Meta Cloud API e a Edge Function `whatsapp-webhook`. **Fora do ar hoje.** |
+| `importar_extrato` | Importar extrato CSV/OFX | `index.tsx:1298`, `ImportarExtratoModal.tsx` | Parser, e carga de até 10 mil linhas no Supabase Free |
+| `colar_comprovante` | Colar comprovante | `index.tsx:1291` | Regressão no parser (`lib/heuristics.ts`) atinge todo mundo de uma vez |
+| `qr_nota` | Escanear nota fiscal | `index.tsx:1305`, `QrScannerModal.tsx` | `expo-camera`, permissão, e mudança no formato do QR da NFC-e |
+| `lancamento_voz` | Lançamento por voz | `index.tsx` (`VoiceEntryButton`), `lancamentos.tsx` | `expo-speech-recognition` — quebra por plataforma, tipicamente só num lado |
+| `relatorio_pdf` | Relatório em PDF | `perfil.tsx`, `lib/pdf-report.ts` | `expo-print`/`expo-sharing`, comportamento diferente por SO |
+| `foto_perfil` | Foto de perfil | `perfil.tsx:470`, `OnboardingModal.tsx:514` | Upload para o Storage do Supabase |
+| `lembretes` | Lembretes de vencimento | `perfil.tsx:475,512,538` | `expo-notifications`, permissão e agendamento |
+| `assinatura_checkout` | Checkout da assinatura | tela de assinar | Kiwify e a Edge Function `kiwify-webhook`. Dinheiro entra por aqui. |
+| `orcamento_sugerido` | Orçamento sugerido | `perfil.tsx:598`, `BudgetTemplatesModal` | Cálculo por renda |
+| `diagnostico` | Diagnóstico financeiro | `perfil.tsx:604,612` | `lib/diagnostico.ts` |
+| `cofrinhos` | Cofrinhos e metas | `index.tsx` (`GoalsCarousel`) | Depósito e resgate |
+| `desafios` | Desafios e Score | aba Desafios | `get_gamification_summary()` no banco |
+
+**O que NÃO recebe interruptor, e por quê.** Ver e registrar lançamento,
+carteiras, categorias, saldo, login, bloqueio por biometria e modo privacidade
+são o produto em si, não ferramentas acessórias. Desligar qualquer um deles não
+é "instabilidade", é o app não existir — nesse caso o certo é uma página de
+status, não um flag. Segurança (biometria, bloqueio de captura) nunca deve ter
+interruptor remoto: seria um jeito de desligar a proteção de todo mundo por
+`UPDATE`.
+
+## Parte 3 — Exemplo trabalhado: os quatro pontos do WhatsApp
+
+O WhatsApp é o caso mais espalhado do inventário (quatro pontos de entrada em
+três arquivos), por isso serve de modelo. **O mesmo padrão vale para todas as
+outras chaves** — só muda quantos pontos cada uma tem. As regras logo abaixo da
+tabela são gerais, não específicas do WhatsApp.
 
 | # | Onde | Arquivo | O que fazer |
 |---|---|---|---|
@@ -455,7 +550,9 @@ descobre pelo app. O flag no banco é a verdade; o push é um empurrão.
 
 ## Parte 6 — Como operar (o que rodar no dia)
 
-**Desligar o WhatsApp e avisar:**
+Vale para **qualquer** chave do inventário — troque o `where key`.
+
+**Desligar e avisar (exemplo com o WhatsApp):**
 
 ```sql
 update feature_flags set
@@ -474,12 +571,48 @@ where key = 'whatsapp';
 ```sql
 update feature_flags set
   enabled = true, titulo = null, mensagem = null,
-  reativa_em = null, updated_at = now()
-where key = 'whatsapp';
+  reativa_em = null, plataformas = null,
+  versao_min = null, versao_max = null, updated_at = now()
+where key = 'whatsapp';   -- troque pela chave que quiser religar
 ```
+
+Limpar `plataformas` e a faixa de versão junto é obrigatório: um flag religado
+com escopo antigo pendurado vira armadilha no próximo incidente.
 
 O `reativa_em` é rede de segurança: mesmo esquecendo de religar, volta sozinho
 em 7 dias. Se o incidente durar mais, é só empurrar a data.
+
+**Desligar só numa plataforma** (ex.: voz quebrada só no Android):
+
+```sql
+update feature_flags set
+  enabled = false, plataformas = '{android}',
+  titulo = 'Lançamento por voz indisponível no Android',
+  mensagem = 'O reconhecimento de voz está instável nos aparelhos Android e foi desativado temporariamente. Dá para lançar colando o comprovante ou escaneando a nota enquanto isso.',
+  reativa_em = now() + interval '3 days', aviso_versao = aviso_versao + 1,
+  updated_at = now()
+where key = 'lancamento_voz';
+```
+
+**Desligar só nas versões afetadas** (defeito já corrigido na 1.5.0):
+
+```sql
+update feature_flags set
+  enabled = false, versao_max = '1.4.1',
+  titulo = 'Importação de extrato indisponível nesta versão',
+  mensagem = 'A importação de extrato apresentou um problema nesta versão do app e foi desativada. Atualize para a versão mais recente para voltar a usar.',
+  aviso_versao = aviso_versao + 1, updated_at = now()
+where key = 'importar_extrato';
+```
+
+**Ver o que está desligado agora:**
+
+```sql
+select key, plataformas, versao_min, versao_max, reativa_em, titulo
+from feature_flags where not enabled order by updated_at desc;
+```
+
+**Religar (qualquer chave):**
 
 ---
 
@@ -497,11 +630,33 @@ O projeto tem o hábito de virar regra em teste (`corpus-schema-guardas.ts`,
 2. **Estender `corpus-schema-guardas.ts`** para exigir que `feature_flags` e
    `push_tokens` tenham RLS ligado e política de select — o guarda de schema já
    faz isso para outras tabelas.
-3. **Guarda de cobertura dos pontos do WhatsApp:** um teste que falha se
-   `logo-whatsapp` ou `PareamentoWhatsapp` aparecer num arquivo que não importa
-   `useFlags`. É o que impede um quinto ponto de entrada nascer sem
-   interruptor — o padrão sistêmico já registrado no `IMPECCABLE_AUDIT.md`
-   ("o projeto cria a ferramenta certa e aplica em um lugar só").
+3. **Guarda de cobertura de TODAS as ferramentas** — o teste mais importante
+   dos três. Um mapa `chave -> marcadores no código` e um teste que falha
+   quando um marcador aparece num arquivo que não importa `useFlags`:
+
+   ```ts
+   const COBERTURA: Record<string, string[]> = {
+     whatsapp:          ['logo-whatsapp', 'PareamentoWhatsapp', 'WhatsappBotSheet'],
+     importar_extrato:  ['ImportarExtratoModal'],
+     colar_comprovante: ['setPasteModalOpen'],
+     qr_nota:           ['QrScannerModal'],
+     lancamento_voz:    ['VoiceEntryButton'],
+     relatorio_pdf:     ['gerarRelatorioPdf'],
+     foto_perfil:       ['fotoUrl'],
+     lembretes:         ['scheduleBillReminders', 'scheduleCardInvoiceReminders'],
+     // ... uma linha por chave do inventário
+   };
+   // Para cada arquivo que contém um marcador: exigir import de useFlags.
+   // Para cada chave do banco: exigir pelo menos um marcador conhecido.
+   ```
+
+   Isto ataca diretamente o padrão sistêmico já registrado no
+   `IMPECCABLE_AUDIT.md` — *"o projeto cria a ferramenta certa e aplica em um
+   lugar só"*. Sem este teste, o interruptor cobre as ferramentas de hoje e a
+   próxima nasce sem ele, que é a forma mais provável de este trabalho
+   apodrecer.
+4. **Teste de escopo:** flag com `plataformas = '{android}'` não desliga no
+   iOS; flag com `versao_max = '1.4.1'` não desliga em quem está na 1.5.0.
 
 ---
 
@@ -509,10 +664,18 @@ O projeto tem o hábito de virar regra em teste (`corpus-schema-guardas.ts`,
 
 - [ ] 1. Aplicar o SQL da Parte 1 no Supabase e acrescentar ao `schema.sql`
 - [ ] 2. Criar `lib/feature-flags.tsx` e montar o provider em `app/_layout.tsx`
-- [ ] 3. Ligar os 4 pontos do WhatsApp da Parte 3
+- [ ] 3. Ligar TODOS os pontos de entrada do Inventário, não só os do
+       WhatsApp — a chave de tudo é não parar na ferramenta que motivou o
+       pedido. Se o tempo apertar, o corte honesto é por ferramenta inteira
+       (deixar `cofrinhos` para depois), nunca por "só metade dos pontos do
+       WhatsApp": meio interruptor é pior que nenhum, porque dá a impressão
+       de que está coberto
 - [ ] 4. Criar `components/AvisoFlagModal.tsx` e chamá-lo na área logada
 - [ ] 5. `npx tsc --noEmit` + `npm run test:parser`
-- [ ] 6. Escrever `__tests__/corpus-flags.ts` (Parte 7) e incluir no `test:parser`
+- [ ] 6. Escrever `__tests__/corpus-flags.ts` (Parte 7) e incluir no
+       `test:parser`. **O item 3 da Parte 7 (guarda de cobertura) não é
+       opcional** — é ele que garante que a próxima ferramenta do Grana. nasça
+       com interruptor em vez de repetir este trabalho daqui a seis meses
 - [ ] 7. **Subir `expo.version` no `app.json`** (regra 5 do AGENTS.md)
 - [ ] 8. `npm run notas:check "<mensagem>"` (regra 6 do AGENTS.md)
 - [ ] 9. Build, e **testar o interruptor com o app instalado**: virar o flag no
@@ -536,12 +699,17 @@ melhoria de alcance, não pré-requisito.
    (`npm run notas:check`). Regra 6 do `AGENTS.md`.
 3. **Build do EAS consome cota compartilhada entre as duas máquinas** — pedir
    explicitamente antes de disparar. Regra 4.
-4. **Falha aberta é decisão, não descuido.** Se alguém "corrigir" o
+4. **Nunca dar interruptor a segurança.** Biometria, bloqueio de captura de
+   tela e modo privacidade ficam fora do sistema de flags de propósito: um
+   flag remoto sobre eles seria um jeito de desligar a proteção de todo mundo
+   com um `UPDATE`, e quem conseguisse escrever na tabela conseguiria isso.
+   Está registrado no Inventário e precisa continuar assim.
+5. **Falha aberta é decisão, não descuido.** Se alguém "corrigir" o
    `catch {}` do provider para desligar tudo em caso de erro, uma queda do
    Supabase vira app inteiro morto. O comentário no código precisa sobreviver.
-5. **`git fetch origin` e comparar com `origin/main` antes de commitar** —
+6. **`git fetch origin` e comparar com `origin/main` antes de commitar** —
    regra 1, e este repositório já sofreu reescrita acidental de histórico.
-6. **Não confundir com o `EntitlementProvider`.** Ele falha FECHADO de
+7. **Não confundir com o `EntitlementProvider`.** Ele falha FECHADO de
    propósito (o RLS aplica a mesma regra no servidor). Os flags falham ABERTOS.
    Os dois estão certos, por motivos opostos.
 
@@ -549,8 +717,10 @@ melhoria de alcance, não pré-requisito.
 
 ## Estimativa honesta
 
-- **Partes 1–4 e 6 (interruptor + aviso no app):** meio dia de trabalho. Toda a
-  infraestrutura já existe; é seguir padrões do próprio projeto.
+- **Partes 1–4 e 6 (interruptor + aviso no app):** um dia. Meio dia era a conta
+  para o WhatsApp sozinho; cobrir as 13 ferramentas do inventário dobra a
+  parte de ligar os pontos de entrada, mas não muda banco, provider nem aviso —
+  esses são escritos uma vez e servem todas.
 - **Parte 5 (push):** um a dois dias, e a maior parte é credencial (Firebase,
   APNs) e teste em aparelho — não código.
 - **Parte 7 (testes):** duas a três horas, e é o que impede o quinto ponto de
