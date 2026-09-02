@@ -37,7 +37,7 @@ import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, touchTarget } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, touchTarget, lh } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type CreditCardInvoicePayment, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -1187,22 +1187,26 @@ const styles = StyleSheet.create({
   cardBankName: {
     fontFamily: fonts.regular,
     fontSize: type.nota,
+    lineHeight: lh(type.nota, 'apoio'),
     color: theme.ink,
   },
   cardDigits: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkFaint,
   },
   cardMidRow: { gap: 2, marginVertical: 4 },
   cardInvoiceLabel: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkFaint,
   },
   cardInvoiceValue: {
     fontFamily: fonts.regular,
     fontSize: type.titulo,
+    lineHeight: lh(type.titulo, 'valor'),
     color: theme.down,
   },
   cardBottomRow: { gap: 4 },
@@ -1214,11 +1218,13 @@ const styles = StyleSheet.create({
   cardLimitText: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkFaint,
   },
   cardLimitPct: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.accent2,
   },
   limitTrack: {
@@ -1243,6 +1249,7 @@ const styles = StyleSheet.create({
   emptyCardsTitle: {
     fontFamily: fonts.regular,
     fontSize: type.corpo,
+    lineHeight: lh(type.corpo, 'corpo'),
     color: theme.ink,
   },
   emptyCardsSub: {
@@ -1278,15 +1285,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  invoiceInfo: { flex: 1, minWidth: 168 },
+  /* `gap` porque o rótulo e o valor estavam encostados: "Total em Faturas
+     (Todos os Cartões)" quebra em duas linhas e a segunda ficava colada no
+     "R$ 0,00" logo abaixo. Todo outro bloco empilhado da tela já tem folga
+     (cardIdentidade 2, cardMidRow 2, cardBottomRow 4); este era o único sem. */
+  invoiceInfo: { flex: 1, minWidth: 168, gap: 2 },
   invoiceLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'corpo'),
     color: theme.inkFaint,
   },
   invoiceTotal: {
     fontFamily: fonts.regular,
     fontSize: type.destaque,
+    lineHeight: lh(type.destaque, 'valor'),
     color: theme.down,
   },
   invoiceStatusRow: {
@@ -1298,6 +1311,7 @@ const styles = StyleSheet.create({
   invoiceDueText: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkFaint,
   },
   invoiceStatusBadge: {
@@ -1309,6 +1323,7 @@ const styles = StyleSheet.create({
   invoiceStatusText: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
   },
   payInvoiceBtn: {
     flexDirection: 'row',
@@ -1356,6 +1371,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'corpo'),
     color: theme.inkFaint,
     letterSpacing: 0.5,
     marginTop: spacing.sm,
@@ -1363,6 +1379,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: fonts.regular,
     fontSize: type.nota,
+    lineHeight: lh(type.nota, 'corpo'),
     color: theme.inkFaint,
     paddingVertical: spacing.md,
   },
@@ -1378,6 +1395,7 @@ const styles = StyleSheet.create({
   txDesc: {
     fontFamily: fonts.regular,
     fontSize: type.apoio,
+    lineHeight: lh(type.apoio, 'corpo'),
     color: theme.ink,
   },
   instBadge: {
@@ -1389,16 +1407,19 @@ const styles = StyleSheet.create({
   instBadgeText: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
     color: theme.accent2,
   },
   txDate: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkFaint,
   },
   txAmount: {
     fontFamily: fonts.regular,
     fontSize: type.apoio,
+    lineHeight: lh(type.apoio, 'valor'),
     color: theme.down,
   },
   sheetHeader: {
@@ -1410,6 +1431,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontFamily: fonts.regular,
     fontSize: type.titulo,
+    lineHeight: lh(type.titulo, 'titulo'),
     color: theme.ink,
   },
   input: {
@@ -1423,6 +1445,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkFaint,
     marginTop: spacing.xs,
   },
@@ -1445,6 +1468,7 @@ const styles = StyleSheet.create({
   bankChipText: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkSoft,
   },
   row2Cols: {
@@ -1482,6 +1506,7 @@ const styles = StyleSheet.create({
   fieldKey: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkFaint,
   },
   fieldVal: {
@@ -1492,6 +1517,7 @@ const styles = StyleSheet.create({
   fieldValText: {
     fontFamily: fonts.regular,
     fontSize: type.nota,
+    lineHeight: lh(type.nota, 'apoio'),
     color: theme.ink,
   },
   saveBtn: {

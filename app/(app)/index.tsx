@@ -1278,7 +1278,11 @@ export default function InicioScreen() {
             }}
             collapsable={false}
           >
-          <View style={styles.smartActionsRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.smartActionsRow}
+          >
           <AppPressable
             style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
             onPress={() => setPasteModalOpen(true)}
@@ -1314,7 +1318,7 @@ export default function InicioScreen() {
               setPasteModalOpen(true);
             }}
           />
-          </View>
+          </ScrollView>
           </View>
         </FadeIn>
 
@@ -1713,7 +1717,12 @@ const styles = StyleSheet.create({
   },
   quickChipHover: { backgroundColor: theme.hover },
   quickChipText: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.regular },
-  smartActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  /* Sem `flexWrap`: a fileira desliza, não empilha. Um passe de auditoria
+     (b34be61) trocou isto por `flexWrap: 'wrap'` e os quatro botões viraram
+     duas fileiras empilhadas, empurrando todo o resto da Início para baixo —
+     revertido a pedido do autor. O `paddingRight` é o respiro do fim da
+     rolagem, pra o último botão não colar na borda da tela. */
+  smartActionsRow: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.lg },
   smartActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',

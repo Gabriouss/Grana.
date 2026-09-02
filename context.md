@@ -729,3 +729,39 @@ quem ainda não atualizou ou não abriu.
 Verificações: `npx tsc --noEmit` limpo e `npm run test:parser` completo
 aprovado — 94/94 nas notas de release e 32/32 em sincronia. Nenhuma build
 disparada; `app.json` segue em `1.4.1`.
+
+## Sessão de 02/09/2026 - carrossel de ações e entrelinha da tela de Crédito
+
+Dois pedidos do autor, a partir de prints do app em produção.
+
+**Ações da Início voltaram a deslizar.** Os quatro botões ("Colar
+comprovante", "Importar extrato", "Escanear nota", "Lançamento por voz")
+estavam empilhados em duas fileiras. O `b34be61` (passe de auditoria) trocou
+o `ScrollView horizontal` por `flexWrap: 'wrap'` e não atualizou o comentário
+logo acima, que continuava descrevendo a rolagem — código e comentário
+estavam se contradizendo desde então. Revertido para o `ScrollView
+horizontal` original; o `minHeight: touchTarget` que veio no mesmo commit
+ficou, porque é alvo de toque e não layout.
+
+**Entrelinha da tela de Crédito.** A tela tinha 31 estilos de texto com
+`fontSize` e apenas 1 com `lineHeight`. O `lib/theme.ts` já documenta por que
+isso embola: a Neue Machina tem leading intrínseco curto, então `<Text>` sem
+`lineHeight` explícito sai com as linhas quase encostadas — e existe o helper
+`lh(tamanho, papel)` justamente pra isso, usado até então só em duas telas de
+auth.
+
+- 22 estilos passaram a usar `lh()`, pelo papel do texto: `corpo` (1.45) no
+  que quebra em duas linhas de verdade, `apoio` (1.4) em rótulo e metadado,
+  `valor` (1.15) em dinheiro, `titulo` (1.25) no título de folha.
+- Ficaram de fora de propósito: rótulos de botão (mudar a caixa de texto muda
+  a geometria do botão) e campos de digitação (`lineHeight` em `TextInput` no
+  Android corta o texto verticalmente).
+- `invoiceInfo` ganhou `gap: 2`. Era o único bloco empilhado da tela sem folga
+  nenhuma: "Total em Faturas (Todos os Cartões)" quebra em duas linhas e a
+  segunda encostava no "R$ 0,00" logo abaixo. Os vizinhos já tinham folga
+  (`cardIdentidade` 2, `cardMidRow` 2, `cardBottomRow` 4, `txInfo` 2).
+
+Verificações: `npx tsc --noEmit`, `git diff --check` e `npm run test:parser`
+completo aprovados. Sem validação visual em aparelho ou navegador nesta
+sessão — não há login disponível aqui, então as duas mudanças são de leitura
+de estilo, não de observação da tela renderizada.
