@@ -1097,3 +1097,14 @@ limpo, `test:parser` completo, e a troca de categoria funcionando de verdade
 em 3 tentativas consecutivas depois da correção (antes, falhava 100% das
 vezes). O deploy da Vercel precisa rodar pra `granaponto.com.br` refletir
 isto — não confirmado nesta sessão se já rodou.
+
+## Auditoria de segurança (02/09/2026)
+
+Auditoria estática do código e do `supabase/schema.sql` concluída, sem build,
+deploy, migração ou escrita em produção. Foram documentados cinco achados
+(2 altos, 2 médios, 1 baixo), com evidências e remediações em
+`docs/security-audit/dados-auditoria.json` e no PDF
+`docs/security-audit/relatorio-auditoria-seguranca.pdf`. Não foi confirmada
+brecha de tenant/IDOR nem XSS na revisão estática; a limitação principal é a
+ausência do código da Edge Function `delete-account` e de testes autenticados
+contra produção.

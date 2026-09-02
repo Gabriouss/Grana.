@@ -1,0 +1,102 @@
+{
+  "project": "Grana.",
+  "date": "02/09/2026",
+  "timezone": "America/Sao_Paulo",
+  "commit": "4b5015223196c79b9e15c449efbd7f524109e23c",
+  "scope": [
+    "isolamento por locatário e RLS",
+    "autorização server-side versus gates de frontend",
+    "IDOR em RPCs e Edge Functions",
+    "segredos no código, histórico e bundle",
+    "XSS, HTML e sinks de entrada"
+  ],
+  "execution": {
+    "mode": "revisão estática do repositório",
+    "production_tests": false,
+    "build_dispatched": false,
+    "deploy_dispatched": false,
+    "files_reviewed": 86,
+    "edge_functions": 3,
+    "rls_tables": 18
+  },
+  "summary": {
+    "findings": 5,
+    "high": 2,
+    "medium": 2,
+    "low": 1,
+    "confirmed_tenant_or_idor": 0,
+    "confirmed_xss": 0
+  },
+  "findings": [
+    {
+      "id": "GRN-SEC-001",
+      "severity": "ALTA",
+      "confidence": "Média / lacuna verificável no repositório",
+      "title": "Exclusão de conta depende de uma garantia de reautenticação que está só no cliente",
+      "status": "Risco condicional não verificável em produção",
+      "impact": "A tela pede a senha via signInWithPassword e depois chama a Edge Function delete-account. Essa função não existe no repositório; portanto não há evidência auditável de que o servidor exija uma credencial recém-validada. Se o endpoint aceitar somente o JWT de sessão, qualquer sessão roubada pode apagar a conta sem a senha.",
+      "evidence": ["app/(app)/perfil.tsx:178-194", "lib/data.ts:783-809", "supabase/schema.sql:3195-3198", "supabase/functions/: sem delete-account"],
+      "fix": "Implementar a Edge Function em código versionado; validar JWT, user_id derivado do token e reautenticação recente (ou step-up token de uso único) no servidor; testar chamada direta sem passar pela UI."
+    },
+    {
+      "id": "GRN-SEC-002",
+      "severity": "ALTA",
+      "confidence": "Alta",
+      "title": "Webhook Kiwify autentica com bearer estático em URL e corpo",
+      "status": "Confirmado no código",
+      "impact": "O segredo é aceito em x-kiwify-token, webhook_token, token, secret ou ?token=. Query strings aparecem em histórico, proxies e logs; corpo/headers podem ser retidos por observabilidade. Com o bearer vazado, um atacante consegue fabricar novo event_id e evento approved para liberar uma assinatura própria.",
+      "evidence": ["supabase/functions/kiwify-webhook/index.ts:20-32", "supabase/functions/kiwify-webhook/index.ts:73-95", "supabase/schema.sql:3054-3193"],
+      "fix": "Remover token de query/body; aceitar apenas HMAC da requisição bruta ou o cabeçalho oficial documentado; rotacionar o segredo atual, rejeitar replay por timestamp/nonce e manter inbox idempotente."
+    },
+    {
+      "id": "GRN-SEC-003",
+      "severity": "MÉDIA",
+      "confidence": "Alta",
+      "title": "Token de ativação permanece exposto no cliente antes do consumo",
+      "status": "Confirmado no código",
+      "impact": "O link /ativar?token=... coloca um bearer na URL e, quando a pessoa está deslogada, o app o copia para AsyncStorage (localStorage na web). O servidor agora usa hash, expiração e consumo único, mas uma cópia local pode sobreviver indefinidamente e ser lida por backup, extensão/XSS ou dispositivo comprometido.",
+      "evidence": ["app/ativar.tsx:39-48", "lib/assinatura.ts:1-18", "supabase/schema.sql:1364-1394"],
+      "fix": "Usar SecureStore no nativo e memória/sessionStorage com TTL curto na web; remover token também em erro/expiração; trocar links por fragmento ou código de uso único que não viaje em Referer/logs."
+    },
+    {
+      "id": "GRN-SEC-004",
+      "severity": "MÉDIA",
+      "confidence": "Condicional",
+      "title": "Vínculo automático de assinatura não exige e-mail confirmado",
+      "status": "Risco dependente da configuração de Auth",
+      "impact": "vincular_assinatura_automatica associa qualquer assinatura sem user_id ao e-mail da sessão. Se a confirmação de e-mail estiver desativada ou houver um provedor que emita sessão antes da verificação, basta cadastrar o e-mail de uma compra para receber o acesso pago.",
+      "evidence": ["supabase/schema.sql:2351-2378", "supabase/schema.sql:2364-2373", "lib/auth-context.tsx:75-90"],
+      "fix": "No servidor, exigir auth.users.email_confirmed_at não nulo (ou identidade verificada equivalente) antes da associação; confirmar a configuração de confirmação de e-mail em produção e criar teste negativo."
+    },
+    {
+      "id": "GRN-SEC-005",
+      "severity": "BAIXA",
+      "confidence": "Alta",
+      "title": "Conquistas são graváveis pelo próprio cliente sem allowlist",
+      "status": "Confirmado como risco de integridade",
+      "impact": "A policy FOR ALL permite INSERT/UPDATE/DELETE em user_achievements quando user_id é próprio, sem validar badge_id ou unlocked_at. Um usuário autenticado pode fabricar qualquer medalha e data; isso não atravessa RLS nem libera dados financeiros, mas falsifica o estado de gamificação.",
+      "evidence": ["supabase/schema.sql:3237-3252", "lib/data.ts:426-440"],
+      "fix": "Conceder ao app apenas SELECT próprio; mover desbloqueio para RPC server-side com allowlist de badge_id, regras derivadas de dados e timestamps do banco."
+    }
+  ],
+  "controls": [
+    "RLS habilitado nas 18 tabelas identificadas; policies financeiras finais combinam auth.uid() = user_id com tem_direito_acesso().",
+    "Nenhum IDOR ou quebra de tenant foi confirmado na revisão estática: RPCs por UUID filtram também user_id e FKs compostas reforçam relações de mesmo dono.",
+    "RPCs administrativas e de webhook revogam EXECUTE de public/anon/authenticated e concedem somente a service_role.",
+    "HMAC de WhatsApp e EAS falha fechado quando o secret falta; comparação é constante e o corpo tem limite de tamanho.",
+    "Os sinks HTML revisados usam conteúdo estático ou escaparHtml para descrições, categorias e nomes; não foi confirmado XSS executável.",
+    "Busca de segredos atuais/históricos não encontrou PAT sbp_, service_role hard-coded, chaves privadas, GitHub token ou chaves OpenAI/Groq; JWTs encontrados são anon e públicos."
+  ],
+  "limitations": [
+    "Não foram feitas chamadas REST/RPC de escrita ou testes contra contas reais; a matriz A→B estática prevê bloqueio, mas não o prova no catálogo implantado.",
+    "A Edge Function delete-account não está versionada; o comportamento do endpoint eventualmente implantado não pôde ser validado.",
+    "Não foi disparado build, deploy ou migração; não houve geração de bundle novo. O diretório dist existente foi apenas escaneado.",
+    "Configurações externas de confirmação de e-mail, retenção de logs e segredo oficial da Kiwify precisam ser confirmadas no painel sem expor valores."
+  ],
+  "sources": [
+    {"label": "Supabase — Securing your API", "url": "https://supabase.com/docs/guides/api/securing-your-api"},
+    {"label": "Supabase — Row Level Security", "url": "https://supabase.com/docs/guides/database/postgres/row-level-security"},
+    {"label": "Supabase — Secure data", "url": "https://supabase.com/docs/guides/database/secure-data"},
+    {"label": "Expo SDK 57 reference", "url": "https://docs.expo.dev/versions/v57.0.0/"}
+  ]
+}
