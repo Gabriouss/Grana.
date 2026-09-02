@@ -865,3 +865,41 @@ Positivos confirmados: arranque correto para o SDK 57 (`preventAutoHideAsync`
 em escopo global sem await), escala de fonte do sistema intacta (zero
 `allowFontScaling`, ou seja, padrão ligado), e as correções da segunda rodada
 se sustentaram.
+
+## Sessão de 02/09/2026 - plano de interruptores remotos (NADA implementado)
+
+O autor pediu um jeito de desligar funcionalidade do app sem obrigar as pessoas
+a atualizar — caso concreto: o WhatsApp do Grana. caiu e não há como esconder o
+botão nem o vínculo de número. Pediu também aviso dentro do app e notificação
+push (Android/iOS).
+
+**Nenhuma linha de código foi alterada nesta sessão.** O pedido explícito foi
+montar o plano para executar na outra máquina. O plano está em
+`PLANO-INTERRUPTORES-REMOTOS.md`, na raiz, pronto para ser seguido: SQL
+completo, o provider React inteiro, os quatro pontos de entrada do WhatsApp com
+arquivo e linha, o componente de aviso, a parte de push (tabela, registro,
+Edge Function remetente, credenciais FCM/APNs), o SQL de operação do dia do
+incidente, os testes a escrever e um checklist na ordem.
+
+A ressalva que decide o cronograma, e que está no topo do plano: **isto não
+resolve o apagão atual.** O app instalado (1.4.1) não tem código que procure
+por flags, então o interruptor só existe a partir de uma build nova — dela em
+diante todo apagão futuro se resolve por UPDATE no banco. Quem ficar na 1.4.1
+continua vendo o botão do WhatsApp para sempre.
+
+Duas decisões de arquitetura registradas no plano, com o motivo:
+
+- **Flags genéricos por nome**, não um booleano de WhatsApp: mesmo trabalho
+  agora, e o próximo incidente em qualquer funcionalidade não exige build.
+- **Falha ABERTA**: se a leitura da tabela falhar, tudo continua ligado. É o
+  oposto do `EntitlementProvider`, que falha fechado de propósito porque o RLS
+  aplica a mesma regra no servidor; aqui não existe segunda barreira e o custo
+  de errar para cada lado é invertido. Uma queda do Supabase não pode virar app
+  inteiro morto.
+
+Levantamento que fundamenta o plano: `expo-notifications` já está instalado e
+configurado como plugin, mas só é usado para notificação LOCAL (lembrete de
+boleto, fatura, limite de cartão em `lib/notifications.ts`) — não há registro
+de push token, tabela de token nem remetente, então push é trabalho novo de
+verdade. O `EntitlementProvider` serve de template para o provider de flags, e
+o `NovidadesModal` para o pop-up de aviso.
