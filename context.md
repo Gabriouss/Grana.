@@ -1281,3 +1281,26 @@ passou a checar boleto ANTES de crédito (mesma ordem do
 "crédito" quando os dois aparecem juntos, tipo "boleto no cartão").
 `npx tsc --noEmit` e `npm run test:parser` (37/37 em sincronia) aprovados de
 novo depois desta extensão.
+
+## Sessão de 03/09/2026 - CSV também pode ser marcado como fatura de cartão
+
+Autor perguntou como o Grana. separa lançamentos de crédito/débito em
+importação de CSV/OFX. Resposta: o OFX já resolvia isso sozinho (o arquivo
+declara `<CREDITCARDMSGSRSV1>`/`<CCSTMTRS>` quando é fatura de cartão,
+`lib/ofx-parser.ts`), com seletor de cartão na tela de importação. O CSV não
+carrega esse metadado — é só data/descrição/valor — então sempre entrava como
+conta corrente, mesmo quando era, de fato, export de fatura.
+
+- `ImportarExtratoModal.tsx` ganhou `veioDeCsv` (estado só de UI, não muda o
+  parser): quando o arquivo interpretado é CSV, aparece um `ToggleSwitch`
+  ("Este CSV é fatura de cartão de crédito") antes do bloco de escolha de
+  cartão. Ligado, reaproveita o mesmo bloco/seletor que o OFX já tinha —
+  `ehCartao` (derivado de `origem`) já controlava tanto a UI quanto o
+  `payment_method: 'credit'`/`card_id` no `confirmar()`, então bastou tornar
+  `origem` editável pra CSV em vez de fixa em `'conta'`.
+- No OFX a origem continua vindo só do arquivo, sem toggle — é fato
+  declarado pelo banco, não pergunta.
+
+Verificações: `npx tsc --noEmit` e `npm run test:parser` (37/37 em
+sincronia) aprovados. Sem validação visual em aparelho/navegador nesta
+sessão.
