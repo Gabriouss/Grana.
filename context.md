@@ -1177,3 +1177,37 @@ não aparecerem como controles sem ação. Verificação local em 1440×900,
 297/297 guardas do design system passaram, auditoria axe/WCAG com zero
 violações e console do navegador sem erros. Nada foi publicado ou enviado à
 web nesta revisão; o servidor de aprovação local usa `http://127.0.0.1:8082`.
+
+## Revisão do branch `claude/grana-landing-page-design-df5etm` (03/09/2026)
+
+Apesar do nome, esse branch remoto (ainda **não mesclado ao `main`**) também
+acumulou três correções de código de outra sessão na manhã de 03/09, além do
+trabalho de landing: voz com intenção de crédito abre a caixa do cartão, voz
+com intenção de boleto abre a caixa de contas (ambas portando
+`ehIntencaoCredito`/`ehIntencaoBoleto`/`parseParcelas`/`matchCardByText`/
+`parseDiaVencimento` de `supabase/functions/whatsapp-webhook` para
+`lib/heuristics.ts`, vigiadas por `sync-parser.js`), e um toggle "isto é
+fatura de cartão?" na importação de CSV. Mais um spec (sem implementação)
+em `docs/specs/2026-09-03-ciclo-fatura-cartao-design.md` sobre agrupar fatura
+por dia de fechamento em vez de mês civil.
+
+Revisão feita numa worktree separada (`git worktree add` apontando pro
+branch remoto, com `npm install` próprio — não mexeu no checkout principal).
+`tsc --noEmit` limpo e `test:parser` 100% (37/37 em sincronia, subiu de 32
+com as 5 funções novas).
+
+**Achado real, corrigido no próprio branch (commit `46a06c2`):**
+`abrirNovaCompraDoTexto` em `app/(app)/credito.tsx` (o formulário que a voz
+abre quando detecta intenção de crédito) chamava `guessAmountFromText` etc.
+para preencher o formulário mas fixava `setTxInstallments('1')` direto —
+`ehIntencaoCredito` já chama `parseParcelas` pra decidir a intenção, mas o
+número extraído nunca chegava ao formulário. Ou seja: falar "TV 2500 em 12
+parcelas" pelo botão de voz do app abria a tela certa com valor/categoria/
+cartão certos, mas sempre lançava 1x — exatamente o bug que o commit
+`09ea1dd` da manhã descreve ter corrigido no bot do WhatsApp, reintroduzido
+no caminho do app. Corrigido chamando `parseParcelas(texto)` também para
+`txInstallments`, com `1` como padrão. Publicado no branch, não no `main`.
+
+**Ainda pendente:** decidir se/quando mesclar este branch ao `main` — ele
+tem commits de landing (motion, composição visual) e de correções de app
+(crédito/boleto/CSV) misturados, então um merge simples traz os dois juntos.
