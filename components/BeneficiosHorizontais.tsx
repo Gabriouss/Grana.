@@ -162,8 +162,8 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
               <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} />
             ))}
           </ScrollView>
-          <FadeBorda lado="esquerda" />
-          <FadeBorda lado="direita" />
+          <FadeBorda lado="esquerda" largura={largura} />
+          <FadeBorda lado="direita" largura={largura} />
         </View>
       </View>
     );
@@ -180,8 +180,8 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
                 <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} />
               ))}
             </View>
-            <FadeBorda lado="esquerda" />
-            <FadeBorda lado="direita" />
+            <FadeBorda lado="esquerda" largura={largura} />
+            <FadeBorda lado="direita" largura={largura} />
           </View>
         </View>
       </View>
@@ -198,12 +198,17 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
  * transparente sobre um fundo colorido deixaria a própria cor vazando na
  * borda) até transparente, por cima do trilho, sem capturar toque.
  */
-function FadeBorda({ lado }: { lado: 'esquerda' | 'direita' }) {
+function FadeBorda({ lado, largura }: { lado: 'esquerda' | 'direita'; largura: number }) {
+  /* Fixo em 64px o fade engolia quase toda a "espiadinha" do próximo card
+     num celular de 390px de largura (a fresta que sobra depois do card
+     principal costuma ter uns 70-90px) — o próximo card sumia dentro do
+     degradê em vez de só suavizar a borda dele. Mais estreito no compacto. */
+  const largo = largura < CORTES.medio ? 32 : 64;
   return (
     <View
       aria-hidden
       pointerEvents="none"
-      style={[styles.fadeBorda, lado === 'esquerda' ? styles.fadeBordaEsquerda : styles.fadeBordaDireita]}
+      style={[styles.fadeBorda, { width: largo }, lado === 'esquerda' ? styles.fadeBordaEsquerda : styles.fadeBordaDireita]}
     />
   );
 }
@@ -237,7 +242,7 @@ const styles = StyleSheet.create({
   // clipping pra funcionar — é o próprio degradê que cobre o card, não a
   // borda do container.
   viewportToque: { width: '100%', position: 'relative' },
-  fadeBorda: { position: 'absolute', top: 0, bottom: 0, width: 64, zIndex: 1 },
+  fadeBorda: { position: 'absolute', top: 0, bottom: 0, zIndex: 1 },
   fadeBordaEsquerda: {
     left: 0,
     ...({ backgroundImage: `linear-gradient(90deg, ${theme.paperRaised} 0%, transparent 100%)` } as any),
@@ -259,6 +264,6 @@ const styles = StyleSheet.create({
     ...({ boxShadow: '0 18px 45px -24px rgba(0,0,0,0.7)' } as any),
   },
   rotulo: { color: theme.accent2, fontSize: type.micro, lineHeight: type.micro * 1.4, fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: spacing.xs },
-  tituloCard: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular, marginBottom: spacing.xs },
-  textoCard: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.5, fontFamily: fonts.light },
+  tituloCard: { color: theme.ink, fontSize: type.apoio, lineHeight: type.apoio * 1.3, fontFamily: fonts.regular, marginBottom: spacing.xs },
+  textoCard: { color: theme.inkSoft, fontSize: type.legenda, lineHeight: type.legenda * 1.5, fontFamily: fonts.light },
 });
