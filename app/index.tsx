@@ -15,10 +15,11 @@ import RevealOnScroll from '@/components/RevealOnScroll';
 import FogBackground from '@/components/FogBackground';
 import ConversaGranabo from '@/components/ConversaGranabo';
 import CardLivreParaGastar from '@/components/CardLivreParaGastar';
-import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';
+import BeneficiosHorizontais, { type BeneficioHorizontal } from '@/components/BeneficiosHorizontais';
 import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
 import MolduraCelular from '@/components/MolduraCelular';
+import ScrollLinkedView from '@/components/ScrollLinkedView';
 import landingMeta from '@/landing-meta.json';
 
 // A landing é uma superfície de marca. O produto logado usa a família do
@@ -116,6 +117,7 @@ function BotaoCTA({
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
+  const [ponteiroAtivo, setPonteiroAtivo] = useState(false);
   const idBruto = useId();
   const prefixoReflexo = `ctaReflexo_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
 
@@ -128,6 +130,10 @@ function BotaoCTA({
       ativo = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (reduzirMovimento) setPonteiroAtivo(false);
+  }, [reduzirMovimento]);
 
   // O reflexo passa rápido (10% do ciclo) e fica parado, fora da área
   // visível, no resto — é isso que dá o efeito "de tempos em tempos" em vez
@@ -169,6 +175,8 @@ function BotaoCTA({
           `style` função que já funcionava. */}
       <AppPressable
         href={hrefCadastroComAtribuicao()}
+        onHoverIn={() => !reduzirMovimento && setPonteiroAtivo(true)}
+        onHoverOut={() => setPonteiroAtivo(false)}
         style={({ hovered }) => [
           styles.ctaPrimario,
           ehCompacto && styles.ctaPrimarioCompacto,
@@ -176,6 +184,11 @@ function BotaoCTA({
           hovered && styles.ctaPrimarioHover,
         ]}
       >
+        <View
+          aria-hidden
+          pointerEvents="none"
+          style={[styles.ctaPonteiroIos, ponteiroAtivo && styles.ctaPonteiroIosAtivo]}
+        />
         {!reduzirMovimento && (
           <View style={styles.ctaReflexo} aria-hidden pointerEvents="none">
             <View
@@ -191,13 +204,67 @@ function BotaoCTA({
             />
           </View>
         )}
-        <Text style={styles.ctaPrimarioTexto}>{rotulo}</Text>
-        <View aria-hidden>
-          <Ionicons name="arrow-forward" size={17} color={theme.accent2} />
+        <View style={styles.ctaConteudo}>
+          {/* Reaproveita `ponteiroAtivo` (já existe pro efeito do fundo) em
+              vez de um segundo estado só pra isto. */}
+          <RotuloRolante texto={rotulo} ativo={ponteiroAtivo} estilo={styles.ctaPrimarioTexto} altura={type.corpo * 1.2} />
+          <View aria-hidden>
+            <Ionicons name="arrow-forward" size={17} color={theme.accent2} />
+          </View>
         </View>
       </AppPressable>
       {microcopy ? <Text style={[styles.ctaMicrocopy, centralizado && styles.ctaMicrocopyCentralizada]}>{microcopy}</Text> : null}
     </View>
+  );
+}
+
+/**
+ * Texto "rolando" no hover: duas cópias do rótulo empilhadas dentro de uma
+ * janela do tamanho de uma linha (`overflow:hidden`); `ativo` sobe a trilha
+ * uma linha inteira e a segunda cópia entra por baixo — o rótulo nunca fica
+ * sem chão, ao contrário de um fade cruzado. Extraído de `BotaoCTA` pra ser
+ * reaproveitado em qualquer botão/link da página (nota do autor: "podemos
+ * usar nos nossos botões", não só no CTA principal).
+ */
+function RotuloRolante({
+  texto,
+  ativo,
+  estilo,
+  altura,
+}: {
+  texto: string;
+  ativo: boolean;
+  estilo: StyleProp<TextStyle>;
+  /** Mesmo `lineHeight` usado em `estilo` — a janela e o quanto a trilha
+      sobe no hover dependem do tamanho REAL do texto, que muda por lugar
+      (CTA principal e "Entrar" não usam a mesma fonte). */
+  altura: number;
+}) {
+  return (
+    <View style={[styles.ctaRotuloJanela, { height: altura }]}>
+      <View style={[styles.ctaRotuloTrilho, ativo && { transform: [{ translateY: -altura }] }]}>
+        <Text style={estilo}>{texto}</Text>
+        <Text style={estilo} aria-hidden>{texto}</Text>
+      </View>
+    </View>
+  );
+}
+
+/** O "Entrar" do cabeçalho, com o mesmo rolling-text do CTA principal. */
+function LinkEntrar() {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <AppPressable
+      href="/sign-in"
+      scaleOnPress={false}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={[styles.navLinkAlvo, styles.navEntrarAlvo, hovered && styles.navEntrarAlvoHover]}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <RotuloRolante texto="Entrar" ativo={hovered} estilo={styles.navEntrarTexto} altura={type.nota * 1.2} />
+      <Ionicons name="arrow-forward" size={14} color={theme.paper} aria-hidden />
+    </AppPressable>
   );
 }
 
@@ -240,7 +307,7 @@ function useAlturaDobra(): number | null {
  * cor nova. `colunaConteudo` continua limitando o CONTEÚDO; é só o FUNDO
  * que vai de ponta a ponta da janela.
  */
-function Dobra({ levantada, children }: { levantada?: boolean; children: React.ReactNode }) {
+function Dobra({ levantada, semParallax, children }: { levantada?: boolean; semParallax?: boolean; children: React.ReactNode }) {
   const alturaDobra = useAlturaDobra();
   const { ehCompacto } = useBreakpoint();
   const cheia = alturaDobra !== null;
@@ -252,7 +319,13 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
         cheia && styles.dobraSnap,
       ]}
     >
-      <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>{children}</View>
+      <ScrollLinkedView
+        desativado={semParallax}
+        intensidade={ehCompacto ? 10 : 24}
+        style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}
+      >
+        {children}
+      </ScrollLinkedView>
     </View>
   );
 }
@@ -379,14 +452,7 @@ const RECURSOS_GRANABO = [
   },
 ];
 
-type BeneficioLanding = {
-  variante: VarianteMock;
-  rotulo: string;
-  titulo: string;
-  texto: string;
-};
-
-const BENEFICIOS_LANDING: BeneficioLanding[] = [
+const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
   {
     variante: 'lancar',
     rotulo: 'Registro',
@@ -894,15 +960,7 @@ function ConteudoWeb() {
           <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
             <BrandLogotype width={104} />
             <View style={styles.cabecalhoAcoes}>
-              <AppPressable
-                href="/sign-in"
-                scaleOnPress={false}
-                style={({ hovered }) => [styles.navLinkAlvo, styles.navEntrarAlvo, hovered && styles.navEntrarAlvoHover]}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={styles.navEntrarTexto}>Entrar</Text>
-                <Ionicons name="arrow-forward" size={14} color={theme.paper} aria-hidden />
-              </AppPressable>
+              <LinkEntrar />
             </View>
           </View>
         </View>
@@ -981,10 +1039,10 @@ function ConteudoWeb() {
           que a dobra anterior acabou de nomear. Título em três tempos, com o
           terceiro destacado em COR (a Neue Machina não tem itálico, e
           sintetizar quebraria a regra de fonte da marca). */}
-      <View style={styles.palcoComCamada}>
+      <View nativeID="registro-rapido" style={styles.palcoComCamada}>
         <GradeInterativa />
-        <Dobra levantada>
-          <View style={styles.secao}>
+        <Dobra levantada semParallax>
+          <ScrollLinkedView modo="zoom" style={styles.zoomRaiz} contentStyle={[styles.zoomPainel, ehCompacto && styles.zoomPainelCompacto]}>
             <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
                 {'Você fala e o Grana. organiza.\n'}
@@ -994,7 +1052,7 @@ function ConteudoWeb() {
                 Sem formulário e sem planilha. Você diz o que gastou do jeito que falaria para um amigo, e o lançamento já nasce organizado.
               </Text>
             </RevealOnScroll>
-          </View>
+          </ScrollLinkedView>
         </Dobra>
       </View>
 
@@ -1117,39 +1175,16 @@ function ConteudoWeb() {
       {/* ───────── Tudo que o Grana. faz (dobra 8) ─────────
           Cada card mostra o benefício acontecendo. Os mini-mocks substituem
           ícones genéricos e usam somente dados fictícios. */}
-      <View nativeID="beneficios" style={styles.palcoComCamada}>
+      <View nativeID="beneficios" style={styles.palcoBeneficios}>
         <GradeInterativa invertida />
-        <Dobra levantada>
-          <View style={styles.secao}>
-            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
-              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>Tudo que o Grana. faz pela sua saúde financeira.</TituloSecao>
-              <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
-                Lançamentos, cartões, contas, gráficos e metas ficam conectados numa visão que você consegue acompanhar no dia a dia.
-              </Text>
-            </RevealOnScroll>
-
-            <View style={styles.beneficiosGrade}>
-              {BENEFICIOS_LANDING.map((beneficio, indice) => {
-                const destaque = largura >= CORTES.amplo && [0, 3, 4].includes(indice);
-                return (
-                  <RevealOnScroll
-                    key={beneficio.variante}
-                    atraso={indice * 70}
-                    variante="card"
-                    style={[styles.beneficioPosicao, destaque && styles.beneficioPosicaoDestaque]}
-                  >
-                    <View style={[styles.beneficioCard, destaque && styles.beneficioCardDestaque]}>
-                      <MiniMockBeneficio variante={beneficio.variante} destaque={destaque} />
-                      <Text style={styles.beneficioRotulo}>{beneficio.rotulo}</Text>
-                      <Text style={styles.beneficioTitulo}>{beneficio.titulo}</Text>
-                      <Text style={styles.beneficioTexto}>{beneficio.texto}</Text>
-                    </View>
-                  </RevealOnScroll>
-                );
-              })}
-            </View>
-          </View>
-        </Dobra>
+        <BeneficiosHorizontais
+          itens={BENEFICIOS_LANDING}
+          largura={largura}
+          altura={altura}
+          alturaCabecalho={alturaCabecalho}
+          titulo="Tudo que o Grana. faz pela sua saúde financeira."
+          descricao="Lançamentos, cartões, contas, gráficos e metas ficam conectados numa visão que você consegue acompanhar no dia a dia."
+        />
       </View>
 
       {/* ───────── Segurança e confiança (dobra 9) ─────────
@@ -1486,12 +1521,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.accent2,
     ...({ boxShadow: '0 10px 28px -9px rgba(174,255,227,0.55)' } as any),
   },
-  navEntrarTexto: { color: theme.paper, fontSize: type.nota, fontFamily: fonts.regular },
+  navEntrarTexto: { color: theme.paper, fontSize: type.nota, lineHeight: type.nota * 1.2, fontFamily: fonts.regular },
   instagramCabecalhoHover: { borderColor: theme.ruleStrong, backgroundColor: theme.hover },
 
   palcoHero: { position: 'relative' },
   palcoCtaFinal: { position: 'relative', overflow: 'hidden' },
   palcoComCamada: { position: 'relative', overflow: 'hidden' },
+  palcoBeneficios: { position: 'relative', backgroundColor: theme.paperRaised },
 
   eyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, marginBottom: spacing.xs, textTransform: 'uppercase' },
   // Escala bem acima do resto da tipografia do app de propósito — esta é a
@@ -1578,7 +1614,35 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(11,45,53,0.9)',
     ...({ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 34px -10px rgba(174,255,227,0.8)', transform: [{ translateY: -2 }] } as any),
   },
-  ctaPrimarioTexto: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  ctaPrimarioTexto: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.2, fontFamily: fonts.regular },
+  // A altura da janela (`height`) e o quanto a trilha sobe no hover vêm
+  // inline, de `RotuloRolante` — precisam bater com o `lineHeight` real do
+  // texto, que muda por lugar (CTA principal usa `type.corpo`, "Entrar" usa
+  // `type.nota`). Sem isso o `overflow:'hidden'` cortaria a cópia de baixo
+  // pela metade, em vez de escondê-la inteira até a hora de subir.
+  ctaRotuloJanela: { overflow: 'hidden' },
+  ctaRotuloTrilho: {
+    ...({ transitionProperty: 'transform', transitionDuration: '320ms', transitionTimingFunction: 'cubic-bezier(0.65, 0, 0.35, 1)' } as any),
+  },
+  ctaConteudo: { position: 'relative', zIndex: 2, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  ctaPonteiroIos: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    bottom: 3,
+    left: 3,
+    borderRadius: radius.md - 2,
+    backgroundColor: 'rgba(174,255,227,0.14)',
+    opacity: 0,
+    transform: [{ scale: 0.78 }],
+    ...({
+      transitionProperty: 'opacity, transform',
+      transitionDuration: '320ms',
+      transitionTimingFunction: 'cubic-bezier(0.2, 0.9, 0.2, 1.15)',
+      transformOrigin: 'center',
+    } as any),
+  },
+  ctaPonteiroIosAtivo: { opacity: 1, transform: [{ scale: 1 }] },
   ctaPrimarioCompacto: { paddingVertical: 14, paddingHorizontal: spacing.md },
   ctaPrimarioCentralizado: { alignSelf: 'center' },
   // Fica sob TODO botão de CTA — reduz a maior fricção não dita ("quanto
@@ -1615,6 +1679,25 @@ const styles = StyleSheet.create({
   // tela cheia — pouco respiro ao redor do conteúdo centralizado. `xxl * 2.5`
   // dá ar de verdade sem competir com o `justifyContent:'center'` da Dobra.
   secao: { paddingVertical: spacing.xxl * 2.5 },
+  zoomRaiz: { width: '100%', alignItems: 'center', overflow: 'visible' },
+  zoomPainel: {
+    minHeight: '68vh' as any,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xxl * 2,
+    paddingVertical: spacing.xxl * 2,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    backgroundColor: 'rgba(11,45,53,0.82)',
+    overflow: 'hidden',
+  },
+  zoomPainelCompacto: {
+    minHeight: 520,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl * 2,
+  },
   secaoComCartao: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, flexWrap: 'wrap' },
   // `flex:1` + `minWidth` nos dois filhos (`molduraCentralizada`/
   // `colunaTextoSecao` etc.) não força a quebra de linha de forma confiável
@@ -1701,37 +1784,6 @@ const styles = StyleSheet.create({
   habitoTexto: { flex: 1 },
   habitoTitulo: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, marginBottom: 2 },
   habitoDescricao: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.4, fontFamily: fonts.light },
-  beneficiosGrade: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'stretch',
-    gap: spacing.lg,
-    marginTop: spacing.xxl + spacing.sm,
-  },
-  beneficioPosicao: { flexGrow: 1, flexBasis: '31%', minWidth: 280 },
-  beneficioPosicaoDestaque: { flexBasis: '64%' },
-  beneficioCard: {
-    height: '100%',
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: theme.paperRaised,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    ...sombraCard,
-  },
-  beneficioCardDestaque: { padding: spacing.xl, borderColor: theme.ruleStrong },
-  beneficioRotulo: {
-    color: theme.accent2,
-    fontSize: type.micro,
-    lineHeight: type.micro * 1.4,
-    fontFamily: fonts.regular,
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-    marginBottom: spacing.xs,
-  },
-  beneficioTitulo: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular, marginBottom: spacing.sm },
-  beneficioTexto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.5, fontFamily: fonts.light },
-
   destaqueInline: { color: theme.accent2, fontFamily: fonts.regular },
 
   // O card único — a borda/raio/sombra que antes viviam em cada metade
