@@ -44,7 +44,7 @@ function CardBeneficio({ item, larguraCard, alturaCard }: { item: BeneficioHoriz
         <MiniMockBeneficio variante={item.variante} />
         <Text style={styles.rotulo}>{item.rotulo}</Text>
         <Text style={styles.tituloCard}>{item.titulo}</Text>
-        <Text style={styles.textoCard}>{item.texto}</Text>
+        <Text style={styles.textoCard} numberOfLines={3}>{item.texto}</Text>
       </View>
     </View>
   );
@@ -56,7 +56,7 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
   );
   const fixar = largura >= 1100 && altura >= 720 && !reduzirMovimento;
   const larguraCard = fixar ? 420 : Math.min(440, Math.max(260, largura - (largura < CORTES.medio ? 96 : 120)));
-  const alturaCard = largura < CORTES.medio ? 350 : 400;
+  const alturaCard = largura < CORTES.medio ? 290 : 340;
   const alturaSticky = Math.max(620, altura - alturaCabecalho);
   const [alturaPalco, setAlturaPalco] = useState(alturaSticky * 2.4);
   const palcoRef = useRef<View>(null);
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   trilhoToque: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.lg, paddingRight: spacing.xxl },
   cardPosicao: { flexShrink: 0, minWidth: 0 },
   card: {
-    padding: spacing.xl,
+    padding: spacing.lg,
     borderRadius: radius.lg,
     backgroundColor: theme.paperRaised,
     borderWidth: 1,
@@ -259,6 +259,6 @@ const styles = StyleSheet.create({
     ...({ boxShadow: '0 18px 45px -24px rgba(0,0,0,0.7)' } as any),
   },
   rotulo: { color: theme.accent2, fontSize: type.micro, lineHeight: type.micro * 1.4, fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: spacing.xs },
-  tituloCard: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular, marginBottom: spacing.sm },
+  tituloCard: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular, marginBottom: spacing.xs },
   textoCard: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.5, fontFamily: fonts.light },
 });
