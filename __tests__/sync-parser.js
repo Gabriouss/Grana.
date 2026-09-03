@@ -69,6 +69,7 @@ const COMPARTILHADAS = [
   'VALOR_INICIAL', 'VALOR_FINAL', 'FORMA_PAGAMENTO_FINAL', 'VENCIMENTO_FINAL', 'PARCELAMENTO_FINAL',
   'limparCaudaDeMetadado', 'limparSobra', 'capitalizar', 'EXPRESSAO_VALOR', 'guessDescFromText',
   'guessAmountFromText', 'normalizarParaBusca', 'contemPalavra',
+  'parseParcelas', 'ehIntencaoCredito', 'matchCardByText',
 ];
 
 /* A guarda ortográfica das notas de versão. Divergir aqui é pior que no

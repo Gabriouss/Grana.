@@ -47,6 +47,7 @@ import WalletPill from '@/components/WalletPill';
 import WidgetGrid, { ESPACO_ALCA } from '@/components/WidgetGrid';
 import { useFlags } from '@/lib/feature-flags';
 import { colunaConteudo } from '@/lib/breakpoints';
+import { ehIntencaoCredito } from '@/lib/heuristics';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import ImportarExtratoModal from '@/components/ImportarExtratoModal';
@@ -1330,6 +1331,10 @@ export default function InicioScreen() {
             style={styles.smartActionBtn}
             hoverStyle={styles.smartActionBtnHover}
             onTranscribed={(text) => {
+              if (ehIntencaoCredito(text)) {
+                router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
+                return;
+              }
               setVoiceText(text);
               setPasteModalOpen(true);
             }}

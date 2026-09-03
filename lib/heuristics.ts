@@ -271,6 +271,96 @@ function contemPalavra(textoNormalizado: string, keyword: string): boolean {
   return textoNormalizado.includes(normalizarParaBusca(keyword));
 }
 
+/* ---- crédito: reconhecer intenção e casar o cartão certo ----
+   Cópia da mesma extensão em supabase/functions/whatsapp-webhook (o bot já
+   acerta isso bem); vigiada por __tests__/sync-parser.js pra não divergir. */
+
+export function parseParcelas(text: string): number | null {
+  /* Falado, o número da parcela vem por extenso — "parcelei em oito", "em
+     três vezes" — e o resto desta função só enxerga dígito. Sem esta troca,
+     o parcelamento sumia calado em todo lançamento por áudio: virava uma
+     compra única pelo valor cheio, e a fatura do mês levava o tombo inteiro.
+     A tabela é local, e não uma constante de módulo, porque os testes
+     extraem esta função inteira do arquivo — uma constante de fora ficaria
+     para trás e o teste passaria medindo outra coisa. */
+  const EXTENSO: Record<string, number> = {
+    dois: 2, duas: 2, tres: 3, três: 3, quatro: 4, cinco: 5, seis: 6, sete: 7,
+    oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13, catorze: 14,
+    quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18,
+    dezenove: 19, vinte: 20, 'vinte e quatro': 24, trinta: 30, 'trinta e seis': 36,
+  };
+  /* Do mais longo pro mais curto: senão "vinte" casa antes e "vinte e quatro"
+     nunca chega a ser reconhecido. */
+  const palavras = Object.keys(EXTENSO)
+    .sort((a, b) => b.length - a.length)
+    .map((p) => p.replace(/ /g, '\\s+'))
+    .join('|');
+  const alvo = text.replace(new RegExp(`\\b(?:${palavras})\\b`, 'gi'), (m) =>
+    String(EXTENSO[m.toLowerCase().replace(/\s+/g, ' ')])
+  );
+
+  const padroes = [
+    /\bem\s+(\d{1,2})\s*x\b/i,
+    /\b(\d{1,2})\s*x\b/i,
+    /\bem\s+(\d{1,2})\s+vezes\b/i,
+    /\b(\d{1,2})\s+vezes\b/i,
+    /\bem\s+(\d{1,2})\s+parcelas?\b/i,
+    /\b(\d{1,2})\s+parcelas?\b/i,
+    /\bparcel(?:ei|ado|ada|ar|a)\s+em\s+(\d{1,2})\b/i,
+  ];
+  for (const re of padroes) {
+    const m = alvo.match(re);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n >= 2 && n <= 36) return n;
+    }
+  }
+  return null;
+}
+
+/** "no crédito", "cartão de crédito", "parcelei", "3x", "5 vezes" — sinais de que a compra foi no cartão, não em débito/pix. */
+export function ehIntencaoCredito(text: string): boolean {
+  /* Débito dito com todas as letras encerra a conversa antes de qualquer
+     outra regra: "no cartão de débito" casava com a regra de "no cartão" e
+     ia parar na fatura do crédito. */
+  if (/\bd[eé]bito\b/i.test(text)) return false;
+
+  /* A palavra "crédito" sozinha basta. A regra antiga exigia a preposição
+     "no" grudada nela, e por isso mandava pro débito as formas mais curtas,
+     que são justamente as que a pessoa usa quando manda áudio ou escreve com
+     pressa: "Almoço crédito C6", "Chip de 22 reais, Crédito, C6",
+     "Crédito Almoço 20 reais". Todas foram lançadas errado. */
+  if (/\bcr[eé]dito\b/i.test(text)) return true;
+
+  if (/\bno\s+(?:cr[eé]dito|cart[aã]o)\b/i.test(text)) return true;
+  if (/\bcart[aã]o\s+de\s+cr[eé]dito\b/i.test(text)) return true;
+  if (/\bparcel(?:ei|ado|ada|ar|a)\b/i.test(text)) return true;
+  if (/\b\d+\s*x\b/i.test(text)) return true;
+  if (/\b\d+\s*vezes\b/i.test(text)) return true;
+  /* Parcelamento só existe no crédito, então achar parcela JÁ é dizer que é
+     crédito. As regras acima cobriam "3x" e "em 3 vezes" mas não "em 12
+     parcelas" nem parcela falada por extenso — e como registrarLancamento só
+     procura parcelas DENTRO do ramo de crédito, o parcelamento era descartado
+     em silêncio: "TV 2500 em 12 parcelas" virava uma saída única de R$ 2.500
+     fora da fatura. Delegar pro parseParcelas mantém as duas decisões
+     concordando sempre, em vez de duas listas de padrões pra divergir. */
+  if (parseParcelas(text) !== null) return true;
+  return false;
+}
+
+type CartaoBusca = { id: string; name: string; bank: string };
+
+/** Acha o cartão citado no texto pelo nome que o usuário deu a ele ou pelo banco ("Nubank", "Itaú Click", "no Inter"). */
+export function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null {
+  const alvo = normalizarParaBusca(text);
+  for (const c of cards) {
+    if (contemPalavra(alvo, c.name) || contemPalavra(alvo, c.bank)) return c;
+    const partes = c.name.split(/\s+/).filter((p) => p.length >= 4);
+    if (partes.some((p) => contemPalavra(alvo, p))) return c;
+  }
+  return null;
+}
+
 /* `extras` são as categorias que o usuário criou no gerenciador do app
    (fetchCategories(), filtradas por `!is_default`) — sem isso, colar
    comprovante/escanear nota nunca reconhecia uma categoria custom, só as 9
