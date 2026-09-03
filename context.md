@@ -1349,3 +1349,32 @@ Merge feito com `git merge` (histórias divergiam desde antes de `fa124dc`/
 (as duas linhas de trabalho documentaram no mesmo arquivo); resolvido
 mantendo as duas narrativas. Nenhum conflito de código — o branch não
 tocava em nenhum arquivo da landing.
+
+## Sessão de 03/09/2026 - cards de benefício: o desktop herdou as regras do celular
+
+Autor, por print: "você corrigiu essa parte no celular e deixou ruim na
+versão desktop". As três correções anteriores do dia em
+`components/BeneficiosHorizontais.tsx` (commits `5082069`, `4817e79`,
+`296ac7c`) foram todas motivadas por prints de celular, mas nenhuma delas
+era condicional à largura — o `numberOfLines={3}`, a altura fixa recalculada
+pra caber o texto truncado, o padding menor e o degrau a menos na tipografia
+valiam também no card de 420px do desktop. Resultado no amplo: parágrafo
+cortado com reticências no meio de uma frase e um vão morto de ~85px embaixo
+do texto, porque a altura fixa tinha sido dimensionada pro conteúdo já
+cortado.
+
+Compacto e amplo agora são dois cards diferentes, não o mesmo card
+escalado. O compacto fica exatamente como estava (altura 290, 3 linhas com
+reticências, `padding: lg`, `type.apoio`/`type.legenda`). O amplo perdeu a
+altura fixa: `cardAmplo` usa `flex: 1`, e o `alignItems: 'stretch'` que o
+trilho já tinha iguala todos os cards pela altura do mais alto — que é o que
+a altura fixa tentava imitar com número mágico. Texto inteiro, sem
+`numberOfLines`, `padding: xl` e tipografia cheia (`type.corpo`/`type.nota`)
+de volta.
+
+Verificado com agent-browser em 1440×900 (caminho fixo/sticky), 1426×645 (o
+caminho de rolagem horizontal, que é onde o print do autor caiu: `fixar`
+exige altura ≥720, então uma janela desktop baixa usa o layout de toque) e
+390×844 (compacto, inalterado). `npx tsc --noEmit` limpo; `npm run
+test:parser` 100% (94 notas, 303 guardas do design system, 17 interruptores,
+37/37 em sincronia).

@@ -37,14 +37,39 @@ function containerRolavel(no: HTMLElement): HTMLElement | null {
   return null;
 }
 
-function CardBeneficio({ item, larguraCard, alturaCard }: { item: BeneficioHorizontal; larguraCard: number; alturaCard: number }) {
+/**
+ * Compacto e amplo são dois cards diferentes, não o mesmo card com escala.
+ *
+ * No celular o card precisa caber num terço da tela: altura travada, texto
+ * cortado na 3ª linha e um degrau a menos na tipografia. Levar essas mesmas
+ * restrições pro desktop (foi o que aconteceu em 03/09/2026) deixa o card de
+ * 420px com reticências no meio de uma frase e um vão morto embaixo, porque
+ * a altura fixa foi calculada pro texto truncado do celular.
+ *
+ * No amplo, então: texto inteiro, tipografia cheia e nenhuma altura fixa —
+ * o `alignItems: 'stretch'` do trilho já iguala todos os cards pela altura
+ * do mais alto, que é exatamente o que a altura fixa tentava imitar.
+ */
+function CardBeneficio({
+  item,
+  larguraCard,
+  alturaCard,
+  compacto,
+}: {
+  item: BeneficioHorizontal;
+  larguraCard: number;
+  alturaCard: number;
+  compacto: boolean;
+}) {
   return (
-    <View role="listitem" style={[styles.cardPosicao, { width: larguraCard }]}> 
-      <View style={[styles.card, { height: alturaCard }]}>
+    <View role="listitem" style={[styles.cardPosicao, { width: larguraCard }]}>
+      <View style={[styles.card, compacto ? { height: alturaCard } : styles.cardAmplo]}>
         <MiniMockBeneficio variante={item.variante} />
         <Text style={styles.rotulo}>{item.rotulo}</Text>
-        <Text style={styles.tituloCard}>{item.titulo}</Text>
-        <Text style={styles.textoCard} numberOfLines={3}>{item.texto}</Text>
+        <Text style={[styles.tituloCard, !compacto && styles.tituloCardAmplo]}>{item.titulo}</Text>
+        <Text style={[styles.textoCard, !compacto && styles.textoCardAmplo]} numberOfLines={compacto ? 3 : undefined}>
+          {item.texto}
+        </Text>
       </View>
     </View>
   );
@@ -54,9 +79,11 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => Platform.OS === 'web' && typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
+  const compacto = largura < CORTES.medio;
   const fixar = largura >= 1100 && altura >= 720 && !reduzirMovimento;
-  const larguraCard = fixar ? 420 : Math.min(440, Math.max(260, largura - (largura < CORTES.medio ? 96 : 120)));
-  const alturaCard = largura < CORTES.medio ? 290 : 340;
+  const larguraCard = fixar ? 420 : Math.min(440, Math.max(260, largura - (compacto ? 96 : 120)));
+  // Só o compacto trava altura; no amplo o card cresce com o conteúdo.
+  const alturaCard = 290;
   const alturaSticky = Math.max(620, altura - alturaCabecalho);
   const [alturaPalco, setAlturaPalco] = useState(alturaSticky * 2.4);
   const palcoRef = useRef<View>(null);
@@ -159,7 +186,7 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
             aria-label="Recursos do Grana."
           >
             {itens.map((item) => (
-              <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} />
+              <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} compacto={compacto} />
             ))}
           </ScrollView>
           <FadeBorda lado="esquerda" largura={largura} />
@@ -177,7 +204,7 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
           <View ref={viewportRef} style={styles.viewport}>
             <View ref={trilhoRef} role="list" aria-label="Recursos do Grana." style={styles.trilhoDesktop}>
               {itens.map((item) => (
-                <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} />
+                <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} compacto={compacto} />
               ))}
             </View>
             <FadeBorda lado="esquerda" largura={largura} />
@@ -263,7 +290,13 @@ const styles = StyleSheet.create({
     borderColor: theme.ruleStrong,
     ...({ boxShadow: '0 18px 45px -24px rgba(0,0,0,0.7)' } as any),
   },
+  // `flex: 1` faz o card ocupar a altura que o `alignItems: 'stretch'` do
+  // trilho já reservou (a do card mais alto) — é o que iguala os cards no
+  // amplo sem número mágico de altura.
+  cardAmplo: { flex: 1, padding: spacing.xl },
   rotulo: { color: theme.accent2, fontSize: type.micro, lineHeight: type.micro * 1.4, fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: spacing.xs },
   tituloCard: { color: theme.ink, fontSize: type.apoio, lineHeight: type.apoio * 1.3, fontFamily: fonts.regular, marginBottom: spacing.xs },
+  tituloCardAmplo: { fontSize: type.corpo, lineHeight: type.corpo * 1.3, marginBottom: spacing.sm },
   textoCard: { color: theme.inkSoft, fontSize: type.legenda, lineHeight: type.legenda * 1.5, fontFamily: fonts.light },
+  textoCardAmplo: { fontSize: type.nota, lineHeight: type.nota * 1.5 },
 });
