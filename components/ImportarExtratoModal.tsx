@@ -14,6 +14,7 @@ import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import AppPressable from './AppPressable';
+import ToggleSwitch from './ToggleSwitch';
 import { useKeyboardHeight } from './Sheet';
 import AccessibleModalPanel from './AccessibleModalPanel';
 import type { CreditCard } from '@/lib/types';
@@ -43,8 +44,14 @@ import type { CreditCard } from '@/lib/types';
  *
  * Fatura de cartão não é saída de caixa: o dinheiro só sai quando a fatura é
  * paga. Por isso um extrato de cartão entra com `payment_method: 'credit'` e
- * `card_id`, do mesmo jeito que uma compra lançada à mão na tela de Cartões, e
- * a pessoa escolhe a qual cartão o arquivo pertence.
+ * `card_id`, do mesmo jeito que uma compra lançada à mão na tela de Cartões.
+ *
+ * No OFX a origem (conta ou fatura) é um FATO do arquivo — o próprio banco
+ * declara (`<CREDITCARDMSGSRSV1>`/`<CCSTMTRS>`), então a pessoa só escolhe A
+ * QUAL cartão cadastrado o arquivo pertence, nunca se é fatura ou não. O CSV
+ * não carrega essa informação (é só data/descrição/valor, sem metadado de
+ * origem), então para CSV a pergunta "isto é fatura de cartão?" precisa ser
+ * feita à pessoa — é um toggle manual (`veioDeCsv`), não uma dedução.
  */
 
 type LinhaImportavel = LancamentoOfx;
@@ -66,6 +73,10 @@ export default function ImportarExtratoModal({
   const [textoColado, setTextoColado] = useState('');
   const [linhas, setLinhas] = useState<LinhaImportavel[]>([]);
   const [origem, setOrigem] = useState<OrigemOfx>('conta');
+  /* true só quando o arquivo interpretado foi CSV — controla se o toggle
+     manual de "isto é fatura de cartão?" aparece. No OFX a origem já vem do
+     próprio arquivo (ver comentário no topo do arquivo) e não é editável. */
+  const [veioDeCsv, setVeioDeCsv] = useState(false);
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
   const [lendo, setLendo] = useState(false);
   const [importando, setImportando] = useState(false);
@@ -93,6 +104,7 @@ export default function ImportarExtratoModal({
     setTextoColado('');
     setLinhas([]);
     setOrigem('conta');
+    setVeioDeCsv(false);
     setNomeArquivo(null);
     setLendo(false);
     setImportando(false);
@@ -126,6 +138,7 @@ export default function ImportarExtratoModal({
         );
       }
       setOrigem(r.origem);
+      setVeioDeCsv(false);
       setLinhas(r.lancamentos);
       setNomeArquivo(nome);
       return;
@@ -147,6 +160,7 @@ export default function ImportarExtratoModal({
       );
     }
     setOrigem('conta');
+    setVeioDeCsv(true);
     /* CSV não traz um identificador de transação dado por uma instituição,
        diferente do OFX — mas cada linha já vem com uma chave sintética de
        gerarFitidSintetico() (lib/heuristics.ts), derivada do próprio
@@ -304,9 +318,22 @@ export default function ImportarExtratoModal({
                 </Text>
               ) : null}
 
+              {veioDeCsv ? (
+                <View style={styles.toggleFaturaLinha}>
+                  <ToggleSwitch
+                    value={ehCartao}
+                    onToggle={() => setOrigem((o) => (o === 'cartao' ? 'conta' : 'cartao'))}
+                    label="Este CSV é fatura de cartão de crédito"
+                  />
+                  <Text style={styles.toggleFaturaTexto}>Este CSV é fatura de cartão de crédito</Text>
+                </View>
+              ) : null}
+
               {ehCartao ? (
                 <View style={styles.blocoCartao}>
-                  <Text style={styles.blocoCartaoTitulo}>Este arquivo é uma fatura de cartão</Text>
+                  <Text style={styles.blocoCartaoTitulo}>
+                    {veioDeCsv ? 'A quem estas compras pertencem' : 'Este arquivo é uma fatura de cartão'}
+                  </Text>
                   {cartoes.length === 0 ? (
                     <Text style={styles.blocoCartaoTexto}>
                       Você ainda não tem cartão cadastrado, então os lançamentos entram como saídas comuns. Cadastre o
@@ -455,6 +482,9 @@ const styles = StyleSheet.create({
   },
 
   arquivoNome: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.light },
+
+  toggleFaturaLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  toggleFaturaTexto: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.light, flexShrink: 1 },
 
   blocoCartao: {
     borderWidth: 1,

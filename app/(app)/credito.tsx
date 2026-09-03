@@ -34,6 +34,7 @@ import {
   criarOcorrenciasRecorrentes,
 } from '@/lib/data';
 import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, parseParcelas } from '@/lib/heuristics';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
@@ -62,7 +63,7 @@ import FadeIn from '@/components/FadeIn';
 export default function CreditoScreen() {
   const { paddingConteudo } = useTabBarInset();
   const router = useRouter();
-  const { novaCompra } = useLocalSearchParams<{ novaCompra?: string }>();
+  const { novaCompra, texto } = useLocalSearchParams<{ novaCompra?: string; texto?: string }>();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, wallets } = useWallet();
@@ -220,8 +221,12 @@ export default function CreditoScreen() {
      de cartão que abriria vazio antes dos cartões chegarem. Ver o hook para as
      duas armadilhas que ele resolve. */
   useAberturaPorParametro(novaCompra === '1' && !loading, () => {
-    abrirNovaCompra();
-    router.setParams({ novaCompra: undefined });
+    if (texto) {
+      abrirNovaCompraDoTexto(texto);
+    } else {
+      abrirNovaCompra();
+    }
+    router.setParams({ novaCompra: undefined, texto: undefined });
   });
 
   /* Esta tela renderiza um carrossel de cartões e uma FlatList de compras;
@@ -443,6 +448,29 @@ export default function CreditoScreen() {
     setTxCategory(CATEGORIES[0].name);
     setTxCatColor(CATEGORIES[0].color);
     if (walletCards.length > 0) setTxCardId(walletCards[0].id);
+    setNewTxOpen(true);
+  }
+
+  /* Abrir o sheet preenchido a partir de uma fala reconhecida por voz (Início
+     ou Lançamentos, quando ehIntencaoCredito detecta "no crédito"/parcelamento
+     e navega pra cá em vez de abrir o modal de colar comprovante). Mesmo
+     extrator do modal (valor/descrição/categoria); o cartão é casado pelo
+     nome/banco citado, com o primeiro cartão da carteira como reserva —
+     mesmo critério do bot do WhatsApp (matchCardByText). */
+  function abrirNovaCompraDoTexto(texto: string) {
+    setEditingTxId(null);
+    const guessedAmount = guessAmountFromText(texto);
+    const guessedCat = guessCategoryFromText(texto);
+    const guessedDesc = guessDescFromText(texto, 'out');
+    const cartaoCasado = matchCardByText(texto, walletCards);
+    setTxDesc(guessedDesc);
+    setTxAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
+    setTxCategory(guessedCat.name);
+    setTxCatColor(guessedCat.color);
+    setTxCardId(cartaoCasado?.id || walletCards[0]?.id || '');
+    setTxInstallments(String(parseParcelas(texto) ?? 1));
+    setTxRecurring(false);
+    setTxDate(todayISO());
     setNewTxOpen(true);
   }
 

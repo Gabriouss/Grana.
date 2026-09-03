@@ -1178,36 +1178,174 @@ não aparecerem como controles sem ação. Verificação local em 1440×900,
 violações e console do navegador sem erros. Nada foi publicado ou enviado à
 web nesta revisão; o servidor de aprovação local usa `http://127.0.0.1:8082`.
 
-## Revisão do branch `claude/grana-landing-page-design-df5etm` (03/09/2026)
+## Sessão de 02/09/2026 - auditoria de motion e composição visual da landing
 
-Apesar do nome, esse branch remoto (ainda **não mesclado ao `main`**) também
-acumulou três correções de código de outra sessão na manhã de 03/09, além do
-trabalho de landing: voz com intenção de crédito abre a caixa do cartão, voz
-com intenção de boleto abre a caixa de contas (ambas portando
-`ehIntencaoCredito`/`ehIntencaoBoleto`/`parseParcelas`/`matchCardByText`/
-`parseDiaVencimento` de `supabase/functions/whatsapp-webhook` para
-`lib/heuristics.ts`, vigiadas por `sync-parser.js`), e um toggle "isto é
-fatura de cartão?" na importação de CSV. Mais um spec (sem implementação)
-em `docs/specs/2026-09-03-ciclo-fatura-cartao-design.md` sobre agrupar fatura
-por dia de fechamento em vez de mês civil.
+Pedido do autor: usar as skills `impeccable` e `web-animation-design` (via
+`SuggestSkills`/`SearchSkills`, que não trouxeram nada novo além dessas duas
+já habilitadas) pra levantar oportunidades de motion e composição visual na
+landing. **Só auditoria, nenhuma linha de código mudou nesta sessão.**
 
-Revisão feita numa worktree separada (`git worktree add` apontando pro
-branch remoto, com `npm install` próprio — não mexeu no checkout principal).
-`tsc --noEmit` limpo e `test:parser` 100% (37/37 em sincronia, subiu de 32
-com as 5 funções novas).
+**Achado central: um único gesto de motion, repetido 25+ vezes.**
+`RevealOnScroll` (fade + `translateY: 16→0`, `cubic-bezier(0.16,1,0.3,1)`,
+600ms) é chamado 25 vezes em `app/index.tsx` — Preços, Segurança, FAQ,
+Hábitos, Benefícios, guia numerado, todos com o mesmo gesto, mesma direção,
+mesmo tempo. É o antipadrão que o `impeccable` nomeia em `reference/animate.md`:
+*"A generic fade-and-rise, hover lift, parallax layer, or scroll reveal is
+not a thesis."* A sensação de "falta de motion de qualidade" relatada pelo
+autor provavelmente vem daqui — não é falta de quantidade, é falta de
+variedade com propósito; a repetição faz a mente parar de notar.
 
-**Achado real, corrigido no próprio branch (commit `46a06c2`):**
-`abrirNovaCompraDoTexto` em `app/(app)/credito.tsx` (o formulário que a voz
-abre quando detecta intenção de crédito) chamava `guessAmountFromText` etc.
-para preencher o formulário mas fixava `setTxInstallments('1')` direto —
-`ehIntencaoCredito` já chama `parseParcelas` pra decidir a intenção, mas o
-número extraído nunca chegava ao formulário. Ou seja: falar "TV 2500 em 12
-parcelas" pelo botão de voz do app abria a tela certa com valor/categoria/
-cartão certos, mas sempre lançava 1x — exatamente o bug que o commit
-`09ea1dd` da manhã descreve ter corrigido no bot do WhatsApp, reintroduzido
-no caminho do app. Corrigido chamando `parseParcelas(texto)` também para
-`txInstallments`, com `1` como padrão. Publicado no branch, não no `main`.
+**O que já funciona (preservar):**
+- Hero com stagger de letras (`Animated.stagger`, `app/index.tsx:553-556`) —
+  único momento realmente autoral da página.
+- `NotebookAnimado` — composição de camadas PNG, ideia de material específica
+  do produto.
+- `TrustMarquee` — loop CSS puro (`@keyframes` + `animationIterationCount:
+  infinite`), contornando corretamente o bug do `Animated.loop` no RN Web
+  (já documentado nas Convenções de código acima).
 
-**Ainda pendente:** decidir se/quando mesclar este branch ao `main` — ele
-tem commits de landing (motion, composição visual) e de correções de app
-(crédito/boleto/CSV) misturados, então um merge simples traz os dois juntos.
+**Vocabulário de interação quase inexistente.** Hover só existe em 3
+elementos da página inteira: CTA primário, link "Entrar" do cabeçalho, ícone
+do Instagram no rodapé (`app/index.tsx:1517-1523,1609`) — e nos três casos é
+só troca de `borderColor`/`backgroundColor`. Cards de dor, cards de benefício
+e os passos do guia numerado não respondem a hover nenhum.
+
+**Findings priorizados:**
+
+1. **[P1] Reveal genérico sem hierarquia de distância/consequência** — as 25
+   chamadas de `RevealOnScroll`. A tabela de timing do `web-animation-design`
+   associa duração a distância/importância (300-500ms layout/overlay,
+   500-800ms só pro momento autoral); usar 600ms uniforme nivela seções que
+   deveriam ter peso diferente. Direção: reservar motion mais lento/expressivo
+   pra 1-2 seções que carregam a proposta de valor (Segurança, virada pra
+   Preços) e acelerar/suavizar o resto (translateY menor, ~200-300ms).
+   Comando sugerido: `/impeccable animate`.
+2. **[P1] Composições de card sem resposta a hover/proximidade** — cards de
+   dor, benefícios, guia numerado. Direção: elevação sutil (`translateY:
+   -2/-4px` + sombra, só transform+opacity) em ~150ms `ease`. Comando
+   sugerido: `/impeccable delight` ou `/impeccable animate`.
+3. **[P2] Nenhum material além de opacity/translateY na página inteira** —
+   `animate.md` lista blur/mask/clip-path/movimento espacial como paleta pra
+   "foco e profundidade" ou "reveal e composição"; a Segurança
+   (`MolduraCelular`/`MolduraNavegador` sobrepostos) é a candidata óbvia pra
+   um reveal por máscara/clip em vez de fade genérico, já que a composição em
+   si é o argumento visual da seção.
+4. **[P3] `.impeccable/design.json` desatualizado** — `context.mjs` do
+   `impeccable` sinalizou que o sidecar de tokens (inclusive motion tokens)
+   foi gerado antes da última edição do `DESIGN.md`. Rodar
+   `/impeccable document` antes de qualquer trabalho de motion, pra não
+   trabalhar com tokens defasados.
+
+**Ordem recomendada pro autor, quando decidir avançar:** `/impeccable animate`
+na seção Segurança → `/impeccable animate`/`delight` nos cards → variar o
+timing do `RevealOnScroll` por peso de seção → `/impeccable polish` como
+passe final.
+
+## Sessão de 03/09/2026 - lançamento por voz com intenção de crédito
+
+Pedido do autor: "dei um comando de voz pra lançar no crédito e caiu no
+Pix/dinheiro". Três itens levantados na mesma sessão (ver
+`docs/superpowers/specs/2026-09-03-ciclo-fatura-cartao-design.md` pro
+primeiro, ainda sem plano de implementação; editar cartão e trocar o motor de
+voz do app pro mesmo Whisper do WhatsApp ficaram só desenhados, sem
+implementação ainda) — só este terceiro foi implementado nesta sessão, a
+pedido explícito do autor.
+
+**Causa raiz confirmada em código**: `PasteReceiptModal.tsx` (o modal que
+recebe tanto "colar comprovante" quanto a transcrição de voz no app) nunca
+extraiu `payment_method`/`card_id` do texto — só tipo/descrição/valor/
+categoria. O comentário em `lib/heuristics.ts:441-447` já registrava isso:
+"no crédito da C6" funciona no bot do WhatsApp porque uma etapa lá casa o
+cartão citado; "nunca no lançamento por voz DENTRO do app, que não passa por
+lá". Ou seja, dizer "no crédito" em voz nunca setava forma de pagamento
+nenhuma — o lançamento nascia sem `payment_method`, que a tela mostra como
+Pix/dinheiro.
+
+**Escopo pedido pelo autor foi mais estreito** que a primeira proposta
+(chip de forma de pagamento na tela de confirmação): só quer que o áudio com
+intenção de crédito abra direto a caixa de lançamento do cartão, sem
+seletor novo em nenhuma tela.
+
+- `ehIntencaoCredito`/`matchCardByText`/`parseParcelas` portados de
+  `supabase/functions/whatsapp-webhook/index.ts` pra `lib/heuristics.ts`
+  (exportados), vigiados por `__tests__/sync-parser.js` (agora 35 pares em
+  sincronia, incluindo os três novos).
+- Botão de voz na Início e em Lançamentos: quando `ehIntencaoCredito(texto)`
+  é verdadeiro, navega pra `/(app)/credito?novaCompra=1&texto=<transcrição>`
+  em vez de abrir o modal de colar comprovante.
+- `credito.tsx` ganhou `abrirNovaCompraDoTexto(texto)` — roda a mesma
+  extração de valor/descrição/categoria do modal, casa o cartão citado por
+  nome/banco (`matchCardByText`, reserva pro primeiro cartão da carteira,
+  mesmo critério do bot), e abre a caixa de compra no cartão já preenchida
+  pra revisão antes de salvar.
+- Quando a fala NÃO tem intenção de crédito, nada muda — continua abrindo o
+  modal de sempre.
+
+Verificações: `npx tsc --noEmit` limpo (precisou de `npm install`, o
+ambiente não tinha `node_modules`) e `npm run test:parser` completo aprovado
+(34.093 checagens do corpus, mais os 35 pares de `sync-parser.js`, incluindo
+os três novos). Sem validação visual em aparelho/navegador nesta sessão —
+mudança de lógica de roteamento e extração de texto, não de estilo.
+
+**Mesma sessão, extensão pro boleto.** Autor perguntou se o mesmo atalho
+existia pra Contas — não existia. `ehIntencaoBoleto`/`parseDiaVencimento`
+portados do bot do WhatsApp pro `lib/heuristics.ts` do mesmo jeito (agora 37
+pares em `sync-parser.js`). `contas.tsx` ganhou `abrirNovaContaDoTexto`,
+espelhando `abrirNovaCompraDoTexto`, e o botão de voz em Início/Lançamentos
+passou a checar boleto ANTES de crédito (mesma ordem do
+`registrarLancamento` do bot — "boleto" é sinal mais específico que
+"crédito" quando os dois aparecem juntos, tipo "boleto no cartão").
+`npx tsc --noEmit` e `npm run test:parser` (37/37 em sincronia) aprovados de
+novo depois desta extensão.
+
+## Sessão de 03/09/2026 - CSV também pode ser marcado como fatura de cartão
+
+Autor perguntou como o Grana. separa lançamentos de crédito/débito em
+importação de CSV/OFX. Resposta: o OFX já resolvia isso sozinho (o arquivo
+declara `<CREDITCARDMSGSRSV1>`/`<CCSTMTRS>` quando é fatura de cartão,
+`lib/ofx-parser.ts`), com seletor de cartão na tela de importação. O CSV não
+carrega esse metadado — é só data/descrição/valor — então sempre entrava como
+conta corrente, mesmo quando era, de fato, export de fatura.
+
+- `ImportarExtratoModal.tsx` ganhou `veioDeCsv` (estado só de UI, não muda o
+  parser): quando o arquivo interpretado é CSV, aparece um `ToggleSwitch`
+  ("Este CSV é fatura de cartão de crédito") antes do bloco de escolha de
+  cartão. Ligado, reaproveita o mesmo bloco/seletor que o OFX já tinha —
+  `ehCartao` (derivado de `origem`) já controlava tanto a UI quanto o
+  `payment_method: 'credit'`/`card_id` no `confirmar()`, então bastou tornar
+  `origem` editável pra CSV em vez de fixa em `'conta'`.
+- No OFX a origem continua vindo só do arquivo, sem toggle — é fato
+  declarado pelo banco, não pergunta.
+
+Verificações: `npx tsc --noEmit` e `npm run test:parser` (37/37 em
+sincronia) aprovados. Sem validação visual em aparelho/navegador nesta
+sessão.
+
+## Revisão e merge do branch `claude/grana-landing-page-design-df5etm` (03/09/2026)
+
+Todo o trabalho das três sessões acima (crédito/boleto por voz, CSV como
+fatura) vivia num branch remoto separado, nunca mesclado ao `main` — as
+seções acima foram trazidas por este merge, não escritas nesta sessão.
+Revisão feita numa worktree isolada (`git worktree add` apontando pro branch
+remoto, `npm install` próprio, sem mexer no checkout principal): `tsc
+--noEmit` limpo e `test:parser` 100% (37/37 em sincronia).
+
+**Achado real, corrigido antes do merge (commit `46a06c2`):**
+`abrirNovaCompraDoTexto` em `app/(app)/credito.tsx` chamava
+`guessAmountFromText`/`guessCategoryFromText`/`guessDescFromText`/
+`matchCardByText` para preencher o formulário de voz, mas fixava
+`setTxInstallments('1')` direto — `ehIntencaoCredito` já chama
+`parseParcelas` pra decidir a intenção (parcelamento só existe no crédito),
+mas o número extraído nunca chegava ao formulário. Ou seja: falar "TV 2500
+em 12 parcelas" pelo botão de voz do app abria a tela certa com
+valor/categoria/cartão certos, mas sempre lançava 1x — a mesma classe de bug
+que a sessão de crédito acima descreve ter corrigido no bot do WhatsApp,
+reintroduzida no caminho do app. Corrigido chamando `parseParcelas(texto)`
+também para `txInstallments`, com `1` como padrão quando a fala não
+menciona parcela.
+
+Merge feito com `git merge` (histórias divergiam desde antes de `fa124dc`/
+`cedc5ee`, então não foi fast-forward). Conflito só em `context.md`
+(as duas linhas de trabalho documentaram no mesmo arquivo); resolvido
+mantendo as duas narrativas. Nenhum conflito de código — o branch não
+tocava em nenhum arquivo da landing.
