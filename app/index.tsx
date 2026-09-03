@@ -1877,7 +1877,7 @@ const styles = StyleSheet.create({
   segurancaProvaIcone: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep, marginBottom: spacing.xl },
   segurancaProvaTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.3, fontFamily: fonts.regular, marginBottom: spacing.sm },
   segurancaProvaTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light, maxWidth: 360 },
-  segurancaLimite: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: spacing.sm, marginTop: spacing.xxl + spacing.sm },
+  segurancaLimite: { flexDirection: 'row', alignItems: 'flex-start', alignSelf: 'center', gap: spacing.sm, marginTop: spacing.xxl + spacing.sm },
   segurancaLimiteTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.45, fontFamily: fonts.light, textAlign: 'center' },
   segurancaCta: { alignItems: 'center', marginTop: spacing.xxl + spacing.xs },
 

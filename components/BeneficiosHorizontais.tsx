@@ -56,7 +56,7 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
   );
   const fixar = largura >= 1100 && altura >= 720 && !reduzirMovimento;
   const larguraCard = fixar ? 420 : Math.min(440, Math.max(260, largura - (largura < CORTES.medio ? 96 : 120)));
-  const alturaCard = largura < CORTES.medio ? 400 : 350;
+  const alturaCard = largura < CORTES.medio ? 350 : 400;
   const alturaSticky = Math.max(620, altura - alturaCabecalho);
   const [alturaPalco, setAlturaPalco] = useState(alturaSticky * 2.4);
   const palcoRef = useRef<View>(null);
