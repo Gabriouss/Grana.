@@ -34,7 +34,7 @@ import {
   criarOcorrenciasRecorrentes,
 } from '@/lib/data';
 import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText } from '@/lib/heuristics';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, parseParcelas } from '@/lib/heuristics';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
@@ -468,7 +468,7 @@ export default function CreditoScreen() {
     setTxCategory(guessedCat.name);
     setTxCatColor(guessedCat.color);
     setTxCardId(cartaoCasado?.id || walletCards[0]?.id || '');
-    setTxInstallments('1');
+    setTxInstallments(String(parseParcelas(texto) ?? 1));
     setTxRecurring(false);
     setTxDate(todayISO());
     setNewTxOpen(true);
