@@ -1270,3 +1270,14 @@ ambiente não tinha `node_modules`) e `npm run test:parser` completo aprovado
 (34.093 checagens do corpus, mais os 35 pares de `sync-parser.js`, incluindo
 os três novos). Sem validação visual em aparelho/navegador nesta sessão —
 mudança de lógica de roteamento e extração de texto, não de estilo.
+
+**Mesma sessão, extensão pro boleto.** Autor perguntou se o mesmo atalho
+existia pra Contas — não existia. `ehIntencaoBoleto`/`parseDiaVencimento`
+portados do bot do WhatsApp pro `lib/heuristics.ts` do mesmo jeito (agora 37
+pares em `sync-parser.js`). `contas.tsx` ganhou `abrirNovaContaDoTexto`,
+espelhando `abrirNovaCompraDoTexto`, e o botão de voz em Início/Lançamentos
+passou a checar boleto ANTES de crédito (mesma ordem do
+`registrarLancamento` do bot — "boleto" é sinal mais específico que
+"crédito" quando os dois aparecem juntos, tipo "boleto no cartão").
+`npx tsc --noEmit` e `npm run test:parser` (37/37 em sincronia) aprovados de
+novo depois desta extensão.
