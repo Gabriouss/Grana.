@@ -1496,7 +1496,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
-  cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs },
+  // O `paddingBottom` é 1px menor que o topo de propósito: a barra tem
+  // `borderBottomWidth: 1`, e a régua que o olho usa é a linha, não o fim da
+  // caixa. Com 8/8 o conteúdo ficava 0,5px acima do centro da barra; com
+  // 8/4 (o `spacing.xs` que estava aqui, já que o `paddingTop` da linha de
+  // cima sobrescreve só o topo) ficava 3px abaixo — visível no logotipo.
+  cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, paddingBottom: spacing.sm - 1 },
   cabecalhoAcoes: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.md, flex: 1 },
   navLinkAlvo: {
     minHeight: 36,

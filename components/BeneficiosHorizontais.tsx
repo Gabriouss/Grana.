@@ -83,7 +83,10 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
   const fixar = largura >= 1100 && altura >= 720 && !reduzirMovimento;
   const larguraCard = fixar ? 420 : Math.min(440, Math.max(260, largura - (compacto ? 96 : 120)));
   // Só o compacto trava altura; no amplo o card cresce com o conteúdo.
-  const alturaCard = 290;
+  // 300 e não 290 porque o palco do mini-mock subiu de 108 pra 124 (ele
+  // cortava três das seis variantes) — sem acompanhar, o card voltava a
+  // clipar a última linha do parágrafo.
+  const alturaCard = 300;
   const alturaSticky = Math.max(620, altura - alturaCabecalho);
   const [alturaPalco, setAlturaPalco] = useState(alturaSticky * 2.4);
   const palcoRef = useRef<View>(null);

@@ -173,7 +173,15 @@ function BlocoHome({ icone, texto, largo }: { icone: React.ComponentProps<typeof
 
 const styles = StyleSheet.create({
   palco: {
-    height: 108,
+    /* Medido, não estimado: com 108 as variantes `mes` e `organizar` pediam
+       115px de conteúdo e `personalizar` 109 — como o palco é
+       `justifyContent: 'center'` + `overflow: 'hidden'`, o excedente saía
+       igualmente por cima e por baixo e comia o próprio padding, então a
+       primeira linha encostava na borda ("Gastos deste mês / R$ 1.210" sem
+       respiro nenhum) e a última era cortada. Altura única pra todas as
+       variantes é de propósito: é o que mantém o rótulo/título de cada card
+       da dobra na mesma linha de base. 124 = a mais alta (115) com folga. */
+    height: 124,
     borderRadius: radius.md,
     backgroundColor: theme.paper,
     borderWidth: 1,

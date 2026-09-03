@@ -1378,3 +1378,41 @@ exige altura ≥720, então uma janela desktop baixa usa o layout de toque) e
 390×844 (compacto, inalterado). `npx tsc --noEmit` limpo; `npm run
 test:parser` 100% (94 notas, 303 guardas do design system, 17 interruptores,
 37/37 em sincronia).
+
+### Mesma sessão - o palco do mini-mock estava 9px curto desde sempre
+
+Autor, por prints: "isso aqui não tem margem, totalmente amador" (topo do
+mock de análises), "esse primeiro card da sessão não dá pra ver direito" e
+"o último também não".
+
+`MiniMockBeneficio.palco` tinha `height: 108` fixo com
+`justifyContent: 'center'` + `overflow: 'hidden'`. Medido no navegador, três
+das seis variantes pediam mais que isso: `mes` e `organizar` 115px de
+conteúdo, `personalizar` 109. Como o conteúdo é centralizado antes de ser
+cortado, o excedente saía metade por cima e metade por baixo — comendo o
+próprio `padding: spacing.md` — então a primeira linha ("Gastos deste mês /
+R$ 1.210") encostava na borda de cima e a última era decepada. Não era só o
+card do print: era o mesmo defeito em três cards, em toda largura, desde que
+os mocks foram escritos.
+
+Palco subiu pra 124 (a variante mais alta, 115, com folga). Altura única pra
+todas as variantes continua sendo de propósito — é o que mantém o
+rótulo/título de cada card na mesma linha de base. `alturaCard` do compacto
+acompanhou, de 290 pra 300 (medido: sobra de 18px sob a última linha, com
+16 de padding, ou seja 2px de folga real).
+
+### Mesma sessão - cabeçalho 3px abaixo do centro da barra
+
+`styles.cabecalho` usava `paddingVertical: spacing.xs` e a JSX sobrescrevia
+só o topo (`paddingTop: insets.top + spacing.sm`), então a linha ficava com
+8 em cima e 4 embaixo. Somando o `borderBottomWidth: 1` da barra sticky, o
+logotipo e o botão "Entrar" caíam 3px abaixo do centro real da barra.
+Agora `paddingVertical: spacing.sm` com `paddingBottom: spacing.sm - 1` —
+o 1px a menos compensa a borda, que é a régua que o olho usa. Medido depois:
+logotipo 12,6px acima e 12,6 abaixo, botão 8 e 8, numa barra de 52px.
+
+**Observação sobre o ar (não corrigido, é infra):** granaponto.com.br está
+servindo um bundle ANTERIOR até às correções de card do dia — o palco de lá
+ainda mede 108 e não há `-webkit-line-clamp` nenhum, ou seja, o deploy da
+Vercel não acompanhou os últimos pushes do `main`. Vale conferir o painel da
+Vercel antes de julgar qualquer correção de landing por print do site no ar.
