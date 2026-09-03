@@ -1224,3 +1224,49 @@ e os passos do guia numerado não respondem a hover nenhum.
 na seção Segurança → `/impeccable animate`/`delight` nos cards → variar o
 timing do `RevealOnScroll` por peso de seção → `/impeccable polish` como
 passe final.
+
+## Sessão de 03/09/2026 - lançamento por voz com intenção de crédito
+
+Pedido do autor: "dei um comando de voz pra lançar no crédito e caiu no
+Pix/dinheiro". Três itens levantados na mesma sessão (ver
+`docs/superpowers/specs/2026-09-03-ciclo-fatura-cartao-design.md` pro
+primeiro, ainda sem plano de implementação; editar cartão e trocar o motor de
+voz do app pro mesmo Whisper do WhatsApp ficaram só desenhados, sem
+implementação ainda) — só este terceiro foi implementado nesta sessão, a
+pedido explícito do autor.
+
+**Causa raiz confirmada em código**: `PasteReceiptModal.tsx` (o modal que
+recebe tanto "colar comprovante" quanto a transcrição de voz no app) nunca
+extraiu `payment_method`/`card_id` do texto — só tipo/descrição/valor/
+categoria. O comentário em `lib/heuristics.ts:441-447` já registrava isso:
+"no crédito da C6" funciona no bot do WhatsApp porque uma etapa lá casa o
+cartão citado; "nunca no lançamento por voz DENTRO do app, que não passa por
+lá". Ou seja, dizer "no crédito" em voz nunca setava forma de pagamento
+nenhuma — o lançamento nascia sem `payment_method`, que a tela mostra como
+Pix/dinheiro.
+
+**Escopo pedido pelo autor foi mais estreito** que a primeira proposta
+(chip de forma de pagamento na tela de confirmação): só quer que o áudio com
+intenção de crédito abra direto a caixa de lançamento do cartão, sem
+seletor novo em nenhuma tela.
+
+- `ehIntencaoCredito`/`matchCardByText`/`parseParcelas` portados de
+  `supabase/functions/whatsapp-webhook/index.ts` pra `lib/heuristics.ts`
+  (exportados), vigiados por `__tests__/sync-parser.js` (agora 35 pares em
+  sincronia, incluindo os três novos).
+- Botão de voz na Início e em Lançamentos: quando `ehIntencaoCredito(texto)`
+  é verdadeiro, navega pra `/(app)/credito?novaCompra=1&texto=<transcrição>`
+  em vez de abrir o modal de colar comprovante.
+- `credito.tsx` ganhou `abrirNovaCompraDoTexto(texto)` — roda a mesma
+  extração de valor/descrição/categoria do modal, casa o cartão citado por
+  nome/banco (`matchCardByText`, reserva pro primeiro cartão da carteira,
+  mesmo critério do bot), e abre a caixa de compra no cartão já preenchida
+  pra revisão antes de salvar.
+- Quando a fala NÃO tem intenção de crédito, nada muda — continua abrindo o
+  modal de sempre.
+
+Verificações: `npx tsc --noEmit` limpo (precisou de `npm install`, o
+ambiente não tinha `node_modules`) e `npm run test:parser` completo aprovado
+(34.093 checagens do corpus, mais os 35 pares de `sync-parser.js`, incluindo
+os três novos). Sem validação visual em aparelho/navegador nesta sessão —
+mudança de lógica de roteamento e extração de texto, não de estilo.
