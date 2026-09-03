@@ -361,6 +361,48 @@ export function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca
   return null;
 }
 
+/* ---- boleto: reconhecer intenção e a data de vencimento ----
+   Cópia da mesma extensão em supabase/functions/whatsapp-webhook; vigiada
+   por __tests__/sync-parser.js pra não divergir. */
+
+/** Só vira boleto se a pessoa disser explicitamente — "paguei a luz" sozinho continua sendo um lançamento normal, não uma conta a programar. */
+export function ehIntencaoBoleto(text: string): boolean {
+  return (
+    /\bboletos?\b/i.test(text) ||
+    /\bvencimento\b/i.test(text) ||
+    /\bvence\s+(?:dia|em|no|dessa)\b/i.test(text) ||
+    /\bconta\s+a\s+pagar\b/i.test(text)
+  );
+}
+
+export function parseDiaVencimento(text: string): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dataCompleta = text.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+  if (dataCompleta) {
+    const d = parseInt(dataCompleta[1], 10);
+    const m = parseInt(dataCompleta[2], 10);
+    let y = dataCompleta[3] ? parseInt(dataCompleta[3], 10) : new Date().getFullYear();
+    if (y < 100) y += 2000;
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return `${y}-${pad(m)}-${pad(d)}`;
+  }
+
+  const diaSolto = text.match(/\bdia\s+(\d{1,2})\b/i);
+  if (diaSolto) {
+    const dia = parseInt(diaSolto[1], 10);
+    if (dia >= 1 && dia <= 31) {
+      const hoje = new Date();
+      // Se o dia já passou neste mês, o vencimento só pode ser no mês seguinte.
+      const mesAlvo = dia < hoje.getDate() ? hoje.getMonth() + 1 : hoje.getMonth();
+      const venc = new Date(hoje.getFullYear(), mesAlvo, dia);
+      return `${venc.getFullYear()}-${pad(venc.getMonth() + 1)}-${pad(venc.getDate())}`;
+    }
+  }
+
+  const padrao = new Date();
+  padrao.setDate(padrao.getDate() + 5);
+  return `${padrao.getFullYear()}-${pad(padrao.getMonth() + 1)}-${pad(padrao.getDate())}`;
+}
+
 /* `extras` são as categorias que o usuário criou no gerenciador do app
    (fetchCategories(), filtradas por `!is_default`) — sem isso, colar
    comprovante/escanear nota nunca reconhecia uma categoria custom, só as 9

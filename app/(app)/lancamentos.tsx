@@ -28,7 +28,7 @@ import WalletPill from '@/components/WalletPill';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import { useFlags } from '@/lib/feature-flags';
-import { ehIntencaoCredito } from '@/lib/heuristics';
+import { ehIntencaoBoleto, ehIntencaoCredito } from '@/lib/heuristics';
 import ImportarExtratoModal from '@/components/ImportarExtratoModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
@@ -557,6 +557,10 @@ export default function LancamentosScreen() {
             <VoiceEntryButton
               iconSize={16}
               onTranscribed={(text) => {
+                if (ehIntencaoBoleto(text)) {
+                  router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto: text } });
+                  return;
+                }
                 if (ehIntencaoCredito(text)) {
                   router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
                   return;

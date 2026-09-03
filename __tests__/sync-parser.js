@@ -70,6 +70,7 @@ const COMPARTILHADAS = [
   'limparCaudaDeMetadado', 'limparSobra', 'capitalizar', 'EXPRESSAO_VALOR', 'guessDescFromText',
   'guessAmountFromText', 'normalizarParaBusca', 'contemPalavra',
   'parseParcelas', 'ehIntencaoCredito', 'matchCardByText',
+  'ehIntencaoBoleto', 'parseDiaVencimento',
 ];
 
 /* A guarda ortográfica das notas de versão. Divergir aqui é pior que no

@@ -30,6 +30,7 @@ import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
 import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, payBill, reopenBill, updateBill } from '@/lib/data';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento } from '@/lib/heuristics';
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
@@ -43,7 +44,7 @@ import { LIMITS } from '@/lib/limits';
 
 export default function ContasScreen() {
   const router = useRouter();
-  const { novaConta } = useLocalSearchParams<{ novaConta?: string }>();
+  const { novaConta, texto } = useLocalSearchParams<{ novaConta?: string; texto?: string }>();
   const { paddingConteudo, total: tabBarTotal } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet } = useWallet();
@@ -115,8 +116,12 @@ export default function ContasScreen() {
   /* Chegando pelo FAB da Início (?novaConta=1): abre o mesmo formulário do
      "+" desta tela. Ver o hook para as duas armadilhas que ele resolve. */
   useAberturaPorParametro(novaConta === '1', () => {
-    openNewModal();
-    router.setParams({ novaConta: undefined });
+    if (texto) {
+      abrirNovaContaDoTexto(texto);
+    } else {
+      openNewModal();
+    }
+    router.setParams({ novaConta: undefined, texto: undefined });
   });
 
   function openNewModal() {
@@ -127,6 +132,26 @@ export default function ContasScreen() {
     setCategory(catObj.name);
     setCatColor(catObj.color);
     setDueDate(todayISO());
+    setRecurring(false);
+    setModalOpen(true);
+  }
+
+  /* Abrir o sheet preenchido a partir de uma fala reconhecida por voz (Início
+     ou Lançamentos, quando ehIntencaoBoleto detecta "boleto"/"vence dia
+     X"/"conta a pagar" e navega pra cá em vez de abrir o modal de colar
+     comprovante ou a caixa do crédito). Mesmo extrator do modal de crédito
+     pra valor/descrição/categoria; a data de vencimento vem de
+     parseDiaVencimento — mesmo motor do bot do WhatsApp. */
+  function abrirNovaContaDoTexto(texto: string) {
+    setEditingBillId(null);
+    const guessedAmount = guessAmountFromText(texto);
+    const guessedCat = guessCategoryFromText(texto);
+    const guessedDesc = guessDescFromText(texto, 'out');
+    setDesc(guessedDesc);
+    setAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
+    setCategory(guessedCat.name);
+    setCatColor(guessedCat.color);
+    setDueDate(parseDiaVencimento(texto));
     setRecurring(false);
     setModalOpen(true);
   }
