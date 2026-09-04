@@ -2081,3 +2081,54 @@ nenhuma checagem textual alcançava: no React Native 0.86,
 `HeadlessJsTaskService.getTaskConfig` recebe `Intent?`, mas o override local
 usava `Intent` não nulo. `GranaVoiceHeadlessService` foi ajustado para a
 assinatura atual e continua encerrando com segurança quando não há extras.
+
+## Sessão de 04/09/2026 — auditoria de margem/entrelinha e o passe de ritmo
+
+`/impeccable audit margem e espaçamento entre linhas`, medido por analisador
+nos blocos `StyleSheet` (relatório completo no `IMPECCABLE_AUDIT.md`). As duas
+superfícies eram imagem espelhada uma da outra: **o app tinha resolvido a
+entrelinha e não a margem (40% de token); a landing tinha resolvido a margem
+(96%) e não usava o `lh()`.**
+
+**O achado que mudou o remédio.** Havia 154 números crus de espaço nas telas,
+mas não eram 154 decisões: 86 eram quatro valores repetidos, e dois deles com
+papel verificado no código — `6px` em 39 lugares (sempre o vão entre um ícone
+e o texto ao lado) e `2px` em 23 (sempre o fio entre um rótulo e o sub-rótulo).
+Um valor usado 39 vezes para a mesma coisa é um token que ninguém nomeou. A
+causa era a escala: `spacing` saltava 4 → 8 → 12 → 16, sem nada abaixo de 4 nem
+entre os degraus, então todo ajuste fino escapava do sistema por construção.
+
+Entraram **`spacing.fio` (2)** e **`spacing.icone` (6)**, nomeados por PAPEL e
+não como `xxs`/`xsm` — mesmo espírito de `leading.corpo`/`leading.apoio`. A
+razão é de revisão: `spacing.icone` num espaço que não envolve ícone lê como
+engano; um `xxs` genérico não lê como nada. Com eles, 145 números viraram token
+(117 no primeiro passe + 28 na Início, que ficou para um commit à parte).
+
+Também: **`perfil.tsx` entrou no `screenRhythm`** — era a única das sete telas
+fora dele (20/16 contra 16/12), e por isso o corpo deslocava ao trocar de aba,
+que é exatamente o sintoma que o token nasceu para matar. E **três `lineHeight`
+cravados em pixel viraram `lh()`**: `type` é `Platform.select` e `legenda` vale
+12 no Android e 14 na web, então um `15` fixo dava 1,07× na web, com as linhas
+quase se encostando.
+
+**O que NÃO foi trocado, de propósito.** Sobraram 37 números crus, e eles não
+são ritmo: `13` é altura de linha tocável no Perfil, `14` é altura de botão
+primário, `10` é altura de linha de lista. Trocar por token encolheria alvo de
+toque — seria mudança de design disfarçada de limpeza. Ficaram, com comentário
+no ponto mais denso (`perfil.tsx`, os `row`/`tappableRow`) para a próxima
+pessoa não "limpar" e reduzir os alvos em silêncio.
+
+Fica aberto do relatório: rótulos nas abas (as três de pagamento — carteira,
+cartão e recibo — não se distinguem por ícone), Ionicons no lugar de SF
+Symbols/Material Symbols, agregação no banco para o saldo, token de "gravando"
+no lugar da cor de Alimentação, e a entrelinha da landing ligada ao `lh()`
+(esta última precisa nomear a entrelinha de 1,5 do corpo de marketing, que não
+é decisão mecânica).
+
+**CI nova:** `.github/workflows/android.yml` compila o Android nativo
+(`expo prebuild` + `gradlew :app:assembleDebug`) num runner do GitHub a cada
+push que toca `modules/`, `plugins/`, `app.json` ou `package.json`. Não usa EAS
+e não encosta na cota. Existe porque o Kotlin do widget nunca foi compilado
+nesta máquina — não há JDK nem Android SDK aqui — e revisão por leitura não
+pega erro de tipo, de API nem de merge de manifest. Tem `workflow_dispatch`
+para rodar à mão antes de uma build.
