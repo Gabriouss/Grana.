@@ -2023,3 +2023,23 @@ Segue pendente do relatório: rótulos nas abas (P2), Ionicons (P2), agregação
 banco para o saldo (P2), token de "gravando" no lugar da cor de Alimentação
 (P2), `theme.scrim` (P3), órfãos (P3). Nenhuma build disparada; `app.json` em
 1.4.3.
+
+## Sessão de 04/09/2026 — reflexo do CTA e direção dos widgets
+
+Corrigido em `app/index.tsx` o reflexo dos botões primários "Criar minha
+conta" da landing. O bug era o ciclo de uma única execução (`720ms`,
+`animationIterationCount: 1`): ao terminar, a transformação voltava ao estado
+estático e deixava a faixa clara parada sobre o botão. Agora a camada continua
+existindo somente durante hover real, mas roda em ciclos infinitos de `3.2s`:
+uma passagem visível de aproximadamente 700ms, pausa invisível e retorno ao
+início ainda com opacidade zero. `prefers-reduced-motion` continua sem o efeito.
+
+Validação no Expo Web com navegador automatizado: estilo computado confirmou
+`animation-duration: 3.2s` e `animation-iteration-count: infinite`; a amostragem
+por sete segundos observou duas passagens completas; ao retirar o cursor, a
+camada animada foi desmontada (`0` elementos). `npx tsc --noEmit` e
+`git diff --check` passaram.
+
+Também ficou aprovada como direção de produto, ainda sem implementação nesta
+sessão, a família de widgets Android: voz 1x1; Livre para Gastar 2x1; central
+de lançamento 2x2; próximo compromisso 2x2; e cofrinho 2x1.

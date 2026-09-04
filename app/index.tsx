@@ -151,15 +151,21 @@ function BotaoCTA({
     if (reduzirMovimento) setPonteiroAtivo(false);
   }, [reduzirMovimento]);
 
-  // O reflexo responde ao hover uma vez. Deixar uma animação infinita em cada
-  // CTA mantinha vários loops ativos até quando o botão estava fora da tela.
+  // O reflexo só existe enquanto há hover real: assim ele pode repetir sem
+  // manter loops ativos nos outros CTAs ou quando o botão sai debaixo do
+  // mouse. Dentro do ciclo, a passagem ocupa ~700ms e o restante é uma pausa
+  // invisível — reflexo contínuo pareceria uma faixa clara varrendo o CTA sem
+  // descanso, em vez de um brilho ocasional.
   useEffect(() => {
     if (reduzirMovimento) return;
     const tag = document.createElement('style');
     tag.textContent = `
       @keyframes ${prefixoReflexo} {
-        0% { transform: translateX(-160%) skewX(-18deg); }
-        100% { transform: translateX(360%) skewX(-18deg); }
+        0% { transform: translateX(-160%) skewX(-18deg); opacity: 0; }
+        2% { transform: translateX(-160%) skewX(-18deg); opacity: 1; }
+        22% { transform: translateX(360%) skewX(-18deg); opacity: 1; }
+        24%, 78% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
+        80%, 100% { transform: translateX(-160%) skewX(-18deg); opacity: 0; }
       }
     `;
     document.head.appendChild(tag);
@@ -213,9 +219,11 @@ function BotaoCTA({
                 styles.ctaReflexoFaixa,
                 {
                   animationName: prefixoReflexo,
-                  animationDuration: '720ms',
-                  animationTimingFunction: 'ease-out',
-                  animationIterationCount: 1,
+                  animationDuration: '3.2s',
+                  animationTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                  animationIterationCount: 'infinite',
+                  animationFillMode: 'both',
+                  willChange: 'transform, opacity',
                 } as any,
               ]}
             />
