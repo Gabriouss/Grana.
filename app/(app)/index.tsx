@@ -921,7 +921,7 @@ export default function InicioScreen() {
               sistema (fora da identidade visual), setinhas só na web, onde
               não existe gesto de arrastar com o mouse. */}
           {Platform.OS === 'web' && (
-            <View style={{ flexDirection: 'row', gap: 2 }}>
+            <View style={{ flexDirection: 'row', gap: spacing.fio }}>
               <AppPressable
                 style={({ hovered }) => [styles.carouselArrow, hovered && styles.carouselArrowHover]}
                 onPress={() => scrollQuickChips(-1)}
@@ -973,7 +973,7 @@ export default function InicioScreen() {
           </PrivacyValue>
         </View>
 
-        <View style={{ gap: 8 }}>
+        <View style={{ gap: spacing.sm }}>
           <SegmentedTabs
             options={[
               { key: 'month', label: 'Mês' },
@@ -1056,7 +1056,7 @@ export default function InicioScreen() {
       <View style={styles.card}>
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Orçamento do mês</Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
             <AppPressable onPress={() => setTemplatesModalOpen(true)}>
               <Text style={styles.templateBudgetText}>Templates</Text>
             </AppPressable>
@@ -1133,7 +1133,7 @@ export default function InicioScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={styles.dueName}>{b.description}</Text>
                   {b.recurring && (
-                    <Ionicons name="repeat-outline" size={11} color={theme.inkFaint} style={{ marginLeft: 4 }} />
+                    <Ionicons name="repeat-outline" size={11} color={theme.inkFaint} style={{ marginLeft: spacing.xs }} />
                   )}
                 </View>
                 <Text style={styles.dueDate}>vence {formatDateLabel(b.due_date)}</Text>
@@ -1728,26 +1728,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.ruleStrong,
     borderRadius: radius.pill,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.icone,
     paddingVertical: 1,
   },
   customizeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: spacing.icone,
     paddingVertical: 10,
     marginTop: spacing.sm,
   },
   customizeBtnText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
-  avatarBtn: { padding: 2 },
+  avatarBtn: { padding: spacing.fio },
   /* 44, não 34: a foto é a identidade da pessoa na tela e estava menor que
      os botões de ação ao lado. Passa a ser o maior elemento circular do
      cabeçalho, com os botões de ícone em 36. */
   avatarImg: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.rule },
   errorText: { color: theme.danger, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
-  quickChipsSection: { gap: 6 },
+  quickChipsSection: { gap: spacing.icone },
   quickChipsHeadRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1758,13 +1758,13 @@ const styles = StyleSheet.create({
   },
   carouselArrow: { width: touchTarget, height: touchTarget, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   carouselArrowHover: { backgroundColor: theme.hover },
-  quickChipsRow: { gap: 8, paddingVertical: 4 },
+  quickChipsRow: { gap: spacing.sm, paddingVertical: spacing.xs },
   quickChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: spacing.icone,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     backgroundColor: theme.paperRaised,
     borderWidth: 1,
@@ -1784,7 +1784,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: touchTarget,
-    gap: 6,
+    gap: spacing.icone,
     paddingVertical: 10,
     paddingHorizontal: spacing.md,
     borderRadius: radius.md,
@@ -1812,9 +1812,9 @@ const styles = StyleSheet.create({
   emptyText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
 
   pieWrap: { alignItems: 'center', paddingVertical: spacing.sm },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
-  legendChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule },
-  categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
+  legendChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone, paddingHorizontal: 10, paddingVertical: spacing.icone, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule },
+  categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dot: { width: 8, height: 8, borderRadius: 4 },
   categoryName: { color: theme.ink, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.regular },
@@ -1824,9 +1824,9 @@ const styles = StyleSheet.create({
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   addBudgetText: { color: theme.inkSoft, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
-  budgetRow: { gap: 6, paddingVertical: 8, borderRadius: radius.sm },
+  budgetRow: { gap: spacing.icone, paddingVertical: spacing.sm, borderRadius: radius.sm },
   budgetRowHover: { backgroundColor: theme.hover },
-  budgetTopLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
+  budgetTopLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
   budgetAmountRow: { flexDirection: 'row', alignItems: 'baseline' },
   budgetTrack: { height: 6, borderRadius: 3, backgroundColor: theme.paper, overflow: 'hidden' },
   budgetFill: { height: '100%', borderRadius: 3 },
@@ -1842,7 +1842,7 @@ const styles = StyleSheet.create({
   recentRowTitle: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   recentRowSub: { color: theme.inkFaint, fontSize: type.legenda,
-  lineHeight: lh(type.legenda, 'corpo'), marginTop: 2, fontFamily: fonts.light },
+  lineHeight: lh(type.legenda, 'corpo'), marginTop: spacing.fio, fontFamily: fonts.light },
   recentRowAmount: { fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   recentAmountRow: { flexDirection: 'row', alignItems: 'baseline' },
@@ -1850,41 +1850,41 @@ const styles = StyleSheet.create({
   dueName: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   dueDate: { color: theme.inkFaint, fontSize: type.legenda,
-  lineHeight: lh(type.legenda, 'apoio'), marginTop: 2, fontFamily: fonts.light },
+  lineHeight: lh(type.legenda, 'apoio'), marginTop: spacing.fio, fontFamily: fonts.light },
   dueAmount: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo,
   lineHeight: lh(type.titulo, 'titulo'), fontFamily: fonts.regular },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
-  typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
+  typeBtn: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },
   typeBtnIn: { backgroundColor: theme.entradaFundo, borderWidth: 1, borderColor: theme.entradaBorda },
   typeText: { color: theme.inkFaint, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   typeTextOn: { color: theme.ink},
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
+  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: spacing.sm, fontFamily: fonts.regular },
+  amountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
   amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.rule },
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.light },
-  fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fieldVal: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   fieldValText: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   removeBudgetText: { color: theme.inkFaint, fontSize: type.apoio,
-  lineHeight: lh(type.apoio, 'apoio'), textAlign: 'center', paddingVertical: 6, fontFamily: fonts.light },
-  dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
+  lineHeight: lh(type.apoio, 'apoio'), textAlign: 'center', paddingVertical: spacing.icone, fontFamily: fonts.light },
+  dateQuickRow: { flexDirection: 'row', gap: spacing.icone, marginTop: spacing.fio },
   dateQuickChip: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: spacing.icone,
     borderRadius: radius.sm,
     backgroundColor: theme.paper,
     borderWidth: 1,
