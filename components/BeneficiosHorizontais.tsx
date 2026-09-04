@@ -14,6 +14,9 @@ export type BeneficioHorizontal = {
   rotulo: string;
   titulo: string;
   texto: string;
+  /** Só o bento lê este campo — os outros dois modos ignoram. `undefined`
+      equivale a `'normal'`, então itens já existentes não precisam mudar. */
+  tamanho?: 'normal' | 'grande';
 };
 
 type Props = {
@@ -77,12 +80,37 @@ function CardBeneficio({
   );
 }
 
+/**
+ * Card do bento — não é `CardBeneficio` com props diferentes porque os dois
+ * têm regra de largura oposta: `CardBeneficio` recebe `larguraCard` explícita
+ * (mesmo valor pro trilho inteiro), o bento deixa a grade decidir a largura
+ * de cada célula e só diz quantas colunas ocupar via `tamanho`.
+ */
+function CardBento({ item }: { item: BeneficioHorizontal }) {
+  const grande = item.tamanho === 'grande';
+  return (
+    <View role="listitem" style={[styles.celulaBento, grande && ({ gridColumn: 'span 2' } as any)]}>
+      <View style={[styles.card, styles.cardAmplo, styles.cardBento, grande && styles.cardBentoGrande]}>
+        <MiniMockBeneficio variante={item.variante} destaque={grande} />
+        <Text style={[styles.rotulo, grande && styles.rotuloGrande]}>{item.rotulo}</Text>
+        <Text style={[styles.tituloCard, styles.tituloCardAmplo, grande && styles.tituloCardGrande]}>{item.titulo}</Text>
+        <Text style={[styles.textoCard, styles.textoCardAmplo, grande && styles.textoCardGrande]}>{item.texto}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function BeneficiosHorizontais({ itens, largura, altura, alturaCabecalho, titulo, descricao }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => Platform.OS === 'web' && typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
   const compacto = largura < CORTES.medio;
-  const fixar = largura >= 1100 && altura >= 720 && !reduzirMovimento;
+  // O bento é um quarto ESTADO de decisão, não uma variação do sticky-scroll
+  // — os dois critérios de largura não são o mesmo corte, e nunca podem
+  // ficar ativos ao mesmo tempo (duas lógicas de posicionamento brigando
+  // pelo mesmo trilho). `fixar` passa a excluir explicitamente o bento.
+  const bento = largura >= 1100 && !reduzirMovimento;
+  const fixar = !bento && largura >= 1100 && altura >= 720 && !reduzirMovimento;
   const larguraCard = fixar ? 420 : Math.min(440, Math.max(260, largura - (compacto ? 96 : 120)));
   // Só o compacto trava altura; no amplo o card cresce com o conteúdo.
   // 300 e não 290 porque o palco do mini-mock subiu de 108 pra 124 (ele
@@ -195,6 +223,19 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
       <Text style={[styles.descricao, largura < CORTES.medio && styles.descricaoCompacta]}>{descricao}</Text>
     </RevealOnScroll>
   );
+
+  if (bento) {
+    return (
+      <View style={[colunaConteudo, styles.faixa, styles.conteudoLivre]}>
+        {cabecalho}
+        <View role="list" aria-label="Recursos do Grana." style={styles.gradeBento as any}>
+          {itens.map((item) => (
+            <CardBento key={item.variante} item={item} />
+          ))}
+        </View>
+      </View>
+    );
+  }
 
   if (!fixar) {
     return (
@@ -379,4 +420,32 @@ const styles = StyleSheet.create({
   tituloCardAmplo: { fontSize: type.corpo, lineHeight: type.corpo * 1.3, marginBottom: spacing.sm },
   textoCard: { color: theme.inkSoft, fontSize: type.legenda, lineHeight: type.legenda * 1.5, fontFamily: fonts.light },
   textoCardAmplo: { fontSize: type.nota, lineHeight: type.nota * 1.5 },
+  // `display:'grid'` via `as any` — mesma regra do projeto pra CSS puro sem
+  // libs novas. 3 colunas iguais; os cards `'grande'` tomam 2 delas
+  // (`gridColumn: 'span 2'` em `celulaBento`). `dense` evita buraco no grid
+  // quando um item grande não fecha a linha sozinho.
+  gradeBento: {
+    width: '100%',
+    ...({
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, 1fr)',
+      gridAutoFlow: 'dense',
+      gap: spacing.lg,
+    } as any),
+  },
+  // Sem largura fixa — ao contrário de `cardPosicao` (carrossel), quem
+  // decide a largura da célula é a grade, não o componente.
+  celulaBento: { minWidth: 0 },
+  // `cardAmplo` já dá `flex:1`; aqui só troca a altura fixa do carrossel por
+  // altura livre (mesmo raciocínio do modo touch/sticky amplo) — o bento
+  // NUNCA herda `alturaCard = 300`, que existe só pro modo compacto.
+  cardBento: { minHeight: 220 },
+  cardBentoGrande: {
+    backgroundColor: theme.accentDeep,
+    borderColor: theme.accent,
+    borderRadius: 20,
+  },
+  rotuloGrande: { color: theme.accent2 },
+  tituloCardGrande: { color: theme.ink },
+  textoCardGrande: { color: theme.ink, opacity: 0.85 },
 });

@@ -1610,3 +1610,47 @@ corretos, ancorados na moldura).
   `BeneficiosHorizontais.tsx` — maior risco técnico do plano.
 - **Cards "Jornada" e "Fechamento do mês"** (item 4): dependem do bento
   existir.
+
+## Sessão de 04/09/2026 (continuação) — bento grid, código pronto/QA pendente
+
+Implementado o item 3 do plano em `components/BeneficiosHorizontais.tsx`:
+quarto estado de decisão `bento = largura >= 1100 && !reduzirMovimento`,
+`fixar` passou a excluir `bento` explicitamente (`!bento && ...`) pra
+nunca ter duas lógicas de posicionamento ativas ao mesmo tempo. Novo ramo
+JSX (`if (bento) return (...)`) antes do `if (!fixar)` existente, com
+`display:'grid'` via `as any` (3 colunas, `gap: spacing.lg`,
+`gridAutoFlow: 'dense'`). Novo componente interno `CardBento` — não
+reaproveita `CardBeneficio` porque a regra de largura é oposta (a grade
+decide a largura da célula, não o componente). Campo novo
+`tamanho?: 'normal' | 'grande'` em `BeneficioHorizontal`
+(`undefined` = normal, retrocompatível); card `'grande'` usa
+`gridColumn: 'span 2'`, fundo `theme.accentDeep`, borda `theme.accent`,
+`borderRadius: 20`. A prop `destaque` que `MiniMockBeneficio` já tinha foi
+reaproveitada pro card grande, sem inventar sistema paralelo (era a
+recomendação do plano).
+
+`npx tsc --noEmit` limpo e `npm run test:parser` 100% (318/318 guardas do
+design system) depois da mudança.
+
+**QA visual NÃO concluída nesta sessão** — a tentativa esbarrou em dois
+erros de uso do `agent-browser` (não do produto): a env var da sessão
+isolada é `AGENT_BROWSER_SESSION`, não `AGENTS_BROWSER_SESSION`; o comando
+de redimensionar viewport é `viewport <w> <h>`, não `resize`. Corrigidos,
+mas a sessão foi pausada pelo autor antes da primeira screenshot.
+**Próxima sessão: retomar com QA visual nas 3 larguras críticas do plano**
+(390×844 compacto — confirmar que ficou bit-a-bit igual ao que já existia
+antes do bento; 1024-1100px — faixa onde `bento`/`fixar` trocam, único
+modo ativo por vez, sem listener órfão do `useEffect` de scroll-linked;
+1440×900 — grade do bento com os 6 itens atuais, ainda sem nenhum
+`'grande'` porque isso só chega com o item 4). Com os itens atuais
+(nenhum com `tamanho: 'grande'`), o bento hoje é uma grade neutra de 6
+cards iguais — a hierarquia visual (1-2 cards grandes/coloridos) só
+aparece depois que o item 4 (Jornada/Fechamento do mês) marcar 2 itens
+como `'grande'`.
+
+**Pendente — 2 dos 7 itens**, mesmo plano:
+- **QA visual do bento** (ver acima) antes de considerar o item 3
+  fechado.
+- **Cards "Jornada" e "Fechamento do mês"** (item 4): depende do bento,
+  que já existe em código — pode começar assim que a QA confirmar que o
+  bento está correto.

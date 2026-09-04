@@ -157,6 +157,18 @@
       "skillPath": "pm-go-to-market/skills/growth-loops/SKILL.md",
       "computedHash": "d32e728cca11d669d15a936ab8f3b8f4d3e7d6ef49df67a0b24426cdcdc51a8b"
     },
+    "gsap-framer-scroll-animation": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/gsap-framer-scroll-animation/SKILL.md",
+      "computedHash": "e6a4caf23b818ffc5185d51339e941ca783944b6693da877fc1206693b2dff66"
+    },
+    "gsap-greensock": {
+      "source": "dylantarre/animation-principles",
+      "sourceType": "github",
+      "skillPath": "skills/09-by-tool-framework/gsap-greensock/SKILL.md",
+      "computedHash": "5af9f9198109d1e9e582df66c038577c6613612ffa2524c78de63682b615c6f3"
+    },
     "gtm-motions": {
       "source": "phuryn/pm-skills",
       "sourceType": "github",
@@ -361,6 +373,12 @@
       "skillPath": "pm-toolkit/skills/review-resume/SKILL.md",
       "computedHash": "c5278789e6491dd276de8dbc091e4823a0ab8b4d143c68af0a72a1e099b6a3e7"
     },
+    "scroll-animations": {
+      "source": "dylantarre/animation-principles",
+      "sourceType": "github",
+      "skillPath": "skills/05-by-animation-type/scroll-animations/SKILL.md",
+      "computedHash": "16e1d229291ca23991f26215efd830f1ce942fdca60deb43f9fbe04a1fee43c2"
+    },
     "sentiment-analysis": {
       "source": "phuryn/pm-skills",
       "sourceType": "github",
@@ -439,6 +457,12 @@
       "skillPath": "pm-execution/skills/test-scenarios/SKILL.md",
       "computedHash": "66225d50d6eb80ffbdc0d75cee39d3638b5953e24a7c8b39711cc9d1846612c8"
     },
+    "ui-visual-composition": {
+      "source": "hueyexe/frontend-agent-skills",
+      "sourceType": "github",
+      "skillPath": "ui-visual-composition/SKILL.md",
+      "computedHash": "bfe56aeeef4c79967f72fa0615e1dbdf661df3200be428a7ca93a8436a08d107"
+    },
     "user-personas": {
       "source": "phuryn/pm-skills",
       "sourceType": "github",
@@ -474,6 +498,12 @@
       "sourceType": "github",
       "skillPath": ".agents/skills/web-animation-design/SKILL.md",
       "computedHash": "dcd3f6da245643cd00ef93ad73ea62edc3ae925c6d7763c0675892441d6ba6c3"
+    },
+    "web-motion-design": {
+      "source": "dylantarre/animation-principles",
+      "sourceType": "github",
+      "skillPath": "skills/01-by-domain/web-motion-design/SKILL.md",
+      "computedHash": "b73096ae0ad4bf50ee888519a9a863e949e0203b61339f4c274b3f460618a7f2"
     },
     "webapp-testing": {
       "source": "anthropics/skills",

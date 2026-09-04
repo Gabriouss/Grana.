@@ -46,7 +46,8 @@ marcadas **[ASSUMIDO]** abaixo — todas reversíveis.
    com a dobra vizinha que mostrava a mesma cena — ajuste feito durante a
    execução, ver `context.md`).
 4. ✅ Painel web / moldura de navegador (item 2) — **concluído** (04/09/2026).
-5. 🔲 Bento grid de recursos (item 3) — **pendente, próximo**, maior risco técnico.
+5. 🟡 Bento grid de recursos (item 3) — **código pronto, QA visual
+   pendente** (ver nota na seção 5 abaixo).
 6. 🔲 Cards "Jornada" e "Fechamento do mês" (item 4) — **pendente**,
    depende do item 5 existir.
 7. ✅ Captura das 5 telas (Passo 0 do item 1) — **concluído**, mais a
@@ -207,7 +208,25 @@ disponível) pra testar 2-3 composições de balão antes de fixar.
 
 ---
 
-## 5. Bento grid de recursos (item 3) — 🔲 pendente, maior risco técnico
+## 5. Bento grid de recursos (item 3) — 🟡 código pronto, QA visual pendente
+
+**Nota de implementação (04/09/2026)**: as mudanças abaixo foram escritas
+como planejado, `npx tsc --noEmit` e `npm run test:parser` (318/318 guardas
+do design system + resto da suíte) passam. **O que falta**: confirmar
+visualmente nas 3 larguras críticas (390×844 compacto, a faixa
+1024-1100px onde `bento`/`fixar` trocam, 1440×900 com o bento amplo) —
+a sessão de QA com `agent-browser` foi interrompida por atrito de
+ferramenta (`AGENT_BROWSER_SESSION` é o nome certo da env var, não
+`AGENTS_BROWSER_SESSION`; `viewport <w> <h>` é o comando certo, não
+`resize`) antes de capturar a primeira screenshot. **Próxima sessão:
+retomar exatamente daqui** — o código já está certo em teoria, só falta o
+olho humano/screenshot confirmando.
+
+Com os 6 itens atuais de `BENEFICIOS_LANDING` (nenhum ainda marcado
+`tamanho: 'grande'`), o bento hoje renderiza 6 cards normais numa grade
+3 colunas — a hierarquia visual (1-2 cards grandes/coloridos) só aparece
+depois do item 6 (Jornada/Fechamento), que é quem vai usar
+`tamanho: 'grande'` de fato.
 
 **Arquitetura**: `components/BeneficiosHorizontais.tsx` já tem 2 modos por
 `fixar = largura >= 1100 && altura >= 720 && !reduzirMovimento`:
