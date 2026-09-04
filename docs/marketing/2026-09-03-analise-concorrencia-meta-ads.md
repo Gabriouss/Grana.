@@ -53,6 +53,8 @@ como canal de aquisição — o oposto do padrão dos apps estabelecidos.
 **Página:** facebook.com/61579716705010 · **Posicionamento:** app de
 finanças pessoais com Open Finance + agente de IA no WhatsApp.
 
+**Ver na Biblioteca:** [todos os anúncios ativos da página](https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=BR&view_all_page_id=61579716705010) · [o anúncio com 12 versões em teste](https://www.facebook.com/ads/library/?id=1061006579753249) (ativo desde 30/06/2026)
+
 - Pelo menos **20+ variações de criativo ativas simultaneamente** no
   momento da coleta (contagem visível na busca direta pelo nome da
   página), a maior densidade de teste entre todos os concorrentes
@@ -98,6 +100,8 @@ contrário de todas as buscas por palavra-chave genérica). É o concorrente
 com posicionamento **mais próximo do Grana.** entre todos os encontrados:
 assistente de IA no WhatsApp que lança e categoriza gasto por mensagem.
 
+**Ver na Biblioteca:** [todos os anúncios ativos da página](https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=BR&view_all_page_id=61577366280869) · [o anúncio "Almoço, 42 reais → lançado"](https://www.facebook.com/ads/library/?id=1748928659782294) (ativo desde 11/08/2026)
+
 - Um dos criativos ativos começou a veicular em **11/08/2026**, rodando em
   4 plataformas simultâneas (Facebook, Instagram, Messenger, Threads).
 - **Preço explícito na copy**: "menos de R$ 21/mês" (plano anual, 12x de
@@ -130,16 +134,56 @@ assistente de IA no WhatsApp que lança e categoriza gasto por mensagem.
 
 ---
 
+## 3. Planilha Premium (produto substituto, não app)
+
+Pedido do autor: pesquisar especificamente o produtor "Planilha Premium".
+**Não é um concorrente de app** — é um infoproduto (planilha Excel/Google
+Sheets vendida via link externo, modelo "comente e receba"), mas compete
+pelo mesmo público e pela mesma dor ("organizar minhas finanças sem
+esforço"), num preço de entrada normalmente bem menor que qualquer
+assinatura mensal.
+
+**Página:** facebook.com/61558968558000 · **Ver na Biblioteca:** [todos os
+anúncios ativos da página](https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=BR&view_all_page_id=252136761326106)
+(~4 resultados no momento da coleta)
+
+| Anúncio | Início | Formato | Link direto |
+|---|---|---|---|
+| "Organizar suas finanças não precisa ser difícil" (a mais antiga; 3 versões desta rodam em paralelo) | 11/05/2026 | Vídeo, CTA "Comente EU QUERO" | [ver](https://www.facebook.com/ads/library/?id=3338994822974287) |
+| Mesma copy, variação de veiculação | 27/08/2026 | Vídeo, mesmo CTA | [ver](https://www.facebook.com/ads/library/?id=2126693748267238) |
+| Mesma copy, funil de quiz (`quizfinanceiro.vercel.app`) | 19/08/2026 | Vídeo, redireciona pra um quiz antes da oferta | [ver](https://www.facebook.com/ads/library/?id=1068555742323995) |
+| "Você precisa se organizar, muitas pessoas perdem dinheiro..." | 29/08/2026 | Vídeo UGC (pessoa falando pra câmera) | [ver](https://www.facebook.com/ads/library/?id=1530998968710294) |
+
+### O que chama atenção
+
+- **O criativo mais antigo (11/05/2026) segue ativo quase 4 meses depois**
+  — mais tempo contínuo no ar que qualquer anúncio do Pierre Finance ou do
+  Dinzo encontrado nesta coleta. Pra um produto de ticket único e baixo
+  (planilha, não assinatura), isso indica CAC muito baixo sustentando o
+  anúncio por muito mais tempo sem fadiga de criativo.
+- **CTA é "comente EU QUERO"**, não um link direto de checkout — capta o
+  lead pelo comentário (provavelmente resposta automática ou DM), reduz
+  fricção de clique mas empurra a conversão pra fora do anúncio.
+- **Terceiro anúncio usa funil de quiz** antes da oferta
+  (`quizfinanceiro.vercel.app`) — qualifica o lead com perguntas antes de
+  mostrar preço, tática ausente nos outros dois concorrentes analisados.
+- **Nenhuma automação real**: é uma planilha estática com suporte humano
+  ("suporte para acesso incluído"), não um produto que lança gasto
+  sozinho. A promessa é organização, não automação — a lacuna que o
+  Grana. (e os outros dois concorrentes) preenchem é justamente essa.
+
+---
+
 ## Comparativo direto
 
-| | Grana. | Pierre Finance | Dinzo |
-|---|---|---|---|
-| Preço | R$ 9,90/mês, sem trial | Free + trial 7d no Pro | ~R$ 21/mês, garantia 7d |
-| Conecta banco (Open Finance) | Não, nunca | Sim | Sim |
-| Lançamento por voz/texto | Sim (voz, WhatsApp, QR nota) | Não (foco é sincronização automática) | Sim (WhatsApp) |
-| Assistente de IA nomeado | Granabô | — | Dino |
-| Formato de anúncio dominante | — (sem campanha ativa) | Vídeo UGC/depoimento | Estático + vídeo produto |
-| Volume de criativo em teste | — | Muito alto (20+) | Alto (14+, foco só Meta) |
+| | Grana. | Pierre Finance | Dinzo | Planilha Premium |
+|---|---|---|---|---|
+| Preço | R$ 9,90/mês, sem trial | Free + trial 7d no Pro | ~R$ 21/mês, garantia 7d | Ticket único (não exposto no anúncio) |
+| Conecta banco (Open Finance) | Não, nunca | Sim | Sim | Não (planilha manual) |
+| Lançamento por voz/texto | Sim (voz, WhatsApp, QR nota) | Não (foco é sincronização automática) | Sim (WhatsApp) | Não (preenchimento manual) |
+| Assistente de IA nomeado | Granabô | — | Dino | — |
+| Formato de anúncio dominante | — (sem campanha ativa) | Vídeo UGC/depoimento | Estático + vídeo produto | Vídeo + funil de quiz |
+| Volume de criativo em teste | — | Muito alto (20+) | Alto (14+, foco só Meta) | Baixo (4), mas o mais antigo em veiculação contínua |
 
 ## O que isso sugere pro Grana.
 
@@ -158,6 +202,11 @@ assistente de IA no WhatsApp que lança e categoriza gasto por mensagem.
 4. **Nenhum dos dois concorrentes usa reconhecimento de nota fiscal por QR
    Code** — é um diferencial exclusivo do Grana. que nenhum anúncio do
    nicho está reivindicando.
+5. **A Planilha Premium prova que existe demanda pagando por "organização"
+   sozinha, sem nenhuma automação** — quase 4 meses de anúncio contínuo
+   pra um produto estático. Reforça que "menos esforço que uma planilha" é
+   argumento de peso, não só um chavão da landing: tem gente pagando pela
+   versão manual disso hoje.
 
 ## Limitação a registrar
 
@@ -168,3 +217,10 @@ volume de criativo, duração e amplitude de posicionamento, não por gasto
 real. Se o objetivo for decidir orçamento de mídia com precisão, isso
 exige o Meta Ads Reporting (público, mas granularidade menor) ou acesso à
 própria conta de anúncios de cada concorrente (impossível).
+
+**Sobre os links desta análise:** todos apontam pra Biblioteca de
+Anúncios pública da Meta (não exigem login) e abrem o anúncio específico
+citado. Como são anúncios **ativos**, cada um pode sair do ar a qualquer
+momento por decisão do próprio anunciante — se um link parar de mostrar o
+anúncio, o texto e a data descritos aqui continuam sendo o registro do que
+foi coletado em 03/09/2026.
