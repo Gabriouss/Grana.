@@ -1416,3 +1416,133 @@ servindo um bundle ANTERIOR até às correções de card do dia — o palco de l
 ainda mede 108 e não há `-webkit-line-clamp` nenhum, ou seja, o deploy da
 Vercel não acompanhou os últimos pushes do `main`. Vale conferir o painel da
 Vercel antes de julgar qualquer correção de landing por print do site no ar.
+
+## Sessão de 03/09/2026 - teardown da Dinzo e execução parcial do plano de 7 seções
+
+Pedido do autor: análise profunda da landing de um concorrente (Dinzo) e
+replicação da técnica (não da marca/paleta) na landing do Grana. Documentos
+gerados: `docs/marketing/2026-09-03-analise-concorrencia-meta-ads.md`
+(campanhas mais escaladas no nicho, via Biblioteca de Anúncios da Meta) e
+`docs/marketing/2026-09-03-dinzo-design-teardown.md` (tipografia, cor,
+spacing, motion com curvas/durações exatas e estratégia de copy da Dinzo,
+extraído por `getComputedStyle`/`document.styleSheets`, não estimativa
+visual).
+
+A partir do teardown, o autor apontou 7 elementos específicos pra replicar
+(técnica, não visual clara da Dinzo) e pediu um plano único de execução —
+`C:\Users\user\.claude\plans\mete-marcha-num-plano-ticklish-waffle.md`
+(fora do repo, no diretório de planos do Claude Code). Também virou regra
+permanente (`AGENTS.md` #8): antes de qualquer pedido, buscar na
+biblioteca de skills instaladas algo relevante ao domínio do pedido.
+
+**Concluído nesta sessão (4 dos 7 itens):**
+
+1. **CTA secundário no herói** — "Ver o Granabô em ação" ao lado do botão
+   de cadastro, rolando até `#granabo` via `navegarParaSecao` (passada como
+   prop `onNavegarGranabo` pra `HeroStorytelling`, que fica fora do escopo
+   léxico de `ConteudoWeb`). `BotaoCTA` ganhou `variante?: 'primario' |
+   'secundario'` e `onPress` opcional (precedência sobre o `href` de
+   cadastro) — o secundário é outline, sem o reflexo diagonal (assinatura
+   do CTA de conversão), com seta pra baixo em vez de pra frente (é
+   rolagem, não navegação).
+2. **`ConversaGranabo.tsx` clicável, com cara de WhatsApp de verdade** —
+   reescrito do zero (era 100% estático). 3 chips disparam trocas reais
+   (lançamento por texto, por áudio com o eco `🎙️ Ouvi:`, e consulta por
+   categoria), respostas fiéis ao formato literal de
+   `supabase/functions/whatsapp-webhook/index.ts`. Cores/formas do
+   WhatsApp são citação literal (fundo bege, balão verde com canto reto,
+   check duplo azul) — mesma lógica da exceção já aberta pro verde
+   #25D366, mas aplicada à janela inteira; a barra de chips por baixo
+   volta pros tokens do Grana. de propósito (é controle da landing, não
+   WhatsApp de verdade).
+3. **Seção "Dois passos" fundida na dobra de "esforço quase zero"** — o
+   autor notou que a dobra existente e a seção de passos mostravam a MESMA
+   cena (fala virando lançamento) separadas; viraram uma coisa só.
+   `components/TrilhaPassos.tsx` (novo) tem 2 passos (não 3 — "conectar
+   banco" não existe no produto), cada um com uma CENA do mecanismo
+   acontecendo em vez de ícone genérico (mensagem→lançamento categorizado;
+   celular+navegador com a mesma linha destacada nos dois). Trilha SVG
+   pontilhada liga os dois nós, revelada por `clip-path` (não
+   `stroke-dashoffset`, que deslocaria os pontos em vez de crescer a
+   linha). `components/DemoRegistroRapido.tsx` ficou órfão (mesmo critério
+   de `NotebookVideo.tsx`: mantido no repo, sem uso).
+4. **Carrossel navegável de 5 telas reais** (item que o autor pediu pra
+   "copiar totalmente" da Dinzo, depois corrigido pra "carrossel com todas
+   as telas principais", não só 3 fixas) — `components/CarrosselTelasApp.tsx`
+   (novo), nova seção `nativeID="telas"` ("Por dentro do aplicativo.").
+   `components/MolduraCelular.tsx` ganhou `indiceControlado?: number`:
+   quando fornecido, desliga o crossfade automático por `@keyframes` e
+   cada quadro vira uma camada com `opacity`/`transition` CSS controlada
+   de fora. Controles emprestam o vocabulário de `BeneficiosHorizontais.tsx`
+   (índice, `podeVoltar`/`podeAvancar`, teclado ArrowLeft/Right,
+   `accessibilityLiveRegion`) mas usam pílulas com NOME de cada aba
+   (Início, Débito e Pix, Crédito, Boletos, Desafios), não setas + "N de 5"
+   — aqui cada tela é identificável, ao contrário dos cards de benefício
+   intercambiáveis.
+
+**Capturas novas em `public/telas/`** (conta de demonstração, dado 100%
+fictício, modo "Dados de exemplo" do Perfil ligado só em memória — some ao
+recarregar, precisa navegar por dentro do app depois de ligar, nunca por
+URL direta): `lancamentos-mobile.png`, `credito-mobile.png`,
+`contas-mobile.png` (novas) e `inicio-mobile.png`/`desafios-mobile.png`
+(recapturadas). A tag "(exemplo)" do cabeçalho foi ocultada via DOM na
+hora da captura (`display:none` no elemento certo), nunca no código — o
+app continua mostrando a badge normalmente pra quem usa de verdade.
+
+**`lib/demo-data.ts` corrigido — bug real, não só preparo de print.** As
+datas eram literais em agosto/2026; setembro chegou e o modo de exemplo
+passou a abrir um mês vazio (Livre para Gastar zerado, gráfico de
+comprometimento com 6 barras idênticas). Agora `esteMes()`/`mesesAtras()`/
+`mesesAFrente()` calculam a partir de `new Date()` — a fixture não
+envelhece de novo. Acrescentado: 5 meses de histórico com valores variados
+(mês de viagem, mês magro, décimo terceiro) e 4 compras parceladas com
+janelas de sobreposição diferentes, pra o gráfico de "Comprometimento
+futuro" ter pico/queda reais em vez de linha reta (pedido explícito do
+autor). Metas (`current_amount`) reduzidas de 4200/1150 pra 1800/650 —
+com o histórico novo, os valores antigos deixavam "Livre para Gastar"
+negativo (virava R$0,00 na tela).
+
+**Achados de auditoria anteriores também corrigidos nesta sessão**
+(P1-P3 do `.impeccable/critique/2026-09-03T23-45-30Z__landing-design-motion.md`,
+a maioria já resolvida por trabalho anterior no dia — conferido no código
+antes de mexer, não redigitado): "menos de R$0,34/dia" → "R$0,37" (o
+valor antigo falhava em fevereiro, 9,90÷28=0,354); sombra ad hoc de
+`BeneficiosHorizontais.tsx` unificada com o token `sombraCard`
+(`lib/theme.ts`, exportado, antes era const local de `app/index.tsx`);
+`prefers-reduced-transparency` tratado nas 3 superfícies com
+`backdropFilter` (`usePrefersReducedTransparency` em `lib/motion.ts`);
+`FogBackground` passou a reagir a mudança de reduced-motion ao vivo
+(`useReducedMotion()` central em vez de checagem única no mount); FAQ
+anima altura/opacidade em vez de teleportar (plano formal em
+`plans/001-faqitem-accordion-transition.md`); 6 curvas `cubic-bezier`
+soltas viraram tokens nomeados (`EASE_REVEAL`, `EASE_LOOP`,
+`EASE_BOUNCE_HINT`, `EASE_ROLL`, `EASE_SNAP` em `lib/motion.ts`).
+
+**Pendente — 3 dos 7 itens, o plano completo continua em
+`C:\Users\user\.claude\plans\mete-marcha-num-plano-ticklish-waffle.md`:**
+
+- **Painel web / moldura de navegador** (item 2): `components/MolduraNavegador.tsx`
+  foi deletado no commit `f391829` (31/08) por ficar órfão — precisa ser
+  recriado (conteúdo recuperável via `git show f391829~1:components/MolduraNavegador.tsx`)
+  mais balões de anotação flutuantes (duração/delay únicos por balão,
+  nunca sincronizados) e indicador de mouse sugerindo interação. Precisa
+  também recapturar `public/telas/conquistas-web.webp` (desktop, 1440×900,
+  desatualizada desde antes da correção de crop/badge do mesmo commit).
+- **Bento grid de recursos** (item 3): quarto modo em
+  `BeneficiosHorizontais.tsx` (CSS Grid estático em telas amplas, mantendo
+  o carrossel atual intocado no compacto) — o item de maior risco técnico
+  do plano, precisa desligar por completo a mecânica de scroll-linked
+  quando o bento estiver ativo pra não competir no mesmo trilho.
+- **Cards "Jornada" e "Fechamento do mês"** (item 4): dependem do bento
+  existir. Não são feature nova — Jornada reaproveita a linguagem de
+  `PILARES_HABITO` (Score, streak, 12 conquistas nominais de
+  `lib/gamification.ts`, nunca mencionar XP/Elos como ganho por lançar
+  gasto); Fechamento do mês já existe como `components/MonthlyWrappedModal.tsx`
+  (7 slides, sem slide de "quanto guardou" — não prometer isso na copy).
+
+`npx tsc --noEmit` limpo e `npm run test:parser` 100% (312/312 guardas do
+design system) depois de cada mudança desta sessão. QA visual feito com
+`agent-browser` priorizando mobile (390×844) antes de desktop, por pedido
+explícito do autor ("70% do foco em mobile"). Sem commit nem push até
+este ponto — a sessão foi instruída a manter tudo local até aqui, e agora
+publica tudo de uma vez a pedido do autor, pra continuar na outra máquina.

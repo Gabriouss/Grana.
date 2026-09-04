@@ -1,5 +1,6 @@
 import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { EASE_LOOP } from '@/lib/motion';
 
 // Canvas original dos 3 PNGs (bg.png define o tamanho de referência) — todo
 // o posicionamento por porcentagem abaixo é relativo a ESTE espaço, nunca ao
@@ -149,7 +150,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     : {
         animationName: `${prefixo}_notebook`,
         animationDuration: '4.8s',
-        animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
+        animationTimingFunction: EASE_LOOP,
         animationIterationCount: 'infinite',
         willChange: 'transform',
         backfaceVisibility: 'hidden',
@@ -161,7 +162,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
     : {
         animationName: `${prefixo}_sombra`,
         animationDuration: '4.8s',
-        animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
+        animationTimingFunction: EASE_LOOP,
         animationIterationCount: 'infinite',
         willChange: 'transform, opacity',
         backfaceVisibility: 'hidden',

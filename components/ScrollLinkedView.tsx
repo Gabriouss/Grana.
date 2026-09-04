@@ -26,6 +26,71 @@ function containerRolavel(no: HTMLElement): HTMLElement | null {
   return null;
 }
 
+type Atualizador = () => void;
+type AlvoRolagem = HTMLElement | Window;
+
+type CoordenadorRolagem = {
+  assinantes: Set<Atualizador>;
+  quadro: number;
+  agendar: Atualizador;
+};
+
+const coordenadores = new Map<AlvoRolagem, CoordenadorRolagem>();
+
+function assinarRolagem(alvo: AlvoRolagem, atualizar: Atualizador) {
+  let coordenador = coordenadores.get(alvo);
+  if (!coordenador) {
+    const novo: CoordenadorRolagem = {
+      assinantes: new Set(),
+      quadro: 0,
+      agendar: () => {
+        if (novo.quadro) return;
+        novo.quadro = window.requestAnimationFrame(() => {
+          novo.quadro = 0;
+          novo.assinantes.forEach((assinante) => assinante());
+        });
+      },
+    };
+    coordenador = novo;
+    coordenadores.set(alvo, novo);
+    alvo.addEventListener('scroll', novo.agendar, { passive: true });
+    window.addEventListener('resize', novo.agendar, { passive: true });
+  }
+
+  coordenador.assinantes.add(atualizar);
+  return () => {
+    coordenador?.assinantes.delete(atualizar);
+    if (!coordenador || coordenador.assinantes.size > 0) return;
+    if (coordenador.quadro) window.cancelAnimationFrame(coordenador.quadro);
+    alvo.removeEventListener('scroll', coordenador.agendar);
+    window.removeEventListener('resize', coordenador.agendar);
+    coordenadores.delete(alvo);
+  };
+}
+
+const observados = new Map<Element, Set<Atualizador>>();
+let observadorCompartilhado: ResizeObserver | null = null;
+
+function observarTamanho(elemento: Element, atualizar: Atualizador) {
+  if (typeof ResizeObserver === 'undefined') return () => {};
+  observadorCompartilhado ??= new ResizeObserver((entradas) => {
+    entradas.forEach((entrada) => observados.get(entrada.target)?.forEach((assinante) => assinante()));
+  });
+
+  const assinantes = observados.get(elemento) ?? new Set<Atualizador>();
+  assinantes.add(atualizar);
+  observados.set(elemento, assinantes);
+  observadorCompartilhado.observe(elemento);
+
+  return () => {
+    const atuais = observados.get(elemento);
+    atuais?.delete(atualizar);
+    if (atuais?.size) return;
+    observadorCompartilhado?.unobserve(elemento);
+    observados.delete(elemento);
+  };
+}
+
 /**
  * Movimento vinculado à posição real da seção dentro do ScrollView da landing.
  * Atua diretamente no nó web para não provocar re-render a cada pixel rolado.
@@ -50,8 +115,6 @@ export default function ScrollLinkedView({
 
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const scroller = containerRolavel(raiz);
-    let quadro = 0;
-
     const limpar = () => {
       conteudo.style.transform = '';
       conteudo.style.opacity = '';
@@ -59,7 +122,6 @@ export default function ScrollLinkedView({
     };
 
     const atualizar = () => {
-      quadro = 0;
       if (media?.matches) {
         limpar();
         return;
@@ -69,6 +131,13 @@ export default function ScrollLinkedView({
       const topoViewport = scroller?.getBoundingClientRect().top ?? 0;
       const alturaViewport = scroller?.clientHeight ?? window.innerHeight;
       const topoRelativo = retangulo.top - topoViewport;
+      const margemComposicao = 120;
+      const estaPerto = retangulo.bottom >= topoViewport - margemComposicao
+        && retangulo.top <= topoViewport + alturaViewport + margemComposicao;
+      if (!estaPerto) {
+        limpar();
+        return;
+      }
       conteudo.style.willChange = 'transform, opacity';
 
       if (modo === 'zoom') {
@@ -91,26 +160,16 @@ export default function ScrollLinkedView({
       conteudo.style.opacity = '1';
     };
 
-    const agendar = () => {
-      if (quadro) return;
-      quadro = window.requestAnimationFrame(atualizar);
-    };
-
     const alvoRolagem: HTMLElement | Window = scroller ?? window;
-    alvoRolagem.addEventListener('scroll', agendar, { passive: true });
-    window.addEventListener('resize', agendar, { passive: true });
-    media?.addEventListener?.('change', agendar);
-
-    const observador = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(agendar) : null;
-    observador?.observe(raiz);
+    const removerRolagem = assinarRolagem(alvoRolagem, atualizar);
+    const removerObservacao = observarTamanho(raiz, atualizar);
+    media?.addEventListener?.('change', atualizar);
     atualizar();
 
     return () => {
-      if (quadro) window.cancelAnimationFrame(quadro);
-      alvoRolagem.removeEventListener('scroll', agendar);
-      window.removeEventListener('resize', agendar);
-      media?.removeEventListener?.('change', agendar);
-      observador?.disconnect();
+      removerRolagem();
+      removerObservacao();
+      media?.removeEventListener?.('change', atualizar);
       limpar();
     };
   }, [desativado, intensidade, modo]);

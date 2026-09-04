@@ -1,6 +1,7 @@
 import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, View } from 'react-native';
 import { theme, radius } from '@/lib/theme';
+import { EASE_LOOP } from '@/lib/motion';
 
 type Quadro = { src: string; legenda: string };
 
@@ -15,6 +16,10 @@ type Props = {
       uma imagem só, sem crossfade. */
   quadros?: Quadro[];
   largura?: number;
+  /** Quando fornecido, desliga o ciclo automático por tempo e mostra só o
+      quadro deste índice — controlado de fora (ex. por um carrossel com
+      setas). Sem isto, `quadros` sempre alterna sozinho no próprio ritmo. */
+  indiceControlado?: number;
 };
 
 /* Proporção real da captura (390×844, um iPhone padrão) — a moldura herda
@@ -51,7 +56,8 @@ const DURACAO_POR_TELA_S = 3.6;
  * que faz o total de animações rodando ao mesmo tempo nunca passar de uma
  * ou duas.
  */
-export default function MolduraCelular({ src, legenda, quadros, largura = 280 }: Props) {
+export default function MolduraCelular({ src, legenda, quadros, largura = 280, indiceControlado }: Props) {
+  const controlado = indiceControlado !== undefined;
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
@@ -61,7 +67,9 @@ export default function MolduraCelular({ src, legenda, quadros, largura = 280 }:
   const prefixo = `molduraCelular_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
 
   const listaQuadros: Quadro[] = quadros && quadros.length > 0 ? quadros : [{ src: src ?? '', legenda: legenda ?? '' }];
-  const cicloDeTelas = listaQuadros.length > 1;
+  // Controlado nunca entra no ciclo automático por tempo — é o índice de
+  // fora que decide qual quadro aparece, não um `@keyframes` de relógio.
+  const cicloDeTelas = !controlado && listaQuadros.length > 1;
 
   useEffect(() => {
     let ativo = true;
@@ -135,7 +143,7 @@ export default function MolduraCelular({ src, legenda, quadros, largura = 280 }:
       : ({
           animationName: prefixo,
           animationDuration: '4.8s',
-          animationTimingFunction: 'cubic-bezier(0.42, 0, 0.58, 1)',
+          animationTimingFunction: EASE_LOOP,
           animationIterationCount: 'infinite',
           willChange: 'transform',
           backfaceVisibility: 'hidden',
@@ -195,6 +203,25 @@ export default function MolduraCelular({ src, legenda, quadros, largura = 280 }:
                   animationIterationCount: 'infinite',
                 } as any)
               : null;
+          // Controlado: cada quadro é uma camada empilhada (posição
+          // absoluta) com `opacity` decidida pelo índice de fora, suavizada
+          // por `transition` CSS simples — não `@keyframes`, que reinicia
+          // do zero a cada troca em vez de retargetar a partir do valor
+          // atual (relevante se a pessoa clicar rápido entre setas).
+          const estiloControlado = controlado
+            ? ({
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+                opacity: indice === indiceControlado ? 1 : 0,
+                transitionProperty: 'opacity',
+                transitionDuration: reduzirMovimento ? '0ms' : '420ms',
+                transitionTimingFunction: 'ease',
+              } as any)
+            : null;
           return createElement('img', {
             key: quadro.src || indice,
             src: quadro.src,
@@ -202,18 +229,20 @@ export default function MolduraCelular({ src, legenda, quadros, largura = 280 }:
             width: 390,
             height: 844,
             loading: 'lazy',
-            style: cicloDeTelas
-              ? {
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                  opacity: indice === 0 ? 1 : 0,
-                  ...animacaoTela,
-                }
-              : { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+            style:
+              estiloControlado ??
+              (cicloDeTelas
+                ? {
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                    opacity: indice === 0 ? 1 : 0,
+                    ...animacaoTela,
+                  }
+                : { width: '100%', height: '100%', objectFit: 'cover', display: 'block' }),
           });
         })}
       </View>

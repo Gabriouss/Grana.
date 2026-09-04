@@ -4,7 +4,7 @@ import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, spacing, radius, fonts as uiFonts, type } from '@/lib/theme';
+import { theme, spacing, radius, fonts as uiFonts, type, sombraCard } from '@/lib/theme';
 import { CORTES, colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
@@ -12,6 +12,7 @@ import NotebookAnimado from '@/components/NotebookAnimado';
 import GradeInterativa from '@/components/GradeInterativa';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
+import { EASE_BOUNCE_HINT, EASE_ROLL, EASE_SNAP, usePrefersReducedTransparency } from '@/lib/motion';
 import FogBackground from '@/components/FogBackground';
 import ConversaGranabo from '@/components/ConversaGranabo';
 import CardLivreParaGastar from '@/components/CardLivreParaGastar';
@@ -19,7 +20,9 @@ import BeneficiosHorizontais, { type BeneficioHorizontal } from '@/components/Be
 import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
 import MolduraCelular from '@/components/MolduraCelular';
+import CarrosselTelasApp from '@/components/CarrosselTelasApp';
 import ScrollLinkedView from '@/components/ScrollLinkedView';
+import TrilhaPassos from '@/components/TrilhaPassos';
 import landingMeta from '@/landing-meta.json';
 
 // A landing é uma superfície de marca. O produto logado usa a família do
@@ -67,9 +70,9 @@ export default function LandingPage() {
    período de teste. */
 const PARAMETROS_ATRIBUICAO = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
 
-/* Em compacto/médio, a navegação mora no botão flutuante; no amplo, os mesmos
-   destinos ficam persistentes no cabeçalho. Cada ícone é mnemônico da seção,
-   não decoração: permite reconhecer o item pela forma antes do rótulo. */
+/* Em compacto/médio, a navegação abre pelo botão do cabeçalho; no amplo, o
+   mesmo menu permanece flutuante. Cada ícone é mnemônico da seção, não
+   decoração: permite reconhecer o item pela forma antes do rótulo. */
 const NAVEGACAO_LANDING = [
   { rotulo: 'Como funciona', href: '#produto', icone: 'play-circle-outline' },
   { rotulo: 'Granabô', href: '#granabo', icone: 'logo-whatsapp' },
@@ -108,15 +111,27 @@ function BotaoCTA({
   microcopy,
   centralizado,
   rotulo = 'Criar minha conta',
+  variante = 'primario',
+  onPress,
 }: {
   microcopy?: string;
   centralizado?: boolean;
   rotulo?: string;
+  /* 'secundario' é outline, sem o reflexo diagonal — esse efeito é a
+     assinatura do CTA de conversão real; repeti-lo aqui diluiria a
+     hierarquia (o CTA primário precisa continuar sendo a coisa mais
+     "clicável" da tela, ver comentário grande abaixo). */
+  variante?: 'primario' | 'secundario';
+  /* Quando passado, o botão vira uma ação em vez de link de cadastro —
+     `onPress` tem precedência sobre `href`. Usado pelo CTA secundário do
+     herói, que rola até a seção do Granabô em vez de ir pro cadastro. */
+  onPress?: (evento?: { preventDefault?: () => void }) => void;
 }) {
   const { ehCompacto } = useBreakpoint();
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
+  const reduzirTransparencia = usePrefersReducedTransparency();
   const [ponteiroAtivo, setPonteiroAtivo] = useState(false);
   const idBruto = useId();
   const prefixoReflexo = `ctaReflexo_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -135,16 +150,15 @@ function BotaoCTA({
     if (reduzirMovimento) setPonteiroAtivo(false);
   }, [reduzirMovimento]);
 
-  // O reflexo passa rápido (10% do ciclo) e fica parado, fora da área
-  // visível, no resto — é isso que dá o efeito "de tempos em tempos" em vez
-  // de um brilho constante indo e voltando.
+  // O reflexo responde ao hover uma vez. Deixar uma animação infinita em cada
+  // CTA mantinha vários loops ativos até quando o botão estava fora da tela.
   useEffect(() => {
     if (reduzirMovimento) return;
     const tag = document.createElement('style');
     tag.textContent = `
       @keyframes ${prefixoReflexo} {
         0% { transform: translateX(-160%) skewX(-18deg); }
-        10%, 100% { transform: translateX(360%) skewX(-18deg); }
+        100% { transform: translateX(360%) skewX(-18deg); }
       }
     `;
     document.head.appendChild(tag);
@@ -174,14 +188,16 @@ function BotaoCTA({
           aba" e rastreamento por crawler de busca funcionam — sem tocar no
           `style` função que já funcionava. */}
       <AppPressable
-        href={hrefCadastroComAtribuicao()}
+        {...(onPress ? { onPress } : { href: hrefCadastroComAtribuicao() })}
         onHoverIn={() => !reduzirMovimento && setPonteiroAtivo(true)}
         onHoverOut={() => setPonteiroAtivo(false)}
         style={({ hovered }) => [
           styles.ctaPrimario,
+          variante === 'secundario' && styles.ctaSecundario,
+          reduzirTransparencia && variante === 'primario' && styles.ctaPrimarioSolido,
           ehCompacto && styles.ctaPrimarioCompacto,
           centralizado && styles.ctaPrimarioCentralizado,
-          hovered && styles.ctaPrimarioHover,
+          hovered && (variante === 'secundario' ? styles.ctaSecundarioHover : styles.ctaPrimarioHover),
         ]}
       >
         <View
@@ -189,16 +205,16 @@ function BotaoCTA({
           pointerEvents="none"
           style={[styles.ctaPonteiroIos, ponteiroAtivo && styles.ctaPonteiroIosAtivo]}
         />
-        {!reduzirMovimento && (
+        {variante === 'primario' && !reduzirMovimento && ponteiroAtivo && (
           <View style={styles.ctaReflexo} aria-hidden pointerEvents="none">
             <View
               style={[
                 styles.ctaReflexoFaixa,
                 {
                   animationName: prefixoReflexo,
-                  animationDuration: '9.35s',
-                  animationTimingFunction: 'ease-in-out',
-                  animationIterationCount: 'infinite',
+                  animationDuration: '720ms',
+                  animationTimingFunction: 'ease-out',
+                  animationIterationCount: 1,
                 } as any,
               ]}
             />
@@ -207,9 +223,22 @@ function BotaoCTA({
         <View style={styles.ctaConteudo}>
           {/* Reaproveita `ponteiroAtivo` (já existe pro efeito do fundo) em
               vez de um segundo estado só pra isto. */}
-          <RotuloRolante texto={rotulo} ativo={ponteiroAtivo} estilo={styles.ctaPrimarioTexto} altura={type.corpo * 1.2} />
+          <RotuloRolante
+            texto={rotulo}
+            ativo={ponteiroAtivo}
+            estilo={variante === 'secundario' ? styles.ctaSecundarioTexto : styles.ctaPrimarioTexto}
+            altura={type.corpo * 1.2}
+          />
+          {/* Seta pra baixo no secundário porque a ação é ROLAR até uma seção
+              da mesma página, não ir pra outro lugar — a seta pra frente do
+              primário promete navegação, e prometer a mesma coisa nos dois
+              apaga a diferença entre eles. */}
           <View aria-hidden>
-            <Ionicons name="arrow-forward" size={17} color={theme.accent2} />
+            <Ionicons
+              name={variante === 'secundario' ? 'arrow-down' : 'arrow-forward'}
+              size={17}
+              color={variante === 'secundario' ? theme.inkFaint : theme.accent2}
+            />
           </View>
         </View>
       </AppPressable>
@@ -307,7 +336,7 @@ function useAlturaDobra(): number | null {
  * cor nova. `colunaConteudo` continua limitando o CONTEÚDO; é só o FUNDO
  * que vai de ponta a ponta da janela.
  */
-function Dobra({ levantada, semParallax, children }: { levantada?: boolean; semParallax?: boolean; children: React.ReactNode }) {
+function Dobra({ levantada, children }: { levantada?: boolean; children: React.ReactNode }) {
   const alturaDobra = useAlturaDobra();
   const { ehCompacto } = useBreakpoint();
   const cheia = alturaDobra !== null;
@@ -319,13 +348,9 @@ function Dobra({ levantada, semParallax, children }: { levantada?: boolean; semP
         cheia && styles.dobraSnap,
       ]}
     >
-      <ScrollLinkedView
-        desativado={semParallax}
-        intensidade={ehCompacto ? 10 : 24}
-        style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}
-      >
+      <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
         {children}
-      </ScrollLinkedView>
+      </View>
     </View>
   );
 }
@@ -594,7 +619,18 @@ function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
   return [...texto].map(() => new Animated.Value(valorInicial));
 }
 
-function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean; alturaCabecalho: number }) {
+function HeroStorytelling({
+  ehCompacto,
+  alturaCabecalho,
+  onNavegarGranabo,
+}: {
+  ehCompacto: boolean;
+  alturaCabecalho: number;
+  /* `navegarParaSecao` vive no escopo de `ConteudoWeb`, fora do alcance
+     léxico desta função — chega como prop, mesmo padrão que `NavFlutuanteLanding`
+     já usa com `onNavigate`. */
+  onNavegarGranabo: (evento?: { preventDefault?: () => void }) => void;
+}) {
   const alturaDobra = useAlturaDobra();
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
   const [letras] = useState<Animated.Value[]>(() => criarLetras(TITULO_HERO, 0));
@@ -677,7 +713,14 @@ function HeroStorytelling({ ehCompacto, alturaCabecalho }: { ehCompacto: boolean
           <Text style={styles.eyebrow}>{GANCHO_HERO}</Text>
           {titulo}
           <Text style={styles.subheadline}>{APOIO_HERO}</Text>
-          <BotaoCTA />
+          <View style={styles.heroCtas}>
+            <BotaoCTA />
+            <BotaoCTA
+              variante="secundario"
+              rotulo="Ver o Granabô em ação"
+              onPress={onNavegarGranabo}
+            />
+          </View>
           {!reduzirMovimento && (
             <Animated.View style={[[styles.heroScrollHint, heroScrollHintAnimado], { pointerEvents: 'none' }]} >
               <Ionicons name="chevron-down" size={22} color={theme.accent2} />
@@ -813,6 +856,7 @@ function ConteudoWeb() {
      e com a escala tipográfica da web, e o herói precisa descontar o valor
      REAL pra primeira dobra fechar em 16:9 exatos. */
   const [alturaCabecalho, setAlturaCabecalho] = useState(0);
+  const reduzirTransparencia = usePrefersReducedTransparency();
 
   /**
    * Leva até a seção por rolagem calculada.
@@ -949,17 +993,19 @@ function ConteudoWeb() {
       {/* ───────── Cabeçalho (sticky com blur) ───────── */}
       <View
         role="banner"
-        style={styles.cabecalhoSticky}
+        style={[styles.cabecalhoSticky, reduzirTransparencia && styles.cabecalhoStickySolido]}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
-        {/* O cabeçalho carrega a marca e "Entrar", e só. A navegação pelas
-            seções mora no botão flutuante em TODAS as larguras: a fileira de
-            atalhos aqui em cima é o que o autor pediu para tirar, e devolvê-la
-            no amplo devolve junto o amontoado que motivou o pedido. */}
+        {/* A navegação compacta cabe no cabeçalho como um único ícone, sem
+            devolver a fileira de atalhos que motivou a simplificação. No
+            amplo, o mesmo menu continua flutuante. */}
         <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
           <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
             <BrandLogotype width={104} />
             <View style={styles.cabecalhoAcoes}>
+              {largura < CORTES.amplo ? (
+                <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} embutido />
+              ) : null}
               <LinkEntrar />
             </View>
           </View>
@@ -997,7 +1043,11 @@ function ConteudoWeb() {
             compacto aplica `colunaConteudo/faixa` nele mesmo (mesmo efeito
             de antes), o largo não aplica nenhum, e só o texto por cima do
             vídeo fica preso a 1440px (`heroConteudoCentralizado`). */}
-        <HeroStorytelling ehCompacto={heroCompacto} alturaCabecalho={alturaCabecalho} />
+        <HeroStorytelling
+          ehCompacto={heroCompacto}
+          alturaCabecalho={alturaCabecalho}
+          onNavegarGranabo={(e) => navegarParaSecao('#granabo', e)}
+        />
       </View>
 
       {/* ───────── Reconhece isso? (dor, antes da solução) ─────────
@@ -1041,17 +1091,24 @@ function ConteudoWeb() {
           sintetizar quebraria a regra de fonte da marca). */}
       <View nativeID="registro-rapido" style={styles.palcoComCamada}>
         <GradeInterativa />
-        <Dobra levantada semParallax>
+        <Dobra levantada>
           <ScrollLinkedView modo="zoom" style={styles.zoomRaiz} contentStyle={[styles.zoomPainel, ehCompacto && styles.zoomPainelCompacto]}>
-            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
+            <View style={styles.precoIntroCentralizada}>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
                 {'Você fala e o Grana. organiza.\n'}
                 <Text style={styles.destaqueInline}>Esforço quase zero.</Text>
               </TituloSecao>
-              <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
-                Sem formulário e sem planilha. Você diz o que gastou do jeito que falaria para um amigo, e o lançamento já nasce organizado.
+              {/* Dois passos, não três: o primeiro passo que todo concorrente
+                  tem ("conecte seu banco") não existe aqui por decisão de
+                  produto. Esta dobra já era a demonstração de "fala vira
+                  lançamento"; a trilha acrescenta o segundo passo (onde esse
+                  lançamento aparece depois) em vez de repetir a mesma cena
+                  numa seção separada logo abaixo, que era o que acontecia. */}
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
+                Sem formulário e sem planilha. São dois passos entre o gasto e o controle.
               </Text>
-            </RevealOnScroll>
+            </View>
+            <TrilhaPassos compacto={ehCompacto} />
           </ScrollLinkedView>
         </Dobra>
       </View>
@@ -1069,7 +1126,7 @@ function ConteudoWeb() {
               <View style={[styles.colunaTextoSecao, granaboEmpilhado && styles.colunaTextoSecaoCompacta]}>
               <RevealOnScroll variante="titulo">
                 <TituloSecao>Seu controle também cabe numa conversa no WhatsApp.</TituloSecao>
-                <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
                   Depois de vincular seu número uma vez, envie um texto ou áudio para o Granabô, o assistente do Grana. no WhatsApp. Ele identifica o valor e a descrição, sugere uma categoria e cria o lançamento no Grana. Você só ajusta se precisar.
                 </Text>
               </RevealOnScroll>
@@ -1079,7 +1136,9 @@ function ConteudoWeb() {
               </View>
 
               <RevealOnScroll style={[styles.composicaoTelas, granaboEmpilhado && styles.composicaoTelasCompacta]}>
-                <ConversaGranabo compacto={granaboEmpilhado} />
+                <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
+                  <ConversaGranabo compacto={granaboEmpilhado} />
+                </ScrollLinkedView>
               </RevealOnScroll>
             </View>
 
@@ -1090,7 +1149,7 @@ function ConteudoWeb() {
                   atraso={indice * 60}
                   style={[styles.granaboRecursoPos, ehCompacto && styles.granaboRecursoPosCompacto]}
                 >
-                  <View style={styles.granaboRecurso}>
+                  <View style={[styles.granaboRecurso, reduzirTransparencia && styles.granaboRecursoSolido]}>
                     <Ionicons name={recurso.icone} size={20} color={theme.accent2} aria-hidden />
                     <Text style={styles.granaboRecursoTitulo}>{recurso.titulo}</Text>
                     <Text style={styles.granaboRecursoTexto}>{recurso.texto}</Text>
@@ -1110,23 +1169,25 @@ function ConteudoWeb() {
           <RevealOnScroll>
             <View style={[styles.secao, styles.secaoComCartao, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
               <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
-                <MolduraCelular
-                  quadros={[
-                    {
-                      src: '/telas/inicio-mobile.png',
-                      legenda: 'Tela de Início do Grana. no celular, com Livre para Gastar, cofrinhos e compromissos futuros',
-                    },
-                    {
-                      src: '/telas/desafios-mobile.png',
-                      legenda: 'Tela de Desafios do Grana. no celular, com sequência, Score e mural de conquistas',
-                    },
-                  ]}
-                  largura={ehCompacto ? 200 : 260}
-                />
+                <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
+                  <MolduraCelular
+                    quadros={[
+                      {
+                        src: '/telas/inicio-mobile.png',
+                        legenda: 'Tela de Início do Grana. no celular, com Livre para Gastar, cofrinhos e compromissos futuros',
+                      },
+                      {
+                        src: '/telas/desafios-mobile.png',
+                        legenda: 'Tela de Desafios do Grana. no celular, com sequência, Score e mural de conquistas',
+                      },
+                    ]}
+                    largura={ehCompacto ? 200 : 260}
+                  />
+                </ScrollLinkedView>
               </View>
               <View style={[styles.colunaTextoSecao, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
                 <TituloSecao>O Grana. ajuda o controle a virar hábito.</TituloSecao>
-                <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
                   A experiência é apoiada em princípios de formação de hábito: um registro fácil de começar, sinais para lembrar e progresso que você consegue enxergar.
                 </Text>
                 <View style={styles.habitoGrade}>
@@ -1148,6 +1209,27 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
+      {/* ───────── Por dentro do app (tour de telas) ─────────
+          As 5 abas principais dentro do MESMO celular, navegáveis por
+          quem visita — não um mockup por seção espalhado pela página, é
+          o produto de verdade, tela por tela, sob controle da pessoa. */}
+      <View nativeID="telas" style={styles.palcoComCamada}>
+        <GradeInterativa invertida />
+        <Dobra levantada>
+          <View style={styles.secao}>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>Por dentro do aplicativo.</TituloSecao>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
+                As telas de verdade do Grana., prontas pra você navegar antes de criar conta.
+              </Text>
+            </RevealOnScroll>
+            <RevealOnScroll variante="prova">
+              <CarrosselTelasApp compacto={ehCompacto} />
+            </RevealOnScroll>
+          </View>
+        </Dobra>
+      </View>
+
       {/* ───────── Inteligência financeira ───────── */}
       <View nativeID="livre" style={styles.palcoComCamada}>
         <GradeInterativa />
@@ -1157,7 +1239,7 @@ function ConteudoWeb() {
             <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
               {/* Copy e visual agora descrevem a mesma fórmula real. */}
               <TituloSecao>Saiba quanto dá pra gastar hoje, sem fazer conta.</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
                 Com base nos seus lançamentos do mês, nas contas que ainda vencem e no que você separou para as metas, o Grana. estima o{' '}
                 <Text style={styles.destaqueInline}>Livre para Gastar</Text>
                 {' '}por dia. É uma referência baseada no que você registra. Você continua no controle.
@@ -1165,7 +1247,9 @@ function ConteudoWeb() {
             </View>
 
             <View style={[styles.composicaoTelas, ehCompacto && styles.composicaoTelasCompacta]}>
-              <CardLivreParaGastar compacto={ehCompacto} />
+              <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
+                <CardLivreParaGastar compacto={ehCompacto} />
+              </ScrollLinkedView>
             </View>
           </View>
         </RevealOnScroll>
@@ -1195,7 +1279,7 @@ function ConteudoWeb() {
           <View style={styles.secao}>
             <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>É seguro informar meus gastos para um aplicativo?</TituloSecao>
-              <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
                 Faz sentido perguntar. Aqui estão os fatos que ajudam você a decidir com clareza.
               </Text>
             </RevealOnScroll>
@@ -1237,14 +1321,18 @@ function ConteudoWeb() {
                   número mensal está logo abaixo, no card, e aqui em cima ele
                   aparece na escala que a pessoa consegue comparar com um café.
 
-                  Com R$ 9,90 a conta fecha redonda: 9,90 ÷ 30 = 0,33 exatos, e
-                  "menos de R$ 0,34" vale em todo mês de 30 e 31 dias. Fevereiro
-                  é a única exceção (9,90 ÷ 28 = 0,354). */}
+                  Achado da auditoria de 03/09/2026: "menos de R$ 0,34" só
+                  valia em mês de 30/31 dias (9,90 ÷ 30 = 0,33 exatos); em
+                  fevereiro, 9,90 ÷ 28 = 0,354 — a página afirmava algo que o
+                  próprio cálculo contradizia num mês inteiro do ano, risco
+                  direto de confiança. "Menos de R$ 0,37" continua verdadeiro
+                  em todo mês do ano, fevereiro incluído (9,90 ÷ 28 = 0,354,
+                  o pior caso possível). */}
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
                 Seu assistente financeiro por{' '}
-                <Text style={styles.destaqueInline}>menos de R$ 0,34 por dia!</Text>
+                <Text style={styles.destaqueInline}>menos de R$ 0,37 por dia!</Text>
               </TituloSecao>
-              <Text style={[styles.secaoTexto, styles.precoTextoCentralizado]}>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
                 {'Todos os recursos financeiros do Grana. em uma assinatura mensal simples.'}
               </Text>
             </RevealOnScroll>
@@ -1259,14 +1347,15 @@ function ConteudoWeb() {
                 <View style={[styles.precoChecklistCol, ehCompacto && styles.precoChecklistColCompacta]}>
                   <Text style={[styles.precoChecklistTitulo, ehCompacto && styles.precoTituloCentralizado]}>Tudo que você recebe</Text>
                   <View style={styles.precoChecklist}>
-                    {BENEFICIOS_PRECO.map((b) => (
-                      <View
+                    {BENEFICIOS_PRECO.map((b, i) => (
+                      <RevealOnScroll
                         key={b}
+                        atraso={i * 45}
                         style={[styles.precoChecklistLinha, ehCompacto && styles.precoChecklistLinhaCompacta]}
                       >
                         <Ionicons name="checkmark-circle" size={22} color={theme.up} aria-hidden />
                         <Text style={styles.precoChecklistTexto}>{b}</Text>
-                      </View>
+                      </RevealOnScroll>
                     ))}
                   </View>
                 </View>
@@ -1288,6 +1377,12 @@ function ConteudoWeb() {
                   <View style={styles.precoCta}>
                     <BotaoCTA centralizado={ehCompacto} />
                   </View>
+                  {/* Reduz a mesma fricção que um "período de teste" resolveria,
+                      sem prometer um: o modelo do Grana. já não tem fidelidade
+                      nem letra miúda, só faltava dizer isso perto do botão. */}
+                  <Text style={[styles.precoConfianca, ehCompacto && styles.precoTextoCentralizado]}>
+                    Sem período de teste. Cancele quando quiser.
+                  </Text>
                 </View>
               </View>
             </RevealOnScroll>
@@ -1308,7 +1403,7 @@ function ConteudoWeb() {
             <View style={[styles.faqLayout, faqEmpilhado && styles.faqLayoutCompacta]}>
               <RevealOnScroll variante="titulo" style={[styles.faqColunaEditorial, faqEmpilhado && styles.faqCompactoSemFlex]}>
                 <TituloSecao>Sem letra miúda</TituloSecao>
-                <Text style={[styles.secaoTexto, ehCompacto && styles.precoTextoCentralizado]}>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
                   Respostas rápidas para as dúvidas que travam muita gente antes de entrar.
                 </Text>
               </RevealOnScroll>
@@ -1422,16 +1517,16 @@ function ConteudoWeb() {
     {/* Fora do ScrollView de propósito:  precisa se ancorar
         na janela, e um elemento fixo dentro do contêiner que rola fica
         sujeito ao recorte dele. */}
-    <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} />
+    {largura >= CORTES.amplo ? (
+      <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} />
+    ) : null}
     </>
   );
 }
 
-/* Sombra de verdade (boxShadow), não só borda — `as any` porque `boxShadow`
-   não existe no tipo ViewStyle do React Native, só no CSS que o
-   react-native-web gera. Esta página só renderiza na web (ver o redirect no
-   topo do arquivo), então não há caminho nativo perdendo o efeito. */
-const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
+// `sombraCard` mudou pra `lib/theme.ts` (03/09/2026) pra também ser
+// reaproveitada por `BeneficiosHorizontais.tsx`, que tinha um valor ad hoc
+// só um pouco diferente deste — ver o import no topo do arquivo.
 
 /* Fica FORA do `StyleSheet.create` de propósito — dentro dele, o validador
    de estilo do react-native-web (dev only) rejeita `animationName` com
@@ -1444,8 +1539,8 @@ const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
 const heroScrollHintAnimado = {
   animationName: 'hero-scroll-bounce',
   animationDuration: '1.3s',
-  animationTimingFunction: 'cubic-bezier(0.45, 0, 0.2, 1)',
-  animationIterationCount: 'infinite',
+  animationTimingFunction: EASE_BOUNCE_HINT,
+  animationIterationCount: 3,
 } as any;
 
 const styles = StyleSheet.create({
@@ -1496,6 +1591,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
+  // `prefers-reduced-transparency`: sobrepõe o blur com fundo quase opaco em
+  // vez de deixar o vidro fosco cheio pra quem pediu menos transparência ao
+  // sistema — sem isso as 3 superfícies com `backdropFilter` da página
+  // (esta, `ctaPrimario`, `granaboRecurso`) ignoravam a preferência.
+  cabecalhoStickySolido: { ...({ backdropFilter: 'none', WebkitBackdropFilter: 'none' } as any), backgroundColor: 'rgba(5,34,41,0.97)' },
   // O `paddingBottom` é 1px menor que o topo de propósito: a barra tem
   // `borderBottomWidth: 1`, e a régua que o olho usa é a linha, não o fim da
   // caixa. Com 8/8 o conteúdo ficava 0,5px acima do centro da barra; com
@@ -1593,13 +1693,25 @@ const styles = StyleSheet.create({
       transitionDuration: '180ms',
     } as any),
   },
-  // Tira fina de luz cor de menta que atravessa o botão de tempos em tempos —
-  // pedido do autor. `overflow:'hidden'` do pai corta a faixa nas bordas
-  // arredondadas; a faixa em si é bem mais larga que alta e girada
-  // (`skewX`), pra cruzar na diagonal em vez de subir reta. A maior parte do
-  // ciclo ela fica parada FORA da área visível (0% até a passagem, depois
-  // parada de novo no fim) — é isso que faz o reflexo parecer periódico em
-  // vez de um brilho constante andando de um lado a outro.
+  ctaPrimarioSolido: { ...({ backdropFilter: 'none', WebkitBackdropFilter: 'none' } as any), backgroundColor: 'rgba(5,34,41,0.94)' },
+  /* Secundário: mesma caixa do primário (altura, padding, raio — o par
+     precisa parecer um par), mas sem preenchimento nem brilho. É borda
+     discreta sobre fundo transparente; o primário continua sendo o único
+     com sombra colorida e reflexo. */
+  ctaSecundario: {
+    backgroundColor: 'transparent',
+    borderColor: theme.rule,
+    ...({ boxShadow: 'none' } as any),
+  },
+  ctaSecundarioTexto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.2, fontFamily: fonts.regular },
+  ctaSecundarioHover: {
+    borderColor: theme.accent2,
+    backgroundColor: theme.hover,
+    ...({ boxShadow: 'none', transform: [{ translateY: -2 }] } as any),
+  },
+  // Tira fina de luz cor de menta que atravessa o botão uma vez no hover.
+  // `overflow:'hidden'` do pai corta a faixa nas bordas arredondadas e o
+  // `skewX` faz a passagem cruzar na diagonal.
   ctaReflexo: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   // Sem `transform` estático aqui de propósito: `skewX` não é uma função de
   // transform que o React Native tipa (é conceito só de CSS/web), então todo
@@ -1627,7 +1739,7 @@ const styles = StyleSheet.create({
   // pela metade, em vez de escondê-la inteira até a hora de subir.
   ctaRotuloJanela: { overflow: 'hidden' },
   ctaRotuloTrilho: {
-    ...({ transitionProperty: 'transform', transitionDuration: '320ms', transitionTimingFunction: 'cubic-bezier(0.65, 0, 0.35, 1)' } as any),
+    ...({ transitionProperty: 'transform', transitionDuration: '320ms', transitionTimingFunction: EASE_ROLL } as any),
   },
   ctaConteudo: { position: 'relative', zIndex: 2, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   ctaPonteiroIos: {
@@ -1643,7 +1755,7 @@ const styles = StyleSheet.create({
     ...({
       transitionProperty: 'opacity, transform',
       transitionDuration: '320ms',
-      transitionTimingFunction: 'cubic-bezier(0.2, 0.9, 0.2, 1.15)',
+      transitionTimingFunction: EASE_SNAP,
       transformOrigin: 'center',
     } as any),
   },
@@ -1732,6 +1844,7 @@ const styles = StyleSheet.create({
      23px o mesmo título fecha em três linhas cheias. */
   secaoTituloCompacto: { fontSize: type.cabecalho - 1, lineHeight: (type.cabecalho - 1) * 1.28, letterSpacing: -0.4 },
   secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560 },
+  secaoTextoCompacto: { fontSize: type.corpo, lineHeight: type.corpo * 1.5 },
   // Só o parágrafo de Preços — as duas frases quebram uma por linha (`\n`
   // explícito) e o bloco centraliza na coluna, diferente do resto das
   // seções, onde o texto de apoio fica alinhado à esquerda junto do título.
@@ -1875,6 +1988,7 @@ const styles = StyleSheet.create({
   precoPeriodo: { color: theme.inkFaint, fontSize: type.corpo, fontFamily: fonts.light },
   featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
   precoCta: { marginTop: spacing.lg },
+  precoConfianca: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },
 
   segurancaProvas: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.xxl, marginTop: spacing.xxl + spacing.sm },
   segurancaProvaPosicao: { flexGrow: 1, flexBasis: '29%', minWidth: 260 },
@@ -1901,6 +2015,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(11,45,53,0.78)',
     ...({ backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' } as any),
   },
+  granaboRecursoSolido: { ...({ backdropFilter: 'none', WebkitBackdropFilter: 'none' } as any), backgroundColor: 'rgba(11,45,53,0.97)' },
   granaboRecursoTitulo: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular },
   granaboRecursoTexto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.45, fontFamily: fonts.light },
 
@@ -1910,6 +2025,8 @@ const styles = StyleSheet.create({
   // elemento só.
   composicaoTelas: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center', position: 'relative', paddingVertical: spacing.xxl },
   composicaoTelasCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
+  visualParallax: { width: '100%' },
+  visualParallaxConteudo: { alignItems: 'center' },
 
   faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl * 2, marginTop: spacing.sm },
   faqColunaEditorial: { flex: 1, minWidth: 320, maxWidth: 440 },
@@ -2035,6 +2152,9 @@ const styles = StyleSheet.create({
     ...({ position: 'relative' } as any),
   },
   heroColunaTexto: { flex: 1, maxWidth: 540 },
+  // `flexWrap` porque os dois rótulos juntos passam de 540px em algumas
+  // larguras do herói largo — sem isso o secundário sairia do contêiner.
+  heroCtas: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' },
   // Escurece a área onde o texto fica (a metade esquerda) e some antes de
   // chegar no notebook, à direita — mesma ideia do degradê branco->
   // transparente da referência (Apple/AirPods) por cima do vídeo, mas em

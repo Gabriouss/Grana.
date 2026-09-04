@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { CORTES, colunaConteudo } from '@/lib/breakpoints';
-import { fonts as uiFonts, radius, spacing, theme, type } from '@/lib/theme';
+import { fonts as uiFonts, radius, sombraCard, spacing, theme, type } from '@/lib/theme';
 import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';
 import RevealOnScroll from '@/components/RevealOnScroll';
+import AppPressable from '@/components/AppPressable';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
@@ -93,6 +95,13 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
   const stickyRef = useRef<View>(null);
   const viewportRef = useRef<View>(null);
   const trilhoRef = useRef<View>(null);
+  const rolagemToqueRef = useRef<ScrollView>(null);
+  const [indiceToque, setIndiceToque] = useState(0);
+  const [bordasToque, setBordasToque] = useState({ anterior: false, proxima: itens.length > 1 });
+  const [bordasFixas, setBordasFixas] = useState({ anterior: false, proxima: itens.length > 1 });
+  const intervaloCard = larguraCard + spacing.lg;
+  const podeVoltar = indiceToque > 0;
+  const podeAvancar = indiceToque < itens.length - 1;
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
@@ -124,6 +133,8 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
       const percursoVertical = Math.max(1, palco.offsetHeight - sticky.offsetHeight);
       const progresso = limitar((scroller.scrollTop - inicio) / percursoVertical, 0, 1);
       trilho.style.transform = `translate3d(${(-percursoHorizontal * progresso).toFixed(2)}px, 0, 0)`;
+      const novasBordas = { anterior: progresso > 0.01, proxima: progresso < 0.99 && percursoHorizontal > 0 };
+      setBordasFixas((atuais) => atuais.anterior === novasBordas.anterior && atuais.proxima === novasBordas.proxima ? atuais : novasBordas);
     };
 
     const agendar = () => {
@@ -156,6 +167,26 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
     };
   }, [alturaCabecalho, alturaSticky, fixar, itens.length, larguraCard]);
 
+  function irParaIndice(indice: number) {
+    const proximo = limitar(indice, 0, itens.length - 1);
+    rolagemToqueRef.current?.scrollTo({ x: proximo * intervaloCard, animated: !reduzirMovimento });
+    setIndiceToque(proximo);
+  }
+
+  function aoRolarToque(evento: any) {
+    const { contentOffset, contentSize, layoutMeasurement } = evento.nativeEvent;
+    const x = contentOffset?.x ?? 0;
+    const larguraConteudo = contentSize?.width ?? 0;
+    const larguraVisivel = layoutMeasurement?.width ?? 0;
+    const indice = limitar(Math.round(x / intervaloCard), 0, itens.length - 1);
+    setIndiceToque((atual) => atual === indice ? atual : indice);
+    const novasBordas = {
+      anterior: x > 4,
+      proxima: x + larguraVisivel < larguraConteudo - 4,
+    };
+    setBordasToque((atuais) => atuais.anterior === novasBordas.anterior && atuais.proxima === novasBordas.proxima ? atuais : novasBordas);
+  }
+
   const cabecalho = (
     <RevealOnScroll variante="titulo" style={styles.intro}>
       <Text role="heading" aria-level={2} style={[styles.tituloSecao, largura < CORTES.medio && styles.tituloSecaoCompacto]}>
@@ -179,21 +210,53 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
         {cabecalho}
         <View style={styles.viewportToque}>
           <ScrollView
+            ref={rolagemToqueRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             decelerationRate="fast"
-            snapToInterval={larguraCard + spacing.lg}
+            snapToInterval={intervaloCard}
+            onScroll={aoRolarToque}
+            scrollEventThrottle={32}
             style={styles.rolagemHorizontal}
             contentContainerStyle={styles.trilhoToque}
             role="list"
             aria-label="Recursos do Grana."
+            {...({
+              tabIndex: 0,
+              onKeyDown: (evento: KeyboardEvent) => {
+                if (evento.key !== 'ArrowLeft' && evento.key !== 'ArrowRight') return;
+                evento.preventDefault();
+                irParaIndice(indiceToque + (evento.key === 'ArrowRight' ? 1 : -1));
+              },
+            } as any)}
           >
             {itens.map((item) => (
               <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} compacto={compacto} />
             ))}
           </ScrollView>
-          <FadeBorda lado="esquerda" largura={largura} />
-          <FadeBorda lado="direita" largura={largura} />
+          <FadeBorda lado="esquerda" largura={largura} visivel={bordasToque.anterior && podeVoltar} />
+          <FadeBorda lado="direita" largura={largura} visivel={bordasToque.proxima && podeAvancar} />
+        </View>
+        <View style={styles.controles}>
+          <AppPressable
+            onPress={() => irParaIndice(indiceToque - 1)}
+            disabled={!podeVoltar}
+            accessibilityLabel="Ver recurso anterior"
+            accessibilityState={{ disabled: !podeVoltar }}
+            style={({ hovered }) => [styles.controle, hovered && podeVoltar && styles.controleHover, !podeVoltar && styles.controleDesativado]}
+          >
+            <Ionicons name="arrow-back" size={18} color={theme.ink} aria-hidden />
+          </AppPressable>
+          <Text accessibilityLiveRegion="polite" style={styles.progresso}>{indiceToque + 1} de {itens.length}</Text>
+          <AppPressable
+            onPress={() => irParaIndice(indiceToque + 1)}
+            disabled={!podeAvancar}
+            accessibilityLabel="Ver próximo recurso"
+            accessibilityState={{ disabled: !podeAvancar }}
+            style={({ hovered }) => [styles.controle, hovered && podeAvancar && styles.controleHover, !podeAvancar && styles.controleDesativado]}
+          >
+            <Ionicons name="arrow-forward" size={18} color={theme.ink} aria-hidden />
+          </AppPressable>
         </View>
       </View>
     );
@@ -210,8 +273,8 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
                 <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} compacto={compacto} />
               ))}
             </View>
-            <FadeBorda lado="esquerda" largura={largura} />
-            <FadeBorda lado="direita" largura={largura} />
+            <FadeBorda lado="esquerda" largura={largura} visivel={bordasFixas.anterior} />
+            <FadeBorda lado="direita" largura={largura} visivel={bordasFixas.proxima} />
           </View>
         </View>
       </View>
@@ -228,7 +291,7 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
  * transparente sobre um fundo colorido deixaria a própria cor vazando na
  * borda) até transparente, por cima do trilho, sem capturar toque.
  */
-function FadeBorda({ lado, largura }: { lado: 'esquerda' | 'direita'; largura: number }) {
+function FadeBorda({ lado, largura, visivel }: { lado: 'esquerda' | 'direita'; largura: number; visivel: boolean }) {
   /* Fixo em 64px o fade engolia quase toda a "espiadinha" do próximo card
      num celular de 390px de largura (a fresta que sobra depois do card
      principal costuma ter uns 70-90px) — o próximo card sumia dentro do
@@ -238,7 +301,7 @@ function FadeBorda({ lado, largura }: { lado: 'esquerda' | 'direita'; largura: n
     <View
       aria-hidden
       pointerEvents="none"
-      style={[styles.fadeBorda, { width: largo }, lado === 'esquerda' ? styles.fadeBordaEsquerda : styles.fadeBordaDireita]}
+      style={[styles.fadeBorda, { width: largo, opacity: visivel ? 1 : 0 }, lado === 'esquerda' ? styles.fadeBordaEsquerda : styles.fadeBordaDireita]}
     />
   );
 }
@@ -284,6 +347,20 @@ const styles = StyleSheet.create({
   trilhoDesktop: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.lg, width: 'max-content' as any },
   rolagemHorizontal: { width: '100%', overflow: 'visible' },
   trilhoToque: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.lg, paddingRight: spacing.xxl },
+  controles: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, marginTop: spacing.xl },
+  controle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    backgroundColor: theme.paper,
+  },
+  controleHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
+  controleDesativado: { opacity: 0.35 },
+  progresso: { minWidth: 64, textAlign: 'center', color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.4, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
   cardPosicao: { flexShrink: 0, minWidth: 0 },
   card: {
     padding: spacing.lg,
@@ -291,7 +368,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paperRaised,
     borderWidth: 1,
     borderColor: theme.ruleStrong,
-    ...({ boxShadow: '0 18px 45px -24px rgba(0,0,0,0.7)' } as any),
+    ...sombraCard,
   },
   // `flex: 1` faz o card ocupar a altura que o `alignItems: 'stretch'` do
   // trilho já reservou (a do card mais alto) — é o que iguala os cards no

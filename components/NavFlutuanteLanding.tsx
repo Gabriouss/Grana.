@@ -13,9 +13,11 @@ const ID_GATILHO = 'nav-secoes-gatilho';
 export default function NavFlutuanteLanding({
   itens,
   onNavigate,
+  embutido = false,
 }: {
   itens: readonly { rotulo: string; href: string; icone: keyof typeof Ionicons.glyphMap }[];
   onNavigate: (href: string, evento: { preventDefault?: () => void }) => void;
+  embutido?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const progresso = useRef(new Animated.Value(0)).current;
@@ -85,7 +87,7 @@ export default function NavFlutuanteLanding({
           diálogo que exige decisão. */}
       {aberto && <Pressable style={styles.veu} onPress={() => setAberto(false)} accessibilityLabel="Fechar menu de seções" />}
 
-      <View style={[styles.ancora, ehCompacto && styles.ancoraCompacta, { pointerEvents: 'box-none' }]} >
+      <View style={[styles.ancora, ehCompacto && styles.ancoraCompacta, embutido && styles.ancoraEmbutida, { pointerEvents: 'box-none' }]} >
         {aberto && (
           <Animated.View
             nativeID={ID_PAINEL}
@@ -96,7 +98,7 @@ export default function NavFlutuanteLanding({
                `translateY` não atrapalha o toque durante a animação: o
                navegador testa o clique na caixa já transformada, então o que
                se vê e o que recebe o dedo são a mesma coisa em qualquer quadro. */
-            style={[styles.painel, { opacity: progresso, transform: [{ translateY: deslocamento }] }]}
+            style={[styles.painel, embutido && styles.painelEmbutido, { opacity: progresso, transform: [{ translateY: deslocamento }] }]}
             role="navigation"
             accessibilityLabel="Seções da página"
           >
@@ -127,13 +129,13 @@ export default function NavFlutuanteLanding({
           accessibilityState={{ expanded: aberto }}
           aria-controls={ID_PAINEL}
           aria-expanded={aberto}
-          style={({ hovered }) => [styles.botao, ehCompacto && styles.botaoCompacto, ehAmplo && styles.botaoAmplo, hovered && styles.botaoHover]}
+          style={({ hovered }) => [styles.botao, ehCompacto && styles.botaoCompacto, embutido && styles.botaoEmbutido, ehAmplo && !embutido && styles.botaoAmplo, hovered && styles.botaoHover]}
         >
           <View style={styles.botaoConteudo}>
             <Animated.View style={{ transform: [{ rotate: rotacao }] }}>
               <Ionicons name={aberto ? 'close' : 'menu'} size={22} color={theme.paper} aria-hidden />
             </Animated.View>
-            {ehAmplo ? <Text style={styles.botaoTexto}>{aberto ? 'Fechar' : 'Explorar'}</Text> : null}
+            {ehAmplo && !embutido ? <Text style={styles.botaoTexto}>{aberto ? 'Fechar' : 'Explorar'}</Text> : null}
           </View>
         </AppPressable>
       </View>
@@ -153,6 +155,12 @@ const styles = StyleSheet.create({
     zIndex: 49,
   },
   ancoraCompacta: { right: spacing.xs, bottom: spacing.sm },
+  ancoraEmbutida: {
+    position: 'relative',
+    right: 'auto',
+    bottom: 'auto',
+    alignItems: 'flex-end',
+  } as any,
   painel: {
     marginBottom: spacing.md,
     backgroundColor: theme.paperRaised,
@@ -164,6 +172,12 @@ const styles = StyleSheet.create({
     minWidth: 208,
     ...({ boxShadow: '0 18px 44px -14px rgba(0,0,0,0.65)' } as any),
   },
+  painelEmbutido: {
+    position: 'absolute',
+    top: 52,
+    right: 0,
+    marginBottom: 0,
+  } as any,
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -185,6 +199,7 @@ const styles = StyleSheet.create({
     ...({ boxShadow: '0 10px 30px -8px rgba(31,169,141,0.75)', transitionProperty: 'box-shadow, transform', transitionDuration: '180ms' } as any),
   },
   botaoCompacto: { width: 44, height: 44, borderRadius: 22 },
+  botaoEmbutido: { width: 44, height: 44, borderRadius: 22 },
   botaoAmplo: { width: 128, borderRadius: radius.pill },
   botaoConteudo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   botaoTexto: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },

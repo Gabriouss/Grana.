@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { AccessibilityInfo, Platform, View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { useReducedMotion } from '@/lib/motion';
 
 type Props = {
   compacto?: boolean;
@@ -13,23 +14,15 @@ type Props = {
  * respeita a preferencia de movimento reduzido do sistema.
  */
 export default function FogBackground({ compacto = false, intensidade = 'sutil' }: Props) {
-  const [reduzirMovimento, setReduzirMovimento] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
+  // Achado da auditoria de 03/09/2026: a checagem antiga só lia a preferência
+  // uma vez, no mount — quem muda reduced-motion no sistema com a página já
+  // aberta continuava vendo a neblina se mexer até recarregar. `useReducedMotion`
+  // (lib/motion.ts) já tem o listener ao vivo (`reduceMotionChanged`).
+  const reduzirMovimento = useReducedMotion();
   const [naTela, setNaTela] = useState(true);
   const ref = useRef<View>(null);
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const prefixo = `granaFog_${id}`;
-
-  useEffect(() => {
-    let ativo = true;
-    AccessibilityInfo.isReduceMotionEnabled?.()
-      .then((valor) => ativo && setReduzirMovimento(valor))
-      .catch(() => {});
-    return () => {
-      ativo = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof IntersectionObserver === 'undefined') return;

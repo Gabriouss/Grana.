@@ -76,3 +76,16 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    parou. Ao encerrar uma sessão que mexeu em código, atualize o `context.md`
    com o que mudou e o estado atual, e suba isso no GitHub junto com o resto
    do commit — é assim que a outra máquina fica sabendo o que aconteceu aqui.
+
+8. **Antes de agir sobre qualquer pedido do autor, procure na biblioteca de
+   skills instaladas (`.claude/skills/`, `.agents/skills/`, e as globais)
+   por alguma que ajude a executar o que foi pedido.** Pedido de auditoria de
+   design/UI → skills tipo `impeccable`/`apple-design`/`emil-design-eng`;
+   pedido de motion/animação → `find-animation-opportunities`/
+   `improve-animations`/`review-animations`/`animation-vocabulary`; pedido de
+   copy/posicionamento → `copywriting`/`competitor-analysis`/etc. Isso vale
+   pra qualquer tipo de solicitação, não só landing page — é hábito
+   permanente da sessão, não uma escolha pontual. Só pular a busca quando o
+   pedido for claramente fora do domínio de qualquer skill instalada (ex.:
+   uma pergunta de fato sobre configuração do Supabase, uma correção de bug
+   pontual sem ambiguidade de abordagem).

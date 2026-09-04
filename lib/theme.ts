@@ -96,6 +96,15 @@ export const card = {
   borderWidth: 1,
 };
 
+/* Sombra "persuasiva" dos cards de destaque da landing (cena de dor, card
+   de benefício, FAQ) — grande, escura, sem cor de marca (ela só reforça
+   profundidade, não decora). `as any` porque `boxShadow` não existe no
+   tipo `ViewStyle` do React Native, só o react-native-web reconhece.
+   Achado da auditoria de 03/09/2026: `BeneficiosHorizontais.tsx` tinha um
+   valor ad hoc (`0 18px 45px -24px rgba(0,0,0,0.7)`) só um pouco diferente
+   deste — consolidado aqui pra não deixar os dois derivarem mais. */
+export const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
+
 /* Papéis tipográficos semânticos calibrados por plataforma. iOS parte do
    corpo de 17pt e piso de 11pt; Android usa os equivalentes em sp; web sobe
    a densidade de leitura para a distância de monitor. Text continua com

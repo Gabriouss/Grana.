@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { AccessibilityInfo, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
+import { EASE_REVEAL } from '@/lib/motion';
 
 /**
  * Cada variante é uma FORMA de entrada diferente, não só um número trocado —
@@ -135,7 +136,7 @@ export default function RevealOnScroll({ children, atraso = 0, variante = 'padra
     ],
     transitionProperty: 'opacity, transform',
     transitionDuration: receita.duracao,
-    transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    transitionTimingFunction: EASE_REVEAL,
   } as any;
 
   return (
