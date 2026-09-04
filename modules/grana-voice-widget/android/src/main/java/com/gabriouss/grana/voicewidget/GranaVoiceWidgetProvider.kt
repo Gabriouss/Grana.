@@ -39,6 +39,12 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.grana_voice_rotulo, context.getString(R.string.grana_voice_processando))
             views.setContentDescription(R.id.grana_voice_circulo, context.getString(R.string.grana_voice_processando))
           }
+          EstadoWidget.ATENCAO -> {
+            views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo)
+            views.setImageViewResource(R.id.grana_voice_circulo, R.drawable.ic_grana_voice_atencao)
+            views.setTextViewText(R.id.grana_voice_rotulo, context.getString(R.string.grana_voice_atencao))
+            views.setContentDescription(R.id.grana_voice_circulo, context.getString(R.string.grana_voice_atencao_desc))
+          }
           else -> {
             views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo)
             views.setImageViewResource(R.id.grana_voice_circulo, R.drawable.ic_grana_voice_mic)
@@ -47,15 +53,35 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
           }
         }
 
-        /* Enquanto processa, o toque não faz nada de propósito: um segundo
-           comando por cima do primeiro criaria dois lançamentos da mesma
-           fala. */
-        if (estado != EstadoWidget.PROCESSANDO) {
-          views.setOnClickPendingIntent(R.id.grana_voice_raiz, pendingDeToque(context, id))
+        when (estado) {
+          /* Enquanto processa, o toque não faz nada de propósito: um segundo
+             comando por cima do primeiro criaria dois lançamentos da mesma
+             fala. */
+          EstadoWidget.PROCESSANDO -> {}
+          /* Em atenção o toque ABRE O APP, não o microfone: falta uma
+             permissão, e permissão só se resolve numa tela. Abrir o microfone
+             aqui daria a terceira gravação perdida seguida. */
+          EstadoWidget.ATENCAO -> {
+            val abrir = pendingDeAbrirApp(context, id)
+            if (abrir != null) views.setOnClickPendingIntent(R.id.grana_voice_raiz, abrir)
+          }
+          else -> views.setOnClickPendingIntent(R.id.grana_voice_raiz, pendingDeToque(context, id))
         }
 
         manager.updateAppWidget(id, views)
       }
+    }
+
+    /** Abre a tela inicial do próprio app. `null` se o launcher não expuser
+     *  intent de abertura — nesse caso o widget fica só informativo. */
+    private fun pendingDeAbrirApp(context: Context, widgetId: Int): PendingIntent? {
+      val intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+      var flags = PendingIntent.FLAG_UPDATE_CURRENT
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags = flags or PendingIntent.FLAG_IMMUTABLE
+      /* requestCode deslocado pra não colidir com o PendingIntent de toque
+         deste mesmo widget, que usa o próprio id. */
+      return PendingIntent.getActivity(context, 100_000 + widgetId, intent, flags)
     }
 
     private fun pendingDeToque(context: Context, widgetId: Int): PendingIntent {

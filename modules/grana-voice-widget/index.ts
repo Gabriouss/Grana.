@@ -18,7 +18,12 @@ type NativeGranaVoiceWidget = {
 
 const nativo = requireOptionalNativeModule<NativeGranaVoiceWidget>('GranaVoiceWidget');
 
-export type EstadoWidgetVoz = 'ocioso' | 'ouvindo' | 'processando';
+/**
+ * `atencao` é o único estado que NÃO se resolve sozinho: falta algo que só
+ * uma tela concede (hoje, permissão de notificação). Ele fica na tela inicial
+ * até alguém tocar, e o toque abre o app em vez do microfone.
+ */
+export type EstadoWidgetVoz = 'ocioso' | 'ouvindo' | 'processando' | 'atencao';
 
 /** O widget existe nesta plataforma/build? */
 export const widgetDisponivel = Platform.OS === 'android' && nativo != null;

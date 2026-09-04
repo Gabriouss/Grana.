@@ -18,6 +18,17 @@ object EstadoWidget {
   const val OUVINDO = "ouvindo"
   const val PROCESSANDO = "processando"
 
+  /**
+   * Precisa da pessoa antes de poder gravar de novo — hoje, só falta de
+   * permissão de notificação.
+   *
+   * Existe porque o widget não tem outro jeito de falar. Sem notificação ele
+   * não entrega recibo nem "Desfazer", então não lança; e voltar ao repouso
+   * calado faria parecer que o toque não pegou. Este estado FICA na tela até
+   * alguém tocar, e o toque abre o app em vez de abrir o microfone.
+   */
+  const val ATENCAO = "atencao"
+
   private const val PREFS = "grana_voice_widget"
   private const val CHAVE_ESTADO = "estado"
 

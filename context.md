@@ -1953,3 +1953,73 @@ lido e revisado, não código executado.
    `voice_operations`, `mode=commit` e idempotência por `request_id`.
 
 As alterações paralelas da landing seguem preservadas e fora deste commit.
+
+## Sessão de 04/09/2026 — auditoria `/impeccable audit` e `/impeccable harden`
+
+Auditoria completa registrada em `IMPECCABLE_AUDIT.md` (seção de 04/09):
+**14/20**, com a triagem dos 94 achados do detector — 93 são `advisory` e a
+maioria é falso positivo (cor de categoria e de banco são DADO, não drift).
+Caiu de 16 para 14 sem regressão: entrou escopo novo (voz/widget) e a rubrica
+de app de aparência única foi aplicada direito.
+
+Em seguida, `/impeccable harden` corrigiu os dois P1. Os dois tinham a mesma
+raiz: **o widget tratava permissão de notificação como detalhe de lembrete,
+quando ela é pré-requisito de mover dinheiro.**
+
+**A regra nova, em uma frase: sem como avisar, o widget não grava.** Não é
+"grava e tenta avisar" — é recusa. Duas coisas dependem da notificação e as
+duas são inegociáveis: a notificação do serviço em primeiro plano carrega os
+botões **Encerrar** e **Cancelar** (sem ela o microfone abre sem controle
+visível na gaveta), e o recibo do lançamento — com o **Desfazer** — sai por
+notificação. No Android 13+ `POST_NOTIFICATIONS` é permissão de runtime e
+`scheduleNotificationAsync` **falha calada**: sem esta regra, o gasto entrava
+na conta e ninguém ficava sabendo.
+
+Três portões, em profundidade:
+
+1. **Perfil** pede a permissão ANTES de oferecer o widget
+   (`adicionarWidgetVoz`). Instalar primeiro e descobrir depois seria entregar
+   um botão morto.
+2. **`GranaVoiceCaptureService`** checa `POST_NOTIFICATIONS` (API 33+) junto
+   com `RECORD_AUDIO` e se recusa a abrir o microfone sem as duas.
+3. **A tarefa headless** confere antes de gastar transcrição e antes de gravar,
+   para o caso de a permissão ser revogada entre uma coisa e outra.
+
+**Estado novo do widget: `atencao`.** Existe porque o widget não tem outro
+jeito de falar — voltar ao repouso calado faria parecer que o toque não pegou.
+Ele fica na tela até alguém tocar, e **o toque abre o app em vez do
+microfone**, porque permissão só se resolve numa tela. O ícone é o microfone
+CORTADO em `theme.danger`, não um "!": diz o que está indisponível, não que
+algo deu errado. `RespostaVozWidget` apaga o aviso na abertura e a cada volta
+do segundo plano (`AppState`) — o caminho real é conceder nas configurações do
+sistema e voltar, e nessa volta o app é retomado, não remontado.
+
+**Terceiro achado, fora da auditoria:** `lib/voz.ts` não tinha timeout nenhum.
+Rede móvel ruim não devolve erro, ela pendura — o botão ficava em
+"Transcrevendo…" para sempre e a tarefa do widget segurava o widget em
+"Lançando…" até o Android matá-la aos dois minutos. Agora corta em 45s com
+`AbortController` e código próprio (`demorou`), que diz a verdade: a fala pode
+ter sido perfeita e o áudio pode até ter chegado — "sem conexão" seria mentira.
+
+**Verificações.** `tsc --noEmit` limpo e `test:parser` 100% (324 guardas do
+design system, 39/39 em sincronia). O Kotlin **continua sem compilar** (não há
+JDK nem SDK aqui), então foram escritos dois verificadores para cobrir a classe
+de erro que uma edição manual de recursos produz:
+
+- **cruzamento de recursos**: toda referência `R.<tipo>.<nome>` no Kotlin e
+  todo `@<tipo>/<nome>` no XML resolvem para um recurso existente — 29/29, zero
+  órfãos. Precisou de duas correções no próprio verificador: `android.R.*` é
+  recurso do sistema, e o `AndroidManifest.xml` mora fora de `res/`.
+- **well-formedness de XML**: 11/11 arquivos do módulo, com controle negativo
+  provando que o verificador reprova XML quebrado de verdade. A primeira versão
+  acusou sete arquivos corretos — o grupo de atributos engolia a barra da tag
+  auto-fechada.
+
+Os dois verificadores foram descartados depois de rodar: são de uso único e
+viveriam desatualizados no repo. Se o módulo nativo crescer, vale reescrevê-los
+como teste dentro do `test:parser`.
+
+Segue pendente do relatório: rótulos nas abas (P2), Ionicons (P2), agregação no
+banco para o saldo (P2), token de "gravando" no lugar da cor de Alimentação
+(P2), `theme.scrim` (P3), órfãos (P3). Nenhuma build disparada; `app.json` em
+1.4.3.

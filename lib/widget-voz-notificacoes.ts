@@ -15,6 +15,29 @@ const CANAL = 'lancamento-voz';
 export const CATEGORIA_SUCESSO = 'grana-voz-resultado';
 export const ACAO_DESFAZER = 'desfazer';
 
+/**
+ * Dá pra avisar a pessoa?
+ *
+ * Esta pergunta decide se o widget pode lançar. Ele é o único caminho do
+ * produto que grava dinheiro sem nenhuma tela: a notificação é o recibo
+ * inteiro — é ela que diz o que foi salvo e é dela que sai o "Desfazer". No
+ * Android 13+ `POST_NOTIFICATIONS` é permissão de runtime e
+ * `scheduleNotificationAsync` **falha calada** quando ela está negada, então
+ * sem esta checagem o gasto entrava na conta e ninguém ficava sabendo.
+ */
+export async function podeNotificar(): Promise<boolean> {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === 'granted';
+  } catch {
+    /* Fecha, não abre: na dúvida sobre conseguir avisar, o widget não lança.
+       O oposto do `feature-flags`, que falha aberto de propósito — lá o custo
+       de errar é uma funcionalidade a menos, aqui é dinheiro registrado em
+       silêncio. */
+    return false;
+  }
+}
+
 /** Dados que viajam na notificação e voltam quando a pessoa toca nela. */
 export type DadosNotifVoz =
   | { origem: 'voz'; resultado: 'salvo'; tipo: 'transaction' | 'bill'; ids: string[] }

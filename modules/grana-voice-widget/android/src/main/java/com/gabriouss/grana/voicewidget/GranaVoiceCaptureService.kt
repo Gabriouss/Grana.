@@ -118,9 +118,23 @@ class GranaVoiceCaptureService : Service() {
 
     if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
       /* O widget não tem como pedir permissão: quem pede é uma tela. Aqui só
-         resta devolver o widget pro ocioso e deixar o JS avisar quando o app
-         abrir — pedir do nada aqui daria um diálogo sem contexto nenhum. */
-      abortar("sem_permissao")
+         resta acender o estado de atenção — cujo toque abre o app — em vez de
+         voltar ao repouso como se o toque não tivesse pegado. */
+      abortar("sem_permissao", EstadoWidget.ATENCAO)
+      return
+    }
+
+    /* Notificação é pré-requisito para GRAVAR, não só para avisar no fim.
+       Duas coisas dependem dela e as duas são inegociáveis: a notificação do
+       serviço em primeiro plano carrega os botões Encerrar e Cancelar (sem
+       ela o microfone abre sem nenhum controle visível), e o recibo do
+       lançamento sai por notificação (sem ela o dinheiro entra calado).
+       Abrir o microfone sabendo que nenhuma das duas vai aparecer é pior do
+       que não gravar. */
+    if (Build.VERSION.SDK_INT >= 33 &&
+      ContextCompat.checkSelfPermission(this, "android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED
+    ) {
+      abortar("sem_notificacao", EstadoWidget.ATENCAO)
       return
     }
 
@@ -222,14 +236,21 @@ class GranaVoiceCaptureService : Service() {
   }
 
   /** Sai sem entregar nada. `motivo` é só pro log — o widget volta ao ocioso. */
-  private fun abortar(motivo: String?) {
+  /**
+   * Sai sem entregar nada. `motivo` é só pro log — nunca vai pra tela.
+   *
+   * `estado` decide o que a pessoa vê depois: `OCIOSO` quando ela mesma
+   * cancelou ou quando dá pra tentar de novo na hora, e `ATENCAO` quando falta
+   * algo que só se resolve dentro do app.
+   */
+  private fun abortar(motivo: String?, estado: String = EstadoWidget.OCIOSO) {
     gravando = false
     cancelarAgendados()
     liberar()
     arquivo?.delete()
     arquivo = null
     if (motivo != null) android.util.Log.w("GranaVoz", "gravação abortada: $motivo")
-    finalizar(EstadoWidget.OCIOSO)
+    finalizar(estado)
   }
 
   private fun cancelarAgendados() {

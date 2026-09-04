@@ -9,6 +9,8 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { useRouter } from 'expo-router';
 import {
+  definirEstado as definirEstadoWidgetVoz,
+  estadoAtual as estadoWidgetVoz,
   fixarNaTelaInicial as fixarWidgetVoz,
   podeFixar as podeFixarWidgetVoz,
   quantidadeInstalada as quantidadeWidgetsVoz,
@@ -232,7 +234,25 @@ export default function PerfilScreen() {
    * quando não implementa, o caminho honesto é ensinar o gesto manual em vez
    * de deixar um botão que não faz nada.
    */
-  function adicionarWidgetVoz() {
+  async function adicionarWidgetVoz() {
+    /* A permissão vem ANTES de oferecer o widget, e não depois de ele falhar:
+       o widget lança dinheiro sem abrir tela nenhuma, e a notificação é o
+       recibo inteiro — é ela que diz o que foi salvo, é dela que sai o
+       "Desfazer", e é ela que carrega os botões de encerrar/cancelar enquanto
+       o microfone está aberto. Sem isso ele se recusa a gravar, então
+       instalar primeiro e descobrir depois seria entregar um botão morto. */
+    const podeAvisar = await requestNotificationPermission();
+    if (!podeAvisar) {
+      Alert.alert(
+        'Ative as notificações primeiro',
+        'O widget lança sem abrir o app, e a notificação é o seu comprovante: é nela que aparece o que foi lançado, o botão de desfazer e o de encerrar a gravação. Sem ela o widget não grava. Autorize as notificações do Grana. nas configurações do aparelho e tente de novo.'
+      );
+      return;
+    }
+    /* Se o widget estava pedindo atenção justamente por causa disto, o aviso
+       morre agora — não faz sentido continuar piscando na tela inicial. */
+    if (estadoWidgetVoz() === 'atencao') definirEstadoWidgetVoz('ocioso');
+
     if (quantidadeWidgetsVoz() > 0) {
       setWidgetsVoz(quantidadeWidgetsVoz());
       Alert.alert(

@@ -1,11 +1,16 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { Alert } from '@/lib/alert';
 import { deleteBill, deleteTransaction } from '@/lib/data';
 import { ehIntencaoBoleto, ehIntencaoCredito } from '@/lib/heuristics';
-import { ACAO_DESFAZER, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
+import { ACAO_DESFAZER, podeNotificar, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
+import {
+  definirEstado as definirEstadoWidgetVoz,
+  estadoAtual as estadoWidgetVoz,
+  widgetDisponivel as widgetVozDisponivel,
+} from '@/modules/grana-voice-widget';
 
 /**
  * O que acontece quando a pessoa TOCA na notificação do widget de voz.
@@ -23,6 +28,33 @@ import { ACAO_DESFAZER, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes
  */
 export default function RespostaVozWidget() {
   const router = useRouter();
+
+  /* O widget acende "Toque p/ ativar" quando não consegue notificar, e não
+     tem como descobrir sozinho que a permissão voltou — ele só é redesenhado
+     quando alguém manda.
+     Na abertura E a cada volta do segundo plano, porque o caminho real é
+     exatamente esse: tocar no widget abre o app, a pessoa concede a permissão
+     nas CONFIGURAÇÕES DO SISTEMA e volta. Nessa volta o app é retomado, não
+     remontado — só na montagem, o aviso ficaria preso pedindo uma permissão
+     já concedida. */
+  useEffect(() => {
+    if (!widgetVozDisponivel) return;
+
+    function conferir() {
+      if (estadoWidgetVoz() !== 'atencao') return;
+      podeNotificar()
+        .then((pode) => {
+          if (pode) definirEstadoWidgetVoz('ocioso');
+        })
+        .catch(() => {});
+    }
+
+    conferir();
+    const inscricao = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') conferir();
+    });
+    return () => inscricao.remove();
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;

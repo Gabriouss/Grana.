@@ -24,9 +24,25 @@ type Payload = { caminho?: string; requestId?: string };
 async function executarTarefa(payload: Payload) {
   const { definirEstado } = await import('@/modules/grana-voice-widget');
   const caminho = payload?.caminho;
+  /* O estado final do widget é decidido aqui e não no `finally` de sempre:
+     quando não há como avisar a pessoa, ele NÃO pode voltar ao repouso como
+     se nada tivesse acontecido — é justamente esse "nada aconteceu" que
+     esconderia um lançamento perdido. */
+  let estadoFinal: 'ocioso' | 'atencao' = 'ocioso';
 
   try {
     if (!caminho) return;
+
+    /* Antes de gastar transcrição, e muito antes de gravar qualquer coisa:
+       sem permissão de notificação o widget não tem como entregar o recibo
+       nem o "Desfazer". Nesse caso ele não lança — acende o estado de
+       atenção, e um toque abre o app pra resolver a permissão. */
+    const { podeNotificar } = await import('./widget-voz-notificacoes');
+    if (!(await podeNotificar())) {
+      estadoFinal = 'atencao';
+      return;
+    }
+
     await processar(caminho);
   } catch {
     const { notificarFalha } = await import('./widget-voz-notificacoes');
@@ -36,7 +52,7 @@ async function executarTarefa(payload: Payload) {
        pode ficar preso em "Lançando…" — os dois valem em QUALQUER saída,
        inclusive erro. */
     if (caminho) await apagarArquivo(caminho);
-    definirEstado('ocioso');
+    definirEstado(estadoFinal);
   }
 }
 

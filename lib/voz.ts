@@ -33,7 +33,8 @@ export type CodigoErroVoz =
   | 'sem_provedor'
   | 'nao_entendi'
   | 'erro_interno'
-  | 'sem_rede';
+  | 'sem_rede'
+  | 'demorou';
 
 export type ResultadoVoz = { ok: true; transcript: string } | { ok: false; codigo: CodigoErroVoz };
 
@@ -47,6 +48,13 @@ const MAX_AUDIO_BYTES = 2 * 1024 * 1024;
 
 /** Duração máxima da gravação. Vale pro botão do app e pro widget. */
 export const MAX_SEGUNDOS_GRAVACAO = 20;
+
+/* Rede móvel ruim não devolve erro: ela pendura. Sem este teto o botão de voz
+   ficava em "Transcrevendo…" pra sempre, sem cancelar e sem explicar, e a
+   tarefa do widget segurava o widget em "Lançando…" até o Android matá-la aos
+   dois minutos. 45s cobre com folga upload + Whisper + fallback pra OpenAI
+   (a própria Edge Function corta cada provedor em 30s). */
+const TIMEOUT_MS = 45_000;
 
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -100,17 +108,26 @@ export async function transcreverAudio(
     form.append('audio', { uri, name: nomeArquivo, type: mimeType } as unknown as Blob);
   }
 
+  const controle = new AbortController();
+  const corte = setTimeout(() => controle.abort(), TIMEOUT_MS);
   let resposta: Response;
   try {
     resposta = await fetch(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: form,
+      signal: controle.signal,
     });
-  } catch {
+  } catch (e: any) {
+    /* Estourou o tempo é diferente de não ter rede: a fala pode ter sido
+       perfeita e o áudio pode até ter chegado — dizer "sem conexão" seria
+       mentir sobre o que aconteceu. */
+    if (e?.name === 'AbortError') return { ok: false, codigo: 'demorou' };
     /* Sem rede, DNS fora, servidor inalcançável. Não é erro de transcrição e
        não deve virar "não entendi" — a fala pode ter sido perfeita. */
     return { ok: false, codigo: 'sem_rede' };
+  } finally {
+    clearTimeout(corte);
   }
 
   let corpo: any = null;
@@ -148,6 +165,11 @@ export function mensagemDeErroVoz(codigo: CodigoErroVoz): { titulo: string; text
       return {
         titulo: 'Sem conexão',
         texto: 'Não foi possível enviar o áudio. Verifique a internet e tente de novo.',
+      };
+    case 'demorou':
+      return {
+        titulo: 'Demorou demais',
+        texto: 'A conexão está lenta e o áudio não foi transcrito a tempo. Nada foi lançado — tente de novo.',
       };
     case 'nao_autenticado':
     case 'sem_sessao':

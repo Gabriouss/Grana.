@@ -6,4 +6,7 @@
   <color name="grana_voice_menta">#7BD8C0</color>
   <color name="grana_voice_escuro">#052229</color>
   <color name="grana_voice_texto">#E8F3F1</color>
+  <!-- theme.danger. Vale só para "não dá pra gravar", nunca para gasto: no
+       Grana. saída de dinheiro é ciano, e vermelho existe só para erro. -->
+  <color name="grana_voice_atencao">#E08A7D</color>
 </resources>

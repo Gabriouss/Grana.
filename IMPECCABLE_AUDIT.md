@@ -1,8 +1,13 @@
 # Impeccable Audit — Grana.
 
-> **A SEÇÃO MAIS RECENTE É "Auditoria: 02/09/2026 (segunda rodada)", NO FIM
-> DO ARQUIVO.** Ela corrige, com evidência, duas notas que a primeira rodada
-> de 02/09 deu alto demais.
+> **A SEÇÃO MAIS RECENTE É "Auditoria: 04/09/2026", NO FIM DO ARQUIVO** —
+> 14/20, com dois P1 novos na superfície de voz/widget e a triagem dos falsos
+> positivos do detector registrada para não voltarem. A nota caiu de 16 para
+> 14 sem regressão: entrou escopo novo e a rubrica de aparência única foi
+> aplicada direito.
+>
+> A seção anterior ("Auditoria: 02/09/2026, segunda rodada") corrige, com
+> evidência, duas notas que a primeira rodada de 02/09 deu alto demais.
 >
 > **ATUALIZADO EM 02/09/2026 — a auditoria de 28/08 abaixo ficou parcialmente
 > desatualizada.** A nota de Conformidade de Plataforma (4/4) e o Veredito
@@ -923,3 +928,307 @@ seguir, foi escrever a guarda.
    nas listas de altura fixa.
 4. **[P3]** `/impeccable layout` — `perfil.tsx` no `screenRhythm`.
 5. **[P3]** Remover os 9 componentes órfãos.
+
+---
+
+Auditoria: 04 de setembro de 2026 (`/impeccable audit geral total`)
+Escopo: aplicativo autenticado inteiro + a superfície de voz/widget criada
+hoje (nunca auditada antes)
+Plataformas: `adaptive` · Modo: **Operate**
+Método: análise de fonte, detector empacotado (`detect.mjs`, 94 achados
+triados um a um), cálculo de contraste WCAG sobre os pares de token do
+`lib/theme.ts`, e verificação em código de cada achado antes de reportar.
+**Sem hardware:** nenhuma tela foi vista rodando nesta rodada — não há JDK,
+Android SDK nem sessão logada nesta máquina.
+
+## Audit Health Score
+
+| # | Dimensão | Nota | Achado principal |
+|---|-----------|-------|-------------|
+| 1 | Acessibilidade | 3 | Contraste excelente e escala de fonte intacta; barra de abas só com ícone |
+| 2 | Performance | 3 | Memoização e virtualização em dia; histórico ainda vem inteiro do banco |
+| 3 | Aparência & Tema | 3 | 324 guardas de design system por máquina; véus de modal sem token |
+| 4 | Conformidade de Plataforma | 2 | Barra de abas própria + Ionicons nas duas plataformas |
+| 5 | Adaptatividade | 3 | Trilho lateral e coluna de conteúdo em 7 telas; dobráveis fora do radar |
+| **Total** | | **14/20** | **Bom (atacar as dimensões fracas)** |
+
+A nota caiu de 16 para 14 e **não houve regressão**. Duas razões: a
+superfície de voz/widget entrou no escopo e trouxe um P1 novo, e a rodada
+anterior não descontou o ponto que a rubrica cobra de um app de aparência
+única (ver Aparência).
+
+## Veredito de conformidade de plataforma
+
+**Passa com ressalva.** Um usuário fluente de Android confia nas telas: o
+`Switch` é o nativo, o `android_ripple` foi recortado no raio certo, o Back
+preditivo está ligado, o blur usa `dimezisBlurView` com `BlurTargetView` (o
+jeito certo desde o expo-blur 55), a área segura é respeitada em 14 arquivos
+e a orientação não é travada. Não é um site portado.
+
+O que impede a nota alta são três desvios que se somam **na mesma
+superfície** — a navegação principal:
+
+1. **Barra de abas desenhada em JavaScript**, não a Navigation Bar do
+   Material nem a UITabBar. Decisão registrada, com incidente real por trás
+   (`app/(app)/_layout.tsx:202-215`): as Native Tabs deram tela branca duas
+   vezes, a segunda numa build de release, na volta do desbloqueio por
+   digital. Trocar acabamento nativo por não perder o app inteiro é a
+   escolha certa — mas continua sendo um desvio, e a rubrica cobra por ele.
+2. **Abas sem rótulo visível.** O leitor de tela recebe o nome
+   (`accessibilityLabel`, `accessibilityRole="tab"` — isso está certo), mas
+   quem enxerga recebe só o glifo. Material 3 e HIG rotulam destinos, e aqui
+   o custo é concreto: três dos cinco ícones são de pagamento
+   (`wallet-outline`, `card-outline`, `receipt-outline`) para "Débito e Pix",
+   "Crédito" e "Boletos". Nenhum desses três significados sai do desenho.
+3. **Ionicons em 56 arquivos**, nas duas plataformas, no lugar de SF Symbols
+   (iOS) e Material Symbols (Android). Registrado em 02/09; segue aberto.
+
+## Resumo executivo
+
+- Audit Health Score: **14/20** (Bom)
+- Achados: **2 P1, 4 P2, 5 P3** (mais 3 falsos positivos do detector,
+  documentados abaixo para não voltarem na próxima rodada)
+- Os três primeiros:
+  1. O widget grava dinheiro e o recibo pode ser invisível — o caminho de
+     notificação nunca checa permissão.
+  2. A gravação do widget não pode ser cancelada pela gaveta se
+     `POST_NOTIFICATIONS` estiver negada.
+  3. Barra de abas só com ícone, com três glifos de pagamento disputando
+     significado.
+
+## Achados detalhados
+
+### [P1] O widget lança dinheiro sem recibo garantido
+
+- **Local**: `lib/widget-voz-notificacoes.ts` (todo o arquivo);
+  `lib/widget-voz-task.ts`, função `processar`
+- **Categoria**: Acessibilidade / Conformidade
+- **Impacto**: O widget é o único caminho do produto que grava um lançamento
+  **sem nenhuma tela**. A notificação é o recibo inteiro: é ela que diz o que
+  foi salvo e é dela que sai o "Desfazer". No Android 13+ `POST_NOTIFICATIONS`
+  é permissão de runtime, e `scheduleNotificationAsync` **falha em silêncio**
+  quando ela está negada. Verificado: nenhum ponto do caminho do widget chama
+  `getPermissionsAsync` nem `requestPermissionsAsync`. Hoje a permissão só é
+  pedida por `garantirPermissao()` (`lib/notifications.ts:76-84`), que vive no
+  fluxo de LEMBRETES — quem desligou lembrete de boleto, ou negou o diálogo
+  uma vez, usa o widget e não vê nada. O gasto entra na conta, calado.
+- **Recomendação**: pedir a permissão no momento em que o widget é oferecido
+  (a linha nova do Perfil) e não anunciar o widget como pronto sem ela. Se a
+  permissão estiver negada na hora de publicar o resultado, o caminho honesto
+  é não salvar automaticamente: cair no mesmo fluxo de "revisar" que já existe
+  para valor ausente.
+- **Comando sugerido**: `/impeccable harden`
+
+### [P1] Gravação do widget sem como cancelar pela gaveta
+
+- **Local**: `modules/grana-voice-widget/.../GranaVoiceCaptureService.kt`,
+  `subirEmPrimeiroPlano`
+- **Categoria**: Conformidade / Acessibilidade
+- **Impacto**: Mesma raiz do anterior. A notificação do serviço em primeiro
+  plano carrega **Encerrar** e **Cancelar** — é o único jeito de cortar uma
+  gravação sem voltar à tela inicial e achar o widget. Sem
+  `POST_NOTIFICATIONS`, no Android 13+ ela não aparece: o serviço roda, o
+  indicador de microfone acende, e a pessoa vê que algo está ouvindo sem ter
+  onde desligar. Microfone aberto sem controle visível é o pior lugar do app
+  para uma permissão implícita.
+- **Guideline**: Android — foreground service de microfone deve dar controle
+  visível ao usuário.
+- **Recomendação**: mesma correção do P1 acima; a permissão vira pré-requisito
+  para oferecer o widget, não um detalhe do fluxo de lembretes.
+- **Comando sugerido**: `/impeccable harden`
+
+### [P2] Abas só com ícone, com três glifos de pagamento
+
+- **Local**: `app/(app)/_layout.tsx:21-27` (ICONS) e `TabButton`
+- **Categoria**: Conformidade
+- **Impacto**: `wallet-outline` / `card-outline` / `receipt-outline` para
+  "Débito e Pix" / "Crédito" / "Boletos". Os três são metáforas de pagamento e
+  nenhum diz qual é qual; a pessoa aprende por tentativa. O leitor de tela está
+  servido, quem enxerga não.
+- **Guideline**: Material 3 Navigation bar e HIG Tab bar rotulam destinos.
+- **Recomendação**: rótulo curto sob o ícone (a barra tem 68px de altura,
+  cabe), ou pelo menos no item ativo.
+- **Comando sugerido**: `/impeccable clarify`
+
+### [P2] Ionicons nas duas plataformas
+
+- **Local**: 56 importações em `app/` e `components/`
+- **Categoria**: Conformidade
+- **Impacto**: Ícone fora do idioma do sistema em toda a interface. Também
+  custa peso: `Ionicons.ttf` são ~199 KB comprimidos na web para cerca de
+  vinte glifos.
+- **Recomendação**: trabalho grande; a versão barata é padronizar o conjunto e
+  documentá-lo no DESIGN.md como decisão consciente, em vez de deixar como
+  acidente.
+- **Comando sugerido**: `/impeccable document`
+
+### [P2] Histórico inteiro a cada carregamento
+
+- **Local**: `lib/data.ts:35` (`fetchTransactions` → `buscarTodasAsPaginas`)
+- **Categoria**: Performance
+- **Impacto**: Início, Gráficos e Lançamentos leem todas as páginas. É o achado
+  que 28/08 e 02/09 já registraram, **e continua correto não janelar**: o saldo
+  depende do histórico completo, então uma janela curta daria número ERRADO,
+  não mais lento. O custo cresce com o tempo de uso — hoje é irrelevante, no
+  terceiro ano de uso não é.
+- **Recomendação**: agregação no banco (soma de saldo por período) e busca por
+  período sob demanda. Exige migração validada contra o banco real.
+- **Comando sugerido**: `/impeccable optimize`
+
+### [P2] Cor de dado usada como cor de estado da interface
+
+- **Local**: `components/VoiceEntryButton.tsx:229`
+  (`active: { backgroundColor: '#bb6b60' }`)
+- **Categoria**: Aparência & Tema
+- **Impacto**: `#bb6b60` é a cor da categoria **Alimentação**
+  (`lib/types.ts:174`), não um token de interface. Ela pinta o botão de voz
+  enquanto grava. Funciona hoje, mas amarra o estado "gravando" a um dado que
+  pode mudar por outro motivo, e escapa do sistema de tokens que o resto do app
+  respeita.
+- **Recomendação**: token próprio de "gravando" no `lib/theme.ts`.
+- **Comando sugerido**: `/impeccable colorize`
+
+### [P3] Véu dos modais sem token, com cinco opacidades diferentes
+
+- **Local**: `Sheet.tsx:141` (0.55), `PasteReceiptModal.tsx:335` (0.5),
+  `ItemActionSheet.tsx:68` (0.5), `CategoryPickerModal.tsx:332` (0.5),
+  `DatePickerModal.tsx:240` (0.5), `FeedbackModal.tsx:163` (0.5),
+  `BudgetTemplatesModal.tsx:173` (0.5), `ImportarExtratoModal.tsx:432` (0.55),
+  `perfil.tsx:1021` (0.6), `_layout.tsx:280` (0.35)
+- **Categoria**: Aparência & Tema
+- **Impacto**: `rgba(0,0,0,X)` escrito à mão em dez lugares, com X variando de
+  0.35 a 0.6. Ninguém percebe abrindo um modal; percebe abrindo dois em
+  sequência. É o tipo de valor que diverge mais a cada modal novo.
+- **Recomendação**: `theme.scrim`.
+- **Comando sugerido**: `/impeccable extract`
+
+### [P3] `getItemLayout` ausente em listas de altura fixa
+
+- **Local**: `lancamentos.tsx`, `credito.tsx`
+- **Categoria**: Performance
+- **Impacto**: As 5 `FlatList` têm `keyExtractor`, mas nenhuma tem
+  `getItemLayout`; só duas têm `windowSize`/`initialNumToRender`. Nas duas
+  telas de linha com altura fixa isso é ganho de graça no scroll longo.
+- **Comando sugerido**: `/impeccable optimize`
+
+### [P3] Avatares remotos sem `expo-image`
+
+- **Local**: 3 usos de `<Image source={{ uri }}>`
+- **Categoria**: Performance
+- **Impacto**: Sem cache em disco no Android e decodificação em tamanho cheio
+  para exibir a 44px. Registrado em 02/09, segue aberto.
+- **Comando sugerido**: `/impeccable optimize`
+
+### [P3] `ToggleSwitch` quebra a ordem dos hooks
+
+- **Local**: `components/ToggleSwitch.tsx:20`
+- **Categoria**: Conformidade
+- **Impacto**: `if (Platform.OS !== 'web') return` antes de
+  `useReducedMotion`/`useEffect`. Não quebra em runtime porque `Platform.OS` é
+  invariante entre renders — mas é a Regra dos Hooks violada de verdade, e o
+  dia em que a condição virar dinâmica isso vira crash. Achado em 02/09, segue
+  aberto.
+- **Comando sugerido**: `/impeccable harden`
+
+### [P3] Componentes órfãos
+
+- **Local**: `components/NotebookFloatEstatico.tsx`,
+  `components/IconeMetaAtingida.tsx` (zero referências)
+- **Categoria**: Conformidade
+- **Impacto**: Código morto que a próxima pessoa lê achando que está no ar.
+- **Comando sugerido**: `/impeccable distill`
+
+## Falsos positivos do detector (verificados, não são achados)
+
+O detector apontou 94 itens. **93 são `advisory`** e a triagem derrubou a
+grande maioria. Fica registrado para não voltarem:
+
+1. **81 "cor fora do DESIGN.md"** — a esmagadora maioria é `lib/types.ts` e
+   `lib/demo-data.ts`: as 9 cores de categoria e as cores de marca dos bancos.
+   O próprio DESIGN.md classifica cor de categoria como **"Estado (dados, não
+   decoração)"**, e cor de banco é identidade de terceiro. Não é drift, é dado.
+2. **Contraste dos pares "reprovados"** — o cálculo achou 5 pares abaixo de
+   4.5:1, e a verificação em código mostrou que **nenhum dos cinco é
+   renderizado**. `accentDeep` só aparece como fundo de círculo de ícone
+   (NovidadesModal, AvisoFlagModal) ou de chip com texto `ink` (9.88:1); o
+   `eyebrow` em `inkFaint` fica sobre `paperRaised` (5.61:1), não sobre
+   `accentDeep`. `theme.accent` como texto só existe no `MonthSelector`, sobre
+   `paper` (5.62:1).
+3. **`EASE_SNAP` "bounce easing"** (`lib/motion.ts:22`) — único `warning` do
+   detector. É token nomeado e documentado, com overshoot de 1.15 no
+   preenchimento do hover do CTA da landing. Decisão, não acidente.
+
+## Verificações executadas
+
+- `detect.mjs` sobre `app/`, `components/` e `lib/` — 94 achados, todos
+  triados individualmente contra o código.
+- Contraste WCAG calculado sobre o produto cartesiano dos tokens de fundo
+  (`paper`, `paperRaised`, `paperSelected`, `accentDeep`) e de texto (`ink`,
+  `inkSoft`, `inkFaint`, `accent`, `accent2`, `up`, `down`, `danger`) — 32
+  pares.
+- Varredura de `accessibilityLabel`, `hitSlop` (78 usos), `allowFontScaling`
+  (**zero** desligamentos), props de `FlatList`, `useMemo` por tela,
+  `SafeAreaView`/insets, `KeyboardAvoidingView` e uso de `colunaConteudo`.
+- Leitura integral de `app/(app)/_layout.tsx` (navegação) e do código de voz e
+  widget escrito hoje.
+
+## Padrões sistêmicos
+
+1. **A navegação concentra os três desvios de plataforma.** Barra própria, sem
+   rótulo, com ícones de outro idioma — não são três problemas soltos, é uma
+   superfície que ficou fora do padrão do sistema por decisões tomadas em
+   momentos diferentes. Atacar as três juntas rende mais que uma a uma.
+2. **Permissão de notificação é tratada como assunto de lembrete.** Ela virou
+   pré-requisito de uma funcionalidade que grava dinheiro, e o código ainda a
+   pede no lugar antigo. Os dois P1 são o mesmo esquecimento.
+3. **O sistema de design é forte onde tem guarda de máquina e frouxo onde não
+   tem.** Fonte e cor de token têm 324 checagens no `test:parser` e zero
+   violações; véu de modal e cor de estado não têm guarda nenhuma e divergiram
+   em dez arquivos. O padrão não é falta de cuidado, é falta de detector.
+
+## Pontos positivos
+
+- **324 guardas de design system rodando no `npm run test:parser`**
+  (`__tests__/corpus-design-system.ts`): nenhum `fontFamily` literal, nenhum
+  `fontWeight`, nenhuma fonte de sistema. Sistema de design cobrado por máquina
+  é raro — e nasceu de uma correção que se perdeu num `git checkout` e foi
+  declarada feita sem estar.
+- **Contraste da paleta é forte de verdade**: 16.06:1 no texto principal,
+  14.13:1 sobre superfície elevada, e todo par realmente renderizado passa em
+  AA. Não é sorte — é paleta escolhida com a conta feita.
+- **Escala de fonte do sistema intacta**: zero `allowFontScaling={false}` em
+  todo o app.
+- **`prefers-reduced-motion` honrado em mais de 20 componentes**, com
+  vocabulário de easing nomeado e comentado em `lib/motion.ts`.
+- **Detalhes nativos certos onde é fácil errar**: `Switch` do sistema,
+  `android_ripple` recortado no raio da pílula, `dimezisBlurView` com
+  `BlurTargetView`, Back preditivo ligado, orientação livre.
+- **O desvio da barra de abas está documentado com o incidente que o causou.**
+  Um desvio explicado é uma decisão; um desvio silencioso é dívida.
+
+## Ações recomendadas
+
+1. **[P1] `/impeccable harden`** — permissão de notificação como pré-requisito
+   do widget, e recusa de salvar automaticamente quando ela não existir.
+   Resolve os dois P1 de uma vez.
+2. **[P2] `/impeccable clarify`** — rótulos nas abas; começar pelos três glifos
+   de pagamento.
+3. **[P2] `/impeccable optimize`** — agregação no banco para o saldo, mais
+   `getItemLayout` e `expo-image`.
+4. **[P2] `/impeccable colorize`** — token de "gravando" no lugar da cor de
+   Alimentação.
+5. **[P3] `/impeccable extract`** — `theme.scrim` para os dez véus.
+6. **[P3] `/impeccable distill`** — remover os órfãos.
+7. **`/impeccable polish`** como passe final.
+
+## Limites de validação
+
+**Nada foi visto rodando.** Sem JDK, sem Android SDK e sem sessão logada nesta
+máquina, esta rodada é análise de fonte e cálculo — não observação. Três
+consequências honestas:
+
+- O widget e o serviço em primeiro plano **nunca foram compilados**. Os dois P1
+  vêm de leitura da API do Android, não de um aparelho.
+- Contraste foi calculado sobre tokens, não medido em pixel renderizado.
+- Nenhuma verificação de comportamento em aparelho: gesto, jank, recomposição e
+  posture de dobrável seguem sem evidência.
