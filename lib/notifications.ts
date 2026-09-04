@@ -1,27 +1,23 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type * as NotificationsModule from 'expo-notifications';
 import { obterProximaMensagem } from './notification-messages';
+import {
+  ehIdLembreteHabito,
+  ID_HABITO_LEGADO,
+  planejarLembretesHabito,
+} from './notification-schedule';
 import { formatMoney } from './format';
 import type { Bill, CreditCard } from './types';
 
 const CHANNEL_ID = 'lembretes-contas';
 
-// No SDK 53+, expo-notifications lança erro ao rodar no Expo Go para Android.
-// Verificamos o ambiente para evitar que o módulo quebre a inicialização do app no Expo Go.
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-const isNotificationsSupported = Platform.OS !== 'web' && !(isExpoGo && Platform.OS === 'android');
+const isNotificationsSupported = Platform.OS !== 'web';
 
 /**
- * `import * as Notifications from 'expo-notifications'` no topo do arquivo
- * lança IMEDIATAMENTE ao carregar o módulo (não só ao chamar uma função dele)
- * quando roda no Expo Go no Android — o próprio pacote faz essa checagem de
- * ambiente na hora do import. Isso derrubava o app inteiro na inicialização,
- * porque este arquivo é importado por app/_layout.tsx: um import estático
- * quebrado aqui quebrava a tela raiz de todo mundo, mesmo quem nunca usa
- * lembretes. `require()` adiado resolve porque só executa quando chamado —
- * dá pra checar `isNotificationsSupported` ANTES de carregar o módulo.
+ * O carregamento continua adiado para que uma limitação do ambiente de
+ * execução nunca derrube a raiz do app. No Expo Go, o SDK 57 restringe push
+ * remoto no Android, mas mantém notificações locais — que são as usadas aqui.
  */
 let cached: typeof NotificationsModule | null = null;
 let tentouCarregar = false;
@@ -62,7 +58,7 @@ async function ensureChannel(): Promise<void> {
   if (!Notifications || Platform.OS !== 'android' || channelReady) return;
   try {
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Lembretes de contas',
+      name: 'Lembretes do Grana.',
       importance: Notifications.AndroidImportance.HIGH,
     });
     channelReady = true;
@@ -75,6 +71,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
   const Notifications = getNotifications();
   if (!Notifications) return false;
   try {
+    // Android 13 só mostra o pedido de permissão depois que existe um canal.
+    await ensureChannel();
     const { status: existing } = await Notifications.getPermissionsAsync();
     if (existing === 'granted') return true;
     const { status } = await Notifications.requestPermissionsAsync();
@@ -308,14 +306,39 @@ export async function salvarNotifPrefs(prefs: NotifPrefs): Promise<void> {
 
 /* ---- lembrete diário de hábito ---- */
 
-const ID_HABITO_DIARIO = 'habito-diario';
+const CHAVE_HORARIO_HABITO = '@grana_habit_schedule_time';
+let filaHabito: Promise<void> = Promise.resolve();
+
+function enfileirarHabito(operacao: () => Promise<void>): Promise<void> {
+  const proxima = filaHabito.then(operacao, operacao);
+  filaHabito = proxima.catch(() => {});
+  return proxima;
+}
+
+async function idsHabitoAgendados(Notifications: typeof NotificationsModule): Promise<string[]> {
+  try {
+    const agendadas = await Notifications.getAllScheduledNotificationsAsync();
+    return agendadas.map((item) => item.identifier).filter(ehIdLembreteHabito);
+  } catch {
+    return [];
+  }
+}
+
+async function cancelarHabitoInterno(
+  Notifications: typeof NotificationsModule,
+  limparHorario: boolean
+): Promise<void> {
+  const ids = new Set([ID_HABITO_LEGADO, ...(await idsHabitoAgendados(Notifications))]);
+  await Promise.all(
+    [...ids].map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {}))
+  );
+  if (limparHorario) await AsyncStorage.removeItem(CHAVE_HORARIO_HABITO).catch(() => {});
+}
 
 /**
- * Agenda (ou reagenda) o lembrete diário de hábito. A mensagem é sorteada
- * agora, no momento do agendamento — notificação local tem conteúdo fixo
- * assim que agendada, então a "rotação" acontece a cada reagendamento
- * (chamado no foco da Home, ver app/(app)/index.tsx), igual ao padrão de
- * scheduleBillReminders/scheduleCardInvoiceReminders acima.
+ * Mantém sete lembretes diários à frente, cada um com mensagem e id próprios.
+ * Ao abrir a Home, preserva o que já estava agendado e só completa a janela;
+ * assim a rotação das 48 mensagens não é consumida por sorteios descartados.
  *
  * Se já lançou algo hoje, silencia o lembrete de hoje e agenda direto para
  * amanhã — repetir o pedido no mesmo dia depois que a pessoa já fez o que
@@ -328,47 +351,76 @@ export async function scheduleDailyHabitReminder(opts: {
   streak: number;
   diasInativo: number;
 }): Promise<void> {
-  const Notifications = getNotifications();
-  if (!Notifications) return;
-  await cancelDailyHabitReminder();
+  return enfileirarHabito(async () => {
+    const Notifications = getNotifications();
+    if (!Notifications) return;
 
-  const granted = await requestNotificationPermission();
-  if (!granted) return;
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
 
-  await ensureChannel();
+    const chaveHorario = `${opts.hour}:${opts.minute}`;
+    const horarioAnterior = await AsyncStorage.getItem(CHAVE_HORARIO_HABITO).catch(() => null);
+    if (horarioAnterior !== chaveHorario) {
+      await cancelarHabitoInterno(Notifications, false);
+    }
 
-  const agora = new Date();
-  let quando = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), opts.hour, opts.minute, 0, 0);
-  if (opts.jaLancouHoje || quando.getTime() <= agora.getTime()) {
-    quando = new Date(quando.getTime() + 24 * 60 * 60 * 1000);
-  }
-
-  const mensagem = await obterProximaMensagem({
-    streak: opts.streak,
-    diasInativo: opts.diasInativo,
-    diaSemana: quando.getDay(),
-  });
-
-  try {
-    await Notifications.scheduleNotificationAsync({
-      identifier: ID_HABITO_DIARIO,
-      content: {
-        title: mensagem.titulo,
-        body: mensagem.texto.replace('{streak}', String(opts.streak)),
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: quando,
-        channelId: CHANNEL_ID,
-      },
+    const planejados = planejarLembretesHabito({
+      agora: new Date(),
+      hour: opts.hour,
+      minute: opts.minute,
+      jaLancouHoje: opts.jaLancouHoje,
     });
-  } catch (e) {
-    // Ignora erro se agendamento local falhar
-  }
+    const idsDesejados = new Set(planejados.map((item) => item.id));
+    const existentes = await idsHabitoAgendados(Notifications);
+
+    // Remove o id antigo e também o lembrete de hoje quando o lançamento do
+    // dia já foi feito; notificações de contas/faturas ficam intocadas.
+    await Promise.all(
+      existentes
+        .filter((id) => !idsDesejados.has(id))
+        .map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {}))
+    );
+
+    const aindaAgendados = new Set(existentes.filter((id) => idsDesejados.has(id)));
+    for (const planejado of planejados) {
+      if (aindaAgendados.has(planejado.id)) continue;
+
+      const mensagem = await obterProximaMensagem({
+        streak: opts.streak,
+        diasInativo: opts.diasInativo + planejado.diasDesdeHoje,
+        diaSemana: planejado.quando.getDay(),
+      });
+
+      try {
+        await Notifications.scheduleNotificationAsync({
+          identifier: planejado.id,
+          content: {
+            title: mensagem.titulo,
+            body: mensagem.texto.replace('{streak}', String(opts.streak)),
+            data: {
+              tipo: 'habito-diario',
+              mensagemId: mensagem.id,
+            },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: planejado.quando,
+            channelId: CHANNEL_ID,
+          },
+        });
+      } catch {
+        // A próxima abertura da Home tenta completar a ocorrência que faltou.
+      }
+    }
+
+    await AsyncStorage.setItem(CHAVE_HORARIO_HABITO, chaveHorario).catch(() => {});
+  });
 }
 
 export async function cancelDailyHabitReminder(): Promise<void> {
-  const Notifications = getNotifications();
-  if (!Notifications) return;
-  await Notifications.cancelScheduledNotificationAsync(ID_HABITO_DIARIO).catch(() => {});
+  return enfileirarHabito(async () => {
+    const Notifications = getNotifications();
+    if (!Notifications) return;
+    await cancelarHabitoInterno(Notifications, true);
+  });
 }

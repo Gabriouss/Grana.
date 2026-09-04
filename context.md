@@ -1654,3 +1654,41 @@ como `'grande'`.
 - **Cards "Jornada" e "Fechamento do mês"** (item 4): depende do bento,
   que já existe em código — pode começar assim que a QA confirmar que o
   bento está correto.
+
+## Sessão de 04/09/2026 — notificações humanizadas contínuas no Android
+
+O autor reportou que os lembretes humanizados no tom de voz do Duolingo não
+estavam aparecendo, embora os lembretes de contas fossem entregues e agrupados
+normalmente pelo Android. O catálogo já existia e foi preservado por inteiro:
+48 mensagens em `lib/notification-messages.ts`, com seleção por sequência,
+inatividade e fim de semana e bloqueio das 10 últimas escolhas.
+
+**Causa real:** `scheduleDailyHabitReminder` mantinha um único id
+`habito-diario` e um trigger `DATE`, que dispara uma vez só. A Home o
+reagendava quando ganhava foco, mas depois do primeiro disparo não restava
+nenhum lembrete futuro. Não era falta do sistema de mensagens; era o
+despachante one-shot.
+
+**Correção:** `lib/notification-schedule.ts` passou a planejar sete ocorrências
+avulsas futuras, cada uma com id datado. `lib/notifications.ts` preserva as que
+já estão pendentes e completa apenas o fim da janela, para a rotação não gastar
+mensagens em reagendamentos descartados. Se já houve lançamento no dia, só a
+ocorrência daquele dia é retirada; contas e faturas ficam intocadas. Alterar o
+horário no Perfil substitui a janela inteira. As operações são serializadas
+para duas chamadas concorrentes da Home não brigarem entre si.
+
+No Android, o canal agora é criado antes de `requestPermissionsAsync` (ordem
+necessária a partir do Android 13) e recebeu o nome abrangente "Lembretes do
+Grana.". O bloqueio total do `expo-notifications` no Expo Go Android foi
+removido: o SDK 57 restringe push remoto nesse ambiente, não as notificações
+locais; o `require` continua adiado e protegido para nunca derrubar a raiz.
+
+Regressão adicionada em `__tests__/corpus-notificacoes.ts`: 10/10 checagens
+para janela de sete dias, silêncio após lançamento, horário, ids únicos e
+virada de ano. `npx tsc --noEmit` limpo e `npm run test:parser` completo passou,
+incluindo 318/318 guardas do design system e 37/37 pares sincronizados.
+
+Nenhum build EAS foi disparado — continua exigindo pedido explícito do autor.
+As alterações paralelas já existentes em `components/MolduraNavegador.tsx`,
+`components/PainelWebDestaque.tsx` e `.tmp.driveupload/` foram preservadas e
+deixadas fora desta correção.
