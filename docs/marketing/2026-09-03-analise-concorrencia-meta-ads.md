@@ -174,16 +174,64 @@ anúncios ativos da página](https://www.facebook.com/ads/library/?active_status
 
 ---
 
+## 4. Minhas Finanças Organizadas (produtor substituto, não app)
+
+Pedido do autor: avaliar os anúncios da página
+[facebook.com/profile.php?id=61566849653837](https://www.facebook.com/profile.php?id=61566849653837).
+Mesmo perfil da Planilha Premium — infoproduto, não app —, mas com uma
+diferença estrutural: **é um portfólio de 3 planilhas distintas rodando
+sob a mesma página**, não um produto só. Duas delas nem são pra
+finanças pessoais.
+
+**Página:** facebook.com/61566849653837 · **Ver na Biblioteca:** [busca
+que isola a página](https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=BR&q=Minhas%20Finan%C3%A7as%20Organizadas&search_type=keyword_unordered&media_type=all)
+(a Biblioteca não abre a listagem completa da página por link direto sem
+antes buscar por nome — ao clicar, o link acima já filtra e todo
+resultado com esse nome de anunciante é dela)
+
+| Produto anunciado | Público | Início do criativo mais antigo | Preço na copy | Link direto |
+|---|---|---|---|---|
+| "Minhas Finanças Organizadas" (planilha de gastos pessoais) | Pessoa física | 29/05/2026 | Não exposto | [ver](https://www.facebook.com/ads/library/?id=987408040658368) |
+| "Planilha de Precificação Inteligente" / "Precificação Lucrativa" | MEI, autônomo, pequena empresa | 24/05/2026 (3 versões em paralelo) | Não exposto | [ver](https://www.facebook.com/ads/library/?id=951533177716077) |
+| "Planilha de Controle Financeiro Empresarial" ("Minha Empresa Organizada") | Pequeno negócio | 29/05/2026 (várias versões) | **R$ 10** | [ver](https://www.facebook.com/ads/library/?id=998208433958801) |
+
+### O que chama atenção
+
+- **Não é um concorrente do Grana. — é o mesmo padrão da Planilha
+  Premium, mas operado como portfólio**: uma página, três planilhas, três
+  públicos diferentes (pessoa física, MEI, pequena empresa). Cheira a
+  produtor de infoproduto testando qual oferta financeira converte melhor,
+  não a uma marca com identidade de produto única.
+- **Os três criativos mais antigos começaram na mesma janela de 5 dias**
+  (24 a 29/05/2026) — sugere lançamento simultâneo das três ofertas, não
+  crescimento orgânico de uma pra outra.
+- **Preço de R$10 exposto na oferta empresarial** é o único ponto de preço
+  visível nos três — ordem de grandeza muito abaixo de qualquer
+  assinatura mensal (a do Grana. inclusive), reforçando que planilha
+  estática compete por **impulso de compra**, não por avaliação de
+  assinatura recorrente.
+- **Mesma ausência de automação** da Planilha Premium: "Dashboard
+  Gerencial", "Fluxo de caixa e DRE", "Conciliação Bancária" são todos
+  entregues como planilha preenchida manualmente, não sincronizada com
+  banco nem lançada por voz/WhatsApp.
+- **Vídeo aulas + bônus** aparece como reforço de valor percebido no
+  produto de R$10 — tática de precificação de infoproduto (ancorar o
+  preço baixo com "bônus" que custaria mais separado), não relevante pro
+  modelo de assinatura do Grana., mas mostra o padrão de oferta que esse
+  público já está acostumado a ver.
+
+---
+
 ## Comparativo direto
 
-| | Grana. | Pierre Finance | Dinzo | Planilha Premium |
-|---|---|---|---|---|
-| Preço | R$ 9,90/mês, sem trial | Free + trial 7d no Pro | ~R$ 21/mês, garantia 7d | Ticket único (não exposto no anúncio) |
-| Conecta banco (Open Finance) | Não, nunca | Sim | Sim | Não (planilha manual) |
-| Lançamento por voz/texto | Sim (voz, WhatsApp, QR nota) | Não (foco é sincronização automática) | Sim (WhatsApp) | Não (preenchimento manual) |
-| Assistente de IA nomeado | Granabô | — | Dino | — |
-| Formato de anúncio dominante | — (sem campanha ativa) | Vídeo UGC/depoimento | Estático + vídeo produto | Vídeo + funil de quiz |
-| Volume de criativo em teste | — | Muito alto (20+) | Alto (14+, foco só Meta) | Baixo (4), mas o mais antigo em veiculação contínua |
+| | Grana. | Pierre Finance | Dinzo | Planilha Premium | Minhas Finanças Organizadas |
+|---|---|---|---|---|---|
+| Preço | R$ 9,90/mês, sem trial | Free + trial 7d no Pro | ~R$ 21/mês, garantia 7d | Ticket único (não exposto) | Ticket único, R$10 num dos 3 produtos |
+| Conecta banco (Open Finance) | Não, nunca | Sim | Sim | Não (planilha manual) | Não (planilha manual) |
+| Lançamento por voz/texto | Sim (voz, WhatsApp, QR nota) | Não (foco é sincronização automática) | Sim (WhatsApp) | Não (preenchimento manual) | Não (preenchimento manual) |
+| Assistente de IA nomeado | Granabô | — | Dino | — | — |
+| Formato de anúncio dominante | — (sem campanha ativa) | Vídeo UGC/depoimento | Estático + vídeo produto | Vídeo + funil de quiz | Vídeo (mockup de planilha) |
+| Volume de criativo em teste | — | Muito alto (20+) | Alto (14+, foco só Meta) | Baixo (4), mas o mais antigo em veiculação contínua | Baixo (3 grupos), mas 3 ofertas/públicos em paralelo |
 
 ## O que isso sugere pro Grana.
 
