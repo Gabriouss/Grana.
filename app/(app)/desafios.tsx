@@ -563,15 +563,22 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     gap: spacing.md,
   },
+  /* `flexWrap` + `flexShrink` no título: "Composição do seu Score" + ícone
+     colidia com "210/1000 pts" quando os dois juntos não cabiam numa linha
+     só — nenhum dos dois lados podia ceder espaço nem quebrar. Achado num
+     print da landing que mostrava o card real do app. */
   cardHeadRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    rowGap: 4,
   },
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.icone,
+    flexShrink: 1,
   },
   indicadorItem: { gap: spacing.fio },
   indicadorValor: { color: theme.ink, fontSize: type.apoio,
