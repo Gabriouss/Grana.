@@ -1232,3 +1232,143 @@ consequências honestas:
 - Contraste foi calculado sobre tokens, não medido em pixel renderizado.
 - Nenhuma verificação de comportamento em aparelho: gesto, jank, recomposição e
   posture de dobrável seguem sem evidência.
+
+---
+
+Auditoria: 04 de setembro de 2026 — recorte de **margem e entrelinha**
+(`/impeccable audit margem e espaçamento entre linhas`)
+Escopo: as 7 telas de `app/(app)/` (Operate) e a landing `app/index.tsx`
+(Persuade), medidas separadamente porque a régua de cada uma é diferente
+Método: analisador percorrendo os blocos `StyleSheet.create`, classificando
+cada estilo com `fontSize` pela forma da entrelinha e cada valor de
+padding/margin/gap por origem (token ou número cru). Cada achado foi
+verificado no código antes de entrar aqui.
+
+| Eixo | App (Operate) | Landing (Persuade) |
+|---|---|---|
+| Entrelinha via `lh()` | 117/145 (81%) | 0/37 (0%) |
+| Entrelinha ausente | 25 — **todas exclusão deliberada** | 12 |
+| Espaço vindo de token | 95/238 (40%) | 89/93 (**96%**) |
+
+As duas superfícies são a imagem espelhada uma da outra: **o app resolveu a
+entrelinha e não resolveu a margem; a landing resolveu a margem e não usa o
+helper de entrelinha.**
+
+## O que NÃO é achado (verificado, para não voltar)
+
+**Os 25 estilos do app sem `lineHeight` estão certos.** Conferidos um a um:
+são todos campo de digitação (`descInput`, `amountInput`, `searchInput`,
+`reauthInput`, `input`) ou rótulo de botão (`saveBtnText`, `addCardBtnText`,
+`payInvoiceBtnText`, `smartActionText`, …) — exatamente as duas exclusões que
+as sessões de 02/09 registraram de propósito: `lineHeight` em `TextInput`
+corta o texto verticalmente no Android, e mudar a caixa de texto de um rótulo
+muda a geometria do botão. **A cobertura de entrelinha do app é, na prática,
+100% do que deveria tê-la.**
+
+## Achados
+
+### [P2] Três entrelinhas em pixel que não acompanham a escala de tipo
+
+- **Local**: `desafios.tsx:506` (`masteryDesc`, `lineHeight: 15`),
+  `desafios.tsx:551` (`levelHint`, `14`), `credito.tsx:1321`
+  (`emptyCardsSub`, `16`)
+- **Impacto**: são os únicos três que escapam do `lh()`, e o problema não é
+  estética — é que `type` é `Platform.select`: `type.legenda` vale 12 no
+  Android e **14 na web**. Um `lineHeight` fixo em 15 dá 1,25× no Android e
+  **1,07× na web**, com as linhas quase se encostando. O `lh()` existe
+  precisamente para a entrelinha seguir o corpo em cada plataforma.
+- **Recomendação**: `lh(type.legenda, 'apoio')` e `lh(type.micro, 'apoio')`.
+- **Comando sugerido**: `/impeccable typeset`
+
+### [P2] `spacing` não tem o degrau fino que o app usa 86 vezes
+
+- **Local**: as 7 telas de `app/(app)/`
+- **Impacto**: 101 valores de espaço estão fora da escala — mas não são 101
+  decisões avulsas. **86 deles são quatro valores só**: `6px` (×39), `2px`
+  (×23), `10px` (×16) e `14px` (×8). E o papel é consistente, conferido no
+  código: **6px é sempre o vão entre um ícone e o texto ao lado**
+  (`cardTopRow.gap`, `titleWithIcon.gap`, `amountRow.gap`); **2px é sempre o
+  fio entre um rótulo e o sub-rótulo logo abaixo** (`rowSub.marginTop`,
+  `cardCat.marginTop`, `cardIdentidade.gap`). Um valor repetido 39 vezes com
+  o mesmo papel não é número solto: é um token que ninguém nomeou. A causa é
+  a escala — `spacing` salta 4 → 8 → 12 → 16 e não tem nada abaixo de 4 nem
+  entre os degraus, então todo ajuste fino escapa do sistema por construção.
+- **Recomendação**: nomear o degrau que já existe na prática (algo como
+  `spacing.hairline: 2` e `spacing.icone: 6`) em vez de trocar número por
+  número. Sem isso, o próximo componente inventa `5` ou `7` e ninguém percebe.
+- **Comando sugerido**: `/impeccable extract`
+
+### [P2] `perfil.tsx` é a única tela fora do `screenRhythm`
+
+- **Local**: `perfil.tsx:1098` — `content: { padding: spacing.xl, gap: spacing.lg }`
+- **Impacto**: as outras seis telas usam `content: { padding:
+  screenRhythm.padding, gap: screenRhythm.gap }`, ou seja **16/12**. O Perfil
+  usa **20/16** — um degrau acima nos dois eixos. É visível ao trocar de aba:
+  o corpo da tela desloca. O `screenRhythm` nasceu exatamente para matar esse
+  sintoma ("o mesmo seletor de mês pousava a distâncias diferentes do
+  cabeçalho dependendo da aba", diz o comentário em `lib/theme.ts`), e o
+  Perfil ficou de fora. Consta como P3 em três auditorias seguidas sem ser
+  corrigido; aqui vai com os números exatos.
+- **Recomendação**: trocar por `screenRhythm`, conferindo depois se algum
+  bloco do Perfil dependia dos 4px extras.
+- **Comando sugerido**: `/impeccable layout`
+
+### [P3] 53 valores que SÃO a escala, escritos à mão
+
+- **Local**: as 7 telas — `4` (×17), `8` (×27), `12` (×8), `16` (×1)
+- **Impacto**: nenhum visual: são `spacing.xs`, `sm`, `md` e `lg` escritos
+  como número. O custo é de manutenção — mexer na escala não alcança esses
+  53 pontos, e é assim que uma escala vira decoração.
+- **Comando sugerido**: `/impeccable extract`
+
+### [P3] Cerca de 11 valores realmente avulsos
+
+- **Local**: `1`, `3`, `5`, `9`, `11`, `13` px, 1 a 4 usos cada — com
+  destaque para `perfil.tsx` (`rowColuna.paddingVertical: 13`,
+  `nomeSalvar.paddingVertical: 14`) e `emptyText.marginTop: 30` repetido em
+  `lancamentos` e `contas` (a escala tem 28).
+- **Impacto**: baixo isoladamente; é o resíduo depois de nomear o degrau
+  fino do P2 acima. Vale resolver junto, não antes.
+- **Comando sugerido**: `/impeccable layout`
+
+### [P3] A landing tem um vocabulário de entrelinha paralelo
+
+- **Local**: `app/index.tsx` — 25 estilos com `lineHeight` escrito como
+  multiplicação inline (`type.corpo * 1.2`, `type.nota * 1.4`,
+  `type.destaque * 1.5`)
+- **Impacto**: os valores estão certos hoje — `1.4` é literalmente
+  `leading.apoio`, `1.5` é uma entrelinha de corpo de marketing mais solta de
+  propósito, e `1.2` só aparece em rótulo de uma linha (CTA, nav). O problema
+  é de ligação, não de número: mexer em `leading` no `lib/theme.ts` não
+  alcança a landing, e as duas escalas divergem no primeiro ajuste.
+- **Comando sugerido**: `/impeccable typeset`
+
+## Pontos positivos
+
+- **A landing tira 96% do espaço de token** (89 de 93 valores). É o padrão
+  que as telas do app deveriam alcançar — e prova que a disciplina existe no
+  projeto, só não chegou igual nos dois lados.
+- **A entrelinha do app está resolvida onde importa**: 117 usos do `lh()`, e
+  as 25 ausências são as exclusões certas, não esquecimento. O trabalho das
+  sessões de 02/09 se sustentou.
+- **`screenRhythm` pegou em 6 das 7 telas.** Um token criado para matar um
+  sintoma específico e que de fato foi adotado é raro.
+- **Os degraus inventados são consistentes.** Que 6px signifique sempre a
+  mesma coisa em 39 lugares, sem token que obrigue, diz mais sobre o cuidado
+  de quem escreveu do que sobre a falta da escala.
+
+## Ações recomendadas
+
+1. **[P2] `/impeccable extract`** — nomear `2` e `6` na escala e trocar os 53
+   números que já são token. As duas coisas no mesmo passe, porque a segunda
+   sem a primeira empurra o problema pra frente.
+2. **[P2] `/impeccable layout`** — `perfil.tsx` no `screenRhythm`.
+3. **[P2] `/impeccable typeset`** — os três `lineHeight` em pixel.
+4. **[P3] `/impeccable typeset`** — ligar a entrelinha da landing ao `lh()`.
+
+## Limites desta medição
+
+Análise de TEXTO dos blocos `StyleSheet.create`, não de árvore de sintaxe.
+Estilo montado fora do `StyleSheet.create`, espalhado por spread ou aplicado
+inline no JSX não entra na conta — os percentuais dimensionam e localizam, não
+provam cobertura absoluta. Nada foi visto renderizado nesta rodada.
