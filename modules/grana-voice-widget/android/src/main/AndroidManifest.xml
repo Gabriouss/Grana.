@@ -29,6 +29,56 @@
         android:resource="@xml/grana_voice_widget_info" />
     </receiver>
 
+    <receiver
+      android:name="com.gabriouss.grana.voicewidget.LivreParaGastarWidgetProvider"
+      android:label="@string/grana_livre_widget_rotulo"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="android.intent.action.DATE_CHANGED" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.LOCALE_CHANGED" />
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/grana_livre_widget_info" />
+    </receiver>
+
+    <receiver
+      android:name="com.gabriouss.grana.voicewidget.CentralLancamentoWidgetProvider"
+      android:label="@string/grana_central_widget_rotulo"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="android.intent.action.LOCALE_CHANGED" />
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/grana_central_widget_info" />
+    </receiver>
+
+    <receiver
+      android:name="com.gabriouss.grana.voicewidget.ProximoCompromissoWidgetProvider"
+      android:label="@string/grana_compromisso_widget_rotulo"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="android.intent.action.DATE_CHANGED" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.LOCALE_CHANGED" />
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/grana_compromisso_widget_info" />
+    </receiver>
+
+    <receiver
+      android:name="com.gabriouss.grana.voicewidget.CofrinhoWidgetProvider"
+      android:label="@string/grana_cofrinho_widget_rotulo"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="android.intent.action.DATE_CHANGED" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.LOCALE_CHANGED" />
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/grana_cofrinho_widget_info" />
+    </receiver>
+
     <service
       android:name="com.gabriouss.grana.voicewidget.GranaVoiceCaptureService"
       android:foregroundServiceType="microphone"

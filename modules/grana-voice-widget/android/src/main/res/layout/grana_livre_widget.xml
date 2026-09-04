@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/grana_livre_raiz"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/grana_widget_card"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:padding="12dp">
+
+  <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/grana_livre_titulo"
+      android:textColor="@color/grana_widget_texto_suave"
+      android:textSize="11sp"
+      android:maxLines="1" />
+
+  <TextView
+      android:id="@+id/grana_livre_valor"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:text="R$ 42,00/dia"
+      android:textColor="@color/grana_widget_texto"
+      android:textSize="20sp"
+      android:textStyle="bold"
+      android:maxLines="1"
+      android:ellipsize="end" />
+
+  <TextView
+      android:id="@+id/grana_livre_apoio"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="1dp"
+      android:text="R$ 840,00 no total · 20 dias"
+      android:textColor="@color/grana_widget_texto_suave"
+      android:textSize="10sp"
+      android:maxLines="1"
+      android:ellipsize="end" />
+
+  <TextView
+      android:id="@+id/grana_livre_atualizado"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:text="Atualizado agora"
+      android:textColor="@color/grana_widget_texto_suave"
+      android:textSize="8sp"
+      android:maxLines="1" />
+</LinearLayout>

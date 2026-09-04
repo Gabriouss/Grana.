@@ -11,4 +11,37 @@
   <string name="grana_voice_gravando_texto">Fale o lançamento. Toque no widget para encerrar.</string>
   <string name="grana_voice_encerrar">Encerrar</string>
   <string name="grana_voice_cancelar">Cancelar</string>
+
+  <string name="grana_widget_sem_dados">Ainda sem dados</string>
+  <string name="grana_widget_abrir_atualizar">Abra o Grana. para atualizar</string>
+
+  <string name="grana_livre_widget_rotulo">Grana. — Livre para gastar</string>
+  <string name="grana_livre_widget_descricao">Veja quanto está livre por dia e no mês.</string>
+  <string name="grana_livre_titulo">Livre para gastar</string>
+  <string name="grana_livre_sem_saldo">Sem saldo disponível</string>
+
+  <string name="grana_central_widget_rotulo">Grana. — Central de lançamento</string>
+  <string name="grana_central_widget_descricao">Abra rapidamente Entrada, Débito e Pix, Crédito ou Boleto.</string>
+  <string name="grana_central_titulo">Novo lançamento</string>
+  <string name="grana_central_entrada">Entrada</string>
+  <string name="grana_central_saida">Débito/Pix</string>
+  <string name="grana_central_credito">Crédito</string>
+  <string name="grana_central_boleto">Boleto</string>
+
+  <string name="grana_compromisso_widget_rotulo">Grana. — Próximo compromisso</string>
+  <string name="grana_compromisso_widget_descricao">Veja a próxima conta pendente ou atrasada.</string>
+  <string name="grana_compromisso_titulo">Próximo compromisso</string>
+  <string name="grana_compromisso_proximo">A VENCER</string>
+  <string name="grana_compromisso_atrasado">ATRASADO</string>
+  <string name="grana_compromisso_em_dia">EM DIA</string>
+  <string name="grana_compromisso_nada">Nada pendente</string>
+  <string name="grana_compromisso_abrir">Toque para ver suas contas</string>
+  <string name="grana_compromisso_recorrente">↻ recorrente</string>
+
+  <string name="grana_cofrinho_widget_rotulo">Grana. — Cofrinho</string>
+  <string name="grana_cofrinho_widget_descricao">Acompanhe uma meta e abra o depósito com um toque.</string>
+  <string name="grana_cofrinho_titulo">Cofrinho em foco</string>
+  <string name="grana_cofrinho_criar">Crie seu primeiro cofrinho</string>
+  <string name="grana_cofrinho_criar_apoio">Toque para começar uma meta</string>
+  <string name="grana_cofrinho_concluido">Concluído ✓</string>
 </resources>

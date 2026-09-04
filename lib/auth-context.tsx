@@ -7,6 +7,7 @@ import { supabase } from './supabase';
 import { traduzirErroAuth, type ErroAuth } from './auth-errors';
 import { vincularAssinaturasPendentes } from './assinatura';
 import { removerPushHabitoAntesDeSair } from './push-notifications';
+import { limparSnapshotWidgets } from './widgets-home-sync';
 
 type AuthContextValue = {
   session: Session | null;
@@ -172,6 +173,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return { error: traduzirErroAuth(error), needsEmailConfirmation: !error && !data.session };
     },
     async signOut() {
+      /* Some da tela inicial antes de a sessão ser removida: nenhuma conta
+         seguinte pode herdar o saldo, boleto ou cofrinho da anterior. */
+      limparSnapshotWidgets();
       try {
         await removerPushHabitoAntesDeSair();
       } catch (err) {

@@ -63,5 +63,45 @@ class GranaVoiceWidgetModule : Module() {
         false
       }
     }
+
+    Function("quantidadeInstaladaPorTipo") { tipo: String ->
+      WidgetRegistry.quantidade(context, tipo)
+    }
+
+    Function("fixarPorTipo") { tipo: String ->
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return@Function false
+      val manager = AppWidgetManager.getInstance(context) ?: return@Function false
+      if (!manager.isRequestPinAppWidgetSupported) return@Function false
+      val classe = WidgetRegistry.classe(tipo) ?: return@Function false
+      try {
+        manager.requestPinAppWidget(ComponentName(context, classe), null, null)
+      } catch (_: Exception) {
+        false
+      }
+    }
+
+    Function("atualizarSnapshot") { json: String ->
+      WidgetSnapshotStore.salvar(context, json)
+      WidgetRegistry.redesenharTodos(context)
+    }
+
+    Function("limparSnapshot") {
+      WidgetSnapshotStore.limpar(context)
+      WidgetRegistry.redesenharTodos(context)
+    }
+
+    Function("garantirUsuario") { userId: String ->
+      WidgetSnapshotStore.garantirUsuario(context, userId)
+      WidgetRegistry.redesenharTodos(context)
+    }
+
+    Function("definirPrivacidade") { hidden: Boolean ->
+      WidgetSnapshotStore.definirPrivacidade(context, hidden)
+      WidgetRegistry.redesenharTodos(context)
+    }
+
+    Function("redesenharTodos") {
+      WidgetRegistry.redesenharTodos(context)
+    }
   }
 }

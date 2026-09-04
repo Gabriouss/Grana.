@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { buscarTodasAsPaginas } from './paginacao';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
+import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
   Bill,
@@ -134,6 +135,8 @@ export async function addTransaction(input: {
     checarLimiteCartao(input.card_id).catch(() => {});
   }
 
+  notificarDadosDosWidgetsAlterados();
+
   return data;
 }
 
@@ -213,6 +216,7 @@ export async function payCardInvoice(input: {
       p_wallet_id: input.wallet_id,
     });
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
   return data as unknown as CreditCardInvoicePayment;
 }
 
@@ -224,6 +228,7 @@ export async function payCardInvoice(input: {
 export async function reopenCardInvoice(invoice: CreditCardInvoicePayment): Promise<void> {
   const { error } = await supabase.rpc('reabrir_fatura_cartao', { p_invoice_id: invoice.id });
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
 }
 
 /* O filtro por user_id é redundante com a RLS — e é de propósito. Se uma
@@ -233,6 +238,7 @@ export async function updateTransaction(id: string, changes: Partial<Transaction
   const user_id = await currentUserId();
   const { error } = await supabase.from('transactions').update(changes).eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
 }
 
 export async function addTransactionsBatch(
@@ -310,6 +316,7 @@ export async function addTransactionsBatch(
     onProgress?.(Math.min(inicio + TAMANHO_LOTE, rows.length), rows.length);
   }
 
+  if (inseridos > 0) notificarDadosDosWidgetsAlterados();
   return { inseridos, ignorados };
 }
 
@@ -349,13 +356,16 @@ export async function criarOcorrenciasRecorrentes(faltantes: OcorrenciaFaltante[
     })
     .select('id');
   if (error) throw error;
-  return data?.length ?? 0;
+  const criadas = data?.length ?? 0;
+  if (criadas > 0) notificarDadosDosWidgetsAlterados();
+  return criadas;
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
 }
 
 /**
@@ -407,6 +417,8 @@ export async function addInstallmentPurchase(input: {
   if (input.card_id) {
     checarLimiteCartao(input.card_id).catch(() => {});
   }
+
+  notificarDadosDosWidgetsAlterados();
 
   return rows;
 }
@@ -551,6 +563,7 @@ export async function addBill(input: {
     .select()
     .single();
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
   return data;
 }
 
@@ -558,6 +571,7 @@ export async function updateBill(id: string, changes: Partial<Bill>): Promise<vo
   const user_id = await currentUserId();
   const { error } = await supabase.from('bills').update(changes).eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
 }
 
 export async function setBillStatus(id: string, status: BillStatus): Promise<void> {
@@ -577,6 +591,7 @@ export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
     p_paid_on: paidOn,
   });
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
   return data as unknown as Bill;
 }
 
@@ -588,6 +603,7 @@ export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
 export async function reopenBill(bill: Bill): Promise<Bill> {
   const { data, error } = await supabase.rpc('reabrir_conta', { p_bill_id: bill.id });
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
   return data as unknown as Bill;
 }
 
@@ -595,6 +611,7 @@ export async function deleteBill(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('bills').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
 }
 
 /* ---- orçamento por categoria ---- */

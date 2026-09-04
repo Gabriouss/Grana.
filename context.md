@@ -2040,6 +2040,38 @@ por sete segundos observou duas passagens completas; ao retirar o cursor, a
 camada animada foi desmontada (`0` elementos). `npx tsc --noEmit` e
 `git diff --check` passaram.
 
-Também ficou aprovada como direção de produto, ainda sem implementação nesta
-sessão, a família de widgets Android: voz 1x1; Livre para Gastar 2x1; central
+Também ficou aprovada como direção de produto, ainda sem implementação naquela
+etapa, a família de widgets Android: voz 1x1; Livre para Gastar 2x1; central
 de lançamento 2x2; próximo compromisso 2x2; e cofrinho 2x1.
+
+## Sessão de 04/09/2026 — família de widgets Android implementada
+
+A direção acima foi implementada conforme a especificação aprovada em
+`docs/superpowers/specs/2026-09-04-widgets-android-home-design.md`. O widget de
+voz 1x1 foi preservado e o módulo local agora também publica quatro providers:
+
+- **Livre para gastar 2x1** — livre por dia, total e dias restantes;
+- **Central de lançamentos 2x2** — Entrada, Débito/Pix, Crédito e Boleto;
+- **Próximo compromisso 2x2** — primeiro boleto pendente/atrasado;
+- **Cofrinho 2x1** — meta em foco, valores, percentual e progresso.
+
+Os informativos não abrem cliente Supabase no launcher. O React Native monta
+um snapshot mínimo, versionado e cifrado em AES/GCM com chave não exportável do
+Android Keystore. O snapshot é atualizado no login, na volta ao primeiro plano
+e depois de mutações de transação, boleto ou meta; falha de uma fonte preserva
+o último conjunto coerente. Logout limpa os valores antes de remover a sessão,
+troca de conta invalida buscas atrasadas e o modo privacidade mascara valores
+imediatamente, mesmo sem rede.
+
+Os toques usam deep links e sempre voltam aos fluxos existentes do app. Apenas
+o widget de voz movimenta dinheiro sem abrir interface; os quatro widgets
+novos só abrem telas/modais para confirmação. O Perfil ganhou uma seção com os
+cinco widgets, contagem instalada, pinning quando o launcher suporta e instrução
+manual quando não suporta.
+
+**Verificações locais:** `npx tsc --noEmit` limpo; `npm run test:parser` 100%,
+incluindo 23/23 verificações novas de snapshot/seleção/deep links; 24/24 XMLs
+Android bem formados; todas as referências `R.*` do Kotlin e referências entre
+XMLs resolvidas. O compile real de Kotlin/recursos/manifest fica a cargo do
+workflow `.github/workflows/android.yml` após o push. Nenhum build EAS foi
+disparado e `app.json` permanece em 1.4.3.

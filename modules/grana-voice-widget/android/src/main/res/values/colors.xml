@@ -9,4 +9,11 @@
   <!-- theme.danger. Vale só para "não dá pra gravar", nunca para gasto: no
        Grana. saída de dinheiro é ciano, e vermelho existe só para erro. -->
   <color name="grana_voice_atencao">#E08A7D</color>
+  <color name="grana_widget_superficie">#0B2D35</color>
+  <color name="grana_widget_superficie_alta">#123B44</color>
+  <color name="grana_widget_regra">#2A5660</color>
+  <color name="grana_widget_texto">#E8F3F1</color>
+  <color name="grana_widget_texto_suave">#A7C0C2</color>
+  <color name="grana_widget_menta">#7BD8C0</color>
+  <color name="grana_widget_perigo">#E08A7D</color>
 </resources>

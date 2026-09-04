@@ -24,6 +24,7 @@ import UpdateBanner from '@/components/UpdateBanner';
 import NovidadesModal from '@/components/NovidadesModal';
 import AvisoFlagModal from '@/components/AvisoFlagModal';
 import RespostaVozWidget from '@/components/RespostaVozWidget';
+import SincronizadorWidgetsHome from '@/components/SincronizadorWidgetsHome';
 import { carregarNotifPrefs } from '@/lib/notifications';
 import { observarTrocaDeTokenPush, sincronizarPushHabito } from '@/lib/push-notifications';
 // Registra o handler de notificações locais e remotas assim que o app abre.
@@ -206,6 +207,8 @@ function RootNavigator() {
           fala criou; um lançamento que o widget não salvou sozinho abre a
           revisão com a transcrição pronta. */}
       {session && <RespostaVozWidget />}
+      {/* Snapshot mínimo e cifrado usado pelos widgets informativos Android. */}
+      <SincronizadorWidgetsHome />
       <Stack screenOptions={{ headerShown: false }}>
         {/* O link de recuperação autentica de verdade — sem este guard a
             pessoa cairia direto na Início, logada, com a senha antiga (a que

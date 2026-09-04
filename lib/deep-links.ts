@@ -11,6 +11,11 @@
  *   grana://add-tx?amount=50,00&desc=Almoco&type=out&category=Alimentacao
  *   grana://scan-qr
  *   grana://safe-to-spend
+ *   grana://add-credit
+ *   grana://add-bill
+ *   grana://bills
+ *   grana://goals
+ *   grana://deposit-goal?goalId=<uuid>
  *
  * Este módulo só INTERPRETA a URL. Quem navega é app/(app)/_layout.tsx, e quem
  * executa a ação é a Home — separado assim porque o parser é lógica pura e
@@ -20,7 +25,12 @@
 export type AcaoDeepLink =
   | { tipo: 'add-tx'; amount: string | null; desc: string | null; txType: 'in' | 'out'; category: string | null }
   | { tipo: 'scan-qr' }
-  | { tipo: 'safe-to-spend' };
+  | { tipo: 'safe-to-spend' }
+  | { tipo: 'add-credit' }
+  | { tipo: 'add-bill' }
+  | { tipo: 'bills' }
+  | { tipo: 'goals' }
+  | { tipo: 'deposit-goal'; goalId: string };
 
 /** Aceita 'in'/'out' em qualquer caixa; qualquer outra coisa vira 'out' (o caso de longe mais comum). */
 function normalizarTipo(bruto: string | null): 'in' | 'out' {
@@ -60,6 +70,18 @@ export function parseDeepLink(url: string): AcaoDeepLink | null {
       return { tipo: 'scan-qr' };
     case 'safe-to-spend':
       return { tipo: 'safe-to-spend' };
+    case 'add-credit':
+      return { tipo: 'add-credit' };
+    case 'add-bill':
+      return { tipo: 'add-bill' };
+    case 'bills':
+      return { tipo: 'bills' };
+    case 'goals':
+      return { tipo: 'goals' };
+    case 'deposit-goal': {
+      const goalId = ler('goalId');
+      return goalId ? { tipo: 'deposit-goal', goalId } : null;
+    }
     default:
       return null;
   }
@@ -74,5 +96,6 @@ export function acaoParaParams(acao: AcaoDeepLink): Record<string, string> {
     if (acao.category) p.category = acao.category;
     return p;
   }
+  if (acao.tipo === 'deposit-goal') return { acao: acao.tipo, goalId: acao.goalId };
   return { acao: acao.tipo };
 }

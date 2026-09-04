@@ -43,7 +43,8 @@ async function executarTarefa(payload: Payload) {
       return;
     }
 
-    await processar(caminho);
+    const salvou = await processar(caminho);
+    if (salvou) await sincronizarResumoDepoisDaVoz();
   } catch {
     const { notificarFalha } = await import('./widget-voz-notificacoes');
     await notificarFalha('erro_interno');
@@ -66,7 +67,7 @@ async function apagarArquivo(caminho: string) {
   }
 }
 
-async function processar(caminho: string) {
+async function processar(caminho: string): Promise<boolean> {
   const [{ transcreverAudio }, notificacoes, heuristics, data] = await Promise.all([
     import('./voz'),
     import('./widget-voz-notificacoes'),
@@ -78,7 +79,7 @@ async function processar(caminho: string) {
   const transcricao = await transcreverAudio(uri, { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' });
   if (!transcricao.ok) {
     await notificacoes.notificarFalha(transcricao.codigo);
-    return;
+    return false;
   }
 
   const texto = transcricao.transcript;
@@ -88,7 +89,7 @@ async function processar(caminho: string) {
      "não lançou". A pessoa revê no app, com o que foi ouvido já preenchido. */
   if (!valor || valor <= 0) {
     await notificacoes.notificarRevisao('Não encontrei o valor', texto);
-    return;
+    return false;
   }
 
   const extras = await categoriasDaPessoa(data);
@@ -102,7 +103,7 @@ async function processar(caminho: string) {
      cai na revisão: errar pro lado de perguntar é o lado barato. */
   if (categoria.name === 'Outros') {
     await notificacoes.notificarRevisao('Qual categoria?', texto);
-    return;
+    return false;
   }
 
   const tipo = heuristics.guessTypeFromText(texto);
@@ -124,12 +125,11 @@ async function processar(caminho: string) {
       tipo: 'bill',
       ids: [conta.id],
     });
-    return;
+    return true;
   }
 
   if (heuristics.ehIntencaoCredito(texto)) {
-    await lancarNoCredito({ texto, valor, descricao, categoria, heuristics, data, notificacoes });
-    return;
+    return lancarNoCredito({ texto, valor, descricao, categoria, heuristics, data, notificacoes });
   }
 
   const formaPagamento = heuristics.parseFormaPagamento(texto);
@@ -152,6 +152,7 @@ async function processar(caminho: string) {
     tipo: 'transaction',
     ids: [lancamento.id],
   });
+  return true;
 }
 
 async function lancarNoCredito(args: {
@@ -162,7 +163,7 @@ async function lancarNoCredito(args: {
   heuristics: typeof import('./heuristics');
   data: typeof import('./data');
   notificacoes: typeof import('./widget-voz-notificacoes');
-}) {
+}): Promise<boolean> {
   const { texto, valor, descricao, categoria, heuristics, data, notificacoes } = args;
 
   const cartoes = await data.fetchCreditCards();
@@ -171,7 +172,7 @@ async function lancarNoCredito(args: {
      inventar um fato financeiro. */
   if (cartoes.length === 0) {
     await notificacoes.notificarRevisao('Nenhum cartão cadastrado', texto);
-    return;
+    return false;
   }
 
   const cartao = heuristics.matchCardByText(texto, cartoes) ?? cartoes[0];
@@ -194,7 +195,7 @@ async function lancarNoCredito(args: {
       tipo: 'transaction',
       ids: criados.map((t) => t.id),
     });
-    return;
+    return true;
   }
 
   const lancamento = await data.addTransaction({
@@ -214,6 +215,24 @@ async function lancarNoCredito(args: {
     tipo: 'transaction',
     ids: [lancamento.id],
   });
+  return true;
+}
+
+async function sincronizarResumoDepoisDaVoz() {
+  try {
+    const [{ supabase }, { sincronizarWidgetsHome }, { default: AsyncStorage }] = await Promise.all([
+      import('./supabase'),
+      import('./widgets-home-sync'),
+      import('@react-native-async-storage/async-storage'),
+    ]);
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    const hidden = (await AsyncStorage.getItem('grana_privacy_hidden')) === '1';
+    await sincronizarWidgetsHome(data.user.id, hidden);
+  } catch {
+    /* O lançamento e o recibo já deram certo. Snapshot é consequência
+       best-effort e será atualizado na próxima abertura do app. */
+  }
 }
 
 async function categoriasDaPessoa(data: typeof import('./data')) {

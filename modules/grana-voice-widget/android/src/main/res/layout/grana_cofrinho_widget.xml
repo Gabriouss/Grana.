@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/grana_cofrinho_raiz"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/grana_widget_card"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:padding="12dp">
+
+  <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/grana_cofrinho_titulo"
+      android:textColor="@color/grana_widget_texto_suave"
+      android:textSize="10sp"
+      android:maxLines="1" />
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:gravity="center_vertical"
+      android:orientation="horizontal">
+    <TextView
+        android:id="@+id/grana_cofrinho_titulo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Reserva"
+        android:textColor="@color/grana_widget_texto"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end" />
+    <TextView
+        android:id="@+id/grana_cofrinho_pct"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="42%"
+        android:textColor="@color/grana_widget_menta"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:maxLines="1" />
+  </LinearLayout>
+
+  <TextView
+      android:id="@+id/grana_cofrinho_valor"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="1dp"
+      android:text="R$ 420,00 de R$ 1.000,00"
+      android:textColor="@color/grana_widget_texto_suave"
+      android:textSize="10sp"
+      android:maxLines="1"
+      android:ellipsize="end" />
+
+  <ProgressBar
+      android:id="@+id/grana_cofrinho_progresso"
+      style="?android:attr/progressBarStyleHorizontal"
+      android:layout_width="match_parent"
+      android:layout_height="4dp"
+      android:layout_marginTop="6dp"
+      android:max="100"
+      android:progress="42"
+      android:progressBackgroundTint="@color/grana_widget_regra"
+      android:progressTint="@color/grana_widget_menta" />
+
+  <TextView
+      android:id="@+id/grana_cofrinho_atualizado"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:text="Atualizado agora"
+      android:textColor="@color/grana_widget_texto_suave"
+      android:textSize="8sp"
+      android:maxLines="1" />
+</LinearLayout>

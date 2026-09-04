@@ -166,6 +166,18 @@ function useAtalhosDeepLink() {
       if (!url) return;
       const acao = parseDeepLink(url);
       if (!acao) return;
+      if (acao.tipo === 'add-credit') {
+        router.push('/(app)/credito?novaCompra=1');
+        return;
+      }
+      if (acao.tipo === 'add-bill') {
+        router.push('/(app)/contas?novaConta=1');
+        return;
+      }
+      if (acao.tipo === 'bills') {
+        router.push('/(app)/contas');
+        return;
+      }
       router.push({ pathname: '/(app)/', params: acaoParaParams(acao) });
     }
 

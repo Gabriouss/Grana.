@@ -1,83 +1,12 @@
 import { ARQUETIPOS, type ArquetipoId } from './diagnostico';
-import type { Bill, Budget, Goal, Transaction } from './types';
+import type { Bill, Budget, Transaction } from './types';
+
+export { calcularSafeToSpend, calcularSaldoAtual } from './safe-to-spend';
+export type { SafeToSpend } from './safe-to-spend';
 
 /**
  * Inteligência e Projeções Preditivas — Épico 2 do PLANO_DE_EVOLUCAO.md.
  */
-
-/* ── Safe-to-Spend ("Livre para gastar por dia") ──────────────────────────── */
-
-export type SafeToSpend = {
-  saldoAtual: number;
-  contasFixasPendentes: number;
-  reservadoEmMetas: number;
-  diasRestantes: number;
-  livreTotal: number;
-  livrePorDia: number;
-};
-
-/**
- * "Saldo atual" — como o Grana. não tem conta bancária vinculada, é a soma
- * de entradas menos saídas DO MÊS (o mesmo mês usado para contas pendentes e
- * dias restantes), não do histórico inteiro. A primeira versão somava todos
- * os lançamentos desde o primeiro registro, o que inflava o "livre para
- * gastar" com meses passados e não batia com o saldo do mês mostrado em
- * Lançamentos — corrigido a pedido do autor, que esperava ver o saldo do mês
- * atual aqui, não um acumulado histórico.
- */
-export function calcularSaldoAtual(transactions: Transaction[], ano: number, mes: number): number {
-  return transactions
-    .filter((t) => {
-      const d = new Date(t.occurred_on + 'T00:00:00');
-      return d.getFullYear() === ano && d.getMonth() === mes;
-    })
-    .reduce((soma, t) => soma + (t.type === 'in' ? Number(t.amount) : -Number(t.amount)), 0);
-}
-
-function diasRestantesNoMes(hoje: Date): number {
-  const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-  return Math.max(1, ultimoDia - hoje.getDate() + 1);
-}
-
-/**
- * Livre/dia = (Saldo Atual − Contas Fixas Pendentes no Mês − Aportes em
- * Metas) / Dias restantes até o fim do mês — fórmula do PLANO_DE_EVOLUCAO.md.
- *
- * "Aportes em Metas" aqui é o total já guardado em TODOS os cofrinhos (não
- * só depósitos deste mês): depósitos em metas não geram uma saída em
- * `transactions` (ver depositToGoal em lib/goals.ts), e não existe histórico
- * de QUANDO cada depósito aconteceu — só o saldo atual de cada cofrinho. Usar
- * o total é a leitura conservadora: nunca mostra como "livre" um dinheiro que
- * a pessoa já decidiu separar para outra coisa, mesmo que tenha sido guardado
- * mês passado.
- */
-export function calcularSafeToSpend(
-  transactions: Transaction[],
-  bills: Bill[],
-  goals: Goal[],
-  hoje: Date = new Date()
-): SafeToSpend {
-  const ano = hoje.getFullYear();
-  const mes = hoje.getMonth();
-
-  const saldoAtual = calcularSaldoAtual(transactions, ano, mes);
-
-  const contasFixasPendentes = bills
-    .filter((b) => b.status === 'due')
-    .filter((b) => {
-      const d = new Date(b.due_date + 'T00:00:00');
-      return d.getFullYear() === ano && d.getMonth() === mes;
-    })
-    .reduce((soma, b) => soma + Number(b.amount), 0);
-
-  const reservadoEmMetas = goals.reduce((soma, g) => soma + Number(g.current_amount), 0);
-
-  const diasRestantes = diasRestantesNoMes(hoje);
-  const livreTotal = Math.max(0, saldoAtual - contasFixasPendentes - reservadoEmMetas);
-  const livrePorDia = livreTotal / diasRestantes;
-
-  return { saldoAtual, contasFixasPendentes, reservadoEmMetas, diasRestantes, livreTotal, livrePorDia };
-}
 
 /* ── Projeção de comprometimento futuro (linha do tempo de 6 meses) ───────── */
 

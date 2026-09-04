@@ -134,6 +134,7 @@ export default function InicioScreen() {
 
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [voiceText, setVoiceText] = useState<string | undefined>(undefined);
+  const [widgetGoalId, setWidgetGoalId] = useState<string | null>(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [wrappedOpen, setWrappedOpen] = useState(false);
@@ -339,6 +340,7 @@ export default function InicioScreen() {
   const params = useLocalSearchParams<{
     acao?: string; amount?: string; desc?: string; type?: string; category?: string;
     colarTexto?: string;
+    goalId?: string;
   }>();
 
   /* Fala vinda do widget que o próprio widget se recusou a salvar sozinho
@@ -361,13 +363,15 @@ export default function InicioScreen() {
       if (params.desc) setTxDesc(params.desc);
     } else if (params.acao === 'scan-qr') {
       setQrModalOpen(true);
+    } else if (params.acao === 'deposit-goal' && params.goalId) {
+      setWidgetGoalId(params.goalId);
     }
-    // 'safe-to-spend' já cumpriu o papel só de trazer o usuário para a Home,
-    // onde o card "Livre para gastar" mora.
+    // 'safe-to-spend' e 'goals' já cumpriram o papel ao trazer a pessoa para
+    // a Home, onde os blocos correspondentes vivem.
 
     router.replace('/(app)/');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.acao, params.amount, params.desc, params.type, params.category]);
+  }, [params.acao, params.amount, params.desc, params.type, params.category, params.goalId]);
 
   /* Retrospectiva do mês fechado: monta a partir dos dados já carregados e
      abre uma vez só por mês. Espera `loading` terminar para não gerar um
@@ -902,6 +906,8 @@ export default function InicioScreen() {
       <GoalsCarousel
         goals={walletGoals}
         lifetimeXp={lifetimeXp}
+        abrirDepositoGoalId={widgetGoalId}
+        onAbrirDepositoConcluido={() => setWidgetGoalId(null)}
         onCreateGoal={handleCreateGoal}
         onDeposit={handleDepositGoal}
         onDeleteGoal={handleDeleteGoal}

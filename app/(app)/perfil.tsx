@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,10 +11,11 @@ import { useRouter } from 'expo-router';
 import {
   definirEstado as definirEstadoWidgetVoz,
   estadoAtual as estadoWidgetVoz,
-  fixarNaTelaInicial as fixarWidgetVoz,
-  podeFixar as podeFixarWidgetVoz,
-  quantidadeInstalada as quantidadeWidgetsVoz,
-  widgetDisponivel as widgetVozDisponivel,
+  fixarNaTelaInicial,
+  podeFixar,
+  quantidadeInstalada,
+  widgetDisponivel,
+  type TipoWidget,
 } from '@/modules/grana-voice-widget';
 import { useSession } from '@/lib/auth-context';
 import { usePrivacy } from '@/lib/privacy-context';
@@ -78,6 +79,28 @@ const ATALHOS = [
   { titulo: 'Ver quanto tenho livre', url: 'grana://safe-to-spend' },
 ];
 
+const WIDGETS_HOME: Array<{
+  tipo: TipoWidget;
+  titulo: string;
+  tamanho: string;
+  descricao: string;
+  nomeNoLauncher: string;
+}> = [
+  { tipo: 'voz', titulo: 'Lançar por voz', tamanho: '1 × 1', descricao: 'Fale qualquer lançamento sem precisar abrir o app.', nomeNoLauncher: 'Grana. — lançar por voz' },
+  { tipo: 'livre', titulo: 'Livre para gastar', tamanho: '2 × 1', descricao: 'Veja quanto está realmente disponível neste mês.', nomeNoLauncher: 'Grana. — livre para gastar' },
+  { tipo: 'central', titulo: 'Central de lançamentos', tamanho: '2 × 2', descricao: 'Abra rapidamente Entrada, Débito/Pix, Crédito ou Boleto.', nomeNoLauncher: 'Grana. — central de lançamentos' },
+  { tipo: 'compromisso', titulo: 'Próximo compromisso', tamanho: '2 × 2', descricao: 'Acompanhe a próxima conta pendente e abra os detalhes.', nomeNoLauncher: 'Grana. — próximo compromisso' },
+  { tipo: 'cofrinho', titulo: 'Cofrinho', tamanho: '2 × 1', descricao: 'Acompanhe uma meta e vá direto para adicionar dinheiro.', nomeNoLauncher: 'Grana. — cofrinho' },
+];
+
+const CONTAGEM_WIDGETS_INICIAL: Record<TipoWidget, number> = {
+  voz: 0,
+  livre: 0,
+  central: 0,
+  compromisso: 0,
+  cofrinho: 0,
+};
+
 export default function PerfilScreen() {
   const { ligado, flag } = useFlags();
   const { paddingConteudo } = useTabBarInset();
@@ -110,7 +133,9 @@ export default function PerfilScreen() {
   const [atalhosOpen, setAtalhosOpen] = useState(false);
   /* Quantas cópias do widget de voz estão na tela inicial. Relido a cada foco
      porque a pessoa pode ter adicionado (ou removido) fora do app. */
-  const [widgetsVoz, setWidgetsVoz] = useState(0);
+  const [widgetsInstalados, setWidgetsInstalados] = useState<Record<TipoWidget, number>>(
+    CONTAGEM_WIDGETS_INICIAL
+  );
   const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
   const [whatsappSaving, setWhatsappSaving] = useState(false);
   const nomeModalRef = useRef<View>(null);
@@ -221,56 +246,76 @@ export default function PerfilScreen() {
     }
   }, [isDemoMode]);
 
+  const recarregarWidgets = useCallback(() => {
+    if (!widgetDisponivel) return;
+    setWidgetsInstalados({
+      voz: quantidadeInstalada('voz'),
+      livre: quantidadeInstalada('livre'),
+      central: quantidadeInstalada('central'),
+      compromisso: quantidadeInstalada('compromisso'),
+      cofrinho: quantidadeInstalada('cofrinho'),
+    });
+  }, []);
+
   useEffect(() => {
     recarregarPerfil();
     recarregarDiagnostico();
     recarregarWhatsapp();
     carregarNotifPrefs().then(setNotifPrefs);
-    if (widgetVozDisponivel) setWidgetsVoz(quantidadeWidgetsVoz());
-  }, [recarregarPerfil, recarregarDiagnostico, recarregarWhatsapp]);
+    recarregarWidgets();
+  }, [recarregarPerfil, recarregarDiagnostico, recarregarWhatsapp, recarregarWidgets]);
+
+  useEffect(() => {
+    if (!widgetDisponivel) return;
+    const assinatura = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') recarregarWidgets();
+    });
+    return () => assinatura.remove();
+  }, [recarregarWidgets]);
 
   /**
    * Pede ao launcher pra fixar o widget. Nem todo launcher implementa isso —
    * quando não implementa, o caminho honesto é ensinar o gesto manual em vez
    * de deixar um botão que não faz nada.
    */
-  async function adicionarWidgetVoz() {
+  async function adicionarWidget(tipo: TipoWidget) {
+    const configuracao = WIDGETS_HOME.find((widget) => widget.tipo === tipo)!;
     /* A permissão vem ANTES de oferecer o widget, e não depois de ele falhar:
        o widget lança dinheiro sem abrir tela nenhuma, e a notificação é o
        recibo inteiro — é ela que diz o que foi salvo, é dela que sai o
        "Desfazer", e é ela que carrega os botões de encerrar/cancelar enquanto
        o microfone está aberto. Sem isso ele se recusa a gravar, então
        instalar primeiro e descobrir depois seria entregar um botão morto. */
-    const podeAvisar = await requestNotificationPermission();
-    if (!podeAvisar) {
-      Alert.alert(
-        'Ative as notificações primeiro',
-        'O widget lança sem abrir o app, e a notificação é o seu comprovante: é nela que aparece o que foi lançado, o botão de desfazer e o de encerrar a gravação. Sem ela o widget não grava. Autorize as notificações do Grana. nas configurações do aparelho e tente de novo.'
-      );
-      return;
+    if (tipo === 'voz') {
+      const podeAvisar = await requestNotificationPermission();
+      if (!podeAvisar) {
+        Alert.alert(
+          'Ative as notificações primeiro',
+          'O widget lança sem abrir o app, e a notificação é o seu comprovante: é nela que aparece o que foi lançado, o botão de desfazer e o de encerrar a gravação. Sem ela o widget não grava. Autorize as notificações do Grana. nas configurações do aparelho e tente de novo.'
+        );
+        return;
+      }
+      if (estadoWidgetVoz() === 'atencao') definirEstadoWidgetVoz('ocioso');
     }
-    /* Se o widget estava pedindo atenção justamente por causa disto, o aviso
-       morre agora — não faz sentido continuar piscando na tela inicial. */
-    if (estadoWidgetVoz() === 'atencao') definirEstadoWidgetVoz('ocioso');
 
-    if (quantidadeWidgetsVoz() > 0) {
-      setWidgetsVoz(quantidadeWidgetsVoz());
+    if (quantidadeInstalada(tipo) > 0) {
+      recarregarWidgets();
       Alert.alert(
         'Widget já está na tela inicial',
-        'Toque nele e fale o lançamento — o Grana. registra sem abrir o app. Para remover, segure o widget e arraste.'
+        'Você já pode usá-lo. Para remover, segure o widget na tela inicial e arraste.'
       );
       return;
     }
-    if (!podeFixarWidgetVoz() || !fixarWidgetVoz()) {
+    if (!podeFixar(tipo) || !fixarNaTelaInicial(tipo)) {
       Alert.alert(
         'Adicione pela tela inicial',
-        'Seu launcher não permite adicionar por aqui. Segure um espaço vazio da tela inicial, toque em "Widgets" e procure por "Grana. — lançar por voz".'
+        `Seu launcher não permite adicionar por aqui. Segure um espaço vazio da tela inicial, toque em "Widgets" e procure por "${configuracao.nomeNoLauncher}".`
       );
       return;
     }
     /* O launcher mostra o próprio diálogo de confirmação; só dá pra saber se
        a pessoa aceitou relendo a contagem depois. */
-    setTimeout(() => setWidgetsVoz(quantidadeWidgetsVoz()), 1500);
+    setTimeout(recarregarWidgets, 1500);
   }
 
   /* Com o código na tela, o app confere sozinho: a pessoa manda a mensagem,
@@ -571,25 +616,6 @@ export default function PerfilScreen() {
                 : whatsappLink?.verified ? 'Vinculado ✓' : whatsappLink ? 'Aguardando código' : 'Vincular'} &gt;
             </Text>
           </AppPressable>
-          {/* Só aparece onde o widget existe (Android, build com o módulo
-              nativo). Sem esta linha, a única forma de achar o widget seria
-              segurar a tela inicial e procurar numa lista com dezenas de
-              itens — descoberta que praticamente ninguém faz. */}
-          {widgetVozDisponivel && (
-            <AppPressable
-              style={styles.tappableRow}
-              onPress={adicionarWidgetVoz}
-              disabled={!ligado('lancamento_voz')}
-              accessibilityState={{ disabled: !ligado('lancamento_voz') }}
-            >
-              <Text style={[styles.rowKey, !ligado('lancamento_voz') && styles.rowKeyDesativado]}>
-                Widget de voz na tela inicial
-              </Text>
-              <Text style={styles.rowValue}>
-                {!ligado('lancamento_voz') ? 'Instável' : widgetsVoz > 0 ? 'Adicionado ✓' : 'Adicionar'} &gt;
-              </Text>
-            </AppPressable>
-          )}
           <AppPressable style={styles.tappableRow} onPress={() => setAtalhosOpen(true)}>
             <Text style={styles.rowKey}>Atalhos rápidos</Text>
             <Text style={styles.rowValue}>Configurar &gt;</Text>
@@ -599,6 +625,41 @@ export default function PerfilScreen() {
             <Text style={styles.rowValue}>Abrir &gt;</Text>
           </AppPressable>
         </View>
+
+        {/* O Android também lista estes itens no seletor nativo, mas esta
+            vitrine deixa claro o que cada tamanho resolve e tenta fixá-lo com
+            um toque nos launchers compatíveis. */}
+        {widgetDisponivel && (
+          <>
+            <Text style={styles.sectionLabel}>Widgets da tela inicial</Text>
+            <View style={styles.sectionCard}>
+              {WIDGETS_HOME.map((widget, index) => {
+                const vozDesativada = widget.tipo === 'voz' && !ligado('lancamento_voz');
+                const instalado = widgetsInstalados[widget.tipo] > 0;
+                return (
+                  <AppPressable
+                    key={widget.tipo}
+                    style={[styles.widgetRow, index === WIDGETS_HOME.length - 1 && styles.ultimaLinha]}
+                    onPress={() => adicionarWidget(widget.tipo)}
+                    disabled={vozDesativada}
+                    accessibilityState={{ disabled: vozDesativada }}
+                    accessibilityLabel={`${widget.titulo}, widget ${widget.tamanho}`}
+                  >
+                    <View style={styles.widgetRowCopy}>
+                      <Text style={[styles.rowKey, vozDesativada && styles.rowKeyDesativado]}>
+                        {widget.titulo} · {widget.tamanho}
+                      </Text>
+                      <Text style={styles.widgetRowHint}>{widget.descricao}</Text>
+                    </View>
+                    <Text style={styles.rowValue}>
+                      {vozDesativada ? 'Instável' : instalado ? 'Adicionado ✓' : 'Adicionar'} &gt;
+                    </Text>
+                  </AppPressable>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Seção Preferências */}
         <Text style={styles.sectionLabel}>Preferências</Text>
@@ -1118,6 +1179,10 @@ const styles = StyleSheet.create({
      pro token mais próximo. Mesmo caso do `14` dos botões primários. */
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
   tappableRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  widgetRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  ultimaLinha: { borderBottomWidth: 0 },
+  widgetRowCopy: { flex: 1, gap: spacing.fio },
+  widgetRowHint: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
   rowKey: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   rowValue: { color: theme.inkFaint, fontSize: type.nota,

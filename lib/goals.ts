@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Goal } from './types';
+import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 
 async function currentUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
@@ -30,6 +31,7 @@ export async function createGoal(input: {
     p_wallet_id: input.wallet_id ?? null,
   });
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
   return data as unknown as Goal;
 }
 
@@ -37,6 +39,7 @@ export async function deleteGoal(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('goals').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
 }
 
 /**
@@ -51,6 +54,7 @@ export async function depositToGoal(goal: Goal, delta: number): Promise<Goal> {
     p_delta: delta,
   });
   if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
   return data as unknown as Goal;
 }
 

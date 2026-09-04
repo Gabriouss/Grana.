@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
@@ -39,12 +39,16 @@ type NovaMeta = { title: string; target_amount: number; color: string; icon: str
 export default function GoalsCarousel({
   goals,
   lifetimeXp,
+  abrirDepositoGoalId,
+  onAbrirDepositoConcluido,
   onCreateGoal,
   onDeposit,
   onDeleteGoal,
 }: {
   goals: Goal[];
   lifetimeXp: number;
+  abrirDepositoGoalId?: string | null;
+  onAbrirDepositoConcluido?: () => void;
   onCreateGoal: (input: NovaMeta) => Promise<void>;
   onDeposit: (goal: Goal, delta: number) => Promise<void>;
   onDeleteGoal: (goal: Goal) => Promise<void>;
@@ -70,6 +74,16 @@ export default function GoalsCarousel({
 
   const [depositTarget, setDepositTarget] = useState<Goal | null>(null);
   const [depositing, setDepositing] = useState(false);
+
+  /* Deep link do widget: abre o MESMO modal usado pelo card do cofrinho. Se
+     a meta foi removida desde o snapshot, apenas consome o pedido e deixa a
+     pessoa na lista atual — nunca movimenta outro cofrinho por aproximação. */
+  useEffect(() => {
+    if (!abrirDepositoGoalId) return;
+    const alvo = goals.find((goal) => goal.id === abrirDepositoGoalId);
+    if (alvo) setDepositTarget(alvo);
+    onAbrirDepositoConcluido?.();
+  }, [abrirDepositoGoalId, goals, onAbrirDepositoConcluido]);
 
   function resetCreateForm() {
     setTitle('');

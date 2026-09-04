@@ -14,6 +14,13 @@ type NativeGranaVoiceWidget = {
   quantidadeInstalada(): number;
   podeFixar(): boolean;
   fixarNaTelaInicial(): boolean;
+  quantidadeInstaladaPorTipo(tipo: string): number;
+  fixarPorTipo(tipo: string): boolean;
+  atualizarSnapshot(json: string): void;
+  limparSnapshot(): void;
+  garantirUsuario(userId: string): void;
+  definirPrivacidade(hidden: boolean): void;
+  redesenharTodos(): void;
 };
 
 const nativo = requireOptionalNativeModule<NativeGranaVoiceWidget>('GranaVoiceWidget');
@@ -24,6 +31,7 @@ const nativo = requireOptionalNativeModule<NativeGranaVoiceWidget>('GranaVoiceWi
  * até alguém tocar, e o toque abre o app em vez do microfone.
  */
 export type EstadoWidgetVoz = 'ocioso' | 'ouvindo' | 'processando' | 'atencao';
+export type TipoWidget = 'voz' | 'livre' | 'central' | 'compromisso' | 'cofrinho';
 
 /** O widget existe nesta plataforma/build? */
 export const widgetDisponivel = Platform.OS === 'android' && nativo != null;
@@ -48,17 +56,17 @@ export function definirEstado(estado: EstadoWidgetVoz): void {
 }
 
 /** Quantas cópias do widget estão na tela inicial. */
-export function quantidadeInstalada(): number {
+export function quantidadeInstalada(tipo: TipoWidget = 'voz'): number {
   if (!nativo) return 0;
   try {
-    return nativo.quantidadeInstalada();
+    return tipo === 'voz' ? nativo.quantidadeInstalada() : nativo.quantidadeInstaladaPorTipo(tipo);
   } catch {
     return 0;
   }
 }
 
 /** O launcher desta pessoa aceita "adicionar widget" por botão? */
-export function podeFixar(): boolean {
+export function podeFixar(_tipo: TipoWidget = 'voz'): boolean {
   if (!nativo) return false;
   try {
     return nativo.podeFixar();
@@ -68,11 +76,50 @@ export function podeFixar(): boolean {
 }
 
 /** Pede ao launcher pra adicionar o widget. `false` = não deu, oriente o gesto manual. */
-export function fixarNaTelaInicial(): boolean {
+export function fixarNaTelaInicial(tipo: TipoWidget = 'voz'): boolean {
   if (!nativo) return false;
   try {
-    return nativo.fixarNaTelaInicial();
+    return tipo === 'voz' ? nativo.fixarNaTelaInicial() : nativo.fixarPorTipo(tipo);
   } catch {
     return false;
   }
+}
+
+export function atualizarSnapshot(snapshot: unknown): void {
+  if (!nativo) return;
+  try {
+    nativo.atualizarSnapshot(JSON.stringify(snapshot));
+  } catch {
+    // O último snapshot válido continua sendo melhor que trocar por zeros.
+  }
+}
+
+export function limparSnapshot(): void {
+  if (!nativo) return;
+  try {
+    nativo.limparSnapshot();
+  } catch {}
+}
+
+/** Remove o snapshot somente se ele pertencer a outra conta. */
+export function garantirUsuario(userId: string): void {
+  if (!nativo) return;
+  try {
+    nativo.garantirUsuario(userId);
+  } catch {}
+}
+
+/** Privacidade é independente da rede: esconder precisa ser imediato. */
+export function definirPrivacidade(hidden: boolean): void {
+  if (!nativo) return;
+  try {
+    nativo.definirPrivacidade(hidden);
+  } catch {}
+}
+
+export function redesenharTodos(): void {
+  if (!nativo) return;
+  try {
+    nativo.redesenharTodos();
+  } catch {}
 }
