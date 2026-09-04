@@ -2170,3 +2170,66 @@ instalada neste ambiente) e `npm run test:parser` completo aprovado, incluindo
 20/20 checagens de notificações, 23/23 de widgets e 39/39 pares em
 sincronia. Sem validação visual em aparelho Android nesta sessão — o widget
 de resumo com o toggle novo ainda não foi visto rodando de verdade.
+
+## Sessão de 04/09/2026 - texto sobrepondo texto, e a margem dos componentes
+
+O autor mandou prints reais do app (via a seção "por dentro do aplicativo" da
+landing) mostrando informação empilhada uma em cima da outra. Não era print
+ruim: era bug de layout, e tinha uma causa raiz só.
+
+**A causa.** Uma `View` com `flexDirection: 'row'` +
+`justifyContent: 'space-between'` segurando dois `<Text>`, nenhum com
+`flexShrink` e a fileira sem `flexWrap`. Enquanto o conteúdo cabe na linha,
+parece certo. Quando o texto é dado do usuário e cresce — descrição de conta,
+nome de categoria, valor em R$ sem teto, nome de faixa — os dois lados não
+têm como ceder nem quebrar, e colidem. Por isso o mesmo card aparecia certo
+numa linha e sobreposto na outra, o que fazia parecer defeito aleatório.
+
+Dez ocorrências corrigidas em seis arquivos (`index.tsx`, `contas.tsx`,
+`desafios.tsx`, `credito.tsx`, `TransactionSheet.tsx`, `OnboardingModal.tsx`),
+cada uma com o dado dinâmico que a dispara escrito no comentário. O padrão de
+correção é sempre o mesmo: `flexWrap` + `rowGap` na fileira, `flexShrink: 1`
+no texto que faz sentido quebrar pra linha de baixo.
+
+**Não era bug** o botão flutuante de Lançamentos aparecendo por cima de um
+valor num dos prints: FAB fica em posição fixa da tela por definição, e a
+lista já reserva espaço embaixo via `useTabBarInset`. Só precisa printar de
+outro ponto de rolagem.
+
+**Auditoria de margem, medida (não amostrada).** A auditoria de 04/09 de
+manhã mediu só `app/(app)/*.tsx`. Medindo de novo, agora incluindo os ~60
+componentes compartilhados:
+
+| Superfície | Cobertura de token | Números crus |
+|---|---|---|
+| Telas do app | 82,8% | 47 |
+| Componentes do app | 57,5% | 221 |
+| Componentes da landing | 71,1% | 33 |
+
+As 7 telas estão todas na mesma régua (`screenRhythm.padding` lateral,
+`screenRhythm.gap` entre cards) — a regra de alinhamento do `AGENTS.md` está
+cumprida no nível de tela. Os sheets/modais também estão consistentes
+(`Sheet.tsx` + `padding: spacing.xl` no scrim de nove modais).
+
+O que sobra, em ordem de valor:
+
+1. **78 dos 221 crus dos componentes são os dois tokens que já existem**:
+   `6` em 52 lugares (é `spacing.icone`) e `2` em 26 (é `spacing.fio`). Os
+   tokens nasceram na auditoria da manhã e foram aplicados só nas telas.
+   Trocar isso é mecânico e não move um pixel.
+2. **`10` (45 usos) e `14` (26 usos) estão ENTRE degraus da escala** (que
+   salta 8 → 12 → 16). São 71 decisões feitas no olho. Precisam de decisão do
+   autor: ganham nome por papel, como `fio` e `icone` ganharam, ou encostam
+   no degrau vizinho. Não foi mexido.
+3. Dois desvios pontuais: `ImportarExtratoModal` usa scrim
+   `rgba(0,0,0,0.55)` contra `0.5` dos outros nove; `HomeCustomizerModal` usa
+   `spacing.sm + 2`, conta que escapa da escala.
+
+Vale separar as duas coisas: dívida de token causa um card sutilmente mais
+apertado que o irmão, não causa colisão. O que apareceu nos prints era o bug
+de flex acima, e está corrigido.
+
+Verificações: `npx tsc --noEmit` limpo e `npm run test:parser` completo
+aprovado (327/327 guardas do design system, 39/39 em sincronia). Sem
+validação visual em aparelho — os prints novos que o autor pediu ainda
+precisam ser tirados depois de rodar o app.
