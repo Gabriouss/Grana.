@@ -1430,10 +1430,13 @@ visual).
 
 A partir do teardown, o autor apontou 7 elementos específicos pra replicar
 (técnica, não visual clara da Dinzo) e pediu um plano único de execução —
-`C:\Users\user\.claude\plans\mete-marcha-num-plano-ticklish-waffle.md`
-(fora do repo, no diretório de planos do Claude Code). Também virou regra
-permanente (`AGENTS.md` #8): antes de qualquer pedido, buscar na
-biblioteca de skills instaladas algo relevante ao domínio do pedido.
+escrito primeiro em `C:\Users\user\.claude\plans\mete-marcha-num-plano-ticklish-waffle.md`
+(fora do repo), depois trazido pra
+`docs/marketing/2026-09-03-plano-secoes-landing-dinzo.md` em 04/09/2026 a
+pedido do autor, pra qualquer máquina ter acesso via `git pull` em vez de
+só a que gerou o plano originalmente. Também virou regra permanente
+(`AGENTS.md` #8): antes de qualquer pedido, buscar na biblioteca de skills
+instaladas algo relevante ao domínio do pedido.
 
 **Concluído nesta sessão (4 dos 7 itens):**
 
@@ -1518,8 +1521,8 @@ anima altura/opacidade em vez de teleportar (plano formal em
 soltas viraram tokens nomeados (`EASE_REVEAL`, `EASE_LOOP`,
 `EASE_BOUNCE_HINT`, `EASE_ROLL`, `EASE_SNAP` em `lib/motion.ts`).
 
-**Pendente — 3 dos 7 itens, o plano completo continua em
-`C:\Users\user\.claude\plans\mete-marcha-num-plano-ticklish-waffle.md`:**
+**Pendente — 3 dos 7 itens, o plano completo (com status por item) está em
+`docs/marketing/2026-09-03-plano-secoes-landing-dinzo.md`:**
 
 - **Painel web / moldura de navegador** (item 2): `components/MolduraNavegador.tsx`
   foi deletado no commit `f391829` (31/08) por ficar órfão — precisa ser

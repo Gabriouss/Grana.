@@ -34,12 +34,14 @@ bastante pra não precisar):
   em `lib/motion.ts`, aplicado nas 3 superfícies com `backdropFilter`
   (cabeçalho sticky, `ctaPrimario`, `granaboRecurso`).
 
-## Plano maior em andamento (fora deste diretório)
+## Plano maior em andamento
 
 O plano de 7 seções novas inspiradas no teardown da Dinzo
-(`docs/marketing/2026-09-03-dinzo-design-teardown.md`) não vive aqui —
-está em `C:\Users\user\.claude\plans\mete-marcha-num-plano-ticklish-waffle.md`
-(fora do repo). 4 dos 7 itens já implementados na sessão de 03/09/2026 —
-ver a seção correspondente em `context.md` pro detalhe de cada um e o que
-ainda falta (painel web/moldura de navegador, bento grid de recursos,
-cards Jornada/Fechamento do mês).
+(`docs/marketing/2026-09-03-dinzo-design-teardown.md`) vive em
+[`docs/marketing/2026-09-03-plano-secoes-landing-dinzo.md`](../docs/marketing/2026-09-03-plano-secoes-landing-dinzo.md)
+— trazido pro repositório em 04/09/2026 (vivia antes só em
+`C:\Users\user\.claude\plans\`, fora do controle de versão e inacessível
+de outra máquina). 4 dos 7 itens já implementados na sessão de 03/09/2026
+— ver a seção correspondente em `context.md` pro detalhe de cada um, e o
+plano em si pro que ainda falta (painel web/moldura de navegador, bento
+grid de recursos, cards Jornada/Fechamento do mês).
