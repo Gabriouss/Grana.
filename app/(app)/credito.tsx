@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -26,6 +26,7 @@ import {
   deleteTransaction,
   fetchCreditTransactionsForMonth,
   fetchCreditCards,
+  fetchCategories,
   fetchRecurrenceContext,
   fetchCardInvoicePayments,
   payCardInvoice,
@@ -34,7 +35,7 @@ import {
   criarOcorrenciasRecorrentes,
 } from '@/lib/data';
 import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, parseParcelas } from '@/lib/heuristics';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
@@ -111,6 +112,19 @@ export default function CreditoScreen() {
   const [txDate, setTxDate] = useState(todayISO());
   const [txInstallments, setTxInstallments] = useState('1');
   const [txRecurring, setTxRecurring] = useState(false);
+  /* Categorias criadas pela pessoa. Só servem ao caminho de VOZ desta tela —
+     sem elas, "ração 80 no crédito, categoria Pet" caía em "Outros", enquanto
+     a mesma frase pelo WhatsApp acertava. O seletor da tela já enxerga as
+     custom sozinho (CategoryPickerModal lê do banco); quem não enxergava era
+     o reconhecimento do texto. */
+  const [categoriasExtras, setCategoriasExtras] = useState<{ name: string; color: string }[]>([]);
+
+  useEffect(() => {
+    if (isDemoMode) return;
+    fetchCategories()
+      .then((cats) => setCategoriasExtras(cats.filter((c) => !c.is_default)))
+      .catch(() => {});
+  }, [isDemoMode]);
 
   /* Menu de ação da linha — mesmo componente e mesmo gesto das outras telas:
      tocar edita, segurar abre "Editar / Excluir". Antes daqui, segurar
@@ -460,7 +474,7 @@ export default function CreditoScreen() {
   function abrirNovaCompraDoTexto(texto: string) {
     setEditingTxId(null);
     const guessedAmount = guessAmountFromText(texto);
-    const guessedCat = guessCategoryFromText(texto);
+    const guessedCat = guessCategoryFromText(texto, categoriasExtras);
     const guessedDesc = guessDescFromText(texto, 'out');
     const cartaoCasado = matchCardByText(texto, walletCards);
     setTxDesc(guessedDesc);
@@ -469,7 +483,11 @@ export default function CreditoScreen() {
     setTxCatColor(guessedCat.color);
     setTxCardId(cartaoCasado?.id || walletCards[0]?.id || '');
     setTxInstallments(String(parseParcelas(texto) ?? 1));
-    setTxRecurring(false);
+    /* Era `false` fixo: "Netflix 39,90 no crédito todo mês" abria como compra
+       avulsa e a assinatura sumia do mês seguinte. `parseRecorrencia` já
+       devolve false sozinha quando há parcelamento na frase — as duas coisas
+       são contraditórias e o parcelamento vence. */
+    setTxRecurring(parseRecorrencia(texto));
     setTxDate(todayISO());
     setNewTxOpen(true);
   }

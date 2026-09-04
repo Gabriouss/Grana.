@@ -6,13 +6,24 @@ import AppPressable from '@/components/AppPressable';
 export default function CategoryChips({
   value,
   onChange,
+  extras = [],
 }: {
   value: string;
   onChange: (name: string) => void;
+  /** Categorias criadas pela pessoa (fora das 9 padrão). Sem passar isto, uma
+   *  categoria custom RECONHECIDA no texto — por voz ou por comprovante
+   *  colado — ficava selecionada sem chip nenhum na tela pra mostrar qual era,
+   *  e tocar em qualquer outra apagava a escolha sem jeito de voltar. */
+  extras?: { name: string; color: string }[];
 }) {
+  /* As 9 fixas primeiro, na ordem de sempre; as da pessoa depois. Uma custom
+     com nome repetido de padrão não duplica o chip. */
+  const nomesPadrao = new Set(CATEGORIES.map((c) => c.name));
+  const lista = [...CATEGORIES, ...extras.filter((c) => !nomesPadrao.has(c.name))];
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      {CATEGORIES.map((c) => {
+      {lista.map((c) => {
         const selected = c.name === value;
         return (
           <AppPressable

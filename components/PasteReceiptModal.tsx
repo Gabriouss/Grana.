@@ -15,6 +15,8 @@ import {
   guessCategoryFromText,
   guessDescFromText,
   guessTypeFromText,
+  parseFormaPagamento,
+  parseRecorrencia,
 } from '@/lib/heuristics';
 import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { addTransaction, fetchCategories } from '@/lib/data';
@@ -66,6 +68,12 @@ export default function PasteReceiptModal({
      guessCategoryFromText nunca reconhecia uma categoria custom no texto
      colado, só as fixas. Buscada quando o modal abre, não a cada tecla. */
   const [categoriasExtras, setCategoriasExtras] = useState<{ name: string; color: string }[]>([]);
+  /* Reconhecidos do texto e salvos junto — sem campo na tela de propósito: a
+     confirmação aqui é uma revisão rápida de valor/descrição/categoria, e o
+     que a pessoa disse ("no pix", "todo mês") ela já sabe que disse. Aparecem
+     como resumo em `detalhesReconhecidos` abaixo, pra revisão não virar fé. */
+  const [formaPagamento, setFormaPagamento] = useState<string | null>(null);
+  const [recorrente, setRecorrente] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -82,7 +90,24 @@ export default function PasteReceiptModal({
     setType('out');
     setSaving(false);
     setOrigemVoz(false);
+    setFormaPagamento(null);
+    setRecorrente(false);
   }
+
+  /* O que foi reconhecido mas não tem campo próprio nesta tela. Sem isto a
+     pessoa salvava sem saber que "todo mês" tinha virado uma série que se
+     repete sozinha — e recorrência criada sem querer é dinheiro que aparece
+     nos meses seguintes. */
+  const NOME_DA_FORMA: Record<string, string> = {
+    pix: 'Pix',
+    debit: 'Débito',
+    cash: 'Dinheiro',
+    credit: 'Crédito',
+  };
+  const detalhesReconhecidos = [
+    formaPagamento ? NOME_DA_FORMA[formaPagamento] ?? formaPagamento : null,
+    recorrente ? 'repete todo mês' : null,
+  ].filter((d): d is string => !!d);
 
   function processText(text: string) {
     const guessedAmount = guessAmountFromText(text);
@@ -94,6 +119,12 @@ export default function PasteReceiptModal({
     setDesc(guessedDesc);
     setAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
     setCategory(guessedCat.name);
+    /* Forma de pagamento e recorrência ditas na frase eram simplesmente
+       jogadas fora aqui: "mercado 120 no pix" salvava sem payment_method
+       nenhum, e "aluguel 1500 todo mês" salvava avulso. O bot do WhatsApp já
+       lia as duas coisas do mesmo texto — o app é que não lia. */
+    setFormaPagamento(parseFormaPagamento(text));
+    setRecorrente(parseRecorrencia(text));
     setRecognized(true);
   }
 
@@ -130,7 +161,11 @@ export default function PasteReceiptModal({
       return;
     }
 
-    const catObj = guessCategoryFromText(category);
+    /* `categoriasExtras` também aqui, e não só no reconhecimento: sem passar,
+       uma categoria custom reconhecida no texto voltava a cair em "Outros" na
+       hora de salvar — o nome certo aparecia na tela e o lançamento gravava
+       outro. */
+    const catObj = guessCategoryFromText(category, categoriasExtras);
     savingRef.current = true;
     setSaving(true);
     try {
@@ -141,6 +176,8 @@ export default function PasteReceiptModal({
         category: catObj.name,
         color: catObj.color,
         occurred_on: todayISO(),
+        ...(formaPagamento ? { payment_method: formaPagamento } : null),
+        ...(recorrente ? { recurring: true } : null),
       });
       resetState();
       onClose();
@@ -254,7 +291,16 @@ export default function PasteReceiptModal({
                 />
               </View>
 
-              <CategoryChips value={category} onChange={setCategory} />
+              <CategoryChips value={category} onChange={setCategory} extras={categoriasExtras} />
+
+              {detalhesReconhecidos.length > 0 && (
+                <View style={styles.detalhesRow}>
+                  <Ionicons name="checkmark-circle-outline" size={14} color={theme.accent2} aria-hidden />
+                  <Text style={styles.detalhesTexto}>
+                    Também reconhecido: {detalhesReconhecidos.join(' · ')}
+                  </Text>
+                </View>
+              )}
 
               <AppPressable
                 style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
@@ -294,6 +340,14 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
     maxHeight: '90%',
+  },
+  detalhesRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detalhesTexto: {
+    flex: 1,
+    color: theme.inkFaint,
+    fontSize: type.nota,
+    lineHeight: lh(type.nota, 'apoio'),
+    fontFamily: fonts.light,
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },

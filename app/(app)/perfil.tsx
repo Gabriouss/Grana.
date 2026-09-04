@@ -8,6 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { useRouter } from 'expo-router';
+import {
+  fixarNaTelaInicial as fixarWidgetVoz,
+  podeFixar as podeFixarWidgetVoz,
+  quantidadeInstalada as quantidadeWidgetsVoz,
+  widgetDisponivel as widgetVozDisponivel,
+} from '@/modules/grana-voice-widget';
 import { useSession } from '@/lib/auth-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -100,6 +106,9 @@ export default function PerfilScreen() {
 
   const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [atalhosOpen, setAtalhosOpen] = useState(false);
+  /* Quantas cópias do widget de voz estão na tela inicial. Relido a cada foco
+     porque a pessoa pode ter adicionado (ou removido) fora do app. */
+  const [widgetsVoz, setWidgetsVoz] = useState(0);
   const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
   const [whatsappSaving, setWhatsappSaving] = useState(false);
   const nomeModalRef = useRef<View>(null);
@@ -215,7 +224,34 @@ export default function PerfilScreen() {
     recarregarDiagnostico();
     recarregarWhatsapp();
     carregarNotifPrefs().then(setNotifPrefs);
+    if (widgetVozDisponivel) setWidgetsVoz(quantidadeWidgetsVoz());
   }, [recarregarPerfil, recarregarDiagnostico, recarregarWhatsapp]);
+
+  /**
+   * Pede ao launcher pra fixar o widget. Nem todo launcher implementa isso —
+   * quando não implementa, o caminho honesto é ensinar o gesto manual em vez
+   * de deixar um botão que não faz nada.
+   */
+  function adicionarWidgetVoz() {
+    if (quantidadeWidgetsVoz() > 0) {
+      setWidgetsVoz(quantidadeWidgetsVoz());
+      Alert.alert(
+        'Widget já está na tela inicial',
+        'Toque nele e fale o lançamento — o Grana. registra sem abrir o app. Para remover, segure o widget e arraste.'
+      );
+      return;
+    }
+    if (!podeFixarWidgetVoz() || !fixarWidgetVoz()) {
+      Alert.alert(
+        'Adicione pela tela inicial',
+        'Seu launcher não permite adicionar por aqui. Segure um espaço vazio da tela inicial, toque em "Widgets" e procure por "Grana. — lançar por voz".'
+      );
+      return;
+    }
+    /* O launcher mostra o próprio diálogo de confirmação; só dá pra saber se
+       a pessoa aceitou relendo a contagem depois. */
+    setTimeout(() => setWidgetsVoz(quantidadeWidgetsVoz()), 1500);
+  }
 
   /* Com o código na tela, o app confere sozinho: a pessoa manda a mensagem,
      volta pro app e já encontra o vínculo feito, sem apertar "verificar". */
@@ -515,6 +551,25 @@ export default function PerfilScreen() {
                 : whatsappLink?.verified ? 'Vinculado ✓' : whatsappLink ? 'Aguardando código' : 'Vincular'} &gt;
             </Text>
           </AppPressable>
+          {/* Só aparece onde o widget existe (Android, build com o módulo
+              nativo). Sem esta linha, a única forma de achar o widget seria
+              segurar a tela inicial e procurar numa lista com dezenas de
+              itens — descoberta que praticamente ninguém faz. */}
+          {widgetVozDisponivel && (
+            <AppPressable
+              style={styles.tappableRow}
+              onPress={adicionarWidgetVoz}
+              disabled={!ligado('lancamento_voz')}
+              accessibilityState={{ disabled: !ligado('lancamento_voz') }}
+            >
+              <Text style={[styles.rowKey, !ligado('lancamento_voz') && styles.rowKeyDesativado]}>
+                Widget de voz na tela inicial
+              </Text>
+              <Text style={styles.rowValue}>
+                {!ligado('lancamento_voz') ? 'Instável' : widgetsVoz > 0 ? 'Adicionado ✓' : 'Adicionar'} &gt;
+              </Text>
+            </AppPressable>
+          )}
           <AppPressable style={styles.tappableRow} onPress={() => setAtalhosOpen(true)}>
             <Text style={styles.rowKey}>Atalhos rápidos</Text>
             <Text style={styles.rowValue}>Configurar &gt;</Text>

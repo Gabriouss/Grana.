@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -29,8 +29,8 @@ import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
 import MonthSelector from '@/components/MonthSelector';
-import { addBill, deleteBill, fetchBills, payBill, reopenBill, updateBill } from '@/lib/data';
-import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento } from '@/lib/heuristics';
+import { addBill, deleteBill, fetchBills, fetchCategories, payBill, reopenBill, updateBill } from '@/lib/data';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento, parseRecorrencia } from '@/lib/heuristics';
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
@@ -68,6 +68,10 @@ export default function ContasScreen() {
   const [dueDate, setDueDate] = useState(todayISO());
   const [recurring, setRecurring] = useState(false);
   const [saving, setSaving] = useState(false);
+  /* Categorias criadas pela pessoa. Só servem ao caminho de VOZ desta tela —
+     sem elas, "boleto do pet shop 80, categoria Pet" caía em "Outros",
+     enquanto a mesma frase pelo WhatsApp acertava. */
+  const [categoriasExtras, setCategoriasExtras] = useState<{ name: string; color: string }[]>([]);
 
   // Aux Pickers & Sheets
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
@@ -113,6 +117,13 @@ export default function ContasScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  useEffect(() => {
+    if (isDemoMode) return;
+    fetchCategories()
+      .then((cats) => setCategoriasExtras(cats.filter((c) => !c.is_default)))
+      .catch(() => {});
+  }, [isDemoMode]);
+
   /* Chegando pelo FAB da Início (?novaConta=1): abre o mesmo formulário do
      "+" desta tela. Ver o hook para as duas armadilhas que ele resolve. */
   useAberturaPorParametro(novaConta === '1', () => {
@@ -145,14 +156,16 @@ export default function ContasScreen() {
   function abrirNovaContaDoTexto(texto: string) {
     setEditingBillId(null);
     const guessedAmount = guessAmountFromText(texto);
-    const guessedCat = guessCategoryFromText(texto);
+    const guessedCat = guessCategoryFromText(texto, categoriasExtras);
     const guessedDesc = guessDescFromText(texto, 'out');
     setDesc(guessedDesc);
     setAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
     setCategory(guessedCat.name);
     setCatColor(guessedCat.color);
     setDueDate(parseDiaVencimento(texto));
-    setRecurring(false);
+    /* Era `false` fixo: "internet 99 vence dia 15 todo mês" virava um boleto
+       único, e no mês seguinte a conta não existia mais. */
+    setRecurring(parseRecorrencia(texto));
     setModalOpen(true);
   }
 

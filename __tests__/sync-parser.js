@@ -65,6 +65,10 @@ const COMPARTILHADAS = [
   'guessAmountFromText', 'normalizarParaBusca', 'contemPalavra',
   'parseParcelas', 'ehIntencaoCredito', 'matchCardByText',
   'ehIntencaoBoleto', 'parseDiaVencimento',
+  /* Portadas pro app quando o lançamento por voz passou a usar o mesmo
+     Whisper do bot: sem elas, "no pix" e "todo mês" eram ouvidos e jogados
+     fora — o app gravava payment_method vazio e recurring fixo em false. */
+  'parseFormaPagamento', 'parseRecorrencia',
 ];
 
 /* A guarda ortográfica das notas de versão. Divergir aqui é pior que no

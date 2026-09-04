@@ -23,6 +23,7 @@ import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
 import NovidadesModal from '@/components/NovidadesModal';
 import AvisoFlagModal from '@/components/AvisoFlagModal';
+import RespostaVozWidget from '@/components/RespostaVozWidget';
 import { carregarNotifPrefs } from '@/lib/notifications';
 import { observarTrocaDeTokenPush, sincronizarPushHabito } from '@/lib/push-notifications';
 // Registra o handler de notificações locais e remotas assim que o app abre.
@@ -201,6 +202,10 @@ function RootNavigator() {
           outro aparece na próxima abertura. Empilhar dois pop-ups na primeira
           abertura seria pior que atrasar um deles. */}
       {session && <AvisoFlagModal />}
+      {/* Toque na notificação do widget de voz: "Desfazer" apaga o que aquela
+          fala criou; um lançamento que o widget não salvou sozinho abre a
+          revisão com a transcrição pronta. */}
+      {session && <RespostaVozWidget />}
       <Stack screenOptions={{ headerShown: false }}>
         {/* O link de recuperação autentica de verdade — sem este guard a
             pessoa cairia direto na Início, logada, com a senha antiga (a que

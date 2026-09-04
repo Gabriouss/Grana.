@@ -3,7 +3,7 @@
     "name": "Grana.",
     "slug": "grana-app",
     "scheme": "com.gabriouss.grana",
-    "version": "1.4.2",
+    "version": "1.4.3",
     "orientation": "default",
     "backgroundColor": "#052229",
     "icon": "./assets/icon.png",
@@ -68,7 +68,13 @@
         }
       ],
       "expo-sharing",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Permitir que o Grana. use o microfone para você lançar gastos falando, no app e pelo widget."
+        }
+      ]
     ],
     "extra": {
       "router": {},

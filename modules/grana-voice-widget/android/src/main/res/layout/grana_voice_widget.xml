@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 1x1 na tela inicial: cabe um alvo circular e nada mais. O rótulo abaixo
+     existe pro estado, não pra marca — "Ouvindo…" e "Lançando…" são a única
+     forma de saber o que está acontecendo num widget que não anima. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/grana_voice_raiz"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="2dp">
+
+  <ImageView
+      android:id="@+id/grana_voice_circulo"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      android:background="@drawable/grana_voice_fundo"
+      android:src="@drawable/ic_grana_voice_mic"
+      android:scaleType="center"
+      android:contentDescription="@string/grana_voice_ocioso" />
+
+  <TextView
+      android:id="@+id/grana_voice_rotulo"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="3dp"
+      android:text="@string/grana_voice_ocioso"
+      android:textColor="@color/grana_voice_texto"
+      android:textSize="9sp"
+      android:maxLines="1"
+      android:ellipsize="end" />
+
+</LinearLayout>

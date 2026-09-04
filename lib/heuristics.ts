@@ -403,6 +403,67 @@ export function parseDiaVencimento(text: string): string {
   return `${padrao.getFullYear()}-${pad(padrao.getMonth() + 1)}-${pad(padrao.getDate())}`;
 }
 
+/**
+ * Forma de pagamento dita na frase.
+ *
+ * `transactions.payment_method` aceita 'debit' | 'credit' | 'pix' | 'cash'
+ * desde sempre, mas o lançamento por voz do app não gravava nada: dizer "no
+ * pix" era ouvido, entrava na descrição e sumia. Quem lança pelo WhatsApp já
+ * tinha isto; quem lançava por voz no app, não.
+ *
+ * Crédito NÃO sai daqui: quem decide é `ehIntencaoCredito`, que já sabe
+ * recusar "cartão de débito" e "recebi um crédito de 500". Misturar as duas
+ * decisões faria uma desfazer a outra.
+ *
+ * Cópia da mesma função em supabase/functions/whatsapp-webhook, vigiada por
+ * __tests__/sync-parser.js.
+ */
+export function parseFormaPagamento(text: string): string | null {
+  const t = text.toLowerCase();
+  /* Débito antes de pix: "paguei no débito e o resto no pix" é raro, mas
+     quando aparecem os dois vale o primeiro dito. */
+  const iDebito = t.search(/\bd[ée]bito\b/);
+  const iPix = t.search(/\bpix\b/);
+  const iDinheiro = t.search(/\b(?:dinheiro|esp[ée]cie)\b/);
+
+  const achados = [
+    { forma: 'debit', i: iDebito },
+    { forma: 'pix', i: iPix },
+    { forma: 'cash', i: iDinheiro },
+  ].filter((a) => a.i >= 0);
+
+  if (achados.length === 0) return null;
+  achados.sort((a, b) => a.i - b.i);
+  return achados[0].forma;
+}
+
+/**
+ * "Todo mês" — a série que se repete sozinha (ver lib/recorrencia.ts).
+ *
+ * O app gravava `recurring: false` fixo no lançamento por voz de crédito e de
+ * boleto, então "aluguel 1500 todo mês" virava um lançamento avulso e a pessoa
+ * redigitava todo mês uma coisa que ela já tinha dito que repetia.
+ *
+ * A lista é curta de propósito, e o motivo é assimetria de dano: marcar
+ * recorrência à toa cria dinheiro que não existe nos meses seguintes — o
+ * mesmo tipo de erro de um valor errado. Não marcar só custa redigitar. Por
+ * isso "mensalidade" e "assinatura" ficaram de fora: são substantivos que
+ * descrevem o gasto ("academia mensalidade 89,90"), não um pedido de repetir.
+ * Só entra quem disse com todas as letras que repete.
+ *
+ * Semana e dia também ficam de fora, e não por esquecimento: o modelo de
+ * recorrência do app é mensal. Marcar "toda semana" como mensal seria dar uma
+ * resposta errada em vez de nenhuma.
+ */
+export function parseRecorrencia(text: string): boolean {
+  const t = text.toLowerCase();
+  /* "Parcelado em 3x" é uma série FECHADA de três linhas, criada de uma vez —
+     o oposto de uma série aberta. Dizer as duas coisas é contradição, e o
+     parcelamento é o mais específico dos dois. */
+  if (parseParcelas(text) !== null) return false;
+  return /\btod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?\b|\bcada\s+m[êe]s\b|\bmensalmente\b|\brecorrente\b|\bse\s+repete\b|\bque\s+repete\b|\brepete\s+tod[oa]\s+m[êe]s\b/.test(t);
+}
+
 /* `extras` são as categorias que o usuário criou no gerenciador do app
    (fetchCategories(), filtradas por `!is_default`) — sem isso, colar
    comprovante/escanear nota nunca reconhecia uma categoria custom, só as 9

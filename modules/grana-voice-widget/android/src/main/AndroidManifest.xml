@@ -1,0 +1,44 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- Gravar do widget exige as três: o microfone em si, o serviço em primeiro
+       plano e o subtipo `microphone`, obrigatório a partir do Android 14 pra
+       um serviço que captura áudio. Sem o subtipo o sistema derruba o serviço
+       com SecurityException assim que ele sobe. -->
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+  <application>
+
+    <!-- `exported="true"` é exigência do launcher: quem entrega o toque no
+         widget é o processo da tela inicial, fora do app. -->
+    <receiver
+      android:name="com.gabriouss.grana.voicewidget.GranaVoiceWidgetProvider"
+      android:label="@string/grana_voice_widget_rotulo"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <intent-filter>
+        <action android:name="com.gabriouss.grana.voicewidget.TOQUE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/grana_voice_widget_info" />
+    </receiver>
+
+    <service
+      android:name="com.gabriouss.grana.voicewidget.GranaVoiceCaptureService"
+      android:foregroundServiceType="microphone"
+      android:exported="false" />
+
+    <!-- Sem `exported`: quem inicia é sempre o serviço de captura, no mesmo
+         processo. -->
+    <service
+      android:name="com.gabriouss.grana.voicewidget.GranaVoiceHeadlessService"
+      android:exported="false" />
+
+  </application>
+</manifest>

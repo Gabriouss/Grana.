@@ -338,7 +338,19 @@ export default function InicioScreen() {
      modal, porque a rota continuaria carregando o parâmetro. */
   const params = useLocalSearchParams<{
     acao?: string; amount?: string; desc?: string; type?: string; category?: string;
+    colarTexto?: string;
   }>();
+
+  /* Fala vinda do widget que o próprio widget se recusou a salvar sozinho
+     (sem valor, categoria incerta): abre a mesma revisão do botão de voz, com
+     a transcrição preenchida, pra ninguém ter que repetir o que já falou. */
+  useEffect(() => {
+    if (!params.colarTexto) return;
+    setVoiceText(params.colarTexto);
+    setPasteModalOpen(true);
+    router.replace('/(app)/');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.colarTexto]);
 
   useEffect(() => {
     if (!params.acao) return;

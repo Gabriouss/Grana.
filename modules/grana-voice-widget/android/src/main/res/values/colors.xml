@@ -1,0 +1,9 @@
+<resources>
+  <!-- Mesmos tokens de lib/theme.ts: o widget mora fora do app, mas continua
+       sendo o Grana. na tela inicial da pessoa. -->
+  <color name="grana_voice_fundo">#0B2D35</color>
+  <color name="grana_voice_borda">#174A55</color>
+  <color name="grana_voice_menta">#7BD8C0</color>
+  <color name="grana_voice_escuro">#052229</color>
+  <color name="grana_voice_texto">#E8F3F1</color>
+</resources>

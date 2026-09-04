@@ -1,13 +1,14 @@
 {
   "name": "grana-app",
   "version": "1.0.0",
-  "main": "expo-router/entry",
+  "main": "index.js",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.112.3",
     "aes-js": "^3.1.2",
     "expo": "~57.0.18",
+    "expo-audio": "~57.0.4",
     "expo-blur": "~57.0.2",
     "expo-camera": "~57.0.4",
     "expo-clipboard": "~57.0.1",

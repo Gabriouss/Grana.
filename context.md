@@ -1807,3 +1807,149 @@ centavo" → `1,01 reais`).
 As alterações paralelas da landing (`app/index.tsx`, `components/AppPressable.tsx`,
 `CarrosselTelasApp`, `ConversaGranabo`, `MolduraNavegador`, `PainelWebDestaque`,
 `TrilhaPassos`, `BrandMark.tsx`) foram preservadas e ficaram FORA deste commit.
+
+## Sessão de 04/09/2026 — lançamento por áudio unificado e widget Android 1x1
+
+Escopo pedido pelo autor, mais estreito que a spec inteira: **resolver o
+lançamento por áudio e deixar o widget de voz pronto pra próxima APK.** Fases 3
+a 6 da spec, com uma troca de arquitetura deliberada (ver abaixo).
+
+### A decisão que muda a spec: o backend transcreve, o aparelho interpreta
+
+A spec previa levar o parser inteiro pro Deno (`_shared/finance-command.ts`) e
+a Edge Function devolver o lançamento já interpretado. **Não foi isso que foi
+feito, e o motivo é concreto:** o gap de qualidade do lançamento por voz do app
+era o MOTOR DE TRANSCRIÇÃO (`expo-speech-recognition`, reconhecimento do
+aparelho), não o parser. O parser do app (`lib/heuristics.ts`) já é o mesmo do
+webhook — vigiado arquivo a arquivo por `sync-parser.js` e coberto pelos 34.093
+casos do corpus.
+
+Então a Edge Function nova devolve **só o texto transcrito**, e quem interpreta
+é `lib/heuristics.ts`, no aparelho. Resultado:
+
+- paridade real nos dois eixos (mesmo Whisper + mesmo parser) sem portar ~1.000
+  linhas de regex financeira pro Deno, onde ela seria verificada por nada;
+- o widget não precisa ir à rede pra decidir o que já sabe decidir;
+- nenhuma cópia nova nasceu — a contagem de pares em sincronia subiu de 37 pra
+  39 porque duas funções foram PORTADAS pro app, não duplicadas de novo.
+
+Quem for retomar a spec: os Blocos `finance-persistence.ts`, `voice_operations`,
+`mode=commit` e idempotência por `request_id` **não foram implementados** e
+seguem válidos como trabalho futuro. Hoje o widget grava direto pelo
+`lib/data.ts` do app, com a sessão do usuário.
+
+### Backend
+
+- **`supabase/functions/processar-lancamento-voz/`** (novo, autenticado). Recebe
+  `multipart/form-data` com o campo `audio`, valida o JWT com
+  `auth.getUser()` (identidade NUNCA vem do corpo), aplica teto de 2 MiB,
+  allowlist de MIME e um rate limit best-effort de 12/min por usuário —
+  best-effort de verdade: é um `Map` na memória do isolate, e o Supabase
+  recicla isolates. O controle de custo que vale é o teto de tamanho.
+  Devolve `{ status: 'ready', transcript }` ou `{ status: 'error', code }` com
+  códigos estáveis, que são o que escolhe a mensagem na UI.
+  **Publicar SEM `--no-verify-jwt`.** Precisa de `GROQ_API_KEY` (e
+  `OPENAI_API_KEY` como fallback) nos secrets.
+- O prompt do Whisper em `_shared/voice-transcription.ts` deixou de dizer
+  "mensagens de WhatsApp" — agora serve os três canais.
+
+### App
+
+- **`lib/voz.ts`** (novo) — cliente da função. Trata o upload de arquivo nas
+  duas plataformas (`{uri,name,type}` no nativo; `Blob` de verdade na web, onde
+  a forma do React Native subiria como `[object Object]`), e traduz cada código
+  de erro em título+texto prontos pra Alert ou notificação.
+- **`components/VoiceEntryButton.tsx`** — trocou `expo-speech-recognition` por
+  gravação com `expo-audio` (mono, 64 kbps, .m4a; ~150 KB em 20s), corte
+  automático em 20s, e estado "Transcrevendo…" com spinner. **Efeito colateral
+  bom: voz voltou a funcionar no Expo Go**, já que o aparelho agora só grava.
+- **Lacunas de parsing fechadas** (eram as apontadas pela spec):
+  `parseFormaPagamento` e `parseRecorrencia` portadas do webhook pro
+  `lib/heuristics.ts` (agora 39/39 em sincronia). Com elas:
+  - `credito.tsx` e `contas.tsx` deixaram de gravar `recurring: false` fixo —
+    "Netflix no crédito todo mês" e "internet vence dia 15 todo mês" viravam
+    lançamento avulso;
+  - as duas telas passaram a carregar categorias personalizadas e usá-las no
+    reconhecimento por voz;
+  - `PasteReceiptModal` grava `payment_method` e `recurring` (antes "no pix"
+    era ouvido e jogado fora), e o `guessCategoryFromText` do SALVAR passou a
+    receber `extras` — sem isso, categoria custom reconhecida na tela voltava
+    pra "Outros" na hora de gravar. Ganhou uma linha "Também reconhecido:
+    Pix · repete todo mês", porque recorrência criada sem a pessoa perceber é
+    dinheiro aparecendo nos meses seguintes.
+  - `CategoryChips` aceita `extras` — antes, categoria custom reconhecida ficava
+    selecionada sem chip nenhum pra mostrar qual era.
+
+### Widget Android
+
+Módulo Expo **local** em `modules/grana-voice-widget/` (não config plugin): o
+`AndroidManifest.xml` e os recursos do módulo são mesclados pelo Gradle
+sozinhos, o que evita um plugin manipulando XML na mão. Autolinking confirmado
+via `npx expo-modules-autolinking resolve` (o módulo aparece na lista; ele não
+entra no `settings.gradle`, é resolvido por `expoAutolinking.useExpoModules()`).
+
+- `GranaVoiceWidgetProvider` — 1x1, três estados (ocioso/ouvindo/processando),
+  estado em SharedPreferences porque um `AppWidgetProvider` é um receiver sem
+  instância viva entre um toque e o próximo.
+- `GranaVoiceCaptureService` — foreground service `microphone`, MediaRecorder
+  com a MESMA configuração do gravador do app, corte por silêncio (só depois de
+  ter ouvido fala) e teto duro de 20s. Apaga o arquivo em todo caminho de saída.
+- `GranaVoiceHeadlessService` — `HeadlessJsTaskService`, entrega o arquivo ao
+  JS com o app fechado.
+- `lib/widget-voz-task.ts` — a tarefa. Transcreve, interpreta com
+  `lib/heuristics.ts` e grava com `lib/data.ts`. **Não salva quando há
+  ambiguidade que mexe em dinheiro**: sem valor, categoria caindo em "Outros",
+  ou crédito sem cartão cadastrado viram notificação "toque para revisar" que
+  abre a tela certa com a transcrição pronta.
+- `index.js` novo (e `package.json:main` apontando pra ele): a tarefa headless
+  precisa estar registrada na avaliação do bundle, antes de existir árvore React.
+- `components/RespostaVozWidget.tsx` — trata o toque na notificação. "Desfazer"
+  apaga o que a fala criou (inclusive todas as parcelas); tocar no corpo abre a
+  tela. O botão abre o app de propósito (`opensAppToForeground`): apagar
+  lançamento é destrutivo e a confirmação precisa ser visível.
+- Perfil ganhou "Widget de voz na tela inicial", com pinning quando o launcher
+  suporta e instrução do gesto manual quando não.
+
+### Dois bugs achados relendo o Kotlin (corrigidos antes de qualquer build)
+
+1. **Crash garantido**: o provider chama `startForegroundService` em TODO toque,
+   inclusive no "encerrar". Se o processo tivesse morrido com o widget em
+   "ouvindo", a instância nova do serviço nascia com `gravando = false`, saía
+   sem chamar `startForeground` e o Android derrubava o app inteiro
+   (`ForegroundServiceDidNotStartInTimeException`). Agora `startForeground` é a
+   primeira coisa do `onStartCommand`, sempre.
+2. **`setMaxDuration` + timer próprio**: o MediaRecorder para sozinho ao atingir
+   o limite, e o `stop()` seguinte lança — descartando uma gravação de 20s
+   perfeitamente boa. O corte agora é só nosso.
+
+### Verificações
+
+`npx tsc --noEmit` limpo; `deno check` limpo nos módulos `_shared` e na Edge
+Function nova; `npm run test:parser` 100% (250.200 + 34.093 + 324 guardas do
+design system + **39/39 em sincronia**); `npx expo prebuild --platform android`
+gerou o projeto nativo sem erro com o módulo autolinkado; e
+`npm run notas:check` aprovou a nota candidata do build.
+
+`app.json` subiu **1.4.2 → 1.4.3** (regra 5 do AGENTS.md).
+
+**Não verificado, e só dá pra verificar com build:** o Kotlin nunca foi
+compilado — não há JDK nem Android SDK nesta máquina (`java` não existe,
+`ANDROID_HOME` vazio). Widget, foreground service e tarefa headless são código
+lido e revisado, não código executado.
+
+**Pendente:**
+
+1. **Build EAS** — não disparada (regra 4 do AGENTS.md exige pedido explícito).
+   Nota já aprovada: `"Lance gastos por voz direto da tela inicial, com o mesmo
+   motor do WhatsApp"`.
+2. **Deploy da Edge Function** `processar-lancamento-voz` e conferir que
+   `GROQ_API_KEY` está nos secrets. Sem isso o botão de voz responde
+   "Voz indisponível agora" — o app não quebra, mas voz não funciona.
+3. **QA em aparelho real**: widget na home, gravação com app fechado, force-stop,
+   reboot, Android 12/13/14/15, e pelo menos Pixel/Samsung/Motorola.
+4. **`expo-speech-recognition` continua instalado** de propósito — nada mais o
+   importa, mas a spec manda remover só depois do QA em APK passar.
+5. Da spec original, seguem em aberto: `finance-persistence.ts`,
+   `voice_operations`, `mode=commit` e idempotência por `request_id`.
+
+As alterações paralelas da landing seguem preservadas e fora deste commit.

@@ -1,0 +1,12 @@
+<resources>
+  <string name="grana_voice_widget_rotulo">Grana. — lançar por voz</string>
+  <string name="grana_voice_widget_descricao">Toque e fale o gasto. O Grana. lança sem abrir o app.</string>
+  <string name="grana_voice_ocioso">Lançar por voz</string>
+  <string name="grana_voice_ouvindo">Ouvindo…</string>
+  <string name="grana_voice_processando">Lançando…</string>
+  <string name="grana_voice_canal">Lançamento por voz</string>
+  <string name="grana_voice_gravando_titulo">Grana. está ouvindo</string>
+  <string name="grana_voice_gravando_texto">Fale o lançamento. Toque no widget para encerrar.</string>
+  <string name="grana_voice_encerrar">Encerrar</string>
+  <string name="grana_voice_cancelar">Cancelar</string>
+</resources>
