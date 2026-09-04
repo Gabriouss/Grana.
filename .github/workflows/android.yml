@@ -1,0 +1,82 @@
+name: Android nativo
+
+# O `ci.yml` cobre TypeScript e a suíte de corpus — tudo que roda em Node.
+# O que ele não alcança é o Android nativo: desde o widget de lançamento por
+# voz (`modules/grana-voice-widget/`) existe Kotlin, layout, drawable e
+# manifest no repositório, e nada disso é compilado por `tsc` nem por
+# `test:parser`.
+#
+# O buraco é o mesmo que motivou o `ci.yml`, um andar abaixo: código que só
+# quebra quando executado de verdade. Na sessão em que o widget foi escrito
+# não havia JDK nem Android SDK na máquina do autor, então o Kotlin foi
+# revisado por leitura e conferido por dois scripts descartáveis (cruzamento
+# de `R.*` contra os recursos, e well-formedness de XML). Isso pega nome de
+# recurso trocado; não pega erro de tipo, de API ou de merge de manifest.
+#
+# Este workflow tira essa dúvida do caminho crítico: os runners do GitHub já
+# vêm com JDK e Android SDK, então dá pra compilar de verdade a cada push,
+# de graça — sem gastar a cota do EAS, que é o recurso escasso aqui (ver
+# regra 4 do AGENTS.md).
+#
+# `assembleDebug` e não `compileDebugKotlin` de propósito: o alvo maior é mais
+# lento, mas além do Kotlin ele faz o link dos recursos e o merge do manifest,
+# que é justamente a outra metade do que foi escrito à mão. Em debug o Expo
+# não empacota o JavaScript, então isto não depende de nenhum segredo nem das
+# variáveis `EXPO_PUBLIC_*`.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'modules/**'
+      - 'plugins/**'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/android.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'modules/**'
+      - 'plugins/**'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/android.yml'
+  # Para rodar à mão antes de disparar uma build do EAS, mesmo sem ter
+  # tocado em nada de nativo.
+  workflow_dispatch:
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # O runner traz mais de uma JDK; fixar a 17 evita depender de qual está
+      # ativa por padrão — o Expo SDK 57 compila em 17.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Cache do Gradle: sem ele cada execução rebaixa as dependências
+      # inteiras e o job passa de dez minutos.
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      # O projeto usa geração nativa do Expo — `android/` não existe no
+      # repositório (está no .gitignore) e é gerado a cada vez. É também o que
+      # torna este job uma verificação honesta do config plugin e do
+      # autolinking do módulo local, não só do Kotlin.
+      - name: Gerar o projeto nativo
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Compilar Kotlin, recursos e manifest
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
