@@ -21,7 +21,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { useAppLock } from '@/lib/app-lock-context';
 import { useScreenCapture } from '@/lib/screen-capture-context';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, fonts, type, lh } from '@/lib/theme';
 import {
   createWhatsappPairing,
   deleteUserAccount,
@@ -1016,9 +1016,9 @@ const styles = StyleSheet.create({
      tamanho, só recuado em cor — a linha continua legível, e o motivo vem do
      valor à direita ("Instável") e do pop-up de aviso. */
   rowKeyDesativado: { color: theme.inkFaint },
-  rowColuna: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule, gap: 4 },
+  rowColuna: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule, gap: spacing.xs },
   rowInterna: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowAjuda: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda), paddingRight: 16, fontFamily: fonts.light },
+  rowAjuda: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda), paddingRight: spacing.lg, fontFamily: fonts.light },
   avatarFoto: { width: '100%', height: '100%', borderRadius: 999 },
   avatarBadge: {
     position: 'absolute', right: -2, bottom: -2,
@@ -1034,7 +1034,7 @@ const styles = StyleSheet.create({
     letterSpacing: 6,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
-    paddingVertical: 8, fontFamily: fonts.regular },
+    paddingVertical: spacing.sm, fontFamily: fonts.regular },
   nomeSalvar: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   nomeSalvarTexto: { color: theme.paper, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
@@ -1043,12 +1043,12 @@ const styles = StyleSheet.create({
   reauthTitle: { color: theme.ink, fontSize: type.titulo,
   lineHeight: lh(type.titulo, 'titulo'), fontFamily: fonts.regular },
   reauthText: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.light },
-  reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: type.corpo, color: theme.ink, backgroundColor: theme.paper, fontFamily: fonts.regular },
+  reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, fontSize: type.corpo, color: theme.ink, backgroundColor: theme.paper, fontFamily: fonts.regular },
   reauthError: { color: theme.danger, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.regular },
   reauthDanger: { backgroundColor: theme.danger, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   reauthDangerText: { color: theme.paper, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
-  reauthCancel: { paddingVertical: 12, alignItems: 'center' },
+  reauthCancel: { paddingVertical: spacing.md, alignItems: 'center' },
   reauthCancelText: { color: theme.inkSoft, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.light },
   /* Verde do WhatsApp: única cor emprestada de outra marca no app, e aqui ela
@@ -1075,7 +1075,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paper,
     paddingHorizontal: spacing.md,
   },
-  whatsappCopiar: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  whatsappCopiar: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone },
   whatsappCopiarTexto: { color: theme.inkFaint, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.light },
   atalhoLinha: {
@@ -1092,10 +1092,14 @@ const styles = StyleSheet.create({
   atalhoTitulo: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   atalhoUrl: { color: theme.inkFaint, fontSize: type.legenda,
-  lineHeight: lh(type.legenda, 'apoio'), marginTop: 2, fontFamily: fonts.light },
+  lineHeight: lh(type.legenda, 'apoio'), marginTop: spacing.fio, fontFamily: fonts.light },
   container: { flex: 1, backgroundColor: theme.paper },
   /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
-  content: { padding: spacing.xl, gap: spacing.lg },
+  /* Era 20/16 — um degrau acima das outras seis telas, que usam 16/12. O
+     Perfil foi a única que nunca entrou no `screenRhythm`, e dava pra ver
+     trocando de aba: o corpo deslocava. É exatamente o sintoma que o token
+     nasceu pra matar. */
+  content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
   avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: theme.paperRaised, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.rule },
   avatarText: { color: theme.ink, fontSize: type.destaque,
@@ -1103,10 +1107,15 @@ const styles = StyleSheet.create({
   name: { color: theme.ink, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
   sub: { color: theme.inkFaint, fontSize: type.nota,
-  lineHeight: lh(type.nota, 'corpo'), marginTop: 2, fontFamily: fonts.light },
+  lineHeight: lh(type.nota, 'corpo'), marginTop: spacing.fio, fontFamily: fonts.light },
   sectionLabel: { color: theme.inkFaint, fontSize: type.legenda,
   lineHeight: lh(type.legenda, 'apoio'), letterSpacing: 0.5, marginTop: spacing.sm, fontFamily: fonts.light },
   sectionCard: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, paddingHorizontal: spacing.md },
+  /* Os `13` daqui NÃO são a escala de espaço esquecida — são ALTURA DE LINHA
+     de um item tocável, e cada linha destas é um alvo de toque. Trocar por
+     `spacing.md` encolhe todas as linhas de ajuste de uma vez; se um dia for
+     pra mexer, o caminho é `minHeight: touchTarget`, não arredondar o padding
+     pro token mais próximo. Mesmo caso do `14` dos botões primários. */
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
   tappableRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: theme.rule },
   rowKey: { color: theme.ink, fontSize: type.apoio,

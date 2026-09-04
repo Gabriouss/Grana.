@@ -479,12 +479,12 @@ const styles = StyleSheet.create({
     lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkSoft,
   },
-  heroInfo: { flex: 1, gap: 2 },
+  heroInfo: { flex: 1, gap: spacing.fio },
   levelBadge: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(174,255,227,0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.fio,
     borderRadius: radius.pill,
   },
   levelBadgeText: {
@@ -503,10 +503,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: type.legenda,
     color: theme.inkFaint,
-    lineHeight: 15,
+    /* Era `15` fixo. `type` é Platform.select — `legenda` vale 12 no Android e
+       14 na web —, então o pixel cravado dava 1,25× num lugar e 1,07× no
+       outro, com as linhas quase se encostando. O `lh()` existe pra
+       entrelinha seguir o corpo em cada plataforma. */
+    lineHeight: lh(type.legenda, 'apoio'),
   },
   progressSection: {
-    gap: 4,
+    gap: spacing.xs,
     paddingTop: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.rule,
@@ -548,8 +552,8 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: type.micro,
     color: theme.inkFaint,
-    lineHeight: 14,
-    marginTop: 2,
+    lineHeight: lh(type.micro, 'apoio'),
+    marginTop: spacing.fio,
   },
   card: {
     backgroundColor: theme.paperRaised,
@@ -567,9 +571,9 @@ const styles = StyleSheet.create({
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.icone,
   },
-  indicadorItem: { gap: 2 },
+  indicadorItem: { gap: spacing.fio },
   indicadorValor: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'valor'), fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   cardTitle: {
@@ -584,8 +588,8 @@ const styles = StyleSheet.create({
     lineHeight: lh(type.legenda, 'apoio'),
     color: theme.accent2,
     backgroundColor: 'rgba(174,255,227,0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.fio,
     borderRadius: radius.pill,
   },
   scoreTotalLabel: {
@@ -604,7 +608,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  dayCol: { alignItems: 'center', gap: 6 },
+  dayCol: { alignItems: 'center', gap: spacing.icone },
   dayCircle: {
     width: 26,
     height: 26,

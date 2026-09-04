@@ -404,14 +404,14 @@ const styles = StyleSheet.create({
     gap: screenRhythm.gap,
   },
   headerBtn: {
-    padding: 6,
+    padding: spacing.icone,
     borderRadius: radius.sm,
   },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: theme.paper,
     borderRadius: radius.pill,
-    padding: 4,
+    padding: spacing.xs,
     borderWidth: 1,
     borderColor: theme.rule,
   },
@@ -456,8 +456,8 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    gap: 2,
+    paddingVertical: spacing.sm,
+    gap: spacing.fio,
   },
   periodoFieldLabel: {
     color: theme.inkFaint,
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
     padding: cardTokens.padding,
-    gap: 4,
+    gap: spacing.xs,
   },
   summaryLabel: {
     color: theme.inkFaint,
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
   },
   legendCol: {
     flex: 1,
-    gap: 8,
+    gap: spacing.sm,
   },
   legendColLargo: {
     maxWidth: 280,
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
   legendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.icone,
   },
   legendDot: {
     width: 6,

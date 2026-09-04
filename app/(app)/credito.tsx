@@ -1098,7 +1098,7 @@ export default function CreditoScreen() {
           </View>
 
           {wallets.length > 0 && (
-            <View style={{ gap: 4, marginTop: 4 }}>
+            <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
               <Text style={styles.inputLabel}>Pagar com a carteira</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.banksRow}>
                 {wallets.map((w) => (
@@ -1169,7 +1169,7 @@ const CreditTransactionRow = memo(function CreditTransactionRow({
       onLongPress={onLongPress}
     >
       <View style={styles.txInfo}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.icone }}>
           <Text style={styles.txDesc}>{tx.description}</Text>
           {tx.installment_total && tx.installment_total > 1 ? (
             <View style={styles.instBadge}>
@@ -1195,9 +1195,9 @@ const styles = StyleSheet.create({
   addCardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: spacing.icone,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(174,255,227,0.1)',
     borderWidth: 1,
@@ -1213,7 +1213,7 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
-  cardsRow: { gap: spacing.md, paddingVertical: 4 },
+  cardsRow: { gap: spacing.md, paddingVertical: spacing.xs },
   creditCard: {
     width: 240,
     borderRadius: radius.lg,
@@ -1232,13 +1232,13 @@ const styles = StyleSheet.create({
        dígitos), então centralizar deixaria a bolinha flutuando entre elas em
        vez de marcar o início. */
     alignItems: 'flex-start',
-    gap: 6,
+    gap: spacing.icone,
   },
-  cardIdentidade: { flexShrink: 1, gap: 2 },
+  cardIdentidade: { flexShrink: 1, gap: spacing.fio },
   cardBankTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.icone,
   },
   bankDot: {
     marginTop: 5,
@@ -1258,7 +1258,7 @@ const styles = StyleSheet.create({
     lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkFaint,
   },
-  cardMidRow: { gap: 2, marginVertical: 4 },
+  cardMidRow: { gap: spacing.fio, marginVertical: spacing.xs },
   cardInvoiceLabel: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
@@ -1271,7 +1271,7 @@ const styles = StyleSheet.create({
     lineHeight: lh(type.titulo, 'valor'),
     color: theme.down,
   },
-  cardBottomRow: { gap: 4 },
+  cardBottomRow: { gap: spacing.xs },
   cardLimitRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1319,13 +1319,16 @@ const styles = StyleSheet.create({
     fontSize: type.legenda,
     color: theme.inkFaint,
     textAlign: 'center',
-    lineHeight: 16,
+    /* Texto de estado vazio quebra em duas linhas de verdade — entra em
+       `corpo`, não em `apoio`. Era `16` fixo, que na web (legenda = 14) dava
+       1,14×. */
+    lineHeight: lh(type.legenda, 'corpo'),
   },
   emptyCardActionBtn: {
-    marginTop: 4,
+    marginTop: spacing.xs,
     backgroundColor: 'rgba(174,255,227,0.1)',
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
     borderRadius: radius.pill,
   },
   emptyCardActionText: {
@@ -1351,7 +1354,7 @@ const styles = StyleSheet.create({
      (Todos os Cartões)" quebra em duas linhas e a segunda ficava colada no
      "R$ 0,00" logo abaixo. Todo outro bloco empilhado da tela já tem folga
      (cardIdentidade 2, cardMidRow 2, cardBottomRow 4); este era o único sem. */
-  invoiceInfo: { flex: 1, minWidth: 168, gap: 2 },
+  invoiceInfo: { flex: 1, minWidth: 168, gap: spacing.fio },
   invoiceLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
@@ -1367,8 +1370,8 @@ const styles = StyleSheet.create({
   invoiceStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
+    gap: spacing.icone,
+    marginTop: spacing.xs,
   },
   invoiceDueText: {
     fontFamily: fonts.regular,
@@ -1379,8 +1382,8 @@ const styles = StyleSheet.create({
   invoiceStatusBadge: {
     borderWidth: 1,
     borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.fio,
   },
   invoiceStatusText: {
     fontFamily: fonts.regular,
@@ -1391,7 +1394,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: spacing.icone,
     backgroundColor: theme.ink,
     borderRadius: radius.md,
     paddingVertical: 11,
@@ -1416,10 +1419,10 @@ const styles = StyleSheet.create({
   addPurchaseBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     backgroundColor: theme.accent2,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radius.md,
     justifyContent: 'center',
     flexGrow: 1,
@@ -1453,7 +1456,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
-  txInfo: { flex: 1, gap: 2 },
+  txInfo: { flex: 1, gap: spacing.fio },
   txDesc: {
     fontFamily: fonts.regular,
     fontSize: type.apoio,
@@ -1462,7 +1465,7 @@ const styles = StyleSheet.create({
   },
   instBadge: {
     backgroundColor: 'rgba(174,255,227,0.12)',
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.icone,
     paddingVertical: 1,
     borderRadius: 4,
   },
@@ -1501,7 +1504,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.rule,
     color: theme.ink,
     fontSize: type.apoio,
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
     fontFamily: fonts.regular,
   },
   inputLabel: {
@@ -1513,15 +1516,15 @@ const styles = StyleSheet.create({
   },
   banksRow: {
     flexDirection: 'row',
-    gap: 6,
-    paddingVertical: 4,
+    gap: spacing.icone,
+    paddingVertical: spacing.xs,
   },
   bankChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.icone,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: spacing.icone,
     borderRadius: radius.pill,
     backgroundColor: theme.paper,
     borderWidth: 1,
@@ -1541,10 +1544,10 @@ const styles = StyleSheet.create({
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.icone,
     borderBottomWidth: 1,
     borderBottomColor: theme.ruleStrong,
-    paddingBottom: 6,
+    paddingBottom: spacing.icone,
   },
   amountPrefix: {
     color: theme.inkFaint,
@@ -1563,7 +1566,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
-    gap: 2,
+    gap: spacing.fio,
   },
   fieldKey: {
     fontFamily: fonts.regular,
@@ -1574,7 +1577,7 @@ const styles = StyleSheet.create({
   fieldVal: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.icone,
   },
   fieldValText: {
     fontFamily: fonts.regular,

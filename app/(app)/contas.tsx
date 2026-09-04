@@ -410,7 +410,7 @@ export default function ContasScreen() {
                       <View style={styles.cardNameRow}>
                         <Text style={styles.cardName}>{item.description}</Text>
                         {item.recurring && (
-                          <Ionicons name="repeat-outline" size={12} color={theme.inkFaint} style={{ marginLeft: 4 }} />
+                          <Ionicons name="repeat-outline" size={12} color={theme.inkFaint} style={{ marginLeft: spacing.xs }} />
                         )}
                       </View>
                       <Text style={styles.cardCat}>{item.category}</Text>
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
   filtrosWrap: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.padding, gap: screenRhythm.gap },
   /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
   listContent: { paddingHorizontal: screenRhythm.padding, paddingTop: screenRhythm.gap, gap: screenRhythm.gap },
-  emptyText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', marginTop: 30, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
+  emptyText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', marginTop: spacing.xxl, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
   /* Sem marginBottom aqui: o espaço entre itens já vem do `gap` de
      styles.listContent — somar os dois dobraria a distância entre um card e
      o próximo em relação à distância do primeiro card até o filtro acima. */
@@ -527,13 +527,13 @@ const styles = StyleSheet.create({
   cardName: { color: theme.ink, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
   cardCat: { color: theme.inkFaint, fontSize: type.legenda,
-  lineHeight: lh(type.legenda, 'apoio'), marginTop: 2, fontFamily: fonts.light },
+  lineHeight: lh(type.legenda, 'apoio'), marginTop: spacing.fio, fontFamily: fonts.light },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardAmount: { color: theme.ink, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   cardDue: { color: theme.inkFaint, fontSize: type.legenda,
   lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
-  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
+  pill: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
   pillOk: { backgroundColor: theme.rule },
   pillWarn: { borderWidth: 1, borderColor: theme.ruleStrong },
   pillLate: { backgroundColor: theme.ink },
@@ -549,14 +549,14 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo,
   lineHeight: lh(type.titulo, 'titulo'), fontFamily: fonts.regular },
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
+  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: spacing.sm, fontFamily: fonts.regular },
+  amountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
   amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.rule },
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.light },
-  fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fieldVal: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   fieldValText: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   dot: { width: 8, height: 8, borderRadius: 4 },

@@ -66,7 +66,29 @@ export const PALETTE_30 = [
   '#d087a0', '#a3566a', '#ab8bc2', '#8f6bb0', '#93739e',
 ];
 
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 };
+/* `fio` e `icone` não são degraus da escala de camiseta — são PAPÉIS, no mesmo
+   espírito de `leading.corpo`/`leading.apoio` mais abaixo. Nasceram de uma
+   medição: a escala saltava 4 → 8 → 12 → 16 e não tinha nada abaixo de 4 nem
+   entre os degraus, então todo ajuste fino escapava do sistema. O resultado
+   eram 62 números soltos nas telas — mas não 62 decisões: eram DOIS valores
+   repetidos com um papel consistente cada, `6` em 39 lugares e `2` em 23.
+   Um valor usado 39 vezes para a mesma coisa é um token que ninguém nomeou.
+
+   Nomeados por papel, e não como `xxs`/`xsm`, justamente para o uso errado
+   ficar visível: `spacing.icone` num espaço que não envolve ícone lê como
+   engano na revisão; um `xxs` genérico não lê como nada. */
+export const spacing = {
+  /** O fio entre um rótulo e o sub-rótulo logo abaixo dele. */
+  fio: 2,
+  xs: 4,
+  /** O vão entre um ícone e o texto ao lado. */
+  icone: 6,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 28,
+};
 export const radius = { sm: 8, md: 12, lg: 16, xl: 22, pill: 999 };
 
 /* Rítmica do corpo das telas principais (abaixo do ScreenHeader). Cada tela
