@@ -17,8 +17,8 @@ import com.facebook.react.jstasks.HeadlessJsTaskConfig
  * A tarefa se chama `GranaVoiceTask` e é registrada em `lib/widget-voz-task.ts`.
  */
 class GranaVoiceHeadlessService : HeadlessJsTaskService() {
-  override fun getTaskConfig(intent: Intent): HeadlessJsTaskConfig? {
-    val extras = intent.extras ?: return null
+  override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {
+    val extras = intent?.extras ?: return null
     return HeadlessJsTaskConfig(
       "GranaVoiceTask",
       Arguments.fromBundle(extras),

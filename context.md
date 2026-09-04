@@ -2075,3 +2075,9 @@ Android bem formados; todas as referências `R.*` do Kotlin e referências entre
 XMLs resolvidas. O compile real de Kotlin/recursos/manifest fica a cargo do
 workflow `.github/workflows/android.yml` após o push. Nenhum build EAS foi
 disparado e `app.json` permanece em 1.4.3.
+
+O primeiro run desse workflow revelou um erro anterior do widget de voz que
+nenhuma checagem textual alcançava: no React Native 0.86,
+`HeadlessJsTaskService.getTaskConfig` recebe `Intent?`, mas o override local
+usava `Intent` não nulo. `GranaVoiceHeadlessService` foi ajustado para a
+assinatura atual e continua encerrando com segurança quando não há extras.
