@@ -2132,3 +2132,41 @@ e não encosta na cota. Existe porque o Kotlin do widget nunca foi compilado
 nesta máquina — não há JDK nem Android SDK aqui — e revisão por leitura não
 pega erro de tipo, de API nem de merge de manifest. Tem `workflow_dispatch`
 para rodar à mão antes de uma build.
+
+## Sessão de 04/09/2026 - dois vazamentos de dado financeiro fora do app
+
+O autor perguntou se a sessão anterior tinha se equivocado em privacidade ao
+construir os widgets/notificações. Investigação confirmou dois vazamentos
+reais, ambos corrigidos:
+
+1. **`notifyCreditLimitThreshold`** (`lib/notifications.ts`) mandava
+   `"R$ X de R$ Y gastos"` no corpo da notificação de limite de cartão — texto
+   que aparece na tela de bloqueio por padrão, sem exigir desbloqueio, a menos
+   que a pessoa tenha configurado manualmente "ocultar conteúdo sensível" no
+   sistema (raro). Corpo não cita mais valor nenhum; a porcentagem que já
+   estava no título é suficiente pra avisar.
+2. **Widgets de resumo** (Livre pra Gastar, Cofrinho, Próximo Compromisso)
+   mostravam saldo/fatura reais na tela inicial por padrão. A causa: a flag de
+   privacidade deles só herdava `usePrivacy()` (modo privacidade geral do
+   app), que nasce DESLIGADO (`useState(false)`) e foi desenhado pra outra
+   ameaça — alguém olhando por cima do ombro enquanto você usa o app —, não
+   pra "fica exposto na tela inicial o tempo todo, sem eu nem tocar no
+   celular". Ninguém pensaria em ligar essa configuração especificamente por
+   causa do widget.
+
+   `lib/widget-privacy-context.tsx` é uma preferência nova e separada
+   (`WidgetPrivacyProvider`, chave própria no AsyncStorage), que nasce
+   OCULTA. `SincronizadorWidgetsHome` agora oculta valor no widget se
+   QUALQUER um dos dois sinais mandar ocultar (`hidden || !valoresVisiveis`).
+   Toggle "Mostrar valores nos widgets" novo na seção de widgets do Perfil,
+   desligado até a pessoa ligar explicitamente.
+
+   Widgets de ação pura (voz, central de lançamento) não mostram dado
+   nenhum — confirmado que não precisavam de mudança.
+
+Verificações: `npx tsc --noEmit` limpo (precisou reinstalar `node_modules` —
+`expo-audio`, dependência nova da sessão de voz unificada, não estava
+instalada neste ambiente) e `npm run test:parser` completo aprovado, incluindo
+20/20 checagens de notificações, 23/23 de widgets e 39/39 pares em
+sincronia. Sem validação visual em aparelho Android nesta sessão — o widget
+de resumo com o toggle novo ainda não foi visto rodando de verdade.
