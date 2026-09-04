@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { traduzirErroAuth, type ErroAuth } from './auth-errors';
 import { vincularAssinaturasPendentes } from './assinatura';
+import { removerPushHabitoAntesDeSair } from './push-notifications';
 
 type AuthContextValue = {
   session: Session | null;
@@ -171,6 +172,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return { error: traduzirErroAuth(error), needsEmailConfirmation: !error && !data.session };
     },
     async signOut() {
+      try {
+        await removerPushHabitoAntesDeSair();
+      } catch (err) {
+        console.warn('Erro ao remover o push antes de sair:', err);
+      }
       try {
         await supabase.auth.signOut();
       } catch (err) {

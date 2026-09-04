@@ -5,6 +5,13 @@ import {
   PREFIXO_ID_HABITO,
   QUANTIDADE_LEMBRETES_HABITO,
 } from '../lib/notification-schedule';
+import { MENSAGENS, selecionarMensagem } from '../lib/notification-catalog';
+import {
+  atrasoDaTentativa,
+  chegouHorario,
+  contextoDasDatas,
+  momentoNaZona,
+} from '../supabase/functions/_shared/push-habit';
 
 let passou = 0;
 let falhou = 0;
@@ -57,6 +64,27 @@ checar('atravessa a virada do ano', viradaDoAno[1].id === 'habito-diario-2027-01
 checar('reconhece o id legado', ehIdLembreteHabito(ID_HABITO_LEGADO));
 checar('reconhece ids datados', ehIdLembreteHabito(`${PREFIXO_ID_HABITO}2026-09-04`));
 checar('não captura lembretes de conta', !ehIdLembreteHabito('conta-123-3d'));
+
+checar('mantém as 48 copies aprovadas', MENSAGENS.length === 48);
+checar('cada copy tem id único', new Set(MENSAGENS.map((item) => item.id)).size === MENSAGENS.length);
+
+const mensagemSaudade = selecionarMensagem(
+  { streak: 0, diasInativo: 3, diaSemana: 2 },
+  ['saudade-1'],
+  () => 0
+);
+checar('inatividade usa a copy de saudade', mensagemSaudade.categoria === 'saudade');
+checar('sorteio remoto respeita o histórico antirrepetição', mensagemSaudade.id !== 'saudade-1');
+
+const momentoBrasil = momentoNaZona(new Date('2026-09-04T23:31:00.000Z'), 'America/Sao_Paulo');
+checar('converte o instante para a data local do aparelho', momentoBrasil?.data === '2026-09-04');
+checar('considera vencido depois do horário escolhido', !!momentoBrasil && chegouHorario(momentoBrasil, 20, 30));
+checar('timezone inválida não derruba o lote', momentoNaZona(new Date(), 'timezone-inexistente') === null);
+
+const contexto = contextoDasDatas(['2026-09-03', '2026-09-02', '2026-08-31'], '2026-09-04');
+checar('calcula streak até ontem quando hoje ainda não teve lançamento', contexto.streak === 2);
+checar('calcula dias de inatividade', contexto.diasInativo === 1);
+checar('retentativa tem teto de seis horas', atrasoDaTentativa(20) === 6 * 60 * 60_000);
 
 console.log(`${passou}/${passou + falhou} notificações passaram`);
 if (falhou > 0) process.exit(1);

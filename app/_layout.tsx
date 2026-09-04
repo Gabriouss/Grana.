@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { ActivityIndicator, AppState, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
@@ -23,7 +23,9 @@ import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
 import NovidadesModal from '@/components/NovidadesModal';
 import AvisoFlagModal from '@/components/AvisoFlagModal';
-// Registra o handler de notificações (lembretes de contas) assim que o app abre.
+import { carregarNotifPrefs } from '@/lib/notifications';
+import { observarTrocaDeTokenPush, sincronizarPushHabito } from '@/lib/push-notifications';
+// Registra o handler de notificações locais e remotas assim que o app abre.
 import '@/lib/notifications';
 
 const FAVICON_SVG = '/favicon.svg?v=grana-gradiente-20260830';
@@ -136,6 +138,30 @@ function RootNavigator() {
   const { session, isLoading, emRecuperacao } = useSession();
   const { estado: estadoAcesso, carregando: carregandoAcesso } = useEntitlement();
   const router = useRouter();
+
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId || Platform.OS === 'web' || estadoAcesso?.allowed === false) return;
+
+    let encerrado = false;
+    const sincronizar = async () => {
+      const prefs = await carregarNotifPrefs();
+      if (!encerrado) await sincronizarPushHabito(userId, prefs);
+    };
+    const tentarSincronizar = () => void sincronizar().catch(() => {});
+
+    tentarSincronizar();
+    const appState = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') tentarSincronizar();
+    });
+    const token = observarTrocaDeTokenPush(tentarSincronizar);
+
+    return () => {
+      encerrado = true;
+      appState.remove();
+      token?.remove();
+    };
+  }, [session?.user.id, estadoAcesso?.allowed]);
 
   /* Link protegido aberto sem sessão vai para o login, não para a página de
      marketing. Sem isto o expo-router caía na landing e o destino sumia. */

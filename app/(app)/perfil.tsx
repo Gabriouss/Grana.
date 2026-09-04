@@ -33,7 +33,6 @@ import {
   salvarNotifPrefs,
   requestNotificationPermission,
   scheduleDailyHabitReminder,
-  cancelDailyHabitReminder,
   scheduleBillReminders,
   cancelBillReminders,
   scheduleCardInvoiceReminders,
@@ -58,6 +57,7 @@ import OnboardingModal from '@/components/OnboardingModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import FeedbackModal from '@/components/FeedbackModal';
 import Toast from '@/components/Toast';
+import { sincronizarPushHabito } from '@/lib/push-notifications';
 
 /* Endereços que app/(app)/_layout.tsx sabe rotear — ver lib/deep-links.ts.
    O `add-tx` vem com valor e descrição de exemplo já preenchidos: quem cola
@@ -224,12 +224,9 @@ export default function PerfilScreen() {
     setWhatsappLink
   );
 
-  /**
-   * Lembrete diário é 1 id determinístico só — reagenda na hora. Contas e
-   * faturas são N ids (um por boleto/cartão); pra ter efeito imediato sem
-   * esperar a pessoa abrir aquelas telas, busca tudo aqui uma vez e repete o
-   * mesmo laço de reagendamento que contas.tsx/credito.tsx já fazem no load.
-   */
+  /** O push diário sincroniza a preferência no servidor; em Expo Go ou numa
+   * falha de cadastro, a janela local assume sem criar notificações duplas.
+   * Contas e faturas continuam sendo lembretes locais independentes. */
   async function alterarNotifPrefs(mudanca: Partial<NotifPrefs>) {
     if (!notifPrefs || isDemoMode) return;
     const novasPrefs = { ...notifPrefs, ...mudanca };
@@ -237,12 +234,11 @@ export default function PerfilScreen() {
     await salvarNotifPrefs(novasPrefs);
 
     if ('lembreteDiarioAtivo' in mudanca || 'horario' in mudanca) {
-      if (!novasPrefs.lembreteDiarioAtivo) {
-        await cancelDailyHabitReminder();
-      } else {
-        const granted = await requestNotificationPermission();
-        if (!granted) return;
-        try {
+      try {
+        const resultado = session?.user.id
+          ? await sincronizarPushHabito(session.user.id, novasPrefs)
+          : 'fallback-local';
+        if (resultado === 'fallback-local' && novasPrefs.lembreteDiarioAtivo) {
           const transacoes = await fetchTransactions({ sinceDays: 35 });
           const { streak } = calculateStreakAndWeek(transacoes);
           const jaLancouHoje = transacoes.some((t) => t.occurred_on === todayISO());
@@ -251,9 +247,12 @@ export default function PerfilScreen() {
             ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
             : 99;
           await scheduleDailyHabitReminder({ ...novasPrefs.horario, jaLancouHoje, streak, diasInativo });
-        } catch {
-          // Falha graciosa — a próxima abertura da Home tenta de novo
         }
+      } catch {
+        Alert.alert(
+          'Não foi possível atualizar os lembretes',
+          'Confira sua conexão e tente de novo. O Grana. tentará sincronizar novamente quando o app abrir.'
+        );
       }
     }
 

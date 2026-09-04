@@ -529,11 +529,22 @@ e oferece o caminho alternativo. As três importam.
 
 ### Parte 5 — Notificação push (Android e iOS)
 
-Esta é a parte grande. `expo-notifications` já está instalado
-(`~57.0.15`) e configurado como plugin no `app.json`, mas hoje é usado **só
-para notificação LOCAL** (lembrete de boleto, fatura, limite de cartão, em
-`lib/notifications.ts`). Não existe registro de push token, tabela de token
-nem remetente.
+**Estado em 04/09/2026:** o push remoto dos lembretes DIÁRIOS de hábito foi
+implementado no repositório (`lib/push-notifications.ts`, tabelas/outbox no
+`schema.sql`, Edge Function `enviar-lembretes-habito` e cron de 5 minutos).
+Ele reutiliza as 48 copies existentes, evita as 10 últimas, respeita horário e
+fuso do aparelho, faz retry, consulta recibos e remove `DeviceNotRegistered`.
+O backend diário já está em produção: migration aplicada, segredo separado no
+Vault/Edge Secrets, function ativa e cron `*/5 * * * *` confirmado com execução
+automática + HTTP 200. A credencial FCM v1 da conta EAS ainda precisa ser
+confirmada, seguida de build e teste num Android físico. O remetente genérico
+de INCIDENTE descrito abaixo (`enviar-aviso`) continua pendente e é um fluxo
+diferente.
+
+O diagnóstico abaixo registra o estado anterior à implementação diária.
+`expo-notifications` já existia, mas só era usado para notificações locais;
+agora o fluxo diário também registra tokens e usa o remetente remoto descrito
+no quadro de estado acima.
 
 ### 5.1 Credenciais (fazer primeiro — sem isso nada funciona)
 
@@ -834,7 +845,9 @@ de que as 13 chaves aparecem em `ligado('<chave>')` nos arquivos certos.
        SQL e confirmar que o botão some sem reinstalar nada — **não disparado
        nesta sessão**: regra 4 do AGENTS.md exige pedido explícito, e não
        houve pedido de build, só de terminar o trabalho de código/banco
-- [ ] 10. Só então começar a Parte 5 (push), que é independente e não bloqueia
+- [ ] 10. Concluir a Parte 5 (push): hábito diário e backend em produção,
+       faltam confirmar FCM v1 + build/teste Android; o push
+       genérico de incidente (`enviar-aviso`) continua pendente
 - [x] 11. Atualizar `context.md` e `DESIGN.md` (o estado desabilitado é um
        estado visual novo e o DESIGN.md não tem vocabulário para ele)
 

@@ -63,7 +63,8 @@
         "expo-notifications",
         {
           "color": "#052229",
-          "icon": "./assets/android-icon-monochrome.png"
+          "icon": "./assets/android-icon-monochrome.png",
+          "defaultChannel": "lembretes-contas"
         }
       ],
       "expo-sharing",

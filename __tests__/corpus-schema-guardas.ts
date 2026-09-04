@@ -18,6 +18,8 @@ import path from 'path';
 
 const ESQUEMA = path.join(__dirname, '..', 'supabase', 'schema.sql');
 const sql = readFileSync(ESQUEMA, 'utf8');
+const MIGRATION_PUSH = path.join(__dirname, '..', 'supabase', 'migrations', '20260904190000_push_habito.sql');
+const migrationPush = readFileSync(MIGRATION_PUSH, 'utf8');
 
 let total = 0;
 let falhas = 0;
@@ -122,6 +124,36 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
     const revoga = new RegExp(String.raw`revoke all on function public\.${nome}\([^)]*\) from public, anon, authenticated`);
     checar(`${nome} tem execução revogada de anon e authenticated`, revoga.test(sql));
   }
+}
+
+// ── 6. Push: token do dono, outbox só do servidor e claim atômico ─────────
+{
+  checar(
+    'push_tokens tem RLS habilitado',
+    /alter table public\.push_tokens enable row level security/.test(sql)
+  );
+  checar(
+    'a outbox de push não é exposta ao app',
+    /revoke all on public\.push_habit_deliveries from anon, authenticated/.test(sql)
+  );
+  checar(
+    'o claim do push usa SKIP LOCKED contra disparo duplicado',
+    /reivindicar_entregas_push_habito[\s\S]*for update skip locked/.test(sql)
+  );
+  checar(
+    'RPCs de contexto e claim são exclusivos do service_role',
+    /revoke all on function public\.contextos_push_habito\(uuid\[\]\) from public, anon, authenticated/.test(sql)
+      && /revoke all on function public\.reivindicar_entregas_push_habito\(integer\) from public, anon, authenticated/.test(sql)
+  );
+  const normalizarSql = (fonte: string) => fonte
+    .replace(/--[^\n]*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const inicioPush = sql.indexOf('create table if not exists public.push_tokens');
+  checar(
+    'a migration do push permanece idêntica ao baseline do schema',
+    inicioPush >= 0 && normalizarSql(sql.slice(inicioPush)) === normalizarSql(migrationPush)
+  );
 }
 
 console.log(`\n${total - falhas}/${total} guardas do schema passaram — ${falhas} falhas`);

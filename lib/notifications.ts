@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type * as NotificationsModule from 'expo-notifications';
 import { obterProximaMensagem } from './notification-messages';
+import { pushRemotoAtivo } from './push-state';
 import {
   ehIdLembreteHabito,
   ID_HABITO_LEGADO,
@@ -22,7 +23,7 @@ const isNotificationsSupported = Platform.OS !== 'web';
 let cached: typeof NotificationsModule | null = null;
 let tentouCarregar = false;
 
-function getNotifications(): typeof NotificationsModule | null {
+export function getNotifications(): typeof NotificationsModule | null {
   if (!isNotificationsSupported) return null;
   if (!tentouCarregar) {
     tentouCarregar = true;
@@ -354,6 +355,11 @@ export async function scheduleDailyHabitReminder(opts: {
   return enfileirarHabito(async () => {
     const Notifications = getNotifications();
     if (!Notifications) return;
+
+    if (await pushRemotoAtivo()) {
+      await cancelarHabitoInterno(Notifications, true);
+      return;
+    }
 
     const granted = await requestNotificationPermission();
     if (!granted) return;

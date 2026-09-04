@@ -1660,7 +1660,7 @@ como `'grande'`.
 O autor reportou que os lembretes humanizados no tom de voz do Duolingo não
 estavam aparecendo, embora os lembretes de contas fossem entregues e agrupados
 normalmente pelo Android. O catálogo já existia e foi preservado por inteiro:
-48 mensagens em `lib/notification-messages.ts`, com seleção por sequência,
+48 mensagens em `lib/notification-catalog.ts`, com seleção por sequência,
 inatividade e fim de semana e bloqueio das 10 últimas escolhas.
 
 **Causa real:** `scheduleDailyHabitReminder` mantinha um único id
@@ -1689,6 +1689,56 @@ virada de ano. `npx tsc --noEmit` limpo e `npm run test:parser` completo passou,
 incluindo 318/318 guardas do design system e 37/37 pares sincronizados.
 
 Nenhum build EAS foi disparado — continua exigindo pedido explícito do autor.
+
+## Sessão de 04/09/2026 — push diário contínuo, aleatório e independente de abertura
+
+O autor esclareceu que sete lembretes locais à frente não atendem ao requisito:
+as 48 mensagens humanizadas precisam continuar girando diariamente mesmo que a
+pessoa nunca mais abra o app, até a desinstalação. A arquitetura passou a ter o
+push remoto como fonte principal e o agendamento local de sete dias como
+fallback de cadastro/Expo Go, sem manter os dois ativos ao mesmo tempo.
+
+- `lib/notification-catalog.ts` virou a fonte pura das 48 copies e do seletor
+  contextual aleatório; `lib/notification-messages.ts` guarda somente o
+  histórico local. Tanto o app quanto a Edge Function usam o mesmo catálogo.
+- `lib/push-notifications.ts` registra e renova o Expo Push Token depois do
+  login e a cada retorno ao primeiro plano, junto com plataforma, fuso e horário
+  escolhidos. Troca de token também força sincronização. Desligar o lembrete ou
+  sair da conta remove o token; falha inicial de cadastro mantém o fallback
+  local. `app.json` fixa `lembretes-contas` como canal Android padrão.
+- `push_tokens` tem RLS por dono. `push_habit_deliveries` é uma outbox invisível
+  ao app, única por token/data local. O claim SQL usa `FOR UPDATE SKIP LOCKED` e
+  lease de 15 minutos, impedindo duplicata se dois crons se sobrepuserem e
+  recuperando uma execução que caiu no meio.
+- A mesma alteração vive como baseline no fim de `supabase/schema.sql` e como
+  delta aplicável em `supabase/migrations/20260904190000_push_habito.sql`.
+- `enviar-lembretes-habito` cria a entrega após o horário local, envia lotes de
+  até 100 para o Expo, repete falhas transitórias com backoff, consulta recibos
+  após 15 minutos e apaga o token quando recebe `DeviceNotRegistered`. A copy
+  evita as 10 últimas mensagens daquele aparelho e preserva contexto de
+  inatividade, fim de semana e sequência.
+- `supabase/cron-lembretes-habito.sql` instala o job de 5 em 5 minutos usando
+  URL e segredo guardados no Vault. A função exige `CRON_PUSH_SECRET`; um
+  `EXPO_ACCESS_TOKEN` pode ser configurado se a segurança reforçada do Expo for
+  habilitada.
+- Testes do módulo subiram de 10 para 20 casos (catálogo, antirrepetição, fuso,
+  horário, streak e backoff), e as guardas do schema agora cobrem RLS, outbox e
+  claim atômico. `npx tsc --noEmit` e `deno check` da Edge Function passaram.
+
+**Estado operacional:** o autor forneceu um token temporário do Supabase e o
+backend foi ativado em produção. A migration foi aplicada; a function está
+`ACTIVE` com `verify_jwt=false` e segredo próprio obrigatório; o cron está ativo
+em `*/5 * * * *`. A primeira execução automática ficou `succeeded`, e a chamada
+real pg_net → Vault → Edge Function voltou HTTP 200 com
+`{"ok":true,"tokens":0,...}`. Chamada sem segredo voltou 401, como deve. O
+token temporário do autor não foi persistido em arquivo nem no repositório.
+
+**Bloqueio restante:** a conta EAS está autenticada nesta máquina, mas a CLI só
+expõe o gerenciamento de FCM de forma interativa; não foi possível confirmar
+sem risco de alteração se a credencial Android FCM v1 já existe. Ainda falta
+uma build nova aberta uma vez num Android físico (para cadastrar o primeiro
+token) e um teste de envio + recibo. Até esse teste, não existe garantia honesta
+de entrega ponta a ponta. Nenhum build EAS foi disparado nesta sessão.
 As alterações paralelas já existentes em `components/MolduraNavegador.tsx`,
 `components/PainelWebDestaque.tsx` e `.tmp.driveupload/` foram preservadas e
 deixadas fora desta correção.
