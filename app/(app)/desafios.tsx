@@ -515,15 +515,21 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.rule,
   },
+  /* Mesma causa do `cardHeadRow` acima: "Rumo a [título da faixa]" ou
+     "Nível X · [título do elo]" cresce com o nome da faixa/elo e colidia
+     com a porcentagem fixa ao lado quando não cabiam numa linha só. */
   progressLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    rowGap: 4,
   },
   progressLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
     lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkSoft,
+    flexShrink: 1,
   },
   progressPct: {
     fontFamily: fonts.regular,
@@ -658,15 +664,21 @@ const styles = StyleSheet.create({
   },
   factorsList: { gap: spacing.md },
   factorItem: { gap: 3 },
+  /* Mesma causa do `cardHeadRow`: rótulos como "Sequência de registros" ou
+     "Contas acompanhadas" são mais longos que "Composição do seu Score" e
+     colidiam com "XXX/1000 pts" do mesmo jeito quando não cabiam juntos. */
   factorTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    rowGap: 2,
   },
   factorLabel: {
     fontFamily: fonts.regular,
     fontSize: type.nota,
     lineHeight: lh(type.nota, 'apoio'),
     color: theme.ink,
+    flexShrink: 1,
   },
   factorPoints: {
     fontFamily: fonts.regular,

@@ -406,7 +406,7 @@ export default function ContasScreen() {
                   }}
                 >
                   <View style={styles.cardTop}>
-                    <View>
+                    <View style={{ flexShrink: 1 }}>
                       <View style={styles.cardNameRow}>
                         <Text style={styles.cardName}>{item.description}</Text>
                         {item.recurring && (
@@ -516,7 +516,10 @@ const styles = StyleSheet.create({
      o próximo em relação à distância do primeiro card até o filtro acima. */
   card: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
   cardHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  /* Descrição da conta (dado do usuário, pode ser longa) some contra a
+     pílula de status sem espaço pra ceder — mesma causa do `cardBottom`
+     logo abaixo, só que no bloco de cima do card. */
+  cardTop: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', rowGap: 2 },
   cardNameRow: { flexDirection: 'row', alignItems: 'center' },
   /* Pílula de status e botão de opções na mesma coluna direita do card. */
   cardTopAcoes: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

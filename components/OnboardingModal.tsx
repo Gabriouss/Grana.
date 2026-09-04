@@ -1041,10 +1041,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
   },
   orcamentoBox: { backgroundColor: theme.paperRaised, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: 2 },
-  orcamentoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.rule },
-  orcamentoRotulo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  /* "Poupança (equilibrar as contas primeiro)" é o texto mais longo que
+     `metaPoupanca` devolve — combinado com o valor em R$ ao lado, colidia
+     sem `flexWrap`/`flexShrink` do mesmo jeito que os cards já corrigidos
+     em contas.tsx e desafios.tsx. */
+  orcamentoRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', rowGap: 2, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  orcamentoRotulo: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  orcamentoNome: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  orcamentoNome: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, flexShrink: 1 },
   orcamentoValor: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
   orcamentoTotal: { borderBottomWidth: 0, paddingTop: 10 },
   orcamentoNomeTotal: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },

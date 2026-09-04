@@ -1129,7 +1129,7 @@ export default function InicioScreen() {
         ) : (
           dueThisWeek.map((b) => (
             <View key={b.id} style={styles.dueRow}>
-              <View>
+              <View style={{ flexShrink: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={styles.dueName}>{b.description}</Text>
                   {b.recurring && (
@@ -1799,22 +1799,28 @@ const styles = StyleSheet.create({
      no canto superior direito do card, e é exatamente onde estes cabeçalhos
      colocam o "Ver todos", o "+ Definir" e os totais. Abrir o recuo aqui é o
      que faz a alça caber AO LADO do controle em vez de por cima dele. */
+  /* `flexWrap` + `rowGap`: nos cards de fluxo e de categoria o valor à
+     direita (PrivacyValue/flowValue) é dinheiro real, sem limite de tamanho
+     — "− R$ 123.456,78" some da mesma forma que o valor de contas.tsx
+     colidia com a data ao lado. */
   cardHeadRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    rowGap: 2,
     ...(Platform.OS === 'web' ? { paddingRight: ESPACO_ALCA } : null),
   },
   cardLabel: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   flowValue: { color: theme.ink, fontSize: type.apoio,
-  lineHeight: lh(type.apoio, 'apoio'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  lineHeight: lh(type.apoio, 'apoio'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular, flexShrink: 1, textAlign: 'right' },
   emptyText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
 
   pieWrap: { alignItems: 'center', paddingVertical: spacing.sm },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
   legendChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone, paddingHorizontal: 10, paddingVertical: spacing.icone, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule },
-  categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   categoryName: { color: theme.ink, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.regular },
@@ -1826,7 +1832,11 @@ const styles = StyleSheet.create({
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   budgetRow: { gap: spacing.icone, paddingVertical: spacing.sm, borderRadius: radius.sm },
   budgetRowHover: { backgroundColor: theme.hover },
-  budgetTopLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
+  /* Categoria (nome escolhido pelo usuário) de um lado e "gasto de limite"
+     do outro — os dois crescem com o dado real (categoria longa, valores
+     grandes, "· excedido") e sem `flexWrap`/`rowGap` colidiam em vez de o
+     bloco de categoria quebrar pra linha de baixo. */
+  budgetTopLine: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm, rowGap: 2 },
   budgetAmountRow: { flexDirection: 'row', alignItems: 'baseline' },
   budgetTrack: { height: 6, borderRadius: 3, backgroundColor: theme.paper, overflow: 'hidden' },
   budgetFill: { height: '100%', borderRadius: 3 },
@@ -1846,7 +1856,11 @@ const styles = StyleSheet.create({
   recentRowAmount: { fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   recentAmountRow: { flexDirection: 'row', alignItems: 'baseline' },
-  dueRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  /* Mesma causa do `cardBottom` de contas.tsx: descrição do boleto (dado do
+     usuário, pode ser longa) somada à data+valor não cabe numa linha só em
+     tela estreita — sem `flexWrap`/`rowGap` os dois lados se sobrepunham em
+     vez do bloco esquerdo quebrar pra linha de baixo. */
+  dueRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', rowGap: 2, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: theme.rule },
   dueName: { color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   dueDate: { color: theme.inkFaint, fontSize: type.legenda,

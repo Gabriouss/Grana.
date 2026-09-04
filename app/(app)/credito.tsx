@@ -1272,16 +1272,22 @@ const styles = StyleSheet.create({
     color: theme.down,
   },
   cardBottomRow: { gap: spacing.xs },
+  /* Cartão do carrossel tem só 240px de largura fixa — "Limite: R$
+     12.345,67" cresce com o valor real cadastrado e colidia com a
+     porcentagem ao lado sem espaço nenhum pra ceder. */
   cardLimitRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    rowGap: 2,
   },
   cardLimitText: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
     lineHeight: lh(type.micro, 'apoio'),
     color: theme.inkFaint,
+    flexShrink: 1,
   },
   cardLimitPct: {
     fontFamily: fonts.regular,

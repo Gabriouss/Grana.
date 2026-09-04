@@ -383,17 +383,22 @@ const styles = StyleSheet.create({
   },
   bankChipText: { fontFamily: fonts.regular, fontSize: type.legenda, color: theme.inkSoft },
   bankDot: { width: 8, height: 8, borderRadius: 4 },
+  /* A categoria é escolhida pelo usuário e pode ser mais longa que o rótulo
+     fixo "Categoria" — sem `flexWrap`/`flexShrink` os dois coincidiam na
+     mesma linha e colidiam em telas estreitas. */
   fieldRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    rowGap: 2,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
-  fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, flexShrink: 1 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   dateQuickChip: {
