@@ -19,6 +19,7 @@ import {
 } from '@/modules/grana-voice-widget';
 import { useSession } from '@/lib/auth-context';
 import { usePrivacy } from '@/lib/privacy-context';
+import { useWidgetPrivacy } from '@/lib/widget-privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { useAppLock } from '@/lib/app-lock-context';
 import { useScreenCapture } from '@/lib/screen-capture-context';
@@ -106,6 +107,7 @@ export default function PerfilScreen() {
   const { paddingConteudo } = useTabBarInset();
   const { session, signOut } = useSession();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
+  const { valoresVisiveis: widgetValoresVisiveis, toggle: toggleWidgetValores } = useWidgetPrivacy();
   const { isDemoMode, toggleDemoMode } = useDemo();
   const { ativo: lockAtivo, disponivel: lockDisponivel, alternar: alternarLock } = useAppLock();
   const { bloqueado: capturaBloqueada, disponivel: capturaDisponivel, alternar: alternarCaptura } = useScreenCapture();
@@ -657,6 +659,22 @@ export default function PerfilScreen() {
                   </AppPressable>
                 );
               })}
+            </View>
+
+            {/* Widgets de resumo (Livre pra Gastar, Cofrinho, Próximo
+                Compromisso) mostram saldo/fatura na tela inicial sem exigir
+                desbloqueio — exposição diferente da que o modo privacidade
+                do app cobre, por isso nasce OCULTO por padrão (ver
+                lib/widget-privacy-context.tsx) até a pessoa ligar aqui. */}
+            <View style={styles.sectionCard}>
+              <View style={styles.row}>
+                <Text style={styles.rowKey}>Mostrar valores nos widgets</Text>
+                <ToggleSwitch
+                  value={widgetValoresVisiveis}
+                  onToggle={toggleWidgetValores}
+                  label="Mostrar valores nos widgets"
+                />
+              </View>
             </View>
           </>
         )}

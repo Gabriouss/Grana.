@@ -264,8 +264,13 @@ export async function notifyCreditLimitThreshold(card: CreditCard, threshold: nu
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
+        /* Só a porcentagem, nunca o valor em R$: o corpo da notificação
+           aparece na tela de bloqueio por padrão, sem exigir desbloqueio —
+           "R$ 450 de R$ 1.000 gastos" ficava visível pra qualquer um que
+           olhasse o aparelho de relance. A porcentagem já avisa sem expor
+           quanto a pessoa gasta ou qual é o limite do cartão. */
         title: `${card.name} chegou a ${threshold}% do limite`,
-        body: `R$ ${formatMoney(spent)} de R$ ${formatMoney(card.limit_amount)} gastos neste mês.`,
+        body: 'Fique de olho pra não estourar a fatura deste mês.',
         data: { cardId: card.id, threshold },
       },
       trigger: { seconds: 1, channelId: CHANNEL_ID } as any,

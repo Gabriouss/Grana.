@@ -9,6 +9,7 @@ import { ActivityIndicator, AppState, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
+import { WidgetPrivacyProvider } from '@/lib/widget-privacy-context';
 import { DemoProvider } from '@/lib/demo-context';
 import { FlagsProvider } from '@/lib/feature-flags';
 import { theme } from '@/lib/theme';
@@ -112,6 +113,7 @@ export default function RootLayout() {
           <FlagsProvider>
           <EntitlementProvider>
             <PrivacyProvider>
+            <WidgetPrivacyProvider>
               <DemoProvider>
                 <AppLockProvider>
                   <ScreenCaptureProvider>
@@ -127,6 +129,7 @@ export default function RootLayout() {
                   </ScreenCaptureProvider>
                 </AppLockProvider>
               </DemoProvider>
+            </WidgetPrivacyProvider>
             </PrivacyProvider>
           </EntitlementProvider>
           </FlagsProvider>
