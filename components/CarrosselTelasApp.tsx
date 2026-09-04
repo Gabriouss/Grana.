@@ -38,6 +38,18 @@ export default function CarrosselTelasApp({ compacto = false }: { compacto?: boo
     setIndice(Math.min(TELAS.length - 1, Math.max(0, proximo)));
   };
 
+  const renderPilula = (tela: Tela, i: number) => (
+    <AppPressable
+      key={tela.rotulo}
+      onPress={() => irParaIndice(i)}
+      accessibilityLabel={`Ver tela de ${tela.rotulo}`}
+      accessibilityState={{ selected: i === indice }}
+      style={({ hovered }) => [styles.pilula, i === indice && styles.pilulaAtiva, hovered && i !== indice && styles.pilulaHover]}
+    >
+      <Text style={[styles.pilulaTexto, i === indice && styles.pilulaTextoAtivo]}>{tela.rotulo}</Text>
+    </AppPressable>
+  );
+
   return (
     <View style={styles.raiz}>
       <View
@@ -80,18 +92,14 @@ export default function CarrosselTelasApp({ compacto = false }: { compacto?: boo
         {TELAS[indice].rotulo}, tela {indice + 1} de {TELAS.length}
       </Text>
 
+      {/* 3 em cima, 2 embaixo — de propósito, não o `flexWrap` decidindo
+          sozinho onde cabe. Com wrap automático o ponto de quebra dependia
+          da largura renderizada de cada rótulo, então "3+2"/"4+1" mudava
+          conforme a fonte ou o texto do rótulo — pedido do autor depois de
+          ver a fileira reorganizar visualmente a cada seleção. */}
       <View style={styles.pilulas}>
-        {TELAS.map((tela, i) => (
-          <AppPressable
-            key={tela.rotulo}
-            onPress={() => irParaIndice(i)}
-            accessibilityLabel={`Ver tela de ${tela.rotulo}`}
-            accessibilityState={{ selected: i === indice }}
-            style={({ hovered }) => [styles.pilula, i === indice && styles.pilulaAtiva, hovered && i !== indice && styles.pilulaHover]}
-          >
-            <Text style={[styles.pilulaTexto, i === indice && styles.pilulaTextoAtivo]}>{tela.rotulo}</Text>
-          </AppPressable>
-        ))}
+        <View style={styles.pilulasLinha}>{TELAS.slice(0, 3).map((tela, i) => renderPilula(tela, i))}</View>
+        <View style={styles.pilulasLinha}>{TELAS.slice(3).map((tela, i) => renderPilula(tela, i + 3))}</View>
       </View>
     </View>
   );
@@ -114,14 +122,18 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     ...({ transitionProperty: 'border-color, background-color', transitionDuration: '150ms' } as any),
   },
-  setaEsquerda: { left: -14 },
-  setaDireita: { right: -14 },
+  // -48 = -(largura do botão, 36 + respiro de 12): garante que o botão
+  // fique inteiro fora da moldura do celular, nunca em cima do bezel — com
+  // -14 o botão ficava 22px por dentro da moldura, sobre o próprio bezel.
+  setaEsquerda: { left: -48 },
+  setaDireita: { right: -48 },
   setaHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
   setaDesativada: { opacity: 0.35 },
   // O contador por extenso existe só pra leitor de tela — quem enxerga já
   // vê a pílula ativa; duplicar como texto visível seria redundante.
   contadorOculto: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 },
-  pilulas: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.xs, maxWidth: 320 },
+  pilulas: { flexDirection: 'column', alignItems: 'center', gap: spacing.xs, maxWidth: 320 },
+  pilulasLinha: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xs },
   pilula: {
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
@@ -132,6 +144,13 @@ const styles = StyleSheet.create({
   },
   pilulaHover: { borderColor: theme.ruleStrong },
   pilulaAtiva: { backgroundColor: theme.accentDeep, borderColor: theme.accent2 },
+  // Mesma fonte nos dois estados de propósito: `fonts.regular` é mais larga
+  // que `fonts.light` pixel a pixel, então trocar a família junto com a cor
+  // ao ativar mudava a largura de CADA pílula — e como a fileira é
+  // `flexWrap`, isso empurrava o ponto de quebra de linha pro lugar errado
+  // toda vez que o item ativo mudava (o motivo de "Desafios" pular de linha
+  // sozinho ou "Boletos"/"Desafios" ficarem juntos, dependendo de qual
+  // pílula estava selecionada). Só a cor muda; a largura nunca varia.
   pilulaTexto: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
-  pilulaTextoAtivo: { color: theme.ink, fontFamily: fonts.regular },
+  pilulaTextoAtivo: { color: theme.ink },
 });

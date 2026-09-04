@@ -1,6 +1,7 @@
 import { useEffect, useId } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { fonts as uiFonts, radius, spacing, theme, type } from '@/lib/theme';
+import { useBreakpoint } from '@/lib/breakpoints';
 import { useReducedMotion } from '@/lib/motion';
 import MolduraNavegador from '@/components/MolduraNavegador';
 
@@ -74,62 +75,22 @@ function BalaoFlutuante({ balao }: { balao: Balao }) {
 }
 
 /**
- * Indicador de mouse sugerindo interação — um pulso de anel se expandindo
- * e sumindo por trás de um ponto fixo, parecido com o "anel de espera" do
- * teardown da Dinzo (`dz-wa-wait-ring`: `scale 1→1.35, opacity 0.55→0`).
- * Não simula um clique de verdade, só chama atenção pra "isto é
- * clicável" — por isso fica perto do link "Ver todos" da lista de
- * lançamentos, não em cima de um número que a pessoa só lê.
- */
-function IndicadorMouse() {
-  const reduzirMovimento = useReducedMotion();
-  const idBruto = useId();
-  const prefixo = `painelMouse_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
-
-  useEffect(() => {
-    if (reduzirMovimento) return;
-    const tag = document.createElement('style');
-    tag.textContent = `
-      @keyframes ${prefixo} {
-        0% { transform: scale(1); opacity: 0.55; }
-        100% { transform: scale(1.9); opacity: 0; }
-      }
-    `;
-    document.head.appendChild(tag);
-    return () => {
-      document.head.removeChild(tag);
-    };
-  }, [prefixo, reduzirMovimento]);
-
-  return (
-    <View aria-hidden style={styles.mousePosicao}>
-      <View style={styles.mousePonto} />
-      {!reduzirMovimento && (
-        <View
-          style={[
-            styles.mouseAnel,
-            {
-              animationName: prefixo,
-              animationDuration: '1.8s',
-              animationTimingFunction: 'ease-out',
-              animationIterationCount: 'infinite',
-            } as any,
-          ]}
-        />
-      )}
-    </View>
-  );
-}
-
-/**
  * Composição completa da dobra "painel web": a moldura de navegador com a
- * tela real do Grana. dentro, mais os balões de anotação e o indicador de
- * mouse — que existem só aqui (não fazem parte de `MolduraNavegador`
- * porque dependem de onde exatamente cada dado real aparece NESTA
- * captura, não são um recurso genérico da moldura).
+ * tela real do Grana. dentro, mais os balões de anotação — que existem só
+ * aqui (não fazem parte de `MolduraNavegador`) porque dependem de onde
+ * exatamente cada dado real aparece NESTA captura, não são um recurso
+ * genérico da moldura.
  */
 export default function PainelWebDestaque({ compacto = false }: { compacto?: boolean }) {
-  const larguraMoldura = compacto ? 300 : 560;
+  const { largura } = useBreakpoint();
+  // Empilhado (`compacto`) cobre de celular estreito (390px) até 1279px de
+  // janela — um número fixo só ficaria bom numa dessas pontas. 64 é a
+  // margem horizontal da seção (`faixaCompacta`, 32px de cada lado); o teto
+  // de 460 evita que a moldura vire um retângulo enorme e vazio nas larguras
+  // médias (768-1279), sem crescer sem limite. Achado real: com 300 fixo, a
+  // moldura ficava minúscula e sobrava muito breu embaixo dela nessa faixa
+  // (autor: "tela muito pequena na versão mobile, ficou péssimo").
+  const larguraMoldura = compacto ? Math.min(largura - 64, 460) : 660;
   return (
     // Largura explícita, batendo com a da moldura (+2 da borda de 1px de
     // cada lado) — sem isso `raiz` esticava pra preencher a seção inteira
@@ -141,9 +102,9 @@ export default function PainelWebDestaque({ compacto = false }: { compacto?: boo
         src="/telas/inicio-web.png"
         legenda="Painel web do Grana. mostrando Livre para Gastar, comprometimento futuro e gastos por categoria de uma conta de exemplo"
         largura={larguraMoldura}
+        inclinada={!compacto}
       />
       {!compacto && BALOES.map((balao) => <BalaoFlutuante key={balao.rotulo} balao={balao} />)}
-      {!compacto && <IndicadorMouse />}
     </View>
   );
 }
@@ -166,7 +127,4 @@ const styles = StyleSheet.create({
   balaoDireita: { right: -40 },
   balaoRotulo: { color: theme.accent2, fontSize: type.micro, lineHeight: type.micro * 1.4, fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
   balaoTexto: { color: theme.inkSoft, fontSize: type.legenda, lineHeight: type.legenda * 1.35, fontFamily: fonts.light },
-  mousePosicao: { position: 'absolute', right: '14%', bottom: '20%', width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
-  mousePonto: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.accent2 },
-  mouseAnel: { position: 'absolute', width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: theme.accent2 },
 });

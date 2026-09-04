@@ -9,7 +9,15 @@ type Props = {
   largura?: number;
   /** Proporção real da captura (1440×900 por padrão — a tela desktop do Grana.). */
   proporcao?: number;
+  /** Inclinação 3D em perspectiva (pedido do autor: "a exibição da tela
+      igual a do Dinzo") — a mesma ideia de cartão flutuando levemente
+      girado que o teardown documentou na seção "Painel web" do
+      concorrente. Só a apresentação da moldura muda; cores, pontinhos
+      neutros e o miolo continuam 100% Grana. */
+  inclinada?: boolean;
 };
+
+const INCLINACAO = 'perspective(1600px) rotateX(4deg) rotateY(-9deg)';
 
 /**
  * Moldura de navegador desenhada em CSS — mesmo raciocínio do
@@ -30,7 +38,7 @@ type Props = {
  * animação passou a vir do token `EASE_LOOP` (lib/motion.ts), que não
  * existia na primeira versão.
  */
-export default function MolduraNavegador({ src, legenda, largura = 520, proporcao = 1440 / 900 }: Props) {
+export default function MolduraNavegador({ src, legenda, largura = 520, proporcao = 1440 / 900, inclinada = false }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
@@ -64,17 +72,22 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
     // `translate3d`, não `translateY` (ver comentário equivalente em
     // `MolduraCelular`) — força promoção de camada na GPU sem precisar
     // separar a sombra num wrapper à parte.
+    // A inclinação faz parte do MESMO transform da animação — se ficasse só
+    // no estilo estático, a troca pra `animation-name` no play substituiria
+    // o transform inteiro e a moldura "achataria" toda vez que voltasse à
+    // tela ou saísse do Reduce Motion.
+    const base = inclinada ? `${INCLINACAO} ` : '';
     tag.textContent = `
       @keyframes ${prefixo} {
-        0%, 100% { transform: translate3d(0, 0, 0); }
-        50% { transform: translate3d(0, -12px, 0); }
+        0%, 100% { transform: ${base}translate3d(0, 0, 0); }
+        50% { transform: ${base}translate3d(0, -12px, 0); }
       }
     `;
     document.head.appendChild(tag);
     return () => {
       document.head.removeChild(tag);
     };
-  }, [prefixo, reduzirMovimento]);
+  }, [prefixo, reduzirMovimento, inclinada]);
 
   const alturaTela = largura / proporcao;
   const alturaBarra = Math.max(28, largura * 0.055);
@@ -90,6 +103,10 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
           backfaceVisibility: 'hidden',
           WebkitBackfaceVisibility: 'hidden',
         } as any);
+  // Estático (Reduce Motion, ou parado fora da tela) precisa da MESMA
+  // inclinação de base — sem isto a moldura "achataria" toda vez que a
+  // animação não estivesse tocando, em vez de só perder o balanço.
+  const estiloInclinado = inclinada && !animacao ? ({ transform: INCLINACAO } as any) : null;
 
   return (
     <View
@@ -97,6 +114,7 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
       style={[
         estiloSombra,
         animacao,
+        estiloInclinado,
         {
           width: largura,
           borderRadius: 14,

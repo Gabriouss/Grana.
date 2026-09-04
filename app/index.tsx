@@ -19,7 +19,6 @@ import CardLivreParaGastar from '@/components/CardLivreParaGastar';
 import BeneficiosHorizontais, { type BeneficioHorizontal } from '@/components/BeneficiosHorizontais';
 import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
-import MolduraCelular from '@/components/MolduraCelular';
 import CarrosselTelasApp from '@/components/CarrosselTelasApp';
 import PainelWebDestaque from '@/components/PainelWebDestaque';
 import ScrollLinkedView from '@/components/ScrollLinkedView';
@@ -696,7 +695,7 @@ function HeroStorytelling({
           width: 800,
           height: 482,
           fetchPriority: 'high',
-          style: { width: '100%', height: 'auto', maxWidth: 400, aspectRatio: 800 / 482, objectFit: 'contain', display: 'block' },
+          style: { width: '100%', height: 'auto', maxWidth: 480, aspectRatio: 800 / 482, objectFit: 'contain', display: 'block' },
         })}
         <View style={styles.heroTextoCompacto}>
           <Text style={[styles.eyebrow, styles.precoTextoCentralizado, styles.heroTextoSemMargem]}>{GANCHO_HERO}</Text>
@@ -856,6 +855,11 @@ function ConteudoWeb() {
   const { ehCompacto, largura, altura } = useBreakpoint();
   const habitosEmpilhados = largura < LARGURA_MINIMA_HABITOS_EM_LINHA;
   const granaboEmpilhado = largura < 1040;
+  // Limiar mais alto que o do Granabô (1040): a moldura aqui é bem mais
+  // larga (660px, contra o celular de 260px) e ainda ganha uma inclinação
+  // 3D (`MolduraNavegador#inclinada`) que sangra um pouco além da própria
+  // caixa — precisa de mais fôlego antes de quebrar linha.
+  const painelWebEmpilhado = largura < 1280;
   const faqEmpilhado = largura < 980;
   const faqComNavLateral = largura >= CORTES.medio && largura < CORTES.amplo;
   const heroCompacto = largura < LARGURA_MINIMA_HERO_LARGO || altura < ALTURA_MINIMA_HERO_LARGO;
@@ -1171,27 +1175,26 @@ function ConteudoWeb() {
       </View>
 
 
-      {/* ───────── Construção do hábito (dobra 5) ───────── */}
+      {/* ───────── Construção do hábito (dobra 5) ─────────
+          Fundida com o antigo "Por dentro do aplicativo" (autor: "o
+          carrossel pode muito bem estar nessa tela aqui e mesclar essas
+          duas sessões") — eram duas dobras seguidas mostrando um celular
+          com telas do app, uma delas nem navegável (só 2 quadros em
+          crossfade automático). Agora é uma só: o carrossel de 5 abas de
+          verdade (`CarrosselTelasApp`) entra no lugar do `MolduraCelular`
+          de 2 quadros, e "Por dentro do aplicativo." vira legenda
+          (`eyebrow`) presa ao carrossel — hierarquia menor, de propósito —
+          enquanto "O Grana. ajuda o controle a virar hábito." continua
+          sendo o título (H2) da seção. */}
       <View nativeID="habitos" style={styles.palcoComCamada}>
         <GradeInterativa />
         <Dobra levantada>
           <RevealOnScroll>
             <View style={[styles.secao, styles.secaoComCartao, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
               <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
+                <Text style={styles.eyebrow}>Por dentro do aplicativo.</Text>
                 <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
-                  <MolduraCelular
-                    quadros={[
-                      {
-                        src: '/telas/inicio-mobile.png',
-                        legenda: 'Tela de Início do Grana. no celular, com Livre para Gastar, cofrinhos e compromissos futuros',
-                      },
-                      {
-                        src: '/telas/desafios-mobile.png',
-                        legenda: 'Tela de Desafios do Grana. no celular, com sequência, Score e mural de conquistas',
-                      },
-                    ]}
-                    largura={ehCompacto ? 200 : 260}
-                  />
+                  <CarrosselTelasApp compacto={ehCompacto} />
                 </ScrollLinkedView>
               </View>
               <View style={[styles.colunaTextoSecao, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
@@ -1218,31 +1221,16 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Por dentro do app (tour de telas) ─────────
-          As 5 abas principais dentro do MESMO celular, navegáveis por
-          quem visita — não um mockup por seção espalhado pela página, é
-          o produto de verdade, tela por tela, sob controle da pessoa. */}
-      <View nativeID="telas" style={styles.palcoComCamada}>
-        <GradeInterativa invertida />
-        <Dobra levantada>
-          <View style={styles.secao}>
-            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
-              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>Por dentro do aplicativo.</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
-                As telas de verdade do Grana., prontas pra você navegar antes de criar conta.
-              </Text>
-            </RevealOnScroll>
-            <RevealOnScroll variante="prova">
-              <CarrosselTelasApp compacto={ehCompacto} />
-            </RevealOnScroll>
-          </View>
-        </Dobra>
-      </View>
-
       {/* ───────── Painel web (par com "Por dentro do app") ─────────
           A mesma conta do carrossel de celular acima, agora na tela
           grande — reforça "controle no celular e no computador" (já
           citado na TrustMarquee) com a composição em vez de só a frase.
+          Texto à esquerda, tela à direita (mesmo esqueleto de
+          `secaoComCartao`/`colunaTextoSecao`/`molduraCentralizada` já usado
+          em Granabô/Hábitos) — pedido do autor depois que a composição
+          empilhada (título em cima, moldura embaixo) deixou a moldura
+          inclinada sangrar por cima do H1 em telas médias, já que uma
+          rotação 3D não reserva espaço extra no layout, só no visual.
           Balões de anotação existem só nesta seção (não em
           `MolduraNavegador`): dependem de onde exatamente cada dado
           aparece NESTA captura específica. */}
@@ -1250,15 +1238,22 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra levantada>
           <View style={styles.secao}>
-            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
-              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>O mesmo Grana., na tela grande.</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
-                Registre pelo celular ou pelo WhatsApp. Acompanhe no computador, com os mesmos dados sincronizados.
-              </Text>
-            </RevealOnScroll>
-            <RevealOnScroll variante="prova">
-              <PainelWebDestaque compacto={ehCompacto} />
-            </RevealOnScroll>
+            <View style={[styles.secaoComCartao, painelWebEmpilhado && styles.secaoComCartaoCompacta]}>
+              <View style={[styles.colunaTextoSecao, painelWebEmpilhado && styles.colunaTextoSecaoCompacta]}>
+                <RevealOnScroll variante="titulo">
+                  <TituloSecao>O mesmo Grana., na tela grande.</TituloSecao>
+                  <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
+                    Registre pelo celular ou pelo WhatsApp. Acompanhe no computador, com os mesmos dados sincronizados.
+                  </Text>
+                </RevealOnScroll>
+              </View>
+              <RevealOnScroll
+                variante="prova"
+                style={[styles.molduraCentralizada, painelWebEmpilhado && styles.molduraCentralizadaCompacta]}
+              >
+                <PainelWebDestaque compacto={painelWebEmpilhado} />
+              </RevealOnScroll>
+            </View>
           </View>
         </Dobra>
       </View>
@@ -1837,10 +1832,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.xxl * 2,
     paddingVertical: spacing.xxl * 2,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.ruleStrong,
-    backgroundColor: 'rgba(11,45,53,0.82)',
     overflow: 'hidden',
   },
   zoomPainelCompacto: {

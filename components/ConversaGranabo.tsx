@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
+import BrandMark from '@/components/BrandMark';
 import { useReducedMotion } from '@/lib/motion';
 
 /**
@@ -113,8 +114,12 @@ export default function ConversaGranabo({ compacto }: { compacto?: boolean }) {
   return (
     <View style={[styles.janela, compacto && styles.janelaCompacta]}>
       <View style={styles.cabecalho}>
+        {/* Granabô é um CONTATO dentro do WhatsApp, não o próprio WhatsApp —
+            o avatar de um contato de verdade mostra a foto/marca dele, não
+            o logo do app onde a conversa acontece. Por isso o ícone aqui é
+            o G do Grana., não `logo-whatsapp`. */}
         <View style={styles.avatar} aria-hidden>
-          <Ionicons name="logo-whatsapp" size={16} color="#FFFFFF" />
+          <BrandMark size={16} color={theme.accentDeep} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.nome}>Granabô</Text>
@@ -174,9 +179,11 @@ export default function ConversaGranabo({ compacto }: { compacto?: boolean }) {
  * Esta janela é uma CITAÇÃO da interface de outro produto: repintá-la em
  * petróleo/menta faria a pessoa ter que acreditar que aquilo é um WhatsApp,
  * em vez de reconhecer na hora. É a mesma exceção que o DESIGN.md já abre
- * pro verde #25D366 (permitido porque o elemento representa literalmente o
- * WhatsApp) — aqui ela vale pro conjunto todo da janela, e só dentro dela.
- * Fora deste componente, nenhuma destas cores tem uso.
+ * pro verde #25D366 quando um elemento representa literalmente o WhatsApp
+ * — aqui ela vale pro conjunto todo da janela, e só dentro dela. Fora deste
+ * componente, nenhuma destas cores tem uso. (O avatar do Granabô NÃO usa
+ * mais o verde: ele é a "foto" de um contato dentro da conversa, não o selo
+ * do próprio WhatsApp, então vai de mint do Grana. — ver `styles.avatar`.)
  */
 const WA = {
   fundo: '#EFEAE2', // papel de parede padrão (chapado — o padrão de rabiscos é arte da Meta, não replicada aqui)
@@ -185,7 +192,6 @@ const WA = {
   balaoEnviado: '#D9FDD3',
   texto: '#111B21',
   textoFraco: '#667781',
-  verde: '#25D366',
   confirmado: '#53BDEB',
   divisor: 'rgba(17,27,33,0.08)',
 };
@@ -214,7 +220,9 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: WA.verde,
+    // Mint do Grana., não mais o verde do WhatsApp (`WA.verde`) — o círculo
+    // é a "foto" do contato Granabô, não um selo do app onde ele mora.
+    backgroundColor: theme.accent2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -262,9 +270,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: theme.rule,
+    // Sem isto o chip mede a largura da sua própria frase inteira numa
+    // linha só — o mais comprido ("quanto gastei com Alimentação?") passa
+    // dos 300px da janela compacta e o `overflow:hidden` arredondado de
+    // `janela` corta o pedaço que sobra, em vez do texto quebrar linha.
+    maxWidth: '100%',
     ...({ transitionProperty: 'border-color, background-color', transitionDuration: '150ms' } as any),
   },
   chipHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
   chipDesativado: { opacity: 0.5 },
-  chipTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
+  chipTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light, flexShrink: 1 },
 });

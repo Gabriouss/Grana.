@@ -105,7 +105,21 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
   const merged: HoverState = { pressed, hovered: Platform.OS === 'web' && hovered };
   const resolvedStyle = typeof style === 'function' ? style(merged) : style;
 
+  /* `onHoverIn` também dispara num TOQUE em telemóvel/tablet — o comentário
+     acima ("inofensivos e ignorados em toque") era a suposição, mas vários
+     navegadores móveis emitem o hover sintético do Pressable ao tocar, e
+     como não existe um "mouse saindo" depois de erguer o dedo, `onHoverOut`
+     nunca vem: o botão fica preso no estado hover pra sempre (achado real —
+     o CTA de conversão travava com o brilho e o reflexo diagonal acesos
+     depois de um toque). `(hover: hover) and (pointer: fine)` só é
+     verdadeiro com mouse/trackpad de verdade; em toque a checagem barra o
+     hover antes de ele entrar no estado. */
+  function suportaHoverReal() {
+    return typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches === true;
+  }
+
   function handleHoverIn(e: any) {
+    if (Platform.OS === 'web' && !suportaHoverReal()) return;
     setHovered(true);
     onHoverIn?.(e);
   }

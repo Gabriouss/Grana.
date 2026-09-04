@@ -1,8 +1,6 @@
-import { createElement, useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts as uiFonts, radius, spacing, theme, type } from '@/lib/theme';
-import { EASE_REVEAL, useReducedMotion } from '@/lib/motion';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
@@ -84,102 +82,9 @@ const PASSOS: Passo[] = [
   },
 ];
 
-/**
- * A trilha pontilhada que liga os dois passos.
- *
- * O traço se revela da esquerda pra direita por `clip-path`, não por
- * `stroke-dashoffset`: o `dasharray` aqui é o que faz a linha ser
- * PONTILHADA, e animar o `dashoffset` por cima disso faria os pontos
- * deslizarem no lugar de a linha crescer. `clip-path: inset()` revela
- * qualquer traço, pontilhado incluído, sem competir com o estilo dele.
- *
- * Só na web (é `<svg>` cru via `createElement`, mesmo padrão que
- * `MolduraCelular` usa pra `<img>`); no nativo a landing nem renderiza.
- */
-function Trilha({ visivel, reduzirMovimento }: { visivel: boolean; reduzirMovimento: boolean }) {
-  if (Platform.OS !== 'web') return null;
-
-  return (
-    <View
-      aria-hidden
-      style={[
-        styles.trilha,
-        {
-          // Reduced motion: a trilha já nasce inteira, sem o gesto de desenhar.
-          clipPath: reduzirMovimento || visivel ? 'inset(0 0 0 0)' : 'inset(0 100% 0 0)',
-          transitionProperty: 'clip-path',
-          transitionDuration: reduzirMovimento ? '0ms' : '700ms',
-          transitionTimingFunction: EASE_REVEAL,
-          // Começa depois que o título da seção já assentou — o traço é o
-          // último elemento a aparecer, não competindo com a leitura.
-          transitionDelay: reduzirMovimento ? '0ms' : '600ms',
-        } as any,
-      ]}
-    >
-      {/* viewBox proporcional (sem `preserveAspectRatio: none`): esticar o
-          SVG na largura deformaria os nós, que viravam elipses. Aqui a
-          proporção 20:1 já é larga o bastante pra atravessar a seção sem
-          precisar de distorção. */}
-      {createElement(
-        'svg',
-        {
-          viewBox: '0 0 1200 60',
-          focusable: 'false',
-          style: { width: '100%', height: 'auto', display: 'block' },
-        },
-        [
-          createElement('path', {
-            key: 'traco',
-            d: 'M 30 46 C 350 4, 850 58, 1170 16',
-            fill: 'none',
-            stroke: theme.accent2,
-            strokeOpacity: 0.45,
-            strokeWidth: 2.5,
-            strokeDasharray: '2 12',
-            strokeLinecap: 'round',
-          }),
-          // Os nós ancoram o traço nos dois passos: sem eles a linha flutua
-          // solta acima dos cards, sem dizer o que está ligando.
-          createElement('circle', { key: 'no1', cx: 30, cy: 46, r: 6, fill: theme.accent2 }),
-          createElement('circle', { key: 'no2', cx: 1170, cy: 16, r: 6, fill: theme.accent2 }),
-        ]
-      )}
-    </View>
-  );
-}
-
 export default function TrilhaPassos({ compacto = false }: { compacto?: boolean }) {
-  const [visivel, setVisivel] = useState(false);
-  const raizRef = useRef<View>(null);
-  const reduzirMovimento = useReducedMotion();
-
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof IntersectionObserver === 'undefined') {
-      setVisivel(true);
-      return;
-    }
-    const no = raizRef.current as unknown as HTMLElement | null;
-    if (!no) {
-      setVisivel(true);
-      return;
-    }
-    const observador = new IntersectionObserver(
-      ([entrada]) => {
-        if (entrada.isIntersecting) {
-          setVisivel(true);
-          observador.disconnect();
-        }
-      },
-      { rootMargin: '0px 0px -10% 0px', threshold: 0.2 }
-    );
-    observador.observe(no);
-    return () => observador.disconnect();
-  }, []);
-
   return (
-    <View ref={raizRef} style={styles.raiz}>
-      {!compacto && <Trilha visivel={visivel} reduzirMovimento={reduzirMovimento} />}
-
+    <View style={styles.raiz}>
       <View style={[styles.passos, compacto && styles.passosCompactos]}>
         {PASSOS.map((passo) => (
           <View key={passo.titulo} style={styles.passo}>
@@ -195,7 +100,6 @@ export default function TrilhaPassos({ compacto = false }: { compacto?: boolean 
 
 const styles = StyleSheet.create({
   raiz: { width: '100%', marginTop: spacing.xxl },
-  trilha: { width: "100%", marginBottom: spacing.sm },
   passos: { flexDirection: 'row', gap: spacing.xl, alignItems: 'stretch' },
   passosCompactos: { flexDirection: 'column', gap: spacing.lg },
   passo: {
