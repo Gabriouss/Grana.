@@ -21,6 +21,7 @@ import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
 import MolduraCelular from '@/components/MolduraCelular';
 import CarrosselTelasApp from '@/components/CarrosselTelasApp';
+import PainelWebDestaque from '@/components/PainelWebDestaque';
 import ScrollLinkedView from '@/components/ScrollLinkedView';
 import TrilhaPassos from '@/components/TrilhaPassos';
 import landingMeta from '@/landing-meta.json';
@@ -1225,6 +1226,30 @@ function ConteudoWeb() {
             </RevealOnScroll>
             <RevealOnScroll variante="prova">
               <CarrosselTelasApp compacto={ehCompacto} />
+            </RevealOnScroll>
+          </View>
+        </Dobra>
+      </View>
+
+      {/* ───────── Painel web (par com "Por dentro do app") ─────────
+          A mesma conta do carrossel de celular acima, agora na tela
+          grande — reforça "controle no celular e no computador" (já
+          citado na TrustMarquee) com a composição em vez de só a frase.
+          Balões de anotação existem só nesta seção (não em
+          `MolduraNavegador`): dependem de onde exatamente cada dado
+          aparece NESTA captura específica. */}
+      <View nativeID="painel-web" style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra levantada>
+          <View style={styles.secao}>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>O mesmo Grana., na tela grande.</TituloSecao>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
+                Registre pelo celular ou pelo WhatsApp. Acompanhe no computador, com os mesmos dados sincronizados.
+              </Text>
+            </RevealOnScroll>
+            <RevealOnScroll variante="prova">
+              <PainelWebDestaque compacto={ehCompacto} />
             </RevealOnScroll>
           </View>
         </Dobra>

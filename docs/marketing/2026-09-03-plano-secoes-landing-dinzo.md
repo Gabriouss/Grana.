@@ -45,8 +45,8 @@ marcadas **[ASSUMIDO]** abaixo — todas reversíveis.
 3. ✅ "2 passos" com trilha pontilhada (item 6) — **concluído** (fundido
    com a dobra vizinha que mostrava a mesma cena — ajuste feito durante a
    execução, ver `context.md`).
-4. 🔲 Painel web / moldura de navegador (item 2) — **pendente, próximo**.
-5. 🔲 Bento grid de recursos (item 3) — **pendente**, maior risco técnico.
+4. ✅ Painel web / moldura de navegador (item 2) — **concluído** (04/09/2026).
+5. 🔲 Bento grid de recursos (item 3) — **pendente, próximo**, maior risco técnico.
 6. 🔲 Cards "Jornada" e "Fechamento do mês" (item 4) — **pendente**,
    depende do item 5 existir.
 7. ✅ Captura das 5 telas (Passo 0 do item 1) — **concluído**, mais a
@@ -125,7 +125,41 @@ critério de `NotebookVideo.tsx`).
 
 ---
 
-## 4. Painel web / moldura de navegador (item 2) — 🔲 pendente, próximo item
+## 4. Painel web / moldura de navegador (item 2) — ✅ concluído (04/09/2026)
+
+**Implementado como planejado, com um ajuste**: `components/MolduraNavegador.tsx`
+recriado 1:1 (curva de animação passou a usar o token `EASE_LOOP`, que não
+existia na versão original). Balões de anotação e indicador de mouse
+viraram um componente novo, `components/PainelWebDestaque.tsx`, em vez de
+entrarem dentro da própria moldura — decisão tomada na execução porque
+dependem de onde o dado real aparece NESTA captura específica, não são um
+recurso genérico reaproveitável por qualquer uso futuro de
+`MolduraNavegador`.
+
+**Bug encontrado e corrigido durante a implementação**: os balões, ao
+serem posicionados com `left`/`right` negativo, ficavam relativos à SEÇÃO
+inteira em vez de à moldura — o `View` que os envolvia não tinha largura
+própria (comportamento padrão de esticar no eixo cruzado dentro de um
+flex column), então saíam pela borda do viewport em telas largas.
+Corrigido dando ao wrapper uma largura explícita igual à da moldura.
+
+**Screenshot nova**: `public/telas/conquistas-web.webp` (desatualizada,
+29/08) foi removida; `public/telas/inicio-web.png` capturada no lugar
+(1440×900, tela Início com o `lib/demo-data.ts` já corrigido — mostra
+"Livre para Gastar", gráfico de comprometimento com variação real e
+donut de categorias, dados ricos o bastante pra sustentar os balões).
+
+**Achado à parte, fora do escopo original mas corrigido na mesma
+sessão**: o autor reportou por print um aviso "React does not recognize
+the `im..." na tela de Início do app de verdade (não só nas minhas
+capturas). Rastreado até `components/PieChart.tsx` e
+`components/StackedBarChart.tsx`: os dois passavam
+`importantForAccessibility="no-hide-descendants"` (prop só do Android)
+direto pro `<Svg>` da `react-native-svg`, que não traduz isso pra web —
+vazava como atributo cru no DOM. Corrigido com `Platform.OS !== 'web'`
+guardando a prop nos dois arquivos; comportamento nativo idêntico, aviso
+de dev sumiu na web. Não afeta a versão publicada (só aparece em build de
+desenvolvimento).
 
 **Arquivo**: recriar `components/MolduraNavegador.tsx` — existiu, foi
 deletado no commit `f391829` (31/08/2026) por ficar órfão, não por

@@ -1549,3 +1549,64 @@ design system) depois de cada mudança desta sessão. QA visual feito com
 explícito do autor ("70% do foco em mobile"). Sem commit nem push até
 este ponto — a sessão foi instruída a manter tudo local até aqui, e agora
 publica tudo de uma vez a pedido do autor, pra continuar na outra máquina.
+
+## Sessão de 04/09/2026 - plano pro repositório, painel web, bug real de aviso no Início
+
+Continuação da sessão anterior, em outra janela/possivelmente outra
+máquina (mesmo diretório, `git pull` já trazia o commit `bc0f7ba` no
+início). Pedido do autor: "eu quero que a outra máquina tenha acesso
+total ao planejamento de implementações".
+
+**Plano trazido pro repositório.** O plano das 7 seções (antes só em
+`C:\Users\user\.claude\plans\mete-marcha-num-plano-ticklish-waffle.md`,
+fora do controle de versão) foi copiado pra
+`docs/marketing/2026-09-03-plano-secoes-landing-dinzo.md`, com status
+marcado por item — qualquer máquina agora vê o plano completo e o que já
+foi feito só com `git pull`. `plans/README.md` e `context.md` atualizados
+pra apontar pro novo local.
+
+**Painel web / moldura de navegador implementado (item 2 do plano, 5 dos
+7 concluídos agora).** `components/MolduraNavegador.tsx` recriado (existia,
+foi deletado no commit `f391829` de 31/08) — conteúdo idêntico ao
+original, curva de animação migrada pro token `EASE_LOOP`. Balões de
+anotação e indicador de mouse viraram componente novo,
+`components/PainelWebDestaque.tsx` (não entraram na própria moldura —
+dependem de onde o dado real aparece nesta captura específica). Nova
+seção `nativeID="painel-web"` em `app/index.tsx`, entre o carrossel de
+telas e "Inteligência financeira".
+
+Bug pego durante a implementação: os balões, posicionados com
+`left`/`right` negativo, ficavam relativos à SEÇÃO inteira em vez de à
+moldura (o `View` que os envolvia esticava no eixo cruzado por padrão, sem
+largura própria) — saíam pela borda do viewport em telas largas. Corrigido
+dando ao wrapper largura explícita igual à da moldura.
+
+**Nova screenshot**: `public/telas/conquistas-web.webp` (desatualizada,
+29/08) removida; `public/telas/inicio-web.png` capturada no lugar
+(1440×900, conta de demonstração, mesmo processo de ocultar a badge
+"(exemplo)" via DOM só na captura — nunca no código).
+
+**Achado real fora do escopo, corrigido na mesma sessão.** O autor
+reportou por print um aviso vermelho "React does not recognize the
+`im..." na tela de Início do app de verdade — não só numa captura minha.
+Rastreado: `components/PieChart.tsx` e `components/StackedBarChart.tsx`
+passavam `importantForAccessibility="no-hide-descendants"` (prop só do
+Android) direto pro `<Svg>` da `react-native-svg`, que não traduz isso pra
+web — vazava como atributo cru no DOM. Corrigido com `Platform.OS !==
+'web'` guardando a prop nos dois arquivos; comportamento nativo idêntico,
+aviso de dev sumiu na web (não afeta a versão publicada, só aparece em
+build de desenvolvimento).
+
+`npx tsc --noEmit` limpo e `npm run test:parser` 100% (318/318 guardas do
+design system) depois de cada mudança. QA visual em 390×844 (compacto,
+sem balões — corretamente ausentes), 1024×800 (faixa de risco que o
+plano apontava, sem colisão com o cabeçalho) e 1440×900 (balões
+corretos, ancorados na moldura).
+
+**Pendente — 2 dos 7 itens**, plano completo em
+`docs/marketing/2026-09-03-plano-secoes-landing-dinzo.md`:
+
+- **Bento grid de recursos** (item 3, próximo): quarto modo em
+  `BeneficiosHorizontais.tsx` — maior risco técnico do plano.
+- **Cards "Jornada" e "Fechamento do mês"** (item 4): dependem do bento
+  existir.

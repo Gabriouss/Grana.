@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
 import Svg, { Path, G, Text as SvgText } from 'react-native-svg';
 import { theme, fonts } from '@/lib/theme';
 
@@ -182,7 +182,13 @@ function PieChart({ data, size = 216 }: { data: PieSlice[]; size?: number }) {
         height={size}
         viewBox={VIEW_BOX}
         accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
+        // Só nativo: na web a `react-native-svg` não traduz essa prop pro
+        // DOM, e ela vaza como atributo cru — React acusa em dev
+        // ("does not recognize the `importantForAccessibility` prop").
+        // Redundante ali de qualquer forma: o `View` pai já tem
+        // `accessible`+`accessibilityRole`+`accessibilityLabel`, que já
+        // colapsa a subárvore sozinho.
+        {...(Platform.OS !== 'web' ? { importantForAccessibility: 'no-hide-descendants' as const } : {})}
       >
         {slices.map(({ seg, d, labelX, labelY, mid, anchor, pct }) => {
           const cabe =

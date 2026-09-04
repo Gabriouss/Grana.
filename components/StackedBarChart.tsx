@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from 'react-native';
 import Svg, { Rect, Line, Text as SvgText, G } from 'react-native-svg';
 import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
@@ -89,7 +89,12 @@ export default function StackedBarChart({
           width={containerWidth}
           height={height}
           accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
+          // Só nativo — na web a `react-native-svg` não traduz essa prop
+          // pro DOM, e ela vaza como atributo cru que o React acusa em
+          // dev ("does not recognize the `importantForAccessibility`
+          // prop"). `accessibilityElementsHidden` sozinho já basta pra
+          // web (e continua também no nativo, sem mudança de comportamento).
+          {...(Platform.OS !== 'web' ? { importantForAccessibility: 'no-hide-descendants' as const } : {})}
         >
           {/* Linha guia de base */}
           <Line
