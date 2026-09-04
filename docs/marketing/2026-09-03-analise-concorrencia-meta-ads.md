@@ -132,6 +132,66 @@ assistente de IA no WhatsApp que lança e categoriza gasto por mensagem.
   mapeia direto para o card "Acompanhe cartão, fatura e limite" do Grana.,
   mas com mais detalhe de copy (menciona "próximos 30 dias").
 
+### Página de vendas — dinzo.com.br
+
+Pedido do autor: analisar a landing de destino dos anúncios. Correção a um
+ponto do que foi escrito antes: **o Dinzo tem plano grátis** (1 banco
+conectado via Open Finance, painel limitado) — não estava registrado
+acima porque nenhum anúncio da coleta o menciona, só a landing.
+
+**Estrutura (14 seções, na ordem):** hero com CTA duplo ("Começar grátis" /
+"Ver o Dino em ação") → demonstração visual (saldo, metas, últimos
+lançamentos) → logos de 15+ bancos suportados → processo em 3 passos
+(conectar bancos → falar com Dino → conferir dados) → exemplos de comando
+no WhatsApp ("mercado 184", áudio, foto de nota) → recursos (categorização,
+assinaturas, fatura prevista, parcelas) → painel web com exportação
+CSV/XLSX/PDF → screenshots do app → segurança/Open Finance → **"Por que o
+Dinzo é pago?"** → 3 depoimentos com nome e cidade → FAQ (6 perguntas) →
+metas → CTA final.
+
+**Preços reais (a copy do anúncio "menos de R$21/mês" simplifica dois
+planos distintos):**
+
+| Plano | Preço mensal equivalente | Cobrança | Inclui |
+|---|---|---|---|
+| Grátis | R$0 | — | 1 banco via Open Finance, painel limitado |
+| Premium | R$ 20,82/mês | R$249,90/ano | WhatsApp, 3 conexões bancárias, relatórios, investimentos |
+| Ultra | R$ 33,32/mês | R$399,90/ano | Tudo do Premium + conexões ilimitadas, múltiplos CPF/CNPJ, até 5 usuários |
+
+Mais 10% de desconto pagando o anual via Pix à vista. Garantia de 7 dias
+com reembolso sem justificativa em todos os planos pagos.
+
+**Achados que valem pro Grana.:**
+
+- **Seção "Por que o Dinzo é pago?" é o achado mais direto pra copy.**
+  Justifica o preço atacando o modelo "grátis": "apps grátis se pagam de
+  outro jeito — vendendo dados, promovendo cartão de crédito, saturando
+  com anúncio". Três princípios: "Zero anúncios", "Seus dados não são o
+  produto", "Incentivo alinhado" (só ganham se você continuar assinante).
+  **O Grana. não tem nada equivalente** — cobra desde o primeiro dia mas
+  não explica por quê, e essa seção do Dinzo é literalmente a resposta pra
+  objeção mais óbvia de quem vê um app pago de finanças.
+- **FAQ pergunta #2 ataca a planilha de frente**: "Por que o Dinzo, e não
+  a minha planilha?" — resposta: "Planilha depende de digitação diária.
+  Dinzo recebe gastos automaticamente [...], aceita lançamento por áudio,
+  projeta fatura futura". Confirma o que as seções 3 e 4 deste documento
+  já mostravam pelo lado oposto (produtores de planilha ainda vendendo
+  bem): a planilha manual é competidor relevante o bastante pra merecer
+  pergunta própria no FAQ de um concorrente direto. O Grana. também
+  substitui planilha e não tem esse enfrentamento na landing. Ver seções 3
+  e 4 abaixo (Planilha Premium e Minhas Finanças Organizadas).
+- **3 depoimentos com nome e cidade real** (Renata M./BH, Caio F./Curitiba,
+  Juliana T./Recife), cada um amarrado a um recurso específico do produto
+  (áudio no mercado, fatura prevista, conexão de dois bancos num domingo à
+  noite) — não é depoimento genérico de estrela. A landing do Grana. não
+  usa depoimento nenhum hoje (a política do produto é não logar conta real
+  pra gerar material de marketing — testemunho de cliente de verdade é
+  outra categoria, exigiria consentimento explícito da pessoa, não dado
+  fabricado).
+- **Exportação CSV/XLSX/PDF pelo painel web** é um recurso que a landing do
+  Grana. não anuncia — vale conferir se o app já faz isso e só não está na
+  copy, ou se é lacuna de produto.
+
 ---
 
 ## 3. Planilha Premium (produto substituto, não app)
@@ -226,7 +286,7 @@ resultado com esse nome de anunciante é dela)
 
 | | Grana. | Pierre Finance | Dinzo | Planilha Premium | Minhas Finanças Organizadas |
 |---|---|---|---|---|---|
-| Preço | R$ 9,90/mês, sem trial | Free + trial 7d no Pro | ~R$ 21/mês, garantia 7d | Ticket único (não exposto) | Ticket único, R$10 num dos 3 produtos |
+| Preço | R$ 9,90/mês, sem trial | Free + trial 7d no Pro | Grátis limitado + R$20,82-33,32/mês (anual), garantia 7d | Ticket único (não exposto) | Ticket único, R$10 num dos 3 produtos |
 | Conecta banco (Open Finance) | Não, nunca | Sim | Sim | Não (planilha manual) | Não (planilha manual) |
 | Lançamento por voz/texto | Sim (voz, WhatsApp, QR nota) | Não (foco é sincronização automática) | Sim (WhatsApp) | Não (preenchimento manual) | Não (preenchimento manual) |
 | Assistente de IA nomeado | Granabô | — | Dino | — | — |
