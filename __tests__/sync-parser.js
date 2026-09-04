@@ -58,12 +58,6 @@ function corpo(arquivo, nome) {
 /* Cada entrada é o nome da função; quando ela se chama diferente nos dois
    arquivos, vira [nomeNoApp, nomeNoWebhook]. */
 const COMPARTILHADAS = [
-  'NUMERO_POR_EXTENSO', 'somarExtenso', 'segmentarExtenso', 'MOEDA', 'PALAVRA_MOEDA',
-  /* A função mais importante do lançamento por voz — é ela que transforma
-     "trinta e quatro e sessenta e cinco" em "34,65". Ficou de fora desta
-     lista desde o começo, embora a normalização de nomes acima já existisse
-     pra ela: o guarda sabia traduzir o nome e nunca comparava o corpo. */
-  ['normalizarTexto', 'normalizarTextoTranscrito'],
   'VERBOS_INICIAIS', 'CONECTOR', 'CONECTOR_INICIAL', 'CONECTOR_FINAL',
   'MULETA_INICIAL', 'MULETA_FINAL', 'MARCA_RECORRENCIA',
   'VALOR_INICIAL', 'VALOR_FINAL', 'FORMA_PAGAMENTO_FINAL', 'VENCIMENTO_FINAL', 'PARCELAMENTO_FINAL',
@@ -81,8 +75,23 @@ const NOTAS_RELEASE = [
   'palavrasDe', 'validarNotaRelease', 'notaEhPublicavel',
 ];
 
+/* Normalização de número por extenso — desde a unificação de voz/widget
+   (2026-09-04), o whatsapp-webhook não guarda mais cópia própria disto: ele
+   importa de supabase/functions/_shared/finance-command.ts, o mesmo módulo
+   que a Edge Function processar-lancamento-voz (app/widget) vai usar. O par
+   que importa comparar não é mais app-vs-webhook, é app-vs-_shared. */
+const COMPARTILHADAS_FINANCE_COMMAND = [
+  'NUMERO_POR_EXTENSO', 'somarExtenso', 'segmentarExtenso', 'MOEDA', 'PALAVRA_MOEDA',
+  /* A função mais importante do lançamento por voz — é ela que transforma
+     "trinta e quatro e sessenta e cinco" em "34,65". Ficou de fora desta
+     lista desde o começo, embora a normalização de nomes acima já existisse
+     pra ela: o guarda sabia traduzir o nome e nunca comparava o corpo. */
+  ['normalizarTexto', 'normalizarTextoTranscrito'],
+];
+
 const PARES = [
   { app: 'lib/heuristics.ts', web: 'supabase/functions/whatsapp-webhook/index.ts', funcoes: COMPARTILHADAS },
+  { app: 'lib/heuristics.ts', web: 'supabase/functions/_shared/finance-command.ts', funcoes: COMPARTILHADAS_FINANCE_COMMAND },
   { app: 'lib/notas-release.ts', web: 'supabase/functions/eas-build-webhook/index.ts', funcoes: NOTAS_RELEASE },
 ];
 

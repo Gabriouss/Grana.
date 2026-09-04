@@ -1742,3 +1742,68 @@ de entrega ponta a ponta. Nenhum build EAS foi disparado nesta sessão.
 As alterações paralelas já existentes em `components/MolduraNavegador.tsx`,
 `components/PainelWebDestaque.tsx` e `.tmp.driveupload/` foram preservadas e
 deixadas fora desta correção.
+
+## Sessão de 04/09/2026 — voz unificada, Fase 2 (primeira leva do núcleo compartilhado)
+
+Início da execução de
+`docs/superpowers/specs/2026-09-04-voz-unificada-widget-android-design.md`, a
+pedido do autor. Fase 0 e Fase 1 cumpridas; Fase 2 começou pela fatia mais
+autocontida. **Nada do app, do widget ou do banco foi tocado.**
+
+**Fase 1 já estava cumprida na prática, e a investigação mostrou por quê.** O
+corpus existente não é só um teste do `lib/heuristics.ts`: `__tests__/extrair.ts`
+lê funções DIRETO do arquivo real do webhook por regex e roda dentro de
+`new Function`. Ou seja, mover código pra fora de `whatsapp-webhook/index.ts`
+quebra teste que ninguém esperava — quem for extrair o resto do parser precisa
+saber disto antes de mexer:
+
+- `corpus-whatsapp-gerado.ts` (34.093 checagens), `corpus-roteamento.ts`,
+  `corpus-consulta.ts` e `corpus-categorias-custom.ts` extraem por nome do
+  arquivo do webhook. Função que sai de lá precisa ter o `corpoDaFuncao`
+  correspondente repontado pro arquivo novo, ou o teste morre com
+  `não achei X`.
+- `__tests__/sync-parser.js` compara texto entre dois arquivos por par. Uma
+  função que vira `import` no webhook some da comparação — o par tem que ser
+  reapontado, não removido.
+
+**O que foi extraído** para `supabase/functions/_shared/`:
+
+- `finance-command.ts` — `NUMERO_POR_EXTENSO`, `somarExtenso`,
+  `podeContinuarNumeral`, `segmentarExtenso`, `MOEDA`, `PALAVRA_MOEDA` e
+  `normalizarTextoTranscrito`, movidos verbatim (só ganharam `export`). É a
+  camada que a transcrição de áudio depende antes de qualquer parser de campo
+  rodar.
+- `voice-transcription.ts` — a ordem Groq (`whisper-large-v3`) → OpenAI
+  (`whisper-1`), o prompt e a chamada multipart. Duas diferenças deliberadas
+  em relação ao que estava inline no webhook: `transcrever()` recebe bytes +
+  MIME + nome de arquivo (não um `mediaId` da Meta, que o app/widget não têm),
+  e o prompt deixou de dizer "mensagens de WhatsApp" — o mesmo texto passa a
+  valer pra áudio gravado no app ou no widget, que nunca passaram por lá.
+  `fetchComTimeout` é injetado por quem chama.
+
+`whatsapp-webhook/index.ts` passou a importar os dois; `baixarAudioDaMeta`
+continua lá, porque é específico da Meta. O resto do parser (forma de
+pagamento, recorrência, parcelas, categoria, boleto, `registrarLancamento`)
+**ainda não migrou** — é a continuação da Fase 2.
+
+**Achado, não corrigido:** `deno check supabase/functions/whatsapp-webhook/index.ts`
+acusa **7 erros de tipo que já existiam antes desta sessão** (confirmado
+rodando o mesmo comando no arquivo de `HEAD`). Todos vêm do `extras = []` sem
+anotação, que é intencional — o comentário no próprio arquivo explica que
+anotar quebra a limpeza de tipos de `__tests__/extrair.ts`. O pipeline do
+projeto nunca rodou `deno check` (usa `tsc --noEmit`, que exclui
+`supabase/functions/**`, mais os corpus em Node). Isso vira problema quando a
+Edge Function nova entrar: vale decidir entre anotar e ensinar o extrator, ou
+manter e conviver.
+
+Verificações: `deno check` limpo nos dois módulos novos; `npx tsc --noEmit`
+limpo; `npm run test:parser` completo 100% (34.093 do corpus gerado, 16.332 do
+manual, 321/321 do design system, 37/37 em sincronia — mesma contagem de
+antes, com o par de normalização repontado pro `_shared`); e prova de execução
+real em Deno das 7 frases canônicas ("onze e setenta e nove" → `11,79`, "fiz um
+pix de 50 pra Maria" preservando o artigo, "5h90" → `5,90`, "um real e um
+centavo" → `1,01 reais`).
+
+As alterações paralelas da landing (`app/index.tsx`, `components/AppPressable.tsx`,
+`CarrosselTelasApp`, `ConversaGranabo`, `MolduraNavegador`, `PainelWebDestaque`,
+`TrilhaPassos`, `BrandMark.tsx`) foram preservadas e ficaram FORA deste commit.
