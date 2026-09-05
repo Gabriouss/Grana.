@@ -4,6 +4,7 @@ import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
+import { requestRecordingPermissionsAsync } from 'expo-audio';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';
@@ -289,6 +290,21 @@ export default function PerfilScreen() {
        o microfone está aberto. Sem isso ele se recusa a gravar, então
        instalar primeiro e descobrir depois seria entregar um botão morto. */
     if (tipo === 'voz') {
+      /* As duas permissões, não só a notificação: o serviço nativo
+         (GranaVoiceCaptureService.iniciar()) checa RECORD_AUDIO ANTES de
+         checar notificação, e devolve o mesmo silêncio-com-flash-de-atencao
+         pras duas faltas. Pedir só a notificação aqui deixava o microfone
+         sempre recusando pra quem nunca tinha usado o botão de voz dentro do
+         app antes (só ele pedia RECORD_AUDIO) — a pessoa tocava, via um
+         piscar rápido de "ouvindo" e nada mais, sem entender por quê. */
+      const podeGravar = (await requestRecordingPermissionsAsync()).granted;
+      if (!podeGravar) {
+        Alert.alert(
+          'Autorize o microfone primeiro',
+          'O widget de voz precisa do microfone pra gravar. Autorize o acesso ao microfone do Grana. nas configurações do aparelho e tente de novo.'
+        );
+        return;
+      }
       const podeAvisar = await requestNotificationPermission();
       if (!podeAvisar) {
         Alert.alert(

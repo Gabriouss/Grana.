@@ -12,8 +12,16 @@
   <color name="grana_widget_superficie">#0B2D35</color>
   <color name="grana_widget_superficie_alta">#123B44</color>
   <color name="grana_widget_regra">#2A5660</color>
-  <color name="grana_widget_texto">#E8F3F1</color>
-  <color name="grana_widget_texto_suave">#A7C0C2</color>
-  <color name="grana_widget_menta">#7BD8C0</color>
+  <!-- Valores abaixo eram aproximações a olho — corrigidos pra bater exato
+       com lib/theme.ts (04/09/2026: usuário reportou os widgets "muito
+       ruins", e a cor errada dos ícones de ação era parte do problema). -->
+  <color name="grana_widget_texto">#EFFFFA</color>
+  <color name="grana_widget_texto_suave">#A6D9CE</color>
+  <color name="grana_widget_menta">#AEFFE3</color>
   <color name="grana_widget_perigo">#E08A7D</color>
+  <!-- theme.up / theme.down — cor de Entrada e de Saída, nunca a mesma cor
+       (eram as duas "menta" antes, sem distinção nenhuma entre entrar e
+       sair dinheiro). -->
+  <color name="grana_widget_entrada">#74E291</color>
+  <color name="grana_widget_saida">#00A6CA</color>
 </resources>
