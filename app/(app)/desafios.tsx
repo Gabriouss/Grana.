@@ -266,7 +266,8 @@ export default function DesafiosScreen() {
           {level.nextElo && (
             <Text style={styles.remainingText}>{`Rumo ao elo ${level.nextElo.title}`}</Text>
           )}
-          <Text style={styles.levelHint}>Este nível é separado da saúde financeira acima. O XP vem de criar cofrinhos, guardar dinheiro e bater metas — nunca diminui.</Text>
+          {/* Ponto final no lugar do travessão: regra de copy do projeto. */}
+          <Text style={styles.levelHint}>Este nível é separado da saúde financeira acima. O XP vem de criar cofrinhos, guardar dinheiro e bater metas. Ele nunca diminui.</Text>
         </View>
 
         {/* Ritmo Semanal */}

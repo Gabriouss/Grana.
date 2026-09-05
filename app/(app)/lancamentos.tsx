@@ -17,7 +17,7 @@ import {
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
-import { colunaConteudo } from '@/lib/breakpoints';
+import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -130,6 +130,7 @@ export default function LancamentosScreen() {
   const router = useRouter();
   const { novoLancamento } = useLocalSearchParams<{ novoLancamento?: string }>();
   const { paddingConteudoComFab } = useTabBarInset();
+  const { ehCompacto } = useBreakpoint();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, activeWalletName } = useWallet();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
@@ -613,7 +614,7 @@ export default function LancamentosScreen() {
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Entradas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
-              <Text style={[styles.monthSummaryVal, { color: theme.up }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+              <Text style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: theme.up }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {formatBRL(monthIn, '+')}
               </Text>
             </PrivacyValue>
@@ -622,7 +623,7 @@ export default function LancamentosScreen() {
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Saídas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
-              <Text style={[styles.monthSummaryVal, { color: theme.down }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+              <Text style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: theme.down }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {formatBRL(monthOut, '−')}
               </Text>
             </PrivacyValue>
@@ -632,7 +633,7 @@ export default function LancamentosScreen() {
             <Text style={styles.monthSummaryLabel}>Saldo</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text
-                style={[styles.monthSummaryVal, { color: monthBalance >= 0 ? theme.ink : theme.down }]}
+                style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: monthBalance >= 0 ? theme.ink : theme.down }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.75}
@@ -849,11 +850,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
   },
-  monthSummaryCol: { flex: 1, alignItems: 'center' },
+  /* `minWidth: 0` deixa a coluna encolher abaixo do texto (padrão do flex é
+     não encolher além do conteúdo, e sem isso as três colunas empurram umas
+     às outras até os valores se encostarem). O padding garante que, mesmo no
+     limite, sobre respiro antes do divisor. */
+  monthSummaryCol: { flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: spacing.xs },
   monthSummaryLabel: { color: theme.inkFaint, fontSize: type.legenda,
   lineHeight: lh(type.legenda, 'apoio'), marginBottom: spacing.fio, letterSpacing: 0.5, fontFamily: fonts.light },
-  monthSummaryVal: { fontSize: type.apoio,
-  lineHeight: lh(type.apoio, 'apoio'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  /* `type.nota` e não `type.apoio`: são TRÊS quantias lado a lado numa tela
+     de 390px, e a 16px "+ R$ 7.050,00" encostava na vizinha. O
+     `adjustsFontSizeToFit` do JSX cobre o caso extremo, mas só existe em
+     iOS/Android — na web ele é ignorado, então o tamanho base precisa caber
+     por conta própria. */
+  monthSummaryVal: { fontSize: type.nota,
+  lineHeight: lh(type.nota, 'apoio'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  /* Um degrau a menos em tela estreita. Medido: três quantias de ~13
+     caracteres dividem ~100px de coluna num aparelho de 390px, e a 15px elas
+     encostam no divisor. A 14px sobra respiro. É a mesma razão de o valor já
+     ter caído de `apoio` pra `nota`; aqui a conta simplesmente não fecha em
+     tela pequena. */
+  monthSummaryValCompacto: { fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
   monthSummaryDivider: { width: 1, height: 24, backgroundColor: theme.rule },
   dateQuickRow: { flexDirection: 'row', gap: spacing.icone, marginTop: spacing.fio },
   dateQuickChip: {

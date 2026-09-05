@@ -181,14 +181,14 @@ function PieChart({ data, size = 216 }: { data: PieSlice[]; size?: number }) {
         width={size}
         height={size}
         viewBox={VIEW_BOX}
-        accessibilityElementsHidden
-        // Só nativo: na web a `react-native-svg` não traduz essa prop pro
-        // DOM, e ela vaza como atributo cru — React acusa em dev
-        // ("does not recognize the `importantForAccessibility` prop").
-        // Redundante ali de qualquer forma: o `View` pai já tem
-        // `accessible`+`accessibilityRole`+`accessibilityLabel`, que já
-        // colapsa a subárvore sozinho.
-        {...(Platform.OS !== 'web' ? { importantForAccessibility: 'no-hide-descendants' as const } : {})}
+        /* Ambas são só de nativo: a `react-native-svg` não traduz nenhuma
+           das duas pro DOM e elas vazam como atributo cru, que o React
+           acusa em dev. Redundantes na web de qualquer forma — o `View` pai
+           já tem `accessible`+`accessibilityRole`+`accessibilityLabel`, que
+           colapsa a subárvore sozinho. */
+        {...(Platform.OS !== 'web'
+          ? { accessibilityElementsHidden: true, importantForAccessibility: 'no-hide-descendants' as const }
+          : {})}
       >
         {slices.map(({ seg, d, labelX, labelY, mid, anchor, pct }) => {
           const cabe =

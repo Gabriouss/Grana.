@@ -88,13 +88,17 @@ export default function StackedBarChart({
         <Svg
           width={containerWidth}
           height={height}
-          accessibilityElementsHidden
-          // Só nativo — na web a `react-native-svg` não traduz essa prop
-          // pro DOM, e ela vaza como atributo cru que o React acusa em
-          // dev ("does not recognize the `importantForAccessibility`
-          // prop"). `accessibilityElementsHidden` sozinho já basta pra
-          // web (e continua também no nativo, sem mudança de comportamento).
-          {...(Platform.OS !== 'web' ? { importantForAccessibility: 'no-hide-descendants' as const } : {})}
+          /* AS DUAS props são só de nativo. A correção anterior tratou só
+             `importantForAccessibility` e deixou esta passando, na suposição
+             de que ela bastaria na web — não basta: a `react-native-svg`
+             também não a traduz, e ela vaza como atributo cru. O React
+             acusa em dev, e o overlay de erro suja qualquer captura de tela
+             feita pra material de marketing. Na web o `View` pai já tem
+             `accessible`+`accessibilityRole`+`accessibilityLabel`, que
+             colapsa a subárvore sozinho. */
+          {...(Platform.OS !== 'web'
+            ? { accessibilityElementsHidden: true, importantForAccessibility: 'no-hide-descendants' as const }
+            : {})}
         >
           {/* Linha guia de base */}
           <Line

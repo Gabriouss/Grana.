@@ -77,6 +77,7 @@ const styles = StyleSheet.create({
      borda da tela em celular grande antes desta correção. */
   leftCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1, minWidth: 0 },
   texts: { flexShrink: 1, minWidth: 0 },
+
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 0 },
   eyebrow: {
@@ -93,5 +94,11 @@ const styles = StyleSheet.create({
   title: {
     ...textStyles.title,
     color: theme.ink,
+    /* Nunca partir PALAVRA. Com duas linhas liberadas, o react-native-web
+       passou a quebrar "Lançamentos" em "Lançam"/"entos" quando a direita do
+       cabeçalho aperta a coluna — o que é pior que a reticência que as duas
+       linhas vieram resolver. Quebrar só entre palavras devolve a decisão
+       pro caminho normal: cabe em uma linha, cabe em duas, ou elide. */
+    ...({ wordBreak: 'keep-all', overflowWrap: 'normal' } as any),
   },
 });

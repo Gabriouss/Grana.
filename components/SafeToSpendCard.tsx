@@ -57,7 +57,9 @@ export default function SafeToSpendCard({
 
       {sugestaoArquetipo && (
         <Text style={styles.hint}>
-          💡 Seu comportamento recente lembra o perfil {sugestaoArquetipo.emoji} {sugestaoArquetipo.nome} — vale refazer o diagnóstico no Perfil.
+          {/* Ponto final em vez de travessão: a regra de copy do projeto o
+              proíbe, e esta frase aparece no card mais visível da Início. */}
+          💡 Seu comportamento recente lembra o perfil {sugestaoArquetipo.emoji} {sugestaoArquetipo.nome}. Vale refazer o diagnóstico no Perfil.
         </Text>
       )}
     </View>

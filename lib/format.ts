@@ -224,7 +224,16 @@ export function addMonthsToISO(iso: string, months: number): string {
 export function saudacaoDoDia(nome: string): string {
   const hora = new Date().getHours();
   const periodo = hora >= 4 && hora < 12 ? 'Bom dia' : hora >= 12 && hora < 18 ? 'Boa tarde' : 'Boa noite';
-  return nome ? `${periodo}, ${nome}` : periodo;
+  /* Só o primeiro nome. Cumprimento usa primeiro nome em português, e o nome
+     completo estourava o cabeçalho: "Boa noite, Mariana Alves" virava
+     "Boa noite, Mariana ..." mesmo com o título em duas linhas, porque a
+     direita do cabeçalho (privacidade + carteira) não encolhe por regra.
+     Cortar aqui resolve na origem, em vez de espremer o layout.
+
+     `nomeDeExibicao` continua devolvendo o nome inteiro: a tela de Perfil
+     mostra a pessoa por extenso, e ali isso está certo. */
+  const primeiro = nome.trim().split(/\s+/)[0] ?? '';
+  return primeiro ? `${periodo}, ${primeiro}` : periodo;
 }
 
 export function formatDateLabel(iso: string): string {
