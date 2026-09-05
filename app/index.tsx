@@ -22,6 +22,7 @@ import CarrosselTelasApp from '@/components/CarrosselTelasApp';
 import PainelWebDestaque from '@/components/PainelWebDestaque';
 import ScrollLinkedView from '@/components/ScrollLinkedView';
 import TrilhaPassos from '@/components/TrilhaPassos';
+import ConversaGranachat from '@/components/ConversaGranachat';
 import landingMeta from '@/landing-meta.json';
 
 // A landing é uma superfície de marca. O produto logado usa a família do
@@ -74,6 +75,7 @@ const PARAMETROS_ATRIBUICAO = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_
    decoração: permite reconhecer o item pela forma antes do rótulo. */
 const NAVEGACAO_LANDING = [
   { rotulo: 'Como funciona', href: '#produto', icone: 'play-circle-outline' },
+  { rotulo: 'Granabô', href: '#granachat', icone: 'sparkles-outline' },
   { rotulo: 'Hábitos', href: '#habitos', icone: 'flame-outline' },
   { rotulo: 'Benefícios', href: '#beneficios', icone: 'grid-outline' },
   { rotulo: 'Segurança', href: '#seguranca', icone: 'shield-checkmark-outline' },
@@ -100,21 +102,49 @@ function hrefCadastroComAtribuicao(): string {
   return query ? `/sign-up?${query}` : '/sign-up';
 }
 
-/* `rotulo` permite variar o texto do botão por seção. O padrão é
-   "Criar minha conta", que é a ação REAL: o checkout da Kiwify ainda não
-   existe e `temAssinaturaAtiva()` não é chamada em tela nenhuma, então
-   nenhum botão pode prometer uma compra. `microcopy` é opcional e fica
-   reservada aos pontos em que realmente esclarece uma condição. */
+/* Destino de COMPRA, distinto do destino de cadastro.
+ *
+ * A URL vem do ambiente porque é um link de checkout que pode mudar sem
+ * mexer no código. Se ela não estiver configurada — e hoje ela NÃO está na
+ * Vercel, conferido baixando o bundle publicado —, o botão cai no cadastro
+ * em vez de virar link morto. É a mesma defesa que `app/assinar.tsx:9-11`
+ * já fazia; repetir o critério aqui evita que a página prometa um checkout
+ * que o ambiente não tem.
+ *
+ * `startsWith('https://')` em vez de checar só existência: uma variável
+ * definida como string vazia ou com um valor de placeholder passaria num
+ * teste de existência e levaria a pessoa a lugar nenhum. */
+function hrefCompra(): string {
+  const checkout = process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
+  return checkout?.startsWith('https://') ? checkout : hrefCadastroComAtribuicao();
+}
+
+/* `rotulo` permite variar o texto do botão por seção. O padrão continua
+   "Criar minha conta", que é a ação certa na maior parte da página: quem
+   ainda está lendo argumento não está pronto pra pagar.
+
+   `compra` inverte isso nos dois pontos em que a pessoa JÁ decidiu — a
+   dobra de preços e o fechamento. Antes nem esses levavam ao checkout, e o
+   caminho do dinheiro era um laço: da página não se chegava ao pagamento, e
+   o botão dentro do app devolvia pra página. O paywall existe de verdade
+   (`app/_layout.tsx:223-226` protege as telas por `estadoAcesso.allowed`),
+   então prometer a compra aqui é fiel ao produto.
+
+   `microcopy` é opcional e fica reservada aos pontos em que realmente
+   esclarece uma condição. */
 function BotaoCTA({
   microcopy,
   centralizado,
   rotulo = 'Criar minha conta',
   variante = 'primario',
+  compra,
   onPress,
 }: {
   microcopy?: string;
   centralizado?: boolean;
   rotulo?: string;
+  /** Leva ao checkout em vez do cadastro. Só nos pontos de decisão. */
+  compra?: boolean;
   /* 'secundario' é outline, sem o reflexo diagonal — esse efeito é a
      assinatura do CTA de conversão real; repeti-lo aqui diluiria a
      hierarquia (o CTA primário precisa continuar sendo a coisa mais
@@ -193,7 +223,7 @@ function BotaoCTA({
           aba" e rastreamento por crawler de busca funcionam — sem tocar no
           `style` função que já funcionava. */}
       <AppPressable
-        {...(onPress ? { onPress } : { href: hrefCadastroComAtribuicao() })}
+        {...(onPress ? { onPress } : { href: compra ? hrefCompra() : hrefCadastroComAtribuicao() })}
         onHoverIn={() => !reduzirMovimento && setPonteiroAtivo(true)}
         onHoverOut={() => setPonteiroAtivo(false)}
         style={({ hovered }) => [
@@ -459,14 +489,49 @@ const PILARES_HABITO = [
     titulo: 'Entenda sua evolução',
     texto: 'O Score Grana reúne quatro fatores numa escala de 0 a 1000 e ajuda a acompanhar seu progresso.',
   },
+  /* Widget entra como pilar de HÁBITO, e não de conveniência, porque é onde
+     ele de fato atua: o atrito que quebra a sequência costuma ser abrir o
+     app, não registrar. Um atalho na tela inicial remove justamente esse
+     passo. */
+  {
+    icone: 'apps-outline' as const,
+    titulo: 'Deixe à mão na tela inicial',
+    texto: 'Widgets no Android colocam o microfone e o Livre para Gastar a um toque, sem precisar abrir o aplicativo.',
+  },
 ];
 
+/* Nove categorias, não seis. A página vendia 6 benefícios enquanto o app
+   tinha perto de 40 ferramentas — carteiras múltiplas, diagnóstico,
+   retrospectiva do mês e os 6 meses de projeção não apareciam em lugar
+   nenhum, e widgets, Granachat e hábito não existiam na página.
+
+   A ordem conta uma história: primeiro como o dado ENTRA (Registro), depois
+   como se PERGUNTA sobre ele (Granachat), depois como se OLHA (Análises), o
+   que já está comprometido (Cartões, Contas), o que se PLANEJA, e por fim o
+   que sustenta o hábito (Hábito, Widgets) e o ajuste fino (Personalização).
+
+   `tamanho: 'grande'` só nos dois itens novos de maior apelo. O bento já
+   suportava esse campo desde que foi escrito, mas nenhum item usava — a
+   hierarquia visual dele nunca tinha aparecido por falta de dado. */
 const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
   {
     variante: 'lancar',
     rotulo: 'Registro',
     titulo: 'Lance do jeito que for mais fácil',
-    texto: 'Use voz no app, QR Code, comprovante Pix, CSV com até 10 mil linhas ou formulário manual. Se a conexão cair, a fila offline guarda o lançamento para sincronizar depois.',
+    texto: 'Fale no app, aponte para o QR Code da nota, cole um comprovante do Pix, importe extrato OFX ou CSV com até 10 mil linhas, ou preencha à mão. Se a conexão cair, a fila offline guarda e sincroniza depois.',
+  },
+  {
+    variante: 'granachat',
+    rotulo: 'Granabô',
+    titulo: 'Pergunte sobre o seu dinheiro e receba resposta',
+    texto: 'Quanto gastei em Alimentação? Quanto posso gastar? O Granabô consulta os seus próprios lançamentos e responde com o número real. Ele nunca inventa um valor: quando não encontra a categoria, ele pergunta.',
+    tamanho: 'grande',
+  },
+  {
+    variante: 'mes',
+    rotulo: 'Análises',
+    titulo: 'Veja o mês por vários ângulos',
+    texto: 'Acompanhe o fluxo por mês, por ano ou por período livre, veja a composição por categoria e os compromissos dos próximos seis meses. No fim do mês, a retrospectiva resume o que aconteceu. Exporte em PDF quando precisar.',
   },
   {
     variante: 'cartao',
@@ -481,16 +546,23 @@ const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
     texto: 'Marque uma conta como paga para criar a saída e preparar a próxima ocorrência. Os lembretes acompanham a aproximação do vencimento no aplicativo móvel.',
   },
   {
-    variante: 'mes',
-    rotulo: 'Análises',
-    titulo: 'Veja o mês por vários ângulos',
-    texto: 'Acompanhe fluxo financeiro, gastos por categoria, períodos personalizados e os compromissos dos próximos seis meses. Quando precisar, exporte um relatório em PDF.',
-  },
-  {
     variante: 'organizar',
     rotulo: 'Planejamento',
     titulo: 'Separe o dinheiro com intenção',
-    texto: 'Crie carteiras, cofrinhos com prazo, orçamentos por categoria e categorias próprias. O Grana. ajuda a distinguir o que está disponível do que já tem destino.',
+    texto: 'Use várias carteiras, cofrinhos com prazo, orçamentos por categoria e categorias próprias. O diagnóstico inicial sugere um ponto de partida a partir das suas respostas.',
+  },
+  {
+    variante: 'habito',
+    rotulo: 'Hábito',
+    titulo: 'Enxergue sua constância',
+    texto: 'O Score Grana mede o seu comportamento de registro, não o tamanho do seu saldo. O Ritmo da Semana mostra a sequência, as conquistas marcam o progresso, e os lembretes chegam no horário que você escolher.',
+  },
+  {
+    variante: 'widgets',
+    rotulo: 'Widgets',
+    titulo: 'Lance sem nem abrir o aplicativo',
+    texto: 'Cinco widgets para a tela inicial do Android: falar um gasto, ver o Livre para Gastar, abrir a central de lançamentos, conferir o próximo compromisso e acompanhar um cofrinho. Os valores podem ficar ocultos.',
+    tamanho: 'grande',
   },
   {
     variante: 'personalizar',
@@ -499,6 +571,7 @@ const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
     texto: 'Escolha e reorganize até dez blocos na tela inicial, use atalhos diretos e explore o modo de exemplo com dados fictícios antes de registrar os seus.',
   },
 ];
+
 
 /* Ordenado por risco percebido, não por curiosidade: a conexão bancária vem
    primeiro porque é a objeção que trava mais gente, e as três últimas tratam
@@ -1071,6 +1144,42 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
+      {/* ───────── Granachat (dobra 4) ─────────
+          A dobra anterior mostra o dado ENTRANDO; esta mostra a pergunta que
+          se faz depois que ele está lá dentro. É o recurso mais novo do
+          produto e o único que responde em linguagem natural, então ganha
+          dobra própria em vez de virar mais um card.
+
+          O argumento central não é "tem IA": é que a resposta vem do SEU
+          lançamento. Por isso a copy insiste no número real e no que o
+          assistente faz quando não encontra a categoria — é o que separa
+          isto de um chatbot que chuta. */}
+      <View nativeID="granachat" style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra levantada>
+          <RevealOnScroll>
+            <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
+              <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+                <Text style={styles.eyebrow}>Conheça o Granabô</Text>
+                <TituloSecao>Pergunte sobre o seu dinheiro.</TituloSecao>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
+                  O Granabô consulta os seus próprios lançamentos antes de responder. Pergunte quanto
+                  gastou numa categoria, quanto ainda dá pra gastar no mês ou quais boletos estão
+                  pendentes, do jeito que você falaria com alguém.
+                </Text>
+                <Text style={[styles.secaoTexto, styles.secaoTextoSeguinte, ehCompacto && styles.secaoTextoCompacto]}>
+                  Ele nunca inventa um valor. Quando a categoria que você citou não existe, ele diz
+                  quais existem e pergunta qual você quis dizer.
+                </Text>
+              </View>
+              <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
+                <ConversaGranachat compacto={ehCompacto} />
+              </View>
+            </View>
+          </RevealOnScroll>
+        </Dobra>
+      </View>
+
       {/* ───────── Construção do hábito (dobra 5) ─────────
           Fundida com o antigo "Por dentro do aplicativo" (autor: "o
           carrossel pode muito bem estar nessa tela aqui e mesclar essas
@@ -1299,7 +1408,9 @@ function ConteudoWeb() {
                     Registre com facilidade, acompanhe seu mês e planeje o que vem pela frente.
                   </Text>
                   <View style={styles.precoCta}>
-                    <BotaoCTA centralizado={ehCompacto} />
+                    {/* Ponto de decisão: quem chegou no card de preço com o
+                        valor na frente já está escolhendo, não conhecendo. */}
+                    <BotaoCTA compra rotulo="Assinar o Grana." centralizado={ehCompacto} />
                   </View>
                   {/* Reduz a mesma fricção que um "período de teste" resolveria,
                       sem prometer um: o modelo do Grana. já não tem fidelidade
@@ -1384,7 +1495,7 @@ function ConteudoWeb() {
                     </View>
                   ))}
                 </View>
-                <BotaoCTA centralizado />
+                <BotaoCTA compra rotulo="Assinar o Grana." centralizado />
               </View>
             </View>
           </View>
@@ -1764,6 +1875,10 @@ const styles = StyleSheet.create({
   secaoTituloCompacto: { fontSize: type.cabecalho - 1, lineHeight: (type.cabecalho - 1) * 1.28, letterSpacing: -0.4 },
   secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560 },
   secaoTextoCompacto: { fontSize: type.corpo, lineHeight: type.corpo * 1.5 },
+  /* Segundo parágrafo de uma mesma seção. `secaoTexto` não tem margem porque
+     todas as outras seções têm um parágrafo só; sem isto os dois blocos
+     encostam e leem como um texto corrido só. */
+  secaoTextoSeguinte: { marginTop: spacing.md },
   // Só o parágrafo de Preços — as duas frases quebram uma por linha (`\n`
   // explícito) e o bloco centraliza na coluna, diferente do resto das
   // seções, onde o texto de apoio fica alinhado à esquerda junto do título.

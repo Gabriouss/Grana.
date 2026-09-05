@@ -19,7 +19,10 @@ export type VarianteMock =
   | 'boletos'
   | 'mes'
   | 'organizar'
-  | 'personalizar';
+  | 'personalizar'
+  | 'habito'
+  | 'widgets'
+  | 'granachat';
 
 export default function MiniMockBeneficio({ variante, destaque = false }: { variante: VarianteMock; destaque?: boolean }) {
   return <View style={[styles.palco, destaque && styles.palcoDestaque]}>{conteudo(variante)}</View>;
@@ -143,6 +146,64 @@ function conteudo(variante: VarianteMock): React.ReactNode {
       </View>
     </View>
   ),
+
+  /* Hábito: o Score é o número que a tela de Desafios mostra, e a régua de
+     dias é o Ritmo da Semana. Os valores são ilustrativos, mas a ESTRUTURA
+     (0-1000, sete dias, sequência) é a do app. */
+  habito: (
+    <View style={styles.mockColuna}>
+      <View style={styles.linhaTopo}>
+        <Text style={styles.rotulo}>Score Grana</Text>
+        <Text style={styles.scoreValor}>742</Text>
+      </View>
+      <Barra pct={74} cor={theme.up} />
+      <View style={styles.divisor} />
+      <View style={styles.linhaTopo}>
+        <Text style={styles.rotulo}>Ritmo da semana</Text>
+        <Text style={styles.rotulo}>5 dias seguidos</Text>
+      </View>
+      <View style={styles.semana}>
+        {[true, true, true, true, true, false, false].map((feito, i) => (
+          <View key={i} style={[styles.diaSemana, feito && styles.diaSemanaFeito]} />
+        ))}
+      </View>
+    </View>
+  ),
+
+  /* Widgets: a graça é lançar SEM abrir o app, então o mock mostra a tela
+     inicial do Android — não uma tela do Grana. */
+  widgets: (
+    <View style={styles.mockColuna}>
+      <Text style={styles.rotulo}>Na tela inicial do celular</Text>
+      <View style={styles.widgetLinha}>
+        <View style={styles.widgetVoz}>
+          <Ionicons name="mic" size={16} color={theme.paper} aria-hidden />
+        </View>
+        <View style={styles.widgetCartao}>
+          <Text style={styles.widgetRotulo}>Livre para gastar</Text>
+          <Text style={styles.widgetValor}>R$ 48,23<Text style={styles.widgetPorDia}>/dia</Text></Text>
+        </View>
+      </View>
+      <Text style={styles.widgetNota}>Toque no microfone e fale. O app nem precisa abrir.</Text>
+    </View>
+  ),
+
+  /* Granachat: duas bolhas bastam pra comunicar "pergunta em português,
+     resposta com número". O valor sai de ferramenta determinística no app
+     real — aqui é ilustrativo, mas o formato é o mesmo. */
+  granachat: (
+    <View style={styles.mockColuna}>
+      <View style={styles.balaoPergunta}>
+        <Text style={styles.balaoPerguntaTexto}>Quanto gastei em Alimentação?</Text>
+      </View>
+      <View style={styles.balaoResposta}>
+        <View style={styles.granaboSelo} aria-hidden>
+          <Ionicons name="sparkles" size={11} color={theme.paper} />
+        </View>
+        <Text style={styles.balaoRespostaTexto}>Você gastou R$ 412,80 em Alimentação em setembro.</Text>
+      </View>
+    </View>
+  ),
   };
   return mapa[variante];
 }
@@ -193,6 +254,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   palcoDestaque: { height: 132, paddingHorizontal: spacing.xl },
+  scoreValor: { color: theme.accent2, fontSize: type.apoio, fontFamily: fonts.regular },
+  semana: { flexDirection: 'row', gap: 4 },
+  diaSemana: { flex: 1, height: 6, borderRadius: 3, backgroundColor: theme.paperRaised },
+  diaSemanaFeito: { backgroundColor: theme.up },
+  widgetLinha: { flexDirection: 'row', gap: 6, alignItems: 'stretch' },
+  widgetVoz: { width: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accent2 },
+  widgetCartao: { flex: 1, gap: 2, padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, backgroundColor: theme.paperRaised },
+  widgetRotulo: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
+  widgetValor: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
+  widgetPorDia: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
+  widgetNota: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
+  balaoPergunta: { alignSelf: 'flex-end', maxWidth: '85%', paddingVertical: 6, paddingHorizontal: spacing.sm, borderRadius: radius.md, backgroundColor: theme.accentDeep },
+  balaoPerguntaTexto: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.light },
+  balaoResposta: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, maxWidth: '92%', paddingVertical: 6, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, backgroundColor: theme.paperRaised },
+  granaboSelo: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accent2 },
+  balaoRespostaTexto: { flex: 1, color: theme.ink, fontSize: type.micro, fontFamily: fonts.light },
   mockColuna: { gap: spacing.xs, width: '100%' },
   metaResumo: { gap: spacing.xs, width: '100%', maxWidth: 320, alignSelf: 'center' },
   entradaVoz: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

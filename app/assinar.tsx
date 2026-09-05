@@ -30,7 +30,12 @@ export default function AssinarScreen() {
         <Text style={styles.eyebrow}>GRANA. COMPLETO</Text>
         <Text style={styles.title}>Seu controle financeiro continua por R$ 9,90/mês.</Text>
         <Text style={styles.body}>
-          A assinatura libera lançamentos, contas, cartões, metas e o assistente pelo WhatsApp. Sem conectar sua conta bancária.
+          {/* Dizia "o assistente pelo WhatsApp". Esse canal está desligado
+              por decisão (flag `whatsapp`), e prometer num ecrã de COBRANÇA
+              algo que a pessoa não vai receber é o pior lugar possível pra
+              uma promessa vencida. O assistente agora é o Granabô, dentro do
+              próprio app. */}
+          A assinatura libera lançamentos, contas, cartões, metas e o Granabô, seu assistente dentro do app. Sem conectar sua conta bancária.
         </Text>
         {estado?.status === 'past_due' && (
           <Text style={styles.notice}>O pagamento está pendente. Atualize a cobrança para manter o acesso.</Text>
