@@ -2462,3 +2462,15 @@ Entrou na CI. TypeScript, esse teste, `deno check` da função e a suíte comple
 Não houve teste de microfone em aparelho físico ou transcrição com provedores
 reais. Nenhuma build EAS foi solicitada/disparada: o Android instalado ainda
 precisa de nova versão contendo o cliente corrigido; app.json não foi alterado.
+
+### Publicação confirmada em 05/09/2026
+
+Com token temporário fornecido pelo autor, `processar-lancamento-voz` foi
+publicada com sucesso via `supabase functions deploy --use-api`. A pendência
+de autenticação/publicação acima está resolvida. O token foi usado apenas no
+ambiente do processo, sem ser salvo em arquivos do projeto.
+
+Verificação remota: OPTIONS retornou 204 com cabeçalhos CORS; POST sem
+Authorization continuou recusado com 401 pelo gateway. A transcrição real e
+a gravação em aparelho ainda precisam de validação; a correção nativa requer
+novo APK. Nenhuma build EAS foi disparada.
