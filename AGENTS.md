@@ -89,3 +89,12 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    pedido for claramente fora do domínio de qualquer skill instalada (ex.:
    uma pergunta de fato sobre configuração do Supabase, uma correção de bug
    pontual sem ambiguidade de abordagem).
+
+9. **`eas.json`: `preview` e `production` têm que continuar gerando o mesmo
+   tipo de artefato (`distribution: internal`, `android.buildType: apk`).**
+   O pop-up de atualização (`lib/atualizacao.ts`) só funciona se o link do
+   build for um `.apk` instalável direto — um `.aab` (o padrão do Expo pra
+   builds sem esses dois campos) chega ao aviso mas não instala. Os dois
+   perfis foram alinhados em 05/09/2026 por causa disso; se `production`
+   voltar a divergir de `preview`, o próximo build feito com o perfil
+   errado quebra o aviso silenciosamente.
