@@ -10,7 +10,7 @@ Este documento reúne a nova direção de copy para a landing page do Grana., co
 - apresentar o Granabô como assistente do Grana. no WhatsApp;
 - mostrar como o produto ajuda a construir o hábito de registrar gastos;
 - explicar o Livre para Gastar de acordo com o funcionamento real;
-- apresentar a assinatura de R$ 9,99 por mês, sem período gratuito;
+- apresentar a assinatura de R$ 9,90 por mês, sem período gratuito;
 - fortalecer a última dobra como fechamento de conversão.
 
 ## Arquitetura de marca
@@ -70,7 +70,7 @@ Apresentar o principal resultado do produto e gerar interesse sem tentar explica
 
 **CTA**
 
-> Começar por R$ 9,99/mês
+> Começar por R$ 9,90/mês
 
 **Microcopy**
 
@@ -159,7 +159,7 @@ Apresentar e demonstrar o principal diferencial atual do produto. Esta é a úni
 
 **Microcopy**
 
-> Assine o Grana. por R$ 9,99 por mês.
+> Assine o Grana. por R$ 9,90 por mês.
 
 ### Direção visual
 
@@ -328,7 +328,7 @@ Apresentar preço, periodicidade e forma de pagamento sem repetir a lista comple
 
 **Título**
 
-> Tenha seu controle financeiro por R$ 9,99 por mês.
+> Tenha seu controle financeiro por R$ 9,90 por mês.
 
 **Texto de apoio**
 
@@ -342,7 +342,7 @@ Apresentar preço, periodicidade e forma de pagamento sem repetir a lista comple
 
 **Preço**
 
-> R$ 9,99/mês
+> R$ 9,90/mês
 
 **Resumo de valor**
 
@@ -423,7 +423,7 @@ Recapitular a transformação, reforçar a oferta e dar o último impulso para a
 
 **Preço**
 
-> R$ 9,99 por mês
+> R$ 9,90 por mês
 
 **CTA**
 
@@ -456,8 +456,8 @@ A composição deve funcionar como um resumo visual da jornada apresentada pela 
 
 | Contexto | CTA | Microcopy |
 |---|---|---|
-| Hero | Começar por R$ 9,99/mês | Assinatura mensal com pagamento pela Kiwify. |
-| Granabô | Começar com o Granabô | Assine o Grana. por R$ 9,99 por mês. |
+| Hero | Começar por R$ 9,90/mês | Assinatura mensal com pagamento pela Kiwify. |
+| Granabô | Começar com o Granabô | Assine o Grana. por R$ 9,90 por mês. |
 | Segurança | Criar minha conta | Seus lançamentos continuam sob o seu controle. |
 | Preço | Assinar o Grana. | Pagamento processado pela Kiwify. |
 | Fechamento | Assinar o Grana. | Pagamento pela Kiwify. |
@@ -475,7 +475,7 @@ A nova landing estará pronta para implementação quando:
 - hábito e gamificação aparecerem com recursos que já existem no produto;
 - o visual do Livre para Gastar corresponder ao texto da seção;
 - todas as referências a gratuidade e acesso antecipado forem removidas;
-- o preço estiver consistente em R$ 9,99 por mês;
+- o preço estiver consistente em R$ 9,90 por mês;
 - o funcionamento da Kiwify estiver descrito de forma fiel;
 - a última dobra tiver argumento, prova visual, preço e CTA;
 - nenhuma promessa depender de recurso ainda indisponível;

@@ -24,8 +24,10 @@ type Balao = {
 };
 
 const BALOES: Balao[] = [
-  { rotulo: 'LIVRE PARA GASTAR', texto: 'Calculado sozinho, todo dia', top: '18%', lado: 'esquerda', duracaoS: 5.4, atrasoS: 0 },
-  { rotulo: 'COMPROMETIMENTO FUTURO', texto: 'Fatura e parcelas dos próximos 6 meses', top: '58%', lado: 'direita', duracaoS: 6, atrasoS: 0.6 },
+  // Captura 1440×900 de 05/09: ambos os títulos estão em y=245.
+  // Com a barra da moldura, essa linha fica em aproximadamente 33% da altura.
+  { rotulo: 'LIVRE PARA GASTAR', texto: 'Calculado sozinho, todo dia', top: '33%', lado: 'esquerda', duracaoS: 5.4, atrasoS: 0 },
+  { rotulo: 'COMPROMETIMENTO FUTURO', texto: 'Fatura e parcelas dos próximos 6 meses', top: '33%', lado: 'direita', duracaoS: 6, atrasoS: 0.6 },
 ];
 
 function BalaoFlutuante({ balao }: { balao: Balao }) {
@@ -99,7 +101,7 @@ export default function PainelWebDestaque({ compacto = false }: { compacto?: boo
     // moldura, saindo pela borda do viewport em vez de abraçar o painel.
     <View style={[styles.raiz, { width: larguraMoldura + 2, alignSelf: 'center' }]}>
       <MolduraNavegador
-        src="/telas/inicio-web.png"
+        src="/telas/inicio-web.png?v=20260905"
         legenda="Painel web do Grana. mostrando Livre para Gastar, comprometimento futuro e gastos por categoria de uma conta de exemplo"
         largura={larguraMoldura}
         inclinada={!compacto}

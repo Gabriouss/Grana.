@@ -63,11 +63,8 @@ export default function LandingPage() {
  * aparece — se um card de recurso e o botão de ação têm a mesma presença
  * visual, a hierarquia não está fazendo o trabalho dela.
  */
-/* Microcopy padrão sob o CTA. O botão diz "Criar minha conta" e NÃO promete
-   compra: o checkout da Kiwify ainda não existe e não há paywall no app
-   (temAssinaturaAtiva em lib/assinatura.ts não é chamada em tela nenhuma).
-   O preço aparece porque o lançamento é pago desde o primeiro dia, sem
-   período de teste. */
+/* Cadastro e compra têm destinos distintos. Os CTAs de preço/fechamento
+   usam o checkout configurado; os demais preservam a criação de conta. */
 const PARAMETROS_ATRIBUICAO = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
 
 /* Em compacto/médio, a navegação abre pelo botão do cabeçalho; no amplo, o
@@ -524,7 +521,7 @@ const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
     variante: 'granachat',
     rotulo: 'Granabô',
     titulo: 'Pergunte sobre o seu dinheiro e receba resposta',
-    texto: 'Quanto gastei em Alimentação? Quanto posso gastar? O Granabô consulta os seus próprios lançamentos e responde com o número real. Ele nunca inventa um valor: quando não encontra a categoria, ele pergunta.',
+    texto: 'Quanto gastei em Alimentação? Quanto posso gastar? O Granabô consulta os seus lançamentos para responder. Se a categoria não for encontrada, ele pede mais detalhes para identificar o que você procura.',
     tamanho: 'grande',
   },
   {
@@ -1168,8 +1165,8 @@ function ConteudoWeb() {
                   pendentes, do jeito que você falaria com alguém.
                 </Text>
                 <Text style={[styles.secaoTexto, styles.secaoTextoSeguinte, ehCompacto && styles.secaoTextoCompacto]}>
-                  Ele nunca inventa um valor. Quando a categoria que você citou não existe, ele diz
-                  quais existem e pergunta qual você quis dizer.
+                  As respostas partem dos dados que você registrou. Se a categoria não for encontrada,
+                  ele pede mais detalhes para identificar o que você procura.
                 </Text>
               </View>
               <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
@@ -1412,11 +1409,10 @@ function ConteudoWeb() {
                         valor na frente já está escolhendo, não conhecendo. */}
                     <BotaoCTA compra rotulo="Assinar o Grana." centralizado={ehCompacto} />
                   </View>
-                  {/* Reduz a mesma fricção que um "período de teste" resolveria,
-                      sem prometer um: o modelo do Grana. já não tem fidelidade
-                      nem letra miúda, só faltava dizer isso perto do botão. */}
+                  {/* Condições confirmadas; detalhes de cancelamento dependem
+                      da política apresentada no checkout. */}
                   <Text style={[styles.precoConfianca, ehCompacto && styles.precoTextoCentralizado]}>
-                    Sem período de teste. Cancele quando quiser.
+                    Assinatura mensal. Sem período de teste.
                   </Text>
                 </View>
               </View>

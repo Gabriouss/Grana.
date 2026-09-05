@@ -10,11 +10,11 @@ const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 type Tela = { src: string; rotulo: string; legenda: string };
 
 const TELAS: Tela[] = [
-  { src: '/telas/inicio-mobile.png', rotulo: 'Início', legenda: 'Tela de Início do Grana. no celular, com Livre para Gastar, cofrinhos e comprometimento futuro' },
-  { src: '/telas/lancamentos-mobile.png', rotulo: 'Débito e Pix', legenda: 'Tela de lançamentos do Grana. no celular, com entradas, saídas e busca por categoria' },
-  { src: '/telas/credito-mobile.png', rotulo: 'Crédito', legenda: 'Tela de cartões do Grana. no celular, com fatura atual, limite usado e compras parceladas' },
-  { src: '/telas/contas-mobile.png', rotulo: 'Boletos', legenda: 'Tela de contas a pagar do Grana. no celular, com vencimento e valor de cada boleto' },
-  { src: '/telas/desafios-mobile.png', rotulo: 'Desafios', legenda: 'Tela de Desafios do Grana. no celular, com sequência, Score e progresso de metas' },
+  { src: '/telas/inicio-mobile.png?v=20260905', rotulo: 'Início', legenda: 'Tela de Início do Grana. no celular, com Livre para Gastar, cofrinhos e comprometimento futuro' },
+  { src: '/telas/lancamentos-mobile.png?v=20260905', rotulo: 'Débito e Pix', legenda: 'Tela de lançamentos do Grana. no celular, com entradas, saídas e busca por categoria' },
+  { src: '/telas/credito-mobile.png?v=20260905', rotulo: 'Crédito', legenda: 'Tela de cartões do Grana. no celular, com fatura atual, limite usado e compras parceladas' },
+  { src: '/telas/contas-mobile.png?v=20260905', rotulo: 'Boletos', legenda: 'Tela de contas a pagar do Grana. no celular, com vencimento e valor de cada boleto' },
+  { src: '/telas/desafios-mobile.png?v=20260905', rotulo: 'Desafios', legenda: 'Tela de Desafios do Grana. no celular, com sequência, Score e progresso de metas' },
 ];
 
 /**

@@ -2678,3 +2678,11 @@ foi publicada, por escolha explícita do autor.
 ## 05/09/2026 — Ajuste visual do vidro após feedback
 - Usuário aprovou o resultado visual e pediu menor desfoque para reconhecer melhor o fundo. Intensidade nativa 80 → 45; véu petróleo 28% → 18%. Na web, blur 24px → 14px e véu 55% → 38%. Ciclo de vida e alvos preservados. Preview pelo Metro existente.
 - Push continua pendente: rejeição anterior abrangia o commit preexistente 1e542ce; este ajuste não autoriza publicar aquele escopo.
+
+## 05/09/2026 — Retomada da landing após 09c822d (Codex)
+
+Concluído o item D restante do plano do Claude: captura `public/telas/inicio-web.png` 1440×900 com dados de exemplo; as cinco mobile já estavam prontas. Balões reposicionados em 33% após medir títulos em y=245. QA de landing em 390, 1060 e 1440px.
+Revisão: conta da demo do Granachat corrigida (624/13=48), identificação visível de exemplo, removida promessa absoluta de IA, preço do documento de copy alinhado a 9,90 e condição de cancelamento não confirmada retirada da landing. Metadados não anunciam mais WhatsApp; CSP do JSON-LD acompanha a descrição. Capturas têm versão na URL para renovar cache.
+TypeScript e suíte parser passaram. Relatório completo e próximas melhorias: `docs/marketing/2026-09-05-retomada-e-revisao-landing.md`.
+Pendente operacional: em produção os dois CTAs Assinar ainda levam a /sign-up; local aponta à Kiwify e checkout aberto confirmou R$9,90/mês. Configurar EXPO_PUBLIC_KIWIFY_CHECKOUT_URL em Production na Vercel e redeployar; painel/CLI autenticada indisponíveis nesta sessão. Nenhuma compra/webhook simulado nem EAS disparado. Conquistas-web.webp não precisa recaptura: foi substituída por inicio-web.png.
+- Exportação web e injeção de SEO/JSON-LD concluídas; hash CSP validado. As seis imagens versionadas carregaram no navegador.

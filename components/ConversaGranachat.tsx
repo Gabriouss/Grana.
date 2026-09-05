@@ -49,7 +49,7 @@ const COMANDOS: Comando[] = [
     icone: 'wallet-outline',
     envio: 'Quanto posso gastar?',
     resposta:
-      'Você tem R$ 623,40 livre para gastar neste mês, o que dá R$ 48,23 por dia até o fim do mês.',
+      'Você tem R$ 624,00 livre para gastar neste mês. Com 13 dias restantes, isso dá R$ 48,00 por dia.',
   },
   {
     rotulo: 'Boletos do mês',
@@ -105,7 +105,7 @@ export default function ConversaGranachat({ compacto }: { compacto?: boolean }) 
           <Ionicons name="sparkles" size={15} color={theme.paper} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.eyebrow}>Assistente</Text>
+          <Text style={styles.eyebrow}>Conversa de exemplo</Text>
           <Text style={styles.nome}>Granabô</Text>
         </View>
       </View>
@@ -128,7 +128,7 @@ export default function ConversaGranachat({ compacto }: { compacto?: boolean }) 
         ))}
         {pensando && (
           <View style={[styles.balao, styles.balaoBot]}>
-            <Text style={styles.pensandoTexto}>consultando seus lançamentos…</Text>
+            <Text style={styles.pensandoTexto}>consultando os dados de exemplo…</Text>
           </View>
         )}
       </ScrollView>

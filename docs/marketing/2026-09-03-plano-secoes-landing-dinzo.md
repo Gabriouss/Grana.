@@ -404,3 +404,7 @@ mas não confirmados em toda listagem de skills de sessão — confirmar
 disponibilidade real no início da execução de cada item; se ausentes,
 usar os fallbacks já indicados (`ui-visual-composition`, `interface-design`,
 `frontend-design`, confirmadas disponíveis nesta sessão).
+
+## Reconciliação em 05/09/2026
+
+A QA do bento foi concluída pelo Claude em 7c8a7a5 e revisada na retomada descrita em [retomada e revisão da landing](2026-09-05-retomada-e-revisao-landing.md). A captura desktop vigente é inicio-web.png, recapturada nesta rodada; conquistas-web.webp foi substituída e não precisa ser restaurada. Os trechos anteriores que a pedem são históricos. Novas seções Jornada/Fechamento do plano original continuam fora do escopo da retomada atual.
