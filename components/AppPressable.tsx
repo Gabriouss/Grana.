@@ -94,6 +94,20 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  /* Escala de pressão PROPORCIONAL ao tamanho do alvo, medida em layout.
+     Com um 0.96 fixo, um card de 350dp encolhia 14dp (viagem visível) e um
+     ícone de 44dp encolhia 1,8dp (quase nada) — o mesmo número produzindo
+     dois feedbacks diferentes. Aqui a mira é um recuo aproximadamente
+     constante em dp: alvo pequeno comprime mais em escala, alvo grande
+     comprime menos, e os dois cedem a mesma distância física. Os limites
+     impedem tanto o exagero num alvo minúsculo quanto o imperceptível num
+     alvo enorme. */
+  const [ladoMaior, setLadoMaior] = useState(0);
+  const escalaPressionada = (() => {
+    if (!ladoMaior) return 0.96;
+    const RECUO_DP = 3;
+    return Math.min(0.985, Math.max(0.94, 1 - (RECUO_DP * 2) / ladoMaior));
+  })();
   const reduzirMovimento = useReducedMotion();
   const animarPressao = scaleOnPress && !reduzirMovimento;
   const papel = accessibilityRole ?? (rest.href ? 'link' : rest.onPress ? 'button' : undefined);
@@ -130,14 +144,14 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
   function handlePressIn(e: GestureResponderEvent) {
     setPressed(true);
     if (animarPressao && Platform.OS !== 'web') {
-      Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+      Animated.spring(scale, { toValue: escalaPressionada, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
     }
     onPressIn?.(e);
   }
   function handlePressOut(e: GestureResponderEvent) {
     setPressed(false);
     if (animarPressao && Platform.OS !== 'web') {
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 0 }).start();
     }
     onPressOut?.(e);
   }
@@ -199,6 +213,12 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
       onHoverOut={handleHoverOut}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        const maior = Math.max(width, height);
+        if (maior && Math.abs(maior - ladoMaior) > 1) setLadoMaior(maior);
+        rest.onLayout?.(e);
+      }}
       style={[resolvedStyle, { transform: [{ scale }] }]}
     />
   );

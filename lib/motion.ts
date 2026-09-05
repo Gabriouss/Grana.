@@ -21,6 +21,29 @@ export const EASE_BOUNCE_HINT = 'cubic-bezier(0.45, 0, 0.2, 1)'; // 3 pulsos do 
 export const EASE_ROLL = 'cubic-bezier(0.65, 0, 0.35, 1)'; // texto rolando pra cima (RotuloRolante do CTA)
 export const EASE_SNAP = 'cubic-bezier(0.2, 0.9, 0.2, 1.15)'; // preenchimento com leve overshoot no hover do CTA
 
+/* ── Motion do aplicativo interno (plano `plans/003-base-motion-feedback.md`)
+ *
+ * Os tokens acima nasceram na landing e cada um É um efeito específico dela.
+ * Estes três são o vocabulário do app autenticado, e existem como PARES: a
+ * forma CSS pro caminho web e os pontos de controle pro `Easing.bezier` do
+ * Animated, derivados dos mesmos números. Guardar os dois juntos é o que
+ * impede a web e o nativo de divergirem quando alguém ajustar a curva num
+ * lado só.
+ */
+
+/** Entrada e saída de superfície (janela, toast, conteúdo). Desacelera forte
+    no fim, que é o que faz a coisa "pousar" em vez de parar. */
+export const UI_OUT = [0.23, 1, 0.32, 1] as const;
+/** Folhas e assentamento: sai mais devagar e chega mais firme que a UI_OUT. */
+export const UI_DRAWER = [0.32, 0.72, 0, 1] as const;
+/** Movimento entre dois estados já visíveis, quando ambos importam. */
+export const UI_MOVE = [0.77, 0, 0.175, 1] as const;
+
+/** Forma CSS de um dos tokens acima, pro caminho web. */
+export function cssBezier(pontos: readonly [number, number, number, number]): string {
+  return `cubic-bezier(${pontos.join(', ')})`;
+}
+
 /** Mantém as animações não essenciais alinhadas à preferência do sistema. */
 export function useReducedMotion() {
   const [reduzir, setReduzir] = useState(false);

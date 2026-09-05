@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   FlatList,
   Keyboard,
   Platform,
@@ -16,6 +18,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import AppPressable from '@/components/AppPressable';
 import { useKeyboardHeight } from '@/components/Sheet';
+import { UI_OUT, useReducedMotion } from '@/lib/motion';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { theme, spacing, radius, fonts, type, lh, screenRhythm } from '@/lib/theme';
 import {
@@ -24,6 +27,10 @@ import {
   type MensagemAssistente,
   type MensagemLocal,
 } from '@/lib/assistente';
+
+/* Mesma curva de entrada e saída (plano 004 e skill `animate`): forte
+   desaceleração no fim, que é o que faz a janela pousar em vez de parar. */
+const CURVA = Easing.bezier(...UI_OUT);
 
 /**
  * Granachat: a janela flutuante de conversa com o Granabô.
@@ -60,6 +67,7 @@ export default function Granachat({
      `components/Sheet.tsx` chegou, e o hook dele é reaproveitado aqui. */
   const alturaTeclado = useKeyboardHeight();
   const insets = useSafeAreaInsets();
+  const reduzirMovimento = useReducedMotion();
   /* Tudo que envolve o campo de texto é derivado da JANELA e da ESCALA DE
      FONTE do sistema, nunca de um tamanho de aparelho. `useWindowDimensions`
      é reativo: girar a tela, entrar em split view ou mudar o tamanho da letra
@@ -119,6 +127,58 @@ export default function Granachat({
   const larguraPainel = Math.min(larguraDisponivel, espacoLivre * (3 / 4));
   const alturaPainel = larguraPainel * (4 / 3);
   const alturaMaximaCampo = Math.min(120 * escalaTexto, alturaPainel / 3);
+  /* ── Presença: "quero estar visível" ≠ "estou na árvore" ─────────────
+     Antes o componente saía com `if (!visivel) return null`, ou seja, a
+     janela evaporava. Para existir saída, a árvore precisa sobreviver ao
+     fim do desejo: `montado` só vira false quando a animação de saída
+     TERMINA. `progresso` vai de 0 a 1 e volta, e é dele que saem opacidade,
+     deslocamento e escala — um valor só, então as três nunca dessincronizam.
+
+     A entrada é 240ms e a saída 160ms pelo mesmo caminho invertido: sair um
+     pouco mais rápido que entrar é o que faz o fechamento parecer obediente
+     em vez de arrastado. Curva UI_OUT nas duas pontas — `ease-in` atrasaria
+     justamente o instante que a pessoa está olhando. */
+  const [montado, setMontado] = useState(visivel);
+  const progresso = useRef(new Animated.Value(visivel ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (visivel) {
+      setMontado(true);
+      /* Sem `setValue(0)`: se a saída estava em curso, a entrada retoma do
+         ponto atual em vez de saltar pro início. É o que torna abrir/fechar
+         repetidamente uma reversão, e não dois filmes concorrentes. */
+      Animated.timing(progresso, {
+        toValue: 1,
+        duration: reduzirMovimento ? 120 : 240,
+        easing: CURVA,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+    Animated.timing(progresso, {
+      toValue: 0,
+      duration: reduzirMovimento ? 120 : 160,
+      easing: CURVA,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      /* `finished` importa: se o usuário reabriu no meio da saída, esta
+         animação foi interrompida e desmontar aqui apagaria a janela que
+         acabou de ser pedida de novo. */
+      if (finished) setMontado(false);
+    });
+  }, [visivel, progresso, reduzirMovimento]);
+
+  /* Em modo reduzido sobra só o fade — nada de deslocamento ou escala. */
+  const estiloPainel = reduzirMovimento
+    ? { opacity: progresso }
+    : {
+        opacity: progresso,
+        transform: [
+          { translateY: progresso.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+          { scale: progresso.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) },
+        ],
+      };
+
   const [mensagens, setMensagens] = useState<MensagemLocal[]>([]);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -169,9 +229,9 @@ export default function Granachat({
   /* ── Scroll pro fim quando chega mensagem nova ────────────────────── */
   const scrollParaFim = useCallback(() => {
     setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
+      flatListRef.current?.scrollToEnd({ animated: !reduzirMovimento });
     }, 100);
-  }, []);
+  }, [reduzirMovimento]);
 
   useEffect(() => {
     if (mensagens.length > 0) scrollParaFim();
@@ -330,7 +390,7 @@ export default function Granachat({
     [carregando]
   );
 
-  if (!visivel) return null;
+  if (!montado) return null;
 
   return (
     /* Fundo escurecido: toca fora e fecha, como qualquer janela flutuante.
@@ -355,14 +415,23 @@ export default function Granachat({
           Ainda assim, o desfoque é ENFEITE: quem resolve a hierarquia é o véu
           escuro por cima. Se o blur não funcionar num aparelho, nada quebra e
           nada fica ilegível. */}
-      {Platform.OS === 'web' ? (
-        <View style={[styles.veuBlur, { backdropFilter: 'blur(18px) saturate(140%)' } as any]} pointerEvents="none" />
-      ) : (
-        <BlurView intensity={40} tint="dark" style={styles.veuBlur} pointerEvents="none" />
-      )}
-      <View style={styles.veu} pointerEvents="none" />
+      <Animated.View style={[styles.veuBlur, { opacity: progresso }]} pointerEvents="none">
+        {Platform.OS === 'web' ? (
+          <View style={[styles.veuBlur, { backdropFilter: 'blur(18px) saturate(140%)' } as any]} />
+        ) : (
+          <BlurView intensity={40} tint="dark" style={styles.veuBlur} />
+        )}
+        <View style={styles.veu} />
+      </Animated.View>
+      {/* Durante a saída o conteúdo deixa de aceitar toque: sem isto dá pra
+          acertar um botão de uma janela que já está indo embora. O fundo
+          continua consumindo o toque, então nada vaza pra tela de baixo. */}
+      <Animated.View
+        style={[{ width: larguraPainel, height: alturaPainel }, estiloPainel]}
+        pointerEvents={visivel ? 'auto' : 'none'}
+      >
       <Pressable
-        style={[styles.painel, { width: larguraPainel, height: alturaPainel }]}
+        style={styles.painel}
         onPress={() => {}}
         accessibilityViewIsModal
         role="dialog"
@@ -444,6 +513,7 @@ export default function Granachat({
         </View>
       </View>
       </Pressable>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -505,6 +575,7 @@ const styles = StyleSheet.create({
      janela. Numa tela pequena ele ocupa quase tudo; numa grande, fica sendo
      uma janela mesmo. `flexShrink` deixa o teclado espremê-lo sem estourar. */
   painel: {
+    flex: 1,
     backgroundColor: theme.paper,
     borderRadius: radius.xl,
     borderWidth: 1,

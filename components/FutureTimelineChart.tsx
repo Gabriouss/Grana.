@@ -4,7 +4,9 @@ import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { MesProjetado } from '@/lib/projections';
 import PrivacyValue from './PrivacyValue';
-import { useReducedMotion } from '@/lib/motion';
+import { UI_OUT, useReducedMotion } from '@/lib/motion';
+
+const CURVA_ENTRADA = Easing.bezier(...UI_OUT);
 
 const TRACK_HEIGHT = 84;
 
@@ -17,28 +19,27 @@ function FutureTimelineChart({ meses }: { meses: MesProjetado[] }) {
   const maxVal = Math.max(...meses.map((m) => m.total), 1);
 
   const progress = useRef(new Animated.Value(0)).current;
-  const [t, setT] = useState(0);
   const reduzirMovimento = useReducedMotion();
 
-  useEffect(() => {
-    const id = progress.addListener(({ value }) => setT(value));
-    return () => progress.removeListener(id);
-  }, []);
-
+  /* Mesma correção do FlowChart: as barras cresciam por 700ms com um
+     `setState` por frame. Agora nascem na altura final e o conjunto entra por
+     opacidade, no driver nativo. Altura é dado — vê-la crescer não informa
+     nada e atrasa a leitura. */
   useEffect(() => {
     progress.setValue(0);
-    if (reduzirMovimento) {
-      progress.setValue(1);
-      return;
-    }
-    Animated.timing(progress, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: reduzirMovimento ? 0 : 240,
+      easing: CURVA_ENTRADA,
+      useNativeDriver: true,
+    }).start();
   }, [maxVal, meses.length, progress, reduzirMovimento]);
 
   return (
-    <View style={{ gap: spacing.sm }}>
+    <Animated.View style={{ gap: spacing.sm, opacity: progress }}>
       <View style={styles.row}>
         {meses.map((m, i) => {
-          const alturaTotal = m.total > 0 ? Math.max(3, (m.total / maxVal) * TRACK_HEIGHT) * t : 0;
+          const alturaTotal = m.total > 0 ? Math.max(3, (m.total / maxVal) * TRACK_HEIGHT) : 0;
           const alturaParcelas = m.total > 0 ? (m.parcelasFuturas / m.total) * alturaTotal : 0;
           const alturaRecorrentes = alturaTotal - alturaParcelas;
           return (
@@ -86,7 +87,7 @@ function FutureTimelineChart({ meses }: { meses: MesProjetado[] }) {
           {`Total comprometido nos próximos ${meses.length} meses: R$ ${formatMoney(meses.reduce((s, m) => s + m.total, 0))}`}
         </Text>
       </PrivacyValue>
-    </View>
+    </Animated.View>
   );
 }
 

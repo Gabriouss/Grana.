@@ -5,7 +5,10 @@ import { theme, spacing, type, fonts } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
-import { useReducedMotion } from '@/lib/motion';
+import { UI_OUT, useReducedMotion } from '@/lib/motion';
+
+/* Entrada do conjunto do gráfico: mesma curva do resto do app. */
+const CURVA_ENTRADA = Easing.bezier(...UI_OUT);
 import { usePrivacy } from '@/lib/privacy-context';
 
 export type ChartPeriod = 'month' | '7days' | 'year';
@@ -188,39 +191,40 @@ export default function FlowChart({
   const endLabel = buckets[buckets.length - 1]?.labelEnd || '';
 
   const progress = useRef(new Animated.Value(0)).current;
-  const [t, setT] = useState(0);
   const reduzirMovimento = useReducedMotion();
   const { hidden } = usePrivacy();
   const signature = JSON.stringify([inPoints, outPoints, period, currentYear, currentMonth]);
-
-  useEffect(() => {
-    const id = progress.addListener(({ value }) => setT(value));
-    return () => progress.removeListener(id);
-  }, []);
 
   useEffect(() => {
     setSelecionado(buckets.length - 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, currentYear, currentMonth]);
 
+  /* O desenho antigo se traçava em 4 SEGUNDOS, com um listener chamando
+     `setState` a cada frame — dois problemas de uma vez. O tempo: 4s é uma
+     eternidade pra quem só quer ler o saldo, e a informação ficava incompleta
+     durante quase toda a espera. O custo: cada frame virava um render do
+     React com recálculo de caminho SVG.
+
+     Agora o desenho está COMPLETO desde o primeiro frame e o que entra é a
+     opacidade do conjunto, em 240ms. O dado nunca aparece pela metade, e a
+     animação roda no driver nativo, fora do JS. */
   useEffect(() => {
     progress.setValue(0);
-    if (reduzirMovimento) {
-      progress.setValue(1);
-      return;
-    }
     Animated.timing(progress, {
       toValue: 1,
-      duration: 4000,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
+      duration: reduzirMovimento ? 0 : 240,
+      easing: CURVA_ENTRADA,
+      useNativeDriver: true,
     }).start();
   }, [progress, reduzirMovimento, signature]);
 
 
-  const dashoffset = DASH_LEN - DASH_LEN * t;
-  const outOpacity = t;
-  const dotOpacity = t > 0.9 ? (t - 0.9) / 0.1 : 0;
+  /* Sem traçado progressivo: linha inteira, curvas e marcadores visíveis de
+     saída. Quem faz a entrada é a opacidade do conjunto, acima. */
+  const dashoffset = 0;
+  const outOpacity = 1;
+  const dotOpacity = 1;
 
   const inPath = caminhoReto(inPoints);
   const outPath = caminhoReto(outPoints);
@@ -259,7 +263,7 @@ export default function FlowChart({
         </View>
       ) : null}
 
-    <View style={{ position: 'relative' }} onLayout={handleLayout}>
+    <Animated.View style={{ position: 'relative', opacity: progress }} onLayout={handleLayout}>
       <Svg width={viewW} height={VIEW_H} viewBox={`0 0 ${viewW} ${VIEW_H}`} style={{ overflow: 'visible' }}>
         <Defs>
           <LinearGradient id="fluxoAreaFill" x1="0" y1="0" x2="0" y2="1">
@@ -382,7 +386,7 @@ export default function FlowChart({
           );
         })}
       </View>
-    </View>
+    </Animated.View>
     </View>
   );
 }

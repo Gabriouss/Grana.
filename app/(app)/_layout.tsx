@@ -5,6 +5,7 @@ import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import TabBlurTarget, { type RegisterTabBlur, type TabBlurRef } from '@/components/TabBlurTarget';
 import TabBarBlur from '@/components/TabBarBlur';
+import CenaAnimada from '@/components/CenaAnimada';
 import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
 import { theme, spacing } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -27,6 +28,12 @@ type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (p
    flutuante, e entra injetado no meio da fileira (ver `BotaoGranabo`).
    Nomenclatura: **Granabô** é o assistente (o personagem, e o que a copy
    mostra); **Granachat** é a janela de conversa com ele. */
+/* Ordem das abas na barra. Serve só pra decidir a DIREÇÃO da entrada da cena
+   (ir pra uma aba à direita traz a tela da direita) — a navegação em si
+   continua vindo do `state.routes`. Telas fora da barra (perfil) caem no -1 e
+   entram sem direção, que é o correto: elas não têm posição na fileira. */
+const ORDEM_ABAS = ['index', 'lancamentos', 'credito', 'contas', 'graficos', 'desafios'];
+
 const ICONS: Record<string, { off: keyof typeof Ionicons.glyphMap; on: keyof typeof Ionicons.glyphMap }> = {
   index: { off: 'home-outline', on: 'home' },
   lancamentos: { off: 'wallet-outline', on: 'wallet' },
@@ -354,7 +361,9 @@ function AbasEmJavaScript() {
     <View style={{ flex: 1 }}>
         <Tabs
           screenLayout={({ children, route }) => (
-            <TabBlurTarget routeKey={route.key} register={register}>{children}</TabBlurTarget>
+            <TabBlurTarget routeKey={route.key} register={register}>
+              <CenaAnimada indice={ORDEM_ABAS.indexOf(route.name)}>{children}</CenaAnimada>
+            </TabBlurTarget>
           )}
           detachInactiveScreens
           tabBar={(props) =>
