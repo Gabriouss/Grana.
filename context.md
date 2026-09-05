@@ -2340,3 +2340,30 @@ parte do binário do APK), a correção não precisa de build nova — é um
 documentado no comentário do `schema.sql`. Passado pela mesma guarda
 ortográfica (`validarNotaRelease`) antes de entregar ao autor rodar no
 SQL Editor do Supabase (sem expor nenhuma credencial de serviço aqui).
+
+**Causa real do lançamento por voz "aperta e nada acontece" tem DUAS
+camadas, não uma.** O autor suspeitou que o banimento das contas do
+Meta/WhatsApp (30/08, ver memória `meta-whatsapp-contas-banidas`) estivesse
+por trás — e estava certo, só que indiretamente: aquele mesmo incidente
+órfãou `GROQ_API_KEY`/`OPENAI_API_KEY`, as duas chaves que o motor de
+transcrição (WhatsApp, app e widget, é o mesmo motor) precisa. O autor já
+regenerou as duas nos consoles externos e recolou nos Secrets — essa parte
+está resolvida.
+
+**Mas tem uma segunda causa, confirmada por sonda HTTP direta**: a Edge
+Function `supabase/functions/processar-lancamento-voz/` **nunca foi
+publicada em produção**. `curl` na URL da função devolve
+`{"code":"NOT_FOUND","message":"Requested function was not found"}` — a
+resposta canônica do Supabase pra função inexistente, diferente de um
+403/401 de autenticação (que é o que `whatsapp-webhook`, publicada de
+verdade, devolve pro mesmo tipo de sonda). Ou seja: mesmo com a permissão
+de microfone corrigida (sessão anterior) e as chaves novas no lugar, o
+áudio chegaria ao servidor e não teria pra onde ir.
+
+**Pendente, a pedido do autor — resolver junto na próxima sessão, não
+isoladamente**: (1) publicar `processar-lancamento-voz`
+(`supabase functions deploy processar-lancamento-voz --project-ref
+cjnuzfbvfuauvlzfoutv`) — nenhuma sessão até agora teve
+`SUPABASE_ACCESS_TOKEN`/login da CLI disponível pra fazer isso; (2) o
+`update app_release set notes = ...` das notas incompletas da 1.4.3 (ver
+acima). Nenhum dos dois precisa de `eas build`.
