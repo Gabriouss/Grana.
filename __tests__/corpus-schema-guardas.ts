@@ -20,6 +20,8 @@ const ESQUEMA = path.join(__dirname, '..', 'supabase', 'schema.sql');
 const sql = readFileSync(ESQUEMA, 'utf8');
 const MIGRATION_PUSH = path.join(__dirname, '..', 'supabase', 'migrations', '20260904190000_push_habito.sql');
 const migrationPush = readFileSync(MIGRATION_PUSH, 'utf8');
+const MIGRATION_VOZ = path.join(__dirname, '..', 'supabase', 'migrations', '20260905004109_voice_operations.sql');
+const migrationVoz = readFileSync(MIGRATION_VOZ, 'utf8');
 
 let total = 0;
 let falhas = 0;
@@ -150,9 +152,45 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
     .replace(/\s+/g, ' ')
     .trim();
   const inicioPush = sql.indexOf('create table if not exists public.push_tokens');
+  const inicioVoz = sql.indexOf('create table if not exists public.voice_operations');
   checar(
     'a migration do push permanece idêntica ao baseline do schema',
-    inicioPush >= 0 && normalizarSql(sql.slice(inicioPush)) === normalizarSql(migrationPush)
+    inicioPush >= 0 && inicioVoz > inicioPush
+      && normalizarSql(sql.slice(inicioPush, inicioVoz)) === normalizarSql(migrationPush)
+  );
+  checar(
+    'a migration de voz permanece idêntica ao baseline do schema',
+    inicioVoz >= 0 && normalizarSql(sql.slice(inicioVoz)) === normalizarSql(migrationVoz)
+  );
+}
+
+// 7. Voz: request persistente, escrita/undo atômicos e menor privilégio.
+{
+  checar(
+    'voice_operations tem RLS habilitado',
+    /alter table public\.voice_operations enable row level security/.test(sql)
+  );
+  checar(
+    'o app não altera recibos de voz diretamente',
+    /revoke all on public\.voice_operations from anon, authenticated/.test(sql)
+      && /grant select on public\.voice_operations to authenticated/.test(sql)
+  );
+  checar(
+    'registro de voz deriva o dono exclusivamente de auth.uid',
+    /registrar_operacao_voz[\s\S]*v_user uuid := \(select auth\.uid\(\)\)/.test(sql)
+  );
+  checar(
+    'o mesmo request devolve o recibo já persistido',
+    /registrar_operacao_voz[\s\S]*on conflict \(id\) do nothing[\s\S]*status in \('committed', 'undone'\)/.test(sql)
+  );
+  checar(
+    'parcelamento vazio não pode virar operação committed sem linhas',
+    /v_installments is null or v_installments not between 1 and 120/.test(sql)
+      && /p_kind <> 'bill' and jsonb_array_length\(v_ids\) <> v_installments/.test(sql)
+  );
+  checar(
+    'undo usa a lista persistida e marca tombstone undone',
+    /desfazer_operacao_voz[\s\S]*jsonb_array_elements_text\(v_operation\.result_ids\)[\s\S]*status = 'undone'/.test(sql)
   );
 }
 

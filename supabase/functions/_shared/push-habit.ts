@@ -62,3 +62,11 @@ export function atrasoDaTentativa(tentativas: number): number {
   const minutos = Math.min(360, 5 * 2 ** Math.max(0, tentativas - 1));
   return minutos * 60_000;
 }
+
+/**
+ * A entrega e at-least-once. Esta chave faz FCM/APNs agruparem retentativas
+ * da mesma pessoa/data, em vez de exibirem lembretes iguais lado a lado.
+ */
+export function chaveColapsoEntrega(dataLocal: string): string {
+  return `grana-habito-${dataLocal}`;
+}

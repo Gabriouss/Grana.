@@ -127,10 +127,9 @@ export async function addTransaction(input: {
   /* Só saída no crédito — sem `await`/sem propagar erro: checarLimiteCartao
      é fire-and-forget de propósito, uma notificação de limite atrasada ou
      perdida não pode fazer o próprio lançamento falhar. Único ponto de
-     entrada pra TODOS os caminhos do app (manual, colar comprovante, QR,
-     voz, CSV) — todos passam por addTransaction. Lançamento pelo WhatsApp
-     não passa por aqui (a Edge Function não importa de lib/), então nunca
-     dispara — comportamento esperado, ver lib/creditLimitAlert.ts. */
+     entrada para os caminhos de tela do app (manual, comprovante, QR, voz e
+     CSV). Widget de voz usa RPC atômica e chama a checagem após o commit;
+     WhatsApp roda no servidor e não dispara notificação local. */
   if (input.type === 'out' && input.card_id) {
     checarLimiteCartao(input.card_id).catch(() => {});
   }

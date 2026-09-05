@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Alert } from '@/lib/alert';
 import { deleteBill, deleteTransaction } from '@/lib/data';
 import { ehIntencaoBoleto, ehIntencaoCredito } from '@/lib/heuristics';
+import { desfazerOperacaoVoz } from '@/lib/voice-operations';
 import { ACAO_DESFAZER, podeNotificar, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
 import {
   definirEstado as definirEstadoWidgetVoz,
@@ -72,9 +73,15 @@ export default function RespostaVozWidget() {
           return;
         }
         try {
-          for (const id of dados.ids) {
-            if (dados.tipo === 'bill') await deleteBill(id);
-            else await deleteTransaction(id);
+          if (dados.operationId) {
+            await desfazerOperacaoVoz(dados.operationId);
+          } else {
+            /* Compatibilidade com recibos emitidos por uma build antiga. Os
+               novos sempre usam a RPC atomica acima. */
+            for (const id of dados.ids) {
+              if (dados.tipo === 'bill') await deleteBill(id);
+              else await deleteTransaction(id);
+            }
           }
           Alert.alert('Desfeito', 'O lançamento criado por voz foi removido.');
         } catch {

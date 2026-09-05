@@ -36,11 +36,9 @@ export function proximoDegrauCruzado(pct: number, jaNotificado: number): number 
  * `card.last_notified_threshold` guarda o maior já avisado, pra não
  * repetir o mesmo aviso a cada novo lançamento pequeno no mesmo cartão.
  *
- * Chamada só de dentro de addTransaction (lib/data.ts), só pra lançamento
- * feito PELO APP — nunca a partir do bot do WhatsApp (decisão explícita do
- * autor: um gasto no crédito lançado pelo WhatsApp não dispara notificação
- * de limite nesta rodada, já que o servidor não tem como notificar o
- * celular da pessoa sem push remoto, que fica de fora por ora).
+ * Chamada por addTransaction/addInstallmentPurchase (lib/data.ts) e, depois
+ * do commit atômico, pelo widget de voz. Nunca a partir do bot do WhatsApp:
+ * o servidor não tem como publicar esta notificação local no aparelho.
  *
  * Nunca lança erro pra quem chama — falha aqui não pode derrubar o
  * salvamento do lançamento que a acionou.

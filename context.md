@@ -2233,3 +2233,39 @@ Verificações: `npx tsc --noEmit` limpo e `npm run test:parser` completo
 aprovado (327/327 guardas do design system, 39/39 em sincronia). Sem
 validação visual em aparelho — os prints novos que o autor pediu ainda
 precisam ser tirados depois de rodar o app.
+
+## Sessão de 04/09/2026 - consolidação da outra máquina e fechamento dos riscos
+
+`main` recebeu por fast-forward os 6 commits que estavam apenas em
+`origin/claude/grana-landing-page-design-df5etm`: privacidade de notificação
+de limite, valores dos widgets ocultos por padrão, toggle explícito no Perfil
+e as correções de colisão de texto descritas acima.
+
+O que ainda era risco funcional foi fechado no código:
+
+- voz do widget agora usa `requestId` de ponta a ponta e grava por
+  `registrar_operacao_voz`; `voice_operations` persiste o recibo, compara hash
+  do payload e devolve o mesmo resultado em retentativas;
+- conta, transação e todas as parcelas são criadas na mesma transação SQL;
+  `desfazer_operacao_voz` remove o conjunto inteiro atomicamente e deixa o
+  tombstone `undone`, impedindo uma retentativa antiga de recriar o gasto;
+- notificações novas carregam `operationId`; recibos de builds antigas ainda
+  têm fallback pelos IDs individuais;
+- todos os `AppWidgetProvider` ficaram `android:exported="false"`, inclusive o
+  receiver que aceita `TOQUE`, impedindo outro app de iniciar o microfone;
+- pushes remotos de hábito ganharam `collapseId` e `tag` Android estáveis por
+  data local, mantendo o retry exponencial sem empilhar cópias visíveis.
+
+Banco: migration criada em
+`supabase/migrations/20260905004109_voice_operations.sql` e baseline repetível
+atualizado em `supabase/schema.sql`. A aplicação remota não ocorreu: o projeto
+está vinculado, mas a CLI respondeu `401 Unauthorized` ao inicializar o login
+role e não há `SUPABASE_ACCESS_TOKEN` disponível nesta máquina. Pelo mesmo
+motivo, a Edge Function de push alterada não foi publicada.
+
+Verificações locais: TypeScript limpo; a suíte completa encontrou um `+`
+acidental no baseline SQL na primeira passagem, ele foi removido, e a segunda
+passagem terminou inteira sem falhas (incluindo 23/23 schema, 11/11
+voz/idempotência, 22/22 notificações, 327/327 design system e 39/39 arquivos
+em sincronia). `git diff --check` também ficou limpo. Nenhuma build, EAS,
+versão ou release foi criada nesta sessão.

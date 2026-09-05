@@ -4,7 +4,7 @@ Data: 2026-09-04
 
 Pedido por: Gabriel (autor)
 
-Status: design aprovado em conversa; pronto para ser executado por outro agente
+Status: implementado no repositório; migração remota e validação em aparelho aguardam credenciais/build autorizada
 
 Escopo de plataforma: Android, APK distribuído fora da Play Store
 

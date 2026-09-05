@@ -40,7 +40,14 @@ export async function podeNotificar(): Promise<boolean> {
 
 /** Dados que viajam na notificação e voltam quando a pessoa toca nela. */
 export type DadosNotifVoz =
-  | { origem: 'voz'; resultado: 'salvo'; tipo: 'transaction' | 'bill'; ids: string[] }
+  | {
+      origem: 'voz';
+      resultado: 'salvo';
+      tipo: 'transaction' | 'bill';
+      ids: string[];
+      /** Ausente apenas em notificacoes antigas, anteriores ao undo atomico. */
+      operationId?: string;
+    }
   | { origem: 'voz'; resultado: 'revisar'; transcricao: string };
 
 async function prepararCanal() {
@@ -94,11 +101,15 @@ export async function notificarSucesso(args: {
   texto: string;
   tipo: 'transaction' | 'bill';
   ids: string[];
+  operationId: string;
 }) {
   await publicar(
     args.titulo,
     `${args.texto} · salvo no Grana.`,
-    { origem: 'voz', resultado: 'salvo', tipo: args.tipo, ids: args.ids },
+    {
+      origem: 'voz', resultado: 'salvo', tipo: args.tipo,
+      ids: args.ids, operationId: args.operationId,
+    },
     CATEGORIA_SUCESSO
   );
 }

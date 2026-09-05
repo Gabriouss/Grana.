@@ -12,12 +12,13 @@
 
   <application>
 
-    <!-- `exported="true"` é exigência do launcher: quem entrega o toque no
-         widget é o processo da tela inicial, fora do app. -->
+    <!-- AppWidgetManager e PendingIntents explícitos continuam entregando os
+         eventos com receivers privados. Assim nenhum outro app pode forjar o
+         TOQUE e iniciar a captura do microfone. -->
     <receiver
       android:name="com.gabriouss.grana.voicewidget.GranaVoiceWidgetProvider"
       android:label="@string/grana_voice_widget_rotulo"
-      android:exported="true">
+      android:exported="false">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
       </intent-filter>
@@ -32,7 +33,7 @@
     <receiver
       android:name="com.gabriouss.grana.voicewidget.LivreParaGastarWidgetProvider"
       android:label="@string/grana_livre_widget_rotulo"
-      android:exported="true">
+      android:exported="false">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
         <action android:name="android.intent.action.DATE_CHANGED" />
@@ -45,7 +46,7 @@
     <receiver
       android:name="com.gabriouss.grana.voicewidget.CentralLancamentoWidgetProvider"
       android:label="@string/grana_central_widget_rotulo"
-      android:exported="true">
+      android:exported="false">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
         <action android:name="android.intent.action.LOCALE_CHANGED" />
@@ -56,7 +57,7 @@
     <receiver
       android:name="com.gabriouss.grana.voicewidget.ProximoCompromissoWidgetProvider"
       android:label="@string/grana_compromisso_widget_rotulo"
-      android:exported="true">
+      android:exported="false">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
         <action android:name="android.intent.action.DATE_CHANGED" />
@@ -69,7 +70,7 @@
     <receiver
       android:name="com.gabriouss.grana.voicewidget.CofrinhoWidgetProvider"
       android:label="@string/grana_cofrinho_widget_rotulo"
-      android:exported="true">
+      android:exported="false">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
         <action android:name="android.intent.action.DATE_CHANGED" />

@@ -1,6 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { selecionarMensagem } from '../../../lib/notification-catalog.ts';
-import { atrasoDaTentativa, chegouHorario, contextoDasDatas, momentoNaZona } from '../_shared/push-habit.ts';
+import {
+  atrasoDaTentativa,
+  chaveColapsoEntrega,
+  chegouHorario,
+  contextoDasDatas,
+  momentoNaZona,
+} from '../_shared/push-habit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -226,15 +232,21 @@ async function enviarPendentes(tokens: PushToken[], agora: Date): Promise<number
 
     let resposta: Response;
     try {
-      resposta = await fetchExpo(EXPO_SEND_URL, lote.map((entrega) => ({
-        to: entrega.expo_push_token,
-        title: entrega.titulo,
-        body: entrega.corpo,
-        sound: 'default',
-        priority: 'high',
-        channelId: 'lembretes-contas',
-        data: { tipo: 'habito-diario', mensagemId: entrega.mensagem_id },
-      })));
+      resposta = await fetchExpo(EXPO_SEND_URL, lote.map((entrega) => {
+        const token = tokensPorId.get(entrega.expo_push_token)!;
+        const chave = chaveColapsoEntrega(entrega.data_local);
+        return {
+          to: entrega.expo_push_token,
+          title: entrega.titulo,
+          body: entrega.corpo,
+          sound: 'default',
+          priority: 'high',
+          channelId: 'lembretes-contas',
+          collapseId: chave,
+          ...(token.plataforma === 'android' ? { tag: chave } : {}),
+          data: { tipo: 'habito-diario', mensagemId: entrega.mensagem_id },
+        };
+      }));
     } catch {
       await Promise.all(lote.map((entrega) => reagendarOuFalhar(entrega, 'expo_network_error')));
       continue;

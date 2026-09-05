@@ -24,6 +24,7 @@ type Payload = { caminho?: string; requestId?: string };
 async function executarTarefa(payload: Payload) {
   const { definirEstado } = await import('@/modules/grana-voice-widget');
   const caminho = payload?.caminho;
+  const requestId = payload?.requestId;
   /* O estado final do widget é decidido aqui e não no `finally` de sempre:
      quando não há como avisar a pessoa, ele NÃO pode voltar ao repouso como
      se nada tivesse acontecido — é justamente esse "nada aconteceu" que
@@ -32,6 +33,7 @@ async function executarTarefa(payload: Payload) {
 
   try {
     if (!caminho) return;
+    if (!requestId) throw new Error('request_id_ausente');
 
     /* Antes de gastar transcrição, e muito antes de gravar qualquer coisa:
        sem permissão de notificação o widget não tem como entregar o recibo
@@ -43,7 +45,7 @@ async function executarTarefa(payload: Payload) {
       return;
     }
 
-    const salvou = await processar(caminho);
+    const salvou = await processar(caminho, requestId);
     if (salvou) await sincronizarResumoDepoisDaVoz();
   } catch {
     const { notificarFalha } = await import('./widget-voz-notificacoes');
@@ -67,12 +69,13 @@ async function apagarArquivo(caminho: string) {
   }
 }
 
-async function processar(caminho: string): Promise<boolean> {
-  const [{ transcreverAudio }, notificacoes, heuristics, data] = await Promise.all([
+async function processar(caminho: string, requestId: string): Promise<boolean> {
+  const [{ transcreverAudio }, notificacoes, heuristics, data, voiceOperations] = await Promise.all([
     import('./voz'),
     import('./widget-voz-notificacoes'),
     import('./heuristics'),
     import('./data'),
+    import('./voice-operations'),
   ]);
 
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
@@ -111,29 +114,36 @@ async function processar(caminho: string): Promise<boolean> {
 
   // Boleto antes de crédito: "boleto no cartão" é boleto. Mesma ordem do bot.
   if (heuristics.ehIntencaoBoleto(texto)) {
-    const conta = await data.addBill({
+    const dueDate = heuristics.parseDiaVencimento(texto);
+    const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
+      kind: 'bill',
       description: descricao,
       amount: valor,
       category: categoria.name,
       color: categoria.color,
-      due_date: heuristics.parseDiaVencimento(texto),
+      due_date: dueDate,
       recurring: heuristics.parseRecorrencia(texto),
     });
+    if (resultado.status === 'undone') return true;
     await notificacoes.notificarSucesso({
       titulo: `${descricao} — ${formatarBRL(valor)}`,
-      texto: `Conta a pagar · vence ${formatarData(conta.due_date)}`,
+      texto: `Conta a pagar · vence ${formatarData(dueDate)}`,
       tipo: 'bill',
-      ids: [conta.id],
+      ids: resultado.ids,
+      operationId: resultado.operationId,
     });
     return true;
   }
 
   if (heuristics.ehIntencaoCredito(texto)) {
-    return lancarNoCredito({ texto, valor, descricao, categoria, heuristics, data, notificacoes });
+    return lancarNoCredito({
+      requestId, texto, valor, descricao, categoria, heuristics, data, notificacoes, voiceOperations,
+    });
   }
 
   const formaPagamento = heuristics.parseFormaPagamento(texto);
-  const lancamento = await data.addTransaction({
+  const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
+    kind: 'transaction',
     type: tipo,
     description: descricao,
     amount: valor,
@@ -143,6 +153,7 @@ async function processar(caminho: string): Promise<boolean> {
     recurring: heuristics.parseRecorrencia(texto),
     ...(formaPagamento ? { payment_method: formaPagamento } : null),
   });
+  if (resultado.status === 'undone') return true;
 
   await notificacoes.notificarSucesso({
     titulo: `${descricao} — ${formatarBRL(valor)}`,
@@ -150,12 +161,14 @@ async function processar(caminho: string): Promise<boolean> {
       .filter(Boolean)
       .join(' · '),
     tipo: 'transaction',
-    ids: [lancamento.id],
+    ids: resultado.ids,
+    operationId: resultado.operationId,
   });
   return true;
 }
 
 async function lancarNoCredito(args: {
+  requestId: string;
   texto: string;
   valor: number;
   descricao: string;
@@ -163,8 +176,9 @@ async function lancarNoCredito(args: {
   heuristics: typeof import('./heuristics');
   data: typeof import('./data');
   notificacoes: typeof import('./widget-voz-notificacoes');
+  voiceOperations: typeof import('./voice-operations');
 }): Promise<boolean> {
-  const { texto, valor, descricao, categoria, heuristics, data, notificacoes } = args;
+  const { requestId, texto, valor, descricao, categoria, heuristics, data, notificacoes, voiceOperations } = args;
 
   const cartoes = await data.fetchCreditCards();
   /* Sem cartão cadastrado, crédito NÃO vira Pix nem débito caladinho: a
@@ -179,9 +193,11 @@ async function lancarNoCredito(args: {
   const parcelas = heuristics.parseParcelas(texto);
 
   if (parcelas && parcelas > 1) {
-    const criados = await data.addInstallmentPurchase({
+    const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
+      kind: 'installment',
+      type: 'out',
       description: descricao,
-      totalAmount: valor,
+      amount: valor,
       category: categoria.name,
       color: categoria.color,
       occurred_on: hojeISO(),
@@ -189,16 +205,21 @@ async function lancarNoCredito(args: {
       card_id: cartao.id,
       installments: parcelas,
     });
+    if (resultado.status === 'undone') return true;
+    const { checarLimiteCartao } = await import('./creditLimitAlert');
+    checarLimiteCartao(cartao.id).catch(() => {});
     await notificacoes.notificarSucesso({
       titulo: `${descricao} — ${formatarBRL(valor)}`,
       texto: `${parcelas}x no ${cartao.name} · ${categoria.name}`,
       tipo: 'transaction',
-      ids: criados.map((t) => t.id),
+      ids: resultado.ids,
+      operationId: resultado.operationId,
     });
     return true;
   }
 
-  const lancamento = await data.addTransaction({
+  const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
+    kind: 'transaction',
     type: 'out',
     description: descricao,
     amount: valor,
@@ -209,11 +230,15 @@ async function lancarNoCredito(args: {
     card_id: cartao.id,
     recurring: heuristics.parseRecorrencia(texto),
   });
+  if (resultado.status === 'undone') return true;
+  const { checarLimiteCartao } = await import('./creditLimitAlert');
+  checarLimiteCartao(cartao.id).catch(() => {});
   await notificacoes.notificarSucesso({
     titulo: `${descricao} — ${formatarBRL(valor)}`,
     texto: `Crédito · ${cartao.name} · ${categoria.name}`,
     tipo: 'transaction',
-    ids: [lancamento.id],
+    ids: resultado.ids,
+    operationId: resultado.operationId,
   });
   return true;
 }

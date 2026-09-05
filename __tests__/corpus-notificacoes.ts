@@ -8,6 +8,7 @@ import {
 import { MENSAGENS, selecionarMensagem } from '../lib/notification-catalog';
 import {
   atrasoDaTentativa,
+  chaveColapsoEntrega,
   chegouHorario,
   contextoDasDatas,
   momentoNaZona,
@@ -85,6 +86,9 @@ const contexto = contextoDasDatas(['2026-09-03', '2026-09-02', '2026-08-31'], '2
 checar('calcula streak até ontem quando hoje ainda não teve lançamento', contexto.streak === 2);
 checar('calcula dias de inatividade', contexto.diasInativo === 1);
 checar('retentativa tem teto de seis horas', atrasoDaTentativa(20) === 6 * 60 * 60_000);
+const chaveColapso = chaveColapsoEntrega('2026-09-04');
+checar('retentativas do dia usam uma chave de colapso determinística', chaveColapso === 'grana-habito-2026-09-04');
+checar('a chave de colapso cabe no limite dos provedores', new TextEncoder().encode(chaveColapso).length <= 64);
 
 console.log(`${passou}/${passou + falhou} notificações passaram`);
 if (falhou > 0) process.exit(1);
