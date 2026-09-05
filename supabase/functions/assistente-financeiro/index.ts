@@ -1,8 +1,8 @@
 // Grana. — Granabô, assistente financeiro com IA
 //
-// Edge Function que recebe a pergunta do usuário, chama o LLM (Groq,
-// llama-3.1-8b-instant) com tool calling, executa as ferramentas
-// determinísticas contra o Supabase, e devolve a resposta final.
+// Edge Function que recebe a pergunta do usuário, chama o LLM com tool
+// calling, executa as ferramentas determinísticas contra o Supabase, e
+// devolve a resposta final.
 //
 // O LLM NUNCA vê o banco de dados nem gera valores em R$ por conta própria:
 // ele escolhe qual ferramenta chamar, a ferramenta busca o número real, e o
@@ -11,8 +11,8 @@
 // nunca de geração livre.
 //
 // Configuração (supabase secrets set):
-//   GROQ_API_KEY     — modelo de chat (llama-3.1-8b-instant)
-//   SUPABASE_URL     — já existe
+//   GEMINI_API_KEY    — modelo de chat
+//   SUPABASE_URL      — já existe
 //   SUPABASE_ANON_KEY — já existe
 //
 // Publicar COM verificação de JWT (o padrão):
@@ -21,12 +21,26 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
 
-const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') ?? '';
+const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
-const MODELO = 'llama-3.1-8b-instant';
-const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
+/* Por que Gemini e não Groq, apesar de a Groq já estar configurada:
+   a conta Groq deste projeto NÃO tem acesso a nenhum modelo Llama de chat.
+   Verificado contra a própria API em 05/09/2026 — `llama-3.1-8b-instant` e
+   `llama-3.3-70b-versatile` responderam 404 `model_not_found`, e a listagem
+   de modelos da conta traz só Whisper (áudio), classificadores e os
+   `openai/gpt-oss-*`, que são COBRADOS por token. Como custo zero é
+   requisito, o chat migrou pro free tier do Gemini.
+
+   A chave da Groq continua em uso e intocada: é ela que transcreve a voz em
+   `processar-lancamento-voz`. São dois provedores para dois trabalhos.
+
+   O endpoint do Gemini abaixo é o COMPATÍVEL com a API da OpenAI, e é isso
+   que permite `tools`/`tool_choice` no mesmo formato — as ferramentas e o
+   fluxo de duas passadas não mudaram uma linha ao trocar de provedor. */
+const MODELO = 'gemini-3.8-flash';
+const CHAT_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
 /* ── Rate limit best-effort ──────────────────────────────────────────────── */
 
@@ -401,8 +415,8 @@ Deno.serve(async (req) => {
     const mensagem = (body.mensagem ?? '').trim();
     if (!mensagem) return erro('mensagem_vazia', 400);
 
-    if (!GROQ_API_KEY) {
-      console.error('[assistente-financeiro] GROQ_API_KEY não configurada');
+    if (!GEMINI_API_KEY) {
+      console.error('[assistente-financeiro] GEMINI_API_KEY não configurada');
       return erro('sem_provedor', 503, 'Não consegui pensar nisso agora. Tenta de novo em instantes.');
     }
 
@@ -431,10 +445,10 @@ Deno.serve(async (req) => {
       max_tokens: 1024,
     };
 
-    const chatRes = await fetchComTimeout(GROQ_CHAT_URL, {
+    const chatRes = await fetchComTimeout(CHAT_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(chatPayload),
@@ -442,7 +456,7 @@ Deno.serve(async (req) => {
 
     if (!chatRes.ok) {
       const status = chatRes.status;
-      console.error(`[assistente-financeiro] Groq respondeu ${status}:`, await chatRes.text());
+      console.error(`[assistente-financeiro] LLM respondeu ${status}:`, await chatRes.text());
       if (status === 429) {
         return erro('erro_ia', 429, 'Estou um pouco sobrecarregado agora. Tenta de novo em alguns instantes.');
       }
@@ -492,10 +506,10 @@ Deno.serve(async (req) => {
       }
 
       /* Segunda chamada: LLM formula a resposta com os dados reais */
-      const followUpRes = await fetchComTimeout(GROQ_CHAT_URL, {
+      const followUpRes = await fetchComTimeout(CHAT_URL, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
