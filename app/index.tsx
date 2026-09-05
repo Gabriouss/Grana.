@@ -14,7 +14,6 @@ import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import { EASE_BOUNCE_HINT, EASE_ROLL, EASE_SNAP, usePrefersReducedTransparency } from '@/lib/motion';
 import FogBackground from '@/components/FogBackground';
-import ConversaGranabo from '@/components/ConversaGranabo';
 import CardLivreParaGastar from '@/components/CardLivreParaGastar';
 import BeneficiosHorizontais, { type BeneficioHorizontal } from '@/components/BeneficiosHorizontais';
 import TrustMarquee from '@/components/TrustMarquee';
@@ -75,7 +74,6 @@ const PARAMETROS_ATRIBUICAO = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_
    decoração: permite reconhecer o item pela forma antes do rótulo. */
 const NAVEGACAO_LANDING = [
   { rotulo: 'Como funciona', href: '#produto', icone: 'play-circle-outline' },
-  { rotulo: 'Granabô', href: '#granabo', icone: 'logo-whatsapp' },
   { rotulo: 'Hábitos', href: '#habitos', icone: 'flame-outline' },
   { rotulo: 'Benefícios', href: '#beneficios', icone: 'grid-outline' },
   { rotulo: 'Segurança', href: '#seguranca', icone: 'shield-checkmark-outline' },
@@ -123,8 +121,9 @@ function BotaoCTA({
      "clicável" da tela, ver comentário grande abaixo). */
   variante?: 'primario' | 'secundario';
   /* Quando passado, o botão vira uma ação em vez de link de cadastro —
-     `onPress` tem precedência sobre `href`. Usado pelo CTA secundário do
-     herói, que rola até a seção do Granabô em vez de ir pro cadastro. */
+     `onPress` tem precedência sobre `href`. Reservado a um futuro CTA
+     secundário que precise rolar até uma seção específica em vez de ir
+     pro cadastro; nenhum uso ativo no momento. */
   onPress?: (evento?: { preventDefault?: () => void }) => void;
 }) {
   const { ehCompacto } = useBreakpoint();
@@ -462,35 +461,12 @@ const PILARES_HABITO = [
   },
 ];
 
-const RECURSOS_GRANABO = [
-  {
-    icone: 'mic-outline' as const,
-    titulo: 'Texto ou áudio',
-    texto: 'Fale do seu jeito. O Granabô identifica valor e descrição sem formulário.',
-  },
-  {
-    icone: 'sparkles-outline' as const,
-    titulo: 'Categoria sugerida',
-    texto: 'O lançamento já chega organizado e continua editável no aplicativo.',
-  },
-  {
-    icone: 'search-outline' as const,
-    titulo: 'Consulta na conversa',
-    texto: 'Pergunte quanto já gastou e receba uma resposta baseada nos seus registros.',
-  },
-  {
-    icone: 'shield-checkmark-outline' as const,
-    titulo: 'Controle continua seu',
-    texto: 'O número fica vinculado à sua conta e cada lançamento pode ser ajustado ou excluído.',
-  },
-];
-
 const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
   {
     variante: 'lancar',
     rotulo: 'Registro',
     titulo: 'Lance do jeito que for mais fácil',
-    texto: 'Use voz no app, Granabô, QR Code, comprovante Pix, CSV com até 10 mil linhas ou formulário manual. Se a conexão cair, a fila offline guarda o lançamento para sincronizar depois.',
+    texto: 'Use voz no app, QR Code, comprovante Pix, CSV com até 10 mil linhas ou formulário manual. Se a conexão cair, a fila offline guarda o lançamento para sincronizar depois.',
   },
   {
     variante: 'cartao',
@@ -526,21 +502,16 @@ const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
 
 /* Ordenado por risco percebido, não por curiosidade: a conexão bancária vem
    primeiro porque é a objeção que trava mais gente, e as três últimas tratam
-   de dinheiro (cobrança, controle dos dados). Três perguntas são novas e
-   cobrem objeções decisivas que a página não respondia: o que acontece quando
-   o reconhecimento erra, como o Livre para Gastar é calculado, e quem é o
-   Granabô. A resposta comercial aponta para a seção de Preços, que concentra
-   valor e forma de pagamento. */
+   de dinheiro (cobrança, controle dos dados). Duas perguntas cobrem objeções
+   decisivas que a página não respondia: o que acontece quando o
+   reconhecimento erra e como o Livre para Gastar é calculado. A resposta
+   comercial aponta para a seção de Preços, que concentra valor e forma de
+   pagamento. */
 const PERGUNTAS_FAQ = [
   {
     pergunta: 'O Grana. acessa minha conta bancária?',
     resposta:
-      'Não. O Grana. não se conecta ao seu banco e não usa Open Finance. Você registra por voz, por texto ou áudio no WhatsApp, ou apontando a câmera pro QR Code da nota, e ele organiza. Você nunca compartilha senha de banco com ninguém.',
-  },
-  {
-    pergunta: 'Quem é o Granabô?',
-    resposta:
-      'É o assistente do Grana. no WhatsApp. Você vincula seu número uma vez, pelo próprio app, e depois é só mandar um texto ou um áudio para ele. Ele identifica o valor e a descrição, sugere uma categoria e cria o lançamento no Grana. Você só ajusta se precisar.',
+      'Não. O Grana. não se conecta ao seu banco e não usa Open Finance. Você registra por voz ou apontando a câmera pro QR Code da nota, e ele organiza. Você nunca compartilha senha de banco com ninguém.',
   },
   {
     pergunta: 'E se o Grana. entender um lançamento errado?',
@@ -556,11 +527,6 @@ const PERGUNTAS_FAQ = [
     pergunta: 'Como funciona a assinatura?',
     resposta:
       'O Grana. funciona por assinatura mensal e não oferece período de teste. Você encontra o valor e a forma de pagamento na seção de Preços desta página.',
-  },
-  {
-    pergunta: 'Posso enviar áudio para o Granabô?',
-    resposta:
-      'Pode. Ele entende texto e áudio. Imagem ainda não: se você mandar uma foto, ele avisa que por enquanto só entende mensagem de texto ou áudio.',
   },
   {
     pergunta: 'Posso editar ou excluir meus dados?',
@@ -630,14 +596,9 @@ function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
 function HeroStorytelling({
   ehCompacto,
   alturaCabecalho,
-  onNavegarGranabo,
 }: {
   ehCompacto: boolean;
   alturaCabecalho: number;
-  /* `navegarParaSecao` vive no escopo de `ConteudoWeb`, fora do alcance
-     léxico desta função — chega como prop, mesmo padrão que `NavFlutuanteLanding`
-     já usa com `onNavigate`. */
-  onNavegarGranabo: (evento?: { preventDefault?: () => void }) => void;
 }) {
   const alturaDobra = useAlturaDobra();
   const [reduzirMovimento, setReduzirMovimento] = useState(false);
@@ -723,11 +684,6 @@ function HeroStorytelling({
           <Text style={styles.subheadline}>{APOIO_HERO}</Text>
           <View style={styles.heroCtas}>
             <BotaoCTA />
-            <BotaoCTA
-              variante="secundario"
-              rotulo="Ver o Granabô em ação"
-              onPress={onNavegarGranabo}
-            />
           </View>
           {!reduzirMovimento && (
             <Animated.View style={[[styles.heroScrollHint, heroScrollHintAnimado], { pointerEvents: 'none' }]} >
@@ -854,8 +810,7 @@ function ConteudoWeb() {
   const insets = useSafeAreaInsets();
   const { ehCompacto, largura, altura } = useBreakpoint();
   const habitosEmpilhados = largura < LARGURA_MINIMA_HABITOS_EM_LINHA;
-  const granaboEmpilhado = largura < 1040;
-  // Limiar mais alto que o do Granabô (1040): a moldura aqui é bem mais
+  // Limiar mais alto que uma dobra normal (1040px): a moldura aqui é bem mais
   // larga (660px, contra o celular de 260px) e ainda ganha uma inclinação
   // 3D (`MolduraNavegador#inclinada`) que sangra um pouco além da própria
   // caixa — precisa de mais fôlego antes de quebrar linha.
@@ -930,11 +885,6 @@ function ConteudoWeb() {
 
   const PROVAS_SEGURANCA = [
     {
-      icone: 'logo-whatsapp' as const,
-      titulo: 'Canal oficial',
-      texto: 'A Meta confirma a identidade do Grana. e cada chamada recebida passa por validação.',
-    },
-    {
       icone: 'finger-print-outline' as const,
       titulo: 'Proteção no aparelho',
       texto: 'No celular, você pode bloquear o acesso com biometria ou com a senha do próprio aparelho.',
@@ -957,7 +907,7 @@ function ConteudoWeb() {
   // duas larguras muito diferentes deixa o wrap natural decidir; quebra
   // escolhida à mão só vale onde a largura é previsível (título de dobra).
   const BENEFICIOS_PRECO = [
-    'Voz, WhatsApp (texto ou áudio) ou QR Code da nota para lançar',
+    'Voz ou QR Code da nota para lançar',
     /* Não repete mais "calculado sozinho, considerando o que ainda vem" —
        mesma correção da seção de inteligência financeira: a conta usa o mês
        corrente, não parcelas futuras. */
@@ -1034,14 +984,10 @@ function ConteudoWeb() {
       {/* Fatos verificáveis, não autoavaliação. "Sem burocracia", "Sem letra
           miúda" e "Preço simples e fixo" eram opinião da própria empresa sobre
           si mesma, que não funciona como prova. Cada item aqui é checável:
-          o WhatsApp é canal oficial (empresa verificada pela Meta), não existe
-          conexão bancária e o app roda no navegador. "Verificado pela Meta"
-          fala do CANAL — nunca aparece perto
-          do bloco de segurança, onde insinuaria endosso do produto. */}
+          não existe conexão bancária e o app roda no navegador. */}
       <TrustMarquee
         itens={[
           'Sem conectar conta bancária',
-          'WhatsApp oficial, verificado pela Meta',
           'Funciona direto no navegador',
           'Controle no celular e no computador',
         ]}
@@ -1059,7 +1005,6 @@ function ConteudoWeb() {
         <HeroStorytelling
           ehCompacto={heroCompacto}
           alturaCabecalho={alturaCabecalho}
-          onNavegarGranabo={(e) => navegarParaSecao('#granabo', e)}
         />
       </View>
 
@@ -1126,55 +1071,6 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Granabô no WhatsApp (dobra 4) ─────────
-          A dobra mais importante da página: é o diferencial demonstrado, não
-          descrito. A conversa mostra o Granabô devolvendo MAIS do que
-          recebeu (registra e depois responde quanto já foi gasto na
-          categoria) — as duas coisas que a Edge Function realmente faz. */}
-      <View nativeID="granabo" style={styles.palcoComCamada}>
-        <FogBackground compacto={granaboEmpilhado} />
-        <Dobra>
-          <View style={styles.secao}>
-            <View style={[styles.granaboTopo, granaboEmpilhado && styles.granaboTopoEmpilhado]}>
-              <View style={[styles.colunaTextoSecao, granaboEmpilhado && styles.colunaTextoSecaoCompacta]}>
-              <RevealOnScroll variante="titulo">
-                <TituloSecao>Seu controle também cabe numa conversa no WhatsApp.</TituloSecao>
-                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
-                  Depois de vincular seu número uma vez, envie um texto ou áudio para o Granabô, o assistente do Grana. no WhatsApp. Ele identifica o valor e a descrição, sugere uma categoria e cria o lançamento no Grana. Você só ajusta se precisar.
-                </Text>
-              </RevealOnScroll>
-              <RevealOnScroll style={styles.ctaAposTexto}>
-                <BotaoCTA centralizado={ehCompacto} />
-              </RevealOnScroll>
-              </View>
-
-              <RevealOnScroll style={[styles.composicaoTelas, granaboEmpilhado && styles.composicaoTelasCompacta]}>
-                <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
-                  <ConversaGranabo compacto={granaboEmpilhado} />
-                </ScrollLinkedView>
-              </RevealOnScroll>
-            </View>
-
-            <View style={styles.granaboRecursosGrade}>
-              {RECURSOS_GRANABO.map((recurso, indice) => (
-                <RevealOnScroll
-                  key={recurso.titulo}
-                  atraso={indice * 60}
-                  style={[styles.granaboRecursoPos, ehCompacto && styles.granaboRecursoPosCompacto]}
-                >
-                  <View style={[styles.granaboRecurso, reduzirTransparencia && styles.granaboRecursoSolido]}>
-                    <Ionicons name={recurso.icone} size={20} color={theme.accent2} aria-hidden />
-                    <Text style={styles.granaboRecursoTitulo}>{recurso.titulo}</Text>
-                    <Text style={styles.granaboRecursoTexto}>{recurso.texto}</Text>
-                  </View>
-                </RevealOnScroll>
-              ))}
-            </View>
-          </View>
-        </Dobra>
-      </View>
-
-
       {/* ───────── Construção do hábito (dobra 5) ─────────
           Fundida com o antigo "Por dentro do aplicativo" (autor: "o
           carrossel pode muito bem estar nessa tela aqui e mesclar essas
@@ -1227,7 +1123,7 @@ function ConteudoWeb() {
           citado na TrustMarquee) com a composição em vez de só a frase.
           Texto à esquerda, tela à direita (mesmo esqueleto de
           `secaoComCartao`/`colunaTextoSecao`/`molduraCentralizada` já usado
-          em Granabô/Hábitos) — pedido do autor depois que a composição
+          em Hábitos) — pedido do autor depois que a composição
           empilhada (título em cima, moldura embaixo) deixou a moldura
           inclinada sangrar por cima do H1 em telas médias, já que uma
           rotação 3D não reserva espaço extra no layout, só no visual.
@@ -1243,7 +1139,7 @@ function ConteudoWeb() {
                 <RevealOnScroll variante="titulo">
                   <TituloSecao>O mesmo Grana., na tela grande.</TituloSecao>
                   <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
-                    Registre pelo celular ou pelo WhatsApp. Acompanhe no computador, com os mesmos dados sincronizados.
+                    Registre pelo celular. Acompanhe no computador, com os mesmos dados sincronizados.
                   </Text>
                 </RevealOnScroll>
               </View>
@@ -1300,8 +1196,8 @@ function ConteudoWeb() {
       </View>
 
       {/* ───────── Segurança e confiança (dobra 9) ─────────
-          As duas metades são deliberadamente separadas: a Meta confirma a
-          identidade do canal; as proteções do produto cuidam dos dados. */}
+          Fatos verificáveis sobre como o produto protege os dados —
+          nenhuma opinião da própria empresa sobre si mesma. */}
       <View nativeID="seguranca" style={styles.palcoComCamada}>
         <Dobra>
           <View style={styles.secao}>
@@ -1521,7 +1417,6 @@ function ConteudoWeb() {
               <View style={styles.rodapeColuna}>
                 <Text style={styles.rodapeTitulo}>Produto</Text>
                 <AppPressable href="#produto" onPress={(evento) => navegarParaSecao('#produto', evento)} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Como funciona</Text></AppPressable>
-                <AppPressable href="#granabo" onPress={(evento) => navegarParaSecao('#granabo', evento)} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Granabô</Text></AppPressable>
                 <AppPressable href="#precos" onPress={(evento) => navegarParaSecao('#precos', evento)} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Preços</Text></AppPressable>
                 <AppPressable href="#faq" onPress={(evento) => navegarParaSecao('#faq', evento)} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Perguntas frequentes</Text></AppPressable>
               </View>
@@ -1621,8 +1516,8 @@ const styles = StyleSheet.create({
   },
   // `prefers-reduced-transparency`: sobrepõe o blur com fundo quase opaco em
   // vez de deixar o vidro fosco cheio pra quem pediu menos transparência ao
-  // sistema — sem isso as 3 superfícies com `backdropFilter` da página
-  // (esta, `ctaPrimario`, `granaboRecurso`) ignoravam a preferência.
+  // sistema — sem isso as superfícies com `backdropFilter` da página (esta,
+  // `ctaPrimario`) ignoravam a preferência.
   cabecalhoStickySolido: { ...({ backdropFilter: 'none', WebkitBackdropFilter: 'none' } as any), backgroundColor: 'rgba(5,34,41,0.97)' },
   // O `paddingBottom` é 1px menor que o topo de propósito: a barra tem
   // `borderBottomWidth: 1`, e a régua que o olho usa é a linha, não o fim da
@@ -1884,10 +1779,6 @@ const styles = StyleSheet.create({
   // frase sozinha no meio, separando "agora" do resto por conta própria.
   precoTextoCentralizado: { textAlign: 'center', maxWidth: 820 },
   colunaTextoSecao: { flex: 1, minWidth: 320, maxWidth: 620 },
-  // CTAs que vêm depois de texto corrido ganham um intervalo próprio. O
-  // componente do botão não conhece o contexto anterior e, sem este bloco,
-  // acabava encostado na última linha do parágrafo do Granabô.
-  ctaAposTexto: { marginTop: spacing.xxl + spacing.xs },
   // No desktop a coluna de texto divide espaço com uma moldura; no compacto
   // ela passa a ficar empilhada. Manter `flex:1` nesse eixo fazia o pai
   // resolver uma altura menor que o conteúdo e o recorte da seção escondia o
@@ -2024,28 +1915,9 @@ const styles = StyleSheet.create({
   segurancaLimiteTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.45, fontFamily: fonts.light, textAlign: 'center' },
   segurancaCta: { alignItems: 'center', marginTop: spacing.xxl + spacing.xs },
 
-  granaboTopo: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl * 2 },
-  granaboTopoEmpilhado: { flexDirection: 'column', alignItems: 'stretch' },
-  granaboRecursosGrade: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.lg, marginTop: spacing.xxl },
-  granaboRecursoPos: { flexGrow: 1, flexBasis: '22%', minWidth: 240 },
-  granaboRecursoPosCompacto: { flexBasis: '100%', minWidth: 0 },
-  granaboRecurso: {
-    height: '100%',
-    gap: spacing.sm,
-    padding: spacing.lg,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    backgroundColor: 'rgba(11,45,53,0.78)',
-    ...({ backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' } as any),
-  },
-  granaboRecursoSolido: { ...({ backdropFilter: 'none', WebkitBackdropFilter: 'none' } as any), backgroundColor: 'rgba(11,45,53,0.97)' },
-  granaboRecursoTitulo: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular },
-  granaboRecursoTexto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.45, fontFamily: fonts.light },
-
-  // Coluna que hospeda a prova visual ao lado do texto da seção (a conversa
-  // do Granabô, o card de Livre para Gastar). Herdou o nome de quando era
-  // uma composição de navegador + celular sobrepostos; hoje centraliza um
+  // Coluna que hospeda a prova visual ao lado do texto da seção (o card de
+  // Livre para Gastar, o painel web). Herdou o nome de quando era uma
+  // composição de navegador + celular sobrepostos; hoje centraliza um
   // elemento só.
   composicaoTelas: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center', position: 'relative', paddingVertical: spacing.xxl },
   composicaoTelasCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
