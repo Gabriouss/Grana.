@@ -65,6 +65,7 @@ async function sincronizarInterno(
       timezone: timezoneDoAparelho(),
       horario_hora: prefs.horario.hour,
       horario_minuto: prefs.horario.minute,
+      almoco_ativo: prefs.almocoAtivo,
       ativo: true,
       visto_em: new Date().toISOString(),
       atualizado_em: new Date().toISOString(),

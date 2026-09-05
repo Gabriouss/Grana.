@@ -4,7 +4,14 @@ export type CategoriaMensagem =
   | 'micro_gastos'
   | 'fim_de_semana'
   | 'saudade'
-  | 'dicas_atalhos';
+  | 'dicas_atalhos'
+  | 'almoco';
+
+/** Janela de horário do lembrete — decide só o pool geral de fallback em
+    `selecionarMensagem`; a prioridade de saudade/fim de semana/streak é
+    igual e compartilhada entre as duas (ver spec
+    docs/superpowers/specs/2026-09-05-janelas-notificacao-design.md). */
+export type JanelaLembrete = 'noite' | 'almoco';
 
 export type MensagemNotif = {
   id: string;
@@ -75,21 +82,41 @@ export const MENSAGENS: MensagemNotif[] = [
   { id: 'dica-6', categoria: 'dicas_atalhos', titulo: 'Metas com cofrinho', texto: 'Cofrinhos ajudam a visualizar o quanto falta pra sua meta. Já deu uma olhada nos seus? 🎯' },
   { id: 'dica-7', categoria: 'dicas_atalhos', titulo: 'Atalho pelo WhatsApp', texto: 'Sabia que também dá pra lançar gastos mandando mensagem no WhatsApp? Configura no Perfil 💬' },
   { id: 'dica-8', categoria: 'dicas_atalhos', titulo: 'Menos atrito, mais constância', texto: 'Quanto mais fácil for lançar, mais fácil manter o hábito. Já testou os atalhos do Grana.? ⚡' },
+
+  // ---- almoco: janela de 12h, dias úteis, tom descontraído ----
+  { id: 'almoco-1', categoria: 'almoco', titulo: 'Bateu a fome?', texto: 'Depois de resolver o almoço, resolve o lançamento também 🍴' },
+  { id: 'almoco-2', categoria: 'almoco', titulo: 'Marmita ou delivery?', texto: 'De qualquer jeito, vale registrar o que você gastou no almoço 🥡' },
+  { id: 'almoco-3', categoria: 'almoco', titulo: 'Hora do intervalo', texto: 'Aproveita a pausa pra lançar o gasto do almoço antes de esquecer 🕐' },
+  { id: 'almoco-4', categoria: 'almoco', titulo: 'Aquele suco também conta', texto: 'Água de coco, suco ou refrigerante do almoço soma no controle. Bora lançar? 🥤' },
+  { id: 'almoco-5', categoria: 'almoco', titulo: 'Voltando pro trabalho?', texto: 'Antes de sentar na mesa de novo, um lançamento rápido do almoço não faz mal 💼' },
+  { id: 'almoco-6', categoria: 'almoco', titulo: 'Restaurante, marmita ou vale-refeição?', texto: 'Não importa como foi o almoço, ele merece um lugar no Grana. 🍱' },
+  { id: 'almoco-7', categoria: 'almoco', titulo: 'Meio-dia bateu', texto: 'Já almoçou? Então já dá pra registrar também 🍽️' },
+  { id: 'almoco-8', categoria: 'almoco', titulo: 'Rapidinho antes de voltar', texto: '10 segundos pra registrar o almoço e você já pode voltar pro que estava fazendo 😉' },
+  { id: 'almoco-9', categoria: 'almoco', titulo: 'Cadê o lançamento do almoço?', texto: 'Já passou da hora e esse gasto ainda não apareceu no Grana. Bora resolver? 🍔' },
 ];
 
-const CATEGORIA_GERAL: CategoriaMensagem[] = ['noturno_humor', 'micro_gastos', 'dicas_atalhos'];
+const CATEGORIA_GERAL: Record<JanelaLembrete, CategoriaMensagem[]> = {
+  noite: ['noturno_humor', 'micro_gastos', 'dicas_atalhos'],
+  almoco: ['almoco', 'micro_gastos', 'dicas_atalhos'],
+};
 
 /**
- * Escolhe a próxima mensagem do lembrete diário. Prioriza contexto
- * (inatividade > fim de semana > proteção de streak) e evita repetir os
- * últimos 10 ids escolhidos — se a categoria prioritária inteira já foi
- * usada recentemente, cai para o sorteio geral em vez de travar sem opção.
+ * Escolhe a próxima mensagem do lembrete. Prioriza contexto (inatividade >
+ * fim de semana > proteção de streak) e evita repetir os últimos 10 ids
+ * escolhidos — se a categoria prioritária inteira já foi usada
+ * recentemente, cai para o sorteio geral em vez de travar sem opção.
+ *
+ * `janela` só decide qual pool GERAL usar no fallback (`almoco` nunca sai
+ * fora da janela de almoço, `noturno_humor` nunca sai fora da janela da
+ * noite) — a prioridade de saudade/fim de semana/streak não muda entre
+ * janelas, e por isso uma sexta-feira já produz tom de fim de semana nas
+ * duas sem precisar de lógica extra.
  */
 export function selecionarMensagem(contexto: {
   streak: number;
   diasInativo: number;
   diaSemana: number;
-}, recentes: string[], aleatorio = Math.random): MensagemNotif {
+}, recentes: string[], aleatorio = Math.random, janela: JanelaLembrete = 'noite'): MensagemNotif {
   const semRepetir = (lista: MensagemNotif[]) => lista.filter((m) => !recentes.includes(m.id));
 
   let categoriaPrioritaria: CategoriaMensagem | null = null;
@@ -102,7 +129,8 @@ export function selecionarMensagem(contexto: {
     candidatas = semRepetir(MENSAGENS.filter((m) => m.categoria === categoriaPrioritaria));
   }
   if (candidatas.length === 0) {
-    candidatas = semRepetir(MENSAGENS.filter((m) => CATEGORIA_GERAL.includes(m.categoria)));
+    const pool = CATEGORIA_GERAL[janela];
+    candidatas = semRepetir(MENSAGENS.filter((m) => pool.includes(m.categoria)));
   }
   if (candidatas.length === 0) {
     // Tudo foi usado recentemente (catálogo pequeno demais ou muita sorte

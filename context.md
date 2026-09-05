@@ -2495,3 +2495,74 @@ Verificação remota: OPTIONS retornou 204 com cabeçalhos CORS; POST sem
 Authorization continuou recusado com 401 pelo gateway. A transcrição real e
 a gravação em aparelho ainda precisam de validação; a correção nativa requer
 novo APK. Nenhuma build EAS foi disparada.
+
+## Sessão de 05/09/2026 — janelas de horário nos lembretes (almoço + noite)
+
+O autor pediu uma segunda janela de lembrete de hábito, no horário de
+almoço (11h-13h, pensando no funcionário CLT), acreditando que já existia
+uma janela "da noite" dedicada. Duas explorações de código confirmaram que
+não é bem assim: **hoje existe um único horário de lembrete por dia**
+(19h/20h30/21h30, escolhido em Perfil) — "fim de semana" já influencia o
+TOM da mensagem (categoria `fim_de_semana`), mas nunca gerou um envio a
+mais, e "noite" (`noturno_humor`) sempre foi só um rótulo de categoria,
+nunca filtrado por horário de verdade. Os dois documentos pedidos:
+`docs/notificacoes/2026-09-05-estado-atual.md` (o que já existe, em
+detalhe) e `docs/superpowers/specs/2026-09-05-janelas-notificacao-design.md`
+(o desenho aprovado da solução).
+
+**Decisões do autor**: almoço dispara só em dias úteis (seg-sex, fixo às
+12h, não configurável — mesmo espírito dos lembretes de conta); sem
+terceiro envio dedicado a fim de semana (o tom de fim de semana passa a
+valer pra qualquer uma das duas janelas que cair em sexta/sábado/domingo,
+sem lógica nova); categoria `almoco` nova no catálogo com **9 mensagens**
+(uma a mais que as outras, pedido explícito), tom descontraído/brincalhão.
+
+**Implementado**:
+- `lib/notification-catalog.ts`: categoria `almoco` (9 mensagens, 57 no
+  catálogo total), tipo `JanelaLembrete`, `selecionarMensagem` ganhou
+  parâmetro `janela` que só decide o pool geral de fallback (prioridade
+  saudade/fim-de-semana/streak continua idêntica e compartilhada).
+- `supabase/functions/_shared/push-habit.ts`: `ehDiaUtil`,
+  `chegouHorarioAlmoco` (reaproveita `chegouHorario` com 12h/0min fixos);
+  `chaveColapsoEntrega` ganhou `janela` no colapso — sem isso, almoço e
+  noite no mesmo dia colapsariam uma notificação por cima da outra no
+  Android/iOS.
+- `supabase/functions/enviar-lembretes-habito/index.ts`: itera as 2
+  janelas por token (`janelasVencidas`), cada uma com seu próprio
+  upsert/mensagem.
+- Schema: `push_tokens.almoco_ativo` e `push_habit_deliveries.janela`
+  (migration `20260905140000_janelas_notificacao.sql`, espelhada como
+  `alter table` ao FINAL do baseline em `schema.sql` — não embutida na
+  lista de colunas do `create table`, seguindo o padrão já usado no
+  resto do arquivo). Constraint única virou
+  `unique(expo_push_token, data_local, janela)`.
+  `reivindicar_entregas_push_habito` não precisou mudar (`returning
+  d.*` já propaga a coluna nova sozinho).
+- Cliente: `NotifPrefs.almocoAtivo` (default true), toggle novo em Perfil
+  ("Lembrete na hora do almoço"), `planejarLembretesHabito`/
+  `scheduleDailyHabitReminder` agendam as duas janelas (fallback local
+  pula sábado/domingo pra almoço), `sincronizarInterno` sobe
+  `almoco_ativo` pro `push_tokens`.
+
+**Achado durante a implementação, não previsto no plano**: o guarda de
+schema (`corpus-schema-guardas.ts`) comparava o segmento inteiro de
+`push_tokens`→`voice_operations` contra UM arquivo de migration só. Minha
+primeira tentativa embutiu as colunas novas dentro do `create table`
+(errado — quebrou o guarda E destoava do padrão real do arquivo, que
+sempre acrescenta `alter table ... add column` depois, nunca embutido).
+Corrigido nos dois lados: revertido pra `alter table` solto no fim do
+bloco, e o guarda ganhou um terceiro segmento
+(`inicioJanelas`→`inicioVoz`) comparado contra a migration nova. Um bug
+à parte no próprio guarda novo: a âncora de busca usava um `\n` cru no
+meio da string — `schema.sql` está em CRLF, então nunca batia; trocado
+por uma âncora de uma linha só.
+
+`npx tsc --noEmit` limpo; `npm run test:parser` 100% (327/327 design
+system, 35/35 notificações — incluindo os casos novos de almoço pulando
+fim de semana, as duas janelas não colidindo de id/chave de colapso, e
+sexta produzindo tom de fim de semana nas duas —, 24/24 guardas de
+schema); `deno check` limpo na Edge Function.
+
+**Pendente**: aplicar a migration em produção e publicar a Edge Function
+atualizada (precisa de token/acesso explícito do autor, mesmo padrão de
+sempre — não feito nesta sessão). Nenhuma build EAS disparada.

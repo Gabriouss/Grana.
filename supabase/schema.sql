@@ -3594,6 +3594,24 @@ $$;
 
 revoke all on function public.reivindicar_entregas_push_habito(integer) from public, anon, authenticated;
 grant execute on function public.reivindicar_entregas_push_habito(integer) to service_role;
+
+-- Segunda janela de lembrete (almoço, fixa às 12h, dias úteis), além da que
+-- já existia (agora chamada "noite" internamente). Sem coluna de horário
+-- pro almoço: é fixo em código, mesmo espírito dos lembretes de conta.
+-- Ver docs/superpowers/specs/2026-09-05-janelas-notificacao-design.md.
+alter table public.push_tokens
+  add column if not exists almoco_ativo boolean not null default true;
+
+alter table public.push_habit_deliveries
+  add column if not exists janela text not null default 'noite'
+    check (janela in ('noite', 'almoco'));
+
+alter table public.push_habit_deliveries
+  drop constraint if exists push_habit_deliveries_expo_push_token_data_local_key;
+alter table public.push_habit_deliveries
+  add constraint push_habit_deliveries_token_dia_janela_key
+    unique (expo_push_token, data_local, janela);
+
 -- Operacoes financeiras criadas pela voz precisam sobreviver a reinicios e
 -- retentativas do Headless JS. O request_id gerado no Android e a chave: uma
 -- resposta de rede perdida nunca pode transformar a mesma fala em duas compras.

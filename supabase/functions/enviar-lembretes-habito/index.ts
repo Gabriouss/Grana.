@@ -1,11 +1,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
-import { selecionarMensagem } from '../../../lib/notification-catalog.ts';
+import { selecionarMensagem, type JanelaLembrete } from '../../../lib/notification-catalog.ts';
 import {
   atrasoDaTentativa,
   chaveColapsoEntrega,
   chegouHorario,
+  chegouHorarioAlmoco,
   contextoDasDatas,
+  ehDiaUtil,
   momentoNaZona,
+  type MomentoLocal,
 } from '../_shared/push-habit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -27,6 +30,7 @@ type PushToken = {
   timezone: string;
   horario_hora: number;
   horario_minuto: number;
+  almoco_ativo: boolean;
   ativo: boolean;
   mensagens_recentes: string[];
 };
@@ -35,6 +39,7 @@ type Entrega = {
   id: string;
   expo_push_token: string;
   data_local: string;
+  janela: JanelaLembrete;
   mensagem_id: string;
   titulo: string;
   corpo: string;
@@ -92,7 +97,7 @@ async function todosOsTokensAtivos(): Promise<PushToken[]> {
   for (let inicio = 0; ; inicio += 1000) {
     const { data, error } = await supabase
       .from('push_tokens')
-      .select('expo_push_token,user_id,plataforma,timezone,horario_hora,horario_minuto,ativo,mensagens_recentes')
+      .select('expo_push_token,user_id,plataforma,timezone,horario_hora,horario_minuto,almoco_ativo,ativo,mensagens_recentes')
       .eq('ativo', true)
       .range(inicio, inicio + 999);
     if (error) throw error;
@@ -112,26 +117,39 @@ async function contextosDosUsuarios(userIds: string[]): Promise<Map<string, stri
   ]));
 }
 
+/** Quais janelas já venceram pra este token, nesta passada do cron — nunca
+    mais de uma por token aqui (`noite` e `almoco` são checadas cada uma
+    com seu próprio gate), mas um token pode aparecer 0, 1 ou 2 vezes na
+    lista combinada quando as duas vencem no mesmo ciclo de 5 min. */
+function janelasVencidas(token: PushToken, momento: MomentoLocal): JanelaLembrete[] {
+  const janelas: JanelaLembrete[] = [];
+  if (chegouHorario(momento, token.horario_hora, token.horario_minuto)) janelas.push('noite');
+  if (token.almoco_ativo && ehDiaUtil(momento.diaSemana) && chegouHorarioAlmoco(momento)) janelas.push('almoco');
+  return janelas;
+}
+
 async function criarEntregasDoDia(tokens: PushToken[], agora: Date): Promise<number> {
   const vencidos = tokens.flatMap((token) => {
     const momento = momentoNaZona(agora, token.timezone);
-    return momento && chegouHorario(momento, token.horario_hora, token.horario_minuto)
-      ? [{ token, momento }]
-      : [];
+    if (!momento) return [];
+    return janelasVencidas(token, momento).map((janela) => ({ token, momento, janela }));
   });
   if (!vencidos.length) return 0;
 
   const userIds = [...new Set(vencidos.map(({ token }) => token.user_id))];
   const contextos = await contextosDosUsuarios(userIds);
-  const linhas = vencidos.map(({ token, momento }) => {
+  const linhas = vencidos.map(({ token, momento, janela }) => {
     const contexto = contextoDasDatas(contextos.get(token.user_id) ?? [], momento.data);
     const mensagem = selecionarMensagem(
       { ...contexto, diaSemana: momento.diaSemana },
-      token.mensagens_recentes ?? []
+      token.mensagens_recentes ?? [],
+      Math.random,
+      janela
     );
     return {
       expo_push_token: token.expo_push_token,
       data_local: momento.data,
+      janela,
       mensagem_id: mensagem.id,
       titulo: mensagem.titulo,
       corpo: mensagem.texto.replace('{streak}', String(contexto.streak)),
@@ -139,7 +157,7 @@ async function criarEntregasDoDia(tokens: PushToken[], agora: Date): Promise<num
   });
   const { error } = await supabase
     .from('push_habit_deliveries')
-    .upsert(linhas, { onConflict: 'expo_push_token,data_local', ignoreDuplicates: true });
+    .upsert(linhas, { onConflict: 'expo_push_token,data_local,janela', ignoreDuplicates: true });
   if (error) throw error;
   return linhas.length;
 }
@@ -166,7 +184,7 @@ async function processarRecibos(): Promise<number> {
   const limite = new Date(Date.now() - 15 * 60_000).toISOString();
   const { data, error } = await supabase
     .from('push_habit_deliveries')
-    .select('id,expo_push_token,data_local,mensagem_id,titulo,corpo,tentativas,expo_ticket_id,enviado_em')
+    .select('id,expo_push_token,data_local,janela,mensagem_id,titulo,corpo,tentativas,expo_ticket_id,enviado_em')
     .eq('status', 'sent')
     .is('recibo_consultado_em', null)
     .lte('enviado_em', limite)
@@ -234,7 +252,7 @@ async function enviarPendentes(tokens: PushToken[], agora: Date): Promise<number
     try {
       resposta = await fetchExpo(EXPO_SEND_URL, lote.map((entrega) => {
         const token = tokensPorId.get(entrega.expo_push_token)!;
-        const chave = chaveColapsoEntrega(entrega.data_local);
+        const chave = chaveColapsoEntrega(entrega.data_local, entrega.janela);
         return {
           to: entrega.expo_push_token,
           title: entrega.titulo,

@@ -10,7 +10,9 @@ import {
   atrasoDaTentativa,
   chaveColapsoEntrega,
   chegouHorario,
+  chegouHorarioAlmoco,
   contextoDasDatas,
+  ehDiaUtil,
   momentoNaZona,
 } from '../supabase/functions/_shared/push-habit';
 
@@ -66,8 +68,9 @@ checar('reconhece o id legado', ehIdLembreteHabito(ID_HABITO_LEGADO));
 checar('reconhece ids datados', ehIdLembreteHabito(`${PREFIXO_ID_HABITO}2026-09-04`));
 checar('não captura lembretes de conta', !ehIdLembreteHabito('conta-123-3d'));
 
-checar('mantém as 48 copies aprovadas', MENSAGENS.length === 48);
+checar('mantém as 57 copies aprovadas (48 + 9 de almoço)', MENSAGENS.length === 57);
 checar('cada copy tem id único', new Set(MENSAGENS.map((item) => item.id)).size === MENSAGENS.length);
+checar('categoria almoco tem as 9 mensagens pedidas', MENSAGENS.filter((m) => m.categoria === 'almoco').length === 9);
 
 const mensagemSaudade = selecionarMensagem(
   { streak: 0, diasInativo: 3, diaSemana: 2 },
@@ -86,9 +89,52 @@ const contexto = contextoDasDatas(['2026-09-03', '2026-09-02', '2026-08-31'], '2
 checar('calcula streak até ontem quando hoje ainda não teve lançamento', contexto.streak === 2);
 checar('calcula dias de inatividade', contexto.diasInativo === 1);
 checar('retentativa tem teto de seis horas', atrasoDaTentativa(20) === 6 * 60 * 60_000);
-const chaveColapso = chaveColapsoEntrega('2026-09-04');
-checar('retentativas do dia usam uma chave de colapso determinística', chaveColapso === 'grana-habito-2026-09-04');
-checar('a chave de colapso cabe no limite dos provedores', new TextEncoder().encode(chaveColapso).length <= 64);
+const chaveColapsoNoite = chaveColapsoEntrega('2026-09-04', 'noite');
+const chaveColapsoAlmoco = chaveColapsoEntrega('2026-09-04', 'almoco');
+checar('retentativas do dia usam uma chave de colapso determinística', chaveColapsoNoite === 'grana-habito-2026-09-04-noite');
+checar('a chave de colapso cabe no limite dos provedores', new TextEncoder().encode(chaveColapsoNoite).length <= 64);
+checar('almoço e noite têm chave de colapso distinta no mesmo dia', chaveColapsoNoite !== chaveColapsoAlmoco);
+
+// ---- janela de almoço (docs/superpowers/specs/2026-09-05-janelas-notificacao-design.md) ----
+
+checar('ehDiaUtil aceita segunda a sexta', [1, 2, 3, 4, 5].every((d) => ehDiaUtil(d)));
+checar('ehDiaUtil recusa sábado e domingo', !ehDiaUtil(0) && !ehDiaUtil(6));
+checar('chegouHorarioAlmoco vence ao meio-dia', chegouHorarioAlmoco({ ...momentoBrasil!, minutosDoDia: 12 * 60 }));
+checar('chegouHorarioAlmoco ainda não venceu às 11h59', !chegouHorarioAlmoco({ ...momentoBrasil!, minutosDoDia: 11 * 60 + 59 }));
+
+// 05/09/2026 é sábado, 06/09 domingo, 07/09 segunda.
+const almocoDesdeSabado = planejarLembretesHabito({
+  agora: new Date(2026, 8, 5, 8, 0),
+  hour: 12,
+  minute: 0,
+  jaLancouHoje: false,
+  quantidade: 3,
+  janela: 'almoco',
+});
+checar('almoço pula sábado e domingo', almocoDesdeSabado.every((item) => item.quando.getDay() !== 0 && item.quando.getDay() !== 6));
+checar('almoço começa na próxima segunda', almocoDesdeSabado[0].id === 'habito-almoco-2026-09-07');
+
+const noiteMesmoDia = planejarLembretesHabito({ agora: new Date(2026, 8, 7, 8, 0), hour: 20, minute: 30, jaLancouHoje: false, quantidade: 1, janela: 'noite' });
+const almocoMesmoDia = planejarLembretesHabito({ agora: new Date(2026, 8, 7, 8, 0), hour: 12, minute: 0, jaLancouHoje: false, quantidade: 1, janela: 'almoco' });
+checar('almoço e noite não colidem de id no mesmo dia', noiteMesmoDia[0].id !== almocoMesmoDia[0].id);
+
+// Contexto neutro (terça, sem streak nem inatividade) força o pool geral —
+// é aí que o pool por janela precisa se manter separado.
+const contextoNeutro = { streak: 0, diasInativo: 0, diaSemana: 2 };
+let poolAlmocoNuncaSaiNoturno = true;
+let poolNoiteNuncaSaiAlmoco = true;
+for (let i = 0; i < 30; i++) {
+  const sorteio = i / 30;
+  if (selecionarMensagem(contextoNeutro, [], () => sorteio, 'almoco').categoria === 'noturno_humor') poolAlmocoNuncaSaiNoturno = false;
+  if (selecionarMensagem(contextoNeutro, [], () => sorteio, 'noite').categoria === 'almoco') poolNoiteNuncaSaiAlmoco = false;
+}
+checar('pool geral da janela de almoço nunca sorteia noturno_humor', poolAlmocoNuncaSaiNoturno);
+checar('pool geral da janela de noite nunca sorteia almoco', poolNoiteNuncaSaiAlmoco);
+
+const sextaAlmoco = selecionarMensagem({ streak: 0, diasInativo: 0, diaSemana: 5 }, [], () => 0, 'almoco');
+const sextaNoite = selecionarMensagem({ streak: 0, diasInativo: 0, diaSemana: 5 }, [], () => 0, 'noite');
+checar('sexta produz tom de fim de semana na janela de almoço', sextaAlmoco.categoria === 'fim_de_semana');
+checar('sexta produz tom de fim de semana na janela de noite', sextaNoite.categoria === 'fim_de_semana');
 
 console.log(`${passou}/${passou + falhou} notificações passaram`);
 if (falhou > 0) process.exit(1);

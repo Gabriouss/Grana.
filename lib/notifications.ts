@@ -286,13 +286,21 @@ export type NotifPrefs = {
   lembreteDiarioAtivo: boolean;
   horario: { hour: number; minute: number };
   lembretesContasAtivo: boolean;
+  /** Janela extra às 12h, dias úteis — horário fixo, não guardado aqui
+      (ver docs/superpowers/specs/2026-09-05-janelas-notificacao-design.md). */
+  almocoAtivo: boolean;
 };
 
 const PREFS_PADRAO: NotifPrefs = {
   lembreteDiarioAtivo: true,
   horario: { hour: 20, minute: 30 },
   lembretesContasAtivo: true,
+  almocoAtivo: true,
 };
+
+/** Horário fixo da janela de almoço — não configurável, mesmo espírito dos
+    lembretes de conta (fixos às 9h, sem escolha do usuário). */
+const HORARIO_ALMOCO = { hour: 12, minute: 0 } as const;
 
 const CHAVE_PREFS = '@grana_notif_prefs';
 
@@ -356,6 +364,9 @@ export async function scheduleDailyHabitReminder(opts: {
   jaLancouHoje: boolean;
   streak: number;
   diasInativo: number;
+  /** Default `true` — quem nunca tocou no toggle novo ganha a janela de
+      almoço junto, mesmo comportamento "ligado por padrão" do restante. */
+  almocoAtivo?: boolean;
 }): Promise<void> {
   return enfileirarHabito(async () => {
     const Notifications = getNotifications();
@@ -375,17 +386,23 @@ export async function scheduleDailyHabitReminder(opts: {
       await cancelarHabitoInterno(Notifications, false);
     }
 
-    const planejados = planejarLembretesHabito({
-      agora: new Date(),
-      hour: opts.hour,
-      minute: opts.minute,
-      jaLancouHoje: opts.jaLancouHoje,
-    });
+    const agora = new Date();
+    const planejados = [
+      ...planejarLembretesHabito({
+        agora, hour: opts.hour, minute: opts.minute, jaLancouHoje: opts.jaLancouHoje, janela: 'noite',
+      }).map((p) => ({ ...p, janela: 'noite' as const })),
+      // `almocoAtivo` por padrão true — só desliga se explicitamente false.
+      ...(opts.almocoAtivo === false ? [] : planejarLembretesHabito({
+        agora, hour: HORARIO_ALMOCO.hour, minute: HORARIO_ALMOCO.minute, jaLancouHoje: opts.jaLancouHoje, janela: 'almoco',
+      }).map((p) => ({ ...p, janela: 'almoco' as const }))),
+    ];
     const idsDesejados = new Set(planejados.map((item) => item.id));
     const existentes = await idsHabitoAgendados(Notifications);
 
     // Remove o id antigo e também o lembrete de hoje quando o lançamento do
     // dia já foi feito; notificações de contas/faturas ficam intocadas.
+    // A mesma limpeza cuida de cancelar a janela de almoço quando o toggle
+    // é desligado: os ids dela deixam de aparecer em `idsDesejados`.
     await Promise.all(
       existentes
         .filter((id) => !idsDesejados.has(id))
@@ -400,7 +417,7 @@ export async function scheduleDailyHabitReminder(opts: {
         streak: opts.streak,
         diasInativo: opts.diasInativo + planejado.diasDesdeHoje,
         diaSemana: planejado.quando.getDay(),
-      });
+      }, planejado.janela);
 
       try {
         await Notifications.scheduleNotificationAsync({
@@ -411,6 +428,7 @@ export async function scheduleDailyHabitReminder(opts: {
             data: {
               tipo: 'habito-diario',
               mensagemId: mensagem.id,
+              janela: planejado.janela,
             },
           },
           trigger: {

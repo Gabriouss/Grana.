@@ -22,6 +22,8 @@ const MIGRATION_PUSH = path.join(__dirname, '..', 'supabase', 'migrations', '202
 const migrationPush = readFileSync(MIGRATION_PUSH, 'utf8');
 const MIGRATION_VOZ = path.join(__dirname, '..', 'supabase', 'migrations', '20260905004109_voice_operations.sql');
 const migrationVoz = readFileSync(MIGRATION_VOZ, 'utf8');
+const MIGRATION_JANELAS = path.join(__dirname, '..', 'supabase', 'migrations', '20260905140000_janelas_notificacao.sql');
+const migrationJanelas = readFileSync(MIGRATION_JANELAS, 'utf8');
 
 let total = 0;
 let falhas = 0;
@@ -152,11 +154,20 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
     .replace(/\s+/g, ' ')
     .trim();
   const inicioPush = sql.indexOf('create table if not exists public.push_tokens');
+  // Âncora numa única linha, de propósito: `schema.sql` está com CRLF, e um
+  // separador `\n` cru no meio de uma string de busca nunca bate ali.
+  const inicioJanelasMarcador = sql.indexOf('add column if not exists almoco_ativo');
+  const inicioJanelas = inicioJanelasMarcador >= 0 ? sql.lastIndexOf('alter table public.push_tokens', inicioJanelasMarcador) : -1;
   const inicioVoz = sql.indexOf('create table if not exists public.voice_operations');
   checar(
     'a migration do push permanece idêntica ao baseline do schema',
-    inicioPush >= 0 && inicioVoz > inicioPush
-      && normalizarSql(sql.slice(inicioPush, inicioVoz)) === normalizarSql(migrationPush)
+    inicioPush >= 0 && inicioJanelas > inicioPush
+      && normalizarSql(sql.slice(inicioPush, inicioJanelas)) === normalizarSql(migrationPush)
+  );
+  checar(
+    'a migration das janelas de notificação permanece idêntica ao baseline do schema',
+    inicioJanelas >= 0 && inicioVoz > inicioJanelas
+      && normalizarSql(sql.slice(inicioJanelas, inicioVoz)) === normalizarSql(migrationJanelas)
   );
   checar(
     'a migration de voz permanece idêntica ao baseline do schema',

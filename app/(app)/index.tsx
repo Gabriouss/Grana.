@@ -311,7 +311,7 @@ export default function InicioScreen() {
         const diasInativo = ultimaData
           ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
           : 99;
-        scheduleDailyHabitReminder({ ...prefs.horario, jaLancouHoje, streak, diasInativo }).catch(() => {});
+        scheduleDailyHabitReminder({ ...prefs.horario, jaLancouHoje, streak, diasInativo, almocoAtivo: prefs.almocoAtivo }).catch(() => {});
       });
 
       try {

@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   selecionarMensagem,
+  type JanelaLembrete,
   type MensagemNotif,
 } from './notification-catalog';
 
 export { MENSAGENS, selecionarMensagem } from './notification-catalog';
-export type { CategoriaMensagem, MensagemNotif } from './notification-catalog';
+export type { CategoriaMensagem, JanelaLembrete, MensagemNotif } from './notification-catalog';
 
 const CHAVE_RECENTES = '@grana_recent_notifs';
 export const MAX_MENSAGENS_RECENTES = 10;
@@ -26,14 +27,16 @@ async function registrarRecente(id: string, recentes: string[]): Promise<void> {
   await AsyncStorage.setItem(CHAVE_RECENTES, JSON.stringify(atualizada));
 }
 
-/** Seleciona a copy do contexto e persiste o histórico do fallback local. */
+/** Seleciona a copy do contexto e persiste o histórico do fallback local.
+    `janela` (default `'noite'`) decide só o pool geral de fallback — ver
+    `selecionarMensagem` em `./notification-catalog`. */
 export async function obterProximaMensagem(contexto: {
   streak: number;
   diasInativo: number;
   diaSemana: number;
-}): Promise<MensagemNotif> {
+}, janela: JanelaLembrete = 'noite'): Promise<MensagemNotif> {
   const recentes = await obterRecentes();
-  const escolhida = selecionarMensagem(contexto, recentes);
+  const escolhida = selecionarMensagem(contexto, recentes, Math.random, janela);
   await registrarRecente(escolhida.id, recentes);
   return escolhida;
 }

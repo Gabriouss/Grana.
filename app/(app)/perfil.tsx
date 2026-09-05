@@ -352,7 +352,7 @@ export default function PerfilScreen() {
     setNotifPrefs(novasPrefs);
     await salvarNotifPrefs(novasPrefs);
 
-    if ('lembreteDiarioAtivo' in mudanca || 'horario' in mudanca) {
+    if ('lembreteDiarioAtivo' in mudanca || 'horario' in mudanca || 'almocoAtivo' in mudanca) {
       try {
         const resultado = session?.user.id
           ? await sincronizarPushHabito(session.user.id, novasPrefs)
@@ -365,7 +365,7 @@ export default function PerfilScreen() {
           const diasInativo = ultimaData
             ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
             : 99;
-          await scheduleDailyHabitReminder({ ...novasPrefs.horario, jaLancouHoje, streak, diasInativo });
+          await scheduleDailyHabitReminder({ ...novasPrefs.horario, jaLancouHoje, streak, diasInativo, almocoAtivo: novasPrefs.almocoAtivo });
         }
       } catch {
         Alert.alert(
@@ -734,6 +734,14 @@ export default function PerfilScreen() {
                     alterarNotifPrefs({ horario: { hour, minute } });
                   }}
                 />
+                <View style={[styles.rowInterna, { marginTop: spacing.md }]}>
+                  <Text style={styles.rowKey}>Lembrete na hora do almoço (dias úteis, 12h)</Text>
+                  <ToggleSwitch
+                    value={notifPrefs?.almocoAtivo ?? true}
+                    onToggle={() => alterarNotifPrefs({ almocoAtivo: !notifPrefs?.almocoAtivo })}
+                    label="Lembrete na hora do almoço"
+                  />
+                </View>
               </View>
             )}
           </View>

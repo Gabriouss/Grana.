@@ -36,6 +36,21 @@ export function chegouHorario(momento: MomentoLocal, hora: number, minuto: numbe
   return momento.minutosDoDia >= hora * 60 + minuto;
 }
 
+/** Segunda a sexta, no fuso já resolvido de `MomentoLocal.diaSemana`
+    (0=domingo...6=sábado). Usado pela janela de almoço, que não faz
+    sentido em dia sem expediente. */
+export function ehDiaUtil(diaSemana: number): boolean {
+  return diaSemana >= 1 && diaSemana <= 5;
+}
+
+/** Horário fixo da janela de almoço — não configurável, mesmo espírito
+    dos lembretes de conta (fixos às 9h). Reaproveita `chegouHorario`
+    com o mesmo padrão "sem teto superior" de sempre: o outbox
+    (`unique(token, dia, janela)`) é quem impede reenvio no mesmo dia. */
+export function chegouHorarioAlmoco(momento: MomentoLocal): boolean {
+  return chegouHorario(momento, 12, 0);
+}
+
 function numeroDoDia(data: string): number {
   const [ano, mes, dia] = data.split('-').map(Number);
   return Math.floor(Date.UTC(ano, mes - 1, dia) / 86400000);
@@ -65,8 +80,11 @@ export function atrasoDaTentativa(tentativas: number): number {
 
 /**
  * A entrega e at-least-once. Esta chave faz FCM/APNs agruparem retentativas
- * da mesma pessoa/data, em vez de exibirem lembretes iguais lado a lado.
+ * da mesma pessoa/data/janela, em vez de exibirem lembretes iguais lado a
+ * lado — inclui a janela pra almoço e noite não colapsarem uma na outra
+ * quando caem no mesmo dia (sem isso, a segunda a chegar apagaria a
+ * primeira da gaveta de notificações antes da pessoa ver).
  */
-export function chaveColapsoEntrega(dataLocal: string): string {
-  return `grana-habito-${dataLocal}`;
+export function chaveColapsoEntrega(dataLocal: string, janela: string): string {
+  return `grana-habito-${dataLocal}-${janela}`;
 }
