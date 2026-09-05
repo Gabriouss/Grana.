@@ -94,7 +94,7 @@ type ChartView = 'in' | 'out' | 'both';
 
 export default function InicioScreen() {
   const { ligado } = useFlags();
-  const { paddingConteudo } = useTabBarInset();
+  const { paddingConteudoComFab } = useTabBarInset();
   const router = useRouter();
   const { hidden, toggle } = usePrivacy();
   const reduzirMovimento = useReducedMotion();
@@ -1276,7 +1276,7 @@ export default function InicioScreen() {
 
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
+        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
       >
         {/* Seletor Mês a Mês */}

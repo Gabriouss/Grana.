@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ComponentProps, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentProps, type RefObject } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView, BlurTargetView } from 'expo-blur';
+import TabBlurTarget, { type RegisterTabBlur, type TabBlurRef } from '@/components/TabBlurTarget';
+import TabBarBlur from '@/components/TabBarBlur';
 import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
 import { theme, spacing } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -11,6 +12,7 @@ import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
 import SideNav, { type ItemNav } from '@/components/SideNav';
+import Granachat from '@/components/Granachat';
 import { useReducedMotion } from '@/lib/motion';
 
 /* expo-router não reexporta o tipo de `tabBar` publicamente (ele vive numa
@@ -18,24 +20,22 @@ import { useReducedMotion } from '@/lib/motion';
    import profundo e frágil, o tipo é extraído da própria prop do `<Tabs>`. */
 type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (props: infer P) => any ? P : never;
 
-/* Sete destinos, na ordem em que aparecem na barra. O par outline/preenchido
-   existe porque o estado ativo não pode depender só de cor: preenchimento é a
-   segunda pista, e é a que continua legível pra quem não distingue bem menta
-   de cinza-esverdeado. `assistente` fica no meio de propósito — é o índice 3
-   de 0..6, o centro exato da fileira, e é o único que não usa este mapa
-   (ganha o botão elevado, ver `BotaoGranabo`). */
+/* As SEIS rotas da barra. O par outline/preenchido existe porque o estado
+   ativo não pode depender só de cor: preenchimento é a segunda pista, e é a
+   que continua legível pra quem não distingue bem menta de cinza-esverdeado.
+   O Granachat não está aqui de propósito — ele não é rota, é uma janela
+   flutuante, e entra injetado no meio da fileira (ver `BotaoGranabo`).
+   Nomenclatura: **Granabô** é o assistente (o personagem, e o que a copy
+   mostra); **Granachat** é a janela de conversa com ele. */
 const ICONS: Record<string, { off: keyof typeof Ionicons.glyphMap; on: keyof typeof Ionicons.glyphMap }> = {
   index: { off: 'home-outline', on: 'home' },
   lancamentos: { off: 'wallet-outline', on: 'wallet' },
   credito: { off: 'card-outline', on: 'card' },
-  assistente: { off: 'sparkles-outline', on: 'sparkles' },
   contas: { off: 'receipt-outline', on: 'receipt' },
   graficos: { off: 'bar-chart-outline', on: 'bar-chart' },
   desafios: { off: 'trophy-outline', on: 'trophy' },
 };
 
-/** A rota que ganha o botão central elevado, em vez de um ícone comum. */
-const ROTA_DESTAQUE = 'assistente';
 
 /**
  * Barra flutuante "vidro líquido", 100% customizada em vez de estilizar a
@@ -48,25 +48,9 @@ const ROTA_DESTAQUE = 'assistente';
  * `alignItems:'center'`), o alinhamento deixa de depender de nenhum cálculo
  * interno de terceiros.
  */
-function FloatingTabBar({ state, descriptors, navigation, blurTarget }: TabBarProps & { blurTarget: RefObject<View | null> | null }) {
+function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto, onAlternarChat }:
+  TabBarProps & { blurTarget: RefObject<View | null> | null; chatAberto: boolean; onAlternarChat: () => void }) {
   const { margem } = useTabBarInset();
-
-  /* ── Fix de timing do blur no Android ──────────────────────────────
-     O lado nativo do expo-blur tem uma condição de corrida: `setBlurMethod`
-     só habilita o blur (`setBlurEnabled(true)`) dentro do seu próprio corpo.
-     Se ele rodar ANTES de `setBlurTargetId` ter resolvido o target real, ele
-     configura `NONE` e nunca mais reabilita — mesmo quando o target aparece
-     no re-render seguinte. Atrasando a ativação do prop `blurMethod` em
-     ~150ms, garantimos que o ciclo mount→updateBlurTargetId→re-render já
-     completou e o target nativo existe quando `setBlurMethod` finalmente
-     roda. */
-  const [blurMethodAtivo, setBlurMethodAtivo] = useState(false);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const timer = setTimeout(() => setBlurMethodAtivo(true), 150);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <View style={[styles.floatWrap, { pointerEvents: 'box-none' }]}>
@@ -92,21 +76,7 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget }: TabBarPr
             />
           ) : (
             <>
-            <BlurView
-                intensity={100}
-                tint="dark"
-                blurReductionFactor={2}
-                style={StyleSheet.absoluteFill}
-                /* No Android, blurMethod por padrão é 'none' — só um véu
-                   semitransparente, sem desfoque de verdade. 'dimezisBlurView'
-                   liga o blur nativo real. O prop só é passado DEPOIS de
-                   150ms (ver estado `blurMethodAtivo` acima) para contornar
-                   o bug de timing no lado nativo: se `setBlurMethod` roda
-                   antes de `setBlurTargetId`, o blur é configurado como NONE
-                   e nunca mais reabilita. */
-                blurMethod={Platform.OS === 'android' && blurMethodAtivo ? 'dimezisBlurView' : undefined}
-                blurTarget={Platform.OS === 'android' ? blurTarget ?? undefined : undefined}
-              />
+              <TabBarBlur key={state.routes[state.index].key} target={blurTarget} />
               {/* O `tint="dark"` do BlurView é neutro: sozinho, a barra fica
                   cinza no meio de um app que é petróleo em todo o resto. Este
                   véu devolve a cor da marca sem fechar o desfoque. */}
@@ -120,9 +90,14 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget }: TabBarPr
             e abaixo dos ícones, na borda que pega a luz. */}
         <View style={styles.brilhoSuperior} pointerEvents="none" />
 
+        {/* O botão do Granabô é o único item da barra que NÃO é rota: ele abre
+            o Granachat por cima da tela atual. Por isso entra injetado no meio
+            da fileira (índice 3 de 0..6) em vez de sair de `state.routes` —
+            trocar de tela pra perguntar sobre o que está na tela seria perder
+            justamente o contexto que motivou a pergunta. */}
         {state.routes
           .filter((route) => ICONS[route.name])
-          .map((route) => {
+          .flatMap((route, posicao) => {
             const index = state.routes.indexOf(route);
             const { options } = descriptors[route.key];
             const focused = state.index === index;
@@ -135,19 +110,21 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget }: TabBarPr
               }
             }
 
-            if (route.name === ROTA_DESTAQUE) {
-              return <BotaoGranabo key={route.key} focused={focused} label={label} onPress={onPress} />;
-            }
+            const destaque =
+              posicao === 3 ? (
+                <BotaoGranabo key="granabo" ativo={chatAberto} onPress={onAlternarChat} />
+              ) : null;
 
-            return (
+            return [
+              destaque,
               <TabButton
                 key={route.key}
                 icones={ICONS[route.name]}
                 focused={focused}
                 label={label}
                 onPress={onPress}
-              />
-            );
+              />,
+            ];
           })}
       </View>
     </View>
@@ -231,7 +208,7 @@ function TabButton({
  * sozinha — que o marca como "o de fora da fileira" mesmo pra quem vê a barra
  * em escala de cinza.
  */
-function BotaoGranabo({ focused, label, onPress }: { focused: boolean; label: string; onPress: () => void }) {
+function BotaoGranabo({ ativo, onPress }: { ativo: boolean; onPress: () => void }) {
   const pressao = useRef(new Animated.Value(0)).current;
   const reduzirMovimento = useReducedMotion();
 
@@ -256,9 +233,12 @@ function BotaoGranabo({ focused, label, onPress }: { focused: boolean; label: st
          parecer morto por 100ms. */
       onPressIn={() => animarPara(1)}
       onPressOut={() => animarPara(0)}
-      accessibilityRole="tab"
-      accessibilityState={focused ? { selected: true } : {}}
-      accessibilityLabel={label}
+      /* `button`, não `tab`: ele não leva a uma tela, abre uma janela sobre a
+         atual. `expanded` é o que conta pro leitor de tela que a conversa
+         está aberta — e que tocar de novo fecha. */
+      accessibilityRole="button"
+      accessibilityState={{ expanded: ativo }}
+      accessibilityLabel={ativo ? 'Fechar conversa com o Granabô' : 'Abrir conversa com o Granabô'}
       style={styles.destaqueSlot}
       scaleOnPress={false}
       android_ripple={{ color: 'rgba(5,34,41,0.16)', borderless: true, radius: 37 }}
@@ -353,36 +333,29 @@ export default function AppTabsLayout() {
  * puro) a correr esse risco de novo — esta barra em JS agora é usada em
  * QUALQUER runtime não-web: build de release, dev build e Expo Go. */
 function AbasEmJavaScript() {
-  const blurTarget = useRef<View>(null);
-  /* Por que um estado só pra dizer "o alvo montou": o BlurView lê
-     `blurTarget.current` no PRÓPRIO componentDidMount e só relê quando a prop
-     muda de identidade. Como ele é descendente do BlurTargetView, o ref do
-     ancestral ainda está null nessa hora (o React preenche ref de filho antes
-     do de pai) — e ref não dispara render, então nada nunca o fazia reler. O
-     resultado era `blurTargetId: undefined`, e o lado nativo cai pra
-     `BlurMethod.NONE` em silêncio: tinta sim, desfoque nenhum. Era exatamente
-     o sintoma. Passar `undefined` primeiro e o ref depois faz a prop MUDAR de
-     verdade, que é o que dispara a releitura. */
-  const [alvoPronto, setAlvoPronto] = useState(false);
-  const { temBarraLateral } = useBreakpoint();
-
-  /* Este efeito roda depois que TODOS os refs desta árvore já foram
-     preenchidos, inclusive o do BlurTargetView logo abaixo — é o primeiro
-     momento em que `blurTarget.current` existe de verdade. O `setState` aqui
-     é o que faz a prop do BlurView mudar de `null` para o ref, e é essa
-     mudança de identidade (não o conteúdo do ref) que o `componentDidUpdate`
-     dele compara pra reler o alvo. */
-  useEffect(() => {
-    if (blurTarget.current) setAlvoPronto(true);
+  const [targets, setTargets] = useState<Record<string, TabBlurRef>>({});
+  const register = useCallback<RegisterTabBlur>((key, target) => {
+    setTargets(previous => {
+      if (previous[key]?.current === target?.current) return previous;
+      const next = { ...previous };
+      if (target) next[key] = target;
+      else delete next[key];
+      return next;
+    });
   }, []);
+  const { temBarraLateral } = useBreakpoint();
+  const [chatAberto, setChatAberto] = useState(false);
 
   /* `tabBarPosition: 'left'` faz o próprio BottomTabView virar a orientação
      do container para linha e renderizar a barra ANTES das telas — ou seja,
      a lateral entra no fluxo normal e as telas ocupam o que sobra, sem
      posicionamento absoluto nem cálculo de margem manual. */
   return (
-    <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
         <Tabs
+          screenLayout={({ children, route }) => (
+            <TabBlurTarget routeKey={route.key} register={register}>{children}</TabBlurTarget>
+          )}
           detachInactiveScreens
           tabBar={(props) =>
             temBarraLateral ? (
@@ -390,10 +363,19 @@ function AbasEmJavaScript() {
                 itens={ITENS_LATERAIS}
                 rodape={RODAPE_LATERAL}
                 rotaAtiva={props.state.routes[props.state.index]?.name ?? 'index'}
-                onNavegar={(rota) => props.navigation.navigate(rota as never)}
+                onNavegar={(rota) =>
+                  rota === 'assistente'
+                    ? setChatAberto(true)
+                    : props.navigation.navigate(rota as never)
+                }
               />
             ) : (
-              <FloatingTabBar {...props} blurTarget={alvoPronto ? blurTarget : null} />
+              <FloatingTabBar
+                {...props}
+                blurTarget={targets[props.state.routes[props.state.index].key] ?? null}
+                chatAberto={chatAberto}
+                onAlternarChat={() => setChatAberto((v) => !v)}
+              />
             )
           }
           screenOptions={{ headerShown: false, freezeOnBlur: true, lazy: true, tabBarPosition: temBarraLateral ? 'left' : 'bottom' }}
@@ -404,7 +386,6 @@ function AbasEmJavaScript() {
           <Tabs.Screen name="index" options={{ title: 'Início' }} />
           <Tabs.Screen name="lancamentos" options={{ title: 'Débito e Pix' }} />
           <Tabs.Screen name="credito" options={{ title: 'Crédito' }} />
-          <Tabs.Screen name="assistente" options={{ title: 'Granabô' }} />
           <Tabs.Screen name="contas" options={{ title: 'Boletos' }} />
           <Tabs.Screen name="graficos" options={{ title: 'Gráficos' }} />
           <Tabs.Screen name="desafios" options={{ title: 'Desafios' }} />
@@ -412,7 +393,12 @@ function AbasEmJavaScript() {
               avatar do cabeçalho da Início e pela lateral do desktop. */}
           <Tabs.Screen name="perfil" options={{ href: null }} />
         </Tabs>
-    </BlurTargetView>
+
+        {/* Irmão das abas, não filho de nenhuma tela: assim o Granachat
+            sobrevive à troca de aba por baixo dele e some junto com o layout
+            no logout, sem cada tela precisar saber que ele existe. */}
+        <Granachat visivel={chatAberto} onFechar={() => setChatAberto(false)} />
+    </View>
   );
 }
 
@@ -461,7 +447,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(5,34,41,0.55)',
   },
   tintaNativa: {
-    backgroundColor: 'rgba(5,34,41,0.45)',
+    backgroundColor: 'rgba(5,34,41,0.28)',
   },
   /* Só a aresta de cima, com 1px: é onde a luz bate num objeto de vidro
      apoiado sobre o conteúdo. Nas outras três bordas o mesmo fio leria como

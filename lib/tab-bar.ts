@@ -19,6 +19,19 @@ export const TAB_BAR_ALTURA = 68;
 /** Folga mínima entre a barra e o fundo da tela, quando não há gesture bar. */
 const MARGEM_MINIMA = 46;
 
+/* Medidas do FAB (`components/FabButton.tsx`). Moram aqui, e não lá, porque
+   quem precisa delas é o cálculo de reserva do conteúdo — o FabButton já
+   importa deste módulo, então o contrário criaria dependência circular.
+
+   Por que isto passou a existir: o FAB flutua ACIMA da barra de abas, mas a
+   reserva de conteúdo (`paddingConteudo`) só contava a barra. O FAB começa em
+   `total + FAB_FOLGA` e sobe mais 52 — ou seja, ~48px além do que a lista
+   reservava, e o último item ficava com o valor escondido atrás do botão.
+   Aparecia em qualquer aparelho, não era questão de tela pequena: a última
+   linha da lista simplesmente não tinha como ser lida. */
+export const FAB_TAMANHO = 52;
+const FAB_FOLGA = spacing.md;
+
 export function useTabBarInset() {
   const insets = useSafeAreaInsets();
   const { temBarraLateral } = useBreakpoint();
@@ -29,7 +42,12 @@ export function useTabBarInset() {
      telas. Como as oito telas já leem daqui, zerar neste ponto resolve todas
      de uma vez. Sobra só a folga de respiro, que continua fazendo sentido. */
   if (temBarraLateral) {
-    return { margem: 0, total: 0, paddingConteudo: spacing.xl };
+    return {
+      margem: 0,
+      total: 0,
+      paddingConteudo: spacing.xl,
+      paddingConteudoComFab: spacing.xl + FAB_FOLGA + FAB_TAMANHO,
+    };
   }
 
   /* `floatWrap` ancora em bottom:0, que no modo edge-to-edge é a borda física
@@ -45,5 +63,8 @@ export function useTabBarInset() {
     total: TAB_BAR_ALTURA + margem,
     /** Reserva para conteúdo rolável: a barra mais uma folga de respiro. */
     paddingConteudo: TAB_BAR_ALTURA + margem + spacing.lg,
+    /** Reserva para tela que TAMBÉM tem FAB: precisa limpar o botão inteiro,
+        senão o último item da lista fica embaixo dele. */
+    paddingConteudoComFab: TAB_BAR_ALTURA + margem + FAB_FOLGA + FAB_TAMANHO + spacing.lg,
   };
 }

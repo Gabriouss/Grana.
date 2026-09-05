@@ -35,7 +35,13 @@ export default function ScreenHeader({
               <Text style={styles.eyebrow}>{eyebrow}</Text>
               {eyebrowBadges}
             </View>
-            <Text style={styles.title} numberOfLines={1}>
+            {/* Duas linhas, não uma. Com o teto em 1, "Lançamentos" virava
+                "Lança..." assim que a direita do cabeçalho enchia — a palavra
+                era mutilada mesmo havendo altura de sobra logo abaixo. Com 2,
+                o título continua numa linha só onde cabe (nada muda em tela
+                folgada) e QUEBRA em vez de truncar onde aperta. Reticências
+                voltam a ser o último recurso, não o primeiro. */}
+            <Text style={styles.title} numberOfLines={2}>
               {title}
             </Text>
           </View>

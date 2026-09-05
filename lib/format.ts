@@ -5,6 +5,27 @@ export function formatMoney(n: number): string {
 }
 
 /**
+ * Valor em reais que NUNCA quebra linha no meio.
+ *
+ * Escrito como `+ R$ 7.050,00` com espaços comuns, o texto é livre pra quebrar
+ * em qualquer um deles — e quebra, assim que a coluna aperta: sai "+ R$" numa
+ * linha e "7.050,00" na outra, que é uma quantia partida ao meio. Num app de
+ * dinheiro isso não é só feio, é ilegível. Os espaços aqui são U+00A0
+ * (inquebrável), então o conjunto se comporta como uma palavra só: ou cabe
+ * inteiro, ou o `Text` que o mostra encolhe/elide — nunca parte.
+ *
+ * Onde a largura é apertada (coluna de resumo, card de carrossel), combinar
+ * com `numberOfLines={1}` e `adjustsFontSizeToFit` no `Text`: aí a quantia se
+ * ajusta ao espaço que existe, em vez de depender de um tamanho que só serve
+ * pra uma tela específica.
+ */
+export function formatBRL(n: number, sinal?: '+' | '−'): string {
+  const NBSP = '\u00A0';
+  const prefixo = sinal ? `${sinal}${NBSP}` : '';
+  return `${prefixo}R$${NBSP}${formatMoney(n)}`;
+}
+
+/**
  * Lê um valor em dinheiro escrito do jeito que brasileiro escreve.
  *
  * A versão anterior tomava o ÚLTIMO separador como decimal, fosse ele vírgula

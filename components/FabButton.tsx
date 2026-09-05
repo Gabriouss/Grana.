@@ -3,7 +3,7 @@ import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
-import { useTabBarInset } from '@/lib/tab-bar';
+import { FAB_TAMANHO, useTabBarInset } from '@/lib/tab-bar';
 import AppPressable from './AppPressable';
 import { useReducedMotion } from '@/lib/motion';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
@@ -216,9 +216,9 @@ const styles = StyleSheet.create({
   menuItemHover: { backgroundColor: theme.paper },
   menuText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   fabBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: FAB_TAMANHO,
+    height: FAB_TAMANHO,
+    borderRadius: FAB_TAMANHO / 2,
     backgroundColor: theme.ink,
     alignItems: 'center',
     justifyContent: 'center',

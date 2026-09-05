@@ -62,7 +62,7 @@ import Sheet from '@/components/Sheet';
 import FadeIn from '@/components/FadeIn';
 
 export default function CreditoScreen() {
-  const { paddingConteudo } = useTabBarInset();
+  const { paddingConteudoComFab } = useTabBarInset();
   const router = useRouter();
   const { novaCompra, texto } = useLocalSearchParams<{ novaCompra?: string; texto?: string }>();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
@@ -741,7 +741,7 @@ export default function CreditoScreen() {
             }}
           />
         )}
-        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
+        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1213,7 +1213,13 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
-  cardsRow: { gap: spacing.md, paddingVertical: spacing.xs },
+  /* `paddingVertical` maior que o resto das seções de propósito. O ritmo
+     padrão (`screenRhythm.gap`, 12) separa bem um rótulo de um card, mas aqui
+     o vizinho de baixo é OUTRO card, e o de cima pode estar com a borda de
+     seleção acesa — dois blocos sólidos a 12+4 de distância leem como
+     encostados, que foi o "espaçamento quase zero" relatado. Com 12 aqui, a
+     folga real abaixo do carrossel vira 24. */
+  cardsRow: { gap: spacing.md, paddingVertical: spacing.md },
   creditCard: {
     width: 240,
     borderRadius: radius.lg,

@@ -2664,3 +2664,13 @@ foi publicada, por escolha explícita do autor.
   lá o chat responde erro).
 - Confirmar o blur no aparelho.
 - Nenhuma build EAS disparada.
+
+## 05/09/2026 — Correção da árvore do blur da barra (Codex)
+
+- Diagnóstico confirmado no código: o BlurTargetView envolvia todo o Tabs, incluindo o BlurView da própria barra. O README da versão 3.1.0 do Dimezis proíbe explicitamente um alvo conter o BlurView que o amostra: https://github.com/Dimezis/BlurView/blob/version-3.1.0/README.md. Isso é um defeito concreto e uma explicação plausível para o crash relatado; sem logcat, não é confirmação da causa exclusiva.
+- Agora screenLayout envolve somente o conteúdo de cada rota com components/TabBlurTarget.tsx. A barra e o Granachat ficam fora dos alvos. O alvo é registrado após onLayout; a barra recebe apenas o da rota ativa, com identidade imutável. Não restaurar o alvo ancestral do navegador.
+- components/TabBarBlur.tsx desmonta a captura com a trava ainda não pronta, bloqueada ou AppState inativo. Aguarda dois frames após retomada/troca de alvo, cancela callbacks na saída e não reutiliza uma captura pronta para outro alvo. Método Android dimezisBlurView, intensidade 80, redução 4; véu petróleo reduzido de 45% para 28%. iOS mantém blur nativo e web mantém backdrop-filter.
+- npm run test:blur cobre os hooks reais com AppState/frames simulados: ausência/troca de alvo, bloqueio, retomada, evento active repetido e cleanup. Integrado ao CI. TypeScript passou. Testes JS NÃO validam RenderNode, Activity ou sensor biométrico.
+- Sem adb/Java disponíveis nesta sessão; nenhum APK/EAS build disparado. Validação física pendente: em Android instalado, rolar texto/gráfico atrás da barra; trocar todas as abas; bloquear/desbloquear por digital repetidamente; cancelar digital e tentar novamente; voltar de segundo plano curto e >30s; testar início frio e logout/login. Observar blur em movimento e ausência de fechamento; coletar logcat se falhar. Testar API <31 e >=31, pois a biblioteca usa caminhos nativos diferentes.
+- Preservadas as alterações que já estavam no workspace antes desta correção (Granachat, retirada da rota assistente e ajustes relacionados). Elas não foram produzidas como parte do diagnóstico do blur.
+- Validação final: tsc, test:blur, test:voz e toda a suíte test:parser passaram. O harness de voz precisou declarar __DEV__: false para acomodar os diagnósticos de desenvolvimento já adicionados anteriormente ao cliente; sem alteração no fluxo de voz.

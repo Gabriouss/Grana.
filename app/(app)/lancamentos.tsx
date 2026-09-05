@@ -58,7 +58,7 @@ import {
   setCachedTransactions,
 } from '@/lib/offline-cache';
 import { hapticDelete } from '@/lib/haptics';
-import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO } from '@/lib/format';
+import { formatBRL, addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO } from '@/lib/format';
 import { theme, radius, spacing, screenRhythm, fonts, type, lh } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
@@ -129,7 +129,7 @@ export default function LancamentosScreen() {
   const { ligado } = useFlags();
   const router = useRouter();
   const { novoLancamento } = useLocalSearchParams<{ novoLancamento?: string }>();
-  const { paddingConteudo } = useTabBarInset();
+  const { paddingConteudoComFab } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, activeWalletName } = useWallet();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
@@ -613,22 +613,31 @@ export default function LancamentosScreen() {
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Entradas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
-              <Text style={[styles.monthSummaryVal, { color: theme.up }]}>+ R$ {formatMoney(monthIn)}</Text>
+              <Text style={[styles.monthSummaryVal, { color: theme.up }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                {formatBRL(monthIn, '+')}
+              </Text>
             </PrivacyValue>
           </View>
           <View style={styles.monthSummaryDivider} />
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Saídas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
-              <Text style={[styles.monthSummaryVal, { color: theme.down }]}>− R$ {formatMoney(monthOut)}</Text>
+              <Text style={[styles.monthSummaryVal, { color: theme.down }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                {formatBRL(monthOut, '−')}
+              </Text>
             </PrivacyValue>
           </View>
           <View style={styles.monthSummaryDivider} />
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Saldo</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
-              <Text style={[styles.monthSummaryVal, { color: monthBalance >= 0 ? theme.ink : theme.down }]}>
-                {monthBalance >= 0 ? '+' : '−'} R$ {formatMoney(Math.abs(monthBalance))}
+              <Text
+                style={[styles.monthSummaryVal, { color: monthBalance >= 0 ? theme.ink : theme.down }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                {formatBRL(Math.abs(monthBalance), monthBalance >= 0 ? '+' : '−')}
               </Text>
             </PrivacyValue>
           </View>
@@ -692,7 +701,7 @@ export default function LancamentosScreen() {
         <FlatList
           data={visible}
           keyExtractor={(t) => t.id}
-          contentContainerStyle={[styles.listContent, colunaConteudo, { paddingBottom: paddingConteudo }]}
+          contentContainerStyle={[styles.listContent, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>

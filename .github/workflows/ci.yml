@@ -39,5 +39,8 @@ jobs:
       - name: Upload de voz nativo e web, erros e CORS
         run: npm run test:voz
 
+      - name: Ciclo de vida do blur da barra
+        run: npm run test:blur
+
       - name: Corpus de testes (parser, paginação, recorrência, sequência, relatório, Score, schema)
         run: npm run test:parser

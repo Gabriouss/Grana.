@@ -45,7 +45,7 @@ import { LIMITS } from '@/lib/limits';
 export default function ContasScreen() {
   const router = useRouter();
   const { novaConta, texto } = useLocalSearchParams<{ novaConta?: string; texto?: string }>();
-  const { paddingConteudo, total: tabBarTotal } = useTabBarInset();
+  const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -380,7 +380,7 @@ export default function ContasScreen() {
         <FlatList
           data={monthBills}
           keyExtractor={(b) => b.id}
-          contentContainerStyle={[styles.listContent, colunaConteudo, { paddingBottom: paddingConteudo }]}
+          contentContainerStyle={[styles.listContent, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma conta vencendo neste mês. Toque no botão "+" para registrar.</Text>}
           renderItem={({ item }) => {

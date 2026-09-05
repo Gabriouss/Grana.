@@ -149,7 +149,13 @@ onde parou, em vez de perder o histórico a cada sessão.
 
 ## Cliente
 
-Nova tela `app/(app)/assistente.tsx`: chat de verdade (campo de texto
+**Nomenclatura (fechada com o autor em 05/09/2026):** **Granabô** é o
+assistente — o personagem com quem se fala, e o nome que aparece na copy
+visível. **Granachat** é a janela de conversa com ele, ou seja, o
+recurso. Por isso o cabeçalho da janela diz "Granabô" e o arquivo se
+chama `components/Granachat.tsx`.
+
+`components/Granachat.tsx`: chat de verdade (campo de texto
 livre, lista de mensagens, scroll automático pro fim). A estrutura
 visual de bolhas de `components/ConversaGranabo.tsx` serve de referência
 de layout, mas **não as cores** — aquele componente usa a paleta

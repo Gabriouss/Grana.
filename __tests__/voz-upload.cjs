@@ -16,7 +16,7 @@ function carregar(arquivo, dependencias, globais = {}) {
   }).outputText;
   vm.runInNewContext(js, {
     exports, Blob, File, Request, Response, Uint8Array, TextEncoder,
-    AbortController, setTimeout, clearTimeout, console,
+    AbortController, setTimeout, clearTimeout, console, __DEV__: false,
     require(id) {
       if (id in dependencias) return dependencias[id];
       throw new Error(`Import não simulado: ${id}`);
