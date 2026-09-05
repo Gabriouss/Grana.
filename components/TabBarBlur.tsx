@@ -31,7 +31,7 @@ export default function TabBarBlur({ target }: { target: TabBlurRef | null }) {
     };
   }, [enabled, target, activity]);
   if (!enabled || ready?.target !== target || ready?.activity !== activity) return null;
-  return <BlurView intensity={80} tint="dark" blurReductionFactor={4}
+  return <BlurView intensity={45} tint="dark" blurReductionFactor={4}
     style={StyleSheet.absoluteFill}
     blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
     blurTarget={Platform.OS === 'android' ? target ?? undefined : undefined} />;

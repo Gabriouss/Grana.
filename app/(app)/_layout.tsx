@@ -71,7 +71,7 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
                 styles.webGlass,
                 /* `saturate` compensa a lavagem de cor que todo desfoque grande
                    provoca: sem ele o que passa por trás chega acinzentado. */
-                { backdropFilter: 'blur(24px) saturate(180%)' } as any,
+                { backdropFilter: 'blur(14px) saturate(180%)' } as any,
               ]}
             />
           ) : (
@@ -444,10 +444,10 @@ const styles = StyleSheet.create({
      inativo (inkFaint) sobre o que passa por trás, e baixo o bastante pra que
      o desfoque tenha o que mostrar. */
   webGlass: {
-    backgroundColor: 'rgba(5,34,41,0.55)',
+    backgroundColor: 'rgba(5,34,41,0.38)',
   },
   tintaNativa: {
-    backgroundColor: 'rgba(5,34,41,0.28)',
+    backgroundColor: 'rgba(5,34,41,0.18)',
   },
   /* Só a aresta de cima, com 1px: é onde a luz bate num objeto de vidro
      apoiado sobre o conteúdo. Nas outras três bordas o mesmo fio leria como

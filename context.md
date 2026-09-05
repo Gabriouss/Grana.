@@ -2674,3 +2674,7 @@ foi publicada, por escolha explícita do autor.
 - Sem adb/Java disponíveis nesta sessão; nenhum APK/EAS build disparado. Validação física pendente: em Android instalado, rolar texto/gráfico atrás da barra; trocar todas as abas; bloquear/desbloquear por digital repetidamente; cancelar digital e tentar novamente; voltar de segundo plano curto e >30s; testar início frio e logout/login. Observar blur em movimento e ausência de fechamento; coletar logcat se falhar. Testar API <31 e >=31, pois a biblioteca usa caminhos nativos diferentes.
 - Preservadas as alterações que já estavam no workspace antes desta correção (Granachat, retirada da rota assistente e ajustes relacionados). Elas não foram produzidas como parte do diagnóstico do blur.
 - Validação final: tsc, test:blur, test:voz e toda a suíte test:parser passaram. O harness de voz precisou declarar __DEV__: false para acomodar os diagnósticos de desenvolvimento já adicionados anteriormente ao cliente; sem alteração no fluxo de voz.
+
+## 05/09/2026 — Ajuste visual do vidro após feedback
+- Usuário aprovou o resultado visual e pediu menor desfoque para reconhecer melhor o fundo. Intensidade nativa 80 → 45; véu petróleo 28% → 18%. Na web, blur 24px → 14px e véu 55% → 38%. Ciclo de vida e alvos preservados. Preview pelo Metro existente.
+- Push continua pendente: rejeição anterior abrangia o commit preexistente 1e542ce; este ajuste não autoriza publicar aquele escopo.
