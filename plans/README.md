@@ -45,3 +45,19 @@ de outra máquina). 4 dos 7 itens já implementados na sessão de 03/09/2026
 — ver a seção correspondente em `context.md` pro detalhe de cada um, e o
 plano em si pro que ainda falta (painel web/moldura de navegador, bento
 grid de recursos, cards Jornada/Fechamento do mês).
+
+## Motion premium do aplicativo interno — 05/09/2026
+
+Base d37bd7f. Planejamento solicitado pelo usuário, sem implementação. Escopo distinto da landing acima.
+
+| Plano | Entrega | Status |
+|---|---|---|
+| [002](002-motion-premium-interno.md) | Direção, auditoria e critérios de aceite | PLANEJADO |
+| [003](003-base-motion-feedback.md) | Tokens, toasts e entradas | TODO |
+| [004](004-granachat-presenca.md) | Abertura/saída do Granachat | TODO |
+| [007](007-navegacao-e-botoes.md) | Troca de telas e resposta dos botões | TODO |
+| [008](008-graficos-transicoes.md) | Transições e seleção dos gráficos | TODO |
+| [005](005-folhas-edicao.md) | Folhas de edição — piloto | TODO |
+| [006](006-voz-estados.md) | Estados visuais de voz | TODO |
+
+Executar 003 → 004 → 007 → 008 → 005 → 006. Os quatro pilares explícitos são Granachat, telas, botões e gráficos; o restante estende a mesma linguagem. Cada arquivo inclui especificação, evidência, limites e validação. Não instalar dependências, mudar backend ou disparar EAS como consequência automática deste planejamento.
