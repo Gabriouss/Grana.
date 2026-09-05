@@ -36,5 +36,8 @@ jobs:
       - name: Verificação de tipos
         run: npx tsc --noEmit
 
+      - name: Upload de voz nativo e web, erros e CORS
+        run: npm run test:voz
+
       - name: Corpus de testes (parser, paginação, recorrência, sequência, relatório, Score, schema)
         run: npm run test:parser

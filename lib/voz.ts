@@ -1,4 +1,6 @@
 import { Platform } from 'react-native';
+import { fetch as expoFetch } from 'expo/fetch';
+import { File } from 'expo-file-system';
 import { supabase } from './supabase';
 
 /**
@@ -52,9 +54,8 @@ export const MAX_SEGUNDOS_GRAVACAO = 20;
 /* Rede móvel ruim não devolve erro: ela pendura. Sem este teto o botão de voz
    ficava em "Transcrevendo…" pra sempre, sem cancelar e sem explicar, e a
    tarefa do widget segurava o widget em "Lançando…" até o Android matá-la aos
-   dois minutos. 45s cobre com folga upload + Whisper + fallback pra OpenAI
-   (a própria Edge Function corta cada provedor em 30s). */
-const TIMEOUT_MS = 45_000;
+   dois minutos. São dois provedores sequenciais de até 30s cada, mais upload. */
+const TIMEOUT_MS = 75_000;
 
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -85,7 +86,6 @@ export async function transcreverAudio(
   if (!token) return { ok: false, codigo: 'sem_sessao' };
 
   const nomeArquivo = opts.nomeArquivo ?? (Platform.OS === 'web' ? 'lancamento.webm' : 'lancamento.m4a');
-  const mimeType = opts.mimeType ?? (Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a');
 
   const form = new FormData();
   if (Platform.OS === 'web') {
@@ -101,18 +101,23 @@ export async function transcreverAudio(
       return { ok: false, codigo: 'audio_ausente' };
     }
   } else {
-    /* Formato de arquivo do React Native: `{ uri, name, type }` num FormData é
-       traduzido pelo runtime em multipart de verdade, sem ler os bytes no JS —
-       que é o que permite mandar 20 segundos de áudio sem carregar tudo em
-       memória nem passar por base64. */
-    form.append('audio', { uri, name: nomeArquivo, type: mimeType } as unknown as Blob);
+    /* Expo 57 usa expo/fetch: o objeto antigo { uri, name, type } é rejeitado
+       antes de enviar a requisição. File oferece bytes() ao serializador. */
+    try {
+      const arquivo = new File(uri);
+      if (!arquivo.exists || arquivo.size === 0) return { ok: false, codigo: 'audio_ausente' };
+      if (arquivo.size > MAX_AUDIO_BYTES) return { ok: false, codigo: 'audio_grande' };
+      form.append('audio', arquivo);
+    } catch {
+      return { ok: false, codigo: 'audio_ausente' };
+    }
   }
 
   const controle = new AbortController();
   const corte = setTimeout(() => controle.abort(), TIMEOUT_MS);
   let resposta: Response;
   try {
-    resposta = await fetch(url, {
+    resposta = await expoFetch(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: form,
@@ -123,9 +128,10 @@ export async function transcreverAudio(
        perfeita e o áudio pode até ter chegado — dizer "sem conexão" seria
        mentir sobre o que aconteceu. */
     if (e?.name === 'AbortError') return { ok: false, codigo: 'demorou' };
-    /* Sem rede, DNS fora, servidor inalcançável. Não é erro de transcrição e
-       não deve virar "não entendi" — a fala pode ter sido perfeita. */
-    return { ok: false, codigo: 'sem_rede' };
+    /* Erro de serialização/leitura local não prova falta de internet. */
+    const mensagem = String(e?.message ?? '');
+    const falhaDeRede = /network|failed to fetch|fetch failed|unable to resolve host|connection|connect to|socket|dns/i.test(mensagem);
+    return { ok: false, codigo: falhaDeRede ? 'sem_rede' : 'erro_interno' };
   } finally {
     clearTimeout(corte);
   }

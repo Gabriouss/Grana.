@@ -2430,3 +2430,35 @@ em paralelo, possivelmente na outra máquina. Nenhum arquivo de voz
 `processar-lancamento-voz`) foi tocado nesta sessão além do deploy da
 função (que é infraestrutura, não código) — só investigado. Quem
 retomar precisa `git fetch` antes de editar esses arquivos.
+
+## Sessão de 05/09/2026 — envio de voz compatível com Expo 57
+
+O aviso "Sem conexão" também era causado por uma exceção LOCAL, antes de
+qualquer envio: `lib/voz.ts` passava `{ uri, name, type }` ao FormData, mas
+Expo 57 instala `expo/fetch` globalmente e seu serializador rejeita esse
+objeto com `Unsupported FormDataPart implementation`. Reproduzido com o
+serializador instalado e o cliente real, sessão/transporte simulados; zero
+envios e a mesma mensagem do print. A observação da sessão anterior sobre
+`fetch` lançar apenas por rede/DNS/TLS estava incompleta.
+
+O cliente compartilhado pelo botão e widget agora envia `File` de
+`expo-file-system`, verifica existência/tamanho e usa `expo/fetch`
+explicitamente. Falhas locais não são mais rotuladas como falta de rede.
+Timeout de 75s comporta os dois provedores sequenciais de 30s mais upload,
+abaixo do teto de 120s da tarefa do widget.
+
+A função de transcrição ganhou preflight OPTIONS e cabeçalhos CORS em
+sucesso/erro. Sonda em produção confirmou que a função JÁ existe (405 com
+`metodo_invalido` em OPTIONS), mas ainda não tinha CORS. A tentativa de
+publicar esta correção via CLI com `--use-api` retornou 401 Unauthorized;
+é preciso renovar a autenticação da CLI e publicar a função. Não houve
+alteração de secrets, banco ou permissões de JWT.
+
+`npm run test:voz` executa cliente e handler com dependências nativas/serviços
+simulados e o serializador REAL do Expo, cobrindo a regressão, bytes multipart,
+arquivo ausente/vazio/grande, sessão, rede, erro local, timeout, web e CORS.
+Entrou na CI. TypeScript, esse teste, `deno check` da função e a suíte completa
+`test:parser` passaram.
+Não houve teste de microfone em aparelho físico ou transcrição com provedores
+reais. Nenhuma build EAS foi solicitada/disparada: o Android instalado ainda
+precisa de nova versão contendo o cliente corrigido; app.json não foi alterado.

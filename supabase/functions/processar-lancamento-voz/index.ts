@@ -22,6 +22,7 @@
 //   supabase functions deploy processar-lancamento-voz
 
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
 import { provedoresPadrao, transcrever } from '../_shared/voice-transcription.ts';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') ?? '';
@@ -90,11 +91,12 @@ type CodigoErro =
 function erro(codigo: CodigoErro, status: number) {
   return new Response(JSON.stringify({ status: 'error', code: codigo }), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== 'POST') return erro('metodo_invalido', 405);
 
   try {
@@ -151,7 +153,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ status: 'ready', transcript: resultado.texto, provedor: resultado.provedor }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
     console.error('[processar-lancamento-voz] erro:', err);
