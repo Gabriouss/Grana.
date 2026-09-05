@@ -2269,3 +2269,74 @@ passagem terminou inteira sem falhas (incluindo 23/23 schema, 11/11
 voz/idempotência, 22/22 notificações, 327/327 design system e 39/39 arquivos
 em sincronia). `git diff --check` também ficou limpo. Nenhuma build, EAS,
 versão ou release foi criada nesta sessão.
+
+## Sessão de 05/09/2026 — pop-up de atualização de verdade, e widgets com defeito real de uso
+
+**Pop-up de atualização**: confirmado ponta a ponta com dados reais (`eas
+build:list`, `eas webhook:list`, probe HTTP na Edge Function) que o
+mecanismo funciona — mas só quando o build usa o perfil `preview`. O
+`eas.json` tinha um perfil `production` incompleto (sem `distribution:
+internal` nem `android.buildType: apk`) desde o commit inicial do projeto,
+nunca usado de verdade (100% das builds históricas usaram `preview`), mas
+um risco real se algum dia alguém rodasse `--profile production` por
+engano: o artefato sairia `.aab`, que o banner anuncia mas ninguém
+instala fora da Play Store. Corrigido alinhando os dois perfis; regra nova
+permanente no `AGENTS.md` (#9).
+
+A pedido explícito do autor, build disparada (`eas build --profile preview
+--platform android`, 1.4.3, mensagem já aprovada por `notas:check`) —
+consumiu 1 das 15 builds EAS do mês. Terminou `FINISHED`, artefato
+`.apk`, distribuição `internal`, exatamente o que o webhook espera.
+
+**Achado real, não cosmético: o widget de lançar por voz nunca pedia
+`RECORD_AUDIO`.** `adicionarWidget('voz')` em `perfil.tsx` só pedia
+permissão de notificação antes de liberar o widget — mas
+`GranaVoiceCaptureService.iniciar()` checa `RECORD_AUDIO` PRIMEIRO, e
+devolve o mesmo silêncio com flash de "atenção" pras duas faltas. Quem
+nunca tinha usado o botão de voz dentro do app (único lugar que pedia
+microfone, em `VoiceEntryButton.tsx`) tocava no widget, via um pisca
+rápido de "ouvindo" e nada mais — exatamente o "aperto, falo, nada
+acontece" relatado pelo autor a partir do aparelho real dele. Corrigido
+chamando `requestRecordingPermissionsAsync()` (`expo-audio`) também, antes
+da notificação. **Quem já tem o widget instalado da build 1.4.3 não
+precisa de build nova pra isso**: basta autorizar o microfone do Grana.
+direto nas configurações do aparelho (Android: Apps → Grana. →
+Permissões → Microfone) — é permissão de app, não de widget, e passa a
+valer na próxima gravação.
+
+**Widget "Central de lançamentos" redesenhado**: era uma grade 2x2 de
+caixas com ícone genérico (um "+"/"−" só, sem nenhuma seta) todas na
+MESMA cor aproximada a olho (`#7BD8C0`, não batia com nenhum token real).
+O autor comparou com o menu real do app (`components/FabButton.tsx`,
+lista vertical ícone+rótulo) e pediu pra parecer com aquilo. Reescrito
+como lista vertical de 4 linhas; ícones de Entrada/Saída redesenhados como
+círculo com seta pra cima/baixo (equivalente a `arrow-up/down-circle-
+outline` do Ionicons); cores corrigidas pra bater exato com `lib/theme.ts`
+(`theme.up` verde, `theme.down` ciano, `theme.accent2` menta pro Crédito,
+`theme.ink` pro Boleto — cada ação com sua própria cor pela primeira vez).
+`grana_compromisso_widget.xml` (Próximo compromisso) NÃO foi mexido: o
+autor citou como "ruim" na primeira mensagem mas não re-confirmou depois
+de esclarecer que os valores mascarados eram só o modo privacidade sem
+ativar (não um defeito) — fora de escopo por enquanto.
+
+Sem JDK/Android SDK nesta máquina (limitação de sempre), verificação foi:
+XML bem formado (checagem própria de balanceamento de tags), toda
+referência `@color`/`@drawable`/`@string`/`@layout` resolvendo pra algo
+que existe (script próprio, descartável), IDs batendo com
+`CentralLancamentoWidgetProvider.kt`. Compilação de verdade fica por conta
+do `.github/workflows/android.yml` no push — acompanhado até `completed`
+desta vez, pela API pública do GitHub (o repositório é público, dá pra ler
+sem token).
+
+**Notas da versão 1.4.3 incompletas**: o autor notou que o pop-up "O que
+mudou" só mostrava uma linha (a mensagem do último commit do build), quando
+na verdade a versão inclui tudo desde a 1.4.1 — os 5 widgets Android, push
+contínuo, notificações humanizadas corrigidas, e agora os fixes desta
+sessão. O campo `notes` sempre suportou múltiplas linhas
+(`verificarNovidades` já faz `.split('\n')`); só nunca tinha recebido um
+texto multi-linha de verdade. Como o texto é só um campo de dado (não faz
+parte do binário do APK), a correção não precisa de build nova — é um
+`update app_release set notes = ... where id = 1` direto, no padrão já
+documentado no comentário do `schema.sql`. Passado pela mesma guarda
+ortográfica (`validarNotaRelease`) antes de entregar ao autor rodar no
+SQL Editor do Supabase (sem expor nenhuma credencial de serviço aqui).
