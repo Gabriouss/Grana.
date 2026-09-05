@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Virou faixa larga de 1 linha (era 2x2 quadrado): o autor pediu os 4
+     botões lado a lado, na mesma barra horizontal dos botões reais de
+     "Colar comprovante"/"Escanear nota" — não cabe formato nenhum numa
+     célula quadrada de 2x2 (05/09/2026). -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="110dp"
-    android:minHeight="110dp"
-    android:targetCellWidth="2"
-    android:targetCellHeight="2"
+    android:minWidth="250dp"
+    android:minHeight="60dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/grana_central_widget"
     android:previewLayout="@layout/grana_central_widget"

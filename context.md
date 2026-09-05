@@ -2463,6 +2463,27 @@ Não houve teste de microfone em aparelho físico ou transcrição com provedore
 reais. Nenhuma build EAS foi solicitada/disparada: o Android instalado ainda
 precisa de nova versão contendo o cliente corrigido; app.json não foi alterado.
 
+## Sessão de 05/09/2026 — novo visual do widget de voz
+
+O autor comparou o widget 1x1 com os ícones reais do launcher e enviou como
+referência o ícone oficial com fundo em gradiente. O diagnóstico confirmou
+que o disco de 48dp parecia subdimensionado na célula, principalmente ao lado
+do ícone adaptativo do próprio Grana.
+
+O estado de repouso agora usa um círculo de 64dp (33% maior no diâmetro), com
+o gradiente horizontal oficial `#B0F7C9 → #22A1C1` e microfone em Instrument
+Mint (`#AEFFE3`). Como menta sobre a ponta clara da rampa tem pouco contraste,
+o vetor ganhou contorno petróleo `#09384A`; ele continua visualmente menta sem
+sumir sobre o fundo. O ícone ocupa 32dp dentro do disco, preservando a proporção
+anterior. Ouvindo/processando/atenção mantêm fundos próprios e a mesma forma
+circular, portanto o feedback de estado não foi sacrificado.
+
+Arquivos principais: `grana_voice_fundo_gradiente.xml`,
+`grana_voice_widget.xml`, `ic_grana_voice_mic.xml`, `colors.xml` e
+`GranaVoiceWidgetProvider.kt`. A exceção do gradiente foi registrada em
+`DESIGN.md`: no launcher, o widget funciona como extensão do ícone da marca.
+Nenhuma build ou alteração de versão foi feita.
+
 ### Publicação confirmada em 05/09/2026
 
 Com token temporário fornecido pelo autor, `processar-lancamento-voz` foi

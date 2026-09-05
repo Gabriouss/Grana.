@@ -220,6 +220,39 @@ Botão de ação primária dentro do fluxo do app usa raio `md` (12px); o CTA da
 
 ## Components
 
+### Widget Android — lançamento por voz
+
+Na tela inicial do Android, o atalho de voz funciona como extensão do ícone do
+aplicativo, não como um card da interface. Por isso ele é a exceção explícita
+à regra de reservar o gradiente para a marca: disco perfeitamente circular de
+64dp com a rampa horizontal oficial `#B0F7C9 → #22A1C1`.
+
+Repouso e ativo invertem o par círculo/ícone de propósito (pedido do autor,
+05/09/2026): no repouso o ícone é escuro (`#052229`) sobre a rampa clara;
+"Ouvindo" inverte para fundo petróleo sólido com ícone Instrument Mint —
+mesmo padrão que "Lançando" já usava, então os dois estados "o sistema está
+fazendo algo" ficam consistentes entre si. "Atenção" mantém fundo petróleo
+com o coral reservado só pra essa exceção — nunca reaproveitado no estado
+ativo. A forma e o diâmetro não mudam entre estados, evitando salto visual
+na grade do launcher.
+
+**Achado em aberto, não corrigido:** a rampa está com `android:angle="0"`
+(horizontal), mas o token `brand.gradient` (`lib/theme.ts`) documenta 45°
+diagonal, e o SVG-fonte confirma a diagonal. As cores extremas batem exatas;
+só o ângulo diverge do documentado.
+
+### Widget Android — central de lançamentos
+
+Barra horizontal de 4 botões-pílula (Entrada, Débito/Pix, Crédito, Boleto),
+não mais grade 2×2: o widget mudou de forma (`targetCellWidth="4"
+targetCellHeight="1"`, era 2×2) pra caber os 4 lado a lado, mesma barra
+visual de "Colar comprovante"/"Escanear nota" na Início. Cada ícone é um
+selo circular CHEIO (`#04475C`, mesma receita de `habitoIcone`) com um
+glifo simples dentro — seta pra Entrada/Saída, cartão pro Crédito, papel
+com linhas pro Boleto — colorido por ação (verde/ciano/menta/branco), nunca
+o selo em si. Ícone fica acima do rótulo dentro da pílula, não ao lado: a
+largura de ~70dp por pílula não sobra espaço pros dois lado a lado.
+
 ### Buttons
 - **Shape:** `md` (12px) em contexto de app; `pill` (999px) em CTA de persuasão.
 - **Primary (Operar):** fundo Sea Foam White, texto Deep Petroleum — a superfície invertida, mesma receita do FAB e do toast.

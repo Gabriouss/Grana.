@@ -12,11 +12,12 @@
 
   <ImageView
       android:id="@+id/grana_voice_circulo"
-      android:layout_width="48dp"
-      android:layout_height="48dp"
-      android:background="@drawable/grana_voice_fundo"
+      android:layout_width="64dp"
+      android:layout_height="64dp"
+      android:background="@drawable/grana_voice_fundo_gradiente"
       android:src="@drawable/ic_grana_voice_mic"
-      android:scaleType="center"
+      android:padding="16dp"
+      android:scaleType="fitCenter"
       android:contentDescription="@string/grana_voice_ocioso" />
 
   <TextView

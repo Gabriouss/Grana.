@@ -1,80 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lista vertical (ícone + rótulo por linha), não mais grade 2x2 de caixas —
-     pra se parecer com o menu de "Novo lançamento" que já existe dentro do
-     app (components/FabButton.tsx), como pedido depois que o widget saiu
-     "muito ruim"/"paia" na primeira versão (04-05/09/2026). -->
+<!-- Barra horizontal, 4 botões-pílula lado a lado (pedido de 05/09/2026).
+     Cada pílula agora tem um selo circular CHEIO em volta do ícone — mesma
+     receita de habitoIcone (app/index.tsx: círculo sólido + glifo simples
+     dentro, sem contorno no ícone) — antes cada ícone tentava desenhar seu
+     próprio círculo de contorno, inconsistente entre os 4 e "muito ruim"
+     por retrato do autor. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/grana_central_raiz"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/grana_widget_card"
-    android:orientation="vertical"
-    android:padding="10dp">
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="8dp">
 
-  <TextView
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginBottom="4dp"
-      android:text="@string/grana_central_titulo"
-      android:textColor="@color/grana_widget_menta"
-      android:textSize="10sp"
-      android:letterSpacing="0.04"
-      android:textAllCaps="true"
-      android:maxLines="1" />
-
-  <TextView
+  <LinearLayout
       android:id="@+id/grana_central_entrada"
-      android:layout_width="match_parent"
-      android:layout_height="0dp"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
       android:layout_weight="1"
-      android:gravity="center_vertical"
-      android:drawableStart="@drawable/ic_grana_widget_entrada"
-      android:drawablePadding="8dp"
-      android:paddingHorizontal="2dp"
-      android:text="@string/grana_central_entrada"
-      android:textColor="@color/grana_widget_texto"
-      android:textSize="13sp"
-      android:maxLines="1" />
+      android:orientation="vertical"
+      android:gravity="center"
+      android:background="@drawable/grana_widget_acao">
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@drawable/grana_widget_selo"
+        android:src="@drawable/ic_grana_widget_entrada"
+        android:padding="5dp"
+        android:scaleType="centerInside" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="@string/grana_central_entrada"
+        android:textColor="@color/grana_widget_texto"
+        android:textSize="9.5sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+  </LinearLayout>
 
-  <TextView
+  <LinearLayout
       android:id="@+id/grana_central_saida"
-      android:layout_width="match_parent"
-      android:layout_height="0dp"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
       android:layout_weight="1"
-      android:gravity="center_vertical"
-      android:drawableStart="@drawable/ic_grana_widget_saida"
-      android:drawablePadding="8dp"
-      android:paddingHorizontal="2dp"
-      android:text="@string/grana_central_saida"
-      android:textColor="@color/grana_widget_texto"
-      android:textSize="13sp"
-      android:maxLines="1" />
+      android:layout_marginStart="6dp"
+      android:orientation="vertical"
+      android:gravity="center"
+      android:background="@drawable/grana_widget_acao">
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@drawable/grana_widget_selo"
+        android:src="@drawable/ic_grana_widget_saida"
+        android:padding="5dp"
+        android:scaleType="centerInside" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="@string/grana_central_saida"
+        android:textColor="@color/grana_widget_texto"
+        android:textSize="9.5sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+  </LinearLayout>
 
-  <TextView
+  <LinearLayout
       android:id="@+id/grana_central_credito"
-      android:layout_width="match_parent"
-      android:layout_height="0dp"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
       android:layout_weight="1"
-      android:gravity="center_vertical"
-      android:drawableStart="@drawable/ic_grana_widget_credito"
-      android:drawablePadding="8dp"
-      android:paddingHorizontal="2dp"
-      android:text="@string/grana_central_credito"
-      android:textColor="@color/grana_widget_texto"
-      android:textSize="13sp"
-      android:maxLines="1" />
+      android:layout_marginStart="6dp"
+      android:orientation="vertical"
+      android:gravity="center"
+      android:background="@drawable/grana_widget_acao">
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@drawable/grana_widget_selo"
+        android:src="@drawable/ic_grana_widget_credito"
+        android:padding="5dp"
+        android:scaleType="centerInside" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="@string/grana_central_credito"
+        android:textColor="@color/grana_widget_texto"
+        android:textSize="9.5sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+  </LinearLayout>
 
-  <TextView
+  <LinearLayout
       android:id="@+id/grana_central_boleto"
-      android:layout_width="match_parent"
-      android:layout_height="0dp"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
       android:layout_weight="1"
-      android:gravity="center_vertical"
-      android:drawableStart="@drawable/ic_grana_widget_boleto"
-      android:drawablePadding="8dp"
-      android:paddingHorizontal="2dp"
-      android:text="@string/grana_central_boleto"
-      android:textColor="@color/grana_widget_texto"
-      android:textSize="13sp"
-      android:maxLines="1" />
+      android:layout_marginStart="6dp"
+      android:orientation="vertical"
+      android:gravity="center"
+      android:background="@drawable/grana_widget_acao">
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@drawable/grana_widget_selo"
+        android:src="@drawable/ic_grana_widget_boleto"
+        android:padding="5dp"
+        android:scaleType="centerInside" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="@string/grana_central_boleto"
+        android:textColor="@color/grana_widget_texto"
+        android:textSize="9.5sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+  </LinearLayout>
 </LinearLayout>

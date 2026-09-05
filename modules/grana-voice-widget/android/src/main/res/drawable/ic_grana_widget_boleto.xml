@@ -1,3 +1,5 @@
+<!-- Só o glifo (documento com linhas), sem círculo — ver comentário em
+     ic_grana_widget_entrada.xml. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="20dp" android:height="20dp" android:viewportWidth="24" android:viewportHeight="24">
-  <path android:fillColor="@android:color/transparent" android:strokeColor="@color/grana_widget_texto" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M6,3L18,3L18,21L15,19L12,21L9,19L6,21zM9,8L15,8M9,12L15,12" />
+  <path android:fillColor="@android:color/transparent" android:strokeColor="@color/grana_widget_texto" android:strokeWidth="1.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M6,4h12v16h-12zM8.5,8.5h7M8.5,11.5h7M8.5,14.5h4" />
 </vector>

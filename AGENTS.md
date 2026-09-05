@@ -32,52 +32,44 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    nesta sessão — mesmo que uma sessão anterior, nesta ou noutra máquina,
    tenha pedido builds recentemente. Cada sessão pede de novo.
 
-5. **Suba `expo.version` no `app.json` ANTES de todo build de release.**
-   Não é burocracia de versionamento: é o que faz o aviso de atualização
-   funcionar. Quem já tem o app instalado só descobre que saiu versão nova
-   pelo banner de `lib/atualizacao.ts`, e ele compara a versão da linha
-   `app_release` com a versão embutida na build instalada. A linha
-   `app_release` é escrita pela Edge Function `eas-build-webhook`, que
-   **recusa** um build cuja versão não seja maior que a já anunciada
-   (responde `older version ignored`).
+5. **Todo build de release começa por `npm run build:preparar --
+   "<mensagem>"` (ou `-- --minor "<mensagem>"` / `-- --major "<mensagem>"`
+   pra subir mais que o patch) — NUNCA suba `expo.version` nem escreva a
+   mensagem do build à mão.** Esse comando (`scripts/preparar-lancamento.ts`)
+   funde dois passos que já tiveram guarda-corpo separado e mesmo assim
+   falharam por depender de alguém lembrar de rodar os dois, na ordem
+   certa, toda vez:
 
-   Ou seja, buildar sem subir a versão não gera erro nenhum — o build sai,
-   instala e funciona — mas ninguém é avisado, e o silêncio é
-   indistinguível de "não saiu build". Foi exatamente o que aconteceu entre
-   1.1.1 e 1.2.0: várias builds seguidas com a mesma versão, todas
-   ignoradas pelo webhook.
+   - **Sobe `expo.version` sozinho** (patch por padrão). Sem isso o aviso
+     de atualização (`lib/atualizacao.ts`) não funciona: ele compara a
+     versão anunciada em `app_release` com a versão embutida na build
+     instalada, e a Edge Function `eas-build-webhook` **recusa** publicar
+     uma versão que não seja maior que a já anunciada (responde
+     `older version ignored`) — build sai, instala, funciona, e ninguém é
+     avisado, silêncio indistinguível de "não saiu build". Foi exatamente
+     o que aconteceu entre 1.1.1 e 1.2.0: várias builds seguidas com a
+     mesma versão, todas ignoradas.
+   - **Valida a mensagem ANTES de escrever qualquer coisa em disco** (mesma
+     checagem de `lib/notas-release.ts`/`__tests__/sync-parser.js` que a
+     Edge Function roda do lado dela). O texto do `--message` vai
+     literalmente para o pop-up "O que mudou no Grana.", na cara de todo
+     mundo que atualiza — a 1.4.1 foi ao ar com "apos" sem acento porque os
+     commits deste repositório são escritos sem acento por convenção, e
+     `eas build` sem `--message` preenche a mensagem do build com a do
+     commit. Nota reprovada não bumpa versão nenhuma — não vale gastar um
+     número de versão numa nota que vai sair errada mesmo.
 
-6. **A mensagem do build é COPY DE PRODUTO, não changelog técnico — e tem
-   verificador.** O texto do `--message` vai literalmente para o pop-up "O que
-   mudou no Grana.", na cara de todo mundo que atualiza. Antes de buildar:
+   O comando termina imprimindo o `eas build --profile preview --platform
+   android --message "..."` já pronto pra copiar — ele mesmo NUNCA dispara
+   o build (regra 4 continua valendo, pedido explícito sempre).
 
-   ```
-   npm run notas:check "Corrige tela branca após desbloqueio por digital"
-   ```
-
-   Reprovado, ele diz palavra por palavra o que está errado e sai com código 1.
-
-   Isto não é preciosismo: a 1.4.1 foi ao ar com "apos" sem acento no pop-up.
-   A causa não foi distração — é que os commits deste repositório são escritos
-   SEM ACENTO por convenção, e quando o `eas build` roda sem `--message` o EAS
-   preenche a mensagem do build com a mensagem do commit. Ou seja, o caminho
-   padrão publica texto interno como copy de produto. Escreva sempre
-   `--message`, com acentuação de português de verdade.
-
-   A Edge Function `eas-build-webhook` roda a mesma checagem
-   (`lib/notas-release.ts`, copiado lá dentro e vigiado por
-   `__tests__/sync-parser.js`). Se a nota for reprovada ela publica a versão
-   assim mesmo, porém SEM notas — o aviso de atualização da regra 5 nunca
-   pode depender de ortografia —, e a recusa aparece no log da função e na
-   tela de webhooks do EAS.
-
-7. **Ao iniciar o trabalho numa sessão, leia o `context.md` primeiro.** Ele é
+6. **Ao iniciar o trabalho numa sessão, leia o `context.md` primeiro.** Ele é
    a visão técnica/operacional do projeto e o estado de onde a última sessão
    parou. Ao encerrar uma sessão que mexeu em código, atualize o `context.md`
    com o que mudou e o estado atual, e suba isso no GitHub junto com o resto
    do commit — é assim que a outra máquina fica sabendo o que aconteceu aqui.
 
-8. **Antes de agir sobre qualquer pedido do autor, procure na biblioteca de
+7. **Antes de agir sobre qualquer pedido do autor, procure na biblioteca de
    skills instaladas (`.claude/skills/`, `.agents/skills/`, e as globais)
    por alguma que ajude a executar o que foi pedido.** Pedido de auditoria de
    design/UI → skills tipo `impeccable`/`apple-design`/`emil-design-eng`;
@@ -90,7 +82,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    uma pergunta de fato sobre configuração do Supabase, uma correção de bug
    pontual sem ambiguidade de abordagem).
 
-9. **`eas.json`: `preview` e `production` têm que continuar gerando o mesmo
+8. **`eas.json`: `preview` e `production` têm que continuar gerando o mesmo
    tipo de artefato (`distribution: internal`, `android.buildType: apk`).**
    O pop-up de atualização (`lib/atualizacao.ts`) só funciona se o link do
    build for um `.apk` instalável direto — um `.aab` (o padrão do Expo pra

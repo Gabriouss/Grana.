@@ -28,8 +28,14 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
 
         when (estado) {
           EstadoWidget.OUVINDO -> {
-            views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo_ativo)
-            views.setImageViewResource(R.id.grana_voice_circulo, R.drawable.ic_grana_voice_mic_escuro)
+            // Inverte o repouso de propósito: ocioso é círculo claro com
+            // ícone escuro, ativo vira círculo escuro com ícone menta —
+            // mesmo padrão que "Lançando…" (processando) já usava, então os
+            // dois estados "o sistema está fazendo algo" ficam consistentes
+            // entre si. Nunca usa a cor de atenção/coral aqui: essa é a
+            // exceção reservada só pra "não dá pra gravar".
+            views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo)
+            views.setImageViewResource(R.id.grana_voice_circulo, R.drawable.ic_grana_voice_mic_menta)
             views.setTextViewText(R.id.grana_voice_rotulo, context.getString(R.string.grana_voice_ouvindo))
             views.setContentDescription(R.id.grana_voice_circulo, context.getString(R.string.grana_voice_ouvindo))
           }
@@ -46,7 +52,7 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
             views.setContentDescription(R.id.grana_voice_circulo, context.getString(R.string.grana_voice_atencao_desc))
           }
           else -> {
-            views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo)
+            views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo_gradiente)
             views.setImageViewResource(R.id.grana_voice_circulo, R.drawable.ic_grana_voice_mic)
             views.setTextViewText(R.id.grana_voice_rotulo, context.getString(R.string.grana_voice_ocioso))
             views.setContentDescription(R.id.grana_voice_circulo, context.getString(R.string.grana_voice_ocioso))
