@@ -2367,3 +2367,66 @@ cjnuzfbvfuauvlzfoutv`) — nenhuma sessão até agora teve
 `SUPABASE_ACCESS_TOKEN`/login da CLI disponível pra fazer isso; (2) o
 `update app_release set notes = ...` das notas incompletas da 1.4.3 (ver
 acima). Nenhum dos dois precisa de `eas build`.
+
+## Sessão de 05/09/2026 (continuação) — as duas pendências resolvidas, e o WhatsApp desligado
+
+O autor trouxe um Personal Access Token do Supabase válido por 1 dia
+(`sbp_...`, nunca persistido em arquivo nem commitado). Com ele, as duas
+pendências registradas acima foram fechadas:
+
+- **`processar-lancamento-voz` publicada** (`supabase functions deploy`).
+  Confirmado por sonda HTTP: a resposta mudou de
+  `{"code":"NOT_FOUND",...}` pra `{"code":"UNAUTHORIZED_NO_AUTH_HEADER",...}`
+  — a função existe e valida JWT como esperado, sem `--no-verify-jwt`.
+- **Notas da 1.4.3 reescritas** via `POST /v1/projects/{ref}/database/query`
+  (Management API, mesmo token) com o changelog completo da versão
+  (5 widgets Android, voz na tela inicial, privacidade dos widgets,
+  notificações contínuas) em vez da única linha do commit do build.
+  Passado pela mesma guarda ortográfica (`validarNotaRelease`) antes de
+  publicar. Confirmado por leitura de volta da linha.
+
+**Achado, não coincidência: o autor suspeitou certo, só que indireto.** O
+mesmo incidente de 30/08 (contas Meta banidas) órfãou `GROQ_API_KEY`/
+`OPENAI_API_KEY` — as chaves do motor de voz. O autor já tinha regenerado
+as duas antes desta sessão; o que faltava era só a função nunca ter sido
+publicada (item acima). **Verificado, não achado**: `lib/voz.ts`,
+`VoiceEntryButton.tsx`, `widget-voz-task.ts` e a Edge Function não têm
+NENHUMA referência de código ao WhatsApp — só comentários explicando que
+é "o mesmo motor Whisper". O erro "Sem conexão" que o autor mostrou por
+print é `codigo: 'sem_rede'` em `lib/voz.ts`, que só dispara quando o
+`fetch()` em si lança exceção (sem rede/DNS/TLS) — não tem relação com
+função ausente (isso seria outro código) nem com o WhatsApp.
+
+**O WhatsApp foi desativado por tempo indeterminado, decisão do autor
+depois de um SEGUNDO banimento de contas Meta** (frustração explícita
+na sessão). Dois desligamentos independentes, cada um pela via certa:
+
+1. **Dentro do app**: `UPDATE feature_flags` (mecanismo já existente desde
+   02/09, ver `lib/feature-flags-regras.ts`) — `enabled=false` já estava
+   assim de uma queda anterior, mas escopado só a `plataformas: ["web"]`
+   e com `reativa_em` marcado pra 09/09. Ampliado pra `plataformas: null`
+   (todas) e `reativa_em: null` (sem prazo automático), `aviso_versao`
+   subiu pra forçar o aviso a reaparecer. Vale em segundos, sem build —
+   já esconde/desabilita os botões de WhatsApp em Início, Perfil e
+   Onboarding, que já liam essa flag antes desta sessão.
+2. **Na landing page** (`app/index.tsx`, commit `a7fb214`): removida a
+   dobra inteira "Granabô no WhatsApp" (título, chat `ConversaGranabo`,
+   grade de 4 recursos), o item de navegação, o CTA secundário do herói,
+   o selo "WhatsApp oficial, verificado pela Meta" (2 lugares: faixa de
+   confiança e seção de segurança) e as 2 perguntas do FAQ exclusivas do
+   Granabô. Mais 3 ajustes de copy que citavam WhatsApp como um canal
+   entre vários. `components/ConversaGranabo.tsx` foi MANTIDO no
+   repositório (só desconectado) — "tempo indeterminado" implica
+   reativar depois, não descartar.
+
+`npx tsc --noEmit` limpo e `npm run test:parser` 100% (327/327 guardas
+do design system) depois da remoção da landing. Nenhuma build EAS
+disparada — nenhuma das mudanças desta sessão precisava.
+
+**Nota de coordenação**: o autor mencionou que "o Codex" (outra
+ferramenta de IA) está avaliando o mesmo assunto de lançamento por voz
+em paralelo, possivelmente na outra máquina. Nenhum arquivo de voz
+(`lib/voz.ts`, `widget-voz-task.ts`, `VoiceEntryButton.tsx`,
+`processar-lancamento-voz`) foi tocado nesta sessão além do deploy da
+função (que é infraestrutura, não código) — só investigado. Quem
+retomar precisa `git fetch` antes de editar esses arquivos.
