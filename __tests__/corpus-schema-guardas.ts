@@ -24,6 +24,8 @@ const MIGRATION_VOZ = path.join(__dirname, '..', 'supabase', 'migrations', '2026
 const migrationVoz = readFileSync(MIGRATION_VOZ, 'utf8');
 const MIGRATION_JANELAS = path.join(__dirname, '..', 'supabase', 'migrations', '20260905140000_janelas_notificacao.sql');
 const migrationJanelas = readFileSync(MIGRATION_JANELAS, 'utf8');
+const MIGRATION_ASSISTENTE = path.join(__dirname, '..', 'supabase', 'migrations', '20260905160000_assistant_messages.sql');
+const migrationAssistente = readFileSync(MIGRATION_ASSISTENTE, 'utf8');
 
 let total = 0;
 let falhas = 0;
@@ -159,6 +161,7 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   const inicioJanelasMarcador = sql.indexOf('add column if not exists almoco_ativo');
   const inicioJanelas = inicioJanelasMarcador >= 0 ? sql.lastIndexOf('alter table public.push_tokens', inicioJanelasMarcador) : -1;
   const inicioVoz = sql.indexOf('create table if not exists public.voice_operations');
+  const inicioAssistente = sql.indexOf('create table if not exists public.assistant_messages');
   checar(
     'a migration do push permanece idêntica ao baseline do schema',
     inicioPush >= 0 && inicioJanelas > inicioPush
@@ -171,7 +174,12 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   );
   checar(
     'a migration de voz permanece idêntica ao baseline do schema',
-    inicioVoz >= 0 && normalizarSql(sql.slice(inicioVoz)) === normalizarSql(migrationVoz)
+    inicioVoz >= 0 && inicioAssistente > inicioVoz
+      && normalizarSql(sql.slice(inicioVoz, inicioAssistente)) === normalizarSql(migrationVoz)
+  );
+  checar(
+    'a migration do assistente permanece idêntica ao baseline do schema',
+    inicioAssistente >= 0 && normalizarSql(sql.slice(inicioAssistente)) === normalizarSql(migrationAssistente)
   );
 }
 

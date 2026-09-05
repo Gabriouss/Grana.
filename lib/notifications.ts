@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Constants, { AppOwnership } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type * as NotificationsModule from 'expo-notifications';
 import { obterProximaMensagem } from './notification-messages';
@@ -15,16 +16,33 @@ const CHANNEL_ID = 'lembretes-contas';
 
 const isNotificationsSupported = Platform.OS !== 'web';
 
+/* `appOwnership === 'expo'` é a única forma confiável de distinguir Expo Go
+   de uma build com dev-client — `executionEnvironment` marca os dois como
+   `storeClient`, mas só o Expo Go de verdade não tem o módulo nativo de push.
+   O campo está com `@deprecated` na tipagem em favor de `executionEnvironment`,
+   mas para ESTA distinção não existe substituto: é o único sinal que aponta
+   "Expo Go" e não "storeClient" (que também cobre dev-client, que tem o
+   módulo). Sem esta checagem, mesmo o `require('expo-notifications')' dentro
+   do try/catch abaixo não bloqueia a queda: o pacote importa em cadeia um
+   arquivo de efeito colateral (`DevicePushTokenAutoRegistration.fx.js`) que
+   registra um listener de push token no carregamento do módulo, e é esse
+   listener que lança o aviso de Expo Go sem suporte — de forma assíncrona,
+   fora do escopo síncrono do try/catch que o chama. */
+const isExpoGo = Constants.appOwnership === AppOwnership.Expo;
+
 /**
  * O carregamento continua adiado para que uma limitação do ambiente de
- * execução nunca derrube a raiz do app. No Expo Go, o SDK 57 restringe push
- * remoto no Android, mas mantém notificações locais — que são as usadas aqui.
+ * execução nunca derrube a raiz do app. No Android, o Expo Go do SDK 57 não
+ * suporta mais o módulo nativo de push nenhum — nem local, só remoto tinha
+ * aviso documentado, mas o pacote inteiro carrega um listener que derruba o
+ * app ao ser importado (ver `isExpoGo` acima). Fora do Expo Go (dev-client ou
+ * build de release) o módulo carrega normalmente, local e remoto incluídos.
  */
 let cached: typeof NotificationsModule | null = null;
 let tentouCarregar = false;
 
 export function getNotifications(): typeof NotificationsModule | null {
-  if (!isNotificationsSupported) return null;
+  if (!isNotificationsSupported || isExpoGo) return null;
   if (!tentouCarregar) {
     tentouCarregar = true;
     try {

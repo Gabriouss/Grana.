@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+import { getNotifications } from './notifications';
 import { mensagemDeErroVoz, type CodigoErroVoz } from './voz';
 
 /**
@@ -26,6 +26,8 @@ export const ACAO_DESFAZER = 'desfazer';
  * sem esta checagem o gasto entrava na conta e ninguém ficava sabendo.
  */
 export async function podeNotificar(): Promise<boolean> {
+  const Notifications = getNotifications();
+  if (!Notifications) return false;
   try {
     const { status } = await Notifications.getPermissionsAsync();
     return status === 'granted';
@@ -51,6 +53,8 @@ export type DadosNotifVoz =
   | { origem: 'voz'; resultado: 'revisar'; transcricao: string };
 
 async function prepararCanal() {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   try {
     await Notifications.setNotificationChannelAsync(CANAL, {
       name: 'Lançamento por voz',
@@ -63,6 +67,8 @@ async function prepararCanal() {
 }
 
 async function prepararCategoria() {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   try {
     await Notifications.setNotificationCategoryAsync(CATEGORIA_SUCESSO, [
       {
@@ -80,6 +86,11 @@ async function prepararCategoria() {
 }
 
 async function publicar(titulo: string, corpo: string, dados: DadosNotifVoz, categoria?: string) {
+  const Notifications = getNotifications();
+  /* `podeNotificar()` já é o gate de verdade antes do widget tentar lançar;
+     esta checagem aqui é só a segunda camada, pro caso de `publicar` ser
+     chamada num ambiente sem o módulo (Expo Go, web). */
+  if (!Notifications) return;
   await prepararCanal();
   if (categoria) await prepararCategoria();
   await Notifications.scheduleNotificationAsync({

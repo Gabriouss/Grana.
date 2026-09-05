@@ -2,7 +2,9 @@
 
 **Data:** 05/09/2026
 
-**Estado:** planejamento aprovado, aguardando pedido explícito de implementação
+**Estado:** implementado em 05/09/2026. Migration **aplicada em
+produção**; Edge Function **ainda não publicada** (escolha explícita do
+autor). Enquanto não for publicada, o chat do app responde erro.
 
 ## Objetivo
 
@@ -155,13 +157,41 @@ literal do WhatsApp por ser uma citação daquele produto na landing page;
 uma tela dentro do próprio Grana. usa os tokens normais de
 `lib/theme.ts`.
 
-**Acesso**: a barra inferior já está no limite de 5 abas
-(`app/(app)/_layout.tsx`). Duas peças já resolvem esse mesmo problema —
-`graficos` e `perfil` usam `href: null` e só aparecem na barra lateral
-do desktop (`SideNav`). O plano é replicar isso e somar um ponto de
-acesso mobile novo: um botão flutuante circular na tela Início — que
-também é a primeira aparição visual do mascote no produto (ver o
-segundo documento).
+**Acesso — decidido e já implementado em 05/09/2026.** A ideia inicial
+(botão flutuante na Início) foi descartada em favor de dar ao Granabô um
+lugar fixo na navegação principal. A barra de abas passou de 5 para 7
+destinos, nesta ordem:
+
+> Início · Débito e Pix · Crédito · **Granabô** · Boletos · Gráficos · Desafios
+
+Três consequências:
+
+1. **O Granabô fica no centro exato** (4º de 7) e ganha um botão
+   destacado — disco de menta sólida, elevado acima da aresta superior
+   da pílula. É a ação primária da barra e segue o mesmo tratamento que
+   o resto do produto já dá a ação primária (menta sólida + tinta
+   petróleo), diferenciando-se pela elevação, não por uma cor nova.
+2. **Gráficos volta para a barra.** Era desktop-only (`href: null` +
+   `SideNav`) e no celular não tinha ponto de acesso nenhum — um destino
+   real inalcançável. Agora é a 6ª aba.
+3. **Perfil continua fora da barra**, acessível pelo avatar no cabeçalho
+   da Início e pela lateral do desktop: é configuração, não destino de
+   uso diário.
+
+O limite de 5 abas nunca foi restrição do React Navigation — a barra é
+100% desenhada em JavaScript (`FloatingTabBar`), então 7 itens é só uma
+questão de largura, que cabe com folga mesmo em tela de 320px.
+
+Na mesma passada foi corrigido o desfoque da barra, que não borrava o
+conteúdo por trás: o container tinha `backgroundColor` semiopaco **e** a
+camada de vidro repetia o mesmo tom por cima, somando ~88% de opacidade.
+O desfoque existia, só não tinha o que mostrar. O tom passou a morar numa
+camada só.
+
+A tela em si (`app/(app)/assistente.tsx`) existe hoje como casca — um
+botão que leva a lugar nenhum seria pior do que uma tela que diz
+honestamente o que ainda não faz. A conversa entra quando a Edge
+Function e a tabela deste documento forem implementadas.
 
 **Bônus de custo zero**: permitir perguntar por voz reaproveitando
 `lib/voz.ts` + `processar-lancamento-voz`, infraestrutura de

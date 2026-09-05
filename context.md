@@ -2566,3 +2566,101 @@ schema); `deno check` limpo na Edge Function.
 **Pendente**: aplicar a migration em produção e publicar a Edge Function
 atualizada (precisa de token/acesso explícito do autor, mesmo padrão de
 sempre — não feito nesta sessão). Nenhuma build EAS disparada.
+
+---
+
+## Sessão 05/09/2026 (tarde) — barra de 7 destinos, Granabô e correções de Expo Go
+
+### Barra de navegação
+
+A barra flutuante passou de 5 para 7 destinos, nesta ordem: Início ·
+Débito e Pix · Crédito · **Granabô** · Boletos · Gráficos · Desafios. O
+Granabô fica no centro exato (4º de 7) com botão elevado — disco de menta
+sólida de 74px numa barra de 68, transbordando 3px em cima e embaixo. O
+limite de 5 abas nunca foi restrição do React Navigation: a barra é 100%
+desenhada em JS (`FloatingTabBar`), então era só largura. Gráficos voltou
+pra barra (era desktop-only e no celular não tinha ponto de acesso
+nenhum, um destino inalcançável); Perfil segue fora, no avatar do
+cabeçalho. `MARGEM_MINIMA` do `lib/tab-bar.ts` subiu de 30 pra 46 por
+causa do transbordo do disco.
+
+### Blur da barra: duas causas, não uma
+
+O desfoque nunca borrou nada, e foram dois defeitos somados:
+
+1. O container tinha `backgroundColor` semiopaco **e** a camada de vidro
+   repetia o mesmo tom por cima — juntas davam ~88% de opacidade. O
+   desfoque existia e não tinha o que mostrar. O tom passou a morar numa
+   camada só (`styles.vidro`), que também recorta a pílula — o que
+   permitiu `overflow: visible` no container, sem o qual o disco elevado
+   seria cortado.
+2. **A causa raiz de verdade**: o `BlurView` lê `blurTarget.current` no
+   próprio `componentDidMount`, mas ele é *descendente* do
+   `BlurTargetView`, e o React preenche ref de filho antes do de pai. Na
+   hora em que ele lia, o ref do ancestral ainda era `null`. Como ref não
+   dispara render, nada nunca o fazia reler: ia `blurTargetId: undefined`
+   pro nativo, e o Kotlin cai pra `BlurMethod.NONE` em silêncio
+   (`val safeMethod = if (blurTarget != null) method else NONE`). A
+   correção é passar a prop como `null` primeiro e o ref depois: é a
+   mudança de IDENTIDADE da prop que dispara o `componentDidUpdate` a
+   reler o alvo.
+
+### Expo Go: expo-notifications derrubava o app inteiro
+
+Rodar em Expo Go quebrava na raiz. O Expo Go do SDK 53+ removeu o módulo
+nativo de push no Android, e o pacote carrega, ao ser importado, um
+arquivo de efeito colateral (`DevicePushTokenAutoRegistration.fx.js`) que
+registra um listener e lança — de forma assíncrona, fora do escopo do
+`try/catch` que já existia em volta do `require`.
+
+Corrigido com um guard de ambiente (`Constants.appOwnership === 'expo'`,
+o único sinal que separa Expo Go de dev-client: `executionEnvironment`
+marca os dois como `storeClient`) em `getNotifications()`, mais a
+eliminação de **dois** imports estáticos que furavam esse guard:
+`components/RespostaVozWidget.tsx` e `lib/widget-voz-notificacoes.ts`
+importavam `expo-notifications` no topo do arquivo. Ambos passaram a
+`import type` + `getNotifications()` lazy. Varredura confirmou que não
+sobrou nenhum import cru no repositório.
+
+### Assistente Granabô
+
+Implementado o que o plano de
+`docs/assistente-ia/2026-09-05-plano-assistente-zero-custo.md` desenhou:
+`supabase/functions/assistente-financeiro/index.ts` (Groq
+`llama-3.1-8b-instant`, tool calling em duas passadas, auth por JWT do
+usuário com RLS natural, rate limit em memória, degradação graciosa no
+429), `lib/assistente.ts`, `app/(app)/assistente.tsx` (chat real) e a
+migration `20260905160000_assistant_messages.sql`.
+
+**Correção feita na revisão**: `gastoPorCategoria` usava
+`.ilike('category', categoria)`, casamento exato. Um nome que o modelo
+inventasse ("Comida" quando a categoria se chama "Alimentação") não casava
+com linha nenhuma, a soma dava zero, e o assistente afirmaria "você gastou
+R$ 0,00" com toda a confiança — a mentira exata que o desenho com
+ferramentas existe pra impedir. Agora a ferramenta resolve o nome contra
+as categorias REAIS do usuário (sem acento, case-insensitive, com
+casamento parcial) e, quando não acha, devolve a lista real e manda o
+modelo perguntar em vez de inventar. Zero só pode ser dito quando a
+categoria existe e não teve gasto.
+
+`schema.sql` foi espelhado com a migration nova e o guarda ganhou um
+quarto segmento (`inicioVoz`→`inicioAssistente`): 25/25.
+
+**Aplicado em produção**: só a migration (tabela criada, RLS ligado, 1
+policy `auth.uid() = user_id` em ALL, 2 índices — verificado por
+introspecção e por teste de isolamento ao vivo). A Edge Function **não**
+foi publicada, por escolha explícita do autor.
+
+### Pendências
+
+- **Lançamento por voz falha em Expo Go.** A Edge Function foi testada
+  direto com JWT real e um `.m4a` montado à mão: o servidor está
+  íntegro (autentica, aceita o MIME, chega no Whisper, devolve
+  `nao_entendi` pra áudio mudo). A falha é do lado do cliente. Ficaram
+  logs `[voz:diag]` (guardados por `__DEV__`) nos quatro pontos de falha
+  de `lib/voz.ts` e `components/VoiceEntryButton.tsx` — **remover quando
+  a causa for encontrada**.
+- Publicar a Edge Function `assistente-financeiro` (o app já chama; até
+  lá o chat responde erro).
+- Confirmar o blur no aparelho.
+- Nenhuma build EAS disparada.

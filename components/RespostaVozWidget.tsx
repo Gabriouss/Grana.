@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsModule from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { Alert } from '@/lib/alert';
 import { deleteBill, deleteTransaction } from '@/lib/data';
 import { ehIntencaoBoleto, ehIntencaoCredito } from '@/lib/heuristics';
+import { getNotifications } from '@/lib/notifications';
 import { desfazerOperacaoVoz } from '@/lib/voice-operations';
 import { ACAO_DESFAZER, podeNotificar, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
 import {
@@ -58,9 +59,15 @@ export default function RespostaVozWidget() {
   }, []);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    /* `getNotifications()` já cobre web (null direto) e Expo Go no Android
+       (SDK 57 removeu o módulo nativo de push; até só importar o pacote, sem
+       usar nada dele, derruba o app — ver o comentário de `isExpoGo` em
+       lib/notifications.ts). Fora desses dois casos, `Notifications` é o
+       módulo de verdade. */
+    const Notifications = getNotifications();
+    if (!Notifications) return;
 
-    async function tratar(resposta: Notifications.NotificationResponse) {
+    async function tratar(resposta: NotificationsModule.NotificationResponse) {
       const dados = resposta.notification.request.content.data as unknown as DadosNotifVoz | undefined;
       if (!dados || dados.origem !== 'voz') return;
 

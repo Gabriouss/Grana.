@@ -105,10 +105,12 @@ export async function transcreverAudio(
        antes de enviar a requisição. File oferece bytes() ao serializador. */
     try {
       const arquivo = new File(uri);
+      if (__DEV__) console.warn('[voz:diag] arquivo', JSON.stringify({ uri, exists: arquivo.exists, size: arquivo.size, type: (arquivo as any).type }));
       if (!arquivo.exists || arquivo.size === 0) return { ok: false, codigo: 'audio_ausente' };
       if (arquivo.size > MAX_AUDIO_BYTES) return { ok: false, codigo: 'audio_grande' };
       form.append('audio', arquivo);
-    } catch {
+    } catch (e: any) {
+      if (__DEV__) console.warn('[voz:diag] falha ao ler arquivo', String(e?.message ?? e));
       return { ok: false, codigo: 'audio_ausente' };
     }
   }
@@ -124,6 +126,7 @@ export async function transcreverAudio(
       signal: controle.signal,
     });
   } catch (e: any) {
+    if (__DEV__) console.warn('[voz:diag] expoFetch lancou', e?.name, String(e?.message ?? e));
     /* Estourou o tempo é diferente de não ter rede: a fala pode ter sido
        perfeita e o áudio pode até ter chegado — dizer "sem conexão" seria
        mentir sobre o que aconteceu. */
@@ -144,6 +147,7 @@ export async function transcreverAudio(
   }
 
   if (!resposta.ok || corpo?.status !== 'ready') {
+    if (__DEV__) console.warn('[voz:diag] resposta', resposta.status, JSON.stringify(corpo));
     const codigo = corpo?.code;
     if (typeof codigo === 'string' && (CODIGOS_CONHECIDOS as string[]).includes(codigo)) {
       return { ok: false, codigo: codigo as CodigoErroVoz };

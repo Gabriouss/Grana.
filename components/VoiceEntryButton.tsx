@@ -119,7 +119,8 @@ export default function VoiceEntryButton({
       }
       hapticSuccess();
       onTranscribed(resultado.transcript);
-    } catch {
+    } catch (e: any) {
+      if (__DEV__) console.warn('[voz:diag] botao lancou', e?.name, String(e?.message ?? e));
       const msg = mensagemDeErroVoz('erro_interno');
       Alert.alert(msg.titulo, msg.texto);
     } finally {

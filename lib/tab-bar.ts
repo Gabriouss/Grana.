@@ -17,7 +17,7 @@ import { useBreakpoint } from './breakpoints';
 export const TAB_BAR_ALTURA = 68;
 
 /** Folga mínima entre a barra e o fundo da tela, quando não há gesture bar. */
-const MARGEM_MINIMA = 30;
+const MARGEM_MINIMA = 46;
 
 export function useTabBarInset() {
   const insets = useSafeAreaInsets();
