@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
-import { createWallet } from '@/lib/wallets';
+import { createWallet, updateWallet, deleteWallet } from '@/lib/wallets';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
@@ -30,7 +30,7 @@ export default function WalletPickerModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const { wallets, activeWalletId, setActiveWalletId, saldos, refreshWallets } = useWallet();
+  const { wallets, activeWalletId, setActiveWalletId, saldos, refreshWallets, refreshSaldos } = useWallet();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
 
@@ -41,9 +41,78 @@ export default function WalletPickerModal({
   const [newColor, setNewColor] = useState(WALLET_COLORS[0]);
   const [saving, setSaving] = useState(false);
 
+  // Edição de uma carteira já existente. Reaproveita o mesmo trio de campos
+  // da criação (nome, saldo, cor); só o alvo muda (update em vez de insert).
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editBalance, setEditBalance] = useState('');
+  const [editColor, setEditColor] = useState(WALLET_COLORS[0]);
+
   function handleOpen() {
     setSelectedId(activeWalletId);
     setCreating(false);
+    setEditingId(null);
+  }
+
+  function handleStartEdit(w: (typeof wallets)[number]) {
+    if (isDemoMode) {
+      Alert.alert('Modo de Exemplo', 'Edição de carteira é simulada no modo de exemplo.');
+      return;
+    }
+    setEditingId(w.id);
+    setEditName(w.name);
+    setEditBalance(formatMoneyInput(String(Math.round(Number(w.initial_balance || 0) * 100))));
+    setEditColor(w.color || WALLET_COLORS[0]);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingId) return;
+    if (!editName.trim()) {
+      Alert.alert('Informe o nome da carteira');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateWallet(editingId, {
+        name: editName.trim(),
+        initial_balance: parseAmount(editBalance) || 0,
+        color: editColor,
+      });
+      await refreshWallets();
+      await refreshSaldos();
+      setEditingId(null);
+    } catch (e: any) {
+      Alert.alert('Erro ao salvar carteira', e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleDeleteWallet(w: (typeof wallets)[number]) {
+    if (isDemoMode) {
+      Alert.alert('Modo de Exemplo', 'Exclusão de carteira é simulada no modo de exemplo.');
+      return;
+    }
+    Alert.alert(
+      `Excluir "${w.name}"?`,
+      'Os lançamentos dessa carteira passam para a carteira principal. Essa ação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteWallet(w.id);
+              await refreshWallets();
+              await refreshSaldos();
+            } catch (e: any) {
+              Alert.alert('Erro ao excluir carteira', e.message);
+            }
+          },
+        },
+      ]
+    );
   }
 
   function handleSelect() {
@@ -131,34 +200,107 @@ export default function WalletPickerModal({
             const isSelected = selectedId === w.id;
             const saldoItem = saldos.porCarteira[w.id] ?? Number(w.initial_balance || 0);
 
-            return (
-              <AppPressable
-                key={w.id}
-                style={[styles.walletCard, isSelected && styles.walletCardSelected]}
-                onPress={() => setSelectedId(w.id)}
-              >
-                <View style={styles.radioOuter}>
-                  {isSelected && <View style={styles.radioInner} />}
-                </View>
-                <View
-                  style={[
-                    styles.walletIconWrap,
-                    { backgroundColor: `${w.color || theme.accent}26` },
-                  ]}
-                >
-                  <Ionicons
-                    name={(w.icon as any) || 'wallet-outline'}
-                    size={20}
-                    color={w.color || theme.accent}
+            if (editingId === w.id) {
+              return (
+                <View key={w.id} style={styles.createBox}>
+                  <Text style={styles.createTitle}>Editar carteira</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nome da conta"
+                    placeholderTextColor={theme.inkFaint}
+                    value={editName}
+                    onChangeText={setEditName}
                   />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Saldo inicial (R$ 0,00)"
+                    placeholderTextColor={theme.inkFaint}
+                    keyboardType="number-pad"
+                    value={editBalance}
+                    onChangeText={(t) => setEditBalance(formatMoneyInput(t))}
+                  />
+                  <Text style={styles.colorLabel}>Cor do marcador</Text>
+                  <View style={styles.colorRow}>
+                    {WALLET_COLORS.map((c) => (
+                      <AppPressable
+                        key={c}
+                        style={[
+                          styles.colorDot,
+                          { backgroundColor: c },
+                          editColor === c && styles.colorDotSelected,
+                        ]}
+                        onPress={() => setEditColor(c)}
+                        accessibilityLabel={`Selecionar cor ${c}`}
+                        accessibilityState={{ selected: editColor === c }}
+                      />
+                    ))}
+                  </View>
+                  <View style={styles.createBtnRow}>
+                    <AppPressable
+                      style={styles.createCancelBtn}
+                      onPress={() => setEditingId(null)}
+                      disabled={saving}
+                    >
+                      <Text style={styles.createCancelText}>Cancelar</Text>
+                    </AppPressable>
+                    <AppPressable style={styles.createConfirmBtn} onPress={handleSaveEdit} disabled={saving}>
+                      {saving ? (
+                        <ActivityIndicator size="small" color={theme.paper} />
+                      ) : (
+                        <Text style={styles.createConfirmText}>Salvar</Text>
+                      )}
+                    </AppPressable>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.walletName}>{w.name}</Text>
-                </View>
-                <PrivacyValue>
-                  <Text style={styles.walletBalance}>{`R$ ${formatMoney(saldoItem)}`}</Text>
-                </PrivacyValue>
-              </AppPressable>
+              );
+            }
+
+            return (
+              <View key={w.id} style={[styles.walletCard, isSelected && styles.walletCardSelected]}>
+                <AppPressable style={styles.walletCardMain} onPress={() => setSelectedId(w.id)}>
+                  <View style={styles.radioOuter}>
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
+                  <View
+                    style={[
+                      styles.walletIconWrap,
+                      { backgroundColor: `${w.color || theme.accent}26` },
+                    ]}
+                  >
+                    <Ionicons
+                      name={(w.icon as any) || 'wallet-outline'}
+                      size={20}
+                      color={w.color || theme.accent}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.walletName}>{w.name}</Text>
+                  </View>
+                  <PrivacyValue>
+                    <Text style={styles.walletBalance}>{`R$ ${formatMoney(saldoItem)}`}</Text>
+                  </PrivacyValue>
+                </AppPressable>
+                <AppPressable
+                  hitSlop={8}
+                  onPress={() => handleStartEdit(w)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Editar carteira ${w.name}`}
+                  style={styles.walletActionBtn}
+                >
+                  <Ionicons name="pencil-outline" size={16} color={theme.inkFaint} />
+                </AppPressable>
+                {!w.is_default && (
+                  <AppPressable
+                    hitSlop={8}
+                    onPress={() => handleDeleteWallet(w)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Excluir carteira ${w.name}`}
+                    style={styles.walletActionBtn}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={theme.danger} />
+                  </AppPressable>
+                )}
+              </View>
             );
           })}
 
@@ -281,6 +423,16 @@ const styles = StyleSheet.create({
   walletCardSelected: {
     borderColor: theme.accent2,
     backgroundColor: 'rgba(31,169,141,0.08)',
+  },
+  walletCardMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  walletActionBtn: {
+    padding: spacing.xs,
+    marginLeft: spacing.xs,
   },
   radioOuter: {
     width: 20,
