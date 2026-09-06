@@ -174,6 +174,22 @@ export async function addCreditCard(input: {
   return data;
 }
 
+export async function updateCreditCard(
+  id: string,
+  input: Partial<Omit<CreditCard, 'id' | 'user_id' | 'created_at'>>
+): Promise<CreditCard> {
+  const user_id = await currentUserId();
+  const { data, error } = await supabase
+    .from('credit_cards')
+    .update(input)
+    .eq('id', id)
+    .eq('user_id', user_id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteCreditCard(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('credit_cards').delete().eq('id', id).eq('user_id', user_id);

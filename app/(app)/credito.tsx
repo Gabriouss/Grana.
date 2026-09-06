@@ -23,6 +23,7 @@ import {
   addInstallmentPurchase,
   addTransaction,
   deleteCreditCard,
+  updateCreditCard,
   deleteTransaction,
   fetchCreditTransactionsForMonth,
   fetchCreditCards,
@@ -109,6 +110,10 @@ export default function CreditoScreen() {
 
   // Modais de Cadastro de Cartão
   const [newCardOpen, setNewCardOpen] = useState(false);
+  /* Mesmo sheet serve pra criar e pra editar — quando isto tem id, o salvar
+     atualiza aquele cartão em vez de criar um novo. Mesmo padrão do sheet de
+     lançamento (editingTxId) e do de carteira. */
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [cardName, setCardName] = useState('');
   const [cardBank, setCardBank] = useState<string>(BANKS[0].id);
   const [cardDigits, setCardDigits] = useState('');
@@ -116,6 +121,12 @@ export default function CreditoScreen() {
   const [cardClosingDay, setCardClosingDay] = useState('15');
   const [cardDueDay, setCardDueDay] = useState('22');
   const [cardSaving, setCardSaving] = useState(false);
+
+  // Menu de ação do cartão (Editar/Excluir) — mesmo componente e gesto dos
+  // lançamentos: toque no botão de opções ou toque longo no card abrem o
+  // mesmo menu.
+  const [cardActionSheetOpen, setCardActionSheetOpen] = useState(false);
+  const [selectedCardForAction, setSelectedCardForAction] = useState<CreditCard | null>(null);
 
   // Modais de Lançamento no Crédito
   const [newTxOpen, setNewTxOpen] = useState(false);
@@ -461,7 +472,32 @@ export default function CreditoScreen() {
     ]);
   }
 
-  // Salvar novo cartão
+  /* Abre o sheet em branco, pra criar. Limpa campo por campo porque o mesmo
+     sheet pode ter acabado de servir pra editar um cartão existente. */
+  function abrirNovoCartao() {
+    setEditingCardId(null);
+    setCardName('');
+    setCardBank(BANKS[0].id);
+    setCardDigits('');
+    setCardLimit('');
+    setCardClosingDay('15');
+    setCardDueDay('22');
+    setNewCardOpen(true);
+  }
+
+  /* Abre o sheet preenchido com um cartão já cadastrado. */
+  function abrirEdicaoCartao(card: CreditCard) {
+    setEditingCardId(card.id);
+    setCardName(card.name);
+    setCardBank(card.bank);
+    setCardDigits(card.last_digits ?? '');
+    setCardLimit(formatMoneyInput(String(Math.round(Number(card.limit_amount || 0) * 100))));
+    setCardClosingDay(String(card.closing_day));
+    setCardDueDay(String(card.due_day));
+    setNewCardOpen(true);
+  }
+
+  // Salvar cartão (criação ou edição)
   async function handleSaveCard() {
     if (!cardName.trim()) {
       Alert.alert('Nome obrigatório', 'Dê um nome para identificar o cartão.');
@@ -477,7 +513,25 @@ export default function CreditoScreen() {
 
     setCardSaving(true);
     try {
-      if (isDemoMode) {
+      if (editingCardId) {
+        const alteracoes = {
+          name: cardName.trim(),
+          bank: cardBank,
+          color: bankObj.color,
+          last_digits: cardDigits.trim() || undefined,
+          limit_amount: limit,
+          closing_day: Number(cardClosingDay) || 15,
+          due_day: Number(cardDueDay) || 22,
+        };
+        if (isDemoMode) {
+          setCards((prev) => prev.map((c) => (c.id === editingCardId ? { ...c, ...alteracoes } : c)));
+        } else {
+          await updateCreditCard(editingCardId, alteracoes);
+          await loadData();
+        }
+        hapticSuccess();
+        triggerToast('Cartão atualizado');
+      } else if (isDemoMode) {
         const fakeCard: CreditCard = {
           id: `card-${Date.now()}`,
           user_id: 'demo',
@@ -491,6 +545,8 @@ export default function CreditoScreen() {
           created_at: new Date().toISOString(),
         };
         setCards((prev) => [...prev, fakeCard]);
+        hapticSuccess();
+        triggerToast('Cartão cadastrado com sucesso');
       } else {
         await addCreditCard({
           name: cardName.trim(),
@@ -503,10 +559,11 @@ export default function CreditoScreen() {
           wallet_id: activeWallet?.id ?? null,
         });
         await loadData();
+        hapticSuccess();
+        triggerToast('Cartão cadastrado com sucesso');
       }
-      hapticSuccess();
-      triggerToast('Cartão cadastrado com sucesso');
       setNewCardOpen(false);
+      setEditingCardId(null);
       setCardName('');
       setCardDigits('');
       setCardLimit('');
@@ -776,7 +833,7 @@ export default function CreditoScreen() {
               label="+ Cartão"
               onPress={() => {
                 hapticTap();
-                setNewCardOpen(true);
+                abrirNovoCartao();
               }}
             />
             <HeaderAction
@@ -893,7 +950,10 @@ export default function CreditoScreen() {
                       setSelectedCardId((curr) => (curr === card.id ? 'all' : card.id));
                     }}
                     accessibilityHint="Filtra os lançamentos por este cartão. Toque de novo para ver todos."
-                    onLongPress={() => confirmDeleteCard(card)}
+                    onLongPress={() => {
+                      setSelectedCardForAction(card);
+                      setCardActionSheetOpen(true);
+                    }}
                   >
                     {/* Dígitos EMBAIXO do apelido, não ao lado. Lado a lado, um
                         apelido longo ("Itaú Personalité Black") empurrava até
@@ -930,17 +990,19 @@ export default function CreditoScreen() {
                       </View>
                     </View>
                   </AppPressable>
-                  {/* Excluir cartão morava só no toque longo, e o toque simples
-                      já tem dono (seleciona o cartão). Era o mesmo defeito das
-                      linhas de lançamento, com agravante: é a ÚNICA forma de
-                      excluir um cartão em todo o app, e `confirmDeleteCard`
-                      tinha um único chamador. Gesto invisível para leitor de
-                      tela e para teclado. */}
+                  {/* Editar/excluir moravam só no toque longo (e excluir
+                      direto, sem menu nenhum) — o mesmo defeito das linhas de
+                      lançamento, com agravante: era a ÚNICA forma de mexer
+                      num cartão já cadastrado em todo o app. Gesto invisível
+                      pra leitor de tela e teclado. Agora abre o mesmo menu
+                      Editar/Excluir que lançamentos e contas já usam. */}
                   <View style={styles.botaoOpcoesFlutuanteCartao}>
                     <BotaoOpcoesItem
-                      icone="trash-outline"
-                      accessibilityLabel={`Excluir cartão ${card.name}`}
-                      onPress={() => confirmDeleteCard(card)}
+                      accessibilityLabel={`Opções de ${card.name}`}
+                      onPress={() => {
+                        setSelectedCardForAction(card);
+                        setCardActionSheetOpen(true);
+                      }}
                     />
                   </View>
                 </View>
@@ -956,7 +1018,7 @@ export default function CreditoScreen() {
             </Text>
             <AppPressable
               style={styles.emptyCardActionBtn}
-              onPress={() => setNewCardOpen(true)}
+              onPress={() => abrirNovoCartao()}
             >
               <Text style={styles.emptyCardActionText}>+ Cadastrar primeiro cartão</Text>
             </AppPressable>
@@ -1035,11 +1097,11 @@ export default function CreditoScreen() {
         ListFooterComponent={<View style={{ height: 100 }} />}
       />
 
-      {/* Modal: Novo Cartão de Crédito */}
+      {/* Modal: Novo/Editar Cartão de Crédito */}
       <AppModal visible={newCardOpen} animationType="slide" transparent onRequestClose={() => setNewCardOpen(false)}>
         <Sheet onClose={() => setNewCardOpen(false)}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Novo Cartão de Crédito</Text>
+            <Text style={styles.sheetTitle}>{editingCardId ? 'Editar Cartão de Crédito' : 'Novo Cartão de Crédito'}</Text>
             <AppPressable onPress={() => setNewCardOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
@@ -1132,7 +1194,11 @@ export default function CreditoScreen() {
             onPress={handleSaveCard}
             disabled={cardSaving}
           >
-            {cardSaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Salvar Cartão</Text>}
+            {cardSaving ? (
+              <ActivityIndicator color={theme.paper} />
+            ) : (
+              <Text style={styles.saveBtnText}>{editingCardId ? 'Salvar Alterações' : 'Salvar Cartão'}</Text>
+            )}
           </AppPressable>
         </Sheet>
       </AppModal>
@@ -1148,6 +1214,18 @@ export default function CreditoScreen() {
            aproxima os dois botões, então a pergunta continua valendo. */
         onDelete={() => {
           if (selectedTx) confirmDeleteTx(selectedTx);
+        }}
+      />
+
+      <ItemActionSheet
+        visible={cardActionSheetOpen}
+        title="Cartão"
+        onClose={() => setCardActionSheetOpen(false)}
+        onEdit={() => {
+          if (selectedCardForAction) abrirEdicaoCartao(selectedCardForAction);
+        }}
+        onDelete={() => {
+          if (selectedCardForAction) confirmDeleteCard(selectedCardForAction);
         }}
       />
 
