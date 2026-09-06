@@ -1,7 +1,8 @@
 import { useEffect, useRef, type PropsWithChildren } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
+import { theme } from '@/lib/theme';
 
 /**
  * Entrada direcional curta da cena ao trocar de aba.
@@ -74,17 +75,28 @@ export default function CenaAnimada({ indice, children }: PropsWithChildren<{ in
   }, [focada, indice, progresso, deslocamento, reduzirMovimento]);
 
   return (
-    <Animated.View
-      style={[
-        styles.cena,
-        { opacity: progresso, transform: [{ translateX: deslocamento }] },
-      ]}
-    >
-      {children}
-    </Animated.View>
+    // Fundo sólido fora da parte animada de propósito: as telas não pintam
+    // seu próprio fundo escuro no container raiz (nunca precisaram — sem
+    // esta animação, opacidade é sempre 1 e nada por trás jamais aparece).
+    // Animar `opacity` nesta MESMA View que pinta o fundo desbotaria o fundo
+    // junto, revelando por baixo o cinza claro que o navigator usa por
+    // padrão — o "flash de tela branca" reportado ao trocar de aba. Por
+    // isso o fundo mora numa View de fora, nunca animada, e só o conteúdo
+    // (dentro da Animated.View, sem fundo próprio) desbota.
+    <View style={styles.fundo}>
+      <Animated.View
+        style={[
+          styles.cena,
+          { opacity: progresso, transform: [{ translateX: deslocamento }] },
+        ]}
+      >
+        {children}
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  fundo: { flex: 1, backgroundColor: theme.paper },
   cena: { flex: 1 },
 });
