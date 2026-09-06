@@ -3,14 +3,28 @@
      botões lado a lado, na mesma barra horizontal dos botões reais de
      "Colar comprovante"/"Escanear nota" — não cabe formato nenhum numa
      célula quadrada de 2x2 (05/09/2026). -->
+<!-- targetCellWidth 4 não alcançava ponta-a-ponta em launchers com grade de
+     5 colunas (o comum hoje) — sobrava papel de parede dos dois lados
+     (06/09/2026). Subido pra 5 (o Android recorta pro tamanho real da grade
+     de qualquer launcher mais estreito, então pedir 5 não quebra em quem só
+     tem 4). `resizeMode="none"` também saiu: alguns launchers ignoram esse
+     valor e deixam arrastar a alça de redimensionar mesmo assim — como o
+     app nunca é avisado (`onAppWidgetOptionsChanged`) porque o manifesto diz
+     que não é redimensionável, o conteúdo não se redesenha e sobra área em
+     branco. `resizeMode="horizontal"` (mesmo padrão já usado em
+     grana_livre_widget_info.xml/grana_compromisso_widget_info.xml) deixa o
+     sistema tratar o resize de verdade — o layout já reflui sozinho
+     (match_parent + peso igual nos 4 botões), só faltava o manifesto permitir. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
     android:minHeight="60dp"
-    android:targetCellWidth="4"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="60dp"
+    android:targetCellWidth="5"
     android:targetCellHeight="1"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/grana_central_widget"
     android:previewLayout="@layout/grana_central_widget"
     android:description="@string/grana_central_widget_descricao"
-    android:resizeMode="none"
+    android:resizeMode="horizontal"
     android:widgetCategory="home_screen" />
