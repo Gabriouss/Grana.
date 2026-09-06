@@ -2714,3 +2714,15 @@ Bateria completa testada ao vivo e correta: a pergunta original do print (R$ 0,0
 
 ## 06/09/2026 — Correções após auditoria visual da landing
 Mock financeiro calculado a partir dos valores fictícios; detalhes de benefícios em Modal de viewport com fechamento; alvos de 44px; preço antes do checklist mobile; menu no cabeçalho desktop; Granabô e hero mais concisos; carrossel inicial em Desafios; legendas do painel fora da captura e link de ampliação; bento preservado com movimento reduzido; caminho sticky impossível removido. Trilha alinhada à voz no app. Relatório e limites: docs/marketing/auditoria-visual-2026-09-06/CORRECOES.md. TypeScript, 339 guardas de design e exportação web passaram. Sem EAS. Melhorias editoriais/arte e validação em aparelho permanecem documentadas.
+
+## 06/09/2026 — Landing: revisitar alterações com o autor
+
+Pedido explícito após visualizar o preview: deixar as modificações registradas no contexto porque será necessário revisitar e alterar algumas coisas. **A implementação atual não representa aprovação visual definitiva.** Manter o estado atual até o autor indicar os ajustes; não reverter nem executar automaticamente as demais propostas da auditoria.
+
+- Referência da rodada: commit `0766bd7` (`fix: corrige hierarquia e interacoes da landing`). Base anterior para comparação: `a39c680`.
+- Auditoria original, com 20 achados e capturas: `docs/marketing/auditoria-visual-2026-09-06/RELATORIO.md`.
+- Implementação e pendências discriminadas: `docs/marketing/auditoria-visual-2026-09-06/CORRECOES.md`.
+- Mudanças visuais/editoriais a recuperar na conversa: título e apoio do hero; introdução do Granabô; preço antes do checklist mobile; menu desktop no cabeçalho; detalhes em modal com fechar; alvos maiores; carrossel começando em Desafios; substituição dos balões por legendas abaixo do painel com link de ampliação; fechamento com preço mensal.
+- Correções técnicas da mesma rodada: cálculo coerente do mock financeiro, bento preservado com movimento reduzido e retirada do caminho sticky inalcançável.
+- O autor ainda não especificou quais elementos deseja alterar. Na retomada, comparar o preview com a versão anterior e receber o direcionamento sobre os pontos concretos; não presumir reprovação de todas as mudanças nem aprovação das sugestões restantes.
+- Esta atualização é somente documental: nenhum novo ajuste na landing foi realizado.
