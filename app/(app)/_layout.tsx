@@ -23,7 +23,7 @@ import { useReducedMotion } from '@/lib/motion';
    import profundo e frágil, o tipo é extraído da própria prop do `<Tabs>`. */
 type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (props: infer P) => any ? P : never;
 
-/* As QUATRO rotas principais da barra. O par outline/preenchido existe porque o estado
+/* As CINCO rotas principais da barra. O par outline/preenchido existe porque o estado
    ativo não pode depender só de cor: preenchimento é a segunda pista, e é a
    que continua legível pra quem não distingue bem menta de cinza-esverdeado.
    O Granachat não está aqui de propósito — ele não é rota, é uma janela
@@ -34,13 +34,14 @@ type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (p
    (ir pra uma aba à direita traz a tela da direita) — a navegação em si
    continua vindo do `state.routes`. Telas fora da barra (perfil) caem no -1 e
    entram sem direção, que é o correto: elas não têm posição na fileira. */
-const ORDEM_ABAS = ['index', 'lancamentos', 'credito', 'contas'];
+const ORDEM_ABAS = ['index', 'lancamentos', 'credito', 'contas', 'graficos'];
 
 const ICONS: Record<string, { off: keyof typeof Ionicons.glyphMap; on: keyof typeof Ionicons.glyphMap }> = {
   index: { off: 'home-outline', on: 'home' },
   lancamentos: { off: 'wallet-outline', on: 'wallet' },
   credito: { off: 'card-outline', on: 'card' },
   contas: { off: 'receipt-outline', on: 'receipt' },
+  graficos: { off: 'bar-chart-outline', on: 'bar-chart' },
 };
 
 
@@ -324,10 +325,10 @@ const ITENS_LATERAIS: ItemNav[] = [
   { rota: 'credito', rotulo: 'Crédito', icone: 'card-outline' },
   { rota: 'assistente', rotulo: 'Granabô', icone: 'sparkles-outline' },
   { rota: 'contas', rotulo: 'Boletos', icone: 'receipt-outline' },
+  { rota: 'graficos', rotulo: 'Gráficos', icone: 'bar-chart-outline' },
 ];
 
 const ITENS_SECUNDARIOS: ItemNav[] = [
-  { rota: 'graficos', rotulo: 'Gráficos', icone: 'bar-chart-outline' },
   { rota: 'desafios', rotulo: 'Desafios', icone: 'trophy-outline' },
 ];
 
@@ -418,7 +419,7 @@ function AbasEmJavaScript() {
           <Tabs.Screen name="lancamentos" options={{ title: 'Débito e Pix' }} />
           <Tabs.Screen name="credito" options={{ title: 'Crédito' }} />
           <Tabs.Screen name="contas" options={{ title: 'Boletos' }} />
-          <Tabs.Screen name="graficos" options={{ title: 'Gráficos', href: null }} />
+          <Tabs.Screen name="graficos" options={{ title: 'Gráficos' }} />
           <Tabs.Screen name="desafios" options={{ title: 'Desafios', href: null }} />
           {/* href: null tira da barra inferior. Perfil continua acessível pelo
               avatar do cabeçalho da Início e pela lateral do desktop. */}
@@ -448,7 +449,7 @@ function MaisMenuSheet({
 }: {
   visible: boolean;
   onClose: () => void;
-  onNavigate: (route: 'graficos' | 'desafios') => void;
+  onNavigate: (route: 'desafios') => void;
 }) {
   return (
     <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -462,7 +463,7 @@ function MaisMenuSheet({
         {ITENS_SECUNDARIOS.map((item) => (
           <AppPressable
             key={item.rota}
-            onPress={() => onNavigate(item.rota as 'graficos' | 'desafios')}
+            onPress={() => onNavigate(item.rota as 'desafios')}
             accessibilityRole="button"
             accessibilityLabel={`Abrir ${item.rotulo}`}
             style={({ hovered }) => [styles.moreItem, hovered && styles.moreItemHover]}
