@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -35,6 +35,7 @@ import {
   criarOcorrenciasRecorrentes,
 } from '@/lib/data';
 import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { mesFaturaDoLancamento, dataVencimentoFatura } from '@/lib/faturaCiclo';
 import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
@@ -76,10 +77,27 @@ export default function CreditoScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | 'all'>('all');
 
-  // Mês e Ano Selecionados
+  // Mês e Ano Selecionados — visão "Total" (mês civil; cartões podem ter
+  // closing_day diferentes entre si, então não existe um ciclo único pra
+  // agregar todos ao mesmo tempo).
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+
+  /* Cursor de fatura, só quando um cartão específico está selecionado — eixo
+     DIFERENTE do mês civil acima, nunca reciclado de um pro outro (ver
+     efeito abaixo, perto de `walletCards`). `null` até o efeito rodar pela
+     primeira vez; nesse meio-tempo `viewYear`/`viewMonth` caem no mês civil,
+     o que não chega a aparecer porque `selectedCardId` só sai de 'all'
+     depois de um toque do usuário, e o efeito já roda antes do próximo
+     paint. */
+  const [faturaCardYear, setFaturaCardYear] = useState<number | null>(null);
+  const [faturaCardMonth, setFaturaCardMonth] = useState<number | null>(null);
+
+  /* O que está de fato navegado agora, seja qual for o eixo: mês civil na
+     visão Total, ciclo de fatura daquele cartão quando um está selecionado. */
+  const viewYear = selectedCardId === 'all' ? selectedYear : faturaCardYear ?? selectedYear;
+  const viewMonth = selectedCardId === 'all' ? selectedMonth : faturaCardMonth ?? selectedMonth;
 
   // Toast
   const [toastMsg, setToastMsg] = useState('');
@@ -154,51 +172,67 @@ export default function CreditoScreen() {
     }
 
     try {
-      const [c, recurrenceContext, selectedTransactionsInitial, p] = await Promise.all([
+      /* Uma fatura nunca cobre mais que o mês civil dela mesma e o anterior
+         (ver lib/faturaCiclo.ts — o corte é sempre um dia dentro desse par),
+         então 2 meses civis bastam pra cobrir qualquer closing_day de 1 a
+         31, seja qual for o cartão. Sem isso, um lançamento do mês anterior
+         que ainda pertence à fatura em aberto (fechamento depois do dia 1)
+         nunca chegava a ser buscado. */
+      const [c, recurrenceContext, mesNavegado, mesAnteriorAoNavegado, p] = await Promise.all([
         fetchCreditCards(),
         fetchRecurrenceContext(),
-        fetchCreditTransactionsForMonth(selectedYear, selectedMonth),
+        fetchCreditTransactionsForMonth(viewYear, viewMonth),
+        fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
         fetchCardInvoicePayments(),
       ]);
 
       /* Assinaturas no cartão ("repete a cada mês") só entram na fatura do mês
          novo se alguém criar a ocorrência — é aqui que isso acontece, tanto
          pras compras no crédito quanto pras saídas da carteira. */
-      let selectedTransactions = selectedTransactionsInitial;
+      let selectedTransactions = [...mesNavegado, ...mesAnteriorAoNavegado];
       const faltantes = ocorrenciasFaltantes(recurrenceContext, todayISO());
       if (faltantes.length > 0) {
         await criarOcorrenciasRecorrentes(faltantes);
-        selectedTransactions = await fetchCreditTransactionsForMonth(selectedYear, selectedMonth);
+        const [a, b] = await Promise.all([
+          fetchCreditTransactionsForMonth(viewYear, viewMonth),
+          fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
+        ]);
+        selectedTransactions = [...a, ...b];
       }
 
       setCards(c);
       setTransactions(selectedTransactions);
       setInvoicePayments(p);
 
-      // Lembretes de vencimento da fatura do mês corrente real (não o mês
-      // navegado na tela) — mesmo padrão de "reagenda tudo a cada load" que
-      // app/(app)/contas.tsx já usa para boletos.
-      const hoje = new Date();
-      const anoAtual = hoje.getFullYear();
-      const mesAtual = hoje.getMonth();
+      /* Lembretes de vencimento da fatura EM ABERTO agora, cartão por
+         cartão — não do mês navegado na tela, e não mais do mês civil
+         corrente (uma fatura que fechou dia 19 e ainda não venceu continua
+         "em aberto" mesmo depois do calendário virar de mês). Busca
+         dedicada (mesAtual + mês anterior) porque o fetch acima já é sobre
+         o eixo NAVEGADO, que pode estar longe de hoje. */
       const { lembretesContasAtivo } = await carregarNotifPrefs();
-      const currentTransactions = selectedYear === anoAtual && selectedMonth === mesAtual
-        ? selectedTransactions
-        : await fetchCreditTransactionsForMonth(anoAtual, mesAtual);
+      const hoje = todayISO();
+      const [mesAtualTx, mesAnteriorTx] = await Promise.all([
+        fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
+        fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
+      ]);
+      const transacoesParaLembrete = [...mesAtualTx, ...mesAnteriorTx];
       for (const card of c) {
-        const valorFatura = currentTransactions
-          .filter(
-            (tx) =>
-              (tx.payment_method === 'credit' || tx.card_id) &&
-              tx.card_id === card.id &&
-              isSameMonth(tx.occurred_on, anoAtual, mesAtual)
-          )
+        const cicloAberto = mesFaturaDoLancamento(hoje, card.closing_day);
+        const valorFatura = transacoesParaLembrete
+          .filter((tx) => (tx.payment_method === 'credit' || tx.card_id) && tx.card_id === card.id)
+          .filter((tx) => {
+            const ciclo = mesFaturaDoLancamento(tx.occurred_on, card.closing_day);
+            return ciclo.year === cicloAberto.year && ciclo.month === cicloAberto.month;
+          })
           .reduce((s, tx) => s + Number(tx.amount), 0);
-        const jaPaga = p.some((inv) => inv.card_id === card.id && inv.year === anoAtual && inv.month === mesAtual);
+        const jaPaga = p.some(
+          (inv) => inv.card_id === card.id && inv.year === cicloAberto.year && inv.month === cicloAberto.month
+        );
         if (lembretesContasAtivo && !jaPaga && valorFatura > 0) {
-          scheduleCardInvoiceReminders(card, anoAtual, mesAtual, valorFatura).catch(() => {});
+          scheduleCardInvoiceReminders(card, cicloAberto.year, cicloAberto.month, valorFatura).catch(() => {});
         } else {
-          cancelCardInvoiceReminders(card.id, anoAtual, mesAtual).catch(() => {});
+          cancelCardInvoiceReminders(card.id, cicloAberto.year, cicloAberto.month).catch(() => {});
         }
       }
     } catch {
@@ -207,7 +241,7 @@ export default function CreditoScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isDemoMode, selectedMonth, selectedYear]);
+  }, [isDemoMode, viewYear, viewMonth]);
 
   useFocusEffect(
     useCallback(() => {
@@ -224,6 +258,31 @@ export default function CreditoScreen() {
     () => (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)),
     [activeWalletId, transactions]
   );
+
+  /* Ref só pra ler `walletCards` de dentro do efeito abaixo sem TRIGGAR ele —
+     ver o motivo no próprio efeito. */
+  const walletCardsRef = useRef(walletCards);
+  walletCardsRef.current = walletCards;
+
+  /* "Trocar de 'Total' para um cartão abre direto na fatura em aberto agora
+     (calculada a partir de hoje), não recicla o índice do mês civil que
+     estava selecionado" — decisão do design. Roda em toda TROCA de cartão
+     selecionado, inclusive de um cartão pra outro direto.
+
+     Deps só `[selectedCardId]` de propósito: se `walletCards` entrasse aqui,
+     todo `loadData()` (que troca a referência de `cards`) reabriria a fatura
+     em aberto e descartaria a navegação manual do usuário pra uma fatura
+     passada — o efeito existe pra reagir à SELEÇÃO, não a toda atualização
+     de dado. */
+  useEffect(() => {
+    if (selectedCardId === 'all') return;
+    const card = walletCardsRef.current.find((c) => c.id === selectedCardId);
+    if (!card) return;
+    const ciclo = mesFaturaDoLancamento(todayISO(), card.closing_day);
+    setFaturaCardYear(ciclo.year);
+    setFaturaCardMonth(ciclo.month);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCardId]);
 
   /* Chegando aqui via FabButton da Início (?novaCompra=1): abre o mesmo
      modal do botão "Lançar no Crédito" — mas só depois que os cartões
@@ -247,16 +306,26 @@ export default function CreditoScreen() {
      qualquer toque que mexa em estado (selecionar cartão, abrir folha, digitar
      no modal) refazia esta cadeia inteira sobre o histórico. Ela só muda de
      verdade quando muda a carteira, o mês ou o cartão selecionado. */
-  // Filtra compras no cartão no mês selecionado
+  // Vencimento/status só fazem sentido para um cartão específico — "Total"
+  // agrega cartões com dias de vencimento diferentes.
+  const selectedCard = selectedCardId === 'all' ? null : walletCards.find((c) => c.id === selectedCardId) ?? null;
+
+  /* Total: mês civil (sem closing_day único pra agregar todos os cartões).
+     Cartão específico: agrupa pela FATURA daquele cartão — que fecha um
+     ciclo que pode começar no mês civil anterior, não pelo mês do
+     calendário. Ver design em
+     docs/superpowers/specs/2026-09-03-ciclo-fatura-cartao-design.md. */
   const creditTransactions = useMemo(
     () =>
       walletTransactions.filter((t) => {
         const isCredit = t.payment_method === 'credit' || t.card_id;
-        const sameMonth = isSameMonth(t.occurred_on, selectedYear, selectedMonth);
-        const cardMatch = selectedCardId === 'all' || t.card_id === selectedCardId;
-        return isCredit && sameMonth && cardMatch;
+        if (!isCredit) return false;
+        if (selectedCardId === 'all') return isSameMonth(t.occurred_on, viewYear, viewMonth);
+        if (t.card_id !== selectedCardId || !selectedCard) return false;
+        const ciclo = mesFaturaDoLancamento(t.occurred_on, selectedCard.closing_day);
+        return ciclo.year === viewYear && ciclo.month === viewMonth;
       }),
-    [selectedCardId, selectedMonth, selectedYear, walletTransactions]
+    [selectedCardId, selectedCard, viewYear, viewMonth, walletTransactions]
   );
 
   const totalInvoice = useMemo(
@@ -264,19 +333,13 @@ export default function CreditoScreen() {
     [creditTransactions]
   );
 
-  // Vencimento/status só fazem sentido para um cartão específico — "Total"
-  // agrega cartões com dias de vencimento diferentes.
-  const selectedCard = selectedCardId === 'all' ? null : walletCards.find((c) => c.id === selectedCardId) ?? null;
   const currentInvoicePayment = selectedCard
     ? invoicePayments.find(
-        (inv) => inv.card_id === selectedCard.id && inv.year === selectedYear && inv.month === selectedMonth
+        (inv) => inv.card_id === selectedCard.id && inv.year === viewYear && inv.month === viewMonth
       ) ?? null
     : null;
   const invoiceDueDate = selectedCard
-    ? (() => {
-        const mesVencimento = selectedCard.due_day >= selectedCard.closing_day ? selectedMonth : selectedMonth + 1;
-        return new Date(selectedYear, mesVencimento, selectedCard.due_day);
-      })()
+    ? dataVencimentoFatura(viewYear, viewMonth, selectedCard.due_day, selectedCard.closing_day)
     : null;
   const invoiceStatus: 'paga' | 'atrasada' | 'vence-hoje' | 'aberta' | null = !selectedCard
     ? null
@@ -322,7 +385,7 @@ export default function CreditoScreen() {
           id: `tx-${Date.now()}`,
           user_id: 'demo',
           type: 'out',
-          description: `Pagamento fatura — ${selectedCard.name} (${formatMonthYear(selectedYear, selectedMonth)})`,
+          description: `Pagamento fatura — ${selectedCard.name} (${formatMonthYear(viewYear, viewMonth)})`,
           amount,
           category: 'Cartão de crédito',
           color: selectedCard.color,
@@ -336,8 +399,8 @@ export default function CreditoScreen() {
           id: `inv-${Date.now()}`,
           user_id: 'demo',
           card_id: selectedCard.id,
-          year: selectedYear,
-          month: selectedMonth,
+          year: viewYear,
+          month: viewMonth,
           amount,
           paid_on: payDate,
           wallet_id: payWalletId,
@@ -349,8 +412,8 @@ export default function CreditoScreen() {
       } else {
         await payCardInvoice({
           card: selectedCard,
-          year: selectedYear,
-          month: selectedMonth,
+          year: viewYear,
+          month: viewMonth,
           amount,
           paid_on: payDate,
           wallet_id: payWalletId,
@@ -754,13 +817,22 @@ export default function CreditoScreen() {
         }
         ListHeaderComponent={
           <>
-        {/* Seletor de Mês */}
+        {/* Seletor de Mês — mês civil na visão Total; fatura a fatura do
+            cartão quando um está selecionado (eixo independente, nunca
+            reciclado de um pro outro — ver viewYear/viewMonth acima). */}
         <MonthSelector
-          year={selectedYear}
-          month={selectedMonth}
+          year={viewYear}
+          month={viewMonth}
+          currentYear={selectedCard ? mesFaturaDoLancamento(todayISO(), selectedCard.closing_day).year : undefined}
+          currentMonth={selectedCard ? mesFaturaDoLancamento(todayISO(), selectedCard.closing_day).month : undefined}
           onChange={(y, m) => {
-            setSelectedYear(y);
-            setSelectedMonth(m);
+            if (selectedCardId === 'all') {
+              setSelectedYear(y);
+              setSelectedMonth(m);
+            } else {
+              setFaturaCardYear(y);
+              setFaturaCardMonth(m);
+            }
           }}
         />
 
@@ -881,7 +953,11 @@ export default function CreditoScreen() {
               </PrivacyValue>
               {selectedCard && invoiceDueDate && invoiceStatus && (
                 <View style={styles.invoiceStatusRow}>
-                  <Text style={styles.invoiceDueText}>{`Vence em ${formatDateLabel(
+                  {/* "Fecha dia X" ao lado do vencimento: sem isso, "Setembro
+                      2026" no seletor de mês acima parece mês civil por
+                      engano — é o mês de FECHAMENTO da fatura, que pode ter
+                      começado em agosto se o cartão fecha depois do dia 1. */}
+                  <Text style={styles.invoiceDueText}>{`Fecha dia ${selectedCard.closing_day} · Vence em ${formatDateLabel(
                     `${invoiceDueDate.getFullYear()}-${String(invoiceDueDate.getMonth() + 1).padStart(2, '0')}-${String(
                       invoiceDueDate.getDate()
                     ).padStart(2, '0')}`
@@ -1080,7 +1156,7 @@ export default function CreditoScreen() {
 
           {selectedCard && (
             <Text style={styles.inputLabel}>
-              {`${selectedCard.name} — ${formatMonthYear(selectedYear, selectedMonth)}`}
+              {`${selectedCard.name} — ${formatMonthYear(viewYear, viewMonth)}`}
             </Text>
           )}
 

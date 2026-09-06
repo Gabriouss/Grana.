@@ -2,7 +2,13 @@
 
 Data: 2026-09-03
 Pedido por: Gabriel (autor), via voz
-Status: aprovado por seção com o autor, aguardando plano de implementação
+Status: implementado em 2026-09-06 (`lib/faturaCiclo.ts`, `app/(app)/credito.tsx`,
+`components/MonthSelector.tsx`) — ver `context.md` da mesma data para o
+relato completo. Migração de `credit_card_invoices` (seção "Migração" abaixo)
+tem o script de prévia pronto em
+`docs/superpowers/specs/2026-09-06-migracao-fatura-cartao-preview.sql`, mas a
+EXECUÇÃO em produção segue pendente — precisa da revisão do autor sobre a
+prévia antes de qualquer UPDATE, como o próprio design abaixo já exigia.
 
 ## Problema
 

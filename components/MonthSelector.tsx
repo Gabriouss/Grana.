@@ -8,11 +8,20 @@ type MonthSelectorProps = {
   year: number;
   month: number; // 0-11
   onChange: (year: number, month: number) => void;
+  /** O que conta como "mês atual" pro selo "Atual" e pro toque na pílula
+      central voltar. Default: ano/mês civil de hoje — o mesmo de sempre.
+      Sobrescrito por quem navega um eixo que não é mês civil (ex.: fatura de
+      cartão de crédito, cujo "aberta agora" pode já ter virado de mês antes
+      do calendário virar, dependendo do dia de fechamento). */
+  currentYear?: number;
+  currentMonth?: number;
 };
 
-export default function MonthSelector({ year, month, onChange }: MonthSelectorProps) {
+export default function MonthSelector({ year, month, onChange, currentYear, currentMonth }: MonthSelectorProps) {
   const now = new Date();
-  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+  const anoAtual = currentYear ?? now.getFullYear();
+  const mesAtual = currentMonth ?? now.getMonth();
+  const isCurrentMonth = year === anoAtual && month === mesAtual;
 
   function handlePrev() {
     if (month === 0) {
@@ -31,7 +40,7 @@ export default function MonthSelector({ year, month, onChange }: MonthSelectorPr
   }
 
   function handleResetCurrent() {
-    onChange(now.getFullYear(), now.getMonth());
+    onChange(anoAtual, mesAtual);
   }
 
   return (
