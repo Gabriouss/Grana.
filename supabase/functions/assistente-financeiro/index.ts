@@ -61,6 +61,42 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const MODELO = 'gemini-3.5-flash-lite';
 const CHAT_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
+/**
+ * O free tier do Gemini tem instabilidade transitória confirmada em teste ao
+ * vivo: uma chamada falha (timeout de 30s ou 5xx/429) e a PRÓXIMA, segundos
+ * depois, responde normalmente em 2-3s — não é degradação sustentada, é uma
+ * falha isolada. Cada pergunta do usuário depende de até duas chamadas
+ * sequenciais (tool-calling + follow-up); sem repetir, uma falha isolada em
+ * qualquer uma das duas vira "Granabô não respondeu" pro usuário mesmo o
+ * serviço estando saudável segundos depois.
+ *
+ * Uma única repetição, após um respiro curto, cobre exatamente esse padrão
+ * observado. Só repete em falha TRANSIENTE (exceção de rede/timeout, 429, ou
+ * 5xx) — um 400/401 (payload ou chave inválida) falharia do mesmo jeito de
+ * novo, e repetir só somaria latência sem chance de sucesso.
+ */
+async function chamarLLMComRetry(payload: unknown): Promise<Response> {
+  const chamar = () =>
+    fetchComTimeout(CHAT_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+  try {
+    const res = await chamar();
+    if (res.ok || (res.status !== 429 && res.status < 500)) return res;
+    console.warn(`[assistente-financeiro] LLM respondeu ${res.status}, tentando de novo em instantes`);
+  } catch (e) {
+    console.warn('[assistente-financeiro] erro de rede/timeout na chamada ao LLM, tentando de novo:', e);
+  }
+  await new Promise((r) => setTimeout(r, 600));
+  return await chamar();
+}
+
 /* ── Rate limit best-effort ──────────────────────────────────────────────── */
 
 const excedeuRateLimit = criarRateLimiter(60_000, 10);
@@ -1514,14 +1550,7 @@ Deno.serve(async (req) => {
       max_tokens: 1024,
     };
 
-    const chatRes = await fetchComTimeout(CHAT_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(chatPayload),
-    });
+    const chatRes = await chamarLLMComRetry(chatPayload);
 
     if (!chatRes.ok) {
       const status = chatRes.status;
@@ -1610,22 +1639,15 @@ Deno.serve(async (req) => {
       }
 
       /* Segunda chamada: LLM formula a resposta com os dados reais */
-      const followUpRes = await fetchComTimeout(CHAT_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${GEMINI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: MODELO,
-          messages: toolMessages,
-          temperature: 0.3,
-          max_tokens: 1024,
-        }),
+      const followUpRes = await chamarLLMComRetry({
+        model: MODELO,
+        messages: toolMessages,
+        temperature: 0.3,
+        max_tokens: 1024,
       });
 
       if (!followUpRes.ok) {
-        console.error(`[assistente-financeiro] Groq follow-up respondeu ${followUpRes.status}`);
+        console.error(`[assistente-financeiro] LLM follow-up respondeu ${followUpRes.status}`);
         return erro('erro_ia', 502, 'Não consegui pensar nisso agora. Tenta de novo em instantes.');
       }
 
