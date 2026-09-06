@@ -1554,7 +1554,14 @@ Deno.serve(async (req) => {
             id: userId,
             user_metadata: userData?.user?.user_metadata ?? null,
           });
-          if (!METAFERRAMENTAS.has(nome)) {
+          /* "Não existe categoria/cartão/carteira/meta chamada X" significa
+             que o ARGUMENTO passado não resolveu — o modelo errou o nome,
+             não é exemplo de sucesso. Achado testando em produção: sem este
+             filtro, "quanto gastei com mercado" virava exemplo reforçando
+             `categoria: "mercado"`, que SEMPRE falha (não existe categoria
+             com esse nome) — o few-shot ensinaria o erro, não o acerto. */
+          const falhouResolucaoDeNome = resultado.startsWith('Não existe ');
+          if (!METAFERRAMENTAS.has(nome) && !falhouResolucaoDeNome) {
             ultimaFerramentaBemSucedida = { nome, args };
           }
         } catch (err) {
