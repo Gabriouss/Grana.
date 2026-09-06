@@ -1,6 +1,7 @@
 package com.gabriouss.grana.voicewidget
 
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.os.Build
 import expo.modules.kotlin.exception.Exceptions
