@@ -38,8 +38,19 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
    O endpoint do Gemini abaixo é o COMPATÍVEL com a API da OpenAI, e é isso
    que permite `tools`/`tool_choice` no mesmo formato — as ferramentas e o
-   fluxo de duas passadas não mudaram uma linha ao trocar de provedor. */
-const MODELO = 'gemini-3.8-flash';
+   fluxo de duas passadas não mudaram uma linha ao trocar de provedor.
+
+   Por que `gemini-3.5-flash-lite` e não `gemini-3.8-flash`: confirmado no
+   painel de rate limits do AI Studio em 06/09/2026 — `gemini-3.8-flash`
+   tem RPD (requisições por dia) = 20 no free tier deste projeto, o mesmo
+   valor de TODA a linha "Flash" não-Lite (3.5, 3.6, 3.7, 3.8). Como cada
+   pergunta do usuário gasta 2 chamadas (a de tool-calling e a de
+   follow-up), 20/dia RPD sustenta ~10 perguntas por dia PRO APP INTEIRO,
+   todos os usuários somados — foi o que estourou a cota no meio de uma
+   bateria de teste. As variantes "Lite" (3.1 e 3.5) têm RPD = 500 e
+   RPM = 15 (contra 5), 25x mais requisições diárias pelo mesmo custo
+   zero. Escolhido 3.5 por ser a mais recente das duas com esse limite. */
+const MODELO = 'gemini-3.5-flash-lite';
 const CHAT_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
 /* ── Rate limit best-effort ──────────────────────────────────────────────── */
