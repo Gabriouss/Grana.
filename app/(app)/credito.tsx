@@ -952,22 +952,29 @@ export default function CreditoScreen() {
                 <Text style={styles.invoiceTotal}>{`R$ ${formatMoney(totalInvoice)}`}</Text>
               </PrivacyValue>
               {selectedCard && invoiceDueDate && invoiceStatus && (
-                <View style={styles.invoiceStatusRow}>
-                  {/* "Fecha dia X" ao lado do vencimento: sem isso, "Setembro
+                <>
+                  {/* Linha própria, fora da fileira com o selo: colada no
+                      "Vence em" (que já tinha marcado o limite de largura
+                      certo pro selo ao lado), "Fecha dia X · Vence em ..."
+                      ficava comprida demais em telas estreitas, quebrava
+                      linha e o selo sobrepunha o texto. Sem isso, "Setembro
                       2026" no seletor de mês acima parece mês civil por
                       engano — é o mês de FECHAMENTO da fatura, que pode ter
                       começado em agosto se o cartão fecha depois do dia 1. */}
-                  <Text style={styles.invoiceDueText}>{`Fecha dia ${selectedCard.closing_day} · Vence em ${formatDateLabel(
-                    `${invoiceDueDate.getFullYear()}-${String(invoiceDueDate.getMonth() + 1).padStart(2, '0')}-${String(
-                      invoiceDueDate.getDate()
-                    ).padStart(2, '0')}`
-                  )}`}</Text>
-                  <View style={[styles.invoiceStatusBadge, { borderColor: INVOICE_STATUS_LABEL[invoiceStatus].cor }]}>
-                    <Text style={[styles.invoiceStatusText, { color: INVOICE_STATUS_LABEL[invoiceStatus].cor }]}>
-                      {INVOICE_STATUS_LABEL[invoiceStatus].texto}
-                    </Text>
+                  <Text style={styles.invoiceClosingText}>{`Fecha dia ${selectedCard.closing_day}`}</Text>
+                  <View style={styles.invoiceStatusRow}>
+                    <Text style={styles.invoiceDueText}>{`Vence em ${formatDateLabel(
+                      `${invoiceDueDate.getFullYear()}-${String(invoiceDueDate.getMonth() + 1).padStart(2, '0')}-${String(
+                        invoiceDueDate.getDate()
+                      ).padStart(2, '0')}`
+                    )}`}</Text>
+                    <View style={[styles.invoiceStatusBadge, { borderColor: INVOICE_STATUS_LABEL[invoiceStatus].cor }]}>
+                      <Text style={[styles.invoiceStatusText, { color: INVOICE_STATUS_LABEL[invoiceStatus].cor }]}>
+                        {INVOICE_STATUS_LABEL[invoiceStatus].texto}
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                </>
               )}
             </View>
             <AppPressable
@@ -1455,11 +1462,18 @@ const styles = StyleSheet.create({
     lineHeight: lh(type.destaque, 'valor'),
     color: theme.down,
   },
+  invoiceClosingText: {
+    fontFamily: fonts.regular,
+    fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
+    color: theme.inkFaint,
+    marginTop: spacing.xs,
+  },
   invoiceStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.icone,
-    marginTop: spacing.xs,
+    marginTop: spacing.fio,
   },
   invoiceDueText: {
     fontFamily: fonts.regular,
