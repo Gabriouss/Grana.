@@ -2726,3 +2726,17 @@ Pedido explícito após visualizar o preview: deixar as modificações registrad
 - Correções técnicas da mesma rodada: cálculo coerente do mock financeiro, bento preservado com movimento reduzido e retirada do caminho sticky inalcançável.
 - O autor ainda não especificou quais elementos deseja alterar. Na retomada, comparar o preview com a versão anterior e receber o direcionamento sobre os pontos concretos; não presumir reprovação de todas as mudanças nem aprovação das sugestões restantes.
 - Esta atualização é somente documental: nenhum novo ajuste na landing foi realizado.
+
+## 06/09/2026 — Três bugs encontrados testando a build 1.5.0 no aparelho — NÃO corrigidos, registrados pra próxima sessão
+
+O autor instalou a build 1.5.0 e testou ao vivo. Três problemas reais, nenhum corrigido nesta sessão (pedido explícito: só registrar e encerrar):
+
+1. **Gráficos → Despesas → Mês a Mês: rótulos de data do eixo X sobrepostos e ilegíveis** ("Jun/05/25/25/07/25/25/20/26/20/26/07/06/25/26/26/06/26"). Componente: `components/LineAreaChart.tsx`, usado por `app/(app)/graficos.tsx`. Provável falta de espaçamento/rotação dos rótulos em largura real de celular.
+
+2. **Nome da carteira sumiu do seletor** (topo direito das telas principais). `components/WalletPill.tsx` já tem esse comportamento DE PROPÓSITO (`ehCompacto` oculta o texto, mantendo bolinha+chevron+área de toque+accessibilityLabel — decisão de uma rodada anterior). O que precisa ser conferido na próxima sessão: (a) se o breakpoint `ehCompacto` está dando falso positivo na largura real do aparelho do autor, ou (b) se o autor, vendo ao vivo, quer reverter a decisão de ocultar o nome mesmo em compacto. Não presumir nenhuma das duas — perguntar.
+
+3. **Lançamento por voz continua falhando** ("Não deu para transcrever — Algo falhou ao processar o áudio"). Já era pendência conhecida antes desta sessão (logs `[voz:diag]` instalados em `lib/voz.ts`/`components/VoiceEntryButton.tsx`, causa ainda não encontrada). Sem novidade nesta sessão além de confirmar que persiste na 1.5.0.
+
+4. **Granabô respondeu com erro genérico do servidor pra uma pergunta real no aparelho**: "Algo deu errado do meu lado. Tenta de novo." — essa frase exata é o catch-all `erro_interno` (500) de `supabase/functions/assistente-financeiro/index.ts:1682`, ou seja, uma EXCEÇÃO NÃO TRATADA aconteceu de verdade no servidor pra uma pergunta de período (mês passado / maio de 2026) na conta real do autor — diferente da conta de testes usada nesta sessão, que respondeu esses mesmos tipos de pergunta corretamente via curl. Tentei puxar o stack trace exato dos logs (`function_logs`/`function_edge_logs` via Management API) e as duas tabelas já tinham zerado (retenção curta, o tempo entre o teste do autor e esta investigação foi suficiente pra expirar). **Próxima sessão: reproduzir a mesma pergunta com a conta do autor e puxar o log NA HORA, antes de expirar** — sem o stack trace, a causa raiz continua desconhecida; não presumir qual parte do código quebrou.
+
+Nenhuma dessas quatro coisas foi tocada nesta sessão. Todo o código já commitado e publicado (Granabô fases 1-3 + correções + build 1.5.0) permanece como estava — este bloco é só registro de teste, sem alteração de código.
