@@ -264,6 +264,36 @@ export default function InicioScreen() {
     });
   }, [isDemoMode, userId, loading, onboardingOpen, session]);
 
+  /* Contas/orçamentos/cofrinhos/cartões, SEM lançamentos — a parte barata do
+     `load()` de baixo, pensada pra rodar em todo foco de tela sem custar o
+     histórico inteiro (ver comentário em `load` sobre por que ele é caro e
+     por que não é seguro encurtar o QUE é buscado). Chamada em foco repetido
+     e nas ações que só mexem em conta/orçamento/cofrinho — nenhuma delas
+     muda a lista de lançamentos, então recarregá-la ali seria pagar o preço
+     de novo por um dado que não mudou. */
+  const carregarDadosLeves = useCallback(async () => {
+    if (isDemoMode) return; // dados de exemplo já são fixos, nada aqui muda sozinho
+    try {
+      const [b, bg, cc] = await Promise.all([fetchBills(), fetchBudgets(), fetchCreditCards()]);
+      setBills(b);
+      setBudgets(bg);
+      setCreditCards(cc);
+      setError(null);
+    } catch (e: any) {
+      setError(e.message ?? 'Erro ao carregar dados');
+    }
+    try {
+      setGoals(await fetchGoals());
+    } catch {
+      setGoals([]);
+    }
+    try {
+      setLifetimeXp((await fetchGamification()).lifetime_xp);
+    } catch {
+      setLifetimeXp(0);
+    }
+  }, [isDemoMode]);
+
   const load = useCallback(async () => {
     if (isDemoMode) {
       setTransactions(DEMO_TRANSACTIONS);
@@ -285,6 +315,17 @@ export default function InicioScreen() {
       // falha ali (tabela ausente, RLS não aplicada) nunca derrube os dados
       // já estabelecidos — sem isso, um `throw` num `fetchGoals` zerava a
       // Home inteira, inclusive lançamentos que já estavam funcionando.
+      //
+      // `fetchTransactions()` SEM `sinceDays` é de propósito, não descuido —
+      // IMPECCABLE_AUDIT.md (P2, 28/08/2026) já investigou encurtar essa
+      // janela e reverteu: Início navega por mês (inclusive meses antigos),
+      // e uma janela curta mostraria um mês vazio em vez de lento. O saldo
+      // por carteira NÃO depende mais disto (veio do banco via
+      // `refreshSaldos()`, ver useEffect abaixo) — o que ainda depende do
+      // histórico completo é só a navegação por mês. Por isso o fix aqui é
+      // outro: não repetir esta busca cara a cada foco de tela que não
+      // mexeu em lançamento nenhum — ver `carregarDadosLeves` acima e o
+      // `useFocusEffect` abaixo.
       const [tx, b, bg, cc] = await Promise.all([
         fetchTransactions(),
         fetchBills(),
@@ -297,9 +338,13 @@ export default function InicioScreen() {
       setCreditCards(cc);
       setError(null);
 
-      // Reagenda o lembrete diário de hábito toda vez que a Home ganha foco
-      // (inclusive ao abrir o app) — mesmo padrão de "reagenda tudo a cada
-      // load" que contas.tsx/credito.tsx já usam pros próprios lembretes.
+      // Reagenda o lembrete diário de hábito toda vez que os lançamentos são
+      // recarregados de verdade (abrir o app, puxar pra atualizar, ou depois
+      // de qualquer ação que crie/edite/exclua um lançamento) — não mais em
+      // todo foco de tela, já que a maioria deles agora não busca lançamento
+      // nenhum (ver carregarDadosLeves). Streak/jaLancouHoje podem ficar
+      // minutos desatualizados entre uma ação e outra; é um lembrete de
+      // notificação, não um valor financeiro.
       carregarNotifPrefs().then((prefs) => {
         if (!prefs.lembreteDiarioAtivo) {
           cancelDailyHabitReminder().catch(() => {});
@@ -420,9 +465,24 @@ export default function InicioScreen() {
     quickChipsScrollRef.current?.scrollTo({ x: Math.max(0, quickChipsScrollX.current + delta), animated: true });
   }
 
+  /* Guarda o último `isDemoMode` com que a tela realmente carregou dados —
+     não o valor atual, o valor JÁ CARREGADO. `null` só antes da primeira
+     carga. Serve pra decidir, a cada foco, se este é um foco "de verdade
+     novo" (primeira vez, ou acabou de trocar de modo real/exemplo — os dois
+     precisam da carga completa) ou só voltar pra uma aba que já tinha os
+     dados certos (aí a carga leve basta). Sem isto, alternar o modo exemplo
+     no Perfil e voltar pra Início pela navegação (que também é um foco)
+     cairia na carga leve e nunca chegaria a mostrar os dados de exemplo. */
+  const ultimoModoCarregadoRef = useRef<boolean | null>(null);
+
   useFocusEffect(
     useCallback(() => {
-      load();
+      if (ultimoModoCarregadoRef.current === isDemoMode) {
+        carregarDadosLeves();
+      } else {
+        ultimoModoCarregadoRef.current = isDemoMode;
+        load();
+      }
       carregarPerfil().then((p) => {
         setPerfil(p);
         setNomeExibicao(nomeDeExibicao(p));
@@ -435,7 +495,7 @@ export default function InicioScreen() {
         return;
       }
       Animated.spring(pieAnim, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 7 }).start();
-    }, [load, pieAnim, reduzirMovimento])
+    }, [load, carregarDadosLeves, isDemoMode, pieAnim, reduzirMovimento])
   );
 
   /* ── Valores derivados ──────────────────────────────────────────────────
@@ -745,7 +805,7 @@ export default function InicioScreen() {
       });
       setBillSheetOpen(false);
       triggerToast('Boleto / Conta salva');
-      load();
+      carregarDadosLeves();
     } catch (e: any) {
       Alert.alert('Erro ao salvar conta', e.message);
     } finally {
@@ -783,7 +843,7 @@ export default function InicioScreen() {
       await upsertBudget(catObj.name, value, catObj.color);
       setBudgetModalOpen(false);
       triggerToast('Orçamento salvo');
-      load();
+      carregarDadosLeves();
     } catch (e: any) {
       Alert.alert('Erro ao salvar orçamento', e.message);
     } finally {
@@ -802,7 +862,7 @@ export default function InicioScreen() {
       await deleteBudget(budgetCategory);
       setBudgetModalOpen(false);
       triggerToast('Orçamento removido');
-      load();
+      carregarDadosLeves();
     } catch (e: any) {
       Alert.alert('Erro ao remover orçamento', e.message);
     }
@@ -856,7 +916,7 @@ export default function InicioScreen() {
     }
     await depositToGoal(goal, delta);
     triggerToast(delta >= 0 ? 'Guardado no cofrinho' : 'Resgatado do cofrinho');
-    load();
+    carregarDadosLeves();
   }
 
   function handleLayoutChange(novo: HomeBlockConfig[]) {
@@ -885,7 +945,7 @@ export default function InicioScreen() {
     }
     await deleteGoal(goal.id);
     triggerToast('Meta removida');
-    load();
+    carregarDadosLeves();
   }
 
   /* Conteúdo de cada bloco personalizável da Home (lib/home-layout.ts) —
@@ -1662,7 +1722,7 @@ export default function InicioScreen() {
         onClose={() => setTemplatesModalOpen(false)}
         onSuccess={() => {
           triggerToast('Orçamento sugerido aplicado');
-          load();
+          carregarDadosLeves();
         }}
       />
 
