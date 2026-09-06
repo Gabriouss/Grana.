@@ -33,7 +33,7 @@ Método: análise de fonte + sessão autenticada real verificada ao vivo em
 | # | Dimensão | Nota | Achado principal |
 |---|---|---:|---|
 | 1 | Acessibilidade | **4/4** | 0 controles sem nome nas 6 telas; isolamento de modal medido; Reduce Motion completo |
-| 2 | Performance | **3/4** | Virtualização e agregação resolvidas, mas 3 telas ainda baixam o histórico inteiro |
+| 2 | Performance | **3/4** | Virtualização e agregação resolvidas; Início parou de rebuscar o histórico a cada foco (06/09), Lançamentos ainda repete |
 | 3 | Aparência e temas | **4/4** | Tema escuro integrado; token drift fechado em 28/08 (ver achado abaixo) |
 | 4 | Conformidade de plataforma | ~~**4/4**~~ **ver 02/09** | ~~Native Tabs com SF Symbols/Material Symbols~~ Nunca validado em hardware; causou tela branca e foi removido |
 | 5 | Adaptatividade | **4/4** | Classes de janela em toda plataforma, orientação livre, insets corretos |
@@ -98,7 +98,34 @@ acusa 8 nós "fora da marca" por tela — todos são `<style>`, `<title>` e
 
 ## Achados detalhados
 
-### P2 — Três telas ainda baixam o histórico inteiro de lançamentos — EM ABERTO, não corrigido
+### P2 — Três telas ainda baixam o histórico inteiro de lançamentos — PARCIALMENTE CORRIGIDO (06/09/2026)
+
+> **Início resolvido; Gráficos e Lançamentos continuam abertos.** O autor
+> reportou lentidão geral no app depois de usar a build 1.5.0, e o
+> reinvestigar confirmou exatamente o que este achado já apontava, com uma
+> saída que as duas travas abaixo ("por que não foi corrigido") NÃO
+> bloqueiam: a trava 1 (saldo dependia do histórico completo) já não existe
+> mais — `app/(app)/index.tsx:404-410` já usa `refreshSaldos()`
+> (`saldos_por_carteira()` no banco) pra conta real desde antes desta
+> sessão, só o modo demo ainda soma em memória. A trava 2 (janelar quebra
+> navegação por mês/ano antigo) continua válida, e por isso o fix NÃO
+> encurta a janela — encurta a FREQUÊNCIA. `fetchTransactions()` sem
+> `sinceDays` continua trazendo o histórico inteiro, mas só roda no primeiro
+> foco da tela, no pull-to-refresh, e depois de uma ação que genuinamente
+> cria/edita/exclui um lançamento; os focos repetidos (toda troca de aba de
+> volta pra Início) e as ações que só mexem em conta/orçamento/cofrinho
+> passaram a usar um carregador que pula a busca de lançamentos
+> (`carregarDadosLeves`, ver `app/(app)/index.tsx`). Verificado ao vivo
+> instrumentando `window.fetch`: depois de três idas e voltas pela Início, a
+> assinatura sem filtro de `fetchTransactions()` não apareceu nenhuma vez.
+>
+> **Gráficos** não tem este problema específico (não usa `useFocusEffect`
+> pra recarregar a cada foco). **Lançamentos** tem o MESMO padrão
+> (`app/(app)/lancamentos.tsx:267` — `useFocusEffect(() => load())`) e seria
+> candidato ao mesmo fix numa próxima rodada — não corrigido agora porque o
+> autor pediu pra tratar a lentidão relatada, e Início (a tela que mais
+> recebe foco, por ser a primeira e a que se volta a cada navegação) já
+> resolve a maior parte do impacto percebido.
 
 > **Status (28/08/2026): investigado a fundo e deliberadamente NÃO corrigido
 > nesta rodada.** A correção foi iniciada e revertida. O motivo está abaixo,
