@@ -2900,3 +2900,31 @@ EAS, não pelo `app.json`).
   lógica (o runner encerrou apenas com a guarda de fonte antes do ajuste, que
   foi corrigida e passou em seguida). QA visual ao vivo continua limitado ao
   Chrome/ADB indisponíveis neste ambiente.
+
+## 06/09/2026 (continuação) — primeira build 1.7.0 falhou no Gradle, corrigida e reenviada com sucesso
+
+A build disparada (`32f00f39-07d9-4a3c-a538-90797676659f`) falhou depois de
+7min54s — `eas build:view --json` só devolvia "Gradle build failed with
+unknown error", sem detalhe. O log de verdade fica num arquivo `.txt`
+comprimido em Brotli (`Content-Encoding: br`) num link assinado do GCS —
+`curl` sozinho baixa os bytes crus sem descomprimir; precisa
+`zlib.brotliDecompressSync` (Node) ou equivalente antes de conseguir ler.
+Decodificado, o erro real: `Unresolved reference 'ComponentName'` em
+`modules/grana-voice-widget/android/.../GranaVoiceWidgetModule.kt:54`
+(`fixarPorTipo`, usa `ComponentName` mas só importava `Context`) — bug
+latente desde `856b59f` (limpeza ponytail, bem antes desta sessão), nunca
+pego porque nenhuma build real tinha rodado contra este arquivo desde
+então (as builds anteriores ficaram só preparadas, nunca disparadas).
+Confirmado que os outros arquivos do módulo (`EstadoWidget.kt`,
+`GranaResumoWidgetProvider.kt`, `WidgetRegistry.kt`) já importavam
+`ComponentName` certo — só faltava neste um.
+
+Corrigido (`65c0c8f`, uma linha: `import android.content.ComponentName`).
+Build reenviada com a mesma versão/nota (`44a6885a-e156-4624-9153-425defa7ba59`,
+versionCode 7) — **sucesso**. Link de instalação:
+`https://expo.dev/accounts/gabriouss/projects/grana-app/builds/44a6885a-e156-4624-9153-425defa7ba59`.
+
+Nota pra quem for depurar uma build falha no futuro: `eas build:view <id>
+--json` dá o `logFiles` (URL assinada); baixar com `curl`, depois
+descomprimir Brotli antes de grep — sem isso o arquivo parece binário
+ilegível e é fácil desistir cedo demais achando que não dá pra ler o log.
