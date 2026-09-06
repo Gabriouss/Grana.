@@ -6,6 +6,7 @@ import {
   FlatList,
   Platform,
   RefreshControl,
+  SectionList,
   ScrollView,
   StyleSheet,
   Text,
@@ -35,8 +36,9 @@ import {
   updateTransaction,
   criarOcorrenciasRecorrentes,
 } from '@/lib/data';
-import { formatDateLabel, formatMoney, formatMonthYear, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { mesFaturaDoLancamento, dataVencimentoFatura } from '@/lib/faturaCiclo';
+import { formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
+import { agruparLancamentosPorCartao, filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
 import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
@@ -78,9 +80,8 @@ export default function CreditoScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | 'all'>('all');
 
-  // Mês e Ano Selecionados — visão "Total" (mês civil; cartões podem ter
-  // closing_day diferentes entre si, então não existe um ciclo único pra
-  // agregar todos ao mesmo tempo).
+  // Mês e ano de FECHAMENTO selecionados na visão Total. Cada lançamento é
+  // resolvido pelo ciclo do próprio cartão antes de entrar nesse agrupamento.
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -95,8 +96,8 @@ export default function CreditoScreen() {
   const [faturaCardYear, setFaturaCardYear] = useState<number | null>(null);
   const [faturaCardMonth, setFaturaCardMonth] = useState<number | null>(null);
 
-  /* O que está de fato navegado agora, seja qual for o eixo: mês civil na
-     visão Total, ciclo de fatura daquele cartão quando um está selecionado. */
+  /* O que está de fato navegado agora: mês de fechamento agregado na visão
+     Total ou ciclo de fatura daquele cartão quando um está selecionado. */
   const viewYear = selectedCardId === 'all' ? selectedYear : faturaCardYear ?? selectedYear;
   const viewMonth = selectedCardId === 'all' ? selectedMonth : faturaCardMonth ?? selectedMonth;
 
@@ -235,12 +236,13 @@ export default function CreditoScreen() {
       const hoje = todayISO();
       for (const card of c) {
         const cicloAberto = mesFaturaDoLancamento(hoje, card.closing_day);
-        const valorFatura = selectedTransactions
-          .filter((tx) => (tx.payment_method === 'credit' || tx.card_id) && tx.card_id === card.id)
-          .filter((tx) => {
-            const ciclo = mesFaturaDoLancamento(tx.occurred_on, card.closing_day);
-            return ciclo.year === cicloAberto.year && ciclo.month === cicloAberto.month;
-          })
+        const valorFatura = filtrarLancamentosDaFatura(
+          selectedTransactions,
+          c,
+          card.id,
+          cicloAberto.year,
+          cicloAberto.month
+        )
           .reduce((s, tx) => s + Number(tx.amount), 0);
         const jaPaga = p.some(
           (inv) => inv.card_id === card.id && inv.year === cicloAberto.year && inv.month === cicloAberto.month
@@ -326,35 +328,23 @@ export default function CreditoScreen() {
   // agrega cartões com dias de vencimento diferentes.
   const selectedCard = selectedCardId === 'all' ? null : walletCards.find((c) => c.id === selectedCardId) ?? null;
 
-  /* Total: mês civil (sem closing_day único pra agregar todos os cartões).
-     Cartão específico: agrupa pela FATURA daquele cartão — que fecha um
-     ciclo que pode começar no mês civil anterior, não pelo mês do
-     calendário. Ver design em
-     docs/superpowers/specs/2026-09-03-ciclo-fatura-cartao-design.md. */
   const creditTransactions = useMemo(
-    () =>
-      walletTransactions.filter((t) => {
-        const isCredit = t.payment_method === 'credit' || t.card_id;
-        if (!isCredit) return false;
-        if (selectedCardId !== 'all') {
-          if (t.card_id !== selectedCardId || !selectedCard) return false;
-          const ciclo = mesFaturaDoLancamento(t.occurred_on, selectedCard.closing_day);
-          return ciclo.year === viewYear && ciclo.month === viewMonth;
-        }
-        /* Total: cada lançamento agrupa pelo ciclo do PRÓPRIO cartão dele —
-           nunca mês civil, mesmo com vários cartões de closing_day
-           diferentes. "Setembro" aqui vira "soma de toda fatura que fecha
-           em setembro", que é a mesma definição de fatura usada quando um
-           cartão específico está selecionado — só sem restringir a um só.
-           Lançamento sem cartão vinculado (ex.: o cartão foi excluído) não
-           tem closing_day nenhum pra usar, então cai no mês civil mesmo. */
-        const card = t.card_id ? walletCards.find((c) => c.id === t.card_id) : null;
-        if (!card) return isSameMonth(t.occurred_on, viewYear, viewMonth);
-        const ciclo = mesFaturaDoLancamento(t.occurred_on, card.closing_day);
-        return ciclo.year === viewYear && ciclo.month === viewMonth;
-      }),
-    [selectedCardId, selectedCard, viewYear, viewMonth, walletTransactions, walletCards]
+    () => filtrarLancamentosDaFatura(walletTransactions, walletCards, selectedCardId, viewYear, viewMonth),
+    [walletTransactions, walletCards, selectedCardId, viewYear, viewMonth]
   );
+
+  const secoesDeLancamentos = useMemo(() => {
+    if (selectedCardId === 'all') return agruparLancamentosPorCartao(creditTransactions, walletCards);
+    if (!selectedCard || creditTransactions.length === 0) return [];
+    return [{
+      chave: selectedCard.id,
+      titulo: selectedCard.name,
+      cor: selectedCard.color,
+      cartao: selectedCard,
+      data: creditTransactions,
+      subtotal: creditTransactions.reduce((soma, transacao) => soma + Number(transacao.amount), 0),
+    }];
+  }, [selectedCardId, selectedCard, creditTransactions, walletCards]);
 
   const totalInvoice = useMemo(
     () => creditTransactions.reduce((s, t) => s + Number(t.amount), 0),
@@ -861,9 +851,9 @@ export default function CreditoScreen() {
         }
       />
 
-      <FlatList
+      <SectionList
         style={styles.scroll}
-        data={creditTransactions}
+        sections={secoesDeLancamentos}
         keyExtractor={(tx) => tx.id}
         initialNumToRender={12}
         maxToRenderPerBatch={12}
@@ -878,6 +868,25 @@ export default function CreditoScreen() {
             }}
           />
         )}
+        renderSectionHeader={({ section }) => selectedCardId === 'all' ? (
+          <View style={styles.cardSectionHeader}>
+            <View style={styles.cardSectionIdentity}>
+              <View style={[styles.cardSectionDot, { backgroundColor: section.cor ?? theme.inkFaint }]} />
+              <View style={styles.cardSectionText}>
+                <Text style={styles.cardSectionTitle}>{section.titulo}</Text>
+                <Text style={styles.cardSectionPeriod}>
+                  {section.cartao
+                    ? `Ciclo ${rotuloPeriodoFatura(viewYear, viewMonth, section.cartao.closing_day)}`
+                    : 'Sem ciclo definido'}
+                </Text>
+              </View>
+            </View>
+            <PrivacyValue>
+              <Text style={styles.cardSectionSubtotal}>{`R$ ${formatMoney(section.subtotal)}`}</Text>
+            </PrivacyValue>
+          </View>
+        ) : null}
+        stickySectionHeadersEnabled={false}
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
         refreshControl={
           <RefreshControl
@@ -891,12 +900,12 @@ export default function CreditoScreen() {
         }
         ListHeaderComponent={
           <>
-        {/* Seletor de Mês — mês civil na visão Total; fatura a fatura do
-            cartão quando um está selecionado (eixo independente, nunca
-            reciclado de um pro outro — ver viewYear/viewMonth acima). */}
+        {/* Seletor do mês de fechamento — agregado na visão Total e fatura a
+            fatura quando um cartão está selecionado. */}
         <MonthSelector
           year={viewYear}
           month={viewMonth}
+          mode="invoice"
           currentYear={selectedCard ? mesFaturaDoLancamento(todayISO(), selectedCard.closing_day).year : undefined}
           currentMonth={selectedCard ? mesFaturaDoLancamento(todayISO(), selectedCard.closing_day).month : undefined}
           onChange={(y, m) => {
@@ -935,12 +944,13 @@ export default function CreditoScreen() {
                 selectedCardId === card.id
                   ? { year: viewYear, month: viewMonth }
                   : mesFaturaDoLancamento(todayISO(), card.closing_day);
-              const cardSpent = walletTransactions
-                .filter((t) => t.card_id === card.id)
-                .filter((t) => {
-                  const ciclo = mesFaturaDoLancamento(t.occurred_on, card.closing_day);
-                  return ciclo.year === cicloDoCard.year && ciclo.month === cicloDoCard.month;
-                })
+              const cardSpent = filtrarLancamentosDaFatura(
+                walletTransactions,
+                walletCards,
+                card.id,
+                cicloDoCard.year,
+                cicloDoCard.month
+              )
                 .reduce((s, t) => s + Number(t.amount), 0);
               const limitPct = Math.min(1, cardSpent / (card.limit_amount || 1));
 
@@ -1057,7 +1067,9 @@ export default function CreditoScreen() {
                       2026" no seletor de mês acima parece mês civil por
                       engano — é o mês de FECHAMENTO da fatura, que pode ter
                       começado em agosto se o cartão fecha depois do dia 1. */}
-                  <Text style={styles.invoiceClosingText}>{`Fecha dia ${selectedCard.closing_day}`}</Text>
+                  <Text style={styles.invoiceClosingText}>
+                    {`Ciclo ${rotuloPeriodoFatura(viewYear, viewMonth, selectedCard.closing_day)} · fecha dia ${selectedCard.closing_day}`}
+                  </Text>
                   <View style={styles.invoiceStatusRow}>
                     <Text style={styles.invoiceDueText}>{`Vence em ${formatDateLabel(
                       `${invoiceDueDate.getFullYear()}-${String(invoiceDueDate.getMonth() + 1).padStart(2, '0')}-${String(
@@ -1100,9 +1112,13 @@ export default function CreditoScreen() {
         </View>
 
         {/* Lista de Compras no Crédito */}
-        <Text style={styles.sectionLabel}>Lançamentos da Fatura · segure para editar ou excluir</Text>
+        <Text style={styles.sectionLabel}>
+          {selectedCardId === 'all'
+            ? 'Lançamentos por cartão · segure para editar ou excluir'
+            : 'Lançamentos da fatura · segure para editar ou excluir'}
+        </Text>
         {creditTransactions.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhuma compra no crédito neste mês.</Text>
+          <Text style={styles.emptyText}>Nenhuma compra no crédito nesta fatura.</Text>
         ) : null}
           </>
         }
@@ -1654,6 +1670,51 @@ const styles = StyleSheet.create({
     color: theme.inkFaint,
     letterSpacing: 0.5,
     marginTop: spacing.sm,
+  },
+  cardSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.ruleStrong,
+  },
+  cardSectionIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.icone,
+    flexShrink: 1,
+  },
+  cardSectionText: {
+    flexShrink: 1,
+    gap: spacing.fio,
+  },
+  cardSectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  cardSectionTitle: {
+    fontFamily: fonts.regular,
+    fontSize: type.apoio,
+    lineHeight: lh(type.apoio, 'titulo'),
+    color: theme.ink,
+    flexShrink: 1,
+  },
+  cardSectionPeriod: {
+    fontFamily: fonts.regular,
+    fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
+    color: theme.inkFaint,
+  },
+  cardSectionSubtotal: {
+    fontFamily: fonts.regular,
+    fontSize: type.apoio,
+    lineHeight: lh(type.apoio, 'valor'),
+    fontVariant: ['tabular-nums'],
+    color: theme.down,
   },
   emptyText: {
     fontFamily: fonts.regular,

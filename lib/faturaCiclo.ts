@@ -50,6 +50,21 @@ export function janelaFatura(year: number, month: number, closingDay: number): {
   };
 }
 
+/** Rótulo compacto do intervalo real da fatura, com o fim exclusivo ajustado. */
+export function rotuloPeriodoFatura(year: number, month: number, closingDay: number): string {
+  const { inicio, fim } = janelaFatura(year, month, closingDay);
+  const [anoInicio, mesInicio, diaInicio] = inicio.split('-').map(Number);
+  const [anoFim, mesFim, diaFim] = fim.split('-').map(Number);
+  const fimInclusivo = new Date(anoFim, mesFim - 1, diaFim - 1);
+  const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const anoNecessario = anoInicio !== fimInclusivo.getFullYear();
+  const inicioLabel = `${diaInicio} ${meses[mesInicio - 1]}${anoNecessario ? ` ${anoInicio}` : ''}`;
+  const fimLabel = `${fimInclusivo.getDate()} ${meses[fimInclusivo.getMonth()]}${
+    anoNecessario ? ` ${fimInclusivo.getFullYear()}` : ''
+  }`;
+  return `${inicioLabel} – ${fimLabel}`;
+}
+
 /**
  * Vencimento de uma fatura, relativo ao mês de FECHAMENTO dela (`year`,
  * `month` = quando ela fecha, não quando vence) — generaliza o cálculo que

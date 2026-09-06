@@ -15,13 +15,20 @@ type MonthSelectorProps = {
       do calendário virar, dependendo do dia de fechamento). */
   currentYear?: number;
   currentMonth?: number;
+  /** Troca a linguagem do controle sem alterar seu eixo numérico. */
+  mode?: 'month' | 'invoice';
 };
 
-export default function MonthSelector({ year, month, onChange, currentYear, currentMonth }: MonthSelectorProps) {
+export default function MonthSelector({ year, month, onChange, currentYear, currentMonth, mode = 'month' }: MonthSelectorProps) {
   const now = new Date();
   const anoAtual = currentYear ?? now.getFullYear();
   const mesAtual = currentMonth ?? now.getMonth();
   const isCurrentMonth = year === anoAtual && month === mesAtual;
+  const periodoLabel = mode === 'invoice'
+    ? `Fatura de ${formatMonthYear(year, month)}`
+    : formatMonthYear(year, month);
+  const anteriorLabel = mode === 'invoice' ? 'Fatura anterior' : 'Mês anterior';
+  const proximoLabel = mode === 'invoice' ? 'Próxima fatura' : 'Próximo mês';
 
   function handlePrev() {
     if (month === 0) {
@@ -49,7 +56,7 @@ export default function MonthSelector({ year, month, onChange, currentYear, curr
         style={({ hovered }) => [styles.arrowBtn, hovered && styles.btnHover]}
         onPress={handlePrev}
         hitSlop={12}
-        accessibilityLabel="Mês anterior"
+        accessibilityLabel={anteriorLabel}
       >
         <Ionicons name="chevron-back" size={20} color={theme.ink} />
       </AppPressable>
@@ -57,9 +64,9 @@ export default function MonthSelector({ year, month, onChange, currentYear, curr
       <AppPressable
         style={({ hovered }) => [styles.centerPill, hovered && styles.btnHover]}
         onPress={handleResetCurrent}
-        accessibilityLabel={`${formatMonthYear(year, month)}. Voltar para o mês atual`}
+        accessibilityLabel={`${periodoLabel}. Voltar para ${mode === 'invoice' ? 'a fatura atual' : 'o mês atual'}`}
       >
-        <Text style={styles.monthText}>{formatMonthYear(year, month)}</Text>
+        <Text style={styles.monthText}>{periodoLabel}</Text>
         {isCurrentMonth ? (
           <View style={styles.currentBadge}>
             <Text style={styles.currentBadgeText}>Atual</Text>
@@ -73,7 +80,7 @@ export default function MonthSelector({ year, month, onChange, currentYear, curr
         style={({ hovered }) => [styles.arrowBtn, hovered && styles.btnHover]}
         onPress={handleNext}
         hitSlop={12}
-        accessibilityLabel="Próximo mês"
+        accessibilityLabel={proximoLabel}
       >
         <Ionicons name="chevron-forward" size={20} color={theme.ink} />
       </AppPressable>

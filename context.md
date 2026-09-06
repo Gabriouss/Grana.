@@ -2808,3 +2808,29 @@ Três achados seguidos, testando a implementação acima com o cartão real do a
 3. **Teste ao vivo com fechamento dia 15**: reproduzi o cenário exato do autor (C6, fechamento 15, vencimento 22) e simulei 3 lançamentos (20/ago, "31/ago", 04/set) — o total bateu R$40 em vez dos R$60 esperados. Investigando, achei que o "31/ago" na verdade tinha sido salvo como **31/JULHO** — erro meu no picker de calendário (ele não reseta pro mês atual a cada abertura; um segundo clique em "mês anterior", pensando que ainda estava em setembro, foi parar em julho). Confirmado consultando o Postgres direto (`occurred_on: "2026-07-31"`). Não era bug: dia 31 com fechamento 15 pertence à fatura de AGOSTO mesmo, e o app mostrou isso corretamente ao navegar pra lá. Conclusão: a lógica de agrupamento está correta; o "Cannot connect to Expo CLI" que apareceu no rodapé de um print do autor sugere que o app dele pode ter ficado com um bundle desatualizado depois de perder a conexão com o Metro — vale reconectar/recarregar antes de testar de novo.
 4. **Edição de cartão não existia** (`566b774`): só dava pra criar e excluir; editar nome/banco/dígitos/limite/fechamento/vencimento depois de cadastrado exigia recriar do zero. Achado pelo autor testando a correção acima com o cartão real. `lib/data.ts` ganhou `updateCreditCard` (mesmo padrão de `updateWallet`); o botão de opções do cartão (antes só lixeira, exclusão direta) e o toque longo (antes só excluir) passaram a abrir o mesmo menu Editar/Excluir que os lançamentos já usam (`ItemActionSheet`). Mesmo sheet de cadastro serve pra criar e editar (`editingCardId` no estado decide qual). Verificado ao vivo: editar fechamento de 15 pra 20 persiste e reflete na tela.
 5. **Visão "Total" também agrupava por mês civil** (`f5bb94b`): eu tinha deixado isso fora de propósito (mesma decisão do achado 2, documentada como "cartões podem ter closing_day diferentes, não existe um ciclo único pra agregar"). O autor testou a aba Total com o cartão real (fechamento dia 15) e mostrou print — reagiu mal ao ver agrupamento por mês civil de novo, com razão: a justificativa não se sustenta, cada lançamento continua pertencendo ao ciclo do PRÓPRIO cartão dele em qualquer aba. `creditTransactions` agora resolve cada lançamento pelo `closing_day` do seu próprio `card_id`, mesmo na visão Total — "Setembro" ali passa a significar "soma de toda fatura que fecha em setembro". Lançamento sem cartão vinculado (cartão excluído) continua caindo no mês civil, único caso sem `closing_day` disponível. Verificado ao vivo: lançamento de 31/ago com fechamento dia 15 sumiu do Total de agosto e apareceu no Total de setembro.
+# Sessão de 06/09/2026 — lista de crédito por ciclo e por cartão
+
+- A tela de Crédito passou de uma lista plana para `SectionList` na visão
+  Total. Cada cartão tem seção própria, na mesma ordem do carrossel, com cor,
+  nome, intervalo real do ciclo e subtotal; lançamentos ambíguos ficam em
+  “Sem cartão vinculado”. Ao selecionar um cartão, a lista continua
+  visualmente plana.
+- O seletor compartilhado ganhou `mode="invoice"`; só a tela de Crédito usa
+  esse modo e agora exibe “Fatura de …”, com setas anunciadas como fatura
+  anterior/próxima. As outras telas continuam falando em mês.
+- `lib/creditoFaturas.ts` virou a fonte única da filtragem e do agrupamento da
+  tela. Lista, total, cartão selecionado, carrossel e lembretes usam a mesma
+  regra baseada em `mesFaturaDoLancamento`.
+- Diagnóstico das capturas reais: compras antigas apareciam no Total, mas o C6
+  mostrava R$ 0,00, sinal de crédito salvo sem `card_id`. Quando há exatamente
+  um cartão, a associação é inequívoca e esses registros passam a usar o ciclo
+  dele sem reescrever o banco. Com dois ou mais cartões, continuam separados em
+  “Sem cartão vinculado” para não atribuir uma compra ao cartão errado; podem
+  ser vinculados pela edição do lançamento.
+- `rotuloPeriodoFatura` explicita a janela real (ex.: `20 ago – 19 set`) no
+  resumo do cartão e no cabeçalho de cada seção, evitando que o mês de
+  fechamento seja confundido com mês civil.
+- Verificação: `tsc --noEmit` passou; suíte completa `npm run test:parser`
+  passou, incluindo 17/17 casos da matemática de fatura e 7/7 casos novos de
+  filtragem/separação. A tentativa de QA via `agent-browser` não abriu o Chrome
+  local (`CDP response channel closed`); nenhuma build EAS foi disparada.
