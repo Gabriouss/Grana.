@@ -59,42 +59,50 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
    RPM = 15 (contra 5), 25x mais requisições diárias pelo mesmo custo
    zero. Escolhido 3.5 por ser a mais recente das duas com esse limite. */
 const MODELO = 'gemini-3.5-flash-lite';
+/* Backup pra retry, não escolha principal: mesmo teto generoso de free tier
+   (RPD 500/RPM 15), só mais "antigo" que 3.5 — ver justificativa da escolha
+   do MODELO acima. Existe só pra dar uma segunda chance num BACKEND
+   diferente quando o principal está sobrecarregado (ver comentário de
+   chamarLLMComRetry). */
+const MODELO_FALLBACK = 'gemini-3.1-flash-lite';
 const CHAT_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
 /**
- * O free tier do Gemini tem instabilidade transitória confirmada em teste ao
- * vivo: uma chamada falha (timeout de 30s ou 5xx/429) e a PRÓXIMA, segundos
- * depois, responde normalmente em 2-3s — não é degradação sustentada, é uma
- * falha isolada. Cada pergunta do usuário depende de até duas chamadas
- * sequenciais (tool-calling + follow-up); sem repetir, uma falha isolada em
- * qualquer uma das duas vira "Granabô não respondeu" pro usuário mesmo o
- * serviço estando saudável segundos depois.
+ * O free tier do Gemini falha de dois jeitos, confirmados em teste ao vivo
+ * em 06/09/2026: (a) uma chamada estoura os 30s de timeout e a PRÓXIMA,
+ * segundos depois, responde normal — rede/latência pontual; e (b) o modelo
+ * responde 503 "This model is currently experiencing high demand" — o
+ * MODELO em si sobrecarregado, não a rede. O caso (b) foi visto bater duas
+ * vezes seguidas na mesma chamada (timeout, depois 503 nesse mesmo modelo),
+ * o que faz sentido: se o modelo está sob demanda alta, tentar de novo o
+ * MESMO modelo 600ms depois tem boa chance de cair na mesma sobrecarga.
  *
- * Uma única repetição, após um respiro curto, cobre exatamente esse padrão
- * observado. Só repete em falha TRANSIENTE (exceção de rede/timeout, 429, ou
- * 5xx) — um 400/401 (payload ou chave inválida) falharia do mesmo jeito de
- * novo, e repetir só somaria latência sem chance de sucesso.
+ * Por isso a segunda tentativa troca pro `MODELO_FALLBACK` — um backend
+ * independente — em vez de repetir o mesmo. Só tenta de novo em falha
+ * TRANSIENTE (exceção de rede/timeout, 429, ou 5xx) — um 400/401 (payload ou
+ * chave inválida) falharia do mesmo jeito em qualquer modelo, e repetir só
+ * somaria latência sem chance de sucesso.
  */
-async function chamarLLMComRetry(payload: unknown): Promise<Response> {
-  const chamar = () =>
+async function chamarLLMComRetry(payload: Record<string, unknown>): Promise<Response> {
+  const chamar = (modelo: string) =>
     fetchComTimeout(CHAT_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${GEMINI_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, model: modelo }),
     });
 
   try {
-    const res = await chamar();
+    const res = await chamar(MODELO);
     if (res.ok || (res.status !== 429 && res.status < 500)) return res;
-    console.warn(`[assistente-financeiro] LLM respondeu ${res.status}, tentando de novo em instantes`);
+    console.warn(`[assistente-financeiro] ${MODELO} respondeu ${res.status}, tentando ${MODELO_FALLBACK}`);
   } catch (e) {
-    console.warn('[assistente-financeiro] erro de rede/timeout na chamada ao LLM, tentando de novo:', e);
+    console.warn(`[assistente-financeiro] erro de rede/timeout em ${MODELO}, tentando ${MODELO_FALLBACK}:`, e);
   }
   await new Promise((r) => setTimeout(r, 600));
-  return await chamar();
+  return await chamar(MODELO_FALLBACK);
 }
 
 /* ── Rate limit best-effort ──────────────────────────────────────────────── */
@@ -1541,8 +1549,8 @@ Deno.serve(async (req) => {
     messages.push({ role: 'user', content: mensagem });
 
     /* ── Primeira chamada: LLM decide se usa ferramenta ──────────────── */
+    // `model` não entra aqui — chamarLLMComRetry() escolhe o modelo (ver comentário lá).
     const chatPayload = {
-      model: MODELO,
       messages,
       tools: TOOLS,
       tool_choice: 'auto',
@@ -1640,7 +1648,6 @@ Deno.serve(async (req) => {
 
       /* Segunda chamada: LLM formula a resposta com os dados reais */
       const followUpRes = await chamarLLMComRetry({
-        model: MODELO,
         messages: toolMessages,
         temperature: 0.3,
         max_tokens: 1024,
