@@ -336,12 +336,24 @@ export default function CreditoScreen() {
       walletTransactions.filter((t) => {
         const isCredit = t.payment_method === 'credit' || t.card_id;
         if (!isCredit) return false;
-        if (selectedCardId === 'all') return isSameMonth(t.occurred_on, viewYear, viewMonth);
-        if (t.card_id !== selectedCardId || !selectedCard) return false;
-        const ciclo = mesFaturaDoLancamento(t.occurred_on, selectedCard.closing_day);
+        if (selectedCardId !== 'all') {
+          if (t.card_id !== selectedCardId || !selectedCard) return false;
+          const ciclo = mesFaturaDoLancamento(t.occurred_on, selectedCard.closing_day);
+          return ciclo.year === viewYear && ciclo.month === viewMonth;
+        }
+        /* Total: cada lançamento agrupa pelo ciclo do PRÓPRIO cartão dele —
+           nunca mês civil, mesmo com vários cartões de closing_day
+           diferentes. "Setembro" aqui vira "soma de toda fatura que fecha
+           em setembro", que é a mesma definição de fatura usada quando um
+           cartão específico está selecionado — só sem restringir a um só.
+           Lançamento sem cartão vinculado (ex.: o cartão foi excluído) não
+           tem closing_day nenhum pra usar, então cai no mês civil mesmo. */
+        const card = t.card_id ? walletCards.find((c) => c.id === t.card_id) : null;
+        if (!card) return isSameMonth(t.occurred_on, viewYear, viewMonth);
+        const ciclo = mesFaturaDoLancamento(t.occurred_on, card.closing_day);
         return ciclo.year === viewYear && ciclo.month === viewMonth;
       }),
-    [selectedCardId, selectedCard, viewYear, viewMonth, walletTransactions]
+    [selectedCardId, selectedCard, viewYear, viewMonth, walletTransactions, walletCards]
   );
 
   const totalInvoice = useMemo(
