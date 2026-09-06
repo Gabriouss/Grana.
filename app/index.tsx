@@ -654,10 +654,10 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
  * A revelação letra a letra do título fica, porque é a assinatura da página
  * registrada no DESIGN.md e não dependia da troca de capítulos.
  */
-const TITULO_HERO = 'Grana. um aplicativo que ajuda você a visualizar seu mês.';
+const TITULO_HERO = 'Saiba quanto pode gastar hoje com o Grana.';
 const GANCHO_HERO = 'Cadê meu dinheiro?';
 const APOIO_HERO =
-  'Registre seus gastos em segundos. O Grana. organiza seus lançamentos sem a necessidade de conectar sua conta bancária.';
+  'Registre por voz e acompanhe seu mês. O Grana. organiza seus gastos sem conectar sua conta bancária.';
 
 function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
   return [...texto].map(() => new Animated.Value(valorInicial));
@@ -1029,16 +1029,12 @@ function ConteudoWeb() {
         style={[styles.cabecalhoSticky, reduzirTransparencia && styles.cabecalhoStickySolido]}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
-        {/* A navegação compacta cabe no cabeçalho como um único ícone, sem
-            devolver a fileira de atalhos que motivou a simplificação. No
-            amplo, o mesmo menu continua flutuante. */}
+        {/* Menu no cabeçalho em todas as larguras, sem cobrir os cards. */}
         <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
           <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
             <BrandLogotype width={104} />
             <View style={styles.cabecalhoAcoes}>
-              {largura < CORTES.amplo ? (
-                <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} embutido />
-              ) : null}
+              <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} embutido />
               <LinkEntrar />
             </View>
           </View>
@@ -1160,13 +1156,8 @@ function ConteudoWeb() {
                 <Text style={styles.eyebrow}>Conheça o Granabô</Text>
                 <TituloSecao>Pergunte sobre o seu dinheiro.</TituloSecao>
                 <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
-                  O Granabô consulta os seus próprios lançamentos antes de responder. Pergunte quanto
-                  gastou numa categoria, quanto ainda dá pra gastar no mês ou quais boletos estão
-                  pendentes, do jeito que você falaria com alguém.
-                </Text>
-                <Text style={[styles.secaoTexto, styles.secaoTextoSeguinte, ehCompacto && styles.secaoTextoCompacto]}>
-                  As respostas partem dos dados que você registrou. Se a categoria não for encontrada,
-                  ele pede mais detalhes para identificar o que você procura.
+                  Pergunte sobre gastos, boletos ou quanto ainda pode gastar. O Granabô consulta
+                  seus lançamentos para responder e pede detalhes quando precisa.
                 </Text>
               </View>
               <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
@@ -1373,7 +1364,7 @@ function ConteudoWeb() {
                 visual (`paperSelected`), separado por uma borda em vez de um
                 vão entre dois elementos. */}
             <RevealOnScroll style={styles.precoCardUnico}>
-              <View style={styles.precoColunas}>
+              <View style={[styles.precoColunas, ehCompacto && { flexDirection: 'column-reverse' }]}>
                 <View style={[styles.precoChecklistCol, ehCompacto && styles.precoChecklistColCompacta]}>
                   <Text style={[styles.precoChecklistTitulo, ehCompacto && styles.precoTituloCentralizado]}>Tudo que você recebe</Text>
                   <View style={styles.precoChecklist}>
@@ -1478,10 +1469,10 @@ function ConteudoWeb() {
             <View style={[styles.ctaFinalLayout, ehCompacto && styles.ctaFinalLayoutCompacto]}>
               <View style={[styles.ctaFinalConteudo, ehCompacto && styles.ctaFinalConteudoCompacto]}>
                 <Text role="heading" aria-level={2} style={[styles.ctaFinalTitulo, styles.precoTextoCentralizado]}>
-                  Nunca é tarde para começar a organizar suas finanças. Comece hoje.
+                  Seu próximo gasto pode ser o primeiro passo.
                 </Text>
                 <Text style={[styles.ctaFinalTexto, styles.precoTextoCentralizado]}>
-                  Comece pelos gastos de hoje. O Grana. organiza seus lançamentos e ajuda você a construir um controle que cabe na sua rotina.
+                  Organize seus gastos com o Grana. por R$ 9,90/mês. Assinatura mensal, sem período de teste.
                 </Text>
                 <View style={[styles.ctaFinalFatos, styles.ctaFinalFatosCompacto]}>
                   {['Sem conectar banco', 'Lançamentos organizados', 'Celular e computador'].map((fato) => (
@@ -1544,12 +1535,6 @@ function ConteudoWeb() {
       </View>
     </ScrollView>
 
-    {/* Fora do ScrollView de propósito:  precisa se ancorar
-        na janela, e um elemento fixo dentro do contêiner que rola fica
-        sujeito ao recorte dele. */}
-    {largura >= CORTES.amplo ? (
-      <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} />
-    ) : null}
     </>
   );
 }
@@ -2003,7 +1988,7 @@ const styles = StyleSheet.create({
   // topo de um painel que agora está embaixo, não ao lado. `alignItems:
   // 'center'` sobrescreve o `flex-start` de `cardPreco` — pedido do autor
   // pra Preços inteiro centralizado no compacto (rótulo, valor e descrição).
-  cardPrecoCompacto: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%', alignItems: 'center', borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: theme.ruleStrong },
+  cardPrecoCompacto: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%', alignItems: 'center', borderLeftWidth: 0, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong },
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
   precoLinhaCompacta: { justifyContent: 'center' },

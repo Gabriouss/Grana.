@@ -30,7 +30,7 @@ const TELAS: Tela[] = [
  * setas + "N de 5".
  */
 export default function CarrosselTelasApp({ compacto = false }: { compacto?: boolean }) {
-  const [indice, setIndice] = useState(0);
+  const [indice, setIndice] = useState(4);
   const podeVoltar = indice > 0;
   const podeAvancar = indice < TELAS.length - 1;
 
@@ -135,6 +135,8 @@ const styles = StyleSheet.create({
   pilulas: { flexDirection: 'column', alignItems: 'center', gap: spacing.xs, maxWidth: 320 },
   pilulasLinha: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xs },
   pilula: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,

@@ -1,6 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { theme, radius, spacing, card as cardTokens, fonts, type } from '@/lib/theme';
 
+const EXEMPLO = { saldo: 3240, contas: 1180, cofrinhos: 800, dias: 15 };
+const livre = EXEMPLO.saldo - EXEMPLO.contas - EXEMPLO.cofrinhos;
+const moeda = (valor: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+
 /**
  * Cópia visual do card real de "Livre para gastar" (`SafeToSpendCard.tsx`),
  * para a landing page, com valores fictícios.
@@ -24,16 +28,16 @@ export default function CardLivreParaGastar({ compacto }: { compacto?: boolean }
       <Text style={styles.label}>Livre para gastar</Text>
 
       <Text style={styles.headline}>
-        R$ 84,60
+        {moeda(livre / EXEMPLO.dias)}
         {compacto ? '\n' : ' '}
         <Text style={styles.headlineSuffix}>/dia até o fim do mês</Text>
       </Text>
 
       <View style={styles.breakdown}>
-        <Linha chave="Saldo atual" valor="R$ 3.240,00" />
-        <Linha chave="Contas a vencer este mês" valor="− R$ 1.180,00" />
-        <Linha chave="Reservado em cofrinhos" valor="− R$ 800,00" />
-        <Linha chave="Livre no total · 15 dias restantes" valor="R$ 1.269,00" forte />
+        <Linha chave="Saldo atual" valor={moeda(EXEMPLO.saldo)} />
+        <Linha chave="Contas a vencer este mês" valor={`− ${moeda(EXEMPLO.contas)}`} />
+        <Linha chave="Reservado em cofrinhos" valor={`− ${moeda(EXEMPLO.cofrinhos)}`} />
+        <Linha chave={`Livre no total · ${EXEMPLO.dias} dias restantes`} valor={moeda(livre)} forte />
       </View>
     </View>
   );

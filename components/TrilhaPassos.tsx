@@ -73,7 +73,7 @@ const PASSOS: Passo[] = [
   {
     cena: 'fala',
     titulo: 'Fale com o Granabô',
-    texto: 'Texto ou áudio no WhatsApp, ou voz direto no aplicativo. Ele identifica o valor, a descrição e a categoria.',
+    texto: 'Fale direto no aplicativo. O Grana. identifica o valor, a descrição e a categoria para você conferir.',
   },
   {
     cena: 'lugares',

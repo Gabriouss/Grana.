@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CORTES, colunaConteudo } from '@/lib/breakpoints';
 import { fonts as uiFonts, radius, sombraCard, spacing, theme, type } from '@/lib/theme';
@@ -31,16 +31,6 @@ type Props = {
 
 function limitar(valor: number, minimo: number, maximo: number) {
   return Math.min(maximo, Math.max(minimo, valor));
-}
-
-function containerRolavel(no: HTMLElement): HTMLElement | null {
-  let atual = no.parentElement;
-  while (atual) {
-    const estilo = window.getComputedStyle(atual);
-    if (/(auto|scroll|overlay)/.test(estilo.overflowY) && atual.scrollHeight > atual.clientHeight + 1) return atual;
-    atual = atual.parentElement;
-  }
-  return null;
 }
 
 /**
@@ -119,37 +109,20 @@ function CardBento({ item }: { item: BeneficioHorizontal }) {
   );
 }
 
-export default function BeneficiosHorizontais({ itens, largura, altura, alturaCabecalho, titulo, descricao }: Props) {
+export default function BeneficiosHorizontais({ itens, largura, altura, titulo, descricao }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => Platform.OS === 'web' && typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
   const compacto = largura < CORTES.medio;
-  // O bento é um quarto ESTADO de decisão, não uma variação do sticky-scroll
-  // — os dois critérios de largura não são o mesmo corte, e nunca podem
-  // ficar ativos ao mesmo tempo (duas lógicas de posicionamento brigando
-  // pelo mesmo trilho). `fixar` passa a excluir explicitamente o bento.
-  const bento = largura >= 1100 && !reduzirMovimento;
-  const fixar = !bento && largura >= 1100 && altura >= 720 && !reduzirMovimento;
-  const larguraCard = fixar ? 420 : Math.min(440, Math.max(260, largura - (compacto ? 96 : 120)));
+  // A largura escolhe a composição; movimento reduzido só afeta transições.
+  const bento = largura >= 1100;
+  const larguraCard = Math.min(440, Math.max(260, largura - (compacto ? 96 : 120)));
   // Só o compacto trava altura; no amplo o card cresce com o conteúdo.
-  // 300 e não 290 porque o palco do mini-mock subiu de 108 pra 124 (ele
-  // cortava três das seis variantes) — sem acompanhar, o card voltava a
-  // clipar a última linha do parágrafo.
-  // +28 pro link "Ver detalhes": medido nas 9 categorias em 390px, o texto
-  // de TODAS corta na 3ª linha (é decisão, não acidente — ver comentário em
-  // CardBeneficio). Sem essa folga o link empurraria conteúdo pra fora da
-  // caixa de altura fixa, que não recorta overflow.
-  const alturaCard = 328;
-  const alturaSticky = Math.max(620, altura - alturaCabecalho);
-  const [alturaPalco, setAlturaPalco] = useState(alturaSticky * 2.4);
-  const palcoRef = useRef<View>(null);
-  const stickyRef = useRef<View>(null);
-  const viewportRef = useRef<View>(null);
-  const trilhoRef = useRef<View>(null);
+  // Reserva espaço para três linhas de resumo e um alvo de toque de 44px.
+  const alturaCard = 352;
   const rolagemToqueRef = useRef<ScrollView>(null);
   const [indiceToque, setIndiceToque] = useState(0);
   const [bordasToque, setBordasToque] = useState({ anterior: false, proxima: itens.length > 1 });
-  const [bordasFixas, setBordasFixas] = useState({ anterior: false, proxima: itens.length > 1 });
   // Detalhe do card compacto. Só o carrossel de toque usa `compacto=true`
   // pra valer; bento e modo fixo (desktop) já mostram o texto inteiro.
   const [detalheAberto, setDetalheAberto] = useState<BeneficioHorizontal | null>(null);
@@ -164,62 +137,6 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
     media?.addEventListener?.('change', atualizar);
     return () => media?.removeEventListener?.('change', atualizar);
   }, []);
-
-  useEffect(() => {
-    if (!fixar || Platform.OS !== 'web' || typeof window === 'undefined') return;
-
-    const palco = palcoRef.current as unknown as HTMLElement | null;
-    const sticky = stickyRef.current as unknown as HTMLElement | null;
-    const viewport = viewportRef.current as unknown as HTMLElement | null;
-    const trilho = trilhoRef.current as unknown as HTMLElement | null;
-    if (!palco || !sticky || !viewport || !trilho) return;
-
-    const scroller = containerRolavel(palco);
-    if (!scroller) return;
-    let quadro = 0;
-    let percursoHorizontal = 0;
-
-    const atualizar = () => {
-      quadro = 0;
-      const retanguloPalco = palco.getBoundingClientRect();
-      const retanguloScroller = scroller.getBoundingClientRect();
-      const inicio = scroller.scrollTop + retanguloPalco.top - retanguloScroller.top - alturaCabecalho;
-      const percursoVertical = Math.max(1, palco.offsetHeight - sticky.offsetHeight);
-      const progresso = limitar((scroller.scrollTop - inicio) / percursoVertical, 0, 1);
-      trilho.style.transform = `translate3d(${(-percursoHorizontal * progresso).toFixed(2)}px, 0, 0)`;
-      const novasBordas = { anterior: progresso > 0.01, proxima: progresso < 0.99 && percursoHorizontal > 0 };
-      setBordasFixas((atuais) => atuais.anterior === novasBordas.anterior && atuais.proxima === novasBordas.proxima ? atuais : novasBordas);
-    };
-
-    const agendar = () => {
-      if (quadro) return;
-      quadro = window.requestAnimationFrame(atualizar);
-    };
-
-    const medir = () => {
-      percursoHorizontal = Math.max(0, trilho.scrollWidth - viewport.clientWidth);
-      const novaAltura = Math.ceil(alturaSticky + percursoHorizontal + spacing.xxl * 2);
-      setAlturaPalco((atual) => (Math.abs(atual - novaAltura) > 1 ? novaAltura : atual));
-      agendar();
-    };
-
-    trilho.style.willChange = 'transform';
-    scroller.addEventListener('scroll', agendar, { passive: true });
-    window.addEventListener('resize', medir, { passive: true });
-    const observador = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null;
-    observador?.observe(viewport);
-    observador?.observe(trilho);
-    medir();
-
-    return () => {
-      if (quadro) window.cancelAnimationFrame(quadro);
-      scroller.removeEventListener('scroll', agendar);
-      window.removeEventListener('resize', medir);
-      observador?.disconnect();
-      trilho.style.transform = '';
-      trilho.style.willChange = '';
-    };
-  }, [alturaCabecalho, alturaSticky, fixar, itens.length, larguraCard]);
 
   function irParaIndice(indice: number) {
     const proximo = limitar(indice, 0, itens.length - 1);
@@ -263,7 +180,7 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
     );
   }
 
-  if (!fixar) {
+  {
     return (
       <View
         style={[
@@ -333,34 +250,21 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
           </AppPressable>
         </View>
         {detalheAberto && (
+          <Modal transparent visible animationType="none" onRequestClose={() => setDetalheAberto(null)}>
           <Sheet onClose={() => setDetalheAberto(null)}>
+            <AppPressable accessibilityLabel="Fechar detalhes" onPress={() => setDetalheAberto(null)} style={{ minHeight: 44, minWidth: 44, alignSelf: 'flex-end', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="close" size={24} color={theme.ink} aria-hidden />
+            </AppPressable>
             <Text style={styles.rotulo}>{detalheAberto.rotulo}</Text>
             <Text style={styles.detalheTitulo}>{detalheAberto.titulo}</Text>
             <Text style={styles.detalheTexto}>{detalheAberto.texto}</Text>
           </Sheet>
+          </Modal>
         )}
       </View>
     );
   }
 
-  return (
-    <View ref={palcoRef} style={[styles.palco, { height: alturaPalco }]}>
-      <View ref={stickyRef} style={[styles.sticky, { top: alturaCabecalho, height: alturaSticky }]}>
-        <View style={[colunaConteudo, styles.faixa, styles.conteudoSticky]}>
-          {cabecalho}
-          <View ref={viewportRef} style={styles.viewport}>
-            <View ref={trilhoRef} role="list" aria-label="Recursos do Grana." style={styles.trilhoDesktop}>
-              {itens.map((item) => (
-                <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} compacto={compacto} />
-              ))}
-            </View>
-            <FadeBorda lado="esquerda" largura={largura} visivel={bordasFixas.anterior} />
-            <FadeBorda lado="direita" largura={largura} visivel={bordasFixas.proxima} />
-          </View>
-        </View>
-      </View>
-    </View>
-  );
 }
 
 /**
@@ -460,7 +364,7 @@ const styles = StyleSheet.create({
   /* `alignSelf: 'flex-start'` em vez de bloco cheio: é um link, não uma barra
      — a área de toque não deveria se estender pela largura do card inteiro,
      onde tocar do lado teria expectativa de fazer outra coisa. */
-  verDetalhes: { alignSelf: 'flex-start', marginTop: spacing.sm },
+  verDetalhes: { alignSelf: 'flex-start', marginTop: spacing.sm, minHeight: 44, justifyContent: 'center' },
   verDetalhesTexto: { color: theme.accent2, fontSize: type.nota, fontFamily: fonts.regular, textDecorationLine: 'underline' },
   detalheTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.3, fontFamily: fonts.regular, marginBottom: spacing.md },
   detalheTexto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.light },
@@ -496,3 +400,4 @@ const styles = StyleSheet.create({
   tituloCardGrande: { color: theme.ink },
   textoCardGrande: { color: theme.ink, opacity: 0.85 },
 });
+
