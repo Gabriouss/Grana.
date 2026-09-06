@@ -480,6 +480,7 @@ export default function Granachat({
         <View style={[styles.inputWrap, { paddingBottom: recuoInferior }]}>
           <View style={styles.inputRow}>
             <TextInput
+              accessibilityLabel="Mensagem para o Granabô"
               ref={inputRef}
               style={[styles.input, { minHeight: alturaMinimaCampo, maxHeight: alturaMaximaCampo }]}
               value={texto}

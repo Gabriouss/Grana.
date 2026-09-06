@@ -131,6 +131,7 @@ export default function FeedbackModal({
 
           <ScrollView style={styles.mensagemWrap} keyboardShouldPersistTaps="handled">
             <TextInput
+              accessibilityLabel="Mensagem do feedback"
               style={styles.mensagemInput}
               placeholder="Conte com detalhes — quanto mais específico, melhor."
               placeholderTextColor={theme.inkFaint}

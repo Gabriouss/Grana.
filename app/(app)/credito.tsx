@@ -17,7 +17,7 @@ import AppModal from '@/components/AppModal';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
-import { colunaConteudo } from '@/lib/breakpoints';
+import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import { Ionicons } from '@expo/vector-icons';
 import {
   addCreditCard,
@@ -67,6 +67,7 @@ import FadeIn from '@/components/FadeIn';
 
 export default function CreditoScreen() {
   const { paddingConteudoComFab } = useTabBarInset();
+  const { ehCompacto } = useBreakpoint();
   const router = useRouter();
   const { novaCompra, texto } = useLocalSearchParams<{ novaCompra?: string; texto?: string }>();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
@@ -122,6 +123,7 @@ export default function CreditoScreen() {
   const [cardClosingDay, setCardClosingDay] = useState('15');
   const [cardDueDay, setCardDueDay] = useState('22');
   const [cardSaving, setCardSaving] = useState(false);
+  const [cardFormError, setCardFormError] = useState<string | null>(null);
 
   // Menu de ação do cartão (Editar/Excluir) — mesmo componente e gesto dos
   // lançamentos: toque no botão de opções ou toque longo no card abrem o
@@ -484,6 +486,7 @@ export default function CreditoScreen() {
     setCardLimit('');
     setCardClosingDay('15');
     setCardDueDay('22');
+    setCardFormError(null);
     setNewCardOpen(true);
   }
 
@@ -496,20 +499,22 @@ export default function CreditoScreen() {
     setCardLimit(formatMoneyInput(String(Math.round(Number(card.limit_amount || 0) * 100))));
     setCardClosingDay(String(card.closing_day));
     setCardDueDay(String(card.due_day));
+    setCardFormError(null);
     setNewCardOpen(true);
   }
 
   // Salvar cartão (criação ou edição)
   async function handleSaveCard() {
     if (!cardName.trim()) {
-      Alert.alert('Nome obrigatório', 'Dê um nome para identificar o cartão.');
+      setCardFormError('Informe um nome para identificar o cartão.');
       return;
     }
     const limit = parseAmount(cardLimit);
     if (!limit || limit <= 0) {
-      Alert.alert('Limite inválido', 'Informe o limite total do cartão.');
+      setCardFormError('Informe um limite total maior que zero.');
       return;
     }
+    setCardFormError(null);
 
     const bankObj = BANKS.find((b) => b.id === cardBank) || BANKS[0];
 
@@ -1049,8 +1054,8 @@ export default function CreditoScreen() {
 
         {/* Resumo da Fatura Consolidada */}
         <View style={styles.invoiceSummaryCard}>
-          <View style={styles.invoiceHeadRow}>
-            <View style={styles.invoiceInfo}>
+          <View style={[styles.invoiceHeadRow, ehCompacto && styles.invoiceHeadRowCompact]}>
+            <View style={[styles.invoiceInfo, ehCompacto && styles.invoiceInfoCompact]}>
               <Text style={styles.invoiceLabel}>
                 {selectedCardId === 'all' ? 'Total em Faturas (Todos os Cartões)' : 'Fatura do Cartão Selecionado'}
               </Text>
@@ -1086,7 +1091,7 @@ export default function CreditoScreen() {
               )}
             </View>
             <AppPressable
-              style={styles.addPurchaseBtn}
+              style={[styles.addPurchaseBtn, ehCompacto && styles.addPurchaseBtnCompact]}
               onPress={() => {
                 hapticTap();
                 abrirNovaCompra();
@@ -1136,6 +1141,7 @@ export default function CreditoScreen() {
           </View>
 
           <TextInput
+            accessibilityLabel="Nome do cartão"
             maxLength={LIMITS.description}
             style={styles.input}
             placeholder="Nome do cartão (ex: Nubank Black)"
@@ -1167,6 +1173,7 @@ export default function CreditoScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Últimos 4 dígitos</Text>
               <TextInput
+                accessibilityLabel="Últimos 4 dígitos do cartão"
                 maxLength={4}
                 style={styles.input}
                 placeholder="4092"
@@ -1179,6 +1186,7 @@ export default function CreditoScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Limite Total (R$)</Text>
               <TextInput
+                accessibilityLabel="Limite total do cartão em reais"
                 maxLength={LIMITS.amount}
                 style={styles.input}
                 placeholder="5.000,00"
@@ -1194,6 +1202,7 @@ export default function CreditoScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Fechamento (dia)</Text>
               <TextInput
+                accessibilityLabel="Dia de fechamento da fatura"
                 maxLength={2}
                 style={styles.input}
                 placeholder="15"
@@ -1206,6 +1215,7 @@ export default function CreditoScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Vencimento (dia)</Text>
               <TextInput
+                accessibilityLabel="Dia de vencimento da fatura"
                 maxLength={2}
                 style={styles.input}
                 placeholder="22"
@@ -1228,6 +1238,11 @@ export default function CreditoScreen() {
               <Text style={styles.saveBtnText}>{editingCardId ? 'Salvar Alterações' : 'Salvar Cartão'}</Text>
             )}
           </AppPressable>
+          {cardFormError && (
+            <Text style={styles.formError} role="alert" accessibilityLiveRegion="assertive">
+              {cardFormError}
+            </Text>
+          )}
         </Sheet>
       </AppModal>
 
@@ -1298,6 +1313,7 @@ export default function CreditoScreen() {
           <View style={styles.amountRow}>
             <Text style={styles.amountPrefix}>R$</Text>
             <TextInput
+              accessibilityLabel="Valor do pagamento da fatura em reais"
               maxLength={LIMITS.amount}
               style={styles.amountInput}
               placeholder="0,00"
@@ -1573,11 +1589,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
+  invoiceHeadRowCompact: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
   /* `gap` porque o rótulo e o valor estavam encostados: "Total em Faturas
      (Todos os Cartões)" quebra em duas linhas e a segunda ficava colada no
      "R$ 0,00" logo abaixo. Todo outro bloco empilhado da tela já tem folga
      (cardIdentidade 2, cardMidRow 2, cardBottomRow 4); este era o único sem. */
   invoiceInfo: { flex: 1, minWidth: 168, gap: spacing.fio },
+  invoiceInfoCompact: { width: '100%', minWidth: 0 },
   invoiceLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
@@ -1658,6 +1679,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     minHeight: touchTarget,
   },
+  addPurchaseBtnCompact: { width: '100%', flexGrow: 0 },
   addPurchaseBtnText: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
@@ -1875,4 +1897,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: type.apoio,
   },
+  formError: { color: theme.danger, fontFamily: fonts.regular, fontSize: type.legenda, marginTop: spacing.xs },
 });

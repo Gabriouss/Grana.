@@ -205,6 +205,7 @@ export default function WalletPickerModal({
                 <View key={w.id} style={styles.createBox}>
                   <Text style={styles.createTitle}>Editar carteira</Text>
                   <TextInput
+                    accessibilityLabel="Nome da carteira"
                     style={styles.input}
                     placeholder="Nome da conta"
                     placeholderTextColor={theme.inkFaint}
@@ -212,6 +213,7 @@ export default function WalletPickerModal({
                     onChangeText={setEditName}
                   />
                   <TextInput
+                    accessibilityLabel="Saldo inicial da carteira em reais"
                     style={styles.input}
                     placeholder="Saldo inicial (R$ 0,00)"
                     placeholderTextColor={theme.inkFaint}
@@ -309,6 +311,7 @@ export default function WalletPickerModal({
             <View style={styles.createBox}>
               <Text style={styles.createTitle}>Nova Carteira / Conta</Text>
               <TextInput
+                accessibilityLabel="Nome da nova carteira"
                 style={styles.input}
                 placeholder="Nome da conta (ex: Casamento)"
                 placeholderTextColor={theme.inkFaint}
@@ -316,6 +319,7 @@ export default function WalletPickerModal({
                 onChangeText={setNewName}
               />
               <TextInput
+                accessibilityLabel="Saldo inicial da nova carteira em reais"
                 style={styles.input}
                 placeholder="Saldo inicial (R$ 0,00)"
                 placeholderTextColor={theme.inkFaint}

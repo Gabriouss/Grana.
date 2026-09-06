@@ -266,6 +266,7 @@ export default function QrScannerModal({
         )}
 
         <TextInput
+          accessibilityLabel="Descrição do lançamento"
           maxLength={LIMITS.description}
           style={styles.descInput}
           placeholder="Descrição (ex: Supermercado)"
@@ -277,6 +278,7 @@ export default function QrScannerModal({
         <View style={styles.amountRow}>
           <Text style={styles.amountPrefix}>R$</Text>
           <TextInput
+            accessibilityLabel="Valor do lançamento em reais"
             maxLength={LIMITS.amount}
             style={styles.amountInput}
             placeholder="0,00"

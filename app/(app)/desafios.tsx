@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
@@ -35,6 +35,7 @@ import ScreenHeader from '@/components/ScreenHeader';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import { useFlags } from '@/lib/feature-flags';
+import type { Bill, Transaction } from '@/lib/types';
 
 type FilterType = 'all' | 'unlocked' | 'locked';
 
@@ -49,6 +50,7 @@ export default function DesafiosScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [conquistaNova, setConquistaNova] = useState<Badge | null>(null);
+  const fallbackCache = useRef<{ transactions: Transaction[]; bills: Bill[] } | null>(null);
 
   const loadData = useCallback(async () => {
     if (isDemoMode) {
@@ -73,8 +75,13 @@ export default function DesafiosScreen() {
         gState = getGamificationState(tx, b, bg, historical, conquistadas);
       } else {
         // Compatibilidade temporária com bancos ainda sem a função nova.
-        const [allTx, allBills] = await Promise.all([fetchTransactions(), fetchBills()]);
-        gState = getGamificationState(allTx, allBills, bg, undefined, conquistadas);
+        let fallback = fallbackCache.current;
+        if (!fallback) {
+          const [allTx, allBills] = await Promise.all([fetchTransactions(), fetchBills()]);
+          fallback = { transactions: allTx, bills: allBills };
+          fallbackCache.current = fallback;
+        }
+        gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas);
       }
       setState(gState);
 

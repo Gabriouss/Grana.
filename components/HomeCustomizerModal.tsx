@@ -15,9 +15,9 @@ import ToggleSwitch from './ToggleSwitch';
 import Sheet from './Sheet';
 
 const PRESETS: { key: HomePreset; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'completo', label: '🌟 Completo', icon: 'grid-outline' },
-  { key: 'essencial', label: '⚡ Essencial', icon: 'flash-outline' },
-  { key: 'metas', label: '🎯 Metas & Limites', icon: 'trophy-outline' },
+  { key: 'completo', label: 'Completo', icon: 'grid-outline' },
+  { key: 'essencial', label: 'Essencial', icon: 'flash-outline' },
+  { key: 'metas', label: 'Metas & Limites', icon: 'trophy-outline' },
 ];
 
 export default function HomeCustomizerModal({

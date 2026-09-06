@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hover: { borderColor: theme.ruleStrong },
-  active: { backgroundColor: '#bb6b60', borderColor: '#bb6b60' },
+  active: { backgroundColor: theme.danger, borderColor: theme.danger },
   label: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   labelActive: { color: theme.paper },
 });

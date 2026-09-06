@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,12 +36,15 @@ export default function SideNav({
   rotaAtiva,
   onNavegar,
   rodape,
+  extras,
 }: {
   itens: ItemNav[];
   rotaAtiva: string;
   onNavegar: (rota: string) => void;
   /** Itens fixados na base (Perfil), separados do bloco principal. */
   rodape?: ItemNav[];
+  /** Destinos menos frequentes, revelados em uma área secundária. */
+  extras?: ItemNav[];
 }) {
   const { ehAmplo } = useBreakpoint();
   const mostrarRotulos = ehAmplo;
@@ -50,6 +54,7 @@ export default function SideNav({
      instalada/PWA ocupa janela edge-to-edge, e no tablet o inset esquerdo
      cobre o notch em paisagem. */
   const insets = useSafeAreaInsets();
+  const [extrasAbertos, setExtrasAbertos] = useState(false);
 
   return (
     <View
@@ -82,6 +87,31 @@ export default function SideNav({
           />
         ))}
       </View>
+
+      {extras && extras.length > 0 && (
+        <View style={styles.extrasGrupo}>
+          <AppPressable
+            onPress={() => setExtrasAbertos((value) => !value)}
+            accessibilityRole="button"
+            accessibilityLabel="Mais opções de navegação"
+            accessibilityState={{ expanded: extrasAbertos }}
+            scaleOnPress={false}
+            style={({ hovered }) => [styles.item, !mostrarRotulos && styles.itemCompacto, hovered && styles.itemHover]}
+          >
+            <Ionicons name="ellipsis-horizontal-circle-outline" size={20} color={theme.inkFaint} />
+            {mostrarRotulos && <Text style={styles.rotulo}>Mais</Text>}
+          </AppPressable>
+          {(extrasAbertos || extras.some((item) => item.rota === rotaAtiva)) && extras.map((item) => (
+            <ItemBarra
+              key={item.rota}
+              item={item}
+              ativo={rotaAtiva === item.rota}
+              mostrarRotulo={mostrarRotulos}
+              onPress={() => onNavegar(item.rota)}
+            />
+          ))}
+        </View>
+      )}
 
       {rodape && rodape.length > 0 && (
         <View style={styles.rodape}>
@@ -121,6 +151,7 @@ function ItemBarra({
       /* Com o rótulo escondido (trilho de 76px) o botão fica só com o ícone,
          e um botão só de ícone sem nome é invisível para leitor de tela. */
       accessibilityLabel={item.rotulo}
+      href={item.rota === 'assistente' ? undefined : item.rota === 'index' ? '/' : `/${item.rota}`}
       scaleOnPress={false}
       style={({ hovered }) => [
         styles.item,
@@ -155,6 +186,7 @@ const styles = StyleSheet.create({
   marca: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xs },
   marcaCompacta: { alignItems: 'center', paddingHorizontal: 0 },
   grupo: { gap: 2, flex: 1 },
+  extrasGrupo: { gap: 2, marginTop: spacing.sm },
   rodape: { gap: 2, borderTopWidth: 1, borderTopColor: theme.rule, paddingTop: spacing.md },
   item: {
     flexDirection: 'row',

@@ -84,6 +84,7 @@ export default function GoalDepositModal({
         <View style={styles.amountRow}>
           <Text style={styles.amountPrefix}>R$</Text>
           <TextInput
+            accessibilityLabel={modo === 'guardar' ? 'Valor para guardar na meta em reais' : 'Valor para resgatar da meta em reais'}
             maxLength={LIMITS.amount}
             style={styles.amountInput}
             placeholder="0,00"

@@ -229,6 +229,7 @@ export default function PasteReceiptModal({
                 Cole o texto copiado de um comprovante Pix, fatura ou recibo. Identificamos o valor, categoria e tipo automaticamente.
               </Text>
               <TextInput
+                accessibilityLabel="Texto do comprovante"
                 maxLength={LIMITS.pastedText}
                 style={styles.textArea}
                 placeholder="Ex: Você transferiu R$ 45,90 para Restaurante Sabor da Terra..."
@@ -271,7 +272,7 @@ export default function PasteReceiptModal({
                 </AppPressable>
               </View>
 
-              <TextInput maxLength={LIMITS.description}
+              <TextInput accessibilityLabel="Descrição do lançamento" maxLength={LIMITS.description}
                 style={styles.descInput}
                 placeholder="Descrição"
                 placeholderTextColor={theme.inkFaint}
@@ -281,7 +282,7 @@ export default function PasteReceiptModal({
 
               <View style={styles.amountRow}>
                 <Text style={styles.amountPrefix}>R$</Text>
-                <TextInput maxLength={LIMITS.amount}
+                <TextInput accessibilityLabel="Valor do lançamento em reais" maxLength={LIMITS.amount}
                   style={styles.amountInput}
                   placeholder="0,00"
                   placeholderTextColor={theme.inkFaint}

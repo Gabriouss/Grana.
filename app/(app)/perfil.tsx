@@ -559,7 +559,7 @@ export default function PerfilScreen() {
               {enviandoFoto ? (
                 <ActivityIndicator color={theme.paper} />
               ) : perfil?.fotoUrl ? (
-                <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarFoto} />
+                <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarFoto} accessibilityLabel="Foto de perfil" />
               ) : (
                 <Text style={styles.avatarText}>{initial}</Text>
               )}
@@ -911,6 +911,7 @@ export default function PerfilScreen() {
               Usamos esse nome aqui no perfil e nas mensagens de lembrete de vencimento.
             </Text>
             <TextInput
+              accessibilityLabel="Seu nome ou apelido"
               maxLength={LIMITE_NOME}
               style={styles.reauthInput}
               placeholder="Seu nome"
@@ -1078,7 +1079,7 @@ export default function PerfilScreen() {
                   disabled={whatsappSaving}
                 >
                   <Text style={styles.reauthCancelText}>
-                    {whatsappSaving ? 'Gerando...' : 'Código expirou? Gerar um novo'}
+                    {whatsappSaving ? 'Gerando…' : 'Código expirou? Gerar um novo'}
                   </Text>
                 </AppPressable>
               </>

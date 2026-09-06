@@ -87,19 +87,19 @@ export const OPCOES_PRESET_HOME: {
 }[] = [
   {
     key: 'completo',
-    label: '🌟 Completo & Analítico',
+    label: 'Completo & Analítico',
     desc: 'Visão 360° da sua vida financeira com Safe-to-Spend diário, cofrinhos, projeções e faturas.',
     badge: 'Recomendado',
   },
   {
     key: 'essencial',
-    label: '⚡ Essencial & Clean',
+    label: 'Essencial & Clean',
     desc: 'Painel enxuto e focado no essencial: Donut de gastos por categoria e registro rápido.',
     badge: 'Mais Ágil',
   },
   {
     key: 'metas',
-    label: '🎯 Foco em Metas & Limites',
+    label: 'Foco em Metas & Limites',
     desc: 'Destaque total para seus cofrinhos de economia, limites por categoria e boletos.',
     badge: 'Construtor',
   },
@@ -513,7 +513,7 @@ export default function OnboardingModal({
                   {enviandoFoto ? (
                     <ActivityIndicator color={theme.ink} />
                   ) : fotoUrl ? (
-                    <Image source={{ uri: fotoUrl }} style={styles.avatarImg} />
+                    <Image source={{ uri: fotoUrl }} style={styles.avatarImg} accessibilityLabel="Prévia da foto de perfil" />
                   ) : (
                     <Text style={styles.avatarInicial}>
                       {nome.trim() ? nome.trim().charAt(0).toUpperCase() : '?'}
@@ -526,6 +526,7 @@ export default function OnboardingModal({
 
                 <View style={{ flex: 1, gap: 6 }}>
                   <TextInput
+                    accessibilityLabel="Seu nome ou apelido"
                     style={styles.nomeCampo}
                     placeholder="Seu nome ou apelido"
                     placeholderTextColor={theme.inkFaint}
@@ -615,6 +616,7 @@ export default function OnboardingModal({
               <View style={styles.incomeRow}>
                 <Text style={styles.incomePrefix}>R$</Text>
                 <TextInput
+                  accessibilityLabel="Renda mensal aproximada em reais"
                   maxLength={LIMITS.amount}
                   style={styles.incomeInput}
                   placeholder="0,00"

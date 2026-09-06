@@ -84,6 +84,7 @@ export default function RecuperarSenhaModal({
               Informe o e-mail da sua conta. Enviamos um link para você definir uma senha nova.
             </Text>
             <TextInput
+              accessibilityLabel="E-mail da conta"
               style={styles.input}
               placeholder="voce@exemplo.com"
               placeholderTextColor={theme.inkFaint}

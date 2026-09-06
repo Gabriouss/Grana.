@@ -2834,3 +2834,30 @@ Três achados seguidos, testando a implementação acima com o cartão real do a
   passou, incluindo 17/17 casos da matemática de fatura e 7/7 casos novos de
   filtragem/separação. A tentativa de QA via `agent-browser` não abriu o Chrome
   local (`CDP response channel closed`); nenhuma build EAS foi disparada.
+
+# Sessão de 06/09/2026 — auditoria Impeccable (Android e desktop web)
+
+- Todos os `TextInput` de fluxos autenticados e modais compartilhados receberam
+  `accessibilityLabel`; a validação de lançamento e cadastro de cartão agora
+  aparece inline, em região de alerta, sem depender de `Alert.alert`.
+- A barra inferior do Android/tablet compacto ficou com quatro destinos
+  principais (Início, Débito e Pix, Crédito e Boletos), o Granabô e um botão
+  **Mais**. Gráficos e Desafios saíram da fileira e aparecem no sheet Mais.
+  No desktop, o trilho lateral usa o mesmo agrupamento secundário expansível;
+  Perfil continua no rodapé. Links da lateral web agora têm `href` real.
+- O resumo da fatura em Crédito empilha informação e CTA em telas compactas;
+  isso elimina a sobreposição observada entre “Vence em…”, selo e o botão
+  “Lançar no Crédito”.
+- Gráficos reutiliza o histórico em cache ao alternar abas; o fallback antigo
+  de Desafios também guarda a consulta completa. O recorte de Período continua
+  buscando somente as datas necessárias, e os modos Ano/Mês mantêm histórico
+  completo porque precisam construir o eixo desde o primeiro lançamento.
+- Fotos de perfil passaram a ter nome acessível, os presets perderam emojis
+  redundantes (o ícone já comunica a categoria), o estado de gravação por voz
+  usa `theme.danger` e copy com reticência tipográfica.
+- Verificação: `tsc --noEmit`, corpus de ciclo/lista/design system (17/17,
+  7/7 e 312/312). A suíte completa anterior já estava verde; a nova execução
+  também concluiu os corpora até a guarda de design system, sem regressões de
+  lógica (o runner encerrou apenas com a guarda de fonte antes do ajuste, que
+  foi corrigida e passou em seguida). QA visual ao vivo continua limitado ao
+  Chrome/ADB indisponíveis neste ambiente.

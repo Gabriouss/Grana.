@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -75,6 +75,7 @@ export default function GraficosScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const historicoCache = useRef<Transaction[] | null>(null);
   const [walletModalVisible, setWalletModalVisible] = useState(false);
 
   const [tabModo, setTabModo] = useState<TabModo>('despesas');
@@ -88,7 +89,7 @@ export default function GraficosScreen() {
   const [periodoFim, setPeriodoFim] = useState(hoje);
   const [pickerAberto, setPickerAberto] = useState<'inicio' | 'fim' | null>(null);
 
-  const carregarDados = useCallback(async () => {
+  const carregarDados = useCallback(async (forcar = false) => {
     try {
       if (isDemoMode) {
         setTransactions(DEMO_TRANSACTIONS);
@@ -100,10 +101,12 @@ export default function GraficosScreen() {
           NÃO pode acontecer: "Ano a Ano" e "Mês a Mês" montam a régua a partir
           do primeiro e do último lançamento existentes, e um recorte mudaria o
           que aparece no eixo. */
-      const data =
-        granularidade === 'periodo'
-          ? await fetchTransactionsDoPeriodo(periodoInicio, periodoFim)
+      const data = granularidade === 'periodo'
+        ? await fetchTransactionsDoPeriodo(periodoInicio, periodoFim)
+        : historicoCache.current && !forcar
+          ? historicoCache.current
           : await fetchTransactions();
+      if (granularidade !== 'periodo') historicoCache.current = data;
       setTransactions(data || []);
     } catch (e) {
       console.warn('Erro ao carregar transações para gráficos:', e);
@@ -119,7 +122,7 @@ export default function GraficosScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    carregarDados();
+    carregarDados(true);
   }, [carregarDados]);
 
   // Filtra transações pela carteira selecionada. Compra no crédito fica de

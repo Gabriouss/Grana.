@@ -1292,7 +1292,7 @@ export default function InicioScreen() {
         left={
           <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn} accessibilityLabel="Abrir perfil">
             {perfil?.fotoUrl ? (
-              <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} />
+              <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} accessibilityLabel="Foto de perfil" />
             ) : (
               <Ionicons name="person-circle-outline" size={44} color={theme.inkFaint} />
             )}
@@ -1517,7 +1517,7 @@ export default function InicioScreen() {
               </AppPressable>
             </View>
 
-            <TextInput maxLength={LIMITS.description}
+            <TextInput accessibilityLabel="Descrição da conta a pagar" maxLength={LIMITS.description}
               style={styles.descInput}
               placeholder="Descrição — ex: Energia"
               placeholderTextColor={theme.inkFaint}
@@ -1527,7 +1527,7 @@ export default function InicioScreen() {
 
             <View style={styles.amountRow}>
               <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput maxLength={LIMITS.amount}
+              <TextInput accessibilityLabel="Valor da conta a pagar em reais" maxLength={LIMITS.amount}
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}
@@ -1600,7 +1600,7 @@ export default function InicioScreen() {
 
             <View style={styles.amountRow}>
               <Text style={styles.amountPrefix}>R$</Text>
-              <TextInput maxLength={LIMITS.amount}
+              <TextInput accessibilityLabel="Valor do orçamento em reais" maxLength={LIMITS.amount}
                 style={styles.amountInput}
                 placeholder="0,00"
                 placeholderTextColor={theme.inkFaint}
@@ -1972,4 +1972,3 @@ const styles = StyleSheet.create({
   lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
   dateQuickTextActive: { color: theme.ink},
 });
-

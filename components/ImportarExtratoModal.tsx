@@ -293,6 +293,7 @@ export default function ImportarExtratoModal({
               <Text style={styles.separador}>ou cole o conteúdo</Text>
 
               <TextInput
+                accessibilityLabel="Conteúdo do extrato bancário"
                 maxLength={LIMITS.pastedText}
                 style={styles.textArea}
                 placeholder="Data,Descrição,Valor&#10;15/08/2026,Supermercado,-187.40&#10;14/08/2026,Salário,6200.00"

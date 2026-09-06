@@ -657,6 +657,7 @@ export default function LancamentosScreen() {
         <View style={styles.searchRow}>
           <Ionicons name="search-outline" size={16} color={theme.inkFaint} />
           <TextInput
+            accessibilityLabel="Buscar lançamentos"
             style={styles.searchInput}
             placeholder="Buscar por descrição ou categoria"
             placeholderTextColor={theme.inkFaint}
@@ -932,6 +933,5 @@ const styles = StyleSheet.create({
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   categoryChipTextActive: { color: theme.ink},
 });
-
 
 

@@ -268,6 +268,7 @@ export default function GoalsCarousel({
           </View>
 
           <TextInput
+            accessibilityLabel="Nome da meta"
             maxLength={LIMITS.goalTitle}
             style={styles.descInput}
             placeholder="Nome da meta — ex: Reserva de emergência"
@@ -279,6 +280,7 @@ export default function GoalsCarousel({
           <View style={styles.amountRow}>
             <Text style={styles.amountPrefix}>R$</Text>
             <TextInput
+              accessibilityLabel="Valor alvo da meta em reais"
               maxLength={LIMITS.amount}
               style={styles.amountInput}
               placeholder="0,00"

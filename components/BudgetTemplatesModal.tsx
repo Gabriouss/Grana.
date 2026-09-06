@@ -124,7 +124,7 @@ export default function BudgetTemplatesModal({
 
           <View style={styles.amountRow}>
             <Text style={styles.amountPrefix}>R$</Text>
-            <TextInput maxLength={LIMITS.amount}
+            <TextInput accessibilityLabel="Renda mensal em reais" maxLength={LIMITS.amount}
               style={styles.amountInput}
               placeholder="5.000,00"
               placeholderTextColor={theme.inkFaint}

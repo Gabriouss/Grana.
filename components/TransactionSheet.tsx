@@ -78,6 +78,7 @@ export default function TransactionSheet({
   const [installment, setInstallment] = useState(inicial.installments > 1);
   const [installmentCount, setInstallmentCount] = useState(String(Math.max(2, inicial.installments)));
   const [cardId, setCardId] = useState<string | null>(inicial.card_id);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [catPickerOpen, setCatPickerOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -97,6 +98,7 @@ export default function TransactionSheet({
     setInstallment(inicial.installments > 1);
     setInstallmentCount(String(Math.max(2, inicial.installments)));
     setCardId(inicial.card_id);
+    setFormError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
@@ -122,9 +124,24 @@ export default function TransactionSheet({
           : 'Nova saída';
 
   function salvar() {
+    const descricao = desc.trim();
+    const valor = parseAmount(amount);
+    if (!descricao) {
+      setFormError('Informe uma descrição para o lançamento.');
+      return;
+    }
+    if (!valor || valor <= 0) {
+      setFormError('Informe um valor maior que zero.');
+      return;
+    }
+    if (ehCredito && cartoes.length > 1 && !cardId) {
+      setFormError('Escolha em qual cartão esta compra foi feita.');
+      return;
+    }
+    setFormError(null);
     onSalvar({
       type: ehCredito || ehBoleto ? 'out' : type,
-      description: desc,
+      description: descricao,
       amount,
       category,
       color: catColor,
@@ -162,24 +179,26 @@ export default function TransactionSheet({
           )}
 
           <TextInput
+            accessibilityLabel={ehBoleto ? 'Descrição da conta a pagar' : ehCredito ? 'Descrição da compra no cartão' : 'Descrição do lançamento'}
             maxLength={LIMITS.description}
             style={styles.descInput}
             placeholder={ehBoleto ? 'Descrição — ex: Energia' : ehCredito ? 'Descrição — ex: Supermercado' : 'Descrição'}
             placeholderTextColor={theme.inkFaint}
             value={desc}
-            onChangeText={setDesc}
+            onChangeText={(value) => { setDesc(value); if (formError) setFormError(null); }}
           />
 
           <View style={styles.amountRow}>
             <Text style={styles.amountPrefix}>R$</Text>
             <TextInput
+              accessibilityLabel="Valor do lançamento em reais"
               maxLength={LIMITS.amount}
               style={styles.amountInput}
               placeholder="0,00"
               placeholderTextColor={theme.inkFaint}
               keyboardType="number-pad"
               value={amount}
-              onChangeText={(t) => setAmount(formatMoneyInput(t))}
+              onChangeText={(t) => { setAmount(formatMoneyInput(t)); if (formError) setFormError(null); }}
             />
           </View>
 
@@ -192,6 +211,9 @@ export default function TransactionSheet({
                     key={c.id}
                     style={[styles.bankChip, cardId === c.id && { borderColor: c.color, backgroundColor: 'rgba(255,255,255,0.08)' }]}
                     onPress={() => setCardId(c.id)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: cardId === c.id }}
+                    accessibilityLabel={`Cartão ${c.name}`}
                   >
                     <View style={[styles.bankDot, { backgroundColor: c.color }]} />
                     <Text style={[styles.bankChipText, cardId === c.id && { color: theme.ink }]}>{c.name}</Text>
@@ -201,7 +223,7 @@ export default function TransactionSheet({
             </View>
           )}
 
-          <AppPressable style={styles.fieldRow} onPress={() => setCatPickerOpen(true)}>
+          <AppPressable style={styles.fieldRow} onPress={() => setCatPickerOpen(true)} accessibilityRole="button" accessibilityLabel={`Categoria: ${category}`}>
             <Text style={styles.fieldKey}>Categoria</Text>
             <View style={styles.fieldVal}>
               <View style={[styles.dot, { backgroundColor: catColor }]} />
@@ -211,7 +233,7 @@ export default function TransactionSheet({
           </AppPressable>
 
           <View style={{ gap: 6 }}>
-            <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)}>
+            <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)} accessibilityRole="button" accessibilityLabel={`${ehBoleto ? 'Vencimento' : 'Data do lançamento'}: ${formatDateLabel(occurredOn)}`}>
               <Text style={styles.fieldKey}>{ehBoleto ? 'Vencimento' : 'Data do lançamento'}</Text>
               <View style={styles.fieldVal}>
                 <Text style={styles.fieldValText}>{formatDateLabel(occurredOn)}</Text>
@@ -317,6 +339,11 @@ export default function TransactionSheet({
               <Text style={styles.saveBtnText}>{editando ? 'Salvar alterações' : ehBoleto ? 'Salvar conta' : 'Salvar lançamento'}</Text>
             )}
           </AppPressable>
+          {formError && (
+            <Text style={styles.formError} role="alert" accessibilityLiveRegion="assertive">
+              {formError}
+            </Text>
+          )}
         </Sheet>
       </AppModal>
 
@@ -429,6 +456,7 @@ const styles = StyleSheet.create({
   },
   stepperVal: { color: theme.ink, fontSize: type.apoio, minWidth: 26, textAlign: 'center', fontFamily: fonts.regular },
   installmentHint: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
+  formError: { color: theme.danger, fontSize: type.legenda, fontFamily: fonts.regular, marginTop: spacing.xs },
   saveBtn: {
     backgroundColor: theme.ink,
     borderRadius: radius.md,

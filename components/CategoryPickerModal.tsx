@@ -260,6 +260,7 @@ export default function CategoryPickerModal({
                   {isEditing && (
                     <View style={styles.newForm}>
                       <TextInput
+                        accessibilityLabel="Nome da categoria"
                         maxLength={LIMITS.category}
                         style={styles.newInput}
                         placeholder="Nome da categoria"
@@ -302,7 +303,7 @@ export default function CategoryPickerModal({
             </AppPressable>
           ) : (
             <View style={styles.newForm}>
-              <TextInput maxLength={LIMITS.category}
+              <TextInput accessibilityLabel="Nome da nova categoria" maxLength={LIMITS.category}
                 style={styles.newInput}
                 placeholder="Nome da categoria"
                 placeholderTextColor={theme.inkFaint}
