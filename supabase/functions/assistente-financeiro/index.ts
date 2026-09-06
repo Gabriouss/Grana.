@@ -189,6 +189,61 @@ function casarNome(nomes: string[], pedido: string): string | null {
   );
 }
 
+/**
+ * Mesma resolução de `casarNome`, mas com memória: um apelido que este
+ * usuário já usou antes pra este domínio ('categoria' | 'cartao' |
+ * 'carteira') é lembrado e passa a resolver DIRETO, sem depender do
+ * casamento difuso de novo. Quando o difuso resolve algo, o apelido é
+ * gravado pra a próxima chamada já cair no atalho — é o mecanismo
+ * "aprender vocabulário": "comida" vira "Alimentação" uma vez, e da
+ * segunda pergunta em diante nem precisa mais da heurística difusa.
+ *
+ * Falha de leitura/escrita na memória NUNCA impede a resposta: é reforço
+ * de aprendizado, não parte crítica do caminho de resolver o nome.
+ */
+async function casarNomeComMemoria(
+  supabase: SupabaseClient,
+  userId: string,
+  dominio: 'categoria' | 'cartao' | 'carteira',
+  nomes: string[],
+  pedido: string
+): Promise<string | null> {
+  const alvo = normalizar(pedido);
+  if (!alvo) return null;
+
+  const exato = nomes.find((n) => normalizar(n) === alvo);
+  if (exato) return exato;
+
+  try {
+    const { data } = await supabase
+      .from('assistant_memory')
+      .select('valor')
+      .eq('user_id', userId)
+      .eq('tipo', 'vocabulario')
+      .eq('chave', `${dominio}:${alvo}`)
+      .maybeSingle();
+    const lembrado = data?.valor as string | undefined;
+    /* Só usa se o nome lembrado ainda existir de verdade — evita responder
+       com uma categoria/cartão/carteira que foi renomeada ou excluída
+       desde que o apelido foi aprendido. */
+    if (lembrado && nomes.includes(lembrado)) return lembrado;
+  } catch (e) {
+    console.error('[assistente-financeiro] erro ao ler vocabulário:', e);
+  }
+
+  const difuso = nomes.find((n) => normalizar(n).includes(alvo) || alvo.includes(normalizar(n))) ?? null;
+  if (difuso) {
+    try {
+      await supabase.rpc('registrar_memoria_assistente', {
+        p_user_id: userId, p_tipo: 'vocabulario', p_chave: `${dominio}:${alvo}`, p_valor: difuso,
+      });
+    } catch (e) {
+      console.error('[assistente-financeiro] erro ao gravar vocabulário:', e);
+    }
+  }
+  return difuso;
+}
+
 /* ── Ferramentas (tool definitions para o LLM) ───────────────────────────── */
 
 const TOOLS = [
@@ -382,6 +437,65 @@ const TOOLS = [
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'lembrarFato',
+      description:
+        'Guarda um fato que o USUÁRIO AFIRMOU sobre a própria vida financeira, pra lembrar nas próximas conversas ' +
+        '(ex.: "meu salário cai todo dia 5", "considero Mercado uma categoria essencial", "moro sozinho"). ' +
+        'Use SOMENTE quando o usuário disser algo factual sobre si mesmo, com as próprias palavras. ' +
+        'NUNCA use para registrar uma dedução ou opinião sua sobre o comportamento do usuário.',
+      parameters: {
+        type: 'object',
+        properties: {
+          chave: { type: 'string', description: 'Rótulo curto do fato, em minúsculas com underscore. Ex.: "dia_do_salario".' },
+          fato: { type: 'string', description: 'O fato em si, como uma frase curta e objetiva.' },
+        },
+        required: ['chave', 'fato'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'naoConsegui',
+      description:
+        'Chame esta ferramenta, em vez de só escrever uma desculpa, sempre que NENHUMA outra ferramenta ' +
+        'conseguir responder à pergunta. Isso registra a lacuna para que o time do Grana. saiba o que o ' +
+        'assistente ainda não sabe responder — não é uma falha em chamá-la, é a forma certa de admitir o limite.',
+      parameters: {
+        type: 'object',
+        properties: {
+          motivo: { type: 'string', description: 'Por que não deu pra responder — o que faltou ou que tipo de pergunta é essa.' },
+        },
+        required: ['motivo'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'ensinarApelido',
+      description:
+        'Registra que um apelido/sinônimo que o usuário usa corresponde a uma categoria, cartão ou carteira ' +
+        'real dele (ex.: "comida" para a categoria "Alimentação", "nu" para o cartão "Nubank"). ' +
+        'Use isso quando o usuário usar um nome que NÃO bate exatamente com nada, e você já sabe — porque ele ' +
+        'confirmou nesta conversa, ou porque é um sinônimo óbvio de uma categoria/cartão/carteira real dele — ' +
+        'qual é o nome de verdade. O casamento automático só reconhece nomes parecidos por trecho de texto ' +
+        '(ex.: "Aliment" bate com "Alimentação" sozinho); sinônimos de verdade como "comida" só resolvem se ' +
+        'você chamar esta ferramenta. Depois de ensinado, o apelido passa a resolver direto, sem perguntar de novo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          dominio: { type: 'string', enum: ['categoria', 'cartao', 'carteira'], description: 'A que tipo de coisa o apelido se refere.' },
+          apelido: { type: 'string', description: 'O termo que o usuário usou. Ex.: "comida".' },
+          nome_real: { type: 'string', description: 'O nome exato, como está cadastrado no app. Ex.: "Alimentação".' },
+        },
+        required: ['dominio', 'apelido', 'nome_real'],
+      },
+    },
+  },
 ];
 
 /* ── Execução das ferramentas ────────────────────────────────────────────── */
@@ -456,7 +570,7 @@ async function executarFerramenta(
         const { data: cats, error: e } = await supabase.from('categories').select('name').eq('user_id', userId);
         if (e) throw e;
         const nomes: string[] = (cats ?? []).map((c: { name: string }) => c.name);
-        const casada = casarNome(nomes, String(args.categoria));
+        const casada = await casarNomeComMemoria(supabase, userId, 'categoria', nomes, String(args.categoria));
         if (!casada) {
           return nomes.length
             ? `Não existe categoria chamada "${args.categoria}". As categorias do usuário são: ${nomes.join(', ')}. ` +
@@ -471,7 +585,7 @@ async function executarFerramenta(
         const { data: cards, error: e } = await supabase.from('credit_cards').select('id, name').eq('user_id', userId);
         if (e) throw e;
         const lista = (cards ?? []) as Array<{ id: string; name: string }>;
-        const casado = casarNome(lista.map((c) => c.name), String(args.cartao));
+        const casado = await casarNomeComMemoria(supabase, userId, 'cartao', lista.map((c) => c.name), String(args.cartao));
         if (!casado) {
           return lista.length
             ? `Não existe cartão chamado "${args.cartao}". Os cartões do usuário são: ${lista.map((c) => c.name).join(', ')}.`
@@ -485,7 +599,7 @@ async function executarFerramenta(
         const { data: ws, error: e } = await supabase.from('wallets').select('id, name').eq('user_id', userId);
         if (e) throw e;
         const lista = (ws ?? []) as Array<{ id: string; name: string }>;
-        const casada = casarNome(lista.map((w) => w.name), String(args.carteira));
+        const casada = await casarNomeComMemoria(supabase, userId, 'carteira', lista.map((w) => w.name), String(args.carteira));
         if (!casada) {
           return lista.length
             ? `Não existe carteira chamada "${args.carteira}". As carteiras do usuário são: ${lista.map((w) => w.name).join(', ')}.`
@@ -631,7 +745,7 @@ async function executarFerramenta(
       if (erroCategorias) throw erroCategorias;
 
       const nomes: string[] = (categorias ?? []).map((c: { name: string }) => c.name);
-      const casada = casarNome(nomes, pedida);
+      const casada = await casarNomeComMemoria(supabase, userId, 'categoria', nomes, pedida);
 
       if (!casada) {
         return nomes.length
@@ -1116,6 +1230,75 @@ async function executarFerramenta(
       );
     }
 
+    /* Só grava fato que o usuário AFIRMOU — nunca uma inferência do modelo
+       sobre ele, que é como o assistente passaria a julgar (a regra de tom
+       do projeto proíbe). Falha de gravação não derruba a resposta: o
+       usuário só não terá isso lembrado da próxima vez. */
+    case 'lembrarFato': {
+      const chave = String(args.chave ?? '').trim().toLowerCase().replace(/\s+/g, '_').slice(0, 100);
+      const fato = String(args.fato ?? '').trim();
+      if (!chave || !fato) return 'Não deu para guardar: faltou a chave ou o fato. Peça ao usuário para reformular.';
+      try {
+        await supabase.rpc('registrar_memoria_assistente', {
+          p_user_id: userId, p_tipo: 'fato', p_chave: chave, p_valor: fato,
+        });
+      } catch (e) {
+        console.error('[assistente-financeiro] erro ao guardar fato:', e);
+        return 'Não consegui guardar esse fato agora, mas responda a mensagem do usuário normalmente.';
+      }
+      return `Guardado: "${fato}". Diga ao usuário que você vai lembrar disso.`;
+    }
+
+    /* O registro em si é automático: `ferramentaUsada = 'naoConsegui'` já é
+       salvo em assistant_messages.ferramenta_usada pelo fluxo principal,
+       sem precisar de tabela nova — é a lacuna aparecendo sozinha pelo uso
+       real, sem o autor precisar perceber e avisar. */
+    case 'naoConsegui': {
+      const motivo = String(args.motivo ?? 'motivo não informado').trim();
+      return `Diga ao usuário, com gentileza, que você ainda não consegue responder isso. ` +
+        `Motivo interno, não repita ao usuário: ${motivo}`;
+    }
+
+    /* O casamento difuso de `casarNome`/`casarNomeComMemoria` só reconhece
+       nome PARECIDO por trecho de texto ("Aliment" bate com "Alimentação"
+       sozinho) — nunca um sinônimo de verdade ("comida" não é trecho de
+       "Alimentação", string nenhuma resolve isso). Só o próprio modelo
+       entende que são a mesma coisa, então esta ferramenta é o jeito dele
+       ensinar essa correspondência pra memória, em vez de string nenhuma
+       tentar adivinhar sinônimo. */
+    case 'ensinarApelido': {
+      const dominio = String(args.dominio ?? '');
+      if (!['categoria', 'cartao', 'carteira'].includes(dominio)) {
+        return 'Domínio inválido. Use categoria, cartao ou carteira.';
+      }
+      const apelido = String(args.apelido ?? '').trim();
+      const nomeReal = String(args.nome_real ?? '').trim();
+      if (!apelido || !nomeReal) return 'Faltou o apelido ou o nome real. Não gravei nada.';
+
+      /* Confirma que o nome real EXISTE de verdade antes de gravar — sem
+         isso, um apelido aprendido errado "resolveria" pra algo que o
+         usuário não tem, e a próxima consulta com esse apelido falharia
+         silenciosamente ou apontaria pro lugar errado. */
+      const tabela = dominio === 'categoria' ? 'categories' : dominio === 'cartao' ? 'credit_cards' : 'wallets';
+      const { data: existentes, error: erroExistentes } = await supabase.from(tabela).select('name').eq('user_id', userId);
+      if (erroExistentes) throw erroExistentes;
+      const nomes = (existentes ?? []).map((r: { name: string }) => r.name);
+      const casado = casarNome(nomes, nomeReal);
+      if (!casado) {
+        return `"${nomeReal}" não bate com nenhum(a) ${dominio} real do usuário. Não gravei nenhum apelido — confirme o nome certo primeiro.`;
+      }
+
+      try {
+        await supabase.rpc('registrar_memoria_assistente', {
+          p_user_id: userId, p_tipo: 'vocabulario', p_chave: `${dominio}:${normalizar(apelido)}`, p_valor: casado,
+        });
+      } catch (e) {
+        console.error('[assistente-financeiro] erro ao ensinar apelido:', e);
+        return 'Não consegui gravar esse apelido agora, mas pode responder a pergunta do usuário normalmente.';
+      }
+      return `Apelido gravado: "${apelido}" = ${casado}. Da próxima vez que o usuário disser "${apelido}", já resolve direto, sem perguntar de novo.`;
+    }
+
     default:
       return 'Ferramenta não reconhecida.';
   }
@@ -1123,25 +1306,89 @@ async function executarFerramenta(
 
 /* ── System prompt ───────────────────────────────────────────────────────── */
 
+type MemoriaAssistente = {
+  vocabulario: Array<{ chave: string; valor: string }>;
+  fatos: Array<{ chave: string; valor: string }>;
+  exemplos: Array<{ chave: string; valor: string; usos: number }>;
+};
+
+const MEMORIA_VAZIA: MemoriaAssistente = { vocabulario: [], fatos: [], exemplos: [] };
+
+/**
+ * Busca a memória aprendida deste usuário. Tetos rígidos (20 vocabulário,
+ * 10 fatos, 5 exemplos) por dois motivos: sem eles o prompt incha sem
+ * limite conforme o usuário usa mais o assistente — o oposto do que
+ * "aprender com o uso" deveria entregar — e o free tier do Gemini já tem
+ * pouca margem de tokens por chamada.
+ *
+ * Falha aqui NUNCA impede a resposta: memória é reforço, não parte crítica
+ * do caminho de responder. Sem ela, o Granabô só volta a se comportar como
+ * antes de aprender nada — nunca para de funcionar.
+ */
+async function carregarMemoria(supabase: SupabaseClient, userId: string, mensagem: string): Promise<MemoriaAssistente> {
+  try {
+    const [vocabResult, fatosResult, exemplosResult] = await Promise.all([
+      supabase.from('assistant_memory').select('chave, valor')
+        .eq('user_id', userId).eq('tipo', 'vocabulario')
+        .order('usos', { ascending: false }).order('atualizado_em', { ascending: false })
+        .limit(20),
+      supabase.from('assistant_memory').select('chave, valor')
+        .eq('user_id', userId).eq('tipo', 'fato')
+        .order('atualizado_em', { ascending: false })
+        .limit(10),
+      supabase.rpc('buscar_exemplos_similares', { p_user_id: userId, p_pergunta: mensagem, p_limite: 5 }),
+    ]);
+    return {
+      vocabulario: (vocabResult.data ?? []) as MemoriaAssistente['vocabulario'],
+      fatos: (fatosResult.data ?? []) as MemoriaAssistente['fatos'],
+      exemplos: (exemplosResult.data ?? []) as MemoriaAssistente['exemplos'],
+    };
+  } catch (e) {
+    console.error('[assistente-financeiro] erro ao carregar memória:', e);
+    return MEMORIA_VAZIA;
+  }
+}
+
 /**
  * A data é computada NO SERVIDOR a cada chamada e injetada aqui. Sem ela o
  * modelo não tem como transformar "mês passado" ou "nos últimos 15 dias" em
  * argumentos concretos, e cai no único período que conhecia antes: o mês
  * corrente. Nunca deixar o modelo adivinhar a data.
+ *
+ * `memoria` é o que faz o Granabô "aprender sozinho" com o próprio uso, sem
+ * fine-tuning nenhum (pago, fora do requisito de custo zero): vocabulário
+ * que este usuário já ensinou, fatos que ele já contou, e exemplos de
+ * perguntas parecidas que já foram respondidas com sucesso antes — nada
+ * disso muda o modelo, só o que ele lê antes de responder.
  */
-function montarSystemPrompt(): string {
+function montarSystemPrompt(memoria: MemoriaAssistente = MEMORIA_VAZIA): string {
   const hoje = new Date();
   const porExtenso = hoje.toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
+  const blocoVocabulario = memoria.vocabulario.length
+    ? `\n\nApelidos que este usuário já usou antes (use direto, sem precisar confirmar de novo):\n` +
+      memoria.vocabulario.map((v) => `- "${v.chave.split(':').slice(1).join(':')}" = ${v.valor}`).join('\n')
+    : '';
+
+  const blocoFatos = memoria.fatos.length
+    ? `\n\nFatos que este usuário já contou sobre si (ele afirmou, não é suposição sua):\n` +
+      memoria.fatos.map((f) => `- ${f.valor}`).join('\n')
+    : '';
+
+  const blocoExemplos = memoria.exemplos.length
+    ? `\n\nPerguntas parecidas que este usuário já fez antes, e como foram resolvidas (para o mesmo padrão de pergunta, prefira a mesma ferramenta e os mesmos argumentos):\n` +
+      memoria.exemplos.map((e) => `- Pergunta: "${e.chave}" → ${e.valor}`).join('\n')
+    : '';
+
   return `Você é o Granabô, o assistente financeiro do app Grana.
 
-Hoje é ${porExtenso} (${iso(hoje)}). Use esta data para resolver períodos relativos como "mês passado", "nos últimos 15 dias", "este ano".
+Hoje é ${porExtenso} (${iso(hoje)}). Use esta data para resolver períodos relativos como "mês passado", "nos últimos 15 dias", "este ano".${blocoVocabulario}${blocoFatos}${blocoExemplos}
 
 Regras invioláveis:
 1. NUNCA invente um valor em reais. Todo número financeiro que você mencionar DEVE ter vindo do resultado de uma ferramenta.
-2. Se a pergunta não puder ser respondida com as ferramentas disponíveis, diga isso com gentileza.
+2. Se a pergunta não puder ser respondida com nenhuma ferramenta disponível, chame a ferramenta naoConsegui em vez de só escrever uma desculpa — isso registra a lacuna pra melhorar o assistente.
 3. Seja direto e amigável. Use frases curtas.
 4. NUNCA julgue os gastos do usuário. Não diga "você gastou muito" nem "você deveria economizar" — só apresente os números quando pedidos.
 5. Responda em português do Brasil.
@@ -1150,7 +1397,9 @@ Regras invioláveis:
 8. Use emojis com moderação — no máximo um por mensagem.
 9. SEMPRE cite o período consultado junto do valor ("nos últimos 15 dias", "em maio de 2026"). O resultado da ferramenta traz esse período; sem citá-lo, quem perguntou não tem como saber a que janela o número se refere.
 10. Cada usuário cria as próprias categorias, cartões e carteiras. NUNCA presuma que algo não existe nem recuse consultar por achar que a categoria não é válida: chame a ferramenta e deixe ela responder. Se o nome não casar, ela devolve a lista real.
-11. Para qualquer pergunta sobre gastos ou receitas que as ferramentas específicas não cubram exatamente, use consultarLancamentos combinando os filtros necessários, em vez de dizer que não consegue.`;
+11. Para qualquer pergunta sobre gastos ou receitas que as ferramentas específicas não cubram exatamente, use consultarLancamentos combinando os filtros necessários, em vez de dizer que não consegue.
+12. Se o usuário afirmar algo factual sobre a própria vida financeira (não uma pergunta), use lembrarFato pra guardar, além de responder normalmente.
+13. O casamento automático de categoria/cartão/carteira só reconhece nomes parecidos por trecho de texto — nunca um sinônimo de verdade ("comida" não é trecho de "Alimentação"). Quando o usuário usar um termo assim e você já souber (nesta conversa, ou por ser um sinônimo óbvio) a qual categoria/cartão/carteira real ele se refere, use ensinarApelido pra guardar essa correspondência.`;
 }
 
 /* ── Handler principal ───────────────────────────────────────────────────── */
@@ -1209,7 +1458,8 @@ Deno.serve(async (req) => {
     }
 
     /* ── Montar mensagens para o LLM ─────────────────────────────────── */
-    const messages: { role: string; content: string }[] = [{ role: 'system', content: montarSystemPrompt() }];
+    const memoria = await carregarMemoria(supabase, userId, mensagem);
+    const messages: { role: string; content: string }[] = [{ role: 'system', content: montarSystemPrompt(memoria) }];
 
     // Incluir histórico recente se fornecido (últimas mensagens para contexto)
     if (body.historico && Array.isArray(body.historico)) {
@@ -1268,6 +1518,15 @@ Deno.serve(async (req) => {
         choice, // a mensagem do assistente com os tool_calls
       ];
 
+      /* "Aprender com os próprios acertos": guarda a ÚLTIMA ferramenta de
+         consulta que rodou sem exceção nesta pergunta, pra virar few-shot
+         em perguntas parecidas no futuro (ver carregarMemoria acima).
+         naoConsegui/lembrarFato ficam de fora — são meta-ferramentas, não
+         respondem pergunta financeira nenhuma, não fazem sentido como
+         exemplo de "como resolver esta pergunta". */
+      const METAFERRAMENTAS = new Set(['naoConsegui', 'lembrarFato', 'ensinarApelido']);
+      let ultimaFerramentaBemSucedida: { nome: string; args: Record<string, unknown> } | null = null;
+
       for (const toolCall of choice.tool_calls) {
         const nome = toolCall.function.name;
         let args: Record<string, unknown> = {};
@@ -1284,6 +1543,9 @@ Deno.serve(async (req) => {
             id: userId,
             user_metadata: userData?.user?.user_metadata ?? null,
           });
+          if (!METAFERRAMENTAS.has(nome)) {
+            ultimaFerramentaBemSucedida = { nome, args };
+          }
         } catch (err) {
           console.error(`[assistente-financeiro] erro na ferramenta ${nome}:`, err);
           resultado = 'Erro ao consultar os dados. Tente novamente.';
@@ -1294,6 +1556,19 @@ Deno.serve(async (req) => {
           tool_call_id: toolCall.id,
           content: resultado,
         });
+      }
+
+      if (ultimaFerramentaBemSucedida) {
+        try {
+          await supabase.rpc('registrar_memoria_assistente', {
+            p_user_id: userId,
+            p_tipo: 'exemplo',
+            p_chave: mensagem,
+            p_valor: `ferramenta: ${ultimaFerramentaBemSucedida.nome}, args: ${JSON.stringify(ultimaFerramentaBemSucedida.args)}`,
+          });
+        } catch (e) {
+          console.error('[assistente-financeiro] erro ao gravar exemplo:', e);
+        }
       }
 
       /* Segunda chamada: LLM formula a resposta com os dados reais */

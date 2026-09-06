@@ -26,6 +26,8 @@ const MIGRATION_JANELAS = path.join(__dirname, '..', 'supabase', 'migrations', '
 const migrationJanelas = readFileSync(MIGRATION_JANELAS, 'utf8');
 const MIGRATION_ASSISTENTE = path.join(__dirname, '..', 'supabase', 'migrations', '20260905160000_assistant_messages.sql');
 const migrationAssistente = readFileSync(MIGRATION_ASSISTENTE, 'utf8');
+const MIGRATION_MEMORIA = path.join(__dirname, '..', 'supabase', 'migrations', '20260906120000_assistant_memory.sql');
+const migrationMemoria = readFileSync(MIGRATION_MEMORIA, 'utf8');
 
 let total = 0;
 let falhas = 0;
@@ -162,6 +164,7 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   const inicioJanelas = inicioJanelasMarcador >= 0 ? sql.lastIndexOf('alter table public.push_tokens', inicioJanelasMarcador) : -1;
   const inicioVoz = sql.indexOf('create table if not exists public.voice_operations');
   const inicioAssistente = sql.indexOf('create table if not exists public.assistant_messages');
+  const inicioMemoria = sql.indexOf('create extension if not exists pg_trgm');
   checar(
     'a migration do push permanece idêntica ao baseline do schema',
     inicioPush >= 0 && inicioJanelas > inicioPush
@@ -179,7 +182,12 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   );
   checar(
     'a migration do assistente permanece idêntica ao baseline do schema',
-    inicioAssistente >= 0 && normalizarSql(sql.slice(inicioAssistente)) === normalizarSql(migrationAssistente)
+    inicioAssistente >= 0 && inicioMemoria > inicioAssistente
+      && normalizarSql(sql.slice(inicioAssistente, inicioMemoria)) === normalizarSql(migrationAssistente)
+  );
+  checar(
+    'a migration de memória do assistente permanece idêntica ao baseline do schema',
+    inicioMemoria >= 0 && normalizarSql(sql.slice(inicioMemoria)) === normalizarSql(migrationMemoria)
   );
 }
 
