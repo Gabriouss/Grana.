@@ -2855,6 +2855,45 @@ Três achados seguidos, testando a implementação acima com o cartão real do a
 - Fotos de perfil passaram a ter nome acessível, os presets perderam emojis
   redundantes (o ícone já comunica a categoria), o estado de gravação por voz
   usa `theme.danger` e copy com reticência tipográfica.
+
+## 06/09/2026 (continuação) — versão 1.7.0 preparada e build EAS disparada
+
+Autor pediu explicitamente ("dispara uma build aí"). Antes de disparar,
+conferido que os 4 commits mais recentes (não produzidos por mim nesta
+sessão — pelo estilo e pelo conteúdo, parecem ser do Codex continuando o
+plano em `docs/superpowers/specs/2026-09-06-plano-codex-ciclo-fatura-cartao.md`
+que eu tinha deixado: agrupamento de crédito por ciclo E por cartão numa
+`SectionList`, `mode="invoice"` no `MonthSelector`, `lib/creditoFaturas.ts`
+como fonte única de filtragem, mais uma auditoria de acessibilidade —
+labels em `TextInput`, validação inline em vez de `Alert.alert`, barra
+inferior com os 6 destinos reais + Granabô, cache de histórico em
+Gráficos/Desafios) estavam íntegros: `npx tsc --noEmit` limpo e
+`npm run test:parser` 100% (incluindo os novos corpora de ciclo/fatura).
+
+Havia também um trabalho EM ANDAMENTO, não commitado, tocando
+`supabase/functions/assistente-financeiro/index.ts` +
+`supabase/functions/_shared/fatura-ciclo.ts` (novo) +
+`__tests__/corpus-assistente-fatura.ts` (novo) — provavelmente o
+`resumoCredito` do Granabô sendo atualizado pro mesmo modelo de ciclo (a
+dívida que o plano pro Codex tinha registrado). **Não tocado, não
+commitado por mim** — é trabalho de outra sessão em andamento, e além
+disso é uma Edge Function, que não entra no bundle do app de qualquer
+jeito.
+
+Versão subida 1.6.0 → **1.7.0** via `npm run build:preparar -- --minor`
+(`fd12be4`), nota: "Boletos marcam como pago na hora, cartões de crédito
+agrupam certo pela fatura (não mais pelo mês do calendário) com
+lançamentos separados por cartão, e agora dá para editar um cartão já
+cadastrado." Cobre o boleto de dois toques + as cinco rodadas do ciclo de
+fatura (implementação, layout, carrossel, edição de cartão, visão Total) +
+o trabalho do Codex (separação por cartão na lista, acessibilidade).
+
+Tudo publicado no GitHub (`f951bd8..fd12be4`) e **build EAS disparada**
+(`eas build --profile preview --platform android`, pedido explícito do
+autor) — acompanhar em
+`https://expo.dev/accounts/gabriouss/projects/grana-app/builds/32f00f39-07d9-4a3c-a538-90797676659f`.
+`versionCode` do Android subiu de 5 para 6 automaticamente (gerenciado pelo
+EAS, não pelo `app.json`).
 - Verificação: `tsc --noEmit`, corpus de ciclo/lista/design system (17/17,
   7/7 e 312/312). A suíte completa anterior já estava verde; a nova execução
   também concluiu os corpora até a guarda de design system, sem regressões de
