@@ -11,9 +11,7 @@ import { Platform, requireOptionalNativeModule } from 'expo-modules-core';
 type NativeGranaVoiceWidget = {
   estadoAtual(): string;
   definirEstado(estado: string): void;
-  quantidadeInstalada(): number;
   podeFixar(): boolean;
-  fixarNaTelaInicial(): boolean;
   quantidadeInstaladaPorTipo(tipo: string): number;
   fixarPorTipo(tipo: string): boolean;
   atualizarSnapshot(json: string): void;
@@ -59,7 +57,7 @@ export function definirEstado(estado: EstadoWidgetVoz): void {
 export function quantidadeInstalada(tipo: TipoWidget = 'voz'): number {
   if (!nativo) return 0;
   try {
-    return tipo === 'voz' ? nativo.quantidadeInstalada() : nativo.quantidadeInstaladaPorTipo(tipo);
+    return nativo.quantidadeInstaladaPorTipo(tipo);
   } catch {
     return 0;
   }
@@ -79,7 +77,7 @@ export function podeFixar(_tipo: TipoWidget = 'voz'): boolean {
 export function fixarNaTelaInicial(tipo: TipoWidget = 'voz'): boolean {
   if (!nativo) return false;
   try {
-    return tipo === 'voz' ? nativo.fixarNaTelaInicial() : nativo.fixarPorTipo(tipo);
+    return nativo.fixarPorTipo(tipo);
   } catch {
     return false;
   }

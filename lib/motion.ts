@@ -34,15 +34,6 @@ export const EASE_SNAP = 'cubic-bezier(0.2, 0.9, 0.2, 1.15)'; // preenchimento c
 /** Entrada e saída de superfície (janela, toast, conteúdo). Desacelera forte
     no fim, que é o que faz a coisa "pousar" em vez de parar. */
 export const UI_OUT = [0.23, 1, 0.32, 1] as const;
-/** Folhas e assentamento: sai mais devagar e chega mais firme que a UI_OUT. */
-export const UI_DRAWER = [0.32, 0.72, 0, 1] as const;
-/** Movimento entre dois estados já visíveis, quando ambos importam. */
-export const UI_MOVE = [0.77, 0, 0.175, 1] as const;
-
-/** Forma CSS de um dos tokens acima, pro caminho web. */
-export function cssBezier(pontos: readonly [number, number, number, number]): string {
-  return `cubic-bezier(${pontos.join(', ')})`;
-}
 
 /** Mantém as animações não essenciais alinhadas à preferência do sistema. */
 export function useReducedMotion() {

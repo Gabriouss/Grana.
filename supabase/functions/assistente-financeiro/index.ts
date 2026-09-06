@@ -27,6 +27,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    às vezes resolve pra "Alimentação" sozinho, "mercado" não — inconsistente).
    Ver casarPorPalavraChave, mais abaixo. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
+import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -62,29 +63,7 @@ const CHAT_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/c
 
 /* ── Rate limit best-effort ──────────────────────────────────────────────── */
 
-const JANELA_MS = 60_000;
-const MAX_POR_JANELA = 10;
-const usoRecente = new Map<string, number[]>();
-
-function excedeuRateLimit(userId: string): boolean {
-  const agora = Date.now();
-  const anteriores = (usoRecente.get(userId) ?? []).filter((t) => agora - t < JANELA_MS);
-  anteriores.push(agora);
-  usoRecente.set(userId, anteriores);
-  return anteriores.length > MAX_POR_JANELA;
-}
-
-/* ── Fetch com timeout ───────────────────────────────────────────────────── */
-
-async function fetchComTimeout(url: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+const excedeuRateLimit = criarRateLimiter(60_000, 10);
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 

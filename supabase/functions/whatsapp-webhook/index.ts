@@ -50,6 +50,9 @@ import { provedoresPadrao, transcrever } from '../_shared/voice-transcription.ts
    categoria na mesma lista, pro Granabô), sem duplicar a lista — ver o
    comentário no arquivo compartilhado. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
+/* timingSafeEqual e fetchComTimeout eram cópias idênticas em 3-4 Edge
+   Functions — ver comentário em _shared/seguranca.ts. */
+import { timingSafeEqual, fetchComTimeout } from '../_shared/seguranca.ts';
 
 const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? '';
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN') ?? '';
@@ -66,16 +69,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const MAX_BODY_BYTES = 512 * 1024;
-
-async function fetchComTimeout(url: string, init: RequestInit = {}, timeoutMs = 20_000): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 /* ---- heurísticas (cópia mínima de lib/heuristics.ts e lib/types.ts) ---- */
 
@@ -549,13 +542,6 @@ async function hmacSha256Hex(secret: string, body: string): Promise<string> {
     .join('');
 }
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 /** true = pode processar. Sem WHATSAPP_APP_SECRET configurado, deixa passar (com aviso) em vez de derrubar o webhook. */
 async function assinaturaValida(rawBody: string, header: string | null): Promise<boolean> {
   if (!WHATSAPP_APP_SECRET) {
@@ -597,7 +583,7 @@ async function sendWhatsappMessage(to: string, body: string): Promise<void> {
       type: 'text',
       text: { body },
     }),
-  });
+  }, 20_000);
   if (!res.ok) {
     console.error('[sendWhatsappMessage] Meta recusou o envio', { status: res.status });
     throw Object.assign(new Error('Falha ao enviar confirmação pela Meta'), { code: 'meta_send_failed' });
@@ -608,7 +594,7 @@ async function sendWhatsappMessage(to: string, body: string): Promise<void> {
 async function baixarAudioDaMeta(mediaId: string): Promise<ArrayBuffer | null> {
   const metaRes = await fetchComTimeout(`https://graph.facebook.com/v20.0/${mediaId}`, {
     headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-  });
+  }, 20_000);
   if (!metaRes.ok) {
     console.error('[transcribeAudio] Meta recusou a consulta da mídia:', metaRes.status);
     return null;
@@ -616,7 +602,7 @@ async function baixarAudioDaMeta(mediaId: string): Promise<ArrayBuffer | null> {
   const { url } = await metaRes.json();
   if (!url) return null;
 
-  const mediaRes = await fetchComTimeout(url, { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } });
+  const mediaRes = await fetchComTimeout(url, { headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` } }, 20_000);
   if (!mediaRes.ok) {
     console.error('[transcribeAudio] falha ao baixar bytes do áudio:', mediaRes.status);
     return null;

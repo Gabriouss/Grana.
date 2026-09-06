@@ -10,6 +10,7 @@ import {
   momentoNaZona,
   type MomentoLocal,
 } from '../_shared/push-habit.ts';
+import { timingSafeEqual } from '../_shared/seguranca.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -60,13 +61,6 @@ type ReciboExpo = {
   message?: string;
   details?: { error?: string };
 };
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
 
 function headersExpo(): HeadersInit {
   return {

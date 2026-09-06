@@ -6,8 +6,10 @@
  *
  * Roda: npx tsx __tests__/corpus-csv-dedup.ts
  */
-import { parseCsvText } from '../lib/heuristics';
+import { parseCsvTextDetalhado } from '../lib/heuristics';
 import { LIMITS } from '../lib/limits';
+
+const parseCsvText = (text: string) => parseCsvTextDetalhado(text).rows;
 
 let falhas = 0;
 let total = 0;

@@ -889,10 +889,6 @@ export type CsvParseResult = {
   truncado: boolean;
 };
 
-export function parseCsvText(text: string): ParsedCsvTransaction[] {
-  return parseCsvTextDetalhado(text).rows;
-}
-
 export function parseCsvTextDetalhado(text: string): CsvParseResult {
   const vazio: CsvParseResult = { rows: [], totalLinhas: 0, truncado: false };
 

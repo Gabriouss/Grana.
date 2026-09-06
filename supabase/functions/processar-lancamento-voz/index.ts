@@ -24,6 +24,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
 import { provedoresPadrao, transcrever } from '../_shared/voice-transcription.ts';
+import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') ?? '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
@@ -53,27 +54,7 @@ const MIMES_ACEITOS = new Set([
    pedidos simultâneos podem cair em contadores diferentes. Serve pro caso que
    importa na prática (um aparelho em loop, um botão preso), sem exigir tabela
    nova; o teto de tamanho acima é o controle de custo que vale de verdade. */
-const JANELA_MS = 60_000;
-const MAX_POR_JANELA = 12;
-const usoRecente = new Map<string, number[]>();
-
-function excedeuRateLimit(userId: string): boolean {
-  const agora = Date.now();
-  const anteriores = (usoRecente.get(userId) ?? []).filter((t) => agora - t < JANELA_MS);
-  anteriores.push(agora);
-  usoRecente.set(userId, anteriores);
-  return anteriores.length > MAX_POR_JANELA;
-}
-
-async function fetchComTimeout(url: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+const excedeuRateLimit = criarRateLimiter(60_000, 12);
 
 /* Códigos estáveis: a UI do app e a notificação do widget escolhem a mensagem
    a partir daqui, então mudar um destes textos muda o que a pessoa lê. */
