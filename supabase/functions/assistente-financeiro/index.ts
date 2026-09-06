@@ -308,6 +308,80 @@ const TOOLS = [
       parameters: { type: 'object', properties: { ...PROPS_PERIODO }, required: [] },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'resumoMetas',
+      description:
+        'Retorna as metas/cofrinhos do usuário: quanto já foi guardado, quanto falta e o prazo. ' +
+        'Use para "quanto já guardei", "quanto falta pra minha meta", "como estão meus cofrinhos".',
+      parameters: {
+        type: 'object',
+        properties: {
+          meta: { type: 'string', description: 'Nome da meta, se o usuário citou uma específica. Omita para listar todas.' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'comprometimentoFuturo',
+      description:
+        'Projeta quanto já está comprometido nos próximos meses (contas recorrentes + parcelas de compras parceladas). ' +
+        'Use para "quanto tenho comprometido", "o que já está comprometido pra frente", "quanto vou pagar nos próximos meses".',
+      parameters: {
+        type: 'object',
+        properties: {
+          meses: { type: 'number', description: 'Quantos meses projetar, incluindo o atual. Padrão 6, máximo 24.' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'alertaDeLimiteCartao',
+      description:
+        'Mostra quanto de cada limite de cartão de crédito já foi usado no mês atual. ' +
+        'Use para "estou perto do limite", "quanto sobrou do meu limite", "como está meu cartão".',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'perfilFinanceiro',
+      description:
+        'Retorna o perfil/arquétipo financeiro que o usuário obteve no diagnóstico do app. ' +
+        'Use para "qual é o meu perfil", "qual meu arquétipo financeiro".',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'resumoScoreERitmo',
+      description:
+        'Retorna o Score Grana (0 a 1000) e a sequência de dias seguidos registrando (Ritmo da Semana). ' +
+        'Use para "qual meu score", "quantos dias seguidos venho registrando", "como está meu ritmo".',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'retrospectivaDoMes',
+      description:
+        'Resumo completo do MÊS ANTERIOR já fechado: entradas, saídas, maior despesa, categoria campeã, ' +
+        'boletos pagos, comprometido fixo e comparação com o mês anterior a esse. ' +
+        'Use para "como foi meu mês passado", "resumo do mês anterior", "retrospectiva". ' +
+        'Sempre o mês anterior ao atual — não aceita outro período.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
 ];
 
 /* ── Execução das ferramentas ────────────────────────────────────────────── */
@@ -315,12 +389,19 @@ const TOOLS = [
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
 
+/* `usuario` vem inteiro, e não só o id, porque o diagnóstico financeiro do
+   app NÃO fica em tabela: vive em `user_metadata`, que a chamada de
+   autenticação já devolve no início do handler. Passar o objeto adiante
+   evita uma segunda ida à Auth API só pra ler algo que já está em mãos. */
+type UsuarioAutenticado = { id: string; user_metadata?: Record<string, unknown> | null };
+
 async function executarFerramenta(
   nome: string,
   args: Record<string, unknown>,
   supabase: SupabaseClient,
-  userId: string
+  usuario: UsuarioAutenticado
 ): Promise<string> {
+  const userId = usuario.id;
   /* `livreParaGastar` é a única que IGNORA o período pedido: ela projeta o
      que ainda dá pra gastar nos dias que faltam, e essa pergunta não existe
      pra um mês já fechado. "Quanto sobrou em maio" é `resumoMes`. */
@@ -591,8 +672,8 @@ async function executarFerramenta(
           return `- ${b.description}: R$ ${formatarBRL(Number(b.amount))} (vence dia ${parseInt(dia)})`;
         })
         .join('\n');
-      return `O usuário tem R$ ${formatarBRL(total)} em ${linhas.length} boleto(s) pendente(s). Período consultado: ${rotulo}. Cite esse período na resposta.
-${detalhe}`;
+      return `O usuário tem R$ ${formatarBRL(total)} em ${linhas.length} boleto(s) pendente(s). ` +
+        `Período consultado: ${rotulo}. Cite esse período na resposta.\n${detalhe}`;
     }
 
     case 'resumoCredito': {
@@ -624,8 +705,8 @@ ${detalhe}`;
           return `- ${c.name}: R$ ${formatarBRL(gastoCartao)} (limite: R$ ${formatarBRL(Number(c.limit_amount))})`;
         })
         .join('\n');
-      return `O usuário gastou R$ ${formatarBRL(total)} no crédito. Período consultado: ${rotulo}. Cite esse período na resposta.
-${porCartao}`;
+      return `O usuário gastou R$ ${formatarBRL(total)} no crédito. ` +
+        `Período consultado: ${rotulo}. Cite esse período na resposta.\n${porCartao}`;
     }
 
     case 'livreParaGastar': {
@@ -679,8 +760,7 @@ ${porCartao}`;
       const porDia = livre / diasRestantes;
 
       return (
-        `Livre para gastar em ${rotulo}: R$ ${formatarBRL(livre)}
-` +
+        `Livre para gastar em ${rotulo}: R$ ${formatarBRL(livre)}\n` +
         `Isso dá R$ ${formatarBRL(porDia)} por dia (${diasRestantes} dias restantes).\n` +
         `Detalhes: saldo R$ ${formatarBRL(saldo)}, contas pendentes R$ ${formatarBRL(contasPendentes)}, ` +
         `guardado em metas R$ ${formatarBRL(metas)}.`
@@ -704,11 +784,335 @@ ${porCartao}`;
         .reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
       const saldo = receitas - gastos;
       return (
-        `Resumo do período consultado (${rotulo}), que deve ser citado na resposta:
-` +
+        `Resumo do período consultado (${rotulo}), que deve ser citado na resposta:\n` +
         `- Receitas: R$ ${formatarBRL(receitas)}\n` +
         `- Gastos: R$ ${formatarBRL(gastos)}\n` +
         `- Saldo: R$ ${formatarBRL(saldo)} (${saldo >= 0 ? 'positivo' : 'negativo'})`
+      );
+    }
+
+    /* SELECT direto — current_amount/target_amount já vêm prontos da tabela,
+       sem cálculo nenhum a reproduzir. */
+    case 'resumoMetas': {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('title, target_amount, current_amount, deadline')
+        .eq('user_id', userId);
+      if (error) throw error;
+      const metas = (data ?? []) as Array<{ title: string; target_amount: number; current_amount: number; deadline: string | null }>;
+      if (metas.length === 0) return 'O usuário ainda não tem nenhuma meta/cofrinho cadastrado.';
+
+      const pedida = args.meta !== undefined && String(args.meta).trim() ? String(args.meta).trim() : null;
+      const casada = pedida ? casarNome(metas.map((m) => m.title), pedida) : null;
+      if (pedida && !casada) {
+        return `Não existe meta chamada "${pedida}". As metas do usuário são: ${metas.map((m) => m.title).join(', ')}.`;
+      }
+
+      const linha = (m: (typeof metas)[number]) => {
+        const falta = Math.max(0, Number(m.target_amount) - Number(m.current_amount));
+        const prazo = m.deadline ? `, prazo ${dataBR(m.deadline)}` : '';
+        return `- ${m.title}: guardado R$ ${formatarBRL(Number(m.current_amount))} de R$ ${formatarBRL(Number(m.target_amount))} ` +
+          `(falta R$ ${formatarBRL(falta)}${prazo})`;
+      };
+
+      if (casada) {
+        const m = metas.find((x) => x.title === casada)!;
+        return linha(m);
+      }
+      return `Metas do usuário:\n${metas.map(linha).join('\n')}`;
+    }
+
+    /* Porta a MESMA fórmula de lib/projections.ts:projetarComprometimentoFuturo
+       — contas recorrentes contam pelo valor atual em TODO mês futuro (só a
+       próxima ocorrência existe como linha), parcelas futuras são somadas por
+       mês de occurred_on. Nenhuma versão simplificada: mesmo cálculo. */
+    case 'comprometimentoFuturo': {
+      const meses = Math.min(Math.max(Math.round(Number(args.meses ?? 6)) || 6, 1), 24);
+      const hoje = new Date();
+
+      const [billsResult, txResult] = await Promise.all([
+        supabase.from('bills').select('amount, recurring').eq('user_id', userId).eq('recurring', true),
+        supabase.from('transactions').select('amount, occurred_on').eq('user_id', userId).eq('type', 'out').gt('installment_total', 1),
+      ]);
+      if (billsResult.error) throw billsResult.error;
+      if (txResult.error) throw txResult.error;
+
+      const totalRecorrentes = (billsResult.data ?? []).reduce((s: number, b: { amount: number }) => s + Number(b.amount), 0);
+      const parcelas = (txResult.data ?? []) as Array<{ amount: number; occurred_on: string }>;
+
+      const linhasMes: string[] = [];
+      let totalGeral = 0;
+      for (let i = 0; i < meses; i++) {
+        const ref = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+        const ano = ref.getFullYear();
+        const mes = ref.getMonth();
+        const totalParcelas = parcelas
+          .filter((t) => {
+            const d = new Date(t.occurred_on + 'T00:00:00');
+            return d.getFullYear() === ano && d.getMonth() === mes;
+          })
+          .reduce((s, t) => s + Number(t.amount), 0);
+        const totalMes = totalRecorrentes + totalParcelas;
+        totalGeral += totalMes;
+        const label = ref.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        linhasMes.push(`- ${label}: R$ ${formatarBRL(totalMes)} (recorrentes R$ ${formatarBRL(totalRecorrentes)}, parcelas R$ ${formatarBRL(totalParcelas)})`);
+      }
+
+      return `Comprometimento projetado para os próximos ${meses} mês(es), somando R$ ${formatarBRL(totalGeral)}:\n${linhasMes.join('\n')}`;
+    }
+
+    /* Porta a MESMA fórmula e os MESMOS degraus de lib/creditLimitAlert.ts
+       (calcularPctCartao, DEGRAUS=[100,90,70,50]) — só a leitura, sem o
+       estado de "já notificado" (que é local ao aparelho, não do servidor). */
+    case 'alertaDeLimiteCartao': {
+      const DEGRAUS = [100, 90, 70, 50];
+      const hojeD = new Date();
+      const inicioMes = `${hojeD.getFullYear()}-${pad(hojeD.getMonth() + 1)}-01`;
+      const ultimoDiaMes = new Date(hojeD.getFullYear(), hojeD.getMonth() + 1, 0).getDate();
+      const fimMes = `${hojeD.getFullYear()}-${pad(hojeD.getMonth() + 1)}-${pad(ultimoDiaMes)}`;
+
+      const [cardsResult, txResult] = await Promise.all([
+        supabase.from('credit_cards').select('id, name, limit_amount').eq('user_id', userId),
+        supabase.from('transactions').select('amount, card_id').eq('user_id', userId).eq('payment_method', 'credit')
+          .gte('occurred_on', inicioMes).lte('occurred_on', fimMes),
+      ]);
+      if (cardsResult.error) throw cardsResult.error;
+      if (txResult.error) throw txResult.error;
+
+      const cards = (cardsResult.data ?? []) as Array<{ id: string; name: string; limit_amount: number }>;
+      if (cards.length === 0) return 'O usuário não tem nenhum cartão de crédito cadastrado.';
+      const txs = (txResult.data ?? []) as Array<{ amount: number; card_id: string | null }>;
+
+      const linhasCartao = cards.map((c) => {
+        const gasto = txs.filter((t) => t.card_id === c.id).reduce((s, t) => s + Number(t.amount), 0);
+        const pct = c.limit_amount > 0 ? gasto / c.limit_amount : 0;
+        const degrau = DEGRAUS.find((d) => pct * 100 >= d) ?? null;
+        const aviso = degrau ? ` — atenção: já passou de ${degrau}% do limite` : '';
+        return `- ${c.name}: R$ ${formatarBRL(gasto)} de R$ ${formatarBRL(Number(c.limit_amount))} (${(pct * 100).toFixed(0)}% do limite)${aviso}`;
+      });
+
+      return `Uso do limite dos cartões no mês atual:\n${linhasCartao.join('\n')}`;
+    }
+
+    /* O diagnóstico NÃO fica em tabela: vive em user_metadata, que a chamada
+       de autenticação já trouxe — zero query nova. Os nomes de exibição são
+       os MESMOS de lib/diagnostico.ts (ARQUETIPOS) — arquetipoId sozinho
+       ("resgate") não diz nada a quem lê a resposta. */
+    case 'perfilFinanceiro': {
+      const NOMES_ARQUETIPO: Record<string, string> = {
+        resgate: 'Organizador & Resgate',
+        construtor: 'Construtor de Reserva',
+        otimizador: 'Otimizador & Investidor',
+        estrategista: 'Estrategista de Renda Variável',
+      };
+      const diagnostico = usuario.user_metadata?.diagnostico as
+        | { arquetipoId?: string; atualizadoEm?: string }
+        | undefined;
+      if (!diagnostico?.arquetipoId) {
+        return 'O usuário ainda não fez o diagnóstico financeiro no app. Sugira que ele faça, na tela de Perfil. Não invente um arquétipo.';
+      }
+      const nome = NOMES_ARQUETIPO[diagnostico.arquetipoId] ?? diagnostico.arquetipoId;
+      return `O perfil financeiro do usuário é "${nome}" (diagnóstico feito em ${diagnostico.atualizadoEm ?? 'data não registrada'}).`;
+    }
+
+    /* Porta a MESMA fórmula de lib/monthly-wrapped.ts:gerarMonthlyWrapped —
+       SEMPRE o mês anterior ao atual, nunca o corrente (mês em andamento dá
+       impressão errada de quanto se gastou). `ehDoMes` compara a data como
+       STRING pura ('YYYY-MM'), igual ao original, pra não introduzir
+       diferença de fuso horário que o original não tem.
+
+       Omitido de propósito: o `level`/XP de gamificação do wrapped visual.
+       Não é dado financeiro do mês, é derivado do XP acumulado da conta
+       inteira — fora do que "como foi meu mês passado" pergunta, e coberto
+       à parte por resumoScoreERitmo. */
+
+    /* Porta calculateStreakAndWeek + calculateScoreBreakdown de
+       lib/gamification.ts, mas replicando o RECORTE DE DADOS REAL que
+       app/(app)/desafios.tsx usa hoje em produção (quando o RPC de resumo
+       histórico existe, que já confirmamos publicado): transactions dos
+       ÚLTIMOS 45 DIAS (fetchTransactions({ sinceDays: 45 })), e bills só
+       com status='due' (fetchBills({ status: 'due' })) — NUNCA 'paid'.
+
+       Isso significa, no cálculo REAL de hoje, que `contasResolvidas`
+       (bills.filter(status==='paid')) é sempre 0 dentro desse recorte, e o
+       fator "Contas acompanhadas" vale 200 só quando não há boleto due
+       nenhum, e 0 caso contrário — não é aproximação minha, é o que a tela
+       de Desafios já entrega hoje. Replicar qualquer outro recorte (todas
+       as bills, todo o histórico) faria este número DIVERGIR do que a
+       pessoa vê na aba Desafios, que é o padrão de fidelidade do projeto.
+
+       Fuso: os "dias" da sequência e da constância são calculados no fuso
+       de São Paulo (Intl.DateTimeFormat com timeZone fixo), não no fuso do
+       servidor (Deno roda em UTC) — sem isso, a virada do dia aconteceria
+       3h mais cedo aqui do que no aparelho do usuário. */
+    case 'resumoScoreERitmo': {
+      const FUSO = 'America/Sao_Paulo';
+      const isoSaoPaulo = (d: Date): string =>
+        new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+
+      const hojeAgora = new Date();
+      const todayStr = isoSaoPaulo(hojeAgora);
+
+      const cutoff = new Date(hojeAgora);
+      cutoff.setDate(cutoff.getDate() - 45);
+      const cutoffISO = cutoff.toISOString().slice(0, 10);
+
+      const [txResult, billsResult] = await Promise.all([
+        supabase.from('transactions').select('type, occurred_on, created_at, category')
+          .eq('user_id', userId).gte('occurred_on', cutoffISO),
+        supabase.from('bills').select('status').eq('user_id', userId).eq('status', 'due'),
+      ]);
+      if (txResult.error) throw txResult.error;
+      if (billsResult.error) throw billsResult.error;
+
+      type TxLeve = { type: string; occurred_on: string; created_at: string | null; category: string };
+      const transacoes = (txResult.data ?? []) as TxLeve[];
+      const bills = (billsResult.data ?? []) as Array<{ status: string }>;
+
+      const dataDoRegistro = (t: TxLeve) => (t.created_at ? isoSaoPaulo(new Date(t.created_at)) : t.occurred_on);
+      const datasComRegistro = new Set(transacoes.map(dataDoRegistro));
+
+      // Sequência: mesmo algoritmo de calculateStreakAndWeek. Anda dia a dia
+      // em UTC puro a partir do dia-calendário já resolvido em São Paulo —
+      // um dia é um dia, não precisa reprojetar fuso a cada passo do laço.
+      let streak = 0;
+      const [anoHoje, mesHoje, diaHoje] = todayStr.split('-').map(Number);
+      const cursor = new Date(Date.UTC(anoHoje, mesHoje - 1, diaHoje));
+      if (!datasComRegistro.has(todayStr)) cursor.setUTCDate(cursor.getUTCDate() - 1);
+      while (true) {
+        const iso = `${cursor.getUTCFullYear()}-${pad(cursor.getUTCMonth() + 1)}-${pad(cursor.getUTCDate())}`;
+        if (!datasComRegistro.has(iso)) break;
+        streak += 1;
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
+      }
+
+      // Score: mesmo algoritmo de calculateScoreBreakdown.
+      const currentYear = anoHoje;
+      const currentMonth = mesHoje - 1; // 0-11
+      const diasNoMes = new Date(Date.UTC(currentYear, currentMonth + 1, 0)).getUTCDate();
+      const diasDecorridos = Math.max(1, Math.min(diasNoMes, diaHoje));
+
+      const monthTx = transacoes.filter((t) => {
+        const [y, m] = t.occurred_on.split('-').map(Number);
+        return y === currentYear && m === currentMonth + 1;
+      });
+      const prefixoDoMes = `${currentYear}-${pad(currentMonth + 1)}`;
+      const diasComRegistroNoMes = new Set(
+        transacoes.map(dataDoRegistro).filter((d) => d.startsWith(prefixoDoMes))
+      ).size;
+
+      const consistencyPts = Math.min(300, streak * 20);
+      const fatiaDeDias = Math.min(1, diasComRegistroNoMes / diasDecorridos);
+      const constanciaPts = Math.round(fatiaDeDias * 300);
+
+      const temEntrada = monthTx.some((t) => t.type === 'in');
+      const temSaida = monthTx.some((t) => t.type === 'out');
+      const comCategoria = monthTx.filter((t) => t.category && t.category !== 'Outros').length;
+      const fatiaCategorizada = monthTx.length > 0 ? comCategoria / monthTx.length : 0;
+      const retratoPts = Math.round((temEntrada ? 70 : 0) + (temSaida ? 70 : 0) + fatiaCategorizada * 60);
+
+      // `contasResolvidas` é sempre 0 neste recorte (só bills 'due' chegam
+      // aqui) — ver o comentário grande acima do case. Não é bug do port.
+      const contasPts = bills.length === 0 ? 200 : 0;
+
+      const score = Math.min(1000, Math.max(0, consistencyPts + constanciaPts + retratoPts + contasPts));
+
+      return (
+        `Score Grana do usuário: ${score} de 1000. ` +
+        `Sequência de registros (Ritmo): ${streak} ${streak === 1 ? 'dia seguido' : 'dias seguidos'}.\n` +
+        `Detalhamento dos fatores: sequência de registros ${consistencyPts}/300, constância no mês ${constanciaPts}/300, ` +
+        `retrato completo ${retratoPts}/200, contas acompanhadas ${contasPts}/200.`
+      );
+    }
+
+    case 'retrospectivaDoMes': {
+      const hojeR = new Date();
+      const refFechado = new Date(hojeR.getFullYear(), hojeR.getMonth() - 1, 1);
+      const ano = refFechado.getFullYear();
+      const mes = refFechado.getMonth(); // 0-11
+      const refAnterior = new Date(ano, mes - 1, 1);
+      const anoAnt = refAnterior.getFullYear();
+      const mesAnt = refAnterior.getMonth();
+
+      const chaveMes = (y: number, m: number) => `${y}-${pad(m + 1)}`;
+      const ehDoMes = (dataISO: string, y: number, m: number) => dataISO.slice(0, 7) === chaveMes(y, m);
+
+      const inicioJanela = `${anoAnt}-${pad(mesAnt + 1)}-01`;
+      const ultimoDiaMes = new Date(ano, mes + 1, 0).getDate();
+      const fimJanela = `${ano}-${pad(mes + 1)}-${pad(ultimoDiaMes)}`;
+
+      const [txResult, billsResult, budgetsResult] = await Promise.all([
+        supabase.from('transactions').select('type, amount, category, color, recurring, occurred_on')
+          .eq('user_id', userId).gte('occurred_on', inicioJanela).lte('occurred_on', fimJanela),
+        supabase.from('bills').select('amount, due_date, status').eq('user_id', userId).eq('status', 'paid')
+          .gte('due_date', `${ano}-${pad(mes + 1)}-01`).lte('due_date', fimJanela),
+        supabase.from('budgets').select('category, amount').eq('user_id', userId),
+      ]);
+      if (txResult.error) throw txResult.error;
+      if (billsResult.error) throw billsResult.error;
+      if (budgetsResult.error) throw budgetsResult.error;
+
+      type Tx = { type: string; amount: number; category: string; color: string; recurring: boolean; occurred_on: string };
+      const todasTx = (txResult.data ?? []) as Tx[];
+      const doMes = todasTx.filter((t) => ehDoMes(t.occurred_on, ano, mes));
+      const saidasTx = doMes.filter((t) => t.type === 'out');
+      const doMesAnterior = todasTx.filter((t) => ehDoMes(t.occurred_on, anoAnt, mesAnt));
+
+      if (doMes.length === 0) {
+        const label = new Date(ano, mes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        return `Não houve nenhum lançamento em ${label}. Diga ao usuário que não há retrospectiva pra mostrar nesse mês.`;
+      }
+
+      const entradas = doMes.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
+      const saidas = saidasTx.reduce((s, t) => s + Number(t.amount), 0);
+
+      const maiorDespesa = saidasTx.reduce<Tx | null>(
+        (maior, t) => (!maior || Number(t.amount) > Number(maior.amount) ? t : maior), null
+      );
+
+      const porCategoria = new Map<string, number>();
+      for (const t of saidasTx) porCategoria.set(t.category, (porCategoria.get(t.category) ?? 0) + Number(t.amount));
+      let categoriaCampea: { nome: string; total: number } | null = null;
+      for (const [nome, total] of porCategoria) {
+        if (!categoriaCampea || total > categoriaCampea.total) categoriaCampea = { nome, total };
+      }
+      const orcamentoCampea = categoriaCampea
+        ? ((budgetsResult.data ?? []) as Array<{ category: string; amount: number }>).find((b) => b.category === categoriaCampea!.nome)
+        : null;
+
+      const saidasMesAnterior = doMesAnterior.length
+        ? doMesAnterior.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0)
+        : null;
+
+      const recorrentes = saidasTx.filter((t) => t.recurring).reduce((s, t) => s + Number(t.amount), 0);
+      const boletosPagos = (billsResult.data ?? []) as Array<{ amount: number }>;
+      const valorBoletos = boletosPagos.reduce((s, b) => s + Number(b.amount), 0);
+      const comprometidoFixo = recorrentes + valorBoletos;
+      const saldo = entradas - saidas;
+      const taxaPoupanca = entradas > 0 ? (saldo / entradas) * 100 : null;
+      const diasComRegistro = new Set(doMes.map((t) => t.occurred_on)).size;
+      const label = new Date(ano, mes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+      const comparativo = saidasMesAnterior === null
+        ? 'sem registro no mês anterior para comparar'
+        : saidas > saidasMesAnterior
+          ? `${formatarBRL(((saidas - saidasMesAnterior) / saidasMesAnterior) * 100)}% a mais que no mês anterior`
+          : `${formatarBRL(((saidasMesAnterior - saidas) / saidasMesAnterior) * 100)}% a menos que no mês anterior`;
+
+      return (
+        `Retrospectiva de ${label} (mês fechado, cite o mês na resposta):\n` +
+        `- Entradas: R$ ${formatarBRL(entradas)}\n` +
+        `- Saídas: R$ ${formatarBRL(saidas)} (${comparativo})\n` +
+        `- Saldo: R$ ${formatarBRL(saldo)}\n` +
+        (taxaPoupanca !== null ? `- Taxa de poupança: ${formatarBRL(taxaPoupanca)}%\n` : '') +
+        (maiorDespesa ? `- Maior despesa: ${maiorDespesa.category}, R$ ${formatarBRL(Number(maiorDespesa.amount))}\n` : '') +
+        (categoriaCampea
+          ? `- Categoria campeã: ${categoriaCampea.nome}, R$ ${formatarBRL(categoriaCampea.total)}` +
+            (orcamentoCampea ? ` (${formatarBRL((categoriaCampea.total / Number(orcamentoCampea.amount)) * 100)}% do orçamento)` : '') + '\n'
+          : '') +
+        `- Boletos pagos: ${boletosPagos.length}, totalizando R$ ${formatarBRL(valorBoletos)}\n` +
+        `- Comprometido fixo (recorrentes + boletos): R$ ${formatarBRL(comprometidoFixo)}\n` +
+        `- Dias com pelo menos um lançamento: ${diasComRegistro} de ${ultimoDiaMes}`
       );
     }
 
@@ -876,7 +1280,10 @@ Deno.serve(async (req) => {
 
         let resultado: string;
         try {
-          resultado = await executarFerramenta(nome, args, supabase, userId);
+          resultado = await executarFerramenta(nome, args, supabase, {
+            id: userId,
+            user_metadata: userData?.user?.user_metadata ?? null,
+          });
         } catch (err) {
           console.error(`[assistente-financeiro] erro na ferramenta ${nome}:`, err);
           resultado = 'Erro ao consultar os dados. Tente novamente.';
