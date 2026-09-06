@@ -263,11 +263,20 @@ export default function ContasScreen() {
       return;
     }
 
+    /* Otimista, antes de qualquer rede: sem isto, o pill "paga"/"em aberto"
+       só mudava depois de DOIS round-trips em sequência (a RPC de
+       pagar/reabrir, depois o load() inteiro refazendo fetchBills()) — o
+       toque não dava pista nenhuma de que funcionou nesse meio-tempo, e
+       parecia não ter registrado. Um segundo toque então acertava por
+       coincidência de tempo, ou desfazia o que o primeiro já tinha feito.
+       Se a rede falhar, o catch abaixo devolve pro status anterior. */
+    setBills((prev) => prev.map((b) => (b.id === bill.id ? { ...b, status: newStatus } : b)));
+    if (newStatus === 'paid') hapticSuccess(); else hapticTap();
+
     try {
       if (newStatus === 'paid') {
         // payBill já lança a saída correspondente em transactions, na data de hoje.
         await payBill(bill, todayISO());
-        hapticSuccess();
         triggerToast(
           proximaData
             ? `Conta paga. Próxima fatura em ${formatDateLabel(proximaData)}`
@@ -276,11 +285,11 @@ export default function ContasScreen() {
       } else {
         // reopenBill desfaz a saída lançada quando a conta foi paga, se houver.
         await reopenBill(bill);
-        hapticTap();
         triggerToast('Conta reaberta');
       }
       load();
     } catch (e: any) {
+      setBills((prev) => prev.map((b) => (b.id === bill.id ? { ...b, status: bill.status } : b)));
       Alert.alert('Erro ao atualizar', e.message);
     }
   }
