@@ -6,6 +6,7 @@ import { fonts as uiFonts, radius, sombraCard, spacing, theme, type } from '@/li
 import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import AppPressable from '@/components/AppPressable';
+import Sheet from '@/components/Sheet';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
@@ -60,11 +61,14 @@ function CardBeneficio({
   larguraCard,
   alturaCard,
   compacto,
+  aoAbrirDetalhe,
 }: {
   item: BeneficioHorizontal;
   larguraCard: number;
   alturaCard: number;
   compacto: boolean;
+  /** Só existe em modo compacto — é quem abre a folha com o texto inteiro. */
+  aoAbrirDetalhe?: (item: BeneficioHorizontal) => void;
 }) {
   return (
     <View role="listitem" style={[styles.cardPosicao, { width: larguraCard }]}>
@@ -75,6 +79,21 @@ function CardBeneficio({
         <Text style={[styles.textoCard, !compacto && styles.textoCardAmplo]} numberOfLines={compacto ? 3 : undefined}>
           {item.texto}
         </Text>
+        {/* Medido nas 9 categorias em 390px: TODAS cortam na 3ª linha (63px de
+            altura útil contra 105–218px de texto real) — não é caso raro de
+            item com frase mais longa, é sistemático. Altura fixa e 3 linhas
+            continuam existindo por decisão (mantêm a seção compacta no
+            celular); "Ver detalhes" é a via de escape que a limitação já
+            previa, sem mexer na altura do card nem no ritmo do carrossel. */}
+        {compacto && (
+          <AppPressable
+            onPress={() => aoAbrirDetalhe?.(item)}
+            style={styles.verDetalhes}
+            accessibilityLabel={`Ver detalhes de ${item.rotulo}: ${item.titulo}`}
+          >
+            <Text style={styles.verDetalhesTexto}>Ver detalhes</Text>
+          </AppPressable>
+        )}
       </View>
     </View>
   );
@@ -116,7 +135,11 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
   // 300 e não 290 porque o palco do mini-mock subiu de 108 pra 124 (ele
   // cortava três das seis variantes) — sem acompanhar, o card voltava a
   // clipar a última linha do parágrafo.
-  const alturaCard = 300;
+  // +28 pro link "Ver detalhes": medido nas 9 categorias em 390px, o texto
+  // de TODAS corta na 3ª linha (é decisão, não acidente — ver comentário em
+  // CardBeneficio). Sem essa folga o link empurraria conteúdo pra fora da
+  // caixa de altura fixa, que não recorta overflow.
+  const alturaCard = 328;
   const alturaSticky = Math.max(620, altura - alturaCabecalho);
   const [alturaPalco, setAlturaPalco] = useState(alturaSticky * 2.4);
   const palcoRef = useRef<View>(null);
@@ -127,6 +150,9 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
   const [indiceToque, setIndiceToque] = useState(0);
   const [bordasToque, setBordasToque] = useState({ anterior: false, proxima: itens.length > 1 });
   const [bordasFixas, setBordasFixas] = useState({ anterior: false, proxima: itens.length > 1 });
+  // Detalhe do card compacto. Só o carrossel de toque usa `compacto=true`
+  // pra valer; bento e modo fixo (desktop) já mostram o texto inteiro.
+  const [detalheAberto, setDetalheAberto] = useState<BeneficioHorizontal | null>(null);
   const intervaloCard = larguraCard + spacing.lg;
   const podeVoltar = indiceToque > 0;
   const podeAvancar = indiceToque < itens.length - 1;
@@ -272,7 +298,14 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
             } as any)}
           >
             {itens.map((item) => (
-              <CardBeneficio key={item.variante} item={item} larguraCard={larguraCard} alturaCard={alturaCard} compacto={compacto} />
+              <CardBeneficio
+                key={item.variante}
+                item={item}
+                larguraCard={larguraCard}
+                alturaCard={alturaCard}
+                compacto={compacto}
+                aoAbrirDetalhe={setDetalheAberto}
+              />
             ))}
           </ScrollView>
           <FadeBorda lado="esquerda" largura={largura} visivel={bordasToque.anterior && podeVoltar} />
@@ -299,6 +332,13 @@ export default function BeneficiosHorizontais({ itens, largura, altura, alturaCa
             <Ionicons name="arrow-forward" size={18} color={theme.ink} aria-hidden />
           </AppPressable>
         </View>
+        {detalheAberto && (
+          <Sheet onClose={() => setDetalheAberto(null)}>
+            <Text style={styles.rotulo}>{detalheAberto.rotulo}</Text>
+            <Text style={styles.detalheTitulo}>{detalheAberto.titulo}</Text>
+            <Text style={styles.detalheTexto}>{detalheAberto.texto}</Text>
+          </Sheet>
+        )}
       </View>
     );
   }
@@ -417,6 +457,13 @@ const styles = StyleSheet.create({
   cardAmplo: { flex: 1, padding: spacing.xl },
   rotulo: { color: theme.accent2, fontSize: type.micro, lineHeight: type.micro * 1.4, fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: spacing.xs },
   tituloCard: { color: theme.ink, fontSize: type.apoio, lineHeight: type.apoio * 1.3, fontFamily: fonts.regular, marginBottom: spacing.xs },
+  /* `alignSelf: 'flex-start'` em vez de bloco cheio: é um link, não uma barra
+     — a área de toque não deveria se estender pela largura do card inteiro,
+     onde tocar do lado teria expectativa de fazer outra coisa. */
+  verDetalhes: { alignSelf: 'flex-start', marginTop: spacing.sm },
+  verDetalhesTexto: { color: theme.accent2, fontSize: type.nota, fontFamily: fonts.regular, textDecorationLine: 'underline' },
+  detalheTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.3, fontFamily: fonts.regular, marginBottom: spacing.md },
+  detalheTexto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.light },
   tituloCardAmplo: { fontSize: type.corpo, lineHeight: type.corpo * 1.3, marginBottom: spacing.sm },
   textoCard: { color: theme.inkSoft, fontSize: type.legenda, lineHeight: type.legenda * 1.5, fontFamily: fonts.light },
   textoCardAmplo: { fontSize: type.nota, lineHeight: type.nota * 1.5 },
