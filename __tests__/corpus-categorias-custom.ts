@@ -14,11 +14,21 @@
  *
  * Roda: npx tsx __tests__/corpus-categorias-custom.ts
  */
+import * as path from 'path';
 import { guessCategoryFromText } from '../lib/heuristics';
 import { corpoDaFuncao } from './extrair';
 
-const NOMES = ['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra', 'matchCategoryByKeyword', 'matchCategoryByReply'];
-const fonte = NOMES.map((n) => corpoDaFuncao(n)).join('\n\n');
+/* CATEGORY_KEYWORDS/normalizarParaBusca/contemPalavra foram extraídas do
+   webhook pra supabase/functions/_shared/category-keywords.ts (também
+   servem assistente-financeiro/index.ts agora) — continuam lidas do
+   ARQUIVO ONDE REALMENTE MORAM. */
+const CATEGORY_KEYWORDS_FILE = path.join(__dirname, '..', 'supabase', 'functions', '_shared', 'category-keywords.ts');
+const NOMES_COMPARTILHADOS = ['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra'];
+const NOMES_WEBHOOK = ['matchCategoryByKeyword', 'matchCategoryByReply'];
+const fonte = [
+  ...NOMES_COMPARTILHADOS.map((n) => corpoDaFuncao(n, CATEGORY_KEYWORDS_FILE)),
+  ...NOMES_WEBHOOK.map((n) => corpoDaFuncao(n)),
+].join('\n\n');
 const bot = new Function(
   /* CATEGORIES não é extraída direto (tem anotação de tipo objeto literal
      que a limpeza ingênua não desmonta) — reconstruída aqui a partir das

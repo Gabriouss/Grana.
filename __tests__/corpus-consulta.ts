@@ -15,10 +15,22 @@
  *
  * Roda: npx tsx __tests__/corpus-consulta.ts
  */
+import * as path from 'path';
 import { corpoDaFuncao } from './extrair';
 
-const NOMES = ['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra', 'matchCategoryByKeyword', 'interpretarConsulta'];
-const fonte = NOMES.map((n) => corpoDaFuncao(n)).join('\n\n');
+/* CATEGORY_KEYWORDS/normalizarParaBusca/contemPalavra moraram no webhook e
+   foram extraídas pra supabase/functions/_shared/category-keywords.ts, pra
+   serem compartilhadas com assistente-financeiro/index.ts sem duplicar a
+   lista — ver o comentário no arquivo compartilhado. Continuam lendo do
+   ARQUIVO ONDE REALMENTE MORAM AGORA, então uma correção ali não deixa de
+   valer aqui. */
+const CATEGORY_KEYWORDS_FILE = path.join(__dirname, '..', 'supabase', 'functions', '_shared', 'category-keywords.ts');
+const NOMES_COMPARTILHADOS = ['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra'];
+const NOMES_WEBHOOK = ['matchCategoryByKeyword', 'interpretarConsulta'];
+const fonte = [
+  ...NOMES_COMPARTILHADOS.map((n) => corpoDaFuncao(n, CATEGORY_KEYWORDS_FILE)),
+  ...NOMES_WEBHOOK.map((n) => corpoDaFuncao(n)),
+].join('\n\n');
 const bot = new Function(
   `${fonte}
    const CATEGORIES = Object.keys(CATEGORY_KEYWORDS).map((name) => ({ name, color: '' }));

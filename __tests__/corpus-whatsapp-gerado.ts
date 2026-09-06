@@ -23,6 +23,7 @@
  *
  * Roda: npx tsx __tests__/corpus-whatsapp-gerado.ts
  */
+import * as path from 'path';
 import { guessAmountFromText, guessDescFromText, guessTypeFromText } from '../lib/heuristics';
 import { comoAudio, porExtenso } from './extenso';
 import { corpoDaFuncao } from './extrair';
@@ -34,13 +35,22 @@ import { corpoDaFuncao } from './extrair';
    (`{ name: string; color: string }[]`) que a limpeza ingênua do extrator não
    desmonta. O que interessa em matchCategoryByKeyword é o NOME escolhido, e
    pra isso a lista derivada das chaves de CATEGORY_KEYWORDS é equivalente —
-   a cor não participa de nenhuma decisão. */
+   a cor não participa de nenhuma decisão.
+
+   CATEGORY_KEYWORDS/normalizarParaBusca/contemPalavra foram extraídas do
+   webhook pra supabase/functions/_shared/category-keywords.ts (também
+   servem assistente-financeiro/index.ts agora) — continuam lidas do
+   ARQUIVO ONDE REALMENTE MORAM. */
+const CATEGORY_KEYWORDS_FILE = path.join(__dirname, '..', 'supabase', 'functions', '_shared', 'category-keywords.ts');
 const fonte = [
-  'CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra', 'matchCategoryByKeyword',
-  'parseParcelas', 'ehIntencaoCredito', 'ehIntencaoBoleto', 'parseDiaVencimento',
-  'parseFormaPagamento', 'parseRecorrencia', 'CANCELAR', 'ehIntencaoCancelar',
-  'COMANDO_CANCELAR_FINAL',
-].map((n) => corpoDaFuncao(n)).join('\n\n');
+  ...['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra'].map((n) => corpoDaFuncao(n, CATEGORY_KEYWORDS_FILE)),
+  ...[
+    'matchCategoryByKeyword',
+    'parseParcelas', 'ehIntencaoCredito', 'ehIntencaoBoleto', 'parseDiaVencimento',
+    'parseFormaPagamento', 'parseRecorrencia', 'CANCELAR', 'ehIntencaoCancelar',
+    'COMANDO_CANCELAR_FINAL',
+  ].map((n) => corpoDaFuncao(n)),
+].join('\n\n');
 
 type Api = {
   matchCategoryByKeyword: (t: string) => { name: string } | null;

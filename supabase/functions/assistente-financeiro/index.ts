@@ -20,6 +20,13 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
+/* Mesmo dicionário sinônimo->categoria do whatsapp-webhook (mercado, ifood,
+   uber, netflix... -> categoria real), compartilhado via _shared pra
+   resolver sinônimo de forma DETERMINÍSTICA pra qualquer usuário, sem
+   depender do modelo entender sozinho (achado testando em produção: "comida"
+   às vezes resolve pra "Alimentação" sozinho, "mercado" não — inconsistente).
+   Ver casarPorPalavraChave, mais abaixo. */
+import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -201,13 +208,42 @@ function casarNome(nomes: string[], pedido: string): string | null {
 }
 
 /**
+ * Resolve sinônimo de categoria contra CATEGORY_KEYWORDS (o mesmo dicionário
+ * do whatsapp-webhook: "mercado"/"ifood"/"uber"/"netflix"... -> categoria
+ * real), DETERMINÍSTICO pra qualquer usuário — ao contrário do modelo, que
+ * às vezes entende o sinônimo sozinho e às vezes não (achado testando em
+ * produção: "comida" resolveu pra "Alimentação" sozinho numa pergunta, mas
+ * "mercado" não resolveu na outra, mesmo sendo o mesmo tipo de sinônimo).
+ *
+ * Só resolve pra uma categoria que o usuário TEM de verdade — as 9 chaves de
+ * CATEGORY_KEYWORDS são as categorias PADRÃO, mas o usuário pode ter
+ * renomeado ou excluído qualquer uma delas, então `nomes.includes(catName)`
+ * é obrigatório antes de aceitar o casamento.
+ */
+function casarPorPalavraChave(nomes: string[], pedido: string): string | null {
+  const alvo = normalizarParaBusca(pedido);
+  for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (!nomes.includes(catName)) continue;
+    if (keywords.some((kw) => contemPalavra(alvo, kw))) return catName;
+  }
+  return null;
+}
+
+/**
  * Mesma resolução de `casarNome`, mas com memória: um apelido que este
  * usuário já usou antes pra este domínio ('categoria' | 'cartao' |
  * 'carteira') é lembrado e passa a resolver DIRETO, sem depender do
  * casamento difuso de novo. Quando o difuso resolve algo, o apelido é
  * gravado pra a próxima chamada já cair no atalho — é o mecanismo
- * "aprender vocabulário": "comida" vira "Alimentação" uma vez, e da
- * segunda pergunta em diante nem precisa mais da heurística difusa.
+ * "aprender vocabulário": um apelido não coberto por CATEGORY_KEYWORDS vira
+ * conhecido uma vez, e da segunda pergunta em diante nem precisa mais da
+ * heurística difusa.
+ *
+ * Ordem de resolução: exato -> memória pessoal (uma correção já ensinada
+ * pelo usuário sempre vale mais que uma suposição genérica) -> dicionário de
+ * sinônimo padrão (só pra domínio 'categoria', determinístico, sem custo de
+ * rede) -> casamento difuso por trecho de texto (último recurso, e o único
+ * que aprende).
  *
  * Falha de leitura/escrita na memória NUNCA impede a resposta: é reforço
  * de aprendizado, não parte crítica do caminho de resolver o nome.
@@ -240,6 +276,11 @@ async function casarNomeComMemoria(
     if (lembrado && nomes.includes(lembrado)) return lembrado;
   } catch (e) {
     console.error('[assistente-financeiro] erro ao ler vocabulário:', e);
+  }
+
+  if (dominio === 'categoria') {
+    const porPalavraChave = casarPorPalavraChave(nomes, pedido);
+    if (porPalavraChave) return porPalavraChave;
   }
 
   const difuso = nomes.find((n) => normalizar(n).includes(alvo) || alvo.includes(normalizar(n))) ?? null;

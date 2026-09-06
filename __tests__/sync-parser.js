@@ -62,7 +62,7 @@ const COMPARTILHADAS = [
   'MULETA_INICIAL', 'MULETA_FINAL', 'MARCA_RECORRENCIA',
   'VALOR_INICIAL', 'VALOR_FINAL', 'FORMA_PAGAMENTO_FINAL', 'VENCIMENTO_FINAL', 'PARCELAMENTO_FINAL',
   'limparCaudaDeMetadado', 'limparSobra', 'capitalizar', 'EXPRESSAO_VALOR', 'guessDescFromText',
-  'guessAmountFromText', 'normalizarParaBusca', 'contemPalavra',
+  'guessAmountFromText',
   'parseParcelas', 'ehIntencaoCredito', 'matchCardByText',
   'ehIntencaoBoleto', 'parseDiaVencimento',
   /* Portadas pro app quando o lançamento por voz passou a usar o mesmo
@@ -93,9 +93,18 @@ const COMPARTILHADAS_FINANCE_COMMAND = [
   ['normalizarTexto', 'normalizarTextoTranscrito'],
 ];
 
+/* Mesmo motivo do bloco acima: desde 06/09/2026 o whatsapp-webhook também não
+   guarda mais cópia própria de normalizarParaBusca/contemPalavra — importa
+   de supabase/functions/_shared/category-keywords.ts, o mesmo módulo que
+   assistente-financeiro (Granabô) passou a usar pra resolver sinônimo de
+   categoria. O par que importa comparar é app-vs-_shared, não mais
+   app-vs-webhook. */
+const COMPARTILHADAS_CATEGORY_KEYWORDS = ['normalizarParaBusca', 'contemPalavra'];
+
 const PARES = [
   { app: 'lib/heuristics.ts', web: 'supabase/functions/whatsapp-webhook/index.ts', funcoes: COMPARTILHADAS },
   { app: 'lib/heuristics.ts', web: 'supabase/functions/_shared/finance-command.ts', funcoes: COMPARTILHADAS_FINANCE_COMMAND },
+  { app: 'lib/heuristics.ts', web: 'supabase/functions/_shared/category-keywords.ts', funcoes: COMPARTILHADAS_CATEGORY_KEYWORDS },
   { app: 'lib/notas-release.ts', web: 'supabase/functions/eas-build-webhook/index.ts', funcoes: NOTAS_RELEASE },
 ];
 
