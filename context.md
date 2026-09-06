@@ -2928,3 +2928,39 @@ Nota pra quem for depurar uma build falha no futuro: `eas build:view <id>
 --json` dá o `logFiles` (URL assinada); baixar com `curl`, depois
 descomprimir Brotli antes de grep — sem isso o arquivo parece binário
 ilegível e é fácil desistir cedo demais achando que não dá pra ler o log.
+
+## 06/09/2026 (continuação) — investigação do lançamento por voz: widget funciona, gargalo era o fallback sequencial Groq/OpenAI
+
+O autor relatou lentidão e o widget "não funcionando", perguntando se dava
+pra trocar pro reconhecimento de voz nativo do Android. Investigação com
+logs reais de produção (Supabase Management API, `analytics/endpoints/
+logs.all`, precisa de `iso_timestamp_start`/`iso_timestamp_end` explícitos
+ou a query some sem erro) confirmou:
+
+- **O widget está mecanicamente funcionando na build 1.7.0** — permissão,
+  gravação, upload e resposta da função `processar-lancamento-voz`, tudo
+  OK. As duas notificações do print do autor têm causas diferentes: uma foi
+  erro genérico antes de chegar na função; a outra foi a função respondendo
+  200 com uma transcrição realmente ruim ("Ouvi: 'VALORES EM RAZO'"), e o
+  app recusando lançar por não achar valor — comportamento correto de
+  `lib/widget-voz-task.ts`, não bug.
+- **Reconhecimento nativo do Android não é recomendado.** Já foi tentado
+  antes (`expo-speech-recognition`, ainda instalado sem uso) e revertido de
+  propósito por dar transcrição pior que o Whisper na nuvem. Trocar de novo
+  arriscaria piorar, não melhorar.
+- **A lentidão real era o fallback sequencial**: o segundo provedor só
+  começava depois do primeiro terminar (falhando ou não), somando até dois
+  timeouts de 30s quando o Groq ficava pendurado sem responder — até ~60s
+  no pior caso. Corrigido em `supabase/functions/_shared/voice-
+  transcription.ts` (commit `5200545`): corrida com atraso — Groq sai na
+  hora, o OpenAI só entra se o Groq falhar na hora ou passar 8s sem
+  resposta, o que vier primeiro. Custo do OpenAI não é gasto à toa no caso
+  comum (Groq rápido). Validado com `deno check` limpo, `npm run
+  test:parser` 100% e um teste isolado (4 cenários: sucesso rápido, falha
+  rápida, Groq pendurado, os dois falhando).
+
+**Commitado e publicado no GitHub, mas a função NÃO foi implantada em
+produção** — o autor pediu pra deixar só commitado por enquanto
+("Não, só deixa commitado por enquanto"). Quando for autorizado: `supabase
+functions deploy processar-lancamento-voz --use-api --project-ref
+cjnuzfbvfuauvlzfoutv`.
