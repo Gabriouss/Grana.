@@ -274,6 +274,9 @@ function useAtalhosDeepLink() {
   const router = useRouter();
 
   useEffect(() => {
+    // Native URLs are rewritten before routing by +native-intent. A second
+    // listener here races the router and can open the same form twice.
+    if (Platform.OS !== 'web') return;
     function tratar(url: string | null) {
       if (!url) return;
       const acao = parseDeepLink(url);

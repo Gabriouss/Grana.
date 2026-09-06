@@ -101,14 +101,19 @@ export async function transcreverAudio(
       return { ok: false, codigo: 'audio_ausente' };
     }
   } else {
-    /* Expo 57 usa expo/fetch: o objeto antigo { uri, name, type } é rejeitado
-       antes de enviar a requisição. File oferece bytes() ao serializador. */
+    /* Expo serializes name/type/bytes, not the RN {uri} upload shape.
+       Keep explicit metadata: Android's MIME lookup is device-dependent,
+       and the widget's supplied name/type must not be discarded. */
     try {
       const arquivo = new File(uri);
       if (__DEV__) console.warn('[voz:diag] arquivo', JSON.stringify({ uri, exists: arquivo.exists, size: arquivo.size, type: (arquivo as any).type }));
       if (!arquivo.exists || arquivo.size === 0) return { ok: false, codigo: 'audio_ausente' };
       if (arquivo.size > MAX_AUDIO_BYTES) return { ok: false, codigo: 'audio_grande' };
-      form.append('audio', arquivo);
+      form.append('audio', {
+        name: nomeArquivo,
+        type: opts.mimeType ?? 'audio/mp4',
+        bytes: () => arquivo.bytes(),
+      } as unknown as Blob);
     } catch (e: any) {
       if (__DEV__) console.warn('[voz:diag] falha ao ler arquivo', String(e?.message ?? e));
       return { ok: false, codigo: 'audio_ausente' };

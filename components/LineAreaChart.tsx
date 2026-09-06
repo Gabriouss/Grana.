@@ -7,6 +7,7 @@ import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
 import { usePrivacy } from '@/lib/privacy-context';
 import type { BarColumn } from './StackedBarChart';
+import { visibleChartLabels } from '@/lib/chart-labels';
 
 /* Rótulo compacto do eixo Y ("R$ 3 mil" em vez de "R$ 3.000,00") — o valor
    cheio já aparece no cabeçalho de seleção e nas fatias abaixo; aqui, ao
@@ -198,7 +199,7 @@ function LineAreaChart({
             );
           })}
 
-          {columns.map((col, i) => (
+          {visibleChartLabels(columns.length, plotWidth, Math.max(64, ...columns.map(c => c.label.length * type.legenda * 0.65 + 12))).map((i) => (
             <SvgText
               key={`label-${i}`}
               x={pontos[i].x}
@@ -208,7 +209,7 @@ function LineAreaChart({
               fontFamily={selectedIndex === i ? fonts.regular : fonts.light}
               textAnchor="middle"
             >
-              {col.label}
+              {columns[i].label}
             </SvgText>
           ))}
         </Svg>
