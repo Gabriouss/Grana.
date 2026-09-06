@@ -2840,12 +2840,11 @@ Três achados seguidos, testando a implementação acima com o cartão real do a
 - Todos os `TextInput` de fluxos autenticados e modais compartilhados receberam
   `accessibilityLabel`; a validação de lançamento e cadastro de cartão agora
   aparece inline, em região de alerta, sem depender de `Alert.alert`.
-- A barra inferior do Android/tablet compacto ficou com cinco destinos
-  principais (Início, Débito e Pix, Crédito, Boletos e Gráficos), o Granabô e
-  um botão **Mais**. Só Desafios fica no sheet Mais, deixando três controles de
-  cada lado do destaque central. No desktop, o trilho lateral usa o mesmo
-  agrupamento secundário expansível; Perfil continua no rodapé. Links da
-  lateral web agora têm `href` real.
+- A barra inferior do Android/tablet compacto ficou com seis destinos
+  principais (Início, Débito e Pix, Crédito, Boletos, Gráficos e Desafios) e o
+  Granabô no centro, sem botão de três pontos. No desktop, o trilho lateral
+  mostra os mesmos destinos e Perfil continua no rodapé. Links da lateral web
+  agora têm `href` real.
 - O resumo da fatura em Crédito empilha informação e CTA em telas compactas;
   isso elimina a sobreposição observada entre “Vence em…”, selo e o botão
   “Lançar no Crédito”.

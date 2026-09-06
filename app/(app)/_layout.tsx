@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type RefObject } from 'react';
-import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,15 +7,13 @@ import TabBlurTarget, { type RegisterTabBlur, type TabBlurRef } from '@/componen
 import TabBarBlur from '@/components/TabBarBlur';
 import CenaAnimada from '@/components/CenaAnimada';
 import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
-import { theme, spacing, fonts, type } from '@/lib/theme';
+import { theme, spacing } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
 import SideNav, { type ItemNav } from '@/components/SideNav';
 import Granachat from '@/components/Granachat';
-import AppModal from '@/components/AppModal';
-import Sheet from '@/components/Sheet';
 import { useReducedMotion } from '@/lib/motion';
 
 /* expo-router não reexporta o tipo de `tabBar` publicamente (ele vive numa
@@ -23,7 +21,7 @@ import { useReducedMotion } from '@/lib/motion';
    import profundo e frágil, o tipo é extraído da própria prop do `<Tabs>`. */
 type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (props: infer P) => any ? P : never;
 
-/* As CINCO rotas principais da barra. O par outline/preenchido existe porque o estado
+/* As SEIS rotas principais da barra. O par outline/preenchido existe porque o estado
    ativo não pode depender só de cor: preenchimento é a segunda pista, e é a
    que continua legível pra quem não distingue bem menta de cinza-esverdeado.
    O Granachat não está aqui de propósito — ele não é rota, é uma janela
@@ -34,7 +32,7 @@ type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (p
    (ir pra uma aba à direita traz a tela da direita) — a navegação em si
    continua vindo do `state.routes`. Telas fora da barra (perfil) caem no -1 e
    entram sem direção, que é o correto: elas não têm posição na fileira. */
-const ORDEM_ABAS = ['index', 'lancamentos', 'credito', 'contas', 'graficos'];
+const ORDEM_ABAS = ['index', 'lancamentos', 'credito', 'contas', 'graficos', 'desafios'];
 
 const ICONS: Record<string, { off: keyof typeof Ionicons.glyphMap; on: keyof typeof Ionicons.glyphMap }> = {
   index: { off: 'home-outline', on: 'home' },
@@ -42,6 +40,7 @@ const ICONS: Record<string, { off: keyof typeof Ionicons.glyphMap; on: keyof typ
   credito: { off: 'card-outline', on: 'card' },
   contas: { off: 'receipt-outline', on: 'receipt' },
   graficos: { off: 'bar-chart-outline', on: 'bar-chart' },
+  desafios: { off: 'trophy-outline', on: 'trophy' },
 };
 
 
@@ -56,8 +55,8 @@ const ICONS: Record<string, { off: keyof typeof Ionicons.glyphMap; on: keyof typ
  * `alignItems:'center'`), o alinhamento deixa de depender de nenhum cálculo
  * interno de terceiros.
  */
-function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto, onAlternarChat, onAbrirMais }:
-  TabBarProps & { blurTarget: RefObject<View | null> | null; chatAberto: boolean; onAlternarChat: () => void; onAbrirMais: () => void }) {
+function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto, onAlternarChat }:
+  TabBarProps & { blurTarget: RefObject<View | null> | null; chatAberto: boolean; onAlternarChat: () => void }) {
   const { margem } = useTabBarInset();
 
   return (
@@ -134,18 +133,6 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
               />,
             ];
           })}
-        <AppPressable
-          onPress={onAbrirMais}
-          accessibilityRole="button"
-          accessibilityLabel="Abrir mais opções"
-          style={styles.tabItem}
-          scaleOnPress={false}
-          android_ripple={{ color: theme.hover, borderless: true, radius: 20 }}
-        >
-          <View style={styles.iconWrap}>
-            <Ionicons name="ellipsis-horizontal" size={22} color={theme.inkFaint} />
-          </View>
-        </AppPressable>
       </View>
     </View>
   );
@@ -326,9 +313,6 @@ const ITENS_LATERAIS: ItemNav[] = [
   { rota: 'assistente', rotulo: 'Granabô', icone: 'sparkles-outline' },
   { rota: 'contas', rotulo: 'Boletos', icone: 'receipt-outline' },
   { rota: 'graficos', rotulo: 'Gráficos', icone: 'bar-chart-outline' },
-];
-
-const ITENS_SECUNDARIOS: ItemNav[] = [
   { rota: 'desafios', rotulo: 'Desafios', icone: 'trophy-outline' },
 ];
 
@@ -371,8 +355,6 @@ function AbasEmJavaScript() {
   }, []);
   const { temBarraLateral } = useBreakpoint();
   const [chatAberto, setChatAberto] = useState(false);
-  const [maisAberto, setMaisAberto] = useState(false);
-  const router = useRouter();
 
   /* `tabBarPosition: 'left'` faz o próprio BottomTabView virar a orientação
      do container para linha e renderizar a barra ANTES das telas — ou seja,
@@ -391,7 +373,6 @@ function AbasEmJavaScript() {
             temBarraLateral ? (
               <SideNav
                 itens={ITENS_LATERAIS}
-                extras={ITENS_SECUNDARIOS}
                 rodape={RODAPE_LATERAL}
                 rotaAtiva={props.state.routes[props.state.index]?.name ?? 'index'}
                 onNavegar={(rota) =>
@@ -406,21 +387,20 @@ function AbasEmJavaScript() {
                 blurTarget={targets[props.state.routes[props.state.index].key] ?? null}
                 chatAberto={chatAberto}
                 onAlternarChat={() => setChatAberto((v) => !v)}
-                onAbrirMais={() => setMaisAberto(true)}
               />
             )
           }
           screenOptions={{ headerShown: false, freezeOnBlur: true, lazy: true, tabBarPosition: temBarraLateral ? 'left' : 'bottom' }}
         >
           {/* A ordem aqui é a ordem da barra: `state.routes` sai na sequência
-              em que as telas principais são declaradas. Gráficos e Desafios
-              continuam como rotas, mas ficam acessíveis pelo menu Mais. */}
+              em que as seis telas principais são declaradas. O Granabô é
+              inserido entre a terceira e a quarta, no centro visual. */}
           <Tabs.Screen name="index" options={{ title: 'Início' }} />
           <Tabs.Screen name="lancamentos" options={{ title: 'Débito e Pix' }} />
           <Tabs.Screen name="credito" options={{ title: 'Crédito' }} />
           <Tabs.Screen name="contas" options={{ title: 'Boletos' }} />
           <Tabs.Screen name="graficos" options={{ title: 'Gráficos' }} />
-          <Tabs.Screen name="desafios" options={{ title: 'Desafios', href: null }} />
+          <Tabs.Screen name="desafios" options={{ title: 'Desafios' }} />
           {/* href: null tira da barra inferior. Perfil continua acessível pelo
               avatar do cabeçalho da Início e pela lateral do desktop. */}
           <Tabs.Screen name="perfil" options={{ href: null }} />
@@ -430,72 +410,11 @@ function AbasEmJavaScript() {
             sobrevive à troca de aba por baixo dele e some junto com o layout
             no logout, sem cada tela precisar saber que ele existe. */}
         <Granachat visivel={chatAberto} onFechar={() => setChatAberto(false)} />
-        <MaisMenuSheet
-          visible={maisAberto}
-          onClose={() => setMaisAberto(false)}
-          onNavigate={(route) => {
-            setMaisAberto(false);
-            router.push(`/(app)/${route}` as never);
-          }}
-        />
     </View>
   );
 }
 
-function MaisMenuSheet({
-  visible,
-  onClose,
-  onNavigate,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onNavigate: (route: 'desafios') => void;
-}) {
-  return (
-    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Sheet onClose={onClose}>
-        <View style={styles.moreHeader}>
-          <Text style={styles.moreTitle}>Mais</Text>
-          <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar menu Mais">
-            <Ionicons name="close" size={22} color={theme.inkFaint} />
-          </AppPressable>
-        </View>
-        {ITENS_SECUNDARIOS.map((item) => (
-          <AppPressable
-            key={item.rota}
-            onPress={() => onNavigate(item.rota as 'desafios')}
-            accessibilityRole="button"
-            accessibilityLabel={`Abrir ${item.rotulo}`}
-            style={({ hovered }) => [styles.moreItem, hovered && styles.moreItemHover]}
-          >
-            <Ionicons name={item.icone} size={22} color={theme.accent2} />
-            <Text style={styles.moreItemText}>{item.rotulo}</Text>
-            <Ionicons name="chevron-forward" size={18} color={theme.inkFaint} />
-          </AppPressable>
-        ))}
-      </Sheet>
-    </AppModal>
-  );
-}
-
 const styles = StyleSheet.create({
-  moreHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  moreTitle: { color: theme.ink, fontSize: 22, fontFamily: fonts.regular },
-  moreItem: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: 14,
-  },
-  moreItemHover: { backgroundColor: theme.hover },
-  moreItemText: { flex: 1, color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   floatWrap: {
     position: 'absolute',
     left: 0,

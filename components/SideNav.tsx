@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,11 +23,8 @@ export type ItemNav = {
  * Na horizontal também acaba o aperto por espaço: cabem rótulos junto dos
  * ícones, e cabem mais de cinco destinos.
  *
- * É isso que permite promover duas telas que no celular ficam escondidas:
- * "Gráficos" (hoje `href: null`, alcançável só por navegação direta) e
- * "Perfil" (hoje só pelo avatar na Início). No desktop as duas viram
- * destinos de primeira classe, porque o limite de cinco abas que as
- * escondia é uma restrição de espaço, não do produto. No nativo, o Expo
+ * No desktop, todos os destinos de uso diário cabem no trilho lateral, e
+ * Perfil continua separado no rodapé por ser configuração. No nativo, o Expo
  * Router fornece tab bar/sidebar/Navigation Bar diretamente pelo sistema.
  */
 export default function SideNav({
@@ -36,15 +32,12 @@ export default function SideNav({
   rotaAtiva,
   onNavegar,
   rodape,
-  extras,
 }: {
   itens: ItemNav[];
   rotaAtiva: string;
   onNavegar: (rota: string) => void;
   /** Itens fixados na base (Perfil), separados do bloco principal. */
   rodape?: ItemNav[];
-  /** Destinos menos frequentes, revelados em uma área secundária. */
-  extras?: ItemNav[];
 }) {
   const { ehAmplo } = useBreakpoint();
   const mostrarRotulos = ehAmplo;
@@ -54,7 +47,6 @@ export default function SideNav({
      instalada/PWA ocupa janela edge-to-edge, e no tablet o inset esquerdo
      cobre o notch em paisagem. */
   const insets = useSafeAreaInsets();
-  const [extrasAbertos, setExtrasAbertos] = useState(false);
 
   return (
     <View
@@ -87,31 +79,6 @@ export default function SideNav({
           />
         ))}
       </View>
-
-      {extras && extras.length > 0 && (
-        <View style={styles.extrasGrupo}>
-          <AppPressable
-            onPress={() => setExtrasAbertos((value) => !value)}
-            accessibilityRole="button"
-            accessibilityLabel="Mais opções de navegação"
-            accessibilityState={{ expanded: extrasAbertos }}
-            scaleOnPress={false}
-            style={({ hovered }) => [styles.item, !mostrarRotulos && styles.itemCompacto, hovered && styles.itemHover]}
-          >
-            <Ionicons name="ellipsis-horizontal-circle-outline" size={20} color={theme.inkFaint} />
-            {mostrarRotulos && <Text style={styles.rotulo}>Mais</Text>}
-          </AppPressable>
-          {(extrasAbertos || extras.some((item) => item.rota === rotaAtiva)) && extras.map((item) => (
-            <ItemBarra
-              key={item.rota}
-              item={item}
-              ativo={rotaAtiva === item.rota}
-              mostrarRotulo={mostrarRotulos}
-              onPress={() => onNavegar(item.rota)}
-            />
-          ))}
-        </View>
-      )}
 
       {rodape && rodape.length > 0 && (
         <View style={styles.rodape}>
@@ -186,7 +153,6 @@ const styles = StyleSheet.create({
   marca: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xs },
   marcaCompacta: { alignItems: 'center', paddingHorizontal: 0 },
   grupo: { gap: 2, flex: 1 },
-  extrasGrupo: { gap: 2, marginTop: spacing.sm },
   rodape: { gap: 2, borderTopWidth: 1, borderTopColor: theme.rule, paddingTop: spacing.md },
   item: {
     flexDirection: 'row',
