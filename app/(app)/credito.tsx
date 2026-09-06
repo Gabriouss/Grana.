@@ -175,29 +175,40 @@ export default function CreditoScreen() {
       /* Uma fatura nunca cobre mais que o mês civil dela mesma e o anterior
          (ver lib/faturaCiclo.ts — o corte é sempre um dia dentro desse par),
          então 2 meses civis bastam pra cobrir qualquer closing_day de 1 a
-         31, seja qual for o cartão. Sem isso, um lançamento do mês anterior
-         que ainda pertence à fatura em aberto (fechamento depois do dia 1)
-         nunca chegava a ser buscado. */
-      const [c, recurrenceContext, mesNavegado, mesAnteriorAoNavegado, p] = await Promise.all([
-        fetchCreditCards(),
-        fetchRecurrenceContext(),
-        fetchCreditTransactionsForMonth(viewYear, viewMonth),
-        fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
-        fetchCardInvoicePayments(),
-      ]);
+         31, seja qual for o cartão. Busca os dois pares — o mês NAVEGADO e
+         o mês de HOJE — porque o carrossel mostra "Fatura atual" de TODOS
+         os cartões ao mesmo tempo, não só do selecionado: sem o par de
+         hoje, um cartão que não é o navegado ficaria com a fatura atual
+         incompleta sempre que a tela estivesse navegada pra outro mês/
+         fatura. Os dois pares se sobrepõem no caso comum (navegando perto
+         de hoje) — dedup por id abaixo. */
+      const [c, recurrenceContext, mesNavegado, mesAnteriorAoNavegado, mesAtualTx, mesAnteriorTx, p] =
+        await Promise.all([
+          fetchCreditCards(),
+          fetchRecurrenceContext(),
+          fetchCreditTransactionsForMonth(viewYear, viewMonth),
+          fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
+          fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
+          fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
+          fetchCardInvoicePayments(),
+        ]);
+
+      const dedup = (txs: Transaction[]) => Array.from(new Map(txs.map((t) => [t.id, t])).values());
 
       /* Assinaturas no cartão ("repete a cada mês") só entram na fatura do mês
          novo se alguém criar a ocorrência — é aqui que isso acontece, tanto
          pras compras no crédito quanto pras saídas da carteira. */
-      let selectedTransactions = [...mesNavegado, ...mesAnteriorAoNavegado];
+      let selectedTransactions = dedup([...mesNavegado, ...mesAnteriorAoNavegado, ...mesAtualTx, ...mesAnteriorTx]);
       const faltantes = ocorrenciasFaltantes(recurrenceContext, todayISO());
       if (faltantes.length > 0) {
         await criarOcorrenciasRecorrentes(faltantes);
-        const [a, b] = await Promise.all([
+        const [a, b, d1, d2] = await Promise.all([
           fetchCreditTransactionsForMonth(viewYear, viewMonth),
           fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
+          fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
+          fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
         ]);
-        selectedTransactions = [...a, ...b];
+        selectedTransactions = dedup([...a, ...b, ...d1, ...d2]);
       }
 
       setCards(c);
@@ -207,19 +218,13 @@ export default function CreditoScreen() {
       /* Lembretes de vencimento da fatura EM ABERTO agora, cartão por
          cartão — não do mês navegado na tela, e não mais do mês civil
          corrente (uma fatura que fechou dia 19 e ainda não venceu continua
-         "em aberto" mesmo depois do calendário virar de mês). Busca
-         dedicada (mesAtual + mês anterior) porque o fetch acima já é sobre
-         o eixo NAVEGADO, que pode estar longe de hoje. */
+         "em aberto" mesmo depois do calendário virar de mês). O par de mês
+         de hoje já buscado acima cobre qualquer cartão. */
       const { lembretesContasAtivo } = await carregarNotifPrefs();
       const hoje = todayISO();
-      const [mesAtualTx, mesAnteriorTx] = await Promise.all([
-        fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
-        fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
-      ]);
-      const transacoesParaLembrete = [...mesAtualTx, ...mesAnteriorTx];
       for (const card of c) {
         const cicloAberto = mesFaturaDoLancamento(hoje, card.closing_day);
-        const valorFatura = transacoesParaLembrete
+        const valorFatura = selectedTransactions
           .filter((tx) => (tx.payment_method === 'credit' || tx.card_id) && tx.card_id === card.id)
           .filter((tx) => {
             const ciclo = mesFaturaDoLancamento(tx.occurred_on, card.closing_day);
@@ -848,8 +853,25 @@ export default function CreditoScreen() {
             windowSize={5}
             renderItem={({ item: card }) => {
               const bankObj = BANKS.find((b) => b.id === card.bank);
+              /* "Fatura atual" de CADA cartão do carrossel, sempre pelo ciclo
+                 DAQUELE cartão (mesFaturaDoLancamento com o closing_day dele)
+                 — nunca por mês civil, senão um lançamento no fim do ciclo
+                 (ex.: dia 25 com fechamento dia 20) contava no mês civil
+                 errado e parecia não ter "se juntado" com o resto da fatura.
+                 O cartão que está com o painel de detalhe aberto embaixo
+                 acompanha o ciclo NAVEGADO ali (evita a pílula do carrossel
+                 mostrar um valor e o painel de baixo mostrar outro pro mesmo
+                 cartão); os demais mostram a fatura REAL em aberto agora. */
+              const cicloDoCard =
+                selectedCardId === card.id
+                  ? { year: viewYear, month: viewMonth }
+                  : mesFaturaDoLancamento(todayISO(), card.closing_day);
               const cardSpent = walletTransactions
-                .filter((t) => t.card_id === card.id && isSameMonth(t.occurred_on, selectedYear, selectedMonth))
+                .filter((t) => t.card_id === card.id)
+                .filter((t) => {
+                  const ciclo = mesFaturaDoLancamento(t.occurred_on, card.closing_day);
+                  return ciclo.year === cicloDoCard.year && ciclo.month === cicloDoCard.month;
+                })
                 .reduce((s, t) => s + Number(t.amount), 0);
               const limitPct = Math.min(1, cardSpent / (card.limit_amount || 1));
 
