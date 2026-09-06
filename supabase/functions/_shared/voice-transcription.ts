@@ -49,11 +49,86 @@ const PROMPT_TRANSCRICAO =
 
 export type ResultadoTranscricao = { texto: string; provedor: string };
 
+/* Tempo de espera antes de também acionar o provedor seguinte, quando o
+   anterior não falhou nem respondeu ainda — ele só existe pra cobrir Groq
+   "pendurado" (lento, sem responder nem falhar), que é o que fazia a
+   sequência antiga somar dois timeouts de até 30s (ver histórico de
+   `lib/voz.ts`). Num Groq normal (sub-2s, "ordens de grandeza mais rápida")
+   este tempo nunca chega a passar, e o fallback nunca é acionado à toa.
+   ponytail: gatilho fixo, não adaptativo — se um dia o provedor primário
+   ficar consistentemente mais lento que isto, vale medir a latência real e
+   ajustar, em vez de chutar de novo. */
+const ESPERA_ANTES_DO_PROXIMO_MS = 8_000;
+
+async function chamarProvedor(
+  provedor: ProvedorTranscricao,
+  audioBytes: ArrayBuffer,
+  opts: { mimeType: string; nomeArquivo: string; fetchComTimeout: (url: string, init?: RequestInit) => Promise<Response> }
+): Promise<ResultadoTranscricao | null> {
+  try {
+    const formData = new FormData();
+    formData.append('file', new Blob([audioBytes], { type: opts.mimeType }), opts.nomeArquivo);
+    formData.append('model', provedor.model);
+    formData.append('language', 'pt');
+    formData.append('response_format', 'json');
+    formData.append('prompt', PROMPT_TRANSCRICAO);
+
+    const res = await opts.fetchComTimeout(provedor.url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${provedor.key()}` },
+      body: formData,
+    });
+    if (!res.ok) {
+      console.error(`[transcrever] ${provedor.nome} respondeu ${res.status}:`, await res.text());
+      return null;
+    }
+    const bruto = (await res.json())?.text;
+    if (typeof bruto !== 'string' || !bruto.trim()) return null;
+
+    const normalizado = normalizarTextoTranscrito(bruto);
+    if (!normalizado) return null;
+    // Só o provedor e o tamanho. A transcrição em si é o extrato da
+    // pessoa ("mercado, 120 reais") e os logs da Edge Function ficam
+    // retidos e legíveis por qualquer um com acesso ao painel — não é
+    // lugar para dado financeiro. Para depurar, o que importa é saber se
+    // veio texto e de qual provedor.
+    console.log(`[transcrever] ${provedor.nome} devolveu ${normalizado.length} caracteres`);
+    return { texto: normalizado, provedor: provedor.nome };
+  } catch (err) {
+    console.error(`[transcrever] ${provedor.nome} lançou exceção:`, err);
+    return null;
+  }
+}
+
+/** Resolve assim que a primeira tentativa em andamento devolver sucesso; só
+ *  volta null depois que TODAS já tiverem terminado (com falha). */
+function primeiroSucesso(tentativas: Promise<ResultadoTranscricao | null>[]): Promise<ResultadoTranscricao | null> {
+  let restantes = tentativas.length;
+  return new Promise((resolve) => {
+    for (const tentativa of tentativas) {
+      tentativa.then((resultado) => {
+        restantes -= 1;
+        if (resultado) resolve(resultado);
+        else if (restantes === 0) resolve(null);
+      });
+    }
+  });
+}
+
 /**
- * Tenta cada provedor na ordem e devolve a primeira transcrição não vazia, já
+ * Chama o primeiro provedor na hora; os seguintes só entram na corrida se o
+ * anterior demorar mais que `ESPERA_ANTES_DO_PROXIMO_MS` OU já tiver falhado
+ * — o que vier primeiro. Devolve a primeira transcrição não vazia, já
  * normalizada (ver normalizarTextoTranscrito). Devolve null quando nenhum
  * provedor está configurado, todos falharam, ou o áudio saiu inaudível — quem
  * chama decide a mensagem de fallback.
+ *
+ * Antes disto os provedores rodavam em sequência estrita (o segundo só
+ * começava depois do primeiro terminar, falhando ou não), o que somava dois
+ * timeouts de até 30s quando o Groq ficava pendurado sem responder — a fonte
+ * real da lentidão relatada em lançamentos por voz. A troca de provedor por
+ * ordem de custo (Groq primeiro, mais barato) continua valendo; só a espera
+ * cega vira uma corrida com atraso.
  *
  * `fetchComTimeout` é injetado (não importado direto) pra este módulo não
  * decidir timeout nem depender de um helper específico de uma função —
@@ -68,42 +143,36 @@ export async function transcrever(
     fetchComTimeout: (url: string, init?: RequestInit) => Promise<Response>;
   }
 ): Promise<ResultadoTranscricao | null> {
-  for (const provedor of opts.provedores) {
-    const chave = provedor.key();
-    if (!chave) continue;
+  const disponiveis = opts.provedores.filter((p) => p.key());
+  if (disponiveis.length === 0) return null;
 
-    try {
-      const formData = new FormData();
-      formData.append('file', new Blob([audioBytes], { type: opts.mimeType }), opts.nomeArquivo);
-      formData.append('model', provedor.model);
-      formData.append('language', 'pt');
-      formData.append('response_format', 'json');
-      formData.append('prompt', PROMPT_TRANSCRICAO);
+  const tentativas: Promise<ResultadoTranscricao | null>[] = [];
+  let anterior: Promise<ResultadoTranscricao | null> | null = null;
 
-      const res = await opts.fetchComTimeout(provedor.url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${chave}` },
-        body: formData,
-      });
-      if (!res.ok) {
-        console.error(`[transcrever] ${provedor.nome} respondeu ${res.status}:`, await res.text());
-        continue;
-      }
-      const bruto = (await res.json())?.text;
-      if (typeof bruto !== 'string' || !bruto.trim()) continue;
-
-      const normalizado = normalizarTextoTranscrito(bruto);
-      if (!normalizado) continue;
-      // Só o provedor e o tamanho. A transcrição em si é o extrato da
-      // pessoa ("mercado, 120 reais") e os logs da Edge Function ficam
-      // retidos e legíveis por qualquer um com acesso ao painel — não é
-      // lugar para dado financeiro. Para depurar, o que importa é saber se
-      // veio texto e de qual provedor.
-      console.log(`[transcrever] ${provedor.nome} devolveu ${normalizado.length} caracteres`);
-      return { texto: normalizado, provedor: provedor.nome };
-    } catch (err) {
-      console.error(`[transcrever] ${provedor.nome} lançou exceção:`, err);
-    }
+  for (const provedor of disponiveis) {
+    const atual: Promise<ResultadoTranscricao | null> = anterior === null
+      ? chamarProvedor(provedor, audioBytes, opts)
+      : new Promise((resolve) => {
+          // Trava contra disparo duplo: o timer e a falha do anterior podem
+          // acontecer em qualquer ordem, mas só o primeiro dos dois pode de
+          // fato chamar o provedor.
+          let disparado = false;
+          const disparar = () => {
+            if (disparado) return;
+            disparado = true;
+            clearTimeout(timer);
+            resolve(chamarProvedor(provedor, audioBytes, opts));
+          };
+          const timer = setTimeout(disparar, ESPERA_ANTES_DO_PROXIMO_MS);
+          anterior!.then((resultado) => {
+            // Sucesso do anterior: deixa o timer correndo. Se `primeiroSucesso`
+            // já tiver o que precisa, este disparo tardio só é ignorado.
+            if (resultado === null) disparar();
+          });
+        });
+    tentativas.push(atual);
+    anterior = atual;
   }
-  return null;
+
+  return primeiroSucesso(tentativas);
 }
