@@ -189,7 +189,12 @@ async function lancarNoCredito(args: {
     return false;
   }
 
-  const cartao = heuristics.matchCardByText(texto, cartoes) ?? cartoes[0];
+  const cartaoIdentificado = heuristics.matchCardByText(texto, cartoes);
+  if (!cartaoIdentificado && cartoes.length > 1) {
+    await notificacoes.notificarRevisao('Qual cartão?', texto);
+    return false;
+  }
+  const cartao = cartaoIdentificado ?? cartoes[0];
   const parcelas = heuristics.parseParcelas(texto);
 
   if (parcelas && parcelas > 1) {

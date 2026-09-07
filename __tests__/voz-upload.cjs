@@ -69,12 +69,14 @@ async function main() {
   });
   const transcrever = () => cliente.transcreverAudio('file:///voz.m4a');
   assert.equal((await transcrever()).transcript, 'mercado 32 no Pix');
-  assert.match(corpoEnviado, /name="audio"; filename="voz.m4a"/);
+  assert.match(corpoEnviado, /name="audio"; filename="lancamento.m4a"/);
   assert.match(corpoEnviado, /audio\/mp4/);
   assert.ok(corpoEnviado.includes('\u0001\u0002\u0003\u0004'));
   assert.ok(prazo >= 70_000 && prazo < 120_000);
   // Widget e app usam o mesmo cliente, inclusive nome/opções do widget.
   assert.equal((await cliente.transcreverAudio('file:///widget.m4a', { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' })).ok, true);
+  assert.match(corpoEnviado, /name="audio"; filename="widget.m4a"/);
+  assert.match(corpoEnviado, /content-type: audio\/m4a/);
   const antes = envios;
   existe = false;
   assert.equal((await transcrever()).codigo, 'audio_ausente');
@@ -114,6 +116,7 @@ async function main() {
     '../_shared/voice-transcription.ts': {
       provedoresPadrao: () => [], transcrever: async () => ({ texto: 'mercado 32', provedor: 'simulado' }),
     },
+    '../_shared/seguranca.ts': { fetchComTimeout: () => { throw new Error('Rede inesperada'); }, criarRateLimiter: () => () => false },
   }, { Deno: { env: { get: () => 'config-ficticia' }, serve(fn) { handler = fn; } } });
   const url = 'https://example.invalid/voz';
   const preflight = await handler(new Request(url, { method: 'OPTIONS' }));

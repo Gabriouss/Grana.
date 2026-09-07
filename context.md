@@ -3074,6 +3074,35 @@ foi usado somente no processo de publicação e não foi salvo no projeto.
   explícita, após rejeição da revisão automática. Deploy Supabase foi autorizado
   pelo token fornecido e está concluído, independentemente desse push.
 
+## 07/09/2026 — QA com cartões e pré-build do widget de áudio
+
+- A pedido do autor, criados QA C6 (fecha 15, vence 22) e QA Nubank (fecha 25,
+  vence 2), seis transações em cada um e dois controles Pix/débito na conta QA.
+  Dados permanecem para inspeção. Criação idempotente em
+  `scripts/testar-granabo-cartoes.cjs`; credenciais vêm do ambiente.
+- Primeira bateria: 6/7, erro em fatura passada C6. Correção publicada:
+  referências explícitas de ciclo atual/anterior são resolvidas no backend com
+  deslocamento relativo ao fechamento de cada cartão, sobrescrevendo mês civil
+  incorreto do modelo. Comparações entre ciclos não recebem override único.
+- Segunda bateria real: 9/9. C6 Alimentação anterior=120, atual=275, total
+  atual=335. Nubank Alimentação anterior=200, atual=325, Outros=70, total=395.
+  Pix 999 e débito 888 não contam no crédito. Respostas/ciclos/tempos em
+  `docs/GRANABO_TESTE_CARTOES_20260906.json`; latência máxima observada 24,8s.
+- Suite aprendizado 10 cenários + integração passou, Deno e tsc passaram.
+- Auditoria widget: upload corrigido no TESTE (expectativa antiga e mock
+  ausente), 11/11 guardas de idempotência e 9/9 visuais passaram. Corrigida
+  escolha silenciosa do primeiro cartão na tarefa: vários cartões sem nome
+  reconhecido agora pedem revisão. Teste executável da tarefa em
+  `__tests__/widget-voz-cartoes.cjs` passou.
+- Backend de voz em produção transcreveu M4A sintético corretamente 3/3,
+  HTTP 200, Groq, 0,64–0,83s. Nenhum gasto criado por essa sonda.
+- Download da função publicada confirmou fallback ainda sequencial; melhoria
+  local de 8s NÃO foi publicada (decisão anterior era deixar só commitada).
+  Não há acesso a Android/adb para validar widget físico; não houve build.
+  Limites e roteiro em `docs/AUDITORIA_WIDGET_VOZ_20260907.md`.
+- Push continua pendente da autorização explícita solicitada após rejeição
+  de auto-review; não tentar contornar essa restrição.
+
 ## 06-07/09/2026 — widget Central de Lançamentos vira cápsulas, retry no lançamento por voz, e fatura passada/atual do Granabô fechada
 
 Sequência de correções antes de uma nova build (nenhuma disparada ainda,
