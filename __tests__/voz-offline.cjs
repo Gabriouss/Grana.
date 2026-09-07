@@ -43,6 +43,21 @@ function carregar(file, deps) {
   await operacoes.sincronizarOperacoesVoz();
   assert.equal(envios.length, 2);
 
+  offline = true;
+  await operacoes.registrarOperacaoVoz('id2', 'widget', payload);
+  await operacoes.registrarOperacaoVoz('id3', 'widget', payload);
+  storage.set('grana:voz:operacao:a:corrompida', '{');
+  offline = false;
+  const primeiraSync = operacoes.sincronizarOperacoesVoz();
+  const segundaSync = operacoes.sincronizarOperacoesVoz();
+  assert.equal(primeiraSync, segundaSync, 'toques simultâneos aguardam a mesma tentativa');
+  const resumo = await primeiraSync;
+  assert.equal(resumo.sincronizadas, 2, 'fila realmente sincroniza após retorno da rede');
+  assert.equal(resumo.falhas, 1, 'item corrompido permanece recuperável');
+  assert.equal(storage.size, 1, 'só remove operações confirmadas');
+  assert.ok(!resumo.mensagem.includes('conexão'), 'erro local não é apresentado como falta de internet');
+  storage.clear();
+
   const listeners = new Map();
   let installed = true, starts = 0;
   const local = carregar('lib/voz-local.ts', {

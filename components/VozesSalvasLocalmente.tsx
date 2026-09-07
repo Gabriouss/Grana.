@@ -28,7 +28,7 @@ export default function VozesSalvasLocalmente() {
       try {
         const resultado = await sincronizarOperacoesVoz();
         await carregar();
-        if (resultado.falhas) setMensagem(`Sincronizadas ${resultado.sincronizadas}; ${resultado.falhas} aguardando conexão.`);
+        if (resultado.falhas) setMensagem(resultado.mensagem ?? 'Não foi possível confirmar todos os lançamentos.');
       } catch { setMensagem('Não foi possível sincronizar agora. Tente novamente.'); }
       finally { setOcupado(false); }
     }}><Text style={styles.action}>{ocupado ? 'Sincronizando…' : 'Tentar sincronizar'}</Text></AppPressable>

@@ -176,7 +176,7 @@ function RootNavigator() {
     if (!session?.user.id || Platform.OS !== 'android' || estadoAcesso?.allowed === false) return;
     let encerrado = false;
     const tentar = () => {
-      if (encerrado) return;
+      if (encerrado || AppState.currentState !== 'active') return;
       void import('@/lib/voice-operations').then(({ sincronizarOperacoesVoz }) =>
         sincronizarOperacoesVoz()).catch(() => {});
       void import('@/lib/widget-voz-task').then(({ tentarVozesPendentes }) => {
@@ -185,11 +185,13 @@ function RootNavigator() {
     };
 
     tentar();
+    const intervaloVoz = setInterval(tentar, 30_000);
     const appState = AppState.addEventListener('change', (estado) => {
       if (estado === 'active') tentar();
     });
     return () => {
       encerrado = true;
+      clearInterval(intervaloVoz);
       appState.remove();
     };
   }, [session?.user.id, estadoAcesso?.allowed]);

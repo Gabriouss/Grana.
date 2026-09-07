@@ -88,13 +88,16 @@ export async function registrarOperacaoVoz(
   }
 }
 
-let sincronizando = false;
-export async function sincronizarOperacoesVoz(): Promise<{ sincronizadas: number; falhas: number }> {
-  if (sincronizando) return { sincronizadas: 0, falhas: 0 };
-  sincronizando = true;
+type ResumoSync = { sincronizadas: number; falhas: number; mensagem?: string };
+let sincronizacao: Promise<ResumoSync> | null = null;
+export function sincronizarOperacoesVoz(): Promise<ResumoSync> {
+  if (!sincronizacao) sincronizacao = executarSincronizacao().finally(() => { sincronizacao = null; });
+  return sincronizacao;
+}
+async function executarSincronizacao(): Promise<ResumoSync> {
   let sincronizadas = 0;
   let falhas = 0;
-  try {
+  let mensagem: string | undefined;
     const { data } = await supabase.auth.getSession();
     const userId = data.session?.user.id;
     if (!userId) return { sincronizadas, falhas: 1 };
@@ -102,19 +105,27 @@ export async function sincronizarOperacoesVoz(): Promise<{ sincronizadas: number
     for (const chave of chaves) {
       const raw = await AsyncStorage.getItem(chave);
       if (!raw) continue;
-      const item = JSON.parse(raw);
       try {
+        const item = JSON.parse(raw);
+        const atual = await supabase.auth.getSession();
+        if (atual.data.session?.user.id !== userId) break;
         await enviarOperacaoVoz(item.requestId, item.source, item.payload);
         await AsyncStorage.removeItem(chave);
         notificarDadosDosWidgetsAlterados();
         sincronizadas++;
-      } catch {
+      } catch (erro) {
         // Uma operação inválida não pode impedir as demais de serem tentadas.
         falhas++;
+        const codigo = String((erro as { code?: string })?.code ?? '');
+        const texto = String((erro as { message?: string })?.message ?? erro);
+        mensagem = /^(42501|PGRST30)/.test(codigo)
+          ? 'Não foi possível autorizar o envio. Confira sua sessão e o acesso à conta.'
+          : /network|failed to fetch|fetch failed|socket|dns/i.test(texto)
+            ? 'Sem conexão com o serviço. O lançamento continua salvo no aparelho.'
+            : 'O serviço não confirmou o lançamento. Ele continua salvo no aparelho.';
       }
     }
-  } finally { sincronizando = false; }
-  return { sincronizadas, falhas };
+  return { sincronizadas, falhas, mensagem };
 }
 
 async function enviarOperacaoVoz(requestId: string, source: 'app' | 'widget', payload: PayloadOperacaoVoz): Promise<ResultadoOperacaoVoz> {

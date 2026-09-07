@@ -3245,3 +3245,6 @@ passaram. Android físico ainda não validado; nenhuma build/deploy disparados.
   SDK Android nesta máquina; a integração nativa ainda precisa de uma build
   interna e teste físico no aparelho antes de publicar APK. Nenhuma build foi
   disparada.
+
+## Revisão da sincronização de voz — 07/09/2026
+Correção anterior 12d75d9 não comprovou a causa da falha do aparelho. Agora sincronizações concorrentes compartilham a promessa, JSON inválido não interrompe a fila, troca de conta interrompe envios e erros de servidor não são rotulados como falta de internet. Retomada periódica a cada 30s apenas em primeiro plano. Teste executável cobre fila offline retornando online, concorrência e item corrompido. Testes de voz/upload/widget e TypeScript verificados. Pendente: diagnóstico da resposta real do backend no aparelho e QA visual Android; nenhuma nova build autorizada/disparada nesta correção.
