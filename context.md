@@ -6,6 +6,13 @@
 
 ## Correção do resumo de faturas na Home — 07/09/2026
 
+## Ordem das ações rápidas na Home — 07/09/2026
+
+O botão de lançamento por voz foi movido para o primeiro filho da fileira de
+ações inteligentes em `app/(app)/index.tsx`. Como desktop e aplicativo usam a
+mesma tela, a ordem agora é Voz, Colar comprovante, Importar extrato e
+Escanear nota quando os respectivos flags estão ligados. TSC passou.
+
 `components/CreditSummaryCard.tsx` somava crédito por mês civil, embora a
 tela Crédito agrupasse pelo dia de fechamento de cada cartão. O resumo agora
 usa `filtrarLancamentosDaFatura`, a mesma regra compartilhada da tela de
