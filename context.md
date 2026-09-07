@@ -3248,3 +3248,66 @@ passaram. Android físico ainda não validado; nenhuma build/deploy disparados.
 
 ## Revisão da sincronização de voz — 07/09/2026
 Correção anterior 12d75d9 não comprovou a causa da falha do aparelho. Agora sincronizações concorrentes compartilham a promessa, JSON inválido não interrompe a fila, troca de conta interrompe envios e erros de servidor não são rotulados como falta de internet. Retomada periódica a cada 30s apenas em primeiro plano. Teste executável cobre fila offline retornando online, concorrência e item corrompido. Testes de voz/upload/widget e TypeScript verificados. Pendente: diagnóstico da resposta real do backend no aparelho e QA visual Android; nenhuma nova build autorizada/disparada nesta correção.
+
+## 07/09/2026 — CAUSA RAIZ do lançamento por voz: a migration nunca foi aplicada em produção
+
+O lançamento por voz estava quebrado por um motivo que nenhuma das três
+correções de cliente anteriores (`12d75d9`, `26d6c63`, e as tentativas de
+fila offline) poderia resolver: **a migration
+`20260905004109_voice_operations.sql` nunca foi aplicada ao banco de
+produção**. A tabela `voice_operations` e as funções
+`registrar_operacao_voz`/`desfazer_operacao_voz` simplesmente não existiam.
+
+Diagnóstico (sonda com a chave anônima; a função levanta erro de autorização
+antes de qualquer escrita, então a sonda é inofensiva):
+
+- `registrar_operacao_voz` → `PGRST202` (não encontrada)
+- `desfazer_operacao_voz` → `PGRST202` (não encontrada)
+- tabela `voice_operations` → `PGRST205` (não encontrada)
+- controle `tem_direito_acesso` → `42501` (existe; prova que o banco respondia)
+
+Das cinco migrations do repositório, só essa faltava — as outras quatro
+(`push_habito`, `janelas_notificacao`, `assistant_messages`,
+`assistant_memory`) já estavam aplicadas. Este projeto não usa
+`supabase_migrations.schema_migrations` (a tabela não existe no banco), então
+não há nada que compare repositório e produção: a única forma de saber é
+consultar objeto por objeto.
+
+**Por que isso se disfarçou de bug de sincronização.** Em
+`lib/voice-operations.ts:80-88`, só erros Postgres `22*`, `23*` e `42501` são
+tratados como recusa definitiva; qualquer outro vira
+`return { status: 'pending' }`, que a interface mostra como "Salvo no
+aparelho — será sincronizado ao abrir o Grana. com conexão". `PGRST202` não
+casa com nenhum dos três. Resultado: com internet perfeita, toda fala chamava
+uma função inexistente, recebia "não encontrada" e era arquivada como se
+fosse falta de conexão — e a fila retentava contra a mesma função inexistente
+para sempre. Duas builds Android foram gastas em correções de cliente que não
+tinham como funcionar.
+
+**Correção aplicada em 07/09/2026**: a migration foi executada em produção
+via Management API (`POST /v1/projects/{ref}/database/query`, token temporário
+do autor, nunca persistido). Verificado depois: os três objetos agora
+respondem `42501 permission denied` para o `anon` em vez de "não existe" —
+que é exatamente o desenho da migration (`revoke all ... from anon`,
+`grant execute ... to authenticated`). Dependências conferidas ANTES de
+aplicar: `extensions.digest`, `public.somar_meses_data`,
+`transactions_source_event_uniq` e `bills_source_event_uniq` — todas já
+existiam.
+
+**Nenhuma build foi necessária**: a 1.8.2 instalada já retenta a fila ao abrir
+o app e a cada volta ao primeiro plano, então os lançamentos presos entram
+sozinhos.
+
+Notas de PowerShell, para a próxima vez que alguém aplicar SQL daqui:
+`@{ query = $sql } | ConvertTo-Json` produziu `{"query":{"value":"..."}}` em
+vez de `{"query":"..."}` nesta máquina, e a API respondia
+`query: Invalid input: expected string, received object`. A saída só ficou
+correta montando o JSON à mão (`-replace` para `\`, `"`, CRLF e tab) e
+enviando com `curl.exe --data-binary`, nunca com `Invoke-RestMethod`.
+
+**Dívida declarada, para a próxima build** (não bloqueante): o cliente ainda
+converte falha permanente em "salvo no aparelho". `PGRST202` (função ausente),
+`PGRST301` (JWT expirado) e timeouts continuam entrando na fila como se
+fossem falta de conexão. Foi exatamente isso que escondeu uma feature
+totalmente fora do ar por dois dias. O certo é separar recusa permanente de
+indisponibilidade temporária e mostrar a primeira em vez de enfileirar.
