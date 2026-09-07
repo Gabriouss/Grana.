@@ -133,6 +133,26 @@ Regras permanentes para qualquer sessão que abrir este repositório:
      foi validado, de preferência como checklist de QA acionável em vez de
      ressalva vaga. Se uma sessão seguinte provar que a hipótese estava
      errada, volte e corrija o registro antigo.
+   - **Quando uma feature falha de ponta a ponta, confira o SERVIDOR antes de
+     depurar o cliente.** Este projeto não tem
+     `supabase_migrations.schema_migrations`: nada compara o repositório com
+     a produção, e uma migration escrita aqui pode simplesmente nunca ter
+     sido aplicada lá. Em 07/09/2026 o lançamento por voz estava morto porque
+     a tabela e as RPCs de `20260905004109_voice_operations.sql` não existiam
+     em produção — e duas builds Android foram gastas em correções de fila,
+     retry e concorrência no cliente, nenhuma das quais tinha como funcionar.
+     A sonda é barata e não escreve nada: chamar a RPC com a chave anônima
+     devolve `PGRST202` quando a função não existe e `42501` quando existe.
+     O mesmo vale para colunas novas e para as notificações push, que nunca
+     entregaram nada porque `push_tokens` estava vazia (falta
+     `google-services.json`/FCM, não é bug de código).
+   - **`catch` que transforma falha permanente em estado benigno é como uma
+     feature inteira fica fora do ar por dias sem ninguém notar.** Aconteceu
+     três vezes neste projeto: `PGRST202` virando "salvo no aparelho, sincroniza
+     depois", e o registro do token push falhando em silêncio desde o primeiro
+     dia. Ao capturar um erro, decida explicitamente se ele é temporário
+     (vale enfileirar e tentar de novo) ou permanente (precisa aparecer),
+     e nunca deixe um `catch` sem log.
 
    A versão longa desta análise, com os commits e trechos de código de cada
    caso, está na memória do Claude nesta máquina, em
