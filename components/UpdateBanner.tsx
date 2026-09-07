@@ -16,6 +16,7 @@ import AppPressable from './AppPressable';
  */
 export default function UpdateBanner() {
   const [info, setInfo] = useState<InfoAtualizacao | null>(null);
+  const [abrindo, setAbrindo] = useState(false);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -23,6 +24,20 @@ export default function UpdateBanner() {
   }, []);
 
   if (!info) return null;
+
+  async function abrirAtualizacao() {
+    if (abrindo) return;
+    setAbrindo(true);
+    try {
+      // A faixa pode permanecer montada enquanto uma build nova é publicada.
+      // Reconsulta o singleton para nunca abrir um APK antigo armazenado no
+      // estado da faixa e bloqueia toques repetidos durante a abertura.
+      const atualizada = await verificarAtualizacao();
+      if (atualizada?.apkUrl) await Linking.openURL(atualizada.apkUrl);
+    } finally {
+      setAbrindo(false);
+    }
+  }
 
   /* O banner é o primeiro filho da área logada, acima do <Stack> — ou seja,
      fica fora do SafeAreaView que cada tela monta por dentro, e no Android o
@@ -37,10 +52,12 @@ export default function UpdateBanner() {
         Versão {info.versao} disponível
       </Text>
       <AppPressable
-        style={({ hovered }) => [styles.botaoBaixar, hovered && { opacity: 0.85 }]}
-        onPress={() => Linking.openURL(info.apkUrl)}
+        style={({ hovered }) => [styles.botaoBaixar, abrindo && styles.botaoBaixarDesabilitado, hovered && !abrindo && { opacity: 0.85 }]}
+        onPress={abrirAtualizacao}
+        disabled={abrindo}
+        accessibilityState={{ disabled: abrindo }}
       >
-        <Text style={styles.botaoBaixarTexto}>Atualizar</Text>
+        <Text style={styles.botaoBaixarTexto}>{abrindo ? 'Abrindo…' : 'Atualizar'}</Text>
       </AppPressable>
       <AppPressable
         onPress={() => {
@@ -71,5 +88,6 @@ const styles = StyleSheet.create({
   },
   texto: { flex: 1, color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   botaoBaixar: { backgroundColor: theme.accent2, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
+  botaoBaixarDesabilitado: { opacity: 0.6 },
   botaoBaixarTexto: { color: theme.paper, fontSize: type.nota, fontFamily: fonts.regular },
 });
