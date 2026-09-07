@@ -2983,6 +2983,14 @@ cjnuzfbvfuauvlzfoutv`.
   nenhum número pode ser inventado. O helper puro em
   `supabase/functions/_shared/fatura-ciclo.ts` tem 4 cenários automatizados em
   `__tests__/corpus-assistente-fatura.ts`.
+
+### Publicação e verificação (06/09/2026)
+
+A Edge Function `assistente-financeiro` foi publicada em produção com
+`supabase functions deploy --use-api`. A sonda autenticada na conta de testes
+retornou HTTP 200 para saudação e para uma pergunta de fatura; a segunda usou
+`resumoCredito` e respondeu pelo ciclo de setembro de 2026. O token temporário
+foi usado somente no processo de publicação e não foi salvo no projeto.
 - Verificação: `tsc --noEmit` passou e o corpus isolado do ciclo passou 4/4.
   A Edge Function ainda precisa ser publicada quando o autor autorizar; nenhum
   deploy ou build EAS foi disparado nesta sessão.
