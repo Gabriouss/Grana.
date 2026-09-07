@@ -3311,3 +3311,74 @@ converte falha permanente em "salvo no aparelho". `PGRST202` (função ausente),
 fossem falta de conexão. Foi exatamente isso que escondeu uma feature
 totalmente fora do ar por dois dias. O certo é separar recusa permanente de
 indisponibilidade temporária e mostrar a primeira em vez de enfileirar.
+
+## 07/09/2026 (continuação) — Granabô perdendo mensagens, e notificações de almoço/noite
+
+Três correções na mesma sessão, todas com a mesma assinatura: um erro real
+escondido atrás de um caminho que parecia benigno.
+
+### Granabô: mensagens sumindo do histórico (`c7818f7`)
+
+O autor relatou que "algumas mensagens do Granabô somem da conversa, outras
+não". Não sumiam: **nada apaga** `assistant_messages` (não há `DELETE` no
+código, nem trigger, nem cron — verificado). O problema era de leitura.
+
+A Edge Function gravava pergunta e resposta **numa única instrução**, e
+`now()` no Postgres devolve o mesmo instante para a transação inteira. As
+duas linhas nasciam com `criado_em` idêntico ao microssegundo. Medido na
+conta do autor: **100 linhas para 50 instantes distintos** — todo par
+colidindo, sem exceção.
+
+`fetchMensagens` ordenava só por `criado_em` com `limit(50)`. Ordenação com
+empate e `LIMIT` é não-determinística no Postgres, e daí saíam os dois
+sintomas: a resposta aparecia acima da pergunta (comprovado — dois pares do
+mesmo resultado saíam em ordens opostas), e o par cortado na fronteira do
+limite voltava pela metade, ora um membro ora outro. O mesmo histórico
+bagunçado ainda era reenviado como contexto ao modelo a cada pergunta, então
+o Granabô também *raciocinava* sobre uma conversa fora de ordem.
+
+Correção: leitura desempata por `papel` (como `'assistente' < 'usuario'`, a
+ordem decrescente fica estável e o `reverse()` entrega pergunta antes de
+resposta — conserta inclusive as linhas antigas, sem migration); escrita passa
+a gravar timestamps explícitos com 1ms de diferença. Edge Function publicada
+(versão 20). Nota: `limit = 50` conta LINHAS, então o histórico visível é de
+25 perguntas, não 50.
+
+### Voz: falha permanente deixando de parecer falta de rede (`dce7d63`)
+
+Continuação da causa raiz da migration não aplicada: `PGRST202`/`PGRST205`/
+`42883`/`42P01` agora têm mensagem própria dizendo que não se resolve
+sozinho, em vez do texto genérico "continua salvo no aparelho". Nada mudou no
+que decide guardar ou remover o lançamento. Junto, consertada a guarda
+`corpus-voz-idempotencia`, vermelha desde `81758a6` porque a regex exigia
+aridade exata de `processar()` — o `test:parser` voltou a 100%.
+
+### Notificações de almoço e janta (`8b1fea4`)
+
+O backend está inteiro e correto: cron a cada 5 minutos rodando, tabelas,
+RLS e as colunas da janela (`almoco_ativo`, `janela`) todas aplicadas em
+produção. Mas **`push_tokens` está vazia para todas as contas** e
+`push_habit_deliveries` não tem uma linha sequer.
+
+Causa: o projeto **nunca teve `google-services.json`** (nunca existiu no
+histórico do git) nem credencial FCM. Sem isso `getExpoPushTokenAsync` sempre
+lança no Android — e o `catch` sem log engolia desde o primeiro dia, fazendo
+um push que nunca funcionou parecer um push desligado por escolha. O bloqueio
+já estava anotado aqui em 04/09 ("falta confirmar se a credencial Android FCM
+v1 já existe") e nunca foi fechado.
+
+O que foi corrigido: o `catch` passa a logar, e o agendamento **local** (o
+único lembrete que existe sem FCM) deixou de depender de a tela Início ter
+terminado de carregar os lançamentos — o boot agenda as duas janelas quando o
+push não está disponível. Antes, qual tela abriu primeiro decidia se o
+lembrete existia.
+
+**Pendência que só o autor pode fechar** (não dá pelo código): criar o projeto
+no Firebase com o pacote `com.gabriouss.grana`, baixar o `google-services.json`,
+referenciá-lo em `app.json` como `android.googleServicesFile`, subir a
+credencial FCM v1 no EAS (`eas credentials`) e fazer uma build nova. Até lá o
+push remoto continua morto e só o lembrete local funciona.
+
+Detalhe do agendamento local que vale saber: o lembrete do dia é
+propositalmente cancelado quando já houve lançamento no dia (`jaLancouHoje`).
+Quem lança todo dia antes das 12h/20h30 naturalmente vê poucos lembretes.
