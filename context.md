@@ -2991,6 +2991,19 @@ A Edge Function `assistente-financeiro` foi publicada em produção com
 retornou HTTP 200 para saudação e para uma pergunta de fatura; a segunda usou
 `resumoCredito` e respondeu pelo ciclo de setembro de 2026. O token temporário
 foi usado somente no processo de publicação e não foi salvo no projeto.
+
+## Auditoria geral — correções aplicadas (06/09/2026)
+
+- `Granachat` ganhou `AbortController`, botão de cancelamento e timeout de 35s;
+  fechar a janela ou desmontar o componente também cancela a consulta.
+- `ToggleSwitch` foi dividido em componentes nativo/web para preservar a ordem
+  dos Hooks.
+- A busca de Lançamentos já estava memoizada e não recebeu uma reescrita sem
+  ganho comprovado. O carregamento de histórico completo no Início/Gráficos
+  continua sendo a principal dívida de escala, pois a navegação permite meses
+  antigos; exige agregação/consulta no banco e validação contra dados reais.
+- A auditoria ainda tem um gate físico: widget, voz, biometria, notificações,
+  deep links e blur precisam ser instalados e exercitados num Android real.
 - Verificação: `tsc --noEmit` passou e o corpus isolado do ciclo passou 4/4.
   A Edge Function ainda precisa ser publicada quando o autor autorizar; nenhum
   deploy ou build EAS foi disparado nesta sessão.
