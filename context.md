@@ -2964,3 +2964,25 @@ produção** — o autor pediu pra deixar só commitado por enquanto
 ("Não, só deixa commitado por enquanto"). Quando for autorizado: `supabase
 functions deploy processar-lancamento-voz --use-api --project-ref
 cjnuzfbvfuauvlzfoutv`.
+
+## Sessão de 06/09/2026 — Granabô: ciclo de fatura e aprendizado assertivo
+
+- `supabase/functions/assistente-financeiro/index.ts` agora resolve `resumoCredito`
+  pelo ciclo de fechamento de cada cartão (ex.: 20/08–19/09), e não pelo mês
+  civil. A mesma ferramenta aceita cartão e categoria e mantém cartões
+  diferentes separados, incluindo lançamentos sem cartão vinculado como grupo
+  indeterminado.
+- `gastoPorCategoria` reconhece o modo `fatura=true` para não cair no recorte
+  mensal quando o modelo escolher essa ferramenta para uma pergunta de categoria.
+- Foi adicionada a ferramenta `lembrarPreferencia`. Preferências ficam na
+  memória existente com a chave `preferencia:*` e são injetadas no prompt sem
+  serem tratadas como fatos financeiros. Correções explícitas sobre fatura
+  também são detectadas automaticamente no histórico, mesmo que o modelo não
+  chame a ferramenta de memória.
+- O prompt reforça que toda pergunta de fatura/cartão usa o ciclo real e que
+  nenhum número pode ser inventado. O helper puro em
+  `supabase/functions/_shared/fatura-ciclo.ts` tem 4 cenários automatizados em
+  `__tests__/corpus-assistente-fatura.ts`.
+- Verificação: `tsc --noEmit` passou e o corpus isolado do ciclo passou 4/4.
+  A Edge Function ainda precisa ser publicada quando o autor autorizar; nenhum
+  deploy ou build EAS foi disparado nesta sessão.

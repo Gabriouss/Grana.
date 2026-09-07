@@ -28,6 +28,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    Ver casarPorPalavraChave, mais abaixo. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
+import { janelaFatura, mesFaturaDoLancamento } from '../_shared/fatura-ciclo.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -128,6 +129,9 @@ type ArgsPeriodo = {
   mes?: number;
   ano?: number;
   ano_inteiro?: boolean;
+  fatura?: boolean;
+  cartao?: string;
+  categoria?: string;
 };
 
 type Periodo = { inicio: string; fim: string; rotulo: string };
@@ -204,6 +208,55 @@ const PROPS_PERIODO = {
   ano: { type: 'number', description: 'Ano com quatro dígitos. Ex.: 2026.' },
   ano_inteiro: { type: 'boolean', description: 'true para somar o ano inteiro indicado em "ano", de 1º de janeiro a 31 de dezembro.' },
 } as const;
+
+const PROPS_CICLO_FATURA = {
+  fatura: {
+    type: 'boolean',
+    description: 'true quando a pergunta fala da fatura/ciclo do cartão. Nesse caso use as datas de fechamento, nunca o mês civil.',
+  },
+  cartao: { type: 'string', description: 'Nome do cartão, do jeito que o usuário falou. Se omitido, use todos os cartões (ou o único cartão cadastrado).' },
+} as const;
+
+type CartaoAssistente = { id: string; name: string; limit_amount: number; closing_day: number; due_day?: number };
+
+const NOMES_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+function periodoExplicito(args: ArgsPeriodo): boolean {
+  return args.ultimos_dias !== undefined || args.desde !== undefined || args.ate !== undefined || args.ano_inteiro === true;
+}
+
+/** Resolve a fatura pelo mês de FECHAMENTO, não pelo mês civil da compra. */
+function periodoDaFatura(args: ArgsPeriodo, closingDay: number): Periodo | { erro: string } {
+  const hoje = new Date();
+  let year: number;
+  let month: number;
+
+  if (args.mes !== undefined) {
+    const mes = Number(args.mes);
+    if (!Number.isInteger(mes) || mes < 1 || mes > 12) return { erro: `Mês de fatura inválido: ${args.mes}. Use de 1 a 12.` };
+    year = Number(args.ano ?? hoje.getFullYear());
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return { erro: `Ano inválido: ${args.ano}.` };
+    month = mes - 1;
+  } else {
+    const cicloAtual = mesFaturaDoLancamento(iso(hoje), closingDay);
+    year = cicloAtual.year;
+    month = cicloAtual.month;
+  }
+
+  const janela = janelaFatura(year, month, closingDay);
+  return {
+    inicio: janela.inicio,
+    fim: janela.fim,
+    rotulo: `fatura de ${NOMES_MESES[month]} de ${year} (${janela.rotulo})`,
+  };
+}
+
+function intervaloMaisAmplo(periodos: Periodo[]): Periodo {
+  if (!periodos.length) return { inicio: '9999-12-31', fim: '1900-01-01', rotulo: '' };
+  const inicio = periodos.reduce((menor, p) => p.inicio < menor ? p.inicio : menor, periodos[0].inicio);
+  const fim = periodos.reduce((maior, p) => p.fim > maior ? p.fim : maior, periodos[0].fim);
+  return { inicio, fim, rotulo: `${dataBR(inicio)} a ${dataBR(fim)}` };
+}
 
 function formatarBRL(valor: number): string {
   return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -339,6 +392,7 @@ const TOOLS = [
         type: 'object',
         properties: {
           ...PROPS_PERIODO,
+          fatura: { type: 'boolean', description: 'true somente quando a pergunta pede o ciclo da fatura. Use junto com cartao para filtrar pela fatura real, não pelo mês civil.' },
           tipo: { type: 'string', enum: ['in', 'out'], description: '"out" para gastos/saídas, "in" para receitas/entradas. Omita para incluir os dois.' },
           categoria: { type: 'string', description: 'Nome da categoria, do jeito que o usuário falou. Será casado com as categorias reais dele.' },
           descricao_contem: { type: 'string', description: 'Trecho do texto da descrição. Ex.: "iFood", "Uber", "farmácia".' },
@@ -377,6 +431,7 @@ const TOOLS = [
         type: 'object',
         properties: {
           ...PROPS_PERIODO,
+          ...PROPS_CICLO_FATURA,
           categoria: {
             type: 'string',
             /* NÃO listar categorias de exemplo aqui. A lista anterior trazia
@@ -406,12 +461,21 @@ const TOOLS = [
   },
   {
     type: 'function' as const,
-    function: {
-      name: 'resumoCredito',
-      description:
-        'Retorna o total gasto no cartão de crédito num período, com detalhamento por cartão. ' +
-        'Use quando o usuário perguntar sobre fatura, cartão de crédito, gastos no crédito.',
-      parameters: { type: 'object', properties: { ...PROPS_PERIODO }, required: [] },
+      function: {
+        name: 'resumoCredito',
+        description:
+        'Retorna gastos da FATURA do cartão usando o ciclo de fechamento real (por exemplo, 20/08 a 19/09), nunca o mês civil. ' +
+        'Use para perguntas sobre fatura/cartão. "mês" e "ano" significam o mês em que a fatura fecha. ' +
+        'Aceita filtro por cartão e categoria e separa cartões diferentes em linhas próprias.',
+      parameters: {
+        type: 'object',
+        properties: {
+          ...PROPS_PERIODO,
+          cartao: { type: 'string', description: 'Nome do cartão, do jeito que o usuário falou. Omita para mostrar cada cartão separado.' },
+          categoria: { type: 'string', description: 'Categoria da compra, se o usuário pediu uma categoria específica dentro da fatura.' },
+        },
+        required: [],
+      },
     },
   },
   {
@@ -534,6 +598,24 @@ const TOOLS = [
   {
     type: 'function' as const,
     function: {
+      name: 'lembrarPreferencia',
+      description:
+        'Guarda uma preferência explícita do usuário sobre COMO o Granabô deve responder nas próximas conversas. ' +
+        'Use quando ele disser "aprenda", "guarde", "da próxima vez", "quero que você responda assim" ou corrigir o formato da resposta. ' +
+        'A preferência só pode mudar formato/seleção da consulta; nunca substitui números reais, ciclo de fatura ou regras de segurança.',
+      parameters: {
+        type: 'object',
+        properties: {
+          chave: { type: 'string', description: 'Rótulo curto em minúsculas com underscore. Ex.: "ciclo_fatura", "formato_resposta".' },
+          preferencia: { type: 'string', description: 'A regra de resposta que o usuário pediu, em uma frase objetiva.' },
+        },
+        required: ['chave', 'preferencia'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'naoConsegui',
       description:
         'Chame esta ferramenta, em vez de só escrever uma desculpa, sempre que NENHUMA outra ferramenta ' +
@@ -584,6 +666,124 @@ type SupabaseClient = any;
    evita uma segunda ida à Auth API só pra ler algo que já está em mãos. */
 type UsuarioAutenticado = { id: string; user_metadata?: Record<string, unknown> | null };
 
+async function executarResumoCredito(
+  args: ArgsPeriodo,
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<string> {
+  const { data: cardsData, error: erroCards } = await supabase
+    .from('credit_cards')
+    .select('id, name, limit_amount, closing_day, due_day')
+    .eq('user_id', userId);
+  if (erroCards) throw erroCards;
+  const cards = (cardsData ?? []) as CartaoAssistente[];
+
+  let categoriaCasada: string | null = null;
+  const categoriaPedida = String(args.categoria ?? '').trim();
+  if (categoriaPedida) {
+    const { data: categorias, error: erroCategorias } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('user_id', userId);
+    if (erroCategorias) throw erroCategorias;
+    const nomes = (categorias ?? []).map((c: { name: string }) => c.name);
+    categoriaCasada = await casarNomeComMemoria(supabase, userId, 'categoria', nomes, categoriaPedida);
+    if (!categoriaCasada) {
+      return 'Não existe categoria chamada "' + categoriaPedida + '". As categorias do usuário são: ' + nomes.join(', ') + '.';
+    }
+  }
+
+  const cartaoPedida = String(args.cartao ?? '').trim();
+  let cardsAlvo = cards;
+  if (cartaoPedida) {
+    const nomeCard = await casarNomeComMemoria(supabase, userId, 'cartao', cards.map((c) => c.name), cartaoPedida);
+    if (!nomeCard) {
+      return cards.length
+        ? 'Não existe cartão chamado "' + cartaoPedida + '". Os cartões do usuário são: ' + cards.map((c) => c.name).join(', ') + '.'
+        : 'O usuário não tem nenhum cartão de crédito cadastrado.';
+    }
+    cardsAlvo = cards.filter((c) => c.name === nomeCard);
+  }
+
+  /* Sem cartão cadastrado, preserva a consulta de crédito antiga. Com cartão,
+     o padrão é a fatura em aberto de cada cartão. mes/ano indicam o mês
+     em que a fatura fecha; só uma janela móvel/exata continua sendo civil. */
+  if (!cards.length) {
+    const periodo = resolverPeriodo(args);
+    if ('erro' in periodo) return periodo.erro;
+    const q = supabase
+      .from('transactions')
+      .select('amount, category')
+      .eq('user_id', userId)
+      .eq('type', 'out')
+      .eq('payment_method', 'credit')
+      .gte('occurred_on', periodo.inicio)
+      .lte('occurred_on', periodo.fim);
+    const { data, error } = await q;
+    if (error) throw error;
+    const linhas = (data ?? []) as Array<{ amount: number; category: string }>;
+    const filtradas = categoriaCasada ? linhas.filter((l) => l.category === categoriaCasada) : linhas;
+    const total = filtradas.reduce((soma, linha) => soma + Number(linha.amount), 0);
+    return 'O usuário gastou R$ ' + formatarBRL(total) + ' no crédito' +
+      (categoriaCasada ? ' em ' + categoriaCasada : '') + '. Período consultado: ' + periodo.rotulo + '. Cite esse período na resposta.';
+  }
+
+  const usarCiclo = !periodoExplicito(args);
+  let periodos: Array<{ card: CartaoAssistente; periodo: Periodo }>;
+  if (usarCiclo) {
+    const resolvidos = cardsAlvo.map((card) => ({ card, periodo: periodoDaFatura(args, Number(card.closing_day)) }));
+    const erroPeriodo = resolvidos.find((item) => 'erro' in item.periodo);
+    if (erroPeriodo && 'erro' in erroPeriodo.periodo) return erroPeriodo.periodo.erro;
+    periodos = resolvidos as Array<{ card: CartaoAssistente; periodo: Periodo }>;
+  } else {
+    const periodo = resolverPeriodo(args);
+    if ('erro' in periodo) return periodo.erro;
+    periodos = cardsAlvo.map((card) => ({ card, periodo }));
+  }
+
+  const amplo = intervaloMaisAmplo(periodos.map((item) => item.periodo));
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('amount, card_id, category, occurred_on')
+    .eq('user_id', userId)
+    .eq('type', 'out')
+    .eq('payment_method', 'credit')
+    .gte('occurred_on', amplo.inicio)
+    .lte('occurred_on', amplo.fim);
+  if (error) throw error;
+
+  let linhas = (data ?? []) as Array<{ amount: number; card_id: string | null; category: string; occurred_on: string }>;
+  if (categoriaCasada) linhas = linhas.filter((linha) => linha.category === categoriaCasada);
+  const somaDoCartao = (card: CartaoAssistente, periodo: Periodo) =>
+    linhas
+      .filter((linha) => {
+        const pertence = linha.card_id === card.id || (linha.card_id === null && cards.length === 1);
+        return pertence && linha.occurred_on >= periodo.inicio && linha.occurred_on <= periodo.fim;
+      })
+      .reduce((soma, linha) => soma + Number(linha.amount), 0);
+
+  const totais = periodos.map(({ card, periodo }) => ({ card, periodo, total: somaDoCartao(card, periodo) }));
+  const totalCartoes = totais.reduce((soma, item) => soma + item.total, 0);
+  const textoCategoria = categoriaCasada ? ' em ' + categoriaCasada : '';
+  if (cartaoPedida || cardsAlvo.length === 1) {
+    const item = totais[0];
+    return 'O usuário gastou R$ ' + formatarBRL(item.total) + textoCategoria + ' na fatura do cartão ' + item.card.name + '. ' +
+      'Período consultado: ' + item.periodo.rotulo + '. Cite o ciclo da fatura na resposta.';
+  }
+
+  const idsConhecidos = new Set(cards.map((card) => card.id));
+  const semCartao = linhas
+    .filter((linha) => !linha.card_id || !idsConhecidos.has(linha.card_id))
+    .reduce((soma, linha) => soma + Number(linha.amount), 0);
+  const detalhes = totais.map((item) =>
+    '- ' + item.card.name + ': R$ ' + formatarBRL(item.total) + ' (' + item.periodo.rotulo + ')'
+  );
+  if (semCartao > 0) detalhes.push('- Sem cartão vinculado: R$ ' + formatarBRL(semCartao) + ' (ciclo indeterminado)');
+  const total = totalCartoes + semCartao;
+  return 'Gastos' + textoCategoria + ' nas faturas dos cartões: R$ ' + formatarBRL(total) + ' no total.\n' +
+    detalhes.join('\n') + '\nCada cartão está separado pelo próprio ciclo de fechamento; cite os intervalos na resposta.';
+}
+
 async function executarFerramenta(
   nome: string,
   args: Record<string, unknown>,
@@ -591,6 +791,12 @@ async function executarFerramenta(
   usuario: UsuarioAutenticado
 ): Promise<string> {
   const userId = usuario.id;
+  if (nome === 'consultarLancamentos' && args.fatura === true) {
+    /* Evita que uma escolha genérica do modelo volte a interpretar fatura
+       como mês civil. A ferramenta especializada é a única fonte de números
+       para esse recorte. */
+    return await executarResumoCredito(args as ArgsPeriodo, supabase, userId);
+  }
   /* `livreParaGastar` é a única que IGNORA o período pedido: ela projeta o
      que ainda dá pra gastar nos dias que faltam, e essa pergunta não existe
      pra um mês já fechado. "Quanto sobrou em maio" é `resumoMes`. */
@@ -829,6 +1035,71 @@ async function executarFerramenta(
           : 'O usuário ainda não tem nenhuma categoria cadastrada.';
       }
 
+      /* Quando a pergunta fala de fatura/cartão, "mês" é o mês de
+         fechamento da fatura. O modelo pode escolher esta ferramenta por
+         causa do filtro de categoria; por isso o ciclo também é aplicado
+         aqui, e não só em resumoCredito. */
+      const pediuCartao = String(args.cartao ?? '').trim();
+      const usarCiclo = args.fatura === true || Boolean(pediuCartao);
+      if (usarCiclo && !periodoExplicito(args as ArgsPeriodo)) {
+        const { data: cardsData, error: erroCards } = await supabase
+          .from('credit_cards')
+          .select('id, name, limit_amount, closing_day, due_day')
+          .eq('user_id', userId);
+        if (erroCards) throw erroCards;
+        const cards = (cardsData ?? []) as CartaoAssistente[];
+        if (!cards.length) return 'O usuário não tem nenhum cartão de crédito cadastrado.';
+
+        let cardsAlvo = cards;
+        if (pediuCartao) {
+          const nomeCard = await casarNomeComMemoria(supabase, userId, 'cartao', cards.map((c) => c.name), pediuCartao);
+          if (!nomeCard) {
+            return 'Não existe cartão chamado "' + pediuCartao + '". Os cartões do usuário são: ' + cards.map((c) => c.name).join(', ') + '.';
+          }
+          cardsAlvo = cards.filter((c) => c.name === nomeCard);
+        }
+
+        const periodosFatura = cardsAlvo.map((card) => ({
+          card,
+          periodo: periodoDaFatura(args as ArgsPeriodo, Number(card.closing_day)),
+        }));
+        const erroPeriodo = periodosFatura.find((item) => 'erro' in item.periodo);
+        if (erroPeriodo && 'erro' in erroPeriodo.periodo) return erroPeriodo.periodo.erro;
+        const periodosValidos = periodosFatura as Array<{ card: CartaoAssistente; periodo: Periodo }>;
+        const amplo = intervaloMaisAmplo(periodosValidos.map((item) => item.periodo));
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('amount, card_id, occurred_on')
+          .eq('user_id', userId)
+          .eq('type', 'out')
+          .eq('payment_method', 'credit')
+          .gte('occurred_on', amplo.inicio)
+          .lte('occurred_on', amplo.fim)
+          .eq('category', casada);
+        if (error) throw error;
+
+        const linhas = (data ?? []) as Array<{ amount: number; card_id: string | null; occurred_on: string }>;
+        const somaDo = (card: CartaoAssistente, periodo: Periodo) =>
+          linhas
+            .filter((linha) => {
+              const pertenceAoCartao = linha.card_id === card.id || (linha.card_id === null && cards.length === 1);
+              return pertenceAoCartao && linha.occurred_on >= periodo.inicio && linha.occurred_on <= periodo.fim;
+            })
+            .reduce((soma, linha) => soma + Number(linha.amount), 0);
+
+        const detalhes = periodosValidos.map(({ card, periodo }) =>
+          '- ' + card.name + ': R$ ' + formatarBRL(somaDo(card, periodo)) + ' (' + periodo.rotulo + ')'
+        );
+        const total = periodosValidos.reduce((soma, { card, periodo }) => soma + somaDo(card, periodo), 0);
+        if (pediuCartao || cardsAlvo.length === 1) {
+          const item = periodosValidos[0];
+          return 'O usuário gastou R$ ' + formatarBRL(total) + ' em ' + casada + ' na fatura do cartão ' + item.card.name + '. ' +
+            'Período consultado: ' + item.periodo.rotulo + '. Cite o ciclo da fatura na resposta.';
+        }
+        return 'Gasto em ' + casada + ' nas faturas dos cartões: R$ ' + formatarBRL(total) + ' no total.\n' +
+          detalhes.join('\n') + ' Cite o ciclo de cada fatura na resposta.';
+      }
+
       const { data, error } = await supabase
         .from('transactions')
         .select('amount')
@@ -866,6 +1137,8 @@ async function executarFerramenta(
     }
 
     case 'resumoCredito': {
+      return await executarResumoCredito(args as ArgsPeriodo, supabase, userId);
+
       const [cartoes, gastosResult] = await Promise.all([
         supabase
           .from('credit_cards')
@@ -1328,6 +1601,24 @@ async function executarFerramenta(
        salvo em assistant_messages.ferramenta_usada pelo fluxo principal,
        sem precisar de tabela nova — é a lacuna aparecendo sozinha pelo uso
        real, sem o autor precisar perceber e avisar. */
+    case 'lembrarPreferencia': {
+      const chaveCrua = String(args.chave ?? '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+      const preferencia = String(args.preferencia ?? '').trim().slice(0, 500);
+      if (!chaveCrua || !preferencia) return 'Faltou o nome ou o texto da preferência. Não gravei nada.';
+      try {
+        await supabase.rpc('registrar_memoria_assistente', {
+          p_user_id: userId,
+          p_tipo: 'fato',
+          p_chave: 'preferencia:' + chaveCrua.slice(0, 80),
+          p_valor: preferencia,
+        });
+      } catch (e) {
+        console.error('[assistente-financeiro] erro ao guardar preferência:', e);
+        return 'Não consegui guardar essa preferência agora, mas vou seguir a correção nesta conversa.';
+      }
+      return 'Preferência guardada: "' + preferencia + '". Diga ao usuário que você vai seguir esse formato daqui para frente.';
+    }
+
     case 'naoConsegui': {
       const motivo = String(args.motivo ?? 'motivo não informado').trim();
       return `Diga ao usuário, com gentileza, que você ainda não consegue responder isso. ` +
@@ -1384,10 +1675,11 @@ async function executarFerramenta(
 type MemoriaAssistente = {
   vocabulario: Array<{ chave: string; valor: string }>;
   fatos: Array<{ chave: string; valor: string }>;
+  preferencias: Array<{ chave: string; valor: string }>;
   exemplos: Array<{ chave: string; valor: string; usos: number }>;
 };
 
-const MEMORIA_VAZIA: MemoriaAssistente = { vocabulario: [], fatos: [], exemplos: [] };
+const MEMORIA_VAZIA: MemoriaAssistente = { vocabulario: [], fatos: [], preferencias: [], exemplos: [] };
 
 /**
  * Busca a memória aprendida deste usuário. Tetos rígidos (20 vocabulário,
@@ -1413,9 +1705,13 @@ async function carregarMemoria(supabase: SupabaseClient, userId: string, mensage
         .limit(10),
       supabase.rpc('buscar_exemplos_similares', { p_user_id: userId, p_pergunta: mensagem, p_limite: 5 }),
     ]);
+    const fatos = (fatosResult.data ?? []) as MemoriaAssistente['fatos'];
     return {
       vocabulario: (vocabResult.data ?? []) as MemoriaAssistente['vocabulario'],
-      fatos: (fatosResult.data ?? []) as MemoriaAssistente['fatos'],
+      fatos: fatos.filter((fato) => !fato.chave.startsWith('preferencia:')),
+      preferencias: fatos
+        .filter((fato) => fato.chave.startsWith('preferencia:'))
+        .slice(0, 10),
       exemplos: (exemplosResult.data ?? []) as MemoriaAssistente['exemplos'],
     };
   } catch (e) {
@@ -1452,14 +1748,23 @@ function montarSystemPrompt(memoria: MemoriaAssistente = MEMORIA_VAZIA): string 
       memoria.fatos.map((f) => `- ${f.valor}`).join('\n')
     : '';
 
-  const blocoExemplos = memoria.exemplos.length
+  const blocoPreferencias = memoria.preferencias.length
+    ? '\n\nPreferências de resposta que este usuário pediu (siga sem deixar de consultar os dados reais):\n' +
+      memoria.preferencias.map((p) => '- ' + p.valor).join('\n')
+    : '';
+
+  const blocoExemplosBase = memoria.exemplos.length
     ? `\n\nPerguntas parecidas que este usuário já fez antes, e como foram resolvidas (para o mesmo padrão de pergunta, prefira a mesma ferramenta e os mesmos argumentos):\n` +
       memoria.exemplos.map((e) => `- Pergunta: "${e.chave}" → ${e.valor}`).join('\n')
     : '';
 
+  const blocoExemplos = blocoPreferencias + blocoExemplosBase;
+
   return `Você é o Granabô, o assistente financeiro do app Grana.
 
 Hoje é ${porExtenso} (${iso(hoje)}). Use esta data para resolver períodos relativos como "mês passado", "nos últimos 15 dias", "este ano".${blocoVocabulario}${blocoFatos}${blocoExemplos}
+
+${REGRAS_PRIORITARIAS}
 
 Regras invioláveis:
 1. NUNCA invente um valor em reais. Todo número financeiro que você mencionar DEVE ter vindo do resultado de uma ferramenta.
@@ -1476,6 +1781,24 @@ Regras invioláveis:
 12. Se o usuário afirmar algo factual sobre a própria vida financeira (não uma pergunta), use lembrarFato pra guardar, além de responder normalmente.
 13. O casamento automático de categoria/cartão/carteira só reconhece nomes parecidos por trecho de texto — nunca um sinônimo de verdade ("comida" não é trecho de "Alimentação"). Quando o usuário usar um termo assim e você já souber (nesta conversa, ou por ser um sinônimo óbvio) a qual categoria/cartão/carteira real ele se refere, use ensinarApelido pra guardar essa correspondência.`;
 }
+
+function inferirPreferenciaFatura(
+  mensagem: string,
+  historico: Array<{ papel: string; texto: string }> | undefined,
+): string | null {
+  const contexto = [mensagem, ...(historico ?? []).map((item) => String(item?.texto ?? ''))].join(' ');
+  const normalizado = normalizar(contexto);
+  const pediuAprendizado = /\b(aprenda|aprender|guarde|guardar|lembre|lembrar|formule|formular|da proxima vez|responda assim)\b/.test(normalizado);
+  const falouDeFatura = /\b(fatura|cartao|mes civil|mes calendario|gasto total)\b/.test(normalizado);
+  if (!pediuAprendizado || !falouDeFatura) return null;
+  return 'Quando eu perguntar sobre cartão ou fatura, consulte o ciclo real da fatura (data de fechamento), nunca o mês civil; responda o total da fatura e, quando eu indicar uma categoria, filtre somente os lançamentos desse ciclo.';
+}
+
+const REGRAS_PRIORITARIAS =
+  'Regra prioritária: fatura e cartão sempre significam o ciclo de fechamento do próprio cartão, nunca o mês civil. ' +
+  'Use resumoCredito para a fatura; para uma categoria dentro dela, passe categoria nessa ferramenta ou use gastoPorCategoria com fatura=true. ' +
+  'Se o usuário pedir para aprender, guardar, lembrar ou corrigir a formulação, chame lembrarPreferencia e siga a regra ensinada. ' +
+  'Nunca responda com o total do mês civil quando a pergunta pedir a fatura.';
 
 /* ── Handler principal ───────────────────────────────────────────────────── */
 
@@ -1527,6 +1850,25 @@ Deno.serve(async (req) => {
     const mensagem = (body.mensagem ?? '').trim();
     if (!mensagem) return erro('mensagem_vazia', 400);
 
+    /* Uma correção explícita feita no próprio chat também vira memória
+       persistente. O LLM continua podendo guardar preferências específicas
+       com lembrarPreferencia; esta inferência cobre a regra de fatura que o
+       usuário já ensinou no histórico, mesmo quando ele não repete o formato
+       esperado da ferramenta. Falha de memória nunca bloqueia a resposta. */
+    const preferenciaInferida = inferirPreferenciaFatura(mensagem, body.historico);
+    if (preferenciaInferida) {
+      try {
+        await supabase.rpc('registrar_memoria_assistente', {
+          p_user_id: userId,
+          p_tipo: 'fato',
+          p_chave: 'preferencia:ciclo_fatura',
+          p_valor: preferenciaInferida,
+        });
+      } catch (e) {
+        console.error('[assistente-financeiro] erro ao guardar preferência inferida:', e);
+      }
+    }
+
     if (!GEMINI_API_KEY) {
       console.error('[assistente-financeiro] GEMINI_API_KEY não configurada');
       return erro('sem_provedor', 503, 'Não consegui pensar nisso agora. Tenta de novo em instantes.');
@@ -1534,7 +1876,10 @@ Deno.serve(async (req) => {
 
     /* ── Montar mensagens para o LLM ─────────────────────────────────── */
     const memoria = await carregarMemoria(supabase, userId, mensagem);
-    const messages: { role: string; content: string }[] = [{ role: 'system', content: montarSystemPrompt(memoria) }];
+    const messages: { role: string; content: string }[] = [{
+      role: 'system',
+      content: montarSystemPrompt(memoria),
+    }];
 
     // Incluir histórico recente se fornecido (últimas mensagens para contexto)
     if (body.historico && Array.isArray(body.historico)) {
@@ -1592,7 +1937,7 @@ Deno.serve(async (req) => {
          naoConsegui/lembrarFato ficam de fora — são meta-ferramentas, não
          respondem pergunta financeira nenhuma, não fazem sentido como
          exemplo de "como resolver esta pergunta". */
-      const METAFERRAMENTAS = new Set(['naoConsegui', 'lembrarFato', 'ensinarApelido']);
+      const METAFERRAMENTAS = new Set(['naoConsegui', 'lembrarFato', 'lembrarPreferencia', 'ensinarApelido']);
       let ultimaFerramentaBemSucedida: { nome: string; args: Record<string, unknown> } | null = null;
 
       for (const toolCall of choice.tool_calls) {
