@@ -3007,3 +3007,21 @@ foi usado somente no processo de publicação e não foi salvo no projeto.
 - Verificação: `tsc --noEmit` passou e o corpus isolado do ciclo passou 4/4.
   A Edge Function ainda precisa ser publicada quando o autor autorizar; nenhum
   deploy ou build EAS foi disparado nesta sessão.
+
+## Sessão de 06/09/2026 — continuidade natural do Granabô
+
+- O fluxo de continuação curta foi reforçado em
+  `supabase/functions/assistente-financeiro/index.ts`: quando a mensagem atual
+  diz "fatura/ciclo atual" e o histórico contém a pergunta anterior sobre
+  cartão/fatura, a intenção anterior é reapresentada ao modelo mantendo
+  cartão, categoria e filtros e trocando apenas o ciclo.
+- Se a segunda chamada do modelo voltar sem conteúdo depois de uma ferramenta
+  consultar os dados, a resposta usa o resultado real da ferramenta como
+  fallback; o Granabô não descarta uma consulta válida nem mostra uma desculpa
+  genérica.
+- A pergunta original continua sendo salva no histórico; o texto enriquecido
+  é apenas interno ao ciclo de tool calling.
+- `git fetch origin` não pôde completar por indisponibilidade de rede; o ramo
+  local está 7 commits à frente de `origin/main`. A alteração está local e
+  ainda precisa de validação/publicação quando a rede e a autorização de push
+  estiverem disponíveis.

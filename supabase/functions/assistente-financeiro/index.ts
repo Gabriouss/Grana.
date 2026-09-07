@@ -1795,6 +1795,37 @@ function inferirPreferenciaFatura(
   return 'Quando eu perguntar sobre cartão ou fatura, consulte o ciclo real da fatura (data de fechamento), nunca o mês civil; responda o total da fatura e, quando eu indicar uma categoria, filtre somente os lançamentos desse ciclo.';
 }
 
+/**
+ * Perguntas de continuação costumam ser curtas demais para o modelo escolher
+ * a ferramenta com segurança (ex.: "E na fatura atual?"). O histórico já
+ * contém a pergunta completa; neste caso repetimos a intenção explicitamente
+ * para que a segunda chamada não dependa de memória implícita do modelo.
+ * A mensagem original continua sendo a chave do histórico e da memória.
+ */
+function enriquecerContinuidadeFatura(
+  mensagem: string,
+  historico: Array<{ papel: string; texto: string }> | undefined,
+): string {
+  const normalizado = normalizar(mensagem);
+  const eContinuidade = /\b(fatura|ciclo)\b/.test(normalizado) &&
+    /\b(atual|nessa|nesta|essa)\b/.test(normalizado);
+  if (!eContinuidade || !historico?.length) return mensagem;
+
+  const perguntaAnterior = [...historico]
+    .reverse()
+    .find((item) => item?.papel === 'usuario' &&
+      /\b(fatura|ciclo|cartao|credito)\b/i.test(String(item.texto ?? '')));
+  if (!perguntaAnterior?.texto) return mensagem;
+
+  const intencaoAnterior = String(perguntaAnterior.texto)
+    .replace(/\b(passada|anterior|ultima)\b/gi, 'atual');
+
+  return `${mensagem}\n\n[CONTINUAÇÃO DA CONVERSA — instrução determinística]\n` +
+    `A pergunta atual é uma continuação da intenção: "${intencaoAnterior}". ` +
+    `Mantenha o mesmo cartão e a mesma categoria/filtros, alterando somente o período para a fatura atual. ` +
+    `Consulte o ciclo real da fatura com resumoCredito; não use mês civil e não responda com naoConsegui.`;
+}
+
 const REGRAS_PRIORITARIAS =
   'Regra prioritária: qualquer menção a cartão, cartão de crédito, crédito ou compra no cartão significa o ciclo de fechamento da fatura do próprio cartão, mesmo quando o usuário usar a palavra de forma imprecisa; nunca interprete isso como mês civil. ' +
   'Use resumoCredito para a fatura; para uma categoria dentro dela, passe categoria nessa ferramenta ou use gastoPorCategoria com fatura=true. ' +
@@ -1878,6 +1909,7 @@ Deno.serve(async (req) => {
 
     /* ── Montar mensagens para o LLM ─────────────────────────────────── */
     const memoria = await carregarMemoria(supabase, userId, mensagem);
+    const mensagemParaLLM = enriquecerContinuidadeFatura(mensagem, body.historico);
     const messages: { role: string; content: string }[] = [{
       role: 'system',
       content: montarSystemPrompt(memoria),
@@ -1893,7 +1925,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    messages.push({ role: 'user', content: mensagem });
+    messages.push({ role: 'user', content: mensagemParaLLM });
 
     /* ── Primeira chamada: LLM decide se usa ferramenta ──────────────── */
     // `model` não entra aqui — chamarLLMComRetry() escolhe o modelo (ver comentário lá).
@@ -2006,7 +2038,18 @@ Deno.serve(async (req) => {
       }
 
       const followUpJson = await followUpRes.json();
-      respostaFinal = followUpJson.choices?.[0]?.message?.content ?? 'Desculpa, não consegui formular uma resposta.';
+      const textoFollowUp = String(followUpJson.choices?.[0]?.message?.content ?? '').trim();
+      if (textoFollowUp) {
+        respostaFinal = textoFollowUp;
+      } else {
+        /* O número já veio da ferramenta. Nunca descarte uma consulta válida
+           só porque o modelo não devolveu texto na etapa de redação. */
+        const resultados = toolMessages
+          .filter((item) => item.role === 'tool')
+          .map((item) => item.content.trim())
+          .filter(Boolean);
+        respostaFinal = resultados.at(-1) ?? 'Não consegui formular uma resposta agora. Tente novamente.';
+      }
     }
 
     /* ── Salvar pergunta e resposta no histórico ──────────────────────── */
