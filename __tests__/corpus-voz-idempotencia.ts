@@ -23,7 +23,9 @@ function checar(nome: string, condicao: boolean) {
 }
 
 checar('a tarefa exige requestId antes de transcrever', /if \(!requestId\) throw/.test(task));
-checar('o requestId chega ao processamento financeiro', /processar\(caminho, requestId\)/.test(task));
+// Aceita argumentos extras depois do requestId (o `contexto` entrou em 81758a6):
+// a guarda existe para o requestId chegar ao processamento, não para fixar a aridade.
+checar('o requestId chega ao processamento financeiro', /processar\(caminho, requestId[,)]/.test(task));
 checar('nenhuma escrita financeira da voz usa insert direto do cliente',
   !/data\.add(?:Bill|Transaction|InstallmentPurchase)\(/.test(task));
 checar('conta, transação e parcelamento usam a RPC idempotente',

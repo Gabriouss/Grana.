@@ -12,7 +12,7 @@ function carregar(file, deps) {
 }
 (async () => {
   const storage = new Map();
-  let usuario = 'a', offline = true, envios = [];
+  let usuario = 'a', offline = true, envios = [], erroRpc = null;
   const operacoes = carregar('lib/voice-operations.ts', {
     '@react-native-async-storage/async-storage': { __esModule: true, default: {
       getItem: async k => storage.get(k) ?? null,
@@ -25,6 +25,7 @@ function carregar(file, deps) {
     './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: usuario } } } }) },
       rpc: (_, args) => ({ abortSignal: async () => {
         envios.push(args);
+        if (erroRpc) return { error: erroRpc };
         if (offline) return { error: { message: 'Network request failed' } };
         return { data: { status: 'committed', operation_id: args.p_request_id, ids: ['tx'], replayed: false } };
       } }),
@@ -56,6 +57,17 @@ function carregar(file, deps) {
   assert.equal(resumo.falhas, 1, 'item corrompido permanece recuperável');
   assert.equal(storage.size, 1, 'só remove operações confirmadas');
   assert.ok(!resumo.mensagem.includes('conexão'), 'erro local não é apresentado como falta de internet');
+
+  // Regressão de 07/09/2026: a RPC não existia em produção e o PGRST202 era
+  // exibido como "continua salvo no aparelho", indistinguível de espera de rede.
+  storage.clear();
+  erroRpc = { code: 'PGRST202', message: 'Could not find the function public.registrar_operacao_voz' };
+  assert.equal((await operacoes.registrarOperacaoVoz('id4', 'widget', payload)).status, 'pending');
+  const permanente = await operacoes.sincronizarOperacoesVoz();
+  assert.match(permanente.mensagem, /não se resolve sozinho/, 'objeto ausente no servidor não é fila de espera');
+  assert.ok(!permanente.mensagem.includes('conexão'), 'RPC ausente não é apresentada como falta de internet');
+  assert.equal(storage.size, 1, 'falha permanente não descarta o lançamento');
+  erroRpc = null;
   storage.clear();
 
   const listeners = new Map();

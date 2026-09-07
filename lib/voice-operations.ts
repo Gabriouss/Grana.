@@ -88,6 +88,34 @@ export async function registrarOperacaoVoz(
   }
 }
 
+/**
+ * Traduz a falha de envio na frase que a pessoa lê.
+ *
+ * A distinção que importa é entre "espere" e "isto não vai se resolver
+ * sozinho". Em 07/09/2026 a migration das operações de voz não estava
+ * aplicada em produção: a RPC não existia, o PostgREST devolvia `PGRST202` a
+ * cada tentativa, e como esse caso caía no texto genérico de "continua salvo
+ * no aparelho", uma feature inteira fora do ar ficou dois dias parecendo
+ * instabilidade de rede. Objeto ausente no servidor não é fila de espera — é
+ * chamado para o suporte.
+ */
+function explicarFalhaDeEnvio(erro: unknown): string {
+  const codigo = String((erro as { code?: string })?.code ?? '');
+  const texto = String((erro as { message?: string })?.message ?? erro);
+  // PGRST202/PGRST205: função ou tabela fora do cache de esquema.
+  // 42883/42P01: os equivalentes do próprio Postgres.
+  if (/^(PGRST202|PGRST205|42883|42P01)/.test(codigo)) {
+    return 'O serviço não reconhece o lançamento por voz. Nada foi perdido, mas isso não se resolve sozinho: avise o suporte.';
+  }
+  if (/^(42501|PGRST30)/.test(codigo)) {
+    return 'Não foi possível autorizar o envio. Confira sua sessão e o acesso à conta.';
+  }
+  if (/network|failed to fetch|fetch failed|socket|dns/i.test(texto)) {
+    return 'Sem conexão com o serviço. O lançamento continua salvo no aparelho.';
+  }
+  return 'O serviço não confirmou o lançamento. Ele continua salvo no aparelho.';
+}
+
 type ResumoSync = { sincronizadas: number; falhas: number; mensagem?: string };
 let sincronizacao: Promise<ResumoSync> | null = null;
 export function sincronizarOperacoesVoz(): Promise<ResumoSync> {
@@ -116,13 +144,7 @@ async function executarSincronizacao(): Promise<ResumoSync> {
       } catch (erro) {
         // Uma operação inválida não pode impedir as demais de serem tentadas.
         falhas++;
-        const codigo = String((erro as { code?: string })?.code ?? '');
-        const texto = String((erro as { message?: string })?.message ?? erro);
-        mensagem = /^(42501|PGRST30)/.test(codigo)
-          ? 'Não foi possível autorizar o envio. Confira sua sessão e o acesso à conta.'
-          : /network|failed to fetch|fetch failed|socket|dns/i.test(texto)
-            ? 'Sem conexão com o serviço. O lançamento continua salvo no aparelho.'
-            : 'O serviço não confirmou o lançamento. Ele continua salvo no aparelho.';
+        mensagem = explicarFalhaDeEnvio(erro);
       }
     }
   return { sincronizadas, falhas, mensagem };
