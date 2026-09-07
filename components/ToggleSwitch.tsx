@@ -19,19 +19,23 @@ export default function ToggleSwitch({
   label?: string;
 }) {
   if (Platform.OS !== 'web') {
-    return (
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        accessibilityLabel={label}
-        trackColor={{ false: theme.ruleStrong, true: theme.accent }}
-        thumbColor={value ? theme.accent2 : theme.inkSoft}
-        ios_backgroundColor={theme.ruleStrong}
-      />
-    );
+    return <NativeToggleSwitch value={value} onToggle={onToggle} label={label} />;
   }
 
   return <WebToggleSwitch value={value} onToggle={onToggle} hitSlop={hitSlop} label={label} />;
+}
+
+function NativeToggleSwitch({ value, onToggle, label }: { value: boolean; onToggle: () => void; label?: string }) {
+  return (
+    <Switch
+      value={value}
+      onValueChange={onToggle}
+      accessibilityLabel={label}
+      trackColor={{ false: theme.ruleStrong, true: theme.accent }}
+      thumbColor={value ? theme.accent2 : theme.inkSoft}
+      ios_backgroundColor={theme.ruleStrong}
+    />
+  );
 }
 
 function WebToggleSwitch({

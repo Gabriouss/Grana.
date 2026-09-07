@@ -71,7 +71,8 @@ export type RespostaAssistente = {
  */
 export async function enviarPergunta(
   mensagem: string,
-  historico: { papel: string; texto: string }[] = []
+  historico: { papel: string; texto: string }[] = [],
+  signal?: AbortSignal,
 ): Promise<RespostaAssistente> {
   const {
     data: { session },
@@ -90,6 +91,7 @@ export async function enviarPergunta(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ mensagem, historico }),
+    signal,
   });
 
   if (!res.ok) {

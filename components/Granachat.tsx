@@ -185,6 +185,14 @@ export default function Granachat({
   const [carregando, setCarregando] = useState(true);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+  const requisicaoRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => requisicaoRef.current?.abort(), []);
+
+  const fechar = useCallback(() => {
+    requisicaoRef.current?.abort();
+    onFechar();
+  }, [onFechar]);
 
   /* ── Carregar histórico ao abrir ──────────────────────────────────── */
   useEffect(() => {
@@ -271,6 +279,9 @@ export default function Granachat({
 
     setMensagens((prev) => [...prev, novaPergunta, placeholderResposta]);
     setEnviando(true);
+    const controller = new AbortController();
+    requisicaoRef.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 35_000);
 
     try {
       // Monta histórico recente para contexto
@@ -279,7 +290,7 @@ export default function Granachat({
         .slice(-10)
         .map((m) => ({ papel: m.papel, texto: m.texto }));
 
-      const resultado = await enviarPergunta(pergunta, historicoParaEnviar);
+      const resultado = await enviarPergunta(pergunta, historicoParaEnviar, controller.signal);
 
       setMensagens((prev) =>
         prev.map((m) =>
@@ -294,7 +305,9 @@ export default function Granachat({
         )
       );
     } catch (err) {
-      const mensagemErro = err instanceof Error ? err.message : 'Algo deu errado. Tenta de novo.';
+      const mensagemErro = controller.signal.aborted
+        ? 'A consulta demorou demais ou foi cancelada. Tente novamente.'
+        : err instanceof Error ? err.message : 'Algo deu errado. Tenta de novo.';
       setMensagens((prev) =>
         prev.map((m) =>
           m.id === idResposta
@@ -308,6 +321,8 @@ export default function Granachat({
         )
       );
     } finally {
+      clearTimeout(timeout);
+      requisicaoRef.current = null;
       setEnviando(false);
       /* Tocar no botão de enviar desfoca o campo no Android (é um Pressable
          fora dele), e sem devolver o foco a pessoa precisa tocar de novo pra
@@ -315,6 +330,10 @@ export default function Granachat({
       inputRef.current?.focus();
     }
   }, [texto, enviando, mensagens]);
+
+  const cancelarEnvio = useCallback(() => {
+    requisicaoRef.current?.abort();
+  }, []);
 
   /* ── Render de cada mensagem ──────────────────────────────────────── */
   const renderMensagem = useCallback(({ item }: { item: MensagemLocal }) => {
@@ -399,7 +418,7 @@ export default function Granachat({
        Mesmo truque que `components/Sheet.tsx` já usa. */
     <Pressable
       style={[styles.fundo, { paddingTop: insets.top, paddingBottom: recuoPainel }]}
-      onPress={onFechar}
+      onPress={fechar}
       accessible={false}
     >
       {/* Desfoque do que está atrás. Na web é `backdrop-filter`, que é barato
@@ -442,7 +461,7 @@ export default function Granachat({
             <Text style={styles.cabecalhoTitulo} numberOfLines={1}>Granabô</Text>
           </View>
           <AppPressable
-            onPress={onFechar}
+            onPress={fechar}
             style={styles.botaoFechar}
             accessibilityLabel="Fechar conversa"
             hitSlop={10}
@@ -499,13 +518,13 @@ export default function Granachat({
               onSubmitEditing={enviar}
             />
             <AppPressable
-              onPress={enviar}
+              onPress={enviando ? cancelarEnvio : enviar}
               style={[styles.botaoEnviar, (!texto.trim() || enviando) && styles.botaoEnviarDesabilitado]}
-              disabled={!texto.trim() || enviando}
-              accessibilityLabel="Enviar mensagem"
+              disabled={!enviando && !texto.trim()}
+              accessibilityLabel={enviando ? 'Cancelar consulta' : 'Enviar mensagem'}
             >
               {enviando ? (
-                <ActivityIndicator size="small" color={theme.paper} />
+                <Ionicons name="close" size={20} color={theme.paper} />
               ) : (
                 <Ionicons name="arrow-up" size={20} color={theme.paper} />
               )}
