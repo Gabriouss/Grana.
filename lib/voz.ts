@@ -63,28 +63,21 @@ function urlDaFuncao(): string | null {
   return `${base.replace(/\/+$/, '')}/functions/v1/processar-lancamento-voz`;
 }
 
+type ResultadoTentativa = ResultadoVoz | { ok: false; codigo: 'erro_interno'; ambiguo: true };
+
 /**
- * Sobe o arquivo gravado e devolve a transcrição.
- *
- * `tamanhoBytes` é opcional porque nem todo chamador sabe o tamanho de graça;
- * quando vem, a checagem acontece antes do upload.
+ * Uma rodada de upload + transcrição. Isolado do `transcreverAudio` porque
+ * o caso "resposta 200 mas corpo ilegível" (ver `ambiguo` abaixo) merece uma
+ * segunda tentativa antes de incomodar quem usa o app — mobile picando no
+ * meio da resposta corta o corpo sem derrubar o status HTTP, e os logs de
+ * produção já confirmaram a função respondendo certo nesses casos.
  */
-export async function transcreverAudio(
+async function tentarUmaVez(
+  url: string,
+  token: string,
   uri: string,
-  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number } = {}
-): Promise<ResultadoVoz> {
-  const url = urlDaFuncao();
-  if (!url) return { ok: false, codigo: 'erro_interno' };
-
-  if (opts.tamanhoBytes !== undefined && opts.tamanhoBytes > MAX_AUDIO_BYTES) {
-    return { ok: false, codigo: 'audio_grande' };
-  }
-  if (opts.tamanhoBytes === 0) return { ok: false, codigo: 'audio_ausente' };
-
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) return { ok: false, codigo: 'sem_sessao' };
-
+  opts: { mimeType?: string; nomeArquivo?: string }
+): Promise<ResultadoTentativa> {
   const nomeArquivo = opts.nomeArquivo ?? (Platform.OS === 'web' ? 'lancamento.webm' : 'lancamento.m4a');
 
   const form = new FormData();
@@ -160,12 +153,49 @@ export async function transcreverAudio(
     /* 401 sem corpo reconhecível ainda é sessão: o gateway do Supabase recusa
        antes da função rodar quando o JWT expirou. */
     if (resposta.status === 401) return { ok: false, codigo: 'nao_autenticado' };
+    /* Resposta 200 (a função rodou e respondeu certo) mas corpo ilegível ou
+       sem o campo esperado — nem `code` reconhecível, nem 401. Nenhum dos
+       dois provou que o pedido em si era ruim (audio_ausente/audio_grande/
+       formato_invalido teriam vindo com `code`), então vale tentar de novo
+       em vez de já desistir. */
+    if (resposta.ok) return { ok: false, codigo: 'erro_interno', ambiguo: true };
     return { ok: false, codigo: 'erro_interno' };
   }
 
   const transcript = typeof corpo.transcript === 'string' ? corpo.transcript.trim() : '';
   if (!transcript) return { ok: false, codigo: 'nao_entendi' };
   return { ok: true, transcript };
+}
+
+/**
+ * Sobe o arquivo gravado e devolve a transcrição.
+ *
+ * `tamanhoBytes` é opcional porque nem todo chamador sabe o tamanho de graça;
+ * quando vem, a checagem acontece antes do upload.
+ */
+export async function transcreverAudio(
+  uri: string,
+  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number } = {}
+): Promise<ResultadoVoz> {
+  const url = urlDaFuncao();
+  if (!url) return { ok: false, codigo: 'erro_interno' };
+
+  if (opts.tamanhoBytes !== undefined && opts.tamanhoBytes > MAX_AUDIO_BYTES) {
+    return { ok: false, codigo: 'audio_grande' };
+  }
+  if (opts.tamanhoBytes === 0) return { ok: false, codigo: 'audio_ausente' };
+
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return { ok: false, codigo: 'sem_sessao' };
+
+  const primeira = await tentarUmaVez(url, token, uri, opts);
+  if (!('ambiguo' in primeira)) return primeira;
+
+  if (__DEV__) console.warn('[voz:diag] resposta ambigua, tentando de novo');
+  const segunda = await tentarUmaVez(url, token, uri, opts);
+  if ('ambiguo' in segunda) return { ok: false, codigo: 'erro_interno' };
+  return segunda;
 }
 
 /** Título e texto prontos pra um Alert ou pra uma notificação do widget. */
