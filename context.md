@@ -8,6 +8,12 @@
 
 ## Ordem das ações rápidas na Home — 07/09/2026
 
+O desktop continuava mostrando a ordem antiga porque o Metro não conseguia
+recompilar: `app/(app)/_layout.tsx` importava `lib/navegacao-nativa.ts`, mas o
+arquivo havia sido removido em um commit anterior. O arquivo foi restaurado,
+o servidor web foi reiniciado com cache limpo e a validação autenticada na
+Home confirmou: não há banner de APK no desktop e Voz é o primeiro botão.
+
 O botão de lançamento por voz foi movido para o primeiro filho da fileira de
 ações inteligentes em `app/(app)/index.tsx`. Como desktop e aplicativo usam a
 mesma tela, a ordem agora é Voz, Colar comprovante, Importar extrato e
