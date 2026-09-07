@@ -5,7 +5,7 @@ export const META = new Set(['naoConsegui', 'lembrarFato', 'lembrarPreferencia',
 const normalizar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 export function resultadoValido(texto: string): boolean {
-  return !!texto.trim() && !/(^erro|nao existe |nao consegui|nao deu|nao gravei|faltou|faltam|invalido|invalida|nao reconhecida|nao bate com|reformular|motivo interno)/.test(normalizar(texto));
+  return !!texto.trim() && !/(^erro|nao existe |nao tem nenhum|nao ha .*cadastrad|nao consegui|nao deu|nao gravei|faltou|faltam|invalido|invalida|nao reconhecida|nao bate com|reformular|motivo interno)/.test(normalizar(texto));
 }
 
 export function feedbackExplicito(texto: string): 'positivo' | 'negativo' | null {
@@ -22,6 +22,11 @@ function valores(texto: string): string[] {
 }
 
 export function respostaFundamentada(texto: string, registros: Registro[]): boolean {
+  // Uma consulta ampla bem-sucedida não resolve a ausência do cartão/categoria
+  // solicitado. Sem recuperação do filtro, nenhum valor pode ser apresentado.
+  const pendente = registros.some((r, i) => r.consulta && !r.ok &&
+    !registros.slice(i + 1).some((c) => c.consulta && c.ok && c.nome === r.nome));
+  if (pendente && valores(texto).length) return false;
   const permitidos = new Set(registros.filter((r) => r.ok && r.consulta).flatMap((r) => valores(r.resultado)));
   return valores(texto).every((valor) => permitidos.has(valor));
 }
@@ -36,12 +41,16 @@ export function exemploElegivel(texto: string, registros: Registro[]): boolean {
 
 export function fallbackSeguro(registros: Registro[]): string {
   const consultas = registros.filter((r) => r.consulta);
+  if (consultas.some((r) => /nao tem nenhum cartao/.test(normalizar(r.resultado)))) {
+    return 'Não encontrei nenhum cartão de crédito cadastrado na sua conta. Preciso do cartão cadastrado para consultar essa fatura.';
+  }
   if (!consultas.length || consultas.some((r) => !r.ok)) {
     return 'Não consegui concluir essa consulta. Pode confirmar o período e os filtros que deseja consultar?';
   }
-  return consultas.map((r) => r.resultado
+  return [...new Set(consultas.map((r) => r.resultado))].map((resultado) => resultado
     .replace(/O usuário gastou/g, 'Você gastou')
-    .replace(/\s*Cite[^.\n]*\./g, '')).join('\n\n');
+    .replace(/\s*Cite[^.\n]*\./g, '')
+    .replace(/\s*\(cite-os na resposta\)/g, '')).join('\n\n');
 }
 
 export type MensagemLLM = { role: string; content?: string | null; tool_call_id?: string; tool_calls?: any[] };
@@ -60,6 +69,7 @@ export async function conduzirConversa(options: {
   const messages = [...options.messages];
   const registros: Registro[] = [];
   const cache = new Map<string, Registro>();
+  const filtrosAtivos: Record<string, unknown> = {};
   for (let rodada = 0; rodada < 4; rodada++) {
     if (Date.now() >= (options.deadline ?? Infinity)) break;
     let choice: any;
@@ -95,6 +105,14 @@ export async function conduzirConversa(options: {
         const parsed = JSON.parse(call.function.arguments ?? '{}');
         if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error('Argumentos inválidos');
         args = parsed;
+        // Uma tentativa posterior só pode trocar os filtros, nunca omiti-los
+        // silenciosamente. Ferramenta sem capacidade de aplicá-los é recusada.
+        if (!META.has(nome)) {
+          for (const [key, value] of Object.entries(filtrosAtivos)) {
+            if (!schema.properties?.[key]) throw new Error('Ferramenta não suporta os filtros solicitados');
+            if (args[key] === undefined) args[key] = value;
+          }
+        }
         for (const required of schema.required ?? []) {
           if (args[required] === undefined) throw new Error('Argumento obrigatório ausente');
         }
@@ -102,6 +120,11 @@ export async function conduzirConversa(options: {
           const prop = schema.properties?.[key];
           if (!prop || typeof value !== prop.type || (prop.enum && !prop.enum.includes(value))) throw new Error('Argumento inválido');
           if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('Número inválido');
+        }
+        if (!META.has(nome)) {
+          for (const key of ['cartao', 'categoria', 'carteira', 'payment_method', 'fatura']) {
+            if (args[key] !== undefined && args[key] !== '') filtrosAtivos[key] = args[key];
+          }
         }
         const key = nome + ':' + JSON.stringify(Object.entries(args).sort(([a], [b]) => a.localeCompare(b)));
         const anterior = cache.get(key);

@@ -64,6 +64,19 @@ async function run(respostas, executar, customTools = tools) {
   await scenario('não vaza instruções internas do naoConsegui no fallback', async () => {
     assert.equal(fallbackSeguro([{ nome: 'naoConsegui', resultado: 'Motivo interno: segredo', ok: false, consulta: false, args: {} }]).includes('segredo'), false);
   });
+  await scenario('cartão ausente não autoriza responder com total de outros lançamentos', async () => {
+    const catalogo = [
+      { function: { name: 'credito', parameters: { properties: { cartao: { type: 'string' } } } } },
+      { function: { name: 'geral', parameters: { properties: {} } } },
+    ];
+    let consultasGerais = 0;
+    const r = await run([call('credito', { cartao: 'C6' }), call('geral', {}), { content: 'R$ 280,00' }, { content: 'R$ 280,00' }],
+      async (nome) => { if (nome === 'geral') consultasGerais++; return 'O usuário não tem nenhum cartão de crédito cadastrado.'; }, catalogo);
+    assert.equal(consultasGerais, 0);
+    assert.equal(r.resposta.includes('R$'), false);
+    assert.match(r.resposta, /Não encontrei nenhum cartão/);
+    assert.equal(exemploElegivel(r.resposta, r.registros), false);
+  });
   await scenario('rejeição tem precedência e confirmação precisa ser explícita', async () => {
     assert.equal(feedbackExplicito('Certo, mas está errado'), 'negativo');
     assert.equal(feedbackExplicito('Agora sim!'), 'positivo');

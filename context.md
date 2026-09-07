@@ -3052,3 +3052,24 @@ foi usado somente no processo de publicação e não foi salvo no projeto.
   fornecida com `LegacyInvalidAccessTokenError` (formato inválido). Mudança ainda
   não está ativa no Supabase; precisa de token válido e teste autenticado após
   publicação. Não foi disparada build EAS.
+
+### Publicação e sonda real — aprendizado do Granabô
+
+- O autor forneceu novamente o token completo. A função `assistente-financeiro`
+  foi publicada com sucesso no Supabase (`--use-api`). Não salvar a credencial.
+- A primeira sonda revelou que a conta de testes atual tem zero cartões; o
+  modelo tentava ampliar a consulta após não encontrar C6. Corrigido o executor:
+  filtros de cartão/categoria/carteira são mantidos entre tentativas e uma
+  ferramenta incapaz de aplicá-los é recusada. Ausência de cadastro não é sucesso
+  nem autoriza um total amplo. Proteção ganhou teste e foi republicada.
+- Sonda autenticada com o modelo real, após a última publicação:
+  Alimentação em setembro/2026 -> R$ 130,00 (14,1s); "E em Outros?" ->
+  R$ 50,00, preservando setembro/2026 (18,9s); fatura atual C6 -> informou
+  ausência do cartão sem apresentar outro total (12,4s). Consulta REST direta
+  confirmou zero cartões. Não foi possível validar números do ciclo C6 nessa
+  conta e não foram criados cartões ou lançamentos de teste.
+- Suite de aprendizado: nove cenários de política e integração do handler
+  passaram; `deno check` passou. Não houve build EAS: alteração é no servidor.
+- O push de commits para `origin/main` permanece pendente de autorização
+  explícita, após rejeição da revisão automática. Deploy Supabase foi autorizado
+  pelo token fornecido e está concluído, independentemente desse push.

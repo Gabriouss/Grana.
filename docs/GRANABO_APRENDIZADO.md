@@ -58,3 +58,14 @@ isolamento por usuário e falha de gravação. Não mede a qualidade do modelo r
 Para avaliar em produção, usar conversas encadeadas sobre cartões, categorias
 customizadas, troca de meio de pagamento e mudanças de assunto. Conferir os
 filtros/resultados no banco, não apenas a fluência da frase do assistente.
+
+## Publicação de 06/09/2026
+
+Função publicada. A sonda real continuou de Alimentação (R$ 130,00) para
+"E em Outros?" (R$ 50,00), preservando setembro/2026. A conta tem zero cartões,
+confirmado por consulta direta: C6 foi informado como ausente. Não é validação
+do cálculo de faturas com C6 cadastrado. Tempos observados: 12,4 a 18,9 segundos.
+
+A sonda também motivou uma proteção adicional: ferramentas de recuperação
+herdam filtros de cartão/categoria/carteira e são recusadas se não suportarem
+esses filtros. Ausência de cadastro não permite apresentar um total mais amplo.
