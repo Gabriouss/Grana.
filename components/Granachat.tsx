@@ -416,11 +416,14 @@ export default function Granachat({
        O painel é um Pressable aninhado com onPress vazio — assim ele consome
        o toque antes de chegar no fundo, e tocar DENTRO do chat nunca fecha.
        Mesmo truque que `components/Sheet.tsx` já usa. */
-    <Pressable
+    <View
       style={[styles.fundo, { paddingTop: insets.top, paddingBottom: recuoPainel }]}
-      onPress={fechar}
-      accessible={false}
     >
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={fechar}
+        accessible={false}
+      />
       {/* Desfoque do que está atrás. Na web é `backdrop-filter`, que é barato
           e sem risco. No nativo é o BlurView do expo-blur.
 
@@ -449,9 +452,8 @@ export default function Granachat({
         style={[{ width: larguraPainel, height: alturaPainel }, estiloPainel]}
         pointerEvents={visivel ? 'auto' : 'none'}
       >
-      <Pressable
+      <View
         style={styles.painel}
-        onPress={() => {}}
         accessibilityViewIsModal
         role="dialog"
       >
@@ -532,9 +534,9 @@ export default function Granachat({
           </View>
         </View>
       </View>
-      </Pressable>
+      </View>
       </Animated.View>
-    </Pressable>
+    </View>
   );
 }
 
