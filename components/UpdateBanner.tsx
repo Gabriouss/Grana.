@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
@@ -20,10 +20,11 @@ export default function UpdateBanner() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
+    if (Platform.OS !== 'android') return;
     verificarAtualizacao().then(setInfo);
   }, []);
 
-  if (!info) return null;
+  if (Platform.OS !== 'android' || !info) return null;
 
   async function abrirAtualizacao() {
     if (abrindo) return;
