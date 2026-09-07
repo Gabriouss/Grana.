@@ -3025,3 +3025,30 @@ foi usado somente no processo de publicação e não foi salvo no projeto.
   local está 7 commits à frente de `origin/main`. A alteração está local e
   ainda precisa de validação/publicação quando a rede e a autorização de push
   estiverem disponíveis.
+
+## 06/09/2026 — aprendizado operacional geral do Granabô
+
+- Substituído o remendo específico de "fatura atual" por um fluxo geral em
+  `_shared/assistant-learning.ts`: até três rodadas de ferramentas para aprender
+  apelidos/preferências, corrigir argumentos e consultar novamente. Chamadas
+  idênticas são reutilizadas; catálogo/argumentos são validados.
+- `assistant_memory` existente guarda o plano recente em fato `__conversa`,
+  vinculado à resposta anterior e válido por 30 minutos. O plano é contexto,
+  nunca fonte de valores. Não houve mudança de schema/RLS.
+- Exemplos v2 distinguem execução verificada de confirmação explícita do
+  usuário. Rejeições explícitas retiram o exemplo vinculado. Exemplos legados
+  não verificados não entram mais no prompt. Continuação guarda a pergunta com
+  contexto para não ensinar um filtro específico como resposta universal.
+- Resposta com valores R$ sem suporte nas ferramentas provoca nova tentativa.
+  Falha de redação pode usar resultado de consulta completa. Memórias com erro
+  no RPC não são mais anunciadas como gravadas com sucesso.
+- Chamadas ao modelo têm orçamento compartilhado de 27s (até 10s por tentativa).
+  Banco/autenticação acrescentam latência. Não é garantia de tempo total.
+- Validação: `npm run test:assistente-aprendizado` (políticas + handler real com
+  serviços simulados), `deno check` da função e `tsc --noEmit` do app. Detalhes e
+  limites em `docs/GRANABO_APRENDIZADO.md`. Não houve avaliação com o modelo real.
+- `git fetch origin` voltou a funcionar com execução autorizada; nenhuma
+  divergência remota encontrada. Deploy tentado, mas o CLI rejeitou a credencial
+  fornecida com `LegacyInvalidAccessTokenError` (formato inválido). Mudança ainda
+  não está ativa no Supabase; precisa de token válido e teste autenticado após
+  publicação. Não foi disparada build EAS.

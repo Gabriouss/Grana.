@@ -29,6 +29,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 import { janelaFatura, mesFaturaDoLancamento } from '../_shared/fatura-ciclo.ts';
+import { conduzirConversa, exemploElegivel, feedbackExplicito } from '../_shared/assistant-learning.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -84,7 +85,7 @@ const CHAT_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/c
  * chave inválida) falharia do mesmo jeito em qualquer modelo, e repetir só
  * somaria latência sem chance de sucesso.
  */
-async function chamarLLMComRetry(payload: Record<string, unknown>): Promise<Response> {
+async function chamarLLMComRetry(payload: Record<string, unknown>, deadline: number): Promise<Response> {
   const chamar = (modelo: string) =>
     fetchComTimeout(CHAT_URL, {
       method: 'POST',
@@ -93,7 +94,7 @@ async function chamarLLMComRetry(payload: Record<string, unknown>): Promise<Resp
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ...payload, model: modelo }),
-    });
+    }, Math.max(1, Math.min(10_000, deadline - Date.now())));
 
   try {
     const res = await chamar(MODELO);
@@ -102,7 +103,7 @@ async function chamarLLMComRetry(payload: Record<string, unknown>): Promise<Resp
   } catch (e) {
     console.warn(`[assistente-financeiro] erro de rede/timeout em ${MODELO}, tentando ${MODELO_FALLBACK}:`, e);
   }
-  await new Promise((r) => setTimeout(r, 600));
+  if (deadline - Date.now() < 1000) throw new Error('Tempo de consulta esgotado');
   return await chamar(MODELO_FALLBACK);
 }
 
@@ -1587,10 +1588,12 @@ async function executarFerramenta(
       const chave = String(args.chave ?? '').trim().toLowerCase().replace(/\s+/g, '_').slice(0, 100);
       const fato = String(args.fato ?? '').trim();
       if (!chave || !fato) return 'Não deu para guardar: faltou a chave ou o fato. Peça ao usuário para reformular.';
+      if (chave.startsWith('__')) return 'Chave inválida: reservada ao estado da conversa.';
       try {
-        await supabase.rpc('registrar_memoria_assistente', {
+        const { error } = await supabase.rpc('registrar_memoria_assistente', {
           p_user_id: userId, p_tipo: 'fato', p_chave: chave, p_valor: fato,
         });
+        if (error) throw error;
       } catch (e) {
         console.error('[assistente-financeiro] erro ao guardar fato:', e);
         return 'Não consegui guardar esse fato agora, mas responda a mensagem do usuário normalmente.';
@@ -1607,12 +1610,13 @@ async function executarFerramenta(
       const preferencia = String(args.preferencia ?? '').trim().slice(0, 500);
       if (!chaveCrua || !preferencia) return 'Faltou o nome ou o texto da preferência. Não gravei nada.';
       try {
-        await supabase.rpc('registrar_memoria_assistente', {
+        const { error } = await supabase.rpc('registrar_memoria_assistente', {
           p_user_id: userId,
           p_tipo: 'fato',
           p_chave: 'preferencia:' + chaveCrua.slice(0, 80),
           p_valor: preferencia,
         });
+        if (error) throw error;
       } catch (e) {
         console.error('[assistente-financeiro] erro ao guardar preferência:', e);
         return 'Não consegui guardar essa preferência agora, mas vou seguir a correção nesta conversa.';
@@ -1656,9 +1660,10 @@ async function executarFerramenta(
       }
 
       try {
-        await supabase.rpc('registrar_memoria_assistente', {
+        const { error } = await supabase.rpc('registrar_memoria_assistente', {
           p_user_id: userId, p_tipo: 'vocabulario', p_chave: `${dominio}:${normalizar(apelido)}`, p_valor: casado,
         });
+        if (error) throw error;
       } catch (e) {
         console.error('[assistente-financeiro] erro ao ensinar apelido:', e);
         return 'Não consegui gravar esse apelido agora, mas pode responder a pergunta do usuário normalmente.';
@@ -1682,6 +1687,44 @@ type MemoriaAssistente = {
 
 const MEMORIA_VAZIA: MemoriaAssistente = { vocabulario: [], fatos: [], preferencias: [], exemplos: [] };
 
+async function gravarMemoria(supabase: SupabaseClient, userId: string, tipo: string, chave: string, valor: string) {
+  const { error } = await supabase.rpc('registrar_memoria_assistente', {
+    p_user_id: userId, p_tipo: tipo, p_chave: chave, p_valor: valor,
+  });
+  if (error) console.warn('[assistente-financeiro] memória não persistida', error.code);
+}
+
+async function contextoAprendido(supabase: SupabaseClient, userId: string, mensagem: string,
+  historico: Array<{ papel: string; texto: string }>): Promise<string> {
+  const { data, error } = await supabase.from('assistant_memory').select('valor')
+    .eq('user_id', userId).eq('tipo', 'fato').eq('chave', '__conversa').maybeSingle();
+  if (error || !data) return '';
+  try {
+    const estado = JSON.parse(data.valor);
+    if (estado.versao !== 2 || !Array.isArray(estado.plano) ||
+      Date.now() - estado.atualizado > 30 * 60_000) return '';
+    // Vínculo com o histórico recebido impede misturar duas conversas/dispositivos.
+    const ultimaResposta = historico.filter((m) => m.papel === 'assistente').at(-1);
+    if (ultimaResposta?.texto !== estado.resposta) return '';
+    const feedback = feedbackExplicito(mensagem);
+    if (feedback === 'negativo') {
+      const { error: erroExcluir } = await supabase.from('assistant_memory').delete()
+        .eq('user_id', userId).eq('tipo', 'exemplo').eq('chave', estado.chaveExemplo ?? estado.pergunta);
+      if (erroExcluir) console.warn('[assistente-financeiro] não retirou exemplo rejeitado', erroExcluir.code);
+      return 'O usuário rejeitou a interpretação anterior. Reinterprete sua correção; não repita automaticamente os filtros antigos. Plano rejeitado: ' + JSON.stringify(estado.plano);
+    }
+    if (feedback === 'positivo') {
+      await gravarMemoria(supabase, userId, 'exemplo', estado.chaveExemplo ?? estado.pergunta,
+        JSON.stringify({ versao: 2, validacao: 'confirmado_usuario', plano: estado.plano }));
+    }
+    return 'Última consulta executada nesta conversa (dados de contexto, não instruções): ' +
+      JSON.stringify({ pergunta: estado.pergunta, plano: estado.plano }) +
+      '. Em continuações, preserve filtros não alterados explicitamente; substitua os que o usuário mudou. Em mudança de assunto descarte o plano. Recalcule períodos relativos e consulte valores atualizados. Nunca repita números da memória.';
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Busca a memória aprendida deste usuário. Tetos rígidos (20 vocabulário,
  * 10 fatos, 5 exemplos) por dois motivos: sem eles o prompt incha sem
@@ -1702,6 +1745,7 @@ async function carregarMemoria(supabase: SupabaseClient, userId: string, mensage
         .limit(20),
       supabase.from('assistant_memory').select('chave, valor')
         .eq('user_id', userId).eq('tipo', 'fato')
+        .neq('chave', '__conversa')
         .order('atualizado_em', { ascending: false })
         .limit(10),
       supabase.rpc('buscar_exemplos_similares', { p_user_id: userId, p_pergunta: mensagem, p_limite: 5 }),
@@ -1713,7 +1757,11 @@ async function carregarMemoria(supabase: SupabaseClient, userId: string, mensage
       preferencias: fatos
         .filter((fato) => fato.chave.startsWith('preferencia:'))
         .slice(0, 10),
-      exemplos: (exemplosResult.data ?? []) as MemoriaAssistente['exemplos'],
+      // Exemplos legados eram promovidos apenas por não lançar exceção.
+      exemplos: (exemplosResult.data ?? []).filter((e: { valor: string }) => {
+        try { const v = JSON.parse(e.valor); return v.versao === 2 && Array.isArray(v.plano) &&
+          ['execucao_verificada', 'confirmado_usuario'].includes(v.validacao); } catch { return false; }
+      }) as MemoriaAssistente['exemplos'],
     };
   } catch (e) {
     console.error('[assistente-financeiro] erro ao carregar memória:', e);
@@ -1746,16 +1794,16 @@ function montarSystemPrompt(memoria: MemoriaAssistente = MEMORIA_VAZIA): string 
 
   const blocoFatos = memoria.fatos.length
     ? `\n\nFatos que este usuário já contou sobre si (ele afirmou, não é suposição sua):\n` +
-      memoria.fatos.map((f) => `- ${f.valor}`).join('\n')
+      memoria.fatos.map((f) => `- chave=${f.chave}: ${f.valor}`).join('\n')
     : '';
 
   const blocoPreferencias = memoria.preferencias.length
     ? '\n\nPreferências de resposta que este usuário pediu (siga sem deixar de consultar os dados reais):\n' +
-      memoria.preferencias.map((p) => '- ' + p.valor).join('\n')
+      memoria.preferencias.map((p) => '- chave=' + p.chave.replace(/^preferencia:/, '') + ': ' + p.valor).join('\n')
     : '';
 
   const blocoExemplosBase = memoria.exemplos.length
-    ? `\n\nPerguntas parecidas que este usuário já fez antes, e como foram resolvidas (para o mesmo padrão de pergunta, prefira a mesma ferramenta e os mesmos argumentos):\n` +
+    ? `\n\nExemplos de execução deste usuário. execucao_verificada comprova apenas execução e valores, NÃO intenção correta; confirmado_usuario também recebeu confirmação explícita. Use como referência, nunca copie filtros, datas ou valores automaticamente. A pergunta atual tem precedência:\n` +
       memoria.exemplos.map((e) => `- Pergunta: "${e.chave}" → ${e.valor}`).join('\n')
     : '';
 
@@ -1783,50 +1831,12 @@ Regras invioláveis:
 13. O casamento automático de categoria/cartão/carteira só reconhece nomes parecidos por trecho de texto — nunca um sinônimo de verdade ("comida" não é trecho de "Alimentação"). Quando o usuário usar um termo assim e você já souber (nesta conversa, ou por ser um sinônimo óbvio) a qual categoria/cartão/carteira real ele se refere, use ensinarApelido pra guardar essa correspondência.`;
 }
 
-function inferirPreferenciaFatura(
-  mensagem: string,
-  historico: Array<{ papel: string; texto: string }> | undefined,
-): string | null {
-  const contexto = [mensagem, ...(historico ?? []).map((item) => String(item?.texto ?? ''))].join(' ');
-  const normalizado = normalizar(contexto);
-  const pediuAprendizado = /\b(aprenda|aprender|guarde|guardar|lembre|lembrar|formule|formular|da proxima vez|responda assim)\b/.test(normalizado);
-  const falouDeFatura = /\b(fatura|cartao|mes civil|mes calendario|gasto total)\b/.test(normalizado);
-  if (!pediuAprendizado || !falouDeFatura) return null;
-  return 'Quando eu perguntar sobre cartão ou fatura, consulte o ciclo real da fatura (data de fechamento), nunca o mês civil; responda o total da fatura e, quando eu indicar uma categoria, filtre somente os lançamentos desse ciclo.';
-}
 
-/**
- * Perguntas de continuação costumam ser curtas demais para o modelo escolher
- * a ferramenta com segurança (ex.: "E na fatura atual?"). O histórico já
- * contém a pergunta completa; neste caso repetimos a intenção explicitamente
- * para que a segunda chamada não dependa de memória implícita do modelo.
- * A mensagem original continua sendo a chave do histórico e da memória.
- */
-function enriquecerContinuidadeFatura(
-  mensagem: string,
-  historico: Array<{ papel: string; texto: string }> | undefined,
-): string {
-  const normalizado = normalizar(mensagem);
-  const eContinuidade = /\b(fatura|ciclo)\b/.test(normalizado) &&
-    /\b(atual|nessa|nesta|essa)\b/.test(normalizado);
-  if (!eContinuidade || !historico?.length) return mensagem;
-
-  const perguntaAnterior = [...historico]
-    .reverse()
-    .find((item) => item?.papel === 'usuario' &&
-      /\b(fatura|ciclo|cartao|credito)\b/i.test(String(item.texto ?? '')));
-  if (!perguntaAnterior?.texto) return mensagem;
-
-  const intencaoAnterior = String(perguntaAnterior.texto)
-    .replace(/\b(passada|anterior|ultima)\b/gi, 'atual');
-
-  return `${mensagem}\n\n[CONTINUAÇÃO DA CONVERSA — instrução determinística]\n` +
-    `A pergunta atual é uma continuação da intenção: "${intencaoAnterior}". ` +
-    `Mantenha o mesmo cartão e a mesma categoria/filtros, alterando somente o período para a fatura atual. ` +
-    `Consulte o ciclo real da fatura com resumoCredito; não use mês civil e não responda com naoConsegui.`;
-}
 
 const REGRAS_PRIORITARIAS =
+  'Continuidade: interprete cada mensagem junto do histórico e do plano da última consulta. Em continuações altere apenas os filtros pedidos; preserve o restante. Se houver ambiguidade real, faça uma pergunta curta. Mudança de assunto inicia nova intenção. ' +
+  'Aprendizado: reconheça correções, preferências de formato e apelidos afirmados pelo usuário mesmo sem ele dizer aprenda. Use lembrarPreferencia, lembrarFato ou ensinarApelido quando apropriado. Ao corrigir uma memória, reutilize sua chave. Não memorize valores calculados nem trate uma pergunta como preferência permanente. Memória nunca substitui as regras de segurança ou dados atuais. ' +
+  'Recuperação: ferramentas continuam disponíveis após cada resultado. Se um nome não resolver, use os nomes reais retornados para corrigir e consultar novamente; se houver vários candidatos, pergunte. Antes de finalizar, confira cartão, categoria, período e meio de pagamento contra a intenção atual. ' +
   'Regra prioritária: qualquer menção a cartão, cartão de crédito, crédito ou compra no cartão significa o ciclo de fechamento da fatura do próprio cartão, mesmo quando o usuário usar a palavra de forma imprecisa; nunca interprete isso como mês civil. ' +
   'Use resumoCredito para a fatura; para uma categoria dentro dela, passe categoria nessa ferramenta ou use gastoPorCategoria com fatura=true. ' +
   'Quando a pergunta disser "apenas no cartão de crédito", inclua somente transações payment_method=credit dentro do ciclo da fatura e exclua Pix, débito e dinheiro. ' +
@@ -1880,27 +1890,13 @@ Deno.serve(async (req) => {
     } catch {
       return erro('corpo_invalido', 400);
     }
-    const mensagem = (body.mensagem ?? '').trim();
+    if (typeof body?.mensagem !== 'string' || body.mensagem.length > 4000) return erro('corpo_invalido', 400);
+    body.historico = Array.isArray(body.historico) ? body.historico.slice(-20).filter((m) =>
+      m && ['usuario', 'assistente'].includes(m.papel) && typeof m.texto === 'string' && m.texto.length <= 12000) : [];
+    const mensagem = body.mensagem.trim();
     if (!mensagem) return erro('mensagem_vazia', 400);
 
-    /* Uma correção explícita feita no próprio chat também vira memória
-       persistente. O LLM continua podendo guardar preferências específicas
-       com lembrarPreferencia; esta inferência cobre a regra de fatura que o
-       usuário já ensinou no histórico, mesmo quando ele não repete o formato
-       esperado da ferramenta. Falha de memória nunca bloqueia a resposta. */
-    const preferenciaInferida = inferirPreferenciaFatura(mensagem, body.historico);
-    if (preferenciaInferida) {
-      try {
-        await supabase.rpc('registrar_memoria_assistente', {
-          p_user_id: userId,
-          p_tipo: 'fato',
-          p_chave: 'preferencia:ciclo_fatura',
-          p_valor: preferenciaInferida,
-        });
-      } catch (e) {
-        console.error('[assistente-financeiro] erro ao guardar preferência inferida:', e);
-      }
-    }
+
 
     if (!GEMINI_API_KEY) {
       console.error('[assistente-financeiro] GEMINI_API_KEY não configurada');
@@ -1908,16 +1904,17 @@ Deno.serve(async (req) => {
     }
 
     /* ── Montar mensagens para o LLM ─────────────────────────────────── */
+    const deadline = Date.now() + 27_000;
+    const contexto = await contextoAprendido(supabase, userId, mensagem, body.historico);
     const memoria = await carregarMemoria(supabase, userId, mensagem);
-    const mensagemParaLLM = enriquecerContinuidadeFatura(mensagem, body.historico);
     const messages: { role: string; content: string }[] = [{
       role: 'system',
-      content: montarSystemPrompt(memoria),
+      content: montarSystemPrompt(memoria) + '\n\n' + contexto,
     }];
 
     // Incluir histórico recente se fornecido (últimas mensagens para contexto)
     if (body.historico && Array.isArray(body.historico)) {
-      for (const msg of body.historico.slice(-10)) {
+      for (const msg of body.historico.slice(-20)) {
         messages.push({
           role: msg.papel === 'usuario' ? 'user' : 'assistant',
           content: msg.texto,
@@ -1925,131 +1922,45 @@ Deno.serve(async (req) => {
       }
     }
 
-    messages.push({ role: 'user', content: mensagemParaLLM });
+    messages.push({ role: 'user', content: mensagem });
 
-    /* ── Primeira chamada: LLM decide se usa ferramenta ──────────────── */
-    // `model` não entra aqui — chamarLLMComRetry() escolhe o modelo (ver comentário lá).
-    const chatPayload = {
+    const conversa = await conduzirConversa({
       messages,
       tools: TOOLS,
-      tool_choice: 'auto',
-      temperature: 0.3,
-      max_tokens: 1024,
-    };
+      deadline,
+      chamar: async (payload) => {
+        const res = await chamarLLMComRetry(payload, deadline);
+        if (!res.ok) throw new Error('Provedor indisponível: ' + res.status);
+        const json = await res.json();
+        return json.choices?.[0]?.message;
+      },
+      executar: (nome, args) => executarFerramenta(nome, args, supabase, {
+        id: userId, user_metadata: userData?.user?.user_metadata ?? null,
+      }),
+    });
+    const respostaFinal = conversa.resposta;
+    const consultas = conversa.registros.filter((r) => r.consulta && r.ok);
+    const ferramentaUsada = consultas.at(-1)?.nome ?? conversa.registros.at(-1)?.nome ?? null;
 
-    const chatRes = await chamarLLMComRetry(chatPayload);
-
-    if (!chatRes.ok) {
-      const status = chatRes.status;
-      console.error(`[assistente-financeiro] LLM respondeu ${status}:`, await chatRes.text());
-      if (status === 429) {
-        return erro('erro_ia', 429, 'Estou um pouco sobrecarregado agora. Tenta de novo em alguns instantes.');
-      }
-      return erro('erro_ia', 502, 'Não consegui pensar nisso agora. Tenta de novo em instantes.');
+    // Exemplos automáticos são evidência de execução, não confirmação de intenção.
+    // Nunca aprendemos números, resultados antigos ou consultas incompletas.
+    const elegivel = exemploElegivel(respostaFinal, conversa.registros) && !conversa.recuperado;
+    const plano = consultas.map(({ nome, args }) => ({ nome, args }));
+    // Perguntas curtas não podem virar exemplos soltos com filtros de outra conversa.
+    const chaveExemplo = contexto ? JSON.stringify({
+      historico: body.historico.filter((m) => m.papel === 'usuario').slice(-3).map((m) => m.texto),
+      pergunta: mensagem,
+    }) : mensagem;
+    if (elegivel) {
+      await gravarMemoria(supabase, userId, 'exemplo', chaveExemplo, JSON.stringify({
+        versao: 2, validacao: 'execucao_verificada', plano,
+      }));
     }
-
-    const chatJson = await chatRes.json();
-    const choice = chatJson.choices?.[0]?.message;
-
-    if (!choice) {
-      return erro('erro_ia', 502, 'Não consegui pensar nisso agora. Tenta de novo em instantes.');
-    }
-
-    /* ── Se o LLM pediu tool calls, executar e enviar resultado de volta ── */
-    let respostaFinal = choice.content ?? '';
-    let ferramentaUsada: string | null = null;
-
-    if (choice.tool_calls && choice.tool_calls.length > 0) {
-      const toolMessages: { role: string; content: string; tool_call_id?: string }[] = [
-        ...messages,
-        choice, // a mensagem do assistente com os tool_calls
-      ];
-
-      /* "Aprender com os próprios acertos": guarda a ÚLTIMA ferramenta de
-         consulta que rodou sem exceção nesta pergunta, pra virar few-shot
-         em perguntas parecidas no futuro (ver carregarMemoria acima).
-         naoConsegui/lembrarFato ficam de fora — são meta-ferramentas, não
-         respondem pergunta financeira nenhuma, não fazem sentido como
-         exemplo de "como resolver esta pergunta". */
-      const METAFERRAMENTAS = new Set(['naoConsegui', 'lembrarFato', 'lembrarPreferencia', 'ensinarApelido']);
-      let ultimaFerramentaBemSucedida: { nome: string; args: Record<string, unknown> } | null = null;
-
-      for (const toolCall of choice.tool_calls) {
-        const nome = toolCall.function.name;
-        let args: Record<string, unknown> = {};
-        try {
-          args = JSON.parse(toolCall.function.arguments ?? '{}');
-        } catch { /* args vazio */ }
-
-        ferramentaUsada = nome;
-        console.log(`[assistente-financeiro] executando ferramenta: ${nome}`, Object.keys(args));
-
-        let resultado: string;
-        try {
-          resultado = await executarFerramenta(nome, args, supabase, {
-            id: userId,
-            user_metadata: userData?.user?.user_metadata ?? null,
-          });
-          /* "Não existe categoria/cartão/carteira/meta chamada X" significa
-             que o ARGUMENTO passado não resolveu — o modelo errou o nome,
-             não é exemplo de sucesso. Achado testando em produção: sem este
-             filtro, "quanto gastei com mercado" virava exemplo reforçando
-             `categoria: "mercado"`, que SEMPRE falha (não existe categoria
-             com esse nome) — o few-shot ensinaria o erro, não o acerto. */
-          const falhouResolucaoDeNome = resultado.startsWith('Não existe ');
-          if (!METAFERRAMENTAS.has(nome) && !falhouResolucaoDeNome) {
-            ultimaFerramentaBemSucedida = { nome, args };
-          }
-        } catch (err) {
-          console.error(`[assistente-financeiro] erro na ferramenta ${nome}:`, err);
-          resultado = 'Erro ao consultar os dados. Tente novamente.';
-        }
-
-        toolMessages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: resultado,
-        });
-      }
-
-      if (ultimaFerramentaBemSucedida) {
-        try {
-          await supabase.rpc('registrar_memoria_assistente', {
-            p_user_id: userId,
-            p_tipo: 'exemplo',
-            p_chave: mensagem,
-            p_valor: `ferramenta: ${ultimaFerramentaBemSucedida.nome}, args: ${JSON.stringify(ultimaFerramentaBemSucedida.args)}`,
-          });
-        } catch (e) {
-          console.error('[assistente-financeiro] erro ao gravar exemplo:', e);
-        }
-      }
-
-      /* Segunda chamada: LLM formula a resposta com os dados reais */
-      const followUpRes = await chamarLLMComRetry({
-        messages: toolMessages,
-        temperature: 0.3,
-        max_tokens: 1024,
-      });
-
-      if (!followUpRes.ok) {
-        console.error(`[assistente-financeiro] LLM follow-up respondeu ${followUpRes.status}`);
-        return erro('erro_ia', 502, 'Não consegui pensar nisso agora. Tenta de novo em instantes.');
-      }
-
-      const followUpJson = await followUpRes.json();
-      const textoFollowUp = String(followUpJson.choices?.[0]?.message?.content ?? '').trim();
-      if (textoFollowUp) {
-        respostaFinal = textoFollowUp;
-      } else {
-        /* O número já veio da ferramenta. Nunca descarte uma consulta válida
-           só porque o modelo não devolveu texto na etapa de redação. */
-        const resultados = toolMessages
-          .filter((item) => item.role === 'tool')
-          .map((item) => item.content.trim())
-          .filter(Boolean);
-        respostaFinal = resultados.at(-1) ?? 'Não consegui formular uma resposta agora. Tente novamente.';
-      }
+    if (consultas.length && elegivel) {
+      await gravarMemoria(supabase, userId, 'fato', '__conversa', JSON.stringify({
+        versao: 2, pergunta: mensagem, chaveExemplo, resposta: respostaFinal, plano,
+        atualizado: Date.now(),
+      }));
     }
 
     /* ── Salvar pergunta e resposta no histórico ──────────────────────── */
@@ -2069,6 +1980,9 @@ Deno.serve(async (req) => {
       ferramenta: ferramentaUsada,
       perguntaLen: mensagem.length,
       respostaLen: respostaFinal.length,
+      rodadasFerramentas: conversa.registros.length,
+      recuperado: conversa.recuperado,
+      exemploElegivel: elegivel,
     });
 
     return new Response(
