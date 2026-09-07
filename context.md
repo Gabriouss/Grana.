@@ -3207,6 +3207,18 @@ autor pediu pra aguardar o Codex terminar o Granabô primeiro):
 
 ## 07/09/2026 — análise do vídeo dos dois widgets e fila offline do lançamento por voz
 
+Atualização posterior: a explicação sobre o limiar era hipótese, não causa
+comprovada da segunda tentativa. A fila inicial tinha limitações identificadas
+na revisão seguinte; ver docs/VOZ_OFFLINE.md para a implementação posterior.
+
+Implementado reconhecimento local compartilhado (Android 13+, modelo pt-BR),
+preparação do modelo no Perfil, persistência de operações de voz antes da RPC,
+retomada com payload original e aviso de itens locais. Formulários de despesa,
+crédito e boleto usam a fila quando abertos por voz. Cartões/categorias têm cache
+por conta. Áudios pendentes usam documentos privados e permanecem na fila durante
+a tentativa. Testes voz-offline, voz-upload, widget-voz-cartoes e TypeScript
+passaram. Android físico ainda não validado; nenhuma build/deploy disparados.
+
 - O áudio do vídeo foi transcrito somente depois de autorização explícita do
   autor. O vídeo mostrou o widget de voz ficando em “Ouvindo...” até o segundo
   toque, seguido de captura de fala que não correspondia ao comando financeiro;

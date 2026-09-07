@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useRef } from 'react';
+import { randomUUID } from 'expo-crypto';
+import { registrarOperacaoVoz } from '@/lib/voice-operations';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
   ActivityIndicator,
@@ -43,6 +46,7 @@ import type { Bill, BillStatus } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 
 export default function ContasScreen() {
+  const operacaoVoz = useRef<string | null>(null);
   const router = useRouter();
   const { novaConta, texto } = useLocalSearchParams<{ novaConta?: string; texto?: string }>();
   const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
@@ -136,6 +140,7 @@ export default function ContasScreen() {
   });
 
   function openNewModal() {
+    operacaoVoz.current = null;
     setEditingBillId(null);
     setDesc('');
     setAmount('');
@@ -154,6 +159,7 @@ export default function ContasScreen() {
      pra valor/descrição/categoria; a data de vencimento vem de
      parseDiaVencimento — mesmo motor do bot do WhatsApp. */
   function abrirNovaContaDoTexto(texto: string) {
+    operacaoVoz.current = randomUUID();
     setEditingBillId(null);
     const guessedAmount = guessAmountFromText(texto);
     const guessedCat = guessCategoryFromText(texto, categoriasExtras);
@@ -216,6 +222,15 @@ export default function ContasScreen() {
         }
         triggerToast('Conta atualizada');
       } else {
+        if (operacaoVoz.current) {
+          const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', {
+            kind: 'bill', description: v.description.trim() || 'Sem descrição',
+            amount: value, category: v.category, color: v.color,
+            due_date: v.occurred_on, recurring: v.recurring,
+          });
+          operacaoVoz.current = null;
+          triggerToast(resultado.status === 'pending' ? 'Conta salva no aparelho; sincronização pendente' : 'Conta salva');
+        } else {
         const created = await addBill({
           description: v.description.trim() || 'Sem descrição',
           amount: value,
@@ -227,6 +242,7 @@ export default function ContasScreen() {
         });
         scheduleBillReminders(created).catch(() => {});
         triggerToast('Conta salva');
+        }
       }
       setModalOpen(false);
       load();

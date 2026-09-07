@@ -1,4 +1,22 @@
 import { supabase } from './supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+async function referenciaLocal<T>(nome: string, buscar: () => Promise<T[]>): Promise<T[]> {
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user.id;
+  if (!userId) throw new Error('Usuário não autenticado');
+  const chave = `grana:voz:referencia:${userId}:${nome}`;
+  try {
+    const itens = await buscar();
+    await AsyncStorage.setItem(chave, JSON.stringify(itens));
+    return itens;
+  } catch (erro) {
+    if (!/network|fetch|timeout|conex|connection/i.test(String((erro as {message?: string})?.message ?? erro))) throw erro;
+    const cache = await AsyncStorage.getItem(chave);
+    if (!cache) throw erro;
+    return JSON.parse(cache);
+  }
+}
 import { buscarTodasAsPaginas } from './paginacao';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
@@ -142,16 +160,14 @@ export async function addTransaction(input: {
 /* ---- cartões de crédito ---- */
 
 export async function fetchCreditCards(): Promise<CreditCard[]> {
-  try {
+  return referenciaLocal<CreditCard>('cartoes', async () => {
     const { data, error } = await supabase
       .from('credit_cards')
       .select('*')
       .order('created_at', { ascending: true });
-    if (error) return [];
+    if (error) throw error;
     return data || [];
-  } catch {
-    return [];
-  }
+  });
 }
 
 export async function addCreditCard(input: {
@@ -678,9 +694,11 @@ export async function deleteBudget(category: string): Promise<void> {
    abre o gerenciador de categorias. */
 
 export async function fetchCategories(): Promise<Category[]> {
+  return referenciaLocal<Category>('categorias', async () => {
   const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
   if (error) throw error;
   return data;
+  });
 }
 
 /**

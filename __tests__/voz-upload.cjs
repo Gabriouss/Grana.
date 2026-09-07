@@ -46,6 +46,7 @@ async function main() {
   let relogio = 0, timeoutRapido = false;
   let resposta = () => Response.json({ status: 'ready', transcript: 'mercado 32 no Pix' });
   const cliente = carregar('lib/voz.ts', {
+    './voz-local': { transcreverNoAparelho: async () => null },
     'react-native': { Platform: { get OS() { return plataforma; } } },
     'expo-file-system': { File: class {
       constructor(uri) { assert.ok(uri.startsWith('file://')); }
@@ -74,19 +75,19 @@ async function main() {
   assert.match(corpoEnviado, /name="audio"; filename="lancamento.m4a"/);
   assert.match(corpoEnviado, /audio\/mp4/);
   assert.ok(corpoEnviado.includes('\u0001\u0002\u0003\u0004'));
-  assert.ok(prazo >= 70_000 && prazo < 120_000);
+  assert.equal(prazo, 60_000);
   // Widget e app usam o mesmo cliente, inclusive nome/opções do widget.
   assert.equal((await cliente.transcreverAudio('file:///widget.m4a', { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' })).ok, true);
   assert.match(corpoEnviado, /name="audio"; filename="widget.m4a"/);
   assert.match(corpoEnviado, /content-type: audio\/m4a/);
   let rodadas = 0;
   resposta = () => {
-    if (rodadas++ === 0) { relogio += 74000; return Response.json({}); }
+    if (rodadas++ === 0) { relogio += 59000; return Response.json({}); }
     return Response.json({ status: 'ready', transcript: 'mercado 32' });
   };
   assert.equal((await transcrever()).ok, true);
   assert.equal(rodadas, 2);
-  assert.equal(prazo, 16000, 'retry só pode usar o restante do orçamento total');
+  assert.equal(prazo, 1000, 'retry só pode usar o restante do orçamento total');
   timeoutRapido = true;
   resposta = () => ({ ok: true, status: 200, json: () => new Promise(() => {}) });
   assert.equal((await transcrever()).codigo, 'demorou', 'corpo pendurado também tem timeout');

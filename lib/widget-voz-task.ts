@@ -101,6 +101,10 @@ async function executarTarefa(payload: Payload) {
        pode ficar preso em "Lançando…" — os dois valem em QUALQUER saída,
        inclusive erro. */
     if (caminho && !manterArquivo) await apagarArquivo(caminho);
+    if (requestId && !manterArquivo) {
+      const { removerVozPendente } = await import('./widget-voz-pendentes');
+      await removerVozPendente(requestId);
+    }
     definirEstado(estadoFinal);
   }
 }
@@ -174,6 +178,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
       due_date: dueDate,
       recurring: heuristics.parseRecorrencia(texto),
     });
+    if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
     if (resultado.status === 'undone') return true;
     try {
       await notificacoes.notificarSucesso({
@@ -208,6 +213,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     recurring: heuristics.parseRecorrencia(texto),
     ...(formaPagamento ? { payment_method: formaPagamento } : null),
   });
+  if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
   if (resultado.status === 'undone') return true;
 
   try {
@@ -270,6 +276,7 @@ async function lancarNoCredito(args: {
       card_id: cartao.id,
       installments: parcelas,
     });
+    if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
     if (resultado.status === 'undone') return true;
     const { checarLimiteCartao } = await import('./creditLimitAlert');
     checarLimiteCartao(cartao.id).catch(() => {});
@@ -299,6 +306,7 @@ async function lancarNoCredito(args: {
     card_id: cartao.id,
     recurring: heuristics.parseRecorrencia(texto),
   });
+  if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
   if (resultado.status === 'undone') return true;
   const { checarLimiteCartao } = await import('./creditLimitAlert');
   checarLimiteCartao(cartao.id).catch(() => {});
@@ -334,9 +342,7 @@ export async function tentarVozesPendentes(): Promise<void> {
     if (!userId) return;
 
     for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId)) {
-      /* Remove antes de processar: em caso de queda durante a tentativa, o
-         próprio executarTarefa recoloca o mesmo requestId sem duplicar. */
-      await removerVozPendente(item.requestId);
+      // Mantém o item até a tarefa concluir; uma interrupção permite retomada.
       await executarTarefa({ caminho: item.caminho, requestId: item.requestId });
     }
   } catch {

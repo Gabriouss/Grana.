@@ -1,4 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { randomUUID } from 'expo-crypto';
+import { registrarOperacaoVoz } from '@/lib/voice-operations';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -66,6 +68,7 @@ import Sheet from '@/components/Sheet';
 import FadeIn from '@/components/FadeIn';
 
 export default function CreditoScreen() {
+  const operacaoVoz = useRef<string | null>(null);
   const { paddingConteudoComFab } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
   const router = useRouter();
@@ -585,6 +588,7 @@ export default function CreditoScreen() {
      sheet pode ter acabado de ser usado pra editar — sem isto, "Lançar no
      Crédito" abriria com os dados do último lançamento aberto. */
   function abrirNovaCompra() {
+    operacaoVoz.current = null;
     setEditingTxId(null);
     setTxDesc('');
     setTxAmount('');
@@ -604,6 +608,7 @@ export default function CreditoScreen() {
      nome/banco citado, com o primeiro cartão da carteira como reserva —
      mesmo critério do bot do WhatsApp (matchCardByText). */
   function abrirNovaCompraDoTexto(texto: string) {
+    operacaoVoz.current = randomUUID();
     setEditingTxId(null);
     const guessedAmount = guessAmountFromText(texto);
     const guessedCat = guessCategoryFromText(texto, categoriasExtras);
@@ -723,6 +728,19 @@ export default function CreditoScreen() {
           };
         });
         setTransactions((prev) => [...fakeRows, ...prev]);
+      } else if (operacaoVoz.current && targetCard) {
+        const base = {
+          type: 'out' as const, description: valores.description.trim(), amount,
+          category: valores.category, color: valores.color,
+          occurred_on: valores.occurred_on, payment_method: 'credit' as const,
+          card_id: targetCard.id,
+        };
+        const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app',
+          totalInst > 1 ? { ...base, kind: 'installment', installments: totalInst }
+            : { ...base, kind: 'transaction', recurring: valores.recurring });
+        if (resultado.status === 'pending') Alert.alert('Salvo no aparelho', 'A compra será sincronizada quando houver conexão.');
+        operacaoVoz.current = null;
+        if (resultado.status !== 'pending') await loadData();
       } else if (totalInst > 1) {
         await addInstallmentPurchase({
           description: valores.description.trim(),

@@ -149,7 +149,13 @@ export async function notificarFalha(codigo: CodigoErroVoz) {
 export async function notificarPendenteOffline() {
   await publicar(
     'Lançamento aguardando conexão',
-    'O áudio foi guardado no aparelho. O Grana. tenta lançar quando a internet voltar.',
+    'O áudio foi guardado. Abra o Grana. com conexão para tentar novamente.',
     { origem: 'voz', resultado: 'pendente', transcricao: '' }
   );
+}
+
+export async function notificarSalvoLocal() {
+  await publicar('Lançamento salvo no aparelho',
+    'Será sincronizado com sua conta ao abrir o Grana. com conexão.',
+    { origem: 'voz', resultado: 'pendente', transcricao: '' });
 }

@@ -650,6 +650,21 @@ export default function PerfilScreen() {
         {widgetDisponivel && (
           <>
             <Text style={styles.sectionLabel}>Widgets da tela inicial</Text>
+            <AppPressable onPress={async () => {
+              try {
+                const { ExpoSpeechRecognitionModule: motor } = await import('expo-speech-recognition');
+                if (!motor.supportsOnDeviceRecognition()) {
+                  Alert.alert('Voz offline indisponível', 'Este aparelho não oferece reconhecimento local compatível.');
+                  return;
+                }
+                await motor.androidTriggerOfflineModelDownload({ locale: 'pt-BR' });
+                Alert.alert('Português offline', 'Download solicitado ao Android. Aguarde a instalação com conexão antes de usar sem internet.');
+              } catch {
+                Alert.alert('Não foi possível preparar', 'Verifique a conexão e o serviço de reconhecimento de voz do Android.');
+              }
+            }}>
+              <Text style={styles.rowKey}>Preparar português para voz offline</Text>
+            </AppPressable>
             <View style={styles.sectionCard}>
               {WIDGETS_HOME.map((widget, index) => {
                 const vozDesativada = widget.tipo === 'voz' && !ligado('lancamento_voz');

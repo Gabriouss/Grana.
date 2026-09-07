@@ -57,7 +57,7 @@ export const MAX_SEGUNDOS_GRAVACAO = 20;
    dois minutos. São dois provedores sequenciais de até 30s cada, mais upload. */
 const TIMEOUT_MS = 75_000;
 // Deixa 30s para interpretação, gravação e recibo antes do headless (120s).
-const TIMEOUT_TOTAL_MS = 90_000;
+const TIMEOUT_TOTAL_MS = 60_000;
 
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -182,6 +182,9 @@ export async function transcreverAudio(
   uri: string,
   opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number } = {}
 ): Promise<ResultadoVoz> {
+  const { transcreverNoAparelho } = await import('./voz-local');
+  const local = await transcreverNoAparelho(uri);
+  if (local) return { ok: true, transcript: local };
   const url = urlDaFuncao();
   if (!url) return { ok: false, codigo: 'erro_interno' };
 

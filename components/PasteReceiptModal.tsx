@@ -27,6 +27,8 @@ import AppPressable from './AppPressable';
 import Sheet from './Sheet';
 import type { TxType } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
+import { randomUUID } from 'expo-crypto';
+import { registrarOperacaoVoz } from '@/lib/voice-operations';
 
 export default function PasteReceiptModal({
   visible,
@@ -56,6 +58,7 @@ export default function PasteReceiptModal({
      idênticos. O ref é síncrono: barra a segunda chamada no mesmo instante
      em que a primeira entra, sem esperar o React repintar nada. */
   const savingRef = useRef(false);
+  const operacaoVoz = useRef<string | null>(null);
   /* Só true quando o texto veio do reconhecimento de voz — quem colou o
      próprio comprovante já viu o que digitou/colou na textarea, então
      repetir o texto na tela de confirmação seria eco redundante. Voz é o
@@ -83,6 +86,7 @@ export default function PasteReceiptModal({
   }, [visible]);
 
   function resetState() {
+    operacaoVoz.current = null;
     setRawText('');
     setRecognized(false);
     setDesc('');
@@ -169,7 +173,7 @@ export default function PasteReceiptModal({
     savingRef.current = true;
     setSaving(true);
     try {
-      await addTransaction({
+      const input = {
         type,
         description: desc.trim() || 'Sem descrição',
         amount: val,
@@ -178,7 +182,14 @@ export default function PasteReceiptModal({
         occurred_on: todayISO(),
         ...(formaPagamento ? { payment_method: formaPagamento } : null),
         ...(recorrente ? { recurring: true } : null),
-      });
+      };
+      if (origemVoz) {
+        operacaoVoz.current ??= randomUUID();
+        const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', { kind: 'transaction', ...input });
+        if (resultado.status === 'pending') Alert.alert('Salvo no aparelho', 'O lançamento será sincronizado ao abrir o Grana. com conexão.');
+      } else {
+        await addTransaction(input);
+      }
       resetState();
       onClose();
       onSuccess();

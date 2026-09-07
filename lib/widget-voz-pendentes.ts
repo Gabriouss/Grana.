@@ -35,18 +35,18 @@ async function ler(): Promise<VozPendente[]> {
 }
 
 async function gravar(itens: VozPendente[]): Promise<void> {
-  try {
     await AsyncStorage.setItem(CHAVE, JSON.stringify(itens));
-  } catch {
-    /* Se o armazenamento estiver cheio, o arquivo continua no cache e o
-       estado de atenção evita fingir que o lançamento foi concluído. */
-  }
 }
 
 export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'>): Promise<void> {
   const itens = await ler();
   if (itens.some((existente) => existente.requestId === item.requestId)) return;
-  itens.push({ ...item, criadoEm: Date.now() });
+  const fs = await import('expo-file-system/legacy');
+  const pasta = `${fs.documentDirectory}voz-pendente/`;
+  await fs.makeDirectoryAsync(pasta, { intermediates: true });
+  const destino = `${pasta}${item.requestId}.m4a`;
+  await fs.copyAsync({ from: item.caminho.startsWith('file://') ? item.caminho : `file://${item.caminho}`, to: destino });
+  itens.push({ ...item, caminho: destino, criadoEm: Date.now() });
   await gravar(itens);
 }
 

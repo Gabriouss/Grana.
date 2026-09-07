@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type BaseFinanceira = {
   description: string;
@@ -31,12 +32,21 @@ export type PayloadOperacaoVoz =
     });
 
 export type ResultadoOperacaoVoz = {
-  status: 'committed' | 'undone';
+  status: 'committed' | 'undone' | 'pending';
   operationId: string;
   kind: PayloadOperacaoVoz['kind'];
   ids: string[];
   replayed: boolean;
 };
+
+export async function listarOperacoesVozLocais(): Promise<{ requestId: string; payload: PayloadOperacaoVoz }[]> {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) return [];
+  const prefixo = `grana:voz:operacao:${data.session.user.id}:`;
+  const chaves = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith(prefixo));
+  const itens = await AsyncStorage.multiGet(chaves);
+  return itens.filter(([, raw]) => !!raw).map(([, raw]) => JSON.parse(raw!));
+}
 
 function textoObrigatorio(valor: unknown, campo: string): string {
   if (typeof valor !== 'string' || !valor) throw new Error(`Resposta invalida: ${campo}`);
@@ -53,13 +63,65 @@ export async function registrarOperacaoVoz(
   source: 'app' | 'widget',
   payload: PayloadOperacaoVoz
 ): Promise<ResultadoOperacaoVoz> {
+  const { data: sessao } = await supabase.auth.getSession();
+  const userId = sessao.session?.user.id;
+  if (!userId) throw new Error('Entre na conta para salvar o lançamento.');
+  const chave = `grana:voz:operacao:${userId}:${requestId}`;
+  const existente = await AsyncStorage.getItem(chave);
+  const operacao = existente ? JSON.parse(existente) : { requestId, source, payload };
+  // Persiste ANTES da rede. O payload original permanece igual em toda retomada.
+  await AsyncStorage.setItem(chave, JSON.stringify(operacao));
+  notificarDadosDosWidgetsAlterados();
+  try {
+    const resultado = await enviarOperacaoVoz(operacao.requestId, operacao.source, operacao.payload);
+    await AsyncStorage.removeItem(chave);
+    notificarDadosDosWidgetsAlterados();
+    return resultado;
+  } catch (erro) {
+    const codigo = String((erro as { code?: string })?.code ?? '');
+    // Recusa definitiva não pode reaparecer silenciosamente numa sincronização.
+    if (/^(22|23|42501)/.test(codigo)) {
+      await AsyncStorage.removeItem(chave);
+      throw erro;
+    }
+    return { status: 'pending', operationId: requestId, kind: payload.kind, ids: [], replayed: false };
+  }
+}
+
+let sincronizando = false;
+export async function sincronizarOperacoesVoz(): Promise<void> {
+  if (sincronizando) return;
+  sincronizando = true;
+  try {
+    const { data } = await supabase.auth.getSession();
+    const userId = data.session?.user.id;
+    if (!userId) return;
+    const chaves = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith(`grana:voz:operacao:${userId}:`));
+    for (const chave of chaves) {
+      const raw = await AsyncStorage.getItem(chave);
+      if (!raw) continue;
+      const item = JSON.parse(raw);
+      try {
+        await enviarOperacaoVoz(item.requestId, item.source, item.payload);
+        await AsyncStorage.removeItem(chave);
+        notificarDadosDosWidgetsAlterados();
+      } catch { break; }
+    }
+  } finally { sincronizando = false; }
+}
+
+async function enviarOperacaoVoz(requestId: string, source: 'app' | 'widget', payload: PayloadOperacaoVoz): Promise<ResultadoOperacaoVoz> {
   const { kind, ...dados } = payload;
+  const controle = new AbortController();
+  const prazo = setTimeout(() => controle.abort(), 15_000);
+  try {
   const { data, error } = await supabase.rpc('registrar_operacao_voz', {
     p_request_id: requestId,
     p_source: source,
     p_kind: kind,
     p_payload: dados,
-  });
+  }).abortSignal(controle.signal);
+  if (controle.signal.aborted) throw new Error('timeout ao sincronizar lançamento');
   if (error) throw error;
 
   const resposta = data as Record<string, unknown> | null;
@@ -81,6 +143,7 @@ export async function registrarOperacaoVoz(
   };
   if (status === 'committed' && !resultado.replayed) notificarDadosDosWidgetsAlterados();
   return resultado;
+  } finally { clearTimeout(prazo); }
 }
 
 /** Desfaz conta, compra ou todas as parcelas de uma vez, de forma idempotente. */

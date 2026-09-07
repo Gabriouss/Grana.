@@ -25,6 +25,7 @@ import UpdateBanner from '@/components/UpdateBanner';
 import NovidadesModal from '@/components/NovidadesModal';
 import AvisoFlagModal from '@/components/AvisoFlagModal';
 import RespostaVozWidget from '@/components/RespostaVozWidget';
+import VozesSalvasLocalmente from '@/components/VozesSalvasLocalmente';
 import SincronizadorWidgetsHome from '@/components/SincronizadorWidgetsHome';
 import { carregarNotifPrefs } from '@/lib/notifications';
 import { observarTrocaDeTokenPush, sincronizarPushHabito } from '@/lib/push-notifications';
@@ -176,6 +177,8 @@ function RootNavigator() {
     let encerrado = false;
     const tentar = () => {
       if (encerrado) return;
+      void import('@/lib/voice-operations').then(({ sincronizarOperacoesVoz }) =>
+        sincronizarOperacoesVoz()).catch(() => {});
       void import('@/lib/widget-voz-task').then(({ tentarVozesPendentes }) => {
         if (!encerrado) return tentarVozesPendentes();
       }).catch(() => {});
@@ -233,6 +236,7 @@ function RootNavigator() {
           fala criou; um lançamento que o widget não salvou sozinho abre a
           revisão com a transcrição pronta. */}
       {session && <RespostaVozWidget />}
+      {session && <VozesSalvasLocalmente key={session.user.id} />}
       {/* Snapshot mínimo e cifrado usado pelos widgets informativos Android. */}
       <SincronizadorWidgetsHome />
       <Stack screenOptions={{ headerShown: false }}>
