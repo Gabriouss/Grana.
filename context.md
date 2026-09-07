@@ -3073,3 +3073,62 @@ foi usado somente no processo de publicação e não foi salvo no projeto.
 - O push de commits para `origin/main` permanece pendente de autorização
   explícita, após rejeição da revisão automática. Deploy Supabase foi autorizado
   pelo token fornecido e está concluído, independentemente desse push.
+
+## 06-07/09/2026 — widget Central de Lançamentos vira cápsulas, retry no lançamento por voz, e fatura passada/atual do Granabô fechada
+
+Sequência de correções antes de uma nova build (nenhuma disparada ainda,
+autor pediu pra aguardar o Codex terminar o Granabô primeiro):
+
+- **Widget "Central de Lançamentos"** (`modules/grana-voice-widget/...`):
+  duas rodadas. Primeiro `targetCellWidth` 4→5 e `resizeMode` "none"→
+  "horizontal" (`7d6bc65`) — o autor mostrou print com o widget não
+  ocupando a tela de ponta a ponta em launcher de 5 colunas, e um segundo
+  print de área branca ao tentar redimensionar (launcher ignora
+  `resizeMode="none"` e arrasta mesmo assim, mas o app nunca é avisado via
+  `onAppWidgetOptionsChanged`, então o conteúdo não reflui). Depois
+  (`3541789`) os 4 botões deixaram de ser colunas empilhadas dentro de 1
+  cartão contínuo e viraram cápsulas separadas (ícone ao lado do rótulo),
+  a pedido do autor pra igualar o formato real da fileira "Colar
+  comprovante/Importar extrato/Escanear nota" da tela Início
+  (`styles.smartActionBtn`). `grana_widget_acao` (usado só neste widget)
+  ganhou raio 999dp; `grana_widget_selo` (círculo atrás do ícone) ficou
+  órfão e foi removido. Confirmado por inspeção que os IDs de clique
+  (`R.id.grana_central_*`) não mudaram — `CentralLancamentoWidgetProvider.kt`
+  e o roteamento de deep link (`lib/deep-links.ts`, `app/+native-intent.tsx`)
+  não foram tocados. Só verificação estática (`tsc`, XML bem formado) —
+  sem JDK/SDK Android nesta máquina, nada foi compilado de verdade.
+- **Lançamento por voz — velocidade**: fallback sequencial Groq→OpenAI
+  trocado por corrida com atraso de 8s em
+  `supabase/functions/_shared/voice-transcription.ts` (`5200545`).
+  Commitado, **não publicado ainda** (autor pediu pra deixar só
+  commitado).
+- **Lançamento por voz — retry**: logs de produção mostraram a função
+  `processar-lancamento-voz` respondendo 200 com transcrição válida, mas
+  o app às vezes não conseguindo ler o corpo (JSON ilegível ou sem
+  `status: 'ready'`) — suspeita de rede móvel picando no meio da resposta.
+  `lib/voz.ts` (`fb0bc3f`) agora tenta a mesma gravação mais uma vez
+  automaticamente nesse caso específico (nunca nos erros definitivos como
+  `audio_ausente`/`audio_grande`/`formato_invalido`/401, que têm código
+  reconhecível e não são retentados). Validado com um teste isolado (5
+  cenários, fora do `test:parser`) já que o módulo depende de
+  react-native/expo e não roda em Node puro.
+- **Granabô — fatura passada vs atual**: o Codex diagnosticou e corrigiu
+  (`cddb6a9`, eu só revisei e commitei porque a sessão dele bateu no
+  limite de uso no meio do trabalho): o Granabô respondia com a fatura
+  ATUAL quando perguntado pela PASSADA, porque dependia do modelo acertar
+  mês/ano sozinho. `deslocamentoPedido()` lê a própria frase do usuário
+  ("fatura passada/anterior" vs "atual") e `cicloRelativo()` resolve o
+  ciclo pelo fechamento real de cada cartão, sobrescrevendo o período
+  antes da ferramenta rodar. Testado com 2 cartões reais (fechamentos
+  diferentes) e 14 lançamentos na conta QA (`docs/GRANABO_TESTE_CARTOES_
+  20260906.json`), incluindo troca de cartão no meio da conversa: 9/9
+  perguntas corretas contra a função já publicada em produção (versão 19,
+  confirmado via Management API que o deploy precedeu o teste em segundos).
+  Já publicado; não precisa de build.
+- **Estado antes da próxima build**: `tsc --noEmit` limpo e `test:parser`
+  100% no HEAD. Além do widget acima, `components/Granachat.tsx`
+  (rolagem sem teclado + cancelamento de consultas do Granabô) e
+  `components/ToggleSwitch.tsx` (correção de hooks) também mudaram desde
+  a 1.7.0 e nunca foram testados num aparelho real. Versão ainda em
+  `1.7.0` no `app.json` — falta rodar `npm run build:preparar` antes de
+  disparar. Nenhuma build EAS disparada nesta sessão.
