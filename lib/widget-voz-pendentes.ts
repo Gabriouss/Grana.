@@ -1,0 +1,59 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+/*
+ * A transcrição depende da rede, mas a gravação não. Quando o widget é usado
+ * sem internet, o áudio fica no cache privado do app e entra nesta fila. O
+ * requestId não muda: se o servidor tiver recebido o pedido antes da conexão
+ * cair, repetir a chamada devolve o mesmo resultado em vez de duplicar o
+ * lançamento.
+ */
+const CHAVE = 'grana:queue:widget-voz-pendente-v1';
+
+export type VozPendente = {
+  caminho: string;
+  requestId: string;
+  userId: string;
+  criadoEm: number;
+};
+
+async function ler(): Promise<VozPendente[]> {
+  try {
+    const bruto = await AsyncStorage.getItem(CHAVE);
+    if (!bruto) return [];
+    const itens = JSON.parse(bruto) as unknown;
+    if (!Array.isArray(itens)) return [];
+    return itens.filter((item): item is VozPendente => (
+      !!item && typeof item === 'object' &&
+      typeof (item as VozPendente).caminho === 'string' &&
+      typeof (item as VozPendente).requestId === 'string' &&
+      typeof (item as VozPendente).userId === 'string' &&
+      typeof (item as VozPendente).criadoEm === 'number'
+    ));
+  } catch {
+    return [];
+  }
+}
+
+async function gravar(itens: VozPendente[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CHAVE, JSON.stringify(itens));
+  } catch {
+    /* Se o armazenamento estiver cheio, o arquivo continua no cache e o
+       estado de atenção evita fingir que o lançamento foi concluído. */
+  }
+}
+
+export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'>): Promise<void> {
+  const itens = await ler();
+  if (itens.some((existente) => existente.requestId === item.requestId)) return;
+  itens.push({ ...item, criadoEm: Date.now() });
+  await gravar(itens);
+}
+
+export async function listarVozesPendentes(): Promise<VozPendente[]> {
+  return ler();
+}
+
+export async function removerVozPendente(requestId: string): Promise<void> {
+  await gravar((await ler()).filter((item) => item.requestId !== requestId));
+}

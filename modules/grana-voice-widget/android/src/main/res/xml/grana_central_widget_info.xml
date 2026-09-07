@@ -17,9 +17,9 @@
      (match_parent + peso igual nos 4 botões), só faltava o manifesto permitir. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="60dp"
+    android:minHeight="48dp"
     android:minResizeWidth="250dp"
-    android:minResizeHeight="60dp"
+    android:minResizeHeight="48dp"
     android:targetCellWidth="5"
     android:targetCellHeight="1"
     android:updatePeriodMillis="0"

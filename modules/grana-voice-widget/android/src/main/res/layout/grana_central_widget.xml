@@ -12,7 +12,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/grana_central_raiz"
     android:layout_width="match_parent"
-    android:layout_height="60dp"
+    android:layout_height="48dp"
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:paddingHorizontal="2dp">
@@ -20,7 +20,7 @@
   <LinearLayout
       android:id="@+id/grana_central_entrada"
       android:layout_width="0dp"
-      android:layout_height="44dp"
+      android:layout_height="40dp"
       android:layout_weight="1"
       android:orientation="horizontal"
       android:gravity="center"
@@ -45,7 +45,7 @@
   <LinearLayout
       android:id="@+id/grana_central_saida"
       android:layout_width="0dp"
-      android:layout_height="44dp"
+      android:layout_height="40dp"
       android:layout_weight="1"
       android:layout_marginStart="5dp"
       android:orientation="horizontal"
@@ -71,7 +71,7 @@
   <LinearLayout
       android:id="@+id/grana_central_credito"
       android:layout_width="0dp"
-      android:layout_height="44dp"
+      android:layout_height="40dp"
       android:layout_weight="1"
       android:layout_marginStart="5dp"
       android:orientation="horizontal"
@@ -97,7 +97,7 @@
   <LinearLayout
       android:id="@+id/grana_central_boleto"
       android:layout_width="0dp"
-      android:layout_height="44dp"
+      android:layout_height="40dp"
       android:layout_weight="1"
       android:layout_marginStart="5dp"
       android:orientation="horizontal"

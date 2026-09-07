@@ -48,7 +48,11 @@ class GranaVoiceCaptureService : Service() {
        inicial pegaria quem toca e leva um segundo pra começar a falar. */
     private const val INTERVALO_AMOSTRA_MS = 200L
     private const val SILENCIO_PARA_CORTAR_MS = 1_600L
-    private const val LIMIAR_FALA = 1_800
+    /* Em aparelhos com microfone mais distante, a fala normal fica abaixo de
+       1.800. O limiar alto fazia `ouviuFala` permanecer falso e o corte por
+       silêncio nunca era armado; a gravação só terminava no segundo toque ou
+       no teto de 20s, capturando a explicação seguinte junto. */
+    private const val LIMIAR_FALA = 600
   }
 
   private var recorder: MediaRecorder? = null

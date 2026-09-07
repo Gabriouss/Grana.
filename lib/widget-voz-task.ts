@@ -1,4 +1,9 @@
 import { AppRegistry, Platform } from 'react-native';
+import { isLikelyNetworkError } from './offline-cache';
+
+class VozPendenteOffline extends Error {
+  readonly nome = 'VozPendenteOffline';
+}
 
 /**
  * Tarefa headless do widget Android de lançamento por voz.
@@ -30,6 +35,8 @@ async function executarTarefa(payload: Payload) {
      se nada tivesse acontecido — é justamente esse "nada aconteceu" que
      esconderia um lançamento perdido. */
   let estadoFinal: 'ocioso' | 'atencao' = 'ocioso';
+  let manterArquivo = false;
+  const contexto: { transcricao?: string } = {};
 
   try {
     if (!caminho) return;
@@ -45,23 +52,55 @@ async function executarTarefa(payload: Payload) {
       return;
     }
 
-    const salvou = await processar(caminho, requestId);
+    const salvou = await processar(caminho, requestId, contexto);
     if (salvou) await sincronizarResumoDepoisDaVoz();
     else estadoFinal = 'atencao';
-  } catch {
+  } catch (erro) {
     estadoFinal = 'atencao';
-    try {
-      const { notificarFalha } = await import('./widget-voz-notificacoes');
-      await notificarFalha('erro_interno');
-    } catch {
-      // O estado de atenção continua sendo o recibo mínimo se a notificação
-      // também falhar: o próximo toque abre o app em vez de parecer perdido.
+    if (erro instanceof VozPendenteOffline || isLikelyNetworkError(erro)) {
+      /* A gravação já aconteceu. Não apagá-la é a diferença entre "sem rede"
+         ser uma espera transparente e perder a fala junto com a notificação. */
+      if (caminho && requestId) {
+        const [{ adicionarVozPendente }, { supabase }] = await Promise.all([
+          import('./widget-voz-pendentes'),
+          import('./supabase'),
+        ]);
+        /* A fila é vinculada ao usuário autenticado. Sem isso, alguém que
+           saia da conta antes da rede voltar poderia lançar o áudio antigo na
+           conta seguinte do mesmo aparelho. */
+        const { data } = await supabase.auth.getSession();
+        const userId = data.session?.user.id;
+        if (userId) {
+          await adicionarVozPendente({ caminho, requestId, userId });
+          manterArquivo = true;
+          try {
+            const { notificarPendenteOffline } = await import('./widget-voz-notificacoes');
+            await notificarPendenteOffline();
+          } catch {
+            // A fila continua sendo a fonte de verdade se a notificação falhar.
+          }
+        }
+      }
+    } else {
+      try {
+        const notificacoes = await import('./widget-voz-notificacoes');
+        if (contexto.transcricao) {
+          /* Se a captura e a transcrição deram certo, devolver a fala para a
+             revisão é muito mais útil que "erro interno" sem contexto. */
+          await notificacoes.notificarRevisao('Não consegui salvar', contexto.transcricao);
+        } else {
+          await notificacoes.notificarFalha('erro_interno');
+        }
+      } catch {
+        // O estado de atenção continua sendo o recibo mínimo se a notificação
+        // também falhar: o próximo toque abre o app em vez de parecer perdido.
+      }
     }
   } finally {
     /* Áudio financeiro não fica no aparelho depois de usado, e o widget não
        pode ficar preso em "Lançando…" — os dois valem em QUALQUER saída,
        inclusive erro. */
-    if (caminho) await apagarArquivo(caminho);
+    if (caminho && !manterArquivo) await apagarArquivo(caminho);
     definirEstado(estadoFinal);
   }
 }
@@ -76,7 +115,7 @@ async function apagarArquivo(caminho: string) {
   }
 }
 
-async function processar(caminho: string, requestId: string): Promise<boolean> {
+async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }): Promise<boolean> {
   const [{ transcreverAudio }, notificacoes, heuristics, data, voiceOperations] = await Promise.all([
     import('./voz'),
     import('./widget-voz-notificacoes'),
@@ -88,11 +127,15 @@ async function processar(caminho: string, requestId: string): Promise<boolean> {
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
   const transcricao = await transcreverAudio(uri, { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' });
   if (!transcricao.ok) {
+    if (transcricao.codigo === 'sem_rede' || transcricao.codigo === 'demorou') {
+      throw new VozPendenteOffline('A transcrição será retomada quando houver conexão.');
+    }
     await notificacoes.notificarFalha(transcricao.codigo);
     return false;
   }
 
   const texto = transcricao.transcript;
+  contexto.transcricao = texto;
   const valor = heuristics.guessAmountFromText(texto);
 
   /* Sem valor não se salva nada — é a regra que separa "lançou errado" de
@@ -132,13 +175,18 @@ async function processar(caminho: string, requestId: string): Promise<boolean> {
       recurring: heuristics.parseRecorrencia(texto),
     });
     if (resultado.status === 'undone') return true;
-    await notificacoes.notificarSucesso({
-      titulo: `${descricao} — ${formatarBRL(valor)}`,
-      texto: `Conta a pagar · vence ${formatarData(dueDate)}`,
-      tipo: 'bill',
-      ids: resultado.ids,
-      operationId: resultado.operationId,
-    });
+    try {
+      await notificacoes.notificarSucesso({
+        titulo: `${descricao} — ${formatarBRL(valor)}`,
+        texto: `Conta a pagar · vence ${formatarData(dueDate)}`,
+        tipo: 'bill',
+        ids: resultado.ids,
+        operationId: resultado.operationId,
+      });
+    } catch {
+      /* A RPC já confirmou a gravação. Uma falha no recibo nunca deve fazer
+         parecer que o lançamento não existiu nem provocar nova tentativa. */
+    }
     return true;
   }
 
@@ -162,15 +210,20 @@ async function processar(caminho: string, requestId: string): Promise<boolean> {
   });
   if (resultado.status === 'undone') return true;
 
-  await notificacoes.notificarSucesso({
-    titulo: `${descricao} — ${formatarBRL(valor)}`,
-    texto: [categoria.name, nomeDaForma(formaPagamento), heuristics.parseRecorrencia(texto) ? 'todo mês' : null]
-      .filter(Boolean)
-      .join(' · '),
-    tipo: 'transaction',
-    ids: resultado.ids,
-    operationId: resultado.operationId,
-  });
+  try {
+    await notificacoes.notificarSucesso({
+      titulo: `${descricao} — ${formatarBRL(valor)}`,
+      texto: [categoria.name, nomeDaForma(formaPagamento), heuristics.parseRecorrencia(texto) ? 'todo mês' : null]
+        .filter(Boolean)
+        .join(' · '),
+      tipo: 'transaction',
+      ids: resultado.ids,
+      operationId: resultado.operationId,
+    });
+  } catch {
+    /* O lançamento já foi confirmado no banco; o próximo refresh do app o
+       encontra mesmo que o recibo local não possa ser publicado. */
+  }
   return true;
 }
 
@@ -220,13 +273,17 @@ async function lancarNoCredito(args: {
     if (resultado.status === 'undone') return true;
     const { checarLimiteCartao } = await import('./creditLimitAlert');
     checarLimiteCartao(cartao.id).catch(() => {});
-    await notificacoes.notificarSucesso({
-      titulo: `${descricao} — ${formatarBRL(valor)}`,
-      texto: `${parcelas}x no ${cartao.name} · ${categoria.name}`,
-      tipo: 'transaction',
-      ids: resultado.ids,
-      operationId: resultado.operationId,
-    });
+    try {
+      await notificacoes.notificarSucesso({
+        titulo: `${descricao} — ${formatarBRL(valor)}`,
+        texto: `${parcelas}x no ${cartao.name} · ${categoria.name}`,
+        tipo: 'transaction',
+        ids: resultado.ids,
+        operationId: resultado.operationId,
+      });
+    } catch {
+      // A operação já está confirmada; não repetir para tentar publicar o recibo.
+    }
     return true;
   }
 
@@ -245,14 +302,48 @@ async function lancarNoCredito(args: {
   if (resultado.status === 'undone') return true;
   const { checarLimiteCartao } = await import('./creditLimitAlert');
   checarLimiteCartao(cartao.id).catch(() => {});
-  await notificacoes.notificarSucesso({
-    titulo: `${descricao} — ${formatarBRL(valor)}`,
-    texto: `Crédito · ${cartao.name} · ${categoria.name}`,
-    tipo: 'transaction',
-    ids: resultado.ids,
-    operationId: resultado.operationId,
-  });
+  try {
+    await notificacoes.notificarSucesso({
+      titulo: `${descricao} — ${formatarBRL(valor)}`,
+      texto: `Crédito · ${cartao.name} · ${categoria.name}`,
+      tipo: 'transaction',
+      ids: resultado.ids,
+      operationId: resultado.operationId,
+    });
+  } catch {
+    // A operação já está confirmada; não repetir para tentar publicar o recibo.
+  }
   return true;
+}
+
+let filaEmExecucao = false;
+
+/** Retoma áudios que foram gravados sem internet quando o app volta à frente. */
+export async function tentarVozesPendentes(): Promise<void> {
+  if (filaEmExecucao || Platform.OS !== 'android') return;
+  filaEmExecucao = true;
+  try {
+    const [{ listarVozesPendentes, removerVozPendente }, { podeNotificar }, { supabase }] = await Promise.all([
+      import('./widget-voz-pendentes'),
+      import('./widget-voz-notificacoes'),
+      import('./supabase'),
+    ]);
+    if (!(await podeNotificar())) return;
+    const { data: sessao } = await supabase.auth.getSession();
+    const userId = sessao.session?.user.id;
+    if (!userId) return;
+
+    for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId)) {
+      /* Remove antes de processar: em caso de queda durante a tentativa, o
+         próprio executarTarefa recoloca o mesmo requestId sem duplicar. */
+      await removerVozPendente(item.requestId);
+      await executarTarefa({ caminho: item.caminho, requestId: item.requestId });
+    }
+  } catch {
+    // A fila permanece no aparelho; a próxima abertura/retomada tenta de novo.
+  } finally {
+    filaEmExecucao = false;
+  }
 }
 
 async function sincronizarResumoDepoisDaVoz() {

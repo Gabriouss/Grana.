@@ -3204,3 +3204,32 @@ autor pediu pra aguardar o Codex terminar o Granabô primeiro):
   a 1.7.0 e nunca foram testados num aparelho real. Versão ainda em
   `1.7.0` no `app.json` — falta rodar `npm run build:preparar` antes de
   disparar. Nenhuma build EAS disparada nesta sessão.
+
+## 07/09/2026 — análise do vídeo dos dois widgets e fila offline do lançamento por voz
+
+- O áudio do vídeo foi transcrito somente depois de autorização explícita do
+  autor. O vídeo mostrou o widget de voz ficando em “Ouvindo...” até o segundo
+  toque, seguido de captura de fala que não correspondia ao comando financeiro;
+  também mostrou o widget Central de Lançamentos ocupando espaço vertical
+  demais. A segunda tentativa encerrou a captura, mas ainda podia terminar sem
+  lançamento quando a transcrição ou a RPC encontravam uma falha de rede.
+- `GranaVoiceCaptureService.kt`: limiar de fala reduzido de 1.800 para 600 de
+  amplitude. Em aparelhos com microfone mais distante, o valor anterior nunca
+  armava o corte por silêncio; a captura só terminava no segundo toque ou no
+  teto de 20 segundos e podia incluir a explicação seguinte.
+- `grana_central_widget.xml` e `grana_central_widget_info.xml`: altura visual
+  reduzida de 60/44dp para 48/40dp, mantendo quatro cápsulas horizontais e os
+  IDs de clique/deep link.
+- `lib/widget-voz-pendentes.ts` e `lib/widget-voz-task.ts`: quando a rede cai,
+  o áudio e o mesmo `requestId` ficam numa fila local vinculada ao usuário; o
+  widget notifica que o lançamento está aguardando conexão e o app retoma a
+  fila ao abrir ou voltar ao primeiro plano. A RPC idempotente impede duplicata
+  se o servidor tiver recebido a operação antes da queda. A fila não é
+  processada por outra conta no mesmo aparelho.
+- Falha posterior à transcrição agora devolve o texto ouvido para revisão, em
+  vez de uma mensagem genérica; falha ao publicar a notificação não transforma
+  uma operação já confirmada em nova tentativa.
+- Verificação local: `tsc --noEmit` e `git diff --check` passaram. Não há JDK/
+  SDK Android nesta máquina; a integração nativa ainda precisa de uma build
+  interna e teste físico no aparelho antes de publicar APK. Nenhuma build foi
+  disparada.

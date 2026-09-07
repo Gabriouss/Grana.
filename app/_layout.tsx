@@ -168,6 +168,29 @@ function RootNavigator() {
     };
   }, [session?.user.id, estadoAcesso?.allowed]);
 
+  /* O widget consegue gravar sem rede, mas a transcrição e a RPC precisam
+     dela. O headless mantém o áudio no cache quando a conexão cai; aqui a
+     fila é retomada ao abrir o app e a cada volta ao primeiro plano. */
+  useEffect(() => {
+    if (!session?.user.id || Platform.OS !== 'android' || estadoAcesso?.allowed === false) return;
+    let encerrado = false;
+    const tentar = () => {
+      if (encerrado) return;
+      void import('@/lib/widget-voz-task').then(({ tentarVozesPendentes }) => {
+        if (!encerrado) return tentarVozesPendentes();
+      }).catch(() => {});
+    };
+
+    tentar();
+    const appState = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') tentar();
+    });
+    return () => {
+      encerrado = true;
+      appState.remove();
+    };
+  }, [session?.user.id, estadoAcesso?.allowed]);
+
   /* Link protegido aberto sem sessão vai para o login, não para a página de
      marketing. Sem isto o expo-router caía na landing e o destino sumia. */
   useEffect(() => {

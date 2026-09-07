@@ -2,20 +2,22 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
-let task, permission = true, cards = [], matched = null, saved = [], revisions = [], cleaned = 0;
+let task, permission = true, cards = [], matched = null, saved = [], revisions = [], cleaned = 0, pending = [];
 const deps = {
   'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
+  './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado: () => {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: 'mercado 32 no crédito' }) },
   './widget-voz-notificacoes': { podeNotificar: async () => permission,
-    notificarRevisao: async (titulo) => { revisions.push(titulo); }, notificarFalha: async () => { throw new Error('Falha inesperada'); }, notificarSucesso: async () => {} },
+    notificarRevisao: async (titulo) => { revisions.push(titulo); }, notificarFalha: async () => { throw new Error('Falha inesperada'); }, notificarPendenteOffline: async () => { revisions.push('Lançamento aguardando conexão'); }, notificarSucesso: async () => {} },
   './heuristics': { guessAmountFromText: () => 32, guessCategoryFromText: () => ({ name: 'Alimentação', color: '#fff' }),
     guessTypeFromText: () => 'out', guessDescFromText: () => 'mercado', ehIntencaoBoleto: () => false,
     ehIntencaoCredito: () => true, matchCardByText: () => matched, parseParcelas: () => 1, parseRecorrencia: () => false },
   './data': { fetchCreditCards: async () => cards, fetchCategories: async () => [] },
   './voice-operations': { registrarOperacaoVoz: async (_, __, input) => { saved.push(input); return { ids: ['tx'], operationId: 'op' }; } },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
-  './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }) } } },
+  './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: { user: { id: 'qa-user' } } } }) } } },
+  './widget-voz-pendentes': { adicionarVozPendente: async (item) => { pending.push(item); }, listarVozesPendentes: async () => pending, removerVozPendente: async () => {} },
   './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},
   'expo-file-system/legacy': { deleteAsync: async () => { cleaned++; } },
 };
@@ -32,5 +34,10 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 
   assert.equal(saved[1].card_id, 'c6');
   permission = false; await task({ caminho: '/qa.m4a', requestId: '4' });
   assert.equal(saved.length, 2); assert.equal(cleaned, 4);
-  console.log('OK tarefa real: cartão ambíguo vai à revisão; cartão citado é usado; único cartão funciona; sem notificação não grava; áudio é removido.');
+  permission = true;
+  deps['./voz'].transcreverAudio = async () => ({ ok: false, codigo: 'sem_rede' });
+  await task({ caminho: '/qa-offline.m4a', requestId: '5' });
+  assert.equal(pending.length, 1); assert.equal(pending[0].userId, 'qa-user');
+  assert.equal(cleaned, 4, 'áudio offline fica preservado para a fila');
+  console.log('OK tarefa real: cartão ambíguo vai à revisão; cartão citado é usado; único cartão funciona; sem notificação não grava; áudio offline fica na fila; erros não apagam o áudio pendente.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

@@ -50,7 +50,8 @@ export type DadosNotifVoz =
       /** Ausente apenas em notificacoes antigas, anteriores ao undo atomico. */
       operationId?: string;
     }
-  | { origem: 'voz'; resultado: 'revisar'; transcricao: string };
+  | { origem: 'voz'; resultado: 'revisar'; transcricao: string }
+  | { origem: 'voz'; resultado: 'pendente'; transcricao: string };
 
 async function prepararCanal() {
   const Notifications = getNotifications();
@@ -142,4 +143,13 @@ export async function notificarRevisao(titulo: string, transcricao: string) {
 export async function notificarFalha(codigo: CodigoErroVoz) {
   const msg = mensagemDeErroVoz(codigo);
   await publicar(msg.titulo, msg.texto, { origem: 'voz', resultado: 'revisar', transcricao: '' });
+}
+
+/** O áudio foi guardado; falta só a rede para transcrever e salvar. */
+export async function notificarPendenteOffline() {
+  await publicar(
+    'Lançamento aguardando conexão',
+    'O áudio foi guardado no aparelho. O Grana. tenta lançar quando a internet voltar.',
+    { origem: 'voz', resultado: 'pendente', transcricao: '' }
+  );
 }
