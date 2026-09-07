@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
-import { formatMoney, isSameMonth } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
+import { filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
 import { BANKS, type CreditCard, type Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
@@ -24,7 +25,9 @@ export default function CreditSummaryCard({
   month: number;
   onPress: () => void;
 }) {
-  const creditTx = transactions.filter((t) => t.payment_method === 'credit' && isSameMonth(t.occurred_on, year, month));
+  // Fatura não é mês civil: cada cartão pode fechar em um dia diferente.
+  // Reutiliza a mesma regra da tela Crédito para o resumo não divergir dela.
+  const creditTx = filtrarLancamentosDaFatura(transactions, cards, 'all', year, month);
   const totalMes = creditTx.reduce((s, t) => s + Number(t.amount), 0);
 
   const porCartao = cards

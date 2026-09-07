@@ -4,6 +4,14 @@
 
 ## Correção adicional do widget de áudio — 07/09/2026
 
+## Correção do resumo de faturas na Home — 07/09/2026
+
+`components/CreditSummaryCard.tsx` somava crédito por mês civil, embora a
+tela Crédito agrupasse pelo dia de fechamento de cada cartão. O resumo agora
+usa `filtrarLancamentosDaFatura`, a mesma regra compartilhada da tela de
+crédito; cartões com fechamentos diferentes deixam de misturar ciclos. TSC e
+17/17 checagens de ciclo passaram.
+
 Após a build 1.8.1, o widget podia parecer morto quando a tarefa headless
 falhava: `processando` não tinha ação, exceções de notificação eram silenciosas
 e um `Intent` sem extras deixava o estado preso. A tarefa agora preserva
