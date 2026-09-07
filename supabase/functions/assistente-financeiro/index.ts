@@ -792,7 +792,7 @@ async function executarFerramenta(
   usuario: UsuarioAutenticado
 ): Promise<string> {
   const userId = usuario.id;
-  if (nome === 'consultarLancamentos' && args.fatura === true) {
+  if (nome === 'consultarLancamentos' && (args.fatura === true || String(args.cartao ?? '').trim() !== '')) {
     /* Evita que uma escolha genérica do modelo volte a interpretar fatura
        como mês civil. A ferramenta especializada é a única fonte de números
        para esse recorte. */
