@@ -53,7 +53,10 @@ async function sincronizarInterno(
 
   const Notifications = getNotifications();
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-  if (!Notifications || !projectId) return jaEstavaAtivo ? 'push' : 'fallback-local';
+  if (!Notifications || !projectId) {
+    if (!projectId) console.warn('[push] sem projectId do EAS — só resta o lembrete local.');
+    return jaEstavaAtivo ? 'push' : 'fallback-local';
+  }
 
   try {
     const anterior = await tokenPushSalvo();
@@ -78,10 +81,20 @@ async function sincronizarInterno(
     await salvarEstadoPush(token);
     await cancelDailyHabitReminder();
     return 'push';
-  } catch {
-    // Android no Expo Go não oferece token remoto. Se este aparelho já tinha
-    // sido cadastrado, o servidor continua sendo a fonte; num aparelho novo,
-    // o agendamento local mantém o lembrete até a próxima tentativa online.
+  } catch (e) {
+    /* Android no Expo Go não oferece token remoto. Se este aparelho já tinha
+       sido cadastrado, o servidor continua sendo a fonte; num aparelho novo,
+       o agendamento local mantém o lembrete até a próxima tentativa online.
+
+       O log existe porque este catch já custou caro: sem ele, um push que
+       nunca chegou a funcionar ficou indistinguível de um push desligado por
+       escolha. Em 07/09/2026 a tabela `push_tokens` estava VAZIA para todas
+       as contas e `push_habit_deliveries` não tinha uma linha sequer — o
+       projeto nunca teve `google-services.json` nem credencial FCM, então
+       `getExpoPushTokenAsync` sempre lançou aqui, em silêncio, desde o
+       primeiro dia. Falha permanente de configuração não pode se parecer com
+       indisponibilidade temporária (mesma lição de lib/voice-operations.ts). */
+    console.warn('[push] registro do token falhou; caindo no lembrete local:', e);
     return jaEstavaAtivo ? 'push' : 'fallback-local';
   }
 }

@@ -27,8 +27,11 @@ import AvisoFlagModal from '@/components/AvisoFlagModal';
 import RespostaVozWidget from '@/components/RespostaVozWidget';
 import VozesSalvasLocalmente from '@/components/VozesSalvasLocalmente';
 import SincronizadorWidgetsHome from '@/components/SincronizadorWidgetsHome';
-import { carregarNotifPrefs } from '@/lib/notifications';
+import { carregarNotifPrefs, scheduleDailyHabitReminder } from '@/lib/notifications';
 import { observarTrocaDeTokenPush, sincronizarPushHabito } from '@/lib/push-notifications';
+import { fetchTransactions } from '@/lib/data';
+import { calculateStreakAndWeek } from '@/lib/gamification';
+import { todayISO } from '@/lib/format';
 // Registra o handler de notificações locais e remotas assim que o app abre.
 import '@/lib/notifications';
 
@@ -152,7 +155,29 @@ function RootNavigator() {
     let encerrado = false;
     const sincronizar = async () => {
       const prefs = await carregarNotifPrefs();
-      if (!encerrado) await sincronizarPushHabito(userId, prefs);
+      if (encerrado) return;
+      const resultado = await sincronizarPushHabito(userId, prefs);
+      /* Sem push remoto, o lembrete local é o único que existe — e até
+         07/09/2026 ele só era agendado quando a Início terminava de carregar
+         os lançamentos. Como o push nunca chegou a funcionar (o projeto não
+         tem `google-services.json` nem credencial FCM, então
+         `getExpoPushTokenAsync` sempre falhou; `push_tokens` estava vazia
+         para todas as contas), as janelas de almoço e noite ficavam à mercê
+         de qual tela a pessoa abriu primeiro. Agendar aqui garante as duas em
+         toda abertura, com os mesmos dados que o Perfil já usava. */
+      if (encerrado || resultado !== 'fallback-local' || !prefs.lembreteDiarioAtivo) return;
+      const transacoes = await fetchTransactions({ sinceDays: 35 });
+      if (encerrado) return;
+      const ultimaData = transacoes[0]?.occurred_on;
+      await scheduleDailyHabitReminder({
+        ...prefs.horario,
+        jaLancouHoje: transacoes.some((t) => t.occurred_on === todayISO()),
+        streak: calculateStreakAndWeek(transacoes).streak,
+        diasInativo: ultimaData
+          ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
+          : 99,
+        almocoAtivo: prefs.almocoAtivo,
+      });
     };
     const tentarSincronizar = () => void sincronizar().catch(() => {});
 
