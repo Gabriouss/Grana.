@@ -43,6 +43,7 @@ async function main() {
 
   let existe = true, tamanho = 4, erroEnvio = null, envios = 0, token = 'sessao-ficticia';
   let plataforma = 'android', corpoEnviado = '', prazo;
+  let relogio = 0, timeoutRapido = false;
   let resposta = () => Response.json({ status: 'ready', transcript: 'mercado 32 no Pix' });
   const cliente = carregar('lib/voz.ts', {
     'react-native': { Platform: { get OS() { return plataforma; } } },
@@ -65,7 +66,8 @@ async function main() {
     FormData: FormNativo,
     process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://example.invalid' } },
     fetch: async () => ({ blob: async () => new Blob(['audio-web'], { type: 'audio/webm' }) }),
-    setTimeout(fn, ms) { prazo = ms; return setTimeout(fn, ms); },
+    Date: { now: () => relogio },
+    setTimeout(fn, ms) { prazo = ms; return setTimeout(fn, timeoutRapido ? 5 : ms); },
   });
   const transcrever = () => cliente.transcreverAudio('file:///voz.m4a');
   assert.equal((await transcrever()).transcript, 'mercado 32 no Pix');
@@ -77,6 +79,19 @@ async function main() {
   assert.equal((await cliente.transcreverAudio('file:///widget.m4a', { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' })).ok, true);
   assert.match(corpoEnviado, /name="audio"; filename="widget.m4a"/);
   assert.match(corpoEnviado, /content-type: audio\/m4a/);
+  let rodadas = 0;
+  resposta = () => {
+    if (rodadas++ === 0) { relogio += 74000; return Response.json({}); }
+    return Response.json({ status: 'ready', transcript: 'mercado 32' });
+  };
+  assert.equal((await transcrever()).ok, true);
+  assert.equal(rodadas, 2);
+  assert.equal(prazo, 16000, 'retry só pode usar o restante do orçamento total');
+  timeoutRapido = true;
+  resposta = () => ({ ok: true, status: 200, json: () => new Promise(() => {}) });
+  assert.equal((await transcrever()).codigo, 'demorou', 'corpo pendurado também tem timeout');
+  timeoutRapido = false;
+  resposta = () => Response.json({ status: 'ready', transcript: 'mercado 32' });
   const antes = envios;
   existe = false;
   assert.equal((await transcrever()).codigo, 'audio_ausente');

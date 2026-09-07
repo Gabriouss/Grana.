@@ -56,6 +56,8 @@ export const MAX_SEGUNDOS_GRAVACAO = 20;
    tarefa do widget segurava o widget em "Lançando…" até o Android matá-la aos
    dois minutos. São dois provedores sequenciais de até 30s cada, mais upload. */
 const TIMEOUT_MS = 75_000;
+// Deixa 30s para interpretação, gravação e recibo antes do headless (120s).
+const TIMEOUT_TOTAL_MS = 90_000;
 
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -76,8 +78,10 @@ async function tentarUmaVez(
   url: string,
   token: string,
   uri: string,
-  opts: { mimeType?: string; nomeArquivo?: string }
+  opts: { mimeType?: string; nomeArquivo?: string },
+  deadline: number,
 ): Promise<ResultadoTentativa> {
+  if (Date.now() >= deadline) return { ok: false, codigo: 'demorou' };
   const nomeArquivo = opts.nomeArquivo ?? (Platform.OS === 'web' ? 'lancamento.webm' : 'lancamento.m4a');
 
   const form = new FormData();
@@ -114,8 +118,9 @@ async function tentarUmaVez(
   }
 
   const controle = new AbortController();
-  const corte = setTimeout(() => controle.abort(), TIMEOUT_MS);
+  const corte = setTimeout(() => controle.abort(), Math.max(1, Math.min(TIMEOUT_MS, deadline - Date.now())));
   let resposta: Response;
+  let corpo: any = null;
   try {
     resposta = await expoFetch(url, {
       method: 'POST',
@@ -123,6 +128,13 @@ async function tentarUmaVez(
       body: form,
       signal: controle.signal,
     });
+    if (controle.signal.aborted) return { ok: false, codigo: 'demorou' };
+    // O prazo cobre também corpo pendurado depois dos cabeçalhos HTTP 200.
+    corpo = await Promise.race([
+      resposta.json().catch(() => null),
+      new Promise<never>((_, reject) => controle.signal.addEventListener('abort', () =>
+        reject(Object.assign(new Error('Timeout ao ler áudio'), { name: 'AbortError' })), { once: true })),
+    ]);
   } catch (e: any) {
     if (__DEV__) console.warn('[voz:diag] expoFetch lancou', e?.name, String(e?.message ?? e));
     /* Estourou o tempo é diferente de não ter rede: a fala pode ter sido
@@ -135,13 +147,6 @@ async function tentarUmaVez(
     return { ok: false, codigo: falhaDeRede ? 'sem_rede' : 'erro_interno' };
   } finally {
     clearTimeout(corte);
-  }
-
-  let corpo: any = null;
-  try {
-    corpo = await resposta.json();
-  } catch {
-    corpo = null;
   }
 
   if (!resposta.ok || corpo?.status !== 'ready') {
@@ -189,11 +194,12 @@ export async function transcreverAudio(
   const token = data.session?.access_token;
   if (!token) return { ok: false, codigo: 'sem_sessao' };
 
-  const primeira = await tentarUmaVez(url, token, uri, opts);
+  const deadline = Date.now() + TIMEOUT_TOTAL_MS;
+  const primeira = await tentarUmaVez(url, token, uri, opts, deadline);
   if (!('ambiguo' in primeira)) return primeira;
 
   if (__DEV__) console.warn('[voz:diag] resposta ambigua, tentando de novo');
-  const segunda = await tentarUmaVez(url, token, uri, opts);
+  const segunda = await tentarUmaVez(url, token, uri, opts, deadline);
   if ('ambiguo' in segunda) return { ok: false, codigo: 'erro_interno' };
   return segunda;
 }

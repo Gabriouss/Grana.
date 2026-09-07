@@ -165,9 +165,13 @@ export async function transcrever(
           };
           const timer = setTimeout(disparar, ESPERA_ANTES_DO_PROXIMO_MS);
           anterior!.then((resultado) => {
-            // Sucesso do anterior: deixa o timer correndo. Se `primeiroSucesso`
-            // já tiver o que precisa, este disparo tardio só é ignorado.
             if (resultado === null) disparar();
+            else if (!disparado) {
+              // Não acionar o provedor pago depois de já ter uma transcrição.
+              disparado = true;
+              clearTimeout(timer);
+              resolve(resultado);
+            }
           });
         });
     tentativas.push(atual);

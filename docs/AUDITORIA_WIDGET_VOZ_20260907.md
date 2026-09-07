@@ -1,5 +1,9 @@
 # Verificação do widget de voz — 07/09/2026
 
+## Atualização na preparação da 1.8.1
+
+Após autorização de nova build, corrigidos orçamento total de 90s para transcrição/retry (incluindo leitura do JSON) e disparo indevido do provedor reserva após sucesso. Testes de upload, cartões do widget e fallback passaram. Backend atualizado; sonda pós-deploy retornou HTTP 200 e transcrição correta em 1,93s. Expo Doctor 21/21 após instalar expo-asset e alinhar patches SDK 57. Export Android gerado. O resultado abaixo descreve a primeira auditoria; teste físico continua pendente.
+
 ## Resultado
 
 Backend de transcrição funcional na sonda autenticada. Não foi feita gravação

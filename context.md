@@ -1,5 +1,13 @@
 # Contexto do projeto — Grana.
 
+## Pré-build 1.8.1 — 07/09/2026
+
+Autor autorizou corrigir impedimentos e disparar uma build Android. Versão preparada pelo script obrigatório, de 1.8.0 para 1.8.1. Expo SDK 57 alinhado nos patches recomendados; expo-asset instalado diretamente, com plugin, por ser peer obrigatório de expo-audio.
+
+Voz: retry compartilha orçamento de 90s e inclui leitura do JSON no timeout, evitando consumir os 120s do serviço headless somente em duas tentativas. Corrigido fallback atrasado para não chamar outro provedor depois de sucesso do principal. Função processar-lancamento-voz publicada nesta rodada, substituindo a indicação histórica de "não publicado" abaixo. Sonda autenticada pós-deploy com M4A: HTTP 200, Groq, "gastei 32 reais no mercado no pix", 1,93s; sem gravar lançamento.
+
+Validação: Expo Doctor 21/21, TypeScript, test:parser completo, test:voz, widget-voz-cartoes, voice-fallback e test:assistente-aprendizado passaram. Export Android gerou metadata e bundle Hermes. Audit de dependências: 16 moderadas, zero altas/críticas; não aplicar sugestões que rebaixam Expo. Não houve teste físico do widget/biometria; APK precisa desse teste após compilação. Push anterior foi rejeitado pela revisão automática; não repetido sem autorização específica. Build será enviada pelo checkout local.
+
 Documento de orientação técnica/operacional pra quem (pessoa ou sessão de
 IA) está entrando neste repositório agora. Cobre o que **não** está nos
 outros documentos — arquitetura, convenções de código, fluxo de trabalho,
