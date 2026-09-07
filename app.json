@@ -3,7 +3,7 @@
     "name": "Grana.",
     "slug": "grana-app",
     "scheme": "com.gabriouss.grana",
-    "version": "1.8.2",
+    "version": "1.8.3",
     "orientation": "default",
     "backgroundColor": "#052229",
     "icon": "./assets/icon.png",
