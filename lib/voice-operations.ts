@@ -89,13 +89,15 @@ export async function registrarOperacaoVoz(
 }
 
 let sincronizando = false;
-export async function sincronizarOperacoesVoz(): Promise<void> {
-  if (sincronizando) return;
+export async function sincronizarOperacoesVoz(): Promise<{ sincronizadas: number; falhas: number }> {
+  if (sincronizando) return { sincronizadas: 0, falhas: 0 };
   sincronizando = true;
+  let sincronizadas = 0;
+  let falhas = 0;
   try {
     const { data } = await supabase.auth.getSession();
     const userId = data.session?.user.id;
-    if (!userId) return;
+    if (!userId) return { sincronizadas, falhas: 1 };
     const chaves = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith(`grana:voz:operacao:${userId}:`));
     for (const chave of chaves) {
       const raw = await AsyncStorage.getItem(chave);
@@ -105,9 +107,14 @@ export async function sincronizarOperacoesVoz(): Promise<void> {
         await enviarOperacaoVoz(item.requestId, item.source, item.payload);
         await AsyncStorage.removeItem(chave);
         notificarDadosDosWidgetsAlterados();
-      } catch { break; }
+        sincronizadas++;
+      } catch {
+        // Uma operação inválida não pode impedir as demais de serem tentadas.
+        falhas++;
+      }
     }
   } finally { sincronizando = false; }
+  return { sincronizadas, falhas };
 }
 
 async function enviarOperacaoVoz(requestId: string, source: 'app' | 'widget', payload: PayloadOperacaoVoz): Promise<ResultadoOperacaoVoz> {
