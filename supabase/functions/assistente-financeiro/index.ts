@@ -1979,9 +1979,16 @@ Deno.serve(async (req) => {
     }
 
     /* ── Salvar pergunta e resposta no histórico ──────────────────────── */
+    /* Timestamps explícitos e distintos: `default now()` devolve o mesmo
+       instante para a transação inteira, então as duas linhas nasciam
+       empatadas e a ordenação do histórico virava não-determinística —
+       resposta acima da pergunta, e par cortado pela metade na fronteira do
+       `limit` (ver comentário em lib/assistente.ts). O milissegundo de
+       diferença é o que torna a ordem um fato gravado, não um desempate. */
+    const instante = Date.now();
     const inserts = [
-      { user_id: userId, papel: 'usuario', texto: mensagem },
-      { user_id: userId, papel: 'assistente', texto: respostaFinal, ferramenta_usada: ferramentaUsada },
+      { user_id: userId, papel: 'usuario', texto: mensagem, criado_em: new Date(instante).toISOString() },
+      { user_id: userId, papel: 'assistente', texto: respostaFinal, ferramenta_usada: ferramentaUsada, criado_em: new Date(instante + 1).toISOString() },
     ];
     const { error: insertError } = await supabase.from('assistant_messages').insert(inserts);
     if (insertError) {

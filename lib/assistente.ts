@@ -42,10 +42,22 @@ export type MensagemLocal = {
  * pesado.
  */
 export async function fetchMensagens(limit = 50): Promise<MensagemAssistente[]> {
+  /* `papel` é desempate obrigatório, não refinamento: até 07/09/2026 a Edge
+     Function gravava pergunta e resposta numa única instrução, e `now()` no
+     Postgres devolve o MESMO instante para a transação inteira — as duas
+     linhas nasciam com `criado_em` idêntico ao microssegundo (medido: 100
+     linhas para 50 instantes distintos). Ordenar só por `criado_em` com
+     `limit` é não-determinístico quando há empate: a resposta aparecia acima
+     da pergunta, e um par cortado na fronteira do limite voltava pela metade,
+     ora um membro ora outro — as "mensagens que somem" relatadas pelo autor.
+     Como 'assistente' < 'usuario', o desempate ascendente coloca a resposta
+     antes na ordem decrescente e, depois do `reverse()`, a pergunta vem
+     primeiro. Vale também para as linhas antigas, que continuam empatadas. */
   const { data, error } = await supabase
     .from('assistant_messages')
     .select('id, papel, texto, ferramenta_usada, criado_em')
     .order('criado_em', { ascending: false })
+    .order('papel', { ascending: true })
     .limit(limit);
 
   if (error) {
