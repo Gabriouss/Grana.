@@ -60,10 +60,13 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
         }
 
         when (estado) {
-          /* Enquanto processa, o toque não faz nada de propósito: um segundo
-             comando por cima do primeiro criaria dois lançamentos da mesma
-             fala. */
-          EstadoWidget.PROCESSANDO -> {}
+          /* Durante o processamento, o toque não inicia outra gravação. Ele
+             abre o app para que a pessoa possa recuperar um estado preso,
+             em vez de apresentar um widget aparentemente morto. */
+          EstadoWidget.PROCESSANDO -> {
+            val abrir = pendingDeAbrirApp(context, id)
+            if (abrir != null) views.setOnClickPendingIntent(R.id.grana_voice_raiz, abrir)
+          }
           /* Em atenção o toque ABRE O APP, não o microfone: falta uma
              permissão, e permissão só se resolve numa tela. Abrir o microfone
              aqui daria a terceira gravação perdida seguida. */

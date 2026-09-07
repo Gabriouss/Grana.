@@ -17,6 +17,17 @@ import com.facebook.react.jstasks.HeadlessJsTaskConfig
  * A tarefa se chama `GranaVoiceTask` e é registrada em `lib/widget-voz-task.ts`.
  */
 class GranaVoiceHeadlessService : HeadlessJsTaskService() {
+  override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    if (intent?.extras == null) {
+      /* Sem extras não existe áudio nem requestId. Evita deixar o widget preso
+         em "processando" quando o Android reentrega um Intent incompleto. */
+      EstadoWidget.definir(this, EstadoWidget.ATENCAO)
+      stopSelf(startId)
+      return START_NOT_STICKY
+    }
+    return super.onStartCommand(intent, flags, startId)
+  }
+
   override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {
     val extras = intent?.extras ?: return null
     return HeadlessJsTaskConfig(

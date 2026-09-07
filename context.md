@@ -2,6 +2,18 @@
 
 ## Pré-build 1.8.1 — 07/09/2026
 
+## Correção adicional do widget de áudio — 07/09/2026
+
+Após a build 1.8.1, o widget podia parecer morto quando a tarefa headless
+falhava: `processando` não tinha ação, exceções de notificação eram silenciosas
+e um `Intent` sem extras deixava o estado preso. A tarefa agora preserva
+`atencao` em falhas, tenta notificar sem esconder a falha quando a própria
+notificação falha, e o estado `processando` abre o app para recuperação. A
+tarefa headless rejeita explicitamente intents incompletos e devolve o widget a
+`atencao`. `tsc`, teste executável de cartões e 9/9 guardas visuais passaram.
+Essas mudanças nativas precisam entrar em uma nova APK; nenhuma build foi
+disparada nesta correção.
+
 Build enviada e aceita pelo EAS: `ce91668c-0a56-4e45-9842-def12af7108c`, preview Android APK interno, versão 1.8.1/code 8, commit `403c446`. Status inicial NEW em 07/09/2026 06:10 UTC, compilação ainda não concluída no registro. Acompanhar: https://expo.dev/accounts/gabriouss/projects/grana-app/builds/ce91668c-0a56-4e45-9842-def12af7108c . Não disparar duplicata.
 
 Autor autorizou corrigir impedimentos e disparar uma build Android. Versão preparada pelo script obrigatório, de 1.8.0 para 1.8.1. Expo SDK 57 alinhado nos patches recomendados; expo-asset instalado diretamente, com plugin, por ser peer obrigatório de expo-audio.

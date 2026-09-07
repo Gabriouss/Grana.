@@ -47,9 +47,16 @@ async function executarTarefa(payload: Payload) {
 
     const salvou = await processar(caminho, requestId);
     if (salvou) await sincronizarResumoDepoisDaVoz();
+    else estadoFinal = 'atencao';
   } catch {
-    const { notificarFalha } = await import('./widget-voz-notificacoes');
-    await notificarFalha('erro_interno');
+    estadoFinal = 'atencao';
+    try {
+      const { notificarFalha } = await import('./widget-voz-notificacoes');
+      await notificarFalha('erro_interno');
+    } catch {
+      // O estado de atenção continua sendo o recibo mínimo se a notificação
+      // também falhar: o próximo toque abre o app em vez de parecer perdido.
+    }
   } finally {
     /* Áudio financeiro não fica no aparelho depois de usado, e o widget não
        pode ficar preso em "Lançando…" — os dois valem em QUALQUER saída,
