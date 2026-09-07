@@ -28,10 +28,4 @@
        sair dinheiro). -->
   <color name="grana_widget_entrada">#74E291</color>
   <color name="grana_widget_saida">#00A6CA</color>
-  <!-- theme.accentDeep — o mesmo selo circular sólido de habitoIcone
-       (app/index.tsx), reaproveitado como badge dos ícones da Central de
-       lançamentos: o pedido foi padronizar com os ícones de Hábitos, que
-       usam círculo CHEIO (não contorno) com um glifo simples dentro
-       (05/09/2026). -->
-  <color name="grana_widget_selo">#04475C</color>
 </resources>

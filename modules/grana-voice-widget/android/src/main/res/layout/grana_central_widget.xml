@@ -1,41 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Barra horizontal, 4 botões-pílula lado a lado (pedido de 05/09/2026).
-     Cada pílula agora tem um selo circular CHEIO em volta do ícone — mesma
-     receita de habitoIcone (app/index.tsx: círculo sólido + glifo simples
-     dentro, sem contorno no ícone) — antes cada ícone tentava desenhar seu
-     próprio círculo de contorno, inconsistente entre os 4 e "muito ruim"
-     por retrato do autor. -->
+<!-- 06/09/2026: trocado de "1 cartão único com 4 colunas empilhadas (ícone
+     em cima, rótulo embaixo, dentro de uma faixa com fundo próprio)" pra "4
+     cápsulas separadas lado a lado, ícone ao lado do rótulo" — pedido do
+     autor pra igualar o formato real da fileira "Colar comprovante"/
+     "Importar extrato"/"Escanear nota" (app/(app)/index.tsx,
+     styles.smartActionBtn), só trocando a descrição/função pelas 4 de
+     lançamento (Entrada/Débito-Pix/Crédito/Boleto). Por isso o elemento
+     raiz não tem mais fundo/borda próprios — quem desenha cápsula agora é
+     cada botão (grana_widget_acao, raio 999dp), com folga entre eles pra
+     aparecer o papel de parede, igual à referência. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/grana_central_raiz"
     android:layout_width="match_parent"
-    android:layout_height="56dp"
-    android:background="@drawable/grana_widget_card"
+    android:layout_height="60dp"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="8dp">
+    android:paddingHorizontal="2dp">
 
   <LinearLayout
       android:id="@+id/grana_central_entrada"
       android:layout_width="0dp"
-      android:layout_height="56dp"
+      android:layout_height="44dp"
       android:layout_weight="1"
-      android:orientation="vertical"
+      android:orientation="horizontal"
       android:gravity="center"
+      android:paddingHorizontal="6dp"
       android:background="@drawable/grana_widget_acao">
     <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:background="@drawable/grana_widget_selo"
+        android:layout_width="15dp"
+        android:layout_height="15dp"
         android:src="@drawable/ic_grana_widget_entrada"
-        android:padding="5dp"
         android:scaleType="centerInside" />
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginStart="4dp"
         android:text="@string/grana_central_entrada"
         android:textColor="@color/grana_widget_texto"
-        android:textSize="9.5sp"
+        android:textSize="9sp"
         android:maxLines="1"
         android:ellipsize="end" />
   </LinearLayout>
@@ -43,26 +45,25 @@
   <LinearLayout
       android:id="@+id/grana_central_saida"
       android:layout_width="0dp"
-      android:layout_height="56dp"
+      android:layout_height="44dp"
       android:layout_weight="1"
-      android:layout_marginStart="6dp"
-      android:orientation="vertical"
+      android:layout_marginStart="5dp"
+      android:orientation="horizontal"
       android:gravity="center"
+      android:paddingHorizontal="6dp"
       android:background="@drawable/grana_widget_acao">
     <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:background="@drawable/grana_widget_selo"
+        android:layout_width="15dp"
+        android:layout_height="15dp"
         android:src="@drawable/ic_grana_widget_saida"
-        android:padding="5dp"
         android:scaleType="centerInside" />
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginStart="4dp"
         android:text="@string/grana_central_saida"
         android:textColor="@color/grana_widget_texto"
-        android:textSize="9.5sp"
+        android:textSize="9sp"
         android:maxLines="1"
         android:ellipsize="end" />
   </LinearLayout>
@@ -70,26 +71,25 @@
   <LinearLayout
       android:id="@+id/grana_central_credito"
       android:layout_width="0dp"
-      android:layout_height="56dp"
+      android:layout_height="44dp"
       android:layout_weight="1"
-      android:layout_marginStart="6dp"
-      android:orientation="vertical"
+      android:layout_marginStart="5dp"
+      android:orientation="horizontal"
       android:gravity="center"
+      android:paddingHorizontal="6dp"
       android:background="@drawable/grana_widget_acao">
     <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:background="@drawable/grana_widget_selo"
+        android:layout_width="15dp"
+        android:layout_height="15dp"
         android:src="@drawable/ic_grana_widget_credito"
-        android:padding="5dp"
         android:scaleType="centerInside" />
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginStart="4dp"
         android:text="@string/grana_central_credito"
         android:textColor="@color/grana_widget_texto"
-        android:textSize="9.5sp"
+        android:textSize="9sp"
         android:maxLines="1"
         android:ellipsize="end" />
   </LinearLayout>
@@ -97,28 +97,26 @@
   <LinearLayout
       android:id="@+id/grana_central_boleto"
       android:layout_width="0dp"
-      android:layout_height="56dp"
+      android:layout_height="44dp"
       android:layout_weight="1"
-      android:layout_marginStart="6dp"
-      android:orientation="vertical"
+      android:layout_marginStart="5dp"
+      android:orientation="horizontal"
       android:gravity="center"
+      android:paddingHorizontal="6dp"
       android:background="@drawable/grana_widget_acao">
     <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:background="@drawable/grana_widget_selo"
+        android:layout_width="15dp"
+        android:layout_height="15dp"
         android:src="@drawable/ic_grana_widget_boleto"
-        android:padding="5dp"
         android:scaleType="centerInside" />
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginStart="4dp"
         android:text="@string/grana_central_boleto"
         android:textColor="@color/grana_widget_texto"
-        android:textSize="9.5sp"
+        android:textSize="9sp"
         android:maxLines="1"
         android:ellipsize="end" />
   </LinearLayout>
 </LinearLayout>
-
