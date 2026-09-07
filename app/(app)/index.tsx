@@ -1353,7 +1353,7 @@ export default function InicioScreen() {
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
-        {/* Ações Inteligentes: Colar Comprovante, CSV, Nota Fiscal e Voz.
+        {/* Ações Inteligentes: Voz, Colar Comprovante, CSV e Nota Fiscal.
             Rolagem horizontal em vez de `flex: 1` dividindo a largura: com o
             quarto botão (escanear nota) os rótulos passaram a quebrar em duas
             linhas e a fileira ficou espremida. Assim cada botão ocupa a
@@ -1371,6 +1371,30 @@ export default function InicioScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.smartActionsRow}
           >
+          {ligado('lancamento_voz') && (
+          <VoiceEntryButton
+            label="Lançamento por voz"
+            textStyle={styles.smartActionText}
+            /* O lançamento por voz é o atalho primário da Home: fica sempre
+               na primeira posição, tanto no desktop quanto no aplicativo. */
+            iconColor={theme.ink}
+            iconSize={16}
+            style={styles.smartActionBtn}
+            hoverStyle={styles.smartActionBtnHover}
+            onTranscribed={(text) => {
+              if (ehIntencaoBoleto(text)) {
+                router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto: text } });
+                return;
+              }
+              if (ehIntencaoCredito(text)) {
+                router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
+                return;
+              }
+              setVoiceText(text);
+              setPasteModalOpen(true);
+            }}
+          />
+          )}
           {ligado('colar_comprovante') && (
             <AppPressable
               style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
@@ -1397,30 +1421,6 @@ export default function InicioScreen() {
               <Ionicons name="qr-code-outline" size={16} color={theme.ink} />
               <Text style={styles.smartActionText}>Escanear nota</Text>
             </AppPressable>
-          )}
-          {ligado('lancamento_voz') && (
-          <VoiceEntryButton
-            label="Lançamento por voz"
-            textStyle={styles.smartActionText}
-            /* Os três vizinhos desta fileira usam theme.ink no ícone — aqui a
-               vizinhança não é a do cabeçalho, é esta. */
-            iconColor={theme.ink}
-            iconSize={16}
-            style={styles.smartActionBtn}
-            hoverStyle={styles.smartActionBtnHover}
-            onTranscribed={(text) => {
-              if (ehIntencaoBoleto(text)) {
-                router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto: text } });
-                return;
-              }
-              if (ehIntencaoCredito(text)) {
-                router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
-                return;
-              }
-              setVoiceText(text);
-              setPasteModalOpen(true);
-            }}
-          />
           )}
           </ScrollView>
           </View>
