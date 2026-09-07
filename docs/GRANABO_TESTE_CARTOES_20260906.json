@@ -1,0 +1,219 @@
+{
+  "criado": "2026-09-07T02:48:24.525Z",
+  "cartoes": [
+    {
+      "id": "785ccb2e-b36f-4ffb-861f-c10d7c754b74",
+      "name": "QA C6",
+      "closing_day": 15,
+      "due_day": 22
+    },
+    {
+      "id": "612b7e2d-32ff-49d6-9333-3834bb1c8e8c",
+      "name": "QA Nubank",
+      "closing_day": 25,
+      "due_day": 2
+    }
+  ],
+  "lancamentos": [
+    {
+      "id": "70227062-a8f6-4fd6-ba68-b4973c1bc601",
+      "description": "QA Granabo 20260906 #1",
+      "amount": 80,
+      "category": "Alimentação",
+      "occurred_on": "2026-07-20",
+      "payment_method": "credit",
+      "cartao": "QA C6"
+    },
+    {
+      "id": "b9668399-4f81-40fc-aeee-66e0d2bcd33c",
+      "description": "QA Granabo 20260906 #2",
+      "amount": 40,
+      "category": "Alimentação",
+      "occurred_on": "2026-08-14",
+      "payment_method": "credit",
+      "cartao": "QA C6"
+    },
+    {
+      "id": "141a01e3-4e9b-47b5-bb08-7c939a138dcd",
+      "description": "QA Granabo 20260906 #3",
+      "amount": 100,
+      "category": "Alimentação",
+      "occurred_on": "2026-08-15",
+      "payment_method": "credit",
+      "cartao": "QA C6"
+    },
+    {
+      "id": "aed3205d-ca75-483d-b316-cc0a15813b83",
+      "description": "QA Granabo 20260906 #4",
+      "amount": 150,
+      "category": "Alimentação",
+      "occurred_on": "2026-08-24",
+      "payment_method": "credit",
+      "cartao": "QA C6"
+    },
+    {
+      "id": "b86e1e14-7aad-430d-a6b9-4f0b220f2160",
+      "description": "QA Granabo 20260906 #5",
+      "amount": 25,
+      "category": "Alimentação",
+      "occurred_on": "2026-09-06",
+      "payment_method": "credit",
+      "cartao": "QA C6"
+    },
+    {
+      "id": "8c7c01b1-ebcd-41fa-8918-c58146bb11da",
+      "description": "QA Granabo 20260906 #6",
+      "amount": 60,
+      "category": "Outros",
+      "occurred_on": "2026-08-30",
+      "payment_method": "credit",
+      "cartao": "QA C6"
+    },
+    {
+      "id": "f98b7431-bed8-414b-8bf2-61c00f95aaff",
+      "description": "QA Granabo 20260906 #7",
+      "amount": 90,
+      "category": "Alimentação",
+      "occurred_on": "2026-07-26",
+      "payment_method": "credit",
+      "cartao": "QA Nubank"
+    },
+    {
+      "id": "aeafe3de-e0b7-4b60-a1c7-622633c7c2d6",
+      "description": "QA Granabo 20260906 #8",
+      "amount": 110,
+      "category": "Alimentação",
+      "occurred_on": "2026-08-24",
+      "payment_method": "credit",
+      "cartao": "QA Nubank"
+    },
+    {
+      "id": "8482bdf4-7051-49db-ba98-da3ff396b9ec",
+      "description": "QA Granabo 20260906 #9",
+      "amount": 200,
+      "category": "Alimentação",
+      "occurred_on": "2026-08-25",
+      "payment_method": "credit",
+      "cartao": "QA Nubank"
+    },
+    {
+      "id": "8090b427-4789-4388-96ab-dec8a9fda0f1",
+      "description": "QA Granabo 20260906 #10",
+      "amount": 50,
+      "category": "Alimentação",
+      "occurred_on": "2026-09-01",
+      "payment_method": "credit",
+      "cartao": "QA Nubank"
+    },
+    {
+      "id": "e8bf6363-b7c0-4545-9087-6e1585eda2f3",
+      "description": "QA Granabo 20260906 #11",
+      "amount": 75,
+      "category": "Alimentação",
+      "occurred_on": "2026-09-06",
+      "payment_method": "credit",
+      "cartao": "QA Nubank"
+    },
+    {
+      "id": "24ce2846-bcea-4ea4-8c79-270aea939954",
+      "description": "QA Granabo 20260906 #12",
+      "amount": 70,
+      "category": "Outros",
+      "occurred_on": "2026-08-30",
+      "payment_method": "credit",
+      "cartao": "QA Nubank"
+    },
+    {
+      "id": "91ac22e8-7b16-49cd-b08c-398f2ef811d9",
+      "description": "QA Granabo 20260906 #13",
+      "amount": 999,
+      "category": "Alimentação",
+      "occurred_on": "2026-09-04",
+      "payment_method": "pix",
+      "cartao": null
+    },
+    {
+      "id": "777bef14-927c-43e2-8588-5c2149a545b5",
+      "description": "QA Granabo 20260906 #14",
+      "amount": 888,
+      "category": "Alimentação",
+      "occurred_on": "2026-09-05",
+      "payment_method": "debit",
+      "cartao": null
+    }
+  ],
+  "testes": [
+    {
+      "pergunta": "Quanto gastei em Alimentação na fatura passada do cartão QA C6?",
+      "esperado": 120,
+      "resposta": "Você gastou R$ 120,00 em Alimentação na fatura passada do cartão QA C6 (ciclo de 15 de julho a 14 de agosto de 2026). 💳",
+      "ferramenta": "gastoPorCategoria",
+      "segundos": 14.6,
+      "passou": true
+    },
+    {
+      "pergunta": "E na fatura atual?",
+      "esperado": 275,
+      "resposta": "Na fatura atual do cartão QA C6 (ciclo de 15 de agosto a 14 de setembro de 2026), você gastou R$ 275,00 em Alimentação. 💳",
+      "ferramenta": "gastoPorCategoria",
+      "segundos": 22.5,
+      "passou": true
+    },
+    {
+      "pergunta": "E no cartão QA Nubank?",
+      "esperado": 325,
+      "resposta": "No cartão QA Nubank, você gastou R$ 325,00 em Alimentação na fatura atual (ciclo de 25 de agosto a 24 de setembro de 2026). 💳",
+      "ferramenta": "gastoPorCategoria",
+      "segundos": 23.8,
+      "passou": true
+    },
+    {
+      "pergunta": "E na categoria Outros?",
+      "esperado": 70,
+      "resposta": "Na fatura atual do cartão QA Nubank (ciclo de 25 de agosto a 24 de setembro de 2026), você gastou R$ 70,00 na categoria Outros. 💳",
+      "ferramenta": "gastoPorCategoria",
+      "segundos": 24.8,
+      "passou": true
+    },
+    {
+      "pergunta": "Qual é o total da fatura atual desse cartão, considerando todas as categorias?",
+      "esperado": 395,
+      "resposta": "O total da fatura atual do cartão QA Nubank (ciclo de 25 de agosto a 24 de setembro de 2026), considerando todas as categorias, é de R$ 395,00. 💳",
+      "ferramenta": "resumoCredito",
+      "segundos": 8.4,
+      "passou": true
+    },
+    {
+      "pergunta": "E o total da fatura atual do QA C6, em todas as categorias?",
+      "esperado": 335,
+      "resposta": "O total da fatura atual do cartão QA C6 (ciclo de 15 de agosto a 14 de setembro de 2026), considerando todas as categorias, é de R$ 335,00. 💳",
+      "ferramenta": "resumoCredito",
+      "segundos": 14.8,
+      "passou": true
+    },
+    {
+      "pergunta": "Quanto gastei em Alimentação apenas no crédito do QA C6 na fatura atual, sem Pix nem débito?",
+      "esperado": 275,
+      "resposta": "Você gastou R$ 275,00 em Alimentação no crédito do cartão QA C6 na fatura atual (ciclo de 15 de agosto a 14 de setembro de 2026). 💳",
+      "ferramenta": "consultarLancamentos",
+      "segundos": 2.9,
+      "passou": true
+    },
+    {
+      "pergunta": "E em Alimentação na fatura passada do QA Nubank?",
+      "esperado": 200,
+      "resposta": "Na fatura passada do cartão QA Nubank (ciclo de 25 de julho a 24 de agosto de 2026), você gastou R$ 200,00 em Alimentação. 💳",
+      "ferramenta": "gastoPorCategoria",
+      "segundos": 4.2,
+      "passou": true
+    },
+    {
+      "pergunta": "E na fatura atual?",
+      "esperado": 325,
+      "resposta": "Na fatura atual do cartão QA Nubank (ciclo de 25 de agosto a 24 de setembro de 2026), você gastou R$ 325,00 em Alimentação. 💳",
+      "ferramenta": "gastoPorCategoria",
+      "segundos": 13.3,
+      "passou": true
+    }
+  ]
+}

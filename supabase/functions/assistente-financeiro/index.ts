@@ -28,7 +28,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    Ver casarPorPalavraChave, mais abaixo. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
-import { janelaFatura, mesFaturaDoLancamento } from '../_shared/fatura-ciclo.ts';
+import { janelaFatura, mesFaturaDoLancamento, cicloRelativo, deslocamentoPedido } from '../_shared/fatura-ciclo.ts';
 import { conduzirConversa, exemploElegivel, feedbackExplicito } from '../_shared/assistant-learning.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
@@ -124,6 +124,7 @@ function dataBR(isoStr: string): string {
 }
 
 type ArgsPeriodo = {
+  deslocamento_fatura?: number;
   ultimos_dias?: number;
   desde?: string;
   ate?: string;
@@ -199,6 +200,7 @@ function resolverPeriodo(args: ArgsPeriodo): Periodo | { erro: string } {
 
 /** Argumentos de período que toda ferramenta com data expõe ao modelo. */
 const PROPS_PERIODO = {
+  deslocamento_fatura: { type: 'number', description: 'Para ciclos de cartão: 0=fatura atual, -1=anterior. Resolve pelo fechamento real de cada cartão; use em vez de mes/ano para referências relativas.' },
   ultimos_dias: {
     type: 'number',
     description: 'Janela móvel terminando hoje. Ex.: 15 para "nos últimos 15 dias", 30 para "no último mês corrido". Inclui o dia de hoje.',
@@ -232,7 +234,12 @@ function periodoDaFatura(args: ArgsPeriodo, closingDay: number): Periodo | { err
   let year: number;
   let month: number;
 
-  if (args.mes !== undefined) {
+  if (args.deslocamento_fatura !== undefined) {
+    if (!Number.isInteger(args.deslocamento_fatura) || Math.abs(args.deslocamento_fatura) > 120) return { erro: 'Deslocamento de fatura inválido.' };
+    const ciclo = cicloRelativo(iso(hoje), closingDay, args.deslocamento_fatura);
+    year = ciclo.year;
+    month = ciclo.month;
+  } else if (args.mes !== undefined) {
     const mes = Number(args.mes);
     if (!Number.isInteger(mes) || mes < 1 || mes > 12) return { erro: `Mês de fatura inválido: ${args.mes}. Use de 1 a 12.` };
     year = Number(args.ano ?? hoje.getFullYear());
@@ -1934,9 +1941,17 @@ Deno.serve(async (req) => {
         const json = await res.json();
         return json.choices?.[0]?.message;
       },
-      executar: (nome, args) => executarFerramenta(nome, args, supabase, {
-        id: userId, user_metadata: userData?.user?.user_metadata ?? null,
-      }),
+      executar: (nome, args) => {
+        const deslocamento = deslocamentoPedido(mensagem);
+        if (deslocamento !== undefined && ['resumoCredito', 'gastoPorCategoria', 'consultarLancamentos'].includes(nome)) {
+          args.deslocamento_fatura = deslocamento;
+          if (nome !== 'resumoCredito') args.fatura = true;
+          for (const key of ['mes', 'ano', 'desde', 'ate', 'ultimos_dias', 'ano_inteiro']) delete args[key];
+        }
+        return executarFerramenta(nome, args, supabase, {
+          id: userId, user_metadata: userData?.user?.user_metadata ?? null,
+        });
+      },
     });
     const respostaFinal = conversa.resposta;
     const consultas = conversa.registros.filter((r) => r.consulta && r.ok);

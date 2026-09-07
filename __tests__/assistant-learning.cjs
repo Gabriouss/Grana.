@@ -10,6 +10,12 @@ loaded._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, file);
 const { conduzirConversa, exemploElegivel, feedbackExplicito, respostaFundamentada, fallbackSeguro } = loaded.exports;
+const cycleFile = path.resolve(__dirname, '../supabase/functions/_shared/fatura-ciclo.ts');
+const cycleModule = new Module(cycleFile, module);
+cycleModule._compile(ts.transpileModule(fs.readFileSync(cycleFile, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, cycleFile);
+const { cicloRelativo, deslocamentoPedido } = cycleModule.exports;
 const tools = ['consulta', 'ensinarApelido'].map((name) => ({ function: { name,
   parameters: { type: 'object', properties: { categoria: { type: 'string' } }, required: ['categoria'] },
 } }));
@@ -25,6 +31,15 @@ async function run(respostas, executar, customTools = tools) {
   return { ...output, chamadas };
 }
 (async () => {
+  await scenario('fatura anterior usa fechamento real, inclusive virada do ano', async () => {
+    assert.deepEqual(cicloRelativo('2026-09-06', 15, -1), { year: 2026, month: 7 });
+    assert.deepEqual(cicloRelativo('2026-09-20', 15, 0), { year: 2026, month: 9 });
+    assert.deepEqual(cicloRelativo('2026-09-20', 25, 0), { year: 2026, month: 8 });
+    assert.deepEqual(cicloRelativo('2026-01-06', 15, -1), { year: 2025, month: 11 });
+    assert.equal(deslocamentoPedido('Alimentação na fatura passada do C6?'), -1);
+    assert.equal(deslocamentoPedido('E na fatura atual?'), 0);
+    assert.equal(deslocamentoPedido('Compare a fatura passada e a atual'), undefined);
+  });
   await scenario('corrige categoria sem exigir nova mensagem e aprende consulta corrigida', async () => {
     const r = await run([call('consulta', { categoria: 'comida' }), call('consulta', { categoria: 'Alimentação' }),
       { content: 'Você gastou R$ 130,00 em Alimentação.' }], async (_, args) => args.categoria === 'comida'

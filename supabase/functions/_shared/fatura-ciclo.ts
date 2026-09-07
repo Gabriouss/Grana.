@@ -11,6 +11,21 @@ const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.ge
 export type CicloFatura = { year: number; month: number };
 export type JanelaFatura = { inicio: string; fim: string; rotulo: string };
 
+/** Resolve referências relativas pelo fechamento de cada cartão. */
+export function cicloRelativo(hoje: string, closingDay: number, deslocamento: number): CicloFatura {
+  const atual = mesFaturaDoLancamento(hoje, closingDay);
+  const data = new Date(atual.year, atual.month + deslocamento, 1);
+  return { year: data.getFullYear(), month: data.getMonth() };
+}
+
+export function deslocamentoPedido(mensagem: string): number | undefined {
+  const texto = mensagem.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const anterior = /\b(?:fatura|ciclo)\s+(?:passad[ao]|anterior|ultim[ao])\b/.test(texto);
+  const atual = /\b(?:fatura|ciclo)\s+atual\b/.test(texto) || (anterior && /\batual\b/.test(texto));
+  // Comparações precisam de duas consultas; não sobrescrever ambas com o mesmo ciclo.
+  return anterior === atual ? undefined : anterior ? -1 : 0;
+}
+
 export function mesFaturaDoLancamento(occurredOn: string, closingDay: number): CicloFatura {
   const [year, month, day] = occurredOn.split('-').map(Number);
   const month0 = day < closingDay ? month - 1 : month;
@@ -33,4 +48,3 @@ export function janelaFatura(year: number, month: number, closingDay: number): J
 
   return { inicio, fim, rotulo: `${inicioLabel} – ${fimLabel}` };
 }
-
