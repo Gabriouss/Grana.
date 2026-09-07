@@ -90,3 +90,52 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    perfis foram alinhados em 05/09/2026 por causa disso; se `production`
    voltar a divergir de `preview`, o próximo build feito com o perfil
    errado quebra o aviso silenciosamente.
+
+9. **Antes de dar qualquer mudança por pronta, siga a disciplina de
+   verificação abaixo.** Ela foi escrita em 07/09/2026, a pedido do autor,
+   depois que uma revisão das correções do Codex mostrou duas regressões
+   introduzidas por outro agente na mesma semana — pegas antes da build
+   1.8.1, mas que teriam ido ao aparelho. O autor pediu que isto seja
+   consultado sempre, não só quando parecer relevante.
+
+   - **Existem SEIS scripts de teste, não um.** `test:parser` é o corpus
+     grande e **não** cobre `lib/voz.ts`, o assistente nem os widgets. Os
+     outros são `test:voz`, `test:assistente-aprendizado`,
+     `test:assistente-fatura`, `test:blur` e `test:motion`, além de testes
+     em `__tests__/` sem script próprio (`voice-fallback.cjs`,
+     `voz-offline.cjs`, `widget-voz-cartoes.cjs`). Liste os scripts antes de
+     afirmar que algo não tem teste — um `grep` por um nome só já levou a
+     concluir, errado, que `test:parser` era a única suíte do projeto.
+   - **Módulo de React Native, Expo ou Deno NÃO é desculpa pra não testar.**
+     Sem Jest, este repositório testa esses módulos compilando o TypeScript
+     em memória (`ts.transpileModule`) e executando em `vm.runInNewContext`
+     com um `require` que devolve dublês para cada import. O sandbox também
+     controla o tempo: um `Date.now` falso e um `setTimeout` encurtado fazem
+     uma corrida de 8 segundos rodar em milissegundos sem mexer na constante
+     de produção. Receita pronta em `__tests__/voz-upload.cjs` e
+     `__tests__/voice-fallback.cjs`. Testar uma reimplementação da lógica não
+     vale: só o módulo real pega o bug do módulo real. E quando o
+     comportamento custa dinheiro, tempo ou escrita em banco, asserte em
+     QUAIS chamadas aconteceram, não só no valor devolvido.
+   - **Retry e fallback precisam caber no prazo de quem chama.** Some o novo
+     pior caso antes de acrescentar uma tentativa: duplicar um timeout de 75s
+     estourava os 120s em que o Android mata a tarefa headless do widget, o
+     que é pior que o bug original. Use um prazo total compartilhado, com
+     folga pro que vem depois (interpretar, gravar, notificar). E confira,
+     linha a linha, se a proteção cobre a etapa que realmente falha — abortar
+     o `fetch` mas ler o corpo fora da região protegida deixa sem proteção
+     justamente o corpo pendurado que se queria consertar.
+   - **Todo caminho de falha deixa recibo visível.** Voltar ao repouso em
+     silêncio é o pior desfecho, porque é indistinguível de "nada aconteceu".
+     Estado de atenção, notificação, ou tela — algo. E o `catch` que notifica
+     precisa de guarda própria, porque a notificação também pode falhar.
+   - **Separe hipótese de fato comprovado no `context.md`,** e diga o que NÃO
+     foi validado, de preferência como checklist de QA acionável em vez de
+     ressalva vaga. Se uma sessão seguinte provar que a hipótese estava
+     errada, volte e corrija o registro antigo.
+
+   A versão longa desta análise, com os commits e trechos de código de cada
+   caso, está na memória do Claude nesta máquina, em
+   `.claude/projects/c--Users-user-Desktop-Aplicativo-Financeiro/memory/`
+   (`verificacao-no-repo-grana`, `retry-precisa-caber-no-orcamento-de-quem-chama`
+   e `padroes-de-correcao-do-codex`).
