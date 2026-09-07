@@ -2,6 +2,8 @@
 
 ## Pré-build 1.8.1 — 07/09/2026
 
+Build enviada e aceita pelo EAS: `ce91668c-0a56-4e45-9842-def12af7108c`, preview Android APK interno, versão 1.8.1/code 8, commit `403c446`. Status inicial NEW em 07/09/2026 06:10 UTC, compilação ainda não concluída no registro. Acompanhar: https://expo.dev/accounts/gabriouss/projects/grana-app/builds/ce91668c-0a56-4e45-9842-def12af7108c . Não disparar duplicata.
+
 Autor autorizou corrigir impedimentos e disparar uma build Android. Versão preparada pelo script obrigatório, de 1.8.0 para 1.8.1. Expo SDK 57 alinhado nos patches recomendados; expo-asset instalado diretamente, com plugin, por ser peer obrigatório de expo-audio.
 
 Voz: retry compartilha orçamento de 90s e inclui leitura do JSON no timeout, evitando consumir os 120s do serviço headless somente em duas tentativas. Corrigido fallback atrasado para não chamar outro provedor depois de sucesso do principal. Função processar-lancamento-voz publicada nesta rodada, substituindo a indicação histórica de "não publicado" abaixo. Sonda autenticada pós-deploy com M4A: HTTP 200, Groq, "gastei 32 reais no mercado no pix", 1,93s; sem gravar lançamento.
