@@ -463,9 +463,10 @@ const TOOLS = [
     type: 'function' as const,
       function: {
         name: 'resumoCredito',
-        description:
+      description:
         'Retorna gastos da FATURA do cartão usando o ciclo de fechamento real (por exemplo, 20/08 a 19/09), nunca o mês civil. ' +
-        'Use para perguntas sobre fatura/cartão. "mês" e "ano" significam o mês em que a fatura fecha. ' +
+        'Use sempre que o usuário mencionar cartão, crédito, compra no cartão ou fatura, mesmo que ele não use a palavra fatura. ' +
+        '"mês" e "ano" significam o mês em que a fatura fecha. ' +
         'Aceita filtro por cartão e categoria e separa cartões diferentes em linhas próprias.',
       parameters: {
         type: 'object',
@@ -1795,8 +1796,9 @@ function inferirPreferenciaFatura(
 }
 
 const REGRAS_PRIORITARIAS =
-  'Regra prioritária: fatura e cartão sempre significam o ciclo de fechamento do próprio cartão, nunca o mês civil. ' +
+  'Regra prioritária: qualquer menção a cartão, cartão de crédito, crédito ou compra no cartão significa o ciclo de fechamento da fatura do próprio cartão, mesmo quando o usuário usar a palavra de forma imprecisa; nunca interprete isso como mês civil. ' +
   'Use resumoCredito para a fatura; para uma categoria dentro dela, passe categoria nessa ferramenta ou use gastoPorCategoria com fatura=true. ' +
+  'Quando a pergunta disser "apenas no cartão de crédito", inclua somente transações payment_method=credit dentro do ciclo da fatura e exclua Pix, débito e dinheiro. ' +
   'Se o usuário pedir para aprender, guardar, lembrar ou corrigir a formulação, chame lembrarPreferencia e siga a regra ensinada. ' +
   'Nunca responda com o total do mês civil quando a pergunta pedir a fatura.';
 
