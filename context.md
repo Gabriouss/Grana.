@@ -3382,3 +3382,20 @@ push remoto continua morto e só o lembrete local funciona.
 Detalhe do agendamento local que vale saber: o lembrete do dia é
 propositalmente cancelado quando já houve lançamento no dia (`jaLancouHoje`).
 Quem lança todo dia antes das 12h/20h30 naturalmente vê poucos lembretes.
+
+### Build 1.8.3 enviada e concluída (07/09/2026)
+
+Build EAS `74bd28fe-2222-4f90-87f9-21ff913b765e` — **sucesso na primeira
+tentativa**, sem repetir a falha de Gradle da 1.7.0. Autorizada
+explicitamente pelo autor antes de sair ("quando finalizar e garantir que
+está tudo certo, commit e dispare build"). Link de instalação:
+`https://expo.dev/accounts/gabriouss/projects/grana-app/builds/74bd28fe-2222-4f90-87f9-21ff913b765e`
+
+Carrega: correção do histórico do Granabô (lado da leitura), lembretes de
+almoço e noite agendados no boot sem depender da tela Início, mensagem
+honesta para falha permanente no lançamento por voz, as duas correções de
+sincronização de voz do Codex (`12d75d9`, `26d6c63`) e a faixa de aviso que
+deixou de cobrir a barra de status.
+
+**Continua fora do ar até alguém mexer no Firebase/EAS**: o push remoto. Ver
+a seção acima sobre `google-services.json` e credencial FCM v1.
