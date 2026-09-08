@@ -22,12 +22,16 @@ const MIGRATION_PUSH = path.join(__dirname, '..', 'supabase', 'migrations', '202
 const migrationPush = readFileSync(MIGRATION_PUSH, 'utf8');
 const MIGRATION_VOZ = path.join(__dirname, '..', 'supabase', 'migrations', '20260905004109_voice_operations.sql');
 const migrationVoz = readFileSync(MIGRATION_VOZ, 'utf8');
+const MIGRATION_VOZ_CARTEIRAS = path.join(__dirname, '..', 'supabase', 'migrations', '20260908000000_voice_wallets.sql');
+const migrationVozCarteiras = readFileSync(MIGRATION_VOZ_CARTEIRAS, 'utf8');
 const MIGRATION_JANELAS = path.join(__dirname, '..', 'supabase', 'migrations', '20260905140000_janelas_notificacao.sql');
 const migrationJanelas = readFileSync(MIGRATION_JANELAS, 'utf8');
 const MIGRATION_ASSISTENTE = path.join(__dirname, '..', 'supabase', 'migrations', '20260905160000_assistant_messages.sql');
 const migrationAssistente = readFileSync(MIGRATION_ASSISTENTE, 'utf8');
 const MIGRATION_MEMORIA = path.join(__dirname, '..', 'supabase', 'migrations', '20260906120000_assistant_memory.sql');
 const migrationMemoria = readFileSync(MIGRATION_MEMORIA, 'utf8');
+const MIGRATION_COTAS = path.join(__dirname, '..', 'supabase', 'migrations', '20260908140000_ai_usage_quotas.sql');
+const migrationCotas = readFileSync(MIGRATION_COTAS, 'utf8');
 
 let total = 0;
 let falhas = 0;
@@ -157,6 +161,10 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
     .replace(/--[^\n]*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  const migrationAPartirDe = (fonte: string, marcador: string) => {
+    const inicio = fonte.indexOf(marcador);
+    return inicio >= 0 ? normalizarSql(fonte.slice(inicio)) : '';
+  };
   const inicioPush = sql.indexOf('create table if not exists public.push_tokens');
   // Âncora numa única linha, de propósito: `schema.sql` está com CRLF, e um
   // separador `\n` cru no meio de uma string de busca nunca bate ali.
@@ -165,29 +173,52 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   const inicioVoz = sql.indexOf('create table if not exists public.voice_operations');
   const inicioAssistente = sql.indexOf('create table if not exists public.assistant_messages');
   const inicioMemoria = sql.indexOf('create extension if not exists pg_trgm');
+  const inicioCotas = sql.indexOf('create table if not exists public.ai_usage_counters');
   checar(
     'a migration do push permanece idêntica ao baseline do schema',
     inicioPush >= 0 && inicioJanelas > inicioPush
-      && normalizarSql(sql.slice(inicioPush, inicioJanelas)) === normalizarSql(migrationPush)
+      && normalizarSql(sql.slice(inicioPush, inicioJanelas)) === migrationAPartirDe(migrationPush, 'create table if not exists public.push_tokens')
   );
   checar(
     'a migration das janelas de notificação permanece idêntica ao baseline do schema',
     inicioJanelas >= 0 && inicioVoz > inicioJanelas
-      && normalizarSql(sql.slice(inicioJanelas, inicioVoz)) === normalizarSql(migrationJanelas)
+      && normalizarSql(sql.slice(inicioJanelas, inicioVoz)) === migrationAPartirDe(migrationJanelas, 'alter table public.push_tokens')
   );
   checar(
-    'a migration de voz permanece idêntica ao baseline do schema',
+    'a migration histórica base da voz continua versionada',
+    migrationVoz.includes('create table if not exists public.voice_operations')
+      && migrationVoz.includes('create or replace function public.registrar_operacao_voz(')
+      && migrationVoz.includes('create or replace function public.desfazer_operacao_voz(')
+  );
+  checar(
+    'a migration atual de voz com carteiras permanece idêntica ao baseline do schema',
     inicioVoz >= 0 && inicioAssistente > inicioVoz
-      && normalizarSql(sql.slice(inicioVoz, inicioAssistente)) === normalizarSql(migrationVoz)
+      && normalizarSql(sql.slice(inicioVoz, inicioAssistente)) === migrationAPartirDe(migrationVozCarteiras, 'create table if not exists public.voice_operations')
   );
   checar(
     'a migration do assistente permanece idêntica ao baseline do schema',
     inicioAssistente >= 0 && inicioMemoria > inicioAssistente
-      && normalizarSql(sql.slice(inicioAssistente, inicioMemoria)) === normalizarSql(migrationAssistente)
+      && normalizarSql(sql.slice(inicioAssistente, inicioMemoria)) === migrationAPartirDe(migrationAssistente, 'create table if not exists public.assistant_messages')
   );
   checar(
     'a migration de memória do assistente permanece idêntica ao baseline do schema',
-    inicioMemoria >= 0 && normalizarSql(sql.slice(inicioMemoria)) === normalizarSql(migrationMemoria)
+    inicioMemoria >= 0 && inicioCotas > inicioMemoria
+      && normalizarSql(sql.slice(inicioMemoria, inicioCotas)) === migrationAPartirDe(migrationMemoria, 'create extension if not exists pg_trgm')
+  );
+  checar(
+    'a migration de cotas de IA permanece idêntica ao baseline do schema',
+    inicioCotas > inicioMemoria
+      && normalizarSql(sql.slice(inicioCotas)) === migrationAPartirDe(migrationCotas, 'create table if not exists public.ai_usage_counters')
+  );
+  checar(
+    'cotas de IA têm RLS e não expõem a tabela ao app',
+    /alter table public\.ai_usage_counters enable row level security/.test(sql)
+      && /revoke all on public\.ai_usage_counters from public, anon, authenticated/.test(sql)
+  );
+  checar(
+    'RPC de quota deriva o usuário do JWT e fixa o search_path',
+    /create or replace function public\.consumir_cota_ia\(p_tipo text\)[\s\S]*v_user uuid := \(select auth\.uid\(\)\)/.test(sql)
+      && /consumir_cota_ia\(p_tipo text\)[\s\S]*set search_path = ''/.test(sql)
   );
 }
 

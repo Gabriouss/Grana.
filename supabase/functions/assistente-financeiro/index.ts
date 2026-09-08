@@ -28,6 +28,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    Ver casarPorPalavraChave, mais abaixo. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
+import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
 import { janelaFatura, mesFaturaDoLancamento, cicloRelativo, deslocamentoPedido } from '../_shared/fatura-ciclo.ts';
 import { conduzirConversa, exemploElegivel, feedbackExplicito } from '../_shared/assistant-learning.ts';
 
@@ -1858,6 +1859,7 @@ type CodigoErro =
   | 'corpo_invalido'
   | 'mensagem_vazia'
   | 'muitas_tentativas'
+  | 'limite_indisponivel'
   | 'sem_provedor'
   | 'erro_ia'
   | 'erro_interno';
@@ -1886,10 +1888,6 @@ Deno.serve(async (req) => {
     const userId = userData?.user?.id;
     if (authError || !userId) return erro('nao_autenticado', 401);
 
-    if (excedeuRateLimit(userId)) {
-      return erro('muitas_tentativas', 429, 'Calma aí! Você fez muitas perguntas seguidas. Espera um minutinho e tenta de novo.');
-    }
-
     /* ── Validação do corpo ───────────────────────────────────────────── */
     let body: { mensagem: string; historico?: { papel: string; texto: string }[] };
     try {
@@ -1908,6 +1906,20 @@ Deno.serve(async (req) => {
     if (!GEMINI_API_KEY) {
       console.error('[assistente-financeiro] GEMINI_API_KEY não configurada');
       return erro('sem_provedor', 503, 'Não consegui pensar nisso agora. Tenta de novo em instantes.');
+    }
+
+    if (excedeuRateLimit(userId)) {
+      return erro('muitas_tentativas', 429, 'Calma aí! Você fez muitas perguntas seguidas. Espera um minutinho e tenta de novo.');
+    }
+
+    let cota;
+    try {
+      cota = await consumirCotaIA(supabase, 'assistente');
+    } catch {
+      return erro('limite_indisponivel', 503, 'Não consegui confirmar o limite de uso agora. Tenta de novo em instantes.');
+    }
+    if (!cota.permitido) {
+      return erro('muitas_tentativas', 429, mensagemCotaEsgotada('assistente', cota.motivo));
     }
 
     /* ── Montar mensagens para o LLM ─────────────────────────────────── */

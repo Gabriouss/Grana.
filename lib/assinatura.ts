@@ -7,6 +7,12 @@ import { supabase } from './supabase';
    a sessão existir (ver lib/auth-context.tsx). */
 const CHAVE_TOKEN_PENDENTE = '@grana_token_ativacao_pendente';
 
+export type ResultadoVinculoAssinatura = {
+  houveFalha: boolean;
+  tokenPendente: boolean;
+  motivo: 'sincronizacao_email' | 'token_recusado' | 'token_indisponivel' | null;
+};
+
 export async function guardarTokenAtivacaoPendente(token: string): Promise<void> {
   try {
     await AsyncStorage.setItem(CHAVE_TOKEN_PENDENTE, token);
@@ -23,24 +29,44 @@ export async function guardarTokenAtivacaoPendente(token: string): Promise<void>
  * 2. Token guardado antes de logar — cobre compra com e-mail diferente do
  *    cadastro (presente, apelido de Gmail, erro de digitação).
  *
- * As duas chamadas são silenciosas de propósito: um erro aqui (rede, RPC
- * indisponível) não pode travar o login de ninguém. Se falhar, a pessoa só
- * continua sem a assinatura vinculada até a próxima vez.
+ * A falha não trava o login, mas também não é silenciosa: o chamador recebe um
+ * recibo para mostrar que o acesso ainda precisa ser confirmado. Isso evita
+ * que uma compra aprovada pareça simplesmente uma conta sem assinatura.
  */
-export async function vincularAssinaturasPendentes(): Promise<void> {
+export async function vincularAssinaturasPendentes(): Promise<ResultadoVinculoAssinatura> {
+  let houveFalha = false;
+  let motivo: ResultadoVinculoAssinatura['motivo'] = null;
+
   try {
-    await supabase.rpc('vincular_assinatura_automatica');
-  } catch {
-    // silencioso — ver comentário acima
+    const { error } = await supabase.rpc('vincular_assinatura_automatica');
+    if (error) {
+      houveFalha = true;
+      motivo = 'sincronizacao_email';
+      console.warn('[assinatura] não foi possível sincronizar compra por e-mail', {
+        code: error.code ?? null,
+        message: error.message ?? null,
+      });
+    }
+  } catch (error) {
+    houveFalha = true;
+    motivo = 'sincronizacao_email';
+    console.warn('[assinatura] falha de transporte ao sincronizar compra por e-mail', {
+      message: error instanceof Error ? error.message : 'erro desconhecido',
+    });
   }
 
   let token: string | null = null;
   try {
     token = await AsyncStorage.getItem(CHAVE_TOKEN_PENDENTE);
-  } catch {
+  } catch (error) {
     token = null;
+    houveFalha = true;
+    motivo = motivo ?? 'token_indisponivel';
+    console.warn('[assinatura] não foi possível ler o token de ativação pendente', {
+      message: error instanceof Error ? error.message : 'erro desconhecido',
+    });
   }
-  if (!token) return;
+  if (!token) return { houveFalha, tokenPendente: false, motivo };
 
   try {
     // `supabase.rpc` só REJEITA a Promise por falha de transporte (rede
@@ -54,10 +80,27 @@ export async function vincularAssinaturasPendentes(): Promise<void> {
     // false` já era tratada como sucesso e apagava o token, deixando a
     // pessoa sem assinatura vinculada e sem chance de tentar de novo.
     const { data, error } = await supabase.rpc('vincular_assinatura_por_token', { p_token: token });
-    if (error || data !== true) return; // mantém o token guardado pra tentar de novo no próximo login.
+    if (error || data !== true) {
+      houveFalha = true;
+      motivo = 'token_recusado';
+      console.warn('[assinatura] token de ativação não foi vinculado', {
+        code: error?.code ?? null,
+        message: error?.message ?? null,
+        retornouVerdadeiro: data === true,
+      });
+      return { houveFalha, tokenPendente: true, motivo };
+    }
     await AsyncStorage.removeItem(CHAVE_TOKEN_PENDENTE);
-  } catch {
-    // Falha de transporte — mantém o token guardado pra tentar de novo no próximo login.
+    return { houveFalha, tokenPendente: false, motivo };
+  } catch (error) {
+    // Falha de transporte — mantém o token guardado para tentar de novo, mas
+    // deixa o paywall mostrar que a confirmação ainda está pendente.
+    houveFalha = true;
+    motivo = 'token_indisponivel';
+    console.warn('[assinatura] falha de transporte ao vincular token de ativação', {
+      message: error instanceof Error ? error.message : 'erro desconhecido',
+    });
+    return { houveFalha, tokenPendente: true, motivo };
   }
 }
 

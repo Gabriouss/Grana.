@@ -31,6 +31,7 @@ const client = {
   from: (table) => new Query(table),
   rpc: async (name, args) => {
     if (name === 'buscar_exemplos_similares') return { data: memories.filter((m) => m.user_id === args.p_user_id && m.tipo === 'exemplo'), error: null };
+    if (name === 'consumir_cota_ia') return { data: [{ permitido: true, motivo: null, minuto_restante: 9, dia_restante: 119 }], error: null };
     if (rpcFails) return { error: { code: 'unavailable' } };
     const key = { user_id: args.p_user_id, tipo: args.p_tipo, chave: args.p_chave };
     const row = memories.find((m) => m.user_id === key.user_id && m.tipo === key.tipo && m.chave === key.chave);

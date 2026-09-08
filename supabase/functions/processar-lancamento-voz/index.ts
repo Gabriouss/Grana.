@@ -25,6 +25,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
 import { provedoresPadrao, transcrever } from '../_shared/voice-transcription.ts';
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
+import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') ?? '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
@@ -65,12 +66,13 @@ type CodigoErro =
   | 'audio_grande'
   | 'formato_invalido'
   | 'muitas_tentativas'
+  | 'limite_indisponivel'
   | 'sem_provedor'
   | 'nao_entendi'
   | 'erro_interno';
 
-function erro(codigo: CodigoErro, status: number) {
-  return new Response(JSON.stringify({ status: 'error', code: codigo }), {
+function erro(codigo: CodigoErro, status: number, mensagem?: string) {
+  return new Response(JSON.stringify({ status: 'error', code: codigo, mensagem }), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
@@ -96,8 +98,6 @@ Deno.serve(async (req) => {
     const userId = userData?.user?.id;
     if (authError || !userId) return erro('nao_autenticado', 401);
 
-    if (excedeuRateLimit(userId)) return erro('muitas_tentativas', 429);
-
     if (!GROQ_API_KEY && !OPENAI_API_KEY) {
       console.error('[processar-lancamento-voz] nenhuma chave de transcrição configurada.');
       return erro('sem_provedor', 503);
@@ -113,6 +113,18 @@ Deno.serve(async (req) => {
        arquivo é a única pista, e o provedor aceita pela extensão. */
     const mime = (audio.type || '').split(';')[0].trim().toLowerCase();
     if (mime && !MIMES_ACEITOS.has(mime)) return erro('formato_invalido', 415);
+
+    if (excedeuRateLimit(userId)) return erro('muitas_tentativas', 429, mensagemCotaEsgotada('voz', 'minuto'));
+
+    let cota;
+    try {
+      cota = await consumirCotaIA(supabase, 'voz');
+    } catch {
+      return erro('limite_indisponivel', 503);
+    }
+    if (!cota.permitido) {
+      return erro('muitas_tentativas', 429, mensagemCotaEsgotada('voz', cota.motivo));
+    }
 
     const bytes = await audio.arrayBuffer();
     const resultado = await transcrever(bytes, {

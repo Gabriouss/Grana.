@@ -3676,13 +3676,32 @@ Especificação aprovada e registrada em
   `test:assistente-fatura`, `test:blur`, `test:motion`: passaram.
 - `voice-fallback.cjs`, `voz-offline.cjs` e `widget-voz-cartoes.cjs`: passaram.
 - O corpus completo de parser passou em voz, WhatsApp, categorias, cartões e
-  102 casos novos de carteiras. A única falha restante é a guarda antiga que
-  compara a migration de voz com o baseline do schema (25/26), já existente
-  antes desta sessão e relacionada ao arquivo da outra máquina.
+  102 casos novos de carteiras. A guarda de schema agora trata a migration
+  histórica de voz separadamente e compara o baseline final com
+  `20260908000000_voice_wallets.sql`, sem sobrescrever a migration da outra
+  máquina.
+- O lote de hardening para venda pública foi implementado localmente:
+  vínculo de assinatura agora deixa recibo visível e log sem secrets; cobrança
+  past_due não abre um segundo checkout; privacidade/termos cobrem push,
+  voz no app/widget, Granabô/Gemini e memória; CI ganhou test:ci, Deno check
+  e os testes reais de assinatura/quota; a quota de IA ganhou contador SQL
+  atômico por usuário/canal em supabase/migrations/20260908140000_ai_usage_quotas.sql;
+  e os artefatos de handoff estão em documentation/.
+- A migration de quota e as duas Edge Functions alteradas ainda precisam ser
+  aplicadas/publicadas na produção, na ordem migration → funções. Sem isso o
+  novo cliente retornará limite_indisponivel de propósito, em vez de chamar
+  IA sem proteção.
 
 ### Ainda não comprovado / manual
 
 Checklist para executar na outra máquina, nesta ordem:
+
+0. **Quota de IA — banco e funções:** aplicar
+   20260908140000_ai_usage_quotas.sql no Supabase de produção e publicar
+   assistente-financeiro e processar-lancamento-voz depois da migration.
+   Confirmar com uma conta autenticada que consumir_cota_ia('assistente') e
+   consumir_cota_ia('voz') devolvem uma linha permitida; sem JWT a RPC deve
+   devolver 42501. Não publicar as funções antes da tabela/RPC existir.
 
 1. **Kiwify — header e segredo:** no painel do webhook, confirmar/configurar o
    envio do segredo no header `x-kiwify-token`. O valor precisa ser o mesmo do
@@ -3713,7 +3732,7 @@ Checklist para executar na outra máquina, nesta ordem:
    confirmar a URL `/downloads/grana-latest.apk`, variáveis do Vercel/EAS e os
    botões/links de entrega nos e-mails e checkout da Kiwify. Fazer um download
    limpo e instalar fora do ambiente de desenvolvimento.
-7. **Dívida técnica separada:** corrigir a guarda antiga que compara a migration
-   `20260905004109_voice_operations.sql` com o baseline do schema (25/26). O
-   arquivo da migration já estava alterado por outra máquina; não sobrescrever
-   antes de comparar o diff e alinhar os dois lados.
+Além da distribuição, configurar EXPO_PUBLIC_KIWIFY_BILLING_URL na Vercel/EAS
+somente se a Kiwify fornecer um link real de atualização de cobrança. Sem esse
+link o app não abre um segundo checkout: orienta o usuário a usar o e-mail da
+Kiwify e oferece o contato de suporte.

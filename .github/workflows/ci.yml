@@ -6,14 +6,10 @@ name: CI
 # passar, em sessões anteriores, código que quebrava só quando executado de
 # verdade.
 #
-# Escopo deliberadamente pequeno: só o que já roda limpo localmente hoje,
-# `tsc` e a suíte de corpus (`npm run test:parser`), que juntas cobrem tipos,
-# paginação, recorrência, sequência de dias, relatório em PDF, Score e os
-# guardas de texto sobre supabase/schema.sql. Checagem de Edge Function (Deno)
-# e de aplicação limpa do schema num banco novo (GRN-BE-008) ficam de fora
-# porque exigem Docker/Supabase local, que não foi possível verificar
-# funcionando neste ambiente — melhor um workflow pequeno e confiável do que
-# um grande que ninguém sabe se roda.
+# O workflow reúne os testes determinísticos do app, voz, widget, assistente e
+# schema, além da checagem de tipos e das Edge Functions alteradas. A aplicação
+# real do schema em um banco novo continua sendo uma etapa operacional do
+# Supabase, porque este repositório não sobe Docker/Supabase local no CI.
 on:
   push:
     branches: [main]
@@ -36,11 +32,15 @@ jobs:
       - name: Verificação de tipos
         run: npx tsc --noEmit
 
-      - name: Upload de voz nativo e web, erros e CORS
-        run: npm run test:voz
+      - name: Suítes determinísticas do app, voz, widget, assistente e schema
+        run: npm run test:ci
 
-      - name: Ciclo de vida do blur da barra
-        run: npm run test:blur
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
 
-      - name: Corpus de testes (parser, paginação, recorrência, sequência, relatório, Score, schema)
-        run: npm run test:parser
+      - name: Verificação das Edge Functions alteradas
+        run: |
+          deno check supabase/functions/_shared/ai-quota.ts
+          deno check supabase/functions/assistente-financeiro/index.ts
+          deno check supabase/functions/processar-lancamento-voz/index.ts

@@ -9,11 +9,17 @@ const checkoutConfigurado = process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
 const destinoCompra = checkoutConfigurado?.startsWith('https://')
   ? checkoutConfigurado
   : 'https://granaponto.com.br/#precos';
+const gerenciamentoConfigurado = process.env.EXPO_PUBLIC_KIWIFY_BILLING_URL;
+const destinoGerenciamento = gerenciamentoConfigurado?.startsWith('https://')
+  ? gerenciamentoConfigurado
+  : null;
+const destinoSuporte = 'mailto:gbr.design30@gmail.com?subject=Ajuda%20com%20a%20cobran%C3%A7a%20do%20Grana.';
 
 export default function AssinarScreen() {
   const { ligado } = useFlags();
-  const { estado, recarregar } = useEntitlement();
+  const { estado, sincronizacao, recarregar } = useEntitlement();
   const [verificando, setVerificando] = useState(false);
+  const cobrancaPendente = estado?.status === 'past_due';
 
   async function verificar() {
     setVerificando(true);
@@ -38,27 +44,59 @@ export default function AssinarScreen() {
           A assinatura libera lançamentos, contas, cartões, metas e o Granabô, seu assistente dentro do app. Sem conectar sua conta bancária.
         </Text>
         {estado?.status === 'past_due' && (
-          <Text style={styles.notice}>O pagamento está pendente. Atualize a cobrança para manter o acesso.</Text>
+          <Text style={styles.notice}>
+            O pagamento está pendente. Atualize a cobrança pelo link da Kiwify para manter o acesso.
+          </Text>
+        )}
+        {sincronizacao.mensagem && (
+          <Text style={styles.notice} accessibilityLiveRegion="polite">
+            {sincronizacao.mensagem}
+          </Text>
         )}
         {/* Desabilitado, não escondido: sumir com o botão de compra numa tela
             de assinatura deixaria a pessoa sem entender o que fazer ali. O
             rótulo passa a dizer o motivo — dinheiro entra por este caminho, e
             mandar alguém para um checkout instável é pior que fazê-lo esperar. */}
-        <Pressable
-          accessibilityRole="button"
-          disabled={!ligado('assinatura_checkout')}
-          accessibilityState={{ disabled: !ligado('assinatura_checkout') }}
-          onPress={() => Linking.openURL(destinoCompra)}
-          style={({ pressed }) => [
-            styles.primary,
-            pressed && styles.pressed,
-            !ligado('assinatura_checkout') && { opacity: 0.5 },
-          ]}
-        >
-          <Text style={styles.primaryText}>
-            {ligado('assinatura_checkout') ? 'Assinar o Grana.' : 'Pagamento indisponível no momento'}
-          </Text>
-        </Pressable>
+        {cobrancaPendente ? (
+          destinoGerenciamento ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => Linking.openURL(destinoGerenciamento)}
+              style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+            >
+              <Text style={styles.primaryText}>Atualizar cobrança</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.billingHelp}>
+              <Text style={styles.billingHelpText}>
+                Abra o e-mail da Kiwify para atualizar a cobrança. Se não encontrar o link, fale com o suporte.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => Linking.openURL(destinoSuporte)}
+                style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+              >
+                <Text style={styles.secondaryText}>Falar com o suporte</Text>
+              </Pressable>
+            </View>
+          )
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            disabled={!ligado('assinatura_checkout')}
+            accessibilityState={{ disabled: !ligado('assinatura_checkout') }}
+            onPress={() => Linking.openURL(destinoCompra)}
+            style={({ pressed }) => [
+              styles.primary,
+              pressed && styles.pressed,
+              !ligado('assinatura_checkout') && { opacity: 0.5 },
+            ]}
+          >
+            <Text style={styles.primaryText}>
+              {ligado('assinatura_checkout') ? 'Assinar o Grana.' : 'Pagamento indisponível no momento'}
+            </Text>
+          </Pressable>
+        )}
         <Pressable
           accessibilityRole="button"
           onPress={verificar}
@@ -119,6 +157,16 @@ const styles = StyleSheet.create({
   notice: {
     color: theme.danger,
     fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  billingHelp: {
+    gap: spacing.sm,
+  },
+  billingHelpText: {
+    color: theme.inkSoft,
+    fontFamily: fonts.light,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',

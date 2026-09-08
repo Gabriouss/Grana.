@@ -124,11 +124,18 @@ async function main() {
 
   let handler, autenticacoes = 0;
   carregar('supabase/functions/processar-lancamento-voz/index.ts', {
-    'npm:@supabase/supabase-js@2.112.3': { createClient: () => ({ auth: { getUser: async () => {
-      autenticacoes++;
-      return { data: { user: { id: 'usuario-ficticio' } }, error: null };
-    } } }) },
+    'npm:@supabase/supabase-js@2.112.3': { createClient: () => ({
+      auth: { getUser: async () => {
+        autenticacoes++;
+        return { data: { user: { id: 'usuario-ficticio' } }, error: null };
+      } },
+      rpc: async () => ({ data: [{ permitido: true, motivo: null, minuto_restante: 11, dia_restante: 59 }], error: null }),
+    }) },
     'npm:@supabase/supabase-js@2.112.3/cors': { corsHeaders },
+    '../_shared/ai-quota.ts': {
+      consumirCotaIA: async () => ({ permitido: true, motivo: null, minutoRestante: 11, diaRestante: 59 }),
+      mensagemCotaEsgotada: () => 'quota simulada',
+    },
     '../_shared/voice-transcription.ts': {
       provedoresPadrao: () => [], transcrever: async () => ({ texto: 'mercado 32', provedor: 'simulado' }),
     },

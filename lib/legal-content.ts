@@ -34,7 +34,7 @@ const EMAIL_CONTATO = '[gbr.design30@gmail.com](mailto:gbr.design30@gmail.com)';
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '17 de agosto de 2026',
+  atualizadoEm: '8 de setembro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -54,7 +54,10 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Perfil: nome de exibição e, opcionalmente, uma foto de perfil.',
         'Dados financeiros que você registra: lançamentos (descrição, valor, categoria, data), contas a pagar, orçamentos por categoria e categorias personalizadas. Esses dados existem só para o app funcionar — o Grana. não tem finalidade de análise de crédito, publicidade ou repasse a terceiros para fins comerciais.',
         'Vínculo de WhatsApp (opcional): se você ativar o lançamento por WhatsApp, guardamos o número de telefone informado e um código de pareamento temporário, usados só para confirmar que aquele número é seu.',
-        'Dados técnicos mínimos: identificador interno da conta e horários de criação/atualização dos seus registros, para o funcionamento normal do banco de dados.',
+        'Voz no app e no widget (opcional): o áudio é enviado apenas para a transcrição do comando; guardamos o recibo técnico do lançamento e não mantemos o arquivo de áudio após o processamento.',
+        'Assistente Granabô (opcional): guardamos as perguntas, respostas e memórias que você escolhe ou permite formar para manter o contexto do assistente. Esses dados podem conter informações financeiras que você escreveu na conversa.',
+        'Notificações (opcional): guardamos o token técnico de push, o fuso horário, preferências de janela e o estado de entrega para enviar os lembretes que você ativou. O token pode ser removido pelo app ao sair da conta ou deixar de usar o aparelho.',
+        'Dados técnicos mínimos: identificador interno da conta, horários de criação/atualização dos seus registros e recibos técnicos de operações, para o funcionamento normal do banco de dados.',
       ],
     },
     {
@@ -68,7 +71,9 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
       itens: [
         'Exibir seus lançamentos, contas, orçamentos e o diagnóstico financeiro dentro do próprio app.',
         'Enviar lembretes de vencimento de contas (notificações geradas e agendadas no próprio aparelho).',
-        'Permitir o registro de lançamentos por voz, por texto colado ou pelo WhatsApp, quando você opta por usar esses recursos.',
+        'Enviar notificações remotas de hábito e vencimento quando você ativa essa opção.',
+        'Permitir o registro de lançamentos por voz no app/widget, por texto colado ou pelo WhatsApp, quando você opta por usar esses recursos.',
+        'Responder perguntas financeiras pelo Granabô, consultando somente os dados da sua própria conta e guardando o histórico para manter a conversa.',
         'Manter sua sessão conectada com segurança entre usos do app.',
       ],
     },
@@ -82,7 +87,8 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
       itens: [
         'Supabase (banco de dados, autenticação e armazenamento de arquivos) — infraestrutura que hospeda todos os dados descritos acima.',
         'Meta / WhatsApp Cloud API — somente se você vincular um número de WhatsApp: as mensagens que você envia para registrar lançamentos passam pela API oficial da Meta até chegarem ao nosso servidor.',
-        'OpenAI e Groq (Whisper) — somente para transcrever mensagens de áudio enviadas pelo WhatsApp, quando esse canal está em uso. O áudio é enviado só para a transcrição e não é retido por nós após o processamento.',
+        'OpenAI e Groq (Whisper) — somente para transcrever mensagens de áudio enviadas pelo WhatsApp, app ou widget, quando você usa voz. O áudio é enviado só para a transcrição e não é retido por nós após o processamento.',
+        'Google (Gemini) — somente para gerar a resposta textual do Granabô a partir da pergunta, do contexto da conversa e dos resultados financeiros necessários para responder. O modelo não recebe acesso direto ao banco.',
         'Kiwify — se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Kiwify, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
       ],
     },
@@ -170,7 +176,7 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Alguns recursos (lançamento por WhatsApp e transcrição de áudio) dependem de serviços de terceiros — Meta (WhatsApp Cloud API), OpenAI e Groq (Whisper). Interrupções, mudanças de política ou indisponibilidade desses serviços podem afetar esses recursos específicos sem que isso dependa de nós.',
+        'Alguns recursos (lançamento por WhatsApp, voz no app/widget e Granabô) dependem de serviços de terceiros — Meta (WhatsApp Cloud API), OpenAI, Groq (Whisper) e Google (Gemini). Interrupções, mudanças de política ou indisponibilidade desses serviços podem afetar esses recursos específicos sem que isso dependa de nós.',
     },
     { tipo: 'subtitulo', texto: '5. Planos pagos e assinatura' },
     {
@@ -232,6 +238,9 @@ export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
         'Todos os lançamentos, contas a pagar, orçamentos e categorias personalizadas;',
         'Foto de perfil e nome de exibição;',
         'Vínculo com o WhatsApp, se houver;',
+        'Histórico e memória do Granabô, se houver;',
+        'Token de notificações, preferências e recibos técnicos associados ao aparelho;',
+        'Recibos técnicos de operações de voz, sem retenção do arquivo de áudio;',
         'Vínculo com sua assinatura, se houver — o registro da compra em si permanece com o parceiro de pagamento, fora do nosso controle.',
       ],
     },
