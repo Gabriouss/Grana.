@@ -3869,3 +3869,89 @@ ser gravados sem carteira por causa do seletor agregado.
   build.
 - Não foi disparado build Android; a mudança de código só entra no APK após o
   fluxo de build autorizado e preparado pelo script de release.
+
+## 08/09/2026 — auditoria impeccable: correções P0/P1 e a descoberta do `+html.tsx` inerte
+
+Relatório completo em `docs/IMPECCABLE_AUDIT_APP_WEB_20260908.md` (11/20 web,
+12/20 nativo — a queda contra os 14/12 de 07/09 é **alcance**, não regressão: a
+rodada anterior parou em ~10 componentes e esta varreu `lib/`, o PDF, o build
+web e o comportamento em paisagem).
+
+**Aviso sobre o commit `2dc7146`.** A mensagem dele fala de carteiras, mas ele
+carrega junto todo o lote 2 desta auditoria — outro agente rodando neste mesmo
+diretório commitou a árvore inteira, incluindo trabalho meu ainda não
+commitado. Nada se perdeu e nada quebrou; o histórico é que ficou ilegível
+nesse ponto. Fica registrado aqui para quem for procurar depois. **Dois agentes
+no mesmo diretório de trabalho colidem assim**: commitar em lotes menores
+reduz a janela.
+
+### Fechado no lote 1 (`36cff7c`)
+
+- **P0**: saída de dinheiro saía em vermelho no PDF exportado. Entrada e saída
+  agora são a mesma família cromática escurecida para papel (5,27:1 e 5,12:1
+  sobre branco), escolhidas para **pesar igual**.
+- **P1**: `entradaBorda`/`saidaBorda` reconstruíam o semáforo verde/vermelho.
+  `#bb6b60` (que era a cor da categoria Alimentação, reaproveitada por engano)
+  virou `#4f8894` — mesmo matiz ciano da marca com L e S idênticos aos do verde.
+- **P1**: `VozesSalvasLocalmente` caía na fonte do sistema, sem `fontFamily`
+  nenhuma; ganhou também `minHeight: touchTarget` (dava ~36dp contra 48dp),
+  região viva e `busy`.
+- **P1**: botão do WhatsApp em `PareamentoWhatsapp` tinha contraste 1,98:1.
+  Passou a `theme.paper`: 8,36:1.
+- **Sistêmico**: o corpus de design system pegava fonte ERRADA e não fonte
+  AUSENTE, e parava em `app/`+`components/`. Agora varre `lib/` e acusa estilo
+  com `fontSize` sozinho sem família. Provado contra a versão anterior do
+  arquivo no git.
+
+### Fechado no lote 2 (dentro de `2dc7146`)
+
+- Insets laterais nas 8 telas (`edges={['top','left','right']}`): em paisagem
+  num aparelho com recorte o inset é ~59pt contra 20pt de margem.
+- Granachat passou a tratar o **Voltar do Android** e o **Esc**: era `View`
+  absoluta, não `<Modal>`, então não herdava `onRequestClose` e o Back saía da
+  aba com o chat aberto.
+- Modais do Perfil sobem com o teclado, usando `useKeyboardHeight` (o projeto
+  decidiu não usar `KeyboardAvoidingView` desde o edge-to-edge do SDK 54).
+- `SideNav` anuncia o Granabô como `button`, não `link` sem destino.
+- Estado de carregamento de Desafios ganhou área segura.
+- **Ícones: 19 famílias → 1.** Os 57 imports saíram do barril
+  `@expo/vector-icons` para `@expo/vector-icons/Ionicons`. Medido em
+  `expo export`: **3,89 MB → 0,37 MB** de `.ttf`, com guarda novo no corpus
+  impedindo o barril de voltar (é o import que o editor sugere sozinho).
+
+### A descoberta que vale mais que o achado original
+
+A auditoria dizia que o CSS global do `app/+html.tsx` não chegava ao build. É
+verdade, mas o motivo é maior: **`+html.tsx` é ignorado por completo**. O
+`index.html` publicado é, byte a byte, o template padrão da Expo
+(`@expo/cli/static/template/index.html`) — mesmo `httpEquiv`, mesma string de
+`viewport`, mesmo `<style id="expo-reset">`.
+
+Provado inserindo uma `<meta>` marcadora que nunca apareceu no export, mesmo
+depois de limpar `.expo`, `node_modules/.cache` e exportar com `--clear`. O
+`expo-router` só honra `+html.tsx` quando `web.output` é `"static"`; o
+`app.json` não define a chave, então vale `"single"` (SPA).
+
+Consequência: o CSS de legibilidade da Neue Machina, o `lang="pt-BR"` e o
+`viewport-fit` nunca valeram. Movido para `instalarDocumentoWeb()` em
+`lib/foco-web.ts`, que injeta em runtime — mesmo caminho que o anel de foco já
+usava — em vez de trocar o modo de renderização do site inteiro. Junto entrou
+o CSS de `:-webkit-autofill`, que impedia o Chrome de pintar campo
+autopreenchido com fundo claro dentro da UI petróleo.
+
+O `+html.tsx` foi mantido, com um aviso no topo explicando que está inerte e
+que volta a valer sozinho se alguém ligar `web.output: "static"`.
+
+### Aberto de propósito
+
+- **Sete itens na barra** (6 destinos + a ação do Granabô) contra o teto de 5
+  do HIG e do Material 3. **Não mexi**: reduzir significa decidir qual seção
+  deixa de ser aba, e isso é produto, não craft. O botão central já está certo
+  (`button` + `expanded`, não destino) e não deve ser desfeito junto.
+- **`srcset` nas imagens do herói**: exige variantes redimensionadas e este
+  ambiente não tem nenhum conversor de imagem (`cwebp`, `magick`, `sips`,
+  `ffmpeg`). Pendente de asset, não de código.
+- **Cascata de render da Início**: 64 `useState` e nenhum `memo`; digitar num
+  campo reconstrói `HOME_BLOCOS` inteiro, inclusive blocos ocultos. É o maior
+  ganho de performance que sobrou, e também o refactor mais arriscado — fica
+  para uma rodada com verificação em aparelho.
