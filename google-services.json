@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "2609097746",
+    "project_id": "granaponto",
+    "storage_bucket": "granaponto.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:2609097746:android:0d83f623ab8241babe3ccb",
+        "android_client_info": {
+          "package_name": "com.gabriouss.grana"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDR492eKyMoiKDy2IDW-VV3wkZm9ES6VZI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

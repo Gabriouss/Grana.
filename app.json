@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "com.gabriouss.grana",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#052229",
         "foregroundImage": "./assets/android-icon-foreground.png",
