@@ -11,18 +11,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-function tokenValido(req: Request, url: URL, body: Record<string, unknown>): boolean {
+function tokenValido(req: Request): boolean {
   if (!KIWIFY_WEBHOOK_TOKEN) return false;
-  const candidatos = [
-    req.headers.get('x-kiwify-token'),
-    typeof body.webhook_token === 'string' ? body.webhook_token : null,
-    typeof body.token === 'string' ? body.token : null,
-    typeof body.secret === 'string' ? body.secret : null,
-    // Compatibilidade de transição com o endpoint já cadastrado. O segredo
-    // nunca é persistido nem incluído em logs.
-    url.searchParams.get('token'),
-  ];
-  return candidatos.some((valor) => !!valor && timingSafeEqual(valor, KIWIFY_WEBHOOK_TOKEN));
+  // O bearer não pode viajar na URL nem no JSON: ambos acabam em histórico,
+  // proxy e ferramenta de observabilidade. A Kiwify deve enviar o segredo no
+  // header configurado do webhook.
+  const valor = req.headers.get('x-kiwify-token');
+  return !!valor && timingSafeEqual(valor, KIWIFY_WEBHOOK_TOKEN);
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -64,8 +59,7 @@ Deno.serve(async (req: Request) => {
     return resposta({ error: 'invalid_json' }, 400);
   }
 
-  const url = new URL(req.url);
-  if (!tokenValido(req, url, body)) return resposta({ error: 'unauthorized' }, 401);
+  if (!tokenValido(req)) return resposta({ error: 'unauthorized' }, 401);
 
   const evento = normalizarEventoKiwify(body);
   if (!evento || (!evento.orderId && !evento.subscriptionId)) {

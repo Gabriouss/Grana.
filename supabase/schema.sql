@@ -659,6 +659,9 @@ create policy "usuário vê e edita só suas carteiras"
 
 create index if not exists wallets_user_id_idx on wallets (user_id);
 
+alter table whatsapp_pending
+  add column if not exists wallet_id uuid references wallets(id) on delete set null;
+
 alter table wallets drop constraint if exists wallets_name_len;
 alter table wallets add constraint wallets_name_len
   check (char_length(name) <= 60);
@@ -2357,12 +2360,16 @@ as $$
 declare
   v_user uuid := (select auth.uid());
   v_email text;
+  v_confirmed_at timestamptz;
 begin
   if v_user is null then
     raise exception 'Não autenticado' using errcode = '42501';
   end if;
-  select u.email into v_email from auth.users u where u.id = v_user;
-  if v_email is null then return; end if;
+  select u.email, u.email_confirmed_at
+    into v_email, v_confirmed_at
+  from auth.users u
+  where u.id = v_user;
+  if v_email is null or v_confirmed_at is null then return; end if;
 
   update public.subscriptions s
   set user_id = v_user,
@@ -2752,7 +2759,8 @@ create or replace function public.registrar_lancamento_whatsapp(
   p_card_id uuid default null,
   p_payment_method text default null,
   p_installments integer default null,
-  p_recurring boolean default false
+  p_recurring boolean default false,
+  p_wallet_id uuid default null
 )
 returns uuid
 language plpgsql
@@ -2762,6 +2770,7 @@ as $$
 declare
   v_existing uuid;
   v_parent uuid := gen_random_uuid();
+  v_wallet_id uuid := p_wallet_id;
   v_base numeric(12,2);
   v_last numeric(12,2);
   v_installments integer := coalesce(p_installments, 1);
@@ -2780,8 +2789,22 @@ begin
   ) then
     raise exception 'Vínculo do WhatsApp inválido' using errcode = '42501';
   end if;
+  if v_wallet_id is null then
+    select w.id into v_wallet_id
+    from public.wallets w
+    where w.user_id = p_user_id
+    order by w.is_default desc, w.created_at asc
+    limit 1;
+  end if;
+  if v_wallet_id is null or not exists (
+    select 1 from public.wallets w where w.id = v_wallet_id and w.user_id = p_user_id
+  ) then
+    raise exception 'Carteira não pertence ao usuário' using errcode = '23503';
+  end if;
   if p_card_id is not null and not exists (
-    select 1 from public.credit_cards c where c.id = p_card_id and c.user_id = p_user_id
+    select 1 from public.credit_cards c
+    where c.id = p_card_id and c.user_id = p_user_id
+      and (c.wallet_id is null or c.wallet_id = v_wallet_id)
   ) then
     raise exception 'Cartão não pertence ao usuário' using errcode = '23503';
   end if;
@@ -2795,10 +2818,10 @@ begin
   if v_installments = 1 then
     insert into public.transactions (
       id, user_id, type, description, amount, category, color, occurred_on,
-      recurring, card_id, payment_method, source, source_event_id
+      recurring, card_id, wallet_id, payment_method, source, source_event_id
     ) values (
       v_parent, p_user_id, p_type, p_description, p_amount, p_category,
-      p_color, p_occurred_on, p_recurring, p_card_id, p_payment_method,
+      p_color, p_occurred_on, p_recurring, p_card_id, v_wallet_id, p_payment_method,
       'whatsapp', p_event_id
     ) on conflict (source, source_event_id) do nothing;
   else
@@ -2806,7 +2829,7 @@ begin
     v_last := round(p_amount - v_base * (v_installments - 1), 2);
     insert into public.transactions (
       id, user_id, type, description, amount, category, color, occurred_on,
-      recurring, parent_id, card_id, payment_method, installment_current,
+      recurring, parent_id, card_id, wallet_id, payment_method, installment_current,
       installment_total, source, source_event_id
     )
     select
@@ -2821,6 +2844,7 @@ begin
       false,
       case when serie.i = 1 then null else v_parent end,
       p_card_id,
+      v_wallet_id,
       p_payment_method,
       serie.i,
       v_installments,
@@ -2847,8 +2871,8 @@ begin
 end;
 $$;
 
-revoke all on function public.registrar_lancamento_whatsapp(uuid, text, text, text, text, numeric, text, text, date, uuid, text, integer, boolean) from public, anon, authenticated;
-grant execute on function public.registrar_lancamento_whatsapp(uuid, text, text, text, text, numeric, text, text, date, uuid, text, integer, boolean) to service_role;
+revoke all on function public.registrar_lancamento_whatsapp(uuid, text, text, text, text, numeric, text, text, date, uuid, text, integer, boolean, uuid) from public, anon, authenticated;
+grant execute on function public.registrar_lancamento_whatsapp(uuid, text, text, text, text, numeric, text, text, date, uuid, text, integer, boolean, uuid) to service_role;
 
 create or replace function public.registrar_boleto_whatsapp(
   p_user_id uuid,
@@ -2859,7 +2883,8 @@ create or replace function public.registrar_boleto_whatsapp(
   p_category text,
   p_color text,
   p_due_date date,
-  p_recurring boolean default false
+  p_recurring boolean default false,
+  p_wallet_id uuid default null
 )
 returns uuid
 language plpgsql
@@ -2868,6 +2893,7 @@ set search_path = ''
 as $$
 declare
   v_id uuid;
+  v_wallet_id uuid := p_wallet_id;
 begin
   if p_amount <= 0 or char_length(p_event_id) not between 1 and 255 then
     raise exception 'Boleto inválido' using errcode = '22023';
@@ -2881,13 +2907,25 @@ begin
   ) then
     raise exception 'Vínculo do WhatsApp inválido' using errcode = '42501';
   end if;
+  if v_wallet_id is null then
+    select w.id into v_wallet_id
+    from public.wallets w
+    where w.user_id = p_user_id
+    order by w.is_default desc, w.created_at asc
+    limit 1;
+  end if;
+  if v_wallet_id is null or not exists (
+    select 1 from public.wallets w where w.id = v_wallet_id and w.user_id = p_user_id
+  ) then
+    raise exception 'Carteira não pertence ao usuário' using errcode = '23503';
+  end if;
 
   insert into public.bills (
     user_id, description, amount, category, color, due_date, status,
-    recurring, source, source_event_id
+    recurring, wallet_id, source, source_event_id
   ) values (
     p_user_id, p_description, p_amount, p_category, p_color, p_due_date,
-    'due', p_recurring, 'whatsapp', p_event_id
+    'due', p_recurring, v_wallet_id, 'whatsapp', p_event_id
   ) on conflict (source, source_event_id) do nothing
   returning id into v_id;
 
@@ -2904,8 +2942,8 @@ begin
 end;
 $$;
 
-revoke all on function public.registrar_boleto_whatsapp(uuid, text, text, text, numeric, text, text, date, boolean) from public, anon, authenticated;
-grant execute on function public.registrar_boleto_whatsapp(uuid, text, text, text, numeric, text, text, date, boolean) to service_role;
+revoke all on function public.registrar_boleto_whatsapp(uuid, text, text, text, numeric, text, text, date, boolean, uuid) from public, anon, authenticated;
+grant execute on function public.registrar_boleto_whatsapp(uuid, text, text, text, numeric, text, text, date, boolean, uuid) to service_role;
 
 create or replace function public.cancelar_ultimo_whatsapp(p_phone text)
 returns jsonb

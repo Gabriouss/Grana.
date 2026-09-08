@@ -363,12 +363,19 @@ export function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca
 
 type CarteiraBusca = { id: string; name: string };
 
+function normalizarNomeCarteira(texto: string): string {
+  return normalizarParaBusca(texto)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
 /** Encontra nomes personalizados somente quando a fala os ancora em "carteira" ou "conta". */
 export function matchWalletByText(text: string, wallets: CarteiraBusca[]): CarteiraBusca | null {
-  const alvo = normalizarParaBusca(text);
+  const alvo = normalizarNomeCarteira(text);
   const ordenadas = [...wallets].sort((a, b) => b.name.length - a.name.length);
   return ordenadas.find((wallet) => {
-    const nome = normalizarParaBusca(wallet.name);
+    const nome = normalizarNomeCarteira(wallet.name);
     return alvo.includes(`carteira ${nome}`) || alvo.includes(`conta ${nome}`);
   }) ?? null;
 }

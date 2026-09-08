@@ -99,18 +99,10 @@ const CATEGORIES: { name: string; color: string }[] = [
    categoria padrão no app não muda esse vocabulário de propósito (ver
    comentário em supabase/schema.sql sobre `categories`).
 
-   `extras` SEM anotação de tipo de propósito, nem `as` de cast (seria
-   `: { name: string; color: string }[]`): __tests__/extrair.ts lê esta
-   função direto do arquivo pra testar contra o código real (ver
-   __tests__/corpus-whatsapp-gerado.ts), e a limpeza de tipo ali só sabe
-   remover `string`/`number`/`boolean` de PARÂMETRO — QUALQUER outra sintaxe
-   de TypeScript sobrando (tipo objeto literal, `as`) quebra o `new
-   Function` com `SyntaxError`, porque o resultado precisa ser JS puro
-   (mesmo problema que já existe pra CATEGORIES, documentado em
-   corpus-whatsapp-gerado.ts:32-37). O tipo de retorno continua anotado
-   normalmente: esse SIM o extrator sabe limpar (regex própria pra objeto
-   literal depois de `):`). */
-function matchCategoryByKeyword(text: string, extras = []): { name: string; color: string } | null {
+   O tipo explícito evita que o compilador Deno infira `never[]` para o valor
+   padrão vazio. O extrator de testes remove essa anotação antes de executar
+   a função em Node. */
+function matchCategoryByKeyword(text: string, extras: { name: string; color: string }[] = []): { name: string; color: string } | null {
   const alvo = normalizarParaBusca(text);
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     if (keywords.some((kw) => contemPalavra(alvo, kw))) {
@@ -123,9 +115,8 @@ function matchCategoryByKeyword(text: string, extras = []): { name: string; colo
   return null;
 }
 
-/** Casa a resposta de uma pergunta de esclarecimento: nome exato da categoria, ou uma palavra-chave conhecida.
-    `extras` sem anotação de tipo — mesma razão de matchCategoryByKeyword logo acima. */
-function matchCategoryByReply(text: string, extras = []): { name: string; color: string } | null {
+/** Casa a resposta de uma pergunta de esclarecimento: nome exato da categoria, ou uma palavra-chave conhecida. */
+function matchCategoryByReply(text: string, extras: { name: string; color: string }[] = []): { name: string; color: string } | null {
   const lower = text.trim().toLowerCase();
   const exact = CATEGORIES.find((c) => c.name.toLowerCase() === lower) ?? extras.find((c) => c.name.toLowerCase() === lower);
   if (exact) return exact;
@@ -720,6 +711,7 @@ type Rascunho = {
   occurred_on: string;
   attempts: number;
   card_id: string | null;
+  wallet_id: string | null;
   payment_method: string | null;
   /* Atravessa a pergunta de categoria junto do resto do rascunho — sem isto,
      "mercado 300 em 3x" cuja categoria o bot não reconhece perderia o
@@ -813,7 +805,7 @@ async function limparPendente(phone: string): Promise<void> {
 
 /** Grava o lançamento de verdade e limpa qualquer rascunho pendente daquele número. */
 async function finalizarLancamento(
-  rascunho: Pick<Rascunho, 'user_id' | 'phone' | 'description' | 'amount' | 'type' | 'occurred_on' | 'card_id' | 'payment_method'> & {
+  rascunho: Pick<Rascunho, 'user_id' | 'phone' | 'description' | 'amount' | 'type' | 'occurred_on' | 'card_id' | 'wallet_id' | 'payment_method'> & {
     installments?: number | null;
     recurring?: boolean;
   },
@@ -834,6 +826,7 @@ async function finalizarLancamento(
     p_color: categoria.color,
     p_occurred_on: rascunho.occurred_on,
     p_card_id: rascunho.card_id,
+    p_wallet_id: rascunho.wallet_id,
     p_payment_method: rascunho.payment_method,
     p_installments: parcelas,
     p_recurring: rascunho.recurring ?? false,
@@ -955,7 +948,62 @@ function ehIntencaoCredito(text: string): boolean {
   return false;
 }
 
-type CartaoBusca = { id: string; name: string; bank: string };
+type CartaoBusca = { id: string; name: string; bank: string; wallet_id: string | null };
+
+type CarteiraBusca = { id: string; name: string; is_default: boolean };
+
+function normalizarNomeCarteira(texto: string): string {
+  return normalizarParaBusca(texto)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function carteiraFoiMencionada(text: string): boolean {
+  return /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(text);
+}
+
+function carteirasMencionadas(text: string, wallets: CarteiraBusca[]): CarteiraBusca[] {
+  const alvo = normalizarNomeCarteira(text);
+  return [...wallets]
+    .sort((a, b) => b.name.length - a.name.length)
+    .filter((wallet) => {
+      const nome = normalizarNomeCarteira(wallet.name);
+      return alvo.includes(`carteira ${nome}`) || alvo.includes(`conta ${nome}`);
+    });
+}
+
+function limparReferenciaCarteira(text: string, walletName: string): string {
+  const escapado = walletName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text
+    .replace(new RegExp(`\\b(?:carteira|conta)\\s+${escapado}\\b`, 'ig'), ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+async function fetchWalletsDoUsuario(userId: string): Promise<CarteiraBusca[]> {
+  const { data, error } = await supabase
+    .from('wallets')
+    .select('id, name, is_default')
+    .eq('user_id', userId)
+    .order('is_default', { ascending: false })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data as CarteiraBusca[] | null) ?? [];
+}
+
+function carteirasElegiveisDoTexto(text: string, wallets: CarteiraBusca[]): {
+  carteira: CarteiraBusca | null;
+  mencionada: boolean;
+  erro: 'nao_encontrada' | 'ambigua' | 'sem_carteira' | null;
+} {
+  const mencionada = carteiraFoiMencionada(text);
+  const encontradas = carteirasMencionadas(text, wallets);
+  if (encontradas.length > 1) return { carteira: null, mencionada, erro: 'ambigua' };
+  if (mencionada && encontradas.length === 0) return { carteira: null, mencionada, erro: 'nao_encontrada' };
+  const carteira = encontradas[0] ?? wallets.find((wallet) => wallet.is_default) ?? wallets[0] ?? null;
+  return { carteira, mencionada, erro: carteira ? null : 'sem_carteira' };
+}
 
 /** Acha o cartão citado no texto pelo nome que o usuário deu a ele ou pelo banco ("Nubank", "Itaú Click", "no Inter"). */
 function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null {
@@ -968,10 +1016,14 @@ function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null
   return null;
 }
 
+function cartoesMencionados(text: string, cards: CartaoBusca[]): CartaoBusca[] {
+  return cards.filter((card) => matchCardByText(text, [card]) !== null);
+}
+
 async function fetchCreditCardsDoUsuario(userId: string): Promise<CartaoBusca[]> {
   const { data, error } = await supabase
     .from('credit_cards')
-    .select('id, name, bank')
+    .select('id, name, bank, wallet_id')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -1152,7 +1204,7 @@ type ResultadoConsulta =
    matchCategoryByKeyword: __tests__/corpus-consulta.ts extrai esta função
    direto do arquivo real, e a limpeza de tipo do extrator não sabe remover
    tipo objeto literal de parâmetro (só o de retorno). */
-function interpretarConsulta(text: string, categoriasDoUsuario = []): ResultadoConsulta | null {
+function interpretarConsulta(text: string, categoriasDoUsuario: { name: string; color: string }[] = []): ResultadoConsulta | null {
   if (!/\b(?:quanto|qual)\b[\s\S]*\b(?:gastei|gasto|tenho|falta|foi\s+gasto|j[aá]\s+gastei)\b/i.test(text)) return null;
 
   if (/\bboletos?\b|\bconta[s]?\s+a\s+pagar\b|\bvencer\b/i.test(text)) return { tipo: 'boletos' };
@@ -1278,9 +1330,27 @@ async function registrarBoleto(
   amount: number,
   eventId: string,
   ouvido?: string,
-  categoriasDoUsuario = []
+  categoriasDoUsuario: { name: string; color: string }[] = []
 ): Promise<void> {
-  const description = guessDescFromText(text, 'out');
+  const carteiras = await fetchWalletsDoUsuario(userId);
+  const resolucao = carteirasElegiveisDoTexto(text, carteiras);
+  if (resolucao.erro === 'nao_encontrada') {
+    await sendWhatsappMessage(phone, 'Não encontrei essa carteira. Confira o nome no app e tente de novo.');
+    return;
+  }
+  if (resolucao.erro === 'ambigua') {
+    await sendWhatsappMessage(phone, 'Encontrei mais de uma carteira com esse nome. Diga o nome completo, por exemplo: "carteira pessoal".');
+    return;
+  }
+  if (!resolucao.carteira) {
+    await sendWhatsappMessage(phone, 'Você ainda não tem uma carteira cadastrada. Crie uma no app antes de lançar por aqui.');
+    return;
+  }
+
+  const textoFinanceiro = resolucao.mencionada
+    ? limparReferenciaCarteira(text, resolucao.carteira.name)
+    : text;
+  const description = guessDescFromText(textoFinanceiro, 'out');
   const due_date = parseDiaVencimento(text);
   const categoria = matchCategoryByKeyword(text, categoriasDoUsuario) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
 
@@ -1294,6 +1364,7 @@ async function registrarBoleto(
     p_color: categoria.color,
     p_due_date: due_date,
     p_recurring: parseRecorrencia(text),
+    p_wallet_id: resolucao.carteira.id,
   });
   if (error) throw error;
 
@@ -1301,7 +1372,7 @@ async function registrarBoleto(
   const vencFmt = due_date.split('-').reverse().join('/');
   await sendWhatsappMessage(
     phone,
-    `📄 Boleto registrado em Contas a pagar: R$ ${valorFmt} (${description}), vence ${vencFmt}.` + linhaDoQueFoiOuvido(ouvido)
+    `📄 Boleto registrado em Contas a pagar: R$ ${valorFmt} (${description}), vence ${vencFmt} · carteira ${resolucao.carteira.name}.` + linhaDoQueFoiOuvido(ouvido)
   );
 }
 
@@ -1346,8 +1417,27 @@ async function registrarLancamento(
     return;
   }
 
-  const type = guessTypeFromText(text);
-  let description = guessDescFromText(text, type);
+  const carteiras = await fetchWalletsDoUsuario(userId);
+  const resolucao = carteirasElegiveisDoTexto(text, carteiras);
+  if (resolucao.erro === 'nao_encontrada') {
+    await sendWhatsappMessage(phone, 'Não encontrei essa carteira. Confira o nome no app e tente de novo.');
+    return;
+  }
+  if (resolucao.erro === 'ambigua') {
+    await sendWhatsappMessage(phone, 'Encontrei mais de uma carteira com esse nome. Diga o nome completo, por exemplo: "carteira pessoal".');
+    return;
+  }
+  if (!resolucao.carteira) {
+    await sendWhatsappMessage(phone, 'Você ainda não tem uma carteira cadastrada. Crie uma no app antes de lançar por aqui.');
+    return;
+  }
+
+  let carteira = resolucao.carteira;
+  const textoFinanceiro = resolucao.mencionada
+    ? limparReferenciaCarteira(text, carteira.name)
+    : text;
+  const type = guessTypeFromText(textoFinanceiro);
+  let description = guessDescFromText(textoFinanceiro, type);
   const occurred_on = todayISO();
   const categoria = matchCategoryByKeyword(text, categoriasDoUsuario);
 
@@ -1355,7 +1445,7 @@ async function registrarLancamento(
   /* Pix, débito e dinheiro saem daqui; crédito é decidido logo abaixo e
      sobrescreve. Antes disto o campo só era preenchido no crédito — dizer "no
      pix" era ouvido pra tirar da descrição e jogado fora na hora de salvar. */
-  let payment_method: string | null = parseFormaPagamento(text);
+  let payment_method: string | null = parseFormaPagamento(textoFinanceiro);
   let nomeCartao: string | null = null;
   /* Só faz sentido parcelar saída no crédito — "recebi 300 em 3x" não existe,
      e parcelar um pix/débito também não. Fica null fora desse caso. */
@@ -1363,24 +1453,44 @@ async function registrarLancamento(
   /* Só saída vai pra fatura. Agora que a palavra "crédito" sozinha aciona a
      regra, "recebi um crédito de 500" — que é dinheiro entrando — cairia num
      cartão sem esta trava. */
-  if (type === 'out' && ehIntencaoCredito(text)) {
-    const cartoes = await fetchCreditCardsDoUsuario(userId);
-    if (cartoes.length > 0) {
-      // Cita o cartão pelo nome/banco? usa esse. Senão, cai no primeiro
-      // cadastrado — na prática o único, pra maioria de quem usa 1 cartão —
-      // e avisa qual foi usado na confirmação, pra corrigir fácil se errou.
-      const achado = matchCardByText(text, cartoes) ?? cartoes[0];
-      card_id = achado.id;
-      payment_method = 'credit';
-      nomeCartao = achado.name;
-      /* "C6" (ou o nome que a pessoa deu ao cartão) identifica ONDE lançar,
-         não faz parte do nome do gasto — "Almoço pago no crédito da C6"
-         virava a descrição "Almoço pago no crédito da C6" (relatado pelo
-         autor), quando o esperado é só "Almoço pago", com o cartão indo
-         para `card_id` separadamente. */
-      description = limparReferenciaCartao(description, nomeCartao);
-      installments = parseParcelas(text);
+  if (type === 'out' && ehIntencaoCredito(textoFinanceiro)) {
+    const todosCartoes = await fetchCreditCardsDoUsuario(userId);
+    const cartoes = resolucao.mencionada
+      ? todosCartoes.filter((card) => !card.wallet_id || card.wallet_id === carteira.id)
+      : todosCartoes;
+    const citados = cartoesMencionados(text, cartoes);
+    const citadosForaDaCarteira = resolucao.mencionada && citados.length === 0
+      ? cartoesMencionados(text, todosCartoes)
+      : [];
+
+    if (citadosForaDaCarteira.length > 0) {
+      await sendWhatsappMessage(phone, 'Esse cartão pertence a outra carteira. Diga a carteira correta ou escolha outro cartão.');
+      return;
     }
+    if (citados.length > 1) {
+      await sendWhatsappMessage(phone, 'Você citou mais de um cartão. Diga o nome completo do cartão que usou.');
+      return;
+    }
+    const achado = citados[0] ?? (cartoes.length === 1 ? cartoes[0] : null);
+    if (!achado) {
+      await sendWhatsappMessage(phone, cartoes.length === 0
+        ? 'Não encontrei um cartão nessa carteira. Cadastre o cartão no app ou informe outra forma de pagamento.'
+        : 'Você tem mais de um cartão. Diga qual usou, por exemplo: "cartão C6".');
+      return;
+    }
+
+    if (!resolucao.mencionada && achado.wallet_id) {
+      const carteiraDoCartao = carteiras.find((item) => item.id === achado.wallet_id);
+      if (carteiraDoCartao) carteira = carteiraDoCartao;
+    }
+
+    card_id = achado.id;
+    payment_method = 'credit';
+    nomeCartao = achado.name;
+    /* "C6" (ou o nome que a pessoa deu ao cartão) identifica ONDE lançar,
+       não faz parte do nome do gasto. */
+    description = limparReferenciaCartao(description, nomeCartao);
+    installments = parseParcelas(textoFinanceiro);
   }
 
   /* Parcelamento e recorrência são modelos que se excluem: 3x é uma série
@@ -1388,11 +1498,11 @@ async function registrarLancamento(
      que o app vai preenchendo mês a mês. `parseRecorrencia` já recusa quando
      acha parcela; a repetição aqui é só pra deixar a regra visível no ponto
      onde o lançamento é montado. */
-  const recurring = installments ? false : parseRecorrencia(text);
+  const recurring = installments ? false : parseRecorrencia(textoFinanceiro);
 
   if (categoria) {
     await finalizarLancamento(
-      { user_id: userId, phone, description, amount, type, occurred_on, card_id, payment_method, installments, recurring },
+      { user_id: userId, phone, description, amount, type, occurred_on, card_id, wallet_id: carteira.id, payment_method, installments, recurring },
       categoria,
       eventId,
       nomeCartao,
@@ -1409,7 +1519,7 @@ async function registrarLancamento(
        na linha e a resposta de categoria cairia no ramo errado. */
     .upsert({
       phone, user_id: userId, description, amount, type, occurred_on, attempts: 0,
-      card_id, payment_method, installments, recurring,
+      card_id, wallet_id: carteira.id, payment_method, installments, recurring,
       pending_kind: 'categoria', amount_alt: null, raw_text: null,
     });
   if (pendingError) throw pendingError;
@@ -1441,6 +1551,7 @@ async function perguntarValorAmbiguo(
     occurred_on: todayISO(),
     attempts: 0,
     card_id: null,
+    wallet_id: null,
     payment_method: null,
     installments: null,
     pending_kind: 'valor',

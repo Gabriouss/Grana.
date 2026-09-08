@@ -3626,3 +3626,69 @@ melhor que documento paralelo — foi o comentário que corrigiu o registro.
 
 `PENDENCIAS.md` foi removido do repositório nesta sessão. Não é mais o lugar
 de registrar trabalho em aberto — esse lugar é este arquivo.
+
+## 08/09/2026 — endurecimento para venda e carteiras no WhatsApp
+
+Especificação aprovada e registrada em
+`docs/superpowers/specs/2026-09-08-prontidao-venda-hardening-design.md`.
+
+### O que foi implementado
+
+- `kiwify-webhook` agora aceita o segredo somente no header
+  `x-kiwify-token`; query string e campos de segredo no corpo foram removidos.
+  A idempotência continua na RPC `processar_evento_kiwify`.
+- Criada a Edge Function `delete-account`. Ela exige JWT, confere
+  `last_sign_in_at` dentro de uma janela de 10 minutos, remove arquivos do
+  bucket `avatars`, anonimiza feedbacks e remove o usuário via Auth Admin.
+  Falha em qualquer etapa retorna erro visível e não finge exclusão completa.
+- O vínculo automático de assinatura agora exige `auth.users.email_confirmed_at`.
+  O vínculo por token continua disponível.
+- Corrigido o resolver de carteira no app e no WhatsApp para ignorar acentos,
+  reconhecer nomes personalizados e não escolher silenciosamente quando o
+  nome é inexistente ou ambíguo.
+- O WhatsApp passa `wallet_id` nas transações, parcelas e boletos; a carteira
+  escolhida sobrevive enquanto o bot pergunta a categoria.
+- Atualizadas as migrations
+  `20260908120000_whatsapp_wallets.sql` e
+  `20260908130000_assinatura_email_confirmado.sql`, além do `schema.sql`.
+- Termos e página de exclusão agora dizem que o acesso atual é pago e foram
+  atualizados para 8 de setembro de 2026.
+- Novo corpus `__tests__/corpus-whatsapp-wallets.ts` cobre carteira padrão,
+  personalizada, acento omitido, inexistente e ambígua.
+
+### Produção — feito e verificado
+
+- As duas migrations acima foram aplicadas no projeto Supabase de produção.
+- Foram publicadas as Edge Functions `kiwify-webhook`, `whatsapp-webhook` e
+  `delete-account`.
+- Sondas sem autenticação devolveram 401 para Kiwify e exclusão de conta.
+- A RPC de WhatsApp com `wallet_id`, a coluna de pendência e a guarda de
+  e-mail confirmado foram confirmadas no banco.
+- `app_backend_config.enforce_subscriptions` permanece `false`; nenhum bloqueio
+  global foi ativado.
+- Não foi disparado build.
+
+### Verificação
+
+- `npx tsc --noEmit`: passou.
+- `deno check` das três Edge Functions: passou.
+- `npm run test:voz`, `test:assistente-aprendizado`,
+  `test:assistente-fatura`, `test:blur`, `test:motion`: passaram.
+- `voice-fallback.cjs`, `voz-offline.cjs` e `widget-voz-cartoes.cjs`: passaram.
+- O corpus completo de parser passou em voz, WhatsApp, categorias, cartões e
+  102 casos novos de carteiras. A única falha restante é a guarda antiga que
+  compara a migration de voz com o baseline do schema (25/26), já existente
+  antes desta sessão e relacionada ao arquivo da outra máquina.
+
+### Ainda não comprovado / manual
+
+- O painel da Kiwify precisa ser confirmado para enviar o segredo em
+  `x-kiwify-token`; sem esse header o webhook rejeita corretamente com 401.
+- Ainda falta uma compra real ou evento de teste da Kiwify para validar o ciclo
+  completo de entitlement.
+- A exclusão completa ainda precisa ser exercitada com uma conta descartável;
+  os probes feitos foram negativos e não alteraram dados.
+- A nova lógica de carteira do app e a normalização sem acento só entram no
+  APK após uma nova build Android — build não autorizada nesta sessão.
+- Push remoto, APK, publicação do asset no GitHub Release, variáveis Vercel/EAS
+  e smoke test físico continuam na checklist da outra máquina.

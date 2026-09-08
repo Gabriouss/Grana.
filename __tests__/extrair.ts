@@ -65,6 +65,9 @@ export function corpoDaFuncao(nome: string, arquivo: string = WEBHOOK): string {
          casaria com o "string" de dentro dos sinais de maior e menor e
          deixaria `Record<, number>` para trás. */
       .replace(/:\s*Record<[^>]*>/g, '')
+      /* O webhook também tipa listas de objetos inline. Remover somente este
+         formato evita tocar em objetos literais do corpo da função. */
+      .replace(/:\s*\{\s*name:\s*string;\s*color:\s*string\s*\}\[\]/g, '')
       /* O `[]` faz parte do tipo e precisa sair junto: sem ele,
          `const candidatos: string[] = []` virava `const candidatos[] = []`. */
       .replace(/:\s*(?:string|number|boolean)(?:\[\])?(?![A-Za-z0-9_])/g, '')

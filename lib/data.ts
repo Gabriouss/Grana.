@@ -841,22 +841,19 @@ export async function reauthenticate(password: string): Promise<{ ok: boolean; e
 }
 
 /**
- * `completo: false` significa que a RPC oficial (`delete_user_account`, com
- * `SECURITY DEFINER`) não estava instalada no banco, e o fallback abaixo
- * rodou no lugar dela. O fallback apaga os dados de TODAS as tabelas
- * conhecidas, mas — diferente da RPC — não consegue apagar a própria linha
- * de `auth.users`: isso exige privilégio de administrador que o cliente
- * autenticado nunca tem, só uma função `SECURITY DEFINER` rodando no
- * servidor. Ou seja, sem a RPC instalada, a exclusão nunca fica 100%
- * completa — a pessoa continua existindo como login, só sem nenhum dado.
- * O chamador precisa saber disso pra avisar a pessoa em vez de fingir
- * sucesso total.
+ * A Edge Function confirma o JWT, exige um login recente e usa privilégio de
+ * servidor para remover Storage e a própria linha de `auth.users`. O cliente
+ * nunca recebe nem conhece a chave administrativa; em falha, a exceção sobe
+ * para a tela em vez de fingir que a conta foi encerrada.
  */
 export async function deleteUserAccount(): Promise<{ completo: boolean }> {
-  const { error } = await supabase.functions.invoke('delete-account', { body: {} });
+  const { data, error } = await supabase.functions.invoke('delete-account', { body: {} });
   if (error) throw error;
-  await supabase.auth.signOut();
-  return { completo: true };
+  /* O usuário Auth já foi removido no servidor. Encerrar só a sessão local
+     evita transformar um logout remoto esperado em erro depois de uma
+     exclusão que já terminou com sucesso. */
+  await supabase.auth.signOut({ scope: 'local' });
+  return { completo: data?.complete === true };
 }
 
 

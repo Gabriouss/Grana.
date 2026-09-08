@@ -132,7 +132,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
 
 export const TERMOS_DE_SERVICO: DocumentoLegal = {
   titulo: 'Termos de Serviço',
-  atualizadoEm: '17 de agosto de 2026',
+  atualizadoEm: '8 de setembro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -176,7 +176,7 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Quando o Grana. oferecer um plano pago, a cobrança é processada por um parceiro de pagamento (atualmente Kiwify) — não diretamente por nós. As condições de cobrança, renovação, período de acesso e cancelamento válidas são as apresentadas na página de compra no momento da assinatura. Cancelamento, reembolso ou contestação de cobrança são tratados pelo parceiro de pagamento conforme a política dele; o acesso ao app é ajustado automaticamente a partir dessas notificações.',
+        'O Grana. atualmente oferece acesso pago. A cobrança é processada por um parceiro de pagamento (atualmente Kiwify), e não diretamente por nós. As condições de cobrança, renovação, período de acesso e cancelamento válidas são as apresentadas na página de compra no momento da assinatura. Cancelamento, reembolso ou contestação de cobrança são tratados pelo parceiro de pagamento conforme a política aplicável; o acesso ao app é ajustado automaticamente a partir dessas notificações.',
     },
     { tipo: 'subtitulo', texto: '6. Sem garantias' },
     {
@@ -202,7 +202,7 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
 
 export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
   titulo: 'Como excluir seus dados do Grana.',
-  atualizadoEm: '17 de agosto de 2026',
+  atualizadoEm: '8 de setembro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
