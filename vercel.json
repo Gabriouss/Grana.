@@ -1,6 +1,13 @@
 {
   "buildCommand": "npx expo export --platform web && node scripts/inject-og-meta.js",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/downloads/grana-latest.apk",
+      "destination": "https://github.com/Gabriouss/Grana./releases/latest/download/grana.apk",
+      "permanent": false
+    }
+  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [
     {

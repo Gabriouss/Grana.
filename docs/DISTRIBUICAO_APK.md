@@ -20,11 +20,25 @@ web e nas próximas builds Android. O valor deve ser uma URL HTTPS estável para
 APK mais recente, por exemplo:
 
 ```text
-https://downloads.granaponto.com.br/grana-latest.apk
+https://granaponto.com.br/downloads/grana-latest.apk
 ```
 
 Não usar como endereço comercial permanente o link bruto de
 `expo.dev/artifacts/eas/`: os artefatos do EAS podem expirar.
+
+## Origem do arquivo
+
+O endereço acima é um redirecionamento do Vercel para o asset `grana.apk` da
+release mais recente do repositório GitHub. O redirecionamento está versionado
+em `vercel.json`; a aplicação nunca precisa conhecer a URL interna do GitHub.
+
+Para cada versão publicada, criar uma release pública no GitHub, anexar o APK
+com o nome exato `grana.apk`, e marcar a release como a mais recente. O endereço
+`/releases/latest/download/grana.apk` continuará apontando para a versão nova.
+
+O APK não deve ser protegido por login: ele pode ser compartilhado. O controle
+de acesso comercial acontece no servidor, pela assinatura vinculada à conta, e
+não pelo segredo do arquivo de instalação.
 
 Enquanto a variável não estiver configurada, `/baixar` mostra uma mensagem de
 indisponibilidade em vez de exibir um botão que leva a um link morto.
@@ -36,9 +50,9 @@ publicada. O processo de release deve:
 
 1. preparar a versão pelo script obrigatório do projeto;
 2. gerar o APK somente com autorização explícita;
-3. publicar o arquivo no armazenamento/CDN escolhido;
-4. atualizar `EXPO_PUBLIC_ANDROID_DOWNLOAD_URL` se o endereço mudar;
-5. conferir o download em Android real;
+3. criar a release correspondente no GitHub e anexar o APK como `grana.apk`;
+4. conferir o redirecionamento e o download em Android real;
+5. calcular e guardar o SHA-256 do APK na anotação da release;
 6. testar a atualização sobre uma versão anterior.
 
 ## Checklist da Kiwify
@@ -63,3 +77,12 @@ Quando a variável estiver configurada na build instalada, o aviso interno de
 atualização também prefere essa URL estável. O link temporário registrado pelo
 EAS continua servindo como fallback enquanto a configuração ainda não foi
 publicada.
+
+## Ações manuais obrigatórias
+
+- [ ] Criar/publicar a release do GitHub com o APK autorizado.
+- [ ] Confirmar que o asset se chama exatamente `grana.apk`.
+- [ ] Configurar `EXPO_PUBLIC_ANDROID_DOWNLOAD_URL` no projeto Vercel.
+- [ ] Configurar a mesma variável nos perfis EAS antes da próxima build.
+- [ ] Configurar os dois botões no e-mail pós-compra da Kiwify.
+- [ ] Fazer o primeiro teste em Android real, incluindo instalação e atualização.

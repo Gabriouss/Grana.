@@ -12,8 +12,11 @@ mostra estado de preparação, nunca um link falso.
 artefato temporário do EAS apenas como fallback para instalações antigas ou
 ambientes ainda não configurados.
 
-O processo operacional está em `docs/DISTRIBUICAO_APK.md`. Ainda falta escolher
-e publicar o APK em um endereço estável e configurar a variável na Vercel/EAS.
+O processo operacional está em `docs/DISTRIBUICAO_APK.md`. Ainda falta publicar
+o APK em uma release e configurar a variável na Vercel/EAS. `vercel.json` já
+redireciona `/downloads/grana-latest.apk` para o asset `grana.apk` da release
+mais recente no GitHub; a criação da release e os ajustes nos painéis externos
+continuam manuais.
 Nenhum build foi disparado e nenhum banco foi alterado nesta mudança.
 
 ## 08/09/2026 — carteiras nos lançamentos e na voz
