@@ -3723,6 +3723,13 @@ begin
   v_color := nullif(btrim(p_payload->>'color'), '');
   v_recurring := coalesce((p_payload->>'recurring')::boolean, false);
   v_wallet_id := nullif(p_payload->>'wallet_id', '')::uuid;
+  if v_wallet_id is null then
+    select w.id into v_wallet_id
+    from public.wallets w
+    where w.user_id = v_user
+    order by w.is_default desc, w.created_at asc
+    limit 1;
+  end if;
   if v_wallet_id is null or not exists (
     select 1 from public.wallets w where w.id = v_wallet_id and w.user_id = v_user
   ) then

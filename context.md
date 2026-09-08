@@ -17,6 +17,10 @@ transações, parcelas e boletos. **A migration ainda não foi aplicada em
 produção nesta sessão**; uma APK com o cliente novo não deve ser distribuída
 antes disso.
 
+A função mantém compatibilidade com APKs anteriores: quando o payload antigo
+não traz `wallet_id`, resolve a carteira padrão do usuário no servidor. Assim
+aplicar a migration antes da nova build não interrompe a voz da versão 1.8.3.
+
 Verificação local: TypeScript, voz, widget-cartões, fallback, voz offline,
 assistente-aprendizado, blur e motion passaram. O corpus de parser foi
 iniciado sem falha reportada, mas a execução encadeada não exibiu o resumo
