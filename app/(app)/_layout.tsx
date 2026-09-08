@@ -7,7 +7,7 @@ import TabBlurTarget, { type RegisterTabBlur, type TabBlurRef } from '@/componen
 import TabBarBlur from '@/components/TabBarBlur';
 import CenaAnimada from '@/components/CenaAnimada';
 import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
-import { theme, spacing } from '@/lib/theme';
+import { theme, spacing, sombras } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     /* Sem `backgroundColor` e sem `overflow: hidden` de propósito: o tom mora
        na camada `vidro` (senão soma duas vezes e mata o desfoque) e o recorte
        mora nela também (senão o disco elevado do Granabô é cortado). */
-    ...({ boxShadow: '0 10px 30px -8px rgba(0,0,0,0.55)' } as any),
+    ...({ boxShadow: sombras.barraAbas } as any),
   },
   /* Camada única de material: recorta a pílula, carrega o desfoque, o tom e a
      borda. É a peça que dá "espessura" à barra. */
@@ -513,6 +513,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.accent2,
     /* Duas sombras: a de menta é o halo que amarra o disco à barra (sem ela o
        disco parece colado por cima), a preta é a que o descola do conteúdo. */
-    ...({ boxShadow: '0 6px 18px -4px rgba(174,255,227,0.40), 0 3px 10px rgba(0,0,0,0.45)' } as any),
+    ...({ boxShadow: sombras.abaCentral } as any),
   },
 });

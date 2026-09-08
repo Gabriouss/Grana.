@@ -4,7 +4,7 @@ import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, spacing, radius, fonts as uiFonts, type, sombraCard } from '@/lib/theme';
+import { theme, spacing, radius, fonts as uiFonts, type, sombraCard, sombras } from '@/lib/theme';
 import { CORTES, colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
@@ -1635,12 +1635,12 @@ const styles = StyleSheet.create({
   navEntrarAlvo: {
     borderColor: theme.accent,
     backgroundColor: theme.accent,
-    ...({ boxShadow: '0 8px 22px -10px rgba(31,169,141,0.8)' } as any),
+    ...({ boxShadow: sombras.ctaPrimario } as any),
   },
   navEntrarAlvoHover: {
     borderColor: theme.accent2,
     backgroundColor: theme.accent2,
-    ...({ boxShadow: '0 10px 28px -9px rgba(174,255,227,0.55)' } as any),
+    ...({ boxShadow: sombras.ctaPrimarioHover } as any),
   },
   navEntrarTexto: { color: theme.paper, fontSize: type.nota, lineHeight: type.nota * 1.2, fontFamily: fonts.regular },
   instagramCabecalhoHover: { borderColor: theme.ruleStrong, backgroundColor: theme.hover },
@@ -1702,7 +1702,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     ...({
-      boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 10px 28px -12px rgba(174,255,227,0.65)',
+      boxShadow: sombras.planoDestaque,
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
       transitionProperty: 'border-color, background-color, box-shadow, transform',
@@ -1745,7 +1745,7 @@ const styles = StyleSheet.create({
   ctaPrimarioHover: {
     borderColor: theme.accent2,
     backgroundColor: 'rgba(11,45,53,0.9)',
-    ...({ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 34px -10px rgba(174,255,227,0.8)', transform: [{ translateY: -2 }] } as any),
+    ...({ boxShadow: sombras.planoDestaqueHover, transform: [{ translateY: -2 }] } as any),
   },
   ctaPrimarioTexto: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.2, fontFamily: fonts.regular },
   // A altura da janela (`height`) e o quanto a trilha sobe no hover vêm

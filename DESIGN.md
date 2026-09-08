@@ -198,6 +198,90 @@ Duas filosofias coexistem, por modo — e isso é decisão, não inconsistência
 **Persuadir (landing page pública):** pode pesar mais. Cards de recurso, o cartão do herói e o card de "Livre para Gastar" usam sombra suave e profunda (`0 16px 40px -12px rgba(0,0,0,0.5)`) porque a landing precisa competir por atenção antes de haver qualquer confiança estabelecida — o mesmo motivo que não se aplica a uma tela que a pessoa já abre todo dia.
 
 ### Shadow Vocabulary
+As receitas vivem em `sombras`, em `lib/theme.ts`, e `__tests__/corpus-design-system.ts`
+recusa qualquer `boxShadow` escrito à mão fora de lá. Esta lista descreve o que cada
+uma é para; o valor está no código, que é onde ele passou a ser verificável.
+
+**Operar (telas do app) — só o que flutua SOBRE o conteúdo:**
+- `sombras.menu` — menu suspenso do FAB (Android elevation 8).
+- `sombras.flutuante` — o botão de ação flutuante em si (Android elevation 6).
+- `sombras.toast` — notificação toast (Android elevation 6).
+- `sombras.barraAbas` — a barra flutuante de navegação. Mais forte que a do FAB porque atravessa a largura toda e passa por cima de conteúdo de contraste variável.
+- `sombras.abaCentral` — a aba do Granabô. Única superfície do app com glow de marca, porque ela não é mais uma aba: é o assistente morando na barra.
+- `sombras.conquista` — o cartão de conquista desbloqueada, que entra por cima de tudo.
+- `sombras.painelFlutuante` — painel grande sobre tudo: o Granabô em tela e o painel do menu da landing.
+
+**Persuadir (landing pública) — pode pesar mais, e pode ter cor:**
+- `sombras.cardPersuasao` — cards de recurso, cena de dor, FAQ, "Livre para Gastar".
+- `sombras.cardHeroi` — moldura de dispositivo/navegador, o maior destaque da página.
+- `sombras.navGatilho` / `sombras.navGatilhoHover` — o gatilho do menu flutuante. Único controle de navegação do sistema com glow de cor.
+- `sombras.ctaPrimario` / `sombras.ctaPrimarioHover` — o CTA da landing.
+- `sombras.planoDestaque` / `sombras.planoDestaqueHover` — o card do plano em destaque.
+
+Duas correções vieram da auditoria de 08/09/2026. A barra de abas estava
+documentada aqui como `0 6px 16px rgba(0,0,0,0.35)` e no código como
+`0 10px 30px -8px rgba(0,0,0,0.55)` — prevaleceu o código, que é a tela no ar.
+E o painel do Granabô tinha valor próprio a 4px e 0,05 de alfa do painel da
+landing: diferença que ninguém enxerga, existindo só por terem sido escritos
+em semanas diferentes. Ficaram sendo `painelFlutuante`, um só.
+
+### Named Rules
+**The No-Red Rule.** Vermelho não existe no vocabulário de **dado financeiro**. Saída de dinheiro usa Calm Cyan, não uma cor de alerta — o produto nunca trata "você gastou" como um evento negativo a ser sinalizado.
+
+Duas cores ficam fora dessa regra, as duas por função e não por decoração:
+
+- **Danger** (#e08a7d): ação destrutiva e estado de atraso — excluir conta, excluir cartão, erro de reautenticação, fatura "Atrasada". É um salmão dessaturado, não um vermelho de alarme, e mede 6,39:1 sobre Deep Petroleum e 5,62:1 sobre Raised Tide. Nunca aparece em valor de gasto: a fronteira é "isto vai destruir algo ou já venceu", não "isto é dinheiro saindo". Substituiu um `#bb6b60` cru (a cor da categoria Alimentação, reaproveitada por engano) que dava 3,74:1, abaixo do AA.
+- **Verde do WhatsApp** (#25D366): num botão que abre o WhatsApp de verdade — cor emprestada com propósito funcional, citada como exceção no próprio comentário do código.
+
+**The Mint-Is-Rare Rule.** Instrument Mint é a cor mais chamativa da paleta e por isso a mais restrita — marca, ação em foco, valor em destaque. Se ela aparece em mais de um ou dois lugares na mesma tela, algo que devia ser silencioso está gritando.
+
+## Typography
+
+**Única fonte do produto:** Neue Machina — Light e Regular, os dois únicos
+pesos que existem como arquivo (`NeueMachina-Light.otf`,
+`NeueMachina-Regular.otf`, carregados via `expo-font` em `app/_layout.tsx`).
+Isto vale em TODO texto do app, em toda plataforma, sem exceção: marca,
+títulos, corpo, campo, controle, rótulo, metadado, valor monetário.
+
+**Character:** a voz geométrica do Grana. é a interface inteira, não um
+acento reservado a momentos de assinatura. Nenhum papel tipográfico usa
+fonte do sistema (San Francisco, Roboto, `system-ui`) — essa era uma
+decisão de uma rodada anterior, revertida a pedido explícito do autor, e a
+regra agora é permanente: **proibido qualquer fonte que não seja Neue
+Machina**, em qualquer papel, em qualquer plataforma. Dynamic Type/sp
+continuam funcionando normalmente com fonte customizada — o React Native
+escala texto de qualquer família — então não há trade-off de acessibilidade
+nessa escolha.
+
+### Hierarchy
+- **Headline** (Neue Machina Regular, 24px nativo, lh 1.2): título principal de tela.
+- **Title** (Neue Machina Regular, 20px, lh 1.25): título de folha, modal ou card autoral.
+- **Body** (Neue Machina Regular, 17pt iOS · 16sp Android · 18px web, lh 1.45): corpo, campo e botão.
+- **Label** (Neue Machina Regular, 15pt iOS · 14sp Android · 16px web, lh 1.35): rótulos e controles.
+- **Metadata** (Neue Machina Light, piso 11pt iOS · 12sp Android): subtítulo de linha e informação auxiliar; nada interativo abaixo desse piso.
+- **Valor monetário** (Neue Machina Regular, 32px, tabular): degrau próprio para quantias em foco.
+- **Display de persuasão** (Neue Machina Regular, fluido, só na landing page): três degraus acima de tudo o que o app usa, porque uma dobra de tela cheia precisa de um título que ocupe a cena, e o corpo de 24px vira um bloquinho perdido no meio de 1080px. `clamp(34px, 2.6vw + 16px, 56px)` no H1 do herói amplo, `clamp(26px, 6vw, 32px)` na variante compacta dele, `clamp(32px, 3.2vw, 52px)` no título do fechamento. Fora da landing este degrau não existe: numa tela de app ele seria drift, não escala.
+
+### Named Rules
+**The Only-Font Rule.** Neue Machina é a única fonte do produto — sem exceção, sem "fonte de sistema pro corpo", sem fallback que vaze pra tela. Qualquer PR/edição que introduza `fontFamily: 'System'`, `'sans-serif'`, `'system-ui'`, `Platform.select` de fonte, ou qualquer nome de família que não seja `NeueMachina-Light`/`NeueMachina-Regular` em `lib/theme.ts` está quebrando a marca, não fazendo acessibilidade — reverta, não documente como aceito. Só existem DOIS pesos (Light/Regular); não existe um terceiro degrau nem arquivo bold, e `fontWeight` nunca deve ser usado (o nativo ignora, a web sintetiza um falso negrito).
+
+**The Tabular Rule.** Todo valor monetário usa `fontVariant: ['tabular-nums']`. Sem isso, dígitos de largura variável fazem o número "dançar" visualmente a cada atualização — inaceitável numa tela que existe pra mostrar dinheiro.
+
+## Layout
+
+Toda plataforma usa classes de janela (`compacto` <768px, `medio` 768–1279px, `amplo` ≥1280px), inclusive iPad Split View, Android multiwindow e aparelhos dobráveis. Compacto permanece em uma coluna; médio pode reestruturar cards em duas colunas ou modal central; amplo comporta até três colunas. A web usa SideNav em médio/amplo. No nativo, a própria navegação do sistema decide tab bar, Navigation Bar ou sidebar adaptável.
+
+Ritmo padrão do corpo de tela: `padding` 16px, `gap` entre cards 12px (token `screenRhythm`). Card de destaque em largura cheia usa `padding` 16px, borda 1px — a mesma receita em toda tela principal, depois de uma consolidação que unificou paddings de 12/16/20 que cada tela tinha herdado de sessões diferentes.
+
+## Elevation & Depth
+
+Duas filosofias coexistem, por modo — e isso é decisão, não inconsistência.
+
+**Operar (telas do app, pós-login):** chapado por padrão. A maioria dos cards não tem sombra nenhuma — só borda de 1px em `rule`. Sombra é reservada pra sinalizar algo que está genuinamente flutuando sobre o resto do conteúdo: o menu do FAB, o próprio FAB, o toast. Três receitas nomeadas, sem uma quarta variação improvisada.
+
+**Persuadir (landing page pública):** pode pesar mais. Cards de recurso, o cartão do herói e o card de "Livre para Gastar" usam sombra suave e profunda (`0 16px 40px -12px rgba(0,0,0,0.5)`) porque a landing precisa competir por atenção antes de haver qualquer confiança estabelecida — o mesmo motivo que não se aplica a uma tela que a pessoa já abre todo dia.
+
+### Shadow Vocabulary
 - **Menu** (`0 6px 14px rgba(0,0,0,0.20)`, Android elevation 8): menu suspenso do FAB.
 - **Flutuante** (`0 6px 12px rgba(0,0,0,0.30)`, Android elevation 6): o botão de ação flutuante em si.
 - **Toast** (`0 4px 10px rgba(0,0,0,0.25)`, Android elevation 6): notificação toast.
@@ -313,5 +397,5 @@ Substituiu uma sequência de 4 "capítulos" trocados por scroll, cada um mostran
 - **Don't** usar fonte do sistema (ou qualquer fonte que não seja Neue Machina) em lugar nenhum — nem corpo, nem controle, nem campo, nem metadado. E não sintetizar `fontWeight` nos arquivos Light/Regular da marca.
 - **Don't** clonar a identidade visual de outro banco/fintech — sem vermelho de alarme, sem badge/confete de gamificação, sem urgência fabricada.
 - **Don't** desenhar a interface como planilha utilitária — voz e WhatsApp são a entrada principal; a tela nunca deveria parecer uma ferramenta de contador.
-- **Don't** inventar uma nova sombra ad hoc — as cinco receitas catalogadas em Elevation & Depth cobrem todo caso real; uma sexta variação é sinal de que a tela deveria reaproveitar uma das cinco.
+- **Don't** inventar uma nova sombra ad hoc — as receitas em `sombras` (lib/theme.ts) cobrem todo caso real, e o corpus quebra se aparecer um `boxShadow` literal. Receita nova exige uma linha no catálogo, que é exatamente o momento de perguntar se ela precisa existir.
 - **Don't** emprestar cor de marca de terceiro sem necessidade funcional — a única exceção (verde do WhatsApp) existe porque o botão literalmente abre o WhatsApp, e está documentada como tal no código.

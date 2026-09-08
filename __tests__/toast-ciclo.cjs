@@ -86,7 +86,7 @@ vm.runInNewContext(
       if (nome === 'react/jsx-runtime') return { jsx: (type, props) => ({ type, props }) };
       if (nome === 'react-native') return reactNative;
       if (nome === '@/lib/theme') {
-        return { theme: {}, radius: {}, spacing: { sm: 8 }, fonts: {}, type: {} };
+        return { theme: {}, radius: {}, spacing: { sm: 8 }, fonts: {}, type: {}, sombras: {} };
       }
       if (nome === '@/lib/tab-bar') return { useTabBarInset: () => ({ total: 100 }) };
       if (nome === '@/lib/motion') {

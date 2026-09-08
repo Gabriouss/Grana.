@@ -189,6 +189,30 @@ for (const { caminho, src } of FONTES) {
   );
 }
 
+/* ── Sombra vem do catálogo, nunca escrita à mão ────────────────────────────
+   O `DESIGN.md` proíbe sombra ad hoc desde 02/09/2026 e mesmo assim a
+   auditoria de 08/09 achou três receitas novas — uma delas na barra de abas,
+   com valor DIFERENTE do que o próprio documento afirmava. Regra que mora só
+   em markdown não é verificada por ninguém.
+
+   Agora as receitas são `sombras` em `lib/theme.ts`, e este guarda recusa
+   qualquer literal fora de lá. `'none'` passa: desligar sombra não é inventar
+   receita. */
+for (const { caminho, src } of FONTES) {
+  if (caminho === 'lib/theme.ts') continue;
+  const codigo = semComentarios(src);
+  const literais = [...codigo.matchAll(/boxShadow\s*:\s*'([^']+)'/g)]
+    .map((m) => m[1])
+    .filter((v) => v.trim() !== 'none');
+  checar(
+    'Sombra do catálogo: ' + caminho,
+    literais.length === 0,
+    literais.length
+      ? literais.join(' | ') + ' — importe de `sombras` (lib/theme.ts); receita nova se declara lá'
+      : ''
+  );
+}
+
 /* ── Sem peso sintético ─────────────────────────────────────────────────── */
 
 for (const { caminho, src } of FONTES) {

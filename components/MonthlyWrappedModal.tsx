@@ -305,7 +305,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm,
   },
   titulo: { color: theme.ink, fontSize: type.cabecalho, lineHeight: 30, fontFamily: fonts.regular },
-  destaque: { fontSize: type.valor, letterSpacing: -1, fontFamily: fonts.regular },
+  /* O maior número do Wrapped: sem `tabular-nums` os dígitos têm larguras
+     diferentes e o valor treme quando a retrospectiva troca de cartão. */
+  destaque: { fontSize: type.valor, letterSpacing: -1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   apoio: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), marginTop: spacing.xs, fontFamily: fonts.light },
 
   zonasToque: { position: 'absolute', left: 0, right: 0, top: 120, bottom: 110, flexDirection: 'row' },

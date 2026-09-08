@@ -21,7 +21,7 @@ import AppPressable from '@/components/AppPressable';
 import { useKeyboardHeight } from '@/components/Sheet';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
 import { useTabBarInset } from '@/lib/tab-bar';
-import { theme, spacing, radius, fonts, type, lh, screenRhythm } from '@/lib/theme';
+import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras } from '@/lib/theme';
 import {
   fetchMensagens,
   enviarPergunta,
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.ruleStrong,
     overflow: 'hidden',
-    ...({ boxShadow: '0 18px 40px -10px rgba(0,0,0,0.6)' } as any),
+    ...({ boxShadow: sombras.painelFlutuante } as any),
   },
   cabecalho: {
     flexDirection: 'row',

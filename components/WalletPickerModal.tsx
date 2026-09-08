@@ -465,6 +465,9 @@ const styles = StyleSheet.create({
     fontSize: type.corpo, fontFamily: fonts.regular },
   walletBalance: {
     color: theme.ink,
+    /* Saldos empilhados numa lista: alinham na vírgula com dígito de largura
+       fixa, e param de saltar quando um valor muda. */
+    fontVariant: ['tabular-nums'],
     fontSize: type.corpo, fontFamily: fonts.regular },
   addBtn: {
     flexDirection: 'row',

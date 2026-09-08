@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, sombras } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 import { useReducedMotion } from '@/lib/motion';
 
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.ruleStrong,
     overflow: 'hidden',
-    ...({ boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any),
+    ...({ boxShadow: sombras.cardPersuasao } as any),
   },
   janelaCompacta: { maxWidth: 320 },
   cabecalho: {

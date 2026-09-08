@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, sombras } from '@/lib/theme';
 import { FAB_TAMANHO, useTabBarInset } from '@/lib/tab-bar';
 import AppPressable from './AppPressable';
 import { useReducedMotion } from '@/lib/motion';
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     gap: 4,
     minWidth: 140,
-    ...({ boxShadow: '0 6px 14px rgba(0,0,0,0.2)' } as any),
+    ...({ boxShadow: sombras.menu } as any),
   },
   menuItem: {
     flexDirection: 'row',
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.ink,
     alignItems: 'center',
     justifyContent: 'center',
-    ...({ boxShadow: '0 6px 12px rgba(0,0,0,0.3)' } as any),
+    ...({ boxShadow: sombras.flutuante } as any),
   },
   fabBtnOpen: { backgroundColor: theme.inkSoft },
   fabBtnHover: { opacity: 0.9 },

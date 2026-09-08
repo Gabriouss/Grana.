@@ -1,6 +1,6 @@
 import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, View } from 'react-native';
-import { theme, radius } from '@/lib/theme';
+import { theme, radius, sombras } from '@/lib/theme';
 import { EASE_LOOP } from '@/lib/motion';
 
 type Quadro = { src: string; legenda: string };
@@ -282,5 +282,5 @@ export default function MolduraCelular({ src, legenda, quadros, largura = 280, i
 // persuasiva, `web only` (`as any` porque `boxShadow` não existe no tipo
 // ViewStyle do React Native, só no CSS que o react-native-web gera).
 const estiloSombra = {
-  boxShadow: '0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)',
+  boxShadow: sombras.cardHeroi,
 } as any;

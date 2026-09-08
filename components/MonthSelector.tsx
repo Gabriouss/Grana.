@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   btnHover: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: theme.hover,
   },
   monthText: {
     color: theme.ink,

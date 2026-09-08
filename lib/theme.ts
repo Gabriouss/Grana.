@@ -25,6 +25,17 @@ export const theme = {
      era. Para botões, o padrão continua sendo `ruleStrong` na borda ou
      opacidade — hover não precisa ser fundo em tudo. */
   hover: 'rgba(174,255,227,0.07)',
+  /* Superfície do que ainda NÃO foi preenchido ou ativado: o trilho vazio de
+     uma barra de progresso/limite, o ícone de uma conquista bloqueada, o
+     widget desligado no personalizador. Mesmo valor de `hover` de propósito —
+     é o mesmo véu de menta a 7%, que funciona sobre `paper` e `paperRaised`
+     igual — mas com nome próprio porque o papel é outro: um trilho não some
+     quando o ponteiro sai, e chamá-lo de `hover` faz o próximo leitor
+     procurar um estado de interação que não existe ali. Antes disso os sete
+     lugares escreviam `rgba(255,255,255,0.0X)` cru, cinza neutro no meio de
+     uma paleta que não tem cinza neutro — três alfas diferentes, nenhum
+     deles combinando com o outro. */
+  superficieInativa: 'rgba(174,255,227,0.07)',
   /* Cor de perigo/atenção — excluir conta, fatura atrasada, erro de
      reautenticação. Já era usada assim em `app/(app)/perfil.tsx` e
      `app/(app)/credito.tsx`, só nunca tinha virado token: cada tela
@@ -33,10 +44,16 @@ export const theme = {
      papel. Valor já catalogado como "proposto" em
      design-system/tokens/tokens.json antes deste token existir de verdade. */
   danger: '#e08a7d',
-  /* Tom do cartão de crédito selecionado em app/(app)/credito.tsx — mais
-     claro que `paperRaised` de propósito, pra distinguir visualmente do
-     estado não selecionado. Só usado ali; nomeado aqui pra não ficar como
-     hex solto competindo com o resto da paleta de superfície. */
+  /* Tom de qualquer coisa SELECIONADA numa lista de opções: o cartão de
+     crédito escolhido em `credito.tsx`, o chip de banco/carteira nos
+     formulários, a conquista já obtida no `BadgeCard`. Mais claro que
+     `paperRaised` de propósito, pra distinguir do estado não selecionado.
+     Nomeado aqui pra não ficar como hex solto competindo com o resto da
+     paleta de superfície.
+
+     Não confundir com `hover`: seleção PERSISTE depois que o ponteiro sai, e
+     os chips que usavam o véu de hover pra marcar escolha ficavam
+     indistinguíveis de um chip qualquer sob o cursor. */
   paperSelected: '#0c353e',
   /* Par do seletor entrada/saída (os botões "Entrada"/"Saída" da Início e de
      Lançamentos, e "Guardar"/"Resgatar" do cofrinho). Não são `up`/`down`:
@@ -135,7 +152,46 @@ export const card = {
    Achado da auditoria de 03/09/2026: `BeneficiosHorizontais.tsx` tinha um
    valor ad hoc (`0 18px 45px -24px rgba(0,0,0,0.7)`) só um pouco diferente
    deste — consolidado aqui pra não deixar os dois derivarem mais. */
-export const sombraCard = { boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any;
+/* O catálogo de sombras, em código.
+ *
+ * O `DESIGN.md` proíbe "inventar uma nova sombra ad hoc" desde a auditoria de
+ * 02/09/2026, e mesmo assim a de 08/09 achou três receitas novas — inclusive a
+ * barra de abas, cujo valor no código (`0 10px 30px -8px`) já não era o que o
+ * documento afirmava (`0 6px 16px`). Uma regra escrita só em markdown depende
+ * de alguém lembrar de abrir o markdown; ninguém abre. Aqui ela vira import,
+ * e `__tests__/corpus-design-system.ts` recusa qualquer `boxShadow` literal
+ * fora deste arquivo — receita nova passa a exigir uma linha AQUI, que é
+ * exatamente o momento em que dá pra perguntar se ela precisa existir.
+ *
+ * Os valores são os que estavam no código, não os do documento: é a tela que
+ * está no ar. As divergências foram levadas de volta pro `DESIGN.md`.
+ */
+export const sombras = {
+  /* ── Operar (telas do app) — só o que flutua SOBRE o conteúdo ─────────── */
+  menu: '0 6px 14px rgba(0,0,0,0.2)',
+  flutuante: '0 6px 12px rgba(0,0,0,0.3)',
+  toast: '0 4px 10px rgba(0,0,0,0.25)',
+  barraAbas: '0 10px 30px -8px rgba(0,0,0,0.55)',
+  /* A aba central (Granabô) é a única superfície do app com glow de marca:
+     ela não é uma aba a mais, é o botão do assistente morando na barra. */
+  abaCentral: '0 6px 18px -4px rgba(174,255,227,0.40), 0 3px 10px rgba(0,0,0,0.45)',
+  conquista: '0 10px 28px -12px rgba(0,0,0,0.55)',
+  /* Painel grande que entra por cima de tudo: o Granabô em tela, e o painel
+     do menu flutuante da landing. Eram dois valores a 4px e 0.05 de alfa de
+     distância um do outro — diferença que ninguém enxerga e que só existia
+     por terem sido escritos em semanas diferentes. */
+  painelFlutuante: '0 18px 44px -14px rgba(0,0,0,0.65)',
+
+  /* ── Persuadir (landing pública) — pode pesar mais, e pode ter cor ────── */
+  cardPersuasao: '0 16px 40px -12px rgba(0,0,0,0.5)',
+  cardHeroi: '0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)',
+  navGatilho: '0 10px 30px -8px rgba(31,169,141,0.75)',
+  navGatilhoHover: '0 14px 38px -6px rgba(31,169,141,0.95)',
+  ctaPrimario: '0 8px 22px -10px rgba(31,169,141,0.8)',
+  ctaPrimarioHover: '0 10px 28px -9px rgba(174,255,227,0.55)',
+  planoDestaque: '0 0 0 1px rgba(255,255,255,0.04), 0 10px 28px -12px rgba(174,255,227,0.65)',
+  planoDestaqueHover: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 34px -10px rgba(174,255,227,0.8)',
+} as const;
 
 /* Papéis tipográficos semânticos calibrados por plataforma. iOS parte do
    corpo de 17pt e piso de 11pt; Android usa os equivalentes em sp; web sobe
@@ -237,3 +293,6 @@ export const brand = {
   dot: '#a9f8c8',
   dark: '#052229',
 };
+
+/* Alias histórico: já importado por seis componentes da landing. */
+export const sombraCard = { boxShadow: sombras.cardPersuasao } as any;

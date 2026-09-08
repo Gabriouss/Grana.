@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text } from 'react-native';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, sombras } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
 
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radius.pill,
     zIndex: 99,
-    ...({ boxShadow: '0 4px 10px rgba(0,0,0,0.25)' } as any),
+    ...({ boxShadow: sombras.toast } as any),
   },
   toastText: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
 });

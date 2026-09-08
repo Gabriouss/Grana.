@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: theme.superficieInativa,
     borderRadius: radius.pill,
     overflow: 'hidden',
   },
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
   },
   factorBarBg: {
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: theme.superficieInativa,
     borderRadius: radius.pill,
     overflow: 'hidden',
   },

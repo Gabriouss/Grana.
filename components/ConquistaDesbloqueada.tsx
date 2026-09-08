@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Animated, Platform, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, sombras } from '@/lib/theme';
 import { useReducedMotion } from '@/lib/motion';
 import AppPressable from './AppPressable';
 
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...({ boxShadow: '0 10px 28px -12px rgba(0,0,0,0.55)' } as any),
+    ...({ boxShadow: sombras.conquista } as any),
   },
   medalha: {
     width: 40,

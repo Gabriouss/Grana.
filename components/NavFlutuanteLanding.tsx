@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, sombras } from '@/lib/theme';
 import { CORTES } from '@/lib/breakpoints';
 import { useReducedMotion } from '@/lib/motion';
 import AppPressable from './AppPressable';
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     padding: 6,
     gap: 2,
     minWidth: 208,
-    ...({ boxShadow: '0 18px 44px -14px rgba(0,0,0,0.65)' } as any),
+    ...({ boxShadow: sombras.painelFlutuante } as any),
   },
   painelEmbutido: {
     position: 'absolute',
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    ...({ boxShadow: '0 10px 30px -8px rgba(31,169,141,0.75)', transitionProperty: 'box-shadow, transform', transitionDuration: '180ms' } as any),
+    ...({ boxShadow: sombras.navGatilho, transitionProperty: 'box-shadow, transform', transitionDuration: '180ms' } as any),
   },
   botaoCompacto: { width: 44, height: 44, borderRadius: 22 },
   botaoEmbutido: { width: 44, height: 44, borderRadius: 22 },
@@ -204,6 +204,6 @@ const styles = StyleSheet.create({
   botaoConteudo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   botaoTexto: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
   botaoHover: {
-    ...({ boxShadow: '0 14px 38px -6px rgba(31,169,141,0.95)', transform: [{ translateY: -2 }] } as any),
+    ...({ boxShadow: sombras.navGatilhoHover, transform: [{ translateY: -2 }] } as any),
   },
 });

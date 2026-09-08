@@ -411,6 +411,10 @@ const styles = StyleSheet.create({
   selectionValor: {
     fontSize: type.nota,
     fontFamily: fonts.regular,
+    /* Este valor muda enquanto o dedo arrasta pelo gráfico — é o caso exato
+       que a Tabular Rule existe para evitar: sem largura fixa de dígito, o
+       número dança sob o dedo em vez de só mudar. */
+    fontVariant: ['tabular-nums'],
   },
   axisLabel: {
     position: 'absolute',

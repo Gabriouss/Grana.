@@ -1,6 +1,6 @@
 import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, Text, View } from 'react-native';
-import { theme, spacing, fonts } from '@/lib/theme';
+import { theme, spacing, fonts, sombras } from '@/lib/theme';
 import { EASE_LOOP } from '@/lib/motion';
 
 type Props = {
@@ -170,5 +170,5 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
 }
 
 const estiloSombra = {
-  boxShadow: '0 32px 80px -16px rgba(0,0,0,0.55), 0 0 0 1px rgba(174,255,227,0.07)',
+  boxShadow: sombras.cardHeroi,
 } as any;

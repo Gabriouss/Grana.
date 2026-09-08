@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme, radius, spacing, card as cardTokens, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, card as cardTokens, fonts, type, sombras } from '@/lib/theme';
 
 const EXEMPLO = { saldo: 3240, contas: 1180, cofrinhos: 800, dias: 15 };
 const livre = EXEMPLO.saldo - EXEMPLO.contas - EXEMPLO.cofrinhos;
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     borderColor: theme.ruleStrong,
     padding: spacing.xl,
     gap: spacing.sm,
-    ...({ boxShadow: '0 16px 40px -12px rgba(0,0,0,0.5)' } as any),
+    ...({ boxShadow: sombras.cardPersuasao } as any),
   },
   label: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   headline: { color: theme.ink, fontSize: type.valor, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },

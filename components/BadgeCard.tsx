@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(174,255,227,0.15)',
   },
   iconLocked: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: theme.superficieInativa,
   },
   badgeStatus: {
     paddingHorizontal: 6,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 3,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: theme.superficieInativa,
     borderRadius: radius.pill,
     marginTop: 4,
     overflow: 'hidden',

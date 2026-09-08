@@ -1182,7 +1182,7 @@ export default function CreditoScreen() {
                 key={b.id}
                 style={[
                   styles.bankChip,
-                  cardBank === b.id && { borderColor: b.color, backgroundColor: 'rgba(255,255,255,0.08)' },
+                  cardBank === b.id && { borderColor: b.color, backgroundColor: theme.paperSelected },
                 ]}
                 onPress={() => setCardBank(b.id)}
               >
@@ -1323,7 +1323,7 @@ export default function CreditoScreen() {
 
       {/* Modal: Pagar Fatura */}
       <AppModal visible={payInvoiceOpen} animationType="slide" transparent onRequestClose={() => setPayInvoiceOpen(false)}>
-        <Sheet onClose={() => setPayInvoiceOpen(false)}>
+        <Sheet centered onClose={() => setPayInvoiceOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Pagar Fatura</Text>
             <AppPressable onPress={() => setPayInvoiceOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -1360,7 +1360,7 @@ export default function CreditoScreen() {
                     key={w.id}
                     style={[
                       styles.bankChip,
-                      payWalletId === w.id && { borderColor: w.color, backgroundColor: 'rgba(255,255,255,0.08)' },
+                      payWalletId === w.id && { borderColor: w.color, backgroundColor: theme.paperSelected },
                     ]}
                     onPress={() => setPayWalletId(w.id)}
                   >
@@ -1558,7 +1558,7 @@ const styles = StyleSheet.create({
   limitTrack: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: theme.superficieInativa,
     overflow: 'hidden',
   },
   limitFill: {

@@ -227,7 +227,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hover: { borderColor: theme.ruleStrong },
-  active: { backgroundColor: theme.danger, borderColor: theme.danger },
+  /* Gravando NÃO é erro. `theme.danger` está documentado como perigo/atenção
+     (excluir conta, fatura atrasada, falha de reautenticação), e pintar o
+     estado "estou te ouvindo" com ele reconstruía o ponto vermelho de câmera
+     dentro de uma paleta que a No-Red Rule mantém sem vermelho — o usuário
+     via alarme onde o app estava só funcionando. `accent2` é o token mais
+     claro da marca, então o botão fica igualmente impossível de ignorar, e o
+     ícone/rótulo em `paper` (#052229 sobre #aeffe3) continua legível. */
+  active: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
   label: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   labelActive: { color: theme.paper },
 });

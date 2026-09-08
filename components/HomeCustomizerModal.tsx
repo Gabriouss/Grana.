@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(31,169,141,0.18)',
   },
   iconWrapOff: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: theme.superficieInativa,
   },
   textCol: {
     flex: 1,
