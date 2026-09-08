@@ -3501,31 +3501,59 @@ Antes de apagar, um agente conferiu cada item listado **contra o código atual**
 não contra o texto do documento. A maioria já estava resolvida. Quatro itens
 seguem abertos de verdade e não estavam registrados em nenhum outro lugar:
 
-- **Histórico sem paginação (Início, Gráficos) — ainda intencional, não
-  esquecido.** `app/(app)/index.tsx` e `app/(app)/graficos.tsx` continuam
-  buscando o histórico financeiro inteiro sem limite, porque o saldo depende
-  do histórico completo — janelar a busca deixaria o saldo ERRADO, não só mais
-  lento. `desafios.tsx` já ganhou parte da correção
-  (`fetchTransactions({ sinceDays: 45 })` como caminho principal, com fallback
-  pro histórico completo se a agregação nova ainda não existir no banco). A
-  correção completa das outras duas telas é agregação no servidor, no mesmo
-  padrão que `desafios.tsx` já usa via `fetchGamificationHistoricalSummary()`
-  — essa função é a referência de como fazer.
-- **`lancamentos.tsx` sem otimização de lista.** A `FlatList` de linhas com
-  altura fixa não tem `initialNumToRender`/`windowSize`/`getItemLayout`.
-  `credito.tsx` já ganhou essas props (`initialNumToRender={4}`,
-  `windowSize={5}`) e serve de referência de como fazer aqui.
+- **`lancamentos.tsx` sem otimização de lista.** A `FlatList` não tinha
+  `initialNumToRender`/`windowSize`. **Resolvido na mesma sessão** — ver
+  abaixo.
 - **Avatares sem cache em disco.** `perfil.tsx`, `index.tsx` e
-  `OnboardingModal.tsx` ainda usam o `<Image>` puro do React Native com `uri`
-  remoto pro avatar; `expo-image` não está instalado no projeto. A foto é
-  decodificada em tamanho cheio pra ser exibida a 44px, sem cache, toda vez
-  que a tela remonta.
-- **`components/BrandLogo.tsx` é o único componente órfão restante.** Os
-  outros 8 que o `PENDENCIAS.md` listava (`EntradaEscalonada`, `FloatingIcon`,
-  `GlowOrb`, `IconeMetaAtingida`, `LandingHeroDemo`, `LaptopMockup`,
-  `NotebookFloatEstatico`, `NotebookVideo`) já foram apagados. Este ficou
-  porque o app usa `BrandLogotype` em todo lugar — conferir se ainda serve pra
-  algo antes de apagar.
+  `OnboardingModal.tsx` usavam o `<Image>` puro do React Native com `uri`
+  remoto. **Resolvido na mesma sessão** — ver abaixo.
+- **`components/BrandLogo.tsx` órfão.** **Resolvido na mesma sessão** — ver
+  abaixo.
+
+**O quarto item que eu tinha listado NÃO era pendência, e vale registrar o
+erro.** Migrei do `PENDENCIAS.md` um item dizendo que Início e Gráficos
+buscam o histórico inteiro "sem paginação, aguardando agregação no banco".
+Ao ir corrigir, li os comentários do próprio código e a história é outra, mais
+atual que o documento de 02/09:
+
+- `app/(app)/index.tsx:319-328` diz, com todas as letras, que a busca sem
+  `sinceDays` é **de propósito**: a Início navega por mês, inclusive meses
+  antigos, e uma janela curta mostraria mês vazio em vez de mês lento. Mais
+  importante: **o saldo não depende mais disso** — ele vem do banco via
+  `saldos_por_carteira` (`refreshSaldos()`). O que restou dependendo do
+  histórico completo é só a navegação por mês. A mitigação escolhida foi
+  outra: não repetir a busca cara a cada foco de tela (`carregarDadosLeves`).
+- `app/(app)/graficos.tsx:98-109` já usa `fetchTransactionsDoPeriodo` quando
+  há período selecionado, e só cai no histórico completo em "Ano a Ano"/"Mês a
+  Mês" — modos que montam a régua a partir do primeiro e do último lançamento
+  existentes, onde recortar mudaria o eixo. E ainda cacheia (`historicoCache`).
+
+Ou seja: a parte perigosa (saldo errado) já foi resolvida com agregação no
+banco, e o que sobra é deliberado e documentado no ponto de uso. A auditoria
+de 28/08 já tinha tentado encurtar essa janela e revertido. **Não tentar de
+novo.**
+
+A lição, de novo a mesma do dia: o `PENDENCIAS.md` descrevia o mundo de
+02/09, e eu o tratei como estado atual. Comentário no ponto de uso envelhece
+melhor que documento paralelo — foi o comentário que corrigiu o registro.
+
+## 08/09/2026 — os três itens reais, resolvidos
+
+- **`lancamentos.tsx`**: ganhou `initialNumToRender={8}` e `windowSize={5}`,
+  mesmo par que `credito.tsx` já usava. Importa mais aqui porque a importação
+  de extrato aceita 10 mil lançamentos de uma vez. **Sem `getItemLayout` de
+  propósito**: ele exige altura constante e `rowSub` não tem `numberOfLines` —
+  em tela estreita a linha quebra em duas. Altura declarada errada não deixa a
+  lista lenta, deixa a rolagem pulando pro lugar errado.
+- **Avatares**: `expo-image` instalado (`~57.0.4`) e os três pontos
+  (`perfil.tsx`, `index.tsx`, `OnboardingModal.tsx`) passaram a usar
+  `contentFit="cover"` e `cachePolicy="disk"`. É **dependência nativa nova** —
+  só passa a valer na próxima build.
+- **`components/BrandLogo.tsx`**: apagado. Era o último órfão dos nove que o
+  `PENDENCIAS.md` listava. O comentário de `BrandLogotype.tsx` que o citava foi
+  atualizado, pra não apontar pra arquivo que não existe mais.
+
+`tsc --noEmit` limpo e `test:parser` 100% depois das três mudanças.
 
 `PENDENCIAS.md` foi removido do repositório nesta sessão. Não é mais o lugar
 de registrar trabalho em aberto — esse lugar é este arquivo.

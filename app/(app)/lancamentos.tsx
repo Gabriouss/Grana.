@@ -713,6 +713,16 @@ export default function LancamentosScreen() {
             </Text>
           }
           renderItem={renderizarLinha}
+          /* Mesmo par que `credito.tsx` usa: monta o suficiente pra primeira
+             tela e mantém uma janela curta de linhas vivas. Importa mais aqui
+             do que nas outras listas porque a importação de extrato aceita 10
+             mil lançamentos de uma vez.
+             Sem `getItemLayout` de propósito: ele exige altura constante, e
+             `rowSub` não tem `numberOfLines` — em tela estreita a linha quebra
+             em duas. Altura declarada errada não deixa a lista mais lenta,
+             deixa a rolagem pulando pro lugar errado. */
+          initialNumToRender={8}
+          windowSize={5}
           ListFooterComponent={
             monthTransactions.length > 0 ? (
               <View style={styles.exportWrap}>

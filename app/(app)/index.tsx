@@ -3,7 +3,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Animated,
-  Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -12,6 +11,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+/* `expo-image` no lugar do `Image` do React Native: o avatar do cabeçalho vem
+   de URL remota e era decodificado em tamanho cheio pra ser exibido a 44px,
+   sem cache em disco no Android, a cada montagem da tela. */
+import { Image } from 'expo-image';
 import AppModal from '@/components/AppModal';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -1292,7 +1295,13 @@ export default function InicioScreen() {
         left={
           <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn} accessibilityLabel="Abrir perfil">
             {perfil?.fotoUrl ? (
-              <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarImg} accessibilityLabel="Foto de perfil" />
+              <Image
+                source={{ uri: perfil.fotoUrl }}
+                style={styles.avatarImg}
+                contentFit="cover"
+                cachePolicy="disk"
+                accessibilityLabel="Foto de perfil"
+              />
             ) : (
               <Ionicons name="person-circle-outline" size={44} color={theme.inkFaint} />
             )}

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+/* `expo-image` e não o `Image` do React Native: a foto de perfil vem de URL
+   remota e era decodificada em tamanho cheio a cada montagem de tela, sem
+   cache em disco no Android. Com `cachePolicy="disk"` ela é lida uma vez. */
+import { Image } from 'expo-image';
 import { Alert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -559,7 +563,13 @@ export default function PerfilScreen() {
               {enviandoFoto ? (
                 <ActivityIndicator color={theme.paper} />
               ) : perfil?.fotoUrl ? (
-                <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarFoto} accessibilityLabel="Foto de perfil" />
+                <Image
+                  source={{ uri: perfil.fotoUrl }}
+                  style={styles.avatarFoto}
+                  contentFit="cover"
+                  cachePolicy="disk"
+                  accessibilityLabel="Foto de perfil"
+                />
               ) : (
                 <Text style={styles.avatarText}>{initial}</Text>
               )}

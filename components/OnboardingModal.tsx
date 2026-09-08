@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+/* `expo-image` no lugar do `Image` do React Native — mesma razão do avatar da
+   Início e do Perfil: URL remota decodificada em tamanho cheio, sem cache. */
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -513,7 +515,13 @@ export default function OnboardingModal({
                   {enviandoFoto ? (
                     <ActivityIndicator color={theme.ink} />
                   ) : fotoUrl ? (
-                    <Image source={{ uri: fotoUrl }} style={styles.avatarImg} accessibilityLabel="Prévia da foto de perfil" />
+                    <Image
+                      source={{ uri: fotoUrl }}
+                      style={styles.avatarImg}
+                      contentFit="cover"
+                      cachePolicy="disk"
+                      accessibilityLabel="Prévia da foto de perfil"
+                    />
                   ) : (
                     <Text style={styles.avatarInicial}>
                       {nome.trim() ? nome.trim().charAt(0).toUpperCase() : '?'}
