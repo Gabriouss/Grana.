@@ -3486,3 +3486,46 @@ desabilitado: a guarda confere `disabled` E `accessibilityState.disabled`,
 porque as duas formas anunciam "indisponível".
 
 `tsc --noEmit` limpo e `test:parser` 100% depois da mudança.
+
+## 08/09/2026 — PENDENCIAS.md apagado; os 5 itens que ainda eram reais migraram pra cá
+
+`PENDENCIAS.md` foi escrito em 02/09/2026 por uma sessão sem login no app, sem
+acesso ao banco de produção e sem aparelho físico — 1053 linhas do que sobrava
+pra fazer dado esse limite. Desde então este arquivo (`context.md`) virou a
+fonte de verdade real: é aqui que cada sessão registra o que fez. O
+`PENDENCIAS.md` parou no tempo — chegou a descrever como pendente o Bloco 3
+inteiro de interruptores remotos, já implementado há dias — e o autor pediu
+pra apagá-lo.
+
+Antes de apagar, um agente conferiu cada item listado **contra o código atual**,
+não contra o texto do documento. A maioria já estava resolvida. Quatro itens
+seguem abertos de verdade e não estavam registrados em nenhum outro lugar:
+
+- **Histórico sem paginação (Início, Gráficos) — ainda intencional, não
+  esquecido.** `app/(app)/index.tsx` e `app/(app)/graficos.tsx` continuam
+  buscando o histórico financeiro inteiro sem limite, porque o saldo depende
+  do histórico completo — janelar a busca deixaria o saldo ERRADO, não só mais
+  lento. `desafios.tsx` já ganhou parte da correção
+  (`fetchTransactions({ sinceDays: 45 })` como caminho principal, com fallback
+  pro histórico completo se a agregação nova ainda não existir no banco). A
+  correção completa das outras duas telas é agregação no servidor, no mesmo
+  padrão que `desafios.tsx` já usa via `fetchGamificationHistoricalSummary()`
+  — essa função é a referência de como fazer.
+- **`lancamentos.tsx` sem otimização de lista.** A `FlatList` de linhas com
+  altura fixa não tem `initialNumToRender`/`windowSize`/`getItemLayout`.
+  `credito.tsx` já ganhou essas props (`initialNumToRender={4}`,
+  `windowSize={5}`) e serve de referência de como fazer aqui.
+- **Avatares sem cache em disco.** `perfil.tsx`, `index.tsx` e
+  `OnboardingModal.tsx` ainda usam o `<Image>` puro do React Native com `uri`
+  remoto pro avatar; `expo-image` não está instalado no projeto. A foto é
+  decodificada em tamanho cheio pra ser exibida a 44px, sem cache, toda vez
+  que a tela remonta.
+- **`components/BrandLogo.tsx` é o único componente órfão restante.** Os
+  outros 8 que o `PENDENCIAS.md` listava (`EntradaEscalonada`, `FloatingIcon`,
+  `GlowOrb`, `IconeMetaAtingida`, `LandingHeroDemo`, `LaptopMockup`,
+  `NotebookFloatEstatico`, `NotebookVideo`) já foram apagados. Este ficou
+  porque o app usa `BrandLogotype` em todo lugar — conferir se ainda serve pra
+  algo antes de apagar.
+
+`PENDENCIAS.md` foi removido do repositório nesta sessão. Não é mais o lugar
+de registrar trabalho em aberto — esse lugar é este arquivo.
