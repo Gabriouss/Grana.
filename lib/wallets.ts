@@ -149,7 +149,13 @@ export function calcularSaldosComAgregado(
 
   agregado.forEach(({ wallet_id, delta }) => {
     const valor = Number(delta || 0);
-    const alvo = wallet_id || (defaultWallet ? defaultWallet.id : null);
+    /* Carteira desconhecida cai na padrão, igual ao `wallet_id` nulo. Antes ela
+       era ignorada aqui e mesmo assim somada no total, o que quebrava em
+       silêncio a única invariante que liga as duas visões: o Total tem que ser
+       a soma das carteiras. Lançamento apontando para carteira apagada sumia de
+       toda visão por carteira e continuava no Total, sem aviso nenhum. */
+    const conhecida = wallet_id && porCarteira[wallet_id] !== undefined;
+    const alvo = conhecida ? wallet_id : defaultWallet ? defaultWallet.id : null;
     if (alvo && porCarteira[alvo] !== undefined) porCarteira[alvo] += valor;
     total += valor;
   });

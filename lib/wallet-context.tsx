@@ -118,6 +118,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
    */
   const refreshSaldos = useCallback(async () => {
     if (isDemoMode) return;
+    /* Sem a lista de carteiras não dá para distribuir nada: `porCarteira`
+       sairia vazio e o total viria certo, porque em `calcularSaldosComAgregado`
+       o total soma incondicionalmente e a carteira só recebe se a chave existir.
+       O seletor então cai no fallback `?? initial_balance` e mostra R$ 0,00 em
+       toda carteira, com o Total correto ao lado — foi exatamente o que o autor
+       viu em 08/09/2026, no Expo Go, com o banco íntegro (390 lançamentos, zero
+       sem carteira, zero órfão) e o APK exibindo o valor certo no mesmo
+       instante.
+
+       É corrida, não dado: este `refreshSaldos` é disparado pelo efeito da
+       Início assim que as TRANSAÇÕES chegam (app/(app)/index.tsx), e captura
+       `wallets` no closure. Quando a busca de carteiras perde a corrida — mais
+       provável no bundle de desenvolvimento, que é mais lento — roda com lista
+       vazia. Sair agora não perde a atualização: `wallets` está nas dependências
+       do callback, então a identidade dele muda quando a lista chega e o efeito
+       roda de novo. */
+    if (wallets.length === 0) return;
     try {
       const agregado = await fetchSaldosPorCarteira();
       setSaldos(calcularSaldosComAgregado(wallets, agregado));
