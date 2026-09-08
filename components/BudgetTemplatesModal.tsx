@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 8 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular },
+  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   templateList: { maxHeight: 280 },
   templateCard: {
     backgroundColor: theme.paper,

@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     fontSize: type.nota, fontFamily: fonts.light },
   selectedTotal: {
     color: theme.accent2,
-    fontSize: type.titulo, fontFamily: fonts.regular },
+    fontSize: type.titulo, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   breakdownList: {
     gap: 6,
     paddingTop: spacing.xs,
@@ -277,5 +277,5 @@ const styles = StyleSheet.create({
     fontSize: type.apoio, fontFamily: fonts.regular },
   breakdownVal: {
     color: theme.ink,
-    fontSize: type.apoio, fontFamily: fonts.regular },
+    fontSize: type.apoio, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
 });

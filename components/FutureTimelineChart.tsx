@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 7, height: 7, borderRadius: 3.5 },
   legendText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
-  totalText: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center', fontFamily: fonts.light },
+  totalText: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center', fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
 });
 
 /* `memo` pelo mesmo motivo do PieChart: a Início re-renderiza por estado que

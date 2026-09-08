@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular },
+  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },

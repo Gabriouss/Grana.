@@ -116,7 +116,7 @@ export default function GoalDepositModal({
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: theme.ink, fontSize: type.titulo, flex: 1, marginRight: spacing.sm, fontFamily: fonts.regular },
-  subtitle: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
+  subtitle: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnGuardar: { backgroundColor: theme.entradaFundo, borderWidth: 1, borderColor: theme.entradaBorda },

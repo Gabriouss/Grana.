@@ -957,7 +957,11 @@ export default function PerfilScreen() {
       {/* Toast */}
       {/* Edição do nome de exibição. */}
       <Modal visible={nomeOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setNomeOpen(false)}>
-        <View style={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}>
+        <ScrollView
+          style={styles.reauthScrimFundo}
+          contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
+          keyboardShouldPersistTaps="handled"
+        >
           <View ref={nomeModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Como podemos te chamar?</Text>
             <Text style={styles.reauthText}>
@@ -988,7 +992,7 @@ export default function PerfilScreen() {
               <Text style={styles.reauthCancelText}>Cancelar</Text>
             </AppPressable>
           </View>
-        </View>
+        </ScrollView>
       </Modal>
 
       {/* Reautenticação antes de excluir a conta. */}
@@ -998,7 +1002,11 @@ export default function PerfilScreen() {
         transparent
         onRequestClose={() => setReauthOpen(false)}
       >
-        <View style={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}>
+        <ScrollView
+          style={styles.reauthScrimFundo}
+          contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
+          keyboardShouldPersistTaps="handled"
+        >
           <View ref={reauthModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Confirme sua senha</Text>
             <Text style={styles.reauthText}>
@@ -1043,12 +1051,16 @@ export default function PerfilScreen() {
               <Text style={styles.reauthCancelText}>Cancelar</Text>
             </AppPressable>
           </View>
-        </View>
+        </ScrollView>
       </Modal>
 
       {/* Guia de atalhos rápidos (deep links) */}
       <Modal visible={atalhosOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setAtalhosOpen(false)}>
-        <View style={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}>
+        <ScrollView
+          style={styles.reauthScrimFundo}
+          contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
+          keyboardShouldPersistTaps="handled"
+        >
           <View ref={atalhosModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Atalhos rápidos</Text>
             <Text style={styles.reauthText}>
@@ -1086,12 +1098,16 @@ export default function PerfilScreen() {
               <Text style={styles.reauthCancelText}>Fechar</Text>
             </AppPressable>
           </View>
-        </View>
+        </ScrollView>
       </Modal>
 
       {/* Vínculo de WhatsApp */}
       <Modal visible={whatsappOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setWhatsappOpen(false)}>
-        <View style={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}>
+        <ScrollView
+          style={styles.reauthScrimFundo}
+          contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
+          keyboardShouldPersistTaps="handled"
+        >
           <View ref={whatsappModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Lançar pelo WhatsApp</Text>
 
@@ -1160,7 +1176,7 @@ export default function PerfilScreen() {
               <Text style={styles.reauthCancelText}>Fechar</Text>
             </AppPressable>
           </View>
-        </View>
+        </ScrollView>
       </Modal>
 
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
@@ -1195,7 +1211,18 @@ const styles = StyleSheet.create({
   nomeSalvar: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   nomeSalvarTexto: { color: theme.paper, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
-  reauthScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  /* O scrim dos quatro modais do Perfil é um ScrollView, não uma View.
+     `justifyContent: 'center'` centraliza enquanto o cartão CABE, e é o que
+     estava aqui; o que faltava era o que acontece quando ele não cabe. No
+     cartão de reautenticação — parágrafo longo + campo de senha + dois botões —
+     num aparelho baixo com o teclado aberto sobra pouco mais de 250pt, e uma
+     View centralizada estoura para os dois lados: "Excluir definitivamente"
+     sai por baixo e não existe gesto que o traga de volta. Com `flexGrow` no
+     conteúdo de um ScrollView vale o comportamento dos dois mundos:
+     centralizado quando cabe, rolável quando não cabe. O guia de atalhos, que
+     é uma lista longa, ganha o mesmo pelo mesmo motivo. */
+  reauthScrimFundo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  reauthScrim: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   reauthCard: { width: '100%', maxWidth: 400, backgroundColor: theme.paperRaised, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, borderWidth: 1, borderColor: theme.rule },
   reauthTitle: { color: theme.ink, fontSize: type.titulo,
   lineHeight: lh(type.titulo, 'titulo'), fontFamily: fonts.regular },
