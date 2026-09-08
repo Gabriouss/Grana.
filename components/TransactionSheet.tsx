@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import ToggleSwitch from './ToggleSwitch';
@@ -81,7 +81,15 @@ export default function TransactionSheet({
   const [installment, setInstallment] = useState(inicial.installments > 1);
   const [installmentCount, setInstallmentCount] = useState(String(Math.max(2, inicial.installments)));
   const [cardId, setCardId] = useState<string | null>(inicial.card_id);
-  const [walletId, setWalletId] = useState(inicial.wallet_id);
+  /* "Total" é um sentinel do seletor de visão, não uma carteira persistível.
+     Mesmo que uma tela antiga ou uma integração passe esse valor por engano,
+     o sheet só expõe carteiras reais e cai na Principal. */
+  const carteirasReais = useMemo(() => carteiras.filter((wallet) => wallet.id !== 'total'), [carteiras]);
+  const carteiraInicial = useMemo(() => {
+    if (carteirasReais.some((wallet) => wallet.id === inicial.wallet_id)) return inicial.wallet_id;
+    return carteirasReais.find((wallet) => wallet.is_default)?.id ?? carteirasReais[0]?.id ?? '';
+  }, [carteirasReais, inicial.wallet_id]);
+  const [walletId, setWalletId] = useState(carteiraInicial);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [catPickerOpen, setCatPickerOpen] = useState(false);
@@ -102,10 +110,10 @@ export default function TransactionSheet({
     setInstallment(inicial.installments > 1);
     setInstallmentCount(String(Math.max(2, inicial.installments)));
     setCardId(inicial.card_id);
-    setWalletId(inicial.wallet_id);
+    setWalletId(carteiraInicial);
     setFormError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [visible, carteiraInicial]);
 
   const parcelas = Math.max(2, Math.round(Number(installmentCount) || 2));
   const ehCredito = modo === 'credito';
@@ -144,7 +152,7 @@ export default function TransactionSheet({
       setFormError(cartoesDaCarteira.length === 0 ? 'Esta carteira não possui cartão cadastrado.' : 'Escolha em qual cartão esta compra foi feita.');
       return;
     }
-    if (!walletId) {
+    if (!walletId || !carteirasReais.some((wallet) => wallet.id === walletId)) {
       setFormError('Escolha em qual carteira este lançamento deve entrar.');
       return;
     }
@@ -192,10 +200,10 @@ export default function TransactionSheet({
           <View style={{ gap: 4 }}>
             <Text style={styles.inputLabel}>Carteira</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.banksRow}>
-              {carteiras.map((wallet) => (
+              {carteirasReais.map((wallet) => (
                 <AppPressable
                   key={wallet.id}
-                  style={[styles.bankChip, walletId === wallet.id && { borderColor: wallet.color, backgroundColor: 'rgba(255,255,255,0.08)' }]}
+                  style={[styles.bankChip, walletId === wallet.id && { borderColor: wallet.color, backgroundColor: theme.paperSelected }]}
                   onPress={() => {
                     setWalletId(wallet.id);
                     if (ehCredito && cardId && !cartoes.some((card) => card.id === cardId && card.wallet_id === wallet.id)) setCardId(null);
@@ -242,7 +250,7 @@ export default function TransactionSheet({
                 {cartoesDaCarteira.map((c) => (
                   <AppPressable
                     key={c.id}
-                    style={[styles.bankChip, cardId === c.id && { borderColor: c.color, backgroundColor: 'rgba(255,255,255,0.08)' }]}
+                    style={[styles.bankChip, cardId === c.id && { borderColor: c.color, backgroundColor: theme.paperSelected }]}
                     onPress={() => setCardId(c.id)}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: cardId === c.id }}

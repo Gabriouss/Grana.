@@ -3836,6 +3836,20 @@ somente se a Kiwify fornecer um link real de atualização de cobrança. Sem ess
 link o app não abre um segundo checkout: orienta o usuário a usar o e-mail da
 Kiwify e oferece o contato de suporte.
 
+## 08/09/2026 — invariante de carteira no banco e no formulário
+
+Foi criada e aplicada a migration `20260908150000_wallet_assignment_invariant.sql`.
+Ela garante que `Total` permaneça apenas uma visão: inserts e updates sem
+`wallet_id` recebem a carteira padrão do próprio usuário em transações,
+cartões, boletos, metas, pagamentos de fatura e pendências de WhatsApp. Também
+há uma única Principal por usuário e a exclusão de uma carteira secundária
+reatribui seus dados à Principal; a Principal não pode ser excluída.
+
+O formulário compartilhado de lançamento (`components/TransactionSheet.tsx`)
+filtra o sentinel `total`, escolhe a Principal como fallback e rejeita qualquer
+valor que não corresponda a uma carteira real. A verificação de produção
+confirmou zero registros órfãos e todos os gatilhos/invariantes ativos.
+
 ## 08/09/2026 — correção da carteira Total na conta pessoal
 
 O usuário confirmou que `Total` é apenas a visão agregada e que os lançamentos

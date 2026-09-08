@@ -4217,3 +4217,86 @@ $$;
 
 revoke all on function public.consumir_cota_ia(text) from public, anon;
 grant execute on function public.consumir_cota_ia(text) to authenticated;
+
+-- ============================================================
+-- Invariante: Total é somente uma visão, nunca um destino de dados
+-- ============================================================
+-- Toda entidade financeira recebe a Principal quando uma integração não
+-- informa wallet_id. Isso cobre app, voz, widget, WhatsApp e rotinas futuras.
+do $$
+begin
+  if exists (
+    select 1 from public.wallets where is_default
+    group by user_id having count(*) <> 1
+  ) then
+    raise exception 'Não foi possível garantir uma Principal única por usuário';
+  end if;
+end;
+$$;
+
+create unique index if not exists wallets_one_default_per_user_idx
+  on public.wallets (user_id) where is_default;
+
+create or replace function public.preencher_wallet_padrao()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.wallet_id is null then
+    select w.id into new.wallet_id
+    from public.wallets w
+    where w.user_id = new.user_id and w.is_default
+    order by w.created_at asc, w.id asc
+    limit 1;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists preencher_wallet_transactions on public.transactions;
+create trigger preencher_wallet_transactions before insert or update of wallet_id, user_id on public.transactions
+for each row execute procedure public.preencher_wallet_padrao();
+drop trigger if exists preencher_wallet_credit_cards on public.credit_cards;
+create trigger preencher_wallet_credit_cards before insert or update of wallet_id, user_id on public.credit_cards
+for each row execute procedure public.preencher_wallet_padrao();
+drop trigger if exists preencher_wallet_bills on public.bills;
+create trigger preencher_wallet_bills before insert or update of wallet_id, user_id on public.bills
+for each row execute procedure public.preencher_wallet_padrao();
+drop trigger if exists preencher_wallet_goals on public.goals;
+create trigger preencher_wallet_goals before insert or update of wallet_id, user_id on public.goals
+for each row execute procedure public.preencher_wallet_padrao();
+drop trigger if exists preencher_wallet_invoices on public.credit_card_invoices;
+create trigger preencher_wallet_invoices before insert or update of wallet_id, user_id on public.credit_card_invoices
+for each row execute procedure public.preencher_wallet_padrao();
+drop trigger if exists preencher_wallet_whatsapp_pending on public.whatsapp_pending;
+create trigger preencher_wallet_whatsapp_pending before insert or update of wallet_id, user_id on public.whatsapp_pending
+for each row execute procedure public.preencher_wallet_padrao();
+
+create or replace function public.reatribuir_wallet_antes_de_excluir()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare principal_id uuid;
+begin
+  if old.is_default then raise exception 'A carteira Principal não pode ser excluída'; end if;
+  select id into principal_id from public.wallets
+  where user_id = old.user_id and is_default and id <> old.id
+  order by created_at asc, id asc limit 1;
+  if principal_id is null then raise exception 'Usuário sem carteira Principal para receber os dados'; end if;
+  update public.transactions set wallet_id = principal_id where user_id = old.user_id and wallet_id = old.id;
+  update public.credit_cards set wallet_id = principal_id where user_id = old.user_id and wallet_id = old.id;
+  update public.bills set wallet_id = principal_id where user_id = old.user_id and wallet_id = old.id;
+  update public.goals set wallet_id = principal_id where user_id = old.user_id and wallet_id = old.id;
+  update public.credit_card_invoices set wallet_id = principal_id where user_id = old.user_id and wallet_id = old.id;
+  update public.whatsapp_pending set wallet_id = principal_id where user_id = old.user_id and wallet_id = old.id;
+  return old;
+end;
+$$;
+
+drop trigger if exists reatribuir_wallet_antes_de_excluir on public.wallets;
+create trigger reatribuir_wallet_antes_de_excluir before delete on public.wallets
+for each row execute procedure public.reatribuir_wallet_antes_de_excluir();

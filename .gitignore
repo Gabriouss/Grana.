@@ -49,6 +49,8 @@ deno.lock
 
 # logs de sessão local do dev server
 .expo-start.log
+expo-start.log
+expo-start.err.log
 .expo-web.log
 
 # generated native folders

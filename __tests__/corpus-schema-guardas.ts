@@ -174,6 +174,7 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   const inicioAssistente = sql.indexOf('create table if not exists public.assistant_messages');
   const inicioMemoria = sql.indexOf('create extension if not exists pg_trgm');
   const inicioCotas = sql.indexOf('create table if not exists public.ai_usage_counters');
+  const fimCotas = sql.indexOf('-- Invariante: Total é somente uma visão, nunca um destino de dados');
   checar(
     'a migration do push permanece idêntica ao baseline do schema',
     inicioPush >= 0 && inicioJanelas > inicioPush
@@ -207,8 +208,8 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   );
   checar(
     'a migration de cotas de IA permanece idêntica ao baseline do schema',
-    inicioCotas > inicioMemoria
-      && normalizarSql(sql.slice(inicioCotas)) === migrationAPartirDe(migrationCotas, 'create table if not exists public.ai_usage_counters')
+    inicioCotas > inicioMemoria && fimCotas > inicioCotas
+      && normalizarSql(sql.slice(inicioCotas, fimCotas)) === migrationAPartirDe(migrationCotas, 'create table if not exists public.ai_usage_counters')
   );
   checar(
     'cotas de IA têm RLS e não expõem a tabela ao app',
