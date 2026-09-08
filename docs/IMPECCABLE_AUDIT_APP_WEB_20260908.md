@@ -308,3 +308,71 @@ Nada aqui foi validado em aparelho. A varredura de acessibilidade dedicada não
 concluiu, e a nota 2/4 é a menos confiável das cinco. Os achados de geometria
 (alvo de 42,8pt, inset de 59pt em paisagem) são cálculo a partir do código e
 precisam de medição real antes de virarem "resolvido".
+
+---
+
+## Placar de fechamento — 08/09/2026
+
+Escrito no fim do dia, depois de resolver os achados. Vale mais do que a lista
+de "ações recomendadas" acima, que ficou como estava no momento da auditoria.
+
+### Fechados e verificados por teste
+
+1, 2, 3, 4, 6, 7, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+26, 27, 28.
+
+Três deles passaram a ter guarda mecânica, que é o que impede a reincidência:
+
+- **Only-Font** — o corpus varre `lib/` (era só `app/` e `components/`) e acusa
+  estilo que declara `fontSize` sem família, que era o buraco por onde a fonte
+  do sistema entrava sem ninguém escrever o nome dela.
+- **Sombra** — as 15 receitas viraram `sombras` em `lib/theme.ts` e o corpus
+  recusa qualquer `boxShadow` literal fora daquele arquivo. O catálogo em
+  markdown já proibia sombra ad hoc desde 02/09 e mesmo assim três apareceram —
+  uma delas na barra de abas, com valor diferente do que o documento afirmava.
+- **Ícone** — o corpus acusa import do barril `@expo/vector-icons`, que é o que
+  o editor sugere sozinho e o que trazia 3,89 MB de fontes de ícone.
+
+O corpus de design system foi de 315 para 1120 guardas ao longo do dia.
+
+### Fechados por decisão, não por código
+
+- **5 (sete itens na barra)** — decisão de produto tomada e em uso; a barra tem
+  cinco destinos mais o Granabô no centro (que é ação, não destino) e o FAB. A
+  auditoria conta sete controles, o que é verdade, mas a hierarquia entre
+  destino e ação já está correta na implementação. Fica como está.
+
+### Abertos, com o motivo
+
+- **8 (bundle web único de 2,82 MB serve a landing)** — a separação exige trocar
+  `web.output` de `single` para `static`, o que muda o modo de renderização do
+  site inteiro e reabilita o `app/+html.tsx` hoje inerte (ver achado 19). É
+  mudança de outra ordem e precisa de uma rodada própria, com o site rodando.
+
+- **10 (`srcset` nas imagens do herói)** — bloqueado por ferramenta: gerar as
+  variantes de largura exige um conversor de imagem que não existe neste
+  ambiente. O trabalho é de minutos com `sharp` ou `squoosh` disponível.
+
+- **11 (cascata de render da Início)** — resolvido pela METADE, e a metade que
+  falta está identificada:
+
+  Fechado: `HOME_BLOCOS` passou a guardar funções em vez de JSX pronto. Antes o
+  objeto era montado inteiro a cada render e só DEPOIS filtrado por
+  `b.visible`, então `budgets.map`, `dueThisWeek.map` e `pieData.map` rodavam
+  também para os blocos que a pessoa tinha desligado. Agora só roda o corpo do
+  bloco que vai aparecer.
+
+  Aberto: a Início continua re-renderizando a cada tecla porque `billDesc`,
+  `billAmount` e o valor do orçamento são `useState` dela, não dos formulários.
+  A correção certa é extrair os dois formulários para componentes próprios, e
+  isso esbarra no `DatePickerModal` e no `CategoryPickerModal`, que são
+  singletons no nível da Início e recebem o alvo por `datePickerTarget` /
+  `catPickerTarget`. É refatoração de plumbing, não de estilo, e merece uma
+  passada própria com o app rodando — para MEDIR o ganho em vez de supor. Sem
+  medição, trocar dez `useState` por dez `useMemo` de dependência larga troca um
+  problema de desempenho por um risco de tela desatualizada, que é pior.
+
+### O que continua valendo do aviso final
+
+Nada disto foi validado em aparelho. Os números de geometria seguem sendo
+cálculo a partir do código.

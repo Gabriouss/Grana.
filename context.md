@@ -98,6 +98,62 @@ Estas são validações operacionais, não novas implementações estruturais:
    inicia uma nova compra para `past_due`.
 8. Fazer revisão humana final dos textos legais antes da publicação comercial.
 
+## 08/09/2026 — auditoria /impeccable fechada (24 de 28 achados)
+
+A auditoria completa do app e do desktop web está em
+`docs/IMPECCABLE_AUDIT_APP_WEB_20260908.md`, com o placar de fechamento no fim
+do arquivo. Vinte e quatro achados resolvidos e verificados por teste, um
+fechado por decisão de produto (os sete controles da barra: são cinco destinos
+mais o Granabô e o FAB, e a distinção entre destino e ação já está certa) e
+três abertos com motivo escrito.
+
+O que mudou de estrutural, e vale mais que a lista de correções: **três regras
+do `DESIGN.md` viraram guarda mecânica**, porque a auditoria provou que regra
+escrita só em markdown deriva. O corpus de design system foi de 315 para 1120
+verificações.
+
+- **Sombra** — as 15 receitas viraram `sombras` em `lib/theme.ts` e o corpus
+  recusa `boxShadow` literal fora dali. O documento proibia sombra ad hoc desde
+  02/09 e mesmo assim três novas apareceram, uma delas na barra de abas com
+  valor DIFERENTE do que o próprio documento afirmava.
+- **Only-Font** — a varredura passou a incluir `lib/` (era só `app/` e
+  `components/`, e foi por isso que a saída de dinheiro em vermelho no PDF e a
+  fonte do sistema passaram meses despercebidas) e a acusar estilo que declara
+  `fontSize` sem família, que é como a fonte do sistema entra sem ninguém
+  escrever o nome dela.
+- **Ícone** — o corpus acusa import do barril `@expo/vector-icons`, que é o que
+  o editor sugere sozinho e o que trazia 3,89 MB de fontes.
+
+Também nasceram tokens onde havia hex repetido: `menta(alfa)` (o canal
+174,255,227 estava escrito nove vezes, sete delas como 175), `mockupTela`,
+`superficieInativa`, `colunaLista`. E `chart-colors.ts` passou a DERIVAR a
+paleta de `CATEGORIES` em vez de copiá-la — o comentário já dizia "exatamente
+as de CATEGORIES" e mesmo assim eram duas listas de oito hexes em arquivos
+diferentes; ao ligar as duas apareceu um erro real, o mock da landing pintando
+"Casa" com a cor de Transporte.
+
+**Três achados seguem abertos, de propósito:**
+
+- **Bundle web único (2,82 MB para a landing pública)** — separar exige trocar
+  `web.output` de `single` para `static`, o que muda o modo de renderização do
+  site inteiro e reabilita o `app/+html.tsx` hoje inerte. Outra ordem de
+  mudança; rodada própria.
+- **`srcset` nas imagens do herói** — bloqueado por ferramenta: gerar as
+  variantes de largura exige um conversor de imagem que não existe neste
+  ambiente. Minutos de trabalho com `sharp` disponível.
+- **Cascata de render da Início** — resolvida pela metade. `HOME_BLOCOS` passou
+  a guardar funções, então blocos desligados em "Personalizar Início" deixaram
+  de custar `budgets.map`/`dueThisWeek.map`/`pieData.map` a cada tecla. A outra
+  metade — `billDesc`, `billAmount` e o valor do orçamento sendo `useState` da
+  Início — pede extrair os formulários para componentes próprios, e isso esbarra
+  no `DatePickerModal`/`CategoryPickerModal`, que são singletons no nível da
+  Início. É refatoração de plumbing e merece uma passada com o app rodando, para
+  MEDIR: sem medição, trocar dez `useState` por dez `useMemo` de dependência
+  larga troca desempenho por risco de tela desatualizada.
+
+**Nada disso foi validado em aparelho, e nenhuma build foi disparada.** Os
+números de geometria continuam sendo cálculo a partir do código.
+
 ## 08/09/2026 — entrega direta do APK
 
 Foi implementado o fluxo curto de distribuição: rota pública `/baixar`, link
