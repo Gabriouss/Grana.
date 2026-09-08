@@ -1524,7 +1524,7 @@ export default function InicioScreen() {
 
       {/* Sheet: Novo Boleto */}
       <AppModal visible={billSheetOpen} animationType="slide" transparent onRequestClose={() => setBillSheetOpen(false)}>
-        <Sheet onClose={() => setBillSheetOpen(false)}>
+        <Sheet centered onClose={() => setBillSheetOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Nova conta a pagar</Text>
               <AppPressable onPress={() => setBillSheetOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

@@ -106,7 +106,7 @@ export default function Sheet({
           a folha — só o fundo escurecido em volta dele fecha. */}
       <Pressable
         ref={painelRef}
-        style={[styles.sheet, { maxHeight: '92%' }, flutuanteStyle, sheetStyle]}
+        style={[styles.sheet, centered && styles.sheetCentered, { maxHeight: '92%' }, flutuanteStyle, sheetStyle]}
         onPress={() => {}}
         accessibilityViewIsModal
         importantForAccessibility="yes"
@@ -150,6 +150,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     width: '100%',
     ...(Platform.OS === 'android' ? { elevation: 8 } : null),
+  },
+  sheetCentered: {
+    maxWidth: 520,
+    borderRadius: radius.xl,
   },
   handle: {
     width: 36,

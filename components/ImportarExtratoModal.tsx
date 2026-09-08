@@ -246,12 +246,12 @@ export default function ImportarExtratoModal({
 
   return (
     <AppModal visible={visible} animationType="slide" transparent onRequestClose={fechar}>
-      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={fechar}>
+      <Pressable style={[styles.modalScrim, styles.modalScrimCentered, scrimStyle]} onPress={fechar}>
         {/* A prévia usa FlatList, então esta folha não entra no <Sheet> (que
             rolaria por fora); aqui basta afastar o conteúdo do teclado. */}
         <AccessibleModalPanel
           ativo={visible}
-          style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}
+          style={[styles.sheet, styles.sheetCentered, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}
         >
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>
@@ -433,6 +433,7 @@ export default function ImportarExtratoModal({
 
 const styles = StyleSheet.create({
   modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  modalScrimCentered: { justifyContent: 'center', alignItems: 'center', padding: spacing.md },
   sheet: {
     backgroundColor: theme.paperRaised,
     borderTopLeftRadius: radius.xl,
@@ -441,6 +442,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     maxHeight: '88%',
   },
+  sheetCentered: { width: '100%', maxWidth: 640, borderRadius: radius.xl },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular, flex: 1 },
   hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },

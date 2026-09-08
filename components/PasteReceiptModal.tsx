@@ -227,6 +227,7 @@ export default function PasteReceiptModal({
       }}
     >
       <Sheet
+        centered
         onClose={() => {
           resetState();
           onClose();
