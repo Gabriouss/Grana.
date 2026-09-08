@@ -1,0 +1,13 @@
+[
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\user\\Desktop\\Aplicativo Financeiro\\grana-app\\components\\Granachat.tsx",
+    "line": 606,
+    "snippet": "Undocumented color rgba(0,0,0,0.6) is outside DESIGN.md colors",
+    "ignoreValue": "rgba(0,0,0,0.6)"
+  }
+]
