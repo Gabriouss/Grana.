@@ -46,11 +46,21 @@ export const theme = {
      tela. Vinham repetidos como hex cru em 3 arquivos — viraram token porque
      é exatamente o tipo de par que sai de sincronia quando alguém ajusta um
      lado e esquece os outros dois. O sufixo `Fundo` é o mesmo tom com alfa
-     `33` (20%), como o hex cru já fazia. */
+     `33` (20%), como o hex cru já fazia.
+
+     A saída era `#bb6b60` (terracota) até 08/09/2026, e isso reconstruía o
+     semáforo verde/vermelho que a No-Red Rule existe para impedir — o motivo
+     documentado acima explica por que o par não usa `up`/`down`, mas nunca
+     justificou escolher vermelho de um dos lados. `#4f8894` é o mesmo matiz
+     ciano da marca (191°) com a luminosidade e a saturação IDÊNTICAS às do
+     verde ao lado (L 0.45, S 0.30): os dois botões pesam igual, que é o ponto
+     da regra. Escolher por conversão de matiz, e não a olho, também evita
+     reincidir no acidente que `#bb6b60` era — ele é a cor da categoria
+     Alimentação, reaproveitada aqui por engano (ver ItemActionSheet.tsx:54). */
   entradaBorda: '#4f9483',
   entradaFundo: '#4f948333',
-  saidaBorda: '#bb6b60',
-  saidaFundo: '#bb6b6033',
+  saidaBorda: '#4f8894',
+  saidaFundo: '#4f889433',
 };
 
 /* Recorte de 30 cores da paleta "Refreshing Aqua Tones" (lib/demo-data.ts),

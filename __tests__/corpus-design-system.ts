@@ -46,9 +46,24 @@ function arquivos(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const FONTES = ['app', 'components']
+/* `lib` entrou em 08/09/2026. A auditoria daquele dia achou as duas piores
+   violações de marca do projeto justamente ali — saída de dinheiro em vermelho
+   no PDF exportado e fonte do sistema — porque a varredura parava em `app` e
+   `components`. Regra de design que só vale onde o teste olha não é regra.
+
+   Dois arquivos declaram família de fonte por direito e ficam de fora da
+   checagem de literal (não das outras):
+   - `lib/theme.ts` é a FONTE dos tokens; é onde o nome da fonte deve aparecer.
+   - `lib/pdf-report-html.ts` monta HTML para impressão, onde a pilha CSS
+     precisa terminar numa fonte de sistema: no nativo o expo-print roda em
+     WebView isolado, sem acesso aos assets, e embutir a Neue Machina em base64
+     custaria ~155 KB de bundle por um recurso pontual. A escolha está
+     argumentada no próprio arquivo. */
+const PODEM_DECLARAR_FONTE = new Set(['lib/theme.ts', 'lib/pdf-report-html.ts']);
+
+const FONTES = ['app', 'components', 'lib']
   .flatMap((d) => arquivos(d))
-  .map((caminho) => ({ caminho, src: readFileSync(caminho, 'utf8') }));
+  .map((caminho) => ({ caminho: caminho.replace(/\\/g, '/'), src: readFileSync(caminho, 'utf8') }));
 
 /* Comentários fora: este arquivo e os que explicam as regras CITAM as grafias
    proibidas de propósito, e acusá-las seria acusar a documentação. */
@@ -59,6 +74,7 @@ function semComentarios(src: string): string {
 /* ── The Only-Font Rule ─────────────────────────────────────────────────── */
 
 for (const { caminho, src } of FONTES) {
+  if (PODEM_DECLARAR_FONTE.has(caminho)) continue;
   const codigo = semComentarios(src);
   /* Aceita `fonts.algo` e `{fonts.algo}`; recusa qualquer literal de string. */
   const literais = [...codigo.matchAll(/fontFamily[:=]\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
@@ -66,6 +82,93 @@ for (const { caminho, src } of FONTES) {
     'Only-Font: ' + caminho + ' sem fontFamily literal',
     literais.length === 0,
     literais.length ? 'encontrado: ' + literais.join(', ') + ' — use fonts.regular/fonts.light de lib/theme.ts' : ''
+  );
+}
+
+/* ── The Only-Font Rule, segunda metade: fonte AUSENTE ──────────────────────
+   A checagem acima pega quem escreve a fonte errada. Ela não pegava quem não
+   escreve fonte nenhuma — e o resultado é o mesmo, porque o React Native cai
+   na fonte do sistema. Foi assim que `VozesSalvasLocalmente` passou meses com
+   os três textos fora da marca, com o corpus verde.
+
+   Heurística: todo objeto de estilo que define `fontSize` também precisa dizer
+   em que família ele sai. Espalhar um token (`...textStyles.body`) satisfaz,
+   porque o token já carrega `fontFamily`. */
+function objetoQueContem(codigo: string, indice: number): string {
+  let inicio = indice;
+  let nivel = 0;
+  while (inicio > 0) {
+    const c = codigo[--inicio];
+    if (c === '}') nivel++;
+    else if (c === '{') {
+      if (nivel === 0) break;
+      nivel--;
+    }
+  }
+  let fim = indice;
+  nivel = 0;
+  while (fim < codigo.length) {
+    const c = codigo[fim++];
+    if (c === '{') nivel++;
+    else if (c === '}') {
+      if (nivel === 0) break;
+      nivel--;
+    }
+  }
+  return codigo.slice(inicio, fim);
+}
+
+/* Um estilo SEM família não é violação quando ele é sobreposição: em
+   `[styles.secaoTitulo, ehCompacto && styles.secaoTituloCompacto]` só o
+   primeiro precisa declarar a fonte, e o segundo ajusta tamanho. Acusar esses
+   transformaria o guarda em ruído — e guarda ruidoso é pior que nenhum, porque
+   alguém desliga. Então só acusa o estilo que aparece ao menos uma vez SOZINHO
+   na expressão de `style`. */
+function usadoSozinho(codigo: string, nome: string): boolean {
+  for (const m of codigo.matchAll(new RegExp('styles\\.' + nome + '\\b', 'g'))) {
+    /* O marcador é o ATRIBUTO `style=`/`style:`, não a palavra "style" solta —
+       ela é prefixo de `styles.`, e procurá-la casava com a própria ocorrência,
+       fazendo todo estilo parecer usado sozinho. */
+    const janela = codigo.slice(Math.max(0, m.index! - 400), m.index!);
+    const marcadores = [...janela.matchAll(/\bstyle\s*[=:]/g)];
+    if (!marcadores.length) continue;
+    const inicio = Math.max(0, m.index! - 400) + marcadores[marcadores.length - 1].index!;
+    /* Do atributo até fechar a expressão dele, contando irmãos. */
+    let nivel = 0;
+    let fim = inicio;
+    for (; fim < codigo.length; fim++) {
+      const c = codigo[fim];
+      if (c === '{' || c === '[') nivel++;
+      else if (c === '}' || c === ']') {
+        nivel--;
+        if (nivel <= 0) break;
+      }
+    }
+    const expressao = codigo.slice(inicio, fim + 1);
+    if ((expressao.match(/styles\./g) ?? []).length === 1) return true;
+  }
+  return false;
+}
+
+for (const { caminho, src } of FONTES) {
+  if (PODEM_DECLARAR_FONTE.has(caminho)) continue;
+  const codigo = semComentarios(src);
+  const semFamilia: string[] = [];
+  for (const m of codigo.matchAll(/\bfontSize\s*:/g)) {
+    const bloco = objetoQueContem(codigo, m.index!);
+    if (/fontFamily|\.\.\.\s*textStyles\./.test(bloco)) continue;
+    const nome = /(\w+)\s*:\s*\{[^{]*$/.exec(codigo.slice(0, m.index!))?.[1];
+    /* Objeto anônimo (estilo inline) fica de fora: não dá para rastrear uso, e
+       o palpite erraria mais do que acertaria. */
+    if (!nome) continue;
+    if (usadoSozinho(codigo, nome)) semFamilia.push(nome);
+  }
+  checar(
+    'Only-Font: ' + caminho + ' sem estilo de texto órfão de fontFamily',
+    semFamilia.length === 0,
+    semFamilia.length
+      ? semFamilia.join(', ') + ' — define fontSize sozinho e sem família; cai na fonte do sistema'
+      : ''
   );
 }
 

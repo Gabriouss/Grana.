@@ -13,8 +13,15 @@ import { formatMoney, MONTH_NAMES } from './format';
 import type { Bill, Transaction } from './types';
 import type { MonthlyWrapped } from './monthly-wrapped';
 
+/* Entrada e saída são a MESMA família cromática, escurecida para papel branco:
+   gasto não é erro e não leva cor de alarme (No-Red Rule do DESIGN.md). O par
+   é escolhido por peso visual, não só por matiz — 5,27:1 e 5,12:1 sobre branco,
+   os dois acima de AA e praticamente idênticos, para que nenhum dos dois pese
+   mais que o outro na página. Até 08/09/2026 a saída saía em #a8443c, ou seja,
+   o único artefato que a pessoa IMPRIME e mostra para alguém era o único lugar
+   do produto que pintava gasto de vermelho. */
 const VERDE = '#0d7a63';
-const VERMELHO = '#a8443c';
+const CIANO = '#0d788f';
 const PETROLEO = '#052229';
 const TINTA_FRACA = '#6d7b78';
 const LINHA = '#dde5e3';
@@ -456,7 +463,7 @@ ${fonte.faces}
   .card .rotulo { color: ${TINTA_FRACA}; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.7px; }
   .card .valor { font-size: 16px; margin-top: 4px; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
   .positivo { color: ${VERDE}; }
-  .negativo { color: ${VERMELHO}; }
+  .negativo { color: ${CIANO}; }
   .card.destaque { background: ${MENTA_PAPEL}; border-color: ${VERDE}; }
 
   /* Leitura do mês: duas colunas de blocos curtos. Cada um tem uma régua

@@ -55,7 +55,7 @@ export default function PareamentoWhatsapp({ codigo, chamada }: Props) {
         accessibilityRole="button"
         accessibilityLabel="Abrir a conversa do Grana. no WhatsApp com a mensagem já escrita"
       >
-        <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+        <Ionicons name="logo-whatsapp" size={20} color={theme.paper} />
         <Text style={styles.botaoTexto}>Abrir a conversa no WhatsApp</Text>
       </AppPressable>
 
@@ -151,7 +151,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   botaoHover: { opacity: 0.9 },
-  botaoTexto: { color: '#fff', fontSize: type.corpo, fontFamily: fonts.regular },
+  /* `theme.paper` (petróleo), não branco: sobre o verde do WhatsApp o branco
+     dá 1,98:1, bem abaixo do mínimo AA de 4,5:1, e o petróleo dá 8,36:1. Os
+     outros três botões de WhatsApp do app já faziam assim — este era o único
+     fora do padrão. */
+  botaoTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   oQueAcontece: {
     color: theme.inkSoft,
     fontSize: type.apoio,

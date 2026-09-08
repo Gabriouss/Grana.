@@ -113,8 +113,18 @@ function ItemBarra({
   return (
     <AppPressable
       onPress={onPress}
-      accessibilityRole="link"
-      accessibilityState={ativo ? { selected: true } : {}}
+      /* `assistente` é AÇÃO, não destino: ele abre a conversa sobre a tela
+         atual em vez de navegar, e por isso não recebe `href` na linha abaixo.
+         Anunciar isso como `link` prometia ao leitor de tela uma navegação que
+         não acontece. O botão central da barra compacta já resolvia assim
+         (app/(app)/_layout.tsx:246) — era o mesmo controle com dois papéis
+         diferentes dependendo da largura da janela. */
+      accessibilityRole={item.rota === 'assistente' ? 'button' : 'link'}
+      accessibilityState={
+        item.rota === 'assistente'
+          ? { expanded: ativo }
+          : ativo ? { selected: true } : {}
+      }
       /* Com o rótulo escondido (trilho de 76px) o botão fica só com o ícone,
          e um botão só de ícone sem nome é invisível para leitor de tela. */
       accessibilityLabel={item.rotulo}
