@@ -957,9 +957,18 @@ export default function InicioScreen() {
 
   /* Conteúdo de cada bloco personalizável da Home (lib/home-layout.ts) —
      um objeto em vez de um switch porque a ordem de exibição já vem pronta
-     de `homeLayout`; este objeto só precisa saber traduzir chave -> JSX. */
-  const HOME_BLOCOS: Record<HomeBlockConfig['key'], React.ReactNode> = {
-    saldo: (
+     de `homeLayout`; este objeto só precisa saber traduzir chave -> JSX.
+
+     FUNÇÕES, não JSX pronto. O objeto é montado a cada render da Início, e a
+     Início re-renderiza a cada tecla digitada nos formulários que moram nela
+     (nova conta a pagar, orçamento). Com os blocos escritos direto como valor,
+     montar o objeto executava `budgets.map`, `dueThisWeek.map` e `pieData.map`
+     de todos os dez blocos por tecla — inclusive dos blocos que a pessoa
+     DESLIGOU em "Personalizar Início", porque o filtro `b.visible` só acontece
+     lá embaixo, depois do objeto já pronto. Como thunk, o corpo só roda para o
+     bloco que vai realmente aparecer. */
+  const HOME_BLOCOS: Record<HomeBlockConfig['key'], () => React.ReactNode> = {
+    saldo: () => (
       <View
         ref={(n) => {
           tourRefs.current.saldo = n;
@@ -969,7 +978,7 @@ export default function InicioScreen() {
         <SafeToSpendCard data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
       </View>
     ),
-    cofrinhos: (
+    cofrinhos: () => (
       <GoalsCarousel
         goals={walletGoals}
         lifetimeXp={lifetimeXp}
@@ -980,7 +989,7 @@ export default function InicioScreen() {
         onDeleteGoal={handleDeleteGoal}
       />
     ),
-    atalhos: (
+    atalhos: () => (
       <>
         <View style={styles.quickChipsHeadRow}>
           <Text style={styles.sectionLabel}>Lançamento rápido</Text>
@@ -1031,7 +1040,7 @@ export default function InicioScreen() {
         </ScrollView>
       </>
     ),
-    fluxo: (
+    fluxo: () => (
       <View style={styles.card}>
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Fluxo financeiro</Text>
@@ -1076,7 +1085,7 @@ export default function InicioScreen() {
         />
       </View>
     ),
-    categoria: (
+    categoria: () => (
       <View
         style={styles.card}
         ref={(n) => {
@@ -1119,7 +1128,7 @@ export default function InicioScreen() {
         )}
       </View>
     ),
-    orcamento: (
+    orcamento: () => (
       <View style={styles.card}>
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Orçamento do mês</Text>
@@ -1172,7 +1181,7 @@ export default function InicioScreen() {
         )}
       </View>
     ),
-    credito: (
+    credito: () => (
       <View
         ref={(n) => {
           tourRefs.current.credito = n;
@@ -1188,7 +1197,7 @@ export default function InicioScreen() {
         />
       </View>
     ),
-    boletos: (
+    boletos: () => (
       <View style={{ gap: spacing.sm }}>
         <Text style={styles.sectionLabel}>Vence esta semana</Text>
         {dueThisWeek.length === 0 ? (
@@ -1213,7 +1222,7 @@ export default function InicioScreen() {
         )}
       </View>
     ),
-    timeline: (
+    timeline: () => (
       <View style={styles.card}>
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Comprometimento futuro</Text>
@@ -1221,7 +1230,7 @@ export default function InicioScreen() {
         <FutureTimelineChart meses={comprometimentoFuturo} />
       </View>
     ),
-    lancamentos: (
+    lancamentos: () => (
       <View style={{ gap: spacing.sm }}>
         <View style={styles.cardHeadRow}>
           <Text style={styles.sectionLabel}>Últimos lançamentos</Text>
@@ -1455,7 +1464,7 @@ export default function InicioScreen() {
                 : undefined,
               conteudo: (
                 <FadeIn delay={60} style={b.key === 'atalhos' ? styles.quickChipsSection : undefined}>
-                  {HOME_BLOCOS[b.key]}
+                  {HOME_BLOCOS[b.key]()}
                 </FadeIn>
               ),
             }))}
