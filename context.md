@@ -3682,13 +3682,38 @@ Especificação aprovada e registrada em
 
 ### Ainda não comprovado / manual
 
-- O painel da Kiwify precisa ser confirmado para enviar o segredo em
-  `x-kiwify-token`; sem esse header o webhook rejeita corretamente com 401.
-- Ainda falta uma compra real ou evento de teste da Kiwify para validar o ciclo
-  completo de entitlement.
-- A exclusão completa ainda precisa ser exercitada com uma conta descartável;
-  os probes feitos foram negativos e não alteraram dados.
-- A nova lógica de carteira do app e a normalização sem acento só entram no
-  APK após uma nova build Android — build não autorizada nesta sessão.
-- Push remoto, APK, publicação do asset no GitHub Release, variáveis Vercel/EAS
-  e smoke test físico continuam na checklist da outra máquina.
+Checklist para executar na outra máquina, nesta ordem:
+
+1. **Kiwify — header e segredo:** no painel do webhook, confirmar/configurar o
+   envio do segredo no header `x-kiwify-token`. O valor precisa ser o mesmo do
+   secret `KIWIFY_WEBHOOK_TOKEN` da Edge Function. Fazer uma rotação coordenada
+   (atualizar os dois lados sem deixar o endpoint sem segredo) e disparar o
+   evento de teste da Kiwify. A resposta esperada é 200; sem o header, 401 é
+   intencional.
+2. **Ciclo comercial:** com uma conta de teste, validar compra nova, vínculo
+   pelo mesmo e-mail, ativação por token, renovação, cancelamento, reembolso e
+   chargeback. Conferir `subscriptions`, `access_until` e o estado retornado por
+   `obter_estado_acesso`. Manter
+   `app_backend_config.enforce_subscriptions = false` até todos os cenários
+   passarem; só então decidir a ativação global.
+3. **Exclusão de conta:** criar uma conta descartável, confirmar o e-mail,
+   entrar no app, reautenticar com a senha e usar Perfil → Excluir conta.
+   Confirmar no painel que o usuário Auth, dados pessoais, avatar e vínculo do
+   WhatsApp sumiram. Não testar isso em conta real.
+4. **Build Android:** como este trabalho alterou o resolver de carteiras no
+   app, gerar nova build somente com autorização explícita do autor. Antes,
+   rodar `npm run build:preparar -- "<mensagem revisada>"`; depois executar o
+   comando EAS impresso pelo script. Não subir versão nem mensagem à mão.
+5. **Smoke test no aparelho:** instalar o APK e testar voz no app e no widget
+   com `carteira pessoal`, `carteira empresa`, nomes com acento/sem acento,
+   múltiplos cartões, crédito parcelado, recorrência, boleto e categoria
+   personalizada. Confirmar que `push_tokens` recebe o token e que chegam as
+   notificações interativas de almoço/noite.
+6. **Distribuição:** publicar o APK como asset `grana.apk` no GitHub Release,
+   confirmar a URL `/downloads/grana-latest.apk`, variáveis do Vercel/EAS e os
+   botões/links de entrega nos e-mails e checkout da Kiwify. Fazer um download
+   limpo e instalar fora do ambiente de desenvolvimento.
+7. **Dívida técnica separada:** corrigir a guarda antiga que compara a migration
+   `20260905004109_voice_operations.sql` com o baseline do schema (25/26). O
+   arquivo da migration já estava alterado por outra máquina; não sobrescrever
+   antes de comparar o diff e alinhar os dois lados.
