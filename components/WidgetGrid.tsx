@@ -80,9 +80,17 @@ export default function WidgetGrid({
       const sair = () => setSobreVoo((atual) => (atual === w.chave ? null : atual));
       node.addEventListener('mouseenter', entrar);
       node.addEventListener('mouseleave', sair);
+      /* `focusin`/`focusout` (que sobem, ao contrário de `focus`/`blur`) fazem
+         o mesmo pelo teclado: chegar na alça com Tab a revela, igual ao mouse.
+         Sem isso ela ficava focável e invisível, que é pior do que não existir
+         — o anel de foco pousaria num retângulo em branco. */
+      node.addEventListener('focusin', entrar);
+      node.addEventListener('focusout', sair);
       limpezas.push(() => {
         node.removeEventListener('mouseenter', entrar);
         node.removeEventListener('mouseleave', sair);
+        node.removeEventListener('focusin', entrar);
+        node.removeEventListener('focusout', sair);
       });
     }
     return () => limpezas.forEach((f) => f());
@@ -161,8 +169,20 @@ export default function WidgetGrid({
       ]}
     >
       {w.conteudo}
-      {podeArrastar && (sobreVoo === w.chave || arrastando === w.chave) && (
-        <Alca responder={criarResponder(w.chave)} ativo={arrastando === w.chave} topo={w.alcaTopo} />
+      {/* A alça é RENDERIZADA sempre e só some por opacidade. Enquanto ela só
+          existia no hover, reordenar arrastando era invisível para quem não usa
+          mouse: não dava para chegar nela com Tab, porque um elemento que não
+          está no DOM não está na ordem de tabulação. A WCAG 2.2 já estava
+          satisfeita pelo caminho alternativo ("Personalizar Início"), mas
+          descobrir que o arraste existe dependia de passar o ponteiro por cima
+          — e ninguém passa o ponteiro à toa. */}
+      {podeArrastar && (
+        <Alca
+          responder={criarResponder(w.chave)}
+          ativo={arrastando === w.chave}
+          topo={w.alcaTopo}
+          visivel={sobreVoo === w.chave || arrastando === w.chave}
+        />
       )}
     </View>
   );
@@ -189,10 +209,12 @@ function Alca({
   responder,
   ativo,
   topo = spacing.lg,
+  visivel,
 }: {
   responder: ReturnType<typeof PanResponder.create>;
   ativo: boolean;
   topo?: number;
+  visivel: boolean;
 }) {
   return (
     <View
@@ -200,7 +222,13 @@ function Alca({
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel="Arrastar para reordenar. Também é possível reordenar em Personalizar Início."
-      style={[styles.alca, { top: topo }, ativo && styles.alcaAtiva, { cursor: ativo ? 'grabbing' : 'grab' } as any]}
+      style={[
+        styles.alca,
+        { top: topo },
+        ativo && styles.alcaAtiva,
+        !visivel && styles.alcaOculta,
+        { cursor: ativo ? 'grabbing' : 'grab' } as any,
+      ]}
     >
       <Ionicons name="reorder-two-outline" size={16} color={ativo ? theme.paper : theme.inkFaint} />
     </View>
@@ -239,4 +267,10 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   alcaAtiva: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
+  /* Invisível, mas ainda focável. `pointerEvents: 'none'` é obrigatório junto:
+     um elemento com opacidade zero continua interceptando clique, e a alça
+     mora no canto superior direito do card, exatamente onde vivem o "Ver
+     todos" e o "+ Definir". Sem isso ela roubaria o clique deles. O ponteiro
+     entrando no card já a torna visível antes de qualquer clique valer. */
+  alcaOculta: { opacity: 0, pointerEvents: 'none' },
 });

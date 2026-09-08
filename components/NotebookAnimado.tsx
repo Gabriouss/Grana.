@@ -11,11 +11,12 @@ const CANVAS_ASPECT = CANVAS_W / CANVAS_H;
 
 /**
  * Fundo animado do herói largo, montado a partir de 3 camadas soltas
- * (`public/notebook/bg.png`, `sombra.png`, `notebook.png` — exportadas pelo
- * autor a partir do mesmo render 3D usado no vídeo de referência) em vez de
- * um vídeo. PNG é sem perdas (o vídeo, mesmo em CRF baixo, sempre recomprime
- * pixel por pixel a cada frame); aqui a imagem do notebook nunca perde
- * nitidez, e o "flutuar" é simulado em CSS puro sobre uma imagem parada — só
+ * (`public/notebook/bg-opacidade.webp`, `sombra.webp`, `notebook.webp` —
+ * exportadas pelo autor a partir do mesmo render 3D usado no vídeo de
+ * referência) em vez de um vídeo. WebP sem perdas (o vídeo, mesmo em CRF
+ * baixo, sempre recomprime pixel por pixel a cada frame); aqui a imagem do
+ * notebook nunca perde nitidez, e o "flutuar" é simulado em CSS puro sobre
+ * uma imagem parada — só
  * `transform`/`opacity` animam (a regra de ouro de performance: essas duas
  * propriedades não disparam layout nem paint, rodam inteiras na GPU).
  *

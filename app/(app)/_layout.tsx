@@ -7,7 +7,7 @@ import TabBlurTarget, { type RegisterTabBlur, type TabBlurRef } from '@/componen
 import TabBarBlur from '@/components/TabBarBlur';
 import CenaAnimada from '@/components/CenaAnimada';
 import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
-import { theme, spacing, sombras } from '@/lib/theme';
+import { theme, spacing, sombras, menta } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(175,255,227,0.20)',
+    borderColor: menta(0.2),
     overflow: 'hidden',
   },
   /* 0.55 em vez dos 0.65 antigos: o suficiente pra manter o contraste do ícone

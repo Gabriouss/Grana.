@@ -64,6 +64,28 @@ export const colunaLeitura = { width: '100%', maxWidth: 720, alignSelf: 'center'
 export const colunaConteudo = { width: '100%', maxWidth: LARGURA_MAXIMA_CONTEUDO, alignSelf: 'center' } as const;
 
 /**
+ * Coluna de LISTA cronológica: extrato de lançamentos e boletos do mês.
+ *
+ * `colunaConteudo` (1440px) é o teto certo para uma GRADE — a Início espalha
+ * cards por ela, a Crédito enfileira cartões, a Desafios monta painéis. Numa
+ * lista de linhas "descrição à esquerda, valor à direita" ele produz o
+ * contrário: num monitor de 1440 a descrição e o valor da MESMA linha ficam a
+ * um metro de olho um do outro, e associar os dois vira trabalho — o problema
+ * clássico da tabela larga demais, que a diagramação de jornal resolve há um
+ * século com coluna estreita.
+ *
+ * Não vira grade de duas colunas (`numColumns`) de propósito, apesar de a
+ * auditoria de 08/09/2026 ter sugerido isso: extrato se lê na ordem das datas,
+ * e duas colunas obrigam o olho a descer, voltar ao topo e descer de novo,
+ * perdendo justamente a ordem que dá sentido à lista. Os aplicativos de banco
+ * no desktop mantêm uma coluna só, estreita e centralizada, pelo mesmo motivo.
+ *
+ * 900px cabe folgado a linha mais larga do app (descrição longa + chip de
+ * categoria + valor) sem que sobre vão morto no meio dela.
+ */
+export const colunaLista = { width: '100%', maxWidth: 900, alignSelf: 'center' } as const;
+
+/**
  * Controles que no celular ocupam a linha inteira porque a linha é estreita —
  * abas segmentadas, filtros, seletores. Numa tela larga essa mesma regra
  * espalha três botões por 1400px, e o alvo de clique vira uma faixa

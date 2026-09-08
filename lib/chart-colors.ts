@@ -1,4 +1,5 @@
 import type { PieSlice } from '@/components/PieChart';
+import { CATEGORIES } from '@/lib/types';
 
 /**
  * Cores de categoria dos gráficos, e o agrupamento das fatias pequenas.
@@ -30,32 +31,24 @@ import type { PieSlice } from '@/components/PieChart';
    O que compensa isso é a legenda: ela lista TODAS as fatias com nome e
    porcentagem, então nenhuma informação do gráfico depende apenas da cor.
    Essa é a condição para a paleta pastel poder ficar. */
-const PALETA = [
-  '#bb6b60', // Alimentação
-  '#93739e', // Moradia
-  '#6b9dc2', // Transporte
-  '#c66f8e', // Lazer
-  '#74a17c', // Saúde
-  '#d3b869', // Assinaturas
-  '#4f9483', // Salário
-  '#c1a24c', // Investimentos
-];
+const CORES_FIXAS = CATEGORIES.filter((c) => c.name !== 'Outros');
+
+/* Derivado de `CATEGORIES`, não copiado dela.
+   O comentário acima já dizia "exatamente as de CATEGORIES" desde que o
+   módulo existe, e mesmo assim eram duas listas de oito hexes em arquivos
+   diferentes, mantidas em sincronia só por boa vontade: mudar a cor de uma
+   categoria em `lib/types.ts` repintava o chip e a etiqueta e deixava o
+   gráfico com a cor antiga, sem erro em lugar nenhum. Agora não há como. */
+const PALETA = CORES_FIXAS.map((c) => c.color);
 
 /* Cinza para "Outros": é o balde do que não tem identidade própria, e ler
    como neutro aqui é o comportamento desejado. */
-const NEUTRO = '#8b9198';
+const NEUTRO = CATEGORIES.find((c) => c.name === 'Outros')!.color;
 
 /** Cada categoria fixa do app ocupa o slot da própria cor de marca. */
-const SLOT_FIXO: Record<string, number> = {
-  'Alimentação': 0,
-  'Moradia': 1,
-  'Transporte': 2,
-  'Lazer': 3,
-  'Saúde': 4,
-  'Assinaturas': 5,
-  'Salário': 6,
-  'Investimentos': 7,
-};
+const SLOT_FIXO: Record<string, number> = Object.fromEntries(
+  CORES_FIXAS.map((c, i) => [c.name, i])
+);
 
 /** Hash estável: a mesma categoria personalizada cai sempre no mesmo slot. */
 function hashSlot(nome: string): number {

@@ -17,7 +17,7 @@ import {
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
-import { colunaConteudo } from '@/lib/breakpoints';
+import { colunaLista } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -363,6 +363,7 @@ export default function ContasScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <ScreenHeader
+        coluna={colunaLista}
         eyebrow="Pagamentos"
         title="Contas a pagar"
         right={
@@ -382,7 +383,7 @@ export default function ContasScreen() {
 
       {/* Resumo e seletor de mês ficam ABAIXO da borda do cabeçalho, não
           dentro dele — mesmo arranjo de Crédito, que é o padrão das telas. */}
-      <View style={[styles.filtrosWrap, colunaConteudo]}>
+      <View style={[styles.filtrosWrap, colunaLista]}>
         <View style={styles.subtitleRow}>
           <PrivacyValue>
             <Text style={styles.subtitle}>{`R$ ${formatMoney(openTotal)}`}</Text>
@@ -406,7 +407,7 @@ export default function ContasScreen() {
         <FlatList
           data={monthBills}
           keyExtractor={(b) => b.id}
-          contentContainerStyle={[styles.listContent, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
+          contentContainerStyle={[styles.listContent, colunaLista, { paddingBottom: paddingConteudoComFab }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma conta vencendo neste mês. Toque no botão "+" para registrar.</Text>}
           renderItem={({ item }) => {

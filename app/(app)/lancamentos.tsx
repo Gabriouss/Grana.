@@ -17,7 +17,7 @@ import {
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
-import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
+import { colunaLista, useBreakpoint } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -537,6 +537,7 @@ export default function LancamentosScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <ScreenHeader
+        coluna={colunaLista}
         eyebrow="Movimentações"
         title="Lançamentos"
         right={
@@ -588,7 +589,7 @@ export default function LancamentosScreen() {
       {/* Filtros, resumo e seletor de mês ficam ABAIXO da borda do cabeçalho,
           não dentro dele. O cabeçalho é só eyebrow + título + ações — mesmo
           arranjo de Crédito, que é o padrão das telas. */}
-      <View style={[styles.filtrosWrap, colunaConteudo]}>
+      <View style={[styles.filtrosWrap, colunaLista]}>
         {(offline || pendingCount > 0) && (
           <View style={styles.offlineBanner}>
             <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
@@ -704,7 +705,7 @@ export default function LancamentosScreen() {
         <FlatList
           data={visible}
           keyExtractor={(t) => t.id}
-          contentContainerStyle={[styles.listContent, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
+          contentContainerStyle={[styles.listContent, colunaLista, { paddingBottom: paddingConteudoComFab }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>

@@ -4,7 +4,7 @@ import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { ESPACO_ALCA } from './WidgetGrid';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget, menta } from '@/lib/theme';
 import { formatMoney, formatDateLabel, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { calcularLevelState } from '@/lib/gamification-infinite';
 import { LIMITS } from '@/lib/limits';
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     flexShrink: 1,
-    backgroundColor: 'rgba(175,255,227,0.08)',
+    backgroundColor: menta(0.08),
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: radius.pill,

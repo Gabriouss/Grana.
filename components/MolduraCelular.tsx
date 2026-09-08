@@ -160,7 +160,7 @@ export default function MolduraCelular({ src, legenda, quadros, largura = 280, i
           width: largura + espessuraBezel * 2,
           height: altura + espessuraBezel * 2,
           borderRadius: largura * 0.16,
-          backgroundColor: '#02141a',
+          backgroundColor: theme.mockupTela,
           borderWidth: 1,
           borderColor: theme.ruleStrong,
           padding: espessuraBezel,
@@ -257,7 +257,7 @@ export default function MolduraCelular({ src, legenda, quadros, largura = 280, i
           height: espessuraBezel * 0.9,
           borderBottomLeftRadius: radius.md,
           borderBottomRightRadius: radius.md,
-          backgroundColor: '#02141a',
+          backgroundColor: theme.mockupTela,
         }, { pointerEvents: 'none' }]}
       />
       {/* Home indicator — traço neutro, nunca uma cor semântica. */}

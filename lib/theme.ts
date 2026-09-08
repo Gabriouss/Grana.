@@ -4,6 +4,15 @@ import { Platform, type TextStyle } from 'react-native';
    sincronização com o design system, e lib/theme.classic-dark-backup.ts
    guarda o tema escuro grayscale anterior a ela. Para reverter, copie o
    objeto `theme` do arquivo desejado pra cá. */
+/* `accent2` (#aeffe3 = 174,255,227) com alfa.
+ *
+ * Existia como literal em nove lugares, e em SETE deles escrito
+ * `rgba(175,...)` — um dígito a mais que ninguém enxerga na tela e que mesmo
+ * assim significava que a cor não vinha de lugar nenhum: era digitada de novo
+ * a cada uso, e uma delas errou. A função remove a possibilidade: o canal RGB
+ * fica escrito uma vez só, e o call site escolhe apenas o alfa. */
+export const menta = (alfa: number) => `rgba(174,255,227,${alfa})`;
+
 export const theme = {
   paper: '#052229',
   paperRaised: '#0b2d35',
@@ -11,8 +20,8 @@ export const theme = {
   inkSoft: '#a6d9ce',
   // ~5.6:1 contra paperRaised e ~6.4:1 contra paper — dentro do AA (4.5:1).
   inkFaint: '#7fa9a0',
-  rule: 'rgba(175,255,227,0.14)',
-  ruleStrong: 'rgba(175,255,227,0.26)',
+  rule: menta(0.14),
+  ruleStrong: menta(0.26),
   up: '#74e291',
   down: '#00a6ca',
   accent: '#1fa98d',
@@ -24,7 +33,7 @@ export const theme = {
      quando a própria seção já era paperRaised, e pesado demais quando não
      era. Para botões, o padrão continua sendo `ruleStrong` na borda ou
      opacidade — hover não precisa ser fundo em tudo. */
-  hover: 'rgba(174,255,227,0.07)',
+  hover: menta(0.07),
   /* Superfície do que ainda NÃO foi preenchido ou ativado: o trilho vazio de
      uma barra de progresso/limite, o ícone de uma conquista bloqueada, o
      widget desligado no personalizador. Mesmo valor de `hover` de propósito —
@@ -35,7 +44,7 @@ export const theme = {
      lugares escreviam `rgba(255,255,255,0.0X)` cru, cinza neutro no meio de
      uma paleta que não tem cinza neutro — três alfas diferentes, nenhum
      deles combinando com o outro. */
-  superficieInativa: 'rgba(174,255,227,0.07)',
+  superficieInativa: menta(0.07),
   /* Cor de perigo/atenção — excluir conta, fatura atrasada, erro de
      reautenticação. Já era usada assim em `app/(app)/perfil.tsx` e
      `app/(app)/credito.tsx`, só nunca tinha virado token: cada tela
@@ -55,6 +64,12 @@ export const theme = {
      os chips que usavam o véu de hover pra marcar escolha ficavam
      indistinguíveis de um chip qualquer sob o cursor. */
   paperSelected: '#0c353e',
+  /* O preto da TELA dentro das molduras de celular e navegador da landing —
+     mais fundo que `paper` de propósito, pra a moldura ler como vidro
+     desligado e o conteúdo do mockup se destacar dela. Estava como hex cru em
+     três lugares de dois arquivos, que é o número exato a partir do qual um
+     valor começa a derivar. */
+  mockupTela: '#02141a',
   /* Par do seletor entrada/saída (os botões "Entrada"/"Saída" da Início e de
      Lançamentos, e "Guardar"/"Resgatar" do cofrinho). Não são `up`/`down`:
      aqueles pintam o VALOR de um lançamento já existente, estes pintam o

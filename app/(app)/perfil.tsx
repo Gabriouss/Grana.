@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { useRouter } from 'expo-router';
+import HeaderAction from '@/components/HeaderAction';
 import {
   definirEstado as definirEstadoWidgetVoz,
   estadoAtual as estadoWidgetVoz,
@@ -561,6 +562,23 @@ export default function PerfilScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
       <ScrollView style={styles.container} contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}>
+        {/* Saída explícita.
+            O Perfil é registrado com `href: null` em `_layout.tsx`, então ele
+            não aparece na barra de abas: entra-se por um `router.push` (avatar
+            da Início, item da lateral no desktop) e, sendo tecnicamente uma
+            aba, o gesto de arrastar da borda não funciona ali. Sem este botão
+            a única saída era tocar uma aba lá embaixo, que não é "voltar" —
+            é começar outra coisa. `canGoBack` cobre o caso de o Perfil ter
+            sido aberto por link direto, quando não há histórico para desfazer. */}
+        <View style={styles.voltarLinha}>
+          <HeaderAction
+            icon="arrow-back"
+            label="Voltar"
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            accessibilityLabel="Voltar para a tela anterior"
+          />
+        </View>
+
         {/* Header com Avatar */}
         <View style={styles.header}>
           <AppPressable
@@ -1239,6 +1257,9 @@ const styles = StyleSheet.create({
      trocando de aba: o corpo deslocava. É exatamente o sintoma que o token
      nasceu pra matar. */
   content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
+  /* `alignItems: flex-start` para a pílula não esticar até a largura toda:
+     ela é um botão, não uma barra. */
+  voltarLinha: { alignItems: 'flex-start', marginTop: spacing.sm },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
   avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: theme.paperRaised, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.rule },
   avatarText: { color: theme.ink, fontSize: type.destaque,

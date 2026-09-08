@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { corDaCategoria } from '@/lib/chart-colors';
 
 /**
  * Miniaturas que ilustram cada card da dobra "Tudo que o Grana. faz".
@@ -100,9 +101,9 @@ function conteudo(variante: VarianteMock): React.ReactNode {
         <Text style={styles.rotulo}>Gastos deste mês</Text>
         <Text style={styles.valorResumo}>R$ 1.210</Text>
       </View>
-      <CategoriaResumo nome="Alimentação" valor="R$ 620" pct={62} cor="#bb6b60" />
-      <CategoriaResumo nome="Casa" valor="R$ 380" pct={38} cor="#6b9dc2" />
-      <CategoriaResumo nome="Lazer" valor="R$ 210" pct={21} cor="#d3b869" />
+      <CategoriaResumo nome="Alimentação" valor="R$ 620" pct={62} cor={corDaCategoria('Alimentação')} />
+      <CategoriaResumo nome="Moradia" valor="R$ 380" pct={38} cor={corDaCategoria('Moradia')} />
+      <CategoriaResumo nome="Lazer" valor="R$ 210" pct={21} cor={corDaCategoria('Lazer')} />
     </View>
   ),
 

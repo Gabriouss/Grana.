@@ -132,7 +132,7 @@ export default function MolduraNavegador({ src, legenda, largura = 520, proporca
           alignItems: 'center',
           paddingHorizontal: spacing.md,
           gap: spacing.sm,
-          backgroundColor: '#02141a',
+          backgroundColor: theme.mockupTela,
           borderBottomWidth: 1,
           borderBottomColor: theme.rule,
         }}

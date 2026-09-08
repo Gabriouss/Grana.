@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { fonts, spacing, theme, type, textStyles } from '@/lib/theme';
+import { colunaConteudo } from '@/lib/breakpoints';
 
 /**
  * Cabeçalho padrão das telas principais. Antes cada tela tinha seu próprio
@@ -16,6 +17,7 @@ export default function ScreenHeader({
   title,
   right,
   children,
+  coluna = colunaConteudo,
 }: {
   left?: ReactNode;
   eyebrow: string;
@@ -24,31 +26,44 @@ export default function ScreenHeader({
   title: string;
   right?: ReactNode;
   children?: ReactNode;
+  /* Teto de largura do CONTEÚDO do cabeçalho. A borda de baixo continua
+     atravessando a tela inteira — ela separa o cabeçalho do corpo, e uma linha
+     que para no meio do nada leria como recorte. O que se alinha com a coluna
+     de baixo é o título e as ações.
+
+     Sem isso, num monitor largo o título ficava colado na borda esquerda da
+     janela enquanto a lista começava centralizada bem mais para dentro: duas
+     réguas diferentes na mesma tela. O padrão `colunaConteudo` serve às telas
+     de grade; Lançamentos e Boletos passam `colunaLista`, mais estreita, e é
+     justamente por isso que este prop existe. */
+  coluna?: StyleProp<ViewStyle>;
 }) {
   return (
     <View style={styles.header}>
-      <View style={styles.row}>
-        <View style={styles.leftCol}>
-          {left}
-          <View style={styles.texts}>
-            <View style={styles.eyebrowRow}>
-              <Text style={styles.eyebrow}>{eyebrow}</Text>
-              {eyebrowBadges}
+      <View style={[styles.interno, coluna]}>
+        <View style={styles.row}>
+          <View style={styles.leftCol}>
+            {left}
+            <View style={styles.texts}>
+              <View style={styles.eyebrowRow}>
+                <Text style={styles.eyebrow}>{eyebrow}</Text>
+                {eyebrowBadges}
+              </View>
+              {/* Duas linhas, não uma. Com o teto em 1, "Lançamentos" virava
+                  "Lança..." assim que a direita do cabeçalho enchia — a palavra
+                  era mutilada mesmo havendo altura de sobra logo abaixo. Com 2,
+                  o título continua numa linha só onde cabe (nada muda em tela
+                  folgada) e QUEBRA em vez de truncar onde aperta. Reticências
+                  voltam a ser o último recurso, não o primeiro. */}
+              <Text style={styles.title} numberOfLines={2}>
+                {title}
+              </Text>
             </View>
-            {/* Duas linhas, não uma. Com o teto em 1, "Lançamentos" virava
-                "Lança..." assim que a direita do cabeçalho enchia — a palavra
-                era mutilada mesmo havendo altura de sobra logo abaixo. Com 2,
-                o título continua numa linha só onde cabe (nada muda em tela
-                folgada) e QUEBRA em vez de truncar onde aperta. Reticências
-                voltam a ser o último recurso, não o primeiro. */}
-            <Text style={styles.title} numberOfLines={2}>
-              {title}
-            </Text>
           </View>
+          {right ? <View style={styles.right}>{right}</View> : null}
         </View>
-        {right ? <View style={styles.right}>{right}</View> : null}
+        {children}
       </View>
-      {children}
     </View>
   );
 }
@@ -59,8 +74,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
-    gap: spacing.sm,
   },
+  interno: { gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   /* Regra dura, não negociável: o seletor de carteira e os botões de ação
      NUNCA encolhem e NUNCA saem da tela — só o título/saudação cede espaço,

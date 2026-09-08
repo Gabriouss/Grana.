@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
+import { menta } from '@/lib/theme';
 
 // Mesma grade nas 4 seções que a usam (FAQ, Reconhece isso, Inteligência
 // financeira, Preços) — uma versão anterior variava o desenho por seção
@@ -10,12 +11,12 @@ import { View } from 'react-native';
 // quase subliminar, e o brilho sob o cursor continua claramente mais forte
 // que ela sem voltar a competir com o conteúdo por cima.
 const IMAGEM_BASE =
-  'linear-gradient(rgba(175,255,227,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(175,255,227,0.05) 1px, transparent 1px)';
+  `linear-gradient(${menta(0.05)} 1px, transparent 1px), linear-gradient(90deg, ${menta(0.05)} 1px, transparent 1px)`;
 // MESMO desenho, só que mais forte — é essa cópia que o brilho do cursor
 // revela através da máscara circular, criando o efeito de "acender" a
 // textura por baixo do mouse.
 const IMAGEM_BRILHO =
-  'linear-gradient(rgba(175,255,227,0.32) 1px, transparent 1px), linear-gradient(90deg, rgba(175,255,227,0.32) 1px, transparent 1px)';
+  `linear-gradient(${menta(0.32)} 1px, transparent 1px), linear-gradient(90deg, ${menta(0.32)} 1px, transparent 1px)`;
 const TAMANHO = '32px 32px';
 // Máscara elíptica fixa que concentra a grade toda longe das bordas da
 // seção — `farthest-side`, não um raio em %, bate exatamente nas bordas
