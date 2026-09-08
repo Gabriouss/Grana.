@@ -169,8 +169,16 @@ export default function AppPressable({ style, onHoverIn, onHoverOut, onPressIn, 
      * é acionado por Enter e nunca por espaço. */
     const precisaDeEspaco = !rest.href && !!rest.onPress
       && (papel === 'checkbox' || papel === 'radio' || papel === 'switch');
+    /* O `disabled` é conferido AQUI porque este manipulador passa por fora do
+       Pressable: o react-native-web já ignora clique e toque num controle
+       desabilitado, mas quem chama `onPress` nesta linha somos nós, e nada
+       nesse caminho consulta o estado. Sem a guarda, o teclado aciona o que o
+       mouse recusa. As duas formas contam — a prop e o `accessibilityState`,
+       que é como um controle anuncia "indisponível" ao leitor de tela. */
+    const desabilitado = rest.disabled === true || rest.accessibilityState?.disabled === true;
     const aoTeclar = precisaDeEspaco
       ? (evento: any) => {
+          if (desabilitado) return;
           if (evento?.key !== ' ' && evento?.key !== 'Spacebar') return;
           evento.preventDefault?.();
           rest.onPress?.(evento);

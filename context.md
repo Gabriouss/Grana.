@@ -3432,3 +3432,57 @@ o roteiro e a verificação estão em `docs/PUSH_FCM_SETUP.md`.
 
 Quando a build sair, a versão precisa subir por `npm run build:preparar`
 (ainda está em 1.8.3, que é a build já instalada).
+
+## 08/09/2026 — alerta do GitHub sobre a chave do Firebase (resolvido, não é vazamento)
+
+O GitHub disparou "Secrets detected — Google API Key" apontando
+`google-services.json#L18`, commit `9b924ea`. **Não é vazamento, e não precisa
+de rotação.** Fica registrado com a verificação para ninguém reabrir a
+investigação a cada e-mail do scanner.
+
+O que foi conferido no repositório, não no registro:
+
+- O repositório é **público** (confirmado pela API do GitHub sem autenticação).
+- **Nenhum arquivo do código importa Firebase.** O `google-services.json` só é
+  lido pelo plugin do Gradle na hora de compilar o APK; o push sai por
+  `expo-notifications` → serviço da Expo → FCM.
+- O arquivo é mínimo: sem `oauth_client`, sem Firestore, sem Storage, sem
+  Firebase Auth. É FCM e nada mais. Dado do usuário vive no Supabase, atrás de
+  RLS e sessão — nada disso passa por essa chave.
+
+Por que a chave não é segredo: chave de API do Firebase para Android
+**identifica** o projeto, não **autoriza** acesso. Ela viaja dentro de todo APK
+distribuído e qualquer pessoa extrai com um descompactador — esconder é
+impossível por desenho, e a própria documentação do Google diz que pode ficar
+em arquivo de configuração versionado.
+
+O que de fato protege, e **foi confirmado pelo autor em 08/09/2026**: a chave
+está restrita no Google Cloud por pacote (`com.gabriouss.grana`) + SHA-1 do
+keystore do EAS. Sem a restrição o risco real não seria acesso a dado, seria
+consumo de cota/cobrança em outras APIs do mesmo projeto. Com ela, a chave só
+funciona a partir do app assinado.
+
+**Ação:** fechar o alerta no GitHub como "won't fix". Se o aviso voltar a
+incomodar, a alternativa é tirar o arquivo do git e injetá-lo pelo EAS no
+build — some o alerta, mas não aumenta a segurança (a chave continua dentro do
+APK) e acrescenta uma peça móvel ao build.
+
+## 08/09/2026 — guarda de teclado no AppPressable (defeito latente, sem vítima)
+
+A auditoria de 07/09 carimbou P1 em `AppPressable`: o `onKeyDown` que o projeto
+adiciona por fora do `Pressable` chamava `onPress` sem consultar `disabled`, ou
+seja, a barra de espaço acionava um controle que o mouse recusa.
+
+Verificado antes de corrigir: **o defeito é real no código, mas não era
+alcançável.** Os seis únicos lugares com papel `checkbox`/`radio`/`switch`
+(`sign-up`, `ColorGridPicker`, `GoalsCarousel`, `TransactionSheet`,
+`QrScannerModal`, `ToggleSwitch`) nunca recebem `disabled` — o `ToggleSwitch`
+nem expõe essa prop. As linhas do Perfil que a feature flag desabilita têm
+papel `button`, que não entra nessa condição. P1 superestimava: impacto atual
+zero.
+
+Corrigido mesmo assim, porque é armadilha para quem criar o primeiro switch
+desabilitado: a guarda confere `disabled` E `accessibilityState.disabled`,
+porque as duas formas anunciam "indisponível".
+
+`tsc --noEmit` limpo e `test:parser` 100% depois da mudança.
