@@ -1,5 +1,103 @@
 # Contexto do projeto — Grana.
 
+## Estado atual para venda — 08/09/2026
+
+### Resumo executivo
+
+O hardening de venda pública está implementado no código, documentado e
+publicado em `origin/main`. A parte de quota de IA também já está aplicada no
+Supabase de produção. Não há build Android nova nesta etapa: a última APK
+instalada continua sendo a 1.8.3, e qualquer nova build exige autorização
+explícita do autor.
+
+### O que foi implementado no código
+
+- Quota persistente e atômica por usuário/canal para o Granabô e lançamento por
+  voz, com janela por minuto e por dia; a quota em memória continua apenas como
+  defesa rápida.
+- Falha da RPC de quota retorna `503`/`limite_indisponivel` e não chama o
+  provedor externo; quota esgotada retorna `429` com mensagem amigável.
+- Sincronização de assinatura agora deixa recibo visível, preserva token
+  pendente e registra logs sem token, senha ou payload de pagamento.
+- Assinatura `past_due` não abre um segundo checkout: usa URL de gerenciamento
+  da Kiwify quando configurada ou orienta e-mail/suporte.
+- Política de privacidade, termos e exclusão de dados cobrem voz no app/widget,
+  push, Granabô/Gemini, memória e recibos técnicos.
+- CI passou a executar `test:ci`, testes de assinatura/quota e `deno check` das
+  Edge Functions alteradas.
+- Guardas do schema passaram a separar migrations históricas do baseline final;
+  a migration final de voz é comparada com `20260908000000_voice_wallets.sql`.
+- Documentação de handoff está em `documentation/`; a especificação está em
+  `docs/superpowers/specs/2026-09-08-hardening-venda-publica-design.md`.
+
+### Produção Supabase — aplicado e verificado
+
+Projeto: `cjnuzfbvfuauvlzfoutv` (`ACTIVE_HEALTHY`, região `sa-east-1`).
+
+- `supabase/migrations/20260908140000_ai_usage_quotas.sql` aplicada pela API
+  de gerenciamento.
+- `public.ai_usage_counters` existe com RLS habilitado.
+- `authenticated` pode executar a RPC, mas não tem `SELECT` direto na tabela.
+- `public.consumir_cota_ia(text)` existe como `security definer`, fixa o
+  `search_path` e usa o fuso `America/Sao_Paulo`.
+- Sonda sem JWT confirmou `42501`; nenhuma quota foi consumida nessa sonda.
+- `assistente-financeiro`: `ACTIVE`, versão 21, JWT obrigatório.
+- `processar-lancamento-voz`: `ACTIVE`, versão 5, JWT obrigatório.
+- A migration e as funções foram publicadas na ordem correta: banco → funções.
+- O PAT temporário fornecido pelo autor não foi salvo no repositório, em
+  variável persistente ou em documentação.
+
+### Verificação executada
+
+- `npx tsc --noEmit`: passou.
+- `deno check` de `ai-quota.ts`, `assistente-financeiro` e
+  `processar-lancamento-voz`: passou.
+- `test:voz`, `test:assistente-aprendizado`, `test:assistente-fatura`,
+  `test:blur`, `test:motion`: passaram.
+- `voice-fallback.cjs`, `voz-offline.cjs`, `widget-voz-cartoes.cjs`,
+  `assinatura-sync.cjs` e `ai-quota.cjs`: passaram.
+- Parser completo: 27/27 corpus TypeScript passaram, incluindo voz, WhatsApp,
+  carteiras, categorias, cartões, notificações, design system e flags.
+- Guardas do schema: 30/30 passaram.
+- Como o `npx tsx` local ficou bloqueado por permissão/rede, o corpus TypeScript
+  foi executado com o mesmo compilador TypeScript em memória e resolução do
+  alias `@/`; o CI continua usando os scripts oficiais do `package.json`.
+
+### Commits e sincronização
+
+- `c6579a0` — hardening para venda pública, quota, CI e documentação.
+- `2e8893f` — registro deste deploy no `context.md`.
+- `HEAD` e `origin/main` estão em `2e8893f`.
+- Permanecem fora deste trabalho, sem alteração intencional: `components/RevealOnScroll.tsx`,
+  `supabase/migrations/20260905004109_voice_operations.sql` e
+  `.tmp.driveupload/`.
+
+### Pendências antes de vender
+
+Estas são validações operacionais, não novas implementações estruturais:
+
+1. Com uma conta autenticada, confirmar uma chamada permitida de
+   `consumir_cota_ia('assistente')` e `consumir_cota_ia('voz')` pelo app/fluxo
+   real; a rejeição sem JWT já foi comprovada.
+2. Na Kiwify, confirmar o header `x-kiwify-token`, testar compra nova, vínculo
+   por e-mail/token, renovação, cancelamento, reembolso e chargeback. Manter
+   `app_backend_config.enforce_subscriptions = false` até o ciclo passar.
+3. Fazer exclusão de conta com uma conta descartável e verificar Auth, dados,
+   avatar e vínculo de WhatsApp removidos.
+4. Autorizar a próxima build e preparar a versão somente com
+   `npm run build:preparar -- "<mensagem revisada>"`; não subir versão ou
+   mensagem manualmente. Nenhum build foi disparado nesta sessão.
+5. No APK novo, testar em Android real: voz no app/widget, carteiras pessoais
+   e empresa, nomes com/sem acento, múltiplos cartões, parcelado, recorrente,
+   boleto, categorias personalizadas, push e notificações interativas.
+6. Publicar o APK como `grana.apk`, conferir
+   `/downloads/grana-latest.apk`, configurar variáveis Vercel/EAS e validar os
+   e-mails pós-compra da Kiwify com links separados de download e ativação.
+7. Configurar `EXPO_PUBLIC_KIWIFY_BILLING_URL` somente se existir um link real
+   de gerenciamento da Kiwify; sem ele o comportamento atual é seguro e não
+   inicia uma nova compra para `past_due`.
+8. Fazer revisão humana final dos textos legais antes da publicação comercial.
+
 ## 08/09/2026 — entrega direta do APK
 
 Foi implementado o fluxo curto de distribuição: rota pública `/baixar`, link
