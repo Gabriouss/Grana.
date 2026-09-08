@@ -120,10 +120,9 @@ export default function TransactionSheet({
   const ehBoleto = modo === 'boleto';
   const cartoesDaCarteira = ehCredito ? cartoes.filter((card) => card.wallet_id === walletId) : cartoes;
 
-  /* Parcelar só faz sentido criando uma saída: cada parcela é uma transação
-     própria, então editar uma delas edita aquela linha, não o parcelamento.
-     Boleto não parcela: quem paga em parcelas cadastra uma conta por mês. */
-  const podeParcelar = !editando && !ehBoleto && type === 'out' && !recurring;
+  /* Parcelamento só existe no fluxo de compra no crédito. Pix, débito e boleto
+     entram como um único lançamento; editar uma linha também nunca cria série. */
+  const podeParcelar = modo === 'credito' && !editando && type === 'out' && !recurring;
 
   const titulo = editando
     ? ehBoleto
@@ -436,7 +435,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   inputLabel: { fontFamily: fonts.regular, fontSize: type.legenda, color: theme.inkFaint, marginTop: spacing.xs },
   banksRow: { flexDirection: 'row', gap: 6, paddingVertical: 4 },
   bankChip: {
@@ -497,7 +496,7 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   stepperVal: { color: theme.ink, fontSize: type.apoio, minWidth: 26, textAlign: 'center', fontFamily: fonts.regular },
-  installmentHint: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light },
+  installmentHint: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
   formError: { color: theme.danger, fontSize: type.legenda, fontFamily: fonts.regular, marginTop: spacing.xs },
   saveBtn: {
     backgroundColor: theme.ink,
