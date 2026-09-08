@@ -13,9 +13,11 @@ descrição e usa a carteira ativa/padrão quando ela não é dita. O widget rec
 carteira desconhecida e conflito entre o cartão e a carteira. O contrato da
 operação de voz passou a exigir `wallet_id`; a migration
 `20260908000000_voice_wallets.sql` valida propriedade e grava a carteira em
-transações, parcelas e boletos. **A migration ainda não foi aplicada em
-produção nesta sessão**; uma APK com o cliente novo não deve ser distribuída
-antes disso.
+transações, parcelas e boletos.
+
+A migration foi aplicada em produção em 08/09/2026 pela Management API e
+verificada pela definição efetiva da função (`wallet_enabled=true` e
+`legacy_fallback=true`). O token temporário fornecido não foi persistido.
 
 A função mantém compatibilidade com APKs anteriores: quando o payload antigo
 não traz `wallet_id`, resolve a carteira padrão do usuário no servidor. Assim
