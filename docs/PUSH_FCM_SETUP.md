@@ -1,21 +1,40 @@
 # Ligar o push remoto (FCM) do Grana.
 
-Estado em 07/09/2026: **o push remoto nunca funcionou**. Todo o resto do
-caminho está pronto e rodando — o cron dispara a cada 5 minutos, a Edge
-Function `enviar-lembretes-habito` responde, as tabelas `push_tokens` e
-`push_habit_deliveries` existem com RLS e as colunas das duas janelas
-(`almoco_ativo`, `janela`) aplicadas. O que falta é só a configuração do
-Firebase, sem a qual `getExpoPushTokenAsync` sempre falha no Android e
-nenhum aparelho chega a se cadastrar.
+> **Estado em 07/09/2026 (fim do dia): a configuração está FEITA e
+> verificada. Falta apenas uma build nova.** O autor pediu para segurar a
+> build e soltar junto com as próximas melhorias, para não atualizar tantas
+> vezes em pouco tempo. Enquanto essa build não sair, `push_tokens` continua
+> vazia — isso é esperado, **não é mais um bug a investigar**.
+>
+> O que foi feito e conferido:
+> - Projeto Firebase `granaponto` criado, app Android registrado com o pacote
+>   `com.gabriouss.grana`.
+> - `google-services.json` no repositório, e a chave de API dele restringida
+>   no Google Cloud Console por pacote + SHA-1 do keystore do EAS
+>   (`13:F8:38:A1:0E:86:72:04:1C:B9:F4:60:A6:70:20:30:DF:E5:1F:A7`).
+> - `app.json` aponta `android.googleServicesFile`.
+> - Chave de conta de serviço enviada ao EAS via `eas credentials` e
+>   **verificada por consulta à API**: `googleServiceAccountKeyForFcmV1` saiu
+>   de `null` para `firebase-adminsdk-fbsvc@granaponto.iam.gserviceaccount.com`
+>   (projeto `granaponto`). A chave privada NÃO está no repositório.
+>
+> O que falta, em ordem: disparar uma build (o `google-services.json` só entra
+> no APK em tempo de compilação), abrir o app uma vez no aparelho, e então
+> rodar a verificação da seção "Depois" abaixo.
 
-Sintoma exato enquanto isso não for feito: `push_tokens` fica vazia,
-`push_habit_deliveries` não recebe uma linha sequer, e os lembretes de almoço
-e noite vivem apenas do agendamento local do aparelho.
+## Contexto histórico: por que o push nunca funcionou até aqui
 
-## O que só o autor pode fazer
+Todo o backend já estava pronto e rodando há dias — o cron dispara a cada 5
+minutos, a Edge Function `enviar-lembretes-habito` responde, as tabelas
+`push_tokens` e `push_habit_deliveries` existem com RLS e as colunas das duas
+janelas (`almoco_ativo`, `janela`) aplicadas. Faltava só a configuração do
+Firebase, sem a qual `getExpoPushTokenAsync` sempre falhava no Android e
+nenhum aparelho chegava a se cadastrar.
 
-Estes três passos dependem da conta Google e da conta Expo — não há como
-fazê-los por código.
+## Os passos que dependiam da conta Google e da Expo (já executados)
+
+Ficam registrados porque serão necessários de novo se o projeto Firebase for
+recriado, ou se alguém precisar repetir isso em outro ambiente.
 
 ### 1. Criar o app Android no Firebase
 

@@ -3399,3 +3399,36 @@ deixou de cobrir a barra de status.
 
 **Continua fora do ar até alguém mexer no Firebase/EAS**: o push remoto. Ver
 a seção acima sobre `google-services.json` e credencial FCM v1.
+
+## 07/09/2026 (fim do dia) — FCM configurado e verificado; build segurada a pedido do autor
+
+O push remoto deixou de estar bloqueado. A configuração que faltava desde
+04/09 foi feita nesta sessão, com o autor conduzindo as partes que dependiam
+da conta Google:
+
+- Projeto Firebase `granaponto`, app Android registrado com o pacote
+  `com.gabriouss.grana`.
+- `google-services.json` commitado (`9b924ea`). A chave de API dele não é
+  segredo (viaja dentro de todo APK), mas como o repositório é público ela
+  foi **restringida** no Google Cloud Console por pacote + SHA-1 do keystore
+  do EAS (`13:F8:38:A1:0E:86:72:04:1C:B9:F4:60:A6:70:20:30:DF:E5:1F:A7`,
+  obtido por consulta à API do EAS, não chutado).
+- Chave de conta de serviço enviada ao EAS via `eas credentials` (a CLI só
+  funciona em terminal interativo de verdade — não dá para automatizar daqui,
+  o autor rodou). **Verificada por consulta à API**:
+  `googleServiceAccountKeyForFcmV1` saiu de `null` para
+  `firebase-adminsdk-fbsvc@granaponto.iam.gserviceaccount.com`. A chave
+  privada nunca entrou no repositório, e as cópias locais foram apagadas.
+
+**Nenhuma build foi disparada.** O autor pediu para segurar e soltar junto
+com as próximas melhorias: "preciso ver se vai surgir alguma melhoria antes
+para soltar tudo junto, já atualizamos muitas vezes em pouco tempo".
+
+**Consequência importante para a próxima sessão:** `push_tokens` continua
+vazia, e isso é **esperado**, não é bug. O `google-services.json` só entra no
+APK em tempo de compilação, então nada de push funciona até sair uma build
+nova e o app ser aberto uma vez no aparelho. Não refaça o diagnóstico —
+o roteiro e a verificação estão em `docs/PUSH_FCM_SETUP.md`.
+
+Quando a build sair, a versão precisa subir por `npm run build:preparar`
+(ainda está em 1.8.3, que é a build já instalada).
