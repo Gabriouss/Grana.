@@ -3870,6 +3870,21 @@ ser gravados sem carteira por causa do seletor agregado.
 - Não foi disparado build Android; a mudança de código só entra no APK após o
   fluxo de build autorizado e preparado pelo script de release.
 
+## 08/09/2026 — carteiras de crédito e boletos da conta pessoal
+
+Após a correção dos lançamentos, foi feita uma segunda leitura autenticada da
+mesma conta para os registros que também possuem `wallet_id`:
+
+- 1 cartão de crédito estava sem carteira e foi vinculado à `Principal`.
+- 15 boletos/contas estavam sem carteira e foram vinculados à `Principal`.
+- Não havia pagamentos de fatura em `credit_card_invoices` sem carteira.
+- A verificação posterior retornou zero cartões, boletos ou pagamentos de fatura
+  sem carteira.
+
+Nenhum valor, limite, vencimento, status ou lançamento foi alterado; somente a
+carteira de destino foi preenchida. A sessão usada para a correção foi encerrada
+ao final. Não foi disparado build.
+
 ## 08/09/2026 — auditoria impeccable: correções P0/P1 e a descoberta do `+html.tsx` inerte
 
 Relatório completo em `docs/IMPECCABLE_AUDIT_APP_WEB_20260908.md` (11/20 web,
