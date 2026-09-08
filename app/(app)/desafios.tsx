@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   fetchBills,
   fetchBudgets,
@@ -148,7 +148,7 @@ export default function DesafiosScreen() {
   if (!ligado('desafios')) {
     const f = flag('desafios');
     return (
-      <SafeAreaView edges={['top']} style={styles.screen}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
         <View style={styles.center}>
           <Text style={styles.emptyTitulo}>{f?.titulo ?? 'Desafios indisponíveis'}</Text>
           <Text style={styles.emptyTexto}>
@@ -160,10 +160,13 @@ export default function DesafiosScreen() {
   }
 
   if (loading || !state) {
+    /* Mesmas bordas seguras da tela pronta: como `View` puro, o indicador
+       aparecia sob a barra de status até os dados chegarem — a única tela do
+       app cujo carregamento saía da área segura. */
     return (
-      <View style={styles.center}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.center}>
         <ActivityIndicator color={theme.ink} />
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -182,7 +185,7 @@ export default function DesafiosScreen() {
 
 
   return (
-    <SafeAreaView edges={['top']} style={styles.screen}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <ScreenHeader
         eyebrow="Saúde & consistência"
         title="Desafios"

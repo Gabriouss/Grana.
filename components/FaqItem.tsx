@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 import { EASE_REVEAL, useReducedMotion } from '@/lib/motion';

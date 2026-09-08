@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { CORTES, colunaConteudo } from '@/lib/breakpoints';
 import { fonts as uiFonts, radius, sombraCard, spacing, theme, type } from '@/lib/theme';
 import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';

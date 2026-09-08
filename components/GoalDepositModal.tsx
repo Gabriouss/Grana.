@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View, StyleSheet } from 'react-native';
 import AppModal from './AppModal';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';

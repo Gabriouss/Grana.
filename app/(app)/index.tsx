@@ -20,7 +20,7 @@ import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals } from '@/lib/goals';
@@ -805,7 +805,7 @@ export default function InicioScreen() {
         color: billCatColor,
         due_date: billDueDate,
         recurring: billRecurring,
-        wallet_id: activeWallet?.id ?? null,
+        wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
       });
       setBillSheetOpen(false);
       triggerToast('Boleto / Conta salva');
@@ -905,7 +905,10 @@ export default function InicioScreen() {
       triggerToast('Meta criada (exemplo)');
       return;
     }
-    const novaMeta = await createGoal({ ...input, wallet_id: activeWallet?.id ?? null });
+    const novaMeta = await createGoal({
+      ...input,
+      wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
+    });
     setGoals((prev) => [...prev, novaMeta]);
     triggerToast('Meta criada');
   }
@@ -1281,7 +1284,7 @@ export default function InicioScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
       {/* Fora do ScrollView de propósito: a marca fica fixa na tela em vez de
           rolar junto com o conteúdo, para reforçar a identidade visual. */}
       <ScreenHeader

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
 import { fonts, radius, spacing, theme, type } from '@/lib/theme';
 import type { Badge } from '@/lib/gamification';

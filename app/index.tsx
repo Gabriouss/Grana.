@@ -3,7 +3,7 @@ import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, 
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, spacing, radius, fonts as uiFonts, type, sombraCard } from '@/lib/theme';
 import { CORTES, colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';

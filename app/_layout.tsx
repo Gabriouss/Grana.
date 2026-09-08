@@ -13,7 +13,7 @@ import { WidgetPrivacyProvider } from '@/lib/widget-privacy-context';
 import { DemoProvider } from '@/lib/demo-context';
 import { FlagsProvider } from '@/lib/feature-flags';
 import { theme } from '@/lib/theme';
-import { instalarAnelDeFoco } from '@/lib/foco-web';
+import { instalarAnelDeFoco, instalarDocumentoWeb } from '@/lib/foco-web';
 import { acompanharFocoParaModais } from '@/lib/modal-accessibility';
 import { capturarDestinoProtegido, consumirDestinoPosLogin } from '@/lib/destino-pos-login';
 import { EntitlementProvider, useEntitlement } from '@/lib/entitlement-context';
@@ -64,6 +64,7 @@ export default function RootLayout() {
      propósito: não depende delas e precisa valer desde o primeiro render,
      inclusive na tela de carregamento. */
   useEffect(() => {
+    instalarDocumentoWeb();
     instalarAnelDeFoco();
     acompanharFocoParaModais();
     /* Antes de o roteador reescrever a URL: quem abriu /credito deslogado

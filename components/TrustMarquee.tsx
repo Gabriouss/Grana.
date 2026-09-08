@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, spacing, fonts, type } from '@/lib/theme';
 import { CORTES, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';

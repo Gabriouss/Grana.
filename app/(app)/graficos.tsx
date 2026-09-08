@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo, controleCompacto, useBreakpoint, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import ScreenHeader from '@/components/ScreenHeader';
 import HeaderAction from '@/components/HeaderAction';
 import AppPressable from '@/components/AppPressable';
@@ -235,7 +235,7 @@ export default function GraficosScreen() {
   }, [pieSlices]);
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
       <ScreenHeader
         eyebrow="Relatórios"
         title="Gráficos"

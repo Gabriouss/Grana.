@@ -36,7 +36,7 @@ export const HOME_BLOCK_LABELS: Record<HomeBlockKey, string> = {
 /* Ícone e descrição curta usados pelo customizador redesenhado
    (components/HomeCustomizerModal.tsx). Vivem aqui, ao lado dos rótulos, para
    que um bloco novo só precise ser descrito num lugar. */
-export const HOME_BLOCK_ICONS: Record<HomeBlockKey, keyof typeof import('@expo/vector-icons').Ionicons.glyphMap> = {
+export const HOME_BLOCK_ICONS: Record<HomeBlockKey, keyof typeof import('@expo/vector-icons/Ionicons').default.glyphMap> = {
   saldo: 'trending-up-outline',
   cofrinhos: 'gift-outline',
   atalhos: 'flash-outline',

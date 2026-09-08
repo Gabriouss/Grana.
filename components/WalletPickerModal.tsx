@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';

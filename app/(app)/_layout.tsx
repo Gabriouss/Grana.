@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ComponentProps, type Ref
 import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import TabBlurTarget, { type RegisterTabBlur, type TabBlurRef } from '@/components/TabBlurTarget';
 import TabBarBlur from '@/components/TabBarBlur';
 import CenaAnimada from '@/components/CenaAnimada';

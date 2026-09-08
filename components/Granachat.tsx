@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  BackHandler,
   Easing,
   FlatList,
   Keyboard,
@@ -15,7 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import { useKeyboardHeight } from '@/components/Sheet';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
@@ -193,6 +194,31 @@ export default function Granachat({
     requisicaoRef.current?.abort();
     onFechar();
   }, [onFechar]);
+
+  /* A conversa é uma View absoluta, não um <Modal> — por isso não herda o
+     `onRequestClose` que trataria o Voltar do Android sozinho. Sem isto, o
+     Back preditivo saía da aba ou fechava o app com o chat aberto, quando o
+     Material 3 manda o Voltar dispensar a superfície transitória do topo. O Esc
+     é o equivalente no teclado, mesmo tratamento que `components/Sheet.tsx` já
+     dá às folhas. Só enquanto aberto: um listener sempre ativo roubaria o
+     Voltar da tela de baixo. */
+  useEffect(() => {
+    if (!montado) return;
+    if (Platform.OS === 'android') {
+      const inscricao = BackHandler.addEventListener('hardwareBackPress', () => {
+        fechar();
+        return true;
+      });
+      return () => inscricao.remove();
+    }
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const aoTeclar = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') fechar();
+      };
+      document.addEventListener('keydown', aoTeclar);
+      return () => document.removeEventListener('keydown', aoTeclar);
+    }
+  }, [montado, fechar]);
 
   /* ── Carregar histórico ao abrir ──────────────────────────────────── */
   useEffect(() => {

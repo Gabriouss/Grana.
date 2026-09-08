@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-n
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
 import { ESPACO_ALCA } from './WidgetGrid';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import { formatMoney, formatDateLabel, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { calcularLevelState } from '@/lib/gamification-infinite';

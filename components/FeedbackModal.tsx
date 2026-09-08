@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { LIMITS } from '@/lib/limits';
 import { enviarFeedback, type FeedbackType } from '@/lib/feedback';

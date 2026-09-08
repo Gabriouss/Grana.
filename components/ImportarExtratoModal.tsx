@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { parseCsvTextDetalhado } from '@/lib/heuristics';
 import { parseOfx, type LancamentoOfx, type OrigemOfx } from '@/lib/ofx-parser';
@@ -66,7 +66,7 @@ export default function ImportarExtratoModal({
   onSuccess: () => void;
 }) {
   const { isDemoMode } = useDemo();
-  const { activeWallet } = useWallet();
+  const { activeWallet, wallets } = useWallet();
   const keyboardHeight = useKeyboardHeight();
   const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
 
@@ -212,7 +212,9 @@ export default function ImportarExtratoModal({
         color: l.color,
         occurred_on: l.occurred_on,
         fitid: l.fitid,
-        wallet_id: activeWallet?.id ?? null,
+        // Total is a display-only aggregate. Persist imports in the default
+        // wallet instead of creating rows that disappear from a wallet view.
+        wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
         ...(ehCartao && cartaoEscolhido
           ? { payment_method: 'credit' as const, card_id: cartaoEscolhido.id }
           : {}),

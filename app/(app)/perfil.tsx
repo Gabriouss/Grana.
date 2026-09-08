@@ -5,7 +5,7 @@ import { ActivityIndicator, AppState, Modal, Platform, ScrollView, StyleSheet, T
    cache em disco no Android. Com `cachePolicy="disk"` ela é lida uma vez. */
 import { Image } from 'expo-image';
 import { Alert } from '@/lib/alert';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
@@ -66,6 +66,7 @@ import AppPressable from '@/components/AppPressable';
 import PareamentoWhatsapp from '@/components/PareamentoWhatsapp';
 import { useFlags } from '@/lib/feature-flags';
 import PasswordInput from '@/components/PasswordInput';
+import { useKeyboardHeight } from '@/components/Sheet';
 import ToggleSwitch from '@/components/ToggleSwitch';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
 import OnboardingModal from '@/components/OnboardingModal';
@@ -150,6 +151,15 @@ export default function PerfilScreen() {
   const atalhosModalRef = useRef<View>(null);
   const whatsappModalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
+  /* Os quatro modais que compartilham `reauthScrim` centralizam um card sem
+     rolagem, e dois deles abrem com `autoFocus` num campo de texto — em tela
+     curta o teclado cobria o botão de confirmar, inclusive o "Excluir
+     definitivamente", sem como rolar até ele. Reduzir a altura útil do scrim
+     faz o `justifyContent: 'center'` recentrar o card no espaço que sobrou.
+     Usa o hook da casa em vez de KeyboardAvoidingView de propósito: desde o
+     SDK 54 o edge-to-edge não redimensiona a janela no Android e o KAV empilha
+     folga sobre folga (ver o comentário em components/Sheet.tsx). */
+  const alturaTecladoModais = useKeyboardHeight();
   useModalAccessibility(nomeModalRef, nomeOpen);
   useModalAccessibility(reauthModalRef, reauthOpen);
   useModalAccessibility(atalhosModalRef, atalhosOpen);
@@ -549,7 +559,7 @@ export default function PerfilScreen() {
 
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.paper }}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
       <ScrollView style={styles.container} contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}>
         {/* Header com Avatar */}
         <View style={styles.header}>
@@ -929,7 +939,7 @@ export default function PerfilScreen() {
       {/* Toast */}
       {/* Edição do nome de exibição. */}
       <Modal visible={nomeOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setNomeOpen(false)}>
-        <View style={styles.reauthScrim}>
+        <View style={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}>
           <View ref={nomeModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Como podemos te chamar?</Text>
             <Text style={styles.reauthText}>
@@ -970,7 +980,7 @@ export default function PerfilScreen() {
         transparent
         onRequestClose={() => setReauthOpen(false)}
       >
-        <View style={styles.reauthScrim}>
+        <View style={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}>
           <View ref={reauthModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Confirme sua senha</Text>
             <Text style={styles.reauthText}>
@@ -1020,7 +1030,7 @@ export default function PerfilScreen() {
 
       {/* Guia de atalhos rápidos (deep links) */}
       <Modal visible={atalhosOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setAtalhosOpen(false)}>
-        <View style={styles.reauthScrim}>
+        <View style={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}>
           <View ref={atalhosModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Atalhos rápidos</Text>
             <Text style={styles.reauthText}>
@@ -1063,7 +1073,7 @@ export default function PerfilScreen() {
 
       {/* Vínculo de WhatsApp */}
       <Modal visible={whatsappOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setWhatsappOpen(false)}>
-        <View style={styles.reauthScrim}>
+        <View style={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}>
           <View ref={whatsappModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
             <Text style={styles.reauthTitle}>Lançar pelo WhatsApp</Text>
 

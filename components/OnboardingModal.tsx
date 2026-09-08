@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget, lh } from '@/lib/theme';
 import * as Clipboard from 'expo-clipboard';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';

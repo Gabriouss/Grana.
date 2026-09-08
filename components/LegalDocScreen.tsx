@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'expo-router';
 import { Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, spacing, radius, fonts, type } from '@/lib/theme';
 import { colunaLeitura, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';

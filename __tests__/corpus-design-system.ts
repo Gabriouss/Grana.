@@ -172,6 +172,23 @@ for (const { caminho, src } of FONTES) {
   );
 }
 
+/* ── Ícone vem do caminho profundo, nunca do barril ─────────────────────────
+   `import { Ionicons } from '@expo/vector-icons'` puxa o barril inteiro: 19
+   famílias de ícone, e o build web publicava 3,89 MB de `.ttf` para um app que
+   usa só Ionicons. Trocar pelos 57 imports profundos derrubou para 0,37 MB num
+   único arquivo — medido em `expo export`, não estimado. O guarda existe porque
+   o barril é o import que o editor sugere sozinho ao completar `Ionicons`. */
+for (const { caminho, src } of FONTES) {
+  const codigo = semComentarios(src);
+  const barril = /from\s+'@expo\/vector-icons'/.test(codigo)
+    || /import\('@expo\/vector-icons'\)/.test(codigo);
+  checar(
+    'Ícones: ' + caminho + ' importa do caminho profundo',
+    !barril,
+    barril ? "use `import Ionicons from '@expo/vector-icons/Ionicons'` — o barril traz as 19 famílias" : ''
+  );
+}
+
 /* ── Sem peso sintético ─────────────────────────────────────────────────── */
 
 for (const { caminho, src } of FONTES) {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Clipboard from 'expo-clipboard';
 import AppPressable from '@/components/AppPressable';
 import { abrirPareamentoNoWhatsapp, NUMERO_BOT_EXIBICAO } from '@/lib/whatsapp';

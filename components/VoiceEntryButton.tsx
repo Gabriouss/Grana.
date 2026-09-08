@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { Alert } from '@/lib/alert';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   AudioQuality,
   IOSOutputFormat,

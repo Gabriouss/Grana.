@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { fonts as uiFonts, radius, spacing, theme, type } from '@/lib/theme';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };

@@ -20,7 +20,7 @@ import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   addCreditCard,
   addInstallmentPurchase,
@@ -567,7 +567,7 @@ export default function CreditoScreen() {
           limit_amount: limit,
           closing_day: Number(cardClosingDay) || 15,
           due_day: Number(cardDueDay) || 22,
-          wallet_id: activeWallet?.id ?? null,
+          wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
         });
         await loadData();
         hapticSuccess();
@@ -854,7 +854,7 @@ export default function CreditoScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']} style={styles.screen}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <ScreenHeader
         eyebrow="Cartões & faturas"
         title="Crédito"

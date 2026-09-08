@@ -1,6 +1,6 @@
 import { useEffect, useRef, type PropsWithChildren } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAppLock } from '@/lib/app-lock-context';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from './AppPressable';

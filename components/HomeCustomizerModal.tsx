@@ -1,6 +1,6 @@
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppModal from './AppModal';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import {
   HOME_BLOCK_DESCRIPTIONS,

@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import AppModal from './AppModal';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import AppPressable from './AppPressable';

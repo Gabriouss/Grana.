@@ -12,7 +12,7 @@ import {
 import { Alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
 import { guessCategoryFromText } from '@/lib/heuristics';
@@ -71,7 +71,7 @@ export default function QrScannerModal({
   const modalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
   const { isDemoMode } = useDemo();
-  const { activeWalletId } = useWallet();
+  const { activeWalletId, wallets } = useWallet();
   const [permissao, pedirPermissao] = useCameraPermissions();
   /* Overlay da câmera desenha até a borda física; sem o inset os botões de
      fechar/lanterna ficam sob a barra de status em aparelhos de barra alta. */
@@ -143,7 +143,10 @@ export default function QrScannerModal({
         category: catObj.name,
         color: catObj.color,
         occurred_on: nota.dataEmissao,
-        wallet_id: activeWalletId === 'total' ? null : activeWalletId,
+        wallet_id:
+          activeWalletId === 'total'
+            ? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null
+            : activeWalletId,
       });
       hapticSuccess();
       resetState();

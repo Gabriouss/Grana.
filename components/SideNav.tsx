@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, spacing, radius, type, fonts } from '@/lib/theme';
 import { useBreakpoint } from '@/lib/breakpoints';
 import BrandLogotype from './BrandLogotype';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { Alert } from '@/lib/alert';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { MONTH_NAMES } from '@/lib/format';
 import { fetchBills } from '@/lib/data';

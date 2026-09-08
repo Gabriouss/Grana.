@@ -18,7 +18,7 @@ import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
 import HeaderAction from '@/components/HeaderAction';
@@ -535,7 +535,7 @@ export default function LancamentosScreen() {
   );
 
   return (
-    <SafeAreaView edges={['top']} style={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <ScreenHeader
         eyebrow="Movimentações"
         title="Lançamentos"

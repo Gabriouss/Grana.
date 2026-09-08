@@ -3835,3 +3835,37 @@ Além da distribuição, configurar EXPO_PUBLIC_KIWIFY_BILLING_URL na Vercel/EAS
 somente se a Kiwify fornecer um link real de atualização de cobrança. Sem esse
 link o app não abre um segundo checkout: orienta o usuário a usar o e-mail da
 Kiwify e oferece o contato de suporte.
+
+## 08/09/2026 — correção da carteira Total na conta pessoal
+
+O usuário confirmou que `Total` é apenas a visão agregada e que os lançamentos
+devem pertencer à `Principal` ou a outra carteira real. Na conta pessoal, a
+importação histórica havia gravado 389 transações com `wallet_id = NULL`; isso
+fazia os lançamentos aparecerem em `Total`, mas desaparecerem ao selecionar
+`Principal`.
+
+### Produção — feito e verificado
+
+- A conta pessoal foi acessada pelo endereço oficial informado pelo usuário.
+- A carteira padrão `Principal` foi identificada sem alterar outras carteiras.
+- Os 389 lançamentos sem carteira foram atualizados para o UUID da `Principal`.
+- A verificação posterior retornou zero transações sem `wallet_id`.
+- Havia 15 contas/boletos sem carteira; eles não foram alterados porque a
+  solicitação era corrigir os lançamentos importados.
+- A interface foi conferida depois da atualização: `Total` e `Principal`
+  exibem o mesmo saldo e os lançamentos aparecem na Principal.
+
+### Prevenção no app
+
+Os caminhos de importação de extrato, leitura de QR, lançamento de conta/meta
+na tela inicial e cadastro de cartão agora resolvem `wallet_id` para a carteira
+padrão quando `Total` estiver selecionado. Assim, novos registros não voltam a
+ser gravados sem carteira por causa do seletor agregado.
+
+### Ainda não comprovado
+
+- Não foi feita nova importação real de arquivo na conta pessoal após a mudança;
+  validar uma pequena importação com `Total` selecionado antes da próxima
+  build.
+- Não foi disparado build Android; a mudança de código só entra no APK após o
+  fluxo de build autorizado e preparado pelo script de release.
