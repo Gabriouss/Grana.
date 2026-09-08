@@ -19,6 +19,27 @@ mais recente no GitHub; a criação da release e os ajustes nos painéis externo
 continuam manuais.
 Nenhum build foi disparado e nenhum banco foi alterado nesta mudança.
 
+### Pendências obrigatórias para a próxima máquina — distribuição do APK
+
+- [ ] Gerar uma nova build Android somente após autorização explícita do autor.
+- [ ] Criar uma release pública no GitHub e anexar o APK com o nome exato
+  `grana.apk`.
+- [ ] Conferir no navegador e em Android real o redirecionamento
+  `/downloads/grana-latest.apk`.
+- [ ] Configurar `EXPO_PUBLIC_ANDROID_DOWNLOAD_URL` no projeto Vercel com
+  `https://granaponto.com.br/downloads/grana-latest.apk`.
+- [ ] Configurar a mesma variável nos perfis EAS antes da próxima build.
+- [ ] Configurar no e-mail pós-compra da Kiwify os botões separados de
+  download e ativação.
+- [ ] Testar compra, download, instalação, ativação e atualização em Android
+  real.
+- [ ] Calcular e registrar o SHA-256 do APK na anotação da release.
+
+Não considerar o fluxo de distribuição pronto enquanto esses itens não tiverem
+evidência concreta. A migration de voz, `components/RevealOnScroll.tsx` e
+`.tmp.driveupload/` continuam sendo alterações externas e não devem ser
+incluídos nesse trabalho sem revisão própria.
+
 ## 08/09/2026 — carteiras nos lançamentos e na voz
 
 O `TransactionSheet` agora é centralizado e exige uma carteira real, com
