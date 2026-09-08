@@ -163,8 +163,22 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
 
-  const tipo = heuristics.guessTypeFromText(texto);
-  const descricao = heuristics.guessDescFromText(texto, tipo) || 'Lançamento por voz';
+  const { fetchWallets } = await import('./wallets');
+  const carteiras = await fetchWallets();
+  const carteiraMencionada = heuristics.matchWalletByText(texto, carteiras);
+  const mencionaCarteira = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto);
+  if (mencionaCarteira && !carteiraMencionada) {
+    await notificacoes.notificarRevisao('Qual carteira?', texto);
+    return false;
+  }
+  const carteira = carteiraMencionada ?? carteiras.find((w) => w.is_default) ?? carteiras[0];
+  if (!carteira) {
+    await notificacoes.notificarRevisao('Nenhuma carteira cadastrada', texto);
+    return false;
+  }
+  const textoFinanceiro = carteiraMencionada ? heuristics.limparReferenciaCarteira(texto, carteira.name) : texto;
+  const tipo = heuristics.guessTypeFromText(textoFinanceiro);
+  const descricao = heuristics.guessDescFromText(textoFinanceiro, tipo) || 'Lançamento por voz';
 
   // Boleto antes de crédito: "boleto no cartão" é boleto. Mesma ordem do bot.
   if (heuristics.ehIntencaoBoleto(texto)) {
@@ -177,6 +191,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
       color: categoria.color,
       due_date: dueDate,
       recurring: heuristics.parseRecorrencia(texto),
+      wallet_id: carteira.id,
     });
     if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
     if (resultado.status === 'undone') return true;
@@ -197,7 +212,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   if (heuristics.ehIntencaoCredito(texto)) {
     return lancarNoCredito({
-      requestId, texto, valor, descricao, categoria, heuristics, data, notificacoes, voiceOperations,
+      requestId, texto, valor, descricao, categoria, carteiraId: carteira.id, heuristics, data, notificacoes, voiceOperations,
     });
   }
 
@@ -212,6 +227,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     occurred_on: hojeISO(),
     recurring: heuristics.parseRecorrencia(texto),
     ...(formaPagamento ? { payment_method: formaPagamento } : null),
+    wallet_id: carteira.id,
   });
   if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
   if (resultado.status === 'undone') return true;
@@ -239,12 +255,13 @@ async function lancarNoCredito(args: {
   valor: number;
   descricao: string;
   categoria: { name: string; color: string };
+  carteiraId: string;
   heuristics: typeof import('./heuristics');
   data: typeof import('./data');
   notificacoes: typeof import('./widget-voz-notificacoes');
   voiceOperations: typeof import('./voice-operations');
 }): Promise<boolean> {
-  const { requestId, texto, valor, descricao, categoria, heuristics, data, notificacoes, voiceOperations } = args;
+  const { requestId, texto, valor, descricao, categoria, carteiraId, heuristics, data, notificacoes, voiceOperations } = args;
 
   const cartoes = await data.fetchCreditCards();
   /* Sem cartão cadastrado, crédito NÃO vira Pix nem débito caladinho: a
@@ -261,6 +278,10 @@ async function lancarNoCredito(args: {
     return false;
   }
   const cartao = cartaoIdentificado ?? cartoes[0];
+  if (cartao.wallet_id && cartao.wallet_id !== carteiraId) {
+    await notificacoes.notificarRevisao('Cartão e carteira não combinam', texto);
+    return false;
+  }
   const parcelas = heuristics.parseParcelas(texto);
 
   if (parcelas && parcelas > 1) {
@@ -275,6 +296,7 @@ async function lancarNoCredito(args: {
       payment_method: 'credit',
       card_id: cartao.id,
       installments: parcelas,
+      wallet_id: carteiraId,
     });
     if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
     if (resultado.status === 'undone') return true;
@@ -305,6 +327,7 @@ async function lancarNoCredito(args: {
     payment_method: 'credit',
     card_id: cartao.id,
     recurring: heuristics.parseRecorrencia(texto),
+    wallet_id: carteiraId,
   });
   if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
   if (resultado.status === 'undone') return true;

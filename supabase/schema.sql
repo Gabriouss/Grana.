@@ -3673,6 +3673,7 @@ declare
   v_recurring boolean;
   v_payment_method text;
   v_card_id uuid;
+  v_wallet_id uuid;
   v_installments integer;
   v_base numeric(12,2);
   v_last numeric(12,2);
@@ -3721,6 +3722,12 @@ begin
   v_category := nullif(btrim(p_payload->>'category'), '');
   v_color := nullif(btrim(p_payload->>'color'), '');
   v_recurring := coalesce((p_payload->>'recurring')::boolean, false);
+  v_wallet_id := nullif(p_payload->>'wallet_id', '')::uuid;
+  if v_wallet_id is null or not exists (
+    select 1 from public.wallets w where w.id = v_wallet_id and w.user_id = v_user
+  ) then
+    raise exception 'Carteira nao pertence ao usuario' using errcode = '23503';
+  end if;
 
   if v_description is null or char_length(v_description) > 200
      or v_amount is null or v_amount <= 0 or v_amount > 999999999.99
@@ -3739,10 +3746,10 @@ begin
     end if;
     insert into public.bills (
       id, user_id, description, amount, category, color, due_date, status,
-      recurring, source, source_event_id
+      recurring, wallet_id, source, source_event_id
     ) values (
       v_parent, v_user, v_description, v_amount, v_category, v_color, v_date,
-      'due', v_recurring, v_source_financeiro, p_request_id::text
+      'due', v_recurring, v_wallet_id, v_source_financeiro, p_request_id::text
     ) on conflict (source, source_event_id) do nothing
     returning id into v_id;
 
@@ -3778,18 +3785,18 @@ begin
     end if;
     if v_card_id is not null and not exists (
       select 1 from public.credit_cards c
-      where c.id = v_card_id and c.user_id = v_user
+      where c.id = v_card_id and c.user_id = v_user and c.wallet_id = v_wallet_id
     ) then
-      raise exception 'Cartao nao pertence ao usuario' using errcode = '23503';
+      raise exception 'Cartao nao pertence a carteira escolhida' using errcode = '23503';
     end if;
 
     if p_kind = 'transaction' then
       insert into public.transactions (
         id, user_id, type, description, amount, category, color, occurred_on,
-        recurring, card_id, payment_method, source, source_event_id
+        recurring, card_id, wallet_id, payment_method, source, source_event_id
       ) values (
         v_parent, v_user, v_type, v_description, v_amount, v_category, v_color,
-        v_date, v_recurring, v_card_id, v_payment_method,
+        v_date, v_recurring, v_card_id, v_wallet_id, v_payment_method,
         v_source_financeiro, p_request_id::text
       ) on conflict (source, source_event_id) do nothing
       returning id into v_id;
@@ -3811,7 +3818,7 @@ begin
       with inseridas as (
         insert into public.transactions (
           id, user_id, type, description, amount, category, color, occurred_on,
-          recurring, parent_id, card_id, payment_method, installment_current,
+          recurring, parent_id, card_id, wallet_id, payment_method, installment_current,
           installment_total, source, source_event_id
         )
         select
@@ -3826,6 +3833,7 @@ begin
           false,
           case when serie.i = 1 then null else v_parent end,
           v_card_id,
+          v_wallet_id,
           v_payment_method,
           serie.i,
           v_installments,

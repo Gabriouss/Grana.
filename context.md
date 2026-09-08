@@ -1,5 +1,28 @@
 # Contexto do projeto — Grana.
 
+## 08/09/2026 — carteiras nos lançamentos e na voz
+
+O `TransactionSheet` agora é centralizado e exige uma carteira real, com
+seleção dentro da própria janela. Home, Lançamentos, Contas e Crédito passam
+o `wallet_id` escolhido também em edição; no crédito, os cartões exibidos são
+os da carteira selecionada.
+
+A voz no app e no widget reconhece nomes personalizados ancorados por
+“carteira” ou “conta” (ignorando caixa e acentos), remove essa referência da
+descrição e usa a carteira ativa/padrão quando ela não é dita. O widget recusa
+carteira desconhecida e conflito entre o cartão e a carteira. O contrato da
+operação de voz passou a exigir `wallet_id`; a migration
+`20260908000000_voice_wallets.sql` valida propriedade e grava a carteira em
+transações, parcelas e boletos. **A migration ainda não foi aplicada em
+produção nesta sessão**; uma APK com o cliente novo não deve ser distribuída
+antes disso.
+
+Verificação local: TypeScript, voz, widget-cartões, fallback, voz offline,
+assistente-aprendizado, blur e motion passaram. O corpus de parser foi
+iniciado sem falha reportada, mas a execução encadeada não exibiu o resumo
+final; repetir antes da build. QA visual Android do modal centralizado também
+continua pendente. Nenhuma build foi disparada.
+
 ## Pré-build 1.8.1 — 07/09/2026
 
 ## Correção adicional do widget de áudio — 07/09/2026

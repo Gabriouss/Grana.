@@ -348,7 +348,7 @@ export function ehIntencaoCredito(text: string): boolean {
   return false;
 }
 
-type CartaoBusca = { id: string; name: string; bank: string };
+type CartaoBusca = { id: string; name: string; bank: string; wallet_id?: string | null };
 
 /** Acha o cartão citado no texto pelo nome que o usuário deu a ele ou pelo banco ("Nubank", "Itaú Click", "no Inter"). */
 export function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null {
@@ -359,6 +359,23 @@ export function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca
     if (partes.some((p) => contemPalavra(alvo, p))) return c;
   }
   return null;
+}
+
+type CarteiraBusca = { id: string; name: string };
+
+/** Encontra nomes personalizados somente quando a fala os ancora em "carteira" ou "conta". */
+export function matchWalletByText(text: string, wallets: CarteiraBusca[]): CarteiraBusca | null {
+  const alvo = normalizarParaBusca(text);
+  const ordenadas = [...wallets].sort((a, b) => b.name.length - a.name.length);
+  return ordenadas.find((wallet) => {
+    const nome = normalizarParaBusca(wallet.name);
+    return alvo.includes(`carteira ${nome}`) || alvo.includes(`conta ${nome}`);
+  }) ?? null;
+}
+
+export function limparReferenciaCarteira(text: string, walletName: string): string {
+  const escaped = walletName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`\\b(?:carteira|conta)\\s+${escaped}\\b`, 'ig'), ' ').replace(/\s{2,}/g, ' ').trim();
 }
 
 /* ---- boleto: reconhecer intenção e a data de vencimento ----

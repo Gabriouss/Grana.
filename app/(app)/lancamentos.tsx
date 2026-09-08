@@ -132,7 +132,7 @@ export default function LancamentosScreen() {
   const { paddingConteudoComFab } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
   const { isDemoMode } = useDemo();
-  const { activeWalletId, activeWallet, activeWalletName } = useWallet();
+  const { activeWalletId, activeWallet, activeWalletName, wallets } = useWallet();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -412,6 +412,7 @@ export default function LancamentosScreen() {
           color: v.color,
           occurred_on: v.occurred_on,
           recurring: v.recurring,
+          wallet_id: v.wallet_id,
         });
         triggerToast('Lançamento atualizado');
       } else if (isInstallmentSave) {
@@ -422,7 +423,7 @@ export default function LancamentosScreen() {
           color: v.color,
           occurred_on: v.occurred_on,
           installments: parcelas,
-          wallet_id: activeWallet?.id ?? null,
+          wallet_id: v.wallet_id,
         });
         triggerToast(`Compra parcelada em ${parcelas}x`);
       } else {
@@ -434,7 +435,7 @@ export default function LancamentosScreen() {
           color: v.color,
           occurred_on: v.occurred_on,
           recurring: v.recurring,
-          wallet_id: activeWallet?.id ?? null,
+          wallet_id: v.wallet_id,
         };
         try {
           await addTransaction(input);
@@ -749,6 +750,7 @@ export default function LancamentosScreen() {
         modo="carteira"
         editando={!!editingTxId}
         salvando={saving}
+        carteiras={wallets}
         inicial={{
           type,
           description: desc,
@@ -759,6 +761,7 @@ export default function LancamentosScreen() {
           recurring,
           installments: installment ? Math.max(2, Math.round(Number(installmentCount) || 2)) : 1,
           card_id: null,
+          wallet_id: selectedTx?.wallet_id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '',
         }}
         onSalvar={handleSave}
 

@@ -10,7 +10,7 @@ import CategoryPickerModal from '@/components/CategoryPickerModal';
 import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount, todayISO } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
-import type { CreditCard, TxType } from '@/lib/types';
+import type { CreditCard, TxType, Wallet } from '@/lib/types';
 
 /* Sheet de lançamento — um só, usado pela tela de Lançamentos e pela de
    Crédito. Antes eram dois blocos de JSX quase iguais em arquivos separados,
@@ -37,6 +37,7 @@ export type ValoresLancamento = {
   installments: number;
   /** Só no modo crédito. */
   card_id: string | null;
+  wallet_id: string;
 };
 
 type Props = {
@@ -47,6 +48,7 @@ type Props = {
   inicial: ValoresLancamento;
   /** Obrigatório no modo crédito: cartões entre os quais escolher. */
   cartoes?: CreditCard[];
+  carteiras: Wallet[];
   salvando: boolean;
   onSalvar: (valores: ValoresLancamento) => void;
 };
@@ -65,6 +67,7 @@ export default function TransactionSheet({
   editando,
   inicial,
   cartoes = [],
+  carteiras,
   salvando,
   onSalvar,
 }: Props) {
@@ -78,6 +81,7 @@ export default function TransactionSheet({
   const [installment, setInstallment] = useState(inicial.installments > 1);
   const [installmentCount, setInstallmentCount] = useState(String(Math.max(2, inicial.installments)));
   const [cardId, setCardId] = useState<string | null>(inicial.card_id);
+  const [walletId, setWalletId] = useState(inicial.wallet_id);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [catPickerOpen, setCatPickerOpen] = useState(false);
@@ -98,6 +102,7 @@ export default function TransactionSheet({
     setInstallment(inicial.installments > 1);
     setInstallmentCount(String(Math.max(2, inicial.installments)));
     setCardId(inicial.card_id);
+    setWalletId(inicial.wallet_id);
     setFormError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -105,6 +110,7 @@ export default function TransactionSheet({
   const parcelas = Math.max(2, Math.round(Number(installmentCount) || 2));
   const ehCredito = modo === 'credito';
   const ehBoleto = modo === 'boleto';
+  const cartoesDaCarteira = ehCredito ? cartoes.filter((card) => card.wallet_id === walletId) : cartoes;
 
   /* Parcelar só faz sentido criando uma saída: cada parcela é uma transação
      própria, então editar uma delas edita aquela linha, não o parcelamento.
@@ -134,8 +140,12 @@ export default function TransactionSheet({
       setFormError('Informe um valor maior que zero.');
       return;
     }
-    if (ehCredito && cartoes.length > 1 && !cardId) {
-      setFormError('Escolha em qual cartão esta compra foi feita.');
+    if (ehCredito && (!cardId || cartoesDaCarteira.length === 0)) {
+      setFormError(cartoesDaCarteira.length === 0 ? 'Esta carteira não possui cartão cadastrado.' : 'Escolha em qual cartão esta compra foi feita.');
+      return;
+    }
+    if (!walletId) {
+      setFormError('Escolha em qual carteira este lançamento deve entrar.');
       return;
     }
     setFormError(null);
@@ -149,6 +159,7 @@ export default function TransactionSheet({
       recurring,
       installments: podeParcelar && installment ? parcelas : 1,
       card_id: ehCredito ? cardId : null,
+      wallet_id: walletId,
     });
   }
 
@@ -158,7 +169,7 @@ export default function TransactionSheet({
   return (
     <>
       <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-        <Sheet onClose={onClose}>
+        <Sheet onClose={onClose} centered sheetStyle={styles.centeredSheet}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{titulo}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -177,6 +188,28 @@ export default function TransactionSheet({
               </AppPressable>
             </View>
           )}
+
+          <View style={{ gap: 4 }}>
+            <Text style={styles.inputLabel}>Carteira</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.banksRow}>
+              {carteiras.map((wallet) => (
+                <AppPressable
+                  key={wallet.id}
+                  style={[styles.bankChip, walletId === wallet.id && { borderColor: wallet.color, backgroundColor: 'rgba(255,255,255,0.08)' }]}
+                  onPress={() => {
+                    setWalletId(wallet.id);
+                    if (ehCredito && cardId && !cartoes.some((card) => card.id === cardId && card.wallet_id === wallet.id)) setCardId(null);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: walletId === wallet.id }}
+                  accessibilityLabel={`Carteira ${wallet.name}`}
+                >
+                  <View style={[styles.bankDot, { backgroundColor: wallet.color }]} />
+                  <Text style={[styles.bankChipText, walletId === wallet.id && { color: theme.ink }]}>{wallet.name}</Text>
+                </AppPressable>
+              ))}
+            </ScrollView>
+          </View>
 
           <TextInput
             accessibilityLabel={ehBoleto ? 'Descrição da conta a pagar' : ehCredito ? 'Descrição da compra no cartão' : 'Descrição do lançamento'}
@@ -202,11 +235,11 @@ export default function TransactionSheet({
             />
           </View>
 
-          {ehCredito && cartoes.length > 0 && (
+          {ehCredito && cartoesDaCarteira.length > 0 && (
             <View style={{ gap: 4, marginTop: 4 }}>
               <Text style={styles.inputLabel}>Cartão / Banco</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.banksRow}>
-                {cartoes.map((c) => (
+                {cartoesDaCarteira.map((c) => (
                   <AppPressable
                     key={c.id}
                     style={[styles.bankChip, cardId === c.id && { borderColor: c.color, backgroundColor: 'rgba(255,255,255,0.08)' }]}
@@ -369,6 +402,7 @@ export default function TransactionSheet({
 }
 
 const styles = StyleSheet.create({
+  centeredSheet: { width: '100%', maxWidth: 520, borderRadius: radius.xl, maxHeight: '90%' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   typeRow: { flexDirection: 'row', gap: spacing.xs },

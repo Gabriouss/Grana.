@@ -12,8 +12,10 @@ const deps = {
     notificarRevisao: async (titulo) => { revisions.push(titulo); }, notificarFalha: async () => { throw new Error('Falha inesperada'); }, notificarPendenteOffline: async () => { revisions.push('Lançamento aguardando conexão'); }, notificarSucesso: async () => {} },
   './heuristics': { guessAmountFromText: () => 32, guessCategoryFromText: () => ({ name: 'Alimentação', color: '#fff' }),
     guessTypeFromText: () => 'out', guessDescFromText: () => 'mercado', ehIntencaoBoleto: () => false,
-    ehIntencaoCredito: () => true, matchCardByText: () => matched, parseParcelas: () => 1, parseRecorrencia: () => false },
+    ehIntencaoCredito: () => true, matchCardByText: () => matched, matchWalletByText: () => null,
+    limparReferenciaCarteira: (t) => t, parseParcelas: () => 1, parseRecorrencia: () => false },
   './data': { fetchCreditCards: async () => cards, fetchCategories: async () => [] },
+  './wallets': { fetchWallets: async () => [{ id: 'wallet', name: 'Pessoal', is_default: true }] },
   './voice-operations': { registrarOperacaoVoz: async (_, __, input) => { saved.push(input); return { ids: ['tx'], operationId: 'op' }; } },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: { user: { id: 'qa-user' } } } }) } } },
@@ -25,7 +27,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, { exports: {}, require: (id) => { if (!(id in deps)) throw new Error(id); return deps[id]; }, console });
 (async () => {
-  cards = [{ id: 'c6', name: 'QA C6' }, { id: 'nubank', name: 'QA Nubank' }];
+  cards = [{ id: 'c6', name: 'QA C6', wallet_id: 'wallet' }, { id: 'nubank', name: 'QA Nubank', wallet_id: 'wallet' }];
   await task({ caminho: '/qa.m4a', requestId: '1' });
   assert.equal(saved.length, 0); assert.deepEqual(revisions, ['Qual cartão?']);
   matched = cards[1]; await task({ caminho: '/qa.m4a', requestId: '2' });

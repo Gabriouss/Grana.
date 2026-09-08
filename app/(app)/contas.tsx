@@ -51,7 +51,7 @@ export default function ContasScreen() {
   const { novaConta, texto } = useLocalSearchParams<{ novaConta?: string; texto?: string }>();
   const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
   const { isDemoMode } = useDemo();
-  const { activeWalletId, activeWallet } = useWallet();
+  const { activeWalletId, activeWallet, wallets } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -206,6 +206,7 @@ export default function ContasScreen() {
           color: v.color,
           due_date: v.occurred_on,
           recurring: v.recurring,
+          wallet_id: v.wallet_id,
         });
         // updateBill não devolve a linha atualizada — remonta localmente pra reagendar os lembretes.
         const original = bills.find((b) => b.id === editingBillId);
@@ -226,7 +227,7 @@ export default function ContasScreen() {
           const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', {
             kind: 'bill', description: v.description.trim() || 'Sem descrição',
             amount: value, category: v.category, color: v.color,
-            due_date: v.occurred_on, recurring: v.recurring,
+            due_date: v.occurred_on, recurring: v.recurring, wallet_id: v.wallet_id,
           });
           operacaoVoz.current = null;
           triggerToast(resultado.status === 'pending' ? 'Conta salva no aparelho; sincronização pendente' : 'Conta salva');
@@ -238,7 +239,7 @@ export default function ContasScreen() {
           color: v.color,
           due_date: v.occurred_on,
           recurring: v.recurring,
-          wallet_id: activeWallet?.id ?? null,
+          wallet_id: v.wallet_id,
         });
         scheduleBillReminders(created).catch(() => {});
         triggerToast('Conta salva');
@@ -492,6 +493,7 @@ export default function ContasScreen() {
         modo="boleto"
         editando={!!editingBillId}
         salvando={saving}
+        carteiras={wallets}
         inicial={{
           type: 'out',
           description: desc,
@@ -502,6 +504,7 @@ export default function ContasScreen() {
           recurring,
           installments: 1,
           card_id: null,
+          wallet_id: selectedBill?.wallet_id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '',
         }}
         onSalvar={handleSave}
       />

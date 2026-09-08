@@ -5,6 +5,7 @@ import {
   Text,
   TextInput,
   View,
+  ScrollView,
 } from 'react-native';
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
@@ -17,6 +18,8 @@ import {
   guessTypeFromText,
   parseFormaPagamento,
   parseRecorrencia,
+  matchWalletByText,
+  limparReferenciaCarteira,
 } from '@/lib/heuristics';
 import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { addTransaction, fetchCategories } from '@/lib/data';
@@ -29,6 +32,7 @@ import type { TxType } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 import { randomUUID } from 'expo-crypto';
 import { registrarOperacaoVoz } from '@/lib/voice-operations';
+import { useWallet } from '@/lib/wallet-context';
 
 export default function PasteReceiptModal({
   visible,
@@ -44,6 +48,7 @@ export default function PasteReceiptModal({
   initialText?: string;
 }) {
   const { isDemoMode } = useDemo();
+  const { wallets, activeWallet } = useWallet();
   const [rawText, setRawText] = useState('');
   const [recognized, setRecognized] = useState(false);
   const [type, setType] = useState<TxType>('out');
@@ -77,6 +82,7 @@ export default function PasteReceiptModal({
      como resumo em `detalhesReconhecidos` abaixo, pra revisão não virar fé. */
   const [formaPagamento, setFormaPagamento] = useState<string | null>(null);
   const [recorrente, setRecorrente] = useState(false);
+  const [walletId, setWalletId] = useState('');
 
   useEffect(() => {
     if (!visible) return;
@@ -96,6 +102,7 @@ export default function PasteReceiptModal({
     setOrigemVoz(false);
     setFormaPagamento(null);
     setRecorrente(false);
+    setWalletId('');
   }
 
   /* O que foi reconhecido mas não tem campo próprio nesta tela. Sem isto a
@@ -114,10 +121,13 @@ export default function PasteReceiptModal({
   ].filter((d): d is string => !!d);
 
   function processText(text: string) {
-    const guessedAmount = guessAmountFromText(text);
-    const guessedType = guessTypeFromText(text);
-    const guessedCat = guessCategoryFromText(text, categoriasExtras);
-    const guessedDesc = guessDescFromText(text, guessedType);
+    const wallet = matchWalletByText(text, wallets);
+    const textoFinanceiro = wallet ? limparReferenciaCarteira(text, wallet.name) : text;
+    setWalletId(wallet?.id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '');
+    const guessedAmount = guessAmountFromText(textoFinanceiro);
+    const guessedType = guessTypeFromText(textoFinanceiro);
+    const guessedCat = guessCategoryFromText(textoFinanceiro, categoriasExtras);
+    const guessedDesc = guessDescFromText(textoFinanceiro, guessedType);
 
     setType(guessedType);
     setDesc(guessedDesc);
@@ -157,6 +167,10 @@ export default function PasteReceiptModal({
       Alert.alert('Valor inválido', 'Informe um valor válido em R$.');
       return;
     }
+    if (!walletId) {
+      Alert.alert('Escolha uma carteira', 'Informe em qual carteira o lançamento deve entrar.');
+      return;
+    }
     if (isDemoMode) {
       Alert.alert(
         'Modo de exemplo ativo',
@@ -182,6 +196,7 @@ export default function PasteReceiptModal({
         occurred_on: todayISO(),
         ...(formaPagamento ? { payment_method: formaPagamento } : null),
         ...(recorrente ? { recurring: true } : null),
+        wallet_id: walletId,
       };
       if (origemVoz) {
         operacaoVoz.current ??= randomUUID();
@@ -282,6 +297,17 @@ export default function PasteReceiptModal({
                   <Text style={[styles.typeText, type === 'in' && styles.typeTextOn]}>Receita (+)</Text>
                 </AppPressable>
               </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletRow}>
+                {wallets.map((wallet) => (
+                  <AppPressable key={wallet.id} onPress={() => setWalletId(wallet.id)}
+                    style={[styles.walletChip, walletId === wallet.id && { borderColor: wallet.color }]}
+                    accessibilityRole="radio" accessibilityState={{ selected: walletId === wallet.id }}>
+                    <View style={[styles.walletDot, { backgroundColor: wallet.color }]} />
+                    <Text style={styles.walletText}>{wallet.name}</Text>
+                  </AppPressable>
+                ))}
+              </ScrollView>
 
               <TextInput accessibilityLabel="Descrição do lançamento" maxLength={LIMITS.description}
                 style={styles.descInput}
@@ -399,6 +425,10 @@ const styles = StyleSheet.create({
   typeBtnIn: { backgroundColor: theme.entradaFundo, borderWidth: 1, borderColor: theme.entradaBorda },
   typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   typeTextOn: { color: theme.ink},
+  walletRow: { flexDirection: 'row', gap: 6, paddingVertical: 4 },
+  walletChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: theme.rule, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 7 },
+  walletDot: { width: 7, height: 7, borderRadius: 4 },
+  walletText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.regular },
   descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },

@@ -67,6 +67,7 @@ export default function Sheet({
   contentStyle,
   sheetStyle,
   onClose,
+  centered = false,
 }: {
   children: ReactNode;
   /** Estilo do container interno do conteúdo (o padrão já aplica o espaçamento entre campos). */
@@ -76,6 +77,7 @@ export default function Sheet({
       modal. Opcional só para não quebrar quem ainda não passa essa prop; sem
       ela o fundo continua inerte, do jeito que já era antes. */
   onClose?: () => void;
+  centered?: boolean;
 }) {
   const keyboardHeight = useKeyboardHeight();
   const insets = useSafeAreaInsets();
@@ -98,7 +100,7 @@ export default function Sheet({
   }, [onClose]);
 
   return (
-    <Pressable style={[styles.scrim, scrimStyle]} onPress={onClose} accessible={false}>
+    <Pressable style={[styles.scrim, centered && styles.scrimCentered, scrimStyle]} onPress={onClose} accessible={false}>
       {/* onPress vazio: por ser um Pressable aninhado, ele assume o toque
           antes que chegue ao fundo, então tocar dentro do painel nunca fecha
           a folha — só o fundo escurecido em volta dele fecha. */}
@@ -139,6 +141,7 @@ export default function Sheet({
 
 const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  scrimCentered: { justifyContent: 'center', alignItems: 'center', padding: spacing.md },
   sheet: {
     backgroundColor: theme.paperRaised,
     borderTopLeftRadius: Platform.OS === 'android' ? 28 : radius.xl,

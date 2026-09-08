@@ -41,7 +41,7 @@ import {
 import { formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
 import { agruparLancamentosPorCartao, filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
-import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, matchWalletByText, limparReferenciaCarteira, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
@@ -142,6 +142,7 @@ export default function CreditoScreen() {
   const [txDesc, setTxDesc] = useState('');
   const [txAmount, setTxAmount] = useState('');
   const [txCardId, setTxCardId] = useState<string>('');
+  const [txWalletId, setTxWalletId] = useState<string>('');
   const [txCategory, setTxCategory] = useState(CATEGORIES[0].name);
   const [txCatColor, setTxCatColor] = useState(CATEGORIES[0].color);
   const [txDate, setTxDate] = useState(todayISO());
@@ -612,13 +613,17 @@ export default function CreditoScreen() {
     setEditingTxId(null);
     const guessedAmount = guessAmountFromText(texto);
     const guessedCat = guessCategoryFromText(texto, categoriasExtras);
-    const guessedDesc = guessDescFromText(texto, 'out');
-    const cartaoCasado = matchCardByText(texto, walletCards);
+    const carteiraCasada = matchWalletByText(texto, wallets);
+    const textoFinanceiro = carteiraCasada ? limparReferenciaCarteira(texto, carteiraCasada.name) : texto;
+    const guessedDesc = guessDescFromText(textoFinanceiro, 'out');
+    const cartoesElegiveis = carteiraCasada ? cards.filter((c) => c.wallet_id === carteiraCasada.id) : walletCards;
+    const cartaoCasado = matchCardByText(textoFinanceiro, cartoesElegiveis);
+    setTxWalletId(carteiraCasada?.id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '');
     setTxDesc(guessedDesc);
     setTxAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
     setTxCategory(guessedCat.name);
     setTxCatColor(guessedCat.color);
-    setTxCardId(cartaoCasado?.id || walletCards[0]?.id || '');
+    setTxCardId(cartaoCasado?.id || cartoesElegiveis[0]?.id || '');
     setTxInstallments(String(parseParcelas(texto) ?? 1));
     /* Era `false` fixo: "Netflix 39,90 no crédito todo mês" abria como compra
        avulsa e a assinatura sumia do mês seguinte. `parseRecorrencia` já
@@ -656,7 +661,7 @@ export default function CreditoScreen() {
     }
 
 
-    const targetCard = walletCards.find((c) => c.id === valores.card_id) || walletCards[0];
+    const targetCard = cards.find((c) => c.id === valores.card_id);
     const totalInst = Math.max(1, valores.installments);
 
     setTxSaving(true);
@@ -678,6 +683,7 @@ export default function CreditoScreen() {
              cabeça, então o mês que vem simplesmente não nasce — sem apagar
              nada do que já foi cobrado. */
           recurring: valores.recurring,
+          wallet_id: valores.wallet_id,
         };
         if (isDemoMode) {
           setTransactions((prev) =>
@@ -734,6 +740,7 @@ export default function CreditoScreen() {
           category: valores.category, color: valores.color,
           occurred_on: valores.occurred_on, payment_method: 'credit' as const,
           card_id: targetCard.id,
+          wallet_id: valores.wallet_id,
         };
         const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app',
           totalInst > 1 ? { ...base, kind: 'installment', installments: totalInst }
@@ -752,7 +759,7 @@ export default function CreditoScreen() {
           payment_method: 'credit',
           bank: targetCard?.bank || 'outro',
           card_id: targetCard?.id,
-          wallet_id: targetCard?.wallet_id ?? activeWallet?.id ?? null,
+          wallet_id: valores.wallet_id,
         });
         await loadData();
       } else {
@@ -769,7 +776,7 @@ export default function CreditoScreen() {
           card_id: targetCard?.id,
           installment_current: 1,
           installment_total: 1,
-          wallet_id: targetCard?.wallet_id ?? activeWallet?.id ?? null,
+          wallet_id: valores.wallet_id,
         });
         await loadData();
       }
@@ -1296,7 +1303,8 @@ export default function CreditoScreen() {
         onClose={() => setNewTxOpen(false)}
         modo="credito"
         editando={!!editingTxId}
-        cartoes={walletCards}
+        cartoes={cards}
+        carteiras={wallets}
         salvando={txSaving}
         inicial={{
           type: 'out',
@@ -1308,6 +1316,7 @@ export default function CreditoScreen() {
           recurring: txRecurring,
           installments: Math.max(1, parseInt(txInstallments, 10) || 1),
           card_id: txCardId || walletCards[0]?.id || null,
+          wallet_id: txWalletId || cards.find((c) => c.id === txCardId)?.wallet_id || activeWallet?.id || wallets.find((w) => w.is_default)?.id || wallets[0]?.id || '',
         }}
         onSalvar={handleSaveCreditTx}
       />

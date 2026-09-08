@@ -8,6 +8,7 @@ type BaseFinanceira = {
   category: string;
   color: string;
   recurring?: boolean;
+  wallet_id: string;
 };
 
 export type PayloadOperacaoVoz =

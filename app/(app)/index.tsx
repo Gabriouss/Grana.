@@ -103,7 +103,7 @@ export default function InicioScreen() {
   const reduzirMovimento = useReducedMotion();
   const { isDemoMode } = useDemo();
   const { session } = useSession();
-  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, updateSaldosComTransacoes, refreshSaldos } = useWallet();
+  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, wallets, updateSaldosComTransacoes, refreshSaldos } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -742,6 +742,7 @@ export default function InicioScreen() {
           color: v.color,
           occurred_on: v.occurred_on,
           recurring: v.recurring,
+          wallet_id: v.wallet_id,
         });
         triggerToast('Lançamento atualizado');
       } else {
@@ -753,7 +754,7 @@ export default function InicioScreen() {
           color: v.color,
           occurred_on: v.occurred_on,
           recurring: v.recurring,
-          wallet_id: activeWallet?.id ?? null,
+          wallet_id: v.wallet_id,
         });
         triggerToast('Lançamento salvo');
       }
@@ -1502,6 +1503,7 @@ export default function InicioScreen() {
         modo="carteira"
         editando={!!editingTxId}
         salvando={txSaving}
+        carteiras={wallets}
         inicial={{
           type: txType,
           description: txDesc,
@@ -1512,6 +1514,7 @@ export default function InicioScreen() {
           recurring: txRecurring,
           installments: 1,
           card_id: null,
+          wallet_id: transactions.find((t) => t.id === editingTxId)?.wallet_id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '',
         }}
         onSalvar={handleSaveTx}
       />
