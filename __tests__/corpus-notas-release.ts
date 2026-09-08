@@ -161,5 +161,27 @@ checar(
 const multi = validarNotaRelease('Corrige o saldo\nMelhora a importacao\nNovo grafico');
 checar('acha erro em qualquer linha', multi.length === 2, 'achou ' + multi.length);
 
+/* ── Configuração do Firebase apontada mas ausente ─────────────────────── */
+
+/* Mesma família de defeito que as notas: só aparece quando a build já está
+   rodando, e aí o número de build já foi gasto (a cota é de 15 por mês).
+   `googleServicesFile` apontando para um arquivo que não existe quebra o
+   Gradle no meio, e é uma armadilha real porque o push do Grana. depende de
+   adicionar exatamente essa linha — ver docs/PUSH_FCM_SETUP.md, que instrui
+   a NÃO adicioná-la antes de o arquivo existir. O guarda existe para que a
+   ordem errada custe um teste em vez de uma build. */
+{
+  const { existsSync, readFileSync: lerArquivo } = require('fs') as typeof import('fs');
+  const { resolve } = require('path') as typeof import('path');
+  const raiz = resolve(__dirname, '..');
+  const appJson = JSON.parse(lerArquivo(resolve(raiz, 'app.json'), 'utf8'));
+  const apontado: string | undefined = appJson?.expo?.android?.googleServicesFile;
+  checar(
+    'googleServicesFile do app.json, quando declarado, aponta para arquivo existente',
+    !apontado || existsSync(resolve(raiz, apontado)),
+    apontado ? `declarado como "${apontado}", que não existe` : ''
+  );
+}
+
 console.log('\n' + passaram + '/' + (passaram + falhas) + ' checagens de notas de release passaram — ' + falhas + ' falhas');
 if (falhas > 0) process.exit(1);
