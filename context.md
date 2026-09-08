@@ -3687,21 +3687,22 @@ Especificação aprovada e registrada em
   e os testes reais de assinatura/quota; a quota de IA ganhou contador SQL
   atômico por usuário/canal em supabase/migrations/20260908140000_ai_usage_quotas.sql;
   e os artefatos de handoff estão em documentation/.
-- A migration de quota e as duas Edge Functions alteradas ainda precisam ser
-  aplicadas/publicadas na produção, na ordem migration → funções. Sem isso o
-  novo cliente retornará limite_indisponivel de propósito, em vez de chamar
-  IA sem proteção.
+- A migration de quota foi aplicada no Supabase de produção pela API de
+  gerenciamento e verificada com RLS, RPC protegida, fuso de São Paulo e sem
+  leitura direta por `authenticated`. Depois dela, `assistente-financeiro` foi
+  publicado na versão 21 e `processar-lancamento-voz` na versão 5; ambas estão
+  ACTIVE com JWT obrigatório. A sonda sem JWT retornou `42501` como esperado.
 
 ### Ainda não comprovado / manual
 
 Checklist para executar na outra máquina, nesta ordem:
 
-0. **Quota de IA — banco e funções:** aplicar
-   20260908140000_ai_usage_quotas.sql no Supabase de produção e publicar
-   assistente-financeiro e processar-lancamento-voz depois da migration.
-   Confirmar com uma conta autenticada que consumir_cota_ia('assistente') e
-   consumir_cota_ia('voz') devolvem uma linha permitida; sem JWT a RPC deve
-   devolver 42501. Não publicar as funções antes da tabela/RPC existir.
+0. **Quota de IA — concluído em 08/09/2026:**
+   `20260908140000_ai_usage_quotas.sql` foi aplicada no Supabase de produção;
+   `assistente-financeiro` e `processar-lancamento-voz` foram publicados depois
+   dela. Resta apenas confirmar com uma conta autenticada que
+   `consumir_cota_ia('assistente')` e `consumir_cota_ia('voz')` devolvem uma
+   linha permitida; a sonda sem JWT já devolveu `42501`.
 
 1. **Kiwify — header e segredo:** no painel do webhook, confirmar/configurar o
    envio do segredo no header `x-kiwify-token`. O valor precisa ser o mesmo do
