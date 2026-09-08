@@ -360,7 +360,14 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
-  aviso: { color: '#d3b869', fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.regular },
+  /* `theme.danger`, cujo próprio comentário em lib/theme.ts diz "perigo/atenção",
+     e não o âmbar que estava aqui: `#d3b869` é a cor da categoria Assinaturas,
+     emprestada como cor semântica — exatamente o acidente que fez o token
+     `danger` existir (o botão "Excluir conta" tinha pegado a cor de
+     Alimentação do mesmo jeito). O aviso é de integridade do dado ("isto não é
+     uma compra real"), que é o papel do token; um terceiro tom semântico
+     reintroduziria o semáforo que a No-Red Rule mantém fora da paleta. */
+  aviso: { color: theme.danger, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.regular },
 
   notaBox: { backgroundColor: theme.paper, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },
   notaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
