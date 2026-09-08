@@ -1,5 +1,21 @@
 # Contexto do projeto — Grana.
 
+## 08/09/2026 — entrega direta do APK
+
+Foi implementado o fluxo curto de distribuição: rota pública `/baixar`, link
+para ela no rodapé da landing, botão de download após a ativação da assinatura
+e helper centralizado em `lib/download-app.ts`. A URL do APK vem de
+`EXPO_PUBLIC_ANDROID_DOWNLOAD_URL`; sem uma URL HTTPS configurada a interface
+mostra estado de preparação, nunca um link falso.
+
+`lib/atualizacao.ts` também prefere essa URL estável quando existe, deixando o
+artefato temporário do EAS apenas como fallback para instalações antigas ou
+ambientes ainda não configurados.
+
+O processo operacional está em `docs/DISTRIBUICAO_APK.md`. Ainda falta escolher
+e publicar o APK em um endereço estável e configurar a variável na Vercel/EAS.
+Nenhum build foi disparado e nenhum banco foi alterado nesta mudança.
+
 ## 08/09/2026 — carteiras nos lançamentos e na voz
 
 O `TransactionSheet` agora é centralizado e exige uma carteira real, com

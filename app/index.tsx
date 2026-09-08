@@ -1521,6 +1521,7 @@ function ConteudoWeb() {
               <View style={styles.rodapeColuna}>
                 <Text style={styles.rodapeTitulo}>Conta</Text>
                 <AppPressable href="/sign-up" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Criar conta</Text></AppPressable>
+                <AppPressable href="/baixar" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Baixar o app</Text></AppPressable>
                 <AppPressable href="/sign-in" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Entrar</Text></AppPressable>
               </View>
               <View style={styles.rodapeColuna}>

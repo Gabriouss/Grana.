@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +8,7 @@ import { guardarTokenAtivacaoPendente } from '@/lib/assinatura';
 import { supabase } from '@/lib/supabase';
 import { theme, spacing, radius, fonts, type, lh } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
+import { obterUrlDownloadAndroid } from '@/lib/download-app';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
 
@@ -26,6 +28,21 @@ export default function Ativar() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { token } = useLocalSearchParams<{ token?: string }>();
+  const urlDownload = obterUrlDownloadAndroid();
+  const [erroDownload, setErroDownload] = useState<string | null>(null);
+
+  async function abrirDownload() {
+    setErroDownload(null);
+    if (!urlDownload) {
+      router.push('/baixar');
+      return;
+    }
+    try {
+      await Linking.openURL(urlDownload);
+    } catch {
+      setErroDownload('Não conseguimos abrir o download. Tente novamente pela página de download.');
+    }
+  }
 
   const [estado, setEstado] = useState<'carregando' | 'vinculado' | 'ja-vinculado' | 'erro' | 'sem-token'>('carregando');
   const jaTentou = useRef(false);
@@ -100,6 +117,13 @@ export default function Ativar() {
             >
               <Text style={styles.primaryBtnText}>Ir para o Grana.</Text>
             </AppPressable>
+            <AppPressable
+              style={({ hovered }) => [styles.secondaryBtn, hovered && styles.secondaryBtnHover]}
+              onPress={abrirDownload}
+            >
+              <Text style={styles.secondaryBtnText}>Baixar o aplicativo</Text>
+            </AppPressable>
+            {erroDownload ? <Text style={styles.erroDownload}>{erroDownload}</Text> : null}
           </>
         )}
 
@@ -167,4 +191,5 @@ const styles = StyleSheet.create({
   secondaryBtn: { paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs, borderRadius: radius.md },
   secondaryBtnHover: { backgroundColor: theme.paperRaised },
   secondaryBtnText: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
+  erroDownload: { color: theme.danger, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light, textAlign: 'center', marginTop: spacing.sm },
 });

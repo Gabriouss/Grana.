@@ -292,6 +292,9 @@ function RootNavigator() {
             (ver app/ativar.tsx) precisa funcionar tanto logado quanto
             deslogado — os dois casos são tratados dentro da própria tela. */}
         <Stack.Screen name="ativar" />
+        {/* A distribuição direta precisa abrir antes de existir uma conta, tanto
+            pelo e-mail da compra quanto pela landing. */}
+        <Stack.Screen name="baixar" />
         {/* Callback PKCE dedicado: recebe somente um código curto e de uso
             único; a troca pela sessão acontece em auth-context. */}
         <Stack.Screen name="auth/callback" />

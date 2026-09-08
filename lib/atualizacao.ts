@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { compararVersoes } from './versao';
+import { obterUrlDownloadAndroid } from './download-app';
 
 /**
  * Aviso de atualização do APK.
@@ -57,13 +58,16 @@ export async function verificarAtualizacao(): Promise<InfoAtualizacao | null> {
   if (compararVersoes(data.version, versaoAtual()) <= 0) return null;
 
   // Links de artefato do EAS expiram — melhor não anunciar uma versão nova
-  // cujo download já morreu do que mandar a pessoa pra um 404.
-  if (data.apk_expires_at && new Date(data.apk_expires_at).getTime() <= Date.now()) return null;
+  // cujo download já morreu do que mandar a pessoa pra um 404. Quando há uma
+  // URL estável configurada, ela substitui o artefato temporário do EAS e a
+  // expiração deste último não invalida o aviso.
+  const urlDownloadEstavel = obterUrlDownloadAndroid();
+  if (!urlDownloadEstavel && data.apk_expires_at && new Date(data.apk_expires_at).getTime() <= Date.now()) return null;
 
   const dispensada = await AsyncStorage.getItem(CHAVE_DISPENSADA);
   if (dispensada === data.version) return null;
 
-  return { versao: data.version, apkUrl: data.apk_url, notas: data.notes };
+  return { versao: data.version, apkUrl: urlDownloadEstavel ?? data.apk_url, notas: data.notes };
 }
 
 /** Marca esta versão como dispensada — o aviso só volta quando sair uma versão mais nova ainda. */
