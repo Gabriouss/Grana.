@@ -15,16 +15,29 @@
      grana_livre_widget_info.xml/grana_compromisso_widget_info.xml) deixa o
      sistema tratar o resize de verdade — o layout já reflui sozinho
      (match_parent + peso igual nos 4 botões), só faltava o manifesto permitir. -->
+<!-- ALTURA: 40dp não é escolha estética, é o teto de uma linha da grade.
+     O launcher decide quantas LINHAS o widget ocupa por
+     `minHeight = 70 × n − 30`, ou seja n = ceil((minHeight + 30) / 70):
+     40dp → 1 linha, e qualquer valor acima disso já vira 2 linhas (110dp).
+     Ficou em 60dp e depois 48dp, e as duas vezes o widget reservou DUAS
+     linhas na tela inicial — uma faixa fina de botões dentro de uma caixa com
+     o dobro da altura, que foi como o autor reportou em 07/09/2026. Passar de
+     40dp aqui custa uma linha inteira da grade, por 1dp que seja.
+     `targetCellHeight="1"` sozinho não resolve: launcher que ainda respeita o
+     `minHeight` legado como piso arredonda para cima assim mesmo.
+     O resize ganhou o eixo vertical junto: como a altura é o incômodo, faz
+     sentido a pessoa poder encolher no próprio launcher — o piso continua
+     sendo `minResizeHeight`, então não dá para cortar o conteúdo. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="48dp"
+    android:minHeight="40dp"
     android:minResizeWidth="250dp"
-    android:minResizeHeight="48dp"
+    android:minResizeHeight="40dp"
     android:targetCellWidth="5"
     android:targetCellHeight="1"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/grana_central_widget"
     android:previewLayout="@layout/grana_central_widget"
     android:description="@string/grana_central_widget_descricao"
-    android:resizeMode="horizontal"
+    android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />

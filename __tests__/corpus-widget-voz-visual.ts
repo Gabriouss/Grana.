@@ -44,5 +44,27 @@ conferir('ouvindo usa o fundo escuro (mesmo padrão de "processando"), nunca a c
 conferir('o ícone preserva metade do diâmetro do círculo',
   /android:padding="16dp"/.test(layout) && /android:scaleType="fitCenter"/.test(layout));
 
+/* ── Central de Lançamentos: altura de UMA linha da grade ──────────────────
+   O launcher decide quantas linhas o widget ocupa por
+   `minHeight = 70 × n − 30`, ou seja n = ceil((minHeight + 30) / 70). O teto
+   de uma linha é 40dp, e QUALQUER valor acima disso já reserva duas.
+   Isto regrediu duas vezes: ficou em 60dp e depois em 48dp, e nas duas o
+   widget apareceu na tela inicial como uma faixa fina de botões dentro de uma
+   caixa com o dobro da altura, reportado pelo autor em 07/09/2026. Um dp a
+   mais aqui custa uma linha inteira da grade, e o defeito não aparece em
+   lugar nenhum até alguém instalar o APK — daí o guarda. */
+const centralInfo = ler(`${raiz}res/xml/grana_central_widget_info.xml`);
+const alturaDeclarada = Number(/android:minHeight="(\d+)dp"/.exec(centralInfo)?.[1] ?? NaN);
+const linhasOcupadas = Math.ceil((alturaDeclarada + 30) / 70);
+conferir(
+  `minHeight da Central cabe em 1 linha da grade (declarado ${alturaDeclarada}dp → ${linhasOcupadas} linha(s))`,
+  Number.isFinite(alturaDeclarada) && linhasOcupadas === 1
+);
+const alturaRedimensionavel = Number(/android:minResizeHeight="(\d+)dp"/.exec(centralInfo)?.[1] ?? NaN);
+conferir(
+  'minResizeHeight da Central não passa do minHeight',
+  Number.isFinite(alturaRedimensionavel) && alturaRedimensionavel <= alturaDeclarada
+);
+
 console.log(`${total - falhas}/${total} guardas visuais do widget de voz passaram`);
 if (falhas > 0) process.exit(1);
