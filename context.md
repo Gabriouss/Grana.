@@ -4452,3 +4452,19 @@ Ler o número da versão como sinal de publicação levaria à conclusão errada
 foi escrito contra a documentação, não contra tráfego observado. Falta apontar
 o webhook no painel da Cakto e configurar `EXPO_PUBLIC_CHECKOUT_URL` na Vercel
 e no EAS com `https://pay.cakto.com.br/esgddv2_1096987`.
+
+## 09/09/2026 — link do APK e webhook de build, aplicados
+
+Fechados os pendentes que sobraram da rodada do link estável:
+
+- segredo `ANDROID_DOWNLOAD_URL` criado no Supabase, com
+  `https://granaponto.com.br/downloads/grana-latest.apk`;
+- `eas-build-webhook` republicada, então a partir da próxima build é o
+  endereço estável que fica gravado, e não o artefato do EAS;
+- `app_release` apontava para o artefato que vencia em 23/09 e passou a
+  apontar para o link estável, com `apk_expires_at` nulo. Isso fecha o buraco
+  de quem está numa build ANTERIOR à 1.8.4, que não tem a URL estável embutida
+  e teria o aviso de atualização suprimido em silêncio a partir daquela data.
+
+`verify_jwt` conferido em todas as funções depois dos deploys: `false` nos
+quatro webhooks de provedor externo, `true` nas três que atendem o app logado.
