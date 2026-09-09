@@ -34,18 +34,46 @@ export function provedoresPadrao(groqKey: string, openaiKey: string): ProvedorTr
   ];
 }
 
-/* Prompt único, sem mencionar canal ("mensagem de WhatsApp") — o mesmo texto
-   vale pra um áudio gravado no app ou no widget, que nunca passaram pelo
-   WhatsApp. O prompt não garante nada (Whisper não segue instrução à risca),
-   mas empurra o estilo de saída: sem isso, "onze e setenta e nove" (forma
-   comum de falar um preço, reais e centavos, sem dizer "reais"/"centavos")
-   às vezes sai transcrito como "1179", os dois números colados sem vírgula
-   nem "e" — formato que normalizarTextoTranscrito não tem como recuperar
-   depois, porque "1179" sozinho é ambíguo (pode ser R$1.179 de verdade). */
-const PROMPT_TRANSCRICAO =
-  'Transcrição de um comando de voz em português do Brasil sobre um lançamento financeiro pessoal ' +
-  '(gasto, receita, boleto ou compra). Valores em reais usam vírgula como separador decimal, nunca ponto: ' +
-  '11,79 (não 11.79, não 1179).';
+/* Contexto de domínio, sem instrução de formatação nem exemplos numéricos:
+   preserva o comportamento publicado e reduz o risco de eco no silêncio. */
+export const PROMPT_TRANSCRICAO =
+  'Comando de voz em português do Brasil sobre um lançamento financeiro pessoal: ' +
+  'gasto, receita, boleto ou compra.';
+
+// Proteções já publicadas na versão 7 da função de voz, agora versionadas.
+// Não induzir formatação: o prompt antigo podia ser ecoado no silêncio e
+// provocar numerais híbridos, como "57quenta", que perdiam parte do valor.
+const NUMERAIS_ESCRITOS = [
+  'um', 'dois', 'tres', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove',
+  'dez', 'onze', 'doze', 'treze', 'quatorze', 'catorze', 'quinze', 'dezesseis',
+  'dezessete', 'dezoito', 'dezenove', 'vinte', 'trinta', 'quarenta', 'cinquenta',
+  'sessenta', 'setenta', 'oitenta', 'noventa', 'cem', 'cento', 'duzentos',
+  'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos',
+  'oitocentos', 'novecentos', 'mil', 'milhao', 'milhoes',
+];
+
+export function temNumeralPartido(texto: string): boolean {
+  for (const token of texto.toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
+    const m = /^(?:\d+([\p{L}]+)|([\p{L}]+)\d+)$/u.exec(token);
+    if (!m) continue;
+    const letras = (m[1] ?? m[2] ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (letras.length < 3) continue;
+    if (NUMERAIS_ESCRITOS.some((n) => n.endsWith(letras) || n.startsWith(letras))) return true;
+  }
+  return false;
+}
+
+function chaveDeComparacao(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+const CHAVE_PROMPT = chaveDeComparacao(PROMPT_TRANSCRICAO);
+
+export function ehEcoDoPrompt(texto: string): boolean {
+  const chave = chaveDeComparacao(texto);
+  if (chave.length < 25) return false;
+  return CHAVE_PROMPT.includes(chave);
+}
 
 export type ResultadoTranscricao = { texto: string; provedor: string };
 
@@ -87,6 +115,10 @@ async function chamarProvedor(
 
     const normalizado = normalizarTextoTranscrito(bruto);
     if (!normalizado) return null;
+    if (ehEcoDoPrompt(normalizado) || temNumeralPartido(normalizado)) {
+      console.warn(`[transcrever] ${provedor.nome} devolveu transcrição não confiável`);
+      return null;
+    }
     // Só o provedor e o tamanho. A transcrição em si é o extrato da
     // pessoa ("mercado, 120 reais") e os logs da Edge Function ficam
     // retidos e legíveis por qualquer um com acesso ao painel — não é

@@ -1,14 +1,17 @@
 import { supabase } from './supabase';
 import type { Transaction, Wallet } from './types';
-import { DEMO_WALLETS } from './demo-data';
 import { isCreditTx } from './format';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export async function fetchWallets(): Promise<Wallet[]> {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return DEMO_WALLETS;
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error('Entre na conta para carregar suas carteiras.');
+  const user = session.user;
+  const chave = `grana:voz:referencia:${user.id}:carteiras`;
 
+  try {
   const { data, error } = await supabase
     .from('wallets')
     .select('*')
@@ -16,21 +19,7 @@ export async function fetchWallets(): Promise<Wallet[]> {
     .order('is_default', { ascending: false })
     .order('name', { ascending: true });
 
-  if (error) {
-    console.warn('Erro ao carregar carteiras:', error.message);
-    return [
-      {
-        id: 'default-principal',
-        user_id: user.id,
-        name: 'Principal',
-        initial_balance: 0,
-        color: '#1fa98d',
-        icon: 'wallet-outline',
-        is_default: true,
-        created_at: new Date().toISOString(),
-      },
-    ];
-  }
+  if (error) throw error;
 
   // Se o usuário ainda não tiver nenhuma carteira cadastrada, cria a "Principal" automaticamente
   if (!data || data.length === 0) {
@@ -48,11 +37,26 @@ export async function fetchWallets(): Promise<Wallet[]> {
       .single();
 
     if (!createError && created) {
+      await AsyncStorage.setItem(chave, JSON.stringify([created]));
       return [created as Wallet];
     }
+    if (createError) throw createError;
   }
 
-  return (data as Wallet[]) || [];
+  const carteiras = (data as Wallet[]) || [];
+  await AsyncStorage.setItem(chave, JSON.stringify(carteiras));
+  return carteiras;
+  } catch (erro) {
+    console.warn('[carteiras] falha ao buscar referências', (erro as { code?: string })?.code ?? 'rede/local');
+    if (/network|fetch|timeout|conex|connection/i.test(String((erro as { message?: string })?.message ?? erro))) {
+      const raw = await AsyncStorage.getItem(chave);
+      if (raw) {
+        const cache = JSON.parse(raw) as Wallet[];
+        if (Array.isArray(cache) && cache.every((w) => w.user_id === user.id)) return cache;
+      }
+    }
+    throw erro;
+  }
 }
 
 export async function createWallet(input: {

@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const ts = require('typescript');
 let task, permission = true, cards = [], matched = null, saved = [], revisions = [], cleaned = 0, pending = [];
 const deps = {
+  './voz-confiabilidade': { precisaRevisarValorVoz: () => false },
   'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado: () => {} },
@@ -25,7 +26,7 @@ const deps = {
 };
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-}).outputText, { exports: {}, require: (id) => { if (!(id in deps)) throw new Error(id); return deps[id]; }, console });
+}).outputText, { exports: {}, require: (id) => { if (!(id in deps)) throw new Error(id); return deps[id]; }, console, setTimeout, clearTimeout });
 (async () => {
   cards = [{ id: 'c6', name: 'QA C6', wallet_id: 'wallet' }, { id: 'nubank', name: 'QA Nubank', wallet_id: 'wallet' }];
   await task({ caminho: '/qa.m4a', requestId: '1' });
@@ -36,6 +37,10 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 
   assert.equal(saved[1].card_id, 'c6');
   permission = false; await task({ caminho: '/qa.m4a', requestId: '4' });
   assert.equal(saved.length, 2); assert.equal(cleaned, 4);
+  permission = true;
+  permission = false;
+  await task({ caminho: '/voz-pendente/app.m4a', requestId: 'app-sem-permissao', source: 'app' });
+  assert.equal(cleaned, 4, 'retomada do app sem notificações conserva o áudio');
   permission = true;
   deps['./voz'].transcreverAudio = async () => ({ ok: false, codigo: 'sem_rede' });
   await task({ caminho: '/qa-offline.m4a', requestId: '5' });

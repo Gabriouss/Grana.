@@ -1,5 +1,6 @@
 import { AppRegistry, Platform } from 'react-native';
 import { isLikelyNetworkError } from './offline-cache';
+import type { CreditCard } from './types';
 
 class VozPendenteOffline extends Error {
   readonly nome = 'VozPendenteOffline';
@@ -24,7 +25,7 @@ class VozPendenteOffline extends Error {
  * pra registrar um nome de tarefa atrasaria o arranque de todo mundo.
  */
 
-type Payload = { caminho?: string; requestId?: string };
+type Payload = { caminho?: string; requestId?: string; source?: 'app' | 'widget'; transcricao?: string };
 
 async function executarTarefa(payload: Payload) {
   const { definirEstado } = await import('@/modules/grana-voice-widget');
@@ -49,13 +50,16 @@ async function executarTarefa(payload: Payload) {
     const { podeNotificar } = await import('./widget-voz-notificacoes');
     if (!(await podeNotificar())) {
       estadoFinal = 'atencao';
+      // Uma retomada sem permissão não pode apagar o áudio preservado.
+      manterArquivo = payload.source === 'app' || caminho.includes('/voz-pendente/');
       return;
     }
 
-    const salvou = await processar(caminho, requestId, contexto);
+    const salvou = await processar(caminho, requestId, contexto, payload);
     if (salvou) await sincronizarResumoDepoisDaVoz();
     else estadoFinal = 'atencao';
   } catch (erro) {
+    console.warn('[voz:widget] tarefa interrompida', (erro as { code?: string })?.code ?? 'falha');
     estadoFinal = 'atencao';
     if (erro instanceof VozPendenteOffline || isLikelyNetworkError(erro)) {
       /* A gravação já aconteceu. Não apagá-la é a diferença entre "sem rede"
@@ -71,7 +75,7 @@ async function executarTarefa(payload: Payload) {
         const { data } = await supabase.auth.getSession();
         const userId = data.session?.user.id;
         if (userId) {
-          await adicionarVozPendente({ caminho, requestId, userId });
+          await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao });
           manterArquivo = true;
           try {
             const { notificarPendenteOffline } = await import('./widget-voz-notificacoes');
@@ -119,7 +123,7 @@ async function apagarArquivo(caminho: string) {
   }
 }
 
-async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }): Promise<boolean> {
+async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload): Promise<boolean> {
   const [{ transcreverAudio }, notificacoes, heuristics, data, voiceOperations] = await Promise.all([
     import('./voz'),
     import('./widget-voz-notificacoes'),
@@ -129,7 +133,9 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   ]);
 
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
-  const transcricao = await transcreverAudio(uri, { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' });
+  const transcricao = payload.transcricao
+    ? { ok: true as const, transcript: payload.transcricao }
+    : await transcreverAudio(uri, { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' });
   if (!transcricao.ok) {
     if (transcricao.codigo === 'sem_rede' || transcricao.codigo === 'demorou') {
       throw new VozPendenteOffline('A transcrição será retomada quando houver conexão.');
@@ -140,6 +146,15 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   const texto = transcricao.transcript;
   contexto.transcricao = texto;
+  if (payload.source === 'app') {
+    await notificacoes.notificarRevisao('Revise seu lançamento por voz', texto);
+    return false;
+  }
+  const { precisaRevisarValorVoz } = await import('./voz-confiabilidade');
+  if (precisaRevisarValorVoz(texto)) {
+    await notificacoes.notificarRevisao('Confirme o valor que ouvi', texto);
+    return false;
+  }
   const valor = heuristics.guessAmountFromText(texto);
 
   /* Sem valor não se salva nada — é a regra que separa "lançou errado" de
@@ -149,7 +164,14 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
 
-  const extras = await categoriasDaPessoa(data);
+  const { fetchWallets } = await import('./wallets');
+  let prazoReferencias: ReturnType<typeof setTimeout> | undefined;
+  const [extras, carteiras, cartoesDisponiveis] = await Promise.race([
+    Promise.all([categoriasDaPessoa(data), fetchWallets(), heuristics.ehIntencaoCredito(texto) ? data.fetchCreditCards() : Promise.resolve([])]),
+    new Promise<never>((_, reject) => {
+      prazoReferencias = setTimeout(() => reject(new VozPendenteOffline('timeout ao carregar referências')), 8_000);
+    }),
+  ]).finally(() => clearTimeout(prazoReferencias));
   const categoria = heuristics.guessCategoryFromText(texto, extras);
 
   /* "Outros" é o balde de "não reconheci", não uma escolha. Salvar aqui em
@@ -163,8 +185,6 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
 
-  const { fetchWallets } = await import('./wallets');
-  const carteiras = await fetchWallets();
   const carteiraMencionada = heuristics.matchWalletByText(texto, carteiras);
   const mencionaCarteira = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto);
   if (mencionaCarteira && !carteiraMencionada) {
@@ -212,7 +232,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   if (heuristics.ehIntencaoCredito(texto)) {
     return lancarNoCredito({
-      requestId, texto, valor, descricao, categoria, carteiraId: carteira.id, heuristics, data, notificacoes, voiceOperations,
+      requestId, texto, valor, descricao, categoria, carteiraId: carteira.id, cartoesDisponiveis, heuristics, data, notificacoes, voiceOperations,
     });
   }
 
@@ -256,6 +276,7 @@ async function lancarNoCredito(args: {
   descricao: string;
   categoria: { name: string; color: string };
   carteiraId: string;
+  cartoesDisponiveis: CreditCard[];
   heuristics: typeof import('./heuristics');
   data: typeof import('./data');
   notificacoes: typeof import('./widget-voz-notificacoes');
@@ -263,7 +284,7 @@ async function lancarNoCredito(args: {
 }): Promise<boolean> {
   const { requestId, texto, valor, descricao, categoria, carteiraId, heuristics, data, notificacoes, voiceOperations } = args;
 
-  const cartoes = await data.fetchCreditCards();
+  const cartoes = args.cartoesDisponiveis;
   /* Sem cartão cadastrado, crédito NÃO vira Pix nem débito caladinho: a
      forma de pagamento muda de quem cobra e quando, e adivinhar isso é
      inventar um fato financeiro. */
@@ -366,7 +387,7 @@ export async function tentarVozesPendentes(): Promise<void> {
 
     for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId)) {
       // Mantém o item até a tarefa concluir; uma interrupção permite retomada.
-      await executarTarefa({ caminho: item.caminho, requestId: item.requestId });
+      await executarTarefa(item);
     }
   } catch {
     // A fila permanece no aparelho; a próxima abertura/retomada tenta de novo.
@@ -393,12 +414,8 @@ async function sincronizarResumoDepoisDaVoz() {
 }
 
 async function categoriasDaPessoa(data: typeof import('./data')) {
-  try {
     const cats = await data.fetchCategories();
     return cats.filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color }));
-  } catch {
-    return [];
-  }
 }
 
 function hojeISO(): string {

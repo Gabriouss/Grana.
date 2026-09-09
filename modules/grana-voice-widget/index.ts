@@ -9,6 +9,7 @@ import { Platform, requireOptionalNativeModule } from 'expo-modules-core';
  * funções abaixo respondem "não dá" em vez de lançar.
  */
 type NativeGranaVoiceWidget = {
+  prepararAudioLocal?(uri: string): Promise<{ uri: string; sampleRate: number; audioChannels: number; audioEncoding: number }>;
   estadoAtual(): string;
   definirEstado(estado: string): void;
   podeFixar(): boolean;
@@ -22,6 +23,11 @@ type NativeGranaVoiceWidget = {
 };
 
 const nativo = requireOptionalNativeModule<NativeGranaVoiceWidget>('GranaVoiceWidget');
+
+export async function prepararAudioLocal(uri: string) {
+  if (!nativo?.prepararAudioLocal) return null;
+  return nativo.prepararAudioLocal(uri);
+}
 
 /**
  * `atencao` é o único estado que NÃO se resolve sozinho: falta algo que só

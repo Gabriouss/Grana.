@@ -73,6 +73,8 @@ function carregar(file, deps) {
   const listeners = new Map();
   let installed = true, starts = 0;
   const local = carregar('lib/voz-local.ts', {
+    '@/modules/grana-voice-widget': { prepararAudioLocal: async () => ({ uri: 'file:///voz.pcm', sampleRate: 44100, audioChannels: 1, audioEncoding: 2 }) },
+    'expo-file-system/legacy': { deleteAsync: async uri => assert.equal(uri, 'file:///voz.pcm') },
     'react-native': { Platform: { OS: 'android', Version: 33 } },
     'expo-speech-recognition': { ExpoSpeechRecognitionModule: {
       supportsOnDeviceRecognition: () => true,
@@ -81,7 +83,7 @@ function carregar(file, deps) {
       abort() {}, start: opts => {
         starts++;
         assert.equal(opts.requiresOnDeviceRecognition, true);
-        assert.equal(opts.audioSource.uri, 'file:///voz.m4a');
+        assert.equal(opts.audioSource.uri, 'file:///voz.pcm', 'não rotula M4A comprimido como PCM');
         listeners.get('result')({ isFinal: true, results: [{ transcript: 'Merenda 25,17' }] });
         listeners.get('end')();
       },

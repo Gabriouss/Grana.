@@ -195,6 +195,8 @@ export function normalizarTexto(texto: string): string {
 
   return saida
     .join('')
+    // Separador ditado explicitamente: "dezoito vírgula noventa e nove".
+    .replace(/(\d+)\s+v[íi]rgula\s+(\d{1,2})(?!\d)/gi, (_m, r, c) => `${r},${c}`)
     /* Cópia sincronizada do mesmo fix em supabase/functions/whatsapp-webhook
        — ver o comentário completo lá. Resumo: ruído de alucinação do
        Whisper em áudio curto (termina a frase em outro alfabeto em vez de
@@ -571,7 +573,7 @@ export function guessAmountFromText(text: string): number {
   if (comMoeda) return parseAmount(comMoeda[1]);
 
   // "150,00" / "1.250,50" — número com centavos explícitos.
-  const comCentavos = normalizado.match(/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
+  const comCentavos = normalizado.match(/(?<![\d.,])(\d{1,3}(?:\.\d{3})*,\d{1,2}|\d+,\d{1,2})(?!\d)/);
   if (comCentavos) return parseAmount(comCentavos[1]);
 
   // "mercado 50" / "50 no mercado" — último recurso: qualquer número solto.

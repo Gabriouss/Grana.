@@ -6,11 +6,16 @@ let ocupado = false;
 export async function transcreverNoAparelho(uri: string): Promise<string | null> {
   if (Platform.OS !== 'android' || Number(Platform.Version) < 33 || ocupado) return null;
   ocupado = true;
+  let pcmUri: string | undefined;
   try {
     const { ExpoSpeechRecognitionModule: motor } = await import('expo-speech-recognition');
     if (!motor.supportsOnDeviceRecognition()) return null;
     const idiomas = await motor.getSupportedLocales({});
     if (!idiomas.installedLocales.some((lang) => lang.toLowerCase().replace('_', '-') === 'pt-br')) return null;
+    const { prepararAudioLocal } = await import('@/modules/grana-voice-widget');
+    const audioSource = await prepararAudioLocal(uri);
+    if (!audioSource) return null;
+    pcmUri = audioSource.uri;
     return await new Promise<string | null>((resolve) => {
       let texto = '';
       let terminou = false;
@@ -32,12 +37,21 @@ export async function transcreverNoAparelho(uri: string): Promise<string | null>
       try {
         motor.start({
           lang: 'pt-BR', requiresOnDeviceRecognition: true, interimResults: false,
-          audioSource: { uri, audioChannels: 1, sampleRate: 44100, audioEncoding: 2 },
+          audioSource: { ...audioSource, audioEncoding: 2 },
         });
       } catch { concluir(null); }
     });
-  } catch {
+  } catch (erro) {
+    console.warn('[voz:local] reconhecimento indisponível', (erro as { name?: string })?.name ?? 'erro');
     // Expo Go e aparelhos sem serviço local continuam pelo caminho remoto.
     return null;
-  } finally { ocupado = false; }
+  } finally {
+    ocupado = false;
+    if (pcmUri) {
+      try {
+        const fs = await import('expo-file-system/legacy');
+        await fs.deleteAsync(pcmUri, { idempotent: true });
+      } catch { console.warn('[voz:local] falha ao limpar PCM temporário'); }
+    }
+  }
 }

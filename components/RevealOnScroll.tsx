@@ -108,7 +108,19 @@ export default function RevealOnScroll({ children, atraso = 0, variante = 'padra
               obs.disconnect();
             }
           },
-          { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }
+          /* Revela ANTES de entrar, e com qualquer pixel — não depois de
+             entrar 10% e com 10% do elemento dentro, que era o ajuste
+             anterior (`-10%` + `threshold: 0.1`).
+             O `-10%` ENCOLHE a área de detecção, e as dobras desta página têm
+             altura de tela inteira: somando os dois, os primeiros ~180px de
+             uma seção podiam estar na tela ainda invisíveis. Com
+             `scroll-snap`, a rolagem parava exatamente aí — e a pessoa via
+             uma tela inteira vazia, que foi o defeito relatado.
+             Agora o `+15%` ESTICA a área para baixo: quando a seção chega ao
+             olho, a animação já começou. O gesto continua o mesmo; só deixa
+             de haver um instante em que o conteúdo está visível na tela e
+             transparente. */
+          { rootMargin: '0px 0px 15% 0px', threshold: 0 }
         );
         observador = obs;
         obs.observe(no);

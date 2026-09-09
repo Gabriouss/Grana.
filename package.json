@@ -53,7 +53,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test:voz": "node __tests__/voz-upload.cjs",
+    "test:voz": "node __tests__/voz-upload.cjs && node __tests__/voz-valores-regressao.cjs && node __tests__/voz-carteiras-offline.cjs",
     "test:assistente-fatura": "npx --yes tsx __tests__/corpus-assistente-fatura.ts",
     "test:assistente-aprendizado": "node __tests__/assistant-learning.cjs && node __tests__/assistant-memory-integration.cjs",
     "test:blur": "node __tests__/tab-bar-blur.cjs",

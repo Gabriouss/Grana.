@@ -27,5 +27,12 @@ async function run(primary, secondary) {
   r = await run(fail, ok); assert.deepEqual(r.calls, ['groq', 'openai']); assert.equal(r.result.provedor, 'openai');
   r = await run(() => new Promise(() => {}), ok); assert.equal(r.result.provedor, 'openai');
   r = await run(fail, fail); assert.equal(r.result, null); assert.deepEqual(r.calls, ['groq', 'openai']);
+  for (const texto of [api.PROMPT_TRANSCRICAO, 'Comando de voz em português do Brasil', 'Merenda 57quenta e sete reais']) {
+    r = await run(() => Response.json({ text: texto }), ok);
+    assert.equal(r.result.provedor, 'openai', 'transcrição corrompida aciona fallback');
+  }
+  for (const texto of ['Mercado 34,57 no C6', 'TV 1080p em 12x', 'Água 100ml']) {
+    assert.equal(api.temNumeralPartido(texto), false, texto);
+  }
   console.log('OK fallback: sucesso rápido sem chamada paga, falha rápida, primário pendurado e falha de ambos.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

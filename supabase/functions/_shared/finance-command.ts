@@ -204,6 +204,8 @@ export function normalizarTextoTranscrito(texto: string): string {
 
   return saida
     .join('')
+    // Separador ditado explicitamente: "dezoito vírgula noventa e nove".
+    .replace(/(\d+)\s+v[íi]rgula\s+(\d{1,2})(?!\d)/gi, (_m, r, c) => `${r},${c}`)
     /* Ruído de alucinação do Whisper em áudio curto ou impreciso: sem sinal
        de fala suficiente pra reconhecer, o modelo às vezes "termina" a
        frase em outro alfabeto (cirílico, CJK etc.) em vez de admitir

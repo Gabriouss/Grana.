@@ -24,6 +24,10 @@ class GranaVoiceWidgetModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("GranaVoiceWidget")
 
+    AsyncFunction("prepararAudioLocal") { uri: String ->
+      VoicePcmDecoder.decode(context, uri)
+    }
+
     Function("estadoAtual") {
       EstadoWidget.atual(context)
     }

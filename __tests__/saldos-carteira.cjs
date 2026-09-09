@@ -39,6 +39,7 @@ function carregar(file, deps) {
 
 const { calcularSaldosComAgregado } = carregar('lib/wallets.ts', {
   './supabase': { supabase: {} },
+  '@react-native-async-storage/async-storage': { __esModule: true, default: {} },
   './demo-data': { DEMO_WALLETS: [] },
   './format': { isCreditTx: (t) => t.payment_method === 'credit' },
 });

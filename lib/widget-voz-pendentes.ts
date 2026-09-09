@@ -14,6 +14,8 @@ export type VozPendente = {
   requestId: string;
   userId: string;
   criadoEm: number;
+  source?: 'app' | 'widget';
+  transcricao?: string;
 };
 
 async function ler(): Promise<VozPendente[]> {

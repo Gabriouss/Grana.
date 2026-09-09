@@ -46,7 +46,7 @@ async function main() {
   let relogio = 0, timeoutRapido = false;
   let resposta = () => Response.json({ status: 'ready', transcript: 'mercado 32 no Pix' });
   const cliente = carregar('lib/voz.ts', {
-    './voz-local': { transcreverNoAparelho: async () => null },
+    './voz-local': { transcreverNoAparelho: async () => { relogio += tempoLocal; return null; } },
     'react-native': { Platform: { get OS() { return plataforma; } } },
     'expo-file-system': { File: class {
       constructor(uri) { assert.ok(uri.startsWith('file://')); }
@@ -70,12 +70,17 @@ async function main() {
     Date: { now: () => relogio },
     setTimeout(fn, ms) { prazo = ms; return setTimeout(fn, timeoutRapido ? 5 : ms); },
   });
+  let tempoLocal = 0;
   const transcrever = () => cliente.transcreverAudio('file:///voz.m4a');
   assert.equal((await transcrever()).transcript, 'mercado 32 no Pix');
   assert.match(corpoEnviado, /name="audio"; filename="lancamento.m4a"/);
   assert.match(corpoEnviado, /audio\/mp4/);
   assert.ok(corpoEnviado.includes('\u0001\u0002\u0003\u0004'));
   assert.equal(prazo, 60_000);
+  tempoLocal = 30000;
+  await transcrever();
+  assert.equal(prazo, 30000, 'reconhecimento local e remoto compartilham prazo total');
+  tempoLocal = 0;
   // Widget e app usam o mesmo cliente, inclusive nome/opções do widget.
   assert.equal((await cliente.transcreverAudio('file:///widget.m4a', { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' })).ok, true);
   assert.match(corpoEnviado, /name="audio"; filename="widget.m4a"/);

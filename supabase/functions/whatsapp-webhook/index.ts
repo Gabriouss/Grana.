@@ -173,7 +173,7 @@ function guessAmountFromText(text: string): number {
   if (comMoeda) return parseAmount(comMoeda[1]);
 
   // "150,00" / "1.250,50" — número com centavos explícitos.
-  const comCentavos = normalizado.match(/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
+  const comCentavos = normalizado.match(/(?<![\d.,])(\d{1,3}(?:\.\d{3})*,\d{1,2}|\d+,\d{1,2})(?!\d)/);
   if (comCentavos) return parseAmount(comCentavos[1]);
 
   // "mercado 50" / "50 no mercado" — último recurso: qualquer número solto.

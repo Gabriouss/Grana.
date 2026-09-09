@@ -182,6 +182,8 @@ export async function transcreverAudio(
   uri: string,
   opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number } = {}
 ): Promise<ResultadoVoz> {
+  // O reconhecimento local também consome o prazo da tarefa Android.
+  const deadline = Date.now() + TIMEOUT_TOTAL_MS;
   const { transcreverNoAparelho } = await import('./voz-local');
   const local = await transcreverNoAparelho(uri);
   if (local) return { ok: true, transcript: local };
@@ -197,7 +199,6 @@ export async function transcreverAudio(
   const token = data.session?.access_token;
   if (!token) return { ok: false, codigo: 'sem_sessao' };
 
-  const deadline = Date.now() + TIMEOUT_TOTAL_MS;
   const primeira = await tentarUmaVez(url, token, uri, opts, deadline);
   if (!('ambiguo' in primeira)) return primeira;
 

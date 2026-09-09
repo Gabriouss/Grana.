@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -14,6 +14,9 @@ import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
 import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz, transcreverAudio } from '@/lib/voz';
 import AppPressable from './AppPressable';
+import { supabase } from '@/lib/supabase';
+import { randomUUID } from 'expo-crypto';
+import { adicionarVozPendente } from '@/lib/widget-voz-pendentes';
 
 /* Voz de lançamento, não música: mono e bitrate baixo. 20 segundos saem em
    torno de 150 KB, bem abaixo do teto de 2 MB da Edge Function, e o Whisper
@@ -89,6 +92,7 @@ export default function VoiceEntryButton({
      `gravando` só vira true depois do await, e dois toques rápidos criavam
      duas preparações concorrentes no mesmo gravador. */
   const ocupado = useRef(false);
+  const encerrando = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -97,6 +101,8 @@ export default function VoiceEntryButton({
   }, []);
 
   async function encerrarEEnviar() {
+    if (encerrando.current) return;
+    encerrando.current = true;
     if (cortePorTempo.current) {
       clearTimeout(cortePorTempo.current);
       cortePorTempo.current = null;
@@ -113,6 +119,14 @@ export default function VoiceEntryButton({
       }
       const resultado = await transcreverAudio(uri);
       if (!resultado.ok) {
+        if (Platform.OS === 'android' && (resultado.codigo === 'sem_rede' || resultado.codigo === 'demorou')) {
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            await adicionarVozPendente({ caminho: uri, requestId: randomUUID(), userId: data.session.user.id, source: 'app' });
+            Alert.alert('Áudio salvo no aparelho', 'Não foi possível concluir o reconhecimento. Seu áudio foi preservado para retomar e revisar ao abrir o Grana. com conexão.');
+            return;
+          }
+        }
         const msg = mensagemDeErroVoz(resultado.codigo);
         Alert.alert(msg.titulo, msg.texto);
         return;
@@ -124,6 +138,7 @@ export default function VoiceEntryButton({
       const msg = mensagemDeErroVoz('erro_interno');
       Alert.alert(msg.titulo, msg.texto);
     } finally {
+      encerrando.current = false;
       setEnviando(false);
       ocupado.current = false;
     }
