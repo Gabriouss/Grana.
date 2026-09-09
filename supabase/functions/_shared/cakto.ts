@@ -59,19 +59,26 @@ export function normalizarEventoCakto(
 
   const orderId = texto(body, ['data.id', 'data.refId']);
 
-  /* `paidAt` primeiro: é quando o dinheiro entrou. Em cancelamento não existe
-     `paidAt`, e `canceledAt` é a data que importa. `createdAt` fecha o resto.
-     O fallback para agora existe porque `p_event_at` é obrigatório na função
-     do banco e um evento sem data ainda é melhor que um evento perdido. */
-  const eventAt = dataIso(
-    texto(body, [
-      'data.paidAt',
-      'data.subscription.canceledAt',
-      'data.createdAt',
-      'data.subscription.createdAt',
-    ]),
-    agora.toISOString(),
-  )!;
+  /* A data DO EVENTO, não a do pagamento — e cada tipo guarda a dele num campo
+     próprio. Isto não é preciosismo: `processar_evento_assinatura` compara
+     `p_event_at` com o último evento da assinatura e DESCARTA o que for mais
+     antigo, como desatualizado. Num reembolso o `paidAt` continua sendo a data
+     do pagamento original, então ler `paidAt` primeiro faria todo reembolso e
+     todo chargeback chegarem com data velha e serem silenciosamente
+     ignorados — o dinheiro voltava e o acesso continuava de pé.
+     Descoberto conferindo o modelo do painel da Cakto antes da primeira venda. */
+  const CAMINHOS_DATA: Record<TipoEventoAssinatura, string[]> = {
+    approved: ['data.paidAt', 'data.createdAt'],
+    renewed: ['data.paidAt', 'data.createdAt'],
+    refunded: ['data.refundedAt', 'data.createdAt', 'data.paidAt'],
+    chargeback: ['data.chargedbackAt', 'data.createdAt', 'data.paidAt'],
+    canceled: ['data.canceledAt', 'data.subscription.canceledAt', 'data.createdAt'],
+    late: ['data.createdAt', 'data.due_date'],
+  };
+  /* O recuo para agora existe porque `p_event_at` é obrigatório do lado do
+     banco: um evento com data aproximada ainda é melhor que um evento perdido,
+     e a Cakto não reenvia nada. */
+  const eventAt = dataIso(texto(body, CAMINHOS_DATA[type]), agora.toISOString())!;
 
   return {
     type,

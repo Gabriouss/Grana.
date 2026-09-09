@@ -122,6 +122,45 @@ for (const evento of ['pix_gerado', 'boleto_gerado', 'picpay_gerado', 'checkout_
 checar('evento desconhecido é ignorado', cakto.normalizarEventoCakto(clone({ event: 'algo_novo_deles' })), null);
 checar('payload sem evento é ignorado', cakto.normalizarEventoCakto({ secret: 'x', data: {} }), null);
 
+/* ---- a data do evento tem que ser a DO EVENTO ----
+ *
+ * `processar_evento_assinatura` descarta evento mais antigo que o ultimo
+ * processado, como desatualizado. Ler `paidAt` num reembolso entregaria a data
+ * do pagamento ORIGINAL, o evento seria considerado velho e ignorado calado: o
+ * dinheiro voltava e o acesso continuava de pe.
+ *
+ * Os nomes de campo abaixo vieram do modelo exibido no painel da Cakto, que
+ * traz `refundedAt`, `chargedbackAt` e `canceledAt` no nivel de `data` — coisa
+ * que o exemplo da documentacao publica nao mostrava. */
+const PAGO_EM = '2026-06-26T12:00:00.000000+00:00';
+const DEPOIS = '2026-07-10T09:30:00.000000+00:00';
+
+const reembolso = cakto.normalizarEventoCakto(clone({ event: 'refund' }, {
+  paidAt: PAGO_EM, refundedAt: DEPOIS,
+}));
+checar('reembolso usa refundedAt, não paidAt', reembolso.eventAt, '2026-07-10T09:30:00.000Z');
+
+const estorno = cakto.normalizarEventoCakto(clone({ event: 'chargeback' }, {
+  paidAt: PAGO_EM, chargedbackAt: DEPOIS,
+}));
+checar('chargeback usa chargedbackAt', estorno.eventAt, '2026-07-10T09:30:00.000Z');
+
+const cancelaTopo = cakto.normalizarEventoCakto(clone({ event: 'subscription_canceled' }, {
+  paidAt: PAGO_EM, canceledAt: DEPOIS,
+}));
+checar('cancelamento usa canceledAt do nível de data', cancelaTopo.eventAt, '2026-07-10T09:30:00.000Z');
+
+// Aprovação continua usando a data do pagamento, que é a correta para ela.
+checar('aprovação segue usando paidAt', cakto.normalizarEventoCakto(clone({}, { paidAt: PAGO_EM })).eventAt, '2026-06-26T12:00:00.000Z');
+
+/* O modelo do painel traz `subscription: null` para produto de pagamento
+   único. Não pode derrubar a leitura: o id do pedido sustenta o evento. */
+const semAssinatura = cakto.normalizarEventoCakto(clone({}, { subscription: null }));
+checar('subscription nula não quebra', semAssinatura.type, 'approved');
+checar('subscription nula deixa o id nulo', semAssinatura.subscriptionId, null);
+checar('subscription nula não promete acesso', semAssinatura.accessUntil, null);
+checar('subscription nula mantém o id do pedido', semAssinatura.orderId, '1f1c81d2-088a-412d-8bb7-3d5269d64f58');
+
 // ---- validação do segredo ----
 const comparar = (a, b) => a === b;
 const SEGREDO = '8402b43f-c839-4090-bbd1-186725d185c7';
