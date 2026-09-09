@@ -4418,3 +4418,37 @@ escrito contra a documentação, não contra tráfego observado.
 O texto legal (`lib/legal-content.ts`) passou a citar os dois provedores,
 porque assinatura recorrente não se transfere: quem já paga continua na Kiwify
 até cancelar, e os dois vão conviver por meses.
+
+### Aplicado em produção no mesmo dia
+
+O autor esclareceu que **não existe assinante real na Kiwify**: todos os
+usuários da época eram testers que entraram por concessão manual
+(`provider = 'interno'`), não por compra. Some, portanto, a preocupação de
+convivência entre gateways que motivou dividir a migration — não havia base a
+migrar. As duas migrations foram aplicadas no mesmo dia.
+
+Estado em produção, conferido:
+
+- `subscriptions_provider_check` e `webhook_events_provider_check` aceitam
+  `cakto`;
+- `processar_evento_assinatura` existe com `p_provider` como primeiro
+  parâmetro e `service_role` executa;
+- `processar_evento_kiwify` foi removida — só depois de os dois webhooks já
+  chamarem o nome novo;
+- `cakto-webhook` publicada (v1) e `kiwify-webhook` republicada, ambas com
+  `verify_jwt=false`, e as duas recusam requisição sem credencial com 401;
+- segredo `CAKTO_WEBHOOK_SECRET` criado.
+
+O texto legal voltou a citar apenas a Cakto, já que não há assinatura anterior
+em outro provedor para descrever.
+
+**Descoberta operacional, registrada na regra 11 do AGENTS.md:** criar um
+segredo no Supabase reinstancia TODAS as Edge Functions e soma 1 na versão de
+cada uma, sem tocar no código nem no `updated_at`. Um único `POST /secrets`
+levou `eas-build-webhook` de v33 para v34 e `whatsapp-webhook` de v68 para v69.
+Ler o número da versão como sinal de publicação levaria à conclusão errada.
+
+**Continua NÃO verificado:** nenhuma compra real passou pela Cakto. O tradutor
+foi escrito contra a documentação, não contra tráfego observado. Falta apontar
+o webhook no painel da Cakto e configurar `EXPO_PUBLIC_CHECKOUT_URL` na Vercel
+e no EAS com `https://pay.cakto.com.br/esgddv2_1096987`.

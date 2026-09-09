@@ -89,7 +89,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Meta / WhatsApp Cloud API — somente se você vincular um número de WhatsApp: as mensagens que você envia para registrar lançamentos passam pela API oficial da Meta até chegarem ao nosso servidor.',
         'OpenAI e Groq (Whisper) — somente para transcrever mensagens de áudio enviadas pelo WhatsApp, app ou widget, quando você usa voz. O áudio é enviado só para a transcrição e não é retido por nós após o processamento.',
         'Google (Gemini) — somente para gerar a resposta textual do Granabô a partir da pergunta, do contexto da conversa e dos resultados financeiros necessários para responder. O modelo não recebe acesso direto ao banco.',
-        'Cakto e Kiwify — se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pelo parceiro onde a compra foi realizada (Cakto nas assinaturas novas, Kiwify nas anteriores), que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
+        'Cakto — se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Cakto, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
       ],
     },
     {
@@ -182,7 +182,7 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'O Grana. atualmente oferece acesso pago. A cobrança é processada por um parceiro de pagamento (atualmente Cakto para novas assinaturas; assinaturas feitas antes da mudança seguem na Kiwify até serem canceladas), e não diretamente por nós. As condições de cobrança, renovação, período de acesso e cancelamento válidas são as apresentadas na página de compra no momento da assinatura. Cancelamento, reembolso ou contestação de cobrança são tratados pelo parceiro de pagamento conforme a política aplicável; o acesso ao app é ajustado automaticamente a partir dessas notificações.',
+        'O Grana. atualmente oferece acesso pago. A cobrança é processada por um parceiro de pagamento (atualmente Cakto), e não diretamente por nós. As condições de cobrança, renovação, período de acesso e cancelamento válidas são as apresentadas na página de compra no momento da assinatura. Cancelamento, reembolso ou contestação de cobrança são tratados pelo parceiro de pagamento conforme a política aplicável; o acesso ao app é ajustado automaticamente a partir dessas notificações.',
     },
     { tipo: 'subtitulo', texto: '6. Sem garantias' },
     {
