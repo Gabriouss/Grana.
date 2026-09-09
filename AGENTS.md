@@ -159,3 +159,48 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    `.claude/projects/c--Users-user-Desktop-Aplicativo-Financeiro/memory/`
    (`verificacao-no-repo-grana`, `retry-precisa-caber-no-orcamento-de-quem-chama`
    e `padroes-de-correcao-do-codex`).
+
+10. **Todo trabalho vive numa linha só: o `master` local, que rastreia
+    `origin/main`. Não crie branch. Não crie worktree. Não deixe stash.**
+    O autor não acompanha branches — ele mesmo diz que é leigo em git — e
+    depende de que o que foi feito esteja publicado, não guardado em algum
+    lugar que só um agente sabe achar.
+
+    Em 09/09/2026 o inventário do repositório mostrava, ao mesmo tempo:
+
+    - `preview/copy-landing` com **2 commits de 28/08 nunca mesclados**,
+      mexendo em 334 linhas de `app/index.tsx`. A `main` fez a mesma tarefa
+      por outro caminho (`e0d7ce4`), então foi trabalho **feito duas vezes** e
+      o do branch virou lixo — e como a landing foi reescrita várias vezes
+      desde então, mesclar hoje seria regressão, não recuperação;
+    - `fix/header-overflow` e `local/imagens-landing` apontando para branches
+      remotas que **já não existem**;
+    - **três** worktrees de agente (`.claude/worktrees/agent-*`) parados no
+      MESMO commit, com a MESMA mensagem — a mesma correção tentada em
+      triplicata;
+    - um stash de 02/09 (`wip-featureflags-duplicado-antes-de-reconciliar`),
+      resto de uma reconciliação em que TRÊS sessões implementaram o mesmo
+      plano em paralelo sem saber uma da outra.
+
+    Nada disso apareceu sozinho: cada item foi criado por uma sessão que
+    achou que estava sendo organizada, e nenhuma voltou para limpar.
+
+    Na prática, em toda sessão:
+
+    - **Comece com o inventário e RELATE ao autor**, antes de escrever código:
+      `git branch -vv`, `git worktree list`, `git stash list`. Qualquer coisa
+      que não seja `master` é dívida — diga qual é, se tem trabalho exclusivo
+      (`git log --oneline origin/main..<branch>`) e proponha resolver ou
+      descartar. Não decida sozinho apagar: só o autor sabe o que ainda quer.
+    - **Se uma ferramenta criar worktree sozinha** (subagente com isolamento),
+      a sessão que o criou o remove antes de terminar (`git worktree remove`).
+      Worktree é andaime, não entrega.
+    - **Nunca termine com trabalho não commitado.** Se ficou pela metade,
+      commite pela metade e diga isso na mensagem — a regra 3 existe pra isso.
+    - **Antes de começar tarefa grande, confira se ela já não está sendo
+      feita**: leia o `context.md` e o inventário acima. Duas sessões no mesmo
+      plano é o defeito mais caro deste repositório, e já aconteceu com o
+      Bloco 3 dos interruptores remotos e com a família de widgets.
+
+    A única exceção é branch pedida explicitamente pelo autor nesta sessão —
+    e nesse caso ela é mesclada ou descartada antes de a sessão acabar.
