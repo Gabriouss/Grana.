@@ -4040,3 +4040,17 @@ que volta a valer sozinho se alguém ligar `web.output: "static"`.
   campo reconstrói `HOME_BLOCOS` inteiro, inclusive blocos ocultos. É o maior
   ganho de performance que sobrou, e também o refactor mais arriscado — fica
   para uma rodada com verificação em aparelho.
+
+## 08/09/2026 — preparação autorizada do Android 1.8.4
+
+O autor informou que Claude concluiu as correções e autorizou explicitamente
+uma nova build. `npm run test:ci` completo e `npx tsc --noEmit` passaram.
+O script obrigatório `build:preparar` elevou 1.8.3 para 1.8.4 e aprovou a nota:
+"Melhora o lançamento por voz e os widgets, corrige a seleção de carteiras e aprimora as telas e as respostas do Granabô."
+
+EAS preview e production já possuem EXPO_PUBLIC_ANDROID_DOWNLOAD_URL com
+https://granaponto.com.br/downloads/grana-latest.apk. O autor configurou a
+variável na Vercel e foi orientado a redeployar. O download público retornava
+404 antes da publicação do asset grana.apk; ainda exige verificação após release.
+Build será enviada após este commit. Testes em Android real e publicação do
+APK ainda pendentes; testes automatizados não comprovam instalação no aparelho.
