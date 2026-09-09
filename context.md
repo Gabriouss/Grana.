@@ -4224,3 +4224,30 @@ produção segue com a versão antiga até lá.
 continua indo para Transporte. Nesse texto o número é genuinamente ambíguo
 entre valor e nome do serviço, e resolver exigiria a heurística conhecer o
 valor já extraído — hoje `guessCategoryFromText` recebe só o texto.
+
+## 09/09/2026 — WhatsApp despriorizado, e o assistente publicado
+
+**Decisão de produto do autor:** "Esquece WhatsApp. Não sei nem se iremos
+voltar a utilizar." O app passou a ter lançamento por voz e chat próprios,
+integrados, que cobrem o que o bot fazia. Não propor nem executar trabalho de
+evolução desse canal: melhorias no webhook, reativação, copy ou CTA que
+dependam dele. O interruptor remoto `whatsapp` está desligado em produção,
+coerente com isso. `PRODUCT.md` ainda descreve a integração como operacional e
+está desatualizado nesse ponto.
+
+Correção geral que toque o webhook de raspão — como a do vocabulário de
+categorias, hoje — segue valendo como higiene de código, para as cópias não
+divergirem. Mas isso não é avanço de produto e **não justifica publicar aquela
+função**.
+
+**Publicado:** `assistente-financeiro` foi de v21 para v22, com a correção de
+categoria. `verify_jwt=true` preservado, e a sonda sem login devolve o próprio
+`nao_autenticado` da função, confirmando que o caminho novo está no ar.
+
+**NÃO publicado, de propósito:** `whatsapp-webhook` segue na v68. Ele roda com
+`verify_jwt=false` porque quem posta nele é a Meta, esse ajuste só existe no
+servidor, e este repositório não tem `supabase/config.toml` — publicar pela
+CLI passaria a exigir JWT e faria o webhook recusar toda mensagem. Sem
+benefício algum enquanto o canal está desligado. Divergência registrada de
+propósito: o repositório está À FRENTE da produção nessa função, que é o
+sentido seguro (nada é apagado). Detalhes na regra 11 do `AGENTS.md`.
