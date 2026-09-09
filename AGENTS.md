@@ -204,3 +204,48 @@ Regras permanentes para qualquer sessão que abrir este repositório:
 
     A única exceção é branch pedida explicitamente pelo autor nesta sessão —
     e nesse caso ela é mesclada ou descartada antes de a sessão acabar.
+
+11. **Publicar uma Edge Function SOBRESCREVE a produção inteira. Se houver
+    código lá que não está aqui, o deploy apaga — em silêncio.** É o perigo
+    inverso do descrito na regra 9, e os dois convivem: nada neste projeto
+    garante que o repositório e a produção sejam iguais. Não existe
+    `supabase_migrations.schema_migrations`, não existe deploy pela CI, e
+    ninguém compara os dois automaticamente.
+
+    Já aconteceu. As proteções da versão 7 da função de voz — o descarte do
+    eco do prompt e a recusa de numeral partido — existiam SÓ no servidor,
+    escritas direto pelo painel. Enquanto ninguém publicava, funcionavam; o
+    primeiro deploy feito a partir do repositório as teria apagado sem aviso
+    nenhum, e a falha só apareceria como "o reconhecimento por voz piorou".
+    O commit `e7ab948` existe em boa parte para trazer aquele código de volta
+    ao repositório justamente por isso.
+
+    Antes de qualquer `supabase functions deploy`:
+
+    - **Compare o carimbo do que está no ar com o histórico do arquivo.**
+      `GET https://api.supabase.com/v1/projects/<ref>/functions` devolve
+      `version` e `updated_at` de cada função; `git log -3 -- <caminho da
+      função>` devolve quando o fonte mudou por aqui. Um deploy sem commit
+      correspondente por perto é o sinal de que alguém mexeu direto na
+      produção, e aí o deploy PRECISA parar até isso ser reconciliado.
+    - **Baixe e guarde o que está no ar antes de sobrescrever.**
+      `GET /v1/projects/<ref>/functions/<slug>/body` devolve o pacote
+      publicado. Ele vem em ESZIP comprimido, então `grep` nele não prova
+      ausência de nada — serve como artefato de retorno, não como diff.
+    - **Rode `deno check` na função.** O `tsc` do app não olha
+      `supabase/functions/`; um erro de tipo só apareceria em produção.
+
+    E vale o mesmo cuidado do outro lado: `supabase functions deploy` sem
+    nomear a função publica TODAS as funções da pasta. Nomeie sempre as que
+    você quer, uma a uma.
+
+    **Um caso específico que já esteve a um comando de quebrar o bot:** o
+    `whatsapp-webhook` roda com `verify_jwt=false`, porque quem faz POST nele
+    é a Meta, que não tem como mandar um JWT do Supabase. Esse ajuste vive no
+    servidor. Este repositório **não tem `supabase/config.toml`**, então a CLI
+    não tem de onde ler a exceção e usa o padrão dela, `verify_jwt=true` —
+    publicar aquela função sem cuidado passa a exigir JWT e faz o webhook
+    recusar toda mensagem da Meta, com o sintoma de "o bot parou de responder"
+    e nenhuma pista no código. Confira `verify_jwt` de cada função em
+    `GET /v1/projects/<ref>/functions` ANTES de publicar, e publique só o que
+    de fato mudou.
