@@ -4056,3 +4056,65 @@ Build será enviada após este commit. Testes em Android real e publicação do
 APK ainda pendentes; testes automatizados não comprovam instalação no aparelho.
 
 Build enviada ao EAS: 99b1a002-dd9b-467f-9cfb-cfed3a24deb2, Android 1.8.4, versionCode 11, commit 3d37c34. Upload e fingerprint concluídos. Novo fetch confirmou HEAD sem divergência de origin/main; 155 arquivos mudaram desde o APK 1.8.3 (17a08baf). APK ainda aguardando conclusão e teste real.
+
+## 09/09/2026 — consolidação: tudo numa linha só
+
+O autor pediu para mesclar todo o progresso espalhado numa "linha" só,
+descartando o que fosse regressão. O inventário achou 4 worktrees, 7 branches
+locais, 5 branches remotas e 1 stash. Cada item foi julgado contra o código
+atual, não contra o nome ou a data.
+
+**Resgatado (1 item).** `preview/copy-landing` (28/08, 2 commits) tinha visto
+um problema real no `components/FaqItem.tsx`: `resposta` com `lineHeight: 21`
+cravado e `pergunta` sem entrelinha nenhuma. Na web `type.apoio` vale 16, o
+que dava razão 1,31 — abaixo do 1,4 do papel `apoio`; e a Neue Machina tem
+leading intrínseco curto, então pergunta de duas linhas saía embolada. A
+branch corrigia multiplicando na mão (`type.corpo * 1.4`); o master ganhou
+`lh()`/`leading` depois disso, então o resgate foi portado para o idioma
+atual (commit `8fca3c5`).
+
+**Descartado, com o motivo.** O resto de `preview/copy-landing`: o hash de CSP
+do `vercel.json` é da build daquela branch e quebraria o site atual; o copy do
+`landing-meta.json` ainda anuncia WhatsApp (banido na Meta) e "comece grátis"
+(hoje há assinatura de R$ 9,90); as props `ajuste`/`escala` do
+`NotebookAnimado` não teriam chamador, porque o master invoca
+`<NotebookAnimado />` sem props, e o modo `cobrir` é matematicamente idêntico
+ao código atual.
+
+`fix/header-overflow` (31/08, 1 commit) estava meio dentro e meio errada: o
+`minWidth: 0` em `leftCol`/`texts` já está no master com comentário próprio,
+e o `numberOfLines={1}` é exatamente a regressão que o comentário do
+`ScreenHeader.tsx` descreve ("Lançamentos" virando "Lança..." com altura
+sobrando logo abaixo). Nada a resgatar. SHA `1300835`, se algum dia precisar.
+
+O stash `wip-featureflags-duplicado-antes-de-reconciliar` estava 205 commits
+atrás do master. O nome não mentia: o master tem `lib/feature-flags.tsx`,
+`lib/feature-flags-regras.ts`, `components/AvisoFlagModal.tsx` e 14
+consumidores — implementação estritamente mais completa que a do stash,
+incluindo o flag `lancamento_voz` do widget, que nem existia em 02/09.
+Aplicá-lo reverteria 205 commits nos arquivos que toca. SHA
+`b38846a267ca47e2f81290af2bccde6c4fe97d1a`.
+
+As 3 worktrees de agente e a `codex/correcao-voz-184` não tinham nada
+exclusivo — a do Codex foi conferida arquivo a arquivo contra o master
+(ignorando CRLF) e as únicas diferenças eram o `AGENTS.md` e o `FaqItem.tsx`
+alterados hoje, depois dela. As branches `local/imagens-landing`,
+`claude/grana-landing-page-design-df5etm`, `claude/repository-analysis-j56mv1`
+e `origin/master` têm zero commits fora do master.
+
+**Estado final local:** uma branch (`master`), zero worktrees, zero stash.
+Removê-las exigiu limpar atributos no PowerShell — o `git worktree remove` deu
+"Permission denied" no Windows e deixou os diretórios de administração em
+`.git/worktrees/` para trás.
+
+**Verificado:** `npx tsc --noEmit` limpo; `test:parser` 1126/1126 guardas do
+design system, 17/17 interruptores, 39/39 em sincronia; `test:blur` e
+`test:motion` OK. **Não verificado:** a mudança do FaqItem não foi vista em
+aparelho nem no navegador — a entrelinha é derivada dos mesmos tokens que o
+resto do app já usa, mas ninguém olhou o FAQ renderizado depois dela.
+
+**Pendente de aprovação do autor:** 3 commits locais (`e7ab948`, `a6cd8de`,
+`8fca3c5`) ainda não publicados, e as 4 branches remotas obsoletas
+(`preview/copy-landing`, `master`, `claude/grana-landing-page-design-df5etm`,
+`claude/repository-analysis-j56mv1`) ainda estão no GitHub — apagá-las é um
+push, e push depende de pedido explícito.
