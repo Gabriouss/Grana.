@@ -4468,3 +4468,48 @@ Fechados os pendentes que sobraram da rodada do link estável:
 
 `verify_jwt` conferido em todas as funções depois dos deploys: `false` nos
 quatro webhooks de provedor externo, `true` nas três que atendem o app logado.
+
+## 09/09/2026 — pendências deixadas explicitamente para a outra máquina
+
+O autor confirmou que salvou o webhook da Cakto no painel deles (URL, segredo
+e os 6 eventos: compra aprovada, compra recusada, reembolso, chargeback,
+assinatura renovada, assinatura cancelada — tipo de disparo Individual).
+Ainda assim, **nenhum evento chegou** a `webhook_events` com
+`provider = 'cakto'` até este ponto — zero linhas. A integração está pronta
+dos dois lados, mas não foi exercitada de ponta a ponta.
+
+O autor disse explicitamente que vai fazer os itens abaixo **na outra
+máquina**, então a próxima sessão que abrir o projeto lá deve continuar a
+partir daqui, não repetir o trabalho:
+
+1. **Rotacionar o token do Supabase.** Um token de Management API
+   (`sbp_e87f...`) circulou em texto puro nesta conversa/sessão. Ele tinha
+   validade de 1 dia a partir de quando foi gerado (09/09/2026) e foi usado
+   nesta máquina para aplicar as duas migrations da Cakto, criar os segredos
+   `CAKTO_WEBHOOK_SECRET` e `ANDROID_DOWNLOAD_URL`, e publicar
+   `cakto-webhook`, `kiwify-webhook` e `eas-build-webhook`. Revogar em
+   https://supabase.com/dashboard/account/tokens e gerar um novo quando for
+   preciso mexer no projeto pela API de novo.
+
+2. **Configurar `EXPO_PUBLIC_CHECKOUT_URL`** na Vercel (Settings → Environment
+   Variables, nos três ambientes, com redeploy depois — a variável só vale
+   numa build nova do site) e no EAS (mesmo lugar onde
+   `EXPO_PUBLIC_ANDROID_DOWNLOAD_URL` foi configurada, nos perfis `preview` e
+   `production` — só vale numa build nova do app). Valor:
+   `https://pay.cakto.com.br/esgddv2_1096987`, ou o que estiver de fato no
+   painel da Cakto se tiver mudado. A variável antiga
+   `EXPO_PUBLIC_KIWIFY_CHECKOUT_URL` pode ficar como rede de segurança (o
+   código lê a nova primeiro) até a nova estar confirmada nos dois lugares.
+
+3. **Fazer uma compra de teste real na Cakto** depois do passo 2, e conferir
+   se o evento chegou (`select * from webhook_events where provider =
+   'cakto'`) e se a assinatura foi criada em `subscriptions` com
+   `provider = 'cakto'`. É o único jeito de validar a integração de ponta a
+   ponta — tudo o que foi feito até aqui passou nos testes automatizados
+   contra a documentação e o modelo do painel, mas nunca recebeu tráfego real.
+
+Publicados nesta sessão (`origin/main` = `5113247`): correção do link estável
+do APK, toda a integração da Cakto (incluindo a correção de data de evento
+achada ao conferir o modelo do painel), a regra 11 do AGENTS.md, e a aplicação
+em produção do segredo `ANDROID_DOWNLOAD_URL` e do `app_release` apontando
+para o link estável.
