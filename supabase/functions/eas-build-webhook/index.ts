@@ -164,7 +164,7 @@ function escolherDownloadPublicado(
   const estavel = limpa && /^https:\/\//i.test(limpa) ? limpa : null;
   return {
     url: estavel ?? artefatoEas,
-    expiraEm: estavel ? null : expiracaoEas,
+    expiraEm: estavel ? null : (expiracaoEas || null),
     ignorou: !!limpa && !estavel,
   };
 }
@@ -251,9 +251,9 @@ Deno.serve(async (req: Request) => {
   const notes = notasReprovadas ? null : bruta;
 
   const escolha = escolherDownloadPublicado(
-    Deno.env.get('ANDROID_DOWNLOAD_URL'),
+    Deno.env.get('ANDROID_DOWNLOAD_URL') ?? '',
     apkUrl as string,
-    payload.expirationDate ?? null,
+    payload.expirationDate ?? '',
   );
   if (escolha.ignorou) {
     // Falha de configuração não pode virar silêncio: sem isto, um valor

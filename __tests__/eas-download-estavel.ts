@@ -8,13 +8,17 @@
  *
  * Em 09/09/2026 a produção estava assim: `apk_url` apontando para
  * `expo.dev/artifacts/eas/...` com vencimento em 23/09. Quem estava na 1.8.4
- * não seria afetado (a URL estável está embutida naquela build, conferido
- * abrindo o APK publicado), mas quem ficou numa build anterior perderia o
- * aviso em silêncio.
+ * não seria afetado — a URL estável está embutida naquela build, conferido
+ * abrindo o APK publicado e procurando a string dentro do bundle —, mas quem
+ * ficou numa build anterior perderia o aviso em silêncio.
  *
  * A função é lida do ARQUIVO REAL (ver `extrair.ts`), não copiada: o webhook
  * é Deno e não carrega no Node, e um teste sobre uma cópia passaria mesmo com
  * a função de produção errada.
+ *
+ * Convenção da assinatura: string vazia significa "não configurado" e "sem
+ * data", porque a limpeza de tipos do extrator não desmonta `| undefined` na
+ * lista de parâmetros. O comentário na própria função registra isso.
  *
  * Roda: npx tsx __tests__/eas-download-estavel.ts
  */
@@ -27,7 +31,7 @@ type Escolha = { url: string; expiraEm: string | null; ignorou: boolean };
 const escolher = new Function(
   `${corpoDaFuncao('escolherDownloadPublicado', ARQUIVO)}
    return escolherDownloadPublicado;`
-)() as (configurada: string | undefined, artefato: string, expiracao: string | null) => Escolha;
+)() as (configurada: string, artefato: string, expiracao: string) => Escolha;
 
 const ARTEFATO = 'https://expo.dev/artifacts/eas/9TRXShnbCgf0DtyXXD6c2ev__Mh2f4sQ0qFzoNUaAKo.apk';
 const VENCE = '2026-09-23T00:10:27.997Z';
@@ -50,10 +54,7 @@ checar('estável configurada substitui o artefato', escolher(ESTAVEL, ARTEFATO, 
 });
 
 // Sem configuração, o comportamento antigo continua: artefato e a data dele.
-checar('sem configuração, grava o artefato do EAS', escolher(undefined, ARTEFATO, VENCE), {
-  url: ARTEFATO, expiraEm: VENCE, ignorou: false,
-});
-checar('string vazia é o mesmo que não configurada', escolher('', ARTEFATO, VENCE), {
+checar('sem configuração, grava o artefato do EAS', escolher('', ARTEFATO, VENCE), {
   url: ARTEFATO, expiraEm: VENCE, ignorou: false,
 });
 checar('só espaços é o mesmo que não configurada', escolher('   ', ARTEFATO, VENCE), {
@@ -74,8 +75,9 @@ for (const ruim of ['http://granaponto.com.br/x.apk', '/downloads/grana-latest.a
   });
 }
 
-// Build sem data de expiração no payload continua sem data.
-checar('artefato sem data de expiração', escolher(undefined, ARTEFATO, null), {
+// Build sem data de expiração no payload continua sem data — e vira nulo, não
+// string vazia, porque é isso que a coluna do banco espera.
+checar('artefato sem data de expiração vira nulo', escolher('', ARTEFATO, ''), {
   url: ARTEFATO, expiraEm: null, ignorou: false,
 });
 
