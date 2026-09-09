@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, spacing, fonts, type } from '@/lib/theme';
+import { theme, spacing, fonts, type, lh } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 import { EASE_REVEAL, useReducedMotion } from '@/lib/motion';
 
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pergunta: { flex: 1, color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  pergunta: { flex: 1, color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo), fontFamily: fonts.regular },
   // `position: absolute` faz o medidor não empurrar layout enquanto o pai
   // está com `height: 0` durante o fechamento — sem isso, a View interna
   // (sempre montada, pro `onLayout` medir) somaria sua altura real por
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   resposta: {
     color: theme.inkSoft,
     fontSize: type.apoio,
-    lineHeight: 21,
+    lineHeight: lh(type.apoio, 'apoio'),
     fontFamily: fonts.light,
     marginTop: spacing.md,
     paddingRight: spacing.sm,
