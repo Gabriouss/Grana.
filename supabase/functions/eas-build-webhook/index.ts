@@ -137,6 +137,38 @@ function notaEhPublicavel(texto: string): boolean {
   return validarNotaRelease(texto).length === 0;
 }
 
+/* O link que o EAS manda é um artefato temporário, e o vencimento dele tem
+   um modo de falha SILENCIOSO: quem está numa build sem a URL estável
+   embutida cai no ramo de `lib/atualizacao.ts` que suprime o aviso inteiro
+   em vez de mostrar um link morto — a pessoa simplesmente para de saber que
+   saiu versão nova, que é a regra 5 do AGENTS.md acontecendo de novo por
+   outro caminho.
+
+   Por isso o que fica GRAVADO é o endereço estável, quando há um
+   configurado. O artefato do EAS continua sendo exigido na guarda lá em
+   cima: ele é a prova de que este build é real, não o endereço que a gente
+   entrega pra quem vai baixar.
+
+   Endereço estável não expira, então a data vai nula junto — deixar a data
+   do artefato descartado ali continuaria suprimindo o aviso na data dela. */
+/* Tipos simples de propósito nos parâmetros: esta função é lida do arquivo
+   real por `__tests__/extrair.ts`, cuja limpeza de tipos é ingênua e deixa
+   `| undefined` solto na lista de parâmetros. Quem não está configurado
+   chega como string vazia; quem não tem data, idem. */
+function escolherDownloadPublicado(
+  configurada: string,
+  artefatoEas: string,
+  expiracaoEas: string,
+): { url: string; expiraEm: string | null; ignorou: boolean } {
+  const limpa = configurada.trim();
+  const estavel = limpa && /^https:\/\//i.test(limpa) ? limpa : null;
+  return {
+    url: estavel ?? artefatoEas,
+    expiraEm: estavel ? null : expiracaoEas,
+    ignorou: !!limpa && !estavel,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
   if (!EAS_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -218,10 +250,21 @@ Deno.serve(async (req: Request) => {
   }
   const notes = notasReprovadas ? null : bruta;
 
+  const escolha = escolherDownloadPublicado(
+    Deno.env.get('ANDROID_DOWNLOAD_URL'),
+    apkUrl as string,
+    payload.expirationDate ?? null,
+  );
+  if (escolha.ignorou) {
+    // Falha de configuração não pode virar silêncio: sem isto, um valor
+    // errado degradaria pro artefato temporário sem ninguém perceber.
+    console.error('[eas-build-webhook] ANDROID_DOWNLOAD_URL ignorada, não é https');
+  }
+
   const { data: result, error } = await supabase.rpc('publicar_app_release', {
     p_version: version,
-    p_apk_url: apkUrl,
-    p_expires_at: payload.expirationDate ?? null,
+    p_apk_url: escolha.url,
+    p_expires_at: escolha.expiraEm,
     p_notes: notes,
   });
   if (error) {
