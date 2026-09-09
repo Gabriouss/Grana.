@@ -4251,3 +4251,104 @@ CLI passaria a exigir JWT e faria o webhook recusar toda mensagem. Sem
 benefício algum enquanto o canal está desligado. Divergência registrada de
 propósito: o repositório está À FRENTE da produção nessa função, que é o
 sentido seguro (nada é apagado). Detalhes na regra 11 do `AGENTS.md`.
+
+## 09/09/2026 — leitura do estado atual do lançamento por voz
+
+Esta seção registra como a ferramenta funciona agora, para preservar o
+encadeamento que está dando certo e evitar que uma correção futura trate app e
+widget como dois motores diferentes.
+
+### O fluxo real
+
+O app e o widget têm entradas diferentes, mas convergem para a mesma cadeia:
+
+1. **Captura.** O botão dentro do app grava M4A/AAC mono em 44,1 kHz e 64 kbps,
+   por até 20 segundos, encerrando no segundo toque ou no corte automático. O
+   widget usa um `ForegroundService` Android com a mesma configuração; encerra
+   depois de 1,6 s de silêncio posterior à fala ou no limite de 20 s.
+2. **Transcrição.** Ambos chamam `lib/voz.ts`. No Android 13+, quando o modelo
+   `pt-BR` está instalado e o reconhecimento local está disponível, o aparelho
+   converte o M4A para PCM e tenta transcrever sem rede. Se o caminho local não
+   estiver disponível ou falhar, o áudio vai autenticado para
+   `processar-lancamento-voz`, que usa Groq primeiro e OpenAI como fallback
+   atrasado. A Edge Function transcreve; ela não interpreta carteira, cartão ou
+   categoria.
+3. **Interpretação.** O texto é interpretado no aparelho por
+   `lib/heuristics.ts`, compartilhado entre app e widget. O mesmo núcleo extrai
+   valor, tipo, categoria, categoria personalizada, carteira, forma de
+   pagamento, crédito, cartão, parcelas, recorrência, boleto e vencimento.
+4. **Persistência.** A operação recebe um `requestId`, é guardada antes da
+   rede e chega à RPC `registrar_operacao_voz`. O banco valida usuário, acesso,
+   carteira, cartão, tipo e valores; a operação é atômica e idempotente. Repetir
+   o mesmo `requestId` devolve o resultado anterior, em vez de duplicar o
+   lançamento.
+
+### Diferença entre app e widget
+
+Dentro do app, a fala preenche uma revisão visual: texto ouvido, descrição,
+valor, tipo, categoria, carteira e metadados reconhecidos. Crédito abre a tela
+de crédito para confirmar cartão/parcelas; boleto abre Contas para confirmar
+vencimento; lançamento comum usa o modal de revisão. O usuário confirma antes
+de salvar.
+
+No widget, não há tela. Ele só grava automaticamente quando o valor, a
+categoria, a carteira e, quando necessário, o cartão são inequívocos. Categoria
+desconhecida, valor ambíguo, carteira não encontrada, múltiplos cartões sem
+correspondência ou cartão incompatível com a carteira produzem notificação de
+revisão; não viram uma escolha silenciosa.
+
+Carteiras personalizadas são reconhecidas quando a fala as ancora em
+`carteira <nome>` ou `conta <nome>`. Se nenhuma carteira for mencionada, usa-se
+a carteira padrão. Cartões são filtrados pela carteira escolhida e casados por
+nome, banco ou parte suficientemente longa do nome.
+
+### Proteções que não podem ser removidas
+
+- `precisaRevisarValorVoz` recusa valores sem evidência decimal, numerais
+  partidos, separadores inválidos e mais de um valor decimal; ele prefere pedir
+  revisão a inventar valor.
+- `semValorMonetario` remove o preço antes da classificação, impedindo que
+  centavos como `99` escolham Transporte; a busca também dobra acentos para
+  reconhecer categorias personalizadas mesmo quando a transcrição perde o
+  acento.
+- O widget exige permissão de notificação antes de gravar, porque o recibo e o
+  botão `Desfazer` são a única confirmação visível quando o app está fechado.
+- Falha temporária de rede preserva áudio/operação e tenta novamente ao abrir,
+  voltar ao primeiro plano e periodicamente. Falha permanente precisa aparecer
+  como falha; não pode ser rotulada como sincronização pendente.
+- O payload original e o `requestId` permanecem imutáveis durante a retomada.
+  A RPC e as restrições de carteira/cartão são a última barreira contra
+  duplicidade ou lançamento na conta errada.
+
+### O motivo de o fluxo estar estável agora
+
+O ganho não veio de uma heurística isolada. Veio de manter uma única sequência
+de captura, transcrição, interpretação, validação, persistência idempotente e
+recibo. App e widget compartilham `lib/voz.ts`, `lib/heuristics.ts` e
+`lib/voice-operations.ts`; o widget não possui um parser financeiro paralelo.
+As cópias server-side que ainda existem são vigiadas por `sync-parser.js`.
+
+### Limites conhecidos
+
+- No Android com modelo `pt-BR` local instalado, a transcrição local encerra o
+  fluxo antes do Whisper. Portanto a paridade de caminho é garantida, mas a
+  qualidade da transcrição pode variar por aparelho/modelo; não se deve afirmar
+  que esse caminho sempre tem a mesma qualidade do Whisper do WhatsApp.
+- O código foi coberto pelos testes automatizados de voz, fallback, valores,
+  carteiras, cartões, offline e idempotência, mas ainda existe um gate manual:
+  não houve validação física completa em Android real de modo avião, widget
+  fechado, múltiplas carteiras/cartões, modelo local instalado e retomada após
+  reconexão.
+- A especificação inicial de voz e alguns comentários antigos ainda descrevem
+  o fluxo anterior, em que a transcrição era somente remota. Para manutenção,
+  esta seção e a implementação atual devem prevalecer sobre essa descrição
+  histórica.
+
+### Estado do working tree durante esta leitura
+
+A leitura não alterou o código. Já havia uma alteração não commitada em
+`supabase/functions/eas-build-webhook/index.ts` e o teste novo
+`__tests__/eas-download-estavel.ts` não rastreado. A alteração do webhook ainda
+falha em `deno check` porque `Deno.env.get('ANDROID_DOWNLOAD_URL')` pode ser
+`undefined`, mas a função auxiliar aceita apenas `string`. Isso permanece
+registrado como pendência técnica; não foi corrigido nesta leitura.
