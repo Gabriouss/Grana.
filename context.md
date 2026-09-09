@@ -4352,3 +4352,69 @@ A leitura não alterou o código. Já havia uma alteração não commitada em
 falha em `deno check` porque `Deno.env.get('ANDROID_DOWNLOAD_URL')` pode ser
 `undefined`, mas a função auxiliar aceita apenas `string`. Isso permanece
 registrado como pendência técnica; não foi corrigido nesta leitura.
+
+## 09/09/2026 — Cakto como segundo provedor de assinatura
+
+O autor decidiu trocar o gateway para a Cakto, depois de um comparativo em que
+recomendei outro caminho (Pix Automático, por causa da taxa fixa de R$ 2,49
+pesar 25% num preço de R$ 9,90). Decisão dele, seguimos com a Cakto.
+
+**O que já existia a favor.** O modelo de assinatura no banco sempre foi
+agnóstico de provedor: a coluna `provider` existe desde o início e a função de
+processamento recebe campos já normalizados pelo webhook. O que prendia tudo na
+Kiwify eram duas restrições `check` e o nome da função.
+
+**O que foi feito.** `processar_evento_kiwify` virou
+`processar_evento_assinatura`, com `p_provider` como primeiro parâmetro —
+renomear em vez de duplicar, para as duas integrações herdarem qualquer
+correção de regra de assinatura em vez de divergirem em silêncio. Os
+auxiliares de leitura de payload saíram de `_shared/kiwify.ts` para
+`_shared/normalizar-webhook.ts`, compartilhados. Novos
+`_shared/cakto.ts` e `cakto-webhook/`, escritos contra o exemplo LITERAL da
+documentação oficial da Cakto.
+
+**Duas diferenças da Cakto que moldaram o código, e que são piores que a
+Kiwify:**
+
+1. **Segredo no corpo.** A Cakto manda a chave em `secret`, dentro do JSON,
+   em vez de assinatura HMAC em header. O `kiwify-webhook` tem um comentário
+   dizendo explicitamente que segredo não deve viajar no JSON, porque JSON
+   acaba em log, proxy e observabilidade — e é exatamente o que a Cakto faz.
+   Quem capturar UM payload consegue forjar eventos. Não dá para consertar do
+   nosso lado. Mitigado com comparação em tempo constante e a regra de NUNCA
+   registrar o corpo em log, nem em erro.
+2. **Sem reenvio.** A documentação diz que a Cakto trata qualquer resposta
+   como entrega bem-sucedida. Não há retry. Um erro nosso perde o evento para
+   sempre, e um `purchase_approved` perdido é alguém que pagou e ficou sem
+   acesso. Todo caminho de falha grita no log com tipo e ids, marcado como
+   `EVENTO PERDIDO`, para dar reconciliação manual. Vale notar que a função do
+   banco tem um comentário assumindo que "o retry do provedor" resolveria o
+   caso de evento fora de ordem — com a Cakto isso deixa de ser verdade.
+
+**ORDEM DE IMPLANTAÇÃO, e ela importa.** A migration foi dividida em duas de
+propósito. `20260909170000` cria a função nova e MANTÉM a antiga;
+`20260909171000` só apaga a antiga. Entre as duas é obrigatório publicar os
+dois webhooks. Apagar antes derruba a cobrança da Kiwify em produção, porque a
+versão no ar ainda chama o nome antigo.
+
+**Verificado:** `deno check` limpo nas quatro funções tocadas, `tsc` limpo e
+`npm run test:ci` saída 0, incluindo o teste novo `__tests__/cakto-webhook.cjs`
+(27 checagens contra os módulos reais) e 30/30 guardas do schema.
+
+**NÃO verificado:** nada foi exercitado contra a Cakto de verdade. Nenhuma
+compra real, nenhum webhook recebido, nenhuma assinatura criada. O tradutor foi
+escrito contra a documentação, não contra tráfego observado.
+
+**Pendente, e nada disso foi aplicado:**
+- rodar a migration `20260909170000` em produção;
+- criar o segredo `CAKTO_WEBHOOK_SECRET` no Supabase;
+- publicar `cakto-webhook` (precisa de `--no-verify-jwt`, como os outros
+  webhooks de provedor externo) e republicar `kiwify-webhook`;
+- apontar o webhook no painel da Cakto para a função;
+- configurar `EXPO_PUBLIC_CHECKOUT_URL` na Vercel e no EAS com
+  `https://pay.cakto.com.br/esgddv2_1096987`;
+- só depois de tudo isso, rodar `20260909171000`.
+
+O texto legal (`lib/legal-content.ts`) passou a citar os dois provedores,
+porque assinatura recorrente não se transfere: quem já paga continua na Kiwify
+até cancelar, e os dois vão conviver por meses.

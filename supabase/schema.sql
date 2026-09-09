@@ -923,7 +923,7 @@ create table if not exists subscriptions (
   -- 'kiwify' é venda de verdade. 'interno' é acesso concedido à mão (conta de
   -- teste automatizado, cortesia), separado justamente para não se misturar a
   -- venda em nenhuma contagem de receita futura.
-  provider text not null default 'kiwify' check (provider in ('kiwify', 'interno')),
+  provider text not null default 'kiwify' check (provider in ('kiwify', 'cakto', 'interno')),
   -- Id do pedido/assinatura na Kiwify. `unique` com `provider` faz o upsert
   -- do webhook ser idempotente — reenvio do mesmo evento (retry deles) não
   -- duplica a linha.
@@ -1260,7 +1260,7 @@ revoke all on public.app_backend_config from anon, authenticated;
 -- Inbox mínima de webhooks. Não guarda payload, headers, e-mail, telefone,
 -- CPF ou token: somente identidade técnica, hash e estado de processamento.
 create table if not exists public.webhook_events (
-  provider text not null check (provider in ('kiwify', 'whatsapp', 'eas')),
+  provider text not null check (provider in ('kiwify', 'cakto', 'whatsapp', 'eas')),
   event_id text not null,
   event_type text,
   payload_hash text not null check (char_length(payload_hash) = 64),
@@ -2453,7 +2453,7 @@ as $$
 declare
   v_event public.webhook_events;
 begin
-  if p_provider not in ('kiwify', 'whatsapp', 'eas')
+  if p_provider not in ('kiwify', 'cakto', 'whatsapp', 'eas')
      or char_length(p_event_id) not between 1 and 255
      or char_length(p_payload_hash) <> 64 then
     raise exception 'Identidade de webhook inválida' using errcode = '22023';
@@ -3089,7 +3089,8 @@ $$;
 revoke all on function public.publicar_app_release(text, text, timestamptz, text) from public, anon, authenticated;
 grant execute on function public.publicar_app_release(text, text, timestamptz, text) to service_role;
 
-create or replace function public.processar_evento_kiwify(
+create or replace function public.processar_evento_assinatura(
+  p_provider text,
   p_event_id text,
   p_event_type text,
   p_payload_hash text,
@@ -3111,24 +3112,25 @@ declare
   v_access_until timestamptz;
   v_status text;
 begin
-  if p_event_type not in ('approved', 'renewed', 'late', 'canceled', 'refunded', 'chargeback')
+  if p_provider not in ('kiwify', 'cakto')
+     or p_event_type not in ('approved', 'renewed', 'late', 'canceled', 'refunded', 'chargeback')
      or char_length(p_event_id) not between 1 and 255
      or char_length(p_payload_hash) <> 64
      or p_event_at is null
      or coalesce(nullif(p_subscription_id, ''), nullif(p_order_id, '')) is null then
-    raise exception 'Evento Kiwify inválido' using errcode = '22023';
+    raise exception 'Evento de assinatura inválido' using errcode = '22023';
   end if;
 
   insert into public.webhook_events (
     provider, event_id, event_type, payload_hash, status
   ) values (
-    'kiwify', p_event_id, p_event_type, p_payload_hash, 'processing'
+    p_provider, p_event_id, p_event_type, p_payload_hash, 'processing'
   ) on conflict (provider, event_id) do nothing;
   get diagnostics v_rows = row_count;
   if v_rows = 0 then
     if exists (
       select 1 from public.webhook_events e
-      where e.provider = 'kiwify' and e.event_id = p_event_id
+      where e.provider = p_provider and e.event_id = p_event_id
         and e.payload_hash <> p_payload_hash
     ) then
       raise exception 'Evento repetido com payload divergente' using errcode = '22000';
@@ -3138,7 +3140,7 @@ begin
 
   select * into v_subscription
   from public.subscriptions s
-  where s.provider = 'kiwify'
+  where s.provider = p_provider
     and (
       (p_subscription_id is not null and s.provider_subscription_id = p_subscription_id)
       or (p_order_id is not null and s.provider_order_id = p_order_id)
@@ -3152,7 +3154,7 @@ begin
     update public.webhook_events
     set status = 'done', processed_at = statement_timestamp(),
         updated_at = statement_timestamp()
-    where provider = 'kiwify' and event_id = p_event_id;
+    where provider = p_provider and event_id = p_event_id;
     return 'outdated';
   end if;
 
@@ -3171,7 +3173,7 @@ begin
       activation_token_hash, activation_expires_at, last_event_at,
       last_event_id, last_event_metadata, updated_at
     ) values (
-      'kiwify', coalesce(nullif(p_order_id, ''), p_subscription_id),
+      p_provider, coalesce(nullif(p_order_id, ''), p_subscription_id),
       nullif(p_subscription_id, ''), lower(trim(p_email)), p_plan, 'active',
       v_access_until, null, null,
       encode(extensions.digest(encode(extensions.gen_random_bytes(32), 'hex'), 'sha256'), 'hex'),
@@ -3222,13 +3224,13 @@ begin
   update public.webhook_events
   set status = 'done', processed_at = statement_timestamp(),
       updated_at = statement_timestamp()
-  where provider = 'kiwify' and event_id = p_event_id;
+  where provider = p_provider and event_id = p_event_id;
   return 'processed';
 end;
 $$;
 
-revoke all on function public.processar_evento_kiwify(text, text, text, timestamptz, text, text, text, text, timestamptz) from public, anon, authenticated;
-grant execute on function public.processar_evento_kiwify(text, text, text, timestamptz, text, text, text, text, timestamptz) to service_role;
+revoke all on function public.processar_evento_assinatura(text, text, text, text, timestamptz, text, text, text, text, timestamptz) from public, anon, authenticated;
+grant execute on function public.processar_evento_assinatura(text, text, text, text, timestamptz, text, text, text, text, timestamptz) to service_role;
 
 -- A exclusão completa passa pela Edge Function delete-account porque somente
 -- a API de Storage remove também os bytes do objeto. A RPC SQL antiga não

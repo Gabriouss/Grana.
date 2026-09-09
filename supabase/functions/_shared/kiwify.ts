@@ -1,48 +1,16 @@
-export type TipoEventoKiwify =
-  | 'approved'
-  | 'renewed'
-  | 'late'
-  | 'canceled'
-  | 'refunded'
-  | 'chargeback';
+import {
+  dataIso,
+  texto,
+  type EventoAssinatura,
+  type TipoEventoAssinatura,
+} from './normalizar-webhook.ts';
 
-export type EventoKiwify = {
-  type: TipoEventoKiwify;
-  eventId: string | null;
-  eventAt: string;
-  orderId: string | null;
-  subscriptionId: string | null;
-  email: string | null;
-  plan: string | null;
-  accessUntil: string | null;
-};
+/* `pegar`/`texto`/`dataIso` moraram aqui até a Cakto entrar. Saíram para
+   `normalizar-webhook.ts` porque os dois provedores precisam da mesma leitura
+   defensiva de payload, e cópia entre webhooks já quebrou este projeto antes. */
 
-function pegar(obj: unknown, caminhos: string[]): unknown {
-  for (const caminho of caminhos) {
-    let valor: unknown = obj;
-    for (const chave of caminho.split('.')) {
-      valor = valor && typeof valor === 'object'
-        ? (valor as Record<string, unknown>)[chave]
-        : undefined;
-      if (valor === undefined) break;
-    }
-    if (valor !== undefined && valor !== null && valor !== '') return valor;
-  }
-  return undefined;
-}
-
-function texto(body: Record<string, unknown>, caminhos: string[], limite = 255): string | null {
-  const valor = pegar(body, caminhos);
-  if (valor === undefined) return null;
-  const limpo = String(valor).trim();
-  return limpo ? limpo.slice(0, limite) : null;
-}
-
-function dataIso(valor: string | null, fallback?: string): string | null {
-  if (!valor) return fallback ?? null;
-  const date = new Date(valor.includes('T') ? valor : valor.replace(' ', 'T') + 'Z');
-  return Number.isFinite(date.getTime()) ? date.toISOString() : fallback ?? null;
-}
+export type TipoEventoKiwify = TipoEventoAssinatura;
+export type EventoKiwify = EventoAssinatura;
 
 export function normalizarEventoKiwify(body: Record<string, unknown>, agora = new Date()): EventoKiwify | null {
   const trigger = texto(body, [

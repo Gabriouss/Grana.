@@ -23,7 +23,7 @@ const DOCUMENTOS = [
  * lib/legal-content.ts.
  *
  * Quem abre esta tela raramente vem de dentro do app: é o revisor da Meta
- * validando o app do WhatsApp, é o formulário de checkout da Kiwify, é
+ * validando o app do WhatsApp, é o formulário de checkout do provedor de pagamento, é
  * alguém buscando "grana política de privacidade" no Google. Por isso o
  * cabeçalho mostra a marca (ninguém que chegou por link direto tem outro
  * jeito de saber que está no lugar certo) e o corpo usa `colunaLeitura`, não
@@ -149,7 +149,7 @@ export default function LegalDocScreen({ doc }: Props) {
               <BrandLogotype width={92} />
             </View>
 
-            {/* Quem chegou por link direto (Kiwify, Meta) não tem como voltar pro
+            {/* Quem chegou por link direto (checkout, Meta) não tem como voltar pro
                 Perfil pra ver os outros dois documentos — esta linha é o único
                 jeito de ir de um pro outro sem sair do site. */}
             <View style={styles.abasDocs}>

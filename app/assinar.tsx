@@ -5,11 +5,18 @@ import { useEntitlement } from '@/lib/entitlement-context';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { useFlags } from '@/lib/feature-flags';
 
-const checkoutConfigurado = process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
+/* Nomes sem provedor no meio, porque o provedor mudou uma vez e pode mudar de
+   novo. A queda para os nomes antigos existe para a build instalada e os
+   ambientes já configurados não pararem de vender no dia da troca: enquanto a
+   variável nova não estiver publicada em toda parte, a antiga continua
+   valendo. Remover a queda só depois que Vercel e EAS estiverem com a nova. */
+const checkoutConfigurado =
+  process.env.EXPO_PUBLIC_CHECKOUT_URL ?? process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
 const destinoCompra = checkoutConfigurado?.startsWith('https://')
   ? checkoutConfigurado
   : 'https://granaponto.com.br/#precos';
-const gerenciamentoConfigurado = process.env.EXPO_PUBLIC_KIWIFY_BILLING_URL;
+const gerenciamentoConfigurado =
+  process.env.EXPO_PUBLIC_BILLING_URL ?? process.env.EXPO_PUBLIC_KIWIFY_BILLING_URL;
 const destinoGerenciamento = gerenciamentoConfigurado?.startsWith('https://')
   ? gerenciamentoConfigurado
   : null;
@@ -45,7 +52,7 @@ export default function AssinarScreen() {
         </Text>
         {estado?.status === 'past_due' && (
           <Text style={styles.notice}>
-            O pagamento está pendente. Atualize a cobrança pelo link da Kiwify para manter o acesso.
+            O pagamento está pendente. Atualize a cobrança pelo link do e-mail da compra para manter o acesso.
           </Text>
         )}
         {sincronizacao.mensagem && (
@@ -69,7 +76,7 @@ export default function AssinarScreen() {
           ) : (
             <View style={styles.billingHelp}>
               <Text style={styles.billingHelpText}>
-                Abra o e-mail da Kiwify para atualizar a cobrança. Se não encontrar o link, fale com o suporte.
+                Abra o e-mail da compra para atualizar a cobrança. Se não encontrar o link, fale com o suporte.
               </Text>
               <Pressable
                 accessibilityRole="button"

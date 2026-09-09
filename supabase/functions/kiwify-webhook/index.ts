@@ -70,7 +70,8 @@ Deno.serve(async (req: Request) => {
 
   const payloadHash = await sha256Hex(rawBody);
   const eventId = (evento.eventId ?? payloadHash).slice(0, 255);
-  const { data, error } = await supabase.rpc('processar_evento_kiwify', {
+  const { data, error } = await supabase.rpc('processar_evento_assinatura', {
+    p_provider: 'kiwify',
     p_event_id: eventId,
     p_event_type: evento.type,
     p_payload_hash: payloadHash,

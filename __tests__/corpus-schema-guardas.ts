@@ -1,6 +1,6 @@
 /* Guardas estáticos do schema.sql — a classe de defeito que não aparece em tsc.
  *
- * O caso que originou este corpus: `processar_evento_kiwify` é
+ * O caso que originou este corpus: `processar_evento_assinatura` (na época `processar_evento_kiwify`) é
  * `security definer` com `set search_path = ''`, que é o endurecimento correto,
  * e chamava `gen_random_bytes(...)` sem qualificar. Com o search_path vazio, a
  * função do pgcrypto (que no Supabase vive no schema `extensions`) não resolve,
@@ -119,8 +119,8 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
 // ── 4. Cortesia nunca se confunde com venda ───────────────────────────────
 {
   checar(
-    "o provider aceita 'interno' além de 'kiwify'",
-    /check\s*\(provider in \('kiwify', 'interno'\)\)/.test(sql)
+    "o provider aceita 'cakto' e 'interno' além de 'kiwify'",
+    /check\s*\(provider in \('kiwify', 'cakto', 'interno'\)\)/.test(sql)
   );
   checar(
     'revogar cortesia filtra por provider interno',

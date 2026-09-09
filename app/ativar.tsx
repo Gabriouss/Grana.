@@ -13,7 +13,7 @@ import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
 
 /**
- * Destino do link de ativação que a Kiwify manda no e-mail de entrega
+ * Destino do link de ativação que o provedor de pagamento manda no e-mail de entrega
  * (`.../ativar?token=...`) — cobre quem comprou com um e-mail diferente do
  * que usa (ou vai usar) no Grana., que é o único caso que o vínculo
  * automático por e-mail (ver lib/assinatura.ts) não resolve sozinho.

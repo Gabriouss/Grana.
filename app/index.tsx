@@ -112,7 +112,7 @@ function hrefCadastroComAtribuicao(): string {
  * definida como string vazia ou com um valor de placeholder passaria num
  * teste de existência e levaria a pessoa a lugar nenhum. */
 function hrefCompra(): string {
-  const checkout = process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
+  const checkout = process.env.EXPO_PUBLIC_CHECKOUT_URL ?? process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
   return checkout?.startsWith('https://') ? checkout : hrefCadastroComAtribuicao();
 }
 
