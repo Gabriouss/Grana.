@@ -4118,3 +4118,59 @@ resto do app já usa, mas ninguém olhou o FAQ renderizado depois dela.
 (`preview/copy-landing`, `master`, `claude/grana-landing-page-design-df5etm`,
 `claude/repository-analysis-j56mv1`) ainda estão no GitHub — apagá-las é um
 push, e push depende de pedido explícito.
+
+## 09/09/2026 — o app não funcionava sem internet
+
+O autor perguntou se o app e o lançamento por voz funcionavam offline e disse
+que precisam funcionar. Não funcionavam, e a causa era uma só.
+
+**O diagnóstico.** `lib/entitlement-context.tsx` chamava a RPC
+`obter_estado_acesso` e, em QUALQUER erro — inclusive falta de rede —, caía num
+`catch` que definia `allowed: false`. Não havia cache em disco dessa resposta.
+O `app/_layout.tsx` então roteava para a tela de assinatura. Na prática, um
+cliente pagante que abrisse o Grana. sem internet via a tela de venda.
+
+O comentário no código chamava isso de falha fechada proposital, com o
+argumento de que o RLS negaria os dados de qualquer forma. O argumento tinha um
+furo: `lib/offline-cache.ts` já implementa cache de lançamentos e fila de
+pendentes, e `lib/widget-voz-pendentes.ts` já guarda áudios gravados sem rede.
+Tudo isso ficava inalcançável, atrás de um portão que exigia estar online para
+abrir. É o mesmo padrão da regra 9 do AGENTS.md, por outro ângulo: um `catch`
+tratando falha temporária como veredito permanente.
+
+**A correção.** Novo `lib/entitlement-cache.ts` guarda a última resposta boa do
+servidor, por usuário. Quando a rede falha, o acesso passa a valer até o prazo
+que o próprio servidor prometeu (`access_until`/`grace_until`, o maior dos
+dois), em vez de uma janela de tolerância inventada — política escolhida pelo
+autor entre três opções. Quem cancelou perde o acesso quando o período pago
+vence, mesmo sem nunca mais abrir o app com internet. Instalação nova sem rede
+continua bloqueada, porque não há cache.
+
+A queda para o cache acontece SÓ em erro de rede (`isLikelyNetworkError`).
+Falha permanente, como uma RPC que não existe, continua falhando fechada e
+agora registra `causa: 'falha permanente'` no log — para não repetir o caso do
+`PGRST202` que virou estado benigno e deixou uma feature fora do ar por dias.
+`signOut` apaga o cache, e o registro é chaveado por usuário, então trocar de
+conta no mesmo aparelho não herda o prazo da anterior.
+
+**Sobre a voz offline.** O fluxo já tenta reconhecimento no próprio aparelho
+antes da rede (`lib/voz.ts` chama `transcreverNoAparelho`). Mas na build 1.8.4
+esse caminho não tem como funcionar: ele entrega ao reconhecedor o arquivo m4a
+declarando `audioEncoding: 2` (PCM cru). O `VoicePcmDecoder.kt` que decodifica
+de verdade é do commit `e7ab948`, que não está na 1.8.4. Ou seja, **voz offline
+só passa a funcionar numa build nova** — a correção deste commit resolve o
+bloqueio do app, não a transcrição sem rede.
+
+**Verificado:** `npx tsc --noEmit` limpo e `npm run test:ci` completo, saída 0,
+incluindo o teste novo `__tests__/entitlement-offline.cjs` (16 verificações
+contra o módulo real, com `AsyncStorage` dublê), já encadeado no `test:ci`.
+
+**NÃO verificado — checklist de QA em aparelho:**
+- Abrir o app em modo avião com sessão salva e confirmar que entra, em vez de
+  cair na tela de assinatura.
+- Confirmar que a tela de Lançamentos mostra a faixa "sem conexão" e os dados
+  do cache.
+- Lançar algo offline pelo formulário e confirmar a sincronização ao voltar a
+  rede.
+- Gravar pelo widget offline e confirmar que o áudio é preservado e retomado.
+- Sair da conta offline e confirmar que não entra mais sem rede.

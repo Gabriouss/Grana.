@@ -7,6 +7,7 @@ import { supabase } from './supabase';
 import { traduzirErroAuth, type ErroAuth } from './auth-errors';
 import { vincularAssinaturasPendentes } from './assinatura';
 import { removerPushHabitoAntesDeSair } from './push-notifications';
+import { esquecerAcesso } from './entitlement-cache';
 import { limparSnapshotWidgets } from './widgets-home-sync';
 
 type AuthContextValue = {
@@ -176,6 +177,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
       /* Some da tela inicial antes de a sessão ser removida: nenhuma conta
          seguinte pode herdar o saldo, boleto ou cofrinho da anterior. */
       limparSnapshotWidgets();
+      /* O acesso guardado para uso offline sai junto: sair é deliberado, e
+         nenhuma conta seguinte pode entrar no app pelo prazo da anterior. */
+      await esquecerAcesso();
       try {
         await removerPushHabitoAntesDeSair();
       } catch (err) {
