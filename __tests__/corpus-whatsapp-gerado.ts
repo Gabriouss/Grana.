@@ -43,7 +43,7 @@ import { corpoDaFuncao } from './extrair';
    ARQUIVO ONDE REALMENTE MORAM. */
 const CATEGORY_KEYWORDS_FILE = path.join(__dirname, '..', 'supabase', 'functions', '_shared', 'category-keywords.ts');
 const fonte = [
-  ...['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra'].map((n) => corpoDaFuncao(n, CATEGORY_KEYWORDS_FILE)),
+  ...['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra', 'semValorMonetario'].map((n) => corpoDaFuncao(n, CATEGORY_KEYWORDS_FILE)),
   ...[
     'matchCategoryByKeyword',
     'parseParcelas', 'ehIntencaoCredito', 'ehIntencaoBoleto', 'parseDiaVencimento',

@@ -23,7 +23,7 @@ import { corpoDaFuncao } from './extrair';
    servem assistente-financeiro/index.ts agora) — continuam lidas do
    ARQUIVO ONDE REALMENTE MORAM. */
 const CATEGORY_KEYWORDS_FILE = path.join(__dirname, '..', 'supabase', 'functions', '_shared', 'category-keywords.ts');
-const NOMES_COMPARTILHADOS = ['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra'];
+const NOMES_COMPARTILHADOS = ['CATEGORY_KEYWORDS', 'normalizarParaBusca', 'contemPalavra', 'semValorMonetario'];
 const NOMES_WEBHOOK = ['matchCategoryByKeyword', 'matchCategoryByReply'];
 const fonte = [
   ...NOMES_COMPARTILHADOS.map((n) => corpoDaFuncao(n, CATEGORY_KEYWORDS_FILE)),
@@ -89,6 +89,51 @@ checar('resposta que não bate em nada', bot.matchCategoryByReply('sei lá', EXT
 checar('app: sem extras cai em Outros', guessCategoryFromText('gasto com o gato 40 reais').name, 'Outros');
 checar('app: com extras reconhece categoria custom', guessCategoryFromText('gasto com o gato 40 reais, pet', EXTRAS).name, PET.name);
 checar('app: categoria fixa não é hijackada', guessCategoryFromText('mercado 120 reais', EXTRAS).name, 'Alimentação');
+
+/* ---------- o valor não pode escolher a categoria ----------
+ *
+ * Relatado do aparelho em 09/09/2026: "Energético 18,99" foi para Transporte.
+ * A transcrição estava certa; a classificação não. '99' é keyword do
+ * aplicativo de corrida, e `normalizarParaBusca` quebra "18,99" em "18 99",
+ * entregando os centavos como palavra. Como preço em real quase sempre
+ * termina em ,99, isso atingia qualquer lançamento sem keyword forte no
+ * texto — não só categoria custom.
+ *
+ * O segundo defeito apareceu junto: a categoria custom só era consultada
+ * DEPOIS das 9 fixas (isso é de propósito, ver acima), então o falso
+ * positivo do valor impedia "Energético" de sequer ser testada. E sem dobra
+ * de acento, "energetico" transcrito sem acento não achava "Energético".
+ */
+const ENERGETICO = { name: 'Energético', color: '#f80' };
+const EXTRAS_E = [ENERGETICO];
+
+// O caso relatado, e as outras formas de escrever o mesmo valor.
+checar('app: valor ,99 não rouba pra Transporte', guessCategoryFromText('Energético 18,99', EXTRAS_E).name, ENERGETICO.name);
+checar('app: valor 99,00', guessCategoryFromText('Energético 99,00', EXTRAS_E).name, ENERGETICO.name);
+checar('app: valor com moeda por extenso', guessCategoryFromText('Energético 99 reais', EXTRAS_E).name, ENERGETICO.name);
+checar('app: valor com cifrão', guessCategoryFromText('Energético R$ 18,99', EXTRAS_E).name, ENERGETICO.name);
+checar('app: milhar com centavos', guessCategoryFromText('Energético 1.899,99', EXTRAS_E).name, ENERGETICO.name);
+
+// Acento: a fala nem sempre devolve, e o nome custom não pode ser duplicado.
+checar('app: sem acento acha a categoria acentuada', guessCategoryFromText('energetico 5,99', EXTRAS_E).name, ENERGETICO.name);
+checar('app: com acento continua achando', guessCategoryFromText('Energético 5,99', EXTRAS_E).name, ENERGETICO.name);
+
+// O '99' do aplicativo de corrida continua valendo quando é MESMO o serviço.
+checar('app: "99" solto ainda é Transporte', guessCategoryFromText('chamei um 99', EXTRAS_E).name, 'Transporte');
+checar('app: "99 pop" com valor junto', guessCategoryFromText('99 pop 18,99', EXTRAS_E).name, 'Transporte');
+checar('app: keyword forte vence o valor', guessCategoryFromText('uber 18,99', EXTRAS_E).name, 'Transporte');
+
+// Keywords com dígito que NÃO são valor seguem intactas.
+checar('app: "office 365" não é comido pelo recorte', guessCategoryFromText('office 365 39,90', EXTRAS_E).name, 'Assinaturas');
+checar('app: "b3" segue em Investimentos', guessCategoryFromText('aporte b3 1.500,00', EXTRAS_E).name, 'Investimentos');
+
+// As 9 fixas continuam vencendo — a política não mudou.
+checar('app: fixa ainda vence custom', guessCategoryFromText('mercado 120 reais', EXTRAS_E).name, 'Alimentação');
+
+// O mesmo defeito existia no bot; a correção mora no arquivo compartilhado.
+checar('bot: valor ,99 não rouba pra Transporte', bot.matchCategoryByKeyword('Energético 18,99', EXTRAS_E)?.name ?? null, ENERGETICO.name);
+checar('bot: "99" solto ainda é Transporte', bot.matchCategoryByKeyword('chamei um 99', EXTRAS_E)?.name ?? null, 'Transporte');
+checar('bot: sem acento acha a acentuada', bot.matchCategoryByKeyword('energetico 5,99', EXTRAS_E)?.name ?? null, ENERGETICO.name);
 
 console.log(`\n${total - falhas}/${total} checagens de categoria custom passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);

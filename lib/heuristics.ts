@@ -259,14 +259,41 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Outros': ['shein', 'renner', 'c&a', 'cea', 'zara', 'riachuelo', 'marisa', 'hering', 'centauro', 'netshoes', 'nike', 'adidas', 'roupa', 'roupas', 'calca', 'calça', 'camisa', 'camiseta', 'vestido', 'sapato', 'tenis', 'tênis', 'bolsa', 'mochila', 'shopee', 'aliexpress', 'mercado livre', 'americanas', 'magazine luiza', 'magalu', 'casas bahia', 'ponto frio', 'submarino', 'compras online', 'papelaria', 'pet shop', 'petshop', 'veterinario', 'veterinário', 'racao', 'ração', 'salao de beleza', 'salão de beleza', 'cabeleireiro', 'manicure', 'barbearia', 'estetica', 'estética'],
 };
 
+/* O VALOR não é pista de categoria. "Energético 18,99" caía em Transporte
+   porque '99' é palavra-chave do aplicativo de corrida e a normalização
+   quebra "18,99" em "18 99", entregando os centavos como se fossem uma
+   palavra. Preço em real quase sempre termina em ,99, então isso não era um
+   caso raro: atingia todo lançamento sem palavra-chave forte no texto.
+
+   Some com o número do VALOR, não com todo número — "chamei um 99" ainda
+   precisa cair em Transporte, e 'office 365'/'b3' seguem intactos porque
+   nenhum deles tem separador decimal. */
+function semValorMonetario(texto: string): string {
+  return texto
+    .replace(/r\$\s*[\d.,]*\d/gi, ' ')
+    .replace(/\d[\d.,]*\s*(?:reais|real|contos?|pila|paus?|mangos?)\b/gi, ' ')
+    .replace(/(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?!\d)/g, ' ')
+    .replace(/(?<![\d.,])\d+[.,]\d{1,2}(?!\d)/g, ' ');
+}
+
 /* Normaliza para comparar: minúsculas, pontuação vira espaço, e o texto fica
    cercado por espaços. A comparação passa a ser por palavra inteira em vez de
    `includes` cru — antes a keyword 'max' (de HBO Max) casava dentro de
    "máxima", 'oi' dentro de "coisa" e '99' dentro de "1990", jogando o
    lançamento na categoria errada. Espaço nas pontas faz a keyword de uma
    palavra só casar no começo e no fim da frase. */
+/* Dobra o acento antes de comparar. A lista fixa contornava isso repetindo
+   variante a variante ('taxi' e 'táxi', 'metro' e 'metrô'), mas o nome de
+   uma categoria que a PESSOA criou não tem como ser duplicado — e a
+   transcrição por voz nem sempre devolve o acento, então "energetico" não
+   encontrava a categoria "Energético" que existia no app.
+
+   A remoção dos sinais vem ANTES da troca por espaço: o `[^0-9a-zà-ÿ]` não
+   inclui a faixa de combinantes do NFD, e deixá-los para depois partiria
+   "energético" em "energe tico". */
 function normalizarParaBusca(texto: string): string {
-  return ' ' + texto.toLowerCase().replace(/[^0-9a-zà-ÿ]+/gi, ' ').trim() + ' ';
+  const semAcento = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return ' ' + semAcento.toLowerCase().replace(/[^0-9a-zà-ÿ]+/gi, ' ').trim() + ' ';
 }
 
 function contemPalavra(textoNormalizado: string, keyword: string): boolean {
@@ -500,7 +527,7 @@ export function guessCategoryFromText(
   text: string,
   extras: { name: string; color: string }[] = []
 ): { name: string; color: string } {
-  const alvo = normalizarParaBusca(text);
+  const alvo = normalizarParaBusca(semValorMonetario(text));
   let bestName: string | null = null;
 
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {

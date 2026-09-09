@@ -4174,3 +4174,53 @@ contra o módulo real, com `AsyncStorage` dublê), já encadeado no `test:ci`.
   rede.
 - Gravar pelo widget offline e confirmar que o áudio é preservado e retomado.
 - Sair da conta offline e confirmar que não entra mais sem rede.
+
+## 09/09/2026 — o valor escolhia a categoria
+
+Relatado do aparelho: "Energético 18,99" foi lançado em Transporte. A
+transcrição estava correta; a classificação não. Reproduzido contra o módulo
+real antes de qualquer correção.
+
+**Causa.** `'99'` é palavra-chave de Transporte (o aplicativo de corrida) e
+`normalizarParaBusca` troca pontuação por espaço, então "18,99" virava
+"18 99" e os centavos eram lidos como palavra. Não era caso raro: preço em
+real quase sempre termina em ,99, e o defeito atingia todo lançamento sem
+palavra-chave forte no texto — `cafe 4,99` só escapava porque "cafe" casava
+antes. Como as 9 categorias fixas são testadas ANTES das personalizadas (isso
+é deliberado, ver `__tests__/corpus-categorias-custom.ts`), o falso positivo
+ainda impedia que a categoria "Energético" fosse sequer consultada.
+
+**Segundo defeito, achado na mesma investigação.** A comparação não dobrava
+acento. A lista fixa contornava isso repetindo variante a variante ('taxi' e
+'táxi', 'metro' e 'metrô'), mas o nome de uma categoria criada pela pessoa não
+tem como ser duplicado, e a transcrição por voz nem sempre devolve o acento:
+"energetico" não encontrava "Energético".
+
+**Correção.** `semValorMonetario` remove o número do VALOR antes da busca por
+palavra-chave, e `normalizarParaBusca` passou a dobrar acento via NFD. Some o
+valor, não todo número: "chamei um 99" continua caindo em Transporte, e
+'office 365'/'b3' seguem intactos porque não têm separador decimal. A política
+de "fixa vence custom" NÃO mudou.
+
+Aplicado nas quatro cópias: `lib/heuristics.ts`,
+`supabase/functions/_shared/category-keywords.ts` e os dois consumidores
+(`whatsapp-webhook`, `assistente-financeiro`). `semValorMonetario` entrou na
+lista do `__tests__/sync-parser.js`, que subiu de 39 para 40 pares vigiados,
+para as cópias não divergirem.
+
+**Verificado:** `npx tsc --noEmit` limpo e `npm run test:ci` completo, saída 0
+— 250.200 casos do corpus do WhatsApp, 34.093 do corpus de voz, 28/28 de
+categoria custom (três deles rodando contra a cópia do bot, não a do app) e
+40/40 em sincronia. Três arneses de teste precisaram passar a fornecer a
+função nova; o primeiro só foi descoberto porque a suíte quebrou.
+
+**NÃO verificado, e importante:** nada foi testado em aparelho. E a correção
+não chega sozinha a lugar nenhum — a classificação por voz roda no CLIENTE
+(`lib/widget-voz-task.ts` chama `guessCategoryFromText`), então **só vale com
+APK novo**. As mudanças nas Edge Functions também exigem deploy; o Granabô em
+produção segue com a versão antiga até lá.
+
+**Sabidamente fora do alcance:** "Energético 99" sem centavos e sem "reais"
+continua indo para Transporte. Nesse texto o número é genuinamente ambíguo
+entre valor e nome do serviço, e resolver exigiria a heurística conhecer o
+valor já extraído — hoje `guessCategoryFromText` recebe só o texto.

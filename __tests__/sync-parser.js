@@ -99,7 +99,7 @@ const COMPARTILHADAS_FINANCE_COMMAND = [
    assistente-financeiro (Granabô) passou a usar pra resolver sinônimo de
    categoria. O par que importa comparar é app-vs-_shared, não mais
    app-vs-webhook. */
-const COMPARTILHADAS_CATEGORY_KEYWORDS = ['normalizarParaBusca', 'contemPalavra'];
+const COMPARTILHADAS_CATEGORY_KEYWORDS = ['normalizarParaBusca', 'contemPalavra', 'semValorMonetario'];
 
 const PARES = [
   { app: 'lib/heuristics.ts', web: 'supabase/functions/whatsapp-webhook/index.ts', funcoes: COMPARTILHADAS },

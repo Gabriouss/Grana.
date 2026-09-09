@@ -49,7 +49,7 @@ import { provedoresPadrao, transcrever } from '../_shared/voice-transcription.ts
    compartilhadas com assistente-financeiro/index.ts (que resolve sinônimo de
    categoria na mesma lista, pro Granabô), sem duplicar a lista — ver o
    comentário no arquivo compartilhado. */
-import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
+import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra, semValorMonetario } from '../_shared/category-keywords.ts';
 /* timingSafeEqual e fetchComTimeout eram cópias idênticas em 3-4 Edge
    Functions — ver comentário em _shared/seguranca.ts. */
 import { timingSafeEqual, fetchComTimeout } from '../_shared/seguranca.ts';
@@ -103,7 +103,7 @@ const CATEGORIES: { name: string; color: string }[] = [
    padrão vazio. O extrator de testes remove essa anotação antes de executar
    a função em Node. */
 function matchCategoryByKeyword(text: string, extras: { name: string; color: string }[] = []): { name: string; color: string } | null {
-  const alvo = normalizarParaBusca(text);
+  const alvo = normalizarParaBusca(semValorMonetario(text));
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     if (keywords.some((kw) => contemPalavra(alvo, kw))) {
       return CATEGORIES.find((c) => c.name === catName) ?? null;

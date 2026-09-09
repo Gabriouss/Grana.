@@ -26,7 +26,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    depender do modelo entender sozinho (achado testando em produção: "comida"
    às vezes resolve pra "Alimentação" sozinho, "mercado" não — inconsistente).
    Ver casarPorPalavraChave, mais abaixo. */
-import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra } from '../_shared/category-keywords.ts';
+import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra, semValorMonetario } from '../_shared/category-keywords.ts';
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
 import { janelaFatura, mesFaturaDoLancamento, cicloRelativo, deslocamentoPedido } from '../_shared/fatura-ciclo.ts';
@@ -306,7 +306,7 @@ function casarNome(nomes: string[], pedido: string): string | null {
  * é obrigatório antes de aceitar o casamento.
  */
 function casarPorPalavraChave(nomes: string[], pedido: string): string | null {
-  const alvo = normalizarParaBusca(pedido);
+  const alvo = normalizarParaBusca(semValorMonetario(pedido));
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     if (!nomes.includes(catName)) continue;
     if (keywords.some((kw) => contemPalavra(alvo, kw))) return catName;
