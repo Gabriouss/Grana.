@@ -4054,3 +4054,5 @@ variável na Vercel e foi orientado a redeployar. O download público retornava
 404 antes da publicação do asset grana.apk; ainda exige verificação após release.
 Build será enviada após este commit. Testes em Android real e publicação do
 APK ainda pendentes; testes automatizados não comprovam instalação no aparelho.
+
+Build enviada ao EAS: 99b1a002-dd9b-467f-9cfb-cfed3a24deb2, Android 1.8.4, versionCode 11, commit 3d37c34. Upload e fingerprint concluídos. Novo fetch confirmou HEAD sem divergência de origin/main; 155 arquivos mudaram desde o APK 1.8.3 (17a08baf). APK ainda aguardando conclusão e teste real.
