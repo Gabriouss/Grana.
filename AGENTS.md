@@ -222,6 +222,13 @@ Regras permanentes para qualquer sessão que abrir este repositório:
 
     Antes de qualquer `supabase functions deploy`:
 
+    - **Use `updated_at`, nunca o número da versão.** Criar ou alterar um
+      segredo do projeto reinstancia TODAS as funções com o ambiente novo e
+      soma 1 na versão de cada uma, sem tocar no código nem no `updated_at`.
+      Observado em 09/09/2026: um único `POST /secrets` levou
+      `eas-build-webhook` de v33 para v34 e `whatsapp-webhook` de v68 para
+      v69, com os dois carimbos intactos. Ler versão como "alguém publicou
+      isso" leva a conclusão errada.
     - **Compare o carimbo do que está no ar com o histórico do arquivo.**
       `GET https://api.supabase.com/v1/projects/<ref>/functions` devolve
       `version` e `updated_at` de cada função; `git log -3 -- <caminho da
