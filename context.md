@@ -1,5 +1,36 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — voz, bateria 2: continuar investigando antes de corrigir
+
+O autor pediu mais baterias e adiou explicitamente as correções. Nenhum
+arquivo de produção alterado nesta rodada. Sem build ou deploy.
+
+Novo corpus `node __tests__/voz-auditoria-rodada2.cjs`: **2068 verificações,
+1916 aprovadas e 152 reprovadas**, saída 1 pelos achados abertos. Fora do
+`test:ci`, como a primeira bateria. Data simulada: 10/09/2026.
+
+Novos achados comprovados com módulos reais e gravação simulada:
+
+- Parcelas faladas: 22 vira 2, 35 vira 5, 21 pode virar compra única;
+  37 (fora do limite) também vira compra única sem revisão.
+- “Não recorrente” e “não se repete” ativam recorrência.
+- “Vence amanhã” e “dia vinte” caem em hoje + 5 dias; 31/02 é enviado como
+  data impossível (não foi testada aceitação pelo banco).
+- “Recebi um crédito de 89,90 de salário” vira saída no cartão se só há C6.
+- Nomes de carteira Boleto, Recorrente e Débito alteram o tipo/recorrência/
+  pagamento; Crédito pede cartão indevidamente.
+- C6 Empresa pode ser barrado por selecionar primeiro o C6 da Pessoal:
+  ampliação do matcher da bateria 1, sem gravação errada nesse caso.
+
+As funções reais das telas também reproduziram parcelas, vencimento e
+recorrência incorretos. As 730 datas explícitas válidas passaram. A suíte
+completa passou na rodada anterior e não foi repetida sem mudança de produção.
+
+Relatório: `documentation/auditoria-voz-2026-09-10-rodada2.md`.
+Acumulado das duas baterias: **9835 asserções, 8265 passaram, 1570 falharam**;
+não são bugs únicos nem taxa de erro acústico. Seguir acumulando achados antes
+de começar as correções, conforme a orientação atual do autor.
+
 ## 10/09/2026 — auditoria adicional de voz: há falhas além da build pendente
 
 Pedido do autor: verificar os achados do Claude e ampliar a bateria de testes.
