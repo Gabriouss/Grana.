@@ -168,13 +168,28 @@ Ou seja, quem parcela paga R$ 4,92 a mais do que ficaria no mensal, e a frase
 em DOIS lugares, com a mesma redação: `app/index.tsx` (cartão de preços da
 landing) e `app/assinar.tsx` (tela de assinatura do aplicativo).
 
-**Decisão do autor: absorver os juros**, mudando a oferta anual na Cakto para
-parcelamento sem juros para o comprador. Com isso a parcela vira os R$ 8,33 já
-prometidos e a copy fica correta como está. **Nenhuma linha de código muda.**
+**Resolvido no mesmo dia, por outro caminho.** O autor pediu preço fechado:
+R$ 9,90 no mensal e R$ 97,90 no anual. A oferta `323b2rs` foi de R$ 98,98 para
+**R$ 96,91**, que com a taxa de serviço de R$ 0,99 dá os R$ 97,90 exatos. O
+mensal ficou intacto, porque R$ 8,91 já produz os R$ 9,90 anunciados. Feito
+pela API, com prévia e confirmação, e conferido na resposta.
 
-**Enquanto essa chave não for virada no painel, a promessa das duas telas é
-falsa.** Se a decisão mudar, o conserto é reescrever os dois textos, e aí o da
-tela do aplicativo só chega ao aparelho com build nova.
+**O 12x fechando em R$ 97,90 NÃO é possível pela API da Cakto, e isso é fato
+verificado, não suposição.** A tabela que a Public API expõe
+(`installment-interest`) é de **juro adicional**, o que o produtor cobra POR
+CIMA do juro-base da Cakto. O juro-base sai do comprador e não tem chave para
+desligar por ali. `fees_retrieve` devolveu a tabela vigente da conta: 8,67% em
+2x, 14,87% em 6x e **23,94% em 12x**. No preço novo, 12x totalizaria
+R$ 121,34, ainda mais caro que os R$ 118,80 de doze meses do mensal.
+
+Por isso as duas telas **pararam de anunciar valor de parcela**. Elas falam do
+preço à vista, onde a economia de R$ 20,90 é verdadeira, e citam o
+parcelamento sem inventar um número que o checkout não pratica. O comentário
+de `app/assinar.tsx` que mandava DERIVAR a parcela foi reescrito para explicar
+por que não se deve derivá-la.
+
+Se aparecer no painel da Cakto uma opção de assumir o juro do parcelamento,
+ela não existe na API, e aí vale devolver a promessa de 12x à copy.
 
 ### O MCP da Cakto NÃO existe mais nesta máquina
 
