@@ -3315,7 +3315,10 @@ create index if not exists user_achievements_user_id_idx on user_achievements (u
 -- é assim que uma delas fica para trás.
 --
 -- `provider = 'interno'` é o que separa cortesia de venda. Toda contagem de
--- receita futura filtra por `provider = 'kiwify'` e não vê estas linhas.
+-- receita futura deve filtrar por provider de VENDA — hoje 'cakto', antes
+-- 'kiwify' — e nunca ver estas linhas. Não existe esse filtro no schema hoje;
+-- quando existir, use uma lista de provedores pagos, não um nome só, senão a
+-- próxima troca de gateway cega o relatório em silêncio.
 --
 -- Liberar quem AINDA NÃO tem conta funciona: a linha nasce com `user_id` nulo
 -- e `vincular_assinatura_automatica()` a associa no primeiro login com aquele
