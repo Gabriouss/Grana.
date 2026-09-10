@@ -31,6 +31,7 @@ export const NUMERO_POR_EXTENSO: Record<string, number> = {
   sessenta: 60, setenta: 70, oitenta: 80, noventa: 90, cem: 100, cento: 100,
   duzentos: 200, trezentos: 300, quatrocentos: 400, quinhentos: 500, seiscentos: 600,
   setecentos: 700, oitocentos: 800, novecentos: 900, mil: 1000,
+  milhão: 1000000, milhao: 1000000, milhões: 1000000, milhoes: 1000000,
 };
 
 export function somarExtenso(palavras: string[]): number {
@@ -39,7 +40,10 @@ export function somarExtenso(palavras: string[]): number {
   for (const p of palavras) {
     const v = NUMERO_POR_EXTENSO[p];
     if (v === undefined) continue; // "e"
-    if (v === 1000) {
+    if (v === 1000000) {
+      total = (total + atual || 1) * v;
+      atual = 0;
+    } else if (v === 1000) {
       atual = (atual === 0 ? 1 : atual) * 1000;
       total += atual;
       atual = 0;
@@ -102,7 +106,7 @@ export function segmentarExtenso(palavras: string[]): number[] {
   for (const p of palavras) {
     const v = NUMERO_POR_EXTENSO[p];
     if (v === undefined) continue; // "e"
-    if (v !== 1000 && !podeContinuarNumeral(anterior, v)) {
+    if (v < 1000 && !podeContinuarNumeral(anterior, v)) {
       if (atual.length) segmentos.push(somarExtenso(atual));
       atual = [];
       anterior = Infinity;
@@ -112,7 +116,7 @@ export function segmentarExtenso(palavras: string[]): number[] {
        veio antes: em "dois mil e quinhentos" o que segue precisa ser menor
        que MIL (500 é), não menor que DOIS. Mantendo `anterior = 2` a regra
        quebrava ali e o valor virava R$ 2.000 — quinhentos ia embora. */
-    anterior = v === 1000 ? 1000 : v;
+    anterior = v;
   }
   if (atual.length) segmentos.push(somarExtenso(atual));
   return segmentos;
@@ -134,6 +138,9 @@ export const PALAVRA_MOEDA = new RegExp(`^(?:${MOEDA}|centavos?)$`, 'i');
 
 /** Converte trechos numéricos por extenso em dígitos e junta "X reais e Y centavos". */
 export function normalizarTextoTranscrito(texto: string): string {
+  // Zero à esquerda depois de vírgula é uma casa decimal, não outro numeral.
+  texto = texto.replace(/v[íi]rgula\s+zero\s+(um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove)\b/gi,
+    (_m, unidade: string) => `vírgula 0${NUMERO_POR_EXTENSO[unidade.toLowerCase()]}`);
   /* "45 mil" antes de qualquer outra coisa.
    *
    * O bloco de número por extenso mais abaixo resolve "quarenta e cinco mil"
@@ -152,7 +159,7 @@ export function normalizarTextoTranscrito(texto: string): string {
    * em milhar, e milhão pela mesma razão. */
   const MULTIPLICADOR: Record<string, number> = { mil: 1000, milhao: 1e6, milhoes: 1e6 };
   texto = texto.replace(
-    /(?<![\d.,])(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{1,2}))?\s+(mil|milh[ãa]o|milh[õo]es)\b/gi,
+    /(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:[,.](\d{1,2}))?\s+(mil|milh[ãa]o|milh[õo]es)\b/gi,
     (_m: string, inteiro: string, decimal: string | undefined, palavra: string) => {
       const chave = palavra.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
       const fator = MULTIPLICADOR[chave];
@@ -232,32 +239,21 @@ export function normalizarTextoTranscrito(texto: string): string {
 
   return saida
     .join('')
+    // Partes mistas de escala: 2 mil e 500; 1 milhão e 200 mil.
+    .replace(/(?<![\d.,])(\d+)\s+e\s+(\d+)\b/g, (m, a, b) =>
+      Number(a) >= 1000 && Number(a) % 1000 === 0 && Number(b) >= 100 && Number(b) < Number(a)
+        ? String(Number(a) + Number(b)) : m)
     // Separador ditado explicitamente: "dezoito vírgula noventa e nove".
     .replace(/(\d+)\s+v[íi]rgula\s+(\d{1,2})(?!\d)/gi, (_m, r, c) => `${r},${c}`)
-    /* Ruído de alucinação do Whisper em áudio curto ou impreciso: sem sinal
-       de fala suficiente pra reconhecer, o modelo às vezes "termina" a
-       frase em outro alfabeto (cirílico, CJK etc.) em vez de admitir
-       silêncio — mesmo com `language:'pt'` forçado na chamada (é uma dica
-       pro modelo, não uma garantia). Português nunca usa nada fora de
-       Latin-1/Latin Extended, então qualquer caractere fora desse conjunto
-       é ruído de transcrição, nunca fala de verdade. Remove o CARACTERE,
-       não a palavra/frase inteira, pra não perder o resto de uma mensagem
-       real que só teve uma alucinação colada na ponta (caso real: "5,90
-       украї" — o valor tinha vindo certo, só a categoria que sobrou virou
-       lixo cirílico e a pessoa via isso ecoado de volta). */
+    /* Cópia sincronizada do mesmo fix em supabase/functions/whatsapp-webhook
+       — ver o comentário completo lá. Resumo: ruído de alucinação do
+       Whisper em áudio curto (termina a frase em outro alfabeto em vez de
+       admitir silêncio) — remove qualquer caractere fora de Latin-1/Latin
+       Extended, o único conjunto que português de verdade usa. */
     .replace(/[^a-zA-Z0-9À-ÿ\s.,!?;:'"()$%&\-+/]/g, '')
-    /* "5h90": outra forma do mesmo problema, mas nos DÍGITOS em vez de nas
-       letras. Um valor falado com vírgula decimal ("cinco e noventa", "5
-       reais e 90") às vezes sai transcrito com "h" no lugar da vírgula,
-       como se fosse hora do relógio — mas hora de verdade nunca passa de
-       59 minutos, então "h" seguido de 60+ (ou de 3+ dígitos) não pode ser
-       hora nenhuma; só pode ser a vírgula que o Whisper confundiu com
-       marcador de hora. "5h30" (hora real, minuto válido) fica intocado de
-       propósito — só reescreve quando o "minuto" é matematicamente
-       impossível. Sem isso "5h90" não batia em nenhuma das 4 regras de
-       `guessAmountFromText` (não tem vírgula nem "reais" colado) e o
-       lançamento morria pedindo repetição, mesmo a pessoa já tendo dito o
-       valor certo. */
+    /* "5h90" — mesmo fix, mesma razão: "h" seguido de minuto impossível
+       (60+) só pode ser a vírgula decimal que o Whisper confundiu com
+       marcador de hora. "5h30" (hora real) fica intocado. */
     /* Hora NUNCA sobrevive num comando de lançamento. Decisão do autor em
        10/09/2026, depois de "merenda cinco e cinquenta e sete" chegar como
        "Mereda 5h57" e virar R$ 0,00: "preciso que você proiba a interpretação
@@ -272,12 +268,14 @@ export function normalizarTextoTranscrito(texto: string): string {
 
        Num aplicativo cujo único assunto é dinheiro, `5h57` é sempre R$ 5,57.
        Quem quiser registrar horário escreve na descrição. */
-    .replace(/(\d{1,3})h(\d{2,})/gi, (_m: string, h: string, mm: string) => `${h},${mm}`)
+    .replace(/(?<![\d.,])(\d+)\s*h\s*(\d{2})(?!\d)/gi, (_m: string, h: string, mm: string) => `${h},${mm}`)
     /* Mesma proibição na grafia com dois pontos, que é como outros
        reconhecedores escrevem a mesma coisa. */
-    .replace(/(?<![\d.,])(\d{1,3}):(\d{2})(?![\d.,])/g, (_m: string, h: string, mm: string) => `${h},${mm}`)
+    .replace(/(?<![\d.,])(\d+):(\d{2})(?!\d|[.,]\d)/g, (_m: string, h: string, mm: string) => `${h},${mm}`)
     .replace(/\s{2,}/g, ' ')
-    .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
+    .replace(/(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:[,.]00)?\s*(?:reais|real)\s*e\s*(\d{1,2})\s*centavos?\b/gi,
+      (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
+    .replace(/(?<![\d.,])(\d+)\s+(?:reais|real)\s+e?\s*meio\b/gi, (_m, r) => `${r},50 reais`)
     /* Fala real quase nunca diz "centavos" ("trinta reais e cinquenta") — só
        entra quando o número depois do "e" tem 1-2 dígitos e não é seguido de
        outra palavra de moeda, pra não confundir com "50 reais e 30 mil" ou

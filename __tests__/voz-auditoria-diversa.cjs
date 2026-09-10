@@ -1,5 +1,5 @@
-/* Auditoria exploratória: módulos reais, referências fictícias, nenhuma rede.
- * Saída 1 significa achados abertos; deliberadamente fora do test:ci.
+/* Regressões da primeira auditoria: módulos reais, referências fictícias, nenhuma rede.
+ * Integrado ao test:voz/test:ci após a correção das famílias auditadas.
  * Execute: node __tests__/voz-auditoria-diversa.cjs
  */
 const fs = require('node:fs');
@@ -135,6 +135,7 @@ function appFunction(file, name, text) {
     ['mercado 5:57.', { amount: 5.57 }],
     ['mercado 18,99 e farmácia 20 reais', null],
     ['mercado 18,99 não 28,99', null],
+    ['mercado 18,99 reais e 5 centavos', null],
     ['mercado 18,99 no crédito C6 em 3 vezes', { amount: 18.99, kind: 'installment', installments: 3, card_id: 'c6' }],
     ['internet 89,90 boleto recorrente', { amount: 89.9, kind: 'bill', recurring: true }],
   ]) await widget(text, expected);

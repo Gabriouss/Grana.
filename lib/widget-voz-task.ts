@@ -144,26 +144,12 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
 
-  const texto = transcricao.transcript;
+  let texto = transcricao.transcript;
   contexto.transcricao = texto;
   if (payload.source === 'app') {
     await notificacoes.notificarRevisao('Revise seu lançamento por voz', texto);
     return false;
   }
-  const { precisaRevisarValorVoz } = await import('./voz-confiabilidade');
-  if (precisaRevisarValorVoz(texto)) {
-    await notificacoes.notificarRevisao('Confirme o valor que ouvi', texto);
-    return false;
-  }
-  const valor = heuristics.guessAmountFromText(texto);
-
-  /* Sem valor não se salva nada — é a regra que separa "lançou errado" de
-     "não lançou". A pessoa revê no app, com o que foi ouvido já preenchido. */
-  if (!valor || valor <= 0) {
-    await notificacoes.notificarRevisao('Não encontrei o valor', texto);
-    return false;
-  }
-
   const { fetchWallets } = await import('./wallets');
   let prazoReferencias: ReturnType<typeof setTimeout> | undefined;
   const [extras, carteiras, cartoesDisponiveis] = await Promise.race([
@@ -172,18 +158,6 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
       prazoReferencias = setTimeout(() => reject(new VozPendenteOffline('timeout ao carregar referências')), 8_000);
     }),
   ]).finally(() => clearTimeout(prazoReferencias));
-  const categoria = heuristics.guessCategoryFromText(texto, extras);
-
-  /* "Outros" é o balde de "não reconheci", não uma escolha. Salvar aqui em
-     silêncio empurraria gasto pra categoria errada semana após semana, e
-     ninguém revisa o que já foi salvo — então o widget prefere perguntar.
-     Custa um toque; o contrário custa um extrato torto.
-     Quem falou uma palavra-chave de "Outros" de verdade ("shein 200") também
-     cai na revisão: errar pro lado de perguntar é o lado barato. */
-  if (categoria.name === 'Outros') {
-    await notificacoes.notificarRevisao('Qual categoria?', texto);
-    return false;
-  }
 
   const carteiraMencionada = heuristics.matchWalletByText(texto, carteiras);
   const mencionaCarteira = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto);
@@ -197,12 +171,36 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
   const textoFinanceiro = carteiraMencionada ? heuristics.limparReferenciaCarteira(texto, carteira.name) : texto;
+  texto = textoFinanceiro;
+  const { precisaRevisarValorVoz } = await import('./voz-confiabilidade');
+  if (precisaRevisarValorVoz(texto)) {
+    await notificacoes.notificarRevisao('Confirme o valor que ouvi', transcricao.transcript);
+    return false;
+  }
+  const valor = heuristics.guessAmountFromText(texto);
+  if (!Number.isFinite(valor) || valor <= 0) {
+    await notificacoes.notificarRevisao('Não encontrei o valor', transcricao.transcript);
+    return false;
+  }
+  const categoria = heuristics.guessCategoryFromText(texto, extras);
+  if (categoria.name === 'Outros') {
+    await notificacoes.notificarRevisao('Qual categoria?', transcricao.transcript);
+    return false;
+  }
+  if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(texto) && heuristics.parseParcelas(texto) === null) {
+    await notificacoes.notificarRevisao('Confirme o parcelamento', transcricao.transcript);
+    return false;
+  }
   const tipo = heuristics.guessTypeFromText(textoFinanceiro);
   const descricao = heuristics.guessDescFromText(textoFinanceiro, tipo) || 'Lançamento por voz';
 
   // Boleto antes de crédito: "boleto no cartão" é boleto. Mesma ordem do bot.
   if (heuristics.ehIntencaoBoleto(texto)) {
     const dueDate = heuristics.parseDiaVencimento(texto);
+    if (!dueDate) {
+      await notificacoes.notificarRevisao('Confirme o vencimento', transcricao.transcript);
+      return false;
+    }
     const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
       kind: 'bill',
       description: descricao,
@@ -284,7 +282,7 @@ async function lancarNoCredito(args: {
 }): Promise<boolean> {
   const { requestId, texto, valor, descricao, categoria, carteiraId, heuristics, data, notificacoes, voiceOperations } = args;
 
-  const cartoes = args.cartoesDisponiveis;
+  const cartoes = args.cartoesDisponiveis.filter(c => !c.wallet_id || c.wallet_id === carteiraId);
   /* Sem cartão cadastrado, crédito NÃO vira Pix nem débito caladinho: a
      forma de pagamento muda de quem cobra e quando, e adivinhar isso é
      inventar um fato financeiro. */
@@ -294,7 +292,8 @@ async function lancarNoCredito(args: {
   }
 
   const cartaoIdentificado = heuristics.matchCardByText(texto, cartoes);
-  if (!cartaoIdentificado && cartoes.length > 1) {
+  const cartaoExplicito = /\b(?:cr[eé]dito|cart[aã]o)\s+(?!(?:em|no|na|de|todo|recorrente)\b)[\p{L}\d]/iu.test(texto);
+  if (!cartaoIdentificado && (cartoes.length > 1 || cartaoExplicito)) {
     await notificacoes.notificarRevisao('Qual cartão?', texto);
     return false;
   }

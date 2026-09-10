@@ -1,5 +1,68 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — correções de voz do Codex: verificadas e publicadas
+
+O Codex fez duas baterias de auditoria (commits `942f264` e `27ba1e2`) e
+começou as correções numa terceira sessão, que **acabou no meio**: o
+`npm run test:ci` foi recusado pela revisão automática do ambiente dele e em
+seguida a cota de uso estourou. Ficaram 14 arquivos modificados e não
+commitados, sem nenhuma verificação de regressão.
+
+Esta sessão fez a verificação que faltava e publicou.
+
+### O que foi verificado
+
+- `npx tsc --noEmit`: **saída 0**.
+- `npm run test:ci` completo: **saída 0**. Os corpus grandes seguem no mesmo
+  tamanho — 250.200 do WhatsApp e 16.332 da voz gerada —, o sincronismo entre
+  as duas cópias do normalizador continua **40/40**, e o trabalho de 09/09
+  (Cakto 35/35, link de download 10/10) está intacto.
+- `deno check` limpo em `whatsapp-webhook` e `_shared/finance-command.ts`.
+- As duas baterias de auditoria, que reprovavam, agora passam inteiras:
+  **7.770 e 2.075 verificações, zero falhas**. Elas entraram no `test:voz`,
+  portanto passam a rodar dentro do `test:ci` — deixaram de ser corpus
+  paralelo e viraram regressão permanente.
+
+### Sondagem independente, contra os módulos reais
+
+Não bastou aceitar os testes de quem escreveu a correção. Foram conferidas à
+parte as frases exatas dos relatórios: `18,00 reais e 99 centavos` dá 18,99;
+`45 mil reais` dá 45.000; `2 mil e 500` dá 2.500; `dois reais e meio` dá
+2,50; `18 vírgula zero cinco` dá 18,05 com e sem acento; `5:57.` e `5h57`
+dão 5,57; `vinte e duas vezes` dá 22 parcelas e `trinta e cinco` dá 35;
+`não recorrente` não ativa repetição.
+
+A mudança de filosofia no casamento de cartão e carteira é o ganho maior:
+**diante de ambiguidade, agora recusa em vez de adivinhar**. `Nubank` com
+Black e Gold cadastrados devolve nulo; `Itaú` com apenas C6 devolve nulo;
+`carteira Pessoal` não casa mais com `Pessoalidade`. E a referência de
+carteira passou a ser removida sem acento, que era o que fazia
+`mercado 18,99 carteira salario` virar entrada — conferido, hoje sai como
+saída com a referência limpa.
+
+### Uma correção do meu próprio relato
+
+Numa primeira sondagem eu marquei `vírgula zero cinco` como ainda quebrado.
+Era erro de medição meu: inventei a frase `cafe virgula zero cinco`, sem
+parte inteira antes da vírgula, que não é fala plausível de preço e não é o
+caso do relatório. Com a forma real (`18 vírgula zero cinco`) o valor sai
+certo. O código estava correto.
+
+### O que continua NÃO verificado
+
+Nada disso passou por aparelho. São módulos reais executados com microfone,
+banco e notificações simulados. **A 1.9.0 instalada ainda tem os defeitos
+dentro** — as correções de voz só chegam ao aparelho com build nova, porque o
+reconhecimento local (o caminho sem rede) roda no cliente.
+
+### Segurança
+
+Um segundo token de Management API do Supabase (`sbp_bad2...`) circulou em
+texto puro no transcript colado. Conferido: **não vazou para nenhum arquivo do
+repositório**. Deve ser revogado junto com o `sbp_e87f...` da rodada anterior,
+em https://supabase.com/dashboard/account/tokens.
+
+
 ## 10/09/2026 — voz, bateria 2: continuar investigando antes de corrigir
 
 O autor pediu mais baterias e adiou explicitamente as correções. Nenhum

@@ -887,6 +887,11 @@ function parseParcelas(text: string): number | null {
     quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18,
     dezenove: 19, vinte: 20, 'vinte e quatro': 24, trinta: 30, 'trinta e seis': 36,
   };
+  for (const [dezena, base] of [['vinte', 20], ['trinta', 30]] as const) {
+    for (const [unidade, valor] of Object.entries({ um: 1, uma: 1, dois: 2, duas: 2, tres: 3, três: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9 })) {
+      EXTENSO[`${dezena} e ${unidade}`] = base + valor;
+    }
+  }
   /* Do mais longo pro mais curto: senão "vinte" casa antes e "vinte e quatro"
      nunca chega a ser reconhecido. */
   const palavras = Object.keys(EXTENSO)
@@ -920,6 +925,8 @@ function parseParcelas(text: string): number | null {
 
 /** "no crédito", "cartão de crédito", "parcelei", "3x", "5 vezes" — sinais de que a compra foi no cartão, não em débito/pix. */
 function ehIntencaoCredito(text: string): boolean {
+  if (/\b(?:recebi|recebido|entrou|creditado|dep[oó]sito|reembolso)\b/i.test(text)
+    && !/\b(?:paguei|comprei|gastei|parcelei)\b/i.test(text)) return false;
   /* Débito dito com todas as letras encerra a conversa antes de qualquer
      outra regra: "no cartão de débito" casava com a regra de "no cartão" e
      ia parar na fatura do crédito. */
@@ -969,16 +976,22 @@ function carteirasMencionadas(text: string, wallets: CarteiraBusca[]): CarteiraB
     .sort((a, b) => b.name.length - a.name.length)
     .filter((wallet) => {
       const nome = normalizarNomeCarteira(wallet.name);
-      return alvo.includes(`carteira ${nome}`) || alvo.includes(`conta ${nome}`);
+      return !!nome && new RegExp(`\\b(?:carteira|conta)\\s+${nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\d])`, 'u').test(alvo);
     });
 }
 
 function limparReferenciaCarteira(text: string, walletName: string): string {
-  const escapado = walletName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return text
-    .replace(new RegExp(`\\b(?:carteira|conta)\\s+${escapado}\\b`, 'ig'), ' ')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const escaped = norm(walletName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`\\b(?:carteira|conta)\\s+${escaped}(?![\\p{L}\\d])`, 'gu');
+  // Busca sem acento, preservando a grafia do restante da descrição.
+  const chars = Array.from(text.normalize('NFC'));
+  const original = chars.join('');
+  return original.replace(/\b(?:carteira|conta)\s+[^\n]+/giu, trecho => {
+    const match = re.exec(norm(trecho));
+    re.lastIndex = 0;
+    return match ? ' ' + trecho.slice(match[0].length) : trecho;
+  }).replace(/\s{2,}/g, ' ').trim();
 }
 
 async function fetchWalletsDoUsuario(userId: string): Promise<CarteiraBusca[]> {
@@ -1007,16 +1020,27 @@ function carteirasElegiveisDoTexto(text: string, wallets: CarteiraBusca[]): {
 
 /** Acha o cartão citado no texto pelo nome que o usuário deu a ele ou pelo banco ("Nubank", "Itaú Click", "no Inter"). */
 function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null {
-  const alvo = normalizarParaBusca(text);
-  for (const c of cards) {
-    if (contemPalavra(alvo, c.name) || contemPalavra(alvo, c.bank)) return c;
-    const partes = c.name.split(/\s+/).filter((p) => p.length >= 4);
-    if (partes.some((p) => contemPalavra(alvo, p))) return c;
+  const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const alvo = norm(text);
+  const contem = (s: string) => !!s.trim() && new RegExp(`(?<![\\p{L}\\d])${norm(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\d])`, 'u').test(alvo);
+  const nomes = cards.filter(c => contem(c.name));
+  // Nomes completos mais específicos prevalecem sobre o nome-base do banco.
+  const especificos = nomes.filter(c => !nomes.some(outro => outro !== c && norm(outro.name).includes(norm(c.name)) && outro.name.length > c.name.length));
+  if (especificos.length > 1) return null;
+  if (especificos.length === 1) {
+    const escolhido = especificos[0];
+    if (norm(escolhido.name) === norm(escolhido.bank) && cards.filter(c => norm(c.bank) === norm(escolhido.bank)).length > 1) return null;
+    return escolhido;
   }
-  return null;
+  const bancos = cards.filter(c => contem(c.bank));
+  if (bancos.length) return bancos.length === 1 ? bancos[0] : null;
+  const partes = cards.filter(c => c.name.split(/\s+/).filter(p => p.length >= 4).some(contem));
+  return partes.length === 1 ? partes[0] : null;
 }
 
 function cartoesMencionados(text: string, cards: CartaoBusca[]): CartaoBusca[] {
+  const unico = matchCardByText(text, cards);
+  if (unico) return [unico];
   return cards.filter((card) => matchCardByText(text, [card]) !== null);
 }
 
@@ -1163,6 +1187,7 @@ function parseRecorrencia(text: string): boolean {
      o oposto de uma série aberta. Dizer as duas coisas é contradição, e o
      parcelamento é o mais específico dos dois. */
   if (parseParcelas(text) !== null) return false;
+  if (/\b(?:n[ãa]o|sem)\s+(?:(?:ser|[ée]|vai|deve|quero|precisa)\s+)*(?:recorrente|se\s+repete|repetir|repete|recorr[êe]ncia)\b/i.test(t)) return false;
   return /\btod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?\b|\bcada\s+m[êe]s\b|\bmensalmente\b|\brecorrente\b|\bse\s+repete\b|\bque\s+repete\b|\brepete\s+tod[oa]\s+m[êe]s\b/.test(t);
 }
 
@@ -1296,30 +1321,53 @@ async function responderConsulta(userId: string, phone: string, resultado: Resul
 /** "vence dia 25", "vencimento 25/08", "vence 25/08/2026" — sem nada disso, vence em 5 dias por padrão (editável no app). */
 function parseDiaVencimento(text: string): string {
   const pad = (n: number) => String(n).padStart(2, '0');
-  const dataCompleta = text.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+  const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const valida = (y: number, m: number, d: number) => {
+    const data = new Date(y, m - 1, d);
+    return data.getFullYear() === y && data.getMonth() === m - 1 && data.getDate() === d ? iso(data) : '';
+  };
+  const hoje = new Date();
+  const palavras: Record<string, number> = {
+    um: 1, uma: 1, dois: 2, duas: 2, tres: 3, três: 3, quatro: 4, cinco: 5,
+    seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12,
+    treze: 13, catorze: 14, quatorze: 14, quinze: 15, dezesseis: 16,
+    dezessete: 17, dezoito: 18, dezenove: 19, vinte: 20, trinta: 30,
+  };
+  const numero = (s: string) => /^\d+$/.test(s) ? Number(s) :
+    s.split(/\s+e\s+/).reduce((n, p) => n + (palavras[p] ?? NaN), 0);
+  const t = text.toLowerCase();
+  const dataCompleta = t.match(/(?<!\d)(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?(?!\d)/);
   if (dataCompleta) {
-    const d = parseInt(dataCompleta[1], 10);
-    const m = parseInt(dataCompleta[2], 10);
-    let y = dataCompleta[3] ? parseInt(dataCompleta[3], 10) : new Date().getFullYear();
+    let y = dataCompleta[3] ? Number(dataCompleta[3]) : hoje.getFullYear();
     if (y < 100) y += 2000;
-    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return `${y}-${pad(m)}-${pad(d)}`;
+    return valida(y, Number(dataCompleta[2]), Number(dataCompleta[1]));
   }
-
-  const diaSolto = text.match(/\bdia\s+(\d{1,2})\b/i);
+  const relativa = t.match(/\bvence\s+(hoje|amanh[ãa]|em\s+(.+?)\s+dias?)(?![\p{L}\d])/iu);
+  if (relativa) {
+    const dias = relativa[1] === 'hoje' ? 0 : /^amanh/.test(relativa[1]) ? 1 : numero(relativa[2]);
+    if (!Number.isFinite(dias) || dias < 0 || dias > 365) return '';
+    hoje.setDate(hoje.getDate() + dias);
+    return iso(hoje);
+  }
+  const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const nomeMes = t.match(/\b(\d{1,2})\s+de\s+([a-zç]+)(?:\s+de\s+(\d{4}))?/);
+  if (nomeMes) {
+    const m = meses.indexOf(nomeMes[2]) + 1;
+    return valida(nomeMes[3] ? Number(nomeMes[3]) : hoje.getFullYear(), m, Number(nomeMes[1]));
+  }
+  const numerais = Object.keys(palavras).join('|');
+  const diaSolto = t.match(new RegExp(`\\bdia\\s+(\\d{1,2}|(?:${numerais})(?:\\s+e\\s+(?:${numerais}))?)(?![\\p{L}\\d])`, 'u'));
   if (diaSolto) {
-    const dia = parseInt(diaSolto[1], 10);
-    if (dia >= 1 && dia <= 31) {
-      const hoje = new Date();
-      // Se o dia já passou neste mês, o vencimento só pode ser no mês seguinte.
-      const mesAlvo = dia < hoje.getDate() ? hoje.getMonth() + 1 : hoje.getMonth();
-      const venc = new Date(hoje.getFullYear(), mesAlvo, dia);
-      return `${venc.getFullYear()}-${pad(venc.getMonth() + 1)}-${pad(venc.getDate())}`;
-    }
+    const dia = numero(diaSolto[1]);
+    if (dia < 1 || dia > 31 || !Number.isFinite(dia)) return '';
+    const mesAlvo = dia < hoje.getDate() ? hoje.getMonth() + 1 : hoje.getMonth();
+    const primeiro = new Date(hoje.getFullYear(), mesAlvo, 1);
+    return valida(primeiro.getFullYear(), primeiro.getMonth() + 1, dia);
   }
-
-  const padrao = new Date();
-  padrao.setDate(padrao.getDate() + 5);
-  return `${padrao.getFullYear()}-${pad(padrao.getMonth() + 1)}-${pad(padrao.getDate())}`;
+  // Uma data explicitamente mencionada, mas ilegível, exige revisão.
+  if (/\b(?:vence|vencimento|dia)\b/.test(t)) return '';
+  hoje.setDate(hoje.getDate() + 5);
+  return iso(hoje);
 }
 
 /** Cria a conta a pagar direto (sem passar por transactions — boleto só vira saída quando marcado como pago, igual no app). */
@@ -1351,8 +1399,12 @@ async function registrarBoleto(
     ? limparReferenciaCarteira(text, resolucao.carteira.name)
     : text;
   const description = guessDescFromText(textoFinanceiro, 'out');
-  const due_date = parseDiaVencimento(text);
-  const categoria = matchCategoryByKeyword(text, categoriasDoUsuario) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
+  const due_date = parseDiaVencimento(textoFinanceiro);
+  if (!due_date) {
+    await sendWhatsappMessage(phone, 'Não reconheci um vencimento válido. Informe a data, por exemplo: "vence dia 20".');
+    return;
+  }
+  const categoria = matchCategoryByKeyword(textoFinanceiro, categoriasDoUsuario) ?? CATEGORIES.find((c) => c.name === 'Outros')!;
 
   const { error } = await supabase.rpc('registrar_boleto_whatsapp', {
     p_user_id: userId,
@@ -1363,7 +1415,7 @@ async function registrarBoleto(
     p_category: categoria.name,
     p_color: categoria.color,
     p_due_date: due_date,
-    p_recurring: parseRecorrencia(text),
+    p_recurring: parseRecorrencia(textoFinanceiro),
     p_wallet_id: resolucao.carteira.id,
   });
   if (error) throw error;
@@ -1401,21 +1453,10 @@ async function registrarLancamento(
   valorForcado?: number,
   ouvido?: string
 ): Promise<void> {
-  const amount = valorForcado ?? guessAmountFromText(text);
-  if (!amount || amount <= 0) {
-    await sendWhatsappMessage(phone, 'Não consegui identificar o valor. Tente algo como: "Almoço de 38 reais" ou "R$ 38 em Alimentação".');
-    return;
-  }
-
   /* Buscada uma vez só aqui e repassada adiante (pro boleto e pro match
      principal) — evita duas idas ao banco pro mesmo dado dentro da mesma
      mensagem. Ver comentário completo em fetchCategoriasDoUsuario. */
   const categoriasDoUsuario = await fetchCategoriasDoUsuario(userId);
-
-  if (ehIntencaoBoleto(text)) {
-    await registrarBoleto(userId, phone, text, amount, eventId, ouvido, categoriasDoUsuario);
-    return;
-  }
 
   const carteiras = await fetchWalletsDoUsuario(userId);
   const resolucao = carteirasElegiveisDoTexto(text, carteiras);
@@ -1436,10 +1477,23 @@ async function registrarLancamento(
   const textoFinanceiro = resolucao.mencionada
     ? limparReferenciaCarteira(text, carteira.name)
     : text;
+  const amount = valorForcado ?? guessAmountFromText(textoFinanceiro);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    await sendWhatsappMessage(phone, 'Não consegui identificar o valor. Tente algo como: "Almoço de 38 reais" ou "R$ 38 em Alimentação".');
+    return;
+  }
+  if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(textoFinanceiro) && parseParcelas(textoFinanceiro) === null) {
+    await sendWhatsappMessage(phone, 'Não reconheci uma quantidade válida de 2 a 36 parcelas. Repita com a quantidade correta.');
+    return;
+  }
+  if (ehIntencaoBoleto(textoFinanceiro)) {
+    await registrarBoleto(userId, phone, text, amount, eventId, ouvido, categoriasDoUsuario);
+    return;
+  }
   const type = guessTypeFromText(textoFinanceiro);
   let description = guessDescFromText(textoFinanceiro, type);
   const occurred_on = todayISO();
-  const categoria = matchCategoryByKeyword(text, categoriasDoUsuario);
+  const categoria = matchCategoryByKeyword(textoFinanceiro, categoriasDoUsuario);
 
   let card_id: string | null = null;
   /* Pix, débito e dinheiro saem daqui; crédito é decidido logo abaixo e
@@ -1458,9 +1512,9 @@ async function registrarLancamento(
     const cartoes = resolucao.mencionada
       ? todosCartoes.filter((card) => !card.wallet_id || card.wallet_id === carteira.id)
       : todosCartoes;
-    const citados = cartoesMencionados(text, cartoes);
+    const citados = cartoesMencionados(textoFinanceiro, cartoes);
     const citadosForaDaCarteira = resolucao.mencionada && citados.length === 0
-      ? cartoesMencionados(text, todosCartoes)
+      ? cartoesMencionados(textoFinanceiro, todosCartoes)
       : [];
 
     if (citadosForaDaCarteira.length > 0) {
@@ -1471,7 +1525,8 @@ async function registrarLancamento(
       await sendWhatsappMessage(phone, 'Você citou mais de um cartão. Diga o nome completo do cartão que usou.');
       return;
     }
-    const achado = citados[0] ?? (cartoes.length === 1 ? cartoes[0] : null);
+    const cartaoExplicito = /\b(?:cr[eé]dito|cart[aã]o)\s+(?!(?:em|no|na|de|todo|recorrente)\b)[\p{L}\d]/iu.test(textoFinanceiro);
+    const achado = citados[0] ?? (!cartaoExplicito && cartoes.length === 1 ? cartoes[0] : null);
     if (!achado) {
       await sendWhatsappMessage(phone, cartoes.length === 0
         ? 'Não encontrei um cartão nessa carteira. Cadastre o cartão no app ou informe outra forma de pagamento.'

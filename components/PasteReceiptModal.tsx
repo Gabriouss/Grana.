@@ -123,7 +123,8 @@ export default function PasteReceiptModal({
   function processText(text: string) {
     const wallet = matchWalletByText(text, wallets);
     const textoFinanceiro = wallet ? limparReferenciaCarteira(text, wallet.name) : text;
-    setWalletId(wallet?.id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '');
+    const mencionada = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(text);
+    setWalletId(wallet?.id ?? (mencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
     const guessedAmount = guessAmountFromText(textoFinanceiro);
     const guessedType = guessTypeFromText(textoFinanceiro);
     const guessedCat = guessCategoryFromText(textoFinanceiro, categoriasExtras);
@@ -137,8 +138,8 @@ export default function PasteReceiptModal({
        jogadas fora aqui: "mercado 120 no pix" salvava sem payment_method
        nenhum, e "aluguel 1500 todo mês" salvava avulso. O bot do WhatsApp já
        lia as duas coisas do mesmo texto — o app é que não lia. */
-    setFormaPagamento(parseFormaPagamento(text));
-    setRecorrente(parseRecorrencia(text));
+    setFormaPagamento(parseFormaPagamento(textoFinanceiro));
+    setRecorrente(parseRecorrencia(textoFinanceiro));
     setRecognized(true);
   }
 

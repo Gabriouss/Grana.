@@ -612,25 +612,30 @@ export default function CreditoScreen() {
   function abrirNovaCompraDoTexto(texto: string) {
     operacaoVoz.current = randomUUID();
     setEditingTxId(null);
-    const guessedAmount = guessAmountFromText(texto);
-    const guessedCat = guessCategoryFromText(texto, categoriasExtras);
     const carteiraCasada = matchWalletByText(texto, wallets);
     const textoFinanceiro = carteiraCasada ? limparReferenciaCarteira(texto, carteiraCasada.name) : texto;
+    if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(textoFinanceiro) && parseParcelas(textoFinanceiro) === null) {
+      Alert.alert('Confirme o parcelamento', 'Não reconheci uma quantidade válida de 2 a 36 parcelas. Repita o lançamento com a quantidade correta.');
+      return;
+    }
+    const guessedAmount = guessAmountFromText(textoFinanceiro);
+    const guessedCat = guessCategoryFromText(textoFinanceiro, categoriasExtras);
     const guessedDesc = guessDescFromText(textoFinanceiro, 'out');
     const cartoesElegiveis = carteiraCasada ? cards.filter((c) => c.wallet_id === carteiraCasada.id) : walletCards;
     const cartaoCasado = matchCardByText(textoFinanceiro, cartoesElegiveis);
-    setTxWalletId(carteiraCasada?.id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '');
+    const carteiraMencionada = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto);
+    setTxWalletId(carteiraCasada?.id ?? (carteiraMencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
     setTxDesc(guessedDesc);
     setTxAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
     setTxCategory(guessedCat.name);
     setTxCatColor(guessedCat.color);
-    setTxCardId(cartaoCasado?.id || cartoesElegiveis[0]?.id || '');
-    setTxInstallments(String(parseParcelas(texto) ?? 1));
+    setTxCardId(cartaoCasado?.id || '');
+    setTxInstallments(String(parseParcelas(textoFinanceiro) ?? 1));
     /* Era `false` fixo: "Netflix 39,90 no crédito todo mês" abria como compra
        avulsa e a assinatura sumia do mês seguinte. `parseRecorrencia` já
        devolve false sozinha quando há parcelamento na frase — as duas coisas
        são contraditórias e o parcelamento vence. */
-    setTxRecurring(parseRecorrencia(texto));
+    setTxRecurring(parseRecorrencia(textoFinanceiro));
     setTxDate(todayISO());
     setNewTxOpen(true);
   }
@@ -663,6 +668,10 @@ export default function CreditoScreen() {
 
 
     const targetCard = cards.find((c) => c.id === valores.card_id);
+    if (!targetCard || (targetCard.wallet_id && targetCard.wallet_id !== valores.wallet_id)) {
+      Alert.alert('Escolha o cartão', 'Selecione um cartão da carteira escolhida.');
+      return;
+    }
     const totalInst = Math.max(1, valores.installments);
 
     setTxSaving(true);

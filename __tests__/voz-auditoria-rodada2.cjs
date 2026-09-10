@@ -1,6 +1,6 @@
-/* Segunda bateria exploratória, sem correções e sem rede.
+/* Regressões da segunda bateria, sem rede.
  * node __tests__/voz-auditoria-rodada2.cjs
- * Saída 1: expectativas ainda não atendidas. Fora do test:ci.
+ * Integrado ao test:voz/test:ci após as correções.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -81,8 +81,7 @@ for (const [phrase, expected] of [
 ]) check('datas faladas', phrase, h.parseDiaVencimento('internet 89,90 boleto ' + phrase), expected);
 for (const date of ['31/02/2027', '29/02/2027', '31/04/2027', '31/06/2027', '31/09/2027', '31/11/2027']) {
   const parsed = h.parseDiaVencimento('internet 89,90 boleto vence ' + date);
-  const [y, m, d] = parsed.split('-').map(Number);
-  check('data retornada precisa existir', `${date} -> ${parsed}`, new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10) === parsed, true);
+  check('data impossível exige revisão', date, parsed, '');
 }
 
 let task, writes = [], reviews = [];
@@ -132,7 +131,7 @@ function screen(file, name, text) {
   const context = { ...h, wallets, cards, walletCards: cards, activeWallet: wallets[0], categoriasExtras: [],
     operacaoVoz: {}, randomUUID: () => 'fake', todayISO: () => '2026-09-10',
     formatMoney: value => value, input: text };
-  for (const field of ['EditingBillId', 'Desc', 'Amount', 'Category', 'CatColor', 'DueDate', 'Recurring', 'ModalOpen',
+  for (const field of ['VozWalletId', 'EditingBillId', 'Desc', 'Amount', 'Category', 'CatColor', 'DueDate', 'Recurring', 'ModalOpen',
     'EditingTxId', 'TxWalletId', 'TxDesc', 'TxAmount', 'TxCategory', 'TxCatColor', 'TxCardId', 'TxInstallments',
     'TxRecurring', 'TxDate', 'NewTxOpen']) context['set' + field] = value => { state[field] = value; };
   vm.runInNewContext(ts.transpileModule(found.getText(source), {

@@ -19,6 +19,7 @@ const NUMERO_POR_EXTENSO: Record<string, number> = {
   sessenta: 60, setenta: 70, oitenta: 80, noventa: 90, cem: 100, cento: 100,
   duzentos: 200, trezentos: 300, quatrocentos: 400, quinhentos: 500, seiscentos: 600,
   setecentos: 700, oitocentos: 800, novecentos: 900, mil: 1000,
+  milhão: 1000000, milhao: 1000000, milhões: 1000000, milhoes: 1000000,
 };
 
 function somarExtenso(palavras: string[]): number {
@@ -27,7 +28,10 @@ function somarExtenso(palavras: string[]): number {
   for (const p of palavras) {
     const v = NUMERO_POR_EXTENSO[p];
     if (v === undefined) continue; // "e"
-    if (v === 1000) {
+    if (v === 1000000) {
+      total = (total + atual || 1) * v;
+      atual = 0;
+    } else if (v === 1000) {
       atual = (atual === 0 ? 1 : atual) * 1000;
       total += atual;
       atual = 0;
@@ -93,7 +97,7 @@ function segmentarExtenso(palavras: string[]): number[] {
   for (const p of palavras) {
     const v = NUMERO_POR_EXTENSO[p];
     if (v === undefined) continue; // "e"
-    if (v !== 1000 && !podeContinuarNumeral(anterior, v)) {
+    if (v < 1000 && !podeContinuarNumeral(anterior, v)) {
       if (atual.length) segmentos.push(somarExtenso(atual));
       atual = [];
       anterior = Infinity;
@@ -103,7 +107,7 @@ function segmentarExtenso(palavras: string[]): number[] {
        veio antes: em "dois mil e quinhentos" o que segue precisa ser menor
        que MIL (500 é), não menor que DOIS. Mantendo `anterior = 2` a regra
        quebrava ali e o valor virava R$ 2.000 — quinhentos ia embora. */
-    anterior = v === 1000 ? 1000 : v;
+    anterior = v;
   }
   if (atual.length) segmentos.push(somarExtenso(atual));
   return segmentos;
@@ -125,6 +129,9 @@ const MOEDA = 'reais|real|contos?|pila|paus?|mangos?';
 const PALAVRA_MOEDA = new RegExp(`^(?:${MOEDA}|centavos?)$`, 'i');
 
 export function normalizarTexto(texto: string): string {
+  // Zero à esquerda depois de vírgula é uma casa decimal, não outro numeral.
+  texto = texto.replace(/v[íi]rgula\s+zero\s+(um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove)\b/gi,
+    (_m, unidade: string) => `vírgula 0${NUMERO_POR_EXTENSO[unidade.toLowerCase()]}`);
   /* "45 mil" antes de qualquer outra coisa.
    *
    * O bloco de número por extenso mais abaixo resolve "quarenta e cinco mil"
@@ -143,7 +150,7 @@ export function normalizarTexto(texto: string): string {
    * em milhar, e milhão pela mesma razão. */
   const MULTIPLICADOR: Record<string, number> = { mil: 1000, milhao: 1e6, milhoes: 1e6 };
   texto = texto.replace(
-    /(?<![\d.,])(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{1,2}))?\s+(mil|milh[ãa]o|milh[õo]es)\b/gi,
+    /(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:[,.](\d{1,2}))?\s+(mil|milh[ãa]o|milh[õo]es)\b/gi,
     (_m: string, inteiro: string, decimal: string | undefined, palavra: string) => {
       const chave = palavra.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
       const fator = MULTIPLICADOR[chave];
@@ -223,6 +230,10 @@ export function normalizarTexto(texto: string): string {
 
   return saida
     .join('')
+    // Partes mistas de escala: 2 mil e 500; 1 milhão e 200 mil.
+    .replace(/(?<![\d.,])(\d+)\s+e\s+(\d+)\b/g, (m, a, b) =>
+      Number(a) >= 1000 && Number(a) % 1000 === 0 && Number(b) >= 100 && Number(b) < Number(a)
+        ? String(Number(a) + Number(b)) : m)
     // Separador ditado explicitamente: "dezoito vírgula noventa e nove".
     .replace(/(\d+)\s+v[íi]rgula\s+(\d{1,2})(?!\d)/gi, (_m, r, c) => `${r},${c}`)
     /* Cópia sincronizada do mesmo fix em supabase/functions/whatsapp-webhook
@@ -248,12 +259,14 @@ export function normalizarTexto(texto: string): string {
 
        Num aplicativo cujo único assunto é dinheiro, `5h57` é sempre R$ 5,57.
        Quem quiser registrar horário escreve na descrição. */
-    .replace(/(\d{1,3})h(\d{2,})/gi, (_m: string, h: string, mm: string) => `${h},${mm}`)
+    .replace(/(?<![\d.,])(\d+)\s*h\s*(\d{2})(?!\d)/gi, (_m: string, h: string, mm: string) => `${h},${mm}`)
     /* Mesma proibição na grafia com dois pontos, que é como outros
        reconhecedores escrevem a mesma coisa. */
-    .replace(/(?<![\d.,])(\d{1,3}):(\d{2})(?![\d.,])/g, (_m: string, h: string, mm: string) => `${h},${mm}`)
+    .replace(/(?<![\d.,])(\d+):(\d{2})(?!\d|[.,]\d)/g, (_m: string, h: string, mm: string) => `${h},${mm}`)
     .replace(/\s{2,}/g, ' ')
-    .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
+    .replace(/(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:[,.]00)?\s*(?:reais|real)\s*e\s*(\d{1,2})\s*centavos?\b/gi,
+      (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
+    .replace(/(?<![\d.,])(\d+)\s+(?:reais|real)\s+e?\s*meio\b/gi, (_m, r) => `${r},50 reais`)
     /* Fala real quase nunca diz "centavos" ("trinta reais e cinquenta") — só
        entra quando o número depois do "e" tem 1-2 dígitos e não é seguido de
        outra palavra de moeda, pra não confundir com "50 reais e 30 mil" ou
@@ -389,6 +402,11 @@ export function parseParcelas(text: string): number | null {
     quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18,
     dezenove: 19, vinte: 20, 'vinte e quatro': 24, trinta: 30, 'trinta e seis': 36,
   };
+  for (const [dezena, base] of [['vinte', 20], ['trinta', 30]] as const) {
+    for (const [unidade, valor] of Object.entries({ um: 1, uma: 1, dois: 2, duas: 2, tres: 3, três: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9 })) {
+      EXTENSO[`${dezena} e ${unidade}`] = base + valor;
+    }
+  }
   /* Do mais longo pro mais curto: senão "vinte" casa antes e "vinte e quatro"
      nunca chega a ser reconhecido. */
   const palavras = Object.keys(EXTENSO)
@@ -420,6 +438,8 @@ export function parseParcelas(text: string): number | null {
 
 /** "no crédito", "cartão de crédito", "parcelei", "3x", "5 vezes" — sinais de que a compra foi no cartão, não em débito/pix. */
 export function ehIntencaoCredito(text: string): boolean {
+  if (/\b(?:recebi|recebido|entrou|creditado|dep[oó]sito|reembolso)\b/i.test(text)
+    && !/\b(?:paguei|comprei|gastei|parcelei)\b/i.test(text)) return false;
   /* Débito dito com todas as letras encerra a conversa antes de qualquer
      outra regra: "no cartão de débito" casava com a regra de "no cartão" e
      ia parar na fatura do crédito. */
@@ -452,13 +472,22 @@ type CartaoBusca = { id: string; name: string; bank: string; wallet_id?: string 
 
 /** Acha o cartão citado no texto pelo nome que o usuário deu a ele ou pelo banco ("Nubank", "Itaú Click", "no Inter"). */
 export function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null {
-  const alvo = normalizarParaBusca(text);
-  for (const c of cards) {
-    if (contemPalavra(alvo, c.name) || contemPalavra(alvo, c.bank)) return c;
-    const partes = c.name.split(/\s+/).filter((p) => p.length >= 4);
-    if (partes.some((p) => contemPalavra(alvo, p))) return c;
+  const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const alvo = norm(text);
+  const contem = (s: string) => !!s.trim() && new RegExp(`(?<![\\p{L}\\d])${norm(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\d])`, 'u').test(alvo);
+  const nomes = cards.filter(c => contem(c.name));
+  // Nomes completos mais específicos prevalecem sobre o nome-base do banco.
+  const especificos = nomes.filter(c => !nomes.some(outro => outro !== c && norm(outro.name).includes(norm(c.name)) && outro.name.length > c.name.length));
+  if (especificos.length > 1) return null;
+  if (especificos.length === 1) {
+    const escolhido = especificos[0];
+    if (norm(escolhido.name) === norm(escolhido.bank) && cards.filter(c => norm(c.bank) === norm(escolhido.bank)).length > 1) return null;
+    return escolhido;
   }
-  return null;
+  const bancos = cards.filter(c => contem(c.bank));
+  if (bancos.length) return bancos.length === 1 ? bancos[0] : null;
+  const partes = cards.filter(c => c.name.split(/\s+/).filter(p => p.length >= 4).some(contem));
+  return partes.length === 1 ? partes[0] : null;
 }
 
 type CarteiraBusca = { id: string; name: string };
@@ -474,15 +503,26 @@ function normalizarNomeCarteira(texto: string): string {
 export function matchWalletByText(text: string, wallets: CarteiraBusca[]): CarteiraBusca | null {
   const alvo = normalizarNomeCarteira(text);
   const ordenadas = [...wallets].sort((a, b) => b.name.length - a.name.length);
-  return ordenadas.find((wallet) => {
+  const encontradas = ordenadas.filter((wallet) => {
     const nome = normalizarNomeCarteira(wallet.name);
-    return alvo.includes(`carteira ${nome}`) || alvo.includes(`conta ${nome}`);
-  }) ?? null;
+    return !!nome && new RegExp(`\\b(?:carteira|conta)\\s+${nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\d])`, 'u').test(alvo);
+  });
+  const especificas = encontradas.filter(w => !encontradas.some(outro => outro !== w && normalizarNomeCarteira(outro.name).startsWith(normalizarNomeCarteira(w.name) + ' ')));
+  return especificas.length === 1 ? especificas[0] : null;
 }
 
 export function limparReferenciaCarteira(text: string, walletName: string): string {
-  const escaped = walletName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return text.replace(new RegExp(`\\b(?:carteira|conta)\\s+${escaped}\\b`, 'ig'), ' ').replace(/\s{2,}/g, ' ').trim();
+  const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const escaped = norm(walletName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`\\b(?:carteira|conta)\\s+${escaped}(?![\\p{L}\\d])`, 'gu');
+  // Busca sem acento, preservando a grafia do restante da descrição.
+  const chars = Array.from(text.normalize('NFC'));
+  const original = chars.join('');
+  return original.replace(/\b(?:carteira|conta)\s+[^\n]+/giu, trecho => {
+    const match = re.exec(norm(trecho));
+    re.lastIndex = 0;
+    return match ? ' ' + trecho.slice(match[0].length) : trecho;
+  }).replace(/\s{2,}/g, ' ').trim();
 }
 
 /* ---- boleto: reconhecer intenção e a data de vencimento ----
@@ -501,30 +541,53 @@ export function ehIntencaoBoleto(text: string): boolean {
 
 export function parseDiaVencimento(text: string): string {
   const pad = (n: number) => String(n).padStart(2, '0');
-  const dataCompleta = text.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+  const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const valida = (y: number, m: number, d: number) => {
+    const data = new Date(y, m - 1, d);
+    return data.getFullYear() === y && data.getMonth() === m - 1 && data.getDate() === d ? iso(data) : '';
+  };
+  const hoje = new Date();
+  const palavras: Record<string, number> = {
+    um: 1, uma: 1, dois: 2, duas: 2, tres: 3, três: 3, quatro: 4, cinco: 5,
+    seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12,
+    treze: 13, catorze: 14, quatorze: 14, quinze: 15, dezesseis: 16,
+    dezessete: 17, dezoito: 18, dezenove: 19, vinte: 20, trinta: 30,
+  };
+  const numero = (s: string) => /^\d+$/.test(s) ? Number(s) :
+    s.split(/\s+e\s+/).reduce((n, p) => n + (palavras[p] ?? NaN), 0);
+  const t = text.toLowerCase();
+  const dataCompleta = t.match(/(?<!\d)(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?(?!\d)/);
   if (dataCompleta) {
-    const d = parseInt(dataCompleta[1], 10);
-    const m = parseInt(dataCompleta[2], 10);
-    let y = dataCompleta[3] ? parseInt(dataCompleta[3], 10) : new Date().getFullYear();
+    let y = dataCompleta[3] ? Number(dataCompleta[3]) : hoje.getFullYear();
     if (y < 100) y += 2000;
-    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return `${y}-${pad(m)}-${pad(d)}`;
+    return valida(y, Number(dataCompleta[2]), Number(dataCompleta[1]));
   }
-
-  const diaSolto = text.match(/\bdia\s+(\d{1,2})\b/i);
+  const relativa = t.match(/\bvence\s+(hoje|amanh[ãa]|em\s+(.+?)\s+dias?)(?![\p{L}\d])/iu);
+  if (relativa) {
+    const dias = relativa[1] === 'hoje' ? 0 : /^amanh/.test(relativa[1]) ? 1 : numero(relativa[2]);
+    if (!Number.isFinite(dias) || dias < 0 || dias > 365) return '';
+    hoje.setDate(hoje.getDate() + dias);
+    return iso(hoje);
+  }
+  const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const nomeMes = t.match(/\b(\d{1,2})\s+de\s+([a-zç]+)(?:\s+de\s+(\d{4}))?/);
+  if (nomeMes) {
+    const m = meses.indexOf(nomeMes[2]) + 1;
+    return valida(nomeMes[3] ? Number(nomeMes[3]) : hoje.getFullYear(), m, Number(nomeMes[1]));
+  }
+  const numerais = Object.keys(palavras).join('|');
+  const diaSolto = t.match(new RegExp(`\\bdia\\s+(\\d{1,2}|(?:${numerais})(?:\\s+e\\s+(?:${numerais}))?)(?![\\p{L}\\d])`, 'u'));
   if (diaSolto) {
-    const dia = parseInt(diaSolto[1], 10);
-    if (dia >= 1 && dia <= 31) {
-      const hoje = new Date();
-      // Se o dia já passou neste mês, o vencimento só pode ser no mês seguinte.
-      const mesAlvo = dia < hoje.getDate() ? hoje.getMonth() + 1 : hoje.getMonth();
-      const venc = new Date(hoje.getFullYear(), mesAlvo, dia);
-      return `${venc.getFullYear()}-${pad(venc.getMonth() + 1)}-${pad(venc.getDate())}`;
-    }
+    const dia = numero(diaSolto[1]);
+    if (dia < 1 || dia > 31 || !Number.isFinite(dia)) return '';
+    const mesAlvo = dia < hoje.getDate() ? hoje.getMonth() + 1 : hoje.getMonth();
+    const primeiro = new Date(hoje.getFullYear(), mesAlvo, 1);
+    return valida(primeiro.getFullYear(), primeiro.getMonth() + 1, dia);
   }
-
-  const padrao = new Date();
-  padrao.setDate(padrao.getDate() + 5);
-  return `${padrao.getFullYear()}-${pad(padrao.getMonth() + 1)}-${pad(padrao.getDate())}`;
+  // Uma data explicitamente mencionada, mas ilegível, exige revisão.
+  if (/\b(?:vence|vencimento|dia)\b/.test(t)) return '';
+  hoje.setDate(hoje.getDate() + 5);
+  return iso(hoje);
 }
 
 /**
@@ -585,6 +648,7 @@ export function parseRecorrencia(text: string): boolean {
      o oposto de uma série aberta. Dizer as duas coisas é contradição, e o
      parcelamento é o mais específico dos dois. */
   if (parseParcelas(text) !== null) return false;
+  if (/\b(?:n[ãa]o|sem)\s+(?:(?:ser|[ée]|vai|deve|quero|precisa)\s+)*(?:recorrente|se\s+repete|repetir|repete|recorr[êe]ncia)\b/i.test(t)) return false;
   return /\btod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?\b|\bcada\s+m[êe]s\b|\bmensalmente\b|\brecorrente\b|\bse\s+repete\b|\bque\s+repete\b|\brepete\s+tod[oa]\s+m[êe]s\b/.test(t);
 }
 

@@ -35,7 +35,7 @@ import Sheet from '@/components/Sheet';
 import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, fetchCategories, payBill, reopenBill, updateBill } from '@/lib/data';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal } from '@/lib/offline-cache';
-import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento, parseRecorrencia } from '@/lib/heuristics';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento, parseRecorrencia, matchWalletByText, limparReferenciaCarteira } from '@/lib/heuristics';
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
@@ -73,6 +73,7 @@ export default function ContasScreen() {
   const [catColor, setCatColor] = useState(CATEGORIES[CATEGORIES.length - 1].color);
   const [dueDate, setDueDate] = useState(todayISO());
   const [recurring, setRecurring] = useState(false);
+  const [vozWalletId, setVozWalletId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   /* Categorias criadas pela pessoa. Só servem ao caminho de VOZ desta tela —
      sem elas, "boleto do pet shop 80, categoria Pet" caía em "Outros",
@@ -142,6 +143,7 @@ export default function ContasScreen() {
   });
 
   function openNewModal() {
+    setVozWalletId(null);
     operacaoVoz.current = null;
     setEditingBillId(null);
     setDesc('');
@@ -163,21 +165,30 @@ export default function ContasScreen() {
   function abrirNovaContaDoTexto(texto: string) {
     operacaoVoz.current = randomUUID();
     setEditingBillId(null);
-    const guessedAmount = guessAmountFromText(texto);
-    const guessedCat = guessCategoryFromText(texto, categoriasExtras);
-    const guessedDesc = guessDescFromText(texto, 'out');
+    const carteira = matchWalletByText(texto, wallets);
+    const financeiro = carteira ? limparReferenciaCarteira(texto, carteira.name) : texto;
+    const vencimento = parseDiaVencimento(financeiro);
+    if (!vencimento) {
+      Alert.alert('Confirme o vencimento', 'Não reconheci uma data válida. Repita o lançamento com o vencimento correto.');
+      return;
+    }
+    setVozWalletId(carteira?.id ?? (/\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto) ? '' : null));
+    const guessedAmount = guessAmountFromText(financeiro);
+    const guessedCat = guessCategoryFromText(financeiro, categoriasExtras);
+    const guessedDesc = guessDescFromText(financeiro, 'out');
     setDesc(guessedDesc);
     setAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
     setCategory(guessedCat.name);
     setCatColor(guessedCat.color);
-    setDueDate(parseDiaVencimento(texto));
+    setDueDate(vencimento);
     /* Era `false` fixo: "internet 99 vence dia 15 todo mês" virava um boleto
        único, e no mês seguinte a conta não existia mais. */
-    setRecurring(parseRecorrencia(texto));
+    setRecurring(parseRecorrencia(financeiro));
     setModalOpen(true);
   }
 
   function openEditModal(bill: Bill) {
+    setVozWalletId(null);
     setEditingBillId(bill.id);
     setDesc(bill.description);
     setAmount(formatMoney(Number(bill.amount)));
@@ -531,7 +542,7 @@ export default function ContasScreen() {
           recurring,
           installments: 1,
           card_id: null,
-          wallet_id: selectedBill?.wallet_id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '',
+          wallet_id: vozWalletId ?? selectedBill?.wallet_id ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '',
         }}
         onSalvar={handleSave}
       />
