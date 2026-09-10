@@ -1,5 +1,39 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — auditoria adicional de voz: há falhas além da build pendente
+
+Pedido do autor: verificar os achados do Claude e ampliar a bateria de testes.
+Base `7a6f2b5`. Nenhuma mudança no código de produção, deploy ou build.
+
+**A conclusão anterior de que faltava apenas uma build precisa desta
+ressalva:** a suíte existente passou, mas os testes novos reproduziram
+payloads incorretos chegando à fronteira de gravação do widget:
+
+- `mercado 18,00 reais e 99 centavos` vira **1800.99** e não pede revisão.
+- Nubank Black pode selecionar Gold do mesmo banco; banco sem nome específico
+  escolhe o primeiro; citar Itaú com apenas C6 cadastrado usa C6.
+- Carteira Pessoal casa indevidamente com `Pessoalidade`.
+- Carteira cadastrada como `Salário`, dita `salario`, pode transformar saída
+  em entrada porque a referência não é removida após o casamento sem acento.
+
+Valor, cartão e tipo incorretos também foram reproduzidos nas funções reais
+que preenchem as telas do app (ali ainda há confirmação humana).
+
+Verificação: `npm.cmd run test:ci` **saída 0**, inclusive repertório do Claude
+64/64, voz gerada 16332/16332 e sincronismo 40/40. Corpus novo
+`node __tests__/voz-auditoria-diversa.cjs`: **7767 verificações, 6349 passaram,
+1418 falharam**, agrupadas em famílias, não bugs únicos. O corpus retorna 1
+enquanto os achados estiverem abertos e fica fora de `test:ci`.
+
+Correção do relato anterior: o widget tem uma guarda adicional de valor;
+`mercado 45 mil reais` pede revisão, sem gravação. Não basta valor > 0 e
+categoria conhecida, como sugeria o registro do repertório abaixo.
+
+Relatório completo, causas, controles e checklist de aparelho:
+`documentation/auditoria-voz-2026-09-10.md`. Módulos reais executados com
+dispositivo/banco/notificações simulados; sem QA acústico ou APK, sem consulta
+ao estado atual de produção. Recomenda-se corrigir os achados antes da build.
+
 ## 10/09/2026 — PASSAGEM DE MÁQUINA: leia isto primeiro
 
 O autor vai continuar em outra máquina. Tudo abaixo está commitado e empurrado
