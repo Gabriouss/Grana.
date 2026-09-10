@@ -1,5 +1,24 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — bateria exploratória de voz 4, sem correções
+
+Base `07507b3`, apenas master, sem stash/worktree extra e árvore inicialmente
+limpa. Novo teste `node __tests__/voz-auditoria-rodada4.cjs`: **37 asserções,
+17 aprovadas e 20 reprovadas**, sete famílias novas investigadas:
+boleto já pago vira conta futura; “vence amanhã” sem “boleto” vira saída hoje;
+“não lançar” não impede gravação; duas carteiras com prefixo comum escolhem
+a longa; nome de cartão mais outro banco não pede revisão; nome de cartão
+contamina categoria; consulta de idiomas/conversão PCM não têm prazo e podem
+reter o estado ocupado quando a dependência nunca resolve.
+
+São reproduções nos módulos reais com gravação interceptada, não lançamentos
+reais nem validação de microfone/aparelho. Não foi determinada a origem por
+commit dessas falhas. Controles `voz-offline.cjs`, `voice-fallback.cjs` e
+`widget-voz-cartoes.cjs` passaram. CI completo não repetido (verde na rodada 3,
+produção inalterada). Nenhuma correção, build ou publicação de servidor.
+Corpus exploratório fica fora do CI. Evidências, expectativas e QA pendente:
+`documentation/auditoria-voz-2026-09-10-rodada4.md`.
+
 ## 10/09/2026 — bateria de voz 3 após os últimos commits
 
 Pedido: analisar commits recentes e testar áudio novamente. Base `c5febc2`,
