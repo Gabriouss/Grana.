@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { comCacheOffline } from './cache-de-tela';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 async function referenciaLocal<T>(nome: string, buscar: () => Promise<T[]>): Promise<T[]> {
@@ -51,7 +52,7 @@ async function currentUserId(): Promise<string> {
  * precisam de uma janela recente (ex.: Desafios, que calcula streak e score
  * sobre no máximo os últimos 30 dias) evitarem escanear o histórico todo.
  */
-export async function fetchTransactions(opts?: { sinceDays?: number }): Promise<Transaction[]> {
+async function buscar_fetchTransactions(opts?: { sinceDays?: number }): Promise<Transaction[]> {
   return buscarTodasAsPaginas<Transaction>((de, ate) => {
     let query = supabase
       .from('transactions')
@@ -85,7 +86,7 @@ export async function fetchTransactions(opts?: { sinceDays?: number }): Promise<
  * Para esse caso existe `fetchRecurrenceContext()`, logo abaixo, e o corpus
  * `__tests__/corpus-recorrencia.ts` guarda a armadilha com um caso próprio.
  */
-export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: string): Promise<Transaction[]> {
+async function buscar_fetchTransactionsDoPeriodo(inicioISO: string, fimISO: string): Promise<Transaction[]> {
   return buscarTodasAsPaginas<Transaction>((de, ate) =>
     supabase
       .from('transactions')
@@ -110,7 +111,7 @@ export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: stri
  * A função SQL `saldos_por_carteira()` foi conferida contra a regra do app
  * sobre os dados reais, usuário a usuário, e bate no centavo.
  */
-export async function fetchSaldosPorCarteira(): Promise<{ wallet_id: string | null; delta: number }[]> {
+async function buscar_fetchSaldosPorCarteira(): Promise<{ wallet_id: string | null; delta: number }[]> {
   const { data, error } = await supabase.rpc('saldos_por_carteira');
   if (error) throw error;
   return (data ?? []).map((linha: { wallet_id: string | null; delta: number | string }) => ({
@@ -159,7 +160,7 @@ export async function addTransaction(input: {
 
 /* ---- cartões de crédito ---- */
 
-export async function fetchCreditCards(): Promise<CreditCard[]> {
+async function buscar_fetchCreditCards(): Promise<CreditCard[]> {
   return referenciaLocal<CreditCard>('cartoes', async () => {
     const { data, error } = await supabase
       .from('credit_cards')
@@ -214,7 +215,7 @@ export async function deleteCreditCard(id: string): Promise<void> {
 
 /* ---- pagamento de fatura de cartão ---- */
 
-export async function fetchCardInvoicePayments(): Promise<CreditCardInvoicePayment[]> {
+async function buscar_fetchCardInvoicePayments(): Promise<CreditCardInvoicePayment[]> {
   /* Uma linha por fatura paga, por cartão, por mês: cresce devagar, mas
      cresce sem teto, então pagina como o resto. */
   return buscarTodasAsPaginas<CreditCardInvoicePayment>((de, ate) =>
@@ -464,7 +465,7 @@ export async function addInstallmentPurchase(input: {
  * sumia quando um gasto virava o mês. Guardar o desbloqueio como evento é o
  * que faz conquista ser conquista.
  */
-export async function fetchConquistas(): Promise<string[]> {
+async function buscar_fetchConquistas(): Promise<string[]> {
   const linhas = await buscarTodasAsPaginas<{ badge_id: string }>((de, ate) =>
     supabase.from('user_achievements').select('badge_id').order('badge_id', { ascending: true }).range(de, ate)
   );
@@ -487,7 +488,7 @@ export async function registrarConquistas(badgeIds: string[]): Promise<void> {
 
 /* ---- contas a pagar ---- */
 
-export async function fetchBills(opts?: { status?: BillStatus }): Promise<Bill[]> {
+async function buscar_fetchBills(opts?: { status?: BillStatus }): Promise<Bill[]> {
   /* Paginado pelo mesmo motivo das transações: conta recorrente gera uma
      linha por mês e cresce sem teto ao longo dos anos. */
   return buscarTodasAsPaginas<Bill>((de, ate) => {
@@ -503,7 +504,7 @@ export async function fetchBills(opts?: { status?: BillStatus }): Promise<Bill[]
 }
 
 /** Janela mensal indexável; evita baixar o histórico inteiro em faturas. */
-export async function fetchCreditTransactionsForMonth(year: number, month: number): Promise<Transaction[]> {
+async function buscar_fetchCreditTransactionsForMonth(year: number, month: number): Promise<Transaction[]> {
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 1);
   const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
@@ -647,7 +648,7 @@ export async function deleteBill(id: string): Promise<void> {
 
 /* ---- orçamento por categoria ---- */
 
-export async function fetchBudgets(): Promise<Budget[]> {
+async function buscar_fetchBudgets(): Promise<Budget[]> {
   const { data, error } = await supabase.from('budgets').select('*');
   if (error) throw error;
   return data;
@@ -693,7 +694,7 @@ export async function deleteBudget(category: string): Promise<void> {
    por isso são semeadas (is_default = true) na primeira vez que o usuário
    abre o gerenciador de categorias. */
 
-export async function fetchCategories(): Promise<Category[]> {
+async function buscar_fetchCategories(): Promise<Category[]> {
   return referenciaLocal<Category>('categorias', async () => {
   const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
   if (error) throw error;
@@ -856,5 +857,20 @@ export async function deleteUserAccount(): Promise<{ completo: boolean }> {
   return { completo: data?.complete === true };
 }
 
+/* ── Cache offline ─────────────────────────────────────────────────────────
+   Os buscadores acima viraram privados e saem daqui envolvidos: gravam o que
+   trouxeram e devolvem o guardado quando a REDE falha. A assinatura não muda,
+   então nenhum dos 43 pontos de chamada precisou ser tocado.
 
-
+   Erro que NÃO é de rede continua estourando — ver o comentário longo em
+   `lib/cache-de-tela.ts` sobre a regra 9 do AGENTS.md. */
+export const fetchTransactions = comCacheOffline('transacoes', buscar_fetchTransactions, (opts?) => String(opts?.sinceDays ?? 'tudo'));
+export const fetchTransactionsDoPeriodo = comCacheOffline('transacoes-periodo', buscar_fetchTransactionsDoPeriodo, (inicio, fim) => `${inicio}..${fim}`);
+export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);
+export const fetchCreditCards = comCacheOffline('cartoes', buscar_fetchCreditCards);
+export const fetchCardInvoicePayments = comCacheOffline('pagamentos-fatura', buscar_fetchCardInvoicePayments);
+export const fetchConquistas = comCacheOffline('conquistas', buscar_fetchConquistas);
+export const fetchBills = comCacheOffline('boletos', buscar_fetchBills, (opts?) => String(opts?.status ?? 'todos'));
+export const fetchCreditTransactionsForMonth = comCacheOffline('credito-mes', buscar_fetchCreditTransactionsForMonth, (ano, mes) => `${ano}-${mes}`);
+export const fetchBudgets = comCacheOffline('orcamentos', buscar_fetchBudgets);
+export const fetchCategories = comCacheOffline('categorias', buscar_fetchCategories);

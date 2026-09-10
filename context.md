@@ -98,6 +98,79 @@ Estas são validações operacionais, não novas implementações estruturais:
    inicia uma nova compra para `past_due`.
 8. Fazer revisão humana final dos textos legais antes da publicação comercial.
 
+## 10/09/2026 — o app inteiro passa a funcionar sem internet
+
+O autor pediu de novo que o app e o lançamento por voz funcionassem offline. A
+correção de 09/09 tinha resolvido o BLOQUEIO (o app se trancava sem rede,
+mandando quem pagou para a tela de venda), mas não o conteúdo.
+
+### O que a auditoria mostrou
+
+Sem rede, só a tela de Lançamentos sobrevivia. `lib/offline-cache.ts` sabia
+guardar apenas TRANSAÇÕES, e só `lancamentos.tsx` consumia. As outras cinco —
+Início, Crédito, Boletos, Gráficos, Desafios — caíam num `catch` que fazia
+`setError(...)` e desenhava uma linha de texto sobre nada. A pior era a Início,
+que é a tela que abre e onde mora o "Livre para Gastar".
+
+### A escolha de desenho
+
+O cache foi para os BUSCADORES, não para as telas. São 43 chamadas de `fetch*`
+espalhadas; dar cache a cada tela seria a mesma correção escrita cinco vezes, e
+a sexta tela nasceria sem — que é exatamente como esta situação apareceu.
+`lib/cache-de-tela.ts` traz `comCacheOffline`, que envolve um buscador para
+gravar o que trouxe e devolver o guardado quando a REDE falhar. Treze
+buscadores foram envolvidos e nenhum ponto de chamada precisou mudar.
+
+Quatro limites, que são o que importa num app de dinheiro:
+
+1. **Só erro de rede cai para o cache.** Falha permanente continua estourando.
+   Devolver dado velho no lugar de um erro permanente é a regra 9 do AGENTS.md
+   quebrada com outra roupa.
+2. **Sem nada guardado, o erro sobe.** Lista vazia diria "você não tem
+   lançamento nenhum", que é mentira.
+3. **O registro é por usuário.** Trocar de conta no mesmo aparelho nunca mostra
+   o dinheiro da anterior, e `signOut` apaga tudo.
+4. **A tela avisa.** `components/FaixaOffline.tsx` mostra "sem conexão —
+   mostrando dados salvos no aparelho". Sem esse aviso o cache seria piora
+   disfarçada de melhora: o saldo de ontem apareceria com a cara do saldo de
+   agora, e a decisão de dinheiro seria tomada sobre número velho.
+
+Cache por ARGUMENTO onde o buscador depende do que recebe (`fetchBills`,
+`fetchCreditTransactionsForMonth`, `fetchTransactions`): sem isso, abrir abril
+serviria a fatura de março.
+
+### Escrita offline além de lançamento
+
+A fila só aceitava transação; boleto e meta estouravam um Alert e o que a
+pessoa digitou sumia com o teclado. Numa tela de dinheiro isso é pior que erro
+de leitura, porque a informação existia e foi perdida. A fila passou a ter
+`tipo` e um despachante. O campo é OPCIONAL de propósito: quem atualizar com
+fila cheia tem itens gravados sem ele, e item sem tipo é transação — era o
+único tipo que existia quando foi gravado. Ler como obrigatório descartaria em
+silêncio o lançamento feito no metrô.
+
+O item otimista entra no cache da tela correspondente, então aparece na lista
+na hora e continua aparecendo depois de fechar o app.
+
+### Verificado
+
+`npx tsc --noEmit` limpo e `__tests__/cache-offline.cjs` novo, 21 checagens
+contra o módulo real com disco e sessão dublês, já encadeado no `test:ci`. Ele
+protege principalmente os LIMITES: erro permanente estourando, conta trocada
+não herdando dado, cache por argumento, e o aviso ligando junto com o dado
+velho.
+
+### NÃO verificado, e continua sendo o mesmo checklist de aparelho
+
+Nada disto foi visto rodando. Em modo avião, confirmar: as cinco telas mostram
+dado com a faixa "sem conexão"; criar boleto e meta offline e vê-los na lista;
+voltar a rede e confirmar a sincronização; sair da conta offline e confirmar
+que o cache foi apagado.
+
+E o que cache nenhum resolve: dado que o aparelho nunca viu não existe offline.
+Instalação nova em modo avião continua sem entrar, e mês nunca aberto continua
+vazio.
+
 ## 10/09/2026 — o mesmo defeito de voz corrigido duas vezes, e a release do APK
 
 ### A duplicação, que é o defeito da regra 10 acontecendo

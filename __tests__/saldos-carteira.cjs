@@ -38,6 +38,11 @@ function carregar(file, deps) {
 }
 
 const { calcularSaldosComAgregado } = carregar('lib/wallets.ts', {
+  /* `wallets.ts` passou a envolver os buscadores com o cache offline
+     (10/09/2026). Aqui o dublê devolve a função crua: este corpus verifica a
+     ARITMÉTICA do saldo, e o cache tem corpus próprio em
+     `__tests__/cache-offline.cjs`. */
+  './cache-de-tela': { comCacheOffline: (_nome, buscar) => buscar },
   './supabase': { supabase: {} },
   '@react-native-async-storage/async-storage': { __esModule: true, default: {} },
   './demo-data': { DEMO_WALLETS: [] },

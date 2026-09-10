@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { addTransaction } from './data';
+import { addBill, addTransaction } from './data';
+import { createGoal } from './goals';
+import { guardarTela, lerTela } from './cache-de-tela';
 import type { Transaction, TxType } from './types';
 
 const CACHE_KEY = 'grana:cache:transactions';
@@ -48,7 +50,62 @@ type PendingInput = {
   card_id?: string | null;
 };
 
-type PendingItem = { localId: string; input: PendingInput };
+type PendingItem = { localId: string; input: PendingInput; tipo?: TipoPendente };
+
+/* ── Fila para além do lançamento ───────────────────────────────────────────
+
+   A fila nasceu só para transação, e por meses foi a única coisa que
+   sobrevivia sem rede: boleto e meta estouravam um Alert e o que a pessoa
+   digitou sumia com o teclado. Numa tela de dinheiro isso é pior que erro de
+   leitura, porque a informação existia e foi perdida.
+
+   `tipo` é OPCIONAL de propósito. Quem atualizar o app com fila cheia tem
+   itens gravados sem esse campo, e um item sem tipo é uma transação — era o
+   único tipo que existia quando ele foi gravado. Ler como obrigatório
+   descartaria em silêncio o lançamento que a pessoa fez no metrô. */
+export type TipoPendente = 'transacao' | 'boleto' | 'meta';
+
+/** Para onde cada tipo vai quando a rede volta. */
+const ENVIAR: Record<TipoPendente, (input: any) => Promise<unknown>> = {
+  transacao: addTransaction,
+  boleto: addBill,
+  meta: createGoal,
+};
+
+/** Qual cache de tela recebe o item otimista, para ele aparecer na hora. */
+const CACHE_DA_TELA: Record<TipoPendente, string | null> = {
+  transacao: null, // tem cache próprio, com união de meses; ver getCachedTransactions
+  boleto: 'boletos:todos',
+  meta: 'metas',
+};
+
+export function novoIdLocal(): string {
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Guarda um boleto ou uma meta na fila e o mostra na tela imediatamente.
+ *
+ * O item otimista entra no cache da tela correspondente, então ele aparece na
+ * lista sem a tela precisar saber que existe fila — e continua aparecendo
+ * depois de fechar o app, porque o cache é disco.
+ */
+export async function enfileirarPendente<T extends { id: string }>(
+  tipo: Exclude<TipoPendente, 'transacao'>,
+  input: unknown,
+  otimista: T
+): Promise<T> {
+  const queue = await getQueue();
+  queue.push({ localId: otimista.id, tipo, input: input as PendingInput });
+  await setQueue(queue);
+
+  const chave = CACHE_DA_TELA[tipo];
+  if (chave) {
+    const guardado = await lerTela<T[]>(chave);
+    await guardarTela(chave, [otimista, ...(guardado?.dados ?? [])]);
+  }
+  return otimista;
+}
 
 async function getQueue(): Promise<PendingItem[]> {
   try {
@@ -67,17 +124,11 @@ async function setQueue(items: PendingItem[]): Promise<void> {
   }
 }
 
-/**
- * Heurística pra separar "sem conexão" de erros de verdade (validação, RLS,
- * sessão expirada). O supabase-js repassa a falha crua do `fetch` do RN
- * quando não há rede, e essas mensagens são as que aparecem nesse caso —
- * sem uma checagem de conectividade nativa (NetInfo) à disposição, isto é o
- * sinal mais confiável que dá pra usar sem adicionar um módulo nativo novo.
- */
-export function isLikelyNetworkError(e: unknown): boolean {
-  const msg = String((e as { message?: string })?.message ?? e ?? '').toLowerCase();
-  return msg.includes('network') || msg.includes('fetch') || msg.includes('conex') || msg.includes('timeout');
-}
+/* Mudou para `cache-de-tela.ts` e é reexportado daqui: `data.ts` passou a
+   depender daquele arquivo, e este já dependia de `data.ts` — manter a função
+   aqui fechava um ciclo de import. Os 9 chamadores continuam importando deste
+   módulo, como sempre fizeram. */
+export { isLikelyNetworkError } from './cache-de-tela';
 
 /**
  * Salva um lançamento na fila local e devolve uma versão otimista dele pra
@@ -85,9 +136,9 @@ export function isLikelyNetworkError(e: unknown): boolean {
  * do Supabase assim que `flushPendingQueue` conseguir enviá-lo.
  */
 export async function queuePendingTransaction(input: PendingInput): Promise<Transaction> {
-  const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const localId = novoIdLocal();
   const queue = await getQueue();
-  queue.push({ localId, input });
+  queue.push({ localId, tipo: 'transacao', input });
   await setQueue(queue);
 
   const optimistic: Transaction = {
@@ -132,8 +183,20 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
   let synced = 0;
 
   while (remaining.length > 0) {
+    /* Item sem `tipo` é de uma versão anterior do app, quando só transação
+       entrava na fila. Ver o comentário em `TipoPendente`. */
+    const tipo = remaining[0].tipo ?? 'transacao';
+    const enviar = ENVIAR[tipo];
+    if (!enviar) {
+      /* Tipo que este app não conhece (fila gravada por versão MAIS NOVA, em
+         downgrade): tira da frente em vez de travar a fila inteira para
+         sempre. Barulhento, porque é perda de dado. */
+      console.error('[offline] item pendente de tipo desconhecido, descartado', { tipo });
+      remaining.shift();
+      continue;
+    }
     try {
-      await addTransaction(remaining[0].input);
+      await enviar(remaining[0].input);
       remaining.shift();
       synced++;
     } catch {

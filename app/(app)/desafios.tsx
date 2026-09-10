@@ -28,6 +28,7 @@ import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, 
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import BadgeCard from '@/components/BadgeCard';
+import FaixaOffline from '@/components/FaixaOffline';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import AppPressable from '@/components/AppPressable';
 import ConquistaDesbloqueada from '@/components/ConquistaDesbloqueada';
@@ -191,6 +192,7 @@ export default function DesafiosScreen() {
         title="Desafios"
         right={<WalletPill onPress={() => setWalletModalOpen(true)} />}
       />
+      <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
 
       <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 

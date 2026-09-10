@@ -16,11 +16,13 @@ import {
    sem cache em disco no Android, a cada montagem da tela. */
 import { Image } from 'expo-image';
 import AppModal from '@/components/AppModal';
+import FaixaOffline from '@/components/FaixaOffline';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { enfileirarPendente, isLikelyNetworkError, novoIdLocal } from '@/lib/offline-cache';
 import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals } from '@/lib/goals';
@@ -797,18 +799,39 @@ export default function InicioScreen() {
     }
 
     setBillSaving(true);
+    const entradaBoleto = {
+      description: billDesc.trim() || 'Sem descrição',
+      amount: val,
+      category: billCategory,
+      color: billCatColor,
+      due_date: billDueDate,
+      recurring: billRecurring,
+      wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
+    };
     try {
-      await addBill({
-        description: billDesc.trim() || 'Sem descrição',
-        amount: val,
-        category: billCategory,
-        color: billCatColor,
-        due_date: billDueDate,
-        recurring: billRecurring,
-        wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
-      });
+      try {
+        await addBill(entradaBoleto);
+        triggerToast('Boleto / Conta salva');
+      } catch (erroInterno) {
+        // Sem rede o boleto entra na fila em vez de sumir com o formulário.
+        if (!isLikelyNetworkError(erroInterno)) throw erroInterno;
+        await enfileirarPendente<Bill>('boleto', entradaBoleto, {
+          id: novoIdLocal(),
+          user_id: 'local',
+          description: entradaBoleto.description,
+          amount: entradaBoleto.amount,
+          category: entradaBoleto.category,
+          color: entradaBoleto.color,
+          due_date: entradaBoleto.due_date,
+          status: 'due',
+          recurring: !!entradaBoleto.recurring,
+          paid_transaction_id: null,
+          wallet_id: entradaBoleto.wallet_id ?? null,
+          created_at: new Date().toISOString(),
+        });
+        triggerToast('Sem conexão — conta salva no aparelho');
+      }
       setBillSheetOpen(false);
-      triggerToast('Boleto / Conta salva');
       carregarDadosLeves();
     } catch (e: any) {
       Alert.alert('Erro ao salvar conta', e.message);
@@ -905,12 +928,32 @@ export default function InicioScreen() {
       triggerToast('Meta criada (exemplo)');
       return;
     }
-    const novaMeta = await createGoal({
+    const entradaMeta = {
       ...input,
       wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
-    });
-    setGoals((prev) => [...prev, novaMeta]);
-    triggerToast('Meta criada');
+    };
+    try {
+      const novaMeta = await createGoal(entradaMeta);
+      setGoals((prev) => [...prev, novaMeta]);
+      triggerToast('Meta criada');
+    } catch (erro) {
+      // Mesmo tratamento do boleto: sem rede a meta espera, não some.
+      if (!isLikelyNetworkError(erro)) throw erro;
+      const pendente = await enfileirarPendente<Goal>('meta', entradaMeta, {
+        id: novoIdLocal(),
+        user_id: 'local',
+        title: entradaMeta.title,
+        target_amount: entradaMeta.target_amount,
+        current_amount: 0,
+        color: entradaMeta.color,
+        icon: entradaMeta.icon,
+        deadline: entradaMeta.deadline ?? null,
+        wallet_id: entradaMeta.wallet_id ?? null,
+        created_at: new Date().toISOString(),
+      });
+      setGoals((prev) => [...prev, pendente]);
+      triggerToast('Sem conexão — meta salva no aparelho');
+    }
   }
 
   async function handleDepositGoal(goal: Goal, delta: number) {
@@ -1353,6 +1396,7 @@ export default function InicioScreen() {
           </>
         }
       />
+      <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
 
       <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 

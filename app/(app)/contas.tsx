@@ -20,6 +20,7 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaLista } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
+import FaixaOffline from '@/components/FaixaOffline';
 import ScreenHeader from '@/components/ScreenHeader';
 import HeaderAction from '@/components/HeaderAction';
 import WalletPickerModal from '@/components/WalletPickerModal';
@@ -33,6 +34,7 @@ import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
 import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, fetchCategories, payBill, reopenBill, updateBill } from '@/lib/data';
+import { enfileirarPendente, isLikelyNetworkError, novoIdLocal } from '@/lib/offline-cache';
 import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento, parseRecorrencia } from '@/lib/heuristics';
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
@@ -232,7 +234,7 @@ export default function ContasScreen() {
           operacaoVoz.current = null;
           triggerToast(resultado.status === 'pending' ? 'Conta salva no aparelho; sincronização pendente' : 'Conta salva');
         } else {
-        const created = await addBill({
+        const entrada = {
           description: v.description.trim() || 'Sem descrição',
           amount: value,
           category: v.category,
@@ -240,9 +242,32 @@ export default function ContasScreen() {
           due_date: v.occurred_on,
           recurring: v.recurring,
           wallet_id: v.wallet_id,
-        });
-        scheduleBillReminders(created).catch(() => {});
-        triggerToast('Conta salva');
+        };
+        try {
+          const created = await addBill(entrada);
+          scheduleBillReminders(created).catch(() => {});
+          triggerToast('Conta salva');
+        } catch (erroInterno) {
+          /* Sem rede o boleto ia embora com um Alert, e o que a pessoa digitou
+             se perdia. Agora entra na fila e aparece na lista na hora, com o
+             mesmo tratamento que o lançamento já tinha. */
+          if (!isLikelyNetworkError(erroInterno)) throw erroInterno;
+          await enfileirarPendente<Bill>('boleto', entrada, {
+            id: novoIdLocal(),
+            user_id: 'local',
+            description: entrada.description,
+            amount: entrada.amount,
+            category: entrada.category,
+            color: entrada.color,
+            due_date: entrada.due_date,
+            status: 'due',
+            recurring: !!entrada.recurring,
+            paid_transaction_id: null,
+            wallet_id: entrada.wallet_id ?? null,
+            created_at: new Date().toISOString(),
+          });
+          triggerToast('Sem conexão — conta salva no aparelho');
+        }
         }
       }
       setModalOpen(false);
@@ -380,6 +405,7 @@ export default function ContasScreen() {
           </>
         }
       />
+      <FaixaOffline estilo={[colunaLista, { marginTop: spacing.sm }]} />
 
       {/* Resumo e seletor de mês ficam ABAIXO da borda do cabeçalho, não
           dentro dele — mesmo arranjo de Crédito, que é o padrão das telas. */}

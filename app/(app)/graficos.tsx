@@ -5,6 +5,7 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo, controleCompacto, useBreakpoint, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import ScreenHeader from '@/components/ScreenHeader';
+import FaixaOffline from '@/components/FaixaOffline';
 import HeaderAction from '@/components/HeaderAction';
 import AppPressable from '@/components/AppPressable';
 import { type BarColumn } from '@/components/StackedBarChart';
@@ -252,6 +253,7 @@ export default function GraficosScreen() {
           </>
         }
       />
+      <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
 
       <ScrollView
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}

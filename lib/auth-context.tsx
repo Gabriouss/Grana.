@@ -8,6 +8,7 @@ import { traduzirErroAuth, type ErroAuth } from './auth-errors';
 import { vincularAssinaturasPendentes } from './assinatura';
 import { removerPushHabitoAntesDeSair } from './push-notifications';
 import { esquecerAcesso } from './entitlement-cache';
+import { esquecerTelas } from './cache-de-tela';
 import { limparSnapshotWidgets } from './widgets-home-sync';
 
 type AuthContextValue = {
@@ -180,6 +181,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
       /* O acesso guardado para uso offline sai junto: sair é deliberado, e
          nenhuma conta seguinte pode entrar no app pelo prazo da anterior. */
       await esquecerAcesso();
+      /* E o cache de leitura das telas, pelo mesmo motivo levado até o fim: o
+         registro é chaveado por usuário e já recusaria conta diferente, mas
+         deixar extrato, boleto e meta de alguém no disco depois de a pessoa
+         sair é guardar dado financeiro sem razão nenhuma para tê-lo. */
+      await esquecerTelas();
       try {
         await removerPushHabitoAntesDeSair();
       } catch (err) {

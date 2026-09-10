@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { comCacheOffline } from './cache-de-tela';
 import type { Goal } from './types';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 
@@ -8,7 +9,7 @@ async function currentUserId(): Promise<string> {
   return data.user.id;
 }
 
-export async function fetchGoals(): Promise<Goal[]> {
+async function buscar_fetchGoals(): Promise<Goal[]> {
   const { data, error } = await supabase.from('goals').select('*').order('created_at', { ascending: true });
   if (error) throw error;
   return data;
@@ -58,7 +59,7 @@ export async function depositToGoal(goal: Goal, delta: number): Promise<Goal> {
   return data as unknown as Goal;
 }
 
-export async function fetchGamification(): Promise<{ lifetime_xp: number; streak_shields: number }> {
+async function buscar_fetchGamification(): Promise<{ lifetime_xp: number; streak_shields: number }> {
   const user_id = await currentUserId();
   const { data, error } = await supabase
     .from('user_gamification')
@@ -69,3 +70,12 @@ export async function fetchGamification(): Promise<{ lifetime_xp: number; streak
   return data ?? { lifetime_xp: 0, streak_shields: 2 };
 }
 
+/* ── Cache offline ─────────────────────────────────────────────────────────
+   Os buscadores acima viraram privados e saem daqui envolvidos: gravam o que
+   trouxeram e devolvem o guardado quando a REDE falha. A assinatura não muda,
+   então nenhum dos 43 pontos de chamada precisou ser tocado.
+
+   Erro que NÃO é de rede continua estourando — ver o comentário longo em
+   `lib/cache-de-tela.ts` sobre a regra 9 do AGENTS.md. */
+export const fetchGoals = comCacheOffline('metas', buscar_fetchGoals);
+export const fetchGamification = comCacheOffline('gamificacao', buscar_fetchGamification);

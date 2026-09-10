@@ -18,6 +18,7 @@ import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaLista, useBreakpoint } from '@/lib/breakpoints';
+import { useModoOffline } from '@/components/FaixaOffline';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -143,7 +144,16 @@ export default function LancamentosScreen() {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   // Cache offline: true quando a última tentativa de buscar caiu pra cache local.
-  const [offline, setOffline] = useState(false);
+  /* O sinal agora vem do buscador, não deste `catch`.
+     Desde que `fetchTransactions` passou a cair para o cache por dentro
+     (`lib/cache-de-tela.ts`), o `catch` abaixo praticamente não dispara mais —
+     e sem isto a faixa "sem conexão" tinha deixado de aparecer justamente na
+     tela onde ela nasceu. `setOffline` continua existindo para o caminho em
+     que esta tela lê o próprio cache de união de meses, que é dela e não passa
+     pelo buscador. */
+  const offlineGlobal = useModoOffline();
+  const [offlineLocal, setOffline] = useState(false);
+  const offline = offlineGlobal || offlineLocal;
   const [pendingCount, setPendingCount] = useState(0);
 
   // Mês e Ano Selecionados (inicializa com o mês atual)

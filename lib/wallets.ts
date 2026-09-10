@@ -1,9 +1,10 @@
 import { supabase } from './supabase';
+import { comCacheOffline } from './cache-de-tela';
 import type { Transaction, Wallet } from './types';
 import { isCreditTx } from './format';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export async function fetchWallets(): Promise<Wallet[]> {
+async function buscar_fetchWallets(): Promise<Wallet[]> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -209,3 +210,12 @@ export function calcularSaldosWallets(
 
   return { porCarteira, total };
 }
+
+/* ── Cache offline ─────────────────────────────────────────────────────────
+   Os buscadores acima viraram privados e saem daqui envolvidos: gravam o que
+   trouxeram e devolvem o guardado quando a REDE falha. A assinatura não muda,
+   então nenhum dos 43 pontos de chamada precisou ser tocado.
+
+   Erro que NÃO é de rede continua estourando — ver o comentário longo em
+   `lib/cache-de-tela.ts` sobre a regra 9 do AGENTS.md. */
+export const fetchWallets = comCacheOffline('carteiras', buscar_fetchWallets);
