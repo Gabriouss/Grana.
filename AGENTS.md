@@ -155,13 +155,25 @@ Regras permanentes para qualquer sessão que abrir este repositório:
      e nunca deixe um `catch` sem log.
 
    A versão longa desta análise, com os commits e trechos de código de cada
-   caso, está na memória do Claude nesta máquina, em
-   `.claude/projects/c--Users-user-Desktop-Aplicativo-Financeiro/memory/`
+   caso, está na memória do Claude, em
+   `~/.claude/projects/<pasta do projeto>/memory/`
    (`verificacao-no-repo-grana`, `retry-precisa-caber-no-orcamento-de-quem-chama`
    e `padroes-de-correcao-do-codex`).
 
-10. **Todo trabalho vive numa linha só: o `master` local, que rastreia
+   **Atenção: a memória é indexada pelo CAMINHO da pasta de trabalho.** Ela
+   não acompanha o repositório e não é a mesma nas duas máquinas. Numa sessão
+   aberta em outro diretório, o acervo aparece vazio mesmo existindo em disco.
+   Até 10/09/2026 esta referência apontava para
+   `c--Users-user-Desktop-Aplicativo-Financeiro`, endereço que morreu quando o
+   trabalho nesta máquina mudou de pasta. As 32 memórias foram consolidadas em
+   `E--GranaPonto`, que corresponde a `E:\GranaPonto`. Se abrir o projeto por
+   um caminho novo, copie o acervo antes de começar, em vez de recomeçar do
+   zero.
+
+10. **Todo trabalho vive numa linha só: a branch local única, que rastreia
     `origin/main`. Não crie branch. Não crie worktree. Não deixe stash.**
+    O nome dela varia por cópia — era `master` nos clones antigos e é `main`
+    no clone de `E:\GranaPonto` —, mas a regra é a mesma: uma só.
     O autor não acompanha branches — ele mesmo diz que é leigo em git — e
     depende de que o que foi feito esteja publicado, não guardado em algum
     lugar que só um agente sabe achar.

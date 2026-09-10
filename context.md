@@ -81,6 +81,98 @@ Nenhuma das cinco baterias tocou num microfone. Todas rodam com gravação
 simulada. O reconhecimento local, o widget e o fluxo offline nunca foram
 exercitados num telefone.
 
+## 10/09/2026 (fim do dia) — a pasta de trabalho mudou de disco
+
+Esta máquina deixou de trabalhar no espelho do Google Drive e passou a usar
+um clone limpo em `E:\GranaPonto`. **Nenhuma linha de código mudou nesta
+sessão**; o que mudou foi onde o repositório vive e onde a memória do agente
+está guardada. A outra máquina não é afetada, o GitHub segue sendo a ponte.
+
+### Por que saiu do Drive
+
+O caminho antigo, `G:\Outros computadores\Meu computador (1)\GranaPonto`,
+juntava dois defeitos:
+
+- **Estourava o limite de 260 caracteres do Windows.** Uma referência de
+  checkpoint criada pelo Codex em `.git/refs/codex/turn-diffs/...` ficou longa
+  demais para o próprio git ler. O `git fsck` acusava "Filename too long" e o
+  `git fetch origin` abortava com "did not send all necessary objects" — que
+  faz qualquer sessão nova concluir, errado, que o repositório divergiu do
+  remoto. Fato verificado, não hipótese.
+- **Não economizava disco.** O Drive em modo streaming reporta o espaço livre
+  do C:, porque é lá que fica o cache dele. Compilar o app puxava tudo para
+  esse cache de qualquer jeito.
+
+O destino foi escolhido por medição: o volume `E:` estava praticamente vazio,
+com 298 GB livres, contra 47 GB no `C:`.
+
+### Estado do clone novo, verificado
+
+| Verificação em `E:\GranaPonto` | Resultado |
+|---|---|
+| `npm install` | código 0 |
+| `npx tsc --noEmit` | código 0 |
+| `npm run test:ci` | código 0, zero falhas |
+
+Mesmo commit do `origin/main`, árvore limpa, `git fetch` funcionando.
+
+### O que não vem num `git clone`, e foi copiado à mão
+
+- `.env` (ignorado pelo git, com as três chaves públicas do app).
+- `deno.lock` (ignorado de propósito, ver abaixo).
+- `Feedbacks/` e `Screenshots/`, ignorados por conterem dado financeiro de
+  terceiro num repositório público. Uma varredura do histórico inteiro
+  confirmou que **nunca** foram commitados.
+- O material não versionado que vivia na pasta matriz do Desktop
+  (identidade visual, PSDs, mockups, protótipos da landing, vídeos, prints de
+  auditoria) foi para `E:\Grana-Arquivos`, de propósito **fora** do
+  repositório. São 18.728 arquivos, conferidos um a um contra a origem, zero
+  faltando.
+
+A pasta matriz (`C:\Users\user\Desktop\Aplicativo Financeiro\grana-app`)
+estava num commit ancestral do publicado, com árvore limpa e nada exclusivo.
+Nada se perdeu ali.
+
+### `deno.lock` continua ignorado — decisão revista e mantida
+
+Cogitou-se versioná-lo. **Não vale.** As Edge Functions importam uma única
+dependência externa e ela já vem com a versão exata escrita no código
+(`npm:@supabase/supabase-js@2.112.3`), num arquivo que é versionado. O
+lockfile não acrescenta travamento nenhum, e o commit `578ca28` já havia
+documentado esse mesmo raciocínio.
+
+### Credenciais
+
+O `.env` de `E:\GranaPonto` passou a guardar, além das três chaves públicas,
+o par de cliente/segredo da API da Cakto e um Personal Access Token da
+Management API do Supabase (`SUPABASE_ACCESS_TOKEN`, nome que a CLI lê
+sozinha). **Nenhuma delas leva o prefixo `EXPO_PUBLIC_`**, que embutiria o
+segredo no pacote instalado no aparelho. Os valores não estão escritos aqui,
+e o `.env` segue no `.gitignore`.
+
+O token do Supabase foi validado por sonda somente-leitura: `GET
+/v1/projects` respondeu 200 e enxerga `cjnuzfbvfuauvlzfoutv`, saudável.
+
+### Memória do agente consolidada
+
+A memória do Claude é indexada pelo **caminho** da pasta, não pelo
+repositório. Havia 29 memórias presas ao caminho do Desktop e 3 ao do Drive;
+uma sessão aberta no `E:` começaria sem nenhuma. As 32 foram copiadas para o
+projeto novo e conferidas byte a byte. A regra 9 do `AGENTS.md` foi corrigida,
+porque apontava para o endereço morto.
+
+### Continua manual, nesta ordem
+
+1. Apagar a cópia do Drive em `G:` — libera o cache no `C:` e, de quebra,
+   remove a única via pela qual `Feedbacks/` e `Screenshots/` saíam desta
+   máquina.
+2. Apagar `C:\Users\user\Desktop\Aplicativo Financeiro` (2,52 GB) depois de
+   conferir `E:\Grana-Arquivos`.
+3. **Revogar o token de Management API** usado hoje, somando-se aos
+   `sbp_e87f` e `sbp_bad2` já listados, e o segredo do MCP da Cakto.
+4. Tudo que já estava no checklist do topo deste arquivo continua valendo:
+   a compra de teste na Cakto destrava o resto.
+
 ---
 
 
