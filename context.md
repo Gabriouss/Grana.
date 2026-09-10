@@ -98,6 +98,70 @@ Estas são validações operacionais, não novas implementações estruturais:
    inicia uma nova compra para `past_due`.
 8. Fazer revisão humana final dos textos legais antes da publicação comercial.
 
+## 10/09/2026 — repertório da voz: quatro erros de valor, três deles salvando sozinho
+
+O autor testou a 1.9.0 **sem internet**, então o reconhecimento foi o do
+próprio aparelho, que estreou nessa versão. Ele falou "merenda cinco e
+cinquenta e sete" e recebeu `Ouvi: "Mereda 5h57"` com R$ 0,00.
+
+### A causa, e a regra que o autor impôs
+
+O reconhecedor do Android formata número falado como HORA. E havia uma regra no
+normalizador que convertia `XhYY` em valor **só quando não era hora válida**
+(`mm > 59`), justamente para preservar "almoço 12h30" como horário. Como
+`57 <= 59`, o valor era preservado como hora e sumia.
+
+Decisão do autor, literal: *"preciso que você proiba a interpretação de números
+se transformando em formato de hora. É PROIBIDO."* A condição caiu. Num
+aplicativo cujo único assunto é dinheiro, `5h57` é sempre R$ 5,57, e quem quiser
+registrar horário escreve na descrição. A grafia com dois pontos (`15:90`) entrou
+junto.
+
+### A varredura achou mais três, e piores
+
+Partindo daquele caso, montei um repertório amplo de fala real e rodei contra o
+parser de produção. Três defeitos novos, todos com valor > 0 e categoria
+reconhecida, ou seja, todos passando pelos dois portões do salvamento automático
+do widget:
+
+| fala | devolvia | correto | erro |
+|---|---|---|---|
+| carro 45 mil reais | R$ 1.000,00 | R$ 45.000,00 | mil vezes |
+| casa 250 mil reais | R$ 1.000,00 | R$ 250.000,00 | mil vezes |
+| doce noventa e nove centavos | R$ 99,00 | R$ 0,99 | cem vezes |
+| café dois e meio | R$ 2,00 | R$ 2,50 | os centavos |
+
+O milhar misto ("45 mil") é o que um reconhecedor produz naturalmente: ele
+transcreve a parte numérica como dígito e deixa "mil" por extenso. O bloco de
+número por extenso só resolvia quando TUDO era palavra.
+
+### Duas armadilhas no caminho, que valem mais que as correções
+
+**Ordem de regras.** A regra nova de "centavos sozinho" entrou antes da que
+junta "X e Y" e quebrou 26 casos do corpus gerado: "dez e cinquenta centavos"
+virava "10 e 0,50" e valia R$ 10,00. Ela pertence ao FIM da cadeia.
+
+**Lookbehind casando sufixo.** Com o lookbehind mais frouxo, em "2,99 centavos"
+o motor barrava o "99" e então casava só o "9" final, produzindo "2,90,09" e
+R$ 2,90. O lookbehind precisa recusar dígito, vírgula e ponto, os três juntos.
+
+Os dois só apareceram porque o corpus existente é grande. Sem ele, as duas
+teriam ido para produção como "melhoria".
+
+### Verificado
+
+`__tests__/corpus-voz-repertorio.ts`, 64 casos, encadeado no `test:parser`.
+`corpus-voz.ts` 106/106, `corpus-voz-gerado.ts` 16332/16332, `test:ci` saída 0,
+e `sync-parser` 40/40 (as duas cópias do normalizador, app e Edge Function,
+mudaram juntas).
+
+### Onde cada correção vale
+
+O normalizador vive em duas cópias. A do servidor atende o caminho de nuvem e o
+WhatsApp, e vale com um deploy. A do aplicativo atende o reconhecimento local,
+que é justamente o caminho onde o defeito apareceu, e **só vale numa APK nova** —
+a 1.9.0 que acabou de sair já está com o defeito dentro.
+
 ## 10/09/2026 — build 1.9.0, e a guarda que recusou a própria release
 
 Build disparada a pedido do autor, `--minor` porque carrega recurso e não

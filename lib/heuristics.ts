@@ -125,6 +125,34 @@ const MOEDA = 'reais|real|contos?|pila|paus?|mangos?';
 const PALAVRA_MOEDA = new RegExp(`^(?:${MOEDA}|centavos?)$`, 'i');
 
 export function normalizarTexto(texto: string): string {
+  /* "45 mil" antes de qualquer outra coisa.
+   *
+   * O bloco de número por extenso mais abaixo resolve "quarenta e cinco mil"
+   * (45000), porque ali tudo é palavra e entra no mesmo bloco. Não resolvia a
+   * forma MISTA, que é justamente a que um reconhecedor de fala escreve: ele
+   * transcreve "quarenta e cinco" como dígito e deixa "mil" por extenso.
+   *
+   * O estrago era de mil vezes, e calado. Medido no parser real em
+   * 10/09/2026: "carro 45 mil reais" devolvia R$ 1.000,00 (o "mil" virava um
+   * 1000 solto, e a regra de moeda casava com ele), "casa 250 mil reais"
+   * também R$ 1.000,00, e "entrada 50 mil" devolvia R$ 50,00. Todos com valor
+   * > 0 e categoria plausível, ou seja, todos salvos automaticamente pelo
+   * widget sem ninguém perguntar nada.
+   *
+   * Aceita decimal ("1,5 mil" -> 1500) porque é como se fala valor quebrado
+   * em milhar, e milhão pela mesma razão. */
+  const MULTIPLICADOR: Record<string, number> = { mil: 1000, milhao: 1e6, milhoes: 1e6 };
+  texto = texto.replace(
+    /(?<![\d.,])(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{1,2}))?\s+(mil|milh[ãa]o|milh[õo]es)\b/gi,
+    (_m: string, inteiro: string, decimal: string | undefined, palavra: string) => {
+      const chave = palavra.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const fator = MULTIPLICADOR[chave];
+      if (!fator) return _m;
+      const base = Number(inteiro.replace(/\./g, '')) + (decimal ? Number(decimal) / 10 ** decimal.length : 0);
+      return String(Math.round(base * fator));
+    }
+  );
+
   const tokens = texto.split(/(\s+)/);
   const saida: string[] = [];
   let bloco: string[] = [];
@@ -206,7 +234,24 @@ export function normalizarTexto(texto: string): string {
     /* "5h90" — mesmo fix, mesma razão: "h" seguido de minuto impossível
        (60+) só pode ser a vírgula decimal que o Whisper confundiu com
        marcador de hora. "5h30" (hora real) fica intocado. */
-    .replace(/(\d{1,3})h(\d{2,})/gi, (m: string, h: string, mm: string) => (mm.length > 2 || Number(mm) > 59 ? `${h},${mm}` : m))
+    /* Hora NUNCA sobrevive num comando de lançamento. Decisão do autor em
+       10/09/2026, depois de "merenda cinco e cinquenta e sete" chegar como
+       "Mereda 5h57" e virar R$ 0,00: "preciso que você proiba a interpretação
+       de números se transformando em formato de hora. É PROIBIDO."
+
+       A condição que estava aqui (`mm.length > 2 || Number(mm) > 59`)
+       convertia só o que NÃO era hora válida, para preservar "almoço 12h30"
+       como horário. O reconhecedor do próprio aparelho, que passou a atender o
+       lançamento offline na 1.9.0, formata todo valor falado como hora: "cinco
+       e cinquenta e sete" sai "5h57", e como 57 <= 59 a regra o preservava
+       como horário — o valor sumia calado, que é o pior desfecho possível.
+
+       Num aplicativo cujo único assunto é dinheiro, `5h57` é sempre R$ 5,57.
+       Quem quiser registrar horário escreve na descrição. */
+    .replace(/(\d{1,3})h(\d{2,})/gi, (_m: string, h: string, mm: string) => `${h},${mm}`)
+    /* Mesma proibição na grafia com dois pontos, que é como outros
+       reconhecedores escrevem a mesma coisa. */
+    .replace(/(?<![\d.,])(\d{1,3}):(\d{2})(?![\d.,])/g, (_m: string, h: string, mm: string) => `${h},${mm}`)
     .replace(/\s{2,}/g, ' ')
     .replace(/(\d+)\s*(?:reais|real)\s*e\s*(\d+)\s*centavos?/gi, (_m, r, c) => `${r},${String(c).padStart(2, '0')} reais`)
     /* Fala real quase nunca diz "centavos" ("trinta reais e cinquenta") — só
@@ -243,6 +288,32 @@ export function normalizarTexto(texto: string): string {
       /(?<!\d)(?<!(?:^|\s)(?:s[aã]o|era|eram|[àa]s?)\s)(\d+)\s*,?\s+e\s+(\d{1,2})\b(?!\s*(?:mil|horas?|km|quil[oô]metros?|anos?|meses?|dias?|semanas?|vezes|pessoas?|unidades?|itens?))/gi,
       (_m: string, r: string, c: string) => `${r},${String(c).padStart(2, '0')}`
     )
+    /* "noventa e nove centavos", sem parte inteira nenhuma.
+     *
+     * A regra acima só resolve "X reais e Y centavos". Sozinho, o "centavos"
+     * não dizia nada e o número ia inteiro para o valor: "doce noventa e nove
+     * centavos" virava R$ 99,00 e "pão 50 centavos" virava R$ 50,00 — erro de
+     * CEM vezes, com valor plausível e categoria reconhecida, ou seja, salvo
+     * automaticamente pelo widget sem perguntar nada.
+     *
+     * Vem no FIM da cadeia de propósito. Colocada antes da regra que junta
+     * "X e Y", ela quebrava "dez e cinquenta centavos": disparava no "50",
+     * produzia "10 e 0,50" e o valor virava R$ 10,00.
+     *
+     * O lookbehind recusa dígito, vírgula E ponto antes do número, os três
+     * juntos. Com uma versão mais frouxa o motor casava um SUFIXO dos
+     * dígitos: em "2,99 centavos" ele barrava o "99" e então casava só o "9"
+     * final, devolvendo "2,90,09" e um valor de R$ 2,90. */
+    .replace(/(?<![\d,.])(\d{1,4})\s*centavos?\b/gi, (_m: string, c: string) => {
+      const valor = Number(c) / 100;
+      return valor.toFixed(2).replace('.', ',');
+    })
+    /* "dois e meio" e "meio real". O bloco de extenso não conhece "meio",
+     * então ele sobrevive como palavra: "café dois e meio" chegava aqui como
+     * "café 2 meio" e valia R$ 2,00, com os cinquenta centavos sumindo
+     * calados. "meio real" não valia nada. */
+    .replace(/(\d+)\s+e?\s*meio\b/gi, (_m: string, r: string) => `${r},50`)
+    .replace(/(?<![\d,])mei[oa]\s+(?=(?:reais|real)\b)/gi, '0,50 ')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
