@@ -1,5 +1,33 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — bateria de voz 3 após os últimos commits
+
+Pedido: analisar commits recentes e testar áudio novamente. Base `c5febc2`,
+árvore limpa no início, apenas master, sem stash/worktrees extras. O commit
+de voz é `de546cf`; os sete seguintes não mudaram o motor de voz.
+
+Novo corpus: `node __tests__/voz-auditoria-rodada3.cjs` — **1169 asserções,
+372 aprovadas, 797 reprovadas**. A comparação opcional
+`--baseline=27ba1e2` deu 354 aprovadas/815 reprovadas. As quatro famílias
+abaixo já existiam antes das correções; não foram introduzidas pelo Claude:
+
+- `2 mil e 50 reais` vira 2000.50, em vez de 2050; 792 combinações dessa família.
+- “crédito no Itaú”/“crédito de Itaú” ainda pode usar o único cartão C6.
+- `mercado 18,99 e farmácia 20` grava apenas 18.99 em vez de pedir revisão.
+- “não quero que se repita todo mês” ativa recorrência.
+
+Os exemplos chegaram à fronteira de gravação simulada do widget. Não houve
+gravação real, deploy ou correção de código de produção nesta rodada.
+Controles do reconhecedor local (sucesso, silêncio, erro, recuperação,
+concorrência e limpeza) passaram. O corpus novo fica fora do CI enquanto os
+achados estiverem abertos. Relatório:
+`documentation/auditoria-voz-2026-09-10-rodada3.md`.
+
+`npm.cmd run test:ci` completo terminou com **saída 0**, incluindo as duas
+baterias anteriores (7770/7770 e 2075/2075), voz gerada 16332/16332,
+corpus geral 250200/250200 e sincronismo 40/40. A suíte permanente está verde;
+as reprovações são das expectativas adicionais da terceira bateria.
+
 ## 10/09/2026 — o MCP da Cakto, e o estado para a próxima sessão
 
 ### Existe um servidor MCP da Cakto configurado
