@@ -1,5 +1,89 @@
 # Contexto do projeto — Grana.
 
+# ⚠ FIM DO DIA 10/09/2026 — O QUE FALTA, TUDO MANUAL
+
+Nada abaixo depende de código. Tudo já está no repositório e, onde precisava,
+em produção. Esta lista existe para a próxima sessão (nesta ou na outra
+máquina) não refazer o que já foi feito nem esquecer o que ficou.
+
+## 1. Compra de teste na Cakto — DESTRAVA TODO O RESTO
+
+Nenhum evento da Cakto jamais chegou. `webhook_events` só tem `eas` e
+`whatsapp`. A integração inteira foi escrita contra a documentação e o modelo
+do painel, nunca contra tráfego real.
+
+- Mensal: `https://pay.cakto.com.br/esgddv2_1096987` (cliente paga R$ 9,90)
+- Anual: `https://pay.cakto.com.br/323b2rs` (cliente paga R$ 99,97)
+
+Depois de comprar, conferir:
+
+    select * from webhook_events where provider = 'cakto';
+    select provider, status, access_until from subscriptions where provider = 'cakto';
+
+O `access_until` é o ponto de atenção: no anual tem que dar ~365 dias, não 92.
+Era exatamente a armadilha corrigida hoje.
+
+## 2. Ligar `enforce_subscriptions` — SÓ DEPOIS DO ITEM 1
+
+Hoje está `false`: o app é gratuito na prática. As 9 contas existentes já têm
+cortesia vitalícia, então **ninguém é bloqueado** ao virar a chave. Quem se
+cadastrar depois precisa assinar.
+
+    update app_backend_config set enforce_subscriptions = true;
+
+Ligar antes de provar o webhook significa que quem pagar não recebe acesso, e
+o defeito aparece pelo suporte em vez do log.
+
+## 3. `EXPO_PUBLIC_CHECKOUT_URL_ANUAL` na Vercel e no EAS
+
+Valor: `https://pay.cakto.com.br/323b2rs`. Sem isso o plano anual não aparece
+em lugar nenhum. Na Vercel vale após redeploy; no app, só com build nova.
+
+## 4. Investigar por que a landing nova não está no ar
+
+O site ainda mostra apenas R$ 9,90. O cartão de preço que escrevi mostra
+R$ 99,97 **independente de variável de ambiente**, então se o código novo
+estivesse publicado, o valor apareceria. Ou a Vercel não fez o deploy, ou ele
+falhou. Conferir o painel dela.
+
+## 5. Build nova — seis motivos acumulados
+
+Nada disso chega ao aparelho sem APK novo:
+
+1. As sete correções de voz de hoje (valor, cartão, carteira, boleto,
+   recorrência, prazo do reconhecedor local).
+2. O app funcionando sem internet.
+3. O plano anual.
+4. O checkout da Cakto.
+5. O preço mensal correto.
+6. A categoria certa no lançamento por voz.
+
+Lembrar da regra 5: começa por `npm run build:preparar -- "<mensagem>"`, nunca
+subindo `expo.version` à mão. E da regra 4: build exige pedido explícito.
+
+## 6. Confirmar o Pix Automático com o suporte da Cakto
+
+O líquido dele (R$ 5,62) é MENOR que o do Pix comum (R$ 6,42) e menor que o do
+cartão (R$ 5,98), o oposto do padrão de mercado. Não destacar esse método no
+checkout até entender por quê.
+
+## 7. Rotacionar as credenciais que circularam em texto puro
+
+- Token de Management API do Supabase, prefixo `sbp_bad2`, com escopo de
+  administração. Usado hoje para as migrations da Cakto, os segredos e os
+  deploys.
+- Segredo do MCP da Cakto, com escopo de ESCRITA em produção. Expira sozinho
+  em 11/09 01:46Z, mas vale trocar.
+
+## 8. Testar voz em aparelho de verdade
+
+Nenhuma das cinco baterias tocou num microfone. Todas rodam com gravação
+simulada. O reconhecimento local, o widget e o fluxo offline nunca foram
+exercitados num telefone.
+
+---
+
+
 ## 10/09/2026 — as sete famílias de voz, corrigidas e verificadas
 
 O Codex passou das baterias de auditoria para as CORREÇÕES e parou no meio,
