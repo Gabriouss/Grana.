@@ -1,5 +1,75 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — o MCP da Cakto, e o estado para a próxima sessão
+
+### Existe um servidor MCP da Cakto configurado
+
+Foi ele que permitiu criar a oferta anual e corrigir o preço do mensal sem sair
+do terminal. Registrado aqui porque **nada disso aparece no repositório** e a
+próxima sessão não teria como adivinhar.
+
+Como foi adicionado (o autor forneceu as credenciais):
+
+    claude mcp add --transport http cakto https://mcp.cakto.com.br       --header "X-Cakto-Client-Id: <id>"       --header "X-Cakto-Client-Secret: <segredo>"
+
+As credenciais ficam em `C:UsersUser.claude.json`, com escopo de projeto —
+**fora do repositório**, conferido. Nunca commitá-las.
+
+**Oito ferramentas**, sendo as úteis: `cakto_whoami` (mostra ambiente e
+escopos), `cakto_search_api` (busca endpoint por intenção — o parâmetro é
+`query`, não `intencao`), `cakto_list_endpoints`, `cakto_get_endpoint`,
+`cakto_search_docs` e `cakto_call` (executa, e o parâmetro é `operation_id`
+com underscore, não `operationId`).
+
+**Duas armadilhas que custaram tempo:**
+
+1. **Ferramenta de MCP adicionada no meio da sessão NÃO carrega.** Só aparece
+   depois de reiniciar. Enquanto isso, dá para falar JSON-RPC direto no
+   endpoint por `curl` — `initialize`, depois `tools/list` e `tools/call` —, que
+   foi o caminho usado nesta sessão inteira.
+2. **Escrita exige confirmação em dois passos.** `cakto_call` sem
+   `confirm: true` devolve uma PRÉVIA e não executa. O contrato da própria
+   ferramenta diz que `confirm` só pode ir como verdadeiro **depois de o humano
+   aprovar a prévia** — foi assim que as duas ofertas foram alteradas.
+
+A credencial tem escopo de ESCRITA em produção (`offers`, `orders`,
+`payments`, `products`, `subscriptions`, `webhooks`, `write`) e **expira**:
+`cakto_whoami` mostrou vencimento em 2026-09-11T01:46Z. Depois disso, pedir
+credencial nova ao autor.
+
+### Estado, em uma tabela
+
+| peça | situação |
+|---|---|
+| Ofertas na Cakto | mensal `esgddv2` R$ 8,91 e anual `323b2rs` R$ 98,98, ambas ativas |
+| Preço que o cliente vê | R$ 9,90/mês e R$ 99,97/ano (taxa fixa de R$ 0,99 embutida) |
+| Parcelamento | até 12x, confirmado no painel |
+| Plano anual no produto | em destaque no app e na landing |
+| Cortesia dos testers | 9 contas, sem prazo, 0 bloqueadas |
+| `enforce_subscriptions` | **false** — app gratuito, por decisão do autor |
+| Eventos da Cakto | **zero**. Nunca recebeu tráfego |
+| Correções de voz | no repositório, **não no aparelho** |
+
+### O que falta, em ordem
+
+1. **Compra de teste na Cakto.** Destrava tudo. Link anual direto:
+   `https://pay.cakto.com.br/323b2rs`. Conferir depois se o evento chegou
+   (`select * from webhook_events where provider='cakto'`) e se `access_until`
+   ficou correto — é onde estava a armadilha dos 92 dias.
+2. **Ligar `enforce_subscriptions`** só DEPOIS do item 1.
+3. **Publicar `EXPO_PUBLIC_CHECKOUT_URL_ANUAL`** na Vercel e no EAS com
+   `https://pay.cakto.com.br/323b2rs`. Sem isso o anual não aparece; no app,
+   só com build nova.
+4. **Build nova.** Cinco motivos acumulados que só chegam ao aparelho por APK:
+   correções de voz, app funcionando offline, plano anual, checkout da Cakto e
+   preço certo. Exige pedido explícito (regra 4).
+5. **Confirmar o Pix Automático com o suporte da Cakto.** O líquido dele é
+   MENOR que o do Pix comum, o oposto do padrão de mercado. Não destacar esse
+   método até entender por quê.
+6. **Rotacionar as credenciais** que circularam em texto puro: o token de
+   Management API do Supabase e o segredo do MCP da Cakto.
+
+
 ## 10/09/2026 — cortesia para os testers, e a cobrança segue DESLIGADA
 
 O autor decidiu ligar a cobrança em algum momento, mas **não antes de a compra
