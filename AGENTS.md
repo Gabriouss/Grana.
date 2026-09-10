@@ -213,12 +213,26 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     ninguém compara os dois automaticamente.
 
     Já aconteceu. As proteções da versão 7 da função de voz — o descarte do
-    eco do prompt e a recusa de numeral partido — existiam SÓ no servidor,
-    escritas direto pelo painel. Enquanto ninguém publicava, funcionavam; o
-    primeiro deploy feito a partir do repositório as teria apagado sem aviso
-    nenhum, e a falha só apareceria como "o reconhecimento por voz piorou".
-    O commit `e7ab948` existe em boa parte para trazer aquele código de volta
-    ao repositório justamente por isso.
+    eco do prompt e a recusa de numeral partido — estavam no ar e não estavam
+    no `origin/main`, então qualquer deploy feito a partir do repositório as
+    teria apagado sem aviso, e a falha só apareceria como "o reconhecimento
+    por voz piorou".
+
+    A causa não foi o painel do Supabase, como esta regra afirmou primeiro:
+    aquele código foi escrito NUM repositório, em outra sessão, e publicado de
+    lá — só que os commits nunca foram empurrados. Quem olhou depois viu código
+    em produção sem origem no `main` e concluiu, razoavelmente, que alguém
+    tinha escrito direto no painel. O commit `e7ab948` reconstruiu a mesma
+    lógica a partir do bundle publicado, e em 10/09/2026 as duas versões foram
+    reconciliadas: prevaleceu a do `e7ab948`, e da outra sobreviveram só os
+    testes, que eram mais completos.
+
+    Isso torna a regra MAIS forte, não menos. O painel é um caminho que dá pra
+    evitar por disciplina; uma sessão que commita e publica sem empurrar
+    produz o mesmo estrago sem ninguém fazer nada de errado à vista. É por isso
+    que a regra 10 (uma linha de trabalho só, nada guardado) e esta aqui são a
+    mesma regra vista de dois lados: código que existe em produção e não existe
+    no `origin/main` é uma bomba-relógio, seja qual for o caminho que o levou lá.
 
     Antes de qualquer `supabase functions deploy`:
 

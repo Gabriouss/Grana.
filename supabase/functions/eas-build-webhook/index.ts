@@ -277,6 +277,62 @@ Deno.serve(async (req: Request) => {
 
   await supabase.rpc('finalizar_webhook_evento', { p_provider: 'eas', p_event_id: eventId });
   if (result === 'older') return new Response('older version ignored', { status: 200 });
+
+  /* Último elo da entrega direta: manda o GitHub Actions publicar o APK.
+
+     Sem isto, `app_release.apk_url` passa a apontar para o link permanente
+     (`/downloads/grana-latest.apk`) enquanto a release do GitHub continua na
+     versão ANTERIOR — o app anuncia 1.8.5 e entrega 1.8.4, sem erro em lugar
+     nenhum. A correção do link estável (`4c9dcdc`) tirou o vencimento do
+     caminho e, ao fazer isso, tornou a release obrigatória.
+
+     Vai para o Actions e não é feito aqui porque o APK tem ~129 MB: uma Edge
+     Function não tem memória nem tempo de parede para baixar, verificar e
+     reenviar isso. O runner tem disco, tem `gh` e já vem autenticado no
+     próprio repositório.
+
+     Manda o artefato do EAS (`apkUrl`), não `escolha.url`: o workflow precisa
+     do arquivo de origem para conferir e publicar; o link permanente é o
+     DESTINO, e apontá-lo para si mesmo daria um laço.
+
+     Falha aqui NUNCA derruba o webhook. A release em `app_release` já foi
+     gravada e o evento já foi finalizado; devolver erro agora faria o EAS
+     reentregar um evento que já surtiu efeito. Sem o segredo configurado,
+     apenas registra e segue — é o estado de hoje, e o workflow continua
+     acionável à mão por `workflow_dispatch`. */
+  const githubToken = Deno.env.get('GITHUB_DISPATCH_TOKEN') ?? '';
+  const githubRepo = Deno.env.get('GITHUB_REPO') ?? '';
+  if (!githubToken || !githubRepo) {
+    console.log('[eas-build-webhook] sem GITHUB_DISPATCH_TOKEN/GITHUB_REPO: release do APK fica para o disparo manual');
+  } else {
+    try {
+      const resposta = await fetch(`https://api.github.com/repos/${githubRepo}/dispatches`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'grana-eas-build-webhook',
+        },
+        body: JSON.stringify({
+          event_type: 'apk-pronto',
+          client_payload: { versao: version, apk_url: apkUrl, notas: notes ?? '' },
+        }),
+      });
+      // 204 é o sucesso desta rota; qualquer outra coisa vira log, não erro.
+      if (resposta.status !== 204) {
+        console.error('[eas-build-webhook] dispatch recusado pelo GitHub', {
+          status: resposta.status,
+          corpo: (await resposta.text()).slice(0, 300),
+        });
+      } else {
+        console.log('[eas-build-webhook] release do APK disparada', { version });
+      }
+    } catch (err) {
+      console.error('[eas-build-webhook] dispatch falhou', { erro: String(err).slice(0, 300) });
+    }
+  }
+
   return new Response(
     notasReprovadas ? 'ok (notas reprovadas: ' + problemas.map((p) => p.trecho || p.tipo).join(', ') + ')' : 'ok',
     { status: 200 }

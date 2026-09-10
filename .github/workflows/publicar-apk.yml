@@ -1,0 +1,152 @@
+name: Publicar APK
+
+# Fecha o último trecho da entrega direta: o EAS termina a build, o
+# `eas-build-webhook` grava versão e notas em `app_release`, e daqui em diante
+# ninguém fazia nada. O `vercel.json` já redireciona
+# `/downloads/grana-latest.apk` para `releases/latest/download/grana.apk` desde
+# sempre, só que o repositório não tinha NENHUMA release: o endereço
+# permanente da página de download era um 404, e o app caía no link do EAS,
+# que expira em trinta dias.
+#
+# Por que aqui e não dentro da Edge Function: o APK tem 129 MB. Uma Edge
+# Function do Supabase não tem memória nem tempo de parede para baixar,
+# verificar e reenviar isso. Um runner do GitHub tem disco, tem o `gh`
+# instalado e já está autenticado no próprio repositório pelo GITHUB_TOKEN
+# efêmero do job, o que evita guardar mais um segredo de longa duração.
+#
+# `workflow_dispatch` além do `repository_dispatch` de propósito: dá para
+# publicar à mão sem depender do webhook, que é o que se quer numa build que
+# falhou o webhook, num repost de versão antiga, ou enquanto o segredo do
+# dispatch ainda não existe.
+on:
+  repository_dispatch:
+    types: [apk-pronto]
+  workflow_dispatch:
+    inputs:
+      versao:
+        description: 'Versão, sem o v (ex.: 1.8.5)'
+        required: true
+      apk_url:
+        description: 'URL do artefato do EAS'
+        required: true
+      notas:
+        description: 'Notas da versão (opcional; sem elas a release sai só com a ficha técnica)'
+        required: false
+
+# Só o repositório. O job não fala com mais nada.
+permissions:
+  contents: write
+
+# Duas builds seguidas não podem publicar ao mesmo tempo, e a segunda não pode
+# ser cancelada no meio de um upload de 129 MB — daí o `cancel-in-progress`
+# falso: a corrida se resolve pela ordem, não pelo cancelamento.
+concurrency:
+  group: publicar-apk
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Reunir os dados dos dois gatilhos
+        id: dados
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "versao=${{ github.event.client_payload.versao }}" >> "$GITHUB_OUTPUT"
+            echo "apk_url=${{ github.event.client_payload.apk_url }}" >> "$GITHUB_OUTPUT"
+            printf 'notas<<FIM\n%s\nFIM\n' "${{ github.event.client_payload.notas }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "versao=${{ inputs.versao }}" >> "$GITHUB_OUTPUT"
+            echo "apk_url=${{ inputs.apk_url }}" >> "$GITHUB_OUTPUT"
+            printf 'notas<<FIM\n%s\nFIM\n' "${{ inputs.notas }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Recusar versão fora do formato
+        env:
+          VERSAO: ${{ steps.dados.outputs.versao }}
+          APK_URL: ${{ steps.dados.outputs.apk_url }}
+        run: |
+          # A versão vira nome de tag e o URL vira um download: os dois entram
+          # em comandos, então nenhum dos dois passa sem conferir a forma.
+          echo "$VERSAO" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "versão inválida: $VERSAO"; exit 1; }
+          echo "$APK_URL" | grep -qE '^https://[a-z0-9.-]*expo\.dev/' || { echo "URL fora do domínio do EAS: $APK_URL"; exit 1; }
+
+      - name: Baixar o artefato
+        env:
+          APK_URL: ${{ steps.dados.outputs.apk_url }}
+        run: curl --fail --location --silent --show-error "$APK_URL" -o grana.apk
+
+      # O passo que não existia em lugar nenhum: até aqui a versão publicada
+      # era a que o EAS AFIRMOU no payload, sem ninguém abrir o arquivo. Este
+      # script recusa binário truncado, sem assinatura, ou de outra versão.
+      - name: Verificar o APK
+        id: apk
+        run: node scripts/verificar-apk.mjs grana.apk "${{ steps.dados.outputs.versao }}"
+
+      - name: Publicar a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSAO: ${{ steps.dados.outputs.versao }}
+          NOTAS: ${{ steps.dados.outputs.notas }}
+          SHA256: ${{ steps.apk.outputs.sha256 }}
+          TAMANHO: ${{ steps.apk.outputs.tamanho }}
+        run: |
+          set -euo pipefail
+          TAG="v$VERSAO"
+          TAMANHO_FMT=$(printf "%'d" "$TAMANHO" | tr ',' '.')
+
+          # O corpo repete o checksum para quem baixa poder conferir sem
+          # depender de a gente ter conferido. É o mesmo texto da v1.8.4,
+          # publicada à mão antes deste workflow existir.
+          {
+            if [ -n "$NOTAS" ]; then printf '%s\n\n' "$NOTAS"; fi
+            printf '## Instalar\n\n'
+            printf 'Baixe o `grana.apk` logo abaixo e abra o arquivo no celular. Na primeira vez o Android pede autorização para instalar um app de fora da Play Store.\n\n'
+            printf 'Endereço permanente, que sempre entrega a versão mais recente:\n\n'
+            printf '    https://granaponto.com.br/downloads/grana-latest.apk\n\n'
+            printf '## Conferir o arquivo\n\n'
+            printf '| | |\n|---|---|\n'
+            printf '| Versão | %s |\n' "$VERSAO"
+            printf '| Pacote | `com.gabriouss.grana` |\n'
+            printf '| Tamanho | %s bytes |\n' "$TAMANHO_FMT"
+            printf '| SHA-256 | `%s` |\n' "$SHA256"
+            printf '| Assinatura | APK Signature Scheme v2 |\n\n'
+            printf 'No Windows: `certutil -hashfile grana.apk SHA256`\n'
+            printf 'No Linux ou Mac: `shasum -a 256 grana.apk`\n'
+          } > corpo.md
+
+          # Republicar a mesma versão substitui o arquivo em vez de falhar: um
+          # webhook reentregue pelo EAS não pode derrubar o job, e o
+          # `--clobber` deixa o passo inteiro idempotente.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file corpo.md
+          else
+            gh release create "$TAG" --title "Grana. $VERSAO" --notes-file corpo.md --target "${{ github.sha }}"
+          fi
+          gh release upload "$TAG" grana.apk --clobber
+
+      # Prova de que o endereço permanente entrega ESTE arquivo, e não o
+      # anterior: baixa pelo caminho público e compara o checksum. Sem isto o
+      # job diria "publicado" mesmo se a release saísse como rascunho ou
+      # pré-lançamento, que é quando `releases/latest` deixa de resolver.
+      - name: Conferir o endereço permanente
+        env:
+          SHA256: ${{ steps.apk.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            "https://github.com/${{ github.repository }}/releases/latest/download/grana.apk" -o publicado.apk
+          PUBLICADO=$(sha256sum publicado.apk | cut -d' ' -f1)
+          if [ "$PUBLICADO" != "$SHA256" ]; then
+            echo "o endereço permanente devolveu outro arquivo"
+            echo "  esperado:  $SHA256"
+            echo "  devolvido: $PUBLICADO"
+            exit 1
+          fi
+          echo "endereço permanente confirmado: $PUBLICADO"

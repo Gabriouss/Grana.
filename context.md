@@ -98,6 +98,406 @@ Estas são validações operacionais, não novas implementações estruturais:
    inicia uma nova compra para `past_due`.
 8. Fazer revisão humana final dos textos legais antes da publicação comercial.
 
+## 10/09/2026 — o mesmo defeito de voz corrigido duas vezes, e a release do APK
+
+### A duplicação, que é o defeito da regra 10 acontecendo
+
+Duas sessões corrigiram o eco do prompt e o numeral partido em paralelo, sem
+saber uma da outra. Uma escreveu a correção, publicou as funções e NÃO empurrou
+os commits; a outra encontrou o código em produção sem origem no `main`,
+concluiu que alguém tinha escrito pelo painel do Supabase, e o reconstruiu a
+partir do bundle publicado no commit `e7ab948`.
+
+As duas implementações eram equivalentes, porque a segunda foi reconstruída da
+primeira. Na reconciliação prevaleceu a do `e7ab948` (já estava no `main`) e a
+outra foi descartada, sobrevivendo só os testes, que cobriam mais: os falsos
+positivos do `temNumeralPartido` (`12x`, `100ml`, `1080p`, `5g`), o eco
+truncado derivado do `PROMPT_TRANSCRICAO` real em vez de copiado, a frase real
+do caso de 08/09 na íntegra, e uma guarda de regressão do próprio prompt — se
+alguém reintroduzir a instrução de escrever dígitos, o teste quebra.
+
+A regra 11 foi corrigida junto: ela atribuía as proteções da v7 ao painel do
+Supabase, e a causa real foi uma sessão que publicou sem empurrar. A regra fica
+mais forte assim, porque esse caminho não se evita por disciplina de não abrir
+o painel.
+
+### A release do APK, que faltava
+
+O `vercel.json` redireciona `/downloads/grana-latest.apk` para
+`releases/latest/download/grana.apk` desde sempre, e o repositório não tinha
+NENHUMA release: o endereço permanente era 404. A v1.8.4 foi publicada à mão
+(APK conferido antes: 129.071.468 bytes, `versionName` 1.8.4 lido do
+`AndroidManifest.xml`, pacote `com.gabriouss.grana`, assinatura v2, sha256
+`19c18af6…`), e a cadeia inteira foi testada de ponta a ponta — baixando pelo
+endereço público e comparando o checksum.
+
+Isso ficou obrigatório depois do `4c9dcdc`: com `app_release.apk_url` apontando
+para o link permanente, uma build nova sem release publicada faria o app
+anunciar a versão nova e entregar a anterior, sem erro em lugar nenhum.
+
+Para as próximas builds entrou a automação:
+
+- `scripts/verificar-apk.mjs` abre o APK e recusa binário truncado, sem
+  assinatura v2, ou de outra versão. Traz um leitor de zip próprio (o Node não
+  tem, e depender do `unzip` do sistema não funciona no Windows do autor) com
+  autoteste que roda no `test:ci`. Testado contra o APK real de 129 MB: aceita
+  1.8.4 e recusa 1.9.9.
+- `.github/workflows/publicar-apk.yml` baixa, verifica, publica a release com
+  notas e checksum, e no fim CONFERE que o endereço permanente devolve o
+  arquivo novo. Aceita `repository_dispatch` (automático) e `workflow_dispatch`
+  (à mão).
+- O `eas-build-webhook` dispara o `repository_dispatch` depois de gravar em
+  `app_release`. Falha no disparo nunca derruba o webhook.
+
+**Pendente, e sem isso a automação não roda sozinha:** os segredos
+`GITHUB_DISPATCH_TOKEN` (PAT com `contents: write` no repositório) e
+`GITHUB_REPO` (`Gabriouss/Grana.`) no Supabase, e a republicação do
+`eas-build-webhook`. Enquanto não existirem, o webhook registra no log e segue,
+e a release sai pelo `workflow_dispatch` à mão. O deploy não foi feito nesta
+sessão porque o token de acesso expirou no meio, e a regra 11 proíbe publicar
+sem antes comparar o que está no ar com o repositório.
+
+## 08/09/2026 — registro completo do dia (34 commits, ~1 400 linhas líquidas)
+
+Dia mais denso do projeto até agora: hardening para venda pública, auditoria
+visual completa, correção crítica do lançamento por voz, invariantes de
+carteira no banco, design system consolidado, distribuição direta do APK e
+build Android 1.8.4 enviada ao EAS.
+
+
+---
+
+### 1. Correção crítica do lançamento por voz (`c36cce5`, `e9a7b3e`)
+
+**O que aconteceu.** O autor reportou duas falhas com vídeo e print na mesma
+noite, ambas no widget Android:
+
+1. **Eco do prompt.** A pessoa disse "merenda de 57 reais e 98 centavos" e a
+   folha de confirmação abriu com a descrição `Valores em reais usam vírgula
+   como separador decimal, nunca ponto` e R$ 0,00 — o próprio PROMPT que o
+   app enviava ao provedor de transcrição.
+
+2. **Numeral partido (e este SALVOU).** Notificação `Merenda de 57quenta e —
+   R$ 7,66 · salvo no Grana.` quando a fala foi R$ 57,66. O decodificador
+   produziu o híbrido "57quenta" para "cinquenta"; o parser não reconhece isso
+   como número, então o valor da frase passa a ser o "sete" seguinte. Valor
+   > 0 e categoria Alimentação são as duas condições do salvamento automático
+   do widget — R$ 57,66 virou R$ 7,66 em silêncio.
+
+**Causa raiz comum.** A instrução no prompt: `"Valores em reais usam vírgula
+como separador decimal, nunca ponto: 11,79 (não 11.79, não 1179)"`. Áudio sem
+fala não faz o Whisper devolver vazio — faz ele alucinar, e o recheio é aquilo
+com que ele foi escorado. E empurrado a escrever dígitos enquanto ouve
+palavras, o decodificador produz híbridos tipo "57quenta".
+
+O motivo original da instrução não se sustentava: `guessAmountFromText` já lê
+a forma falada sem ajuda nenhuma. Medido: "onze e setenta e nove" → 11,79,
+"uber quinze e cinquenta" → 15,50, "merenda de cinquenta e sete reais e
+sessenta e seis centavos" → 57,66. O prompt protegia contra um problema que o
+parser já resolvia, e cobrava dois piores por isso.
+
+**O que mudou em `voice-transcription.ts` (módulo compartilhado pelos 3 canais):**
+
+- **Prompt simplificado.** Virou só contexto de domínio (`"Comando de voz em
+  português do Brasil sobre um lançamento financeiro pessoal: gasto, receita,
+  boleto ou compra."`), sem instrução de formatação e sem exemplos de frase.
+  Exemplos descartados de propósito: prompt é viés de vocabulário nos dois
+  sentidos, e as palavras que ele facilita reconhecer ele também facilita
+  inventar — uma alucinação misturando "mercado" com a fala real não seria eco
+  e passaria.
+- **`ehEcoDoPrompt(texto)`.** Compara a transcrição normalizada contra o
+  prompt. Por TRECHO e não por igualdade: o eco do vídeo parou no meio
+  ("nunca ponto") e `===` não pegaria. Piso de 25 caracteres normalizados
+  para não barrar fala curta.
+- **`temNumeralPartido(texto)`.** Recusa dígito colado em pedaço de numeral.
+  Rabo de 3+ letras para não barrar "12x", "5g", "1080p", "100ml"; pega
+  "20mil" junto, que é a mesma corrupção. Tabela de todos os numerais
+  escritos em português.
+- Ambas devolvem `null` como falha de provedor, então a corrida tenta o outro
+  — e só com os dois falhando é que sai `nao_entendi`.
+- Testes em `voice-fallback.cjs` derivam os casos do `PROMPT_TRANSCRICAO`
+  real, não de cópia hardcoded.
+
+Verificação: `npm run test:ci` inteiro verde (39/39), incluindo corpus de
+250 mil casos e guarda de sincronia app/servidor.
+
+---
+
+### 2. Carteiras nos lançamentos por voz (`8f2f5c7`, `c9cc7c6`)
+
+- A Edge Function `processar-lancamento-voz` agora recebe e respeita
+  `wallet_id` e `card_id` enviados pelo cliente.
+- Migration `20260908000000_voice_wallets.sql`: funções `inserir_lancamento`,
+  `inserir_lancamento_cartao` e `inserir_lancamento_credito` passam a
+  registrar na carteira indicada ou na Principal do usuário como fallback.
+- `widget-voz-task.ts` envia o `wallet_id` quando tem contexto de carteira.
+- Backward compat: colunas opcionais na RPC, versões anteriores do app
+  continuam funcionando sem enviar carteira.
+
+---
+
+### 3. Hardening para venda pública (`c66990c`, `1065aba`, `c6579a0`,
+`0057619`, `2e8893f`)
+
+**Quota de IA:**
+- Quota persistente e atômica por usuário/canal para o Granabô e lançamento
+  por voz, com janela por minuto e por dia; quota em memória continua só como
+  defesa rápida.
+- `public.consumir_cota_ia(text)` criada como `security definer`, fuso
+  `America/Sao_Paulo`, RLS habilitado em `ai_usage_counters`.
+- Falha da RPC retorna `503`/`limite_indisponivel`; quota esgotada retorna
+  `429` com mensagem amigável.
+- Migration `20260908140000_ai_usage_quotas.sql` aplicada em produção.
+
+**Assinatura:**
+- Sincronização de assinatura preserva recibo visível, token pendente e
+  registra logs sem token, senha ou payload de pagamento.
+- Assinatura `past_due` não abre segundo checkout: usa URL de gerenciamento
+  da Kiwify quando configurada.
+- Teste `assinatura-sync.cjs` com 88 linhas cobrindo os cenários.
+
+**WhatsApp:**
+- `whatsapp-webhook` ganhou suporte a carteiras (migration
+  `20260908120000_whatsapp_wallets.sql`).
+- `delete-account` Edge Function para exclusão de dados (LGPD).
+- Migration `20260908130000_assinatura_email_confirmado.sql`.
+
+**Documentação:**
+- Especificação em `docs/superpowers/specs/2026-09-08-hardening-venda-publica-design.md`.
+- Handoff completo em `documentation/` (architecture, automation, cron,
+  emails, flows, operations, permissions, seo, tests, variables).
+- Política de privacidade, termos e exclusão de dados cobrem voz no
+  app/widget, push, Granabô/Gemini, memória e recibos técnicos.
+
+**Produção Supabase** (projeto `cjnuzfbvfuauvlzfoutv`, `sa-east-1`):
+- Todas as migrations aplicadas e verificadas.
+- `assistente-financeiro` versão 21, `processar-lancamento-voz` versão 5.
+- Sonda sem JWT confirmou `42501`; nenhuma quota consumida na sonda.
+
+---
+
+### 4. Invariante de carteira no banco (`47238b1`, `9cfc9eb`, `da0cf0a`)
+
+- Migration `20260908150000`: insert/update sem `wallet_id` recebe a Principal
+  do próprio usuário. Existe uma única Principal por usuário. Excluir carteira
+  secundária reatribui dados à Principal. A Principal não pode ser excluída.
+- Registros históricos sem carteira corrigidos por UPDATEs idempotentes.
+- `TransactionSheet` filtra o sentinel `total`, cai na Principal como padrão
+  e recusa valor que não corresponda a carteira real.
+- **Race condition corrigida** (`9cfc9eb`): `refreshSaldos` era disparado pelo
+  efeito da Início quando as transações chegavam e capturava `wallets` no
+  closure; se a busca de carteiras perdia a corrida, rodava com lista vazia.
+  Principal zerava no Expo Go enquanto o APK mostrava o valor certo (mesma
+  conta, mesmo banco). Agora `refreshSaldos` sai cedo com lista vazia e
+  reagenda.
+- Lançamentos de agregados (cartão, boleto) reatribuídos à Principal.
+
+---
+
+### 5. Auditoria Impeccable completa (`2461eb3` → `e8f041a`)
+
+Auditoria do app e do desktop web em 08/09. **24 achados fechados, 3 abertos
+com motivo.** Relatório em `docs/IMPECCABLE_AUDIT_APP_WEB_20260908.md`.
+
+**Lote 1 — marca e design** (`36cff7c`):
+- **P0**: saída de dinheiro saía em vermelho no PDF. Entrada e saída agora
+  mesma família cromática (5,27:1 e 5,12:1 sobre branco).
+- **P1**: `entradaBorda`/`saidaBorda` reconstruíam semáforo verde/vermelho.
+  `saidaBorda` → `#4f8894` (matiz ciano da marca).
+- **P1**: `VozesSalvasLocalmente` sem `fontFamily`, sem touchTarget mínimo.
+- **P1**: botão WhatsApp contraste 1,98:1 → 8,36:1.
+- Corpus de design system agora varre `lib/` e acusa `fontSize` sem família.
+
+**Lote 2** (dentro de `2dc7146`, depois documentado em `fdad811`):
+- Insets laterais em 8 telas para paisagem.
+- Granachat trata Voltar do Android e Esc.
+- Modais do Perfil sobem com teclado (`useKeyboardHeight`).
+- SideNav anuncia Granabô como `button`, não `link`.
+- **Ícones: 19 famílias → 1.** 57 imports de `@expo/vector-icons` →
+  `@expo/vector-icons/Ionicons`. Medido: **3,89 MB → 0,37 MB** de `.ttf`.
+
+**Lote 3 — design system** (`52a840c`):
+- Catálogo de sombras em `lib/theme.ts`. 15 receitas, 18 pontos de uso.
+  Corpus recusa `boxShadow` literal fora do catálogo.
+- Véu neutro (`rgba(255,255,255,0.0X)`) separado por papel real:
+  `theme.paperSelected`, `theme.paperMint`, `theme.veil`.
+- Cores de gráficos movidas de `theme.ts` para `lib/chart-colors.ts`,
+  derivadas de `chartPalette` em vez de ad hoc.
+- `formatarDinheiro` tabular com `variant: 'tabular'` usando `tabularNums`.
+
+**Lote 4 — janelas e modal** (`da1cf4f`, `350f563`, `aab39e9`, `c91c949`):
+- Janelas de entrada centralizadas (ImportarExtrato, PasteReceipt, QrScanner).
+- Modais com `presentationStyle: 'formSheet'` (iOS).
+- `formatarDinheiro` em todos os gráficos.
+- Parcelas só em compra no crédito.
+- Cor semântica de alerta no scan de nota fiscal.
+
+**Lote 5 — extrato e teclado** (`beea09c`):
+- `colunaLista` (900px) para extrato em monitores grandes (contra `colunaConteudo` 1440px).
+- `ScreenHeader` ganhou prop `coluna`.
+- Perfil agora tem botão "Voltar" (era sem saída).
+- Alça de arrastar (`Sheet`) acessível por teclado.
+- **2,8 MB de assets mortos removidos** (`public/notebook/bg.png`,
+  `public/videos/notebook-*.webp`, `notebook-flutuando-v3.mp4`).
+
+**Lote 6 — performance** (`6b57167`):
+- Blocos ocultos da Início adiados (`defer hidden home blocks`).
+
+**Abertos de propósito (não são bugs):**
+- Sete itens na barra (6 destinos + Granabô) contra teto de 5 — decisão de
+  produto.
+- `srcset` nas imagens do herói — pendente de asset, não de código.
+- Cascata de render da Início (64 `useState`, nenhum `memo`) — refactor
+  arriscado, fica para rodada com aparelho.
+
+---
+
+### 6. Distribuição direta do APK (`1d5b191`, `5c6d4ca`, `be314df`)
+
+- Tela `app/baixar.tsx` com link direto para APK.
+- Rota `app/ativar.tsx` para ativação.
+- `lib/download-app.ts` e `lib/atualizacao.ts` atualizados.
+- Variável `EXPO_PUBLIC_ANDROID_DOWNLOAD_URL` configurada no EAS e Vercel
+  (`https://granaponto.com.br/downloads/grana-latest.apk`).
+- `vercel.json` com header de download.
+- Documentação em `docs/DISTRIBUICAO_APK.md`.
+
+---
+
+### 7. Performance e limpeza (`b8c00b5`, `a993d43`, `faf80fa`)
+
+- `lancamentos.tsx`: `initialNumToRender={8}`, `windowSize={5}` (importação
+  aceita 10k lançamentos). Sem `getItemLayout` de propósito (altura variável).
+- `expo-image` nos 3 avatares (perfil, Início, OnboardingModal) com
+  `cachePolicy="disk"`. Dependência nativa: só vale na próxima build.
+- `components/BrandLogo.tsx` apagado (último órfão).
+- `PENDENCIAS.md` migrado para `context.md` e apagado.
+- Barra de espaço deixa de acionar controle desabilitado (`onKeyDown` agora
+  consulta `disabled` e `accessibilityState.disabled`).
+
+---
+
+### 8. Build Android 1.8.4 (`3d37c34`, `ca5d343`)
+
+O autor autorizou explicitamente a build após Claude concluir correções.
+`npm run test:ci` completo e `npx tsc --noEmit` passaram. `build:preparar`
+elevou 1.8.3 → 1.8.4 com nota: "Melhora o lançamento por voz e os widgets,
+corrige a seleção de carteiras e aprimora as telas e as respostas do Granabô."
+
+- Build EAS: `99b1a002-dd9b-467f-9cfb-cfed3a24deb2`
+- Android 1.8.4, versionCode 11, commit `3d37c34`
+- Upload e fingerprint concluídos
+- 155 arquivos mudaram desde o APK 1.8.3 (`17a08baf`)
+- APK aguardando conclusão do build e teste real no aparelho
+
+---
+
+### 9. Descoberta do `+html.tsx` inerte
+
+O `expo-router` só honra `+html.tsx` quando `web.output` é `"static"`; o
+`app.json` não define a chave, então vale `"single"` (SPA). O CSS de
+legibilidade, `lang="pt-BR"` e `viewport-fit` nunca valeram. Movido tudo
+para `instalarDocumentoWeb()` em `lib/foco-web.ts` (injeção em runtime).
+`+html.tsx` mantido com aviso explicando que está inerte.
+
+---
+
+### Estado ao final do dia
+
+- **Produção Supabase**: todas as migrations do dia aplicadas e verificadas.
+- **Edge Functions**: `processar-lancamento-voz` v5, `assistente-financeiro`
+  v21, `whatsapp-webhook` com carteiras e quota.
+- **CI**: verde (39/39 testes), incluindo corpus de 250k e guardas de design.
+- **Build 1.8.4**: enviada ao EAS, aguardando conclusão.
+- **Pendente**: teste da APK em Android real, publicação do asset `grana.apk`,
+  redeploy da Vercel com a variável de download.
+
+## 08/09/2026 — os dois defeitos de voz, e a instrução que causava os dois
+
+Duas falhas do lançamento por voz na mesma noite, reportadas pelo autor com
+vídeo e print. Causa raiz **comum**, e não é onde ninguém estava procurando.
+
+### O que apareceu
+
+**Primeiro:** o widget abriu a folha de confirmação com a descrição
+`Valores em reais usam vírgula como separador decimal, nunca ponto` e R$ 0,00,
+depois de o autor falar "merenda de 57 reais e 98 centavos". Aquele texto é o
+PROMPT que o app envia ao provedor de transcrição.
+
+**Segundo, e pior:** a notificação `Merenda de 57quenta e — R$ 7,66 · salvo no
+Grana.` quando o autor tinha falado R$ 57,66. Este SALVOU sozinho.
+
+### A causa
+
+O prompt mandava o Whisper escrever em dígitos: "Valores em reais usam vírgula
+como separador decimal, nunca ponto: 11,79 (não 11.79, não 1179)". Isso produz
+as duas falhas:
+
+1. **Eco.** Áudio sem fala não faz o Whisper devolver vazio — faz ele alucinar,
+   e o que ele inventa é aquilo com que foi escorado. Com instrução no prompt,
+   sai a instrução. Comprovado cruzando com o mesmo áudio transcrito
+   localmente, sem prompt: ali saiu a fala certa nos trechos com voz e
+   "Legendas pela comunidade de Amara.org" no silêncio — a alucinação canônica
+   de silêncio do modelo. Dois modelos, o mesmo defeito, cada um com o seu
+   recheio.
+
+2. **Numeral partido.** Empurrado a escrever dígitos enquanto ouve palavras, o
+   decodificador produz híbridos: "cinquenta" saiu "57quenta". Rodado no parser
+   real, `Merenda de 57quenta e sete reais e sessenta e seis centavos` devolve
+   **R$ 7,66** — "57quenta" não é número, então o valor da frase passa a ser o
+   "sete" seguinte. Valor > 0 e categoria Alimentação são exatamente as duas
+   condições do salvamento automático do widget. Cinquenta reais somem, calados.
+
+E o motivo original da instrução não se sustentava. Ela existia para impedir
+que "onze e setenta e nove" saísse como "1179". Medido contra o código de
+produção, `guessAmountFromText` já lê a forma falada sem ajuda nenhuma:
+"onze e setenta e nove" → 11,79, "uber quinze e cinquenta" → 15,50,
+"merenda de cinquenta e sete reais e sessenta e seis centavos" → 57,66.
+**O prompt protegia contra um problema que o parser já resolvia, e cobrava dois
+piores por isso.**
+
+### O que foi feito
+
+Tudo em `supabase/functions/_shared/voice-transcription.ts`, que é por onde
+passam os três canais (app, widget e WhatsApp) — uma correção cobre os três.
+
+- O prompt virou só contexto de domínio: "Comando de voz em português do Brasil
+  sobre um lançamento financeiro pessoal: gasto, receita, boleto ou compra."
+  Sem instrução de formatação e **sem exemplos de frase** — prompt é viés de
+  vocabulário nos dois sentidos, e as palavras que ele facilita reconhecer ele
+  também facilita inventar.
+- `ehEcoDoPrompt` recusa transcrição que seja trecho do prompt. Por TRECHO, não
+  por igualdade: o eco do vídeo parou no meio e `===` não pegaria.
+- `temNumeralPartido` recusa transcrição com dígito colado em pedaço de numeral
+  ("57quenta", "20mil"). Exige rabo de 3+ letras para não barrar "12x", "5g",
+  "1080p", "100ml".
+- Os dois devolvem `null` como uma falha de provedor: a corrida segue para o
+  outro provedor, e só se ambos falharem é que quem chamou recebe
+  `nao_entendi` — "Não entendi / Não deu pra reconhecer o que foi falado", que
+  é o que devia ter aparecido em vez da folha preenchida.
+
+Publicado nas duas funções. Testes em `__tests__/voice-fallback.cjs`, que passou
+a derivar os casos do `PROMPT_TRANSCRICAO` real em vez de copiar o texto — a
+cópia teria testado um prompt que deixou de existir no momento da própria
+correção.
+
+### O que NÃO era, e ficou provado
+
+- **Não era o interpretador.** Alimentado com a fala real, ele acerta.
+- **Não era o reconhecimento local.** O widget nem usa esse caminho; o
+  `expo-speech-recognition` só serve ao botão dentro do app.
+- **Não era a 1.8.4.** `voice-transcription.ts` é idêntico entre 1.8.3 e 1.8.4,
+  e a corrida entre provedores entrou em 06/09, antes das duas. A alucinação é
+  probabilística: some e volta, o que de fora parece exatamente "quebrou na
+  atualização".
+
+### A dívida que fica
+
+Não existe registro de nenhuma transcrição em lugar nenhum: `voice_operations`
+guarda só `payload_hash`, e o áudio é apagado depois de usado. Só foi possível
+diagnosticar porque o autor filmou a tela. A próxima falha de voz sem câmera
+ligada é indiagnosticável do mesmo jeito.
+
 ## 08/09/2026 — auditoria /impeccable fechada (24 de 28 achados)
 
 A auditoria completa do app e do desktop web está em
