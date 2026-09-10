@@ -120,7 +120,7 @@ function hrefCompra(): string {
    embutida. O equivalente mensal do anual é DERIVADO: um número escrito à mão
    aqui envelheceria calado no dia em que o preço mudasse. */
 const PRECO_MENSAL = 9.9;
-const PRECO_ANUAL = 99.97;
+const PRECO_ANUAL = 97.9;
 const emReais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
 /* Checkout do plano ANUAL. Sem a variável configurada, cai no mensal em vez de
@@ -1413,8 +1413,9 @@ function ConteudoWeb() {
                     <Text style={styles.precoPeriodo}>/ano</Text>
                   </View>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                    12x de {emReais(PRECO_ANUAL / 12)} no cartão, ou à vista. Você economiza{' '}
-                    {emReais(PRECO_MENSAL * 12 - PRECO_ANUAL)} no ano.
+                    À vista no cartão ou no Pix, você economiza{' '}
+                    {emReais(PRECO_MENSAL * 12 - PRECO_ANUAL)} no ano. Em até 12x com juros da
+                    operadora.
                   </Text>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
                     Registre com facilidade, acompanhe seu mês e planeje o que vem pela frente.

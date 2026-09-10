@@ -25,14 +25,14 @@ const destinoAnual = anualConfigurado?.startsWith('https://') ? anualConfigurado
    Cakto embutida — a oferta é cadastrada por R$ 0,99 a menos, de cada lado,
    justamente para o total bater com o que se anuncia aqui.
 
-   O valor da parcela é DERIVADO, não escrito à mão: um número solto aqui
-   envelheceria calado no dia em que o preço mudasse. Parcelamento em até 12x
-   confirmado no painel da Cakto (Configurações do Cartão de Crédito, print de
-   10/09/2026) — antes disso o texto dizia "equivale a" por cautela. */
+   O texto NÃO anuncia valor de parcela. A Cakto cobra o juro-base dela do
+   COMPRADOR (23,94% em 12x, lido de `fees_retrieve` em 11/09/2026), e a
+   Public API só permite acrescentar juro por cima desse, nunca removê-lo.
+   Dividir o preço por 12 aqui produziria um número que o checkout não pratica,
+   que foi exatamente o defeito corrigido em 11/09/2026. */
 const PRECO_MENSAL = 9.9;
-const PRECO_ANUAL = 99.97;
+const PRECO_ANUAL = 97.9;
 const reais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
-const parcelaAnual = reais(PRECO_ANUAL / 12);
 const economiaAnual = reais(PRECO_MENSAL * 12 - PRECO_ANUAL);
 
 const gerenciamentoConfigurado =
@@ -124,7 +124,8 @@ export default function AssinarScreen() {
                   <Text style={styles.destaquePeriodo}>/ano</Text>
                 </View>
                 <Text style={styles.destaqueApoio}>
-                  12x de {parcelaAnual} no cartão, ou à vista. Você economiza {economiaAnual} no ano.
+                  À vista no cartão ou no Pix, você economiza {economiaAnual} no ano. Em até 12x
+                  com juros da operadora.
                 </Text>
                 <Pressable
                   accessibilityRole="button"

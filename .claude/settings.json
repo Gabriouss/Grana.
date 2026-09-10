@@ -1,5 +1,11 @@
 {
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(curl https://api.vercel.com/*)",
+      "Bash(curl -s https://mcp.cakto.com.br*)"
+    ]
   }
 }
