@@ -98,6 +98,57 @@ Estas são validações operacionais, não novas implementações estruturais:
    inicia uma nova compra para `past_due`.
 8. Fazer revisão humana final dos textos legais antes da publicação comercial.
 
+## 10/09/2026 — build 1.9.0, e a guarda que recusou a própria release
+
+Build disparada a pedido do autor, `--minor` porque carrega recurso e não
+correção: 22 commits desde a 1.8.4, com reconhecimento de voz no aparelho,
+o app inteiro funcionando offline e o checkout da Cakto.
+
+### O defeito que só a primeira build depois revelaria
+
+O webhook do EAS entregou, e `publicar_app_release` recusou **sete vezes**, com
+`22023`. `app_release` ficou parada na 1.8.4: ninguém seria avisado da
+atualização, que é o que a regra 5 do AGENTS.md existe para impedir.
+
+A causa: a função valida a origem de `apk_url` por lista branca, e a lista só
+tinha `https://expo.dev/`. Em 09/09 o webhook passou a gravar o link PERMANENTE
+(`4c9dcdc`), porque o artefato do EAS vence em trinta dias. O chamador mudou, a
+guarda não.
+
+O defeito não apareceu na hora porque a 1.8.4 foi gravada **direto por SQL**,
+sem passar pela função. Ele esperou a primeira build seguinte. Vale como padrão:
+aplicar um valor novo por caminho diferente do de produção testa o valor, não o
+caminho — e é o caminho que tem a guarda.
+
+`20260910110000_release_aceita_link_permanente.sql` acrescenta a segunda origem.
+Continua lista branca de propósito: `apk_url` é para onde o aplicativo manda a
+pessoa baixar um instalador, e um webhook forjado gravando endereço arbitrário
+ali viraria vetor de distribuição de APK.
+
+### A release saiu pelo plano B, que existia justamente para isto
+
+Como o EAS já tinha desistido depois das sete tentativas, o disparo automático
+nunca chegou ao Actions. A release saiu por `workflow_dispatch`, o caminho
+manual que o workflow aceita desde o primeiro dia — e o `app_release` foi
+gravado chamando a função corrigida, não por UPDATE direto, para exercitar o
+caminho de verdade.
+
+### Verificado no APK que o link permanente entrega
+
+129.132.680 bytes, sha256 `01cc3c2a…`, `versionName` 1.9.0 lido do manifesto, e
+dentro do bundle: `pay.cakto.com.br` presente e `pay.kiwify.co` ausente,
+`prepararAudioLocal` (voz no aparelho) presente, `cache:tela` (offline)
+presente. O log do build confirmou `EXPO_PUBLIC_CHECKOUT_URL` carregada do
+ambiente `preview` do EAS.
+
+### O que continua sem prova
+
+Nada foi exercitado em aparelho: nem a voz local, nem o offline, nem o checkout.
+O disparo automático da release (`repository_dispatch` a partir do webhook)
+também segue sem uma execução real — as duas vezes que rodou foram testes meus,
+e desta vez o webhook morreu antes de chegar nele. A próxima build é que vai
+dizer.
+
 ## 10/09/2026 — o app inteiro passa a funcionar sem internet
 
 O autor pediu de novo que o app e o lançamento por voz funcionassem offline. A

@@ -3055,8 +3055,16 @@ declare
   v_new_parts integer[];
   v_old_parts integer[];
 begin
+  -- Duas origens, as duas nossas: o artefato do EAS (que vence) e o endereço
+  -- permanente servido pelo site, que redireciona para a release do GitHub.
+  -- A segunda entrou em 10/09/2026: o webhook tinha passado a gravar o link
+  -- permanente (4c9dcdc) sem que esta guarda soubesse, e a primeira build
+  -- depois disso foi recusada sete vezes com 22023, deixando `app_release` na
+  -- versão anterior. Continua sendo lista branca de propósito: `apk_url` é
+  -- para onde o app manda a pessoa baixar um instalador.
   if p_version !~ '^\d+\.\d+\.\d+(?:\.\d+)?$'
-     or p_apk_url !~ '^https://expo\.dev/' then
+     or (p_apk_url !~ '^https://expo\.dev/'
+         and p_apk_url !~ '^https://(www\.)?granaponto\.com\.br/') then
     raise exception 'Release inválida' using errcode = '22023';
   end if;
 
