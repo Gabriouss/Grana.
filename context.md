@@ -1,5 +1,86 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — PASSAGEM DE MÁQUINA: leia isto primeiro
+
+O autor vai continuar em outra máquina. Tudo abaixo está commitado e empurrado
+para `origin/main` (`d803816`); a árvore está limpa, sem stash, sem branch e sem
+worktree extra. Nada mora só nesta máquina.
+
+### O estado, em uma tabela
+
+| peça | onde está | o que falta |
+|---|---|---|
+| Build **1.9.0** | publicada e instalada no aparelho do autor | — |
+| `app_release` | 1.9.0, link permanente, sem vencimento | — |
+| Edge Functions de voz | publicadas 10/09 08:58 | — |
+| `eas-build-webhook` | publicada 10/09 06:27, com disparo do Actions | — |
+| Release do APK no GitHub | v1.9.0, com checksum | — |
+| Cakto no site | no ar, Kiwify fora do bundle | — |
+| Cakto no aplicativo | na 1.9.0 | — |
+| **Correções de voz de 10/09** | só no repositório | **build nova** |
+
+### O que EXIGE uma build nova, e por quê
+
+Dois commits entraram DEPOIS da 1.9.0 (`2af9092` e `d803816`). O segundo é o que
+importa: a proibição de hora (`5h57` -> R$ 5,57) e as correções de "45 mil",
+"99 centavos" e "dois e meio".
+
+O normalizador vive em duas cópias. A do servidor já está publicada e vale para
+o caminho de nuvem e para o WhatsApp. A do aplicativo atende o reconhecimento
+LOCAL, que é o caminho usado quando não há rede — e é exatamente onde o defeito
+apareceu. **A 1.9.0 instalada ainda tem o defeito dentro.**
+
+Para buildar, na outra máquina:
+
+    npm run build:preparar -- "<nota do release>"
+    eas build --profile preview --platform android --message "<a mesma nota>"
+
+O `build:preparar` sobe a versão e valida a ortografia da nota no mesmo passo; a
+nota vira o pop-up de novidades e passa por guarda. Build continua exigindo
+pedido explícito do autor (regra 4).
+
+Quando essa build terminar, a release do APK deve sair SOZINHA pela primeira vez
+(webhook -> `repository_dispatch` -> Actions). Até agora esse disparo automático
+nunca completou de ponta a ponta: as duas execuções do workflow foram testes
+manuais, e na 1.9.0 o webhook morreu antes de chegar nele, por causa da guarda
+de origem que o `2af9092` corrigiu. **Se falhar, o plano B é o
+`workflow_dispatch` do workflow "Publicar APK", que está testado.**
+
+### Segredos criados nesta rodada
+
+No Supabase: `GITHUB_DISPATCH_TOKEN` (PAT de repositório único, `contents:
+write`, SEM validade) e `GITHUB_REPO`. Na Vercel e no EAS:
+`EXPO_PUBLIC_CHECKOUT_URL`. Nenhum valor está no repositório.
+
+### Pendências reais, em ordem de custo
+
+1. **Build nova** — leva as correções de voz ao aparelho. É o item que o autor
+   mais sente.
+2. **Nada foi validado em aparelho**: nem o offline, nem a voz local, nem o
+   checkout da Cakto. O checklist de modo avião está na entrada
+   "o app inteiro passa a funcionar sem internet".
+3. **A Cakto nunca recebeu um evento.** `webhook_events` só tem `eas` e
+   `whatsapp`, e `subscriptions` tem uma linha só (`provider=interno`). Uma
+   compra de teste é a única coisa que prova painel -> webhook -> banco.
+4. **`enforce_subscriptions` está `false`** em `app_backend_config`, ou seja,
+   o app é gratuito na prática. Ligar é decisão comercial do autor.
+5. **Fallback da Kiwify** ainda no código e na Vercel — remover só depois de a
+   Cakto estar confirmada numa APK nova.
+6. **Três achados da auditoria de 08/09 seguem abertos**, com motivo escrito no
+   próprio relatório: bundle web único, `srcset` (bloqueado por falta de
+   conversor de imagem) e a metade que sobra da cascata de render da Início.
+
+### Duas lições desta rodada que valem para a próxima sessão
+
+**Aplicar valor novo por caminho diferente do de produção não testa nada.** A
+1.8.4 foi gravada em `app_release` por SQL direto; a guarda de origem que
+recusava o link permanente ficou esperando a build seguinte para aparecer.
+
+**Corpus grande é o que separa correção de estrago.** As duas piores armadilhas
+das correções de voz (ordem de regras e lookbehind casando sufixo) não apareceram
+em teste dirigido: apareceram nos 16 mil casos gerados. Sem eles, teriam ido
+para produção como melhoria.
+
 ## Estado atual para venda — 08/09/2026
 
 ### Resumo executivo
