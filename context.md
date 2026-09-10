@@ -1,5 +1,47 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — a armadilha dos 92 dias, achada antes da primeira venda anual
+
+O autor pediu para trabalhar com plano ANUAL com parcelamento. Antes de
+implementar, uma checagem no caminho de gravação achou um defeito que só
+apareceria depois da primeira venda anual, e em silêncio.
+
+`processar_evento_assinatura` calcula o fim do acesso assim:
+
+    v_access_until := coalesce(p_access_until, p_event_at + interval '92 days');
+
+Os 92 dias foram escolhidos quando só existia plano mensal. E o tradutor da
+Cakto lia **apenas** `next_payment_date` para preencher `p_access_until`.
+Faltando essa data numa assinatura anual, o cliente pagaria doze meses e
+perderia o acesso em três — sem erro em log, sem sintoma, só uma conta que
+para de funcionar.
+
+**Correção:** novo `acessoAte()` em `_shared/cakto.ts`. A data explícita
+continua mandando; na ausência dela, o período é derivado de
+`recurrence_period`, que a Cakto documenta como o intervalo em DIAS entre
+cobranças. Teto de 400 dias para valor absurdo do provedor não virar acesso
+perpétuo, e piso de 1 dia. Só vale para `approved` e `renewed`: cancelamento,
+reembolso e chargeback não ganham data futura por dedução.
+
+Testes do webhook da Cakto: **35 para 47 checagens**, incluindo anual sem data
+(365 dias), mensal sem data (30 dias), precedência da data explícita, os cinco
+valores inválidos de `recurrence_period` e os três eventos que não podem
+estender acesso. `deno check` limpo e `npm run test:ci` saída 0.
+
+**Ainda NÃO implementado:** a oferta anual em si. Falta decisão comercial do
+autor sobre o preço que o cliente vê e o número de parcelas, e falta ele criar
+a oferta anual no painel da Cakto para gerar o segundo link de checkout. O app
+hoje tem um único plano, com um único `EXPO_PUBLIC_CHECKOUT_URL` e o preço
+`R$ 9,90` escrito em três lugares (`app/assinar.tsx` e duas vezes em
+`app/index.tsx`, uma delas no argumento de "R$ 0,33 por dia").
+
+**Pendência comercial relacionada, ainda aberta:** o checkout da Cakto soma uma
+taxa de serviço de R$ 0,99 e cobra R$ 10,89 do cliente, enquanto o produto
+anuncia R$ 9,90 em todo lugar. R$ 0,99 é exatamente 10% de R$ 9,90, então a
+taxa provavelmente é percentual e não fixa — o que muda qual valor de oferta
+faz o total fechar redondo. Não confirmado com a Cakto.
+
+
 ## 10/09/2026 — correções de voz do Codex: verificadas e publicadas
 
 O Codex fez duas baterias de auditoria (commits `942f264` e `27ba1e2`) e

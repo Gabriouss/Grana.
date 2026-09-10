@@ -161,6 +161,51 @@ checar('subscription nula deixa o id nulo', semAssinatura.subscriptionId, null);
 checar('subscription nula não promete acesso', semAssinatura.accessUntil, null);
 checar('subscription nula mantém o id do pedido', semAssinatura.orderId, '1f1c81d2-088a-412d-8bb7-3d5269d64f58');
 
+/* ---- plano ANUAL: o acesso não pode encolher para 92 dias ----
+ *
+ * `processar_evento_assinatura` cai num padrão de 92 dias quando o provedor não
+ * manda `next_payment_date`. Esse número foi escolhido quando só existia plano
+ * mensal. Numa assinatura anual significaria receber doze meses e cortar o
+ * acesso em tres — o cliente paga e fica sem, sem erro em lugar nenhum.
+ *
+ * Por isso, faltando a data, o periodo e derivado de `recurrence_period`, que a
+ * Cakto documenta como o intervalo em DIAS entre cobrancas. */
+const semData = (recurrence, extra = {}) => clone(extra, {
+  subscription: { ...BASE.data.subscription, next_payment_date: null, recurrence_period: recurrence },
+});
+
+// Anual: 365 dias a partir do pagamento (08/04/2025 17:43 UTC -> 08/04/2026).
+checar('anual sem data explícita usa recurrence_period',
+  cakto.normalizarEventoCakto(semData(365)).accessUntil, '2026-04-08T17:43:43.575Z');
+
+// Mensal: mesma regra, 30 dias.
+checar('mensal sem data explícita usa recurrence_period',
+  cakto.normalizarEventoCakto(semData(30)).accessUntil, '2025-05-08T17:43:43.575Z');
+
+// A data explícita continua mandando quando existe.
+checar('next_payment_date vence recurrence_period',
+  cakto.normalizarEventoCakto(clone({}, {
+    subscription: { ...BASE.data.subscription, recurrence_period: 365 },
+  })).accessUntil, '2025-04-08T17:43:39.724Z');
+
+/* Valor absurdo do provedor não pode virar acesso perpétuo, e valor ausente ou
+   inválido devolve a decisão para o banco em vez de inventar data. */
+for (const ruim of [5000, 0, -30, null, 'anual']) {
+  checar(`recurrence_period inválido (${JSON.stringify(ruim)}) não inventa data`,
+    cakto.normalizarEventoCakto(semData(ruim)).accessUntil, null);
+}
+
+/* Só evento que ESTENDE acesso ganha data derivada. Cancelamento e reembolso
+   não podem receber acesso futuro por dedução. */
+for (const [evento, rotulo] of [['subscription_canceled', 'cancelamento'], ['refund', 'reembolso'], ['chargeback', 'chargeback']]) {
+  checar(`${rotulo} não ganha acesso futuro por dedução`,
+    cakto.normalizarEventoCakto(semData(365, { event: evento })).accessUntil, null);
+}
+
+// Renovação anual também estende.
+checar('renovação anual estende',
+  cakto.normalizarEventoCakto(semData(365, { event: 'subscription_renewed' })).accessUntil, '2026-04-08T17:43:43.575Z');
+
 // ---- validação do segredo ----
 const comparar = (a, b) => a === b;
 const SEGREDO = '8402b43f-c839-4090-bbd1-186725d185c7';

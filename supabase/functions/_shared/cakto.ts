@@ -91,8 +91,41 @@ export function normalizarEventoCakto(
     /* Até quando o acesso vale. Numa renovação bem-sucedida é a próxima
        cobrança; no cancelamento a Cakto zera este campo, e aí quem decide o
        fim do acesso é a função do banco. */
-    accessUntil: dataIso(texto(body, ['data.subscription.next_payment_date'])),
+    accessUntil: acessoAte(body, type, eventAt),
   };
+}
+
+/* Até quando o acesso vale, com rede de segurança para o plano ANUAL.
+ *
+ * O caminho normal é `next_payment_date`. O problema é o que acontece quando
+ * ele não vem: `processar_evento_assinatura` cai num padrão de 92 dias, que
+ * foi escolhido quando só existia plano mensal. Numa assinatura anual isso
+ * significa receber doze meses e cortar o acesso em três — o cliente pagou e
+ * fica sem, sem erro em lugar nenhum.
+ *
+ * Por isso, na ausência da data, o período é derivado de `recurrence_period`,
+ * que a Cakto documenta como o intervalo em DIAS entre cobranças. O teto de
+ * 400 dias existe para um valor absurdo do provedor não virar acesso perpétuo;
+ * abaixo de 1 não há o que derivar e a decisão volta para o banco.
+ *
+ * Só vale para eventos que ESTENDEM acesso. Cancelamento e reembolso não
+ * ganham data futura por dedução. */
+function acessoAte(
+  body: Record<string, unknown>,
+  type: TipoEventoAssinatura,
+  eventAt: string,
+): string | null {
+  const explicita = dataIso(texto(body, ['data.subscription.next_payment_date']));
+  if (explicita) return explicita;
+  if (type !== 'approved' && type !== 'renewed') return null;
+
+  const dias = Number(texto(body, ['data.subscription.recurrence_period']));
+  if (!Number.isFinite(dias) || dias < 1 || dias > 400) return null;
+
+  const base = new Date(eventAt);
+  if (!Number.isFinite(base.getTime())) return null;
+  base.setUTCDate(base.getUTCDate() + Math.round(dias));
+  return base.toISOString();
 }
 
 /* Validação de autenticidade.
