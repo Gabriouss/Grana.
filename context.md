@@ -4851,12 +4851,28 @@ feito**, criada como `plaintext` de projeto nos ambientes `production` e
 que já estava nos mesmos dois ambientes — foi assim que o link permanente do APK
 entrou na 1.8.4.
 
-**Na Vercel continua faltando**, e nenhuma sessão de agente alcança aquele
-painel: não há CLI da Vercel instalada nem token no ambiente. Conferido no
-bundle publicado de `granaponto.com.br`: ele contém `pay.kiwify.co` e NÃO contém
-`pay.cakto.com.br`, ou seja, o botão de assinar do site ainda manda para a
-Kiwify. Só o redeploy depois de criar a variável resolve, porque `EXPO_PUBLIC_*`
-é gravada dentro do arquivo no momento da compilação.
+**Na Vercel também está feito**, com token de um dia que o autor gerou para
+isso. A variável foi criada nos três ambientes (`production`, `preview`,
+`development`) e o deployment de produção foi refeito, porque `EXPO_PUBLIC_*` é
+gravada dentro do arquivo no momento da compilação e variável nova não vale
+retroativamente.
+
+Antes do redeploy o bundle publicado continha `pay.kiwify.co` e não continha
+`pay.cakto.com.br`; depois, o inverso, com o hash do arquivo mudando de
+`index-24dfd276…` para `index-d2fd7560…`. O link da Kiwify sumiu por completo
+do bundle, e não só deixou de ser usado: como o código é
+`EXPO_PUBLIC_CHECKOUT_URL ?? EXPO_PUBLIC_KIWIFY_CHECKOUT_URL` e o primeiro
+agora é um literal não vazio, o minificador eliminou o segundo ramo. O fallback
+é comprovadamente inalcançável na web.
+
+Isso encerra a lista de pendentes da migração para a Cakto.
+
+**A variável antiga `EXPO_PUBLIC_KIWIFY_CHECKOUT_URL` segue existindo na Vercel
+(só em `production`), e o fallback segue no código.** Nenhum dos dois faz efeito
+na web depois desta mudança, mas os dois ainda são a rede do APLICATIVO: a
+1.8.4 instalada não tem checkout embutido de lado nenhum, então quem está nela
+depende do que vier na próxima build. Remover o fallback só depois de uma APK
+nova sair com a Cakto dentro.
 
 Vale o mesmo para o aplicativo: a variável agora existe no EAS, mas só entra
 numa APK nova. Quem tem a 1.8.4 instalada continua indo para o checkout antigo
