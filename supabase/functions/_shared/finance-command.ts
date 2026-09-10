@@ -158,6 +158,21 @@ export function normalizarTextoTranscrito(texto: string): string {
    * Aceita decimal ("1,5 mil" -> 1500) porque é como se fala valor quebrado
    * em milhar, e milhão pela mesma razão. */
   const MULTIPLICADOR: Record<string, number> = { mil: 1000, milhao: 1e6, milhoes: 1e6 };
+  // Preserve a escala explícita antes que "mil" desapareça: 2 mil e 50
+  // são 2050 reais, enquanto "2000 e 50" continua sendo reais e centavos.
+  const restoEscala = `(?:\\d+(?:[.,]\\d{1,2})?|(?:${Object.keys(NUMERO_POR_EXTENSO).join('|')})(?:\\s+e\\s+(?:${Object.keys(NUMERO_POR_EXTENSO).join('|')}))*)`;
+  texto = texto.replace(new RegExp(`(?<![\\d.,])(\\d+)\\s+mil\\s+e\\s+(${restoEscala})(?![\\p{L}\\d.,])`, 'giu'),
+    (m, base: string, resto: string, indice: number, original: string) => {
+      if (/^\s*centavos?\b/i.test(original.slice(indice + m.length))) return m;
+      const segmentos = /^\d/.test(resto) ? [Number(resto.replace(',', '.'))] : segmentarExtenso(resto.toLowerCase().split(/\s+/));
+      const n = segmentos[0];
+      if (!(n > 0 && n < 1000)) return m;
+      const soma = Number(base) * 1000 + n;
+      if (segmentos.length > 1) return `${soma} reais e ${segmentos.slice(1).join(' e ')}`;
+      // Não introduza ,00 antes de centavos ainda por normalizar.
+      if (/^\s+(?:reais?\s+)?e\s+/i.test(original.slice(indice + m.length))) return String(soma);
+      return soma.toFixed(2).replace('.', ',');
+    });
   texto = texto.replace(
     /(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:[,.](\d{1,2}))?\s+(mil|milh[ãa]o|milh[õo]es)\b/gi,
     (_m: string, inteiro: string, decimal: string | undefined, palavra: string) => {

@@ -1,5 +1,5 @@
 /* Bateria 4, sem rede: referências, roteamento e prazos locais.
- * node __tests__/voz-auditoria-rodada4.cjs; fora do CI enquanto houver achados.
+ * node __tests__/voz-auditoria-rodada4.cjs; regressões incluídas no CI.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -118,4 +118,3 @@ async function localTimeout(stage) {
   console.log('RESULTADO', JSON.stringify({ total, passed: total - failed, failed, groups: Object.fromEntries(groups) }, null, 2));
   if (failed) process.exitCode = 1;
 })().catch(error => { console.error(error); process.exitCode = 2; });
-

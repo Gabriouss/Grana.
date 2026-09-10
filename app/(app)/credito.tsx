@@ -42,7 +42,7 @@ import {
 import { formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
 import { agruparLancamentosPorCartao, filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
-import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, matchWalletByText, limparReferenciaCarteira, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, matchWalletByText, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
@@ -619,10 +619,10 @@ export default function CreditoScreen() {
       return;
     }
     const guessedAmount = guessAmountFromText(textoFinanceiro);
-    const guessedCat = guessCategoryFromText(textoFinanceiro, categoriasExtras);
     const guessedDesc = guessDescFromText(textoFinanceiro, 'out');
     const cartoesElegiveis = carteiraCasada ? cards.filter((c) => c.wallet_id === carteiraCasada.id) : walletCards;
     const cartaoCasado = matchCardByText(textoFinanceiro, cartoesElegiveis);
+    const guessedCat = guessCategoryFromText(cartaoCasado ? limparReferenciaCartao(textoFinanceiro, cartaoCasado) : textoFinanceiro, categoriasExtras);
     const carteiraMencionada = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto);
     setTxWalletId(carteiraCasada?.id ?? (carteiraMencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
     setTxDesc(guessedDesc);

@@ -14,7 +14,7 @@ const deps = {
   './heuristics': { guessAmountFromText: () => 32, guessCategoryFromText: () => ({ name: 'Alimentação', color: '#fff' }),
     guessTypeFromText: () => 'out', guessDescFromText: () => 'mercado', ehIntencaoBoleto: () => false,
     ehIntencaoCredito: () => true, matchCardByText: () => matched, matchWalletByText: () => null,
-    limparReferenciaCarteira: (t) => t, parseParcelas: () => 1, parseRecorrencia: () => false },
+    limparReferenciaCarteira: (t) => t, limparReferenciaCartao: (t) => t, parseParcelas: () => 1, parseRecorrencia: () => false },
   './data': { fetchCreditCards: async () => cards, fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => [{ id: 'wallet', name: 'Pessoal', is_default: true }] },
   './voice-operations': { registrarOperacaoVoz: async (_, __, input) => { saved.push(input); return { ids: ['tx'], operationId: 'op' }; } },

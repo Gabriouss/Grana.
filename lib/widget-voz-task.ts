@@ -182,7 +182,10 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     await notificacoes.notificarRevisao('Não encontrei o valor', transcricao.transcript);
     return false;
   }
-  const categoria = heuristics.guessCategoryFromText(texto, extras);
+  const cartaoDaCategoria = heuristics.ehIntencaoCredito(texto)
+    ? heuristics.matchCardByText(texto, cartoesDisponiveis.filter(c => !c.wallet_id || c.wallet_id === carteira.id)) : null;
+  const textoDaCategoria = cartaoDaCategoria ? heuristics.limparReferenciaCartao(texto, cartaoDaCategoria) : texto;
+  const categoria = heuristics.guessCategoryFromText(textoDaCategoria, extras);
   if (categoria.name === 'Outros') {
     await notificacoes.notificarRevisao('Qual categoria?', transcricao.transcript);
     return false;
@@ -292,7 +295,7 @@ async function lancarNoCredito(args: {
   }
 
   const cartaoIdentificado = heuristics.matchCardByText(texto, cartoes);
-  const cartaoExplicito = /\b(?:cr[eé]dito|cart[aã]o)\s+(?!(?:em|no|na|de|todo|recorrente)\b)[\p{L}\d]/iu.test(texto);
+  const cartaoExplicito = /\b(?:cr[eé]dito|cart[aã]o)\s+(?:(?:no|na|do|da|de)\s+)?(?!(?:em|no|na|de|todo|recorrente)\b)[\p{L}\d]/iu.test(texto);
   if (!cartaoIdentificado && (cartoes.length > 1 || cartaoExplicito)) {
     await notificacoes.notificarRevisao('Qual cartão?', texto);
     return false;

@@ -1029,6 +1029,8 @@ function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca | null
   if (especificos.length > 1) return null;
   if (especificos.length === 1) {
     const escolhido = especificos[0];
+    // Um nome completo não pode ocultar a menção a outro banco.
+    if (cards.some(c => norm(c.bank) !== norm(escolhido.bank) && contem(c.bank))) return null;
     if (norm(escolhido.name) === norm(escolhido.bank) && cards.filter(c => norm(c.bank) === norm(escolhido.bank)).length > 1) return null;
     return escolhido;
   }
@@ -1187,7 +1189,7 @@ function parseRecorrencia(text: string): boolean {
      o oposto de uma série aberta. Dizer as duas coisas é contradição, e o
      parcelamento é o mais específico dos dois. */
   if (parseParcelas(text) !== null) return false;
-  if (/\b(?:n[ãa]o|sem)\s+(?:(?:ser|[ée]|vai|deve|quero|precisa)\s+)*(?:recorrente|se\s+repete|repetir|repete|recorr[êe]ncia)\b/i.test(t)) return false;
+  if (/\b(?:n[ãa]o|sem)\s+(?:(?:ser|[ée]|vai|deve|quero|precisa|que|se)\s+)*(?:recorrente|repita|repete|repetir|recorr[êe]ncia)\b/i.test(t)) return false;
   return /\btod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?\b|\bcada\s+m[êe]s\b|\bmensalmente\b|\brecorrente\b|\bse\s+repete\b|\bque\s+repete\b|\brepete\s+tod[oa]\s+m[êe]s\b/.test(t);
 }
 
@@ -1195,10 +1197,12 @@ function parseRecorrencia(text: string): boolean {
 
 /** Só vira boleto se a pessoa disser explicitamente — "paguei a luz" sozinho continua sendo um lançamento normal, não uma conta a programar. */
 function ehIntencaoBoleto(text: string): boolean {
+  // Pagamento concluído é saída, não uma nova dívida com data inventada.
+  if (/\b(?:paguei|quitei|liquidei)\b|\bboleto\s+(?:j[áa]\s+)?pago\b/i.test(text) && !/\bn[ãa]o\s+(?:paguei|quitei|liquidei)\b/i.test(text)) return false;
   return (
     /\bboletos?\b/i.test(text) ||
     /\bvencimento\b/i.test(text) ||
-    /\bvence\s+(?:dia|em|no|dessa)\b/i.test(text) ||
+    /\bvence\s+(?:dia|em|no|dessa|hoje|amanh[ãa])(?![\p{L}\d])/iu.test(text) ||
     /\bconta\s+a\s+pagar\b/i.test(text)
   );
 }

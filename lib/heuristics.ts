@@ -149,6 +149,21 @@ export function normalizarTexto(texto: string): string {
    * Aceita decimal ("1,5 mil" -> 1500) porque é como se fala valor quebrado
    * em milhar, e milhão pela mesma razão. */
   const MULTIPLICADOR: Record<string, number> = { mil: 1000, milhao: 1e6, milhoes: 1e6 };
+  // Preserve a escala explícita antes que "mil" desapareça: 2 mil e 50
+  // são 2050 reais, enquanto "2000 e 50" continua sendo reais e centavos.
+  const restoEscala = `(?:\\d+(?:[.,]\\d{1,2})?|(?:${Object.keys(NUMERO_POR_EXTENSO).join('|')})(?:\\s+e\\s+(?:${Object.keys(NUMERO_POR_EXTENSO).join('|')}))*)`;
+  texto = texto.replace(new RegExp(`(?<![\\d.,])(\\d+)\\s+mil\\s+e\\s+(${restoEscala})(?![\\p{L}\\d.,])`, 'giu'),
+    (m, base: string, resto: string, indice: number, original: string) => {
+      if (/^\s*centavos?\b/i.test(original.slice(indice + m.length))) return m;
+      const segmentos = /^\d/.test(resto) ? [Number(resto.replace(',', '.'))] : segmentarExtenso(resto.toLowerCase().split(/\s+/));
+      const n = segmentos[0];
+      if (!(n > 0 && n < 1000)) return m;
+      const soma = Number(base) * 1000 + n;
+      if (segmentos.length > 1) return `${soma} reais e ${segmentos.slice(1).join(' e ')}`;
+      // Não introduza ,00 antes de centavos ainda por normalizar.
+      if (/^\s+(?:reais?\s+)?e\s+/i.test(original.slice(indice + m.length))) return String(soma);
+      return soma.toFixed(2).replace('.', ',');
+    });
   texto = texto.replace(
     /(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:[,.](\d{1,2}))?\s+(mil|milh[ãa]o|milh[õo]es)\b/gi,
     (_m: string, inteiro: string, decimal: string | undefined, palavra: string) => {
@@ -481,6 +496,8 @@ export function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca
   if (especificos.length > 1) return null;
   if (especificos.length === 1) {
     const escolhido = especificos[0];
+    // Um nome completo não pode ocultar a menção a outro banco.
+    if (cards.some(c => norm(c.bank) !== norm(escolhido.bank) && contem(c.bank))) return null;
     if (norm(escolhido.name) === norm(escolhido.bank) && cards.filter(c => norm(c.bank) === norm(escolhido.bank)).length > 1) return null;
     return escolhido;
   }
@@ -491,6 +508,20 @@ export function matchCardByText(text: string, cards: CartaoBusca[]): CartaoBusca
 }
 
 type CarteiraBusca = { id: string; name: string };
+
+/** Remove só a referência ancorada ao cartão, nunca o nome da loja solto. */
+export function limparReferenciaCartao(text: string, card: CartaoBusca): string {
+  const original = text.normalize('NFC');
+  const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const nomes = [card.name, card.bank].filter(Boolean).sort((a, b) => b.length - a.length)
+    .map(n => norm(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const re = new RegExp(`\\b(?:credito|cartao)(?:\\s+(?:de|do|da|no|na))?\\s+(?:${nomes})(?![\\p{L}\\d])`, 'gu');
+  let resultado = original;
+  for (const m of [...norm(original).matchAll(re)].reverse()) {
+    resultado = resultado.slice(0, m.index) + 'crédito' + resultado.slice(m.index! + m[0].length);
+  }
+  return resultado;
+}
 
 function normalizarNomeCarteira(texto: string): string {
   return normalizarParaBusca(texto)
@@ -503,12 +534,20 @@ function normalizarNomeCarteira(texto: string): string {
 export function matchWalletByText(text: string, wallets: CarteiraBusca[]): CarteiraBusca | null {
   const alvo = normalizarNomeCarteira(text);
   const ordenadas = [...wallets].sort((a, b) => b.name.length - a.name.length);
-  const encontradas = ordenadas.filter((wallet) => {
-    const nome = normalizarNomeCarteira(wallet.name);
-    return !!nome && new RegExp(`\\b(?:carteira|conta)\\s+${nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\d])`, 'u').test(alvo);
-  });
-  const especificas = encontradas.filter(w => !encontradas.some(outro => outro !== w && normalizarNomeCarteira(outro.name).startsWith(normalizarNomeCarteira(w.name) + ' ')));
-  return especificas.length === 1 ? especificas[0] : null;
+  const encontradas = new Map<string, CarteiraBusca>();
+  // A preferência pelo nome longo vale por menção, não pela frase inteira.
+  for (const mencao of alvo.matchAll(/\b(?:carteira|conta)\s+/g)) {
+    const trecho = alvo.slice(mencao.index! + mencao[0].length);
+    const candidatas = ordenadas.filter(wallet => {
+      const nome = normalizarNomeCarteira(wallet.name);
+      return !!nome && new RegExp(`^${nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\d])`, 'u').test(trecho);
+    });
+    if (!candidatas.length) return null;
+    const melhor = candidatas[0];
+    if (candidatas.filter(w => normalizarNomeCarteira(w.name) === normalizarNomeCarteira(melhor.name)).length > 1) return null;
+    encontradas.set(melhor.id, melhor);
+  }
+  return encontradas.size === 1 ? [...encontradas.values()][0] : null;
 }
 
 export function limparReferenciaCarteira(text: string, walletName: string): string {
@@ -521,7 +560,7 @@ export function limparReferenciaCarteira(text: string, walletName: string): stri
   return original.replace(/\b(?:carteira|conta)\s+[^\n]+/giu, trecho => {
     const match = re.exec(norm(trecho));
     re.lastIndex = 0;
-    return match ? ' ' + trecho.slice(match[0].length) : trecho;
+    return match ? trecho.slice(0, match.index) + ' ' + trecho.slice(match.index + match[0].length) : trecho;
   }).replace(/\s{2,}/g, ' ').trim();
 }
 
@@ -531,10 +570,12 @@ export function limparReferenciaCarteira(text: string, walletName: string): stri
 
 /** Só vira boleto se a pessoa disser explicitamente — "paguei a luz" sozinho continua sendo um lançamento normal, não uma conta a programar. */
 export function ehIntencaoBoleto(text: string): boolean {
+  // Pagamento concluído é saída, não uma nova dívida com data inventada.
+  if (/\b(?:paguei|quitei|liquidei)\b|\bboleto\s+(?:j[áa]\s+)?pago\b/i.test(text) && !/\bn[ãa]o\s+(?:paguei|quitei|liquidei)\b/i.test(text)) return false;
   return (
     /\bboletos?\b/i.test(text) ||
     /\bvencimento\b/i.test(text) ||
-    /\bvence\s+(?:dia|em|no|dessa)\b/i.test(text) ||
+    /\bvence\s+(?:dia|em|no|dessa|hoje|amanh[ãa])(?![\p{L}\d])/iu.test(text) ||
     /\bconta\s+a\s+pagar\b/i.test(text)
   );
 }
@@ -648,7 +689,7 @@ export function parseRecorrencia(text: string): boolean {
      o oposto de uma série aberta. Dizer as duas coisas é contradição, e o
      parcelamento é o mais específico dos dois. */
   if (parseParcelas(text) !== null) return false;
-  if (/\b(?:n[ãa]o|sem)\s+(?:(?:ser|[ée]|vai|deve|quero|precisa)\s+)*(?:recorrente|se\s+repete|repetir|repete|recorr[êe]ncia)\b/i.test(t)) return false;
+  if (/\b(?:n[ãa]o|sem)\s+(?:(?:ser|[ée]|vai|deve|quero|precisa|que|se)\s+)*(?:recorrente|repita|repete|repetir|recorr[êe]ncia)\b/i.test(t)) return false;
   return /\btod[oa]s?\s+(?:o\s+|os\s+)?m[êe]s(?:es)?\b|\bcada\s+m[êe]s\b|\bmensalmente\b|\brecorrente\b|\bse\s+repete\b|\bque\s+repete\b|\brepete\s+tod[oa]\s+m[êe]s\b/.test(t);
 }
 

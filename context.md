@@ -1,5 +1,54 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — as sete famílias de voz, corrigidas e verificadas
+
+O Codex passou das baterias de auditoria para as CORREÇÕES e parou no meio,
+deixando 124 linhas em 10 arquivos sem commitar, mais a quinta bateria não
+rastreada. Esta sessão conferiu, validou e publicou.
+
+### O que foi corrigido
+
+| Defeito | Correção |
+|---|---|
+| `2 mil e 50 reais` virava R$ 2.000,50 | Preserva a escala antes de "mil" sumir |
+| "crédito no Itaú" usava o único C6 | Nome completo não oculta menção a outro banco |
+| Duas carteiras parecidas resolvidas sozinhas | Preferência pelo nome longo passa a valer por MENÇÃO, não pela frase |
+| Boleto já pago virava conta futura | "paguei/quitei/liquidei" deixa de ser intenção de boleto |
+| "vence amanhã" não era reconhecido | `hoje` e `amanhã` entraram na regra |
+| "não quero que se repita" ligava recorrência | `que` e `se` entraram na negação |
+| Preparação do reconhecedor local pendurava | Orçamento único de 30s, com limpeza do PCM se estourar |
+
+Duas coisas que valem destacar no que ele fez:
+
+- **`limparReferenciaCartao` é função nova e está LIGADA**, não é código morto:
+  `widget-voz-task.ts` e `credito.tsx` a usam para o nome do cartão não
+  contaminar a categoria. O dublê em `widget-voz-cartoes.cjs` foi atualizado
+  junto.
+- **A conversão nativa de áudio não é cancelável.** O código trata isso: se o
+  prazo estourar e a conversão terminar depois, ele só apaga o PCM em vez de
+  iniciar um reconhecedor órfão sobre áudio velho.
+
+### Verificação
+
+`npx tsc --noEmit` limpo, `deno check` limpo nas duas Edge Functions
+alteradas, e `npm run test:ci` **saída 0, zero falhas** — agora com as CINCO
+baterias de auditoria encadeadas em `test:voz`, então elas não regridem mais
+em silêncio.
+
+**NÃO verificado:** nada em aparelho. Toda a bateria roda com gravação
+simulada; o microfone real nunca foi exercitado.
+
+### Deploy
+
+`processar-lancamento-voz` **precisa ser republicada**: a correção do
+"2 mil e 50" mora em `_shared/finance-command.ts`, que entra no pacote dela
+via `_shared/voice-transcription.ts`.
+
+`whatsapp-webhook` recebeu as mesmas correções por higiene de código, para as
+cópias não divergirem, mas **fica sem publicar** — o canal está desligado por
+decisão, e o repositório à frente da produção é o sentido seguro.
+
+
 ## 10/09/2026 — bateria exploratória de voz 4, sem correções
 
 Base `07507b3`, apenas master, sem stash/worktree extra e árvore inicialmente
