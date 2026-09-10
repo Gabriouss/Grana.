@@ -4842,6 +4842,26 @@ Estado em produção, conferido:
 O texto legal voltou a citar apenas a Cakto, já que não há assinatura anterior
 em outro provedor para descrever.
 
+### 10/09/2026 — metade do último pendente
+
+Da lista acima sobrava só um item: `EXPO_PUBLIC_CHECKOUT_URL`. **No EAS está
+feito**, criada como `plaintext` de projeto nos ambientes `production` e
+`preview` com `https://pay.cakto.com.br/esgddv2_1096987`, e conferida por
+`eas env:list` depois de gravar. Fica ao lado da `EXPO_PUBLIC_ANDROID_DOWNLOAD_URL`,
+que já estava nos mesmos dois ambientes — foi assim que o link permanente do APK
+entrou na 1.8.4.
+
+**Na Vercel continua faltando**, e nenhuma sessão de agente alcança aquele
+painel: não há CLI da Vercel instalada nem token no ambiente. Conferido no
+bundle publicado de `granaponto.com.br`: ele contém `pay.kiwify.co` e NÃO contém
+`pay.cakto.com.br`, ou seja, o botão de assinar do site ainda manda para a
+Kiwify. Só o redeploy depois de criar a variável resolve, porque `EXPO_PUBLIC_*`
+é gravada dentro do arquivo no momento da compilação.
+
+Vale o mesmo para o aplicativo: a variável agora existe no EAS, mas só entra
+numa APK nova. Quem tem a 1.8.4 instalada continua indo para o checkout antigo
+até atualizar.
+
 **Descoberta operacional, registrada na regra 11 do AGENTS.md:** criar um
 segredo no Supabase reinstancia TODAS as Edge Functions e soma 1 na versão de
 cada uma, sem tocar no código nem no `updated_at`. Um único `POST /secrets`
