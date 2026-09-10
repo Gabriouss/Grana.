@@ -116,6 +116,20 @@ function hrefCompra(): string {
   return checkout?.startsWith('https://') ? checkout : hrefCadastroComAtribuicao();
 }
 
+/* Preços que a pessoa paga no checkout, já com a taxa de serviço da Cakto
+   embutida. O equivalente mensal do anual é DERIVADO: um número escrito à mão
+   aqui envelheceria calado no dia em que o preço mudasse. */
+const PRECO_MENSAL = 9.9;
+const PRECO_ANUAL = 99.97;
+const emReais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+/* Checkout do plano ANUAL. Sem a variável configurada, cai no mensal em vez de
+   sumir com o botão: a página nunca fica sem caminho de compra. */
+function hrefCompraAnual(): string {
+  const anual = process.env.EXPO_PUBLIC_CHECKOUT_URL_ANUAL;
+  return anual?.startsWith('https://') ? anual : hrefCompra();
+}
+
 /* `rotulo` permite variar o texto do botão por seção. O padrão continua
    "Criar minha conta", que é a ação certa na maior parte da página: quem
    ainda está lendo argumento não está pronto pra pagar.
@@ -135,6 +149,7 @@ function BotaoCTA({
   rotulo = 'Criar minha conta',
   variante = 'primario',
   compra,
+  anual,
   onPress,
 }: {
   microcopy?: string;
@@ -142,6 +157,8 @@ function BotaoCTA({
   rotulo?: string;
   /** Leva ao checkout em vez do cadastro. Só nos pontos de decisão. */
   compra?: boolean;
+  /** Com `compra`, aponta para o checkout anual em vez do mensal. */
+  anual?: boolean;
   /* 'secundario' é outline, sem o reflexo diagonal — esse efeito é a
      assinatura do CTA de conversão real; repeti-lo aqui diluiria a
      hierarquia (o CTA primário precisa continuar sendo a coisa mais
@@ -220,7 +237,7 @@ function BotaoCTA({
           aba" e rastreamento por crawler de busca funcionam — sem tocar no
           `style` função que já funcionava. */}
       <AppPressable
-        {...(onPress ? { onPress } : { href: compra ? hrefCompra() : hrefCadastroComAtribuicao() })}
+        {...(onPress ? { onPress } : { href: compra ? (anual ? hrefCompraAnual() : hrefCompra()) : hrefCadastroComAtribuicao() })}
         onHoverIn={() => !reduzirMovimento && setPonteiroAtivo(true)}
         onHoverOut={() => setPonteiroAtivo(false)}
         style={({ hovered }) => [
@@ -1382,28 +1399,41 @@ function ConteudoWeb() {
                 </View>
 
                 <View style={[styles.cardPreco, ehCompacto && styles.cardPrecoCompacto]}>
-                  {/* "Assinatura única" saiu: lido rápido, sugere pagamento
-                      único em vez de mensalidade. "Grana. mensal" diz o que é. */}
-                  <Text style={[styles.precoRotulo, ehCompacto && styles.precoTituloCentralizado]}>Grana. mensal</Text>
-                  {/* Qualificador em linha própria, nunca colado no "/mês":
+                  {/* O ANUAL lidera o cartão: é o plano de foco, e o argumento
+                      está no equivalente mensal logo abaixo — ele fica MENOR que
+                      a mensalidade avulsa. O mensal continua visível mais abaixo,
+                      porque tirar a porta de entrada barata faz quem não pode
+                      pagar o ano sair sem assinar nada. */}
+                  <Text style={[styles.precoRotulo, ehCompacto && styles.precoTituloCentralizado]}>Grana. anual</Text>
+                  {/* Qualificador em linha própria, nunca colado no "/ano":
                       dentro de `precoLinha` (flex row) ele espremia o valor e
                       o preço quebrava em duas linhas. */}
                   <View style={[styles.precoLinha, ehCompacto && styles.precoLinhaCompacta]}>
-                    <Text style={[styles.precoValor, ehCompacto && styles.precoValorCompacto]}>R$ 9,90</Text>
-                    <Text style={styles.precoPeriodo}>/mês</Text>
+                    <Text style={[styles.precoValor, ehCompacto && styles.precoValorCompacto]}>{emReais(PRECO_ANUAL)}</Text>
+                    <Text style={styles.precoPeriodo}>/ano</Text>
                   </View>
+                  <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
+                    Equivale a {emReais(PRECO_ANUAL / 12)} por mês. Você economiza{' '}
+                    {emReais(PRECO_MENSAL * 12 - PRECO_ANUAL)} no ano.
+                  </Text>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
                     Registre com facilidade, acompanhe seu mês e planeje o que vem pela frente.
                   </Text>
                   <View style={styles.precoCta}>
                     {/* Ponto de decisão: quem chegou no card de preço com o
                         valor na frente já está escolhendo, não conhecendo. */}
-                    <BotaoCTA compra rotulo="Assinar o Grana." centralizado={ehCompacto} />
+                    <BotaoCTA compra anual rotulo="Assinar o plano anual" centralizado={ehCompacto} />
+                    <BotaoCTA
+                      compra
+                      variante="secundario"
+                      rotulo={`Prefiro mensal, ${emReais(PRECO_MENSAL)} por mês`}
+                      centralizado={ehCompacto}
+                    />
                   </View>
                   {/* Condições confirmadas; detalhes de cancelamento dependem
                       da política apresentada no checkout. */}
                   <Text style={[styles.precoConfianca, ehCompacto && styles.precoTextoCentralizado]}>
-                    Assinatura mensal. Sem período de teste.
+                    Assinatura recorrente. Sem período de teste.
                   </Text>
                 </View>
               </View>
@@ -1472,7 +1502,8 @@ function ConteudoWeb() {
                   Seu próximo gasto pode ser o primeiro passo.
                 </Text>
                 <Text style={[styles.ctaFinalTexto, styles.precoTextoCentralizado]}>
-                  Organize seus gastos com o Grana. por R$ 9,90/mês. Assinatura mensal, sem período de teste.
+                  Organize seus gastos com o Grana. a partir de {emReais(PRECO_ANUAL / 12)} por mês no
+                  plano anual, ou {emReais(PRECO_MENSAL)} por mês no avulso. Sem período de teste.
                 </Text>
                 <View style={[styles.ctaFinalFatos, styles.ctaFinalFatosCompacto]}>
                   {['Sem conectar banco', 'Lançamentos organizados', 'Celular e computador'].map((fato) => (

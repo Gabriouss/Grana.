@@ -1,5 +1,73 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — plano anual, com o anual em destaque
+
+O autor pediu plano anual com parcelamento, com o anual como foco comercial.
+Feito no painel da Cakto (via MCP, com aprovação explícita dele em cada
+escrita) e no produto.
+
+### A taxa da Cakto é FIXA, não percentual
+
+Descoberto empiricamente, e isso mudou os dois preços. O checkout mostrava
+R$ 10,89 para uma oferta de R$ 9,90, e R$ 0,99 é exatamente 10% de 9,90 — o
+que sugeria percentual. Baixando a oferta para R$ 9,00, o total foi para
+R$ 9,99: a taxa continuou R$ 0,99. **É fixa, cobrada do comprador, por
+transação.**
+
+Consequência: toda oferta é cadastrada por R$ 0,99 a MENOS que o preço
+anunciado, para o total bater com o que o produto promete.
+
+| Oferta | id | Preço cadastrado | Cliente paga | Recorrência |
+|---|---|---|---|---|
+| Grana. | `esgddv2` | R$ 8,91 | **R$ 9,90** | 30 dias |
+| Grana. Anual | `323b2rs` | R$ 98,98 | **R$ 99,97** | 365 dias |
+
+O mensal estava cobrando R$ 10,89 enquanto o produto anunciava R$ 9,90 em três
+lugares. Isso acabou.
+
+### Por que o anual rende mais, e não menos
+
+A taxa de PRODUTOR tem um componente fixo por transação. No mensal ele é pago
+doze vezes; no anual, uma. Com 4,99% + R$ 2,49 (número publicado da Cakto,
+**não confirmado na conta** porque ainda não há venda real):
+
+| Por cliente, ao ano | Mensal | Anual |
+|---|---|---|
+| Cliente paga | R$ 118,80 | R$ 99,97 |
+| Autor recebe | R$ 71,70 | **R$ 91,55** |
+
+O cliente paga 16% menos e o autor recebe 28% mais.
+
+### No produto
+
+`app/assinar.tsx` e o cartão de preço da landing passaram a liderar pelo
+anual, com selo de destaque, o valor cheio e o equivalente mensal logo abaixo
+— que é o argumento, porque fica MENOR que a mensalidade avulsa. O mensal
+continua visível, em botão discreto: tirar a porta de entrada barata faria
+quem não pode pagar o ano sair sem assinar nada.
+
+Duas decisões de redação que valem registro:
+
+- **"Equivale a X por mês", nunca "12x de X".** Parcelamento é ajuste de
+  checkout no painel da Cakto e ainda NÃO foi configurado. Prometer parcela
+  numa tela de cobrança sem ter certeza de que ela existe seria a pior
+  promessa possível.
+- **O equivalente mensal e a economia são DERIVADOS** dos dois preços em
+  constantes, não escritos à mão, para não envelhecerem calados quando o preço
+  mudar.
+
+O plano anual só aparece quando `EXPO_PUBLIC_CHECKOUT_URL_ANUAL` está
+configurada. Sem ela, as duas telas voltam a ser exatamente o que eram.
+
+**Verificado:** `tsc` limpo e `test:ci` saída 0, com 1144 guardas do design
+system e 40/40 de sincronia.
+
+**Pendente com o autor:** configurar o parcelamento em 12x no painel da Cakto;
+publicar `EXPO_PUBLIC_CHECKOUT_URL_ANUAL` na Vercel e no EAS (a landing e o
+app só mostram o anual depois disso, e no app só com build nova); e confirmar
+a taxa de produtor real no painel financeiro.
+
+
 ## 10/09/2026 — a armadilha dos 92 dias, achada antes da primeira venda anual
 
 O autor pediu para trabalhar com plano ANUAL com parcelamento. Antes de

@@ -15,6 +15,27 @@ const checkoutConfigurado =
 const destinoCompra = checkoutConfigurado?.startsWith('https://')
   ? checkoutConfigurado
   : 'https://granaponto.com.br/#precos';
+/* Plano anual. Só aparece quando há URL configurada: sem ela, a tela volta a
+   ser exatamente o que era, com o mensal sozinho, em vez de mostrar um botão
+   que leva a lugar nenhum. */
+const anualConfigurado = process.env.EXPO_PUBLIC_CHECKOUT_URL_ANUAL;
+const destinoAnual = anualConfigurado?.startsWith('https://') ? anualConfigurado : null;
+
+/* Preços que a pessoa realmente paga no checkout, já com a taxa de serviço da
+   Cakto embutida — a oferta é cadastrada por R$ 0,99 a menos, de cada lado,
+   justamente para o total bater com o que se anuncia aqui.
+
+   O equivalente mensal do anual é DERIVADO, não escrito à mão: um número solto
+   aqui envelheceria calado no dia em que o preço mudasse. E é "equivale a", não
+   "12x de", de propósito — parcelamento é ajuste de checkout no painel da
+   Cakto, e prometer parcela numa tela de cobrança sem ter certeza de que ela
+   existe é a pior promessa possível. */
+const PRECO_MENSAL = 9.9;
+const PRECO_ANUAL = 99.97;
+const reais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+const equivalenteMensalDoAnual = reais(PRECO_ANUAL / 12);
+const economiaAnual = reais(PRECO_MENSAL * 12 - PRECO_ANUAL);
+
 const gerenciamentoConfigurado =
   process.env.EXPO_PUBLIC_BILLING_URL ?? process.env.EXPO_PUBLIC_KIWIFY_BILLING_URL;
 const destinoGerenciamento = gerenciamentoConfigurado?.startsWith('https://')
@@ -41,7 +62,9 @@ export default function AssinarScreen() {
     <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.eyebrow}>GRANA. COMPLETO</Text>
-        <Text style={styles.title}>Seu controle financeiro continua por R$ 9,90/mês.</Text>
+        {/* O preço saiu do título e foi para os cartões de plano: com dois
+            preços na tela, cravar um deles aqui em cima contradiz o outro. */}
+        <Text style={styles.title}>Seu controle financeiro continua.</Text>
         <Text style={styles.body}>
           {/* Dizia "o assistente pelo WhatsApp". Esse canal está desligado
               por decisão (flag `whatsapp`), e prometer num ecrã de COBRANÇA
@@ -88,21 +111,57 @@ export default function AssinarScreen() {
             </View>
           )
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            disabled={!ligado('assinatura_checkout')}
-            accessibilityState={{ disabled: !ligado('assinatura_checkout') }}
-            onPress={() => Linking.openURL(destinoCompra)}
-            style={({ pressed }) => [
-              styles.primary,
-              pressed && styles.pressed,
-              !ligado('assinatura_checkout') && { opacity: 0.5 },
-            ]}
-          >
-            <Text style={styles.primaryText}>
-              {ligado('assinatura_checkout') ? 'Assinar o Grana.' : 'Pagamento indisponível no momento'}
-            </Text>
-          </Pressable>
+          <View style={styles.planos}>
+            {/* O anual é o foco: card com moldura de destaque, valor grande e o
+                equivalente mensal logo abaixo, que é o argumento — ele fica
+                MENOR que a mensalidade avulsa. O mensal continua ali, em botão
+                discreto, porque esconder a opção mais barata de entrada faria
+                quem não pode pagar o ano sair da tela sem assinar nada. */}
+            {destinoAnual && ligado('assinatura_checkout') ? (
+              <View style={styles.destaque}>
+                <Text style={styles.selo}>MAIS VANTAJOSO</Text>
+                <View style={styles.destaqueLinha}>
+                  <Text style={styles.destaqueValor}>{reais(PRECO_ANUAL)}</Text>
+                  <Text style={styles.destaquePeriodo}>/ano</Text>
+                </View>
+                <Text style={styles.destaqueApoio}>
+                  Equivale a {equivalenteMensalDoAnual} por mês. Você economiza {economiaAnual} no ano.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Assinar o plano anual por ${reais(PRECO_ANUAL)} ao ano`}
+                  onPress={() => Linking.openURL(destinoAnual)}
+                  style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+                >
+                  <Text style={styles.primaryText}>Assinar o plano anual</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={!ligado('assinatura_checkout')}
+              accessibilityState={{ disabled: !ligado('assinatura_checkout') }}
+              onPress={() => Linking.openURL(destinoCompra)}
+              style={({ pressed }) => [
+                destinoAnual && ligado('assinatura_checkout') ? styles.secondary : styles.primary,
+                pressed && styles.pressed,
+                !ligado('assinatura_checkout') && { opacity: 0.5 },
+              ]}
+            >
+              <Text
+                style={
+                  destinoAnual && ligado('assinatura_checkout') ? styles.secondaryText : styles.primaryText
+                }
+              >
+                {!ligado('assinatura_checkout')
+                  ? 'Pagamento indisponível no momento'
+                  : destinoAnual
+                    ? `Prefiro mensal, ${reais(PRECO_MENSAL)} por mês`
+                    : 'Assinar o Grana.'}
+              </Text>
+            </Pressable>
+          </View>
         )}
         <Pressable
           accessibilityRole="button"
@@ -207,5 +266,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  planos: { gap: spacing.md },
+  /* Moldura no tom de acento, não um cinza a mais: o destaque precisa vencer
+     o botão do mensal logo abaixo sem depender de tamanho de fonte. */
+  destaque: {
+    gap: spacing.sm,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: theme.accent2,
+    backgroundColor: theme.paper,
+    padding: spacing.lg,
+  },
+  selo: {
+    alignSelf: 'flex-start',
+    color: theme.accent2,
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    lineHeight: 15,
+    letterSpacing: 1.1,
+  },
+  // `baseline` para o "/ano" assentar na base do número, não no meio dele.
+  destaqueLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
+  destaqueValor: { color: theme.ink, fontFamily: fonts.regular, fontSize: 30, lineHeight: 36 },
+  destaquePeriodo: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: 15, lineHeight: 20 },
+  destaqueApoio: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: 14, lineHeight: 20 },
   pressed: { opacity: 0.72 },
 });
