@@ -64,6 +64,14 @@ supabase/.temp/
 # próprio Claude Code é por-máquina, não compartilhada entre as duas máquinas
 .claude/settings.local.json
 
+# Configuracao de servidor MCP com escopo de PROJETO. O `claude mcp add` grava
+# as credenciais em texto puro aqui quando alguem passa `-s project`. O padrao
+# do comando e escopo local, que vai para ~/.claude.json e fica fora do repo —
+# mas basta uma flag para o segredo cair aqui dentro. Em 10/09/2026 o MCP da
+# Cakto foi adicionado com credencial de ESCRITA em producao; se aquilo tivesse
+# ido para o escopo de projeto, teria virado commit publico.
+.mcp.json
+
 # Temporarios do Google Drive Desktop, que sincroniza esta pasta
 .tmp.driveupload/
 .tmp.drivedownload/

@@ -12,7 +12,7 @@ Como foi adicionado (o autor forneceu as credenciais):
 
     claude mcp add --transport http cakto https://mcp.cakto.com.br       --header "X-Cakto-Client-Id: <id>"       --header "X-Cakto-Client-Secret: <segredo>"
 
-As credenciais ficam em `C:UsersUser.claude.json`, com escopo de projeto —
+As credenciais ficam em `C:\Users\User\.claude.json`, com escopo de projeto —
 **fora do repositório**, conferido. Nunca commitá-las.
 
 **Oito ferramentas**, sendo as úteis: `cakto_whoami` (mostra ambiente e
