@@ -25,15 +25,14 @@ const destinoAnual = anualConfigurado?.startsWith('https://') ? anualConfigurado
    Cakto embutida — a oferta é cadastrada por R$ 0,99 a menos, de cada lado,
    justamente para o total bater com o que se anuncia aqui.
 
-   O equivalente mensal do anual é DERIVADO, não escrito à mão: um número solto
-   aqui envelheceria calado no dia em que o preço mudasse. E é "equivale a", não
-   "12x de", de propósito — parcelamento é ajuste de checkout no painel da
-   Cakto, e prometer parcela numa tela de cobrança sem ter certeza de que ela
-   existe é a pior promessa possível. */
+   O valor da parcela é DERIVADO, não escrito à mão: um número solto aqui
+   envelheceria calado no dia em que o preço mudasse. Parcelamento em até 12x
+   confirmado no painel da Cakto (Configurações do Cartão de Crédito, print de
+   10/09/2026) — antes disso o texto dizia "equivale a" por cautela. */
 const PRECO_MENSAL = 9.9;
 const PRECO_ANUAL = 99.97;
 const reais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
-const equivalenteMensalDoAnual = reais(PRECO_ANUAL / 12);
+const parcelaAnual = reais(PRECO_ANUAL / 12);
 const economiaAnual = reais(PRECO_MENSAL * 12 - PRECO_ANUAL);
 
 const gerenciamentoConfigurado =
@@ -125,7 +124,7 @@ export default function AssinarScreen() {
                   <Text style={styles.destaquePeriodo}>/ano</Text>
                 </View>
                 <Text style={styles.destaqueApoio}>
-                  Equivale a {equivalenteMensalDoAnual} por mês. Você economiza {economiaAnual} no ano.
+                  12x de {parcelaAnual} no cartão, ou à vista. Você economiza {economiaAnual} no ano.
                 </Text>
                 <Pressable
                   accessibilityRole="button"

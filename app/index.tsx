@@ -1413,7 +1413,7 @@ function ConteudoWeb() {
                     <Text style={styles.precoPeriodo}>/ano</Text>
                   </View>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                    Equivale a {emReais(PRECO_ANUAL / 12)} por mês. Você economiza{' '}
+                    12x de {emReais(PRECO_ANUAL / 12)} no cartão, ou à vista. Você economiza{' '}
                     {emReais(PRECO_MENSAL * 12 - PRECO_ANUAL)} no ano.
                   </Text>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>

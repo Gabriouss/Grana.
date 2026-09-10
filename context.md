@@ -1,5 +1,37 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — parcelamento e taxa de produtor confirmados no painel
+
+O autor mandou três prints do painel da Cakto que fecharam duas pendências do
+registro anterior.
+
+**Parcelamento em até 12x já estava configurado** (Configurações do Cartão de
+Crédito). A copy que dizia "equivale a R$ 8,33 por mês" — cautelosa, porque eu
+não tinha certeza de que a parcela existia — virou "12x de R$ 8,33", em
+`app/assinar.tsx` e `app/index.tsx`.
+
+**A taxa de produtor foi confirmada, e bate com o que eu tinha usado sem
+confirmação.** O painel de métodos de pagamento mostra o valor líquido da
+oferta mensal (R$ 8,91): cartão R$ 5,98, Pix R$ 6,42. Contas:
+
+    cartão: 8,91 × (1 − 4,99%) − 2,49 = 5,98  (bate exato)
+    pix:    8,91 − 2,49                = 6,42  (bate exato)
+
+Ou seja, 4,99% + R$ 2,49 no cartão e R$ 2,49 fixo no Pix são os números reais
+da conta, não só o publicado genericamente pela Cakto. Os cálculos de
+lucratividade do plano anual do registro anterior **continuam válidos**.
+
+**Achado que MUDA uma recomendação anterior:** Pix Automático líquido é
+R$ 5,62 — menor que o Pix comum (R$ 6,42) e menor que o cartão. É o oposto do
+que se esperava pelo mercado em geral, onde Pix Automático costuma ser o mais
+barato. Na Cakto especificamente, aparenta não ser. **Não recomendar Pix
+Automático como método de destaque no checkout até confirmar com o suporte
+da Cakto por que o líquido é menor** — a fórmula exata não foi determinada.
+Cartão continua sendo o método padrão certo, que é como já está configurado.
+
+Verificado: `tsc` limpo, `test:parser` com as 1144 guardas do design system.
+
+
 ## 10/09/2026 — plano anual, com o anual em destaque
 
 O autor pediu plano anual com parcelamento, com o anual como foco comercial.
