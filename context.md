@@ -1,5 +1,44 @@
 # Contexto do projeto — Grana.
 
+## 10/09/2026 — cortesia para os testers, e a cobrança segue DESLIGADA
+
+O autor decidiu ligar a cobrança em algum momento, mas **não antes de a compra
+de teste na Cakto provar o webhook**. Ordem escolhida por ele: provar primeiro,
+cobrar depois. O motivo é direto — se `enforce_subscriptions` virar `true` com
+o webhook quebrado, quem pagar não recebe acesso, e o defeito aparece pelo
+suporte em vez de pelo log.
+
+### O que estava prestes a dar errado
+
+`enforce_subscriptions` está `false`, então o app é gratuito na prática. Havia
+**9 contas e 1 assinatura** — só a do próprio autor, concedida à mão. Ligar a
+cobrança naquele estado jogaria **8 pessoas na tela de venda no mesmo
+instante**, incluindo os testers que nunca vão pagar.
+
+### O que foi feito
+
+`conceder_acesso_cortesia()` aplicada às 9 contas existentes, sem prazo, com
+motivo "tester beta". Conferido depois: 9 cortesias ativas, 0 vendas reais e
+**0 contas que ficariam bloqueadas** se a chave virasse hoje.
+
+Três propriedades que importam e valem lembrar:
+
+- Cortesia nasce com `provider = 'interno'` e **nunca conta como venda** — não
+  há risco de confundir tester com cliente pagante em relatório de receita.
+- Vale só para quem JÁ existia. Quem se cadastrar a partir de agora precisa
+  assinar, que é o comportamento desejado ao ligar a cobrança.
+- É reversível conta a conta com `revogar_acesso_cortesia(email)`, que só
+  apaga cortesia e nunca encosta numa assinatura paga.
+
+### Ordem acordada daqui para frente
+
+1. Compra de teste real na Cakto (prova painel → webhook → banco).
+2. Só então ligar `enforce_subscriptions`.
+
+**Ainda não feito:** a compra de teste. `webhook_events` segue com `eas` (8) e
+`whatsapp` (1), zero da Cakto.
+
+
 ## 10/09/2026 — parcelamento e taxa de produtor confirmados no painel
 
 O autor mandou três prints do painel da Cakto que fecharam duas pendências do
