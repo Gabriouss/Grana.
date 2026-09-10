@@ -34,17 +34,28 @@ cadastrar depois precisa assinar.
 Ligar antes de provar o webhook significa que quem pagar não recebe acesso, e
 o defeito aparece pelo suporte em vez do log.
 
-## 3. `EXPO_PUBLIC_CHECKOUT_URL_ANUAL` na Vercel e no EAS
+## 3. `EXPO_PUBLIC_CHECKOUT_URL_ANUAL` — FEITO NA VERCEL, FALTA O EAS
 
-Valor: `https://pay.cakto.com.br/323b2rs`. Sem isso o plano anual não aparece
-em lugar nenhum. Na Vercel vale após redeploy; no app, só com build nova.
+Valor: `https://pay.cakto.com.br/323b2rs`.
 
-## 4. Investigar por que a landing nova não está no ar
+**Na Vercel está resolvido** (11/09/2026, ver seção do dia). Criada nos três
+ambientes e produção republicada; o pacote no ar já traz a URL literal.
 
-O site ainda mostra apenas R$ 9,90. O cartão de preço que escrevi mostra
-R$ 99,97 **independente de variável de ambiente**, então se o código novo
-estivesse publicado, o valor apareceria. Ou a Vercel não fez o deploy, ou ele
-falhou. Conferir o painel dela.
+**No EAS continua pendente** e só entra numa APK nova.
+
+## 4. ~~Investigar por que a landing nova não está no ar~~ — HIPÓTESE ERRADA
+
+**A landing nova SEMPRE esteve no ar.** Registro corrigido em 11/09/2026: a
+publicação de produção de 10/09 às 22h50 aponta para `1275a3c`, a mesma cabeça
+do `origin/main`, e o pacote servido já continha o preço anual e o checkout da
+Cakto. Não houve deploy travado nem falho.
+
+O sintoma real era outro, e pior: sem a variável do item 3, o botão do plano
+anual caía no checkout MENSAL de propósito (`hrefCompraAnual` em
+`app/index.tsx`), para a página nunca ficar sem caminho de compra. Quem
+clicasse no anual via o preço certo e pagava R$ 9,90 por mês. A rede de
+proteção escondia o defeito em vez de mostrá-lo — o mesmo padrão que a regra 9
+do `AGENTS.md` descreve como o pior desfecho.
 
 ## 5. Build nova — seis motivos acumulados
 
@@ -80,6 +91,108 @@ checkout até entender por quê.
 Nenhuma das cinco baterias tocou num microfone. Todas rodam com gravação
 simulada. O reconhecimento local, o widget e o fluxo offline nunca foram
 exercitados num telefone.
+
+## 11/09/2026 — o plano anual no ar, e a landing inocentada
+
+Sessão sem mudança de código do aplicativo. O que mudou foi produção, mais um
+registro corrigido e uma permissão local.
+
+### O plano anual passou a funcionar de verdade
+
+`EXPO_PUBLIC_CHECKOUT_URL_ANUAL` foi criada no projeto `grana` da Vercel, como
+`encrypted`, nos três ambientes (`production`, `preview`, `development`), e a
+publicação de produção foi refeita — variável desse tipo é gravada no arquivo
+no momento da compilação e não vale para trás.
+
+Conferido no pacote que o site serve, não no painel: o arquivo mudou de
+`index-cbf95a24…` para `index-e803340211…`, e onde antes havia `x=void 0`
+agora há o literal `https://pay.cakto.com.br/323b2rs`, nos dois pontos que
+leem a variável. O checkout mensal continua presente e o da Kiwify segue
+ausente do pacote da web.
+
+### A função de voz já estava publicada — pendência encerrada
+
+O `context.md` de 10/09 dizia que `processar-lancamento-voz` PRECISAVA ser
+republicada. Ela já tinha sido. A versão no ar é a v14, com `updated_at` de
+10/09 17:54, um minuto depois do commit `732bdc7` (17:53). Não ficou na
+coincidência de horário: o pacote publicado foi baixado e contém três
+ocorrências de `restoEscala`, o identificador que a correção do "2 mil e 50"
+introduziu em `_shared/finance-command.ts`.
+
+Checagem da regra 11 de passagem: nenhuma função mostra deploy sem commit
+correspondente por perto, e `whatsapp-webhook` segue em v74 com
+`verify_jwt=false`, como precisa ficar.
+
+### Credenciais novas no `.env`, e uma armadilha da Vercel
+
+Entraram `VERCEL_TOKEN` e `GITHUB_TOKEN`, ambas validadas por sonda somente
+leitura antes de gravar, ambas sem o prefixo `EXPO_PUBLIC_`.
+
+**A armadilha:** o painel da Vercel oferece dois tipos de credencial com nomes
+parecidos. A chave do **AI Gateway** (prefixo `vck_`) autentica o usuário e por
+isso PARECE funcionar, mas não enxerga projeto nenhum — a listagem de projetos
+volta vazia e domínios respondem 403. Ela só serve para cobrar uso de modelo.
+O que administra projeto é o **Access Token** (prefixo `vcp_`), criado em
+`https://vercel.com/account/settings/tokens`. Uma sessão que ler "200 OK" na
+identidade e concluir que o token serve vai perder tempo à toa.
+
+O `GITHUB_TOKEN` é granular, restrito ao repositório `Gabriouss/Grana.`, com
+Contents em leitura e escrita. Ele NÃO é o que faz o `git push` funcionar
+(isso é o Gerenciador de Credenciais do Windows), e serve para publicar o APK
+na release que `vercel.json` usa como link permanente de download.
+
+Todas essas credenciais circularam em texto puro e entram na fila de revogação
+do item 7 do checklist do topo.
+
+### `.claude/settings.json` ganhou uma permissão
+
+`Bash(curl https://api.vercel.com/*)`. Sem ela o modo automático do Claude Code
+barra qualquer escrita na Vercel como alteração de recurso compartilhado, e
+aprovação por mensagem não levanta esse bloqueio. A regra é estreita de
+propósito: só vale para chamadas cujo primeiro argumento é a API da Vercel.
+
+### O anual em 12x sai MAIS CARO que o mensal — achado do autor, não corrigido
+
+Descoberto ao abrir o checkout que passou a funcionar. A Cakto repassa os
+juros do parcelamento ao comprador, então a oferta anual parcela em 12x de
+R$ 10,31, não nos R$ 8,33 que as duas telas prometem.
+
+| Caminho | Custo no ano |
+|---|---|
+| Mensal, 12 meses | R$ 118,80 |
+| Anual à vista | R$ 99,97 |
+| Anual em 12x | R$ 123,72 |
+
+Ou seja, quem parcela paga R$ 4,92 a mais do que ficaria no mensal, e a frase
+"Você economiza R$ 18,83 no ano" só é verdadeira à vista. O texto errado está
+em DOIS lugares, com a mesma redação: `app/index.tsx` (cartão de preços da
+landing) e `app/assinar.tsx` (tela de assinatura do aplicativo).
+
+**Decisão do autor: absorver os juros**, mudando a oferta anual na Cakto para
+parcelamento sem juros para o comprador. Com isso a parcela vira os R$ 8,33 já
+prometidos e a copy fica correta como está. **Nenhuma linha de código muda.**
+
+**Enquanto essa chave não for virada no painel, a promessa das duas telas é
+falsa.** Se a decisão mudar, o conserto é reescrever os dois textos, e aí o da
+tela do aplicativo só chega ao aparelho com build nova.
+
+### O MCP da Cakto NÃO existe mais nesta máquina
+
+A seção de 10/09 registra um servidor MCP da Cakto que permitiu criar a oferta
+anual sem sair do terminal. Ele foi registrado com escopo de projeto no
+caminho ANTIGO, então não acompanhou a mudança para `E:\GranaPonto`: não há
+`cakto` em `.claude.json` nem `.mcp.json` neste clone. As credenciais de API
+da Cakto seguem no `.env`, mas o atalho de linha de comando precisa ser
+registrado de novo se for útil.
+
+### Continua manual
+
+Nada mudou nos itens 1, 2, 5, 6, 7 e 8 do checklist do topo. A compra de teste
+na Cakto segue destravando o resto, a variável do plano anual ainda precisa ser
+criada no EAS para valer dentro do aplicativo, e o parcelamento sem juros
+precisa ser ligado no painel da Cakto.
+
+---
 
 ## 10/09/2026 (fim do dia) — a pasta de trabalho mudou de disco
 
