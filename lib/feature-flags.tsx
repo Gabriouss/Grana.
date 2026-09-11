@@ -101,7 +101,16 @@ export function FlagsProvider({ children }: PropsWithChildren) {
         return f ? avaliar(f) : true; // chave desconhecida = ligada
       },
       flag: (chave) => flags[chave] ?? null,
-      avisosAtivos: Object.values(flags).filter((f) => !avaliar(f) && !!f.mensagem),
+      /* `whatsapp` nunca vira pop-up. O canal saiu INTEIRO da interface em
+         11/09/2026 — não há botão, linha de Perfil, passo de onboarding nem
+         passo de tour que o cite. A linha continua no banco (`enabled=false`,
+         com mensagem) porque o webhook e o vínculo de quem já pareou seguem
+         existindo do lado do servidor; sem este filtro, o AvisoFlagModal
+         abriria dizendo "O lançamento por WhatsApp está temporariamente fora
+         do ar" e reapresentaria a ferramenta a quem nunca a viu. */
+      avisosAtivos: Object.values(flags).filter(
+        (f) => f.key !== 'whatsapp' && !avaliar(f) && !!f.mensagem
+      ),
       recarregar,
     };
   }, [flags, recarregar]);

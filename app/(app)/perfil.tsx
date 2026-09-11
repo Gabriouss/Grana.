@@ -32,17 +32,13 @@ import { useAppLock } from '@/lib/app-lock-context';
 import { useScreenCapture } from '@/lib/screen-capture-context';
 import { theme, radius, spacing, screenRhythm, fonts, type, lh } from '@/lib/theme';
 import {
-  createWhatsappPairing,
   deleteUserAccount,
-  fetchWhatsappLink,
   reauthenticate,
-  unlinkWhatsapp,
   fetchBills,
   fetchCreditCards,
   fetchCardInvoicePayments,
   fetchTransactions,
 } from '@/lib/data';
-import type { WhatsappLink } from '@/lib/types';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
 import {
@@ -60,12 +56,9 @@ import { isSameMonth, todayISO } from '@/lib/format';
 import { calculateStreakAndWeek } from '@/lib/gamification';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import { LIMITS } from '@/lib/limits';
-import { abrirConversaDoBot, abrirPareamentoNoWhatsapp, numeroVinculadoParaExibir } from '@/lib/whatsapp';
-import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
 import { carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import AppPressable from '@/components/AppPressable';
-import PareamentoWhatsapp from '@/components/PareamentoWhatsapp';
 import { useFlags } from '@/lib/feature-flags';
 import PasswordInput from '@/components/PasswordInput';
 import { useKeyboardHeight } from '@/components/Sheet';
@@ -139,19 +132,15 @@ export default function PerfilScreen() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
-  const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [atalhosOpen, setAtalhosOpen] = useState(false);
   /* Quantas cópias do widget de voz estão na tela inicial. Relido a cada foco
      porque a pessoa pode ter adicionado (ou removido) fora do app. */
   const [widgetsInstalados, setWidgetsInstalados] = useState<Record<TipoWidget, number>>(
     CONTAGEM_WIDGETS_INICIAL
   );
-  const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
-  const [whatsappSaving, setWhatsappSaving] = useState(false);
   const nomeModalRef = useRef<View>(null);
   const reauthModalRef = useRef<View>(null);
   const atalhosModalRef = useRef<View>(null);
-  const whatsappModalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
   /* Os quatro modais que compartilham `reauthScrim` centralizam um card sem
      rolagem, e dois deles abrem com `autoFocus` num campo de texto — em tela
@@ -165,7 +154,6 @@ export default function PerfilScreen() {
   useModalAccessibility(nomeModalRef, nomeOpen);
   useModalAccessibility(reauthModalRef, reauthOpen);
   useModalAccessibility(atalhosModalRef, atalhosOpen);
-  useModalAccessibility(whatsappModalRef, whatsappOpen);
 
 
   function triggerToast(msg: string) {
@@ -256,15 +244,6 @@ export default function PerfilScreen() {
     setDiagnostico(await carregarDiagnostico());
   }, []);
 
-  const recarregarWhatsapp = useCallback(async () => {
-    if (isDemoMode) return;
-    try {
-      setWhatsappLink(await fetchWhatsappLink());
-    } catch {
-      setWhatsappLink(null);
-    }
-  }, [isDemoMode]);
-
   const recarregarWidgets = useCallback(() => {
     if (!widgetDisponivel) return;
     setWidgetsInstalados({
@@ -279,10 +258,9 @@ export default function PerfilScreen() {
   useEffect(() => {
     recarregarPerfil();
     recarregarDiagnostico();
-    recarregarWhatsapp();
     carregarNotifPrefs().then(setNotifPrefs);
     recarregarWidgets();
-  }, [recarregarPerfil, recarregarDiagnostico, recarregarWhatsapp, recarregarWidgets]);
+  }, [recarregarPerfil, recarregarDiagnostico, recarregarWidgets]);
 
   useEffect(() => {
     if (!widgetDisponivel) return;
@@ -351,13 +329,6 @@ export default function PerfilScreen() {
        a pessoa aceitou relendo a contagem depois. */
     setTimeout(recarregarWidgets, 1500);
   }
-
-  /* Com o código na tela, o app confere sozinho: a pessoa manda a mensagem,
-     volta pro app e já encontra o vínculo feito, sem apertar "verificar". */
-  useAguardarVinculoWhatsapp(
-    whatsappOpen && !!whatsappLink && !whatsappLink.verified,
-    setWhatsappLink
-  );
 
   /** O push diário sincroniza a preferência no servidor; em Expo Go ou numa
    * falha de cadastro, a janela local assume sem criar notificações duplas.
@@ -433,47 +404,6 @@ export default function PerfilScreen() {
     }
   }
 
-  function abrirWhatsapp() {
-    if (isDemoMode) {
-      Alert.alert('Modo de exemplo ativo', 'Desative "Dados de exemplo" no Perfil para vincular um número de verdade.');
-      return;
-    }
-    setWhatsappOpen(true);
-  }
-
-  /* Sem pedir o número: quem confirma o vínculo é o webhook, e ele grava o
-     telefone de quem REALMENTE mandou a mensagem por cima do que fosse
-     digitado aqui. Ver lib/whatsapp.ts. */
-  async function handleGerarPareamento() {
-    setWhatsappSaving(true);
-    try {
-      setWhatsappLink(await createWhatsappPairing());
-    } catch (e: any) {
-      Alert.alert('Erro ao gerar código', e.message);
-    } finally {
-      setWhatsappSaving(false);
-    }
-  }
-
-  function confirmarDesvincularWhatsapp() {
-    Alert.alert('Desvincular WhatsApp', 'Você vai parar de conseguir lançar por mensagem até parear de novo.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Desvincular',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await unlinkWhatsapp();
-            setWhatsappLink(null);
-            setWhatsappOpen(false);
-            triggerToast('WhatsApp desvinculado');
-          } catch (e: any) {
-            Alert.alert('Erro ao desvincular', e.message);
-          }
-        },
-      },
-    ]);
-  }
 
   function abrirEdicaoNome() {
     setNomeRascunho(perfil?.nome ?? '');
@@ -653,26 +583,6 @@ export default function PerfilScreen() {
             </Text>
             <Text style={styles.rowValue}>{ligado('lembretes') ? 'Ativados' : 'Instável'}</Text>
           </View>
-          {/* Diferente do ícone no cabeçalho da Início, aqui a linha CONTINUA
-              visível e só fica desabilitada: no Perfil ela tem rótulo, então
-              cabe explicar. Sumir daria a impressão de que a funcionalidade
-              acabou, e o vínculo de quem já pareou continua intacto — o
-              interruptor esconde a entrada, nunca apaga dado. */}
-          <AppPressable
-            style={styles.tappableRow}
-            onPress={abrirWhatsapp}
-            disabled={!ligado('whatsapp')}
-            accessibilityState={{ disabled: !ligado('whatsapp') }}
-          >
-            <Text style={[styles.rowKey, !ligado('whatsapp') && styles.rowKeyDesativado]}>
-              Lançar pelo WhatsApp
-            </Text>
-            <Text style={styles.rowValue}>
-              {!ligado('whatsapp')
-                ? 'Instável'
-                : whatsappLink?.verified ? 'Vinculado ✓' : whatsappLink ? 'Aguardando código' : 'Vincular'} &gt;
-            </Text>
-          </AppPressable>
           <AppPressable style={styles.tappableRow} onPress={() => setAtalhosOpen(true)}>
             <Text style={styles.rowKey}>Atalhos rápidos</Text>
             <Text style={styles.rowValue}>Configurar &gt;</Text>
@@ -1102,84 +1012,6 @@ export default function PerfilScreen() {
         </ScrollView>
       </Modal>
 
-      {/* Vínculo de WhatsApp */}
-      <Modal visible={whatsappOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setWhatsappOpen(false)}>
-        <ScrollView
-          style={styles.reauthScrimFundo}
-          contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View ref={whatsappModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
-            <Text style={styles.reauthTitle}>Lançar pelo WhatsApp</Text>
-
-            {whatsappLink?.verified ? (
-              <>
-                <Text style={styles.reauthText}>
-                  Vinculado ao número {numeroVinculadoParaExibir(whatsappLink.phone) ?? whatsappLink.phone}.
-                  Mande uma mensagem descrevendo o lançamento (ex: "Mercado de 120 reais") que o
-                  Grana. registra automaticamente.
-                </Text>
-                <AppPressable
-                  style={({ hovered }) => [styles.whatsappAbrir, hovered && { opacity: 0.88 }]}
-                  onPress={() => abrirConversaDoBot()}
-                  accessibilityRole="button"
-                  accessibilityLabel="Abrir a conversa do Grana. no WhatsApp"
-                >
-                  <Ionicons name="logo-whatsapp" size={19} color={theme.paper} />
-                  <Text style={styles.whatsappAbrirTexto}>Abrir conversa</Text>
-                </AppPressable>
-                <AppPressable
-                  style={({ hovered }) => [styles.reauthDanger, hovered && { opacity: 0.88 }]}
-                  onPress={confirmarDesvincularWhatsapp}
-                >
-                  <Text style={styles.reauthDangerText}>Desvincular número</Text>
-                </AppPressable>
-              </>
-            ) : whatsappLink ? (
-              <>
-                {ligado('whatsapp') && (
-                  <PareamentoWhatsapp
-                    codigo={whatsappLink.pairing_code}
-                    chamada="O código vale por 15 minutos."
-                  />
-                )}
-                <AppPressable
-                  style={({ hovered }) => [styles.reauthCancel, hovered && { opacity: 0.88 }]}
-                  onPress={handleGerarPareamento}
-                  disabled={whatsappSaving}
-                >
-                  <Text style={styles.reauthCancelText}>
-                    {whatsappSaving ? 'Gerando…' : 'Código expirou? Gerar um novo'}
-                  </Text>
-                </AppPressable>
-              </>
-            ) : (
-              <>
-                <Text style={styles.reauthText}>
-                  Informe seu número com DDD. Vamos gerar um código de 6 dígitos para você
-                  confirmar pelo próprio WhatsApp.
-                </Text>
-                <AppPressable
-                  style={({ hovered }) => [styles.nomeSalvar, hovered && { opacity: 0.88 }]}
-                  onPress={handleGerarPareamento}
-                  disabled={whatsappSaving}
-                >
-                  {whatsappSaving ? (
-                    <ActivityIndicator color={theme.paper} />
-                  ) : (
-                    <Text style={styles.nomeSalvarTexto}>Gerar código de pareamento</Text>
-                  )}
-                </AppPressable>
-              </>
-            )}
-
-            <AppPressable style={styles.reauthCancel} onPress={() => setWhatsappOpen(false)}>
-              <Text style={styles.reauthCancelText}>Fechar</Text>
-            </AppPressable>
-          </View>
-        </ScrollView>
-      </Modal>
-
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
     </SafeAreaView>
   );
@@ -1201,14 +1033,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: theme.paper,
   },
-  whatsappCode: {
-    color: theme.ink,
-    fontSize: type.valor,
-    lineHeight: lh(type.valor, 'valor'),
-    letterSpacing: 6,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-    paddingVertical: spacing.sm, fontFamily: fonts.regular },
   nomeSalvar: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   nomeSalvarTexto: { color: theme.paper, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
@@ -1236,33 +1060,6 @@ const styles = StyleSheet.create({
   reauthCancel: { paddingVertical: spacing.md, alignItems: 'center' },
   reauthCancelText: { color: theme.inkSoft, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.light },
-  /* Verde do WhatsApp: única cor emprestada de outra marca no app, e aqui ela
-     informa — diz pra onde o toque leva antes de a pessoa ler o rótulo. */
-  whatsappAbrir: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: '#25D366',
-    borderRadius: radius.md,
-    paddingVertical: 14,
-  },
-  whatsappAbrirTexto: { color: theme.paper, fontSize: type.corpo,
-  lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
-  whatsappCodigoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    borderRadius: radius.md,
-    backgroundColor: theme.paper,
-    paddingHorizontal: spacing.md,
-  },
-  whatsappCopiar: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone },
-  whatsappCopiarTexto: { color: theme.inkFaint, fontSize: type.apoio,
-  lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.light },
   atalhoLinha: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -195,6 +195,44 @@ function carregar(caminho, deps, globais = {}) {
       'a regra le o flag guardado e mantem o canal desligado'
     );
 
+    /* ── 4. Nenhum vestigio do WhatsApp visivel na interface ───────────── */
+    const fontesDeTela = [
+      'app/(app)/index.tsx',
+      'app/(app)/perfil.tsx',
+      'components/OnboardingModal.tsx',
+      'lib/home-tour.ts',
+    ];
+    for (const arquivo of fontesDeTela) {
+      const fonte = fs.readFileSync(arquivo, 'utf8');
+      /* Tira comentario de bloco e de linha: o que sobra e codigo, e e nele
+         que uma mencao chegaria a tela. O historico escrito em comentario
+         continua — apagar o PORQUE junto com o QUE seria perder a explicacao
+         de uma decisao deliberada. */
+      const codigo = fonte
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+      ok(!/whatsapp/i.test(codigo), `${arquivo} nao cita WhatsApp fora de comentario`);
+    }
+
+    // Os componentes que so existiam para o canal nao voltam pelo disco.
+    for (const removido of [
+      'components/WhatsappBotSheet.tsx',
+      'components/PareamentoWhatsapp.tsx',
+      'hooks/useAguardarVinculoWhatsapp.ts',
+    ]) {
+      ok(!fs.existsSync(removido), `${removido} continua fora do repositorio`);
+    }
+
+    /* O pop-up de interruptor tambem nao pode reapresentar a ferramenta: a
+       linha segue no banco (enabled=false, COM mensagem) porque o webhook do
+       lado do servidor continua existindo, e sem este filtro o AvisoFlagModal
+       abriria dizendo que o lancamento por WhatsApp esta fora do ar. */
+    const fonteFlags = fs.readFileSync('lib/feature-flags.tsx', 'utf8');
+    ok(
+      /avisosAtivos[\s\S]{0,400}key !== 'whatsapp'/.test(fonteFlags),
+      'o aviso de ferramenta fora do ar ignora a chave whatsapp'
+    );
+
     console.log(`offline-video-11-09: ${passou} verificacoes OK`);
   })();
 }

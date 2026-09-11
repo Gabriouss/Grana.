@@ -75,7 +75,6 @@ import DatePickerModal from '@/components/DatePickerModal';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import TransactionSheet, { type ValoresLancamento } from '@/components/TransactionSheet';
-import WhatsappBotSheet, { jaViuExplicacaoDoBot, marcarExplicacaoDoBotVista } from '@/components/WhatsappBotSheet';
 import Toast from '@/components/Toast';
 import FabButton from '@/components/FabButton';
 import FadeIn from '@/components/FadeIn';
@@ -171,12 +170,6 @@ export default function InicioScreen() {
   const [billSaving, setBillSaving] = useState(false);
 
   // Date and Category pickers
-  /* Atalho pro bot de WhatsApp, no cabeçalho. O sheet é quem decide o destino
-     pelo estado do vínculo — aqui só se controla se ele está aberto e se a
-     explicação de estreia já foi lida. */
-  const [whatsappSheetOpen, setWhatsappSheetOpen] = useState(false);
-  const [explicacaoWhatsappVista, setExplicacaoWhatsappVista] = useState(true);
-
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [datePickerTarget, setDatePickerTarget] = useState<'tx' | 'bill'>('tx');
   const [catPickerOpen, setCatPickerOpen] = useState(false);
@@ -662,13 +655,6 @@ export default function InicioScreen() {
     setTxSheetOpen(true);
   }
 
-
-  /* Lê o sinalizador antes de abrir, e não na montagem da tela: assim a
-     explicação some já na segunda vez, sem depender de recarregar a Home. */
-  async function abrirWhatsappBot() {
-    setExplicacaoWhatsappVista(await jaViuExplicacaoDoBot());
-    setWhatsappSheetOpen(true);
-  }
 
   function openTxEdit(tx: Transaction) {
     setEditingTxId(tx.id);
@@ -1378,25 +1364,6 @@ export default function InicioScreen() {
         }
         right={
           <>
-            <View
-              ref={(n) => {
-                tourRefs.current.whatsapp = n;
-              }}
-              collapsable={false}
-            >
-              {/* Some quando o interruptor remoto desliga o WhatsApp. No
-                  cabeçalho é botão de ícone sem rótulo: desabilitado ele
-                  viraria um enfeite cinza sem explicação nenhuma, então
-                  esconder é mais honesto que mostrar quebrado. A explicação
-                  aparece no Perfil, onde a linha tem texto, e no pop-up. */}
-              {ligado('whatsapp') && (
-                <HeaderAction
-                  icon="logo-whatsapp"
-                  onPress={abrirWhatsappBot}
-                  accessibilityLabel="Lançar gastos pelo WhatsApp"
-                />
-              )}
-            </View>
             <HeaderAction
               icon={hidden ? 'eye-off-outline' : 'eye-outline'}
               onPress={() => {
@@ -1556,16 +1523,6 @@ export default function InicioScreen() {
         onAddExpense={() => router.push('/(app)/lancamentos?novoLancamento=out')}
         onAddBill={() => router.push('/(app)/contas?novaConta=1')}
         onAddCredit={() => router.push('/(app)/credito?novaCompra=1')}
-      />
-
-      <WhatsappBotSheet
-        visible={whatsappSheetOpen}
-        onClose={() => setWhatsappSheetOpen(false)}
-        explicar={!explicacaoWhatsappVista}
-        onExplicacaoVista={() => {
-          setExplicacaoWhatsappVista(true);
-          marcarExplicacaoDoBotVista();
-        }}
       />
 
       {/* Sheet de lançamento — mesmo componente das telas de Lançamentos e Crédito. */}

@@ -5,14 +5,18 @@ import { HOME_BLOCK_DESCRIPTIONS, type HomeBlockKey } from './home-layout';
  * Tour essencial da Início — 5 pontos tocáveis sobre elementos REAIS da
  * tela, não uma segunda pesquisa. O `OnboardingModal` já existe e já roda
  * no primeiro login, mas é um questionário (arquétipo financeiro,
- * orçamento, WhatsApp) que nunca aponta pra Home de verdade — depois dele
+ * orçamento) que nunca aponta pra Home de verdade — depois dele
  * a pessoa cai numa tela cheia de widgets sem explicação nenhuma. Este
  * arquivo só guarda o roteiro e a flag; a mecânica visual mora em
  * components/HomeTourOverlay.tsx, e a integração (refs, disparo) em
  * app/(app)/index.tsx.
  */
 
-export type HomeTourStepId = 'saldo' | 'lancar' | 'whatsapp' | 'credito' | 'graficos';
+/* O passo 'whatsapp' saiu em 11/09/2026 junto com todo vestígio do canal na
+   interface: ele prometia "manda um texto ou um áudio pro Granabô no WhatsApp"
+   para um número banido na Meta, e o tour é justamente a primeira coisa que
+   uma pessoa nova lê. */
+export type HomeTourStepId = 'saldo' | 'lancar' | 'credito' | 'graficos';
 
 export type HomeTourStep = {
   id: HomeTourStepId;
@@ -37,14 +41,6 @@ export const HOME_TOUR_STEPS: HomeTourStep[] = [
     titulo: 'Lance em um toque',
     texto:
       'Colar comprovante, importar CSV, escanear nota ou falar por voz — qualquer um desses vira lançamento sem digitar linha por linha.',
-  },
-  {
-    id: 'whatsapp',
-    titulo: 'Ou pelo WhatsApp',
-    /* Não citar foto/imagem: o webhook responde que só entende texto ou áudio
-       (supabase/functions/whatsapp-webhook/index.ts). O texto antigo prometia
-       "foto da nota", que nunca funcionou por esse canal. */
-    texto: 'Manda um texto ou um áudio pro Granabô no WhatsApp e ele lança pra você, sem nem abrir o app.',
   },
   {
     id: 'credito',

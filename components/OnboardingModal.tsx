@@ -18,12 +18,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget, lh } from '@/lib/theme';
 import * as Clipboard from 'expo-clipboard';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
-import { upsertBudgetsBatch, createWhatsappPairing, fetchWhatsappLink } from '@/lib/data';
+import { upsertBudgetsBatch } from '@/lib/data';
 
-import { numeroVinculadoParaExibir } from '@/lib/whatsapp';
-import { useAguardarVinculoWhatsapp } from '@/hooks/useAguardarVinculoWhatsapp';
 import { carregarPerfil, removerFoto, salvarFoto, salvarNome, LIMITE_NOME } from '@/lib/profile';
-import type { WhatsappLink } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
@@ -41,7 +38,6 @@ import {
 } from '@/lib/diagnostico';
 import { layoutDoPreset, salvarLayoutHome, type HomePreset } from '@/lib/home-layout';
 import AppPressable from './AppPressable';
-import PareamentoWhatsapp from './PareamentoWhatsapp';
 import { useKeyboardHeight } from './Sheet';
 import { useFlags } from '@/lib/feature-flags';
 
@@ -111,7 +107,7 @@ export const OPCOES_PRESET_HOME: {
    todos os `step === N` do diagnóstico já estavam escritos e renumerar sete
    blocos à mão é convite pra errar um. O rótulo mostrado à pessoa é
    `step + 1`, então ela lê "1 de 7" normalmente. */
-const TOTAL_ETAPAS = 7;
+const TOTAL_ETAPAS = 6;
 const PRIMEIRA_ETAPA = 0;
 
 function SeletorCard({
@@ -175,15 +171,6 @@ export default function OnboardingModal({
   const [ambicao, setAmbicao] = useState<Ambicao | null>(null);
   const [presetHome, setPresetHome] = useState<HomePreset>('completo');
 
-  const [whatsappLink, setWhatsappLink] = useState<WhatsappLink | null>(null);
-  const [whatsappSaving, setWhatsappSaving] = useState(false);
-  /* Três estados, não dois. "Não existe vínculo" e "não consegui saber" levam
-     a decisões OPOSTAS: no primeiro caso o código pode ser preparado sozinho,
-     no segundo isso apagaria um vínculo verificado — createWhatsappPairing
-     começa por um delete do vínculo anterior, e uma falha de rede momentânea
-     desligaria o WhatsApp de quem já usava, sem pedir nada e sem avisar. */
-  const [whatsappEstado, setWhatsappEstado] = useState<'carregando' | 'ok' | 'erro'>('carregando');
-
   /* Apresentação: nome e foto. O nome é salvo ao AVANÇAR, não a cada tecla —
      cada `salvarNome` é uma ida ao Supabase Auth, e salvar por caractere
      digitado transformaria um campo de texto numa enxurrada de requisições. A
@@ -214,9 +201,6 @@ export default function OnboardingModal({
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
     setOrcamentoAplicado(false);
-    // Se a pessoa já vinculou o WhatsApp antes (ex: refazendo o diagnóstico),
-    // o passo mostra o estado atual em vez de fingir que nunca foi feito.
-    setWhatsappEstado('carregando');
     /* Quem já tem nome ou foto (refazendo o diagnóstico, ou voltando depois
        de ter preenchido no Perfil) encontra os campos preenchidos em vez de
        uma tela em branco pedindo tudo de novo. */
@@ -228,18 +212,6 @@ export default function OnboardingModal({
       .catch(() => {
         setNome('');
         setFotoUrl(null);
-      });
-    fetchWhatsappLink()
-      .then((l) => {
-        setWhatsappLink(l);
-        setWhatsappEstado('ok');
-      })
-      /* Sem `finally`: o estado 'ok' é uma AFIRMAÇÃO de que a consulta
-         respondeu. Marcar carregado no finally tratava a falha como
-         "não tem vínculo" — que é justamente a leitura perigosa. */
-      .catch(() => {
-        setWhatsappLink(null);
-        setWhatsappEstado('erro');
       });
   }, [visible, initial]);
 
@@ -309,8 +281,10 @@ export default function OnboardingModal({
       if (!ambicao) return avisar('Escolha sua meta de economia mensal.');
       setStep(5);
     } else if (step === 5) {
-      setStep(6);
-    } else if (step === 6) {
+      /* Ia para o passo 6, que perguntava "Quer lançar gastos direto pelo
+         WhatsApp?". O passo saiu inteiro em 11/09/2026: o canal está banido na
+         Meta, e oferecê-lo na CRIAÇÃO DA CONTA é a primeira coisa que alguém
+         novo lê sobre o produto. O diagnóstico fecha aqui. */
       finalizar({
         organizacao: organizacao!,
         foco: foco!,
@@ -358,19 +332,6 @@ export default function OnboardingModal({
     }
   }
 
-  function recarregarVinculo() {
-    setWhatsappEstado('carregando');
-    fetchWhatsappLink()
-      .then((l) => {
-        setWhatsappLink(l);
-        setWhatsappEstado('ok');
-      })
-      .catch(() => {
-        setWhatsappLink(null);
-        setWhatsappEstado('erro');
-      });
-  }
-
   async function escolherFoto() {
     if (isDemoMode) return;
     /* Sem requestMediaLibraryPermissionsAsync antes: no SDK 57 o próprio
@@ -415,40 +376,6 @@ export default function OnboardingModal({
       /* segue o fluxo — dá pra ajustar depois no Perfil */
     }
   }
-
-  async function handleGerarPareamento() {
-    setWhatsappSaving(true);
-    try {
-      setWhatsappLink(await createWhatsappPairing());
-    } catch (e: any) {
-      Alert.alert('Erro ao gerar código', e.message);
-    } finally {
-      setWhatsappSaving(false);
-    }
-  }
-
-  /* O código é preparado ao CHEGAR no passo, não ao tocar no botão.
-     Duas razões, e a segunda é a que obriga:
-      1. quando a pessoa chega, já está tudo pronto — um toque e acabou;
-      2. na web, `Linking.openURL` vira `window.open`, que o navegador só
-         libera enquanto o clique ainda está sendo processado. Se o botão
-         precisasse esperar a rede criar o código antes de abrir, o
-         bloqueador de pop-up comeria a aba em silêncio — o pior tipo de
-         falha, porque não deixa rastro nenhum na tela. */
-  useEffect(() => {
-    if (!visible || step !== 6 || isDemoMode) return;
-    // Só com resposta confirmada de que NÃO existe vínculo. Ver whatsappEstado.
-    if (whatsappEstado !== 'ok' || whatsappLink || whatsappSaving) return;
-    void handleGerarPareamento();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, step, isDemoMode, whatsappEstado, whatsappLink]);
-
-  /* Enquanto o código está na tela, o app fica de olho sozinho: a pessoa
-     manda a mensagem, volta, e o passo já mudou pra "vinculado". */
-  useAguardarVinculoWhatsapp(
-    visible && step === 6 && !!whatsappLink && !whatsappLink.verified,
-    setWhatsappLink
-  );
 
   const rendaValida = parseAmount(renda) > 0;
   /* +1 porque a apresentação é o passo 0: sem isso a primeira tela abriria
@@ -678,64 +605,6 @@ export default function OnboardingModal({
             </View>
           )}
 
-          {step === 6 && (
-            <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>7 de {TOTAL_ETAPAS} · opcional</Text>
-              <Text style={styles.question}>Quer lançar gastos direto pelo WhatsApp?</Text>
-              <Text style={styles.hint}>
-                Mande uma mensagem como "Mercado de 120 reais" — o Grana. identifica valor,
-                categoria e registra sozinho. Dá pra configurar depois no Perfil também, se
-                preferir pular agora.
-              </Text>
-
-              {isDemoMode ? (
-                <Text style={[styles.hint, { marginTop: spacing.sm }]}>
-                  Indisponível no modo de exemplo — desative "Dados de exemplo" no Perfil para vincular um número de verdade.
-                </Text>
-              ) : whatsappLink?.verified ? (
-                <View style={styles.whatsappCard}>
-                  <View style={styles.whatsappOk}>
-                    <Ionicons name="checkmark-circle" size={22} color={theme.accent2} />
-                    <Text style={styles.whatsappCardText}>
-                      {numeroVinculadoParaExibir(whatsappLink.phone)
-                        ? `Pronto — ${numeroVinculadoParaExibir(whatsappLink.phone)} está vinculado.`
-                        : 'Pronto — seu WhatsApp está vinculado.'}{' '}
-                      Pode mandar seu primeiro lançamento assim que quiser.
-                    </Text>
-                  </View>
-                </View>
-              ) : whatsappLink ? (
-                /* Na criação de conta o passo some INTEIRO quando o
-                   WhatsApp está fora do ar — um passo travado com explicação
-                   de instabilidade é a primeira impressão do produto. */
-                ligado('whatsapp') ? (
-                <View style={styles.whatsappCard}>
-                  <PareamentoWhatsapp codigo={whatsappLink.pairing_code} />
-                </View>
-                ) : null
-              ) : whatsappEstado === 'erro' ? (
-                /* Não dá pra preparar o código sem saber se já existe vínculo —
-                   tentar às cegas apagaria um vínculo que talvez esteja lá. */
-                <View style={styles.whatsappCard}>
-                  <Text style={styles.whatsappCardText}>
-                    Não consegui checar seu vínculo agora. Confira a conexão e tente de novo — dá
-                    pra fazer isso depois no Perfil também.
-                  </Text>
-                  <AppPressable
-                    style={({ hovered }) => [styles.applyBtn, hovered && styles.applyBtnHover]}
-                    onPress={recarregarVinculo}
-                  >
-                    <Text style={styles.applyBtnText}>Tentar de novo</Text>
-                  </AppPressable>
-                </View>
-              ) : (
-                <View style={styles.whatsappCard}>
-                  <ActivityIndicator color={theme.ink} />
-                </View>
-              )}
-            </View>
-          )}
-
           {step === 7 && arquetipo && orcamento && respostas && (
             <View style={styles.stepContent}>
               <Text style={styles.eyebrow}>Seu diagnóstico</Text>
@@ -925,15 +794,6 @@ const styles = StyleSheet.create({
   planoNumeroTexto: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
   planoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
 
-  whatsappCard: {
-    backgroundColor: theme.paperRaised,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
   identidade: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
   avatar: {
     width: 76,
@@ -976,80 +836,6 @@ const styles = StyleSheet.create({
   },
   identidadeAjuda: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   removerFotoTexto: { color: theme.inkSoft, fontSize: type.legenda, fontFamily: fonts.light },
-  whatsappCardText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light, flex: 1 },
-  whatsappOk: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  /* Verde do WhatsApp de propósito: é o único lugar do app que empresta a cor
-     de outra marca, e aqui ela carrega a informação — diz pra onde o toque
-     leva antes de a pessoa ler o rótulo. */
-  whatsappBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: '#25D366',
-    borderRadius: radius.md,
-    paddingVertical: 14,
-  },
-  whatsappBtnHover: { opacity: 0.88 },
-  whatsappBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
-  whatsappEsperando: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  whatsappEsperandoTexto: {
-    color: theme.inkFaint,
-    fontSize: type.apoio,
-    lineHeight: 18,
-    fontFamily: fonts.light,
-    flex: 1,
-  },
-  whatsappAlternativa: {
-    color: theme.inkFaint,
-    fontSize: type.apoio,
-    fontFamily: fonts.light,
-    marginTop: spacing.xs,
-  },
-  whatsappCodigoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    borderRadius: radius.md,
-    backgroundColor: theme.paper,
-    paddingHorizontal: spacing.md,
-  },
-  whatsappCopiar: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  whatsappCopiarTexto: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
-  whatsappCode: {
-    color: theme.ink,
-    fontSize: type.valor,
-    letterSpacing: 6,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-    paddingVertical: 8,
-    fontFamily: fonts.regular,
-  },
-  telefoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  ddiFixo: {
-    paddingVertical: 12,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: theme.rule,
-    backgroundColor: theme.paper,
-  },
-  ddiTexto: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
-  telefoneInput: { flex: 1 },
-  telefoneInputCampo: {
-    borderWidth: 1.5,
-    borderColor: theme.rule,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    fontSize: type.corpo,
-    color: theme.ink,
-    backgroundColor: theme.paper,
-    fontFamily: fonts.regular,
-  },
   orcamentoBox: { backgroundColor: theme.paperRaised, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: 2 },
   /* "Poupança (equilibrar as contas primeiro)" é o texto mais longo que
      `metaPoupanca` devolve — combinado com o valor em R$ ao lado, colidia
