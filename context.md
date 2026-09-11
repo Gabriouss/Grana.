@@ -6533,28 +6533,46 @@ exceção caía no `catch` geral da tarefa e o áudio era APAGADO, o oposto do q
 aquele arquivo verifica. `npm run test:ci` sai 0, `tsc --noEmit` limpo,
 `sync-parser` em 40/40.
 
-**O que NÃO foi feito, e precisa de decisão do autor.** `jwt_exp` do projeto
-continua em **3600 segundos (1 hora)**, lido por
-`GET /v1/projects/cjnuzfbvfuauvlzfoutv/config/auth`. A tentativa de subi-lo
-para 604800 (7 dias, o máximo do Supabase) foi **barrada pelo classificador de
-segurança da sessão**, por ser um afrouxamento de configuração. Não é mais um
-bloqueio funcional — com a queda para o disco, o app funciona offline por
-tempo indeterminado sem isso. O ganho seria outro: com o token ainda válido,
-um sinal de instante já serve para escrever no servidor, sem depender de a
-renovação completar. O custo é que um token de acesso vazado vale 7 dias em
-vez de 1 hora. Fica para o autor decidir e aprovar.
+**`jwt_exp` subiu de 1 hora para 7 dias, com aprovação do autor.** O prazo do
+token de acesso do projeto passou de **3600 para 604800 segundos** (o máximo do
+Supabase), por `PATCH /v1/projects/cjnuzfbvfuauvlzfoutv/config/auth`, e o novo
+valor foi confirmado numa leitura separada. As outras cinco configurações de
+sessão ficaram intactas: `refresh_token_rotation_enabled: true`,
+`security_refresh_token_reuse_interval: 10`, `sessions_timebox: 0`,
+`sessions_inactivity_timeout: 0`, `sessions_single_per_user: false`.
+
+Duas tentativas anteriores foram barradas pelo classificador de segurança da
+sessão, por ser afrouxamento de configuração; passou depois que o autor saiu do
+modo automático. **Isto é independente do conserto de código acima**, e nenhum
+dos dois substitui o outro: o prazo maior faz o token continuar VÁLIDO durante
+a viagem, então um instante de rede basta para escrever no servidor sem esperar
+a renovação; a queda para o disco cobre o caso de passar até dos 7 dias.
+
+O custo, registrado de propósito: um token de acesso vazado agora vale 7 dias
+em vez de 1 hora. O `signOut` continua revogando no servidor e a rotação de
+refresh token segue ligada.
 
 **Checklist de QA no aparelho** (nada disto foi validado em hardware):
 
-1. Entrar na conta, colocar o aparelho em modo avião, esperar mais de 1 hora,
-   abrir o app. Esperado: entra direto na Início, com a faixa "Sem conexão —
-   mostrando dados salvos no aparelho".
+> [!warning] Subir o `jwt_exp` tornou o defeito mais difícil de reproduzir
+> Com o token valendo 7 dias, o modo avião por uma hora **não** exercita mais a
+> queda para o disco — ela só entra em cena depois que o token vence de fato.
+> Um teste de uma hora hoje prova o cache das telas, e passa verde mesmo que a
+> queda para o disco esteja quebrada. Para exercitar o caminho novo é preciso
+> baixar `jwt_exp` temporariamente (ex.: 60 segundos, pelo painel em
+> Authentication → Sessions), rodar os passos, e devolver a 604800. Sem isso, o
+> passo 1 vira um teste que não testa o que se quer.
+
+1. Entrar na conta, colocar o aparelho em modo avião, esperar o token vencer
+   (ver o aviso acima), abrir o app. Esperado: entra direto na Início, com a
+   faixa "Sem conexão — mostrando dados salvos no aparelho".
 2. Nesse estado, lançar por voz pelo botão do app e pelo widget. Esperado: os
    dois guardam a fala e notificam pendência; nenhum apaga o áudio nem manda
    entrar na conta.
 3. Tirar do modo avião. Esperado: em até um minuto a fila sobe sozinha e a
    faixa some.
 4. Sair da conta **em modo avião** e reabrir o app. Esperado: tela de entrada,
-   e a conta NÃO volta sozinha.
+   e a conta NÃO volta sozinha. É o passo que mais importa: foi este caminho
+   que o conserto criou, e é o único cuja falha seria silenciosa.
 5. Trocar de conta no mesmo aparelho e conferir que nem o cache das telas nem
    a fila de voz da conta anterior aparecem.
