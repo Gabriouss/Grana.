@@ -322,7 +322,7 @@ export default function InicioScreen() {
       // Home inteira, inclusive lançamentos que já estavam funcionando.
       //
       // `fetchTransactions()` SEM `sinceDays` é de propósito, não descuido —
-      // IMPECCABLE_AUDIT.md (P2, 28/08/2026) já investigou encurtar essa
+      // a auditoria Impeccable (P2, 28/08/2026) já investigou encurtar essa
       // janela e reverteu: Início navega por mês (inclusive meses antigos),
       // e uma janela curta mostraria um mês vazio em vez de lento. O saldo
       // por carteira NÃO depende mais disto (veio do banco via
@@ -508,7 +508,7 @@ export default function InicioScreen() {
      pode ficar depois de um return antecipado. Antes eram consts soltas aqui
      embaixo, recalculadas a cada render — inclusive a cada tecla digitada num
      campo de modal, sobre o histórico de lançamentos INTEIRO (a busca desta
-     tela não pagina; ver IMPECCABLE_AUDIT.md). Com 5 anos de uso importados
+     tela não pagina; ver a auditoria Impeccable). Com 5 anos de uso importados
      de outro app, isso é a diferença entre a tela responder e engasgar.
      `graficos.tsx` já fazia assim; esta tela era a exceção. */
 

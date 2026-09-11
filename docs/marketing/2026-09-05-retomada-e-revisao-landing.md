@@ -33,7 +33,7 @@ Os títulos de Livre para Gastar e Comprometimento futuro ficaram em y=245 na ca
 2. **Conta inconsistente na demo:** R$ 623,40 / R$ 48,23 não correspondia a um número inteiro de dias. Exemplo agora explicita R$ 624,00 / 13 dias = R$ 48,00 por dia.
 3. **Demo confundida com consulta real:** cabeçalho visível “Conversa de exemplo”; estado de processamento cita os dados de exemplo. A área continua com papel de log e anúncio acessível.
 4. **Promessa absoluta de IA:** “Ele nunca inventa um valor” substituído pela descrição do uso dos dados registrados e do pedido de esclarecimento de categoria.
-5. **Preço divergente:** `COPY_LANDING_GRANABO.md` alinhado a R$ 9,90, coincidente com landing, tela Assinar e checkout real.
+5. **Preço divergente:** `COPY_LANDING_GRANABO.md` (hoje no vault, como "Copy da Landing - Documento Completo") alinhado a R$ 9,90, coincidente com landing, tela Assinar e checkout real.
 6. **Condição comercial não confirmada:** removido “Cancele quando quiser” da landing. Os termos do projeto remetem às condições do parceiro; o checkout aberto não esclareceu o procedimento de cancelamento. Preservadas mensalidade e ausência de teste. Não alterados os termos jurídicos.
 7. **SEO/share anunciando canal desligado:** `landing-meta.json` atualizado para voz/nota fiscal e Granabô dentro do app. Hash exato do JSON-LD atualizado na CSP, sem flexibilizar a política.
 8. **Cache de capturas:** seis URLs recebem `?v=20260905`, pois os arquivos substituídos mantêm os nomes e a hospedagem configura cache prolongado para `/telas/`.

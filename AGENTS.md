@@ -308,11 +308,15 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     aparece depois de reiniciar; enquanto isso o vault é alcançável como pasta
     comum do sistema de arquivos.
 
-    **O `context.md` é espelhado automaticamente**, do repositório para o
-    vault, em `01 - Código/Contexto do Projeto - Grana.md`. Quem faz isso é um
-    `hook` de `Stop` em `.claude/settings.local.json` — arquivo ignorado pelo
-    git de propósito, porque o caminho do vault só existe nesta máquina. **A
-    direção é uma só: o repositório manda.** Editar aquela nota dentro do
+    **O `context.md` e o próprio `AGENTS.md` são espelhados
+    automaticamente**, do repositório para o vault, em
+    `01 - Código/Contexto do Projeto - Grana.md` e
+    `01 - Código/Regras para Agentes - Grana.md`. Quem faz isso é um `hook` de
+    `Stop` em `.claude/settings.local.json` — arquivo ignorado pelo git de
+    propósito, porque o caminho do vault só existe nesta máquina. Ele compara
+    antes de copiar, para não provocar sincronização do Drive à toa, e sai com
+    código zero mesmo com o vault desmontado. **A direção é uma só: o
+    repositório manda.** Editar qualquer uma dessas duas notas dentro do
     Obsidian não volta para cá e será sobrescrita no fim do próximo turno. Se
     a outra máquina for usar o vault, ela precisa do próprio `hook`, com o
     caminho dela.

@@ -14,7 +14,7 @@ de acesso ao chat e dentro da própria conversa.
 ## Estado atual: não existe nenhum personagem
 
 "Granabô" hoje é só um nome e uma copy — o assistente do Grana. no
-WhatsApp (`COPY_LANDING_GRANABO.md`). Não existe nenhum personagem
+WhatsApp (`COPY_LANDING_GRANABO.md`, hoje no vault, como "Copy da Landing - Documento Completo"). Não existe nenhum personagem
 ilustrado por trás desse nome: o "avatar" usado na conversa mockada da
 landing page (`components/ConversaGranabo.tsx`) é literalmente o círculo
 com o símbolo G. da marca, reaproveitado como se fosse uma foto de
