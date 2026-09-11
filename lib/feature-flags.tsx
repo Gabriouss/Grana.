@@ -2,6 +2,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useState, type Pro
 import { AppState, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { useSession } from './auth-context';
+import { guardarFlags, lerFlagsGuardadas } from './flags-cache';
 import { supabase } from './supabase';
 import { COLUNAS_FLAG, efetivamenteLigado, type ChaveFlag, type Flag } from './feature-flags-regras';
 
@@ -46,11 +47,34 @@ export function FlagsProvider({ children }: PropsWithChildren) {
       const mapa: Record<string, Flag> = {};
       for (const linha of (data ?? []) as Flag[]) mapa[linha.key] = linha;
       setFlags(mapa);
+      void guardarFlags(mapa);
     } catch {
       /* FALHA ABERTA — ver o cabeçalho do arquivo. Sem resposta, o mapa fica
-         como está (vazio na primeira vez) e `ligado()` devolve true. */
+         como está e `ligado()` devolve true para chave desconhecida.
+
+         Quem cobre o buraco que isso abria sem rede é o cache lido no efeito
+         abaixo: sem ele, o mapa ficava VAZIO offline e todo interruptor
+         remoto voltava a ligado — inclusive o do WhatsApp, um canal desligado
+         por estar banido na Meta e que reapareceu num teste em modo avião. */
     }
   }, [session]);
+
+  /* O último mapa confirmado entra ANTES da rede, e só enquanto não houver
+     resposta boa. Offline é ele que decide; online ele é sobrescrito em
+     seguida pelo mapa fresco. A falha aberta continua valendo para quem nunca
+     conseguiu ler as flags neste aparelho, que é quando desligar tudo seria
+     pior que o contrário. */
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const guardado = await lerFlagsGuardadas();
+      if (!vivo || !guardado) return;
+      setFlags((atual) => (Object.keys(atual).length > 0 ? atual : guardado));
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   useEffect(() => {
     recarregar();

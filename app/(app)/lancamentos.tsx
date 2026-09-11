@@ -624,13 +624,21 @@ export default function LancamentosScreen() {
           }}
         />
 
-        {/* Resumo Rápido do Mês Selecionado */}
+        {/* Resumo Rápido do Mês Selecionado.
+
+            `loading` gateava só a lista lá embaixo, então enquanto o mês não
+            chegava este cartão somava um array vazio e exibia R$ 0,00 nas três
+            colunas, com "Tudo (0)" logo abaixo. Sem rede isso dura o tempo do
+            cache responder, e foi filmado em 11/09/2026: a tela afirmando
+            saldo zero para quem tem R$ 1.322,79, com a faixa de "mostrando
+            dados salvos no aparelho" acesa por cima. Número velho é útil;
+            número INVENTADO não — enquanto não há dado, mostra-se travessão. */}
         <View style={styles.monthSummaryCard}>
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Entradas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: theme.up }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-                {formatBRL(monthIn, '+')}
+                {loading ? '—' : formatBRL(monthIn, '+')}
               </Text>
             </PrivacyValue>
           </View>
@@ -639,7 +647,7 @@ export default function LancamentosScreen() {
             <Text style={styles.monthSummaryLabel}>Saídas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: theme.down }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-                {formatBRL(monthOut, '−')}
+                {loading ? '—' : formatBRL(monthOut, '−')}
               </Text>
             </PrivacyValue>
           </View>
@@ -653,7 +661,7 @@ export default function LancamentosScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.75}
               >
-                {formatBRL(Math.abs(monthBalance), monthBalance >= 0 ? '+' : '−')}
+                {loading ? '—' : formatBRL(Math.abs(monthBalance), monthBalance >= 0 ? '+' : '−')}
               </Text>
             </PrivacyValue>
           </View>
@@ -661,7 +669,7 @@ export default function LancamentosScreen() {
 
         <SegmentedTabs
           options={[
-            { key: 'tudo', label: `Tudo (${monthTransactions.length})` },
+            { key: 'tudo', label: loading ? 'Tudo' : `Tudo (${monthTransactions.length})` },
             { key: 'in', label: 'Entradas' },
             { key: 'out', label: 'Saídas' },
           ]}

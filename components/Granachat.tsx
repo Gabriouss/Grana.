@@ -20,6 +20,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import { useKeyboardHeight } from '@/components/Sheet';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
+import { mensagemErro as traduzirErro } from '@/lib/erros';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras } from '@/lib/theme';
 import {
@@ -331,9 +332,14 @@ export default function Granachat({
         )
       );
     } catch (err) {
+      /* `err.message` cru punha uma exceção Java na bolha do chat — visto em
+         vídeo em 11/09/2026: "fetch failed: java.net.UnknownHostException:
+         Unable to resolve host 'cjnuzf...supabase.co'". Além de ilegível,
+         expunha o endereço do projeto. `mensagemErro` já traduz falha de rede
+         e barra despejo de dados; era só não estar sendo usada aqui. */
       const mensagemErro = controller.signal.aborted
         ? 'A consulta demorou demais ou foi cancelada. Tente novamente.'
-        : err instanceof Error ? err.message : 'Algo deu errado. Tenta de novo.';
+        : traduzirErro(err, 'Algo deu errado. Tenta de novo.');
       setMensagens((prev) =>
         prev.map((m) =>
           m.id === idResposta

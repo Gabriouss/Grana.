@@ -23,7 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { enfileirarPendente, isLikelyNetworkError, novoIdLocal } from '@/lib/offline-cache';
+import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, queuePendingTransaction } from '@/lib/offline-cache';
 import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals } from '@/lib/goals';
@@ -749,7 +749,7 @@ export default function InicioScreen() {
         });
         triggerToast('Lançamento atualizado');
       } else {
-        await addTransaction({
+        const entradaLancamento = {
           type: v.type,
           description: v.description.trim() || (v.type === 'in' ? 'Entrada' : 'Saída'),
           amount: val,
@@ -758,13 +758,25 @@ export default function InicioScreen() {
           occurred_on: v.occurred_on,
           recurring: v.recurring,
           wallet_id: v.wallet_id,
-        });
-        triggerToast('Lançamento salvo');
+        };
+        try {
+          await addTransaction(entradaLancamento);
+          triggerToast('Lançamento salvo');
+        } catch (erroInterno) {
+          /* Sem rede, o lançamento entra na fila em vez de sumir com um
+             alerta. O boleto logo acima já fazia isto; o lançamento, não —
+             e esta é a tela onde a maioria das pessoas lança. Visto em vídeo
+             em 11/09/2026: "Erro ao salvar / Usuário não autenticado" em modo
+             avião, e o valor digitado foi perdido. */
+          if (!isLikelyNetworkError(erroInterno)) throw erroInterno;
+          await queuePendingTransaction(entradaLancamento);
+          triggerToast('Sem conexão — lançamento salvo no aparelho');
+        }
       }
       setTxSheetOpen(false);
       load();
     } catch (e: any) {
-      Alert.alert('Erro ao salvar', e.message);
+      Alert.alert('Erro ao salvar', mensagemErro(e));
     } finally {
       setTxSaving(false);
     }

@@ -40,10 +40,25 @@ import type {
   WhatsappLink,
 } from './types';
 
+/**
+ * Quem é o dono deste aparelho, para carimbar `user_id` no que vai ser
+ * gravado.
+ *
+ * Usava `supabase.auth.getUser()`, que é ida à REDE — ele valida o token no
+ * servidor. Sem internet isso falhava e `addTransaction` morria com "Usuário
+ * não autenticado" ANTES de tentar gravar qualquer coisa, então o lançamento
+ * não chegava nem à fila offline: sumia com um alerta. Visto em vídeo em
+ * 11/09/2026, salvando uma saída pela Início em modo avião.
+ *
+ * O id vem do aparelho. A gravação logo abaixo continua exigindo credencial
+ * válida e continua passando pelo RLS — o que muda é que a falha passa a ser
+ * a falha REAL (sem rede), que quem chama sabe enfileirar, em vez de uma
+ * mentira sobre a sessão.
+ */
 async function currentUserId(): Promise<string> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) throw new Error('Usuário não autenticado');
-  return data.user.id;
+  const id = await idDoUsuarioLocal();
+  if (!id) throw new Error('Usuário não autenticado');
+  return id;
 }
 
 /* ---- transações ---- */

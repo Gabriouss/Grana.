@@ -1,12 +1,14 @@
 import { supabase } from './supabase';
 import { comCacheOffline } from './cache-de-tela';
+import { idDoUsuarioLocal } from './sessao-offline';
 import type { Goal } from './types';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 
+// Pelo aparelho, não pela rede — mesmo motivo detalhado em `lib/data.ts`.
 async function currentUserId(): Promise<string> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) throw new Error('Usuário não autenticado');
-  return data.user.id;
+  const id = await idDoUsuarioLocal();
+  if (!id) throw new Error('Usuário não autenticado');
+  return id;
 }
 
 async function buscar_fetchGoals(): Promise<Goal[]> {
