@@ -299,8 +299,15 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     **Como é o acesso.** O vault raiz é `G:\Meu Drive\Obsidian`; o material do
     projeto vive em `Gabriel/Grana`, organizado em pastas numeradas
     (`01 - Código`, `02 - Design System`, `03 - Marketing`, `04 - Tráfego`,
-    `05 - Vendas`, `06 - Produto`). Nota nova entra na pasta do assunto,
-    seguindo os nomes descritivos que já existem. O servidor MCP é o
+    `05 - Vendas`, `06 - Produto`). A porta de entrada é a nota `Grana`, na
+    raiz de `Gabriel/Grana`, e **as regras de como escrever ali estão na nota
+    `00 - Convenções do Vault` — leia antes de criar ou editar nota.** Em
+    resumo: nota nova entra na pasta do assunto, sem sufixo de categoria no
+    nome e sem data no título, declarando `tipo` no frontmatter (`perene`,
+    `registro`, `espelho` ou `indice`); registro leva `data` e nunca é
+    corrigido; perene conferido contra a fonte leva `revisado`. Preço só é
+    afirmado no presente por uma nota, `Preço Vigente e Parcelamento - Cakto`,
+    e as outras apontam para ela. O servidor MCP é o
     `mcpvault`, rodado por
     `npx -y @bitbonsai/mcpvault@latest "G:\Meu Drive\Obsidian"`, apontado para
     a RAIZ do vault e não para a subpasta, para os links internos do Obsidian
@@ -312,15 +319,20 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     vault, todos em `01 - Código`: o `context.md` como
     `Contexto do Projeto - Grana.md`, o próprio `AGENTS.md` como
     `Regras para Agentes - Grana.md`, e o `PRODUCT.md` como
-    `Produto - Estado Atual - Grana.md`. Quem faz isso é um `hook` de
-    `Stop` em `.claude/settings.local.json` — arquivo ignorado pelo git de
-    propósito, porque o caminho do vault só existe nesta máquina. Ele compara
-    antes de copiar, para não provocar sincronização do Drive à toa, e sai com
-    código zero mesmo com o vault desmontado. **A direção é uma só: o
-    repositório manda.** Editar qualquer uma dessas duas notas dentro do
-    Obsidian não volta para cá e será sobrescrita no fim do próximo turno. Se
-    a outra máquina for usar o vault, ela precisa do próprio `hook`, com o
-    caminho dela.
+    `Produto - Estado Atual - Grana.md`. Quem faz isso é o
+    `scripts/espelhar-vault.sh`, versionado aqui e chamado por um `hook` de
+    `Stop` em `.claude/settings.local.json`, que passa a pasta de destino como
+    argumento — o arquivo de settings é ignorado pelo git de propósito, porque
+    o caminho do vault muda de máquina, mas o script é o mesmo para as duas. A
+    outra máquina precisa só do próprio `hook`, apontando o caminho dela.
+
+    O script compara antes de escrever, para não provocar sincronização do
+    Drive à toa, e sai com código zero mesmo com o vault desmontado. Cada
+    cópia sai com frontmatter (`tipo: espelho`, `somente_leitura: true`) e um
+    alerta no topo, porque dentro do Obsidian nada mais indicaria que aquele
+    arquivo é gerado. **A direção é uma só: o repositório manda.** Editar
+    qualquer uma das três notas dentro do Obsidian não volta para cá e será
+    sobrescrita no fim do próximo turno.
 
     Isso **não** substitui a regra 6: o `context.md` do repositório continua
     obrigatório, porque é por ele que a outra máquina fica sabendo o que

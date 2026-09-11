@@ -6188,3 +6188,52 @@ do APK, toda a integração da Cakto (incluindo a correção de data de evento
 achada ao conferir o modelo do painel), a regra 11 do AGENTS.md, e a aplicação
 em produção do segredo `ANDROID_DOWNLOAD_URL` e do `app_release` apontando
 para o link estável.
+
+# Sessão de 11/09/2026 — reforma da estrutura do vault do Obsidian
+
+A pedido do autor ("analise e verifique se há alguma melhoria na estrutura
+organizacional desse segundo cérebro"), o vault em
+`G:\Meu Drive\Obsidian\Gabriel\Grana` foi auditado e depois reformado. Backup
+do estado anterior em `E:\Grana-Arquivos\vault-backup-11-09\`, fora do Drive.
+
+**O que a auditoria achou**, com 82 notas e 316 links: 18 alvos de link sem
+destino; o preço afirmado em cinco valores diferentes (9,90 / 19,99 / 9,99 /
+97,90 / 99,97) espalhados por 15 notas, sem nada distinguindo "é o preço" de
+"era o preço"; tags que apenas repetiam o nome da pasta; três assuntos escritos
+duas vezes em pastas diferentes (mockups, notificações, landing repartida entre
+Marketing e Tráfego); e os três espelhos do repositório chegando ao Obsidian
+sem nenhum sinal de que são somente leitura. A varredura por credencial no
+vault veio limpa, então a segunda metade da regra 12 estava sendo cumprida.
+
+**O que foi feito.** Links quebrados a zero: dez apontavam para uma convenção
+de nome (`Categoria - Nome`) que nunca foi adotada nos arquivos e foram
+redirecionados; os outros oito eram falso positivo do verificador que eu mesmo
+escrevi, que não entendia a barra invertida obrigatória antes do `|` dentro de
+tabela — os links de `Planos de Motion e UX` sempre funcionaram. Criadas a nota
+raiz `Grana` (linkada por nove notas e inexistente) e o `00 - Índice - Tráfego`
+(única pasta sem índice). O link `[[Ferramentas]]` da nota de voz, que resolvia
+para um arquivo vazio na raiz do vault, passou a apontar para o índice certo.
+
+Removido o sufixo ` - Grana` de 25 notas e a data do título de duas. A nota
+técnica de notificações virou `Notificações - Implementação Técnica`, porque
+tinha título idêntico ao da nota de produto; as duas agora se citam. Todas as
+84 notas ganharam `tipo` no frontmatter (`perene`, `registro`, `espelho`,
+`indice`), os 18 registros ganharam `data`, e as tags que espelhavam pasta
+saíram.
+
+`Preço Vigente e Parcelamento - Cakto` virou fonte única de preço: seis notas
+perenes ganharam aviso apontando para lá e sete registros de agosto ganharam
+aviso de que o valor citado é o da época. A segunda nota de mockups foi
+apagada; as duas auditorias da landing saíram de Tráfego para Marketing e os
+metadados de SEO fizeram o caminho inverso, com a fronteira entre as duas
+pastas escrita nos dois índices.
+
+**Mudança que afeta as duas máquinas**: o espelhamento saiu de dentro do
+`.claude/settings.local.json` e virou `scripts/espelhar-vault.sh`, versionado,
+recebendo a pasta de destino como argumento. Cada cópia agora sai com
+frontmatter e um alerta de somente leitura no topo. O hook local só chama o
+script. A regra 12 do `AGENTS.md` foi atualizada com isso e passou a apontar
+para a nota `00 - Convenções do Vault`, que é onde as regras de escrita do
+vault vivem daqui em diante.
+
+Nenhum código do aplicativo foi tocado nesta sessão.
