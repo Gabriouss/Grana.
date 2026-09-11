@@ -6533,34 +6533,41 @@ exceção caía no `catch` geral da tarefa e o áudio era APAGADO, o oposto do q
 aquele arquivo verifica. `npm run test:ci` sai 0, `tsc --noEmit` limpo,
 `sync-parser` em 40/40.
 
-**`jwt_exp` subiu de 1 hora para 7 dias, com aprovação do autor.** O prazo do
-token de acesso do projeto passou de **3600 para 604800 segundos** (o máximo do
-Supabase), por `PATCH /v1/projects/cjnuzfbvfuauvlzfoutv/config/auth`, e o novo
-valor foi confirmado numa leitura separada. As outras cinco configurações de
-sessão ficaram intactas: `refresh_token_rotation_enabled: true`,
+**`jwt_exp` subiu de 1 hora para 3 dias, com aprovação do autor.** O prazo do
+token de acesso do projeto passou de **3600 para 259200 segundos**, por
+`PATCH /v1/projects/cjnuzfbvfuauvlzfoutv/config/auth`, e o valor foi confirmado
+numa leitura separada. As outras cinco configurações de sessão ficaram
+intactas: `refresh_token_rotation_enabled: true`,
 `security_refresh_token_reuse_interval: 10`, `sessions_timebox: 0`,
 `sessions_inactivity_timeout: 0`, `sessions_single_per_user: false`.
+
+**Foi a 604800 (7 dias, o máximo) primeiro, e o autor mandou baixar para 3
+dias** — julgou 7 exagerado, porque ninguém passa mais que isso sem internet
+hoje em dia. O raciocínio está certo e o custo de manter 7 era real: a janela
+em que um token de acesso vazado continua servindo. Reduzir para 3 não perde
+nada de funcionalidade, porque o que passar do prazo é coberto pela queda para
+o disco.
 
 Duas tentativas anteriores foram barradas pelo classificador de segurança da
 sessão, por ser afrouxamento de configuração; passou depois que o autor saiu do
 modo automático. **Isto é independente do conserto de código acima**, e nenhum
-dos dois substitui o outro: o prazo maior faz o token continuar VÁLIDO durante
-a viagem, então um instante de rede basta para escrever no servidor sem esperar
-a renovação; a queda para o disco cobre o caso de passar até dos 7 dias.
+dos dois substitui o outro: o prazo do token faz ele continuar VÁLIDO durante a
+viagem, então um instante de rede basta para escrever no servidor sem esperar a
+renovação; a queda para o disco cobre o caso de passar até dos 3 dias.
 
-O custo, registrado de propósito: um token de acesso vazado agora vale 7 dias
-em vez de 1 hora. O `signOut` continua revogando no servidor e a rotação de
-refresh token segue ligada.
+O custo, registrado de propósito: um token de acesso vazado vale 3 dias em vez
+de 1 hora. O `signOut` continua revogando no servidor e a rotação de refresh
+token segue ligada.
 
 **Checklist de QA no aparelho** (nada disto foi validado em hardware):
 
 > [!warning] Subir o `jwt_exp` tornou o defeito mais difícil de reproduzir
-> Com o token valendo 7 dias, o modo avião por uma hora **não** exercita mais a
+> Com o token valendo 3 dias, o modo avião por uma hora **não** exercita mais a
 > queda para o disco — ela só entra em cena depois que o token vence de fato.
 > Um teste de uma hora hoje prova o cache das telas, e passa verde mesmo que a
 > queda para o disco esteja quebrada. Para exercitar o caminho novo é preciso
 > baixar `jwt_exp` temporariamente (ex.: 60 segundos, pelo painel em
-> Authentication → Sessions), rodar os passos, e devolver a 604800. Sem isso, o
+> Authentication → Sessions), rodar os passos, e devolver a 259200. Sem isso, o
 > passo 1 vira um teste que não testa o que se quer.
 
 1. Entrar na conta, colocar o aparelho em modo avião, esperar o token vencer
