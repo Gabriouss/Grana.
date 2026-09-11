@@ -60,6 +60,13 @@ function montar(usuarioInicial) {
       JSON,
       Set,
       String,
+      Promise,
+      /* O prazo que serve o disco quando a rede pendura (ver
+         `PRAZO_ATE_SERVIR_DO_CACHE_MS`) usa temporizador. Encurtado mil vezes
+         aqui para os quatro segundos de produção passarem em quatro
+         milissegundos, sem mexer na constante. */
+      setTimeout: (fn, ms) => setTimeout(fn, Math.max(0, Math.ceil((ms || 0) / 1000))),
+      clearTimeout,
       require: (id) => {
         /* `__esModule: true` é obrigatório: sem ele o helper `__importDefault`
            do TypeScript embrulha o objeto MAIS UMA VEZ, `AsyncStorage.setItem`

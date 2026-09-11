@@ -12,7 +12,7 @@ import {
 } from 'expo-audio';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
-import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz, transcreverAudio } from '@/lib/voz';
+import { MAX_SEGUNDOS_GRAVACAO, ORCAMENTO_COM_PESSOA_ESPERANDO_MS, mensagemDeErroVoz, transcreverAudio } from '@/lib/voz';
 import AppPressable from './AppPressable';
 import { supabase } from '@/lib/supabase';
 import { randomUUID } from 'expo-crypto';
@@ -117,7 +117,11 @@ export default function VoiceEntryButton({
         Alert.alert(msg.titulo, msg.texto);
         return;
       }
-      const resultado = await transcreverAudio(uri);
+      /* Prazo curto de propósito: aqui existe alguém olhando para a tela, e
+         no Android o desfecho de "não deu" é guardar o áudio na fila, que
+         retoma sozinha. Esperar o minuto inteiro do widget só adiava esse
+         mesmo desfecho. */
+      const resultado = await transcreverAudio(uri, { orcamentoMs: ORCAMENTO_COM_PESSOA_ESPERANDO_MS });
       if (!resultado.ok) {
         if (Platform.OS === 'android' && (resultado.codigo === 'sem_rede' || resultado.codigo === 'demorou')) {
           const { data } = await supabase.auth.getSession();

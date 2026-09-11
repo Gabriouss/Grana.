@@ -332,9 +332,15 @@ function montarVoz(opts) {
   const reg = { envios: 0, locais: 0 };
   let relogio = 1000000;
   const mod = carregar('lib/voz.ts', {
-    './voz-local': { transcreverNoAparelho: async () => {
-      reg.locais++; relogio += o.msLocal || 0; return o.textoLocal || null;
-    } },
+    './voz-local': {
+      /* O modulo real exporta o teto padrao, e `transcreverAudio` usa esse
+         valor para caber no orcamento de quem chamou. Um duble sem ele fazia
+         o passo local ser pulado calado, e o teste media outra coisa. */
+      PRAZO_LOCAL_PADRAO_MS: 30000,
+      transcreverNoAparelho: async (_uri, prazoMs) => {
+        reg.locais++; reg.prazoLocal = prazoMs; relogio += o.msLocal || 0; return o.textoLocal || null;
+      },
+    },
     'react-native': { Platform: { OS: 'android' } },
     'expo-file-system': { File: class {
       get exists() { return o.arquivoExiste !== false; }

@@ -94,6 +94,75 @@ Nenhuma das cinco baterias tocou num microfone. Todas rodam com gravação
 simulada. O reconhecimento local, o widget e o fluxo offline nunca foram
 exercitados num telefone.
 
+## 11/09/2026 — a lentidao sem rede, corrigida e medida
+
+Queixa do autor: o app demora a abrir sem internet, e o lançamento por voz
+demora a ser agendado na fila. **Os dois tinham a mesma causa.**
+
+Rede AUSENTE devolve erro em milissegundos e nunca foi o problema. O caso que
+doía é a rede que ACEITA a conexão e não responde — Wi-Fi de hotel, portal de
+captura, sinal de um traço —, em que o `fetch` do React Native fica pendurado
+até o tempo do sistema operacional, de um minuto para cima. Enquanto isso o
+app esperava, mesmo tendo o dado no disco a um `AsyncStorage` de distância.
+
+### Três correções
+
+1. **`lib/cache-de-tela.ts` ganhou prazo.** `comCacheOffline` envolve os 16
+   buscadores das telas e só caía para o disco DEPOIS que a rede rejeitasse.
+   Agora ele corre contra `PRAZO_ATE_SERVIR_DO_CACHE_MS` (4 s): estourado o
+   prazo, se houver dado guardado ele é servido na hora e o aviso de "dado
+   velho" acende. A resposta continua a caminho e, quando chega, atualiza o
+   disco para a próxima abertura nascer atual. **Sem disco guardado, nada
+   muda:** continua esperando, porque lista vazia diria à pessoa que ela não
+   tem lançamento nenhum. Falha permanente que chega atrasada deixa recibo no
+   log, e falha permanente dentro do prazo continua estourando, como manda a
+   regra 9.
+
+2. **`lib/entitlement-context.tsx` passou a adiantar o acesso guardado.**
+   `app/_layout.tsx:240` não desenha tela nenhuma enquanto o estado de acesso
+   não existe, e esse estado dependia de duas chamadas de rede em sequência,
+   sem prazo. Agora, se já existe palavra do servidor guardada e dentro do
+   prazo, ela entra ANTES da rede e a confirmação segue por trás. Falha
+   permanente continua fechando o portão depois.
+
+3. **`lib/voz.ts` aceita orçamento de quem chama.** Era 60 s fixos, um teto
+   pensado para a tarefa headless do widget, que tem 120 s antes de o Android
+   matá-la. O botão de voz herdava isso com uma pessoa olhando para a tela:
+   com rede pendurada, um minuto de "Transcrevendo…" para terminar em "guardei
+   no aparelho". `VoiceEntryButton` passa agora
+   `ORCAMENTO_COM_PESSOA_ESPERANDO_MS` (15 s), e o desfecho de fila preserva a
+   fala e retoma sozinho. O widget segue com o minuto inteiro.
+
+### Um acoplamento que quase passou
+
+A primeira versão da correção 3 lia a constante do teto local dentro de
+`lib/voz.ts` para calcular quanto sobrava. Com um dublê de teste sem essa
+constante, a conta virava `NaN` e o reconhecimento no aparelho era **pulado em
+silêncio**, trocando trabalho de graça por chamada paga. Duas suítes
+diferentes tropeçaram nisso, `voz-upload.cjs` e a bateria 6.
+
+A correção foi inverter a responsabilidade: `lib/voz.ts` passa o que RESTA do
+orçamento, e `lib/voz-local.ts` limita ao próprio teto. Quem define o limite
+agora é o dono do limite.
+
+### Verificação
+
+Novo `__tests__/offline-rapido.cjs`, **10 guardas, todas passando**, e ele
+entrou no `test:ci`. Não é teste de conforto: os dois sintomas foram
+REPRODUZIDOS contra o código de `HEAD` antes da mudança — a tela com disco
+cheio continuava pendurada, e `transcreverAudio` não aceitava orçamento
+nenhum.
+
+`npx tsc --noEmit` limpo e `npm run test:ci` com **saída 0**.
+
+Dois dublês de teste precisaram ser atualizados junto, porque os módulos
+passaram a usar temporizador: `cache-offline.cjs` não tinha `clearTimeout` no
+sandbox, e a bateria 6 não exportava o teto local.
+
+**NÃO validado:** nada em aparelho. Os prazos foram exercitados com relógio
+falso e `setTimeout` encurtado mil vezes. Falta ver, num telefone de verdade,
+o app abrindo em modo avião e o botão de voz caindo na fila.
+
 ## 11/09/2026 — bateria de voz 6, os quatro caminhos, sem correcoes
 
 Pedido do autor: bateria extensa de lançamento por áudio, com e sem rede, no

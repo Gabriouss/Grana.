@@ -2,8 +2,19 @@ import { Platform } from 'react-native';
 
 let ocupado = false;
 
-/** Nunca permite que o reconhecedor do sistema envie a fala à rede. */
-export async function transcreverNoAparelho(uri: string): Promise<string | null> {
+/** Teto do reconhecimento no aparelho quando quem chama não impõe outro. */
+export const PRAZO_LOCAL_PADRAO_MS = 30_000;
+
+/**
+ * Nunca permite que o reconhecedor do sistema envie a fala à rede.
+ *
+ * `prazoMs` é o que RESTA do orçamento de quem chamou, e só serve para
+ * ENCURTAR: o teto próprio continua mandando. O widget headless tem 120
+ * segundos antes de o Android matá-lo; o botão de voz tem uma pessoa olhando
+ * para a tela. Fixar 30 segundos aqui dentro fazia o botão herdar um teto
+ * pensado para o widget.
+ */
+export async function transcreverNoAparelho(uri: string, prazoMs = PRAZO_LOCAL_PADRAO_MS): Promise<string | null> {
   if (Platform.OS !== 'android' || Number(Platform.Version) < 33 || ocupado) return null;
   ocupado = true;
   let pcmUri: string | undefined;
@@ -16,7 +27,7 @@ export async function transcreverNoAparelho(uri: string): Promise<string | null>
       expirou = true;
       encerrarReconhecimento?.();
       reject(new Error('prazo_local_esgotado'));
-    }, 30_000);
+    }, Math.max(1, Math.min(PRAZO_LOCAL_PADRAO_MS, prazoMs)));
   });
   const dentroDoPrazo = <T,>(operacao: Promise<T>) => Promise.race([operacao, limite]);
   const limparPCM = async (caminho: string) => {

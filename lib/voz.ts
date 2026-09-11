@@ -59,6 +59,16 @@ const TIMEOUT_MS = 75_000;
 // Deixa 30s para interpretação, gravação e recibo antes do headless (120s).
 const TIMEOUT_TOTAL_MS = 60_000;
 
+/* Orçamento de quem tem uma PESSOA esperando na tela.
+   O widget roda com o app fechado e pode gastar o minuto inteiro; o botão de
+   voz, não. Quando a rede aceita a conexão e não responde, o caminho completo
+   (reconhecimento local + upload) consumia os 60 segundos antes de o botão
+   poder salvar o áudio na fila — um minuto de "Transcrevendo…" para terminar
+   em "guardei no aparelho". Quinze segundos cobrem folgado uma transcrição
+   sadia, e o que passa disso vira fila, que preserva a fala e retoma sozinha
+   na próxima abertura com conexão. */
+export const ORCAMENTO_COM_PESSOA_ESPERANDO_MS = 15_000;
+
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
   if (!base) return null;
@@ -180,12 +190,17 @@ async function tentarUmaVez(
  */
 export async function transcreverAudio(
   uri: string,
-  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number } = {}
+  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number; orcamentoMs?: number } = {}
 ): Promise<ResultadoVoz> {
-  // O reconhecimento local também consome o prazo da tarefa Android.
-  const deadline = Date.now() + TIMEOUT_TOTAL_MS;
+  // O reconhecimento local também consome o prazo de quem chamou.
+  const deadline = Date.now() + (opts.orcamentoMs ?? TIMEOUT_TOTAL_MS);
   const { transcreverNoAparelho } = await import('./voz-local');
-  const local = await transcreverNoAparelho(uri);
+  /* Passa o que RESTA do orçamento, e quem limita ao próprio teto é o módulo
+     local. Ler a constante dele aqui criava um acoplamento silencioso: com um
+     orçamento de 15s, um teto local de 30s estouraria o prazo inteiro antes de
+     a rede ser tentada, e um valor ausente pulava o reconhecimento no aparelho
+     sem dizer nada, trocando trabalho de graça por chamada paga. */
+  const local = await transcreverNoAparelho(uri, Math.max(0, deadline - Date.now()));
   if (local) return { ok: true, transcript: local };
   const url = urlDaFuncao();
   if (!url) return { ok: false, codigo: 'erro_interno' };

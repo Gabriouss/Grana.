@@ -58,6 +58,23 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
        `signOut`, que sabe que a saída foi deliberada. */
 
     setCarregando(true);
+
+    /* Antes de gastar rede: se já existe palavra do servidor guardada e ela
+       ainda vale, ela entra AGORA e a confirmação segue por trás. Sem isto o
+       app inteiro ficava numa tela de carregamento até a rede responder — e
+       `app/_layout.tsx` só desenha as telas depois que este estado existe.
+       Com rede ausente o `fetch` falha rápido, mas com rede que aceita a
+       conexão e não responde (Wi-Fi de hotel, portal de captura, sinal fraco)
+       a espera vai ao tempo do sistema operacional, de um minuto para cima.
+       Quem paga e abre o app no metrô não pode olhar para um `spinner` desse
+       tamanho tendo o acesso guardado a um `AsyncStorage` de distância. */
+    const adiantado = await lerAcessoGuardado(session.user.id);
+    if (adiantado && prazoOfflineAindaVale(adiantado)) {
+      setEstado(adiantado);
+      setModoOffline(true);
+      setCarregando(false);
+    }
+
     try {
       const vinculo = await vincularAssinaturasPendentes();
       setSincronizacao({

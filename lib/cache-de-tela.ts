@@ -138,6 +138,19 @@ function definirModo(offline: boolean) {
  * coisas diferentes por argumento, e um cache só sob o nome da função serviria
  * a fatura de março quando a pessoa abrisse abril.
  */
+/* Quanto a tela espera a rede antes de servir o que já está no disco.
+   Rede AUSENTE devolve erro em milissegundos e nunca chega aqui. Este prazo
+   existe para a rede que ACEITA a conexão e não responde — Wi-Fi de hotel,
+   portal de captura, sinal de um traço —, em que o `fetch` do React Native
+   fica pendurado até o tempo do sistema operacional, de um minuto para cima.
+   Sem este corte, um app que tinha os dados no disco ficava a mesma eternidade
+   numa tela de carregamento, e a queixa que chegou foi exatamente essa.
+   Quatro segundos é folgado para qualquer resposta sadia e curto o bastante
+   para não parecer travamento. */
+const PRAZO_ATE_SERVIR_DO_CACHE_MS = 4_000;
+
+type Desfecho<T> = { ok: true; dados: T } | { ok: false; erro: unknown };
+
 export function comCacheOffline<A extends unknown[], T>(
   nome: string,
   buscar: (...args: A) => Promise<T>,
@@ -150,20 +163,59 @@ export function comCacheOffline<A extends unknown[], T>(
 ): (...args: A) => Promise<T> {
   return async (...args: A): Promise<T> => {
     const chave = chaveDoArgumento ? `${nome}:${chaveDoArgumento(...args)}` : nome;
-    try {
-      const dados = await buscar(...args);
-      await guardarTela(chave, dados);
-      definirModo(false);
-      return dados;
-    } catch (erro) {
-      if (!isLikelyNetworkError(erro)) throw erro;
-      const guardado = await lerTela<T>(chave);
+
+    /* Mapear para um objeto, em vez de deixar rejeitar, é o que permite
+       correr contra o prazo sem criar rejeição não tratada quando a resposta
+       lenta chega depois de a tela já ter sido servida. */
+    const pedido: Promise<Desfecho<T>> = buscar(...args).then(
+      (dados) => ({ ok: true as const, dados }),
+      (erro) => ({ ok: false as const, erro }),
+    );
+
+    let cortar: ReturnType<typeof setTimeout> | undefined;
+    const prazo = new Promise<'prazo'>((resolve) => {
+      cortar = setTimeout(() => resolve('prazo'), PRAZO_ATE_SERVIR_DO_CACHE_MS);
+    });
+    const primeiro = await Promise.race([pedido, prazo]).finally(() => clearTimeout(cortar));
+
+    if (primeiro !== 'prazo') return concluir(primeiro);
+
+    /* Estourou o prazo. Servir o disco só vale se houver disco: sem nada
+       guardado, esperar a resposta de verdade continua sendo melhor que
+       inventar uma lista vazia, que diria à pessoa que ela não tem
+       lançamento nenhum. */
+    const guardado = await lerTela<T>(chave);
+    if (!guardado) return concluir(await pedido);
+
+    definirModo(true);
+    /* A resposta continua a caminho. Quando chegar, o dado fresco vai para o
+       disco, para a próxima abertura já nascer atual. O aviso de "dado
+       velho" NÃO é apagado aqui: a tela em cima da mão de quem lê continua
+       mostrando o que veio do disco, e dizer que está atualizada seria
+       mentira. Falha permanente que chega atrasada deixa recibo no log, em
+       vez de sumir junto com a promessa. */
+    void pedido.then(async (tardio) => {
+      if (tardio.ok) { await guardarTela(chave, tardio.dados); return; }
+      if (!isLikelyNetworkError(tardio.erro)) {
+        console.error('[cache-de-tela] falha permanente depois do prazo', nome, tardio.erro);
+      }
+    });
+    return guardado.dados;
+
+    async function concluir(desfecho: Desfecho<T>): Promise<T> {
+      if (desfecho.ok) {
+        await guardarTela(chave, desfecho.dados);
+        definirModo(false);
+        return desfecho.dados;
+      }
+      if (!isLikelyNetworkError(desfecho.erro)) throw desfecho.erro;
+      const doDisco = await lerTela<T>(chave);
       /* Sem nada guardado, o erro de rede segue subindo: a tela mostra "não
          consegui carregar", que é a verdade. Fingir lista vazia diria à
          pessoa que ela não tem lançamento nenhum. */
-      if (!guardado) throw erro;
+      if (!doDisco) throw desfecho.erro;
       definirModo(true);
-      return guardado.dados;
+      return doDisco.dados;
     }
   };
 }
