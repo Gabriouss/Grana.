@@ -381,3 +381,37 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     Isso **não** substitui a regra 6: o `context.md` do repositório continua
     obrigatório, porque é por ele que a outra máquina fica sabendo o que
     aconteceu aqui, pelo GitHub. O vault é registro adicional.
+
+13. **Lançamento por voz é UMA ferramenta, com UMA configuração, dentro do
+    app e no widget. As regras e o comportamento precisam ser EXATAMENTE
+    IGUAIS nos dois caminhos.** Regra explícita do autor em 11/09/2026.
+
+    - **Uma única fonte de verdade executável.** Configuração de voz,
+      transcrição, normalização, interpretação de valores, categorias,
+      carteiras, cartões, parcelas, recorrência, validação, confiança,
+      confirmação, persistência, idempotência, offline, retomada e tratamento
+      de erros pertencem ao mesmo núcleo compartilhado. Não duplique lógica
+      nem mantenha ajustes independentes por origem (`app` ou `widget`).
+    - **Corrigiu em um, corrigiu nos dois.** Toda correção deve ser aplicada
+      no núcleo comum e alcançar automaticamente ambas as entradas. Uma
+      proteção aplicada só no widget ou só no botão do app é uma correção
+      incompleta, nunca trabalho pronto.
+    - **Mesma entrada, mesma decisão.** Com a mesma fala, dados do usuário e
+      condições, os dois caminhos devem produzir o mesmo valor, destino,
+      interpretação e decisão de salvar, pedir confirmação ou recusar.
+      Nenhuma entrada pode aceitar silenciosamente o que a outra considera
+      ambíguo, nem ter timeout, fallback ou política de retenção próprios.
+    - **Só a apresentação se adapta à superfície.** Microfone, ciclo de vida
+      Android, tela e notificação podem exigir adaptadores técnicos; eles não
+      podem redefinir regras financeiras ou de segurança. Uma confirmação
+      necessária continua necessária no widget, que deve abrir/encaminhar a
+      revisão equivalente, nunca contorná-la por não estar dentro do app.
+    - **Testes de paridade são obrigatórios.** Todo bug de voz vira regressão
+      testada nas DUAS entradas, exercitando os módulos reais e comparando
+      decisões, valores e efeitos de gravação, fila, descarte e confirmação.
+      Testar somente o parser ou uma das superfícies não comprova a correção.
+    - **Divergência existente é dívida, não exceção autorizada.** Descrições
+      históricas no `context.md`, comentários ou implementações anteriores
+      que justifiquem comportamentos diferentes não prevalecem sobre esta
+      regra. Ao encontrá-los, registrar a divergência e resolvê-la no núcleo
+      compartilhado, sem introduzir outro remendo específico de superfície.
