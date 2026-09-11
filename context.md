@@ -94,6 +94,55 @@ Nenhuma das cinco baterias tocou num microfone. Todas rodam com gravação
 simulada. O reconhecimento local, o widget e o fluxo offline nunca foram
 exercitados num telefone.
 
+## 11/09/2026 — bateria de voz 6, os quatro caminhos, sem correcoes
+
+Pedido do autor: bateria extensa de lançamento por áudio, com e sem rede, no
+widget e no botão do app, procurando erro. Base `dcc1ec5`, apenas `main`,
+árvore limpa no início, sem stash nem worktree.
+
+Novo teste `node __tests__/voz-auditoria-rodada6.cjs`: **90 asserções, 84
+aprovadas, 6 reprovadas.** Exercita os módulos REAIS
+(`lib/voice-operations.ts`, `lib/widget-voz-task.ts`,
+`lib/widget-voz-pendentes.ts`, `lib/voz.ts` e o `heuristics` de verdade) e
+afirma sobre EFEITO COLATERAL: qual notificação saiu, em que estado o widget
+ficou, se o áudio foi apagado, se a fila guardou o item, quantas vezes a rede
+foi chamada.
+
+**Os seis achados, nenhum corrigido nesta sessão:**
+
+1. **Falha permanente do servidor vira "salvo no aparelho".** `PGRST202` não
+   está na lista de códigos definitivos de `registrarOperacaoVoz`, então cai
+   no `catch` genérico e vira `pending`; o widget notifica "salvo local",
+   devolve `true` e termina em `ocioso`. É o defeito de 07/09/2026 de novo. O
+   próprio arquivo já sabe distinguir esses códigos em `explicarFalhaDeEnvio`,
+   mas essa função só é usada no caminho de sincronização.
+2. **Sem rede E sem sessão, a fala é destruída.** O `catch` só enfileira se
+   houver `userId`; sem ele, o `finally` apaga o arquivo assim mesmo.
+3. **Gravação nova sem permissão de notificação é descartada** (questão de
+   desenho: a proteção cobre só áudio já preservado).
+4. **Áudio vindo do botão do app deixa o widget em `atencao`**, porque pedir
+   revisão devolve `false`, e `false` é lido como falha.
+5. **A fila de voz pendente não tem validade nem faxina.** Áudio de outra
+   conta no mesmo aparelho fica guardado para sempre, nunca processado e nunca
+   apagado.
+6. O fio comum de 1, 2 e 5 é a regra 9 do `AGENTS.md`: erro permanente virando
+   espera silenciosa, e descarte de dado sem aviso.
+
+**Duas expectativas reprovadas eram MINHAS, não do código, e foram
+corrigidas:** apagar o áudio quando a operação fica pendente está certo,
+porque o payload estruturado já foi gravado antes da rede; e o primeiro
+caminho feliz que escrevi usava valor inteiro, que `precisaRevisarValorVoz`
+manda confirmar por desenho, já que o reconhecedor pode ter colado reais e
+centavos.
+
+**Verificação:** `npm run test:ci` com saída 0 depois da rodada. A bateria 6
+fica FORA do CI enquanto os achados estiverem abertos, como as rodadas
+anteriores.
+
+**NÃO validado:** nada em aparelho. Toda gravação é simulada; microfone,
+serviço nativo do widget e entrega real de notificação seguem sem teste.
+Checklist de QA em `documentation/auditoria-voz-2026-09-11-rodada6.md`.
+
 ## 11/09/2026 — o plano anual no ar, e a landing inocentada
 
 Sessão sem mudança de código do aplicativo. O que mudou foi produção, mais um
