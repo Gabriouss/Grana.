@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { mensagemErro } from '@/lib/erros';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
@@ -61,7 +62,7 @@ export default function FeedbackModal({
       onClose();
       onSuccess();
     } catch (e: any) {
-      Alert.alert('Erro ao enviar', e.message ?? 'Tente novamente mais tarde.');
+      Alert.alert('Erro ao enviar', mensagemErro(e, 'Tente novamente mais tarde.'));
     } finally {
       setEnviando(false);
     }

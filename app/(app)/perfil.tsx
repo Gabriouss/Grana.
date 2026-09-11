@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { mensagemErro } from '@/lib/erros';
 import { ActivityIndicator, AppState, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 /* `expo-image` e não o `Image` do React Native: a foto de perfil vem de URL
    remota e era decodificada em tamanho cheio a cada montagem de tela, sem
@@ -213,7 +214,7 @@ export default function PerfilScreen() {
       }
       router.replace('/sign-in');
     } catch (err: any) {
-      Alert.alert('Erro ao excluir conta', err?.message || 'Tente novamente mais tarde.');
+      Alert.alert('Erro ao excluir conta', mensagemErro(err, 'Tente novamente mais tarde.'));
     } finally {
       setDeleting(false);
     }

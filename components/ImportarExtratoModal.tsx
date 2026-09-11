@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { mensagemErro } from '@/lib/erros';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alert';
@@ -177,7 +178,7 @@ export default function ImportarExtratoModal({
       if (!arquivo) return;
       interpretar(arquivo.texto, arquivo.nome);
     } catch (e: any) {
-      Alert.alert('Não foi possível ler o arquivo', e?.message ?? 'Tente novamente.');
+      Alert.alert('Não foi possível ler o arquivo', mensagemErro(e, 'Tente novamente.'));
     } finally {
       setLendo(false);
     }

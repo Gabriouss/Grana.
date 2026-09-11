@@ -19,6 +19,14 @@ export type MensagemNotif = {
   titulo: string;
   /** Pode conter o token literal "{streak}", substituído na hora de agendar. */
   texto: string;
+  /* Dias da semana em que a mensagem faz sentido, no formato de `getDay()`
+     (0 = domingo). Ausente significa "qualquer dia".
+
+     Existe porque a CATEGORIA é sensível ao dia e a mensagem não era: a
+     categoria `fim_de_semana` cobre sexta, sábado e domingo, e o sorteio
+     dentro dela podia entregar "Domingo à noite é um ótimo momento" numa
+     sexta. Foi o que aconteceu com o autor em 11/09/2026. */
+  dias?: number[];
 };
 
 /** Catálogo canônico da copy aprovada para os lembretes de hábito. */
@@ -54,14 +62,14 @@ export const MENSAGENS: MensagemNotif[] = [
   { id: 'micro-8', categoria: 'micro_gastos', titulo: 'Nada é pequeno demais', texto: 'Não existe gasto pequeno demais pra registrar. Bora fechar a contagem de hoje? 📋' },
 
   // ---- fim_de_semana: sexta/sábado/domingo à noite ----
-  { id: 'finde-1', categoria: 'fim_de_semana', titulo: 'Fim de semana chegando', texto: 'Antes do fim de semana começar valendo, que tal fechar os gastos da semana? 🎉' },
-  { id: 'finde-2', categoria: 'fim_de_semana', titulo: 'Sábado também conta', texto: 'Rolou programa hoje? Sábado também entra na conta — registra o que gastou 🎊' },
-  { id: 'finde-3', categoria: 'fim_de_semana', titulo: 'Fechando a semana', texto: 'Domingo à noite é um ótimo momento pra revisar como foi a semana no bolso 📊' },
-  { id: 'finde-4', categoria: 'fim_de_semana', titulo: 'Balanço do fim de semana', texto: 'Curtiu o fim de semana? Só falta contar pro Grana. quanto ele custou 😄' },
-  { id: 'finde-5', categoria: 'fim_de_semana', titulo: 'Sexta é dia de gasto extra', texto: 'Sexta costuma ter aquele gasto a mais — bar, cinema, delivery. Bora registrar? 🍕' },
-  { id: 'finde-6', categoria: 'fim_de_semana', titulo: 'Antes da segunda chegar', texto: 'Fecha o fim de semana com o controle em dia — a segunda agradece 🗓️' },
-  { id: 'finde-7', categoria: 'fim_de_semana', titulo: 'Domingo de organização', texto: 'Domingão é ótimo pra revisar a semana inteira, não só hoje. Já deu uma olhada? 🧾' },
-  { id: 'finde-8', categoria: 'fim_de_semana', titulo: 'Semana começando', texto: 'Comece a semana sabendo exatamente como terminou a anterior. Vamos fechar as contas? ✅' },
+  { id: 'finde-1', dias: [5], categoria: 'fim_de_semana', titulo: 'Fim de semana chegando', texto: 'Antes do fim de semana começar valendo, que tal fechar os gastos da semana? 🎉' },
+  { id: 'finde-2', dias: [6], categoria: 'fim_de_semana', titulo: 'Sábado também conta', texto: 'Rolou programa hoje? Sábado também entra na conta — registra o que gastou 🎊' },
+  { id: 'finde-3', dias: [0], categoria: 'fim_de_semana', titulo: 'Fechando a semana', texto: 'Domingo à noite é um ótimo momento pra revisar como foi a semana no bolso 📊' },
+  { id: 'finde-4', dias: [6, 0], categoria: 'fim_de_semana', titulo: 'Balanço do fim de semana', texto: 'Curtiu o fim de semana? Só falta contar pro Grana. quanto ele custou 😄' },
+  { id: 'finde-5', dias: [5], categoria: 'fim_de_semana', titulo: 'Sexta é dia de gasto extra', texto: 'Sexta costuma ter aquele gasto a mais — bar, cinema, delivery. Bora registrar? 🍕' },
+  { id: 'finde-6', dias: [0], categoria: 'fim_de_semana', titulo: 'Antes da segunda chegar', texto: 'Fecha o fim de semana com o controle em dia — a segunda agradece 🗓️' },
+  { id: 'finde-7', dias: [0], categoria: 'fim_de_semana', titulo: 'Domingo de organização', texto: 'Domingão é ótimo pra revisar a semana inteira, não só hoje. Já deu uma olhada? 🧾' },
+  { id: 'finde-8', dias: [0], categoria: 'fim_de_semana', titulo: 'Semana começando', texto: 'Comece a semana sabendo exatamente como terminou a anterior. Vamos fechar as contas? ✅' },
 
   // ---- saudade: 2+ dias sem abrir o app ----
   { id: 'saudade-1', categoria: 'saudade', titulo: 'Sentimos sua falta', texto: 'Faz um tempinho que a gente não se vê por aqui — como estão as finanças? 👋' },
@@ -117,7 +125,13 @@ export function selecionarMensagem(contexto: {
   diasInativo: number;
   diaSemana: number;
 }, recentes: string[], aleatorio = Math.random, janela: JanelaLembrete = 'noite'): MensagemNotif {
-  const semRepetir = (lista: MensagemNotif[]) => lista.filter((m) => !recentes.includes(m.id));
+  /* Duas peneiras, nesta ordem. A do DIA vem primeiro e não é negociável:
+     uma mensagem que promete "Domingo à noite" numa sexta mente para a
+     pessoa, e mentir é pior que repetir. A de repetição vem depois e cede
+     quando precisa. */
+  const doDia = (lista: MensagemNotif[]) =>
+    lista.filter((m) => !m.dias || m.dias.includes(contexto.diaSemana));
+  const semRepetir = (lista: MensagemNotif[]) => doDia(lista).filter((m) => !recentes.includes(m.id));
 
   let categoriaPrioritaria: CategoriaMensagem | null = null;
   if (contexto.diasInativo >= 2) categoriaPrioritaria = 'saudade';
@@ -135,6 +149,10 @@ export function selecionarMensagem(contexto: {
   if (candidatas.length === 0) {
     // Tudo foi usado recentemente (catálogo pequeno demais ou muita sorte
     // ruim) — melhor repetir do que não notificar nada.
+    // Ainda respeitando o dia: repetir é aceitável, mentir não.
+    candidatas = doDia(MENSAGENS);
+  }
+  if (candidatas.length === 0) {
     candidatas = MENSAGENS;
   }
 

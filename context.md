@@ -1,5 +1,71 @@
 # Contexto do projeto — Grana.
 
+## 11/09/2026 — dois defeitos vistos no aparelho, corrigidos
+
+O autor reportou com prints do celular. Os dois são de superfície e nenhuma
+bateria de voz pegaria: um é copy, o outro é apresentação de erro.
+
+### A faixa de erro virou terminal
+
+**O sintoma:** a tela Início, sem rede, imprimiu a LISTA INTEIRA de lançamentos
+— ids, `user_id`, valores, datas — na faixa de erro, cobrindo o app.
+
+**A causa imediata** é `{error && <Text style={styles.errorText}>{error}</Text>}`
+alimentado por `setError(e.message)`. Alguma biblioteca devolveu o payload
+dentro de `error.message` e o código repassou cru. **Qual biblioteca não foi
+determinado:** não há `throw` com dado serializado em lugar nenhum do
+repositório, e sem o log do aparelho não dá para cravar. O suspeito é o
+armazenamento local do Android estourando limite de tamanho, mas isso é
+hipótese, não fato.
+
+**A causa que importa é nossa:** uma faixa de erro não pode exibir texto
+ilimitado vindo de fora. `mensagemErro` em `lib/erros.ts` passou a barrar o que
+tem cara de despejo — acima de 180 caracteres, ou com estrutura de JSON — e a
+mandar o detalhe truncado para o log. Mensagem técnica CURTA continua passando,
+que era a intenção original e é útil.
+
+Aplicado nos cinco pontos que expunham mensagem crua: a faixa da Início (dois
+pontos), e os alertas de excluir conta, gerar relatório, enviar feedback e ler
+extrato.
+
+Novo `__tests__/erro-na-tela.cjs`, 9 checagens contra o módulo real, incluindo
+o payload exato do print.
+
+### A notificação prometia o dia errado
+
+**O sintoma:** numa SEXTA chegou "Fechando a semana — Domingo à noite é um
+ótimo momento pra revisar como foi a semana no bolso".
+
+**A causa:** a CATEGORIA era sensível ao dia, a mensagem não.
+`[5, 6, 0].includes(diaSemana)` manda sexta, sábado e domingo para
+`fim_de_semana`, e dentro dela a escolha era sorteio puro entre oito. Cinco
+dessas oito citam um dia específico. Numa sexta, cinco chances em oito de
+mentir.
+
+**A correção:** `MensagemNotif` ganhou `dias?: number[]`, as oito mensagens de
+fim de semana foram marcadas com o dia que prometem, e `selecionarMensagem`
+peneira por dia ANTES de peneirar por repetição. A ordem importa: repetir é
+aceitável, mentir não — inclusive no último recuo, quando o repertório do dia
+se esgota.
+
+A Edge Function `enviar-lembretes-habito` **importa** o mesmo arquivo em vez de
+duplicá-lo, então a correção vale nos dois caminhos sozinha.
+
+Novo `__tests__/notificacao-dia-certo.cjs`, 11 checagens, varrendo os sete dias
+e conferindo que nenhuma mensagem alcançável cita um dia diferente do atual.
+
+### Verificação
+
+`tsc` limpo, `deno check` limpo, `test:ci` **saída 0** com os dois testes novos
+encadeados.
+
+**NÃO resolvido:** a origem do payload dentro de `error.message`. A blindagem
+impede o vazamento na tela, mas a falha em si continua acontecendo sem rede.
+Para fechar, é preciso o `adb logcat` do aparelho no momento do erro — o log
+agora registra tamanho e os 300 primeiros caracteres, que devem bastar para
+identificar a origem.
+
+
 ## 11/09/2026 — a unificação da voz, concluída, e duas decisões que ela forçou
 
 O autor mandou unificar: "É TUDO A MESMA COISA, SEMPRE. EXATAMENTE IGUAIS."

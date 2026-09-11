@@ -18,6 +18,7 @@ import { Image } from 'expo-image';
 import AppModal from '@/components/AppModal';
 import FaixaOffline from '@/components/FaixaOffline';
 import { Alert } from '@/lib/alert';
+import { mensagemErro } from '@/lib/erros';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
@@ -285,7 +286,7 @@ export default function InicioScreen() {
       setCreditCards(cc);
       setError(null);
     } catch (e: any) {
-      setError(e.message ?? 'Erro ao carregar dados');
+      setError(mensagemErro(e, 'Erro ao carregar dados'));
     }
     try {
       setGoals(await fetchGoals());
@@ -375,7 +376,7 @@ export default function InicioScreen() {
         setLifetimeXp(0);
       }
     } catch (e: any) {
-      setError(e.message ?? 'Erro ao carregar dados');
+      setError(mensagemErro(e, 'Erro ao carregar dados'));
     } finally {
       setLoading(false);
       setRefreshing(false);
