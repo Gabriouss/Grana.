@@ -1,6 +1,6 @@
 # 007 — Tornar troca de telas e botões fluidos
 Status: TODO • Base d37bd7f • Severidade MEDIUM • Escopo: app/(app)/_layout.tsx, components/AppPressable.tsx, lib/motion.ts e novo wrapper de cena se necessário.
-Raiz: C:/Users/user/Desktop/Aplicativo Financeiro/grana-app.
+Raiz: E:/GranaPonto (era C:/Users/user/Desktop/Aplicativo Financeiro/grana-app ate 10/09/2026).
 Pedido explícito do usuário: motion na navegação e nos botões. Dependência recomendada: 003.
 
 ## Evidência

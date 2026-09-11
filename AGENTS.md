@@ -308,10 +308,11 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     aparece depois de reiniciar; enquanto isso o vault é alcançável como pasta
     comum do sistema de arquivos.
 
-    **O `context.md` e o próprio `AGENTS.md` são espelhados
-    automaticamente**, do repositório para o vault, em
-    `01 - Código/Contexto do Projeto - Grana.md` e
-    `01 - Código/Regras para Agentes - Grana.md`. Quem faz isso é um `hook` de
+    **Três arquivos são espelhados automaticamente**, do repositório para o
+    vault, todos em `01 - Código`: o `context.md` como
+    `Contexto do Projeto - Grana.md`, o próprio `AGENTS.md` como
+    `Regras para Agentes - Grana.md`, e o `PRODUCT.md` como
+    `Produto - Estado Atual - Grana.md`. Quem faz isso é um `hook` de
     `Stop` em `.claude/settings.local.json` — arquivo ignorado pelo git de
     propósito, porque o caminho do vault só existe nesta máquina. Ele compara
     antes de copiar, para não provocar sincronização do Drive à toa, e sai com

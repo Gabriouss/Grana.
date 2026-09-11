@@ -1,6 +1,6 @@
 # 008 — Animar gráficos com transições curtas e dados estáveis
 Status: TODO • Base d37bd7f • Severidade HIGH para duração atual de FlowChart; MEDIUM para coesão.
-Raiz: C:/Users/user/Desktop/Aplicativo Financeiro/grana-app.
+Raiz: E:/GranaPonto (era C:/Users/user/Desktop/Aplicativo Financeiro/grana-app ate 10/09/2026).
 Escopo: components/FlowChart.tsx, LineAreaChart.tsx, FutureTimelineChart.tsx; integração de chaves em app/(app)/index.tsx e graficos.tsx. Dependência: 003. Pedido explícito do usuário: motion em gráficos.
 
 ## Evidência

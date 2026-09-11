@@ -1,6 +1,6 @@
 # 006 — Refinar o feedback dos estados de voz
 Base: d37bd7f • Status: TODO • Aplicativo interno Grana.
-Raiz absoluta: C:/Users/user/Desktop/Aplicativo Financeiro/grana-app.
+Raiz absoluta: E:/GranaPonto (era C:/Users/user/Desktop/Aplicativo Financeiro/grana-app ate 10/09/2026).
 Todos os caminhos abaixo são relativos a essa raiz. Planejamento apenas.
 
 Severidade: LOW. Categoria: indicação de estado. Escopo: components/VoiceEntryButton.tsx e eventual componente visual extraído; lib/motion.ts para tokens. Dependência: 003.

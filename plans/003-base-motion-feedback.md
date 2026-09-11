@@ -1,6 +1,6 @@
 # 003 — Consolidar feedback e reduzir custo de movimento
 Base: d37bd7f • Status: TODO • Aplicativo interno Grana.
-Raiz absoluta: C:/Users/user/Desktop/Aplicativo Financeiro/grana-app.
+Raiz absoluta: E:/GranaPonto (era C:/Users/user/Desktop/Aplicativo Financeiro/grana-app ate 10/09/2026).
 Todos os caminhos abaixo são relativos a essa raiz. Planejamento apenas.
 
 Severidade: MEDIUM. Categorias: interrupção, duração, performance. Escopo: lib/motion.ts, components/Toast.tsx, FadeIn.tsx, FutureTimelineChart.tsx e testes específicos; revisar consumidores antes de mudar API.

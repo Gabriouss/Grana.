@@ -1,6 +1,6 @@
 # 004 — Dar continuidade à abertura e saída do Granachat
 Base: d37bd7f • Status: TODO • Aplicativo interno Grana.
-Raiz absoluta: C:/Users/user/Desktop/Aplicativo Financeiro/grana-app.
+Raiz absoluta: E:/GranaPonto (era C:/Users/user/Desktop/Aplicativo Financeiro/grana-app ate 10/09/2026).
 Todos os caminhos abaixo são relativos a essa raiz. Planejamento apenas.
 
 Severidade: MEDIUM. Categorias: continuidade, acessibilidade. Escopo: components/Granachat.tsx; lib/motion.ts somente se tokens ainda ausentes. Dependência recomendada: 003.

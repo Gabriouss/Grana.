@@ -94,6 +94,65 @@ Nenhuma das cinco baterias tocou num microfone. Todas rodam com gravação
 simulada. O reconhecimento local, o widget e o fluxo offline nunca foram
 exercitados num telefone.
 
+## 11/09/2026 — o vault do Obsidian, a limpeza da raiz e a poeira dos documentos
+
+Três pedidos do autor, na mesma sessão, que viraram a regra 12 do `AGENTS.md`.
+
+### O vault virou o registro do projeto
+
+`G:\Meu Drive\Obsidian\Gabriel\Grana`, com o servidor MCP `mcpvault`
+apontado para a RAIZ do vault. Ele já existia para outra pasta de trabalho e
+foi acrescentado para `E:\GranaPonto` direto no `.claude.json`, porque o
+executável `claude` não está no `PATH` de dentro da extensão do VS Code.
+
+**Três arquivos são espelhados sozinhos** por um `hook` de `Stop` em
+`.claude/settings.local.json` (ignorado pelo git, porque o caminho do vault só
+existe nesta máquina): `context.md`, `AGENTS.md` e `PRODUCT.md`. A direção é
+uma só, o repositório manda, e edição feita dentro do Obsidian será
+sobrescrita.
+
+**O que NÃO vai para lá:** `.env` e qualquer segredo, porque o vault fica
+dentro do Google Drive. Nota que precise citar credencial cita o NOME da
+variável, nunca o valor. Vale o mesmo para `Feedbacks/` e `Screenshots/`.
+
+### 160 KB de relatório saíram da raiz
+
+Seis documentos eram artefato de uma rodada só: `IMPECCABLE_AUDIT.md` (75 KB),
+os dois `PLANO_DE_ACAO_COPY_LANDING` (59 KB), `HANDOFF_LANDING_CODEX.md`,
+`AUDITORIA_LANDING_PAGE.md` e `COPY_LANDING_GRANABO.md`. O texto **integral**
+de cada um foi para o vault e conferido byte a byte ANTES da remoção, e o
+HTML teve o texto extraído em vez de ser descartado como duplicata, porque era
+outra apresentação, com títulos próprios.
+
+As notas-resumo que já existiam no vault passaram a apontar para os completos,
+e a do resumo da auditoria ganhou aviso, porque cita R$ 19,99 e Kiwify. Quatro
+referências que ficariam penduradas foram reapontadas: dois comentários de
+`app/(app)/index.tsx` e duas citações em `docs/`.
+
+### A varredura de fatos obsoletos
+
+O autor apontou o `PRODUCT.md` descrevendo o WhatsApp como canal operacional e
+pediu que o resto fosse conferido. O que estava velho, e foi corrigido:
+
+| Arquivo | O que dizia | O que passou a dizer |
+|---|---|---|
+| `PRODUCT.md` | WhatsApp como entrada principal, "verificada pela Meta" usável publicamente | Canal desligado desde 05/09 e despriorizado desde 09/09; selo proibido em material público |
+| `PRODUCT.md` | R$ 9,90/mês, checkout da Kiwify "ainda não existe", "não existe paywall" | R$ 9,90/mês e R$ 97,90/ano na Cakto, checkouts no ar, bloqueio implementado e desligado por interruptor |
+| `PRODUCT.md` | `temAssinaturaAtiva()` não chamada em tela nenhuma | Trocado pela descrição real do portão em `app/_layout.tsx` |
+| `DESIGN.md` | "voz, WhatsApp ou nota fiscal" como entradas | Voz no app, voz no widget e nota fiscal |
+| `DESIGN.md` | Verde do WhatsApp como exceção viva | Exceção registrada, com os botões hoje ocultos pelo interruptor |
+| `PLANO_DE_EVOLUCAO.md` | Épico 3.2 lido como caminho de evolução | Marcado como histórico, a não retomar |
+| `.env.example` | Número do WhatsApp sem ressalva | Anotado como canal desligado |
+| 6 arquivos em `plans/` e `PLANO_DE_EVOLUCAO.md` | Raiz absoluta na pasta matriz do Desktop, morta desde 10/09 | `E:/GranaPonto`, com a antiga citada como histórico |
+
+**Conferido antes de mudar:** a navegação da landing citada no `DESIGN.md`
+ainda lista "Granabô", e isso está CERTO — o que saiu da landing foi a dobra
+do bot no WhatsApp, não o assistente dentro do app. O `fallback` da Kiwify no
+código também não é poeira: é a rede de quem tem a 1.8.4 instalada, e sai só
+depois de uma APK nova com a Cakto dentro.
+
+`npx tsc --noEmit` limpo e `npm run test:ci` com saída 0 depois de tudo.
+
 ## 11/09/2026 — a lentidao sem rede, corrigida e medida
 
 Queixa do autor: o app demora a abrir sem internet, e o lançamento por voz

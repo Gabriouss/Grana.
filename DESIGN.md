@@ -1,6 +1,6 @@
 ---
 name: Grana.
-description: Registro de finanças pessoais que você conta — voz, WhatsApp ou nota fiscal — não preenche.
+description: Registro de finanças pessoais que você conta — por voz ou por nota fiscal — não preenche.
 colors:
   deep-petroleum: "#052229"
   raised-tide: "#0b2d35"
@@ -92,8 +92,9 @@ components:
 
 **Creative North Star: "The Confessional Ledger"**
 
-Você conta o que aconteceu com seu dinheiro — falando, mandando um áudio no
-WhatsApp, apontando a câmera pra uma nota — e o Grana. escuta sem julgar.
+Você conta o que aconteceu com seu dinheiro — falando no app, falando no
+widget com o app fechado, apontando a câmera pra uma nota — e o Grana.
+escuta sem julgar.
 Não existe vermelho de alarme pra gasto, não existe tom de erro pra ter
 saído dinheiro da conta: "saída" usa ciano, a mesma família cromática de
 "entrada", porque gastar não é um erro a ser sinalizado. A superfície é
@@ -147,7 +148,7 @@ secundário é um verde-água dessaturado, não um cinza.
 Duas cores ficam fora dessa regra, as duas por função e não por decoração:
 
 - **Danger** (#e08a7d): ação destrutiva e estado de atraso — excluir conta, excluir cartão, erro de reautenticação, fatura "Atrasada". É um salmão dessaturado, não um vermelho de alarme, e mede 6,39:1 sobre Deep Petroleum e 5,62:1 sobre Raised Tide. Nunca aparece em valor de gasto: a fronteira é "isto vai destruir algo ou já venceu", não "isto é dinheiro saindo". Substituiu um `#bb6b60` cru (a cor da categoria Alimentação, reaproveitada por engano) que dava 3,74:1, abaixo do AA.
-- **Verde do WhatsApp** (#25D366): num botão que abre o WhatsApp de verdade — cor emprestada com propósito funcional, citada como exceção no próprio comentário do código.
+- **Verde do WhatsApp** (#25D366): num botão que abre o WhatsApp de verdade — cor emprestada com propósito funcional, citada como exceção no próprio comentário do código. **Esses botões estão ocultos desde 05/09/2026**, pelo interruptor remoto `whatsapp`, e a exceção fica registrada para o caso de o canal voltar; não usar essa cor em nenhum lugar novo.
 
 **The Mint-Is-Rare Rule.** Instrument Mint é a cor mais chamativa da paleta e por isso a mais restrita — marca, ação em foco, valor em destaque. Se ela aparece em mais de um ou dois lugares na mesma tela, algo que devia ser silencioso está gritando.
 
@@ -396,6 +397,6 @@ Substituiu uma sequência de 4 "capítulos" trocados por scroll, cada um mostran
 ### Don't:
 - **Don't** usar fonte do sistema (ou qualquer fonte que não seja Neue Machina) em lugar nenhum — nem corpo, nem controle, nem campo, nem metadado. E não sintetizar `fontWeight` nos arquivos Light/Regular da marca.
 - **Don't** clonar a identidade visual de outro banco/fintech — sem vermelho de alarme, sem badge/confete de gamificação, sem urgência fabricada.
-- **Don't** desenhar a interface como planilha utilitária — voz e WhatsApp são a entrada principal; a tela nunca deveria parecer uma ferramenta de contador.
+- **Don't** desenhar a interface como planilha utilitária — a voz é a entrada principal; a tela nunca deveria parecer uma ferramenta de contador.
 - **Don't** inventar uma nova sombra ad hoc — as receitas em `sombras` (lib/theme.ts) cobrem todo caso real, e o corpus quebra se aparecer um `boxShadow` literal. Receita nova exige uma linha no catálogo, que é exatamente o momento de perguntar se ela precisa existir.
-- **Don't** emprestar cor de marca de terceiro sem necessidade funcional — a única exceção (verde do WhatsApp) existe porque o botão literalmente abre o WhatsApp, e está documentada como tal no código.
+- **Don't** emprestar cor de marca de terceiro sem necessidade funcional — a única exceção (verde do WhatsApp) existe porque o botão literalmente abre o WhatsApp, está documentada como tal no código, e hoje esses botões estão ocultos pelo interruptor remoto.

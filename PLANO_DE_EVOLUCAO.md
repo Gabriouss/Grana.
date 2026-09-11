@@ -12,6 +12,15 @@ Este documento é o **plano mestre de implementação** para evoluir o **Grana.*
 > (histórico de planejamento), então lê como trabalho futuro — não é. Só o
 > **Épico 5 (widgets de tela inicial / Atalhos iOS)** continua pendente de
 > verdade.
+>
+> **Atualização de 11/09/2026 — o WhatsApp saiu do mapa.** O canal está
+> desligado por tempo indeterminado desde 05/09/2026, depois de um segundo
+> banimento de contas na Meta, e foi despriorizado como produto em
+> 09/09/2026 ("Esquece WhatsApp. Não sei nem se iremos voltar a utilizar").
+> O item 3.2 abaixo já foi implementado e continua no texto como histórico,
+> mas **não deve ser retomado, estendido nem citado como caminho de
+> evolução**. O mesmo motor de transcrição hoje serve a voz do app e a do
+> widget, que são as entradas rápidas vivas.
 
 ---
 
@@ -124,7 +133,7 @@ fiscal (3.3), voz e colar comprovante.
 - **Atualização na Edge Function `supabase/functions/whatsapp-webhook`**:
   - Quando a mensagem recebida for do tipo `audio` (formato `.ogg`/`.mp3`), a Edge Function baixa o áudio criptografado da API do WhatsApp.
   - Envia para a API do OpenAI Whisper (ou Groq Whisper) para transcrição rápida.
-  - Passa o texto transcrito pelo parser de [heuristics.ts](file:///c:/Users/user/Desktop/Aplicativo%20Financeiro/grana-app/lib/heuristics.ts) e insere o gasto na conta do usuário vinculado.
+  - Passa o texto transcrito pelo parser de [heuristics.ts](lib/heuristics.ts) e insere o gasto na conta do usuário vinculado.
 
 ### 3.3. Leitor de QR Code de Nota Fiscal (NFC-e)
 - **Biblioteca**: `expo-camera` / `expo-barcode-scanner`.
