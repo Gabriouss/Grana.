@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { randomUUID } from 'expo-crypto';
 import { registrarOperacaoVoz } from '@/lib/voice-operations';
+import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
   ActivityIndicator,
@@ -173,11 +174,11 @@ export default function ContasScreen() {
       return;
     }
     setVozWalletId(carteira?.id ?? (/\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto) ? '' : null));
-    const guessedAmount = guessAmountFromText(financeiro);
+    const guessedAmount = valorSeguroParaRevisaoVoz(financeiro);
     const guessedCat = guessCategoryFromText(financeiro, categoriasExtras);
     const guessedDesc = guessDescFromText(financeiro, 'out');
     setDesc(guessedDesc);
-    setAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
+    setAmount(guessedAmount != null && guessedAmount > 0 ? formatMoney(guessedAmount) : '');
     setCategory(guessedCat.name);
     setCatColor(guessedCat.color);
     setDueDate(vencimento);

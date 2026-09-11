@@ -81,6 +81,13 @@ export async function registrarOperacaoVoz(
   } catch (erro) {
     const codigo = String((erro as { code?: string })?.code ?? '');
     // Recusa definitiva não pode reaparecer silenciosamente numa sincronização.
+    /* Objeto ausente no servidor — PGRST202, PGRST205, 42883, 42P01 — NAO
+       entra aqui, e a tentativa de incluí-lo em 11/09/2026 foi revertida.
+       Esses códigos dizem que a migration não foi aplicada: problema de
+       deploy, não recusa do lançamento. Descartar ali apagaria a fala da
+       pessoa por um erro nosso, e contradiz o que `explicarFalhaDeEnvio`
+       promete na tela: "Nada foi perdido". Eles seguem pendentes, com a
+       mensagem dizendo que não se resolve sozinho. */
     if (/^(22|23|42501)/.test(codigo)) {
       await AsyncStorage.removeItem(chave);
       throw erro;

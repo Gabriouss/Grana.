@@ -33,6 +33,7 @@ import { LIMITS } from '@/lib/limits';
 import { randomUUID } from 'expo-crypto';
 import { registrarOperacaoVoz } from '@/lib/voice-operations';
 import { useWallet } from '@/lib/wallet-context';
+import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 
 export default function PasteReceiptModal({
   visible,
@@ -120,19 +121,19 @@ export default function PasteReceiptModal({
     recorrente ? 'repete todo mês' : null,
   ].filter((d): d is string => !!d);
 
-  function processText(text: string) {
+  function processText(text: string, voz = false) {
     const wallet = matchWalletByText(text, wallets);
     const textoFinanceiro = wallet ? limparReferenciaCarteira(text, wallet.name) : text;
     const mencionada = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(text);
     setWalletId(wallet?.id ?? (mencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
-    const guessedAmount = guessAmountFromText(textoFinanceiro);
+    const guessedAmount = voz ? valorSeguroParaRevisaoVoz(textoFinanceiro) : guessAmountFromText(textoFinanceiro);
     const guessedType = guessTypeFromText(textoFinanceiro);
     const guessedCat = guessCategoryFromText(textoFinanceiro, categoriasExtras);
     const guessedDesc = guessDescFromText(textoFinanceiro, guessedType);
 
     setType(guessedType);
     setDesc(guessedDesc);
-    setAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
+    setAmount(guessedAmount != null && guessedAmount > 0 ? formatMoney(guessedAmount) : '');
     setCategory(guessedCat.name);
     /* Forma de pagamento e recorrência ditas na frase eram simplesmente
        jogadas fora aqui: "mercado 120 no pix" salvava sem payment_method
@@ -149,14 +150,14 @@ export default function PasteReceiptModal({
       Alert.alert('Texto vazio', 'Cole o texto do comprovante ou Pix para reconhecer.');
       return;
     }
-    processText(text);
+    processText(text, origemVoz);
   }
 
   useEffect(() => {
     if (!visible || !initialText) return;
     setRawText(initialText);
     setOrigemVoz(true);
-    processText(initialText);
+    processText(initialText, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialText]);
 

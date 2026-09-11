@@ -36,15 +36,27 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 
   cards = [cards[0]]; matched = null; await task({ caminho: '/qa.m4a', requestId: '3' });
   assert.equal(saved[1].card_id, 'c6');
   permission = false; await task({ caminho: '/qa.m4a', requestId: '4' });
-  assert.equal(saved.length, 2); assert.equal(cleaned, 4);
+  /* Sem permissão de notificação o widget NÃO grava — a regra de que sem
+     como avisar não se mexe no dinheiro continua valendo. O que mudou em
+     11/09/2026 é o destino do áudio: antes ele era apagado, agora, havendo
+     sessão, vai para a fila de pendentes e é preservado. A pessoa pode
+     conceder a permissão depois e a fala dela não se perdeu. Por isso
+     `cleaned` para em 3 e a fila ganha uma entrada. */
+  assert.equal(saved.length, 2);
+  assert.equal(cleaned, 3, 'audio preservado em vez de apagado quando falta permissao');
+  assert.equal(pending.length, 1, 'a fala sem permissao vai para a fila de pendentes');
   permission = true;
   permission = false;
   await task({ caminho: '/voz-pendente/app.m4a', requestId: 'app-sem-permissao', source: 'app' });
-  assert.equal(cleaned, 4, 'retomada do app sem notificações conserva o áudio');
+  assert.equal(cleaned, 3, 'retomada do app sem notificações conserva o áudio');
   permission = true;
   deps['./voz'].transcreverAudio = async () => ({ ok: false, codigo: 'sem_rede' });
   await task({ caminho: '/qa-offline.m4a', requestId: '5' });
-  assert.equal(pending.length, 1); assert.equal(pending[0].userId, 'qa-user');
-  assert.equal(cleaned, 4, 'áudio offline fica preservado para a fila');
+  /* Duas entradas agora, não uma: a primeira veio da permissão negada, que
+     desde 11/09/2026 preserva o áudio em vez de apagá-lo, e esta é a do
+     offline. A asserção olha a última para não depender da ordem. */
+  assert.equal(pending.length, 2);
+  assert.equal(pending[pending.length - 1].userId, 'qa-user');
+  assert.equal(cleaned, 3, 'áudio offline fica preservado para a fila');
   console.log('OK tarefa real: cartão ambíguo vai à revisão; cartão citado é usado; único cartão funciona; sem notificação não grava; áudio offline fica na fila; erros não apagam o áudio pendente.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

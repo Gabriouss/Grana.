@@ -175,6 +175,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return { error: traduzirErroAuth(error), needsEmailConfirmation: !error && !data.session };
     },
     async signOut() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user.id) {
+        const { limparVozesDaConta } = await import('./widget-voz-pendentes');
+        await limparVozesDaConta(data.session.user.id);
+      }
       /* Some da tela inicial antes de a sessão ser removida: nenhuma conta
          seguinte pode herdar o saldo, boleto ou cofrinho da anterior. */
       limparSnapshotWidgets();

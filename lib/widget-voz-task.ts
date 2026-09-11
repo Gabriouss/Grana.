@@ -27,8 +27,12 @@ class VozPendenteOffline extends Error {
 
 type Payload = { caminho?: string; requestId?: string; source?: 'app' | 'widget'; transcricao?: string };
 
-async function executarTarefa(payload: Payload) {
-  const { definirEstado } = await import('@/modules/grana-voice-widget');
+type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarRevisao' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'>;
+
+/** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
+export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
+  const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
+  const notificacoes = recibo ?? await import('./widget-voz-notificacoes');
   const caminho = payload?.caminho;
   const requestId = payload?.requestId;
   /* O estado final do widget é decidido aqui e não no `finally` de sempre:
@@ -47,15 +51,24 @@ async function executarTarefa(payload: Payload) {
        sem permissão de notificação o widget não tem como entregar o recibo
        nem o "Desfazer". Nesse caso ele não lança — acende o estado de
        atenção, e um toque abre o app pra resolver a permissão. */
-    const { podeNotificar } = await import('./widget-voz-notificacoes');
-    if (!(await podeNotificar())) {
+    if (!(await notificacoes.podeNotificar())) {
       estadoFinal = 'atencao';
-      // Uma retomada sem permissão não pode apagar o áudio preservado.
-      manterArquivo = payload.source === 'app' || caminho.includes('/voz-pendente/');
+      // A permissão pode ter mudado depois da gravação. Preservar com dono;
+      // nunca atribuir uma fala sem sessão à próxima conta do aparelho.
+      manterArquivo = caminho.includes('/voz-pendente/');
+      if (!manterArquivo) {
+        const { supabase } = await import('./supabase');
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.user.id) {
+          const { adicionarVozPendente } = await import('./widget-voz-pendentes');
+          await adicionarVozPendente({ caminho, requestId, userId: data.session.user.id, source: payload.source });
+          manterArquivo = true;
+        }
+      }
       return;
     }
 
-    const salvou = await processar(caminho, requestId, contexto, payload);
+    const salvou = await processar(caminho, requestId, contexto, payload, notificacoes);
     if (salvou) await sincronizarResumoDepoisDaVoz();
     else estadoFinal = 'atencao';
   } catch (erro) {
@@ -78,16 +91,17 @@ async function executarTarefa(payload: Payload) {
           await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao });
           manterArquivo = true;
           try {
-            const { notificarPendenteOffline } = await import('./widget-voz-notificacoes');
-            await notificarPendenteOffline();
-          } catch {
+            await notificacoes.notificarPendenteOffline();
+          } catch (erroRecibo) {
+            console.warn('[voz] recibo de pendência falhou', erroRecibo);
             // A fila continua sendo a fonte de verdade se a notificação falhar.
           }
+        } else {
+          await notificacoes.notificarFalha('sem_sessao');
         }
       }
     } else {
       try {
-        const notificacoes = await import('./widget-voz-notificacoes');
         if (contexto.transcricao) {
           /* Se a captura e a transcrição deram certo, devolver a fala para a
              revisão é muito mais útil que "erro interno" sem contexto. */
@@ -123,10 +137,9 @@ async function apagarArquivo(caminho: string) {
   }
 }
 
-async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload): Promise<boolean> {
-  const [{ transcreverAudio }, notificacoes, heuristics, data, voiceOperations] = await Promise.all([
+async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz): Promise<boolean> {
+  const [{ transcreverAudio }, heuristics, data, voiceOperations] = await Promise.all([
     import('./voz'),
-    import('./widget-voz-notificacoes'),
     import('./heuristics'),
     import('./data'),
     import('./voice-operations'),
@@ -146,10 +159,9 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   let texto = transcricao.transcript;
   contexto.transcricao = texto;
-  if (payload.source === 'app') {
-    await notificacoes.notificarRevisao('Revise seu lançamento por voz', texto);
-    return false;
-  }
+  // A forma curta "cartão C6" tem a mesma intenção de "no cartão C6".
+  // A heurística existente já preserva débito e recebimentos explicitados.
+  texto = texto.replace(/\bcart[aã]o\b/giu, 'no cartão');
   const { fetchWallets } = await import('./wallets');
   let prazoReferencias: ReturnType<typeof setTimeout> | undefined;
   const [extras, carteiras, cartoesDisponiveis] = await Promise.race([
@@ -204,7 +216,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
       await notificacoes.notificarRevisao('Confirme o vencimento', transcricao.transcript);
       return false;
     }
-    const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
+    const resultado = await voiceOperations.registrarOperacaoVoz(requestId, payload.source ?? 'widget', {
       kind: 'bill',
       description: descricao,
       amount: valor,
@@ -233,12 +245,12 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   if (heuristics.ehIntencaoCredito(texto)) {
     return lancarNoCredito({
-      requestId, texto, valor, descricao, categoria, carteiraId: carteira.id, cartoesDisponiveis, heuristics, data, notificacoes, voiceOperations,
+      requestId, source: payload.source ?? 'widget', texto, valor, descricao, categoria, carteiraId: carteira.id, cartoesDisponiveis, heuristics, data, notificacoes, voiceOperations,
     });
   }
 
   const formaPagamento = heuristics.parseFormaPagamento(texto);
-  const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
+  const resultado = await voiceOperations.registrarOperacaoVoz(requestId, payload.source ?? 'widget', {
     kind: 'transaction',
     type: tipo,
     description: descricao,
@@ -272,6 +284,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
 async function lancarNoCredito(args: {
   requestId: string;
+  source: 'app' | 'widget';
   texto: string;
   valor: number;
   descricao: string;
@@ -280,7 +293,7 @@ async function lancarNoCredito(args: {
   cartoesDisponiveis: CreditCard[];
   heuristics: typeof import('./heuristics');
   data: typeof import('./data');
-  notificacoes: typeof import('./widget-voz-notificacoes');
+  notificacoes: ReciboVoz;
   voiceOperations: typeof import('./voice-operations');
 }): Promise<boolean> {
   const { requestId, texto, valor, descricao, categoria, carteiraId, heuristics, data, notificacoes, voiceOperations } = args;
@@ -308,7 +321,7 @@ async function lancarNoCredito(args: {
   const parcelas = heuristics.parseParcelas(texto);
 
   if (parcelas && parcelas > 1) {
-    const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
+    const resultado = await voiceOperations.registrarOperacaoVoz(requestId, args.source, {
       kind: 'installment',
       type: 'out',
       description: descricao,
@@ -339,7 +352,7 @@ async function lancarNoCredito(args: {
     return true;
   }
 
-  const resultado = await voiceOperations.registrarOperacaoVoz(requestId, 'widget', {
+  const resultado = await voiceOperations.registrarOperacaoVoz(requestId, args.source, {
     kind: 'transaction',
     type: 'out',
     description: descricao,

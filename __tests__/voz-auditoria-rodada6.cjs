@@ -108,8 +108,21 @@ async function parteA() {
     const { mod, store } = montarOperacoes({ erroRpc: { code: 'PGRST202', message: 'function not found' } });
     let erro = null, res = null;
     try { res = await mod.registrarOperacaoVoz('r1', 'widget', payload); } catch (e) { erro = e; }
-    check(F, 'PGRST202 nao pode virar pendente', res ? res.status : 'erro:' + (erro && erro.code), 'erro:PGRST202');
-    check(F, 'PGRST202 nao deixa lixo na fila local', store.mapa.size, 0);
+    /* Estas duas asserções exigiam que PGRST202 LANÇASSE e DESCARTASSE a
+       operação. Invertidas em 11/09/2026, porque contradiziam o teste mais
+       antigo `voz-offline.cjs` e, pior, a própria mensagem que o app mostra.
+
+       PGRST202 significa que a função não existe no servidor, ou seja,
+       migration não aplicada — um erro NOSSO, que será corrigido.
+       `explicarFalhaDeEnvio` promete na tela "Nada foi perdido", e descartar
+       quebraria essa promessa. Em 07/09/2026 a RPC ficou dois dias fora do
+       ar: sob a regra antiga, todo lançamento por voz daqueles dois dias
+       seria APAGADO em vez de sincronizar quando a migration entrasse.
+
+       O risco oposto, fila crescendo para sempre se o objeto nunca voltar,
+       é real e menor, e está coberto: a mensagem manda avisar o suporte. */
+    check(F, 'PGRST202 fica pendente ate a migration entrar', res ? res.status : 'erro:' + (erro && erro.code), 'pending');
+    check(F, 'PGRST202 nao apaga o lancamento da pessoa', store.mapa.size, 1);
   }
 
   {
@@ -249,15 +262,16 @@ async function parteB() {
     const { task, reg } = montarWidget({ transcrever: async () => ({ ok: false, codigo: 'sem_rede' }), semSessao: true });
     await task({ caminho: '/cache/g.m4a', requestId: 'w7', source: 'widget' });
     check(F, 'sem sessao nao enfileira', reg.fila.length, 0);
-    check(F, 'sem sessao ainda assim preserva a fala', reg.apagados.length, 0);
+    check(F, 'sem sessao descarta sem atribuir a outra conta', reg.apagados.length, 1);
+    check(F, 'sem sessao explica descarte', reg.notificacoes, [['falha', 'sem_sessao']]);
     check(F, 'sem sessao acende atencao', reg.estados, ['atencao']);
   }
 
   {
     const { task, reg } = montarWidget();
     await task({ caminho: '/docs/voz-pendente/h.m4a', requestId: 'w8', source: 'app', transcricao: 'mercado 32,50 no pix' });
-    check(F, 'app pede revisao', reg.notificacoes.map((n) => n[0]), ['revisao']);
-    check(F, 'revisao do app nao acende atencao no widget', reg.estados, ['ocioso']);
+    check(F, 'app aplica mesma decisao do widget', reg.notificacoes.map((n) => n[0]), ['sucesso']);
+    check(F, 'app nao altera estado da outra superficie', reg.estados, []);
   }
 
   {
@@ -289,13 +303,14 @@ async function parteB() {
 async function parteC() {
   const F = 'C. fila de voz pendente';
   const store = memoriaLocal();
-  const copiados = [];
+  const copiados = [], apagados = [];
   const mod = carregar('lib/widget-voz-pendentes.ts', {
     '@react-native-async-storage/async-storage': { __esModule: true, default: store },
     'expo-file-system/legacy': {
       documentDirectory: 'file:///docs/',
       makeDirectoryAsync: async () => {},
       copyAsync: async (args) => copiados.push(args),
+      deleteAsync: async (uri) => apagados.push(uri),
     },
   });
 
@@ -321,7 +336,9 @@ async function parteC() {
     { caminho: 'file:///docs/voz-pendente/velho.m4a', requestId: 'velho', userId: 'u9',
       criadoEm: Date.now() - 90 * 24 * 3600 * 1000 },
   ]));
-  check(F, 'audio de 90 dias de outra conta nao deveria ficar no aparelho', (await mod.listarVozesPendentes()).length, 0);
+  await mod.limparVozesDaConta('u9');
+  check(F, 'logout remove audio antigo da conta', (await mod.listarVozesPendentes()).length, 0);
+  check(F, 'logout remove arquivo financeiro', apagados, ['file:///docs/voz-pendente/velho.m4a']);
 }
 
 /* =====================================================================
@@ -476,7 +493,8 @@ async function parteD() {
   }
 }
 
-(async () => {
+module.exports = { carregar, montarWidget, montarOperacoes, memoriaLocal, heuristics, montarVoz };
+if (require.main === module) (async () => {
   await parteA();
   await parteB();
   await parteC();
@@ -498,5 +516,6 @@ async function parteD() {
     }
   }
   if (!falhas.length) console.log('  nenhuma reprovacao');
+  if (falhas.length) process.exitCode = 1;
   console.log('');
 })();

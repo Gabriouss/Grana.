@@ -59,3 +59,17 @@ export async function listarVozesPendentes(): Promise<VozPendente[]> {
 export async function removerVozPendente(requestId: string): Promise<void> {
   await gravar((await ler()).filter((item) => item.requestId !== requestId));
 }
+
+/** Saída explícita da conta elimina suas gravações financeiras, não as de
+ * outra conta. Não expirar silenciosamente uma fala ainda não sincronizada. */
+export async function limparVozesDaConta(userId: string): Promise<void> {
+  const itens = await ler();
+  const fs = await import('expo-file-system/legacy');
+  for (const item of itens.filter(item => item.userId === userId)) {
+    // Só a pasta privada gerenciada pela fila é um alvo válido de exclusão.
+    if (item.caminho.startsWith(`${fs.documentDirectory}voz-pendente/`)) {
+      await fs.deleteAsync(item.caminho, { idempotent: true });
+    }
+  }
+  await gravar(itens.filter(item => item.userId !== userId));
+}

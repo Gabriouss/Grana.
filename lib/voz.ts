@@ -245,7 +245,7 @@ export function mensagemDeErroVoz(codigo: CodigoErroVoz): { titulo: string; text
     case 'sem_sessao':
       return {
         titulo: 'Entre de novo',
-        texto: 'Sua sessão expirou. Abra o Grana. e entre na conta para lançar por voz.',
+        texto: 'Sua sessão expirou. Nada foi lançado e esta gravação não foi guardada sem uma conta identificada. Entre na conta e grave novamente.',
       };
     case 'muitas_tentativas':
       return {

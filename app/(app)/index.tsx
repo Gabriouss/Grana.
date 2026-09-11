@@ -1440,6 +1440,7 @@ export default function InicioScreen() {
           {ligado('lancamento_voz') && (
           <VoiceEntryButton
             label="Lançamento por voz"
+            onSaved={() => { void load(); }}
             textStyle={styles.smartActionText}
             /* O lançamento por voz é o atalho primário da Home: fica sempre
                na primeira posição, tanto no desktop quanto no aplicativo. */

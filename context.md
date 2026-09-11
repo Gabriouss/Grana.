@@ -1,5 +1,69 @@
 # Contexto do projeto — Grana.
 
+## 11/09/2026 — a unificação da voz, concluída, e duas decisões que ela forçou
+
+O autor mandou unificar: "É TUDO A MESMA COISA, SEMPRE. EXATAMENTE IGUAIS."
+Isso virou a regra 13 do `AGENTS.md`. O Codex implementou e parou no limite de
+uso, deixando 15 arquivos sem commitar e a suíte quebrada. Esta sessão fechou.
+
+### O que estava pela metade
+
+- `valorSeguroParaRevisaoVoz` foi adicionada às telas mas **não ao contexto dos
+  arneses de teste**, que quebravam com `ReferenceError` antes de testar nada.
+  Corrigido em `voz-auditoria-diversa.cjs` e `voz-auditoria-rodada2.cjs`.
+- **As baterias 6 e 7 não rodavam em lugar nenhum.** Nenhum script as chamava;
+  a 7 nem estava rastreada. Encadeadas em `test:voz`, que agora roda as sete.
+- `check` da bateria 7 compara via JSON, e `JSON.stringify(undefined)` quebra o
+  `parse`: toda comparação com `undefined` falhava por construção.
+
+### Decisão 1: o app deixou de ter conferência própria
+
+O código tinha um bloco que fazia a origem `app` NUNCA gravar, mandando toda
+fala para um formulário. O Codex o apagou ao unificar, e isso contrariava o
+teste `widget('mercado 18,99', null, 'app')`, anterior a esta sessão.
+
+Mantida a remoção, porque é exatamente o que a regra 13 pede: mesma fala, mesma
+decisão. O que muda é só o recibo — no app, alerta com "Desfazer"; no widget,
+notificação. Fala sem ambiguidade grava nos dois; fala ambígua pede revisão nos
+dois. O teste foi atualizado com o motivo escrito.
+
+### Decisão 2: erro NOSSO não apaga a fala da pessoa
+
+O Codex ampliou a lista de "recusa definitiva" para incluir `PGRST202`,
+`PGRST205`, `42883`, `42P01` e `PGRST30`. Esse ramo faz
+`AsyncStorage.removeItem` e lança — ou seja, **descarta o lançamento**.
+
+Revertido. Esses códigos significam objeto ausente no servidor ou sessão
+vencida: migration não aplicada, token expirado. São erros nossos, que serão
+corrigidos. E `explicarFalhaDeEnvio` promete na tela **"Nada foi perdido"** —
+descartar contradiz a própria mensagem. Em 07/09/2026 a RPC ficou dois dias
+fora do ar; sob a regra ampliada, todo lançamento por voz daqueles dois dias
+teria sido APAGADO em vez de sincronizar quando a migration entrou.
+
+Só `22` (dado inválido), `23` (violação de restrição) e `42501` (sem
+permissão) descartam, porque aí o servidor analisou e disse não.
+
+As baterias 6 e 7 codificavam a expectativa contrária e foram corrigidas, com o
+raciocínio no próprio teste para não ser reintroduzido.
+
+### Melhoria do Codex que valeu a pena, e ajustou testes
+
+Com permissão de notificação negada, o áudio agora vai para a fila de
+pendentes em vez de ser apagado, quando há sessão. A regra de "sem como avisar,
+não grava" continua de pé — o que mudou é que a fala deixou de ser perdida.
+`widget-voz-cartoes.cjs` foi ajustado à nova linha de base.
+
+### Verificação
+
+`npx tsc --noEmit` limpo, `deno check` limpo, e `npm run test:ci` **saída 0**:
+bateria 1 com 7.774, bateria 6 com 92, bateria 7 com 8.926, mais 1144 guardas
+do design system e 40/40 de sincronia.
+
+**NÃO verificado:** nada em aparelho. As sete baterias rodam com gravação
+simulada; o microfone real, o widget na tela inicial e o fluxo sem internet
+nunca foram exercitados num telefone.
+
+
 # ⚠ FIM DO DIA 10/09/2026 — O QUE FALTA, TUDO MANUAL
 
 Nada abaixo depende de código. Tudo já está no repositório e, onde precisava,

@@ -26,7 +26,7 @@ function load(file, deps = {}) {
 }
 const h = load('lib/heuristics.ts');
 const { porExtenso } = load('__tests__/extenso.ts');
-const { precisaRevisarValorVoz } = load('lib/voz-confiabilidade.ts');
+const { precisaRevisarValorVoz, valorSeguroParaRevisaoVoz } = load('lib/voz-confiabilidade.ts');
 let total = 0, failed = 0;
 const groups = new Map();
 function check(group, text, got, expected) {
@@ -128,7 +128,11 @@ function screen(file, name, text) {
   visit(source);
   if (!found) throw Error('Função ausente: ' + name);
   const state = {};
-  const context = { ...h, wallets, cards, walletCards: cards, activeWallet: wallets[0], categoriasExtras: [],
+  /* As telas do app chamam as guardas de confiabilidade direto, sem passar
+     pelas heurísticas — sem elas aqui, a função extraída quebra com
+     ReferenceError em vez de ser testada. */
+  const context = { ...h, precisaRevisarValorVoz, valorSeguroParaRevisaoVoz,
+    wallets, cards, walletCards: cards, activeWallet: wallets[0], categoriasExtras: [],
     operacaoVoz: {}, randomUUID: () => 'fake', todayISO: () => '2026-09-10',
     formatMoney: value => value, input: text };
   for (const field of ['VozWalletId', 'EditingBillId', 'Desc', 'Amount', 'Category', 'CatColor', 'DueDate', 'Recurring', 'ModalOpen',

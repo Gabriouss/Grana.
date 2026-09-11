@@ -43,6 +43,7 @@ import { formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, f
 import { mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
 import { agruparLancamentosPorCartao, filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
 import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, matchWalletByText, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
+import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
@@ -618,7 +619,7 @@ export default function CreditoScreen() {
       Alert.alert('Confirme o parcelamento', 'Não reconheci uma quantidade válida de 2 a 36 parcelas. Repita o lançamento com a quantidade correta.');
       return;
     }
-    const guessedAmount = guessAmountFromText(textoFinanceiro);
+    const guessedAmount = valorSeguroParaRevisaoVoz(textoFinanceiro);
     const guessedDesc = guessDescFromText(textoFinanceiro, 'out');
     const cartoesElegiveis = carteiraCasada ? cards.filter((c) => c.wallet_id === carteiraCasada.id) : walletCards;
     const cartaoCasado = matchCardByText(textoFinanceiro, cartoesElegiveis);
@@ -626,7 +627,7 @@ export default function CreditoScreen() {
     const carteiraMencionada = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto);
     setTxWalletId(carteiraCasada?.id ?? (carteiraMencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
     setTxDesc(guessedDesc);
-    setTxAmount(guessedAmount > 0 ? formatMoney(guessedAmount) : '');
+    setTxAmount(guessedAmount != null && guessedAmount > 0 ? formatMoney(guessedAmount) : '');
     setTxCategory(guessedCat.name);
     setTxCatColor(guessedCat.color);
     setTxCardId(cartaoCasado?.id || '');

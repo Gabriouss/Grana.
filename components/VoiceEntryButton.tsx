@@ -12,11 +12,10 @@ import {
 } from 'expo-audio';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
-import { MAX_SEGUNDOS_GRAVACAO, ORCAMENTO_COM_PESSOA_ESPERANDO_MS, mensagemDeErroVoz, transcreverAudio } from '@/lib/voz';
+import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz } from '@/lib/voz';
 import AppPressable from './AppPressable';
-import { supabase } from '@/lib/supabase';
 import { randomUUID } from 'expo-crypto';
-import { adicionarVozPendente } from '@/lib/widget-voz-pendentes';
+import { executarTarefa } from '@/lib/widget-voz-task';
 
 /* Voz de lançamento, não música: mono e bitrate baixo. 20 segundos saem em
    torno de 150 KB, bem abaixo do teto de 2 MB da Edge Function, e o Whisper
@@ -58,6 +57,7 @@ const GRAVACAO_VOZ: RecordingOptions = {
  */
 export default function VoiceEntryButton({
   onTranscribed,
+  onSaved,
   label,
   style,
   hoverStyle,
@@ -66,6 +66,7 @@ export default function VoiceEntryButton({
   iconColor = theme.accent2,
 }: {
   onTranscribed: (text: string) => void;
+  onSaved?: () => void;
   /** Com rótulo, vira uma pílula (ex: ao lado de "Colar comprovante" no Início). Sem rótulo, vira só o ícone (ex: cabeçalho de Lançamentos). */
   label?: string;
   /** Sobrepõe o formato/cor padrão do botão — use para igualar a família visual de onde ele entra (ex: styles.smartActionBtn no Início). */
@@ -117,26 +118,34 @@ export default function VoiceEntryButton({
         Alert.alert(msg.titulo, msg.texto);
         return;
       }
-      /* Prazo curto de propósito: aqui existe alguém olhando para a tela, e
-         no Android o desfecho de "não deu" é guardar o áudio na fila, que
-         retoma sozinha. Esperar o minuto inteiro do widget só adiava esse
-         mesmo desfecho. */
-      const resultado = await transcreverAudio(uri, { orcamentoMs: ORCAMENTO_COM_PESSOA_ESPERANDO_MS });
-      if (!resultado.ok) {
-        if (Platform.OS === 'android' && (resultado.codigo === 'sem_rede' || resultado.codigo === 'demorou')) {
-          const { data } = await supabase.auth.getSession();
-          if (data.session) {
-            await adicionarVozPendente({ caminho: uri, requestId: randomUUID(), userId: data.session.user.id, source: 'app' });
-            Alert.alert('Áudio salvo no aparelho', 'Não foi possível concluir o reconhecimento. Seu áudio foi preservado para retomar e revisar ao abrir o Grana. com conexão.');
-            return;
-          }
-        }
-        const msg = mensagemDeErroVoz(resultado.codigo);
-        Alert.alert(msg.titulo, msg.texto);
-        return;
-      }
-      hapticSuccess();
-      onTranscribed(resultado.transcript);
+      // Mesma execução do widget. Este adaptador só apresenta o recibo na tela.
+      await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app' }, {
+        podeNotificar: async () => true,
+        notificarRevisao: async (titulo, texto) => {
+          Alert.alert(titulo, 'Confira os dados antes de salvar. Se o valor estiver em branco, informe quanto você falou.');
+          onTranscribed(texto);
+        },
+        notificarSucesso: async (dados) => {
+          hapticSuccess();
+          onSaved?.();
+          Alert.alert(dados.titulo, dados.texto, [
+            { text: 'OK' },
+            { text: 'Desfazer', onPress: () => {
+              if (!dados.operationId) return;
+              void import('@/lib/voice-operations').then(async ({ desfazerOperacaoVoz }) => {
+                await desfazerOperacaoVoz(dados.operationId!);
+                onSaved?.();
+              }).catch((erro) => { console.warn('[voz] desfazer falhou', erro); Alert.alert('Não foi possível desfazer', 'Tente novamente na lista de lançamentos.'); });
+            } },
+          ]);
+        },
+        notificarFalha: async (codigo) => {
+          const msg = mensagemDeErroVoz(codigo);
+          Alert.alert(msg.titulo, msg.texto);
+        },
+        notificarSalvoLocal: async () => { Alert.alert('Salvo no aparelho', 'O lançamento será sincronizado quando houver conexão.'); },
+        notificarPendenteOffline: async () => { Alert.alert('Áudio salvo no aparelho', 'O reconhecimento será retomado quando houver conexão.'); },
+      });
     } catch (e: any) {
       if (__DEV__) console.warn('[voz:diag] botao lancou', e?.name, String(e?.message ?? e));
       const msg = mensagemDeErroVoz('erro_interno');

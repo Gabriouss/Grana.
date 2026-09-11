@@ -21,7 +21,7 @@ function load(file, deps = {}) {
   return exports;
 }
 const h = load('lib/heuristics.ts');
-const { precisaRevisarValorVoz } = load('lib/voz-confiabilidade.ts');
+const { precisaRevisarValorVoz, valorSeguroParaRevisaoVoz } = load('lib/voz-confiabilidade.ts');
 const { porExtenso } = load('__tests__/extenso.ts');
 let total = 0, failed = 0;
 const groups = new Map();
@@ -112,7 +112,11 @@ function appFunction(file, name, text) {
   visit(source);
   if (!found) throw Error('Função ausente: ' + name);
   const state = {};
-  const context = { ...h, wallets, cards, walletCards: cards, activeWallet: wallets[0], categoriasExtras: [],
+  /* As telas do app chamam as guardas de confiabilidade direto, sem passar
+     pelas heurísticas — sem elas aqui, a função extraída quebra com
+     ReferenceError em vez de ser testada. */
+  const context = { ...h, precisaRevisarValorVoz, valorSeguroParaRevisaoVoz,
+    wallets, cards, walletCards: cards, activeWallet: wallets[0], categoriasExtras: [],
     operacaoVoz: {}, randomUUID: () => 'fake', todayISO: () => '2026-09-10',
     formatMoney: value => value, input: text };
   for (const field of ['WalletId', 'Type', 'Desc', 'Amount', 'Category', 'FormaPagamento', 'Recorrente', 'Recognized',
@@ -139,7 +143,14 @@ function appFunction(file, name, text) {
     ['mercado 18,99 no crédito C6 em 3 vezes', { amount: 18.99, kind: 'installment', installments: 3, card_id: 'c6' }],
     ['internet 89,90 boleto recorrente', { amount: 89.9, kind: 'bill', recurring: true }],
   ]) await widget(text, expected);
-  await widget('mercado 18,99', null, 'app');
+  /* Mesma fala, mesma decisão nas duas entradas (regra 13 do AGENTS.md).
+     Este caso exigia que a origem 'app' NUNCA gravasse, mandando toda fala
+     para um formulário de conferência. Isso acabou em 11/09/2026: o app passou
+     a usar o mesmo núcleo do widget, e o que muda é só o recibo — a tela abre
+     um alerta com "Desfazer" no lugar da notificação. Uma fala sem ambiguidade
+     grava nos dois; uma fala ambígua pede revisão nos dois. */
+  await widget('mercado 18,99', { amount: 18.99, type: 'out', category: 'Alimentação' }, 'app');
+  await widget('mercado 18,99 e farmácia 20 reais', null, 'app');
   await widget('mercado 18,99 carteira Pessoalidade', null);
   wallets.push({ id: 's', name: 'Salário' });
   await widget('mercado 18,99 carteira salario', { amount: 18.99, wallet_id: 's', type: 'out', category: 'Alimentação' });

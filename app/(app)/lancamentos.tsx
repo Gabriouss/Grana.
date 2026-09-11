@@ -568,6 +568,7 @@ export default function LancamentosScreen() {
                 e só servia pra ela sair de sincronia. */}
             {ligado('lancamento_voz') && (
             <VoiceEntryButton
+              onSaved={() => { void load(); }}
               iconSize={16}
               onTranscribed={(text) => {
                 const carteira = matchWalletByText(text, wallets);

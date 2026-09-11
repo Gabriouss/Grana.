@@ -85,6 +85,7 @@ carregar('lib/widget-voz-task.ts', {
   assert.equal(revisoes.at(-1), 'Confirme o valor que ouvi');
   texto = 'Mercado 18,99';
   await task({ caminho: '/teste.m4a', requestId: 'app-pendente', source: 'app' });
-  assert.equal(writes.length, 3, 'áudio do app retomado continua exigindo confirmação');
+  assert.equal(writes.length, 4, 'áudio confiável do app usa a mesma decisão do widget (regra 13)');
+  assert.equal(writes[3].amount, 18.99);
   console.log(`OK: ${checks} verificações de valores + fluxo real do widget, cartão, boleto e revisão.`);
 })().catch(e => { console.error(e); process.exitCode = 1; });

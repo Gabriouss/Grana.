@@ -1,5 +1,10 @@
 import { guessAmountFromText, normalizarTexto } from './heuristics';
 
+/** Único valor que as telas de revisão podem sugerir a partir de uma fala. */
+export function valorSeguroParaRevisaoVoz(texto: string): number | null {
+  return precisaRevisarValorVoz(texto) ? null : guessAmountFromText(texto);
+}
+
 /** Não repara dígitos por palpite: separador perdido exige confirmação. */
 export function precisaRevisarValorVoz(texto: string): boolean {
   if (/\bn[ãa]o\s+(?:(?:quero|deve|[ée]|para|pra|que|seja)\s+)*(?:lan[cç](?:ar|a|e)|registr(?:ar|a|e)|salv(?:ar|a|e))\b/i.test(texto)) return true;
