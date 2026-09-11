@@ -334,6 +334,28 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     qualquer uma das três notas dentro do Obsidian não volta para cá e será
     sobrescrita no fim do próximo turno.
 
+    **Uma nota por sessão, em `00 - Sessões`.** Toda sessão que mexer em
+    código ou no vault termina criando a sua, nomeada
+    `AAAA-MM-DD - Mn - assunto`, e toda sessão começa lendo as notas de lá que
+    são da OUTRA máquina. M1 é a máquina cujo repositório fica em
+    `E:\GranaPonto`; M2 é a outra — não há sinal automático confiável, porque
+    o nome de rede das duas é genérico e o autor do commit é o mesmo, então
+    quem decide é o caminho do repositório. A data vem do relógio da máquina,
+    o mesmo que carimba o commit, para a ordem das notas bater com a do
+    `git log`.
+
+    A nota de sessão não repete o `context.md`: ela carrega o que o commit não
+    carrega bem, ou seja, por que foi feito assim, o que foi descartado no
+    caminho, o que deu errado, e o que ficou em aberto. O roteiro completo está
+    em `00 - Índice - Sessões`.
+
+    A alternativa que o autor levantou, separar o vault em pastas por máquina,
+    foi descartada de propósito: arquivaria o conhecimento por autor, e o mesmo
+    assunto passaria a existir dos dois lados quando uma máquina continuasse o
+    trabalho da outra. A nota por sessão entrega o benefício que interessava
+    naquela ideia, que é nunca ter duas máquinas editando o mesmo arquivo
+    dentro do Google Drive, onde não existe fusão de edição concorrente.
+
     Isso **não** substitui a regra 6: o `context.md` do repositório continua
     obrigatório, porque é por ele que a outra máquina fica sabendo o que
     aconteceu aqui, pelo GitHub. O vault é registro adicional.

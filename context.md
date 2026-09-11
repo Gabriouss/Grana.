@@ -6189,12 +6189,12 @@ achada ao conferir o modelo do painel), a regra 11 do AGENTS.md, e a aplicação
 em produção do segredo `ANDROID_DOWNLOAD_URL` e do `app_release` apontando
 para o link estável.
 
-# Sessão de 11/09/2026 — reforma da estrutura do vault do Obsidian
+# Sessão de 10/09/2026 — reforma da estrutura do vault do Obsidian
 
 A pedido do autor ("analise e verifique se há alguma melhoria na estrutura
 organizacional desse segundo cérebro"), o vault em
 `G:\Meu Drive\Obsidian\Gabriel\Grana` foi auditado e depois reformado. Backup
-do estado anterior em `E:\Grana-Arquivos\vault-backup-11-09\`, fora do Drive.
+do estado anterior em `E:\Grana-Arquivos\vault-backup-10-09\`, fora do Drive.
 
 **O que a auditoria achou**, com 82 notas e 316 links: 18 alvos de link sem
 destino; o preço afirmado em cinco valores diferentes (9,90 / 19,99 / 9,99 /
@@ -6237,3 +6237,27 @@ para a nota `00 - Convenções do Vault`, que é onde as regras de escrita do
 vault vivem daqui em diante.
 
 Nenhum código do aplicativo foi tocado nesta sessão.
+
+**Diário de sessões no vault.** Ainda em 10/09, o autor propôs separar o vault
+em pastas por máquina, para cada uma ler o trabalho da outra ao começar. A
+partição por máquina foi descartada, porque arquivaria o conhecimento por
+autor e o mesmo assunto passaria a existir dos dois lados quando uma máquina
+continuasse o trabalho da outra — a mesma duplicação que a reforma tinha
+acabado de desfazer. O que sobreviveu da ideia foi o benefício real que ela
+tinha: como o vault fica no Google Drive, que não funde edição concorrente,
+convém que nenhum arquivo seja escrito pelas duas máquinas.
+
+A solução aplicada é uma pasta `00 - Sessões`, com uma nota por sessão
+(`AAAA-MM-DD - Mn - assunto`), criada ao final dela e nunca tocada pela outra
+máquina. M1 é a máquina cujo repositório fica em `E:\GranaPonto`, M2 é a
+outra; não há sinal automático confiável, porque o nome de rede das duas é
+genérico (`PC`) e o autor do commit é o mesmo. A regra 12 do `AGENTS.md` foi
+estendida com isso.
+
+**Divergência de data, não resolvida.** O relógio desta máquina e o git marcam
+10/09/2026, mas notas escritas hoje e a própria regra 12 dizem 11/09/2026.
+Tudo que esta sessão escreveu foi ancorado no relógio da máquina, porque é ele
+que carimba o commit e é com o `git log` que o nome das notas de sessão
+precisa bater. As afirmações de 11/09 vindas de outras sessões foram deixadas
+como estavam. Se a data certa for 11/09, o relógio desta máquina está um dia
+atrasado e isso afeta todo commit feito aqui.
