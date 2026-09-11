@@ -296,7 +296,14 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     mora, jamais o valor. Vale o mesmo para `Feedbacks/` e `Screenshots/`, que
     contêm dado financeiro de terceiro e continuam apenas na máquina local.
 
-    **Como é o acesso.** O vault raiz é `G:\Meu Drive\Obsidian`; o material do
+    **A letra do drive MUDA entre as máquinas.** O Google Drive monta em `G:`
+    na M1 e em `H:` na M2. Esta regra dava só `G:` até 11/09/2026, e uma sessão
+    na M2 concluiu que o vault não existia antes de procurar. Não confie na
+    letra escrita aqui: varra os drives montados atrás de
+    `<letra>:/Meu Drive/Obsidian` antes de desistir. O resto do caminho é
+    idêntico nas duas máquinas.
+
+    **Como é o acesso.** O vault raiz é `<letra>:\Meu Drive\Obsidian`; o material do
     projeto vive em `Gabriel/Grana`, organizado em pastas numeradas
     (`01 - Código`, `02 - Design System`, `03 - Marketing`, `04 - Tráfego`,
     `05 - Vendas`, `06 - Produto`). A porta de entrada é a nota `Grana`, na
