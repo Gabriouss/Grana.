@@ -49,7 +49,7 @@ tem conta. Fase atual: preparação do lançamento comercial. **O produto é pag
 período de teste gratuito** (decisão do autor em 28/08/2026, que encerra a
 fase de acesso antecipado). São dois planos, com a taxa de serviço do gateway
 já embutida no valor anunciado: **R$ 9,90 por mês** ou **R$ 97,90 por ano**
-(atualizado em 11/09/2026). O gateway é a **Cakto**, e os dois checkouts
+(atualizado em 10/09/2026). O gateway é a **Cakto**, e os dois checkouts
 estão no ar e ligados à landing.
 
 O bloqueio por assinatura existe de verdade: `app/_layout.tsx` protege as

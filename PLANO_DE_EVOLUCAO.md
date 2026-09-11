@@ -13,7 +13,7 @@ Este documento é o **plano mestre de implementação** para evoluir o **Grana.*
 > **Épico 5 (widgets de tela inicial / Atalhos iOS)** continua pendente de
 > verdade.
 >
-> **Atualização de 11/09/2026 — o WhatsApp saiu do mapa.** O canal está
+> **Atualização de 10/09/2026 — o WhatsApp saiu do mapa.** O canal está
 > desligado por tempo indeterminado desde 05/09/2026, depois de um segundo
 > banimento de contas na Meta, e foi despriorizado como produto em
 > 09/09/2026 ("Esquece WhatsApp. Não sei nem se iremos voltar a utilizar").

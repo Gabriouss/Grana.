@@ -285,7 +285,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
 
 12. **Todo registro do projeto vai para o vault do Obsidian, em
     `G:\Meu Drive\Obsidian\Gabriel\Grana` — menos arquivo sensível.** Regra
-    dada pelo autor em 11/09/2026, nas duas metades: registrar ali todas as
+    dada pelo autor em 10/09/2026, nas duas metades: registrar ali todas as
     informações do projeto, e **nunca** levar para lá `.env` ou semelhante.
 
     A segunda metade é a que exige cuidado ativo, porque o vault fica **dentro
@@ -355,6 +355,28 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     trabalho da outra. A nota por sessão entrega o benefício que interessava
     naquela ideia, que é nunca ter duas máquinas editando o mesmo arquivo
     dentro do Google Drive, onde não existe fusão de edição concorrente.
+
+    **O vault envelhece em silêncio, e existe script para isso.** Toda nota
+    perene declara em `fonte` os caminhos do repositório que ela descreve, e
+    `scripts/verificar-vault.mjs` compara o `revisado` da nota com o último
+    commit que tocou aqueles caminhos:
+
+        node scripts/verificar-vault.mjs "<pasta do vault>"
+
+    Ele lista, além das notas atrasadas, link apontando para nota inexistente,
+    nota sem link de entrada e fonte que sumiu do repositório. Rodar antes de
+    dar por encerrado qualquer trabalho que mexeu no vault. Duas armadilhas já
+    resolvidas dentro dele, para ninguém reescrever pior: link entre crases não
+    é link, e dentro de tabela o apelido usa `\|`.
+
+    **Data vem da hora local**, nunca de UTC. Depois das 21h em Brasília, UTC
+    já virou o dia seguinte, e foi assim que uma leva de notas nasceu com um
+    dia a mais que o commit correspondente.
+
+    **Renomeou nota por fora com o Obsidian aberto? Recarregue o aplicativo.**
+    O índice dele fica defasado, e clicar num link antigo **cria uma nota
+    vazia** em vez de avisar que o alvo sumiu. Já apareceram quatro arquivos de
+    zero byte na raiz do vault por causa disso.
 
     Isso **não** substitui a regra 6: o `context.md` do repositório continua
     obrigatório, porque é por ele que a outra máquina fica sabendo o que

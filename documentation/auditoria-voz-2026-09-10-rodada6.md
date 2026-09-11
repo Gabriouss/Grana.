@@ -1,4 +1,4 @@
-# Auditoria de voz — rodada 6 (11/09/2026)
+# Auditoria de voz — rodada 6 (10/09/2026)
 
 Bateria exploratória sobre os quatro caminhos de lançamento por voz: o botão
 dentro do app, a tarefa do widget, o caminho offline com fila, e o cliente de

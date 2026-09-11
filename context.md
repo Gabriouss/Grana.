@@ -47,7 +47,7 @@ Falta só a APK nova para isso valer dentro do aplicativo.
 
 ## 4. ~~Investigar por que a landing nova não está no ar~~ — HIPÓTESE ERRADA
 
-**A landing nova SEMPRE esteve no ar.** Registro corrigido em 11/09/2026: a
+**A landing nova SEMPRE esteve no ar.** Registro corrigido em 10/09/2026: a
 publicação de produção de 10/09 às 22h50 aponta para `1275a3c`, a mesma cabeça
 do `origin/main`, e o pacote servido já continha o preço anual e o checkout da
 Cakto. Não houve deploy travado nem falho.
@@ -94,7 +94,7 @@ Nenhuma das cinco baterias tocou num microfone. Todas rodam com gravação
 simulada. O reconhecimento local, o widget e o fluxo offline nunca foram
 exercitados num telefone.
 
-## 11/09/2026 — o vault do Obsidian, a limpeza da raiz e a poeira dos documentos
+## 10/09/2026 — o vault do Obsidian, a limpeza da raiz e a poeira dos documentos
 
 Três pedidos do autor, na mesma sessão, que viraram a regra 12 do `AGENTS.md`.
 
@@ -153,7 +153,7 @@ depois de uma APK nova com a Cakto dentro.
 
 `npx tsc --noEmit` limpo e `npm run test:ci` com saída 0 depois de tudo.
 
-## 11/09/2026 — a lentidao sem rede, corrigida e medida
+## 10/09/2026 — a lentidao sem rede, corrigida e medida
 
 Queixa do autor: o app demora a abrir sem internet, e o lançamento por voz
 demora a ser agendado na fila. **Os dois tinham a mesma causa.**
@@ -222,7 +222,7 @@ sandbox, e a bateria 6 não exportava o teto local.
 falso e `setTimeout` encurtado mil vezes. Falta ver, num telefone de verdade,
 o app abrindo em modo avião e o botão de voz caindo na fila.
 
-## 11/09/2026 — bateria de voz 6, os quatro caminhos, sem correcoes
+## 10/09/2026 — bateria de voz 6, os quatro caminhos, sem correcoes
 
 Pedido do autor: bateria extensa de lançamento por áudio, com e sem rede, no
 widget e no botão do app, procurando erro. Base `dcc1ec5`, apenas `main`,
@@ -269,9 +269,9 @@ anteriores.
 
 **NÃO validado:** nada em aparelho. Toda gravação é simulada; microfone,
 serviço nativo do widget e entrega real de notificação seguem sem teste.
-Checklist de QA em `documentation/auditoria-voz-2026-09-11-rodada6.md`.
+Checklist de QA em `documentation/auditoria-voz-2026-09-10-rodada6.md`.
 
-## 11/09/2026 — o plano anual no ar, e a landing inocentada
+## 10/09/2026 — o plano anual no ar, e a landing inocentada
 
 Sessão sem mudança de código do aplicativo. O que mudou foi produção, mais um
 registro corrigido e uma permissão local.
@@ -6255,9 +6255,46 @@ genérico (`PC`) e o autor do commit é o mesmo. A regra 12 do `AGENTS.md` foi
 estendida com isso.
 
 **Divergência de data, não resolvida.** O relógio desta máquina e o git marcam
-10/09/2026, mas notas escritas hoje e a própria regra 12 dizem 11/09/2026.
+10/09/2026, mas notas escritas hoje e a própria regra 12 dizem 10/09/2026.
 Tudo que esta sessão escreveu foi ancorado no relógio da máquina, porque é ele
 que carimba o commit e é com o `git log` que o nome das notas de sessão
 precisa bater. As afirmações de 11/09 vindas de outras sessões foram deixadas
 como estavam. Se a data certa for 11/09, o relógio desta máquina está um dia
 atrasado e isso afeta todo commit feito aqui.
+
+**Fechamento das pendências do vault.** Os quatro itens em aberto da nota de
+sessão foram resolvidos:
+
+1. **A divergência de data era fuso.** Às 22h34 de 10/09 em Brasília já era
+   01h34 de 11/09 em UTC, então as sessões que dataram em UTC escreveram o dia
+   seguinte. O autor confirmou que a data corrente é 10/09. Normalizadas as
+   ocorrências em 18 arquivos, no repositório e no vault, e
+   `documentation/auditoria-voz-2026-09-11-rodada6.md` renomeado para
+   `-2026-09-10-`, junto das rodadas 2 a 4 do mesmo dia. As duas marcas de
+   tempo explicitamente em UTC foram preservadas.
+2. **Notas vazias apagadas, com a causa entendida.** Apareceram quatro
+   arquivos de zero byte na raiz do vault ao longo do tempo. O Obsidian estava
+   aberto enquanto os arquivos eram renomeados por fora, o índice dele ficou
+   defasado, e clicar num link que não resolve **cria a nota** em vez de
+   avisar. Sem local padrão configurado, ela nasce na raiz do vault. Regra nova
+   na regra 12: renomeou por fora, recarregue o aplicativo.
+3. **As propriedades passaram a ser lidas por algo.** `00 - Painel do
+   Vault.base` monta cinco visões sobre `tipo`, `data`, `revisado`, `fonte` e
+   `maquina`. Escrito a partir da documentação da sintaxe, sem abrir o
+   Obsidian, então **falta conferir visualmente**.
+4. **Verificador de defasagem escrito**: `scripts/verificar-vault.mjs`. Cada
+   nota perene declara em `fonte` os caminhos do repositório que descreve, e o
+   script compara o `revisado` com o último commit que tocou aqueles caminhos.
+   Primeira execução: zero links quebrados, zero órfãs, zero fontes perdidas,
+   e **51 perenes que nunca foram conferidas** contra a fonte.
+
+**Conferência da produção, e uma correção de registro.** O autor informou que
+as pendências manuais tinham sido todas resolvidas por API. A consulta à
+produção, somente leitura, mostrou outra coisa: as variáveis de checkout na
+Vercel e no EAS estão mesmo feitas, mas **a compra de teste na Cakto nunca
+aconteceu** (`webhook_events` tem 8 de `eas` e 1 de `whatsapp`, zero da Cakto;
+`subscriptions` tem 9 linhas, todas `provider = interno`) e
+**`enforce_subscriptions` continua `false`**. Nenhuma das duas é alcançável
+por chave de API: uma exige pagamento real e a outra só deve ser ligada depois
+que a primeira provar o webhook. Os itens 1 e 2 do topo deste arquivo seguem
+válidos.
