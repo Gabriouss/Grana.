@@ -34,14 +34,16 @@ cadastrar depois precisa assinar.
 Ligar antes de provar o webhook significa que quem pagar não recebe acesso, e
 o defeito aparece pelo suporte em vez do log.
 
-## 3. `EXPO_PUBLIC_CHECKOUT_URL_ANUAL` — FEITO NA VERCEL, FALTA O EAS
+## 3. ~~`EXPO_PUBLIC_CHECKOUT_URL_ANUAL`~~ — FEITO NOS DOIS LADOS
 
 Valor: `https://pay.cakto.com.br/323b2rs`.
 
-**Na Vercel está resolvido** (11/09/2026, ver seção do dia). Criada nos três
-ambientes e produção republicada; o pacote no ar já traz a URL literal.
+**Na Vercel**, criada nos três ambientes e produção republicada; o pacote no ar
+traz a URL literal. **No EAS**, criada como `plaintext` de projeto em
+`production` e `preview`, ao lado da variável do checkout mensal, e conferida
+por `env:list` nos dois ambientes.
 
-**No EAS continua pendente** e só entra numa APK nova.
+Falta só a APK nova para isso valer dentro do aplicativo.
 
 ## 4. ~~Investigar por que a landing nova não está no ar~~ — HIPÓTESE ERRADA
 
@@ -200,12 +202,24 @@ caminho ANTIGO, então não acompanhou a mudança para `E:\GranaPonto`: não há
 da Cakto seguem no `.env`, mas o atalho de linha de comando precisa ser
 registrado de novo se for útil.
 
+### O EAS resolvido sem token novo, por uma sessão esquecida na máquina
+
+`EXPO_PUBLIC_CHECKOUT_URL_ANUAL` entrou no EAS em `production` e `preview`, e
+foi conferida por `env:list` nos dois. **Não foi preciso gerar token nenhum:**
+existe uma sessão do Expo guardada em `~/.expo/state.json` desde 16/08/2026,
+de um `eas login` antigo, e a linha de comando a lê sozinha. A consulta
+`meActor` no GraphQL do Expo confirmou que ela ainda vale, como `gabriouss`.
+
+Vale para a próxima sessão: antes de pedir credencial do Expo ao autor,
+conferir se essa sessão está viva. `npx eas-cli@latest` funciona sem instalar
+nada de forma permanente, e a bandeira `--non-interactive` só existe em
+`env:set`, não em `env:list`.
+
 ### Continua manual
 
 Nada mudou nos itens 1, 2, 5, 6, 7 e 8 do checklist do topo. A compra de teste
-na Cakto segue destravando o resto, a variável do plano anual ainda precisa ser
-criada no EAS para valer dentro do aplicativo, e o parcelamento sem juros
-precisa ser ligado no painel da Cakto.
+na Cakto segue destravando o resto, e o plano anual só chega ao aplicativo com
+APK nova, agora que a variável existe dos dois lados.
 
 ---
 
