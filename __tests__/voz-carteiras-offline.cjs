@@ -10,6 +10,12 @@ const deps = {
      ARITMÉTICA do saldo, e o cache tem corpus próprio em
      `__tests__/cache-offline.cjs`. */
   './cache-de-tela': { comCacheOffline: (_nome, buscar) => buscar },
+  /* Quem é o dono do aparelho passou a ser lido por aqui (11/09/2026), e não
+     mais só por `getSession()`: sem rede e com o token vencido o cliente
+     devolve vazio, e a lista de carteiras — de que o lançamento por voz
+     offline depende — ficava inalcançável. O dublê espelha o mesmo `userId`
+     que o dublê do Supabase logo abaixo usa. */
+  './sessao-offline': { idDoUsuarioLocal: async () => userId ?? null },
   './format': { isCreditTx: () => false },
   '@react-native-async-storage/async-storage': { __esModule: true, default: {
     getItem: async k => storage.get(k) ?? null, setItem: async (k, v) => storage.set(k, v),

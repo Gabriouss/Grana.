@@ -74,6 +74,12 @@ function montar(usuarioInicial) {
            cache simplesmente não gravava e nada dizia por quê. */
         if (id === '@react-native-async-storage/async-storage') return { __esModule: true, default: AsyncStorage };
         if (id === './supabase') return { supabase };
+        /* Desde 11/09/2026 o módulo pergunta quem é o dono do cache pelo
+           APARELHO, não pela rede. `getSession()` tenta renovar o token antes
+           de responder e devolve vazio quando a renovação não tem rede — num
+           módulo cujo propósito é servir offline, isso deixava o cache de
+           todas as telas ilegível justamente por falta de internet. */
+        if (id === './sessao-offline') return { idDoUsuarioLocal: async () => usuario ?? null };
         throw Error(id);
       },
     }

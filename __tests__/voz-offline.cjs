@@ -22,6 +22,11 @@ function carregar(file, deps) {
       multiGet: async keys => keys.map(k => [k, storage.get(k)]),
     } },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
+    /* Dono da fila lido pelo aparelho desde 11/09/2026 — sem rede e com o
+       token vencido, `getSession()` devolvia vazio e a fila RECUSAVA guardar
+       a fala. Segue o mesmo `usuario` que este teste já troca para verificar
+       o isolamento entre contas. */
+    './sessao-offline': { idDoUsuarioLocal: async () => usuario ?? null },
     './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: usuario } } } }) },
       rpc: (_, args) => ({ abortSignal: async () => {
         envios.push(args);

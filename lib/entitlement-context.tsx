@@ -35,7 +35,7 @@ export function useEntitlement() {
 }
 
 export function EntitlementProvider({ children }: PropsWithChildren) {
-  const { session } = useSession();
+  const { session, sessaoNaoConfirmada } = useSession();
   const [estado, setEstado] = useState<EstadoAcesso | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [modoOffline, setModoOffline] = useState(false);
@@ -92,7 +92,15 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
       setModoOffline(false);
       await guardarAcesso(session.user.id, confirmado);
     } catch (error) {
-      const semRede = isLikelyNetworkError(error);
+      /* `sessaoNaoConfirmada` entra na mesma conta que a falta de rede porque a
+         causa é a mesma: a sessão veio do disco, o token de acesso está
+         vencido, e enquanto a renovação não passa o PostgREST responde 401 —
+         que não parece erro de rede nenhum. Sem isto, o instante em que a
+         internet volta (antes de o cliente renovar, até um minuto depois)
+         jogaria na tela de assinatura quem está com a assinatura em dia. Não é
+         afrouxamento: o servidor continua recusando tudo, e o acesso exibido
+         segue limitado ao prazo que o próprio servidor já havia prometido. */
+      const semRede = isLikelyNetworkError(error) || sessaoNaoConfirmada;
       console.error('[entitlement] não foi possível confirmar o acesso', {
         message: error instanceof Error ? error.message : 'erro desconhecido',
         /* Separar os dois casos é o ponto: falta de rede é temporária e o
@@ -133,7 +141,7 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
     } finally {
       setCarregando(false);
     }
-  }, [session]);
+  }, [session, sessaoNaoConfirmada]);
 
   useEffect(() => {
     void recarregar();

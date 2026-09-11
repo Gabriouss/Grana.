@@ -93,6 +93,11 @@ function montarOperacoes(opts) {
         return p;
       },
     } },
+    /* O dono da fila passou a ser lido pelo aparelho (11/09/2026): sem isso,
+       token vencido sem rede fazia `registrarOperacaoVoz` RECUSAR guardar a
+       fala, que é o único trabalho que ela tem offline. Mesmo `u1` do dublê
+       do Supabase acima. */
+    './sessao-offline': { idDoUsuarioLocal: async () => 'u1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     '@react-native-async-storage/async-storage': { __esModule: true, default: store },
   });
@@ -189,6 +194,15 @@ function montarWidget(opts) {
       getSession: async () => ({ data: { session: o.semSessao ? null : { user: { id: o.userId || 'u1' } } } }),
       getUser: async () => ({ data: { user: null } }),
     } } },
+    /* Espelha `semSessao` (11/09/2026). A distinção que este dublê preserva é
+       a que passou a valer na produção: "não há conta neste aparelho" é
+       diferente de "o token venceu e não há rede". A primeira descarta o
+       áudio; a segunda guarda a fala na fila. */
+    './sessao-offline': {
+      idDoUsuarioLocal: async () => (o.semSessao ? null : o.userId || 'u1'),
+      lerSessaoDoDisco: async () =>
+        o.semSessao ? null : { access_token: 'jwt', refresh_token: 'r', user: { id: o.userId || 'u1' } },
+    },
     './widgets-home-sync': { sincronizarWidgetsHome: async () => {} },
     '@react-native-async-storage/async-storage': { __esModule: true, default: memoriaLocal() },
     './widget-voz-pendentes': {
@@ -367,6 +381,8 @@ function montarVoz(opts) {
     './supabase': { supabase: { auth: { getSession: async () => ({
       data: { session: o.semSessao ? null : { access_token: 'tok' } },
     }) } } },
+    // `sem_sessao` agora significa "não há conta neste aparelho", não "o token venceu".
+    './sessao-offline': { tokenDeAcessoLocal: async () => (o.semSessao ? null : 'tok') },
     'expo/fetch': { fetch: async (_url, init) => {
       reg.envios++;
       relogio += o.msEnvio || 0;

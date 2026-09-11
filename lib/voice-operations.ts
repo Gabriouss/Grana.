@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { idDoUsuarioLocal } from './sessao-offline';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -41,9 +42,9 @@ export type ResultadoOperacaoVoz = {
 };
 
 export async function listarOperacoesVozLocais(): Promise<{ requestId: string; payload: PayloadOperacaoVoz }[]> {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) return [];
-  const prefixo = `grana:voz:operacao:${data.session.user.id}:`;
+  const userId = await idDoUsuarioLocal();
+  if (!userId) return [];
+  const prefixo = `grana:voz:operacao:${userId}:`;
   const chaves = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith(prefixo));
   const itens = await AsyncStorage.multiGet(chaves);
   return itens.filter(([, raw]) => !!raw).map(([, raw]) => JSON.parse(raw!));
@@ -64,8 +65,12 @@ export async function registrarOperacaoVoz(
   source: 'app' | 'widget',
   payload: PayloadOperacaoVoz
 ): Promise<ResultadoOperacaoVoz> {
-  const { data: sessao } = await supabase.auth.getSession();
-  const userId = sessao.session?.user.id;
+  /* Pelo aparelho, e não pela rede. Este id só nomeia a chave local em que a
+     fala fica guardada até o envio — e era aqui que a fila offline morria: com
+     o token vencido, `getSession()` devolvia vazio e esta linha recusava
+     GRAVAR o lançamento, exatamente na situação em que a fila existe para
+     servir. O envio logo abaixo continua exigindo credencial válida. */
+  const userId = await idDoUsuarioLocal();
   if (!userId) throw new Error('Entre na conta para salvar o lançamento.');
   const chave = `grana:voz:operacao:${userId}:${requestId}`;
   const existente = await AsyncStorage.getItem(chave);
@@ -134,8 +139,7 @@ async function executarSincronizacao(): Promise<ResumoSync> {
   let sincronizadas = 0;
   let falhas = 0;
   let mensagem: string | undefined;
-    const { data } = await supabase.auth.getSession();
-    const userId = data.session?.user.id;
+    const userId = await idDoUsuarioLocal();
     if (!userId) return { sincronizadas, falhas: 1 };
     const chaves = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith(`grana:voz:operacao:${userId}:`));
     for (const chave of chaves) {
@@ -143,8 +147,10 @@ async function executarSincronizacao(): Promise<ResumoSync> {
       if (!raw) continue;
       try {
         const item = JSON.parse(raw);
-        const atual = await supabase.auth.getSession();
-        if (atual.data.session?.user.id !== userId) break;
+        /* Guarda de troca de conta no meio da fila: se o dono mudou, para. Lê
+           pelo aparelho para não confundir "trocou de conta" com "o token
+           venceu e não há rede" — o segundo caso deve seguir tentando. */
+        if ((await idDoUsuarioLocal()) !== userId) break;
         await enviarOperacaoVoz(item.requestId, item.source, item.payload);
         await AsyncStorage.removeItem(chave);
         notificarDadosDosWidgetsAlterados();

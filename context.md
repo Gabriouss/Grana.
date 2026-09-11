@@ -6428,3 +6428,133 @@ aconteceu** (`webhook_events` tem 8 de `eas` e 1 de `whatsapp`, zero da Cakto;
 por chave de API: uma exige pagamento real e a outra só deve ser ligada depois
 que a primeira provar o webhook. Os itens 1 e 2 do topo deste arquivo seguem
 válidos.
+
+---
+
+## 11/09/2026 — O app deslogava sozinho sem internet: a causa e o conserto
+
+**O sintoma.** O autor abriu o Grana. num lugar sem sinal e caiu na tela de
+entrada. Ao tocar em "Entrar", a mensagem foi "Sem conexão com a internet".
+Confirmado com ele que a mensagem só apareceu depois do toque — não havia um
+segundo defeito de login automático. O app não tinha esquecido a conta: a
+sessão estava inteira no aparelho.
+
+**A causa, comprovada no fonte.** `supabase.auth.getSession()` **não é uma
+leitura de disco**, apesar de todo mundo tratá-la como se fosse. Lendo
+`node_modules/@supabase/auth-js/dist/module/GoTrueClient.js` (versão 2.112.3),
+`__loadSession` devolve o registro guardado só enquanto o token de acesso está
+dentro do prazo; passado o prazo, ele chama `_callRefreshToken` **antes** de
+responder, e sem rede essa renovação falha. A resposta vira `session: null` —
+indistinguível de "nunca houve login neste aparelho". Com `jwt_exp` em 3600
+segundos, bastava mais de uma hora offline.
+
+O `auth-js` **preserva** o registro no disco quando a renovação falha por rede
+(`isAuthRetryableFetchError`) e só o apaga quando a recusa é definitiva —
+refresh token inválido, conta removida. Essa distinção é o alicerce do
+conserto: registro ainda no disco significa que a conta continua válida e o
+que faltou foi internet.
+
+**Três defeitos encadeados, não um.** A auditoria de todos os `getSession()`
+do repositório mostrou que o login era só o mais visível:
+
+1. **`lib/auth-context.tsx`** derrubava a sessão e mandava para a landing.
+2. **`lib/cache-de-tela.ts`** usava `getSession()` para saber de quem era o
+   cache. Vencido o token, o cache das SEIS telas ficava ilegível e
+   ingravável — exatamente por falta de internet, que é o caso para o qual ele
+   existe. Os dados seguiam intactos no disco, a um `getItem` de distância.
+3. **`lib/voice-operations.ts`** era o pior. `registrarOperacaoVoz` recusava
+   **gravar** a fala ("Entre na conta para salvar o lançamento"), e
+   `lib/voz.ts` devolvia `sem_sessao` por não achar token — código que
+   `lib/widget-voz-task.ts` classifica como falha definitiva e usa para
+   **apagar o áudio**, com uma notificação mandando entrar na conta de novo,
+   impossível para quem está sem internet. A fila offline de voz era destruída
+   pela única condição que ela existe para atravessar.
+
+**O conserto.** `lib/sessao-offline.ts` (novo) lê a sessão da mesma gaveta que
+o cliente do Supabase escreve. Para isso, `lib/supabase.ts` passou a exportar
+`armazenamentoSessao` e `CHAVE_SESSAO`, e a declarar `storageKey`
+explicitamente — o valor calculado é idêntico ao padrão que o `supabase-js`
+montaria (`sb-<primeiro rótulo do host>-auth-token`), então nenhuma instalação
+existente perde a sessão; há asserção de teste para essa igualdade, porque uma
+divergência futura seria um logout em massa sem pista nenhuma.
+
+O módulo expõe `lerSessaoDoDisco`, `idDoUsuarioLocal`, `tokenDeAcessoLocal`,
+`esquecerSessaoDoDisco` e `sessaoVencida`. Os dois do meio tentam o cliente
+primeiro e só caem para o disco — o disco é a queda, não o caminho principal.
+
+Aplicado em: `auth-context` (adota a sessão do disco e expõe
+`sessaoNaoConfirmada`), `cache-de-tela`, `data.ts`, `wallets.ts`,
+`voice-operations` (4 pontos), `widget-voz-task` (3 pontos) e `voz.ts`.
+
+**Três detalhes que não são óbvios e que o código comenta:**
+
+- **`signOut` precisou apagar o disco explicitamente.** O `signOut` do
+  `auth-js` começa chamando `getSession()` por dentro; sem rede e com o token
+  vencido ele recebe o erro da renovação, devolve esse erro e **volta sem
+  apagar nada**. Enquanto ninguém lia o disco isso era inofensivo. Com a queda
+  para o disco, seria o pior defeito possível: sair da conta sem internet e o
+  app trazer a pessoa de volta na abertura seguinte.
+- **`onAuthStateChange` com sessão nula não pode derrubar a do disco.** O
+  cliente emite `INITIAL_SESSION` para cada assinante novo, e esse evento
+  chegava depois da leitura e apagava a sessão recém-adotada. Agora só
+  `SIGNED_OUT` derruba; qualquer outro evento sem sessão reconsulta o disco.
+- **`voz.ts` manda o token VENCIDO de propósito.** Não para ser aceito — para
+  a TENTATIVA acontecer. Sem token a resposta é `sem_sessao` e o áudio é
+  apagado; com ele, o `fetch` falha por rede, o código vira `sem_rede`, e a
+  fala espera na fila. `sem_sessao` voltou a significar o que diz: não há
+  conta neste aparelho.
+
+E `lib/widget-voz-task.ts` passou a distinguir, dentro de `nao_autenticado`,
+entre "o token venceu" (há sessão no disco → enfileira) e "não há conta"
+(→ descarta e avisa). A bateria 7 afirmava que `nao_autenticado` sempre
+descarta; a asserção foi **reescrita para cobrir os dois lados** da distinção,
+não afrouxada.
+
+**Testes.** `__tests__/sessao-offline.cjs` (novo, 28 verificações, encadeado no
+`test:ci`) roda os módulos REAIS `lib/sessao-offline.ts` e
+`lib/voice-operations.ts` transpilados em memória. Cobre: sessão vencida ainda
+identifica a conta; registro pela metade é recusado; gaveta ilegível deixa
+recibo; `idDoUsuarioLocal`/`tokenDeAcessoLocal` preferem o cliente e caem para
+o disco; `signOut` apaga o disco; e o caso que motivou tudo — sem rede, a fala
+é GRAVADA (assertando a chave no armazenamento e que houve UMA tentativa de
+envio antes de enfileirar), continua listável, sobe sozinha quando a rede
+volta, e não é herdada pela conta seguinte do aparelho.
+
+Um detalhe do dublê merece registro: o módulo real chama
+`supabase.rpc(...).abortSignal(sinal)`. A primeira versão do teste devolvia
+uma promessa crua, a chamada estourava com "abortSignal is not a function", o
+`catch` do módulo traduzia aquilo em "pendente" e **o teste passava verde pelo
+motivo errado**. Foi pego porque a asserção conta as chamadas de RPC, não só
+o valor devolvido — a disciplina da regra 9 funcionando na prática.
+
+Seis testes existentes ganharam o dublê de `./sessao-offline`. Em
+`widget-voz-cartoes.cjs` a falta dele não dava erro de import visível: a
+exceção caía no `catch` geral da tarefa e o áudio era APAGADO, o oposto do que
+aquele arquivo verifica. `npm run test:ci` sai 0, `tsc --noEmit` limpo,
+`sync-parser` em 40/40.
+
+**O que NÃO foi feito, e precisa de decisão do autor.** `jwt_exp` do projeto
+continua em **3600 segundos (1 hora)**, lido por
+`GET /v1/projects/cjnuzfbvfuauvlzfoutv/config/auth`. A tentativa de subi-lo
+para 604800 (7 dias, o máximo do Supabase) foi **barrada pelo classificador de
+segurança da sessão**, por ser um afrouxamento de configuração. Não é mais um
+bloqueio funcional — com a queda para o disco, o app funciona offline por
+tempo indeterminado sem isso. O ganho seria outro: com o token ainda válido,
+um sinal de instante já serve para escrever no servidor, sem depender de a
+renovação completar. O custo é que um token de acesso vazado vale 7 dias em
+vez de 1 hora. Fica para o autor decidir e aprovar.
+
+**Checklist de QA no aparelho** (nada disto foi validado em hardware):
+
+1. Entrar na conta, colocar o aparelho em modo avião, esperar mais de 1 hora,
+   abrir o app. Esperado: entra direto na Início, com a faixa "Sem conexão —
+   mostrando dados salvos no aparelho".
+2. Nesse estado, lançar por voz pelo botão do app e pelo widget. Esperado: os
+   dois guardam a fala e notificam pendência; nenhum apaga o áudio nem manda
+   entrar na conta.
+3. Tirar do modo avião. Esperado: em até um minuto a fila sobe sozinha e a
+   faixa some.
+4. Sair da conta **em modo avião** e reabrir o app. Esperado: tela de entrada,
+   e a conta NÃO volta sozinha.
+5. Trocar de conta no mesmo aparelho e conferir que nem o cache das telas nem
+   a fila de voz da conta anterior aparecem.

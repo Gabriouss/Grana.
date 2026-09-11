@@ -20,6 +20,14 @@ const deps = {
   './voice-operations': { registrarOperacaoVoz: async (_, __, input) => { saved.push(input); return { ids: ['tx'], operationId: 'op' }; } },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: { user: { id: 'qa-user' } } } }) } } },
+  /* Dono da fila lido pelo aparelho desde 11/09/2026. Sem este dublê o
+     `import('./sessao-offline')` estourava dentro do caminho de permissão
+     negada, a exceção caía no `catch` geral da tarefa e o áudio era APAGADO —
+     o oposto do que este arquivo verifica logo abaixo. */
+  './sessao-offline': {
+    idDoUsuarioLocal: async () => 'qa-user',
+    lerSessaoDoDisco: async () => ({ access_token: 'jwt', refresh_token: 'r', user: { id: 'qa-user' } }),
+  },
   './widget-voz-pendentes': { adicionarVozPendente: async (item) => { pending.push(item); }, listarVozesPendentes: async () => pending, removerVozPendente: async () => {} },
   './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},
   'expo-file-system/legacy': { deleteAsync: async () => { cleaned++; } },

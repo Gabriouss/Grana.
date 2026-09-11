@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { File } from 'expo-file-system';
-import { supabase } from './supabase';
+import { tokenDeAcessoLocal } from './sessao-offline';
 
 /**
  * Cliente da Edge Function `processar-lancamento-voz`.
@@ -210,8 +210,15 @@ export async function transcreverAudio(
   }
   if (opts.tamanhoBytes === 0) return { ok: false, codigo: 'audio_ausente' };
 
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  /* O token pode vir do disco, vencido, de propósito. Não é para ser aceito
+     pelo servidor — é para a TENTATIVA acontecer. Sem token, a resposta aqui
+     é `sem_sessao`, que o widget trata como falha definitiva e usa para apagar
+     o áudio já gravado, avisando a pessoa para entrar na conta de novo:
+     impossível justamente para quem está sem internet. Com o token em mãos, o
+     `fetch` falha por rede, o código vira `sem_rede`, e a fala espera na fila
+     até a conexão voltar. `sem_sessao` volta a significar o que diz: não há
+     conta nenhuma neste aparelho. */
+  const token = await tokenDeAcessoLocal();
   if (!token) return { ok: false, codigo: 'sem_sessao' };
 
   const primeira = await tentarUmaVez(url, token, uri, opts, deadline);

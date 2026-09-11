@@ -57,11 +57,11 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
       // nunca atribuir uma fala sem sessão à próxima conta do aparelho.
       manterArquivo = caminho.includes('/voz-pendente/');
       if (!manterArquivo) {
-        const { supabase } = await import('./supabase');
-        const { data } = await supabase.auth.getSession();
-        if (data.session?.user.id) {
+        const { idDoUsuarioLocal } = await import('./sessao-offline');
+        const userId = await idDoUsuarioLocal();
+        if (userId) {
           const { adicionarVozPendente } = await import('./widget-voz-pendentes');
-          await adicionarVozPendente({ caminho, requestId, userId: data.session.user.id, source: payload.source });
+          await adicionarVozPendente({ caminho, requestId, userId, source: payload.source });
           manterArquivo = true;
         }
       }
@@ -78,15 +78,16 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
       /* A gravação já aconteceu. Não apagá-la é a diferença entre "sem rede"
          ser uma espera transparente e perder a fala junto com a notificação. */
       if (caminho && requestId) {
-        const [{ adicionarVozPendente }, { supabase }] = await Promise.all([
+        const [{ adicionarVozPendente }, { idDoUsuarioLocal }] = await Promise.all([
           import('./widget-voz-pendentes'),
-          import('./supabase'),
+          import('./sessao-offline'),
         ]);
         /* A fila é vinculada ao usuário autenticado. Sem isso, alguém que
            saia da conta antes da rede voltar poderia lançar o áudio antigo na
-           conta seguinte do mesmo aparelho. */
-        const { data } = await supabase.auth.getSession();
-        const userId = data.session?.user.id;
+           conta seguinte do mesmo aparelho. Lido pelo aparelho: este é o
+           caminho DE FALHA POR FALTA DE REDE, e perguntar pela rede quem é o
+           dono descartava a gravação em vez de guardá-la. */
+        const userId = await idDoUsuarioLocal();
         if (userId) {
           await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao });
           manterArquivo = true;
@@ -152,6 +153,18 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   if (!transcricao.ok) {
     if (transcricao.codigo === 'sem_rede' || transcricao.codigo === 'demorou') {
       throw new VozPendenteOffline('A transcrição será retomada quando houver conexão.');
+    }
+    /* Recusa por credencial COM uma sessão gravada no aparelho é temporária,
+       não definitiva: o token de acesso venceu e a renovação ainda não passou
+       (o cliente tenta de novo sozinho a cada 30s). Apagar o áudio aqui seria
+       destruir a fala por causa de uma janela de um minuto. Só quando não há
+       sessão nenhuma no disco é que "entre na conta de novo" é uma instrução
+       que a pessoa consegue cumprir. */
+    if (transcricao.codigo === 'nao_autenticado' || transcricao.codigo === 'sem_sessao') {
+      const { lerSessaoDoDisco } = await import('./sessao-offline');
+      if (await lerSessaoDoDisco()) {
+        throw new VozPendenteOffline('A sessão será renovada quando houver conexão.');
+      }
     }
     await notificacoes.notificarFalha(transcricao.codigo);
     return false;
@@ -390,14 +403,13 @@ export async function tentarVozesPendentes(): Promise<void> {
   if (filaEmExecucao || Platform.OS !== 'android') return;
   filaEmExecucao = true;
   try {
-    const [{ listarVozesPendentes, removerVozPendente }, { podeNotificar }, { supabase }] = await Promise.all([
+    const [{ listarVozesPendentes, removerVozPendente }, { podeNotificar }, { idDoUsuarioLocal }] = await Promise.all([
       import('./widget-voz-pendentes'),
       import('./widget-voz-notificacoes'),
-      import('./supabase'),
+      import('./sessao-offline'),
     ]);
     if (!(await podeNotificar())) return;
-    const { data: sessao } = await supabase.auth.getSession();
-    const userId = sessao.session?.user.id;
+    const userId = await idDoUsuarioLocal();
     if (!userId) return;
 
     for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId)) {

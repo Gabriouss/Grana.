@@ -56,6 +56,11 @@ async function main() {
       async bytes() { return new Uint8Array([1, 2, 3, 4]); }
     } },
     './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: token ? { access_token: token } : null } }) } } },
+    /* O token agora vem por `tokenDeAcessoLocal`, que tenta o cliente e cai
+       para o registro do aparelho — é o que deixa a tentativa acontecer (e
+       falhar como `sem_rede`) em vez de virar `sem_sessao` e descartar o
+       áudio já gravado. Aqui o dublê devolve o mesmo `token` do teste. */
+    './sessao-offline': { tokenDeAcessoLocal: async () => token || null },
     'expo/fetch': { fetch: async (_url, init) => {
       const serializado = await convertFormDataAsync(init.body);
       corpoEnviado = new TextDecoder().decode(serializado.body);

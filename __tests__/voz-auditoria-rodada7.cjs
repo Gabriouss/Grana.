@@ -110,13 +110,30 @@ async function falhasEPersistencia() {
     }
   }
   for (const source of ['app', 'widget']) {
-    for (const codigo of ['sem_rede', 'demorou', 'sem_sessao', 'nao_autenticado']) {
-      const { task, reg } = montarWidget({ semSessao: codigo.includes('sessao'), transcrever: async () => ({ ok: false, codigo }) });
+    /* O que decide entre GUARDAR a fala e APAGÁ-LA não é só o código da falha:
+       é se existe conta gravada neste aparelho. Recusa por credencial COM
+       sessão no disco significa token de acesso vencido — temporário, o
+       cliente renova sozinho em até um minuto — e apagar o áudio ali
+       destruiria a gravação por causa dessa janela. Sem sessão nenhuma,
+       "entre na conta de novo" é uma instrução que a pessoa consegue cumprir,
+       e aí o descarte é honesto. Distinção introduzida em 11/09/2026, depois
+       de o app ter deslogado sozinho num lugar sem sinal; até então
+       `nao_autenticado` apagava a fala nos dois casos. */
+    const casosDeCredencial = [
+      { codigo: 'sem_rede', semSessao: false, guarda: true },
+      { codigo: 'demorou', semSessao: false, guarda: true },
+      { codigo: 'nao_autenticado', semSessao: false, guarda: true },
+      { codigo: 'sem_sessao', semSessao: false, guarda: true },
+      { codigo: 'nao_autenticado', semSessao: true, guarda: false },
+      { codigo: 'sem_sessao', semSessao: true, guarda: false },
+    ];
+    for (const { codigo, semSessao, guarda } of casosDeCredencial) {
+      const nome = `${source} ${codigo} ${semSessao ? 'sem conta no aparelho' : 'com conta no aparelho'}`;
+      const { task, reg } = montarWidget({ semSessao, transcrever: async () => ({ ok: false, codigo }) });
       await task({ caminho: '/cache/a.m4a', requestId: 'r', source });
-      const temporario = ['sem_rede', 'demorou'].includes(codigo);
-      check(source + codigo + ' fila', reg.fila.length, temporario ? 1 : 0);
-      check(source + codigo + ' descarte', reg.apagados.length, temporario ? 0 : 1);
-      check(source + codigo + ' recibo', reg.notificacoes.length + reg.pendenteNotificado > 0, true);
+      check(nome + ' fila', reg.fila.length, guarda ? 1 : 0);
+      check(nome + ' descarte', reg.apagados.length, guarda ? 0 : 1);
+      check(nome + ' recibo', reg.notificacoes.length + reg.pendenteNotificado > 0, true);
     }
     const { task, reg } = montarWidget({ podeNotificar: false });
     await task({ caminho: '/cache/a.m4a', requestId: 'r', source });

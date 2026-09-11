@@ -69,7 +69,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
 /* expo-secure-store não existe na web (não há Keychain/Keystore num
    navegador) — lá a própria Supabase recomenda usar o localStorage do
    navegador. No nativo (iOS/Android), onde os dados realmente moram no
-   aparelho do usuário, seguimos com o LargeSecureStore (criptografado). */
+   aparelho do usuário, seguimos com o LargeSecureStore (criptografado).
+
+   Exportado porque `lib/sessao-offline.ts` precisa ler a MESMA gaveta que o
+   cliente do Supabase escreve. Sem rede e com o token de acesso vencido,
+   `getSession()` devolve `null` mesmo com a sessão intacta no disco — ler o
+   registro direto é a única forma de o app continuar de pé. */
+export const armazenamentoSessao =
+  Platform.OS === 'web' ? globalThis.localStorage : new LargeSecureStore();
+
+/* A mesma chave que o `supabase-js` montaria sozinho: `sb-<primeiro rótulo do
+   host>-auth-token`. Passada explicitamente para deixar de ser detalhe interno
+   da biblioteca: `lib/sessao-offline.ts` depende dela, e uma versão futura que
+   mudasse o padrão em silêncio viraria logout em massa. O valor calculado aqui
+   é idêntico ao padrão atual, então nenhuma instalação existente perde a
+   sessão ao atualizar. */
+export const CHAVE_SESSAO = `sb-${(supabaseUrl ?? '')
+  .replace(/^https?:\/\//, '')
+  .split('.')[0]}-auth-token`;
+
 /**
  * Repete uma vez quando o servidor recusa o token por relógio.
  *
@@ -116,7 +134,8 @@ async function fetchComRetentativaDeRelogio(
 export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
   global: { fetch: fetchComRetentativaDeRelogio },
   auth: {
-    storage: Platform.OS === 'web' ? globalThis.localStorage : new LargeSecureStore(),
+    storage: armazenamentoSessao,
+    storageKey: CHAVE_SESSAO,
     autoRefreshToken: true,
     persistSession: true,
     /* PKCE devolve somente um código curto, de uso único e com validade de

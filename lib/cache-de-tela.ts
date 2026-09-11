@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from './supabase';
+import { idDoUsuarioLocal } from './sessao-offline';
 
 /**
  * Cache de leitura por tela, para o app inteiro continuar servindo enquanto
@@ -53,18 +53,19 @@ type Registro<T> = { userId: string; dados: T; guardadoEm: string };
 /**
  * Id do usuário pela sessão LOCAL.
  *
- * `getSession` lê o que está no AsyncStorage; `getUser` bate no servidor para
- * validar. Num módulo cujo propósito inteiro é funcionar sem rede, usar
- * `getUser` seria a piada pronta.
+ * `getUser` bate no servidor para validar; num módulo cujo propósito inteiro é
+ * funcionar sem rede, usar `getUser` seria a piada pronta. Mas `getSession`
+ * também não é a leitura de disco que este comentário afirmava ser: com o
+ * token de acesso vencido ele tenta RENOVAR antes de responder, e sem rede a
+ * renovação falha e a resposta vem vazia. O efeito era exatamente o oposto do
+ * propósito do módulo — passado o prazo do token, o cache de TODAS as telas
+ * ficava ilegível e ilegravel justamente por falta de internet, com os dados
+ * intactos no disco a um `getItem` de distância. Corrigido em 11/09/2026.
+ *
+ * A queda para o disco não afrouxa nada: o id só decide de quem é o cache
+ * local, e toda leitura do servidor continua passando pelo RLS.
  */
-async function idDoUsuario(): Promise<string | null> {
-  try {
-    const { data } = await supabase.auth.getSession();
-    return data.session?.user?.id ?? null;
-  } catch {
-    return null;
-  }
-}
+const idDoUsuario = idDoUsuarioLocal;
 
 export async function guardarTela<T>(nome: string, dados: T): Promise<void> {
   try {

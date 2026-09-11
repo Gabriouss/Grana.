@@ -1,15 +1,18 @@
 import { supabase } from './supabase';
 import { comCacheOffline } from './cache-de-tela';
+import { idDoUsuarioLocal } from './sessao-offline';
 import type { Transaction, Wallet } from './types';
 import { isCreditTx } from './format';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 async function buscar_fetchWallets(): Promise<Wallet[]> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error('Entre na conta para carregar suas carteiras.');
-  const user = session.user;
+  /* Id pelo aparelho: a busca no servidor abaixo continua exigindo token
+     válido e falha sem rede como sempre falhou, mas o cache local de
+     carteiras precisa continuar identificável quando o token vence — é dele
+     que o lançamento por voz offline tira a lista de carteiras. */
+  const userId = await idDoUsuarioLocal();
+  if (!userId) throw new Error('Entre na conta para carregar suas carteiras.');
+  const user = { id: userId };
   const chave = `grana:voz:referencia:${user.id}:carteiras`;
 
   try {

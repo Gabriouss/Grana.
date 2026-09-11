@@ -1,4 +1,4 @@
-import { createContext, use, useEffect, useState, type PropsWithChildren } from 'react';
+import { createContext, use, useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { Platform } from 'react-native';
 import { Alert } from './alert';
 import * as Linking from 'expo-linking';
@@ -8,6 +8,11 @@ import { traduzirErroAuth, type ErroAuth } from './auth-errors';
 import { vincularAssinaturasPendentes } from './assinatura';
 import { removerPushHabitoAntesDeSair } from './push-notifications';
 import { esquecerAcesso } from './entitlement-cache';
+import {
+  esquecerSessaoDoDisco,
+  lerSessaoDoDisco,
+  marcarSessaoNaoConfirmada,
+} from './sessao-offline';
 import { esquecerTelas } from './cache-de-tela';
 import { limparSnapshotWidgets } from './widgets-home-sync';
 
@@ -29,6 +34,12 @@ type AuthContextValue = {
    */
   emRecuperacao: boolean;
   cancelarRecuperacao: () => void;
+  /**
+   * A sessão em uso foi lida do aparelho porque a renovação do token não teve
+   * rede. Continua sendo a conta certa, com os dados certos no cache — só que
+   * nada que dependa do servidor vai funcionar até a internet voltar.
+   */
+  sessaoNaoConfirmada: boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -71,20 +82,86 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [emRecuperacao, setEmRecuperacao] = useState(false);
+  const [sessaoNaoConfirmada, setSessaoNaoConfirmada] = useState(false);
+  /* Espelho síncrono do estado acima. O `onAuthStateChange` dispara fora do
+     render e precisa decidir na hora se um evento sem sessão deve derrubar a
+     sessão do disco — ler o `useState` ali entregaria o valor do render
+     anterior. */
+  const naoConfirmadaRef = useRef(false);
+
+  const aplicarSessao = useCallback((nova: Session | null, doDisco: boolean) => {
+    naoConfirmadaRef.current = doDisco;
+    // O mesmo estado precisa alcançar quem não é componente (cache de tela).
+    marcarSessaoNaoConfirmada(doDisco);
+    setSessaoNaoConfirmada(doDisco);
+    setSession(nova);
+  }, []);
+
+  /**
+   * O Supabase disse que não há sessão. Confere com o disco antes de acreditar.
+   *
+   * `getSession()` não é leitura de disco: com o token vencido ele tenta
+   * renovar primeiro, e sem rede a renovação falha e a resposta vira
+   * `session: null` — igualzinho a "nunca houve login". O `auth-js` só APAGA o
+   * registro do aparelho quando a recusa é definitiva (refresh token inválido,
+   * conta removida); falha de rede ele preserva. Então: registro ainda no
+   * disco significa que a conta continua válida e o que faltou foi internet.
+   */
+  const resolverAusenciaDeSessao = useCallback(
+    async (motivo: string) => {
+      const guardada = await lerSessaoDoDisco();
+      if (!guardada) {
+        aplicarSessao(null, false);
+        return;
+      }
+      console.warn('[sessao] seguindo com a sessão guardada no aparelho', {
+        motivo,
+        venceuEm: guardada.expires_at
+          ? new Date(guardada.expires_at * 1000).toISOString()
+          : 'sem prazo registrado',
+      });
+      aplicarSessao(guardada, true);
+    },
+    [aplicarSessao]
+  );
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setIsLoading(false);
-      /* Cobre o caso de a assinatura ter sido comprada (ou renovada) DEPOIS
-         da última vez que a pessoa logou neste aparelho — sem isto, quem
-         abre o app já logado só teria a assinatura vinculada no PRÓXIMO
-         login, que pode nunca acontecer num app que guarda sessão. */
-      if (data.session) void vincularAssinaturasPendentes();
-    });
+    let vivo = true;
+
+    void (async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!vivo) return;
+      if (data.session) {
+        aplicarSessao(data.session, false);
+        /* Cobre o caso de a assinatura ter sido comprada (ou renovada) DEPOIS
+           da última vez que a pessoa logou neste aparelho — sem isto, quem
+           abre o app já logado só teria a assinatura vinculada no PRÓXIMO
+           login, que pode nunca acontecer num app que guarda sessão. */
+        void vincularAssinaturasPendentes();
+      } else {
+        await resolverAusenciaDeSessao(
+          error instanceof Error ? error.message : 'getSession devolveu vazio'
+        );
+      }
+      if (vivo) setIsLoading(false);
+    })();
 
     const { data: listener } = supabase.auth.onAuthStateChange((evento, newSession) => {
-      setSession(newSession);
+      if (newSession) {
+        /* Qualquer sessão vinda do cliente é sessão confirmada pelo servidor —
+           inclusive o TOKEN_REFRESHED que chega sozinho quando a internet
+           volta, e que é o que tira o app do modo sem confirmação. */
+        aplicarSessao(newSession, false);
+      } else if (evento === 'SIGNED_OUT') {
+        // Saída deliberada (ou credencial recusada de vez): não há o que salvar.
+        aplicarSessao(null, false);
+      } else {
+        /* Evento sem sessão que NÃO é logout: tipicamente o INITIAL_SESSION
+           que o cliente emite para cada assinante novo. Sem esta consulta ao
+           disco, ele chegaria depois da leitura de cima e apagaria a sessão
+           guardada que acabou de ser adotada. */
+        void resolverAusenciaDeSessao(`evento ${evento} sem sessão`);
+      }
       /* Na web o cliente do Supabase consome a URL sozinho (detectSessionInUrl)
          e avisa aqui qual e-mail originou a sessão. PASSWORD_RECOVERY é o
          único caso em que estar logado NÃO significa que a pessoa pode seguir
@@ -94,8 +171,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
       if (evento === 'SIGNED_IN') void vincularAssinaturasPendentes();
     });
 
-    return () => listener.subscription.unsubscribe();
-  }, []);
+    return () => {
+      vivo = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [aplicarSessao, resolverAusenciaDeSessao]);
 
   /* Trata o retorno do link de confirmação de e-mail (e de qualquer outro
      e-mail de auth — recuperação de senha, magic link) quando o app é aberto
@@ -140,6 +220,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     session,
     isLoading,
     emRecuperacao,
+    sessaoNaoConfirmada,
     cancelarRecuperacao: () => setEmRecuperacao(false),
     async signIn(email, password) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -201,7 +282,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
       } catch (err) {
         console.warn('Erro ao deslogar no Supabase:', err);
       } finally {
-        setSession(null);
+        /* Apagar o registro do disco aqui NÃO é redundância com o signOut
+           acima. O `signOut` do auth-js começa chamando `getSession()` por
+           dentro; sem rede e com o token vencido ele recebe o erro da
+           renovação, devolve esse erro e volta sem apagar nada. Enquanto
+           ninguém lia o disco isso era inofensivo; agora seria o pior defeito
+           possível — sair da conta sem internet e o app trazer a pessoa de
+           volta na próxima abertura. */
+        await esquecerSessaoDoDisco();
+        aplicarSessao(null, false);
       }
     },
   };

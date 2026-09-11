@@ -69,6 +69,8 @@ function montarCache({ disco = new Map(), buscar } = {}) {
     './supabase': { supabase: { auth: {
       getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }),
     } } },
+    // O dono do cache passou a ser lido pelo aparelho (11/09/2026).
+    './sessao-offline': { idDoUsuarioLocal: async () => 'u1' },
   }, { setTimeout: rapido });
   return { mod, disco, gravados, buscar };
 }
@@ -165,6 +167,7 @@ async function vozAgendaRapido() {
       './supabase': { supabase: { auth: { getSession: async () => ({
         data: { session: { access_token: 'tok' } },
       }) } } },
+      './sessao-offline': { tokenDeAcessoLocal: async () => 'tok' },
       'expo/fetch': { fetch: async (_url, init) => {
         reg.envios++;
         return new Promise((_resolve, reject) => {

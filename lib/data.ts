@@ -1,10 +1,13 @@
 import { supabase } from './supabase';
 import { comCacheOffline } from './cache-de-tela';
+import { idDoUsuarioLocal } from './sessao-offline';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 async function referenciaLocal<T>(nome: string, buscar: () => Promise<T[]>): Promise<T[]> {
-  const { data } = await supabase.auth.getSession();
-  const userId = data.session?.user.id;
+  /* Pelo aparelho, não pela rede: este cache existe para responder sem
+     internet, e perguntar ao servidor quem é o dono dele derrubava a
+     referência inteira (categorias, carteiras) assim que o token vencia. */
+  const userId = await idDoUsuarioLocal();
   if (!userId) throw new Error('Usuário não autenticado');
   const chave = `grana:voz:referencia:${userId}:${nome}`;
   try {
