@@ -282,3 +282,41 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     e nenhuma pista no código. Confira `verify_jwt` de cada função em
     `GET /v1/projects/<ref>/functions` ANTES de publicar, e publique só o que
     de fato mudou.
+
+12. **Todo registro do projeto vai para o vault do Obsidian, em
+    `G:\Meu Drive\Obsidian\Gabriel\Grana` — menos arquivo sensível.** Regra
+    dada pelo autor em 11/09/2026, nas duas metades: registrar ali todas as
+    informações do projeto, e **nunca** levar para lá `.env` ou semelhante.
+
+    A segunda metade é a que exige cuidado ativo, porque o vault fica **dentro
+    do Google Drive** e portanto sincroniza para a nuvem. Não escreva ali
+    credencial, token, chave de API, segredo de webhook nem conteúdo do
+    `.env`, nem sequer dentro de um comando copiado de uma sessão. Quando uma
+    nota precisar falar de uma credencial, cite o NOME da variável e onde ela
+    mora, jamais o valor. Vale o mesmo para `Feedbacks/` e `Screenshots/`, que
+    contêm dado financeiro de terceiro e continuam apenas na máquina local.
+
+    **Como é o acesso.** O vault raiz é `G:\Meu Drive\Obsidian`; o material do
+    projeto vive em `Gabriel/Grana`, organizado em pastas numeradas
+    (`01 - Código`, `02 - Design System`, `03 - Marketing`, `04 - Tráfego`,
+    `05 - Vendas`, `06 - Produto`). Nota nova entra na pasta do assunto,
+    seguindo os nomes descritivos que já existem. O servidor MCP é o
+    `mcpvault`, rodado por
+    `npx -y @bitbonsai/mcpvault@latest "G:\Meu Drive\Obsidian"`, apontado para
+    a RAIZ do vault e não para a subpasta, para os links internos do Obsidian
+    continuarem resolvendo. Servidor MCP acrescentado no meio de uma sessão só
+    aparece depois de reiniciar; enquanto isso o vault é alcançável como pasta
+    comum do sistema de arquivos.
+
+    **O `context.md` é espelhado automaticamente**, do repositório para o
+    vault, em `01 - Código/Contexto do Projeto - Grana.md`. Quem faz isso é um
+    `hook` de `Stop` em `.claude/settings.local.json` — arquivo ignorado pelo
+    git de propósito, porque o caminho do vault só existe nesta máquina. **A
+    direção é uma só: o repositório manda.** Editar aquela nota dentro do
+    Obsidian não volta para cá e será sobrescrita no fim do próximo turno. Se
+    a outra máquina for usar o vault, ela precisa do próprio `hook`, com o
+    caminho dela.
+
+    Isso **não** substitui a regra 6: o `context.md` do repositório continua
+    obrigatório, porque é por ele que a outra máquina fica sabendo o que
+    aconteceu aqui, pelo GitHub. O vault é registro adicional.
