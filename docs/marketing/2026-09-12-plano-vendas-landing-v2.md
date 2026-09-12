@@ -241,3 +241,120 @@ vontade. Precisa só parar de perder o rastro do seu dinheiro. E no celular,
       e no clique do plano anual vs. mensal.
 - [ ] LGPD: se houver captura de e-mail em algum ponto, checkbox de
       consentimento explícito.
+
+---
+
+## Prompt para gerar a landing (referências 21st.dev)
+
+**Nota de stack**: os componentes de referência abaixo (21st.dev) são
+React + Next.js + shadcn/ui + Tailwind + TypeScript — uma stack diferente da
+do app (Expo + React Native Web). Este prompt gera um site novo e
+independente, não um componente pra incorporar em `app/index.tsx`. Cole o
+bloco `## PROMPT` inteiro na ferramenta de geração (Claude Design, v0,
+lovable ou equivalente).
+
+### PROMPT
+
+Crie uma landing page de vendas completa em **React + Next.js + shadcn/ui +
+Tailwind + TypeScript** para o **Grana.** (com o ponto final, sempre — faz
+parte do nome), um app de finanças pessoais brasileiro por assinatura.
+
+#### Sistema de design (aplicar à risca)
+
+- Fundo: `#052229` · Superfície elevada: `#0b2d35` · Texto primário:
+  `#effffa` · Texto secundário: `#a6d9ce` · Texto terciário: `#7fa9a0`
+- Marca/destaque (uso moderado): `#aeffe3` · Ação primária/CTA: `#1fa98d`
+- Entrada de dinheiro: `#74e291` · Saída de dinheiro: `#00a6ca` (nunca
+  vermelho) · Destrutivo/atraso (nunca perto de valor de gasto): `#e08a7d`
+- Tipografia: **Neue Machina**, só Light e Regular, nunca negrito simulado,
+  nunca fonte de sistema
+- Nunca branco, nunca cinza neutro em superfície nenhuma
+
+#### Regra de voz (aplicar em toda copy da página)
+
+Nenhuma frase usa travessão (—) nem a construção "não é X, é Y" pra
+corrigir ou julgar quem lê. Tom empático, nunca de fiscal de gastos. Sem
+urgência fabricada (contador, vaga limitada, "só hoje"). Sem prova social
+inventada (produto pré-lançamento — omitir o bloco em vez de simular).
+Comunicação focada na versão **web/desktop**; o app de celular aparece como
+diferencial, nunca como o argumento central.
+
+#### Estrutura e componentes de referência, bloco por bloco
+
+1. **Herói** — background de `https://21st.dev/@amanshakya307/components/velaris`
+   combinado com o layout de `https://21st.dev/@waleedkibhen/components/saa-s-template`.
+   H1 com efeito shimmer de
+   `https://21st.dev/@?/components/shimmer-text` (código completo abaixo,
+   nesta mesma conversa) sobre o texto **"O controle do seu dinheiro, na
+   sua mão."** Subheadline: "Sem formulário, sem planilha, sem conectar
+   banco. Só o seu dinheiro, do seu jeito." CTA: botão "Assinar agora" com
+   o efeito de `https://21st.dev/@designali-in/components/shiny-button`.
+   Mockup do painel web ao lado ou abaixo do herói.
+
+2. **A dor** — 3 blocos curtos, sem ícone genérico: "Você olha o extrato e
+   pensa: 'o que aconteceu com meu dinheiro?' Sem lembrar direito onde ele
+   foi." / "Um dia vira o outro, os gastos somem da memória, e no fim do
+   mês só resta o apagão financeiro: um monte de dinheiro que passou por
+   você sem deixar rastro." / "Sem enxergar o quadro completo, fica difícil
+   fechar o mês com algo guardado pra você."
+
+3. **A solução** — "Pra nunca mais perder o rastro do dinheiro: cole o
+   texto de uma compra, um extrato, um resumo de fatura. O Grana. organiza
+   sozinho, sem formulário, sem escolher categoria na mão." Sem menção a
+   voz aqui.
+
+4. **Panorama de ferramentas** — bento grid de
+   `https://21st.dev/@avanishverma4/components/bento-grid-01`, com o efeito
+   de destaque de `https://21st.dev/@jahed/components/spotlight-card` em
+   cada célula. Abertura: "No Grana. você organiza suas metas nas
+   caixinhas, acompanha entradas e saídas, define tetos de gasto por
+   categoria. E ainda assim consegue ver quanto sobra pra você curtir seu
+   lazer, sem culpa." Uma célula por item: Cartão no seu ritmo, Contas e
+   boletos, Caixinhas e metas, Tetos de gasto por categoria, Entradas e
+   saídas organizadas, Categorização automática, Livre pra Gastar, Gráficos
+   do mês (textos completos de cada um na seção 5 deste documento).
+
+5. **Telas internas do Grana.** — usar
+   `https://21st.dev/@ravikatiyar162/components/circular-gallery` com
+   mockup de celular pra exibir as telas reais do app em carrossel/galeria
+   circular (Início, Crédito, Contas, Desafios).
+
+6. **E no seu bolso, ainda mais** *(diferencial mobile)* — usar
+   `https://21st.dev/@kokonutd/components/ai-voice-input` pra ilustrar a
+   ferramenta de lançamento por voz. Texto: "Tudo que você já tem no
+   computador, com três coisas a mais que só o app traz:" Widgets,
+   Lançamento por voz, Foto da nota fiscal (textos completos na seção 6).
+
+7. **Notificações e desafios** — Score Grana, sequência de dias, conquistas
+   por hábito (textos completos na seção 7).
+
+8. **Granachat + Granabô** — chat simulado com os 4 pares pergunta/resposta
+   da seção 8 deste documento (reaproveitar a lógica de
+   `components/ConversaGranachat.tsx`, adaptada pra React/shadcn).
+
+9. **Oferta/Checkout** — componente
+   `https://21st.dev/@?/components/pricing` (código completo nesta
+   conversa), adaptado pra **BRL** e para os valores reais: **R$97,90/ano**
+   em destaque (plano principal, "Popular") e R$9,90/mês como alternativa.
+   Sem menção a trial nem stack de bônus (o produto não tem nenhum dos
+   dois). Título: "Seu assistente financeiro por menos de R$0,37 por dia."
+   Reforço: "Um único plano, com tudo incluído. Sem versão limitada, sem
+   recurso trancado atrás de outro preço." Botão "Assinar agora" com o
+   efeito shiny-button.
+
+10. **Quebra de objeções**, **Garantia**, **FAQ** — textos completos nas
+    seções 10, 11 e 12 deste documento.
+
+11. **CTA final + PS** — texto completo na seção 13 deste documento.
+
+#### Mobile-first
+
+Público majoritariamente mobile mesmo com o site sendo sobre a versão web
+do produto. Testar em 390px antes de qualquer largura maior.
+
+#### Ao final, inclua
+
+Uma nota técnica separada listando: (a) todo claim que precisa de
+confirmação antes de publicar (ver checklist acima), (b) sugestão de
+tracking (Pixel Meta + GA4, evento no clique do CTA principal e no clique
+do plano anual vs. mensal).
