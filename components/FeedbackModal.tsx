@@ -32,7 +32,7 @@ export default function FeedbackModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
-  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
+  const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const [tipo, setTipo] = useState<FeedbackType>('suggestion');
   const [rating, setRating] = useState<number | null>(null);
   const [message, setMessage] = useState('');
@@ -70,7 +70,7 @@ export default function FeedbackModal({
 
   return (
     <AppModal visible={visible} transparent onRequestClose={handleClose}>
-      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={handleClose}>
+      <Pressable style={[styles.modalScrim, scrimStyle]} onLayout={aoMedirFundo} onPress={handleClose}>
         <AccessibleModalPanel ativo={visible} onClose={handleClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Enviar feedback</Text>

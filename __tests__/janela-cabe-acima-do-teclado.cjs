@@ -27,6 +27,7 @@ vm.runInNewContext(
       // Só as constantes de tema importam para a conta; o resto do módulo usa
       // hooks que este teste não exercita.
       if (nome === './theme') return { radius: { xl: 20 }, spacing: { md: 12 } };
+      if (nome === 'react') return { useCallback: (fn) => fn, useState: (v) => [v, () => {}] };
       if (nome === 'react-native') return { Platform: { OS: 'android' }, useWindowDimensions: () => ({}) };
       if (nome === './teclado') return { useKeyboardHeight: () => 0 };
       throw new Error('import inesperado: ' + nome);
@@ -36,69 +37,80 @@ vm.runInNewContext(
 
 const { medidasDeJanelaFlutuante } = api;
 
-/* Aparelhos reais, em pontos (dp), do menor ao maior. O teclado numérico do
-   Android fica entre 35% e 50% da altura, e cresce junto com a fonte do
-   sistema — por isso os casos extremos. */
-const aparelhos = [
-  ['tela pequena, teclado fechado', 592, 0],
-  ['tela pequena, teclado numérico', 592, 260],
-  ['tela pequena, fonte aumentada e teclado alto', 592, 300],
-  ['tela média, teclado numérico', 800, 320],
-  ['tela grande, teclado numérico', 932, 340],
-  ['tablet, teclado alto', 1180, 420],
-  ['caso patológico: teclado maior que a tela', 592, 700],
-  ['caso patológico: altura zero durante a rotação', 0, 0],
+/* Cada caso é: nome, altura que o app pediu, altura que o sistema DEU, altura
+   do teclado. A diferença entre pedido e recebido é o que o sistema já
+   descontou sozinho. */
+const casos = [
+  // Android com a janela redimensionada pelo sistema: ele já tirou o teclado.
+  ['android redimensiona, tela pequena', 592, 332, 260],
+  ['android redimensiona, tela média', 800, 480, 320],
+  ['android redimensiona, tela grande', 932, 592, 340],
+  // iOS, ou Android configurado para empurrar: o sistema não tira nada.
+  ['sistema não encolhe, tela pequena', 592, 592, 260],
+  ['sistema não encolhe, tela grande', 932, 932, 340],
+  // Meio-termo: o sistema tirou parte, o app reserva o resto.
+  ['sistema encolhe pela metade', 800, 640, 320],
+  // Teclado fechado, em qualquer sistema.
+  ['teclado fechado', 800, 800, 0],
+  // Patológicos.
+  ['teclado maior que a tela', 592, 592, 700],
+  ['medição ainda não chegou', 800, 0, 320],
 ];
 
 let verificacoes = 0;
-for (const [nome, altura, teclado] of aparelhos) {
-  const { recuoInferior, tetoDeAltura } = medidasDeJanelaFlutuante(altura, teclado);
+for (const [nome, pedida, recebida, teclado] of casos) {
+  const { recuoInferior, tetoDeAltura } = medidasDeJanelaFlutuante(pedida, recebida, teclado);
+  const espaco = recebida > 0 ? recebida : pedida;
 
-  // A GARANTIA: a janela inteira, mais o espaço reservado ao teclado, cabe na
-  // tela. É isto que impede o teclado de cobrir o botão de salvar.
+  // A GARANTIA: a janela mais o que ela reserva cabem no espaço que existe.
   assert.ok(
-    tetoDeAltura + recuoInferior <= altura || altura === 0,
-    `${nome}: a janela passa da tela (teto ${tetoDeAltura} + recuo ${recuoInferior} > altura ${altura})`
+    tetoDeAltura + recuoInferior <= espaco,
+    `${nome}: passa do espaço (teto ${tetoDeAltura} + recuo ${recuoInferior} > ${espaco})`
   );
   verificacoes++;
 
-  // Nada de medida negativa, que faz o painel sumir e voltar — a piscada.
-  assert.ok(tetoDeAltura >= 0, `${nome}: teto negativo`);
-  assert.ok(recuoInferior >= 0, `${nome}: recuo negativo`);
-  verificacoes += 2;
+  // Medida negativa faz o painel sumir e voltar, que é a piscada.
+  assert.ok(tetoDeAltura >= 0 && recuoInferior >= 0, `${nome}: medida negativa`);
+  verificacoes++;
+}
 
-  /* O recuo reserva o teclado inteiro, senão ele volta a cobrir a janela. A
-     exceção é o teclado reportado maior que a própria tela: aí reservar tudo
-     empurraria o painel para fora, e cabe na tela tem prioridade sobre
-     reservar o teclado. */
-  assert.ok(
-    recuoInferior >= Math.min(teclado, altura),
-    `${nome}: o recuo não reserva o teclado nem o que a tela permite`
+/* O defeito que o autor viu e descreveu como "espaço vazio entre o teclado e a
+   janela": quando o sistema JÁ encolheu a janela, reservar o teclado de novo
+   abre um vão do tamanho dele. Com o desconto duplo, o recuo aqui seria 332. */
+{
+  const { recuoInferior } = medidasDeJanelaFlutuante(592, 332, 260);
+  assert.equal(recuoInferior, 12, 'sistema que já encolheu não pode ser descontado de novo');
+  verificacoes++;
+}
+
+/* E o inverso: onde o sistema não encolhe, o teclado PRECISA ser reservado,
+   senão ele volta a cobrir o botão de salvar. */
+{
+  const { recuoInferior } = medidasDeJanelaFlutuante(592, 592, 260);
+  assert.equal(recuoInferior, 272, 'sistema que não encolhe exige a reserva inteira');
+  verificacoes++;
+}
+
+/* Meio-termo: reserva só o que faltou. */
+{
+  const { recuoInferior } = medidasDeJanelaFlutuante(800, 640, 320);
+  assert.equal(recuoInferior, 12 + 160, 'reserva apenas a parte que o sistema não tirou');
+  verificacoes++;
+}
+
+// A mesma tela e o mesmo teclado dão a MESMA janela útil, tenha o sistema
+// encolhido ou não. É o que significa "adaptável ao aparelho".
+{
+  const encolhido = medidasDeJanelaFlutuante(592, 332, 260);
+  const naoEncolhido = medidasDeJanelaFlutuante(592, 592, 260);
+  assert.equal(
+    encolhido.tetoDeAltura,
+    naoEncolhido.tetoDeAltura,
+    'a janela útil não pode depender de o sistema encolher ou não'
   );
   verificacoes++;
 }
 
-// Abrir o teclado só pode ENCOLHER a janela, nunca aumentá-la. Era o defeito
-// da versão antiga: o painel crescia pela altura do teclado, ficando maior
-// justamente quando a tela disponível diminuiu.
-const fechado = medidasDeJanelaFlutuante(800, 0);
-const aberto = medidasDeJanelaFlutuante(800, 320);
-assert.ok(aberto.tetoDeAltura < fechado.tetoDeAltura, 'abrir o teclado deveria encolher a janela');
-assert.equal(fechado.tetoDeAltura - aberto.tetoDeAltura, 320, 'a janela encolhe exatamente o tamanho do teclado');
-verificacoes += 2;
-
-// Teclado maior que a tela não pode virar janela de altura negativa.
-assert.equal(medidasDeJanelaFlutuante(592, 700).tetoDeAltura, 0, 'teclado gigante zera o teto, não inverte');
-verificacoes++;
-
-// Altura de teclado inválida (negativa) é tratada como zero.
-assert.deepEqual(
-  medidasDeJanelaFlutuante(800, -50),
-  medidasDeJanelaFlutuante(800, 0),
-  'altura de teclado negativa vale como fechada'
-);
-verificacoes++;
-
 console.log(
-  `OK janela acima do teclado: ${verificacoes} verificações em ${aparelhos.length} aparelhos — cabe na tela, nunca negativa, e encolhe com o teclado.`
+  `OK janela acima do teclado: ${verificacoes} verificações em ${casos.length} combinações de aparelho e sistema — cabe no espaço real, sem desconto duplo e sem medida negativa.`
 );

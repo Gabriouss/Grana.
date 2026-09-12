@@ -19,10 +19,10 @@ export default function ItemActionSheet({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const { scrimStyle, sheetStyle } = useSheetFlutuante();
+  const { aoMedirFundo, scrimStyle, sheetStyle } = useSheetFlutuante();
   return (
     <AppModal visible={visible} transparent onRequestClose={onClose}>
-      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
+      <Pressable style={[styles.modalScrim, scrimStyle]} onLayout={aoMedirFundo} onPress={onClose}>
         <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, sheetStyle]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>

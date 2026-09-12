@@ -44,7 +44,7 @@ export default function CategoryPickerModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
-  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
+  const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
 
   const [loading, setLoading] = useState(false);
   const [custom, setCustom] = useState<Category[]>([]);
@@ -193,7 +193,7 @@ export default function CategoryPickerModal({
 
   return (
     <AppModal visible={visible} transparent onRequestClose={onClose}>
-      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
+      <Pressable style={[styles.modalScrim, scrimStyle]} onLayout={aoMedirFundo} onPress={onClose}>
         <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{mode === 'manage' ? 'Gerenciar categorias' : 'Categoria'}</Text>

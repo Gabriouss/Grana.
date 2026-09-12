@@ -69,7 +69,7 @@ export default function ImportarExtratoModal({
   const { isDemoMode } = useDemo();
   const { activeWallet, wallets } = useWallet();
   const keyboardHeight = useKeyboardHeight();
-  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
+  const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
 
   const [textoColado, setTextoColado] = useState('');
   const [linhas, setLinhas] = useState<LinhaImportavel[]>([]);
@@ -247,7 +247,7 @@ export default function ImportarExtratoModal({
 
   return (
     <AppModal visible={visible} transparent onRequestClose={fechar}>
-      <Pressable style={[styles.modalScrim, styles.modalScrimCentered, scrimStyle]} onPress={fechar}>
+      <Pressable style={[styles.modalScrim, styles.modalScrimCentered, scrimStyle]} onLayout={aoMedirFundo} onPress={fechar}>
         {/* A prévia usa FlatList, então esta folha não entra no <Sheet> (que
             rolaria por fora); aqui basta afastar o conteúdo do teclado. */}
         <AccessibleModalPanel

@@ -34,7 +34,7 @@ export default function BudgetTemplatesModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
-  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
+  const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const [income, setIncome] = useState('');
   const [selectedKey, setSelectedKey] = useState(BUDGET_TEMPLATES[0].key);
   const [saving, setSaving] = useState(false);
@@ -94,7 +94,7 @@ export default function BudgetTemplatesModal({
 
   return (
     <AppModal visible={visible} transparent onRequestClose={fechar}>
-      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={fechar}>
+      <Pressable style={[styles.modalScrim, scrimStyle]} onLayout={aoMedirFundo} onPress={fechar}>
         {/* Já tem ScrollView próprio para a lista de templates, então só
             precisa se afastar do teclado. */}
         <AccessibleModalPanel ativo={visible} onClose={fechar} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>

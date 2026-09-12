@@ -52,12 +52,12 @@ export default function Sheet({
   onClose?: () => void;
   centered?: boolean;
 }) {
-  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
+  const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const painelRef = useRef<View>(null);
   useModalAccessibility(painelRef, true, onClose);
 
   return (
-    <Pressable style={[styles.scrim, centered && styles.scrimCentered, scrimStyle]} onPress={onClose} accessible={false}>
+    <Pressable style={[styles.scrim, centered && styles.scrimCentered, scrimStyle]} onLayout={aoMedirFundo} onPress={onClose} accessible={false}>
       {/* onPress vazio: por ser um Pressable aninhado, ele assume o toque
           antes que chegue ao fundo, então tocar dentro do painel nunca fecha
           a folha — só o fundo escurecido em volta dele fecha. */}
