@@ -1,7 +1,7 @@
-import { createContext, use, useCallback, useEffect, useState, type PropsWithChildren } from 'react';
+import { createContext, use, useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { vincularAssinaturasPendentes } from './assinatura';
 import { useSession } from './auth-context';
-import { guardarAcesso, lerAcessoGuardado, prazoOfflineAindaVale } from './entitlement-cache';
+import { estadoAposFalha, guardarAcesso, lerAcessoGuardado, prazoOfflineAindaVale } from './entitlement-cache';
 import { isLikelyNetworkError } from './offline-cache';
 import { supabase } from './supabase';
 
@@ -44,8 +44,26 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
     mensagem: null,
   });
 
+  /* Identidade ESTÁVEL da pessoa logada, e não o objeto da sessão.
+     `lerSessaoDoDisco()` faz `JSON.parse` e devolve um objeto NOVO a cada
+     chamada, então usar `session` como dependência fazia uma sessão idêntica
+     contar como mudança e disparar uma recarga inteira do acesso. Cada recarga
+     é uma janela em que a guarda de `app/_layout.tsx` pode cair e remontar o
+     grupo de telas. */
+  const userId = session?.user.id ?? null;
+
+  /* Os dois valores abaixo são LIDOS dentro da recarga, nunca dependências
+     dela. Como ref, a recarga enxerga sempre o valor do instante em que a
+     falha aconteceu (que é o correto) sem ganhar identidade nova a cada
+     alternância. `sessaoNaoConfirmada` entrou nas dependências em 9f6412a e é
+     o que multiplicou a frequência das recargas na 1.10.1. */
+  const naoConfirmadaRef = useRef(sessaoNaoConfirmada);
+  naoConfirmadaRef.current = sessaoNaoConfirmada;
+  const estadoRef = useRef<EstadoAcesso | null>(null);
+  estadoRef.current = estado;
+
   const recarregar = useCallback(async () => {
-    if (!session) {
+    if (!userId) {
       setEstado(null);
       setModoOffline(false);
       setSincronizacao({ atencao: false, mensagem: null });
@@ -68,7 +86,7 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
        a espera vai ao tempo do sistema operacional, de um minuto para cima.
        Quem paga e abre o app no metrô não pode olhar para um `spinner` desse
        tamanho tendo o acesso guardado a um `AsyncStorage` de distância. */
-    const adiantado = await lerAcessoGuardado(session.user.id);
+    const adiantado = await lerAcessoGuardado(userId);
     if (adiantado && prazoOfflineAindaVale(adiantado)) {
       setEstado(adiantado);
       setModoOffline(true);
@@ -90,7 +108,7 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
       const confirmado = data as unknown as EstadoAcesso;
       setEstado(confirmado);
       setModoOffline(false);
-      await guardarAcesso(session.user.id, confirmado);
+      await guardarAcesso(userId, confirmado);
     } catch (error) {
       /* `sessaoNaoConfirmada` entra na mesma conta que a falta de rede porque a
          causa é a mesma: a sessão veio do disco, o token de acesso está
@@ -100,7 +118,7 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
          jogaria na tela de assinatura quem está com a assinatura em dia. Não é
          afrouxamento: o servidor continua recusando tudo, e o acesso exibido
          segue limitado ao prazo que o próprio servidor já havia prometido. */
-      const semRede = isLikelyNetworkError(error) || sessaoNaoConfirmada;
+      const semRede = isLikelyNetworkError(error) || naoConfirmadaRef.current;
       console.error('[entitlement] não foi possível confirmar o acesso', {
         message: error instanceof Error ? error.message : 'erro desconhecido',
         /* Separar os dois casos é o ponto: falta de rede é temporária e o
@@ -114,7 +132,7 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
          na tela de venda — e o cache de lançamentos e a fila de voz, que
          funcionam offline, ficavam inalcançáveis atrás de um portão que
          exigia estar online para abrir. */
-      const guardado = semRede ? await lerAcessoGuardado(session.user.id) : null;
+      const guardado = semRede ? await lerAcessoGuardado(userId) : null;
       if (guardado && prazoOfflineAindaVale(guardado)) {
         setEstado(guardado);
         setModoOffline(true);
@@ -122,26 +140,25 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      /* A decisão vive em `entitlement-cache`, num módulo puro e testado,
+         porque ela controla uma guarda de navegação: derrubar o acesso aqui
+         desmonta o grupo de telas e devolve a pessoa à rota inicial, perdendo
+         o que ela estava digitando. Falha passageira preserva o acesso que já
+         estava de pé; falha permanente, e só ela, fecha. */
+      const proximo = estadoAposFalha({ anterior: estadoRef.current, guardado, semRede });
+      const manteveAcesso = proximo.allowed;
       setSincronizacao({
-        atencao: true,
-        mensagem: 'Não conseguimos confirmar seu acesso agora. Tente verificar novamente em instantes.',
+        atencao: !manteveAcesso,
+        mensagem: manteveAcesso
+          ? null
+          : 'Não conseguimos confirmar seu acesso agora. Tente verificar novamente em instantes.',
       });
-      /* Falha fechada: sem prazo válido guardado, o backend aplica a mesma
-         regra no RLS, então liberar a navegação aqui só produziria telas
-         vazias e tentativas negadas. */
-      setEstado({
-        enforced: true,
-        active: false,
-        allowed: false,
-        status: null,
-        access_until: null,
-        grace_until: null,
-      });
-      setModoOffline(false);
+      setEstado(proximo);
+      setModoOffline(manteveAcesso);
     } finally {
       setCarregando(false);
     }
-  }, [session, sessaoNaoConfirmada]);
+  }, [userId]);
 
   useEffect(() => {
     void recarregar();

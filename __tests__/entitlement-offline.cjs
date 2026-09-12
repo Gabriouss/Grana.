@@ -100,7 +100,53 @@ const em = (dias) => new Date(AGORA + dias * 86400000).toISOString();
   assert.ok(avisos.some((a) => a.includes('guardar')), 'falha de escrita deixa recibo no log');
   falharEscrita = false;
 
-  console.log(`OK acesso offline: ${casos.length + 7} verificações — prazo do servidor honrado, conta trocada, cache corrompido e disco cheio.`);
+  // ---- estadoAposFalha: a guarda de navegação não pode piscar ----
+  //
+  // Regressão da 1.10.1. Um tropeço de rede derrubava `allowed`, a guarda
+  // `Stack.Protected` de `app/_layout.tsx` caía junto, o Expo Router
+  // desmontava o grupo de telas e a pessoa reaparecia na rota inicial com o
+  // teclado fechado no meio de um lançamento. Aqui se fixa QUANDO o acesso
+  // pode cair, e sobretudo quando não pode.
+  const valendo = { ...base, access_until: em(30) };
+  const vencido = { ...base, access_until: em(-9) };
+
+  const quedas = [
+    ['guardado válido manda, mesmo sem estado anterior',
+      { anterior: null, guardado: valendo, semRede: true }, true],
+    ['guardado válido manda também na falha permanente',
+      { anterior: null, guardado: valendo, semRede: false }, true],
+    ['falha de rede PRESERVA o acesso que já estava de pé',
+      { anterior: valendo, guardado: null, semRede: true }, true],
+    ['falha PERMANENTE derruba, mesmo com acesso anterior',
+      { anterior: valendo, guardado: null, semRede: false }, false],
+    ['sem anterior e sem guardado, fecha',
+      { anterior: null, guardado: null, semRede: true }, false],
+    ['anterior já vencido não ressuscita',
+      { anterior: vencido, guardado: null, semRede: true }, false],
+    ['anterior que o servidor já negou não vira acesso',
+      { anterior: { ...base, allowed: false }, guardado: null, semRede: true }, false],
+    ['guardado vencido não manda, mas o anterior válido salva',
+      { anterior: valendo, guardado: vencido, semRede: true }, true],
+  ];
+  for (const [nome, entrada, esperado] of quedas) {
+    assert.equal(api.estadoAposFalha({ ...entrada, agora: AGORA }).allowed, esperado, nome);
+  }
+
+  // O estado preservado é o MESMO objeto, não um remendo com allowed ligado:
+  // devolver prazo ou status diferente do que o servidor prometeu seria
+  // inventar acesso.
+  assert.deepEqual(
+    api.estadoAposFalha({ anterior: valendo, guardado: null, semRede: true, agora: AGORA }),
+    valendo,
+    'preservar acesso não altera prazo nem status'
+  );
+
+  // Fechar é fechar: nada de `enforced:false` por engano, que liberaria tudo.
+  const fechado = api.estadoAposFalha({ anterior: null, guardado: null, semRede: false, agora: AGORA });
+  assert.equal(fechado.allowed, false, 'estado fechado nega acesso');
+  assert.equal(fechado.enforced, true, 'estado fechado mantém a cobrança ligada');
+
+  console.log(`OK acesso offline: ${casos.length + quedas.length + 10} verificações — prazo do servidor honrado, conta trocada, cache corrompido, disco cheio e guarda de navegação estável.`);
 })().catch((e) => {
   console.error(e);
   process.exitCode = 1;

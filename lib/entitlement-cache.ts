@@ -72,3 +72,56 @@ export function prazoOfflineAindaVale(estado: EstadoAcesso | null, agora: number
   if (limites.length === 0) return false;
   return Math.max(...limites) > agora;
 }
+
+/** O estado fechado: sem prova de acesso, o app não navega. */
+const ACESSO_NEGADO: EstadoAcesso = {
+  enforced: true,
+  active: false,
+  allowed: false,
+  status: null,
+  access_until: null,
+  grace_until: null,
+};
+
+/**
+ * O que vale quando a confirmação com o servidor FALHA.
+ *
+ * Existe porque a resposta dessa pergunta controla, lá em `app/_layout.tsx`,
+ * uma guarda de navegação (`Stack.Protected`). Guarda que cai desmonta o grupo
+ * de telas inteiro e devolve a pessoa à rota inicial — com o campo que ela
+ * estava preenchendo e o teclado junto. Ou seja, um tropeço de um segundo na
+ * rede não pode virar "o app me jogou pra tela inicial".
+ *
+ * A ordem das três regras é o conteúdo desta função:
+ *
+ * 1. **Concessão guardada que ainda vale manda.** É a palavra mais recente do
+ *    próprio servidor, e é para isso que o cache existe.
+ * 2. **Falha temporária não derruba acesso que já estava de pé.** Se o app já
+ *    tinha confirmado `allowed` neste ciclo de vida e a falha é de rede (ou de
+ *    token ainda não renovado), o estado anterior permanece. Trocá-lo pelo
+ *    fechado seria transformar falha passageira em estado hostil, que é
+ *    exatamente o que a regra 9 do `AGENTS.md` proíbe.
+ * 3. **Qualquer outro caso fecha.** Falha permanente, ou primeira execução sem
+ *    nada guardado: aí o app realmente não sabe, e fingir que sabe seria pior.
+ *    Não é afrouxamento de cobrança em nenhum dos casos — o RLS do servidor
+ *    aplica a mesma regra de novo em toda escrita, então o máximo que se ganha
+ *    aqui é navegar entre telas que o servidor seguirá recusando.
+ */
+export function estadoAposFalha({
+  anterior,
+  guardado,
+  semRede,
+  agora = Date.now(),
+}: {
+  /** O último estado que este processo tinha em mãos, se algum. */
+  anterior: EstadoAcesso | null;
+  /** A concessão lida do disco para este usuário, se alguma. */
+  guardado: EstadoAcesso | null;
+  /** A falha é passageira (rede, ou token do disco ainda não renovado)? */
+  semRede: boolean;
+  agora?: number;
+}): EstadoAcesso {
+  if (guardado && prazoOfflineAindaVale(guardado, agora)) return guardado;
+  if (semRede && anterior && prazoOfflineAindaVale(anterior, agora)) return anterior;
+  return ACESSO_NEGADO;
+}
