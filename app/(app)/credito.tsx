@@ -47,7 +47,7 @@ import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, touchTarget, lh } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type CreditCardInvoicePayment, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -71,7 +71,7 @@ import FadeIn from '@/components/FadeIn';
 
 export default function CreditoScreen() {
   const operacaoVoz = useRef<string | null>(null);
-  const { paddingConteudoComFab } = useTabBarInset();
+  const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
   const router = useRouter();
   const { novaCompra, texto } = useLocalSearchParams<{ novaCompra?: string; texto?: string }>();
@@ -1127,16 +1127,6 @@ export default function CreditoScreen() {
                 </>
               )}
             </View>
-            <AppPressable
-              style={[styles.addPurchaseBtn, ehCompacto && styles.addPurchaseBtnCompact]}
-              onPress={() => {
-                hapticTap();
-                abrirNovaCompra();
-              }}
-            >
-              <Ionicons name="add" size={18} color={theme.paper} />
-              <Text style={styles.addPurchaseBtnText}>Lançar no Crédito</Text>
-            </AppPressable>
           </View>
 
           {selectedCard && totalInvoice > 0 && (
@@ -1166,6 +1156,30 @@ export default function CreditoScreen() {
         }
         ListFooterComponent={<View style={{ height: 100 }} />}
       />
+
+      {/* Lançar compra no crédito.
+
+          Era um botão em linha ("Lançar no Crédito") dentro do cabeçalho do
+          resumo da fatura, dividindo a linha com o total. Com o tamanho de
+          exibição do Android aumentado, o total fica mais largo, a linha
+          estoura e o botão saía PELA BORDA DIREITA da tela: filmado em
+          12/09/2026, sobrava dele uma lasca de menta grudada na margem. O
+          autor pediu o botão flutuante padrão no lugar.
+
+          Flutuante resolve a classe inteira do problema, não só este caso: ele
+          não divide espaço com texto nenhum, então nenhuma escala de fonte ou
+          resolução consegue espremê-lo. É a mesma posição, o mesmo tamanho e o
+          mesmo alvo de toque de `contas.tsx`. */}
+      <AppPressable
+        style={({ hovered }) => [styles.fab, { bottom: tabBarTotal + spacing.md }, hovered && styles.fabHover]}
+        onPress={() => {
+          hapticTap();
+          abrirNovaCompra();
+        }}
+        accessibilityLabel="Lançar compra no crédito"
+      >
+        <Ionicons name="add" size={24} color={theme.paper} />
+      </AppPressable>
 
       {/* Modal: Novo/Editar Cartão de Crédito */}
       <AppModal visible={newCardOpen} transparent onRequestClose={() => setNewCardOpen(false)}>
@@ -1706,24 +1720,20 @@ const styles = StyleSheet.create({
     color: theme.inkFaint,
     textDecorationLine: 'underline',
   },
-  addPurchaseBtn: {
-    flexDirection: 'row',
+  /* Mesma medida e posição do flutuante de `contas.tsx`, de propósito: é o
+     mesmo gesto em telas diferentes. O `bottom` vem do inset da barra de
+     abas, calculado em tempo de execução. */
+  fab: {
+    position: 'absolute',
+    right: spacing.xl,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: theme.ink,
     alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: theme.accent2,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
     justifyContent: 'center',
-    flexGrow: 1,
-    minHeight: touchTarget,
   },
-  addPurchaseBtnCompact: { width: '100%', flexGrow: 0 },
-  addPurchaseBtnText: {
-    fontFamily: fonts.regular,
-    fontSize: type.legenda,
-    color: theme.paper,
-  },
+  fabHover: { opacity: 0.85 },
   sectionLabel: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
