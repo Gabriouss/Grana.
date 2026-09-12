@@ -177,11 +177,16 @@ export function useModalAccessibility(
   useEffect(() => {
     if (!ativo || Platform.OS !== 'web' || !aoFechar || typeof document === 'undefined') return;
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') aoFechar();
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const topo = Array.from(paineisAtivos).filter((painel) => painel.isConnected).at(-1);
+      if (topo !== (ref.current as unknown as HTMLElement)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      aoFechar();
     };
     document.addEventListener('keydown', aoTeclar);
     return () => document.removeEventListener('keydown', aoTeclar);
-  }, [ativo, aoFechar]);
+  }, [ativo, aoFechar, ref]);
 
   useEffect(() => {
     if (!ativo) return;

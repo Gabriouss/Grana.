@@ -1,5 +1,31 @@
 # Contexto do projeto — Grana.
 
+## 12/09/2026 — revisão dos modais após os vídeos
+
+Pedido: "corrija os achados". O autor esclareceu que o primeiro vídeo era
+pós-correção e que o botão Salvar É alcançável rolando dentro da janela.
+A conclusão anterior do agente de que o botão era inacessível foi incorreta:
+os quadros mostram corte do conteúdo, não comprovam sobreposição pelo teclado.
+
+Corrigidos dois defeitos verificáveis: `Sheet.tsx` aplica o teto calculado
+depois dos estilos do chamador; `TransactionSheet.tsx` deixa de sobrescrevê-lo
+com 90%. A rolagem permanece. `useModalAccessibility` limita Escape ao último
+painel ativo conectado e consome o evento, preservando o formulário quando
+Categoria/Data fecha. Não alteramos a fórmula do teclado com base no vídeo:
+desconto duplo quando ambas as medidas encolhem segue hipótese a medir no Android.
+
+Regressão em `__tests__/modais-regressao.cjs`, integrada ao teste de janela:
+executa efeitos reais de registro/limpeza e callbacks de Escape, além de compor
+o Sheet real com estilo conflitante. Não simula layout nativo. QA pendente:
+Android com fonte/exibição grandes, abrir teclado e rolar até Salvar, fechar e
+reabrir teclado, girar a tela; web com Categoria/Data sobre formulário e Escape.
+Teclado piscando continua sem causa confirmada. Nenhuma build foi solicitada.
+
+Verificação desta revisão: `tsc --noEmit --incremental false`, teste de janela
+com regressão de modal e `npm run test:ci` passaram (saída 0). A suíte completa
+precisou de permissão para o npm obter tsx; não foi falha de teste. Nota da
+sessão registrada no vault; verificador sem links quebrados ou notas órfãs.
+
 ## 11/09/2026 — dois defeitos vistos no aparelho, corrigidos
 
 O autor reportou com prints do celular. Os dois são de superfície e nenhuma

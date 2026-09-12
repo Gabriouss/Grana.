@@ -63,7 +63,7 @@ export default function Sheet({
           a folha — só o fundo escurecido em volta dele fecha. */}
       <Pressable
         ref={painelRef}
-        style={[styles.sheet, centered && styles.sheetCentered, flutuanteStyle, sheetStyle]}
+        style={[styles.sheet, centered && styles.sheetCentered, flutuanteStyle, sheetStyle, { maxHeight: flutuanteStyle.maxHeight }]}
         onPress={() => {}}
         accessibilityViewIsModal
         importantForAccessibility="yes"

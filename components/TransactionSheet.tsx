@@ -409,7 +409,7 @@ export default function TransactionSheet({
 }
 
 const styles = StyleSheet.create({
-  centeredSheet: { width: '100%', maxWidth: 520, borderRadius: radius.xl, maxHeight: '90%' },
+  centeredSheet: { width: '100%', maxWidth: 520, borderRadius: radius.xl },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
