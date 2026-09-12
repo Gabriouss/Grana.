@@ -1549,7 +1549,7 @@ export default function InicioScreen() {
       />
 
       {/* Sheet: Novo Boleto */}
-      <AppModal visible={billSheetOpen} animationType="slide" transparent onRequestClose={() => setBillSheetOpen(false)}>
+      <AppModal visible={billSheetOpen} transparent onRequestClose={() => setBillSheetOpen(false)}>
         <Sheet centered onClose={() => setBillSheetOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Nova conta a pagar</Text>
@@ -1628,7 +1628,7 @@ export default function InicioScreen() {
       </AppModal>
 
       {/* Modal de Orçamento */}
-      <AppModal visible={budgetModalOpen} animationType="slide" transparent onRequestClose={() => setBudgetModalOpen(false)}>
+      <AppModal visible={budgetModalOpen} transparent onRequestClose={() => setBudgetModalOpen(false)}>
         <Sheet onClose={() => setBudgetModalOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Orçamento — {budgetCategory}</Text>

@@ -147,9 +147,9 @@ export default function DatePickerModal({
 
   const { scrimStyle, sheetStyle } = useSheetFlutuante();
   return (
-    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} transparent onRequestClose={onClose}>
       <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
-        <AccessibleModalPanel ativo={visible} style={[styles.sheet, sheetStyle]}>
+        <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, sheetStyle]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

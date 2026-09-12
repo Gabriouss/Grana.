@@ -9,7 +9,6 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, radius, spacing } from '@/lib/theme';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
@@ -48,9 +47,15 @@ export function useKeyboardHeight() {
 }
 
 /**
- * Estrutura padrão das folhas do app: fundo escurecido + painel ancorado
- * embaixo. O conteúdo fica dentro de um ScrollView para que, mesmo com o
- * teclado aberto reduzindo o espaço, todos os campos continuem alcançáveis.
+ * Estrutura padrão das janelas do app: fundo escurecido + painel flutuando no
+ * centro, em qualquer largura. O conteúdo fica dentro de um ScrollView para
+ * que, mesmo com o teclado aberto reduzindo o espaço, todos os campos
+ * continuem alcançáveis.
+ *
+ * Todo comportamento de janela mora aqui ou no hook de acessibilidade que ela
+ * usa, nunca no chamador: tocar fora fecha, Escape fecha na web, o botão
+ * voltar do Android fecha (via `onRequestClose` do `AppModal`), a entrada é a
+ * mesma `fade` para todas, e a leitura de tela fica presa dentro do painel.
  *
  * A folga do teclado entra como `paddingBottom` do CONTEÚDO do ScrollView
  * (contentContainerStyle), não do painel que o envolve. Colocá-la no painel
@@ -80,24 +85,9 @@ export default function Sheet({
   centered?: boolean;
 }) {
   const keyboardHeight = useKeyboardHeight();
-  const insets = useSafeAreaInsets();
-  const { flutuante, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
+  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const painelRef = useRef<View>(null);
-  useModalAccessibility(painelRef);
-
-  /* Esc fecha, na web. No celular o gesto equivalente é o botão voltar, que o
-     <Modal> já trata por `onRequestClose`; no navegador não há equivalente —
-     sem isto, quem navega por teclado abre uma folha e fica preso nela, tendo
-     de encontrar o X com Tab. Vale só quando `onClose` existe: sem ele não há
-     o que fazer com a tecla. */
-  useEffect(() => {
-    if (Platform.OS !== 'web' || !onClose || typeof document === 'undefined') return;
-    const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', aoTeclar);
-    return () => document.removeEventListener('keydown', aoTeclar);
-  }, [onClose]);
+  useModalAccessibility(painelRef, true, onClose);
 
   return (
     <Pressable style={[styles.scrim, centered && styles.scrimCentered, scrimStyle]} onPress={onClose} accessible={false}>
@@ -113,32 +103,23 @@ export default function Sheet({
         role="dialog"
         focusable
       >
-        {/* A alcinha é vocabulário de folha que se arrasta a partir da borda
-            de baixo. Como a janela agora flutua no centro em toda largura, ela
-            passou a prometer um gesto que não existe, então sai. */}
-        {Platform.OS !== 'web' && !flutuante ? <View style={styles.handle} accessible={false} /> : null}
+        {/* Não há alcinha de arrastar. Ela é vocabulário de folha puxada pela
+            borda de baixo, e desde 12/09/2026 toda janela do app flutua no
+            centro, em qualquer largura: a alcinha passaria a prometer um gesto
+            que não existe. */}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
-            /* Sem somar insets.bottom, o fim da folha (em geral um rodapé de
-               ação, como "Cancelar"/"Selecionar") encostava na barra de
-               navegação do Android em aparelho com os 3 botões físicos — modo
-               edge-to-edge não reserva essa faixa sozinho, e só o teclado
-               empurrava o conteúdo pra cima. Reportado como "os botões ficam
-               em cima da barra do Android, preciso arrastar pra ver". Com
-               teclado aberto o próprio teclado já cobre essa área, então o
-               inset não soma de novo ali. */
-            /* `insets.bottom` só entra quando a janela ENCOSTA na borda de
-               baixo. Centralizada ela nunca encosta, e somar a faixa da barra
-               de gestos ali dentro criaria um vão morto no rodapé do painel,
-               que foi reportado antes como "esse espaço não deveria existir". */
-            {
-              paddingBottom:
-                keyboardHeight > 0
-                  ? keyboardHeight + 36
-                  : (flutuante ? 0 : insets.bottom) + spacing.lg,
-            },
+            /* Nada de `insets.bottom` aqui. Ele existia porque a folha
+               encostava na borda de baixo e o rodapé de ação ficava sob a
+               barra do Android, reportado como "os botões ficam em cima da
+               barra, preciso arrastar pra ver". A janela flutuante nunca
+               encosta, então somar aquela faixa dentro do painel só criaria um
+               vão morto no rodapé — o outro lado da mesma queixa, "esse espaço
+               não deveria existir". Com o teclado aberto, a folga é a altura
+               dele mais um respiro, para o último campo subir acima do teclado. */
+            { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 36 : spacing.lg },
             contentStyle,
           ]}
           keyboardShouldPersistTaps="handled"
@@ -166,14 +147,6 @@ const styles = StyleSheet.create({
   sheetCentered: {
     maxWidth: 520,
     borderRadius: radius.xl,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.ruleStrong,
-    alignSelf: 'center',
-    marginBottom: spacing.sm,
   },
   scroll: { flexShrink: 1 },
   content: { gap: spacing.md },

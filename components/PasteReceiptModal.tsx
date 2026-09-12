@@ -221,7 +221,6 @@ export default function PasteReceiptModal({
   return (
     <AppModal
       visible={visible}
-      animationType="slide"
       transparent
       onRequestClose={() => {
         resetState();

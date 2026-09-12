@@ -1168,7 +1168,7 @@ export default function CreditoScreen() {
       />
 
       {/* Modal: Novo/Editar Cartão de Crédito */}
-      <AppModal visible={newCardOpen} animationType="slide" transparent onRequestClose={() => setNewCardOpen(false)}>
+      <AppModal visible={newCardOpen} transparent onRequestClose={() => setNewCardOpen(false)}>
         <Sheet onClose={() => setNewCardOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{editingCardId ? 'Editar Cartão de Crédito' : 'Novo Cartão de Crédito'}</Text>
@@ -1334,7 +1334,7 @@ export default function CreditoScreen() {
       />
 
       {/* Modal: Pagar Fatura */}
-      <AppModal visible={payInvoiceOpen} animationType="slide" transparent onRequestClose={() => setPayInvoiceOpen(false)}>
+      <AppModal visible={payInvoiceOpen} transparent onRequestClose={() => setPayInvoiceOpen(false)}>
         <Sheet centered onClose={() => setPayInvoiceOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Pagar Fatura</Text>

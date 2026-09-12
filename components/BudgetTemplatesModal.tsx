@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -83,26 +83,21 @@ export default function BudgetTemplatesModal({
     }
   }
 
+  /* Um caminho de saída só, usado pelo fundo escurecido, pelo botão voltar do
+     Android e pelo Escape da web. Antes a limpeza do rascunho estava copiada em
+     dois lugares, e bastava um terceiro caminho de saída aparecer sem ela para
+     a janela reabrir com o que a pessoa tinha deixado pela metade. */
+  const fechar = useCallback(() => {
+    resetState();
+    onClose();
+  }, [onClose]);
+
   return (
-    <AppModal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={() => {
-        resetState();
-        onClose();
-      }}
-    >
-      <Pressable
-        style={[styles.modalScrim, scrimStyle]}
-        onPress={() => {
-          resetState();
-          onClose();
-        }}
-      >
+    <AppModal visible={visible} transparent onRequestClose={fechar}>
+      <Pressable style={[styles.modalScrim, scrimStyle]} onPress={fechar}>
         {/* Já tem ScrollView próprio para a lista de templates, então só
             precisa se afastar do teclado. */}
-        <AccessibleModalPanel ativo={visible} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
+        <AccessibleModalPanel ativo={visible} onClose={fechar} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Templates de Orçamento</Text>
             <AppPressable

@@ -7,13 +7,16 @@ export default function AccessibleModalPanel({
   ativo,
   children,
   style,
+  onClose,
 }: {
   ativo: boolean;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Com ela, Escape fecha a janela na web, igual ao `Sheet`. */
+  onClose?: () => void;
 }) {
   const ref = useRef<View>(null);
-  useModalAccessibility(ref, ativo);
+  useModalAccessibility(ref, ativo, onClose);
 
   return (
     <Pressable

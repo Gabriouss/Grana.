@@ -246,12 +246,13 @@ export default function ImportarExtratoModal({
   }
 
   return (
-    <AppModal visible={visible} animationType="slide" transparent onRequestClose={fechar}>
+    <AppModal visible={visible} transparent onRequestClose={fechar}>
       <Pressable style={[styles.modalScrim, styles.modalScrimCentered, scrimStyle]} onPress={fechar}>
         {/* A prévia usa FlatList, então esta folha não entra no <Sheet> (que
             rolaria por fora); aqui basta afastar o conteúdo do teclado. */}
         <AccessibleModalPanel
           ativo={visible}
+          onClose={fechar}
           style={[styles.sheet, styles.sheetCentered, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}
         >
           <View style={styles.sheetHeader}>

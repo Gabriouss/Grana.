@@ -86,9 +86,9 @@ export default function AvisoFlagModal() {
   }
 
   return (
-    <AppModal visible animationType="fade" transparent onRequestClose={fechar}>
+    <AppModal visible transparent onRequestClose={fechar}>
       <Pressable style={styles.scrim} onPress={fechar}>
-        <AccessibleModalPanel ativo style={styles.sheet}>
+        <AccessibleModalPanel ativo onClose={fechar} style={styles.sheet}>
           <View style={styles.icone}>
             <Ionicons name="alert-circle-outline" size={22} color={theme.accent2} />
           </View>

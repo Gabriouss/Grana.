@@ -51,7 +51,7 @@ export default function HomeCustomizerModal({
   }
 
   return (
-    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} transparent onRequestClose={onClose}>
       <Sheet onClose={onClose}>
         <View style={styles.header}>
           <View>

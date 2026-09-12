@@ -192,9 +192,9 @@ export default function CategoryPickerModal({
     items.filter((i) => i.name !== exceptName).map((i) => ({ color: i.color, label: i.name }));
 
   return (
-    <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <AppModal visible={visible} transparent onRequestClose={onClose}>
       <Pressable style={[styles.modalScrim, scrimStyle]} onPress={onClose}>
-        <AccessibleModalPanel ativo={visible} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
+        <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{mode === 'manage' ? 'Gerenciar categorias' : 'Categoria'}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

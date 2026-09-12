@@ -266,6 +266,44 @@ for (const familia of unicas) {
   checar('arquivo da fonte ' + familia + ' existe em assets/fonts', existe);
 }
 
+/* ---- Toda janela entra igual, e nenhuma escolhe a própria animação ----
+ *
+ * A decisão vive em `components/AppModal.tsx`, que já cruza a escolha com a
+ * preferência de "reduzir movimento" do sistema. Dezessete telas pediam
+ * `slide`, a animação de folha que sobe da borda de baixo, e ela contradiz uma
+ * janela que flutua no centro: aparecia vindo de um lugar onde não estava. */
+{
+  for (const caminho of [...arquivos('components'), ...arquivos('app')]) {
+    if (caminho.endsWith('AppModal.tsx')) continue;
+    const src = semComentarios(readFileSync(caminho, 'utf8'));
+    checar(
+      'não escolhe animação de janela por conta própria: ' + caminho,
+      !src.includes('animationType="slide"'),
+      'quem decide a entrada das janelas é AppModal, e o padrão dele é fade'
+    );
+  }
+}
+
+/* ---- Escape fecha toda janela, na web ----
+ *
+ * Quem trata a tecla é `useModalAccessibility`, e ele só age se receber o
+ * fechamento. As janelas que passam por `Sheet` herdam pelo `onClose`; as que
+ * usam `AccessibleModalPanel` precisam repassar. Sem isso, quem navega por
+ * teclado abre a janela e fica preso nela, tendo de achar o X com Tab. */
+{
+  for (const caminho of arquivos('components')) {
+    if (caminho.endsWith('AccessibleModalPanel.tsx')) continue;
+    const src = semComentarios(readFileSync(caminho, 'utf8'));
+    if (!src.includes('<AccessibleModalPanel')) continue;
+    const aberturas = src.split('<AccessibleModalPanel').slice(1);
+    checar(
+      'toda janela repassa o fechamento, para Escape funcionar: ' + caminho,
+      aberturas.every((trecho) => /onClose=\{/.test(trecho.slice(0, trecho.indexOf('>')))),
+      'há <AccessibleModalPanel> sem onClose'
+    );
+  }
+}
+
 /* ---- Janela de ação nunca ancora na borda de baixo ----
  *
  * Regra dada pelo autor em 12/09/2026, olhando duas telas: a janela de

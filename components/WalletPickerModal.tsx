@@ -156,7 +156,6 @@ export default function WalletPickerModal({
   return (
     <AppModal
       visible={visible}
-      animationType="slide"
       transparent
       onShow={handleOpen}
       onRequestClose={onClose}

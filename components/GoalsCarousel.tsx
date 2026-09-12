@@ -258,7 +258,7 @@ export default function GoalsCarousel({
       </ScrollView>
 
       {/* Sheet: Nova Meta */}
-      <AppModal visible={createOpen} animationType="slide" transparent onRequestClose={() => setCreateOpen(false)}>
+      <AppModal visible={createOpen} transparent onRequestClose={() => setCreateOpen(false)}>
         <Sheet onClose={() => setCreateOpen(false)}>
           <View style={styles.header}>
             <Text style={styles.sheetTitle}>Nova meta</Text>

@@ -175,7 +175,7 @@ export default function TransactionSheet({
 
   return (
     <>
-      <AppModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <AppModal visible={visible} transparent onRequestClose={onClose}>
         <Sheet onClose={onClose} centered sheetStyle={styles.centeredSheet}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{titulo}</Text>
