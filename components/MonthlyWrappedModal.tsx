@@ -175,7 +175,7 @@ export default function MonthlyWrappedModal({
   const fade = useRef(new Animated.Value(1)).current;
   const modalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
-  useModalAccessibility(modalRef, visible);
+  useModalAccessibility(modalRef, visible, onClose);
   /* O <Modal> desenha sob a barra de status no modo edge-to-edge; o 56 fixo
      que estava aqui acertava por acaso na maioria dos aparelhos e errava nos
      de barra mais alta ou mais baixa. */

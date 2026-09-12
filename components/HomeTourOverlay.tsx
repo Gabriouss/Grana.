@@ -44,7 +44,7 @@ export default function HomeTourOverlay({ visible, steps, targets, onFinish, onS
   const anim = useRef(new Animated.Value(0)).current;
   const modalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
-  useModalAccessibility(modalRef, visible);
+  useModalAccessibility(modalRef, visible, onFinish);
 
   useEffect(() => {
     if (!visible) return;

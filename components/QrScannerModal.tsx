@@ -78,7 +78,7 @@ export default function QrScannerModal({
   const insets = useSafeAreaInsets();
 
   const [nota, setNota] = useState<NotaFiscal | null>(null);
-  useModalAccessibility(modalRef, visible && !nota);
+  useModalAccessibility(modalRef, visible && !nota, fechar);
   const [lanterna, setLanterna] = useState(false);
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('');

@@ -155,7 +155,7 @@ export default function OnboardingModal({
   const { ligado } = useFlags();
   const modalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
-  useModalAccessibility(modalRef, visible);
+  useModalAccessibility(modalRef, visible, onClose);
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
   /* O <Modal> desenha por baixo da barra de status no modo edge-to-edge — sem

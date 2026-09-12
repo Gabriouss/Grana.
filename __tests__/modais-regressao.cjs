@@ -29,7 +29,7 @@ const accessibility = carregar('lib/modal-accessibility.ts', {
 }, { document, setTimeout: () => 1, clearTimeout: () => {},
   MutationObserver: class { disconnect() {} } });
 const closed = [];
-function abrir(name, callback = () => closed.push(name)) {
+function abrir(name, callback) {
   cleanups = [];
   accessibility.useModalAccessibility({ current: { isConnected: true } }, true, callback);
   const own = cleanups;
@@ -41,8 +41,8 @@ function escape(prevented = false) {
     stopImmediatePropagation() { this.stopped = true; } };
   for (const fn of [...listeners]) { fn(event); if (event.stopped) break; }
 }
-const closeParent = abrir('formulario');
-const closeChild = abrir('categoria');
+const closeParent = abrir('formulario', () => closed.push('formulario'));
+const closeChild = abrir('categoria', () => closed.push('categoria'));
 escape();
 assert.deepEqual(closed, ['categoria']);
 closeChild();
@@ -51,6 +51,16 @@ assert.deepEqual(closed, ['categoria']);
 escape();
 assert.deepEqual(closed, ['categoria', 'formulario']);
 closeParent();
+assert.equal(listeners.size, 0);
+
+// Mesmo se código JavaScript escapar da assinatura TypeScript, um painel do
+// topo sem ação não pode deixar o Escape fechar o painel inferior.
+const closeBottom = abrir('baixo', () => closed.push('baixo'));
+const closeTopWithoutCallback = abrir('topo-sem-callback', undefined);
+escape();
+assert.deepEqual(closed, ['categoria', 'formulario']);
+closeTopWithoutCallback();
+closeBottom();
 assert.equal(listeners.size, 0);
 
 // Compõe o Sheet real e achata seus estilos na ordem usada pelo React Native.

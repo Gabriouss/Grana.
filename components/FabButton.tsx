@@ -27,7 +27,7 @@ export default function FabButton({
   const painelRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
   const { total: tabBarTotal } = useTabBarInset();
-  useModalAccessibility(painelRef, mounted);
+  useModalAccessibility(painelRef, mounted, () => setOpen(false));
 
   useEffect(() => {
     if (open) {

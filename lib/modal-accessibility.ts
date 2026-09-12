@@ -161,8 +161,9 @@ function devolverFoco(alvo: HTMLElement | null) {
 /**
  * Isola foco e leitura no modal e devolve o foco ao controle de origem.
  *
- * `aoFechar` é opcional e serve a uma coisa só: **Escape fecha a janela, na
- * web**. Vive aqui, e não em cada janela, porque as duas famílias que o app
+ * `aoFechar` serve a uma coisa só: **Escape fecha a janela, na web**. É
+ * obrigatório para que toda janela registrada tenha uma ação de fechamento.
+ * Vive aqui, e não em cada janela, porque as duas famílias que o app
  * tem (`Sheet` e `AccessibleModalPanel`) passam por este mesmo hook — antes,
  * só o `Sheet` tratava a tecla, e quem abrisse qualquer uma das outras seis
  * janelas navegando por teclado ficava preso nela, tendo de achar o X com Tab.
@@ -172,10 +173,10 @@ function devolverFoco(alvo: HTMLElement | null) {
 export function useModalAccessibility(
   ref: RefObject<View | null>,
   ativo = true,
-  aoFechar?: () => void
+  aoFechar: () => void
 ) {
   useEffect(() => {
-    if (!ativo || Platform.OS !== 'web' || !aoFechar || typeof document === 'undefined') return;
+    if (!ativo || Platform.OS !== 'web' || typeof aoFechar !== 'function' || typeof document === 'undefined') return;
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       const topo = Array.from(paineisAtivos).filter((painel) => painel.isConnected).at(-1);

@@ -47,9 +47,8 @@ export default function Sheet({
   contentStyle?: StyleProp<ViewStyle>;
   sheetStyle?: StyleProp<ViewStyle>;
   /** Toca no fundo escurecido, fora do painel, para fechar — como em qualquer
-      modal. Opcional só para não quebrar quem ainda não passa essa prop; sem
-      ela o fundo continua inerte, do jeito que já era antes. */
-  onClose?: () => void;
+      modal. Também é usado pelo Escape na web. */
+  onClose: () => void;
   centered?: boolean;
 }) {
   const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();

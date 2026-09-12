@@ -14,8 +14,6 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 const assert = require('node:assert/strict');
-require('./modais-regressao.cjs');
-
 const api = {};
 vm.runInNewContext(
   ts.transpileModule(fs.readFileSync('lib/breakpoints.ts', 'utf8'), {

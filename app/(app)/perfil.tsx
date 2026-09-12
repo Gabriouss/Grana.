@@ -151,9 +151,9 @@ export default function PerfilScreen() {
      SDK 54 o edge-to-edge não redimensiona a janela no Android e o KAV empilha
      folga sobre folga (ver o comentário em components/Sheet.tsx). */
   const alturaTecladoModais = useKeyboardHeight();
-  useModalAccessibility(nomeModalRef, nomeOpen);
-  useModalAccessibility(reauthModalRef, reauthOpen);
-  useModalAccessibility(atalhosModalRef, atalhosOpen);
+  useModalAccessibility(nomeModalRef, nomeOpen, () => setNomeOpen(false));
+  useModalAccessibility(reauthModalRef, reauthOpen, () => setReauthOpen(false));
+  useModalAccessibility(atalhosModalRef, atalhosOpen, () => setAtalhosOpen(false));
 
 
   function triggerToast(msg: string) {

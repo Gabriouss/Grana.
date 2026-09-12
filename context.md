@@ -14,17 +14,29 @@ painel ativo conectado e consome o evento, preservando o formulário quando
 Categoria/Data fecha. Não alteramos a fórmula do teclado com base no vídeo:
 desconto duplo quando ambas as medidas encolhem segue hipótese a medir no Android.
 
-Regressão em `__tests__/modais-regressao.cjs`, integrada ao teste de janela:
-executa efeitos reais de registro/limpeza e callbacks de Escape, além de compor
+`__tests__/modais-regressao.cjs` agora é entrada própria do `test:ci`; o import
+indireto no teste de janela foi removido, eliminando a duplicação e evitando que
+apagar uma linha desligue a cobertura. O hook exige `aoFechar` em TypeScript,
+todos os painéis diretos passaram callbacks reais, e a proteção de runtime
+mantém a janela inferior fechada se JavaScript entregar `undefined`. O teste
+executa efeitos reais de registro/limpeza, o caso de topo sem callback e compõe
 o Sheet real com estilo conflitante. Não simula layout nativo. QA pendente:
 Android com fonte/exibição grandes, abrir teclado e rolar até Salvar, fechar e
 reabrir teclado, girar a tela; web com Categoria/Data sobre formulário e Escape.
 Teclado piscando continua sem causa confirmada. Nenhuma build foi solicitada.
 
-Verificação desta revisão: `tsc --noEmit --incremental false`, teste de janela
-com regressão de modal e `npm run test:ci` passaram (saída 0). A suíte completa
+Verificação desta revisão: `tsc --noEmit --incremental false`, testes de modal
+e janela e `npm run test:ci` passaram (saída 0). A suíte completa
 precisou de permissão para o npm obter tsx; não foi falha de teste. Nota da
 sessão registrada no vault; verificador sem links quebrados ou notas órfãs.
+
+Correção complementar: `modais-regressao.cjs` foi adicionado como entrada
+explícita do `test:ci`, e o import indireto em `janela-cabe-acima-do-teclado.cjs`
+foi removido. `aoFechar` agora é obrigatório nas APIs TypeScript de
+`useModalAccessibility`, `Sheet` e `AccessibleModalPanel`; todos os chamadores
+diretos passam fechamento real. A guarda de runtime continua impedindo erro e
+fechamento indevido se JavaScript entregar callback ausente. A suíte final
+passou com os dois testes emitindo uma mensagem cada.
 
 ## 11/09/2026 — dois defeitos vistos no aparelho, corrigidos
 
