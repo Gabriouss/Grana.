@@ -6625,3 +6625,40 @@ foram conferidos lendo os tokens, não vendo a tela.
 
 Fora do código, o FFmpeg foi instalado nesta máquina para eu conseguir ler
 vídeo por quadros, já que vídeo eu não assisto e áudio eu não ouço.
+
+**Fecho do dia 12/09 na M1: a copy e a conferência na Cakto.**
+
+Duas coisas que a próxima sessão precisa saber antes de mexer na landing ou no
+checkout.
+
+**Existe uma branch paralela com trabalho duplicado.**
+`origin/claude/grana-landing-page-design-df5etm`, sete commits de uma sessão do
+Claude na nuvem, cria um site de vendas separado em `site-vendas/index.html`,
+HTML puro, com o plano de copy em
+`docs/marketing/2026-09-12-plano-vendas-landing-v2.md`. O último commit dela já
+tinha feito o alternador mensal/anual com confete, a MESMA feature que esta
+sessão fez na landing horas antes. São duas dobras de preço vivas com o mesmo
+comportamento, em superfícies diferentes. A branch está atrás do `main` e
+**precisa de decisão do autor**: o site novo substitui a landing, vira
+referência, ou é descartado.
+
+**A copy da landing adotou os blocos 1, 3, 4, 9 e 12 daquele plano** (commit
+`8962915`). O principal é o reposicionamento: o título saiu de "Saiba quanto
+pode gastar hoje" para "O controle do seu dinheiro, na sua mão", e a ponte
+parou de liderar por voz, porque o plano tira a voz da web depois da falha
+relatada no Firefox. Ficaram de fora, à espera de decisão: a garantia do bloco
+11, a afirmação de que se cancela pelo aplicativo, e a troca de todo CTA para
+"Assinar agora".
+
+**A conferência na Cakto corrigiu um erro antes de ele ir ao ar.** O produto
+aceita **cartão de crédito, Pix e Pix Automático**. **Boleto NÃO está
+habilitado**, apesar de aparecer na tabela de taxas, que é da plataforma
+inteira e não do produto. Preços confirmados (base 8,91 e 96,91 mais a taxa de
+0,99, dando 9,90 e 97,90), `trial_days: 0` nas duas ofertas e
+`quantity_recurrences: -1`. O prazo de garantia **não é legível**: o campo
+`guarantee` só existe no contrato de escrita, então só o painel responde.
+
+**Pix Automático não sai pela interface de programação.** `paymentMethods` só
+existe no produto, a oferta não tem esse campo, e `products_update` responde
+`ok: true` e ignora a mudança. Releitura limpa confirmou que nada mudou e que
+nada foi destruído. Só pelo painel. Detalhes na nota de preço do vault.
