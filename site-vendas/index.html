@@ -138,14 +138,30 @@ button { font-family: inherit; cursor: pointer; }
 }
 .btn-ghost:hover { border-color: var(--mint); transform: translateY(-2px); }
 
-/* ---------- Shimmer text ---------- */
+/* ---------- Shimmer text ----------
+   Mesma receita de timing do componente de referência (motion/react):
+   duration 1.5s, delay 1.5s antes de começar, repeatDelay 1.5s (pausa
+   entre repetições), backgroundPositionX de -100% a 250%, ease linear.
+   Ciclo total = 1.5s de movimento + 1.5s de pausa = 3s. Portado pra CSS
+   puro (keyframe 50%->100% fica "parado" em 250%, reproduzindo o
+   repeatDelay sem precisar de JS). */
 .shimmer {
   display: inline-block;
-  background-image: linear-gradient(100deg, var(--ink) 40%, rgba(239,255,250,0.4) 50%, var(--ink) 60%);
-  background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  color: var(--ink);
+  background-image: linear-gradient(to right, currentColor 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.55) 60%, currentColor 100%);
+  background-repeat: no-repeat;
+  background-size: 50% 200%;
+  background-position-x: 250%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-@media (prefers-reduced-motion: no-preference) { .shimmer { animation: shimmer-sweep 4.5s linear infinite; } }
-@keyframes shimmer-sweep { 0% { background-position: 140% 0; } 65%, 100% { background-position: -60% 0; } }
+@media (prefers-reduced-motion: no-preference) { .shimmer { animation: shimmer-sweep 3s linear 1.5s infinite; } }
+@keyframes shimmer-sweep {
+  0% { background-position-x: -100%; }
+  50% { background-position-x: 250%; }
+  100% { background-position-x: 250%; }
+}
 
 /* ---------- Hero ---------- */
 .hero-camada {
