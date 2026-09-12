@@ -97,7 +97,7 @@ export default function BudgetTemplatesModal({
       <Pressable style={[styles.modalScrim, scrimStyle]} onPress={fechar}>
         {/* Já tem ScrollView próprio para a lista de templates, então só
             precisa se afastar do teclado. */}
-        <AccessibleModalPanel ativo={visible} onClose={fechar} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
+        <AccessibleModalPanel ativo={visible} onClose={fechar} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Templates de Orçamento</Text>
             <AppPressable

@@ -71,7 +71,7 @@ export default function FeedbackModal({
   return (
     <AppModal visible={visible} transparent onRequestClose={handleClose}>
       <Pressable style={[styles.modalScrim, scrimStyle]} onPress={handleClose}>
-        <AccessibleModalPanel ativo={visible} onClose={handleClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}>
+        <AccessibleModalPanel ativo={visible} onClose={handleClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Enviar feedback</Text>
             <AppPressable onPress={handleClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

@@ -253,7 +253,7 @@ export default function ImportarExtratoModal({
         <AccessibleModalPanel
           ativo={visible}
           onClose={fechar}
-          style={[styles.sheet, styles.sheetCentered, flutuanteStyle, { paddingBottom: spacing.xl + keyboardHeight }]}
+          style={[styles.sheet, styles.sheetCentered, flutuanteStyle, { paddingBottom: spacing.xl }]}
         >
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>

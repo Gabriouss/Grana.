@@ -1,5 +1,6 @@
 import { Platform, useWindowDimensions } from 'react-native';
 import { radius, spacing } from './theme';
+import { useKeyboardHeight } from './teclado';
 
 /**
  * Classes de largura da janela em web, iOS e Android. O tamanho da janela —
@@ -138,11 +139,70 @@ export function classificarLargura(largura: number): ClasseLargura {
  * monitor de 1440px+ lê como defeito.
  */
 export function useSheetFlutuante() {
-  const { ehCompacto } = useBreakpoint();
+  const { ehCompacto, altura } = useBreakpoint();
+  const alturaTeclado = useKeyboardHeight();
+
+  /* **A janela vive na faixa VISÍVEL, não na tela inteira.** É o que a torna
+     independente de aparelho.
+
+     Uma janela centralizada na tela toda tem metade do corpo abaixo do meio.
+     Com o teclado aberto ocupando perto de 45% da altura, essa metade fica
+     atrás dele. Num aparelho grande dava para não notar, porque o conteúdo
+     cabia na metade de cima de qualquer jeito; num aparelho de tela pequena,
+     ou com a fonte do sistema aumentada, o mesmo formulário não cabe e o
+     teclado come o campo que a pessoa está preenchendo. Foi assim que apareceu
+     no aparelho de um usuário e não no do autor.
+
+     A conta não usa nenhuma medida fixa nem limiar de tamanho de tela: o
+     recuo do fundo empurra o centro para cima do teclado, e o teto de altura
+     é o que sobrou. Serve a qualquer resolução, densidade e escala de fonte,
+     porque todas essas já chegam aqui convertidas em pontos. */
+  const { recuoInferior, tetoDeAltura } = medidasDeJanelaFlutuante(altura, alturaTeclado);
+
   return {
     flutuante: true,
-    scrimStyle: sheetFlutuanteScrim,
-    sheetStyle: ehCompacto ? sheetFlutuantePainelCompacto : sheetFlutuantePainel,
+    scrimStyle: {
+      ...sheetFlutuanteScrim,
+      /* Centraliza no que sobrou: o recuo de baixo reserva o teclado, e o
+         `justifyContent: 'center'` passa a valer sobre a faixa visível. */
+      paddingBottom: recuoInferior,
+    },
+    sheetStyle: {
+      ...(ehCompacto ? sheetFlutuantePainelCompacto : sheetFlutuantePainel),
+      /* Numérico de propósito: precisa vencer qualquer `maxHeight` em
+         porcentagem que o painel traga do próprio estilo, e porcentagem aqui
+         seria resolvida contra a tela inteira, que é justamente o que se quer
+         deixar de usar como referência. */
+      maxHeight: tetoDeAltura,
+    },
+  };
+}
+
+/**
+ * A conta que faz a janela caber em qualquer aparelho, separada do hook para
+ * poder ser testada sem React.
+ *
+ * A garantia que ela precisa dar, e que o teste fixa, é uma só:
+ * **`tetoDeAltura + recuoInferior` nunca passa da altura da tela.** Enquanto
+ * isso valer, a janela cabe inteira acima do teclado, seja qual for a
+ * resolução, a densidade ou a escala de fonte do aparelho, porque todas essas
+ * grandezas já chegam aqui convertidas em pontos.
+ */
+export function medidasDeJanelaFlutuante(altura: number, alturaTeclado: number) {
+  const margem = spacing.md;
+  /* `Math.max(.., 0)` não é paranoia: no instante em que o teclado abre, o
+     Android pode reportar a altura dele antes de a janela encolher, e a
+     subtração fica negativa por um quadro. Altura negativa faz o painel
+     desaparecer e voltar, que é a piscada que se quer evitar. */
+  const teclado = Math.max(alturaTeclado, 0);
+  const disponivel = Math.max(altura - teclado, 0);
+  return {
+    /* O recuo é limitado à própria tela. Sem o limite, um teclado reportado
+       maior que a janela (acontece no quadro entre o teclado abrir e a janela
+       encolher, e em aparelho com fonte muito grande) viraria um recuo maior
+       que o container e empurraria o painel inteiro para fora da tela. */
+    recuoInferior: Math.min(margem + teclado, altura),
+    tetoDeAltura: Math.max(disponivel - margem * 2, 0),
   };
 }
 
@@ -165,7 +225,6 @@ const cantosDeJanela = {
 /** Celular: quase a largura toda, com a margem vindo do recuo do fundo. */
 const sheetFlutuantePainelCompacto = {
   width: '100%',
-  maxHeight: '85%',
   ...cantosDeJanela,
 } as const;
 
@@ -175,7 +234,6 @@ const sheetFlutuantePainel = {
   width: '30%',
   minWidth: 420,
   maxWidth: 560,
-  maxHeight: '85%',
   ...cantosDeJanela,
 } as const;
 
