@@ -6662,3 +6662,12 @@ inteira e não do produto. Preços confirmados (base 8,91 e 96,91 mais a taxa de
 existe no produto, a oferta não tem esse campo, e `products_update` responde
 `ok: true` e ignora a mudança. Releitura limpa confirmou que nada mudou e que
 nada foi destruído. Só pelo painel. Detalhes na nota de preço do vault.
+
+**Regra nova: toda mexida no app entra na nota de sessão, em detalhe.** Pedido
+do autor em 12/09/2026, acrescentado à regra 12 do `AGENTS.md`. Vale para
+qualquer alteração de ferramenta, feature, tela ou comportamento, por menor que
+pareça, e o registro é feito JUNTO com a mudança, não no fim da sessão, porque
+o que se perde primeiro é o motivo. A regra lista seis coisas que a nota
+precisa responder: o pedido como chegou, sintoma e causa separados, arquivos e
+commits concretos, o que foi descartado e por quê, o que deu errado no caminho
+(inclusive erro do agente), e o que ficou sem verificação.

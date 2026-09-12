@@ -356,6 +356,40 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     caminho, o que deu errado, e o que ficou em aberto. O roteiro completo está
     em `00 - Índice - Sessões`.
 
+    **Toda mexida dentro do aplicativo entra na nota de sessão, em detalhe, na
+    hora.** Regra dada pelo autor em 12/09/2026. Vale para qualquer alteração
+    de ferramenta, feature, tela, comportamento ou configuração do produto, por
+    menor que pareça, e não só para o trabalho "principal" da sessão. Não
+    espere o fim da sessão para lembrar: registre junto com a mudança, porque o
+    que se perde primeiro é justamente o motivo.
+
+    O que "em detalhe" quer dizer, na prática, é responder a estas seis coisas
+    para cada mudança:
+
+    1. **O pedido como ele chegou**, incluindo a frase do autor ou do usuário
+       quando houver. É o que permite a uma sessão futura julgar se a solução
+       ainda serve ao problema.
+    2. **O sintoma e a causa, separados.** Sintoma é o que se vê; causa é o
+       mecanismo. Se a causa não foi encontrada, dizer isso com todas as letras
+       em vez de deixar a hipótese passar por fato.
+    3. **Arquivos e identificadores concretos**: caminho do arquivo, nome da
+       função, `hash` do commit. Sem isso a nota vira lembrança vaga e a
+       próxima sessão refaz a busca do zero.
+    4. **O que foi DESCARTADO e por quê.** Alternativa recusada é metade do
+       valor da nota: sem ela, a sessão seguinte tenta o caminho que já se
+       provou ruim. Vale também para pedido do autor que não foi seguido à
+       risca, com o motivo.
+    5. **O que deu errado no caminho**, inclusive erro do próprio agente. A
+       correção de 12/09 sobre o teclado só faz sentido registrada junto com a
+       tentativa anterior, que abriu um vão na tela e teve de ser refeita.
+    6. **O que ficou sem verificação.** Separar "testado no aparelho" de
+       "passou no `tsc` e na suíte" de "conferido lendo o código", como manda a
+       regra 9.
+
+    Quando a mudança criar, mover ou apagar arquivo que alguma nota perene
+    descreve, atualizar a nota perene TAMBÉM, e carimbar `revisado`. O
+    `scripts/verificar-vault.mjs` acusa quem esquecer.
+
     A alternativa que o autor levantou, separar o vault em pastas por máquina,
     foi descartada de propósito: arquivaria o conhecimento por autor, e o mesmo
     assunto passaria a existir dos dois lados quando uma máquina continuasse o
