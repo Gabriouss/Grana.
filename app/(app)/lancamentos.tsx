@@ -26,11 +26,6 @@ import HeaderAction from '@/components/HeaderAction';
 import ExportPdfButton from '@/components/ExportPdfButton';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
-import PasteReceiptModal from '@/components/PasteReceiptModal';
-import VoiceEntryButton from '@/components/VoiceEntryButton';
-import { useFlags } from '@/lib/feature-flags';
-import { ehIntencaoBoleto, ehIntencaoCredito, matchWalletByText, limparReferenciaCarteira } from '@/lib/heuristics';
-import ImportarExtratoModal from '@/components/ImportarExtratoModal';
 import ItemActionSheet from '@/components/ItemActionSheet';
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
@@ -127,7 +122,6 @@ const LinhaLancamento = memo(function LinhaLancamento({
 });
 
 export default function LancamentosScreen() {
-  const { ligado } = useFlags();
   const router = useRouter();
   const { novoLancamento } = useLocalSearchParams<{ novoLancamento?: string }>();
   const { paddingConteudoComFab } = useTabBarInset();
@@ -177,9 +171,6 @@ export default function LancamentosScreen() {
   const [saving, setSaving] = useState(false);
 
   // Aux Modals
-  const [pasteModalOpen, setPasteModalOpen] = useState(false);
-  const [voiceText, setVoiceText] = useState<string | undefined>(undefined);
-  const [csvModalOpen, setCsvModalOpen] = useState(false);
 
   // Action Sheet
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
@@ -553,40 +544,6 @@ export default function LancamentosScreen() {
         right={
           <>
             <HeaderAction
-              icon="clipboard-outline"
-              onPress={() => setPasteModalOpen(true)}
-              accessibilityLabel="Colar comprovante"
-            />
-            <HeaderAction
-              icon="document-text-outline"
-              onPress={() => setCsvModalOpen(true)}
-              accessibilityLabel="Importar extrato"
-            />
-            {/* Sem `style`: a geometria do círculo mora no próprio
-                VoiceEntryButton (styles.iconBtn), igual à do HeaderAction.
-                O `headerBtn` local existia pra replicar essa geometria à mão
-                e só servia pra ela sair de sincronia. */}
-            {ligado('lancamento_voz') && (
-            <VoiceEntryButton
-              onSaved={() => { void load(); }}
-              iconSize={16}
-              onTranscribed={(text) => {
-                const carteira = matchWalletByText(text, wallets);
-                const financeiro = carteira ? limparReferenciaCarteira(text, carteira.name) : text;
-                if (ehIntencaoBoleto(financeiro)) {
-                  router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto: text } });
-                  return;
-                }
-                if (ehIntencaoCredito(financeiro)) {
-                  router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
-                  return;
-                }
-                setVoiceText(text);
-                setPasteModalOpen(true);
-              }}
-            />
-            )}
-            <HeaderAction
               icon={hidden ? 'eye-off-outline' : 'eye-outline'}
               onPress={() => {
                 togglePrivacy();
@@ -797,28 +754,6 @@ export default function LancamentosScreen() {
           if (selectedTx) openEditModal(selectedTx);
         }}
         onDelete={handleDeleteSelectedTx}
-      />
-
-      {/* Paste Receipt Modal (também recebe a transcrição do lançamento por voz) */}
-      <PasteReceiptModal
-        visible={pasteModalOpen}
-        initialText={voiceText}
-        onClose={() => { setPasteModalOpen(false); setVoiceText(undefined); }}
-        onSuccess={() => {
-          triggerToast('Lançamento salvo');
-          setVoiceText(undefined);
-          load();
-        }}
-      />
-
-      {/* CSV Import Modal */}
-      <ImportarExtratoModal
-        visible={csvModalOpen}
-        onClose={() => setCsvModalOpen(false)}
-        onSuccess={() => {
-          triggerToast('Lançamentos importados');
-          load();
-        }}
       />
 
       {/* Toast */}
