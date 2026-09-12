@@ -25,8 +25,8 @@ type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (p
    ativo não pode depender só de cor: preenchimento é a segunda pista, e é a
    que continua legível pra quem não distingue bem menta de cinza-esverdeado.
     O Granachat não está aqui de propósito — ele não é rota, é uma janela
-    flutuante. O botão do Granabô fica sobre a barra como ação independente,
-    sem roubar largura dos seis destinos de navegação.
+    flutuante, e o botão dele entra injetado no meio da fileira (ver o
+    `destaque`, no índice 3).
    Nomenclatura: **Granabô** é o assistente (o personagem, e o que a copy
    mostra); **Granachat** é a janela de conversa com ele. */
 /* Ordem das abas na barra. Serve só pra decidir a DIREÇÃO da entrada da cena
@@ -103,7 +103,7 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
             dos seis destinos, para preservar o contexto e os alvos de toque. */}
         {state.routes
           .filter((route) => ICONS[route.name])
-          .map((route) => {
+          .flatMap((route, posicao) => {
             const index = state.routes.indexOf(route);
             const { options } = descriptors[route.key];
             const focused = state.index === index;
@@ -116,19 +116,27 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
               }
             }
 
-            return (
+            /* O Granabô é injetado no MEIO da fileira, no índice 3, e não
+               posicionado por cima dela. Ficar por fora exigiria casar a
+               posição absoluta com a altura da barra na mão, e foi assim que
+               ele apareceu solto acima da barra, com um vão no meio. Dentro da
+               fileira, o próprio flex resolve em qualquer altura de barra. */
+            const destaque =
+              posicao === 3 ? (
+                <BotaoGranabo key="granabo" ativo={chatAberto} onPress={onAlternarChat} />
+              ) : null;
+
+            return [
+              destaque,
               <TabButton
                 key={route.key}
                 icones={ICONS[route.name]}
                 focused={focused}
                 label={label}
                 onPress={onPress}
-              />
-            );
+              />,
+            ];
           })}
-      </View>
-      <View style={[styles.granaboFlutuante, { bottom: margem + 68 + spacing.xs }]}>
-        <BotaoGranabo ativo={chatAberto} onPress={onAlternarChat} />
       </View>
     </View>
   );
@@ -498,15 +506,6 @@ const styles = StyleSheet.create({
   destaqueSlot: {
     width: 78,
     height: 68,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  granaboFlutuante: {
-    position: 'absolute',
-    left: '50%',
-    width: 78,
-    height: 78,
-    marginLeft: -39,
     alignItems: 'center',
     justifyContent: 'center',
   },
