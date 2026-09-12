@@ -12,7 +12,8 @@ import NotebookAnimado from '@/components/NotebookAnimado';
 import GradeInterativa from '@/components/GradeInterativa';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
-import { EASE_BOUNCE_HINT, EASE_ROLL, EASE_SNAP, usePrefersReducedTransparency } from '@/lib/motion';
+import { EASE_BOUNCE_HINT, EASE_ROLL, EASE_SNAP, UI_OUT, useReducedMotion, usePrefersReducedTransparency } from '@/lib/motion';
+import SegmentedTabs from '@/components/SegmentedTabs';
 import FogBackground from '@/components/FogBackground';
 import CardLivreParaGastar from '@/components/CardLivreParaGastar';
 import BeneficiosHorizontais, { type BeneficioHorizontal } from '@/components/BeneficiosHorizontais';
@@ -122,6 +123,52 @@ function hrefCompra(): string {
 const PRECO_MENSAL = 9.9;
 const PRECO_ANUAL = 97.9;
 const emReais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+/* Também derivada: o dia em que um dos dois preços mudar, a economia
+   anunciada muda junto, sem ninguém precisar lembrar de refazer a conta. */
+const ECONOMIA_ANUAL = PRECO_MENSAL * 12 - PRECO_ANUAL;
+
+/* Conta de um preço até o outro quando a pessoa troca de plano, em vez de o
+   número simplesmente aparecer trocado. O `fontVariant: ['tabular-nums']` que
+   `precoValor` já tem é o que segura a largura durante a contagem; sem ele o
+   preço treme e o "/ano" ao lado dança junto.
+
+   `useNativeDriver: false` é obrigatório aqui, e não é escolha de estilo: o
+   que muda é o TEXTO, e texto não existe na thread nativa de animação. É por
+   isso também que existe o listener, que é a única forma de ler os valores
+   intermediários para reescrever a string. */
+function PrecoAnimado({ valor, style }: { valor: number; style?: StyleProp<TextStyle> }) {
+  const reduzirMovimento = useReducedMotion();
+  const animado = useRef(new Animated.Value(valor)).current;
+  const [exibido, setExibido] = useState(valor);
+
+  useEffect(() => {
+    if (reduzirMovimento) {
+      animado.setValue(valor);
+      setExibido(valor);
+      return;
+    }
+    const assinatura = animado.addListener((e) => setExibido(e.value));
+    const animacao = Animated.timing(animado, {
+      toValue: valor,
+      duration: 420,
+      easing: Easing.bezier(...UI_OUT),
+      useNativeDriver: false,
+    });
+    /* O valor final é fixado à mão no fim: o listener entrega frações e a
+       última delas quase nunca é o alvo exato, então sem isto o preço
+       terminaria a contagem parado num centavo errado, que é pior do que não
+       animar nada. */
+    animacao.start(({ finished }) => {
+      if (finished) setExibido(valor);
+    });
+    return () => {
+      animacao.stop();
+      animado.removeListener(assinatura);
+    };
+  }, [animado, reduzirMovimento, valor]);
+
+  return <Text style={style}>{emReais(exibido)}</Text>;
+}
 
 /* Checkout do plano ANUAL. Sem a variável configurada, cai no mensal em vez de
    sumir com o botão: a página nunca fica sem caminho de compra. */
@@ -613,7 +660,7 @@ const PERGUNTAS_FAQ = [
   {
     pergunta: 'Como funciona a assinatura?',
     resposta:
-      'O Grana. funciona por assinatura mensal e não oferece período de teste. Você encontra o valor e a forma de pagamento na seção de Preços desta página.',
+      'O Grana. funciona por assinatura e não oferece período de teste. São dois planos, um mensal e um anual, e você alterna entre os dois na seção de Preços desta página, onde também ficam o valor e a forma de pagamento.',
   },
   {
     pergunta: 'Posso editar ou excluir meus dados?',
@@ -906,6 +953,11 @@ function ConteudoWeb() {
   const faqComNavLateral = largura >= CORTES.medio && largura < CORTES.amplo;
   const heroCompacto = largura < LARGURA_MINIMA_HERO_LARGO || altura < ALTURA_MINIMA_HERO_LARGO;
   const alturaDobra = useAlturaDobra();
+  /* Começa no anual de propósito: é o plano de foco, e quem só quer olhar o
+     mensal troca num toque. O contrário exigiria que a pessoa descobrisse
+     sozinha que existe um plano mais barato por ano. */
+  const [plano, setPlano] = useState<'anual' | 'mensal'>('anual');
+  const ehPlanoAnual = plano === 'anual';
   const rolagemRef = useRef<ScrollView>(null);
   /* Medido em vez de constante: o cabeçalho muda de altura com o `insets.top`
      e com a escala tipográfica da web, e o herói precisa descontar o valor
@@ -1371,7 +1423,7 @@ function ConteudoWeb() {
                 <Text style={styles.destaqueInline}>menos de R$ 0,37 por dia!</Text>
               </TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
-                {'Todos os recursos financeiros do Grana. em uma assinatura mensal simples.'}
+                {'Todos os recursos financeiros do Grana. em uma assinatura simples. Escolha pagar por mês ou de uma vez no ano.'}
               </Text>
             </RevealOnScroll>
 
@@ -1399,35 +1451,69 @@ function ConteudoWeb() {
                 </View>
 
                 <View style={[styles.cardPreco, ehCompacto && styles.cardPrecoCompacto]}>
-                  {/* O ANUAL lidera o cartão: é o plano de foco, e o argumento
-                      está no equivalente mensal logo abaixo — ele fica MENOR que
-                      a mensalidade avulsa. O mensal continua visível mais abaixo,
-                      porque tirar a porta de entrada barata faz quem não pode
-                      pagar o ano sair sem assinar nada. */}
-                  <Text style={[styles.precoRotulo, ehCompacto && styles.precoTituloCentralizado]}>Grana. anual</Text>
+                  {/* Um plano por vez, escolhido pela pessoa, em vez dos dois
+                      botões empilhados que havia antes. Os dois juntos
+                      obrigavam a comparar R$ 97,90/ano com R$ 9,90/mês de
+                      cabeça, que são unidades diferentes; aqui a comparação
+                      fica no selo de economia e na linha de apoio.
+
+                      O controle é o `SegmentedTabs` que o aplicativo já usa
+                      nas abas internas. Reaproveitar traz de graça a mola
+                      `desliza` dos tokens, o alvo de toque mínimo e o respeito
+                      a "reduzir movimento". */}
+                  <SegmentedTabs
+                    options={[
+                      { key: 'anual', label: 'Anual' },
+                      { key: 'mensal', label: 'Mensal' },
+                    ]}
+                    value={plano}
+                    onChange={setPlano}
+                    style={styles.precoAlternador}
+                  />
+
+                  <View style={[styles.precoCabecalho, ehCompacto && styles.precoCabecalhoCompacto]}>
+                    <Text style={styles.precoRotulo}>{ehPlanoAnual ? 'Grana. anual' : 'Grana. mensal'}</Text>
+                    {/* O selo carrega o argumento, não um rótulo de vaidade
+                        como "popular": aqui o que convence é o número que a
+                        pessoa deixa de gastar. */}
+                    {ehPlanoAnual && (
+                      <View style={styles.precoSelo}>
+                        <Ionicons name="star" size={12} color={theme.paper} aria-hidden />
+                        <Text style={styles.precoSeloTexto}>Economize {emReais(ECONOMIA_ANUAL)}</Text>
+                      </View>
+                    )}
+                  </View>
                   {/* Qualificador em linha própria, nunca colado no "/ano":
                       dentro de `precoLinha` (flex row) ele espremia o valor e
                       o preço quebrava em duas linhas. */}
                   <View style={[styles.precoLinha, ehCompacto && styles.precoLinhaCompacta]}>
-                    <Text style={[styles.precoValor, ehCompacto && styles.precoValorCompacto]}>{emReais(PRECO_ANUAL)}</Text>
-                    <Text style={styles.precoPeriodo}>/ano</Text>
+                    <PrecoAnimado
+                      valor={ehPlanoAnual ? PRECO_ANUAL : PRECO_MENSAL}
+                      style={[styles.precoValor, ehCompacto && styles.precoValorCompacto]}
+                    />
+                    <Text style={styles.precoPeriodo}>{ehPlanoAnual ? '/ano' : '/mês'}</Text>
                   </View>
+                  {/* A linha do mensal soma os doze meses porque é a única
+                      comparação honesta com o anual. Nada de parcela aqui: o
+                      juro é da operadora e prometer valor de parcela já saiu
+                      errado uma vez nesta página. */}
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
-                    À vista no cartão ou no Pix, você economiza{' '}
-                    {emReais(PRECO_MENSAL * 12 - PRECO_ANUAL)} no ano. Em até 12x com juros da
-                    operadora.
+                    {ehPlanoAnual
+                      ? `À vista no cartão ou no Pix, você economiza ${emReais(ECONOMIA_ANUAL)} no ano. Em até 12x com juros da operadora.`
+                      : `Renova todo mês. Em doze meses, ${emReais(PRECO_MENSAL * 12)}, ou ${emReais(ECONOMIA_ANUAL)} a mais que o plano anual.`}
                   </Text>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
                     Registre com facilidade, acompanhe seu mês e planeje o que vem pela frente.
                   </Text>
                   <View style={styles.precoCta}>
                     {/* Ponto de decisão: quem chegou no card de preço com o
-                        valor na frente já está escolhendo, não conhecendo. */}
-                    <BotaoCTA compra anual rotulo="Assinar o plano anual" centralizado={ehCompacto} />
+                        valor na frente já está escolhendo, não conhecendo. O
+                        botão segue a escolha do alternador, então o checkout
+                        que abre é sempre o do plano que está na tela. */}
                     <BotaoCTA
                       compra
-                      variante="secundario"
-                      rotulo={`Prefiro mensal, ${emReais(PRECO_MENSAL)} por mês`}
+                      anual={ehPlanoAnual}
+                      rotulo={ehPlanoAnual ? 'Assinar o plano anual' : 'Assinar o plano mensal'}
                       centralizado={ehCompacto}
                     />
                   </View>
@@ -2022,6 +2108,29 @@ const styles = StyleSheet.create({
   // 'center'` sobrescreve o `flex-start` de `cardPreco` — pedido do autor
   // pra Preços inteiro centralizado no compacto (rótulo, valor e descrição).
   cardPrecoCompacto: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%', alignItems: 'center', borderLeftWidth: 0, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong },
+  /* Largura travada para o alternador não esticar até a borda do cartão num
+     desktop largo: dois rótulos curtos ocupando 440px leriam como barra de
+     navegação, não como escolha entre dois planos. */
+  precoAlternador: { alignSelf: 'stretch', maxWidth: 260, marginBottom: spacing.sm },
+  /* `minHeight` fixo porque o selo só existe no plano anual: sem ele a linha
+     encolheria uns 6px ao trocar para o mensal e o cartão inteiro subiria
+     junto, um tranco gratuito bem no momento em que a pessoa compara preço.
+     26 cobre o maior caso (legenda de 14px mais o recuo do selo). */
+  precoCabecalho: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap', minHeight: 26 },
+  precoCabecalhoCompacto: { justifyContent: 'center' },
+  /* `accent` sólido com tinta `paper` por cima: ~6:1 de contraste, dentro do
+     AA. O selo é a única coisa preenchida do cartão além do CTA, e é de
+     propósito, porque é o argumento do plano anual. */
+  precoSelo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.accent,
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+  },
+  precoSeloTexto: { color: theme.paper, fontSize: type.legenda, fontFamily: fonts.regular },
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
   precoLinhaCompacta: { justifyContent: 'center' },

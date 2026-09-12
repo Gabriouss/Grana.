@@ -6583,3 +6583,45 @@ token segue ligada.
    que o conserto criou, e é o único cuja falha seria silenciosa.
 5. Trocar de conta no mesmo aparelho e conferir que nem o cache das telas nem
    a fila de voz da conta anterior aparecem.
+
+# Sessão de 12/09/2026 — alternador de planos na dobra de preços
+
+M1, depois de puxar os 11 commits da M2. Mexeu só em `app/index.tsx`.
+
+O autor mandou um componente de preços pronto, de **Next.js com Tailwind,
+shadcn, Radix, framer-motion e NumberFlow**, com instrução de copiar para
+`components/ui`. Não dá: a landing é a mesma base do aplicativo, Expo Router
+com React Native. `className` é inerte aqui, `div`/`span`/`ul`/`hr` não são
+elementos válidos, `next/link` não existe, e `font-bold` esbarra na regra de
+só usar Neue Machina Light e Regular. Instalar Tailwind e shadcn num app Expo
+para servir uma seção quebraria a build do Android.
+
+Foram oferecidos três escopos de adaptação e o autor escolheu o mais contido:
+manter o cartão e a copy já auditados, e acrescentar o alternador.
+
+O que entrou: alternador mensal/anual reaproveitando o `SegmentedTabs` das
+abas internas (traz de graça a mola `desliza` dos tokens, o alvo de toque e o
+respeito a "reduzir movimento"); um `PrecoAnimado` que conta de um preço ao
+outro com a curva `UI_OUT`; selo de economia no anual, carregando o número em
+vez de um rótulo de vaidade; um CTA só, que segue a escolha, então o checkout
+que abre é sempre o do plano na tela. A copy do subtítulo da dobra e a resposta
+do FAQ sobre assinatura foram corrigidas, porque ainda diziam "assinatura
+mensal" e ignoravam o plano anual.
+
+Recusados de propósito, com motivo: o confete da referência (marca calma, e
+comemorar antes da compra celebra o que não houve), os cartões girados (já
+tentados nesta página, o autor mandou reverter pedindo alinhamento rigoroso),
+as três faixas em dólar (aqui são dois planos, e o preço vem da nota de preço
+vigente) e qualquer promessa de valor de parcela.
+
+Detalhe que evitou tranco: a linha do rótulo ganhou `minHeight`, porque o selo
+só existe no anual e sem isso o cartão inteiro subia uns 6px ao trocar de
+plano.
+
+Verificação: `npx tsc --noEmit` limpo e `npm run test:ci` completo com saída 0,
+sem nenhuma falha, incluindo as 1144 guardas do design system, que são as que
+cobrem a landing e a tipografia. **Não foi aberto no navegador**: cor e layout
+foram conferidos lendo os tokens, não vendo a tela.
+
+Fora do código, o FFmpeg foi instalado nesta máquina para eu conseguir ler
+vídeo por quadros, já que vídeo eu não assisto e áudio eu não ouço.
