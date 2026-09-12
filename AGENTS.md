@@ -456,3 +456,30 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       que justifiquem comportamentos diferentes não prevalecem sobre esta
       regra. Ao encontrá-los, registrar a divergência e resolvê-la no núcleo
       compartilhado, sem introduzir outro remendo específico de superfície.
+
+14. **Mudança de estrutura ou posição na interface vai em COMMIT PRÓPRIO, e
+    nunca de carona num commit sobre outro assunto.** Regra pedida pelo autor
+    em 12/09/2026, depois de abrir o aplicativo e achar o botão do Granabô
+    solto acima da barra de abas, com a fileira de ícones sem o item central.
+
+    A mudança tinha entrado no commit `29cd70c`, cujo assunto declarado era
+    "completa a migração de Modal cru para AppModal, e acessibilidade em
+    chips". Ninguém revisou aquilo como mudança de layout, porque nada no
+    assunto do commit dizia que havia uma. O autor descobriu pela tela.
+
+    Na prática: se ao fazer outra coisa você mexer em posicionamento,
+    hierarquia, navegação ou estrutura de tela, isso sai num commit separado,
+    com o assunto dizendo o que mudou na tela. Vale mesmo quando parece
+    pequeno — revisar um commit a mais custa muito menos que descobrir a
+    regressão pela reclamação de quem usa.
+
+    **E o defeito em si, que é a outra metade da regra: elemento não se
+    posiciona por cima de outro com a medida dele copiada à mão.** O botão
+    virou `<View>` absoluta com `bottom: margem + 68 + spacing.xs`, onde `68`
+    é a altura da barra escrita na mão, que alguém teria de manter em sincronia
+    com `TAB_BAR_ALTURA` para sempre. Quando um elemento precisa se posicionar
+    em relação a outro, ele entra no FLUXO daquele outro (dentro da fileira,
+    dentro do container). O flex resolve em qualquer altura, em qualquer escala
+    de fonte do sistema e em qualquer resolução, sem constante sincronizada.
+    Foi colando medida na mão que a janela de lançamento quebrou em tela
+    pequena no mesmo dia, na conta do teclado — é a mesma classe de defeito.
