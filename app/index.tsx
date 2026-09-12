@@ -463,20 +463,20 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
    seção de três blocos de texto quase idênticos em forma. */
 const CENAS_DOR = [
   {
-    icone: 'calendar-outline' as const,
-    texto: 'Chega sexta-feira e você ainda não sabe se o dinheiro dá para sair à noite.',
+    icone: 'search-outline' as const,
+    texto: 'Você olha o extrato e pensa: o que aconteceu com meu dinheiro? Sem lembrar direito onde ele foi.',
   },
   {
-    icone: 'card-outline' as const,
-    texto: 'A fatura chega com gastos que você mal se lembra de ter feito.',
+    icone: 'calendar-outline' as const,
+    texto: 'Um dia vira o outro, os gastos somem da memória, e no fim do mês o dinheiro passou sem deixar rastro.',
   },
   {
     icone: 'grid-outline' as const,
-    texto: 'A planilha começou organizada. Poucos dias depois, ficou para trás.',
+    texto: 'Sem enxergar o quadro completo, fica difícil fechar o mês com algo guardado pra você.',
   },
 ];
 
-const PONTE_PERGUNTA = 'No Grana., registrar um gasto leva o mesmo tempo que mandar um áudio para um amigo.';
+const PONTE_PERGUNTA = 'Cole o texto de uma compra, de um extrato ou de um resumo de fatura. O Grana. organiza sozinho, sem formulário e sem escolher categoria na mão.';
 
 /* Mesmo escalonamento vertical do FAQ (ver DESALINHO_FAQ) — valores fixos,
    não aleatórios de verdade, pra não "pular" a cada re-render. Só 3 cenas
@@ -643,9 +643,9 @@ const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
    pagamento. */
 const PERGUNTAS_FAQ = [
   {
-    pergunta: 'O Grana. acessa minha conta bancária?',
+    pergunta: 'Preciso conectar minha conta bancária?',
     resposta:
-      'Não. O Grana. não se conecta ao seu banco e não usa Open Finance. Você registra por voz ou apontando a câmera pro QR Code da nota, e ele organiza. Você nunca compartilha senha de banco com ninguém.',
+      'Não. O Grana. não se conecta ao seu banco e não usa Open Finance. Você registra colando um texto, falando no aplicativo ou apontando a câmera pro QR Code da nota, e ele organiza. Você nunca compartilha senha de banco com ninguém.',
   },
   {
     pergunta: 'E se o Grana. entender um lançamento errado?',
@@ -678,8 +678,18 @@ const PERGUNTAS_FAQ = [
       'Não. O Grana. é um registro. Não é uma instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele.',
   },
   {
+    pergunta: 'Funciona pra quem nunca usou aplicativo de finanças?',
+    resposta:
+      'Sim. Comece colando um gasto, sem configurar nada antes. O Grana. organiza e sugere a categoria, e você ajusta se quiser.',
+  },
+  {
+    pergunta: 'Dá pra usar no celular e no computador com a mesma conta?',
+    resposta: 'Dá. A conta é a mesma nos dois, e o que você registra num lugar aparece no outro.',
+  },
+  {
     pergunta: 'Preciso instalar alguma coisa?',
-    resposta: 'Não pra começar. O Grana. roda no navegador, neste mesmo endereço. Uma versão para Android e iOS está a caminho.',
+    resposta:
+      'Não pra começar: o Grana. roda direto no navegador, neste mesmo endereço. Pra ter os recursos extras do bolso, como os widgets da tela inicial, o lançamento por voz e a foto da nota fiscal, é só baixar o aplicativo de Android.',
   },
 ];
 
@@ -718,10 +728,10 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
  * A revelação letra a letra do título fica, porque é a assinatura da página
  * registrada no DESIGN.md e não dependia da troca de capítulos.
  */
-const TITULO_HERO = 'Saiba quanto pode gastar hoje com o Grana.';
+const TITULO_HERO = 'O controle do seu dinheiro, na sua mão.';
 const GANCHO_HERO = 'Cadê meu dinheiro?';
 const APOIO_HERO =
-  'Registre por voz e acompanhe seu mês. O Grana. organiza seus gastos sem conectar sua conta bancária.';
+  'Sem formulário, sem planilha, sem conectar banco. Só o seu dinheiro, do seu jeito.';
 
 function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
   return [...texto].map(() => new Animated.Value(valorInicial));
@@ -1423,7 +1433,7 @@ function ConteudoWeb() {
                 <Text style={styles.destaqueInline}>menos de R$ 0,37 por dia!</Text>
               </TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
-                {'Todos os recursos financeiros do Grana. em uma assinatura simples. Escolha pagar por mês ou de uma vez no ano.'}
+                {'Um único plano, com tudo incluído. Sem versão limitada, sem recurso trancado atrás de outro preço.'}
               </Text>
             </RevealOnScroll>
 
