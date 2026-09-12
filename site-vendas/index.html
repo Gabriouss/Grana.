@@ -362,21 +362,44 @@ button { font-family: inherit; cursor: pointer; }
 .chip:hover, .chip:disabled { color: var(--ink); border-color: var(--mint); }
 .chip:disabled { opacity: 0.4; cursor: default; }
 
-/* ---------- Pricing ---------- */
-.preco-caixa { margin-top: 40px; display: grid; gap: 22px; grid-template-columns: 1fr; }
-@media (min-width: 780px) { .preco-caixa { grid-template-columns: repeat(2, 1fr); } }
-.plano { position: relative; padding: 32px; border-radius: 22px; background: var(--bg-raised); border: 1px solid var(--rule); transition: transform 0.35s var(--ease); }
-.plano:hover { transform: translateY(-4px); }
-.plano.principal { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 60px -20px var(--accent-glow), var(--shadow-card); }
-.plano .badge { position: absolute; top: 0; right: 24px; transform: translateY(-50%); background: var(--accent); color: #04211e; font-size: 12px; padding: 5px 14px; border-radius: 999px; }
+/* ---------- Pricing (plano único, toggle mensal/anual) ---------- */
+.preco-toggle {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin: 36px 0 8px; font-size: 15px; color: var(--ink-soft);
+}
+.preco-toggle .economia { color: var(--mint); font-weight: 400; }
+.switch {
+  position: relative; width: 46px; height: 26px; border-radius: 999px;
+  background: var(--accent); border: none; padding: 0; flex: 0 0 auto;
+  transition: background 0.25s ease;
+}
+.switch[aria-checked="false"] { background: var(--rule-strong); }
+.switch-bola {
+  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--ink); transition: transform 0.3s var(--ease);
+}
+.switch[aria-checked="false"] .switch-bola { transform: translateX(20px); }
+
+.preco-unico { max-width: 420px; margin: 0 auto; }
+.plano { position: relative; padding: 36px; border-radius: 24px; background: var(--bg-raised); border: 1px solid var(--rule); text-align: center; }
+.plano.principal { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 70px -20px var(--accent-glow), var(--shadow-card); }
+.plano .badge {
+  position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%);
+  background: var(--accent); color: #04211e; font-size: 12px; padding: 5px 16px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 5px; opacity: 1; transition: opacity 0.25s ease;
+}
+.plano .badge.oculto { opacity: 0; pointer-events: none; }
 .plano .nome { font-size: 14px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; }
-.plano .valor { margin-top: 12px; font-size: 44px; font-variant-numeric: tabular-nums; }
+.plano .valor { margin-top: 12px; font-size: 48px; font-variant-numeric: tabular-nums; display: flex; justify-content: center; align-items: baseline; gap: 4px; }
+.plano .valor-num { display: inline-block; transition: opacity 0.28s ease, transform 0.28s ease; }
+.plano .valor-num.trocando { opacity: 0; transform: translateY(6px); }
 .plano .valor small { font-size: 16px; color: var(--ink-faint); font-weight: 300; }
 .plano .detalhe { margin-top: 6px; font-size: 13px; color: var(--ink-faint); }
-.plano ul { list-style: none; padding: 0; margin: 22px 0 26px; display: flex; flex-direction: column; gap: 10px; }
+.plano ul { list-style: none; padding: 0; margin: 22px 0 26px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
 .plano li { font-size: 14.5px; color: var(--ink-soft); display: flex; gap: 10px; }
 .plano li::before { content: '✓'; color: var(--up); flex: 0 0 auto; }
-.plano .btn-shiny, .plano .btn-ghost { width: 100%; }
+.plano .btn-shiny { width: 100%; }
+#confete-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
 
 /* ---------- Objeções / FAQ ---------- */
 .faq-lista { margin-top: 40px; display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
@@ -598,31 +621,27 @@ footer { border-top: 1px solid var(--rule); padding-block: 32px; text-align: cen
         <h2 class="titulo-secao" style="margin-inline:auto;">Seu assistente financeiro por menos de R$0,37 por dia.</h2>
         <p class="corpo-secao" style="margin-inline:auto;">Um único plano, com tudo incluído. Sem versão limitada, sem recurso trancado atrás de outro preço.</p>
       </div>
-      <div class="preco-caixa">
-        <div class="plano principal reveal" style="--atraso:0.05s">
-          <span class="badge">Recomendado</span>
-          <div class="nome">Anual</div>
-          <div class="valor">R$ 97<small>,90/ano</small></div>
-          <div class="detalhe">Cobrado uma vez por ano</div>
+      <div class="preco-toggle reveal">
+        <span>Mensal</span>
+        <button type="button" class="switch" id="switch-anual" role="switch" aria-checked="true" aria-label="Alternar entre cobrança mensal e anual">
+          <span class="switch-bola"></span>
+        </button>
+        <span>Anual <span class="economia">(economize 18%)</span></span>
+      </div>
+
+      <div class="preco-unico reveal" style="--atraso:0.08s">
+        <div class="plano principal" id="plano-card">
+          <span class="badge" id="plano-badge">★ Recomendado</span>
+          <div class="nome" id="plano-nome">Anual</div>
+          <div class="valor">R$ <span class="valor-num" id="plano-valor">97,90</span><small id="plano-periodo">/ano</small></div>
+          <div class="detalhe" id="plano-detalhe">Cobrado uma vez por ano</div>
           <ul>
             <li>Todas as ferramentas, sem exceção</li>
             <li>Cartão, boletos, caixinhas e metas</li>
             <li>Granachat e Granabô</li>
             <li>Widgets, voz e foto de nota fiscal</li>
           </ul>
-          <a href="#" class="btn-shiny"><span>Assinar agora</span></a>
-        </div>
-        <div class="plano reveal" style="--atraso:0.15s">
-          <div class="nome">Mensal</div>
-          <div class="valor">R$ 9<small>,90/mês</small></div>
-          <div class="detalhe">Menos de R$ 0,37 por dia</div>
-          <ul>
-            <li>Todas as ferramentas, sem exceção</li>
-            <li>Cartão, boletos, caixinhas e metas</li>
-            <li>Granachat e Granabô</li>
-            <li>Widgets, voz e foto de nota fiscal</li>
-          </ul>
-          <a href="#" class="btn-ghost" style="display:block; text-align:center;">Assinar mensal</a>
+          <a href="#" class="btn-shiny"><span id="plano-cta">Assinar agora</span></a>
         </div>
       </div>
     </div>
@@ -800,6 +819,97 @@ document.querySelectorAll('.bento-card').forEach((card) => {
       todos.forEach((c) => (c.disabled = false));
     }, 1350);
   });
+})();
+
+// Toggle de plano (mensal/anual) com transição de número e confete.
+// Exceção documentada à regra "sem confete/selo" do design system do
+// produto: pedido explícito do autor, restrito a este micro-momento do
+// checkout da landing — não vale pro app.
+(function () {
+  const switchBtn = document.getElementById('switch-anual');
+  const nome = document.getElementById('plano-nome');
+  const valor = document.getElementById('plano-valor');
+  const periodo = document.getElementById('plano-periodo');
+  const detalhe = document.getElementById('plano-detalhe');
+  const badge = document.getElementById('plano-badge');
+  const cta = document.getElementById('plano-cta');
+  if (!switchBtn) return;
+
+  const PLANOS = {
+    anual: { nome: 'Anual', valor: '97,90', periodo: '/ano', detalhe: 'Cobrado uma vez por ano', cta: 'Assinar agora', badge: true },
+    mensal: { nome: 'Mensal', valor: '9,90', periodo: '/mês', detalhe: 'Menos de R$ 0,37 por dia', cta: 'Assinar mensal', badge: false },
+  };
+
+  function trocarPara(chave) {
+    const p = PLANOS[chave];
+    valor.classList.add('trocando');
+    setTimeout(() => {
+      nome.textContent = p.nome;
+      valor.textContent = p.valor;
+      periodo.textContent = p.periodo;
+      detalhe.textContent = p.detalhe;
+      cta.textContent = p.cta;
+      badge.classList.toggle('oculto', !p.badge);
+      valor.classList.remove('trocando');
+    }, 200);
+  }
+
+  switchBtn.addEventListener('click', () => {
+    const anual = switchBtn.getAttribute('aria-checked') !== 'true';
+    switchBtn.setAttribute('aria-checked', String(anual));
+    trocarPara(anual ? 'anual' : 'mensal');
+    if (anual) dispararConfete(switchBtn);
+  });
+
+  function dispararConfete(origem) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let canvas = document.getElementById('confete-canvas');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.id = 'confete-canvas';
+      document.body.appendChild(canvas);
+    }
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    const rect = origem.getBoundingClientRect();
+    const ox = rect.left + rect.width / 2;
+    const oy = rect.top + rect.height / 2;
+    const cores = ['#1fa98d', '#aeffe3', '#74e291', '#effffa'];
+    const particulas = Array.from({ length: 46 }, () => {
+      const ang = Math.random() * Math.PI * 2;
+      const vel = 3 + Math.random() * 5;
+      return {
+        x: ox, y: oy,
+        vx: Math.cos(ang) * vel, vy: Math.sin(ang) * vel - 2,
+        cor: cores[Math.floor(Math.random() * cores.length)],
+        r: 2 + Math.random() * 2.5,
+        vida: 1,
+      };
+    });
+    let quadro = 0;
+    (function passo() {
+      quadro++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let vivas = false;
+      particulas.forEach((p) => {
+        if (p.vida <= 0) return;
+        p.vx *= 0.97; p.vy = p.vy * 0.97 + 0.22;
+        p.x += p.vx; p.y += p.vy; p.vida -= 0.014;
+        if (p.vida > 0) {
+          vivas = true;
+          ctx.globalAlpha = Math.max(p.vida, 0);
+          ctx.fillStyle = p.cor;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+      ctx.globalAlpha = 1;
+      if (vivas && quadro < 200) requestAnimationFrame(passo);
+      else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    })();
+  }
 })();
 
 // Acordeões (objeções + FAQ)
