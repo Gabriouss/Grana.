@@ -22,6 +22,7 @@ import { useKeyboardHeight } from '@/components/Sheet';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
 import { mensagemErro as traduzirErro } from '@/lib/erros';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras } from '@/lib/theme';
 import {
   fetchMensagens,
@@ -185,6 +186,7 @@ export default function Granachat({
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const painelRef = useRef<View | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const requisicaoRef = useRef<AbortController | null>(null);
@@ -212,14 +214,12 @@ export default function Granachat({
       });
       return () => inscricao.remove();
     }
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const aoTeclar = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') fechar();
-      };
-      document.addEventListener('keydown', aoTeclar);
-      return () => document.removeEventListener('keydown', aoTeclar);
-    }
   }, [montado, fechar]);
+
+  /* O chat é uma janela fora do <Modal> nativo, então precisa entrar no mesmo
+     contrato de foco das folhas: foco inicial, contenção de Tab, Escape apenas
+     no topo e restauração do controle que abriu a conversa. */
+  useModalAccessibility(painelRef, visivel && montado, fechar);
 
   /* ── Carregar histórico ao abrir ──────────────────────────────────── */
   useEffect(() => {
@@ -485,9 +485,11 @@ export default function Granachat({
         pointerEvents={visivel ? 'auto' : 'none'}
       >
       <View
+        ref={painelRef}
         style={styles.painel}
         accessibilityViewIsModal
         role="dialog"
+        focusable
       >
         <View style={styles.cabecalho}>
           <View style={styles.cabecalhoTextos}>

@@ -66,12 +66,16 @@ export default function DatePickerModal({
   }
 
   function handleQuickDate(daysOffset: number) {
+    const iso = isoDaDataOffset(daysOffset);
+    onSelectDate(iso);
+    onClose();
+  }
+
+  function isoDaDataOffset(daysOffset: number) {
     const d = new Date();
     d.setDate(d.getDate() + daysOffset);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    onSelectDate(iso);
-    onClose();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   function handleFirstDayOfMonth() {
@@ -197,6 +201,9 @@ export default function DatePickerModal({
                       ]}
                       onPress={() => handleSelect(c.year, c.month, c.day)}
                       hitSlop={4}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: c.isSelected }}
+                      accessibilityLabel={`${c.day} de ${MONTH_NAMES[c.month]} de ${c.year}${c.isToday ? ', hoje' : ''}`}
                     >
                       <Text
                         style={[
@@ -216,13 +223,31 @@ export default function DatePickerModal({
 
           {/* Quick date chips */}
           <View style={styles.quickDatesRow}>
-            <AppPressable style={styles.quickDateChip} onPress={() => handleQuickDate(0)}>
+            <AppPressable
+              style={styles.quickDateChip}
+              onPress={() => handleQuickDate(0)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: currentISO === isoDaDataOffset(0) }}
+              accessibilityLabel="Escolher hoje"
+            >
               <Text style={styles.quickDateText}>Hoje</Text>
             </AppPressable>
-            <AppPressable style={styles.quickDateChip} onPress={() => handleQuickDate(-1)}>
+            <AppPressable
+              style={styles.quickDateChip}
+              onPress={() => handleQuickDate(-1)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: currentISO === isoDaDataOffset(-1) }}
+              accessibilityLabel="Escolher ontem"
+            >
               <Text style={styles.quickDateText}>Ontem</Text>
             </AppPressable>
-            <AppPressable style={styles.quickDateChip} onPress={handleFirstDayOfMonth}>
+            <AppPressable
+              style={styles.quickDateChip}
+              onPress={handleFirstDayOfMonth}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: currentISO === `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01` }}
+              accessibilityLabel="Escolher o primeiro dia deste mês"
+            >
               <Text style={styles.quickDateText}>Dia 1º deste mês</Text>
             </AppPressable>
           </View>

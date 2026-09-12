@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, sombras } from '@/lib/theme';
@@ -7,6 +7,7 @@ import { FAB_TAMANHO, useTabBarInset } from '@/lib/tab-bar';
 import AppPressable from './AppPressable';
 import { useReducedMotion } from '@/lib/motion';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
+import AppModal from './AppModal';
 
 export default function FabButton({
   onAddIncome,
@@ -173,13 +174,13 @@ export default function FabButton({
      é do tamanho exato do menu+botão, não da tela — vira o blindador
      (`Pressable` com `onPress` vazio) quando está dentro do Modal. */
   return open || mounted ? (
-    <Modal visible transparent animationType="none" onRequestClose={() => setOpen(false)}>
+    <AppModal visible transparent animationType="none" onRequestClose={() => setOpen(false)}>
       <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
         <Pressable ref={painelRef} style={posicaoStyle} onPress={() => {}} accessibilityViewIsModal role="dialog" focusable>
           {conteudo}
         </Pressable>
       </Pressable>
-    </Modal>
+    </AppModal>
   ) : (
     <View style={posicaoStyle}>{conteudo}</View>
   );

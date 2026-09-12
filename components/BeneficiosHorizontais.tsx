@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { CORTES, colunaConteudo } from '@/lib/breakpoints';
 import { fonts as uiFonts, radius, sombraCard, spacing, theme, type } from '@/lib/theme';
 import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import AppPressable from '@/components/AppPressable';
+import AppModal from '@/components/AppModal';
 import Sheet from '@/components/Sheet';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
@@ -250,7 +251,7 @@ export default function BeneficiosHorizontais({ itens, largura, altura, titulo, 
           </AppPressable>
         </View>
         {detalheAberto && (
-          <Modal transparent visible animationType="none" onRequestClose={() => setDetalheAberto(null)}>
+          <AppModal transparent visible animationType="none" onRequestClose={() => setDetalheAberto(null)}>
           <Sheet onClose={() => setDetalheAberto(null)}>
             <AppPressable accessibilityLabel="Fechar detalhes" onPress={() => setDetalheAberto(null)} style={{ minHeight: 44, minWidth: 44, alignSelf: 'flex-end', alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="close" size={24} color={theme.ink} aria-hidden />
@@ -259,7 +260,7 @@ export default function BeneficiosHorizontais({ itens, largura, altura, titulo, 
             <Text style={styles.detalheTitulo}>{detalheAberto.titulo}</Text>
             <Text style={styles.detalheTexto}>{detalheAberto.texto}</Text>
           </Sheet>
-          </Modal>
+          </AppModal>
         )}
       </View>
     );

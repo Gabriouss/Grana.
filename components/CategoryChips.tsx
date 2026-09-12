@@ -29,6 +29,9 @@ export default function CategoryChips({
           <AppPressable
             key={c.name}
             onPress={() => onChange(c.name)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            accessibilityLabel={`Categoria ${c.name}`}
             style={({ hovered }) => [
               styles.chip,
               selected && { borderColor: theme.ink, backgroundColor: theme.paperRaised },

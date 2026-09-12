@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, lh } from '@/lib/theme';
@@ -7,6 +7,7 @@ import { formatMoney } from '@/lib/format';
 import { hapticTap } from '@/lib/haptics';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
 import AppPressable from './AppPressable';
+import AppModal from './AppModal';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import ExportPdfButton from './ExportPdfButton';
 import type { Bill, Transaction } from '@/lib/types';
@@ -206,7 +207,7 @@ export default function MonthlyWrappedModal({
   }
 
   return (
-    <Modal visible={visible} animationType={reduzirMovimento ? 'none' : 'fade'} onRequestClose={onClose}>
+    <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'fade'} onRequestClose={onClose}>
       <View ref={modalRef} style={[styles.fundo, { paddingTop: insets.top + spacing.xl }]} accessibilityViewIsModal role="dialog" focusable>
         {/* Barra de progresso dos slides */}
         <View style={styles.progressoRow}>
@@ -284,7 +285,7 @@ export default function MonthlyWrappedModal({
           </AppPressable>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

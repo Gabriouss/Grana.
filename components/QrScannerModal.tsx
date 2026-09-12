@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  Modal,
   StyleSheet,
   Text,
   TextInput,
@@ -25,6 +24,7 @@ import { hapticSuccess, hapticTap } from '@/lib/haptics';
 import { LIMITS } from '@/lib/limits';
 import CategoryChips from './CategoryChips';
 import AppPressable from './AppPressable';
+import AppModal from './AppModal';
 import Sheet from './Sheet';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
@@ -166,7 +166,7 @@ export default function QrScannerModal({
     const semPermissao = !permissao?.granted;
 
     return (
-      <Modal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} onRequestClose={fechar}>
+      <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} onRequestClose={fechar}>
         <View ref={modalRef} style={styles.camWrap} accessibilityViewIsModal role="dialog" focusable>
           {semPermissao ? (
             <View style={styles.permissaoWrap}>
@@ -222,14 +222,14 @@ export default function QrScannerModal({
             </>
           )}
         </View>
-      </Modal>
+      </AppModal>
     );
   }
 
   /* ---- etapa 2: confirmação do lançamento ---- */
 
   return (
-    <Modal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent onRequestClose={fechar}>
+    <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent onRequestClose={fechar}>
       <Sheet centered onClose={fechar}>
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle}>Nota fiscal lida</Text>
@@ -311,7 +311,7 @@ export default function QrScannerModal({
           <Text style={styles.backLink}>Escanear outra nota</Text>
         </AppPressable>
       </Sheet>
-    </Modal>
+    </AppModal>
   );
 }
 

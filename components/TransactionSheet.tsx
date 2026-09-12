@@ -187,10 +187,22 @@ export default function TransactionSheet({
           {/* No crédito não existe "entrada": uma fatura só acumula gastos. */}
           {!ehCredito && !ehBoleto && (
             <View style={styles.typeRow}>
-              <AppPressable onPress={() => setType('out')} style={[styles.typeBtn, type === 'out' && styles.typeBtnOut]}>
+              <AppPressable
+                onPress={() => setType('out')}
+                style={[styles.typeBtn, type === 'out' && styles.typeBtnOut]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: type === 'out' }}
+                accessibilityLabel="Tipo: saída"
+              >
                 <Text style={[styles.typeText, type === 'out' && styles.typeTextOn]}>Saída</Text>
               </AppPressable>
-              <AppPressable onPress={() => setType('in')} style={[styles.typeBtn, type === 'in' && styles.typeBtnIn]}>
+              <AppPressable
+                onPress={() => setType('in')}
+                style={[styles.typeBtn, type === 'in' && styles.typeBtnIn]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: type === 'in' }}
+                accessibilityLabel="Tipo: entrada"
+              >
                 <Text style={[styles.typeText, type === 'in' && styles.typeTextOn]}>Entrada</Text>
               </AppPressable>
             </View>
@@ -285,18 +297,27 @@ export default function TransactionSheet({
               <AppPressable
                 style={[styles.dateQuickChip, occurredOn === todayISO() && styles.dateQuickChipActive]}
                 onPress={() => setOccurredOn(todayISO())}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: occurredOn === todayISO() }}
+                accessibilityLabel="Data: hoje"
               >
                 <Text style={[styles.dateQuickText, occurredOn === todayISO() && styles.dateQuickTextActive]}>Hoje</Text>
               </AppPressable>
               <AppPressable
                 style={[styles.dateQuickChip, occurredOn === yISO && styles.dateQuickChipActive]}
                 onPress={() => setOccurredOn(yISO)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: occurredOn === yISO }}
+                accessibilityLabel="Data: ontem"
               >
                 <Text style={[styles.dateQuickText, occurredOn === yISO && styles.dateQuickTextActive]}>Ontem</Text>
               </AppPressable>
               <AppPressable
                 style={[styles.dateQuickChip, dataCustomizada && styles.dateQuickChipActive]}
                 onPress={() => setDatePickerOpen(true)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: dataCustomizada }}
+                accessibilityLabel="Data: escolher no calendário"
               >
                 <Text style={[styles.dateQuickText, dataCustomizada && styles.dateQuickTextActive]}>Calendário</Text>
               </AppPressable>

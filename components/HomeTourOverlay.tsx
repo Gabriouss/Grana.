@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import AppPressable from '@/components/AppPressable';
+import AppModal from '@/components/AppModal';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import type { HomeTourStep, HomeTourStepId } from '@/lib/home-tour';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
@@ -122,7 +123,7 @@ export default function HomeTourOverlay({ visible, steps, targets, onFinish, onS
   }
 
   return (
-    <Modal visible transparent animationType={reduzirMovimento ? 'none' : 'fade'} onRequestClose={onFinish}>
+    <AppModal visible transparent animationType={reduzirMovimento ? 'none' : 'fade'} onRequestClose={onFinish}>
       <View ref={modalRef} style={styles.fundo} accessibilityViewIsModal role="dialog" focusable>
         <View
           style={[
@@ -158,7 +159,7 @@ export default function HomeTourOverlay({ visible, steps, targets, onFinish, onS
           </View>
         </Animated.View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

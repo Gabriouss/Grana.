@@ -24,8 +24,9 @@ type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (p
 /* As SEIS rotas principais da barra. O par outline/preenchido existe porque o estado
    ativo não pode depender só de cor: preenchimento é a segunda pista, e é a
    que continua legível pra quem não distingue bem menta de cinza-esverdeado.
-   O Granachat não está aqui de propósito — ele não é rota, é uma janela
-   flutuante, e entra injetado no meio da fileira (ver `BotaoGranabo`).
+    O Granachat não está aqui de propósito — ele não é rota, é uma janela
+    flutuante. O botão do Granabô fica sobre a barra como ação independente,
+    sem roubar largura dos seis destinos de navegação.
    Nomenclatura: **Granabô** é o assistente (o personagem, e o que a copy
    mostra); **Granachat** é a janela de conversa com ele. */
 /* Ordem das abas na barra. Serve só pra decidir a DIREÇÃO da entrada da cena
@@ -97,14 +98,12 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
             e abaixo dos ícones, na borda que pega a luz. */}
         <View style={styles.brilhoSuperior} pointerEvents="none" />
 
-        {/* O botão do Granabô é o único item da barra que NÃO é rota: ele abre
-            o Granachat por cima da tela atual. Por isso entra injetado no meio
-            da fileira (índice 3 das rotas principais) em vez de sair de `state.routes` —
-            trocar de tela pra perguntar sobre o que está na tela seria perder
-            justamente o contexto que motivou a pergunta. */}
+        {/* O botão do Granabô é o único item que NÃO é rota: ele abre o
+            Granachat por cima da tela atual. Fica sobre a barra, fora da divisão
+            dos seis destinos, para preservar o contexto e os alvos de toque. */}
         {state.routes
           .filter((route) => ICONS[route.name])
-          .flatMap((route, posicao) => {
+          .map((route) => {
             const index = state.routes.indexOf(route);
             const { options } = descriptors[route.key];
             const focused = state.index === index;
@@ -117,22 +116,19 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
               }
             }
 
-            const destaque =
-              posicao === 3 ? (
-                <BotaoGranabo key="granabo" ativo={chatAberto} onPress={onAlternarChat} />
-              ) : null;
-
-            return [
-              destaque,
+            return (
               <TabButton
                 key={route.key}
                 icones={ICONS[route.name]}
                 focused={focused}
                 label={label}
                 onPress={onPress}
-              />,
-            ];
+              />
+            );
           })}
+      </View>
+      <View style={[styles.granaboFlutuante, { bottom: margem + 68 + spacing.xs }]}>
+        <BotaoGranabo ativo={chatAberto} onPress={onAlternarChat} />
       </View>
     </View>
   );
@@ -429,7 +425,10 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.xl,
+    /* A barra reserva largura para seis alvos de toque. A margem menor é
+       intencional: os cards continuam usando `spacing.xl`, mas a navegação
+       precisa preservar 48dp por item no Android compacto. */
+    marginHorizontal: spacing.sm,
     /* marginBottom vem do useTabBarInset() — depende da navegação do sistema
        (gesture bar vs. 3 botões), então não pode ser fixo aqui. */
     height: 68,
@@ -494,13 +493,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'rgba(174,255,227,0.14)',
   },
-  /* O slot do destaque não usa `flex: 1`: largura fixa reserva exatamente o
-     disco, e os irmãos dividem o resto por igual entre si. Com `flex: 1`
-     em todos, o disco de 56 espremeria os vizinhos de forma desigual conforme
-     a largura da tela. */
+  /* O botão do Granabô fica fora da divisão horizontal dos destinos. Assim os
+     seis itens continuam com pelo menos 48dp em telefones compactos. */
   destaqueSlot: {
     width: 78,
     height: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  granaboFlutuante: {
+    position: 'absolute',
+    left: '50%',
+    width: 78,
+    height: 78,
+    marginLeft: -39,
     alignItems: 'center',
     justifyContent: 'center',
   },

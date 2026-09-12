@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { mensagemErro } from '@/lib/erros';
-import { ActivityIndicator, AppState, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 /* `expo-image` e não o `Image` do React Native: a foto de perfil vem de URL
    remota e era decodificada em tamanho cheio a cada montagem de tela, sem
    cache em disco no Android. Com `cachePolicy="disk"` ela é lida uma vez. */
@@ -15,6 +15,7 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { useRouter } from 'expo-router';
 import HeaderAction from '@/components/HeaderAction';
+import AppModal from '@/components/AppModal';
 import {
   definirEstado as definirEstadoWidgetVoz,
   estadoAtual as estadoWidgetVoz,
@@ -867,7 +868,7 @@ export default function PerfilScreen() {
 
       {/* Toast */}
       {/* Edição do nome de exibição. */}
-      <Modal visible={nomeOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setNomeOpen(false)}>
+      <AppModal visible={nomeOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setNomeOpen(false)}>
         <ScrollView
           style={styles.reauthScrimFundo}
           contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
@@ -904,10 +905,10 @@ export default function PerfilScreen() {
             </AppPressable>
           </View>
         </ScrollView>
-      </Modal>
+      </AppModal>
 
       {/* Reautenticação antes de excluir a conta. */}
-      <Modal
+      <AppModal
         visible={reauthOpen}
         animationType={reduzirMovimento ? 'none' : 'fade'}
         transparent
@@ -963,10 +964,10 @@ export default function PerfilScreen() {
             </AppPressable>
           </View>
         </ScrollView>
-      </Modal>
+      </AppModal>
 
       {/* Guia de atalhos rápidos (deep links) */}
-      <Modal visible={atalhosOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setAtalhosOpen(false)}>
+      <AppModal visible={atalhosOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setAtalhosOpen(false)}>
         <ScrollView
           style={styles.reauthScrimFundo}
           contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
@@ -1010,7 +1011,7 @@ export default function PerfilScreen() {
             </AppPressable>
           </View>
         </ScrollView>
-      </Modal>
+      </AppModal>
 
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
     </SafeAreaView>

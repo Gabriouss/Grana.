@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,6 +37,7 @@ import {
 } from '@/lib/diagnostico';
 import { layoutDoPreset, salvarLayoutHome, type HomePreset } from '@/lib/home-layout';
 import AppPressable from './AppPressable';
+import AppModal from './AppModal';
 import { useKeyboardHeight } from './Sheet';
 import { useFlags } from '@/lib/feature-flags';
 
@@ -384,7 +384,7 @@ export default function OnboardingModal({
   const progresso = Math.min(step + 1, TOTAL_ETAPAS);
 
   return (
-    <Modal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent={false} onRequestClose={onClose}>
+    <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent={false} onRequestClose={onClose}>
       {/* Tela cheia: o campo de renda ficaria atrás do teclado, já que no
           modo edge-to-edge a janela não encolhe sozinha. */}
       <View
@@ -717,7 +717,7 @@ export default function OnboardingModal({
           )}
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 
