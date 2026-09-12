@@ -1,6 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { fonts as uiFonts, radius, spacing, theme, type } from '@/lib/theme';
+import { UI_OUT, useReducedMotion } from '@/lib/motion';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
@@ -10,6 +12,74 @@ type Passo = {
   texto: string;
 };
 
+const ENTRADA = Easing.bezier(...UI_OUT);
+
+/**
+ * Dispara uma vez, quando a trilha entra na tela — mesma técnica de
+ * `RevealOnScroll` (IntersectionObserver + checagem de
+ * `prefers-reduced-motion`/`AccessibilityInfo`), reduzida ao essencial
+ * porque aqui não há variante nem atraso configurável: um `boolean` que
+ * nasce falso e vira verdadeiro uma única vez.
+ *
+ * Não reaproveita `RevealOnScroll` porque este não é um fade de entrada —
+ * é o gatilho de uma SEQUÊNCIA coreografada (mensagem → seta → lançamento)
+ * que mora dentro da própria cena, já dentro do `ScrollLinkedView` que faz
+ * a dobra inteira crescer ao rolar.
+ */
+function useEntrouNaTela() {
+  const ref = useRef<View>(null);
+  const [entrou, setEntrou] = useState(() =>
+    Platform.OS !== 'web' ||
+    typeof window === 'undefined' ||
+    typeof IntersectionObserver === 'undefined' ||
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
+
+  useEffect(() => {
+    if (entrou || Platform.OS !== 'web' || typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
+
+    let cancelado = false;
+    let observador: IntersectionObserver | undefined;
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((reduzir) => {
+        if (cancelado) return;
+        if (reduzir) {
+          setEntrou(true);
+          return;
+        }
+        const no = ref.current as unknown as HTMLElement | null;
+        if (!no) {
+          setEntrou(true);
+          return;
+        }
+        const obs = new IntersectionObserver(
+          ([entrada]) => {
+            if (entrada.isIntersecting) {
+              setEntrou(true);
+              obs.disconnect();
+            }
+          },
+          { rootMargin: '0px 0px 15% 0px', threshold: 0 }
+        );
+        observador = obs;
+        obs.observe(no);
+      })
+      .catch(() => setEntrou(true));
+
+    // Desconecta em qualquer saída: componente desmontado antes de a
+    // promessa resolver, ou antes de a trilha chegar a entrar na tela. Sem
+    // isto o `IntersectionObserver` seguiria observando um nó já removido
+    // do DOM até a página inteira ser descartada.
+    return () => {
+      cancelado = true;
+      observador?.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { ref, entrou };
+}
+
 /**
  * Cada passo mostra o mecanismo ACONTECENDO, não um ícone que repete a
  * palavra do título. Ícone de balãozinho ao lado de "Fale com o Granabô"
@@ -18,36 +88,116 @@ type Passo = {
  *
  * Dimensionadas pro card compacto primeiro (≈350px de largura no celular):
  * tudo que precisa caber, cabe lá, e sobra folga no amplo.
+ *
+ * ── A sequência (o momento de autoria desta dobra) ──────────────────────
+ * A cena inteira nascia montada de uma vez — mensagem, seta e lançamento
+ * já visíveis juntos, o que conta a promessa da dobra ("você fala e o
+ * Grana. organiza") sem NUNCA mostrar o mecanismo acontecendo. Agora, uma
+ * vez que a trilha entra na tela: a mensagem chega (280ms), a seta acende
+ * (140ms) e só então o lançamento categorizado materializa (320ms), com o
+ * ponto de categoria chegando por último — é a peça que prova que a
+ * categorização foi automática, não só que "um lançamento apareceu".
+ * Roda uma vez só; sem `prefers-reduced-motion` tudo nasce no estado final.
  */
-function CenaFala() {
+function CenaFala({ iniciar }: { iniciar: boolean }) {
+  const reduzirMovimento = useReducedMotion();
+  const mensagem = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
+  const seta = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
+  const lancamento = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
+  const ponto = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (!iniciar) return;
+    if (reduzirMovimento) {
+      [mensagem, seta, lancamento, ponto].forEach((valor) => valor.setValue(1));
+      return;
+    }
+    const sequencia = Animated.sequence([
+      Animated.timing(mensagem, { toValue: 1, duration: 280, easing: ENTRADA, useNativeDriver: true }),
+      Animated.timing(seta, { toValue: 1, duration: 140, easing: ENTRADA, useNativeDriver: true }),
+      Animated.timing(lancamento, { toValue: 1, duration: 320, easing: ENTRADA, useNativeDriver: true }),
+      Animated.timing(ponto, { toValue: 1, duration: 180, easing: ENTRADA, useNativeDriver: true }),
+    ]);
+    sequencia.start();
+    return () => sequencia.stop();
+  }, [iniciar, reduzirMovimento, mensagem, seta, lancamento, ponto]);
+
   return (
     <View style={styles.cena}>
-      <View style={styles.mensagemEnviada}>
+      <Animated.View
+        style={[
+          styles.mensagemEnviada,
+          { opacity: mensagem, transform: [{ translateY: mensagem.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }, { scale: mensagem.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }] },
+        ]}
+      >
         <Text style={styles.mensagemTexto}>almoço 32 no mercado</Text>
-      </View>
-      <View style={styles.setaCena} aria-hidden>
+      </Animated.View>
+      <Animated.View style={[styles.setaCena, { opacity: seta }]} aria-hidden>
         <Ionicons name="arrow-down" size={14} color={theme.accent2} />
-      </View>
-      <View style={styles.lancamentoCena}>
-        <View style={[styles.pontoCategoria, { backgroundColor: '#bb6b60' }]} />
+      </Animated.View>
+      <Animated.View
+        style={[
+          styles.lancamentoCena,
+          { opacity: lancamento, transform: [{ translateY: lancamento.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }, { scale: lancamento.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }] },
+        ]}
+      >
+        <Animated.View style={[styles.pontoCategoria, { backgroundColor: '#bb6b60', transform: [{ scale: ponto }] }]} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.lancamentoTitulo}>Almoço no mercado</Text>
           <Text style={styles.lancamentoMeta}>Alimentação</Text>
         </View>
         <Text style={styles.lancamentoValor}>− R$ 32,00</Text>
-      </View>
+      </Animated.View>
     </View>
   );
 }
 
-function CenaLugares() {
+/**
+ * Continuidade, não mecanismo: a MESMA `linhaDestacada` chegando primeiro
+ * no celular e, com uma pausa curta, no computador — é o "aparece nos dois
+ * lugares" da copy virando algo que se vê acontecer, em vez de dois
+ * aparelhos desenhados lado a lado que só por coincidência têm uma linha
+ * colorida igual.
+ */
+function CenaLugares({ iniciar }: { iniciar: boolean }) {
+  const reduzirMovimento = useReducedMotion();
+  const noCelular = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
+  const noNavegador = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (!iniciar) return;
+    if (reduzirMovimento) {
+      noCelular.setValue(1);
+      noNavegador.setValue(1);
+      return;
+    }
+    const sequencia = Animated.sequence([
+      Animated.timing(noCelular, { toValue: 1, duration: 260, easing: ENTRADA, useNativeDriver: true }),
+      Animated.timing(noNavegador, { toValue: 1, duration: 260, easing: ENTRADA, useNativeDriver: true }),
+    ]);
+    sequencia.start();
+    return () => sequencia.stop();
+  }, [iniciar, reduzirMovimento, noCelular, noNavegador]);
+
+  // O estilo original descansa em opacity 0,75 (mais sutil que o resto da
+  // cena) — a interpolação precisa terminar ali, não em 1, senão a linha
+  // fica mais forte do que o desenho original pedia assim que a sequência
+  // termina.
+  const linhaAnimada = (valor: Animated.Value) => [
+    styles.linhaDestacada,
+    {
+      opacity: valor.interpolate({ inputRange: [0, 1], outputRange: [0, 0.75] }),
+      transform: [{ scaleX: valor.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
+    },
+  ];
+
   return (
     <View style={[styles.cena, styles.cenaLugares]}>
       <View style={styles.celular}>
         <View style={styles.celularTela}>
           <View style={styles.linhaFalsa} />
           <View style={[styles.linhaFalsa, styles.linhaCurta]} />
-          <View style={styles.linhaDestacada} />
+          <Animated.View style={linhaAnimada(noCelular)} />
         </View>
       </View>
       <View style={styles.navegador}>
@@ -58,7 +208,7 @@ function CenaLugares() {
         </View>
         <View style={styles.navegadorTela}>
           <View style={styles.linhaFalsa} />
-          <View style={styles.linhaDestacada} />
+          <Animated.View style={linhaAnimada(noNavegador)} />
           <View style={[styles.linhaFalsa, styles.linhaCurta]} />
         </View>
       </View>
@@ -83,12 +233,13 @@ const PASSOS: Passo[] = [
 ];
 
 export default function TrilhaPassos({ compacto = false }: { compacto?: boolean }) {
+  const { ref, entrou } = useEntrouNaTela();
   return (
-    <View style={styles.raiz}>
+    <View ref={ref} style={styles.raiz}>
       <View style={[styles.passos, compacto && styles.passosCompactos]}>
         {PASSOS.map((passo) => (
           <View key={passo.titulo} style={styles.passo}>
-            {passo.cena === 'fala' ? <CenaFala /> : <CenaLugares />}
+            {passo.cena === 'fala' ? <CenaFala iniciar={entrou} /> : <CenaLugares iniciar={entrou} />}
             <Text style={styles.tituloPasso}>{passo.titulo}</Text>
             <Text style={styles.textoPasso}>{passo.texto}</Text>
           </View>
