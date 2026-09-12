@@ -266,6 +266,31 @@ for (const familia of unicas) {
   checar('arquivo da fonte ' + familia + ' existe em assets/fonts', existe);
 }
 
+/* ---- Janela de ação nunca ancora na borda de baixo ----
+ *
+ * Regra dada pelo autor em 12/09/2026, olhando duas telas: a janela de
+ * Editar/Excluir de um lançamento, em que "Excluir" ficava por baixo da barra
+ * de gestos do Android, e a de Gerenciar categorias. Toda janela de ação do
+ * app flutua centralizada, em qualquer largura.
+ *
+ * Quem centraliza é `useSheetFlutuante` (lib/breakpoints.ts), direto ou por
+ * dentro de `components/Sheet.tsx`. A guarda então é: arquivo que desenha um
+ * fundo escurecido colando o painel embaixo precisa passar por um dos dois,
+ * senão ficou de fora da varredura. */
+{
+  const centralizadores = ['useSheetFlutuante', "from './Sheet'", "from '@/components/Sheet'", '<Sheet'];
+  const scrimAncorado = /[Ss]crim\w*:\s*\{[^}]*justifyContent:\s*'flex-end'/;
+  for (const caminho of [...arquivos('components'), ...arquivos('app')]) {
+    const src = semComentarios(readFileSync(caminho, 'utf8'));
+    if (!scrimAncorado.test(src)) continue;
+    checar(
+      'janela de ação flutua, não ancora embaixo: ' + caminho,
+      centralizadores.some((marca) => src.includes(marca)),
+      'o fundo escurecido cola o painel na borda de baixo e o arquivo não usa useSheetFlutuante nem Sheet'
+    );
+  }
+}
+
 console.log(
   '\n' + passaram + '/' + (passaram + falhas) + ' guardas do design system passaram — ' + falhas + ' falhas'
 );

@@ -1,5 +1,5 @@
 import { Platform, useWindowDimensions } from 'react-native';
-import { radius } from './theme';
+import { radius, spacing } from './theme';
 
 /**
  * Classes de largura da janela em web, iOS e Android. O tamanho da janela —
@@ -118,34 +118,65 @@ export function classificarLargura(largura: number): ClasseLargura {
 }
 
 /**
- * Toda folha modal do app (comprovante, categoria, data, orçamento etc.) usa
- * o mesmo par `modalScrim`/`sheet`: fundo escurecido + painel ancorado
- * embaixo, esticado `width: '100%'`. Faz sentido no celular — é a única
- * largura que existe —, mas na web larga essa mesma folha esticava de
- * ponta a ponta de um monitor de 1440px+, lendo como bug e não como janela.
- * `medio` (768px) para cima ela passa a ser uma janela centralizada e
- * estreita, do jeito que qualquer modal de desktop se comporta.
+ * Toda janela de ação do app (comprovante, categoria, data, orçamento,
+ * editar/excluir etc.) passa por aqui, e o que ela devolve decide se o painel
+ * flutua no centro ou fica colado na borda de baixo.
+ *
+ * **Flutua em TODA largura, inclusive no celular.** Até 12/09/2026 ela só
+ * flutuava de `medio` (768px) para cima; no celular devolvia estilo nulo e o
+ * painel voltava a ser a folha ancorada embaixo, com os cantos de cima
+ * arredondados e os de baixo retos. O autor pediu a mudança olhando duas
+ * telas onde isso incomodava: a janela de Editar/Excluir de um lançamento,
+ * em que a palavra "Excluir" ficava por baixo da barra de gestos do Android,
+ * e a de Gerenciar categorias. Janela centralizada não tem esse problema,
+ * porque nunca encosta na borda.
+ *
+ * O que muda com a largura é só o TAMANHO. No celular ela ocupa quase tudo,
+ * com uma margem lateral fina que vem do recuo do próprio fundo escurecido:
+ * o suficiente para ler como janela, e não como a tela inteira. Numa web
+ * larga ela vira uma janela estreita, porque esticar de ponta a ponta num
+ * monitor de 1440px+ lê como defeito.
  */
 export function useSheetFlutuante() {
   const { ehCompacto } = useBreakpoint();
-  const flutuante = !ehCompacto;
   return {
-    flutuante,
-    scrimStyle: flutuante ? sheetFlutuanteScrim : null,
-    sheetStyle: flutuante ? sheetFlutuantePainel : null,
+    flutuante: true,
+    scrimStyle: sheetFlutuanteScrim,
+    sheetStyle: ehCompacto ? sheetFlutuantePainelCompacto : sheetFlutuantePainel,
   };
 }
 
-const sheetFlutuanteScrim = { justifyContent: 'center', alignItems: 'center' } as const;
+/* O recuo é o que cria a margem lateral da janela no celular, e por isso vive
+   no fundo e não no painel: assim o painel pode continuar pedindo
+   `width: '100%'` sem encostar na borda da tela. */
+const sheetFlutuanteScrim = { justifyContent: 'center', alignItems: 'center', padding: spacing.md } as const;
 
-/** 30% da largura da janela, com piso e teto para não virar uma fresta num
+/* Os quatro cantos precisam ser declarados juntos. O estilo base das folhas
+   arredonda só os de cima (`borderTopLeftRadius`), e em React Native a
+   propriedade específica vence a genérica: sem repetir as duas de cima aqui,
+   a janela flutuante ficaria com o rodapé arredondado e o topo no raio
+   antigo do Android. */
+const cantosDeJanela = {
+  borderRadius: radius.xl,
+  borderTopLeftRadius: radius.xl,
+  borderTopRightRadius: radius.xl,
+} as const;
+
+/** Celular: quase a largura toda, com a margem vindo do recuo do fundo. */
+const sheetFlutuantePainelCompacto = {
+  width: '100%',
+  maxHeight: '85%',
+  ...cantosDeJanela,
+} as const;
+
+/** Web larga: 30% da janela, com piso e teto para não virar uma fresta num
     notebook de 1024px nem uma faixa fina demais num ultrawide. */
 const sheetFlutuantePainel = {
   width: '30%',
   minWidth: 420,
   maxWidth: 560,
   maxHeight: '85%',
-  borderRadius: radius.xl,
+  ...cantosDeJanela,
 } as const;
 
 export function useBreakpoint(): Breakpoint {

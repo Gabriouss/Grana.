@@ -81,7 +81,7 @@ export default function Sheet({
 }) {
   const keyboardHeight = useKeyboardHeight();
   const insets = useSafeAreaInsets();
-  const { scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
+  const { flutuante, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const painelRef = useRef<View>(null);
   useModalAccessibility(painelRef);
 
@@ -113,7 +113,10 @@ export default function Sheet({
         role="dialog"
         focusable
       >
-        {Platform.OS !== 'web' ? <View style={styles.handle} accessible={false} /> : null}
+        {/* A alcinha é vocabulário de folha que se arrasta a partir da borda
+            de baixo. Como a janela agora flutua no centro em toda largura, ela
+            passou a prometer um gesto que não existe, então sai. */}
+        {Platform.OS !== 'web' && !flutuante ? <View style={styles.handle} accessible={false} /> : null}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={[
@@ -126,7 +129,16 @@ export default function Sheet({
                em cima da barra do Android, preciso arrastar pra ver". Com
                teclado aberto o próprio teclado já cobre essa área, então o
                inset não soma de novo ali. */
-            { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 36 : insets.bottom + spacing.lg },
+            /* `insets.bottom` só entra quando a janela ENCOSTA na borda de
+               baixo. Centralizada ela nunca encosta, e somar a faixa da barra
+               de gestos ali dentro criaria um vão morto no rodapé do painel,
+               que foi reportado antes como "esse espaço não deveria existir". */
+            {
+              paddingBottom:
+                keyboardHeight > 0
+                  ? keyboardHeight + 36
+                  : (flutuante ? 0 : insets.bottom) + spacing.lg,
+            },
             contentStyle,
           ]}
           keyboardShouldPersistTaps="handled"
