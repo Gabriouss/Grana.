@@ -1,5 +1,101 @@
 # Contexto do projeto — Grana.
 
+## 12/09/2026 — trabalho não commitado da sessão anterior, publicado, e motion na landing
+
+Sessão reaberta depois de troca de modelo/compactação de contexto. Antes de
+qualquer coisa nova: `git status` mostrava 12 arquivos modificados, sem
+commit, que não eram meus — sobra da sessão anterior ("reforma das
+janelas"/Escape, ver seção de 12/09 acima) interrompida antes do commit
+final. Inventário (regra 10): uma branch só, `main`, sem worktree nem
+stash, sem divergência de `origin/main`.
+
+**Inspecionado arquivo por arquivo antes de tocar em qualquer coisa** — não
+dava pra saber se era trabalho pronto ou pela metade sem ler o diff. Era
+pronto: a continuação direta de `1a5072e` ("preservar limite dos modais e
+fechar apenas topo com Escape"). Aquele commit consertou o mecanismo em
+`AppModal`/`useModalAccessibility`; estes 12 arquivos terminam de levar TODA
+tela que ainda montava `<Modal>` cru da `react-native` para o wrapper —
+`BeneficiosHorizontais`, `FabButton`, `HomeTourOverlay`,
+`MonthlyWrappedModal`, `OnboardingModal`, `QrScannerModal`, três modais de
+`perfil.tsx`. Confirmado depois, por grep: nenhum componente do app importa
+mais `Modal` de `react-native` diretamente, só o próprio `AppModal.tsx`.
+
+**O caso que importava de verdade era `Granachat.tsx`.** Ele nunca usou
+`<Modal>` — é uma `View` absoluta por cima da tela — e por isso tinha um
+`document.addEventListener('keydown', ...)` PRÓPRIO pro Escape, que fechava
+o chat mesmo com outra janela por cima dele. Trocado por
+`useModalAccessibility`, o mesmo mecanismo que já resolve foco, `Tab` e
+"fecha só o topo" pras demais.
+
+Achado um defeito de indentação em `CategoryChips.tsx` (JSX bem formado,
+recuo visualmente errado) e corrigido antes de commitar.
+
+`app/(app)/_layout.tsx`: o botão do Granabô sai da fileira `flex` da barra
+de abas e vira um círculo flutuante posicionado por cima dela
+(`position: absolute`). Antes, os seis destinos de navegação dividiam a
+largura com um sétimo item (o botão), o que empurrava o alvo de toque de
+cada rota abaixo de 48dp em Android compacto.
+
+Grupos de opção exclusiva ganharam `accessibilityRole="radio"` +
+`accessibilityState`/`accessibilityLabel`: tipo de lançamento e atalho de
+data em `TransactionSheet`, chip de categoria em `CategoryChips`, célula e
+atalho de data em `DatePickerModal`. Antes eram `AppPressable` mudos pra
+leitor de tela sobre qual opção estava selecionada.
+
+`npx tsc --noEmit` limpo e `npm run test:ci` completo com saída 0 —
+incluindo `voz-auditoria-rodada6.cjs`/`rodada7.cjs`, que já apareciam com
+92/92 e sem reprovação: as correções que zeravam os seis achados da
+bateria 6 (registrados em 10/09) também faziam parte deste apanhado de
+trabalho não commitado. Publicado em `29cd70c`.
+
+### `/impeccable animate`, sem alvo — escolhido a landing pública
+
+Rodado `scripts/context.mjs` do skill antes de agir. Perguntado ao autor
+onde aplicar motion (app autenticado tinha um roteiro de 05/09 quase todo
+implementado sem status atualizado — 003/004/007/008 feitos, só 006 [voz]
+pendente — vs. varredura nova vs. landing). Escolhida a **landing**.
+
+**Antes de desenhar qualquer coisa, mapeado o que a landing já tem**, pra
+não repetir animação madura: `RevealOnScroll` com 4 variantes desde a
+auditoria de 02/09/2026 (`padrao`/`titulo`/`card`/`prova`, cada forma de
+entrada distinta), `ScrollLinkedView` (parallax/zoom ligado ao scroll),
+`PrecoAnimado` (contagem do preço ao trocar de plano, já com guarda de
+`prefers-reduced-motion`), `NavFlutuanteLanding`, `SegmentedTabs`,
+`NotebookAnimado`, `TrustMarquee`, `FaqItem` (plano 001, `DONE`). Isso
+cobre entrada, continuidade e feedback em quase toda a página.
+
+**A lacuna real:** `TrilhaPassos.tsx`, a dobra "Você fala e o Grana.
+organiza" — a demonstração do MECANISMO central do produto
+(`PRODUCT.md`: "entrada por voz alimentando um categorizador automático").
+As duas cenas (`CenaFala`, `CenaLugares`) nasciam com todos os elementos já
+montados juntos, sem nunca MOSTRAR a transformação acontecendo.
+
+Implementada uma sequência coreografada, disparada uma vez quando a
+trilha entra na tela (`IntersectionObserver` dedicado, mesma técnica de
+`RevealOnScroll`, não reaproveitado porque isto é uma sequência com
+múltiplos passos, não um fade binário): mensagem chega (280ms) → seta
+acende (140ms) → lançamento categorizado materializa (320ms) → ponto de
+categoria chega por último (180ms) — a peça que prova categorização
+automática, não só "um lançamento apareceu". `CenaLugares` ganhou o par de
+continuidade: a mesma linha destacada aparecendo primeiro no celular e,
+com uma pausa curta, no navegador.
+
+Dois defeitos pegos e corrigidos ANTES de commitar, não depois: o
+`IntersectionObserver` vazava porque o cleanup verdadeiro do `useEffect`
+não desconectava o observador (o retorno de dentro do `.then()` não é o
+retorno do `useEffect`) — só um `cancelado` sem `observador?.disconnect()`;
+e a opacidade final da linha destacada interpolava até 1 em vez do 0,75
+do desenho original, o que deixaria a linha mais forte do que deveria.
+
+`npx tsc --noEmit` limpo, `npm run test:parser` com 1268/1268 guardas do
+design system. **Não verificado: nada em navegador real.** Sem Playwright
+nem Puppeteer instalados nesta máquina, a sequência foi conferida por
+leitura de código (valores de interpolação, dependências de efeito,
+timing dentro das faixas do playbook `animate.md`), não por captura de
+tela. QA pendente: abrir a landing, rolar até "Lançar é esforço quase
+zero", conferir a sequência a olho e com `prefers-reduced-motion` ligado.
+Publicado em `9dc7878`.
+
 ## 12/09/2026 — revisão dos modais após os vídeos
 
 Pedido: "corrija os achados". O autor esclareceu que o primeiro vídeo era
