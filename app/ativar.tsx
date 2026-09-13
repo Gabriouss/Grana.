@@ -155,17 +155,21 @@ export default function Ativar() {
                 ? 'Entre ou crie sua conta com o e-mail que preferir — assim que você logar, sua assinatura é vinculada automaticamente.'
                 : 'Entre ou crie sua conta com o mesmo e-mail usado na compra — o acesso libera sozinho, sem precisar de mais nada.'}
             </Text>
+            {/* "Criar conta" em destaque, e não "Entrar": quem chega aqui
+                veio do e-mail de uma compra que acabou de acontecer, e o caso
+                comum é não ter conta ainda. Quem já tem reconhece o "Entrar"
+                logo abaixo sem precisar de destaque. */}
             <AppPressable
               style={({ hovered }) => [styles.primaryBtn, hovered && styles.primaryBtnHover]}
-              onPress={() => router.push('/sign-in')}
+              onPress={() => router.push('/sign-up')}
             >
-              <Text style={styles.primaryBtnText}>Entrar</Text>
+              <Text style={styles.primaryBtnText}>Criar conta</Text>
             </AppPressable>
             <AppPressable
               style={({ hovered }) => [styles.secondaryBtn, hovered && styles.secondaryBtnHover]}
-              onPress={() => router.push('/sign-up')}
+              onPress={() => router.push('/sign-in')}
             >
-              <Text style={styles.secondaryBtnText}>Criar conta</Text>
+              <Text style={styles.secondaryBtnText}>Já tenho conta</Text>
             </AppPressable>
           </>
         )}
