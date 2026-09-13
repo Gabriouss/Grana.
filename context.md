@@ -1,5 +1,69 @@
 # Contexto do projeto — Grana.
 
+# 13/09/2026 — quem paga não recebe nenhum link pra criar conta, e a Cakto finge que aceitou o conserto
+
+**O pedido, com vídeo.** "Atualmente como o usuário recebe o link para criar
+sua conta no Grana.? Como ele sabe que já está apto para criar sua conta?",
+com a gravação da própria caixa de entrada mostrando os e-mails da compra de
+teste de hoje.
+
+**O que o e-mail de verdade contém, e o que falta nele.** "Pagamento
+Confirmado — Pedido #sRJRl8y", da Cakto: detalhes do pedido, o contato do
+PRODUTOR pra dúvida sobre o produto (hoje mostra o Gmail pessoal do autor,
+porque `supportEmail` do produto está `null` e a Cakto cai no e-mail da
+conta), e depois só bloco genérico de suporte/legal da própria Cakto (RA1000,
+"baixe o app da Cakto"). **Nenhum link pro Grana., nenhuma instrução do que
+fazer a seguir.**
+
+**Causa, na API do produto:** `contentDeliveries: ["disabled"]` e
+`emailAccessLink: null`. Sem entrega de conteúdo configurada, a Cakto não tem
+o que incluir no e-mail.
+
+**O caminho que já funciona, e por que ele não basta sozinho.** Quem compra e
+depois cria conta no Grana. com o MESMO e-mail da compra é vinculado
+automaticamente (`vincularAssinaturasPendentes`, `lib/assinatura.ts`), sem
+precisar de link nenhum. Mas isso exige que a pessoa já saiba, por conta
+própria, que precisa baixar o app e usar aquele e-mail — nada no fluxo de
+compra ensina isso.
+
+**Metade da correção, em código, publicada.** `app/ativar.tsx` era o destino
+pensado só pra um link com token por comprador (que a Cakto não tem — ver
+abaixo). Sem token, mostrava "Este link de ativação está incompleto", sem
+nenhum botão: um beco sem saída. Agora, sem token, a tela orienta "Entre ou
+crie sua conta com o mesmo e-mail usado na compra" com os botões Entrar/Criar
+conta. `tsc` e `npm run test:ci` limpos, publicado em `729deea`, e a Vercel
+já reimplantou sozinha (confirmado lendo o deployment pela API, `READY`) —
+é só o site, não precisa de build de APK.
+
+**A outra metade, tentada e travada num defeito da própria Cakto.** Tentei
+ligar `contentDeliveries` para `["emailAccess"]` e `emailAccessLink` para
+`https://granaponto.com.br/ativar`, com aprovação prévia do autor. A escrita
+respondeu `ok: true` com as duas mudanças aparentemente aplicadas — só que uma
+releitura imediata (`products_retrieve`) mostrou `emailAccessLink` realmente
+gravado, e `contentDeliveries` **de volta em `["disabled"]`**, como se a
+chamada nunca tivesse pedido a mudança. Não é a primeira vez: é o mesmíssimo
+padrão do Pix Automático de 12/09, documentado em
+[[Preço Vigente e Parcelamento - Cakto]] — a API mente sobre o que aplicou, e
+só uma releitura pega a mentira.
+
+**Deixei o `emailAccessLink` gravado de propósito**, mesmo com a entrega ainda
+desligada: é inofensivo enquanto `contentDeliveries` continuar `disabled`, e
+já fica pronto pro dia em que o autor ligar a entrega pelo painel, sem
+precisar lembrar de preencher esse campo também.
+
+**Pendência que só o autor resolve, pelo painel da Cakto:** entrar em
+Produtos → Grana. → Entrega de conteúdo (ou nome equivalente na versão atual
+do painel) e ligar a entrega por "Acesso por link/e-mail". O link a usar já
+está configurado: `https://granaponto.com.br/ativar`. Sem esse passo, o
+e-mail de compra continua sem nenhuma instrução, mesmo com o código já
+pronto dos dois lados.
+
+**O que não foi verificado:** nenhuma compra nova foi feita para confirmar
+que o e-mail muda depois de o autor ligar a entrega pelo painel — a próxima
+compra de teste é o teste real disso. Também não mexi em `supportEmail`
+(hoje `null`, por isso o Gmail pessoal aparece pro comprador) — decisão à
+parte, não pedida nesta sessão.
+
 ## 12/09/2026 — trabalho não commitado da sessão anterior, publicado, e motion na landing
 
 Sessão reaberta depois de troca de modelo/compactação de contexto. Antes de
