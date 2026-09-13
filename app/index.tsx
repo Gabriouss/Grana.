@@ -1,4 +1,4 @@
-import { createElement, useEffect, useId, useRef, useState } from 'react';
+import { createContext, createElement, useContext, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
@@ -412,10 +412,36 @@ function LinkEntrar() {
  * altura por seção, menos que o próprio título ocupa. Ali a altura continua
  * sendo a do conteúdo, como sempre foi.
  */
+/* A altura do cabeçalho fixo, medida no `onLayout` dele, distribuída por
+   contexto em vez de prop. São nove `<Dobra>` na página, e nenhuma delas tem
+   motivo pra saber disso — passar prop nos nove pontos só transformaria uma
+   correção de layout num diff espalhado e difícil de revisar. */
+const AlturaCabecalhoContexto = createContext(0);
+
+/**
+ * A altura útil de uma dobra de tela cheia.
+ *
+ * Desconta o cabeçalho de propósito. O cabeçalho é `sticky` e OPACO por cima
+ * do conteúdo, então numa janela de 900px só 840px são visíveis — uma dobra de
+ * 900px é sempre 60px mais alta do que cabe. O efeito não é só estético: ela
+ * nunca fecha na tela, quem quer ver o rodapé dela precisa rolar, e ao rolar o
+ * topo (o sobretítulo da seção) entra embaixo do cabeçalho e aparece cortado
+ * ao meio. Foi exatamente o defeito relatado na dobra de hábitos, onde o
+ * conteúdo media 913px numa janela de 900.
+ *
+ * O herói já fazia essa conta desde sempre (`alturaSticky`, em
+ * `HeroStorytelling`); as outras oito dobras não faziam, e essa assimetria é
+ * que era o defeito.
+ *
+ * O piso de 360px é a mesma defesa do herói: numa janela muito baixa, ou com o
+ * cabeçalho ainda não medido, uma dobra não pode virar uma faixa de altura
+ * negativa.
+ */
 function useAlturaDobra(): number | null {
   const { altura, ehCompacto } = useBreakpoint();
+  const alturaCabecalho = useContext(AlturaCabecalhoContexto);
   if (ehCompacto) return null;
-  return altura;
+  return Math.max(360, altura - alturaCabecalho);
 }
 
 /**
@@ -1067,7 +1093,7 @@ function ConteudoWeb() {
   ];
 
   return (
-    <>
+    <AlturaCabecalhoContexto.Provider value={alturaCabecalho}>
     <ScrollView
       ref={rolagemRef}
       style={[styles.pagina, styles.paginaSnap, { scrollPaddingTop: alturaCabecalho } as any]}
@@ -1664,7 +1690,7 @@ function ConteudoWeb() {
       </View>
     </ScrollView>
 
-    </>
+    </AlturaCabecalhoContexto.Provider>
   );
 }
 
