@@ -23,6 +23,7 @@ import PainelWebDestaque from '@/components/PainelWebDestaque';
 import ScrollLinkedView from '@/components/ScrollLinkedView';
 import TrilhaPassos from '@/components/TrilhaPassos';
 import ConversaGranachat from '@/components/ConversaGranachat';
+import NoSeuBolso from '@/components/NoSeuBolso';
 import landingMeta from '@/landing-meta.json';
 
 // A landing é uma superfície de marca. O produto logado usa a família do
@@ -1346,6 +1347,27 @@ function ConteudoWeb() {
           ficam seguros", "o Grana. mexe no meu dinheiro"), que é onde a
           objeção de confiança de fato trava a compra. A dobra antiga gastava
           uma tela inteira em dois cards com muito vazio em volta. */}
+
+      {/* ───────── E no seu bolso, ainda mais (bloco 6 da estrutura) ─────────
+          O que o aplicativo de Android acrescenta ao que a web já faz: voz,
+          nota fiscal e widgets. Vem logo depois do Panorama da web de
+          propósito — primeiro o que funciona em qualquer navegador, depois o
+          que só o celular tem. Detalhes e decisões em NoSeuBolso.tsx. */}
+      <View nativeID="no-bolso" style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra>
+          <View style={styles.secao}>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
+              <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>No celular</Text>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>E no seu bolso, ainda mais.</TituloSecao>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.linhasEquilibradas]}>
+                No aplicativo de Android, o Grana. vai com você: fale o gasto, fotografe a nota e deixe o que importa na tela inicial.
+              </Text>
+            </RevealOnScroll>
+            <NoSeuBolso />
+          </View>
+        </Dobra>
+      </View>
 
       {/* ───────── Construção do hábito (dobra 5) ─────────
           Fundida com o antigo "Por dentro do aplicativo" (autor: "o
