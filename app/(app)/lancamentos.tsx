@@ -18,7 +18,7 @@ import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaLista, useBreakpoint } from '@/lib/breakpoints';
-import { useModoOffline } from '@/components/FaixaOffline';
+import { textoDaFaixaOffline, useModoOffline, useMotivoOffline, useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -146,6 +146,7 @@ export default function LancamentosScreen() {
      que esta tela lê o próprio cache de união de meses, que é dela e não passa
      pelo buscador. */
   const offlineGlobal = useModoOffline();
+  const motivoOffline = useMotivoOffline();
   const [offlineLocal, setOffline] = useState(false);
   const offline = offlineGlobal || offlineLocal;
   const [pendingCount, setPendingCount] = useState(0);
@@ -266,6 +267,7 @@ export default function LancamentosScreen() {
   }, [isDemoMode, inicioDoMes, fimDoMes, guardarNoCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  useRecarregarAoChegarDadoNovo(() => { void load(); });
 
   /* Estáveis entre renders: é o que permite ao `memo` da linha funcionar. */
   const abrirAcoesDoLancamento = useCallback((tx: Transaction) => {
@@ -565,7 +567,7 @@ export default function LancamentosScreen() {
             <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
             <Text style={styles.offlineBannerText} numberOfLines={1}>
               {offline
-                ? 'Sem conexão — mostrando dados salvos no aparelho'
+                ? textoDaFaixaOffline(motivoOffline)
                 : `${pendingCount} lançamento${pendingCount > 1 ? 's' : ''} aguardando conexão para sincronizar`}
             </Text>
           </View>

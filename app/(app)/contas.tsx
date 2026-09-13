@@ -21,7 +21,7 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaLista } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
-import FaixaOffline from '@/components/FaixaOffline';
+import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import ScreenHeader from '@/components/ScreenHeader';
 import HeaderAction from '@/components/HeaderAction';
 import WalletPickerModal from '@/components/WalletPickerModal';
@@ -124,6 +124,7 @@ export default function ContasScreen() {
   }, [isDemoMode]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  useRecarregarAoChegarDadoNovo(() => { void load(); });
 
   useEffect(() => {
     if (isDemoMode) return;

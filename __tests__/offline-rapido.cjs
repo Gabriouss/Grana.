@@ -132,6 +132,53 @@ async function telasAbremRapido() {
     ok('resposta tardia atualiza o disco sem atropelar a tela');
   }
 
+  // 4b. O motivo da faixa: prazo estourado e LENTIDAO, nao falta de rede.
+  //     Filmado em 12/09/2026: Wi-Fi e 5G ligados, servidor respondendo 200, e
+  //     o app afirmando "Sem conexao". O texto precisa dizer a verdade.
+  {
+    const { mod, disco } = montarCache();
+    guardar(disco, 'contas', [{ id: 'velho' }]);
+    await comLimite(mod.comCacheOffline('contas', nunca)(), 'prazo estourado');
+    assert.equal(mod.motivoDoModoOffline(), 'lento', 'prazo estourado nao e falta de rede');
+
+    const { mod: mod2, disco: disco2 } = montarCache();
+    guardar(disco2, 'contas', [{ id: 'velho' }]);
+    await mod2.comCacheOffline('contas', async () => { throw new Error('Network request failed'); })();
+    assert.equal(mod2.motivoDoModoOffline(), 'sem-rede', 'erro de rede e falta de rede');
+    ok('a faixa distingue conexao lenta de sem conexao');
+  }
+
+  // 4c. A resposta atrasada apaga a faixa e a tela recarrega com o dado novo.
+  //     Antes o dado ia so para o disco, a faixa ficava acesa, e puxar para
+  //     atualizar refazia a mesma corrida perdida. Era o laco do video.
+  {
+    const { mod, disco } = montarCache();
+    guardar(disco, 'metas', [{ id: 'velho' }]);
+    let chamadas = 0;
+    const buscar = mod.comCacheOffline('metas', () => {
+      chamadas++;
+      // A primeira chamada responde depois do prazo; qualquer outra, nunca.
+      return chamadas === 1
+        ? new Promise((resolve) => setTimeout(() => resolve([{ id: 'fresco' }]), 40))
+        : new Promise(() => {});
+    });
+    let recargas = 0;
+    const cancelar = mod.assinarDadoNovo(() => { recargas++; });
+
+    assert.deepEqual(await comLimite(buscar(), 'primeira abertura'), [{ id: 'velho' }]);
+    assert.equal(mod.motivoDoModoOffline(), 'lento');
+    await new Promise((r) => setTimeout(r, 120));
+    assert.equal(recargas, 1, 'a tela precisa ser avisada uma vez de que ha dado novo');
+
+    // A recarga precisa vencer mesmo com a rede ainda pendurada.
+    const recarregado = await comLimite(buscar(), 'recarga depois do dado atrasado');
+    assert.deepEqual(recarregado, [{ id: 'fresco' }], 'a recarga mostra o dado que chegou atrasado');
+    assert.equal(mod.estaServindoDoCache(), false, 'com o dado novo na tela, a faixa apaga');
+    assert.equal(chamadas, 1, 'a recarga nao corre contra a rede de novo');
+    cancelar();
+    ok('resposta atrasada apaga a faixa e recarrega sem esperar a rede de novo');
+  }
+
   // 5. Rede sadia continua sendo o caminho normal, sem prazo nenhum no meio.
   {
     const { mod } = montarCache();

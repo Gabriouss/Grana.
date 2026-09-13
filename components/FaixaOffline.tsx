@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
-import { assinarModoOffline, estaServindoDoCache } from '@/lib/cache-de-tela';
+import { assinarDadoNovo, assinarModoOffline, estaServindoDoCache, motivoDoModoOffline, type MotivoOffline } from '@/lib/cache-de-tela';
 
 /**
  * Avisa que a tela está mostrando dado guardado, não dado de agora.
@@ -23,9 +23,37 @@ export function useModoOffline(): boolean {
   return offline;
 }
 
+/** O motivo, para o texto não afirmar "sem conexão" a quem só está lento. */
+export function useMotivoOffline(): MotivoOffline | null {
+  const [motivo, setMotivo] = useState(motivoDoModoOffline);
+  useEffect(() => assinarModoOffline(() => setMotivo(motivoDoModoOffline())), []);
+  return motivo;
+}
+
+/** Texto único da faixa, para Lançamentos e as outras telas dizerem o mesmo. */
+export function textoDaFaixaOffline(motivo: MotivoOffline | null): string {
+  return motivo === 'lento'
+    ? 'Conexão lenta, mostrando dados salvos no aparelho'
+    : 'Sem conexão, mostrando dados salvos no aparelho';
+}
+
+/**
+ * Recarrega a tela quando uma resposta que tinha perdido o prazo chega.
+ *
+ * Sem isto a tela ficava presa no dado velho e na faixa acesa, porque a
+ * resposta nova ia só para o disco. A recarga encontra o dado atrasado em
+ * memória e devolve na hora, então funciona mesmo com a rede ainda lenta.
+ * A função é lida por ref para a tela não precisar memoizar nada.
+ */
+export function useRecarregarAoChegarDadoNovo(recarregar: () => void) {
+  const ref = useRef(recarregar);
+  ref.current = recarregar;
+  useEffect(() => assinarDadoNovo(() => ref.current()), []);
+}
+
 export default function FaixaOffline({ estilo }: { estilo?: object }) {
-  const offline = useModoOffline();
-  if (!offline) return null;
+  const motivo = useMotivoOffline();
+  if (!motivo) return null;
   return (
     <View
       style={[styles.faixa, estilo]}
@@ -34,7 +62,7 @@ export default function FaixaOffline({ estilo }: { estilo?: object }) {
     >
       <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
       <Text style={styles.texto} numberOfLines={1}>
-        Sem conexão — mostrando dados salvos no aparelho
+        {textoDaFaixaOffline(motivo)}
       </Text>
     </View>
   );

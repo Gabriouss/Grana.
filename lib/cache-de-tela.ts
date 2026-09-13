@@ -112,11 +112,24 @@ export async function esquecerTelas(): Promise<void> {
    mostraria saldo de ontem com a mesma cara de saldo de agora, que é pior do
    que mostrar erro: some o dado E some o aviso de que ele está velho. */
 
-let servindoDoCache = false;
+/* O MOTIVO importa tanto quanto o fato. Até 12/09/2026 havia um booleano só,
+   e a faixa dizia "Sem conexão" nos dois casos. Filmado nesse dia: celular com
+   Wi-Fi e 5G, todas as requisições chegando ao servidor e voltando com 200, e o
+   app afirmando que não havia internet. A rede estava LENTA (quase 30 segundos
+   até a requisição sair do aparelho), não ausente. Dizer "sem conexão" a quem
+   está conectado faz a pessoa desconfiar do próprio celular em vez do app. */
+export type MotivoOffline = 'sem-rede' | 'lento';
+
+let motivoAtual: MotivoOffline | null = null;
 const ouvintes = new Set<(offline: boolean) => void>();
 
 export function estaServindoDoCache(): boolean {
-  return servindoDoCache;
+  return motivoAtual !== null;
+}
+
+/** Por que a tela está no dado guardado: rede falhou, ou só demorou. */
+export function motivoDoModoOffline(): MotivoOffline | null {
+  return motivoAtual;
 }
 
 export function assinarModoOffline(ouvinte: (offline: boolean) => void): () => void {
@@ -124,10 +137,42 @@ export function assinarModoOffline(ouvinte: (offline: boolean) => void): () => v
   return () => ouvintes.delete(ouvinte);
 }
 
-function definirModo(offline: boolean) {
-  if (servindoDoCache === offline) return;
-  servindoDoCache = offline;
-  for (const ouvinte of ouvintes) ouvinte(offline);
+function definirModo(motivo: MotivoOffline | null) {
+  if (motivoAtual === motivo) return;
+  motivoAtual = motivo;
+  for (const ouvinte of ouvintes) ouvinte(motivo !== null);
+}
+
+/* ── Dado que chegou atrasado ────────────────────────────────────────────────
+   Quando a resposta perde a corrida do prazo mas chega depois com sucesso, a
+   tela ainda está mostrando o disco. Antes, o dado novo ia só para o disco e o
+   aviso ficava aceso até uma próxima busca vencer o prazo, o que numa rede
+   lenta nunca acontece: puxar para atualizar refazia a mesma corrida, perdia
+   de novo, e a faixa não saía nunca. Era o laço do vídeo.
+
+   Agora o dado atrasado fica em memória por alguns segundos e as telas são
+   avisadas para recarregar. A recarga encontra o dado aqui e devolve na hora,
+   sem correr contra rede nenhuma, então ela funciona mesmo que a rede continue
+   lenta. */
+const VALIDADE_DO_DADO_ATRASADO_MS = 15_000;
+const atrasados = new Map<string, { dados: unknown; em: number }>();
+const ouvintesDeDadoNovo = new Set<() => void>();
+let avisoPendente: ReturnType<typeof setTimeout> | undefined;
+
+export function assinarDadoNovo(ouvinte: () => void): () => void {
+  ouvintesDeDadoNovo.add(ouvinte);
+  return () => ouvintesDeDadoNovo.delete(ouvinte);
+}
+
+function avisarDadoNovo() {
+  /* Uma tela abre com várias buscas em paralelo (lançamentos, contas, metas),
+     e numa rede lenta as respostas atrasadas chegam quase juntas. Agrupar num
+     aviso só evita a tela recarregar três vezes seguidas. */
+  if (avisoPendente) clearTimeout(avisoPendente);
+  avisoPendente = setTimeout(() => {
+    avisoPendente = undefined;
+    for (const ouvinte of ouvintesDeDadoNovo) ouvinte();
+  }, 250);
 }
 
 /**
@@ -165,6 +210,17 @@ export function comCacheOffline<A extends unknown[], T>(
   return async (...args: A): Promise<T> => {
     const chave = chaveDoArgumento ? `${nome}:${chaveDoArgumento(...args)}` : nome;
 
+    /* Dado que acabou de chegar atrasado: vale mais que qualquer corrida. É o
+       que permite à recarga disparada por `avisarDadoNovo` mostrar o dado novo
+       e apagar a faixa mesmo com a rede ainda lenta. Não é apagado ao ser
+       lido, porque telas diferentes pedem a mesma chave (`fetchTransactions`
+       serve Início, Lançamentos e Gráficos). */
+    const atrasado = atrasados.get(chave);
+    if (atrasado && Date.now() - atrasado.em < VALIDADE_DO_DADO_ATRASADO_MS) {
+      definirModo(null);
+      return atrasado.dados as T;
+    }
+
     /* Mapear para um objeto, em vez de deixar rejeitar, é o que permite
        correr contra o prazo sem criar rejeição não tratada quando a resposta
        lenta chega depois de a tela já ter sido servida. */
@@ -188,7 +244,7 @@ export function comCacheOffline<A extends unknown[], T>(
     const guardado = await lerTela<T>(chave);
     if (!guardado) return concluir(await pedido);
 
-    definirModo(true);
+    definirModo('lento');
     /* A resposta continua a caminho. Quando chegar, o dado fresco vai para o
        disco, para a próxima abertura já nascer atual. O aviso de "dado
        velho" NÃO é apagado aqui: a tela em cima da mão de quem lê continua
@@ -196,7 +252,12 @@ export function comCacheOffline<A extends unknown[], T>(
        mentira. Falha permanente que chega atrasada deixa recibo no log, em
        vez de sumir junto com a promessa. */
     void pedido.then(async (tardio) => {
-      if (tardio.ok) { await guardarTela(chave, tardio.dados); return; }
+      if (tardio.ok) {
+        await guardarTela(chave, tardio.dados);
+        atrasados.set(chave, { dados: tardio.dados, em: Date.now() });
+        avisarDadoNovo();
+        return;
+      }
       if (!isLikelyNetworkError(tardio.erro)) {
         console.error('[cache-de-tela] falha permanente depois do prazo', nome, tardio.erro);
       }
@@ -206,7 +267,7 @@ export function comCacheOffline<A extends unknown[], T>(
     async function concluir(desfecho: Desfecho<T>): Promise<T> {
       if (desfecho.ok) {
         await guardarTela(chave, desfecho.dados);
-        definirModo(false);
+        definirModo(null);
         return desfecho.dados;
       }
       if (!isLikelyNetworkError(desfecho.erro)) throw desfecho.erro;
@@ -215,7 +276,7 @@ export function comCacheOffline<A extends unknown[], T>(
          consegui carregar", que é a verdade. Fingir lista vazia diria à
          pessoa que ela não tem lançamento nenhum. */
       if (!doDisco) throw desfecho.erro;
-      definirModo(true);
+      definirModo('sem-rede');
       return doDisco.dados;
     }
   };

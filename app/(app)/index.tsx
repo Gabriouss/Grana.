@@ -16,7 +16,7 @@ import {
    sem cache em disco no Android, a cada montagem da tela. */
 import { Image } from 'expo-image';
 import AppModal from '@/components/AppModal';
-import FaixaOffline from '@/components/FaixaOffline';
+import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import { Alert } from '@/lib/alert';
 import { mensagemErro } from '@/lib/erros';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -474,6 +474,7 @@ export default function InicioScreen() {
      cairia na carga leve e nunca chegaria a mostrar os dados de exemplo. */
   const ultimoModoCarregadoRef = useRef<boolean | null>(null);
 
+  useRecarregarAoChegarDadoNovo(() => { void load(); });
   useFocusEffect(
     useCallback(() => {
       if (ultimoModoCarregadoRef.current === isDemoMode) {

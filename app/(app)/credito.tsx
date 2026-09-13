@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import AppModal from '@/components/AppModal';
-import FaixaOffline from '@/components/FaixaOffline';
+import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -269,6 +269,7 @@ export default function CreditoScreen() {
     }
   }, [isDemoMode, viewYear, viewMonth]);
 
+  useRecarregarAoChegarDadoNovo(() => { void loadData(); });
   useFocusEffect(
     useCallback(() => {
       loadData();
