@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { corDaCategoria } from '@/lib/chart-colors';
+import { EXEMPLO_LIVRE, emReais } from '@/lib/exemplo-landing';
 
 /**
  * Miniaturas que ilustram cada card da dobra "Tudo que o Grana. faz".
@@ -182,7 +183,7 @@ function conteudo(variante: VarianteMock): React.ReactNode {
         </View>
         <View style={styles.widgetCartao}>
           <Text style={styles.widgetRotulo}>Livre para gastar</Text>
-          <Text style={styles.widgetValor}>R$ 48,23<Text style={styles.widgetPorDia}>/dia</Text></Text>
+          <Text style={styles.widgetValor}>{emReais(EXEMPLO_LIVRE.porDia)}<Text style={styles.widgetPorDia}>/dia</Text></Text>
         </View>
       </View>
       <Text style={styles.widgetNota}>Toque no microfone e fale. O app nem precisa abrir.</Text>

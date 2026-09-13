@@ -1,9 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { theme, radius, spacing, card as cardTokens, fonts, type, sombras } from '@/lib/theme';
+import { EXEMPLO_LIVRE, emReais as moeda } from '@/lib/exemplo-landing';
 
-const EXEMPLO = { saldo: 3240, contas: 1180, cofrinhos: 800, dias: 15 };
-const livre = EXEMPLO.saldo - EXEMPLO.contas - EXEMPLO.cofrinhos;
-const moeda = (valor: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+/* Os números saem de `lib/exemplo-landing.ts`, que é a fonte única da página.
+   Este card já derivava tudo de uma estrutura local (correção do achado V01),
+   mas a estrutura era PRIVADA dele — então a conversa do Granabô e o mini-mock
+   de widgets seguiram com cópias à mão, e uma delas com o valor reprovado. */
+const EXEMPLO = EXEMPLO_LIVRE;
+const livre = EXEMPLO.livreNoTotal;
 
 /**
  * Cópia visual do card real de "Livre para gastar" (`SafeToSpendCard.tsx`),
@@ -28,7 +32,7 @@ export default function CardLivreParaGastar({ compacto }: { compacto?: boolean }
       <Text style={styles.label}>Livre para gastar</Text>
 
       <Text style={styles.headline}>
-        {moeda(livre / EXEMPLO.dias)}
+        {moeda(EXEMPLO.porDia)}
         {compacto ? '\n' : ' '}
         <Text style={styles.headlineSuffix}>/dia até o fim do mês</Text>
       </Text>
@@ -37,7 +41,7 @@ export default function CardLivreParaGastar({ compacto }: { compacto?: boolean }
         <Linha chave="Saldo atual" valor={moeda(EXEMPLO.saldo)} />
         <Linha chave="Contas a vencer este mês" valor={`− ${moeda(EXEMPLO.contas)}`} />
         <Linha chave="Reservado em cofrinhos" valor={`− ${moeda(EXEMPLO.cofrinhos)}`} />
-        <Linha chave={`Livre no total · ${EXEMPLO.dias} dias restantes`} valor={moeda(livre)} forte />
+        <Linha chave={`Livre no total · ${EXEMPLO.diasRestantes} dias restantes`} valor={moeda(livre)} forte />
       </View>
     </View>
   );

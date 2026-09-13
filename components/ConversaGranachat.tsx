@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh, sombras } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 import { useReducedMotion } from '@/lib/motion';
+import { EXEMPLO_LIVRE, emReais } from '@/lib/exemplo-landing';
 
 /**
  * Demonstração do Granachat, a janela de conversa com o Granabô.
@@ -48,8 +49,11 @@ const COMANDOS: Comando[] = [
     rotulo: 'Quanto posso gastar',
     icone: 'wallet-outline',
     envio: 'Quanto posso gastar?',
+    /* Derivado de `lib/exemplo-landing.ts`: esta frase e o card da dobra
+       `#livre` falam do MESMO mês fictício, então não podem divergir. */
     resposta:
-      'Você tem R$ 624,00 livre para gastar neste mês. Com 13 dias restantes, isso dá R$ 48,00 por dia.',
+      `Você tem ${emReais(EXEMPLO_LIVRE.livreNoTotal)} livre para gastar neste mês. ` +
+      `Com ${EXEMPLO_LIVRE.diasRestantes} dias restantes, isso dá ${emReais(EXEMPLO_LIVRE.porDia)} por dia.`,
   },
   {
     rotulo: 'Boletos do mês',
