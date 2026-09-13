@@ -146,7 +146,47 @@ const em = (dias) => new Date(AGORA + dias * 86400000).toISOString();
   assert.equal(fechado.allowed, false, 'estado fechado nega acesso');
   assert.equal(fechado.enforced, true, 'estado fechado mantém a cobrança ligada');
 
+  // ---- deveSegurarRotas: a raiz não monta rotas sem saber o acesso ----
+  //
+  // Regressão do defeito de 13/09/2026 na web: "Ativando sua assinatura…"
+  // aparecia em /graficos e /contas. A guarda antiga só segurava se o sinal de
+  // carregando estivesse ligado, e ele nasce desligado — então a primeira
+  // pintura com sessão e sem estado passava, todos os grupos protegidos
+  // fechavam e o roteador caía em `ativar`.
+  const guardas = [
+    ['sessão ainda carregando segura', { carregandoSessao: true, temSessao: false, estadoAcesso: null }, true],
+    ['sem sessão monta as rotas públicas', { carregandoSessao: false, temSessao: false, estadoAcesso: null }, false],
+    // O caso do defeito. Antes: `session && carregando && !estado` com
+    // carregando=false dava false e deixava a pilha desenhar sem acesso.
+    ['COM sessão e SEM estado segura, mesmo sem nada carregando', { carregandoSessao: false, temSessao: true, estadoAcesso: null }, true],
+    ['com sessão e acesso liberado monta o app', { carregandoSessao: false, temSessao: true, estadoAcesso: base }, false],
+    ['com sessão e acesso negado monta a tela de assinar', { carregandoSessao: false, temSessao: true, estadoAcesso: { ...base, allowed: false } }, false],
+    ['sessão recarregando segura mesmo com estado antigo', { carregandoSessao: true, temSessao: true, estadoAcesso: base }, true],
+  ];
+  for (const [nome, entrada, esperado] of guardas) {
+    assert.equal(api.deveSegurarRotas(entrada), esperado, nome);
+  }
+
+  // A propriedade que de fato impede a queda em `ativar`: sempre que a guarda
+  // libera uma pessoa logada, o estado tem `allowed` booleano. Com `true` abre
+  // `(app)`, com `false` abre `assinar` — nunca os dois grupos fechados juntos.
+  let liberacoesComSessao = 0;
+  for (const [, entrada] of guardas) {
+    if (entrada.temSessao && !api.deveSegurarRotas(entrada)) {
+      liberacoesComSessao += 1;
+      assert.equal(typeof entrada.estadoAcesso?.allowed, 'boolean', 'rota liberada com sessão sempre tem allowed definido');
+    }
+  }
+  assert.ok(liberacoesComSessao >= 2, 'a propriedade foi exercitada nos dois lados (liberado e negado)');
+
+  // E a garantia que sustenta segurar sem medo de spinner eterno: nenhuma
+  // falha devolve estado nulo, então a recarga sempre destrava a guarda.
+  for (const [nome, entrada] of quedas) {
+    assert.ok(api.estadoAposFalha({ ...entrada, agora: AGORA }), `falha nunca vira estado nulo: ${nome}`);
+  }
+
   console.log(`OK acesso offline: ${casos.length + quedas.length + 10} verificações — prazo do servidor honrado, conta trocada, cache corrompido, disco cheio e guarda de navegação estável.`);
+  console.log(`OK guarda de rotas: ${guardas.length + 1 + quedas.length} verificações — com sessão e sem acesso a raiz segura, e nenhuma falha deixa o estado nulo.`);
 })().catch((e) => {
   console.error(e);
   process.exitCode = 1;

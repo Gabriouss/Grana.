@@ -125,3 +125,42 @@ export function estadoAposFalha({
   if (semRede && anterior && prazoOfflineAindaVale(anterior, agora)) return anterior;
   return ACESSO_NEGADO;
 }
+
+/**
+ * O layout raiz deve segurar a árvore de rotas (mostrar só o carregamento)?
+ *
+ * **Sim, sempre que houver sessão e ainda não houver estado de acesso.** Não
+ * importa o que diga o sinal de "carregando".
+ *
+ * Existe por causa de um defeito visto em produção na web, em 13/09/2026: ao
+ * abrir `/graficos` ou `/contas` logado, a tela mostrava "Ativando sua
+ * assinatura…" (texto que só existe em `app/ativar.tsx`) com a URL ainda na
+ * rota pedida, depois ficava vazia, e só então montava a página.
+ *
+ * O mecanismo: `EntitlementProvider` nasce com `carregando = false` e só roda
+ * a recarga num `useEffect`, depois da primeira pintura. A guarda antiga
+ * exigia `carregando` verdadeiro para segurar, então havia uma renderização
+ * com sessão, sem estado e sem "carregando" — e ela passava. Com `estado`
+ * nulo, TODOS os grupos protegidos de `app/_layout.tsx` fecham ao mesmo tempo
+ * (`(app)` pede `allowed`, `assinar` pede `allowed === false`, e `undefined`
+ * não é nenhum dos dois), e o expo-router cai na primeira tela sem guarda da
+ * pilha, que é `ativar`.
+ *
+ * Por que isto não cria espera infinita: toda recarga com sessão termina com
+ * estado preenchido. Sucesso grava a resposta do servidor, e qualquer falha
+ * passa por `estadoAposFalha`, que nunca devolve nulo. A única forma de o
+ * estado ficar nulo para sempre é a própria chamada nunca responder — e nesse
+ * caso a guarda antiga também segurava, porque `carregando` ficava ligado.
+ */
+export function deveSegurarRotas({
+  carregandoSessao,
+  temSessao,
+  estadoAcesso,
+}: {
+  carregandoSessao: boolean;
+  temSessao: boolean;
+  estadoAcesso: EstadoAcesso | null;
+}): boolean {
+  if (carregandoSessao) return true;
+  return temSessao && !estadoAcesso;
+}

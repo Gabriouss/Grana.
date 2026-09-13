@@ -17,6 +17,7 @@ import { instalarAnelDeFoco, instalarDocumentoWeb } from '@/lib/foco-web';
 import { acompanharFocoParaModais } from '@/lib/modal-accessibility';
 import { capturarDestinoProtegido, consumirDestinoPosLogin } from '@/lib/destino-pos-login';
 import { EntitlementProvider, useEntitlement } from '@/lib/entitlement-context';
+import { deveSegurarRotas } from '@/lib/entitlement-cache';
 import WebPhoneFrame from '@/components/WebPhoneFrame';
 import AppLockGate from '@/components/AppLockGate';
 import { AppLockProvider } from '@/lib/app-lock-context';
@@ -147,7 +148,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { session, isLoading, emRecuperacao } = useSession();
-  const { estado: estadoAcesso, carregando: carregandoAcesso } = useEntitlement();
+  const { estado: estadoAcesso } = useEntitlement();
   const router = useRouter();
 
   useEffect(() => {
@@ -238,7 +239,13 @@ function RootNavigator() {
     if (destino) router.replace(destino as never);
   }, [isLoading, session, emRecuperacao, router]);
 
-  if (isLoading || (!!session && carregandoAcesso && !estadoAcesso)) {
+  /* Não depende do "carregando" do acesso, de propósito. Ele nasce falso e só
+     liga no primeiro efeito, então havia uma pintura com sessão e sem estado
+     que passava pela guarda: todos os grupos protegidos abaixo fechavam de uma
+     vez e o roteador caía em `ativar`, a primeira tela sem guarda — visto em
+     produção na web como "Ativando sua assinatura…" em `/graficos`. A decisão
+     mora em `lib/entitlement-cache.ts`, testada. */
+  if (deveSegurarRotas({ carregandoSessao: isLoading, temSessao: !!session, estadoAcesso })) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={theme.ink} />
