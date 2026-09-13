@@ -1,5 +1,138 @@
 # Contexto do projeto — Grana.
 
+# 13/09/2026 (tarde) — laço infinito em toda tela logada da web, e a landing reformada só local
+
+**Estado ao fim desta sessão, antes de qualquer outra coisa:**
+
+- `origin/main` (produção, Vercel) = `b8d0771` + **`ce4d689`** + **`e290686`**,
+  as duas correções da área logada da web. Verificadas em produção.
+- `main` local na M1 está **6 commits à frente**, todos da landing, **sem push
+  por ordem explícita do autor** ("não publique nada ainda, deixe tudo em
+  ambiente local"). Isso contraria a regra 3; a decisão é do autor. Até ele
+  decidir, a M2 não vê a reforma da landing.
+
+## A área logada da web entrava em laço infinito (publicado)
+
+**Pedido.** Vídeos do autor: `/graficos` mostrando "Ativando sua assinatura…"
+(texto que só existe em `app/ativar.tsx`), depois tela vazia; e, depois da
+primeira correção no ar, `/perfil` com o spinner piscando sem carregar. "Teste
+todas as telas, todas as telas estão bugadas."
+
+**Causa 1, a superfície — `ce4d689`.** `EntitlementProvider` nasce com
+`carregando = false` e só recarrega num `useEffect`. A guarda de
+`app/_layout.tsx` só segurava com `carregando` ligado, então uma pintura com
+sessão e sem estado passava. Com `estado` nulo, `(app)` (pede `allowed`) e
+`assinar` (pede `allowed === false`) fecham juntos, e o expo-router cai na
+primeira tela sem guarda, `ativar`. Decisão movida para
+`deveSegurarRotas()` em `lib/entitlement-cache.ts`: segura sempre que houver
+sessão e não houver estado. Não cria espera infinita: toda recarga termina com
+estado preenchido (`estadoAposFalha` nunca devolve nulo).
+
+**Causa 2, o laço — `e290686`.** `capturarDestinoProtegido()` roda em toda
+montagem da raiz, logado ou não, e grava a URL protegida. Com a sessão
+presente, o layout fazia `router.replace` para ela **antes** de o acesso
+chegar, com o grupo daquela rota fechado: o roteador caía, a raiz remontava
+(`SessionProvider`, `FlagsProvider` e `EntitlementProvider` juntos), a
+montagem regravava o destino, e recomeçava. Correção:
+`restaurarDestino()` em `lib/destino-pos-login.ts` — com a área logada
+fechada não consome nem navega; destino igual ao caminho atual não navega.
+
+**Fato medido** (Chrome headless, logado com a conta de testes, recarregando
+a rota e gravando tela e chamadas ao Supabase), 9 segundos em `/perfil`:
+
+| | antes | só `ce4d689` | `e290686` |
+|---|---|---|---|
+| `vincular_assinatura_automatica` | 557 | 915 | **2** |
+| `obter_estado_acesso` | 273 | 450 | **1** |
+| `feature_flags` | 278 | 457 | **1** |
+| tela | pisca "Ativando" ↔ vazia | presa no spinner | carrega |
+
+**Hipótese que se provou errada, registrada de propósito.** Supus que
+`ce4d689` tinha causado o laço, porque o vídeo de antes do deploy carregava e o
+de depois não. Rodado o mesmo teste com a guarda antiga restaurada, o laço já
+existia (coluna "antes"). `ce4d689` só trocou o sintoma e acelerou o ciclo.
+**Não foi revertido**, e reverter não teria resolvido.
+
+**Verificado em produção**, `granaponto.com.br`, nas sete rotas logadas
+(`/`, `/lancamentos`, `/credito`, `/contas`, `/graficos`, `/desafios`,
+`/perfil`): todas ficam na rota pedida, spinner liga e desliga uma vez,
+chamadas de sessão e acesso em 2/1/1, conteúdo entre 184ms e 851ms.
+
+**Testes.** `__tests__/entitlement-offline.cjs` (+15 verificações) e o novo
+`__tests__/destino-pos-login.cjs` (15, ligado ao `test:ci`), ambos no módulo
+real, com asserção no efeito (consumiu? navegou?). Mutação: removida cada
+regra, o teste falha na asserção certa. `tsc` limpo, `test:ci` com saída 0.
+
+**NÃO verificado — checklist de QA:**
+- [ ] Navegador de verdade (fora do headless), logado, recarregando cada rota.
+- [ ] Deslogado: abrir `/credito`, cair no login, entrar, voltar a `/credito`.
+      Coberto só no teste de módulo.
+- [ ] As 12 consultas a `transactions` ao abrir `/credito`: limitadas, não
+      investigadas.
+- [ ] App Android: a guarda é a mesma, mas nada foi testado no aparelho. O
+      laço depende de `capturarDestinoProtegido`, que só age na web.
+
+## A landing reformada (LOCAL, sem push)
+
+**Decisões do autor, que valem para qualquer sessão futura na landing:**
+herói, seção de preços e fechamento **mantidos** como estão (o achado V07 de
+06/09 contra o herói está respondido); a estrutura de **13 blocos** que ele
+ditou é a especificação; a "página 2" de referência é a landing do Claude
+Design em `E:\Grana-Arquivos\Grana Landing Page Build\Grana Landing.dc.html`.
+`granaponto.com.br` e `app/index.tsx` **são a mesma página** (um projeto
+Vercel, ligado a este repositório) — o autor achava que não.
+
+**Feito** (commits locais `9998e34` a `3389e6a`):
+- `lib/exemplo-landing.ts`: exemplo único de Livre para Gastar. A página
+  mostrava R$ 84,00, R$ 48,00 e R$ 48,23/dia em três lugares; o último é o
+  número reprovado no V01.
+- `Dobra` desconta a altura do cabeçalho fixo (antes toda dobra era 60px mais
+  alta que a área visível).
+- Estrutura: dobras novas `#objecoes` (sete, formato "Mas…", incluindo "por
+  que é pago" e a planilha) e `#garantia` (7 dias, conferido no painel da
+  Cakto); FAQ reduzida a seis; dobra de Segurança removida (virou três
+  objeções) e o link "Segurança" do menu trocado por "Garantia"; Granabô movido
+  para antes da oferta; Hábitos depois das ferramentas.
+- Folga contra o parallax do celular; alternador Anual/Mensal centralizado no
+  compacto; painel web sem legendas e com zoom no hover; fechamento em tela
+  inteira no celular; carrossel de ferramentas centralizando cada card (0px de
+  desvio medido nos nove, em 390 e 605px).
+
+**Não publicado de propósito:** "cancelamento livre" (sem respaldo na API da
+Cakto; já retirado da página em 05/09). A FAQ de formas de pagamento responde
+cartão e Pix, sem boleto (apurado em 12/09).
+
+**Falta da estrutura de 13 blocos:** CTA primário abaixo do herói ("Assinar
+agora", direto ao checkout); tirar voz do bloco 4 (restrição do Firefox);
+fundir painel web, Livre para Gastar e ferramentas no "Panorama" (bloco 5);
+separar o que é só do celular (bloco 6); tom "você sabia?" (bloco 7); quarto
+exemplo no chat do Granabô (bloco 8); PS no fechamento (bloco 13); copy da dor
+como "apagão financeiro" (bloco 3). E: mini-mocks do bento que não batem com
+as telas reais (Hábito, Personalização, Planejamento, Widgets apontados pelo
+autor), cenas de dor e dobra do Granabô reprovadas no visual, e o botão de
+pausa do letreiro (WCAG 2.2.2, proposta sem resposta).
+
+**Pré-requisito de tráfego ainda aberto:** a página não tem Pixel da Meta nem
+GA4, e a CSP de `vercel.json` (`script-src 'self'` + hash) bloquearia os dois
+sem ajuste.
+
+## Ferramentas e armadilhas desta sessão
+
+- **Chrome headless pelo protocolo DevTools**, sem instalar nada, contra
+  `localhost:8081` ou a produção. Scripts ficaram na pasta temporária da
+  sessão, **não versionados**. Armadilhas: o headless responde `reduce` a
+  `prefers-reduced-motion` e a landing desliga parallax nesse caso (forçar
+  `Emulation.setEmulatedMedia`); o `react-native-web` troca o `scrollTo` do
+  elemento pela assinatura `{x, animated}` (medir por `scrollLeft`); no Git
+  Bash, argumento `/perfil` vira caminho de disco (`MSYS_NO_PATHCONV=1`).
+- **Servidor MCP `21st`** (21st.dev) em `~/.claude.json`, para `E:\GranaPonto`
+  e `e:/GranaPonto`. Chave também no `.env` como `21ST_API_KEY`. Só carrega
+  depois de reiniciar o Claude Code.
+- Leitura do banco de produção pela API de gerenciamento foi barrada uma vez
+  pelo classificador de permissões e liberada pelo autor. Contagens do dia:
+  `push_tokens` = 2 (o push saiu do zero), `assistant_messages` = 156,
+  `subscriptions` = 10, `enforce_subscriptions` = false.
+
 # 13/09/2026 — quem paga não recebe nenhum link pra criar conta, e a Cakto finge que aceitou o conserto
 
 **O pedido, com vídeo.** "Atualmente como o usuário recebe o link para criar
