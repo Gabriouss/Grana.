@@ -264,6 +264,46 @@ simulada; o microfone real, o widget na tela inicial e o fluxo sem internet
 nunca foram exercitados num telefone.
 
 
+# 13/09/2026 — a compra de teste na Cakto foi tentada e recusada, e a causa não está na API
+
+O autor tentou pagar de verdade, pelo link mensal, cartão de crédito no
+CPF/e-mail reais. A Cakto recusou no próprio checkout, antes de qualquer
+método de pagamento processar:
+
+> Pagamento recusado — Esse produto ainda não está disponível para venda.
+
+**Verificado pela interface de programação, ANTES de suspeitar do cliente ou do
+banco (regra 9): não é configuração nossa.**
+
+    products_retrieve(4b8c1193-...)  ->  status: "active"
+    offers_list                       ->  esgddv2  status: "active"
+                                          323b2rs  status: "active"
+
+Produto ativo, as duas ofertas ativas, `paymentMethods` com `credit_card`,
+`pix` e `pix_auto`. Nada aqui explica a recusa.
+
+**A API pública não tem endpoint de conta/produtor.** As oito tags que ela
+expõe são `products`, `offers`, `orders`, `payments`, `subscriptions`,
+`customers`, `fees`, `installment-interest`, `order-bumps`, `webhook` — nenhuma
+fala de verificação de identidade, documentos ou liberação de conta para
+vender. Busquei por "conta do produtor", "KYC", "aprovação para vender",
+"documentos pendentes": os resultados foram sempre os mesmos endpoints de
+produto e taxa, nada de conta.
+
+**Hipótese, não fato comprovado:** a mensagem "produto ainda não está
+disponível para venda", vinda de um gateway de pagamento com produto e ofertas
+ativas, é o texto que essas plataformas costumam usar quando a CONTA do
+vendedor ainda não passou por verificação (documento, conta bancária) — algo
+comum para conta nova, e que fica de propósito fora da API pública, só visível
+no painel do produtor. Não tentei uma segunda compra real para confirmar,
+porque isso gastaria dinheiro de novo sem necessidade: o autor já correu esse
+risco uma vez, e o retorno do próprio checkout já é evidência suficiente de que
+o problema é no nível de conta, não de produto.
+
+**Isso bloqueia o item 1 da lista abaixo, que por sua vez bloqueia o item 2.**
+Nenhuma sessão de código resolve isso: é ação no painel da Cakto, ou contato com
+o suporte deles, e só o autor tem acesso à conta e aos documentos.
+
 # ⚠ FIM DO DIA 10/09/2026 — O QUE FALTA, TUDO MANUAL
 
 Nada abaixo depende de código. Tudo já está no repositório e, onde precisava,
