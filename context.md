@@ -6805,3 +6805,19 @@ o que se perde primeiro é o motivo. A regra lista seis coisas que a nota
 precisa responder: o pedido como chegou, sintoma e causa separados, arquivos e
 commits concretos, o que foi descartado e por quê, o que deu errado no caminho
 (inclusive erro do agente), e o que ficou sem verificação.
+
+**Build 1.10.2 disparada em 12/09/2026, a pedido explícito do autor.** Preparo
+em `91a316f` (`npm run build:preparar`, 1.10.1 → 1.10.2), perfil `preview`,
+APK, `versionCode` 15 (incrementado remotamente pelo EAS). Build
+`149bb92e-3139-4d94-853a-44203424b902`. Leva as correções do dia: guarda de
+navegação que jogava para a tela inicial, janelas de ação centralizadas e
+dimensionadas pela faixa visível, botão flutuante no crédito, cabeçalho de
+Lançamentos enxuto, Granabô de volta à barra, e aviso de conexão lenta que diz
+o motivo e sai sozinho. Mensagem: "O app não volta mais sozinho para a tela
+inicial, as janelas de lançamento cabem acima do teclado em qualquer celular, e
+o aviso de conexão lenta sai sozinho quando os dados chegam."
+
+**Não validado em aparelho antes da build**: a pane, o aviso de conexão, o
+botão do crédito e a causa do teclado piscando. O `29cd70c`, de outro agente,
+foi revisado só no trecho da barra de abas. Cota: cerca de 10 builds
+registradas em setembro antes desta, contra 15 por mês.
