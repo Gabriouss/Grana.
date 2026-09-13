@@ -128,6 +128,18 @@ export default function BeneficiosHorizontais({ itens, largura, altura, titulo, 
   // pra valer; bento e modo fixo (desktop) já mostram o texto inteiro.
   const [detalheAberto, setDetalheAberto] = useState<BeneficioHorizontal | null>(null);
   const intervaloCard = larguraCard + spacing.lg;
+  /* Largura REAL da área de rolagem, medida, e não deduzida da janela.
+     O carrossel centraliza cada card dentro dela, e deduzir exigiria repetir
+     à mão o padding da faixa, o `maxWidth` da coluna e o corte de breakpoint
+     — medida copiada que envelhece calada, o defeito que a regra 14 descreve. */
+  const [larguraViewport, setLarguraViewport] = useState(0);
+  /* Recuo simétrico: com o mesmo espaço antes do primeiro card e depois do
+     último, a posição de rolagem `i * intervaloCard` centraliza o card `i`
+     exatamente. Antes o trilho só tinha recuo à direita (28px) e nenhum à
+     esquerda, então TODO card parava encostado à esquerda, com o vizinho
+     sobrando só de um lado — o "descentralizado a partir do segundo card"
+     que o autor apontou. Zero enquanto não mediu, que dura um quadro. */
+  const recuoTrilho = Math.max(0, (larguraViewport - larguraCard) / 2);
   const podeVoltar = indiceToque > 0;
   const podeAvancar = indiceToque < itens.length - 1;
 
@@ -199,11 +211,16 @@ export default function BeneficiosHorizontais({ itens, largura, altura, titulo, 
             horizontal
             showsHorizontalScrollIndicator={false}
             decelerationRate="fast"
+            /* `snapToInterval` vale no Android e no iOS. O react-native-web
+               NÃO o implementa, e no navegador o arrasto parava onde a pessoa
+               soltasse, com o card em qualquer posição. Na web quem encaixa é
+               o `scroll-snap` do CSS, em `rolagemHorizontal` e `cardPosicao`. */
             snapToInterval={intervaloCard}
             onScroll={aoRolarToque}
+            onLayout={(e) => setLarguraViewport(e.nativeEvent.layout.width)}
             scrollEventThrottle={32}
             style={styles.rolagemHorizontal}
-            contentContainerStyle={styles.trilhoToque}
+            contentContainerStyle={[styles.trilhoToque, { paddingLeft: recuoTrilho, paddingRight: recuoTrilho }]}
             role="list"
             aria-label="Recursos do Grana."
             {...({
@@ -226,8 +243,8 @@ export default function BeneficiosHorizontais({ itens, largura, altura, titulo, 
               />
             ))}
           </ScrollView>
-          <FadeBorda lado="esquerda" largura={largura} visivel={bordasToque.anterior && podeVoltar} />
-          <FadeBorda lado="direita" largura={largura} visivel={bordasToque.proxima && podeAvancar} />
+          <FadeBorda lado="esquerda" largura={largura} recuo={recuoTrilho} visivel={bordasToque.anterior && podeVoltar} />
+          <FadeBorda lado="direita" largura={largura} recuo={recuoTrilho} visivel={bordasToque.proxima && podeAvancar} />
         </View>
         <View style={styles.controles}>
           <AppPressable
@@ -277,12 +294,17 @@ export default function BeneficiosHorizontais({ itens, largura, altura, titulo, 
  * transparente sobre um fundo colorido deixaria a própria cor vazando na
  * borda) até transparente, por cima do trilho, sem capturar toque.
  */
-function FadeBorda({ lado, largura, visivel }: { lado: 'esquerda' | 'direita'; largura: number; visivel: boolean }) {
+function FadeBorda({ lado, largura, recuo, visivel }: { lado: 'esquerda' | 'direita'; largura: number; recuo: number; visivel: boolean }) {
   /* Fixo em 64px o fade engolia quase toda a "espiadinha" do próximo card
      num celular de 390px de largura (a fresta que sobra depois do card
      principal costuma ter uns 70-90px) — o próximo card sumia dentro do
-     degradê em vez de só suavizar a borda dele. Mais estreito no compacto. */
-  const largo = largura < CORTES.medio ? 32 : 64;
+     degradê em vez de só suavizar a borda dele. Mais estreito no compacto.
+
+     E nunca mais largo que o recuo do trilho. Com o card centralizado, o
+     espaço entre a borda da área e o card ativo é exatamente o recuo; num
+     celular de 390px ele tem 16px. Um fade de 32px ali passava 16px POR CIMA
+     do card ativo e apagava a borda dele, que é o card que a pessoa lê. */
+  const largo = Math.min(largura < CORTES.medio ? 32 : 64, recuo);
   return (
     <View
       aria-hidden
@@ -331,8 +353,10 @@ const styles = StyleSheet.create({
     ...({ backgroundImage: `linear-gradient(270deg, ${theme.paperRaised} 0%, transparent 100%)` } as any),
   },
   trilhoDesktop: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.lg, width: 'max-content' as any },
-  rolagemHorizontal: { width: '100%', overflow: 'visible' },
-  trilhoToque: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.lg, paddingRight: spacing.xxl },
+  rolagemHorizontal: { width: '100%', overflow: 'visible', ...({ scrollSnapType: 'x mandatory' } as any) },
+  /* Sem recuo fixo aqui: ele é calculado e aplicado igual dos dois lados no
+     próprio `contentContainerStyle`, a partir da largura medida. */
+  trilhoToque: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.lg },
   controles: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, marginTop: spacing.xl },
   controle: {
     width: 44,
@@ -347,7 +371,9 @@ const styles = StyleSheet.create({
   controleHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
   controleDesativado: { opacity: 0.35 },
   progresso: { minWidth: 64, textAlign: 'center', color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.4, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
-  cardPosicao: { flexShrink: 0, minWidth: 0 },
+  /* `scrollSnapAlign:'center'` é a outra metade do encaixe na web: o arrasto
+     solto para com o card no meio, e não na borda esquerda. */
+  cardPosicao: { flexShrink: 0, minWidth: 0, ...({ scrollSnapAlign: 'center' } as any) },
   card: {
     padding: spacing.lg,
     borderRadius: radius.lg,
