@@ -221,6 +221,35 @@ export default function Granachat({
      no topo e restauração do controle que abriu a conversa. */
   useModalAccessibility(painelRef, visivel && montado, fechar);
 
+  /* Clique fora da caixa fecha, na WEB. Relatado pelo autor em 13/09/2026:
+     "na web o granachat não fecha ao clicar fora da caixa de texto".
+
+     O fundo clicável abaixo (o `Pressable` do tamanho da tela com
+     `onPress={fechar}`) funciona quando o evento chega nele, mas o clique
+     real NÃO chega. Medido no Chrome, logado, com o chat aberto:
+     `document.elementsFromPoint` num ponto fora do painel devolve o próprio
+     contêiner `fundo` no topo, e o `Pressable` nem aparece na pilha; um clique
+     de mouse pelo protocolo não fecha; os mesmos eventos disparados direto no
+     `Pressable` fecham. Ou seja, o teste de alvo do navegador pula o fundo e
+     entrega o clique ao contêiner, que não fazia nada com ele.
+
+     Então o clique é tratado onde ele cai: no contêiner, e só quando o alvo é
+     o PRÓPRIO contêiner. Clique dentro do painel tem como alvo algum filho do
+     painel, sobe até aqui por propagação com outro `target` e é ignorado — por
+     isso o chat continua sem fechar ao clicar dentro dele. O `Pressable` fica
+     para o toque no Android e no iOS, onde a checagem de toque é outra. */
+  const fundoRef = useRef<View | null>(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !montado || !visivel) return;
+    const no = fundoRef.current as unknown as HTMLElement | null;
+    if (!no?.addEventListener) return;
+    const aoClicar = (evento: MouseEvent) => {
+      if (evento.target === no) fechar();
+    };
+    no.addEventListener('click', aoClicar);
+    return () => no.removeEventListener('click', aoClicar);
+  }, [montado, visivel, fechar]);
+
   /* ── Carregar histórico ao abrir ──────────────────────────────────── */
   useEffect(() => {
     let cancelado = false;
@@ -445,10 +474,13 @@ export default function Granachat({
 
   return (
     /* Fundo escurecido: toca fora e fecha, como qualquer janela flutuante.
-       O painel é um Pressable aninhado com onPress vazio — assim ele consome
-       o toque antes de chegar no fundo, e tocar DENTRO do chat nunca fecha.
-       Mesmo truque que `components/Sheet.tsx` já usa. */
+       No Android e no iOS quem fecha é o `Pressable` do tamanho da tela logo
+       abaixo. Na web o clique real não chega nele e é tratado no próprio
+       contêiner, pelo `fundoRef` (ver o efeito que o registra, acima). Tocar
+       DENTRO do painel não fecha em nenhuma das duas: o painel é irmão do
+       fundo, não filho, e na web o alvo do clique é um filho do painel. */
     <View
+      ref={fundoRef}
       style={[styles.fundo, { paddingTop: insets.top, paddingBottom: recuoPainel }]}
     >
       <Pressable
