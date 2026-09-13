@@ -88,10 +88,11 @@ desconectado.
   vendida pela **Cakto** e cancelável a qualquer momento. A vigência continua
   controlada por `subscriptions.access_until`; cancelamento interrompe
   renovações futuras sem retirar o período que já foi pago. Os dois checkouts
-  estão no ar e o webhook comercial existe, mas **nunca recebeu tráfego
-  real** — a integração inteira foi escrita contra a documentação. O bloqueio
-  está implementado e desligado por interruptor até a primeira compra de
-  teste provar o caminho.
+  estão no ar, e o caminho completo foi **provado com a primeira venda real
+  em 13/09/2026** (Pix, plano mensal): pagamento, aviso do webhook, assinatura
+  e vínculo com a conta. Renovação, reembolso, cartão e plano anual ainda não
+  tiveram tráfego real. O bloqueio está implementado e desligado por
+  interruptor; ligar agora depende só de decisão do autor.
 - O parcelamento do plano anual **não fecha no preço cheio**: a Cakto cobra o
   juro-base dela do comprador (23,94% em 12x), e a interface pública só
   permite acrescentar juro por cima, nunca remover. Por isso nenhuma

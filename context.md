@@ -264,45 +264,138 @@ simulada; o microfone real, o widget na tela inicial e o fluxo sem internet
 nunca foram exercitados num telefone.
 
 
-# 13/09/2026 — a compra de teste na Cakto foi tentada e recusada, e a causa não está na API
+# 13/09/2026 — primeira venda real na Cakto, e o webhook que recusava todo evento desde 09/09
 
-O autor tentou pagar de verdade, pelo link mensal, cartão de crédito no
-CPF/e-mail reais. A Cakto recusou no próprio checkout, antes de qualquer
-método de pagamento processar:
+**Resumo, em ordem de importância.** A compra de teste saiu (Pix, plano
+mensal). A Cakto avisou nossa função no mesmo segundo, e ela respondeu 401,
+porque `CAKTO_WEBHOOK_SECRET` no Supabase não era o segredo que a Cakto usa.
+Corrigido o segredo e reenviado o evento, a assinatura nasceu com 92 dias de
+acesso em vez de 30, porque a `cakto-webhook` publicada era de ANTES das duas
+correções de 09 e 10/09, que viviam só no repositório. Publicada a versão
+atual, acertada a data da compra de teste. **Caminho completo provado:
+pagamento, aviso, assinatura, vínculo com a conta.**
 
-> Pagamento recusado — Esse produto ainda não está disponível para venda.
+## A tentativa com cartão, e a hipótese de mais cedo
 
-**Verificado pela interface de programação, ANTES de suspeitar do cliente ou do
-banco (regra 9): não é configuração nossa.**
+Primeira tentativa, cartão, link mensal: a Cakto recusou no próprio checkout
+com "Pagamento recusado — Esse produto ainda não está disponível para venda".
+Conferido pela API antes de suspeitar de qualquer outra coisa (regra 9):
+`products_retrieve` e as duas ofertas (`esgddv2`, `323b2rs`) com
+`status: "active"`. A API pública não tem endpoint de conta, verificação ou
+liberação de venda.
 
-    products_retrieve(4b8c1193-...)  ->  status: "active"
-    offers_list                       ->  esgddv2  status: "active"
-                                          323b2rs  status: "active"
+Registrei como **hipótese** que a conta do vendedor estaria pendente de
+verificação. **Ela não foi confirmada nem refutada:** horas depois, sem
+ninguém mexer em nada do nosso lado, uma segunda tentativa com cartão recebeu
+outra mensagem, "Não foi possível autorizar este pagamento", que é recusa do
+emissor ou do antifraude, e o Pix passou. O bloqueio de "indisponível para
+venda" sumiu sem causa conhecida. Se voltar, olhar o painel da Cakto primeiro.
 
-Produto ativo, as duas ofertas ativas, `paymentMethods` com `credit_card`,
-`pix` e `pix_auto`. Nada aqui explica a recusa.
+## Causa 1: o segredo do webhook nunca bateu
 
-**A API pública não tem endpoint de conta/produtor.** As oito tags que ela
-expõe são `products`, `offers`, `orders`, `payments`, `subscriptions`,
-`customers`, `fees`, `installment-interest`, `order-bumps`, `webhook` — nenhuma
-fala de verificação de identidade, documentos ou liberação de conta para
-vender. Busquei por "conta do produtor", "KYC", "aprovação para vender",
-"documentos pendentes": os resultados foram sempre os mesmos endpoints de
-produto e taxa, nada de conta.
+Pix aprovado às 11h28 (horário local). `function_edge_logs` mostra
+`POST | 401 | .../cakto-webhook` em 14:28:34 UTC, e o histórico do lado da
+Cakto (`webhook_event_history_list`) guarda a resposta que recebeu:
+`{"error": "unauthorized"}`. O `webhook_list` mostra o webhook `67060`
+apontando para a URL certa, com os seis eventos certos, e
+`success_rate: 0` desde a criação.
 
-**Hipótese, não fato comprovado:** a mensagem "produto ainda não está
-disponível para venda", vinda de um gateway de pagamento com produto e ofertas
-ativas, é o texto que essas plataformas costumam usar quando a CONTA do
-vendedor ainda não passou por verificação (documento, conta bancária) — algo
-comum para conta nova, e que fica de propósito fora da API pública, só visível
-no painel do produtor. Não tentei uma segunda compra real para confirmar,
-porque isso gastaria dinheiro de novo sem necessidade: o autor já correu esse
-risco uma vez, e o retorno do próprio checkout já é evidência suficiente de que
-o problema é no nível de conta, não de produto.
+**Fato:** o valor em `CAKTO_WEBHOOK_SECRET` era diferente de `fields.secret`
+do webhook na Cakto. **Hipótese sobre como:** o webhook foi criado no painel
+em 09/09 às 16h04, e é a Cakto que gera o segredo nesse momento; o segredo do
+Supabase deve ter sido gravado antes, com um valor que não era esse. Todo
+evento da Cakto desde 09/09 teria sido recusado. Não houve nenhum antes de
+hoje, então nada foi perdido além deste.
 
-**Isso bloqueia o item 1 da lista abaixo, que por sua vez bloqueia o item 2.**
-Nenhuma sessão de código resolve isso: é ação no painel da Cakto, ou contato com
-o suporte deles, e só o autor tem acesso à conta e aos documentos.
+**Correção:** `POST /v1/projects/<ref>/secrets` com o valor que o próprio
+`webhook_list` devolve. O valor está agora também no `.env` local, que não
+tinha a variável. Efeito colateral esperado da regra 11: TODAS as funções
+foram reinstanciadas e subiram uma versão, sem mudar código nem `updated_at`
+(`cakto-webhook` foi de v5 para v6 só por isso).
+
+**Reenvio:** `webhook_event_resend_create`. **A documentação da Cakto está
+errada neste ponto:** diz que o `{id}` do caminho é o "Id do App Webhook", e
+com `67060` a chamada devolve 404. O certo é o id do EVENTO, o `data[].id` de
+`webhook_event_history_list`. Com ele, "Evento reenviado com sucesso", e
+`webhook_events` ganhou a primeira linha de `cakto` da história do projeto.
+
+## Causa 2: a armadilha dos 92 dias aconteceu de verdade
+
+A assinatura nasceu com `access_until` = pagamento + 92 dias (14/12), num
+plano de 30. É o padrão de `processar_evento_assinatura` quando
+`p_access_until` chega nulo:
+
+    v_access_until := coalesce(p_access_until, p_event_at + interval '92 days');
+
+**Por quê chegou nulo:** a `cakto-webhook` no ar tinha `updated_at` de
+09/09 às 16h00. O `acessoAte()` com `recurrence_period` entrou em `2b491cf`
+(10/09 12h26), e a correção da data de reembolso e chargeback em `411f10c`
+(09/09 16h02). **A seção de 10/09 sobre os 92 dias diz que o código foi
+testado, e nunca diz que foi publicado. Não foi.** É o perigo da regra 11 ao
+contrário: não era código em produção faltando no repositório, era código no
+repositório faltando em produção.
+
+**Achado do payload real, que muda a importância dessa correção:** no Pix, o
+evento de compra aprovada chega com `subscription.next_payment_date: null` e
+`subscription.status: "inactive"` (retrato tirado antes de a assinatura
+ativar), e `recurrence_period: 30`. Ou seja, no Pix o `recurrence_period` não é
+rede de segurança para o anual: é o ÚNICO caminho para uma data certa, em
+qualquer plano.
+
+**Prova antes de publicar:** o módulo real `normalizarEventoCakto`, carregado
+como em `__tests__/cakto-webhook.cjs`, contra o payload real com dado pessoal
+removido, devolveu `accessUntil` = pagamento + 30 dias exatos.
+
+**Publicação, com ok explícito do autor**, seguindo a regra 11:
+
+- pacote no ar baixado antes (ESZIP, 7,9 MB, na pasta temporária da sessão);
+- diferença para a produção conferida: só `_shared/cakto.ts` (+54 −14), os
+  dois commits acima e nada mais;
+- `deno check` limpo (deno 2.9.6, que só existe no cache do `npx` nesta
+  máquina, fora do `PATH`) e `node __tests__/cakto-webhook.cjs` com 47/47;
+- `npx supabase functions deploy cakto-webhook --use-api --no-verify-jwt`
+  resultou em v7, `verify_jwt: false` preservado, `updated_at` 13/09 11h47.
+
+**Sondas em produção, nenhuma grava nada:** segredo errado dá 401; segredo
+certo com `pix_gerado` dá 200 `{"result":"ignored"}`. `webhook_events`
+continua com uma linha só da Cakto.
+
+**Dado corrigido, com ok do autor:** `access_until` da compra de teste de
+14/12 para 13/10 14:28:31 UTC, que é o que a v7 teria gravado. O `update`
+casava o valor antigo, para não sobrescrever nada que tivesse mudado.
+
+**Vínculo com a conta:** a assinatura já estava com `user_id` quando
+conferida de novo. Existe conta com o mesmo e-mail confirmado, e o app chama
+`vincular_assinatura_automatica` ao abrir com sessão salva
+(`lib/auth-context.tsx`), então o autor abrir o app bastou.
+
+## O dinheiro, conferido numa venda real
+
+| Campo do payload | Valor |
+|---|---|
+| `amount`, o que o cliente pagou | R$ 9,90 |
+| `baseAmount`, preço da oferta | R$ 8,91 |
+| `charged_fees`, taxa de serviço cobrada do cliente | R$ 0,99 |
+| `fees`, tarifa da Cakto no Pix (0% + fixo) | R$ 2,49 |
+| comissão do produtor, na notificação da Cakto | R$ 6,42 |
+
+R$ 6,42 = R$ 8,91 − R$ 2,49. De cada R$ 9,90 no Pix mensal, ficam R$ 6,42.
+
+## O que NÃO foi validado, como checklist
+
+- [ ] **Renovação.** Nenhum `subscription_renewed` chegou. No Pix comum (não o
+      Automático) o cliente paga um Pix novo a cada ciclo; não se sabe como a
+      Cakto avisa isso nem se `next_payment_date` vem preenchido. O vencimento
+      da compra de teste é 13/10: conferir `webhook_events` e `access_until`
+      nesse dia.
+- [ ] **Reembolso, chargeback e cancelamento** nunca chegaram de verdade. A
+      correção de data de `411f10c` está no ar desde hoje, sem tráfego real.
+- [ ] **Cartão aprovado.** A única tentativa foi recusada pelo emissor.
+- [ ] **Oferta anual** (`323b2rs`) nunca comprada; os 365 dias só foram
+      testados localmente.
+- [ ] **Tela do app** mostrando a assinatura vinculada: não olhada em aparelho.
+- [ ] **`enforce_subscriptions` continua `false`.** O item 2 da lista abaixo
+      está destravado, e ligar é decisão do autor.
 
 # ⚠ FIM DO DIA 10/09/2026 — O QUE FALTA, TUDO MANUAL
 
@@ -310,7 +403,11 @@ Nada abaixo depende de código. Tudo já está no repositório e, onde precisava
 em produção. Esta lista existe para a próxima sessão (nesta ou na outra
 máquina) não refazer o que já foi feito nem esquecer o que ficou.
 
-## 1. Compra de teste na Cakto — DESTRAVA TODO O RESTO
+## 1. ~~Compra de teste na Cakto~~ — FEITA EM 13/09, ver a seção do dia no topo
+
+Saiu no Pix mensal. Revelou o segredo do webhook errado e a função publicada
+sem as correções de 09 e 10/09; os dois foram consertados no mesmo dia. O
+texto abaixo é o estado de 10/09, mantido como registro.
 
 Nenhum evento da Cakto jamais chegou. `webhook_events` só tem `eas` e
 `whatsapp`. A integração inteira foi escrita contra a documentação e o modelo
@@ -327,7 +424,7 @@ Depois de comprar, conferir:
 O `access_until` é o ponto de atenção: no anual tem que dar ~365 dias, não 92.
 Era exatamente a armadilha corrigida hoje.
 
-## 2. Ligar `enforce_subscriptions` — SÓ DEPOIS DO ITEM 1
+## 2. Ligar `enforce_subscriptions` — DESTRAVADO EM 13/09, decisão do autor
 
 Hoje está `false`: o app é gratuito na prática. As 9 contas existentes já têm
 cortesia vitalícia, então **ninguém é bloqueado** ao virar a chave. Quem se
