@@ -6958,3 +6958,10 @@ o aviso de conexão lenta sai sozinho quando os dados chegam."
 botão do crédito e a causa do teclado piscando. O `29cd70c`, de outro agente,
 foi revisado só no trecho da barra de abas. Cota: cerca de 10 builds
 registradas em setembro antes desta, contra 15 por mês.
+
+**Validado em 13/09/2026:** o autor instalou e abriu a 1.10.2 no aparelho e
+relatou "pra mim está tudo OK", sem apontar problema. **O que isso comprova, e
+o que não:** é uso geral, não um checklist item a item — não há confirmação
+específica de que o teclado piscando (nunca reproduzido, causa desconhecida)
+não voltou a acontecer, nem da pane, do aviso de conexão ou do botão de
+crédito isoladamente. Nenhum bug foi reportado nesta abertura.
