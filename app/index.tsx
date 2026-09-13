@@ -4,7 +4,7 @@ import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, spacing, radius, fonts as uiFonts, type, sombraCard, sombras } from '@/lib/theme';
+import { theme, spacing, radius, fonts as uiFonts, type, lh, sombraCard, sombras } from '@/lib/theme';
 import { CORTES, colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
@@ -76,8 +76,11 @@ const NAVEGACAO_LANDING = [
   { rotulo: 'Granabô', href: '#granachat', icone: 'sparkles-outline' },
   { rotulo: 'Hábitos', href: '#habitos', icone: 'flame-outline' },
   { rotulo: 'Benefícios', href: '#beneficios', icone: 'grid-outline' },
-  { rotulo: 'Segurança', href: '#seguranca', icone: 'shield-checkmark-outline' },
   { rotulo: 'Preços', href: '#precos', icone: 'pricetag-outline' },
+  /* "Segurança" saiu daqui junto com a dobra de mesmo nome, em 13/09/2026:
+     link de menu apontando pra âncora que não existe mais não rola pra lugar
+     nenhum e não avisa. O tema continua na página, dentro das objeções. */
+  { rotulo: 'Garantia', href: '#garantia', icone: 'shield-checkmark-outline' },
   { rotulo: 'Dúvidas', href: '#faq', icone: 'help-circle-outline' },
 ] as const;
 
@@ -667,16 +670,74 @@ const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
    reconhecimento erra e como o Livre para Gastar é calculado. A resposta
    comercial aponta para a seção de Preços, que concentra valor e forma de
    pagamento. */
-const PERGUNTAS_FAQ = [
+/* Quebra de objeções, dobra própria ANTES da FAQ.
+ *
+ * A FAQ estava fazendo dois trabalhos ao mesmo tempo, e mal: dez perguntas
+ * num acordeão fechado no fim da página. Objeção que trava a compra precisa
+ * ser respondida onde a pessoa ainda está decidindo, e visível, não escondida
+ * atrás de um clique. O que sobra de fato operacional continua na FAQ.
+ *
+ * O formato "Mas [objeção]" é deliberado: escreve a frase que a pessoa diria
+ * em voz alta, não a pergunta higienizada que uma empresa escreveria.
+ *
+ * Duas destas não existiam em lugar nenhum da página e são as de maior
+ * retorno apontado na análise de concorrência: "por que é pago" (o Grana.
+ * cobra desde o primeiro dia e nunca explicou o motivo) e a planilha, que é
+ * o concorrente real de quem chega aqui. */
+const OBJECOES = [
   {
-    pergunta: 'Preciso conectar minha conta bancária?',
+    objecao: 'Mas eu não quero dar acesso à minha conta bancária.',
     resposta:
-      'Não. O Grana. não se conecta ao seu banco e não usa Open Finance. Você registra colando um texto, falando no aplicativo ou apontando a câmera pro QR Code da nota, e ele organiza. Você nunca compartilha senha de banco com ninguém.',
+      'E você não vai dar. O Grana. não se conecta ao seu banco e não usa Open Finance. Você conta o que gastou e ele organiza. Senha de banco não entra nessa história em momento nenhum.',
   },
   {
-    pergunta: 'E se o Grana. entender um lançamento errado?',
+    objecao: 'Mas eu já tentei planilha e larguei no meio.',
     resposta:
-      'Acontece. O reconhecimento de valor, descrição e categoria é automático e acerta na maioria das vezes, mas pode errar. Todo lançamento pode ser editado ou excluído no app, e a categoria sugerida pode ser trocada a qualquer momento.',
+      'Quase todo mundo larga. Planilha cobra disciplina de digitação todo dia, e é a digitação que cansa primeiro. Aqui você cola o texto de uma compra e o lançamento aparece pronto, com uma categoria sugerida que você ajusta se precisar.',
+  },
+  {
+    objecao: 'Mas por que ele é pago, se existe aplicativo de graça?',
+    resposta:
+      'Porque aplicativo de finanças grátis precisa se pagar de outro jeito, e os jeitos disponíveis são anúncio, oferta de cartão e uso dos seus dados. O Grana. cobra assinatura para que a única coisa que ele precise fazer bem seja servir a você.',
+  },
+  {
+    objecao: 'Mas e se ele entender meu gasto errado?',
+    resposta:
+      'Acontece. O reconhecimento de valor, descrição e categoria é automático e acerta na maioria das vezes, mas pode errar. Todo lançamento é editável, e a categoria sugerida pode ser trocada a qualquer momento.',
+  },
+  {
+    objecao: 'Mas eu nunca usei aplicativo de finanças.',
+    resposta:
+      'Não precisa configurar nada antes. Cole um gasto e pronto, você já começou. O Grana. organiza e sugere a categoria, e o resto você descobre no seu ritmo.',
+  },
+  {
+    objecao: 'Mas meus dados ficam seguros?',
+    resposta:
+      'Só você acessa os dados da sua conta, e isso é reforçado no banco de dados, não só na tela. No aplicativo móvel a sessão fica criptografada no aparelho e dá pra ativar bloqueio por biometria. No Android, dá pra bloquear prints das telas com valores. Os detalhes completos estão na Política de Privacidade.',
+  },
+  {
+    objecao: 'Mas o Grana. mexe no meu dinheiro?',
+    resposta:
+      'Não. Ele é um registro. Não é instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, a partir do que você mesmo conta pra ele.',
+  },
+];
+
+/* A FAQ que sobra depois das objeções saírem: só dúvida operacional de quem
+   já decidiu. O que travava a decisão virou dobra própria, acima. */
+const PERGUNTAS_FAQ = [
+  {
+    pergunta: 'Como funciona a assinatura?',
+    resposta:
+      'O Grana. funciona por assinatura e não oferece período de teste. São dois planos, um mensal e um anual, e você escolhe entre os dois na seção de preços desta página.',
+  },
+  {
+    /* Apurado em 12/09/2026 contra a API da Cakto (`products_retrieve`): o
+       produto aceita cartão e Pix. Boleto NÃO está habilitado, apesar de
+       aparecer na tabela de taxas da plataforma — anunciar boleto aqui faria
+       a pessoa procurar no checkout uma opção que não existe. */
+    pergunta: 'Quais são as formas de pagamento?',
+    resposta:
+      'Cartão de crédito e Pix. O plano anual também pode ser parcelado no cartão, com os juros da operadora. Não trabalhamos com boleto.',
   },
   {
     pergunta: 'Como o Livre para Gastar é calculado?',
@@ -684,29 +745,9 @@ const PERGUNTAS_FAQ = [
       'A partir do saldo dos seus lançamentos do mês, o Grana. desconta as contas que ainda vencem no mês e o valor que você já separou em metas, e divide o que sobra pelos dias que faltam. É uma estimativa baseada no que você registrou, para servir de referência no dia a dia.',
   },
   {
-    pergunta: 'Como funciona a assinatura?',
-    resposta:
-      'O Grana. funciona por assinatura e não oferece período de teste. São dois planos, um mensal e um anual, e você alterna entre os dois na seção de Preços desta página, onde também ficam o valor e a forma de pagamento.',
-  },
-  {
     pergunta: 'Posso editar ou excluir meus dados?',
     resposta:
       'Pode. Todo lançamento é editável, e você pode excluir sua conta e seus dados quando quiser, pelo próprio aplicativo.',
-  },
-  {
-    pergunta: 'Como meus dados são protegidos?',
-    resposta:
-      'Só você acessa os dados da sua conta, e isso é reforçado no banco de dados, não só na tela. No aplicativo móvel, a sessão fica criptografada no aparelho e você pode ativar bloqueio por biometria; no Android, também dá pra bloquear prints das telas com valores. Detalhes completos na Política de Privacidade.',
-  },
-  {
-    pergunta: 'O Grana. movimenta meu dinheiro?',
-    resposta:
-      'Não. O Grana. é um registro. Não é uma instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, com base no que você mesmo conta pra ele.',
-  },
-  {
-    pergunta: 'Funciona pra quem nunca usou aplicativo de finanças?',
-    resposta:
-      'Sim. Comece colando um gasto, sem configurar nada antes. O Grana. organiza e sugere a categoria, e você ajusta se quiser.',
   },
   {
     pergunta: 'Dá pra usar no celular e no computador com a mesma conta?',
@@ -715,7 +756,7 @@ const PERGUNTAS_FAQ = [
   {
     pergunta: 'Preciso instalar alguma coisa?',
     resposta:
-      'Não pra começar: o Grana. roda direto no navegador, neste mesmo endereço. Pra ter os recursos extras do bolso, como os widgets da tela inicial, o lançamento por voz e a foto da nota fiscal, é só baixar o aplicativo de Android.',
+      'Não pra começar: o Grana. roda direto no navegador, neste mesmo endereço. Pra ter os recursos do bolso, como os widgets da tela inicial, o lançamento por voz e a foto da nota fiscal, é só baixar o aplicativo de Android.',
   },
 ];
 
@@ -1058,19 +1099,6 @@ function ConteudoWeb() {
     };
   }, []);
 
-  const PROVAS_SEGURANCA = [
-    {
-      icone: 'finger-print-outline' as const,
-      titulo: 'Proteção no aparelho',
-      texto: 'No celular, você pode bloquear o acesso com biometria ou com a senha do próprio aparelho.',
-    },
-    {
-      icone: 'shield-checkmark-outline' as const,
-      titulo: 'Controle continua seu',
-      texto: 'Só você acessa sua conta. Seus lançamentos podem ser editados e seus dados, excluídos pelo app.',
-    },
-  ];
-
   // Só o que já é dito em algum outro ponto desta mesma página — nenhum
   // benefício novo inventado pro checklist de Preços.
   //
@@ -1242,83 +1270,6 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Granachat (dobra 4) ─────────
-          A dobra anterior mostra o dado ENTRANDO; esta mostra a pergunta que
-          se faz depois que ele está lá dentro. É o recurso mais novo do
-          produto e o único que responde em linguagem natural, então ganha
-          dobra própria em vez de virar mais um card.
-
-          O argumento central não é "tem IA": é que a resposta vem do SEU
-          lançamento. Por isso a copy insiste no número real e no que o
-          assistente faz quando não encontra a categoria — é o que separa
-          isto de um chatbot que chuta. */}
-      <View nativeID="granachat" style={styles.palcoComCamada}>
-        <GradeInterativa />
-        <Dobra levantada>
-          <RevealOnScroll>
-            <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-              <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
-                <Text style={styles.eyebrow}>Conheça o Granabô</Text>
-                <TituloSecao>Pergunte sobre o seu dinheiro.</TituloSecao>
-                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
-                  Pergunte sobre gastos, boletos ou quanto ainda pode gastar. O Granabô consulta
-                  seus lançamentos para responder e pede detalhes quando precisa.
-                </Text>
-              </View>
-              <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
-                <ConversaGranachat compacto={ehCompacto} />
-              </View>
-            </View>
-          </RevealOnScroll>
-        </Dobra>
-      </View>
-
-      {/* ───────── Construção do hábito (dobra 5) ─────────
-          Fundida com o antigo "Por dentro do aplicativo" (autor: "o
-          carrossel pode muito bem estar nessa tela aqui e mesclar essas
-          duas sessões") — eram duas dobras seguidas mostrando um celular
-          com telas do app, uma delas nem navegável (só 2 quadros em
-          crossfade automático). Agora é uma só: o carrossel de 5 abas de
-          verdade (`CarrosselTelasApp`) entra no lugar do `MolduraCelular`
-          de 2 quadros, e "Por dentro do aplicativo." vira legenda
-          (`eyebrow`) presa ao carrossel — hierarquia menor, de propósito —
-          enquanto "O Grana. ajuda o controle a virar hábito." continua
-          sendo o título (H2) da seção. */}
-      <View nativeID="habitos" style={styles.palcoComCamada}>
-        <GradeInterativa />
-        <Dobra levantada>
-          <RevealOnScroll>
-            <View style={[styles.secao, styles.secaoComCartao, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
-              <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
-                <Text style={styles.eyebrow}>Por dentro do aplicativo.</Text>
-                <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
-                  <CarrosselTelasApp compacto={ehCompacto} />
-                </ScrollLinkedView>
-              </View>
-              <View style={[styles.colunaTextoSecao, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
-                <TituloSecao>O Grana. ajuda o controle a virar hábito.</TituloSecao>
-                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
-                  A experiência é apoiada em princípios de formação de hábito: um registro fácil de começar, sinais para lembrar e progresso que você consegue enxergar.
-                </Text>
-                <View style={styles.habitoGrade}>
-                  {PILARES_HABITO.map((pilar) => (
-                    <View key={pilar.titulo} style={styles.habitoItem}>
-                      <View style={styles.habitoIcone} aria-hidden>
-                        <Ionicons name={pilar.icone} size={17} color={theme.accent2} />
-                      </View>
-                      <View style={styles.habitoTexto}>
-                        <Text style={styles.habitoTitulo}>{pilar.titulo}</Text>
-                        <Text style={styles.habitoDescricao}>{pilar.texto}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          </RevealOnScroll>
-        </Dobra>
-      </View>
-
       {/* ───────── Painel web (par com "Por dentro do app") ─────────
           A mesma conta do carrossel de celular acima, agora na tela
           grande — reforça "controle no celular e no computador" (já
@@ -1397,42 +1348,94 @@ function ConteudoWeb() {
         />
       </View>
 
-      {/* ───────── Segurança e confiança (dobra 9) ─────────
-          Fatos verificáveis sobre como o produto protege os dados —
-          nenhuma opinião da própria empresa sobre si mesma. */}
-      <View nativeID="seguranca" style={styles.palcoComCamada}>
-        <Dobra>
-          <View style={styles.secao}>
-            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
-              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>É seguro informar meus gastos para um aplicativo?</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
-                Faz sentido perguntar. Aqui estão os fatos que ajudam você a decidir com clareza.
-              </Text>
-            </RevealOnScroll>
+      {/* A dobra de Segurança que ficava aqui foi retirada em 13/09/2026.
+          Ela não existe na estrutura de 13 blocos definida pelo autor, e o
+          conteúdo dela não se perdeu: virou três das sete objeções da dobra
+          `#objecoes` ("não quero dar acesso à conta bancária", "meus dados
+          ficam seguros", "o Grana. mexe no meu dinheiro"), que é onde a
+          objeção de confiança de fato trava a compra. A dobra antiga gastava
+          uma tela inteira em dois cards com muito vazio em volta. */}
 
-            <View style={styles.segurancaProvas}>
-              {PROVAS_SEGURANCA.map((prova, indice) => (
-                <RevealOnScroll key={prova.titulo} atraso={indice * 80} variante="card" style={styles.segurancaProvaPosicao}>
-                  <View style={styles.segurancaProva}>
-                    <View style={styles.segurancaProvaIcone} aria-hidden>
-                      <Ionicons name={prova.icone} size={22} color={theme.accent2} />
+      {/* ───────── Construção do hábito (dobra 5) ─────────
+          Fundida com o antigo "Por dentro do aplicativo" (autor: "o
+          carrossel pode muito bem estar nessa tela aqui e mesclar essas
+          duas sessões") — eram duas dobras seguidas mostrando um celular
+          com telas do app, uma delas nem navegável (só 2 quadros em
+          crossfade automático). Agora é uma só: o carrossel de 5 abas de
+          verdade (`CarrosselTelasApp`) entra no lugar do `MolduraCelular`
+          de 2 quadros, e "Por dentro do aplicativo." vira legenda
+          (`eyebrow`) presa ao carrossel — hierarquia menor, de propósito —
+          enquanto "O Grana. ajuda o controle a virar hábito." continua
+          sendo o título (H2) da seção. */}
+      <View nativeID="habitos" style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra levantada>
+          <RevealOnScroll>
+            <View style={[styles.secao, styles.secaoComCartao, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
+              <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
+                <Text style={styles.eyebrow}>Por dentro do aplicativo.</Text>
+                <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
+                  <CarrosselTelasApp compacto={ehCompacto} />
+                </ScrollLinkedView>
+              </View>
+              <View style={[styles.colunaTextoSecao, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
+                <TituloSecao>O Grana. ajuda o controle a virar hábito.</TituloSecao>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
+                  A experiência é apoiada em princípios de formação de hábito: um registro fácil de começar, sinais para lembrar e progresso que você consegue enxergar.
+                </Text>
+                <View style={styles.habitoGrade}>
+                  {PILARES_HABITO.map((pilar) => (
+                    <View key={pilar.titulo} style={styles.habitoItem}>
+                      <View style={styles.habitoIcone} aria-hidden>
+                        <Ionicons name={pilar.icone} size={17} color={theme.accent2} />
+                      </View>
+                      <View style={styles.habitoTexto}>
+                        <Text style={styles.habitoTitulo}>{pilar.titulo}</Text>
+                        <Text style={styles.habitoDescricao}>{pilar.texto}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.segurancaProvaTitulo}>{prova.titulo}</Text>
-                    <Text style={styles.segurancaProvaTexto}>{prova.texto}</Text>
-                  </View>
-                </RevealOnScroll>
-              ))}
+                  ))}
+                </View>
+              </View>
             </View>
+          </RevealOnScroll>
+        </Dobra>
+      </View>
 
-            <RevealOnScroll style={styles.segurancaLimite}>
-              <Ionicons name="remove-circle-outline" size={18} color={theme.down} aria-hidden />
-              <Text style={styles.segurancaLimiteTexto}>O Grana. organiza registros. Nunca movimenta seu dinheiro.</Text>
-            </RevealOnScroll>
+      {/* ───────── Granabô (bloco 8 da estrutura de 13) ─────────
+          Movida em 13/09/2026 da posição 4 para cá, logo antes da oferta.
+          O motivo é de argumento, não de estética: o Granabô é o diferencial
+          principal do produto, e diferencial principal rende mais imediatamente
+          antes do preço do que no meio da explicação de como se lança um gasto.
+          Antes ela vinha logo depois da dobra de registro, quando a pessoa
+          ainda nem sabia o que o app guarda para poder ser perguntado.
 
-            <RevealOnScroll style={styles.segurancaCta}>
-              <BotaoCTA centralizado />
-            </RevealOnScroll>
-          </View>
+          O argumento central não é "tem IA": é que a resposta vem do SEU
+          lançamento. Por isso a copy insiste no número real e no que o
+          assistente faz quando não encontra a categoria, que é o que separa
+          isto de um chatbot que chuta.
+
+          Nome público é Granabô, sempre. "Granachat" é o nome da janela de
+          conversa e do componente, nunca da copy (definido com o autor em
+          05/09/2026). */}
+      <View nativeID="granachat" style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra levantada>
+          <RevealOnScroll>
+            <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
+              <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
+                <Text style={styles.eyebrow}>Conheça o Granabô</Text>
+                <TituloSecao>Pergunte sobre o seu dinheiro.</TituloSecao>
+                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
+                  Pergunte sobre gastos, boletos ou quanto ainda pode gastar. O Granabô consulta
+                  seus lançamentos para responder e pede detalhes quando precisa.
+                </Text>
+              </View>
+              <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
+                <ConversaGranachat compacto={ehCompacto} />
+              </View>
+            </View>
+          </RevealOnScroll>
         </Dobra>
       </View>
 
@@ -1563,6 +1566,65 @@ function ConteudoWeb() {
             </RevealOnScroll>
           </View>
         </Dobra>
+      </View>
+
+      {/* ───────── Quebra de objeções ─────────
+          Vem DEPOIS da oferta e ANTES da FAQ de propósito: é a dobra que
+          responde o que trava a decisão, no momento em que a pessoa acabou
+          de ver o preço. Sem acordeão — objeção escondida atrás de um clique
+          é objeção não respondida. */}
+      <View nativeID="objecoes" style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra levantada>
+          <View style={styles.secao}>
+            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>As perguntas que você ainda não fez.</TituloSecao>
+            </RevealOnScroll>
+            <View style={styles.objecoesGrade}>
+              {OBJECOES.map((o, i) => (
+                <RevealOnScroll key={o.objecao} atraso={i * 60} variante="card" style={styles.objecaoCardPos}>
+                  <View style={styles.objecaoCard}>
+                    <Text style={styles.objecaoPergunta}>{o.objecao}</Text>
+                    <Text style={styles.objecaoResposta}>{o.resposta}</Text>
+                  </View>
+                </RevealOnScroll>
+              ))}
+            </View>
+          </View>
+        </Dobra>
+      </View>
+
+      {/* ───────── Garantia ─────────
+          O prazo de 7 dias é fato conferido no painel da Cakto em 13/09/2026,
+          e é o mesmo que o e-mail de confirmação já promete a quem compra.
+
+          NÃO acrescentar aqui nada sobre COMO se cancela sem confirmar antes:
+          a assinatura é da Cakto, a interface de programação deles não
+          descreve esse caminho, e "cancele quando quiser" já foi retirado
+          desta página uma vez, em 05/09/2026, por falta exatamente disso. */}
+      {/* Faixa compacta, NÃO uma `Dobra` de tela cheia. A garantia é um
+          respiro de tranquilização entre duas dobras densas (objeções e FAQ),
+          e ocupa umas 350px de conteúdo: numa dobra de 840px ela vira uma
+          ilhota cercada de vazio, que foi exatamente o defeito que derrubou a
+          antiga dobra de Segurança ("ruim e feia", palavras do autor). Altura
+          pelo conteúdo é a decisão certa aqui, não um descuido. */}
+      <View nativeID="garantia" style={[styles.palcoComCamada, styles.garantiaBanda]}>
+        <GradeInterativa />
+        <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
+          <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
+            <View style={styles.garantiaSelo} aria-hidden>
+              <Ionicons name="shield-checkmark-outline" size={26} color={theme.accent2} />
+            </View>
+            <TituloSecao estiloExtra={styles.precoTituloCentralizado}>Sete dias para mudar de ideia.</TituloSecao>
+            <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.garantiaTexto]}>
+              Se nos primeiros sete dias você concluir que o Grana. não é pra você, pede o reembolso e recebe o
+              valor de volta. O prazo está escrito no próprio e-mail de confirmação da compra.
+            </Text>
+            <View style={styles.garantiaCta}>
+              <BotaoCTA centralizado compra anual rotulo="Assinar o Grana." />
+            </View>
+          </RevealOnScroll>
+        </View>
       </View>
 
       {/* ───────── FAQ ─────────
@@ -2179,15 +2241,7 @@ const styles = StyleSheet.create({
   precoCta: { marginTop: spacing.lg },
   precoConfianca: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },
 
-  segurancaProvas: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.xxl, marginTop: spacing.xxl + spacing.sm },
-  segurancaProvaPosicao: { flexGrow: 1, flexBasis: '29%', minWidth: 260 },
-  segurancaProva: { height: '100%', paddingVertical: spacing.xl, borderTopWidth: 2, borderTopColor: theme.ruleStrong },
-  segurancaProvaIcone: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.accentDeep, marginBottom: spacing.xl },
-  segurancaProvaTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: type.destaque * 1.3, fontFamily: fonts.regular, marginBottom: spacing.sm },
-  segurancaProvaTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light, maxWidth: 360 },
-  segurancaLimite: { flexDirection: 'row', alignItems: 'flex-start', alignSelf: 'center', gap: spacing.sm, marginTop: spacing.xxl + spacing.sm },
-  segurancaLimiteTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.45, fontFamily: fonts.light, textAlign: 'center' },
-  segurancaCta: { alignItems: 'center', marginTop: spacing.xxl + spacing.xs },
+  /* Os estilos `seguranca*` saíram com a dobra de Segurança (13/09/2026). */
 
   // Coluna que hospeda a prova visual ao lado do texto da seção (o card de
   // Livre para Gastar, o painel web). Herdou o nome de quando era uma
@@ -2242,6 +2296,52 @@ const styles = StyleSheet.create({
   // fornece os dois, dobrar deixaria espaçamento duplicado e uma linha
   // divisória órfã cortando o card ao meio.
   faqItemSemBorda: { borderBottomWidth: 0, paddingVertical: 0 },
+
+  /* Objeções: grade que quebra sozinha por largura. `flexBasis` de 30% com
+     `minWidth` de 300 dá três colunas no desktop largo, duas no intermediário
+     e uma no estreito, sem breakpoint próprio — são sete cards de altura
+     desigual, e uma grade rígida deixaria buraco no fim da última linha. */
+  objecoesGrade: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    marginTop: spacing.xxl,
+    justifyContent: 'center',
+  },
+  /* `maxWidth` existe por causa do sétimo card: são sete objeções em três
+     colunas, então o último fica sozinho na última linha e, só com
+     `flexGrow`, esticava pra largura inteira da página — lia como banner, não
+     como o par dos outros seis. Com teto, ele fica do mesmo tamanho dos
+     demais e o `justifyContent:'center'` da grade o centraliza. */
+  objecaoCardPos: { flexGrow: 1, flexBasis: '30%', minWidth: 300, maxWidth: 420 },
+  objecaoCard: {
+    height: '100%',
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...sombraCard,
+  },
+  /* A objeção é a fala da pessoa, então ganha a cor de destaque e a fonte
+     regular; a resposta é a voz do produto, em tinta suave. É o mesmo
+     contraste que o card de benefício já faz entre rótulo e corpo. */
+  objecaoPergunta: { color: theme.accent2, fontSize: type.apoio, fontFamily: fonts.regular, lineHeight: lh(type.apoio) },
+  objecaoResposta: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light, lineHeight: lh(type.corpo) },
+
+  garantiaSelo: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.accentDeep,
+    marginBottom: spacing.lg,
+  },
+  garantiaBanda: { paddingVertical: spacing.xxl * 2, backgroundColor: theme.paperRaised },
+  garantiaTexto: { maxWidth: 560 },
+  garantiaCta: { marginTop: spacing.xl },
 
   ctaFinalLayout: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xxl * 2 },
   ctaFinalLayoutCompacto: { flexDirection: 'column', gap: spacing.xxl },
