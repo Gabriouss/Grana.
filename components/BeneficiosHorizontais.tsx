@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { CORTES, colunaConteudo } from '@/lib/breakpoints';
 import { fonts as uiFonts, radius, sombraCard, spacing, theme, type } from '@/lib/theme';
 import MiniMockBeneficio, { type VarianteMock } from '@/components/MiniMockBeneficio';
+import RecorteTela, { type Recorte } from '@/components/RecorteTela';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import AppPressable from '@/components/AppPressable';
 import AppModal from '@/components/AppModal';
@@ -12,7 +13,11 @@ import Sheet from '@/components/Sheet';
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
 export type BeneficioHorizontal = {
-  variante: VarianteMock;
+  /** Mini-mock desenhado. Ignorado quando há `recorte`. */
+  variante?: VarianteMock;
+  /** Pedaço de uma captura REAL do app, no lugar do mini-mock. Preferível:
+      mock desenhado se afasta do produto, captura não (ver RecorteTela). */
+  recorte?: Recorte;
   rotulo: string;
   titulo: string;
   texto: string;
@@ -28,7 +33,24 @@ type Props = {
   alturaCabecalho: number;
   titulo: string;
   descricao: string;
+  /** Colunas da grade do bento (largura >= 1100). Padrão 3. Escolher um
+      divisor do número de itens: 8 itens em 3 colunas deixam dois órfãos
+      na última linha. */
+  colunasBento?: number;
 };
+
+/* O visual do card: recorte real quando existe, mini-mock quando não. Com o
+   mesmo respiro embaixo nos dois casos, para o rótulo começar na mesma altura. */
+function VisualBeneficio({ item, destaque }: { item: BeneficioHorizontal; destaque?: boolean }) {
+  if (item.recorte) {
+    return (
+      <View style={styles.visualRecorte}>
+        <RecorteTela recorte={item.recorte} />
+      </View>
+    );
+  }
+  return item.variante ? <MiniMockBeneficio variante={item.variante} destaque={destaque} /> : null;
+}
 
 function limitar(valor: number, minimo: number, maximo: number) {
   return Math.min(maximo, Math.max(minimo, valor));
@@ -63,8 +85,8 @@ function CardBeneficio({
 }) {
   return (
     <View role="listitem" style={[styles.cardPosicao, { width: larguraCard }]}>
-      <View style={[styles.card, compacto ? { height: alturaCard } : styles.cardAmplo]}>
-        <MiniMockBeneficio variante={item.variante} />
+      <View style={[styles.card, compacto ? (item.recorte ? styles.cardCompactoLivre : { height: alturaCard }) : styles.cardAmplo]}>
+        <VisualBeneficio item={item} />
         <Text style={styles.rotulo}>{item.rotulo}</Text>
         <Text style={[styles.tituloCard, !compacto && styles.tituloCardAmplo]}>{item.titulo}</Text>
         <Text style={[styles.textoCard, !compacto && styles.textoCardAmplo]} numberOfLines={compacto ? 3 : undefined}>
@@ -101,7 +123,7 @@ function CardBento({ item }: { item: BeneficioHorizontal }) {
   return (
     <View role="listitem" style={[styles.celulaBento, grande && ({ gridColumn: 'span 2' } as any)]}>
       <View style={[styles.card, styles.cardAmplo, styles.cardBento, grande && styles.cardBentoGrande]}>
-        <MiniMockBeneficio variante={item.variante} destaque={grande} />
+        <VisualBeneficio item={item} destaque={grande} />
         <Text style={[styles.rotulo, grande && styles.rotuloGrande]}>{item.rotulo}</Text>
         <Text style={[styles.tituloCard, styles.tituloCardAmplo, grande && styles.tituloCardGrande]}>{item.titulo}</Text>
         <Text style={[styles.textoCard, styles.textoCardAmplo, grande && styles.textoCardGrande]}>{item.texto}</Text>
@@ -110,7 +132,7 @@ function CardBento({ item }: { item: BeneficioHorizontal }) {
   );
 }
 
-export default function BeneficiosHorizontais({ itens, largura, altura, titulo, descricao }: Props) {
+export default function BeneficiosHorizontais({ itens, largura, altura, titulo, descricao, colunasBento = 3 }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => Platform.OS === 'web' && typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
@@ -184,9 +206,9 @@ export default function BeneficiosHorizontais({ itens, largura, altura, titulo, 
     return (
       <View style={[colunaConteudo, styles.faixa, styles.conteudoLivre]}>
         {cabecalho}
-        <View role="list" aria-label="Recursos do Grana." style={styles.gradeBento as any}>
+        <View role="list" aria-label="Recursos do Grana." style={[styles.gradeBento as any, { gridTemplateColumns: `repeat(${colunasBento}, 1fr)` } as any]}>
           {itens.map((item) => (
-            <CardBento key={item.variante} item={item} />
+            <CardBento key={item.titulo} item={item} />
           ))}
         </View>
       </View>
@@ -234,7 +256,10 @@ export default function BeneficiosHorizontais({ itens, largura, altura, titulo, 
           >
             {itens.map((item) => (
               <CardBeneficio
-                key={item.variante}
+                /* `titulo`, e não `variante`: item com recorte não tem
+                   variante, e oito chaves `undefined` iguais quebravam a
+                   reconciliação da lista (aviso do React visto em 13/09). */
+                key={item.titulo}
                 item={item}
                 larguraCard={larguraCard}
                 alturaCard={alturaCard}
@@ -386,6 +411,12 @@ const styles = StyleSheet.create({
   // trilho já reservou (a do card mais alto) — é o que iguala os cards no
   // amplo sem número mágico de altura.
   cardAmplo: { flex: 1, padding: spacing.xl },
+  /* Card compacto com recorte: sem altura travada. A altura fixa de 352px foi
+     calculada para o mini-mock de 124px; um recorte na proporção 1,6 é mais
+     alto e varia com a largura do card. O trilho tem `alignItems:'stretch'`,
+     então os cards continuam todos da altura do mais alto sem número copiado. */
+  cardCompactoLivre: { flex: 1 },
+  visualRecorte: { width: '100%', marginBottom: spacing.md },
   rotulo: { color: theme.accent2, fontSize: type.micro, lineHeight: type.micro * 1.4, fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: spacing.xs },
   tituloCard: { color: theme.ink, fontSize: type.apoio, lineHeight: type.apoio * 1.3, fontFamily: fonts.regular, marginBottom: spacing.xs },
   /* `alignSelf: 'flex-start'` em vez de bloco cheio: é um link, não uma barra

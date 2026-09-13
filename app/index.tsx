@@ -15,7 +15,6 @@ import RevealOnScroll from '@/components/RevealOnScroll';
 import { EASE_BOUNCE_HINT, EASE_ROLL, EASE_SNAP, UI_OUT, useReducedMotion, usePrefersReducedTransparency } from '@/lib/motion';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import FogBackground from '@/components/FogBackground';
-import CardLivreParaGastar from '@/components/CardLivreParaGastar';
 import BeneficiosHorizontais, { type BeneficioHorizontal } from '@/components/BeneficiosHorizontais';
 import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
@@ -590,75 +589,81 @@ const PILARES_HABITO = [
   },
 ];
 
-/* Nove categorias, não seis. A página vendia 6 benefícios enquanto o app
-   tinha perto de 40 ferramentas — carteiras múltiplas, diagnóstico,
-   retrospectiva do mês e os 6 meses de projeção não apareciam em lugar
-   nenhum, e widgets, Granachat e hábito não existiam na página.
+/* Bloco 5 da estrutura de 13 blocos: o Panorama de ferramentas da WEB. O
+   autor listou o que precisa estar aqui: cartão por ciclo, boletos, caixinhas
+   e metas, tetos por categoria, entradas e saídas, categorização automática,
+   Livre para Gastar ("quanto sobra", não "quanto pode gastar") e gráficos.
+   São oito, na ordem de leitura: primeiro o que o painel responde de cara
+   (quanto sobra, o que entrou e saiu, onde foi, o que vem), depois o que a
+   pessoa organiza (cartão, boletos, cofrinhos, tetos).
 
-   A ordem conta uma história: primeiro como o dado ENTRA (Registro), depois
-   como se PERGUNTA sobre ele (Granachat), depois como se OLHA (Análises), o
-   que já está comprometido (Cartões, Contas), o que se PLANEJA, e por fim o
-   que sustenta o hábito (Hábito, Widgets) e o ajuste fino (Personalização).
+   Cada card mostra um RECORTE de uma captura real do app, no lugar dos
+   mini-mocks desenhados, que o autor apontou um a um como diferentes das telas
+   de verdade. Seis recortes saem da mesma captura do painel web, que o
+   navegador baixa uma vez só; cartão e boletos saem das telas do celular, que
+   são as mesmas telas da web num enquadramento que cabe no card.
 
-   `tamanho: 'grande'` só nos dois itens novos de maior apelo. O bento já
-   suportava esse campo desde que foi escrito, mas nenhum item usava — a
-   hierarquia visual dele nunca tinha aparecido por falta de dado. */
-const BENEFICIOS_LANDING: BeneficioHorizontal[] = [
+   Todos na proporção 1,6 (384×240 no painel, 358×224 no celular), para os
+   títulos dos oito cards caírem na mesma linha de base.
+
+   Os valores das capturas são de conta fictícia de demonstração, e o Livre
+   para Gastar delas é o exemplo único de `lib/exemplo-landing.ts`. */
+const TELA_WEB = { src: '/telas/inicio-web.png?v=20260905', largura: 1440, altura: 900 };
+const TELA_CREDITO = { src: '/telas/credito-mobile.png?v=20260905', largura: 390, altura: 844 };
+const TELA_CONTAS = { src: '/telas/contas-mobile.png?v=20260905', largura: 390, altura: 844 };
+
+const PANORAMA_FERRAMENTAS: BeneficioHorizontal[] = [
   {
-    variante: 'lancar',
-    rotulo: 'Registro',
-    titulo: 'Lance do jeito que for mais fácil',
-    texto: 'Fale no app, aponte para o QR Code da nota, cole um comprovante do Pix, importe extrato OFX ou CSV com até 10 mil linhas, ou preencha à mão. Se a conexão cair, a fila offline guarda e sincroniza depois.',
+    recorte: { ...TELA_WEB, x: 248, y: 236, w: 384, h: 240, alt: 'Card de Livre para Gastar do painel: R$ 59,76 por dia até o fim do mês, com saldo atual, contas a vencer e o que está reservado em cofrinhos.' },
+    rotulo: 'Livre para Gastar',
+    titulo: 'Veja quanto sobra no mês',
+    texto: 'O Grana. desconta as contas que ainda vencem e o que você guardou em cofrinhos, e mostra quanto sobra por dia até o fim do mês.',
   },
   {
-    variante: 'granachat',
-    rotulo: 'Granabô',
-    titulo: 'Pergunte sobre o seu dinheiro e receba resposta',
-    texto: 'Quanto gastei em Alimentação? Quanto posso gastar? O Granabô consulta os seus lançamentos para responder. Se a categoria não for encontrada, ele pede mais detalhes para identificar o que você procura.',
-    tamanho: 'grande',
+    recorte: { ...TELA_WEB, x: 248, y: 660, w: 384, h: 240, alt: 'Fluxo financeiro do painel, com filtros de mês, sete dias e ano, e de entradas, saídas ou ambos.' },
+    rotulo: 'Fluxo',
+    titulo: 'Entradas e saídas do período',
+    texto: 'Acompanhe o que entrou e o que saiu por mês, pelos últimos sete dias ou pelo ano inteiro.',
   },
   {
-    variante: 'mes',
-    rotulo: 'Análises',
-    titulo: 'Veja o mês por vários ângulos',
-    texto: 'Acompanhe o fluxo por mês, por ano ou por período livre, veja a composição por categoria e os compromissos dos próximos seis meses. No fim do mês, a retrospectiva resume o que aconteceu. Exporte em PDF quando precisar.',
+    recorte: { ...TELA_WEB, x: 1040, y: 500, w: 384, h: 240, alt: 'Últimos lançamentos do painel, cada um com a sua categoria: Alimentação, Transporte e Salário.' },
+    rotulo: 'Categorias',
+    titulo: 'Cada lançamento na sua categoria',
+    texto: 'O Grana. sugere a categoria assim que você registra, e você troca se precisar.',
   },
   {
-    variante: 'cartao',
+    recorte: { ...TELA_WEB, x: 644, y: 236, w: 384, h: 240, alt: 'Gráfico de comprometimento futuro do painel, com contas recorrentes e parcelas de setembro a fevereiro.' },
+    rotulo: 'Gráficos',
+    titulo: 'O que já está comprometido',
+    texto: 'Veja em gráfico as contas recorrentes e as parcelas dos próximos seis meses antes de elas chegarem.',
+  },
+  {
+    recorte: { ...TELA_CREDITO, x: 16, y: 150, w: 358, h: 224, alt: 'Tela de Crédito com o cartão Nubank Ultravioleta: fatura atual de R$ 1.342,50 e 16% do limite usado.' },
     rotulo: 'Cartões',
-    titulo: 'Acompanhe cartão, fatura e limite',
-    texto: 'Veja cada cartão, transforme compras parceladas em lançamentos reais e pague a fatura pela carteira escolhida. Alertas mostram quando o uso cruza 50%, 70%, 90% e 100% do limite.',
+    titulo: 'A fatura pelo ciclo do cartão',
+    texto: 'Cada cartão com a fatura do ciclo de fechamento, o limite usado e as compras parceladas lançadas mês a mês.',
   },
   {
-    variante: 'boletos',
-    rotulo: 'Contas',
-    titulo: 'Organize contas e boletos recorrentes',
-    texto: 'Marque uma conta como paga para criar a saída e preparar a próxima ocorrência. Os lembretes acompanham a aproximação do vencimento no aplicativo móvel.',
+    recorte: { ...TELA_CONTAS, x: 16, y: 198, w: 358, h: 224, alt: 'Tela de Contas a pagar com a conta do cartão, que vence em 17 dias, e a de energia, recorrente, que vence em 13 dias.' },
+    rotulo: 'Boletos',
+    titulo: 'Contas e boletos com vencimento',
+    texto: 'Veja quantos dias faltam para cada conta. Marcou como paga, a próxima de uma conta recorrente já fica preparada.',
   },
   {
-    variante: 'organizar',
-    rotulo: 'Planejamento',
-    titulo: 'Separe o dinheiro com intenção',
-    texto: 'Use várias carteiras, cofrinhos com prazo, orçamentos por categoria e categorias próprias. O diagnóstico inicial sugere um ponto de partida a partir das suas respostas.',
+    /* 392×245 em vez de 384×240: o bloco de cofrinhos vai do rótulo
+       "Cofrinhos & metas" (topo em y≈228) ao "22%" do rodapé (base em
+       y≈472), 244px de altura. Com 240 um dos dois saía cortado. Mesma
+       proporção 1,6 dos outros recortes. */
+    recorte: { ...TELA_WEB, x: 1036, y: 227, w: 392, h: 245, alt: 'Cofrinhos e metas do painel: reserva de emergência com R$ 1.800,00 de R$ 10.000,00 e uma viagem com R$ 650,00 de R$ 3.000,00.' },
+    rotulo: 'Cofrinhos',
+    titulo: 'Metas com valor e prazo',
+    texto: 'Separe dinheiro para um objetivo, com quanto e até quando, e acompanhe quanto já guardou.',
   },
   {
-    variante: 'habito',
-    rotulo: 'Hábito',
-    titulo: 'Enxergue sua constância',
-    texto: 'O Score Grana mede o seu comportamento de registro, não o tamanho do seu saldo. O Ritmo da Semana mostra a sequência, as conquistas marcam o progresso, e os lembretes chegam no horário que você escolher.',
-  },
-  {
-    variante: 'widgets',
-    rotulo: 'Widgets',
-    titulo: 'Lance sem nem abrir o aplicativo',
-    texto: 'Cinco widgets para a tela inicial do Android: falar um gasto, ver o Livre para Gastar, abrir a central de lançamentos, conferir o próximo compromisso e acompanhar um cofrinho. Os valores podem ficar ocultos.',
-    tamanho: 'grande',
-  },
-  {
-    variante: 'personalizar',
-    rotulo: 'Personalização',
-    titulo: 'Monte o Grana. do seu jeito',
-    texto: 'Escolha e reorganize até dez blocos na tela inicial, use atalhos diretos e explore o modo de exemplo com dados fictícios antes de registrar os seus.',
+    recorte: { ...TELA_WEB, x: 644, y: 610, w: 384, h: 240, alt: 'Gastos por categoria do painel, num gráfico de rosca com Moradia, Alimentação, Transporte e Lazer.' },
+    rotulo: 'Orçamento',
+    titulo: 'Um teto para cada categoria',
+    texto: 'Veja como os gastos do mês se dividem e defina quanto quer gastar em cada categoria.',
   },
 ];
 
@@ -1284,19 +1289,18 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Painel web (par com "Por dentro do app") ─────────
-          A mesma conta do carrossel de celular acima, agora na tela
-          grande — reforça "controle no celular e no computador" (já
-          citado na TrustMarquee) com a composição em vez de só a frase.
-          Texto à esquerda, tela à direita (mesmo esqueleto de
-          `secaoComCartao`/`colunaTextoSecao`/`molduraCentralizada` já usado
-          em Hábitos) — pedido do autor depois que a composição
-          empilhada (título em cima, moldura embaixo) deixou a moldura
-          inclinada sangrar por cima do H1 em telas médias, já que uma
-          rotação 3D não reserva espaço extra no layout, só no visual.
-          Balões de anotação existem só nesta seção (não em
-          `MolduraNavegador`): dependem de onde exatamente cada dado
-          aparece NESTA captura específica. */}
+      {/* ───────── Panorama de ferramentas (bloco 5 da estrutura) ─────────
+          Duas partes do mesmo bloco. A abertura mostra o painel web inteiro,
+          que é a "visão completa" que o autor pediu, com o zoom no ponteiro
+          que ele mesmo pediu no lugar do link "Ampliar painel". Logo abaixo,
+          a grade diz o que cada parte daquele painel faz, com o recorte de
+          onde ela aparece.
+
+          Saiu daqui a dobra própria do Livre para Gastar (`#livre`, com o
+          `CardLivreParaGastar` desenhado). Ela virou o primeiro card da grade,
+          com a tela real, e o posicionamento pedido pelo autor: "quanto
+          sobra", não "quanto pode gastar". Manter as duas repetiria o mesmo
+          número duas vezes seguidas. */}
       <View nativeID="painel-web" style={styles.palcoComCamada}>
         <GradeInterativa />
         <Dobra levantada>
@@ -1304,9 +1308,10 @@ function ConteudoWeb() {
             <View style={[styles.secaoComCartao, painelWebEmpilhado && styles.secaoComCartaoCompacta]}>
               <View style={[styles.colunaTextoSecao, painelWebEmpilhado && styles.colunaTextoSecaoCompacta]}>
                 <RevealOnScroll variante="titulo">
-                  <TituloSecao>O mesmo Grana., na tela grande.</TituloSecao>
+                  <Text style={[styles.eyebrow, ehCompacto && styles.precoTextoCentralizado]}>No computador</Text>
+                  <TituloSecao>O mês inteiro numa tela só.</TituloSecao>
                   <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
-                    Registre pelo celular. Acompanhe no computador, com os mesmos dados sincronizados.
+                    Tudo o que você registra vira um painel: quanto sobra, o que entrou e saiu, o que vence e o que já está comprometido.
                   </Text>
                 </RevealOnScroll>
               </View>
@@ -1321,44 +1326,16 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Inteligência financeira ───────── */}
-      <View nativeID="livre" style={styles.palcoComCamada}>
-        <GradeInterativa />
-        <Dobra>
-        <RevealOnScroll>
-          <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
-            <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
-              {/* Copy e visual agora descrevem a mesma fórmula real. */}
-              <TituloSecao>Saiba quanto dá pra gastar hoje, sem fazer conta.</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
-                Com base nos seus lançamentos do mês, nas contas que ainda vencem e no que você separou para as metas, o Grana. estima o{' '}
-                <Text style={styles.destaqueInline}>Livre para Gastar</Text>
-                {' '}por dia. É uma referência baseada no que você registra. Você continua no controle.
-              </Text>
-            </View>
-
-            <View style={[styles.composicaoTelas, ehCompacto && styles.composicaoTelasCompacta]}>
-              <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
-                <CardLivreParaGastar compacto={ehCompacto} />
-              </ScrollLinkedView>
-            </View>
-          </View>
-        </RevealOnScroll>
-        </Dobra>
-      </View>
-
-      {/* ───────── Tudo que o Grana. faz (dobra 8) ─────────
-          Cada card mostra o benefício acontecendo. Os mini-mocks substituem
-          ícones genéricos e usam somente dados fictícios. */}
       <View nativeID="beneficios" style={styles.palcoBeneficios}>
         <GradeInterativa invertida />
         <BeneficiosHorizontais
-          itens={BENEFICIOS_LANDING}
+          itens={PANORAMA_FERRAMENTAS}
           largura={largura}
           altura={altura}
           alturaCabecalho={alturaCabecalho}
-          titulo="Tudo que o Grana. faz pela sua saúde financeira."
-          descricao="Lançamentos, cartões, contas, gráficos e metas ficam conectados numa visão que você consegue acompanhar no dia a dia."
+          colunasBento={4}
+          titulo="O que cada parte do painel faz por você."
+          descricao="Oito ferramentas trabalhando com o que você registra. Cada imagem abaixo é um pedaço da tela de verdade."
         />
       </View>
 
