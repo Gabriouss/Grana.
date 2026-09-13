@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, screenRhythm } from '@/lib/theme';
 import { assinarDadoNovo, assinarModoOffline, estaServindoDoCache, motivoDoModoOffline, type MotivoOffline } from '@/lib/cache-de-tela';
 
 /**
@@ -54,21 +54,27 @@ export function useRecarregarAoChegarDadoNovo(recarregar: () => void) {
 export default function FaixaOffline({ estilo }: { estilo?: object }) {
   const motivo = useMotivoOffline();
   if (!motivo) return null;
+  /* Duas caixas de propósito. A faixa é desenhada FORA da área rolável das
+     telas, logo abaixo do cabeçalho, e por isso não herdava o recuo lateral
+     que o conteúdo recebe de `screenRhythm.padding`: com a largura cheia da
+     coluna, ela passava da margem que todos os outros cartões seguem. A caixa
+     de fora recebe a coluna da tela e o mesmo recuo do conteúdo; a de dentro é
+     o desenho. Assim as cinco telas que usam este componente alinham sem
+     ninguém lembrar de somar o recuo no chamador. */
   return (
-    <View
-      style={[styles.faixa, estilo]}
-      accessibilityRole="alert"
-      accessibilityLiveRegion="polite"
-    >
-      <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
-      <Text style={styles.texto} numberOfLines={1}>
-        {textoDaFaixaOffline(motivo)}
-      </Text>
+    <View style={[estilo, styles.recuo]}>
+      <View style={styles.faixa} accessibilityRole="alert" accessibilityLiveRegion="polite">
+        <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
+        <Text style={styles.texto} numberOfLines={1}>
+          {textoDaFaixaOffline(motivo)}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  recuo: { paddingHorizontal: screenRhythm.padding },
   faixa: {
     flexDirection: 'row',
     alignItems: 'center',
