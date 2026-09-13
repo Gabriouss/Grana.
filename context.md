@@ -4,8 +4,10 @@
 
 **Estado ao fim desta sessão, antes de qualquer outra coisa:**
 
-- `origin/main` (produção, Vercel) = `b8d0771` + **`ce4d689`** + **`e290686`**,
-  as duas correções da área logada da web. Verificadas em produção.
+- `origin/main` (produção, Vercel) = `b8d0771` + **`ce4d689`** + **`e290686`**
+  (as duas correções do laço da área logada) + `940b3e8` (este registro) +
+  **`70ffc67`** (Granabô fechando ao clicar fora, na web). Todas verificadas
+  em produção.
 - `main` local na M1 está **6 commits à frente**, todos da landing, **sem push
   por ordem explícita do autor** ("não publique nada ainda, deixe tudo em
   ambiente local"). Isso contraria a regra 3; a decisão é do autor. Até ele
@@ -71,6 +73,31 @@ regra, o teste falha na asserção certa. `tsc` limpo, `test:ci` com saída 0.
       investigadas.
 - [ ] App Android: a guarda é a mesma, mas nada foi testado no aparelho. O
       laço depende de `capturarDestinoProtegido`, que só age na web.
+
+## Granabô não fechava ao clicar fora, na web (publicado, `70ffc67`)
+
+**Pedido do autor:** "na web o granachat não fecha ao clicar fora da caixa de
+texto". O fundo clicável do chat (`Pressable` do tamanho da tela com
+`onPress={fechar}`, em `components/Granachat.tsx`) funciona quando o evento
+chega nele, mas o clique real é entregue ao contêiner: `elementsFromPoint`
+num ponto fora do painel devolve o contêiner no topo e o `Pressable` nem
+aparece; eventos disparados direto no `Pressable` fecham. **Por que o navegador
+pula o `Pressable` não foi determinado.** Correção: na web, ouvinte de clique
+no contêiner que fecha quando o alvo é o próprio contêiner; clique dentro do
+painel é ignorado. Android e iOS inalterados.
+
+**Armadilha de teste que quase desfez uma correção certa:** em produção, num
+navegador limpo, o convite "Grana. para Android" (`ConviteAppAndroid`, só onde
+`EXPO_PUBLIC_ANDROID_DOWNLOAD_URL` existe, por isso ausente no `localhost`) abre
+por cima de tudo logo depois do login, e o "clique fora" caía no fundo dele.
+Parecia que a correção não funcionava em produção. **Dispensar pop-ups de
+primeira visita antes de testar**, e não abrir janela por `.click()` de
+JavaScript quando o que se mede é clique real.
+
+Verificado: `localhost` em 1440, 700 e 390px; produção em 1440 e 390px com o
+convite dispensado. Clique fora fecha, clique dentro mantém aberto. **Sem
+teste automático** (teste de alvo do DOM, sem navegador na suíte). Android e
+iOS não testados.
 
 ## A landing reformada (LOCAL, sem push)
 
