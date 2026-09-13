@@ -24,6 +24,7 @@ import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
 import NovidadesModal from '@/components/NovidadesModal';
 import AvisoFlagModal from '@/components/AvisoFlagModal';
+import ConviteAppAndroid from '@/components/ConviteAppAndroid';
 import RespostaVozWidget from '@/components/RespostaVozWidget';
 import VozesSalvasLocalmente from '@/components/VozesSalvasLocalmente';
 import SincronizadorWidgetsHome from '@/components/SincronizadorWidgetsHome';
@@ -260,6 +261,10 @@ function RootNavigator() {
           outro aparece na próxima abertura. Empilhar dois pop-ups na primeira
           abertura seria pior que atrasar um deles. */}
       {session && <AvisoFlagModal />}
+      {/* Só dispara na web, uma vez por navegador: é o único ponto do fluxo
+          de compra em que alguém que acabou de assinar fica sabendo que
+          existe aplicativo. Ver components/ConviteAppAndroid.tsx. */}
+      {session && <ConviteAppAndroid />}
       {/* Toque na notificação do widget de voz: "Desfazer" apaga o que aquela
           fala criou; um lançamento que o widget não salvou sozinho abre a
           revisão com a transcrição pronta. */}
