@@ -15,7 +15,7 @@ import { FlagsProvider } from '@/lib/feature-flags';
 import { theme } from '@/lib/theme';
 import { instalarAnelDeFoco, instalarDocumentoWeb } from '@/lib/foco-web';
 import { acompanharFocoParaModais } from '@/lib/modal-accessibility';
-import { capturarDestinoProtegido, consumirDestinoPosLogin } from '@/lib/destino-pos-login';
+import { capturarDestinoProtegido, consumirDestinoPosLogin, restaurarDestino } from '@/lib/destino-pos-login';
 import { EntitlementProvider, useEntitlement } from '@/lib/entitlement-context';
 import { deveSegurarRotas } from '@/lib/entitlement-cache';
 import WebPhoneFrame from '@/components/WebPhoneFrame';
@@ -232,12 +232,28 @@ function RootNavigator() {
     router.replace('/sign-in');
   }, [isLoading, session, router]);
 
-  /* Já com sessão: volta ao destino que a pessoa tinha pedido. */
+  /* Já com sessão: volta ao destino que a pessoa tinha pedido.
+
+     Espera a área logada ABRIR antes de navegar, e não navega para onde já
+     está. Sem essas duas condições isto era um laço infinito em toda tela
+     logada da web: navegava para `/perfil` com o grupo de `/perfil` ainda
+     fechado, o roteador caía, a raiz remontava, a montagem regravava o
+     destino e tudo recomeçava — com sessão, flags e acesso refazendo as suas
+     chamadas a cada volta. A regra e a medição estão em
+     `restaurarDestino`, em lib/destino-pos-login.ts. */
+  const areaLogadaAberta = estadoAcesso?.allowed === true;
   useEffect(() => {
     if (isLoading || !session || emRecuperacao) return;
-    const destino = consumirDestinoPosLogin();
+    const destino = restaurarDestino({
+      areaLogadaAberta,
+      caminhoAtual:
+        Platform.OS === 'web' && typeof window !== 'undefined'
+          ? window.location.pathname + window.location.search
+          : '',
+      consumir: consumirDestinoPosLogin,
+    });
     if (destino) router.replace(destino as never);
-  }, [isLoading, session, emRecuperacao, router]);
+  }, [isLoading, session, emRecuperacao, areaLogadaAberta, router]);
 
   /* Não depende do "carregando" do acesso, de propósito. Ele nasce falso e só
      liga no primeiro efeito, então havia uma pintura com sessão e sem estado
