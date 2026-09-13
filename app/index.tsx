@@ -1374,7 +1374,18 @@ function ConteudoWeb() {
             <View style={[styles.secao, styles.secaoComCartao, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
               <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
                 <Text style={styles.eyebrow}>Por dentro do aplicativo.</Text>
-                <ScrollLinkedView intensidade={ehCompacto ? 6 : 14} style={styles.visualParallax} contentStyle={styles.visualParallaxConteudo}>
+                {/* `parallaxFolgaAcima` não é respiro estético: é a reserva do
+                    curso da flutuação. O `ScrollLinkedView` translada o
+                    conteúdo em até `intensidade` px para cima, e o celular
+                    subia por cima deste sobretítulo, que fica logo acima dele
+                    (relatado pelo autor). Transform não reserva espaço no
+                    layout, então quem tem que reservar é o layout. A folga
+                    precisa ser sempre MAIOR que a intensidade usada aqui. */}
+                <ScrollLinkedView
+                  intensidade={ehCompacto ? 6 : 14}
+                  style={[styles.visualParallax, styles.parallaxFolgaAcima]}
+                  contentStyle={styles.visualParallaxConteudo}
+                >
                   <CarrosselTelasApp compacto={ehCompacto} />
                 </ScrollLinkedView>
               </View>
@@ -1507,7 +1518,7 @@ function ConteudoWeb() {
                     ]}
                     value={plano}
                     onChange={setPlano}
-                    style={styles.precoAlternador}
+                    style={[styles.precoAlternador, ehCompacto && styles.precoAlternadorCompacto]}
                   />
 
                   <View style={[styles.precoCabecalho, ehCompacto && styles.precoCabecalhoCompacto]}>
@@ -2210,6 +2221,11 @@ const styles = StyleSheet.create({
      desktop largo: dois rótulos curtos ocupando 440px leriam como barra de
      navegação, não como escolha entre dois planos. */
   precoAlternador: { alignSelf: 'stretch', maxWidth: 260, marginBottom: spacing.sm },
+  /* No compacto, tudo dentro do card de preço é centralizado (selo, valor,
+     parágrafos, botão) e só o alternador ficava encostado à esquerda, porque
+     `alignSelf:'stretch'` com `maxWidth` ancora no início do eixo. No desktop
+     ele continua à esquerda, alinhado com a coluna de texto ao lado. */
+  precoAlternadorCompacto: { alignSelf: 'center' },
   /* `minHeight` fixo porque o selo só existe no plano anual: sem ele a linha
      encolheria uns 6px ao trocar para o mensal e o cartão inteiro subiria
      junto, um tranco gratuito bem no momento em que a pessoa compara preço.
@@ -2250,6 +2266,10 @@ const styles = StyleSheet.create({
   composicaoTelas: { flex: 1, minWidth: 380, alignItems: 'center', justifyContent: 'center', position: 'relative', paddingVertical: spacing.xxl },
   composicaoTelasCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
   visualParallax: { width: '100%' },
+  /* 20px contra um curso máximo de 14px (desktop) e 6px (compacto). A folga
+     tem que superar a intensidade passada ao `ScrollLinkedView`; se alguém
+     aumentar a intensidade lá, aumenta aqui junto. */
+  parallaxFolgaAcima: { marginTop: spacing.xl },
   visualParallaxConteudo: { alignItems: 'center' },
 
   faqLayout: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xxl * 2, marginTop: spacing.sm },
