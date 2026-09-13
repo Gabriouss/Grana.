@@ -13,15 +13,25 @@ import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
 
 /**
- * Destino do link de ativação que o provedor de pagamento manda no e-mail de entrega
- * (`.../ativar?token=...`) — cobre quem comprou com um e-mail diferente do
- * que usa (ou vai usar) no Grana., que é o único caso que o vínculo
- * automático por e-mail (ver lib/assinatura.ts) não resolve sozinho.
+ * Duas portas de entrada para a MESMA tela, e nenhuma das duas tem token na
+ * maioria das vezes:
+ *
+ * 1. `.../ativar?token=...` — o link de ativação que existiria se o provedor
+ *    de pagamento suportasse token por compra. Cobre quem comprou com um
+ *    e-mail diferente do que usa (ou vai usar) no Grana., único caso que o
+ *    vínculo automático por e-mail (ver lib/assinatura.ts) não resolve
+ *    sozinho.
+ * 2. `.../ativar`, SEM token — o link de acesso pós-compra configurado no
+ *    painel da Cakto (`emailAccessLink`), que é FIXO e igual pra todo
+ *    comprador: a Cakto não tem como injetar um token por pessoa nesse campo.
+ *    É o destino de quem acabou de pagar e nunca teve conta no Grana., então
+ *    a orientação aqui é a única coisa que substitui um link de verdade.
  *
  * Fora de qualquer Stack.Protected em app/_layout.tsx de propósito: precisa
  * funcionar tanto pra quem já está logado (vincula na hora) quanto pra quem
- * ainda vai logar ou se cadastrar (guarda o token e vincula depois — ver
- * vincularAssinaturasPendentes, chamada no login em lib/auth-context.tsx).
+ * ainda vai logar ou se cadastrar (guarda o token, se houver, e vincula depois
+ * — ver vincularAssinaturasPendentes, chamada no login em
+ * lib/auth-context.tsx; sem token, o vínculo por e-mail já cobre sozinho).
  */
 export default function Ativar() {
   const { session, isLoading: sessaoCarregando } = useSession();
@@ -143,24 +153,20 @@ export default function Ativar() {
             <Text style={styles.subtitle}>
               {token
                 ? 'Entre ou crie sua conta com o e-mail que preferir — assim que você logar, sua assinatura é vinculada automaticamente.'
-                : 'Este link de ativação está incompleto. Confira se você abriu o link certo, enviado no e-mail de confirmação da compra.'}
+                : 'Entre ou crie sua conta com o mesmo e-mail usado na compra — o acesso libera sozinho, sem precisar de mais nada.'}
             </Text>
-            {!!token && (
-              <>
-                <AppPressable
-                  style={({ hovered }) => [styles.primaryBtn, hovered && styles.primaryBtnHover]}
-                  onPress={() => router.push('/sign-in')}
-                >
-                  <Text style={styles.primaryBtnText}>Entrar</Text>
-                </AppPressable>
-                <AppPressable
-                  style={({ hovered }) => [styles.secondaryBtn, hovered && styles.secondaryBtnHover]}
-                  onPress={() => router.push('/sign-up')}
-                >
-                  <Text style={styles.secondaryBtnText}>Criar conta</Text>
-                </AppPressable>
-              </>
-            )}
+            <AppPressable
+              style={({ hovered }) => [styles.primaryBtn, hovered && styles.primaryBtnHover]}
+              onPress={() => router.push('/sign-in')}
+            >
+              <Text style={styles.primaryBtnText}>Entrar</Text>
+            </AppPressable>
+            <AppPressable
+              style={({ hovered }) => [styles.secondaryBtn, hovered && styles.secondaryBtnHover]}
+              onPress={() => router.push('/sign-up')}
+            >
+              <Text style={styles.secondaryBtnText}>Criar conta</Text>
+            </AppPressable>
           </>
         )}
       </View>
