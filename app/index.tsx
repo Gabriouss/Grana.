@@ -482,76 +482,76 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
   );
 }
 
-// As 3 cenas de dor, cada uma em 3 linhas fixas (`\n` explícito) — mesma
-// disciplina do resto da página: quebra escolhida, não deixada pro acaso do
-// wrap automático em cada largura de tela.
-/* Cada cena ganha um ícone que nomeia a SITUAÇÃO, não a emoção: o calendário
-   é a sexta-feira, o cartão é a fatura, a grade é a planilha. Ícone que
-   repete o que o texto já diz seria decoração; estes três dão ao olho um
-   ponto de entrada em cada card antes da leitura, que é o que faltava numa
-   seção de três blocos de texto quase idênticos em forma. */
-const CENAS_DOR = [
+/* Bloco 3 da estrutura de 13 blocos: a dor, nomeada pelo autor como
+   "apagão financeiro" — "não lembrar pra onde o dinheiro foi, sem julgar quem
+   ainda não se organizou".
+
+   Três MOMENTOS do apagão, não três frases soltas. Cada um tem título curto,
+   que é o que o olho lê primeiro, e uma linha concreta de apoio. O ícone nomeia
+   a cena (o extrato, o café, a noite), porque ícone que repete o texto é
+   decoração.
+
+   Nenhum dos três atribui a culpa à pessoa. O vilão é o mecanismo: gasto
+   pequeno some da memória, e a soma aparece tarde. */
+const MOMENTOS_APAGAO = [
   {
-    icone: 'search-outline' as const,
-    texto: 'Você olha o extrato e pensa: o que aconteceu com meu dinheiro? Sem lembrar direito onde ele foi.',
+    icone: 'receipt-outline' as const,
+    titulo: 'O extrato não explica',
+    texto: 'Você olha a lista de débitos e não reconhece boa parte do que está ali.',
   },
   {
-    icone: 'calendar-outline' as const,
-    texto: 'Um dia vira o outro, os gastos somem da memória, e no fim do mês o dinheiro passou sem deixar rastro.',
+    icone: 'cafe-outline' as const,
+    titulo: 'O gasto pequeno some',
+    texto: 'Café, entrega, um Pix de R$ 12. Um por um não pesa, e somados viram o mês.',
   },
   {
-    icone: 'grid-outline' as const,
-    texto: 'Sem enxergar o quadro completo, fica difícil fechar o mês com algo guardado pra você.',
+    icone: 'moon-outline' as const,
+    titulo: 'O mês fecha no escuro',
+    texto: 'Sem ver o quadro inteiro, fica difícil guardar alguma coisa pra você.',
   },
 ];
 
-const PONTE_PERGUNTA = 'Cole o texto de uma compra, de um extrato ou de um resumo de fatura. O Grana. organiza sozinho, sem formulário e sem escolher categoria na mão.';
-
-/* Mesmo escalonamento vertical do FAQ (ver DESALINHO_FAQ) — valores fixos,
-   não aleatórios de verdade, pra não "pular" a cada re-render. Só 3 cenas
-   aqui, então um array próprio, mais curto. */
-const DESALINHO_DOR = [0, 26, -14];
-
 /**
- * "Reconhece isso?" — cada cena de dor numa caixa própria, desalinhadas
- * entre si (referência: os cards do workshop que o autor mandou), no lugar
- * do scrub de brilho contínuo ligado ao scroll que a página tinha antes. A
- * pergunta de virada (`PONTE_PERGUNTA`) fica fora das caixas, como o
- * parágrafo de saída da seção — ela é a resposta, não mais uma dor.
+ * Os três momentos do apagão financeiro, e a frase de virada.
+ *
+ * Refeita em 13/09/2026 porque o autor reprovou a versão anterior no visual
+ * ("precisamos melhorar isso aqui"). Três decisões:
+ *
+ * - **Alinhada.** A versão anterior deslocava as caixas na vertical de
+ *   propósito (0, +26, -14px). O autor pediu alinhamento rigoroso em toda a
+ *   página, e o mesmo escalonamento já tinha sido retirado da FAQ por ler como
+ *   "desalinhado". Aqui os três cards têm o topo e a altura iguais.
+ * - **Texto à esquerda.** Parágrafo de três linhas centralizado força o olho a
+ *   procurar o começo de cada linha. Centralizado fica só o que é curto.
+ * - **A virada não carrega mais a solução.** A frase de saída dizia "Cole o
+ *   texto de uma compra…", que é o argumento do bloco seguinte. Agora ela só
+ *   abre a porta, e sem botão: o próximo bloco é a resposta, e um CTA aqui
+ *   interromperia o argumento no meio.
  */
 function SecaoReconheceIsso() {
   const { ehCompacto } = useBreakpoint();
   return (
     <View>
-      <View style={styles.gradeCenas}>
-        {CENAS_DOR.map((cena, i) => (
+      <View style={styles.dorGrade}>
+        {MOMENTOS_APAGAO.map((momento, i) => (
           <RevealOnScroll
-            key={cena.texto}
+            key={momento.titulo}
             atraso={i * 90}
-            style={[
-              styles.cenaCaixaPos,
-              ehCompacto && styles.cenaCaixaPosCompacta,
-              !ehCompacto && { transform: [{ translateY: DESALINHO_DOR[i % DESALINHO_DOR.length] }] },
-            ]}
+            variante="card"
+            style={[styles.dorCardPos, ehCompacto && styles.dorCardPosCompacto]}
           >
-            <View style={styles.cenaCaixa}>
-              <View style={styles.cenaIcone} aria-hidden>
-                <Ionicons name={cena.icone} size={19} color={theme.accent2} />
+            <View style={styles.dorCard}>
+              <View style={styles.dorIcone} aria-hidden>
+                <Ionicons name={momento.icone} size={20} color={theme.accent2} />
               </View>
-              <Text style={[styles.textoCena, styles.precoTextoCentralizado]}>{cena.texto}</Text>
+              <Text style={styles.dorTitulo}>{momento.titulo}</Text>
+              <Text style={styles.dorTexto}>{momento.texto}</Text>
             </View>
           </RevealOnScroll>
         ))}
       </View>
-      {/* A ponte fecha a seção e o botão vem logo abaixo dela. Antes a pessoa
-          lia a virada ("é rápido assim") e precisava rolar cinco dobras até
-          encontrar um botão — o momento de maior interesse da página não
-          tinha para onde ir. */}
-      <RevealOnScroll atraso={CENAS_DOR.length * 90} style={styles.precoIntroCentralizada}>
-        <Text style={[styles.pontePergunta, styles.precoTextoCentralizado]}>{PONTE_PERGUNTA}</Text>
-        <View style={styles.cenaCta}>
-          <BotaoCTA centralizado />
-        </View>
+      <RevealOnScroll atraso={MOMENTOS_APAGAO.length * 90} style={styles.precoIntroCentralizada}>
+        <Text style={[styles.dorVirada, styles.precoTextoCentralizado]}>Dá pra acender a luz sem abrir uma planilha.</Text>
       </RevealOnScroll>
     </View>
   );
@@ -797,6 +797,17 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
  */
 const TITULO_HERO = 'O controle do seu dinheiro, na sua mão.';
 const GANCHO_HERO = 'Cadê meu dinheiro?';
+/* Bloco 2 da estrutura de 13 blocos definida pelo autor em 13/09/2026: "CTA
+   primário — Assinar agora — sem preço, direto ao checkout". O texto do
+   herói continua o mesmo (o autor mandou manter); muda o botão.
+
+   Leva ao checkout ANUAL, o plano que a própria estrutura põe em destaque na
+   oferta ("R$ 97,90/ano em destaque") e que a dobra de preços já abre
+   selecionado. Custo conhecido, avisado ao autor: quem clica aqui ainda não
+   viu preço nenhum e cai direto num checkout de R$ 97,90. Se a medição do
+   tráfego mostrar abandono nesse ponto, trocar `anual` por nada leva ao
+   mensal, sem mexer em mais nada. */
+const ROTULO_CTA_HEROI = 'Assinar agora';
 const APOIO_HERO =
   'Sem formulário, sem planilha, sem conectar banco. Só o seu dinheiro, do seu jeito.';
 
@@ -874,7 +885,7 @@ function HeroStorytelling({
           {titulo}
           <Text style={[styles.subheadline, styles.precoTextoCentralizado, styles.heroTextoSemMargem]}>{APOIO_HERO}</Text>
         </View>
-        <BotaoCTA centralizado />
+        <BotaoCTA centralizado compra anual rotulo={ROTULO_CTA_HEROI} />
       </View>
     );
   }
@@ -894,7 +905,7 @@ function HeroStorytelling({
           {titulo}
           <Text style={styles.subheadline}>{APOIO_HERO}</Text>
           <View style={styles.heroCtas}>
-            <BotaoCTA />
+            <BotaoCTA compra anual rotulo={ROTULO_CTA_HEROI} />
           </View>
           {!reduzirMovimento && (
             <Animated.View style={[[styles.heroScrollHint, heroScrollHintAnimado], { pointerEvents: 'none' }]} >
@@ -1219,20 +1230,16 @@ function ConteudoWeb() {
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
-              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
-                {/* Antes: "Anotar gastos dá trabalho. Por isso você não dá
-                    continuidade." — atribuía a falha à pessoa, o oposto de uma
-                    marca que escuta sem julgar. Agora a fricção do processo é
-                    a vilã. Não usa a construção "não é X, é Y", que a marca
-                    não aceita. */}
-                {/* Sem quebra fixa: a que existia aqui cortava depois de
-                    "caber", e no celular a primeira metade já quebrava
-                    sozinha antes disso — sobrava a palavra "caber" isolada
-                    numa linha só. Quem equilibra as linhas agora é o
-                    `textWrap: balance` de `secaoTitulo`, que faz isso na
-                    largura real, seja ela qual for. */}
-                Controle financeiro precisa caber na rotina para continuar funcionando.
-              </TituloSecao>
+              <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>Reconhece isso?</Text>
+              {/* Título antigo: "Controle financeiro precisa caber na rotina
+                  para continuar funcionando." Descrevia a solução antes de
+                  nomear o problema. A estrutura de 13 blocos do autor pede a
+                  dor aqui, com o nome que ele deu a ela. */}
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>O apagão financeiro.</TituloSecao>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.linhasEquilibradas]}>
+                Você olha o saldo e não lembra pra onde o dinheiro foi. Acontece com muita gente, e tem
+                explicação: gasto pequeno some da memória antes do fim do dia.
+              </Text>
             </RevealOnScroll>
 
             <SecaoReconheceIsso />
@@ -1251,8 +1258,15 @@ function ConteudoWeb() {
         <Dobra levantada>
           <ScrollLinkedView modo="zoom" style={styles.zoomRaiz} contentStyle={[styles.zoomPainel, ehCompacto && styles.zoomPainelCompacto]}>
             <View style={styles.precoIntroCentralizada}>
+              <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>A solução</Text>
+              {/* Bloco 4 da estrutura de 13 blocos: "cole o texto, e o app
+                  organiza (web), sem menção a voz aqui". Era "Você fala e o
+                  Grana. organiza." — a voz não funciona no Firefox e foi
+                  para o bloco do celular. "Organiza sozinho", como estava na
+                  estrutura, virou "organiza": a marca não promete absolutos, e
+                  o app mostra o resultado para conferir antes de salvar. */}
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
-                {'Você fala e o Grana. organiza.\n'}
+                {'Você cola e o Grana. organiza.\n'}
                 <Text style={styles.destaqueInline}>Esforço quase zero.</Text>
               </TituloSecao>
               {/* Dois passos, não três: o primeiro passo que todo concorrente
@@ -1261,7 +1275,7 @@ function ConteudoWeb() {
                   lançamento"; a trilha acrescenta o segundo passo (onde esse
                   lançamento aparece depois) em vez de repetir a mesma cena
                   numa seção separada logo abaixo, que era o que acontecia. */}
-              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
+              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.linhasEquilibradas]}>
                 Sem formulário e sem planilha. São dois passos entre o gasto e o controle.
               </Text>
             </View>
@@ -2022,27 +2036,39 @@ const styles = StyleSheet.create({
 
   // Mesmo padrão de grade desalinhada do FAQ (`faqGrade`/`faqCardPos`) — só
   // 3 caixas aqui, então largura própria em vez de reaproveitar a do FAQ.
-  gradeCenas: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center', gap: spacing.xl, marginTop: spacing.lg, width: '100%' },
-  cenaCaixaPos: { flexBasis: '30%', minWidth: 260 },
-  cenaCaixaPosCompacta: { flexBasis: '100%' },
-  cenaCaixa: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.lg, alignItems: 'center', gap: spacing.md, ...sombraCard },
-  cenaIcone: {
+  /* Apagão financeiro (bloco 3). `alignItems:'stretch'` na grade e
+     `height:'100%'` no card: os três cards terminam na mesma linha de base
+     mesmo com textos de tamanho diferente. */
+  dorGrade: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.lg, marginTop: spacing.xxl, width: '100%' },
+  dorCardPos: { flexGrow: 1, flexBasis: '30%', minWidth: 260 },
+  dorCardPosCompacto: { flexBasis: '100%' },
+  dorCard: {
+    height: '100%',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    padding: spacing.xl,
+    ...sombraCard,
+  },
+  dorIcone: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.accentDeep,
+    marginBottom: spacing.xs,
   },
-  cenaCta: { marginTop: spacing.xxl, alignItems: 'center' },
-  textoCena: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.light },
-  // A ponte de volta pra solução usa o accent2 da marca — a paleta muda de
-  // tom no exato lugar onde a copy muda de tom, saindo das caixas de dor.
-  // `type.corpo` (não `type.destaque`, usado antes) — no tamanho de título
-  // essa frase de transição competia com o H2 da própria seção logo acima
-  // em vez de ler como uma frase de apoio; `type.corpo` é o degrau de texto
-  // corrido da escala do design system, não um valor ad hoc.
-  pontePergunta: { color: theme.accent2, fontSize: type.corpo, lineHeight: type.corpo * 1.5, fontFamily: fonts.regular, marginTop: spacing.xl, maxWidth: 640 },
+  dorTitulo: { color: theme.ink, fontSize: type.destaque, lineHeight: lh(type.destaque), fontFamily: fonts.regular },
+  dorTexto: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo), fontFamily: fonts.light },
+  dorVirada: { color: theme.accent2, fontSize: type.destaque, lineHeight: lh(type.destaque), fontFamily: fonts.regular, marginTop: spacing.xxl },
+  /* Parágrafo centralizado de várias linhas sem isto deixa palavra sozinha na
+     última linha ("fim do dia." inteiro isolado, medido a 1440px). `balance`
+     reparte o texto em linhas de largura parecida, na largura real. */
+  linhasEquilibradas: ({ textWrap: 'balance' } as any),
 
   // `spacing.xxl` (28px) sozinho ficava apertado demais dentro da dobra de
   // tela cheia — pouco respiro ao redor do conteúdo centralizado. `xxl * 2.5`

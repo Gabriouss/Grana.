@@ -7,7 +7,7 @@ import { UI_OUT, useReducedMotion } from '@/lib/motion';
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
 type Passo = {
-  cena: 'fala' | 'lugares';
+  cena: 'colar' | 'lugares';
   titulo: string;
   texto: string;
 };
@@ -90,16 +90,28 @@ function useEntrouNaTela() {
  * tudo que precisa caber, cabe lá, e sobra folga no amplo.
  *
  * ── A sequência (o momento de autoria desta dobra) ──────────────────────
- * A cena inteira nascia montada de uma vez — mensagem, seta e lançamento
- * já visíveis juntos, o que conta a promessa da dobra ("você fala e o
- * Grana. organiza") sem NUNCA mostrar o mecanismo acontecendo. Agora, uma
- * vez que a trilha entra na tela: a mensagem chega (280ms), a seta acende
- * (140ms) e só então o lançamento categorizado materializa (320ms), com o
- * ponto de categoria chegando por último — é a peça que prova que a
- * categorização foi automática, não só que "um lançamento apareceu".
- * Roda uma vez só; sem `prefers-reduced-motion` tudo nasce no estado final.
+ * A cena inteira nascia montada de uma vez — texto, seta e lançamento já
+ * visíveis juntos, o que conta a promessa da dobra sem NUNCA mostrar o
+ * mecanismo acontecendo. Agora, uma vez que a trilha entra na tela: o texto
+ * colado chega (280ms), a seta acende (140ms) e só então o lançamento
+ * categorizado materializa (320ms), com o ponto de categoria chegando por
+ * último — é a peça que prova que a categorização foi automática, não só que
+ * "um lançamento apareceu". Roda uma vez só; com `prefers-reduced-motion`
+ * tudo nasce no estado final.
+ *
+ * ── Por que colar, e não falar (13/09/2026) ─────────────────────────────
+ * Até 13/09 esta cena era uma MENSAGEM de fala ("almoço 32 no mercado") e o
+ * passo dizia "Fale com o Granabô". A estrutura de 13 blocos do autor tirou a
+ * voz deste bloco de propósito: é o bloco da solução NA WEB, e o lançamento
+ * por voz não funciona no Firefox. A voz foi para o bloco "E no seu bolso",
+ * do celular. Colar o texto é o que funciona em qualquer navegador — é a
+ * `PasteReceiptModal`, aberta pela Início, que identifica valor, categoria e
+ * tipo e mostra o resultado para conferir antes de salvar.
+ *
+ * O texto colado tem a cara de CAMPO (borda, ícone de área de transferência),
+ * e não de bolha de conversa, para não ser lido como o chat do Granabô.
  */
-function CenaFala({ iniciar }: { iniciar: boolean }) {
+function CenaColar({ iniciar }: { iniciar: boolean }) {
   const reduzirMovimento = useReducedMotion();
   const mensagem = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
   const seta = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
@@ -126,11 +138,12 @@ function CenaFala({ iniciar }: { iniciar: boolean }) {
     <View style={styles.cena}>
       <Animated.View
         style={[
-          styles.mensagemEnviada,
-          { opacity: mensagem, transform: [{ translateY: mensagem.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }, { scale: mensagem.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }] },
+          styles.textoColado,
+          { opacity: mensagem, transform: [{ translateY: mensagem.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }, { scale: mensagem.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) }] },
         ]}
       >
-        <Text style={styles.mensagemTexto}>almoço 32 no mercado</Text>
+        <Ionicons name="clipboard-outline" size={13} color={theme.inkFaint} aria-hidden />
+        <Text style={styles.textoColadoConteudo} numberOfLines={1}>Pix enviado · R$ 32,00 · Mercado Bom Preço</Text>
       </Animated.View>
       <Animated.View style={[styles.setaCena, { opacity: seta }]} aria-hidden>
         <Ionicons name="arrow-down" size={14} color={theme.accent2} />
@@ -143,7 +156,7 @@ function CenaFala({ iniciar }: { iniciar: boolean }) {
       >
         <Animated.View style={[styles.pontoCategoria, { backgroundColor: '#bb6b60', transform: [{ scale: ponto }] }]} />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.lancamentoTitulo}>Almoço no mercado</Text>
+          <Text style={styles.lancamentoTitulo}>Mercado Bom Preço</Text>
           <Text style={styles.lancamentoMeta}>Alimentação</Text>
         </View>
         <Text style={styles.lancamentoValor}>− R$ 32,00</Text>
@@ -221,14 +234,14 @@ function CenaLugares({ iniciar }: { iniciar: boolean }) {
    um terceiro só pra encher a trilha seria enfeite. */
 const PASSOS: Passo[] = [
   {
-    cena: 'fala',
-    titulo: 'Fale com o Granabô',
-    texto: 'Fale direto no aplicativo. O Grana. identifica o valor, a descrição e a categoria para você conferir.',
+    cena: 'colar',
+    titulo: 'Cole o texto da compra',
+    texto: 'Copie o comprovante do Pix, a fatura ou o recibo e cole no Grana. Ele identifica o valor, a categoria e o tipo para você conferir.',
   },
   {
     cena: 'lugares',
     titulo: 'Confira onde quiser',
-    texto: 'O lançamento aparece no celular e no computador, pronto pra você ajustar se precisar.',
+    texto: 'O lançamento aparece no computador e no celular, pronto pra você ajustar se precisar.',
   },
 ];
 
@@ -239,7 +252,7 @@ export default function TrilhaPassos({ compacto = false }: { compacto?: boolean 
       <View style={[styles.passos, compacto && styles.passosCompactos]}>
         {PASSOS.map((passo) => (
           <View key={passo.titulo} style={styles.passo}>
-            {passo.cena === 'fala' ? <CenaFala iniciar={entrou} /> : <CenaLugares iniciar={entrou} />}
+            {passo.cena === 'colar' ? <CenaColar iniciar={entrou} /> : <CenaLugares iniciar={entrou} />}
             <Text style={styles.tituloPasso}>{passo.titulo}</Text>
             <Text style={styles.textoPasso}>{passo.texto}</Text>
           </View>
@@ -278,16 +291,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cenaLugares: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  mensagemEnviada: {
-    alignSelf: 'flex-end',
-    maxWidth: '85%',
-    backgroundColor: theme.accentDeep,
-    borderRadius: radius.md,
-    borderTopRightRadius: 2,
+  /* Campo, não bolha: borda tracejada fina de área de colar, ícone de área de
+     transferência à esquerda, largura inteira. Uma bolha com canto cortado
+     (o desenho anterior) lê como mensagem de chat. */
+  textoColado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: theme.ruleStrong,
     paddingVertical: 6,
     paddingHorizontal: spacing.sm,
   },
-  mensagemTexto: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.light },
+  textoColadoConteudo: { flex: 1, minWidth: 0, color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
   setaCena: { alignSelf: 'center' },
   lancamentoCena: {
     flexDirection: 'row',

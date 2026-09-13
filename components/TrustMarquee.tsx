@@ -1,9 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, spacing, fonts, type } from '@/lib/theme';
 import { CORTES, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
-import AppPressable from '@/components/AppPressable';
 
 type Props = { itens: string[] };
 
@@ -96,8 +94,29 @@ export default function TrustMarquee({ itens }: Props) {
   const copias =
     larguraUmaCopia > 0 ? Math.max(2, Math.ceil((larguraJanela * 2) / larguraUmaCopia) + 1) : 6;
 
+  /* Sem botão de pausa visível, a pedido do autor ("remover esse botão de
+     pausa do texto em movimento na parte superior da hero").
+
+     O botão não era enfeite: a WCAG 2.2.2 exige um jeito de parar conteúdo
+     que se move por mais de cinco segundos. Por isso a exigência passou para
+     o comportamento, em vez de sumir junto com o botão:
+     - o ponteiro em cima da faixa pausa, e ao sair retoma;
+     - o foco do teclado na faixa pausa (ela é alcançável por Tab), e ao sair
+       retoma;
+     - com "reduzir movimento" a faixa nem anda: vira a lista parada acima. */
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      {...({
+        tabIndex: 0,
+        role: 'region',
+        'aria-label': 'Destaques do Grana. A faixa pausa com o ponteiro ou o foco em cima dela.',
+        onMouseEnter: () => setPausado(true),
+        onMouseLeave: () => setPausado(false),
+        onFocus: () => setPausado(true),
+        onBlur: () => setPausado(false),
+      } as any)}
+    >
       <TrustMarqueeFaixa
         nomeKeyframe={nomeKeyframe}
         copias={copias}
@@ -106,17 +125,6 @@ export default function TrustMarquee({ itens }: Props) {
         pausado={pausado}
         onMedir={setLarguraUmaCopia}
       />
-      <AppPressable
-        onPress={() => setPausado((v) => !v)}
-        accessibilityRole="button"
-        accessibilityLabel={pausado ? 'Retomar faixa de informações' : 'Pausar faixa de informações'}
-        aria-pressed={pausado}
-        style={({ hovered }) => [styles.controle, hovered && styles.controleHover]}
-      >
-        <View aria-hidden>
-          <Ionicons name={pausado ? 'play' : 'pause'} size={15} color={theme.inkSoft} />
-        </View>
-      </AppPressable>
     </View>
   );
 }
@@ -214,26 +222,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
+  /* Sem `paddingRight`: os 52px reservavam o espaço do botão de pausa, que
+     saiu. Mantê-los deixaria a faixa cortada antes da borda direita, com um
+     vão sem motivo aparente. */
   faixa: {
     backgroundColor: theme.paperRaised,
     paddingVertical: spacing.xs,
-    paddingRight: 52,
     minHeight: 44,
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  controle: {
-    position: 'absolute',
-    right: spacing.xs,
-    top: 0,
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 22,
-    backgroundColor: theme.paperRaised,
-  },
-  controleHover: { backgroundColor: theme.hover },
   // `flexShrink: 0` nos filhos — sem isso, numa tela mais estreita que o
   // texto inteiro, o flexbox encolhia as cópias pra caber na viewport,
   // cortando o texto em vez de deixar o trilho mais largo que a tela (que é
