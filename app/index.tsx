@@ -1675,11 +1675,20 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── CTA final ───────── */}
+      {/* ───────── CTA final ─────────
+          Tela inteira em QUALQUER largura, não só no desktop. Antes a altura
+          mínima vinha de `alturaDobra`, que é nula no compacto — e no celular
+          o fechamento encolhia para a altura do texto, com o rodapé encostado
+          logo abaixo disputando atenção no instante da decisão. Pedido do
+          autor: "o usuário precisa ficar imerso no final da página, sem outras
+          informações para atrapalhar a decisão de compra". Com a área visível
+          inteira, o rodapé só aparece para quem rola de propósito além dele.
+          O texto e o desenho desta dobra continuam intactos (o autor mandou
+          manter); o que muda é só o espaço que ela ocupa. */}
       <View
         style={[
           styles.palcoCtaFinal,
-          alturaDobra !== null && { minHeight: alturaDobra, justifyContent: 'center' },
+          { minHeight: Math.max(360, altura - alturaCabecalho), justifyContent: 'center' },
           alturaDobra !== null && styles.dobraSnap,
         ]}
       >
