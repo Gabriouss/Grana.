@@ -4,7 +4,7 @@ import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, spacing, radius, fonts as uiFonts, type, lh, sombraCard, sombras } from '@/lib/theme';
+import { theme, spacing, radius, fonts as uiFonts, type, lh, sombraCard, sombras, brand } from '@/lib/theme';
 import { CORTES, colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
@@ -557,38 +557,51 @@ function SecaoReconheceIsso() {
   );
 }
 
-/* Elementos do produto que ajudam o registro a se tornar um hábito. */
+/* Bloco 7 da estrutura de 13 blocos: "Notificações e desafios — tom 'você
+   sabia?', Score Grana (nunca julga), sequência de dias, conquistas por
+   hábito".
+
+   Cada frase foi conferida contra o código antes de ir para a página:
+   - lembrete: `notification-schedule` oferece três horários fixos (19h00,
+     20h30, 21h30), no máximo um aviso por aparelho por dia, e só no app;
+   - Score: `calculateScoreBreakdown`, em lib/gamification.ts, tem quatro
+     fatores (sequência viva, constância no mês, retrato completo, contas
+     acompanhadas). Superávit, teto e vencimento SAÍRAM da nota justamente
+     porque "um mês apertado não é falha de hábito". Por isso "não julga" é
+     afirmação literal, e não enfeite de copy.
+   - O pilar de widgets que existia aqui foi para o bloco 6 ("E no seu
+     bolso"), que é onde a estrutura do autor os pôs. */
 const PILARES_HABITO = [
   {
-    icone: 'flame-outline' as const,
-    titulo: 'Veja sua constância',
-    texto: 'O Ritmo da Semana acompanha os dias em que você registrou e deixa a sequência visível.',
-  },
-  {
-    icone: 'trophy-outline' as const,
-    titulo: 'Acompanhe conquistas',
-    texto: 'Do Primeiro Registro ao Mapeador 360°, você enxerga quais comportamentos já fazem parte da sua rotina.',
-  },
-  {
-    icone: 'notifications-outline' as const,
-    titulo: 'Escolha um lembrete',
-    texto: 'No aplicativo móvel, você define um horário para lembrar dos lançamentos que ainda não fez.',
+    icone: 'alarm-outline' as const,
+    titulo: 'Um lembrete no seu horário',
+    texto: 'Escolha 19h00, 20h30 ou 21h30. Um aviso por dia, no app de Android.',
   },
   {
     icone: 'speedometer-outline' as const,
-    titulo: 'Entenda sua evolução',
-    texto: 'O Score Grana reúne quatro fatores numa escala de 0 a 1000 e ajuda a acompanhar seu progresso.',
+    titulo: 'Score Grana, de 0 a 1000',
+    texto: 'Soma sequência, constância no mês, retrato completo e contas acompanhadas. O saldo fica fora da nota.',
   },
-  /* Widget entra como pilar de HÁBITO, e não de conveniência, porque é onde
-     ele de fato atua: o atrito que quebra a sequência costuma ser abrir o
-     app, não registrar. Um atalho na tela inicial remove justamente esse
-     passo. */
   {
-    icone: 'apps-outline' as const,
-    titulo: 'Deixe à mão na tela inicial',
-    texto: 'Widgets no Android colocam o microfone e o Livre para Gastar a um toque, sem precisar abrir o aplicativo.',
+    icone: 'flame-outline' as const,
+    titulo: 'Ritmo da Semana',
+    texto: 'Marca os dias em que você registrou e deixa a sequência à vista.',
+  },
+  {
+    icone: 'trophy-outline' as const,
+    titulo: 'Conquistas por hábito',
+    texto: 'Do Primeiro Registro ao Mapeador 360°, cada conquista mostra um hábito que já entrou na rotina.',
   },
 ];
+
+/* A notificação que ilustra o tom "você sabia?" é uma mensagem REAL do
+   catálogo (`dica-1` em lib/notification-catalog.ts), copiada letra a letra,
+   inclusive o emoji. Inventar uma frase mais bonita aqui mostraria à pessoa
+   um aviso que ela nunca vai receber. */
+const NOTIFICACAO_EXEMPLO = {
+  titulo: 'Sabia que dá pra falar?',
+  texto: 'Você sabia que dá pra lançar um gasto só falando com o Grana.? Testa o lançamento por voz 🎙️',
+};
 
 /* Bloco 5 da estrutura de 13 blocos: o Panorama de ferramentas da WEB. O
    autor listou o que precisa estar aqui: cartão por ciclo, boletos, caixinhas
@@ -1384,7 +1397,7 @@ function ConteudoWeb() {
         <GradeInterativa />
         <Dobra levantada>
           <RevealOnScroll>
-            <View style={[styles.secao, styles.secaoComCartao, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
+            <View style={[styles.secao, styles.secaoComCartao, !habitosEmpilhados && styles.secaoHabitos, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
               <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
                 <Text style={styles.eyebrow}>Por dentro do aplicativo.</Text>
                 {/* `parallaxFolgaAcima` não é respiro estético: é a reserva do
@@ -1403,10 +1416,24 @@ function ConteudoWeb() {
                 </ScrollLinkedView>
               </View>
               <View style={[styles.colunaTextoSecao, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
-                <TituloSecao>O Grana. ajuda o controle a virar hábito.</TituloSecao>
+                <Text style={[styles.eyebrow, ehCompacto && styles.precoTextoCentralizado]}>Notificações e desafios</Text>
+                <TituloSecao>Um lembrete na hora certa. Um placar que não julga.</TituloSecao>
+                {/* Uma frase só. A versão de três linhas repetia o que os
+                    pilares logo abaixo já dizem ("o saldo fica de fora" aparecia
+                    duas vezes) e empurrava o último pilar para fora da dobra. */}
                 <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
-                  A experiência é apoiada em princípios de formação de hábito: um registro fácil de começar, sinais para lembrar e progresso que você consegue enxergar.
+                  Os dois cuidam do seu hábito sem virar cobrança.
                 </Text>
+                {/* Notificação no formato do Android: ícone circular da marca,
+                    nome do app e hora, título e texto. */}
+                <View style={styles.notifCard} aria-label={`Exemplo de notificação do Grana.: ${NOTIFICACAO_EXEMPLO.titulo}`}>
+                  <View style={styles.notifIcone} aria-hidden />
+                  <View style={styles.notifCorpo}>
+                    <Text style={styles.notifCabecalho}>Grana. · agora</Text>
+                    <Text style={styles.notifTitulo}>{NOTIFICACAO_EXEMPLO.titulo}</Text>
+                    <Text style={styles.notifTexto}>{NOTIFICACAO_EXEMPLO.texto}</Text>
+                  </View>
+                </View>
                 <View style={styles.habitoGrade}>
                   {PILARES_HABITO.map((pilar) => (
                     <View key={pilar.titulo} style={styles.habitoItem}>
@@ -2152,7 +2179,41 @@ const styles = StyleSheet.create({
   // (~342px, viewport de 390px menos o padding de `faixaCompacta`) e
   // estourava largura, cortado pelo `overflow:hidden` da seção.
   molduraCentralizadaCompacta: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%' },
-  habitoGrade: { gap: spacing.sm, marginTop: spacing.xl },
+  habitoGrade: { gap: spacing.sm, marginTop: spacing.lg },
+  /* Medido a 1440×900: a coluna do celular tem 793px (sobretítulo, aparelho e
+     pílulas 3+2, arranjo preservado pela auditoria de 06/09). Com os 70px
+     de respiro padrão de `secao` em cima e embaixo, a dobra pedia 933 numa
+     área útil de 840 e cortava o último pilar. Com 20px: 833. A `Dobra`
+     continua centralizando, então o ritmo com as dobras vizinhas se mantém. */
+  secaoHabitos: { paddingVertical: spacing.xl },
+  /* Notificação de exemplo, no formato do Android. O ícone é o círculo com o
+     degradê da marca porque é assim que o ícone do app aparece numa
+     notificação; dentro da interface o degradê continua proibido. */
+  notifCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    backgroundColor: theme.paperRaised,
+    ...sombraCard,
+  },
+  notifIcone: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: brand.dark,
+    ...({ backgroundImage: `linear-gradient(90deg, ${brand.gradient.from}, ${brand.gradient.to})` } as any),
+  },
+  notifCorpo: { flex: 1, minWidth: 0, gap: 2 },
+  notifCabecalho: { color: theme.inkFaint, fontSize: type.micro, lineHeight: lh(type.micro), fontFamily: fonts.light },
+  notifTitulo: { color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio), fontFamily: fonts.regular },
+  notifTexto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: lh(type.nota), fontFamily: fonts.light },
   habitoItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
