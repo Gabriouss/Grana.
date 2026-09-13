@@ -51,18 +51,37 @@ desligada: é inofensivo enquanto `contentDeliveries` continuar `disabled`, e
 já fica pronto pro dia em que o autor ligar a entrega pelo painel, sem
 precisar lembrar de preencher esse campo também.
 
-**Pendência que só o autor resolve, pelo painel da Cakto:** entrar em
-Produtos → Grana. → Entrega de conteúdo (ou nome equivalente na versão atual
-do painel) e ligar a entrega por "Acesso por link/e-mail". O link a usar já
-está configurado: `https://granaponto.com.br/ativar`. Sem esse passo, o
-e-mail de compra continua sem nenhuma instrução, mesmo com o código já
-pronto dos dois lados.
+**RESOLVIDO no mesmo dia, pelo painel.** O autor achou a seção (aba Geral,
+bloco "Entrega de conteúdo"), onde estava marcado **"Link de pagamento"** —
+cuja descrição é "utilize exclusivamente o link de pagamento para receber os
+valores", ou seja, cobrar sem entregar nada. Trocou para **"Acesso por
+e-mail"**, e o campo de link já apareceu preenchido com
+`https://granaponto.com.br/ativar`, gravado antes pela API. Releitura
+confirmou `contentDeliveries: ["emailAccess"]`, sozinho, com o resto do
+produto intacto.
 
-**O que não foi verificado:** nenhuma compra nova foi feita para confirmar
-que o e-mail muda depois de o autor ligar a entrega pelo painel — a próxima
-compra de teste é o teste real disso. Também não mexi em `supportEmail`
-(hoje `null`, por isso o Gmail pessoal aparece pro comprador) — decisão à
-parte, não pedida nesta sessão.
+**Provado de ponta a ponta, sem gastar outra compra.** Existem DOIS endpoints
+parecidos e só um manda e-mail:
+
+- `orders_resend_access_create` concede o acesso de novo e redispara
+  `purchase_approved`. **Não manda e-mail** — chamei, respondeu "Acesso
+  enviado com sucesso!", e nada chegou na caixa do autor. Do nosso lado o
+  redisparo foi inofensivo: `webhook_events` continuou com UMA linha (a
+  deduplicação por id de evento fez o trabalho) e a assinatura não mudou.
+- `orders_resend_approved_email_create` é o que manda o e-mail de aprovação.
+  Chamado em seguida, o e-mail chegou **com o bloco "Para acessar conteúdo
+  adicional" e o botão "Acessar conteúdo"**, e o campo "Método de Entrega"
+  passou de "Link de Pagamento" para **"Link de acesso via E-mail"**.
+
+**O que ainda não foi verificado:** o destino do botão não foi aberto por
+ninguém até aqui (o autor ia tocar nele), e nenhuma compra NOVA passou pelo
+fluxo completo — o teste foi por reenvio de um pedido existente, que é
+evidência boa, mas não idêntica a uma venda do zero.
+
+**Fica em aberto, como decisão e não como defeito:** `supportEmail` do
+produto. A API devolve `null`, mas o painel mostra o campo preenchido com o
+Gmail pessoal do autor, e é esse endereço que o comprador vê no e-mail. Mais
+um campo que a leitura da API não reflete.
 
 ## 12/09/2026 — trabalho não commitado da sessão anterior, publicado, e motion na landing
 
