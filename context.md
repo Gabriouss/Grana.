@@ -8,10 +8,12 @@
   (as duas correções do laço da área logada) + `940b3e8` (este registro) +
   **`70ffc67`** (Granabô fechando ao clicar fora, na web). Todas verificadas
   em produção.
-- `main` local na M1 está **6 commits à frente**, todos da landing, **sem push
-  por ordem explícita do autor** ("não publique nada ainda, deixe tudo em
-  ambiente local"). Isso contraria a regra 3; a decisão é do autor. Até ele
-  decidir, a M2 não vê a reforma da landing.
+- `main` local na M1 está **14 commits à frente** (`838cd12` a `7645285`),
+  todos da landing, **sem push por ordem explícita do autor** ("não publique
+  nada ainda, deixe tudo em ambiente local"). Isso contraria a regra 3; a
+  decisão é do autor. Até ele decidir, a M2 não vê a reforma da landing. A
+  estrutura de 13 blocos está **completa** nesses commits e aguarda a revisão
+  dele no `localhost:8081`.
 
 ## A área logada da web entrava em laço infinito (publicado)
 
@@ -109,7 +111,9 @@ Design em `E:\Grana-Arquivos\Grana Landing Page Build\Grana Landing.dc.html`.
 `granaponto.com.br` e `app/index.tsx` **são a mesma página** (um projeto
 Vercel, ligado a este repositório) — o autor achava que não.
 
-**Feito** (commits locais `9998e34` a `3389e6a`):
+**Feito** (commits locais `838cd12` a `36620b5`; os hashes `9998e34` a
+`3389e6a` citados antes aqui eram de antes do rebase que publicou as correções
+da área logada, e não existem mais):
 - `lib/exemplo-landing.ts`: exemplo único de Livre para Gastar. A página
   mostrava R$ 84,00, R$ 48,00 e R$ 48,23/dia em três lugares; o último é o
   número reprovado no V01.
@@ -129,15 +133,66 @@ Vercel, ligado a este repositório) — o autor achava que não.
 Cakto; já retirado da página em 05/09). A FAQ de formas de pagamento responde
 cartão e Pix, sem boleto (apurado em 12/09).
 
-**Falta da estrutura de 13 blocos:** CTA primário abaixo do herói ("Assinar
-agora", direto ao checkout); tirar voz do bloco 4 (restrição do Firefox);
-fundir painel web, Livre para Gastar e ferramentas no "Panorama" (bloco 5);
-separar o que é só do celular (bloco 6); tom "você sabia?" (bloco 7); quarto
-exemplo no chat do Granabô (bloco 8); PS no fechamento (bloco 13); copy da dor
-como "apagão financeiro" (bloco 3). E: mini-mocks do bento que não batem com
-as telas reais (Hábito, Personalização, Planejamento, Widgets apontados pelo
-autor), cenas de dor e dobra do Granabô reprovadas no visual, e o botão de
-pausa do letreiro (WCAG 2.2.2, proposta sem resposta).
+**Estrutura de 13 blocos, completa** (commits locais `bee409f` a `7645285`),
+na ordem da página: letreiro sem botão de pausa (pedido do autor) → herói
+mantido com "Assinar agora" direto ao checkout (1 e 2) → "O apagão
+financeiro." (3) → solução por colar o texto, sem voz (4) → painel web e bento
+de ferramentas (5) → "E no seu bolso, ainda mais" (6) → notificações e
+desafios no tom "você sabia?" (7) → Granabô (8) → preços mantidos (9) →
+objeções (10) → garantia (11) → FAQ (12) → fechamento mantido, com PS (13).
+
+- **Bloco 5, bento (`c2ba246`)**, formato do `bento-grid-01` pedido pelo
+  autor, em `components/BentoFerramentas.tsx`. Cada bloco desenha a tela em
+  código copiando rótulo, número e cor de uma captura real. Bento a partir de
+  1200px, duas colunas de 700 a 1199, uma abaixo; cada desenho se rearranja
+  pela largura real da sua área (`onLayout`); linhas crescem com o conteúdo;
+  rótulos de blocos que fecham a mesma fileira alinhados. **Medido** em 14
+  larguras (360 a 1920): nada vaza, nada invade texto, nenhuma reticência,
+  rótulos alinhados. A primeira versão só tinha sido medida a 1440px e vazava
+  abaixo de 1280px (o autor viu na captura de celular).
+- **Bloco 8, Granabô (`bcb39eb`)**: a conversa se encena sozinha, uma vez,
+  quando entra na tela (quatro perguntas), e os atalhos repetem qualquer uma.
+  Números do mesmo mês fictício das capturas em `EXEMPLO_CONVERSA`
+  (`lib/exemplo-landing.ts`). Teste novo `__tests__/exemplo-landing.cjs`
+  (41 verificações, no `test:ci`) confere esses números contra os módulos
+  reais com o relógio em 05/09/2026.
+- **Bloco 13 (`7645285`)**: PS depois do botão, fechando o "apagão financeiro"
+  e convidando para o app de Android. A dobra continua cabendo numa tela.
+- **Regressão desta sessão, corrigida (`5e50288`)**: centralizar o alternador
+  Anual/Mensal (`3f03331`) encolheu as abas para 45px no celular e os rótulos
+  encostaram ("AnualMensal"). Só apareceu medindo; no desktop estava certo.
+
+**NÃO verificado — checklist de QA da landing:**
+- [ ] Revisão visual do autor no `localhost:8081`, em especial bento, Granabô
+      e PS (tudo medido no Chrome headless, nada visto num aparelho).
+- [ ] Safari/iOS e Firefox: nada testado fora do Chrome.
+- [ ] A encenação do Granabô com leitor de tela (a região só vira `aria-live`
+      depois do primeiro clique, por decisão; não testado com NVDA/VoiceOver).
+
+**Achados que ficaram para decisão do autor:**
+- **O Granabô calcula "livre para gastar" diferente da Início.** Lido no
+  código e reproduzido fora dele, mas a função publicada não foi chamada:
+  `livreParaGastar` em
+  `supabase/functions/assistente-financeiro/index.ts` soma TODAS as
+  transações do mês, crédito incluído, enquanto a Início e os widgets tiram o
+  crédito do caixa antes (`walletCashTransactions`, `isCreditTx`). Quem tem
+  compra no cartão no mês recebe do assistente um número menor que o do card,
+  e a fatura pode sair descontada duas vezes (compras e conta do cartão). Na
+  conta de demonstração, com a mesma fórmula da função aplicada aos dados de
+  `lib/demo-data.ts` em 05/09/2026: Início R$ 1.553,65 (R$ 59,76/dia),
+  assistente R$ 211,15 (R$ 8,12/dia). Corrigir
+  exige publicar a Edge Function (regra 11). A landing mostra o número da
+  Início. QA: perguntar "quanto posso gastar" com a conta de testes e
+  comparar com o card.
+- Notificação `dica-7` do catálogo ainda manda configurar o WhatsApp, canal
+  desligado.
+- A própria demonstração diverge 2 centavos: conta "Cartão · Nubank"
+  R$ 1.340,55 e fatura atual R$ 1.342,50. Por isso o bento de Boletos não
+  mostra a conta do cartão.
+- Quatro componentes ficaram sem nenhum import e continuam no repositório:
+  `BeneficiosHorizontais`, `RecorteTela` e `MiniMockBeneficio` (os dois
+  últimos só eram usados pelo primeiro) e `CardLivreParaGastar` (da dobra de
+  Livre para Gastar que saiu da página). Apagar ou manter é decisão do autor.
 
 **Pré-requisito de tráfego ainda aberto:** a página não tem Pixel da Meta nem
 GA4, e a CSP de `vercel.json` (`script-src 'self'` + hash) bloquearia os dois
@@ -151,7 +206,11 @@ sem ajuste.
   `prefers-reduced-motion` e a landing desliga parallax nesse caso (forçar
   `Emulation.setEmulatedMedia`); o `react-native-web` troca o `scrollTo` do
   elemento pela assinatura `{x, animated}` (medir por `scrollLeft`); no Git
-  Bash, argumento `/perfil` vira caminho de disco (`MSYS_NO_PATHCONV=1`).
+  Bash, argumento `/perfil` vira caminho de disco (`MSYS_NO_PATHCONV=1`). A
+  landing **rola dentro de um ScrollView**, não no documento: `window.scrollTo`
+  não faz nada, é preciso achar o `div` com `overflow` rolável. Medir
+  geometria com `prefers-reduced-motion: reduce` (tudo nasce no estado final)
+  e olhar o visual com `no-preference`.
 - **Servidor MCP `21st`** (21st.dev) em `~/.claude.json`, para `E:\GranaPonto`
   e `e:/GranaPonto`. Chave também no `.env` como `21ST_API_KEY`. Só carrega
   depois de reiniciar o Claude Code.
