@@ -598,6 +598,18 @@ const PILARES_HABITO = [
    catálogo (`dica-1` em lib/notification-catalog.ts), copiada letra a letra,
    inclusive o emoji. Inventar uma frase mais bonita aqui mostraria à pessoa
    um aviso que ela nunca vai receber. */
+/* Bloco 8: três fatos de COMO o Granabô responde, cada um tirado da função
+   publicada (`assistente-financeiro`, conferida em 13/09/2026): as ferramentas
+   consultam os lançamentos da própria pessoa; pergunta de cartão usa o ciclo
+   de fechamento de cada cartão (regra prioritária do prompt); e o prompt
+   proíbe julgar gasto. Sem absoluto do tipo "nunca erra": quem escreve a
+   resposta é um modelo de linguagem. */
+const COMO_O_GRANABO_RESPONDE: { icone: keyof typeof Ionicons.glyphMap; texto: string }[] = [
+  { icone: 'receipt-outline', texto: 'Responde com os valores dos seus lançamentos.' },
+  { icone: 'card-outline', texto: 'Fatura do cartão pelo dia de fechamento.' },
+  { icone: 'chatbubble-ellipses-outline', texto: 'Mostra o número que você pediu, sem sermão.' },
+];
+
 const NOTIFICACAO_EXEMPLO = {
   titulo: 'Sabia que dá pra falar?',
   texto: 'Você sabia que dá pra lançar um gasto só falando com o Grana.? Testa o lançamento por voz 🎙️',
@@ -1402,12 +1414,26 @@ function ConteudoWeb() {
           <RevealOnScroll>
             <View style={[styles.secao, styles.secaoComCartao, ehCompacto && styles.secaoComCartaoCompacta]}>
               <View style={[styles.colunaTextoSecao, ehCompacto && styles.colunaTextoSecaoCompacta]}>
-                <Text style={styles.eyebrow}>Conheça o Granabô</Text>
+                {/* Sobretítulo e texto centralizados no celular, como o título
+                    (`TituloSecao` centraliza todo H2 no compacto). Esta era a
+                    única dobra que tinha ficado de fora: título no meio, o resto
+                    encostado à esquerda. */}
+                <Text style={[styles.eyebrow, ehCompacto && styles.precoTextoCentralizado]}>Conheça o Granabô</Text>
                 <TituloSecao>Pergunte sobre o seu dinheiro.</TituloSecao>
-                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto]}>
-                  Pergunte sobre gastos, boletos ou quanto ainda pode gastar. O Granabô consulta
-                  seus lançamentos para responder e pede detalhes quando precisa.
+                <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado, styles.linhasEquilibradas]}>
+                  Gastos de uma categoria, contas do mês, fatura do cartão ou quanto sobra até o fim do mês. O Granabô
+                  consulta os seus lançamentos e responde.
                 </Text>
+                <View style={styles.granaboPontos}>
+                  {COMO_O_GRANABO_RESPONDE.map((ponto) => (
+                    <View key={ponto.texto} style={styles.granaboPonto}>
+                      <View style={styles.granaboPontoIcone} aria-hidden>
+                        <Ionicons name={ponto.icone} size={16} color={theme.accent2} />
+                      </View>
+                      <Text style={styles.granaboPontoTexto}>{ponto.texto}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
               <View style={[styles.molduraCentralizada, ehCompacto && styles.molduraCentralizadaCompacta]}>
                 <ConversaGranachat compacto={ehCompacto} />
@@ -2165,6 +2191,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.accentDeep,
   },
   habitoTexto: { flex: 1 },
+  granaboPontos: { gap: spacing.md, marginTop: spacing.xl },
+  granaboPonto: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  granaboPontoIcone: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.accentDeep,
+  },
+  granaboPontoTexto: { flex: 1, color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio), fontFamily: fonts.light },
   habitoTitulo: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, marginBottom: 2 },
   habitoDescricao: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.4, fontFamily: fonts.light },
   destaqueInline: { color: theme.accent2, fontFamily: fonts.regular },

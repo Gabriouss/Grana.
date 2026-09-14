@@ -3,7 +3,7 @@ import { AccessibilityInfo, Platform, StyleSheet, Text, View } from 'react-nativ
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { fonts as uiFonts, lh, radius, sombraCard, spacing, theme, type } from '@/lib/theme';
 import { corDaCategoria } from '@/lib/chart-colors';
-import { EXEMPLO_LIVRE, emReais } from '@/lib/exemplo-landing';
+import { EXEMPLO_CONVERSA, EXEMPLO_LIVRE, emReais } from '@/lib/exemplo-landing';
 import RevealOnScroll from '@/components/RevealOnScroll';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
@@ -309,9 +309,13 @@ function VisualLivre({ ativo, instantaneo, largura }: PropsVisual) {
 }
 
 /* Captura: public/telas/credito-mobile.png, cartão "Nubank Ultravioleta".
-   A barra de limite enche até os 16% da tela real. */
+   Fatura e limite vêm de `EXEMPLO_CONVERSA`, os mesmos que o Granabô cita no
+   bloco 8; o percentual é a conta dos dois (1.342,50 ÷ 8.500 = 16%, o mesmo
+   da tela real), e a barra enche até ele. */
 const ROXO_CARTAO_DEMO = '#8a3ffc';
 function VisualCartao({ ativo, instantaneo }: PropsVisual) {
+  const { cartao, valor, limite } = EXEMPLO_CONVERSA.fatura;
+  const usado = `${Math.round((valor / limite) * 100)}%`;
   return (
     <View style={[styles.telaCard, styles.cartao]}>
       {/* Linha que QUEBRA em vez de cortar: sem lugar, o final do cartão desce
@@ -319,22 +323,22 @@ function VisualCartao({ ativo, instantaneo }: PropsVisual) {
       <View style={styles.linhaQuebra}>
         <View style={styles.linhaNome}>
           <View style={[styles.pontoCor, { backgroundColor: ROXO_CARTAO_DEMO }]} />
-          <Text style={styles.cartaoNome}>Nubank Ultravioleta</Text>
+          <Text style={styles.cartaoNome}>{cartao}</Text>
         </View>
         <Text style={styles.cartaoFinal}>•••• 4092</Text>
       </View>
       <View>
         <Text style={styles.miniRotulo}>Fatura atual</Text>
-        <Text style={styles.cartaoFatura}>{emReais(1342.5)}</Text>
+        <Text style={styles.cartaoFatura}>{emReais(valor)}</Text>
       </View>
       {/* "Limite" e o percentual na MESMA linha, acima da barra, como na tela
           real de Crédito. */}
       <View style={styles.linhaTopo}>
-        <Text style={styles.miniApoio}>Limite: {emReais(8500)}</Text>
-        <Text style={styles.cartaoPct}>16%</Text>
+        <Text style={styles.miniApoio}>Limite: {emReais(limite)}</Text>
+        <Text style={styles.cartaoPct}>{usado}</Text>
       </View>
       <View style={styles.trilho}>
-        <View style={[styles.preenchido, { backgroundColor: ROXO_CARTAO_DEMO, width: ativo ? '16%' : '0%' }, transicao(instantaneo, 'width', 900, 300)]} />
+        <View style={[styles.preenchido, { backgroundColor: ROXO_CARTAO_DEMO, width: ativo ? usado : '0%' }, transicao(instantaneo, 'width', 900, 300)]} />
       </View>
     </View>
   );
