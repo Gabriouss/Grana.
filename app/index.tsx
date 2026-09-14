@@ -2250,8 +2250,14 @@ const styles = StyleSheet.create({
   /* No compacto, tudo dentro do card de preço é centralizado (selo, valor,
      parágrafos, botão) e só o alternador ficava encostado à esquerda, porque
      `alignSelf:'stretch'` com `maxWidth` ancora no início do eixo. No desktop
-     ele continua à esquerda, alinhado com a coluna de texto ao lado. */
-  precoAlternadorCompacto: { alignSelf: 'center' },
+     ele continua à esquerda, alinhado com a coluna de texto ao lado.
+     `width: '100%'` é o que mantém o tamanho: só com `alignSelf:'center'` o
+     trilho encolhia até o conteúdo, e como cada aba é `flex: 1` (base zero), o
+     conteúdo era nada. As abas ficaram com 45px, "Mensal" (49px) vazava e os
+     dois rótulos encostavam ("AnualMensal", medido a 390px em 13/09/2026).
+     Com a largura cheia, o `maxWidth: 260` de cima volta a valer e o
+     `alignSelf` só centraliza. */
+  precoAlternadorCompacto: { alignSelf: 'center', width: '100%' },
   /* `minHeight` fixo porque o selo só existe no plano anual: sem ele a linha
      encolheria uns 6px ao trocar para o mensal e o cartão inteiro subiria
      junto, um tranco gratuito bem no momento em que a pessoa compara preço.
