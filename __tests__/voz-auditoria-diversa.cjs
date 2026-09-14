@@ -159,7 +159,13 @@ function appFunction(file, name, text) {
   appState = appFunction('components/PasteReceiptModal.tsx', 'processText', 'mercado 18,00 reais e 99 centavos');
   check('app valor', 'mercado 18,00 reais e 99 centavos', appState.Amount, 18.99);
   wallets.push({ id: 'n', name: 'Reserva 2,50' });
-  await widget('carteira Reserva 2,50 mercado 18 reais', null);
+  /* Carteira com número no nome. O que este caso sempre quis provar é que o
+     "2,50" do NOME não vira o valor do lançamento — e agora ele prova isso de
+     forma mais forte: em vez de só exigir revisão, assere o valor que chega à
+     gravação. A expectativa anterior era `null` porque, até 14/09/2026,
+     QUALQUER inteiro em dígitos ia para revisão; removida a referência da
+     carteira sobra "mercado 18 reais", que é valor cheio e inequívoco. */
+  await widget('carteira Reserva 2,50 mercado 18 reais', { amount: 18, wallet_id: 'n', type: 'out', category: 'Alimentação' });
   cards = [{ id: 'gold', name: 'Nubank Gold', bank: 'Nubank', wallet_id: 'p' },
     { id: 'black', name: 'Nubank Black', bank: 'Nubank', wallet_id: 'p' }];
   await widget('mercado 18,99 no crédito Nubank Black', { amount: 18.99, card_id: 'black' });
