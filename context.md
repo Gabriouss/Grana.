@@ -17,6 +17,59 @@
   `www.granaponto.com.br` conferida a 1440 e 390px (textos novos presentes,
   bento sem vazamento, atalhos do Granabô inteiros, alternador com 126px,
   botões de compra no checkout da Cakto, nenhum erro de console ou de CSP).
+- **WhatsApp fora do produto, por decisão definitiva do autor** ("SEM
+  WHATSAPP, NÃO IREMOS UTILIZAR WHATSAPP"). Nesta noite saiu só a notificação
+  `dica-7` ("Atalho pelo WhatsApp"), em `5b87e51`; a remoção completa ficou
+  **para depois**, a pedido dele. Detalhes na seção abaixo.
+
+## A dica do WhatsApp saiu, e a remoção completa ficou para depois
+
+**Feito e publicado.** `dica-7` removida de `lib/notification-catalog.ts`
+(nunca tinha sido entregue: nenhuma linha com ela em `push_habit_deliveries`).
+O catálogo é empacotado pela Edge Function `enviar-lembretes-habito`, então a
+função foi republicada: **v10 → v11**, `--use-api --no-verify-jwt`, a partir de
+`5b87e51` já no `origin/main`. Regra 11 seguida: a v10 era de 05/09 11:29,
+quatro minutos depois de `c5e83e0` (sem código fora do repositório); pacote da
+v10 baixado como cópia de retorno; `deno check` limpo (Deno via `npx deno`,
+não instalado na M1). **A publicação levou junto duas mudanças commitadas e
+nunca publicadas nessa função:** o filtro de dia da semana de `9ef9458`
+(o servidor ainda podia mandar "Domingo à noite" numa sexta) e o
+`timingSafeEqual` movido para `_shared/seguranca.ts` em `856b59f`. Teste
+`corpus-notificacoes` passou a exigir 56 copies e a recusar qualquer copy com
+WhatsApp (mutação conferida).
+
+**Verificado:** a v11 sobe e responde 401 a uma chamada com segredo inválido,
+sem enviar nada; `verify_jwt=false` preservado. **Não verificado:** a próxima
+execução real do cron entregando lembretes pela v11.
+
+**A remoção completa, adiada.** O autor aprovou remover tudo e, com o
+inventário começado, pediu para deixar para depois, com um cuidado explícito:
+"cuidado para não quebrar o lançamento por audio com essa remoção do
+whatsapp". A voz nasceu do bot e divide com ele `_shared/voice-transcription.ts`,
+`_shared/finance-command.ts`, `_shared/category-keywords.ts`,
+`lib/heuristics.ts` e a guarda `__tests__/sync-parser.js`. Nada foi apagado.
+Inventário já levantado (só leitura), para a próxima sessão não refazer:
+- Banco: `whatsapp_links` (6 linhas, 3 com telefone, último vínculo em
+  09/09), `whatsapp_pairing_attempts` (1), `whatsapp_pending` (0); gatilho
+  `preencher_wallet_whatsapp_pending`; políticas `whatsapp_links: dono lê` e
+  `dono remove`; chaves estrangeiras para `auth.users`, `credit_cards` e
+  `wallets`; linha `whatsapp` em `feature_flags` (desligada, com texto
+  "temporariamente fora do ar", escondido pelo app). Nenhum agendamento do
+  `cron` cita WhatsApp. **Faltou:** a busca de funções SQL que citam WhatsApp
+  (a consulta com `pg_get_functiondef` falhou em funções de agregação) e quem
+  mais referencia essas tabelas, como a exclusão de conta.
+- Produção: `whatsapp-webhook` v75, `verify_jwt=false`, recusando tudo porque
+  `WHATSAPP_APP_SECRET` não existe mais (falha fechada, conferido no código).
+- Código: `lib/whatsapp.ts`, `fetchWhatsappLink`/`createWhatsappPairing`/
+  `unlinkWhatsapp` em `lib/data.ts`, tipo `WhatsappLink`, chave `whatsapp` em
+  `lib/feature-flags-regras.ts`, `EXPO_PUBLIC_WHATSAPP_NUMBER` no `eas.json` e
+  no `.env.example`, os testes `corpus-whatsapp*.ts`, e as cláusulas de
+  WhatsApp em `lib/legal-content.ts` (privacidade e termos, no ar no site). A
+  regra 11 do `AGENTS.md` usa o `whatsapp-webhook` como exemplo de
+  `verify_jwt=false`; ao remover a função, o exemplo muda para
+  `cakto-webhook`, que tem a mesma armadilha.
+- Achado lateral: 16 copies do catálogo de notificações usam travessão, contra
+  a regra de copy do autor. Não mexido: são copies aprovadas.
 
 ## A área logada da web entrava em laço infinito (publicado)
 
