@@ -7323,3 +7323,132 @@ o que não:** é uso geral, não um checklist item a item — não há confirma�
 específica de que o teclado piscando (nunca reproduzido, causa desconhecida)
 não voltou a acontecer, nem da pane, do aviso de conexão ou do botão de
 crédito isoladamente. Nenhum bug foi reportado nesta abertura.
+
+---
+
+## 14/09/2026 — M2 — Granabô passa a registrar lançamentos pelo chat
+
+Sessão na M2, começando pela sincronização (44 commits da M1 puxados) e
+terminando com duas entregas: a correção do valor cheio na voz e o lançamento
+pelo chat do Granabô. Publicado em `29b5dd7`, `df0f3fc` e `b51a7f2`.
+
+### 1. "Almoço 20 reais" não lançava sozinho (`29b5dd7`)
+
+**O relato.** Áudio transcrito certo, mas o app não lançava e ainda chegava na
+tela de confirmação com R$ 0,00 no campo do valor.
+
+**O que NÃO era.** O reconhecimento. `guessAmountFromText("Almoço 20 reais")`
+sempre devolveu 20.
+
+**A causa.** `precisaRevisarValorVoz` (criada em `e7ab948`, 09/09) tratava
+**todo inteiro em dígitos como suspeito**, "para qualquer magnitude", por causa
+do risco de o reconhecedor colar reais e centavos ("dezoito e noventa e nove" →
+"1899"). Medido em 21 frases reais: **15 bloqueadas** — "almoço 20 reais",
+"gasolina 100 reais", "café 7 reais", "mercado cento e vinte reais". E o caso
+que a trava nasceu para pegar, "18 e 99", passava direto, porque ali os
+centavos sobrevivem na transcrição. **A trava barrava o comum e deixava passar
+o raro.**
+
+**A correção.** A palavra "reais"/"real" colada ao inteiro é a prova que
+faltava: ela só sobra quando não há centavos ditos, porque `normalizarTexto`
+reconstrói o separador ANTES da decisão ("dezoito e noventa e nove reais" chega
+como "18,99 reais"). O extenso entra pela mesma porta, sem regra própria.
+
+**Continua em revisão, e a suíte provou que precisava:** inteiro solto sem a
+palavra ("mercado 1899"); multiplicador falado ("45 mil reais", que neste
+repositório já virou R$ 1.000); e duas quantias na mesma fala — esta última era
+**regressão introduzida pela própria correção**, pega pela bateria de auditoria
+("carteira Reserva 2,50 mercado 18 reais" tem um decimal E um inteiro cheio, e
+a contagem final só olhava decimais).
+
+**Risco residual aceito pelo autor:** o reconhecedor entregar literalmente
+"1899 reais", já colado e com a palavra intacta.
+
+### 2. O Granabô não lançava nada, e podia mentir que lançou (`df0f3fc`)
+
+**O relato.** "o Granabô não está fazendo lançamento quando envio um lançamento
+no chat pra ele fazer".
+
+**A causa, e ela é estrutural.** Das dezesseis ferramentas do assistente,
+**nenhuma escrevia**. Ele nasceu só de consulta — o comentário no topo do
+arquivo e a própria saudação ("Consulto os seus lançamentos e respondo com os
+números") dizem isso. Não foi regressão: nunca existiu. Conferido no histórico,
+20 commits, nenhum removeu essa capacidade.
+
+**O defeito pior, escondido atrás.** Nada impedia o modelo de AFIRMAR que tinha
+registrado. A única trava (`respostaFundamentada`) recusa valor em R$ sem
+evidência, e só enxerga números prefixados por "R$": uma frase como "Prontinho,
+lançamento registrado!" passava inteira. A pessoa fecharia o app achando que o
+gasto estava lançado. Isso é pior que não fazer nada, e é exatamente o padrão
+que a regra 9 chama de "falha permanente virando estado benigno".
+
+**O que foi construído.**
+
+- `supabase/functions/_shared/interpretar-lancamento.ts` (novo, 747 linhas):
+  leitura determinística do lançamento. O modelo escolhe CHAMAR a ferramenta e
+  repassa a frase; **ele nunca decide quanto é**. Valor por argumento de JSON
+  seria a geração livre que a regra 1 do prompt proíbe, só que gravada no banco.
+- Ferramentas `criarLancamento` e `desfazerUltimoLancamento`. Faltando
+  informação (valor ilegível, categoria desconhecida, cartão ambíguo), **não
+  grava**: devolve o que falta para o modelo perguntar. Mesmo desenho do widget.
+- `assistant-learning.ts` ganhou `ESCRITAS`, a categoria que faltava. Uma
+  ferramenta de escrita não cabia em nenhum dos dois lados: como "consulta", o
+  `exemploElegivel` aprenderia o plano e o assistente **repetiria lançamento por
+  semelhança de frase**; como "meta", o valor gravado não entraria em
+  `permitidos`, a confirmação verdadeira seria reprovada e o `fallbackSeguro`
+  diria "não consegui" DEPOIS de o dinheiro ter entrado, mandando lançar de novo.
+- Regras 1b, 14, 15 e 16 no prompt. A **1b** fecha o buraco original; a **15**
+  separa conversar de comandar ("gastei muito com comida esse mês" é conversa).
+
+**Decisão de arquitetura, a pedido do autor (14/09):** nada de lançamento pode
+depender do WhatsApp, porque a feature será apagada por completo e **o Granachat
+assume o papel dela**. Por isso o interpretador foi extraído de
+`lib/heuristics.ts`, a fonte do app, e NUNCA do `whatsapp-webhook`, apesar de a
+cópia de lá estar pronta e testada. Nenhuma linha de regex foi digitada à mão: o
+módulo foi gerado por script a partir do original, e o `sync-parser` compara
+corpo a corpo (**74/74**, eram 40).
+
+A migration **estende `voice_operations`** em vez de criar tabela paralela —
+ganha de graça, e para sempre, a idempotência por `request_id`, a atomicidade, o
+RLS e o desfazer, tudo já testado em produção pela voz. A função foi extraída
+por script da migration original: **1 linha diferente em 223**, só a restrição
+de origem.
+
+**Erro no caminho, registrado porque quase passou.** O bloco que DESCOBRE o nome
+da restrição chamava `pg_get_constraintdef(con)` passando a linha do catálogo, e
+a função só aceita o oid. Falhou com 42883 e, por ser atômica, **não aplicou
+nada** — conferido relendo a restrição antes de corrigir. Corrigido em `b51a7f2`.
+A versão somente-leitura que eu tinha rodado na investigação usava `con.oid`
+certo; a forma errada entrou na transcrição para dentro do `DO block`.
+
+**Aplicado em produção**, com autorização explícita: migration conferida no
+banco (restrição aceita 'assistente', RPC aceita a origem, `desfazer_ultimo_
+lancamento_assistente` existe) e `assistente-financeiro` publicada **v27 → v28**,
+com `verify_jwt=true` preservado e o pacote v27 guardado antes (regra 11).
+Repo e produção estavam casados antes disto. O `whatsapp-webhook` **não foi
+tocado** e segue em v75.
+
+**NÃO exige build nova:** o lançamento pelo chat é inteiramente do lado do
+servidor. O cliente só manda texto e mostra a resposta.
+
+### O que ficou de fora, de propósito
+
+- **Confirmação em dois turnos antes de gravar.** Grava direto quando
+  inequívoco, igual à voz, ao widget e ao bot, com o desfazer como volta.
+- **Idempotência contra reenvio manual da mesma mensagem.** O cache por turno
+  já impede execução dupla dentro de um turno; reenviar à mão cria um segundo
+  lançamento — deduplicar ali apagaria um segundo almoço legítimo de R$ 20.
+
+### Não verificado
+
+- [ ] **Nada foi exercitado contra o Gemini real.** A cota é de ~20 chamadas por
+      dia para o app INTEIRO (2 por pergunta), e gastar nela para confirmar o
+      que o código já prova seria tirar do uso real. Falta a primeira conversa
+      de verdade: pedir "lança 20 de almoço" e conferir que a linha aparece em
+      Lançamentos, com categoria e carteira certas.
+- [ ] O caminho de "desfaz" nunca foi exercitado ponta a ponta.
+- [ ] Se o modelo respeita a regra 15 (não lançar quando a pessoa só comenta um
+      gasto) é comportamento de LLM, e nenhum teste automático prova isso — só
+      uso real diz.
+- [ ] Boleto e parcelamento pelo chat existem no código e não foram testados
+      em conversa real.
