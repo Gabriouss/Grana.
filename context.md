@@ -7446,12 +7446,17 @@ servidor. O cliente só manda texto e mostra a resposta.
       registrando legal". É a primeira evidência de ponta a ponta — modelo
       escolhendo a ferramenta, interpretador lendo o valor, RPC gravando.
       **O que isso comprova, e o que não:** comprova o caminho feliz. Não
-      comprova o "desfaz", nem a regra 15 (não lançar quando a pessoa só
-      comenta), nem boleto/parcelamento, que continuam abaixo.
+      comprova a regra 15 (não lançar quando a pessoa só comenta) nem
+      boleto/parcelamento, que continuam abaixo.
+- [x] **O "desfaz" funciona.** Confirmado pelo autor logo em seguida. Fecha o
+      caminho de volta: `desfazer_ultimo_lancamento_assistente` acha a operação
+      certa (30 minutos, só origem `'assistente'`) e a RPC da voz remove as
+      linhas. Era o item que mais me preocupava depois do caminho feliz, porque
+      um registro sem volta obrigaria a pessoa a caçar a linha na tela de
+      Lançamentos.
 
 ### Não verificado
 
-- [ ] O caminho de "desfaz" nunca foi exercitado ponta a ponta.
 - [ ] Se o modelo respeita a regra 15 (não lançar quando a pessoa só comenta um
       gasto) é comportamento de LLM, e nenhum teste automático prova isso — só
       uso real diz.
