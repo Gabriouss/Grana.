@@ -43,7 +43,7 @@ begin
   where nsp.nspname = 'public'
     and rel.relname = 'voice_operations'
     and con.contype = 'c'
-    and pg_get_constraintdef(con) ilike '%source%'
+    and pg_get_constraintdef(con.oid) ilike '%source%'
   limit 1;
 
   if v_nome is not null then
