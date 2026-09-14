@@ -1,6 +1,6 @@
 # Contexto do projeto — Grana.
 
-# 13/09/2026 (tarde) — laço infinito em toda tela logada da web, e a landing reformada só local
+# 13/09/2026 (tarde e noite) — laço infinito em toda tela logada da web, e a landing reformada, publicada
 
 **Estado ao fim desta sessão, antes de qualquer outra coisa:**
 
@@ -8,12 +8,15 @@
   (as duas correções do laço da área logada) + `940b3e8` (este registro) +
   **`70ffc67`** (Granabô fechando ao clicar fora, na web). Todas verificadas
   em produção.
-- `main` local na M1 está **14 commits à frente** (`838cd12` a `7645285`),
-  todos da landing, **sem push por ordem explícita do autor** ("não publique
-  nada ainda, deixe tudo em ambiente local"). Isso contraria a regra 3; a
-  decisão é do autor. Até ele decidir, a M2 não vê a reforma da landing. A
-  estrutura de 13 blocos está **completa** nesses commits e aguarda a revisão
-  dele no `localhost:8081`.
+- **A landing reformada foi PUBLICADA** em 13/09/2026, às 22:24, a pedido do
+  autor depois de revisar no `localhost:8081` ("Commita e publica essa página.
+  Gostei dela"): push `6e035a7..1bcdb1b`, com os commits `838cd12` a `7645285`
+  e este registro. Deploy de produção da Vercel `READY` às 22:25. Antes do
+  push: o mesmo build da Vercel (`expo export` + `inject-og-meta`) rodou
+  local, servido com a CSP do `vercel.json`, sem violação nem erro. Depois:
+  `www.granaponto.com.br` conferida a 1440 e 390px (textos novos presentes,
+  bento sem vazamento, atalhos do Granabô inteiros, alternador com 126px,
+  botões de compra no checkout da Cakto, nenhum erro de console ou de CSP).
 
 ## A área logada da web entrava em laço infinito (publicado)
 
@@ -101,7 +104,7 @@ convite dispensado. Clique fora fecha, clique dentro mantém aberto. **Sem
 teste automático** (teste de alvo do DOM, sem navegador na suíte). Android e
 iOS não testados.
 
-## A landing reformada (LOCAL, sem push)
+## A landing reformada (publicada em 13/09/2026, `1bcdb1b`)
 
 **Decisões do autor, que valem para qualquer sessão futura na landing:**
 herói, seção de preços e fechamento **mantidos** como estão (o achado V07 de
@@ -163,8 +166,8 @@ objeções (10) → garantia (11) → FAQ (12) → fechamento mantido, com PS (1
   encostaram ("AnualMensal"). Só apareceu medindo; no desktop estava certo.
 
 **NÃO verificado — checklist de QA da landing:**
-- [ ] Revisão visual do autor no `localhost:8081`, em especial bento, Granabô
-      e PS (tudo medido no Chrome headless, nada visto num aparelho).
+- [x] Revisão visual do autor no `localhost:8081`: aprovada ("Gostei dela").
+- [ ] Aparelho de verdade: tudo foi medido no Chrome headless.
 - [ ] Safari/iOS e Firefox: nada testado fora do Chrome.
 - [ ] A encenação do Granabô com leitor de tela (a região só vira `aria-live`
       depois do primeiro clique, por decisão; não testado com NVDA/VoiceOver).
