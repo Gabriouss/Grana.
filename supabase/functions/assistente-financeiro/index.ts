@@ -27,6 +27,27 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    às vezes resolve pra "Alimentação" sozinho, "mercado" não — inconsistente).
    Ver casarPorPalavraChave, mais abaixo. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra, semValorMonetario } from '../_shared/category-keywords.ts';
+/* Leitura determinística do lançamento escrito. Cópia guardada de
+   `lib/heuristics.ts` (ver o cabeçalho do módulo e `__tests__/sync-parser.js`).
+   Nada aqui vem do whatsapp-webhook: lançamento não pode depender de uma
+   feature que será apagada. */
+import {
+  CATEGORIES,
+  ehIntencaoBoleto,
+  ehIntencaoCredito,
+  guessAmountFromText,
+  guessCategoryFromText,
+  guessDescFromText,
+  guessTypeFromText,
+  limparReferenciaCarteira,
+  limparReferenciaCartao,
+  matchCardByText,
+  matchWalletByText,
+  parseDiaVencimento,
+  parseFormaPagamento,
+  parseParcelas,
+  parseRecorrencia,
+} from '../_shared/interpretar-lancamento.ts';
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
 import { janelaFatura, mesFaturaDoLancamento, cicloRelativo, deslocamentoPedido } from '../_shared/fatura-ciclo.ts';
@@ -663,6 +684,50 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'criarLancamento',
+      description:
+        'REGISTRA de verdade um gasto ou uma receita na conta do usuário. É a ÚNICA forma de criar um ' +
+        'lançamento — sem chamar esta ferramenta, nada é salvo, e afirmar que salvou seria mentira.\n' +
+        'Chame quando o usuário PEDIR para registrar: "lança 20 de almoço", "anota um uber de 15", ' +
+        '"registra 2500 de salário", "coloca aí 50 no mercado".\n' +
+        'NÃO chame quando ele apenas COMENTAR um gasto dentro de uma pergunta ou de um desabafo ' +
+        '("gastei muito com comida esse mês", "acho que paguei 200 no mercado, será?"). Comentar não é pedir ' +
+        'para registrar, e um lançamento criado sem querer é dinheiro errado na conta de alguém.\n' +
+        'Passe em `texto` a frase do lançamento COMO O USUÁRIO ESCREVEU, incluindo valor, o que foi, e o que ' +
+        'ele tiver dito sobre forma de pagamento, cartão, carteira ou repetição. Não traduza o valor para ' +
+        'número nem reescreva: quem lê o valor é o servidor, de forma determinística.\n' +
+        'Se faltar alguma coisa (valor ambíguo, categoria ou cartão que não dá para deduzir), a ferramenta ' +
+        'NÃO grava e devolve o que falta — repasse a pergunta ao usuário e chame de novo quando ele responder, ' +
+        'desta vez com a frase completa (a original mais o que ele esclareceu).',
+      parameters: {
+        type: 'object',
+        properties: {
+          texto: {
+            type: 'string',
+            description:
+              'A frase do lançamento, como o usuário disse. Ex.: "almoço 20 reais no pix", ' +
+              '"mercado 230 parcelado em 3x no cartão C6", "salário 2500".',
+          },
+        },
+        required: ['texto'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'desfazerUltimoLancamento',
+      description:
+        'Apaga o último lançamento que VOCÊ criou para este usuário nos últimos 30 minutos. ' +
+        'Chame quando ele disser que errou logo depois de você registrar algo: "desfaz", "apaga isso", ' +
+        '"não era isso", "errei o valor". Não alcança lançamentos feitos pela voz, pelo widget ou à mão — ' +
+        'para esses, oriente a apagar pela tela de Lançamentos.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
 ];
 
 /* ── Execução das ferramentas ────────────────────────────────────────────── */
@@ -794,6 +859,167 @@ async function executarResumoCredito(
     detalhes.join('\n') + '\nCada cartão está separado pelo próprio ciclo de fechamento; cite os intervalos na resposta.';
 }
 
+/**
+ * Registra um lançamento a partir da frase do usuário.
+ *
+ * O valor, o tipo, a descrição, a categoria, a carteira, o cartão, a forma de
+ * pagamento e a recorrência saem TODOS do interpretador determinístico
+ * (`_shared/interpretar-lancamento.ts`, cópia guardada de `lib/heuristics.ts`),
+ * nunca do modelo. O modelo escolhe CHAMAR a ferramenta e repassa a frase; ele
+ * não decide quanto é. Um valor vindo por argumento de JSON seria a mesma
+ * geração livre que a regra 1 do prompt proíbe — só que gravada no banco.
+ *
+ * Quando falta informação, NÃO grava: devolve o que falta em texto, para o
+ * modelo perguntar. É o mesmo desenho do widget e do bot: só registra o que
+ * está inequívoco.
+ */
+async function executarCriarLancamento(
+  texto: string,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<string> {
+  const frase = texto.trim();
+  if (!frase) return 'Faltou a frase do lançamento. Peça ao usuário o que ele quer registrar e quanto foi.';
+
+  const [carteirasRes, categoriasRes, cartoesRes] = await Promise.all([
+    supabase.from('wallets').select('id, name, is_default').eq('user_id', userId),
+    supabase.from('categories').select('name, color, is_default').eq('user_id', userId),
+    supabase.from('credit_cards').select('id, name, bank, wallet_id').eq('user_id', userId),
+  ]);
+  if (carteirasRes.error) throw carteirasRes.error;
+  if (categoriasRes.error) throw categoriasRes.error;
+  if (cartoesRes.error) throw cartoesRes.error;
+
+  const carteiras = (carteirasRes.data ?? []) as Array<{ id: string; name: string; is_default: boolean }>;
+  const categorias = (categoriasRes.data ?? []) as Array<{ name: string; color: string; is_default: boolean }>;
+  const cartoes = (cartoesRes.data ?? []) as Array<{ id: string; name: string; bank: string; wallet_id: string | null }>;
+
+  if (!carteiras.length) {
+    return 'O usuário não tem nenhuma carteira cadastrada. Sem carteira não dá para lançar: peça para ele criar uma no app antes.';
+  }
+
+  /* Carteira citada na frase manda; senão, a padrão. Citar uma que não existe
+     é erro de quem falou, não motivo para jogar o dinheiro na padrão. */
+  const carteiraCitada = matchWalletByText(frase, carteiras);
+  const mencionouCarteira = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(frase);
+  if (mencionouCarteira && !carteiraCitada) {
+    return 'Não existe carteira com esse nome. As carteiras do usuário são: ' +
+      carteiras.map((c) => c.name).join(', ') + '. Pergunte qual é a certa. NÃO registrei nada.';
+  }
+  let carteira = carteiraCitada ?? carteiras.find((c) => c.is_default) ?? carteiras[0];
+  const financeiro = carteiraCitada ? limparReferenciaCarteira(frase, carteira.name) : frase;
+
+  const valor = guessAmountFromText(financeiro);
+  if (!Number.isFinite(valor) || valor <= 0) {
+    return 'Não identifiquei o valor nessa frase. Peça o valor em reais (ex.: "almoço 38,50"). NÃO registrei nada.';
+  }
+
+  const tipo = guessTypeFromText(financeiro);
+  const categoriaExtras = categorias.filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color }));
+  const categoria = guessCategoryFromText(financeiro, categoriaExtras);
+  /* 'Outros' é o que o interpretador devolve quando não reconheceu nada — o
+     mesmo sinal que o widget usa para mandar à revisão. Só aceita 'Outros' se
+     a pessoa tiver dito "outros" com todas as letras. */
+  if (categoria.name === 'Outros' && !/\boutros?\b/i.test(financeiro)) {
+    const nomes = categorias.length ? categorias.map((c) => c.name) : CATEGORIES.map((c) => c.name);
+    return 'Não identifiquei a categoria de "' + guessDescFromText(financeiro, tipo) + '" (R$ ' + formatarBRL(valor) + '). ' +
+      'Pergunte ao usuário qual destas se encaixa: ' + nomes.join(', ') + '. NÃO registrei nada ainda.';
+  }
+
+  let descricao = guessDescFromText(financeiro, tipo) || 'Lançamento pelo Granabô';
+  let cardId: string | null = null;
+  let formaPagamento: string | null = parseFormaPagamento(financeiro);
+  let parcelas: number | null = null;
+
+  /* Só saída vai para fatura: "recebi um crédito de 500" é dinheiro entrando. */
+  if (tipo === 'out' && ehIntencaoCredito(financeiro)) {
+    const doUsuario = cartoes.filter((c) => !c.wallet_id || c.wallet_id === carteira.id);
+    const citado = matchCardByText(financeiro, doUsuario);
+    const cartaoExplicito = /\b(?:cr[eé]dito|cart[aã]o)\s+(?!(?:em|no|na|de|todo|recorrente)\b)[\p{L}\d]/iu.test(financeiro);
+    const achado = citado ?? (!cartaoExplicito && doUsuario.length === 1 ? doUsuario[0] : null);
+    if (!achado) {
+      return doUsuario.length === 0
+        ? 'A frase fala em crédito, mas não há cartão cadastrado nessa carteira. Peça para cadastrar o cartão no app ou informar outra forma de pagamento. NÃO registrei nada.'
+        : 'A frase fala em crédito e o usuário tem mais de um cartão. Pergunte qual foi: ' +
+          doUsuario.map((c) => c.name).join(', ') + '. NÃO registrei nada.';
+    }
+    cardId = achado.id;
+    formaPagamento = 'credit';
+    descricao = limparReferenciaCartao(descricao, achado);
+    parcelas = parseParcelas(financeiro);
+  } else if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(financeiro)) {
+    return 'Parcelamento só existe em compra no crédito. Confirme com o usuário se foi no cartão e qual cartão. NÃO registrei nada.';
+  }
+
+  /* Parcelado é série FECHADA; recorrente é série ABERTA. Não coexistem. */
+  const recorrente = parcelas ? false : parseRecorrencia(financeiro);
+
+  let kind = 'transaction';
+  const payload: Record<string, unknown> = {
+    type: tipo,
+    description: descricao,
+    amount: valor,
+    category: categoria.name,
+    color: categoria.color,
+    occurred_on: new Date().toISOString().slice(0, 10),
+    recurring: recorrente,
+    wallet_id: carteira.id,
+  };
+  if (formaPagamento) payload.payment_method = formaPagamento;
+  if (cardId) payload.card_id = cardId;
+
+  if (ehIntencaoBoleto(financeiro)) {
+    const vencimento = parseDiaVencimento(financeiro);
+    if (!vencimento) {
+      return 'A frase fala em boleto/conta a pagar, mas não achei o vencimento. Pergunte o dia. NÃO registrei nada.';
+    }
+    kind = 'bill';
+    payload.due_date = vencimento;
+    delete payload.occurred_on;
+    delete payload.payment_method;
+    delete payload.card_id;
+  } else if (parcelas && parcelas >= 2) {
+    kind = 'installment';
+    payload.installments = parcelas;
+  }
+
+  /* `request_id` novo a cada chamada. Dentro de um mesmo turno, o cache de
+     `conduzirConversa` já impede a mesma chamada de executar duas vezes. O que
+     sobra é o reenvio manual da mesma mensagem pela pessoa, e aí ela quis
+     mesmo enviar de novo — dedupe silencioso ali apagaria um segundo almoço
+     legítimo de R$ 20. O caminho de volta é o `desfazerUltimoLancamento`. */
+  const { data, error } = await supabase.rpc('registrar_operacao_voz', {
+    p_request_id: crypto.randomUUID(),
+    p_source: 'assistente',
+    p_kind: kind,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  const resposta = (data ?? {}) as { status?: string };
+  if (resposta.status !== 'committed') {
+    return 'Não consegui concluir o registro. Diga ao usuário que NÃO foi lançado e peça para tentar de novo.';
+  }
+
+  const ondeCartao = cardId ? ' no cartão ' + (cartoes.find((c) => c.id === cardId)?.name ?? '') : '';
+  const comoParcelas = kind === 'installment' ? ' em ' + parcelas + 'x' : '';
+  const repete = recorrente ? ' Repete todo mês.' : '';
+  const rotulo = kind === 'bill' ? 'Conta a pagar registrada' : tipo === 'in' ? 'Entrada registrada' : 'Lançamento registrado';
+  return rotulo + ': R$ ' + formatarBRL(valor) + comoParcelas + ' em ' + categoria.name +
+    ' (' + descricao + ')' + ondeCartao + ', na carteira ' + carteira.name + '.' + repete +
+    ' Confirme isso ao usuário e avise que dá para desfazer dizendo "desfaz".';
+}
+
+/** Remove o último lançamento que o próprio assistente criou (30 min). */
+async function executarDesfazerLancamento(supabase: SupabaseClient): Promise<string> {
+  const { data, error } = await supabase.rpc('desfazer_ultimo_lancamento_assistente');
+  if (error) throw error;
+  const resposta = (data ?? {}) as { status?: string; count?: number };
+  if (resposta.status === 'nada_para_desfazer') {
+    return 'Não há lançamento recente meu para desfazer. Se ele quer apagar algo criado por voz, pelo widget ou à mão, oriente a apagar na tela de Lançamentos.';
+  }
+  return 'Desfeito. Removi o último lançamento que eu tinha registrado.';
+}
+
 async function executarFerramenta(
   nome: string,
   args: Record<string, unknown>,
@@ -801,6 +1027,14 @@ async function executarFerramenta(
   usuario: UsuarioAutenticado
 ): Promise<string> {
   const userId = usuario.id;
+  /* Antes de `resolverPeriodo`: escrita não tem período a resolver, e passar
+     por ele só criaria um caminho de erro que não faz sentido aqui. */
+  if (nome === 'criarLancamento') {
+    return await executarCriarLancamento(String(args.texto ?? ''), supabase, userId);
+  }
+  if (nome === 'desfazerUltimoLancamento') {
+    return await executarDesfazerLancamento(supabase);
+  }
   if (nome === 'consultarLancamentos' && (args.fatura === true || String(args.cartao ?? '').trim() !== '')) {
     /* Evita que uma escolha genérica do modelo volte a interpretar fatura
        como mês civil. A ferramenta especializada é a única fonte de números
@@ -1825,6 +2059,7 @@ ${REGRAS_PRIORITARIAS}
 
 Regras invioláveis:
 1. NUNCA invente um valor em reais. Todo número financeiro que você mencionar DEVE ter vindo do resultado de uma ferramenta.
+1b. NUNCA afirme ter feito algo que você não fez. Você só registra, altera ou apaga lançamento CHAMANDO a ferramenta certa e recebendo a confirmação dela. Dizer "pronto, registrei" sem isso é mentira, e é pior que recusar: a pessoa fecha o app achando que o gasto está lançado. Se a ferramenta devolver que faltou alguma coisa, diga o que faltou — nunca converta isso em sucesso.
 2. Se a pergunta não puder ser respondida com nenhuma ferramenta disponível, chame a ferramenta naoConsegui em vez de só escrever uma desculpa — isso registra a lacuna pra melhorar o assistente.
 3. Seja direto e amigável. Use frases curtas.
 4. NUNCA julgue os gastos do usuário. Não diga "você gastou muito" nem "você deveria economizar" — só apresente os números quando pedidos.
@@ -1836,7 +2071,10 @@ Regras invioláveis:
 10. Cada usuário cria as próprias categorias, cartões e carteiras. NUNCA presuma que algo não existe nem recuse consultar por achar que a categoria não é válida: chame a ferramenta e deixe ela responder. Se o nome não casar, ela devolve a lista real.
 11. Para qualquer pergunta sobre gastos ou receitas que as ferramentas específicas não cubram exatamente, use consultarLancamentos combinando os filtros necessários, em vez de dizer que não consegue.
 12. Se o usuário afirmar algo factual sobre a própria vida financeira (não uma pergunta), use lembrarFato pra guardar, além de responder normalmente.
-13. O casamento automático de categoria/cartão/carteira só reconhece nomes parecidos por trecho de texto — nunca um sinônimo de verdade ("comida" não é trecho de "Alimentação"). Quando o usuário usar um termo assim e você já souber (nesta conversa, ou por ser um sinônimo óbvio) a qual categoria/cartão/carteira real ele se refere, use ensinarApelido pra guardar essa correspondência.`;
+13. O casamento automático de categoria/cartão/carteira só reconhece nomes parecidos por trecho de texto — nunca um sinônimo de verdade ("comida" não é trecho de "Alimentação"). Quando o usuário usar um termo assim e você já souber (nesta conversa, ou por ser um sinônimo óbvio) a qual categoria/cartão/carteira real ele se refere, use ensinarApelido pra guardar essa correspondência.
+14. Você REGISTRA lançamento, além de consultar. Quando o usuário pedir para lançar, anotar, registrar ou adicionar um gasto ou uma receita, chame criarLancamento passando a frase dele como está. Passe a frase inteira, com valor, o que foi e o que ele disser sobre forma de pagamento, cartão, carteira ou repetição — quem lê o valor é o servidor, não você.
+15. Comentar um gasto NÃO é pedir para registrá-lo. "Gastei muito com comida esse mês" e "acho que paguei 200 no mercado" são conversa, e não podem virar lançamento. Na dúvida entre conversar e registrar, pergunte antes — criar um lançamento que ninguém pediu coloca dinheiro errado na conta da pessoa, e ela pode nem perceber.
+16. Depois de registrar, diga o que foi registrado (valor, categoria e carteira) e lembre que dá para desfazer dizendo "desfaz". Se ele disser que errou logo em seguida, chame desfazerUltimoLancamento.`;
 }
 
 

@@ -101,8 +101,35 @@ const COMPARTILHADAS_FINANCE_COMMAND = [
    app-vs-webhook. */
 const COMPARTILHADAS_CATEGORY_KEYWORDS = ['normalizarParaBusca', 'contemPalavra', 'semValorMonetario'];
 
+/* O Granabô registra lançamento pelo chat desde 14/09/2026, e para isso
+   precisa da mesma leitura de texto que o app faz. A cópia dele vive em
+   `_shared/interpretar-lancamento.ts` e foi extraída de `lib/heuristics.ts`,
+   NUNCA do whatsapp-webhook: o autor determinou que nada de lançamento pode
+   depender do WhatsApp, porque a feature será apagada por inteiro. Se a cópia
+   viesse de lá, o registro de dinheiro quebraria no dia da remoção.
+
+   É por isso que existem duas cópias Deno das mesmas funções por enquanto (a
+   do webhook e a do módulo compartilhado). Cada uma é comparada contra o app
+   de forma independente, então nenhuma pode divergir em silêncio — e quando o
+   WhatsApp for apagado, sobra só a de `_shared/`. */
+const COMPARTILHADAS_INTERPRETAR = [
+  ...COMPARTILHADAS,
+  'normalizarNomeCarteira', 'matchWalletByText', 'limparReferenciaCarteira',
+  'limparReferenciaCartao', 'guessCategoryFromText', 'guessTypeFromText',
+  'MARCADORES_SAIDA', 'MARCADORES_ENTRADA',
+];
+
 const PARES = [
   { app: 'lib/heuristics.ts', web: 'supabase/functions/whatsapp-webhook/index.ts', funcoes: COMPARTILHADAS },
+  { app: 'lib/heuristics.ts', web: 'supabase/functions/_shared/interpretar-lancamento.ts', funcoes: COMPARTILHADAS_INTERPRETAR },
+  { app: 'lib/format.ts', web: 'supabase/functions/_shared/interpretar-lancamento.ts', funcoes: ['parseAmount'] },
+  /* `precisaRevisarValorVoz` NÃO foi trazida para o módulo compartilhado, e a
+     ausência é deliberada. Ela existe porque o RECONHECEDOR DE ÁUDIO pode
+     colar reais e centavos ("dezoito e noventa e nove" -> "1899") sem que
+     ninguém veja o texto antes de virar dinheiro. No chat o texto é digitado e
+     fica na tela: a pessoa lê antes de enviar. Aplicar o mesmo gate ali
+     recriaria, no Granabô, a mesma irritação que ele causava na voz — "lança
+     20 de almoço" cairia em revisão por ser inteiro sem a palavra "reais". */
   { app: 'lib/heuristics.ts', web: 'supabase/functions/_shared/finance-command.ts', funcoes: COMPARTILHADAS_FINANCE_COMMAND },
   { app: 'lib/heuristics.ts', web: 'supabase/functions/_shared/category-keywords.ts', funcoes: COMPARTILHADAS_CATEGORY_KEYWORDS },
   { app: 'lib/notas-release.ts', web: 'supabase/functions/eas-build-webhook/index.ts', funcoes: NOTAS_RELEASE },

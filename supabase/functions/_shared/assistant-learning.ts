@@ -1,7 +1,34 @@
 // Política compartilhada pelo fluxo real e pelos testes offline.
 export type Consulta = { nome: string; args: Record<string, unknown> };
 export type Registro = Consulta & { resultado: string; ok: boolean; consulta: boolean };
-export const META = new Set(['naoConsegui', 'lembrarFato', 'lembrarPreferencia', 'ensinarApelido']);
+/* As de escrita entram aqui TAMBÉM, e não só em `ESCRITAS`, por um motivo
+   mecânico: tudo que está fora de `META` recebe injeção automática dos filtros
+   ativos da conversa (cartão, categoria, carteira...). Uma ferramenta de
+   lançamento, cujo único argumento é o texto do pedido, seria recusada com
+   "não suporta os filtros solicitados" sempre que a conversa tivesse passado
+   por uma consulta filtrada antes — ou seja, o lançamento falharia por causa
+   da pergunta anterior. */
+export const META = new Set([
+  'naoConsegui', 'lembrarFato', 'lembrarPreferencia', 'ensinarApelido',
+  'criarLancamento', 'desfazerUltimoLancamento',
+]);
+
+/**
+ * Ferramentas que ESCREVEM dinheiro. Nem consulta, nem meta — e a distinção
+ * não é burocrática, cada lado resolve um problema diferente:
+ *
+ * - **Não são consulta**, porque `exemploElegivel` aprende os planos das
+ *   consultas para repetir em perguntas parecidas. Aprender uma ESCRITA
+ *   significaria o assistente repetir um lançamento sozinho ao ver uma frase
+ *   semelhante. Dinheiro não pode ser criado por semelhança.
+ * - **Mas valem como fonte de valor**, porque a confirmação legítima de um
+ *   lançamento cita o valor gravado ("Lancei R$ 20,00"). Sem estar aqui, esse
+ *   R$ 20,00 não constaria de `permitidos`, `respostaFundamentada` reprovaria
+ *   a frase verdadeira, e o `fallbackSeguro` diria "não consegui concluir essa
+ *   consulta" DEPOIS de o dinheiro já ter entrado — a mentira exata que o
+ *   lançamento pelo chat foi feito para eliminar.
+ */
+export const ESCRITAS = new Set(['criarLancamento', 'desfazerUltimoLancamento']);
 const normalizar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 export function resultadoValido(texto: string): boolean {
@@ -27,7 +54,9 @@ export function respostaFundamentada(texto: string, registros: Registro[]): bool
   const pendente = registros.some((r, i) => r.consulta && !r.ok &&
     !registros.slice(i + 1).some((c) => c.consulta && c.ok && c.nome === r.nome));
   if (pendente && valores(texto).length) return false;
-  const permitidos = new Set(registros.filter((r) => r.ok && r.consulta).flatMap((r) => valores(r.resultado)));
+  const permitidos = new Set(
+    registros.filter((r) => r.ok && (r.consulta || ESCRITAS.has(r.nome))).flatMap((r) => valores(r.resultado))
+  );
   return valores(texto).every((valor) => permitidos.has(valor));
 }
 
@@ -40,6 +69,13 @@ export function exemploElegivel(texto: string, registros: Registro[]): boolean {
 }
 
 export function fallbackSeguro(registros: Registro[]): string {
+  /* Escrita bem-sucedida manda em qualquer outra coisa. Se o lançamento entrou
+     e o modelo, ainda assim, não produziu uma frase aceitável, a saída honesta
+     é dizer o que FOI FEITO — nunca a mensagem genérica de falha logo abaixo,
+     que mandaria a pessoa lançar de novo e criaria o lançamento em dobro. */
+  const escrita = registros.filter((r) => r.ok && ESCRITAS.has(r.nome)).at(-1);
+  if (escrita) return escrita.resultado;
+
   const consultas = registros.filter((r) => r.consulta);
   if (consultas.some((r) => /nao tem nenhum cartao/.test(normalizar(r.resultado)))) {
     return 'Não encontrei nenhum cartão de crédito cadastrado na sua conta. Preciso do cartão cadastrado para consultar essa fatura.';
