@@ -7439,13 +7439,18 @@ servidor. O cliente só manda texto e mostra a resposta.
   já impede execução dupla dentro de um turno; reenviar à mão cria um segundo
   lançamento — deduplicar ali apagaria um segundo almoço legítimo de R$ 20.
 
+### Verificado no uso real, pelo autor
+
+- [x] **Registrar pelo chat funciona.** Logo depois da publicação da v28, o
+      autor testou em conversa de verdade e confirmou: "o granabô tá
+      registrando legal". É a primeira evidência de ponta a ponta — modelo
+      escolhendo a ferramenta, interpretador lendo o valor, RPC gravando.
+      **O que isso comprova, e o que não:** comprova o caminho feliz. Não
+      comprova o "desfaz", nem a regra 15 (não lançar quando a pessoa só
+      comenta), nem boleto/parcelamento, que continuam abaixo.
+
 ### Não verificado
 
-- [ ] **Nada foi exercitado contra o Gemini real.** A cota é de ~20 chamadas por
-      dia para o app INTEIRO (2 por pergunta), e gastar nela para confirmar o
-      que o código já prova seria tirar do uso real. Falta a primeira conversa
-      de verdade: pedir "lança 20 de almoço" e conferir que a linha aparece em
-      Lançamentos, com categoria e carteira certas.
 - [ ] O caminho de "desfaz" nunca foi exercitado ponta a ponta.
 - [ ] Se o modelo respeita a regra 15 (não lançar quando a pessoa só comenta um
       gasto) é comportamento de LLM, e nenhum teste automático prova isso — só
