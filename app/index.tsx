@@ -15,7 +15,6 @@ import RevealOnScroll from '@/components/RevealOnScroll';
 import { EASE_BOUNCE_HINT, EASE_ROLL, EASE_SNAP, UI_OUT, useReducedMotion, usePrefersReducedTransparency } from '@/lib/motion';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import FogBackground from '@/components/FogBackground';
-import BeneficiosHorizontais, { type BeneficioHorizontal } from '@/components/BeneficiosHorizontais';
 import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
 import CarrosselTelasApp from '@/components/CarrosselTelasApp';
@@ -24,6 +23,7 @@ import ScrollLinkedView from '@/components/ScrollLinkedView';
 import TrilhaPassos from '@/components/TrilhaPassos';
 import ConversaGranachat from '@/components/ConversaGranachat';
 import NoSeuBolso from '@/components/NoSeuBolso';
+import BentoFerramentas from '@/components/BentoFerramentas';
 import landingMeta from '@/landing-meta.json';
 
 // A landing é uma superfície de marca. O produto logado usa a família do
@@ -602,84 +602,6 @@ const NOTIFICACAO_EXEMPLO = {
   titulo: 'Sabia que dá pra falar?',
   texto: 'Você sabia que dá pra lançar um gasto só falando com o Grana.? Testa o lançamento por voz 🎙️',
 };
-
-/* Bloco 5 da estrutura de 13 blocos: o Panorama de ferramentas da WEB. O
-   autor listou o que precisa estar aqui: cartão por ciclo, boletos, caixinhas
-   e metas, tetos por categoria, entradas e saídas, categorização automática,
-   Livre para Gastar ("quanto sobra", não "quanto pode gastar") e gráficos.
-   São oito, na ordem de leitura: primeiro o que o painel responde de cara
-   (quanto sobra, o que entrou e saiu, onde foi, o que vem), depois o que a
-   pessoa organiza (cartão, boletos, cofrinhos, tetos).
-
-   Cada card mostra um RECORTE de uma captura real do app, no lugar dos
-   mini-mocks desenhados, que o autor apontou um a um como diferentes das telas
-   de verdade. Seis recortes saem da mesma captura do painel web, que o
-   navegador baixa uma vez só; cartão e boletos saem das telas do celular, que
-   são as mesmas telas da web num enquadramento que cabe no card.
-
-   Todos na proporção 1,6 (384×240 no painel, 358×224 no celular), para os
-   títulos dos oito cards caírem na mesma linha de base.
-
-   Os valores das capturas são de conta fictícia de demonstração, e o Livre
-   para Gastar delas é o exemplo único de `lib/exemplo-landing.ts`. */
-const TELA_WEB = { src: '/telas/inicio-web.png?v=20260905', largura: 1440, altura: 900 };
-const TELA_CREDITO = { src: '/telas/credito-mobile.png?v=20260905', largura: 390, altura: 844 };
-const TELA_CONTAS = { src: '/telas/contas-mobile.png?v=20260905', largura: 390, altura: 844 };
-
-const PANORAMA_FERRAMENTAS: BeneficioHorizontal[] = [
-  {
-    recorte: { ...TELA_WEB, x: 248, y: 236, w: 384, h: 240, alt: 'Card de Livre para Gastar do painel: R$ 59,76 por dia até o fim do mês, com saldo atual, contas a vencer e o que está reservado em cofrinhos.' },
-    rotulo: 'Livre para Gastar',
-    titulo: 'Veja quanto sobra no mês',
-    texto: 'O Grana. desconta as contas que ainda vencem e o que você guardou em cofrinhos, e mostra quanto sobra por dia até o fim do mês.',
-  },
-  {
-    recorte: { ...TELA_WEB, x: 248, y: 660, w: 384, h: 240, alt: 'Fluxo financeiro do painel, com filtros de mês, sete dias e ano, e de entradas, saídas ou ambos.' },
-    rotulo: 'Fluxo',
-    titulo: 'Entradas e saídas do período',
-    texto: 'Acompanhe o que entrou e o que saiu por mês, pelos últimos sete dias ou pelo ano inteiro.',
-  },
-  {
-    recorte: { ...TELA_WEB, x: 1040, y: 500, w: 384, h: 240, alt: 'Últimos lançamentos do painel, cada um com a sua categoria: Alimentação, Transporte e Salário.' },
-    rotulo: 'Categorias',
-    titulo: 'Cada lançamento na sua categoria',
-    texto: 'O Grana. sugere a categoria assim que você registra, e você troca se precisar.',
-  },
-  {
-    recorte: { ...TELA_WEB, x: 644, y: 236, w: 384, h: 240, alt: 'Gráfico de comprometimento futuro do painel, com contas recorrentes e parcelas de setembro a fevereiro.' },
-    rotulo: 'Gráficos',
-    titulo: 'O que já está comprometido',
-    texto: 'Veja em gráfico as contas recorrentes e as parcelas dos próximos seis meses antes de elas chegarem.',
-  },
-  {
-    recorte: { ...TELA_CREDITO, x: 16, y: 150, w: 358, h: 224, alt: 'Tela de Crédito com o cartão Nubank Ultravioleta: fatura atual de R$ 1.342,50 e 16% do limite usado.' },
-    rotulo: 'Cartões',
-    titulo: 'A fatura pelo ciclo do cartão',
-    texto: 'Cada cartão com a fatura do ciclo de fechamento, o limite usado e as compras parceladas lançadas mês a mês.',
-  },
-  {
-    recorte: { ...TELA_CONTAS, x: 16, y: 198, w: 358, h: 224, alt: 'Tela de Contas a pagar com a conta do cartão, que vence em 17 dias, e a de energia, recorrente, que vence em 13 dias.' },
-    rotulo: 'Boletos',
-    titulo: 'Contas e boletos com vencimento',
-    texto: 'Veja quantos dias faltam para cada conta. Marcou como paga, a próxima de uma conta recorrente já fica preparada.',
-  },
-  {
-    /* 392×245 em vez de 384×240: o bloco de cofrinhos vai do rótulo
-       "Cofrinhos & metas" (topo em y≈228) ao "22%" do rodapé (base em
-       y≈472), 244px de altura. Com 240 um dos dois saía cortado. Mesma
-       proporção 1,6 dos outros recortes. */
-    recorte: { ...TELA_WEB, x: 1036, y: 227, w: 392, h: 245, alt: 'Cofrinhos e metas do painel: reserva de emergência com R$ 1.800,00 de R$ 10.000,00 e uma viagem com R$ 650,00 de R$ 3.000,00.' },
-    rotulo: 'Cofrinhos',
-    titulo: 'Metas com valor e prazo',
-    texto: 'Separe dinheiro para um objetivo, com quanto e até quando, e acompanhe quanto já guardou.',
-  },
-  {
-    recorte: { ...TELA_WEB, x: 644, y: 610, w: 384, h: 240, alt: 'Gastos por categoria do painel, num gráfico de rosca com Moradia, Alimentação, Transporte e Lazer.' },
-    rotulo: 'Orçamento',
-    titulo: 'Um teto para cada categoria',
-    texto: 'Veja como os gastos do mês se dividem e defina quanto quer gastar em cada categoria.',
-  },
-];
 
 
 /* Ordenado por risco percebido, não por curiosidade: a conexão bancária vem
@@ -1340,17 +1262,22 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
+      {/* A grade de ferramentas no formato `bento-grid-01`, pedido do autor em
+          13/09/2026. Decisões e fontes de cada desenho em
+          components/BentoFerramentas.tsx. */}
       <View nativeID="beneficios" style={styles.palcoBeneficios}>
         <GradeInterativa invertida />
-        <BeneficiosHorizontais
-          itens={PANORAMA_FERRAMENTAS}
-          largura={largura}
-          altura={altura}
-          alturaCabecalho={alturaCabecalho}
-          colunasBento={4}
-          titulo="O que cada parte do painel faz por você."
-          descricao="Oito ferramentas trabalhando com o que você registra. Cada imagem abaixo é um pedaço da tela de verdade."
-        />
+        <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta, styles.secaoBento]}>
+          <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
+            <TituloSecao estiloExtra={styles.precoTituloCentralizado}>O que cada parte do painel faz por você.</TituloSecao>
+            <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.linhasEquilibradas]}>
+              Oito ferramentas trabalhando com o que você registra, desenhadas a partir das telas de verdade.
+            </Text>
+          </RevealOnScroll>
+          <View style={styles.bentoEspaco}>
+            <BentoFerramentas largura={largura} />
+          </View>
+        </View>
       </View>
 
       {/* A dobra de Segurança que ficava aqui foi retirada em 13/09/2026.
@@ -2186,6 +2113,10 @@ const styles = StyleSheet.create({
      área útil de 840 e cortava o último pilar. Com 20px: 833. A `Dobra`
      continua centralizando, então o ritmo com as dobras vizinhas se mantém. */
   secaoHabitos: { paddingVertical: spacing.xl },
+  /* Mesmo respiro vertical que `conteudoLivre` dava à grade anterior, para a
+     troca de componente não mudar o ritmo da página. */
+  secaoBento: { paddingVertical: spacing.xxl * 2.5 },
+  bentoEspaco: { width: '100%', marginTop: spacing.xxl },
   /* Notificação de exemplo, no formato do Android. O ícone é o círculo com o
      degradê da marca porque é assim que o ícone do app aparece numa
      notificação; dentro da interface o degradê continua proibido. */
