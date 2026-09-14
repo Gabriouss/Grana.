@@ -7460,5 +7460,26 @@ servidor. O cliente só manda texto e mostra a resposta.
 - [ ] Se o modelo respeita a regra 15 (não lançar quando a pessoa só comenta um
       gasto) é comportamento de LLM, e nenhum teste automático prova isso — só
       uso real diz.
-- [ ] Boleto e parcelamento pelo chat existem no código e não foram testados
-      em conversa real.
+- [ ] **Boleto e crédito pelo chat saíram com defeito — para resolver na M1.**
+      O autor relatou em 14/09/2026, depois de usar: "a questão do boleto e do
+      crédito, o lançamento, ficou meio bugado". O caminho feliz (gasto e
+      receita simples) e o "desfaz" ele já tinha confirmado funcionando.
+
+      **Pista concreta, já localizada, não confirmada com reprodução:** em
+      `executarCriarLancamento` o bloco de **crédito vem ANTES do de boleto**. O
+      núcleo já estabelecido faz o contrário — `lib/widget-voz-task.ts` traz o
+      comentário "Boleto antes de crédito: 'boleto no cartão' é boleto. Mesma
+      ordem do bot." Duas consequências: o bloco de crédito tem SAÍDA ANTECIPADA
+      quando há mais de um cartão e nenhum citado, então "boleto no cartão" vira
+      a pergunta "qual cartão?" e nunca chega ao ramo de boleto; e
+      `ehIntencaoCredito` devolve true quando acha parcela, então "boleto em 3x"
+      entra pelo caminho do crédito.
+
+      É divergência do núcleo compartilhado — mesma frase, decisão diferente
+      conforme a superfície, que é o que a regra 13 proíbe. O relato foi
+      genérico, então **pode haver mais de um defeito**: a inversão de ordem é a
+      pista, não necessariamente a lista inteira. A correção espelha a ordem do
+      widget e entra com teste de paridade em
+      `__tests__/granabo-lancamento.cjs`, comparando a decisão do chat com a do
+      widget para "boleto no cartão", "boleto em 3x" e "conta de luz vence dia
+      10".
