@@ -1712,6 +1712,18 @@ function ConteudoWeb() {
                   ))}
                 </View>
                 <BotaoCTA compra rotulo="Assinar o Grana." centralizado />
+                {/* Bloco 13 da estrutura: o PS fecha o ciclo aberto no bloco 3
+                    ("O apagão financeiro.") e convida para o app. Fica DEPOIS
+                    do botão e em corpo menor de propósito: o autor pediu o
+                    fechamento sem nada que dispute a decisão de compra, e um PS
+                    lido depois do botão reforça a decisão em vez de competir
+                    com ela. O app de Android é o que a conta recebe depois de
+                    assinar (o convite aparece na primeira visita ao painel). */}
+                <Text style={[styles.precoTextoCentralizado, styles.ctaFinalPs, styles.linhasEquilibradas]}>
+                  <Text style={styles.ctaFinalPsMarca}>PS: </Text>
+                  o apagão financeiro não precisa durar mais um mês. Registre o próximo gasto hoje e, no Android, leve o
+                  Grana. no bolso com o app.
+                </Text>
               </View>
             </View>
           </View>
@@ -2442,6 +2454,8 @@ const styles = StyleSheet.create({
   ctaFinalFatosCompacto: { justifyContent: 'center' },
   ctaFinalFato: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule, backgroundColor: theme.paperRaised },
   ctaFinalFatoTexto: { color: theme.inkSoft, fontSize: type.micro, fontFamily: fonts.light },
+  ctaFinalPs: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: lh(type.apoio), fontFamily: fonts.light, maxWidth: 520, marginTop: spacing.xl },
+  ctaFinalPsMarca: { color: theme.accent2, fontFamily: fonts.regular },
 
   rodapeFundo: { backgroundColor: theme.paperRaised, borderTopWidth: 1, borderTopColor: theme.rule },
   rodape: {
