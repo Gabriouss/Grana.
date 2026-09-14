@@ -68,7 +68,14 @@ checar('reconhece o id legado', ehIdLembreteHabito(ID_HABITO_LEGADO));
 checar('reconhece ids datados', ehIdLembreteHabito(`${PREFIXO_ID_HABITO}2026-09-04`));
 checar('não captura lembretes de conta', !ehIdLembreteHabito('conta-123-3d'));
 
-checar('mantém as 57 copies aprovadas (48 + 9 de almoço)', MENSAGENS.length === 57);
+/* 56, e não mais 57: a `dica-7` ("Atalho pelo WhatsApp") saiu em 13/09/2026,
+   quando o autor decidiu que o Grana. não usa WhatsApp. */
+checar('mantém as 56 copies aprovadas (47 + 9 de almoço)', MENSAGENS.length === 56);
+checar(
+  'nenhuma copy fala de WhatsApp',
+  MENSAGENS.every((m) => !/whats\s*app/i.test(`${m.titulo} ${m.texto}`)),
+  MENSAGENS.filter((m) => /whats\s*app/i.test(`${m.titulo} ${m.texto}`)).map((m) => m.id).join(', ')
+);
 checar('cada copy tem id único', new Set(MENSAGENS.map((item) => item.id)).size === MENSAGENS.length);
 checar('categoria almoco tem as 9 mensagens pedidas', MENSAGENS.filter((m) => m.categoria === 'almoco').length === 9);
 

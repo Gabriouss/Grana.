@@ -88,7 +88,9 @@ export const MENSAGENS: MensagemNotif[] = [
   { id: 'dica-4', categoria: 'dicas_atalhos', titulo: 'Menos digitação, mais rapidez', texto: 'Falar é mais rápido que digitar — experimenta o lançamento por voz hoje 🗣️' },
   { id: 'dica-5', categoria: 'dicas_atalhos', titulo: 'Compra no mercado?', texto: 'Se acabou de sair do mercado, escaneia a nota e economiza uns bons minutos 🛒' },
   { id: 'dica-6', categoria: 'dicas_atalhos', titulo: 'Metas com cofrinho', texto: 'Cofrinhos ajudam a visualizar o quanto falta pra sua meta. Já deu uma olhada nos seus? 🎯' },
-  { id: 'dica-7', categoria: 'dicas_atalhos', titulo: 'Atalho pelo WhatsApp', texto: 'Sabia que também dá pra lançar gastos mandando mensagem no WhatsApp? Configura no Perfil 💬' },
+  /* `dica-7` ("Atalho pelo WhatsApp") saiu em 13/09/2026. O autor: "SEM
+     WHATSAPP, NÃO IREMOS UTILIZAR WHATSAPP". O id não é reaproveitado, para
+     `mensagens_recentes` antigas não apontarem para uma copy diferente. */
   { id: 'dica-8', categoria: 'dicas_atalhos', titulo: 'Menos atrito, mais constância', texto: 'Quanto mais fácil for lançar, mais fácil manter o hábito. Já testou os atalhos do Grana.? ⚡' },
 
   // ---- almoco: janela de 12h, dias úteis, tom descontraído ----
