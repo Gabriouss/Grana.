@@ -48,14 +48,21 @@ pública próprias, dados fictícios e um perfil EAS separado. Nunca copie o
 provisionado, testes que escrevem no servidor devem usar apenas lançamentos
 descartáveis da conta de teste autorizada.
 
+**Restrição atual:** o projeto está no plano Free. Portanto, não consideramos
+staging remoto dedicado nem recursos pagos de recuperação como concluídos. A
+opção sem custo é um Supabase local com Docker ou uma conta remota descartável
+explicitamente autorizada. Nesta máquina o Docker não está instalado; até ele
+ser disponibilizado, o staging local fica documentado, mas não executável aqui.
+
 ## Backup e restauração
 
 Migrations e `supabase/schema.sql` são a reconstrução do esquema, não backup
 dos dados. O responsável do projeto deve confirmar no painel do Supabase o
-backup automático/PITR disponível no plano, anotar o último ponto recuperável
-e fazer uma restauração periódica em staging. O teste só conta quando uma
-conta fictícia consegue ler os dados restaurados e a produção permanece
-intocada.
+backup automático disponível no plano, anotar o último ponto recuperável e
+manter uma exportação manual segura quando necessário. Não ativar PITR pago
+enquanto a conta estiver no Free. Uma restauração periódica só conta quando
+uma conta fictícia consegue ler os dados restaurados e a produção permanece
+intocada; sem staging disponível, esse teste continua pendente.
 
 O bundle de uma Edge Function é salvo temporariamente antes de cada deploy,
 fora do vault e sem credenciais. Esse artefato é uma cópia de retorno do

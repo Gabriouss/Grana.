@@ -7483,3 +7483,42 @@ servidor. O cliente só manda texto e mostra a resposta.
       `__tests__/granabo-lancamento.cjs`, comparando a decisão do chat com a do
       widget para "boleto no cartão", "boleto em 3x" e "conta de luz vence dia
       10".
+
+---
+
+## 14/09/2026 — Checklist de produção: endurecimento local e limite do plano Free
+
+As três falhas relatadas no Granachat foram corrigidas em `9af988e` e a Edge
+Function `assistente-financeiro` foi publicada em produção (v29, `verify_jwt`
+preservado). O banco não foi alterado nesta etapa; os dois registros de teste
+da conta pessoal do autor foram mantidos.
+
+Para os itens de resiliência e rotas, `1097f7b` adicionou o `ErrorBoundary` na
+raiz do Expo Router e uma tela `app/+not-found.tsx` com retorno para o início.
+O log do boundary registra apenas nome e tamanho da mensagem, nunca a
+mensagem potencialmente sensível. `npm run test:ci`, `npx tsc --noEmit`,
+`git diff --check` e as seis verificações estáticas de resiliência passaram.
+
+Também foram criados `documentation/operations.md` e
+`documentation/android-qa.md`, com rollback por commit/função, observabilidade
+sem serviço pago e casos físicos de QA para teclado, rolagem, crédito
+parcelado, boleto e rota 404.
+
+### Limite conhecido do Supabase Free
+
+Não existe staging remoto isolado neste momento e não foi habilitado nenhum
+recurso pago. O plano de baixo custo é executar Supabase local com Docker ou
+usar uma conta remota descartável explicitamente autorizada. O Docker não está
+instalado nesta máquina, então o staging local ainda está documentado, mas não
+executável aqui. Migrations não são backup de dados; exportação e restauração
+manual continuam pendentes de um procedimento seguro e testado.
+
+Analytics de produto permanece desligado deliberadamente: não há provedor,
+consentimento ou contrato de eventos definido. Não transformar logs
+operacionais em analytics nem enviar descrição, valor, transcrição, e-mail ou
+token.
+
+O repositório está limpo, em `main`, um commit à frente de `origin/main`
+(`1097f7b`). A publicação desse commit ainda requer autorização explícita do
+autor nesta sessão; não declarar o 404 como publicado até a validação após o
+deploy web.
