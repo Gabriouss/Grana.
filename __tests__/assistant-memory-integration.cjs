@@ -7,6 +7,10 @@ const assert = require('node:assert/strict');
 let handler, completions = [], prompts = [], userId = 'usuario-a', rpcFails = false;
 const memories = [];
 const history = [];
+const agora = new Date();
+const transacaoNaFaturaAtual = [agora.getFullYear(), agora.getMonth() + 1, agora.getDate()]
+  .map((parte, indice) => indice === 0 ? String(parte) : String(parte).padStart(2, '0'))
+  .join('-');
 class Query {
   constructor(table) { this.table = table; this.filters = []; this.remover = false; }
   select() { return this; } order() { return this; } limit() { return this; }
@@ -20,7 +24,7 @@ class Query {
     let rows = this.table === 'assistant_memory' ? memories : this.table === 'credit_cards'
       ? [{ user_id: userId, id: 'c6', name: 'C6', closing_day: 15, limit_amount: 1000 }]
       : this.table === 'categories' ? [{ user_id: userId, name: 'Alimentação' }]
-      : this.table === 'transactions' ? [{ user_id: userId, amount: 130, category: 'Alimentação', card_id: 'c6', occurred_on: '2026-09-06', type: 'out', payment_method: 'credit' }] : [];
+      : this.table === 'transactions' ? [{ user_id: userId, amount: 130, category: 'Alimentação', card_id: 'c6', occurred_on: transacaoNaFaturaAtual, type: 'out', payment_method: 'credit' }] : [];
     rows = rows.filter((r) => this.filters.every((f) => f(r)));
     if (this.remover) rows.forEach((r) => memories.splice(memories.indexOf(r), 1));
     return Promise.resolve({ data: this.single ? rows[0] ?? null : rows, error: null }).then(resolve, reject);
