@@ -34,3 +34,49 @@ O projeto usa logs nativos do Supabase e não depende de um serviço externo de
 crash analytics. A abertura de um painel de alerta pago é uma evolução
 operacional, não pode ser confundida com a ausência de recibos: os códigos e
 logs acima são o contrato mínimo para o primeiro lançamento.
+
+## Ambientes
+
+Produção é o projeto Supabase apontado pelo `EXPO_PUBLIC_SUPABASE_URL` da
+build publicada. Os perfis `preview` e `production` do `eas.json` geram APK,
+mas ainda apontam para a mesma infraestrutura; `preview` é uma distribuição
+interna, não um staging isolado.
+
+Um staging de verdade precisa ser um segundo projeto Supabase, com URL e chave
+pública próprias, dados fictícios e um perfil EAS separado. Nunca copie o
+`.env` de produção para esse ambiente. Enquanto esse segundo projeto não for
+provisionado, testes que escrevem no servidor devem usar apenas lançamentos
+descartáveis da conta de teste autorizada.
+
+## Backup e restauração
+
+Migrations e `supabase/schema.sql` são a reconstrução do esquema, não backup
+dos dados. O responsável do projeto deve confirmar no painel do Supabase o
+backup automático/PITR disponível no plano, anotar o último ponto recuperável
+e fazer uma restauração periódica em staging. O teste só conta quando uma
+conta fictícia consegue ler os dados restaurados e a produção permanece
+intocada.
+
+O bundle de uma Edge Function é salvo temporariamente antes de cada deploy,
+fora do vault e sem credenciais. Esse artefato é uma cópia de retorno do
+código, não substitui backup do banco.
+
+## Rollback
+
+Todo release deve ter um commit e uma tag. Para uma Edge Function, o rollback
+é republicar o último commit conhecido como bom, depois de conferir a versão,
+`updated_at` e `verify_jwt` no Management API. Para o banco, migrations são
+avançadas e compensatórias; não se apaga nem se reescreve migration já
+aplicada. Restauração de dados só ocorre a partir de backup/PITR testado.
+
+O rollback precisa ser feito primeiro em staging quando esse ambiente existir.
+Em produção, registrar no incidente o commit, a versão da função, o motivo e
+o resultado da verificação pós-rollback.
+
+## Analytics e privacidade
+
+O Grana. não coleta analytics de produto neste momento. Isso é deliberado:
+logs operacionais não carregam descrição, valor, transcrição, e-mail ou
+token. Se analytics for ativado, deve haver uma lista fechada de eventos
+técnicos, consentimento/opt-out quando aplicável, atualização da Política de
+Privacidade e um teste que impeça dados financeiros de entrarem no payload.

@@ -13,6 +13,14 @@
 | vínculo de assinatura | assinatura-sync.cjs | existente/CI |
 | parsing da resposta de quota | ai-quota.cjs | existente/CI |
 | Edge Functions alteradas | deno check | existente/CI |
+| ErrorBoundary e 404 | resiliencia-app.cjs | existente/CI |
+
+## Validação física pendente
+
+O arquivo `documentation/android-qa.md` cobre os casos que exigem aparelho
+real: rolagem do Granachat com teclado, parcelamento, boleto, falha de rede e
+renderização de rota inexistente. A suíte automatizada não declara esses casos
+como aprovados.
 
 ## Proposto ou manual
 

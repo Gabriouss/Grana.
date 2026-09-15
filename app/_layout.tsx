@@ -1,18 +1,18 @@
 import { useEffect } from 'react';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, type ErrorBoundaryProps } from 'expo-router';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
-import { ActivityIndicator, AppState, Platform, View } from 'react-native';
+import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
 import { WidgetPrivacyProvider } from '@/lib/widget-privacy-context';
 import { DemoProvider } from '@/lib/demo-context';
 import { FlagsProvider } from '@/lib/feature-flags';
-import { theme } from '@/lib/theme';
+import { fonts, lh, radius, spacing, theme, type } from '@/lib/theme';
 import { instalarAnelDeFoco, instalarDocumentoWeb } from '@/lib/foco-web';
 import { acompanharFocoParaModais } from '@/lib/modal-accessibility';
 import { capturarDestinoProtegido, consumirDestinoPosLogin, restaurarDestino } from '@/lib/destino-pos-login';
@@ -20,6 +20,7 @@ import { EntitlementProvider, useEntitlement } from '@/lib/entitlement-context';
 import { deveSegurarRotas } from '@/lib/entitlement-cache';
 import WebPhoneFrame from '@/components/WebPhoneFrame';
 import AppLockGate from '@/components/AppLockGate';
+import AppPressable from '@/components/AppPressable';
 import { AppLockProvider } from '@/lib/app-lock-context';
 import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
@@ -143,6 +144,38 @@ export default function RootLayout() {
         </SessionProvider>
       </SafeAreaProvider>
     </>
+  );
+}
+
+/**
+ * Última barreira para uma exceção que escapou das telas.
+ *
+ * O Expo Router usa a exportação do layout raiz como ErrorBoundary. O log
+ * guarda só metadados: mensagens de exceção podem carregar descrição ou
+ * valores financeiros, portanto não entram no recibo do erro.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  console.error('[erro-global]', {
+    nome: error.name,
+    tamanhoMensagem: error.message.length,
+  });
+
+  return (
+    <View style={styles.erroGlobal}>
+      <Text style={styles.erroGlobalCodigo}>Ops</Text>
+      <Text style={styles.erroGlobalTitulo}>Não conseguimos abrir esta tela.</Text>
+      <Text style={styles.erroGlobalTexto}>
+        O Grana. encontrou um problema inesperado. Tente novamente; seus dados continuam protegidos.
+      </Text>
+      <AppPressable
+        onPress={() => void retry()}
+        accessibilityRole="button"
+        accessibilityLabel="Tentar abrir a tela novamente"
+        style={styles.erroGlobalBotao}
+      >
+        <Text style={styles.erroGlobalBotaoTexto}>Tentar novamente</Text>
+      </AppPressable>
+    </View>
   );
 }
 
@@ -338,4 +371,52 @@ function RootNavigator() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  erroGlobal: {
+    flex: 1,
+    backgroundColor: theme.paper,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  erroGlobalCodigo: {
+    color: theme.accent2,
+    fontSize: type.destaque,
+    fontFamily: fonts.regular,
+    marginBottom: spacing.md,
+  },
+  erroGlobalTitulo: {
+    color: theme.ink,
+    fontSize: type.titulo,
+    lineHeight: lh(type.titulo, 'titulo'),
+    fontFamily: fonts.regular,
+    textAlign: 'center',
+  },
+  erroGlobalTexto: {
+    maxWidth: 420,
+    color: theme.inkSoft,
+    fontSize: type.apoio,
+    lineHeight: lh(type.apoio, 'corpo'),
+    fontFamily: fonts.light,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  erroGlobalBotao: {
+    marginTop: spacing.xl,
+    minHeight: 48,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    backgroundColor: theme.paperRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  erroGlobalBotaoTexto: {
+    color: theme.accent2,
+    fontSize: type.apoio,
+    fontFamily: fonts.regular,
+  },
+});
 
