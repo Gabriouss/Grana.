@@ -1,5 +1,44 @@
 # Contexto do projeto — Grana.
 
+# 15/09/2026 (M2) — memória do Granabô e fixture dependente do calendário (`51b1a39`)
+
+**Pedido.** Depois da atualização do repositório, o autor pediu: "corrija".
+O `npm run test:ci` parava em `__tests__/assistant-memory-integration.cjs`.
+
+**Sintoma.** A pergunta de integração era respondida pelo fallback, com
+`recuperado: true` e `exemploElegivel: false`; em seguida o teste tentava ler
+o exemplo de memória que não tinha sido salvo (`assistant-memory-integration.cjs:71`).
+
+**Causa.** O fixture deixava a única transação em `2026-09-06`. Em
+15/09/2026, o cartão de teste fecha no dia 15 e `periodoDaFatura` passou a
+consultar a fatura vigente de 15/09 a 14/10. A transação fixa ficou na fatura
+anterior; o executor correto devolveu `R$ 0,00`, e a resposta simulada de
+`R$ 130,00` foi recusada pela guarda de fundamentação. O comportamento de
+`supabase/functions/_shared/fatura-ciclo.ts` está de acordo com a regra
+registrada: a data do fechamento entra no ciclo seguinte.
+
+**Correção.** Em `__tests__/assistant-memory-integration.cjs`, o fixture agora
+gera `transacaoNaFaturaAtual` a partir do relógio local da máquina. A consulta
+continua exercitando o handler real, a execução de `resumoCredito`, a guarda de
+valores fundamentados e o aprendizado da memória, mas não envelhece quando o
+calendário atravessa o dia de fechamento. O ajuste foi publicado em `51b1a39`.
+
+**Descartado.** Não enfraqueci `respostaFundamentada`, não forcei a memória a
+aceitar o valor inventado pelo modelo e não alterei o corte da fatura só para
+acomodar um teste. Essas alternativas esconderiam uma proteção financeira ou
+mudariam a regra de ciclo documentada.
+
+**Verificação.** `npm run test:ci` passou integralmente, incluindo os seis
+blocos de teste, `test:parser` e o caso de integração; `npx tsc --noEmit
+--incremental false` passou; `git diff --check` passou. O primeiro intento da
+suíte parou porque `tsx` não estava instalado e o sandbox não acessava o npm;
+o teste foi repetido após baixar somente essa dependência, com resultado zero.
+
+**Não verificado.** Não houve teste em aparelho nem mudança no runtime do app;
+a correção é exclusivamente do fixture offline. QA de aparelho continua
+desnecessário para este ajuste, mas qualquer alteração no fluxo de fatura deve
+manter a regra de `fatura-ciclo.ts` e suas suítes.
+
 # 13/09/2026 (tarde e noite) — laço infinito em toda tela logada da web, e a landing reformada, publicada
 
 **Estado ao fim desta sessão, antes de qualquer outra coisa:**
