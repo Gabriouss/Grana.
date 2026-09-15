@@ -9,7 +9,15 @@ const loaded = new Module(file, module);
 loaded._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, file);
-const { conduzirConversa, exemploElegivel, feedbackExplicito, respostaFundamentada, fallbackSeguro } = loaded.exports;
+const {
+  conduzirConversa,
+  exemploElegivel,
+  feedbackExplicito,
+  respostaFundamentada,
+  fallbackSeguro,
+  respostaFinalSegura,
+  textoLancamentoConfiavel,
+} = loaded.exports;
 const cycleFile = path.resolve(__dirname, '../supabase/functions/_shared/fatura-ciclo.ts');
 const cycleModule = new Module(cycleFile, module);
 cycleModule._compile(ts.transpileModule(fs.readFileSync(cycleFile, 'utf8'), {
@@ -97,6 +105,39 @@ async function run(respostas, executar, customTools = tools) {
     assert.equal(feedbackExplicito('Agora sim!'), 'positivo');
     assert.equal(feedbackExplicito('E na fatura atual?'), null);
     assert.equal(feedbackExplicito('Obrigado'), null);
+  });
+  await scenario('lançamento usa números do usuário e confirmação determinística', async () => {
+    const original = 'Joguei uma compra de R$ 283,72 em 8x no crédito';
+    const historico = [
+      { papel: 'usuario', texto: original },
+      { papel: 'assistente', texto: 'Qual cartão você usou?' },
+    ];
+    const fonte = textoLancamentoConfiavel('C6', historico);
+    assert.equal(fonte, `${original} C6`);
+    assert.equal(textoLancamentoConfiavel(original, []), original);
+
+    const catalogo = [{ function: {
+      name: 'criarLancamento',
+      parameters: { type: 'object', properties: { texto: { type: 'string' } }, required: ['texto'] },
+    } }];
+    let recebido = null;
+    let rodada = 0;
+    const confirmado = 'Lançamento registrado: R$ 283,72 em 8x no cartão C6.';
+    const r = await conduzirConversa({
+      messages: [{ role: 'user', content: 'C6' }],
+      tools: catalogo,
+      prepararArgs: (nome, args) => {
+        if (nome === 'criarLancamento') args.texto = textoLancamentoConfiavel('C6', historico);
+      },
+      chamar: async () => ++rodada === 1
+        ? call('criarLancamento', { texto: 'iPhone 283.728 em 86x no crédito C6' })
+        : { content: 'Registrei R$ 283,72 parcelado em 86x.' },
+      executar: async (_, args) => { recebido = args.texto; return confirmado; },
+    });
+    assert.equal(recebido, fonte, 'a ferramenta não recebe o texto numérico reescrito pelo modelo');
+    assert.equal(r.registros[0].args.texto, fonte, 'a chave de deduplicação usa o texto confiável');
+    assert.equal(respostaFinalSegura('Registrei R$ 283,72 parcelado em 86x.', r.registros), confirmado,
+      'a confirmação não pode inventar quantidade de parcelas');
   });
   console.log(`${checks} cenários passaram.`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });

@@ -1,6 +1,7 @@
 // Política compartilhada pelo fluxo real e pelos testes offline.
 export type Consulta = { nome: string; args: Record<string, unknown> };
 export type Registro = Consulta & { resultado: string; ok: boolean; consulta: boolean };
+export type MensagemHistorico = { papel: string; texto: string };
 /* As de escrita entram aqui TAMBÉM, e não só em `ESCRITAS`, por um motivo
    mecânico: tudo que está fora de `META` recebe injeção automática dos filtros
    ativos da conversa (cartão, categoria, carteira...). Uma ferramenta de
@@ -30,6 +31,41 @@ export const META = new Set([
  */
 export const ESCRITAS = new Set(['criarLancamento', 'desfazerUltimoLancamento']);
 const normalizar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const PEDIDO_DE_LANCAMENTO = /\b(?:lan[cç](?:a|e|ar)|anot(?:a|e|ar)|registr(?:a|e|ar)|adicion(?:a|e|ar)|coloc(?:a|e|ar)|cadastr(?:a|e|ar)|inclu(?:a|i|ir)|salv(?:a|e|ar))\b/i;
+const SINAL_DE_LANCAMENTO = /\b(?:lan[cç](?:a|e|ar)|anot(?:a|e|ar)|registr(?:a|e|ar)|adicion(?:a|e|ar)|coloc(?:a|e|ar)|cadastr(?:a|e|ar)|inclu(?:a|i|ir)|salv(?:a|e|ar)|joguei|fiz|comprei|paguei|gastei|recebi|compra|boleto|conta\s+a\s+pagar)\b/i;
+const FATO_NUMERICO = /(?:\br\$\s*[\d.,]*\d|\b\d+(?:[.,]\d{1,2})?\s*(?:reais?|contos?|pila|paus?|mangos?|centavos?)\b|\b\d{1,3}\s*(?:x|vezes|parcelas?)\b|\bparcel(?:ado|ada|as?)\s*(?:em\s*)?\d{1,3}\b)/i;
+
+/**
+ * Texto financeiro confiável: números só podem vir do que o usuário digitou.
+ * O argumento do modelo é ignorado porque ele pode trocar "283,72 em 8x"
+ * por "283.728 em 86 vezes" antes de chamar a ferramenta.
+ */
+export function textoLancamentoConfiavel(
+  mensagem: string,
+  historico: MensagemHistorico[] = []
+): string {
+  const atual = mensagem.trim();
+  if (!atual) return atual;
+
+  /* Uma nova mensagem que pede o lançamento é a fonte inteira, sem misturar
+     números de uma conversa anterior. */
+  if (PEDIDO_DE_LANCAMENTO.test(atual) ||
+      (SINAL_DE_LANCAMENTO.test(atual) && FATO_NUMERICO.test(atual))) return atual;
+
+  const fonteAnterior = [...historico].reverse().find((item) =>
+    item.papel === 'usuario' && SINAL_DE_LANCAMENTO.test(item.texto) &&
+    (FATO_NUMERICO.test(item.texto) || PEDIDO_DE_LANCAMENTO.test(item.texto))
+  );
+  if (!fonteAnterior) return atual;
+
+  /* Respostas de esclarecimento podem trazer o valor ou as parcelas (quando
+     a primeira mensagem só dizia o que foi comprado). Ponha a resposta
+     primeiro para uma correção explícita de valor vencer a antiga. */
+  return FATO_NUMERICO.test(atual)
+    ? `${atual} ${fonteAnterior.texto}`.trim()
+    : `${fonteAnterior.texto} ${atual}`.trim();
+}
 
 export function resultadoValido(texto: string): boolean {
   return !!texto.trim() && !/(^erro|nao existe |nao tem nenhum|nao ha .*cadastrad|nao consegui|nao deu|nao gravei|faltou|faltam|invalido|invalida|nao reconhecida|nao bate com|reformular|motivo interno)/.test(normalizar(texto));
@@ -89,6 +125,12 @@ export function fallbackSeguro(registros: Registro[]): string {
     .replace(/\s*\(cite-os na resposta\)/g, '')).join('\n\n');
 }
 
+/** Escrita confirmada não passa pela redação livre do modelo. */
+export function respostaFinalSegura(resposta: string, registros: Registro[]): string {
+  const escrita = registros.filter((r) => r.ok && ESCRITAS.has(r.nome)).at(-1);
+  return escrita?.resultado ?? resposta;
+}
+
 export type MensagemLLM = { role: string; content?: string | null; tool_call_id?: string; tool_calls?: any[] };
 
 /** Até três rodadas para aprender apelidos, corrigir argumentos e consultar.
@@ -101,6 +143,7 @@ export async function conduzirConversa(options: {
   deadline?: number;
   chamar: (payload: Record<string, unknown>) => Promise<any>;
   executar: (nome: string, args: Record<string, unknown>) => Promise<string>;
+  prepararArgs?: (nome: string, args: Record<string, unknown>) => void;
 }): Promise<{ resposta: string; registros: Registro[]; recuperado: boolean }> {
   const messages = [...options.messages];
   const registros: Registro[] = [];
@@ -157,6 +200,7 @@ export async function conduzirConversa(options: {
           if (!prop || typeof value !== prop.type || (prop.enum && !prop.enum.includes(value))) throw new Error('Argumento inválido');
           if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('Número inválido');
         }
+        options.prepararArgs?.(nome, args);
         if (!META.has(nome)) {
           for (const key of ['cartao', 'categoria', 'carteira', 'payment_method', 'fatura']) {
             if (args[key] !== undefined && args[key] !== '') filtrosAtivos[key] = args[key];

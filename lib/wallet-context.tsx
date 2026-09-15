@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDemo } from './demo-context';
+import { useSession } from './auth-context';
 import { DEMO_WALLETS } from './demo-data';
 import { fetchWallets, calcularSaldosWallets, calcularSaldosComAgregado } from './wallets';
 import { fetchTransactions, fetchSaldosPorCarteira } from './data';
@@ -30,6 +31,7 @@ const WalletContext = createContext<WalletContextType | null>(null);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { isDemoMode } = useDemo();
+  const { session, isLoading: authLoading, sessaoNaoConfirmada } = useSession();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [activeWalletId, setActiveWalletIdState] = useState<string>('total');
   const [loading, setLoading] = useState(true);
@@ -99,8 +101,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return activeWallet ? activeWallet.color : '#1fa98d';
   }, [activeWalletId, activeWallet]);
 
-  /* Só o modo de exemplo, que não tem banco atrás, ainda soma percorrendo a
-     lista em memória. */
+  /* O modo de exemplo e a sessão offline, que não têm uma RPC confirmada
+     disponível, somam percorrendo a lista já carregada em memória. */
   const updateSaldosComTransacoes = useCallback(
     (txs: Transaction[]) => {
       const calculados = calcularSaldosWallets(wallets, txs);
@@ -118,6 +120,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
    */
   const refreshSaldos = useCallback(async () => {
     if (isDemoMode) return;
+    /* A Home pode pintar e carregar transações antes de o SessionProvider
+       terminar `getSession()`. Chamar a RPC nesse intervalo usa a chave anon
+       e o Postgres responde 42501, embora a permissão para `authenticated`
+       esteja correta. Sessão lida do disco também não tem JWT confirmado:
+       nesse caso a tela usa o cache local até a rede renovar o token. */
+    if (authLoading || !session || sessaoNaoConfirmada) return;
     /* Sem a lista de carteiras não dá para distribuir nada: `porCarteira`
        sairia vazio e o total viria certo, porque em `calcularSaldosComAgregado`
        o total soma incondicionalmente e a carteira só recebe se a chave existir.
@@ -141,7 +149,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.warn('Erro ao carregar saldos:', e);
     }
-  }, [isDemoMode, wallets]);
+  }, [authLoading, isDemoMode, sessaoNaoConfirmada, session, wallets]);
 
   return (
     <WalletContext.Provider

@@ -7522,3 +7522,53 @@ O repositório está limpo, em `main`, um commit à frente de `origin/main`
 (`1097f7b`). A publicação desse commit ainda requer autorização explícita do
 autor nesta sessão; não declarar o 404 como publicado até a validação após o
 deploy web.
+
+---
+
+## 14/09/2026 — Expo Go: corrida de sessão e compra parcelada do Granabô
+
+**Pedido recebido.** O autor relatou, na simulação do Expo Go, um aviso de
+permissão ao carregar saldos e que a tentativa de compra parcelada não saiu.
+As capturas mostravam `permission denied for function saldos_por_carteira` e o
+Granabô afirmando uma compra de `R$ 283.728,00 em 86 vezes`, enquanto a fatura
+do cartão não mostrava a compra.
+
+**Fatos conferidos antes da alteração.** A função `public.saldos_por_carteira()`
+existe em produção, com execução concedida a `authenticated` e não a `anon`.
+Na produção havia uma operação recente de origem `assistente`, mas ela estava
+como `kind = transaction`; a linha criada tinha `amount = 283728.00`,
+`payment_method = credit`, `installment_current = 1` e `installment_total = 1`.
+O parser local, por outro lado, interpreta `283,72 em 8x` como valor 283,72 e
+8 parcelas. Isso separa o sintoma da causa: a compra foi gravada errada como
+transação única, e a confirmação do modelo também inventou a quantidade.
+
+**Causas.** No cliente, `refreshSaldos` podia correr antes de `getSession()`
+terminar; nesse intervalo a RPC chegava como `anon` e recebia 42501. Em modo
+offline, uma sessão lida do disco não tem JWT confirmado para essa RPC. No
+servidor, `executarCriarLancamento` interpretava `args.texto`, texto que o
+modelo podia reescrever antes da ferramenta — exatamente a transformação que
+produziu `283.728` e `86`; depois a resposta livre do modelo repetia a mentira.
+
+**Correção.** `lib/wallet-context.tsx` agora aguarda autenticação confirmada
+antes de consultar saldos; `app/(app)/index.tsx` calcula o saldo a partir do
+cache em sessão offline. O módulo real
+`supabase/functions/_shared/assistant-learning.ts` ganhou
+`textoLancamentoConfiavel`, que reconstrói a frase usando apenas mensagens do
+usuário e canoniza os argumentos antes da chave de deduplicação. A função
+`respostaFinalSegura` faz a confirmação de uma escrita vir do recibo
+determinístico, não da redação do modelo. A integração está em
+`supabase/functions/assistente-financeiro/index.ts`.
+
+**Testes e estado de publicação.** Foram adicionados
+`__tests__/wallet-context-auth.cjs` e regressões no módulo real do assistente.
+`npx tsc --noEmit`, `npx deno check
+supabase/functions/assistente-financeiro/index.ts`, `git diff --check` e
+`npm run test:ci` passaram; o corpus completo terminou com saída zero. A Edge
+Function v29 foi baixada antes da substituição. A publicação da nova versão
+fica registrada na nota de sessão quando concluída. O registro de teste
+`R$ 283.728,00` não foi apagado nem corrigido automaticamente nesta etapa.
+
+**Não verificado ainda.** O fluxo físico do Expo Go após a publicação, com uma
+compra nova parcelada, ainda precisa confirmar a fatura no aparelho. A causa
+do erro de saldo foi inferida da corrida observada e da permissão de produção;
+não foi necessária migration ou mudança de grant.

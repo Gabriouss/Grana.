@@ -51,7 +51,13 @@ import {
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
 import { janelaFatura, mesFaturaDoLancamento, cicloRelativo, deslocamentoPedido } from '../_shared/fatura-ciclo.ts';
-import { conduzirConversa, exemploElegivel, feedbackExplicito } from '../_shared/assistant-learning.ts';
+import {
+  conduzirConversa,
+  exemploElegivel,
+  feedbackExplicito,
+  respostaFinalSegura,
+  textoLancamentoConfiavel,
+} from '../_shared/assistant-learning.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -2197,6 +2203,14 @@ Deno.serve(async (req) => {
         const json = await res.json();
         return json.choices?.[0]?.message;
       },
+      prepararArgs: (nome, args) => {
+        if (nome === 'criarLancamento') {
+          /* Canonicaliza antes da chave de cache da conversa. Se o modelo
+             tentar duas grafias diferentes para o mesmo pedido, ambas viram
+             a mesma operação e não podem criar duas compras. */
+          args.texto = textoLancamentoConfiavel(mensagem, body.historico);
+        }
+      },
       executar: (nome, args) => {
         const deslocamento = deslocamentoPedido(mensagem);
         if (deslocamento !== undefined && ['resumoCredito', 'gastoPorCategoria', 'consultarLancamentos'].includes(nome)) {
@@ -2209,7 +2223,7 @@ Deno.serve(async (req) => {
         });
       },
     });
-    const respostaFinal = conversa.resposta;
+    const respostaFinal = respostaFinalSegura(conversa.resposta, conversa.registros);
     const consultas = conversa.registros.filter((r) => r.consulta && r.ok);
     const ferramentaUsada = consultas.at(-1)?.nome ?? conversa.registros.at(-1)?.nome ?? null;
 
