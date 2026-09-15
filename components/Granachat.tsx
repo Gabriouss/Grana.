@@ -6,6 +6,8 @@ import {
   Easing,
   FlatList,
   Keyboard,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   StyleSheet,
@@ -188,6 +190,7 @@ export default function Granachat({
   const [carregando, setCarregando] = useState(true);
   const painelRef = useRef<View | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const manterScrollNoFimRef = useRef(true);
   const inputRef = useRef<TextInput>(null);
   const requisicaoRef = useRef<AbortController | null>(null);
 
@@ -292,10 +295,16 @@ export default function Granachat({
 
   /* ── Scroll pro fim quando chega mensagem nova ────────────────────── */
   const scrollParaFim = useCallback(() => {
+    if (!manterScrollNoFimRef.current) return;
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: !reduzirMovimento });
     }, 100);
   }, [reduzirMovimento]);
+
+  const registrarPosicaoScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    manterScrollNoFimRef.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= 24;
+  }, []);
 
   useEffect(() => {
     if (mensagens.length > 0) scrollParaFim();
@@ -314,6 +323,7 @@ export default function Granachat({
 
     const idPergunta = `local-${Date.now()}`;
     const idResposta = `local-${Date.now() + 1}`;
+    manterScrollNoFimRef.current = true;
 
     // Adiciona a pergunta do usuário e um placeholder de "pensando"
     const novaPergunta: MensagemLocal = {
@@ -553,6 +563,8 @@ export default function Granachat({
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
+          onScroll={registrarPosicaoScroll}
+          scrollEventThrottle={16}
           onContentSizeChange={scrollParaFim}
         />
 

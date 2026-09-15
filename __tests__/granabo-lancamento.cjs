@@ -74,6 +74,11 @@ const aprendizado = carregar('supabase/functions/_shared/assistant-learning.ts')
      correção da voz no mesmo dia. */
   igual(interp.guessAmountFromText('lança 20 de almoço'), 20, 'inteiro digitado vale no chat');
   ok(!('precisaRevisarValorVoz' in interp), 'a trava de voz nao foi trazida para o chat');
+  igual(
+    interp.guessDescFromText('boleto para o dia 13 de setembro, 47 reais Liga das lendas', 'out'),
+    'Liga das lendas',
+    'boleto usa o nome depois do valor, nao o mes da data'
+  );
 }
 
 /* ── 2. Frase sem valor não vira lançamento ──────────────────────────────── */
@@ -171,6 +176,25 @@ const aprendizado = carregar('supabase/functions/_shared/assistant-learning.ts')
   ok(/source = 'assistente'/.test(mig), 'e so alcanca o que o proprio assistente criou');
   ok(/interval '30 minutes'/.test(mig), 'limitado aos ultimos 30 minutos');
   ok(!/create table/i.test(mig), 'nenhuma tabela paralela foi criada — reusa voice_operations');
+}
+
+/* ── 7. Os três regressions reportados no aparelho ficam presos no código ── */
+{
+  const executor = fs.readFileSync('supabase/functions/assistente-financeiro/index.ts', 'utf8');
+  ok(/const ehBoleto = ehIntencaoBoleto\(financeiro\)/.test(executor),
+    'boleto e decidido antes do ramo de credito');
+  ok(/const parcelas = parseParcelas\(financeiro\)/.test(executor),
+    'parcelas sao extraidas antes de montar a operacao');
+  ok(/const kind = ehBoleto \? 'bill' : parcelas && parcelas >= 2 \? 'installment' : 'transaction'/.test(executor),
+    'compra parcelada sempre recebe o tipo installment');
+  ok(/payload\.installments = parcelas/.test(executor),
+    'a quantidade de parcelas chega ao payload da RPC');
+
+  const chat = fs.readFileSync('components/Granachat.tsx', 'utf8');
+  ok(/if \(!manterScrollNoFimRef\.current\) return;/.test(chat),
+    'auto-scroll nao interrompe quem esta lendo acima');
+  ok(/onScroll=\{registrarPosicaoScroll\}/.test(chat),
+    'Granachat acompanha a posicao real da lista');
 }
 
 console.log(`granabo-lancamento: ${passou} verificacoes OK`);

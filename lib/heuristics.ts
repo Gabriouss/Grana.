@@ -999,6 +999,22 @@ export function guessDescFromText(text: string, type: TxType): string {
     normalizarTexto(text).replace(/[.!?]+\s*$/, '').replace(DICA_CATEGORIA_FINAL, '')
   );
 
+  /* Em boletos a data costuma vir antes do valor e o nome depois dele:
+     "boleto para o dia 13 de setembro, 47 reais Liga das lendas". O parser
+     antigo mordia o primeiro "para"/"de" e devolvia a data como descrição.
+     Só usamos esta forma quando há sinal explícito de boleto/vencimento; em
+     frases comuns, o texto depois do valor pode ser outra metainformação. */
+  const nomeAposValor = texto.match(new RegExp(
+    `(?:r\\$\\s*\\d[\\d.,]*|\\d[\\d.,]*\\s+(?:${MOEDA}))\\s+(.{2,40})$`,
+    'i'
+  ));
+  if (nomeAposValor && /\b(?:boleto|conta\s+a\s+pagar|vencimento|vence|vencendo|dia)\b/i.test(
+    texto.slice(0, nomeAposValor.index ?? 0)
+  )) {
+    const nome = limparSobra(nomeAposValor[1]);
+    if (nome.length >= 2) return capitalizar(nome);
+  }
+
   /* 1º) "<Nome> de <Valor>" — "Energia de 350 reais", "Merenda de 31 reais",
      "Mercado de 120 reais". Vem primeiro porque é o formato mais comum e o
      mais inequívoco: o que está antes do "de" é sempre o nome. Antes esta

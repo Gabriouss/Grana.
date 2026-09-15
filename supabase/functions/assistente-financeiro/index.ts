@@ -927,12 +927,22 @@ async function executarCriarLancamento(
   }
 
   let descricao = guessDescFromText(financeiro, tipo) || 'Lançamento pelo Granabô';
+  const ehBoleto = ehIntencaoBoleto(financeiro);
+  let vencimento: string | null = null;
+  if (ehBoleto) {
+    vencimento = parseDiaVencimento(financeiro);
+    if (!vencimento) {
+      return 'A frase fala em boleto/conta a pagar, mas não achei o vencimento. Pergunte o dia. NÃO registrei nada.';
+    }
+  }
+
   let cardId: string | null = null;
   let formaPagamento: string | null = parseFormaPagamento(financeiro);
-  let parcelas: number | null = null;
+  const parcelas = parseParcelas(financeiro);
 
-  /* Só saída vai para fatura: "recebi um crédito de 500" é dinheiro entrando. */
-  if (tipo === 'out' && ehIntencaoCredito(financeiro)) {
+  /* Boleto vem antes de crédito: "boleto no cartão" continua sendo conta a
+     pagar. Só saída vai para fatura: "recebi um crédito de 500" é entrada. */
+  if (!ehBoleto && tipo === 'out' && ehIntencaoCredito(financeiro)) {
     const doUsuario = cartoes.filter((c) => !c.wallet_id || c.wallet_id === carteira.id);
     const citado = matchCardByText(financeiro, doUsuario);
     const cartaoExplicito = /\b(?:cr[eé]dito|cart[aã]o)\s+(?!(?:em|no|na|de|todo|recorrente)\b)[\p{L}\d]/iu.test(financeiro);
@@ -946,15 +956,17 @@ async function executarCriarLancamento(
     cardId = achado.id;
     formaPagamento = 'credit';
     descricao = limparReferenciaCartao(descricao, achado);
-    parcelas = parseParcelas(financeiro);
-  } else if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(financeiro)) {
+  } else if (!ehBoleto && (parcelas !== null || /\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(financeiro))) {
     return 'Parcelamento só existe em compra no crédito. Confirme com o usuário se foi no cartão e qual cartão. NÃO registrei nada.';
   }
 
   /* Parcelado é série FECHADA; recorrente é série ABERTA. Não coexistem. */
-  const recorrente = parcelas ? false : parseRecorrencia(financeiro);
+  const recorrente = !ehBoleto && parcelas ? false : parseRecorrencia(financeiro);
 
-  let kind = 'transaction';
+  /* O tipo da operação é derivado do texto já interpretado, uma única vez.
+     Isso impede que uma compra com parcelas caia no ramo de transação comum e
+     chegue à RPC com o valor total e apenas uma linha. */
+  const kind = ehBoleto ? 'bill' : parcelas && parcelas >= 2 ? 'installment' : 'transaction';
   const payload: Record<string, unknown> = {
     type: tipo,
     description: descricao,
@@ -968,18 +980,12 @@ async function executarCriarLancamento(
   if (formaPagamento) payload.payment_method = formaPagamento;
   if (cardId) payload.card_id = cardId;
 
-  if (ehIntencaoBoleto(financeiro)) {
-    const vencimento = parseDiaVencimento(financeiro);
-    if (!vencimento) {
-      return 'A frase fala em boleto/conta a pagar, mas não achei o vencimento. Pergunte o dia. NÃO registrei nada.';
-    }
-    kind = 'bill';
+  if (ehBoleto) {
     payload.due_date = vencimento;
     delete payload.occurred_on;
     delete payload.payment_method;
     delete payload.card_id;
-  } else if (parcelas && parcelas >= 2) {
-    kind = 'installment';
+  } else if (kind === 'installment') {
     payload.installments = parcelas;
   }
 
