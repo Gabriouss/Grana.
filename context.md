@@ -7564,11 +7564,13 @@ determinístico, não da redação do modelo. A integração está em
 `npx tsc --noEmit`, `npx deno check
 supabase/functions/assistente-financeiro/index.ts`, `git diff --check` e
 `npm run test:ci` passaram; o corpus completo terminou com saída zero. A Edge
-Function v29 foi baixada antes da substituição. A publicação da nova versão
-fica registrada na nota de sessão quando concluída. O registro de teste
+Function v29 foi baixada antes da substituição. O commit `731e77c` foi
+publicado em `origin/main`, e a função subiu para a v30 com `verify_jwt=true`;
+uma chamada sem autenticação respondeu 401. O registro de teste
 `R$ 283.728,00` não foi apagado nem corrigido automaticamente nesta etapa.
 
 **Não verificado ainda.** O fluxo físico do Expo Go após a publicação, com uma
 compra nova parcelada, ainda precisa confirmar a fatura no aparelho. A causa
 do erro de saldo foi inferida da corrida observada e da permissão de produção;
-não foi necessária migration ou mudança de grant.
+não foi necessária migration ou mudança de grant. O registro errado continua
+pendente de decisão do autor sobre descarte/correção.
