@@ -53,7 +53,8 @@ import {
   cancelCardInvoiceReminders,
   type NotifPrefs,
 } from '@/lib/notifications';
-import { isSameMonth, todayISO } from '@/lib/format';
+import { todayISO } from '@/lib/format';
+import { lembretesDeFatura } from '@/lib/creditoFaturas';
 import { calculateStreakAndWeek } from '@/lib/gamification';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import { LIMITS } from '@/lib/limits';
@@ -371,33 +372,25 @@ export default function PerfilScreen() {
           fetchCardInvoicePayments(),
           fetchTransactions({ sinceDays: 35 }),
         ]);
-        const hoje = new Date();
-        const anoAtual = hoje.getFullYear();
-        const mesAtual = hoje.getMonth();
+        /* Mesma conta da tela de Crédito: fatura pelo ciclo de cada cartão, e
+           lembrete enquanto faltar pagar alguma coisa. Até 16/09/2026 isto
+           somava pelo mês civil e tratava qualquer pagamento como quitação. */
+        const faturas = lembretesDeFatura(transacoes, cards, payments, todayISO());
 
         if (novasPrefs.lembretesContasAtivo) {
           const granted = await requestNotificationPermission();
           if (!granted) return;
           bills.forEach((bill) => { scheduleBillReminders(bill).catch(() => {}); });
-          cards.forEach((card) => {
-            const valorFatura = transacoes
-              .filter(
-                (tx) =>
-                  (tx.payment_method === 'credit' || tx.card_id) &&
-                  tx.card_id === card.id &&
-                  isSameMonth(tx.occurred_on, anoAtual, mesAtual)
-              )
-              .reduce((s, tx) => s + Number(tx.amount), 0);
-            const jaPaga = payments.some((inv) => inv.card_id === card.id && inv.year === anoAtual && inv.month === mesAtual);
-            if (!jaPaga && valorFatura > 0) {
-              scheduleCardInvoiceReminders(card, anoAtual, mesAtual, valorFatura).catch(() => {});
+          faturas.forEach(({ cartao, year, month, restante }) => {
+            if (restante > 0) {
+              scheduleCardInvoiceReminders(cartao, year, month, restante).catch(() => {});
             } else {
-              cancelCardInvoiceReminders(card.id, anoAtual, mesAtual).catch(() => {});
+              cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {});
             }
           });
         } else {
           bills.forEach((bill) => { cancelBillReminders(bill.id).catch(() => {}); });
-          cards.forEach((card) => { cancelCardInvoiceReminders(card.id, anoAtual, mesAtual).catch(() => {}); });
+          faturas.forEach(({ cartao, year, month }) => { cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {}); });
         }
       } catch {
         // Falha graciosa — contas.tsx/credito.tsx reagendam certinho no próximo load

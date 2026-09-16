@@ -1,6 +1,6 @@
 import { isSameMonth } from './format';
 import { mesFaturaDoLancamento } from './faturaCiclo';
-import type { CreditCard, Transaction } from './types';
+import type { CreditCard, CreditCardInvoicePayment, Transaction } from './types';
 
 export type SecaoLancamentosCartao = {
   chave: string;
@@ -117,4 +117,72 @@ export function agruparLancamentosPorCartao(
   const semCartao = criarSecao('__sem_cartao__', null);
   if (semCartao) secoes.push(semCartao);
   return secoes;
+}
+
+export type StatusDaFatura = 'paga' | 'parcial' | 'atrasada' | 'vence-hoje' | 'aberta';
+
+export type SituacaoDaFatura = {
+  status: StatusDaFatura;
+  /** O que já foi pago, somado o restante pago depois. */
+  pago: number;
+  /** O que falta pagar. Nunca negativo. */
+  restante: number;
+};
+
+/**
+ * Situação de uma fatura: quanto já foi pago e quanto falta.
+ *
+ * Até 16/09/2026 a tela de Crédito dizia "Paga ✓" se existisse QUALQUER
+ * pagamento da fatura, sem olhar o valor, e nada descontava o que foi pago.
+ * Quem pagava antes do fechamento e depois comprava mais no mesmo ciclo via
+ * "Paga" com dinheiro em aberto. Agora só é "paga" quando o pago cobre o
+ * total; antes disso a fatura segue o vencimento como qualquer outra, e
+ * "parcial" é o estado de quem pagou uma parte e ainda está no prazo.
+ *
+ * Fatura sem compra e sem pagamento nunca fica "atrasada": não há o que pagar.
+ * A conta é em centavos, para R$ 998,01 pago contra R$ 998,01 dar zero.
+ */
+export function situacaoDaFatura(
+  total: number,
+  pagamento: Pick<CreditCardInvoicePayment, 'amount'> | null | undefined,
+  vencimento: Date | null,
+  hoje: Date = new Date()
+): SituacaoDaFatura {
+  const pago = pagamento ? Number(pagamento.amount) : 0;
+  const faltaEmCentavos = Math.max(0, Math.round(total * 100) - Math.round(pago * 100));
+  const restante = faltaEmCentavos / 100;
+  if (faltaEmCentavos === 0) return { status: pagamento ? 'paga' : 'aberta', pago, restante: 0 };
+
+  let status: StatusDaFatura = pagamento ? 'parcial' : 'aberta';
+  if (vencimento) {
+    const dia = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    if (dia(vencimento) === dia(hoje)) status = 'vence-hoje';
+    else if (dia(vencimento) < dia(hoje)) status = 'atrasada';
+  }
+  return { status, pago, restante };
+}
+
+export type LembreteDeFatura = { cartao: CreditCard; year: number; month: number; restante: number };
+
+/**
+ * Para cada cartão, a fatura em aberto HOJE — pelo ciclo do cartão, nunca pelo
+ * mês civil — e quanto falta pagar dela. `restante` zero quer dizer cancelar o
+ * lembrete. Usado pela tela de Crédito ao carregar e pelo Perfil ao ligar os
+ * lembretes: o Perfil somava pelo mês civil e tratava qualquer pagamento como
+ * quitação, e a tela de Crédito também desligava o lembrete de quem pagou só
+ * uma parte.
+ */
+export function lembretesDeFatura(
+  transacoes: Transaction[],
+  cartoes: CreditCard[],
+  pagamentos: CreditCardInvoicePayment[],
+  hojeISO: string
+): LembreteDeFatura[] {
+  return cartoes.map((cartao) => {
+    const { year, month } = mesFaturaDoLancamento(hojeISO, cartao.closing_day);
+    const total = filtrarLancamentosDaFatura(transacoes, cartoes, cartao.id, year, month)
+      .reduce((soma, transacao) => soma + Number(transacao.amount), 0);
+    const pagamento = pagamentos.find((p) => p.card_id === cartao.id && p.year === year && p.month === month);
+    return { cartao, year, month, restante: situacaoDaFatura(total, pagamento, null).restante };
+  });
 }

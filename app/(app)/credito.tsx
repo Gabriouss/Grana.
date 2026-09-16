@@ -35,6 +35,7 @@ import {
   fetchRecurrenceContext,
   fetchCardInvoicePayments,
   payCardInvoice,
+  payCardInvoiceRemainder,
   reopenCardInvoice,
   updateTransaction,
   criarOcorrenciasRecorrentes,
@@ -45,7 +46,10 @@ import {
   agruparLancamentosPorCartao,
   faturaParaExibir,
   filtrarLancamentosDaFatura,
+  lembretesDeFatura,
+  situacaoDaFatura,
   type FaturaAtualDoCartao,
+  type StatusDaFatura,
 } from '@/lib/creditoFaturas';
 import { descricaoDoLancamento, guessAmountFromText, guessCategoryFromText, matchCardByText, matchWalletByText, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
@@ -246,24 +250,12 @@ export default function CreditoScreen() {
          "em aberto" mesmo depois do calendário virar de mês). O par de mês
          de hoje já buscado acima cobre qualquer cartão. */
       const { lembretesContasAtivo } = await carregarNotifPrefs();
-      const hoje = todayISO();
-      for (const card of c) {
-        const cicloAberto = mesFaturaDoLancamento(hoje, card.closing_day);
-        const valorFatura = filtrarLancamentosDaFatura(
-          selectedTransactions,
-          c,
-          card.id,
-          cicloAberto.year,
-          cicloAberto.month
-        )
-          .reduce((s, tx) => s + Number(tx.amount), 0);
-        const jaPaga = p.some(
-          (inv) => inv.card_id === card.id && inv.year === cicloAberto.year && inv.month === cicloAberto.month
-        );
-        if (lembretesContasAtivo && !jaPaga && valorFatura > 0) {
-          scheduleCardInvoiceReminders(card, cicloAberto.year, cicloAberto.month, valorFatura).catch(() => {});
+      // Pagamento parcial continua lembrando, com o valor que falta.
+      for (const { cartao, year, month, restante } of lembretesDeFatura(selectedTransactions, c, p, todayISO())) {
+        if (lembretesContasAtivo && restante > 0) {
+          scheduleCardInvoiceReminders(cartao, year, month, restante).catch(() => {});
         } else {
-          cancelCardInvoiceReminders(card.id, cicloAberto.year, cicloAberto.month).catch(() => {});
+          cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {});
         }
       }
     } catch {
@@ -394,32 +386,25 @@ export default function CreditoScreen() {
   const invoiceDueDate = selectedCard
     ? dataVencimentoFatura(viewYear, viewMonth, selectedCard.due_day, selectedCard.closing_day)
     : null;
-  const invoiceStatus: 'paga' | 'atrasada' | 'vence-hoje' | 'aberta' | null = !selectedCard
-    ? null
-    : currentInvoicePayment
-    ? 'paga'
-    : (() => {
-        if (!invoiceDueDate) return 'aberta';
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const venc = new Date(invoiceDueDate);
-        venc.setHours(0, 0, 0, 0);
-        if (venc.getTime() === hoje.getTime()) return 'vence-hoje';
-        if (venc.getTime() < hoje.getTime()) return 'atrasada';
-        return 'aberta';
-      })();
-  const INVOICE_STATUS_LABEL: Record<'paga' | 'atrasada' | 'vence-hoje' | 'aberta', { texto: string; cor: string }> = {
+  /* "Paga" só quando o que foi pago cobre o total. Até 16/09/2026 qualquer
+     pagamento valia como quitação — ver `situacaoDaFatura`. */
+  const invoiceSituacao = selectedCard ? situacaoDaFatura(totalInvoice, currentInvoicePayment, invoiceDueDate) : null;
+  const invoiceStatus: StatusDaFatura | null = invoiceSituacao?.status ?? null;
+  const INVOICE_STATUS_LABEL: Record<StatusDaFatura, { texto: string; cor: string }> = {
     paga: { texto: 'Paga ✓', cor: theme.up },
+    parcial: { texto: `Falta R$ ${formatMoney(invoiceSituacao?.restante ?? 0)}`, cor: theme.accent2 },
     atrasada: { texto: 'Atrasada', cor: theme.danger },
     'vence-hoje': { texto: 'Vence hoje', cor: theme.accent2 },
     aberta: { texto: 'Aberta', cor: theme.inkFaint },
   };
+  /* Com parte paga, o botão paga o que falta — e não a fatura inteira de novo. */
+  const pagandoRestante = !!currentInvoicePayment && invoiceStatus !== 'paga';
 
   function abrirPagarFatura() {
     if (!selectedCard) return;
     hapticTap();
     setPayWalletId(selectedCard.wallet_id ?? activeWallet?.id ?? wallets[0]?.id ?? null);
-    setPayAmount(formatMoney(totalInvoice));
+    setPayAmount(formatMoney(pagandoRestante ? invoiceSituacao?.restante ?? 0 : totalInvoice));
     setPayDate(todayISO());
     setPayInvoiceOpen(true);
   }
@@ -433,7 +418,43 @@ export default function CreditoScreen() {
     }
     setPaySaving(true);
     try {
-      if (isDemoMode) {
+      if (isDemoMode && pagandoRestante && currentInvoicePayment) {
+        const fakeTx: Transaction = {
+          id: `tx-${Date.now()}`,
+          user_id: 'demo',
+          type: 'out',
+          description: `Pagamento fatura — ${selectedCard.name} (${formatMonthYear(viewYear, viewMonth)}) — restante`,
+          amount,
+          category: 'Cartão de crédito',
+          color: selectedCard.color,
+          occurred_on: payDate,
+          recurring: false,
+          parent_id: null,
+          wallet_id: payWalletId,
+          created_at: new Date().toISOString(),
+        };
+        setTransactions((prev) => [fakeTx, ...prev]);
+        setInvoicePayments((prev) => prev.map((inv) => inv.id !== currentInvoicePayment.id ? inv : {
+          ...inv,
+          amount: Number(inv.amount) + amount,
+          extra_transaction_ids: [...(inv.extra_transaction_ids ?? []), fakeTx.id],
+        }));
+      } else if (pagandoRestante && currentInvoicePayment) {
+        const registro = await payCardInvoiceRemainder({
+          invoice: currentInvoicePayment,
+          amount,
+          paid_on: payDate,
+          wallet_id: payWalletId,
+        });
+        await loadData();
+        /* O servidor não soma de novo se outro toque já tinha somado: o valor
+           devolvido diz se ESTE pedido entrou. */
+        if (Math.round(Number(registro.amount) * 100) !== Math.round((Number(currentInvoicePayment.amount) + amount) * 100)) {
+          setPayInvoiceOpen(false);
+          Alert.alert('Pagamento não lançado', 'O valor pago desta fatura mudou antes deste pagamento. Confira a fatura atualizada e tente de novo, se ainda faltar algo.');
+          return;
+        }
+      } else if (isDemoMode) {
         const fakeTx: Transaction = {
           id: `tx-${Date.now()}`,
           user_id: 'demo',
@@ -463,7 +484,7 @@ export default function CreditoScreen() {
         setTransactions((prev) => [fakeTx, ...prev]);
         setInvoicePayments((prev) => [...prev, fakePayment]);
       } else {
-        await payCardInvoice({
+        const registro = await payCardInvoice({
           card: selectedCard,
           year: viewYear,
           month: viewMonth,
@@ -472,9 +493,19 @@ export default function CreditoScreen() {
           wallet_id: payWalletId,
         });
         await loadData();
+        /* Com a fatura já paga em outro aparelho, o servidor devolve o
+           pagamento existente sem lançar nada. Dizer "Fatura paga" ali seria
+           mentira. */
+        if (Math.round(Number(registro.amount) * 100) !== Math.round(amount * 100)) {
+          setPayInvoiceOpen(false);
+          Alert.alert('Essa fatura já tinha um pagamento', 'Nada novo foi lançado. Confira a fatura atualizada e, se ainda faltar algo, use "Pagar restante".');
+          return;
+        }
       }
+      const faltava = pagandoRestante ? invoiceSituacao?.restante ?? 0 : totalInvoice;
+      const quitou = Math.round(amount * 100) >= Math.round(faltava * 100);
       hapticSuccess();
-      triggerToast('Fatura paga');
+      triggerToast(quitou ? 'Fatura paga' : 'Pagamento registrado');
       setPayInvoiceOpen(false);
     } catch (e: any) {
       Alert.alert('Erro ao pagar fatura', e.message);
@@ -485,14 +516,17 @@ export default function CreditoScreen() {
 
   function confirmReopenInvoice() {
     if (!currentInvoicePayment) return;
-    Alert.alert('Desfazer pagamento', 'A saída lançada para essa fatura será removida.', [
+    const saidas = [currentInvoicePayment.paid_transaction_id, ...(currentInvoicePayment.extra_transaction_ids ?? [])];
+    Alert.alert('Desfazer pagamento', saidas.length > 1
+      ? 'As saídas lançadas para essa fatura, inclusive a do restante, serão removidas.'
+      : 'A saída lançada para essa fatura será removida.', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Desfazer',
         style: 'destructive',
         onPress: async () => {
           if (isDemoMode) {
-            setTransactions((prev) => prev.filter((t) => t.id !== currentInvoicePayment.paid_transaction_id));
+            setTransactions((prev) => prev.filter((t) => !saidas.includes(t.id)));
             setInvoicePayments((prev) => prev.filter((inv) => inv.id !== currentInvoicePayment.id));
             triggerToast('Pagamento desfeito (exemplo)');
             return;
@@ -1022,7 +1056,13 @@ export default function CreditoScreen() {
                 cicloDoCard.month
               )
                 .reduce((s, t) => s + Number(t.amount), 0);
-              const limitPct = Math.min(1, cardSpent / (card.limit_amount || 1));
+              /* O que já foi pago devolve limite, como no banco. O valor exibido
+                 continua sendo o total da fatura, igual ao painel abaixo. */
+              const pagamentoDoCard = invoicePayments.find(
+                (inv) => inv.card_id === card.id && inv.year === cicloDoCard.year && inv.month === cicloDoCard.month
+              );
+              const limiteUsado = situacaoDaFatura(cardSpent, pagamentoDoCard, null).restante;
+              const limitPct = Math.min(1, limiteUsado / (card.limit_amount || 1));
 
               return (
                 // Mesmo motivo do card de conta em contas.tsx: `BotaoOpcoesItem`

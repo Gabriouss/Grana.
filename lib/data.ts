@@ -271,9 +271,38 @@ export async function payCardInvoice(input: {
 }
 
 /**
- * Desfaz o pagamento de uma fatura: apaga a saída que payCardInvoice lançou
+ * Paga o que falta de uma fatura que já tem pagamento — quem pagou antes do
+ * fechamento e depois comprou mais. `payCardInvoice` não serve para isso: com
+ * a fatura já paga, ele devolve o registro existente sem lançar nada, de
+ * propósito, contra toque duplo.
+ *
+ * O restante vira uma saída própria, com a data e a carteira deste pagamento.
+ * `valorJaPago` é o que a tela via: se outro toque já somou, o servidor
+ * devolve a fatura sem somar de novo, e quem chama compara o valor devolvido.
+ */
+export async function payCardInvoiceRemainder(input: {
+  invoice: CreditCardInvoicePayment;
+  amount: number;
+  paid_on: string;
+  wallet_id: string | null;
+}): Promise<CreditCardInvoicePayment> {
+  const { data, error } = await supabase.rpc('pagar_restante_fatura_cartao', {
+    p_invoice_id: input.invoice.id,
+    p_valor_ja_pago: Number(input.invoice.amount),
+    p_amount: input.amount,
+    p_paid_on: input.paid_on,
+    p_wallet_id: input.wallet_id,
+  });
+  if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
+  return data as unknown as CreditCardInvoicePayment;
+}
+
+/**
+ * Desfaz o pagamento de uma fatura: apaga a saída que payCardInvoice lançou,
+ * as do restante (payCardInvoiceRemainder) e o próprio registro de "paga"
  * (mesmo raciocínio de reopenBill — sem isso, pagar de novo depois contaria
- * a despesa duas vezes) e o próprio registro de "paga".
+ * a despesa duas vezes).
  */
 export async function reopenCardInvoice(invoice: CreditCardInvoicePayment): Promise<void> {
   const { error } = await supabase.rpc('reabrir_fatura_cartao', { p_invoice_id: invoice.id });

@@ -111,6 +111,8 @@ export type CreditCardInvoicePayment = {
   paid_on: string; // 'YYYY-MM-DD'
   wallet_id: string | null;
   paid_transaction_id: string | null;
+  /** Saídas do restante pago depois (`pagar_restante_fatura_cartao`). */
+  extra_transaction_ids?: string[];
   created_at: string;
 };
 
