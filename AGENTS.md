@@ -42,10 +42,17 @@ precisa ser trocada nem cobrada. O cuidado que continua valendo é o da regra
    escreva os valores em arquivo versionado, no vault ou em registro.
 4. Leia a regra 15, no fim deste arquivo, e a seção "O `.env` foi nas builds do EAS" no fim do `context.md`.
 
-**Estado em 16/09/2026:** passo 1 pendente na M1 · troca dos cinco segredos
-pendente (decisão do autor).
+**Estado em 16/09/2026:** passo 1 feito pela M1 (`git pull`, `.easignore` com
+`.env`/`.env.*` confirmado) · **troca dos cinco segredos ADIADA por decisão do
+autor** ("vamos trocar os segredos depois") — não é esquecimento, foi
+perguntado e respondido. Continua pendência, sem prazo.
 
-Quando tudo estiver resolvido e confirmado pelo autor, troque este bloco por
+Isso NÃO bloqueia build nem trabalho novo: a trava (`abf329a`) já impede
+qualquer `.env*` de ir para o pacote, então o risco de REPETIR o vazamento
+está fechado independente da troca. O que fica em aberto é só o segredo já
+exposto no servidor do EAS continuar válido até alguém trocá-lo.
+
+Quando a troca acontecer e for confirmada pelo autor, troque este bloco por
 uma linha dizendo quem resolveu, o quê e quando. O registro detalhado continua
 no `context.md`.
 

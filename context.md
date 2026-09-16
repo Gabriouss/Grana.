@@ -42,12 +42,47 @@ precisa ser trocada nem cobrada. O cuidado que continua valendo é o da regra
    escreva os valores em arquivo versionado, no vault ou em registro.
 4. Leia a regra 15 do `AGENTS.md` e a seção "O `.env` foi nas builds do EAS", no fim deste arquivo.
 
-**Estado em 16/09/2026:** passo 1 pendente na M1 · troca dos cinco segredos
-pendente (decisão do autor).
+**Estado em 16/09/2026:** passo 1 feito pela M1 (`git pull`, `.easignore` com
+`.env`/`.env.*` confirmado) · **troca dos cinco segredos ADIADA por decisão do
+autor** ("vamos trocar os segredos depois") — não é esquecimento, foi
+perguntado e respondido. Continua pendência, sem prazo.
 
-Quando tudo estiver resolvido e confirmado pelo autor, troque este bloco por
+Isso NÃO bloqueia build nem trabalho novo: a trava (`abf329a`) já impede
+qualquer `.env*` de ir para o pacote, então o risco de REPETIR o vazamento
+está fechado independente da troca. O que fica em aberto é só o segredo já
+exposto no servidor do EAS continuar válido até alguém trocá-lo.
+
+Quando a troca acontecer e for confirmada pelo autor, troque este bloco por
 uma linha dizendo quem resolveu, o quê e quando. O registro detalhado continua
 no `context.md`.
+
+---
+
+# 16/09/2026 (M1, nova sessão) — leitura do vault e a troca de segredos adiada
+
+Pedido: "leia o vault, entenda o contexto do que foi feito na M2". Sessão
+reaberta 29 commits atrás de `origin/main` — `git pull --ff-only` trouxe tudo
+sem conflito, incluindo os commits de segurança (`4ce2242`, `abf329a` e os do
+alerta) que faltavam. Dois arquivos de log soltos na raiz
+(`.tmp-expo-crud.std{err,out}.log`, sobra de teste anterior, sem valor
+sensível dentro) foram apagados, sem versão para perder.
+
+Lidas as seis notas de sessão de `00 - Sessões` que faltavam, todas da M2:
+sessão offline (11/09), passagem da build 1.10.1 (11/09), lançamento pelo
+chat do Granabô (14/09), fixture de memória (15/09) e a mais longa,
+sincronização e leitura das sessões da M1 (16/09) — é essa última que traz o
+alerta de segurança, a correção da tela de Crédito, o nome do lançamento sem
+forma de pagamento, e o lote de pendências do autor.
+
+Relatado o alerta ao autor. Resposta: **"vamos trocar os segredos depois"**
+— pergunta feita, resposta registrada, não é esquecimento. Bloco do alerta
+(topo deste arquivo e do `AGENTS.md`) atualizado para refletir isso: passo 1
+(pull) já feito por esta sessão, troca adiada sem prazo, e explicitado que a
+trava `abf329a` já fecha o risco de REPETIR o vazamento numa build futura —
+o que resta em aberto é só o segredo já exposto continuar válido até
+alguém trocá-lo.
+
+**Nada mais foi mexido nesta sessão** além desses dois arquivos de alerta.
 
 ---
 
