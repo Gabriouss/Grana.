@@ -7726,7 +7726,19 @@ servidor. O cliente só manda texto e mostra a resposta.
 - [ ] Se o modelo respeita a regra 15 (não lançar quando a pessoa só comenta um
       gasto) é comportamento de LLM, e nenhum teste automático prova isso — só
       uso real diz.
-- [ ] **Boleto e crédito pelo chat saíram com defeito — para resolver na M1.**
+- [x] **Boleto e crédito pelo chat saíram com defeito — RESOLVIDO NO CÓDIGO pela
+      M1, sem teste no aparelho ainda.** Nota de 16/09/2026, na M2: eram dois
+      defeitos. A ordem foi corrigida em `9af988e` (v29) — hoje `ehBoleto` é
+      calculado primeiro e o crédito só entra com `!ehBoleto`, como a pista
+      abaixo previa. O segundo não estava na pista: **o modelo reescrevia os
+      números da frase** ("283,72 em 8x" virou "283.728 em 86x"), corrigido em
+      `731e77c` (v30) montando o texto só com mensagens do usuário. Nenhum dos
+      dois foi refeito no aparelho: a auditoria de 16/09 testou boleto e
+      parcelamento pela INTERFACE, e pelo chat só um gasto simples. Resta ainda
+      a linha de teste de R$ 283.728,00 em produção, esperando decisão do autor.
+      O texto original do item fica abaixo.
+
+      **Registro original (14/09):**
       O autor relatou em 14/09/2026, depois de usar: "a questão do boleto e do
       crédito, o lançamento, ficou meio bugado". O caminho feliz (gasto e
       receita simples) e o "desfaz" ele já tinha confirmado funcionando.
