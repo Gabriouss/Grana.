@@ -29,7 +29,11 @@ a senha em texto puro desde `14ef2d2` (06/09). Ela saiu do arquivo em
    M1 manda o `.env` de novo, com os mesmos segredos. Depois do pull, confira
    que o `.easignore` tem as linhas `.env` e `.env.*`.
 2. **NÃO dispare nenhuma build (`eas build`) antes do passo 1**, nem com
-   pedido do autor: explique o motivo e faça o pull primeiro.
+   pedido do autor: explique o motivo e faça o pull primeiro. Desde
+   `abf329a`, o `npm run build:preparar` recusa preparar a build (sai com
+   "BLOQUEADO") se algum `.env*` fosse no pacote — mas essa trava só existe
+   DEPOIS do pull, e `eas build` chamado direto passa por cima dela. Nunca
+   pule o `build:preparar` (regra 5).
 3. **Pergunte ao autor se os segredos já foram trocados**:
    `CAKTO_CLIENT_SECRET` (e o par `CAKTO_CLIENT_ID`), `GITHUB_TOKEN`,
    `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN` e a senha da conta de teste. Se não
@@ -8313,3 +8317,21 @@ estão nesta máquina; a garantia para eles vem de o código não os ler.
       `CAKTO_CLIENT_SECRET` (e o par da Cakto), `GITHUB_TOKEN`,
       `SUPABASE_ACCESS_TOKEN` e `VERCEL_TOKEN`. Não ficaram públicos, mas
       foram parar num servidor de terceiro fora do controle do projeto.
+
+**Trava automática do `.env` na build (`abf329a`), a pedido do autor.**
+`scripts/env-fora-da-build.ts` lê as regras como o EAS lê — o `.easignore`
+manda sozinho quando existe; sem ele, vale o `.gitignore` — e lista os
+arquivos `.env*` da raiz (mais os nomes que o Expo carrega) que iriam no
+pacote; `.env.example` é permitido. O `preparar-lancamento.ts` chama isso
+antes da nota e antes de mexer no `app.json`, e sai com "BLOQUEADO" mandando
+puxar o `4ce2242`. A leitura foi conferida contra a biblioteca `ignore` do
+`eas-cli`, inclusive onde ela difere do git (`[!v]` não é negação para o
+EAS). Teste: `__tests__/corpus-env-fora-da-build.ts`, 264 checagens, no
+`test:parser` — reprova o `.easignore` de 01/09 lido do git e roda o
+`preparar-lancamento.ts` real numa cópia temporária, recusando sem subir a
+versão. Seis mutações pegas.
+
+**Limite:** a trava só protege quem usa `npm run build:preparar` (regra 5).
+Um `eas build` chamado direto não passa por ela, e uma máquina que não
+puxou o `abf329a` não a tem. Não foi testada numa build real (cota do EAS
+até 01/10).

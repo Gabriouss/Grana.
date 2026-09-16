@@ -29,7 +29,11 @@ a senha em texto puro desde `14ef2d2` (06/09). Ela saiu do arquivo em
    M1 manda o `.env` de novo, com os mesmos segredos. Depois do pull, confira
    que o `.easignore` tem as linhas `.env` e `.env.*`.
 2. **NÃO dispare nenhuma build (`eas build`) antes do passo 1**, nem com
-   pedido do autor: explique o motivo e faça o pull primeiro.
+   pedido do autor: explique o motivo e faça o pull primeiro. Desde
+   `abf329a`, o `npm run build:preparar` recusa preparar a build (sai com
+   "BLOQUEADO") se algum `.env*` fosse no pacote — mas essa trava só existe
+   DEPOIS do pull, e `eas build` chamado direto passa por cima dela. Nunca
+   pule o `build:preparar` (regra 5).
 3. **Pergunte ao autor se os segredos já foram trocados**:
    `CAKTO_CLIENT_SECRET` (e o par `CAKTO_CLIENT_ID`), `GITHUB_TOKEN`,
    `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN` e a senha da conta de teste. Se não
@@ -568,7 +572,10 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       disso entrou no APK, porque só `EXPO_PUBLIC_` é embutido. As builds
       recebem as `EXPO_PUBLIC_` pelo `eas.json` e pelas variáveis do EAS
       (`eas env:list`), não pelo `.env`. Para conferir uma build, procure
-      `env: load .env` no log dela.
+      `env: load .env` no log dela. **Trava:** `npm run build:preparar`
+      chama `scripts/env-fora-da-build.ts` e se recusa a preparar a build se
+      algum `.env*` da raiz fosse no pacote (`abf329a`). Não a contorne; se
+      ela acusar, corrija o `.easignore`.
     - **Segredo que vazou se troca; não se tenta apagar.** O que esteve
       público deve ser tratado como conhecido. Reescrever o histórico exige
       `push --force` e desencontra a outra máquina (regras 1, 2 e 10): só com
