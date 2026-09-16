@@ -7976,3 +7976,42 @@ orientação/resoluções/escalas de fonte, rede lenta/offline no aparelho,
 links externos/checkout e a repetição das correções `04b2260`, `6a47841` e
 `43ba7e0` dentro de um APK novo. O APK existente não recebeu nenhuma dessas
 correções porque a regra desta auditoria proibiu nova build.
+
+---
+
+## 16/09/2026 — M2 — conta de teste confirmada e fatura paga antes do fechamento
+
+**A conta das auditorias é de teste.** O autor confirmou que
+`gbr.design30@gmail.com` é conta **descartável**. Isso resolve a contradição
+entre a nota de 16/09 ("conta descartável") e a seção de 14/09 acima, que falava
+em registros de teste "da conta pessoal do autor": a exclusão de conta rodada
+pela auditoria de 15/09 não apagou dado pessoal. O mesmo endereço também é o
+contato de suporte do app (`app/assinar.tsx`, `lib/legal-content.ts`), o que
+explica a confusão — são dois papéis do mesmo e-mail.
+
+**Relato: "lançamento no crédito após fatura paga está sendo registrado na
+mesma fatura que já foi paga", e "o pagamento não zerou o valor da fatura
+atual".** Captura do C6: fatura de setembro, ciclo 17 ago – 16 set, "fecha dia
+17", vence 20 set, status "Paga ✓", total R$ 1.016,60, com dois lançamentos de
+**16 set** (R$ 10,99 e R$ 7,60).
+
+O autor definiu a regra: **quem decide a fatura é o FECHAMENTO, não o
+pagamento** — depois de a fatura fechar, compra nova vai para a seguinte.
+
+Essa regra **já é a do app** (`mesFaturaDoLancamento`, em
+`lib/faturaCiclo.ts`): compra no dia do fechamento ou depois cai na próxima
+fatura. Com fechamento no dia 17, compras de 16 set pertencem a setembro. A
+aritmética fecha: o vídeo de 11/09 mostrava essa fatura em R$ 998,01, e
+998,01 + 10,99 + 7,60 = 1.016,60. Ou seja, **a fatura foi paga antes de
+fechar**, e as duas compras entraram depois, ainda dentro do ciclo.
+
+**Defeito real encontrado, ainda não corrigido:** em `app/(app)/credito.tsx`
+o status vira "Paga ✓" se existir QUALQUER pagamento para aquele mês — o valor
+pago é ignorado — e o total da fatura e o uso do limite nunca descontam o que
+foi pago. Então a tela afirma "Paga" com R$ 18,59 em aberto.
+
+**Hipóteses em aberto, sem o banco para confirmar** (token de gerenciamento
+expirado): (1) o fechamento cadastrado (17) pode não ser o real do cartão —
+vencer no dia 20 com fechamento no 17 dá só 3 dias, e cartões brasileiros
+costumam ter de 7 a 10; (2) pagamento antes do fechamento precisa de um
+tratamento na tela. Levadas ao autor.
