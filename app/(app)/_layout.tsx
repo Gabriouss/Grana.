@@ -372,7 +372,14 @@ function AbasEmJavaScript() {
               <CenaAnimada indice={ORDEM_ABAS.indexOf(route.name)}>{children}</CenaAnimada>
             </TabBlurTarget>
           )}
-          detachInactiveScreens
+          /* O app usa uma barra de abas em JavaScript, mas o navigator ainda
+             pode destacar e reciclar as telas nativas inativas. No Fabric do
+             RN 0.86 isso abriu uma corrida na primeira montagem após o login:
+             o SurfaceMountingManager tentou inserir uma tela no índice 1 de
+             um pai vazio e o processo Android caiu. Manter as telas montadas
+             custa memória, mas evita que a árvore nativa fique fora de
+             sincronia — integridade vence essa otimização. */
+          detachInactiveScreens={false}
           tabBar={(props) =>
             temBarraLateral ? (
               <SideNav
