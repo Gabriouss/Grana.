@@ -1,3 +1,96 @@
+# 16/09/2026 (M1) — verificação independente da auditoria Android do Codex
+
+**Pedido.** "verifique o trabalho do codex em testes simulados em android
+real" e, em seguida, "verifique tudo". A sessão anterior (Codex, na madrugada
+de 15 para 16/09) auditou o app no Expo Go + emulador Pixel 8 via Maestro,
+corrigiu três defeitos (`04b2260`, `6a47841`, `43ba7e0`) e uma feature nova de
+lançamento pelo chat do Granabô (`df0f3fc`, `9af988e`, `1097f7b`, `731e77c`),
+e parou no meio de um roteiro de CRUD persistente ao atingir o limite de uso.
+
+**O que foi conferido, e como — não só relido.**
+
+- `npm run test:ci` (todos os 29 passos, incluindo `test:parser` e as 74
+  comparações de `sync-parser.js`) e `npx tsc --noEmit --incremental false`
+  rodados nesta sessão, do zero: saída 0 nos dois.
+- **Migration `43ba7e0` conferida ao vivo no banco**, não só lida: a função
+  `reatribuir_wallet_antes_de_excluir()` publicada contém o `pg_trigger_depth()
+  <= 1`, `wallets_user_id_fkey` tem `confdeltype = 'c'` (CASCADE a partir de
+  `auth.users`), e `delete-account` chama `admin.auth.admin.deleteUser`, que é
+  o caminho que dispara essa cascata. A lógica do trigger está correta: ele só
+  bloqueia exclusão DIRETA da carteira Principal (profundidade 1); dentro da
+  cascata do encerramento de conta (profundidade > 1) deixa passar.
+- **Constraint e RPCs de `20260914120000_lancamento_pelo_assistente.sql`
+  conferidas ao vivo**: `voice_operations_source_check` aceita
+  `'assistente'`; `registrar_operacao_voz` e
+  `desfazer_ultimo_lancamento_assistente` existem, `security definer`. A
+  correção de `b51a7f2` (o `pg_get_constraintdef` recebendo o oid) está
+  aplicada.
+- **O núcleo de escrita do Granabô foi lido linha a linha**
+  (`executarCriarLancamento` em `assistente-financeiro/index.ts`): valor,
+  tipo, categoria, carteira, cartão e parcelamento vêm SEMPRE do interpretador
+  determinístico (`_shared/interpretar-lancamento.ts`, cópia vigiada de
+  `lib/heuristics.ts` por `sync-parser.js`), nunca de argumento gerado pelo
+  modelo — a mesma disciplina que a voz já usa. A gravação passa pela RPC
+  `registrar_operacao_voz` com o cliente autenticado com o JWT de quem chamou
+  (`Authorization` repassado, não service role), então `auth.uid()` resolve
+  para o usuário certo e RLS/`tem_direito_acesso()` se aplicam.
+- **A trava contra o modelo afirmar um lançamento que não aconteceu**
+  (`respostaFinalSegura`, `731e77c`) força a resposta final a ser o texto
+  determinístico devolvido pela própria ferramenta de escrita, sempre que a
+  última chamada de escrita é marcada `ok`; o texto livre do modelo nunca
+  chega à pessoa nesse caso. `textoLancamentoConfiavel` canoniza a frase antes
+  da chave de cache/idempotência, fechando o risco (já anotado no próprio
+  commit) de o modelo reformular o pedido entre tentativas e escapar do
+  dedupe.
+- O toque em `whatsapp-webhook/index.ts` dentro de `9af988e` **não é
+  desenvolvimento novo do canal**: é a mesma correção de `guessDescFromText`
+  que entrou em `lib/heuristics.ts`, replicada porque `sync-parser.js` ainda
+  compara as duas cópias byte a byte (linha 123 do teste). Continua sendo
+  dívida a resolver quando a remoção completa do WhatsApp (adiada em
+  13/09/2026) acontecer, não uma extensão da feature morta.
+- `04b2260` (Fabric) e `6a47841` (onboarding reabrindo) são mudanças
+  cirúrgicas, cada uma na sua própria tela, com comentário explicando a causa
+  raiz encontrada por reprodução real no Maestro — sem gambiarra de posição
+  nem mistura com outro assunto (regra 14 respeitada). `1097f7b` acrescenta um
+  `ErrorBoundary` de raiz e uma tela 404, ambos aditivos, sem tocar estrutura
+  de navegação existente, e evita logar mensagem de exceção (só nome e
+  tamanho) para não vazar valor financeiro em log.
+
+**Achado menor, não corrigido.** `resultadoValido()` em
+`_shared/assistant-learning.ts` não reconhece como "recusa" o texto que
+`executarCriarLancamento` devolve quando falta valor ou categoria ("Não
+identifiquei... NÃO registrei nada."): nenhum dos padrões da função bate com
+essa frase. Na prática isso é inofensivo — `respostaFinalSegura` ainda escolhe
+essa string como resposta final (é a única escrita da rodada), e ela já diz
+com todas as letras que nada foi gravado. Não é um caminho onde a pessoa é
+enganada. Vale considerar estender `resultadoValido` para cobrir esse texto
+também, para manter a garantia por um padrão único, mas não é bloqueante.
+
+**Descartado por mim.** Não repeti os roteiros Maestro (levaria o emulador e
+não mudaria o veredito: o código e o banco já provam o que os roteiros
+tentavam provar). Não toquei no emulador nem no processo Metro que a sessão
+anterior deixou rodando (dois `.tmp-expo-crud.std{out,err}.log` ficaram presos
+por um processo ainda vivo; não foram removidos, só ficaram fora do commit).
+
+**Publicado nesta sessão:** `maestro/audit-crud-lancamento-expo-go.local.yaml`
+— o roteiro que o Codex estava escrevendo quando atingiu o limite de uso,
+marcado no topo do arquivo como NÃO EXECUTADO, para a próxima sessão não
+presumir que ele já foi validado como os outros 23.
+
+**Verificação.** `test:ci` e `tsc` rodados do zero nesta sessão (saída 0
+nos dois); `pg_get_functiondef`/`pg_get_constraintdef`/`pg_proc` consultados
+ao vivo na produção (somente leitura) para os três itens acima; leitura linha
+a linha de `interpretar-lancamento.ts`, `executarCriarLancamento`,
+`respostaFinalSegura`, `textoLancamentoConfiavel` e das duas migrations.
+`scripts/verificar-vault.mjs`: 0 pendências (3 notas de sessão sem link de
+entrada foram adicionadas ao índice).
+
+**Não verificado.** Tudo que a própria auditoria do Codex já listava como
+pendente de aparelho real (voz completa, câmera/QR, PDF, push, widgets,
+biometria, TalkBack, rede lenta) continua pendente — esta sessão não teve
+acesso a hardware físico e não tentou. O roteiro de CRUD persistente
+(criar/editar/excluir lançamento com dados reais) segue sem nenhuma execução.
+
 # Contexto do projeto — Grana.
 
 # 15/09/2026 (M1) — build preview barrada pela cota do EAS e emulador pronto (`c7b2822`)

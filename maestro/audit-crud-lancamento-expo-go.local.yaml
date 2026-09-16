@@ -1,0 +1,38 @@
+# NAO EXECUTADO: a sessao anterior (Codex) foi interrompida por limite de uso
+# antes de rodar este roteiro pela primeira vez. Nao ha confirmacao de que os
+# rotulos batem com a tela real de Novo lancamento. Rodar e corrigir antes de
+# confiar no resultado.
+appId: host.exp.exponent
+---
+- tapOn: { text: "Débito e Pix" }
+- extendedWaitUntil: { visible: "Buscar lançamentos", timeout: 15000 }
+- tapOn: { text: "Novo lançamento" }
+- extendedWaitUntil: { visible: "Nova saída", timeout: 10000 }
+- tapOn: { text: "Descrição do lançamento" }
+- inputText: "Auditoria CRUD"
+- tapOn: { text: "Valor do lançamento em reais" }
+- inputText: "123"
+- hideKeyboard
+- tapOn: { text: "Salvar lançamento" }
+- extendedWaitUntil: { visible: "Auditoria CRUD", timeout: 15000 }
+- tapOn: { text: "Auditoria CRUD" }
+- extendedWaitUntil: { visible: "Editar", timeout: 10000 }
+- tapOn: { text: "Editar" }
+- extendedWaitUntil: { visible: "Editar lançamento", timeout: 10000 }
+- tapOn: { text: "Descrição do lançamento" }
+- eraseText: 40
+- inputText: "Auditoria CRUD editada"
+- tapOn: { text: "Valor do lançamento em reais" }
+- eraseText: 20
+- inputText: "456"
+- hideKeyboard
+- tapOn: { text: "Salvar alterações" }
+- extendedWaitUntil: { visible: "Auditoria CRUD editada", timeout: 15000 }
+- tapOn: { text: "Auditoria CRUD editada" }
+- extendedWaitUntil: { visible: "Editar", timeout: 10000 }
+- tapOn: { text: "Excluir" }
+- extendedWaitUntil: { visible: "Excluir lançamento", timeout: 10000 }
+- tapOn:
+    text: "Excluir"
+    below: { text: "Excluir lançamento" }
+- extendedWaitUntil: { visible: "Nenhum lançamento ainda.", timeout: 15000 }
