@@ -45,6 +45,7 @@ import { mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from
 import {
   agruparLancamentosPorCartao,
   faturaParaExibir,
+  faturaAtualDeTodosOsCartoes,
   filtrarLancamentosDaFatura,
   lembretesDeFatura,
   situacaoDaFatura,
@@ -328,6 +329,48 @@ export default function CreditoScreen() {
       setFaturaCardMonth(destino.month);
     }
   }, [selectedCardId, closingDaySelecionado, hojeISO]);
+
+  /* A visão Total tem o MESMO eixo das outras: fatura, não mês civil. Ela
+     agrupa cada compra pelo ciclo do cartão dela, mas abria no mês do
+     calendário e carimbava esse mês de "Atual" — o que fazia a tela afirmar
+     duas coisas contrárias ao mesmo tempo, com o cartão dizendo "Fatura atual
+     R$ 300,00" logo acima de um total de R$ 0,00. Ver
+     `faturaAtualDeTodosOsCartoes`, que devolve `null` quando os cartões
+     discordam, caso em que não existe fatura atual única e nada é afirmado.
+
+     A chave é primitiva pelo mesmo motivo do efeito acima: `walletCards`
+     troca de referência a cada `loadData()` e reabriria a fatura atual em
+     toda recarga, jogando fora a navegação da pessoa. */
+  const fechamentosDosCartoes = walletCards
+    .map((c) => c.closing_day)
+    .sort((a, b) => a - b)
+    .join(',');
+  const faturaAtualTotal = useMemo(
+    () => faturaAtualDeTodosOsCartoes(walletCards, hojeISO),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fechamentosDosCartoes, hojeISO]
+  );
+  const totalAtualAnterior = useRef<FaturaAtualDoCartao | null>(null);
+  useEffect(() => {
+    if (selectedCardId !== 'all') {
+      totalAtualAnterior.current = null;
+      return;
+    }
+    if (!faturaAtualTotal) return;
+    const atual = { cartaoId: 'all', ...faturaAtualTotal };
+    const destino = faturaParaExibir(atual, totalAtualAnterior.current, {
+      year: selectedYear,
+      month: selectedMonth,
+    });
+    totalAtualAnterior.current = atual;
+    if (destino) {
+      setSelectedYear(destino.year);
+      setSelectedMonth(destino.month);
+    }
+    // `selectedYear`/`selectedMonth` de propósito fora: são o que o efeito
+    // ESCREVE, e reagir a eles desfaria a navegação da pessoa a cada toque.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCardId, faturaAtualTotal]);
 
   /* Chegando aqui via FabButton da Início (?novaCompra=1): abre o mesmo
      modal do botão "Lançar no Crédito" — mas só depois que os cartões
@@ -1010,8 +1053,18 @@ export default function CreditoScreen() {
           year={viewYear}
           month={viewMonth}
           mode="invoice"
-          currentYear={selectedCard ? mesFaturaDoLancamento(todayISO(), selectedCard.closing_day).year : undefined}
-          currentMonth={selectedCard ? mesFaturaDoLancamento(todayISO(), selectedCard.closing_day).month : undefined}
+          /* Na visão Total quem diz o que é "atual" é o ciclo dos cartões, não
+             o calendário — e quando eles discordam, ninguém diz. */
+          currentYear={
+            selectedCard
+              ? mesFaturaDoLancamento(todayISO(), selectedCard.closing_day).year
+              : faturaAtualTotal?.year
+          }
+          currentMonth={
+            selectedCard
+              ? mesFaturaDoLancamento(todayISO(), selectedCard.closing_day).month
+              : faturaAtualTotal?.month
+          }
           onChange={(y, m) => {
             if (selectedCardId === 'all') {
               setSelectedYear(y);

@@ -60,6 +60,33 @@ export function faturaParaExibir(
 }
 
 /**
+ * Qual fatura é a "atual" na visão Total, onde não há um cartão selecionado.
+ *
+ * Existe porque a visão Total tratava o eixo dela como MÊS CIVIL, apesar de
+ * agrupar cada compra pelo ciclo do próprio cartão. Em 16/09/2026, com um
+ * cartão que fecha no dia 15 e uma compra feita no dia 16, a tela mostrava ao
+ * mesmo tempo: "Fatura de Setembro 2026 · Atual", "Total em Faturas (Todos os
+ * Cartões) R$ 0,00", "Nenhuma compra no crédito nesta fatura" e, logo acima,
+ * o próprio cartão anunciando "Fatura atual R$ 300,00". Os R$ 300 estavam na
+ * fatura de outubro, pela regra do fechamento, e nada na tela dizia isso.
+ *
+ * Devolve `null` quando os cartões discordam entre si (fechamentos
+ * diferentes): aí não existe uma fatura atual única e afirmar qualquer uma
+ * seria voltar a mentir. Sem cartão também é `null`.
+ */
+export function faturaAtualDeTodosOsCartoes(
+  cartoes: CreditCard[],
+  hojeISO: string
+): { year: number; month: number } | null {
+  if (cartoes.length === 0) return null;
+  const ciclos = cartoes.map((cartao) => mesFaturaDoLancamento(hojeISO, cartao.closing_day));
+  const primeiro = ciclos[0];
+  return ciclos.every((c) => c.year === primeiro.year && c.month === primeiro.month)
+    ? { year: primeiro.year, month: primeiro.month }
+    : null;
+}
+
+/**
  * Resolve cada compra pelo ciclo do cartão ao qual ela pertence. O mês civil
  * só é usado quando o cartão já não existe e, portanto, não há closing_day.
  */

@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
   agruparLancamentosPorCartao,
+  faturaAtualDeTodosOsCartoes,
   faturaParaExibir,
   filtrarLancamentosDaFatura,
   lembretesDeFatura,
@@ -210,6 +211,44 @@ checar('o Perfil não soma mais pelo mês civil', /isSameMonth\(tx\.occurred_on,
 const migracao = readFileSync(join(__dirname, '..', 'supabase', 'migrations', '20260916200000_pagar_restante_fatura.sql'), 'utf8');
 checar('desfazer apaga também as saídas do restante', /id = any\(v_invoice\.extra_transaction_ids\)/.test(migracao), true);
 checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice\.amount <> p_valor_ja_pago then\s+return v_invoice;/.test(migracao), true);
+
+/* ── A visão Total tem eixo de FATURA, não de mês civil ────────────────
+ *
+ * O defeito, visto na auditoria de 16/09/2026 com um cartão que fecha no dia
+ * 15 e uma compra feita no dia 16: a tela afirmava, ao mesmo tempo, "Fatura de
+ * Setembro 2026 · Atual", "Total em Faturas (Todos os Cartões) R$ 0,00",
+ * "Nenhuma compra no crédito nesta fatura" e, no cartão logo acima, "Fatura
+ * atual R$ 300,00". Os R$ 300 estavam na fatura de OUTUBRO, pela regra do
+ * fechamento; a visão Total agrupava pelo ciclo certo mas abria no mês do
+ * calendário e o carimbava de "Atual". */
+{
+  const c15 = cartao('c15', 'Fecha dia 15', 15);
+  const c20 = cartao('c20', 'Fecha dia 20', 20);
+
+  // Depois do fechamento: a fatura atual é a do mês SEGUINTE, não a de hoje.
+  checar('depois do fechamento, a atual é a do mês seguinte', faturaAtualDeTodosOsCartoes([c15], '2026-09-16'), { year: 2026, month: 9 });
+  // Antes do fechamento: a do próprio mês.
+  checar('antes do fechamento, a atual é a do próprio mês', faturaAtualDeTodosOsCartoes([c15], '2026-09-14'), { year: 2026, month: 8 });
+  // No dia do fechamento já conta para a seguinte, como o resto do app.
+  checar('no dia do fechamento já vale a seguinte', faturaAtualDeTodosOsCartoes([c15], '2026-09-15'), { year: 2026, month: 9 });
+  // Vira o ano junto.
+  checar('dezembro depois do fechamento vira janeiro do ano seguinte', faturaAtualDeTodosOsCartoes([c15], '2026-12-20'), { year: 2027, month: 0 });
+  // Cartões que concordam: há uma atual única.
+  checar('cartões no mesmo ciclo têm fatura atual única', faturaAtualDeTodosOsCartoes([c15, cartao('outro', 'Também 15', 15)], '2026-09-16'), { year: 2026, month: 9 });
+  // Cartões que DISCORDAM: não existe uma atual, e afirmar uma seria mentir.
+  checar('cartões em ciclos diferentes não têm fatura atual única', faturaAtualDeTodosOsCartoes([c15, c20], '2026-09-16'), null);
+  checar('sem cartão não há fatura atual', faturaAtualDeTodosOsCartoes([], '2026-09-16'), null);
+
+  // A GARANTIA de coerência: a fatura que a visão Total abre é a mesma em que
+  // a compra do cartão cai. Era exatamente isso que divergia na tela.
+  const atualTotal = faturaAtualDeTodosOsCartoes([c15], '2026-09-16')!;
+  const cicloDaCompra = mesFaturaDoLancamento('2026-09-16', c15.closing_day);
+  checar('a fatura atual da visão Total é a mesma da compra feita hoje', { year: atualTotal.year, month: atualTotal.month }, { year: cicloDaCompra.year, month: cicloDaCompra.month });
+
+  // E a tela precisa realmente usar isso, em vez de cair no calendário.
+  checar('a tela pergunta a fatura atual dos cartões na visão Total', tela.includes('faturaAtualTotal?.year'), true);
+  checar('a visão Total não abre mais no mês civil', tela.includes('faturaAtualDeTodosOsCartoes(walletCards, hojeISO)'), true);
+}
 
 console.log(`\n${total - falhas}/${total} checagens da lista de faturas passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);
