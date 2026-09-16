@@ -54,6 +54,7 @@ import {
   conduzirConversa,
   exemploElegivel,
   feedbackExplicito,
+  fontesDoNomeDoLancamento,
   respostaFinalSegura,
   textoLancamentoConfiavel,
 } from '../_shared/assistant-learning.ts';
@@ -143,6 +144,13 @@ const excedeuRateLimit = criarRateLimiter(60_000, 10);
 const pad = (n: number) => String(n).padStart(2, '0');
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Data de hoje para quem lança, no fuso de São Paulo — a mesma conversão de
+ *  `resumoScoreERitmo`. O servidor roda em UTC: com `toISOString()`, um
+ *  lançamento feito depois das 21h de Brasília saía com a data do dia
+ *  seguinte, e perto do fechamento isso muda a fatura da compra. */
+const hojeEmSaoPaulo = (agora = new Date()): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora);
 
 /** '2026-09-06' -> '06/09/2026'. Só para o rótulo lido pelo usuário. */
 function dataBR(isoStr: string): string {
@@ -878,10 +886,18 @@ async function executarResumoCredito(
  * modelo perguntar. É o mesmo desenho do widget e do bot: só registra o que
  * está inequívoco.
  */
+/* Os textos que devolvem "Ainda não registrei nada" chegam à pessoa como
+   estão: `resultadoValido` os aceita, e `respostaFinalSegura` troca a redação
+   do modelo pelo resultado da escrita. Por isso são escritos para quem usa o
+   app — até 16/09/2026 eles diziam "Pergunte ao usuário…" e "Confirme isso ao
+   usuário…", e era isso que aparecia no Granachat. Os que o filtro recusa
+   ("não existe", "não há … cadastrado", "não consegui") passam pelo modelo e
+   seguem escritos para ele. */
 async function executarCriarLancamento(
   texto: string,
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  fontesNome: string[] = []
 ): Promise<string> {
   const frase = texto.trim();
   if (!frase) return 'Faltou a frase do lançamento. Peça ao usuário o que ele quer registrar e quanto foi.';
@@ -916,10 +932,23 @@ async function executarCriarLancamento(
 
   const valor = guessAmountFromText(financeiro);
   if (!Number.isFinite(valor) || valor <= 0) {
-    return 'Não identifiquei o valor nessa frase. Peça o valor em reais (ex.: "almoço 38,50"). NÃO registrei nada.';
+    return 'Não identifiquei o valor nessa frase. Me diz quanto foi, em reais (ex.: "almoço 38,50"). Ainda não registrei nada.';
   }
 
   const tipo = guessTypeFromText(financeiro);
+  /* O nome sai da frase que PEDIU o lançamento, e não da junção dela com a
+     resposta a uma pergunta minha — ver `fontesDoNomeDoLancamento`. A resposta
+     só batiza quando a frase original dá o nome genérico ("Pagamento"), isto
+     é, quando não tinha nome nenhum. */
+  const fontesDoNome = fontesNome.length ? fontesNome : [frase];
+  const nomeGenerico = descricaoDoLancamento('', tipo);
+  const nomeDoLancamento = (cartao?: Parameters<typeof descricaoDoLancamento>[2]): string => {
+    const nomes = fontesDoNome.map((fonte) => descricaoDoLancamento(
+      carteiraCitada ? limparReferenciaCarteira(fonte, carteira.name) : fonte, tipo, cartao
+    ));
+    return nomes.find((nome) => nome && nome !== nomeGenerico) ?? nomes[0] ?? '';
+  };
+
   const categoriaExtras = categorias.filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color }));
   const categoria = guessCategoryFromText(financeiro, categoriaExtras);
   /* 'Outros' é o que o interpretador devolve quando não reconheceu nada — o
@@ -927,17 +956,19 @@ async function executarCriarLancamento(
      a pessoa tiver dito "outros" com todas as letras. */
   if (categoria.name === 'Outros' && !/\boutros?\b/i.test(financeiro)) {
     const nomes = categorias.length ? categorias.map((c) => c.name) : CATEGORIES.map((c) => c.name);
-    return 'Não identifiquei a categoria de "' + descricaoDoLancamento(financeiro, tipo) + '" (R$ ' + formatarBRL(valor) + '). ' +
-      'Pergunte ao usuário qual destas se encaixa: ' + nomes.join(', ') + '. NÃO registrei nada ainda.';
+    // O cartão só entra para tirar "no crédito C6" do nome citado na pergunta.
+    const cartaoDaFrase = ehIntencaoCredito(financeiro) ? matchCardByText(financeiro, cartoes) : null;
+    return 'Não identifiquei a categoria de "' + nomeDoLancamento(cartaoDaFrase) + '" (R$ ' + formatarBRL(valor) + '). ' +
+      'Qual destas é a certa: ' + nomes.join(', ') + '? Ainda não registrei nada.';
   }
 
-  let descricao = descricaoDoLancamento(financeiro, tipo) || 'Lançamento pelo Granabô';
+  let descricao = nomeDoLancamento() || 'Lançamento pelo Granabô';
   const ehBoleto = ehIntencaoBoleto(financeiro);
   let vencimento: string | null = null;
   if (ehBoleto) {
     vencimento = parseDiaVencimento(financeiro);
     if (!vencimento) {
-      return 'A frase fala em boleto/conta a pagar, mas não achei o vencimento. Pergunte o dia. NÃO registrei nada.';
+      return 'Entendi que é uma conta a pagar, mas não achei o vencimento. Qual é o dia? Ainda não registrei nada.';
     }
   }
 
@@ -955,17 +986,17 @@ async function executarCriarLancamento(
     if (!achado) {
       return doUsuario.length === 0
         ? 'A frase fala em crédito, mas não há cartão cadastrado nessa carteira. Peça para cadastrar o cartão no app ou informar outra forma de pagamento. NÃO registrei nada.'
-        : 'A frase fala em crédito e o usuário tem mais de um cartão. Pergunte qual foi: ' +
-          doUsuario.map((c) => c.name).join(', ') + '. NÃO registrei nada.';
+        // Também cai aqui quem tem um cartão só e citou outro nome ("crédito Almoço").
+        : 'Em qual cartão foi: ' + doUsuario.map((c) => c.name).join(', ') + '? Ainda não registrei nada.';
     }
     cardId = achado.id;
     formaPagamento = 'credit';
     /* Limpar a descrição JÁ extraída deixava a palavra "crédito" que a própria
        limpeza põe no lugar do cartão ("Energético no crédito"). O nome sai de
        novo, a partir da frase, com o cartão conhecido. */
-    descricao = descricaoDoLancamento(financeiro, tipo, achado) || descricao;
+    descricao = nomeDoLancamento(achado) || descricao;
   } else if (!ehBoleto && (parcelas !== null || /\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(financeiro))) {
-    return 'Parcelamento só existe em compra no crédito. Confirme com o usuário se foi no cartão e qual cartão. NÃO registrei nada.';
+    return 'Parcelamento só existe em compra no crédito. Foi no cartão? Se foi, me diz qual. Ainda não registrei nada.';
   }
 
   /* Parcelado é série FECHADA; recorrente é série ABERTA. Não coexistem. */
@@ -981,7 +1012,7 @@ async function executarCriarLancamento(
     amount: valor,
     category: categoria.name,
     color: categoria.color,
-    occurred_on: new Date().toISOString().slice(0, 10),
+    occurred_on: hojeEmSaoPaulo(),
     recurring: recorrente,
     wallet_id: carteira.id,
   };
@@ -1020,7 +1051,7 @@ async function executarCriarLancamento(
   const rotulo = kind === 'bill' ? 'Conta a pagar registrada' : tipo === 'in' ? 'Entrada registrada' : 'Lançamento registrado';
   return rotulo + ': R$ ' + formatarBRL(valor) + comoParcelas + ' em ' + categoria.name +
     ' (' + descricao + ')' + ondeCartao + ', na carteira ' + carteira.name + '.' + repete +
-    ' Confirme isso ao usuário e avise que dá para desfazer dizendo "desfaz".';
+    ' Se quiser desfazer, é só dizer "desfaz".';
 }
 
 /** Remove o último lançamento que o próprio assistente criou (30 min). */
@@ -1044,7 +1075,8 @@ async function executarFerramenta(
   /* Antes de `resolverPeriodo`: escrita não tem período a resolver, e passar
      por ele só criaria um caminho de erro que não faz sentido aqui. */
   if (nome === 'criarLancamento') {
-    return await executarCriarLancamento(String(args.texto ?? ''), supabase, userId);
+    const fontesNome = Array.isArray(args.fontes_nome) ? args.fontes_nome.map(String) : [];
+    return await executarCriarLancamento(String(args.texto ?? ''), supabase, userId, fontesNome);
   }
   if (nome === 'desfazerUltimoLancamento') {
     return await executarDesfazerLancamento(supabase);
@@ -2211,6 +2243,9 @@ Deno.serve(async (req) => {
              tentar duas grafias diferentes para o mesmo pedido, ambas viram
              a mesma operação e não podem criar duas compras. */
           args.texto = textoLancamentoConfiavel(mensagem, body.historico);
+          /* Depois da validação do esquema, de propósito: o modelo não escolhe
+             de onde sai o nome, e o valor entra na chave de cache junto. */
+          args.fontes_nome = fontesDoNomeDoLancamento(mensagem, body.historico);
         }
       },
       executar: (nome, args) => {

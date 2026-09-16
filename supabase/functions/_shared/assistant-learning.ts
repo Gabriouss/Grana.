@@ -36,6 +36,28 @@ const PEDIDO_DE_LANCAMENTO = /\b(?:lan[cç](?:a|e|ar)|anot(?:a|e|ar)|registr(?:a
 const SINAL_DE_LANCAMENTO = /\b(?:lan[cç](?:a|e|ar)|anot(?:a|e|ar)|registr(?:a|e|ar)|adicion(?:a|e|ar)|coloc(?:a|e|ar)|cadastr(?:a|e|ar)|inclu(?:a|i|ir)|salv(?:a|e|ar)|joguei|fiz|comprei|paguei|gastei|recebi|compra|boleto|conta\s+a\s+pagar)\b/i;
 const FATO_NUMERICO = /(?:\br\$\s*[\d.,]*\d|\b\d+(?:[.,]\d{1,2})?\s*(?:reais?|contos?|pila|paus?|mangos?|centavos?)\b|\b\d{1,3}\s*(?:x|vezes|parcelas?)\b|\bparcel(?:ado|ada|as?)\s*(?:em\s*)?\d{1,3}\b)/i;
 
+/** A mensagem atual e, quando ela só esclarece um pedido anterior, a frase
+ *  desse pedido. Um lugar só decide isso, para o texto financeiro e o nome do
+ *  lançamento nunca discordarem sobre qual foi o pedido. */
+function origemDoLancamento(
+  mensagem: string,
+  historico: MensagemHistorico[]
+): { atual: string; anterior: string | null } {
+  const atual = mensagem.trim();
+  if (!atual) return { atual, anterior: null };
+
+  /* Uma nova mensagem que pede o lançamento é a fonte inteira, sem misturar
+     números de uma conversa anterior. */
+  if (PEDIDO_DE_LANCAMENTO.test(atual) ||
+      (SINAL_DE_LANCAMENTO.test(atual) && FATO_NUMERICO.test(atual))) return { atual, anterior: null };
+
+  const fonteAnterior = [...historico].reverse().find((item) =>
+    item.papel === 'usuario' && SINAL_DE_LANCAMENTO.test(item.texto) &&
+    (FATO_NUMERICO.test(item.texto) || PEDIDO_DE_LANCAMENTO.test(item.texto))
+  );
+  return { atual, anterior: fonteAnterior ? fonteAnterior.texto : null };
+}
+
 /**
  * Texto financeiro confiável: números só podem vir do que o usuário digitou.
  * O argumento do modelo é ignorado porque ele pode trocar "283,72 em 8x"
@@ -45,26 +67,36 @@ export function textoLancamentoConfiavel(
   mensagem: string,
   historico: MensagemHistorico[] = []
 ): string {
-  const atual = mensagem.trim();
-  if (!atual) return atual;
-
-  /* Uma nova mensagem que pede o lançamento é a fonte inteira, sem misturar
-     números de uma conversa anterior. */
-  if (PEDIDO_DE_LANCAMENTO.test(atual) ||
-      (SINAL_DE_LANCAMENTO.test(atual) && FATO_NUMERICO.test(atual))) return atual;
-
-  const fonteAnterior = [...historico].reverse().find((item) =>
-    item.papel === 'usuario' && SINAL_DE_LANCAMENTO.test(item.texto) &&
-    (FATO_NUMERICO.test(item.texto) || PEDIDO_DE_LANCAMENTO.test(item.texto))
-  );
-  if (!fonteAnterior) return atual;
+  const { atual, anterior } = origemDoLancamento(mensagem, historico);
+  if (anterior === null) return atual;
 
   /* Respostas de esclarecimento podem trazer o valor ou as parcelas (quando
      a primeira mensagem só dizia o que foi comprado). Ponha a resposta
      primeiro para uma correção explícita de valor vencer a antiga. */
   return FATO_NUMERICO.test(atual)
-    ? `${atual} ${fonteAnterior.texto}`.trim()
-    : `${fonteAnterior.texto} ${atual}`.trim();
+    ? `${atual} ${anterior}`.trim()
+    : `${anterior} ${atual}`.trim();
+}
+
+/**
+ * De onde sai o NOME do lançamento, em ordem de preferência: a frase que pediu
+ * o lançamento e, só depois, a resposta a uma pergunta do assistente.
+ *
+ * O texto financeiro acima junta a resposta à frase original, e precisa: é ela
+ * que traz a categoria, o cartão ou o valor que faltava. Para o nome, a junção
+ * atrapalha. Em 16/09/2026, na conta de teste, "lança energético 10,99 no
+ * crédito C6" seguido de "Alimentação" foi gravado como "Energético no crédito
+ * Alimentação". A resposta só serve de nome quando a frase original não tinha
+ * nome nenhum ("lança 20 reais no crédito C6", e depois "almoço").
+ */
+export function fontesDoNomeDoLancamento(
+  mensagem: string,
+  historico: MensagemHistorico[] = []
+): string[] {
+  const { atual, anterior } = origemDoLancamento(mensagem, historico);
+  return (anterior === null ? [atual] : [anterior, atual])
+    .map((texto) => texto.trim())
+    .filter(Boolean);
 }
 
 export function resultadoValido(texto: string): boolean {

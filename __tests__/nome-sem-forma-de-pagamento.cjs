@@ -147,7 +147,9 @@ const NO_CREDITO = [
   /* O chat não pode voltar à ordem antiga — limpar a descrição JÁ extraída. */
   const chat = fs.readFileSync('supabase/functions/assistente-financeiro/index.ts', 'utf8');
   ok(!/limparReferenciaCartao\(\s*descricao\b/.test(chat), 'o chat não limpa mais a descrição já extraída');
-  ok(/descricaoDoLancamento\(financeiro,\s*tipo,\s*achado\)/.test(chat), 'o chat extrai o nome com o cartão conhecido');
+  ok(/descricao = nomeDoLancamento\(achado\)/.test(chat), 'o chat extrai o nome com o cartão conhecido');
+  ok(/descricaoDoLancamento\(\s*carteiraCitada \? limparReferenciaCarteira\(fonte, carteira\.name\) : fonte, tipo, cartao\s*\)/.test(chat),
+    'e o nome sai de descricaoDoLancamento com o cartão (a conversa em duas mensagens está em granabo-conversa-lancamento.cjs)');
 
   /* ── 4. O que NÃO pode ser apagado ─────────────────────────────────────── */
   const PRESERVAR = [
