@@ -25,6 +25,40 @@ function resolverCartao(transacao: Transaction, cartoes: CreditCard[]): CreditCa
   return undefined;
 }
 
+/** A fatura "atual" de um cartão, como a tela a calculou por último. */
+export type FaturaAtualDoCartao = { cartaoId: string; year: number; month: number };
+
+/**
+ * Para qual fatura a tela de Crédito deve apontar depois que a fatura "atual"
+ * de um cartão foi recalculada. Devolve `null` quando a tela deve ficar onde
+ * está.
+ *
+ * A fatura atual muda por dois motivos, e a tela ignorava os dois: o dia de
+ * fechamento do cartão foi editado, ou o próprio dia do fechamento chegou com
+ * a aba já aberta (as abas ficam montadas desde `04b2260`). Só a TROCA de
+ * cartão movia a tela. Em 16/09/2026 o autor corrigiu o fechamento do C6 de 17
+ * para 14, e a tela continuou mostrando a fatura de setembro — já fechada e
+ * paga — em vez da de outubro, onde as compras de 16/09 passaram a morar.
+ *
+ * - Cartão novo na seleção (ou nada visto ainda): abre na atual, como sempre.
+ * - A atual mudou e a pessoa ESTAVA nela: acompanha a mudança.
+ * - A atual mudou mas a pessoa tinha navegado para outra fatura: fica onde
+ *   está. Arrancar alguém de uma fatura passada que ele abriu de propósito
+ *   seria o defeito oposto.
+ */
+export function faturaParaExibir(
+  atual: FaturaAtualDoCartao,
+  anterior: FaturaAtualDoCartao | null,
+  vista: { year: number; month: number } | null
+): { year: number; month: number } | null {
+  if (!anterior || anterior.cartaoId !== atual.cartaoId || !vista) {
+    return { year: atual.year, month: atual.month };
+  }
+  if (anterior.year === atual.year && anterior.month === atual.month) return null;
+  const estavaNaAtual = vista.year === anterior.year && vista.month === anterior.month;
+  return estavaNaAtual ? { year: atual.year, month: atual.month } : null;
+}
+
 /**
  * Resolve cada compra pelo ciclo do cartão ao qual ela pertence. O mês civil
  * só é usado quando o cartão já não existe e, portanto, não há closing_day.

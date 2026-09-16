@@ -41,7 +41,12 @@ import {
 } from '@/lib/data';
 import { formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
-import { agruparLancamentosPorCartao, filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
+import {
+  agruparLancamentosPorCartao,
+  faturaParaExibir,
+  filtrarLancamentosDaFatura,
+  type FaturaAtualDoCartao,
+} from '@/lib/creditoFaturas';
 import { guessAmountFromText, guessCategoryFromText, guessDescFromText, matchCardByText, matchWalletByText, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
@@ -286,30 +291,51 @@ export default function CreditoScreen() {
     [activeWalletId, transactions]
   );
 
-  /* Ref só pra ler `walletCards` de dentro do efeito abaixo sem TRIGGAR ele —
-     ver o motivo no próprio efeito. */
-  const walletCardsRef = useRef(walletCards);
-  walletCardsRef.current = walletCards;
-
   /* "Trocar de 'Total' para um cartão abre direto na fatura em aberto agora
      (calculada a partir de hoje), não recicla o índice do mês civil que
-     estava selecionado" — decisão do design. Roda em toda TROCA de cartão
-     selecionado, inclusive de um cartão pra outro direto.
+     estava selecionado" — decisão do design.
 
-     Deps só `[selectedCardId]` de propósito: se `walletCards` entrasse aqui,
-     todo `loadData()` (que troca a referência de `cards`) reabriria a fatura
-     em aberto e descartaria a navegação manual do usuário pra uma fatura
-     passada — o efeito existe pra reagir à SELEÇÃO, não a toda atualização
-     de dado. */
+     A fatura atual também muda sem troca de cartão, e até 16/09/2026 a tela
+     não percebia: quando o dia de fechamento é EDITADO, ou quando o dia do
+     fechamento chega com a aba já aberta (as abas ficam montadas). O autor
+     corrigiu o fechamento do C6 de 17 para 14 e a tela seguiu na fatura de
+     setembro, fechada e paga, em vez de ir para outubro. A regra de quando
+     acompanhar e quando respeitar a navegação manual está em
+     `faturaParaExibir`.
+
+     As dependências são primitivas de propósito. `walletCards` troca de
+     referência a cada `loadData()`, e usá-lo aqui reabriria a fatura atual em
+     toda recarga, descartando a navegação da pessoa para uma fatura passada.
+     `closingDaySelecionado` só muda quando o fechamento muda de verdade, e
+     `hojeISO` só quando o dia vira — a tela re-renderiza ao ganhar foco,
+     porque o foco dispara `loadData()`. */
+  const closingDaySelecionado =
+    selectedCardId === 'all'
+      ? null
+      : walletCards.find((c) => c.id === selectedCardId)?.closing_day ?? null;
+  const hojeISO = todayISO();
+  const faturaAtualAnterior = useRef<FaturaAtualDoCartao | null>(null);
+  const faturaVista = useRef<{ year: number; month: number } | null>(null);
+  faturaVista.current =
+    faturaCardYear !== null && faturaCardMonth !== null
+      ? { year: faturaCardYear, month: faturaCardMonth }
+      : null;
+
   useEffect(() => {
-    if (selectedCardId === 'all') return;
-    const card = walletCardsRef.current.find((c) => c.id === selectedCardId);
-    if (!card) return;
-    const ciclo = mesFaturaDoLancamento(todayISO(), card.closing_day);
-    setFaturaCardYear(ciclo.year);
-    setFaturaCardMonth(ciclo.month);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCardId]);
+    if (selectedCardId === 'all') {
+      faturaAtualAnterior.current = null;
+      return;
+    }
+    if (closingDaySelecionado === null) return;
+    const ciclo = mesFaturaDoLancamento(hojeISO, closingDaySelecionado);
+    const atual = { cartaoId: selectedCardId, year: ciclo.year, month: ciclo.month };
+    const destino = faturaParaExibir(atual, faturaAtualAnterior.current, faturaVista.current);
+    faturaAtualAnterior.current = atual;
+    if (destino) {
+      setFaturaCardYear(destino.year);
+      setFaturaCardMonth(destino.month);
+    }
+  }, [selectedCardId, closingDaySelecionado, hojeISO]);
 
   /* Chegando aqui via FabButton da Início (?novaCompra=1): abre o mesmo
      modal do botão "Lançar no Crédito" — mas só depois que os cartões
