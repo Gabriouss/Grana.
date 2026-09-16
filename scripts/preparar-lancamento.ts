@@ -24,10 +24,15 @@
  *
  * Ordem importa: a nota é validada ANTES de qualquer escrita em disco. Uma
  * nota reprovada não pode custar uma versão gasta à toa.
+ *
+ * Antes até da nota, confere que o `.env` fica fora do pacote que o EAS manda
+ * para o servidor (ver `env-fora-da-build.ts`): a 1.10.2 levou os segredos da
+ * máquina que buildou, e uma build preparada aqui não pode repetir isso.
  */
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { validarNotaRelease } from '../lib/notas-release';
+import { variaveisNoPacoteDaBuild } from './env-fora-da-build';
 
 const APP_JSON = join(__dirname, '..', 'app.json');
 
@@ -45,6 +50,18 @@ const mensagem = args.filter((a) => a !== '--major' && a !== '--minor').join(' '
 if (!mensagem.trim()) {
   console.error('Uso: npm run build:preparar -- ["--minor" | "--major"] "<mensagem do build>"');
   process.exit(2);
+}
+
+const pacote = variaveisNoPacoteDaBuild(join(__dirname, '..'));
+if (pacote.vaoNoPacote.length > 0) {
+  console.error('BLOQUEADO — estes arquivos de variáveis iriam para o servidor do EAS:\n');
+  for (const nome of pacote.vaoNoPacote) console.error('  ' + nome);
+  console.error('\nRegras lidas de: ' + pacote.fonte + '. Com .easignore presente, o EAS não lê o .gitignore');
+  console.error('e copia a pasta de trabalho inteira — foi assim que a build 1.10.2 levou os segredos da');
+  console.error('Cakto, do GitHub, do Supabase e da Vercel. Rode "git pull" (a correção é o commit 4ce2242)');
+  console.error('ou acrescente ao .easignore as linhas ".env", ".env.*" e "!.env.example".');
+  console.error('Nenhum arquivo foi alterado. Ver o alerta no topo do AGENTS.md e a regra 15.');
+  process.exit(1);
 }
 
 const problemas = validarNotaRelease(mensagem);
