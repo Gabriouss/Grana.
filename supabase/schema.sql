@@ -4295,7 +4295,14 @@ set search_path = public, pg_temp
 as $$
 declare principal_id uuid;
 begin
-  if old.is_default then raise exception 'A carteira Principal não pode ser excluída'; end if;
+  if old.is_default then
+    -- Exclusão direta continua bloqueada; a cascata de auth.users precisa
+    -- conseguir encerrar a conta inteira, inclusive a carteira Principal.
+    if pg_trigger_depth() <= 1 then
+      raise exception 'A carteira Principal não pode ser excluída';
+    end if;
+    return old;
+  end if;
   select id into principal_id from public.wallets
   where user_id = old.user_id and is_default and id <> old.id
   order by created_at asc, id asc limit 1;
