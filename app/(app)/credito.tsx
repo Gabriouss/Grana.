@@ -1167,6 +1167,15 @@ export default function CreditoScreen() {
               <PrivacyValue>
                 <Text style={styles.invoiceTotal}>{`R$ ${formatMoney(totalInvoice)}`}</Text>
               </PrivacyValue>
+              {/* Parte paga: o total continua sendo o da fatura, e esta linha
+                  diz quanto já foi e quanto falta. */}
+              {invoiceSituacao && invoiceSituacao.pago > 0 && invoiceSituacao.restante > 0 && (
+                <PrivacyValue>
+                  <Text style={styles.invoiceClosingText}>
+                    {`Pago R$ ${formatMoney(invoiceSituacao.pago)} · falta R$ ${formatMoney(invoiceSituacao.restante)}`}
+                  </Text>
+                </PrivacyValue>
+              )}
               {selectedCard && invoiceDueDate && invoiceStatus && (
                 <>
                   {/* Linha própria, fora da fileira com o selo: colada no
@@ -1197,17 +1206,19 @@ export default function CreditoScreen() {
             </View>
           </View>
 
-          {selectedCard && totalInvoice > 0 && (
-            invoiceStatus === 'paga' ? (
-              <AppPressable style={styles.undoPayBtn} onPress={confirmReopenInvoice}>
-                <Text style={styles.undoPayBtnText}>Desfazer pagamento</Text>
-              </AppPressable>
-            ) : (
-              <AppPressable style={styles.payInvoiceBtn} onPress={abrirPagarFatura}>
-                <Ionicons name="checkmark-circle-outline" size={16} color={theme.paper} />
-                <Text style={styles.payInvoiceBtnText}>Pagar Fatura</Text>
-              </AppPressable>
-            )
+          {/* Com saldo a pagar, o botão principal; com qualquer pagamento, o
+              desfazer — inclusive numa fatura que ficou sem compra depois de
+              paga, que antes escondia os dois botões. */}
+          {selectedCard && invoiceStatus !== 'paga' && (invoiceSituacao?.restante ?? 0) > 0 && (
+            <AppPressable style={styles.payInvoiceBtn} onPress={abrirPagarFatura}>
+              <Ionicons name="checkmark-circle-outline" size={16} color={theme.paper} />
+              <Text style={styles.payInvoiceBtnText}>{pagandoRestante ? 'Pagar restante' : 'Pagar Fatura'}</Text>
+            </AppPressable>
+          )}
+          {selectedCard && currentInvoicePayment && (
+            <AppPressable style={styles.undoPayBtn} onPress={confirmReopenInvoice}>
+              <Text style={styles.undoPayBtnText}>Desfazer pagamento</Text>
+            </AppPressable>
           )}
         </View>
 
@@ -1419,7 +1430,7 @@ export default function CreditoScreen() {
       <AppModal visible={payInvoiceOpen} transparent onRequestClose={() => setPayInvoiceOpen(false)}>
         <Sheet centered onClose={() => setPayInvoiceOpen(false)}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Pagar Fatura</Text>
+            <Text style={styles.sheetTitle}>{pagandoRestante ? 'Pagar restante' : 'Pagar Fatura'}</Text>
             <AppPressable onPress={() => setPayInvoiceOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
