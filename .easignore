@@ -7,3 +7,13 @@
 .claude/
 .expo-start*.log
 design-system/marketing-mockups/
+
+# Variáveis locais. Com `.easignore` presente, o EAS NÃO lê o `.gitignore` e
+# copia a pasta de trabalho inteira para a build — sem estas linhas, o `.env`
+# (que guarda o login da conta de teste, E2E_TEST_*) subia junto em toda build.
+# Preview e produção recebem as EXPO_PUBLIC_ pelo `eas.json`, com os mesmos
+# valores do `.env` (conferido em 16/09/2026); o perfil development não embute
+# o JS, que vem do Metro local.
+.env
+.env.*
+!.env.example
