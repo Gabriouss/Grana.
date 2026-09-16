@@ -17,11 +17,12 @@ segredos NÃO entraram no APK — o APK da 1.10.2 foi aberto e conferido — e n
 ficaram públicos, mas estão num servidor de terceiro, fora do controle do
 projeto.
 
-**2. A senha da conta de teste está pública no GitHub.** O repositório
-`Gabriouss/Grana.` é PÚBLICO. O plano
-`docs/superpowers/specs/2026-09-06-plano-codex-ciclo-fatura-cartao.md` trazia
-a senha em texto puro desde `14ef2d2` (06/09). Ela saiu do arquivo em
-`eb3b3ad`, mas continua no histórico, aberta a qualquer um.
+**Contexto, não pendência:** o repositório `Gabriouss/Grana.` é PÚBLICO, e a
+senha da conta de teste ficou num plano versionado (`14ef2d2`, removida em
+`eb3b3ad`, ainda no histórico). **O autor decidiu em 16/09/2026 que essa
+senha não é importante** — é a conta descartável dos agentes —, então ela não
+precisa ser trocada nem cobrada. O cuidado que continua valendo é o da regra
+15: nenhuma credencial em arquivo versionado.
 
 **O que a M1 faz, nesta ordem, antes de qualquer outro trabalho:**
 
@@ -36,14 +37,13 @@ a senha em texto puro desde `14ef2d2` (06/09). Ela saiu do arquivo em
    pule o `build:preparar` (regra 5).
 3. **Pergunte ao autor se os segredos já foram trocados**:
    `CAKTO_CLIENT_SECRET` (e o par `CAKTO_CLIENT_ID`), `GITHUB_TOKEN`,
-   `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN` e a senha da conta de teste. Se não
-   foram, diga que a troca é pendência crítica. Depois da troca, atualize o
-   `.env` da M1 (inclusive `E2E_TEST_PASSWORD`) — e nunca escreva os valores
-   em arquivo versionado, no vault ou em registro.
+   `SUPABASE_ACCESS_TOKEN` e `VERCEL_TOKEN`. Se não foram, diga que a troca é
+   pendência crítica. Depois da troca, atualize o `.env` da M1 — e nunca
+   escreva os valores em arquivo versionado, no vault ou em registro.
 4. Leia a regra 15 do `AGENTS.md` e a seção "O `.env` foi nas builds do EAS", no fim deste arquivo.
 
 **Estado em 16/09/2026:** passo 1 pendente na M1 · troca dos cinco segredos
-pendente (decisão do autor) · senha da conta de teste ainda não trocada.
+pendente (decisão do autor).
 
 Quando tudo estiver resolvido e confirmado pelo autor, troque este bloco por
 uma linha dizendo quem resolveu, o quê e quando. O registro detalhado continua
@@ -8281,8 +8281,8 @@ Varredura dos 528 commits: nenhum token `sbp_`, `gsk_`, `sk-` ou `whsec_`,
 nenhuma chave privada, e o único JWT é a chave anônima. A chave do Firebase em
 `google-services.json` é pública por projeto, restrita por pacote e SHA-1.
 
-- [ ] **Trocar a senha da conta de teste** e atualizar `E2E_TEST_PASSWORD` no
-      `.env` das DUAS máquinas. Decisão do autor.
+- [x] ~~Trocar a senha da conta de teste~~ — **o autor decidiu em 16/09/2026
+      que ela não é importante** (conta descartável). Não é pendência.
 - [ ] Autor: confirmar que o repositório deve continuar público — a Release do
       APK depende disso, mas tudo o que entra no git fica visível, inclusive
       este arquivo.
