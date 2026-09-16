@@ -8099,12 +8099,23 @@ estourava e toda fala caía em "Não consegui salvar".
 
 **Estado, e o que NÃO foi validado:**
 
-- [ ] **Chat: publicar a Edge Function `assistente-financeiro`.** Sem isso o
-      chat continua gravando "no crédito". Regra 11 conferida em 16/09, sem
-      publicar: v30 no ar, `updated_at` 2026-09-15T01:49:00Z (14/09, 22:49 no
-      horário local), 31 segundos depois de `731e77c`; `verify_jwt=true`;
-      nenhum código no servidor que falte no repositório. **Espera autorização
-      do autor.**
+- [x] **Chat: `assistente-financeiro` publicada em 16/09/2026, com
+      autorização do autor — v30 → v31**, `updated_at` 2026-09-16T16:48:14Z
+      (13:48 no horário local), `verify_jwt=true` preservado e as outras sete
+      funções intactas. Regra 11, antes: a v30 era de 31 segundos depois de
+      `731e77c`, e a diferença para o repositório era só `1ec9e63` (2
+      arquivos, +35 −5); o pacote da v30 (ESZIP, 8,4 MB) foi baixado para a
+      pasta temporária da sessão; `deno check` limpo. Comando:
+      `npx supabase functions deploy assistente-financeiro --use-api
+      --project-ref cjnuzfbvfuauvlzfoutv` (CLI 2.117.0), com o token
+      temporário do autor, não salvo. Para voltar, publicar a partir do
+      `731e77c`. Sondas, sem gravar nada: sem autorização, 401 do gateway;
+      com a chave anônima, 401 `nao_autenticado` do próprio código — a v31
+      carrega e atende. **Não exercitado em produção:** um lançamento real
+      pelo chat, que exige sessão de usuário e gasta cota do Gemini. Vale no
+      app já instalado, sem build nova, porque o nome é decidido no servidor.
+      QA: mandar "energético 10,99 no crédito C6" no Granachat, conferir o
+      nome "Energético" e pedir "desfaz".
 - [ ] **Voz: só chega ao aparelho com build nova** (a cota do EAS volta em
       01/10). Na build, lançar "almoço 20 reais no crédito C6" pelo widget e
       pelo botão do app, e conferir o nome "Almoço" nos dois.
