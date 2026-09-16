@@ -8215,3 +8215,21 @@ e apagado no fim:
 - [ ] Lançamento pelo chat depois das 21h: conferir no ar numa noite.
 - [ ] "hoje" continua no nome de alguns lançamentos ("Uber hoje", visto na
       conta de teste) — pendência já registrada.
+
+**Senha da conta de teste publicada no GitHub (achado do mesmo dia).** Ao
+conferir que a senha nova do `.env` não estava em arquivo versionado, ela
+apareceu em `docs/superpowers/specs/2026-09-06-plano-codex-ciclo-fatura-cartao.md`,
+em texto puro, desde `14ef2d2` (06/09). O repositório `Gabriouss/Grana.` é
+**público** (API do GitHub: `private: false`), e o arquivo abria sem login.
+`eb3b3ad` troca a senha pelo nome da variável, mas a versão antiga continua
+pública pelo hash. Virou a regra 15 do `AGENTS.md`.
+
+Varredura dos 528 commits: nenhum token `sbp_`, `gsk_`, `sk-` ou `whsec_`,
+nenhuma chave privada, e o único JWT é a chave anônima. A chave do Firebase em
+`google-services.json` é pública por projeto, restrita por pacote e SHA-1.
+
+- [ ] **Trocar a senha da conta de teste** e atualizar `E2E_TEST_PASSWORD` no
+      `.env` das DUAS máquinas. Decisão do autor.
+- [ ] Autor: confirmar que o repositório deve continuar público — a Release do
+      APK depende disso, mas tudo o que entra no git fica visível, inclusive
+      este arquivo.

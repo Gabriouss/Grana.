@@ -483,3 +483,37 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     de fonte do sistema e em qualquer resolução, sem constante sincronizada.
     Foi colando medida na mão que a janela de lançamento quebrou em tela
     pequena no mesmo dia, na conta do teclado — é a mesma classe de defeito.
+
+15. **O repositório `Gabriouss/Grana.` é PÚBLICO no GitHub. Tudo o que entra
+    no git — código, `context.md`, planos em `docs/`, testes, mensagens de
+    commit — pode ser lido por qualquer pessoa, sem login, inclusive nas
+    versões antigas.** Conferido em 16/09/2026 pela API do GitHub
+    (`private: false`). A visibilidade tem motivo: o download permanente do
+    APK passa pelas Releases do GitHub (`vercel.json` →
+    `releases/latest/download/grana.apk`), e uma Release só abre sem login em
+    repositório público.
+
+    Já custou uma senha. O plano
+    `docs/superpowers/specs/2026-09-06-plano-codex-ciclo-fatura-cartao.md`
+    (commit `14ef2d2`) trazia o e-mail e a senha da conta de teste em texto
+    puro, e ficou dez dias aberto a qualquer um. Tirar do arquivo (`eb3b3ad`)
+    não tira do histórico: a versão antiga continua acessível pelo hash.
+
+    Na prática:
+
+    - **Credencial só mora no `.env` local, ou nos secrets do Supabase e do
+      EAS.** Em arquivo versionado, cite o NOME da variável — a mesma regra do
+      vault (regra 12), pelo mesmo motivo. Vale para plano, roteiro de QA,
+      comentário, mensagem de commit e saída de comando colada em registro.
+    - **O login da conta de teste é `E2E_TEST_EMAIL` e `E2E_TEST_PASSWORD`**,
+      no `.env` de cada máquina, e é isso que os roteiros do Maestro leem.
+      Nunca com prefixo `EXPO_PUBLIC_`, que embute o valor no app.
+    - **O `.easignore` precisa continuar excluindo o `.env`.** Com
+      `.easignore` presente, o EAS não lê o `.gitignore` e copia a pasta de
+      trabalho inteira para a build — conferido no código do `eas-cli` 24.3.0.
+      As builds de preview e produção recebem as `EXPO_PUBLIC_` pelo
+      `eas.json`, não pelo `.env`.
+    - **Segredo que vazou se troca; não se tenta apagar.** O que esteve
+      público deve ser tratado como conhecido. Reescrever o histórico exige
+      `push --force` e desencontra a outra máquina (regras 1, 2 e 10): só com
+      pedido explícito do autor, e mesmo assim depois da troca.
