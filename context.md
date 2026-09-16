@@ -1,3 +1,89 @@
+# 16/09/2026 (M1, continuação) — auditoria end-to-end de lançamentos e switch torto no Perfil (`6c7ed67`)
+
+**Pedido.** "eu gostaria que você continuasse mexendo no app em busca de
+bugs. Mexendo em todas as ferramentas, fazendo todos os tipos de
+lançamentos, tudo", seguido de "Quero uma verificação de ponta-a-ponta do
+aplicativo" e, depois de eu ter ficado só investigando via código por um
+tempo, "você precisa identificar esses bugs visuais por conta própria, o
+objetivo dessa auditoria é encontrar bugs visuais também".
+
+**O que foi testado, com prova de banco.** Pela interface (Maestro + Expo Go
+no Pixel 8 virtual), sempre conferido depois direto na produção pela API de
+gerenciamento do Supabase: saída débito (criar/editar/excluir), entrada
+(idem), boleto (criar + marcar como pago, com `paid_transaction_id`
+vinculado corretamente), cadastro e edição de cartão de crédito, compra
+parcelada em 4x (parcelas com `parent_id` encadeado e datas mensais
+corretas), cofrinho/meta (criar + depositar, confirmado que depósito não
+gera transação, por desenho), orçamento por categoria, e lançamento pelo
+chat do Granabô ("lança 32 reais de uber hoje" → transação correta,
+`source='voice-assistente'`). Ficaram sem teste: "desfaz" no chat, colar
+comprovante, QR, voz completa.
+
+**Achado 1, corrigido (`6c7ed67`).** O switch de "Lembrete na hora do
+almoço" no Perfil estava 48px fora do eixo dos outros três switches da
+mesma seção (medido via hierarquia de acessibilidade: 925–1051px contra
+877–1003px). Causa: `styles.rowKey` em `app/(app)/perfil.tsx` não tinha
+`flex`/`flexShrink`, e esse rótulo é o único, dos 24 que usam o mesmo
+estilo, comprido o bastante para esbarrar no limite — sem quebrar linha,
+ele empurrava o Switch pra fora do lugar. Correção: `flex: 1, flexShrink: 1,
+marginRight: spacing.md` em `rowKey` (estilo compartilhado; os outros 23
+usos ficam pixel a pixel iguais, só o rótulo comprido passa a quebrar
+linha). Verificado bounds antes/depois (877–1003px nos quatro), screenshot,
+`tsc` limpo, 1310/1310 guardas do design system.
+
+**Achado 2, encontrado e MEDIDO, não corrigido.** `components/Granachat.tsx`
+corta o cabeçalho do painel (ícone/"Assistente"/"Granabô"/botão fechar) com
+o teclado aberto — a árvore de acessibilidade não tem esses nós em lugar
+nenhum nesse estado — e sobra um vão grande entre o rodapé do campo de
+texto e o teclado. Medido: painel renderizado em 984×923px
+(`[48,132][1032,1055]`), quando a fórmula do próprio componente
+(`alturaPainel = larguraPainel * 4/3`) previa ~1312px de altura para essa
+largura — os números não batem, e a proporção renderizada (≈1,07) não é o
+3:4 que o código pretende. Não confirmado: qual dos dois valores medidos em
+runtime (`useKeyboardHeight()` de `components/Sheet.tsx`, ou
+`useWindowDimensions()`) está errado no momento em que o teclado abre. Fui
+interrompido lendo `useKeyboardHeight()` quando o autor pediu pra pausar;
+nenhuma tentativa de correção foi feita.
+
+**Achado 3, encontrado, decisão pendente.** Lançamento por chat/voz com
+"hoje"/"ontem" no fim da frase ("lança 32 reais de uber hoje") deixa a
+palavra na descrição salva ("Uber hoje"): valor/categoria/data saem
+corretos, só a descrição fica com a palavra sobrando.
+`lib/heuristics.ts` só trata "hoje"/"amanhã" no contexto de vencimento de
+boleto; não existe stopword de data pra descrição de lançamento comum. Não
+corrigido de propósito: é `lib/heuristics.ts`, com três cópias sincronizadas
+e 22 mil+ verificações em `corpus-voz.ts` — mudar isso no meio de uma
+varredura ampla, sem rodar a bateria inteira, era mais risco do que o
+achado (cosmético) justificava.
+
+**Descobertas que pareciam bug e não eram.** Campo de valor tratando "1500"
+como R$ 15,00 (é `formatMoneyInput`, dígitos entram da direita, por
+desenho — não bug); switch de captura de tela "não respondendo" (era leitura
+da árvore de acessibilidade rápida demais depois do toque, mais uma bolha
+flutuante "Tools" do próprio Expo Go — inexistente numa build real — que
+por vezes fica sobre a região do switch); switches desligados "parecendo
+tortos" (quadro de toque idêntico nos dois estados, 126×126px; é a própria
+aparência do `Switch` nativo do Android/Material You mudando entre
+ligado/desligado, em qualquer app do aparelho).
+
+**Estado da conta de teste.** `gbr.design30@gmail.com` ficou com dados
+"AUDIT" não limpos (as transações/boleto/cartão/parcelas/meta/orçamento
+acima) e com o bloqueio de captura de tela DESLIGADO (eu desliguei pra
+conseguir tirar print; padrão de fábrica é ligado). Limpeza pendente.
+
+**Verificação.** Tudo acima com prova de banco (leitura direta na produção,
+somente leitura pros lançamentos, gravação real só pelos fluxos testados) ou
+hierarquia de acessibilidade medida antes/depois — não só relato visual.
+`tsc` e guardas do design system rodados depois da correção do switch.
+
+**Não verificado.** Causa raiz do Achado 2 (Granachat); decisão sobre o
+Achado 3; "desfaz" no chat, colar comprovante, QR, voz completa; limpeza dos
+dados "AUDIT"; tudo que já era pendência manual da auditoria de 15/09
+(biometria, TalkBack, push, widgets, rede lenta).
+
+Registrado em detalhe no vault:
+[[2026-09-16 - M1 - Auditoria end-to-end de lancamentos e o switch torto do Perfil]].
+
 # 16/09/2026 (M1) — verificação independente da auditoria Android do Codex
 
 **Pedido.** "verifique o trabalho do codex em testes simulados em android
