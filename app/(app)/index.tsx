@@ -146,6 +146,11 @@ export default function InicioScreen() {
   const [wrapped, setWrapped] = useState<MonthlyWrapped | null>(null);
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  /* O updateUser dispara um evento de sessão antes de garantir que o objeto
+     entregue ao listener já contém o metadata novo. Sem esta trava, concluir
+     o diagnóstico fechava o modal e a sessão intermediária o reabria na
+     primeira etapa, mesmo com `onboarding_seen` já salvo no servidor. */
+  const onboardingDismissedForUser = useRef<string | null>(null);
 
   // New Transaction Sheet
   const [txSheetOpen, setTxSheetOpen] = useState(false);
@@ -194,12 +199,18 @@ export default function InicioScreen() {
   // vez, em NENHUM aparelho/navegador da mesma conta.
   const userId = session?.user.id;
   useEffect(() => {
-    if (isDemoMode || !userId) return;
+    if (!userId) {
+      onboardingDismissedForUser.current = null;
+      return;
+    }
+    if (isDemoMode || onboardingDismissedForUser.current === userId) return;
     if (session?.user.user_metadata?.onboarding_seen !== true) setOnboardingOpen(true);
   }, [userId, isDemoMode, session]);
 
   function markOnboardingSeen() {
-    supabase.auth.updateUser({ data: { onboarding_seen: true } });
+    if (!userId) return;
+    onboardingDismissedForUser.current = userId;
+    void supabase.auth.updateUser({ data: { onboarding_seen: true } });
   }
 
   // Tour essencial da Início: 5 pontos tocáveis sobre elementos reais da
