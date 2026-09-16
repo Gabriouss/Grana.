@@ -210,6 +210,30 @@ export function medidasDeJanelaFlutuante(
   };
 }
 
+/**
+ * O maior retângulo de uma dada proporção que CABE numa caixa medida.
+ *
+ * Existe porque a alternativa — derivar o tamanho da tela e subtrair barras,
+ * insets e teclado na mão — errou das duas formas possíveis no Granachat: a
+ * janela ficava maior que o espaço (e o `justifyContent: 'center'` jogava
+ * metade do excesso para cima, levando o cabeçalho para fora da tela) e ainda
+ * sobrava um vão antes do teclado. O motivo era `useSafeAreaInsets()` devolver
+ * zero dentro de um fundo absoluto cujo `SafeAreaView` pai já consumira os
+ * insets, somado a `useWindowDimensions()` reportar 840dp numa tela de 914dp.
+ *
+ * As duas ENTRADAS são medidas (`onLayout` da área onde o painel vive), então
+ * o resultado não depende de conhecer aparelho, densidade, barra, recorte,
+ * rotação, janela dividida nem escala de fonte: o que chega já é o espaço
+ * real. Nenhum piso ou teto em dp entra aqui de propósito — um piso fixo
+ * volta a produzir uma janela maior que a caixa na primeira tela pequena.
+ */
+export function janelaQueCabe(largura: number, altura: number, razao: number) {
+  const larguraUtil = Math.max(largura, 0);
+  const alturaUtil = Math.max(altura, 0);
+  const larguraFinal = Math.min(larguraUtil, alturaUtil * razao);
+  return { largura: larguraFinal, altura: larguraFinal / razao };
+}
+
 /* O recuo é o que cria a margem lateral da janela no celular, e por isso vive
    no fundo e não no painel: assim o painel pode continuar pedindo
    `width: '100%'` sem encostar na borda da tela. */

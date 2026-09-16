@@ -34,7 +34,7 @@ vm.runInNewContext(
   }
 );
 
-const { medidasDeJanelaFlutuante } = api;
+const { medidasDeJanelaFlutuante, janelaQueCabe } = api;
 
 /* Cada caso é: nome, altura que o app pediu, altura que o sistema DEU, altura
    do teclado. A diferença entre pedido e recebido é o que o sistema já
@@ -108,6 +108,93 @@ for (const [nome, pedida, recebida, teclado] of casos) {
     'a janela útil não pode depender de o sistema encolher ou não'
   );
   verificacoes++;
+}
+
+/* ── O painel do Granachat cabe na caixa MEDIDA, em qualquer tela ──────────
+ *
+ * Os dois defeitos que originaram esta parte, vistos no Pixel 8 em
+ * 16/09/2026: o cabeçalho da conversa ("Assistente", "Granabô", o X de fechar)
+ * não aparecia, e sobrava um vão escuro entre o rodapé e o teclado. A janela
+ * era dimensionada a partir de `useWindowDimensions()` e de
+ * `useSafeAreaInsets()` — que ali devolvia ZERO nas duas pontas, porque um
+ * `SafeAreaView` acima já consumira os insets —, com um piso de 260dp por
+ * cima. Resultado: painel maior que o espaço, e o `justifyContent: 'center'`
+ * do fundo empurrando metade do excesso para fora da tela, pelo topo.
+ *
+ * A garantia abaixo é a que impede a volta do defeito: o painel NUNCA passa da
+ * caixa, em nenhuma das duas dimensões, por menor que ela seja. */
+{
+  const RAZAO = 3 / 4;
+  /* Caixas reais e patológicas: celular pequeno, celular grande, tablet,
+     paisagem, a faixa fina que sobra com teclado aberto em paisagem, e os
+     degenerados. Nenhuma delas pode gerar painel maior que si mesma. */
+  const caixas = [
+    ['celular pequeno, teclado aberto', 320, 300],
+    ['celular pequeno, teclado fechado', 320, 520],
+    ['celular médio, teclado aberto', 375, 440],
+    ['celular grande, teclado aberto', 411, 500],
+    ['celular grande, teclado fechado', 411, 780],
+    ['tablet retrato', 768, 1000],
+    ['tablet paisagem', 1024, 700],
+    ['paisagem no celular, teclado aberto', 720, 120],
+    ['faixa fina', 600, 40],
+    ['caixa quadrada', 400, 400],
+    ['medição ainda não chegou', 0, 0],
+    ['medida negativa', -50, -50],
+  ];
+
+  for (const [nome, largura, altura] of caixas) {
+    const painel = janelaQueCabe(largura, altura, RAZAO);
+
+    // A GARANTIA: nunca maior que a caixa. É o que mantinha o topo cortado.
+    assert.ok(
+      painel.largura <= Math.max(largura, 0) + 0.001,
+      `${nome}: painel mais largo que a caixa (${painel.largura} > ${largura})`
+    );
+    verificacoes++;
+    assert.ok(
+      painel.altura <= Math.max(altura, 0) + 0.001,
+      `${nome}: painel mais alto que a caixa (${painel.altura} > ${altura})`
+    );
+    verificacoes++;
+
+    // Sem medida negativa, que faria o painel sumir.
+    assert.ok(painel.largura >= 0 && painel.altura >= 0, `${nome}: medida negativa`);
+    verificacoes++;
+
+    // A proporção é respeitada sempre que há espaço.
+    if (painel.altura > 0) {
+      assert.ok(
+        Math.abs(painel.largura / painel.altura - RAZAO) < 0.001,
+        `${nome}: proporção quebrada (${painel.largura}x${painel.altura})`
+      );
+      verificacoes++;
+    }
+  }
+
+  /* Numa caixa baixa e larga quem manda é a ALTURA, e numa alta e estreita
+     quem manda é a LARGURA. Era a segunda metade que faltava: o painel usava
+     a largura da tela e derivava a altura dela, então em tela baixa a altura
+     estourava a caixa. */
+  {
+    const baixa = janelaQueCabe(1000, 200, RAZAO);
+    assert.equal(baixa.altura, 200, 'caixa baixa: a altura da caixa é que limita');
+    const estreita = janelaQueCabe(150, 1000, RAZAO);
+    assert.equal(estreita.largura, 150, 'caixa estreita: a largura da caixa é que limita');
+    verificacoes += 2;
+  }
+
+  /* Sem piso em dp: dobrar a caixa dobra o painel, sem degrau. Um piso fixo
+     (era 260dp) quebra justamente isto nas telas menores que ele. */
+  {
+    const metade = janelaQueCabe(200, 260, RAZAO);
+    const inteira = janelaQueCabe(400, 520, RAZAO);
+    assert.ok(
+      Math.abs(inteira.altura - metade.altura * 2) < 0.001,
+      'a janela tem de escalar com a caixa, sem piso fixo no caminho'
+    );
+    verificacoes++;
+  }
 }
 
 console.log(

@@ -6,6 +6,7 @@ import {
   Easing,
   FlatList,
   Keyboard,
+  type LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
@@ -16,7 +17,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
@@ -24,6 +24,7 @@ import { useKeyboardHeight } from '@/components/Sheet';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
 import { mensagemErro as traduzirErro } from '@/lib/erros';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { janelaQueCabe, medidasDeJanelaFlutuante } from '@/lib/breakpoints';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras } from '@/lib/theme';
 import {
@@ -71,7 +72,6 @@ export default function Granachat({
      empilhando folga em cima da que já existe. É a mesma conclusão a que
      `components/Sheet.tsx` chegou, e o hook dele é reaproveitado aqui. */
   const alturaTeclado = useKeyboardHeight();
-  const insets = useSafeAreaInsets();
   const reduzirMovimento = useReducedMotion();
   /* Tudo que envolve o campo de texto é derivado da JANELA e da ESCALA DE
      FONTE do sistema, nunca de um tamanho de aparelho. `useWindowDimensions`
@@ -91,21 +91,43 @@ export default function Granachat({
      crescer até engolir a conversa dentro de um painel pequeno. Um terço do
      painel garante que sobrem sempre dois terços de conversa. O cálculo real
      fica logo abaixo, junto da geometria, porque depende de `alturaPainel`. */
-  /* No Android em edge-to-edge, `endCoordinates.height` mede só o teclado —
-     a barra de navegação fica ABAIXO dele e não entra na conta. Sem somar
-     esse inset, o campo pousa uns 40px baixo demais e o teclado come a
-     borda de baixo da caixa e o botão de enviar. No iOS a altura já vem com
-     a faixa do indicador, então somar de novo levantaria demais. */
-  const folgaSistema = Platform.OS === 'android' ? insets.bottom : 0;
-  /* Dentro do painel, o rodapé só precisa do respiro normal: quem desvia da
-     barra de abas e do teclado é o painel inteiro (ver `recuoPainel`). */
-  const recuoInferior = spacing.lg;
-  /* Onde o painel para, medido em runtime: acima da barra de abas quando o
-     teclado está fechado, acima do TECLADO quando ele sobe. Nenhum número de
-     aparelho aqui — os dois valores vêm do sistema. */
-  const recuoPainel = alturaTeclado > 0
-    ? alturaTeclado + folgaSistema + spacing.md
-    : alturaBarra + spacing.md;
+  /* A CAIXA REAL onde o painel cabe, medida em vez de deduzida — largura e
+     altura. Deduzir da tela não funciona, e foi a origem dos dois defeitos
+     que esta janela tinha: o fundo é `position: absolute` e pinta por cima
+     das barras do sistema, mas `useSafeAreaInsets()` devolve 0 nas duas
+     pontas, porque um `SafeAreaView` acima já consumiu os insets. A janela
+     acreditava não existir barra de status, centralizava o painel como se a
+     tela começasse em zero e enfiava o cabeçalho embaixo do relógio — e
+     `useWindowDimensions()` ainda reportava 840dp numa tela de 914dp. Medido
+     no Pixel 8 em 16/09/2026: `it=0 ib=0 jan=840`.
+
+     Medir resolve a classe inteira do problema em vez deste aparelho: o que
+     chega aqui já é a área depois de qualquer barra, recorte, teclado,
+     rotação, janela dividida ou escala de fonte, sem o app precisar saber que
+     algum deles existe. */
+  const [caixa, setCaixa] = useState({ largura: 0, altura: 0 });
+  const aoMedirArea = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    // Só reage a mudança real: setState em todo layout é laço de render.
+    setCaixa((atual) =>
+      Math.abs(atual.largura - width) > 1 || Math.abs(atual.altura - height) > 1
+        ? { largura: width, altura: height }
+        : atual
+    );
+  }, []);
+  /* Quanto do teclado ainda falta reservar, comparando o que a tela pediu com
+     o que ela recebeu. É a mesma conta das outras janelas do app
+     (`lib/breakpoints.ts`), e existe para não descontar o teclado duas vezes:
+     somá-lo por conta própria numa janela que o sistema JÁ encolheu abre um
+     vão do tamanho do teclado entre o painel e ele. */
+  const { recuoInferior: recuoDoTeclado } = medidasDeJanelaFlutuante(
+    alturaJanela,
+    caixa.altura,
+    alturaTeclado
+  );
+  /* Onde o painel para: acima da barra de abas com o teclado fechado, acima do
+     TECLADO quando ele sobe. Nenhum número de aparelho — tudo vem do sistema. */
+  const recuoPainel = alturaTeclado > 0 ? recuoDoTeclado : alturaBarra + spacing.md;
   /* ── Geometria da janela: 3:4, centralizada, cedendo ao teclado ──────
      A proporção é fixa (3 de largura por 4 de altura), mas o TAMANHO não:
      ele é o maior retângulo 3:4 que cabe na área realmente livre. Essa área
@@ -118,19 +140,27 @@ export default function Granachat({
      tela: o eixo de simetria passa a ser o espaço que sobrou, que é o que a
      pessoa enxerga.
 
-     O piso de altura existe pro caso degenerado — paisagem num celular
-     pequeno com teclado aberto deixa uma faixa de poucas dezenas de dp, e um
-     3:4 obediente ali viraria uma tira inútil. Nesse extremo, é melhor a
-     janela encostar no teclado do que sumir. */
-  const ALTURA_MINIMA_UTIL = 260;
-  const LARGURA_MAXIMA_JANELA = 520;
-  const espacoLivre = Math.max(
-    ALTURA_MINIMA_UTIL,
-    alturaJanela - recuoPainel - insets.top - spacing.lg
+     NENHUM piso nem teto em dp entra aqui, e nenhuma dimensão de tela. Um
+     piso fixo (era 260dp) é o próprio defeito com outro nome: numa tela cuja
+     faixa livre é menor que ele, o piso vence, o painel fica maior que o
+     espaço e transborda — e o `justifyContent: 'center'` joga metade do
+     excesso para cima, levando o cabeçalho para fora da tela. Era esse o
+     "Granachat cortado no topo".
+
+     As duas linhas abaixo são a conta inteira: o maior retângulo 3:4 que cabe
+     na caixa MEDIDA. Como as duas entradas vêm da medição, o resultado é
+     correto em qualquer tela sem nada para ajustar por aparelho. */
+  const RAZAO_JANELA = 3 / 4;
+  /* Antes da primeira medição vale a janela, e só para o quadro inicial não
+     nascer com tamanho zero. */
+  const area = caixa.altura > 0 ? caixa : { largura: larguraJanela, altura: alturaJanela };
+  const { largura: larguraPainel, altura: alturaPainel } = janelaQueCabe(
+    area.largura,
+    area.altura,
+    RAZAO_JANELA
   );
-  const larguraDisponivel = Math.min(larguraJanela - spacing.md * 2, LARGURA_MAXIMA_JANELA);
-  const larguraPainel = Math.min(larguraDisponivel, espacoLivre * (3 / 4));
-  const alturaPainel = larguraPainel * (4 / 3);
+  /* O teto do campo é uma fração do PAINEL, não da tela: garante que sobrem
+     sempre dois terços de conversa, num painel de qualquer tamanho. */
   const alturaMaximaCampo = Math.min(120 * escalaTexto, alturaPainel / 3);
   /* ── Presença: "quero estar visível" ≠ "estou na árvore" ─────────────
      Antes o componente saía com `if (!visivel) return null`, ou seja, a
@@ -491,7 +521,7 @@ export default function Granachat({
        fundo, não filho, e na web o alvo do clique é um filho do painel. */
     <View
       ref={fundoRef}
-      style={[styles.fundo, { paddingTop: insets.top, paddingBottom: recuoPainel }]}
+      style={[styles.fundo, { paddingBottom: recuoPainel }]}
     >
       <Pressable
         style={StyleSheet.absoluteFill}
@@ -522,6 +552,10 @@ export default function Granachat({
       {/* Durante a saída o conteúdo deixa de aceitar toque: sem isto dá pra
           acertar um botão de uma janela que já está indo embora. O fundo
           continua consumindo o toque, então nada vaza pra tela de baixo. */}
+      {/* A ÁREA: o que sobrou depois de reservar teclado, barra e margens. É
+          ela que é medida, e é dela que sai o tamanho do painel — por isso o
+          painel nunca pode ficar maior que o espaço em que está. */}
+      <View style={styles.area} onLayout={aoMedirArea} pointerEvents="box-none">
       <Animated.View
         style={[{ width: larguraPainel, height: alturaPainel }, estiloPainel]}
         pointerEvents={visivel ? 'auto' : 'none'}
@@ -576,7 +610,7 @@ export default function Granachat({
             cena e quem ocupa é o teclado. Somar os dois deixa um vão morto do
             tamanho da barra — foi o "tá estranho" desta tela, e é o mesmo
             defeito que `components/Sheet.tsx` já documenta. */}
-        <View style={[styles.inputWrap, { paddingBottom: recuoInferior }]}>
+        <View style={styles.inputWrap}>
           <View style={styles.inputRow}>
             <TextInput
               accessibilityLabel="Mensagem para o Granabô"
@@ -614,6 +648,7 @@ export default function Granachat({
       </View>
       </View>
       </Animated.View>
+      </View>
     </View>
   );
 }
@@ -642,6 +677,15 @@ const styles = StyleSheet.create({
      componente). A ordem importa: o escurecimento sozinho já resolve a
      hierarquia, então se o blur nativo não estiver disponível no aparelho, o
      resultado continua correto em vez de depender dele. */
+  /* A área útil: o retângulo que sobra depois de o fundo reservar teclado,
+     barra de abas e margens. Medida em runtime (`aoMedirArea`) e usada como
+     ÚNICA fonte do tamanho do painel. */
+  area: {
+    flex: 1,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   fundo: {
     position: 'absolute',
     top: 0,
@@ -650,6 +694,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 60,
     paddingHorizontal: spacing.md,
+    /* Respiro vertical simétrico. Não é margem de barra de status: quem
+       garante que nada fique embaixo dela é o painel caber na área medida. */
+    paddingTop: spacing.lg,
     /* Centro do ESPAÇO LIVRE, não da janela: o `paddingBottom` aplicado no
        componente já desconta a barra de abas ou o teclado, então centralizar
        aqui posiciona a janela no meio do que a pessoa efetivamente vê. */
@@ -867,7 +914,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.rule,
     backgroundColor: theme.paper,
-    paddingTop: spacing.sm,
+    /* Simétrico de propósito. Era `sm` em cima e `lg` embaixo (o recuo vinha
+       do componente, de quando o rodapé ainda desviava do teclado por conta
+       própria): o campo encostava no fio de cima e sobrava uma faixa vazia
+       embaixo dele. Agora quem desvia do teclado é o painel inteiro, e aqui
+       só resta o respiro, igual dos dois lados. */
+    paddingVertical: spacing.md,
     paddingHorizontal: screenRhythm.padding,
   },
   inputRow: {
