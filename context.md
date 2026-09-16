@@ -8044,3 +8044,71 @@ nunca desconta o valor pago. Só aparece para quem paga ANTES do fechamento —
 com o fechamento certo, o caso do autor deixou de existir —, mas a tela ainda
 mentiria nesse cenário. Nada disto chega ao aparelho antes de uma build nova,
 e a cota do EAS volta em 01/10.
+
+## 16/09/2026 — M2 — nome do lançamento sem a forma de pagamento (`1ec9e63`)
+
+**Relato**, com a captura da fatura de outubro do C6: "Dois lançamentos, um no
+Granachat e outro no widget de voz. Os dois saíram com o nome de lançamento
+errado. Utilizaram a informação de "compra no crédito" que seria apenas para
+distinguir pix/débito, boleto ou crédito e adicionou no nome do lançamento".
+Nomes na captura: "Almoço crédito C6", "Transporte no crédito C6" e
+"Energético no crédito".
+
+**Causa comprovada no código: a ordem das chamadas.** `limparReferenciaCartao`
+troca "crédito C6" pela palavra "crédito", que `guessDescFromText` só sabe
+apagar quando ela fica sozinha no FIM da frase — a limpeza tem de vir antes da
+extração do nome. A voz (app e widget, mesmo núcleo) extraía o nome e nunca
+limpava. O chat limpava o nome já extraído, e sobrava o "no crédito" que a
+própria limpeza tinha posto. Além disso, a forma de pagamento no COMEÇO da frase
+("Crédito Almoço 20 reais", "pix mercado 50") não era apagada em caminho
+nenhum. Qual nome veio de qual caminho é dedução pelo formato — os que mantêm
+"C6" batem com o defeito da voz, o outro com o do chat —, coerente com o relato
+mas não conferida lançamento a lançamento no banco.
+
+**Correção.** `descricaoDoLancamento(texto, tipo, cartão?)`, em
+`lib/heuristics.ts` e na cópia Deno
+(`supabase/functions/_shared/interpretar-lancamento.ts`, guardada pelo
+`sync-parser`, agora 75/75), fixa a ordem e tira a forma de pagamento do
+começo — menos quando a palavra seguinte é preposição ("crédito do celular").
+Ela é usada em três lugares:
+
+- no núcleo de voz (`lib/widget-voz-task.ts`): nome base e, com o cartão
+  conhecido, `descricaoNoCartao` no parcelado, no avulso e no recibo;
+- na tela de revisão (`abrirNovaCompraDoTexto`, em `app/(app)/credito.tsx`),
+  que o botão do app e a notificação do widget abrem quando precisam de
+  confirmação — agora ela casa o cartão ANTES de extrair o nome;
+- no chat (`supabase/functions/assistente-financeiro/index.ts`), que extrai o
+  nome da frase com o cartão achado, em vez de limpar o nome já extraído.
+
+Teste novo: `__tests__/nome-sem-forma-de-pagamento.cjs`, com 118 verificações,
+entra no `test:voz`. Ele roda o núcleo real nas duas entradas, a tela de
+revisão, a paridade com a cópia Deno e os casos que não podem ser apagados.
+Seis mutações foram todas pegas: widget, ordem no app, forma de pagamento no
+começo, chat, cópia Deno e tela de revisão. O dublê de `heuristics` em
+`__tests__/widget-voz-cartoes.cjs` ganhou a função nova — sem ela a tarefa
+estourava e toda fala caía em "Não consegui salvar".
+
+**Mantido de propósito:**
+
+- "Crédito Almoço 20 reais" continua indo à revisão "Qual cartão?", porque o
+  núcleo não sabe se "Almoço" é nome de cartão, e mudar isso mexe no destino do
+  dinheiro. A revisão abre com o nome "Almoço".
+- O nome da loja que coincide com o do cartão fica ("Mercado C6 compras").
+- Sem "crédito" ou "cartão" na frase, nada marca o nome do cartão como cartão, e
+  ele fica no nome ("Farmácia no Nubank Ultravioleta").
+
+**Estado, e o que NÃO foi validado:**
+
+- [ ] **Chat: publicar a Edge Function `assistente-financeiro`.** Sem isso o
+      chat continua gravando "no crédito". Regra 11 conferida em 16/09, sem
+      publicar: v30 no ar, `updated_at` 2026-09-15T01:49:00Z (14/09, 22:49 no
+      horário local), 31 segundos depois de `731e77c`; `verify_jwt=true`;
+      nenhum código no servidor que falte no repositório. **Espera autorização
+      do autor.**
+- [ ] **Voz: só chega ao aparelho com build nova** (a cota do EAS volta em
+      01/10). Na build, lançar "almoço 20 reais no crédito C6" pelo widget e
+      pelo botão do app, e conferir o nome "Almoço" nos dois.
+- [ ] Os três lançamentos já gravados continuam com o nome errado. Renomear é
+      escrita na conta do autor e não foi feito.
+- Verificado: `tsc`, `deno check` da função, `test:ci` completo e
+      `git diff --check`.
