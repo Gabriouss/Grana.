@@ -8015,3 +8015,32 @@ expirado): (1) o fechamento cadastrado (17) pode não ser o real do cartão —
 vencer no dia 20 com fechamento no 17 dá só 3 dias, e cartões brasileiros
 costumam ter de 7 a 10; (2) pagamento antes do fechamento precisa de um
 tratamento na tela. Levadas ao autor.
+
+**Atualização do mesmo dia — o fechamento estava errado, e a tela não
+acompanhou a correção (`86b9222`).** O autor confirmou que o fechamento do C6
+estava cadastrado errado no dia 17 e o corrigiu. Conferido no banco com token
+novo: fechamento **14**, fatura de setembro paga (R$ 998,01) em 15/09, e as duas
+compras criadas em 16/09 às 09:00 e às 10:24 — o horário da captura. Com
+fechamento 14, as compras de 16/09 pertencem a outubro. A hipótese (1) acima
+estava certa.
+
+Ele então relatou: "a lista dos lançamentos não zerou após o pagamento da
+fatura para dar espaço para os lançamentos da nova fatura". Causa comprovada no
+código: `app/(app)/credito.tsx` só recalculava a fatura atual quando o cartão
+selecionado TROCAVA. Editar o fechamento deixava a tela em setembro, fechada e
+paga; e o dia do fechamento chegando com a aba aberta dava no mesmo, porque as
+abas ficam montadas desde `04b2260`.
+
+`faturaParaExibir` (`lib/creditoFaturas.ts`) decide: cartão novo abre na
+atual; se a atual mudou e a pessoa estava nela, a tela acompanha; se ela tinha
+navegado para outra fatura, fica onde está. O efeito passou a depender do
+`closing_day` do cartão selecionado e do dia de hoje, valores primitivos —
+`walletCards` continua fora, porque troca de referência a cada `loadData()`.
+Teste com o caso real em `corpus-credito-faturas.ts` (16/16), e com dente: o
+comportamento antigo reprova nos dois casos.
+
+**Continua aberto:** o status "Paga ✓" aparece com qualquer pagamento e o total
+nunca desconta o valor pago. Só aparece para quem paga ANTES do fechamento —
+com o fechamento certo, o caso do autor deixou de existir —, mas a tela ainda
+mentiria nesse cenário. Nada disto chega ao aparelho antes de uma build nova,
+e a cota do EAS volta em 01/10.
