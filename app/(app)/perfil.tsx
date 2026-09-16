@@ -1108,7 +1108,11 @@ const styles = StyleSheet.create({
   ultimaLinha: { borderBottomWidth: 0 },
   widgetRowCopy: { flex: 1, gap: spacing.fio },
   widgetRowHint: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
-  rowKey: { color: theme.ink, fontSize: type.apoio,
+  /* `flex: 1` — sem isso, um rótulo mais comprido que os vizinhos não quebra
+     linha: cresce pela largura do texto e empurra o Switch da linha para
+     fora do eixo dos outros (visto no rótulo do lembrete de almoço).
+     Rótulos curtos ficam iguais a antes. */
+  rowKey: { flex: 1, flexShrink: 1, marginRight: spacing.md, color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   rowValue: { color: theme.inkFaint, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
