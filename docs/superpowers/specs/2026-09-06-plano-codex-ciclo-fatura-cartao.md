@@ -256,7 +256,8 @@ só um cartão). Sugestão de implementação:
 
 ## Roteiro de verificação (rodar antes de considerar qualquer tarefa concluída)
 
-Usar a conta de testes (`gbr.design30@gmail.com` / `Gelitogelado1`) ou
+Usar a conta de testes (`gbr.design30@gmail.com`, senha em `E2E_TEST_PASSWORD`
+no `.env` local — nunca escrita aqui: este repositório é público) ou
 `agent-browser` no dev server (`npx expo start --web`). Criar um cartão de
 teste com fechamento dia 15, vencimento dia 22 (mesma config do cartão real
 do autor, "C6"), e:
