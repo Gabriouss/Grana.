@@ -27,6 +27,16 @@ Nenhum secret deve aparecer em app.json, código cliente, logs, commit, corpo
 de webhook ou query string. A chave Firebase pública do Android deve continuar
 restrita por pacote e SHA-1.
 
+## Testes (só na máquina local)
+
+| Nome | Usado por | Onde mora |
+| --- | --- | --- |
+| E2E_TEST_EMAIL / E2E_TEST_PASSWORD | roteiros do Maestro e testes de ponta a ponta na conta de teste descartável | só no .env local |
+
+Nunca com prefixo EXPO_PUBLIC_, que levaria o valor para dentro do app. O
+.easignore deixa o .env fora do pacote das builds do EAS (com .easignore
+presente, o EAS não lê o .gitignore).
+
 ## Checklist de rotação
 
 1. Criar novo segredo no provedor.

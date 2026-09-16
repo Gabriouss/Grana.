@@ -8115,7 +8115,10 @@ estourava e toda fala caía em "Não consegui salvar".
       pelo chat, que exige sessão de usuário e gasta cota do Gemini. Vale no
       app já instalado, sem build nova, porque o nome é decidido no servidor.
       QA: mandar "energético 10,99 no crédito C6" no Granachat, conferir o
-      nome "Energético" e pedir "desfaz".
+      nome "Energético" e pedir "desfaz". **Feito no mesmo dia pela M2, com
+      o login da conta de teste — e reprovou:** quando o Granabô pergunta a
+      categoria, a v31 gravou "Energético no crédito Alimentação". Corrigido
+      na v32; ver a seção seguinte.
 - [ ] **Voz: só chega ao aparelho com build nova** (a cota do EAS volta em
       01/10). Na build, lançar "almoço 20 reais no crédito C6" pelo widget e
       pelo botão do app, e conferir o nome "Almoço" nos dois.
@@ -8123,3 +8126,92 @@ estourava e toda fala caía em "Não consegui salvar".
       escrita na conta do autor e não foi feito.
 - Verificado: `tsc`, `deno check` da função, `test:ci` completo e
       `git diff --check`.
+
+## 16/09/2026 — M2 — login da conta de teste e segunda rodada do nome pelo chat (`4ce2242`, `9bb1805`, v32)
+
+**Login da conta de teste.** O autor passou a senha da conta de teste
+(`gbr.design30@gmail.com`) e pediu para guardá-la no `.env`. Ela está no `.env`
+da M2, em `E2E_TEST_EMAIL` e `E2E_TEST_PASSWORD` — os nomes que os roteiros do
+Maestro já usam; o valor não está em nenhum outro lugar. O `.env.example`
+passou a citar os dois nomes, sem valor.
+
+**O `.easignore` passou a excluir o `.env` (`4ce2242`).** Conferido no código
+do `eas-cli` 24.3.0 instalado: com `.easignore` presente, o `.gitignore` não é
+lido e a pasta de trabalho inteira é copiada para a build — o `.env` subia em
+toda build do EAS. As builds de preview e produção recebem as `EXPO_PUBLIC_`
+pelo `eas.json`, com valores idênticos aos do `.env` (conferido), então nada
+muda nelas. O perfil `development` não tem `env` no `eas.json`, mas não embute
+o JS, que vem do Metro local. Conferido com a mesma biblioteca `ignore` que o
+`eas-cli` usa: `.env`, `.env.local` e `.env.production` ficam fora;
+`.env.example`, `app.json` e `eas.json` continuam indo.
+
+**Um teste de ponta a ponta na conta de teste, contra a v31, achou três
+defeitos no lançamento pelo chat:**
+
+1. **Nome errado quando a resposta vem em outra mensagem.** "lança energético
+   10,99 no crédito C6" → o Granabô pergunta a categoria → "Alimentação" foi
+   gravado como **"Energético no crédito Alimentação"** (visto no banco).
+   `textoLancamentoConfiavel` cola a resposta na frase original, e o nome saía
+   dessa junção. A correção de `1ec9e63` só cobria a frase completa numa
+   mensagem.
+2. **Texto escrito para o modelo aparecia na tela.** `respostaFinalSegura`
+   devolve o resultado da escrita como está, e `resultadoValido` aceita os
+   textos de "NÃO registrei nada". A pessoa lia "Pergunte ao usuário qual
+   destas se encaixa…" e, em todo lançamento feito, "Confirme isso ao usuário
+   e avise que dá para desfazer…". O Granachat exibe `resposta` sem tratamento.
+3. **Data em UTC.** `occurred_on` vinha de `toISOString()`, então um lançamento
+   pelo chat depois das 21h de Brasília saía com o dia seguinte — perto do
+   fechamento, isso muda a fatura. Lido no código; não reproduzido no ar (o
+   teste foi às 14h).
+
+**Correção (`9bb1805`), publicada como v32:**
+
+- `fontesDoNomeDoLancamento` (`_shared/assistant-learning.ts`): o nome sai da
+  frase que pediu o lançamento; a resposta só batiza quando a frase original
+  dá o nome genérico ("Pagamento"). `origemDoLancamento` decide num lugar só
+  qual foi o pedido, e `textoLancamentoConfiavel` continua igual.
+- No executor (`assistente-financeiro/index.ts`), `nomeDoLancamento(cartao)`
+  aplica isso nos três pontos que usavam o nome, inclusive a pergunta de
+  categoria, que agora cita o nome sem "no crédito C6".
+- Os cinco textos que chegam à pessoa (valor, categoria, vencimento, cartão e
+  parcelamento fora do crédito) e a confirmação foram reescritos para ela. Os
+  textos que o filtro recusa ("não existe", "não há … cadastrado", "não
+  consegui") passam pelo modelo e continuam escritos para ele.
+- `occurred_on: hojeEmSaoPaulo()`, a mesma conversão de `resumoScoreERitmo`.
+
+Teste novo: `__tests__/granabo-conversa-lancamento.cjs`, 26 verificações, no
+`test:assistente-aprendizado`. Handler real, banco e modelo simulados, o modelo
+mandando um texto reescrito com número inventado, e o relógio parado às 23h30
+de Brasília e na virada do ano em UTC. Oito mutações pegas — uma delas, a
+ordem da correção de valor na resposta, não tinha cobertura antes.
+
+**Publicação, pela regra 11:** a v31 no ar era a desta sessão, das 13:48; a
+diferença para o repositório era só `9bb1805`; o pacote da v31 foi guardado
+na pasta temporária da sessão; `deno check` limpo; o commit foi empurrado ANTES
+de publicar. v31 → **v32**, `updated_at` 2026-09-16T17:26:14Z (14:26 local),
+`verify_jwt=true`, as outras sete funções intactas. Para voltar, publicar a
+partir de `1ec9e63`.
+
+**Conferido no ar**, na conta de teste, com um cartão "C6" criado só para isso
+e apagado no fim:
+
+- a pergunta de categoria sai escrita para a pessoa e cita "Energético";
+- a resposta "Alimentação" grava **"Energético"**: R$ 10,99, crédito, C6, dia
+  16/09;
+- "lança almoço 20 reais crédito C6" grava "Almoço" direto;
+- os dois "desfaz" removeram os lançamentos, e a conta voltou ao estado de
+  antes.
+
+**Não resolvido, registrado para decisão:**
+
+- [ ] Resposta de esclarecimento com verbo de lançamento ("Coloca em
+      Alimentação") é lida como pedido NOVO, sem o valor da mensagem anterior,
+      e o Granabô diz que não achou o valor. A regra existe para não misturar
+      números de conversas diferentes; mudar exige saber que havia uma pergunta
+      pendente.
+- [ ] "lança mercado 300 em 3x no pix" vai para o crédito: `ehIntencaoCredito`
+      trata parcela como crédito, e só "débito" dito com todas as letras tira.
+      É decisão antiga, comentada no código, e vale para a voz também.
+- [ ] Lançamento pelo chat depois das 21h: conferir no ar numa noite.
+- [ ] "hoje" continua no nome de alguns lançamentos ("Uber hoje", visto na
+      conta de teste) — pendência já registrada.
