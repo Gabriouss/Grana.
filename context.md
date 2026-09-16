@@ -1,3 +1,52 @@
+# ALERTA CRÍTICO DE SEGURANÇA — LER ANTES DE QUALQUER OUTRA COISA
+
+> **Registrado pela M2 em 16/09/2026, a pedido do autor, como informação
+> séria, crítica e de extrema importância. É a PRIMEIRA coisa que a próxima
+> sessão da M1 precisa saber — antes do inventário, antes de ler o resto,
+> antes de qualquer pedido. Não apague este bloco enquanto os itens abaixo não
+> estiverem resolvidos E confirmados pelo autor.**
+
+**1. Os segredos do `.env` da M1 foram enviados ao servidor do EAS.** A build
+1.10.2 (12/09/2026, disparada pela M1, build `149bb92e`) levou, dentro do
+pacote do projeto, o `.env` da M1 com `CAKTO_CLIENT_ID`,
+`CAKTO_CLIENT_SECRET`, `GITHUB_TOKEN`, `SUPABASE_ACCESS_TOKEN` e
+`VERCEL_TOKEN`. Comprovado pelo log da build (`env: export …`, que mostra só
+os nomes). Causa: o `.easignore`, criado em 01/09 (`00de222`), substitui o
+`.gitignore` no envio e não excluía o `.env`; corrigido em `4ce2242`. Os
+segredos NÃO entraram no APK — o APK da 1.10.2 foi aberto e conferido — e não
+ficaram públicos, mas estão num servidor de terceiro, fora do controle do
+projeto.
+
+**2. A senha da conta de teste está pública no GitHub.** O repositório
+`Gabriouss/Grana.` é PÚBLICO. O plano
+`docs/superpowers/specs/2026-09-06-plano-codex-ciclo-fatura-cartao.md` trazia
+a senha em texto puro desde `14ef2d2` (06/09). Ela saiu do arquivo em
+`eb3b3ad`, mas continua no histórico, aberta a qualquer um.
+
+**O que a M1 faz, nesta ordem, antes de qualquer outro trabalho:**
+
+1. **`git fetch origin` e `git pull`.** Sem o `4ce2242`, a próxima build da
+   M1 manda o `.env` de novo, com os mesmos segredos. Depois do pull, confira
+   que o `.easignore` tem as linhas `.env` e `.env.*`.
+2. **NÃO dispare nenhuma build (`eas build`) antes do passo 1**, nem com
+   pedido do autor: explique o motivo e faça o pull primeiro.
+3. **Pergunte ao autor se os segredos já foram trocados**:
+   `CAKTO_CLIENT_SECRET` (e o par `CAKTO_CLIENT_ID`), `GITHUB_TOKEN`,
+   `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN` e a senha da conta de teste. Se não
+   foram, diga que a troca é pendência crítica. Depois da troca, atualize o
+   `.env` da M1 (inclusive `E2E_TEST_PASSWORD`) — e nunca escreva os valores
+   em arquivo versionado, no vault ou em registro.
+4. Leia a regra 15 do `AGENTS.md` e a seção "O `.env` foi nas builds do EAS", no fim deste arquivo.
+
+**Estado em 16/09/2026:** passo 1 pendente na M1 · troca dos cinco segredos
+pendente (decisão do autor) · senha da conta de teste ainda não trocada.
+
+Quando tudo estiver resolvido e confirmado pelo autor, troque este bloco por
+uma linha dizendo quem resolveu, o quê e quando. O registro detalhado continua
+no `context.md`.
+
+---
+
 # 16/09/2026 (M1, continuação) — auditoria end-to-end de lançamentos e switch torto no Perfil (`6c7ed67`)
 
 **Pedido.** "eu gostaria que você continuasse mexendo no app em busca de
