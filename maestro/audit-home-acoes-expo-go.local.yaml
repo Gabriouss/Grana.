@@ -1,0 +1,47 @@
+appId: host.exp.exponent
+---
+- assertVisible: "Abrir perfil"
+- tapOn: { text: "Ocultar valores" }
+- extendedWaitUntil: { visible: "Mostrar valores", timeout: 5000 }
+- tapOn: { text: "Mostrar valores" }
+- extendedWaitUntil: { visible: "Ocultar valores", timeout: 5000 }
+- tapOn: { text: "Carteira Total. Trocar de carteira" }
+- extendedWaitUntil: { visible: "Selecionar conta", timeout: 10000 }
+- assertVisible: "Total"
+- assertVisible: "Adicionar nova carteira"
+- pressKey: BACK
+- tapOn: { text: "Colar comprovante" }
+- extendedWaitUntil: { visible: "Texto do comprovante", timeout: 10000 }
+- assertVisible: "Reconhecer dados"
+- pressKey: BACK
+- swipe:
+    start: 85%, 30%
+    end: 20%, 30%
+    duration: 500
+- tapOn: { text: "Importar extrato" }
+- extendedWaitUntil: { visible: "Importar extrato", timeout: 10000 }
+- assertVisible: "Conteúdo do extrato bancário"
+- assertVisible: "Escolher arquivo do extrato"
+- pressKey: BACK
+- tapOn: { text: "Escanear nota" }
+- extendedWaitUntil: { visible: "Acesso à câmera", timeout: 10000 }
+- assertVisible: "Permitir câmera"
+- tapOn: { text: "Agora não" }
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 10000 }
+- tapOn: { text: "Abrir conversa com o Granabô" }
+- extendedWaitUntil: { visible: ".*Granabô.*", timeout: 10000 }
+- assertVisible: ".*Mensagem para o Granabô.*"
+- tapOn: { text: "Fechar conversa com o Granabô" }
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 10000 }
+- tapOn: { text: "Novo lançamento" }
+- assertVisible: "Entrada"
+- assertVisible: "Saída"
+- assertVisible: "Boleto"
+- assertVisible: "Crédito"
+- tapOn: { text: "Saída" }
+- extendedWaitUntil: { visible: "Nova saída", timeout: 15000 }
+- assertVisible: "Descrição"
+- assertVisible: "Valor do lançamento em reais"
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Buscar lançamentos", timeout: 15000 }
+- takeScreenshot: home-acoes-expo-go

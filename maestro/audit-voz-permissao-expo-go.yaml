@@ -1,0 +1,11 @@
+appId: host.exp.exponent
+---
+- swipe:
+    start: 20%, 30%
+    end: 85%, 30%
+    duration: 500
+- assertVisible: "Lançar por voz"
+- tapOn: { text: "Lançar por voz" }
+- extendedWaitUntil: { visible: "Permissão de microfone", timeout: 15000 }
+- assertVisible: "Para lançar por voz, autorize o microfone nas configurações do aparelho."
+- pressKey: BACK

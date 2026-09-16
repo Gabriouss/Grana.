@@ -1,0 +1,43 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Débito e Pix" }
+- extendedWaitUntil: { visible: "Lançamentos", timeout: 15000 }
+- assertVisible: "Buscar lançamentos"
+- tapOn: { text: "Crédito" }
+- extendedWaitUntil: { visible: "Crédito", timeout: 15000 }
+- assertVisible: "Lançar compra no crédito"
+- tapOn: { text: "Boletos" }
+- extendedWaitUntil: { visible: "Contas a pagar", timeout: 15000 }
+- assertVisible: "Nova conta a pagar"
+- tapOn: { text: "Gráficos" }
+- extendedWaitUntil: { visible: "Gráficos", timeout: 15000 }
+- assertVisible: "Sem dados suficientes para o período."
+- tapOn: { text: "Desafios" }
+- extendedWaitUntil: { visible: "Desafios", timeout: 15000 }
+- scrollUntilVisible:
+    element: { text: "Mural de Conquistas" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Mural de Conquistas"
+- tapOn: { text: "Início" }
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 15000 }
+- swipe:
+    start: 20%, 30%
+    end: 85%, 30%
+    duration: 500
+- assertVisible: "Lançar por voz"
+- tapOn: { text: "Abrir perfil" }
+- scrollUntilVisible:
+    element: { text: "Categorias" }
+    direction: UP
+    timeout: 10000
+- assertVisible: "Categorias"
+- scrollUntilVisible:
+    element: { text: "Sair da conta" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Sair da conta"
+- assertVisible: "Excluir conta e dados"
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 15000 }
+- takeScreenshot: navegacao-expo-go

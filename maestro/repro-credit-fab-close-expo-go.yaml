@@ -1,0 +1,7 @@
+appId: host.exp.exponent
+---
+- assertVisible: "Lançar compra no crédito"
+- tapOn: { text: "Lançar compra no crédito" }
+- extendedWaitUntil: { visible: "Lançar compra no crédito", timeout: 10000 }
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Lançar compra no crédito", timeout: 10000 }

@@ -1,0 +1,49 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Desafios" }
+- extendedWaitUntil: { visible: "Desafios", timeout: 15000 }
+- swipe:
+    start: 50%, 35%
+    end: 50%, 80%
+    duration: 500
+- extendedWaitUntil: { visible: "pontos", timeout: 15000 }
+- assertVisible: "Progresso de metas"
+- assertVisible: "Ritmo da Semana"
+- scrollUntilVisible:
+    element: { text: "Mural de Conquistas" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Mural de Conquistas"
+- swipe:
+    start: 50%, 80%
+    end: 50%, 40%
+    duration: 500
+- scrollUntilVisible:
+    element: { text: ".*Obtidas.*" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: ".*Todas.*"
+- assertVisible: ".*Obtidas.*"
+- assertVisible: ".*Pendentes.*"
+- tapOn: { text: ".*Obtidas.*" }
+- scrollUntilVisible:
+    element: { text: ".*Obtidas.*" }
+    direction: UP
+    timeout: 10000
+- assertVisible: ".*Obtidas.*"
+- tapOn: { text: ".*Pendentes.*" }
+- scrollUntilVisible:
+    element: { text: ".*Pendentes.*" }
+    direction: UP
+    timeout: 10000
+- assertVisible: ".*Pendentes.*"
+- tapOn: { text: ".*Todas.*" }
+- scrollUntilVisible:
+    element: { text: ".*Todas.*" }
+    direction: UP
+    timeout: 10000
+- assertVisible: "Mural de Conquistas"
+- tapOn: { text: "Carteira Total. Trocar de carteira" }
+- extendedWaitUntil: { visible: "Selecionar conta", timeout: 10000 }
+- assertVisible: "Total"
+- pressKey: BACK

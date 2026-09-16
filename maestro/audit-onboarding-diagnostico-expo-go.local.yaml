@@ -1,0 +1,12 @@
+appId: host.exp.exponent
+---
+- assertVisible: "Seu diagnóstico"
+- scrollUntilVisible:
+    element: { text: "Aplicar orçamento sugerido" }
+    direction: DOWN
+    timeout: 10000
+- tapOn: { text: "Aplicar orçamento sugerido" }
+- extendedWaitUntil: { visible: "Orçamento aplicado", timeout: 30000 }
+- tapOn: { text: "Começar a usar o Grana" }
+- extendedWaitUntil: { visible: "Início", timeout: 30000 }
+- takeScreenshot: onboarding-expo-go-completo

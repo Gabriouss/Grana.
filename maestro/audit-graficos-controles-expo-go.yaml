@@ -1,0 +1,38 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Gráficos" }
+- extendedWaitUntil: { visible: "Gráficos", timeout: 15000 }
+- assertVisible: "Ano a Ano"
+- assertVisible: "Mês a Mês"
+- assertVisible: "Período"
+- assertVisible: "Despesas"
+- assertVisible: "Renda"
+- assertVisible: "Geral"
+- assertVisible: "Sem dados suficientes para o período."
+- tapOn: { text: "Renda" }
+- assertVisible: "Total recebido no período"
+- tapOn: { text: "Geral" }
+- assertVisible: "Movimentação no período"
+- tapOn: { text: "Despesas" }
+- assertVisible: "Total gasto no período"
+- tapOn: { text: "Período" }
+- assertVisible: "De"
+- assertVisible: "Até"
+- tapOn: { text: "De" }
+- extendedWaitUntil: { visible: "Início do período", timeout: 10000 }
+- assertVisible: "Escolher hoje"
+- assertVisible: "Escolher ontem"
+- tapOn: { text: "Escolher ontem" }
+- assertVisible: "De"
+- tapOn: { text: "Até" }
+- extendedWaitUntil: { visible: "Fim do período", timeout: 10000 }
+- tapOn: { text: "Escolher hoje" }
+- assertVisible: "Até"
+- tapOn: { text: "Ocultar valores" }
+- extendedWaitUntil: { visible: "Mostrar valores", timeout: 5000 }
+- tapOn: { text: "Mostrar valores" }
+- extendedWaitUntil: { visible: "Ocultar valores", timeout: 5000 }
+- tapOn: { text: "Carteira Total. Trocar de carteira" }
+- extendedWaitUntil: { visible: "Selecionar conta", timeout: 10000 }
+- assertVisible: "Adicionar nova carteira"
+- pressKey: BACK

@@ -1,0 +1,16 @@
+appId: host.exp.exponent
+---
+- assertVisible: "1/2"
+- assertVisible: "Lance em um toque"
+- tapOn: { text: "Próximo" }
+- assertVisible: "2/2"
+- tapOn: { text: "Concluir" }
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 30000 }
+- assertVisible: "Lançar por voz"
+- assertVisible: "Início"
+- assertVisible: "Débito e Pix"
+- assertVisible: "Crédito"
+- assertVisible: "Boletos"
+- assertVisible: "Gráficos"
+- assertVisible: "Desafios"
+- takeScreenshot: home-expo-go

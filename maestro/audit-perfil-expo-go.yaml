@@ -1,0 +1,80 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Abrir perfil" }
+- scrollUntilVisible:
+    element: { text: "Categorias" }
+    direction: UP
+    timeout: 10000
+- extendedWaitUntil: { visible: "Categorias", timeout: 15000 }
+- assertVisible: "Editar nome"
+- assertVisible: "Sincronização"
+- assertVisible: "Atalhos rápidos"
+- assertVisible: "Enviar feedback ou sugestão"
+- tapOn: { point: "94%, 19%" }
+- extendedWaitUntil: { visible: "Como podemos te chamar?", timeout: 10000 }
+- assertVisible: "Seu nome ou apelido"
+- assertVisible: "Salvar"
+- assertVisible: "Cancelar"
+- tapOn: { text: "Cancelar" }
+- extendedWaitUntil: { visible: "Categorias", timeout: 10000 }
+- tapOn: { text: "Categorias" }
+- extendedWaitUntil: { visible: "Gerenciar categorias", timeout: 10000 }
+- assertVisible: "+ Criar categoria"
+- tapOn: { text: "+ Criar categoria" }
+- extendedWaitUntil: { visible: "Nome da nova categoria", timeout: 10000 }
+- assertVisible: "Adicionar categoria"
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Categorias", timeout: 10000 }
+- tapOn: { text: "Atalhos rápidos" }
+- extendedWaitUntil: { visible: "Atalhos rápidos", timeout: 10000 }
+- assertVisible: "Novo gasto pré-preenchido"
+- assertVisible: "Nova entrada"
+- assertVisible: "Escanear nota fiscal"
+- assertVisible: "Ver quanto tenho livre"
+- assertVisible: "Fechar"
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Enviar feedback ou sugestão", timeout: 10000 }
+- tapOn: { text: "Enviar feedback ou sugestão" }
+- extendedWaitUntil: { visible: "Enviar feedback", timeout: 10000 }
+- assertVisible: "Sugestão"
+- assertVisible: "Problema"
+- assertVisible: "Elogio"
+- assertVisible: "Outro"
+- assertVisible: "Mensagem do feedback"
+- assertVisible: "Enviar feedback"
+- tapOn: { point: "50%, 72%" }
+- extendedWaitUntil: { visible: "Mensagem obrigatória", timeout: 5000 }
+- tapOn: { text: "OK" }
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Enviar feedback ou sugestão", timeout: 10000 }
+- scrollUntilVisible:
+    element: { text: "Lembrete diário de gastos" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Lembretes de contas e faturas"
+- scrollUntilVisible:
+    element: { text: "Modo privacidade" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Modo privacidade"
+- assertVisible: "Dados de exemplo"
+- scrollUntilVisible:
+    element: { text: "Termos de Uso" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Termos de Uso"
+- assertVisible: "Política de Privacidade"
+- assertVisible: "Como excluir meus dados"
+- tapOn: { text: "Termos de Uso" }
+- extendedWaitUntil: { visible: "Termos de Uso", timeout: 10000 }
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Como excluir meus dados", timeout: 10000 }
+- tapOn: { text: "Política de Privacidade" }
+- extendedWaitUntil: { visible: "Política de Privacidade", timeout: 10000 }
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Como excluir meus dados", timeout: 10000 }
+- tapOn: { text: "Como excluir meus dados" }
+- extendedWaitUntil: { visible: "Como excluir seus dados do Grana.", timeout: 10000 }
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Como excluir meus dados", timeout: 10000 }
+- takeScreenshot: perfil-expo-go

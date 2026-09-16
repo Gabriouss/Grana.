@@ -1,0 +1,32 @@
+appId: host.exp.exponent
+---
+- assertVisible: "Como você quer ser chamado?"
+- tapOn: { text: "Continuar" }
+- extendedWaitUntil: { visible: "Como você cuida do seu dinheiro hoje?", timeout: 10000 }
+- tapOn: { text: "Em busca de método" }
+- tapOn: { text: "Continuar" }
+- extendedWaitUntil: { visible: "Qual o seu foco principal no Grana agora?", timeout: 10000 }
+- tapOn: { text: "Construir uma reserva ou meta" }
+- tapOn: { text: "Continuar" }
+- extendedWaitUntil: { visible: "Como é o seu uso de cartão de crédito?", timeout: 10000 }
+- tapOn: { text: "Controlado / Por conveniência" }
+- tapOn: { text: "Continuar" }
+- extendedWaitUntil: { visible: "Qual sua renda mensal aproximada?", timeout: 10000 }
+- tapOn: { text: "Renda mensal aproximada em reais" }
+- inputText: "5000"
+- hideKeyboard
+- tapOn: { text: "30% ou mais" }
+- tapOn: { text: "Continuar" }
+- extendedWaitUntil: { visible: "Como você prefere ver seu painel inicial?", timeout: 10000 }
+- tapOn: { text: "Essencial & Clean" }
+- tapOn: { text: "Continuar" }
+- extendedWaitUntil: { visible: "Seu diagnóstico", timeout: 15000 }
+- scrollUntilVisible:
+    element: { text: "Aplicar orçamento sugerido" }
+    direction: DOWN
+    timeout: 10000
+- tapOn: { text: "Aplicar orçamento sugerido" }
+- extendedWaitUntil: { visible: "Orçamento aplicado", timeout: 30000 }
+- tapOn: { text: "Começar a usar o Grana" }
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 30000 }
+- takeScreenshot: onboarding-expo-go-pos-correcao

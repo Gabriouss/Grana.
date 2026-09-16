@@ -1,0 +1,138 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Início" }
+- extendedWaitUntil: { visible: "Boa noite, Auditoria", timeout: 10000 }
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 500
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 500
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 500
+- tapOn: { text: "Personalizar Início" }
+- extendedWaitUntil: { visible: "Modelos Rápidos", timeout: 10000 }
+- tapOn: { text: "Completo" }
+- tapOn: { text: "Concluir Personalização" }
+- extendedWaitUntil: { visible: "Boa noite, Auditoria", timeout: 10000 }
+- swipe:
+    start: 50%, 20%
+    end: 50%, 80%
+    duration: 500
+- swipe:
+    start: 50%, 20%
+    end: 50%, 80%
+    duration: 500
+- swipe:
+    start: 50%, 20%
+    end: 50%, 80%
+    duration: 500
+- swipe:
+    start: 50%, 20%
+    end: 50%, 80%
+    duration: 500
+- scrollUntilVisible:
+    element: { text: "Cofrinhos & metas" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Cofrinhos & metas"
+- assertVisible: "Nova meta"
+- tapOn: { text: "Nova meta" }
+- extendedWaitUntil: { visible: "Nova meta", timeout: 10000 }
+- assertVisible: "Nome da meta"
+- assertVisible: "Valor alvo da meta em reais"
+- assertVisible: "Ícone"
+- assertVisible: "Cor"
+- assertVisible: "Prazo (opcional)"
+- assertVisible: "Sem prazo"
+- assertVisible: "Criar meta"
+- tapOn: { text: "Prazo (opcional)" }
+- extendedWaitUntil: { visible: "Prazo da meta", timeout: 10000 }
+- assertVisible: "Escolher hoje"
+- assertVisible: "Escolher ontem"
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Criar meta", timeout: 10000 }
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Cofrinhos & metas", timeout: 10000 }
+- scrollUntilVisible:
+    element: { text: "Comprometimento futuro" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Comprometimento futuro"
+- scrollUntilVisible:
+    element: { text: "Nenhum cartão cadastrado ainda. Toque para adicionar." }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Nenhum cartão cadastrado ainda. Toque para adicionar."
+- scrollUntilVisible:
+    element: { text: "Vence esta semana" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Vence esta semana"
+- assertVisible: "Nenhuma conta a vencer."
+- scrollUntilVisible:
+    element: { text: "Gastos por categoria" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Gastos por categoria"
+- assertVisible: "Nenhum gasto registrado ainda."
+- scrollUntilVisible:
+    element: { text: "Fluxo financeiro" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Fluxo financeiro"
+- assertVisible: "Mês"
+- assertVisible: "7 Dias"
+- assertVisible: "Ano"
+- assertVisible: "Entradas"
+- assertVisible: "Saídas"
+- assertVisible: "Ambos"
+- tapOn: { text: "7 Dias" }
+- tapOn: { text: "Saídas" }
+- scrollUntilVisible:
+    element: { text: "Orçamento do mês" }
+    direction: DOWN
+    timeout: 10000
+    visibilityPercentage: 50
+- assertVisible: "Orçamento do mês"
+- assertVisible: "Templates"
+- assertVisible: "+ Definir"
+- tapOn: { text: "Templates" }
+- extendedWaitUntil: { visible: "Templates de Orçamento", timeout: 10000 }
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Orçamento do mês", timeout: 10000 }
+- tapOn: { text: "+ Definir" }
+- extendedWaitUntil: { visible: "Valor do orçamento em reais", timeout: 10000 }
+- assertVisible: "Salvar orçamento"
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Orçamento do mês", timeout: 10000 }
+- scrollUntilVisible:
+    element: { text: "Últimos lançamentos" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Últimos lançamentos"
+- assertVisible: "Nenhum lançamento ainda."
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 500
+- tapOn: { text: "Personalizar Início" }
+- extendedWaitUntil: { visible: "Modelos Rápidos", timeout: 10000 }
+- tapOn: { text: "Essencial" }
+- tapOn: { text: "Concluir Personalização" }
+- extendedWaitUntil: { visible: "Boa noite, Auditoria", timeout: 10000 }
+- swipe:
+    start: 50%, 20%
+    end: 50%, 80%
+    duration: 500
+- swipe:
+    start: 50%, 20%
+    end: 50%, 80%
+    duration: 500
+- assertVisible: "Lançamento rápido"
+- assertVisible: "Nenhum lançamento ainda."
+- takeScreenshot: home-secoes-expo-go

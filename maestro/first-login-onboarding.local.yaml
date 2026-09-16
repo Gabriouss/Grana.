@@ -1,0 +1,17 @@
+appId: com.gabriouss.grana
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "E-mail"
+- inputText: ${E2E_TEST_EMAIL}
+- tapOn:
+    text: "Senha"
+- inputText: ${E2E_TEST_PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: "Entrar"
+- extendedWaitUntil:
+    visible: "Como você quer ser chamado?"
+    timeout: 30000
+- takeScreenshot: onboarding-primeiro-acesso

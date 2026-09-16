@@ -1,0 +1,8 @@
+appId: host.exp.exponent
+---
+- assertVisible: "Abrir perfil"
+- tapOn: { text: "Colar comprovante" }
+- extendedWaitUntil: { visible: "Texto do comprovante", timeout: 10000 }
+- assertVisible: "Reconhecer dados"
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 10000 }

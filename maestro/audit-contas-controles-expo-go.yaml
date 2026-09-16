@@ -1,0 +1,31 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Boletos" }
+- extendedWaitUntil: { visible: "Contas a pagar", timeout: 15000 }
+- assertVisible: "Nenhuma conta vencendo neste mês. Toque no botão \"+\" para registrar."
+- assertVisible: "Mês anterior"
+- assertVisible: "Próximo mês"
+- tapOn: { text: "Nova conta a pagar" }
+- extendedWaitUntil: { visible: "Nova conta a pagar", timeout: 10000 }
+- assertVisible: "Descrição da conta a pagar"
+- assertVisible: "Valor do lançamento em reais"
+- assertVisible: "Categoria: Outros"
+- assertVisible: "Vencimento"
+- assertVisible: "Repetir mensalmente"
+- tapOn: { text: "Repetir mensalmente" }
+- assertVisible: "Ao marcar esta conta como paga, a do mês seguinte é criada sozinha."
+- tapOn: { text: "Repetir mensalmente" }
+- tapOn: { text: "Categoria: Outros" }
+- extendedWaitUntil: { visible: "Categoria", timeout: 10000 }
+- assertVisible: "Moradia"
+- tapOn: { text: "Moradia" }
+- assertVisible: "Categoria: Moradia"
+- tapOn: { text: ".*Vencimento:.*" }
+- extendedWaitUntil: { visible: "Escolher hoje", timeout: 10000 }
+- assertVisible: "Escolher ontem"
+- assertVisible: "Escolher o primeiro dia deste mês"
+- tapOn: { text: "Escolher hoje" }
+- tapOn: { text: "Salvar conta" }
+- assertVisible: "Informe uma descrição para o lançamento."
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Nova conta a pagar", timeout: 10000 }

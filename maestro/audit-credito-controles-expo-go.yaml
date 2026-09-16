@@ -1,0 +1,34 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Crédito" }
+- extendedWaitUntil: { visible: "Lançar compra no crédito", timeout: 15000 }
+- assertVisible: "Nenhum cartão cadastrado"
+- tapOn: { text: "+ Cadastrar primeiro cartão" }
+- extendedWaitUntil: { visible: "Novo Cartão de Crédito", timeout: 10000 }
+- assertVisible: "Nome do cartão"
+- assertVisible: "Banco Emissor"
+- assertVisible: "Últimos 4 dígitos do cartão"
+- assertVisible: "Limite total do cartão em reais"
+- assertVisible: "Dia de fechamento da fatura"
+- assertVisible: "Dia de vencimento da fatura"
+- tapOn: { text: "Salvar Cartão" }
+- assertVisible: "Informe um nome para identificar o cartão."
+- tapOn: { text: "Fechar" }
+- tapOn: { text: "Lançar compra no crédito" }
+- extendedWaitUntil: { visible: "Lançar compra no crédito", timeout: 10000 }
+- assertVisible: "Descrição da compra no cartão"
+- assertVisible: "Valor do lançamento em reais"
+- assertVisible: "Compra parcelada"
+- tapOn: { text: "Compra parcelada" }
+- assertVisible: "Em quantas vezes"
+- tapOn: { text: "Mais uma parcela" }
+- tapOn: { text: "Compra parcelada" }
+- tapOn: { text: "Descrição da compra no cartão" }
+- inputText: "Compra de auditoria"
+- tapOn: { text: "Valor do lançamento em reais" }
+- inputText: "1000"
+- pressKey: BACK
+- tapOn: { text: "Salvar lançamento" }
+- assertVisible: "Esta carteira não possui cartão cadastrado."
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Lançar compra no crédito", timeout: 10000 }

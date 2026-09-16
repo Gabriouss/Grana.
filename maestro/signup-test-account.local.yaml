@@ -1,0 +1,27 @@
+appId: com.gabriouss.grana
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "Não tem conta? Criar conta"
+- extendedWaitUntil:
+    visible: "Criar conta"
+    timeout: 10000
+- tapOn:
+    text: "E-mail"
+- inputText: ${E2E_TEST_EMAIL}
+- tapOn:
+    text: "Senha"
+- inputText: ${E2E_TEST_PASSWORD}
+- tapOn:
+    text: "Confirmar senha"
+- inputText: ${E2E_TEST_PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: "Li e concordo com os.*"
+- tapOn:
+    text: "Criar conta"
+    below:
+      text: "Li e concordo com os.*"
+- waitForAnimationToEnd
+- takeScreenshot: cadastro-conta-teste

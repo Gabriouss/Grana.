@@ -1,0 +1,30 @@
+appId: host.exp.exponent
+---
+- pressKey: BACK
+- tapOn: { text: "Abrir perfil" }
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 500
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 500
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 500
+- tapOn: { text: "Sair da conta" }
+- extendedWaitUntil: { visible: "Você precisará entrar novamente para ver seus dados.", timeout: 10000 }
+- tapOn: { text: "Cancelar" }
+- tapOn: { text: "Sair da conta" }
+- extendedWaitUntil: { visible: "Você precisará entrar novamente para ver seus dados.", timeout: 10000 }
+- tapOn: { text: "Sair" }
+- extendedWaitUntil: { visible: "E-mail", timeout: 15000 }
+- tapOn: { text: "E-mail" }
+- inputText: ${E2E_TEST_EMAIL}
+- tapOn: { text: "Senha" }
+- inputText: ${E2E_TEST_PASSWORD}
+- hideKeyboard
+- tapOn: { text: "Entrar" }
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 20000 }

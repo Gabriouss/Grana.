@@ -1,0 +1,13 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Início" }
+- extendedWaitUntil: { visible: "Boa noite, Auditoria", timeout: 10000 }
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 500
+- tapOn: { text: "Personalizar Início" }
+- extendedWaitUntil: { visible: "Modelos Rápidos", timeout: 10000 }
+- tapOn: { text: "Essencial" }
+- tapOn: { text: "Concluir Personalização" }
+- extendedWaitUntil: { visible: "Boa noite, Auditoria", timeout: 10000 }

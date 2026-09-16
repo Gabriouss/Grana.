@@ -1,0 +1,48 @@
+appId: host.exp.exponent
+---
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 30000 }
+- tapOn: { text: "Débito e Pix" }
+- extendedWaitUntil: { visible: "Buscar lançamentos", timeout: 15000 }
+- assertVisible: "Mês anterior"
+- assertVisible: ".*Voltar para o mês atual"
+- tapOn: { text: ".*Voltar para o mês atual" }
+- assertVisible: "Setembro 2026. Voltar para o mês atual"
+- assertVisible: "Próximo mês"
+- tapOn: { text: "Buscar lançamentos" }
+- inputText: "filtro-sem-resultado"
+- assertVisible: "Nenhum lançamento encontrado com esse filtro."
+- tapOn: { text: "Limpar busca" }
+- assertVisible: "Buscar por descrição ou categoria"
+- pressKey: BACK
+- tapOn: { text: "Entradas" }
+- tapOn: { text: "Saídas" }
+- tapOn: { point: "89%, 20%" }
+- assertVisible: "Outubro 2026"
+- tapOn: { text: "Outubro 2026. Voltar para o mês atual" }
+- assertVisible: "Setembro 2026"
+- tapOn: { text: "Novo lançamento" }
+- tapOn: { text: "Entrada" }
+- extendedWaitUntil: { visible: "Nova entrada", timeout: 15000 }
+- assertVisible: "Descrição do lançamento"
+- assertVisible: "Valor do lançamento em reais"
+- tapOn: { text: "Categoria: Salário" }
+- extendedWaitUntil: { visible: "Categoria", timeout: 10000 }
+- assertVisible: "Alimentação"
+- assertVisible: "Moradia"
+- tapOn: { text: "Moradia" }
+- assertVisible: "Categoria: Moradia"
+- tapOn: { text: ".*Data do lançamento:.*" }
+- extendedWaitUntil: { visible: "Escolher hoje", timeout: 10000 }
+- assertVisible: "Mês anterior"
+- assertVisible: "Próximo mês"
+- assertVisible: "Escolher ontem"
+- assertVisible: "Escolher o primeiro dia deste mês"
+- tapOn: { text: "Escolher ontem" }
+- assertVisible: "Data: ontem"
+- tapOn: { text: "Repetir mensalmente" }
+- assertVisible: "O lançamento se repete todo mês, até você desligar isto."
+- tapOn: { text: "Repetir mensalmente" }
+- tapOn: { text: "Salvar lançamento" }
+- assertVisible: "Informe uma descrição para o lançamento."
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Buscar lançamentos", timeout: 15000 }

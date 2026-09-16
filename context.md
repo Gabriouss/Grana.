@@ -1,5 +1,53 @@
 # Contexto do projeto — Grana.
 
+# 15/09/2026 (M1) — build preview barrada pela cota do EAS e emulador pronto (`c7b2822`)
+
+**Pedido.** O autor pediu: “Pode preparar e fazer a build preview.” O objetivo
+era instalar a versão real no emulador Android e começar os testes automáticos
+com Maestro, sem aparelho físico.
+
+**Preparação e identificadores.** `npm run build:preparar --
+"Melhora a estabilidade e os lançamentos no Android."` validou a nota e subiu
+`expo.version` em `app.json` de `1.10.2` para `1.10.3`. A mudança foi
+commitada e publicada em `c7b2822` (`chore: prepara build preview 1.10.3`).
+O emulador criado é um Pixel 8 com Android API 34 e aparece no ADB como
+`emulator-5554`. O Maestro CLI `2.10.0` foi instalado fora do repositório em
+`%LOCALAPPDATA%\\maestro-cli-2.10.0\\maestro\\bin`.
+
+**Resultado da build.** O comando de preview chegou a enviar o projeto ao EAS,
+mas foi recusado antes da compilação porque a cota de builds Android do plano
+Free já foi consumida; a mensagem do EAS informou reset em 15 dias, em
+01/10/2026. Não houve APK, build ID ou instalação do Grana. no emulador.
+O fallback de build local não foi executado.
+
+**O que deu errado no caminho.** O instalador do Node 22 foi recusado porque já
+havia Node 24.19.0 instalado; `npm`/`npx` no PowerShell também estavam presos
+pela política que bloqueava os wrappers `.ps1`, então os comandos foram
+executados com `.cmd`. O primeiro download do ZIP do Maestro ficou truncado;
+uma segunda transferência com tentativas automáticas produziu um ZIP íntegro.
+O ADB inicialmente não estava no `PATH`; depois de configurado, o terminal do
+autor confirmou `emulator-5554 device`. A primeira tentativa de persistir o
+PATH via API de ambiente não ficou gravada; o registro do usuário foi ajustado
+explicitamente para Android SDK, Java 17 e Maestro.
+
+**O que foi descartado.** Não foi instalado Node 22 por cima do Node 24, não foi
+usado Expo Go, não foi escolhido API 37 para o AVD, não foi criado aparelho
+físico e não foi feito upgrade do plano EAS. Não houve alteração de código do
+aplicativo além da versão exigida pelo preparador da build.
+
+**Verificação.** Confirmados no ambiente do autor: Node `v24.19.0`, npm/npx
+`11.17.0`, Java Temurin `17.0.20.1`, Maestro `2.10.0` e ADB vendo o emulador.
+O preparador validou a mensagem antes de escrever a versão. `git fetch origin`
+foi tentado antes do commit; o sandbox exibiu erro de permissão ao atualizar
+`.git/FETCH_HEAD`, mas a comparação terminou `0 atrás / 0 à frente`, e o push
+de `c7b2822` foi concluído.
+
+**Não verificado.** Nenhum fluxo Maestro, nenhum teste visual Android, nenhuma
+instalação do APK e nenhum teste de teclado, voz, boleto, crédito ou offline
+foi executado. Para continuar antes de 01/10/2026, é preciso autorizar uma
+build local Android (ou decidir pelo upgrade do EAS); essa alternativa pode
+gerar a pasta nativa `android/` e não foi presumida.
+
 # 15/09/2026 (M2) — memória do Granabô e fixture dependente do calendário (`51b1a39`)
 
 **Pedido.** Depois da atualização do repositório, o autor pediu: "corrija".
@@ -7613,3 +7661,127 @@ compra nova parcelada, ainda precisa confirmar a fatura no aparelho. A causa
 do erro de saldo foi inferida da corrida observada e da permissão de produção;
 não foi necessária migration ou mudança de grant. O registro errado continua
 pendente de decisão do autor sobre descarte/correção.
+
+---
+
+## 15/09/2026 — Auditoria Android sem nova build: primeiro acesso e navegação
+
+Esta sessão segue a decisão do autor de não lançar nenhuma build durante a
+auditoria. O APK existente continua instalado no Pixel 8 virtual para testes
+de recursos nativos; o bundle JavaScript atual é executado pelo Expo Go 57
+através do Metro local. O Expo Go precisou ser iniciado em modo LAN/IPv4,
+porque o primeiro servidor escutava apenas em `::1` e o ADB estava usando
+`127.0.0.1`.
+
+### Conta e primeiro acesso
+
+A conta descartável de teste foi recriada e o metadata
+`onboarding_seen` foi removido temporariamente para exercitar as telas do
+primeiro login. O fluxo passou pelas seis perguntas, diagnóstico, aplicação do
+orçamento sugerido e entrada na Home. O backend foi conferido depois: o nome
+de teste foi salvo e `onboarding_seen` voltou a `true`.
+
+O primeiro teste encontrou uma falha real: depois de concluir o diagnóstico, o
+modal reabria na etapa 1. A causa foi uma corrida entre `updateUser` e o
+listener de sessão: uma sessão intermediária ainda sem o metadata fazia o
+efeito de primeiro acesso abrir o modal novamente, embora o banco já tivesse
+gravado a flag. `app/(app)/index.tsx` agora mantém uma trava em memória por
+`userId` até a sessão estabilizar. Corrigido e publicado em `6a47841`.
+
+O teste também reproduziu duas vezes um crash anterior do Fabric ao abrir a
+área autenticada, registrado em `04b2260`; a correção correspondente está em
+`app/(app)/_layout.tsx` com `detachInactiveScreens={false}`. A validação desse
+commit dentro de um APK novo permanece pendente porque nenhuma build foi
+autorizada nesta auditoria.
+
+### Cobertura executada no bundle vivo
+
+- Tour da Home: dois passos exibidos e concluídos.
+- Home: controles de perfil, lançamento por voz e abas presentes.
+- Abas Débito e Pix, Crédito, Boletos, Gráficos e Desafios: navegação e
+  conteúdo principal verificados.
+- Gráficos sem lançamentos: estado vazio “Sem dados suficientes para o
+  período.” verificado.
+- Desafios: conteúdo inferior alcançado por rolagem e mural de conquistas
+  presente.
+- Perfil: rolagem para categorias, configurações, termos, privacidade,
+  saída e exclusão; retorno pelo Back do Android verificado.
+
+O APK instalado não contém as correções `04b2260` e `6a47841`. O Expo Go não
+é equivalente ao APK: o botão Tools do próprio Expo Go pode interceptar a
+região superior da tela e recursos nativos customizados (voz, câmera,
+notificações e widgets) ainda exigem validação no artefato real. Capturas de
+tela do app retornaram arquivo vazio por causa do bloqueio de captura ativado
+no produto; a inspeção desta etapa foi feita por hierarquia de acessibilidade
+e interação.
+
+### Próxima auditoria e pendências
+
+- [ ] Repetir o login e a abertura da área autenticada num APK que contenha
+      `04b2260`.
+- [ ] Repetir o primeiro acesso num APK que contenha `6a47841`.
+- [ ] Validar fisicamente voz/offline, câmera/QR, notificações push/FCM,
+      widgets, biometria, bloqueio de captura, TalkBack, Back do Android,
+      teclado, rede lenta/offline e escalas de fonte/resoluções adicionais.
+- [ ] Testar criação, edição, exclusão e persistência de lançamento, conta a
+      pagar, cartão, parcela, orçamento, cofrinho e meta com dados descartáveis.
+- [ ] Conferir manualmente as telas legais e integrações externas.
+
+Os relatórios Maestro e artefatos temporários da sessão permanecem somente
+locais e não devem ser commitados; os comandos que receberam variáveis do
+`.env` não podem ser enviados ao vault ou ao Git.
+
+### Correção registrada: exclusão completa da conta
+
+O alerta “Erro ao excluir conta” foi rastreado ao trigger
+`public.reatribuir_wallet_antes_de_excluir()`, que bloqueava a carteira
+Principal durante a cascata de remoção de `auth.users`. A migration
+`supabase/migrations/20260915190000_allow_wallet_cascade_on_account_delete.sql`
+permite a remoção somente na profundidade da cascata; a proteção contra
+exclusão direta permanece. `supabase/schema.sql` foi atualizado em paralelo.
+
+A migration foi aplicada e conferida na produção por SQL, e o commit
+`43ba7e0` foi publicado em `origin/main`. A interface Android ainda precisa
+ser repetida após a correção; não houve nova build nem deploy de Edge Function.
+
+### Cobertura adicional concluída sem build
+
+Depois da primeira navegação, foram executados roteiros Maestro no bundle vivo
+do Expo Go para Perfil, Configurações, Home completa, lançamentos, crédito,
+contas, gráficos, desafios e autenticação. A Home completa percorreu os blocos
+de cofrinhos/metas, comprometimento futuro, cartões, contas, categorias, fluxo,
+orçamento e últimos lançamentos; o preset Essencial foi restaurado ao final.
+O fluxo de autenticação também passou por cancelar a confirmação de saída,
+sair de fato e entrar novamente com a conta de teste.
+
+O roteiro de autenticação primeiro produziu um falso positivo: o
+`scrollUntilVisible` encontrou o texto de “Sair da conta” fora da viewport e o
+toque caiu no botão do Granabô. Três gestos de rolagem reais colocaram as duas
+ações de conta acima da barra, sem alteração do aplicativo. A mudança
+temporária em `app/(app)/perfil.tsx` foi revertida; a solução ficou no roteiro
+`maestro/audit-auth-expo-go.local.yaml`, que usa gestos explícitos. O roteiro da
+Home teve o mesmo tipo de fragilidade no orçamento e foi estabilizado com
+visibilidade de 50%.
+
+O `npm.cmd run test:ci` completo passou, incluindo os seis scripts de teste e
+os testes adicionais listados no `package.json`; `npx.cmd tsc --noEmit
+--incremental false` e `git diff --check` também passaram. Os logs de erro
+restantes são cenários simulados de falha esperados pelos testes. Nenhuma build
+foi criada ou publicada nesta auditoria.
+
+### Estado e validações que continuam manuais
+
+A conta de teste terminou autenticada, com `onboarding_seen: true`, nome salvo,
+orçamentos criados pelo diagnóstico e Home no preset Essencial. Nenhum cartão,
+boleto, lançamento ou meta foi salvo pelos roteiros de interface; as telas de
+criação e suas validações vazias foram conferidas. A criação/edição/exclusão e
+persistência com dados descartáveis ainda precisa de um roteiro de seed e
+limpeza controlada.
+
+Continuam fora da validação automatizada desta sessão: envio de áudio da voz e
+seu recibo, leitura real de QR/câmera, exportação e compartilhamento de PDF,
+FCM/push, widgets no launcher, biometria, bloqueio de captura, TalkBack,
+orientação/resoluções/escalas de fonte, rede lenta/offline no aparelho,
+links externos/checkout e a repetição das correções `04b2260`, `6a47841` e
+`43ba7e0` dentro de um APK novo. O APK existente não recebeu nenhuma dessas
+correções porque a regra desta auditoria proibiu nova build.

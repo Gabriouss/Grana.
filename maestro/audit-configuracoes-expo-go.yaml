@@ -1,0 +1,75 @@
+appId: host.exp.exponent
+---
+- tapOn: { text: "Carteira Total. Trocar de carteira" }
+- extendedWaitUntil: { visible: "Selecionar conta", timeout: 10000 }
+- assertVisible: "Ocultar saldo da Tela inicial"
+- assertVisible: "Adicionar nova carteira"
+- assertVisible: "Selecionar"
+- tapOn: { text: "Adicionar nova carteira" }
+- extendedWaitUntil: { visible: "Nova Carteira / Conta", timeout: 10000 }
+- assertVisible: "Nome da nova carteira"
+- assertVisible: "Saldo inicial da nova carteira em reais"
+- assertVisible: "Cor do marcador"
+- assertVisible: "Criar Conta"
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 10000 }
+- tapOn: { text: "Abrir perfil" }
+- scrollUntilVisible:
+    element: { text: "Orçamento sugerido" }
+    direction: DOWN
+    timeout: 10000
+- tapOn: { text: "Orçamento sugerido" }
+- extendedWaitUntil: { visible: "Templates de Orçamento", timeout: 10000 }
+- assertVisible: "Renda mensal em reais"
+- assertVisible: "Sair das dívidas"
+- assertVisible: "Guardar para uma viagem"
+- assertVisible: "Controlar cartão e assinaturas"
+- scrollUntilVisible:
+    element: { text: "Investir e crescer patrimônio" }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Investir e crescer patrimônio"
+- tapOn: { text: "Fechar" }
+- extendedWaitUntil: { visible: "Orçamento sugerido", timeout: 10000 }
+- scrollUntilVisible:
+    element: { text: "Diagnóstico financeiro" }
+    direction: DOWN
+    timeout: 10000
+- tapOn: { text: "Diagnóstico financeiro" }
+- extendedWaitUntil: { visible: "Como você quer ser chamado?", timeout: 10000 }
+- assertVisible: "Continuar"
+- assertVisible: "Pular por agora"
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Diagnóstico financeiro", timeout: 10000 }
+- pressKey: BACK
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 10000 }
+- scrollUntilVisible:
+    element: { text: "Personalizar Início" }
+    direction: DOWN
+    timeout: 10000
+- tapOn: { text: "Personalizar Início" }
+- extendedWaitUntil: { visible: "Modelos Rápidos", timeout: 10000 }
+- assertVisible: "Completo"
+- assertVisible: "Essencial"
+- assertVisible: "Metas & Limites"
+- scrollUntilVisible:
+    element: { text: "Quanto ainda dá para gastar hoje, considerando contas e reservas." }
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Concluir Personalização"
+- tapOn: { text: "Concluir Personalização" }
+- extendedWaitUntil: { visible: "Abrir perfil", timeout: 10000 }
+- tapOn: { text: "Abrir perfil" }
+- scrollUntilVisible:
+    element: { text: "Sair da conta" }
+    direction: DOWN
+    timeout: 10000
+- tapOn: { text: "Excluir conta e dados" }
+- extendedWaitUntil: { visible: "Confirme sua senha", timeout: 10000 }
+- assertVisible: "Sua senha"
+- assertVisible: "Excluir definitivamente"
+- tapOn: { point: "50%, 60%" }
+- extendedWaitUntil: { visible: "Digite sua senha para confirmar.", timeout: 5000 }
+- tapOn: { text: "Cancelar" }
+- extendedWaitUntil: { visible: "Sair da conta", timeout: 10000 }
+- takeScreenshot: configuracoes-expo-go
