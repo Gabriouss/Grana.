@@ -33,14 +33,13 @@ import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra, semValorMonetari
    feature que será apagada. */
 import {
   CATEGORIES,
+  descricaoDoLancamento,
   ehIntencaoBoleto,
   ehIntencaoCredito,
   guessAmountFromText,
   guessCategoryFromText,
-  guessDescFromText,
   guessTypeFromText,
   limparReferenciaCarteira,
-  limparReferenciaCartao,
   matchCardByText,
   matchWalletByText,
   parseDiaVencimento,
@@ -928,11 +927,11 @@ async function executarCriarLancamento(
      a pessoa tiver dito "outros" com todas as letras. */
   if (categoria.name === 'Outros' && !/\boutros?\b/i.test(financeiro)) {
     const nomes = categorias.length ? categorias.map((c) => c.name) : CATEGORIES.map((c) => c.name);
-    return 'Não identifiquei a categoria de "' + guessDescFromText(financeiro, tipo) + '" (R$ ' + formatarBRL(valor) + '). ' +
+    return 'Não identifiquei a categoria de "' + descricaoDoLancamento(financeiro, tipo) + '" (R$ ' + formatarBRL(valor) + '). ' +
       'Pergunte ao usuário qual destas se encaixa: ' + nomes.join(', ') + '. NÃO registrei nada ainda.';
   }
 
-  let descricao = guessDescFromText(financeiro, tipo) || 'Lançamento pelo Granabô';
+  let descricao = descricaoDoLancamento(financeiro, tipo) || 'Lançamento pelo Granabô';
   const ehBoleto = ehIntencaoBoleto(financeiro);
   let vencimento: string | null = null;
   if (ehBoleto) {
@@ -961,7 +960,10 @@ async function executarCriarLancamento(
     }
     cardId = achado.id;
     formaPagamento = 'credit';
-    descricao = limparReferenciaCartao(descricao, achado);
+    /* Limpar a descrição JÁ extraída deixava a palavra "crédito" que a própria
+       limpeza põe no lugar do cartão ("Energético no crédito"). O nome sai de
+       novo, a partir da frase, com o cartão conhecido. */
+    descricao = descricaoDoLancamento(financeiro, tipo, achado) || descricao;
   } else if (!ehBoleto && (parcelas !== null || /\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(financeiro))) {
     return 'Parcelamento só existe em compra no crédito. Confirme com o usuário se foi no cartão e qual cartão. NÃO registrei nada.';
   }

@@ -115,7 +115,7 @@ const COMPARTILHADAS_CATEGORY_KEYWORDS = ['normalizarParaBusca', 'contemPalavra'
 const COMPARTILHADAS_INTERPRETAR = [
   ...COMPARTILHADAS,
   'normalizarNomeCarteira', 'matchWalletByText', 'limparReferenciaCarteira',
-  'limparReferenciaCartao', 'guessCategoryFromText', 'guessTypeFromText',
+  'limparReferenciaCartao', 'descricaoDoLancamento', 'guessCategoryFromText', 'guessTypeFromText',
   'MARCADORES_SAIDA', 'MARCADORES_ENTRADA',
 ];
 

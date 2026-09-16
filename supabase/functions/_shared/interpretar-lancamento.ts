@@ -760,3 +760,31 @@ export function guessDescFromText(text: string, type: TxType): string {
 
   return type === 'in' ? 'Pix recebido' : 'Pagamento';
 }
+
+/**
+ * Nome do lançamento, já sem a referência ao cartão.
+ *
+ * A ORDEM é o que esta função existe para garantir. `limparReferenciaCartao`
+ * troca "crédito C6" (ou "no cartão do Nubank") pela palavra "crédito", de
+ * propósito: é essa palavra solta que `guessDescFromText` sabe apagar como
+ * forma de pagamento. Só funciona se a limpeza vier ANTES da extração do nome.
+ *
+ * Em 16/09/2026 os dois caminhos faziam ao contrário, e o autor viu na fatura:
+ * a voz (app e widget) extraía o nome e nunca limpava — "Almoço crédito C6",
+ * "Transporte no crédito C6" —, e o chat limpava DEPOIS de extrair, sobrando a
+ * palavra que a limpeza tinha acabado de pôr — "Energético no crédito".
+ *
+ * Sem cartão resolvido, é só `guessDescFromText`.
+ */
+export function descricaoDoLancamento(text: string, type: TxType, card?: CartaoBusca | null): string {
+  /* Forma de pagamento no COMEÇO da frase — "Crédito Almoço 20 reais", "pix
+     mercado 50". `guessDescFromText` só apaga a que vem no fim. O padrão é
+     local, e não uma constante de módulo, porque o `sync-parser` compara o
+     corpo desta função entre as cópias: uma constante de fora ficaria sem
+     guarda. Não mexe quando a palavra seguinte é preposição ("crédito do
+     celular", "débito automático"), onde ela faz parte do nome. */
+  const FORMA_PAGAMENTO_INICIAL =
+    /^\s*(?:(?:no|na|via|em)\s+)?(?:pix|dinheiro|esp[ée]cie|d[ée]bito|cr[ée]dito)\s*,?\s+(?!(?:de|do|da|dos|das|para|pra|pro|no|na|em|autom[aá]tico)(?![\p{L}\d]))/iu;
+  const semCartao = card ? limparReferenciaCartao(text, card) : text;
+  return guessDescFromText(semCartao.replace(FORMA_PAGAMENTO_INICIAL, ''), type);
+}

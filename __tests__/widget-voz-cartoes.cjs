@@ -11,8 +11,10 @@ const deps = {
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: 'mercado 32 no crédito' }) },
   './widget-voz-notificacoes': { podeNotificar: async () => permission,
     notificarRevisao: async (titulo) => { revisions.push(titulo); }, notificarFalha: async () => { throw new Error('Falha inesperada'); }, notificarPendenteOffline: async () => { revisions.push('Lançamento aguardando conexão'); }, notificarSucesso: async () => {} },
+  /* O dublê acompanha o que a tarefa chama: sem `descricaoDoLancamento` (16/09/2026)
+     a tarefa quebrava e toda fala caía em "Não consegui salvar". */
   './heuristics': { guessAmountFromText: () => 32, guessCategoryFromText: () => ({ name: 'Alimentação', color: '#fff' }),
-    guessTypeFromText: () => 'out', guessDescFromText: () => 'mercado', ehIntencaoBoleto: () => false,
+    guessTypeFromText: () => 'out', descricaoDoLancamento: () => 'mercado', ehIntencaoBoleto: () => false,
     ehIntencaoCredito: () => true, matchCardByText: () => matched, matchWalletByText: () => null,
     limparReferenciaCarteira: (t) => t, limparReferenciaCartao: (t) => t, parseParcelas: () => 1, parseRecorrencia: () => false },
   './data': { fetchCreditCards: async () => cards, fetchCategories: async () => [] },

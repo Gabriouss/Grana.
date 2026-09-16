@@ -220,7 +220,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
   const tipo = heuristics.guessTypeFromText(textoFinanceiro);
-  const descricao = heuristics.guessDescFromText(textoFinanceiro, tipo) || 'Lançamento por voz';
+  const descricao = heuristics.descricaoDoLancamento(textoFinanceiro, tipo) || 'Lançamento por voz';
 
   // Boleto antes de crédito: "boleto no cartão" é boleto. Mesma ordem do bot.
   if (heuristics.ehIntencaoBoleto(texto)) {
@@ -332,12 +332,16 @@ async function lancarNoCredito(args: {
     return false;
   }
   const parcelas = heuristics.parseParcelas(texto);
+  /* O nome sai de novo, agora que o cartão é conhecido: sem isso "crédito C6"
+     ficava grudado no lançamento ("Almoço crédito C6"). Ver
+     `descricaoDoLancamento`. */
+  const descricaoNoCartao = heuristics.descricaoDoLancamento(texto, 'out', cartao) || descricao;
 
   if (parcelas && parcelas > 1) {
     const resultado = await voiceOperations.registrarOperacaoVoz(requestId, args.source, {
       kind: 'installment',
       type: 'out',
-      description: descricao,
+      description: descricaoNoCartao,
       amount: valor,
       category: categoria.name,
       color: categoria.color,
@@ -353,7 +357,7 @@ async function lancarNoCredito(args: {
     checarLimiteCartao(cartao.id).catch(() => {});
     try {
       await notificacoes.notificarSucesso({
-        titulo: `${descricao} — ${formatarBRL(valor)}`,
+        titulo: `${descricaoNoCartao} — ${formatarBRL(valor)}`,
         texto: `${parcelas}x no ${cartao.name} · ${categoria.name}`,
         tipo: 'transaction',
         ids: resultado.ids,
@@ -368,7 +372,7 @@ async function lancarNoCredito(args: {
   const resultado = await voiceOperations.registrarOperacaoVoz(requestId, args.source, {
     kind: 'transaction',
     type: 'out',
-    description: descricao,
+    description: descricaoNoCartao,
     amount: valor,
     category: categoria.name,
     color: categoria.color,
@@ -384,7 +388,7 @@ async function lancarNoCredito(args: {
   checarLimiteCartao(cartao.id).catch(() => {});
   try {
     await notificacoes.notificarSucesso({
-      titulo: `${descricao} — ${formatarBRL(valor)}`,
+      titulo: `${descricaoNoCartao} — ${formatarBRL(valor)}`,
       texto: `Crédito · ${cartao.name} · ${categoria.name}`,
       tipo: 'transaction',
       ids: resultado.ids,
