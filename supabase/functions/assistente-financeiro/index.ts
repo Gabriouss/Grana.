@@ -51,6 +51,7 @@ import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
 import { janelaFatura, mesFaturaDoLancamento, cicloRelativo, deslocamentoPedido } from '../_shared/fatura-ciclo.ts';
 import {
+  AINDA_NAO_REGISTREI,
   conduzirConversa,
   exemploElegivel,
   feedbackExplicito,
@@ -932,7 +933,7 @@ async function executarCriarLancamento(
 
   const valor = guessAmountFromText(financeiro);
   if (!Number.isFinite(valor) || valor <= 0) {
-    return 'Não identifiquei o valor nessa frase. Me diz quanto foi, em reais (ex.: "almoço 38,50"). Ainda não registrei nada.';
+    return 'Não identifiquei o valor nessa frase. Me diz quanto foi, em reais (ex.: "almoço 38,50"). ' + AINDA_NAO_REGISTREI;
   }
 
   const tipo = guessTypeFromText(financeiro);
@@ -959,7 +960,7 @@ async function executarCriarLancamento(
     // O cartão só entra para tirar "no crédito C6" do nome citado na pergunta.
     const cartaoDaFrase = ehIntencaoCredito(financeiro) ? matchCardByText(financeiro, cartoes) : null;
     return 'Não identifiquei a categoria de "' + nomeDoLancamento(cartaoDaFrase) + '" (R$ ' + formatarBRL(valor) + '). ' +
-      'Qual destas é a certa: ' + nomes.join(', ') + '? Ainda não registrei nada.';
+      'Qual destas é a certa: ' + nomes.join(', ') + '? ' + AINDA_NAO_REGISTREI;
   }
 
   let descricao = nomeDoLancamento() || 'Lançamento pelo Granabô';
@@ -968,7 +969,7 @@ async function executarCriarLancamento(
   if (ehBoleto) {
     vencimento = parseDiaVencimento(financeiro);
     if (!vencimento) {
-      return 'Entendi que é uma conta a pagar, mas não achei o vencimento. Qual é o dia? Ainda não registrei nada.';
+      return 'Entendi que é uma conta a pagar, mas não achei o vencimento. Qual é o dia? ' + AINDA_NAO_REGISTREI;
     }
   }
 
@@ -987,7 +988,7 @@ async function executarCriarLancamento(
       return doUsuario.length === 0
         ? 'A frase fala em crédito, mas não há cartão cadastrado nessa carteira. Peça para cadastrar o cartão no app ou informar outra forma de pagamento. NÃO registrei nada.'
         // Também cai aqui quem tem um cartão só e citou outro nome ("crédito Almoço").
-        : 'Em qual cartão foi: ' + doUsuario.map((c) => c.name).join(', ') + '? Ainda não registrei nada.';
+        : 'Em qual cartão foi: ' + doUsuario.map((c) => c.name).join(', ') + '? ' + AINDA_NAO_REGISTREI;
     }
     cardId = achado.id;
     formaPagamento = 'credit';
@@ -996,7 +997,7 @@ async function executarCriarLancamento(
        novo, a partir da frase, com o cartão conhecido. */
     descricao = nomeDoLancamento(achado) || descricao;
   } else if (!ehBoleto && (parcelas !== null || /\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(financeiro))) {
-    return 'Parcelamento só existe em compra no crédito. Foi no cartão? Se foi, me diz qual. Ainda não registrei nada.';
+    return 'Parcelamento só existe em compra no crédito. Foi no cartão? Se foi, me diz qual. ' + AINDA_NAO_REGISTREI;
   }
 
   /* Parcelado é série FECHADA; recorrente é série ABERTA. Não coexistem. */

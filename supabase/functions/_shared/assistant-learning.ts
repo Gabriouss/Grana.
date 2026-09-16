@@ -36,6 +36,56 @@ const PEDIDO_DE_LANCAMENTO = /\b(?:lan[cç](?:a|e|ar)|anot(?:a|e|ar)|registr(?:a
 const SINAL_DE_LANCAMENTO = /\b(?:lan[cç](?:a|e|ar)|anot(?:a|e|ar)|registr(?:a|e|ar)|adicion(?:a|e|ar)|coloc(?:a|e|ar)|cadastr(?:a|e|ar)|inclu(?:a|i|ir)|salv(?:a|e|ar)|joguei|fiz|comprei|paguei|gastei|recebi|compra|boleto|conta\s+a\s+pagar)\b/i;
 const FATO_NUMERICO = /(?:\br\$\s*[\d.,]*\d|\b\d+(?:[.,]\d{1,2})?\s*(?:reais?|contos?|pila|paus?|mangos?|centavos?)\b|\b\d{1,3}\s*(?:x|vezes|parcelas?)\b|\bparcel(?:ado|ada|as?)\s*(?:em\s*)?\d{1,3}\b)/i;
 
+/** Final de toda pergunta que o lançamento pelo chat faz à pessoa (ver
+ *  `executarCriarLancamento`). É por ele que uma resposta com verbo é
+ *  reconhecida como resposta, e não como pedido novo. */
+export const AINDA_NAO_REGISTREI = 'Ainda não registrei nada.';
+
+const PALAVRAS_DE_LIGACAO = new Set([
+  'a', 'o', 'as', 'os', 'e', 'em', 'na', 'no', 'nas', 'nos', 'de', 'da', 'do', 'pra', 'pro', 'para',
+  'como', 'categoria', 'cartao', 'foi', 'pode', 'por', 'favor', 'ai', 'isso', 'esse', 'essa', 'nesse',
+  'nessa', 'ser', 'la', 'ta', 'sim', 'mesmo', 'entao',
+]);
+
+/** O que sobra de uma resposta sem o verbo de lançamento e sem as palavras de ligação. */
+function nucleoDaResposta(texto: string): string {
+  return normalizar(texto)
+    .replace(new RegExp(PEDIDO_DE_LANCAMENTO.source, 'gi'), ' ')
+    .replace(/[^\p{L}\d.,/ ]+/gu, ' ')
+    .split(/\s+/)
+    .filter((palavra) => palavra && !PALAVRAS_DE_LIGACAO.has(palavra))
+    .join(' ');
+}
+
+/**
+ * Se a mensagem atual responde à pergunta que o chat acabou de fazer.
+ *
+ * Em 16/09/2026, "Coloca em Alimentação", respondendo à pergunta de categoria,
+ * era lida como pedido NOVO por ter o verbo "coloca" — sem o valor da mensagem
+ * anterior, o Granabô dizia que não achou o valor. A regra de pedido novo
+ * existe para não misturar números de conversas diferentes, então a exceção é
+ * estreita: a pergunta pendente precisa ser uma das do lançamento, e a
+ * resposta, tirado o verbo, precisa ser SÓ o que foi perguntado — uma das
+ * opções listadas, um valor, ou um dia. "lança uber 15 reais" depois da
+ * pergunta continua sendo pedido novo.
+ */
+function respondePerguntaPendente(atual: string, pergunta: string): boolean {
+  if (!pergunta.trim().endsWith(AINDA_NAO_REGISTREI)) return false;
+  const nucleo = nucleoDaResposta(atual);
+  if (!nucleo) return false;
+  const lista = pergunta.match(/(?:Qual destas é a certa|Em qual cartão foi):\s*(.+)\?\s*Ainda não registrei nada\.\s*$/);
+  if (lista) {
+    return lista[1].split(/,\s*/).some((opcao) => nucleoDaResposta(opcao) === nucleo);
+  }
+  if (/Não identifiquei o valor/.test(pergunta)) {
+    return /^(?:r\s+)?\d+(?:[.,]\d{1,2})?(?:\s+(?:reais?|real|contos?|pila|paus?|centavos?))?$/.test(nucleo);
+  }
+  if (/não achei o vencimento/.test(pergunta)) {
+    return /^(?:dia\s+)?\d{1,2}(?:\/\d{1,2}(?:\/\d{2,4})?)?$/.test(nucleo);
+  }
+  return false;
+}
+
 /** A mensagem atual e, quando ela só esclarece um pedido anterior, a frase
  *  desse pedido. Um lugar só decide isso, para o texto financeiro e o nome do
  *  lançamento nunca discordarem sobre qual foi o pedido. */
@@ -46,10 +96,14 @@ function origemDoLancamento(
   const atual = mensagem.trim();
   if (!atual) return { atual, anterior: null };
 
+  const ultima = historico[historico.length - 1];
+  const respondePergunta = ultima?.papel === 'assistente' && respondePerguntaPendente(atual, ultima.texto);
+
   /* Uma nova mensagem que pede o lançamento é a fonte inteira, sem misturar
-     números de uma conversa anterior. */
-  if (PEDIDO_DE_LANCAMENTO.test(atual) ||
-      (SINAL_DE_LANCAMENTO.test(atual) && FATO_NUMERICO.test(atual))) return { atual, anterior: null };
+     números de uma conversa anterior — a não ser que ela só responda à
+     pergunta que o chat acabou de fazer. */
+  if (!respondePergunta && (PEDIDO_DE_LANCAMENTO.test(atual) ||
+      (SINAL_DE_LANCAMENTO.test(atual) && FATO_NUMERICO.test(atual)))) return { atual, anterior: null };
 
   const fonteAnterior = [...historico].reverse().find((item) =>
     item.papel === 'usuario' && SINAL_DE_LANCAMENTO.test(item.texto) &&

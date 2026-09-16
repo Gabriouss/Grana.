@@ -1093,8 +1093,14 @@ export function descricaoDoLancamento(text: string, type: TxType, card?: CartaoB
      celular", "débito automático"), onde ela faz parte do nome. */
   const FORMA_PAGAMENTO_INICIAL =
     /^\s*(?:(?:no|na|via|em)\s+)?(?:pix|dinheiro|esp[ée]cie|d[ée]bito|cr[ée]dito)\s*,?\s+(?!(?:de|do|da|dos|das|para|pra|pro|no|na|em|autom[aá]tico)(?![\p{L}\d]))/iu;
+  /* "Hoje" diz QUANDO, e hoje é a data que o lançamento já recebe: no nome é
+     ruído ("lança 32 reais de uber hoje" virou "Uber hoje", visto na
+     auditoria de 16/09/2026). Só "hoje" — "ontem" fica no nome de propósito,
+     porque o lançamento ainda sai com a data de hoje e o nome é a única pista
+     de que ela precisa ser corrigida. */
+  const HOJE = /(?:^|\s)(?:(?:de|para|pra)\s+)?hoje(?:\s+(?:cedo|de\s+manh[ãa]|[àa]\s+(?:tarde|noite)))?(?![\p{L}\d])/giu;
   const semCartao = card ? limparReferenciaCartao(text, card) : text;
-  return guessDescFromText(semCartao.replace(FORMA_PAGAMENTO_INICIAL, ''), type);
+  return guessDescFromText(semCartao.replace(HOJE, ' ').replace(FORMA_PAGAMENTO_INICIAL, ''), type);
 }
 
 export type ParsedCsvTransaction = {

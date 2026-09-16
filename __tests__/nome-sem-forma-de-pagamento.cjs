@@ -169,6 +169,38 @@ const NO_CREDITO = [
     'sem cartão, o resultado de sempre continua igual'
   );
 
+  /* ── 5. "hoje" não entra no nome; "ontem" fica, de propósito ─────────── */
+  /* Visto na auditoria de 16/09/2026: "lança 32 reais de uber hoje" virou
+     "Uber hoje". "hoje" é a data que o lançamento já recebe. "ontem" continua
+     no nome enquanto a data dita não for aplicada — é a pista do erro. */
+  const COM_HOJE = [
+    ['lança 32 reais de uber hoje', 'Uber'],
+    ['uber hoje 32 reais', 'Uber'],
+    ['almoço de hoje 25 reais', 'Almoço'],
+    ['gastei 40 reais no mercado hoje cedo', 'Mercado'],
+  ];
+  for (const source of ['app', 'widget']) {
+    for (const [frase, esperado] of COM_HOJE) {
+      const gravados = [];
+      const { task, reg } = montarWidget({
+        transcrever: async () => ({ ok: true, transcript: frase }),
+        registrar: async (_id, _origem, payload) => {
+          gravados.push(payload);
+          return { status: 'committed', ids: ['t1'], operationId: 'op1' };
+        },
+      });
+      await task({ caminho: '/cache/a.m4a', requestId: 'r-hoje', source });
+      igual(gravados.map((g) => g.description), [esperado], `${source}: "${frase}" grava "${esperado}" (${JSON.stringify(reg.notificacoes)})`);
+    }
+  }
+  for (const [frase, esperado] of [...COM_HOJE, ['energético 10,99 hoje no crédito C6', 'Energético']]) {
+    const cartao = /C6/.test(frase) ? C6 : null;
+    igual(interpChat.descricaoDoLancamento(frase, 'out', cartao), esperado, `chat: "${frase}" vira "${esperado}"`);
+    igual(interpChat.descricaoDoLancamento(frase, 'out', cartao), heuristics.descricaoDoLancamento(frase, 'out', cartao), `chat e app concordam em "${frase}"`);
+  }
+  igual(heuristics.descricaoDoLancamento('uber 20 reais ontem', 'out'), 'Uber ontem', '"ontem" fica no nome enquanto a data dita não é aplicada');
+  igual(heuristics.descricaoDoLancamento('hojeiro 50 reais', 'out'), 'Hojeiro', 'palavra que só começa com "hoje" fica');
+
   console.log(`nome-sem-forma-de-pagamento: ${passou} verificacoes OK`);
 })().catch((erro) => {
   console.error(erro);

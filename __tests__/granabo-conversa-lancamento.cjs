@@ -226,6 +226,64 @@ async function comRelogio(instante, fn) {
     }
   }
 
+  /* ── 6b. Resposta com verbo à pergunta pendente é resposta ─────────────── */
+  /* Visto em 16/09/2026: "Coloca em Alimentação" era lida como pedido novo e o
+     Granabô dizia que não achou o valor. */
+  {
+    const categorias = interp.CATEGORIES.map((c) => c.name).join(', ');
+    const casos = [
+      [['lança energético 10,99 no crédito C6', 'Coloca em Alimentação'], [C6, NUBANK], ['Energético', 10.99, 'Alimentação', 'c6']],
+      [['lança energético 10,99 no crédito C6', 'pode colocar como alimentação'], [C6, NUBANK], ['Energético', 10.99, 'Alimentação', 'c6']],
+      [['lança almoço 20 reais no crédito', 'coloca no C6'], [C6, NUBANK], ['Almoço', 20, 'Alimentação', 'c6']],
+      [['lança almoço no crédito C6', 'lança 20 reais'], [C6], ['Almoço', 20, 'Alimentação', 'c6']],
+      [['lança almoço no crédito C6', 'anota 20,50'], [C6], ['Almoço', 20.5, 'Alimentação', 'c6']],
+    ];
+    for (const [falas, lista, [nome, valor, categoria, cartaoId]] of casos) {
+      cartoes = lista;
+      gravados = [];
+      const respostas = await conversa(falas);
+      igual(gravados.map((g) => [g.p_payload.description, g.p_payload.amount, g.p_payload.category, g.p_payload.card_id]),
+        [[nome, valor, categoria, cartaoId]], `"${falas[1]}" responde à pergunta de "${falas[0]}"`);
+      ok(respostas[0].endsWith('Ainda não registrei nada.'), `"${falas[0]}" fez uma pergunta`);
+    }
+
+    // Vencimento respondido com verbo.
+    cartoes = [C6];
+    gravados = [];
+    await conversa(['lança boleto de luz 150 reais com vencimento semana que vem', 'coloca dia 20']);
+    igual(gravados.map((g) => [g.p_kind, g.p_payload.due_date?.slice(8)]), [['bill', '20']], 'o dia respondido vira o vencimento');
+
+    /* O que NÃO é resposta continua sendo pedido novo. */
+    cartoes = [C6, NUBANK];
+    gravados = [];
+    const [, novo] = await conversa(['lança energético 10,99 no crédito C6', 'lança uber 15 reais']);
+    igual(gravados.map((g) => [g.p_payload.description, g.p_payload.amount]), [['Uber', 15]], 'pedido completo depois da pergunta é pedido novo, sem o valor antigo');
+    ok(!/Energ/.test(novo), 'e não confirma o energético');
+
+    gravados = [];
+    const [, semValor] = await conversa(['lança energético 10,99 no crédito C6', 'lança um café']);
+    igual(gravados.length, 0, '"lança um café" depois da pergunta não herda os R$ 10,99');
+    ok(semValor.startsWith('Não identifiquei o valor'), 'e pede o valor do café');
+
+    gravados = [];
+    await conversa(['lança energético 10,99 no crédito C6', 'coloca em Viagens']);
+    igual(gravados.length, 0, 'opção que não estava na lista não é resposta');
+
+    gravados = [];
+    await conversa(['lança almoço 20 reais no crédito C6', 'coloca 30 de mercado']);
+    igual(gravados.map((g) => [g.p_payload.description, g.p_payload.amount]), [['Almoço', 20], ['Mercado', 30]],
+      'sem pergunta pendente, "coloca" é sempre pedido novo');
+    ok(categorias.length > 0, 'lista de categorias carregada');
+  }
+
+  /* ── 6c. "hoje" não entra no nome pelo chat ───────────────────────────── */
+  {
+    cartoes = [C6];
+    gravados = [];
+    await conversa(['lança 32 reais de uber hoje']);
+    igual(gravados.map((g) => g.p_payload.description), ['Uber'], '"hoje" sai do nome');
+  }
+
   /* ── 7. O código não volta aos textos antigos ─────────────────────────── */
   {
     const fonte = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/assistente-financeiro/index.ts'), 'utf8');
