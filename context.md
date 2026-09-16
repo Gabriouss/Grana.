@@ -8233,3 +8233,34 @@ nenhuma chave privada, e o único JWT é a chave anônima. A chave do Firebase e
 - [ ] Autor: confirmar que o repositório deve continuar público — a Release do
       APK depende disso, mas tudo o que entra no git fica visível, inclusive
       este arquivo.
+
+**O `.env` foi nas builds do EAS — conferido em 16/09/2026, a pedido do
+autor ("as ultimas builds tiveram o .env enviado para produção?").** O
+`.easignore` existe desde `00de222` (01/09) e só passou a excluir o `.env` em
+`4ce2242`. Nesse intervalo saíram 12 builds concluídas (1.4.1 a 1.10.2) e uma
+com erro, todas levando o `.env` da máquina que disparou. Os logs das builds
+(baixados pelo `eas-cli`) mostram o que o Expo carregou de lá, só pelos nomes:
+
+- 1.4.1 a 1.9.0: só `EXPO_PUBLIC_KIWIFY_CHECKOUT_URL`, que é público.
+- 1.10.0 e 1.10.1: nenhuma linha `env: load .env`.
+- **1.10.2 (12/09, disparada pela M1): `CAKTO_CLIENT_ID`,
+  `CAKTO_CLIENT_SECRET`, `GITHUB_TOKEN`, `SUPABASE_ACCESS_TOKEN` e
+  `VERCEL_TOKEN`.** Os valores não aparecem no log, mas estavam no pacote
+  enviado ao servidor do EAS.
+
+**Não entraram no aplicativo.** O APK da 1.10.2 foi baixado e aberto: nenhum
+arquivo `.env`, nenhum dos cinco nomes nos 1.656 arquivos, nenhum token do
+GitHub ou do Supabase reconhecível pelo formato, e o `app.config` embutido só
+traz o `projectId`. O código do app só lê `EXPO_PUBLIC_*`. Os links de
+checkout e de download vêm das variáveis do EAS (`EXPO_PUBLIC_CHECKOUT_URL`,
+`EXPO_PUBLIC_CHECKOUT_URL_ANUAL`, `EXPO_PUBLIC_ANDROID_DOWNLOAD_URL`), então
+tirar o `.env` do pacote não muda o app. Limite da conferência: o segredo da
+Cakto e o token da Vercel não têm formato reconhecível, e os valores não
+estão nesta máquina; a garantia para eles vem de o código não os ler.
+
+- [ ] **M1: `git pull` ANTES da próxima build.** Sem o `4ce2242`, o `.env`
+      da M1, com esses cinco segredos, sobe de novo.
+- [ ] **Autor: trocar os segredos que estavam no `.env` da M1 em 12/09** —
+      `CAKTO_CLIENT_SECRET` (e o par da Cakto), `GITHUB_TOKEN`,
+      `SUPABASE_ACCESS_TOKEN` e `VERCEL_TOKEN`. Não ficaram públicos, mas
+      foram parar num servidor de terceiro fora do controle do projeto.

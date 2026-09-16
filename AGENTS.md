@@ -511,8 +511,15 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **O `.easignore` precisa continuar excluindo o `.env`.** Com
       `.easignore` presente, o EAS não lê o `.gitignore` e copia a pasta de
       trabalho inteira para a build — conferido no código do `eas-cli` 24.3.0.
-      As builds de preview e produção recebem as `EXPO_PUBLIC_` pelo
-      `eas.json`, não pelo `.env`.
+      Aconteceu em toda build de 01/09 (`00de222`, quando o `.easignore`
+      nasceu) a 16/09 (`4ce2242`). A 1.10.2, disparada da M1 em 12/09, levou
+      para o servidor do EAS um `.env` com `CAKTO_CLIENT_ID`,
+      `CAKTO_CLIENT_SECRET`, `GITHUB_TOKEN`, `SUPABASE_ACCESS_TOKEN` e
+      `VERCEL_TOKEN` — o log da build lista os nomes (`env: export …`). Nada
+      disso entrou no APK, porque só `EXPO_PUBLIC_` é embutido. As builds
+      recebem as `EXPO_PUBLIC_` pelo `eas.json` e pelas variáveis do EAS
+      (`eas env:list`), não pelo `.env`. Para conferir uma build, procure
+      `env: load .env` no log dela.
     - **Segredo que vazou se troca; não se tenta apagar.** O que esteve
       público deve ser tratado como conhecido. Reescrever o histórico exige
       `push --force` e desencontra a outra máquina (regras 1, 2 e 10): só com
