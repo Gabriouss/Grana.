@@ -8257,16 +8257,16 @@ e apagado no fim:
 
 **Não resolvido, registrado para decisão:**
 
-- [ ] Resposta de esclarecimento com verbo de lançamento ("Coloca em
+- [x] **Resolvido no mesmo dia (`9df95d1`, v33)** — resposta de esclarecimento com verbo de lançamento ("Coloca em
       Alimentação") é lida como pedido NOVO, sem o valor da mensagem anterior,
       e o Granabô diz que não achou o valor. A regra existe para não misturar
       números de conversas diferentes; mudar exige saber que havia uma pergunta
       pendente.
-- [ ] "lança mercado 300 em 3x no pix" vai para o crédito: `ehIntencaoCredito`
+- [x] **Decidido pelo autor: está certo assim.** "lança mercado 300 em 3x no pix" vai para o crédito: `ehIntencaoCredito`
       trata parcela como crédito, e só "débito" dito com todas as letras tira.
       É decisão antiga, comentada no código, e vale para a voz também.
 - [ ] Lançamento pelo chat depois das 21h: conferir no ar numa noite.
-- [ ] "hoje" continua no nome de alguns lançamentos ("Uber hoje", visto na
+- [x] **Resolvido no mesmo dia (`9df95d1`).** "hoje" continuava no nome de alguns lançamentos ("Uber hoje", visto na
       conta de teste) — pendência já registrada.
 
 **Senha da conta de teste publicada no GitHub (achado do mesmo dia).** Ao
@@ -8283,7 +8283,7 @@ nenhuma chave privada, e o único JWT é a chave anônima. A chave do Firebase e
 
 - [x] ~~Trocar a senha da conta de teste~~ — **o autor decidiu em 16/09/2026
       que ela não é importante** (conta descartável). Não é pendência.
-- [ ] Autor: confirmar que o repositório deve continuar público — a Release do
+- [x] **O autor respondeu "não ligue pra isso".** Confirmar que o repositório deve continuar público — a Release do
       APK depende disso, mas tudo o que entra no git fica visível, inclusive
       este arquivo.
 
@@ -8335,3 +8335,117 @@ versão. Seis mutações pegas.
 Um `eas build` chamado direto não passa por ela, e uma máquina que não
 puxou o `abf329a` não a tem. Não foi testada numa build real (cota do EAS
 até 01/10).
+
+## 16/09/2026 — M2 — lote de pendências decidido pelo autor (`6ec7a17`, `9329c91`, `3103b7a`, `9df95d1`, v33)
+
+**Pedido.** "corrija 5, 6. 7 está correto é assim mesmo. 3 e 4 não ligue pra
+isso. os demais pode fazer. Os críticos não fazer", sobre a lista de
+pendências desta sessão.
+
+**Decisões do autor, que não voltam como pendência:**
+
+- **Parcela vai para o crédito mesmo com "no pix"** — está certo assim.
+- **Repositório público** e **os três lançamentos antigos com nome errado** —
+  "não ligue pra isso".
+- **Críticos não foram mexidos:** a troca dos cinco segredos e o pull da M1
+  continuam no alerta do topo.
+
+**Item 5 — "Paga ✓" com qualquer pagamento (`9329c91` lógica, `3103b7a`
+tela).** Ver o registro detalhado no vault. Em resumo:
+
+- `situacaoDaFatura` e `lembretesDeFatura` (`lib/creditoFaturas.ts`): "paga"
+  só quando o pago cobre o total, em centavos; lembrete pelo ciclo de cada
+  cartão enquanto faltar pagar. Crédito e Perfil usam as duas — o Perfil
+  somava pelo mês civil.
+- **Banco: migration `20260916200000_pagar_restante_fatura.sql`, APLICADA em
+  produção em 16/09/2026** pela Management API, espelhada no `schema.sql`.
+  Coluna `credit_card_invoices.extra_transaction_ids`, função nova
+  `pagar_restante_fatura_cartao` (o restante vira saída própria; só soma se o
+  valor já pago for o que a tela viu) e `reabrir_fatura_cartao` apagando
+  também essas saídas. `anon` não executa; `authenticated` executa.
+  Ensaiada antes e depois de aplicar, numa transação desfeita, com usuário
+  fictício: pagar, pagar restante, toque duplo, valor zero, desfazer,
+  pagamento único e outro usuário — tudo certo, nada gravado.
+- Tela: linha "Pago R$ X · falta R$ Y", botão "Pagar restante", "Desfazer
+  pagamento" com qualquer pagamento, e uso do limite descontando o pago. Os
+  dois caminhos de pagamento avisam quando o servidor devolveu um registro
+  existente sem lançar nada.
+- `corpus-credito-faturas.ts`: 40 checagens; quatro mutações pegas.
+
+**Item 6 — resposta com verbo no Granachat (`9df95d1`, v33).**
+"Coloca em Alimentação" era lida como pedido novo. Agora, se a última
+mensagem do Granabô é uma pergunta do lançamento (termina em
+`AINDA_NAO_REGISTREI`) e a resposta, sem o verbo, é só o que foi perguntado
+(uma opção listada, um valor ou um dia), ela completa o pedido anterior.
+Pedido completo depois da pergunta ("lança uber 15 reais") continua sendo
+pedido novo, sem herdar valor.
+
+**"hoje" no nome (`9df95d1`, v33 e próxima build).** `descricaoDoLancamento`
+tira "hoje" do nome, nas duas cópias (sync 75/75). "ontem" fica de propósito:
+a data dita ainda não é aplicada, e o nome é a única pista.
+
+**Publicação da v33** (regra 11): v32 no ar era desta sessão; diferença só
+`9df95d1`; pacote da v32 guardado; `deno check` limpo; commit empurrado antes.
+`updated_at` 2026-09-16T20:39:00Z, `verify_jwt=true`, outras sete intactas.
+Sondas sem gravar: 401 sem autorização e 401 `nao_autenticado`.
+**Sem teste gravando na conta de teste**, por ordem do autor (ver abaixo).
+Testes: `granabo-conversa-lancamento.cjs` 45, `nome-sem-forma-de-pagamento.cjs`
+139; quatro mutações pegas.
+
+**Branch `claude/grana-landing-page-design-df5etm` — resolvido (`6ec7a17`).**
+Mesclado no `main` e apagado do GitHub (a ponta era `69a6ca4`). Só
+acrescenta arquivos: `site-vendas/` (HTML estático de REFERÊNCIA, não
+publicado — a Vercel publica o `expo export`) e o plano
+`docs/marketing/2026-09-12-plano-vendas-landing-v2.md`, que este arquivo já
+citava. As fontes e as capturas de `site-vendas/` são cópias idênticas de
+`assets/fonts/` e `public/telas/`. O inventário ficou só com `master`.
+
+**Linha de R$ 283.728,00 — já não existe.** Nenhum lançamento acima de R$ 100
+mil no banco; sumiu quando a conta de teste foi excluída e recriada em 15/09.
+
+**Dados "AUDIT" da conta de teste — ficam como estão, por ordem do autor.**
+A limpeza chegou a ser feita e o autor mandou parar ("não mexe na conta de
+teste não, filhote — deixa ela como estava"). Tudo foi restaurado a partir
+de uma cópia feita antes, com os mesmos ids e datas, conferido campo a campo.
+O bloqueio de captura desligado pela auditoria fica no AsyncStorage do
+emulador da M1, não no banco.
+
+**Granachat cortado no topo com o teclado — NÃO corrigido; diagnóstico para a
+M1.** Esta máquina não tem `adb`, emulador nem Maestro, e o componente tem
+histórico de regressão de teclado; mexer sem reproduzir seria às cegas.
+A conta, com os números medidos pela M1 (Pixel 8, 411,4×914,3 dp; painel em
+`[48,132][1032,1055]` px = 375×352 dp, topo em 50,3 dp) e os tokens reais
+(`spacing.md` = 12, `lg` = 16):
+
+- a largura de 375 dp é menor que `larguraDisponivel` (387,4), então veio de
+  `espacoLivre × 3/4` — `espacoLivre` ≈ 500 dp e `alturaPainel` ≈ 500 dp;
+- mas o painel desenhado tem 352 dp de altura, começando exatamente no
+  `paddingTop` do fundo: o Yoga espremeu o painel para caber no espaço entre
+  os dois paddings do fundo, que tinha só ~352 dp;
+- com `alturaJanela` = 914,3, `recuoPainel` ≈ 348 dp, e o fundo teria ~750 dp
+  de altura, ~164 dp a menos que a janela que a fórmula presume.
+
+**Hipótese, não confirmada:** a geometria usa `useWindowDimensions` e a altura
+do teclado, mas o contêiner real (o `fundo`, irmão das abas em
+`app/(app)/_layout.tsx`) não tem a altura da janela quando o teclado abre —
+no Expo Go, onde a M1 mediu, a janela pode estar sendo redimensionada pelo
+sistema, e aí o teclado é descontado duas vezes. Isso explicaria as duas
+metades do sintoma: painel espremido (cabeçalho some) e painel alto demais
+(vão até o teclado). **Direção de correção a testar na M1:** medir o próprio
+`fundo` (`onLayout`/`measureInWindow`) e descontar só a parte dele que o
+teclado cobre (`endCoordinates.screenY`), em vez da altura da janela menos a
+altura do teclado. Conferir no Expo Go E numa build, porque a configuração de
+teclado das duas pode ser diferente.
+
+**Não feito, e por quê:**
+
+- itens 9 e 10 (celular e log da próxima build) esperam a build de 01/10;
+- teste real do chat depois das 21h: exigiria gravar na conta de teste; ficou
+  coberto só pelo teste com relógio parado.
+
+**Pendências abertas:**
+
+- [ ] M1: reproduzir o Granachat com teclado no emulador e confirmar ou
+      derrubar a hipótese acima antes de corrigir.
+- [ ] Próxima build: conferir "Pagar restante", a linha "Pago · falta" e o
+      "hoje" fora do nome por voz.
