@@ -8750,10 +8750,16 @@ disso foi visto num celular de verdade nem no Firefox.
 **Não publicado.** A landing sai no ar com o push (Vercel). Os commits
 esperam a aprovação do autor.
 
-**Pendências abertas:**
+**Decisões do autor, em 17/09/2026, que não voltam como pendência:**
 
-- [ ] Autor: aprovar o push da landing.
-- [ ] Autor: no celular, o botão flutuante fica ou volta para o cabeçalho
-      só no compacto?
+- **Publicar:** aprovou o push desta leva ("pode publicar").
+- **Botão do menu no celular:** fica flutuando no canto ("Deixa o botão
+  flutuando"), ciente de que ele cobre o canto de algum card ao rolar. Não
+  devolver ao cabeçalho sem pedido novo.
+- **"Nada de motion"** era movimento reduzido no Windows da sessão remota do
+  autor, confirmado por ele depois de ligar os efeitos de animação ("era isso
+  mesmo").
+
+**Pendências abertas:**
 - [ ] Conferir no ar, no navegador onde o autor viu as seções em branco,
       se elas aparecem.
