@@ -8700,6 +8700,18 @@ foi apagado. No celular, o botão de 44px cobre o canto de alguns cards ao
 rolar, que foi o motivo da mudança de 06/09. **Decisão pendente com o
 autor.**
 
+**Item 2, segunda rodada (`a10ca88`).** O autor ainda não gostou das
+miniaturas e pediu "um mockup realista de um celular e um notebook juntos".
+A cena virou a imagem `public/telas/multiplataforma.webp` (960×646, 60 KB,
+com transparência), gerada por `scripts/compor-mockup-multiplataforma.mjs`
+(pngjs + ffmpeg): o notebook do herói com `inicio-web.png` na tela e o
+celular de `design-system/marketing-mockups/celular-vazio.png`, recortado do
+fundo cinza pelo contorno, com `inicio-mobile.png`. As duas capturas são do
+modo "Dados de exemplo". A cena sobe para 280px com os cards lado a lado e
+216px empilhados. O `notebook-vazio.png` não foi usado: o fundo não tem
+transparência e o contorno em perspectiva não se recorta por retângulo.
+Rodar o script de novo quando as capturas mudarem.
+
 **Verificação.** `tsc` limpo; `test:ci` inteiro passou (1310 guardas do
 design system); build web local conferida no navegador automatizado. Nada
 disso foi visto num celular de verdade nem no Firefox.
