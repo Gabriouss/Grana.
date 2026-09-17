@@ -638,6 +638,9 @@ const NOTIFICACAO_EXEMPLO = {
  * retorno apontado na análise de concorrência: "por que é pago" (o Grana.
  * cobra desde o primeiro dia e nunca explicou o motivo) e a planilha, que é
  * o concorrente real de quem chega aqui. */
+/* Teto de largura de cada card de objeção; a grade (`objecoesGrade`) soma
+   três destes com os respiros. Acima disso a linha de texto fica longa. */
+const LARGURA_CARD_OBJECAO = 420;
 const OBJECOES = [
   {
     objecao: 'Mas eu não quero dar acesso à minha conta bancária.',
@@ -2433,25 +2436,26 @@ const styles = StyleSheet.create({
   // divisória órfã cortando o card ao meio.
   faqItemSemBorda: { borderBottomWidth: 0, paddingVertical: 0 },
 
-  /* Objeções: grade que quebra sozinha por largura. `flexBasis` de 30% com
-     `minWidth` de 300 dá três colunas no desktop largo, duas no intermediário
-     e uma no estreito, sem breakpoint próprio — são sete cards de altura
-     desigual, e uma grade rígida deixaria buraco no fim da última linha. */
+  /* Objeções: colunas de CSS (alvenaria), até três, cada uma com pelo menos
+     300px; o navegador escolhe quantas cabem, sem breakpoint próprio.
+
+     Até 17/09/2026 era uma grade em linhas (3+3+1). Cada linha tomava a
+     altura do card mais alto, e a 1861×951 os sete cards passavam da tela:
+     o sétimo, sozinho na última linha, saía cortado no pé da dobra (print do
+     autor, "não estão devidamente encaixados na tela"). Em colunas, cada card
+     ocupa só a própria altura, e o sétimo entra na coluna mais curta.
+     A ordem de leitura desce pelas colunas. */
   objecoesGrade: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.lg,
+    width: '100%',
+    maxWidth: 3 * LARGURA_CARD_OBJECAO + 2 * spacing.lg,
+    alignSelf: 'center',
     marginTop: spacing.xxl,
-    justifyContent: 'center',
+    ...({ display: 'block', columnCount: 3, columnWidth: 300, columnGap: spacing.lg } as any),
   },
-  /* `maxWidth` existe por causa do sétimo card: são sete objeções em três
-     colunas, então o último fica sozinho na última linha e, só com
-     `flexGrow`, esticava pra largura inteira da página — lia como banner, não
-     como o par dos outros seis. Com teto, ele fica do mesmo tamanho dos
-     demais e o `justifyContent:'center'` da grade o centraliza. */
-  objecaoCardPos: { flexGrow: 1, flexBasis: '30%', minWidth: 300, maxWidth: 420 },
+  /* `breakInside` impede o card de começar numa coluna e terminar na outra;
+     o respiro vertical é margem porque `gap` não vale entre itens de coluna. */
+  objecaoCardPos: { marginBottom: spacing.lg, ...({ breakInside: 'avoid' } as any) },
   objecaoCard: {
-    height: '100%',
     backgroundColor: theme.paperRaised,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -2461,10 +2465,11 @@ const styles = StyleSheet.create({
     ...sombraCard,
   },
   /* A objeção é a fala da pessoa, então ganha a cor de destaque e a fonte
-     regular; a resposta é a voz do produto, em tinta suave. É o mesmo
-     contraste que o card de benefício já faz entre rótulo e corpo. */
-  objecaoPergunta: { color: theme.accent2, fontSize: type.apoio, fontFamily: fonts.regular, lineHeight: lh(type.apoio) },
-  objecaoResposta: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light, lineHeight: lh(type.corpo) },
+     regular; a resposta é a voz do produto, em tinta suave. Os tamanhos são
+     os do `FaqItem` (pergunta maior que a resposta); até 17/09/2026 estavam
+     invertidos, e a resposta em corpo grande ajudava a grade a passar da tela. */
+  objecaoPergunta: { color: theme.accent2, fontSize: type.corpo, fontFamily: fonts.regular, lineHeight: lh(type.corpo) },
+  objecaoResposta: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light, lineHeight: lh(type.apoio) },
 
   garantiaSelo: {
     width: 56,
