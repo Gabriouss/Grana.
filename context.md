@@ -83,6 +83,8 @@ sessão. Detalhe completo, com prints, na nota
   toque acidental já lança uma saída financeira real (`app/(app)/contas.tsx`).
 - **U2**: fileira de chips de categoria em Lançamentos corta bruscamente na
   borda direita, sem indicar que é rolável.
+- **U3**: em Lançamentos, buscar filtra a lista certo, mas o chip "Tudo (N)"
+  não atualiza a contagem para refletir o resultado da busca.
 
 Descartado como bug: orçamentos com teto minúsculo (R$1,75/2,80/3,85) na
 Início — confirmado que é dado de teste sujo de uma sessão anterior, não
