@@ -106,6 +106,15 @@ vault.
 - Nota: "Lançamento por voz" dispara erro esperado de módulo nativo
   ausente no Expo Go, mas revela que existe fallback de digitação manual
   quando o reconhecimento falha — bom sinal, não testado com áudio real.
+- **U5**: modal "Gerenciar categorias" abre vazio por ~2s sem spinner
+  antes de mostrar as categorias, dá impressão de quebrado.
+- Confirmado sem bug: cofrinho (guardar/resgatar, com validação e
+  mensagem de erro visível quando o resgate excede o guardado) e criar
+  categoria personalizada — testados de ponta a ponta.
+
+Total: **treze achados** (V1–V8, U1–U5), zero corrigidos. Pendências de
+limpeza na conta de teste: carteira e categoria "AUDIT ... teste" sem
+uso, criadas durante os testes desta rodada.
 
 Descartado como bug: orçamentos com teto minúsculo (R$1,75/2,80/3,85) na
 Início — confirmado que é dado de teste sujo de uma sessão anterior, não
