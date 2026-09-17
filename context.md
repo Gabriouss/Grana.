@@ -8796,12 +8796,15 @@ concluir que o Grana. não é pra você, seu reembolso é garantido", sem o "com
 pedir" nem a menção ao e-mail de confirmação. O prazo de sete dias continua no
 título e é o que a Cakto pratica.
 
-**Duas ressalvas levadas ao autor, não resolvidas por mim:** "Mais popular"
-afirma algo que o projeto não mede (não há dado de qual plano é mais escolhido
-— a Cakto não foi consultada para isso), e o texto "com os juros da operadora"
-continua na FAQ desta página (`OBJECOES`/`PERGUNTAS_FAQ`) e em
-`app/assinar.tsx`, então a página ficou com duas formulações para a mesma
-condição.
+**Divergência resolvida (`5472f77`), por pedido do autor.** "com juros" agora
+está escrito igual nos três lugares: card de preço, FAQ de formas de pagamento
+da landing e `app/assinar.tsx`. Conferido no pacote da build local: zero
+ocorrências de "da operadora". A tela do app só muda para quem usa depois da
+próxima build.
+
+**Ressalva que continua aberta:** "Mais popular" afirma algo que o projeto não
+mede (não há dado de qual plano é mais escolhido — a Cakto não foi consultada
+para isso). O autor foi avisado e manteve.
 
 **Pendências abertas:**
 - [ ] Conferir no ar, no navegador onde o autor viu as seções em branco,
