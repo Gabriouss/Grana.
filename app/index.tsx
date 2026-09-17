@@ -484,7 +484,8 @@ function Dobra({ levantada, children }: { levantada?: boolean; children: React.R
 
 /* Bloco 3 da estrutura de 13 blocos: a dor, nomeada pelo autor como
    "apagão financeiro" — "não lembrar pra onde o dinheiro foi, sem julgar quem
-   ainda não se organizou".
+   ainda não se organizou". O nome é só interno: em 17/09/2026 o autor pediu
+   que a página trate o conceito sem nomeá-lo.
 
    Três MOMENTOS do apagão, não três frases soltas. Cada um tem título curto,
    que é o que o olho lê primeiro, e uma linha concreta de apoio. O ícone nomeia
@@ -1184,13 +1185,12 @@ function ConteudoWeb() {
           <View style={styles.secao}>
             <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
               <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>Reconhece isso?</Text>
-              {/* Título antigo: "Controle financeiro precisa caber na rotina
-                  para continuar funcionando." Descrevia a solução antes de
-                  nomear o problema. A estrutura de 13 blocos do autor pede a
-                  dor aqui, com o nome que ele deu a ela. */}
-              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>O apagão financeiro.</TituloSecao>
+              {/* A dor aqui, na pergunta que a pessoa se faz. O autor usa o
+                  conceito de "apagão financeiro" internamente, mas pediu em
+                  17/09/2026 que a página não o nomeie. */}
+              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>Pra onde foi o dinheiro?</TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.linhasEquilibradas]}>
-                Você olha o saldo e não lembra pra onde o dinheiro foi. Acontece com muita gente, e tem
+                Você olha o saldo e não sabe explicar a diferença. Acontece com muita gente, e tem
                 explicação: gasto pequeno some da memória antes do fim do dia.
               </Text>
             </RevealOnScroll>
@@ -1713,7 +1713,7 @@ function ConteudoWeb() {
                 </View>
                 <BotaoCTA compra rotulo="Assinar o Grana." centralizado />
                 {/* Bloco 13 da estrutura: o PS fecha o ciclo aberto no bloco 3
-                    ("O apagão financeiro.") e convida para o app. Fica DEPOIS
+                    ("Pra onde foi o dinheiro?") e convida para o app. Fica DEPOIS
                     do botão e em corpo menor de propósito: o autor pediu o
                     fechamento sem nada que dispute a decisão de compra, e um PS
                     lido depois do botão reforça a decisão em vez de competir
@@ -1721,8 +1721,8 @@ function ConteudoWeb() {
                     assinar (o convite aparece na primeira visita ao painel). */}
                 <Text style={[styles.precoTextoCentralizado, styles.ctaFinalPs, styles.linhasEquilibradas]}>
                   <Text style={styles.ctaFinalPsMarca}>PS: </Text>
-                  o apagão financeiro não precisa durar mais um mês. Registre o próximo gasto hoje e, no Android, leve o
-                  Grana. no bolso com o app.
+                  não precisa passar mais um mês sem saber pra onde foi o dinheiro. Registre o próximo gasto hoje e, no
+                  Android, leve o Grana. no bolso com o app.
                 </Text>
               </View>
             </View>
