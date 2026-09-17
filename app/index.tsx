@@ -180,16 +180,16 @@ function hrefCompraAnual(): string {
   return anual?.startsWith('https://') ? anual : hrefCompra();
 }
 
-/* `rotulo` permite variar o texto do botão por seção. O padrão continua
-   "Criar minha conta", que é a ação certa na maior parte da página: quem
-   ainda está lendo argumento não está pronto pra pagar.
+/* `rotulo` permite variar o texto do botão por seção.
 
-   `compra` inverte isso nos dois pontos em que a pessoa JÁ decidiu — a
-   dobra de preços e o fechamento. Antes nem esses levavam ao checkout, e o
-   caminho do dinheiro era um laço: da página não se chegava ao pagamento, e
-   o botão dentro do app devolvia pra página. O paywall existe de verdade
-   (`app/_layout.tsx:223-226` protege as telas por `estadoAcesso.allowed`),
-   então prometer a compra aqui é fiel ao produto.
+   **Destino, decidido pelo autor em 17/09/2026:** todo botão da página leva à
+   dobra de preços, e só o botão de DENTRO dela vai ao checkout. Ou seja,
+   `compra` fica reservado ao card de preço; sem `compra`, o botão rola até
+   `#precos`. Antes o herói, a garantia e o fechamento abriam o checkout
+   direto, e quem clicava caía num pagamento sem ter visto preço nenhum.
+   O paywall existe de verdade (`app/_layout.tsx:223-226` protege as telas por
+   `estadoAcesso.allowed`), então prometer a compra na dobra de preços é fiel
+   ao produto.
 
    `microcopy` é opcional e fica reservada aos pontos em que realmente
    esclarece uma condição. */
@@ -221,6 +221,7 @@ function BotaoCTA({
   onPress?: (evento?: { preventDefault?: () => void }) => void;
 }) {
   const { ehCompacto } = useBreakpoint();
+  const irParaSecao = useContext(IrParaSecaoContexto);
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
@@ -287,7 +288,11 @@ function BotaoCTA({
           aba" e rastreamento por crawler de busca funcionam — sem tocar no
           `style` função que já funcionava. */}
       <AppPressable
-        {...(onPress ? { onPress } : { href: compra ? (anual ? hrefCompraAnual() : hrefCompra()) : hrefCadastroComAtribuicao() })}
+        {...(onPress
+          ? { onPress }
+          : compra
+            ? { href: anual ? hrefCompraAnual() : hrefCompra() }
+            : { href: '#precos', onPress: (evento?: { preventDefault?: () => void }) => irParaSecao('#precos', evento) })}
         onHoverIn={() => !reduzirMovimento && setPonteiroAtivo(true)}
         onHoverOut={() => setPonteiroAtivo(false)}
         style={({ hovered }) => [
@@ -420,6 +425,11 @@ function LinkEntrar() {
    motivo pra saber disso — passar prop nos nove pontos só transformaria uma
    correção de layout num diff espalhado e difícil de revisar. */
 const AlturaCabecalhoContexto = createContext(0);
+
+/* `navegarParaSecao` vive dentro de `ConteudoWeb`, e o `BotaoCTA` mora no
+   escopo do módulo: o contexto é o que liga os dois sem enfiar a função como
+   prop em cada seção no caminho. Mesmo padrão de `AlturaCabecalhoContexto`. */
+const IrParaSecaoContexto = createContext<(href: string, evento?: { preventDefault?: () => void }) => void>(() => {});
 
 /**
  * A altura útil de uma dobra de tela cheia.
@@ -755,15 +765,13 @@ function TituloSecao({ children, estiloExtra }: { children: React.ReactNode; est
 const TITULO_HERO = 'O controle do seu dinheiro, na sua mão.';
 const GANCHO_HERO = 'Cadê meu dinheiro?';
 /* Bloco 2 da estrutura de 13 blocos definida pelo autor em 13/09/2026: "CTA
-   primário — Assinar agora — sem preço, direto ao checkout". O texto do
-   herói continua o mesmo (o autor mandou manter); muda o botão.
+   primário — Assinar agora — sem preço". O texto do herói continua o mesmo
+   (o autor mandou manter).
 
-   Leva ao checkout ANUAL, o plano que a própria estrutura põe em destaque na
-   oferta ("R$ 97,90/ano em destaque") e que a dobra de preços já abre
-   selecionado. Custo conhecido, avisado ao autor: quem clica aqui ainda não
-   viu preço nenhum e cai direto num checkout de R$ 97,90. Se a medição do
-   tráfego mostrar abandono nesse ponto, trocar `anual` por nada leva ao
-   mensal, sem mexer em mais nada. */
+   Em 17/09/2026 o autor mandou que este botão, como todos os de fora da dobra
+   de preços, leve À DOBRA DE PREÇOS, não ao checkout: quem clica aqui ainda
+   não viu preço nenhum, e caía direto num pagamento de R$ 97,90. A escolha do
+   plano acontece lá, no alternador que já abre no anual. */
 const ROTULO_CTA_HEROI = 'Assinar agora';
 const APOIO_HERO =
   'Sem formulário, sem planilha, sem conectar banco. Só o seu dinheiro, do seu jeito.';
@@ -842,7 +850,7 @@ function HeroStorytelling({
           {titulo}
           <Text style={[styles.subheadline, styles.precoTextoCentralizado, styles.heroTextoSemMargem]}>{APOIO_HERO}</Text>
         </View>
-        <BotaoCTA centralizado compra anual rotulo={ROTULO_CTA_HEROI} />
+        <BotaoCTA centralizado rotulo={ROTULO_CTA_HEROI} />
       </View>
     );
   }
@@ -862,7 +870,7 @@ function HeroStorytelling({
           {titulo}
           <Text style={styles.subheadline}>{APOIO_HERO}</Text>
           <View style={styles.heroCtas}>
-            <BotaoCTA compra anual rotulo={ROTULO_CTA_HEROI} />
+            <BotaoCTA rotulo={ROTULO_CTA_HEROI} />
           </View>
           {!reduzirMovimento && (
             <Animated.View style={[[styles.heroScrollHint, heroScrollHintAnimado], { pointerEvents: 'none' }]} >
@@ -1090,6 +1098,7 @@ function ConteudoWeb() {
 
   return (
     <AlturaCabecalhoContexto.Provider value={alturaCabecalho}>
+    <IrParaSecaoContexto.Provider value={navegarParaSecao}>
     <ScrollView
       ref={rolagemRef}
       style={[styles.pagina, styles.paginaSnap, { scrollPaddingTop: alturaCabecalho } as any]}
@@ -1648,7 +1657,7 @@ function ConteudoWeb() {
               valor de volta. O prazo está escrito no próprio e-mail de confirmação da compra.
             </Text>
             <View style={styles.garantiaCta}>
-              <BotaoCTA centralizado compra anual rotulo="Assinar o Grana." />
+              <BotaoCTA centralizado rotulo="Assinar o Grana." />
             </View>
           </RevealOnScroll>
         </View>
@@ -1734,7 +1743,7 @@ function ConteudoWeb() {
                     </View>
                   ))}
                 </View>
-                <BotaoCTA compra rotulo="Assinar o Grana." centralizado />
+                <BotaoCTA rotulo="Assinar o Grana." centralizado />
                 {/* Bloco 13 da estrutura: o PS fecha o ciclo aberto no bloco 3
                     ("Pra onde foi o dinheiro?") e convida para o app. Fica DEPOIS
                     do botão e em corpo menor de propósito: o autor pediu o
@@ -1806,6 +1815,7 @@ function ConteudoWeb() {
         autor pediu que voltasse a flutuar no canto inferior, em todas as
         larguras. */}
     <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} />
+    </IrParaSecaoContexto.Provider>
     </AlturaCabecalhoContexto.Provider>
   );
 }
