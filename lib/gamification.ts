@@ -1,4 +1,4 @@
-import { formatMoney, isoLocal, isSameMonth, todayISO } from './format';
+import { formatMoney, isCreditTx, isoLocal, isSameMonth, todayISO } from './format';
 import type { Bill, Budget, Transaction } from './types';
 import type { GamificationHistoricalSummary } from './data';
 
@@ -197,8 +197,6 @@ export function calculateScoreBreakdown(
   const currentMonth = agora.getMonth();
 
   const monthTx = transactions.filter((t) => isSameMonth(t.occurred_on, currentYear, currentMonth));
-  const totalIn = monthTx.filter((t) => t.type === "in").reduce((s, t) => s + Number(t.amount), 0);
-  const totalOut = monthTx.filter((t) => t.type === "out").reduce((s, t) => s + Number(t.amount), 0);
 
   /* Dias do mês já decorridos: num mês em andamento a régua é "até hoje", não
      "até o dia 31". Sem isso, todo dia 2 a constância nasceria perto de zero e
@@ -283,6 +281,14 @@ export function calculateScoreBreakdown(
      tenha feito nada errado. */
   const indicadores: Indicador[] = [];
 
+  /* Os indicadores de dinheiro usam o CAIXA do mês, a mesma régua da Início e
+     de Gráficos: compra no crédito só vira saída quando a fatura é paga. Até
+     16/09/2026 eles somavam a compra E, com a fatura paga, o pagamento dela —
+     o mesmo dinheiro duas vezes —, e esta tela mostrava "− R$ 677,20" para o
+     mês em que a Início mostrava "− R$ 377,20". */
+  const caixaDoMes = monthTx.filter((t) => !isCreditTx(t));
+  const totalIn = caixaDoMes.filter((t) => t.type === "in").reduce((s, t) => s + Number(t.amount), 0);
+  const totalOut = caixaDoMes.filter((t) => t.type === "out").reduce((s, t) => s + Number(t.amount), 0);
   const saldo = totalIn - totalOut;
   indicadores.push({
     label: "Resultado do mês",
@@ -296,7 +302,7 @@ export function calculateScoreBreakdown(
 
   if (budgets.length > 0) {
     const outByCat: Record<string, number> = {};
-    monthTx.filter((t) => t.type === "out").forEach((t) => {
+    caixaDoMes.filter((t) => t.type === "out").forEach((t) => {
       outByCat[t.category] = (outByCat[t.category] || 0) + Number(t.amount);
     });
     const dentro = budgets.filter((b) => (outByCat[b.category] || 0) <= Number(b.amount)).length;

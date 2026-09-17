@@ -66,7 +66,11 @@ export default function DesafiosScreen() {
     try {
       const [tx, b, bg, historical, conquistadas] = await Promise.all([
         fetchTransactions({ sinceDays: 45 }),
-        fetchBills({ status: 'due' }),
+        /* TODAS as contas, não só as pendentes: "Contas acompanhadas" mede as
+           PAGAS sobre o total. Só com as pendentes o fator nunca via uma conta
+           paga — com tudo pago dizia "Nenhuma conta cadastrada", e com 2 de 3
+           pagas dava 0 pontos. O caminho alternativo abaixo já buscava todas. */
+        fetchBills(),
         fetchBudgets(),
         fetchGamificationHistoricalSummary().catch(() => null),
         fetchConquistas().catch(() => [] as string[]),

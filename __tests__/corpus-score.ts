@@ -136,5 +136,57 @@ const mesTipico: Transaction[] = [
   );
 }
 
+// ── 7. Os indicadores de dinheiro usam o caixa, como a Início ─────────────
+/* Visto na auditoria de 16/09/2026: com uma compra de R$ 300 no crédito, a
+   tela de Desafios mostrava "Resultado do mês − R$ 677,20" enquanto a Início
+   mostrava − R$ 377,20. E com a fatura paga o pagamento também entrava, então
+   o mesmo dinheiro saía duas vezes. */
+{
+  const salario = tx(1, { type: 'in', amount: 1000, category: 'Salário' });
+  const almoco = tx(2, { amount: 100, category: 'Alimentação' });
+  const compraNoCredito = tx(3, { amount: 300, category: 'Alimentação', payment_method: 'credit', card_id: 'c1' });
+  const pagamentoDaFatura = tx(10, { amount: 300, category: 'Outros', description: 'Pagamento fatura' });
+  const resultado = (lista: Transaction[]) =>
+    calculateScoreBreakdown(lista, [], [{ category: 'Alimentação', amount: 150 } as Budget], 1, AGORA).indicadores;
+  const valor = (ind: ReturnType<typeof resultado>, rotulo: string) => ind.find((i) => i.label === rotulo)?.valor;
+
+  checar(
+    'compra no crédito não entra no resultado do mês',
+    valor(resultado([salario, almoco, compraNoCredito]), 'Resultado do mês') === '+ R$ 900,00',
+    String(valor(resultado([salario, almoco, compraNoCredito]), 'Resultado do mês'))
+  );
+  checar(
+    'com a fatura paga, o dinheiro sai uma vez só (o pagamento)',
+    valor(resultado([salario, almoco, compraNoCredito, pagamentoDaFatura]), 'Resultado do mês') === '+ R$ 600,00',
+    String(valor(resultado([salario, almoco, compraNoCredito, pagamentoDaFatura]), 'Resultado do mês'))
+  );
+  checar(
+    'o teto usa a mesma régua da Início: crédito fora',
+    valor(resultado([salario, almoco, compraNoCredito]), 'Tetos definidos') === '1 de 1',
+    String(valor(resultado([salario, almoco, compraNoCredito]), 'Tetos definidos'))
+  );
+}
+
+// ── 8. "Contas acompanhadas" precisa ver as contas pagas ──────────────────
+/* A tela de Desafios buscava só as PENDENTES. Com tudo pago, o fator dizia
+   "Nenhuma conta cadastrada por enquanto"; com 2 de 3 pagas, dava 0 pontos. */
+{
+  const conta = (id: string, status: 'paid' | 'due') =>
+    ({ id, user_id: 'u', description: id, amount: 50, due_date: '2026-08-25', status, category: 'Moradia' }) as Bill;
+  const fator = (contas: Bill[]) =>
+    calculateScoreBreakdown(mesTipico, contas, [], 5, AGORA).factors.find((f) => f.label === 'Contas acompanhadas')!;
+
+  const duasDeTres = fator([conta('a', 'paid'), conta('b', 'paid'), conta('c', 'due')]);
+  checar('2 de 3 contas em dia valem 2/3 do fator', duasDeTres.points === 133, String(duasDeTres.points));
+  const todasPagas = fator([conta('a', 'paid')]);
+  checar('com tudo pago, não diz que não há conta', !/nenhuma conta/i.test(todasPagas.description), todasPagas.description);
+
+  const desafios = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'app', '(app)', 'desafios.tsx'), 'utf8');
+  checar(
+    'a tela de Desafios não filtra só as pendentes',
+    !/fetchBills\(\{\s*status:\s*'due'\s*\}\)/.test(desafios)
+  );
+}
+
 console.log(`\n${total - falhas}/${total} checagens do Score passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);
