@@ -8788,6 +8788,21 @@ com o "pode publicar" do autor, e a Vercel já serve a versão nova (o bundle
 no ar tem "Pra onde foi o dinheiro?" e o mockup `multiplataforma.webp`).
 Este commit do destino dos botões AINDA NÃO foi publicado.
 
+**Copy da oferta (`cbaf4b8`), três pedidos do autor.** O selo do plano anual
+virou "Mais popular" (era "Economize R$ 20,90"; o valor continua na linha de
+apoio); "Em até 12x com juros da operadora" virou "Em até 12x com juros"; e a
+faixa de garantia virou uma frase só, "Se nos primeiros sete dias você
+concluir que o Grana. não é pra você, seu reembolso é garantido", sem o "como
+pedir" nem a menção ao e-mail de confirmação. O prazo de sete dias continua no
+título e é o que a Cakto pratica.
+
+**Duas ressalvas levadas ao autor, não resolvidas por mim:** "Mais popular"
+afirma algo que o projeto não mede (não há dado de qual plano é mais escolhido
+— a Cakto não foi consultada para isso), e o texto "com os juros da operadora"
+continua na FAQ desta página (`OBJECOES`/`PERGUNTAS_FAQ`) e em
+`app/assinar.tsx`, então a página ficou com duas formulações para a mesma
+condição.
+
 **Pendências abertas:**
 - [ ] Conferir no ar, no navegador onde o autor viu as seções em branco,
       se elas aparecem.
