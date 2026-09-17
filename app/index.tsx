@@ -1130,12 +1130,12 @@ function ConteudoWeb() {
         style={[styles.cabecalhoSticky, reduzirTransparencia && styles.cabecalhoStickySolido]}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
-        {/* Menu no cabeçalho em todas as larguras, sem cobrir os cards. */}
+        {/* O cabeçalho carrega a marca e "Entrar". O menu de seções é o botão
+            flutuante do canto inferior (fim deste componente). */}
         <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
           <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
             <BrandLogotype width={104} />
             <View style={styles.cabecalhoAcoes}>
-              <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} embutido />
               <LinkEntrar />
             </View>
           </View>
@@ -1800,6 +1800,12 @@ function ConteudoWeb() {
       </View>
     </ScrollView>
 
+    {/* Fora do ScrollView de propósito: o botão se ancora na janela, e um
+        elemento fixo dentro do contêiner que rola fica sujeito ao recorte
+        dele. Esteve no cabeçalho de 06/09 (`0766bd7`) a 17/09/2026, quando o
+        autor pediu que voltasse a flutuar no canto inferior, em todas as
+        larguras. */}
+    <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} />
     </AlturaCabecalhoContexto.Provider>
   );
 }
