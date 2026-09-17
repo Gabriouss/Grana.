@@ -773,11 +773,14 @@ const GANCHO_HERO = 'Cadê meu dinheiro?';
    não viu preço nenhum, e caía direto num pagamento de R$ 97,90. A escolha do
    plano acontece lá, no alternador que já abre no anual.
 
-   O rótulo é do autor, escolhido no mesmo dia, junto dessa mudança: um botão
-   que diz "assinar" e leva a uma tabela de preços mente sobre o próprio
-   clique. Na primeira pessoa, ele filtra quem já decidiu — e é exatamente
-   quem tem pressa de ver o preço. */
-const ROTULO_CTA_HEROI = 'Já me decidi. Quero agora';
+   Os rótulos são do autor, escolhidos no mesmo dia, junto dessa mudança: um
+   botão que diz "assinar" e leva a uma tabela de preços mente sobre o próprio
+   clique. `ROTULO_CTA_DECISAO` fica no herói e no fechamento, os dois pontos
+   em que a pessoa decide, e na primeira pessoa filtra quem tem pressa de ver
+   o preço. A faixa da garantia usa "Ver os planos": ali a pessoa ainda está
+   se tranquilizando, e prometer decisão que ela não tomou seria exagero. */
+const ROTULO_CTA_DECISAO = 'Já me decidi. Quero agora';
+const ROTULO_CTA_PLANOS = 'Ver os planos';
 const APOIO_HERO =
   'Sem formulário, sem planilha, sem conectar banco. Só o seu dinheiro, do seu jeito.';
 
@@ -855,7 +858,7 @@ function HeroStorytelling({
           {titulo}
           <Text style={[styles.subheadline, styles.precoTextoCentralizado, styles.heroTextoSemMargem]}>{APOIO_HERO}</Text>
         </View>
-        <BotaoCTA centralizado rotulo={ROTULO_CTA_HEROI} />
+        <BotaoCTA centralizado rotulo={ROTULO_CTA_DECISAO} />
       </View>
     );
   }
@@ -875,7 +878,7 @@ function HeroStorytelling({
           {titulo}
           <Text style={styles.subheadline}>{APOIO_HERO}</Text>
           <View style={styles.heroCtas}>
-            <BotaoCTA rotulo={ROTULO_CTA_HEROI} />
+            <BotaoCTA rotulo={ROTULO_CTA_DECISAO} />
           </View>
           {!reduzirMovimento && (
             <Animated.View style={[[styles.heroScrollHint, heroScrollHintAnimado], { pointerEvents: 'none' }]} >
@@ -1662,7 +1665,7 @@ function ConteudoWeb() {
               valor de volta. O prazo está escrito no próprio e-mail de confirmação da compra.
             </Text>
             <View style={styles.garantiaCta}>
-              <BotaoCTA centralizado rotulo="Assinar o Grana." />
+              <BotaoCTA centralizado rotulo={ROTULO_CTA_PLANOS} />
             </View>
           </RevealOnScroll>
         </View>
@@ -1748,7 +1751,7 @@ function ConteudoWeb() {
                     </View>
                   ))}
                 </View>
-                <BotaoCTA rotulo="Assinar o Grana." centralizado />
+                <BotaoCTA rotulo={ROTULO_CTA_DECISAO} centralizado />
                 {/* Bloco 13 da estrutura: o PS fecha o ciclo aberto no bloco 3
                     ("Pra onde foi o dinheiro?") e convida para o app. Fica DEPOIS
                     do botão e em corpo menor de propósito: o autor pediu o
