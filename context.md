@@ -58,6 +58,42 @@ no `context.md`.
 
 ---
 
+# 17/09/2026 (M1) — varredura de bugs visuais e de usabilidade (não corrigidos)
+
+Continuação da auditoria, depois de publicadas as correções da sessão
+anterior. O autor pediu explicitamente: identificar bugs de usabilidade e
+visuais, **documentar e seguir testando, sem parar para corrigir agora** —
+"verificaremos as correções depois". Sete achados, nenhum corrigido nesta
+sessão. Detalhe completo, com prints, na nota
+[[2026-09-17 - M1 - Varredura de bugs visuais e de usabilidade]] do vault.
+
+- **V4 (mais forte)**: gráfico Gráficos > Geral > Período — no eixo X, o
+  rótulo "Mai/26" some e "Jun/26"/"Jul/26" aparecem colados sem espaço.
+  Provável `components/FlowChart.tsx` ou correlato; não investigado.
+- **V1**: donut "Gastos por categoria" na Início mostra 59% no arco e 58%
+  na legenda — arredondamento divergente entre os dois textos.
+- **V2/V3**: FAB "+" e barra de abas flutuante cobrem conteúdo em duas
+  listas da Início (filtro "Ambos" no card Fluxo financeiro; valor e item
+  seguinte em "Últimos lançamentos") — padding de fundo insuficiente.
+- **V5**: mesma classe, no Perfil: a barra de abas cobre os horários do
+  lembrete diário e o item "Lembretes de contas e faturas".
+- **V6**: o ícone de engrenagem flutuante desce durante o scroll do Perfil
+  e fica em cima do switch "Modo privacidade".
+- **U1**: marcar um boleto como pago é um toque só, sem confirmação —
+  toque acidental já lança uma saída financeira real (`app/(app)/contas.tsx`).
+- **U2**: fileira de chips de categoria em Lançamentos corta bruscamente na
+  borda direita, sem indicar que é rolável.
+
+Descartado como bug: orçamentos com teto minúsculo (R$1,75/2,80/3,85) na
+Início — confirmado que é dado de teste sujo de uma sessão anterior, não
+comportamento quebrado.
+
+Sem verificação: QR de nota fiscal (sem câmera real no emulador, sem
+fallback de galeria no componente), biometria (emulador sem tela de
+bloqueio configurada), modal de Categorias (não abriu nas tentativas).
+
+---
+
 # 16/09/2026 (M1, noite) — Granachat estável em qualquer tela (`ede80df`), Crédito coerente (`6a1ebb2`), "desfaz" honesto no ar (v35)
 
 Continuação da auditoria de lançamentos. Pedido do autor, em ordem: "continue
