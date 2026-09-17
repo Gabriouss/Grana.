@@ -170,7 +170,42 @@ function valores(texto: string): string[] {
     .map((m) => m[1].replace(/\s/g, '').replace(/\.$/, ''));
 }
 
+/* Verbos com que o Granabô AFIRMA que a escrita já aconteceu. Só as formas
+   sem acento: a checagem roda sobre o texto normalizado. */
+const AFIRMA_ESCRITA =
+  /\b(registrei|lancei|anotei|adicionei|salvei|cadastrei|removi|apaguei|exclui|desfiz|registrado|registrada|lancado|lancada|anotado|anotada|salvo|salva|cadastrado|cadastrada|removido|removida|apagado|apagada|excluido|excluida|desfeito|desfeita)\b/g;
+
+/**
+ * Se a frase afirma, de forma positiva, que um lançamento foi criado ou
+ * removido. Negativas ("ainda não registrei nada", "não consegui apagar")
+ * ficam de fora: elas são justamente o contrário de uma afirmação.
+ */
+function afirmaEscritaFeita(texto: string): boolean {
+  const s = normalizar(texto);
+  for (const achado of s.matchAll(AFIRMA_ESCRITA)) {
+    const antes = s.slice(Math.max(0, (achado.index ?? 0) - 40), achado.index);
+    // Negação vale até o fim da frase em que ela aparece.
+    if (!/\b(nao|nem|sem|ainda)\b[^.!?]*$/.test(antes)) return true;
+  }
+  return false;
+}
+
 export function respostaFundamentada(texto: string, registros: Registro[]): boolean {
+  /* Afirmar que registrou ou desfez sem NENHUMA ferramenta de escrita ter sido
+     chamada no turno é a alucinação mais cara que este assistente pode
+     cometer: a pessoa fecha o app achando que o dinheiro entrou, ou que saiu.
+     A trava de valores abaixo não pega isso, porque só enxerga números
+     prefixados por "R$" — e "Desfeito. Removi o último lançamento" não tem
+     número nenhum. Observado no Granachat em 16/09/2026: o chat anunciou
+     "Desfeito. Removi o último lançamento que eu tinha registrado" numa hora
+     em que nenhuma operação foi desfeita no banco (`voice_operations` sem
+     `undone_at` correspondente, e a transação ainda lá).
+
+     A checagem é por ferramenta CHAMADA, não por ferramenta bem-sucedida: com
+     a ferramenta chamada o modelo tem base para falar do que aconteceu,
+     inclusive para dizer que o lançamento já tinha sido desfeito antes. */
+  if (!registros.some((r) => ESCRITAS.has(r.nome)) && afirmaEscritaFeita(texto)) return false;
+
   // Uma consulta ampla bem-sucedida não resolve a ausência do cartão/categoria
   // solicitado. Sem recuperação do filtro, nenhum valor pode ser apresentado.
   const pendente = registros.some((r, i) => r.consulta && !r.ok &&

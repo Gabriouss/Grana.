@@ -1056,12 +1056,30 @@ async function executarCriarLancamento(
 }
 
 /** Remove o último lançamento que o próprio assistente criou (30 min). */
+/* A confirmação depende de `count`, e não só do status. A RPC devolve
+   `{status:'undone', count, replayed}`, e `count` pode ser ZERO em dois casos
+   reais: a operação já tinha sido desfeita (`replayed: true`), ou as linhas já
+   não existiam porque a pessoa apagou o lançamento à mão na tela de
+   Lançamentos — aí a RPC marca a operação como desfeita e apaga nada.
+
+   Até 16/09/2026 este código tratava QUALQUER status diferente de
+   `nada_para_desfazer` como sucesso e anunciava "Desfeito. Removi o último
+   lançamento", inclusive nesses dois casos. Dizer que removeu algo sem ter
+   removido é a mesma mentira sobre dinheiro que o lançamento pelo chat foi
+   feito para eliminar, só que na direção contrária: a pessoa fica achando que
+   o gasto saiu da conta. */
 async function executarDesfazerLancamento(supabase: SupabaseClient): Promise<string> {
   const { data, error } = await supabase.rpc('desfazer_ultimo_lancamento_assistente');
   if (error) throw error;
-  const resposta = (data ?? {}) as { status?: string; count?: number };
+  const resposta = (data ?? {}) as { status?: string; count?: number; replayed?: boolean };
   if (resposta.status === 'nada_para_desfazer') {
     return 'Não há lançamento recente meu para desfazer. Se ele quer apagar algo criado por voz, pelo widget ou à mão, oriente a apagar na tela de Lançamentos.';
+  }
+  if (resposta.status !== 'undone') {
+    return 'Não consegui desfazer. Diga ao usuário que o lançamento CONTINUA lá e peça para apagar pela tela de Lançamentos.';
+  }
+  if (!(Number(resposta.count) > 0)) {
+    return 'Não removi nada agora: esse lançamento já não estava mais na conta. Diga isso ao usuário e peça para conferir a tela de Lançamentos.';
   }
   return 'Desfeito. Removi o último lançamento que eu tinha registrado.';
 }

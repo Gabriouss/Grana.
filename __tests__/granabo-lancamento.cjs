@@ -133,6 +133,74 @@ const aprendizado = carregar('supabase/functions/_shared/assistant-learning.ts')
   const saida = aprendizado.fallbackSeguro([registroDeEscrita]);
   ok(/R\$ 20,00/.test(saida), 'o fallback repete o que foi gravado');
   ok(!/nao consegui|não consegui/i.test(saida), 'e nunca diz "nao consegui" depois de ter gravado');
+
+  /* ── Afirmar escrita sem ter chamado ferramenta de escrita ──────────────
+   *
+   * Observado no Granachat em 16/09/2026, durante a auditoria: o chat
+   * respondeu "Desfeito. Removi o último lançamento que eu tinha registrado."
+   * numa hora em que NADA foi desfeito no banco — `voice_operations` sem
+   * `undone_at` correspondente e a transação ainda na tabela. A trava de
+   * valores não pega isso: a frase não tem um único "R$". */
+  const consulta = { nome: 'gastoPorCategoria', args: {}, resultado: 'R$ 113,30 em Alimentação.', ok: true, consulta: true };
+  const chamouDesfazer = { nome: 'desfazerUltimoLancamento', args: {}, resultado: 'Não há lançamento recente meu para desfazer.', ok: false, consulta: false };
+
+  for (const frase of [
+    'Desfeito. Removi o último lançamento que eu tinha registrado.',
+    'Prontinho, lançamento registrado!',
+    'Pronto, já apaguei esse gasto pra você.',
+    'Feito! Anotei aqui.',
+    'Seu lançamento foi salvo.',
+  ]) {
+    ok(!aprendizado.respostaFundamentada(frase, []), `sem ferramenta nenhuma, "${frase}" e reprovada`);
+    ok(!aprendizado.respostaFundamentada(frase, [consulta]), `so com consulta, "${frase}" e reprovada`);
+  }
+
+  /* Com a ferramenta de escrita CHAMADA, o modelo tem base para falar do que
+     aconteceu — inclusive para dizer que já tinha sido desfeito antes. */
+  ok(
+    aprendizado.respostaFundamentada('O último lançamento já foi desfeito. Não há mais nada recente.', [chamouDesfazer]),
+    'com a ferramenta chamada, falar do desfazer e permitido mesmo sem ela ter removido nada'
+  );
+  ok(
+    aprendizado.respostaFundamentada('Desfeito. Removi o último lançamento.', [{ ...chamouDesfazer, ok: true, resultado: 'Desfeito. Removi o último lançamento que eu tinha registrado.' }]),
+    'e a confirmacao verdadeira continua passando'
+  );
+
+  /* Negativas não são afirmação, e não podem ser barradas: são justamente o
+     que se quer que o assistente diga quando não registrou. */
+  for (const negativa of [
+    'Ainda não registrei nada.',
+    'Não consegui registrar esse lançamento.',
+    'Não apaguei nada, o lançamento continua lá.',
+    'Não removi nada agora: esse lançamento já não estava mais na conta.',
+  ]) {
+    ok(aprendizado.respostaFundamentada(negativa, []), `a negativa "${negativa}" nao pode ser barrada`);
+  }
+
+  /* E uma resposta de consulta comum segue passando: o filtro novo só olha
+     afirmação de escrita. */
+  ok(
+    aprendizado.respostaFundamentada('Você gastou R$ 113,30 em Alimentação.', [consulta]),
+    'resposta de consulta nao e afetada pelo filtro de escrita'
+  );
+
+  /* ── A confirmação do desfazer depende do que saiu do banco ──────────────
+   *
+   * A RPC devolve {status:'undone', count, replayed}. `count` vem ZERO quando
+   * a operação já tinha sido desfeita, ou quando as linhas já não existiam
+   * porque a pessoa apagou o lançamento à mão. Até 16/09/2026 o executor
+   * tratava qualquer status != 'nada_para_desfazer' como sucesso. */
+  const fn = fs.readFileSync('supabase/functions/assistente-financeiro/index.ts', 'utf8');
+  const desfazer = fn.slice(fn.indexOf('async function executarDesfazerLancamento'));
+  const corpo = desfazer.slice(0, desfazer.indexOf('\nasync function'));
+  ok(/Number\(resposta\.count\) > 0/.test(corpo),
+    'o executor so confirma o desfazer quando algo foi realmente removido');
+  ok(/resposta\.status !== 'undone'/.test(corpo),
+    'status inesperado nao vira confirmacao de remocao');
+  ok(
+    corpo.indexOf("'Desfeito. Removi") > corpo.indexOf('Number(resposta.count) > 0'),
+    'a frase de sucesso vem DEPOIS das guardas, nunca como saida padrao'
+  );
 }
 
 /* ── 5. A Edge Function declara as ferramentas e as regras que impedem a mentira ─ */
