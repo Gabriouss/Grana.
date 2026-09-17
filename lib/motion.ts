@@ -57,17 +57,35 @@ export function useReducedMotion() {
   return reduzir;
 }
 
+/** Quando este módulo carregou: separa "a página está abrindo" de "a pessoa
+    já está usando a página". Ver `useEntradaNaTela`. */
+const INICIO = typeof performance !== 'undefined' ? performance.now() : 0;
+const JANELA_DE_CARREGAMENTO_MS = 1500;
+
 /**
- * Gatilho das encenações da landing que rodam uma vez, quando o bloco entra
- * na tela (`TrilhaPassos`, `BentoFerramentas`).
+ * Gatilho das entradas da landing que rodam uma vez, quando o bloco entra na
+ * tela (`RevealOnScroll`, `TrilhaPassos`, `BentoFerramentas`).
  *
- * O conteúdo nasce no estado FINAL (`ativo` e `instantaneo` verdadeiros).
- * Só é escondido para a encenação quando a primeira leitura do observador
- * diz que o bloco está fora da tela, e aí ninguém vê o sumiço. Até 17/09/2026
- * cada componente tinha a sua cópia deste gancho, e as duas nasciam
- * escondidas: se o aviso do observador não chegasse, o desenho ficava vazio
- * para sempre. Agora, sem aviso, fica o estado final. Movimento reduzido,
- * nativo e navegador sem `IntersectionObserver` nunca escondem nada.
+ * O conteúdo nasce no estado FINAL (`ativo` e `instantaneo` verdadeiros) e só
+ * é ESCONDIDO ("armado") quando a primeira leitura do observador confirma
+ * onde ele está. Sem aviso nenhum, fica visível — foi assim que as seções em
+ * branco de 17/09/2026 deixaram de ser possíveis: antes o conteúdo nascia
+ * invisível esperando o aviso, e sem ele ficava vazio para sempre.
+ *
+ * Duas situações na primeira leitura:
+ * - **fora da tela:** esconde na hora (ninguém vê) e encena quando entrar;
+ * - **já na tela** e a página acabou de abrir (`JANELA_DE_CARREGAMENTO_MS`):
+ *   esconde e solta no quadro seguinte, para a primeira dobra também entrar
+ *   animada, como sempre entrou. Passada essa janela (bloco que só aparece
+ *   depois, salto pelo menu), fica no estado final sem animação, porque aí o
+ *   esconde-e-mostra apareceria como um piscar.
+ *
+ * Quem for esconder deve fazê-lo SEM transição (é o que `instantaneo` avisa
+ * ao ser falso só no momento de mostrar): animar o sumiço de algo que está
+ * na tela é o piscar que esta janela existe para evitar.
+ *
+ * Movimento reduzido, nativo e navegador sem `IntersectionObserver` nunca
+ * escondem nada.
  *
  * ponytail: se a primeira leitura chegar e as seguintes não, o bloco continua
  * escondido; não aconteceu em navegador de verdade, só em rolagem por código
@@ -83,6 +101,7 @@ export function useEntradaNaTela(rootMargin: string) {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     let cancelado = false;
     let observador: IntersectionObserver | undefined;
+    let quadro: number | undefined;
     AccessibilityInfo.isReduceMotionEnabled?.()
       .then((reduzir) => {
         const no = ref.current as unknown as HTMLElement | null;
@@ -90,14 +109,32 @@ export function useEntradaNaTela(rootMargin: string) {
         let primeira = true;
         observador = new IntersectionObserver(
           ([entrada]) => {
-            if (entrada.isIntersecting) {
-              setAtivo(true);
-              observador?.disconnect();
-            } else if (primeira) {
+            const naTela = entrada.isIntersecting;
+            if (primeira) {
+              primeira = false;
+              /* Já na tela e fora da janela de carregamento: sem encenação. */
+              if (naTela && performance.now() - INICIO >= JANELA_DE_CARREGAMENTO_MS) {
+                observador?.disconnect();
+                return;
+              }
               setInstantaneo(false);
               setAtivo(false);
+              if (naTela) {
+                /* Dois quadros: o primeiro pinta o estado escondido, o
+                   segundo dispara a transição a partir dele. */
+                quadro = requestAnimationFrame(() => {
+                  quadro = requestAnimationFrame(() => {
+                    setAtivo(true);
+                    observador?.disconnect();
+                  });
+                });
+              }
+              return;
             }
-            primeira = false;
+            if (naTela) {
+              setAtivo(true);
+              observador?.disconnect();
+            }
           },
           { rootMargin, threshold: 0 }
         );
@@ -107,6 +144,7 @@ export function useEntradaNaTela(rootMargin: string) {
     return () => {
       cancelado = true;
       observador?.disconnect();
+      if (quadro !== undefined) cancelAnimationFrame(quadro);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

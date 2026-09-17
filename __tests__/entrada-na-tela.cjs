@@ -7,9 +7,14 @@
  * sem aviso, ficavam vazias. O gancho agora nasce no estado final e só
  * esconde quando a PRIMEIRA leitura diz que o bloco está fora da tela.
  *
- * Carrega o módulo real, com React, React Native, janela e observador
- * falsos. O gancho roda uma vez (efeito com dependências vazias), então o
- * dublê de React executa o efeito na hora e guarda o estado num registro.
+ * O gancho também esconde e solta no quadro seguinte quando o bloco JÁ está
+ * na tela e a página acabou de abrir, para a primeira dobra entrar animada.
+ * Fora dessa janela, fica no estado final: esconder algo visível piscaria.
+ *
+ * Carrega o módulo real, com React, React Native, janela, observador,
+ * relógio e quadros de animação falsos. O gancho roda uma vez (efeito com
+ * dependências vazias), então o dublê de React executa o efeito na hora e
+ * guarda o estado num registro.
  */
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -24,6 +29,8 @@ const codigo = ts.transpileModule(fs.readFileSync('lib/motion.ts', 'utf8'), {
 async function montar({ plataforma = 'web', comObservador = true, reduzirNoCss = false, reduzirNoSistema = false } = {}) {
   const estado = [];
   const observadores = [];
+  const quadros = [];
+  const relogio = { agora: 0 };
   const react = {
     useState: (inicial) => {
       const i = estado.length;
@@ -46,11 +53,17 @@ async function montar({ plataforma = 'web', comObservador = true, reduzirNoCss =
     avisar(visivel) { this.aviso([{ isIntersecting: visivel }]); }
   }
   const janela = { matchMedia: () => ({ matches: reduzirNoCss }) };
+  const performance = { now: () => relogio.agora };
+  const requestAnimationFrame = (fn) => { quadros.push(fn); return quadros.length; };
+  const cancelAnimationFrame = (id) => { quadros[id - 1] = null; };
   const module = { exports: {} };
   const contexto = {
     module,
     exports: module.exports,
     window: janela,
+    performance,
+    requestAnimationFrame,
+    cancelAnimationFrame,
     require: (nome) => {
       if (nome === 'react') return react;
       if (nome === 'react-native') {
@@ -71,6 +84,9 @@ async function montar({ plataforma = 'web', comObservador = true, reduzirNoCss =
     ler: () => ({ ativo: estado[0], instantaneo: estado[1] }),
     observador: observadores[0],
     observadores,
+    relogio,
+    /** Roda os quadros pendentes (o gancho usa dois encadeados). */
+    quadros: () => { for (let i = 0; i < 4 && quadros.length; i++) { const fn = quadros.shift(); if (fn) fn(); } },
   };
 }
 
@@ -99,8 +115,19 @@ caso('fora da tela na primeira leitura: esconde e encena ao entrar', async () =>
   assert.equal(t.observador.desligado, true);
 });
 
-caso('já na tela na primeira leitura: nunca esconde', async () => {
+caso('já na tela ao abrir a página: esconde e solta no quadro seguinte', async () => {
   const t = await montar();
+  t.relogio.agora = 400;
+  t.observador.avisar(true);
+  assert.deepEqual(t.ler(), { ativo: false, instantaneo: false }, 'esconde para encenar');
+  t.quadros();
+  assert.deepEqual(t.ler(), { ativo: true, instantaneo: false }, 'solta com transição');
+  assert.equal(t.observador.desligado, true);
+});
+
+caso('já na tela depois da janela de carregamento: não pisca', async () => {
+  const t = await montar();
+  t.relogio.agora = 4000;
   t.observador.avisar(true);
   assert.deepEqual(t.ler(), { ativo: true, instantaneo: true });
   assert.equal(t.observador.desligado, true);
@@ -108,6 +135,7 @@ caso('já na tela na primeira leitura: nunca esconde', async () => {
 
 caso('só a PRIMEIRA leitura esconde: sair depois de ter aparecido não esconde', async () => {
   const t = await montar();
+  t.relogio.agora = 4000;
   t.observador.avisar(false);
   t.observador.avisar(true);
   t.observador.avisar(false);

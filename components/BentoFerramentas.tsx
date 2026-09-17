@@ -217,7 +217,9 @@ function Bloco({
             setLarguraArea((atual) => (atual === w ? atual : w));
           }}
         >
-          <Visual ativo={ativo} instantaneo={instantaneo} largura={larguraArea} />
+          {/* `instantaneo` também quando o bloco está escondido para encenar:
+              esconder com transição faria o desenho animar o sumiço. */}
+          <Visual ativo={ativo} instantaneo={instantaneo || !ativo} largura={larguraArea} />
         </View>
         {/* A altura mínima vai no invólucro e a medida sai do miolo: medir o
             próprio invólucro devolveria a altura imposta, e o grupo nunca
