@@ -8760,10 +8760,12 @@ esperam a aprovação do autor.
   autor, confirmado por ele depois de ligar os efeitos de animação ("era isso
   mesmo").
 
-**Rótulo do herói (`95a6bb1`).** "Assinar agora" virou "Já me decidi. Quero
-agora", escolhido pelo autor junto da mudança de destino: o rótulo antigo
-prometia pagamento e o botão leva a preços. Garantia e fechamento continuam
-com "Assinar o Grana." — proposta de troca aberta com o autor.
+**Rótulos dos botões (`95a6bb1`, `3465752`).** Escolhidos pelo autor junto da
+mudança de destino, porque "Assinar agora" prometia pagamento e o botão leva a
+preços. São dois papéis, cada um numa constante: `ROTULO_CTA_DECISAO` ("Já me
+decidi. Quero agora") no herói e no fechamento, e `ROTULO_CTA_PLANOS` ("Ver os
+planos") na faixa da garantia, onde a pessoa ainda está se tranquilizando. O
+card de preço mantém "Assinar o plano anual/mensal", que é o único que cobra.
 
 **Destino dos botões (`2b99855`).** Regra do autor: "todos os botões devem
 levar para a sessão de pricing, e na sessão de pricing precisa levar para o
