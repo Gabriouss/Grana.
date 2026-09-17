@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { fonts as uiFonts, radius, spacing, theme, type } from '@/lib/theme';
-import { UI_OUT, useReducedMotion } from '@/lib/motion';
+import { corDaCategoria } from '@/lib/chart-colors';
+import { UI_OUT, useEntradaNaTela } from '@/lib/motion';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
@@ -14,70 +15,28 @@ type Passo = {
 
 const ENTRADA = Easing.bezier(...UI_OUT);
 
-/**
- * Dispara uma vez, quando a trilha entra na tela — mesma técnica de
- * `RevealOnScroll` (IntersectionObserver + checagem de
- * `prefers-reduced-motion`/`AccessibilityInfo`), reduzida ao essencial
- * porque aqui não há variante nem atraso configurável: um `boolean` que
- * nasce falso e vira verdadeiro uma única vez.
- *
- * Não reaproveita `RevealOnScroll` porque este não é um fade de entrada —
- * é o gatilho de uma SEQUÊNCIA coreografada (mensagem → seta → lançamento)
- * que mora dentro da própria cena, já dentro do `ScrollLinkedView` que faz
- * a dobra inteira crescer ao rolar.
- */
-function useEntrouNaTela() {
-  const ref = useRef<View>(null);
-  const [entrou, setEntrou] = useState(() =>
-    Platform.OS !== 'web' ||
-    typeof window === 'undefined' ||
-    typeof IntersectionObserver === 'undefined' ||
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
+/* O mesmo lançamento nos dois passos: o que foi colado no primeiro é o que
+   aparece no celular e no computador no segundo. */
+const COR_ALIMENTACAO = corDaCategoria('Alimentação');
 
+/* `ativo` falso só quando a trilha foi escondida para a encenação (ver
+   `useEntradaNaTela`); `instantaneo` verdadeiro mostra o estado final. */
+type Cena = { ativo: boolean; instantaneo: boolean };
+
+/** Esconde, mostra direto ou encena, conforme o gatilho. */
+function useEncenacao(ativo: boolean, instantaneo: boolean, etapas: [Animated.Value, number][]) {
   useEffect(() => {
-    if (entrou || Platform.OS !== 'web' || typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
-
-    let cancelado = false;
-    let observador: IntersectionObserver | undefined;
-    AccessibilityInfo.isReduceMotionEnabled?.()
-      .then((reduzir) => {
-        if (cancelado) return;
-        if (reduzir) {
-          setEntrou(true);
-          return;
-        }
-        const no = ref.current as unknown as HTMLElement | null;
-        if (!no) {
-          setEntrou(true);
-          return;
-        }
-        const obs = new IntersectionObserver(
-          ([entrada]) => {
-            if (entrada.isIntersecting) {
-              setEntrou(true);
-              obs.disconnect();
-            }
-          },
-          { rootMargin: '0px 0px 15% 0px', threshold: 0 }
-        );
-        observador = obs;
-        obs.observe(no);
-      })
-      .catch(() => setEntrou(true));
-
-    // Desconecta em qualquer saída: componente desmontado antes de a
-    // promessa resolver, ou antes de a trilha chegar a entrar na tela. Sem
-    // isto o `IntersectionObserver` seguiria observando um nó já removido
-    // do DOM até a página inteira ser descartada.
-    return () => {
-      cancelado = true;
-      observador?.disconnect();
-    };
+    if (!ativo || instantaneo) {
+      etapas.forEach(([valor]) => valor.setValue(ativo ? 1 : 0));
+      return;
+    }
+    const sequencia = Animated.sequence(
+      etapas.map(([valor, duracao]) => Animated.timing(valor, { toValue: 1, duration: duracao, easing: ENTRADA, useNativeDriver: true }))
+    );
+    sequencia.start();
+    return () => sequencia.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return { ref, entrou };
+  }, [ativo, instantaneo]);
 }
 
 /**
@@ -96,8 +55,8 @@ function useEntrouNaTela() {
  * colado chega (280ms), a seta acende (140ms) e só então o lançamento
  * categorizado materializa (320ms), com o ponto de categoria chegando por
  * último — é a peça que prova que a categorização foi automática, não só que
- * "um lançamento apareceu". Roda uma vez só; com `prefers-reduced-motion`
- * tudo nasce no estado final.
+ * "um lançamento apareceu". Roda uma vez só. O repouso é o estado final: a
+ * cena só some para encenar enquanto a trilha ainda está fora da tela.
  *
  * ── Por que colar, e não falar (13/09/2026) ─────────────────────────────
  * Até 13/09 esta cena era uma MENSAGEM de fala ("almoço 32 no mercado") e o
@@ -111,28 +70,12 @@ function useEntrouNaTela() {
  * O texto colado tem a cara de CAMPO (borda, ícone de área de transferência),
  * e não de bolha de conversa, para não ser lido como o chat do Granabô.
  */
-function CenaColar({ iniciar }: { iniciar: boolean }) {
-  const reduzirMovimento = useReducedMotion();
-  const mensagem = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
-  const seta = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
-  const lancamento = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
-  const ponto = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
-
-  useEffect(() => {
-    if (!iniciar) return;
-    if (reduzirMovimento) {
-      [mensagem, seta, lancamento, ponto].forEach((valor) => valor.setValue(1));
-      return;
-    }
-    const sequencia = Animated.sequence([
-      Animated.timing(mensagem, { toValue: 1, duration: 280, easing: ENTRADA, useNativeDriver: true }),
-      Animated.timing(seta, { toValue: 1, duration: 140, easing: ENTRADA, useNativeDriver: true }),
-      Animated.timing(lancamento, { toValue: 1, duration: 320, easing: ENTRADA, useNativeDriver: true }),
-      Animated.timing(ponto, { toValue: 1, duration: 180, easing: ENTRADA, useNativeDriver: true }),
-    ]);
-    sequencia.start();
-    return () => sequencia.stop();
-  }, [iniciar, reduzirMovimento, mensagem, seta, lancamento, ponto]);
+function CenaColar({ ativo, instantaneo }: Cena) {
+  const mensagem = useRef(new Animated.Value(1)).current;
+  const seta = useRef(new Animated.Value(1)).current;
+  const lancamento = useRef(new Animated.Value(1)).current;
+  const ponto = useRef(new Animated.Value(1)).current;
+  useEncenacao(ativo, instantaneo, [[mensagem, 280], [seta, 140], [lancamento, 320], [ponto, 180]]);
 
   return (
     <View style={styles.cena}>
@@ -154,7 +97,7 @@ function CenaColar({ iniciar }: { iniciar: boolean }) {
           { opacity: lancamento, transform: [{ translateY: lancamento.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }, { scale: lancamento.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }] },
         ]}
       >
-        <Animated.View style={[styles.pontoCategoria, { backgroundColor: '#bb6b60', transform: [{ scale: ponto }] }]} />
+        <Animated.View style={[styles.pontoCategoria, { backgroundColor: COR_ALIMENTACAO, transform: [{ scale: ponto }] }]} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.lancamentoTitulo}>Mercado Bom Preço</Text>
           <Text style={styles.lancamentoMeta}>Alimentação</Text>
@@ -166,51 +109,40 @@ function CenaColar({ iniciar }: { iniciar: boolean }) {
 }
 
 /**
- * Continuidade, não mecanismo: a MESMA `linhaDestacada` chegando primeiro
- * no celular e, com uma pausa curta, no computador — é o "aparece nos dois
- * lugares" da copy virando algo que se vê acontecer, em vez de dois
- * aparelhos desenhados lado a lado que só por coincidência têm uma linha
- * colorida igual.
+ * Continuidade, não mecanismo: o MESMO lançamento do passo anterior chegando
+ * primeiro no celular e, com uma pausa curta, no computador — é o "aparece
+ * nos dois lugares" da copy virando algo que se vê acontecer.
+ *
+ * Até 17/09/2026 os dois aparelhos eram contornos grossos com linhas cinza de
+ * esqueleto e uma barra de menta. O autor apontou que aquilo não tinha a cara
+ * do Grana.: ao lado do passo 1, que mostra um lançamento de verdade, lia como
+ * ícone genérico. Agora as molduras seguem `MolduraCelular` e
+ * `MolduraNavegador` (vidro `mockupTela`, borda de 1px) e o conteúdo é o
+ * lançamento, com o ponto da categoria. O celular mostra só o valor porque o
+ * nome não cabe legível naquela largura, e os dois aparelhos passam do pé da
+ * cena (cortados pelo `overflow`), como quem entra no quadro: a cena tem
+ * altura fixa, e um celular inteiro nela seria estreito demais até para o
+ * valor.
  */
-function CenaLugares({ iniciar }: { iniciar: boolean }) {
-  const reduzirMovimento = useReducedMotion();
-  const noCelular = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
-  const noNavegador = useRef(new Animated.Value(iniciar ? 1 : 0)).current;
+function CenaLugares({ ativo, instantaneo }: Cena) {
+  const noCelular = useRef(new Animated.Value(1)).current;
+  const noNavegador = useRef(new Animated.Value(1)).current;
+  useEncenacao(ativo, instantaneo, [[noCelular, 260], [noNavegador, 260]]);
 
-  useEffect(() => {
-    if (!iniciar) return;
-    if (reduzirMovimento) {
-      noCelular.setValue(1);
-      noNavegador.setValue(1);
-      return;
-    }
-    const sequencia = Animated.sequence([
-      Animated.timing(noCelular, { toValue: 1, duration: 260, easing: ENTRADA, useNativeDriver: true }),
-      Animated.timing(noNavegador, { toValue: 1, duration: 260, easing: ENTRADA, useNativeDriver: true }),
-    ]);
-    sequencia.start();
-    return () => sequencia.stop();
-  }, [iniciar, reduzirMovimento, noCelular, noNavegador]);
-
-  // O estilo original descansa em opacity 0,75 (mais sutil que o resto da
-  // cena) — a interpolação precisa terminar ali, não em 1, senão a linha
-  // fica mais forte do que o desenho original pedia assim que a sequência
-  // termina.
-  const linhaAnimada = (valor: Animated.Value) => [
-    styles.linhaDestacada,
-    {
-      opacity: valor.interpolate({ inputRange: [0, 1], outputRange: [0, 0.75] }),
-      transform: [{ scaleX: valor.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
-    },
-  ];
+  const chegada = (valor: Animated.Value) => ({
+    opacity: valor,
+    transform: [{ translateY: valor.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }],
+  });
 
   return (
     <View style={[styles.cena, styles.cenaLugares]}>
       <View style={styles.celular}>
         <View style={styles.celularTela}>
-          <View style={styles.linhaFalsa} />
-          <View style={[styles.linhaFalsa, styles.linhaCurta]} />
-          <Animated.View style={linhaAnimada(noCelular)} />
+          <View style={styles.celularCamera} />
+          <Animated.View style={[styles.miniLancamento, styles.miniLancamentoCelular, chegada(noCelular)]}>
+            <View style={[styles.pontoCategoria, { backgroundColor: COR_ALIMENTACAO }]} />
+            <Text style={styles.miniValor} numberOfLines={1}>R$ 32,00</Text>
+          </Animated.View>
         </View>
       </View>
       <View style={styles.navegador}>
@@ -220,9 +152,13 @@ function CenaLugares({ iniciar }: { iniciar: boolean }) {
           <View style={styles.navegadorPonto} />
         </View>
         <View style={styles.navegadorTela}>
-          <View style={styles.linhaFalsa} />
-          <Animated.View style={linhaAnimada(noNavegador)} />
-          <View style={[styles.linhaFalsa, styles.linhaCurta]} />
+          <Animated.View style={[styles.miniLancamento, chegada(noNavegador)]}>
+            <View style={[styles.pontoCategoria, { backgroundColor: COR_ALIMENTACAO }]} />
+            <View style={styles.miniTextos}>
+              <Text style={styles.miniTitulo} numberOfLines={1}>Mercado Bom Preço</Text>
+              <Text style={styles.miniValor} numberOfLines={1}>− R$ 32,00</Text>
+            </View>
+          </Animated.View>
         </View>
       </View>
     </View>
@@ -246,13 +182,13 @@ const PASSOS: Passo[] = [
 ];
 
 export default function TrilhaPassos({ compacto = false }: { compacto?: boolean }) {
-  const { ref, entrou } = useEntrouNaTela();
+  const { ref, ativo, instantaneo } = useEntradaNaTela('0px 0px 15% 0px');
   return (
     <View ref={ref} style={styles.raiz}>
       <View style={[styles.passos, compacto && styles.passosCompactos]}>
         {PASSOS.map((passo) => (
           <View key={passo.titulo} style={styles.passo}>
-            {passo.cena === 'colar' ? <CenaColar iniciar={entrou} /> : <CenaLugares iniciar={entrou} />}
+            {passo.cena === 'colar' ? <CenaColar ativo={ativo} instantaneo={instantaneo} /> : <CenaLugares ativo={ativo} instantaneo={instantaneo} />}
             <Text style={styles.tituloPasso}>{passo.titulo}</Text>
             <Text style={styles.textoPasso}>{passo.texto}</Text>
           </View>
@@ -290,7 +226,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     overflow: 'hidden',
   },
-  cenaLugares: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md },
+  cenaLugares: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', gap: spacing.md, paddingBottom: 0 },
   /* Campo, não bolha: borda tracejada fina de área de colar, ícone de área de
      transferência à esquerda, largura inteira. Uma bolha com canto cortado
      (o desenho anterior) lê como mensagem de chat. */
@@ -323,28 +259,44 @@ const styles = StyleSheet.create({
   lancamentoTitulo: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular },
   lancamentoMeta: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
   lancamentoValor: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  /* Celular e navegador desenhados em CSS, sem asset — mesma receita das
-     molduras que a landing já usa, reduzida ao tamanho de miniatura. */
-  celular: { width: 46, height: 84, borderRadius: 10, borderWidth: 2, borderColor: theme.ruleStrong, padding: 4, justifyContent: 'center' },
-  celularTela: { flex: 1, borderRadius: 5, backgroundColor: theme.paperRaised, padding: 5, gap: 4, justifyContent: 'center' },
-  navegador: { flex: 1, maxWidth: 150, height: 84, borderRadius: 8, borderWidth: 2, borderColor: theme.ruleStrong, overflow: 'hidden' },
+  /* Celular e navegador desenhados em CSS, sem asset — as mesmas receitas de
+     `MolduraCelular` e `MolduraNavegador`, em miniatura. Os dois esticam até
+     a altura da cena, sem altura escrita à mão. */
+  /* A margem negativa leva a borda de baixo para fora da cena. */
+  celular: { width: 88, marginBottom: -radius.lg, padding: 3, borderRadius: 16, borderWidth: 1, borderColor: theme.ruleStrong, backgroundColor: theme.mockupTela },
+  celularTela: { flex: 1, alignItems: 'center', gap: spacing.xs, padding: spacing.xs, borderRadius: 13, backgroundColor: theme.paper },
+  celularCamera: { width: 14, height: 3, borderRadius: 2, backgroundColor: theme.mockupTela },
+  navegador: { flex: 1, maxWidth: 220, marginBottom: -radius.lg, borderRadius: 10, borderWidth: 1, borderColor: theme.ruleStrong, backgroundColor: theme.paperRaised, overflow: 'hidden' },
   navegadorBarra: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 6,
-    height: 14,
-    backgroundColor: theme.paperRaised,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    backgroundColor: theme.mockupTela,
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
   navegadorPonto: { width: 4, height: 4, borderRadius: 2, backgroundColor: theme.rule },
-  navegadorTela: { flex: 1, padding: 8, gap: 5, justifyContent: 'center' },
-  linhaFalsa: { height: 4, borderRadius: 2, backgroundColor: theme.rule },
-  linhaCurta: { width: '60%' },
-  /* A linha destacada é o MESMO lançamento aparecendo nos dois lugares — é o
-     que a copy promete, e sem ela os dois aparelhos seriam só decoração. */
-  linhaDestacada: { height: 5, borderRadius: 2, backgroundColor: theme.accent2, opacity: 0.75 },
+  navegadorTela: { flex: 1, padding: spacing.sm, backgroundColor: theme.paper },
+  /* O lançamento em miniatura, com a mesma superfície de `lancamentoCena`.
+     Texto a 10px, como o endereço da `MolduraNavegador`: é desenho de tela,
+     não leitura corrida. */
+  miniLancamento: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    padding: 5,
+    borderRadius: 6,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.rule,
+  },
+  miniLancamentoCelular: { gap: 3, paddingHorizontal: 3 },
+  miniTextos: { flex: 1, minWidth: 0 },
+  miniTitulo: { color: theme.ink, fontSize: 10, lineHeight: 14, fontFamily: fonts.regular },
+  miniValor: { color: theme.inkSoft, fontSize: 10, lineHeight: 14, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
   tituloPasso: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular },
   textoPasso: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light },
 });
