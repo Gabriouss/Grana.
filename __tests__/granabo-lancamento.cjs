@@ -142,7 +142,8 @@ const aprendizado = carregar('supabase/functions/_shared/assistant-learning.ts')
    * `undone_at` correspondente e a transação ainda na tabela. A trava de
    * valores não pega isso: a frase não tem um único "R$". */
   const consulta = { nome: 'gastoPorCategoria', args: {}, resultado: 'R$ 113,30 em Alimentação.', ok: true, consulta: true };
-  const chamouDesfazer = { nome: 'desfazerUltimoLancamento', args: {}, resultado: 'Não há lançamento recente meu para desfazer.', ok: false, consulta: false };
+  const desfazerRecusado = { nome: 'desfazerUltimoLancamento', args: {}, resultado: 'Não consegui desfazer. O lançamento continua na sua conta.', ok: false, consulta: false };
+  const desfazerSemNada = { nome: 'desfazerUltimoLancamento', args: {}, resultado: 'Não tenho lançamento recente meu para desfazer.', ok: true, consulta: false };
 
   for (const frase of [
     'Desfeito. Removi o último lançamento que eu tinha registrado.',
@@ -155,14 +156,24 @@ const aprendizado = carregar('supabase/functions/_shared/assistant-learning.ts')
     ok(!aprendizado.respostaFundamentada(frase, [consulta]), `so com consulta, "${frase}" e reprovada`);
   }
 
-  /* Com a ferramenta de escrita CHAMADA, o modelo tem base para falar do que
-     aconteceu — inclusive para dizer que já tinha sido desfeito antes. */
+  /* Chamar a ferramenta não basta: se ela RECUSOU, o modelo não pode dizer que
+     desfez. Era o buraco que sobrava quando a regra olhava só a chamada. */
   ok(
-    aprendizado.respostaFundamentada('O último lançamento já foi desfeito. Não há mais nada recente.', [chamouDesfazer]),
-    'com a ferramenta chamada, falar do desfazer e permitido mesmo sem ela ter removido nada'
+    !aprendizado.respostaFundamentada('Pronto, desfiz o último lançamento.', [desfazerRecusado]),
+    'ferramenta chamada e recusada: afirmar que desfez e reprovado'
+  );
+  /* Com a escrita aceita, a resposta passa — e o que chega à tela é o texto da
+     ferramenta, literal, por respostaFinalSegura. */
+  ok(
+    aprendizado.respostaFundamentada('O último lançamento já foi desfeito.', [desfazerSemNada]),
+    'escrita aceita: a redacao do modelo passa'
   );
   ok(
-    aprendizado.respostaFundamentada('Desfeito. Removi o último lançamento.', [{ ...chamouDesfazer, ok: true, resultado: 'Desfeito. Removi o último lançamento que eu tinha registrado.' }]),
+    aprendizado.respostaFinalSegura('O último lançamento já foi desfeito.', [desfazerSemNada]) === desfazerSemNada.resultado,
+    'e a tela mostra o texto da ferramenta, nao o do modelo'
+  );
+  ok(
+    aprendizado.respostaFundamentada('Desfeito. Removi o último lançamento.', [{ ...desfazerSemNada, resultado: 'Desfeito. Removi o último lançamento que eu tinha registrado.' }]),
     'e a confirmacao verdadeira continua passando'
   );
 
@@ -201,6 +212,18 @@ const aprendizado = carregar('supabase/functions/_shared/assistant-learning.ts')
     corpo.indexOf("'Desfeito. Removi") > corpo.indexOf('Number(resposta.count) > 0'),
     'a frase de sucesso vem DEPOIS das guardas, nunca como saida padrao'
   );
+
+  /* Todo texto do desfazer que o filtro ACEITA vai literal para a tela, então
+     não pode conter instrução para o modelo. Na v34, "Não removi nada" chegou
+     ao Granachat com "Diga isso ao usuário e peça para conferir..." no fim. */
+  const textos = [...corpo.matchAll(/return '([^']+)';/g)].map((m) => m[1]);
+  ok(textos.length >= 4, 'os quatro desfechos do desfazer tem texto proprio');
+  for (const texto of textos.filter((t) => aprendizado.resultadoValido(t))) {
+    ok(
+      !/usu[aá]rio|\bdiga\b|\boriente\b|\bse ele\b|\bpe[cç]a para\b/i.test(texto),
+      `texto que vai para a tela escrito para o modelo: ${texto}`
+    );
+  }
 }
 
 /* ── 5. A Edge Function declara as ferramentas e as regras que impedem a mentira ─ */

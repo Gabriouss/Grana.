@@ -1067,19 +1067,23 @@ async function executarCriarLancamento(
    lançamento", inclusive nesses dois casos. Dizer que removeu algo sem ter
    removido é a mesma mentira sobre dinheiro que o lançamento pelo chat foi
    feito para eliminar, só que na direção contrária: a pessoa fica achando que
-   o gasto saiu da conta. */
+   o gasto saiu da conta.
+
+   Os três textos que o filtro aceita (`resultadoValido`) chegam à tela LITERAIS,
+   por `respostaFinalSegura`, então são escritos para a pessoa. Na v34 o
+   "não removi nada" apareceu com "Diga isso ao usuário" no fim. */
 async function executarDesfazerLancamento(supabase: SupabaseClient): Promise<string> {
   const { data, error } = await supabase.rpc('desfazer_ultimo_lancamento_assistente');
   if (error) throw error;
   const resposta = (data ?? {}) as { status?: string; count?: number; replayed?: boolean };
   if (resposta.status === 'nada_para_desfazer') {
-    return 'Não há lançamento recente meu para desfazer. Se ele quer apagar algo criado por voz, pelo widget ou à mão, oriente a apagar na tela de Lançamentos.';
+    return 'Não tenho lançamento recente meu para desfazer. Se você quer apagar algo lançado por voz, pelo widget ou à mão, é pela tela de Lançamentos.';
   }
   if (resposta.status !== 'undone') {
-    return 'Não consegui desfazer. Diga ao usuário que o lançamento CONTINUA lá e peça para apagar pela tela de Lançamentos.';
+    return 'Não consegui desfazer. O lançamento continua na sua conta; se quiser, apague pela tela de Lançamentos.';
   }
   if (!(Number(resposta.count) > 0)) {
-    return 'Não removi nada agora: esse lançamento já não estava mais na conta. Diga isso ao usuário e peça para conferir a tela de Lançamentos.';
+    return 'Não removi nada: esse lançamento já não estava mais na sua conta. Confira pela tela de Lançamentos.';
   }
   return 'Desfeito. Removi o último lançamento que eu tinha registrado.';
 }

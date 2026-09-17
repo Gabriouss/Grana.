@@ -201,10 +201,12 @@ export function respostaFundamentada(texto: string, registros: Registro[]): bool
      em que nenhuma operação foi desfeita no banco (`voice_operations` sem
      `undone_at` correspondente, e a transação ainda lá).
 
-     A checagem é por ferramenta CHAMADA, não por ferramenta bem-sucedida: com
-     a ferramenta chamada o modelo tem base para falar do que aconteceu,
-     inclusive para dizer que o lançamento já tinha sido desfeito antes. */
-  if (!registros.some((r) => ESCRITAS.has(r.nome)) && afirmaEscritaFeita(texto)) return false;
+     Exige escrita BEM-SUCEDIDA, e não só chamada: com a ferramenta chamada e
+     recusada, o modelo ainda podia dizer "pronto, desfiz". Os textos honestos
+     de uma escrita que não mudou nada ("não tenho lançamento para desfazer",
+     "não removi nada") passam pelo filtro e chegam à tela literais, por
+     `respostaFinalSegura`, então não dependem da redação do modelo. */
+  if (!registros.some((r) => r.ok && ESCRITAS.has(r.nome)) && afirmaEscritaFeita(texto)) return false;
 
   // Uma consulta ampla bem-sucedida não resolve a ausência do cartão/categoria
   // solicitado. Sem recuperação do filtro, nenhum valor pode ser apresentado.
