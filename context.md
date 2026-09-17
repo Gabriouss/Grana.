@@ -63,9 +63,12 @@ no `context.md`.
 Continuação da auditoria, depois de publicadas as correções da sessão
 anterior. O autor pediu explicitamente: identificar bugs de usabilidade e
 visuais, **documentar e seguir testando, sem parar para corrigir agora** —
-"verificaremos as correções depois". Sete achados, nenhum corrigido nesta
-sessão. Detalhe completo, com prints, na nota
-[[2026-09-17 - M1 - Varredura de bugs visuais e de usabilidade]] do vault.
+"verificaremos as correções depois". Depois reforçou: "teste todas as
+ferramentas, botões, telas e features... de ponta-a-ponta" e "não pare
+até testar e documentar todas as inconsistências". Treze achados ao
+todo, nenhum corrigido nesta sessão. Detalhe completo, com prints, na
+nota [[2026-09-17 - M1 - Varredura de bugs visuais e de usabilidade]] do
+vault.
 
 - **V4 (mais forte)**: gráfico Gráficos > Geral > Período — no eixo X, o
   rótulo "Mai/26" some e "Jun/26"/"Jul/26" aparecem colados sem espaço.
@@ -85,6 +88,24 @@ sessão. Detalhe completo, com prints, na nota
   borda direita, sem indicar que é rolável.
 - **U3**: em Lançamentos, buscar filtra a lista certo, mas o chip "Tudo (N)"
   não atualiza a contagem para refletir o resultado da busca.
+- **V7 (forte)**: no modal "Selecionar conta" > "Adicionar nova carteira",
+  o botão "Criar Conta" fica cortado na borda do card, colidindo com o
+  rodapé "Cancelar/Selecionar" do modal externo — confirmado funcional
+  apesar do corte (só visual).
+- **U4 (forte)**: "Refazer diagnóstico" (Perfil), ao concluir as 6 etapas,
+  SOBRESCREVE sem aviso a personalização manual da Início feita antes em
+  "Personalizar Início" (testado: troquei para "Essencial", refiz o
+  diagnóstico, voltou para "Completo" sozinho).
+- **V8**: widget "Faturas de crédito" na Início mostra R$ 0,00 para um
+  cartão que a tela de Crédito mostra com fatura de R$ 300,00 aberta —
+  possível mesma classe do Achado 4 já corrigido, não investigado.
+- **V2b/U2b**: mesmo padrão de FAB cobrindo conteúdo (agora no widget
+  "Atalhos rápidos por categoria") e de fileira de chips cortada na borda
+  (agora nos bancos do formulário de novo cartão) — confirmam que os
+  padrões V2/V3/V5 e U2 não são isolados a um card específico.
+- Nota: "Lançamento por voz" dispara erro esperado de módulo nativo
+  ausente no Expo Go, mas revela que existe fallback de digitação manual
+  quando o reconhecimento falha — bom sinal, não testado com áudio real.
 
 Descartado como bug: orçamentos com teto minúsculo (R$1,75/2,80/3,85) na
 Início — confirmado que é dado de teste sujo de uma sessão anterior, não
