@@ -1,5 +1,5 @@
 import { createContext, createElement, useContext, useEffect, useId, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Image, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1363,14 +1363,34 @@ function ConteudoWeb() {
                 <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
                   Os dois cuidam do seu hábito sem virar cobrança.
                 </Text>
-                {/* Notificação no formato do Android: ícone circular da marca,
-                    nome do app e hora, título e texto. */}
-                <View style={styles.notifCard} aria-label={`Exemplo de notificação do Grana.: ${NOTIFICACAO_EXEMPLO.titulo}`}>
-                  <View style={styles.notifIcone} aria-hidden />
-                  <View style={styles.notifCorpo}>
-                    <Text style={styles.notifCabecalho}>Grana. · agora</Text>
-                    <Text style={styles.notifTitulo}>{NOTIFICACAO_EXEMPLO.titulo}</Text>
-                    <Text style={styles.notifTexto}>{NOTIFICACAO_EXEMPLO.texto}</Text>
+                {/* Um recorte da tela do celular, não um card: barra de status
+                    em cima e a notificação no formato do Android 12+. Até
+                    17/09/2026 era só um card, e o autor não reconheceu ali uma
+                    notificação — ao lado dos pilares, lia como mais um pilar.
+                    O relógio marca 19:00, o primeiro horário do lembrete. O
+                    ícone é o monocromático que o app usa de verdade
+                    (`expo-notifications` em app.json). */}
+                <View style={styles.notifTela} aria-label={`Exemplo de notificação do Grana.: ${NOTIFICACAO_EXEMPLO.titulo}`}>
+                  <View style={styles.notifStatus} aria-hidden>
+                    <Text style={styles.notifRelogio}>19:00</Text>
+                    <View style={styles.notifStatusIcones}>
+                      <Ionicons name="wifi" size={12} color={theme.inkSoft} />
+                      <Ionicons name="cellular" size={12} color={theme.inkSoft} />
+                      <Ionicons name="battery-full" size={14} color={theme.inkSoft} />
+                    </View>
+                  </View>
+                  <View style={styles.notifCard}>
+                    <View style={styles.notifIcone} aria-hidden>
+                      <Image source={require('../assets/android-icon-monochrome.png')} style={styles.notifIconeImagem} />
+                    </View>
+                    <View style={styles.notifCorpo}>
+                      <View style={styles.notifCabecalhoLinha}>
+                        <Text style={styles.notifCabecalho}>Grana. · agora</Text>
+                        <Ionicons name="chevron-down" size={14} color={theme.inkFaint} aria-hidden />
+                      </View>
+                      <Text style={styles.notifTitulo}>{NOTIFICACAO_EXEMPLO.titulo}</Text>
+                      <Text style={styles.notifTexto}>{NOTIFICACAO_EXEMPLO.texto}</Text>
+                    </View>
                   </View>
                 </View>
                 <View style={styles.habitoGrade}>
@@ -2155,31 +2175,46 @@ const styles = StyleSheet.create({
      troca de componente não mudar o ritmo da página. */
   secaoBento: { paddingVertical: spacing.xxl * 2.5 },
   bentoEspaco: { width: '100%', marginTop: spacing.xxl },
-  /* Notificação de exemplo, no formato do Android. O ícone é o círculo com o
-     degradê da marca porque é assim que o ícone do app aparece numa
-     notificação; dentro da interface o degradê continua proibido. */
+  /* Notificação de exemplo: o vidro da tela (`mockupTela`, o mesmo das
+     molduras de celular da página) com a barra de status, e dentro dele a
+     notificação lisa, sem sombra, como o Android 12+ desenha. O raio de fora
+     é o de dentro somado ao respiro, para as curvas ficarem paralelas. */
+  notifTela: {
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    padding: spacing.sm,
+    borderRadius: radius.lg + spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    backgroundColor: theme.mockupTela,
+    ...sombraCard,
+  },
+  notifStatus: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm },
+  notifRelogio: { color: theme.inkSoft, fontSize: type.micro, lineHeight: lh(type.micro), fontFamily: fonts.regular },
+  notifStatusIcones: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   notifCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
-    marginTop: spacing.xl,
     padding: spacing.md,
     borderRadius: radius.lg,
+    backgroundColor: theme.paperRaised,
+  },
+  /* Android 12+ põe o ícone pequeno num círculo com a cor da notificação
+     (`#052229` em app.json, o `brand.dark`). O PNG já traz a folga do ícone
+     adaptativo, então ocupa o círculo inteiro. */
+  notifIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: theme.ruleStrong,
-    backgroundColor: theme.paperRaised,
-    ...sombraCard,
+    backgroundColor: brand.dark,
   },
-  notifIcone: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    marginTop: 2,
-    borderWidth: 1,
-    borderColor: brand.dark,
-    ...({ backgroundImage: `linear-gradient(90deg, ${brand.gradient.from}, ${brand.gradient.to})` } as any),
-  },
+  notifIconeImagem: { width: '100%', height: '100%' },
   notifCorpo: { flex: 1, minWidth: 0, gap: 2 },
+  notifCabecalhoLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   notifCabecalho: { color: theme.inkFaint, fontSize: type.micro, lineHeight: lh(type.micro), fontFamily: fonts.light },
   notifTitulo: { color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio), fontFamily: fonts.regular },
   notifTexto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: lh(type.nota), fontFamily: fonts.light },
