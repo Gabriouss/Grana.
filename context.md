@@ -8635,3 +8635,82 @@ teclado das duas pode ser diferente.
       derrubar a hipótese acima antes de corrigir.
 - [ ] Próxima build: conferir "Pagar restante", a linha "Pago · falta" e o
       "hoje" fora do nome por voz.
+
+## 17/09/2026 — M2 — landing: seções em branco, ilustração, notificação, objeções e menu flutuante (`7122c17` a `6d7a682`)
+
+**Pedido.** Oito prints da landing: (1 e 6) não nomear o "apagão
+financeiro", só tratar o conceito; (2) a ilustração de "Confira onde
+quiser" fora do padrão do Grana.; (3 a 5) seções carregando em branco,
+"praticamente todas"; (7) os cards de "As perguntas que você ainda não fez"
+passando das margens; (8) o exemplo de notificação sem cara de notificação.
+No meio da sessão, (9): o botão do menu volta a flutuar no canto inferior.
+O autor pediu também a skill Ponytail (plugin instalado nesta máquina,
+nível `full`, depois de ler o repositório; o OmniRoute foi analisado e não
+recomendado, porque passaria o tráfego de IA por um gateway de terceiro).
+
+**Seções em branco (`7122c17`).** Fato: `RevealOnScroll` (21 usos) e as
+encenações do bento e dos passos nasciam com opacidade 0 e só apareciam
+quando o `IntersectionObserver` avisava. **Não foi reproduzido** no Chrome
+com rolagem de verdade (roda do mouse, saltos do menu); só no navegador
+automatizado, com rolagem por código antes do primeiro evento de mouse. A
+causa exata nas telas do autor segue como hipótese (visualizador embutido,
+captura de página inteira ou aviso que não chegou). A correção remove a
+dependência em vez de caçar o gatilho:
+
+- `RevealOnScroll` é CSS puro preso à rolagem (`animation-timeline: view()`,
+  termina com 40% da faixa de entrada; o atraso das grades vira distância,
+  15px por 45ms). O conteúdo nasce visível. Firefox e movimento reduzido
+  mostram direto, sem animação.
+- `useEntradaNaTela` (`lib/motion.ts`) substitui as duas cópias locais do
+  gatilho (`TrilhaPassos`, `BentoFerramentas`): nasce no estado final e só
+  esconde para encenar quando a PRIMEIRA leitura diz que o bloco está fora
+  da tela. Limite anotado no código: se a primeira leitura chegar e as
+  seguintes não, o bloco fica escondido.
+- `ConversaGranachat` não mudou: enquanto espera, mostra a saudação.
+- `__tests__/entrada-na-tela.cjs` (8 casos, módulo real, no `test:ci`); duas
+  mutações pegas.
+- Medido na build local (1861×951 e 390×844), rolando a página inteira com
+  a roda do mouse: nenhum bloco com opacidade abaixo de 0,98 na metade de
+  cima da tela, em nenhuma parada.
+
+**Itens 1 e 6 (`683e7ca`).** Título da dobra de dor: "Pra onde foi o
+dinheiro?". PS do fechamento sem o nome. O identificador `MOMENTOS_APAGAO`
+ficou, com nota de que o nome é só interno.
+
+**Item 2 (`07252aa`).** A cena usa as receitas de `MolduraCelular` e
+`MolduraNavegador` e mostra o mesmo lançamento do passo 1 (Mercado Bom
+Preço, R$ 32,00, cor de Alimentação via `corDaCategoria`). Os aparelhos
+passam do pé da cena, cortados; na primeira versão o celular inteiro era
+estreito e cortava o valor ("32,…"), visto no print da build local.
+
+**Item 8 (`441e52a`).** Recorte de tela: barra de status com 19:00 (o
+primeiro horário do lembrete), ícone monocromático real
+(`assets/android-icon-monochrome.png`) num círculo `brand.dark`, "Grana. ·
+agora" com a seta, superfície lisa. Texto continua o `dica-1` do catálogo.
+
+**Item 7 (`3fb333d`).** O defeito era vertical, não lateral: a 1861×951 a
+grade 3+3+1 passava da tela e cortava o sétimo card. Agora são colunas de
+CSS (até três, mínimo 300px, `breakInside: avoid`), e pergunta/resposta
+usam os tamanhos do `FaqItem` (estavam invertidos). Medido: a seção vai de
+51 a 950px numa tela de 951.
+
+**Item 9 (`6d7a682`).** O botão volta a ser flutuante em todas as larguras,
+como no desenho original, antes de `bc0f7ba`/`0766bd7`. O modo `embutido`
+foi apagado. No celular, o botão de 44px cobre o canto de alguns cards ao
+rolar, que foi o motivo da mudança de 06/09. **Decisão pendente com o
+autor.**
+
+**Verificação.** `tsc` limpo; `test:ci` inteiro passou (1310 guardas do
+design system); build web local conferida no navegador automatizado. Nada
+disso foi visto num celular de verdade nem no Firefox.
+
+**Não publicado.** A landing sai no ar com o push (Vercel). Os commits
+esperam a aprovação do autor.
+
+**Pendências abertas:**
+
+- [ ] Autor: aprovar o push da landing.
+- [ ] Autor: no celular, o botão flutuante fica ou volta para o cabeçalho
+      só no compacto?
+- [ ] Conferir no ar, no navegador onde o autor viu as seções em branco,
+      se elas aparecem.
