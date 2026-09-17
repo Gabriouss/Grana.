@@ -37,10 +37,15 @@ Pontos de atenção que já causaram retrabalho nesta sessão:
 - O celular está de frente, sem perspectiva forte — mesmo assim a
   screenshot real precisa ser mapeada com homografia, não só redimensionada.
 
-## Ainda não integrado
+## Onde já estão em uso
 
-Estes arquivos **não estão referenciados em nenhum componente** —
-`app/index.tsx` continua usando as ilustrações atuais (`notebook.webp`
-etc). Integração pendente: construir um componente novo (nos moldes de
-`components/NotebookAnimado.tsx`) que componha a screenshot real por cima
-via CSS `matrix3d`, e trocar no herói/seções da landing.
+- `celular-vazio.png` (desde 17/09/2026): entra em
+  `public/telas/multiplataforma.webp`, gerado por
+  `scripts/compor-mockup-multiplataforma.mjs`, que recorta o celular do fundo,
+  cola `public/telas/inicio-mobile.png` na tela por homografia e junta com o
+  notebook do herói (`public/notebook/notebook.webp`, com
+  `inicio-web.png` na tela). A imagem ilustra o passo "Confira onde quiser"
+  (`components/TrilhaPassos.tsx`). Os cantos medidos estão no script.
+- `notebook-vazio.png`: ainda sem uso. O fundo cinza não tem transparência e o
+  contorno do notebook em perspectiva não se recorta por um retângulo, como o
+  do celular; por isso a composição usa o render do herói.

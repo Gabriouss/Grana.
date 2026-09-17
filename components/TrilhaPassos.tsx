@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { fonts as uiFonts, radius, spacing, theme, type } from '@/lib/theme';
@@ -15,13 +15,12 @@ type Passo = {
 
 const ENTRADA = Easing.bezier(...UI_OUT);
 
-/* O mesmo lançamento nos dois passos: o que foi colado no primeiro é o que
-   aparece no celular e no computador no segundo. */
+/* Cor da categoria do lançamento colado, a mesma do app. */
 const COR_ALIMENTACAO = corDaCategoria('Alimentação');
 
 /* `ativo` falso só quando a trilha foi escondida para a encenação (ver
    `useEntradaNaTela`); `instantaneo` verdadeiro mostra o estado final. */
-type Cena = { ativo: boolean; instantaneo: boolean };
+type Cena = { ativo: boolean; instantaneo: boolean; compacto: boolean };
 
 /** Esconde, mostra direto ou encena, conforme o gatilho. */
 function useEncenacao(ativo: boolean, instantaneo: boolean, etapas: [Animated.Value, number][]) {
@@ -70,7 +69,7 @@ function useEncenacao(ativo: boolean, instantaneo: boolean, etapas: [Animated.Va
  * O texto colado tem a cara de CAMPO (borda, ícone de área de transferência),
  * e não de bolha de conversa, para não ser lido como o chat do Granabô.
  */
-function CenaColar({ ativo, instantaneo }: Cena) {
+function CenaColar({ ativo, instantaneo, compacto }: Cena) {
   const mensagem = useRef(new Animated.Value(1)).current;
   const seta = useRef(new Animated.Value(1)).current;
   const lancamento = useRef(new Animated.Value(1)).current;
@@ -78,7 +77,7 @@ function CenaColar({ ativo, instantaneo }: Cena) {
   useEncenacao(ativo, instantaneo, [[mensagem, 280], [seta, 140], [lancamento, 320], [ponto, 180]]);
 
   return (
-    <View style={styles.cena}>
+    <View style={[styles.cena, !compacto && styles.cenaAmpla]}>
       <Animated.View
         style={[
           styles.textoColado,
@@ -109,58 +108,41 @@ function CenaColar({ ativo, instantaneo }: Cena) {
 }
 
 /**
- * Continuidade, não mecanismo: o MESMO lançamento do passo anterior chegando
- * primeiro no celular e, com uma pausa curta, no computador — é o "aparece
- * nos dois lugares" da copy virando algo que se vê acontecer.
+ * O notebook e o celular de verdade, lado a lado, com a mesma conta aberta
+ * nos dois: é o "aparece no computador e no celular" da copy.
  *
- * Até 17/09/2026 os dois aparelhos eram contornos grossos com linhas cinza de
- * esqueleto e uma barra de menta. O autor apontou que aquilo não tinha a cara
- * do Grana.: ao lado do passo 1, que mostra um lançamento de verdade, lia como
- * ícone genérico. Agora as molduras seguem `MolduraCelular` e
- * `MolduraNavegador` (vidro `mockupTela`, borda de 1px) e o conteúdo é o
- * lançamento, com o ponto da categoria. O celular mostra só o valor porque o
- * nome não cabe legível naquela largura, e os dois aparelhos passam do pé da
- * cena (cortados pelo `overflow`), como quem entra no quadro: a cena tem
- * altura fixa, e um celular inteiro nela seria estreito demais até para o
- * valor.
+ * Até 17/09/2026 esta cena eram miniaturas desenhadas em CSS (primeiro um
+ * esqueleto de linhas cinza, depois o lançamento do passo 1 dentro de
+ * molduras pequenas). O autor pediu um mockup realista dos dois aparelhos
+ * juntos. A imagem é gerada por `scripts/compor-mockup-multiplataforma.mjs`
+ * a partir das capturas do modo "Dados de exemplo" (`public/telas/`), então
+ * os números são os mesmos do resto da página e são fictícios.
+ *
+ * `createElement('img')` pelo mesmo motivo de `MolduraCelular`: só assim
+ * `loading="lazy"` chega ao elemento. A página é só web.
  */
-function CenaLugares({ ativo, instantaneo }: Cena) {
-  const noCelular = useRef(new Animated.Value(1)).current;
-  const noNavegador = useRef(new Animated.Value(1)).current;
-  useEncenacao(ativo, instantaneo, [[noCelular, 260], [noNavegador, 260]]);
-
-  const chegada = (valor: Animated.Value) => ({
-    opacity: valor,
-    transform: [{ translateY: valor.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }],
-  });
+function CenaLugares({ ativo, instantaneo, compacto }: Cena) {
+  const aparelhos = useRef(new Animated.Value(1)).current;
+  useEncenacao(ativo, instantaneo, [[aparelhos, 420]]);
 
   return (
-    <View style={[styles.cena, styles.cenaLugares]}>
-      <View style={styles.celular}>
-        <View style={styles.celularTela}>
-          <View style={styles.celularCamera} />
-          <Animated.View style={[styles.miniLancamento, styles.miniLancamentoCelular, chegada(noCelular)]}>
-            <View style={[styles.pontoCategoria, { backgroundColor: COR_ALIMENTACAO }]} />
-            <Text style={styles.miniValor} numberOfLines={1}>R$ 32,00</Text>
-          </Animated.View>
-        </View>
-      </View>
-      <View style={styles.navegador}>
-        <View style={styles.navegadorBarra}>
-          <View style={styles.navegadorPonto} />
-          <View style={styles.navegadorPonto} />
-          <View style={styles.navegadorPonto} />
-        </View>
-        <View style={styles.navegadorTela}>
-          <Animated.View style={[styles.miniLancamento, chegada(noNavegador)]}>
-            <View style={[styles.pontoCategoria, { backgroundColor: COR_ALIMENTACAO }]} />
-            <View style={styles.miniTextos}>
-              <Text style={styles.miniTitulo} numberOfLines={1}>Mercado Bom Preço</Text>
-              <Text style={styles.miniValor} numberOfLines={1}>− R$ 32,00</Text>
-            </View>
-          </Animated.View>
-        </View>
-      </View>
+    <View style={[styles.cena, !compacto && styles.cenaAmpla, styles.cenaLugares]}>
+      <Animated.View
+        style={[
+          styles.aparelhos,
+          { opacity: aparelhos, transform: [{ translateY: aparelhos.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] },
+        ]}
+      >
+        {createElement('img', {
+          src: '/telas/multiplataforma.webp?v=20260917',
+          alt: 'O Grana. aberto no notebook e no celular, com o mesmo mês e os mesmos valores nos dois',
+          width: 960,
+          height: 646,
+          loading: 'lazy',
+          decoding: 'async',
+          style: { width: '100%', height: '100%', objectFit: 'contain', display: 'block' },
+        })}
+      </Animated.View>
     </View>
   );
 }
@@ -188,7 +170,11 @@ export default function TrilhaPassos({ compacto = false }: { compacto?: boolean 
       <View style={[styles.passos, compacto && styles.passosCompactos]}>
         {PASSOS.map((passo) => (
           <View key={passo.titulo} style={styles.passo}>
-            {passo.cena === 'colar' ? <CenaColar ativo={ativo} instantaneo={instantaneo} /> : <CenaLugares ativo={ativo} instantaneo={instantaneo} />}
+            {passo.cena === 'colar' ? (
+              <CenaColar ativo={ativo} instantaneo={instantaneo} compacto={compacto} />
+            ) : (
+              <CenaLugares ativo={ativo} instantaneo={instantaneo} compacto={compacto} />
+            )}
             <Text style={styles.tituloPasso}>{passo.titulo}</Text>
             <Text style={styles.textoPasso}>{passo.texto}</Text>
           </View>
@@ -213,9 +199,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paperRaised,
   },
   /* A cena tem altura fixa nos dois cards pra que título e texto comecem na
-     mesma linha de base, mesmo com conteúdos internos diferentes. */
+     mesma linha de base, mesmo com conteúdos internos diferentes. Subiu de
+     128 para 216 (280 com os cards lado a lado) com o mockup dos aparelhos,
+     que precisa de altura para ser lido como foto e não como ícone. */
   cena: {
-    height: 128,
+    height: 216,
     justifyContent: 'center',
     gap: spacing.xs,
     padding: spacing.md,
@@ -226,7 +214,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     overflow: 'hidden',
   },
-  cenaLugares: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', gap: spacing.md, paddingBottom: 0 },
+  cenaAmpla: { height: 280 },
+  cenaLugares: { padding: spacing.sm },
+  aparelhos: { flex: 1 },
   /* Campo, não bolha: borda tracejada fina de área de colar, ícone de área de
      transferência à esquerda, largura inteira. Uma bolha com canto cortado
      (o desenho anterior) lê como mensagem de chat. */
@@ -259,44 +249,6 @@ const styles = StyleSheet.create({
   lancamentoTitulo: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular },
   lancamentoMeta: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
   lancamentoValor: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  /* Celular e navegador desenhados em CSS, sem asset — as mesmas receitas de
-     `MolduraCelular` e `MolduraNavegador`, em miniatura. Os dois esticam até
-     a altura da cena, sem altura escrita à mão. */
-  /* A margem negativa leva a borda de baixo para fora da cena. */
-  celular: { width: 88, marginBottom: -radius.lg, padding: 3, borderRadius: 16, borderWidth: 1, borderColor: theme.ruleStrong, backgroundColor: theme.mockupTela },
-  celularTela: { flex: 1, alignItems: 'center', gap: spacing.xs, padding: spacing.xs, borderRadius: 13, backgroundColor: theme.paper },
-  celularCamera: { width: 14, height: 3, borderRadius: 2, backgroundColor: theme.mockupTela },
-  navegador: { flex: 1, maxWidth: 220, marginBottom: -radius.lg, borderRadius: 10, borderWidth: 1, borderColor: theme.ruleStrong, backgroundColor: theme.paperRaised, overflow: 'hidden' },
-  navegadorBarra: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 5,
-    backgroundColor: theme.mockupTela,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.rule,
-  },
-  navegadorPonto: { width: 4, height: 4, borderRadius: 2, backgroundColor: theme.rule },
-  navegadorTela: { flex: 1, padding: spacing.sm, backgroundColor: theme.paper },
-  /* O lançamento em miniatura, com a mesma superfície de `lancamentoCena`.
-     Texto a 10px, como o endereço da `MolduraNavegador`: é desenho de tela,
-     não leitura corrida. */
-  miniLancamento: {
-    alignSelf: 'stretch',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    padding: 5,
-    borderRadius: 6,
-    backgroundColor: theme.paperRaised,
-    borderWidth: 1,
-    borderColor: theme.rule,
-  },
-  miniLancamentoCelular: { gap: 3, paddingHorizontal: 3 },
-  miniTextos: { flex: 1, minWidth: 0 },
-  miniTitulo: { color: theme.ink, fontSize: 10, lineHeight: 14, fontFamily: fonts.regular },
-  miniValor: { color: theme.inkSoft, fontSize: 10, lineHeight: 14, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
   tituloPasso: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular },
   textoPasso: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light },
 });
