@@ -8657,10 +8657,10 @@ causa exata nas telas do autor segue como hipótese (visualizador embutido,
 captura de página inteira ou aviso que não chegou). A correção remove a
 dependência em vez de caçar o gatilho:
 
-- `RevealOnScroll` é CSS puro preso à rolagem (`animation-timeline: view()`,
-  termina com 40% da faixa de entrada; o atraso das grades vira distância,
-  15px por 45ms). O conteúdo nasce visível. Firefox e movimento reduzido
-  mostram direto, sem animação.
+- `RevealOnScroll` virou CSS puro preso à rolagem (`animation-timeline:
+  view()`). **Substituído no mesmo dia (`36ee86f`, ver abaixo): não animava
+  nada.** O conteúdo nascer visível, que é o que resolve a seção em branco,
+  ficou.
 - `useEntradaNaTela` (`lib/motion.ts`) substitui as duas cópias locais do
   gatilho (`TrilhaPassos`, `BentoFerramentas`): nasce no estado final e só
   esconde para encenar quando a PRIMEIRA leitura diz que o bloco está fora
@@ -8711,6 +8711,37 @@ modo "Dados de exemplo". A cena sobe para 280px com os cards lado a lado e
 216px empilhados. O `notebook-vazio.png` não foi usado: o fundo não tem
 transparência e o contorno em perspectiva não se recorta por retângulo.
 Rodar o script de novo quando as capturas mudarem.
+
+**Entrada dos blocos sem animação — corrigido (`36ee86f`).** O autor abriu a
+página e viu que nada se movia na rolagem. Fato medido no navegador: com
+`animation-timeline: view()`, o navegador resolve a linha do tempo contra o
+contêiner que ROLA mais próximo; nesta página os blocos ficam dentro de
+contêineres com `overflow: hidden` que não rolam, então a animação nasce
+`finished` (`ViewTimeline` com `source` de 848×848) e o bloco aparece pronto.
+A conferência da rodada anterior só checou se algum bloco ficava APAGADO, não
+se a animação acontecia — é a diferença entre "não está quebrado" e "está
+funcionando", e passou batido.
+
+A correção mantém as duas exigências ao mesmo tempo: `RevealOnScroll` voltou à
+transição de CSS com `IntersectionObserver`, mas pelo `useEntradaNaTela`, que
+nasce no estado final e só esconde depois de confirmar que o bloco está fora
+da tela. Seção em branco continua impossível, e a animação volta inclusive no
+Firefox. Detalhes: a transição só é declarada no sentido de MOSTRAR (e o bento
+esconde sem transição), senão o sumiço de um bloco visível apareceria como
+piscar; e bloco que já está na tela quando a página abre entra animado, por
+uma janela de 1,5s no gatilho. Sonda no navegador: 16 de 16 blocos com
+transição variaram de opacidade ao rolar.
+
+**"Nada de motion funciona" — era movimento reduzido no sistema.** O autor
+relatou, da sessão de acesso remoto, que nem a flutuação, nem o brilho do
+botão no hover, nem o motion da dobra de preços funcionavam, e mandou print da
+faixa do topo parada. Reproduzido aqui emulando `prefers-reduced-motion:
+reduce`: a faixa vira exatamente aquela linha de três fatos parados (é o ramo
+de movimento reduzido do `TrustMarquee`, intocado nesta sessão), e todo o
+resto para junto, porque o projeto desliga essas animações por essa
+preferência. Sessão de acesso remoto do Windows costuma desligar as animações
+do sistema, e o navegador repassa isso. **Não é defeito, e não é regressão** —
+mas também quer dizer que o motion da página não pode ser julgado dali.
 
 **Verificação.** `tsc` limpo; `test:ci` inteiro passou (1310 guardas do
 design system); build web local conferida no navegador automatizado. Nada
