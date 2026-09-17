@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Platform } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Platform, type View } from 'react-native';
 
 /**
  * Curvas de easing usadas em CSS puro (via `as any` — `transitionTimingFunction`/
@@ -55,6 +55,63 @@ export function useReducedMotion() {
   }, []);
 
   return reduzir;
+}
+
+/**
+ * Gatilho das encenações da landing que rodam uma vez, quando o bloco entra
+ * na tela (`TrilhaPassos`, `BentoFerramentas`).
+ *
+ * O conteúdo nasce no estado FINAL (`ativo` e `instantaneo` verdadeiros).
+ * Só é escondido para a encenação quando a primeira leitura do observador
+ * diz que o bloco está fora da tela, e aí ninguém vê o sumiço. Até 17/09/2026
+ * cada componente tinha a sua cópia deste gancho, e as duas nasciam
+ * escondidas: se o aviso do observador não chegasse, o desenho ficava vazio
+ * para sempre. Agora, sem aviso, fica o estado final. Movimento reduzido,
+ * nativo e navegador sem `IntersectionObserver` nunca escondem nada.
+ *
+ * ponytail: se a primeira leitura chegar e as seguintes não, o bloco continua
+ * escondido; não aconteceu em navegador de verdade, só em rolagem por código
+ * no navegador automatizado.
+ */
+export function useEntradaNaTela(rootMargin: string) {
+  const ref = useRef<View>(null);
+  const [ativo, setAtivo] = useState(true);
+  const [instantaneo, setInstantaneo] = useState(true);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let cancelado = false;
+    let observador: IntersectionObserver | undefined;
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((reduzir) => {
+        const no = ref.current as unknown as HTMLElement | null;
+        if (cancelado || reduzir || !no) return;
+        let primeira = true;
+        observador = new IntersectionObserver(
+          ([entrada]) => {
+            if (entrada.isIntersecting) {
+              setAtivo(true);
+              observador?.disconnect();
+            } else if (primeira) {
+              setInstantaneo(false);
+              setAtivo(false);
+            }
+            primeira = false;
+          },
+          { rootMargin, threshold: 0 }
+        );
+        observador.observe(no);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+      observador?.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { ref, ativo, instantaneo };
 }
 
 /**

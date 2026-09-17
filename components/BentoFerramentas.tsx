@@ -1,10 +1,11 @@
-import { createElement, useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
-import { AccessibilityInfo, Platform, StyleSheet, Text, View } from 'react-native';
+import { createElement, useCallback, useEffect, useState, type ComponentType } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { fonts as uiFonts, lh, radius, sombraCard, spacing, theme, type } from '@/lib/theme';
 import { corDaCategoria } from '@/lib/chart-colors';
 import { EXEMPLO_CONVERSA, EXEMPLO_LIVRE, emReais } from '@/lib/exemplo-landing';
 import RevealOnScroll from '@/components/RevealOnScroll';
+import { useEntradaNaTela } from '@/lib/motion';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
@@ -178,7 +179,7 @@ function Bloco({
   /* Um observador por bloco, e não um só para a grade: empilhada, a grade
      passa de 2.500px no celular, e com um observador só os desenhos lá de
      baixo terminavam de se montar antes de a pessoa rolar até eles. */
-  const { ref, ativo, instantaneo } = useEntrouNaTela();
+  const { ref, ativo, instantaneo } = useEntradaNaTela('0px 0px -10% 0px');
   /* O `bento-grid-01` cresce os blocos altos (1.02) e encolhe os outros
      (0.98) sob o ponteiro. Aqui a mesma ideia, mais contida: 1.015 e 0.985.
      Com o conteúdo sendo dado de dinheiro, escala grande lê como instável. */
@@ -688,64 +689,15 @@ function VisualCofrinhos({ ativo, instantaneo, largura }: PropsVisual) {
 
 /* ──────────────────────────── ganchos ──────────────────────────── */
 
-/**
- * `ativo` vira verdadeiro uma vez, quando o elemento do `ref` entra na tela.
- * `instantaneo` é verdadeiro com "reduzir movimento": tudo nasce no estado
- * final e nenhuma transição roda.
- */
-function useEntrouNaTela() {
-  const ref = useRef<View>(null);
-  const semObservador =
-    Platform.OS !== 'web' || typeof window === 'undefined' || typeof IntersectionObserver === 'undefined';
-  const reduzidoNoCss =
-    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-  const [instantaneo, setInstantaneo] = useState(reduzidoNoCss);
-  const [ativo, setAtivo] = useState(semObservador || reduzidoNoCss);
-
-  useEffect(() => {
-    if (ativo) return;
-    let cancelado = false;
-    let observador: IntersectionObserver | undefined;
-    AccessibilityInfo.isReduceMotionEnabled?.()
-      .then((reduzir) => {
-        if (cancelado) return;
-        if (reduzir) {
-          setInstantaneo(true);
-          setAtivo(true);
-          return;
-        }
-        const no = ref.current as unknown as HTMLElement | null;
-        if (!no) {
-          setAtivo(true);
-          return;
-        }
-        observador = new IntersectionObserver(
-          ([entrada]) => {
-            if (entrada.isIntersecting) {
-              setAtivo(true);
-              observador?.disconnect();
-            }
-          },
-          { rootMargin: '0px 0px -10% 0px', threshold: 0 }
-        );
-        observador.observe(no);
-      })
-      .catch(() => setAtivo(true));
-    return () => {
-      cancelado = true;
-      observador?.disconnect();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return { ref, ativo, instantaneo };
-}
-
 /** Conta de 0 até `alvo` em `duracao` ms depois de `atraso`, uma vez. */
 function useContagem(alvo: number, ativo: boolean, instantaneo: boolean, duracao: number, atraso: number) {
   const [valor, setValor] = useState(instantaneo ? alvo : 0);
   useEffect(() => {
-    if (!ativo) return;
+    // Escondido para a encenação (fora da tela): volta a zero para contar.
+    if (!ativo) {
+      setValor(0);
+      return;
+    }
     if (instantaneo) {
       setValor(alvo);
       return;

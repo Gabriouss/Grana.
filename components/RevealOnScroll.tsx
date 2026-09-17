@@ -1,158 +1,104 @@
-import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { AccessibilityInfo, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
+import type { PropsWithChildren } from 'react';
+import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 import { EASE_REVEAL } from '@/lib/motion';
 
 /**
  * Cada variante é uma FORMA de entrada diferente, não só um número trocado —
  * achado da auditoria de 02/09/2026: as 25+ chamadas deste componente usavam
- * a mesma forma (fade + 16px + 600ms) para título de seção, card secundário
- * e prova ao vivo do produto, o que achata a hierarquia visual da página
- * inteira num só gesto repetido.
+ * a mesma forma para título de seção, card secundário e prova ao vivo do
+ * produto, o que achata a hierarquia visual da página inteira num só gesto.
  *
- * - `padrao`: a forma original, para conteúdo de apoio (texto corrido,
- *   itens de lista) — nunca o protagonista da dobra.
- * - `titulo`: deslocamento maior e mais lento. Reservado ao título/eyebrow
- *   de cada seção, o elemento que assina a dobra.
- * - `card`: leve escala junto do fade+subida — para grades de card, onde o
- *   `atraso` (stagger) já existe; a escala reforça a cascata em vez de só
- *   mover o card inteiro em bloco.
- * - `prova`: escala mais perceptível, deslocamento mínimo — para o momento
- *   em que o PRODUTO aparece de verdade (ConversaGranabo, CardLivreParaGastar,
- *   MolduraCelular): o efeito precisa parecer o objeto ganhando presença, não
- *   subindo na tela.
+ * - `padrao`: conteúdo de apoio (texto corrido, itens de lista).
+ * - `titulo`: deslocamento maior. Reservado ao título/eyebrow de cada seção.
+ * - `card`: leve escala junto do fade+subida, para grades de card.
+ * - `prova`: escala mais perceptível, deslocamento mínimo — o produto
+ *   ganhando presença (ConversaGranabo, MolduraCelular…).
  */
 type Variante = 'padrao' | 'titulo' | 'card' | 'prova';
 
-const RECEITAS: Record<Variante, { deslocamento: number; escala: number; duracao: string }> = {
-  padrao: { deslocamento: 16, escala: 1, duracao: '600ms' },
-  titulo: { deslocamento: 30, escala: 1, duracao: '780ms' },
-  card: { deslocamento: 18, escala: 0.96, duracao: '560ms' },
-  prova: { deslocamento: 10, escala: 0.94, duracao: '700ms' },
+const RECEITAS: Record<Variante, { deslocamento: number; escala: number }> = {
+  padrao: { deslocamento: 16, escala: 1 },
+  titulo: { deslocamento: 30, escala: 1 },
+  card: { deslocamento: 18, escala: 0.96 },
+  prova: { deslocamento: 10, escala: 0.94 },
 };
 
+/* Os atrasos das grades são 45 a 90 ms por item. Na rolagem, atraso vira
+   distância: cada passo de 45 ms empurra o fim da entrada 15px mais para
+   dentro da tela. O teto cobre a maior cascata da página. */
+const MS_POR_PASSO = 45;
+const PX_POR_PASSO = 15;
+const PASSOS = 14;
+const passoDoAtraso = (atraso: number) => Math.min(PASSOS, Math.max(0, Math.round(atraso / MS_POR_PASSO)));
+
+/**
+ * A entrada é CSS puro, presa à posição da rolagem (`animation-timeline:
+ * view()`), e o conteúdo nasce VISÍVEL.
+ *
+ * Até 17/09/2026 isto era um `IntersectionObserver`: o conteúdo nascia com
+ * opacidade 0 e só aparecia quando o observador avisava que o elemento tinha
+ * entrado na tela. Se o aviso não chegasse, a seção ficava em branco para
+ * sempre — o autor mostrou três telas assim, só com a grade de fundo. O
+ * aviso depende de o navegador rodar a atualização de quadro; num navegador
+ * automatizado ele não chegou para rolagem feita por código até o primeiro
+ * evento de mouse, e cada visualizador embutido tem regras próprias.
+ *
+ * Agora nada espera evento: o navegador calcula o estado a partir da posição
+ * da rolagem no próprio estilo. Onde `animation-timeline` não existe
+ * (Firefox) ou com `prefers-reduced-motion`, a regra não se aplica e o
+ * conteúdo aparece direto. No nativo, `dataSet` é ignorado.
+ *
+ * A entrada termina com 40% da faixa de entrada percorrida (regra da skill
+ * de rolagem: terminar dentro da tela). Com o encaixe (`scroll-snap`) das
+ * dobras, o que para no pé da tela já chega inteiro ou quase.
+ */
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('reveal-on-scroll')) {
+  const regrasVariante = (Object.keys(RECEITAS) as Variante[])
+    .map((v) => {
+      const { deslocamento, escala } = RECEITAS[v];
+      return `
+        @keyframes reveal-${v} { from { opacity: 0; transform: translateY(${deslocamento}px) scale(${escala}); } }
+        [data-reveal="${v}"] { animation-name: reveal-${v}; }`;
+    })
+    .join('');
+  const regrasAtraso = Array.from({ length: PASSOS + 1 }, (_, p) =>
+    `[data-reveal-passo="${p}"] { animation-range: entry ${p * PX_POR_PASSO}px entry calc(40% + ${p * PX_POR_PASSO}px); }`
+  ).join('\n');
+  const tag = document.createElement('style');
+  tag.id = 'reveal-on-scroll';
+  tag.textContent = `
+    @media (prefers-reduced-motion: no-preference) {
+      @supports (animation-timeline: view()) {
+        [data-reveal] {
+          animation-duration: auto;
+          animation-fill-mode: both;
+          animation-timing-function: ${EASE_REVEAL};
+          animation-timeline: view();
+        }
+        ${regrasVariante}
+        ${regrasAtraso}
+      }
+    }`;
+  document.head.appendChild(tag);
+}
+
 type Props = PropsWithChildren<{
-  /** Milissegundos extras de espera depois que o elemento entra na tela,
-      antes de começar a subir/aparecer — o que faz uma fileira de cards
-      revelar em cascata (cada um com um `atraso` maior) em vez de todos ao
-      mesmo tempo. Sem isso (padrão 0) o comportamento é idêntico ao de antes. */
+  /** Cascata em ms entre itens de uma grade; na rolagem vira distância. */
   atraso?: number;
-  /** Ver a documentação de `Variante` acima. Padrão `'padrao'` — quem não
-      passa nada continua vendo o comportamento de sempre. */
   variante?: Variante;
   /** Repassado ao `View` que envolve o conteúdo — necessário quando este
-      componente é usado como filho direto de um `flexWrap`/grade, porque
-      `flexBasis` só funciona no filho DIRETO do container flex; sem este
-      prop, embrulhar um card de grade aqui faria a grade perder a largura
-      calculada (mesma classe de bug do `flex:1` em coluna já visto nesta
-      página). */
+      componente é filho direto de um `flexWrap`/grade, porque `flexBasis` só
+      funciona no filho DIRETO do container flex. */
   style?: StyleProp<ViewStyle>;
 }>;
 
-/**
- * Revela a seção com um fade + leve subida quando ela entra na tela ao
- * rolar — só na web, com `IntersectionObserver` direto no DOM, no mesmo
- * padrão de `lib/foco-web.ts` (Platform.OS === 'web' + `typeof document`
- * antes de tocar em API de navegador). Não é GSAP/ScrollTrigger: são
- * bibliotecas de DOM puro, e esta tela é um componente React Native como
- * qualquer outro do app — importar uma delas quebraria a única linha de
- * animação que o projeto já usa (`Animated`, nativo do RN, sem dependência
- * nova) só para esta página. O EFEITO de "a rolagem conta a história" é o
- * que vale aproveitar; o mecanismo é o que já existe aqui dentro.
- *
- * No nativo (e se `prefers-reduced-motion` estiver ligado) o conteúdo
- * aparece direto, sem transição — a seção nunca fica invisível esperando
- * uma rolagem que não existe fora do navegador.
- */
 export default function RevealOnScroll({ children, atraso = 0, variante = 'padrao', style }: Props) {
-  const ref = useRef<View>(null);
-  const [visivel, setVisivel] = useState(() =>
-    Platform.OS !== 'web' ||
-    typeof window === 'undefined' ||
-    typeof IntersectionObserver === 'undefined' ||
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
-
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
-      setVisivel(true);
-      return;
-    }
-
-    let cancelado = false;
-    let temporizador: ReturnType<typeof setTimeout> | undefined;
-    let observador: IntersectionObserver | undefined;
-    AccessibilityInfo.isReduceMotionEnabled?.()
-      .then((reduzir) => {
-        if (cancelado) return;
-        if (reduzir) {
-          setVisivel(true);
-          return;
-        }
-        // No RN Web, o `ref` de uma View encaminha para o nó DOM real por baixo.
-        const no = ref.current as unknown as HTMLElement | null;
-        if (!no) {
-          setVisivel(true);
-          return;
-        }
-        // `const obs`, não a variável `observador` do escopo de fora: dentro
-        // do próprio callback, TS não consegue provar que `observador` (um
-        // `let` reatribuído logo depois de criado) já deixou de ser
-        // `undefined` no momento em que o callback roda — mesmo sendo
-        // sempre verdade em tempo de execução (o callback só dispara depois
-        // do `observe()`, que só roda depois da atribuição). Fechar sobre um
-        // `const` local resolve isso sem precisar de non-null assertion.
-        const obs = new IntersectionObserver(
-          ([entrada]) => {
-            if (entrada.isIntersecting) {
-              temporizador = setTimeout(() => setVisivel(true), atraso);
-              obs.disconnect();
-            }
-          },
-          /* Revela ANTES de entrar, e com qualquer pixel — não depois de
-             entrar 10% e com 10% do elemento dentro, que era o ajuste
-             anterior (`-10%` + `threshold: 0.1`).
-             O `-10%` ENCOLHE a área de detecção, e as dobras desta página têm
-             altura de tela inteira: somando os dois, os primeiros ~180px de
-             uma seção podiam estar na tela ainda invisíveis. Com
-             `scroll-snap`, a rolagem parava exatamente aí — e a pessoa via
-             uma tela inteira vazia, que foi o defeito relatado.
-             Agora o `+15%` ESTICA a área para baixo: quando a seção chega ao
-             olho, a animação já começou. O gesto continua o mesmo; só deixa
-             de haver um instante em que o conteúdo está visível na tela e
-             transparente. */
-          { rootMargin: '0px 0px 15% 0px', threshold: 0 }
-        );
-        observador = obs;
-        obs.observe(no);
-      })
-      .catch(() => setVisivel(true));
-
-    return () => {
-      cancelado = true;
-      observador?.disconnect();
-      if (temporizador) clearTimeout(temporizador);
-    };
-  }, [atraso]);
-
-  // Propriedades de transição CSS não existem no tipo ViewStyle do RN — só o
-  // react-native-web as reconhece, no nativo (onde este componente nem monta
-  // com efeito, dado o `visivel` inicial acima) seriam ignoradas de qualquer
-  // forma. Mesmo padrão de `as any` já usado em WebPhoneFrame/_layout.tsx
-  // para o mesmo tipo de propriedade exclusiva da web.
-  const receita = RECEITAS[variante];
-  const estiloWeb = {
-    opacity: visivel ? 1 : 0,
-    transform: [
-      { translateY: visivel ? 0 : receita.deslocamento },
-      { scale: visivel ? 1 : receita.escala },
-    ],
-    transitionProperty: 'opacity, transform',
-    transitionDuration: receita.duracao,
-    transitionTimingFunction: EASE_REVEAL,
-  } as any;
-
   return (
-    <View ref={ref} style={[style, estiloWeb]}>
+    <View
+      // @ts-expect-error — atributo web puro (vira `data-reveal`); o tipo do RN não declara `dataSet`.
+      dataSet={{ reveal: variante, revealPasso: passoDoAtraso(atraso) }}
+      style={style}
+    >
       {children}
     </View>
   );
