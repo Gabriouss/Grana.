@@ -189,6 +189,22 @@ Regras permanentes para qualquer sessão que abrir este repositório:
      silêncio é o pior desfecho, porque é indistinguível de "nada aconteceu".
      Estado de atenção, notificação, ou tela — algo. E o `catch` que notifica
      precisa de guarda própria, porque a notificação também pode falhar.
+   - **Animação se confere vendo o valor MUDAR, não o valor final.** Em
+     17/09/2026 a entrada das seções da landing foi trocada por CSS preso à
+     rolagem, a conferência mediu se algum bloco ficava apagado, deu tudo
+     verde — e no aparelho do autor nada se movia: a animação nascia
+     terminada, porque `animation-timeline: view()` resolve a linha do tempo
+     contra o contêiner que ROLA mais próximo, e as dobras desta página têm
+     contêineres com `overflow: hidden` que não rolam. Sonde a propriedade
+     quadro a quadro (opacidade mínima e máxima por bloco enquanto rola), e
+     desconfie de "não está quebrado" quando o que se prometeu era movimento.
+   - **`prefers-reduced-motion` desliga quase todo o motion do Grana., e
+     sessão de acesso remoto do Windows liga essa preferência sozinha.** Antes
+     de investigar "o motion parou", confirme
+     `matchMedia('(prefers-reduced-motion: reduce)').matches` no ambiente de
+     quem relatou; a faixa do topo parada, com os fatos espaçados, é o sinal
+     visível disso (`TrustMarquee`). Para reproduzir, o navegador
+     automatizado emula com `set media dark reduced-motion`.
    - **Separe hipótese de fato comprovado no `context.md`,** e diga o que NÃO
      foi validado, de preferência como checklist de QA acionável em vez de
      ressalva vaga. Se uma sessão seguinte provar que a hipótese estava
