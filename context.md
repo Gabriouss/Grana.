@@ -8760,6 +8760,27 @@ esperam a aprovação do autor.
   autor, confirmado por ele depois de ligar os efeitos de animação ("era isso
   mesmo").
 
+**Destino dos botões (`2b99855`).** Regra do autor: "todos os botões devem
+levar para a sessão de pricing, e na sessão de pricing precisa levar para o
+checkout". Herói, garantia e fechamento passam a rolar até `#precos`; o
+`compra` do `BotaoCTA` fica só no card de preço, que segue o alternador
+anual/mensal. O botão alcança `navegarParaSecao` por um contexto novo
+(`IrParaSecaoContexto`), no mesmo padrão do `AlturaCabecalhoContexto`.
+
+O relato que abriu o assunto ("os botões estão levando para a tela de criação
+de conta") era da PRÉVIA LOCAL: `hrefCompra()` cai em `/sign-up` de propósito
+quando `EXPO_PUBLIC_CHECKOUT_URL` falta, e o `.env` da M2 não tem essa
+variável. **No ar está correto:** o pacote publicado em
+granaponto.com.br traz a URL da Cakto (conferido no bundle). Ou seja, não era
+defeito de código; é o comportamento de fallback somado a um `.env` local
+incompleto. Se a M2 precisar testar o checkout, a variável tem de entrar no
+`.env` dela — nunca em arquivo versionado.
+
+**Publicação da leva anterior.** Os 13 commits foram empurrados em 17/09/2026
+com o "pode publicar" do autor, e a Vercel já serve a versão nova (o bundle
+no ar tem "Pra onde foi o dinheiro?" e o mockup `multiplataforma.webp`).
+Este commit do destino dos botões AINDA NÃO foi publicado.
+
 **Pendências abertas:**
 - [ ] Conferir no ar, no navegador onde o autor viu as seções em branco,
       se elas aparecem.
