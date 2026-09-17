@@ -704,7 +704,7 @@ const PERGUNTAS_FAQ = [
        a pessoa procurar no checkout uma opção que não existe. */
     pergunta: 'Quais são as formas de pagamento?',
     resposta:
-      'Cartão de crédito e Pix. O plano anual também pode ser parcelado no cartão, com os juros da operadora. Não trabalhamos com boleto.',
+      'Cartão de crédito e Pix. O plano anual também pode ser parcelado no cartão, com juros. Não trabalhamos com boleto.',
   },
   {
     pergunta: 'Como o Livre para Gastar é calculado?',

@@ -125,7 +125,7 @@ export default function AssinarScreen() {
                 </View>
                 <Text style={styles.destaqueApoio}>
                   À vista no cartão ou no Pix, você economiza {economiaAnual} no ano. Em até 12x
-                  com juros da operadora.
+                  com juros.
                 </Text>
                 <Pressable
                   accessibilityRole="button"
