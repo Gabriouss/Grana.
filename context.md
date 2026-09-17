@@ -58,6 +58,157 @@ no `context.md`.
 
 ---
 
+# 16/09/2026 (M1, noite) — Granachat estável em qualquer tela (`ede80df`), Crédito coerente (`6a1ebb2`), "desfaz" honesto no ar (v35)
+
+Continuação da auditoria de lançamentos. Pedido do autor, em ordem: "continue
+o trabalho da auditoria", depois, ao ver o Granachat pular no próprio celular
+(vídeo de 5 s): "Granachat muuuuito bugado", "essas coisas não podem ser
+fixadas por número fixo, precisa ser adaptável a todo tipo de tela e
+resolução", "se você calcular a área da tela atual, muito provavelmente vai
+ficar errada em uma tela diferente" e "eu ordeno você que resolva este caso
+do granachat de uma vez por todas".
+
+## Granachat — o que estava errado, em camadas
+
+1. **Original** (antes de hoje): o painel era dimensionado por
+   `useWindowDimensions()` + `useSafeAreaInsets()` com piso de 260dp. Os
+   insets valem ZERO dentro do fundo (um `SafeAreaView` acima os consome) e
+   `useWindowDimensions()` não é a tela. Sintoma: cabeçalho cortado no topo e
+   vão antes do teclado.
+2. **`90a3469` (desta sessão) estava ERRADO.** Media a área INTERNA do fundo e
+   usava a medida para decidir o recuo do próprio fundo. Recuo muda área, área
+   muda recuo: uma conta-espelho (cada leitura desfaz a anterior). No aparelho
+   do autor a janela pulava entre duas posições várias vezes por segundo, com
+   o campo sumindo atrás do teclado. No emulador o laço só parava quando caía
+   por acaso no ponto de equilíbrio, e a captura única que usei para
+   "confirmar" pegou exatamente esse caso. **Lição: captura única não prova
+   estabilidade; grave a tela.**
+3. **Erro de base comum às duas:** o Android roda em DOIS modos, e o mesmo
+   aparelho troca de um para o outro. Medido com uma sonda temporária:
+   - ponta a ponta: fundo `measureInWindow` y=-50,3 e 914,3dp, fixo;
+   - tela que encolhe: fundo y=0 e 581dp, caindo para 306dp com o teclado.
+   No Expo Go, troca só de tamanho (`wm size`) leva ao primeiro; troca de
+   densidade ou abertura do zero, ao segundo. E a altura do teclado que o RN
+   0.86 entrega no Android EXCLUI a navegação do sistema
+   (`ime.bottom - systemBars.bottom` no `ReactRootView`).
+
+## Granachat — a correção (`ede80df`)
+
+`geometriaDaConversa` em `lib/breakpoints.ts` (substitui `janelaQueCabe`, que
+foi removida). Entram só medições que a janela não consegue alterar:
+
+- fundo por `measureInWindow`, **sem nenhum recuo** (o estilo `fundo` não
+  tem padding de propósito — recuo ali recria o laço);
+- janela (`useWindowDimensions`) e teclado (evento), do sistema;
+- `reservaDaBarra`: distância do ponto mais alto da barra de abas (pílula e
+  disco do Granabô, medidos) até a base, medida pelo `FloatingTabBar` em
+  `app/(app)/_layout.tsx`. Substitui `TAB_BAR_ALTURA + margem` copiados.
+
+A identidade que resolve os dois modos: **topo do teclado nas coordenadas do
+`measureInWindow` = `janela.altura - teclado`**. Bateu com o `screenY` do
+evento e com a base do fundo encolhido em todas as telas medidas. Com teclado,
+a janela pousa nele (12dp); sem teclado, flutua no meio da faixa acima da
+barra. Leitura atrasada do fundo (a ordem evento × layout não é garantida) não
+muda a janela. Largura máxima = 30 × corpo de texto × escala de fonte (teto de
+leitura, não de aparelho). `useSafeAreaInsets` e `useTabBarInset` saíram do
+Granachat.
+
+**Verificado no emulador, com gravação de tela e detector de salto entre
+quadros** (diferença média entre quadros seguidos na região do cabeçalho):
+vídeo do autor 17,7; código anterior 20,0; código novo no máximo 0,26. Telas:
+1080x2400, 1080x2388 (a do autor), 720x1280@320, 1440x3120@560,
+1080x2400@480, 1080x1700, navegação de 3 botões, fonte 1,3x e 2x, paisagem
+(2400x1080), tablet em pé (1600x2560@320) e deitado — teclado aberto e
+fechado em cada uma, e transições de abrir/fechar nos dois modos. Web, 7
+janelas de 320x568 a 1440x900: parado em 12 amostras, dentro da tela, acima
+da barra.
+
+Testes: `__tests__/janela-cabe-acima-do-teclado.cjs` usa as leituras REAIS das
+10 telas (143 verificações), inclui as leituras intermediárias da transição,
+os dois modos dando a mesma janela e a estrutura que impede o laço. Três
+mutações (desconto duplo, leitura velha, janela centralizada com teclado)
+são reprovadas.
+
+**O que NÃO está resolvido e por quê:**
+
+- **Latência de ~250 ms na transição.** O RN no Android só emite
+  `keyboardDidShow/Hide` depois que a animação do teclado termina; nesse
+  intervalo o teclado passa por cima do campo (ao abrir) ou sobra espaço vazio
+  (ao fechar), e então a janela se ajusta de uma vez. Existia antes, não é
+  oscilação. A solução de verdade é `react-native-keyboard-controller`
+  (módulo nativo): exige build nova, decisão do autor.
+- **Paisagem com teclado:** o Android cobre o app com o editor em tela cheia
+  dele. O campo tem `returnKeyType="send"` + `onSubmitEditing`, então o
+  "SEND" desse editor envia. Não foi apertado no teste (gravaria no banco).
+- **As janelas em `<Modal>` (`useSheetFlutuante`/`medidasDeJanelaFlutuante`)
+  não foram tocadas nem medidas.** Vivem em outra janela nativa. A descoberta
+  de que a altura do teclado exclui a navegação pode afetá-las no modo de
+  ponta a ponta — conferir com a mesma sonda antes de mexer.
+- **Nada disso está no celular de ninguém ainda**: é código do app (JS), vai
+  na próxima build. Nenhuma build foi disparada.
+- Rotação real não testada: o Expo Go pede `SCREEN_ORIENTATION_NOSENSOR`;
+  paisagem foi simulada com `wm size`.
+- Tablet, 3 botões e fonte grande só no emulador.
+
+## Crédito — quatro afirmações contrárias na mesma tela (`6a1ebb2`)
+
+Visão Total, cartão que fecha dia 15, compra dia 16: "Fatura de Setembro 2026
+· Atual", cartão com "Fatura atual R$ 300,00", "Total em Faturas R$ 0,00" e
+"Nenhuma compra nesta fatura". A visão Total agrupa pelo ciclo do cartão mas
+abria no mês CIVIL, e o `MonthSelector` recebia `currentYear/currentMonth`
+indefinidos. `faturaAtualDeTodosOsCartoes` (`lib/creditoFaturas.ts`) só afirma
+fatura atual quando todos os cartões concordam; senão, nada é carimbado.
+10 checagens novas em `corpus-credito-faturas.ts`. Conferido no emulador.
+Vários cartões com fechamentos diferentes: só no teste.
+
+## Granabô — "Desfeito" sem ter desfeito (`c8dfa43`, `9b875f1`; no ar na v35)
+
+O chat disse "Desfeito. Removi o último lançamento" sem nenhuma operação
+desfeita no banco. Dois buracos: o executor tratava qualquer status como
+sucesso e ignorava `count` (que vem 0 quando o lançamento já tinha sido
+apagado à mão); e `respostaFundamentada` só recusava R$ sem evidência.
+Agora: confirmação só com `count > 0`; afirmar escrita exige escrita ACEITA no
+turno. **Qual dos dois produziu o que vi não foi determinado.**
+
+Publicado **v34** (00:17Z de 17/09, `c8dfa43`) com autorização do autor,
+depois do preflight da regra 11 (v33 do `9df95d1`, sem código órfão;
+`verify_jwt=true` igual ao padrão da CLI; pacote v33 baixado como retorno, só
+no scratchpad local; `deno check`; só `assistente-financeiro` importa o
+módulo). O teste ao vivo da v34 mostrou um defeito meu: o texto de "não removi
+nada" chegou à tela LITERAL, com "Diga isso ao usuário…" — resultado de
+escrita aceito por `resultadoValido` vai direto para a tela por
+`respostaFinalSegura`. O de "nada para desfazer" já vazava antes ("Se ele
+quer apagar…, oriente…"); o registro de `c8dfa43` dizia que ele era recusado
+pelo filtro, e **estava errado** (o filtro só recusa "não há … cadastrado").
+Corrigido em `9b875f1`, publicado **v35** (01:37Z). Conferido ao vivo na v35,
+na conta de teste, os três desfechos: desfazer real ("Desfeito…" e a transação
+some), nada para desfazer (texto novo), e lançamento apagado à mão antes do
+"desfaz" ("Não removi nada: esse lançamento já não estava mais na sua
+conta…", operação marcada desfeita sem apagar nada). Demais funções
+intactas (mesmas versões e carimbos).
+
+## Outros achados desta rodada
+
+- "pão"/"pao" não está no vocabulário de Alimentação (só a rede "Pão de
+  Açúcar"); o Granabô pergunta a categoria em vez de chutar. Não mexido: o
+  vocabulário é compartilhado com a voz e tem corpus grande.
+- "Colar comprovante" conferido de ponta a ponta (valor, descrição,
+  categoria, "Também reconhecido: Pix"), gravação conferida no banco.
+- Metro caído + `adb reverse` perdido fazem o Expo Go abrir em
+  `ErrorActivity` com "Failed to download remote update", mesmo com o bundle
+  respondendo 200. Recriar `adb reverse tcp:8081 tcp:8081`.
+- A bolha "Tools" do Expo Go fica sobre o X do Granachat; tocar ali abre o
+  menu de desenvolvedor. Só existe no Expo Go.
+
+## Estado da conta de teste
+
+Além do que a seção anterior lista: "AUDIT Padaria Sabor" R$ 67,40 (colado),
+"Cafe" R$ 12 (pelo chat, v34). "Agua" e "Cafe gelado" foram lançados pelo chat
+e apagados à mão; "Pao" foi lançado e desfeito. Emulador devolvido ao padrão
+(tamanho, densidade, navegação por gestos, fonte 1,0).
+
+---
+
 # 16/09/2026 (M1, nova sessão) — leitura do vault e a troca de segredos adiada
 
 Pedido: "leia o vault, entenda o contexto do que foi feito na M2". Sessão
