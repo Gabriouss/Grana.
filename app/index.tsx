@@ -771,8 +771,13 @@ const GANCHO_HERO = 'Cadê meu dinheiro?';
    Em 17/09/2026 o autor mandou que este botão, como todos os de fora da dobra
    de preços, leve À DOBRA DE PREÇOS, não ao checkout: quem clica aqui ainda
    não viu preço nenhum, e caía direto num pagamento de R$ 97,90. A escolha do
-   plano acontece lá, no alternador que já abre no anual. */
-const ROTULO_CTA_HEROI = 'Assinar agora';
+   plano acontece lá, no alternador que já abre no anual.
+
+   O rótulo é do autor, escolhido no mesmo dia, junto dessa mudança: um botão
+   que diz "assinar" e leva a uma tabela de preços mente sobre o próprio
+   clique. Na primeira pessoa, ele filtra quem já decidiu — e é exatamente
+   quem tem pressa de ver o preço. */
+const ROTULO_CTA_HEROI = 'Já me decidi. Quero agora';
 const APOIO_HERO =
   'Sem formulário, sem planilha, sem conectar banco. Só o seu dinheiro, do seu jeito.';
 
