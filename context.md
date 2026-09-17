@@ -8806,6 +8806,14 @@ próxima build.
 mede (não há dado de qual plano é mais escolhido — a Cakto não foi consultada
 para isso). O autor foi avisado e manteve.
 
+**Fim da sessão na M2, 17/09/2026.** Tudo commitado e publicado a pedido do
+autor ("publica, commita tudo e encerramos esse dia de trabalho nessa
+máquina"). A landing no ar passa a ter: seções que não podem nascer em branco,
+entrada animada de volta, ilustração dos passos com mockup realista,
+notificação de exemplo com cara de notificação, objeções em colunas, botão de
+menu flutuante no canto, todo botão levando à dobra de preços (só ela leva ao
+checkout) e a copy nova de rótulos, selo, parcelamento e garantia.
+
 **Pendências abertas:**
 - [ ] Conferir no ar, no navegador onde o autor viu as seções em branco,
       se elas aparecem.
