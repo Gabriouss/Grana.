@@ -1556,13 +1556,15 @@ function ConteudoWeb() {
 
                   <View style={[styles.precoCabecalho, ehCompacto && styles.precoCabecalhoCompacto]}>
                     <Text style={styles.precoRotulo}>{ehPlanoAnual ? 'Grana. anual' : 'Grana. mensal'}</Text>
-                    {/* O selo carrega o argumento, não um rótulo de vaidade
-                        como "popular": aqui o que convence é o número que a
-                        pessoa deixa de gastar. */}
+                    {/* "Mais popular" por decisão do autor em 17/09/2026. O
+                        comentário antigo aqui defendia o contrário (selo com o
+                        valor economizado, por ser argumento em vez de
+                        vaidade); a economia não se perdeu, continua na linha
+                        de apoio logo abaixo, com o número. */}
                     {ehPlanoAnual && (
                       <View style={styles.precoSelo}>
                         <Ionicons name="star" size={12} color={theme.paper} aria-hidden />
-                        <Text style={styles.precoSeloTexto}>Economize {emReais(ECONOMIA_ANUAL)}</Text>
+                        <Text style={styles.precoSeloTexto}>Mais popular</Text>
                       </View>
                     )}
                   </View>
@@ -1582,7 +1584,7 @@ function ConteudoWeb() {
                       errado uma vez nesta página. */}
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
                     {ehPlanoAnual
-                      ? `À vista no cartão ou no Pix, você economiza ${emReais(ECONOMIA_ANUAL)} no ano. Em até 12x com juros da operadora.`
+                      ? `À vista no cartão ou no Pix, você economiza ${emReais(ECONOMIA_ANUAL)} no ano. Em até 12x com juros.`
                       : `Renova todo mês. Em doze meses, ${emReais(PRECO_MENSAL * 12)}, ou ${emReais(ECONOMIA_ANUAL)} a mais que o plano anual.`}
                   </Text>
                   <Text style={[styles.featureTexto, ehCompacto && styles.precoTextoCentralizado]}>
@@ -1660,9 +1662,12 @@ function ConteudoWeb() {
               <Ionicons name="shield-checkmark-outline" size={26} color={theme.accent2} />
             </View>
             <TituloSecao estiloExtra={styles.precoTituloCentralizado}>Sete dias para mudar de ideia.</TituloSecao>
+            {/* Uma frase só, por pedido do autor em 17/09/2026: o "como pedir"
+                e a menção ao e-mail de confirmação saíram. O prazo continua no
+                título da faixa, e os sete dias são o que a Cakto pratica
+                (conferido no painel em 13/09/2026). */}
             <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.garantiaTexto]}>
-              Se nos primeiros sete dias você concluir que o Grana. não é pra você, pede o reembolso e recebe o
-              valor de volta. O prazo está escrito no próprio e-mail de confirmação da compra.
+              Se nos primeiros sete dias você concluir que o Grana. não é pra você, seu reembolso é garantido.
             </Text>
             <View style={styles.garantiaCta}>
               <BotaoCTA centralizado rotulo={ROTULO_CTA_PLANOS} />
