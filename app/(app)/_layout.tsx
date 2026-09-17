@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type RefObject } from 'react';
-import { Animated, Platform, StyleSheet, View } from 'react-native';
+import { Animated, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -56,13 +56,53 @@ const ICONS: Record<string, { off: keyof typeof Ionicons.glyphMap; on: keyof typ
  * `alignItems:'center'`), o alinhamento deixa de depender de nenhum cálculo
  * interno de terceiros.
  */
-function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto, onAlternarChat }:
-  TabBarProps & { blurTarget: RefObject<View | null> | null; chatAberto: boolean; onAlternarChat: () => void }) {
+function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto, onAlternarChat, onMedirReserva }:
+  TabBarProps & {
+    blurTarget: RefObject<View | null> | null;
+    chatAberto: boolean;
+    onAlternarChat: () => void;
+    onMedirReserva: (reserva: number) => void;
+  }) {
   const { margem } = useTabBarInset();
+  const { width: larguraJanela, height: alturaJanela } = useWindowDimensions();
+
+  /* Quanto a barra ocupa, medido do ponto mais alto dela (o disco do Granabô
+     passa da pílula) até a base da tela. O Granachat usa isso para parar acima
+     da barra com o teclado fechado, em vez de repetir aqui a altura da barra
+     e a margem na mão. É uma DISTÂNCIA até a base, e não uma posição, porque
+     ela não muda quando o sistema encolhe a tela para o teclado: a barra
+     acompanha a base. */
+  const envoltorioRef = useRef<View | null>(null);
+  const pilulaRef = useRef<View | null>(null);
+  const discoRef = useRef<View | null>(null);
+  const medirReserva = useCallback(() => {
+    const medir = (ref: RefObject<View | null>) =>
+      new Promise<{ y: number; altura: number } | null>((resolver) => {
+        if (!ref.current) return resolver(null);
+        ref.current.measureInWindow((_x, y, _largura, altura) =>
+          resolver(altura > 0 ? { y, altura } : null)
+        );
+      });
+    Promise.all([medir(envoltorioRef), medir(pilulaRef), medir(discoRef)]).then(
+      ([envoltorio, pilula, disco]) => {
+        if (!envoltorio) return;
+        const topos = [pilula?.y, disco?.y].filter((y): y is number => typeof y === 'number');
+        const topo = topos.length ? Math.min(...topos) : envoltorio.y;
+        onMedirReserva(Math.max(envoltorio.y + envoltorio.altura - topo, 0));
+      }
+    );
+  }, [onMedirReserva]);
+  useEffect(() => {
+    medirReserva();
+  }, [larguraJanela, alturaJanela, margem, medirReserva]);
 
   return (
-    <View style={[styles.floatWrap, { pointerEvents: 'box-none' }]}>
-      <View style={[styles.tabBar, { marginBottom: margem }]}>
+    <View
+      ref={envoltorioRef}
+      onLayout={medirReserva}
+      style={[styles.floatWrap, { pointerEvents: 'box-none' }]}
+    >
+      <View ref={pilulaRef} style={[styles.tabBar, { marginBottom: margem }]}>
         {/* O vidro mora numa camada própria, recortada na pílula, em vez de ser
             o fundo do container. Duas razões, as duas visíveis: (1) o container
             tinha `backgroundColor` semiopaco E a camada de vidro repetia o mesmo
@@ -123,7 +163,7 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
                fileira, o próprio flex resolve em qualquer altura de barra. */
             const destaque =
               posicao === 3 ? (
-                <BotaoGranabo key="granabo" ativo={chatAberto} onPress={onAlternarChat} />
+                <BotaoGranabo key="granabo" ativo={chatAberto} onPress={onAlternarChat} discoRef={discoRef} />
               ) : null;
 
             return [
@@ -219,7 +259,15 @@ function TabButton({
  * sozinha — que o marca como "o de fora da fileira" mesmo pra quem vê a barra
  * em escala de cinza.
  */
-function BotaoGranabo({ ativo, onPress }: { ativo: boolean; onPress: () => void }) {
+function BotaoGranabo({
+  ativo,
+  onPress,
+  discoRef,
+}: {
+  ativo: boolean;
+  onPress: () => void;
+  discoRef: RefObject<View | null>;
+}) {
   const pressao = useRef(new Animated.Value(0)).current;
   const reduzirMovimento = useReducedMotion();
 
@@ -255,6 +303,7 @@ function BotaoGranabo({ ativo, onPress }: { ativo: boolean; onPress: () => void 
       android_ripple={{ color: 'rgba(5,34,41,0.16)', borderless: true, radius: 37 }}
     >
       <Animated.View
+        ref={discoRef}
         style={[
           styles.destaqueDisco,
           { transform: [{ scale: pressao.interpolate({ inputRange: [0, 1], outputRange: [1, 0.94] }) }] },
@@ -359,6 +408,10 @@ function AbasEmJavaScript() {
   }, []);
   const { temBarraLateral } = useBreakpoint();
   const [chatAberto, setChatAberto] = useState(false);
+  const [reservaDaBarra, setReservaDaBarra] = useState(0);
+  const aoMedirReserva = useCallback((reserva: number) => {
+    setReservaDaBarra((atual) => (Math.abs(atual - reserva) < 0.5 ? atual : reserva));
+  }, []);
 
   /* `tabBarPosition: 'left'` faz o próprio BottomTabView virar a orientação
      do container para linha e renderizar a barra ANTES das telas — ou seja,
@@ -398,6 +451,7 @@ function AbasEmJavaScript() {
                 blurTarget={targets[props.state.routes[props.state.index].key] ?? null}
                 chatAberto={chatAberto}
                 onAlternarChat={() => setChatAberto((v) => !v)}
+                onMedirReserva={aoMedirReserva}
               />
             )
           }
@@ -420,7 +474,12 @@ function AbasEmJavaScript() {
         {/* Irmão das abas, não filho de nenhuma tela: assim o Granachat
             sobrevive à troca de aba por baixo dele e some junto com o layout
             no logout, sem cada tela precisar saber que ele existe. */}
-        <Granachat visivel={chatAberto} onFechar={() => setChatAberto(false)} />
+        <Granachat
+          visivel={chatAberto}
+          onFechar={() => setChatAberto(false)}
+          /* Na navegação lateral não há barra no rodapé para desviar. */
+          reservaDaBarra={temBarraLateral ? 0 : reservaDaBarra}
+        />
     </View>
   );
 }

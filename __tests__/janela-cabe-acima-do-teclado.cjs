@@ -34,7 +34,7 @@ vm.runInNewContext(
   }
 );
 
-const { medidasDeJanelaFlutuante, janelaQueCabe } = api;
+const { medidasDeJanelaFlutuante, geometriaDaConversa } = api;
 
 /* Cada caso é: nome, altura que o app pediu, altura que o sistema DEU, altura
    do teclado. A diferença entre pedido e recebido é o que o sistema já
@@ -110,93 +110,185 @@ for (const [nome, pedida, recebida, teclado] of casos) {
   verificacoes++;
 }
 
-/* ── O painel do Granachat cabe na caixa MEDIDA, em qualquer tela ──────────
+/* ── Granachat: a janela cabe e fica parada em qualquer tela ─────────────
  *
- * Os dois defeitos que originaram esta parte, vistos no Pixel 8 em
- * 16/09/2026: o cabeçalho da conversa ("Assistente", "Granabô", o X de fechar)
- * não aparecia, e sobrava um vão escuro entre o rodapé e o teclado. A janela
- * era dimensionada a partir de `useWindowDimensions()` e de
- * `useSafeAreaInsets()` — que ali devolvia ZERO nas duas pontas, porque um
- * `SafeAreaView` acima já consumira os insets —, com um piso de 260dp por
- * cima. Resultado: painel maior que o espaço, e o `justifyContent: 'center'`
- * do fundo empurrando metade do excesso para fora da tela, pelo topo.
+ * Três defeitos originaram esta parte, os três vistos em aparelho em
+ * 16/09/2026:
  *
- * A garantia abaixo é a que impede a volta do defeito: o painel NUNCA passa da
- * caixa, em nenhuma das duas dimensões, por menor que ela seja. */
+ * 1. o cabeçalho da conversa sumia pelo topo e sobrava um vão antes do
+ *    teclado — a conta usava insets que valem ZERO dentro do fundo;
+ * 2. a primeira correção (`90a3469`) mediu a área interna do fundo e usou a
+ *    medida para decidir o recuo do próprio fundo. A conta virou um espelho,
+ *    e no aparelho do autor a janela pulava entre duas posições várias vezes
+ *    por segundo, com o campo sumindo atrás do teclado;
+ * 3. nenhuma das duas sabia que o Android roda em DOIS modos, e que o mesmo
+ *    aparelho troca de um para o outro.
+ *
+ * Os números abaixo NÃO são inventados: são as leituras da sonda instalada no
+ * Granachat durante a auditoria, uma por configuração de tela do emulador
+ * (tamanho, densidade, navegação por gestos ou por 3 botões, paisagem,
+ * tablet). `fundo` é o `measureInWindow` do fundo; `janela` é
+ * `useWindowDimensions`; `teclado` é `endCoordinates.height`; `topoTeclado` é
+ * o `screenY` do evento convertido para as mesmas coordenadas (conferido
+ * contra `janela - teclado` em todas); `reserva` é a barra medida. */
 {
+  const MARGEM = 12;
   const RAZAO = 3 / 4;
-  /* Caixas reais e patológicas: celular pequeno, celular grande, tablet,
-     paisagem, a faixa fina que sobra com teclado aberto em paisagem, e os
-     degenerados. Nenhuma delas pode gerar painel maior que si mesma. */
-  const caixas = [
-    ['celular pequeno, teclado aberto', 320, 300],
-    ['celular pequeno, teclado fechado', 320, 520],
-    ['celular médio, teclado aberto', 375, 440],
-    ['celular grande, teclado aberto', 411, 500],
-    ['celular grande, teclado fechado', 411, 780],
-    ['tablet retrato', 768, 1000],
-    ['tablet paisagem', 1024, 700],
-    ['paisagem no celular, teclado aberto', 720, 120],
-    ['faixa fina', 600, 40],
-    ['caixa quadrada', 400, 400],
-    ['medição ainda não chegou', 0, 0],
-    ['medida negativa', -50, -50],
+  const LARGURA_MAXIMA = 510;
+
+  const aparelhos = [
+    // [nome, fundo {x,y,largura,altura} fechado, fundo aberto, janela {largura, altura}, teclado, reserva]
+    ['ponta a ponta 1080x2400', [0, -50.3, 411.4, 914.3], [0, -50.3, 411.4, 914.3], [411.4, 840], 312.4, 117],
+    ['ponta a ponta 1080x2388 (resolução do autor)', [0, -49.9, 411.4, 909.7], [0, -49.9, 411.4, 909.7], [411.4, 835.8], 312.4, 117],
+    ['encolhe 720x1280 @320', [0, 0, 360, 581], [0, 0, 360, 306], [360, 581], 275, 117],
+    ['encolhe 1440x3120 @560', [0, 0, 411.4, 818.3], [0, 0, 411.4, 506.3], [411.4, 818.3], 312, 117],
+    ['encolhe 1080x2400 @480', [0, 0, 360, 732], [0, 0, 360, 453], [360, 732], 279, 117],
+    ['encolhe tela baixa 1080x1700', [0, 0, 411.4, 587.8], [0, 0, 411.4, 279.6], [411.4, 587.8], 308.2, 117],
+    ['encolhe navegação de 3 botões', [0, 0, 411.4, 816], [0, 0, 411.4, 527.6], [411.4, 816], 288.4, 117],
+    ['ponta a ponta paisagem 2400x1080', [0, -28.2, 914.3, 411.4], [0, -28.2, 914.3, 411.4], [914.3, 335.2], 0, 127],
+    ['ponta a ponta tablet 1600x2560 (lateral)', [0, -70.5, 800, 1280], [0, -70.5, 800, 1280], [800, 1149.5], 325, 0],
+    ['ponta a ponta tablet deitado (lateral)', [0, -44, 1280, 800], [0, -44, 1280, 800], [1280, 696], 279, 0],
   ];
 
-  for (const [nome, largura, altura] of caixas) {
-    const painel = janelaQueCabe(largura, altura, RAZAO);
+  const ret = ([x, y, largura, altura]) => ({ x, y, largura, altura });
+  const calcular = (fundo, janela, teclado, reserva) =>
+    geometriaDaConversa({
+      fundo: ret(fundo),
+      janela: { largura: janela[0], altura: janela[1] },
+      teclado,
+      reservaDaBarra: reserva,
+      topoSeguro: 0,
+      margem: MARGEM,
+      razao: RAZAO,
+      larguraMaxima: LARGURA_MAXIMA,
+    });
+  // Converte a geometria (local ao fundo) para as coordenadas da janela.
+  const naJanela = (g, fundo) => ({
+    topo: g.top + fundo[1],
+    base: g.top + fundo[1] + g.altura,
+    esquerda: g.left + fundo[0],
+    direita: g.left + fundo[0] + g.largura,
+  });
+  const perto = (a, b) => Math.abs(a - b) < 0.01;
+  const mesmaJanela = (a, b, msg) => {
+    for (const k of Object.keys(b)) assert.ok(perto(a[k], b[k]), `${msg} (${k}: ${a[k]} x ${b[k]})`);
+  };
 
-    // A GARANTIA: nunca maior que a caixa. É o que mantinha o topo cortado.
-    assert.ok(
-      painel.largura <= Math.max(largura, 0) + 0.001,
-      `${nome}: painel mais largo que a caixa (${painel.largura} > ${largura})`
-    );
-    verificacoes++;
-    assert.ok(
-      painel.altura <= Math.max(altura, 0) + 0.001,
-      `${nome}: painel mais alto que a caixa (${painel.altura} > ${altura})`
-    );
-    verificacoes++;
+  for (const [nome, fundoFechado, fundoAberto, janela, teclado, reserva] of aparelhos) {
+    const fechado = calcular(fundoFechado, janela, 0, reserva);
+    const f = naJanela(fechado, fundoFechado);
+    const baseDaTela = Math.max(fundoFechado[1] + fundoFechado[3], janela[1]);
 
-    // Sem medida negativa, que faria o painel sumir.
-    assert.ok(painel.largura >= 0 && painel.altura >= 0, `${nome}: medida negativa`);
-    verificacoes++;
+    // Nada negativo, nada fora da faixa: topo abaixo da barra de status (a
+    // origem das coordenadas), base acima da barra de abas e da navegação.
+    assert.ok(fechado.largura > 0 && fechado.altura > 0, `${nome}: janela sumiu com o teclado fechado`);
+    assert.ok(f.topo >= MARGEM - 0.01, `${nome}: topo invade a barra de status (${f.topo})`);
+    assert.ok(f.base <= janela[1] - MARGEM + 0.01, `${nome}: base invade a navegação do sistema`);
+    assert.ok(f.base <= baseDaTela - reserva - MARGEM + 0.01, `${nome}: base invade a barra de abas`);
+    assert.ok(f.esquerda >= MARGEM - 0.01 && f.direita <= janela[0] - MARGEM + 0.01, `${nome}: sai pelos lados`);
+    // Com espaço sobrando, flutua no meio da faixa.
+    const cima = MARGEM;
+    const baixo = Math.min(baseDaTela, janela[1], baseDaTela - reserva) - MARGEM;
+    assert.ok(perto(f.topo - cima, baixo - f.base), `${nome}: fechado deveria estar centralizado`);
+    verificacoes += 6;
 
-    // A proporção é respeitada sempre que há espaço.
-    if (painel.altura > 0) {
-      assert.ok(
-        Math.abs(painel.largura / painel.altura - RAZAO) < 0.001,
-        `${nome}: proporção quebrada (${painel.largura}x${painel.altura})`
+    if (teclado > 0) {
+      const aberto = calcular(fundoAberto, janela, teclado, reserva);
+      const a = naJanela(aberto, fundoAberto);
+      const topoTeclado = janela[1] - teclado;
+      assert.ok(aberto.altura > 0, `${nome}: janela sumiu com o teclado aberto`);
+      assert.ok(a.topo >= MARGEM - 0.01, `${nome}: com teclado, topo invade a barra de status (${a.topo})`);
+      // O defeito do vão: a janela POUSA no teclado, a exatamente uma margem.
+      assert.ok(perto(a.base, topoTeclado - MARGEM), `${nome}: com teclado, base em ${a.base}, esperado ${topoTeclado - MARGEM}`);
+      verificacoes += 3;
+
+      /* A ordem entre o evento do teclado e a medição nova do fundo não é
+         garantida quando o sistema encolhe a tela. As duas leituras
+         intermediárias precisam dar a MESMA janela que a leitura final — é o
+         que impede um quadro errado na transição. */
+      const abrindoComFundoVelho = calcular(fundoFechado, janela, teclado, reserva);
+      mesmaJanela(
+        naJanela(abrindoComFundoVelho, fundoFechado),
+        a,
+        `${nome}: ao abrir, fundo ainda sem encolher não pode mudar a janela`
       );
-      verificacoes++;
+      const fechandoComFundoVelho = calcular(fundoAberto, janela, 0, reserva);
+      mesmaJanela(
+        naJanela(fechandoComFundoVelho, fundoAberto),
+        f,
+        `${nome}: ao fechar, fundo ainda encolhido não pode encolher a janela`
+      );
+      verificacoes += 2;
     }
   }
 
-  /* Numa caixa baixa e larga quem manda é a ALTURA, e numa alta e estreita
-     quem manda é a LARGURA. Era a segunda metade que faltava: o painel usava
-     a largura da tela e derivava a altura dela, então em tela baixa a altura
-     estourava a caixa. */
+  /* Os dois modos, lado a lado, com a MESMA tela e o MESMO teclado: a janela
+     tem de ficar no mesmo lugar da tela. É isto que "adaptável" quer dizer —
+     a conta não pode depender de o sistema encolher a tela ou não. */
   {
-    const baixa = janelaQueCabe(1000, 200, RAZAO);
-    assert.equal(baixa.altura, 200, 'caixa baixa: a altura da caixa é que limita');
-    const estreita = janelaQueCabe(150, 1000, RAZAO);
-    assert.equal(estreita.largura, 150, 'caixa estreita: a largura da caixa é que limita');
+    const janela = [411.4, 840];
+    const ponta = naJanela(calcular([0, -50.3, 411.4, 914.3], janela, 312.4, 117), [0, -50.3, 411.4, 914.3]);
+    const encolhe = naJanela(calcular([0, 0, 411.4, 527.6], janela, 312.4, 117), [0, 0, 411.4, 527.6]);
+    mesmaJanela(ponta, encolhe, 'ponta a ponta e tela que encolhe precisam dar a mesma janela');
+    verificacoes++;
+  }
+
+  /* O laço de `90a3469`: com a conta antiga, a leitura seguinte dependia da
+     anterior. Aqui, a mesma entrada dá sempre a mesma saída, e a saída não é
+     entrada de nada — rodar mil vezes seguidas não pode mover a janela. */
+  {
+    const entrada = [[0, -49.9, 411.4, 909.7], [411.4, 835.8], 312.4, 117];
+    const primeira = calcular(...entrada);
+    for (let i = 0; i < 1000; i++) assert.deepEqual(calcular(...entrada), primeira);
+    verificacoes++;
+  }
+
+  /* Tablet com teclado: a janela 3:4 é menor que a faixa e pousa no teclado,
+     sem vão (a versão centralizada deixava 92dp entre os dois). */
+  {
+    const g = calcular([0, -70.5, 800, 1280], [800, 1149.5], 325, 0);
+    assert.equal(g.largura, LARGURA_MAXIMA);
+    assert.ok(perto(g.altura, LARGURA_MAXIMA / RAZAO), 'no tablet sobra espaço, então vale a proporção 3:4');
+    assert.ok(perto(g.top + -70.5 + g.altura, 1149.5 - 325 - MARGEM), 'e pousa no teclado');
+    verificacoes += 3;
+  }
+
+  /* Faixa baixa (paisagem): a janela fica LARGA e baixa, nunca estreita. */
+  {
+    const g = calcular([0, -28.2, 914.3, 411.4], [914.3, 335.2], 0, 127);
+    assert.equal(g.largura, LARGURA_MAXIMA, 'em paisagem usa a largura de leitura inteira');
+    assert.ok(g.altura < g.largura / RAZAO, 'e a altura cede à faixa');
     verificacoes += 2;
   }
 
-  /* Sem piso em dp: dobrar a caixa dobra o painel, sem degrau. Um piso fixo
-     (era 260dp) quebra justamente isto nas telas menores que ele. */
-  {
-    const metade = janelaQueCabe(200, 260, RAZAO);
-    const inteira = janelaQueCabe(400, 520, RAZAO);
-    assert.ok(
-      Math.abs(inteira.altura - metade.altura * 2) < 0.001,
-      'a janela tem de escalar com a caixa, sem piso fixo no caminho'
-    );
+  /* Degenerados: teclado maior que a janela, fundo zerado. Nada negativo. */
+  for (const [nome, fundo, janela, teclado] of [
+    ['teclado maior que a janela', [0, 0, 400, 800], [400, 800], 900],
+    ['fundo zerado', [0, 0, 0, 0], [0, 0], 0],
+  ]) {
+    const g = calcular(fundo, janela, teclado, 117);
+    assert.ok(g.largura >= 0 && g.altura >= 0, `${nome}: medida negativa`);
     verificacoes++;
+  }
+
+  /* E o componente precisa usar a conta do jeito que ela exige: medindo o
+     FUNDO, sem recuo nele, com a janela posicionada pela geometria, e sem as
+     leituras que já enganaram (insets, altura da barra copiada). */
+  {
+    const chat = fs.readFileSync('components/Granachat.tsx', 'utf8');
+    const layout = fs.readFileSync('app/(app)/_layout.tsx', 'utf8');
+    assert.ok(/ref=\{fundoRef\}\s+onLayout=\{medirFundo\}\s+style=\{styles\.fundo\}/.test(chat), 'o fundo é medido e não recebe estilo calculado');
+    assert.ok(!/paddingBottom:\s*recuo/.test(chat) && !/styles\.fundo,\s*\{/.test(chat), 'o fundo não pode receber recuo calculado — era o laço');
+    const estiloFundo = chat.slice(chat.indexOf('  fundo: {'), chat.indexOf('},', chat.indexOf('  fundo: {')));
+    assert.ok(!/padding/.test(estiloFundo), 'nem recuo fixo no estilo do fundo');
+    assert.ok(/geometriaDaConversa\(/.test(chat) && /top: geometria\.top/.test(chat), 'a janela é posicionada pela geometria');
+    assert.ok(!/useSafeAreaInsets|useTabBarInset|medidasDeJanelaFlutuante|TAB_BAR_ALTURA/.test(chat), 'sem insets, sem altura de barra copiada');
+    assert.ok(/reservaDaBarra=\{temBarraLateral \? 0 : reservaDaBarra\}/.test(layout), 'a reserva da barra vem medida pelo layout');
+    assert.ok(/measureInWindow/.test(layout) && /onMedirReserva=\{aoMedirReserva\}/.test(layout), 'e a barra se mede sozinha');
+    verificacoes += 7;
   }
 }
 
 console.log(
-  `OK janela acima do teclado: ${verificacoes} verificações em ${casos.length} combinações de aparelho e sistema — cabe no espaço real, sem desconto duplo e sem medida negativa.`
+  `OK janela acima do teclado: ${verificacoes} verificações — janelas flutuantes em ${casos.length} combinações de sistema, e o Granachat em 10 telas medidas nos dois modos do Android, sem desconto duplo, sem vão, sem laço e sem medida negativa.`
 );

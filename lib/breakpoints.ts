@@ -210,28 +210,128 @@ export function medidasDeJanelaFlutuante(
   };
 }
 
+/** Um retângulo em coordenadas de `measureInWindow`. */
+export type RetanguloNaJanela = { x: number; y: number; largura: number; altura: number };
+
 /**
- * O maior retângulo de uma dada proporção que CABE numa caixa medida.
+ * Onde fica e que tamanho tem a janela de conversa (Granachat), em
+ * coordenadas LOCAIS do fundo que a contém.
  *
- * Existe porque a alternativa — derivar o tamanho da tela e subtrair barras,
- * insets e teclado na mão — errou das duas formas possíveis no Granachat: a
- * janela ficava maior que o espaço (e o `justifyContent: 'center'` jogava
- * metade do excesso para cima, levando o cabeçalho para fora da tela) e ainda
- * sobrava um vão antes do teclado. O motivo era `useSafeAreaInsets()` devolver
- * zero dentro de um fundo absoluto cujo `SafeAreaView` pai já consumira os
- * insets, somado a `useWindowDimensions()` reportar 840dp numa tela de 914dp.
+ * ── Por que existe, e por que tem este formato ──────────────────────────
  *
- * As duas ENTRADAS são medidas (`onLayout` da área onde o painel vive), então
- * o resultado não depende de conhecer aparelho, densidade, barra, recorte,
- * rotação, janela dividida nem escala de fonte: o que chega já é o espaço
- * real. Nenhum piso ou teto em dp entra aqui de propósito — um piso fixo
- * volta a produzir uma janela maior que a caixa na primeira tela pequena.
+ * Três tentativas anteriores erraram de aparelho para aparelho, cada uma por
+ * um motivo diferente, e o motivo comum era usar números que só valem numa
+ * configuração:
+ *
+ * - a primeira somava teclado, `insets.bottom` e `insets.top`, mas os insets
+ *   valem ZERO dentro deste fundo (um `SafeAreaView` acima os consome), e o
+ *   painel saía maior que o espaço, com o cabeçalho cortado no topo;
+ * - a segunda (16/09/2026, `90a3469`) mediu a área INTERNA do fundo e usou a
+ *   medida para decidir o recuo do próprio fundo. O recuo mudava a área, a
+ *   área mudava o recuo, e a conta virava um espelho: cada leitura desfazia a
+ *   anterior. No aparelho do autor a janela ficou pulando entre duas posições
+ *   várias vezes por segundo, com o campo sumindo atrás do teclado;
+ * - as duas ignoravam que o Android existe em DOIS modos, e que o mesmo
+ *   aparelho troca de um para o outro: de ponta a ponta, em que o fundo cobre
+ *   a tela inteira e não encolhe com o teclado; e o modo em que o sistema
+ *   encolhe a tela quando o teclado abre. Medido no emulador em 16/09/2026: o
+ *   fundo tinha y=-50,3 e 914,3dp fixos no primeiro, e y=0 com 581dp que
+ *   caíam para 306dp com o teclado no segundo.
+ *
+ * ── O que entra ──────────────────────────────────────────────────────────
+ *
+ * Só medições que a própria janela de conversa não consegue alterar, para
+ * nenhuma leitura depender do resultado desta conta:
+ *
+ * - `fundo`: `measureInWindow` do fundo absoluto que cobre o app. O tamanho
+ *   dele vem de quem o contém, nunca de um recuo calculado aqui;
+ * - `janela`: `useWindowDimensions()`. No Android, a origem do
+ *   `measureInWindow` é a borda de baixo da barra de status e a altura da
+ *   janela vai até o topo da navegação do sistema (código do RN 0.86:
+ *   `getViewportOffset` e `DisplayMetricsHolder`);
+ * - `teclado`: `endCoordinates.height`, que no Android EXCLUI a navegação do
+ *   sistema (`ime.bottom - systemBars.bottom` no `ReactRootView`);
+ * - `reservaDaBarra`: distância do ponto mais alto da barra de abas até a
+ *   base do fundo, medida na própria barra. Não muda quando o sistema
+ *   encolhe a tela, porque a barra acompanha a base.
+ *
+ * A peça que resolve os dois modos de uma vez é: **o topo do teclado, nas
+ * coordenadas do `measureInWindow`, é `janela.altura - teclado`**. Conferido
+ * nos dois modos e em cinco combinações de tamanho e densidade: bate com o
+ * `screenY` do evento descontada a barra de status, e bate com a base do
+ * fundo encolhido. A sobreposição com o teclado sai da comparação entre essa
+ * posição e a base do fundo — nula quando o sistema já encolheu a tela, o
+ * teclado mais a navegação quando não encolheu. Sem desconto duplo e sem
+ * saber em que modo o aparelho está.
+ *
+ * Os únicos números que não vêm de medição são de desenho, não de aparelho: a
+ * margem, a proporção preferida e a largura máxima de leitura.
  */
-export function janelaQueCabe(largura: number, altura: number, razao: number) {
-  const larguraUtil = Math.max(largura, 0);
-  const alturaUtil = Math.max(altura, 0);
-  const larguraFinal = Math.min(larguraUtil, alturaUtil * razao);
-  return { largura: larguraFinal, altura: larguraFinal / razao };
+export function geometriaDaConversa({
+  fundo,
+  janela,
+  teclado,
+  reservaDaBarra,
+  topoSeguro,
+  margem,
+  razao,
+  larguraMaxima,
+}: {
+  fundo: RetanguloNaJanela;
+  janela: { largura: number; altura: number };
+  teclado: number;
+  reservaDaBarra: number;
+  /** Quanto do topo da janela é área insegura. Zero no Android e na web,
+      onde a origem do `measureInWindow` já fica abaixo da barra de status. */
+  topoSeguro: number;
+  margem: number;
+  /** Largura dividida pela altura preferida (3/4 é "retrato"). */
+  razao: number;
+  larguraMaxima: number;
+}) {
+  const alturaTeclado = Math.max(teclado, 0);
+  const aberto = alturaTeclado > 0;
+  const baseDoFundo = fundo.y + fundo.altura;
+
+  /* Com o teclado fechado, o fundo nunca termina antes da janela. Se a medição
+     diz que termina, ela é do instante em que o teclado ainda estava aberto e
+     o sistema tinha encolhido a tela — a ordem entre o evento do teclado e a
+     medição nova não é garantida. Vale a janela até a medição chegar, e a
+     janela de conversa não encolhe por um quadro ao fechar o teclado. */
+  const baseDaTela = aberto ? baseDoFundo : Math.max(baseDoFundo, janela.altura);
+
+  const cima = Math.max(fundo.y, topoSeguro) + margem;
+  const baixo =
+    Math.min(
+      baseDaTela,
+      janela.altura - alturaTeclado,
+      /* Com o teclado aberto a barra de abas fica atrás dele ou sob o fundo
+         escurecido; é o teclado que manda. */
+      aberto ? Infinity : baseDaTela - Math.max(reservaDaBarra, 0)
+    ) - margem;
+  const esquerda = Math.max(fundo.x, 0) + margem;
+  const direita = Math.min(fundo.x + fundo.largura, janela.largura) - margem;
+
+  const alturaLivre = Math.max(baixo - cima, 0);
+  const larguraLivre = Math.max(direita - esquerda, 0);
+
+  /* Largura primeiro, altura depois. Numa faixa baixa (paisagem com teclado)
+     a janela fica larga e baixa, em vez de estreita e inútil: a proporção é
+     o teto de altura, não uma forma obrigatória. E nunca passa da faixa. */
+  const largura = Math.min(larguraLivre, Math.max(larguraMaxima, 0));
+  const altura = Math.min(alturaLivre, largura / razao);
+
+  return {
+    /* Com o teclado aberto a janela pousa nele, e a sobra fica em cima: a
+       pessoa está olhando o campo, e um vão entre a janela e o teclado foi
+       justamente o defeito relatado pelo autor. Só com o teclado fechado a
+       janela flutua no meio. No celular dá no mesmo, porque a janela ocupa a
+       faixa inteira; a diferença aparece no tablet. */
+    top: (aberto ? baixo - altura : cima + (alturaLivre - altura) / 2) - fundo.y,
+    left: esquerda - fundo.x + (larguraLivre - largura) / 2,
+    largura,
+    altura,
+  };
 }
 
 /* O recuo é o que cria a margem lateral da janela no celular, e por isso vive

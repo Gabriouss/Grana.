@@ -6,7 +6,6 @@ import {
   Easing,
   FlatList,
   Keyboard,
-  type LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
@@ -17,14 +16,14 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import { useKeyboardHeight } from '@/components/Sheet';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
 import { mensagemErro as traduzirErro } from '@/lib/erros';
-import { useTabBarInset } from '@/lib/tab-bar';
-import { janelaQueCabe, medidasDeJanelaFlutuante } from '@/lib/breakpoints';
+import { geometriaDaConversa, type RetanguloNaJanela } from '@/lib/breakpoints';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras } from '@/lib/theme';
 import {
@@ -61,11 +60,14 @@ const CURVA = Easing.bezier(...UI_OUT);
 export default function Granachat({
   visivel,
   onFechar,
+  reservaDaBarra = 0,
 }: {
   visivel: boolean;
   onFechar: () => void;
+  /** Distância do ponto mais alto da barra de abas até a base da tela, medida
+      na própria barra. Zero quando não há barra no rodapé. */
+  reservaDaBarra?: number;
 }) {
-  const { total: alturaBarra } = useTabBarInset();
   /* Medir o teclado na mão em vez de usar KeyboardAvoidingView: desde o SDK 54
      o Expo liga edge-to-edge por padrão, e nesse modo o sistema NÃO
      redimensiona a janela — o KAV não tem o que compensar no Android e acaba
@@ -86,82 +88,56 @@ export default function Granachat({
   const { width: larguraJanela, height: alturaJanela, fontScale } = useWindowDimensions();
   const escalaTexto = Math.min(Math.max(fontScale, 1), 1.6);
   const alturaMinimaCampo = 44 * escalaTexto;
-  /* O teto do campo é medido contra o PAINEL, não contra a janela: agora que
-     a janela tem altura própria (3:4), limitar por tela deixaria o campo
-     crescer até engolir a conversa dentro de um painel pequeno. Um terço do
-     painel garante que sobrem sempre dois terços de conversa. O cálculo real
-     fica logo abaixo, junto da geometria, porque depende de `alturaPainel`. */
-  /* A CAIXA REAL onde o painel cabe, medida em vez de deduzida — largura e
-     altura. Deduzir da tela não funciona, e foi a origem dos dois defeitos
-     que esta janela tinha: o fundo é `position: absolute` e pinta por cima
-     das barras do sistema, mas `useSafeAreaInsets()` devolve 0 nas duas
-     pontas, porque um `SafeAreaView` acima já consumiu os insets. A janela
-     acreditava não existir barra de status, centralizava o painel como se a
-     tela começasse em zero e enfiava o cabeçalho embaixo do relógio — e
-     `useWindowDimensions()` ainda reportava 840dp numa tela de 914dp. Medido
-     no Pixel 8 em 16/09/2026: `it=0 ib=0 jan=840`.
-
-     Medir resolve a classe inteira do problema em vez deste aparelho: o que
-     chega aqui já é a área depois de qualquer barra, recorte, teclado,
-     rotação, janela dividida ou escala de fonte, sem o app precisar saber que
-     algum deles existe. */
-  const [caixa, setCaixa] = useState({ largura: 0, altura: 0 });
-  const aoMedirArea = useCallback((e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    // Só reage a mudança real: setState em todo layout é laço de render.
-    setCaixa((atual) =>
-      Math.abs(atual.largura - width) > 1 || Math.abs(atual.altura - height) > 1
-        ? { largura: width, altura: height }
-        : atual
-    );
+  /* ── Geometria da janela ───────────────────────────────────────────────
+     A conta inteira mora em `geometriaDaConversa` (lib/breakpoints.ts), junto
+     com a história das tentativas que falharam. Aqui só se coleta o que ela
+     pede, sob uma regra que não pode ser quebrada: NADA do que é medido pode
+     depender do que é calculado. O fundo é absoluto e não recebe recuo, então
+     o retângulo dele vem de quem o contém; a barra é medida na própria barra;
+     teclado e janela vêm do sistema. Assim a conta fecha no primeiro quadro,
+     em qualquer aparelho, e não existe leitura que desfaça a anterior. */
+  const fundoRef = useRef<View | null>(null);
+  const [fundo, setFundo] = useState<RetanguloNaJanela | null>(null);
+  const medirFundo = useCallback(() => {
+    fundoRef.current?.measureInWindow((x, y, largura, altura) => {
+      if (!(largura > 0 && altura > 0)) return;
+      setFundo((atual) =>
+        atual &&
+        Math.abs(atual.x - x) < 0.5 &&
+        Math.abs(atual.y - y) < 0.5 &&
+        Math.abs(atual.largura - largura) < 0.5 &&
+        Math.abs(atual.altura - altura) < 0.5
+          ? atual
+          : { x, y, largura, altura }
+      );
+    });
   }, []);
-  /* Quanto do teclado ainda falta reservar, comparando o que a tela pediu com
-     o que ela recebeu. É a mesma conta das outras janelas do app
-     (`lib/breakpoints.ts`), e existe para não descontar o teclado duas vezes:
-     somá-lo por conta própria numa janela que o sistema JÁ encolheu abre um
-     vão do tamanho do teclado entre o painel e ele. */
-  const { recuoInferior: recuoDoTeclado } = medidasDeJanelaFlutuante(
-    alturaJanela,
-    caixa.altura,
-    alturaTeclado
-  );
-  /* Onde o painel para: acima da barra de abas com o teclado fechado, acima do
-     TECLADO quando ele sobe. Nenhum número de aparelho — tudo vem do sistema. */
-  const recuoPainel = alturaTeclado > 0 ? recuoDoTeclado : alturaBarra + spacing.md;
-  /* ── Geometria da janela: 3:4, centralizada, cedendo ao teclado ──────
-     A proporção é fixa (3 de largura por 4 de altura), mas o TAMANHO não:
-     ele é o maior retângulo 3:4 que cabe na área realmente livre. Essa área
-     é medida, nunca presumida — vai do topo seguro até onde o painel precisa
-     parar, que é acima da barra de abas com o teclado fechado e acima do
-     TECLADO quando ele sobe.
+  /* No modo de ponta a ponta o fundo não muda de tamanho quando o teclado
+     abre, e o `onLayout` dele não dispara. Medir de novo nessas horas cobre
+     também uma mudança só de POSIÇÃO. */
+  useEffect(() => {
+    medirFundo();
+  }, [alturaTeclado, larguraJanela, alturaJanela, medirFundo]);
 
-     Centralizar dentro dessa área (e não na janela inteira) é o que faz a
-     janela continuar parecendo centrada quando o teclado ocupa metade da
-     tela: o eixo de simetria passa a ser o espaço que sobrou, que é o que a
-     pessoa enxerga.
-
-     NENHUM piso nem teto em dp entra aqui, e nenhuma dimensão de tela. Um
-     piso fixo (era 260dp) é o próprio defeito com outro nome: numa tela cuja
-     faixa livre é menor que ele, o piso vence, o painel fica maior que o
-     espaço e transborda — e o `justifyContent: 'center'` joga metade do
-     excesso para cima, levando o cabeçalho para fora da tela. Era esse o
-     "Granachat cortado no topo".
-
-     As duas linhas abaixo são a conta inteira: o maior retângulo 3:4 que cabe
-     na caixa MEDIDA. Como as duas entradas vêm da medição, o resultado é
-     correto em qualquer tela sem nada para ajustar por aparelho. */
   const RAZAO_JANELA = 3 / 4;
-  /* Antes da primeira medição vale a janela, e só para o quadro inicial não
-     nascer com tamanho zero. */
-  const area = caixa.altura > 0 ? caixa : { largura: larguraJanela, altura: alturaJanela };
-  const { largura: larguraPainel, altura: alturaPainel } = janelaQueCabe(
-    area.largura,
-    area.altura,
-    RAZAO_JANELA
-  );
-  /* O teto do campo é uma fração do PAINEL, não da tela: garante que sobrem
-     sempre dois terços de conversa, num painel de qualquer tamanho. */
-  const alturaMaximaCampo = Math.min(120 * escalaTexto, alturaPainel / 3);
+  const geometria = geometriaDaConversa({
+    fundo: fundo ?? { x: 0, y: 0, largura: larguraJanela, altura: alturaJanela },
+    janela: { largura: larguraJanela, altura: alturaJanela },
+    teclado: alturaTeclado,
+    reservaDaBarra,
+    /* No Android e na web a origem do `measureInWindow` já fica abaixo da
+       barra de status. No iOS a janela começa no topo da tela, com o recorte
+       da câmera dentro dela. */
+    topoSeguro: Platform.OS === 'ios' ? initialWindowMetrics?.insets.top ?? 0 : 0,
+    margem: spacing.md,
+    razao: RAZAO_JANELA,
+    /* Teto de LEITURA, não de aparelho: cerca de trinta vezes o corpo de texto
+       dá uma linha confortável, e cresce junto quando a letra aumenta. */
+    larguraMaxima: type.corpo * escalaTexto * 30,
+  });
+  /* O teto do campo é uma fração do PAINEL, não da tela: sobram sempre dois
+     terços de conversa, num painel de qualquer tamanho. */
+  const alturaMaximaCampo = Math.min(120 * escalaTexto, geometria.altura / 3);
   /* ── Presença: "quero estar visível" ≠ "estou na árvore" ─────────────
      Antes o componente saía com `if (!visivel) return null`, ou seja, a
      janela evaporava. Para existir saída, a árvore precisa sobreviver ao
@@ -203,11 +179,34 @@ export default function Granachat({
     });
   }, [visivel, progresso, reduzirMovimento]);
 
+  /* A janela só aparece depois da primeira medição do fundo: antes dela a
+     posição é uma estimativa, e a janela nasceria num lugar para saltar para
+     outro um quadro depois. Se a medição não vier (não deveria), meio segundo
+     depois ela aparece mesmo assim, na estimativa, e o aviso fica no log —
+     janela invisível seria a falha silenciosa que este app não aceita. */
+  const [esperaEsgotada, setEsperaEsgotada] = useState(false);
+  useEffect(() => {
+    if (!montado || fundo) return;
+    const espera = setTimeout(() => {
+      console.warn('[Granachat] measureInWindow não respondeu; a janela usa a estimativa pela tela.');
+      setEsperaEsgotada(true);
+    }, 500);
+    return () => clearTimeout(espera);
+  }, [montado, fundo]);
+  const visibilidadeMedida = useRef(new Animated.Value(0)).current;
+  const pronto = fundo !== null || esperaEsgotada;
+  useEffect(() => {
+    visibilidadeMedida.setValue(pronto ? 1 : 0);
+  }, [pronto, visibilidadeMedida]);
+  /* Criado uma vez: recriar o nó a cada render reconecta o valor nativo e
+     pisca. */
+  const opacidadePainel = useRef(Animated.multiply(progresso, visibilidadeMedida)).current;
+
   /* Em modo reduzido sobra só o fade — nada de deslocamento ou escala. */
   const estiloPainel = reduzirMovimento
-    ? { opacity: progresso }
+    ? { opacity: opacidadePainel }
     : {
-        opacity: progresso,
+        opacity: opacidadePainel,
         transform: [
           { translateY: progresso.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
           { scale: progresso.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) },
@@ -271,7 +270,6 @@ export default function Granachat({
      painel, sobe até aqui por propagação com outro `target` e é ignorado — por
      isso o chat continua sem fechar ao clicar dentro dele. O `Pressable` fica
      para o toque no Android e no iOS, onde a checagem de toque é outra. */
-  const fundoRef = useRef<View | null>(null);
   useEffect(() => {
     if (Platform.OS !== 'web' || !montado || !visivel) return;
     const no = fundoRef.current as unknown as HTMLElement | null;
@@ -519,10 +517,7 @@ export default function Granachat({
        contêiner, pelo `fundoRef` (ver o efeito que o registra, acima). Tocar
        DENTRO do painel não fecha em nenhuma das duas: o painel é irmão do
        fundo, não filho, e na web o alvo do clique é um filho do painel. */
-    <View
-      ref={fundoRef}
-      style={[styles.fundo, { paddingBottom: recuoPainel }]}
-    >
+    <View ref={fundoRef} onLayout={medirFundo} style={styles.fundo}>
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={fechar}
@@ -552,12 +547,12 @@ export default function Granachat({
       {/* Durante a saída o conteúdo deixa de aceitar toque: sem isto dá pra
           acertar um botão de uma janela que já está indo embora. O fundo
           continua consumindo o toque, então nada vaza pra tela de baixo. */}
-      {/* A ÁREA: o que sobrou depois de reservar teclado, barra e margens. É
-          ela que é medida, e é dela que sai o tamanho do painel — por isso o
-          painel nunca pode ficar maior que o espaço em que está. */}
-      <View style={styles.area} onLayout={aoMedirArea} pointerEvents="box-none">
       <Animated.View
-        style={[{ width: larguraPainel, height: alturaPainel }, estiloPainel]}
+        style={[
+          styles.janela,
+          { top: geometria.top, left: geometria.left, width: geometria.largura, height: geometria.altura },
+          estiloPainel,
+        ]}
         pointerEvents={visivel ? 'auto' : 'none'}
       >
       <View
@@ -648,7 +643,6 @@ export default function Granachat({
       </View>
       </View>
       </Animated.View>
-      </View>
     </View>
   );
 }
@@ -677,15 +671,10 @@ const styles = StyleSheet.create({
      componente). A ordem importa: o escurecimento sozinho já resolve a
      hierarquia, então se o blur nativo não estiver disponível no aparelho, o
      resultado continua correto em vez de depender dele. */
-  /* A área útil: o retângulo que sobra depois de o fundo reservar teclado,
-     barra de abas e margens. Medida em runtime (`aoMedirArea`) e usada como
-     ÚNICA fonte do tamanho do painel. */
-  area: {
-    flex: 1,
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  /* Sem recuo de propósito: o retângulo deste fundo é MEDIDO e alimenta a
+     geometria da janela, então nada calculado pode mudá-lo. Um recuo aqui
+     recriaria o laço de 16/09/2026, em que a janela pulava entre duas
+     posições. */
   fundo: {
     position: 'absolute',
     top: 0,
@@ -693,15 +682,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 60,
-    paddingHorizontal: spacing.md,
-    /* Respiro vertical simétrico. Não é margem de barra de status: quem
-       garante que nada fique embaixo dela é o painel caber na área medida. */
-    paddingTop: spacing.lg,
-    /* Centro do ESPAÇO LIVRE, não da janela: o `paddingBottom` aplicado no
-       componente já desconta a barra de abas ou o teclado, então centralizar
-       aqui posiciona a janela no meio do que a pessoa efetivamente vê. */
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  /* Posição e tamanho vêm de `geometriaDaConversa`, em coordenadas do fundo. */
+  janela: {
+    position: 'absolute',
   },
   veuBlur: {
     position: 'absolute',
