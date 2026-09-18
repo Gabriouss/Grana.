@@ -641,12 +641,17 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **`/codex:transfer` entrega o histórico da sessão ao Codex.** Esse
       histórico pode ter texto colado pelo autor. Não use em sessão em que
       apareceu credencial (regra 15).
-    - **O plugin vale só onde foi configurado.** Na M1 ele está em
-      `.claude/settings.local.json`, ignorado pelo git de propósito. A M2 não
-      recebe por `git pull` e precisa da própria configuração, com os mesmos
-      dois blocos: `extraKnownMarketplaces` para `openai-codex` e
-      `enabledPlugins` para `codex@openai-codex`. Os ganchos de início e fim de
-      sessão dele só rodam onde ele estiver habilitado.
+    - **O plugin está instalado no escopo `user` da M1, ou seja, vale em TODOS
+      os projetos daquela máquina, não só no Grana.** Foi instalado em
+      18/09/2026 pelos comandos `/plugin marketplace add openai/codex-plugin-cc`
+      e `/plugin install codex@openai-codex`, seguidos de `/reload-plugins` e
+      `/codex:setup`, que respondeu que o Codex está pronto e que o review
+      gate está desligado. Os ganchos de início e fim de sessão dele rodam em
+      qualquer pasta aberta na M1. **Declarar o plugin em
+      `.claude/settings.local.json` NÃO o instala:** foi tentado primeiro, e o
+      Claude Code não baixou o marketplace nem instalou nada. Só os comandos
+      `/plugin` instalam. A M2 não recebe nada por `git pull` e precisa rodar
+      os mesmos comandos, se o autor quiser o Codex lá.
     - **Citar o revisor no commit é opcional; citar o que foi conferido não é.**
       "Achado do Codex confirmado no trecho X" é registro útil.
       "Corrigido conforme o Codex" não diz nada.

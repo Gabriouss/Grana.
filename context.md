@@ -68,15 +68,21 @@ própria nos scripts (quem fala com a OpenAI é o `codex` local), pacote npm
 `@openai/codex` com mantenedores da OpenAI.
 
 Feito: `codex-cli 0.155.1` instalado globalmente (já logado com o ChatGPT do
-autor) e o plugin `codex@openai-codex` declarado em
-`.claude/settings.local.json`, ignorado pelo git de propósito. Regra 16 no
-`AGENTS.md`: achado do Codex é hipótese até conferido no código, correção dele
-segue as regras 9, 10, 13 e 14, e o `review gate` fica desligado.
+autor) e o plugin `codex@openai-codex` 1.0.6 instalado no escopo `user`, pelos
+comandos `/plugin`. Regra 16 no `AGENTS.md`: achado do Codex é hipótese até
+conferido no código, correção dele segue as regras 9, 10, 13 e 14, e o `review
+gate` fica desligado.
 
-**Não verificado:** o plugin ainda não carregou. Os comandos `/plugin` são
-internos e não rodam por linha de comando, então falta reiniciar o Claude Code
-e rodar `/codex:setup`. **A M2 não tem nada disso** — precisa dos mesmos dois
-blocos no `settings.local.json` dela.
+**Correção de registro:** a primeira versão disse que o plugin estava
+"declarado em `.claude/settings.local.json`" e só faltava reiniciar. Estava
+errado: declarar no arquivo não instala nada, e o autor teve de rodar
+`/plugin marketplace add` e `/plugin install`. Também estava errado que o
+plugin valeria só neste projeto — o escopo é `user`, todos os projetos da M1.
+
+**Verificado:** `/reload-plugins` carregou o plugin (24 skills, 7 agentes, 3
+ganchos) e `/codex:setup` respondeu que o Codex está pronto, com login válido e
+review gate desligado. **Não verificado:** nenhuma revisão real foi rodada
+ainda. **A M2 não tem nada disso.**
 
 Também nesta sessão, sem mexer no repositório: o Codenotch (monitor de limite
 de uso) foi instalado com o hash conferido contra o publicado pelo GitHub, sem
