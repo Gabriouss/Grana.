@@ -170,6 +170,16 @@ export default function OnboardingModal({
   const [renda, setRenda] = useState('');
   const [ambicao, setAmbicao] = useState<Ambicao | null>(null);
   const [presetHome, setPresetHome] = useState<HomePreset>('completo');
+  /* A pessoa ENCOSTOU na pergunta do painel nesta passagem?
+     Ao REFAZER o diagnóstico, a resposta manda: sem isso, percorrer o
+     questionário de novo (para corrigir a renda, por exemplo) jogava fora a
+     Início que a pessoa tinha arrumado à mão em "Personalizar Início", sem
+     aviso nenhum — a pergunta vem pré-marcada em "Completo", e quem só
+     avança leva o preset junto (achado U4 da varredura de 17/09/2026). No
+     primeiro diagnóstico não há o que preservar, e o preset continua valendo
+     como ponto de partida. */
+  const [presetTocado, setPresetTocado] = useState(false);
+  const podeGravarLayout = !initial || presetTocado;
 
   /* Apresentação: nome e foto. O nome é salvo ao AVANÇAR, não a cada tecla —
      cada `salvarNome` é uma ida ao Supabase Auth, e salvar por caractere
@@ -197,6 +207,7 @@ export default function OnboardingModal({
     setRenda(initial && initial.rendaMensal > 0 ? String(initial.rendaMensal).replace('.', ',') : '');
     setAmbicao(initial?.ambicao ?? null);
     setPresetHome('completo');
+    setPresetTocado(false);
     setSalvandoDiagnostico(false);
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
@@ -223,6 +234,7 @@ export default function OnboardingModal({
     setRenda('');
     setAmbicao(null);
     setPresetHome('completo');
+    setPresetTocado(false);
     setSalvandoDiagnostico(false);
     setDiagnosticoSalvo(false);
     setAplicandoOrcamento(false);
@@ -257,7 +269,7 @@ export default function OnboardingModal({
     setCartao(r.cartao);
     setAmbicao(r.ambicao);
     setDiagnosticoSalvo(false);
-    salvarLayoutHome(layoutDoPreset(presetHome));
+    if (podeGravarLayout) salvarLayoutHome(layoutDoPreset(presetHome));
     setStep(7);
   }
 
@@ -293,7 +305,7 @@ export default function OnboardingModal({
         ambicao: ambicao!,
       });
     } else {
-      salvarLayoutHome(layoutDoPreset(presetHome));
+      if (podeGravarLayout) salvarLayoutHome(layoutDoPreset(presetHome));
       onFinished();
       resetState();
       onClose();
@@ -598,7 +610,10 @@ export default function OnboardingModal({
                     label={p.label}
                     desc={p.desc}
                     selecionado={presetHome === p.key}
-                    onPress={() => setPresetHome(p.key)}
+                    onPress={() => {
+                      setPresetHome(p.key);
+                      setPresetTocado(true);
+                    }}
                   />
                 ))}
               </View>
