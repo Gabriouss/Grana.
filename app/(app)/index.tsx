@@ -34,7 +34,7 @@ import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
 import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type, touchTarget, lh } from '@/lib/theme';
-import { prepararFatias } from '@/lib/chart-colors';
+import { percentualDaFatia, prepararFatias } from '@/lib/chart-colors';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -620,14 +620,23 @@ export default function InicioScreen() {
   const pieData: PieSlice[] = useMemo(
     () =>
       prepararFatias(
+        /* Valor em reais, não porcentagem: o `PieChart` calcula a fatia e o
+           rótulo a partir do valor, e a legenda usa `percentualDaFatia` sobre
+           o mesmo total. Entregar porcentagem já arredondada aqui fazia os
+           dois números divergirem em um ponto (auditoria de 17/09/2026). */
         Object.entries(byCategory).map(([name, info]) => ({
           name,
           color: info.color,
-          value: totalOut ? Math.round((info.amount / totalOut) * 100) : 0,
+          value: info.amount,
         }))
       ),
-    [byCategory, totalOut]
+    [byCategory]
   );
+
+  /* O mesmo total que o `PieChart` usa por dentro (a soma das fatias que ele
+     recebeu, já com a cauda dobrada em "Outros"), para a legenda não calcular
+     a porcentagem sobre outra base. */
+  const totalPie = useMemo(() => pieData.reduce((soma, fatia) => soma + fatia.value, 0), [pieData]);
 
   // Quick categories ordered by usage
   const quickCategories = useMemo(() => {
@@ -1174,7 +1183,7 @@ export default function InicioScreen() {
                 <View key={seg.name} style={styles.legendChip}>
                   <View style={[styles.dot, { backgroundColor: seg.color }]} />
                   <Text style={styles.categoryName}>{seg.name}</Text>
-                  <Text style={styles.categoryAmount}>{seg.value}%</Text>
+                  <Text style={styles.categoryAmount}>{percentualDaFatia(seg.value, totalPie)}%</Text>
                 </View>
               ))}
             </View>

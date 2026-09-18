@@ -24,7 +24,7 @@ import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { fetchTransactions, fetchTransactionsDoPeriodo } from '@/lib/data';
 import { formatMoney, isCreditTx, todayISO, formatDateLabel } from '@/lib/format';
 import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts, lh } from '@/lib/theme';
-import { prepararFatias } from '@/lib/chart-colors';
+import { percentualDaFatia, prepararFatias } from '@/lib/chart-colors';
 import type { Transaction } from '@/lib/types';
 
 type TabModo = 'geral' | 'despesas' | 'renda';
@@ -361,7 +361,7 @@ export default function GraficosScreen() {
                       {slice.name}
                     </Text>
                     <Text style={styles.legendPct} numberOfLines={1}>
-                      {totalPeriodo > 0 ? `${Math.round((slice.value / totalPeriodo) * 100)}%` : '0%'}
+                      {percentualDaFatia(slice.value, totalPeriodo)}%
                     </Text>
                     <PrivacyValue>
                       <Text style={styles.legendVal}>R$ {formatMoney(slice.value)}</Text>

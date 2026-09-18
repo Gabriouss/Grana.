@@ -99,3 +99,20 @@ export function prepararFatias(fatias: PieSlice[], max: number = MAX_FATIAS): Pi
 
   return [...visiveis, { name: 'Outros', color: NEUTRO, value: somaResto }];
 }
+
+/**
+ * A porcentagem que a legenda escreve ao lado de uma fatia.
+ *
+ * Existe para a legenda e o rótulo desenhado no arco dizerem o MESMO número.
+ * Em 17/09/2026 a auditoria viu o arco com 59% e a legenda com 58% na mesma
+ * fatia da Início: a tela arredondava a porcentagem antes de entregar ao
+ * gráfico (58,4 → 58) e o `PieChart`, cujo contrato é receber VALOR e calcular
+ * a fatia sozinho, recalculava sobre a soma dos já arredondados — 58/99 volta
+ * 59. Duas contas, duas bases, um ponto de diferença na tela.
+ *
+ * A regra agora é uma só: quem desenha e quem legenda partem do valor bruto e
+ * do mesmo total.
+ */
+export function percentualDaFatia(valor: number, total: number): number {
+  return total > 0 ? Math.round((valor / total) * 100) : 0;
+}
