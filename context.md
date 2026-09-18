@@ -58,6 +58,27 @@ no `context.md`.
 
 ---
 
+# 18/09/2026 (M1) — varredura ampliada no emulador (G1–G13), NÃO corrigidos
+
+Sem mudança de código. Detalhe, com o que foi e o que NÃO foi exercitado, na nota
+`2026-09-18 - M1 - Varredura ampliada do app no emulador`. Não chegou a 100%.
+
+- **Visual pedido pelo autor (G8):** `components/DatePickerModal.tsx:276-285`,
+  o chip "Dia 1º deste mês" quebra em 2 linhas alinhadas à esquerda
+  (`quickDateText` sem `textAlign: 'center'`) e "Hoje"/"Ontem" ficam no topo do
+  chip; "Ir para hoje" duplica "Hoje".
+- **Sem confirmação nem desfazer:** excluir lançamento (`lancamentos.tsx:463`) e
+  reabrir conta paga com um toque (U1).
+- **XP farmável (lido no código):** `deposit_to_goal` (`schema.sql:2383`) e
+  `criar_meta` (`:2335`); excluir/resgatar não tira XP.
+- **Categoria "Outros" excluível:** `excluir_categoria` (`schema.sql:2292`),
+  lido, não executado.
+- **Desempenho:** 8–10 s por aba e ~20 s nas categorias no Expo Go; rede medida
+  rápida (0,2 s). Hipótese: JS em modo dev; não medido em release.
+- **124 `Alert.alert` nativos** fora do tema; `lib/whatsapp.ts` ainda existe.
+
+---
+
 # 18/09/2026 (M1) — varredura completa: Granabô lança o pedido anterior (W5), NÃO corrigido
 
 Sem mudança de código. Detalhe na nota de sessão `2026-09-18 - M1 - Varredura
