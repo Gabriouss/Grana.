@@ -58,6 +58,30 @@ no `context.md`.
 
 ---
 
+# 18/09/2026 (M1) — revisão no emulador Android: correções da M2 conferidas e o Crédito offline
+
+Sem mudança de código. Detalhe na nota de sessão
+`2026-09-18 - M1 - Revisao no emulador das correcoes da M2 e o Credito offline`.
+
+- **Conferidas na tela (Expo Go, Pixel 8 virtual):** V1 (rosca soma 100), V8
+  (fatura de out/26 R$ 300,00 na Início), U3 ("Tudo (1)" na busca), V4 (eixo do
+  gráfico sem colisão).
+- **W1, grave, NÃO corrigido:** em modo avião, a aba Crédito termina em "Nenhum
+  cartão cadastrado / R$ 0,00" e a conta tem cartão. Causa lida no código, não
+  instrumentada: `loadData` em `app/(app)/credito.tsx` faz `Promise.all` com
+  `fetchRecurrenceContext` (`lib/data.ts:574`), que não passa por
+  `comCacheOffline`; offline ela rejeita e o `catch` vazio ("Falha graciosa")
+  deixa `cards = []`. Mesmo comentário em `desafios.tsx:103` e `perfil.tsx:396`
+  (não reproduzido).
+- **W2 (a confirmar em aparelho):** "Conexão lenta" com modo avião, porque no
+  emulador a chamada pendura em vez de falhar. **W3:** barra de abas e botões
+  cobrem a lista com o teclado aberto na busca. **W4:** "Total comprometido"
+  quebra deixando "R$" sozinho.
+- **Sem verificação:** U4, U5, V7, "desfaz" no chat, colar comprovante; tudo só
+  em emulador.
+
+---
+
 # 18/09/2026 (M1) — Codex instalado como revisor do trabalho do Claude
 
 Pedido do autor: "vamos utilizar o codex como um revisor do trabalho do claude
