@@ -6,7 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import TabBlurTarget, { type RegisterTabBlur, type TabBlurRef } from '@/components/TabBlurTarget';
 import TabBarBlur from '@/components/TabBarBlur';
 import CenaAnimada from '@/components/CenaAnimada';
-import { acaoParaParams, parseDeepLink } from '@/lib/deep-links';
+import { acaoInicialPendente, acaoParaParams, parseDeepLink, type AcaoDeepLink } from '@/lib/deep-links';
 import { theme, spacing, sombras, menta } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { useBreakpoint } from '@/lib/breakpoints';
@@ -327,13 +327,7 @@ function useAtalhosDeepLink() {
   const router = useRouter();
 
   useEffect(() => {
-    // Native URLs are rewritten before routing by +native-intent. A second
-    // listener here races the router and can open the same form twice.
-    if (Platform.OS !== 'web') return;
-    function tratar(url: string | null) {
-      if (!url) return;
-      const acao = parseDeepLink(url);
-      if (!acao) return;
+    function navegar(acao: AcaoDeepLink) {
       if (acao.tipo === 'add-credit') {
         router.push('/(app)/credito?novaCompra=1');
         return;
@@ -349,9 +343,33 @@ function useAtalhosDeepLink() {
       router.push({ pathname: '/(app)/', params: acaoParaParams(acao) });
     }
 
-    Linking.getInitialURL().then(tratar);
-    const sub = Linking.addEventListener('url', ({ url }) => tratar(url));
-    return () => sub.remove();
+    if (Platform.OS === 'web') {
+      function tratar(url: string | null) {
+        const acao = url ? parseDeepLink(url) : null;
+        if (acao) navegar(acao);
+      }
+      Linking.getInitialURL().then(tratar);
+      const sub = Linking.addEventListener('url', ({ url }) => tratar(url));
+      return () => sub.remove();
+    }
+
+    /* Nativo: só a URL INICIAL, e só quando o roteador a perdeu.
+     *
+     * O app aberto pelo widget chegava aqui sem nada: o expo-router desiste de
+     * esperar a URL inicial do Android depois de 150ms e cai na rota raiz (ver
+     * `acaoInicialPendente` em lib/deep-links.ts). Aqui a mesma pergunta é
+     * feita sem prazo. O evento 'url' de app já aberto NÃO é escutado neste
+     * lado: aquele caminho não tem prazo nenhum no roteador, e um segundo
+     * ouvinte abriria o mesmo formulário duas vezes. */
+    let cancelado = false;
+    Linking.getInitialURL().then((url) => {
+      if (cancelado) return;
+      const acao = acaoInicialPendente(url);
+      if (acao) navegar(acao);
+    });
+    return () => {
+      cancelado = true;
+    };
   }, [router]);
 }
 

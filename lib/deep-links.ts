@@ -99,3 +99,44 @@ export function acaoParaParams(acao: AcaoDeepLink): Record<string, string> {
   if (acao.tipo === 'deposit-goal') return { acao: acao.tipo, goalId: acao.goalId };
   return { acao: acao.tipo };
 }
+
+/* ── Rede de segurança para a URL inicial do Android ──────────────────────
+ *
+ * O expo-router pede a URL que iniciou o app com um prazo de 150ms
+ * (`getInitialURLWithTimeout`, em expo-router/build/fork/useLinking.native.js:
+ * `Promise.race([Linking.getInitialURL(), setTimeout(() => resolve(null), 150)])`).
+ * Perdida a corrida, ele assume abertura pelo ícone, usa a rota raiz e a ação
+ * do widget some — o app abre e nenhum formulário aparece. Numa abertura a
+ * frio o Android responde depois desse prazo com facilidade, e quanto mais
+ * pesado o app fica para iniciar, mais a corrida é perdida: foi o que o autor
+ * relatou em 18/09/2026 nos quatro botões do widget "Central de Lançamentos".
+ *
+ * Como a biblioteca não dá para configurar, a área logada pergunta a URL de
+ * novo, sem prazo nenhum, e só age se o roteador NÃO tiver dado conta. Quem
+ * avisa que deu conta é `app/+native-intent.tsx`, que roda dentro do próprio
+ * roteador. A ordem é garantida pela guarda de sessão: a área logada só monta
+ * depois de sessão e acesso resolvidos, muito além dos 150ms da corrida.
+ */
+let urlRoteadaPeloRouter: string | null = null;
+
+/** Chamado por `+native-intent` quando o roteador reescreveu a URL sozinho. */
+export function registrarUrlRoteada(url: string): void {
+  urlRoteadaPeloRouter = url;
+}
+
+/**
+ * Ação da URL inicial que o roteador perdeu, ou null quando não há nada a
+ * fazer: sem URL, URL que o roteador já tratou, ou URL que não é uma ação
+ * (link de confirmação de e-mail do Supabase, por exemplo).
+ *
+ * Vale UMA VEZ por URL: o Android devolve a mesma URL de abertura enquanto a
+ * atividade viver, e a área logada remonta a cada saída e entrada na conta —
+ * sem consumir, sair e entrar de novo abriria sozinho o formulário do último
+ * toque no widget.
+ */
+export function acaoInicialPendente(url: string | null): AcaoDeepLink | null {
+  if (!url || url === urlRoteadaPeloRouter) return null;
+  const acao = parseDeepLink(url);
+  if (acao) registrarUrlRoteada(url);
+  return acao;
+}
