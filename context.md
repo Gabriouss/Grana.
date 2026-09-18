@@ -58,6 +58,87 @@ no `context.md`.
 
 ---
 
+# 18/09/2026 (M2) — widget sem abrir o formulário, e verificação da varredura da M1 (`8b31f2a` a `87de97c`)
+
+Pedido do autor, em ordem: puxar o que a M1 fez em 17/09; depois "verifica se
+os problemas achados são problemas reais ou somente erro de detecção da
+auditoria, em caso positivo, pode fazer o ajuste"; e, no meio disso, um
+defeito da build no ar: "o widget de botão de lançamentos (pix, crédito,
+boleto e entrada) está abrindo o app porém não está abrindo a caixa de
+lançamento automaticamente, como era antes".
+
+**Widget abre o app sem abrir o formulário (`8b31f2a`) — causa comprovada no
+fonte, correção sem teste no aparelho.** O link do widget está certo: rodando
+`redirectSystemPath` com as quatro URLs exatas do Kotlin
+(`CentralLancamentoWidgetProvider.kt`), as quatro viram rota de formulário.
+O defeito está no expo-router, lido em
+`node_modules/expo-router/build/fork/useLinking.native.js`: no Android, a URL
+que abriu o app é pedida com `Promise.race([Linking.getInitialURL(),
+setTimeout(() => resolve(null), 150)])`. Perdida a corrida de 150ms, o roteador
+assume abertura pelo ícone, usa a rota raiz e a ação some. Numa abertura a
+frio o Android passa desse prazo com facilidade, e quanto mais pesado o app
+fica para iniciar, mais a corrida é perdida — por isso "funcionava antes".
+Hipótese não comprovada: com o app já aberto em segundo plano deve funcionar
+(aquele caminho não tem prazo).
+
+Correção: a área logada pergunta a URL inicial de novo, sem prazo, e só age
+quando o roteador não deu conta (`acaoInicialPendente`/`registrarUrlRoteada`
+em `lib/deep-links.ts`; `app/+native-intent.tsx` avisa quando tratou). Vale
+uma vez por URL, porque o Android devolve a mesma URL de abertura enquanto a
+atividade viver e a área logada remonta a cada saída e entrada na conta.
+Cobre os outros widgets também. `corpus-widgets-home.ts`: 43 checagens, com
+as URLs lidas do próprio Kotlin; três mutações pegas. **Só chega ao aparelho
+numa build nova.**
+
+**Varredura da M1, achado por achado (13 no total):**
+
+| Achado | Veredito | O que foi feito |
+|---|---|---|
+| V1 donut 59% × 58% | Real — porcentagem arredondada duas vezes, em bases diferentes | Corrigido (`ba8685a`), `percentualDaFatia` em `lib/chart-colors.ts` |
+| U3 "Tudo (N)" não segue a busca | Real — contava o mês inteiro | Corrigido (`e566ae0`) |
+| U4 refazer diagnóstico apaga a Início | Real — o layout era gravado sempre | Corrigido (`ae3644a`): só grava se a pessoa escolher um modelo, ou no primeiro diagnóstico |
+| V8 resumo de faturas R$ 0,00 × R$ 300 | Real — mesma classe do `6a1ebb2`, no widget da Início | Corrigido (`7ea14c8`), `cicloDoResumoDeFaturas`; o card diz "Fatura de out/26" quando o número é de outra fatura |
+| V4 eixo com mês sumido e rótulos colados | Real — rótulo só mora em ponto, e o arredondamento juntava vizinhos | Corrigido (`87de97c`), `lib/chart-labels.ts` refeito em passos inteiros |
+| U1 pagar boleto num toque | Risco real, mas em outro lugar | **Não corrigido** — ver abaixo |
+| V2, V3, V2b, V5 flutuante cobrindo conteúdo | **Não é defeito**, conferido no código | Nada: o botão "+" começa a 132+margem px do fundo e as telas com ele reservam 148+margem; a barra ocupa 68+margem e as outras reservam 84+margem. No fim da rolagem tudo passa acima; o que a M1 fotografou é o conteúdo passando por baixo DURANTE a rolagem, normal de botão flutuante |
+| V6 engrenagem sobre o switch do Perfil | Provavelmente não é do app | Não há ícone de engrenagem em `app/` nem `components/`; suspeita: o botão do menu de desenvolvimento do Expo Go. Não conferido no aparelho |
+| U2/U2b fileiras de chips cortadas | Não verificado | — |
+| U5 modal de categorias vazio por ~2s | Não verificado | — |
+| V7 botão "Criar Conta" cortado | Não verificado | — |
+
+Testes novos no `test:ci`: `corpus-donut-porcentagem.ts` (reproduz o 58 × 59
+exato do print) e `corpus-rotulos-eixo.ts` (varredura de 198 combinações sem
+colisão); casos novos em `corpus-credito-faturas.ts` (57) e
+`corpus-widgets-home.ts` (43). Cada correção com mutação conferida.
+
+**U1 — o defeito real está no banco, não na falta de confirmação.** Lido em
+`supabase/schema.sql`: `pagar_conta` de conta RECORRENTE lança a saída e cria
+a conta do mês seguinte; `reabrir_conta` apaga a saída e volta o status, mas
+**não remove a conta futura que o pagamento criou**. O "toque para reabrir"
+não desfaz tudo e sobra um boleto fantasma. Não corrigido porque exige
+migration e aplicação em produção (regra 9), e distinguir a conta criada pelo
+pagamento de uma que já existia pede guardar o id dela na hora de pagar
+(`on conflict do nothing` hoje esconde essa diferença). A falta de
+confirmação em si ficou como está: a tela é desenhada para um toque
+("toque para pagar"), tem aviso, desfazer e botão de opções separado — trocar
+isso é decisão do autor.
+
+**Não verificado:** nada destas correções foi visto num celular (sem
+emulador nem `adb` na M2). O widget e as telas do app só mudam para quem usa
+depois da próxima build.
+
+**Pendências abertas:**
+
+- [ ] Próxima build: tocar os quatro botões do widget com o app FECHADO e
+      confirmar que o formulário abre; depois com o app em segundo plano.
+- [ ] U1: decidir se a correção do "reabrir" entra (migration nova em
+      `pagar_conta`/`reabrir_conta`, aplicada em produção com a sonda da
+      regra 9) e se o pagamento ganha confirmação.
+- [ ] Verificar U2/U2b, U5 e V7, que não chegaram a ser conferidos.
+- [ ] V6: conferir no aparelho se a engrenagem é do Expo Go.
+
+---
+
 # 17/09/2026 (M1) — varredura de bugs visuais e de usabilidade (não corrigidos)
 
 Continuação da auditoria, depois de publicadas as correções da sessão
