@@ -526,15 +526,22 @@ export default function LancamentosScreen() {
 
   // Filtrado por tipo, categoria e busca textual (descrição ou categoria) — todos dentro do mês selecionado.
   const searchQuery = search.trim().toLowerCase();
-  const visible = useMemo(
+  /* Separado do filtro de TIPO de propósito: é o que a aba "Tudo" mostraria
+     agora, e portanto o número que o rótulo dela precisa dizer. Contar o mês
+     inteiro fazia o chip anunciar "Tudo (6)" com um resultado de busca de um
+     item na tela (achado U3 da varredura de 17/09/2026). */
+  const semFiltroDeTipo = useMemo(
     () =>
       monthTransactions.filter((t) => {
-        if (filter !== 'tudo' && t.type !== filter) return false;
         if (categoryFilter && t.category !== categoryFilter) return false;
         if (searchQuery && !t.description.toLowerCase().includes(searchQuery) && !t.category.toLowerCase().includes(searchQuery)) return false;
         return true;
       }),
-    [categoryFilter, filter, monthTransactions, searchQuery]
+    [categoryFilter, monthTransactions, searchQuery]
+  );
+  const visible = useMemo(
+    () => semFiltroDeTipo.filter((t) => filter === 'tudo' || t.type === filter),
+    [filter, semFiltroDeTipo]
   );
 
   return (
@@ -628,7 +635,7 @@ export default function LancamentosScreen() {
 
         <SegmentedTabs
           options={[
-            { key: 'tudo', label: loading ? 'Tudo' : `Tudo (${monthTransactions.length})` },
+            { key: 'tudo', label: loading ? 'Tudo' : `Tudo (${semFiltroDeTipo.length})` },
             { key: 'in', label: 'Entradas' },
             { key: 'out', label: 'Saídas' },
           ]}
