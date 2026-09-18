@@ -58,6 +58,32 @@ no `context.md`.
 
 ---
 
+# 18/09/2026 (M1) — Codex instalado como revisor do trabalho do Claude
+
+Pedido do autor: "vamos utilizar o codex como um revisor do trabalho do claude
+e vocês irão trabalhar em conjunto". Antes, a legitimidade do passo a passo
+que ele colou foi conferida: repositório `openai/codex-plugin-cc` numa
+organização verificada da OpenAI, licença Apache-2.0, nenhuma chamada de rede
+própria nos scripts (quem fala com a OpenAI é o `codex` local), pacote npm
+`@openai/codex` com mantenedores da OpenAI.
+
+Feito: `codex-cli 0.155.1` instalado globalmente (já logado com o ChatGPT do
+autor) e o plugin `codex@openai-codex` declarado em
+`.claude/settings.local.json`, ignorado pelo git de propósito. Regra 16 no
+`AGENTS.md`: achado do Codex é hipótese até conferido no código, correção dele
+segue as regras 9, 10, 13 e 14, e o `review gate` fica desligado.
+
+**Não verificado:** o plugin ainda não carregou. Os comandos `/plugin` são
+internos e não rodam por linha de comando, então falta reiniciar o Claude Code
+e rodar `/codex:setup`. **A M2 não tem nada disso** — precisa dos mesmos dois
+blocos no `settings.local.json` dela.
+
+Também nesta sessão, sem mexer no repositório: o Codenotch (monitor de limite
+de uso) foi instalado com o hash conferido contra o publicado pelo GitHub, sem
+os ganchos no Claude Code. Ele lê o `~/.claude/.credentials.json`.
+
+---
+
 # 18/09/2026 (M2) — widget sem abrir o formulário, e verificação da varredura da M1 (`8b31f2a` a `87de97c`)
 
 Pedido do autor, em ordem: puxar o que a M1 fez em 17/09; depois "verifica se

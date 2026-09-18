@@ -605,3 +605,48 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       pedido explícito do autor, e mesmo assim depois da troca. Exceção
       decidida pelo autor em 16/09/2026: a senha da conta de teste não é
       importante e não precisa ser trocada.
+
+16. **O Codex é REVISOR do trabalho do Claude neste projeto. O que ele acha é
+    hipótese até alguém conferir no código.** Decisão do autor em 18/09/2026:
+    "vamos utilizar o codex como um revisor do trabalho do claude e vocês irão
+    trabalhar em conjunto". O plugin é o `codex@openai-codex`
+    (`openai/codex-plugin-cc`, organização verificada da OpenAI, licença
+    Apache-2.0), e o `codex` da linha de comando é o `@openai/codex`, já
+    logado com a conta do ChatGPT do autor.
+
+    Por que hipótese e não veredito: em 07/09/2026 uma revisão das correções do
+    Codex achou duas regressões introduzidas por outro agente na mesma semana,
+    e a regra 9 nasceu disso. O revisor erra como qualquer um, e um achado
+    aceito sem conferência vira remendo em cima de um defeito que não existia.
+
+    Na prática:
+
+    - **Antes de agir sobre um achado, leia o trecho que ele cita** e diga, em
+      uma frase, se procede, se não procede ou se não deu para confirmar. Achado
+      que não procede não vira mudança; registre o porquê na nota da sessão, que
+      é o que impede a próxima sessão de refazer a mesma discussão.
+    - **Correção que o Codex escrever (`/codex:rescue`) segue as mesmas regras
+      de qualquer outra:** verificação da regra 9, mudança de layout em commit
+      próprio (regra 14), voz nas duas entradas (regra 13), uma linha de
+      trabalho só, sem branch, sem worktree e sem stash (regra 10). Trabalho do
+      Codex sem commit no fim da sessão é o mesmo defeito da regra 10.
+    - **Onde a revisão vale a pena:** antes de publicar Edge Function ou
+      migration (regra 11), depois de mudança em dinheiro, fatura, assinatura ou
+      voz, e antes de fechar uma varredura grande. Não é etapa de todo commit:
+      cada revisão gasta o limite do plano do autor.
+    - **O `review gate` fica DESLIGADO.** Ligado, um gancho de `Stop` faz o
+      Codex revisar cada resposta e pode bloquear a saída em laço, gastando o
+      limite rápido. Só com pedido explícito do autor e com ele acompanhando a
+      sessão. Confira com `/codex:setup`.
+    - **`/codex:transfer` entrega o histórico da sessão ao Codex.** Esse
+      histórico pode ter texto colado pelo autor. Não use em sessão em que
+      apareceu credencial (regra 15).
+    - **O plugin vale só onde foi configurado.** Na M1 ele está em
+      `.claude/settings.local.json`, ignorado pelo git de propósito. A M2 não
+      recebe por `git pull` e precisa da própria configuração, com os mesmos
+      dois blocos: `extraKnownMarketplaces` para `openai-codex` e
+      `enabledPlugins` para `codex@openai-codex`. Os ganchos de início e fim de
+      sessão dele só rodam onde ele estiver habilitado.
+    - **Citar o revisor no commit é opcional; citar o que foi conferido não é.**
+      "Achado do Codex confirmado no trecho X" é registro útil.
+      "Corrigido conforme o Codex" não diz nada.
