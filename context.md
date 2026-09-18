@@ -81,8 +81,16 @@ plugin valeria só neste projeto — o escopo é `user`, todos os projetos da M1
 
 **Verificado:** `/reload-plugins` carregou o plugin (24 skills, 7 agentes, 3
 ganchos) e `/codex:setup` respondeu que o Codex está pronto, com login válido e
-review gate desligado. **Não verificado:** nenhuma revisão real foi rodada
-ainda. **A M2 não tem nada disso.**
+review gate desligado.
+
+**Primeiro teste de revisão, sem resultado:** `codex review --commit e9556bb`
+parou na primeira chamada com "You've hit your usage limit", retorno às 9h53 de
+19/09. A instalação está boa (o `codex` iniciou e achou o login, modelo
+`gpt-5.6-luna`, esforço `xhigh`); o que faltou foi limite de uso. **Nenhuma
+revisão real foi feita.** Achado do código do plugin: `/codex:review` só
+revisa a árvore de trabalho ou tudo contra uma base, nunca um commit isolado,
+então a revisão útil roda antes do commit. Regra 16 atualizada com isso e com
+o "pergunte antes de rodar". **A M2 não tem nada disso.**
 
 Também nesta sessão, sem mexer no repositório: o Codenotch (monitor de limite
 de uso) foi instalado com o hash conferido contra o publicado pelo GitHub, sem

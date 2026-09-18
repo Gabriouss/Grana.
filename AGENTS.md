@@ -652,6 +652,21 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       Claude Code não baixou o marketplace nem instalou nada. Só os comandos
       `/plugin` instalam. A M2 não recebe nada por `git pull` e precisa rodar
       os mesmos comandos, se o autor quiser o Codex lá.
+    - **O plugin revisa trabalho AINDA NÃO COMMITADO, não um commit isolado.**
+      `/codex:review` só aceita o estado local (`--scope working-tree`) ou tudo
+      contra uma branch base (`--base <ref>`); não existe alvo de commit único,
+      conferido no código do plugin em 18/09/2026. Como este projeto trabalha
+      numa linha só e commita logo, a revisão útil é a que roda ANTES do
+      commit, sobre a árvore de trabalho. Para olhar um commit já feito, só o
+      `codex review --commit <hash>` da linha de comando, fora do plugin.
+    - **Antes de rodar uma revisão, PERGUNTE ao autor, e diga o tamanho.** O
+      limite de uso do Codex é do plano do autor e é curto: o primeiro teste,
+      em 18/09/2026, morreu na primeira chamada com "You've hit your usage
+      limit", com retorno só às 9h53 do dia seguinte, e o Codex usava o esforço
+      de raciocínio `xhigh`, o mais caro. Uma revisão que falha por limite não
+      revisa nada e não deixa recibo, então não conte com ela como etapa
+      obrigatória de nada: se acabar, o trabalho segue pela verificação da
+      regra 9 e o registro diz que a revisão não aconteceu.
     - **Citar o revisor no commit é opcional; citar o que foi conferido não é.**
       "Achado do Codex confirmado no trecho X" é registro útil.
       "Corrigido conforme o Codex" não diz nada.
