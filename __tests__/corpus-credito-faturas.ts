@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
   agruparLancamentosPorCartao,
+  cicloDoResumoDeFaturas,
   faturaAtualDeTodosOsCartoes,
   faturaParaExibir,
   filtrarLancamentosDaFatura,
@@ -248,6 +249,44 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
   // E a tela precisa realmente usar isso, em vez de cair no calendário.
   checar('a tela pergunta a fatura atual dos cartões na visão Total', tela.includes('faturaAtualTotal?.year'), true);
   checar('a visão Total não abre mais no mês civil', tela.includes('faturaAtualDeTodosOsCartoes(walletCards, hojeISO)'), true);
+}
+
+/* ── O resumo da Início mostra a MESMA fatura que a tela de Crédito ───────
+ *
+ * Achado V8 da varredura de 17/09/2026: o card "Faturas de crédito" da Início
+ * mostrava R$ 0,00 no mesmo instante em que a tela de Crédito mostrava
+ * R$ 300,00 de fatura atual para o mesmo cartão. A tela abre na fatura atual
+ * desde `6a1ebb2`; o resumo tinha ficado no mês do calendário. */
+{
+  const HOJE = '2026-09-16';
+  const fechaDia15 = cartao('c15', 'Fecha dia 15', 15);
+  const fechaDia25 = cartao('c25', 'Fecha dia 25', 25);
+
+  checar(
+    'no mês corrente, segue a fatura atual (compra de 16/09 já é outubro)',
+    cicloDoResumoDeFaturas([fechaDia15], 2026, 8, HOJE),
+    { year: 2026, month: 9 }
+  );
+  checar(
+    'no mês corrente, com o ciclo ainda aberto, é o próprio mês',
+    cicloDoResumoDeFaturas([fechaDia25], 2026, 8, HOJE),
+    { year: 2026, month: 8 }
+  );
+  checar(
+    'em outro mês do seletor, manda o mês escolhido',
+    cicloDoResumoDeFaturas([fechaDia15], 2026, 7, HOJE),
+    { year: 2026, month: 7 }
+  );
+  checar(
+    'cartões que discordam não deixam afirmar uma fatura atual',
+    cicloDoResumoDeFaturas([fechaDia15, fechaDia25], 2026, 8, HOJE),
+    { year: 2026, month: 8 }
+  );
+  checar('sem cartão, o mês selecionado', cicloDoResumoDeFaturas([], 2026, 8, HOJE), { year: 2026, month: 8 });
+
+  const resumo = readFileSync(join(__dirname, '..', 'components', 'CreditSummaryCard.tsx'), 'utf8');
+  checar('o resumo usa o ciclo, não o mês civil', resumo.includes('cicloDoResumoDeFaturas(cards, year, month'), true);
+  checar('e avisa quando o número é de outra fatura', resumo.includes('outraFatura'), true);
 }
 
 console.log(`\n${total - falhas}/${total} checagens da lista de faturas passaram — ${falhas} falhas`);

@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
-import { formatMoney } from '@/lib/format';
-import { filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
+import { formatMoney, todayISO } from '@/lib/format';
+import { cicloDoResumoDeFaturas, filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
 import { BANKS, type CreditCard, type Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
@@ -25,9 +25,18 @@ export default function CreditSummaryCard({
   month: number;
   onPress: () => void;
 }) {
-  // Fatura não é mês civil: cada cartão pode fechar em um dia diferente.
-  // Reutiliza a mesma regra da tela Crédito para o resumo não divergir dela.
-  const creditTx = filtrarLancamentosDaFatura(transactions, cards, 'all', year, month);
+  /* Fatura não é mês civil: cada cartão pode fechar em um dia diferente, e a
+     tela de Crédito abre na fatura ATUAL. Este resumo seguia o mês do
+     calendário e por isso mostrava R$ 0,00 enquanto aquela tela mostrava
+     R$ 300,00 do mesmo cartão (achado V8 da varredura de 17/09/2026). */
+  const ciclo = cicloDoResumoDeFaturas(cards, year, month, todayISO());
+  const creditTx = filtrarLancamentosDaFatura(transactions, cards, 'all', ciclo.year, ciclo.month);
+  /* Só avisa quando o número NÃO é do mês que a pessoa selecionou lá em cima:
+     mostrar o valor de outra fatura sem dizer qual é foi metade do defeito. */
+  const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const outraFatura = ciclo.year !== year || ciclo.month !== month
+    ? `Fatura de ${MESES[ciclo.month]}/${String(ciclo.year).slice(2)}`
+    : null;
   const totalMes = creditTx.reduce((s, t) => s + Number(t.amount), 0);
 
   const porCartao = cards
@@ -44,6 +53,7 @@ export default function CreditSummaryCard({
         <Text style={styles.label}>Faturas de crédito</Text>
         <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
       </View>
+      {outraFatura && <Text style={styles.cicloAviso}>{outraFatura}</Text>}
 
       {cards.length === 0 ? (
         <Text style={styles.emptyText}>Nenhum cartão cadastrado ainda. Toque para adicionar.</Text>
@@ -75,6 +85,7 @@ export default function CreditSummaryCard({
 }
 
 const styles = StyleSheet.create({
+  cicloAviso: { color: theme.inkFaint, fontSize: type.micro, lineHeight: lh(type.micro), fontFamily: fonts.light },
   card: {
     backgroundColor: theme.paperRaised,
     borderRadius: cardTokens.radius,

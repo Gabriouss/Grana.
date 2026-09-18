@@ -213,3 +213,28 @@ export function lembretesDeFatura(
     return { cartao, year, month, restante: situacaoDaFatura(total, pagamento, null).restante };
   });
 }
+
+/**
+ * Qual fatura o resumo da Início deve somar para o mês selecionado.
+ *
+ * O resumo é a versão compacta da tela de Crédito, e desde `6a1ebb2` aquela
+ * tela ABRE na fatura atual, não no mês do calendário. O resumo continuou no
+ * mês civil, e as duas telas passaram a discordar: em 17/09/2026 a auditoria
+ * fotografou o resumo com R$ 0,00 no mesmo instante em que a tela de Crédito
+ * mostrava R$ 300,00 de fatura atual para o mesmo cartão — a compra estava no
+ * ciclo seguinte, pela regra de fechamento.
+ *
+ * No mês corrente, manda a fatura atual (quando todos os cartões concordam);
+ * em qualquer outro mês do seletor, manda o próprio mês, que é o que a pessoa
+ * pediu para ver.
+ */
+export function cicloDoResumoDeFaturas(
+  cartoes: CreditCard[],
+  year: number,
+  month: number,
+  hojeISO: string
+): { year: number; month: number } {
+  const ehMesCorrente = Number(hojeISO.slice(0, 4)) === year && Number(hojeISO.slice(5, 7)) - 1 === month;
+  if (!ehMesCorrente) return { year, month };
+  return faturaAtualDeTodosOsCartoes(cartoes, hojeISO) ?? { year, month };
+}
