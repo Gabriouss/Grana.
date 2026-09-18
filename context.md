@@ -58,6 +58,28 @@ no `context.md`.
 
 ---
 
+# 18/09/2026 (M1) — varredura completa: Granabô lança o pedido anterior (W5), NÃO corrigido
+
+Sem mudança de código. Detalhe na nota de sessão `2026-09-18 - M1 - Varredura
+completa e o Granabo que lanca o valor errado`.
+
+- **Estático:** `tsc --noEmit` exit 0; `npm run test:ci` exit 0.
+- **W5, grave (dinheiro), reproduzido com o módulo real:** com "lança 5 reais do
+  café gelado" no histórico, a mensagem "gastei 23,50 no mercado" (ou "23.50 …
+  hoje") registra **R$ 5,00 Cafe gelado** e confirma. Causa:
+  `origemDoLancamento` (`supabase/functions/_shared/assistant-learning.ts:92`)
+  só trata como pedido novo quem casa `PEDIDO_DE_LANCAMENTO`, ou `SINAL` mais
+  `FATO_NUMERICO`; este exige R$/"reais"/parcelas, então "gastei 23,50" sem
+  unidade funde com o pedido antigo. "gastei 23,50 reais", "lança 23,50" e
+  "paguei R$ 23,50" funcionam. Corrigir exige deploy da Edge Function
+  `assistente-financeiro` (regra 11). Não verificado: se a voz (regra 13) tem o
+  mesmo defeito. Na conta de teste ficaram 3 "Cafe gelado R$ 5,00" de 18/09.
+- **X1:** Gráficos afirma "Sem dados suficientes" e R$ 0,00 durante o
+  carregamento. **X3:** a engrenagem flutuante é do Expo Go, não do app.
+- **Sem cobrir:** Contas, Categorias, Atalhos, colar comprovante, voz.
+
+---
+
 # 18/09/2026 (M1) — revisão no emulador Android: correções da M2 conferidas e o Crédito offline
 
 Sem mudança de código. Detalhe na nota de sessão
