@@ -60,8 +60,8 @@ export default function CategoryPickerModal({
 
   /* Tanto as 8 categorias padrão quanto as criadas pelo usuário vêm do banco
      — as padrão chegam aqui semeadas por seedDefaultCategories(), marcadas
-     com is_default só para fins de exibição (nada as impede de ser editadas
-     ou excluídas como qualquer outra). */
+     com is_default. Como a semeadura roda a cada abertura e casa pelo nome,
+     padrão só troca de cor: sem lixeira e sem renomear (achados G10 e G10b). */
   const items: ListItem[] = custom.map((c) => ({ id: c.id, name: c.name, color: c.color, isDefault: c.is_default }));
 
   function resetForms() {
@@ -133,13 +133,14 @@ export default function CategoryPickerModal({
 
   async function handleSaveEdit() {
     if (blockInDemo() || !editingId) return;
-    const name = editName.trim();
+    const oldItem = custom.find((c) => c.id === editingId);
+    if (!oldItem) return;
+    // Padrão nunca muda de nome (ver o formulário de edição abaixo).
+    const name = oldItem.is_default ? oldItem.name : editName.trim();
     if (!name) {
       Alert.alert('Nome obrigatório', 'Digite o nome da categoria.');
       return;
     }
-    const oldItem = custom.find((c) => c.id === editingId);
-    if (!oldItem) return;
     if (items.some((i) => i.id !== editingId && i.name.toLowerCase() === name.toLowerCase())) {
       Alert.alert('Categoria já existe', 'Já existe uma categoria com esse nome.');
       return;
@@ -268,16 +269,27 @@ export default function CategoryPickerModal({
 
                   {isEditing && (
                     <View style={styles.newForm}>
-                      <TextInput
-                        accessibilityLabel="Nome da categoria"
-                        maxLength={LIMITS.category}
-                        style={styles.newInput}
-                        placeholder="Nome da categoria"
-                        placeholderTextColor={theme.inkFaint}
-                        value={editName}
-                        onChangeText={setEditName}
-                        autoFocus
-                      />
+                      {/* Padrão troca só a cor. Renomear mudava o nome da
+                          linha, e `seedDefaultCategories`, que casa pelo nome,
+                          recriava a original na próxima abertura: a pessoa
+                          ficava com "Comida" e "Alimentação" (achado G10b,
+                          19/09/2026). É a mesma razão da lixeira ausente. */}
+                      {item.isDefault ? (
+                        <Text style={styles.nomeFixo}>
+                          Categoria padrão: o nome fica, a cor você escolhe.
+                        </Text>
+                      ) : (
+                        <TextInput
+                          accessibilityLabel="Nome da categoria"
+                          maxLength={LIMITS.category}
+                          style={styles.newInput}
+                          placeholder="Nome da categoria"
+                          placeholderTextColor={theme.inkFaint}
+                          value={editName}
+                          onChangeText={setEditName}
+                          autoFocus
+                        />
+                      )}
                       <ColorGridPicker
                         value={editColor}
                         onChange={setEditColor}
@@ -377,6 +389,7 @@ const styles = StyleSheet.create({
   rowActionBtn: { padding: 4 },
   createToggle: { color: theme.inkSoft, fontSize: type.apoio, paddingVertical: 6, fontFamily: fonts.light },
   newForm: { gap: 10, paddingVertical: 10, paddingHorizontal: 4 },
+  nomeFixo: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.4, fontFamily: fonts.light },
   newInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 6, fontFamily: fonts.regular },
   formActionsRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   cancelBtn: { paddingVertical: 12, paddingHorizontal: 14 },

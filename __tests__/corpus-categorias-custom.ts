@@ -148,6 +148,13 @@ checar('bot: sem acento acha a acentuada', bot.matchCategoryByKeyword('energetic
   checar('a lixeira fica atrás de !item.isDefault', String(guarda > 0 && lixeira - guarda < 400), 'true');
   const data = readFileSync(path.join(__dirname, '..', 'lib', 'data.ts'), 'utf8');
   checar('a semeadura continua rodando sempre (a premissa da guarda)', String(data.includes("onConflict: 'user_id,name', ignoreDuplicates: true")), 'true');
+
+  /* G10b, 19/09/2026: pela mesma semeadura, renomear uma padrão deixava duas
+     (a renomeada e a original recriada). Padrão troca só a cor. */
+  const campoNome = modal.indexOf('accessibilityLabel="Nome da categoria"');
+  const guardaNome = modal.lastIndexOf('{item.isDefault ? (', campoNome);
+  checar('o campo de nome da edição some para a padrão', String(guardaNome > 0 && campoNome - guardaNome < 400), 'true');
+  checar('e o salvar mantém o nome da padrão', String(/const name = oldItem\.is_default \? oldItem\.name : editName\.trim\(\);/.test(modal)), 'true');
 }
 
 console.log(`\n${total - falhas}/${total} checagens de categoria custom passaram — ${falhas} falhas`);
