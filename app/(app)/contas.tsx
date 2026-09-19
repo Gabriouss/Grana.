@@ -349,8 +349,23 @@ export default function ContasScreen() {
     }
   }
 
-  async function handleDeleteSelectedBill() {
+  /* Excluir pede confirmação, como lançamento, compra parcelada e carteira.
+     Até 19/09/2026 o boleto sumia no primeiro toque em "Excluir", sem volta
+     (achado A30 da auditoria no emulador). */
+  function handleDeleteSelectedBill() {
     if (!selectedBill) return;
+    const conta = selectedBill;
+    const detalhe =
+      conta.status === 'paid'
+        ? 'A saída já lançada quando ela foi paga continua em Lançamentos.'
+        : 'Os lembretes de vencimento dela também saem.';
+    Alert.alert('Excluir conta', `Remover "${conta.description}"? ${detalhe}`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: () => void excluirConta(conta) },
+    ]);
+  }
+
+  async function excluirConta(selectedBill: Bill) {
     if (isDemoMode) {
       setBills((prev) => prev.filter((b) => b.id !== selectedBill.id));
       hapticDelete();
