@@ -58,6 +58,61 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — corrige os P1 que não dependiam do autor (`a96e819` a `5ad89dc`), com o Codex como auxiliar
+
+Pedido do autor: "resolva tudo", e depois "continue o job utilizando o codex
+no modelo luna como auxiliar". Sete commits, um por assunto, todos com `tsc`
+limpo e `test:ci`/`test:parser` verdes ao final.
+
+- **A30, `a96e819`:** excluir boleto passa a pedir confirmação, como
+  lançamento e carteira já pediam.
+- **A64, `3e05caf` (`lib/sair-da-conta.ts`, novo):** "Sair da conta" não saía
+  — o `signOut` esperava, em série e sem prazo, limpezas que são cortesia. A
+  sequência agora roda em paralelo com prazo de 4s cada, e a saída do
+  aparelho acontece sempre, no `finally`. Teste do módulo real com etapas que
+  nunca voltam.
+- **A49, `5262771`:** CSV que ignora o sinal do valor — se o arquivo tem
+  algum valor negativo, o sinal manda; sem nenhum negativo, segue adivinhando
+  pela descrição.
+- **A42, `ede6b79`:** "Orçamento sugerido" mostrava os valores só depois de
+  já ter gravado. Agora mostra a prévia por categoria e pede confirmação
+  antes de aplicar.
+- **Codex como auxiliar (pedido do autor nesta sessão):** dois usos, os dois
+  com o modelo `gpt-5.6-luna`, esforço `medium`, só leitura. (1) Diagnóstico
+  da voz presa em "Transcrevendo…" (A47), confirmado linha a linha antes de
+  aplicar → `5ad89dc`. (2) Auditoria de código das quatro telas de dinheiro
+  mais `lib/data.ts`/`lib/heuristics.ts` (~8.163 linhas), à procura de
+  corrida de dados, erro engolido e bug de parser — todos os 8 achados
+  verificados e corrigidos:
+  - **`cfcb523`:** resposta de carga velha sobrescrevendo a mais nova em
+    Início/Lançamentos/Crédito/Boletos (Lançamentos já tinha a proteção, mas
+    incompleta — o próprio Codex achou o furo na correção desta manhã); e
+    erro permanente (RLS negada, servidor fora) virando "sem metas"/"0 XP"
+    sem log, só tabela ausente (schema antigo) continua silencioso de
+    propósito.
+  - **`6c22651`:** `seedDefaultCategories` descartava o próprio erro.
+  - **`cfe321b`:** CSV com campo entre aspas quebrava coluna; data ISO lida
+    na ordem errada (virava outra data, não falha); "31/02" virava data
+    impossível; "Mercado Livre" caía em Alimentação (palavra-chave mais
+    curta vencia por ordem de declaração, não por especificidade); hífen
+    solto ("mercado -100") não era reconhecido como número. Os dois últimos
+    replicados nas cópias Deno (`whatsapp-webhook`, `_shared/interpretar-
+    lancamento.ts`) para `sync-parser.js` continuar em sincronia — **não
+    fiz deploy**, fica para pedido explícito (regra 11).
+  - **`5ad89dc`:** a causa da voz presa — `gravador.stop()` sem prazo, e o
+    orçamento de 15s para quem espera na tela (`ORCAMENTO_COM_PESSOA_
+    ESPERANDO_MS`) nunca era passado adiante.
+
+**Não verificado:** os dois timeouts de `5ad89dc` não têm teste dedicado
+(mockar todas as dependências de `widget-voz-task.ts` só para isso ficou
+fora do tempo desta rodada); a suíte de voz inteira passou sem mudança.
+
+**Ainda em aberto:** A21 (pagar fatura escondido), A22 (cartão que muda de
+sentido), A39 (voltar do Android fecha o app), A46 (Granabô vs. Gráficos), e
+os P2/P3 restantes da auditoria.
+
+---
+
 # 19/09/2026 (M1) — decisões do autor sobre o Perfil (`1e2ae68`, `883f065`)
 
 - **Atalhos `grana://` fora do Perfil** (A41): a linha e o guia saíram; os
