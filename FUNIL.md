@@ -463,9 +463,371 @@ Produzir e revisar a primeira semana:
 Após a aprovação dessas cinco peças, gerar a segunda semana mantendo a mesma
 voz, a mesma direção visual e o mesmo padrão de edição.
 
-## Referências oficiais das ferramentas
+## 17. Biblioteca de prompts visuais por criativo
 
-- Claude Projects: https://support.anthropic.com/en/articles/9519177-how-can-i-create-and-manage-projects
-- Boas práticas de prompt do Claude: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/prompt-templates-and-variables
-- ElevenLabs Voice Design: https://elevenlabs.io/docs/eleven-creative/voices/voice-design
-- ElevenLabs Text to Speech: https://elevenlabs.io/docs/eleven-creative/playground/text-to-speech
+Esta biblioteca serve para gerar somente a camada visual de apoio. Ela não
+substitui a gravação real do produto nem a edição final da tipografia.
+
+### 17.1 Prompt-base universal
+
+Adicionar este bloco ao final de todos os prompts abaixo:
+
+```text
+Premium senior art direction for a Brazilian personal finance campaign. Dark
+petrol and mint visual language, restrained color palette, editorial lifestyle
+photography, realistic Brazilian environment, natural human behavior, tactile
+materials, controlled contrast, subtle film grain, deliberate negative space
+for typography, sophisticated composition, no stock-photo smile, no exaggerated
+fintech clichés, vertical 9:16 for video or 4:5 for still image as specified.
+
+Do not generate readable words, letters, numbers, prices, logos, brand marks,
+app interfaces, financial dashboards, QR codes, barcodes, watermarks, fake
+testimonials, bank logos, or recognizable third-party brands. Do not render the
+Grana. UI. Do not put text inside the image. Keep phone screens turned away,
+blank, out of focus, or intentionally unreadable. No extra fingers, malformed
+hands, duplicated objects, warped phones, floating objects, plastic skin,
+overdone glow, excessive gradients, artificial neon, or camera distortion.
+
+Typography, logo, product screens, numbers and CTA will be added manually in
+post-production.
+```
+
+Para vídeo, gerar clipes simples de 3 a 5 segundos, com uma ação principal por
+clipe. Evitar pedir à IA uma interação complexa com a tela do celular. A tela
+real do Grana. entra na edição.
+
+### 17.2 Reels
+
+#### R1. Onde foi parar?
+
+```text
+Vertical 9:16 cinematic editorial video, 5 seconds. A Brazilian adult in their
+late twenties sits at a small kitchen table at the end of the month, calmly
+looking at a phone held with the screen facing away from the camera. Around the
+table: a grocery receipt with all writing out of focus, a coffee cup, keys and
+an almost empty wallet. The person pauses, looks thoughtful rather than
+panicked, and slowly looks toward the window. Soft late-afternoon light,
+deep petrol shadows, one subtle mint reflection on the table, intimate 50mm
+camera, slow push-in, premium campaign direction, large quiet area on the left
+for manual headline.
+```
+
+**Edição:** inserir manualmente “Você olha o saldo e pensa: onde foi parar?”
+e uma tela real do Grana. no momento de reconhecimento.
+
+#### R2. Lançamento por voz
+
+```text
+Vertical 9:16 cinematic lifestyle video, 5 seconds. Brazilian adult standing
+in a refined but ordinary kitchen after returning from grocery shopping. A
+reusable grocery bag and a receipt sit on the counter. The person picks up a
+phone with the screen turned away and speaks a short voice note naturally,
+without exaggerated acting. Cut-ready composition, medium close-up, warm
+window light against a dark petrol background, mint accent on a small object,
+steady camera, realistic hands, premium fintech editorial campaign.
+```
+
+**Edição:** inserir a gravação real do lançamento por voz entre o segundo 2 e
+o segundo 8 do Reel completo. Usar a locução: “Gastei trinta e dois reais e
+oitenta no mercado.”
+
+#### R3. Não depender da memória
+
+```text
+Vertical 9:16 cinematic video, 5 seconds. Same Brazilian adult from a
+consistent campaign, wearing a simple dark teal shirt, in the middle of a
+normal evening routine. They are putting groceries away, stop for a moment as
+if remembering something, then calmly pick up the phone and record a voice
+note. The phone display is never visible. Natural imperfect movement, no staged
+smile, warm practical light, quiet kitchen, petrol and muted mint palette,
+editorial realism, negative space above the subject for manual copy.
+```
+
+**Edição:** texto manual na tela: “Se anotar depende de lembrar, você perde o
+momento.” Mostrar o produto real apenas na confirmação.
+
+#### R4. Fala. O Grana. organiza.
+
+```text
+Vertical 9:16 close-up video, 5 seconds. A calm Brazilian adult speaks to a
+phone held just below the frame, as if recording a private voice note. Focus
+on natural mouth, hand and shoulder movement, not on performance. Dark petrol
+background, soft side light, one mint edge light, shallow depth of field,
+clean premium sound-design-friendly composition, no visible screen, no text,
+no brand logo, quiet negative space on the right.
+```
+
+**Edição:** sequência com a voz, a tela real do resultado e a frase curta
+“Fala. O Grana. organiza.”
+
+#### R5. Texto do Pix
+
+```text
+Vertical 9:16 editorial video, 5 seconds. Close-up of a hand moving a payment
+confirmation from one phone action to another on a modern smartphone held at
+an angle. The screen content must be fully blurred and unreadable, with no
+symbols or numbers visible. A dark wood desk, a small notebook with blank
+pages, soft morning light and a muted mint reflection create a tactile premium
+scene. Slow controlled hand movement, macro lens, realistic fingers, no app UI,
+no logos, no readable text, no banking brand.
+```
+
+**Edição:** substituir a tela genérica por uma gravação real do fluxo de colar
+o texto do Pix. Não usar nenhum Pix real de cliente.
+
+#### R6. Leitura de QR Code
+
+```text
+Vertical 9:16 cinematic product-context video, 5 seconds. A Brazilian adult
+places a paper receipt on a clean dark petrol table and points a smartphone
+camera toward it. The supposed code area is outside the frame or completely
+soft-focused, never scannable. Controlled top-down movement, paper texture,
+subtle mint reflection, realistic domestic setting, premium editorial direction,
+clear empty space for a manual caption, no phone UI, no generated QR code,
+no text, no logos.
+```
+
+**Edição:** inserir a captura real do fluxo de leitura do QR Code. A IA só
+fornece o contexto físico da nota.
+
+#### R7. Widget Android
+
+```text
+Vertical 9:16 cinematic video, 5 seconds. A hand reaches for a smartphone on
+the edge of a desk during a busy morning. The phone is seen from the back or
+with the display completely blank, and the action is a single confident tap.
+Around it are keys, a coffee cup and a small bag, all arranged with intentional
+editorial spacing. Fast but calm gesture, deep petrol surface, restrained mint
+highlight, natural daylight, premium product campaign, no visible operating
+system interface, no text, no logos, no brand marks.
+```
+
+**Edição:** substituir o display por uma gravação real do widget e mostrar o
+formulário real abrindo após o toque.
+
+#### R8. Livre para Gastar
+
+```text
+Vertical 9:16 cinematic still-life video, 5 seconds. Top-down composition of
+a wallet, a calendar with blank unreadable pages, a few neutral household
+objects and a phone turned face down. The scene transitions from scattered
+objects into a calmer aligned arrangement through a slow camera move, without
+magical floating objects. Dark petrol tabletop, one mint focal accent, soft
+directional light, premium editorial finance campaign, generous negative space
+for a large manual number or product screen, no generated numbers, no text,
+no logos.
+```
+
+**Edição:** inserir a tela real do Livre para Gastar e o valor real somente na
+pós-produção.
+
+#### R9. Planilha aberta versus lançamento simples
+
+```text
+Vertical 9:16 cinematic lifestyle video, 6 seconds. A Brazilian adult sits at
+a desk with an open laptop whose display is deliberately out of focus and
+unreadable. The person looks at the laptop for a moment, then reaches for a
+phone placed beside it with a small relieved change in posture. No frustration
+acting, no exaggerated contrast, no visible software. Dark petrol room,
+natural side light, muted mint detail, 50mm lens, premium realistic campaign,
+clean space for manual text.
+```
+
+**Edição:** o laptop não deve mostrar uma planilha legível. Usar a gravação
+real do Grana. como a solução visual depois do corte.
+
+#### R10. Um dia comum
+
+Gerar como três clipes separados, mantendo a mesma pessoa, roupa e paleta:
+
+```text
+Vertical 9:16 editorial lifestyle clip, 4 seconds. The same Brazilian adult,
+wearing a dark teal shirt, records a quick voice note beside a lunch table.
+Natural daylight, phone screen invisible, calm everyday behavior, dark petrol
+and muted mint accents, premium campaign, no readable text or logos.
+```
+
+```text
+Vertical 9:16 editorial lifestyle clip, 4 seconds. The same Brazilian adult
+returns home in the afternoon and holds a smartphone over a paper receipt. The
+receipt content is fully unreadable and no QR code is visible. Warm light,
+controlled hand movement, consistent wardrobe and camera language, no UI, no
+logos, no text.
+```
+
+```text
+Vertical 9:16 editorial lifestyle clip, 4 seconds. The same Brazilian adult
+places the phone beside a wallet at night and looks calmer after finishing a
+small routine. Dark petrol interior, restrained mint practical light, quiet
+camera, realistic behavior, no screens, no text, no logos.
+```
+
+**Edição:** intercalar os três clipes com as três telas reais: voz, Pix ou QR
+Code e resumo do mês.
+
+#### R11. Começar sem saber tudo
+
+```text
+Vertical 9:16 cinematic portrait video, 5 seconds. A real-looking Brazilian
+adult in a small apartment sits at a table with a phone and a cup of coffee,
+looks at the phone with a calm beginner's curiosity, then makes a simple first
+action. No financial expert styling, no suit, no staged smile. Soft morning
+light, dark petrol background, one restrained mint detail, intimate 50mm lens,
+premium human campaign, empty space for manual headline, no phone screen, no
+text, no logos.
+```
+
+**Edição:** a tela real do primeiro lançamento entra como prova, sem criar uma
+interface conceitual.
+
+#### R12. O próximo gasto pode ser o começo
+
+```text
+Vertical 9:16 cinematic closing video, 5 seconds. A Brazilian adult leaves a
+small apartment in the morning, picks up keys and a phone, and pauses at the
+door with a quiet sense of readiness. The phone is seen from the back. Warm
+sunlight enters a dark petrol hallway, with a single mint highlight on the
+doorway. Hopeful but understated, premium campaign ending, slow forward camera
+movement, generous negative space for a manual CTA, no text, no logos, no UI.
+```
+
+**Edição:** finalizar com a tela real do Grana., a marca e o CTA “Comece pelo
+próximo gasto”.
+
+### 17.3 Estáticos e carrosséis
+
+#### S1. Controle sem parar sua vida
+
+```text
+4:5 premium editorial still life for a Brazilian finance brand. Dark petrol
+matte surface, a single mint line forming a calm continuous path around a
+phone turned face down, small everyday objects placed with generous breathing
+room, sophisticated asymmetrical composition, soft directional light, subtle
+film grain, quiet confidence, large empty area for a manually added manifesto.
+No readable text, no numbers, no logo, no UI, no watermarks.
+```
+
+**Edição:** aplicar manualmente “Controle sem parar sua vida.” e a assinatura
+do Grana.
+
+#### S2. Três jeitos de lançar um gasto
+
+```text
+4:5 editorial overhead still life with three clearly separated visual cues:
+a person speaking near the back of a phone, a blank paper receipt beside a
+wallet, and a smartphone angled toward an unreadable paper surface. Arrange the
+three cues in a balanced triptych with dark petrol background and one mint
+accent connecting them. Premium Brazilian campaign, clean negative space for
+manual labels, no readable text, no QR code, no UI, no logos, no numbers.
+```
+
+**Edição:** transformar cada cue em um slide ou card: voz, texto do Pix e
+código QR. Os rótulos entram manualmente.
+
+#### S3. Livre para Gastar
+
+```text
+4:5 premium editorial composition for a financial clarity concept. Dark petrol
+background with a calm desk scene: wallet, blank calendar, phone turned away,
+and one small mint object in sharp focus. Use a strong central area with visual
+silence around it, subtle side light, tactile paper and fabric, sophisticated
+minimalism, no generated financial value, no text, no UI, no logos.
+```
+
+**Edição:** inserir a tela real e o valor real do Livre para Gastar em uma
+superfície desenhada manualmente.
+
+#### S4. Do gasto lançado ao mês mais claro
+
+```text
+4:5 editorial still life designed as a left-to-right journey. Three physical
+stages on a dark petrol table: a blank receipt and phone, a small organized
+stack of neutral cards, and a calm wallet beside a closed calendar. Connect the
+stages with a thin manual-guideline-friendly composition, restrained mint
+accent, premium editorial finance brand direction, no visible writing, no
+numbers, no generated icons, no UI, no logos.
+```
+
+**Edição:** montar os cinco passos do carrossel manualmente sobre a mesma
+linguagem visual: lançar, organizar, compromissos, saldo e decisão.
+
+#### S5. Seu banco fica no banco
+
+```text
+4:5 premium still life about privacy and personal control. A smartphone rests
+face down beside a closed notebook, keys and a wallet on a dark petrol surface.
+The atmosphere is calm and private, with soft directional light and a single
+muted mint reflection. No bank card brands, no institution logos, no readable
+notebook writing, no phone screen, no text, no UI, no numbers, editorial
+Brazilian campaign.
+```
+
+**Edição:** inserir a mensagem de privacidade e a explicação real do produto,
+sem sugerir conexão bancária.
+
+#### S6. Preciso conectar minha conta?
+
+```text
+4:5 cinematic editorial portrait still. A Brazilian adult sits at a quiet
+table with a phone turned away, a closed notebook and a glass of water. Their
+expression is thoughtful and reassured, not worried. Dark petrol room, soft
+mint light from one side, sophisticated negative space for a question and
+answer, natural wardrobe, no stock-photo smile, no readable text, no UI, no
+logos, no numbers.
+```
+
+**Edição:** dividir em carrossel de pergunta, resposta, como funciona e CTA.
+Todo o texto deve ser aplicado manualmente.
+
+#### S7. Oferta
+
+```text
+4:5 premium product still life for a paid personal finance app. A modern
+smartphone seen from the back lies on a dark petrol pedestal with a subtle
+mint light shape behind it. Clean luxury editorial composition, strong empty
+space for price and guarantee, tactile shadow, restrained contrast, no bank
+commercial aesthetic, no readable screen, no generated price, no logo, no text,
+no UI, no watermark.
+```
+
+**Edição:** inserir manualmente preço vigente, garantia de 7 dias, marca e CTA.
+Não gerar selo de desconto nem urgência artificial.
+
+#### S8. Primeiros 7 dias
+
+```text
+4:5 overhead editorial still life representing a gentle first-week routine. A
+blank checklist sheet, a phone turned away, a wallet, a pen and seven small
+neutral objects arranged in a deliberate rhythm on a dark petrol table. One
+mint object is the only bright accent. Soft morning light, premium calm
+composition, large empty areas for manual checklist copy, no readable paper,
+no numbers, no text, no UI, no logos, no watermarks.
+```
+
+**Edição:** inserir os quatro passos reais do checklist: lançar, categorizar,
+olhar o Livre para Gastar e ajustar a rotina.
+
+### 17.4 Prompt de revisão visual no Claude
+
+Depois de gerar cada imagem ou clipe, anexar o resultado ao Claude com este
+prompt:
+
+```text
+Revise este criativo como diretor de arte sênior do Grana.
+
+Avalie de 0 a 5:
+1. coerência com a identidade petróleo/menta;
+2. aparência premium e não genérica;
+3. legibilidade da área reservada para texto;
+4. naturalidade de mãos, objetos e comportamento;
+5. ausência de UI, logo, preço ou número inventado;
+6. capacidade de receber uma tela real do produto na edição;
+7. adequação ao estágio do funil.
+
+Liste todos os defeitos visíveis. Se houver qualquer texto deformado,
+interface inventada, número falso, mão estranha, marca de terceiro ou excesso
+de efeito, classifique como REPROVAR. Entregue também um prompt revisado para
+uma nova geração, mantendo o conceito original.
+```
+
+## Referências oficiais das ferramentas
