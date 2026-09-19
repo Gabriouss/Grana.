@@ -35,6 +35,17 @@ function FutureTimelineChart({ meses }: { meses: MesProjetado[] }) {
     }).start();
   }, [maxVal, meses.length, progress, reduzirMovimento]);
 
+  /* Nada comprometido: uma frase no lugar de seis colunas vazias com legenda.
+     As barras em branco pareciam gráfico que não carregou, e a única pista de
+     que não havia nada era o "R$ 0,00" miúdo no rodapé (achado G6). */
+  if (meses.every((m) => m.total <= 0)) {
+    return (
+      <Text style={styles.vazio}>
+        {`Nenhuma conta recorrente nem parcela a vencer nos próximos ${meses.length} meses.`}
+      </Text>
+    );
+  }
+
   return (
     <Animated.View style={{ gap: spacing.sm, opacity: progress }}>
       <View style={styles.row}>
@@ -106,6 +117,7 @@ const styles = StyleSheet.create({
   legendDot: { width: 7, height: 7, borderRadius: 3.5 },
   legendText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   totalText: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center', fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
+  vazio: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light, paddingVertical: spacing.sm },
 });
 
 /* `memo` pelo mesmo motivo do PieChart: a Início re-renderiza por estado que
