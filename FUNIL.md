@@ -75,7 +75,7 @@ A divisão inicial dos temas é:
 Cada ideia deve nascer em uma versão orgânica e ser reaproveitada em:
 
 - corte de Reel para anúncio;
-- adaptação 4:5 para feed;
+- adaptação 3:4 (1080x1440) para feed;
 - sequência de Stories;
 - variação de retargeting;
 - resposta a comentários e dúvidas.
@@ -132,6 +132,16 @@ Nos dias sem publicação, usar uma destas opções:
 - lembrete do checklist de primeiros 7 dias.
 
 Não criar depoimentos ou comentários falsos para preencher Stories.
+### Formato Story no funil
+
+Sim, existem criativos em formato Story neste funil. Eles são a camada de
+distribuição vertical das 20 peças principais: cada dia de publicação deve
+gerar uma sequência de três Stories com contexto, demonstração e CTA. A
+sequência pode usar um recorte da peça principal, uma tela real do produto ou
+um frame visual próprio, sempre mantendo a mesma direção de arte.
+
+Stories não são apenas um redimensionamento automático do feed. Quando a
+composição não funcionar em 9:16, gerar uma adaptação visual própria.
 
 ## 7. Direção visual
 
@@ -162,9 +172,12 @@ Não criar depoimentos ou comentários falsos para preencher Stories.
 ### Formatos
 
 - Reels: 1080x1920, entre 15 e 25 segundos.
-- Feed estático: 1080x1350.
-- Carrossel: 5 a 7 slides, com uma promessa na capa.
-- Stories: 1080x1920.
+- Criativo estático de feed: 1080x1440 px, sendo 1080 px de largura e 1440 px
+  de altura.
+- Carrossel de feed: 1080x1440 px por slide, com 5 a 7 slides e uma promessa
+  na capa.
+- Criativo estático de Story: 1080x1920 px, sendo 1080 px de largura e 1920 px
+  de altura.
 - Texto importante sempre dentro da zona segura.
 - Legenda e texto na tela precisam funcionar sem áudio.
 
@@ -448,7 +461,7 @@ intenção.
 - O CTA pede uma ação única?
 - A peça respeita a identidade petróleo/menta e Neue Machina?
 - A IA deixou algum erro em mãos, texto, tela ou objeto?
-- O conteúdo está adaptado para 9:16, 4:5 e Stories quando necessário?
+- O conteúdo está adaptado para 3:4 (1080x1440) para feed e 9:16 (1080x1920) para Stories quando necessário?
 
 ## 16. Próxima execução
 
@@ -478,7 +491,7 @@ petrol and mint visual language, restrained color palette, editorial lifestyle
 photography, realistic Brazilian environment, natural human behavior, tactile
 materials, controlled contrast, subtle film grain, deliberate negative space
 for typography, sophisticated composition, no stock-photo smile, no exaggerated
-fintech clichés, vertical 9:16 for video or 4:5 for still image as specified.
+fintech clichés, vertical 9:16 (1080x1920) for Stories or 3:4 (1080x1440) for feed still image as specified.
 
 Do not generate readable words, letters, numbers, prices, logos, brand marks,
 app interfaces, financial dashboards, QR codes, barcodes, watermarks, fake
@@ -696,10 +709,20 @@ próximo gasto”.
 
 ### 17.3 Estáticos e carrosséis
 
+Dimensões obrigatórias para toda a biblioteca estática:
+
+- Feed e carrossel: 1080x1440 px, sendo 1080 px de largura e 1440 px de altura
+  (proporção 3:4).
+- Story estático: 1080x1920 px, sendo 1080 px de largura e 1920 px de altura
+  (proporção 9:16).
+- A área segura deve ser respeitada em ambos os formatos.
+- Se a composição de feed não funcionar em Story, gerar uma composição própria;
+  não apenas esticar ou cortar automaticamente.
+
 #### S1. Controle sem parar sua vida
 
 ```text
-4:5 premium editorial still life for a Brazilian finance brand. Dark petrol
+3:4 (1080x1440) premium editorial still life for a Brazilian finance brand. Dark petrol
 matte surface, a single mint line forming a calm continuous path around a
 phone turned face down, small everyday objects placed with generous breathing
 room, sophisticated asymmetrical composition, soft directional light, subtle
@@ -713,7 +736,7 @@ do Grana.
 #### S2. Três jeitos de lançar um gasto
 
 ```text
-4:5 editorial overhead still life with three clearly separated visual cues:
+3:4 (1080x1440) editorial overhead still life with three clearly separated visual cues:
 a person speaking near the back of a phone, a blank paper receipt beside a
 wallet, and a smartphone angled toward an unreadable paper surface. Arrange the
 three cues in a balanced triptych with dark petrol background and one mint
@@ -727,7 +750,7 @@ código QR. Os rótulos entram manualmente.
 #### S3. Livre para Gastar
 
 ```text
-4:5 premium editorial composition for a financial clarity concept. Dark petrol
+3:4 (1080x1440) premium editorial composition for a financial clarity concept. Dark petrol
 background with a calm desk scene: wallet, blank calendar, phone turned away,
 and one small mint object in sharp focus. Use a strong central area with visual
 silence around it, subtle side light, tactile paper and fabric, sophisticated
@@ -740,7 +763,7 @@ superfície desenhada manualmente.
 #### S4. Do gasto lançado ao mês mais claro
 
 ```text
-4:5 editorial still life designed as a left-to-right journey. Three physical
+3:4 (1080x1440) editorial still life designed as a left-to-right journey. Three physical
 stages on a dark petrol table: a blank receipt and phone, a small organized
 stack of neutral cards, and a calm wallet beside a closed calendar. Connect the
 stages with a thin manual-guideline-friendly composition, restrained mint
@@ -754,7 +777,7 @@ linguagem visual: lançar, organizar, compromissos, saldo e decisão.
 #### S5. Seu banco fica no banco
 
 ```text
-4:5 premium still life about privacy and personal control. A smartphone rests
+3:4 (1080x1440) premium still life about privacy and personal control. A smartphone rests
 face down beside a closed notebook, keys and a wallet on a dark petrol surface.
 The atmosphere is calm and private, with soft directional light and a single
 muted mint reflection. No bank card brands, no institution logos, no readable
@@ -768,7 +791,7 @@ sem sugerir conexão bancária.
 #### S6. Preciso conectar minha conta?
 
 ```text
-4:5 cinematic editorial portrait still. A Brazilian adult sits at a quiet
+3:4 (1080x1440) cinematic editorial portrait still. A Brazilian adult sits at a quiet
 table with a phone turned away, a closed notebook and a glass of water. Their
 expression is thoughtful and reassured, not worried. Dark petrol room, soft
 mint light from one side, sophisticated negative space for a question and
@@ -782,7 +805,7 @@ Todo o texto deve ser aplicado manualmente.
 #### S7. Oferta
 
 ```text
-4:5 premium product still life for a paid personal finance app. A modern
+3:4 (1080x1440) premium product still life for a paid personal finance app. A modern
 smartphone seen from the back lies on a dark petrol pedestal with a subtle
 mint light shape behind it. Clean luxury editorial composition, strong empty
 space for price and guarantee, tactile shadow, restrained contrast, no bank
@@ -796,7 +819,7 @@ Não gerar selo de desconto nem urgência artificial.
 #### S8. Primeiros 7 dias
 
 ```text
-4:5 overhead editorial still life representing a gentle first-week routine. A
+3:4 (1080x1440) overhead editorial still life representing a gentle first-week routine. A
 blank checklist sheet, a phone turned away, a wallet, a pen and seven small
 neutral objects arranged in a deliberate rhythm on a dark petrol table. One
 mint object is the only bright accent. Soft morning light, premium calm
