@@ -4,7 +4,7 @@
     "slug": "grana-app",
     "scheme": "com.gabriouss.grana",
     "version": "1.10.3",
-    "orientation": "default",
+    "orientation": "portrait",
     "backgroundColor": "#052229",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
