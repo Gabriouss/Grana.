@@ -18,6 +18,7 @@ import {
 import AppModal from '@/components/AppModal';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import { isLikelyNetworkError } from '@/lib/cache-de-tela';
+import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -30,6 +31,7 @@ import {
   deleteCreditCard,
   updateCreditCard,
   deleteTransaction,
+  deleteInstallmentPurchase,
   fetchCreditTransactionsForMonth,
   fetchCreditCards,
   fetchCategories,
@@ -971,29 +973,41 @@ export default function CreditoScreen() {
   }
 
   function confirmDeleteTx(tx: Transaction) {
-    Alert.alert('Excluir lançamento', `Remover "${tx.description}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: async () => {
-          if (isDemoMode) {
-            setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
-            hapticDelete();
-            triggerToast('Lançamento excluído (exemplo)');
-            return;
-          }
-          try {
-            await deleteTransaction(tx.id);
-            hapticDelete();
-            triggerToast('Lançamento excluído');
-            await loadData();
-          } catch (e: any) {
-            Alert.alert('Erro ao excluir', e.message);
-          }
-        },
+    confirmarExclusaoDeLancamento(tx, {
+      apagarEste: async () => {
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+          hapticDelete();
+          triggerToast('Lançamento excluído (exemplo)');
+          return;
+        }
+        try {
+          await deleteTransaction(tx.id);
+          hapticDelete();
+          triggerToast('Lançamento excluído');
+          await loadData();
+        } catch (e: any) {
+          Alert.alert('Erro ao excluir', e.message);
+        }
       },
-    ]);
+      apagarCompraInteira: async () => {
+        const cabeca = tx.parent_id ?? tx.id;
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => !((t.installment_total ?? 1) > 1 && (t.id === cabeca || t.parent_id === cabeca))));
+          hapticDelete();
+          triggerToast('Compra excluída (exemplo)');
+          return;
+        }
+        try {
+          const apagadas = await deleteInstallmentPurchase(tx);
+          hapticDelete();
+          triggerToast(apagadas === 1 ? '1 parcela excluída' : `${apagadas} parcelas excluídas`);
+          await loadData();
+        } catch (e: any) {
+          Alert.alert('Erro ao excluir', e.message);
+        }
+      },
+    });
   }
 
   if (loading) {

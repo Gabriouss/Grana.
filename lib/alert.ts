@@ -34,13 +34,22 @@ function alertWeb(title: string, message?: string, buttons?: AlertButton[]) {
     return;
   }
 
-  /* 3+ botões: window.confirm só tem 2 saídas — não há como representar
-     fielmente. Nenhuma tela do app usa mais de 2 hoje (checado antes de
-     escrever isto), mas o fallback lista as opções no texto em vez de só
-     escolher uma no escuro, caso apareça um caso novo no futuro. */
-  const rotulos = lista.map((b, i) => `${i + 1}. ${b.text ?? 'Opção'}`).join('\n');
-  const escolheu = window.confirm(`${texto}\n\n${rotulos}`);
-  (escolheu ? lista[lista.length - 1] : lista[0])?.onPress?.();
+  /* 3+ botões: window.confirm só tem 2 saídas. O primeiro caso real chegou em
+     19/09/2026, ao excluir uma parcela: Cancelar, "Só esta parcela", "A compra
+     inteira". O fallback antigo mostrava as três no texto e, no OK, disparava
+     a ÚLTIMA — quem queria apagar uma parcela apagava a compra toda.
+
+     Agora pergunta uma opção por vez, na ordem em que aparecem: a primeira
+     confirmada vence, e recusar todas é cancelar. Nenhuma ação escolhida no
+     escuro. */
+  const opcoes = lista.filter((b) => b !== cancelar);
+  for (const opcao of opcoes) {
+    if (window.confirm(`${texto}\n\n${opcao.text ?? 'Continuar'}?`)) {
+      opcao.onPress?.();
+      return;
+    }
+  }
+  cancelar?.onPress?.();
 }
 
 export const Alert = {

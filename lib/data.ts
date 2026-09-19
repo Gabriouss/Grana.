@@ -448,6 +448,40 @@ export async function deleteTransaction(id: string): Promise<void> {
 }
 
 /**
+ * Apaga a compra parcelada INTEIRA, a partir de qualquer uma das parcelas.
+ *
+ * Até 19/09/2026 só existia apagar parcela por parcela: tirar a "(2/3)" deixava
+ * a 1/3 e a 3/3 cobrando nas outras faturas, e desfazer uma compra em 12x
+ * pedia doze exclusões, cada uma numa fatura diferente.
+ *
+ * As duas rotas que criam parcelas (`adicionar_compra_parcelada` e
+ * `registrar_operacao_voz`) gravam a primeira com `parent_id` nulo e as demais
+ * apontando para ela, então a cabeça é `parent_id ?? id`. O filtro por
+ * `installment_total > 1` não é enfeite: assinaturas também usam `parent_id`
+ * para ligar as ocorrências à cabeça, e sem ele apagar uma parcela poderia
+ * apagar os meses de uma assinatura que compartilhasse a cabeça.
+ */
+export async function deleteInstallmentPurchase(
+  tx: Pick<Transaction, 'id' | 'parent_id' | 'installment_total'>
+): Promise<number> {
+  if (!tx.installment_total || tx.installment_total <= 1) {
+    throw new Error('Este lançamento não é uma compra parcelada.');
+  }
+  const user_id = await currentUserId();
+  const cabeca = tx.parent_id ?? tx.id;
+  const { data, error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('user_id', user_id)
+    .gt('installment_total', 1)
+    .or(`id.eq.${cabeca},parent_id.eq.${cabeca}`)
+    .select('id');
+  if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
+  return data?.length ?? 0;
+}
+
+/**
  * Lança uma compra parcelada como N saídas mensais, uma por parcela — a
  * primeira na data informada, as demais um mês depois cada. O valor total é
  * dividido em partes iguais (2 casas decimais); a diferença de arredondamento

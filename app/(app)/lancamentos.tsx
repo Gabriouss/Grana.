@@ -40,11 +40,13 @@ import {
   addTransaction,
   criarOcorrenciasRecorrentes,
   deleteTransaction,
+  deleteInstallmentPurchase,
   fetchRecurrenceContext,
   fetchTransactionsDoPeriodo,
   updateTransaction,
 } from '@/lib/data';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
+import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import {
   flushPendingQueue,
   getCachedTransactions,
@@ -460,22 +462,48 @@ export default function LancamentosScreen() {
     }
   }
 
-  async function handleDeleteSelectedTx() {
-    if (!selectedTx) return;
-    if (isDemoMode) {
-      setTransactions((prev) => prev.filter((t) => t.id !== selectedTx.id));
-      hapticDelete();
-      triggerToast('Lançamento excluído (exemplo)');
-      return;
-    }
-    try {
-      await deleteTransaction(selectedTx.id);
-      hapticDelete();
-      triggerToast('Lançamento excluído');
-      load();
-    } catch (e: any) {
-      Alert.alert('Erro ao excluir', e.message);
-    }
+  /* Pergunta antes de apagar. Até 19/09/2026 esta tela apagava no primeiro
+     toque em "Excluir" da folha de ações, sem confirmação e sem desfazer,
+     enquanto a de Crédito perguntava. A pergunta mora em
+     lib/excluir-lancamento.ts para as duas dizerem o mesmo. */
+  function handleDeleteSelectedTx() {
+    const tx = selectedTx;
+    if (!tx) return;
+    confirmarExclusaoDeLancamento(tx, {
+      apagarEste: async () => {
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+          hapticDelete();
+          triggerToast('Lançamento excluído (exemplo)');
+          return;
+        }
+        try {
+          await deleteTransaction(tx.id);
+          hapticDelete();
+          triggerToast('Lançamento excluído');
+          load();
+        } catch (e: any) {
+          Alert.alert('Erro ao excluir', e.message);
+        }
+      },
+      apagarCompraInteira: async () => {
+        const cabeca = tx.parent_id ?? tx.id;
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => !((t.installment_total ?? 1) > 1 && (t.id === cabeca || t.parent_id === cabeca))));
+          hapticDelete();
+          triggerToast('Compra excluída (exemplo)');
+          return;
+        }
+        try {
+          const apagadas = await deleteInstallmentPurchase(tx);
+          hapticDelete();
+          triggerToast(apagadas === 1 ? '1 parcela excluída' : `${apagadas} parcelas excluídas`);
+          load();
+        } catch (e: any) {
+          Alert.alert('Erro ao excluir', e.message);
+        }
+      },
+    });
   }
 
   // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado em index.tsx e graficos.tsx.

@@ -24,7 +24,8 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, queuePendingTransaction } from '@/lib/offline-cache';
-import { addBill, addTransaction, deleteBudget, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
+import { addBill, addTransaction, deleteBudget, deleteInstallmentPurchase, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
+import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals } from '@/lib/goals';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
@@ -915,22 +916,46 @@ export default function InicioScreen() {
     }
   }
 
-  async function handleDeleteSelectedTx() {
-    if (!selectedTx) return;
-    if (isDemoMode) {
-      setTransactions((prev) => prev.filter((t) => t.id !== selectedTx.id));
-      hapticDelete();
-      triggerToast('Lançamento excluído (exemplo)');
-      return;
-    }
-    try {
-      await deleteTransaction(selectedTx.id);
-      hapticDelete();
-      triggerToast('Lançamento excluído');
-      load();
-    } catch (e: any) {
-      Alert.alert('Erro ao excluir', e.message);
-    }
+  /* Mesma pergunta das telas de Lançamentos e Crédito (lib/excluir-lancamento.ts).
+     Até 19/09/2026 esta também apagava no primeiro toque. */
+  function handleDeleteSelectedTx() {
+    const tx = selectedTx;
+    if (!tx) return;
+    confirmarExclusaoDeLancamento(tx, {
+      apagarEste: async () => {
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+          hapticDelete();
+          triggerToast('Lançamento excluído (exemplo)');
+          return;
+        }
+        try {
+          await deleteTransaction(tx.id);
+          hapticDelete();
+          triggerToast('Lançamento excluído');
+          load();
+        } catch (e: any) {
+          Alert.alert('Erro ao excluir', e.message);
+        }
+      },
+      apagarCompraInteira: async () => {
+        const cabeca = tx.parent_id ?? tx.id;
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => !((t.installment_total ?? 1) > 1 && (t.id === cabeca || t.parent_id === cabeca))));
+          hapticDelete();
+          triggerToast('Compra excluída (exemplo)');
+          return;
+        }
+        try {
+          const apagadas = await deleteInstallmentPurchase(tx);
+          hapticDelete();
+          triggerToast(apagadas === 1 ? '1 parcela excluída' : `${apagadas} parcelas excluídas`);
+          load();
+        } catch (e: any) {
+          Alert.alert('Erro ao excluir', e.message);
+        }
+      },
+    });
   }
 
   async function handleCreateGoal(input: { title: string; target_amount: number; color: string; icon: string; deadline: string | null }) {
