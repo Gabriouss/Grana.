@@ -736,3 +736,31 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       grava ou apaga dado só na conta de teste, com dado inventado marcado
       "AUDIT", apagado no fim. Se um achado pedir uma dessas ações, ele é
       documentado e a varredura continua.
+
+18. **Para ver ou operar o app no emulador, use `scripts/emulador.cjs` e siga
+    `docs/operar-o-app-no-emulador.md`; o mapa das telas, as armadilhas do
+    ambiente e as classes de defeito da auditoria de 19/09/2026 estão em
+    `docs/mapa-do-app-para-agentes.md`. Vale para Claude e para o Codex, e
+    cada agente roda o passo a passo ele mesmo.** Regra dada pelo autor em
+    19/09/2026, depois de ver o Codex digitar "undefined" no campo de e-mail do
+    Expo Go: ele não tinha como ler a conta de teste, porque agente nenhum lê o
+    `.env`, e montou o texto com a variável vazia.
+
+    - **O login é `node scripts/emulador.cjs login`.** O script lê
+      `E2E_TEST_EMAIL` e `E2E_TEST_PASSWORD` dentro do próprio processo e manda
+      o valor direto para o `adb`, sem imprimir. É a única forma aceita: nunca
+      digite credencial à mão, nunca a interpole num comando, nunca a copie
+      para arquivo, log ou registro (regras 12 e 15). Se o script disser que a
+      variável está ausente, pare e avise o autor.
+    - **Quem precisa do app faz o login e a navegação por conta própria.** Não
+      peça a outro agente nem ao autor para entrar por você, e não delegue esse
+      passo: a ferramenta existe para isso.
+    - **Antes de instruir outro agente, dê o caminho, não a resposta.** Ao
+      delegar trabalho que precise ver o app (por exemplo ao Codex), cite o
+      guia e o script no pedido, e não leia nem cole a credencial no pedido. O
+      pedido de 19/09/2026 proibia ler o `.env` e não dizia como entrar: foi a
+      lacuna que quebrou o login.
+    - **Expo Go tem só um conjunto fixo de módulos nativos.** Tela branca com o
+      Metro limpo é módulo ausente, não bug de código: use
+      `node scripts/emulador.cjs abrir dev` (APK de desenvolvimento) antes de
+      depurar.
