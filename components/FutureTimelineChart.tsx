@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import type { MesProjetado } from '@/lib/projections';
 import PrivacyValue from './PrivacyValue';
@@ -117,7 +117,9 @@ const styles = StyleSheet.create({
   legendDot: { width: 7, height: 7, borderRadius: 3.5 },
   legendText: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   totalText: { color: theme.inkFaint, fontSize: type.legenda, textAlign: 'center', fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
-  vazio: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light, paddingVertical: spacing.sm },
+  /* Entrelinha explícita: sem ela a Neue Machina usa a dela, curta, e as duas
+     linhas da frase quase se tocavam (visto no emulador). */
+  vazio: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light, paddingVertical: spacing.sm },
 });
 
 /* `memo` pelo mesmo motivo do PieChart: a Início re-renderiza por estado que
