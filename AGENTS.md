@@ -701,7 +701,12 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Monte a lista de cobertura ANTES de começar e marque conforme avança.**
       "100%" quer dizer cada tela, cada botão, cada modal e folha, e os estados
       de cada tela: vazia, carregando, com erro, sem rede, com texto longo,
-      tema claro e escuro, valores ocultos. Inclui login, cadastro,
+      fonte grande do sistema, valores ocultos. **Não há tema claro nem tela
+      deitada, e nunca haverá** (decisão do autor em 19/09/2026: "O app não
+      terá tela deitada e nem modo claro nunca"): o app é só escuro
+      (`userInterfaceStyle: "dark"`) e só retrato (`orientation: "portrait"`
+      no `app.json`). Não entram na cobertura nem viram achado; o que entra é
+      qualquer resto que sugira o contrário. Inclui login, cadastro,
       assinatura, Início, Lançamentos, Crédito, Gráficos, Carteiras, Metas,
       Desafios, Perfil com tudo o que abre dali, Granabô, voz no app e no
       widget, os widgets da tela inicial e as notificações. A lista fica na
