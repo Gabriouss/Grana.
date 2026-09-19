@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -174,7 +173,15 @@ export default function WalletPickerModal({
           <ToggleSwitch value={hidden} onToggle={togglePrivacy} label="Ocultar saldo da Tela inicial" />
         </View>
 
-        <ScrollView style={styles.list} contentContainerStyle={{ gap: 8 }}>
+        {/* Lista SEM rolagem própria. Até 19/09/2026 esta era uma segunda
+            ScrollView, com teto de 380 px escrito à mão, dentro da ScrollView
+            do `Sheet`. O formulário de nova carteira ficava preso numa janela
+            de 380 px: cortava a paleta de cores e escondia "Criar Conta", e
+            como essa rolagem interna não tinha `keyboardShouldPersistTaps`, o
+            primeiro toque no botão com o teclado aberto só fechava o teclado
+            (achado G18). O `Sheet` já rola o conteúdo inteiro e já se
+            dimensiona acima do teclado, então uma rolagem só basta. */}
+        <View style={styles.list}>
           {/* Opção 1: Total Consolidado */}
           <AppPressable
             style={[styles.walletCard, selectedId === 'total' && styles.walletCardSelected]}
@@ -371,7 +378,7 @@ export default function WalletPickerModal({
               <Text style={styles.addBtnText}>Adicionar nova carteira</Text>
             </AppPressable>
           )}
-        </ScrollView>
+        </View>
 
         {/* Rodapé com Cancelar e Selecionar */}
         <View style={styles.footer}>
@@ -410,7 +417,7 @@ const styles = StyleSheet.create({
     color: theme.inkFaint,
     fontSize: type.corpo, fontFamily: fonts.light },
   list: {
-    maxHeight: 380,
+    gap: 8,
   },
   walletCard: {
     flexDirection: 'row',
