@@ -221,35 +221,35 @@ export default function DatePickerModal({
             ))}
           </View>
 
-          {/* Quick date chips */}
+          {/* Atalhos de data. A seleção vinha só no `accessibilityState`: o
+              leitor de tela sabia qual estava marcado e a tela não mostrava.
+              Agora usam o mesmo destaque dos atalhos do formulário
+              (TransactionSheet, `dateQuickChipActive`). */}
           <View style={styles.quickDatesRow}>
-            <AppPressable
-              style={styles.quickDateChip}
-              onPress={() => handleQuickDate(0)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: currentISO === isoDaDataOffset(0) }}
-              accessibilityLabel="Escolher hoje"
-            >
-              <Text style={styles.quickDateText}>Hoje</Text>
-            </AppPressable>
-            <AppPressable
-              style={styles.quickDateChip}
-              onPress={() => handleQuickDate(-1)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: currentISO === isoDaDataOffset(-1) }}
-              accessibilityLabel="Escolher ontem"
-            >
-              <Text style={styles.quickDateText}>Ontem</Text>
-            </AppPressable>
-            <AppPressable
-              style={styles.quickDateChip}
-              onPress={handleFirstDayOfMonth}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: currentISO === `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01` }}
-              accessibilityLabel="Escolher o primeiro dia deste mês"
-            >
-              <Text style={styles.quickDateText}>Dia 1º deste mês</Text>
-            </AppPressable>
+            {[
+              { rotulo: 'Hoje', a11y: 'Escolher hoje', iso: isoDaDataOffset(0), escolher: () => handleQuickDate(0) },
+              { rotulo: 'Ontem', a11y: 'Escolher ontem', iso: isoDaDataOffset(-1), escolher: () => handleQuickDate(-1) },
+              {
+                rotulo: 'Dia 1º deste mês',
+                a11y: 'Escolher o primeiro dia deste mês',
+                iso: `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`,
+                escolher: handleFirstDayOfMonth,
+              },
+            ].map(({ rotulo, a11y, iso, escolher }) => {
+              const marcado = currentISO === iso;
+              return (
+                <AppPressable
+                  key={rotulo}
+                  style={[styles.quickDateChip, marcado && styles.quickDateChipActive]}
+                  onPress={escolher}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: marcado }}
+                  accessibilityLabel={a11y}
+                >
+                  <Text style={[styles.quickDateText, marcado && styles.quickDateTextActive]}>{rotulo}</Text>
+                </AppPressable>
+              );
+            })}
           </View>
 
           <AppPressable onPress={() => handleQuickDate(0)}>
@@ -273,16 +273,26 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   quickDatesRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  /* A fileira estica os três chips até a altura do mais alto (o `stretch`
+     padrão do flex). Quando "Dia 1º deste mês" quebra em duas linhas, "Hoje"
+     e "Ontem" ficavam grudados no topo de chips mais altos, e as duas linhas
+     do terceiro saíam alinhadas à esquerda. Centrar nos dois eixos mantém os
+     três rótulos na mesma linha visual, em qualquer largura e em qualquer
+     escala de fonte do sistema (achado G8, apontado pelo autor em 18/09). */
   quickDateChip: {
     flex: 1,
     paddingVertical: 8,
+    paddingHorizontal: spacing.xs,
     borderRadius: radius.sm,
     backgroundColor: theme.paper,
     borderWidth: 1,
     borderColor: theme.rule,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  quickDateText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
+  quickDateChipActive: { backgroundColor: theme.ink + '15', borderColor: theme.ink },
+  quickDateText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light, textAlign: 'center' },
+  quickDateTextActive: { color: theme.ink },
   calHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 4 },
   calNav: {
     width: touchTarget,
