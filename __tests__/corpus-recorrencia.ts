@@ -11,6 +11,8 @@
  * descreve o comportamento desejado: descreve o estrago, para que ninguém
  * ligue esta função a uma busca por período sem perceber.
  */
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { ocorrenciasFaltantes } from '../lib/recorrencia';
 import type { Transaction } from '../lib/types';
 
@@ -133,6 +135,28 @@ checar(
   meses(ocorrenciasFaltantes([tx({ id: 'd', occurred_on: '2026-01-31', recurring: true })], '2026-02-15')),
   ['2026-02-28']
 );
+
+/* ── Lançamentos não espera o acerto de assinaturas para mostrar a lista ────
+ *
+ * Achado de 19/09/2026, o mesmo do Crédito (W1): `fetchRecurrenceContext` é
+ * a única busca da carga sem cache offline. Ela ficava no meio do `try`, antes
+ * de `setTransactions`: em rede lenta segurava a lista, e sem rede derrubava a
+ * carga inteira para o `catch`, que acendia a faixa offline mesmo com o mês
+ * já baixado. Checagem do fonte: `load` vive dentro do componente. */
+{
+  const tela = readFileSync(join(__dirname, '..', 'app', '(app)', 'lancamentos.tsx'), 'utf8');
+  const load = tela.slice(tela.indexOf('const load = useCallback'), tela.indexOf('useFocusEffect(useCallback(() => { load(); }'));
+  checar('achou o load de Lançamentos', load.length > 500, true);
+  checar('a lista aparece antes do acerto de recorrências',
+    load.indexOf('setTransactions(tx)') > 0 && load.indexOf('setTransactions(tx)') < load.indexOf('fetchRecurrenceContext()'), true);
+  checar('o carregamento termina antes do acerto de recorrências',
+    load.indexOf('setLoading(false)', load.indexOf('fetchTransactionsDoPeriodo')) < load.indexOf('fetchRecurrenceContext()'), true);
+  checar('o acerto de recorrências tem o próprio try',
+    /try \{\s*const faltantes = ocorrenciasFaltantes\(await fetchRecurrenceContext\(\), todayISO\(\)\)/.test(load), true);
+  checar('erro que não é de rede no acerto fica no log',
+    /acerto de recorrências falhou/.test(load), true);
+  checar('carga velha não sobrescreve a lista do mês novo', /if \(!vigente\(\)\) return;/.test(load), true);
+}
 
 console.log(`\n${total - falhas}/${total} checagens de recorrência passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);

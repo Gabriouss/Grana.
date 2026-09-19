@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
 import {
@@ -208,7 +208,16 @@ export default function LancamentosScreen() {
     await setCachedTransactions([...porId.values()]);
   }, [inicioDoMes, fimDoMes]);
 
+  const cargaAtual = useRef(0);
+
   const load = useCallback(async () => {
+    /* Uma carga mais nova (outro mês, outro foco, modo demo) invalida esta. Os
+       passos de fundo abaixo terminam depois que a lista já apareceu, e sem
+       esta marca uma carga velha poderia trocar a lista pelo mês que a pessoa
+       já deixou. */
+    const minhaCarga = ++cargaAtual.current;
+    const vigente = () => minhaCarga === cargaAtual.current;
+
     if (isDemoMode) {
       setTransactions(DEMO_TRANSACTIONS);
       setOffline(false);
@@ -223,35 +232,59 @@ export default function LancamentosScreen() {
          chips de categoria, busca e filtro. Baixar o histórico inteiro para
          mostrar trinta dias era trabalho jogado fora que crescia sem teto. */
       let tx = await fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes);
+      if (!vigente()) return;
       setOffline(false);
       await guardarNoCache(tx);
+      setTransactions(tx);
+      setPendingCount(await getPendingCount());
+      /* A lista já está certa. Sincronizar a fila e acertar assinaturas é
+         trabalho de fundo e não pode prender o carregamento: até 19/09/2026
+         `fetchRecurrenceContext`, a única busca daqui sem cache, segurava a
+         tela inteira em rede lenta, e sem rede derrubava a carga para o
+         `catch`, que acendia a faixa offline com o mês já baixado na mão. */
+      setLoading(false);
+      setRefreshing(false);
 
       // A rede respondeu — aproveita pra tentar sincronizar o que ficou pendente offline.
-      const { synced } = await flushPendingQueue();
-      if (synced > 0) {
-        tx = await fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes);
-        await guardarNoCache(tx);
-        triggerToast(synced === 1 ? '1 lançamento sincronizado' : `${synced} lançamentos sincronizados`);
+      try {
+        const { synced } = await flushPendingQueue();
+        if (synced > 0) {
+          tx = await fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes);
+          await guardarNoCache(tx);
+          if (!vigente()) return;
+          setTransactions(tx);
+          setPendingCount(await getPendingCount());
+          triggerToast(synced === 1 ? '1 lançamento sincronizado' : `${synced} lançamentos sincronizados`);
+        }
+      } catch (erro) {
+        if (!isLikelyNetworkError(erro)) console.error('[lancamentos] sincronizar a fila falhou', erro);
       }
 
       /* Assinaturas ("repetir mensalmente") só existem no mês seguinte se
          alguém as criar — é aqui que isso acontece.
- 
+
          O contexto vem de `fetchRecurrenceContext()`, e NÃO do mês carregado
          acima: a decisão de criar compara os meses já ocupados de cada série,
          então alimentar isto com um recorte faria todo mês ausente parecer um
          mês a preencher, e o estrago seria lançamento duplicado no extrato.
-         `__tests__/corpus-recorrencia.ts` guarda exatamente esse caso. */
-      const faltantes = ocorrenciasFaltantes(await fetchRecurrenceContext(), todayISO());
-      if (faltantes.length > 0) {
-        await criarOcorrenciasRecorrentes(faltantes);
-        tx = await fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes);
-        await guardarNoCache(tx);
-      }
+         `__tests__/corpus-recorrencia.ts` guarda exatamente esse caso.
 
-      setTransactions(tx);
-      setPendingCount(await getPendingCount());
+         Sem rede, o acerto fica para a próxima abertura com rede: nada se
+         perde, porque `ocorrenciasFaltantes` olha a série inteira de novo. */
+      try {
+        const faltantes = ocorrenciasFaltantes(await fetchRecurrenceContext(), todayISO());
+        if (faltantes.length > 0) {
+          await criarOcorrenciasRecorrentes(faltantes);
+          tx = await fetchTransactionsDoPeriodo(inicioDoMes, fimDoMes);
+          await guardarNoCache(tx);
+          if (!vigente()) return;
+          setTransactions(tx);
+        }
+      } catch (erro) {
+        if (!isLikelyNetworkError(erro)) console.error('[lancamentos] acerto de recorrências falhou', erro);
+      }
     } catch (e: any) {
+      if (!vigente()) return;
       const cached = await getCachedTransactions();
       if (cached) {
         /* O cache guarda a união dos meses já visitados, então offline ainda
@@ -263,8 +296,10 @@ export default function LancamentosScreen() {
         Alert.alert('Erro ao carregar lançamentos', e.message);
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (vigente()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [isDemoMode, inicioDoMes, fimDoMes, guardarNoCache]);
 
