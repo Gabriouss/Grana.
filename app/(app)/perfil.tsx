@@ -834,6 +834,7 @@ export default function PerfilScreen() {
 
       <OnboardingModal
         visible={onboardingOpen}
+        modo="diagnostico"
         onClose={() => setOnboardingOpen(false)}
         onFinished={() => {
           triggerToast('Diagnóstico atualizado');

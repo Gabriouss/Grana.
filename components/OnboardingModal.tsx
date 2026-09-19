@@ -144,10 +144,17 @@ export default function OnboardingModal({
   onClose,
   onFinished,
   initial,
+  modo = 'primeiro-acesso',
 }: {
   visible: boolean;
   onClose: () => void;
   onFinished: () => void;
+  /** 'diagnostico' abre só as quatro perguntas do diagnóstico, sem a
+      apresentação (nome e foto) e sem a escolha do painel inicial. É o que o
+      "Refazer diagnóstico" do Perfil usa, por decisão do autor em 19/09/2026:
+      "Refazer diagnóstico deve abrir apenas o diagnóstico". Antes reabria o
+      primeiro acesso inteiro, desde "bem-vindo ao Grana.". */
+  modo?: 'primeiro-acesso' | 'diagnostico';
   /** Respostas de um diagnóstico já salvo, para pré-preencher ao refazer — sem isso, reabrir o
       questionário sempre voltava em branco e não dava pra simplesmente corrigir a renda. */
   initial?: Respostas;
@@ -163,7 +170,15 @@ export default function OnboardingModal({
      Mesmo tratamento do UpdateBanner. */
   const insets = useSafeAreaInsets();
 
-  const [step, setStep] = useState(PRIMEIRA_ETAPA);
+  const soDiagnostico = modo === 'diagnostico';
+  /* No modo diagnóstico as etapas visíveis são as perguntas 1 a 4; a
+     numeração mostrada à pessoa recomeça em 1 e o total passa a 4. */
+  const primeiraEtapa = soDiagnostico ? 1 : PRIMEIRA_ETAPA;
+  const ultimaPergunta = soDiagnostico ? 4 : 5;
+  const totalEtapas = soDiagnostico ? ultimaPergunta - primeiraEtapa + 1 : TOTAL_ETAPAS;
+  const rotuloEtapa = (s: number) => `${s - primeiraEtapa + 1} de ${totalEtapas}`;
+
+  const [step, setStep] = useState(primeiraEtapa);
   const [organizacao, setOrganizacao] = useState<NivelOrganizacao | null>(null);
   const [foco, setFoco] = useState<Foco | null>(null);
   const [cartao, setCartao] = useState<UsoCartao | null>(null);
@@ -179,7 +194,8 @@ export default function OnboardingModal({
      primeiro diagnóstico não há o que preservar, e o preset continua valendo
      como ponto de partida. */
   const [presetTocado, setPresetTocado] = useState(false);
-  const podeGravarLayout = !initial || presetTocado;
+  /* Só diagnóstico nunca toca no painel: a pergunta do painel nem aparece. */
+  const podeGravarLayout = !soDiagnostico && (!initial || presetTocado);
 
   /* Apresentação: nome e foto. O nome é salvo ao AVANÇAR, não a cada tecla —
      cada `salvarNome` é uma ida ao Supabase Auth, e salvar por caractere
@@ -200,11 +216,12 @@ export default function OnboardingModal({
      primeira montagem nunca aparecia ao reabrir "Refazer diagnóstico". */
   useEffect(() => {
     if (!visible) return;
-    setStep(PRIMEIRA_ETAPA);
+    setStep(primeiraEtapa);
     setOrganizacao(initial?.organizacao ?? null);
     setFoco(initial?.foco ?? null);
     setCartao(initial?.cartao ?? null);
-    setRenda(initial && initial.rendaMensal > 0 ? String(initial.rendaMensal).replace('.', ',') : '');
+    /* Com centavos, como todo campo de valor: `String(50)` mostrava "R$ 50". */
+    setRenda(initial && initial.rendaMensal > 0 ? formatMoney(initial.rendaMensal) : '');
     setAmbicao(initial?.ambicao ?? null);
     setPresetHome('completo');
     setPresetTocado(false);
@@ -224,10 +241,10 @@ export default function OnboardingModal({
         setNome('');
         setFotoUrl(null);
       });
-  }, [visible, initial]);
+  }, [visible, initial, primeiraEtapa]);
 
   function resetState() {
-    setStep(PRIMEIRA_ETAPA);
+    setStep(primeiraEtapa);
     setOrganizacao(null);
     setFoco(null);
     setCartao(null);
@@ -291,6 +308,10 @@ export default function OnboardingModal({
       setStep(4);
     } else if (step === 4) {
       if (!ambicao) return avisar('Escolha sua meta de economia mensal.');
+      if (soDiagnostico) {
+        finalizar({ organizacao: organizacao!, foco: foco!, cartao: cartao!, rendaMensal: parseAmount(renda), ambicao });
+        return;
+      }
       setStep(5);
     } else if (step === 5) {
       /* Ia para o passo 6, que perguntava "Quer lançar gastos direto pelo
@@ -313,7 +334,10 @@ export default function OnboardingModal({
   }
 
   function handleBack() {
-    if (step > PRIMEIRA_ETAPA) setStep(step - 1);
+    /* Do resultado volta para a última pergunta. `step - 1` levava ao passo
+       6, que não existe desde que a pergunta do WhatsApp saiu: tela vazia. */
+    if (step === 7) setStep(ultimaPergunta);
+    else if (step > primeiraEtapa) setStep(step - 1);
   }
 
   function handleSkip() {
@@ -326,7 +350,7 @@ export default function OnboardingModal({
     /* O nome já digitado não se perde por pular o diagnóstico: são coisas
        separadas, e quem escreveu o nome deixou claro que quer ser chamado
        assim. */
-    void salvarIdentidade();
+    if (!soDiagnostico) void salvarIdentidade();
     resetState();
     onClose();
   }
@@ -393,7 +417,7 @@ export default function OnboardingModal({
   /* +1 porque a apresentação é o passo 0: sem isso a primeira tela abriria
      com a barra de progresso inteiramente vazia, como se nada tivesse
      começado ainda. */
-  const progresso = Math.min(step + 1, TOTAL_ETAPAS);
+  const progresso = Math.min(step - primeiraEtapa + 1, totalEtapas);
 
   return (
     <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent={false} onRequestClose={onClose}>
@@ -418,7 +442,7 @@ export default function OnboardingModal({
             <View style={styles.backBtn} />
           )}
           <View style={styles.progressBar}>
-            {Array.from({ length: TOTAL_ETAPAS }).map((_, i) => (
+            {Array.from({ length: totalEtapas }).map((_, i) => (
               <View key={i} style={[styles.progressSegment, i < progresso && styles.progressSegmentDone]} />
             ))}
           </View>
@@ -433,10 +457,10 @@ export default function OnboardingModal({
         >
           {step === PRIMEIRA_ETAPA && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>1 de {TOTAL_ETAPAS} · bem-vindo ao Grana.</Text>
+              <Text style={styles.eyebrow}>{rotuloEtapa(0)} · bem-vindo ao Grana.</Text>
               <Text style={styles.question}>Como você quer ser chamado?</Text>
               <Text style={styles.hint}>
-                É o nome que aparece na saudação da tela inicial. A foto é opcional — sem ela fica
+                É o nome que aparece na saudação da tela inicial. A foto é opcional: sem ela fica
                 a sua inicial.
               </Text>
 
@@ -504,7 +528,7 @@ export default function OnboardingModal({
 
           {step === 1 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>2 de {TOTAL_ETAPAS}</Text>
+              <Text style={styles.eyebrow}>{rotuloEtapa(1)}</Text>
               <Text style={styles.question}>Como você cuida do seu dinheiro hoje?</Text>
               <View style={styles.optionsList}>
                 {OPCOES_ORGANIZACAO.map((o) => (
@@ -522,7 +546,7 @@ export default function OnboardingModal({
 
           {step === 2 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>3 de {TOTAL_ETAPAS}</Text>
+              <Text style={styles.eyebrow}>{rotuloEtapa(2)}</Text>
               <Text style={styles.question}>Qual o seu foco principal no Grana agora?</Text>
               <View style={styles.optionsList}>
                 {OPCOES_FOCO.map((o) => (
@@ -540,7 +564,7 @@ export default function OnboardingModal({
 
           {step === 3 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>4 de {TOTAL_ETAPAS}</Text>
+              <Text style={styles.eyebrow}>{rotuloEtapa(3)}</Text>
               <Text style={styles.question}>Como é o seu uso de cartão de crédito?</Text>
               <View style={styles.optionsList}>
                 {OPCOES_CARTAO.map((o) => (
@@ -558,7 +582,7 @@ export default function OnboardingModal({
 
           {step === 4 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>5 de {TOTAL_ETAPAS}</Text>
+              <Text style={styles.eyebrow}>{rotuloEtapa(4)}</Text>
               <Text style={styles.question}>Qual sua renda mensal aproximada?</Text>
               <View style={styles.incomeRow}>
                 <Text style={styles.incomePrefix}>R$</Text>
@@ -574,7 +598,7 @@ export default function OnboardingModal({
                 />
               </View>
               <Text style={styles.hint}>
-                Usamos isso só para calcular o orçamento sugerido por categoria — dá para deixar em
+                Usamos isso só para calcular o orçamento sugerido por categoria. Dá para deixar em
                 branco e ajustar tudo depois.
               </Text>
 
@@ -597,7 +621,7 @@ export default function OnboardingModal({
 
           {step === 5 && (
             <View style={styles.stepContent}>
-              <Text style={styles.eyebrow}>6 de {TOTAL_ETAPAS} · personalização</Text>
+              <Text style={styles.eyebrow}>{rotuloEtapa(5)} · personalização</Text>
               <Text style={styles.question}>Como você prefere ver seu painel inicial?</Text>
               <Text style={styles.hint}>
                 Escolha o modelo que mais combina com seu momento. Você poderá adicionar, remover ou
@@ -722,12 +746,16 @@ export default function OnboardingModal({
             onPress={handleNext}
           >
             <Text style={styles.primaryBtnText}>
-              {step === 6 ? 'Ver meu diagnóstico' : step === 7 ? 'Começar a usar o Grana' : 'Continuar'}
+              {step === ultimaPergunta
+                ? 'Ver meu diagnóstico'
+                : step === 7
+                ? soDiagnostico ? 'Concluir' : 'Começar a usar o Grana'
+                : 'Continuar'}
             </Text>
           </AppPressable>
           {step <= 6 && (
             <AppPressable onPress={handleSkip}>
-              <Text style={styles.skipBtnText}>Pular por agora</Text>
+              <Text style={styles.skipBtnText}>{soDiagnostico ? 'Cancelar' : 'Pular por agora'}</Text>
             </AppPressable>
           )}
         </View>
