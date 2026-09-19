@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
@@ -37,6 +37,8 @@ function LineAreaChart({
   columns,
   height = 240,
   width,
+  carregando = false,
+  erro = null,
 }: {
   columns: BarColumn[];
   height?: number;
@@ -46,6 +48,13 @@ function LineAreaChart({
       (estreita) e nunca acompanha o card real, deixando o gráfico "colado"
       à esquerda de um card muito mais largo. */
   width?: number;
+  /** A tela ainda está buscando os lançamentos. Sem isto, `columns` vazio
+      durante a carga desenhava "Sem dados suficientes para o período", uma
+      afirmação falsa por alguns segundos a cada abertura (achado X1). */
+  carregando?: boolean;
+  /** A busca falhou e não havia nada guardado. Vazio por falha não é vazio
+      por falta de lançamento, e o texto precisa dizer qual dos dois é. */
+  erro?: string | null;
 }) {
   const [medida, setMedida] = useState(320);
   const { hidden } = usePrivacy();
@@ -61,9 +70,17 @@ function LineAreaChart({
   }
 
   if (!columns || columns.length === 0) {
+    /* Mesmo contêiner e mesma altura nos três casos, para o conteúdo abaixo
+       não pular quando a carga termina. */
     return (
       <View style={[styles.emptyContainer, { height }]}>
-        <Text style={styles.emptyText}>Sem dados suficientes para o período.</Text>
+        {carregando ? (
+          <ActivityIndicator color={theme.inkFaint} accessibilityLabel="Carregando o gráfico" />
+        ) : (
+          <Text style={styles.emptyText} accessibilityRole={erro ? 'alert' : undefined}>
+            {erro ?? 'Sem dados suficientes para o período.'}
+          </Text>
+        )}
       </View>
     );
   }

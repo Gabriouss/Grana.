@@ -74,7 +74,10 @@ export default function GraficosScreen() {
   const { isDemoMode } = useDemo();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  /* `loading` existia e nunca era lido: durante a carga o gráfico dizia "Sem
+     dados suficientes" e o total dizia R$ 0,00 (achado X1, 18/09/2026). */
   const [loading, setLoading] = useState(true);
+  const [erroCarga, setErroCarga] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const historicoCache = useRef<Transaction[] | null>(null);
   const [walletModalVisible, setWalletModalVisible] = useState(false);
@@ -109,8 +112,10 @@ export default function GraficosScreen() {
           : await fetchTransactions();
       if (granularidade !== 'periodo') historicoCache.current = data;
       setTransactions(data || []);
+      setErroCarga(null);
     } catch (e) {
       console.warn('Erro ao carregar transações para gráficos:', e);
+      setErroCarga('Não consegui carregar seus lançamentos. Puxe a tela para tentar de novo.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -325,9 +330,17 @@ export default function GraficosScreen() {
 
         {/* Gráfico de linha — total por período, com a composição por
             categoria da coluna selecionada logo abaixo. */}
-        <LineAreaChart columns={barColumns} height={240} width={larguraGrafico} />
+        <LineAreaChart
+          columns={barColumns}
+          height={240}
+          width={larguraGrafico}
+          carregando={loading && transactions.length === 0}
+          erro={transactions.length === 0 ? erroCarga : null}
+        />
 
-        {/* Total Consolidado do Período */}
+        {/* Total Consolidado do Período. Enquanto nada chegou, ou se a busca
+            falhou sem nada guardado, R$ 0,00 seria uma afirmação sobre o
+            dinheiro da pessoa que ninguém conferiu. */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>
             {tabModo === 'despesas'
@@ -336,9 +349,15 @@ export default function GraficosScreen() {
               ? 'Total recebido no período'
               : 'Movimentação no período'}
           </Text>
-          <PrivacyValue>
-            <Text style={styles.summaryValue}>R$ {formatMoney(totalPeriodo)}</Text>
-          </PrivacyValue>
+          {transactions.length === 0 && (loading || erroCarga) ? (
+            <Text style={[styles.summaryLabel, styles.summaryPendente]}>
+              {loading ? 'Carregando…' : 'Indisponível agora'}
+            </Text>
+          ) : (
+            <PrivacyValue>
+              <Text style={styles.summaryValue}>R$ {formatMoney(totalPeriodo)}</Text>
+            </PrivacyValue>
+          )}
         </View>
 
         {/* Distribuição por Categorias (Donut) */}
@@ -489,6 +508,11 @@ const styles = StyleSheet.create({
     color: theme.ink,
     fontSize: type.cabecalho,
     lineHeight: lh(type.cabecalho, 'titulo'), fontFamily: fonts.regular },
+  /* Mesma altura de linha do valor, para o cartão não mudar de tamanho quando
+     o número chega. */
+  summaryPendente: {
+    lineHeight: lh(type.cabecalho, 'titulo'),
+  },
   donutCard: {
     backgroundColor: theme.paperRaised,
     borderRadius: cardTokens.radius,
