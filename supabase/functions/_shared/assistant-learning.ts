@@ -41,6 +41,10 @@ const FATO_NUMERICO = /(?:\br\$\s*[\d.,]*\d|\b\d+(?:[.,]\d{1,2})?\s*(?:reais?|co
  *  reconhecida como resposta, e não como pedido novo. */
 export const AINDA_NAO_REGISTREI = 'Ainda não registrei nada.';
 
+/** Final de todo recibo de lançamento GRAVADO (ver `executarCriarLancamento`).
+ *  É por ele que se sabe que o pedido anterior já foi consumido. */
+export const RECIBO_DE_LANCAMENTO = 'Se quiser desfazer, é só dizer "desfaz".';
+
 const PALAVRAS_DE_LIGACAO = new Set([
   'a', 'o', 'as', 'os', 'e', 'em', 'na', 'no', 'nas', 'nos', 'de', 'da', 'do', 'pra', 'pro', 'para',
   'como', 'categoria', 'cartao', 'foi', 'pode', 'por', 'favor', 'ai', 'isso', 'esse', 'essa', 'nesse',
@@ -105,10 +109,27 @@ function origemDoLancamento(
   if (!respondePergunta && (PEDIDO_DE_LANCAMENTO.test(atual) ||
       (SINAL_DE_LANCAMENTO.test(atual) && FATO_NUMERICO.test(atual)))) return { atual, anterior: null };
 
-  const fonteAnterior = [...historico].reverse().find((item) =>
-    item.papel === 'usuario' && SINAL_DE_LANCAMENTO.test(item.texto) &&
-    (FATO_NUMERICO.test(item.texto) || PEDIDO_DE_LANCAMENTO.test(item.texto))
-  );
+  /* Um pedido que já virou lançamento não é mais pedido: o recibo de gravação
+     é a fronteira, e a busca não passa dele. Até 19/09/2026 passava. Com
+     "lança 5 reais do café gelado" já registrado no histórico, a mensagem
+     "gastei 23,50 no mercado" caía aqui (tem sinal de lançamento, mas "23,50"
+     sem "reais" não conta como fato numérico), era juntada ao pedido do café,
+     e o Granabô gravava OUTRO café de R$ 5,00 confirmando que tinha dado
+     certo. Visto na conta de teste: três "Cafe gelado R$ 5,00" (achado W5).
+
+     A junção continua valendo enquanto o pedido está em aberto, inclusive
+     depois de uma pergunta livre do modelo ("Qual cartão você usou?"), que é
+     o caso que `__tests__/assistant-learning.cjs` prende. */
+  let fonteAnterior: MensagemHistorico | undefined;
+  for (let i = historico.length - 1; i >= 0; i--) {
+    const item = historico[i];
+    if (item.papel === 'assistente' && item.texto.trim().endsWith(RECIBO_DE_LANCAMENTO)) break;
+    if (item.papel === 'usuario' && SINAL_DE_LANCAMENTO.test(item.texto) &&
+        (FATO_NUMERICO.test(item.texto) || PEDIDO_DE_LANCAMENTO.test(item.texto))) {
+      fonteAnterior = item;
+      break;
+    }
+  }
   return { atual, anterior: fonteAnterior ? fonteAnterior.texto : null };
 }
 

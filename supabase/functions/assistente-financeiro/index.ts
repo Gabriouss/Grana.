@@ -52,6 +52,7 @@ import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
 import { janelaFatura, mesFaturaDoLancamento, cicloRelativo, deslocamentoPedido } from '../_shared/fatura-ciclo.ts';
 import {
   AINDA_NAO_REGISTREI,
+  RECIBO_DE_LANCAMENTO,
   conduzirConversa,
   exemploElegivel,
   feedbackExplicito,
@@ -1052,7 +1053,7 @@ async function executarCriarLancamento(
   const rotulo = kind === 'bill' ? 'Conta a pagar registrada' : tipo === 'in' ? 'Entrada registrada' : 'Lançamento registrado';
   return rotulo + ': R$ ' + formatarBRL(valor) + comoParcelas + ' em ' + categoria.name +
     ' (' + descricao + ')' + ondeCartao + ', na carteira ' + carteira.name + '.' + repete +
-    ' Se quiser desfazer, é só dizer "desfaz".';
+    ' ' + RECIBO_DE_LANCAMENTO;
 }
 
 /** Remove o último lançamento que o próprio assistente criou (30 min). */

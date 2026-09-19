@@ -17,6 +17,8 @@ const {
   fallbackSeguro,
   respostaFinalSegura,
   textoLancamentoConfiavel,
+  fontesDoNomeDoLancamento,
+  RECIBO_DE_LANCAMENTO,
 } = loaded.exports;
 const cycleFile = path.resolve(__dirname, '../supabase/functions/_shared/fatura-ciclo.ts');
 const cycleModule = new Module(cycleFile, module);
@@ -138,6 +140,35 @@ async function run(respostas, executar, customTools = tools) {
     assert.equal(r.registros[0].args.texto, fonte, 'a chave de deduplicação usa o texto confiável');
     assert.equal(respostaFinalSegura('Registrei R$ 283,72 parcelado em 86x.', r.registros), confirmado,
       'a confirmação não pode inventar quantidade de parcelas');
+  });
+  /* W5, visto na conta de teste em 18/09/2026: com "lança 5 reais do café
+     gelado" JÁ REGISTRADO, "gastei 23.50 no mercado hoje" era juntado ao pedido
+     do café e o Granabô gravava outro café de R$ 5,00, confirmando. O recibo de
+     gravação agora é fronteira: pedido consumido não é mais fonte. */
+  await scenario('pedido já registrado não contamina o pedido seguinte', async () => {
+    const cafe = 'lança 5 reais do café gelado';
+    const recibo = 'Lançamento registrado: R$ 5,00 em Alimentação (Cafe gelado), na carteira Principal. ' + RECIBO_DE_LANCAMENTO;
+    const historico = [{ papel: 'usuario', texto: cafe }, { papel: 'assistente', texto: recibo }];
+    for (const fala of ['gastei 23.50 no mercado hoje', 'gastei 23,50 no mercado', 'comprei pão 7,90', 'Alimentação', 'C6']) {
+      assert.equal(textoLancamentoConfiavel(fala, historico), fala, `"${fala}" não pode herdar o café já gravado`);
+      assert.deepEqual([...fontesDoNomeDoLancamento(fala, historico)], [fala], `o nome de "${fala}" não pode vir do café`);
+    }
+  });
+  await scenario('pedido em aberto depois de um já registrado junta com o certo', async () => {
+    const historico = [
+      { papel: 'usuario', texto: 'lança 5 reais do café gelado' },
+      { papel: 'assistente', texto: 'Lançamento registrado: R$ 5,00 em Alimentação (Cafe gelado). ' + RECIBO_DE_LANCAMENTO },
+      { papel: 'usuario', texto: 'lança almoço no crédito C6' },
+      { papel: 'assistente', texto: 'Não identifiquei o valor nessa frase. Me diz quanto foi, em reais (ex.: "almoço 38,50"). Ainda não registrei nada.' },
+    ];
+    const fonte = textoLancamentoConfiavel('38,50', historico);
+    assert.ok(fonte.includes('almoço') && fonte.includes('38,50'), 'junta com o almoço, que está em aberto');
+    assert.ok(!fonte.includes('café'), 'e nunca com o café, que já foi gravado');
+  });
+  await scenario('o recibo da Edge Function termina com a fronteira', async () => {
+    const fonteDaFuncao = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/assistente-financeiro/index.ts'), 'utf8');
+    assert.match(fonteDaFuncao, /' \(' \+ descricao \+ '\)' \+ ondeCartao \+ ', na carteira ' \+ carteira\.name \+ '\.' \+ repete \+\s*' ' \+ RECIBO_DE_LANCAMENTO;/,
+      'se o recibo mudar de texto sem usar a constante, a fronteira deixa de ser reconhecida');
   });
   console.log(`${checks} cenários passaram.`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });
