@@ -1607,7 +1607,7 @@ export default function InicioScreen() {
 
             <TextInput accessibilityLabel="Descrição da conta a pagar" maxLength={LIMITS.description}
               style={styles.descInput}
-              placeholder="Descrição — ex: Energia"
+              placeholder="Descrição, ex.: Energia"
               placeholderTextColor={theme.inkFaint}
               value={billDesc}
               onChangeText={setBillDesc}

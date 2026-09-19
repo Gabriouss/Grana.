@@ -143,5 +143,12 @@ const sextaNoite = selecionarMensagem({ streak: 0, diasInativo: 0, diaSemana: 5 
 checar('sexta produz tom de fim de semana na janela de almoço', sextaAlmoco.categoria === 'fim_de_semana');
 checar('sexta produz tom de fim de semana na janela de noite', sextaNoite.categoria === 'fim_de_semana');
 
+/* Regra de texto do projeto: sem travessão em copy. Doze notificações usavam
+   até 19/09/2026, e é o texto que chega ao celular da pessoa. */
+{
+  const comTravessao = MENSAGENS.filter((m) => m.titulo.includes('—') || m.texto.includes('—')).map((m) => m.id);
+  checar('nenhuma notificação usa travessão', comTravessao.length === 0, comTravessao.join(', '));
+}
+
 console.log(`${passou}/${passou + falhou} notificações passaram`);
 if (falhou > 0) process.exit(1);

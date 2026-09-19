@@ -234,7 +234,7 @@ export default function TransactionSheet({
             accessibilityLabel={ehBoleto ? 'Descrição da conta a pagar' : ehCredito ? 'Descrição da compra no cartão' : 'Descrição do lançamento'}
             maxLength={LIMITS.description}
             style={styles.descInput}
-            placeholder={ehBoleto ? 'Descrição — ex: Energia' : ehCredito ? 'Descrição — ex: Supermercado' : 'Descrição'}
+            placeholder={ehBoleto ? 'Descrição, ex.: Energia' : ehCredito ? 'Descrição, ex.: Supermercado' : 'Descrição'}
             placeholderTextColor={theme.inkFaint}
             value={desc}
             onChangeText={(value) => { setDesc(value); if (formError) setFormError(null); }}

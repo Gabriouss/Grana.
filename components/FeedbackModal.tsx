@@ -134,7 +134,7 @@ export default function FeedbackModal({
             <TextInput
               accessibilityLabel="Mensagem do feedback"
               style={styles.mensagemInput}
-              placeholder="Conte com detalhes — quanto mais específico, melhor."
+              placeholder="Conte com detalhes. Quanto mais específico, melhor."
               placeholderTextColor={theme.inkFaint}
               multiline
               maxLength={LIMITS.feedbackMessage}
