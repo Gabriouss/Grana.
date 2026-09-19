@@ -127,6 +127,33 @@ os P2/P3 restantes da auditoria.
 
 ---
 
+# 19/09/2026 (M1) — o que o Codex pulou, feito pelo Claude (`b7e45d9` e os dois anteriores)
+
+A pedido do autor ("tente corrigir o que foi pulado"), os itens de texto e de
+código simples que o Codex tinha adiado saíram em três commits: **copy**
+(A2, A6, A23, A25, A28, A32, A36, A38, A45, A50, A56, A65; sinal de menos
+padronizado em `lib/format.ts`, `formatBRLSaldo` e `formatBRLSubtraido`;
+"Aberta" virou "A pagar"; ciclo escrito "15 set a 14 out"; o separador da
+janela mudou só em `lib/faturaCiclo.ts`, a cópia Deno `_shared/fatura-ciclo.ts`
+segue com "–" porque o Granabô só muda com deploy), **tela** (A40 sem a linha
+Tema, A67 sem o link duplicado, A14 ícone de recibo no Boleto) e
+**comportamento** (A44 confirma antes de descartar o Feedback, A68 o e-mail do
+login chega ao modal de recuperar senha, A3 o Fluxo abre no período de hoje).
+
+- **Verificação:** `tsc` e `test:ci` verdes. Nada visto no aparelho. Um guarda
+  estático de `corpus-credito-faturas.ts` (texto do botão) e os rótulos de
+  `corpus-score.ts` e `corpus-fatura-ciclo.ts` foram atualizados junto.
+- **Achado que o Codex não tinha visto:** A68 estava marcado como "exige
+  transportar o e-mail", mas o `emailInicial` já existia; o defeito real era
+  `useState(emailInicial)` valer só na montagem do modal, que fica montado.
+- **Ainda em aberto:** decisão de produto (A15, A26, A34, A35, A52, A54,
+  A44 resolvido), conferência visual (A7, A8, A9, A10, A27, A29, A45 "Voltar"
+  fixo, A53, A70), A51 (depósito perdido, causa não isolada), A58, A69
+  (permissão de notificação, exige verificar o pedido nativo) e os nativos
+  A55, A61, A62, A63.
+
+---
+
 # 19/09/2026 (M1) — última leva do dia: o Codex terminou o que sobrava (`5d72611` e os dois anteriores)
 
 O autor pediu que o Codex (`gpt-5.6-luna`, esforço medium, escrita liberada
