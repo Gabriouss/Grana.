@@ -58,6 +58,33 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — auditoria 100% no emulador sob a regra 17: 70 achados, nada corrigido ainda
+
+Lista completa, com passos, gravidade e prints, na nota
+`2026-09-19 - M1 - Auditoria 100 por cento no emulador`. Skills de apoio:
+`impeccable` (auditoria nativa), `ui-visual-composition`, `test-scenarios`.
+Nada foi corrigido durante a varredura (regra 17).
+
+- **P1 (9):** A12 "Saldo atual" da Início é só o mês corrente, não o saldo da
+  carteira (decisão do autor); A21 pagar fatura escondido atrás de tocar no
+  cartão; A22 o cartão do carrossel muda de sentido com a seleção; A30
+  excluir boleto não pede confirmação; A39 o voltar do Android fecha o app
+  em qualquer tela, inclusive com o Granabô aberto (hipótese: voltar
+  preditivo ligado no `app.json`, não comprovada); A42 orçamento sugerido
+  grava ao primeiro toque; A47 voz presa em "Transcrevendo…" sem prazo nem
+  recibo; A49 importar CSV ignora o sinal do valor; A64 "Sair da conta" não
+  sai e não diz nada (`signOut` espera sem prazo).
+- **Confirmado no emulador:** exclusão de parcela com três opções e "a
+  compra inteira"; Crédito offline com cartão (W1); categoria padrão só troca
+  a cor (G10b); toasts e placeholders sem travessão.
+- **Não verificável no emulador:** assinar/ativar (conta com cortesia), nova
+  senha, push (sem FCM), voz real (microfone mudo), QR real, paisagem.
+- **Ambiente:** limpar os dados do app (`pm clear`) religa "Bloquear captura
+  de tela" e os prints saem vazios; o aviso de debug do Metro por cima da
+  barra bloqueia o toque no Granabô.
+
+---
+
 # 19/09/2026 (M1) — terceira leva: o que não dependia do autor (`3379cfa` a `def9f93`) e a regra 17
 
 Pedido do autor: "corrija tudo o que dá", e depois uma revisão rigorosa do app
