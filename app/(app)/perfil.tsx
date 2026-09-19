@@ -59,7 +59,7 @@ import { calculateStreakAndWeek } from '@/lib/gamification';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import { LIMITS } from '@/lib/limits';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
-import { carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
+import { carregarDiagnostico, diagnosticoDosMetadados, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import AppPressable from '@/components/AppPressable';
 import { useFlags } from '@/lib/feature-flags';
 import PasswordInput from '@/components/PasswordInput';
@@ -126,7 +126,12 @@ export default function PerfilScreen() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
-  const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
+  /* Começa pelo que a sessão LOCAL já sabe, sem esperar a rede. Antes começava
+     vazio, e a tela mostrava "Diagnóstico inicial" até o `getUser` voltar, para
+     então trocar para "Diagnóstico financeiro" (achado G12). */
+  const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(() =>
+    diagnosticoDosMetadados(session?.user.user_metadata)
+  );
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [nomeOpen, setNomeOpen] = useState(false);
   const [nomeRascunho, setNomeRascunho] = useState('');
@@ -480,8 +485,12 @@ export default function PerfilScreen() {
   }
 
   const userEmail = perfil?.email || session?.user.email || 'usuario@exemplo.com';
-  const nomeExibido = nomeDeExibicao(perfil) || userEmail;
-  const initial = (perfil?.nome || userEmail)[0]?.toUpperCase() ?? 'G';
+  /* O nome também já vem na sessão local. Sem ele, até o `carregarPerfil`
+     voltar da rede, o cabeçalho mostrava o e-mail no lugar do nome e a
+     inicial do e-mail no avatar, e os dois trocavam na frente da pessoa. */
+  const nomeLocal = typeof session?.user.user_metadata?.nome === 'string' ? session.user.user_metadata.nome : '';
+  const nomeExibido = nomeDeExibicao(perfil) || nomeLocal || userEmail.split('@')[0] || userEmail;
+  const initial = (perfil?.nome || nomeLocal || userEmail)[0]?.toUpperCase() ?? 'G';
 
 
   return (

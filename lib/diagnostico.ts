@@ -266,16 +266,26 @@ export async function salvarDiagnostico(
 
 export type DiagnosticoCarregado = { respostas: Respostas; arquetipo: Arquetipo; atualizadoEm: string };
 
-export async function carregarDiagnostico(): Promise<DiagnosticoCarregado | null> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-
-  const bruto = data.user.user_metadata?.[CHAVE_METADATA] as DiagnosticoSalvo | undefined;
+/**
+ * O diagnóstico guardado nos metadados do usuário, sem ir à rede.
+ *
+ * Serve à primeira pintura do Perfil a partir da SESSÃO local: sem isso a tela
+ * mostrava "Diagnóstico inicial" até o `getUser` voltar e então trocava para
+ * "Diagnóstico financeiro" (achado G12, 18/09/2026). `carregarDiagnostico`
+ * usa a mesma leitura, para as duas nunca discordarem.
+ */
+export function diagnosticoDosMetadados(meta: Record<string, unknown> | null | undefined): DiagnosticoCarregado | null {
+  const bruto = meta?.[CHAVE_METADATA] as DiagnosticoSalvo | undefined;
   if (!bruto || !bruto.arquetipoId || !ARQUETIPOS[bruto.arquetipoId]) return null;
-
   return {
     respostas: bruto.respostas,
     arquetipo: ARQUETIPOS[bruto.arquetipoId],
     atualizadoEm: bruto.atualizadoEm,
   };
+}
+
+export async function carregarDiagnostico(): Promise<DiagnosticoCarregado | null> {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) return null;
+  return diagnosticoDosMetadados(data.user.user_metadata);
 }
