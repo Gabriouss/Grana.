@@ -281,11 +281,15 @@ export default function WalletPickerModal({
                       color={w.color || theme.accent}
                     />
                   </View>
+                  {/* Nome em até duas linhas, e o saldo sem encolher. Com o
+                      lápis e a lixeira na mesma fileira, "AUDIT carteira teste"
+                      já quebrava em três linhas e espremia o valor, que é o
+                      dado que a pessoa veio ver (achado G7). */}
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.walletName}>{w.name}</Text>
+                    <Text style={styles.walletName} numberOfLines={2}>{w.name}</Text>
                   </View>
                   <PrivacyValue>
-                    <Text style={styles.walletBalance}>{`R$ ${formatMoney(saldoItem)}`}</Text>
+                    <Text style={[styles.walletBalance, styles.walletBalanceFixo]}>{`R$ ${formatMoney(saldoItem)}`}</Text>
                   </PrivacyValue>
                 </AppPressable>
                 <AppPressable
@@ -475,6 +479,7 @@ const styles = StyleSheet.create({
        fixa, e param de saltar quando um valor muda. */
     fontVariant: ['tabular-nums'],
     fontSize: type.corpo, fontFamily: fonts.regular },
+  walletBalanceFixo: { flexShrink: 0 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
