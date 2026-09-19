@@ -15,6 +15,7 @@ import {
 } from './sessao-offline';
 import { esquecerTelas } from './cache-de-tela';
 import { limparSnapshotWidgets } from './widgets-home-sync';
+import { sairDaConta } from './sair-da-conta';
 
 type AuthContextValue = {
   session: Session | null;
@@ -255,43 +256,33 @@ export function SessionProvider({ children }: PropsWithChildren) {
       });
       return { error: traduzirErroAuth(error), needsEmailConfirmation: !error && !data.session };
     },
+    /* A sequência e os prazos moram em lib/sair-da-conta.ts: cada limpeza tem
+       prazo próprio e a sessão sai sempre (achado A64, 19/09/2026). */
     async signOut() {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user.id) {
-        const { limparVozesDaConta } = await import('./widget-voz-pendentes');
-        await limparVozesDaConta(data.session.user.id);
-      }
-      /* Some da tela inicial antes de a sessão ser removida: nenhuma conta
-         seguinte pode herdar o saldo, boleto ou cofrinho da anterior. */
-      limparSnapshotWidgets();
-      /* O acesso guardado para uso offline sai junto: sair é deliberado, e
-         nenhuma conta seguinte pode entrar no app pelo prazo da anterior. */
-      await esquecerAcesso();
-      /* E o cache de leitura das telas, pelo mesmo motivo levado até o fim: o
-         registro é chaveado por usuário e já recusaria conta diferente, mas
-         deixar extrato, boleto e meta de alguém no disco depois de a pessoa
-         sair é guardar dado financeiro sem razão nenhuma para tê-lo. */
-      await esquecerTelas();
-      try {
-        await removerPushHabitoAntesDeSair();
-      } catch (err) {
-        console.warn('Erro ao remover o push antes de sair:', err);
-      }
-      try {
-        await supabase.auth.signOut();
-      } catch (err) {
-        console.warn('Erro ao deslogar no Supabase:', err);
-      } finally {
-        /* Apagar o registro do disco aqui NÃO é redundância com o signOut
-           acima. O `signOut` do auth-js começa chamando `getSession()` por
-           dentro; sem rede e com o token vencido ele recebe o erro da
-           renovação, devolve esse erro e volta sem apagar nada. Enquanto
-           ninguém lia o disco isso era inofensivo; agora seria o pior defeito
-           possível — sair da conta sem internet e o app trazer a pessoa de
-           volta na próxima abertura. */
-        await esquecerSessaoDoDisco();
-        aplicarSessao(null, false);
-      }
+      await sairDaConta({
+        idDoUsuario: async () => (await supabase.auth.getSession()).data.session?.user.id ?? null,
+        limparVozesDaConta: async (userId) => {
+          const { limparVozesDaConta } = await import('./widget-voz-pendentes');
+          await limparVozesDaConta(userId);
+        },
+        /* Some da tela inicial antes de a sessão ser removida: nenhuma conta
+           seguinte pode herdar o saldo, boleto ou cofrinho da anterior. */
+        limparWidgets: limparSnapshotWidgets,
+        /* O acesso guardado para uso offline sai junto: sair é deliberado, e
+           nenhuma conta seguinte pode entrar no app pelo prazo da anterior. */
+        esquecerAcesso,
+        /* E o cache de leitura das telas: deixar extrato, boleto e meta de
+           alguém no disco depois de a pessoa sair é guardar dado financeiro
+           sem razão nenhuma para tê-lo. */
+        esquecerTelas,
+        removerPush: removerPushHabitoAntesDeSair,
+        signOutNoServidor: async () => {
+          const { error } = await supabase.auth.signOut();
+          if (error) throw error;
+        },
+        esquecerSessaoDoDisco,
+        aplicarSaida: () => aplicarSessao(null, false),
+      });
     },
   };
 

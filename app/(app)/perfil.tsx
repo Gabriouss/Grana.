@@ -115,6 +115,10 @@ export default function PerfilScreen() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs | null>(null);
   const [deleting, setDeleting] = useState(false);
+  /* A saída pode levar alguns segundos quando a rede ou o push demoram (ver
+     lib/sair-da-conta.ts). Sem isto o diálogo fechava e nada indicava que o
+     app estava saindo (achado A64). */
+  const [saindo, setSaindo] = useState(false);
   const [reauthOpen, setReauthOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -159,7 +163,13 @@ export default function PerfilScreen() {
   }
 
   async function handlePerformSignOut() {
-    await signOut();
+    if (saindo) return;
+    setSaindo(true);
+    try {
+      await signOut();
+    } finally {
+      setSaindo(false);
+    }
     router.replace('/sign-in');
   }
 
@@ -805,8 +815,14 @@ export default function PerfilScreen() {
           <AppPressable
             style={({ hovered }) => [styles.signOutBtn, hovered && styles.signOutBtnHover]}
             onPress={confirmSignOut}
+            disabled={saindo}
+            accessibilityState={{ busy: saindo, disabled: saindo }}
           >
-            <Text style={styles.signOutText}>Sair da conta</Text>
+            {saindo ? (
+              <ActivityIndicator color={theme.ink} size="small" accessibilityLabel="Saindo da conta" />
+            ) : (
+              <Text style={styles.signOutText}>Sair da conta</Text>
+            )}
           </AppPressable>
 
           <AppPressable
