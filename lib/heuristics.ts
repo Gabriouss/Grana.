@@ -1197,6 +1197,16 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
 
   const results: ParsedCsvTransaction[] = [];
 
+  /* Sinal do valor. Extrato que usa sinal marca a saída com "-" e deixa a
+     entrada sem sinal; se o arquivo tem ao menos um negativo, o sinal é um
+     fato do arquivo e manda: negativo é saída, positivo é entrada. Só quando
+     nenhuma linha tem sinal (bancos que exportam tudo positivo) é que o tipo
+     continua adivinhado pelo texto. Até 19/09/2026 o sinal era jogado fora
+     (`Math.abs`) e "11/09,Pix recebido,500.00" entrava como saída de R$ 500
+     (achado A49 da auditoria no emulador). */
+  const valorComSinal = (cols: string[]) => (cols[idxAmount] || '').trim().replace(/^R\$\s*/i, '');
+  const arquivoUsaSinal = dataLines.some((line) => valorComSinal(splitCsvLine(line)).startsWith('-'));
+
   for (const line of dataLines) {
     const cols = splitCsvLine(line);
     if (cols.length < 2) continue;
@@ -1211,11 +1221,13 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
        de fato entra no banco. */
     const desc = ((cols[idxDesc] || 'Sem descrição').trim() || 'Sem descrição').slice(0, LIMITS.description);
     const typeRaw = (idxType !== -1 ? cols[idxType] : '') || '';
-    const isIncome =
-      /entrada|receita|credito|crédito|\+/i.test(typeRaw) ||
-      (!/saida|saída|despesa|debito|débito|-/i.test(typeRaw) &&
-        rawAmount.trim().indexOf('-') !== 0 &&
-        guessTypeFromText(desc + ' ' + typeRaw) === 'in');
+    const negativo = valorComSinal(cols).startsWith('-');
+    const isIncome = typeRaw.trim()
+      ? /entrada|receita|credito|crédito|\+/i.test(typeRaw) ||
+        (!/saida|saída|despesa|debito|débito|-/i.test(typeRaw) && !negativo && guessTypeFromText(desc + ' ' + typeRaw) === 'in')
+      : arquivoUsaSinal
+        ? !negativo
+        : guessTypeFromText(desc) === 'in';
 
     const type: TxType = isIncome ? 'in' : 'out';
 

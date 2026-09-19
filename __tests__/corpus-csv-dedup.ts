@@ -74,5 +74,37 @@ const csvEntradaSaida = [
 const p5 = parseCsvText(csvEntradaSaida);
 checar('entrada e saída de mesmo valor/descrição/data não colidem', p5[0].fitid !== p5[1].fitid, true);
 
+/* ---------- Sinal do valor (achado A49, 19/09/2026) ---------- */
+
+/* O caso visto no emulador: coluna sem "tipo", uma saída com "-" e uma
+   entrada positiva cuja descrição não diz nada. Entrava como saída. */
+const comSinal = parseCsvText([
+  'Data,Descricao,Valor',
+  '10/09/2026,AUDIT import um,-12.30',
+  '11/09/2026,AUDIT import dois,500.00',
+].join('\n'));
+checar('negativo num arquivo com sinal é saída', comSinal[0].type, 'out');
+checar('positivo num arquivo com sinal é entrada, mesmo com descrição neutra', comSinal[1].type, 'in');
+checar('o valor continua positivo depois de ler o sinal', comSinal[1].amount, 500);
+
+const comSinalReal = parseCsvText(['Data;Descrição;Valor', '10/09/2026;Mercado;R$ -45,90', '12/09/2026;Transferência;R$ 1.200,00'].join('\n'));
+checar('"R$ -45,90" também conta como negativo', comSinalReal[0]?.type, 'out');
+checar('e "R$ 1.200,00" no mesmo arquivo é entrada', comSinalReal[1]?.type, 'in');
+
+/* Banco que exporta tudo positivo: o sinal não diz nada, segue a descrição. */
+const semSinal = parseCsvText(['Data,Descricao,Valor', '10/09/2026,Supermercado,45.90', '11/09/2026,Salário,3000.00'].join('\n'));
+checar('arquivo sem nenhum negativo: despesa pela descrição', semSinal[0].type, 'out');
+checar('arquivo sem nenhum negativo: salário pela descrição', semSinal[1].type, 'in');
+
+/* Coluna "tipo" continua mandando sobre o sinal. */
+const comTipo = parseCsvText(['Data,Descricao,Valor,Tipo', '10/09/2026,Estorno,-20.00,Entrada', '11/09/2026,Loja,30.00,Saída'].join('\n'));
+checar('coluna tipo "Entrada" vence o sinal negativo', comTipo[0].type, 'in');
+checar('coluna tipo "Saída" vence o valor positivo', comTipo[1].type, 'out');
+
+/* O exemplo que o próprio campo do app mostra. */
+const exemploDoApp = parseCsvText('Data,Descrição,Valor\n15/08/2026,Supermercado,-187.40\n14/08/2026,Salário,6200.00');
+checar('exemplo do app: supermercado sai', exemploDoApp[0].type, 'out');
+checar('exemplo do app: salário entra', exemploDoApp[1].type, 'in');
+
 console.log(`\n${total - falhas}/${total} checagens de dedup do CSV passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);
