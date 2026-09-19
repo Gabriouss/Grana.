@@ -58,6 +58,47 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — segunda leva de correções, todas vistas no emulador (`abaa671` a `489cafd`)
+
+Pedido: "aplique e continue para as próximas correções". Cada achado foi
+reconferido no código antes de mexer; o emulador reiniciado a frio voltou a
+responder, e TODAS as correções abaixo foram vistas na tela.
+
+- **W3** (`abaa671`): barra de abas e botão "+" somem com o teclado aberto, no
+  celular. Visto: na busca de Lançamentos, o resultado aparece inteiro acima do
+  teclado; fechar o teclado traz os dois de volta. Guarda
+  `__tests__/teclado-esconde-barra.cjs`, no `test:ci`.
+- **W4** (`71e7271`): "R$" colado ao número no total do comprometimento futuro.
+- **G6** (`1776dcf`, entrelinha em `0ecd37b`): comprometimento futuro vazio vira
+  a frase "Nenhuma conta recorrente nem parcela a vencer nos próximos 6 meses."
+- **G4** (`06cae69`): modal de nova meta sem o texto de um ponto que ali não
+  existe e com placeholder que cabe ("Nome da meta, ex.: Viagem").
+- **G7** (`1230f69`, corrigido por `f306fa1`): o teto de duas linhas no nome da
+  carteira foi desfeito no mesmo dia: truncava "AUDIT carteira teste" em "AUDIT
+  carteira ..." e deixaria carteiras parecidas iguais. Ficou só a proteção do
+  saldo. O "espreme o saldo" do achado original era exagero.
+- **G20** (`ca1d003`): "Escuro (Dark Theme)" vira "Escuro".
+- **G5** (`7bf3196`): ligar o olho não empurra mais o cabeçalho. Medido: y=184,
+  270 e 488, iguais com e sem a pílula "oculto". A primeira versão escondia o
+  texto da pílula (só a borda aparecia); corrigido antes do commit.
+- **Achado novo, corrigido** (`489cafd`): numa carteira sem cartão, o resumo
+  "Faturas de crédito" dizia "Nenhum cartão cadastrado ainda" a quem tem cartão
+  em outra carteira. Agora diz "Nenhum cartão nesta carteira."
+- **Vistos também no emulador reiniciado:** W1 em modo avião (cartão e fatura de
+  R$ 300 em 6 s) e a pergunta de exclusão em Lançamentos (cancelada; nada apagado).
+
+**Não procedem, retirados:** G12 (era uma linha só, com o rótulo trocando de
+"Diagnóstico inicial" para "Diagnóstico financeiro" durante a carga); G5, parte
+da fileira de ações cortada na borda (é a pista de rolagem horizontal).
+**Com o autor:** G9 (nomes das abas "Débito e Pix"/"Boletos" x títulos das
+telas, decisão de 17/08 em `a9a3f88`) e G2/G11 (XP farmável, cosmético).
+**Abertos, menores:** rótulo do diagnóstico e avatar trocando durante a carga;
+placeholders "Descrição — ex: ..." ainda usam travessão.
+
+`tsc` 0 e `npm run test:ci` 0 no fim.
+
+---
+
 # 19/09/2026 (M1) — no ar: migration do U1 e a v36 do Granabô (W5)
 
 Autorizado pelo autor ("aplique"). As duas correções abaixo, commitadas antes
