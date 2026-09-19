@@ -243,7 +243,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     if (resultado.status === 'undone') return true;
     try {
       await notificacoes.notificarSucesso({
-        titulo: `${descricao} — ${formatarBRL(valor)}`,
+        titulo: `${descricao} · ${formatarBRL(valor)}`,
         texto: `Conta a pagar · vence ${formatarData(dueDate)}`,
         tipo: 'bill',
         ids: resultado.ids,
@@ -280,7 +280,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   try {
     await notificacoes.notificarSucesso({
-      titulo: `${descricao} — ${formatarBRL(valor)}`,
+      titulo: `${descricao} · ${formatarBRL(valor)}`,
       texto: [categoria.name, nomeDaForma(formaPagamento), heuristics.parseRecorrencia(texto) ? 'todo mês' : null]
         .filter(Boolean)
         .join(' · '),
@@ -357,7 +357,7 @@ async function lancarNoCredito(args: {
     checarLimiteCartao(cartao.id).catch(() => {});
     try {
       await notificacoes.notificarSucesso({
-        titulo: `${descricaoNoCartao} — ${formatarBRL(valor)}`,
+        titulo: `${descricaoNoCartao} · ${formatarBRL(valor)}`,
         texto: `${parcelas}x no ${cartao.name} · ${categoria.name}`,
         tipo: 'transaction',
         ids: resultado.ids,
@@ -388,7 +388,7 @@ async function lancarNoCredito(args: {
   checarLimiteCartao(cartao.id).catch(() => {});
   try {
     await notificacoes.notificarSucesso({
-      titulo: `${descricaoNoCartao} — ${formatarBRL(valor)}`,
+      titulo: `${descricaoNoCartao} · ${formatarBRL(valor)}`,
       texto: `Crédito · ${cartao.name} · ${categoria.name}`,
       tipo: 'transaction',
       ids: resultado.ids,
