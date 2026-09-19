@@ -6,6 +6,33 @@ IA para ganhar velocidade sem parecer um conjunto de peças automáticas. A
 referência de qualidade é uma campanha com direção de arte, copy e edição de
 nível sênior.
 
+## Revisão vigente: produto em primeiro plano
+
+Hierarquia obrigatória: **vista do produto > H1 > H2 > background criativo**.
+Esta revisão prevalece sobre orientações anteriores dos prompts S1–S8 e R1–R12.
+
+- Mockups grandes e proporcionais, com telas reais legíveis.
+- Combinar celular e notebook para comunicar mobile e desktop/web.
+- Logo obrigatório: `design-system/marca/logotipo-gradiente.svg`, íntegro.
+- Sem botões publicitários na arte. CTA na legenda ou recurso nativo.
+  Os controles das telas reais permanecem intactos.
+- Um H1 e um H2 curto. Conectores nunca atravessam letras nem telas.
+- Background flat subordinado ao produto, com ornamentos discretos.
+- Incorporar Neue Machina real na exportação, sem depender de fonte instalada.
+- Feed 1080x1440; Stories 1080x1920, com margens e composição próprias.
+- Aprovar pelas prévias renderizadas, inclusive reduzidas ao tamanho de celular.
+
+### Complemento obrigatório para prompts de estáticos e vídeos
+
+```text
+Hierarquia: produto real > H1 > H2 > background flat. Use mockups grandes de
+celular e notebook, com capturas reais proporcionais. Um título e um apoio
+curto. Não desenhe botões publicitários. Aplique o asset oficial do logotipo
+em gradiente e Neue Machina na edição. Não redesenhe marca ou interface.
+Conectores não atravessam texto nem tela. Em vídeo, preserve as capturas como
+camadas e dê tempo para ler o produto antes de cada transição.
+```
+
 ## 1. Objetivo da campanha
 
 Levar uma pessoa que sente que o dinheiro desaparece durante o mês até a
