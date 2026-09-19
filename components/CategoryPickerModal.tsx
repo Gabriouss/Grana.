@@ -15,6 +15,7 @@ import { theme, radius, spacing, PALETTE_30, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import type { Category } from '@/lib/types';
 import { addCategory, deleteCategory, fetchCategories, seedDefaultCategories, updateCategory } from '@/lib/data';
+import { isLikelyNetworkError } from '@/lib/cache-de-tela';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
@@ -80,11 +81,21 @@ export default function CategoryPickerModal({
     }
     if (isDemoMode) return;
     setLoading(true);
+    /* Falha em `seedDefaultCategories` não pode ficar muda: RLS negada ou
+       erro de servidor faz as 8 categorias padrão nunca existirem para essa
+       conta, e antes disso resolvia normalmente como se nada tivesse dado
+       errado (achado do Codex, 19/09/2026). O gerenciador segue de qualquer
+       jeito e mostra o que `fetchCategories()` trouxer. */
     seedDefaultCategories()
-      .catch(() => {})
+      .catch((erro) => {
+        if (!isLikelyNetworkError(erro)) console.error('[categorias] seedDefaultCategories falhou', erro);
+      })
       .then(() => fetchCategories())
       .then(setCustom)
-      .catch(() => setCustom([]))
+      .catch((erro) => {
+        if (!isLikelyNetworkError(erro)) console.error('[categorias] fetchCategories falhou', erro);
+        setCustom([]);
+      })
       .finally(() => setLoading(false));
   }, [visible, isDemoMode]);
 

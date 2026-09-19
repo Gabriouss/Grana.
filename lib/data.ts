@@ -830,8 +830,14 @@ async function buscar_fetchCategories(): Promise<Category[]> {
  * `ignoreDuplicates` já não faz nada com as 8 categorias que a pessoa já tem.
  */
 export async function seedDefaultCategories(): Promise<void> {
+  /* Erro do getUser e erro do upsert eram descartados os dois — a função
+     resolvia normalmente mesmo quando as 8 categorias padrão não tinham sido
+     gravadas (achado do Codex, 19/09/2026, revisando o código). Sem sessão
+     (userErr ausente, mas também sem usuário) continua não sendo erro: não
+     há o que semear, e não é falha de ninguém. */
   const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData.user) return;
+  if (userErr) throw userErr;
+  if (!userData.user) return;
 
   const user_id = userData.user.id;
   const rows = CATEGORIES.map((c) => ({
@@ -845,7 +851,8 @@ export async function seedDefaultCategories(): Promise<void> {
   // ignoreDuplicates: se por algum motivo já existir uma categoria com esse
   // nome (ex: criada manualmente antes desta migração), pula em vez de falhar
   // o lote inteiro por causa da constraint unique (user_id, name).
-  await supabase.from('categories').upsert(rows, { onConflict: 'user_id,name', ignoreDuplicates: true });
+  const { error } = await supabase.from('categories').upsert(rows, { onConflict: 'user_id,name', ignoreDuplicates: true });
+  if (error) throw error;
 }
 
 export async function addCategory(input: { name: string; color: string; type?: CategoryType }): Promise<Category> {
