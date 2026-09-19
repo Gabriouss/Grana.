@@ -271,7 +271,9 @@ export default function GoalsCarousel({
             accessibilityLabel="Nome da meta"
             maxLength={LIMITS.goalTitle}
             style={styles.descInput}
-            placeholder="Nome da meta — ex: Reserva de emergência"
+            /* Curto para caber inteiro no campo, e sem travessão (regra de texto
+               do projeto). O de antes cortava no meio de "emergência" (G4). */
+            placeholder="Nome da meta, ex.: Viagem"
             placeholderTextColor={theme.inkFaint}
             value={title}
             onChangeText={setTitle}

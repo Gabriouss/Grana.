@@ -108,9 +108,15 @@ export default function ColorGridPicker({
           </View>
         ))}
       </View>
-      <Text style={styles.hint} numberOfLines={1}>
-        {activeUsage ? `Em uso por: ${activeUsage.label}` : 'Um ponto na bolinha indica cor já usada por outra categoria.'}
-      </Text>
+      {/* Só quando existe o que o ponto marca. O modal de meta chama esta grade
+          sem `usedBy`, então nenhuma bolinha ganha ponto ali, e o texto
+          explicava um ponto inexistente, falando em "categoria" dentro de uma
+          meta. Duas linhas porque em uma o fim da frase sumia (achado G4). */}
+      {usedBy.length > 0 && (
+        <Text style={styles.hint} numberOfLines={2}>
+          {activeUsage ? `Em uso por: ${activeUsage.label}` : 'Um ponto na bolinha indica cor já usada por outra categoria.'}
+        </Text>
+      )}
     </View>
   );
 }
