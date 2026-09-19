@@ -61,6 +61,37 @@ async function currentUserId(): Promise<string> {
   return id;
 }
 
+/**
+ * Recibo de diagnóstico para `42501 permission denied for function`.
+ *
+ * Visto em 19/09/2026 no emulador, em `saldos_por_carteira`, cinco dias depois
+ * de a corrida de sessão de 14/09 ter sido dada por corrigida. Esse erro quer
+ * dizer que a chamada chegou ao banco como `anon`: o supabase-js (2.112.3,
+ * `fetchWithAuth`) manda a chave anônima como `Bearer` quando não consegue um
+ * token de acesso — sessão ausente, ou renovação que falhou —, e o estado React
+ * pode continuar dizendo que há sessão nesse instante. Isso é o MECANISMO
+ * possível; a ocorrência foi uma só e não se sabe qual caminho a produziu.
+ *
+ * Por isso isto registra, sem nenhum token, o que a sessão local dizia no
+ * momento da recusa. A próxima ocorrência responde à pergunta.
+ */
+async function diagnosticarChamadaAnonima(funcao: string): Promise<void> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const sessao = data.session;
+    const expiraEm = sessao?.expires_at ? sessao.expires_at * 1000 : null;
+    console.error('[data] 42501: chamada chegou ao banco sem usuário', {
+      funcao,
+      temSessaoNoCliente: !!sessao,
+      temTokenDeAcesso: !!sessao?.access_token,
+      tokenVencido: expiraEm === null ? null : expiraEm <= Date.now(),
+      segundosAteVencer: expiraEm === null ? null : Math.round((expiraEm - Date.now()) / 1000),
+    });
+  } catch (erro) {
+    console.error('[data] 42501 e nem a sessão local pôde ser lida', funcao, erro);
+  }
+}
+
 /* ---- transações ---- */
 
 /**
@@ -131,7 +162,10 @@ async function buscar_fetchTransactionsDoPeriodo(inicioISO: string, fimISO: stri
  */
 async function buscar_fetchSaldosPorCarteira(): Promise<{ wallet_id: string | null; delta: number }[]> {
   const { data, error } = await supabase.rpc('saldos_por_carteira');
-  if (error) throw error;
+  if (error) {
+    if ((error as { code?: string }).code === '42501') await diagnosticarChamadaAnonima('saldos_por_carteira');
+    throw error;
+  }
   return (data ?? []).map((linha: { wallet_id: string | null; delta: number | string }) => ({
     wallet_id: linha.wallet_id,
     delta: Number(linha.delta),

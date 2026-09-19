@@ -232,7 +232,37 @@ function telas() {
   }
 }
 
+/* Mora aqui porque é o arquivo que já carrega lib/data.ts com dublês.
+   42501 em saldos_por_carteira (19/09/2026): o recibo de diagnóstico precisa
+   dizer o estado da sessão e NUNCA carregar o token. */
+async function diagnostico42501() {
+  console.log('\nDiagnostico do 42501 em saldos');
+  const erros = [];
+  const original = console.error;
+  console.error = (...args) => erros.push(args);
+  try {
+    const recusa = { code: '42501', message: 'permission denied for function saldos_por_carteira' };
+    const data = carregarData({
+      rpc: async () => ({ data: null, error: recusa }),
+      auth: { getSession: async () => ({ data: { session: {
+        access_token: 'TOKEN-SECRETO', expires_at: Math.floor(Date.now() / 1000) - 60,
+      } } }) },
+    });
+    await assert.rejects(data.fetchSaldosPorCarteira(), (e) => e.code === '42501');
+    assert.equal(erros.length, 1, 'uma recusa, um recibo');
+    const [, detalhe] = erros[0];
+    assert.equal(detalhe.funcao, 'saldos_por_carteira');
+    assert.equal(detalhe.temSessaoNoCliente, true);
+    assert.equal(detalhe.tokenVencido, true, 'o token vencido e a pista que falta');
+    assert.ok(!JSON.stringify(erros).includes('TOKEN-SECRETO'), 'o token nunca vai para o log');
+  } finally {
+    console.error = original;
+  }
+  ok('42501 deixa recibo do estado da sessao, sem o token');
+}
+
 (async () => {
+  await diagnostico42501();
   await compraInteira();
   await pergunta();
   await alertaNaWeb();
