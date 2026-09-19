@@ -58,6 +58,15 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — só escuro e só retrato, para sempre (`e79cec8`, `0da8e33`)
+
+Decisão do autor: "O app não terá tela deitada e nem modo claro nunca".
+`app.json` passou de `orientation: "default"` para `"portrait"` (chega com
+build nova); o escuro já era fixo por `userInterfaceStyle: "dark"`. A regra 17
+tirou os dois estados da cobertura. Não propor tema claro nem layout deitado.
+
+---
+
 # 19/09/2026 (M1) — auditoria 100% no emulador sob a regra 17: 70 achados, nada corrigido ainda
 
 Lista completa, com passos, gravidade e prints, na nota
