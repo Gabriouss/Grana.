@@ -1840,6 +1840,38 @@ begin
 end
 $$;
 
+-- Conta do mês seguinte criada por um pagamento, para reabrir_conta desfazer
+-- o pagamento inteiro (migration 20260919150000, achado U1).
+alter table public.bills
+  add column if not exists next_bill_id uuid references public.bills(id) on delete set null;
+
+comment on column public.bills.next_bill_id is
+  'Conta do mês seguinte criada por ESTE pagamento (pagar_conta). Nula se a conta não é recorrente, não foi paga, ou se a do mês seguinte já existia. reabrir_conta apaga a conta apontada aqui, se ela ainda não foi paga.';
+
+-- Sem índice, cada exclusão de conta varreria a tabela inteira para cumprir o
+-- `on delete set null`. Parcial porque quase todas as linhas ficam nulas.
+create index if not exists bills_next_bill_id_idx
+  on public.bills (next_bill_id) where next_bill_id is not null;
+
+-- Mesmo padrão das outras referências entre linhas: a FK simples cuida do SET
+-- NULL, a composta prova que as duas contas são do mesmo dono.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'bills_next_bill_same_owner_fkey'
+      and conrelid = 'public.bills'::regclass
+  ) then
+    alter table public.bills
+      add constraint bills_next_bill_same_owner_fkey
+      foreign key (user_id, next_bill_id)
+      references public.bills (user_id, id)
+      not valid;
+  end if;
+  alter table public.bills validate constraint bills_next_bill_same_owner_fkey;
+end
+$$;
+
 create or replace function public.somar_meses_data(p_date date, p_months integer)
 returns date
 language sql
@@ -1875,6 +1907,7 @@ declare
   v_tx_id uuid;
   v_parent uuid;
   v_next_due date;
+  v_next_id uuid;
 begin
   if v_user is null or not public.tem_direito_acesso() then
     raise exception 'Acesso não autorizado' using errcode = '42501';
@@ -1910,13 +1943,24 @@ begin
   if v_bill.recurring then
     v_parent := coalesce(v_bill.parent_id, v_bill.id);
     v_next_due := public.somar_meses_data(v_bill.due_date, 1);
+    -- Com o conflito, nada é inserido e o RETURNING não devolve linha:
+    -- v_next_id fica nulo. É isso que separa "este pagamento criou" de
+    -- "já existia", e só a primeira é desfeita ao reabrir.
     insert into public.bills (
       user_id, description, amount, category, color, due_date, status,
       recurring, wallet_id, parent_id
     ) values (
       v_user, v_bill.description, v_bill.amount, v_bill.category, v_bill.color,
       v_next_due, 'due', true, v_bill.wallet_id, v_parent
-    ) on conflict (user_id, parent_id, due_date) do nothing;
+    ) on conflict (user_id, parent_id, due_date) do nothing
+    returning id into v_next_id;
+
+    if v_next_id is not null then
+      update public.bills
+      set next_bill_id = v_next_id
+      where id = v_bill.id and user_id = v_user
+      returning * into v_bill;
+    end if;
   end if;
 
   return v_bill;
@@ -1953,8 +1997,18 @@ begin
     where id = v_bill.paid_transaction_id and user_id = v_user;
   end if;
 
+  -- A conta do mês seguinte que ESTE pagamento criou sai junto. Se ela já foi
+  -- paga, fica: apagá-la levaria um pagamento de verdade embora.
+  if v_bill.next_bill_id is not null then
+    delete from public.bills
+    where id = v_bill.next_bill_id
+      and user_id = v_user
+      and status = 'due'
+      and paid_transaction_id is null;
+  end if;
+
   update public.bills
-  set status = 'due', paid_transaction_id = null
+  set status = 'due', paid_transaction_id = null, next_bill_id = null
   where id = v_bill.id and user_id = v_user
   returning * into v_bill;
   return v_bill;

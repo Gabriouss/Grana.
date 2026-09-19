@@ -253,5 +253,31 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   );
 }
 
+/* Reabrir conta desfaz o pagamento INTEIRO (U1, 19/09/2026). "Apertou, pagou.
+   Apertou de novo, cancela o pagamento e a saída do dinheiro é cancelada."
+   Pagar conta recorrente cria a do mês seguinte, e reabrir não a apagava:
+   sobrava um boleto fantasma. O comportamento foi testado em Postgres de
+   verdade (PGlite) antes de aplicar; este guarda impede uma edição futura de
+   tirar uma das três pernas sem ninguém perceber. */
+{
+  const migracao = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20260919150000_reabrir_conta_desfaz_proxima.sql'), 'utf8');
+  for (const [onde, texto] of [['schema.sql', sql], ['migration', migracao]] as const) {
+    const pagar = texto.slice(texto.indexOf('create or replace function public.pagar_conta'));
+    const reabrir = texto.slice(texto.indexOf('create or replace function public.reabrir_conta'));
+    checar(`${onde}: pagar_conta guarda a conta seguinte que ELA criou`,
+      /on conflict \(user_id, parent_id, due_date\) do nothing\s+returning id into v_next_id;/.test(pagar) &&
+      /set next_bill_id = v_next_id/.test(pagar));
+    checar(`${onde}: reabrir_conta apaga a conta seguinte só se ainda não foi paga`,
+      /delete from public\.bills\s+where id = v_bill\.next_bill_id\s+and user_id = v_user\s+and status = 'due'\s+and paid_transaction_id is null;/.test(reabrir));
+    checar(`${onde}: reabrir_conta limpa o vínculo`,
+      /set status = 'due', paid_transaction_id = null, next_bill_id = null/.test(reabrir));
+    checar(`${onde}: coluna com FK de mesmo dono e índice`,
+      /add column if not exists next_bill_id uuid references public\.bills\(id\) on delete set null/.test(texto) &&
+      /bills_next_bill_same_owner_fkey/.test(texto) && /bills_next_bill_id_idx/.test(texto));
+  }
+  checar('o backfill casa por igualdade exata de created_at (mesma transação)',
+    /proxima\.created_at = saida\.created_at/.test(migracao));
+}
+
 console.log(`\n${total - falhas}/${total} guardas do schema passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);
