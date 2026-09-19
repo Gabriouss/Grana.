@@ -1408,7 +1408,7 @@ async function executarFerramenta(
         if (pediuCartao || cardsAlvo.length === 1) {
           const item = periodosValidos[0];
           return 'O usuário gastou R$ ' + formatarBRL(total) + ' em ' + casada + ' na fatura do cartão ' + item.card.name + '. ' +
-            'Período consultado: ' + item.periodo.rotulo + '. Cite o ciclo da fatura na resposta.';
+            'Período consultado: ' + item.periodo.rotulo + '. Cite o ciclo da fatura na resposta.' + AVISO_REGRA_CREDITO;
         }
         return 'Gasto em ' + casada + ' nas faturas dos cartões: R$ ' + formatarBRL(total) + ' no total.\n' +
           detalhes.join('\n') + ' Cite o ciclo de cada fatura na resposta.';
@@ -1424,7 +1424,7 @@ async function executarFerramenta(
         .lte('occurred_on', fim);
       if (error) throw error;
       const total = (data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-      return `O usuário gastou R$ ${formatarBRL(total)} em ${casada}. Período consultado: ${rotulo}. Cite esse período na resposta.`;
+      return `O usuário gastou R$ ${formatarBRL(total)} em ${casada}. Período consultado: ${rotulo}. Cite esse período na resposta.${AVISO_REGRA_CREDITO}`;
     }
 
     case 'boletosAVencer': {
@@ -2157,7 +2157,11 @@ const REGRAS_PRIORITARIAS =
   'Use resumoCredito para a fatura; para uma categoria dentro dela, passe categoria nessa ferramenta ou use gastoPorCategoria com fatura=true. ' +
   'Quando a pergunta disser "apenas no cartão de crédito", inclua somente transações payment_method=credit dentro do ciclo da fatura e exclua Pix, débito e dinheiro. ' +
   'Se o usuário pedir para aprender, guardar, lembrar ou corrigir a formulação, chame lembrarPreferencia e siga a regra ensinada. ' +
-  'Nunca responda com o total do mês civil quando a pergunta pedir a fatura.';
+  'Nunca responda com o total do mês civil quando a pergunta pedir a fatura. ' +
+  'Regra de caixa do Grana.: uma compra no crédito só entra no caixa quando a fatura é paga; ao informar compras no crédito, diga claramente que o total é da compra e que o caixa só muda no pagamento da fatura.';
+
+const AVISO_REGRA_CREDITO =
+  ' Regra do app: compras no crédito entram no caixa somente quando a fatura é paga.';
 
 /* ── Handler principal ───────────────────────────────────────────────────── */
 
