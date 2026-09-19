@@ -251,10 +251,6 @@ export default function DatePickerModal({
               );
             })}
           </View>
-
-          <AppPressable onPress={() => handleQuickDate(0)}>
-            <Text style={styles.todayLink}>Ir para hoje</Text>
-          </AppPressable>
         </AccessibleModalPanel>
       </Pressable>
     </AppModal>
@@ -322,6 +318,5 @@ const styles = StyleSheet.create({
   dayText: { color: theme.ink, fontSize: type.apoio, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   dayTextMuted: { color: theme.inkFaint },
   dayTextSelected: { color: theme.paper},
-  todayLink: { color: theme.inkSoft, fontSize: type.apoio, textAlign: 'center', paddingVertical: 6, fontFamily: fonts.light },
 });
 
