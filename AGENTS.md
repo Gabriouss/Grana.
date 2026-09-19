@@ -670,3 +670,64 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Citar o revisor no commit é opcional; citar o que foi conferido não é.**
       "Achado do Codex confirmado no trecho X" é registro útil.
       "Corrigido conforme o Codex" não diz nada.
+
+17. **Verificação do app no emulador Android, depois de iniciada, vai até 100%
+    do aplicativo: sem parar, sem perguntar e sem pausar.** Regra dada pelo
+    autor em 19/09/2026: "Uma vez que você inicia uma verificação na emulação
+    do app do Android, você não para, não pergunta nem pausa nada, você
+    verifica, encontra erros, documenta e continua até verificar 100% do app."
+    E, na mesma mensagem: "você vai pedir auxílio de todas as skills
+    disponíveis para ajudar na auditoria".
+
+    O motivo é o que aconteceu nas varreduras de 18 e 19/09/2026: o autor
+    precisou mandar "continue a auditoria", "continue a verificação" e
+    "verifique tudo até o final" várias vezes, porque a sessão parava no meio
+    para relatar, perguntar ou esperar, e a parte não vista do app ficava sem
+    ninguém saber que não tinha sido vista.
+
+    - **Antes de abrir o emulador, escolha as skills e diga quais.** Procure na
+      biblioteca (regra 7: `.claude/skills/`, `.agents/skills/` e as globais)
+      tudo o que ajuda a auditar, carregue e use como apoio durante a
+      verificação, não só no relatório. As que servem hoje: visual e
+      usabilidade, `ui-visual-composition`, `impeccable`, `interface-design`,
+      `apple-design` e `emil-design-eng`; movimento, `review-animations`,
+      `animation-vocabulary` e `find-animation-opportunities`; texto na tela,
+      `copywriting` e `grammar-check` (com a regra de copy sem travessão e sem
+      "não é X, é Y"); roteiro e cobertura, `test-scenarios`; comportamento
+      prometido contra o entregue, `intended-vs-implemented`; a landing no
+      navegador, `webapp-testing`. A lista envelhece: confira a biblioteca a
+      cada verificação, e registre na nota da sessão qual skill foi usada em
+      quê.
+    - **Monte a lista de cobertura ANTES de começar e marque conforme avança.**
+      "100%" quer dizer cada tela, cada botão, cada modal e folha, e os estados
+      de cada tela: vazia, carregando, com erro, sem rede, com texto longo,
+      tema claro e escuro, valores ocultos. Inclui login, cadastro,
+      assinatura, Início, Lançamentos, Crédito, Gráficos, Carteiras, Metas,
+      Desafios, Perfil com tudo o que abre dali, Granabô, voz no app e no
+      widget, os widgets da tela inicial e as notificações. A lista fica na
+      nota da sessão, no vault; é por ela que se afirma 100%, e é dela que a
+      sessão seguinte retoma se o contexto acabar no meio.
+    - **O que o emulador não alcança não some da lista.** Pagamento real, push
+      pelo FCM, microfone de aparelho físico: marque "não verificável no
+      emulador", com o motivo, e siga. Item pulado em silêncio é o defeito que
+      esta regra existe para impedir.
+    - **Documente cada achado na hora, não no fim.** Na nota da sessão: tela,
+      passos para reproduzir, o que se esperava, o que apareceu, gravidade, e o
+      caminho do print. Os prints ficam na pasta de temporários da sessão, fora
+      do repositório e fora do vault.
+    - **Verificação não é correção.** Durante a varredura não se corrige nada:
+      mexer no código muda o app que está sendo auditado. As correções vêm
+      depois, a partir da lista. A exceção é o bug que impede de continuar; aí
+      registre o contorno usado e siga.
+    - **Falha técnica não é motivo para parar.** App que fecha, Metro com erro,
+      emulador lento: reinicie o que for preciso (app, Metro, inicialização a
+      frio do emulador) e retome do item em que parou. Se quem fechou foi o
+      app, isso é achado.
+    - **Pergunta ao autor vai para o relatório final, não interrompe.** Se um
+      achado depende de decisão dele, anote a pergunta e continue.
+    - **"Sem parar" não suspende as outras regras.** Nada de `eas build`
+      (regra 4), publicação de Edge Function ou migration (regra 11) nem
+      credencial fora do `.env` (regra 15) no meio da varredura. Ação que
+      grava ou apaga dado só na conta de teste, com dado inventado marcado
+      "AUDIT", apagado no fim. Se um achado pedir uma dessas ações, ele é
+      documentado e a varredura continua.
