@@ -58,6 +58,44 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — terceira leva: o que não dependia do autor (`3379cfa` a `def9f93`) e a regra 17
+
+Pedido do autor: "corrija tudo o que dá", e depois uma revisão rigorosa do app
+inteiro no emulador. Detalhe na nota `2026-09-19 - M1 - Terceira leva de
+correcoes e a regra 17`.
+
+- **Perfil** (`3379cfa`): nome, inicial e diagnóstico saem da sessão local na
+  primeira pintura (`diagnosticoDosMetadados` em `lib/diagnostico.ts`). Antes
+  a tela mostrava o e-mail e "Diagnóstico inicial" até a rede voltar.
+- **Lançamentos** (`802f09c`): a lista e o fim do carregamento vêm antes do
+  acerto de recorrências, que tem `try` próprio; carga velha não sobrescreve
+  outro mês (`cargaAtual`). Mesmo defeito do Crédito (W1). Guarda em
+  `corpus-recorrencia.ts`, que falha 5 vezes no código antigo.
+- **Categorias** (`0a100a5`, G10b): categoria padrão troca só a cor. Renomear
+  deixava duas, porque `seedDefaultCategories` recria pelo nome. Visto no
+  emulador.
+- **Copy sem travessão** (`58b3a38`, `ec11317`, `def9f93`): 3 placeholders, 12
+  notificações do catálogo (com guarda em `corpus-notificacoes.ts`), 17 textos
+  de tela e os 4 títulos das notificações do widget de voz. Ficaram de
+  propósito: a descrição gravada no banco ao pagar fatura (é dado), o nome
+  dos widgets no launcher (`strings.xml`, só com build) e o `—` usado como
+  valor vazio enquanto carrega.
+- **Regra 17 no `AGENTS.md`** (`29426e8`): verificação no emulador vai até
+  100% sem parar, perguntar ou pausar, com as skills de auditoria de apoio.
+- **NÃO publicado: `enviar-lembretes-habito`.** As 12 notificações reescritas
+  só chegam ao push remoto depois do deploy (as locais, com build nova). Regra
+  11 conferida: a v11 no ar (13/09 22:45) é o commit `5b87e51`; desde então só
+  o catálogo mudou no grafo de imports; `deno check` limpo; cópia de retorno em
+  `E:\Grana-temporarios\2026-09-19-M1\retorno-producao\`. O deploy foi
+  recusado pelo classificador de permissões da sessão e depende do autor. Tem
+  de manter `verify_jwt=false`, como está no ar (`--no-verify-jwt`).
+- **Verificação:** `tsc` 0; `test:ci` verde; `test:voz`, `voice-fallback`,
+  `voz-offline` e `widget-voz-cartoes` verdes depois da troca dos títulos.
+- **Emulador:** o print saía preto porque "Bloquear captura de tela" estava
+  ligado na conta de teste (`FLAG_SECURE`). Desligado para a auditoria.
+
+---
+
 # 19/09/2026 (M1) — widget "Contas do mês": atrasadas junto com as do mês (`a9e11f8`, `8c6d5b8`, `163c5ce`)
 
 Pedido do autor: "se a gente tem um boleto de agosto atrasado, esse boleto de
