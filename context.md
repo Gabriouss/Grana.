@@ -127,6 +127,30 @@ os P2/P3 restantes da auditoria.
 
 ---
 
+# 19/09/2026 (M1) — como o Codex aprende a usar o app: `scripts/emulador.cjs` e a regra 18 (`c8a2ea4`)
+
+O autor viu o Codex digitar "undefined" no e-mail do login no Expo Go (print:
+campo "dundefined"). **Causa:** o pedido que eu dei ao Codex proibia ler o
+`.env` e não dizia como entrar; sem `E2E_TEST_EMAIL` e `E2E_TEST_PASSWORD` ele
+interpolou uma variável vazia. **Correção:** `scripts/emulador.cjs` (estado,
+abrir go|dev, login, listar, tem, tocar, digitar, voltar, print). O `login` lê o
+`.env` dentro do processo e manda o valor ao `adb` sem imprimir. Guias:
+`docs/operar-o-app-no-emulador.md` (passo a passo e "quando dá errado") e
+`docs/mapa-do-app-para-agentes.md` (mapa de telas, armadilhas do emulador,
+classes de defeito, o que já foi corrigido). Regra 18 no `AGENTS.md`, que o
+Codex lê sozinho ao abrir o repositório.
+
+- **Decisão do autor no meio do trabalho:** "você não pode fazer por ele". Não
+  rodei o `login` por ele; só testei `estado` e `listar`. A regra 18 diz que
+  cada agente faz o login e a navegação por conta própria.
+- **Não verificado:** o `login` nunca foi executado por mim (de propósito). Não
+  sei se ele acerta os campos e o botão no Expo Go; a primeira execução do
+  Codex é o teste. Se falhar, registrar aqui o que a tela mostrou.
+- **Lição para o pedido ao Codex:** ao delegar trabalho que precise ver o app,
+  dar o caminho (guia e script), não a credencial e não só a proibição.
+
+---
+
 # 19/09/2026 (M1) — o que o Codex pulou, feito pelo Claude (`b7e45d9` e os dois anteriores)
 
 A pedido do autor ("tente corrigir o que foi pulado"), os itens de texto e de
