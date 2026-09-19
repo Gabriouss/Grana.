@@ -18,12 +18,17 @@ export default function CreditSummaryCard({
   year,
   month,
   onPress,
+  cartoesNaConta,
 }: {
   cards: CreditCard[];
   transactions: Transaction[];
   year: number;
   month: number;
   onPress: () => void;
+  /** Quantos cartões a conta tem, em todas as carteiras. `cards` chega já
+      filtrado pela carteira ativa; sem este número, uma carteira sem cartão
+      afirmava "Nenhum cartão cadastrado ainda" a quem tem cartão em outra. */
+  cartoesNaConta?: number;
 }) {
   /* Fatura não é mês civil: cada cartão pode fechar em um dia diferente, e a
      tela de Crédito abre na fatura ATUAL. Este resumo seguia o mês do
@@ -56,7 +61,11 @@ export default function CreditSummaryCard({
       {outraFatura && <Text style={styles.cicloAviso}>{outraFatura}</Text>}
 
       {cards.length === 0 ? (
-        <Text style={styles.emptyText}>Nenhum cartão cadastrado ainda. Toque para adicionar.</Text>
+        <Text style={styles.emptyText}>
+          {(cartoesNaConta ?? 0) > 0
+            ? 'Nenhum cartão nesta carteira.'
+            : 'Nenhum cartão cadastrado ainda. Toque para adicionar.'}
+        </Text>
       ) : (
         <>
           <PrivacyValue>

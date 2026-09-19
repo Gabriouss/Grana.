@@ -1278,6 +1278,7 @@ export default function InicioScreen() {
       >
         <CreditSummaryCard
           cards={activeWalletId === 'total' ? creditCards : creditCards.filter((c) => c.wallet_id === activeWalletId)}
+          cartoesNaConta={creditCards.length}
           transactions={walletTransactions}
           year={selectedYear}
           month={selectedMonth}
