@@ -281,12 +281,14 @@ export default function WalletPickerModal({
                       color={w.color || theme.accent}
                     />
                   </View>
-                  {/* Nome em até duas linhas, e o saldo sem encolher. Com o
-                      lápis e a lixeira na mesma fileira, "AUDIT carteira teste"
-                      já quebrava em três linhas e espremia o valor, que é o
-                      dado que a pessoa veio ver (achado G7). */}
+                  {/* O nome quebra inteiro, sem teto de linhas, e o saldo não
+                      encolhe. Um teto de duas linhas foi tentado (19/09/2026) e
+                      desfeito no mesmo dia: "AUDIT carteira teste" virava
+                      "AUDIT carteira ...", e duas carteiras como "Conta
+                      conjunta" e "Conta pessoal" ficariam iguais. Linha mais
+                      alta custa menos que nome ambíguo (achado G7). */}
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.walletName} numberOfLines={2}>{w.name}</Text>
+                    <Text style={styles.walletName}>{w.name}</Text>
                   </View>
                   <PrivacyValue>
                     <Text style={[styles.walletBalance, styles.walletBalanceFixo]}>{`R$ ${formatMoney(saldoItem)}`}</Text>
