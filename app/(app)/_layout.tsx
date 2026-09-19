@@ -9,6 +9,7 @@ import CenaAnimada from '@/components/CenaAnimada';
 import { acaoInicialPendente, acaoParaParams, parseDeepLink, type AcaoDeepLink } from '@/lib/deep-links';
 import { theme, spacing, sombras, menta } from '@/lib/theme';
 import { useTabBarInset } from '@/lib/tab-bar';
+import { useKeyboardHeight } from '@/lib/teclado';
 import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
@@ -65,6 +66,15 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
   }) {
   const { margem } = useTabBarInset();
   const { width: larguraJanela, height: alturaJanela } = useWindowDimensions();
+  /* Com o teclado aberto, a barra sai de cena, como faz o `tabBarHideOnKeyboard`
+     do navegador, que não vale para esta barra própria. No Android a janela
+     encolhe para o teclado e a barra, presa à base, subia junto: na busca de
+     Lançamentos ela e o Granabô cobriam o resultado que a pessoa acabou de
+     buscar (achado W3, 18/09/2026). Fica montada, só invisível, para o vidro
+     não ser recriado a cada tecla; a medição abaixo ignora altura zero, então a
+     reserva do Granachat continua a da barra visível. */
+  const alturaTeclado = useKeyboardHeight();
+  const tecladoAberto = Platform.OS !== 'web' && alturaTeclado > 0;
 
   /* Quanto a barra ocupa, medido do ponto mais alto dela (o disco do Granabô
      passa da pílula) até a base da tela. O Granachat usa isso para parar acima
@@ -100,7 +110,7 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
     <View
       ref={envoltorioRef}
       onLayout={medirReserva}
-      style={[styles.floatWrap, { pointerEvents: 'box-none' }]}
+      style={[styles.floatWrap, { pointerEvents: 'box-none' }, tecladoAberto && { display: 'none' }]}
     >
       <View ref={pilulaRef} style={[styles.tabBar, { marginBottom: margem }]}>
         {/* O vidro mora numa camada própria, recortada na pílula, em vez de ser

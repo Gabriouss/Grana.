@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useKeyboardHeight } from '@/lib/teclado';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, sombras } from '@/lib/theme';
@@ -28,6 +29,13 @@ export default function FabButton({
   const painelRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
   const { total: tabBarTotal } = useTabBarInset();
+  /* Com o teclado aberto, o "+" sai de cena, junto com a barra de abas
+     (FloatingTabBar em app/(app)/_layout.tsx). No Android a janela encolhe para
+     o teclado e o que é preso à base sobe com ela: na busca de Lançamentos, o
+     botão e a barra cobriam justamente o resultado que a pessoa acabou de
+     buscar (achado W3, 18/09/2026). Na web não há teclado de tela. */
+  const alturaTeclado = useKeyboardHeight();
+  const tecladoAberto = Platform.OS !== 'web' && alturaTeclado > 0;
   useModalAccessibility(painelRef, mounted, () => setOpen(false));
 
   useEffect(() => {
@@ -181,7 +189,7 @@ export default function FabButton({
         </Pressable>
       </Pressable>
     </AppModal>
-  ) : (
+  ) : tecladoAberto ? null : (
     <View style={posicaoStyle}>{conteudo}</View>
   );
 }
