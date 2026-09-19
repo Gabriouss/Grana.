@@ -1327,7 +1327,7 @@ export default function InicioScreen() {
                   </View>
                 </View>
                 <View style={styles.budgetTrack}>
-                  <View style={[styles.budgetFill, { width: `${pct}%`, backgroundColor: b.color }]} />
+                  <View style={[styles.budgetFill, { width: `${pct}%`, backgroundColor: over ? theme.danger : b.color }]} />
                 </View>
               </AppPressable>
             );

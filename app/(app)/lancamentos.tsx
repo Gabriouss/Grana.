@@ -574,17 +574,27 @@ export default function LancamentosScreen() {
     [selectedMonth, selectedYear, walletTransactions]
   );
 
+  /* A19: o resumo acompanha a busca e a categoria visíveis, em vez de
+     continuar somando o mês inteiro quando a lista está vazia. */
+  const transacoesDoResumo = useMemo(() => {
+    const termo = search.trim().toLowerCase();
+    return monthTransactions.filter((t) => {
+      if (categoryFilter && t.category !== categoryFilter) return false;
+      return !termo || t.description.toLowerCase().includes(termo) || t.category.toLowerCase().includes(termo);
+    });
+  }, [categoryFilter, monthTransactions, search]);
+
   const { monthIn, monthOut } = useMemo(() => {
     let entrada = 0;
     let saida = 0;
     /* Uma passada só. Eram três (dois filter + dois reduce) sobre a mesma
        lista para chegar nos mesmos dois números. */
-    for (const t of monthTransactions) {
+    for (const t of transacoesDoResumo) {
       if (t.type === 'in') entrada += Number(t.amount);
       else saida += Number(t.amount);
     }
     return { monthIn: entrada, monthOut: saida };
-  }, [monthTransactions]);
+  }, [transacoesDoResumo]);
   const monthBalance = monthIn - monthOut;
 
   // Categorias presentes no mês selecionado, pro filtro por categoria (cada uma com a cor do próprio lançamento).
@@ -770,7 +780,7 @@ export default function LancamentosScreen() {
             <Text style={styles.emptyText}>
               {search || categoryFilter
                 ? 'Nenhum lançamento encontrado com esse filtro.'
-                : 'Nenhum lançamento ainda. Toque no "+" para registrar o primeiro ou use os botões acima para colar comprovante ou importar CSV.'}
+                : 'Nenhum lançamento ainda. Toque no "+" para registrar o primeiro lançamento.'}
             </Text>
           }
           renderItem={renderizarLinha}
@@ -829,7 +839,7 @@ export default function LancamentosScreen() {
       {/* Item Action Sheet (Editar / Excluir) */}
       <ItemActionSheet
         visible={actionSheetOpen}
-        title="Lançamento"
+        title={selectedTx ? `${selectedTx.description} · ${formatBRL(Number(selectedTx.amount))}` : 'Lançamento'}
         onClose={() => setActionSheetOpen(false)}
         onEdit={() => {
           if (selectedTx) openEditModal(selectedTx);

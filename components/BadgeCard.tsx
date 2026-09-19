@@ -42,11 +42,11 @@ export default function BadgeCard({ badge, onPress }: Props) {
         </View>
       </View>
 
-      <Text style={[styles.title, !unlocked && styles.titleLocked]} numberOfLines={1}>
+      <Text style={[styles.title, !unlocked && styles.titleLocked]}>
         {title}
       </Text>
 
-      <Text style={styles.description} numberOfLines={2}>
+      <Text style={styles.description}>
         {description}
       </Text>
 

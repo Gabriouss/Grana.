@@ -232,12 +232,14 @@ export default function GoalsCarousel({
                 <PrivacyValue>
                   <Text style={styles.cardAmount}>{`R$ ${formatMoney(atual)}`}</Text>
                 </PrivacyValue>
-                <Text style={styles.cardTarget}>{`de R$ ${formatMoney(alvo)}`}</Text>
+                <PrivacyValue>
+                  <Text style={styles.cardTarget}>{`de R$ ${formatMoney(alvo)}`}</Text>
+                </PrivacyValue>
                 <View style={styles.track}>
                   <View style={[styles.fill, { width: `${pct}%`, backgroundColor: g.color }]} />
                 </View>
                 <View style={styles.cardBottomRow}>
-                  <Text style={styles.cardPct}>{pct}%</Text>
+                  <PrivacyValue><Text style={styles.cardPct}>{pct}%</Text></PrivacyValue>
                   {g.deadline && <Text style={styles.cardDeadline}>{formatDateLabel(g.deadline)}</Text>}
                 </View>
               </AppPressable>

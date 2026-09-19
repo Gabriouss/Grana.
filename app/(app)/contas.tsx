@@ -422,7 +422,14 @@ export default function ContasScreen() {
 
   // Contas cujo VENCIMENTO cai no mês selecionado — cada boleto pertence ao mês em que vence, não em que foi criado.
   const monthBills = useMemo(
-    () => walletBills.filter((b) => isSameMonth(b.due_date, selectedYear, selectedMonth)),
+    () => walletBills
+      .filter((b) => isSameMonth(b.due_date, selectedYear, selectedMonth))
+      .sort((a, b) => {
+        const atrasada = (bill: Bill) => bill.status !== 'paid' && bill.due_date < todayISO();
+        const ordemAtraso = Number(atrasada(b)) - Number(atrasada(a));
+        if (ordemAtraso !== 0) return ordemAtraso;
+        return a.due_date.localeCompare(b.due_date);
+      }),
     [selectedMonth, selectedYear, walletBills]
   );
   /* Uma passada só, em vez de filter + reduce encadeados: a lista já é

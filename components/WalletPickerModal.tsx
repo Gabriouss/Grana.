@@ -141,6 +141,8 @@ export default function WalletPickerModal({
         icon: 'wallet-outline',
       });
       await refreshWallets();
+      // A11: criar carteira altera o consolidado imediatamente, igual à exclusão.
+      await refreshSaldos();
       setSelectedId(created.id);
       setCreating(false);
       setNewName('');

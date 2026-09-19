@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   },
   catRowHover: { backgroundColor: theme.paper },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  catName: { color: theme.inkSoft, fontSize: type.apoio, flexShrink: 1, fontFamily: fonts.light },
+  catName: { color: theme.inkSoft, fontSize: type.apoio, flex: 1, flexShrink: 1, fontFamily: fonts.light },
   defaultTag: { color: theme.inkFaint, fontSize: type.micro, letterSpacing: 0.5, fontFamily: fonts.light },
   rowActions: { flexDirection: 'row', gap: 4, paddingRight: 8 },
   rowActionBtn: { padding: 4 },

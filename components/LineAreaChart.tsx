@@ -85,7 +85,11 @@ function LineAreaChart({
     );
   }
 
-  const maxTotalBruto = Math.max(...columns.map((c) => c.total), 1);
+  /* A33: com tudo zerado, teto 1 gerava linhas 0, 0, 1, 1, 1 depois do
+     arredondamento. Um eixo de 0 a 4 mantém cinco rótulos distintos sem
+     inventar movimentação nos pontos, que continuam todos no zero. */
+  const maiorTotal = Math.max(...columns.map((c) => c.total), 0);
+  const maxTotalBruto = maiorTotal === 0 ? 4 : maiorTotal;
   const passo = passoRedondo(maxTotalBruto, 4);
   const maxEixo = Math.max(Math.ceil(maxTotalBruto / passo) * passo, passo);
   const gridLines = [0, 1, 2, 3, 4].map((i) => (maxEixo / 4) * i);
