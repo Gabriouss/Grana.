@@ -246,7 +246,7 @@ export function mensagemDeErroVoz(codigo: CodigoErroVoz): { titulo: string; text
     case 'demorou':
       return {
         titulo: 'Demorou demais',
-        texto: 'A conexão está lenta e o áudio não foi transcrito a tempo. Nada foi lançado — tente de novo.',
+        texto: 'A conexão está lenta e o áudio não foi transcrito a tempo. Nada foi lançado. Tente de novo.',
       };
     case 'nao_autenticado':
     case 'sem_sessao':

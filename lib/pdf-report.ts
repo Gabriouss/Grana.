@@ -72,7 +72,7 @@ export async function gerarRelatorioPdf(dados: DadosRelatorio): Promise<{ uri: s
 
   await Sharing.shareAsync(uri, {
     mimeType: 'application/pdf',
-    dialogTitle: `Relatório Grana. — ${MONTH_NAMES[dados.mes]} de ${dados.ano}`,
+    dialogTitle: `Relatório Grana. de ${MONTH_NAMES[dados.mes]} de ${dados.ano}`,
     UTI: 'com.adobe.pdf',
   });
   return { uri, compartilhado: true };

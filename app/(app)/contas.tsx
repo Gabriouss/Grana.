@@ -279,7 +279,7 @@ export default function ContasScreen() {
             wallet_id: entrada.wallet_id ?? null,
             created_at: new Date().toISOString(),
           });
-          triggerToast('Sem conexão — conta salva no aparelho');
+          triggerToast('Sem conexão. Conta salva no aparelho');
         }
         }
       }
@@ -335,7 +335,7 @@ export default function ContasScreen() {
         triggerToast(
           proximaData
             ? `Conta paga. Próxima fatura em ${formatDateLabel(proximaData)}`
-            : 'Conta paga — saída lançada em Lançamentos'
+            : 'Conta paga. Saída lançada em Lançamentos'
         );
       } else {
         // reopenBill desfaz a saída lançada quando a conta foi paga, se houver.

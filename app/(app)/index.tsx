@@ -778,7 +778,7 @@ export default function InicioScreen() {
              avião, e o valor digitado foi perdido. */
           if (!isLikelyNetworkError(erroInterno)) throw erroInterno;
           await queuePendingTransaction(entradaLancamento);
-          triggerToast('Sem conexão — lançamento salvo no aparelho');
+          triggerToast('Sem conexão. Lançamento salvo no aparelho');
         }
       }
       setTxSheetOpen(false);
@@ -850,7 +850,7 @@ export default function InicioScreen() {
           wallet_id: entradaBoleto.wallet_id ?? null,
           created_at: new Date().toISOString(),
         });
-        triggerToast('Sem conexão — conta salva no aparelho');
+        triggerToast('Sem conexão. Conta salva no aparelho');
       }
       setBillSheetOpen(false);
       carregarDadosLeves();
@@ -997,7 +997,7 @@ export default function InicioScreen() {
         created_at: new Date().toISOString(),
       });
       setGoals((prev) => [...prev, pendente]);
-      triggerToast('Sem conexão — meta salva no aparelho');
+      triggerToast('Sem conexão. Meta salva no aparelho');
     }
   }
 

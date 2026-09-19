@@ -49,7 +49,7 @@ export function traduzirErroAuth(erro: AuthError | Error | null): ErroAuth | nul
 
   if (codigo === 'email_not_confirmed' || bruto.includes('email not confirmed')) {
     return {
-      mensagem: 'Sua conta ainda não foi confirmada. Procure o e-mail de confirmação — inclusive no spam.',
+      mensagem: 'Sua conta ainda não foi confirmada. Procure o e-mail de confirmação, inclusive no spam.',
       acao: 'reenviar-confirmacao',
     };
   }

@@ -1557,7 +1557,7 @@ export default function CreditoScreen() {
 
           {selectedCard && (
             <Text style={styles.inputLabel}>
-              {`${selectedCard.name} — ${formatMonthYear(viewYear, viewMonth)}`}
+              {`${selectedCard.name} · ${formatMonthYear(viewYear, viewMonth)}`}
             </Text>
           )}
 

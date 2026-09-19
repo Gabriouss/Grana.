@@ -214,7 +214,7 @@ export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
       tipo: 'paragrafo',
       texto: 'Você pode excluir permanentemente sua conta e todos os dados associados a ela a qualquer momento, de duas formas.',
     },
-    { tipo: 'subtitulo', texto: 'Opção 1 — Direto no aplicativo (recomendado)' },
+    { tipo: 'subtitulo', texto: 'Opção 1: direto no aplicativo (recomendado)' },
     {
       tipo: 'passos',
       itens: [
@@ -225,7 +225,7 @@ export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
       ],
     },
     { tipo: 'paragrafo', texto: 'A exclusão é imediata e definitiva. Não é possível desfazer.' },
-    { tipo: 'subtitulo', texto: 'Opção 2 — Por e-mail' },
+    { tipo: 'subtitulo', texto: 'Opção 2: por e-mail' },
     {
       tipo: 'paragrafo',
       texto: `Se você não tiver mais acesso ao aplicativo, envie um e-mail para ${EMAIL_CONTATO} a partir do endereço cadastrado na sua conta, pedindo a exclusão. Vamos confirmar sua identidade e excluir os dados em até 15 dias.`,
@@ -246,7 +246,7 @@ export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
     },
     {
       tipo: 'paragrafo',
-      texto: `Nada fica retido após a exclusão — não mantemos cópias de backup dos dados apagados. Mais detalhes sobre quais dados coletamos e por quê estão na nossa [Política de Privacidade](/privacidade).`,
+      texto: `Nada fica retido após a exclusão: não mantemos cópias de backup dos dados apagados. Mais detalhes sobre quais dados coletamos e por quê estão na nossa [Política de Privacidade](/privacidade).`,
     },
   ],
 };

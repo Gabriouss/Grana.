@@ -111,7 +111,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
       c.usoDoOrcamento !== null
         ? c.usoDoOrcamento > 1
           ? ` Você passou ${Math.round((c.usoDoOrcamento - 1) * 100)}% do orçamento que tinha definido.`
-          : ` Você usou ${Math.round(c.usoDoOrcamento * 100)}% do orçamento definido — dentro do combinado.`
+          : ` Você usou ${Math.round(c.usoDoOrcamento * 100)}% do orçamento definido, dentro do combinado.`
         : '';
     slides.push({
       key: 'categoria',
@@ -134,7 +134,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
       `${w.level.xp} XP acumulados até aqui.` +
       (w.level.nextElo
         ? ` Faltam ${Math.max(0, w.level.xpParaProximoLevel - w.level.xpAtualNoLevel)} XP para o próximo nível, rumo a ${w.level.nextElo.title}.`
-        : ' Você chegou ao topo dos elos — segue firme.'),
+        : ' Você chegou ao topo dos elos. Segue firme.'),
     icone: 'trophy-outline',
   });
 

@@ -485,7 +485,7 @@ export default function LancamentosScreen() {
           if (!isLikelyNetworkError(innerErr)) throw innerErr;
           await queuePendingTransaction(input);
           setPendingCount(await getPendingCount());
-          triggerToast('Sem conexão — lançamento salvo localmente');
+          triggerToast('Sem conexão. Lançamento salvo no aparelho');
         }
       }
       setModalOpen(false);
