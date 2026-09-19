@@ -2,6 +2,7 @@ package com.gabriouss.grana.voicewidget
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
@@ -118,7 +119,12 @@ class ProximoCompromissoWidgetProvider : GranaResumoWidgetProvider() {
    */
   private fun linhasQueCabem(context: Context, widgetId: Int): Int {
     val opcoes = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
-    val altura = opcoes?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0) ?: 0
+    /* O launcher informa duas alturas: a MÍNIMA é a do widget em paisagem e a
+       MÁXIMA, a em retrato. A primeira versão lia sempre a mínima, e no emulador,
+       em retrato, um widget com espaço para quatro contas desenhou duas. */
+    val retrato = context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+    val chave = if (retrato) AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT
+    val altura = opcoes?.getInt(chave, 0) ?: 0
     if (altura <= 0) return 3
     return ((altura - ESTIMATIVA_MOLDURA_DP) / ESTIMATIVA_LINHA_DP).coerceIn(1, 8)
   }
