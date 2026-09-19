@@ -134,6 +134,10 @@ export function montarSnapshotWidgets(input: {
   bills: Bill[];
   goals: Goal[];
   privacyHidden: boolean;
+  /** Soma de `initial_balance` de todas as carteiras — o widget é sempre a
+      visão "Total", sem carteira ativa. Sem isto, o widget e a Home diziam
+      saldos diferentes para a mesma conta (achado A12). */
+  saldoInicial: number;
   hoje?: Date;
   updatedAt?: string;
 }): SnapshotWidgetsV1 {
@@ -141,7 +145,7 @@ export function montarSnapshotWidgets(input: {
   /* Crédito ainda está na fatura: só vira saída de caixa quando ela é paga.
      É a mesma regra da Home antes de chamar calcularSafeToSpend. */
   const transacoesDeCaixa = input.transactions.filter((tx) => !isCreditTx(tx));
-  const livre = calcularSafeToSpend(transacoesDeCaixa, input.bills, input.goals, hoje);
+  const livre = calcularSafeToSpend(transacoesDeCaixa, input.bills, input.goals, input.saldoInicial, hoje);
   const compromissos = selecionarCompromissosDoMes(input.bills, hoje);
 
   return {

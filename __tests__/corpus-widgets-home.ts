@@ -95,7 +95,7 @@ conferir('ignora boletos pagos', selecionarProximoCompromisso([bill({ id: 'pago'
   conferir('a lista respeita o teto, e o total conta todas', muitos.itens.length === LIMITE_COMPROMISSOS && muitos.total === 20, muitos.total);
 
   const snap = montarSnapshotWidgets({
-    userId: 'u1', transactions: [], goals: [], privacyHidden: false, hoje: dia19,
+    userId: 'u1', transactions: [], goals: [], privacyHidden: false, hoje: dia19, saldoInicial: 0,
     bills: [bill({ id: 'agosto-atrasado', due_date: '2026-08-15' }), bill({ id: 'setembro-25', due_date: '2026-09-25' })],
   });
   conferir('o snapshot leva a lista e o total', snap.commitments.length === 2 && snap.commitmentsCount === 2, snap.commitments);
@@ -122,6 +122,7 @@ const snapshot = montarSnapshotWidgets({
   goals: [goal({ id: 'meta', current_amount: 100, target_amount: 1000 })],
   privacyHidden: true,
   hoje,
+  saldoInicial: 0,
   updatedAt: '2026-09-04T15:00:00.000Z',
 });
 conferir('contrato versionado', snapshot.version === 1);
@@ -129,6 +130,33 @@ conferir('preserva modo privacidade', snapshot.privacyHidden === true);
 conferir('não desconta compra no crédito do caixa', snapshot.safeToSpend.livreTotal === 600, snapshot.safeToSpend);
 conferir('usa total de todas as carteiras', snapshot.safeToSpend.livreTotal === 600);
 conferir('data determinística', snapshot.updatedAt === '2026-09-04T15:00:00.000Z');
+
+/* ── A12: saldo inicial das carteiras entra na conta (19/09/2026) ────────
+   Antes o widget e a Home somavam só o fluxo lançado, sem o saldo com que a
+   carteira começou — a mesma conta que lib/wallets.ts::calcularSaldosWallets
+   já fazia para o seletor de carteira, gerando dois números pra "saldo" na
+   mesma tela. */
+const snapshotComSaldoInicial = montarSnapshotWidgets({
+  userId: 'u1',
+  transactions: [tx({ id: 'saida', amount: 200, type: 'out', payment_method: 'debit' })],
+  bills: [],
+  goals: [],
+  privacyHidden: false,
+  hoje,
+  saldoInicial: 1000,
+  updatedAt: '2026-09-04T15:00:00.000Z',
+});
+conferir(
+  'saldo inicial soma ao fluxo lançado, não fica de fora',
+  snapshotComSaldoInicial.safeToSpend.livreTotal === 800,
+  snapshotComSaldoInicial.safeToSpend
+);
+conferir(
+  'sem saldo inicial nem fluxo positivo, "sem saldo" continua certo',
+  montarSnapshotWidgets({
+    userId: 'u1', transactions: [], bills: [], goals: [], privacyHidden: false, hoje, saldoInicial: 0,
+  }).safeToSpend.semSaldo === true
+);
 
 const links: Array<[string, string, Record<string, string>]> = [
   ['com.gabriouss.grana://add-credit', 'add-credit', { acao: 'add-credit' }],

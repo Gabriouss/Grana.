@@ -72,8 +72,20 @@ const { EXEMPLO_LIVRE, EXEMPLO_CONVERSA, emReais } = exemplo;
 
 // ---- Livre para Gastar: a mesma regra da Início (crédito fora do caixa) ----
 {
-  const caixa = demo.DEMO_TRANSACTIONS.filter((t) => !regras.isCreditTx(t));
-  const r = livre.calcularSafeToSpend(caixa, demo.DEMO_BILLS, demo.DEMO_GOALS, new DataFixa());
+  /* `calcularSaldoAtual` passou a somar TODO o histórico de caixa (mais o
+     saldo inicial da carteira), não só o mês corrente — achado A12,
+     19/09/2026: a mesma carteira mostrava dois números diferentes para
+     "saldo" (o seletor de carteira já somava tudo; "Livre para gastar"
+     somava só o mês). `DEMO_TRANSACTIONS` tem abril a setembro de 2026 (usado
+     por outros testes, ex.: navegação entre meses), mas a captura congelada
+     da landing (`inicio-web.png`/`inicio-mobile.png`) mostra a conta como se
+     começasse em setembro — é o recorte que bate com a imagem, e a imagem não
+     se regera junto com este fix. Por isso o exemplo da landing continua
+     filtrando só o mês da captura, com saldo inicial 0: ele ilustra a TELA
+     CONGELADA, não o comportamento atual do app (que, em modo de exemplo de
+     verdade, agora soma os 6 meses). */
+  const caixa = demo.DEMO_TRANSACTIONS.filter((t) => !regras.isCreditTx(t) && noMes(t.occurred_on));
+  const r = livre.calcularSafeToSpend(caixa, demo.DEMO_BILLS, demo.DEMO_GOALS, 0, new DataFixa());
   conferir(centavos(r.saldoAtual), centavos(EXEMPLO_LIVRE.saldo), 'saldo atual');
   conferir(centavos(r.contasFixasPendentes), centavos(EXEMPLO_LIVRE.contas), 'contas a vencer este mês');
   conferir(centavos(r.reservadoEmMetas), centavos(EXEMPLO_LIVRE.cofrinhos), 'reservado em cofrinhos');
