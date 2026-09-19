@@ -58,6 +58,30 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — U1: reabrir conta paga desfaz o pagamento inteiro (`798370e`), migration NÃO aplicada
+
+Regra do autor: "Apertou, pagou. Apertou de novo, cancela o pagamento e a saída
+do dinheiro é cancelada." O toque único fica, sem confirmação.
+
+- **Defeito:** `pagar_conta` de conta recorrente cria a conta do mês seguinte;
+  `reabrir_conta` não a apagava, e sobrava um boleto fantasma.
+- **Correção:** migration `20260919150000_reabrir_conta_desfaz_proxima.sql` e
+  `schema.sql`. Coluna `bills.next_bill_id` (a conta seguinte que ESTE pagamento
+  criou; o `on conflict do nothing` já devolve nulo quando ela existia antes).
+  `reabrir_conta` apaga essa conta se ainda não foi paga. Backfill das contas já
+  pagas pela igualdade exata de `created_at` com a saída (mesma transação).
+- **Produção conferida antes:** as duas funções no ar eram iguais ao repositório
+  (lidas pela Management API, só leitura).
+- **Teste:** Postgres de verdade com PGlite, fora do repositório (dependência
+  não adicionada ao projeto): funções antigas da produção, dados criados com
+  elas, migration aplicada, 16/16; um mutante sem o `delete` falha. Guarda
+  estática em `corpus-schema-guardas.ts`.
+- **A migration NÃO foi aplicada em produção.** Até ser, o fantasma continua. O
+  app não muda: as RPCs mantêm nome e assinatura, então vale para quem já tem o
+  APK assim que for aplicada.
+
+---
+
 # 19/09/2026 (M1) — correção dos achados reverificados da auditoria Android (`b2f8ccf` a `8fd5b9b`)
 
 Pedido: "resolva todos os problemas verificados e reverificados como problema
