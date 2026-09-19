@@ -127,6 +127,35 @@ os P2/P3 restantes da auditoria.
 
 ---
 
+# 19/09/2026 (M1) — última leva do dia: o Codex terminou o que sobrava (`5d72611` e os dois anteriores)
+
+O autor pediu que o Codex (`gpt-5.6-luna`, esforço medium, escrita liberada
+na pasta) terminasse a lista da auditoria e que a sessão encerrasse quando ele
+acabasse. Ele entregou o relatório por achado; eu conferi o diff, rodei
+`tsc` e `test:ci` fora do sandbox dele (lá `npx tsx` falhou com `EACCES`) e
+publiquei em três commits: **crédito** (A21 faixa de faturas fechadas
+pendentes, A22 rótulo "Fatura de mmm/aa" fora do ciclo atual, título da folha
+de ações), **ajustes de tela** (A4, A5, A11, A16, A17, A19, A20, A31, A33,
+A37) e **Granabô** (A46, só no fonte de `assistente-financeiro`; **NÃO
+publicada**, regra 11 pede conferir a produção antes). Consertei uma linha
+mal indentada que ele deixou em `app/(app)/index.tsx`.
+
+- **Decisões adotadas por padrão, reversíveis:** A21 abre direto o ciclo
+  fechado ao tocar na faixa; A22 mostra mês/ano em qualquer ciclo que não
+  seja o atual; A46 só explica que o crédito muda o caixa no pagamento.
+- **Pulados pelo Codex, seguem em aberto:** A2, A3, A6 a A8, A10, A14, A15,
+  A23, A25 a A29, A32, A34 a A36, A38, A40, A44, A45, A48, A50 a A54, A56,
+  A58, A65 a A70 (copy, decisão de produto ou conferência visual) e os
+  nativos A55, A61, A62, A63 (exigem build).
+- **Sem verificação no aparelho:** tudo desta leva passou em `tsc` e
+  `test:ci` (todas as suítes verdes, `sync-parser` 75/75), mas nenhuma tela
+  foi vista no emulador. A39 (voltar do Android) precisa de build nova.
+- **O que o relatório do Codex disse que eu conferi:** o que estava
+  "JÁ CORRIGIDO" bate com os commits anteriores; o diff só tocou os arquivos
+  listados acima, sem `app/index.tsx`, `PRODUCT.md`, landing ou `public/`.
+
+---
+
 # 19/09/2026 (M1) — só escuro e só retrato, para sempre (`e79cec8`, `0da8e33`)
 
 Decisão do autor: "O app não terá tela deitada e nem modo claro nunca".
