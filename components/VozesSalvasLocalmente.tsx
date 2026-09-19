@@ -20,7 +20,7 @@ export default function VozesSalvasLocalmente() {
   }, []);
   if (!itens.length) return null;
   return <View style={[styles.container, { paddingTop: Math.max(12, insets.top + 8) }]}>
-    <Text style={styles.text}>{itens.length} lançamento(s) por voz salvo(s) neste aparelho.</Text>
+    <Text style={styles.text}>{itens.length === 1 ? '1 lançamento por voz salvo neste aparelho.' : `${itens.length} lançamentos por voz salvos neste aparelho.`}</Text>
     {/* `polite` porque a frase muda sozinha ao fim da sincronização: sem região
         viva, quem usa leitor de tela toca em "Tentar sincronizar" e nunca fica
         sabendo no que deu. `alert` seria grosseiro para um aviso de fundo. */}

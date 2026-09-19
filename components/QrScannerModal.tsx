@@ -303,7 +303,7 @@ export default function QrScannerModal({
           {saving ? (
             <ActivityIndicator color={theme.paper} />
           ) : (
-            <Text style={styles.saveBtnText}>Salvar Lançamento</Text>
+            <Text style={styles.saveBtnText}>Salvar lançamento</Text>
           )}
         </AppPressable>
 

@@ -397,6 +397,9 @@ export default function GraficosScreen() {
           mes={new Date().getMonth()}
           transactions={filteredTransactions}
           carteira={activeWalletName}
+          /* A36: com "Período" ativo o relatório cobre o intervalo escolhido, e
+             o botão continuava dizendo o mês corrente. */
+          rotulo={granularidade === 'periodo' ? 'Exportar relatório do período' : undefined}
         />
 
         <View style={{ height: 100 }} />

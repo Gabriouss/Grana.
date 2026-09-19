@@ -87,8 +87,8 @@ checarCiclo(
   checar('janela: início é 19/set (mês anterior ao fechamento)', j.inicio, '2026-09-19');
   checar('janela: fim é 19/out (dia do fechamento, exclusivo)', j.fim, '2026-10-19');
 }
-checar('rótulo mostra o intervalo real, não o mês civil', rotuloPeriodoFatura(2026, 8, 20), '20 ago – 19 set');
-checar('rótulo explicita o ano quando o ciclo o atravessa', rotuloPeriodoFatura(2027, 0, 20), '20 dez 2026 – 19 jan 2027');
+checar('rótulo mostra o intervalo real, não o mês civil', rotuloPeriodoFatura(2026, 8, 20), '20 ago a 19 set');
+checar('rótulo explicita o ano quando o ciclo o atravessa', rotuloPeriodoFatura(2027, 0, 20), '20 dez 2026 a 19 jan 2027');
 {
   // Fechamento dia 31 com mês anterior de 30 dias (abril): a janela usa a
   // data corrigida pelo próprio JS (1º de maio), não um 31/abril inexistente.

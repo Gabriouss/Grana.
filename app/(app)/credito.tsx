@@ -511,7 +511,9 @@ export default function CreditoScreen() {
     parcial: { texto: `Falta R$ ${formatMoney(invoiceSituacao?.restante ?? 0)}`, cor: theme.accent2 },
     atrasada: { texto: 'Atrasada', cor: theme.danger },
     'vence-hoje': { texto: 'Vence hoje', cor: theme.accent2 },
-    aberta: { texto: 'Aberta', cor: theme.inkFaint },
+    /* A23: "aberta" no vocabulário de cartão é a fatura que ainda recebe
+       compras; aqui o estado quer dizer só "ainda não paga". */
+    aberta: { texto: 'A pagar', cor: theme.inkFaint },
   };
   /* Com parte paga, o botão paga o que falta — e não a fatura inteira de novo. */
   const pagandoRestante = !!currentInvoicePayment && invoiceStatus !== 'paga';
@@ -1364,7 +1366,7 @@ export default function CreditoScreen() {
           <View style={[styles.invoiceHeadRow, ehCompacto && styles.invoiceHeadRowCompact]}>
             <View style={[styles.invoiceInfo, ehCompacto && styles.invoiceInfoCompact]}>
               <Text style={styles.invoiceLabel}>
-                {selectedCardId === 'all' ? 'Total em Faturas (Todos os Cartões)' : 'Fatura do Cartão Selecionado'}
+                {selectedCardId === 'all' ? 'Total das faturas (todos os cartões)' : 'Fatura do cartão selecionado'}
               </Text>
               <PrivacyValue>
                 <Text style={styles.invoiceTotal}>{`R$ ${formatMoney(totalInvoice)}`}</Text>
@@ -1414,7 +1416,7 @@ export default function CreditoScreen() {
           {selectedCard && invoiceStatus !== 'paga' && (invoiceSituacao?.restante ?? 0) > 0 && (
             <AppPressable style={styles.payInvoiceBtn} onPress={abrirPagarFatura}>
               <Ionicons name="checkmark-circle-outline" size={16} color={theme.paper} />
-              <Text style={styles.payInvoiceBtnText}>{pagandoRestante ? 'Pagar restante' : 'Pagar Fatura'}</Text>
+              <Text style={styles.payInvoiceBtnText}>{pagandoRestante ? 'Pagar restante' : 'Pagar fatura'}</Text>
             </AppPressable>
           )}
           {selectedCard && currentInvoicePayment && (
@@ -1466,7 +1468,7 @@ export default function CreditoScreen() {
       <AppModal visible={newCardOpen} transparent onRequestClose={() => setNewCardOpen(false)}>
         <Sheet onClose={() => setNewCardOpen(false)}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{editingCardId ? 'Editar Cartão de Crédito' : 'Novo Cartão de Crédito'}</Text>
+            <Text style={styles.sheetTitle}>{editingCardId ? 'Editar cartão de crédito' : 'Novo cartão de crédito'}</Text>
             <AppPressable onPress={() => setNewCardOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
@@ -1482,7 +1484,7 @@ export default function CreditoScreen() {
             onChangeText={setCardName}
           />
 
-          <Text style={styles.inputLabel}>Banco Emissor</Text>
+          <Text style={styles.inputLabel}>Banco emissor</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.banksRow}>
             {BANKS.map((b) => (
               <AppPressable
@@ -1516,7 +1518,7 @@ export default function CreditoScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Limite Total (R$)</Text>
+              <Text style={styles.inputLabel}>Limite total (R$)</Text>
               <TextInput
                 accessibilityLabel="Limite total do cartão em reais"
                 maxLength={LIMITS.amount}
@@ -1567,7 +1569,7 @@ export default function CreditoScreen() {
             {cardSaving ? (
               <ActivityIndicator color={theme.paper} />
             ) : (
-              <Text style={styles.saveBtnText}>{editingCardId ? 'Salvar Alterações' : 'Salvar Cartão'}</Text>
+              <Text style={styles.saveBtnText}>{editingCardId ? 'Salvar alterações' : 'Salvar cartão'}</Text>
             )}
           </AppPressable>
           {cardFormError && (
@@ -1632,7 +1634,7 @@ export default function CreditoScreen() {
       <AppModal visible={payInvoiceOpen} transparent onRequestClose={() => setPayInvoiceOpen(false)}>
         <Sheet centered onClose={() => setPayInvoiceOpen(false)}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{pagandoRestante ? 'Pagar restante' : 'Pagar Fatura'}</Text>
+            <Text style={styles.sheetTitle}>{pagandoRestante ? 'Pagar restante' : 'Pagar fatura'}</Text>
             <AppPressable onPress={() => setPayInvoiceOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
@@ -1682,7 +1684,7 @@ export default function CreditoScreen() {
           )}
 
           <AppPressable style={styles.fieldRow} onPress={() => setPayDatePickerOpen(true)}>
-            <Text style={styles.fieldKey}>Data do Pagamento</Text>
+            <Text style={styles.fieldKey}>Data do pagamento</Text>
             <Text style={styles.fieldValText}>{formatDateLabel(payDate)}</Text>
           </AppPressable>
 
@@ -1691,7 +1693,7 @@ export default function CreditoScreen() {
             onPress={handlePayInvoice}
             disabled={paySaving}
           >
-            {paySaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Confirmar Pagamento</Text>}
+            {paySaving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Confirmar pagamento</Text>}
           </AppPressable>
         </Sheet>
       </AppModal>

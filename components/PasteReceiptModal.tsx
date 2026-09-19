@@ -236,7 +236,7 @@ export default function PasteReceiptModal({
       >
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>
-              {recognized ? 'Confirmar Lançamento' : 'Colar Comprovante / Pix'}
+              {recognized ? 'Confirmar lançamento' : 'Colar comprovante ou Pix'}
             </Text>
             <AppPressable
               onPress={() => {
@@ -290,13 +290,13 @@ export default function PasteReceiptModal({
                   onPress={() => setType('out')}
                   style={[styles.typeBtn, type === 'out' && styles.typeBtnOut]}
                 >
-                  <Text style={[styles.typeText, type === 'out' && styles.typeTextOn]}>Despesa (−)</Text>
+                  <Text style={[styles.typeText, type === 'out' && styles.typeTextOn]}>Saída</Text>
                 </AppPressable>
                 <AppPressable
                   onPress={() => setType('in')}
                   style={[styles.typeBtn, type === 'in' && styles.typeBtnIn]}
                 >
-                  <Text style={[styles.typeText, type === 'in' && styles.typeTextOn]}>Receita (+)</Text>
+                  <Text style={[styles.typeText, type === 'in' && styles.typeTextOn]}>Entrada</Text>
                 </AppPressable>
               </View>
 
@@ -350,7 +350,7 @@ export default function PasteReceiptModal({
                 {saving ? (
                   <ActivityIndicator color={theme.paper} />
                 ) : (
-                  <Text style={styles.saveBtnText}>Salvar Lançamento</Text>
+                  <Text style={styles.saveBtnText}>Salvar lançamento</Text>
                 )}
               </AppPressable>
 

@@ -65,7 +65,7 @@ export default function HomeCustomizerModal({
 
         {/* Presets Rápidos de 1 Toque */}
         <View style={styles.presetSection}>
-          <Text style={styles.presetTitle}>Modelos Rápidos</Text>
+          <Text style={styles.presetTitle}>Modelos rápidos</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
             {PRESETS.map((p) => (
               <AppPressable
@@ -157,7 +157,7 @@ export default function HomeCustomizerModal({
 
         <View style={styles.footer}>
           <AppPressable style={styles.doneBtn} onPress={onClose}>
-            <Text style={styles.doneBtnText}>Concluir Personalização</Text>
+            <Text style={styles.doneBtnText}>Concluir personalização</Text>
           </AppPressable>
         </View>
       </Sheet>

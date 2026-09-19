@@ -21,8 +21,8 @@ export type HomeBlockKey =
 export type HomeBlockConfig = { key: HomeBlockKey; visible: boolean };
 
 export const HOME_BLOCK_LABELS: Record<HomeBlockKey, string> = {
-  saldo: 'Saldo líquido & Livre para gastar',
-  cofrinhos: 'Carrossel de cofrinhos / metas',
+  saldo: 'Livre para gastar',
+  cofrinhos: 'Cofrinhos e metas',
   atalhos: 'Atalhos rápidos por categoria',
   fluxo: 'Gráfico de fluxo financeiro',
   categoria: 'Gastos por categoria',

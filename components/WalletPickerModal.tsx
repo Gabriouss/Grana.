@@ -13,7 +13,7 @@ import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { createWallet, updateWallet, deleteWallet } from '@/lib/wallets';
-import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
+import { formatBRLSaldo, parseAmount, formatMoneyInput } from '@/lib/format';
 import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
 import AppPressable from './AppPressable';
@@ -163,7 +163,7 @@ export default function WalletPickerModal({
     >
       <Sheet onClose={onClose}>
         <View style={styles.header}>
-          <Text style={styles.title}>Selecionar conta</Text>
+          <Text style={styles.title}>Selecionar carteira</Text>
           <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
@@ -178,7 +178,7 @@ export default function WalletPickerModal({
         {/* Lista SEM rolagem própria. Até 19/09/2026 esta era uma segunda
             ScrollView, com teto de 380 px escrito à mão, dentro da ScrollView
             do `Sheet`. O formulário de nova carteira ficava preso numa janela
-            de 380 px: cortava a paleta de cores e escondia "Criar Conta", e
+            de 380 px: cortava a paleta de cores e escondia "Criar carteira", e
             como essa rolagem interna não tinha `keyboardShouldPersistTaps`, o
             primeiro toque no botão com o teclado aberto só fechava o teclado
             (achado G18). O `Sheet` já rola o conteúdo inteiro e já se
@@ -199,7 +199,7 @@ export default function WalletPickerModal({
               <Text style={styles.walletName}>Total</Text>
             </View>
             <PrivacyValue>
-              <Text style={styles.walletBalance}>{`R$ ${formatMoney(saldos.total)}`}</Text>
+              <Text style={styles.walletBalance}>{formatBRLSaldo(saldos.total)}</Text>
             </PrivacyValue>
           </AppPressable>
 
@@ -215,7 +215,7 @@ export default function WalletPickerModal({
                   <TextInput
                     accessibilityLabel="Nome da carteira"
                     style={styles.input}
-                    placeholder="Nome da conta"
+                    placeholder="Nome da carteira"
                     placeholderTextColor={theme.inkFaint}
                     value={editName}
                     onChangeText={setEditName}
@@ -293,7 +293,7 @@ export default function WalletPickerModal({
                     <Text style={styles.walletName}>{w.name}</Text>
                   </View>
                   <PrivacyValue>
-                    <Text style={[styles.walletBalance, styles.walletBalanceFixo]}>{`R$ ${formatMoney(saldoItem)}`}</Text>
+                    <Text style={[styles.walletBalance, styles.walletBalanceFixo]}>{formatBRLSaldo(saldoItem)}</Text>
                   </PrivacyValue>
                 </AppPressable>
                 <AppPressable
@@ -323,11 +323,11 @@ export default function WalletPickerModal({
           {/* Criação de Nova Carteira */}
           {creating ? (
             <View style={styles.createBox}>
-              <Text style={styles.createTitle}>Nova Carteira / Conta</Text>
+              <Text style={styles.createTitle}>Nova carteira</Text>
               <TextInput
                 accessibilityLabel="Nome da nova carteira"
                 style={styles.input}
-                placeholder="Nome da conta (ex: Casamento)"
+                placeholder="Nome da carteira, ex.: Casamento"
                 placeholderTextColor={theme.inkFaint}
                 value={newName}
                 onChangeText={setNewName}
@@ -375,7 +375,7 @@ export default function WalletPickerModal({
                   {saving ? (
                     <ActivityIndicator size="small" color={theme.paper} />
                   ) : (
-                    <Text style={styles.createConfirmText}>Criar Conta</Text>
+                    <Text style={styles.createConfirmText}>Criar carteira</Text>
                   )}
                 </AppPressable>
               </View>
@@ -383,7 +383,7 @@ export default function WalletPickerModal({
           ) : (
             <AppPressable style={styles.addBtn} onPress={() => setCreating(true)}>
               <Ionicons name="add-circle-outline" size={20} color={theme.accent2} />
-              <Text style={styles.addBtnText}>Adicionar nova carteira</Text>
+              <Text style={styles.addBtnText}>Adicionar carteira</Text>
             </AppPressable>
           )}
         </View>

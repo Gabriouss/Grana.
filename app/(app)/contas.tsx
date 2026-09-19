@@ -469,7 +469,7 @@ export default function ContasScreen() {
           <PrivacyValue>
             <Text style={styles.subtitle}>{`R$ ${formatMoney(openTotal)}`}</Text>
           </PrivacyValue>
-          <Text style={styles.subtitle}> em aberto</Text>
+          <Text style={styles.subtitle}> em aberto neste mês</Text>
         </View>
 
         <MonthSelector
@@ -538,7 +538,7 @@ export default function ContasScreen() {
                       <Text style={styles.cardAmount}>{`R$ ${formatMoney(Number(item.amount))}`}</Text>
                     </PrivacyValue>
                     <Text style={styles.cardDue}>
-                      {formatDateLabel(item.due_date)} · {item.status === 'paid' ? 'toque para reabrir' : 'toque para pagar'}
+                      {`Vence ${formatDateLabel(item.due_date)}`} · {item.status === 'paid' ? 'toque para reabrir' : 'toque para pagar'}
                     </Text>
                   </View>
                 </AppPressable>

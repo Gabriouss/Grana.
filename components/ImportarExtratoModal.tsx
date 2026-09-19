@@ -232,8 +232,8 @@ export default function ImportarExtratoModal({
       Alert.alert(
         'Importação concluída',
         ignorados > 0
-          ? `${inseridos} lançamento(s) importado(s). ${ignorados} já existia(m) e foram ignorados.`
-          : `${inseridos} lançamento(s) importado(s).`
+          ? `${inseridos} ${inseridos === 1 ? 'lançamento importado' : 'lançamentos importados'}. ${ignorados} ${ignorados === 1 ? 'já existia e foi ignorado' : 'já existiam e foram ignorados'}.`
+          : `${inseridos} ${inseridos === 1 ? 'lançamento importado' : 'lançamentos importados'}.`
       );
       limpar();
       onClose();
@@ -257,7 +257,7 @@ export default function ImportarExtratoModal({
         >
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>
-              {linhas.length > 0 ? `Prévia: ${linhas.length} lançamento(s)` : 'Importar extrato'}
+              {linhas.length > 0 ? `Prévia: ${linhas.length} ${linhas.length === 1 ? 'lançamento' : 'lançamentos'}` : 'Importar extrato'}
             </Text>
             <AppPressable onPress={fechar} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
@@ -418,7 +418,7 @@ export default function ImportarExtratoModal({
                     ) : null}
                   </View>
                 ) : (
-                  <Text style={styles.saveBtnText}>Importar {linhas.length} lançamento(s)</Text>
+                  <Text style={styles.saveBtnText}>{linhas.length === 1 ? 'Importar 1 lançamento' : `Importar ${linhas.length} lançamentos`}</Text>
                 )}
               </AppPressable>
 

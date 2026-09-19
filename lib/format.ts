@@ -26,6 +26,21 @@ export function formatBRL(n: number, sinal?: '+' | '−'): string {
 }
 
 /**
+ * Saldo que pode ser negativo, sempre com o sinal de menos tipográfico ANTES do
+ * "R$" ("− R$ 482,10"). `toLocaleString` devolve hífen depois do "R$" no
+ * negativo, e o app já escreve "− R$ 150,00" nas linhas de subtração; os dois
+ * formatos lado a lado no mesmo cartão eram o A2 da auditoria de 19/09/2026.
+ */
+export function formatBRLSaldo(n: number): string {
+  return n < 0 ? formatBRL(-n, '−') : formatBRL(n);
+}
+
+/** Linha de subtração ("− R$ 150,00"); valor zero não leva sinal (A2). */
+export function formatBRLSubtraido(n: number): string {
+  return n > 0 ? formatBRL(n, '−') : formatBRL(0);
+}
+
+/**
  * Lê um valor em dinheiro escrito do jeito que brasileiro escreve.
  *
  * A versão anterior tomava o ÚLTIMO separador como decimal, fosse ele vírgula

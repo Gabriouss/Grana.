@@ -62,7 +62,7 @@ export function rotuloPeriodoFatura(year: number, month: number, closingDay: num
   const fimLabel = `${fimInclusivo.getDate()} ${meses[fimInclusivo.getMonth()]}${
     anoNecessario ? ` ${fimInclusivo.getFullYear()}` : ''
   }`;
-  return `${inicioLabel} – ${fimLabel}`;
+  return `${inicioLabel} a ${fimLabel}`;
 }
 
 /**

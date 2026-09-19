@@ -61,7 +61,7 @@ const mesTipico: Transaction[] = [
   );
   checar(
     'o teto estourado vira indicador, não fator de nota',
-    comOrcamentoEstourado.indicadores.some((i) => i.label === 'Tetos definidos') &&
+    comOrcamentoEstourado.indicadores.some((i) => i.label === 'Categorias dentro do teto') &&
       !comOrcamentoEstourado.factors.some((f) => /rçamento|teto/i.test(f.label))
   );
 }
@@ -162,8 +162,8 @@ const mesTipico: Transaction[] = [
   );
   checar(
     'o teto usa a mesma régua da Início: crédito fora',
-    valor(resultado([salario, almoco, compraNoCredito]), 'Tetos definidos') === '1 de 1',
-    String(valor(resultado([salario, almoco, compraNoCredito]), 'Tetos definidos'))
+    valor(resultado([salario, almoco, compraNoCredito]), 'Categorias dentro do teto') === '1 de 1',
+    String(valor(resultado([salario, almoco, compraNoCredito]), 'Categorias dentro do teto'))
   );
 }
 

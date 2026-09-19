@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
-import { formatMoney } from '@/lib/format';
+import { formatBRLSaldo, formatBRLSubtraido, formatMoney } from '@/lib/format';
 import type { SafeToSpend } from '@/lib/projections';
 import type { Arquetipo } from '@/lib/diagnostico';
 import PrivacyValue from './PrivacyValue';
@@ -39,15 +39,15 @@ export default function SafeToSpendCard({
       <View style={styles.breakdown}>
         <View style={styles.row}>
           <Text style={styles.rowKey}>Saldo atual</Text>
-          <PrivacyValue><Text style={styles.rowVal}>{`R$ ${formatMoney(saldoAtual)}`}</Text></PrivacyValue>
+          <PrivacyValue><Text style={styles.rowVal}>{formatBRLSaldo(saldoAtual)}</Text></PrivacyValue>
         </View>
         <View style={styles.row}>
           <Text style={styles.rowKey}>Contas a vencer este mês</Text>
-          <PrivacyValue><Text style={styles.rowVal}>{`− R$ ${formatMoney(contasFixasPendentes)}`}</Text></PrivacyValue>
+          <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(contasFixasPendentes)}</Text></PrivacyValue>
         </View>
         <View style={styles.row}>
           <Text style={styles.rowKey}>Reservado em cofrinhos</Text>
-          <PrivacyValue><Text style={styles.rowVal}>{`− R$ ${formatMoney(reservadoEmMetas)}`}</Text></PrivacyValue>
+          <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(reservadoEmMetas)}</Text></PrivacyValue>
         </View>
         <View style={styles.row}>
           <Text style={styles.rowKey}>Livre no total · {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'} restantes</Text>

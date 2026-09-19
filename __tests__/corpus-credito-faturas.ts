@@ -204,7 +204,7 @@ checar('a tela não trata mais qualquer pagamento como "paga"', /currentInvoiceP
 checar('o status sai de situacaoDaFatura', /situacaoDaFatura\(totalInvoice, currentInvoicePayment, invoiceDueDate\)/.test(tela), true);
 checar('com parte paga, o pagamento vai para payCardInvoiceRemainder', /pagandoRestante && currentInvoicePayment\) \{\s*const registro = await payCardInvoiceRemainder/.test(tela), true);
 checar('o pagamento que o servidor recusou em silêncio é avisado', (tela.match(/Math\.round\(Number\(registro\.amount\) \* 100\)/g) ?? []).length, 2);
-checar('com parte paga, o botão diz "Pagar restante"', /pagandoRestante \? 'Pagar restante' : 'Pagar Fatura'/.test(tela), true);
+checar('com parte paga, o botão diz "Pagar restante"', /pagandoRestante \? 'Pagar restante' : 'Pagar fatura'/.test(tela), true);
 checar('o desfazer aparece com qualquer pagamento, mesmo parcial', /selectedCard && currentInvoicePayment && \(\s*<AppPressable style=\{styles\.undoPayBtn\}/.test(tela), true);
 checar('A21 mostra faturas fechadas pendentes acima do carrossel', tela.includes('faturasFechadasPendentes') && tela.includes('Faturas fechadas aguardando pagamento'), true);
 checar('A21 força o ciclo da fatura escolhida pela faixa', tela.includes('faturaForcada.current') && tela.includes('setFaturaCardYear(year)'), true);

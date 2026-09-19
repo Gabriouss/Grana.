@@ -307,7 +307,7 @@ export function calculateScoreBreakdown(
     });
     const dentro = budgets.filter((b) => (outByCat[b.category] || 0) <= Number(b.amount)).length;
     indicadores.push({
-      label: "Tetos definidos",
+      label: "Categorias dentro do teto",
       valor: `${dentro} de ${budgets.length}`,
       descricao:
         dentro === budgets.length
