@@ -144,10 +144,10 @@ checar('bot: sem acento acha a acentuada', bot.matchCategoryByKeyword('energetic
   const modal = readFileSync(path.join(__dirname, '..', 'components', 'CategoryPickerModal.tsx'), 'utf8');
   const lixeira = modal.indexOf('accessibilityLabel={`Excluir categoria ${item.name}`}');
   const guarda = modal.lastIndexOf('{!item.isDefault && (', lixeira);
-  checar('a lixeira existe para categoria criada pela pessoa', lixeira > 0, true);
-  checar('a lixeira fica atrás de !item.isDefault', guarda > 0 && lixeira - guarda < 400, true);
+  checar('a lixeira existe para categoria criada pela pessoa', String(lixeira > 0), 'true');
+  checar('a lixeira fica atrás de !item.isDefault', String(guarda > 0 && lixeira - guarda < 400), 'true');
   const data = readFileSync(path.join(__dirname, '..', 'lib', 'data.ts'), 'utf8');
-  checar('a semeadura continua rodando sempre (a premissa da guarda)', data.includes("onConflict: 'user_id,name', ignoreDuplicates: true"), true);
+  checar('a semeadura continua rodando sempre (a premissa da guarda)', String(data.includes("onConflict: 'user_id,name', ignoreDuplicates: true")), 'true');
 }
 
 console.log(`\n${total - falhas}/${total} checagens de categoria custom passaram — ${falhas} falhas`);
