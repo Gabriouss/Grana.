@@ -662,7 +662,7 @@ export default function PerfilScreen() {
           </View>
           <View style={styles.row}>
             <Text style={styles.rowKey}>Tema</Text>
-            <Text style={styles.rowValue}>Escuro (Dark Theme)</Text>
+            <Text style={styles.rowValue}>Escuro</Text>
           </View>
         </View>
 
