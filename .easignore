@@ -17,3 +17,13 @@ design-system/marketing-mockups/
 .env
 .env.*
 !.env.example
+
+# Nativo gerado por `expo prebuild` local. Este projeto é managed: o EAS gera
+# android/ e ios/ no servidor. Uma pasta local (mesmo vazia) subiria junto e
+# faria o EAS tratar o projeto como nativo pronto, pulando o prebuild. Em
+# 19/09/2026 uma compilação local do widget deixou `android/` vazia e presa por
+# um processo; o `.gitignore` já ignorava, mas o `.easignore` o substitui.
+/android
+/ios
+modules/*/android/build/
+modules/*/android/.cxx/
