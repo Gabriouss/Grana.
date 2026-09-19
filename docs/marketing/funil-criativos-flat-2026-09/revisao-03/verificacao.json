@@ -1,0 +1,66 @@
+[
+  {
+    "name": "S1-feed",
+    "font": true,
+    "overlap": false,
+    "copyInside": true,
+    "width": 1080,
+    "height": 1440
+  },
+  {
+    "name": "S1-story",
+    "font": true,
+    "overlap": false,
+    "copyInside": true,
+    "width": 1080,
+    "height": 1920
+  },
+  {
+    "name": "S2-feed",
+    "font": true,
+    "overlap": false,
+    "copyInside": true,
+    "width": 1080,
+    "height": 1440
+  },
+  {
+    "name": "S2-story",
+    "font": true,
+    "overlap": false,
+    "copyInside": true,
+    "width": 1080,
+    "height": 1920
+  },
+  {
+    "name": "S3-feed",
+    "font": true,
+    "overlap": false,
+    "copyInside": true,
+    "width": 1080,
+    "height": 1440
+  },
+  {
+    "name": "S3-story",
+    "font": true,
+    "overlap": false,
+    "copyInside": true,
+    "width": 1080,
+    "height": 1920
+  },
+  {
+    "name": "S4-feed",
+    "font": true,
+    "overlap": false,
+    "copyInside": true,
+    "width": 1080,
+    "height": 1440
+  },
+  {
+    "name": "S4-story",
+    "font": true,
+    "overlap": false,
+    "copyInside": true,
+    "width": 1080,
+    "height": 1920
+  }
+]

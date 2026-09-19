@@ -33,6 +33,27 @@ Conectores não atravessam texto nem tela. Em vídeo, preserve as capturas como
 camadas e dê tempo para ler o produto antes de cada transição.
 ```
 
+### Alternância de layouts e mockups realistas — revisão 03
+
+Orientação vigente: alternar peças exclusivas de celular e de notebook/web,
+variando enquadramento e posição dos textos, não apenas a copy. Substitui a
+exigência anterior de combinar os dois aparelhos em cada peça.
+
+- Sequência: celular à esquerda; notebook com título no topo; celular à
+  direita; notebook com título na base.
+- Usar os mockups realistas da landing, com materiais, teclado e vidro reais.
+- Fontes: public/notebook/notebook.webp e
+  design-system/marketing-mockups/celular-vazio.png.
+- Telas reais inseridas por homografia conforme o script da landing.
+- Manter logo gradiente, fonte oficial, ausência de botões e a hierarquia
+  produto > H1 > H2 > background.
+- Estudos de layout: S2 nesta rodada explora a versão web; não substitui a
+  pauta dos três caminhos no calendário original.
+- Gerador: scripts/gerar-criativos-funil-v3.cjs. Entrega em
+  docs/marketing/funil-criativos-flat-2026-09/revisao-03.
+- Todos os prompts de estáticos e vídeos devem declarar aparelho protagonista
+  e composição específica; preservar a tela real como camada na edição.
+
 ## 1. Objetivo da campanha
 
 Levar uma pessoa que sente que o dinheiro desaparece durante o mês até a
