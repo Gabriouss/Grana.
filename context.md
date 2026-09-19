@@ -58,6 +58,28 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — no ar: migration do U1 e a v36 do Granabô (W5)
+
+Autorizado pelo autor ("aplique"). As duas correções abaixo, commitadas antes
+como NÃO aplicadas, estão em produção.
+
+- **Migration `20260919150000`** aplicada pela Management API, numa transação.
+  Antes: coluna ausente; 4 contas recorrentes pagas, 3 ligáveis pelo backfill.
+  Depois: coluna, FK de mesmo dono validada, índice, 3 ligadas, as duas funções
+  novas, execução só para `authenticated`. Funções anteriores guardadas antes.
+- **`assistente-financeiro` v35 → v36**, regra 11: a v35 era de 16/09 22:37,
+  um minuto depois de `9b875f1` (sem código fora do repositório); desde então
+  só `0ce48df` mexeu na função e nos módulos dela. Pacote da v35 baixado antes.
+  `deno check` 0. `verify_jwt=true` preservado; sem login responde 401.
+- **Provado em produção, na conta de teste:** U1, pagar criou outubro e ligou;
+  reabrir cancelou a saída e apagou outubro; conta de teste apagada. W5, com o
+  café já registrado no histórico, "gastei 23,50 no mercado" gravou "R$ 23,50
+  em Alimentação (Mercado)"; o "desfaz" removeu esse lançamento de teste.
+- **Revisão do Codex (regra 16): não feita.** O autor pediu para aplicar, e a
+  verificação seguiu pela regra 9.
+
+---
+
 # 19/09/2026 (M1) — U1: reabrir conta paga desfaz o pagamento inteiro (`798370e`), migration NÃO aplicada
 
 Regra do autor: "Apertou, pagou. Apertou de novo, cancela o pagamento e a saída
