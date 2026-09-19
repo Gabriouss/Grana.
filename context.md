@@ -58,6 +58,20 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — decisões do autor sobre o Perfil (`1e2ae68`, `883f065`)
+
+- **Atalhos `grana://` fora do Perfil** (A41): a linha e o guia saíram; os
+  endereços seguem funcionando em `lib/deep-links.ts`.
+- **"Refazer diagnóstico" só com o diagnóstico** (A43): `OnboardingModal`
+  aceita `modo="diagnostico"` (4 perguntas, sem nome/foto, sem painel, nunca
+  grava o layout). A Início segue abrindo o primeiro acesso completo. Guarda
+  em `__tests__/perfil-decisoes-19-09.cjs`, no `test:ci`. Visto no emulador.
+- **Codex sem limite:** o diagnóstico pedido para A47 e A64 não rodou
+  ("usage limit"). Modelo configurado: `gpt-5.6-luna`, esforço padrão
+  `xhigh`. O pedido está guardado nos temporários da sessão.
+
+---
+
 # 19/09/2026 (M1) — só escuro e só retrato, para sempre (`e79cec8`, `0da8e33`)
 
 Decisão do autor: "O app não terá tela deitada e nem modo claro nunca".
