@@ -246,14 +246,23 @@ export default function CategoryPickerModal({
                       >
                         <Ionicons name="pencil-outline" size={15} color={theme.inkFaint} />
                       </AppPressable>
-                      <AppPressable
-                        onPress={() => confirmDelete(item)}
-                        hitSlop={8}
-                        style={styles.rowActionBtn}
-                        accessibilityLabel={`Excluir categoria ${item.name}`}
-                      >
-                        <Ionicons name="trash-outline" size={15} color={theme.inkFaint} />
-                      </AppPressable>
+                      {/* Categoria padrão não tem lixeira. `seedDefaultCategories`
+                          roda a cada abertura deste gerenciador e recria as
+                          padrão que faltam, então excluir uma era uma promessa
+                          falsa: ela voltava na próxima vez. O que não voltava
+                          era o orçamento dela, que `excluir_categoria` apaga
+                          de vez. "Outros" ainda é o destino de toda categoria
+                          excluída. Achado G10, 18/09/2026. */}
+                      {!item.isDefault && (
+                        <AppPressable
+                          onPress={() => confirmDelete(item)}
+                          hitSlop={8}
+                          style={styles.rowActionBtn}
+                          accessibilityLabel={`Excluir categoria ${item.name}`}
+                        >
+                          <Ionicons name="trash-outline" size={15} color={theme.inkFaint} />
+                        </AppPressable>
+                      )}
                     </View>
                   </View>
 

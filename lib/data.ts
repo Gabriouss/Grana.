@@ -783,13 +783,11 @@ async function buscar_fetchCategories(): Promise<Category[]> {
   });
 }
 
-/**
- * Semeia as 8 categorias padrão como linhas do usuário, uma única vez por
- * conta. A marca de "já semeado" fica em user_metadata (não em contar linhas
- * `is_default`), porque o usuário pode legitimamente excluir as 8 depois —
- * contar linhas faria elas reaparecerem sozinhas toda vez que a lista
- * ficasse vazia.
- */
+/* O comentário que morava aqui (17/08/2026) dizia que a semeadura rodava uma
+   vez só por conta e que a pessoa podia excluir as padrão para sempre. Deixou
+   de ser verdade no mesmo dia, quando o corte por `categorias_semeadas` saiu
+   (comentário abaixo). Desde então as padrão SEMPRE voltam, e por isso o
+   gerenciador não oferece mais excluí-las (CategoryPickerModal, 19/09/2026). */
 /**
  * Roda sempre, mesmo para quem já tinha sido semeado antes — sem o antigo
  * corte por `categorias_semeadas`, uma categoria padrão nova adicionada a

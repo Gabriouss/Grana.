@@ -135,5 +135,20 @@ checar('bot: valor ,99 não rouba pra Transporte', bot.matchCategoryByKeyword('E
 checar('bot: "99" solto ainda é Transporte', bot.matchCategoryByKeyword('chamei um 99', EXTRAS_E)?.name ?? null, 'Transporte');
 checar('bot: sem acento acha a acentuada', bot.matchCategoryByKeyword('energetico 5,99', EXTRAS_E)?.name ?? null, ENERGETICO.name);
 
+/* ── Categoria padrão não tem lixeira (G10, 18/09/2026) ─────────────────
+   `seedDefaultCategories` roda a cada abertura do gerenciador e recria as
+   padrão, então excluir uma não durava; o orçamento dela, apagado por
+   `excluir_categoria`, não voltava. Checagem do fonte: o modal é componente. */
+{
+  const { readFileSync } = require('fs') as typeof import('fs');
+  const modal = readFileSync(path.join(__dirname, '..', 'components', 'CategoryPickerModal.tsx'), 'utf8');
+  const lixeira = modal.indexOf('accessibilityLabel={`Excluir categoria ${item.name}`}');
+  const guarda = modal.lastIndexOf('{!item.isDefault && (', lixeira);
+  checar('a lixeira existe para categoria criada pela pessoa', lixeira > 0, true);
+  checar('a lixeira fica atrás de !item.isDefault', guarda > 0 && lixeira - guarda < 400, true);
+  const data = readFileSync(path.join(__dirname, '..', 'lib', 'data.ts'), 'utf8');
+  checar('a semeadura continua rodando sempre (a premissa da guarda)', data.includes("onConflict: 'user_id,name', ignoreDuplicates: true"), true);
+}
+
 console.log(`\n${total - falhas}/${total} checagens de categoria custom passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);
