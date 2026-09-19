@@ -47,7 +47,20 @@ export default function ScreenHeader({
             <View style={styles.texts}>
               <View style={styles.eyebrowRow}>
                 <Text style={styles.eyebrow}>{eyebrow}</Text>
-                {eyebrowBadges}
+                {/* Os selos moram num contêiner de altura zero, centrado na
+                    linha do texto: aparecem, mas não entram na conta da altura
+                    da linha. Antes, a pílula "oculto" (entrelinha própria mais
+                    borda e enchimento) era mais alta que o eyebrow, e ligar o
+                    olho empurrava o cabeçalho inteiro para baixo (achado G5).
+                    Sem medida copiada à mão: vale para qualquer selo e escala.
+                    A fileira de dentro é absoluta porque, filha direta de um
+                    contêiner de altura zero, o Android media o texto com altura
+                    zero e só a borda da pílula aparecia (visto no emulador). */}
+                {eyebrowBadges ? (
+                  <View style={styles.selos}>
+                    <View style={styles.selosLinha}>{eyebrowBadges}</View>
+                  </View>
+                ) : null}
               </View>
               {/* Duas linhas, não uma. Com o teto em 1, "Lançamentos" virava
                   "Lança..." assim que a direita do cabeçalho enchia — a palavra
@@ -94,6 +107,8 @@ const styles = StyleSheet.create({
   texts: { flexShrink: 1, minWidth: 0 },
 
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  selos: { height: 0, justifyContent: 'center', overflow: 'visible' },
+  selosLinha: { position: 'absolute', left: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
   right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 0 },
   eyebrow: {
     fontFamily: fonts.regular,
