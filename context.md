@@ -58,6 +58,39 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — widget "Contas do mês": atrasadas junto com as do mês (`a9e11f8`, `8c6d5b8`, `163c5ce`)
+
+Pedido do autor: "se a gente tem um boleto de agosto atrasado, esse boleto de
+agosto precisa aparecer junto com os boletos de setembro, e vai aparecer como
+atrasado mesmo". O widget mostrava UM compromisso, o de vencimento mais antigo,
+e um único atrasado o prendia. Detalhe na nota de sessão
+`2026-09-19 - M1 - Widget de contas do mes`.
+
+- **App:** `selecionarCompromissosDoMes` (`lib/widgets-home-snapshot.ts`) lista
+  os pendentes atrasados de qualquer mês e os pendentes do mês atual; sem
+  nenhum, o próximo vencimento. Snapshot com `commitments`/`commitmentsCount`;
+  `nextCommitment` continua para builds antigas.
+- **Nativo:** `ProximoCompromissoWidgetProvider.kt` desenha uma linha por conta
+  (`grana_compromisso_linha.xml`), atrasada em vermelho e escrita "atrasado",
+  "+N contas" no rodapé; conta as linhas pela altura de RETRATO (a mínima é a
+  de paisagem: a primeira versão desenhava duas onde cabiam quatro).
+  Redimensionável na vertical. Nome: "Grana. — Contas do mês".
+- **Verificado:** `corpus-widgets-home.ts` 62/62; Kotlin e APK de debug
+  compilados LOCALMENTE (`expo prebuild` + `gradle`, sem cota do EAS); no
+  emulador, o widget mostrou agosto e 10/09 como atrasados e 28/09 a vencer.
+  Boletos de teste apagados depois.
+- **Só chega ao celular com build nova** (código nativo); build depende de
+  pedido do autor.
+- **`.easignore`** passou a excluir `/android`, `/ios` e saídas de build dos
+  módulos: a compilação local deixou `E:\GranaPonto\android` vazia e presa por
+  um processo. Conferir que sumiu antes da próxima build.
+- **Temporários no HD 2:** outra sessão aberta no mesmo projeto apagou a pasta
+  temporária desta. A pedido do autor, os temporários da sessão ficam em
+  `E:\Grana-temporarios\2026-09-19-M1\` (fora do repositório, sem credencial,
+  com README). As cópias de retorno da produção foram reconstruídas do git.
+
+---
+
 # 19/09/2026 (M1) — segunda leva de correções, todas vistas no emulador (`abaa671` a `489cafd`)
 
 Pedido: "aplique e continue para as próximas correções". Cada achado foi
