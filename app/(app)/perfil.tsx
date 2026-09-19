@@ -8,7 +8,6 @@ import { Image } from 'expo-image';
 import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
-import * as Clipboard from 'expo-clipboard';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -72,16 +71,10 @@ import FeedbackModal from '@/components/FeedbackModal';
 import Toast from '@/components/Toast';
 import { sincronizarPushHabito } from '@/lib/push-notifications';
 
-/* Endereços que app/(app)/_layout.tsx sabe rotear — ver lib/deep-links.ts.
-   O `add-tx` vem com valor e descrição de exemplo já preenchidos: quem cola
-   isso num atalho quase sempre quer trocar os dois, e ver o formato completo
-   ensina mais do que uma URL nua. */
-const ATALHOS = [
-  { titulo: 'Novo gasto pré-preenchido', url: 'grana://add-tx?amount=50,00&desc=Almoco&type=out&category=Alimentação' },
-  { titulo: 'Nova entrada', url: 'grana://add-tx?type=in' },
-  { titulo: 'Escanear nota fiscal', url: 'grana://scan-qr' },
-  { titulo: 'Ver quanto tenho livre', url: 'grana://safe-to-spend' },
-];
+/* O guia "Atalhos rápidos", que ensinava a colar endereços `grana://` num app
+   de atalhos, saiu do Perfil em 19/09/2026 por decisão do autor: "Os atalhos
+   grana:// não servem para os usuários". Os endereços continuam funcionando
+   (lib/deep-links.ts), porque widgets e notificações abrem o app por eles. */
 
 const WIDGETS_HOME: Array<{
   tipo: TipoWidget;
@@ -139,7 +132,6 @@ export default function PerfilScreen() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
-  const [atalhosOpen, setAtalhosOpen] = useState(false);
   /* Quantas cópias do widget de voz estão na tela inicial. Relido a cada foco
      porque a pessoa pode ter adicionado (ou removido) fora do app. */
   const [widgetsInstalados, setWidgetsInstalados] = useState<Record<TipoWidget, number>>(
@@ -147,9 +139,8 @@ export default function PerfilScreen() {
   );
   const nomeModalRef = useRef<View>(null);
   const reauthModalRef = useRef<View>(null);
-  const atalhosModalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
-  /* Os quatro modais que compartilham `reauthScrim` centralizam um card sem
+  /* Os modais que compartilham `reauthScrim` centralizam um card sem
      rolagem, e dois deles abrem com `autoFocus` num campo de texto — em tela
      curta o teclado cobria o botão de confirmar, inclusive o "Excluir
      definitivamente", sem como rolar até ele. Reduzir a altura útil do scrim
@@ -160,7 +151,6 @@ export default function PerfilScreen() {
   const alturaTecladoModais = useKeyboardHeight();
   useModalAccessibility(nomeModalRef, nomeOpen, () => setNomeOpen(false));
   useModalAccessibility(reauthModalRef, reauthOpen, () => setReauthOpen(false));
-  useModalAccessibility(atalhosModalRef, atalhosOpen, () => setAtalhosOpen(false));
 
 
   function triggerToast(msg: string) {
@@ -586,10 +576,6 @@ export default function PerfilScreen() {
             </Text>
             <Text style={styles.rowValue}>{ligado('lembretes') ? 'Ativados' : 'Instável'}</Text>
           </View>
-          <AppPressable style={styles.tappableRow} onPress={() => setAtalhosOpen(true)}>
-            <Text style={styles.rowKey}>Atalhos rápidos</Text>
-            <Text style={styles.rowValue}>Configurar &gt;</Text>
-          </AppPressable>
           <AppPressable style={[styles.tappableRow, { borderBottomWidth: 0 }]} onPress={() => setFeedbackOpen(true)}>
             <Text style={styles.rowKey}>Enviar feedback ou sugestão</Text>
             <Text style={styles.rowValue}>Abrir &gt;</Text>
@@ -968,53 +954,6 @@ export default function PerfilScreen() {
         </ScrollView>
       </AppModal>
 
-      {/* Guia de atalhos rápidos (deep links) */}
-      <AppModal visible={atalhosOpen} animationType={reduzirMovimento ? 'none' : 'fade'} transparent onRequestClose={() => setAtalhosOpen(false)}>
-        <ScrollView
-          style={styles.reauthScrimFundo}
-          contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View ref={atalhosModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
-            <Text style={styles.reauthTitle}>Atalhos rápidos</Text>
-            <Text style={styles.reauthText}>
-              O Grana. responde a endereços {'grana://'} — dá para abrir uma ação direto da tela de
-              início do celular, sem passar pelo app.
-            </Text>
-
-            {ATALHOS.map((a) => (
-              <AppPressable
-                key={a.url}
-                style={styles.atalhoLinha}
-                onPress={() => {
-                  Clipboard.setStringAsync(a.url);
-                  triggerToast('Endereço copiado');
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.atalhoTitulo}>{a.titulo}</Text>
-                  <Text style={styles.atalhoUrl} numberOfLines={1}>{a.url}</Text>
-                </View>
-                <Ionicons name="copy-outline" size={16} color={theme.inkFaint} />
-              </AppPressable>
-            ))}
-
-            <Text style={styles.reauthText}>
-              {Platform.OS === 'ios'
-                ? 'No iPhone: app Atalhos → + → Adicionar ação → "Abrir URL" → cole o endereço → Adicionar à Tela de Início. Dá para disparar por automação também (ex: ao aproximar do Apple Pay).'
-                : 'No Android: qualquer app de atalhos que abra URLs (ou o próprio navegador) consegue disparar esses endereços. Cole em um atalho na tela inicial.'}
-            </Text>
-
-            <AppPressable
-              style={({ hovered }) => [styles.reauthCancel, hovered && { opacity: 0.88 }]}
-              onPress={() => setAtalhosOpen(false)}
-            >
-              <Text style={styles.reauthCancelText}>Fechar</Text>
-            </AppPressable>
-          </View>
-        </ScrollView>
-      </AppModal>
-
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
     </SafeAreaView>
   );
@@ -1047,8 +986,7 @@ const styles = StyleSheet.create({
      View centralizada estoura para os dois lados: "Excluir definitivamente"
      sai por baixo e não existe gesto que o traga de volta. Com `flexGrow` no
      conteúdo de um ScrollView vale o comportamento dos dois mundos:
-     centralizado quando cabe, rolável quando não cabe. O guia de atalhos, que
-     é uma lista longa, ganha o mesmo pelo mesmo motivo. */
+     centralizado quando cabe, rolável quando não cabe. */
   reauthScrimFundo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
   reauthScrim: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   reauthCard: { width: '100%', maxWidth: 400, backgroundColor: theme.paperRaised, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, borderWidth: 1, borderColor: theme.rule },
@@ -1063,21 +1001,6 @@ const styles = StyleSheet.create({
   reauthCancel: { paddingVertical: spacing.md, alignItems: 'center' },
   reauthCancelText: { color: theme.inkSoft, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.light },
-  atalhoLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: theme.paper,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-  },
-  atalhoTitulo: { color: theme.ink, fontSize: type.apoio,
-  lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
-  atalhoUrl: { color: theme.inkFaint, fontSize: type.legenda,
-  lineHeight: lh(type.legenda, 'apoio'), marginTop: spacing.fio, fontFamily: fonts.light },
   container: { flex: 1, backgroundColor: theme.paper },
   /* paddingBottom vem do useTabBarInset() no JSX — depende da barra flutuante. */
   /* Era 20/16 — um degrau acima das outras seis telas, que usam 16/12. O
