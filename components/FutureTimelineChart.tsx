@@ -83,8 +83,11 @@ function FutureTimelineChart({ meses }: { meses: MesProjetado[] }) {
       </View>
 
       <PrivacyValue>
+        {/* Espaço inseparável entre "R$" e o valor: a frase quebra em duas
+            linhas em tela estreita, e a quebra caía justamente ali, deixando
+            "R$" sozinho no fim de uma linha e o número na outra (achado W4). */}
         <Text style={styles.totalText}>
-          {`Total comprometido nos próximos ${meses.length} meses: R$ ${formatMoney(meses.reduce((s, m) => s + m.total, 0))}`}
+          {`Total comprometido nos próximos ${meses.length} meses: R$ ${formatMoney(meses.reduce((s, m) => s + m.total, 0))}`}
         </Text>
       </PrivacyValue>
     </Animated.View>
