@@ -854,3 +854,146 @@ uma nova geração, mantendo o conceito original.
 ```
 
 ## Referências oficiais das ferramentas
+
+## 18. Atualização visual — direção flat, marca oficial e produto real
+
+Esta seção é a atualização vigente da campanha e tem precedência sobre qualquer
+prompt anterior que peça fotografia, still life ou interface inventada como
+linguagem principal.
+
+### Referência visual
+
+- Usar a página oficial de vendas do Grana. como referência visual primária:
+  https://granaponto.com.br
+- Usar as referências enviadas pelo autor para orientar fundos flat, formas
+  geométricas grandes, diagramas simples, cartões conectados por linhas,
+  símbolos específicos e mockups integrados.
+- Adaptar tudo ao Grana.; não copiar logos, textos, personagens, layouts ou
+  elementos proprietários de outras marcas.
+
+### Direção obrigatória
+
+- Preferir composição flat/editorial, formas, símbolos e tipografia.
+- Fotografia não é o elemento principal; evitar lifestyle genérico e stock.
+- Usar símbolos próprios do Grana.: linha de fluxo com nós, círculo aberto para
+  Livre para Gastar, ondas de voz, cartão de Pix/QR, check, cadeado, setas e
+  cartões arredondados conectados.
+- Aplicar o logo oficial como asset real, nunca pedir à IA para desenhá-lo.
+- Exibir telas reais do Grana. em mockups de celular, tablet, navegador ou
+  cartões de interface.
+- A IA pode gerar fundo, formas e composição, mas não pode inventar UI,
+  textos, preços, números, QR Codes ou logotipo.
+- Manter muito respiro, grid preciso, contraste controlado e um único ponto
+  focal por peça.
+
+### Design system
+
+Usar somente os tokens oficiais:
+
+- #052229 — fundo principal/paper
+- #0B2D35 — superfície elevada
+- #EFFFFA — texto principal/ink
+- #A6D9CE — texto secundário/soft
+- #AEFFE3 — destaque mint
+- #1FA98D — ação/teal
+- #00A6CA — dados/ciano
+- #E08A7D — alerta/perigo, somente quando houver alerta real
+- Gradiente do símbolo oficial, quando aplicável: #B0F7C9 → #22A1C1
+- Tipografia: Neue Machina
+
+Não importar amarelo ou qualquer outra cor das referências externas sem
+aprovação e sem inclusão no design system. Não usar glow, glassmorphism,
+sombras pesadas, efeitos 3D ou gradientes decorativos.
+
+### Assets oficiais
+
+- Logotipos e símbolos oficiais:
+  design-system/marca/logotipo-*.svg,
+  design-system/marca/simbolo-*.svg e
+  design-system/marca/icone-*.svg.
+- Mockups de produto:
+  design-system/marketing-mockups/celular-vazio.png e
+  design-system/marketing-mockups/notebook-vazio.png.
+- Capturas reais para inserção:
+  dist/telas/inicio-mobile.png,
+  dist/telas/lancamentos-mobile.png,
+  dist/telas/contas-mobile.png,
+  dist/telas/credito-mobile.png,
+  dist/telas/desafios-mobile.png e
+  dist/telas/inicio-web.png.
+
+O logotipo e as capturas devem ser inseridos como assets reais na composição
+final. Nunca confiar na reprodução de marca ou de interface feita pela IA.
+
+### Prompt-base atualizado para estáticos e vídeos
+
+Adicionar este bloco ao final de cada prompt da biblioteca. Ele substitui a
+direção fotográfica anterior:
+
+~~~text
+Senior flat editorial art direction for Grana., following the official Grana.
+design system. Use #052229, #0B2D35, #EFFFFA, #A6D9CE, #AEFFE3, #1FA98D,
+#00A6CA and #E08A7D only for a real alert. Use Neue Machina when typography
+is applied manually.
+
+Build the visual with flat geometric shapes: cropped circles and arcs, rounded
+cards, thin route lines, nodes, arrows, check marks, voice waves, Pix/QR symbols
+and the open-circle symbol for Livre para Gastar. Keep a precise grid, generous
+negative space and one clear focal point. No main photography, no stock-photo
+people, no lifestyle props, no colors outside the official palette, no heavy
+gradients, no glassmorphism, no glow and no 3D effects.
+
+Reserve a clean proportional area for a real Grana. screenshot inside a flat
+phone, tablet, browser or rounded-card mockup. The screenshot and the official
+Grana. logo will be applied manually from approved assets. Never generate or
+redraw the logo. Never generate readable UI, prices, numbers, QR codes or
+financial dashboards. Output only the visual base, without watermark.
+~~~
+
+Para vídeos, pedir apenas motion graphics flat ou clipes simples de 3 a 5
+segundos. A gravação real da tela e o logo oficial entram na montagem final.
+A IA não deve animar ou redesenhar a interface do produto.
+
+### Regra para os prompts de estáticos S1–S8
+
+Os prompts individuais anteriores continuam válidos apenas para o conceito e a
+copy de cada peça. A estética fotográfica descrita neles deve ser substituída
+pelo prompt-base acima. Para cada estático:
+
+1. gerar fundo flat em 1080x1440 para feed ou 1080x1920 para Story;
+2. reservar a área proporcional para a tela real indicada;
+3. inserir o mockup real e a captura real na edição;
+4. aplicar logo, tipografia, preço e CTA manualmente;
+5. revisar pelo checklist antes de exportar.
+
+### Nova rodada dos estáticos das duas primeiras semanas
+
+Regenerar S1, S2, S3 e S4 nesta direção:
+
+- S1 — “Controle sem parar sua vida.”  
+  Arco mint, linha de fluxo com nós e mockup com
+  dist/telas/inicio-mobile.png.
+- S2 — “Três jeitos de lançar um gasto.”  
+  Três cartões conectados com símbolos de voz, Pix/QR e lançamento, usando
+  dist/telas/lancamentos-mobile.png.
+- S3 — “Livre para Gastar: o número que importa hoje.”  
+  Círculo aberto/medidor e mockup com dist/telas/inicio-mobile.png.
+- S4 — “Do gasto lançado ao mês mais claro.”  
+  Fluxo flat em quatro etapas — lançar, organizar, compromissos e decidir —
+  com dist/telas/contas-mobile.png ou dist/telas/inicio-web.png.
+
+Criar também uma adaptação própria de cada peça para Story em 1080x1920.
+Não esticar nem cortar automaticamente o feed. Toda versão deve manter o
+logo oficial, os tokens do design system e a tela real correspondente.
+
+### Checklist de aprovação visual
+
+- Logo oficial, íntegro e com contraste correto.
+- Paleta, Neue Machina, grid e espaçamento dentro do design system.
+- Fundo flat com símbolos proprietários do Grana.
+- Tela real do produto, legível e relacionada à promessa da peça.
+- Nenhum texto, preço, número, QR Code ou interface inventado pela IA.
+- Feed em 1080x1440 px; Story em 1080x1920 px.
+- Leitura clara em uma visualização rápida no celular.
+- Nenhuma marca, cor ou solução visual foi copiada de concorrente.
+
