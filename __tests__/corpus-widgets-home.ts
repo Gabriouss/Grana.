@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { acaoInicialPendente, acaoParaParams, parseDeepLink } from '../lib/deep-links';
 import { redirectSystemPath } from '../app/+native-intent';
-import { montarSnapshotWidgets, selecionarCofrinho, selecionarProximoCompromisso } from '../lib/widgets-home-snapshot';
+import { LIMITE_COMPROMISSOS, montarSnapshotWidgets, selecionarCofrinho, selecionarCompromissosDoMes, selecionarProximoCompromisso } from '../lib/widgets-home-snapshot';
 import type { Bill, Goal, Transaction } from '../lib/types';
 
 const hoje = new Date(2026, 8, 4, 12, 0, 0);
@@ -59,6 +59,48 @@ const proximo = selecionarProximoCompromisso([
 conferir('escolhe o vencimento pendente mais antigo', proximo?.id === 'atrasado', proximo);
 conferir('marca compromisso atrasado', proximo?.overdue === true, proximo);
 conferir('ignora boletos pagos', selecionarProximoCompromisso([bill({ id: 'pago', due_date: '2026-09-01', status: 'paid' })], hoje) === null);
+
+/* O pedido do autor em 19/09/2026: "se a gente tem um boleto de agosto
+   atrasado, esse boleto de agosto precisa aparecer junto com os boletos de
+   setembro, e vai aparecer como atrasado mesmo". Antes, um único atrasado
+   prendia o widget nele e as contas do mês nunca apareciam. */
+{
+  const dia19 = new Date(2026, 8, 19, 12, 0, 0);
+  const lista = selecionarCompromissosDoMes([
+    bill({ id: 'outubro', due_date: '2026-10-05' }),
+    bill({ id: 'setembro-25', due_date: '2026-09-25' }),
+    bill({ id: 'agosto-atrasado', due_date: '2026-08-15' }),
+    bill({ id: 'setembro-10', due_date: '2026-09-10' }),
+    bill({ id: 'setembro-pago', due_date: '2026-09-05', status: 'paid' }),
+    bill({ id: 'setembro-19', due_date: '2026-09-19' }),
+  ], dia19);
+  conferir('agosto atrasado aparece junto com as de setembro, em ordem de vencimento',
+    lista.itens.map((c) => c.id).join(',') === 'agosto-atrasado,setembro-10,setembro-19,setembro-25', lista.itens.map((c) => c.id));
+  conferir('agosto e o dia 10 de setembro saem como atrasados',
+    lista.itens.filter((c) => c.overdue).map((c) => c.id).join(',') === 'agosto-atrasado,setembro-10', lista.itens);
+  conferir('o que vence hoje ainda não é atrasado', lista.itens.find((c) => c.id === 'setembro-19')?.overdue === false);
+  conferir('outubro fica fora da lista de setembro', !lista.itens.some((c) => c.id === 'outubro'));
+  conferir('boleto pago fica fora', !lista.itens.some((c) => c.id === 'setembro-pago'));
+  conferir('o total bate com a lista', lista.total === 4, lista.total);
+
+  const soOutubro = selecionarCompromissosDoMes([bill({ id: 'outubro', due_date: '2026-10-02' })], dia19);
+  conferir('sem nada no mês nem atrasado, mostra o próximo vencimento',
+    soOutubro.itens.length === 1 && soOutubro.itens[0].id === 'outubro' && soOutubro.total === 1, soOutubro);
+  conferir('sem nenhum boleto pendente, lista vazia', selecionarCompromissosDoMes([], dia19).total === 0);
+
+  const muitos = selecionarCompromissosDoMes(
+    Array.from({ length: 20 }, (_, i) => bill({ id: `b${String(i).padStart(2, '0')}`, due_date: `2026-09-${String(i + 1).padStart(2, '0')}` })),
+    dia19,
+  );
+  conferir('a lista respeita o teto, e o total conta todas', muitos.itens.length === LIMITE_COMPROMISSOS && muitos.total === 20, muitos.total);
+
+  const snap = montarSnapshotWidgets({
+    userId: 'u1', transactions: [], goals: [], privacyHidden: false, hoje: dia19,
+    bills: [bill({ id: 'agosto-atrasado', due_date: '2026-08-15' }), bill({ id: 'setembro-25', due_date: '2026-09-25' })],
+  });
+  conferir('o snapshot leva a lista e o total', snap.commitments.length === 2 && snap.commitmentsCount === 2, snap.commitments);
+  conferir('nextCommitment segue sendo o primeiro, para o widget de builds antigas', snap.nextCommitment?.id === snap.commitments[0]?.id);
+}
 
 const cofrinho = selecionarCofrinho([
   goal({ id: 'concluido', current_amount: 100, target_amount: 100 }),
@@ -146,6 +188,24 @@ conferir('rejeita depósito sem id', parseDeepLink('com.gabriouss.grana://deposi
   conferir('rota raiz não vira ação', acaoInicialPendente('com.gabriouss.grana:///') === null);
   conferir('link de autenticação não vira ação', acaoInicialPendente('com.gabriouss.grana://#access_token=abc') === null);
   conferir('sem URL, nada a fazer', acaoInicialPendente(null) === null);
+}
+
+/* O widget de contas desenha a LISTA (19/09/2026), e o armazenamento aceita o
+   snapshot antigo, que só tinha `nextCommitment`. Checagem do fonte Kotlin: o
+   comportamento nativo só é visto num APK. */
+{
+  const pasta = join(__dirname, '..', 'modules', 'grana-voice-widget', 'android', 'src', 'main');
+  const provider = readFileSync(join(pasta, 'java', 'com', 'gabriouss', 'grana', 'voicewidget', 'ProximoCompromissoWidgetProvider.kt'), 'utf8');
+  const store = readFileSync(join(pasta, 'java', 'com', 'gabriouss', 'grana', 'voicewidget', 'WidgetSnapshotStore.kt'), 'utf8');
+  const layout = readFileSync(join(pasta, 'res', 'layout', 'grana_compromisso_widget.xml'), 'utf8');
+  conferir('o provider lê a lista de contas', /snapshot\?\.commitments\.orEmpty\(\)/.test(provider));
+  conferir('o provider desenha uma linha por conta', /views\.addView\(R\.id\.grana_compromisso_lista, linha\(/.test(provider));
+  conferir('o provider limpa a linha de prévia antes de desenhar', /views\.removeAllViews\(R\.id\.grana_compromisso_lista\)/.test(provider));
+  conferir('o provider mostra quantas ficaram de fora', /snapshot\.commitmentsCount - visiveis\.size/.test(provider));
+  conferir('atrasada leva a palavra "atrasado", não só a cor', /grana_compromisso_linha_atrasado/.test(provider));
+  conferir('o store lê a lista', /optJSONArray\("commitments"\)/.test(store));
+  conferir('o store aceita o snapshot antigo', /\?: listOfNotNull\(compromisso\)/.test(store));
+  conferir('o layout tem o contêiner da lista', /android:id="@\+id\/grana_compromisso_lista"/.test(layout));
 }
 
 if (falhas > 0) {

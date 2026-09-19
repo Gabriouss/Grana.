@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uma conta na lista do widget de contas do mês. Adicionada em tempo de
+     execução por ProximoCompromissoWidgetProvider (RemoteViews.addView), uma
+     por boleto, até onde a altura do widget comporta. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="5dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+  <LinearLayout
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:orientation="vertical">
+    <TextView
+        android:id="@+id/grana_compromisso_linha_descricao"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Conta de energia"
+        android:textColor="@color/grana_widget_texto"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end" />
+    <TextView
+        android:id="@+id/grana_compromisso_linha_data"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="vence 25/09"
+        android:textColor="@color/grana_widget_texto_suave"
+        android:textSize="9sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+  </LinearLayout>
+
+  <TextView
+      android:id="@+id/grana_compromisso_linha_valor"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="6dp"
+      android:text="R$ 120,00"
+      android:textColor="@color/grana_widget_texto"
+      android:textSize="12sp"
+      android:textStyle="bold"
+      android:maxLines="1" />
+</LinearLayout>

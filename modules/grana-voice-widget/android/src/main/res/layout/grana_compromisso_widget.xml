@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget de contas do mês: cabeçalho, a lista de contas (atrasadas de
+     qualquer mês e pendentes do mês atual) e o rodapé com "+N contas". Até
+     19/09/2026 mostrava UMA conta, a de vencimento mais antigo, e um único
+     boleto atrasado prendia o widget nele. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/grana_compromisso_raiz"
     android:layout_width="match_parent"
@@ -31,55 +35,41 @@
         android:maxLines="1" />
   </LinearLayout>
 
+  <!-- A lista. A linha de exemplo aqui dentro só aparece na prévia do
+       seletor de widgets: o provider limpa o contêiner antes de desenhar. -->
+  <LinearLayout
+      android:id="@+id/grana_compromisso_lista"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:orientation="vertical">
+    <include layout="@layout/grana_compromisso_linha" />
+  </LinearLayout>
+
   <TextView
-      android:id="@+id/grana_compromisso_descricao"
+      android:id="@+id/grana_compromisso_vazio"
       android:layout_width="match_parent"
       android:layout_height="0dp"
       android:layout_weight="1"
       android:layout_marginTop="6dp"
-      android:text="Conta de energia"
+      android:text="@string/grana_compromisso_nada"
       android:textColor="@color/grana_widget_texto"
-      android:textSize="17sp"
+      android:textSize="15sp"
       android:textStyle="bold"
-      android:maxLines="2"
-      android:ellipsize="end" />
+      android:maxLines="3"
+      android:ellipsize="end"
+      android:visibility="gone" />
 
   <LinearLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:gravity="center_vertical"
+      android:layout_marginTop="4dp"
       android:orientation="horizontal">
     <TextView
-        android:id="@+id/grana_compromisso_valor"
+        android:id="@+id/grana_compromisso_mais"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="R$ 120,00"
-        android:textColor="@color/grana_widget_texto"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:maxLines="1" />
-    <TextView
-        android:id="@+id/grana_compromisso_data"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="vence amanhã"
-        android:textColor="@color/grana_widget_texto_suave"
-        android:textSize="10sp"
-        android:maxLines="1" />
-  </LinearLayout>
-
-  <LinearLayout
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="5dp"
-      android:orientation="horizontal">
-    <TextView
-        android:id="@+id/grana_compromisso_recorrente"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="@string/grana_compromisso_recorrente"
         android:textColor="@color/grana_widget_menta"
         android:textSize="8sp"
         android:maxLines="1" />

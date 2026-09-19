@@ -42,6 +42,10 @@ data class SnapshotWidgets(
   val privacyHidden: Boolean,
   val safeToSpend: LivreWidget,
   val nextCommitment: CompromissoWidget?,
+  /** Atrasadas de qualquer mês e pendentes do mês atual, por vencimento. */
+  val commitments: List<CompromissoWidget>,
+  /** Quantas são ao todo; a lista vem limitada pelo app. */
+  val commitmentsCount: Int,
   val goal: CofrinhoWidget?,
 )
 
@@ -131,6 +135,15 @@ object WidgetSnapshotStore {
     return valor
   }
 
+  private fun compromissoDe(objeto: JSONObject) = CompromissoWidget(
+    id = objeto.getString("id"),
+    description = objeto.optString("description", "Conta"),
+    amount = numero(objeto, "amount"),
+    dueDate = objeto.getString("dueDate"),
+    overdue = objeto.optBoolean("overdue"),
+    recurring = objeto.optBoolean("recurring"),
+  )
+
   private fun interpretar(json: String): SnapshotWidgets? {
     return try {
       val raiz = JSONObject(json)
@@ -140,16 +153,13 @@ object WidgetSnapshotStore {
       if (userId.isBlank() || updatedAt.isBlank()) throw IllegalArgumentException("identity")
 
       val livre = raiz.getJSONObject("safeToSpend")
-      val compromisso = raiz.optJSONObject("nextCommitment")?.let {
-        CompromissoWidget(
-          id = it.getString("id"),
-          description = it.optString("description", "Conta"),
-          amount = numero(it, "amount"),
-          dueDate = it.getString("dueDate"),
-          overdue = it.optBoolean("overdue"),
-          recurring = it.optBoolean("recurring"),
-        )
-      }
+      val compromisso = raiz.optJSONObject("nextCommitment")?.let { compromissoDe(it) }
+      /* Snapshot gravado por uma versão do app anterior à lista só tem
+         `nextCommitment`: vira uma lista de um item, em vez de widget vazio. */
+      val lista = raiz.optJSONArray("commitments")?.let { arr ->
+        (0 until arr.length()).map { compromissoDe(arr.getJSONObject(it)) }
+      } ?: listOfNotNull(compromisso)
+      val totalDaLista = raiz.optInt("commitmentsCount", lista.size).coerceAtLeast(lista.size)
       val cofrinho = raiz.optJSONObject("goal")?.let {
         CofrinhoWidget(
           id = it.getString("id"),
@@ -172,6 +182,8 @@ object WidgetSnapshotStore {
           semSaldo = livre.optBoolean("semSaldo"),
         ),
         nextCommitment = compromisso,
+        commitments = lista,
+        commitmentsCount = totalDaLista,
         goal = cofrinho,
       )
     } catch (_: Exception) {

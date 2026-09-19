@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Redimensionável também na vertical desde 19/09/2026: o widget passou a
+     listar as contas do mês, e mais altura mostra mais contas. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="110dp"
     android:minHeight="110dp"
     android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
     android:targetCellWidth="2"
     android:targetCellHeight="2"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/grana_compromisso_widget"
     android:previewLayout="@layout/grana_compromisso_widget"
     android:description="@string/grana_compromisso_widget_descricao"
-    android:resizeMode="horizontal"
+    android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />
