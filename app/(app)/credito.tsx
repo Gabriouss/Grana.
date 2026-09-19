@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import AppModal from '@/components/AppModal';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
+import { isLikelyNetworkError } from '@/lib/cache-de-tela';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -92,6 +93,8 @@ export default function CreditoScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  /* Separa "não tem cartão" de "não consegui saber". Ver o `catch` de loadData. */
+  const [erroCarga, setErroCarga] = useState<string | null>(null);
   const [cards, setCards] = useState<CreditCard[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | 'all'>('all');
@@ -212,10 +215,17 @@ export default function CreditoScreen() {
          incompleta sempre que a tela estivesse navegada pra outro mês/
          fatura. Os dois pares se sobrepõem no caso comum (navegando perto
          de hoje) — dedup por id abaixo. */
-      const [c, recurrenceContext, mesNavegado, mesAnteriorAoNavegado, mesAtualTx, mesAnteriorTx, p] =
+      /* `fetchRecurrenceContext` NÃO entra aqui, e isso não é descuido. Ela é
+         a única destas buscas sem cache offline (o acerto de recorrências
+         ESCREVE, então servir contexto velho a ela criaria lançamento em cima
+         de dado desatualizado). Até 19/09/2026 ela morava neste Promise.all:
+         sem rede, ela rejeitava, levava as outras seis junto, e o `catch` vazio
+         deixava `cards` em `[]`. A tela afirmava "Nenhum cartão cadastrado" a
+         quem tinha cartão com fatura de R$ 300. Em rede pendurada, ela ainda
+         segurava a tela inteira no carregamento até o tempo do sistema. */
+      const [c, mesNavegado, mesAnteriorAoNavegado, mesAtualTx, mesAnteriorTx, p] =
         await Promise.all([
           fetchCreditCards(),
-          fetchRecurrenceContext(),
           fetchCreditTransactionsForMonth(viewYear, viewMonth),
           fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
           fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
@@ -225,25 +235,41 @@ export default function CreditoScreen() {
 
       const dedup = (txs: Transaction[]) => Array.from(new Map(txs.map((t) => [t.id, t])).values());
 
-      /* Assinaturas no cartão ("repete a cada mês") só entram na fatura do mês
-         novo se alguém criar a ocorrência — é aqui que isso acontece, tanto
-         pras compras no crédito quanto pras saídas da carteira. */
       let selectedTransactions = dedup([...mesNavegado, ...mesAnteriorAoNavegado, ...mesAtualTx, ...mesAnteriorTx]);
-      const faltantes = ocorrenciasFaltantes(recurrenceContext, todayISO());
-      if (faltantes.length > 0) {
-        await criarOcorrenciasRecorrentes(faltantes);
-        const [a, b, d1, d2] = await Promise.all([
-          fetchCreditTransactionsForMonth(viewYear, viewMonth),
-          fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
-          fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
-          fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
-        ]);
-        selectedTransactions = dedup([...a, ...b, ...d1, ...d2]);
-      }
-
       setCards(c);
       setTransactions(selectedTransactions);
       setInvoicePayments(p);
+      setErroCarga(null);
+      /* O que a pessoa veio ver já está na tela. Daqui para baixo é trabalho
+         de fundo, e ele não pode prender o indicador de carregamento. */
+      setLoading(false);
+
+      /* Assinaturas no cartão ("repete a cada mês") só entram na fatura do mês
+         novo se alguém criar a ocorrência — é aqui que isso acontece, tanto
+         pras compras no crédito quanto pras saídas da carteira.
+
+         Sem rede, o acerto fica para a próxima abertura com rede: nada se
+         perde, porque `ocorrenciasFaltantes` olha a série inteira de novo. Erro
+         que NÃO é de rede fica no log e também não apaga a tela: a fatura
+         mostrada continua certa, só sem a ocorrência que faltava criar. */
+      try {
+        const faltantes = ocorrenciasFaltantes(await fetchRecurrenceContext(), todayISO());
+        if (faltantes.length > 0) {
+          await criarOcorrenciasRecorrentes(faltantes);
+          const [a, b, d1, d2] = await Promise.all([
+            fetchCreditTransactionsForMonth(viewYear, viewMonth),
+            fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
+            fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
+            fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
+          ]);
+          selectedTransactions = dedup([...a, ...b, ...d1, ...d2]);
+          setTransactions(selectedTransactions);
+        }
+      } catch (erro) {
+        if (!isLikelyNetworkError(erro)) {
+          console.error('[credito] acerto de recorrências falhou', erro);
+        }
+      }
 
       /* Lembretes de vencimento da fatura EM ABERTO agora, cartão por
          cartão — não do mês navegado na tela, e não mais do mês civil
@@ -259,8 +285,17 @@ export default function CreditoScreen() {
           cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {});
         }
       }
-    } catch {
-      // Falha graciosa
+    } catch (erro) {
+      /* As buscas acima têm cache offline, então chegar aqui quer dizer falha
+         permanente, ou falta de rede sem nada guardado no aparelho. Nos dois
+         casos a tela não sabe quais cartões existem, e dizer "Nenhum cartão
+         cadastrado" seria afirmar uma coisa falsa sobre o dinheiro da pessoa. */
+      console.error('[credito] não consegui carregar os cartões', erro);
+      setErroCarga(
+        isLikelyNetworkError(erro)
+          ? 'Sem conexão, e ainda não há cartões salvos neste aparelho.'
+          : 'Não consegui carregar seus cartões agora.'
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -1194,6 +1229,23 @@ export default function CreditoScreen() {
               );
             }}
           />
+        ) : erroCarga ? (
+          <View style={styles.emptyCardsCard} accessibilityRole="alert">
+            <Ionicons name="cloud-offline-outline" size={32} color={theme.inkFaint} />
+            <Text style={styles.emptyCardsTitle}>{erroCarga}</Text>
+            <Text style={styles.emptyCardsSub}>
+              Nada foi apagado. Seus cartões continuam salvos na sua conta.
+            </Text>
+            <AppPressable
+              style={styles.emptyCardActionBtn}
+              onPress={() => {
+                setRefreshing(true);
+                loadData();
+              }}
+            >
+              <Text style={styles.emptyCardActionText}>Tentar de novo</Text>
+            </AppPressable>
+          </View>
         ) : (
           <View style={styles.emptyCardsCard}>
             <Ionicons name="card-outline" size={32} color={theme.inkFaint} />

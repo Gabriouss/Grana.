@@ -289,5 +289,32 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
   checar('e avisa quando o número é de outra fatura', resumo.includes('outraFatura'), true);
 }
 
+/* ── Sem rede, a tela não afirma "Nenhum cartão cadastrado" (W1) ──────────
+ *
+ * Visto no emulador em 18/09/2026, modo avião: a conta tinha um cartão com
+ * fatura de R$ 300,00 e a tela dizia "Nenhum cartão cadastrado", "Total em
+ * Faturas R$ 0,00". `fetchRecurrenceContext` era a única das sete buscas do
+ * `Promise.all` sem cache offline; rejeitava, levava as outras junto, e o
+ * `catch` vazio deixava `cards` em `[]`.
+ *
+ * Checagem do fonte, e não execução: `loadData` vive dentro de um componente
+ * com hooks. O que ela prende são as três pernas do defeito. */
+{
+  const telaW1 = readFileSync(join(__dirname, '..', 'app', '(app)', 'credito.tsx'), 'utf8');
+  const loadData = telaW1.slice(telaW1.indexOf('const loadData = useCallback'), telaW1.indexOf('useRecarregarAoChegarDadoNovo(() =>'));
+  checar('achou o loadData do Crédito', loadData.length > 500, true);
+
+  const primeiroPromiseAll = loadData.slice(loadData.indexOf('await Promise.all(['), loadData.indexOf(']);', loadData.indexOf('await Promise.all([')));
+  checar('a busca sem cache não trava as buscas com cache', primeiroPromiseAll.includes('fetchRecurrenceContext'), false);
+  checar('a busca sem cache continua existindo, em separado', /ocorrenciasFaltantes\(await fetchRecurrenceContext\(\), todayISO\(\)\)/.test(loadData), true);
+  checar('os cartões chegam à tela antes do acerto de recorrências',
+    loadData.indexOf('setCards(c)') < loadData.indexOf('fetchRecurrenceContext()'), true);
+
+  checar('o catch do loadData não é mais vazio', /\}\s*catch\s*\{\s*\/\/ Falha graciosa/.test(loadData), false);
+  checar('falha na carga vira estado de erro', /catch \(erro\) \{[\s\S]*?setErroCarga\(/.test(loadData), true);
+  checar('o erro de carga vem ANTES do "Nenhum cartão cadastrado"',
+    telaW1.indexOf(') : erroCarga ? (') > 0 && telaW1.indexOf(') : erroCarga ? (') < telaW1.indexOf('>Nenhum cartão cadastrado</Text>'), true);
+}
+
 console.log(`\n${total - falhas}/${total} checagens da lista de faturas passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);
