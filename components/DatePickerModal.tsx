@@ -230,7 +230,10 @@ export default function DatePickerModal({
               { rotulo: 'Hoje', a11y: 'Escolher hoje', iso: isoDaDataOffset(0), escolher: () => handleQuickDate(0) },
               { rotulo: 'Ontem', a11y: 'Escolher ontem', iso: isoDaDataOffset(-1), escolher: () => handleQuickDate(-1) },
               {
-                rotulo: 'Dia 1º deste mês',
+                /* "Dia 1º", curto, a pedido do autor (19/09/2026). O "deste
+                   mês" continua no rótulo de acessibilidade, que o leitor de
+                   tela anuncia; na tela, o mês já está no cabeçalho. */
+                rotulo: 'Dia 1º',
                 a11y: 'Escolher o primeiro dia deste mês',
                 iso: `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`,
                 escolher: handleFirstDayOfMonth,
@@ -270,7 +273,8 @@ const styles = StyleSheet.create({
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   quickDatesRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
   /* A fileira estica os três chips até a altura do mais alto (o `stretch`
-     padrão do flex). Quando "Dia 1º deste mês" quebra em duas linhas, "Hoje"
+     padrão do flex). Quando o terceiro rótulo quebrava em duas linhas (era
+     "Dia 1º deste mês" até 19/09/2026, e em fonte grande qualquer um quebra), "Hoje"
      e "Ontem" ficavam grudados no topo de chips mais altos, e as duas linhas
      do terceiro saíam alinhadas à esquerda. Centrar nos dois eixos mantém os
      três rótulos na mesma linha visual, em qualquer largura e em qualquer
