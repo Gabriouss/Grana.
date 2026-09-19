@@ -139,7 +139,7 @@ async function apagarArquivo(caminho: string) {
 }
 
 async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz): Promise<boolean> {
-  const [{ transcreverAudio }, heuristics, data, voiceOperations] = await Promise.all([
+  const [{ transcreverAudio, ORCAMENTO_COM_PESSOA_ESPERANDO_MS }, heuristics, data, voiceOperations] = await Promise.all([
     import('./voz'),
     import('./heuristics'),
     import('./data'),
@@ -147,9 +147,18 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   ]);
 
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
+  /* O app tem uma PESSOA esperando na tela; o widget roda com o app fechado e
+     pode gastar o minuto inteiro (só o Android mata a tarefa headless, aos
+     dois minutos). Sem passar isto, as duas entradas usavam o mesmo teto de
+     60s por padrão — o app ficava "Transcrevendo…" o dobro do orçamento que
+     lib/voz.ts já declara para quem está esperando (achado A47). */
   const transcricao = payload.transcricao
     ? { ok: true as const, transcript: payload.transcricao }
-    : await transcreverAudio(uri, { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' });
+    : await transcreverAudio(uri, {
+        mimeType: 'audio/m4a',
+        nomeArquivo: 'widget.m4a',
+        orcamentoMs: payload.source === 'app' ? ORCAMENTO_COM_PESSOA_ESPERANDO_MS : undefined,
+      });
   if (!transcricao.ok) {
     if (transcricao.codigo === 'sem_rede' || transcricao.codigo === 'demorou') {
       throw new VozPendenteOffline('A transcrição será retomada quando houver conexão.');
@@ -427,6 +436,13 @@ export async function tentarVozesPendentes(): Promise<void> {
   }
 }
 
+/* O recibo (Alert de sucesso, ou notificação do widget) já foi entregue
+   ANTES desta função rodar — ela só atualiza o snapshot dos widgets da tela
+   inicial. Por isso tem prazo curto: sem ele, uma rede lenta aqui prendia
+   `executarTarefa` (e o botão em "Transcrevendo…", achado A47) bem depois de
+   a pessoa já ter visto "Lançamento salvo" na tela. */
+const PRAZO_SINCRONIZAR_RESUMO_MS = 5_000;
+
 async function sincronizarResumoDepoisDaVoz() {
   try {
     const [{ supabase }, { sincronizarWidgetsHome }, { default: AsyncStorage }] = await Promise.all([
@@ -434,10 +450,18 @@ async function sincronizarResumoDepoisDaVoz() {
       import('./widgets-home-sync'),
       import('@react-native-async-storage/async-storage'),
     ]);
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
-    const hidden = (await AsyncStorage.getItem('grana_privacy_hidden')) === '1';
-    await sincronizarWidgetsHome(data.user.id, hidden);
+    let prazo: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      (async () => {
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) return;
+        const hidden = (await AsyncStorage.getItem('grana_privacy_hidden')) === '1';
+        await sincronizarWidgetsHome(data.user.id, hidden);
+      })(),
+      new Promise<never>((_, rejeitar) => {
+        prazo = setTimeout(() => rejeitar(new Error('sincronizar_resumo_travou')), PRAZO_SINCRONIZAR_RESUMO_MS);
+      }),
+    ]).finally(() => clearTimeout(prazo));
   } catch {
     /* O lançamento e o recibo já deram certo. Snapshot é consequência
        best-effort e será atualizado na próxima abertura do app. */

@@ -24,6 +24,10 @@ import { executarTarefa } from '@/lib/widget-voz-task';
    A taxa de amostragem fica em 44.1 kHz de propósito: é a que todo aparelho
    Android aceita sem reclamar, e baixar dela é o tipo de economia que troca
    alguns KB por risco de gravação falhando em fabricante específico. */
+/* `stop()` é local (sem rede): 5s é folga generosa, não um orçamento de
+   transcrição. */
+const PRAZO_PARAR_GRAVACAO_MS = 5_000;
+
 const GRAVACAO_VOZ: RecordingOptions = {
   extension: '.m4a',
   sampleRate: 44100,
@@ -111,7 +115,21 @@ export default function VoiceEntryButton({
     setGravando(false);
     setEnviando(true);
     try {
-      await gravador.stop();
+      /* `stop()` é uma chamada nativa local, sem rede — alguns segundos bastam
+         de sobra. Sem prazo aqui, um `stop()` que nunca resolve prendia o
+         botão em "Transcrevendo…" indefinidamente, e nenhum timeout de
+         lib/voz.ts chegava a rodar, porque `executarTarefa` nem era chamado
+         (achado A47, visto no emulador em 19/09/2026: mais de 4 minutos
+         parado). O `.catch` solto no `pararGravacao` original evita que uma
+         resolução tardia dele suba como rejeição sem dono. */
+      const pararGravacao = gravador.stop();
+      pararGravacao.catch(() => {});
+      await Promise.race([
+        pararGravacao,
+        new Promise<never>((_, rejeitar) => {
+          setTimeout(() => rejeitar(new Error('parar_gravacao_travou')), PRAZO_PARAR_GRAVACAO_MS);
+        }),
+      ]);
       const uri = gravador.uri;
       if (!uri) {
         const msg = mensagemDeErroVoz('audio_ausente');
@@ -148,8 +166,12 @@ export default function VoiceEntryButton({
       });
     } catch (e: any) {
       if (__DEV__) console.warn('[voz:diag] botao lancou', e?.name, String(e?.message ?? e));
-      const msg = mensagemDeErroVoz('erro_interno');
-      Alert.alert(msg.titulo, msg.texto);
+      if (e?.message === 'parar_gravacao_travou') {
+        Alert.alert('Não consegui encerrar a gravação', 'Toque no microfone para tentar de novo.');
+      } else {
+        const msg = mensagemDeErroVoz('erro_interno');
+        Alert.alert(msg.titulo, msg.texto);
+      }
     } finally {
       encerrando.current = false;
       setEnviando(false);
