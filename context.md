@@ -58,6 +58,62 @@ no `context.md`.
 
 ---
 
+# 19/09/2026 (M1) — correção dos achados reverificados da auditoria Android (`b2f8ccf` a `8fd5b9b`)
+
+Pedido: "resolva todos os problemas verificados e reverificados como problema
+real". Detalhe, com o que foi descartado, na nota de sessão
+`2026-09-19 - M1 - Correcao dos achados reverificados`.
+
+- **Faixa "Conexão lenta" mentindo** (`b2f8ccf`): em `lib/cache-de-tela.ts`, falha
+  PERMANENTE que chega depois do prazo de 4 s vira o motivo `falha` ("Não
+  consegui atualizar, mostrando dados salvos no aparelho"). Antes só ia para o
+  log e a faixa culpava a rede. Regressão em `offline-rapido.cjs` (4d).
+- **W1, Crédito sem rede** (`0f50b8a`): `fetchRecurrenceContext` saiu do
+  `Promise.all` do `loadData`; os cartões chegam à tela antes do acerto de
+  recorrências, e a falha de carga mostra motivo e "Tentar de novo" no lugar de
+  "Nenhum cartão cadastrado".
+- **Excluir lançamento** (`922a77d`): Início e Lançamentos passam a perguntar,
+  como o Crédito. Parcela oferece "Só esta parcela" ou "A compra inteira"
+  (`deleteInstallmentPurchase`, cabeça `parent_id ?? id`, filtro
+  `installment_total > 1` para nunca pegar assinatura). `lib/alert.ts`: o
+  fallback web de 3 botões disparava o último no OK; agora pergunta um por vez.
+  Pergunta única em `lib/excluir-lancamento.ts`. Teste novo
+  `__tests__/excluir-lancamento.cjs`, no `test:ci`.
+- **G10** (`bd1c3c5`, tipos do teste em `358c0cb`): categoria padrão sem lixeira;
+  ela voltava pela semeadura e o orçamento dela morria.
+- **G8, seletor de data** (`800762d`, `49f95a9`, `8fd5b9b`): atalhos centrados
+  nos dois eixos e com a seleção visível; saiu o "Ir para hoje" (duplicava o
+  "Hoje"); "Dia 1º deste mês" virou "Dia 1º", a pedido do autor.
+- **X1, Gráficos** (`b657bec`): o `loading` que nunca era lido passou a valer;
+  carregando não afirma mais "Sem dados" nem "R$ 0,00".
+- **G18, seletor de carteira** (`7a5bdca`): saiu a ScrollView interna de 380 px
+  escrita à mão; a janela rola numa camada só. **G19 retirado**: o botão já
+  tinha indicador.
+- **W5, Granabô** (`0ce48df`): o recibo de gravação ("Se quiser desfazer...",
+  agora a constante `RECIBO_DE_LANCAMENTO`) é fronteira; pedido já gravado não
+  contamina o seguinte. **A Edge Function `assistente-financeiro` NÃO foi
+  publicada.** Até o deploy, produção segue com o defeito. O deploy precisa do
+  roteiro da regra 11 e de pedido do autor.
+- **42501 em `saldos_por_carteira`** (`223c088`): só instrumentação. Mecanismo
+  possível confirmado no supabase-js 2.112.3 (sem token, manda a chave anônima
+  como `Bearer`); a causa da ocorrência de 18/09 NÃO foi confirmada.
+
+**Não corrigidos, de propósito:** G2/G11 (XP farmável, cosmético, exige
+migration), U1 (decisão do autor), e os achados que não passaram pela
+reverificação (W3, W4, G4, G5, G6, G7, G9, G12).
+
+**Verificação:** `tsc --noEmit` 0 (lido do próprio `tsc`), `npm run test:ci` 0,
+`deno check` da função 0; cada teste novo falha no código antigo. No emulador só
+o G8 foi visto (os três atalhos em y=1842, "Dia 1º" numa linha). W1, exclusão,
+X1 e G18 NÃO foram vistos no aparelho: o emulador degradou a mais de dez minutos
+por tela.
+
+**Na árvore de trabalho da M1 há 8 arquivos alterados por outra sessão**
+(landing, SEO, `PRODUCT.md` e o fim deste arquivo). Não foram tocados nem
+commitados; esta entrada foi commitada sem eles.
+
+---
+
 # 18/09/2026 (M1) — varredura ampliada no emulador (G1–G13), NÃO corrigidos
 
 Sem mudança de código. Detalhe, com o que foi e o que NÃO foi exercitado, na nota
