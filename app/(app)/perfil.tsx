@@ -665,10 +665,6 @@ export default function PerfilScreen() {
             <Text style={styles.rowKey}>Moeda</Text>
             <Text style={styles.rowValue}>Real (R$)</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.rowKey}>Tema</Text>
-            <Text style={styles.rowValue}>Escuro</Text>
-          </View>
         </View>
 
         {/* Seção Notificações */}
@@ -928,7 +924,7 @@ export default function PerfilScreen() {
             <Text style={styles.reauthTitle}>Confirme sua senha</Text>
             <Text style={styles.reauthText}>
               Todos os seus lançamentos, contas, categorias e orçamentos serão apagados
-              permanentemente. Esta ação é irreversível — digite sua senha para confirmar
+              permanentemente. Esta ação é irreversível. Digite sua senha para confirmar
               que é você.
             </Text>
 

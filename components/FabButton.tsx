@@ -131,7 +131,7 @@ export default function FabButton({
                 onAddBill?.();
               }}
             >
-              <Ionicons name="card-outline" size={18} color={theme.ink} />
+              <Ionicons name="receipt-outline" size={18} color={theme.ink} />
               <Text style={styles.menuText}>Boleto</Text>
             </AppPressable>
           )}

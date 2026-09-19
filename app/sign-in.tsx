@@ -139,9 +139,11 @@ export default function SignIn() {
         {/* Sempre visível, e não só depois de um erro: quem já sabe que
             esqueceu a senha não deveria precisar errar uma vez para
             descobrir que a recuperação existe. */}
-        <AppPressable onPress={() => setRecuperarAberto(true)} style={styles.esqueciBtn}>
-          <Text style={styles.esqueciTexto}>Esqueci minha senha</Text>
-        </AppPressable>
+        {error?.acao !== 'recuperar-senha' && (
+          <AppPressable onPress={() => setRecuperarAberto(true)} style={styles.esqueciBtn}>
+            <Text style={styles.esqueciTexto}>Esqueci minha senha</Text>
+          </AppPressable>
+        )}
 
         <AppPressable
           style={({ hovered }) => [styles.secondaryBtn, hovered && styles.secondaryBtnHover]}
