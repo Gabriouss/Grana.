@@ -176,7 +176,14 @@ export default function CreditoScreen() {
     if (isDemoMode) return;
     fetchCategories()
       .then((cats) => setCategoriasExtras(cats.filter((c) => !c.is_default)))
-      .catch(() => {});
+      /* Sem categorias extras, quem fala/cola um texto mencionando uma
+         categoria própria cai nas padrão (ou em "Outros") sem aviso nenhum —
+         RLS negada ou erro de servidor não pode se parecer com "esta conta
+         não tem categoria personalizada" (achado do Codex, 19/09/2026). Rede
+         cai à parte: nesse caso a próxima tentativa resolve sozinha. */
+      .catch((erro) => {
+        if (!isLikelyNetworkError(erro)) console.error('[credito] fetchCategories falhou', erro);
+      });
   }, [isDemoMode]);
 
   /* Menu de ação da linha — mesmo componente e mesmo gesto das outras telas:
@@ -196,7 +203,17 @@ export default function CreditoScreen() {
   const [payDatePickerOpen, setPayDatePickerOpen] = useState(false);
   const [paySaving, setPaySaving] = useState(false);
 
+  const cargaAtualCredito = useRef(0);
+
   const loadData = useCallback(async () => {
+    /* Trocar de mês/cartão, focar a tela de novo ou uma mutação (pagar,
+       excluir) disparam `loadData()` de novo antes da anterior terminar.
+       Sem uma marca de qual é a carga vigente, a resposta mais VELHA podia
+       escrever por cima da mais nova em `cards`, `transactions` e
+       `invoicePayments` (achado do Codex, 19/09/2026, revisando o código). */
+    const minhaCarga = ++cargaAtualCredito.current;
+    const vigente = () => minhaCarga === cargaAtualCredito.current;
+
     if (isDemoMode) {
       setCards(DEMO_CREDIT_CARDS);
       setTransactions(DEMO_TRANSACTIONS);
@@ -235,6 +252,7 @@ export default function CreditoScreen() {
           fetchCardInvoicePayments(),
         ]);
 
+      if (!vigente()) return;
       const dedup = (txs: Transaction[]) => Array.from(new Map(txs.map((t) => [t.id, t])).values());
 
       let selectedTransactions = dedup([...mesNavegado, ...mesAnteriorAoNavegado, ...mesAtualTx, ...mesAnteriorTx]);
@@ -264,6 +282,7 @@ export default function CreditoScreen() {
             fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
             fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
           ]);
+          if (!vigente()) return;
           selectedTransactions = dedup([...a, ...b, ...d1, ...d2]);
           setTransactions(selectedTransactions);
         }
@@ -272,13 +291,16 @@ export default function CreditoScreen() {
           console.error('[credito] acerto de recorrências falhou', erro);
         }
       }
+      if (!vigente()) return;
 
       /* Lembretes de vencimento da fatura EM ABERTO agora, cartão por
          cartão — não do mês navegado na tela, e não mais do mês civil
          corrente (uma fatura que fechou dia 19 e ainda não venceu continua
          "em aberto" mesmo depois do calendário virar de mês). O par de mês
-         de hoje já buscado acima cobre qualquer cartão. */
+         de hoje já buscado acima cobre qualquer cartão — mas só faz sentido
+         agendar/cancelar lembrete com base numa carga que ainda é a atual. */
       const { lembretesContasAtivo } = await carregarNotifPrefs();
+      if (!vigente()) return;
       // Pagamento parcial continua lembrando, com o valor que falta.
       for (const { cartao, year, month, restante } of lembretesDeFatura(selectedTransactions, c, p, todayISO())) {
         if (lembretesContasAtivo && restante > 0) {
@@ -288,6 +310,7 @@ export default function CreditoScreen() {
         }
       }
     } catch (erro) {
+      if (!vigente()) return;
       /* As buscas acima têm cache offline, então chegar aqui quer dizer falha
          permanente, ou falta de rede sem nada guardado no aparelho. Nos dois
          casos a tela não sabe quais cartões existem, e dizer "Nenhum cartão
@@ -299,8 +322,10 @@ export default function CreditoScreen() {
           : 'Não consegui carregar seus cartões agora.'
       );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (vigente()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [isDemoMode, viewYear, viewMonth]);
 

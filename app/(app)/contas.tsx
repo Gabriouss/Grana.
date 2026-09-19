@@ -95,7 +95,16 @@ export default function ContasScreen() {
     setToastVisible(true);
   }
 
+  const cargaAtualBoletos = useRef(0);
+
   const load = useCallback(async () => {
+    /* Foco, "dado novo chegou" e o refresh manual podem disparar `load()` de
+       novo antes do anterior terminar. Sem marcar qual é a carga vigente, uma
+       resposta mais VELHA pode sobrescrever `bills` por cima de uma conta que
+       acabou de ser paga ou excluída (achado do Codex, 19/09/2026). */
+    const minhaCarga = ++cargaAtualBoletos.current;
+    const vigente = () => minhaCarga === cargaAtualBoletos.current;
+
     if (isDemoMode) {
       setBills(DEMO_BILLS);
       setLoading(false);
@@ -105,21 +114,26 @@ export default function ContasScreen() {
 
     try {
       const b = await fetchBills();
+      if (!vigente()) return;
       setBills(b);
       /* Reagenda os lembretes de cada conta a cada carregamento — os ids são
          determinísticos, então isso só substitui o que já existia (ou
          cancela, se a conta estiver paga). Mantém os lembretes corretos
          mesmo depois de reinstalar o app ou editar uma conta fora desta tela. */
       const { lembretesContasAtivo } = await carregarNotifPrefs();
+      if (!vigente()) return;
       b.forEach((bill) => {
         if (lembretesContasAtivo) scheduleBillReminders(bill).catch(() => {});
         else cancelBillReminders(bill.id).catch(() => {});
       });
     } catch (e: any) {
+      if (!vigente()) return;
       Alert.alert('Erro ao carregar contas', e.message);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (vigente()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [isDemoMode]);
 
@@ -130,7 +144,13 @@ export default function ContasScreen() {
     if (isDemoMode) return;
     fetchCategories()
       .then((cats) => setCategoriasExtras(cats.filter((c) => !c.is_default)))
-      .catch(() => {});
+      /* Mesmo raciocínio de app/(app)/credito.tsx: sem categorias extras, o
+         parser de voz/texto cai nas padrão sem aviso, e RLS negada não pode
+         se parecer com "esta conta não tem categoria personalizada" (achado
+         do Codex, 19/09/2026). */
+      .catch((erro) => {
+        if (!isLikelyNetworkError(erro)) console.error('[contas] fetchCategories falhou', erro);
+      });
   }, [isDemoMode]);
 
   /* Chegando pelo FAB da Início (?novaConta=1): abre o mesmo formulário do

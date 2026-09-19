@@ -235,8 +235,15 @@ export default function LancamentosScreen() {
       if (!vigente()) return;
       setOffline(false);
       await guardarNoCache(tx);
+      /* `guardarNoCache` e `getPendingCount` também são awaits: uma carga mais
+         nova pode ter começado enquanto eles rodavam. Checar só antes deles
+         (achado do Codex, 19/09/2026) deixava a resposta velha ainda escrever
+         por cima da lista do mês que a pessoa já tinha trocado. */
+      if (!vigente()) return;
       setTransactions(tx);
-      setPendingCount(await getPendingCount());
+      const pendentes = await getPendingCount();
+      if (!vigente()) return;
+      setPendingCount(pendentes);
       /* A lista já está certa. Sincronizar a fila e acertar assinaturas é
          trabalho de fundo e não pode prender o carregamento: até 19/09/2026
          `fetchRecurrenceContext`, a única busca daqui sem cache, segurava a
@@ -253,7 +260,9 @@ export default function LancamentosScreen() {
           await guardarNoCache(tx);
           if (!vigente()) return;
           setTransactions(tx);
-          setPendingCount(await getPendingCount());
+          const pendentesAposSync = await getPendingCount();
+          if (!vigente()) return;
+          setPendingCount(pendentesAposSync);
           triggerToast(synced === 1 ? '1 lançamento sincronizado' : `${synced} lançamentos sincronizados`);
         }
       } catch (erro) {

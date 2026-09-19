@@ -282,30 +282,71 @@ export default function InicioScreen() {
      e nas ações que só mexem em conta/orçamento/cofrinho — nenhuma delas
      muda a lista de lançamentos, então recarregá-la ali seria pagar o preço
      de novo por um dado que não mudou. */
+
+  /* `goals`/`user_gamification` são tabelas mais novas: um banco que não
+     rodou a migration devolve PGRST202/PGRST205/42883/42P01, e ISSO é
+     silencioso de propósito (não é bug, é schema antigo — comentário acima).
+     Qualquer OUTRO erro (RLS negada, servidor fora do ar) não pode desaparecer
+     do mesmo jeito: virava "0 XP"/"nenhuma meta" sem log nenhum, o mesmo
+     defeito que já escondeu o lançamento por voz por dias (achado do Codex,
+     19/09/2026, revisando o código; ver lib/voice-operations.ts e a regra 9
+     do AGENTS.md). Fora do caso de schema antigo, mantém o último valor bom
+     em vez de zerar — uma falha passageira não pode apagar metas e XP que já
+     estavam certos na tela. */
+  function ehTabelaNovaAusente(erro: unknown): boolean {
+    const codigo = String((erro as { code?: string })?.code ?? '');
+    return /^(PGRST202|PGRST205|42883|42P01)/.test(codigo);
+  }
+
+  /* Incrementado só por `load()` — a chamada pesada e autoritativa, que busca
+     tudo que `carregarDadosLeves` busca e mais o histórico de lançamentos.
+     `carregarDadosLeves()` roda mais barato a cada foco e não pode escrever
+     por cima de um `load()` mais recente: se um começou antes ou durante a
+     carga leve, os dados dele chegam mais completos, e ela cede (achado do
+     Codex, 19/09/2026 — os dois gravavam `bills`/`budgets`/`creditCards`
+     independentemente, e o que terminasse por último vencia, mesmo sendo o
+     mais velho). */
+  const cargaAtualInicio = useRef(0);
+
   const carregarDadosLeves = useCallback(async () => {
     if (isDemoMode) return; // dados de exemplo já são fixos, nada aqui muda sozinho
+    const cargaDeLoadAoComecar = cargaAtualInicio.current;
+    const seguro = () => cargaAtualInicio.current === cargaDeLoadAoComecar;
     try {
       const [b, bg, cc] = await Promise.all([fetchBills(), fetchBudgets(), fetchCreditCards()]);
+      if (!seguro()) return;
       setBills(b);
       setBudgets(bg);
       setCreditCards(cc);
       setError(null);
     } catch (e: any) {
-      setError(mensagemErro(e, 'Erro ao carregar dados'));
+      if (seguro()) setError(mensagemErro(e, 'Erro ao carregar dados'));
     }
+    if (!seguro()) return;
     try {
-      setGoals(await fetchGoals());
-    } catch {
-      setGoals([]);
+      const goals = await fetchGoals();
+      if (!seguro()) return;
+      setGoals(goals);
+    } catch (erro) {
+      if (!seguro()) return;
+      if (ehTabelaNovaAusente(erro)) setGoals([]);
+      else if (!isLikelyNetworkError(erro)) console.error('[inicio] fetchGoals falhou (carga leve)', erro);
     }
+    if (!seguro()) return;
     try {
-      setLifetimeXp((await fetchGamification()).lifetime_xp);
-    } catch {
-      setLifetimeXp(0);
+      const xp = (await fetchGamification()).lifetime_xp;
+      if (!seguro()) return;
+      setLifetimeXp(xp);
+    } catch (erro) {
+      if (!seguro()) return;
+      if (ehTabelaNovaAusente(erro)) setLifetimeXp(0);
+      else if (!isLikelyNetworkError(erro)) console.error('[inicio] fetchGamification falhou (carga leve)', erro);
     }
   }, [isDemoMode]);
 
   const load = useCallback(async () => {
+    const minhaCarga = ++cargaAtualInicio.current;
+    const vigente = () => minhaCarga === cargaAtualInicio.current;
     if (isDemoMode) {
       setTransactions(DEMO_TRANSACTIONS);
       setBills(DEMO_BILLS);
@@ -343,6 +384,7 @@ export default function InicioScreen() {
         fetchBudgets(),
         fetchCreditCards(),
       ]);
+      if (!vigente()) return;
       setTransactions(tx);
       setBills(b);
       setBudgets(bg);
@@ -371,20 +413,32 @@ export default function InicioScreen() {
       });
 
       try {
-        setGoals(await fetchGoals());
-      } catch {
-        setGoals([]);
+        const goals = await fetchGoals();
+        if (!vigente()) return;
+        setGoals(goals);
+      } catch (erro) {
+        if (!vigente()) return;
+        if (ehTabelaNovaAusente(erro)) setGoals([]);
+        else if (!isLikelyNetworkError(erro)) console.error('[inicio] fetchGoals falhou', erro);
       }
+      if (!vigente()) return;
       try {
-        setLifetimeXp((await fetchGamification()).lifetime_xp);
-      } catch {
-        setLifetimeXp(0);
+        const xp = (await fetchGamification()).lifetime_xp;
+        if (!vigente()) return;
+        setLifetimeXp(xp);
+      } catch (erro) {
+        if (!vigente()) return;
+        if (ehTabelaNovaAusente(erro)) setLifetimeXp(0);
+        else if (!isLikelyNetworkError(erro)) console.error('[inicio] fetchGamification falhou', erro);
       }
     } catch (e: any) {
+      if (!vigente()) return;
       setError(mensagemErro(e, 'Erro ao carregar dados'));
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (vigente()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [isDemoMode]);
 
