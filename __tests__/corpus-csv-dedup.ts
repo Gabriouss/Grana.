@@ -106,5 +106,33 @@ const exemploDoApp = parseCsvText('Data,Descrição,Valor\n15/08/2026,Supermerca
 checar('exemplo do app: supermercado sai', exemploDoApp[0].type, 'out');
 checar('exemplo do app: salário entra', exemploDoApp[1].type, 'in');
 
+/* ---------- Data ISO e data impossível (achado do Codex, 19/09/2026) ---------- */
+
+/* Antes, o regex dd/mm/aa lia "2026-09-12" como dia=26, mês=09, ano=12 — uma
+   data ERRADA e silenciosa (2012-09-26), não uma falha visível. */
+const csvDataIso = parseCsvText(['Data,Descricao,Valor', '2026-09-12,AUDIT iso,50.00'].join('\n'));
+checar('data ISO (AAAA-MM-DD) é lida na ordem certa', csvDataIso[0].occurred_on, '2026-09-12');
+
+/* "31 dentro de 1 a 31" não garante que a data existe — fevereiro nunca
+   chega lá. Antes isso virava a data impossível "2026-02-31" (que o
+   Postgres recusa ao gravar); agora cai no fallback de hoje. */
+const hoje = new Date().toISOString().slice(0, 10);
+const csvDataImpossivel = parseCsvText(['Data,Descricao,Valor', '31/02/2026,AUDIT impossivel,50.00'].join('\n'));
+checar('31 de fevereiro (data impossível) cai no fallback de hoje, não vira "2026-02-31"',
+  csvDataImpossivel[0].occurred_on, hoje);
+
+/* Uma data real de fim de mês continua funcionando (não é regressão do
+   fallback acima: 31/01 existe de verdade). */
+const csvDataRealFimDeMes = parseCsvText(['Data,Descricao,Valor', '31/01/2026,AUDIT real,50.00'].join('\n'));
+checar('31 de janeiro (data real) continua sendo lida normalmente', csvDataRealFimDeMes[0].occurred_on, '2026-01-31');
+
+/* ---------- Campo entre aspas com o delimitador embutido ---------- */
+
+/* Antes, `line.split(',')` quebrava "Mercado, Centro" em duas colunas e
+   empurrava o resto da linha (o valor de verdade) para o lado. */
+const csvComAspas = parseCsvText(['data,descricao,valor', '12/09/2026,"Mercado, Centro",123.45'].join('\n'));
+checar('descrição entre aspas preserva a vírgula interna', csvComAspas[0]?.description, 'Mercado, Centro');
+checar('e o valor não é afetado pela vírgula dentro das aspas', csvComAspas[0]?.amount, 123.45);
+
 console.log(`\n${total - falhas}/${total} checagens de dedup do CSV passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);

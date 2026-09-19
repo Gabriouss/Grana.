@@ -705,11 +705,22 @@ export function guessCategoryFromText(
 ): { name: string; color: string } {
   const alvo = normalizarParaBusca(semValorMonetario(text));
   let bestName: string | null = null;
+  /* Não para na primeira categoria com QUALQUER palavra batendo: uma
+     palavra-chave curta e genérica ("mercado", em Alimentação) vencia uma
+     mais específica que também batia ("mercado livre", em Outros) só porque
+     a categoria dela vem antes na declaração — "compra Mercado Livre 120
+     reais" virava Alimentação (achado do Codex, 19/09/2026, revisando o
+     código). Agora fica com o match de palavra-chave MAIS LONGA, seja qual
+     for a ordem das categorias. */
+  let bestKeywordLen = -1;
 
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => contemPalavra(alvo, kw))) {
-      bestName = catName;
-      break;
+    for (const kw of keywords) {
+      const kwNormalizada = normalizarParaBusca(kw);
+      if (kwNormalizada.length > bestKeywordLen && alvo.includes(kwNormalizada)) {
+        bestName = catName;
+        bestKeywordLen = kwNormalizada.length;
+      }
     }
   }
 
@@ -789,7 +800,14 @@ export function guessAmountFromText(text: string): number {
      R$ 0 e o lançamento morria pedindo o valor de novo. Continua sendo
      lookahead (não consumo) pra não atrapalhar outra regra que venha depois.
      O grupo termina em `\d` pela mesma razão das capturas acima. */
-  const solto = normalizado.match(/(?:^|\s)(\d[\d.]*\d|\d)(?=[\s,;:!?]|$)/);
+  /* O `-?` fica FORA do grupo capturado: um hífen solto antes do número é
+     ruído a pular, não sinal a preservar — o tipo (entrada/saída) já vem de
+     verbo/palavra-chave em `guessTypeFromText`, nunca do sinal do texto.
+     Sem isto, "mercado -100" e "recebi -100" não achavam número nenhum e
+     caíam em "não encontrei o valor" à toa (achado do Codex, 19/09/2026,
+     P2) — o dígito depois do hífen simplesmente não era o começo de nada
+     que a regra reconhecesse. */
+  const solto = normalizado.match(/(?:^|\s)-?(\d[\d.]*\d|\d)(?=[\s,;:!?]|$)/);
   if (solto) return parseAmount(solto[1]);
 
   return 0;
@@ -1137,14 +1155,68 @@ function gerarFitidSintetico(
   return chave.slice(0, 255);
 }
 
+/**
+ * Divide uma linha de CSV respeitando aspas: um campo entre aspas pode conter
+ * o próprio delimitador (`"Mercado, Centro",123,45`) e aspas escapadas
+ * dobradas (`""`). Antes era só `line.split(delim)`, que quebrava um campo
+ * assim em dois e empurrava o resto da linha uma coluna para o lado — a
+ * descrição virava valor, e o valor de verdade ficava perdido ou incompleto
+ * (achado do Codex, 19/09/2026, revisando o código).
+ */
 function splitCsvLine(line: string): string[] {
   const delim = line.split(';').length > line.split(',').length ? ';' : ',';
-  return line.split(delim).map((c) => c.trim().replace(/^"|"$/g, ''));
+  const campos: string[] = [];
+  let atual = '';
+  let dentroDeAspas = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (dentroDeAspas && line[i + 1] === '"') {
+        atual += '"';
+        i++;
+      } else {
+        dentroDeAspas = !dentroDeAspas;
+      }
+    } else if (ch === delim && !dentroDeAspas) {
+      campos.push(atual.trim());
+      atual = '';
+    } else {
+      atual += ch;
+    }
+  }
+  campos.push(atual.trim());
+  return campos;
+}
+
+/**
+ * Confere se ano/mês/dia formam uma data que EXISTE de verdade — "31 dentro
+ * de 1 a 31" não garante isso: fevereiro nunca chega lá. `Date` normaliza
+ * datas impossíveis em vez de recusar (`new Date(2026, 1, 31)` vira 3 de
+ * março), então a checagem é o "volta a bater" de ida e volta, não o
+ * construtor sozinho.
+ */
+function dataValida(y: number, mo: number, d: number): string | null {
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${y}-${pad(mo)}-${pad(d)}`;
 }
 
 function parseCsvDate(raw: string): string {
   if (!raw) return todayISO();
-  const m = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  const texto = raw.trim();
+
+  /* ISO (AAAA-MM-DD) primeiro, e não descuido: o regex de baixo (dia/mês/ano
+     separado por barra ou hífen) não sabe a ordem de "2026-09-12" e lia como
+     dia=26, mês=09, ano=12 → 26/09/2012, uma data errada silenciosa, não uma
+     falha visível (achado do Codex, 19/09/2026, revisando o código). */
+  const iso = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) {
+    return dataValida(parseInt(iso[1], 10), parseInt(iso[2], 10), parseInt(iso[3], 10)) ?? todayISO();
+  }
+
+  const m = texto.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
   if (!m) return todayISO();
 
   const d = parseInt(m[1], 10);
@@ -1152,10 +1224,10 @@ function parseCsvDate(raw: string): string {
   let y = parseInt(m[3], 10);
   if (y < 100) y += 2000;
 
-  if (mo < 1 || mo > 12 || d < 1 || d > 31) return todayISO();
-
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${y}-${pad(mo)}-${pad(d)}`;
+  /* Antes só checava "31 cabe entre 1 e 31" — 31/02 passava e virava a data
+     impossível "2026-02-31", que o Postgres recusa na hora de gravar (achado
+     do Codex). Agora valida a data de verdade, não só os limites soltos. */
+  return dataValida(y, mo, d) ?? todayISO();
 }
 
 /* Resultado do parse, com o aviso de corte quando o arquivo passa do teto —

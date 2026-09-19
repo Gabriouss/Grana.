@@ -149,6 +149,13 @@ const CASOS: Caso[] = [
   { txt: 'paguei o boleto de 250', val: 250 },
   { txt: 'netflix mensalidade 39,90', val: 39.9, cat: 'Assinaturas' },
   { txt: 'gastei 20 reais e 30 reais hoje', val: 20, nota: 'pega o primeiro' },
+
+  // ---------- Hífen solto antes do número (achado do Codex, 19/09/2026, P2) ----------
+  // O tipo vem do verbo/palavra-chave, nunca do sinal do texto — o "-" é
+  // ruído a pular. Sem isto, "mercado -100" não achava número nenhum e caía
+  // em "não encontrei o valor" à toa.
+  { txt: 'mercado -100', val: 100, tipo: 'out' },
+  { txt: 'recebi -100', val: 100, tipo: 'in' },
 ];
 
 let falhas = 0;

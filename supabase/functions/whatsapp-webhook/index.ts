@@ -186,7 +186,14 @@ function guessAmountFromText(text: string): number {
      R$ 0 e o lançamento morria pedindo o valor de novo. Continua sendo
      lookahead (não consumo) pra não atrapalhar outra regra que venha depois.
      O grupo termina em `\d` pela mesma razão das capturas acima. */
-  const solto = normalizado.match(/(?:^|\s)(\d[\d.]*\d|\d)(?=[\s,;:!?]|$)/);
+  /* O `-?` fica FORA do grupo capturado: um hífen solto antes do número é
+     ruído a pular, não sinal a preservar — o tipo (entrada/saída) já vem de
+     verbo/palavra-chave em `guessTypeFromText`, nunca do sinal do texto.
+     Sem isto, "mercado -100" e "recebi -100" não achavam número nenhum e
+     caíam em "não encontrei o valor" à toa (achado do Codex, 19/09/2026,
+     P2) — o dígito depois do hífen simplesmente não era o começo de nada
+     que a regra reconhecesse. */
+  const solto = normalizado.match(/(?:^|\s)-?(\d[\d.]*\d|\d)(?=[\s,;:!?]|$)/);
   if (solto) return parseAmount(solto[1]);
 
   return 0;

@@ -157,5 +157,17 @@ checar('bot: sem acento acha a acentuada', bot.matchCategoryByKeyword('energetic
   checar('e o salvar mantém o nome da padrão', String(/const name = oldItem\.is_default \? oldItem\.name : editName\.trim\(\);/.test(modal)), 'true');
 }
 
+/* ── Palavra-chave mais específica vence, não a categoria que vem primeiro
+   (achado do Codex, 19/09/2026) ────────────────────────────────────────────
+   "mercado" (Alimentação) é substring de "mercado livre" (Outros), e
+   Alimentação é declarada ANTES de Outros em CATEGORY_KEYWORDS. Sem escolher
+   pela palavra-chave mais longa, a primeira categoria com qualquer match
+   vencia — "compra Mercado Livre 120 reais" virava Alimentação. */
+checar('"Mercado Livre" cai em Outros, não em Alimentação (chave mais específica vence)',
+  guessCategoryFromText('compra Mercado Livre 120 reais').name, 'Outros');
+checar('"mercado" sozinho continua Alimentação', guessCategoryFromText('mercado 80 reais').name, 'Alimentação');
+checar('"supermercado" continua Alimentação (não é ambíguo com nada em Outros)',
+  guessCategoryFromText('supermercado 80 reais').name, 'Alimentação');
+
 console.log(`\n${total - falhas}/${total} checagens de categoria custom passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);

@@ -397,11 +397,22 @@ export function guessCategoryFromText(
 ): { name: string; color: string } {
   const alvo = normalizarParaBusca(semValorMonetario(text));
   let bestName: string | null = null;
+  /* Não para na primeira categoria com QUALQUER palavra batendo: uma
+     palavra-chave curta e genérica ("mercado", em Alimentação) vencia uma
+     mais específica que também batia ("mercado livre", em Outros) só porque
+     a categoria dela vem antes na declaração — "compra Mercado Livre 120
+     reais" virava Alimentação (achado do Codex, 19/09/2026, revisando o
+     código). Agora fica com o match de palavra-chave MAIS LONGA, seja qual
+     for a ordem das categorias. */
+  let bestKeywordLen = -1;
 
   for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => contemPalavra(alvo, kw))) {
-      bestName = catName;
-      break;
+    for (const kw of keywords) {
+      const kwNormalizada = normalizarParaBusca(kw);
+      if (kwNormalizada.length > bestKeywordLen && alvo.includes(kwNormalizada)) {
+        bestName = catName;
+        bestKeywordLen = kwNormalizada.length;
+      }
     }
   }
 
@@ -481,7 +492,14 @@ export function guessAmountFromText(text: string): number {
      R$ 0 e o lançamento morria pedindo o valor de novo. Continua sendo
      lookahead (não consumo) pra não atrapalhar outra regra que venha depois.
      O grupo termina em `\d` pela mesma razão das capturas acima. */
-  const solto = normalizado.match(/(?:^|\s)(\d[\d.]*\d|\d)(?=[\s,;:!?]|$)/);
+  /* O `-?` fica FORA do grupo capturado: um hífen solto antes do número é
+     ruído a pular, não sinal a preservar — o tipo (entrada/saída) já vem de
+     verbo/palavra-chave em `guessTypeFromText`, nunca do sinal do texto.
+     Sem isto, "mercado -100" e "recebi -100" não achavam número nenhum e
+     caíam em "não encontrei o valor" à toa (achado do Codex, 19/09/2026,
+     P2) — o dígito depois do hífen simplesmente não era o começo de nada
+     que a regra reconhecesse. */
+  const solto = normalizado.match(/(?:^|\s)-?(\d[\d.]*\d|\d)(?=[\s,;:!?]|$)/);
   if (solto) return parseAmount(solto[1]);
 
   return 0;
