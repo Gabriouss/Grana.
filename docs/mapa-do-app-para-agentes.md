@@ -38,6 +38,8 @@ o `node scripts/emulador.cjs login` a usa.
 | Câmera virtual sem nota fiscal | Escanear nota abre a câmera e não lê nada | marque "não verificável", com o motivo |
 | Depois de `pm clear`, "Bloquear captura de tela" volta ligado | os prints saem pretos | audite pela árvore de acessibilidade (`listar`), não pelo print |
 | Toast nasce atrás do painel escurecido | mensagem curta some sob o fundo | confira por `listar` logo depois da ação |
+| Element Inspector ligado no menu de desenvolvimento | tela cheia de retângulos verde e azul, lista de componentes embaixo e abas "Inspect" e "Touchables" | não é bug do app. Abra o menu (`adb shell input keyevent 82`) e toque em "Hide Element Inspector", ou recarregue o app. Não toque no meio da tela enquanto ele estiver ligado: cada toque só seleciona um componente |
+| Avisos vermelho e amarelo (LogBox) no pé da tela | "Erro ao carregar saldos 42501" e "fetchGamification falhou: Usuário não autenticado" | são avisos de desenvolvimento e ficam acumulados. Se nasceram na tela de login, vêm de chamadas feitas antes da sessão existir. Só vale investigar se reaparecerem com a Início já logada depois de fechar os avisos |
 | Rotação forçada por `adb` não gira o app | `ROTATION_0` permanece | irrelevante: o app é só retrato |
 
 ## Mapa de telas e como chegar
