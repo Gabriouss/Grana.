@@ -43,7 +43,7 @@ import {
   updateTransaction,
   criarOcorrenciasRecorrentes,
 } from '@/lib/data';
-import { formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { formatBRL, formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
 import {
   agruparLancamentosPorCartao,
@@ -370,6 +370,9 @@ export default function CreditoScreen() {
       : walletCards.find((c) => c.id === selectedCardId)?.closing_day ?? null;
   const hojeISO = todayISO();
   const faturaAtualAnterior = useRef<FaturaAtualDoCartao | null>(null);
+  /* A21: a faixa precisa abrir o ciclo fechado escolhido, sem o efeito de
+     acompanhamento da fatura atual sobrescrevê-lo. */
+  const faturaForcada = useRef<{ cardId: string; year: number; month: number } | null>(null);
   const faturaVista = useRef<{ year: number; month: number } | null>(null);
   faturaVista.current =
     faturaCardYear !== null && faturaCardMonth !== null
@@ -384,6 +387,14 @@ export default function CreditoScreen() {
     if (closingDaySelecionado === null) return;
     const ciclo = mesFaturaDoLancamento(hojeISO, closingDaySelecionado);
     const atual = { cartaoId: selectedCardId, year: ciclo.year, month: ciclo.month };
+    const forçada = faturaForcada.current;
+    if (forçada?.cardId === selectedCardId) {
+      faturaForcada.current = null;
+      faturaAtualAnterior.current = atual;
+      setFaturaCardYear(forçada.year);
+      setFaturaCardMonth(forçada.month);
+      return;
+    }
     const destino = faturaParaExibir(atual, faturaAtualAnterior.current, faturaVista.current);
     faturaAtualAnterior.current = atual;
     if (destino) {
@@ -504,6 +515,24 @@ export default function CreditoScreen() {
   };
   /* Com parte paga, o botão paga o que falta — e não a fatura inteira de novo. */
   const pagandoRestante = !!currentInvoicePayment && invoiceStatus !== 'paga';
+
+  const faturasFechadasPendentes = useMemo(() => walletCards.flatMap((card) => {
+    const atual = mesFaturaDoLancamento(hojeISO, card.closing_day);
+    const fechamento = new Date(atual.year, atual.month - 1, 1);
+    const year = fechamento.getFullYear();
+    const month = fechamento.getMonth();
+    const total = filtrarLancamentosDaFatura(walletTransactions, walletCards, card.id, year, month)
+      .reduce((soma, transacao) => soma + Number(transacao.amount), 0);
+    const pagamento = invoicePayments.find(
+      (inv) => inv.card_id === card.id && inv.year === year && inv.month === month
+    ) ?? null;
+    const situacao = situacaoDaFatura(
+      total,
+      pagamento,
+      dataVencimentoFatura(year, month, card.due_day, card.closing_day),
+    );
+    return situacao.restante > 0 ? [{ card, year, month, restante: situacao.restante }] : [];
+  }), [hojeISO, invoicePayments, walletCards, walletTransactions]);
 
   function abrirPagarFatura() {
     if (!selectedCard) return;
@@ -1151,6 +1180,30 @@ export default function CreditoScreen() {
         />
 
         {/* Carrossel de Cartões */}
+        {faturasFechadasPendentes.length > 0 && (
+          <View style={styles.invoicesDueBanner} accessibilityRole="alert">
+            <Text style={styles.invoicesDueTitle}>Faturas fechadas aguardando pagamento</Text>
+            {faturasFechadasPendentes.map(({ card, year, month, restante }) => (
+              <AppPressable
+                key={`${card.id}-${year}-${month}`}
+                style={styles.invoiceDueRow}
+                onPress={() => {
+                  hapticTap();
+                  faturaForcada.current = { cardId: card.id, year, month };
+                  setFaturaCardYear(year);
+                  setFaturaCardMonth(month);
+                  setSelectedCardId(card.id);
+                }}
+                accessibilityLabel={`Abrir fatura de ${card.name}, falta ${formatBRL(restante)}`}
+              >
+                <Text style={styles.invoiceDueCardName}>{card.name}</Text>
+                <Text style={styles.invoiceDueAmount}>{`Falta ${formatBRL(restante)}`}</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.accent2} />
+              </AppPressable>
+            ))}
+          </View>
+        )}
+
         {walletCards.length > 0 ? (
           <FlatList
             horizontal
@@ -1175,6 +1228,9 @@ export default function CreditoScreen() {
                 selectedCardId === card.id
                   ? { year: viewYear, month: viewMonth }
                   : mesFaturaDoLancamento(todayISO(), card.closing_day);
+              const cicloAtualDoCard = mesFaturaDoLancamento(todayISO(), card.closing_day);
+              const ehCicloAtual = cicloDoCard.year === cicloAtualDoCard.year && cicloDoCard.month === cicloAtualDoCard.month;
+              const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
               const cardSpent = filtrarLancamentosDaFatura(
                 walletTransactions,
                 walletCards,
@@ -1233,7 +1289,9 @@ export default function CreditoScreen() {
                     </View>
 
                     <View style={styles.cardMidRow}>
-                      <Text style={styles.cardInvoiceLabel}>Fatura atual</Text>
+                      <Text style={styles.cardInvoiceLabel}>
+                        {ehCicloAtual ? 'Fatura atual' : `Fatura de ${MESES[cicloDoCard.month]}/${String(cicloDoCard.year).slice(2)}`}
+                      </Text>
                       <PrivacyValue>
                         <Text style={styles.cardInvoiceValue}>{`R$ ${formatMoney(cardSpent)}`}</Text>
                       </PrivacyValue>
@@ -1369,8 +1427,8 @@ export default function CreditoScreen() {
         {/* Lista de Compras no Crédito */}
         <Text style={styles.sectionLabel}>
           {selectedCardId === 'all'
-            ? 'Lançamentos por cartão · segure para editar ou excluir'
-            : 'Lançamentos da fatura · segure para editar ou excluir'}
+            ? 'Lançamentos por cartão · use as opções para editar ou excluir'
+            : 'Lançamentos da fatura · use as opções para editar ou excluir'}
         </Text>
         {creditTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhuma compra no crédito nesta fatura.</Text>
@@ -1522,7 +1580,7 @@ export default function CreditoScreen() {
 
       <ItemActionSheet
         visible={actionSheetOpen}
-        title="Lançamento"
+        title={selectedTx ? `${selectedTx.description} · ${formatBRL(Number(selectedTx.amount))}` : 'Lançamento'}
         onClose={() => setActionSheetOpen(false)}
         onEdit={() => {
           if (selectedTx) abrirEdicaoCompra(selectedTx);
@@ -1858,6 +1916,18 @@ const styles = StyleSheet.create({
     borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
   },
+  invoicesDueBanner: {
+    gap: spacing.xs,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: theme.accent2,
+    backgroundColor: 'rgba(232, 180, 76, 0.08)',
+  },
+  invoicesDueTitle: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.regular },
+  invoiceDueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 40 },
+  invoiceDueCardName: { flex: 1, color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  invoiceDueAmount: { color: theme.accent2, fontSize: type.nota, fontFamily: fonts.regular },
   invoiceHeadRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
