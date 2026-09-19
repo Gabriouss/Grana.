@@ -179,6 +179,42 @@ async function telasAbremRapido() {
     ok('resposta atrasada apaga a faixa e recarrega sem esperar a rede de novo');
   }
 
+  // 4d. Falha PERMANENTE que chega depois do prazo nao pode seguir como
+  //     "Conexao lenta". Visto no emulador em 19/09/2026: 42501 em
+  //     saldos_por_carteira, rede perfeita, e a faixa culpando a conexao.
+  {
+    const { mod, disco } = montarCache();
+    guardar(disco, 'saldos', [{ id: 'velho' }]);
+    const erros = [];
+    const consoleOriginal = console.error;
+    console.error = (...args) => { erros.push(args); };
+    try {
+      const buscar = mod.comCacheOffline('saldos', () => new Promise((_resolve, reject) => {
+        setTimeout(() => reject(Object.assign(
+          new Error('permission denied for function saldos_por_carteira'), { code: '42501' },
+        )), 40);
+      }));
+      const servido = await comLimite(buscar(), 'falha permanente tardia');
+      assert.deepEqual(servido, [{ id: 'velho' }], 'a tela ja tinha sido servida com o disco');
+      assert.equal(mod.motivoDoModoOffline(), 'lento', 'antes da resposta, e so lentidao');
+      await new Promise((r) => setTimeout(r, 80));
+      assert.equal(mod.motivoDoModoOffline(), 'falha', 'depois da recusa, nao e mais culpa da rede');
+      assert.equal(erros.length, 1, 'a falha permanente deixa recibo no log');
+    } finally {
+      console.error = consoleOriginal;
+    }
+
+    // E a mesma chegada tardia, se for de REDE, continua sem virar `falha`.
+    const { mod: mod2, disco: disco2 } = montarCache();
+    guardar(disco2, 'saldos', [{ id: 'velho' }]);
+    await comLimite(mod2.comCacheOffline('saldos', () => new Promise((_resolve, reject) => {
+      setTimeout(() => reject(new Error('Network request failed')), 40);
+    }))(), 'falha de rede tardia');
+    await new Promise((r) => setTimeout(r, 80));
+    assert.notEqual(mod2.motivoDoModoOffline(), 'falha', 'erro de rede nao e defeito do servidor');
+    ok('falha permanente depois do prazo deixa de ser apresentada como conexao lenta');
+  }
+
   // 5. Rede sadia continua sendo o caminho normal, sem prazo nenhum no meio.
   {
     const { mod } = montarCache();

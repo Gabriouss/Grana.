@@ -32,9 +32,11 @@ export function useMotivoOffline(): MotivoOffline | null {
 
 /** Texto único da faixa, para Lançamentos e as outras telas dizerem o mesmo. */
 export function textoDaFaixaOffline(motivo: MotivoOffline | null): string {
-  return motivo === 'lento'
-    ? 'Conexão lenta, mostrando dados salvos no aparelho'
-    : 'Sem conexão, mostrando dados salvos no aparelho';
+  if (motivo === 'lento') return 'Conexão lenta, mostrando dados salvos no aparelho';
+  /* A rede funcionou e o servidor recusou. Culpar a conexão aqui mandaria a
+     pessoa mexer no Wi-Fi por causa de um defeito nosso. */
+  if (motivo === 'falha') return 'Não consegui atualizar, mostrando dados salvos no aparelho';
+  return 'Sem conexão, mostrando dados salvos no aparelho';
 }
 
 /**

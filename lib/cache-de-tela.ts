@@ -118,7 +118,13 @@ export async function esquecerTelas(): Promise<void> {
    app afirmando que não havia internet. A rede estava LENTA (quase 30 segundos
    até a requisição sair do aparelho), não ausente. Dizer "sem conexão" a quem
    está conectado faz a pessoa desconfiar do próprio celular em vez do app. */
-export type MotivoOffline = 'sem-rede' | 'lento';
+/* `falha` nasceu em 19/09/2026. Uma falha PERMANENTE que chegava depois do
+   prazo virava só `console.error`, e a faixa seguia dizendo "Conexão lenta"
+   com a rede perfeita. Visto no emulador com `42501 permission denied for
+   function saldos_por_carteira`: um erro de permissão apresentado como culpa
+   da rede. É a troca de falha permanente por estado benigno que a regra 9 do
+   AGENTS.md proíbe, e o cabeçalho deste arquivo já prometia o contrário. */
+export type MotivoOffline = 'sem-rede' | 'lento' | 'falha';
 
 let motivoAtual: MotivoOffline | null = null;
 const ouvintes = new Set<(offline: boolean) => void>();
@@ -249,8 +255,11 @@ export function comCacheOffline<A extends unknown[], T>(
        disco, para a próxima abertura já nascer atual. O aviso de "dado
        velho" NÃO é apagado aqui: a tela em cima da mão de quem lê continua
        mostrando o que veio do disco, e dizer que está atualizada seria
-       mentira. Falha permanente que chega atrasada deixa recibo no log, em
-       vez de sumir junto com a promessa. */
+       mentira.
+
+       Falha permanente que chega atrasada troca o motivo da faixa para
+       `falha`. A tela já foi servida com o disco, então não há como estourar
+       o erro para ela; o que dá para fazer é parar de culpar a rede. */
     void pedido.then(async (tardio) => {
       if (tardio.ok) {
         await guardarTela(chave, tardio.dados);
@@ -260,6 +269,7 @@ export function comCacheOffline<A extends unknown[], T>(
       }
       if (!isLikelyNetworkError(tardio.erro)) {
         console.error('[cache-de-tela] falha permanente depois do prazo', nome, tardio.erro);
+        definirModo('falha');
       }
     });
     return guardado.dados;
