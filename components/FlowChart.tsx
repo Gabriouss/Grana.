@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { theme, spacing, type, fonts } from '@/lib/theme';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, todayISO } from '@/lib/format';
 import type { Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
@@ -152,7 +152,16 @@ export default function FlowChart({
   const currentMonth = month ?? new Date().getMonth();
 
   const buckets = generateBuckets(period, currentYear, currentMonth);
-  const [selecionado, setSelecionado] = useState(buckets.length - 1);
+  /* A3: abria no ÚLTIMO ponto, que no mês corrente é "29–30/09 · Sem
+     movimentação", onze dias à frente de hoje. Abre no período que contém
+     hoje; em mês passado ou outro período, nenhum ponto contém hoje e o
+     último segue como padrão. */
+  const hojeISO = todayISO();
+  const indiceInicial = () => {
+    const i = buckets.findIndex((b) => b.matches(hojeISO));
+    return i >= 0 ? i : buckets.length - 1;
+  };
+  const [selecionado, setSelecionado] = useState(indiceInicial);
   // Número de pontos varia por período (12 no ano, 7 no mês/7 dias) — a
   // posição de cada um no eixo X precisa acompanhar essa contagem, não um
   // "6" fixo que só valia enquanto todo período tinha 7 marcos.
@@ -196,7 +205,7 @@ export default function FlowChart({
   const signature = JSON.stringify([inPoints, outPoints, period, currentYear, currentMonth]);
 
   useEffect(() => {
-    setSelecionado(buckets.length - 1);
+    setSelecionado(indiceInicial());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, currentYear, currentMonth]);
 

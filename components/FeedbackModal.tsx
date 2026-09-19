@@ -45,7 +45,16 @@ export default function FeedbackModal({
     setEnviando(false);
   }
 
+  /* A44: fechar no X ou no voltar apagava o texto digitado sem avisar. Com
+     texto escrito, pergunta antes de descartar. */
   function handleClose() {
+    if (message.trim() && !enviando) {
+      Alert.alert('Descartar mensagem?', 'O texto que você escreveu será apagado.', [
+        { text: 'Continuar escrevendo', style: 'cancel' },
+        { text: 'Descartar', style: 'destructive', onPress: () => { resetState(); onClose(); } },
+      ]);
+      return;
+    }
     resetState();
     onClose();
   }

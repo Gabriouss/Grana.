@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -33,6 +33,13 @@ export default function RecuperarSenhaModal({
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  /* A68: o modal fica montado na tela de entrada, então `useState(emailInicial)`
+     só vale na primeira renderização, quando o campo ainda está vazio. A cada
+     abertura, o e-mail já digitado no login passa para cá. */
+  useEffect(() => {
+    if (visible) setEmail(emailInicial);
+  }, [visible, emailInicial]);
 
   async function handleEnviar() {
     const alvo = email.trim();
