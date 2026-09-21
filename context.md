@@ -9507,3 +9507,27 @@ documentos e comparação com a decisão registrada em 17/09. Nenhum código do
 aplicativo foi alterado. O clique no checkout ao vivo não foi repetido nesta
 correção documental; o funcionamento em produção já estava registrado e o
 autor confirmou novamente o destino.
+
+## 21/09/2026 — Papéis do Maestri versionados para a M1
+
+**Pedido do autor.** Subir também a pasta `.maestri`, porque o Maestri será
+instalado na M1.
+
+**Mudança.** Foram versionados os oito papéis criados no workspace: Product
+Planner, Auditor, QA, Documentation/Vault, App Engineer, Backend Engineer,
+UI/Design e Marketing/Growth. Cada papel preserva a política de modelo e o
+gate que proíbe Opus antes de duas tentativas reais, testadas e documentadas.
+
+**Portabilidade.** Os `AGENTS.md` e `CLAUDE.md` gerados dentro de cada papel
+apontavam para o caminho absoluto da M2. Esse caminho foi substituído por uma
+instrução de usar a raiz do workspace atual, permitindo a mesma pasta em
+`C:\Users\User\Music\GranaPonto` na M2 e `E:\GranaPonto` na M1. O
+`.maestri/README.md` registra a instalação e explica que o Git transporta os
+papéis, mas não o layout, as notas e as conexões do canvas, que pertencem ao
+estado do aplicativo.
+
+**Segurança e verificação.** Busca dirigida confirmou que `.maestri` não
+contém token, segredo, senha, chave ou credencial. Os 24 arquivos de papel
+foram conferidos, e não restou instrução operacional que mande um agente para
+o caminho absoluto da M2; o README apenas documenta os caminhos das duas
+máquinas. Nenhum agente foi recrutado, removido ou reiniciado nesta mudança.
