@@ -75,3 +75,6 @@ supabase/.temp/
 # Temporarios do Google Drive Desktop, que sincroniza esta pasta
 .tmp.driveupload/
 .tmp.drivedownload/
+
+# Estrategia de marketing privada: manter somente no ambiente local.
+/FUNIL.md
