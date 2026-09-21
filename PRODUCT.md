@@ -57,8 +57,10 @@ telas do app por `estadoAcesso.allowed` e manda quem não tem acesso para a
 tela de assinar. Ele está **desligado por interruptor** (`enforce_subscriptions`
 em `app_backend_config`), porque nenhuma compra de teste foi feita ainda e
 nenhum evento da Cakto jamais chegou. As contas existentes têm cortesia sem
-prazo. Por isso o CTA principal da landing continua sendo "Criar minha
-conta", e só a dobra de preços leva ao pagamento.
+prazo. No funil comercial da landing **não existe CTA "Criar conta"**: os
+CTAs de apresentação levam à dobra de preços, e os botões dos planos levam
+diretamente aos checkouts da Cakto. A criação ou entrada na conta é uma etapa
+operacional separada da decisão de compra, não a chamada principal da landing.
 
 **O WhatsApp está desligado por tempo indeterminado** (decisão do autor em
 05/09/2026, depois de um segundo banimento de contas na Meta), e em
@@ -93,6 +95,11 @@ desconectado.
   e vínculo com a conta. Renovação, reembolso, cartão e plano anual ainda não
   tiveram tráfego real. O bloqueio está implementado e desligado por
   interruptor; ligar agora depende só de decisão do autor.
+- O preço **já foi validado** comercialmente e no fluxo real de compra. Nos
+  criativos, anúncios e peças sociais, porém, não divulgar os valores exatos
+  mensal ou anual. A única formulação de preço permitida nessas peças é
+  **"menos de R$ 0,37 por dia"**. Os valores completos ficam na landing e no
+  checkout.
 - O parcelamento do plano anual **não fecha no preço cheio**: a Cakto cobra o
   juro-base dela do comprador (23,94% em 12x), e a interface pública só
   permite acrescentar juro por cima, nunca remover. Por isso nenhuma
@@ -128,8 +135,10 @@ desconectado.
   `PieChart` real e as cores reais de categoria de `lib/heuristics.ts`) —
   tratar a UI real do app como fonte de verdade pra qualquer mock de
   landing page, não inventar uma versão mais bonita e fictícia.
-- Preço decidido: R$ 9,90/mês e R$ 97,90/ano, exibidos como número real na
-  dobra de preços da landing page. O anual lidera o cartão.
+- Preço validado: R$ 9,90/mês e R$ 97,90/ano, exibidos como números reais na
+  dobra de preços da landing page e confirmados no fluxo da Cakto. O anual
+  lidera o cartão. Para criativos, vale a restrição acima: sem preço exato;
+  no máximo, "menos de R$ 0,37 por dia".
 
 ## Product Principles
 

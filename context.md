@@ -9472,3 +9472,38 @@ checkout) e a copy nova de rótulos, selo, parcelamento e garantia.
 **Pendências abertas:**
 - [ ] Conferir no ar, no navegador onde o autor viu as seções em branco,
       se elas aparecem.
+
+## 21/09/2026 — Correção do contexto comercial da landing e dos criativos
+
+**Pedido do autor.** Corrigir a análise e todos os documentos de contexto:
+a landing não usa "Criar conta" como CTA comercial, já conduz ao checkout;
+os criativos não terão preço mensal ou anual; no máximo usarão "menos de
+R$ 0,37 por dia"; e o preço já foi validado.
+
+**Sintoma e causa.** A resposta sobre o calendário repetiu a frase
+desatualizada de `PRODUCT.md` segundo a qual o CTA principal ainda seria
+"Criar minha conta". A implementação atual e o registro de 17/09 dizem outra
+coisa: `BotaoCTA` leva herói, garantia e fechamento a `#precos`; dentro da
+dobra, os botões "Assinar o plano anual/mensal" usam `hrefCompraAnual()` ou
+`hrefCompra()` e abrem os checkouts configurados. A expressão "Criar conta"
+que ainda existe em `app/index.tsx` é navegação de conta no rodapé, não CTA de
+venda. A causa foi tratar uma afirmação antiga do documento como estado atual
+sem confrontá-la com o código e o histórico mais recente.
+
+**Documentos corrigidos.** `PRODUCT.md` agora registra o caminho comercial
+real, a validação do preço e a política de comunicação. `FUNIL.md` remove os
+valores mensais/anuais das instruções de criativos, troca o S7 pela formulação
+permitida e fixa a regra: nenhum preço exato em criativo, anúncio, capa ou
+legenda; no máximo "menos de R$ 0,37 por dia". Os valores exatos continuam
+como verdade interna do produto e na landing/checkout.
+
+**Descartado.** Não se removeu preço da landing, do checkout nem da documentação
+interna de produto: a decisão do autor restringe os criativos. Também não se
+reescreveram registros históricos do `context.md`, que preservam o estado de
+cada data.
+
+**Verificação.** Conferência estática de `app/index.tsx`, busca dirigida nos
+documentos e comparação com a decisão registrada em 17/09. Nenhum código do
+aplicativo foi alterado. O clique no checkout ao vivo não foi repetido nesta
+correção documental; o funcionamento em produção já estava registrado e o
+autor confirmou novamente o destino.

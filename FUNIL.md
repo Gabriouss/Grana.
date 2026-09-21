@@ -82,14 +82,12 @@ O Grana. não conecta a bancos nem utiliza Open Finance. Isso deve ser tratado
 como uma escolha de controle e privacidade, nunca como uma promessa de
 integração que o produto não possui.
 
-Preço vigente para a campanha:
-
-- R$ 9,90 por mês;
-- R$ 97,90 por ano;
-- garantia de reembolso em 7 dias.
-
-Qualquer alteração de preço deve ser conferida na fonte única do projeto antes
-de virar criativo, anúncio ou legenda.
+O preço do produto **já foi validado** e está publicado na landing e nos
+checkouts. Os valores exatos continuam documentados na fonte única do projeto,
+mas **não entram em criativos, anúncios, capas ou legendas**. Quando uma peça
+precisar comunicar acessibilidade da oferta, a única formulação permitida é
+**"menos de R$ 0,37 por dia"**. A garantia de reembolso em 7 dias pode ser
+comunicada normalmente.
 
 ## 3. Arquitetura do funil
 
@@ -99,7 +97,7 @@ de virar criativo, anúncio ou legenda.
 | Consideração | “Como eu registraria tudo sem parar minha vida?” | Demonstrações de voz, Pix, QR Code e widget | Ver a landing e conhecer o produto |
 | Confiança | “Isso funciona para a minha rotina?” | Livre para Gastar, privacidade, FAQ e objeções | Salvar, compartilhar e voltar ao produto |
 | Ativação | “Como começo?” | Checklist de primeiros 7 dias e próximo gasto | Assinar e fazer o primeiro lançamento |
-| Retargeting | “Ainda tenho uma dúvida” | Cortes de demonstração, preço e garantia | Voltar ao checkout |
+| Retargeting | “Ainda tenho uma dúvida” | Cortes de demonstração, oferta e garantia | Voltar ao checkout |
 
 ## 4. Cadência editorial
 
@@ -148,7 +146,7 @@ Cada ideia deve nascer em uma versão orgânica e ser reaproveitada em:
 | 08/10 | S6 | Carrossel | “Preciso conectar minha conta?” | Responder objeção |
 | 09/10 | R9 | Reel | “Planilha aberta versus lançamento simples.” | Mostrar a barreira do registro manual |
 | 12/10 | R10 | Reel | “Um dia comum usando os três caminhos.” | Mostrar recorrência de uso |
-| 13/10 | S7 | Estático | “R$ 9,90 por mês para enxergar melhor o seu dinheiro.” | Apresentar oferta |
+| 13/10 | S7 | Estático | “Seu assistente financeiro por menos de R$ 0,37 por dia.” | Apresentar oferta |
 | 14/10 | S8 | Carrossel | “O que fazer nos primeiros 7 dias.” | Preparar ativação |
 | 15/10 | R11 | Reel | “Você não precisa saber tudo sobre finanças para começar.” | Reduzir insegurança |
 | 16/10 | R12 | Reel | “Seu próximo gasto pode ser o começo.” | Converter |
@@ -214,7 +212,7 @@ composição não funcionar em 9:16, gerar uma adaptação visual própria.
 - Usar composição editorial, assimetria controlada e contraste alto.
 - Evitar excesso de cards, gradientes decorativos e efeitos genéricos.
 - A marca deve aparecer com o ponto final: `Grana.`.
-- Aplicar tipografia, logo, preço, números e UI na edição final.
+- Aplicar tipografia, logo, copy aprovada, números permitidos e UI na edição final.
 - Usar telas reais do produto sempre que o Grana. aparecer.
 
 ### Formatos
@@ -253,7 +251,7 @@ composição não funcionar em 9:16, gerar uma adaptação visual própria.
 - telas do aplicativo;
 - logo e assinatura da marca;
 - textos finais;
-- preços;
+- a formulação permitida de valor diário, quando a pauta exigir;
 - números financeiros;
 - QR Codes;
 - telas de checkout;
@@ -291,8 +289,8 @@ composição não funcionar em 9:16, gerar uma adaptação visual própria.
 
 Criar um Project chamado “Grana. Conteúdo e Lançamento”. Adicionar à base de
 conhecimento os materiais aprovados de produto, identidade visual, tom de voz,
-tokens de cor, preço e concorrência. As instruções do Project devem manter a
-voz, os fatos do produto e as restrições desta campanha.
+tokens de cor, política de preço e concorrência. As instruções do Project devem
+manter a voz, os fatos do produto e as restrições desta campanha.
 
 O Claude deve ser usado como diretor de criação, roteirista, copywriter e
 revisor. Ele pode gerar um briefing visual detalhado, mas não deve ser tratado
@@ -311,8 +309,10 @@ O Grana. reduz a fricção para registrar gastos. A pessoa pode lançar por voz,
 colar o texto de um Pix, ler o QR Code de uma nota e usar o widget Android.
 Depois, acompanha compromissos, cartões e o valor Livre para Gastar.
 
-O produto não conecta a bancos ou Open Finance. O preço vigente é R$ 9,90 por
-mês ou R$ 97,90 por ano, com garantia de reembolso em 7 dias.
+O produto não conecta a bancos ou Open Finance. O preço já foi validado e está
+na landing e no checkout, com garantia de reembolso em 7 dias. Não informe os
+valores exatos em criativos. Se a pauta exigir uma referência de preço, use
+somente "menos de R$ 0,37 por dia".
 </produto>
 
 <marca>
@@ -324,6 +324,8 @@ deve parecer criada por uma equipe sênior, não por um template de IA.
 <restricoes>
 - Não invente depoimentos, estatísticas, usuários ou resultados.
 - Não gere logo, texto, preço, QR Code ou interface dentro da imagem ou vídeo.
+- Não escreva o preço mensal ou anual em criativos, anúncios, capas ou legendas.
+  A única formulação de preço permitida é "menos de R$ 0,37 por dia".
 - Use telas reais quando mostrar o Grana.
 - Não proponha WhatsApp.
 - Use linguagem concreta sobre gastar no escuro, perder o controle do mês e
@@ -450,7 +452,7 @@ Usar principalmente:
 - R7, R8, R9 e R11;
 - S5, S6 e S8;
 - respostas às objeções mais frequentes;
-- demonstração de preço, garantia e primeiros passos.
+- demonstração da oferta, garantia e primeiros passos.
 
 Objetivo: remover dúvida e aumentar o número de pessoas que chegam ao checkout.
 
@@ -460,7 +462,8 @@ Usar principalmente:
 
 - R12;
 - S7;
-- criativos com preço vigente, garantia e CTA direto.
+- criativos de oferta com garantia e CTA direto, sem preço exato; quando fizer
+  sentido, usar apenas "menos de R$ 0,37 por dia".
 
 Não usar escassez inventada, contagem regressiva falsa ou prova social sem
 origem verificável.
@@ -487,7 +490,7 @@ origem verificável.
 ### Funil
 
 - visita qualificada;
-- visualização de preço;
+- visualização dos planos na landing;
 - clique no checkout;
 - assinatura;
 - primeiro lançamento no produto.
@@ -500,7 +503,7 @@ intenção.
 
 - A promessa é única e clara?
 - A tela mostrada existe no produto?
-- O preço foi conferido na fonte vigente?
+- A peça está sem preço exato e, se menciona valor, usa somente "menos de R$ 0,37 por dia"?
 - Há algum número inventado?
 - Há algum depoimento ou comentário fabricado?
 - O texto continua legível no celular?
@@ -861,8 +864,9 @@ commercial aesthetic, no readable screen, no generated price, no logo, no text,
 no UI, no watermark.
 ```
 
-**Edição:** inserir manualmente preço vigente, garantia de 7 dias, marca e CTA.
-Não gerar selo de desconto nem urgência artificial.
+**Edição:** inserir manualmente a garantia de 7 dias, marca e CTA. Não mostrar
+preço mensal ou anual. Se a oferta precisar de referência de valor, usar somente
+"menos de R$ 0,37 por dia". Não gerar selo de desconto nem urgência artificial.
 
 #### S8. Primeiros 7 dias
 
@@ -1011,7 +1015,7 @@ pelo prompt-base acima. Para cada estático:
 1. gerar fundo flat em 1080x1440 para feed ou 1080x1920 para Story;
 2. reservar a área proporcional para a tela real indicada;
 3. inserir o mockup real e a captura real na edição;
-4. aplicar logo, tipografia, preço e CTA manualmente;
+4. aplicar logo, tipografia, copy permitida e CTA manualmente;
 5. revisar pelo checklist antes de exportar.
 
 ### Nova rodada dos estáticos das duas primeiras semanas
