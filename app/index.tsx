@@ -1339,14 +1339,14 @@ function ConteudoWeb() {
           nota fiscal e widgets. Vem logo depois do Panorama da web de
           propósito — primeiro o que funciona em qualquer navegador, depois o
           que só o celular tem. Detalhes e decisões em NoSeuBolso.tsx. */}
-      <View nativeID="no-bolso" style={styles.palcoComCamada}>
-        <GradeInterativa />
+      <View nativeID="no-bolso" style={[styles.palcoComCamada, styles.palcoMenta]}>
+        <GradeInterativa sobreClaro />
         <Dobra>
           <View style={styles.secao}>
             <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
-              <Text style={[styles.eyebrow, styles.precoTextoCentralizado]}>No celular</Text>
-              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>E no seu bolso, ainda mais.</TituloSecao>
-              <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.linhasEquilibradas]}>
+              <Text style={[styles.eyebrow, styles.eyebrowMenta, styles.precoTextoCentralizado]}>No celular</Text>
+              <TituloSecao estiloExtra={[styles.precoTituloCentralizado, styles.tituloMenta]}>E no seu bolso, ainda mais.</TituloSecao>
+              <Text style={[styles.secaoTexto, styles.secaoTextoMenta, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado, styles.linhasEquilibradas]}>
                 No aplicativo de Android, o Grana. vai com você: fale o gasto, fotografe a nota e deixe o que importa na tela inicial.
               </Text>
             </RevealOnScroll>
@@ -1902,6 +1902,7 @@ const styles = StyleSheet.create({
   // na borda em teste real de celular (relato direto do autor).
   faixaCompacta: { paddingHorizontal: spacing.xl + spacing.md },
   bandaLevantada: { backgroundColor: theme.paperRaised },
+  palcoMenta: { backgroundColor: theme.accent2 },
 
   // Cabeçalho sticky com blur — fica fixo no topo durante toda a rolagem,
   // com um backdrop-filter que deixa o conteúdo por baixo visível de forma
@@ -1957,6 +1958,7 @@ const styles = StyleSheet.create({
   palcoBeneficios: { position: 'relative', backgroundColor: theme.paperRaised },
 
   eyebrow: { color: theme.accent2, fontSize: type.legenda, letterSpacing: 1, fontFamily: fonts.regular, marginBottom: spacing.xs, textTransform: 'uppercase' },
+  eyebrowMenta: { color: theme.paper },
   // Escala bem acima do resto da tipografia do app de propósito — esta é a
   // única frase que precisa ser lida antes de qualquer outra coisa na
   // página, e o tamanho tem que dizer isso antes mesmo do conteúdo.
@@ -2165,6 +2167,7 @@ const styles = StyleSheet.create({
      do resto do arquivo; onde não houver suporte, o texto só quebra do jeito
      normal. */
   secaoTitulo: { color: theme.ink, fontSize: type.cabecalho + 4, fontFamily: fonts.regular, marginBottom: spacing.lg, maxWidth: 640, ...({ textWrap: 'balance' } as any) },
+  tituloMenta: { color: theme.paper },
   secaoTituloGrande: { fontSize: 50, lineHeight: 54, letterSpacing: -1.2, maxWidth: 900, marginBottom: spacing.xl },
   /* No celular o título de seção cai de 28 para 23px. Não é preciosismo de
      escala: numa coluna de ~348px, 28px fazia um título como "Controle
@@ -2174,6 +2177,7 @@ const styles = StyleSheet.create({
      23px o mesmo título fecha em três linhas cheias. */
   secaoTituloCompacto: { fontSize: type.cabecalho - 1, lineHeight: (type.cabecalho - 1) * 1.28, letterSpacing: -0.4 },
   secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560 },
+  secaoTextoMenta: { color: theme.paper },
   secaoTextoCompacto: { fontSize: type.corpo, lineHeight: type.corpo * 1.5 },
   /* Segundo parágrafo de uma mesma seção. `secaoTexto` não tem margem porque
      todas as outras seções têm um parágrafo só; sem isto os dois blocos

@@ -12,6 +12,11 @@ import { Platform, type TextStyle } from 'react-native';
  * a cada uso, e uma delas errou. A função remove a possibilidade: o canal RGB
  * fica escrito uma vez só, e o call site escolhe apenas o alfa. */
 export const menta = (alfa: number) => `rgba(174,255,227,${alfa})`;
+/* `theme.paper` (#052229 = 5,34,41) com alfa — mesma ideia de `menta`, para
+   textura sobre fundo CLARO (`accent2`): ali um traço de menta translúcida
+   funde com o próprio fundo e some, então a grade precisa da cor escura da
+   marca, não da clara. */
+export const petroleo = (alfa: number) => `rgba(5,34,41,${alfa})`;
 
 export const theme = {
   paper: '#052229',

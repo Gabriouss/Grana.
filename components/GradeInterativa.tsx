@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
-import { menta } from '@/lib/theme';
+import { menta, petroleo } from '@/lib/theme';
 
 // Mesma grade nas 4 seções que a usam (FAQ, Reconhece isso, Inteligência
 // financeira, Preços) — uma versão anterior variava o desenho por seção
@@ -10,13 +10,21 @@ import { menta } from '@/lib/theme';
 // no background precisa ser mais sutil"). Era 0.1/0.5; a base virou textura
 // quase subliminar, e o brilho sob o cursor continua claramente mais forte
 // que ela sem voltar a competir com o conteúdo por cima.
-const IMAGEM_BASE =
-  `linear-gradient(${menta(0.05)} 1px, transparent 1px), linear-gradient(90deg, ${menta(0.05)} 1px, transparent 1px)`;
-// MESMO desenho, só que mais forte — é essa cópia que o brilho do cursor
-// revela através da máscara circular, criando o efeito de "acender" a
-// textura por baixo do mouse.
-const IMAGEM_BRILHO =
-  `linear-gradient(${menta(0.32)} 1px, transparent 1px), linear-gradient(90deg, ${menta(0.32)} 1px, transparent 1px)`;
+//
+// A cor do traço (`menta` ou `petroleo`) é gerada por seção, não fixa: sobre
+// fundo escuro a grade tem que ser clara (`menta`) para aparecer, e sobre
+// fundo claro (`#no-bolso`, `theme.accent2`) `menta` funde com o próprio
+// fundo e some — ali a grade usa `petroleo`, a cor escura da marca, com os
+// MESMOS alfas. Ver prop `sobreClaro`.
+function imagens(sobreClaro: boolean) {
+  const cor = sobreClaro ? petroleo : menta;
+  const base = `linear-gradient(${cor(0.05)} 1px, transparent 1px), linear-gradient(90deg, ${cor(0.05)} 1px, transparent 1px)`;
+  // MESMO desenho, só que mais forte — é essa cópia que o brilho do cursor
+  // revela através da máscara circular, criando o efeito de "acender" a
+  // textura por baixo do mouse.
+  const brilho = `linear-gradient(${cor(0.32)} 1px, transparent 1px), linear-gradient(90deg, ${cor(0.32)} 1px, transparent 1px)`;
+  return { base, brilho };
+}
 const TAMANHO = '32px 32px';
 // Máscara elíptica fixa que concentra a grade toda longe das bordas da
 // seção — `farthest-side`, não um raio em %, bate exatamente nas bordas
@@ -59,9 +67,14 @@ const MASCARA_BORDA = 'radial-gradient(ellipse farthest-side at 50% 50%, transpa
  * que `TrustMarquee`/`GlowOrb` já evitam `setState` a cada frame nesta
  * página. Sem contador de resize/estado nenhum: só CSS reagindo a duas
  * variáveis.
+ *
+ * `sobreClaro` (prop) troca a cor do traço de `menta` para `petroleo` — usada
+ * só em `#no-bolso`, a única seção com fundo `accent2` (claro); nas outras a
+ * grade continua clara sobre fundo escuro, como sempre foi.
  */
-export default function GradeInterativa({ invertida }: { invertida?: boolean }) {
+export default function GradeInterativa({ invertida, sobreClaro }: { invertida?: boolean; sobreClaro?: boolean }) {
   const mascaraCentro = invertida ? MASCARA_BORDA : MASCARA_CENTRO;
+  const { base: IMAGEM_BASE, brilho: IMAGEM_BRILHO } = imagens(sobreClaro === true);
   const containerRef = useRef<View>(null);
   const brilhoRef = useRef<View>(null);
   const posPendente = useRef<{ x: number; y: number } | null>(null);

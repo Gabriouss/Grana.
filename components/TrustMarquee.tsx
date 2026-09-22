@@ -2,7 +2,6 @@ import { useEffect, useId, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { theme, spacing, fonts, type } from '@/lib/theme';
 import { CORTES, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
-import AppPressable from '@/components/AppPressable';
 
 type Props = { itens: string[] };
 
@@ -50,8 +49,6 @@ export default function TrustMarquee({ itens }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
-  const [pausadoManualmente, setPausadoManualmente] = useState(false);
-  const [emInteracao, setEmInteracao] = useState(false);
   const [larguraUmaCopia, setLarguraUmaCopia] = useState(0);
   const { width: larguraJanela } = useWindowDimensions();
   const idBruto = useId();
@@ -70,7 +67,9 @@ export default function TrustMarquee({ itens }: Props) {
   const textoBase = itens.join(SEPARADOR);
 
   // Reduced motion: uma lista parada, nunca a faixa duplicada congelada,
-  // que pareceria bug (texto repetido sem razão aparente).
+  // que pareceria bug (texto repetido sem razão aparente). É a ÚNICA saída de
+  // movimento que esta faixa tem — a pedido do autor, ela não tem pausa
+  // manual nem por ponteiro/foco no modo normal, e roda infinitamente.
   if (reduzirMovimento) {
     const compacto = larguraJanela < CORTES.medio;
     return (
@@ -96,37 +95,15 @@ export default function TrustMarquee({ itens }: Props) {
   const copias =
     larguraUmaCopia > 0 ? Math.max(2, Math.ceil((larguraJanela * 2) / larguraUmaCopia) + 1) : 6;
 
-  const pausado = pausadoManualmente || emInteracao;
-
   return (
-    <View
-      style={styles.container}
-      {...({
-        role: 'region',
-        'aria-label': 'Destaques do Grana. Use o botão para pausar ou retomar a faixa.',
-        onMouseEnter: () => setEmInteracao(true),
-        onMouseLeave: () => setEmInteracao(false),
-        onFocus: () => setEmInteracao(true),
-        onBlur: () => setEmInteracao(false),
-      } as any)}
-    >
+    <View style={styles.container} {...({ role: 'region', 'aria-label': 'Destaques do Grana.' } as any)}>
       <TrustMarqueeFaixa
         nomeKeyframe={nomeKeyframe}
         copias={copias}
         larguraUmaCopia={larguraUmaCopia}
         textoLoop={textoLoop}
-        pausado={pausado}
         onMedir={setLarguraUmaCopia}
       />
-      <AppPressable
-        accessibilityRole="button"
-        accessibilityLabel={pausadoManualmente ? 'Retomar destaques' : 'Pausar destaques'}
-        onPress={() => setPausadoManualmente((atual) => !atual)}
-        {...({ 'aria-pressed': pausadoManualmente } as any)}
-        style={({ hovered }) => [styles.botaoPausa, hovered && styles.botaoPausaHover]}
-      >
-        <Text style={styles.botaoPausaTexto}>{pausadoManualmente ? 'Retomar' : 'Pausar'}</Text>
-      </AppPressable>
     </View>
   );
 }
@@ -136,14 +113,12 @@ function TrustMarqueeFaixa({
   copias,
   larguraUmaCopia,
   textoLoop,
-  pausado,
   onMedir,
 }: {
   nomeKeyframe: string;
   copias: number;
   larguraUmaCopia: number;
   textoLoop: string;
-  pausado: boolean;
   onMedir: (largura: number) => void;
 }) {
   useEffect(() => {
@@ -172,7 +147,6 @@ function TrustMarqueeFaixa({
             animationDuration: `${duracaoSegundos}s`,
             animationTimingFunction: 'linear',
             animationIterationCount: 'infinite',
-            animationPlayState: pausado ? 'paused' : 'running',
           } as any,
         ]}
       >
@@ -192,13 +166,13 @@ function TrustMarqueeFaixa({
 }
 
 const styles = StyleSheet.create({
-  container: { position: 'relative', backgroundColor: theme.paperRaised, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  container: { position: 'relative', backgroundColor: theme.accent2, borderBottomWidth: 1, borderBottomColor: theme.paper },
   faixaEstatica: {
     minHeight: 44,
     justifyContent: 'center',
-    backgroundColor: theme.paperRaised,
+    backgroundColor: theme.accent2,
     borderBottomWidth: 1,
-    borderBottomColor: theme.rule,
+    borderBottomColor: theme.paper,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
   },
@@ -214,22 +188,19 @@ const styles = StyleSheet.create({
   listaEstaticaCompacta: { flexWrap: 'wrap', gap: spacing.sm },
   itemEstatico: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
   itemEstaticoCompacto: { width: '48%', alignItems: 'flex-start' },
-  pontoEstatico: { width: 5, height: 5, borderRadius: 3, backgroundColor: theme.accent2, marginTop: 1 },
+  pontoEstatico: { width: 5, height: 5, borderRadius: 3, backgroundColor: theme.paper, marginTop: 1 },
   textoEstatico: {
     flexShrink: 1,
-    color: theme.inkSoft,
+    color: theme.paper,
     fontSize: type.micro,
     lineHeight: type.micro * 1.4,
     fontFamily: fonts.regular,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  /* Reserva espaço para o controle persistente de pausa, inclusive em touch:
-     o texto continua em loop por baixo sem ficar escondido sob o botão. */
   faixa: {
-    backgroundColor: theme.paperRaised,
+    backgroundColor: theme.accent2,
     paddingVertical: spacing.xs,
-    paddingRight: 84,
     minHeight: 44,
     justifyContent: 'center',
     overflow: 'hidden',
@@ -247,22 +218,6 @@ const styles = StyleSheet.create({
   // bem maior). Sem isso o loop andava só uma fração do que devia e
   // "saltava" de volta antes de completar uma cópia inteira.
   trilho: { flexDirection: 'row', flexShrink: 0, ...({ width: 'max-content' } as any) },
-  botaoPausa: {
-    position: 'absolute',
-    top: 4,
-    bottom: 4,
-    right: spacing.xl,
-    minWidth: 60,
-    paddingHorizontal: spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.ruleStrong,
-    backgroundColor: theme.paper,
-  },
-  botaoPausaHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
-  botaoPausaTexto: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular },
   // Igual a `texto`, mas sem `marginRight`: o separador "·" que fecha cada
   // cópia já está dentro da própria string (`textoLoop`), então um gap
   // extra aqui duplicaria o espaçamento só nas costuras.
@@ -275,7 +230,7 @@ const styles = StyleSheet.create({
   // garante uma linha só, sem precisar de nenhuma lógica de corte.
   textoLoop: {
     flexShrink: 0,
-    color: theme.inkSoft,
+    color: theme.paper,
     fontSize: type.legenda,
     fontFamily: fonts.light,
     textTransform: 'uppercase',
