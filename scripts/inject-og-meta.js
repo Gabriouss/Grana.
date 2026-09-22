@@ -18,6 +18,20 @@ const jsonLd = JSON.stringify({
   description: meta.description,
   applicationCategory: 'FinanceApplication',
   operatingSystem: 'Web, Android, iOS',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Plano Mensal',
+      price: '9.90',
+      priceCurrency: 'BRL',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Plano Anual',
+      price: '97.90',
+      priceCurrency: 'BRL',
+    },
+  ],
   provider: {
     '@type': 'Organization',
     name: 'Grana.',

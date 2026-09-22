@@ -1,4 +1,17 @@
 User-agent: *
 Allow: /
+Allow: /assinar
+Allow: /baixar
+Allow: /termos
+Allow: /privacidade
+Allow: /exclusao-de-dados
+Disallow: /contas
+Disallow: /credito
+Disallow: /desafios
+Disallow: /graficos
+Disallow: /lancamentos
+Disallow: /perfil
+Disallow: /nova-senha
+Disallow: /auth/
 
 Sitemap: https://granaponto.com.br/sitemap.xml

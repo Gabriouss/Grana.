@@ -112,7 +112,15 @@ function ItemBarra({
 
   return (
     <AppPressable
-      onPress={onPress}
+      onPress={(event) => {
+        // O href preserva abrir em nova aba/copiar link. No clique comum,
+        // somente o roteador deve navegar: a navegacao padrao recarrega o
+        // documento e descarta os contextos, incluindo Dados de exemplo.
+        const mouse = event as typeof event & { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; button?: number };
+        if (mouse.metaKey || mouse.ctrlKey || mouse.shiftKey || mouse.altKey || (mouse.button != null && mouse.button !== 0)) return;
+        event.preventDefault();
+        onPress();
+      }}
       /* `assistente` é AÇÃO, não destino: ele abre a conversa sobre a tela
          atual em vez de navegar, e por isso não recebe `href` na linha abaixo.
          Anunciar isso como `link` prometia ao leitor de tela uma navegação que

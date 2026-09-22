@@ -78,3 +78,68 @@ supabase/.temp/
 
 # Estrategia de marketing privada: manter somente no ambiente local.
 /FUNIL.md
+
+# Instalações locais das skills para os diversos terminais do workspace.
+# O pacote canônico versionado fica em .agents/skills e .claude/skills;
+# estes diretórios são cópias geradas pelo instalador, mantidas localmente
+# para que cada terminal encontre as mesmas skills sem poluir o repositório.
+/.adal/
+/.aider-desk/
+/.augment/
+/.autohand/
+/.bob/
+/.codeartsdoer/
+/.codebuddy/
+/.codemaker/
+/.codestudio/
+/.commandcode/
+/.continue/
+/.cortex/
+/.crush/
+/.devin/
+/.forge/
+/.fx/
+/.goose/
+/.grok/
+/.hermes/
+/.iflow/
+/.inferencesh/
+/.jazz/
+/.junie/
+/.kimchi/
+/.kiro/
+/.kode/
+/.lingma/
+/.mcpjam/
+/.minimax/
+/.moxby/
+/.mux/
+/.neovate/
+/.ona/
+/.openhands/
+/.pi/
+/.pochi/
+/.posit/
+/.qoder/
+/.qwen/
+/.reasonix/
+/.roo/
+/.rovodev/
+/.tabnine/
+/.terramind/
+/.tinycloud/
+/.trae/
+/.vibe/
+/.windsurf/
+/.zcode/
+/.zencoder/
+/agent/
+/data/
+/skills/
+/scripts/.tmp-web-login.cjs
+/test-results/
+
+# O Maestri recria cópias locais dos papéis com IDs do canvas; os papéis
+# portáveis versionados acima continuam rastreáveis, mas essas cópias não são
+# estado compartilhado do projeto.
+/.maestri/roles/*/

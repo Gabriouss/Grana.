@@ -1,0 +1,139 @@
+{
+  "generatedAt": "2026-09-21T02:50:29.439Z",
+  "note": "Lote inicial dos estáticos do novo calendário. E03 e E04 aguardam capturas reais de Pix e QR Code.",
+  "cards": [
+    {
+      "id": "E01",
+      "day": 1,
+      "format": "feed",
+      "size": "1080x1440",
+      "file": "E01-feed-1080x1440.png",
+      "sourceScreen": "docs\\marketing\\funil-criativos-flat-2026-09\\revisao-04\\assets\\celular-2.png",
+      "copy": {
+        "h1": "O salário caiu.",
+        "h2": "Quanto dele já tem destino?"
+      },
+      "caption": "O saldo subiu. Mas o aluguel, a fatura e as contas continuam chegando. O Grana. ajuda a acompanhar esses compromissos e consultar o Livre para Gastar com base no que você registrou. Demonstração com dados fictícios.",
+      "prompt": "Criativo estático de feed 1080x1440 para o Grana., fundo flat azul-petróleo, logo oficial em gradiente, mockup realista do celular com tela real da Home do Grana. grande à esquerda, H1 “O salário caiu.” à direita e H2 “Quanto dele já tem destino?” abaixo. Hierarquia produto > H1 > H2 > fundo. Arco menta discreto e poucos elementos geométricos. Não usar fotografia, pessoa, botão, texto inventado na interface, logotipo redesenhado ou tela gerada por IA. Preservar o mockup original e deixar a nota “Demonstração com dados fictícios.” pequena no rodapé.",
+      "qa": {
+        "fontLoaded": true,
+        "copyInside": true,
+        "deviceInside": true,
+        "footerInside": true,
+        "images": [
+          {
+            "complete": true,
+            "width": 300,
+            "height": 78
+          },
+          {
+            "complete": true,
+            "width": 408,
+            "height": 875
+          }
+        ]
+      }
+    },
+    {
+      "id": "E02",
+      "day": 4,
+      "format": "feed",
+      "size": "1080x1440",
+      "file": "E02-feed-1080x1440.png",
+      "sourceScreen": "docs\\marketing\\funil-criativos-flat-2026-09\\revisao-04\\assets\\celular-1.png",
+      "copy": {
+        "h1": "O café, o delivery, a corrida.",
+        "h2": "Separados parecem pouco. Juntos, fazem parte do mês."
+      },
+      "caption": "Um gasto isolado não conta a história inteira. O Grana. ajuda a registrar os pequenos gastos e enxergar como eles entram no mês. Demonstração com dados fictícios.",
+      "prompt": "Criativo estático de feed 1080x1440 para o Grana., fundo flat azul-petróleo, logo oficial em gradiente no alto, mockup realista do celular com tela real de Lançamentos do Grana. grande à direita, H1 “O café, o delivery, a corrida.” no alto à esquerda e H2 “Separados parecem pouco. Juntos, fazem parte do mês.” abaixo. Três pontos menta como sistema visual. Hierarquia produto > H1 > H2 > fundo. Não usar fotografia, pessoa, botão, logotipo redesenhado ou tela gerada por IA. Preservar o mockup original e deixar a nota “Demonstração com dados fictícios.” pequena no rodapé.",
+      "qa": {
+        "fontLoaded": true,
+        "copyInside": true,
+        "deviceInside": true,
+        "footerInside": true,
+        "images": [
+          {
+            "complete": true,
+            "width": 300,
+            "height": 78
+          },
+          {
+            "complete": true,
+            "width": 408,
+            "height": 875
+          }
+        ]
+      }
+    },
+    {
+      "id": "E05",
+      "day": 15,
+      "format": "feed",
+      "size": "1080x1440",
+      "file": "E05-feed-1080x1440.png",
+      "sourceScreen": "docs\\marketing\\funil-criativos-flat-2026-09\\revisao-04\\assets\\notebook-1.png",
+      "copy": {
+        "h1": "O mês que vem já começou.",
+        "h2": "Nas parcelas deste mês."
+      },
+      "caption": "Uma compra parcelada não termina no dia da compra. O Grana. ajuda a acompanhar o que continua comprometendo os próximos meses. Demonstração com dados fictícios.",
+      "prompt": "Criativo estático de feed 1080x1440 para o Grana., fundo flat azul-petróleo, logo oficial em gradiente, mockup ultra-realista do notebook com tela real da área de cartões do Grana. ocupando a faixa inferior, H1 “O mês que vem já começou.” no alto à esquerda e H2 “Nas parcelas deste mês.” abaixo. Usar um arco geométrico menta como elemento de apoio e bastante respiro. Hierarquia produto > H1 > H2 > fundo. Não usar fotografia, pessoa, botão, logotipo redesenhado ou tela gerada por IA. Preservar o mockup original e deixar a nota “Demonstração com dados fictícios.” pequena no rodapé.",
+      "qa": {
+        "fontLoaded": true,
+        "copyInside": true,
+        "deviceInside": true,
+        "footerInside": true,
+        "images": [
+          {
+            "complete": true,
+            "width": 300,
+            "height": 78
+          },
+          {
+            "complete": true,
+            "width": 1403,
+            "height": 913
+          }
+        ]
+      }
+    },
+    {
+      "id": "E06",
+      "day": 18,
+      "format": "feed",
+      "size": "1080x1440",
+      "file": "E06-feed-1080x1440.png",
+      "sourceScreen": "docs\\marketing\\funil-criativos-flat-2026-09\\revisao-04\\assets\\notebook-2.png",
+      "copy": {
+        "h1": "Organize no computador.",
+        "h2": "Acompanhe no celular, com a mesma conta."
+      },
+      "caption": "O Grana. acompanha a sua rotina em mais de uma tela: organize com visão ampla no computador e consulte o mês quando estiver fora. Demonstração com dados fictícios.",
+      "prompt": "Criativo estático de feed 1080x1440 para o Grana., fundo flat azul-petróleo, logo oficial em gradiente, mockup ultra-realista do notebook com tela real da versão web do Grana. ocupando a parte central e inferior, H1 “Organize no computador.” no alto à esquerda e H2 “Acompanhe no celular, com a mesma conta.” abaixo. Símbolo do Grana. em baixa opacidade como textura geométrica. Hierarquia produto > H1 > H2 > fundo. Não usar fotografia, pessoa, botão, logotipo redesenhado ou tela gerada por IA. Preservar o mockup original e deixar a nota “Demonstração com dados fictícios.” pequena no rodapé.",
+      "qa": {
+        "fontLoaded": true,
+        "copyInside": true,
+        "deviceInside": true,
+        "footerInside": true,
+        "images": [
+          {
+            "complete": true,
+            "width": 150,
+            "height": 150
+          },
+          {
+            "complete": true,
+            "width": 300,
+            "height": 78
+          },
+          {
+            "complete": true,
+            "width": 1403,
+            "height": 913
+          }
+        ]
+      }
+    }
+  ]
+}

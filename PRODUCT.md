@@ -55,12 +55,13 @@ estão no ar e ligados à landing.
 O bloqueio por assinatura existe de verdade: `app/_layout.tsx` protege as
 telas do app por `estadoAcesso.allowed` e manda quem não tem acesso para a
 tela de assinar. Ele está **desligado por interruptor** (`enforce_subscriptions`
-em `app_backend_config`), porque nenhuma compra de teste foi feita ainda e
-nenhum evento da Cakto jamais chegou. As contas existentes têm cortesia sem
-prazo. No funil comercial da landing **não existe CTA "Criar conta"**: os
-CTAs de apresentação levam à dobra de preços, e os botões dos planos levam
-diretamente aos checkouts da Cakto. A criação ou entrada na conta é uma etapa
-operacional separada da decisão de compra, não a chamada principal da landing.
+ em `app_backend_config`). A primeira venda real mensal por Pix e o webhook
+ de ponta a ponta foram comprovados em 13/09/2026; manter o interruptor
+ desligado passou a ser decisão consciente do autor, não bloqueio técnico. As
+ contas existentes têm cortesia sem prazo. No funil comercial da landing
+ **não existe CTA "Criar conta"**: herói, garantia e fechamento levam à dobra
+ de preços, e os botões dos planos levam diretamente aos checkouts da Cakto.
+ A criação ou entrada na conta é uma etapa operacional separada da compra.
 
 **O WhatsApp está desligado por tempo indeterminado** (decisão do autor em
 05/09/2026, depois de um segundo banimento de contas na Meta), e em
@@ -96,10 +97,10 @@ desconectado.
   tiveram tráfego real. O bloqueio está implementado e desligado por
   interruptor; ligar agora depende só de decisão do autor.
 - O preço **já foi validado** comercialmente e no fluxo real de compra. Nos
-  criativos, anúncios e peças sociais, porém, não divulgar os valores exatos
+  criativos, anúncios, capas e legendas, porém, não divulgar os valores exatos
   mensal ou anual. A única formulação de preço permitida nessas peças é
-  **"menos de R$ 0,37 por dia"**. Os valores completos ficam na landing e no
-  checkout.
+  **"menos de R$ 0,37 por dia"**. Os valores completos ficam na landing, no
+  checkout e na documentação interna.
 - O parcelamento do plano anual **não fecha no preço cheio**: a Cakto cobra o
   juro-base dela do comprador (23,94% em 12x), e a interface pública só
   permite acrescentar juro por cima, nunca remover. Por isso nenhuma
@@ -137,8 +138,8 @@ desconectado.
   landing page, não inventar uma versão mais bonita e fictícia.
 - Preço validado: R$ 9,90/mês e R$ 97,90/ano, exibidos como números reais na
   dobra de preços da landing page e confirmados no fluxo da Cakto. O anual
-  lidera o cartão. Para criativos, vale a restrição acima: sem preço exato;
-  no máximo, "menos de R$ 0,37 por dia".
+  lidera o cartão. Para criativos, anúncios, capas e legendas vale a restrição
+  acima: sem preço exato; no máximo, "menos de R$ 0,37 por dia".
 
 ## Product Principles
 
@@ -159,3 +160,33 @@ desconectado.
    como o mesmo produto; só navegação e controles nativos (tab bar, switch,
    gestos do sistema) respeitam as convenções de cada plataforma. Tipografia
    nunca é uma dessas convenções — ver Brand Commitments.
+
+## Copy and Marketing Guidelines
+
+- **Conceito de dor sem rótulo explícito (decisão do autor em 18/09/2026):**
+  O "apagão financeiro" (a dor de ver o saldo evaporar sem saber onde, gastar
+  no escuro, medo de abrir o extrato, a surpresa com a fatura fechada) é um
+  modelo conceitual interno que define a dor e o inimigo do público, mas
+  **NUNCA DEVE SER NOMEADO EXPLICITAMENTE**. Proibido usar a expressão
+  "apagão financeiro" em qualquer copy externa, anúncio, vídeo, post,
+  carrossel, e-mail ou landing page. Descrever a dor sempre de forma direta,
+  tangível e situacional ("gastar no escuro", "não saber para onde o dinheiro
+  foi", "o saldo que sumiu antes do fim do mês").
+- **Diferencial central permanente:** A **praticidade** de uso (voz, colar
+  o Pix, escanear nota fiscal e saber quanto pode gastar hoje em 2 a 5
+  segundos, sem planilhas e sem conexões bancárias).
+
+## Copy and Marketing Guidelines
+
+- **Conceito de dor sem rótulo explícito (decisão do autor em 18/09/2026):**
+  O "apagão financeiro" (a dor de ver o saldo evaporar sem saber onde, gastar
+  no escuro, medo de abrir o extrato, a surpresa com a fatura fechada) é um
+  modelo conceitual interno que define a dor e o inimigo do público, mas
+  **NUNCA DEVE SER NOMEADO EXPLICITAMENTE**. Proibido usar a expressão
+  "apagão financeiro" em qualquer copy externa, anúncio, vídeo, post,
+  carrossel, e-mail ou landing page. Descrever a dor sempre de forma direta,
+  tangível e situacional ("gastar no escuro", "não saber para onde o dinheiro
+  foi", "o saldo que sumiu antes do fim do mês").
+- **Diferencial central permanente:** A **praticidade** de uso (voz, colar
+  o Pix, escanear nota fiscal e saber quanto pode gastar hoje em 2 a 5
+  segundos, sem planilhas e sem conexões bancárias).

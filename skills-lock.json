@@ -13,6 +13,12 @@
       "skillPath": "tools/image/ai-image-generation/SKILL.md",
       "computedHash": "0cb296ffe8d9277dff2e4fbd9888fa943a4f6acee4ad218559e60e45c8a06526"
     },
+    "ai-seo": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "skillPath": "skills/ai-seo/SKILL.md",
+      "computedHash": "de09eb5f5ebaeb5c4e1c5967d90432c442cdcf83fbeca8e5ce8999bbb0e6c8b7"
+    },
     "ai-video-generation": {
       "source": "inference-sh/skills",
       "sourceType": "github",
@@ -30,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "pm-product-strategy/skills/ansoff-matrix/SKILL.md",
       "computedHash": "8d4619a27828764e397e7cb65137a951a60cf87ab5f7822833b231089696b049"
+    },
+    "anti-ui-slop": {
+      "source": "discountry/ritmex-skills",
+      "sourceType": "github",
+      "skillPath": "skills/anti-ui-slop/SKILL.md",
+      "computedHash": "87dd1ae0723c846f95bdc7495989653e52a08e1262259b239aae494e5d7ddc76"
     },
     "beachhead-segment": {
       "source": "phuryn/pm-skills",
@@ -385,6 +397,12 @@
       "skillPath": "pm-market-research/skills/sentiment-analysis/SKILL.md",
       "computedHash": "0ce85da912a73d9828ed8b414dfdcda31ce1a9af3e0ef462bb2fc158e1ef315d"
     },
+    "seo-audit": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "skillPath": "skills/seo-audit/SKILL.md",
+      "computedHash": "71435fbaf3622f1a6b16e20fda15f19aa8e285c9914fdeb92ac0a7612d6317bb"
+    },
     "shadcn": {
       "source": "shadcn-ui/ui",
       "sourceType": "github",
@@ -457,6 +475,12 @@
       "skillPath": "pm-execution/skills/test-scenarios/SKILL.md",
       "computedHash": "66225d50d6eb80ffbdc0d75cee39d3638b5953e24a7c8b39711cc9d1846612c8"
     },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "eb75bf6085080d7d31fa2c0f9fd98d49abd229356147999b09177b733276f806"
+    },
     "ui-visual-composition": {
       "source": "hueyexe/frontend-agent-skills",
       "sourceType": "github",
@@ -498,6 +522,12 @@
       "sourceType": "github",
       "skillPath": ".agents/skills/web-animation-design/SKILL.md",
       "computedHash": "dcd3f6da245643cd00ef93ad73ea62edc3ae925c6d7763c0675892441d6ba6c3"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
     },
     "web-motion-design": {
       "source": "dylantarre/animation-principles",

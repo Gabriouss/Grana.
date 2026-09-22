@@ -91,16 +91,30 @@ const LARGURA_MINIMA_HABITOS_EM_LINHA = 960;
 const LARGURA_MINIMA_HERO_LARGO = 960;
 const ALTURA_MINIMA_HERO_LARGO = 600;
 
-function hrefCadastroComAtribuicao(): string {
-  if (typeof window === 'undefined') return '/sign-up';
+function comAtribuicao(urlDestino: string): string {
+  if (typeof window === 'undefined') return urlDestino;
   const origem = new URLSearchParams(window.location.search);
-  const destino = new URLSearchParams();
+  const params: [string, string][] = [];
   for (const chave of PARAMETROS_ATRIBUICAO) {
     const valor = origem.get(chave);
-    if (valor) destino.set(chave, valor);
+    if (valor) params.push([chave, valor]);
   }
-  const query = destino.toString();
-  return query ? `/sign-up?${query}` : '/sign-up';
+  if (params.length === 0) return urlDestino;
+  try {
+    const parsed = new URL(urlDestino, window.location.origin);
+    for (const [k, v] of params) {
+      parsed.searchParams.set(k, v);
+    }
+    return urlDestino.startsWith('http') ? parsed.toString() : `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    const sep = urlDestino.includes('?') ? '&' : '?';
+    const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+    return `${urlDestino}${sep}${qs}`;
+  }
+}
+
+function hrefCadastroComAtribuicao(): string {
+  return comAtribuicao('/sign-up');
 }
 
 /* Destino de COMPRA, distinto do destino de cadastro.
@@ -117,7 +131,7 @@ function hrefCadastroComAtribuicao(): string {
  * teste de existência e levaria a pessoa a lugar nenhum. */
 function hrefCompra(): string {
   const checkout = process.env.EXPO_PUBLIC_CHECKOUT_URL ?? process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
-  return checkout?.startsWith('https://') ? checkout : hrefCadastroComAtribuicao();
+  return checkout?.startsWith('https://') ? comAtribuicao(checkout) : hrefCadastroComAtribuicao();
 }
 
 /* Preços que a pessoa paga no checkout, já com a taxa de serviço da Cakto
@@ -177,7 +191,7 @@ function PrecoAnimado({ valor, style }: { valor: number; style?: StyleProp<TextS
    sumir com o botão: a página nunca fica sem caminho de compra. */
 function hrefCompraAnual(): string {
   const anual = process.env.EXPO_PUBLIC_CHECKOUT_URL_ANUAL;
-  return anual?.startsWith('https://') ? anual : hrefCompra();
+  return anual?.startsWith('https://') ? comAtribuicao(anual) : hrefCompra();
 }
 
 /* `rotulo` permite variar o texto do botão por seção.

@@ -127,86 +127,6 @@ os P2/P3 restantes da auditoria.
 
 ---
 
-# 19/09/2026 (M1) — como o Codex aprende a usar o app: `scripts/emulador.cjs` e a regra 18 (`c8a2ea4`)
-
-O autor viu o Codex digitar "undefined" no e-mail do login no Expo Go (print:
-campo "dundefined"). **Causa:** o pedido que eu dei ao Codex proibia ler o
-`.env` e não dizia como entrar; sem `E2E_TEST_EMAIL` e `E2E_TEST_PASSWORD` ele
-interpolou uma variável vazia. **Correção:** `scripts/emulador.cjs` (estado,
-abrir go|dev, login, listar, tem, tocar, digitar, voltar, print). O `login` lê o
-`.env` dentro do processo e manda o valor ao `adb` sem imprimir. Guias:
-`docs/operar-o-app-no-emulador.md` (passo a passo e "quando dá errado") e
-`docs/mapa-do-app-para-agentes.md` (mapa de telas, armadilhas do emulador,
-classes de defeito, o que já foi corrigido). Regra 18 no `AGENTS.md`, que o
-Codex lê sozinho ao abrir o repositório.
-
-- **Decisão do autor no meio do trabalho:** "você não pode fazer por ele". Não
-  rodei o `login` por ele; só testei `estado` e `listar`. A regra 18 diz que
-  cada agente faz o login e a navegação por conta própria.
-- **Não verificado:** o `login` nunca foi executado por mim (de propósito). Não
-  sei se ele acerta os campos e o botão no Expo Go; a primeira execução do
-  Codex é o teste. Se falhar, registrar aqui o que a tela mostrou.
-- **Lição para o pedido ao Codex:** ao delegar trabalho que precise ver o app,
-  dar o caminho (guia e script), não a credencial e não só a proibição.
-
----
-
-# 19/09/2026 (M1) — o que o Codex pulou, feito pelo Claude (`b7e45d9` e os dois anteriores)
-
-A pedido do autor ("tente corrigir o que foi pulado"), os itens de texto e de
-código simples que o Codex tinha adiado saíram em três commits: **copy**
-(A2, A6, A23, A25, A28, A32, A36, A38, A45, A50, A56, A65; sinal de menos
-padronizado em `lib/format.ts`, `formatBRLSaldo` e `formatBRLSubtraido`;
-"Aberta" virou "A pagar"; ciclo escrito "15 set a 14 out"; o separador da
-janela mudou só em `lib/faturaCiclo.ts`, a cópia Deno `_shared/fatura-ciclo.ts`
-segue com "–" porque o Granabô só muda com deploy), **tela** (A40 sem a linha
-Tema, A67 sem o link duplicado, A14 ícone de recibo no Boleto) e
-**comportamento** (A44 confirma antes de descartar o Feedback, A68 o e-mail do
-login chega ao modal de recuperar senha, A3 o Fluxo abre no período de hoje).
-
-- **Verificação:** `tsc` e `test:ci` verdes. Nada visto no aparelho. Um guarda
-  estático de `corpus-credito-faturas.ts` (texto do botão) e os rótulos de
-  `corpus-score.ts` e `corpus-fatura-ciclo.ts` foram atualizados junto.
-- **Achado que o Codex não tinha visto:** A68 estava marcado como "exige
-  transportar o e-mail", mas o `emailInicial` já existia; o defeito real era
-  `useState(emailInicial)` valer só na montagem do modal, que fica montado.
-- **Ainda em aberto:** decisão de produto (A15, A26, A34, A35, A52, A54,
-  A44 resolvido), conferência visual (A7, A8, A9, A10, A27, A29, A45 "Voltar"
-  fixo, A53, A70), A51 (depósito perdido, causa não isolada), A58, A69
-  (permissão de notificação, exige verificar o pedido nativo) e os nativos
-  A55, A61, A62, A63.
-
----
-
-# 19/09/2026 (M1) — última leva do dia: o Codex terminou o que sobrava (`5d72611` e os dois anteriores)
-
-O autor pediu que o Codex (`gpt-5.6-luna`, esforço medium, escrita liberada
-na pasta) terminasse a lista da auditoria e que a sessão encerrasse quando ele
-acabasse. Ele entregou o relatório por achado; eu conferi o diff, rodei
-`tsc` e `test:ci` fora do sandbox dele (lá `npx tsx` falhou com `EACCES`) e
-publiquei em três commits: **crédito** (A21 faixa de faturas fechadas
-pendentes, A22 rótulo "Fatura de mmm/aa" fora do ciclo atual, título da folha
-de ações), **ajustes de tela** (A4, A5, A11, A16, A17, A19, A20, A31, A33,
-A37) e **Granabô** (A46, só no fonte de `assistente-financeiro`; **NÃO
-publicada**, regra 11 pede conferir a produção antes). Consertei uma linha
-mal indentada que ele deixou em `app/(app)/index.tsx`.
-
-- **Decisões adotadas por padrão, reversíveis:** A21 abre direto o ciclo
-  fechado ao tocar na faixa; A22 mostra mês/ano em qualquer ciclo que não
-  seja o atual; A46 só explica que o crédito muda o caixa no pagamento.
-- **Pulados pelo Codex, seguem em aberto:** A2, A3, A6 a A8, A10, A14, A15,
-  A23, A25 a A29, A32, A34 a A36, A38, A40, A44, A45, A48, A50 a A54, A56,
-  A58, A65 a A70 (copy, decisão de produto ou conferência visual) e os
-  nativos A55, A61, A62, A63 (exigem build).
-- **Sem verificação no aparelho:** tudo desta leva passou em `tsc` e
-  `test:ci` (todas as suítes verdes, `sync-parser` 75/75), mas nenhuma tela
-  foi vista no emulador. A39 (voltar do Android) precisa de build nova.
-- **O que o relatório do Codex disse que eu conferi:** o que estava
-  "JÁ CORRIGIDO" bate com os commits anteriores; o diff só tocou os arquivos
-  listados acima, sem `app/index.tsx`, `PRODUCT.md`, landing ou `public/`.
-
----
-
 # 19/09/2026 (M1) — só escuro e só retrato, para sempre (`e79cec8`, `0da8e33`)
 
 Decisão do autor: "O app não terá tela deitada e nem modo claro nunca".
@@ -9469,6 +9389,28 @@ notificação de exemplo com cara de notificação, objeções em colunas, botã
 menu flutuante no canto, todo botão levando à dobra de preços (só ela leva ao
 checkout) e a copy nova de rótulos, selo, parcelamento e garantia.
 
+---
+
+### Sessão de 18/09/2026: Funil de Vendas dos 100 Assinantes, SEO e Diretriz de Marca
+
+**1. Diretriz de Marca e Copy — Inimigo sem Nome Explícito (decisão do autor em 18/09/2026):**
+- O conceito de dor do usuário (a perda de controle financeiro, o saldo que evapora sem ninguém ver, o medo de olhar o extrato, a surpresa com o valor da fatura) é o inimigo que o Grana. combate. **Porém, esse fenômeno NUNCA deve ser nomeado como "apagão financeiro" em nenhuma copy externa, anúncio, vídeo, post, carrossel, e-mail ou landing page.**
+- A expressão é estritamente um conceito interno de trabalho. Na comunicação pública, a dor é sempre descrita de forma direta, tangível e situacional ("gastar no escuro", "não saber para onde o dinheiro foi", "o saldo que sumiu antes do fim do mês"). Registrado também em `PRODUCT.md`.
+
+**2. Diferencial Central do Produto:**
+- O autor reiterou que o diferencial primário do Grana. é a **praticidade absoluta de uso** (falar por voz, colar o Pix, ler o QR Code da nota fiscal em 2 a 5 segundos e saber quanto tem livre para gastar hoje). Conexão bancária / Open Finance não é diferencial do app e não entra na comunicação.
+
+**3. Ajustes Técnicos de SEO e Rastreabilidade de Anúncios:**
+- `landing-meta.json`: Títulos e descrições atualizados com foco em praticidade extrema e registro instantâneo.
+- `scripts/inject-og-meta.js`: Adicionado Schema.org estruturado com `offers` dos planos Mensal (R$ 9,90) e Anual (R$ 97,90). Hash SHA-256 recalculado (`17xIDrtPmWHM0Kk0UhlrPVHbznJFe7MZ3M2UwYNEaEU=`) e sincronizado com o Content Security Policy (CSP) em `vercel.json`.
+- `public/robots.txt`: Adicionadas regras `Disallow` bloqueando bots de indexar rotas internas/logadas (`/contas`, `/credito`, `/desafios`, `/graficos`, `/lancamentos`, `/perfil`, etc.) e `Allow` para rotas públicas essenciais (`/`, `/assinar`, `/baixar`, `/termos`, `/privacidade`, `/exclusao-de-dados`).
+- `public/sitemap.xml`: Incluídas as páginas públicas de conversão e download (`/assinar` e `/baixar`).
+- `app/index.tsx`: Criada a função `comAtribuicao()` para preservar `PARAMETROS_ATRIBUICAO` (`gclid`, `fbclid`, `utm_*`) também nos destinos de compra (`hrefCompra` e `hrefCompraAnual`), garantindo que o checkout da Cakto receba os parâmetros para envio via CAPI e Google Ads Offline Conversion.
+- Testes automatizados executados e 100% aprovados: `__tests__/exemplo-landing.cjs` (41/41), `__tests__/cakto-webhook.cjs` (47/47) e TypeScript `tsc --noEmit` (0 erros).
+
+**4. Roteiro e Cronograma de Conteúdo:**
+- Gerado em `roteiro_conteudos_grana.md` o cronograma e os roteiros completos de 12 Reels (com minutagem, cenas, textos e falas), 3 carrosséis e banners de anúncios pagos para Meta e Google Ads, todos devidamente higienizados e alinhados à diretriz de copy.
+
 **Pendências abertas:**
 - [ ] Conferir no ar, no navegador onde o autor viu as seções em branco,
       se elas aparecem.
@@ -9531,3 +9473,45 @@ contém token, segredo, senha, chave ou credencial. Os 24 arquivos de papel
 foram conferidos, e não restou instrução operacional que mande um agente para
 o caminho absoluto da M2; o README apenas documenta os caminhos das duas
 máquinas. Nenhum agente foi recrutado, removido ou reiniciado nesta mudança.
+
+---
+
+## 21/09/2026 — Encerramento da M1: contexto, Maestri e skills
+
+**Pedido do autor.** Encerrar o trabalho do dia, publicar o estado do
+repositório e atualizar o vault com o contexto. A sessão também consolidou as
+correções feitas no Maestri e a triagem das skills encontradas para apoiar o
+trabalho do Grana.
+
+**Contexto compartilhado.** As notas `Contexto - AGENTS`, `Contexto - DESIGN`,
+`Contexto - PRODUCT`, `Contexto - CLAUDE`, `Contexto - FUNIL` e
+`Contexto - context` estão preenchidas e conectadas aos terminais. A nota
+`Revisão do lançamento para venda - 2026-09-21` foi movida para o fichário
+`Fichário` e conectada aos mesmos agentes. Ela mantém as decisões vigentes do
+lançamento: CTA comercial leva a `#precos`/Cakto, preço exato não aparece em
+criativos e WhatsApp não entra na comunicação pública.
+
+**Antigravity.** O terminal voltou a ler `E:/GranaPonto/AGENTS.md` depois que
+o plugin de telemetria quebrado foi desabilitado tanto na configuração ativa
+quanto no `hooks.json` de backup, e o terminal foi reiniciado. Não houve
+alteração no código do aplicativo nesse reparo.
+
+**Skills.** Após a auditoria da lista do autor, foram instaladas no workspace
+as skills `anti-ui-slop`, `ui-ux-pro-max`, `web-design-guidelines`, `seo-audit`
+e `ai-seo`, com o lock atualizado. `content-strategy`, `pricing-strategy` e
+capacidades de navegador já existentes cobrem parte dos itens redundantes.
+Não foram instalados aliases ambíguos ou skills sem ganho claro para o
+projeto, como `caveman`, `minimalist-ui`, `video-lens`, `video-use`,
+`canvas-design`, `pricing` e `find-skills`.
+
+**Documentação local.** `PRODUCT.md` e este arquivo foram reconciliados com
+o vault e com os commits remotos. `FUNIL.md` continua deliberadamente local e
+ignorado, sem ser publicado. O `.gitignore` passou a ocultar cópias locais
+geradas pelo instalador de skills e artefatos temporários; os pacotes
+canônicos ficam em `.agents/skills` e `.claude/skills`.
+
+**Verificação e limites.** Não houve build EAS, deploy de função, compra ou
+publicação de mídia. A sincronização do Git foi feita com rebase sobre
+`origin/main`, preservando o `FUNIL.md` fora do índice. As suítes e a
+verificação final do vault ainda são o gate de encerramento desta sessão;
+qualquer falha ou item não verificado será registrado na nota de sessão.

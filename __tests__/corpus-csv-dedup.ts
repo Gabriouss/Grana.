@@ -116,7 +116,8 @@ checar('data ISO (AAAA-MM-DD) é lida na ordem certa', csvDataIso[0].occurred_on
 /* "31 dentro de 1 a 31" não garante que a data existe — fevereiro nunca
    chega lá. Antes isso virava a data impossível "2026-02-31" (que o
    Postgres recusa ao gravar); agora cai no fallback de hoje. */
-const hoje = new Date().toISOString().slice(0, 10);
+const agora = new Date();
+const hoje = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
 const csvDataImpossivel = parseCsvText(['Data,Descricao,Valor', '31/02/2026,AUDIT impossivel,50.00'].join('\n'));
 checar('31 de fevereiro (data impossível) cai no fallback de hoje, não vira "2026-02-31"',
   csvDataImpossivel[0].occurred_on, hoje);
