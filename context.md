@@ -58,6 +58,33 @@ no `context.md`.
 
 ---
 
+# 22/09/2026 (M1) — tentativa da build preview 1.10.4, bloqueada pela cota do EAS
+
+Pedido do autor: "tenta disparar uma build nova", para entregar a correção do
+lançamento automático por voz no widget. A sessão sincronizou `main` com
+`origin/main`, confirmou `.env`, `.env.*` e `!.env.example` no `.easignore`, e
+não encontrou alteração concorrente.
+
+`npm run build:preparar -- "Corrige o lançamento automático por voz no widget e
+preserva o valor na revisão."` aprovou a nota e subiu `app.json` de 1.10.3 para
+1.10.4. A suíte `npm run test:ci` passou inteira, incluindo as baterias de voz
+e widget, o corpus do parser e as 264 guardas de `.env` fora da build. A
+preparação foi publicada em `3f23c6d` antes do envio.
+
+O executável `eas` não estava no PATH; o mesmo envio foi feito por
+`npx eas-cli@latest`. O EAS recebeu o pacote de 109 MB, calculou o fingerprint
+e carregou o perfil `preview`, mas recusou a build antes da compilação porque a
+cota Android do plano Free está esgotada. O reset informado pelo EAS é em
+01/10/2026. Não houve APK, build ID nem instalação. A tentativa não deixou
+alterações locais: `main` está limpo e alinhado com `origin/main`.
+
+Não validado: a correção do widget no aparelho. O próximo passo é repetir o
+envio após o reset da cota (ou decidir pelo upgrade), instalar a APK e testar
+`Energetico, 20 reais.` pelo widget, conferindo lançamento automático e recibo
+com desfazer.
+
+---
+
 # 19/09/2026 (M1) — corrige os P1 que não dependiam do autor (`a96e819` a `5ad89dc`), com o Codex como auxiliar
 
 Pedido do autor: "resolva tudo", e depois "continue o job utilizando o codex
