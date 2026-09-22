@@ -54,11 +54,12 @@ estão no ar e ligados à landing.
 
 O bloqueio por assinatura existe de verdade: `app/_layout.tsx` protege as
 telas do app por `estadoAcesso.allowed` e manda quem não tem acesso para a
-tela de assinar. Ele está **desligado por interruptor** (`enforce_subscriptions`
- em `app_backend_config`). A primeira venda real mensal por Pix e o webhook
- de ponta a ponta foram comprovados em 13/09/2026; manter o interruptor
- desligado passou a ser decisão consciente do autor, não bloqueio técnico. As
- contas existentes têm cortesia sem prazo. No funil comercial da landing
+tela de assinar. Ele está **ligado desde 22/09/2026** (`enforce_subscriptions = true`
+ em `app_backend_config`), por decisão do autor, para não desperdiçar o
+ tráfego pago com uso gratuito. A primeira venda real mensal por Pix e o
+ webhook de ponta a ponta foram comprovados em 13/09/2026. As 9 contas que
+ existiam na data têm cortesia sem prazo e continuam entrando; toda conta nova
+ precisa assinar. No funil comercial da landing
  **não existe CTA "Criar conta"**: herói, garantia e fechamento levam à dobra
  de preços, e os botões dos planos levam diretamente aos checkouts da Cakto.
  A criação ou entrada na conta é uma etapa operacional separada da compra.

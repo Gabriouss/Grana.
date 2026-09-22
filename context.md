@@ -9590,3 +9590,51 @@ scripts/inject-og-meta.js`, `npx expo export --platform web --clear`, o
 injetor de SEO e `git diff --check` passaram. O export estático foi conferido
 em títulos, descrições e canonicals de home, assinatura e termos. Não foi
 feito deploy nem uma nova captura em navegador real nesta sessão.
+
+## 22/09/2026 — M1 — cobrança LIGADA (`enforce_subscriptions = true`)
+
+Pedido do autor: "pode ativar o bloqueio de assinatura, exceto para as contas
+cortesias que já estão concedidas no app atualmente".
+
+**Estado conferido na produção antes de ligar** (consulta pela Management API,
+e-mails mascarados): 9 contas em `auth.users`. Oito tinham cortesia
+(`provider = 'interno'`, até 2099-12-31), e uma delas também tinha a venda da
+Cakto de 13/09. **A conta do próprio autor (`gbr.design30@…`, criada em 16/09)
+não tinha cortesia nem assinatura** e seria bloqueada. O autor escolheu dar
+cortesia a ela antes de ligar.
+
+**O que foi feito, nesta ordem:**
+
+1. `conceder_acesso_cortesia('<e-mail do autor>', 'conta do autor, antes de
+   ligar enforce_subscriptions (22/09)')` → `ja_existia: false`, até 2099-12-31.
+2. Recontagem: 0 contas sem acesso.
+3. `select public.configurar_bloqueio_assinatura(true)` → `app_backend_config`
+   com `enforce_subscriptions = true`, `updated_at` 2026-09-22 23:18 UTC.
+4. Recontagem: 9 de 9 contas com acesso.
+5. Simulação dentro de uma transação desfeita no final (`set local role
+   authenticated` + `request.jwt.claims`): conta com cortesia →
+   `obter_estado_acesso().allowed = true`; `uuid` inexistente sem assinatura →
+   `allowed = false`, `tem_direito_acesso() = false`.
+
+As funções `tem_assinatura_ativa` e `tem_direito_acesso` publicadas foram lidas
+com `pg_get_functiondef` e batem com `supabase/schema.sql`.
+
+**Efeito:** toda conta criada daqui para frente só entra no app depois de
+assinar pela Cakto (ou de receber cortesia). Nenhum código foi alterado.
+
+**Não verificado:**
+- a tela de assinar no aparelho ou na web com uma conta nova de verdade;
+- a volta ao app depois de uma compra feita com o bloqueio já ligado;
+- o APK antigo, que usa o mesmo `estadoAcesso`, mas não foi aberto nesta
+  sessão.
+
+Checklist de QA para a próxima sessão:
+- [ ] Criar conta nova "AUDIT" na web → deve cair em `/assinar`.
+- [ ] Conta de teste dos agentes → deve entrar normalmente. Ela está entre as
+      cortesias? Conferir pelo `E2E_TEST_EMAIL`.
+- [ ] Depois de uma compra, a assinatura chega pelo webhook e libera a conta
+      sem logout.
+
+**Como reverter:** `select public.configurar_bloqueio_assinatura(false);`.
+Uma cortesia se revoga por conta, com `revogar_acesso_cortesia(email)`, que
+nunca encosta em assinatura paga.
