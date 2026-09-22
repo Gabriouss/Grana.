@@ -225,7 +225,8 @@ export default function MolduraCelular({ src, legenda, quadros, largura = 280, i
           return createElement('img', {
             key: quadro.src || indice,
             src: quadro.src,
-            alt: quadro.legenda,
+            alt: indice === (controlado ? indiceControlado : 0) ? quadro.legenda : '',
+            'aria-hidden': indice !== (controlado ? indiceControlado : 0),
             width: 390,
             height: 844,
             loading: 'lazy',

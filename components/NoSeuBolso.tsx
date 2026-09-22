@@ -166,7 +166,7 @@ const CANTO = 22;
 const styles = StyleSheet.create({
   grade: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.lg, marginTop: spacing.xxl, width: '100%' },
   cardPos: { flexGrow: 1, flexBasis: '30%', minWidth: 280 },
-  cardPosCompacto: { flexBasis: '100%' },
+  cardPosCompacto: { flexBasis: '100%', minWidth: 0, width: '100%' },
   card: {
     height: '100%',
     gap: spacing.xs,

@@ -9544,3 +9544,49 @@ publicada em `570eb67` e o registro final de validação em `e2b66ce`.
 `npm run test:ci`, `npx tsc --noEmit` e o verificador do vault
 passaram; o verificador deixou apenas os 20 avisos preexistentes de perenes
 sem `revisado`. Nenhum segredo foi copiado para o repositório ou para o vault.
+
+## 22/09/2026 — Correções da auditoria da landing com Codex
+
+**Pedido do autor.** Continuar a auditoria da landing page, corrigir todos os
+achados e manter o selo “Mais popular” por decisão explícita do autor. O
+escopo foi somente a landing web; o aplicativo nativo não foi alterado.
+
+**Sintomas e causas.** O preço anual podia quebrar entre “R$” e o valor em
+larguras móveis porque o valor e o período disputavam uma linha flexível. As
+rotas públicas compartilhavam o fallback da SPA, então o HTML entregue fora
+da home não recebia metadados específicos. O marquee não tinha pausa visível,
+os carrosséis tinham larguras mínimas e setas que podiam escapar em 320 px, e
+o painel web não oferecia abertura ampliada para toque/teclado. Havia ainda
+imagens inativas expostas aos leitores de tela, barras do Bento animadas por
+width/height e divergência visual entre a captura do painel e o notebook do
+hero.
+
+**Correções.** `app/index.tsx` tornou o preço indivisível, ajustou o card
+compacto e esclareceu a cópia anual; `components/NoSeuBolso.tsx` e
+`components/CarrosselTelasApp.tsx` corrigiram o comportamento estreito;
+`components/TrustMarquee.tsx` ganhou pausa/retomada acessível; a moldura do
+painel passou a oferecer link ampliado em `components/PainelWebDestaque.tsx`;
+`components/MolduraCelular.tsx` e `components/SegmentedTabs.tsx` receberam
+semântica de acessibilidade; e `components/BentoFerramentas.tsx` passou a
+animar barras com transform. `app.json`, `vercel.json`, `app/+html.tsx` e
+`scripts/inject-og-meta.js` passaram a publicar HTML estático com metadados
+específicos nas 26 rotas públicas geradas. `public/notebook/notebook.webp` foi
+atualizado para alinhar a captura do produto ao mesmo estado visual do painel.
+`landing-meta.json` e a frase anual da landing também foram alinhados à
+política de comunicação vigente.
+
+**Descartado de propósito.** O selo “Mais popular” foi mantido intacto, sem
+alterar texto, presença ou posição. Não houve build EAS, deploy, compra ou
+mudança no aplicativo nativo.
+
+**O que deu errado no caminho.** A primeira execução do injetor exigiu um
+`lang` com espaçamento exato, mas o exportador gerou dois espaços; a validação
+foi corrigida para aceitar HTML equivalente e o injetor passou nas 26 rotas.
+
+**Verificação.** `npx tsc --noEmit --incremental false`,
+`node __tests__/exemplo-landing.cjs` (41/41),
+`node __tests__/entrada-na-tela.cjs` (9/9), `node --check
+scripts/inject-og-meta.js`, `npx expo export --platform web --clear`, o
+injetor de SEO e `git diff --check` passaram. O export estático foi conferido
+em títulos, descrições e canonicals de home, assinatura e termos. Não foi
+feito deploy nem uma nova captura em navegador real nesta sessão.

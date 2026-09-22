@@ -74,7 +74,7 @@ export default function CarrosselTelasApp({ compacto = false }: { compacto?: boo
           onPress={() => irParaIndice(indice - 1)}
           disabled={!podeVoltar}
           accessibilityLabel="Tela anterior"
-          style={({ hovered }) => [styles.seta, styles.setaEsquerda, hovered && podeVoltar && styles.setaHover, !podeVoltar && styles.setaDesativada]}
+          style={({ hovered }) => [styles.seta, compacto ? styles.setaEsquerdaCompacta : styles.setaEsquerda, hovered && podeVoltar && styles.setaHover, !podeVoltar && styles.setaDesativada]}
         >
           <Ionicons name="chevron-back" size={18} color={theme.ink} aria-hidden />
         </AppPressable>
@@ -82,7 +82,7 @@ export default function CarrosselTelasApp({ compacto = false }: { compacto?: boo
           onPress={() => irParaIndice(indice + 1)}
           disabled={!podeAvancar}
           accessibilityLabel="Próxima tela"
-          style={({ hovered }) => [styles.seta, styles.setaDireita, hovered && podeAvancar && styles.setaHover, !podeAvancar && styles.setaDesativada]}
+          style={({ hovered }) => [styles.seta, compacto ? styles.setaDireitaCompacta : styles.setaDireita, hovered && podeAvancar && styles.setaHover, !podeAvancar && styles.setaDesativada]}
         >
           <Ionicons name="chevron-forward" size={18} color={theme.ink} aria-hidden />
         </AppPressable>
@@ -127,6 +127,8 @@ const styles = StyleSheet.create({
   // -14 o botão ficava 22px por dentro da moldura, sobre o próprio bezel.
   setaEsquerda: { left: -48 },
   setaDireita: { right: -48 },
+  setaEsquerdaCompacta: { left: 4 },
+  setaDireitaCompacta: { right: 4 },
   setaHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
   setaDesativada: { opacity: 0.35 },
   // O contador por extenso existe só pra leitor de tela — quem enxerga já

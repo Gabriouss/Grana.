@@ -319,6 +319,7 @@ const ROXO_CARTAO_DEMO = '#8a3ffc';
 function VisualCartao({ ativo, instantaneo }: PropsVisual) {
   const { cartao, valor, limite } = EXEMPLO_CONVERSA.fatura;
   const usado = `${Math.round((valor / limite) * 100)}%`;
+  const usadoFracao = valor / limite;
   return (
     <View style={[styles.telaCard, styles.cartao]}>
       {/* Linha que QUEBRA em vez de cortar: sem lugar, o final do cartão desce
@@ -341,7 +342,13 @@ function VisualCartao({ ativo, instantaneo }: PropsVisual) {
         <Text style={styles.cartaoPct}>{usado}</Text>
       </View>
       <View style={styles.trilho}>
-        <View style={[styles.preenchido, { backgroundColor: ROXO_CARTAO_DEMO, width: ativo ? usado : '0%' }, transicao(instantaneo, 'width', 900, 300)]} />
+        <View
+          style={[
+            styles.preenchido,
+            { backgroundColor: ROXO_CARTAO_DEMO, width: '100%', transform: [{ scaleX: ativo ? usadoFracao : 0 }], ...({ transformOrigin: 'left center' } as any) },
+            transicao(instantaneo, 'transform', 900, 300),
+          ]}
+        />
       </View>
     </View>
   );
@@ -553,8 +560,8 @@ function VisualComprometido({ ativo, instantaneo }: PropsVisual) {
               <View
                 style={[
                   styles.barra,
-                  { height: ativo ? `${((b.rec + b.par) / MAX) * 100}%` : '0%' },
-                  transicao(instantaneo, 'height', 800, 150 + i * 90),
+                  { height: ALTURA, transform: [{ scaleY: ativo ? (b.rec + b.par) / MAX : 0 }], ...({ transformOrigin: 'center bottom' } as any) },
+                  transicao(instantaneo, 'transform', 800, 150 + i * 90),
                 ]}
               >
                 {b.par > 0 && <View style={[styles.barraParcelas, { flex: b.par }]} />}
@@ -677,7 +684,13 @@ function VisualCofrinhos({ ativo, instantaneo, largura }: PropsVisual) {
             </>
           )}
           <View style={[styles.trilho, { marginTop: 4 }]}>
-            <View style={[styles.preenchido, { backgroundColor: m.cor, width: ativo ? `${m.pct}%` : '0%' }, transicao(instantaneo, 'width', 900, 250 + i * 150)]} />
+            <View
+              style={[
+                styles.preenchido,
+                { backgroundColor: m.cor, width: '100%', transform: [{ scaleX: ativo ? m.pct / 100 : 0 }], ...({ transformOrigin: 'left center' } as any) },
+                transicao(instantaneo, 'transform', 900, 250 + i * 150),
+              ]}
+            />
           </View>
           <View style={styles.linhaTopo}>
             <Text style={styles.miniApoio}>{m.pct}%</Text>

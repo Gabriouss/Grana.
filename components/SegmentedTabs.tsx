@@ -56,7 +56,11 @@ export default function SegmentedTabs<T extends string>({
   }
 
   return (
-    <View style={[styles.segmented, style]} onLayout={handleLayout}>
+    <View
+      style={[styles.segmented, style]}
+      onLayout={handleLayout}
+      {...({ role: 'tablist', 'aria-label': 'Escolha uma opção', 'aria-orientation': 'horizontal' } as any)}
+    >
       {containerWidth > 0 && (
         <Animated.View
           style={[styles.pill, { width: segW, transform: [{ translateX }], pointerEvents: 'none' }]}

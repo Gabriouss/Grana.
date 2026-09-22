@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { theme, spacing, fonts, type } from '@/lib/theme';
 import { CORTES, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
+import AppPressable from '@/components/AppPressable';
 
 type Props = { itens: string[] };
 
@@ -49,7 +50,8 @@ export default function TrustMarquee({ itens }: Props) {
   const [reduzirMovimento, setReduzirMovimento] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   );
-  const [pausado, setPausado] = useState(false);
+  const [pausadoManualmente, setPausadoManualmente] = useState(false);
+  const [emInteracao, setEmInteracao] = useState(false);
   const [larguraUmaCopia, setLarguraUmaCopia] = useState(0);
   const { width: larguraJanela } = useWindowDimensions();
   const idBruto = useId();
@@ -94,27 +96,18 @@ export default function TrustMarquee({ itens }: Props) {
   const copias =
     larguraUmaCopia > 0 ? Math.max(2, Math.ceil((larguraJanela * 2) / larguraUmaCopia) + 1) : 6;
 
-  /* Sem botão de pausa visível, a pedido do autor ("remover esse botão de
-     pausa do texto em movimento na parte superior da hero").
+  const pausado = pausadoManualmente || emInteracao;
 
-     O botão não era enfeite: a WCAG 2.2.2 exige um jeito de parar conteúdo
-     que se move por mais de cinco segundos. Por isso a exigência passou para
-     o comportamento, em vez de sumir junto com o botão:
-     - o ponteiro em cima da faixa pausa, e ao sair retoma;
-     - o foco do teclado na faixa pausa (ela é alcançável por Tab), e ao sair
-       retoma;
-     - com "reduzir movimento" a faixa nem anda: vira a lista parada acima. */
   return (
     <View
       style={styles.container}
       {...({
-        tabIndex: 0,
         role: 'region',
-        'aria-label': 'Destaques do Grana. A faixa pausa com o ponteiro ou o foco em cima dela.',
-        onMouseEnter: () => setPausado(true),
-        onMouseLeave: () => setPausado(false),
-        onFocus: () => setPausado(true),
-        onBlur: () => setPausado(false),
+        'aria-label': 'Destaques do Grana. Use o botão para pausar ou retomar a faixa.',
+        onMouseEnter: () => setEmInteracao(true),
+        onMouseLeave: () => setEmInteracao(false),
+        onFocus: () => setEmInteracao(true),
+        onBlur: () => setEmInteracao(false),
       } as any)}
     >
       <TrustMarqueeFaixa
@@ -125,6 +118,15 @@ export default function TrustMarquee({ itens }: Props) {
         pausado={pausado}
         onMedir={setLarguraUmaCopia}
       />
+      <AppPressable
+        accessibilityRole="button"
+        accessibilityLabel={pausadoManualmente ? 'Retomar destaques' : 'Pausar destaques'}
+        onPress={() => setPausadoManualmente((atual) => !atual)}
+        {...({ 'aria-pressed': pausadoManualmente } as any)}
+        style={({ hovered }) => [styles.botaoPausa, hovered && styles.botaoPausaHover]}
+      >
+        <Text style={styles.botaoPausaTexto}>{pausadoManualmente ? 'Retomar' : 'Pausar'}</Text>
+      </AppPressable>
     </View>
   );
 }
@@ -190,7 +192,7 @@ function TrustMarqueeFaixa({
 }
 
 const styles = StyleSheet.create({
-  container: { position: 'relative', backgroundColor: theme.paperRaised },
+  container: { position: 'relative', backgroundColor: theme.paperRaised, borderBottomWidth: 1, borderBottomColor: theme.rule },
   faixaEstatica: {
     minHeight: 44,
     justifyContent: 'center',
@@ -222,12 +224,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  /* Sem `paddingRight`: os 52px reservavam o espaço do botão de pausa, que
-     saiu. Mantê-los deixaria a faixa cortada antes da borda direita, com um
-     vão sem motivo aparente. */
+  /* Reserva espaço para o controle persistente de pausa, inclusive em touch:
+     o texto continua em loop por baixo sem ficar escondido sob o botão. */
   faixa: {
     backgroundColor: theme.paperRaised,
     paddingVertical: spacing.xs,
+    paddingRight: 84,
     minHeight: 44,
     justifyContent: 'center',
     overflow: 'hidden',
@@ -245,6 +247,22 @@ const styles = StyleSheet.create({
   // bem maior). Sem isso o loop andava só uma fração do que devia e
   // "saltava" de volta antes de completar uma cópia inteira.
   trilho: { flexDirection: 'row', flexShrink: 0, ...({ width: 'max-content' } as any) },
+  botaoPausa: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    right: spacing.xl,
+    minWidth: 60,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    backgroundColor: theme.paper,
+  },
+  botaoPausaHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
+  botaoPausaTexto: { color: theme.ink, fontSize: type.micro, fontFamily: fonts.regular },
   // Igual a `texto`, mas sem `marginRight`: o separador "·" que fecha cada
   // cópia já está dentro da própria string (`textoLoop`), então um gap
   // extra aqui duplicaria o espaçamento só nas costuras.

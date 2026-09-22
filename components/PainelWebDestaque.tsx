@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { spacing } from '@/lib/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { useBreakpoint } from '@/lib/breakpoints';
 import { useReducedMotion } from '@/lib/motion';
 import MolduraNavegador from '@/components/MolduraNavegador';
+import AppPressable from '@/components/AppPressable';
 
 /* Quanto o painel cresce sob o ponteiro. 1.06 é aproximação: é perceptível
    como "aproximou" sem empurrar a composição, que é o limite prático aqui,
@@ -13,17 +14,10 @@ const ESCALA_HOVER = 1.06;
 /**
  * A captura do painel web, dentro de uma moldura de navegador.
  *
- * Duas coisas saíram daqui em 13/09/2026, a pedido do autor: as duas legendas
- * que explicavam onde olhar na imagem ("Livre para Gastar: sua estimativa
- * diária na coluna da esquerda" e a do comprometimento futuro), e o link
- * "Ampliar painel (nova aba)". No lugar do link, a imagem cresce sob o
- * ponteiro.
- *
- * **O que se perdeu junto, e vale saber:** o link era o único jeito de ver a
- * captura em tamanho real, e continuava funcionando no teclado e no toque. O
- * zoom de ponteiro não atende nenhum dos dois. A imagem segue com texto
- * alternativo descritivo em `MolduraNavegador`, que é o que sustenta a
- * compreensão de quem não usa mouse; o zoom é reforço, não a informação.
+ * As legendas contextuais continuam fora da captura para manter a composição
+ * limpa. O link para a imagem em tamanho real existe para toque, teclado e
+ * leitura ampliada; no desktop, o zoom sob o ponteiro continua como reforço
+ * visual.
  */
 export default function PainelWebDestaque({ compacto = false }: { compacto?: boolean }) {
   const { largura } = useBreakpoint();
@@ -53,10 +47,37 @@ export default function PainelWebDestaque({ compacto = false }: { compacto?: boo
         largura={larguraMoldura}
         inclinada={!compacto}
       />
+      <AppPressable
+        href="/telas/inicio-web.png?v=20260905"
+        target="_blank"
+        rel="noreferrer"
+        accessibilityRole="link"
+        accessibilityLabel="Abrir o painel web do Grana. em tamanho grande"
+        style={({ hovered }) => [styles.linkAmpliar, hovered && styles.linkAmpliarHover]}
+      >
+        <View style={styles.linkAmpliarTexto}>
+          <View style={styles.linkAmpliarPonto} />
+          <Text style={styles.linkAmpliarRotulo}>Ver detalhes do painel</Text>
+        </View>
+      </AppPressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   raiz: { alignItems: 'center', alignSelf: 'center', gap: spacing.md },
+  linkAmpliar: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    backgroundColor: theme.paperRaised,
+  },
+  linkAmpliarHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
+  linkAmpliarTexto: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  linkAmpliarPonto: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent2 },
+  linkAmpliarRotulo: { color: theme.ink, fontSize: 12, fontFamily: fonts.regular },
 });

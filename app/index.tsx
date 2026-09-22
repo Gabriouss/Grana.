@@ -184,7 +184,7 @@ function PrecoAnimado({ valor, style }: { valor: number; style?: StyleProp<TextS
     };
   }, [animado, reduzirMovimento, valor]);
 
-  return <Text style={style}>{emReais(exibido)}</Text>;
+  return <Text numberOfLines={1} style={[style, { flexShrink: 0 }, ({ whiteSpace: 'nowrap' } as any)]}>{emReais(exibido)}</Text>;
 }
 
 /* Checkout do plano ANUAL. Sem a variável configurada, cai no mensal em vez de
@@ -1582,9 +1582,8 @@ function ConteudoWeb() {
                       </View>
                     )}
                   </View>
-                  {/* Qualificador em linha própria, nunca colado no "/ano":
-                      dentro de `precoLinha` (flex row) ele espremia o valor e
-                      o preço quebrava em duas linhas. */}
+                  {/* O preço é uma unidade indivisível; o período pode cair
+                      para a linha seguinte em larguras muito estreitas. */}
                   <View style={[styles.precoLinha, ehCompacto && styles.precoLinhaCompacta]}>
                     <PrecoAnimado
                       valor={ehPlanoAnual ? PRECO_ANUAL : PRECO_MENSAL}
@@ -1759,8 +1758,8 @@ function ConteudoWeb() {
                   Seu próximo gasto pode ser o primeiro passo.
                 </Text>
                 <Text style={[styles.ctaFinalTexto, styles.precoTextoCentralizado]}>
-                  Organize seus gastos com o Grana. a partir de {emReais(PRECO_ANUAL / 12)} por mês no
-                  plano anual, ou {emReais(PRECO_MENSAL)} por mês no avulso. Sem período de teste.
+                  Organize seus gastos com o Grana. no plano anual — equivalente a {emReais(PRECO_ANUAL / 12)} por mês —
+                  ou {emReais(PRECO_MENSAL)} por mês no plano mensal. Sem período de teste.
                 </Text>
                 <View style={[styles.ctaFinalFatos, styles.ctaFinalFatosCompacto]}>
                   {['Sem conectar banco', 'Lançamentos organizados', 'Celular e computador'].map((fato) => (
@@ -2098,7 +2097,7 @@ const styles = StyleSheet.create({
      mesmo com textos de tamanho diferente. */
   dorGrade: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: spacing.lg, marginTop: spacing.xxl, width: '100%' },
   dorCardPos: { flexGrow: 1, flexBasis: '30%', minWidth: 260 },
-  dorCardPosCompacto: { flexBasis: '100%' },
+  dorCardPosCompacto: { flexBasis: '100%', minWidth: 0, width: '100%' },
   dorCard: {
     height: '100%',
     alignItems: 'flex-start',
@@ -2372,7 +2371,7 @@ const styles = StyleSheet.create({
   // topo de um painel que agora está embaixo, não ao lado. `alignItems:
   // 'center'` sobrescreve o `flex-start` de `cardPreco` — pedido do autor
   // pra Preços inteiro centralizado no compacto (rótulo, valor e descrição).
-  cardPrecoCompacto: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%', alignItems: 'center', borderLeftWidth: 0, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong },
+  cardPrecoCompacto: { flexGrow: 0, flexBasis: 'auto', minWidth: 0, width: '100%', maxWidth: '100%', alignItems: 'center', paddingHorizontal: spacing.lg, borderLeftWidth: 0, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong },
   /* Largura travada para o alternador não esticar até a borda do cartão num
      desktop largo: dois rótulos curtos ocupando 440px leriam como barra de
      navegação, não como escolha entre dois planos. */
@@ -2409,12 +2408,12 @@ const styles = StyleSheet.create({
   precoSeloTexto: { color: theme.paper, fontSize: type.legenda, fontFamily: fonts.regular },
   precoRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   precoLinha: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
-  precoLinhaCompacta: { justifyContent: 'center' },
+  precoLinhaCompacta: { justifyContent: 'center', flexWrap: 'wrap', rowGap: 0, maxWidth: '100%' },
   // Usa `theme.ink` (não `inkFaint`) porque é um preço real e cobrado, não
   // um valor "a definir" — o apagado era o sinal de que ainda não valia.
-  precoValor: { color: theme.ink, fontSize: 56, lineHeight: 60, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  precoValorCompacto: { fontSize: 46, lineHeight: 50 },
-  precoPeriodo: { color: theme.inkFaint, fontSize: type.corpo, fontFamily: fonts.light },
+  precoValor: { color: theme.ink, fontSize: 56, lineHeight: 60, fontFamily: fonts.regular, fontVariant: ['tabular-nums'], flexShrink: 0, ...({ whiteSpace: 'nowrap' } as any) },
+  precoValorCompacto: { fontSize: 40, lineHeight: 44 },
+  precoPeriodo: { color: theme.inkFaint, fontSize: type.corpo, fontFamily: fonts.light, flexShrink: 0 },
   featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
   precoCta: { marginTop: spacing.lg },
   precoConfianca: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },

@@ -4,24 +4,10 @@ import { type PropsWithChildren } from 'react';
 /**
  * Personalização do `<html>` raiz na web.
  *
- * ATENÇÃO — este arquivo está INERTE hoje. Verificado em 08/09/2026 com
- * `expo export`: o `index.html` publicado é, byte a byte, o template padrão da
- * Expo (`@expo/cli/static/template/index.html`). Uma `<meta>` marcadora
- * inserida aqui nunca apareceu no export, mesmo após limpar `.expo`,
- * `node_modules/.cache` e exportar com `--clear`.
- *
- * O motivo: o expo-router só usa `+html.tsx` quando `web.output` é `"static"`
- * (ou `"server"`). O `app.json` não define essa chave, então vale o padrão
- * `"single"` (SPA) e a Expo serve o template dela.
- *
- * O que dependia daqui foi movido para `instalarDocumentoWeb()`
- * (`lib/foco-web.ts`), que injeta em runtime — mesmo caminho que o anel de
- * foco já usava. Os favicons continuam funcionando porque o `<Head>` do
- * `app/_layout.tsx` também os declara.
- *
- * Mantido no repositório porque volta a valer sozinho no dia em que alguém
- * ligar `web.output: "static"` (o que traria SEO de renderização estática
- * junto). Não acrescente aqui nada de que a página dependa hoje.
+ * Este arquivo é usado pelo export estático da web e fornece a base comum de
+ * todas as rotas HTML. Metadados específicos de cada rota entram depois em
+ * `scripts/inject-og-meta.js`, porque o mesmo documento raiz é compartilhado
+ * pelo runtime e pelo crawler.
  */
 export default function Root({ children }: PropsWithChildren) {
   return (
