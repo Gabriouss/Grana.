@@ -9512,7 +9512,8 @@ canônicos ficam em `.agents/skills` e `.claude/skills`.
 
 **Verificação e limites.** Não houve build EAS, deploy de função, compra ou
 publicação de mídia. A sincronização do Git foi feita com rebase sobre
-`origin/main`, preservando o `FUNIL.md` fora do índice. O commit publicado é
-`570eb67`. `npm run test:ci`, `npx tsc --noEmit` e o verificador do vault
+`origin/main`, preservando o `FUNIL.md` fora do índice. A leva principal foi
+publicada em `570eb67` e o registro final de validação em `e2b66ce`.
+`npm run test:ci`, `npx tsc --noEmit` e o verificador do vault
 passaram; o verificador deixou apenas os 20 avisos preexistentes de perenes
 sem `revisado`. Nenhum segredo foi copiado para o repositório ou para o vault.
