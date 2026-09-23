@@ -7,6 +7,7 @@ import { useSession } from '@/lib/auth-context';
 import { Alert } from '@/lib/alert';
 import BaixarMeusDadosBotao from '@/components/BaixarMeusDadosBotao';
 import ExcluirContaSheet from '@/components/ExcluirContaSheet';
+import { checkoutComEmail } from '@/lib/checkout';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { useFlags } from '@/lib/feature-flags';
 
@@ -50,7 +51,17 @@ const destinoSuporte = 'mailto:gbr.design30@gmail.com?subject=Ajuda%20com%20a%20
 export default function AssinarScreen() {
   const { ligado } = useFlags();
   const { estado, sincronizacao, recarregar } = useEntitlement();
-  const { signOut } = useSession();
+  const { signOut, session } = useSession();
+
+  /* O e-mail da conta vai junto para o checkout, e aparece na tela.
+
+     A compra é ligada à conta PELO E-MAIL, no webhook. Quem digita outro no
+     checkout — coisa comum, porque o navegador preenche o endereço pessoal
+     sozinho — paga e continua no paywall (achado C5). Preencher resolve o caso
+     comum; dizer qual é resolve o resto, porque o campo continua editável. */
+  const emailDaConta = session?.user?.email ?? null;
+  const linkDoMensal = checkoutComEmail(destinoCompra, emailDaConta);
+  const linkDoAnual = destinoAnual ? checkoutComEmail(destinoAnual, emailDaConta) : null;
   const [verificando, setVerificando] = useState(false);
   const [excluirAberto, setExcluirAberto] = useState(false);
   const [saindo, setSaindo] = useState(false);
@@ -143,7 +154,7 @@ export default function AssinarScreen() {
                 MENOR que a mensalidade avulsa. O mensal continua ali, em botão
                 discreto, porque esconder a opção mais barata de entrada faria
                 quem não pode pagar o ano sair da tela sem assinar nada. */}
-            {destinoAnual && ligado('assinatura_checkout') ? (
+            {linkDoAnual && ligado('assinatura_checkout') ? (
               <View style={styles.destaque}>
                 <Text style={styles.selo}>MAIS VANTAJOSO</Text>
                 <View style={styles.destaqueLinha}>
@@ -157,7 +168,7 @@ export default function AssinarScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Assinar o plano anual por ${reais(PRECO_ANUAL)} ao ano`}
-                  onPress={() => Linking.openURL(destinoAnual)}
+                  onPress={() => Linking.openURL(linkDoAnual)}
                   style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
                 >
                   <Text style={styles.primaryText}>Assinar o plano anual</Text>
@@ -169,7 +180,7 @@ export default function AssinarScreen() {
               accessibilityRole="button"
               disabled={!ligado('assinatura_checkout')}
               accessibilityState={{ disabled: !ligado('assinatura_checkout') }}
-              onPress={() => Linking.openURL(destinoCompra)}
+              onPress={() => Linking.openURL(linkDoMensal)}
               style={({ pressed }) => [
                 destinoAnual && ligado('assinatura_checkout') ? styles.secondary : styles.primary,
                 pressed && styles.pressed,
@@ -188,6 +199,16 @@ export default function AssinarScreen() {
                     : 'Assinar o Grana.'}
               </Text>
             </Pressable>
+
+            {/* O campo continua editável do outro lado, então preencher não
+                basta: quem troca o e-mail paga e continua aqui. Dizer qual é o
+                e-mail custa uma linha e evita um suporte. */}
+            {emailDaConta && ligado('assinatura_checkout') ? (
+              <Text style={styles.avisoEmail}>
+                A compra é liberada pelo e-mail da conta. Já vai preenchido com {emailDaConta} —
+                se mudar, o acesso não libera sozinho.
+              </Text>
+            ) : null}
           </View>
         )}
         <Pressable
@@ -252,6 +273,13 @@ export default function AssinarScreen() {
 }
 
 const styles = StyleSheet.create({
+  avisoEmail: {
+    color: theme.inkFaint,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    fontFamily: fonts.light,
+  },
   container: { flex: 1, backgroundColor: theme.paper },
   /* `flexGrow` com `justifyContent` centraliza enquanto cabe, e passa a rolar
      quando não cabe — centralizar num `View` fixo cortava o excedente. */
