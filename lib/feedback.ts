@@ -10,6 +10,10 @@ export async function enviarFeedback(
     message: string;
     rating?: number | null;
     screenshotUrl?: string | null;
+    /* A pessoa autorizou o uso público deste comentário (prova social).
+       Chega sempre explícito do formulário, que nasce desmarcado — caixa
+       pré-marcada não é consentimento. Ausente vale como "não autorizou". */
+    autorizaUsoPublico?: boolean;
   },
   isDemoMode: boolean
 ): Promise<void> {
@@ -29,6 +33,7 @@ export async function enviarFeedback(
     app_version: Constants.expoConfig?.version ?? null,
     platform: Platform.OS,
     device_info: `${Constants.deviceName ?? ''} ${Platform.Version ?? ''}`.trim() || null,
+    public_use_consent: input.autorizaUsoPublico === true,
   });
   if (error) throw error;
 }

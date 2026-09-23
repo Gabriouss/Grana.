@@ -37,11 +37,16 @@ export default function FeedbackModal({
   const [rating, setRating] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [enviando, setEnviando] = useState(false);
+  /* Nasce desmarcado e volta a nascer desmarcado a cada envio (`resetState`):
+     autorização é por comentário, não por pessoa, e caixa que vem marcada não
+     é consentimento. Ver a migration 20260923180000_feedback_uso_publico. */
+  const [autorizaUsoPublico, setAutorizaUsoPublico] = useState(false);
 
   function resetState() {
     setTipo('suggestion');
     setRating(null);
     setMessage('');
+    setAutorizaUsoPublico(false);
     setEnviando(false);
   }
 
@@ -66,7 +71,7 @@ export default function FeedbackModal({
     }
     setEnviando(true);
     try {
-      await enviarFeedback({ type: tipo, message: message.trim(), rating }, isDemoMode);
+      await enviarFeedback({ type: tipo, message: message.trim(), rating, autorizaUsoPublico }, isDemoMode);
       resetState();
       onClose();
       onSuccess();
@@ -154,6 +159,28 @@ export default function FeedbackModal({
           <Text style={styles.contador}>{message.length}/{LIMITS.feedbackMessage}</Text>
 
           <AppPressable
+            style={styles.permissao}
+            onPress={() => {
+              hapticTap();
+              setAutorizaUsoPublico((v) => !v);
+            }}
+            accessibilityRole="checkbox"
+            accessibilityLabel="Autorizo o Grana. a mostrar este comentário publicamente"
+            accessibilityState={{ checked: autorizaUsoPublico }}
+          >
+            <Ionicons
+              name={autorizaUsoPublico ? 'checkbox' : 'square-outline'}
+              size={20}
+              color={autorizaUsoPublico ? theme.accent : theme.inkFaint}
+              aria-hidden
+            />
+            <Text style={styles.permissaoTexto}>
+              Pode mostrar este comentário publicamente, sem o meu nome. Você escolhe a cada
+              mensagem, e deixar desmarcado não muda nada no envio.
+            </Text>
+          </AppPressable>
+
+          <AppPressable
             style={({ hovered }) => [styles.enviarBtn, hovered && { opacity: 0.88 }]}
             onPress={handleEnviar}
             disabled={enviando}
@@ -209,6 +236,8 @@ const styles = StyleSheet.create({
   },
   mensagemInput: { color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), padding: spacing.md, minHeight: 100, textAlignVertical: 'top', fontFamily: fonts.regular },
   contador: { color: theme.inkFaint, fontSize: type.micro, textAlign: 'right', fontFamily: fonts.light },
+  permissao: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, minHeight: 44, paddingVertical: 4 },
+  permissaoTexto: { flex: 1, color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   enviarBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   enviarTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });
