@@ -190,13 +190,62 @@ const pag = (card_id: string, year: number, month: number, amount: number) => ({
 const lembretes = (pagamentos: ReturnType<typeof pag>[]) =>
   lembretesDeFatura(comprasDoCaso, [c6de14, interDe5], pagamentos, '2026-09-16')
     .map((l) => ({ cartao: l.cartao.id, year: l.year, month: l.month, restante: l.restante }));
+/* Busca por cartão E ciclo, em vez de por índice: agora são DOIS registros
+   por cartão, e índice fixo esconderia qual dos dois está sendo medido. */
+const lembrete = (pagamentos: ReturnType<typeof pag>[], cartao: string, month: number) =>
+  lembretes(pagamentos).find((l) => l.cartao === cartao && l.month === month);
+
 checar('lembrete de cada cartão sai do ciclo dele, não do mês civil', lembretes([]), [
   { cartao: 'c6', year: 2026, month: 9, restante: 18.59 },
+  { cartao: 'c6', year: 2026, month: 8, restante: 998.01 },
   { cartao: 'inter', year: 2026, month: 9, restante: 60 },
+  { cartao: 'inter', year: 2026, month: 8, restante: 40 },
 ]);
-checar('pagamento parcial continua lembrando, com o que falta', lembretes([pag('inter', 2026, 9, 25)])[1], { cartao: 'inter', year: 2026, month: 9, restante: 35 });
-checar('pagamento total cancela o lembrete', lembretes([pag('c6', 2026, 9, 18.59)])[0].restante, 0);
-checar('pagamento de outra fatura não conta', lembretes([pag('c6', 2026, 8, 998.01)])[0].restante, 18.59);
+checar('pagamento parcial continua lembrando, com o que falta', lembrete([pag('inter', 2026, 9, 25)], 'inter', 9), { cartao: 'inter', year: 2026, month: 9, restante: 35 });
+checar('pagamento total cancela o lembrete', lembrete([pag('c6', 2026, 9, 18.59)], 'c6', 9)!.restante, 0);
+checar('pagamento de outra fatura não conta', lembrete([pag('c6', 2026, 8, 998.01)], 'c6', 9)!.restante, 18.59);
+
+/* ── A fatura que FECHOU continua na conta, paga ou não ───────────────────
+ *
+ * Relato do autor em 23/09/2026: "o Grana. me notificou do vencimento da
+ * fatura do cartão, sendo que eu já tinha pago o cartão. Ele estava me
+ * informando que a fatura estava atrasada, mesmo após paga."
+ *
+ * O lembrete é agendado no aparelho com o ciclo dentro do identificador
+ * (ver idForFatura, em lib/notifications.ts), então cancelar exige acertar o
+ * MESMO ciclo. Esta função era a única fonte desses ciclos e devolvia só o
+ * que acumula — que VIRA no dia do fechamento. A partir dali o cancelamento
+ * mirava a fatura seguinte, e a que fechou ficava com os avisos vivos:
+ * "Fatura vence hoje" e, no dia seguinte, "Fatura atrasada", mesmo paga.
+ *
+ * Ninguém paga antes de a fatura fechar, então o cancelamento só acertava
+ * quem pagasse adiantado. O caminho normal estava quebrado.
+ *
+ * A fatura fechada precisa aparecer AINDA QUE PAGA: é o restante zero dela
+ * que manda cancelar. Filtrar as pagas traria o defeito de volta. */
+{
+  const dia16 = '2026-09-16'; // já passou o fechamento do c6 (dia 14)
+  const soDoC6 = (pagamentos: ReturnType<typeof pag>[]) =>
+    lembretesDeFatura(comprasDoCaso, [c6de14], pagamentos, dia16)
+      .map((l) => ({ ciclo: `${l.year}-${l.month}`, restante: l.restante }));
+
+  checar('depois do fechamento, os dois ciclos entram na conta', soDoC6([]), [
+    { ciclo: '2026-9', restante: 18.59 },
+    { ciclo: '2026-8', restante: 998.01 },
+  ]);
+  checar('a fatura fechada e PAGA continua na lista, com restante zero (é o que cancela)',
+    soDoC6([pag('c6', 2026, 8, 998.01)]).find((l) => l.ciclo === '2026-8'),
+    { ciclo: '2026-8', restante: 0 });
+  checar('e a fatura fechada por pagar mantém o valor, para o lembrete continuar',
+    soDoC6([]).find((l) => l.ciclo === '2026-8')!.restante, 998.01);
+
+  /* Virada de ano: o ciclo anterior a janeiro é dezembro do ano passado, e
+     `new Date(y, -1, 1)` resolve isso sozinho. Sem esta checagem, um mês -1
+     passaria despercebido até janeiro. */
+  const emJaneiro = lembretesDeFatura([], [c6de14], [], '2026-01-05')
+    .map((l) => `${l.year}-${l.month}`);
+  checar('na virada do ano, o ciclo anterior é dezembro do ano passado', emJaneiro, ['2026-0', '2025-11']);
+}
 
 /* ── A tela usa a regra, e o botão paga o restante pelo caminho certo ─── */
 const tela = readFileSync(join(__dirname, '..', 'app', '(app)', 'credito.tsx'), 'utf8');

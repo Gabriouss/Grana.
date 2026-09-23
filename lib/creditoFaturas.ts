@@ -192,12 +192,41 @@ export function situacaoDaFatura(
 export type LembreteDeFatura = { cartao: CreditCard; year: number; month: number; restante: number };
 
 /**
- * Para cada cartão, a fatura em aberto HOJE — pelo ciclo do cartão, nunca pelo
- * mês civil — e quanto falta pagar dela. `restante` zero quer dizer cancelar o
- * lembrete. Usado pela tela de Crédito ao carregar e pelo Perfil ao ligar os
- * lembretes: o Perfil somava pelo mês civil e tratava qualquer pagamento como
- * quitação, e a tela de Crédito também desligava o lembrete de quem pagou só
- * uma parte.
+ * Por cartão, as faturas que podem ter lembrete VIVO agora, e quanto falta
+ * pagar de cada uma. `restante` zero quer dizer cancelar o lembrete daquele
+ * ciclo; maior que zero, agendar.
+ *
+ * São DUAS por cartão, e é justamente isso que consertou o defeito relatado
+ * pelo autor em 23/09/2026: "o Grana. me notificou do vencimento da fatura do
+ * cartão, sendo que eu já tinha pago", com o aviso dizendo que estava
+ * atrasada.
+ *
+ * ── Por que duas ───────────────────────────────────────────────────────────
+ *
+ * O lembrete é agendado no aparelho com um identificador que carrega o ciclo
+ * (`fatura-<cartão>-<ano>-<mês>-{3d,venc,atraso}`, em `lib/notifications.ts`).
+ * Cancelar exige acertar o MESMO ciclo.
+ *
+ * Até aqui esta função devolvia só o ciclo a que uma compra feita hoje
+ * pertenceria. Esse ciclo VIRA no dia do fechamento: a partir dali ela passa a
+ * apontar para a fatura seguinte, e a que acabou de fechar some da conta. Só
+ * que é exatamente essa que vence, e é essa que a pessoa paga — ninguém paga
+ * antes de a fatura fechar. O cancelamento mirava um ciclo sem agendamento
+ * nenhum, os avisos da fatura fechada sobreviviam ao pagamento, e no dia
+ * seguinte ao vencimento disparava "Fatura atrasada" para uma fatura paga.
+ *
+ * Então entram as duas: a que ACUMULA (o ciclo de hoje) e a que FECHOU (o
+ * anterior). O cálculo do ciclo anterior é o mesmo de
+ * `faturasFechadasPendentes`, na tela de Crédito, que já desenhava a faixa
+ * "Faturas fechadas aguardando pagamento" — a tela enxergava aquela fatura, e
+ * só o agendador de lembretes não enxergava.
+ *
+ * Devolver a fatura fechada também quando ela está PAGA é o ponto: é o
+ * `restante: 0` dela que manda cancelar. Filtrar as pagas aqui traria o
+ * defeito de volta.
+ *
+ * Mandar um ciclo já vencido para `scheduleCardInvoiceReminders` é seguro: ele
+ * cancela antes de agendar e ignora data que já passou.
  */
 export function lembretesDeFatura(
   transacoes: Transaction[],
@@ -205,12 +234,21 @@ export function lembretesDeFatura(
   pagamentos: CreditCardInvoicePayment[],
   hojeISO: string
 ): LembreteDeFatura[] {
-  return cartoes.map((cartao) => {
-    const { year, month } = mesFaturaDoLancamento(hojeISO, cartao.closing_day);
-    const total = filtrarLancamentosDaFatura(transacoes, cartoes, cartao.id, year, month)
-      .reduce((soma, transacao) => soma + Number(transacao.amount), 0);
-    const pagamento = pagamentos.find((p) => p.card_id === cartao.id && p.year === year && p.month === month);
-    return { cartao, year, month, restante: situacaoDaFatura(total, pagamento, null).restante };
+  return cartoes.flatMap((cartao) => {
+    const acumulando = mesFaturaDoLancamento(hojeISO, cartao.closing_day);
+    /* `month - 1` com dia 1: o próprio `Date` rola o ano quando o ciclo de
+       hoje é janeiro e o anterior é dezembro. */
+    const anterior = new Date(acumulando.year, acumulando.month - 1, 1);
+    const ciclos = [
+      acumulando,
+      { year: anterior.getFullYear(), month: anterior.getMonth() },
+    ];
+    return ciclos.map(({ year, month }) => {
+      const total = filtrarLancamentosDaFatura(transacoes, cartoes, cartao.id, year, month)
+        .reduce((soma, transacao) => soma + Number(transacao.amount), 0);
+      const pagamento = pagamentos.find((p) => p.card_id === cartao.id && p.year === year && p.month === month);
+      return { cartao, year, month, restante: situacaoDaFatura(total, pagamento, null).restante };
+    });
   });
 }
 
