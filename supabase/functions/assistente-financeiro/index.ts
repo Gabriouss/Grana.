@@ -2170,6 +2170,7 @@ type CodigoErro =
   | 'metodo_invalido'
   | 'corpo_invalido'
   | 'mensagem_vazia'
+  | 'sem_assinatura'
   | 'muitas_tentativas'
   | 'limite_indisponivel'
   | 'sem_provedor'
@@ -2199,6 +2200,42 @@ Deno.serve(async (req) => {
     const { data: userData, error: authError } = await supabase.auth.getUser();
     const userId = userData?.user?.id;
     if (authError || !userId) return erro('nao_autenticado', 401);
+
+    /* ── Direito de acesso ────────────────────────────────────────────
+       O Granabô está na lista do que a assinatura libera ("A assinatura
+       libera lançamentos, contas, cartões, metas e o Granabô", em
+       `app/assinar.tsx`) e é o item mais caro dela, porque cada pergunta
+       gasta cota de IA. Até 23/09/2026 esta função não checava nada disso:
+       qualquer conta autenticada era atendida. Na prática a conta bloqueada
+       recebia uma resposta inútil — a RLS das tabelas de dinheiro devolve
+       vazio e o assistente conclui "você não tem carteira cadastrada" —, o
+       que é o pior dos dois mundos: gasta cota, não entrega nada e não diz
+       por quê. O autor decidiu em 23/09/2026 que o Granabô deve recusar
+       conta bloqueada.
+
+       A checagem vem ANTES do rate limit e da cota, para não debitar nada de
+       quem não tem direito.
+
+       Falha ao consultar recusa, e não libera: liberar em caso de dúvida
+       transformaria qualquer instabilidade do banco em portão aberto. O
+       recibo fica no log, porque um `catch` mudo aqui apagaria justamente o
+       sinal de que o portão parou de funcionar. */
+    const { data: temAcesso, error: acessoError } = await supabase.rpc('tem_direito_acesso');
+    if (acessoError) {
+      console.error('[assistente-financeiro] não consegui confirmar o direito de acesso', {
+        userId,
+        code: acessoError.code,
+        message: acessoError.message,
+      });
+      return erro('limite_indisponivel', 503, 'Não consegui confirmar sua assinatura agora. Tenta de novo em instantes.');
+    }
+    if (temAcesso !== true) {
+      return erro(
+        'sem_assinatura',
+        403,
+        'O Granabô faz parte da assinatura, e a sua está sem acesso agora. Assim que regularizar, eu volto a responder.'
+      );
+    }
 
     /* ── Validação do corpo ───────────────────────────────────────────── */
     let body: { mensagem: string; historico?: { papel: string; texto: string }[] };

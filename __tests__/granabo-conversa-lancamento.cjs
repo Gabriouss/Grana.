@@ -57,6 +57,10 @@ const client = {
   auth: { getUser: async () => ({ data: { user: { id: USUARIO } }, error: null }) },
   from: (table) => new Query(table),
   rpc: async (name, args) => {
+    /* Desde 23/09/2026 o handler recusa conta sem direito de acesso antes de
+       qualquer gasto. Esta conta tem; a recusa tem teste próprio em
+       __tests__/granabo-recusa-conta-bloqueada.cjs. */
+    if (name === 'tem_direito_acesso') return { data: true, error: null };
     if (name === 'consumir_cota_ia') return { data: [{ permitido: true, motivo: null, minuto_restante: 9, dia_restante: 119 }], error: null };
     if (name === 'buscar_exemplos_similares') return { data: [], error: null };
     if (name === 'registrar_operacao_voz') { gravados.push(args); return { data: { status: 'committed' }, error: null }; }

@@ -34,6 +34,10 @@ const client = {
   auth: { getUser: async () => ({ data: { user: { id: userId } }, error: null }) },
   from: (table) => new Query(table),
   rpc: async (name, args) => {
+    /* Desde 23/09/2026 o handler pergunta primeiro se a conta tem direito de
+       acesso, e recusa sem isso. Aqui a conta é boa: a recusa em si tem teste
+       próprio em __tests__/granabo-recusa-conta-bloqueada.cjs. */
+    if (name === 'tem_direito_acesso') return { data: true, error: null };
     if (name === 'buscar_exemplos_similares') return { data: memories.filter((m) => m.user_id === args.p_user_id && m.tipo === 'exemplo'), error: null };
     if (name === 'consumir_cota_ia') return { data: [{ permitido: true, motivo: null, minuto_restante: 9, dia_restante: 119 }], error: null };
     if (rpcFails) return { error: { code: 'unavailable' } };

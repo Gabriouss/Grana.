@@ -4461,3 +4461,48 @@ $$;
 drop trigger if exists reatribuir_wallet_antes_de_excluir on public.wallets;
 create trigger reatribuir_wallet_antes_de_excluir before delete on public.wallets
 for each row execute procedure public.reatribuir_wallet_antes_de_excluir();
+
+-- O Granabô faz parte da assinatura, então conta bloqueada não escreve
+-- histórico nem memória do assistente. A LEITURA fica livre de propósito: o
+-- histórico já é da pessoa, e "Baixar meus dados" (art. 18 da LGPD) lê estas
+-- duas tabelas com a sessão dela. A recusa visível está na Edge Function
+-- `assistente-financeiro`; isto aqui é a porta de trás.
+--
+-- Vem DEPOIS do bloco histórico das duas tabelas de propósito: aquele bloco é
+-- comparado byte a byte com a migration original por
+-- `__tests__/corpus-schema-guardas.ts`, e uma política criada antes dele seria
+-- desfeita pela política antiga logo em seguida.
+-- Ver 20260923210000_granabo_recusa_conta_bloqueada.sql.
+drop policy if exists "usuario acessa proprio historico" on public.assistant_messages;
+drop policy if exists "assistant_messages: dono le sempre" on public.assistant_messages;
+drop policy if exists "assistant_messages: dono com acesso escreve" on public.assistant_messages;
+create policy "assistant_messages: dono le sempre"
+  on public.assistant_messages for select to authenticated
+  using ((select auth.uid()) = user_id);
+create policy "assistant_messages: dono com acesso escreve"
+  on public.assistant_messages for all to authenticated
+  using (
+    (select auth.uid()) = user_id
+    and (select public.tem_direito_acesso())
+  )
+  with check (
+    (select auth.uid()) = user_id
+    and (select public.tem_direito_acesso())
+  );
+
+drop policy if exists "usuario acessa propria memoria" on public.assistant_memory;
+drop policy if exists "assistant_memory: dono le sempre" on public.assistant_memory;
+drop policy if exists "assistant_memory: dono com acesso escreve" on public.assistant_memory;
+create policy "assistant_memory: dono le sempre"
+  on public.assistant_memory for select to authenticated
+  using ((select auth.uid()) = user_id);
+create policy "assistant_memory: dono com acesso escreve"
+  on public.assistant_memory for all to authenticated
+  using (
+    (select auth.uid()) = user_id
+    and (select public.tem_direito_acesso())
+  )
+  with check (
+    (select auth.uid()) = user_id
+    and (select public.tem_direito_acesso())
+  );
