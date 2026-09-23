@@ -58,6 +58,82 @@ no `context.md`.
 
 ---
 
+# 23/09/2026 (M2) — conformidade com a LGPD: sair, exportar e excluir sem assinatura, e feedback anonimizado (`5f639f8`, `9682b2a`, `584abb7`, `96aee74`)
+
+Pedido do autor, respondendo à pergunta pendente sobre quem está no paywall ou
+vencido: "PRECISA poder, é uma questão legal, precisamos estar totalmente em
+conformidade com a LGPD para evitar multas."
+
+**O buraco, comprovado antes de corrigir.** A Política de Privacidade promete,
+na letra, exclusão "a qualquer momento diretamente no app (Perfil → Excluir
+conta)" e, no art. 18, "confirmar a existência e acessar os dados que temos
+sobre você". Nenhuma das duas funcionava para quem perdeu o acesso:
+`app/assinar.tsx` é a única tela liberada nesse estado e não tinha saída
+nenhuma — nem sair da conta. E o direito de acesso não existia em lugar
+nenhum do app: o único "exportar" era o relatório do mês em PDF, dentro da
+área paga.
+
+**O que mudou.**
+
+- `5f639f8`: a tela de assinatura passou a rolar (`ScrollView`), em commit
+  próprio por ser mudança de layout (regra 14). Sem isso, o que foi
+  acrescentado abaixo do botão de compra ficaria fora da tela em aparelho
+  pequeno.
+- `9682b2a`: `lib/exportar-meus-dados.ts` (novo) lê as 15 tabelas do usuário
+  e monta um JSON; tabela que falha vira recibo dentro do próprio arquivo e
+  aviso na tela, porque cópia incompleta que se apresenta como completa é pior
+  que erro. `components/ExcluirContaSheet.tsx` e
+  `components/BaixarMeusDadosBotao.tsx` (novos) saíram de dentro do
+  `perfil.tsx` para servir as duas telas — duplicar confirmação de identidade
+  seguida de apagamento irreversível seria a pior forma de atender ao pedido.
+  `perfil.tsx` perdeu 133 linhas e passou a usar os mesmos componentes.
+  `__tests__/exportar-meus-dados.cjs` roda o módulo real, 13 checagens.
+- `584abb7` e `96aee74`: o feedback depois da exclusão. O autor perguntou se
+  dava para manter os feedbacks legalmente mesmo excluindo a conta, "para
+  ajustes do aplicativo e geração de prova social". Dá, pela anonimização — a
+  LGPD tira o dado anonimizado do alcance da lei (art. 12) —, mas a exclusão
+  só apagava o `user_id` e deixava `device_info` (nome do aparelho, tipo
+  "Pixel da Maria") e `screenshot_url` na linha, então "anonimizado" era
+  promessa e não fato. `supabase/functions/delete-account/index.ts` passa a
+  zerar os três campos; ficam tipo, nota, mensagem, versão e data. E o
+  formulário ganhou uma caixa opcional de autorização de uso público
+  (`public_use_consent`), porque depoimento com atribuição não é dado anônimo:
+  nasce desmarcada, volta a nascer desmarcada a cada envio, e a autorização é
+  por comentário, não por pessoa.
+- A Política de Privacidade afirmava "Nada fica retido após a exclusão", o que
+  era falso e é exatamente o tipo de frase que gera multa. Agora declara a
+  retenção anonimizada do feedback, a autorização opcional, e o caminho do
+  "Baixar meus dados" no direito de acesso.
+
+**Descartado no caminho.** A função de exclusão chegou a ganhar um laço que
+apagava o print do feedback do Storage, com `FEEDBACK_BUCKET =
+'feedback-screenshots'` — bucket inventado: nada no app anexa print e esse
+bucket não existe. O laço saiu; ficou a coluna zerada e um aviso no código de
+que quem implementar o anexo precisa apagar o arquivo no mesmo ponto.
+
+**Não aplicado em produção.** A migration
+`supabase/migrations/20260923180000_feedback_uso_publico.sql` e a nova versão
+da Edge Function `delete-account` estão commitadas e NÃO publicadas —
+publicar é decisão do autor (regra 11). Enquanto a migration não for aplicada,
+o envio de feedback vai falhar, porque `lib/feedback.ts` já grava
+`public_use_consent`: aplicar a migration é pré-requisito da próxima build.
+
+**Verificação.** `tsc` limpo, `npm run test:ci` inteiro verde (inclui os dois
+testes novos), `deno check` na Edge Function. O teste novo foi conferido por
+mutação: trocar `=== true` por `!== false` e tirar `device_info` da limpeza
+derruba 3 das 14 checagens. **Não verificado no aparelho:** nenhuma das telas
+novas foi aberta em emulador ou aparelho nesta sessão, e a exclusão de conta
+não foi executada de ponta a ponta contra o servidor.
+
+**Decisões do autor nesta sessão, para não serem reabertas:** o "Livre para
+Gastar" NÃO desconta a fatura do cartão ("a fatura entra automaticamente no
+gasto mensal em débito depois que é paga, isso geraria redundância"); o
+Granabô deve recusar conta bloqueada (ainda não implementado); o selo "Mais
+popular" fica, e isso não será perguntado de novo; a troca dos cinco segredos
+vazados no EAS fica para depois.
+
+---
+
 # 22/09/2026 (M1) — tentativa da build preview 1.10.4, bloqueada pela cota do EAS
 
 Pedido do autor: "tenta disparar uma build nova", para entregar a correção do
