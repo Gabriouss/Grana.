@@ -95,8 +95,11 @@ desconectado.
   estão no ar, e o caminho completo foi **provado com a primeira venda real
   em 13/09/2026** (Pix, plano mensal): pagamento, aviso do webhook, assinatura
   e vínculo com a conta. Renovação, reembolso, cartão e plano anual ainda não
-  tiveram tráfego real. O bloqueio está implementado e desligado por
-  interruptor; ligar agora depende só de decisão do autor.
+  tiveram tráfego real. O bloqueio foi **ligado em 22/09/2026**. Os testes do
+  mesmo dia acharam dois pontos em que quem pagou pode não chegar ao app sem
+  ajuda: a compra com e-mail diferente do da conta não se vincula sozinha, e o
+  link de confirmação do cadastro feito pela web abre o navegador, não o app
+  (não há App Links). Ver o `context.md` de 22/09.
 - O preço **já foi validado** comercialmente e no fluxo real de compra. Nos
   criativos, anúncios, capas e legendas, porém, não divulgar os valores exatos
   mensal ou anual. A única formulação de preço permitida nessas peças é

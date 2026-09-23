@@ -9712,3 +9712,36 @@ até terminar.
 **Fora do commit de propósito:** a mudança local em `.claude/settings.json`
 (troca das permissões por `Bash(*)`, `Edit(*)` etc.) ficou sem commit por
 ordem do autor, até ele decidir.
+
+## 23/09/2026 — M1 — auditoria dos oito agentes do Maestri, por segmento (só leitura)
+
+O autor pediu uma "auditoria rigorosa" de cada agente no próprio segmento, com
+documentação de todos os achados. **Nada foi corrigido**: nenhum commit de
+código, build, deploy ou escrita em produção. O resumo, com a tabela por
+segmento, os P1/P2 e as 15 perguntas ao autor, está no vault em
+`00 - Sessões/2026-09-23 - M1 - Consolidado das auditorias dos agentes`; cada
+agente tem a própria nota de 23/09 (o Sentinel usa a de 22/09).
+
+- **Totais comprovados até a pausa:** Sentinel 4 P1 / 10 P2 / 41 P3 (app no
+  emulador, concluído); Watchtower 1 P1 / 4 P2 / 1 P3; Forge 0/2/2 (`tsc` limpo
+  e `npm run test:ci` com 0 falhas); Harbor 0/1/2; Ledger 0/10/7; Compass
+  0/7/7; Prism 0/2/3 (ids com prefixo P, que NÃO são gravidade). Beacon
+  (marketing) ficou incompleto na pausa.
+- **P1:** S4 widget de voz sem microfone falha calado; S30 ANR entre Gráficos e
+  Desafios (hipótese: memória do emulador); S43 Granabô soma crédito no gasto do
+  mês e diverge de Gráficos; S51 Crédito sem rede some com os cartões e troca o
+  ciclo; A1 (Watchtower) cache e fila offline atravessam contas no mesmo
+  aparelho.
+- **Canvas do Maestri:** Compass e Ledger passaram a Claude Code; Prism,
+  Beacon e Watchtower rodam `gpt-6-sol` medium só nos terminais do Maestri
+  (padrão do `~/.codex/config.toml` inalterado). Cada agente web tem um portal
+  próprio "Navegador <nome>".
+- **Conta de teste:** o autor confirmou em 23/09 que a conta de
+  `E2E_TEST_EMAIL` é de teste, sem uso real, apesar de ser o Gmail dele.
+- **Pausa por limite:** às 07h30 o Codex chegou a 90% da janela de 5 h; os oito
+  agentes foram pausados e a retomada foi agendada na M1 para 12h07 (reset +
+  1 min), por scripts em `E:\Grana-temporarios\` (fora do repo).
+- **Pendente de decisão do autor:** `.claude/settings.json` com `Bash(*)` e
+  afins continua modificado e FORA de commit (repositório público). Os deploys
+  represados (`assistente-financeiro`, `whatsapp-webhook`,
+  `enviar-lembretes-habito`) seguem sem pedido (regra 11).
