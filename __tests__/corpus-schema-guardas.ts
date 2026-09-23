@@ -32,6 +32,8 @@ const MIGRATION_MEMORIA = path.join(__dirname, '..', 'supabase', 'migrations', '
 const migrationMemoria = readFileSync(MIGRATION_MEMORIA, 'utf8');
 const MIGRATION_COTAS = path.join(__dirname, '..', 'supabase', 'migrations', '20260908140000_ai_usage_quotas.sql');
 const migrationCotas = readFileSync(MIGRATION_COTAS, 'utf8');
+const MIGRATION_TRIGGERS_INTERNOS = path.join(__dirname, '..', 'supabase', 'migrations', '20260923220000_restringir_execucao_triggers_internos.sql');
+const migrationTriggersInternos = readFileSync(MIGRATION_TRIGGERS_INTERNOS, 'utf8');
 
 let total = 0;
 let falhas = 0;
@@ -138,7 +140,21 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   }
 }
 
-// ── 6. Push: token do dono, outbox só do servidor e claim atômico ─────────
+// ── 6. Triggers internos não ficam expostos como RPCs ─────────────────────
+{
+  const triggersInternos = [
+    'handle_new_user_wallet',
+    'preencher_wallet_padrao',
+    'reatribuir_wallet_antes_de_excluir',
+  ];
+  for (const nome of triggersInternos) {
+    const revoga = new RegExp(String.raw`revoke all on function public\.${nome}\(\)\s+from public, anon, authenticated;`);
+    checar(`${nome} não fica exposta como RPC no schema`, revoga.test(sql));
+    checar(`${nome} não fica exposta como RPC na migration`, revoga.test(migrationTriggersInternos));
+  }
+}
+
+// ── 7. Push: token do dono, outbox só do servidor e claim atômico ─────────
 {
   checar(
     'push_tokens tem RLS habilitado',
@@ -223,7 +239,7 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   );
 }
 
-// 7. Voz: request persistente, escrita/undo atômicos e menor privilégio.
+// 8. Voz: request persistente, escrita/undo atômicos e menor privilégio.
 {
   checar(
     'voice_operations tem RLS habilitado',

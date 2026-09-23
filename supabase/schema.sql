@@ -749,6 +749,9 @@ begin
 end;
 $$;
 
+revoke all on function public.handle_new_user_wallet()
+  from public, anon, authenticated;
+
 drop trigger if exists on_auth_user_created_wallet on auth.users;
 create trigger on_auth_user_created_wallet
   after insert on auth.users
@@ -4409,6 +4412,9 @@ begin
 end;
 $$;
 
+revoke all on function public.preencher_wallet_padrao()
+  from public, anon, authenticated;
+
 drop trigger if exists preencher_wallet_transactions on public.transactions;
 create trigger preencher_wallet_transactions before insert or update of wallet_id, user_id on public.transactions
 for each row execute procedure public.preencher_wallet_padrao();
@@ -4457,6 +4463,9 @@ begin
   return old;
 end;
 $$;
+
+revoke all on function public.reatribuir_wallet_antes_de_excluir()
+  from public, anon, authenticated;
 
 drop trigger if exists reatribuir_wallet_antes_de_excluir on public.wallets;
 create trigger reatribuir_wallet_antes_de_excluir before delete on public.wallets

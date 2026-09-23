@@ -58,6 +58,47 @@ no `context.md`.
 
 ---
 
+# 23/09/2026 (M2) — pendências do Supabase publicadas
+
+Pedido do autor: usar o acesso temporário fornecido nesta sessão para “alterar
+o que precisa ser alterado no Supabase”, incluindo functions e outras
+pendências. O token ficou somente na memória do processo, foi removido ao
+fim e não foi salvo em arquivo, login da CLI, vault ou registro.
+
+**Banco.** Foram aplicadas em produção, nesta ordem, as migrations
+`20260923180000_feedback_uso_publico.sql`,
+`20260923210000_granabo_recusa_conta_bloqueada.sql` e a nova
+`20260923220000_restringir_execucao_triggers_internos.sql`. A última fecha o
+H2 da auditoria do Harbor: revoga de `public`, `anon` e `authenticated` o
+`EXECUTE` das três funções internas de trigger
+`handle_new_user_wallet`, `preencher_wallet_padrao` e
+`reatribuir_wallet_antes_de_excluir`. Os gatilhos continuam instalados e o
+comportamento deles não mudou.
+
+**Edge Functions.** Antes de sobrescrever, os quatro pacotes publicados foram
+baixados para uma pasta temporária de retorno. Depois de `deno check` limpo,
+foram publicados individualmente: `assistente-financeiro` v37
+(`verify_jwt=true`), `delete-account` v7 (`true`),
+`enviar-lembretes-habito` v12 (`false`) e `whatsapp-webhook` v76 (`false`).
+Isso põe no ar a recusa do Granabô para conta bloqueada, as correções de
+parser/crédito, a anonimização completa do feedback ao excluir conta e as 12
+copies atuais de lembrete.
+
+**Verificação em produção.** A coluna `feedbacks.public_use_consent` existe;
+as quatro políticas novas de `assistant_messages`/`assistant_memory` estão no
+papel `authenticated`; nenhuma das três funções internas conserva execução
+efetiva para `public`, `anon` ou `authenticated`; as quatro Edge Functions
+estão `ACTIVE` e preservaram o `verify_jwt` anterior. Os testes dirigidos de
+feedback, exportação, bloqueio do Granabô e aprendizado passaram; as quatro
+functions passaram no `deno check`. Nenhum build EAS foi disparado.
+
+**O que deu errado no caminho.** As duas primeiras tentativas de enviar as
+migrations pela Management API geraram JSON inválido por codificação do
+PowerShell e não executaram SQL. O envio foi repetido como bytes UTF-8 e as
+três aplicações foram então confirmadas pela leitura posterior dos objetos.
+
+---
+
 # 23/09/2026 (M2) — conformidade com a LGPD: sair, exportar e excluir sem assinatura, e feedback anonimizado (`5f639f8`, `9682b2a`, `584abb7`, `96aee74`)
 
 Pedido do autor, respondendo à pergunta pendente sobre quem está no paywall ou
