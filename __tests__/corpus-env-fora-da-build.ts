@@ -90,11 +90,11 @@ if (ignore) {
    qualquer pessoa. Até 23/09/2026 era exatamente esse o caso: as regras eram
    `.env` e `.env*.local`, e nenhuma delas casa com `.env.production`. */
 {
-  const regrasDoGit = ignore().add(readFileSync(join(RAIZ, '.gitignore'), 'utf8'));
+  const regrasDoGit = readFileSync(join(RAIZ, '.gitignore'), 'utf8');
   for (const nome of NOMES_DE_VARIAVEIS) {
-    checar(`o .gitignore deste repositório barra ${nome}`, regrasDoGit.ignores(nome), true);
+    checar(`o .gitignore deste repositório barra ${nome}`, ficaForaDoPacote(nome, regrasDoGit), true);
   }
-  checar('e o modelo .env.example continua versionável', regrasDoGit.ignores('.env.example'), false);
+  checar('e o modelo .env.example continua versionável', ficaForaDoPacote('.env.example', regrasDoGit), false);
 }
 
 /* ── 4. De onde vêm as regras, e arquivos que existem de fato ──────────── */
