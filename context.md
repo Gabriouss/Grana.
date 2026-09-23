@@ -166,6 +166,55 @@ segunda conta e escrita no banco.
 
 ---
 
+# 23/09/2026 (M2) — o lembrete da fatura paga dizia "atrasada" (`997efd8`)
+
+Relato do autor, no fim do dia: "o Grana. me notificou do vencimento da fatura
+do cartão, sendo que eu já tinha pago o cartão. Ele estava me informando que a
+fatura estava atrasada, mesmo após paga."
+
+**Causa, reproduzida com os módulos reais antes de mexer.** O lembrete é
+agendado no aparelho com o ciclo DENTRO do identificador (`idForFatura`, em
+`lib/notifications.ts`: `fatura-<cartão>-<ano>-<mês>-{3d,venc,atraso}`), então
+cancelar exige acertar o mesmo ciclo. `lembretesDeFatura` era a única fonte
+desses ciclos e devolvia só um por cartão: aquele a que uma compra feita HOJE
+pertenceria. Esse ciclo VIRA no dia do fechamento. A partir dali a função
+aponta para a fatura seguinte, e a que acabou de fechar some da conta — mas é
+ela que vence, e é ela que a pessoa paga, porque ninguém paga antes de a
+fatura fechar.
+
+Medido com um cartão que fecha dia 15 e vence dia 22: até 14/09 o cancelamento
+mira `2026-8` e acerta; de 15/09 em diante mira `2026-9` enquanto o
+agendamento vivo é `2026-8`. Ou seja, o caminho normal de pagamento estava
+quebrado, e só quem pagasse adiantado era atendido.
+
+**Correção.** `lembretesDeFatura` devolve dois ciclos por cartão, o que
+acumula e o que fechou. O cálculo do anterior é o mesmo que
+`faturasFechadasPendentes` já fazia na tela de Crédito para desenhar "Faturas
+fechadas aguardando pagamento": a tela enxergava aquela fatura, e só o
+agendador não enxergava. A fatura fechada entra na lista AINDA QUE PAGA, de
+propósito — é o `restante: 0` dela que manda cancelar.
+
+Os três pontos de chamada herdam sem mudar uma linha, o que também evitou
+tocar em `credito.tsx` e `perfil.tsx`, que estavam com alterações não
+commitadas do Codex.
+
+**Descartado.** Chegou a ser proposto cancelar também dentro de
+`payCardInvoice`, em `lib/data.ts`. Não foi feito, por dois motivos achados ao
+ler o código: `handlePayInvoice` já chama `loadData()` depois de pagar, e o
+laço de lembretes roda ali, então o núcleo sozinho já cancela no instante do
+pagamento; e `data.ts` não conhece o total da fatura, então cancelar de lá
+apagaria o lembrete de quem pagou só uma parte, trocando um defeito por outro
+mais silencioso.
+
+**Verificação.** `tsc` limpo, `test:ci` inteiro verde, guarda nova em
+`corpus-credito-faturas` (agora busca por cartão E ciclo, em vez de índice) e
+conferida por mutação: voltar a um ciclo só derruba três checagens. **Não
+verificado no aparelho:** a notificação não foi disparada aqui. A prova é
+pagar uma fatura já fechada e confirmar que nada chega no dia seguinte ao
+vencimento.
+
+---
+
 # 23/09/2026 (M2) — varredura de correção dos achados das auditorias da M1
 
 Pedido do autor: "o que temos mais para fazer de correção?" e, em seguida,
