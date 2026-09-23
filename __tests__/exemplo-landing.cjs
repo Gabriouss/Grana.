@@ -188,4 +188,36 @@ const { EXEMPLO_LIVRE, EXEMPLO_CONVERSA, emReais } = exemplo;
   }
 }
 
+/* ── A promessa da nota fiscal cabe no que o leitor faz ──────────────────
+ *
+ * Achados B9 e B10 da auditoria de marketing de 23/09/2026. A landing dizia
+ * "Fotografe a nota" e "/baixar" prometia registro "por voz, texto ou foto",
+ * mas `QrScannerModal` usa `barcodeTypes: ['qr']`: não há captura de imagem
+ * nem OCR. E a frase "O Grana. lê a compra e você confere o valor" só vale nas
+ * notas em contingência — na emissão online comum o QR carrega só a chave, e
+ * `lib/nfce-parser.ts` devolve `valorTotal: null` de propósito, porque prefere
+ * campo em branco a número errado num app de dinheiro.
+ *
+ * As checagens são amarradas ao CÓDIGO do leitor: se um dia ele passar a
+ * aceitar imagem, elas param de cobrar sozinhas. */
+{
+  const scanner = fs.readFileSync('components/QrScannerModal.tsx', 'utf8');
+  const soQr = scanner.includes("barcodeTypes: ['qr']");
+  conferir(soQr, true, 'o leitor continua sendo só de QR Code (contexto das checagens abaixo)');
+
+  if (soQr) {
+    for (const arquivo of ['app/baixar.tsx', 'components/NoSeuBolso.tsx', 'app/index.tsx', 'scripts/inject-og-meta.js']) {
+      const texto = fs.readFileSync(arquivo, 'utf8');
+      conferir(/foto da nota|Fotografe a nota|texto ou foto/.test(texto), false, `${arquivo} não promete foto da nota`);
+    }
+    const bolso = fs.readFileSync('components/NoSeuBolso.tsx', 'utf8');
+    conferir(bolso.includes('QR Code da nota fiscal'), true, 'o card nomeia o que o leitor faz');
+    conferir(
+      /O Grana. lê a compra e você confere o valor/.test(bolso),
+      false,
+      'o card não promete mais o valor já lido em toda nota'
+    );
+  }
+}
+
 console.log(`exemplo-landing: ${verificacoes} verificações passaram`);

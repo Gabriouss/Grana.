@@ -40,7 +40,7 @@ export default function NoSeuBolso() {
   const { ehCompacto } = useBreakpoint();
   const cards = [
     { chave: 'voz', rotulo: 'Voz', titulo: 'Fale o gasto', texto: 'Toque no microfone e diga o que gastou. O Grana. transcreve e sugere a categoria para você conferir.', cena: <CenaVoz /> },
-    { chave: 'nota', rotulo: 'Nota fiscal', titulo: 'Fotografe a nota', texto: 'Aponte a câmera para o QR Code da nota fiscal. O Grana. lê a compra e você confere o valor antes de salvar.', cena: <CenaNota /> },
+    { chave: 'nota', rotulo: 'Nota fiscal', titulo: 'Leia o QR da nota', texto: 'Aponte a câmera para o QR Code da nota fiscal. O Grana. identifica a loja e a data na hora. O valor vem junto quando a nota carrega, e nas outras você digita antes de salvar.', cena: <CenaNota /> },
     { chave: 'widgets', rotulo: 'Widgets', titulo: 'O essencial na tela inicial', texto: 'Fale um gasto ou veja quanto sobra no mês direto da tela inicial do Android, sem abrir o aplicativo.', cena: <CenaWidgets /> },
   ];
   return (

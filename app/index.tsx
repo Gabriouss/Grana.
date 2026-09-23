@@ -737,7 +737,7 @@ const PERGUNTAS_FAQ = [
   {
     pergunta: 'Preciso instalar alguma coisa?',
     resposta:
-      'Não pra começar: o Grana. roda direto no navegador, neste mesmo endereço. Pra ter os recursos do bolso, como os widgets da tela inicial, o lançamento por voz e a foto da nota fiscal, é só baixar o aplicativo de Android.',
+      'Não pra começar: o Grana. roda direto no navegador, neste mesmo endereço. Pra ter os recursos do bolso, como os widgets da tela inicial, o lançamento por voz e a leitura do QR Code da nota fiscal, é só baixar o aplicativo de Android.',
   },
 ];
 

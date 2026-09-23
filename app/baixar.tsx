@@ -37,7 +37,7 @@ export default function BaixarApp() {
           <Text style={styles.eyebrow}>GRANA. PARA ANDROID</Text>
           <Text style={styles.title}>Seu dinheiro cabe no bolso.</Text>
           <Text style={styles.subtitle}>
-            Baixe o aplicativo oficial, entre na sua conta e registre seus lançamentos do jeito que combina com você — por voz, texto ou foto.
+            Baixe o aplicativo oficial, entre na sua conta e registre seus lançamentos do jeito que combina com você: por voz, por texto ou lendo o QR Code da nota fiscal.
           </Text>
 
           <View style={styles.card}>
