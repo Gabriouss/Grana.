@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import * as Linking from 'expo-linking';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEntitlement } from '@/lib/entitlement-context';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { useFlags } from '@/lib/feature-flags';
@@ -57,8 +58,13 @@ export default function AssinarScreen() {
     }
   }
 
+  /* A tela precisa ROLAR: ela é a única aberta para quem está no paywall, e
+     agora carrega também as saídas da conta (sair, baixar os dados, excluir).
+     Numa tela pequena, sem rolagem, o que passasse da altura ficaria
+     inalcançável — e justamente o que não pode ficar inalcançável é a saída. */
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+      <ScrollView contentContainerStyle={styles.rolagem} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
         <Text style={styles.eyebrow}>GRANA. COMPLETO</Text>
         {/* O preço saiu do título e foi para os cartões de plano: com dois
@@ -176,17 +182,16 @@ export default function AssinarScreen() {
           )}
         </Pressable>
       </View>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: theme.paper,
-    padding: spacing.xl,
-  },
+  container: { flex: 1, backgroundColor: theme.paper },
+  /* `flexGrow` com `justifyContent` centraliza enquanto cabe, e passa a rolar
+     quando não cabe — centralizar num `View` fixo cortava o excedente. */
+  rolagem: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl },
   card: {
     width: '100%',
     maxWidth: 520,
