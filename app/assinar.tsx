@@ -3,6 +3,10 @@ import * as Linking from 'expo-linking';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEntitlement } from '@/lib/entitlement-context';
+import { useSession } from '@/lib/auth-context';
+import { Alert } from '@/lib/alert';
+import BaixarMeusDadosBotao from '@/components/BaixarMeusDadosBotao';
+import ExcluirContaSheet from '@/components/ExcluirContaSheet';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { useFlags } from '@/lib/feature-flags';
 
@@ -46,7 +50,24 @@ const destinoSuporte = 'mailto:gbr.design30@gmail.com?subject=Ajuda%20com%20a%20
 export default function AssinarScreen() {
   const { ligado } = useFlags();
   const { estado, sincronizacao, recarregar } = useEntitlement();
+  const { signOut } = useSession();
   const [verificando, setVerificando] = useState(false);
+  const [excluirAberto, setExcluirAberto] = useState(false);
+  const [saindo, setSaindo] = useState(false);
+
+  function confirmarSaida() {
+    Alert.alert('Sair da conta', 'Você vai precisar entrar de novo para usar o Grana.', [
+      { text: 'Continuar aqui', style: 'cancel' },
+      {
+        text: 'Sair',
+        style: 'destructive',
+        onPress: () => {
+          setSaindo(true);
+          void signOut().finally(() => setSaindo(false));
+        },
+      },
+    ]);
+  }
   const cobrancaPendente = estado?.status === 'past_due';
 
   async function verificar() {
@@ -182,6 +203,49 @@ export default function AssinarScreen() {
           )}
         </Pressable>
       </View>
+
+      {/* As saídas da conta, fora do cartão de venda e em peso menor: o botão
+          de assinar continua sendo a coisa mais visível da tela.
+
+          Elas existem aqui por decisão do autor em 23/09/2026 ("precisamos
+          estar totalmente em conformidade com a LGPD para evitar multas") e
+          porque a Política de Privacidade já prometia, na letra, excluir a
+          conta "a qualquer momento, pelo próprio app" e "acessar os dados que
+          temos sobre você" — promessas que esta tela quebrava, por ser a única
+          aberta quando o acesso está bloqueado. */}
+      <View style={styles.saidas}>
+        <Text style={styles.saidasTitulo}>Sua conta continua sua</Text>
+        <Text style={styles.saidasTexto}>
+          Mesmo sem assinatura ativa, você pode sair, baixar uma cópia dos seus dados ou
+          excluir tudo de vez.
+        </Text>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={confirmarSaida}
+          disabled={saindo}
+          accessibilityState={{ busy: saindo, disabled: saindo }}
+          style={({ pressed }) => [styles.saidaBotao, pressed && styles.pressed]}
+        >
+          {saindo ? (
+            <ActivityIndicator color={theme.inkSoft} size="small" accessibilityLabel="Saindo da conta" />
+          ) : (
+            <Text style={styles.saidaTexto}>Sair da conta</Text>
+          )}
+        </Pressable>
+
+        <BaixarMeusDadosBotao />
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setExcluirAberto(true)}
+          style={({ pressed }) => [styles.saidaBotao, pressed && styles.pressed]}
+        >
+          <Text style={styles.saidaPerigo}>Excluir conta e dados</Text>
+        </Pressable>
+      </View>
+
+      <ExcluirContaSheet visible={excluirAberto} onClose={() => setExcluirAberto(false)} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -192,6 +256,31 @@ const styles = StyleSheet.create({
   /* `flexGrow` com `justifyContent` centraliza enquanto cabe, e passa a rolar
      quando não cabe — centralizar num `View` fixo cortava o excedente. */
   rolagem: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl },
+  saidas: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: theme.rule,
+  },
+  saidasTitulo: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
+  saidasTexto: { color: theme.inkFaint, fontFamily: fonts.light, fontSize: 14, lineHeight: 21, marginBottom: spacing.xs },
+  saidaBotao: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    backgroundColor: theme.paperRaised,
+  },
+  saidaTexto: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: 16, lineHeight: 24 },
+  saidaPerigo: { color: theme.danger, fontFamily: fonts.light, fontSize: 16, lineHeight: 24 },
   card: {
     width: '100%',
     maxWidth: 520,

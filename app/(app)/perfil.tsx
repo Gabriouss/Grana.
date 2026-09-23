@@ -32,13 +32,13 @@ import { useAppLock } from '@/lib/app-lock-context';
 import { useScreenCapture } from '@/lib/screen-capture-context';
 import { theme, radius, spacing, screenRhythm, fonts, type, lh } from '@/lib/theme';
 import {
-  deleteUserAccount,
-  reauthenticate,
   fetchBills,
   fetchCreditCards,
   fetchCardInvoicePayments,
   fetchTransactions,
 } from '@/lib/data';
+import ExcluirContaSheet from '@/components/ExcluirContaSheet';
+import BaixarMeusDadosBotao from '@/components/BaixarMeusDadosBotao';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
 import {
@@ -56,12 +56,10 @@ import { todayISO } from '@/lib/format';
 import { lembretesDeFatura } from '@/lib/creditoFaturas';
 import { calculateStreakAndWeek } from '@/lib/gamification';
 import SegmentedTabs from '@/components/SegmentedTabs';
-import { LIMITS } from '@/lib/limits';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
 import { carregarDiagnostico, diagnosticoDosMetadados, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import AppPressable from '@/components/AppPressable';
 import { useFlags } from '@/lib/feature-flags';
-import PasswordInput from '@/components/PasswordInput';
 import { useKeyboardHeight } from '@/components/Sheet';
 import ToggleSwitch from '@/components/ToggleSwitch';
 import BudgetTemplatesModal from '@/components/BudgetTemplatesModal';
@@ -114,14 +112,11 @@ export default function PerfilScreen() {
   const [categoriasOpen, setCategoriasOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [excluirAberto, setExcluirAberto] = useState(false);
   /* A saída pode levar alguns segundos quando a rede ou o push demoram (ver
      lib/sair-da-conta.ts). Sem isto o diálogo fechava e nada indicava que o
      app estava saindo (achado A64). */
   const [saindo, setSaindo] = useState(false);
-  const [reauthOpen, setReauthOpen] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   /* Começa pelo que a sessão LOCAL já sabe, sem esperar a rede. Antes começava
      vazio, e a tela mostrava "Diagnóstico inicial" até o `getUser` voltar, para
@@ -142,7 +137,6 @@ export default function PerfilScreen() {
     CONTAGEM_WIDGETS_INICIAL
   );
   const nomeModalRef = useRef<View>(null);
-  const reauthModalRef = useRef<View>(null);
   const reduzirMovimento = useReducedMotion();
   /* Os modais que compartilham `reauthScrim` centralizam um card sem
      rolagem, e dois deles abrem com `autoFocus` num campo de texto — em tela
@@ -154,7 +148,6 @@ export default function PerfilScreen() {
      folga sobre folga (ver o comentário em components/Sheet.tsx). */
   const alturaTecladoModais = useKeyboardHeight();
   useModalAccessibility(nomeModalRef, nomeOpen, () => setNomeOpen(false));
-  useModalAccessibility(reauthModalRef, reauthOpen, () => setReauthOpen(false));
 
 
   function triggerToast(msg: string) {
@@ -189,58 +182,6 @@ export default function PerfilScreen() {
         },
       ]);
     }
-  }
-
-  async function handlePerformDeleteAccount() {
-    try {
-      setDeleting(true);
-      const { completo } = await deleteUserAccount();
-      await signOut();
-      if (!completo) {
-        // `deleteUserAccount` já apagou todos os dados que conseguiu — só o
-        // encerramento total da conta de login não terminou (depende de uma
-        // função no servidor). Avisa em vez de fingir que terminou 100%.
-        Alert.alert(
-          'Dados apagados',
-          'Seus dados foram removidos, mas não foi possível concluir o encerramento total da conta agora. Se precisar, fale com o suporte.',
-          [{ text: 'OK', onPress: () => router.replace('/sign-in') }]
-        );
-        return;
-      }
-      router.replace('/sign-in');
-    } catch (err: any) {
-      Alert.alert('Erro ao excluir conta', mensagemErro(err, 'Tente novamente mais tarde.'));
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  /* A confirmação por si só não protege nada: quem está com o aparelho
-     desbloqueado toca em "Excluir" e pronto. Por isso o botão agora abre a
-     folha que pede a senha, e a exclusão só acontece depois que o Supabase
-     revalida a credencial. */
-  function confirmDeleteAccount() {
-    setDeleteError(null);
-    setDeletePassword('');
-    setReauthOpen(true);
-  }
-
-  async function handleConfirmDeleteWithPassword() {
-    if (!deletePassword) {
-      setDeleteError('Digite sua senha para confirmar.');
-      return;
-    }
-    setDeleting(true);
-    setDeleteError(null);
-    const { ok, error } = await reauthenticate(deletePassword);
-    if (!ok) {
-      setDeleting(false);
-      setDeleteError(error ?? 'Não foi possível confirmar sua identidade.');
-      return;
-    }
-    setReauthOpen(false);
-    setDeletePassword('');
-    await handlePerformDeleteAccount();
   }
 
   const recarregarPerfil = useCallback(async () => {
@@ -806,8 +747,15 @@ export default function PerfilScreen() {
           </AppPressable>
         </View>
 
-        {/* Ações da Conta: Sair e Excluir */}
+        {/* Ações da Conta: baixar os dados, sair e excluir.
+
+            "Baixar meus dados" atende o artigo 18 da LGPD que a própria
+            Política de Privacidade cita ("confirmar a existência e acessar os
+            dados que temos sobre você"): até 23/09/2026 não havia como fazer
+            isso em lugar nenhum do app. O mesmo botão está na tela de
+            assinatura, para quem perdeu o acesso. */}
         <View style={{ gap: 10, marginTop: spacing.md }}>
+          <BaixarMeusDadosBotao />
           <AppPressable
             style={({ hovered }) => [styles.signOutBtn, hovered && styles.signOutBtnHover]}
             onPress={confirmSignOut}
@@ -823,14 +771,9 @@ export default function PerfilScreen() {
 
           <AppPressable
             style={({ hovered }) => [styles.deleteBtn, hovered && styles.deleteBtnHover]}
-            onPress={confirmDeleteAccount}
-            disabled={deleting}
+            onPress={() => setExcluirAberto(true)}
           >
-            {deleting ? (
-              <ActivityIndicator color={theme.danger} size="small" />
-            ) : (
-              <Text style={styles.deleteText}>Excluir conta e dados</Text>
-            )}
+            <Text style={styles.deleteText}>Excluir conta e dados</Text>
           </AppPressable>
         </View>
       </ScrollView>
@@ -908,64 +851,7 @@ export default function PerfilScreen() {
         </ScrollView>
       </AppModal>
 
-      {/* Reautenticação antes de excluir a conta. */}
-      <AppModal
-        visible={reauthOpen}
-        animationType={reduzirMovimento ? 'none' : 'fade'}
-        transparent
-        onRequestClose={() => setReauthOpen(false)}
-      >
-        <ScrollView
-          style={styles.reauthScrimFundo}
-          contentContainerStyle={[styles.reauthScrim, { paddingBottom: spacing.xl + alturaTecladoModais }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View ref={reauthModalRef} style={styles.reauthCard} accessibilityViewIsModal role="dialog" focusable>
-            <Text style={styles.reauthTitle}>Confirme sua senha</Text>
-            <Text style={styles.reauthText}>
-              Todos os seus lançamentos, contas, categorias e orçamentos serão apagados
-              permanentemente. Esta ação é irreversível. Digite sua senha para confirmar
-              que é você.
-            </Text>
-
-            <PasswordInput
-              backgroundColor={theme.paper}
-              maxLength={LIMITS.password}
-              placeholder="Sua senha"
-              autoComplete="password"
-              autoFocus
-              value={deletePassword}
-              onChangeText={setDeletePassword}
-            />
-
-            {deleteError && <Text style={styles.reauthError}>{deleteError}</Text>}
-
-            <AppPressable
-              style={({ hovered }) => [styles.reauthDanger, hovered && { opacity: 0.88 }]}
-              onPress={handleConfirmDeleteWithPassword}
-              disabled={deleting}
-            >
-              {deleting ? (
-                <ActivityIndicator color={theme.ink} />
-              ) : (
-                <Text style={styles.reauthDangerText}>Excluir definitivamente</Text>
-              )}
-            </AppPressable>
-
-            <AppPressable
-              style={styles.reauthCancel}
-              onPress={() => {
-                setReauthOpen(false);
-                setDeletePassword('');
-                setDeleteError(null);
-              }}
-              disabled={deleting}
-            >
-              <Text style={styles.reauthCancelText}>Cancelar</Text>
-            </AppPressable>
-          </View>
-        </ScrollView>
-      </AppModal>
+      <ExcluirContaSheet visible={excluirAberto} onClose={() => setExcluirAberto(false)} />
 
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
     </SafeAreaView>
@@ -1002,15 +888,11 @@ const styles = StyleSheet.create({
      centralizado quando cabe, rolável quando não cabe. */
   reauthScrimFundo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
   reauthScrim: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, fontSize: type.corpo, color: theme.ink, backgroundColor: theme.paper, fontFamily: fonts.regular },
   reauthCard: { width: '100%', maxWidth: 400, backgroundColor: theme.paperRaised, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, borderWidth: 1, borderColor: theme.rule },
   reauthTitle: { color: theme.ink, fontSize: type.titulo,
   lineHeight: lh(type.titulo, 'titulo'), fontFamily: fonts.regular },
   reauthText: { color: theme.inkSoft, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.light },
-  reauthInput: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, fontSize: type.corpo, color: theme.ink, backgroundColor: theme.paper, fontFamily: fonts.regular },
-  reauthError: { color: theme.danger, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.regular },
-  reauthDanger: { backgroundColor: theme.danger, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
-  reauthDangerText: { color: theme.paper, fontSize: type.corpo,
-  lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
   reauthCancel: { paddingVertical: spacing.md, alignItems: 'center' },
   reauthCancelText: { color: theme.inkSoft, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.light },
