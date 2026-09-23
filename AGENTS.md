@@ -764,3 +764,8 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       Metro limpo é módulo ausente, não bug de código: use
       `node scripts/emulador.cjs abrir dev` (APK de desenvolvimento) antes de
       depurar.
+
+19. **Este terminal do Codex nunca realiza o trabalho diretamente.** Ele apenas
+    encaminha cada tarefa ao agente específico adequado, coordena a execução e,
+    ao final, apresenta ao autor um resumo consolidado dos achados de todos os
+    agentes envolvidos.
