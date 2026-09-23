@@ -9945,6 +9945,66 @@ até terminar.
 (troca das permissões por `Bash(*)`, `Edit(*)` etc.) ficou sem commit por
 ordem do autor, até ele decidir.
 
+## 23/09/2026 — M2 — resolução dos achados do Sentinel
+
+**Pedido do autor.** Depois de ler a auditoria do Sentinel, o autor pediu
+“resolva tudo” e confirmou que esta sessão podia executar diretamente. Não
+foram recrutados agentes duplicados nem usado Opus: havia evidência suficiente
+nos 55 achados, no fonte atual e nos testes existentes.
+
+**O que mudou.** A leva corrige os achados acionáveis no código: modais e
+áreas seguras respeitam barras do Android; telas e cartões toleram fonte
+grande, nomes longos e teclado; Crédito usa o ciclo escolhido também no
+consolidado, destaca o cartão selecionado e evita selo de parcela duplicado;
+Gráficos voltou a agregar “Ano a ano” por ano e mostra entradas, saídas e
+saldo no modo Geral; Desafios ganhou estado de carga/erro, privacidade, XP
+restante e melhor quebra de conteúdo; metas podem ser editadas e o aporte
+atualiza cofrinho/XP imediatamente; carteiras recalculam o saldo com a lista
+recém-atualizada e usam confirmação própria; categorias padrão são filtradas
+por entrada/saída; a Home preserva nome e organização sem rede; lançamentos
+locais exibem “aguardando envio” e o atalho da Home volta para a Home depois
+de salvar.
+
+Voz passou a explicar a permissão antes do diálogo do sistema e a rejeitar
+silêncio, URLs e frases típicas de legenda antes que um número incidental
+vire lançamento. O mesmo núcleo é usado pelo app e pelo widget. O widget
+ganhou texto de atenção genérico e o valor “Livre para gastar” pode ocupar
+duas linhas com ajuste automático. Granabô avisa quando a consulta ultrapassa
+o tempo normal. A recuperação de senha valida domínio completo; textos legais
+foram alinhados à retirada do WhatsApp; o cabeçalho legal passou a ser fixo.
+Copy e nomenclatura também foram uniformizadas (`Modelos`, `Ocultar valores`,
+sentence case, sem travessão nos rótulos do launcher).
+
+**Achados críticos.** S4 já estava corrigido no fonte atual pelo commit
+`d92b5bb`; esta leva manteve a correção e ajustou o recibo genérico do widget.
+S51 também já tinha correção de cache no fonte (`7232ba3`); a CI confirma as
+guardas de cache, mas a reprodução após reiniciar o APK continua pendente no
+aparelho. S43 está corrigido no fonte de `assistente-financeiro` desde
+`5d72611`, porém **continua sem efeito em produção** até um deploy autorizado e
+precedido das comparações da regra 11. Nenhuma Edge Function foi publicada.
+
+**O que não virou correção por falta de causa comprovada.** S30 (ANR ao
+alternar Gráficos/Desafios) ocorreu no bundle de desenvolvimento com o
+emulador sob forte pressão de memória; a própria auditoria manda repetir em
+APK release antes de atribuir causa ao app. S31 (primeiro toque perdido logo
+após reabrir) também não teve mecanismo isolado. Não foi disparada build EAS,
+porque o autor não pediu build nesta sessão. A18/A39, S4/S51 nativos, Central
+de lançamentos/Cofrinho, FCM e motion permanecem na checklist de aparelho da
+próxima build; não foram declarados “resolvidos” por leitura de código.
+
+**O que deu errado no caminho.** A primeira CI parou porque o sandbox negou
+acesso ao cache do `npx`; a repetição autorizada avançou. Depois, dois dublês
+de voz não expunham a nova função de confiança e foram atualizados. Uma troca
+desnecessária de `keyboardShouldPersistTaps` contrariou a guarda consolidada
+dos modais e foi revertida para `handled`. Nenhuma dessas falhas chegou ao
+produto.
+
+**Verificação.** `npx tsc --noEmit`, `git diff --check` e `npm run test:ci`
+passaram. A CI cobriu voz (incluindo os novos ruídos), offline, cache por
+conta, carteiras, modais, teclado, sessão, assinatura, Granabô, Cakto, widgets,
+design system e os corpora gerados (incluindo 250.200 casos). Não houve build,
+deploy, escrita em produção nem teste visual em APK nesta sessão.
+
 ## 23/09/2026 — M1 — auditoria dos oito agentes do Maestri, por segmento (só leitura)
 
 O autor pediu uma "auditoria rigorosa" de cada agente no próprio segmento, com
