@@ -109,6 +109,22 @@ function carregar() {
     const politica = fs.readFileSync('lib/legal-content.ts', 'utf8');
     conferir('a frase "nada fica retido" não voltou', !/[Nn]ada fica retido/.test(politica));
     conferir('a retenção anonimizada do feedback está declarada', /anonimizad/i.test(politica) && /feedback/i.test(politica));
+
+    /* A4 da auditoria de segurança: a política dizia "Não usamos seus dados
+       para publicidade" enquanto a landing repassava gclid/fbclid/utm ao
+       checkout, com finalidade declarada de Meta CAPI e Google Ads. A frase
+       absoluta não pode voltar enquanto o repasse existir. */
+    const landing = fs.readFileSync('app/index.tsx', 'utf8');
+    const repassaIdentificador = landing.includes("'gclid'") && landing.includes('comAtribuicao(');
+    conferir('a landing ainda repassa identificador de anúncio (contexto do próximo item)', repassaIdentificador, repassaIdentificador);
+    if (repassaIdentificador) {
+      conferir(
+        'e a política não volta a negar publicidade de forma absoluta',
+        !/Não usamos seus dados para publicidade/.test(politica)
+      );
+      conferir('ela declara o identificador de clique pelo nome', /gclid/.test(politica) && /fbclid/.test(politica));
+      conferir('e diz quem recebe', /Google Ads e Meta/.test(politica));
+    }
   }
 
   console.log(`\n${total - falhas}/${total} checagens do consentimento de feedback passaram — ${falhas} falhas`);

@@ -79,7 +79,13 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     },
     {
       tipo: 'paragrafo',
-      texto: 'Não usamos seus dados para publicidade, não os vendemos e não fazemos perfilamento para terceiros.',
+      texto:
+        'Não usamos seus dados financeiros para publicidade, não vendemos seus dados e não fazemos perfilamento para terceiros.',
+    },
+    {
+      tipo: 'paragrafo',
+      texto:
+        'Há uma exceção, e ela fica declarada aqui: quando você chega ao nosso site por um anúncio, o endereço traz identificadores de clique (gclid, do Google, e fbclid, da Meta) e parâmetros de campanha (utm). Se você seguir dali para a compra, esses identificadores acompanham o link e informam ao Google e à Meta que aquele anúncio resultou numa venda. O que isso mede é a campanha. Nada do que você registra dentro do Grana. entra nessa medição, e quem chega ao site sem passar por um anúncio não carrega identificador nenhum.',
     },
     { tipo: 'subtitulo', texto: '4. Com quem os dados são compartilhados' },
     {
@@ -89,6 +95,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Meta / WhatsApp Cloud API, somente se você vincular um número de WhatsApp: as mensagens que você envia para registrar lançamentos passam pela API oficial da Meta até chegarem ao nosso servidor.',
         'OpenAI e Groq (Whisper), somente para transcrever mensagens de áudio enviadas pelo WhatsApp, app ou widget, quando você usa voz. O áudio é enviado só para a transcrição e não é retido por nós após o processamento.',
         'Google (Gemini), somente para gerar a resposta textual do Granabô a partir da pergunta, do contexto da conversa e dos resultados financeiros necessários para responder. O modelo não recebe acesso direto ao banco.',
+        'Google Ads e Meta, somente se você chegou por um anúncio e seguiu dali para a compra: recebem o identificador daquele clique e a informação de que a compra aconteceu, para medir a campanha. Não recebem seus dados financeiros nem seu uso do app.',
         'Cakto, se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Cakto, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
       ],
     },
