@@ -31,8 +31,14 @@ yarn-error.*
 *.pem
 
 # local env files (mantém .env.example versionado, com placeholders)
+#
+# O padrão é `.env.*`, e não uma lista de variantes: até 23/09/2026 as regras
+# eram só `.env` e `.env*.local`, então `git add .env.production` seria
+# ACEITO — num repositório público, que é o caso deste (regra 15 do
+# AGENTS.md). O `.easignore` já usava este padrão; agora os dois combinam.
 .env
-.env*.local
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo

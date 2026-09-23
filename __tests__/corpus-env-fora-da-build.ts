@@ -48,7 +48,7 @@ const REGRAS: [string, string, boolean][] = [
   ['.env\n!.env', '.env', false], // a última regra decide
   ['!.env\n.env', '.env', true],
   ['.env*.local', '.env.local', true],
-  ['.env*.local', '.env', false], // é o que o .gitignore tem, e não cobre o .env
+  ['.env*.local', '.env', false], // o que o .gitignore tinha até 23/09/2026, e não cobria o .env
   ['.en[vw]', '.env', true],
   // O eas-cli (biblioteca `ignore`) não nega classe: "[!v]" e "[^v]" casam com "v".
   ['.en[!v]', '.env', true],
@@ -83,6 +83,20 @@ if (ignore) {
   }
 }
 
+/* ── 3.5. O .gitignore DESTE repositório barra qualquer .env ────────────
+   Separado do `.easignore` de propósito: um cuida do pacote da build, o
+   outro do que pode ser commitado. O repositório é público (regra 15), então
+   um `.env.production` aceito pelo `git add` publica credencial para
+   qualquer pessoa. Até 23/09/2026 era exatamente esse o caso: as regras eram
+   `.env` e `.env*.local`, e nenhuma delas casa com `.env.production`. */
+{
+  const regrasDoGit = ignore().add(readFileSync(join(RAIZ, '.gitignore'), 'utf8'));
+  for (const nome of NOMES_DE_VARIAVEIS) {
+    checar(`o .gitignore deste repositório barra ${nome}`, regrasDoGit.ignores(nome), true);
+  }
+  checar('e o modelo .env.example continua versionável', regrasDoGit.ignores('.env.example'), false);
+}
+
 /* ── 4. De onde vêm as regras, e arquivos que existem de fato ──────────── */
 const pasta = mkdtempSync(join(tmpdir(), 'grana-env-'));
 try {
@@ -91,7 +105,10 @@ try {
   writeFileSync(join(pasta, '.gitignore'), '.env\n.env*.local\n');
   writeFileSync(join(pasta, '.env'), 'X=1\n');
   writeFileSync(join(pasta, '.env.example'), 'X=\n');
-  checar('sem .easignore, vale o .gitignore — e ele não cobre .env.production', variaveisNoPacoteDaBuild(pasta), {
+  /* O .gitignore que este projeto teve até 23/09/2026, como cenário: era com
+     ele que `git add .env.production` passava. O .gitignore de hoje tem
+     checagem própria na seção 3.5. */
+  checar('sem .easignore, vale o .gitignore — e o antigo não cobria .env.production', variaveisNoPacoteDaBuild(pasta), {
     fonte: '.gitignore',
     vaoNoPacote: ['.env.development', '.env.production', '.env.test'],
   });
