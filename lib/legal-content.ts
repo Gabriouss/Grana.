@@ -34,7 +34,7 @@ const EMAIL_CONTATO = '[gbr.design30@gmail.com](mailto:gbr.design30@gmail.com)';
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '8 de setembro de 2026',
+  atualizadoEm: '23 de setembro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -100,14 +100,24 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Seus dados ficam armazenados enquanto sua conta existir. Você pode excluir a conta a qualquer momento diretamente no app (Perfil → Excluir conta), o que apaga permanentemente seus lançamentos, contas, orçamentos, categorias e vínculo de WhatsApp, sem necessidade de contato prévio.',
+        'Seus dados ficam armazenados enquanto sua conta existir. Você pode excluir a conta a qualquer momento diretamente no app (Perfil → Excluir conta, ou na tela de assinatura), o que apaga permanentemente seus lançamentos, contas, orçamentos, categorias e vínculo de WhatsApp, sem necessidade de contato prévio.',
+    },
+    {
+      tipo: 'paragrafo',
+      texto:
+        'Há uma única exceção, e ela fica registrada aqui por inteiro: os feedbacks que você enviar pelo app continuam guardados depois da exclusão, de forma anonimizada. Apagamos o vínculo com a sua conta, a identificação do aparelho e qualquer imagem anexada; ficam o tipo, a nota, o texto e a data, que é o que nos ajuda a corrigir e melhorar o app. Dado anonimizado está fora do alcance da LGPD (art. 12), e a partir daí não há mais como ligá-lo a você.',
+    },
+    {
+      tipo: 'paragrafo',
+      texto:
+        'Ao enviar um feedback, você pode marcar uma autorização para que aquele comentário seja mostrado publicamente. A escolha é feita comentário a comentário, a caixa nunca vem marcada, e deixá-la em branco não muda nada no envio.',
     },
     { tipo: 'subtitulo', texto: '6. Seus direitos (LGPD, art. 18)' },
     { tipo: 'paragrafo', texto: 'Você pode, a qualquer momento:' },
     {
       tipo: 'lista',
       itens: [
-        'Confirmar a existência e acessar os dados que temos sobre você;',
+        'Confirmar a existência e acessar os dados que temos sobre você, baixando uma cópia completa em Perfil → Baixar meus dados (também disponível na tela de assinatura);',
         'Corrigir dados incompletos, inexatos ou desatualizados (editando-os diretamente no app);',
         'Solicitar a exclusão de dados desnecessários ou excessivos;',
         'Excluir sua conta e todos os dados associados, pelo próprio app ou pelo e-mail de contato acima;',
@@ -208,7 +218,7 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
 
 export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
   titulo: 'Como excluir seus dados do Grana.',
-  atualizadoEm: '8 de setembro de 2026',
+  atualizadoEm: '23 de setembro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -219,7 +229,7 @@ export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
       tipo: 'passos',
       itens: [
         'Abra o Grana. e entre na sua conta;',
-        'Vá em Perfil;',
+        'Vá em Perfil (ou, se sua assinatura estiver vencida, use a própria tela de assinatura);',
         'Toque em Excluir conta;',
         'Confirme sua senha quando solicitado.',
       ],
@@ -246,7 +256,7 @@ export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
     },
     {
       tipo: 'paragrafo',
-      texto: `Nada fica retido após a exclusão: não mantemos cópias de backup dos dados apagados. Mais detalhes sobre quais dados coletamos e por quê estão na nossa [Política de Privacidade](/privacidade).`,
+      texto: `Não mantemos cópias de backup dos dados apagados. A única coisa que continua guardada são os feedbacks que você tiver enviado pelo app, e de forma anonimizada: sai o vínculo com a sua conta, sai a identificação do aparelho, sai qualquer imagem anexada, e ficam o tipo, a nota, o texto e a data. Mais detalhes sobre quais dados coletamos e por quê estão na nossa [Política de Privacidade](/privacidade).`,
     },
   ],
 };

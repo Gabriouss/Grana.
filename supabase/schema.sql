@@ -839,6 +839,9 @@ create table if not exists feedbacks (
   platform text,
   device_info text,
   screenshot_url text,
+  -- Autorização para uso público do comentário (prova social), colhida no
+  -- envio e nunca pré-marcada. Ver 20260923180000_feedback_uso_publico.sql.
+  public_use_consent boolean not null default false,
   status text not null default 'pending' check (status in ('pending', 'reviewed', 'resolved')),
   created_at timestamptz not null default now()
 );

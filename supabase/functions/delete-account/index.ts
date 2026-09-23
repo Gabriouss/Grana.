@@ -64,11 +64,33 @@ Deno.serve(async (req: Request) => {
     // preservamos a conta inteira para não prometer uma exclusão parcial.
     await removerArquivosDoUsuario(user.id);
 
-    // Feedback é deliberadamente preservado para análise do produto, mas sem
-    // continuar associado a uma pessoa que não existe mais.
+    /* Feedback é deliberadamente preservado, por decisão do autor em
+       23/09/2026: "precisamos manter os feedbacks para ajustes do aplicativo e
+       geração de prova social". O que permite guardá-lo depois da exclusão é a
+       ANONIMIZAÇÃO: a LGPD (art. 12) tira o dado anonimizado do alcance da
+       lei. Por isso a limpeza vai além de desligar o vínculo:
+
+       - `user_id`: some, e com ele qualquer atribuição a uma pessoa;
+       - `screenshot_url`: um print do app financeiro mostra valores e, muitas
+         vezes, nome e e-mail na própria interface — anular o vínculo não
+         anonimizaria a imagem. Nada no app preenche esse campo hoje (nenhuma
+         tela anexa print, e não existe bucket para isso), então aqui a coluna
+         só é zerada. ATENÇÃO para quem for implementar o anexo de print: a
+         imagem em si precisará ser APAGADA do Storage neste mesmo ponto —
+         zerar a coluna deixaria o arquivo vivo e a anonimização seria falsa;
+       - `device_info`: guardava nome do aparelho ("iPhone da Maria"), que é
+         quase-identificador. Fica só a plataforma, que já está em `platform`.
+
+       O que fica: tipo, nota, mensagem, versão do app e data. É o que serve
+       para melhorar o produto, e nada disso aponta para alguém.
+
+       A mensagem é texto livre e pode conter dado pessoal escrito pela própria
+       pessoa. Não dá para apagar isso automaticamente sem destruir o conteúdo,
+       então a política declara a retenção e o uso público identificado exige a
+       autorização de `public_use_consent`. */
     const { error: feedbackError } = await admin
       .from('feedbacks')
-      .update({ user_id: null })
+      .update({ user_id: null, screenshot_url: null, device_info: null })
       .eq('user_id', user.id);
     if (feedbackError) throw Object.assign(new Error('Falha ao anonimizar feedbacks'), { cause: feedbackError });
 
