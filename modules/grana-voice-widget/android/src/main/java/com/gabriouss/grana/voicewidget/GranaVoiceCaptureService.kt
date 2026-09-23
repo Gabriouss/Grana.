@@ -93,19 +93,49 @@ class GranaVoiceCaptureService : Service() {
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    /* SEMPRE antes de qualquer decisão, inclusive num "encerrar" que não vai
-       encerrar nada.
-       O provider chama `startForegroundService` em todo toque, e o Android
-       derruba o app com ForegroundServiceDidNotStartInTimeException se o
-       serviço não chamar `startForeground` em até cinco segundos — mesmo
-       quando o comando era só "pare". Cenário real: o processo morre com o
-       widget mostrando "ouvindo", a pessoa toca pra encerrar, e uma instância
-       NOVA do serviço nasce com `gravando = false`; sem esta chamada ela sairia
-       sem nunca ter ido a primeiro plano, e o app inteiro cairia. */
+    /* Subir a primeiro plano vem antes de QUALQUER decisão, inclusive num
+       "encerrar" que não vai encerrar nada. O provider chama
+       `startForegroundService` em todo toque, e o Android derruba o app com
+       ForegroundServiceDidNotStartInTimeException se o serviço não chamar
+       `startForeground` em até cinco segundos — mesmo quando o comando era só
+       "pare". Cenário real: o processo morre com o widget mostrando "ouvindo",
+       a pessoa toca pra encerrar, e uma instância NOVA do serviço nasce com
+       `gravando = false`; sem aquela chamada ela sairia sem nunca ter ido a
+       primeiro plano, e o app inteiro cairia.
+
+       A ÚNICA coisa que passa na frente é a checagem de permissão de
+       microfone, logo abaixo, e por um motivo que é o oposto de descuido.
+
+       A permissão é conferida AQUI, antes de subir a primeiro
+       plano, e não só dentro de `iniciar()`.
+
+       Motivo, que é o achado S4 da auditoria de 22/09/2026: a partir do
+       Android 14, `startForeground` com o tipo `microphone` EXIGE
+       `RECORD_AUDIO` e lança `SecurityException` sem ela. Ou seja, quem nunca
+       tinha usado a voz dentro do app e tocava no widget nem chegava na
+       checagem de `iniciar()`: estourava aqui, caía no `catch` abaixo e
+       voltava ao repouso em silêncio, com um `erro_interno` só no logcat. Do
+       lado de fora, a ferramenta simplesmente não fazia nada.
+
+       Sair sem ter subido a primeiro plano é seguro porque `finalizar` chama
+       `stopSelf` na hora: o prazo de cinco segundos do
+       `ForegroundServiceDidNotStartInTimeException` vale para serviço que
+       continua vivo sem ter ido a primeiro plano, não para um que encerra. */
+    val comandoDeIniciar = intent?.action != ACAO_ENCERRAR && intent?.action != ACAO_CANCELAR
+    if (comandoDeIniciar && !temPermissaoDeMicrofone()) {
+      abortar("sem_permissao", EstadoWidget.ATENCAO)
+      return START_NOT_STICKY
+    }
+
     try {
       subirEmPrimeiroPlano()
     } catch (e: Exception) {
-      abortar("erro_interno")
+      /* Estado de ATENÇÃO, e não repouso: qualquer falha aqui deixa a pessoa
+         sem microfone, e voltar ao repouso é indistinguível de "o toque não
+         pegou" — que é o desfecho que a regra 9 do AGENTS.md proíbe. O toque
+         no estado de atenção abre o app, que é onde dá para resolver. */
+      android.util.Log.w("GranaVoz", "não consegui subir a primeiro plano", e)
+      abortar("erro_interno", EstadoWidget.ATENCAO)
       return START_NOT_STICKY
     }
 
@@ -117,10 +147,16 @@ class GranaVoiceCaptureService : Service() {
     return START_NOT_STICKY
   }
 
+  private fun temPermissaoDeMicrofone(): Boolean =
+    ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
   private fun iniciar() {
     if (gravando) return
 
-    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+    /* Continua aqui, além da checagem de `onStartCommand`: a permissão pode
+       ser revogada entre uma coisa e outra, e esta função também é o caminho
+       de quem já estava a primeiro plano. */
+    if (!temPermissaoDeMicrofone()) {
       /* O widget não tem como pedir permissão: quem pede é uma tela. Aqui só
          resta acender o estado de atenção — cujo toque abre o app — em vez de
          voltar ao repouso como se o toque não tivesse pegado. */
@@ -239,7 +275,6 @@ class GranaVoiceCaptureService : Service() {
     finalizar(null)
   }
 
-  /** Sai sem entregar nada. `motivo` é só pro log — o widget volta ao ocioso. */
   /**
    * Sai sem entregar nada. `motivo` é só pro log — nunca vai pra tela.
    *

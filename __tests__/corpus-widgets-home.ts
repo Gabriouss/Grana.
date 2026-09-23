@@ -236,6 +236,66 @@ conferir('rejeita depósito sem id', parseDeepLink('com.gabriouss.grana://deposi
   conferir('o layout tem o contêiner da lista', /android:id="@\+id\/grana_compromisso_lista"/.test(layout));
 }
 
+/* ── O widget de voz sem permissão de microfone deixa recibo ─────────────
+ *
+ * Achado S4 da auditoria de 22/09/2026: com `RECORD_AUDIO` ainda não
+ * concedido, o toque no widget não fazia NADA — nenhum estado, nenhuma
+ * notificação, só `GranaVoz: gravação abortada: erro_interno` no logcat.
+ *
+ * A causa não era a checagem de permissão de `iniciar()`, que existe desde
+ * sempre: a partir do Android 14, `startForeground` com o tipo `microphone`
+ * exige `RECORD_AUDIO` e lança `SecurityException`, então o serviço estourava
+ * ANTES de chegar lá e caía num `catch` que voltava ao repouso calado.
+ *
+ * Kotlin não roda no sandbox deste repositório, então aqui a checagem é
+ * estrutural, de propósito: ela prende a ORDEM (permissão antes de subir a
+ * primeiro plano) e o desfecho de cada caminho de falha (estado de atenção,
+ * nunca repouso silencioso), que é exatamente o que regrediria. */
+{
+  const servico = readFileSync(
+    join(
+      __dirname, '..', 'modules', 'grana-voice-widget', 'android', 'src', 'main', 'java',
+      'com', 'gabriouss', 'grana', 'voicewidget', 'GranaVoiceCaptureService.kt'
+    ),
+    'utf8'
+  );
+
+  const posPermissao = servico.indexOf('!temPermissaoDeMicrofone()');
+  const posPrimeiroPlano = servico.indexOf('subirEmPrimeiroPlano()');
+  conferir('o serviço confere a permissão de microfone', posPermissao >= 0);
+  conferir(
+    'e confere ANTES de subir a primeiro plano, que é o que estoura sem ela',
+    posPermissao >= 0 && posPrimeiroPlano >= 0 && posPermissao < posPrimeiroPlano,
+    { posPermissao, posPrimeiroPlano }
+  );
+
+  /* Todo `abortar` com motivo acende o estado de atenção, salvo os motivos em
+     que dá para tentar de novo na hora — que é a regra escrita no próprio
+     `abortar`. A lista de exceções fica CURTA de propósito: um motivo novo que
+     volte ao repouso calado derruba este teste, que é o ponto.
+
+     `abortar(null)` é o cancelamento pedido pela pessoa, e volta ao repouso. */
+  const PODE_TENTAR_DE_NOVO = ['"microfone_ocupado"'];
+  const chamadas = [...servico.matchAll(/(?<!fun )abortar\(([^)]*)\)/g)].map((m) => m[1].trim());
+  const comMotivo = chamadas.filter(
+    (args) => args !== 'null' && args !== '' && !args.startsWith('motivo:')
+  );
+  conferir('há abortos com motivo para conferir', comMotivo.length >= 3, chamadas);
+  for (const args of comMotivo) {
+    if (PODE_TENTAR_DE_NOVO.includes(args.split(',')[0].trim())) continue;
+    conferir(
+      `abortar(${args}) deixa recibo na tela, em vez de voltar ao repouso`,
+      args.includes('EstadoWidget.ATENCAO'),
+      args
+    );
+  }
+
+  conferir(
+    'a falha ao subir a primeiro plano vai para o log, e não some',
+    /catch \(e: Exception\) \{[\s\S]{0,400}?Log\.w\("GranaVoz"/.test(servico)
+  );
+}
+
 if (falhas > 0) {
   console.error(`\n${falhas} falha(s) no corpus de widgets.`);
   process.exit(1);

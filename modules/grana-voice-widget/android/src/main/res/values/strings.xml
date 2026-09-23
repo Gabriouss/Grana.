@@ -5,7 +5,7 @@
   <string name="grana_voice_ouvindo">Ouvindo…</string>
   <string name="grana_voice_processando">Lançando…</string>
   <string name="grana_voice_atencao">Toque p/ ativar</string>
-  <string name="grana_voice_atencao_desc">Lançamento por voz precisa de permissão de notificação. Toque para abrir o Grana.</string>
+  <string name="grana_voice_atencao_desc">Lançamento por voz precisa de uma permissão que só a tela pede. Toque para abrir o Grana.</string>
   <string name="grana_voice_canal">Lançamento por voz</string>
   <string name="grana_voice_gravando_titulo">Grana. está ouvindo</string>
   <string name="grana_voice_gravando_texto">Fale o lançamento. Toque no widget para encerrar.</string>

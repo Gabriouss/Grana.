@@ -19,8 +19,9 @@ object EstadoWidget {
   const val PROCESSANDO = "processando"
 
   /**
-   * Precisa da pessoa antes de poder gravar de novo — hoje, só falta de
-   * permissão de notificação.
+   * Precisa da pessoa antes de poder gravar de novo: falta a permissão de
+   * microfone ou a de notificação, ou o serviço não conseguiu subir a
+   * primeiro plano.
    *
    * Existe porque o widget não tem outro jeito de falar. Sem notificação ele
    * não entrega recibo nem "Desfazer", então não lança; e voltar ao repouso
