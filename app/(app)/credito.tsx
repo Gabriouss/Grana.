@@ -97,6 +97,11 @@ export default function CreditoScreen() {
   const [refreshing, setRefreshing] = useState(false);
   /* Separa "não tem cartão" de "não consegui saber". Ver o `catch` de loadData. */
   const [erroCarga, setErroCarga] = useState<string | null>(null);
+  /* Sem rede, um mês sem nada guardado entra como vazio para a tela não cair
+     inteira (S51). Mas uma fatura a menos é dinheiro a menos na conta de quem
+     lê, então isso NÃO pode passar calado: calar seria trocar "não consegui
+     carregar" por um total errado com cara de certo. */
+  const [faturaIncompleta, setFaturaIncompleta] = useState(false);
   const [cards, setCards] = useState<CreditCard[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | 'all'>('all');
@@ -213,6 +218,9 @@ export default function CreditoScreen() {
        `invoicePayments` (achado do Codex, 19/09/2026, revisando o código). */
     const minhaCarga = ++cargaAtualCredito.current;
     const vigente = () => minhaCarga === cargaAtualCredito.current;
+    /* Ligada quando algum mês (ou os pagamentos) não pôde ser lido por falta
+       de rede e entrou vazio. Vira aviso na tela, nunca silêncio. */
+    let faltouAlgumMes = false;
 
     if (isDemoMode) {
       setCards(DEMO_CREDIT_CARDS);
@@ -242,17 +250,41 @@ export default function CreditoScreen() {
          deixava `cards` em `[]`. A tela afirmava "Nenhum cartão cadastrado" a
          quem tinha cartão com fatura de R$ 300. Em rede pendurada, ela ainda
          segurava a tela inteira no carregamento até o tempo do sistema. */
-      const [c, mesNavegado, mesAnteriorAoNavegado, mesAtualTx, mesAnteriorTx, p] =
-        await Promise.all([
-          fetchCreditCards(),
-          fetchCreditTransactionsForMonth(viewYear, viewMonth),
-          fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
-          fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
-          fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
-          fetchCardInvoicePayments(),
-        ]);
+      /* Tudo-ou-nada era o defeito, não a solução. Cada uma destas buscas tem
+         cache próprio, por CHAVE: `cartoes`, `credito-mes:2026-8`,
+         `credito-mes:2026-7`... Num `Promise.all`, basta UMA chave sem nada
+         guardado — um mês que a pessoa nunca abriu com rede — para a rejeição
+         derrubar as outras cinco, inclusive a dos cartões, que estava no disco
+         inteirinha. A tela então dizia "ainda não há cartões salvos neste
+         aparelho" a quem tinha cartão e fatura. É o achado S51 da auditoria de
+         22/09, e é a MESMA forma do defeito que o `fetchRecurrenceContext`
+         causava até 19/09 (comentário logo acima): a diferença é que lá havia
+         uma busca culpada e aqui a culpa é da estrutura.
+
+         Agora só os CARTÕES são obrigatórios — sem saber quais cartões
+         existem, não há tela. O resto é best-effort: o que veio, entra. */
+      const c = await fetchCreditCards();
+
+      const opcional = async <T,>(promessa: Promise<T>, vazio: T): Promise<T> => {
+        try {
+          return await promessa;
+        } catch (erro) {
+          if (!isLikelyNetworkError(erro)) throw erro;
+          faltouAlgumMes = true;
+          return vazio;
+        }
+      };
+
+      const [mesNavegado, mesAnteriorAoNavegado, mesAtualTx, mesAnteriorTx, p] = await Promise.all([
+        opcional(fetchCreditTransactionsForMonth(viewYear, viewMonth), [] as Transaction[]),
+        opcional(fetchCreditTransactionsForMonth(viewYear, viewMonth - 1), [] as Transaction[]),
+        opcional(fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()), [] as Transaction[]),
+        opcional(fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1), [] as Transaction[]),
+        opcional(fetchCardInvoicePayments(), [] as CreditCardInvoicePayment[]),
+      ]);
 
       if (!vigente()) return;
+      setFaturaIncompleta(faltouAlgumMes);
       const dedup = (txs: Transaction[]) => Array.from(new Map(txs.map((t) => [t.id, t])).values());
 
       let selectedTransactions = dedup([...mesNavegado, ...mesAnteriorAoNavegado, ...mesAtualTx, ...mesAnteriorTx]);
@@ -1103,6 +1135,19 @@ export default function CreditoScreen() {
       />
       <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
 
+      {/* A faixa acima diz "estou mostrando dado salvo"; esta diz outra coisa,
+          mais grave: parte do dado NÃO existe no aparelho, e o total na tela é
+          menor que o de verdade. Duas frases, porque são dois fatos. */}
+      {faturaIncompleta && (
+        <View style={[styles.avisoIncompleto, colunaConteudo]} accessibilityRole="alert">
+          <Ionicons name="alert-circle-outline" size={16} color={theme.danger} aria-hidden />
+          <Text style={styles.avisoIncompletoTexto}>
+            Falta um mês que nunca foi aberto com internet, então o total pode estar menor que o
+            real. Conecte para ver a fatura completa.
+          </Text>
+        </View>
+      )}
+
       <SectionList
         style={styles.scroll}
         sections={secoesDeLancamentos}
@@ -1873,6 +1918,24 @@ const styles = StyleSheet.create({
   limitFill: {
     height: '100%',
     borderRadius: 2,
+  },
+  avisoIncompleto: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: theme.danger,
+    backgroundColor: theme.paperRaised,
+  },
+  avisoIncompletoTexto: {
+    flex: 1,
+    color: theme.inkSoft,
+    fontSize: type.nota,
+    lineHeight: lh(type.nota, 'corpo'),
+    fontFamily: fonts.light,
   },
   emptyCardsCard: {
     backgroundColor: theme.paperRaised,

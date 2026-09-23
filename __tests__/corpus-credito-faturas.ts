@@ -315,6 +315,23 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
 
   checar('o catch do loadData não é mais vazio', /\}\s*catch\s*\{\s*\/\/ Falha graciosa/.test(loadData), false);
   checar('falha na carga vira estado de erro', /catch \(erro\) \{[\s\S]*?setErroCarga\(/.test(loadData), true);
+  /* S51 (auditoria de 22/09): sem rede, o Crédito dizia "ainda não há cartões
+     salvos neste aparelho" a quem tinha cartão no disco. Cada busca tem cache
+     por CHAVE, e bastava uma chave sem nada guardado — um mês nunca aberto com
+     rede — para a rejeição derrubar o `Promise.all` inteiro, cartões
+     incluídos. É a mesma forma do defeito do `fetchRecurrenceContext`, acima:
+     por isso as duas guardas ficam lado a lado. */
+  checar('os cartões são buscados fora do Promise.all dos meses',
+    loadData.includes('const c = await fetchCreditCards();'), true);
+  checar('nenhum fetchCreditCards sobrou dentro do Promise.all',
+    primeiroPromiseAll.includes('fetchCreditCards'), false);
+  checar('mês sem cache entra vazio, em vez de derrubar a tela',
+    loadData.includes('opcional(fetchCreditTransactionsForMonth('), true);
+  checar('e só falha de REDE vira vazio; erro permanente continua subindo',
+    loadData.includes('if (!isLikelyNetworkError(erro)) throw erro;'), true);
+  checar('mês faltando acende aviso na tela, em vez de um total menor calado',
+    loadData.includes('setFaturaIncompleta(faltouAlgumMes)') && telaW1.includes('faturaIncompleta &&'), true);
+
   checar('o erro de carga vem ANTES do "Nenhum cartão cadastrado"',
     telaW1.indexOf(') : erroCarga ? (') > 0 && telaW1.indexOf(') : erroCarga ? (') < telaW1.indexOf('>Nenhum cartão cadastrado</Text>'), true);
 }
