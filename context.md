@@ -9638,3 +9638,77 @@ Checklist de QA para a próxima sessão:
 **Como reverter:** `select public.configurar_bloqueio_assinatura(false);`.
 Uma cortesia se revoga por conta, com `revogar_acesso_cortesia(email)`, que
 nunca encosta em assinatura paga.
+
+## 22/09/2026 — M1 — testes do fluxo de assinatura, regra 19 e o canvas do Maestri
+
+Registro da coordenação feita no Maestri depois de ligar a cobrança (seção
+anterior). Fonte dos resultados: nota de vault
+`00 - Sessões/2026-09-22 - M1 - Testes do fluxo de assinatura` (seções Compass
+e Backend Engineer). Nenhum código do app foi alterado; nenhuma escrita em
+banco, na Cakto ou na Vercel.
+
+**Comprovado (execução real, somente leitura):**
+
+- A conta de teste dos agentes (`E2E_TEST_EMAIL`) está na cortesia:
+  `provider = interno`, `status = active`, até 2099-12-31, já vinculada a um
+  usuário. `enforce_subscriptions` continua `true` (`updated_at` 22/09 23:18
+  UTC). Fecha o segundo item da checklist da seção anterior.
+- O cadastro pela web funciona. O HTTP 500 "Error sending confirmation email"
+  da primeira tentativa era só do domínio reservado `example.com`: o log de
+  auth mostra a Resend recusando com `550 Invalid 'to' field`, e a tentativa
+  com o endereço de teste da Resend (`delivered+…@resend.dev`) voltou 200 e
+  caiu na tela "Confirme seu e-mail". SMTP, remetente e chave estão
+  funcionando.
+- Config de auth: `mailer_autoconfirm = false` (confirmação obrigatória),
+  `site_url = granaapp://`, `uri_allow_list` com `granaapp://*` e
+  `https://(www.)granaponto.com.br/*`.
+
+**Achados (abertos, nenhum corrigido):**
+
+- **A2 (média).** E-mail recusado pelo provedor aparece como "O servidor não
+  respondeu agora. Tente de novo em instantes." (`lib/auth-errors.ts`, ramo
+  `status >= 500`). Repetir não resolve.
+- **A3 (baixa, copy).** A tela "Confirme seu e-mail" (`app/sign-up.tsx`) usa
+  travessão, contra a regra de copy.
+- **A4 (média).** A mesma tela promete "o Grana abre sozinho, já conectado",
+  mas o link de confirmação na web é `https://granaponto.com.br/auth/callback`
+  e o repositório não tem App Links (`assetlinks.json`, `intentFilters`,
+  `associatedDomains`). No celular, o link abre o navegador e a pessoa fica
+  logada na versão web, não no app. **Leitura de código e config; o link não
+  foi clicado.**
+- **Compra com e-mail diferente do da conta não tem recurso automático.** O
+  caminho com `?token=` de `app/ativar.tsx` é inalcançável (a Cakto não gera
+  token por comprador); o único vínculo automático é e-mail igual. Sobra a
+  cortesia manual. **Leitura de código.**
+- Pela leitura de `EntitlementProvider`/`app/assinar.tsx`, quem já está logado
+  no app nativo com o mesmo e-mail da compra é liberado sozinho (toda recarga
+  chama `vincular_assinatura_automatica()`). **Hipótese por leitura, não
+  executada.**
+
+**Pendente de decisão do autor:**
+
+- [ ] Apagar o usuário AUDIT não confirmado `delivered+audit20260922@resend.dev`
+      (endereço de teste da Resend, não é pessoa real). Exige service_role.
+- [ ] Verificar a tela depois da confirmação (app liberado ou `/assinar` com
+      preço e botão da Cakto). Exige caixa real ou confirmar pela Admin API.
+- [ ] Abrir um link de confirmação de verdade no Gmail do celular (prova do A4).
+- [ ] Compra real de teste na Cakto com o bloqueio ligado.
+
+**Regra 19 do `AGENTS.md` (`a57bb45`).** O terminal "Codex" do Maestri não
+executa trabalho: encaminha cada tarefa ao agente adequado, coordena e
+consolida os achados para o autor.
+
+**Canvas do Maestri.** O limite de uso do Codex acabou em 22/09, então os
+terminais Compass e Ledger (Documentation and Vault) passaram de Codex para
+Claude. O Ledger rodou em Claude Opus 5.5, e não no preset preferencial do
+papel (`gpt-5.6-luna`); substituição registrada por isso. A organização do
+canvas vive no estado do aplicativo Maestri e não vai pelo git; os papéis
+novos criados na M1 (`.maestri/roles/*/`) ficam ignorados pelo `.gitignore`.
+
+**Em andamento, sem resultado:** a auditoria do Sentinel no emulador (nota
+`2026-09-22 - M1 - Auditoria no emulador (Sentinel)`). Nada dela entra aqui
+até terminar.
+
+**Fora do commit de propósito:** a mudança local em `.claude/settings.json`
+(troca das permissões por `Bash(*)`, `Edit(*)` etc.) ficou sem commit por
+ordem do autor, até ele decidir.
