@@ -52,6 +52,10 @@ function etapasQueAnotam(sobrescrever = {}) {
     limparWidgets: () => { chamadas.push(['limparWidgets']); },
     esquecerAcesso: anotar('esquecerAcesso'),
     esquecerTelas: anotar('esquecerTelas'),
+    /* Etapa acrescentada em 23/09/2026 (achado A1): o cache de leitura dos
+       lançamentos vive fora do cache de telas e ficava no aparelho depois da
+       saída. */
+    esquecerLancamentosLocais: anotar('esquecerLancamentosLocais'),
     removerPush: anotar('removerPush'),
     signOutNoServidor: anotar('signOutNoServidor'),
     esquecerSessaoDoDisco: anotar('esquecerSessaoDoDisco'),
@@ -71,7 +75,7 @@ function etapasQueAnotam(sobrescrever = {}) {
     const t = etapasQueAnotam();
     await sairDaConta(t.etapas);
     const n = t.nomes();
-    for (const etapa of ['limparWidgets', 'limparVozesDaConta', 'esquecerAcesso', 'esquecerTelas', 'removerPush', 'signOutNoServidor', 'esquecerSessaoDoDisco', 'aplicarSaida']) {
+    for (const etapa of ['limparWidgets', 'limparVozesDaConta', 'esquecerAcesso', 'esquecerTelas', 'esquecerLancamentosLocais', 'removerPush', 'signOutNoServidor', 'esquecerSessaoDoDisco', 'aplicarSaida']) {
       assert.ok(n.includes(etapa), `faltou ${etapa}`);
     }
     assert.deepEqual(t.chamadas.find((c) => c[0] === 'limparVozesDaConta'), ['limparVozesDaConta', 'uid-1']);

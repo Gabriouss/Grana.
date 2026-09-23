@@ -2,10 +2,31 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addBill, addTransaction } from './data';
 import { createGoal } from './goals';
 import { guardarTela, lerTela } from './cache-de-tela';
+import { idDoUsuarioLocal } from './sessao-offline';
 import type { Transaction, TxType } from './types';
 
 const CACHE_KEY = 'grana:cache:transactions';
 const QUEUE_KEY = 'grana:queue:transactions-pendentes';
+
+/* ── De quem é este dado ────────────────────────────────────────────────────
+
+   Até 23/09/2026 estas duas chaves eram GLOBAIS: o cache não guardava dono e
+   a leitura não conferia nada. Num aparelho compartilhado, A saía, B entrava
+   sem rede, abria Lançamentos e via o dinheiro de A — e, quando a rede
+   voltava, um lançamento que A tinha feito offline era gravado NA CONTA DE B,
+   porque `flushPendingQueue` envia com as credenciais de quem estiver logado.
+   A saída também não apagava nada: `esquecerTelas` só alcança
+   `grana:cache:tela:*`. Achado A1 da auditoria de segurança de 23/09,
+   comprovado no código.
+
+   O padrão certo já existia neste projeto, em `cache-de-tela.ts`: carimbar o
+   dono no registro e recusar o que for de outra conta. É o mesmo aqui, para
+   não haver duas ideias de "cache local com dono" envelhecendo separadas.
+
+   O id vem de `idDoUsuarioLocal`, que lê o disco — `getSession` tentaria
+   renovar o token e devolveria vazio justamente sem rede, que é quando este
+   módulo inteiro existe para funcionar. */
+type Registro<T> = { userId: string; dados: T };
 
 /**
  * Cache local dos lançamentos (só leitura). É sempre sobrescrito com a
@@ -15,8 +36,17 @@ const QUEUE_KEY = 'grana:queue:transactions-pendentes';
  */
 export async function getCachedTransactions(): Promise<Transaction[] | null> {
   try {
+    const userId = await idDoUsuarioLocal();
+    if (!userId) return null;
     const raw = await AsyncStorage.getItem(CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const guardado = JSON.parse(raw) as Registro<Transaction[]> | Transaction[] | null;
+    /* Formato antigo (lista crua, sem dono): descartado. É cache de leitura,
+       some e volta na primeira carga com rede — perder isso não custa nada, e
+       adivinhar o dono custaria mostrar o dinheiro de outra pessoa. */
+    if (!guardado || Array.isArray(guardado)) return null;
+    if (guardado.userId !== userId) return null;
+    return guardado.dados;
   } catch {
     return null;
   }
@@ -24,9 +54,23 @@ export async function getCachedTransactions(): Promise<Transaction[] | null> {
 
 export async function setCachedTransactions(list: Transaction[]): Promise<void> {
   try {
-    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(list));
+    const userId = await idDoUsuarioLocal();
+    if (!userId) return;
+    const registro: Registro<Transaction[]> = { userId, dados: list };
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(registro));
   } catch {
     // Cache é best-effort — se o dispositivo estiver sem espaço, seguimos sem ela.
+  }
+}
+
+/** Some com o cache de leitura — usar ao sair da conta, como `esquecerTelas`. */
+export async function esquecerLancamentosLocais(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* idem. E a fila NÃO é apagada aqui de propósito: ela agora é por dono,
+       então não vaza para a próxima conta, e é lançamento que a pessoa fez e
+       ainda não subiu. Apagar seria jogar fora dinheiro registrado. */
   }
 }
 
@@ -50,7 +94,13 @@ type PendingInput = {
   card_id?: string | null;
 };
 
-type PendingItem = { localId: string; input: PendingInput; tipo?: TipoPendente };
+type PendingItem = {
+  localId: string;
+  input: PendingInput;
+  tipo?: TipoPendente;
+  /** Dono do item. Opcional só por causa da fila gravada antes de 23/09/2026. */
+  userId?: string;
+};
 
 /* ── Fila para além do lançamento ───────────────────────────────────────────
 
@@ -95,8 +145,9 @@ export async function enfileirarPendente<T extends { id: string }>(
   input: unknown,
   otimista: T
 ): Promise<T> {
+  const userId = await idDoUsuarioLocal();
   const queue = await getQueue();
-  queue.push({ localId: otimista.id, tipo, input: input as PendingInput });
+  queue.push({ localId: otimista.id, tipo, input: input as PendingInput, userId: userId ?? undefined });
   await setQueue(queue);
 
   const chave = CACHE_DA_TELA[tipo];
@@ -114,6 +165,26 @@ async function getQueue(): Promise<PendingItem[]> {
   } catch {
     return [];
   }
+}
+
+/**
+ * Separa a fila entre o que é desta conta e o que não é.
+ *
+ * Item SEM dono é de uma versão anterior do app, gravado quando a fila não
+ * carimbava ninguém. Ele conta como desta conta, e não como de ninguém: quem
+ * atualiza o app é quem está logado, e descartar seria perder um lançamento
+ * que a pessoa fez e ainda não subiu. A janela em que isso erraria é estreita
+ * (atualizar o app, sair, entrar com outra conta e só então recuperar a rede),
+ * e o outro lado do erro — perder dinheiro registrado — é pior.
+ */
+function separarPorDono(queue: PendingItem[], userId: string | null) {
+  const minhas: PendingItem[] = [];
+  const dosOutros: PendingItem[] = [];
+  for (const item of queue) {
+    if (!item.userId || item.userId === userId) minhas.push(item);
+    else dosOutros.push(item);
+  }
+  return { minhas, dosOutros };
 }
 
 async function setQueue(items: PendingItem[]): Promise<void> {
@@ -137,8 +208,9 @@ export { isLikelyNetworkError } from './cache-de-tela';
  */
 export async function queuePendingTransaction(input: PendingInput): Promise<Transaction> {
   const localId = novoIdLocal();
+  const userId = await idDoUsuarioLocal();
   const queue = await getQueue();
-  queue.push({ localId, tipo: 'transacao', input });
+  queue.push({ localId, tipo: 'transacao', input, userId: userId ?? undefined });
   await setQueue(queue);
 
   const optimistic: Transaction = {
@@ -165,8 +237,10 @@ export async function queuePendingTransaction(input: PendingInput): Promise<Tran
   return optimistic;
 }
 
+/** Quantos itens DESTA conta esperam para subir. */
 export async function getPendingCount(): Promise<number> {
-  return (await getQueue()).length;
+  const userId = await idDoUsuarioLocal();
+  return separarPorDono(await getQueue(), userId).minhas.length;
 }
 
 /**
@@ -176,10 +250,16 @@ export async function getPendingCount(): Promise<number> {
  * conseguir, e tentar mesmo assim só geraria mais chamadas de rede à toa.
  */
 export async function flushPendingQueue(): Promise<{ synced: number; remaining: number }> {
-  const queue = await getQueue();
-  if (queue.length === 0) return { synced: 0, remaining: 0 };
+  const userId = await idDoUsuarioLocal();
+  const { minhas, dosOutros } = separarPorDono(await getQueue(), userId);
+  if (minhas.length === 0) {
+    /* Nada desta conta. Os itens de outra conta ficam onde estão, esperando o
+       dono voltar: enviá-los agora gravaria o lançamento de uma pessoa na
+       conta de outra, que é metade do achado A1. */
+    return { synced: 0, remaining: 0 };
+  }
 
-  const remaining = [...queue];
+  const remaining = [...minhas];
   let synced = 0;
 
   while (remaining.length > 0) {
@@ -204,6 +284,6 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
     }
   }
 
-  await setQueue(remaining);
+  await setQueue([...dosOutros, ...remaining]);
   return { synced, remaining: remaining.length };
 }

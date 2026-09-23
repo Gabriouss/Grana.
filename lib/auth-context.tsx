@@ -14,6 +14,7 @@ import {
   marcarSessaoNaoConfirmada,
 } from './sessao-offline';
 import { esquecerTelas } from './cache-de-tela';
+import { esquecerLancamentosLocais } from './offline-cache';
 import { limparSnapshotWidgets } from './widgets-home-sync';
 import { sairDaConta } from './sair-da-conta';
 
@@ -275,6 +276,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
            alguém no disco depois de a pessoa sair é guardar dado financeiro
            sem razão nenhuma para tê-lo. */
         esquecerTelas,
+        esquecerLancamentosLocais,
         removerPush: removerPushHabitoAntesDeSair,
         signOutNoServidor: async () => {
           const { error } = await supabase.auth.signOut();

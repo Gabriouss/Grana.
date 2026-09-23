@@ -34,6 +34,8 @@ export type EtapasDeSaida = {
   limparWidgets: () => void;
   esquecerAcesso: () => Promise<void>;
   esquecerTelas: () => Promise<void>;
+  /** O cache de leitura dos lançamentos, que vive fora do cache de telas. */
+  esquecerLancamentosLocais: () => Promise<void>;
   /** Precisa do token ainda válido, por isso roda antes do `signOut` do servidor. */
   removerPush: () => Promise<void>;
   signOutNoServidor: () => Promise<void>;
@@ -89,6 +91,7 @@ export async function sairDaConta(etapas: EtapasDeSaida, prazoMs = PRAZO_ETAPA_S
         : Promise.resolve(),
       comPrazo('esquecer o acesso guardado', etapas.esquecerAcesso, prazoMs, avisar),
       comPrazo('esquecer o cache das telas', etapas.esquecerTelas, prazoMs, avisar),
+      comPrazo('esquecer os lançamentos guardados', etapas.esquecerLancamentosLocais, prazoMs, avisar),
       comPrazo('remover o token push', etapas.removerPush, prazoMs, avisar),
     ]);
     await comPrazo('sair no servidor', etapas.signOutNoServidor, prazoMs, avisar);
