@@ -69,6 +69,28 @@ const TIMEOUT_TOTAL_MS = 60_000;
    na próxima abertura com conexão. */
 export const ORCAMENTO_COM_PESSOA_ESPERANDO_MS = 15_000;
 
+/* Orçamento de quem NÃO tem ninguém esperando: a tarefa headless do widget,
+   com o app fechado. O teto é externo e duro — o Android mata a tarefa aos
+   120s —, e o que sobra precisa caber interpretação, gravação e recibo.
+
+   Este valor já era usado, só que por omissão: o widget não passava orçamento
+   nenhum e herdava o padrão do módulo. Passou a ter nome em 23/09/2026 por
+   causa do achado F2, que apontou, com razão, que o núcleo decidia o prazo
+   olhando a ORIGEM (`source === 'app' ? ... : undefined`) — e a regra 13 do
+   AGENTS.md proíbe, na letra, "timeout, fallback ou política de retenção
+   próprios" por entrada.
+
+   Agora quem chama declara o próprio prazo, e o núcleo obedece sem saber de
+   onde veio a fala. É a mesma exigência da regra 9 ("retry e fallback
+   precisam caber no prazo de quem chama") sem o ramo por origem que a regra
+   13 proíbe. Os dois números continuam diferentes porque os dois prazos REAIS
+   são diferentes; nenhuma decisão sobre o dinheiro muda com isso.
+
+   O que continua em aberto para o autor: se os 60s do widget devem cair para
+   os mesmos 15s. Não foi mexido aqui porque seria mudar comportamento numa
+   varredura de correção, e o widget é justamente quem pode esperar. */
+export const ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS = TIMEOUT_TOTAL_MS;
+
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
   if (!base) return null;

@@ -25,7 +25,15 @@ class VozPendenteOffline extends Error {
  * pra registrar um nome de tarefa atrasaria o arranque de todo mundo.
  */
 
-type Payload = { caminho?: string; requestId?: string; source?: 'app' | 'widget'; transcricao?: string };
+type Payload = {
+  caminho?: string;
+  requestId?: string;
+  source?: 'app' | 'widget';
+  transcricao?: string;
+  /** Prazo total de rede que quem chamou consegue esperar. Ver ORCAMENTO_* em
+      lib/voz.ts: o núcleo obedece, não escolhe. */
+  orcamentoMs?: number;
+};
 
 type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarRevisao' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'>;
 
@@ -139,7 +147,7 @@ async function apagarArquivo(caminho: string) {
 }
 
 async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz): Promise<boolean> {
-  const [{ transcreverAudio, ORCAMENTO_COM_PESSOA_ESPERANDO_MS }, heuristics, data, voiceOperations] = await Promise.all([
+  const [{ transcreverAudio, ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS }, heuristics, data, voiceOperations] = await Promise.all([
     import('./voz'),
     import('./heuristics'),
     import('./data'),
@@ -147,17 +155,23 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   ]);
 
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
-  /* O app tem uma PESSOA esperando na tela; o widget roda com o app fechado e
-     pode gastar o minuto inteiro (só o Android mata a tarefa headless, aos
-     dois minutos). Sem passar isto, as duas entradas usavam o mesmo teto de
-     60s por padrão — o app ficava "Transcrevendo…" o dobro do orçamento que
-     lib/voz.ts já declara para quem está esperando (achado A47). */
+  /* O prazo vem de QUEM CHAMA, e não da origem da fala.
+
+     O app tem uma PESSOA esperando na tela; a tarefa headless roda com o app
+     fechado e pode gastar o minuto inteiro, porque só o Android a mata, aos
+     dois minutos. Sem prazo declarado, as duas entradas usavam o mesmo teto de
+     60s e o botão ficava "Transcrevendo…" o dobro do que `lib/voz.ts` promete
+     a quem espera (achado A47).
+
+     Até 23/09/2026 isto era decidido aqui dentro, por `payload.source`, o que
+     a regra 13 proíbe na letra (achado F2): o núcleo não pode ter timeout
+     próprio por entrada. O valor é o mesmo; o que mudou é quem decide. */
   const transcricao = payload.transcricao
     ? { ok: true as const, transcript: payload.transcricao }
     : await transcreverAudio(uri, {
         mimeType: 'audio/m4a',
         nomeArquivo: 'widget.m4a',
-        orcamentoMs: payload.source === 'app' ? ORCAMENTO_COM_PESSOA_ESPERANDO_MS : undefined,
+        orcamentoMs: payload.orcamentoMs ?? ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS,
       });
   if (!transcricao.ok) {
     if (transcricao.codigo === 'sem_rede' || transcricao.codigo === 'demorou') {

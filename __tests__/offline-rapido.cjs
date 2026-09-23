@@ -320,9 +320,31 @@ async function vozAgendaRapido() {
   //     correcao nao existe.
   {
     const { mod } = montarVoz();
-    assert.ok(mod.ORCAMENTO_COM_PESSOA_ESPERANDO_MS < 60000,
-      'o orcamento com pessoa esperando precisa ser menor que o total do widget');
+    assert.ok(mod.ORCAMENTO_COM_PESSOA_ESPERANDO_MS < mod.ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS,
+      'o orcamento com pessoa esperando precisa ser menor que o de quem nao espera');
     ok('o orcamento com pessoa esperando e menor que o do widget');
+  }
+
+  // 11. Achado F2 (regra 13): o nucleo compartilhado NAO escolhe prazo pela
+  //     origem da fala. Quem chama declara, o nucleo obedece. Os dois numeros
+  //     continuam diferentes porque os dois prazos reais sao diferentes; o que
+  //     nao pode existir e um 'if origem' decidindo isso la dentro.
+  {
+    const nucleo = require('node:fs').readFileSync('lib/widget-voz-task.ts', 'utf8');
+    assert.ok(
+      !nucleo.includes('orcamentoMs: payload.source'),
+      'o nucleo nao pode escolher o prazo olhando payload.source (regra 13)'
+    );
+    assert.ok(
+      nucleo.includes('orcamentoMs: payload.orcamentoMs ?? ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS'),
+      'o prazo vem de quem chama, com queda para o de quem nao espera'
+    );
+    const botao = require('node:fs').readFileSync('components/VoiceEntryButton.tsx', 'utf8');
+    assert.ok(
+      botao.includes('orcamentoMs: ORCAMENTO_COM_PESSOA_ESPERANDO_MS'),
+      'o botao do app declara o proprio prazo'
+    );
+    ok('o prazo e declarado por quem chama, nao decidido pela origem');
   }
 }
 

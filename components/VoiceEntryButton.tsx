@@ -12,7 +12,7 @@ import {
 } from 'expo-audio';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
-import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz } from '@/lib/voz';
+import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz, ORCAMENTO_COM_PESSOA_ESPERANDO_MS } from '@/lib/voz';
 import AppPressable from './AppPressable';
 import { randomUUID } from 'expo-crypto';
 import { executarTarefa } from '@/lib/widget-voz-task';
@@ -137,7 +137,9 @@ export default function VoiceEntryButton({
         return;
       }
       // Mesma execução do widget. Este adaptador só apresenta o recibo na tela.
-      await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app' }, {
+      /* O prazo de rede é declarado AQUI, por quem espera, e não escolhido lá
+         dentro pela origem da fala: quem espera nesta tela é uma pessoa. */
+      await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app', orcamentoMs: ORCAMENTO_COM_PESSOA_ESPERANDO_MS }, {
         podeNotificar: async () => true,
         notificarRevisao: async (titulo, texto) => {
           Alert.alert(titulo, 'Confira os dados antes de salvar. Se o valor estiver em branco, informe quanto você falou.');
