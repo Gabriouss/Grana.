@@ -128,9 +128,41 @@ não foi executada de ponta a ponta contra o servidor.
 **Decisões do autor nesta sessão, para não serem reabertas:** o "Livre para
 Gastar" NÃO desconta a fatura do cartão ("a fatura entra automaticamente no
 gasto mensal em débito depois que é paga, isso geraria redundância"); o
-Granabô deve recusar conta bloqueada (ainda não implementado); o selo "Mais
+Granabô deve recusar conta bloqueada (feito, `fe0c75d`); o selo "Mais
 popular" fica, e isso não será perguntado de novo; a troca dos cinco segredos
 vazados no EAS fica para depois.
+
+**O Granabô passou a recusar conta bloqueada (`fe0c75d`).** A auditoria de
+backend da M1, no mesmo dia, mostrou que a Edge Function
+`assistente-financeiro` só conferia o token: nenhuma chamada a
+`tem_direito_acesso()` no arquivo inteiro. A conta bloqueada era atendida,
+gastava cota de IA e recebia "você não tem carteira cadastrada", porque a RLS
+das tabelas de dinheiro devolve vazio — o pior dos dois mundos. A checagem
+agora vem logo depois da autenticação, antes do rate limit e da cota, e
+responde 403 com recado que explica; falha ao consultar recusa com 503 e
+deixa log, em vez de liberar.
+
+`assistant_messages` e `assistant_memory` eram as duas únicas tabelas de
+usuário sem a checagem na RLS. A migration `20260923210000` gateia a ESCRITA
+e deixa a LEITURA livre **de propósito**: o histórico já é da pessoa, e o
+"Baixar meus dados" lê essas tabelas com a sessão dela para atender o art. 18
+da LGPD — gatear tudo teria quebrado, na mesma sessão, a exportação recém
+criada.
+
+Erro cometido e corrigido no caminho: o bloco novo de políticas entrou
+primeiro ANTES da definição das tabelas do assistente no `schema.sql`, onde o
+bloco histórico, mais abaixo, recriaria a política antiga por cima. Foi para o
+fim do arquivo, que é também onde não atrapalha a comparação byte a byte do
+`corpus-schema-guardas`.
+
+**Nada disso está no ar.** A Edge Function `assistente-financeiro` e a
+migration estão commitadas e não publicadas. Vale lembrar que a mesma função
+já tinha deploy represado por outro motivo (as quatro correções de parser do
+`cfe321b`, achado H3 da auditoria), então um deploy só resolve os dois.
+Verificação: `tsc` limpo, `deno check`, `test:ci` inteiro verde, e o teste
+novo roda o handler real — conferido por mutação. **Não verificado:** uma
+chamada real ao Granabô com conta bloqueada de verdade, que exigiria uma
+segunda conta e escrita no banco.
 
 ---
 
