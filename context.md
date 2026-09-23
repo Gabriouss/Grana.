@@ -166,6 +166,81 @@ segunda conta e escrita no banco.
 
 ---
 
+# 23/09/2026 (M2) — varredura de correção dos achados das auditorias da M1
+
+Pedido do autor: "o que temos mais para fazer de correção?" e, em seguida,
+"pode resolver tudo na ordem que você achar melhor". A lista veio das sete
+auditorias que os agentes da M1 fizeram em 22 e 23/09, e cada achado foi
+CONFERIDO no código antes de virar mudança.
+
+**P1 (os quatro acionáveis).**
+
+- **A1, `50d6079` — cache e fila offline atravessavam contas.** O mais grave da
+  rodada. `grana:cache:transactions` e `grana:queue:transactions-pendentes`
+  eram chaves globais, sem dono, a leitura não conferia nada, e a saída só
+  limpava `grana:cache:tela:*`. Em aparelho compartilhado, B via o financeiro
+  de A e, pior, um lançamento que A fez offline era gravado NA CONTA DE B,
+  porque `flushPendingQueue` envia com as credenciais de quem está logado. A
+  correção reusa o padrão que já existia em `cache-de-tela.ts`. Duas decisões
+  registradas: a fila NÃO é apagada na saída (é dinheiro que a pessoa
+  registrou e ainda não subiu, e agora não vaza), e item de fila sem dono
+  conta para quem está logado em vez de ser descartado.
+- **S51, `7232ba3` — Crédito sem rede dizia "não há cartões".** A auditoria
+  marcou "causa não isolada"; a causa é a estrutura da carga. Seis buscas com
+  cache POR CHAVE dentro de um `Promise.all`: uma chave fria (um mês nunca
+  aberto com rede) derrubava as outras cinco, cartões inclusive. É a mesma
+  forma do defeito do `fetchRecurrenceContext` corrigido em 19/09 — lá se
+  tirou a busca culpada, e a classe ficou. Agora só os cartões são
+  obrigatórios, mês que falta entra vazio e ACENDE AVISO próprio, porque
+  fatura a menos é dinheiro a menos.
+- **S4, `d92b5bb` — widget de voz morria calado sem permissão de microfone.**
+  A checagem de permissão existia em `iniciar()` desde sempre e nunca era
+  alcançada: a partir do Android 14, `startForeground` com tipo `microphone`
+  exige `RECORD_AUDIO` e lança `SecurityException`, e isso roda antes de
+  qualquer decisão por causa do prazo de cinco segundos do Android. O `catch`
+  voltava ao repouso em silêncio.
+- **S43 — Granabô somando o crédito no gasto do mês.** Não tem código a
+  escrever: a correção já existe em `5d72611` e só falta publicar a
+  `assistente-financeiro`.
+
+**P2.** `2a8bb59` o checkout leva o e-mail da conta (parâmetros conferidos na
+documentação da Cakto, não chutados) e a tela diz qual é, porque o campo
+continua editável do outro lado. `3680c1f` a Política declara a medição de
+anúncio em vez de negá-la. `ce5ad06` a promessa da nota fiscal passa a caber
+no que o leitor faz (ele só lê QR, e o valor só vem nas notas em
+contingência); o plano de tráfego do vault perde a frase de que o Livre para
+Gastar desconta parcelas futuras. `1dd55ba` o `.gitignore` barra qualquer
+`.env`. `e987e3e` o aviso high do xmldom. `70e787f` o prazo de voz. `4aa0234`
+o `expo-speech-recognition`.
+
+**O que NÃO foi feito, e por quê.**
+
+- **App Links (link de confirmação de cadastro abre o navegador).** Precisa de
+  duas metades: `intentFilters` no `app.json` e um `assetlinks.json` servido
+  pelo domínio com a impressão digital SHA-256 do certificado de assinatura,
+  que vive nas credenciais do EAS do autor. Sem a segunda, a primeira é
+  inerte. Meia configuração não foi publicada de propósito.
+- **S30 (ANR ao alternar Gráficos e Desafios)** continua hipótese, e pode ser
+  memória do emulador.
+- **Os 15 avisos moderate do `npm audit`** vêm todos da cadeia da própria Expo,
+  e o que o npm chama de correção são DOWNGRADES (expo@46, expo-router@5).
+- **Os 25 pacotes `expo-*` com mismatch de patch** que o `expo-doctor` acusa:
+  subir os 25 é mudança de build inteira, não correção de achado.
+- **F2 deixou uma pergunta no código:** se os 60s do widget devem cair para os
+  15s do app. O ramo por origem saiu; os dois números continuam diferentes
+  porque os dois prazos reais são diferentes.
+
+**Verificação.** Todos os commits com `tsc` limpo e `npm run test:ci` inteiro
+verde. Seis guardas novas ou ampliadas, e cada uma foi conferida POR MUTAÇÃO,
+quebrando a correção de propósito para ver o teste cair. **Não verificado no
+aparelho:** nada desta varredura foi aberto em emulador ou aparelho. Em
+particular, faltam prova com duas contas de verdade (A1), instalação com
+`RECORD_AUDIO` negado (S4), mês frio sem rede no Crédito (S51), o checkout
+real recebendo os parâmetros (C5) e o reconhecimento local depois da troca de
+versão (F7, módulo nativo, que só se prova em build).
+
+---
+
 # 22/09/2026 (M1) — tentativa da build preview 1.10.4, bloqueada pela cota do EAS
 
 Pedido do autor: "tenta disparar uma build nova", para entregar a correção do
