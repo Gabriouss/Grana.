@@ -49,6 +49,10 @@ export default function ExportPdfButton({
   async function exportar() {
     setGerando(true);
     try {
+      /* Deixa o React Native pintar o estado ocupado antes de a geração do
+         documento iniciar trabalho síncrono. Sem este quadro, o primeiro
+         recibo visual só aparecia depois que o PDF já estava pronto. */
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       let contas = bills;
       if (!contas) {
         try {

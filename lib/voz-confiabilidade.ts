@@ -1,5 +1,21 @@
 import { guessAmountFromText, normalizarTexto } from './heuristics';
 
+/**
+ * Recusa transcrições típicas de silêncio antes que qualquer heurística
+ * financeira possa transformá-las em lançamento. Provedores de fala às vezes
+ * devolvem legenda, chamada de site ou encerramento de vídeo quando só houve
+ * ruído; sem esta barreira, um ano ou outro número incidental virava valor.
+ */
+export function transcricaoPareceLancamentoVoz(texto: string): boolean {
+  const original = texto.trim();
+  if (!original) return false;
+  const t = normalizarTexto(original);
+  if (/\b(?:https?:\/\/|www\.|\w+\.(?:com|com\.br|net|org|io))\b/i.test(original)) return false;
+  if (/\b(?:obrigad[oa]\s+por\s+assistir|inscreva-se|legendas?\s+(?:pela|por)|acesse\s+o\s+site|todos\s+os\s+direitos\s+reservados)\b/i.test(t)) return false;
+  const valor = guessAmountFromText(t);
+  return Number.isFinite(valor) && valor > 0;
+}
+
 /** Único valor que as telas de revisão podem sugerir a partir de uma fala. */
 export function valorSeguroParaRevisaoVoz(texto: string): number | null {
   return precisaRevisarValorVoz(texto) ? null : guessAmountFromText(texto);

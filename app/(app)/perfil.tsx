@@ -81,11 +81,11 @@ const WIDGETS_HOME: Array<{
   descricao: string;
   nomeNoLauncher: string;
 }> = [
-  { tipo: 'voz', titulo: 'Lançar por voz', tamanho: '1 × 1', descricao: 'Fale qualquer lançamento sem precisar abrir o app.', nomeNoLauncher: 'Grana. — lançar por voz' },
-  { tipo: 'livre', titulo: 'Livre para gastar', tamanho: '2 × 1', descricao: 'Veja quanto está realmente disponível neste mês.', nomeNoLauncher: 'Grana. — livre para gastar' },
-  { tipo: 'central', titulo: 'Central de lançamentos', tamanho: '2 × 2', descricao: 'Abra rapidamente Entrada, Débito/Pix, Crédito ou Boleto.', nomeNoLauncher: 'Grana. — central de lançamentos' },
-  { tipo: 'compromisso', titulo: 'Próximo compromisso', tamanho: '2 × 2', descricao: 'Acompanhe a próxima conta pendente e abra os detalhes.', nomeNoLauncher: 'Grana. — próximo compromisso' },
-  { tipo: 'cofrinho', titulo: 'Cofrinho', tamanho: '2 × 1', descricao: 'Acompanhe uma meta e vá direto para adicionar dinheiro.', nomeNoLauncher: 'Grana. — cofrinho' },
+  { tipo: 'voz', titulo: 'Lançar por voz', tamanho: '1 × 1', descricao: 'Fale qualquer lançamento sem precisar abrir o app.', nomeNoLauncher: 'Grana. Lançar por voz' },
+  { tipo: 'livre', titulo: 'Livre para gastar', tamanho: '2 × 1', descricao: 'Veja quanto está realmente disponível neste mês.', nomeNoLauncher: 'Grana. Livre para gastar' },
+  { tipo: 'central', titulo: 'Central de lançamentos', tamanho: '2 × 2', descricao: 'Abra rapidamente Entrada, Débito/Pix, Crédito ou Boleto.', nomeNoLauncher: 'Grana. Central de lançamentos' },
+  { tipo: 'compromisso', titulo: 'Contas do mês', tamanho: '2 × 2', descricao: 'Acompanhe as contas do mês e as que estão atrasadas.', nomeNoLauncher: 'Grana. Contas do mês' },
+  { tipo: 'cofrinho', titulo: 'Cofrinho', tamanho: '2 × 1', descricao: 'Acompanhe uma meta e vá direto para adicionar dinheiro.', nomeNoLauncher: 'Grana. Cofrinho' },
 ];
 
 const CONTAGEM_WIDGETS_INICIAL: Record<TipoWidget, number> = {
@@ -660,14 +660,14 @@ export default function PerfilScreen() {
         <Text style={styles.sectionLabel}>Personalização</Text>
         <View style={styles.sectionCard}>
           <View style={styles.row}>
-            <Text style={styles.rowKey}>Modo privacidade</Text>
+            <Text style={styles.rowKey}>Ocultar valores</Text>
             <ToggleSwitch
               value={hidden}
               onToggle={() => {
                 togglePrivacy();
                 triggerToast(hidden ? 'Valores visíveis' : 'Valores ocultos');
               }}
-              label="Modo privacidade"
+              label="Ocultar valores"
             />
           </View>
 
@@ -709,7 +709,7 @@ export default function PerfilScreen() {
           {ligado('orcamento_sugerido') && (
             <AppPressable style={styles.tappableRow} onPress={() => setTemplatesOpen(true)}>
               <Text style={styles.rowKey}>Orçamento sugerido</Text>
-              <Text style={styles.rowValue}>Aplicar template &gt;</Text>
+              <Text style={styles.rowValue}>Aplicar modelo &gt;</Text>
             </AppPressable>
           )}
 

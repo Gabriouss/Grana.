@@ -195,6 +195,11 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   let texto = transcricao.transcript;
   contexto.transcricao = texto;
+  const confiabilidade = await import('./voz-confiabilidade');
+  if (!confiabilidade.transcricaoPareceLancamentoVoz(texto)) {
+    await notificacoes.notificarFalha('nao_entendi');
+    return false;
+  }
   // A forma curta "cartão C6" tem a mesma intenção de "no cartão C6".
   // A heurística existente já preserva débito e recebimentos explicitados.
   texto = texto.replace(/\bcart[aã]o\b/giu, 'no cartão');
@@ -220,8 +225,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   }
   const textoFinanceiro = carteiraMencionada ? heuristics.limparReferenciaCarteira(texto, carteira.name) : texto;
   texto = textoFinanceiro;
-  const { precisaRevisarValorVoz } = await import('./voz-confiabilidade');
-  if (precisaRevisarValorVoz(texto)) {
+  if (confiabilidade.precisaRevisarValorVoz(texto)) {
     await notificacoes.notificarRevisao('Confirme o valor que ouvi', transcricao.transcript);
     return false;
   }

@@ -15,6 +15,7 @@ import BotaoOpcoesItem from './BotaoOpcoesItem';
 import ColorGridPicker from './ColorGridPicker';
 import DatePickerModal from './DatePickerModal';
 import GoalDepositModal from './GoalDepositModal';
+import ItemActionSheet from './ItemActionSheet';
 import PrivacyValue from './PrivacyValue';
 import Sheet from './Sheet';
 import { useFlags } from '@/lib/feature-flags';
@@ -34,7 +35,7 @@ const NOME_ICONE: Record<string, string> = {
   heart: 'Saúde',
 };
 
-type NovaMeta = { title: string; target_amount: number; color: string; icon: string; deadline: string | null };
+export type NovaMeta = { title: string; target_amount: number; color: string; icon: string; deadline: string | null };
 
 export default function GoalsCarousel({
   goals,
@@ -42,6 +43,7 @@ export default function GoalsCarousel({
   abrirDepositoGoalId,
   onAbrirDepositoConcluido,
   onCreateGoal,
+  onUpdateGoal,
   onDeposit,
   onDeleteGoal,
 }: {
@@ -50,6 +52,7 @@ export default function GoalsCarousel({
   abrirDepositoGoalId?: string | null;
   onAbrirDepositoConcluido?: () => void;
   onCreateGoal: (input: NovaMeta) => Promise<void>;
+  onUpdateGoal: (goal: Goal, input: NovaMeta) => Promise<void>;
   onDeposit: (goal: Goal, delta: number) => Promise<void>;
   onDeleteGoal: (goal: Goal) => Promise<void>;
 }) {
@@ -71,6 +74,9 @@ export default function GoalsCarousel({
   const [icon, setIcon] = useState(ICONES[0]);
   const [deadline, setDeadline] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [actionTarget, setActionTarget] = useState<Goal | null>(null);
+  const [actionOpen, setActionOpen] = useState(false);
 
   const [depositTarget, setDepositTarget] = useState<Goal | null>(null);
   const [depositing, setDepositing] = useState(false);
@@ -91,6 +97,22 @@ export default function GoalsCarousel({
     setColor(PALETTE_30[0]);
     setIcon(ICONES[0]);
     setDeadline(null);
+    setEditingGoal(null);
+  }
+
+  function abrirEdicao(goal: Goal) {
+    setEditingGoal(goal);
+    setTitle(goal.title);
+    setTargetAmount(formatMoneyInput(String(Math.round(Number(goal.target_amount) * 100))));
+    setColor(goal.color);
+    setIcon(goal.icon);
+    setDeadline(goal.deadline ?? null);
+    setCreateOpen(true);
+  }
+
+  function abrirAcoes(goal: Goal) {
+    setActionTarget(goal);
+    setActionOpen(true);
   }
 
   async function handleCreate() {
@@ -105,7 +127,9 @@ export default function GoalsCarousel({
     }
     setCreating(true);
     try {
-      await onCreateGoal({ title: title.trim(), target_amount: parsed, color, icon, deadline });
+      const entrada = { title: title.trim(), target_amount: parsed, color, icon, deadline };
+      if (editingGoal) await onUpdateGoal(editingGoal, entrada);
+      else await onCreateGoal(entrada);
       resetCreateForm();
       setCreateOpen(false);
     } catch (e: any) {
@@ -214,7 +238,7 @@ export default function GoalsCarousel({
               <AppPressable
                 style={({ hovered }) => [styles.card, hovered && styles.cardHover]}
                 onPress={() => setDepositTarget(g)}
-                onLongPress={() => confirmDelete(g)}
+                onLongPress={() => abrirAcoes(g)}
                 accessibilityHint="Abre o depósito neste cofrinho. Para excluir, use o botão de opções."
               >
                 <View style={styles.cardTop}>
@@ -228,7 +252,7 @@ export default function GoalsCarousel({
                     <View style={{ width: 28, height: 28 }} />
                   </View>
                 </View>
-                <Text style={styles.cardTitle} numberOfLines={1}>{g.title}</Text>
+                <Text style={styles.cardTitle} numberOfLines={2}>{g.title}</Text>
                 <PrivacyValue>
                   <Text style={styles.cardAmount}>{`R$ ${formatMoney(atual)}`}</Text>
                 </PrivacyValue>
@@ -244,7 +268,7 @@ export default function GoalsCarousel({
                 </View>
               </AppPressable>
               <View style={styles.botaoOpcoesFlutuante}>
-                <BotaoOpcoesItem accessibilityLabel={`Opções de ${g.title}`} onPress={() => confirmDelete(g)} />
+                <BotaoOpcoesItem accessibilityLabel={`Opções de ${g.title}`} onPress={() => abrirAcoes(g)} />
               </View>
             </View>
           );
@@ -260,11 +284,11 @@ export default function GoalsCarousel({
       </ScrollView>
 
       {/* Sheet: Nova Meta */}
-      <AppModal visible={createOpen} transparent onRequestClose={() => setCreateOpen(false)}>
-        <Sheet onClose={() => setCreateOpen(false)}>
+      <AppModal visible={createOpen} transparent onRequestClose={() => { setCreateOpen(false); resetCreateForm(); }}>
+        <Sheet onClose={() => { setCreateOpen(false); resetCreateForm(); }}>
           <View style={styles.header}>
-            <Text style={styles.sheetTitle}>Nova meta</Text>
-            <AppPressable onPress={() => setCreateOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <Text style={styles.sheetTitle}>{editingGoal ? 'Editar meta' : 'Nova meta'}</Text>
+            <AppPressable onPress={() => { setCreateOpen(false); resetCreateForm(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>
@@ -336,7 +360,7 @@ export default function GoalsCarousel({
             onPress={handleCreate}
             disabled={creating}
           >
-            <Text style={styles.saveBtnText}>{creating ? 'Salvando...' : 'Criar meta'}</Text>
+            <Text style={styles.saveBtnText}>{creating ? 'Salvando...' : editingGoal ? 'Salvar alterações' : 'Criar meta'}</Text>
           </AppPressable>
         </Sheet>
       </AppModal>
@@ -355,6 +379,18 @@ export default function GoalsCarousel({
         saving={depositing}
         onClose={() => setDepositTarget(null)}
         onSubmit={handleDeposit}
+      />
+
+      <ItemActionSheet
+        visible={actionOpen}
+        title={actionTarget?.title ?? 'Meta'}
+        onClose={() => setActionOpen(false)}
+        onEdit={() => {
+          if (actionTarget) abrirEdicao(actionTarget);
+        }}
+        onDelete={() => {
+          if (actionTarget) confirmDelete(actionTarget);
+        }}
       />
     </View>
   );

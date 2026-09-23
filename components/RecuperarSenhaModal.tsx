@@ -43,7 +43,7 @@ export default function RecuperarSenhaModal({
 
   async function handleEnviar() {
     const alvo = email.trim();
-    if (!alvo.includes('@')) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(alvo)) {
       setErro('Informe um e-mail válido.');
       return;
     }

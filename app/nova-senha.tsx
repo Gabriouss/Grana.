@@ -108,7 +108,7 @@ export default function NovaSenhaScreen() {
           <Text style={styles.label}>Repita a senha</Text>
           <PasswordInput
             maxLength={LIMITS.password}
-            placeholder="••••••••"
+            placeholder="Repita a senha"
             autoComplete="new-password"
             value={confirmacao}
             onChangeText={setConfirmacao}

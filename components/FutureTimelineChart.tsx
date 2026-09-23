@@ -17,6 +17,8 @@ const TRACK_HEIGHT = 84;
  */
 function FutureTimelineChart({ meses }: { meses: MesProjetado[] }) {
   const maxVal = Math.max(...meses.map((m) => m.total), 1);
+  const temParcelas = meses.some((m) => m.parcelasFuturas > 0);
+  const temRecorrentes = meses.some((m) => m.total - m.parcelasFuturas > 0);
 
   const progress = useRef(new Animated.Value(0)).current;
   const reduzirMovimento = useReducedMotion();
@@ -83,14 +85,18 @@ function FutureTimelineChart({ meses }: { meses: MesProjetado[] }) {
       </View>
 
       <View style={styles.legendRow}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: theme.accent }]} />
-          <Text style={styles.legendText}>Contas recorrentes</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: theme.down }]} />
-          <Text style={styles.legendText}>Parcelas futuras</Text>
-        </View>
+        {temRecorrentes && (
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: theme.accent }]} />
+            <Text style={styles.legendText}>Contas recorrentes</Text>
+          </View>
+        )}
+        {temParcelas && (
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: theme.down }]} />
+            <Text style={styles.legendText}>Parcelas futuras</Text>
+          </View>
+        )}
       </View>
 
       <PrivacyValue>

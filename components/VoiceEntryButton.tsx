@@ -4,6 +4,7 @@ import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   AudioQuality,
+  getRecordingPermissionsAsync,
   IOSOutputFormat,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
@@ -187,6 +188,32 @@ export default function VoiceEntryButton({
       await encerrarEEnviar();
       return;
     }
+    if (ocupado.current) return;
+    ocupado.current = true;
+
+    try {
+      const atual = await getRecordingPermissionsAsync();
+      if (atual.status === 'undetermined') {
+        ocupado.current = false;
+        Alert.alert(
+          'Use o microfone para lançar',
+          'O Grana. grava apenas esta fala para transcrever o lançamento. O áudio é apagado depois do processamento.',
+          [
+            { text: 'Agora não', style: 'cancel' },
+            { text: 'Continuar', onPress: () => void iniciarGravacao() },
+          ]
+        );
+        return;
+      }
+    } catch {
+      /* Se o aparelho não informar o estado atual, o pedido do sistema abaixo
+         continua sendo a fonte de verdade. */
+    }
+    ocupado.current = false;
+    await iniciarGravacao();
+  }
+
+  async function iniciarGravacao() {
     if (ocupado.current) return;
     ocupado.current = true;
 

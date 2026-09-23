@@ -45,6 +45,29 @@ export async function deleteGoal(id: string): Promise<void> {
   notificarDadosDosWidgetsAlterados();
 }
 
+export async function updateGoal(
+  id: string,
+  input: { title: string; target_amount: number; color: string; icon: string; deadline?: string | null }
+): Promise<Goal> {
+  const user_id = await currentUserId();
+  const { data, error } = await supabase
+    .from('goals')
+    .update({
+      title: input.title,
+      target_amount: input.target_amount,
+      color: input.color,
+      icon: input.icon,
+      deadline: input.deadline ?? null,
+    })
+    .eq('id', id)
+    .eq('user_id', user_id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  notificarDadosDosWidgetsAlterados();
+  return data as Goal;
+}
+
 /**
  * Aporta ou resgata valor de um cofrinho. `delta` positivo guarda, negativo
  * resgata — o saldo nunca fica negativo (limite aplicado tanto aqui quanto

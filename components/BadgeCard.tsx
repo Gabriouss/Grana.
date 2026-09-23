@@ -11,7 +11,7 @@ type Props = {
 };
 
 export default function BadgeCard({ badge, onPress }: Props) {
-  const { title, description, icone, unlocked, progress, progressLabel } = badge;
+  const { title, description, icone, unlocked, progress } = badge;
 
   return (
     <AppPressable
@@ -37,7 +37,7 @@ export default function BadgeCard({ badge, onPress }: Props) {
         </View>
         <View style={styles.badgeStatus}>
           <Text style={[styles.statusText, unlocked ? styles.statusUnlocked : styles.statusLocked]}>
-            {unlocked ? 'Conquistado' : progressLabel}
+            {unlocked ? 'Conquistado' : `${Math.round(progress * 100)}% concluído`}
           </Text>
         </View>
       </View>
@@ -84,6 +84,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
     marginBottom: 2,
   },
   iconContainer: {
@@ -119,6 +121,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: type.apoio,
     color: theme.ink,
+    lineHeight: type.apoio * 1.35,
   },
   titleLocked: {
     color: theme.inkSoft,
@@ -127,7 +130,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: type.legenda,
     color: theme.inkFaint,
-    lineHeight: 15,
+    lineHeight: type.legenda * 1.4,
   },
   progressBarBg: {
     height: 3,

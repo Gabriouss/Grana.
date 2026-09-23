@@ -25,8 +25,11 @@
       android:textColor="@color/grana_widget_texto"
       android:textSize="20sp"
       android:textStyle="bold"
-      android:maxLines="1"
-      android:ellipsize="end" />
+      android:maxLines="2"
+      android:autoSizeTextType="uniform"
+      android:autoSizeMinTextSize="12sp"
+      android:autoSizeMaxTextSize="20sp"
+      android:autoSizeStepGranularity="1sp" />
 
   <TextView
       android:id="@+id/grana_livre_apoio"

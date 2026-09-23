@@ -347,6 +347,7 @@ export default function ContasScreen() {
        Se a rede falhar, o catch abaixo devolve pro status anterior. */
     setBills((prev) => prev.map((b) => (b.id === bill.id ? { ...b, status: newStatus } : b)));
     if (newStatus === 'paid') hapticSuccess(); else hapticTap();
+    triggerToast(newStatus === 'paid' ? 'Marcando conta como paga…' : 'Reabrindo conta…');
 
     try {
       if (newStatus === 'paid') {
@@ -594,7 +595,7 @@ export default function ContasScreen() {
       {/* Item Action Sheet (Editar / Excluir) */}
       <ItemActionSheet
         visible={actionSheetOpen}
-        title="Conta a pagar"
+        title={selectedBill ? `${selectedBill.description} · R$ ${formatMoney(Number(selectedBill.amount))}` : 'Conta a pagar'}
         onClose={() => setActionSheetOpen(false)}
         onEdit={() => {
           if (selectedBill) openEditModal(selectedBill);

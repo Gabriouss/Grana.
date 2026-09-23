@@ -29,6 +29,8 @@ export type MensagemLocal = {
   criado_em: string;
   /** true enquanto a resposta do Granabô não chegou. */
   carregando?: boolean;
+  /** A consulta passou do tempo normal, mas continua em andamento. */
+  demorando?: boolean;
   /** Mensagem de erro se a chamada falhou. */
   erro?: string;
 };

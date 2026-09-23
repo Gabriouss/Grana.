@@ -29,7 +29,7 @@ export const HOME_BLOCK_LABELS: Record<HomeBlockKey, string> = {
   orcamento: 'Orçamentos do mês',
   credito: 'Resumo de faturas de crédito',
   boletos: 'Próximos boletos a vencer',
-  timeline: 'Comprometimento futuro (6 meses)',
+  timeline: 'Comprometimento futuro',
   lancamentos: 'Últimos lançamentos',
 };
 
@@ -106,10 +106,13 @@ export function layoutPadrao(): HomeBlockConfig[] {
  * configuração salva por uma versão antiga.
  */
 export async function carregarLayoutHome(): Promise<HomeBlockConfig[]> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return layoutPadrao();
+  // A sessão persistida é legível sem rede. `getUser()` sempre consultava o
+  // servidor e fazia a organização da Home voltar ao padrão no modo offline.
+  const { data, error } = await supabase.auth.getSession();
+  const user = data.session?.user;
+  if (error || !user) return layoutPadrao();
 
-  const salvo = data.user.user_metadata?.[CHAVE_METADATA] as HomeBlockConfig[] | undefined;
+  const salvo = user.user_metadata?.[CHAVE_METADATA] as HomeBlockConfig[] | undefined;
   if (!salvo || !Array.isArray(salvo)) return layoutPadrao();
 
   const chavesSalvas = new Set(salvo.map((b) => b.key));

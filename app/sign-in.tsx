@@ -104,7 +104,7 @@ export default function SignIn() {
             ref={campoSenha}
             accessibilityLabel="Senha"
             maxLength={LIMITS.password}
-            placeholder="••••••••"
+            placeholder="Digite sua senha"
             autoComplete="password"
             value={password}
             onChangeText={setPassword}

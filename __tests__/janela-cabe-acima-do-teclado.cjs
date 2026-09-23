@@ -29,6 +29,7 @@ vm.runInNewContext(
       if (nome === 'react') return { useCallback: (fn) => fn, useState: (v) => [v, () => {}] };
       if (nome === 'react-native') return { Platform: { OS: 'android' }, useWindowDimensions: () => ({}) };
       if (nome === './teclado') return { useKeyboardHeight: () => 0 };
+      if (nome === 'react-native-safe-area-context') return { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
       throw new Error('import inesperado: ' + nome);
     },
   }

@@ -123,7 +123,7 @@ function generateBuckets(period: ChartPeriod, year: number, month: number): Buck
   return dayRanges.map((r) => ({
     labelStart: `01/${pad(month + 1)}`,
     labelEnd: `${pad(lastDay)}/${pad(month + 1)}`,
-    label: r.start === r.end ? `${pad(r.start)}/${pad(month + 1)}` : `${pad(r.start)}–${pad(r.end)}/${pad(month + 1)}`,
+    label: r.start === r.end ? `${pad(r.start)}/${pad(month + 1)}` : `${pad(r.start)} a ${pad(r.end)}/${pad(month + 1)}`,
     matches: (txDate: string) => {
       const [y, m, d] = txDate.split('-').map(Number);
       return y === year && m - 1 === month && d >= r.start && d <= r.end;

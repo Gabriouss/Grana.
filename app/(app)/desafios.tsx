@@ -35,7 +35,10 @@ import ConquistaDesbloqueada from '@/components/ConquistaDesbloqueada';
 import ScreenHeader from '@/components/ScreenHeader';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
+import HeaderAction from '@/components/HeaderAction';
+import PrivacyValue from '@/components/PrivacyValue';
 import { useFlags } from '@/lib/feature-flags';
+import { usePrivacy } from '@/lib/privacy-context';
 import type { Bill, Transaction } from '@/lib/types';
 
 type FilterType = 'all' | 'unlocked' | 'locked';
@@ -44,6 +47,7 @@ export default function DesafiosScreen() {
   const { ligado, flag } = useFlags();
   const { paddingConteudo } = useTabBarInset();
   const { isDemoMode } = useDemo();
+  const { hidden, toggle: togglePrivacy } = usePrivacy();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [state, setState] = useState<GamificationState | null>(null);
@@ -51,6 +55,7 @@ export default function DesafiosScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [conquistaNova, setConquistaNova] = useState<Badge | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const fallbackCache = useRef<{ transactions: Transaction[]; bills: Bill[] } | null>(null);
 
   const loadData = useCallback(async () => {
@@ -58,6 +63,7 @@ export default function DesafiosScreen() {
       const gState = getGamificationState(DEMO_TRANSACTIONS, DEMO_BILLS, DEMO_BUDGETS);
       setState(gState);
       setLevel(calcularLevelState(DEMO_LIFETIME_XP));
+      setLoadError(null);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -89,6 +95,7 @@ export default function DesafiosScreen() {
         gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas);
       }
       setState(gState);
+      setLoadError(null);
 
       /* O desbloqueio vira evento gravado, e ganha um momento.
          Antes não havia nenhum: a medalha simplesmente passava a aparecer
@@ -99,8 +106,9 @@ export default function DesafiosScreen() {
         registrarConquistas(novas.map((b) => b.id)).catch(() => {});
         setConquistaNova(novas[0]);
       }
-    } catch {
-      // Falha graciosa
+    } catch (erro) {
+      console.error('[desafios] carga principal falhou', erro);
+      setLoadError('Não foi possível atualizar seus desafios.');
     }
 
     // Separado do bloco acima de propósito: user_gamification é uma tabela
@@ -170,8 +178,41 @@ export default function DesafiosScreen() {
        aparecia sob a barra de status até os dados chegarem — a única tela do
        app cujo carregamento saía da área segura. */
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} style={styles.center}>
-        <ActivityIndicator color={theme.ink} />
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+        <ScreenHeader
+          eyebrow="Saúde & consistência"
+          title="Desafios"
+          right={
+            <>
+              <HeaderAction
+                icon={hidden ? 'eye-off-outline' : 'eye-outline'}
+                onPress={togglePrivacy}
+                accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
+              />
+              <WalletPill onPress={() => setWalletModalOpen(true)} />
+            </>
+          }
+        />
+        <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
+        <View style={[styles.loadingCard, colunaConteudo]}>
+          {loading && <ActivityIndicator color={theme.ink} />}
+          <Text style={styles.loadingTitle}>{loadError ?? 'Carregando seus desafios…'}</Text>
+          <Text style={styles.loadingText}>
+            {loadError ? 'Seus dados continuam protegidos. Tente atualizar novamente.' : 'Calculando seu ritmo, score e conquistas.'}
+          </Text>
+          {loadError && (
+            <AppPressable
+              style={styles.retryButton}
+              onPress={() => {
+                setLoading(true);
+                void loadData();
+              }}
+            >
+              <Text style={styles.retryButtonText}>Tentar novamente</Text>
+            </AppPressable>
+          )}
+        </View>
+        <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
       </SafeAreaView>
     );
   }
@@ -195,7 +236,16 @@ export default function DesafiosScreen() {
       <ScreenHeader
         eyebrow="Saúde & consistência"
         title="Desafios"
-        right={<WalletPill onPress={() => setWalletModalOpen(true)} />}
+        right={
+          <>
+            <HeaderAction
+              icon={hidden ? 'eye-off-outline' : 'eye-outline'}
+              onPress={togglePrivacy}
+              accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
+            />
+            <WalletPill onPress={() => setWalletModalOpen(true)} />
+          </>
+        }
       />
       <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
 
@@ -283,6 +333,9 @@ export default function DesafiosScreen() {
           {level.nextElo && (
             <Text style={styles.remainingText}>{`Rumo ao elo ${level.nextElo.title}`}</Text>
           )}
+          <Text style={styles.remainingText}>
+            {`Faltam ${Math.max(level.xpParaProximoLevel - level.xpAtualNoLevel, 0)} XP para o nível ${level.level + 1}`}
+          </Text>
           {/* Ponto final no lugar do travessão: regra de copy do projeto. */}
           <Text style={styles.levelHint}>Este nível é separado da saúde financeira acima. O XP vem de criar cofrinhos, guardar dinheiro e bater metas. Ele nunca diminui.</Text>
         </View>
@@ -292,7 +345,7 @@ export default function DesafiosScreen() {
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
               <Ionicons name="flame-outline" size={17} color={theme.accent2} />
-              <Text style={styles.cardTitle}>Ritmo da Semana</Text>
+              <Text style={styles.cardTitle}>Ritmo da semana</Text>
             </View>
             <Text style={styles.streakBadgeText}>
               {streak} {streak === 1 ? 'dia ativo' : 'dias em dia'}
@@ -334,7 +387,7 @@ export default function DesafiosScreen() {
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
               <Ionicons name="stats-chart-outline" size={17} color={theme.accent2} />
-              <Text style={styles.cardTitle}>Composição do seu Score</Text>
+              <Text style={styles.cardTitle}>Composição do seu score</Text>
             </View>
             <Text style={styles.scoreTotalLabel}>{score}/1000 pts</Text>
           </View>
@@ -384,15 +437,17 @@ export default function DesafiosScreen() {
                 <View key={i} style={styles.indicadorItem}>
                   <View style={styles.factorTop}>
                     <Text style={styles.factorLabel}>{ind.label}</Text>
-                    <Text
-                      style={[
-                        styles.indicadorValor,
-                        ind.tom === 'alta' && { color: theme.up },
-                        ind.tom === 'baixa' && { color: theme.down },
-                      ]}
-                    >
-                      {ind.valor}
-                    </Text>
+                    <PrivacyValue>
+                      <Text
+                        style={[
+                          styles.indicadorValor,
+                          ind.tom === 'alta' && { color: theme.up },
+                          ind.tom === 'baixa' && { color: theme.down },
+                        ]}
+                      >
+                        {ind.valor}
+                      </Text>
+                    </PrivacyValue>
                   </View>
                   <Text style={styles.factorDesc}>{ind.descricao}</Text>
                 </View>
@@ -406,7 +461,7 @@ export default function DesafiosScreen() {
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
               <Ionicons name="ribbon-outline" size={17} color={theme.accent2} />
-              <Text style={styles.cardTitle}>Mural de Conquistas</Text>
+              <Text style={styles.cardTitle}>Mural de conquistas</Text>
             </View>
             <Text style={styles.badgeRatioText}>{`${unlockedBadgesCount} de ${totalBadgesCount}`}</Text>
           </View>
@@ -460,6 +515,21 @@ const styles = StyleSheet.create({
   },
   screen: { flex: 1, backgroundColor: theme.paper },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.paper },
+  loadingCard: {
+    alignSelf: 'center',
+    marginTop: spacing.xl,
+    padding: cardTokens.padding,
+    borderRadius: cardTokens.radius,
+    borderWidth: cardTokens.borderWidth,
+    borderColor: theme.rule,
+    backgroundColor: theme.paperRaised,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  loadingTitle: { color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular, textAlign: 'center' },
+  loadingText: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light, textAlign: 'center' },
+  retryButton: { marginTop: spacing.xs, borderRadius: radius.md, backgroundColor: theme.ink, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  retryButtonText: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
   scroll: { flex: 1 },
   content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
   heroCard: {
@@ -476,9 +546,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   scoreCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: 'rgba(174,255,227,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -596,7 +666,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
-    rowGap: 4,
+    rowGap: spacing.sm,
+    columnGap: spacing.sm,
   },
   titleWithIcon: {
     flexDirection: 'row',
@@ -612,6 +683,7 @@ const styles = StyleSheet.create({
     fontSize: type.corpo,
     lineHeight: lh(type.corpo, 'corpo'),
     color: theme.ink,
+    flexShrink: 1,
   },
   streakBadgeText: {
     fontFamily: fonts.regular,

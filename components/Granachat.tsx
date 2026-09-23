@@ -376,6 +376,9 @@ export default function Granachat({
     const controller = new AbortController();
     requisicaoRef.current = controller;
     const timeout = setTimeout(() => controller.abort(), 35_000);
+    const avisoDemora = setTimeout(() => {
+      setMensagens((prev) => prev.map((m) => (m.id === idResposta ? { ...m, demorando: true } : m)));
+    }, 8_000);
 
     try {
       // Monta histórico recente para contexto
@@ -394,6 +397,7 @@ export default function Granachat({
                 texto: resultado.resposta,
                 ferramenta_usada: resultado.ferramenta,
                 carregando: false,
+                demorando: false,
               }
             : m
         )
@@ -414,6 +418,7 @@ export default function Granachat({
                 ...m,
                 texto: mensagemErro,
                 carregando: false,
+                demorando: false,
                 erro: mensagemErro,
               }
             : m
@@ -421,6 +426,7 @@ export default function Granachat({
       );
     } finally {
       clearTimeout(timeout);
+      clearTimeout(avisoDemora);
       requisicaoRef.current = null;
       setEnviando(false);
       /* Tocar no botão de enviar desfoca o campo no Android (é um Pressable
@@ -444,7 +450,9 @@ export default function Granachat({
           <View style={[styles.bolha, styles.bolhaAssistente]}>
             <View style={styles.pensando}>
               <ActivityIndicator size="small" color={theme.accent2} />
-              <Text style={styles.pensandoTexto}>Granabô está pensando…</Text>
+              <Text style={styles.pensandoTexto}>
+                {item.demorando ? 'Ainda estou consultando seus dados…' : 'Granabô está pensando…'}
+              </Text>
             </View>
           </View>
         </View>

@@ -4,7 +4,10 @@ const assert = require('node:assert/strict');
 const ts = require('typescript');
 let task, permission = true, cards = [], matched = null, saved = [], revisions = [], cleaned = 0, pending = [];
 const deps = {
-  './voz-confiabilidade': { precisaRevisarValorVoz: () => false },
+  './voz-confiabilidade': {
+    precisaRevisarValorVoz: () => false,
+    transcricaoPareceLancamentoVoz: () => true,
+  },
   'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado: () => {} },

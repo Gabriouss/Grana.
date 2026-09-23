@@ -46,6 +46,8 @@ export default function WalletPickerModal({
   const [editName, setEditName] = useState('');
   const [editBalance, setEditBalance] = useState('');
   const [editColor, setEditColor] = useState(WALLET_COLORS[0]);
+  const [deleteTarget, setDeleteTarget] = useState<(typeof wallets)[number] | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function handleOpen() {
     setSelectedId(activeWalletId);
@@ -77,8 +79,8 @@ export default function WalletPickerModal({
         initial_balance: parseAmount(editBalance) || 0,
         color: editColor,
       });
-      await refreshWallets();
-      await refreshSaldos();
+      const walletsAtualizadas = await refreshWallets();
+      await refreshSaldos(walletsAtualizadas);
       setEditingId(null);
     } catch (e: any) {
       Alert.alert('Erro ao salvar carteira', e.message);
@@ -92,26 +94,22 @@ export default function WalletPickerModal({
       Alert.alert('Modo de Exemplo', 'Exclusão de carteira é simulada no modo de exemplo.');
       return;
     }
-    Alert.alert(
-      `Excluir "${w.name}"?`,
-      'Os lançamentos dessa carteira passam para a carteira principal. Essa ação não pode ser desfeita.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteWallet(w.id);
-              await refreshWallets();
-              await refreshSaldos();
-            } catch (e: any) {
-              Alert.alert('Erro ao excluir carteira', e.message);
-            }
-          },
-        },
-      ]
-    );
+    setDeleteTarget(w);
+  }
+
+  async function confirmarExclusaoCarteira() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteWallet(deleteTarget.id);
+      const walletsAtualizadas = await refreshWallets();
+      await refreshSaldos(walletsAtualizadas);
+      setDeleteTarget(null);
+    } catch (e: any) {
+      Alert.alert('Erro ao excluir carteira', e.message);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function handleSelect() {
@@ -140,9 +138,9 @@ export default function WalletPickerModal({
         color: newColor,
         icon: 'wallet-outline',
       });
-      await refreshWallets();
+      const walletsAtualizadas = await refreshWallets();
       // A11: criar carteira altera o consolidado imediatamente, igual à exclusão.
-      await refreshSaldos();
+      await refreshSaldos(walletsAtualizadas);
       setSelectedId(created.id);
       setCreating(false);
       setNewName('');
@@ -155,8 +153,9 @@ export default function WalletPickerModal({
   }
 
   return (
+    <>
     <AppModal
-      visible={visible}
+      visible={visible && !deleteTarget}
       transparent
       onShow={handleOpen}
       onRequestClose={onClose}
@@ -171,8 +170,8 @@ export default function WalletPickerModal({
 
         {/* Toggle de Ocultar Saldo (Conforme print de referência do usuário) */}
         <View style={styles.privacyRow}>
-          <Text style={styles.privacyLabel}>Ocultar saldo da Tela inicial</Text>
-          <ToggleSwitch value={hidden} onToggle={togglePrivacy} label="Ocultar saldo da Tela inicial" />
+          <Text style={styles.privacyLabel}>Ocultar valores no Início do app</Text>
+          <ToggleSwitch value={hidden} onToggle={togglePrivacy} label="Ocultar valores no Início do app" />
         </View>
 
         {/* Lista SEM rolagem própria. Até 19/09/2026 esta era uma segunda
@@ -301,7 +300,7 @@ export default function WalletPickerModal({
                   onPress={() => handleStartEdit(w)}
                   accessibilityRole="button"
                   accessibilityLabel={`Editar carteira ${w.name}`}
-                  style={styles.walletActionBtn}
+                  style={[styles.walletActionBtn, styles.walletActionBtnPrimeiro]}
                 >
                   <Ionicons name="pencil-outline" size={16} color={theme.inkFaint} />
                 </AppPressable>
@@ -389,16 +388,38 @@ export default function WalletPickerModal({
         </View>
 
         {/* Rodapé com Cancelar e Selecionar */}
-        <View style={styles.footer}>
+        {!creating && !editingId && <View style={styles.footer}>
           <AppPressable style={styles.cancelBtn} onPress={onClose}>
             <Text style={styles.cancelBtnText}>Cancelar</Text>
           </AppPressable>
           <AppPressable style={styles.selectBtn} onPress={handleSelect}>
             <Text style={styles.selectBtnText}>Selecionar</Text>
           </AppPressable>
+        </View>}
+      </Sheet>
+    </AppModal>
+    <AppModal visible={!!deleteTarget} transparent onRequestClose={() => setDeleteTarget(null)}>
+      <Sheet centered onClose={() => setDeleteTarget(null)}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Excluir carteira?</Text>
+          <AppPressable onPress={() => setDeleteTarget(null)} hitSlop={12} accessibilityLabel="Fechar">
+            <Ionicons name="close" size={22} color={theme.inkFaint} />
+          </AppPressable>
+        </View>
+        <Text style={styles.confirmText}>
+          {`Os lançamentos de “${deleteTarget?.name ?? ''}” passam para a carteira principal. Esta ação não pode ser desfeita.`}
+        </Text>
+        <View style={styles.createBtnRow}>
+          <AppPressable style={styles.createCancelBtn} onPress={() => setDeleteTarget(null)} disabled={deleting}>
+            <Text style={styles.createCancelText}>Cancelar</Text>
+          </AppPressable>
+          <AppPressable style={styles.deleteConfirmBtn} onPress={confirmarExclusaoCarteira} disabled={deleting}>
+            {deleting ? <ActivityIndicator size="small" color={theme.paper} /> : <Text style={styles.deleteConfirmText}>Excluir carteira</Text>}
+          </AppPressable>
         </View>
       </Sheet>
     </AppModal>
+    </>
   );
 }
 
@@ -424,11 +445,15 @@ const styles = StyleSheet.create({
   privacyLabel: {
     color: theme.inkFaint,
     fontSize: type.corpo, fontFamily: fonts.light },
+  confirmText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.45, fontFamily: fonts.light },
+  deleteConfirmBtn: { flex: 1, borderRadius: radius.md, backgroundColor: theme.danger, paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center' },
+  deleteConfirmText: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
   list: {
     gap: 8,
   },
   walletCard: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: theme.paper,
@@ -444,6 +469,7 @@ const styles = StyleSheet.create({
   },
   walletCardMain: {
     flex: 1,
+    flexBasis: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -451,6 +477,9 @@ const styles = StyleSheet.create({
   walletActionBtn: {
     padding: spacing.xs,
     marginLeft: spacing.xs,
+  },
+  walletActionBtnPrimeiro: {
+    marginLeft: 'auto',
   },
   radioOuter: {
     width: 20,

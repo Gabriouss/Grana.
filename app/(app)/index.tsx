@@ -27,7 +27,8 @@ import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, queuePendingTran
 import { addBill, addTransaction, deleteBudget, deleteInstallmentPurchase, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
-import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals } from '@/lib/goals';
+import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
+import { calcularLevelState } from '@/lib/gamification-infinite';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
 import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, formatMoneyInput } from '@/lib/format';
@@ -121,7 +122,11 @@ export default function InicioScreen() {
   const [homeLayout, setHomeLayout] = useState<HomeBlockConfig[]>([]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nomeExibicao, setNomeExibicao] = useState('');
+  const [nomeExibicao, setNomeExibicao] = useState(() => {
+    const meta = session?.user.user_metadata;
+    const nome = typeof meta?.nome === 'string' ? meta.nome.trim() : '';
+    return nome || session?.user.email?.split('@')[0] || '';
+  });
   const [chartView, setChartView] = useState<ChartView>('in');
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('month');
 
@@ -550,6 +555,7 @@ export default function InicioScreen() {
         load();
       }
       carregarPerfil().then((p) => {
+        if (!p) return;
         setPerfil(p);
         setNomeExibicao(nomeDeExibicao(p));
       });
@@ -1075,9 +1081,31 @@ export default function InicioScreen() {
       triggerToast(delta >= 0 ? 'Guardado no cofrinho (exemplo)' : 'Resgatado do cofrinho (exemplo)');
       return;
     }
-    await depositToGoal(goal, delta);
+    const nivelAntes = calcularLevelState(lifetimeXp).level;
+    const atualizada = await depositToGoal(goal, delta);
+    setGoals((prev) => prev.map((g) => (g.id === goal.id ? atualizada : g)));
     triggerToast(delta >= 0 ? 'Guardado no cofrinho' : 'Resgatado do cofrinho');
-    carregarDadosLeves();
+    try {
+      const xpAtualizado = (await fetchGamification()).lifetime_xp;
+      setLifetimeXp(xpAtualizado);
+      const depois = calcularLevelState(xpAtualizado);
+      if (depois.level > nivelAntes) {
+        triggerToast(`Você chegou ao nível ${depois.level} · ${depois.elo.title}`);
+      }
+    } catch (erro) {
+      if (!isLikelyNetworkError(erro)) console.error('[inicio] atualização de XP após cofrinho falhou', erro);
+    }
+  }
+
+  async function handleUpdateGoal(goal: Goal, input: { title: string; target_amount: number; color: string; icon: string; deadline: string | null }) {
+    if (isDemoMode) {
+      setGoals((prev) => prev.map((g) => (g.id === goal.id ? { ...g, ...input } : g)));
+      triggerToast('Meta atualizada (exemplo)');
+      return;
+    }
+    const atualizada = await updateGoal(goal.id, input);
+    setGoals((prev) => prev.map((g) => (g.id === goal.id ? atualizada : g)));
+    triggerToast('Meta atualizada');
   }
 
   function handleLayoutChange(novo: HomeBlockConfig[]) {
@@ -1139,6 +1167,7 @@ export default function InicioScreen() {
         abrirDepositoGoalId={widgetGoalId}
         onAbrirDepositoConcluido={() => setWidgetGoalId(null)}
         onCreateGoal={handleCreateGoal}
+        onUpdateGoal={handleUpdateGoal}
         onDeposit={handleDepositGoal}
         onDeleteGoal={handleDeleteGoal}
       />
@@ -1288,7 +1317,7 @@ export default function InicioScreen() {
           <Text style={styles.cardLabel}>Orçamento do mês</Text>
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
             <AppPressable onPress={() => setTemplatesModalOpen(true)}>
-              <Text style={styles.templateBudgetText}>Templates</Text>
+              <Text style={styles.templateBudgetText}>Modelos</Text>
             </AppPressable>
             <AppPressable onPress={() => openBudgetModal()}>
               <Text style={styles.addBudgetText}>+ Definir</Text>
@@ -1296,7 +1325,7 @@ export default function InicioScreen() {
           </View>
         </View>
         {budgets.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum orçamento definido. Toque em "+ Definir" ou escolha "Templates".</Text>
+          <Text style={styles.emptyText}>Nenhum orçamento definido. Toque em "+ Definir" ou escolha "Modelos".</Text>
         ) : (
           budgets.map((b) => {
             const spent = byCategory[b.category]?.amount ?? 0;
@@ -1428,6 +1457,7 @@ export default function InicioScreen() {
                     colorido à esquerda, que não depende de leitura. */}
                 <Text style={styles.recentRowSub}>
                   {t.category} · {formatDateLabel(t.occurred_on)}
+                  {t.id.startsWith('local-') ? ' · aguardando envio' : ''}
                 </Text>
               </View>
               <View style={styles.recentAmountRow}>
@@ -1632,8 +1662,8 @@ export default function InicioScreen() {
           Contas, Crédito para Cartões. Cada destino lê o parâmetro e abre o
           próprio formulário — ver o efeito de trava única em cada tela. */}
       <FabButton
-        onAddIncome={() => router.push('/(app)/lancamentos?novoLancamento=in')}
-        onAddExpense={() => router.push('/(app)/lancamentos?novoLancamento=out')}
+        onAddIncome={() => router.push('/(app)/lancamentos?novoLancamento=in&origem=inicio')}
+        onAddExpense={() => router.push('/(app)/lancamentos?novoLancamento=out&origem=inicio')}
         onAddBill={() => router.push('/(app)/contas?novaConta=1')}
         onAddCredit={() => router.push('/(app)/credito?novaCompra=1')}
       />
@@ -1795,6 +1825,7 @@ export default function InicioScreen() {
       {/* Category Picker Modal */}
       <CategoryPickerModal
         visible={catPickerOpen}
+        tipo={catPickerTarget === 'tx' ? txType : 'out'}
         currentCategory={catPickerTarget === 'tx' ? txCategory : catPickerTarget === 'bill' ? billCategory : budgetCategory}
         onClose={() => setCatPickerOpen(false)}
         onSelectCategory={(cat) => {

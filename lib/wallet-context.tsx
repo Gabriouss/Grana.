@@ -21,10 +21,10 @@ type WalletContextType = {
   };
   loading: boolean;
   setActiveWalletId: (id: string) => void;
-  refreshWallets: () => Promise<void>;
+  refreshWallets: () => Promise<Wallet[]>;
   updateSaldosComTransacoes: (txs: Transaction[]) => void;
   /** Recarrega o saldo pelo agregado do banco. Use este no app real. */
-  refreshSaldos: () => Promise<void>;
+  refreshSaldos: (walletsAtualizadas?: Wallet[]) => Promise<void>;
 };
 
 const WalletContext = createContext<WalletContextType | null>(null);
@@ -44,12 +44,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     try {
       if (isDemoMode) {
         setWallets(DEMO_WALLETS);
-        return;
+        return DEMO_WALLETS;
       }
       const list = await fetchWallets();
       setWallets(list);
+      return list;
     } catch (e) {
       console.warn('Erro ao carregar carteiras no contexto:', e);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -118,7 +120,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
    * saldo de ser calculado sobre as 1000 linhas que o PostgREST devolve no
    * máximo. Também é barato o bastante para rodar depois de cada alteração.
    */
-  const refreshSaldos = useCallback(async () => {
+  const refreshSaldos = useCallback(async (walletsAtualizadas?: Wallet[]) => {
     if (isDemoMode) return;
     /* A Home pode pintar e carregar transações antes de o SessionProvider
        terminar `getSession()`. Chamar a RPC nesse intervalo usa a chave anon
@@ -142,10 +144,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
        vazia. Sair agora não perde a atualização: `wallets` está nas dependências
        do callback, então a identidade dele muda quando a lista chega e o efeito
        roda de novo. */
-    if (wallets.length === 0) return;
+    const baseWallets = walletsAtualizadas ?? wallets;
+    if (baseWallets.length === 0) return;
     try {
       const agregado = await fetchSaldosPorCarteira();
-      setSaldos(calcularSaldosComAgregado(wallets, agregado));
+      setSaldos(calcularSaldosComAgregado(baseWallets, agregado));
     } catch (e) {
       console.warn('Erro ao carregar saldos:', e);
     }

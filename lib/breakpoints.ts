@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Platform, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius, spacing } from './theme';
 import { useKeyboardHeight } from './teclado';
 
@@ -142,6 +143,7 @@ export function classificarLargura(largura: number): ClasseLargura {
 export function useSheetFlutuante() {
   const { ehCompacto, altura } = useBreakpoint();
   const alturaTeclado = useKeyboardHeight();
+  const insets = useSafeAreaInsets();
 
   /* Altura REAL que o fundo escurecido recebeu, medida em vez de calculada.
      É a peça que torna isto independente de aparelho e de sistema. */
@@ -153,20 +155,25 @@ export function useSheetFlutuante() {
   }, []);
 
   const { recuoInferior, tetoDeAltura } = medidasDeJanelaFlutuante(altura, alturaMedida, alturaTeclado);
+  const margemSuperior = Math.max(insets.top, spacing.md);
 
   return {
     flutuante: true,
     /** Ligue no `onLayout` do fundo escurecido. Sem isto a conta cai no
         caminho conservador e reserva o teclado por conta própria. */
     aoMedirFundo,
-    scrimStyle: { ...sheetFlutuanteScrim, paddingBottom: recuoInferior },
+    scrimStyle: {
+      ...sheetFlutuanteScrim,
+      paddingTop: margemSuperior,
+      paddingBottom: recuoInferior,
+    },
     sheetStyle: {
       ...(ehCompacto ? sheetFlutuantePainelCompacto : sheetFlutuantePainel),
       /* Numérico de propósito: precisa vencer qualquer `maxHeight` em
          porcentagem que o painel traga do próprio estilo, e porcentagem seria
          resolvida contra a tela inteira, que é o que se quer parar de usar
          como referência. */
-      maxHeight: tetoDeAltura,
+      maxHeight: Math.max(tetoDeAltura - margemSuperior, 0),
     },
   };
 }

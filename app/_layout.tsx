@@ -6,7 +6,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
 import { WidgetPrivacyProvider } from '@/lib/widget-privacy-context';
@@ -113,7 +113,7 @@ export default function RootLayout() {
   return (
     <>
       {identidadeWeb}
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <SessionProvider>
           {/* Dentro do SessionProvider porque a leitura de `feature_flags`
               passa por RLS e exige sessão; por fora do resto porque qualquer

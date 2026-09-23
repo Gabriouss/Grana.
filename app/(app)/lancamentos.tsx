@@ -107,6 +107,7 @@ const LinhaLancamento = memo(function LinhaLancamento({
         <Text style={styles.rowSub}>
           {item.category}
           {item.recurring ? ' · recorrente' : ''} · {formatDateLabel(item.occurred_on)}
+          {item.id.startsWith('local-') ? ' · aguardando envio' : ''}
         </Text>
       </View>
       <View style={styles.rowAmountWrap}>
@@ -125,7 +126,8 @@ const LinhaLancamento = memo(function LinhaLancamento({
 
 export default function LancamentosScreen() {
   const router = useRouter();
-  const { novoLancamento } = useLocalSearchParams<{ novoLancamento?: string }>();
+  const { novoLancamento, origem } = useLocalSearchParams<{ novoLancamento?: string; origem?: string }>();
+  const voltarAoInicioDepoisDeSalvar = useRef(false);
   const { paddingConteudoComFab } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
   const { isDemoMode } = useDemo();
@@ -329,8 +331,9 @@ export default function LancamentosScreen() {
      formulário do "+" desta tela, já com o tipo escolhido lá. Ver o hook para
      as duas armadilhas que ele resolve. */
   useAberturaPorParametro(novoLancamento === 'in' || novoLancamento === 'out', () => {
+    voltarAoInicioDepoisDeSalvar.current = origem === 'inicio';
     openNewModal(novoLancamento as TxType);
-    router.setParams({ novoLancamento: undefined });
+    router.setParams({ novoLancamento: undefined, origem: undefined });
   });
 
   // Sem um detector de conectividade nativo, reagir a "voltar ao app" (ex: depois
@@ -447,6 +450,10 @@ export default function LancamentosScreen() {
         triggerToast('Lançamento salvo (exemplo)');
       }
       setModalOpen(false);
+      if (!editingTxId && voltarAoInicioDepoisDeSalvar.current) {
+        voltarAoInicioDepoisDeSalvar.current = false;
+        router.replace('/(app)/');
+      }
       return;
     }
 
@@ -498,7 +505,12 @@ export default function LancamentosScreen() {
         }
       }
       setModalOpen(false);
-      load();
+      if (!editingTxId && voltarAoInicioDepoisDeSalvar.current) {
+        voltarAoInicioDepoisDeSalvar.current = false;
+        router.replace('/(app)/');
+      } else {
+        load();
+      }
     } catch (e: any) {
       Alert.alert('Erro ao salvar', e.message);
     } finally {
@@ -686,7 +698,7 @@ export default function LancamentosScreen() {
             <Text style={styles.monthSummaryLabel}>Entradas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: theme.up }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-                {loading ? '—' : formatBRL(monthIn, '+')}
+                {loading ? '—' : formatBRL(monthIn, monthIn === 0 ? undefined : '+')}
               </Text>
             </PrivacyValue>
           </View>
@@ -695,7 +707,7 @@ export default function LancamentosScreen() {
             <Text style={styles.monthSummaryLabel}>Saídas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: theme.down }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-                {loading ? '—' : formatBRL(monthOut, '−')}
+                {loading ? '—' : formatBRL(monthOut, monthOut === 0 ? undefined : '−')}
               </Text>
             </PrivacyValue>
           </View>
@@ -709,7 +721,7 @@ export default function LancamentosScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.75}
               >
-                {loading ? '—' : formatBRL(Math.abs(monthBalance), monthBalance >= 0 ? '+' : '−')}
+                {loading ? '—' : formatBRL(Math.abs(monthBalance), monthBalance === 0 ? undefined : monthBalance > 0 ? '+' : '−')}
               </Text>
             </PrivacyValue>
           </View>

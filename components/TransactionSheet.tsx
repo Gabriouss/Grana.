@@ -418,6 +418,7 @@ export default function TransactionSheet({
 
       <CategoryPickerModal
         visible={catPickerOpen}
+        tipo={type}
         currentCategory={category}
         onSelectCategory={({ name, color }) => {
           setCategory(name);

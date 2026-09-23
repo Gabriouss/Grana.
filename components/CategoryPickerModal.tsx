@@ -13,7 +13,7 @@ import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, PALETTE_30, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
-import type { Category } from '@/lib/types';
+import type { Category, TxType } from '@/lib/types';
 import { addCategory, deleteCategory, fetchCategories, seedDefaultCategories, updateCategory } from '@/lib/data';
 import { isLikelyNetworkError } from '@/lib/cache-de-tela';
 import { useSheetFlutuante } from '@/lib/breakpoints';
@@ -32,6 +32,7 @@ export default function CategoryPickerModal({
   onClose,
   onSelectCategory,
   mode = 'pick',
+  tipo,
 }: {
   visible: boolean;
   /** Só faz sentido no modo "pick" — o modo "manage" não tem uma categoria "atual" pra destacar. */
@@ -42,6 +43,10 @@ export default function CategoryPickerModal({
   /** "pick": tocar numa linha seleciona e fecha (uso normal, dentro de um formulário).
       "manage": lista só de consulta/edição, sem seleção — usado em Perfil → Categorias. */
   mode?: 'pick' | 'manage';
+  /** No formulário, evita oferecer categoria de entrada para uma saída e
+      vice-versa. Categorias criadas pela pessoa continuam disponíveis nos
+      dois tipos, pois não têm natureza fixa. */
+  tipo?: TxType;
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
@@ -64,6 +69,13 @@ export default function CategoryPickerModal({
      com is_default. Como a semeadura roda a cada abertura e casa pelo nome,
      padrão só troca de cor: sem lixeira e sem renomear (achados G10 e G10b). */
   const items: ListItem[] = custom.map((c) => ({ id: c.id, name: c.name, color: c.color, isDefault: c.is_default }));
+  const itemsVisiveis = mode === 'manage' || !tipo
+    ? items
+    : items.filter((item) => {
+        if (!item.isDefault) return true;
+        if (tipo === 'in') return ['Salário', 'Investimentos', 'Outros'].includes(item.name);
+        return item.name !== 'Salário';
+      });
 
   function resetForms() {
     setCreatingNew(false);
@@ -214,13 +226,18 @@ export default function CategoryPickerModal({
             </AppPressable>
           </View>
 
+          {!loading && itemsVisiveis.length > 6 && (
+            <Text style={styles.scrollHint}>Role para ver todas as categorias.</Text>
+          )}
+
           <ScrollView
             style={[styles.catList, mode === 'manage' && styles.catListTall]}
             contentContainerStyle={{ gap: 2 }}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
           >
             {loading && <ActivityIndicator color={theme.ink} style={{ marginVertical: 10 }} />}
-            {items.map((item) => {
+            {itemsVisiveis.map((item) => {
               const selected = item.name === currentCategory;
               const isEditing = editingId === item.id;
               return (
@@ -373,6 +390,7 @@ const styles = StyleSheet.create({
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  scrollHint: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   catList: { maxHeight: 280 },
   catListTall: { maxHeight: 420 },
   /* Contêiner de layout — não é Pressable. Ver o comentário no ponto de uso

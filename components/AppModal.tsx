@@ -13,7 +13,13 @@ import { useReducedMotion } from '@/lib/motion';
  * um lugar onde não estava. Com o padrão aqui, todas entram igual, e uma tela
  * só passa `animationType` quando de fato quiser divergir.
  */
-export default function AppModal({ animationType = 'fade', hardwareAccelerated, ...props }: ModalProps) {
+export default function AppModal({
+  animationType = 'fade',
+  hardwareAccelerated,
+  navigationBarTranslucent,
+  statusBarTranslucent,
+  ...props
+}: ModalProps) {
   const reduzirMovimento = useReducedMotion();
 
   return (
@@ -21,6 +27,8 @@ export default function AppModal({ animationType = 'fade', hardwareAccelerated, 
       {...props}
       animationType={reduzirMovimento ? 'none' : animationType}
       hardwareAccelerated={hardwareAccelerated ?? Platform.OS === 'android'}
+      navigationBarTranslucent={navigationBarTranslucent ?? Platform.OS === 'android'}
+      statusBarTranslucent={statusBarTranslucent ?? Platform.OS === 'android'}
     />
   );
 }

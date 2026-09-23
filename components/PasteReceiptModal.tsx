@@ -166,7 +166,7 @@ export default function PasteReceiptModal({
 
     const val = parseAmount(amount);
     if (!val || val <= 0) {
-      Alert.alert('Valor inválido', 'Informe um valor válido em R$.');
+      Alert.alert('Valor inválido', 'Informe um valor maior que zero.');
       return;
     }
     if (!walletId) {
@@ -260,7 +260,7 @@ export default function PasteReceiptModal({
                 accessibilityLabel="Texto do comprovante"
                 maxLength={LIMITS.pastedText}
                 style={styles.textArea}
-                placeholder="Ex: Você transferiu R$ 45,90 para Restaurante Sabor da Terra..."
+                placeholder="Ex.: Você transferiu R$ 45,90 para Restaurante Sabor da Terra..."
                 placeholderTextColor={theme.inkFaint}
                 multiline
                 numberOfLines={5}
@@ -356,13 +356,17 @@ export default function PasteReceiptModal({
 
               <AppPressable
                 onPress={() => {
-                  // Volta pra textarea editável — a pessoa vai VER o texto ali,
-                  // então o eco acima perde a razão de existir a partir daqui.
+                  if (origemVoz) {
+                    resetState();
+                    onClose();
+                    return;
+                  }
+                  // Volta pra textarea editável — a pessoa vai VER o texto ali.
                   setOrigemVoz(false);
                   setRecognized(false);
                 }}
               >
-                <Text style={styles.backLink}>Colar outro texto</Text>
+                <Text style={styles.backLink}>{origemVoz ? 'Gravar de novo' : 'Colar outro texto'}</Text>
               </AppPressable>
             </>
           )}

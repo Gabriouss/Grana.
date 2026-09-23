@@ -19,8 +19,16 @@ function carregar(file, deps = {}) {
 }
 const h = carregar('lib/heuristics.ts');
 const server = carregar('supabase/functions/_shared/finance-command.ts');
-const { precisaRevisarValorVoz, valorSeguroParaRevisaoVoz } = carregar('lib/voz-confiabilidade.ts');
+const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorSeguroParaRevisaoVoz } = carregar('lib/voz-confiabilidade.ts');
 let checks = 0;
+for (const frase of ['', 'Obrigado por assistir', 'Acesse o site www.exemplo.com', 'Todos os direitos reservados 2026']) {
+  assert.equal(transcricaoPareceLancamentoVoz(frase), false, 'ruído não vira lançamento: ' + frase);
+  checks++;
+}
+for (const frase of ['Mercado 18,99', 'Almoço 20 reais']) {
+  assert.equal(transcricaoPareceLancamentoVoz(frase), true, 'fala financeira válida: ' + frase);
+  checks++;
+}
 for (const reais of [0, 1, 5, 10, 18, 34, 57, 99, 100, 143, 999, 1000, 1899, 12000, 999999]) {
   for (let centavos = 0; centavos < 100; centavos++) {
     if (reais === 0 && centavos === 0) continue;
@@ -92,7 +100,7 @@ carregar('lib/widget-voz-task.ts', {
   '@/modules/grana-voice-widget': { definirEstado() {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: texto }) },
   './heuristics': h,
-  './voz-confiabilidade': { precisaRevisarValorVoz },
+  './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz },
   './data': { fetchCategories: async () => [], fetchCreditCards: async () => [{ id: 'c6', name: 'C6', bank: 'C6', wallet_id: 'pessoal' }] },
   './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
   './voice-operations': { registrarOperacaoVoz: async (_id, _source, payload) => { writes.push(payload); return { status: 'committed', ids: ['tx'], operationId: 'op' }; } },

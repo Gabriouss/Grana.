@@ -1272,7 +1272,7 @@ export default function CreditoScreen() {
                  mostrar um valor e o painel de baixo mostrar outro pro mesmo
                  cartão); os demais mostram a fatura REAL em aberto agora. */
               const cicloDoCard =
-                selectedCardId === card.id
+                selectedCardId === 'all' || selectedCardId === card.id
                   ? { year: viewYear, month: viewMonth }
                   : mesFaturaDoLancamento(todayISO(), card.closing_day);
               const cicloAtualDoCard = mesFaturaDoLancamento(todayISO(), card.closing_day);
@@ -1311,6 +1311,7 @@ export default function CreditoScreen() {
                       hapticTap();
                       setSelectedCardId((curr) => (curr === card.id ? 'all' : card.id));
                     }}
+                    accessibilityState={{ selected: selectedCardId === card.id }}
                     accessibilityHint="Filtra os lançamentos por este cartão. Toque de novo para ver todos."
                     onLongPress={() => {
                       setSelectedCardForAction(card);
@@ -1325,7 +1326,7 @@ export default function CreditoScreen() {
                     <View style={styles.cardTopRow}>
                       <View style={[styles.bankDot, { backgroundColor: card.color }]} />
                       <View style={styles.cardIdentidade}>
-                        <Text style={styles.cardBankName} numberOfLines={1}>{card.name}</Text>
+                        <Text style={styles.cardBankName} numberOfLines={2}>{card.name}</Text>
                         {card.last_digits ? (
                           <Text style={styles.cardDigits}>{`•••• ${card.last_digits}`}</Text>
                         ) : null}
@@ -1523,7 +1524,7 @@ export default function CreditoScreen() {
             accessibilityLabel="Nome do cartão"
             maxLength={LIMITS.description}
             style={styles.input}
-            placeholder="Nome do cartão (ex: Nubank Black)"
+            placeholder="Nome do cartão (ex.: Nubank Black)"
             placeholderTextColor={theme.inkFaint}
             value={cardName}
             onChangeText={setCardName}
@@ -1641,7 +1642,7 @@ export default function CreditoScreen() {
 
       <ItemActionSheet
         visible={cardActionSheetOpen}
-        title="Cartão"
+        title={selectedCardForAction ? selectedCardForAction.name : 'Cartão'}
         onClose={() => setCardActionSheetOpen(false)}
         onEdit={() => {
           if (selectedCardForAction) abrirEdicaoCartao(selectedCardForAction);
@@ -1777,9 +1778,9 @@ const CreditTransactionRow = memo(function CreditTransactionRow({
       onLongPress={onLongPress}
     >
       <View style={styles.txInfo}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.icone }}>
+        <View style={styles.txDescricaoLinha}>
           <Text style={styles.txDesc}>{tx.description}</Text>
-          {tx.installment_total && tx.installment_total > 1 ? (
+          {tx.installment_total && tx.installment_total > 1 && !/\(\d+\/\d+\)\s*$/.test(tx.description) ? (
             <View style={styles.instBadge}>
               <Text style={styles.instBadgeText}>{`${tx.installment_current || 1}/${tx.installment_total}x`}</Text>
             </View>
@@ -1838,6 +1839,8 @@ const styles = StyleSheet.create({
   },
   creditCardSelected: {
     backgroundColor: theme.paperSelected,
+    borderColor: theme.accent2,
+    borderWidth: 2.5,
   },
   botaoOpcoesFlutuanteCartao: { position: 'absolute', top: spacing.md, right: spacing.md, pointerEvents: 'box-none' },
   cardTopRow: {
@@ -2155,17 +2158,26 @@ const styles = StyleSheet.create({
   txRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
-  txInfo: { flex: 1, gap: spacing.fio },
+  txInfo: { flex: 1, minWidth: 0, gap: spacing.fio },
+  txDescricaoLinha: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: spacing.icone,
+    rowGap: spacing.fio,
+  },
   txDesc: {
     fontFamily: fonts.regular,
     fontSize: type.apoio,
     lineHeight: lh(type.apoio, 'corpo'),
     color: theme.ink,
+    flexShrink: 1,
   },
   instBadge: {
     backgroundColor: 'rgba(174,255,227,0.12)',
@@ -2190,6 +2202,7 @@ const styles = StyleSheet.create({
     fontSize: type.apoio,
     lineHeight: lh(type.apoio, 'valor'),
     color: theme.down,
+    flexShrink: 0,
   },
   sheetHeader: {
     flexDirection: 'row',

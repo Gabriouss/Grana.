@@ -1,11 +1,11 @@
 <resources>
-  <string name="grana_voice_widget_rotulo">Grana. — lançar por voz</string>
+  <string name="grana_voice_widget_rotulo">Grana. Lançar por voz</string>
   <string name="grana_voice_widget_descricao">Toque e fale o gasto. O Grana. lança sem abrir o app.</string>
   <string name="grana_voice_ocioso">Lançar por voz</string>
   <string name="grana_voice_ouvindo">Ouvindo…</string>
   <string name="grana_voice_processando">Lançando…</string>
-  <string name="grana_voice_atencao">Toque p/ ativar</string>
-  <string name="grana_voice_atencao_desc">Lançamento por voz precisa de uma permissão que só a tela pede. Toque para abrir o Grana.</string>
+  <string name="grana_voice_atencao">Toque para revisar</string>
+  <string name="grana_voice_atencao_desc">O lançamento por voz precisa da sua atenção. Toque para abrir o Grana.</string>
   <string name="grana_voice_canal">Lançamento por voz</string>
   <string name="grana_voice_gravando_titulo">Grana. está ouvindo</string>
   <string name="grana_voice_gravando_texto">Fale o lançamento. Toque no widget para encerrar.</string>
@@ -15,12 +15,12 @@
   <string name="grana_widget_sem_dados">Ainda sem dados</string>
   <string name="grana_widget_abrir_atualizar">Abra o Grana. para atualizar</string>
 
-  <string name="grana_livre_widget_rotulo">Grana. — Livre para gastar</string>
+  <string name="grana_livre_widget_rotulo">Grana. Livre para gastar</string>
   <string name="grana_livre_widget_descricao">Veja quanto está livre por dia e no mês.</string>
   <string name="grana_livre_titulo">Livre para gastar</string>
   <string name="grana_livre_sem_saldo">Sem saldo disponível</string>
 
-  <string name="grana_central_widget_rotulo">Grana. — Central de lançamento</string>
+  <string name="grana_central_widget_rotulo">Grana. Central de lançamento</string>
   <string name="grana_central_widget_descricao">Abra rapidamente Entrada, Débito e Pix, Crédito ou Boleto.</string>
   <string name="grana_central_titulo">Novo lançamento</string>
   <string name="grana_central_entrada">Entrada</string>
@@ -30,7 +30,7 @@
 
   <!-- Widget de contas do mês (antes "Próximo compromisso", que mostrava uma
        conta só). Lista as atrasadas de qualquer mês e as pendentes do mês. -->
-  <string name="grana_compromisso_widget_rotulo">Grana. — Contas do mês</string>
+  <string name="grana_compromisso_widget_rotulo">Grana. Contas do mês</string>
   <string name="grana_compromisso_widget_descricao">Veja as contas do mês e as que estão atrasadas.</string>
   <string name="grana_compromisso_titulo">Contas do mês</string>
   <string name="grana_compromisso_proximo">A VENCER</string>
@@ -48,7 +48,7 @@
     <item quantity="other">+%d contas</item>
   </plurals>
 
-  <string name="grana_cofrinho_widget_rotulo">Grana. — Cofrinho</string>
+  <string name="grana_cofrinho_widget_rotulo">Grana. Cofrinho</string>
   <string name="grana_cofrinho_widget_descricao">Acompanhe uma meta e abra o depósito com um toque.</string>
   <string name="grana_cofrinho_titulo">Cofrinho em foco</string>
   <string name="grana_cofrinho_criar">Crie seu primeiro cofrinho</string>

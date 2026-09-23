@@ -55,7 +55,7 @@ export default function GoalDepositModal({
     <AppModal visible={visible} transparent onRequestClose={onClose}>
       <Sheet onClose={onClose}>
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>{goal.title}</Text>
+          <Text style={styles.title} numberOfLines={2}>{goal.title}</Text>
           <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
@@ -103,7 +103,10 @@ export default function GoalDepositModal({
           disabled={saving || !parsed || parsed <= 0 || excedeResgate}
         >
           {saving ? (
-            <ActivityIndicator color={theme.paper} />
+            <View style={styles.savingRow}>
+              <ActivityIndicator color={theme.paper} />
+              <Text style={styles.saveBtnText}>Atualizando cofrinho…</Text>
+            </View>
           ) : (
             <Text style={styles.saveBtnText}>{modo === 'guardar' ? 'Guardar no cofrinho' : 'Resgatar para o saldo'}</Text>
           )}
@@ -130,4 +133,5 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  savingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
 });

@@ -22,8 +22,8 @@ const DOCUMENTOS = [
  * Renderizador único pra Termos, Privacidade e Exclusão de dados — ver
  * lib/legal-content.ts.
  *
- * Quem abre esta tela raramente vem de dentro do app: é o revisor da Meta
- * validando o app do WhatsApp, é o formulário de checkout do provedor de pagamento, é
+ * Quem abre esta tela raramente vem de dentro do app: é o formulário de
+ * checkout do provedor de pagamento, é
  * alguém buscando "grana política de privacidade" no Google. Por isso o
  * cabeçalho mostra a marca (ninguém que chegou por link direto tem outro
  * jeito de saber que está no lugar certo) e o corpo usa `colunaLeitura`, não
@@ -92,6 +92,19 @@ export default function LegalDocScreen({ doc }: Props) {
 
   return (
     <View style={styles.pagina}>
+      <View style={[styles.cabecalhoFixo, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={[colunaLeitura, styles.cabecalho]}>
+          <AppPressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            hitSlop={12}
+            style={styles.voltar}
+          >
+            <Ionicons name="chevron-back" size={18} color={theme.inkSoft} />
+            <Text style={styles.voltarTexto}>Voltar</Text>
+          </AppPressable>
+          <BrandLogotype width={92} />
+        </View>
+      </View>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
@@ -137,18 +150,6 @@ export default function LegalDocScreen({ doc }: Props) {
               no eixo certo, sem mexer no layout interno do cartão. */}
           <View style={styles.trilhaCentral}>
           <View style={[colunaLeitura, styles.coluna]}>
-            <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.lg }]}>
-              <AppPressable
-                onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-                hitSlop={12}
-                style={styles.voltar}
-              >
-                <Ionicons name="chevron-back" size={18} color={theme.inkSoft} />
-                <Text style={styles.voltarTexto}>Voltar</Text>
-              </AppPressable>
-              <BrandLogotype width={92} />
-            </View>
-
             {/* Quem chegou por link direto (checkout, Meta) não tem como voltar pro
                 Perfil pra ver os outros dois documentos — esta linha é o único
                 jeito de ir de um pro outro sem sair do site. */}
@@ -248,6 +249,14 @@ const styles = StyleSheet.create({
   corpoPaginaComSumario: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xl },
   trilhaCentral: { flex: 1, alignItems: 'center' },
   coluna: { flex: 1 },
+  cabecalhoFixo: {
+    backgroundColor: theme.paper,
+    paddingHorizontal: spacing.xl,
+    zIndex: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.rule,
+    ...(Platform.OS === 'android' ? { elevation: 4 } : null),
+  },
 
   sumario: {
     width: LARGURA_SUMARIO,
@@ -269,10 +278,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: spacing.lg,
-    marginBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.rule,
+    width: '100%',
+    paddingBottom: spacing.sm,
   },
   voltar: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   voltarTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },

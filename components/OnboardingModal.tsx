@@ -49,11 +49,11 @@ import { useFlags } from '@/lib/feature-flags';
  */
 
 const OPCOES_ORGANIZACAO: { key: NivelOrganizacao; label: string; desc: string }[] = [
-  { key: 'feeling', label: 'No feeling', desc: 'Não anoto quase nada e costumo levar susto no fim do mês.' },
+  { key: 'feeling', label: 'No improviso', desc: 'Não anoto quase nada e costumo levar susto no fim do mês.' },
   { key: 'tentativas', label: 'Tentativas frustradas', desc: 'Já tentei planilhas ou bloquinhos, mas acabo abandonando.' },
   { key: 'buscando-metodo', label: 'Em busca de método', desc: 'Anoto o básico, mas sinto que falta clareza e previsibilidade.' },
-  { key: 'estruturado', label: 'Consciente & Estruturado', desc: 'Já tenho controle das contas e quero praticidade e análises melhores.' },
-  { key: 'renda-variavel', label: 'Autônomo / Renda Variável', desc: 'Minha renda oscila todo mês e preciso de segurança e previsibilidade.' },
+  { key: 'estruturado', label: 'Consciente e estruturado', desc: 'Já tenho controle das contas e quero praticidade e análises melhores.' },
+  { key: 'renda-variavel', label: 'Autônomo com renda variável', desc: 'Minha renda oscila todo mês e preciso de segurança e previsibilidade.' },
 ];
 
 const OPCOES_FOCO: { key: Foco; label: string; desc: string }[] = [
@@ -430,7 +430,7 @@ export default function OnboardingModal({
         focusable
         style={[
           styles.container,
-          { paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg + keyboardHeight },
+          { paddingTop: insets.top + spacing.md, paddingBottom: Math.max(insets.bottom, spacing.lg) + keyboardHeight },
         ]}
       >
         <View style={styles.header}>
@@ -754,7 +754,7 @@ export default function OnboardingModal({
             </Text>
           </AppPressable>
           {step <= 6 && (
-            <AppPressable onPress={handleSkip}>
+            <AppPressable onPress={handleSkip} style={styles.skipBtn}>
               <Text style={styles.skipBtnText}>{soDiagnostico ? 'Cancelar' : 'Pular por agora'}</Text>
             </AppPressable>
           )}
@@ -910,5 +910,6 @@ const styles = StyleSheet.create({
   primaryBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 15, alignItems: 'center' },
   primaryBtnHover: { opacity: 0.88 },
   primaryBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
-  skipBtnText: { color: theme.inkFaint, fontSize: type.apoio, textAlign: 'center', paddingVertical: 6, fontFamily: fonts.light },
+  skipBtn: { minHeight: touchTarget, alignItems: 'center', justifyContent: 'center' },
+  skipBtnText: { color: theme.inkSoft, fontSize: type.apoio, textAlign: 'center', paddingVertical: 6, fontFamily: fonts.regular },
 });

@@ -153,16 +153,33 @@ export default function GraficosScreen() {
         ? filteredTransactions
         : filteredTransactions.filter((t) => t.type === targetType);
 
-    /* 'anos' e 'meses' mostram exatamente a mesma linha contínua — pedido
-       explícito do autor: "Ano a Ano" não agrega mais por ano, os dois
-       botões levam ao mesmo lugar (a distinção que existia antes, um ponto
-       por ano, foi removida de propósito). */
-    let mesesLabels: { anoMes: string; label: string }[];
+    let grupos: { chave: string; label: string; inclui: (tx: Transaction) => boolean }[];
 
     if (granularidade === 'periodo') {
-      mesesLabels = mesesEntre(periodoInicio, periodoFim);
+      grupos = mesesEntre(periodoInicio, periodoFim).map(({ anoMes, label }) => ({
+        chave: anoMes,
+        label,
+        inclui: (tx) => tx.occurred_on.startsWith(anoMes),
+      }));
     } else if (txsToUse.length === 0) {
-      mesesLabels = [];
+      grupos = [];
+    } else if (granularidade === 'anos') {
+      const anos = txsToUse.map((t) => Number(t.occurred_on.slice(0, 4))).sort((a, b) => a - b);
+      const primeiro = anos[0];
+      const ultimo = anos[anos.length - 1];
+      const passo = ultimo - primeiro + 1 > 24 ? Math.ceil((ultimo - primeiro + 1) / 24) : 1;
+      grupos = [];
+      for (let ano = primeiro; ano <= ultimo; ano += passo) {
+        const limite = Math.min(ano + passo - 1, ultimo);
+        grupos.push({
+          chave: String(ano),
+          label: passo === 1 ? String(ano) : `${ano} a ${limite}`,
+          inclui: (tx) => {
+            const anoTx = Number(tx.occurred_on.slice(0, 4));
+            return anoTx >= ano && anoTx <= limite;
+          },
+        });
+      }
     } else {
       /* TODOS os meses com lançamento, do primeiro ao mais recente — não
          mais um teto fixo dos "últimos 6 meses" a partir de hoje, que
@@ -174,11 +191,15 @@ export default function GraficosScreen() {
       const anosMeses = txsToUse.map((t) => t.occurred_on.slice(0, 7)).sort();
       const primeiro = anosMeses[0];
       const ultimo = anosMeses[anosMeses.length - 1];
-      mesesLabels = mesesEntre(`${primeiro}-01`, `${ultimo}-01`);
+      grupos = mesesEntre(`${primeiro}-01`, `${ultimo}-01`).map(({ anoMes, label }) => ({
+        chave: anoMes,
+        label,
+        inclui: (tx) => tx.occurred_on.startsWith(anoMes),
+      }));
     }
 
-    return mesesLabels.map(({ anoMes, label }) => {
-      const txsMes = txsToUse.filter((t) => t.occurred_on.startsWith(anoMes));
+    return grupos.map(({ chave, label, inclui }) => {
+      const txsMes = txsToUse.filter(inclui);
       const catMap: Record<string, { amount: number; color: string }> = {};
 
       txsMes.forEach((t) => {
@@ -200,7 +221,7 @@ export default function GraficosScreen() {
 
       return {
         label,
-        sublabel: anoMes,
+        sublabel: chave,
         total,
         segments,
       };
@@ -240,6 +261,10 @@ export default function GraficosScreen() {
   const totalPeriodo = useMemo(() => {
     return pieSlices.reduce((acc, s) => acc + s.value, 0);
   }, [pieSlices]);
+  const totaisGerais = useMemo(() => ({
+    entradas: filteredTransactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount || 0), 0),
+    saidas: filteredTransactions.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount || 0), 0),
+  }), [filteredTransactions]);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
@@ -347,12 +372,27 @@ export default function GraficosScreen() {
               ? 'Total gasto no período'
               : tabModo === 'renda'
               ? 'Total recebido no período'
-              : 'Movimentação no período'}
+              : 'Entradas + saídas no período'}
           </Text>
           {transactions.length === 0 && (loading || erroCarga) ? (
             <Text style={[styles.summaryLabel, styles.summaryPendente]}>
               {loading ? 'Carregando…' : 'Indisponível agora'}
             </Text>
+          ) : tabModo === 'geral' ? (
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryGridLabel}>Entradas</Text>
+                <PrivacyValue><Text style={[styles.summaryGridValue, { color: theme.up }]}>R$ {formatMoney(totaisGerais.entradas)}</Text></PrivacyValue>
+              </View>
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryGridLabel}>Saídas</Text>
+                <PrivacyValue><Text style={[styles.summaryGridValue, { color: theme.down }]}>R$ {formatMoney(totaisGerais.saidas)}</Text></PrivacyValue>
+              </View>
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryGridLabel}>Saldo</Text>
+                <PrivacyValue><Text style={styles.summaryGridValue}>R$ {formatMoney(totaisGerais.entradas - totaisGerais.saidas)}</Text></PrivacyValue>
+              </View>
+            </View>
           ) : (
             <PrivacyValue>
               <Text style={styles.summaryValue}>R$ {formatMoney(totalPeriodo)}</Text>
@@ -363,7 +403,7 @@ export default function GraficosScreen() {
         {/* Distribuição por Categorias (Donut) */}
         {pieSlices.length > 0 && (
           <View style={styles.donutCard}>
-            <Text style={styles.donutTitle}>Composição por Categorias</Text>
+            <Text style={styles.donutTitle}>Composição por categorias</Text>
             <View style={[styles.donutRow, ehCompacto && styles.donutRowCompacta, !ehCompacto && styles.donutRowLargo]}>
               <PieChart data={pieSlices} size={tamanhoDonut} />
               <View style={[styles.legendCol, ehCompacto && styles.legendColCompacta, !ehCompacto && styles.legendColLargo]}>
@@ -431,6 +471,10 @@ const styles = StyleSheet.create({
     padding: screenRhythm.padding,
     gap: screenRhythm.gap,
   },
+  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.sm },
+  summaryGridItem: { flexGrow: 1, minWidth: 120, gap: spacing.fio },
+  summaryGridLabel: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  summaryGridValue: { color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo, 'valor'), fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   headerBtn: {
     padding: spacing.icone,
     borderRadius: radius.sm,

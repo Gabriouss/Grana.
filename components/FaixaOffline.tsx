@@ -32,7 +32,7 @@ export function useMotivoOffline(): MotivoOffline | null {
 
 /** Texto único da faixa, para Lançamentos e as outras telas dizerem o mesmo. */
 export function textoDaFaixaOffline(motivo: MotivoOffline | null): string {
-  if (motivo === 'lento') return 'Conexão lenta, mostrando dados salvos no aparelho';
+  if (motivo === 'lento') return 'Atualização pendente, mostrando dados salvos no aparelho';
   /* A rede funcionou e o servidor recusou. Culpar a conexão aqui mandaria a
      pessoa mexer no Wi-Fi por causa de um defeito nosso. */
   if (motivo === 'falha') return 'Não consegui atualizar, mostrando dados salvos no aparelho';
@@ -49,8 +49,18 @@ export function textoDaFaixaOffline(motivo: MotivoOffline | null): string {
  */
 export function useRecarregarAoChegarDadoNovo(recarregar: () => void) {
   const ref = useRef(recarregar);
+  const motivo = useMotivoOffline();
   ref.current = recarregar;
   useEffect(() => assinarDadoNovo(() => ref.current()), []);
+  /* Uma falha imediata de rede não produz uma "resposta atrasada" para o
+     assinante acima. Enquanto a faixa estiver acesa, uma tentativa espaçada
+     garante que a tela se recupere sozinha quando a conexão voltar, sem a
+     pessoa precisar trocar de aba ou reiniciar o app. */
+  useEffect(() => {
+    if (!motivo) return;
+    const timer = setInterval(() => ref.current(), 15_000);
+    return () => clearInterval(timer);
+  }, [motivo]);
 }
 
 export default function FaixaOffline({ estilo }: { estilo?: object }) {
