@@ -277,9 +277,16 @@ export default function TransactionSheet({
 
           <AppPressable style={[styles.fieldRow, styles.categoryRow]} onPress={() => setCatPickerOpen(true)} accessibilityRole="button" accessibilityLabel={`Categoria: ${category}`}>
             <Text style={styles.fieldKey}>Categoria</Text>
-            <View style={[styles.fieldVal, styles.categoryValue]}>
-              <View style={[styles.dot, { backgroundColor: catColor }]} />
-              <Text style={styles.fieldValText}>{category}</Text>
+            {/* O nome recebe TODA a sobra da linha, alinhado à direita, em vez
+                de uma caixa do tamanho exato do texto. Com a caixa exata, no
+                Android a última letra quebrava para uma segunda linha que a
+                altura cortava: "Alimentaçã" com espaço sobrando (S10). O ponto
+                de cor vai dentro do mesmo texto para continuar colado ao nome
+                e crescer junto com a fonte do sistema. */}
+            <View style={styles.categoryValue}>
+              <Text style={[styles.fieldValText, styles.categoryText]}>
+                <Text style={{ color: catColor }}>●</Text>{'\u2002'}{category}
+              </Text>
               <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
             </View>
           </AppPressable>
@@ -486,12 +493,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
-  categoryRow: { alignItems: 'stretch' },
-  categoryValue: { maxWidth: '100%', flexShrink: 0 },
+  categoryRow: { flexWrap: 'nowrap', gap: spacing.md },
+  categoryValue: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  categoryText: { flexGrow: 1, textAlign: 'right' },
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, flexShrink: 1 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
   dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   dateQuickChip: {
     flex: 1,
