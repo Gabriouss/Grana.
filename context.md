@@ -10104,3 +10104,38 @@ erro mostrava "[object Object]".
 - **Não verificado:** a tela de feedback no navegador ou no emulador depois da
   correção. A falha de origem (coluna `feedbacks.public_use_consent`
   ausente, se for o caso em produção) é outro achado e não foi mexida aqui.
+
+## 23/09/2026 — M1 — Crédito por ciclo, etapa (a): aritmética do ciclo
+
+Primeira etapa da implementação autorizada do Crédito por ciclo de fatura
+(desenho em `E:\Grana-temporarios\credito-ciclo\forge.md`, fora do repo).
+
+- **Fechamento e vencimento no dia 29-31 respeitam o fim do mês.**
+  `lib/faturaCiclo.ts` e `supabase/functions/_shared/fatura-ciclo.ts`: dia
+  efetivo = min(dia configurado, último dia do mês). Antes, com fechamento 31,
+  a fatura de fevereiro aparecia como "31 jan a 2 mar" e a janela de consulta
+  do Granabô transbordava para março. Muda de fatura só a compra feita no
+  último dia de um mês curto, em cartão com fechamento 29-31 (ex.: fechamento
+  30, compra em 28/02 vai para março).
+- **`cicloRelativo` e `deslocamentoEntre`** entram em `lib/faturaCiclo.ts`
+  (portado do Deno), para a navegação por ciclo das próximas etapas.
+- **O Deno ganhou `dataVencimentoFatura`** e o rótulo da janela passou de
+  "20 ago – 19 set" para "20 ago a 19 set", igual ao app.
+- **`__tests__/paridade-fatura-ciclo.ts`** (novo, no `test:ci`): roda os dois
+  módulos reais sobre todo fechamento 1-31, todo dia de 2026 a 2028 e
+  deslocamento -3..+3; 108.066 checagens. Trava também a invariante "toda data
+  cai na janela da própria fatura, e janelas vizinhas encostam". Mutação:
+  tirar o limite só do app derruba 722; só do Deno, 715.
+- `corpus-fatura-ciclo.ts`: dois casos antigos registravam o transbordo como
+  esperado e foram corrigidos; 8 casos novos (fevereiro, bissexto, vencimento
+  31, virada de ano). 25/25.
+- **Produção NÃO muda com este commit:** o `assistente-financeiro` publicado
+  ainda usa a janela antiga. O deploy dele depende de autorização (regra 11),
+  e nenhuma build do app deve sair antes desse deploy, para a janela do
+  servidor bater com a da tela.
+- Verificação: `tsc --noEmit` limpo; `deno check` na função e no `_shared`
+  limpo (deno 2.9.6 via `npx deno`); `test:ci` verde, exceto a guarda
+  "migration atual de voz com carteiras permanece idêntica ao baseline do
+  schema" (`corpus-schema-guardas.ts`), que falha pelo `supabase/schema.sql`
+  em edição pelo Harbor, ainda sem commit, e não por este commit. Os testes
+  depois dela no `test:parser` foram rodados à mão e passaram.

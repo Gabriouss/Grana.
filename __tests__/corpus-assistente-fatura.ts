@@ -18,7 +18,7 @@ checar(
 );
 const janela = janelaFatura(2026, 8, 20);
 checar('fatura de setembro começa em 20/08 e termina em 19/09', janela.inicio === '2026-08-20' && janela.fim === '2026-09-19', JSON.stringify(janela));
-checar('rótulo da janela deixa o ciclo explícito', janela.rotulo === '20 ago – 19 set', janela.rotulo);
+checar('rótulo da janela deixa o ciclo explícito', janela.rotulo === '20 ago a 19 set', janela.rotulo);
 
 console.log(`\n${total - falhas}/${total} checagens do assistente por ciclo passaram — ${falhas} falhas`);
 if (falhas) process.exitCode = 1;

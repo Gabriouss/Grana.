@@ -26,17 +26,33 @@ export function deslocamentoPedido(mensagem: string): number | undefined {
   return anterior === atual ? undefined : anterior ? -1 : 0;
 }
 
+function diasNoMes(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+/* Fechamento ou vencimento no dia 29-31 cai no último dia do mês curto, como
+ * nos bancos. Mesma regra de `lib/faturaCiclo.ts`; a paridade das duas é
+ * travada por `__tests__/paridade-fatura-ciclo.ts`. */
+function diaEfetivo(year: number, month: number, dia: number): number {
+  return Math.min(dia, diasNoMes(year, month));
+}
+
+function dataDeFechamento(year: number, month: number, closingDay: number): Date {
+  const ref = new Date(year, month, 1);
+  return new Date(ref.getFullYear(), ref.getMonth(), diaEfetivo(ref.getFullYear(), ref.getMonth(), closingDay));
+}
+
 export function mesFaturaDoLancamento(occurredOn: string, closingDay: number): CicloFatura {
   const [year, month, day] = occurredOn.split('-').map(Number);
-  const month0 = day < closingDay ? month - 1 : month;
-  const fechamento = new Date(year, month0, 1);
+  const month0 = month - 1;
+  const fechamento = new Date(year, day < diaEfetivo(year, month0, closingDay) ? month0 : month0 + 1, 1);
   return { year: fechamento.getFullYear(), month: fechamento.getMonth() };
 }
 
 /** Retorna fim inclusivo, pronto para `.gte(...).lte(...)` no Supabase. */
 export function janelaFatura(year: number, month: number, closingDay: number): JanelaFatura {
-  const inicioDate = new Date(year, month - 1, closingDay);
-  const fimDate = new Date(year, month, closingDay);
+  const inicioDate = dataDeFechamento(year, month - 1, closingDay);
+  const fimDate = dataDeFechamento(year, month, closingDay);
   fimDate.setDate(fimDate.getDate() - 1);
 
   const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -46,5 +62,11 @@ export function janelaFatura(year: number, month: number, closingDay: number): J
   const inicioLabel = `${inicioDate.getDate()} ${meses[inicioDate.getMonth()]}${anoDiferente ? ` ${inicioDate.getFullYear()}` : ''}`;
   const fimLabel = `${fimDate.getDate()} ${meses[fimDate.getMonth()]}${anoDiferente ? ` ${fimDate.getFullYear()}` : ''}`;
 
-  return { inicio, fim, rotulo: `${inicioLabel} – ${fimLabel}` };
+  return { inicio, fim, rotulo: `${inicioLabel} a ${fimLabel}` };
+}
+
+/** Vencimento da fatura que fecha em (`year`, `month`). Mesma regra do app. */
+export function dataVencimentoFatura(year: number, month: number, dueDay: number, closingDay: number): Date {
+  const ref = new Date(year, dueDay >= closingDay ? month : month + 1, 1);
+  return new Date(ref.getFullYear(), ref.getMonth(), diaEfetivo(ref.getFullYear(), ref.getMonth(), dueDay));
 }

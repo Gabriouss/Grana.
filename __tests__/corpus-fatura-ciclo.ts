@@ -59,12 +59,29 @@ checarCiclo('fechamento dia 1: compra no fim do mês também é a próxima fatur
   month: 6, // julho
 });
 
-/* ---------- fechamento no dia 31, mês com menos dias (abril tem 30) ---------- */
+/* ---------- fechamento no dia 31, mês com menos dias (abril tem 30) ----------
+   Desde 23/09/2026 o fechamento 31 cai no ÚLTIMO dia do mês curto, como nos
+   bancos. Antes, abril "não fechava" e a janela transbordava para maio. */
 
 checarCiclo(
-  'fechamento dia 31: compra dia 30 de abril (< 31) fica em abril mesmo o mês não tendo dia 31',
+  'fechamento dia 31: abril fecha dia 30, e a compra do dia 30 já é da fatura de maio',
   mesFaturaDoLancamento('2026-04-30', 31),
+  { year: 2026, month: 4 } // maio
+);
+checarCiclo(
+  'fechamento dia 31: compra dia 29 de abril fica em abril',
+  mesFaturaDoLancamento('2026-04-29', 31),
   { year: 2026, month: 3 } // abril
+);
+checarCiclo(
+  'fechamento dia 30: fevereiro fecha dia 28, e a compra do dia 28 vai para março',
+  mesFaturaDoLancamento('2027-02-28', 30),
+  { year: 2027, month: 2 }
+);
+checarCiclo(
+  'fechamento dia 29: fevereiro bissexto fecha dia 29, a compra do dia 28 fica em fevereiro',
+  mesFaturaDoLancamento('2028-02-28', 29),
+  { year: 2028, month: 1 }
 );
 checarCiclo(
   'fechamento dia 31: compra dia 1 de maio (< 31) fica em maio',
@@ -90,10 +107,16 @@ checarCiclo(
 checar('rótulo mostra o intervalo real, não o mês civil', rotuloPeriodoFatura(2026, 8, 20), '20 ago a 19 set');
 checar('rótulo explicita o ano quando o ciclo o atravessa', rotuloPeriodoFatura(2027, 0, 20), '20 dez 2026 a 19 jan 2027');
 {
-  // Fechamento dia 31 com mês anterior de 30 dias (abril): a janela usa a
-  // data corrigida pelo próprio JS (1º de maio), não um 31/abril inexistente.
+  // Fechamento dia 31 com mês anterior de 30 dias (abril): abril fecha no
+  // dia 30, então a fatura de maio começa em 30/04.
   const j = janelaFatura(2026, 4, 31); // fatura que fecha em maio/2026 (mês0=4)
-  checar('janela: início rola pro 1º de maio quando abril não tem dia 31', j.inicio, '2026-05-01');
+  checar('janela: início é o último dia de abril quando abril não tem dia 31', j.inicio, '2026-04-30');
+  const fev = janelaFatura(2027, 1, 31);
+  checar('janela fev/2027 fecha 31: início 31/jan', fev.inicio, '2027-01-31');
+  checar('janela fev/2027 fecha 31: fim no fechamento de 28/fev', fev.fim, '2027-02-28');
+  checar('rótulo fev/2027 fecha 31 não transborda para março', rotuloPeriodoFatura(2027, 1, 31), '31 jan a 27 fev');
+  checar('rótulo fev/2028 (bissexto) fecha 31', rotuloPeriodoFatura(2028, 1, 31), '31 jan a 28 fev');
+  checar('rótulo de virada de ano', rotuloPeriodoFatura(2027, 0, 20), '20 dez 2026 a 19 jan 2027');
   checar('janela: fim é 31/mai', j.fim, '2026-05-31');
 }
 
