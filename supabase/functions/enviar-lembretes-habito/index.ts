@@ -6,6 +6,7 @@ import {
   chegouHorario,
   chegouHorarioAlmoco,
   contextoDasDatas,
+  diasDeAtividade,
   ehDiaUtil,
   lancouNoDia,
   momentoNaZona,
@@ -102,14 +103,39 @@ async function todosOsTokensAtivos(): Promise<PushToken[]> {
   }
 }
 
-async function contextosDosUsuarios(userIds: string[]): Promise<Map<string, string[]>> {
-  if (!userIds.length) return new Map();
-  const { data, error } = await supabase.rpc('contextos_push_habito', { p_user_ids: userIds });
-  if (error) throw error;
-  return new Map((data ?? []).map((item: { usuario_id: string; datas_recentes: string[] }) => [
-    item.usuario_id,
-    item.datas_recentes ?? [],
-  ]));
+type LinhaAtividade = { user_id: string; created_at: string | null; occurred_on: string | null };
+
+/** Janela de leitura da atividade. A sequência maior que isso sai truncada no
+    texto do lembrete; o RPC antigo (`contextos_push_habito`) usava 45 dias. */
+const DIAS_DE_ATIVIDADE = 60;
+
+/**
+ * Lançamentos recentes de cada pessoa, pelo dia em que foram REGISTRADOS.
+ * Substitui o RPC `contextos_push_habito`, que agrega por `occurred_on` e não
+ * tem como saber o fuso de cada aparelho: o dia de atividade é o `created_at`
+ * convertido no fuso do token, o critério do app (`lib/contexto-lembrete.ts`).
+ */
+async function atividadeDosUsuarios(userIds: string[], agora: Date): Promise<Map<string, LinhaAtividade[]>> {
+  const porUsuario = new Map<string, LinhaAtividade[]>();
+  if (!userIds.length) return porUsuario;
+  const desde = new Date(agora.getTime() - DIAS_DE_ATIVIDADE * 86_400_000).toISOString();
+  for (let inicio = 0; ; inicio += 1000) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('user_id,created_at,occurred_on')
+      .in('user_id', userIds)
+      .gte('created_at', desde)
+      .order('id')
+      .range(inicio, inicio + 999);
+    if (error) throw error;
+    const pagina = (data ?? []) as LinhaAtividade[];
+    for (const linha of pagina) {
+      const lista = porUsuario.get(linha.user_id) ?? [];
+      lista.push(linha);
+      porUsuario.set(linha.user_id, lista);
+    }
+    if (pagina.length < 1000) return porUsuario;
+  }
 }
 
 /** Quais janelas já venceram pra este token, nesta passada do cron — nunca
@@ -132,14 +158,15 @@ async function criarEntregasDoDia(tokens: PushToken[], agora: Date): Promise<num
   if (!vencidos.length) return 0;
 
   const userIds = [...new Set(vencidos.map(({ token }) => token.user_id))];
-  const contextos = await contextosDosUsuarios(userIds);
-  /* Quem já lançou hoje não recebe o lembrete de hoje: é a mesma regra do
-     agendamento local (`jaLancouHoje` em lib/notification-schedule.ts), que o
+  const atividade = await atividadeDosUsuarios(userIds, agora);
+  const diasDo = (token: PushToken) => diasDeAtividade(atividade.get(token.user_id) ?? [], token.timezone);
+  /* Quem já registrou hoje não recebe o lembrete de hoje: é a mesma regra do
+     agendamento local (`jaLancouHoje` em lib/contexto-lembrete.ts), que o
      app desliga quando o push remoto está ativo e deixa a decisão aqui. */
-  const aLembrar = vencidos.filter(({ token, momento }) => !lancouNoDia(contextos.get(token.user_id) ?? [], momento.data));
+  const aLembrar = vencidos.filter(({ token, momento }) => !lancouNoDia(diasDo(token), momento.data));
   if (!aLembrar.length) return 0;
   const linhas = aLembrar.map(({ token, momento, janela }) => {
-    const contexto = contextoDasDatas(contextos.get(token.user_id) ?? [], momento.data);
+    const contexto = contextoDasDatas(diasDo(token), momento.data);
     const mensagem = selecionarMensagem(
       { ...contexto, diaSemana: momento.diaSemana },
       token.mensagens_recentes ?? [],
@@ -233,14 +260,14 @@ async function enviarPendentes(tokens: PushToken[], agora: Date): Promise<number
   /* Uma retentativa pode sair horas depois da criação; se a pessoa lançou
      nesse meio-tempo, o lembrete já não é verdade. */
   const donos = [...new Set(reivindicadas.map((e) => tokensPorId.get(e.expo_push_token)?.user_id).filter((id): id is string => !!id))];
-  const contextos = await contextosDosUsuarios(donos);
+  const atividade = await atividadeDosUsuarios(donos, agora);
   const pendentes: Entrega[] = [];
   for (const entrega of reivindicadas) {
     const token = tokensPorId.get(entrega.expo_push_token);
     const momento = token ? momentoNaZona(agora, token.timezone) : null;
     const motivo = !token || momento?.data !== entrega.data_local
       ? 'expired_local_date'
-      : lancouNoDia(contextos.get(token.user_id) ?? [], entrega.data_local)
+      : lancouNoDia(diasDeAtividade(atividade.get(token.user_id) ?? [], token.timezone), entrega.data_local)
         ? 'already_logged_today'
         : null;
     if (!motivo) {

@@ -56,7 +56,30 @@ function numeroDoDia(data: string): number {
   return Math.floor(Date.UTC(ano, mes - 1, dia) / 86400000);
 }
 
-export function contextoDasDatas(datas: string[], hoje: string): { streak: number; diasInativo: number } {
+/**
+ * Dias de ATIVIDADE: o dia em que a pessoa registrou (`created_at`) no fuso
+ * dela, e `occurred_on` só para linha sem `created_at`. É o critério do app
+ * (`lib/contexto-lembrete.ts` e a sequência em `lib/gamification.ts`, desde
+ * `22333aa`). A data do lançamento não diz quando a pessoa usou o app: um
+ * gasto de ontem registrado hoje é atividade de hoje, e uma parcela que cai
+ * hoje, criada semanas atrás, não é.
+ */
+export function diasDeAtividade(
+  linhas: Array<{ created_at?: string | null; occurred_on?: string | null }>,
+  timezone: string,
+): string[] {
+  const dias = new Set<string>();
+  for (const t of linhas) {
+    const dia = t.created_at ? momentoNaZona(new Date(t.created_at), timezone)?.data : t.occurred_on;
+    if (dia) dias.add(dia);
+  }
+  return [...dias];
+}
+
+export function contextoDasDatas(datasTodas: string[], hoje: string): { streak: number; diasInativo: number } {
+  /* Data no futuro não é atividade: sem este corte, uma parcela futura
+     virava "lançou há 0 dias" e a mensagem de retomada nunca saía. */
+  const datas = datasTodas.filter((d) => d <= hoje);
   const dias = new Set(datas);
   const hojeNumero = numeroDoDia(hoje);
   const numeros = datas.map(numeroDoDia).filter(Number.isFinite);
@@ -73,8 +96,8 @@ export function contextoDasDatas(datas: string[], hoje: string): { streak: numbe
   return { streak, diasInativo };
 }
 
-/** Houve lançamento com `occurred_on` neste dia local? O mesmo critério do
-    `jaLancouHoje` do app (`t.occurred_on === todayISO()`). */
+/** A pessoa registrou algo neste dia local? `datas` são dias de atividade
+    (`diasDeAtividade`), o mesmo critério do `jaLancouHoje` do app. */
 export function lancouNoDia(datas: string[], dia: string): boolean {
   return datas.includes(dia);
 }

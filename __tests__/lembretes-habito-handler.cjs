@@ -67,6 +67,9 @@ function criarBanco(estado) {
       eq(c, v) { q.filtros.push(['eq', c, v]); return api; },
       is(c, v) { q.filtros.push(['is', c, v]); return api; },
       lte(c, v) { q.filtros.push(['lte', c, v]); return api; },
+      gte(c, v) { q.filtros.push(['gte', c, v]); return api; },
+      in(c, v) { q.filtros.push(['in', c, v]); return api; },
+      order() { return api; },
       range() { return api; },
       limit() { return api; },
       upsert(linhas, opcoes) { q.acao = 'upsert'; q.dados = linhas; q.opcoes = opcoes; return api; },
@@ -80,6 +83,12 @@ function criarBanco(estado) {
     operacoes.push(q);
     const id = q.filtros.find(([, c]) => c === 'id')?.[2];
     if (q.tabela === 'push_tokens' && q.acao === 'select') return { data: estado.tokens, error: null };
+    if (q.tabela === 'transactions' && q.acao === 'select') {
+      const ids = q.filtros.find(([op, c]) => op === 'in' && c === 'user_id')?.[2] ?? [];
+      const desde = q.filtros.find(([op, c]) => op === 'gte' && c === 'created_at')?.[2];
+      ok(desde, 'a atividade é lida pela data de registro (created_at)');
+      return { data: (estado.transacoes ?? []).filter((t) => ids.includes(t.user_id) && t.created_at >= desde), error: null };
+    }
     if (q.tabela === 'push_habit_deliveries' && q.acao === 'select') return { data: [], error: null };
     if (q.tabela === 'push_habit_deliveries' && q.acao === 'upsert') {
       for (const linha of q.dados) {
@@ -102,7 +111,7 @@ function criarBanco(estado) {
       from: construtor,
       rpc: async (nome) => {
         operacoes.push({ rpc: nome });
-        if (nome === 'contextos_push_habito') return { data: estado.contextos ?? [], error: null };
+        if (nome === 'contextos_push_habito') throw new Error('o handler não usa mais o RPC por occurred_on');
         if (nome === 'reivindicar_entregas_push_habito') {
           const pendentes = [...estado.entregas.values()].filter((e) => e.status === 'pending');
           for (const e of pendentes) { e.status = 'sending'; e.tentativas += 1; }
@@ -155,6 +164,9 @@ function montarHandler(estado, agoraIso, sorteio = Math.random) {
 }
 
 const ontem = (d) => new Date(Date.parse(d + 'T12:00:00Z') - 86400000).toISOString().slice(0, 10);
+/* Lançamento com `occurred_on` = dia e registrado (`created_at`) ao meio-dia
+   de São Paulo do dia `registradoEm` (padrão: o mesmo dia). */
+const reg = (dia, registradoEm = dia) => ({ user_id: 'u1', occurred_on: dia, created_at: `${registradoEm}T15:00:00.000Z` });
 
 const token = (extra = {}) => ({
   expo_push_token: 'ExponentPushToken[a]', user_id: 'u1', plataforma: 'android',
@@ -165,7 +177,7 @@ const token = (extra = {}) => ({
 async function principal() {
   /* Sem o segredo do cron, nada roda. */
   {
-    const estado = { tokens: [token()], entregas: new Map(), contextos: [] };
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [] };
     const m = montarHandler(estado, '2026-09-12T02:31:00Z');
     const r = await m.chamar('errado');
     igual(r.status, 401, 'segredo errado: 401');
@@ -188,7 +200,7 @@ async function principal() {
       const estado = {
         tokens: [token(caso.tz ? { timezone: caso.tz } : {})],
         entregas: new Map(),
-        contextos: [{ usuario_id: 'u1', datas_recentes: [ontem(caso.data)] }],
+        transacoes: [reg(ontem(caso.data))],
       };
       const { chamar, envios } = montarHandler(estado, caso.agora, () => (i + 0.5) / 40);
       const resposta = await chamar();
@@ -215,7 +227,7 @@ async function principal() {
   /* Domingo à noite, a mensagem de domingo PODE sair; na sexta, nunca. */
   const domingo = new Set();
   for (let i = 0; i < 40; i++) {
-    const estado = { tokens: [token()], entregas: new Map(), contextos: [{ usuario_id: 'u1', datas_recentes: ['2026-09-12'] }] };
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [reg('2026-09-12')] };
     await montarHandler(estado, '2026-09-14T00:00:00Z', () => (i + 0.5) / 40).chamar();
     domingo.add([...estado.entregas.values()][0].mensagem_id);
   }
@@ -227,7 +239,7 @@ async function principal() {
      remoto está ativo, e o local respeitava `jaLancouHoje`. Antes desta
      correção o servidor criava e enviava do mesmo jeito. */
   {
-    const estado = { tokens: [token()], entregas: new Map(), contextos: [{ usuario_id: 'u1', datas_recentes: ['2026-09-11', '2026-09-10'] }] };
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [reg('2026-09-11'), reg('2026-09-10')] };
     const m = montarHandler(estado, '2026-09-12T02:31:00Z'); // sexta 23:31 BRT
     const r = await (await m.chamar()).json();
     igual(estado.entregas.size, 0, 'já lançou hoje: nenhuma entrega criada');
@@ -236,14 +248,14 @@ async function principal() {
   }
   {
     /* Lançamento com data de ONTEM não conta como hoje. */
-    const estado = { tokens: [token()], entregas: new Map(), contextos: [{ usuario_id: 'u1', datas_recentes: ['2026-09-10'] }] };
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [reg('2026-09-10')] };
     await montarHandler(estado, '2026-09-12T02:31:00Z').chamar();
     ok(estado.entregas.size > 0, 'lançou só ontem: o lembrete de hoje é criado');
   }
   {
     /* Retentativa: criada ao meio-dia, a pessoa lança às 12:10, a próxima
        tentativa não sai. */
-    const estado = { tokens: [token()], entregas: new Map(), contextos: [{ usuario_id: 'u1', datas_recentes: ['2026-09-11'] }] };
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [reg('2026-09-11')] };
     estado.entregas.set('x', {
       id: 'retry', expo_push_token: 'ExponentPushToken[a]', data_local: '2026-09-11', janela: 'almoco',
       mensagem_id: 'almoco-1', titulo: 'Almoço', corpo: '...', status: 'pending', tentativas: 1,
@@ -257,9 +269,39 @@ async function principal() {
     igual(m.envios.filter((e) => e.url.endsWith('/push/send')).length, 0, 'nenhum envio ao Expo');
   }
 
+  /* Dia de atividade é o dia do REGISTRO (created_at no fuso do token), o
+     critério do app desde 22333aa. */
+  {
+    /* Gasto de ontem registrado hoje: hoje houve atividade, nada é enviado. */
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [reg('2026-09-10', '2026-09-11')] };
+    await montarHandler(estado, '2026-09-12T02:31:00Z').chamar(); // sexta 23:31 BRT
+    igual(estado.entregas.size, 0, 'gasto de ontem registrado hoje silencia o lembrete de hoje');
+  }
+  {
+    /* Parcela que cai hoje, criada 20 dias atrás: não é atividade de hoje. */
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [reg('2026-09-11', '2026-08-22'), reg('2026-09-10')] };
+    await montarHandler(estado, '2026-09-12T02:31:00Z').chamar();
+    ok(estado.entregas.size > 0, 'parcela de hoje criada antes não silencia o lembrete');
+  }
+  {
+    /* Registro às 22:30 de São Paulo já é o dia seguinte em UTC: conta no
+       dia local. */
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [{ user_id: 'u1', occurred_on: '2026-09-11', created_at: '2026-09-12T01:30:00.000Z' }] };
+    await montarHandler(estado, '2026-09-12T02:31:00Z').chamar();
+    igual(estado.entregas.size, 0, 'registro às 22:30 BRT (UTC já no dia seguinte) conta como hoje');
+  }
+  {
+    /* Última atividade há 3 dias e uma parcela com data futura: a retomada
+       (saudade) tem de sair; com Math.max sobre datas futuras, não saía. */
+    const estado = { tokens: [token({ almoco_ativo: false })], entregas: new Map(), transacoes: [reg('2026-12-11', '2026-09-08'), reg('2026-09-08')] };
+    await montarHandler(estado, '2026-09-12T02:31:00Z', () => 0).chamar();
+    const msg = catalogo.MENSAGENS.find((m) => m.id === [...estado.entregas.values()][0]?.mensagem_id);
+    igual(msg?.categoria, 'saudade', 'data futura não esconde a inatividade: sai a retomada');
+  }
+
   /* Idempotência: a mesma passada repetida não cria nem envia de novo. */
   {
-    const estado = { tokens: [token()], entregas: new Map(), contextos: [] };
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [] };
     const a = montarHandler(estado, '2026-09-12T02:31:00Z');
     await a.chamar();
     const primeira = [...estado.entregas.values()].map((e) => ({ ...e }));
@@ -273,7 +315,7 @@ async function principal() {
   /* Entrega que ficou para trás não sai no dia seguinte: criada na sexta,
      reivindicada no sábado, vira `expired_local_date` sem envio. */
   {
-    const estado = { tokens: [token({ almoco_ativo: false })], entregas: new Map(), contextos: [] };
+    const estado = { tokens: [token({ almoco_ativo: false })], entregas: new Map(), transacoes: [] };
     estado.entregas.set('x', {
       id: 'velha', expo_push_token: 'ExponentPushToken[a]', data_local: '2026-09-11', janela: 'noite',
       mensagem_id: 'finde-1', titulo: 'Sexta', corpo: '...', status: 'pending', tentativas: 1,
@@ -289,7 +331,7 @@ async function principal() {
 
   /* Antes do horário escolhido, nada nasce. */
   {
-    const estado = { tokens: [token({ almoco_ativo: false })], entregas: new Map(), contextos: [] };
+    const estado = { tokens: [token({ almoco_ativo: false })], entregas: new Map(), transacoes: [] };
     await montarHandler(estado, '2026-09-11T23:29:00Z').chamar(); // 20:29 BRT
     igual(estado.entregas.size, 0, 'às 20:29 com lembrete às 20:30, nenhuma entrega');
   }
@@ -298,7 +340,7 @@ async function principal() {
   {
     const estado = {
       tokens: [token({ expo_push_token: 'ExponentPushToken[ruim]', timezone: 'Nada/Inexistente' }), token()],
-      entregas: new Map(), contextos: [],
+      entregas: new Map(), transacoes: [],
     };
     const r = await (await montarHandler(estado, '2026-09-12T02:31:00Z').chamar()).json();
     ok(r.ok && [...estado.entregas.values()].every((e) => e.expo_push_token === 'ExponentPushToken[a]'),
