@@ -10259,3 +10259,32 @@ coordenacao e decisoes do autor`. Desenho e relatórios dos agentes em
   permissão ampla virou um gatilho local da M1, fora do git
   (`.claude/modo-livre.cjs`). A pasta `E:\GranaPonto\android\`, resto de um
   `expo prebuild` do Sentinel, espera o OK do autor para ser apagada.
+
+## 23/09/2026 — M1 — Crédito por ciclo: migration de voz dividida (`7553788`) e APK local abandonado
+
+Relatórios do Harbor e do maestro, registrados pelo Ledger. Substitui o item
+"em andamento" da entrada anterior.
+
+- **`7553788` (Harbor), nada aplicado.** A `20260923230000` do `190fac7`
+  juntava duas mudanças com riscos diferentes para o APK instalado, que apaga
+  a fala local ao receber erro 22/23. Agora são três:
+  `20260923230000_voz_devolve_carteira.sql` (só devolve o `wallet_id` da voz e
+  do Granabô, aceita cartão legado sem carteira; **pode ir antes do APK
+  novo**), `20260923230300_voz_credito_exige_cartao.sql` (o mesmo corpo mais
+  a recusa `23514` / `cartao_obrigatorio`) e
+  `20260923230400_transacao_credito_exige_cartao.sql` (trigger `BEFORE INSERT`
+  em `transactions`, mesmo contrato, para formulário, compra parcelada,
+  importação e cliente antigo; só INSERT, e isenta a continuação de série
+  recorrente cuja cabeça já é órfã). **As duas últimas vão junto com o APK
+  novo, nunca antes.** Guardas 79/79; as cinco migrations executadas em duas
+  fases num Postgres embutido fora do repo, 56/56; `tsc` e `test:ci` verdes.
+  Roteiro de aplicação em `E:\Grana-temporarios\credito-ciclo\harbor-aplicacao.md`.
+- **APK local abandonado pelo autor:** "vai dar muito trampo essa geração
+  aí, né? Deixa, eu vou estar bem partindo do dia 1. Eu vou esperar resetar a
+  cota." O APK dos testers sai pelo EAS a partir de 01/10/2026, com
+  `npm run build:preparar` e pedido explícito na sessão (regras 4 e 5). A
+  investigação do Sentinel (`E:\Grana-temporarios\apk-local\sentinel.md`)
+  fica arquivada. Armadilhas registradas para qualquer build fora do EAS: o
+  `app.json` não tem `android.versionCode` (build local sairia com 1 e o
+  Android recusa instalar por cima); três `EXPO_PUBLIC_` (download e os dois
+  checkouts) só existem no ambiente "preview" do EAS, não no `eas.json`.
