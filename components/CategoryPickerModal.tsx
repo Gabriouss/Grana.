@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -18,6 +18,7 @@ import { addCategory, deleteCategory, fetchCategories, seedDefaultCategories, up
 import { isLikelyNetworkError } from '@/lib/cache-de-tela';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
+import { useReducedMotion } from '@/lib/motion';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
 import AccessibleModalPanel from './AccessibleModalPanel';
@@ -63,6 +64,14 @@ export default function CategoryPickerModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState(PALETTE_30[0]);
+  /* O formulário de edição abre DENTRO da lista rolável, logo abaixo da
+     linha. Sem rolar até ele, numa linha perto do fim da lista a paleta e
+     "Salvar categoria" ficavam abaixo da área visível, por baixo do teclado
+     (T18, 24/09/2026). Guardamos onde cada linha começa para levar a linha
+     editada ao topo da lista assim que o formulário aparece. */
+  const listaRef = useRef<ScrollView>(null);
+  const reduzirMovimento = useReducedMotion();
+  const topoDaLinha = useRef<Record<string, number>>({});
 
   /* Tanto as 8 categorias padrão quanto as criadas pelo usuário vêm do banco
      — as padrão chegam aqui semeadas por seedDefaultCategories(), marcadas
@@ -231,6 +240,7 @@ export default function CategoryPickerModal({
           )}
 
           <ScrollView
+            ref={listaRef}
             style={[styles.catList, mode === 'manage' && styles.catListTall]}
             contentContainerStyle={{ gap: 2 }}
             keyboardShouldPersistTaps="handled"
@@ -241,7 +251,7 @@ export default function CategoryPickerModal({
               const selected = item.name === currentCategory;
               const isEditing = editingId === item.id;
               return (
-                <View key={item.id}>
+                <View key={item.id} onLayout={(e) => { topoDaLinha.current[item.id] = e.nativeEvent.layout.y; }}>
                   {/* Contêiner só de layout (não é Pressable): os botões de
                       editar/excluir precisam ser IRMÃOS do botão de
                       selecionar, não filhos dele. Um <button> HTML não pode
@@ -296,7 +306,10 @@ export default function CategoryPickerModal({
                   </View>
 
                   {isEditing && (
-                    <View style={styles.newForm}>
+                    <View
+                      style={styles.newForm}
+                      onLayout={() => listaRef.current?.scrollTo({ y: topoDaLinha.current[item.id] ?? 0, animated: !reduzirMovimento })}
+                    >
                       {/* Padrão troca só a cor. Renomear mudava o nome da
                           linha, e `seedDefaultCategories`, que casa pelo nome,
                           recriava a original na próxima abertura: a pessoa
@@ -391,7 +404,10 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
   scrollHint: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
-  catList: { maxHeight: 280 },
+  /* flexShrink: com o teclado aberto o painel encolhe (teto de
+     `useSheetFlutuante`), e a lista precisa encolher junto em vez de empurrar
+     o fim do painel para baixo do teclado. */
+  catList: { maxHeight: 280, flexShrink: 1 },
   catListTall: { maxHeight: 420 },
   /* Contêiner de layout — não é Pressable. Ver o comentário no ponto de uso
      sobre por que os botões de ação não podem ser filhos do botão da linha. */
