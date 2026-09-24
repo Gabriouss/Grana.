@@ -96,7 +96,10 @@ export default function ImportarExtratoModal({
     fetchCreditCards()
       .then((lista) => {
         setCartoes(lista);
-        setCartaoId((atual) => atual ?? lista[0]?.id ?? null);
+        /* Só vem escolhido quando não há escolha a fazer (um cartão). Com
+           dois ou mais, a pessoa escolhe: crédito nunca grava num cartão que
+           ninguém escolheu (decisão do autor, 23/09/2026). */
+        setCartaoId((atual) => atual ?? (lista.length === 1 ? lista[0].id : null));
       })
       .catch(() => {});
   }, [visible, isDemoMode]);
@@ -203,6 +206,17 @@ export default function ImportarExtratoModal({
       Alert.alert('Modo de exemplo ativo', 'Desative "Dados de exemplo" no Perfil para importar na sua conta.');
       return;
     }
+    /* Fatura de cartão sem cartão escolhido não entra. Até 23/09/2026 ela
+       entrava como saída comum, e as compras sumiam de qualquer fatura. */
+    if (ehCartao && !cartaoEscolhido) {
+      Alert.alert(
+        'Escolha o cartão',
+        cartoes.length === 0
+          ? 'Cadastre o cartão na aba Crédito para importar esta fatura. Nada foi importado.'
+          : 'Escolha a qual cartão estas compras pertencem. Nada foi importado ainda.'
+      );
+      return;
+    }
     setImportando(true);
     try {
       const prontos = linhas.map((l) => ({
@@ -215,7 +229,8 @@ export default function ImportarExtratoModal({
         fitid: l.fitid,
         // Total is a display-only aggregate. Persist imports in the default
         // wallet instead of creating rows that disappear from a wallet view.
-        wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
+        // Compra no cartão fica na carteira do cartão (P11: a carteira separa os cartões).
+        wallet_id: (ehCartao ? cartaoEscolhido?.wallet_id : null) ?? activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
         ...(ehCartao && cartaoEscolhido
           ? { payment_method: 'credit' as const, card_id: cartaoEscolhido.id }
           : {}),
@@ -341,8 +356,9 @@ export default function ImportarExtratoModal({
                   </Text>
                   {cartoes.length === 0 ? (
                     <Text style={styles.blocoCartaoTexto}>
-                      Você ainda não tem cartão cadastrado, então os lançamentos entram como saídas comuns. Cadastre o
-                      cartão na aba Crédito e importe de novo se quiser que eles contem na fatura.
+                      {veioDeCsv
+                        ? 'Você ainda não tem cartão cadastrado. Cadastre o cartão na aba Crédito para importar esta fatura, ou desmarque a opção de fatura para importar como saídas da conta.'
+                        : 'Você ainda não tem cartão cadastrado. Cadastre o cartão na aba Crédito para importar esta fatura.'}
                     </Text>
                   ) : (
                     <>

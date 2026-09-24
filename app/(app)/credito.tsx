@@ -868,7 +868,7 @@ export default function CreditoScreen() {
     setTxDate(todayISO());
     setTxCategory(CATEGORIES[0].name);
     setTxCatColor(CATEGORIES[0].color);
-    if (walletCards.length > 0) setTxCardId(walletCards[0].id);
+    setTxCardId(cartaoPadraoDoFormulario());
     setNewTxOpen(true);
   }
 
@@ -876,8 +876,8 @@ export default function CreditoScreen() {
      ou Lançamentos, quando ehIntencaoCredito detecta "no crédito"/parcelamento
      e navega pra cá em vez de abrir o modal de colar comprovante). Mesmo
      extrator do modal (valor/descrição/categoria); o cartão é casado pelo
-     nome/banco citado, com o primeiro cartão da carteira como reserva —
-     mesmo critério do bot do WhatsApp (matchCardByText). */
+     nome/banco citado (matchCardByText). Sem cartão casado, o formulário só
+     vem preenchido quando não há escolha (ver cartaoPadraoDoFormulario). */
   function abrirNovaCompraDoTexto(texto: string) {
     operacaoVoz.current = randomUUID();
     setEditingTxId(null);
@@ -910,12 +910,21 @@ export default function CreditoScreen() {
     setNewTxOpen(true);
   }
 
+  /* Crédito nunca grava sem a pessoa escolher o cartão (decisão do autor,
+     23/09/2026). O formulário só vem preenchido quando não há escolha a fazer:
+     o cartão aberto na tela, ou o único da carteira. Com dois ou mais, fica
+     vazio e a folha pede o cartão. Antes caía no primeiro da lista. */
+  function cartaoPadraoDoFormulario(): string {
+    if (selectedCard) return selectedCard.id;
+    return walletCards.length === 1 ? walletCards[0].id : '';
+  }
+
   /* Abrir o sheet já preenchido com um lançamento existente. */
   function abrirEdicaoCompra(tx: Transaction) {
     setEditingTxId(tx.id);
     setTxDesc(tx.description);
     setTxAmount(formatMoney(Number(tx.amount)));
-    setTxCardId(tx.card_id || walletCards[0]?.id || '');
+    setTxCardId(tx.card_id || cartaoPadraoDoFormulario());
     setTxCategory(tx.category);
     setTxCatColor(tx.color);
     setTxDate(tx.occurred_on);
@@ -1718,7 +1727,7 @@ export default function CreditoScreen() {
           occurred_on: txDate,
           recurring: txRecurring,
           installments: Math.max(1, parseInt(txInstallments, 10) || 1),
-          card_id: txCardId || walletCards[0]?.id || null,
+          card_id: txCardId || cartaoPadraoDoFormulario() || null,
           wallet_id: txWalletId || cards.find((c) => c.id === txCardId)?.wallet_id || activeWallet?.id || wallets.find((w) => w.is_default)?.id || wallets[0]?.id || '',
         }}
         onSalvar={handleSaveCreditTx}

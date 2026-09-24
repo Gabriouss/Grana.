@@ -9,6 +9,7 @@ const assert = require('node:assert/strict');
 let handler, completions = [], prompts = [], userId = 'usuario-a', rpcFails = false;
 const memories = [];
 const history = [];
+const rpcs = [];
 const agora = new Date();
 const transacaoNaFaturaAtual = [agora.getFullYear(), agora.getMonth() + 1, agora.getDate()]
   .map((parte, indice) => indice === 0 ? String(parte) : String(parte).padStart(2, '0'))
@@ -21,11 +22,12 @@ class Query {
   gte() { return this; } lte() { return this; }
   delete() { this.remover = true; return this; }
   maybeSingle() { this.single = true; return this; }
-  insert(rows) { history.push(...rows); return Promise.resolve({ error: null }); }
+  insert(rows) { history.push(...[].concat(rows).map((r) => ({ tabela: this.table, ...r }))); return Promise.resolve({ error: null }); }
   then(resolve, reject) {
     let rows = this.table === 'assistant_memory' ? memories : this.table === 'credit_cards'
-      ? [{ user_id: userId, id: 'c6', name: 'C6', closing_day: 15, limit_amount: 1000 }]
+      ? [{ user_id: userId, id: 'c6', name: 'C6', bank: 'c6', wallet_id: 'w', closing_day: 15, limit_amount: 1000 }]
       : this.table === 'categories' ? [{ user_id: userId, name: 'Alimentação' }]
+      : this.table === 'wallets' ? [{ user_id: userId, id: 'w', name: 'Pessoal', is_default: true }]
       : this.table === 'transactions' ? [{ user_id: userId, amount: 130, category: 'Alimentação', card_id: 'c6', occurred_on: transacaoNaFaturaAtual, type: 'out', payment_method: 'credit' }, { user_id: userId, amount: 30, category: 'Alimentação', card_id: 'c6', occurred_on: transacaoNaFaturaAtual, type: 'in', payment_method: 'credit' }] : [];
     rows = rows.filter((r) => this.filters.every((f) => f(r)));
     if (this.remover) rows.forEach((r) => memories.splice(memories.indexOf(r), 1));
@@ -36,6 +38,7 @@ const client = {
   auth: { getUser: async () => ({ data: { user: { id: userId } }, error: null }) },
   from: (table) => new Query(table),
   rpc: async (name, args) => {
+    rpcs.push(name);
     /* Desde 23/09/2026 o handler pergunta primeiro se a conta tem direito de
        acesso, e recusa sem isso. Aqui a conta é boa: a recusa em si tem teste
        próprio em __tests__/granabo-recusa-conta-bloqueada.cjs. */
@@ -84,5 +87,15 @@ async function ask(mensagem, historico = []) {
   await ask('Quanto gastei em Alimentação no C6?');
   assert.match(resultadoDaFerramenta(), /R\$ 100,00/, 'resumoCredito por categoria abate o estorno');
 
-  console.log('OK Granabô: estorno no cartão abate a fatura (resumoCredito, com e sem categoria).');
+  /* Lançar estorno pelo chat não grava (23/09/2026): antes virava entrada na
+     carteira, sem cartão. Mesma decisão da voz. */
+  const rpcsAntes = rpcs.length;
+  completions = [tool('criarLancamento', { texto: 'estorno de 50 do mercado no crédito do C6' }), { content: 'ok' }];
+  await ask('estorno de 50 do mercado no crédito do C6');
+  assert.match(resultadoDaFerramenta(), /estorno/i);
+  assert.match(resultadoDaFerramenta(), /Ainda não registrei nada/);
+  assert.equal(rpcs.slice(rpcsAntes).includes('registrar_operacao_voz'), false, 'nenhuma escrita');
+  assert.equal(history.filter((r) => r.tabela === 'transactions').length, 0, 'nenhum lançamento inserido');
+
+  console.log('OK Granabô: estorno no cartão abate a fatura (resumoCredito, com e sem categoria) e não é lançado pelo chat.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

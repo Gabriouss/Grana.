@@ -24,6 +24,7 @@ async function referenciaLocal<T>(nome: string, buscar: () => Promise<T[]>): Pro
 import { buscarTodasAsPaginas } from './paginacao';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
+import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito } from './transaction-rules';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
@@ -187,6 +188,7 @@ export async function addTransaction(input: {
   installment_total?: number;
   wallet_id?: string | null;
 }): Promise<Transaction> {
+  exigirCartaoNoCredito(input);
   const user_id = await currentUserId();
   const { data, error } = await supabase
     .from('transactions')
@@ -348,6 +350,7 @@ export async function reopenCardInvoice(invoice: CreditCardInvoicePayment): Prom
    política for desabilitada por engano no painel do Supabase, estas chamadas
    continuam escopadas ao dono em vez de virarem IDOR na hora. */
 export async function updateTransaction(id: string, changes: Partial<Transaction>): Promise<void> {
+  if (edicaoTiraCartaoDoCredito(changes)) throw new Error(MENSAGEM_CREDITO_SEM_CARTAO);
   const user_id = await currentUserId();
   const { error } = await supabase.from('transactions').update(changes).eq('id', id).eq('user_id', user_id);
   if (error) throw error;
@@ -388,6 +391,8 @@ export async function addTransactionsBatch(
   onProgress?: (processados: number, total: number) => void
 ): Promise<{ inseridos: number; ignorados: number }> {
   if (inputs.length === 0) return { inseridos: 0, ignorados: 0 };
+  // Nenhuma linha entra se alguma for crédito sem cartão: importar metade de uma fatura seria pior.
+  inputs.forEach(exigirCartaoNoCredito);
   const user_id = await currentUserId();
   const rows = inputs.map((item) => ({ ...item, user_id }));
 
@@ -539,6 +544,7 @@ export async function addInstallmentPurchase(input: {
   card_id?: string | null;
   wallet_id?: string | null;
 }): Promise<Transaction[]> {
+  exigirCartaoNoCredito(input);
   const n = Math.max(2, Math.round(input.installments));
   const { data, error } = await supabase.rpc('adicionar_compra_parcelada', {
     p_description: input.description || 'Compra parcelada',

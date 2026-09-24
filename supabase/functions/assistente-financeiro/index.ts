@@ -40,6 +40,7 @@ import {
   guessCategoryFromText,
   guessTypeFromText,
   limparReferenciaCarteira,
+  limparReferenciaCartao,
   matchCardByText,
   matchWalletByText,
   parseDiaVencimento,
@@ -937,7 +938,12 @@ async function executarCriarLancamento(
     return 'Não identifiquei o valor nessa frase. Me diz quanto foi, em reais (ex.: "almoço 38,50"). ' + AINDA_NAO_REGISTREI;
   }
 
-  const tipo = guessTypeFromText(financeiro);
+  /* Tipo lido SEM o nome do cartão citado: com um cartão chamado "Salário",
+     "uber 18,99 no crédito Salário" saía como ENTRADA e ia para a carteira em
+     vez da fatura (achado de 23/09/2026 junto da guarda de estorno). A voz
+     lê o tipo do mesmo jeito (`textoDaCategoria` em `lib/widget-voz-task.ts`). */
+  const cartaoNaFrase = ehIntencaoCredito(financeiro) ? matchCardByText(financeiro, cartoes) : null;
+  const tipo = guessTypeFromText(cartaoNaFrase ? limparReferenciaCartao(financeiro, cartaoNaFrase) : financeiro);
   /* O nome sai da frase que PEDIU o lançamento, e não da junção dela com a
      resposta a uma pergunta minha — ver `fontesDoNomeDoLancamento`. A resposta
      só batiza quando a frase original dá o nome genérico ("Pagamento"), isto
@@ -952,6 +958,17 @@ async function executarCriarLancamento(
   };
 
   const categoriaExtras = categorias.filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color }));
+  /* Entrada que cita CARTÃO ("estorno de 50 no crédito do C6") é estorno na
+     fatura, e isso ainda não se lança pelo chat nem pela voz. Até 23/09/2026 o
+     chat gravava como entrada na carteira e a voz como COMPRA no cartão: as
+     duas erradas, e diferentes. Agora nenhuma grava. "Recebi um crédito de 500"
+     não cita cartão e continua sendo entrada. Mesma regra em
+     `lib/widget-voz-task.ts` (voz no app e no widget). */
+  if (!ehIntencaoBoleto(financeiro) && tipo === 'in' && ehIntencaoCredito(financeiro)
+    && (matchCardByText(financeiro, cartoes) || /\b(?:cart[aã]o|estorn\w*)\b/iu.test(financeiro))) {
+    return 'Isso parece um estorno no cartão, e estorno ainda não é lançado por aqui. Peça para lançar pela importação da fatura do cartão ou confirmar se foi um dinheiro recebido na conta. ' + AINDA_NAO_REGISTREI;
+  }
+
   const categoria = guessCategoryFromText(financeiro, categoriaExtras);
   /* 'Outros' é o que o interpretador devolve quando não reconheceu nada — o
      mesmo sinal que o widget usa para mandar à revisão. Só aceita 'Outros' se

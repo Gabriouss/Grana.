@@ -41,6 +41,25 @@ export type ResultadoOperacaoVoz = {
   replayed: boolean;
 };
 
+/**
+ * Recusa do servidor para crédito sem cartão (contrato do Harbor, 23/09/2026:
+ * `registrar_operacao_voz` levanta 23514 com hint `cartao_obrigatorio`).
+ * O cliente já não manda crédito sem cartão; isto é a rede de proteção. A
+ * fala vai para REVISÃO, onde a pessoa escolhe o cartão e o reenvio sai com
+ * outro request_id (o payload muda, e o id antigo seria um replay).
+ */
+export function ehRecusaCartaoObrigatorio(erro: unknown): boolean {
+  const e = erro as { code?: unknown; hint?: unknown } | null;
+  return String(e?.code ?? '') === '23514' && e?.hint === 'cartao_obrigatorio';
+}
+
+/** Texto para a revisão quando a fila local não guardou a transcrição. */
+function textoParaRevisao(item: { transcricao?: string; payload: PayloadOperacaoVoz }): string {
+  if (item.transcricao) return item.transcricao;
+  const valor = String(item.payload.amount).replace('.', ',');
+  return `${item.payload.description} ${valor} reais no crédito`;
+}
+
 export async function listarOperacoesVozLocais(): Promise<{ requestId: string; payload: PayloadOperacaoVoz }[]> {
   const userId = await idDoUsuarioLocal();
   if (!userId) return [];
@@ -63,7 +82,8 @@ function textoObrigatorio(valor: unknown, campo: string): string {
 export async function registrarOperacaoVoz(
   requestId: string,
   source: 'app' | 'widget',
-  payload: PayloadOperacaoVoz
+  payload: PayloadOperacaoVoz,
+  transcricao?: string
 ): Promise<ResultadoOperacaoVoz> {
   /* Pelo aparelho, e não pela rede. Este id só nomeia a chave local em que a
      fala fica guardada até o envio — e era aqui que a fila offline morria: com
@@ -74,7 +94,7 @@ export async function registrarOperacaoVoz(
   if (!userId) throw new Error('Entre na conta para salvar o lançamento.');
   const chave = `grana:voz:operacao:${userId}:${requestId}`;
   const existente = await AsyncStorage.getItem(chave);
-  const operacao = existente ? JSON.parse(existente) : { requestId, source, payload };
+  const operacao = existente ? JSON.parse(existente) : { requestId, source, payload, ...(transcricao ? { transcricao } : null) };
   // Persiste ANTES da rede. O payload original permanece igual em toda retomada.
   await AsyncStorage.setItem(chave, JSON.stringify(operacao));
   notificarDadosDosWidgetsAlterados();
@@ -113,6 +133,9 @@ export async function registrarOperacaoVoz(
  * chamado para o suporte.
  */
 function explicarFalhaDeEnvio(erro: unknown): string {
+  if (ehRecusaCartaoObrigatorio(erro)) {
+    return 'Um lançamento no crédito ficou sem cartão e não foi salvo. Abra a revisão para escolher o cartão.';
+  }
   const codigo = String((erro as { code?: string })?.code ?? '');
   const texto = String((erro as { message?: string })?.message ?? erro);
   // PGRST202/PGRST205: função ou tabela fora do cache de esquema.
@@ -151,7 +174,21 @@ async function executarSincronizacao(): Promise<ResumoSync> {
            pelo aparelho para não confundir "trocou de conta" com "o token
            venceu e não há rede" — o segundo caso deve seguir tentando. */
         if ((await idDoUsuarioLocal()) !== userId) break;
-        await enviarOperacaoVoz(item.requestId, item.source, item.payload);
+        try {
+          await enviarOperacaoVoz(item.requestId, item.source, item.payload);
+        } catch (erro) {
+          if (!ehRecusaCartaoObrigatorio(erro)) throw erro;
+          /* Crédito sem cartão nunca grava. A fala vira revisão, e só sai da
+             fila depois que a notificação de revisão foi publicada: se ela
+             falhar, o item fica e a próxima sincronização tenta de novo. */
+          const { notificarRevisao } = await import('./widget-voz-notificacoes');
+          await notificarRevisao('Qual cartão?', textoParaRevisao(item));
+          await AsyncStorage.removeItem(chave);
+          notificarDadosDosWidgetsAlterados();
+          falhas++;
+          mensagem = explicarFalhaDeEnvio(erro);
+          continue;
+        }
         await AsyncStorage.removeItem(chave);
         notificarDadosDosWidgetsAlterados();
         sincronizadas++;

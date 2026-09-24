@@ -114,7 +114,13 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
         if (contexto.transcricao) {
           /* Se a captura e a transcrição deram certo, devolver a fala para a
              revisão é muito mais útil que "erro interno" sem contexto. */
-          await notificacoes.notificarRevisao('Não consegui salvar', contexto.transcricao);
+          /* Crédito sem cartão recusado pelo servidor: a revisão pergunta o
+             cartão, que é o que falta. Mesma saída para app e widget. */
+          const { ehRecusaCartaoObrigatorio } = await import('./voice-operations');
+          await notificacoes.notificarRevisao(
+            ehRecusaCartaoObrigatorio(erro) ? 'Qual cartão?' : 'Não consegui salvar',
+            contexto.transcricao
+          );
         } else {
           await notificacoes.notificarFalha('erro_interno');
         }
@@ -237,6 +243,17 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   const cartaoDaCategoria = heuristics.ehIntencaoCredito(texto)
     ? heuristics.matchCardByText(texto, cartoesDisponiveis.filter(c => !c.wallet_id || c.wallet_id === carteira.id)) : null;
   const textoDaCategoria = cartaoDaCategoria ? heuristics.limparReferenciaCartao(texto, cartaoDaCategoria) : texto;
+  /* Entrada que cita cartão ("estorno de 50 no crédito do C6") ia para
+     `lancarNoCredito`, que grava `type: 'out'`: o estorno virava COMPRA no
+     cartão. Estorno ainda não se lança por voz, então vai para revisão, sem
+     gravar. Mesma regra no Granabô (`assistente-financeiro`). */
+  // Tipo lido SEM o nome do cartão: um cartão chamado "Salário" não faz de uma compra uma entrada.
+  if (heuristics.guessTypeFromText(textoDaCategoria) === 'in' && heuristics.ehIntencaoCredito(texto)
+    && (heuristics.matchCardByText(texto, cartoesDisponiveis) || /\b(?:cart[aã]o|estorn\w*)\b/iu.test(texto))) {
+    await notificacoes.notificarRevisao('Estorno no cartão?', transcricao.transcript);
+    return false;
+  }
+
   const categoria = heuristics.guessCategoryFromText(textoDaCategoria, extras);
   if (categoria.name === 'Outros') {
     await notificacoes.notificarRevisao('Qual categoria?', transcricao.transcript);
@@ -377,7 +394,7 @@ async function lancarNoCredito(args: {
       card_id: cartao.id,
       installments: parcelas,
       wallet_id: carteiraId,
-    });
+    }, texto);
     if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
     if (resultado.status === 'undone') return true;
     const { checarLimiteCartao } = await import('./creditLimitAlert');
@@ -408,7 +425,7 @@ async function lancarNoCredito(args: {
     card_id: cartao.id,
     recurring: heuristics.parseRecorrencia(texto),
     wallet_id: carteiraId,
-  });
+  }, texto);
   if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
   if (resultado.status === 'undone') return true;
   const { checarLimiteCartao } = await import('./creditLimitAlert');
