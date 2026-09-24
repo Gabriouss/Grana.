@@ -82,6 +82,7 @@ function carregar(caminho, deps, globais = {}) {
     './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, estaServindoDoCache: () => false },
     './sessao-offline': { idDoUsuarioLocal: async () => idNoDisco },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
+    './lancamentos-alterados': { marcarLancamentosAlterados() {} },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     // Guarda real de crédito sem cartão (23/09/2026); só importa tipos.
     './transaction-rules': carregar('lib/transaction-rules.ts', {}),

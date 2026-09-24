@@ -3,6 +3,7 @@ import { addBill, addTransaction } from './data';
 import { createGoal } from './goals';
 import { guardarTela, lerTela } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
+import { marcarLancamentosAlterados } from './lancamentos-alterados';
 import type { Transaction, TxType } from './types';
 
 const CACHE_KEY = 'grana:cache:transactions';
@@ -285,5 +286,9 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
   }
 
   await setQueue([...dosOutros, ...remaining]);
+  /* A fila também leva boletos e metas; marcar a mais só custa uma carga
+     completa da Início, marcar a menos deixaria o item sincronizado fora de
+     "Últimos lançamentos". */
+  if (synced > 0) marcarLancamentosAlterados();
   return { synced, remaining: remaining.length };
 }

@@ -73,6 +73,7 @@ function montar() {
         };
       }
       if (nome === './goals') return { createGoal: async (input) => { enviados.push({ como: estado.usuario, input }); } };
+      if (nome === './lancamentos-alterados') return { marcarLancamentosAlterados() {} };
       if (nome === './cache-de-tela') {
         return {
           guardarTela: async () => {},

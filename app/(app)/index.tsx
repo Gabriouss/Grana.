@@ -17,6 +17,7 @@ import {
 import { Image } from 'expo-image';
 import AppModal from '@/components/AppModal';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
+import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
 import { Alert } from '@/lib/alert';
 import { mensagemErro } from '@/lib/erros';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -314,6 +315,13 @@ export default function InicioScreen() {
      mais velho). */
   const cargaAtualInicio = useRef(0);
 
+  /* Versão de `lib/lancamentos-alterados` que a última carga completa já
+     contempla. O foco compara com a atual: se algum lançamento foi gravado,
+     editado ou apagado fora daqui desde então, a carga leve não basta, porque
+     ela não busca lançamentos (achado T2 do Sentinel, 23/09/2026: salvar pelo
+     "+" mudava o saldo, mas "Últimos lançamentos" ficava sem o item). */
+  const versaoLancamentosCarregada = useRef(-1);
+
   const carregarDadosLeves = useCallback(async () => {
     if (isDemoMode) return; // dados de exemplo já são fixos, nada aqui muda sozinho
     const cargaDeLoadAoComecar = cargaAtualInicio.current;
@@ -353,6 +361,9 @@ export default function InicioScreen() {
   const load = useCallback(async () => {
     const minhaCarga = ++cargaAtualInicio.current;
     const vigente = () => minhaCarga === cargaAtualInicio.current;
+    /* Lida ANTES da busca: uma gravação que aconteça durante a carga sobe a
+       versão de novo e o próximo foco recarrega, em vez de ser engolida. */
+    const versaoAoComecar = versaoDosLancamentos();
     if (isDemoMode) {
       setTransactions(DEMO_TRANSACTIONS);
       setBills(DEMO_BILLS);
@@ -360,6 +371,7 @@ export default function InicioScreen() {
       setGoals(DEMO_GOALS);
       setLifetimeXp(DEMO_LIFETIME_XP);
       setCreditCards(DEMO_CREDIT_CARDS);
+      versaoLancamentosCarregada.current = versaoAoComecar;
       setError(null);
       setLoading(false);
       setRefreshing(false);
@@ -392,6 +404,7 @@ export default function InicioScreen() {
       ]);
       if (!vigente()) return;
       setTransactions(tx);
+      versaoLancamentosCarregada.current = versaoAoComecar;
       setBills(b);
       setBudgets(bg);
       setCreditCards(cc);
@@ -549,7 +562,7 @@ export default function InicioScreen() {
   useRecarregarAoChegarDadoNovo(() => { void load(); });
   useFocusEffect(
     useCallback(() => {
-      if (ultimoModoCarregadoRef.current === isDemoMode) {
+      if (ultimoModoCarregadoRef.current === isDemoMode && versaoLancamentosCarregada.current === versaoDosLancamentos()) {
         carregarDadosLeves();
       } else {
         ultimoModoCarregadoRef.current = isDemoMode;

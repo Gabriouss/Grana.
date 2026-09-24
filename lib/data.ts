@@ -26,6 +26,7 @@ import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
 import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito } from './transaction-rules';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
+import { marcarLancamentosAlterados } from './lancamentos-alterados';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
   Bill,
@@ -207,6 +208,7 @@ export async function addTransaction(input: {
     checarLimiteCartao(input.card_id).catch(() => {});
   }
 
+  marcarLancamentosAlterados();
   notificarDadosDosWidgetsAlterados();
 
   return data;
@@ -354,6 +356,7 @@ export async function updateTransaction(id: string, changes: Partial<Transaction
   const user_id = await currentUserId();
   const { error } = await supabase.from('transactions').update(changes).eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  marcarLancamentosAlterados();
   notificarDadosDosWidgetsAlterados();
 }
 
@@ -434,7 +437,10 @@ export async function addTransactionsBatch(
     onProgress?.(Math.min(inicio + TAMANHO_LOTE, rows.length), rows.length);
   }
 
-  if (inseridos > 0) notificarDadosDosWidgetsAlterados();
+  if (inseridos > 0) {
+    marcarLancamentosAlterados();
+    notificarDadosDosWidgetsAlterados();
+  }
   return { inseridos, ignorados };
 }
 
@@ -483,6 +489,7 @@ export async function deleteTransaction(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  marcarLancamentosAlterados();
   notificarDadosDosWidgetsAlterados();
 }
 
@@ -516,6 +523,7 @@ export async function deleteInstallmentPurchase(
     .or(`id.eq.${cabeca},parent_id.eq.${cabeca}`)
     .select('id');
   if (error) throw error;
+  marcarLancamentosAlterados();
   notificarDadosDosWidgetsAlterados();
   return data?.length ?? 0;
 }
@@ -571,6 +579,7 @@ export async function addInstallmentPurchase(input: {
     checarLimiteCartao(input.card_id).catch(() => {});
   }
 
+  marcarLancamentosAlterados();
   notificarDadosDosWidgetsAlterados();
 
   return rows;
