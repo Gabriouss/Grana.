@@ -10,6 +10,7 @@ import {
   planejarLembretesHabito,
 } from './notification-schedule';
 import { formatMoney } from './format';
+import { dataVencimentoFatura as vencimentoDoCiclo } from './faturaCiclo';
 import type { Bill, CreditCard } from './types';
 
 const CHANNEL_ID = 'lembretes-contas';
@@ -191,12 +192,14 @@ function idForFatura(cardId: string, year: number, month: number, etapa: EtapaFa
 }
 
 /**
- * Dia de vencimento cai no mesmo mês da fatura quando due_day >= closing_day
- * (o caso comum — ex: fecha dia 18, vence dia 25), senão no mês seguinte.
+ * O vencimento vem de `lib/faturaCiclo.ts`, a mesma conta da tela Crédito, às
+ * 9h. Até 24/09/2026 este arquivo tinha a própria cópia, sem o limite de fim
+ * de mês: com vencimento no dia 31, a fatura de setembro "vencia" em 1º de
+ * outubro, e os três lembretes saíam um dia atrasados (o de atraso, dois).
  */
 function dataVencimentoFatura(card: CreditCard, year: number, month: number): Date {
-  const mesVencimento = card.due_day >= card.closing_day ? month : month + 1;
-  return new Date(year, mesVencimento, card.due_day, 9, 0, 0, 0);
+  const dia = vencimentoDoCiclo(year, month, card.due_day, card.closing_day);
+  return new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 9, 0, 0, 0);
 }
 
 export async function scheduleCardInvoiceReminders(
@@ -347,13 +350,43 @@ function enfileirarHabito(operacao: () => Promise<void>): Promise<void> {
   return proxima;
 }
 
-async function idsHabitoAgendados(Notifications: typeof NotificationsModule): Promise<string[]> {
+type HabitoAgendado = { id: string; data: Record<string, unknown> | undefined };
+
+async function habitoAgendados(Notifications: typeof NotificationsModule): Promise<HabitoAgendado[]> {
   try {
     const agendadas = await Notifications.getAllScheduledNotificationsAsync();
-    return agendadas.map((item) => item.identifier).filter(ehIdLembreteHabito);
+    return agendadas
+      .filter((item) => ehIdLembreteHabito(item.identifier))
+      .map((item) => ({ id: item.identifier, data: item.content?.data as Record<string, unknown> | undefined }));
   } catch {
     return [];
   }
+}
+
+async function idsHabitoAgendados(Notifications: typeof NotificationsModule): Promise<string[]> {
+  return (await habitoAgendados(Notifications)).map((item) => item.id);
+}
+
+/**
+ * Um lembrete já agendado continua verdadeiro com o estado de agora?
+ *
+ * A janela tem sete dias à frente e é preservada entre aberturas, para não
+ * gastar a rotação do catálogo. Só que duas categorias afirmam estado: a de
+ * "uns dias sem registrar" e a que cita o número da sequência. Até 24/09/2026
+ * elas ficavam congeladas como foram sorteadas: quem voltava a lançar ainda
+ * recebia "faz um tempinho" nos dias seguintes, e a sequência saía com o
+ * número velho. As outras categorias não afirmam estado e são mantidas.
+ * Lembrete agendado antes desta versão não guarda o estado e é refeito uma vez.
+ */
+export function lembreteAindaFiel(
+  data: Record<string, unknown> | undefined,
+  agora: { streak: number; diasInativo: number }
+): boolean {
+  const categoria = data?.categoria;
+  if (typeof categoria !== 'string') return false;
+  if (categoria === 'saudade') return agora.diasInativo >= 2;
+  if (categoria === 'streak_protecao') return agora.diasInativo < 2 && data?.streak === agora.streak;
+  return true;
 }
 
 async function cancelarHabitoInterno(
@@ -405,6 +438,7 @@ export async function scheduleDailyHabitReminder(opts: {
     }
 
     const agora = new Date();
+    const agendadosAntes = await habitoAgendados(Notifications);
     const planejados = [
       ...planejarLembretesHabito({
         agora, hour: opts.hour, minute: opts.minute, jaLancouHoje: opts.jaLancouHoje, janela: 'noite',
@@ -414,8 +448,22 @@ export async function scheduleDailyHabitReminder(opts: {
         agora, hour: HORARIO_ALMOCO.hour, minute: HORARIO_ALMOCO.minute, jaLancouHoje: opts.jaLancouHoje, janela: 'almoco',
       }).map((p) => ({ ...p, janela: 'almoco' as const }))),
     ];
-    const idsDesejados = new Set(planejados.map((item) => item.id));
-    const existentes = await idsHabitoAgendados(Notifications);
+    const contextoDoDia = (planejado: (typeof planejados)[number]) => ({
+      streak: opts.streak,
+      diasInativo: opts.diasInativo + planejado.diasDesdeHoje,
+      diaSemana: planejado.quando.getDay(),
+    });
+    /* Desejado = planejado E ainda verdadeiro; o que deixou de ser verdadeiro
+       é cancelado abaixo e sorteado de novo com o estado de agora. */
+    const idsDesejados = new Set(
+      planejados
+        .filter((planejado) => {
+          const agendado = agendadosAntes.find((item) => item.id === planejado.id);
+          return !!agendado && lembreteAindaFiel(agendado.data, contextoDoDia(planejado));
+        })
+        .map((planejado) => planejado.id)
+    );
+    const existentes = agendadosAntes.map((item) => item.id);
 
     // Remove o id antigo e também o lembrete de hoje quando o lançamento do
     // dia já foi feito; notificações de contas/faturas ficam intocadas.
@@ -431,11 +479,8 @@ export async function scheduleDailyHabitReminder(opts: {
     for (const planejado of planejados) {
       if (aindaAgendados.has(planejado.id)) continue;
 
-      const mensagem = await obterProximaMensagem({
-        streak: opts.streak,
-        diasInativo: opts.diasInativo + planejado.diasDesdeHoje,
-        diaSemana: planejado.quando.getDay(),
-      }, planejado.janela);
+      const contexto = contextoDoDia(planejado);
+      const mensagem = await obterProximaMensagem(contexto, planejado.janela);
 
       try {
         await Notifications.scheduleNotificationAsync({
@@ -447,6 +492,9 @@ export async function scheduleDailyHabitReminder(opts: {
               tipo: 'habito-diario',
               mensagemId: mensagem.id,
               janela: planejado.janela,
+              /* Lido por `lembreteAindaFiel` no próximo reagendamento. */
+              categoria: mensagem.categoria,
+              streak: contexto.streak,
             },
           },
           trigger: {

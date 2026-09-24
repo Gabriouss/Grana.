@@ -54,7 +54,7 @@ import {
 } from '@/lib/notifications';
 import { todayISO } from '@/lib/format';
 import { lembretesDeFatura } from '@/lib/creditoFaturas';
-import { calculateStreakAndWeek } from '@/lib/gamification';
+import { contextoDoLembrete } from '@/lib/contexto-lembrete';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
 import { carregarDiagnostico, diagnosticoDosMetadados, type DiagnosticoCarregado } from '@/lib/diagnostico';
@@ -294,13 +294,7 @@ export default function PerfilScreen() {
           : 'fallback-local';
         if (resultado === 'fallback-local' && novasPrefs.lembreteDiarioAtivo) {
           const transacoes = await fetchTransactions({ sinceDays: 35 });
-          const { streak } = calculateStreakAndWeek(transacoes);
-          const jaLancouHoje = transacoes.some((t) => t.occurred_on === todayISO());
-          const ultimaData = transacoes[0]?.occurred_on;
-          const diasInativo = ultimaData
-            ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
-            : 99;
-          await scheduleDailyHabitReminder({ ...novasPrefs.horario, jaLancouHoje, streak, diasInativo, almocoAtivo: novasPrefs.almocoAtivo });
+          await scheduleDailyHabitReminder({ ...novasPrefs.horario, ...contextoDoLembrete(transacoes), almocoAtivo: novasPrefs.almocoAtivo });
         }
       } catch {
         Alert.alert(

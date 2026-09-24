@@ -62,8 +62,8 @@ import VoiceEntryButton from '@/components/VoiceEntryButton';
 import ImportarExtratoModal from '@/components/ImportarExtratoModal';
 import QrScannerModal from '@/components/QrScannerModal';
 import MonthlyWrappedModal from '@/components/MonthlyWrappedModal';
-import { calculateStreakAndWeek } from '@/lib/gamification';
 import { carregarNotifPrefs, scheduleDailyHabitReminder, cancelDailyHabitReminder } from '@/lib/notifications';
+import { contextoDoLembrete } from '@/lib/contexto-lembrete';
 import {
   gerarMonthlyWrapped,
   marcarWrappedVisto,
@@ -422,13 +422,7 @@ export default function InicioScreen() {
           cancelDailyHabitReminder().catch(() => {});
           return;
         }
-        const { streak } = calculateStreakAndWeek(tx);
-        const jaLancouHoje = tx.some((t) => t.occurred_on === todayISO());
-        const ultimaData = tx[0]?.occurred_on;
-        const diasInativo = ultimaData
-          ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
-          : 99;
-        scheduleDailyHabitReminder({ ...prefs.horario, jaLancouHoje, streak, diasInativo, almocoAtivo: prefs.almocoAtivo }).catch(() => {});
+        scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx), almocoAtivo: prefs.almocoAtivo }).catch(() => {});
       });
 
       try {

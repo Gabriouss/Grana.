@@ -33,8 +33,7 @@ import SincronizadorWidgetsHome from '@/components/SincronizadorWidgetsHome';
 import { carregarNotifPrefs, scheduleDailyHabitReminder } from '@/lib/notifications';
 import { observarTrocaDeTokenPush, sincronizarPushHabito } from '@/lib/push-notifications';
 import { fetchTransactions } from '@/lib/data';
-import { calculateStreakAndWeek } from '@/lib/gamification';
-import { todayISO } from '@/lib/format';
+import { contextoDoLembrete } from '@/lib/contexto-lembrete';
 // Registra o handler de notificações locais e remotas assim que o app abre.
 import '@/lib/notifications';
 
@@ -204,14 +203,9 @@ function RootNavigator() {
       if (encerrado || resultado !== 'fallback-local' || !prefs.lembreteDiarioAtivo) return;
       const transacoes = await fetchTransactions({ sinceDays: 35 });
       if (encerrado) return;
-      const ultimaData = transacoes[0]?.occurred_on;
       await scheduleDailyHabitReminder({
         ...prefs.horario,
-        jaLancouHoje: transacoes.some((t) => t.occurred_on === todayISO()),
-        streak: calculateStreakAndWeek(transacoes).streak,
-        diasInativo: ultimaData
-          ? Math.floor((Date.now() - new Date(`${ultimaData}T00:00:00`).getTime()) / 86400000)
-          : 99,
+        ...contextoDoLembrete(transacoes),
         almocoAtivo: prefs.almocoAtivo,
       });
     };
