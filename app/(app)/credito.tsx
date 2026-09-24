@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import AppModal from '@/components/AppModal';
+import AppDialog from '@/components/AppDialog';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import { isLikelyNetworkError } from '@/lib/cache-de-tela';
 import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
@@ -212,6 +213,10 @@ export default function CreditoScreen() {
 
   // Pagamento de fatura
   const [invoicePayments, setInvoicePayments] = useState<CreditCardInvoicePayment[]>([]);
+  /* Pagamento cuja reabertura está sendo confirmada. A confirmação usa o
+     AppDialog, como Boletos e voz (T3): o alerta nativo cinza fugia do padrão
+     das outras janelas do app. */
+  const [desfazerAlvo, setDesfazerAlvo] = useState<{ pagamento: CreditCardInvoicePayment; saidas: (string | null)[] } | null>(null);
   const [payInvoiceOpen, setPayInvoiceOpen] = useState(false);
   const [payWalletId, setPayWalletId] = useState<string | null>(null);
   const [payAmount, setPayAmount] = useState('');
@@ -733,30 +738,23 @@ export default function CreditoScreen() {
   function confirmReopenInvoice() {
     if (!currentInvoicePayment) return;
     const saidas = [currentInvoicePayment.paid_transaction_id, ...(currentInvoicePayment.extra_transaction_ids ?? [])];
-    Alert.alert('Desfazer pagamento', saidas.length > 1
-      ? 'As saídas lançadas para essa fatura, inclusive a do restante, serão removidas.'
-      : 'A saída lançada para essa fatura será removida.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Desfazer',
-        style: 'destructive',
-        onPress: async () => {
-          if (isDemoMode) {
-            setTransactions((prev) => prev.filter((t) => !saidas.includes(t.id)));
-            setInvoicePayments((prev) => prev.filter((inv) => inv.id !== currentInvoicePayment.id));
-            triggerToast('Pagamento desfeito (exemplo)');
-            return;
-          }
-          try {
-            await reopenCardInvoice(currentInvoicePayment);
-            triggerToast('Pagamento desfeito');
-            await loadData();
-          } catch (e: any) {
-            Alert.alert('Erro ao desfazer pagamento', e.message);
-          }
-        },
-      },
-    ]);
+    setDesfazerAlvo({ pagamento: currentInvoicePayment, saidas });
+  }
+
+  async function desfazerPagamento(pagamento: CreditCardInvoicePayment, saidas: (string | null)[]) {
+    if (isDemoMode) {
+      setTransactions((prev) => prev.filter((t) => !saidas.includes(t.id)));
+      setInvoicePayments((prev) => prev.filter((inv) => inv.id !== pagamento.id));
+      triggerToast('Pagamento desfeito (exemplo)');
+      return;
+    }
+    try {
+      await reopenCardInvoice(pagamento);
+      triggerToast('Pagamento desfeito');
+      await loadData();
+    } catch (e: any) {
+      Alert.alert('Erro ao desfazer pagamento', e.message);
+    }
   }
 
   /* Abre o sheet em branco, pra criar. Limpa campo por campo porque o mesmo
@@ -1819,6 +1817,18 @@ export default function CreditoScreen() {
           setPayDate(iso);
           setPayDatePickerOpen(false);
         }}
+      />
+
+      <AppDialog
+        visible={!!desfazerAlvo}
+        title="Desfazer pagamento?"
+        message={desfazerAlvo && desfazerAlvo.saidas.length > 1
+          ? 'As saídas lançadas para essa fatura, inclusive a do restante, serão removidas.'
+          : 'A saída lançada para essa fatura será removida.'}
+        confirmLabel="Desfazer pagamento"
+        destructive
+        onClose={() => setDesfazerAlvo(null)}
+        onConfirm={() => { if (desfazerAlvo) void desfazerPagamento(desfazerAlvo.pagamento, desfazerAlvo.saidas); }}
       />
 
       <Toast message={toastMsg} visible={toastVisible} onHide={() => setToastVisible(false)} />
