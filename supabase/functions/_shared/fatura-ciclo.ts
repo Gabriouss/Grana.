@@ -65,6 +65,40 @@ export function janelaFatura(year: number, month: number, closingDay: number): J
   return { inicio, fim, rotulo: `${inicioLabel} a ${fimLabel}` };
 }
 
+/** Linha de lançamento com o que decide a fatura de uma parcela. */
+export type LinhaDeFatura = {
+  occurred_on: string;
+  installment_current?: number | null;
+  installment_total?: number | null;
+  parent_id?: string | null;
+};
+
+/* Fechamento 29-31: a data gravada da parcela pode cair no dia do fechamento
+ * limitado e pular ou repetir fatura. Só a data da COMPRA decide. Mesma regra
+ * de `cicloDoLancamento` em `lib/creditoFaturas.ts`, travada pela paridade. */
+export function precisaDaCompraOriginal(closingDay: number): boolean {
+  return closingDay >= 29;
+}
+
+export function ehParcelaSeguinte(linha: LinhaDeFatura): boolean {
+  return (linha.installment_total ?? 1) > 1 && (linha.installment_current ?? 1) > 1;
+}
+
+/** Fatura de uma linha; `incerto` quando a compra original era necessária e faltou. */
+export function cicloDaLinha(
+  linha: LinhaDeFatura,
+  closingDay: number,
+  datasDasCompras: ReadonlyMap<string, string>,
+): { ciclo: CicloFatura; incerto: boolean } {
+  const pelaData = mesFaturaDoLancamento(linha.occurred_on, closingDay);
+  if (!ehParcelaSeguinte(linha) || !precisaDaCompraOriginal(closingDay)) return { ciclo: pelaData, incerto: false };
+  const compra = linha.parent_id ? datasDasCompras.get(linha.parent_id) : undefined;
+  if (!compra) return { ciclo: pelaData, incerto: true };
+  const daCompra = mesFaturaDoLancamento(compra, closingDay);
+  const alvo = new Date(daCompra.year, daCompra.month + (linha.installment_current ?? 1) - 1, 1);
+  return { ciclo: { year: alvo.getFullYear(), month: alvo.getMonth() }, incerto: false };
+}
+
 /** Estorno no cartão (`type: 'in'`) abate a fatura. Mesma regra de
  * `valorNaFatura` em `lib/creditoFaturas.ts`, travada pela paridade. */
 export function valorNaFatura(linha: { amount: number | string; type?: string | null }): number {

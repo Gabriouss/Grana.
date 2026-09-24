@@ -50,7 +50,18 @@ import {
 } from '../_shared/interpretar-lancamento.ts';
 import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
-import { janelaFatura, mesFaturaDoLancamento, cicloRelativo, deslocamentoPedido, valorNaFatura } from '../_shared/fatura-ciclo.ts';
+import {
+  janelaFatura,
+  mesFaturaDoLancamento,
+  cicloRelativo,
+  deslocamentoPedido,
+  valorNaFatura,
+  cicloDaLinha,
+  ehParcelaSeguinte,
+  precisaDaCompraOriginal,
+  type CicloFatura,
+  type LinhaDeFatura,
+} from '../_shared/fatura-ciclo.ts';
 import {
   AINDA_NAO_REGISTREI,
   RECIBO_DE_LANCAMENTO,
@@ -174,7 +185,9 @@ type ArgsPeriodo = {
   categoria?: string;
 };
 
-type Periodo = { inicio: string; fim: string; rotulo: string };
+/* `ciclo` existe quando o período é uma FATURA: aí quem decide se um
+   lançamento entra é o ciclo dele (`cicloDaLinha`), não a data. */
+type Periodo = { inicio: string; fim: string; rotulo: string; ciclo?: CicloFatura };
 
 /**
  * Resolve as QUATRO formas de dizer um período, em ordem de precedência:
@@ -294,8 +307,64 @@ function periodoDaFatura(args: ArgsPeriodo, closingDay: number): Periodo | { err
     inicio: janela.inicio,
     fim: janela.fim,
     rotulo: `fatura de ${NOMES_MESES[month]} de ${year} (${janela.rotulo})`,
+    ciclo: { year, month },
   };
 }
+
+type LinhaDeCredito = LinhaDeFatura & { id?: string; amount: number; card_id: string | null; type: string };
+const COLUNAS_DE_FATURA = 'id, amount, card_id, category, occurred_on, type, installment_current, installment_total, parent_id';
+
+/* Com cartão de fechamento 29-31, a parcela pode ter data fora da janela da
+   fatura a que pertence (`cicloDaLinha`). A consulta ganha um mês de folga de
+   cada lado, e o filtro por ciclo descarta o que sobra. */
+function janelaDeConsulta(amplo: Periodo, cartoes: CartaoAssistente[]): Periodo {
+  if (!cartoes.some((c) => precisaDaCompraOriginal(Number(c.closing_day)))) return amplo;
+  const [yi, mi] = amplo.inicio.split('-').map(Number);
+  const [yf, mf] = amplo.fim.split('-').map(Number);
+  return { ...amplo, inicio: iso(new Date(yi, mi - 2, 1)), fim: iso(new Date(yf, mf + 1, 0)) };
+}
+
+/* Data da compra original das parcelas de cartão 29-31 que não vieram na
+   consulta. Mesma regra da tela de Crédito (`fetchDatasDeCompra`). */
+async function comprasOriginais(
+  supabase: SupabaseClient,
+  userId: string,
+  linhas: LinhaDeCredito[],
+  cartoes: CartaoAssistente[],
+): Promise<Map<string, string>> {
+  const datas = new Map<string, string>();
+  for (const l of linhas) {
+    if ((l.installment_total ?? 1) > 1 && (l.installment_current ?? 1) === 1 && l.id) datas.set(l.id, l.occurred_on);
+  }
+  const fechamento = new Map(cartoes.map((c) => [c.id, Number(c.closing_day)]));
+  const faltam = [...new Set(linhas
+    .filter((l) => ehParcelaSeguinte(l) && l.parent_id && !datas.has(l.parent_id)
+      && l.card_id && precisaDaCompraOriginal(fechamento.get(l.card_id) ?? 0))
+    .map((l) => l.parent_id as string))];
+  if (!faltam.length) return datas;
+  const { data, error } = await supabase.from('transactions').select('id, occurred_on').eq('user_id', userId).in('id', faltam);
+  if (error) throw error;
+  for (const l of (data ?? []) as Array<{ id: string; occurred_on: string }>) datas.set(l.id, l.occurred_on);
+  return datas;
+}
+
+/* Um lançamento entra no período: pela FATURA quando o período é uma fatura,
+   pela data quando é um intervalo pedido. `incerto` avisa quem responde. */
+function linhaNoPeriodo(
+  linha: LinhaDeCredito,
+  card: CartaoAssistente,
+  periodo: Periodo,
+  datas: ReadonlyMap<string, string>,
+): { dentro: boolean; incerto: boolean } {
+  if (!periodo.ciclo) return { dentro: linha.occurred_on >= periodo.inicio && linha.occurred_on <= periodo.fim, incerto: false };
+  const { ciclo, incerto } = cicloDaLinha(linha, Number(card.closing_day), datas);
+  const dentro = ciclo.year === periodo.ciclo.year && ciclo.month === periodo.ciclo.month;
+  // Sem a compra original, a data gravada pode apontar para a fatura vizinha.
+  // Avise também quando o fallback excluir a parcela da fatura consultada.
+  return { dentro, incerto };
+}
+
+const AVISO_PARCELA_INCERTA = ' Atenção: não achei a compra original de uma parcela próxima a esta fatura, então o total pode estar incompleto.';
 
 function intervaloMaisAmplo(periodos: Periodo[]): Periodo {
   if (!periodos.length) return { inicio: '9999-12-31', fim: '1900-01-01', rotulo: '' };
@@ -833,33 +902,40 @@ async function executarResumoCredito(
   }
 
   const amplo = intervaloMaisAmplo(periodos.map((item) => item.periodo));
+  const consulta = usarCiclo ? janelaDeConsulta(amplo, cardsAlvo) : amplo;
   const { data, error } = await supabase
     .from('transactions')
-    .select('amount, card_id, category, occurred_on, type')
+    .select(COLUNAS_DE_FATURA)
     .eq('user_id', userId)
     .eq('payment_method', 'credit')
-    .gte('occurred_on', amplo.inicio)
-    .lte('occurred_on', amplo.fim);
+    .gte('occurred_on', consulta.inicio)
+    .lte('occurred_on', consulta.fim);
   if (error) throw error;
 
   // Estorno (type 'in') entra e abate: `valorNaFatura`, igual à tela de Crédito.
-  let linhas = (data ?? []) as Array<{ amount: number; card_id: string | null; category: string; occurred_on: string; type: string }>;
+  let linhas = (data ?? []) as Array<LinhaDeCredito & { category: string }>;
+  const datas = usarCiclo ? await comprasOriginais(supabase, userId, linhas, cardsAlvo) : new Map<string, string>();
   if (categoriaCasada) linhas = linhas.filter((linha) => linha.category === categoriaCasada);
+  let parcelaIncerta = false;
   const somaDoCartao = (card: CartaoAssistente, periodo: Periodo) =>
     linhas
       .filter((linha) => {
         const pertence = linha.card_id === card.id || (linha.card_id === null && cards.length === 1);
-        return pertence && linha.occurred_on >= periodo.inicio && linha.occurred_on <= periodo.fim;
+        if (!pertence) return false;
+        const { dentro, incerto } = linhaNoPeriodo(linha, card, periodo, datas);
+        if (incerto) parcelaIncerta = true;
+        return dentro;
       })
       .reduce((soma, linha) => soma + valorNaFatura(linha), 0);
 
   const totais = periodos.map(({ card, periodo }) => ({ card, periodo, total: somaDoCartao(card, periodo) }));
+  const avisoParcela = parcelaIncerta ? AVISO_PARCELA_INCERTA : '';
   const totalCartoes = totais.reduce((soma, item) => soma + item.total, 0);
   const textoCategoria = categoriaCasada ? ' em ' + categoriaCasada : '';
   if (cartaoPedida || cardsAlvo.length === 1) {
     const item = totais[0];
     return 'O usuário gastou R$ ' + formatarBRL(item.total) + textoCategoria + ' na fatura do cartão ' + item.card.name + '. ' +
-      'Período consultado: ' + item.periodo.rotulo + '. Cite o ciclo da fatura na resposta.';
+      'Período consultado: ' + item.periodo.rotulo + '. Cite o ciclo da fatura na resposta.' + avisoParcela;
   }
 
   const idsConhecidos = new Set(cards.map((card) => card.id));
@@ -872,7 +948,7 @@ async function executarResumoCredito(
   if (semCartao > 0) detalhes.push('- Sem cartão vinculado: R$ ' + formatarBRL(semCartao) + ' (ciclo indeterminado)');
   const total = totalCartoes + semCartao;
   return 'Gastos' + textoCategoria + ' nas faturas dos cartões: R$ ' + formatarBRL(total) + ' no total.\n' +
-    detalhes.join('\n') + '\nCada cartão está separado pelo próprio ciclo de fechamento; cite os intervalos na resposta.';
+    detalhes.join('\n') + '\nCada cartão está separado pelo próprio ciclo de fechamento; cite os intervalos na resposta.' + avisoParcela;
 }
 
 /**
@@ -1398,22 +1474,31 @@ async function executarFerramenta(
         if (erroPeriodo && 'erro' in erroPeriodo.periodo) return erroPeriodo.periodo.erro;
         const periodosValidos = periodosFatura as Array<{ card: CartaoAssistente; periodo: Periodo }>;
         const amplo = intervaloMaisAmplo(periodosValidos.map((item) => item.periodo));
+        const consulta = janelaDeConsulta(amplo, cardsAlvo);
         const { data, error } = await supabase
           .from('transactions')
-          .select('amount, card_id, occurred_on, type')
+          .select(COLUNAS_DE_FATURA)
           .eq('user_id', userId)
           .eq('payment_method', 'credit')
-          .gte('occurred_on', amplo.inicio)
-          .lte('occurred_on', amplo.fim)
+          .gte('occurred_on', consulta.inicio)
+          .lte('occurred_on', consulta.fim)
           .eq('category', casada);
         if (error) throw error;
 
-        const linhas = (data ?? []) as Array<{ amount: number; card_id: string | null; occurred_on: string; type: string }>;
+        const linhas = (data ?? []) as LinhaDeCredito[];
+        /* A compra original de uma parcela pode ser de outra categoria? Não: o
+           parcelamento grava a mesma categoria em todas as parcelas. Mesmo
+           assim a busca é por id, sem filtro de categoria. */
+        const datas = await comprasOriginais(supabase, userId, linhas, cardsAlvo);
+        let parcelaIncerta = false;
         const somaDo = (card: CartaoAssistente, periodo: Periodo) =>
           linhas
             .filter((linha) => {
               const pertenceAoCartao = linha.card_id === card.id || (linha.card_id === null && cards.length === 1);
-              return pertenceAoCartao && linha.occurred_on >= periodo.inicio && linha.occurred_on <= periodo.fim;
+              if (!pertenceAoCartao) return false;
+              const { dentro, incerto } = linhaNoPeriodo(linha, card, periodo, datas);
+              if (incerto) parcelaIncerta = true;
+              return dentro;
             })
             .reduce((soma, linha) => soma + valorNaFatura(linha), 0);
 
@@ -1424,10 +1509,12 @@ async function executarFerramenta(
         if (pediuCartao || cardsAlvo.length === 1) {
           const item = periodosValidos[0];
           return 'O usuário gastou R$ ' + formatarBRL(total) + ' em ' + casada + ' na fatura do cartão ' + item.card.name + '. ' +
-            'Período consultado: ' + item.periodo.rotulo + '. Cite o ciclo da fatura na resposta.' + AVISO_REGRA_CREDITO;
+            'Período consultado: ' + item.periodo.rotulo + '. Cite o ciclo da fatura na resposta.' + AVISO_REGRA_CREDITO +
+            (parcelaIncerta ? AVISO_PARCELA_INCERTA : '');
         }
         return 'Gasto em ' + casada + ' nas faturas dos cartões: R$ ' + formatarBRL(total) + ' no total.\n' +
-          detalhes.join('\n') + ' Cite o ciclo de cada fatura na resposta.';
+          detalhes.join('\n') + ' Cite o ciclo de cada fatura na resposta.' +
+          (parcelaIncerta ? AVISO_PARCELA_INCERTA : '');
       }
 
       const { data, error } = await supabase
