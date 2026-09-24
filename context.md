@@ -10180,3 +10180,82 @@ da RPC foi conferido com datas fixas na mesma expressão, não pela RPC).
 Pendente de decisão: guarda de crédito sem cartão nas OUTRAS entradas do
 servidor (`adicionar_compra_parcelada` e INSERT direto em `transactions`), que
 só um trigger de INSERT cobriria.
+
+## 23/09/2026 — M1 — Crédito por ciclo, etapa (b): parcela pelo ciclo da compra original e estorno que abate (`37318e5`)
+
+Relatório do Forge, repassado pelo maestro ao Ledger (a partir desta etapa o
+Forge não escreve mais no `context.md` nem no vault).
+
+- **Parcelas.** Sintoma: com fechamento 29-31, a parcela k (gravada em
+  compra + (k-1) meses, limitada ao fim do mês) cai no dia do fechamento
+  limitado; numa varredura de 2026-27, 82 compras ficavam com parcela repetida
+  ou fatura pulada. Causa: a fatura saía da DATA da parcela. Agora sai do
+  ciclo da compra original (`cicloDoLancamento`, com `fetchDatasDeCompra` em
+  `lib/data.ts`, que tem cache offline). Parcela sem a compra original marca a
+  fatura como incerta (`faturaTemParcelaIncerta`, faixa "parcela incerta" na
+  tela), sem cair em silêncio na data.
+- **Estorno.** `type: 'in'` no cartão somava, porque toda soma era `+amount`;
+  no Granabô era ignorado pelo `.eq('type', 'out')`. Agora abate na tela, no
+  resumo da Início, nos lembretes, no limite e no Granabô (`valorNaFatura` em
+  `lib/creditoFaturas.ts` e em `_shared/fatura-ciclo.ts`).
+- **Descartado:** buscar a compra original para todo cartão (com fechamento
+  1-28 o resultado é igual, zero divergências; seria rede sem ganho) e
+  reconstruir a data da compra pela parcela (28/02 pode vir de 28 a 31).
+- **Verificação:** `corpus-parcelas-estorno` 39/39 e `granabo-estorno-credito`
+  (handler real), os dois no `test:ci`; paridade 108.066; `tsc` e `deno check`
+  limpos; `test:ci` verde exceto `corpus-schema-guardas`, que não achou a
+  migration de voz que o Harbor estava dividindo na mesma árvore. Mutações:
+  ignorar a compra original derruba 17; pai ausente sem marcar incerto, 2;
+  estorno somando, 5 no app e 1 no Granabô; soma sem sinal na tela, 1.
+- **Não verificado / pendente:** aparelho e emulador; o resumo da Início
+  ainda sem as datas das compras originais (etapa d); o Granabô ainda acha a
+  parcela pela data e pode divergir da tela com fechamento 29-31; o limite do
+  cartão olha só o ciclo atual. Produção não muda: `assistente-financeiro`
+  sem deploy (regra 11).
+
+## 23/09/2026 — M1 — Crédito por ciclo: coordenação e decisões do autor
+
+Nota completa no vault: `00 - Sessões/2026-09-23 - M1 - Credito por ciclo,
+coordenacao e decisoes do autor`. Desenho e relatórios dos agentes em
+`E:\Grana-temporarios\credito-ciclo\` e `E:\Grana-temporarios\apk-local\`
+(fora do repo).
+
+- **Pedido do autor:** "a fatura não pode ficar atrelada ao mês. Ela precisa
+  ficar atrelada ao ciclo de faturamento." Só a tela Crédito e o que depende
+  dela (resumo da Início, pagamento); o resto do app segue no mês civil.
+- **Decisões do autor:** (P11) a carteira continua separando os cartões, e
+  "Todos" no Crédito é só a carteira ativa; tocar no cartão abre a fatura
+  atual dele e o pagamento ganha lugar próprio (faixa de faturas fechadas com
+  "Pagar" por linha); (1) "Todos desta carteira" sem setas, cada cartão com "A
+  pagar agora" e "Em aberto"; (2) o campo vira "Melhor dia de compra"; (3)
+  fechamento bloqueado em cartão com histórico; (4) crédito nunca sem cartão,
+  em TODAS as entradas, e voz/widget mandam para revisão; (5) estorno abate já.
+- **Causa do print do autor:** APK antigo (1.10.2 ou anterior), sem o
+  `6a1ebb2`, que nunca foi para APK por falta de cota do EAS. Reproduzido com
+  os módulos reais da 1.10.2 (`91a316f`) e conferido pelo Watchtower; o autor
+  confirmou que usa APK antigo. A hipótese de 2+ cartões foi DERRUBADA pelos
+  prints (um cartão só), mas o `main` ainda erra nesse caso, e é o que as
+  etapas corrigem. Não lida: a versão exata no Perfil do aparelho.
+- **Ordem até o APK dos testers:** crédito termina → autorização para
+  aplicar as migrations do `190fac7` e publicar o `assistente-financeiro` →
+  auditoria 100% do Sentinel no emulador → correções pelos donos → APK local
+  na M1, sem EAS (`expo prebuild` + Gradle num clone descartável, assinado com
+  a chave do EAS baixada pelo autor; `versionCode` 18 no clone).
+- **Triagem dos achados do Sentinel (decisão do autor):** o maestro confere
+  cada achado no código; confirmado é corrigido na hora pelo agente dono, em
+  commit próprio; incerto fica como "sem confiabilidade suficiente" no
+  relatório final. Muda a regra 17; a redação no `AGENTS.md` aguarda
+  aprovação.
+- **Documentação:** o Ledger passa a ser o dono único do `context.md` e do
+  vault; Forge e Harbor mandam relatório ao maestro, que repassa
+  (`credito-ciclo\relatorio-<agente>-etapa-<x>.md`).
+- **Em andamento, sem commit às 22:15:** o Harbor divide a migration
+  `20260923230000_voz_carteira_e_credito_exige_cartao.sql` em três
+  (`..._voz_devolve_carteira`, `..._voz_credito_exige_cartao`,
+  `..._transacao_credito_exige_cartao`). Até isso ser publicado, a entrada do
+  Harbor acima descreve o `origin/main`.
+- **Resolvido depois da entrada da auditoria dos oito agentes:** o
+  `.claude/settings.json` com `Bash(*)` foi revertido (decisão do autor); a
+  permissão ampla virou um gatilho local da M1, fora do git
+  (`.claude/modo-livre.cjs`). A pasta `E:\GranaPonto\android\`, resto de um
+  `expo prebuild` do Sentinel, espera o OK do autor para ser apagada.
