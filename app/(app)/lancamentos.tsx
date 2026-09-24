@@ -37,7 +37,6 @@ import FabButton from '@/components/FabButton';
 import MonthSelector from '@/components/MonthSelector';
 import {
   addInstallmentPurchase,
-  addTransaction,
   criarOcorrenciasRecorrentes,
   deleteTransaction,
   deleteInstallmentPurchase,
@@ -52,9 +51,10 @@ import {
   getCachedTransactions,
   getPendingCount,
   isLikelyNetworkError,
-  queuePendingTransaction,
+  salvarOuGuardarNoAparelho,
   setCachedTransactions,
 } from '@/lib/offline-cache';
+import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { hapticDelete } from '@/lib/haptics';
 import { formatBRL, addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO } from '@/lib/format';
 import { theme, radius, spacing, screenRhythm, fonts, type, lh } from '@/lib/theme';
@@ -493,16 +493,15 @@ export default function LancamentosScreen() {
           recurring: v.recurring,
           wallet_id: v.wallet_id,
         };
-        try {
-          await addTransaction(input);
-          triggerToast('Lançamento salvo');
-        } catch (innerErr) {
-          // Sem rede: guarda localmente em vez de perder o lançamento — sincroniza sozinho no próximo load() com sucesso.
-          if (!isLikelyNetworkError(innerErr)) throw innerErr;
-          await queuePendingTransaction(input);
+        const { guardado } = await salvarOuGuardarNoAparelho(input);
+        if (guardado) {
           setPendingCount(await getPendingCount());
-          triggerToast('Sem conexão. Lançamento salvo no aparelho');
+          /* A fila não passa por `addTransaction`, então nada marcou a lista
+             como alterada. Sem isto, voltar à Início pelo "+" caía na carga
+             leve e o item guardado não aparecia lá (T2 + T13). */
+          marcarLancamentosAlterados();
         }
+        triggerToast(guardado ? 'Sem conexão. Lançamento salvo no aparelho' : 'Lançamento salvo');
       }
       setModalOpen(false);
       if (!editingTxId && voltarAoInicioDepoisDeSalvar.current) {

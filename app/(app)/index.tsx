@@ -24,8 +24,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, queuePendingTransaction } from '@/lib/offline-cache';
-import { addBill, addTransaction, deleteBudget, deleteInstallmentPurchase, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
+import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
+import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
@@ -847,19 +847,13 @@ export default function InicioScreen() {
           recurring: v.recurring,
           wallet_id: v.wallet_id,
         };
-        try {
-          await addTransaction(entradaLancamento);
-          triggerToast('Lançamento salvo');
-        } catch (erroInterno) {
-          /* Sem rede, o lançamento entra na fila em vez de sumir com um
-             alerta. O boleto logo acima já fazia isto; o lançamento, não —
-             e esta é a tela onde a maioria das pessoas lança. Visto em vídeo
-             em 11/09/2026: "Erro ao salvar / Usuário não autenticado" em modo
-             avião, e o valor digitado foi perdido. */
-          if (!isLikelyNetworkError(erroInterno)) throw erroInterno;
-          await queuePendingTransaction(entradaLancamento);
-          triggerToast('Sem conexão. Lançamento salvo no aparelho');
-        }
+        /* Sem rede, o lançamento entra na fila em vez de sumir com um
+           alerta (visto em vídeo em 11/09/2026: "Erro ao salvar / Usuário não
+           autenticado" em modo avião, e o valor digitado foi perdido). O
+           `guardado` só vem depois da fila gravada, e o item já aparece nas
+           listas (`juntarPendentes`). */
+        const { guardado } = await salvarOuGuardarNoAparelho(entradaLancamento);
+        triggerToast(guardado ? 'Sem conexão. Lançamento salvo no aparelho' : 'Lançamento salvo');
       }
       setTxSheetOpen(false);
       load();
