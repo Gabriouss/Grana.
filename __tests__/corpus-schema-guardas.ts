@@ -219,7 +219,7 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
       return i >= 0 ? normalizarSql(fonte.slice(i, fonte.indexOf(fim, i) + fim.length)) : '<ausente>';
     };
     const migrationAssistenteLanca = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20260914120000_lancamento_pelo_assistente.sql'), 'utf8');
-    const migrationVozCredito = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20260923230000_voz_carteira_e_credito_exige_cartao.sql'), 'utf8');
+    const migrationVozCredito = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20260923230300_voz_credito_exige_cartao.sql'), 'utf8');
     const fimDesfazer = 'grant execute on function public.desfazer_ultimo_lancamento_assistente() to authenticated;';
     const inicioDesfazer = migrationAssistenteLanca.indexOf('create or replace function public.desfazer_ultimo_lancamento_assistente(');
     const desfazerUltimo = normalizarSql(migrationAssistenteLanca.slice(inicioDesfazer, migrationAssistenteLanca.indexOf(fimDesfazer) + fimDesfazer.length));
@@ -330,19 +330,32 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
     return texto.slice(i, texto.indexOf('\n$$;', i) + 4);
   };
 
-  const voz = lerMig('20260923230000_voz_carteira_e_credito_exige_cartao.sql');
+  /* A voz foi dividida em duas: 230000 devolve a carteira (inofensiva para o
+     APK instalado, pode ir antes) e 230300 acrescenta a recusa de crédito sem
+     cartão (vai junto com o APK novo). A de 230300 é a de 230000 mais a
+     recusa, e nada mais. */
+  const vozCarteira = lerMig('20260923230000_voz_devolve_carteira.sql');
+  const fVozCarteira = funcao(vozCarteira, 'registrar_operacao_voz');
+  const voz = lerMig('20260923230300_voz_credito_exige_cartao.sql');
   const fVoz = funcao(voz, 'registrar_operacao_voz');
+  const fimRecusa = "hint = 'cartao_obrigatorio';\n    end if;";
+  const blocoRecusa = fVoz.slice(fVoz.indexOf('\n    -- Decisao do autor (23/09/2026)'), fVoz.indexOf(fimRecusa) + fimRecusa.length);
+  checar('voz 230000: não recusa crédito sem cartão (pode ir antes do APK novo)', fVozCarteira !== '' && !vozCarteira.includes("hint = 'cartao_obrigatorio'"));
+  checar('voz 230000: recria a origem assistente na tabela', vozCarteira.includes("check (source in ('app', 'widget', 'assistente'))"));
+  checar('voz 230300 = 230000 + só a recusa', blocoRecusa.length > 50 && fVoz.split(blocoRecusa).join('') === fVozCarteira);
+  checar('voz: cartão legado sem carteira aceito (APK antigo apaga a fala em 23503)',
+    fVoz.includes('and (c.wallet_id = v_wallet_id or c.wallet_id is null)'));
   checar('voz: crédito sem cartão recusa com 23514 e hint cartao_obrigatorio',
     /if v_payment_method = 'credit' and v_card_id is null then\s+raise exception '[^']+'\s+using errcode = '23514', hint = 'cartao_obrigatorio';/.test(fVoz));
-  checar('voz: aceita as três origens (app, widget, assistente), na RPC e na tabela',
-    fVoz.includes("p_source not in ('app', 'widget', 'assistente')") &&
-    voz.includes("check (source in ('app', 'widget', 'assistente'))"));
+  checar('voz: aceita as três origens (app, widget, assistente)',
+    fVoz.includes("p_source not in ('app', 'widget', 'assistente')"));
   checar('voz: wallet_id gravado em lançamento, parcela e conta',
     (fVoz.match(/card_id, wallet_id, payment_method/g) ?? []).length === 2 &&
     fVoz.includes('recurring, wallet_id, source, source_event_id'));
   checar('voz: sem carteira no pedido, usa a do cartão',
     /select c\.wallet_id into v_wallet_id\s+from public\.credit_cards c/.test(fVoz));
-  checar('voz: cartão conferido contra a carteira', fVoz.includes('c.wallet_id = v_wallet_id'));
+  checar('voz: cartão de outra carteira continua recusado', 
+    /c\.wallet_id = v_wallet_id or c\.wallet_id is null\)\s+\) then\s+raise exception 'Cartao nao pertence a carteira escolhida' using errcode = '23503';/.test(fVoz));
   checar('voz: schema.sql igual à migration', fVoz !== '' && funcao(sqlLf, 'registrar_operacao_voz') === fVoz);
 
   const pagar = lerMig('20260923230100_pagar_fatura_valida_ciclo.sql');
@@ -373,8 +386,23 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   checar('fechamento: trigger interno não fica exposto como RPC', revogaTrava.test(trava) && revogaTrava.test(sqlLf));
   checar('fechamento: schema.sql igual à migration', fTrava !== '' && funcao(sqlLf, 'travar_fechamento_com_historico') === fTrava);
 
+  const credito = lerMig('20260923230400_transacao_credito_exige_cartao.sql');
+  const fCredito = funcao(credito, 'exigir_cartao_no_credito');
+  checar('crédito sem cartão: trigger só em INSERT (órfão gravado continua editável)',
+    /before insert on public\.transactions\s+for each row execute function public\.exigir_cartao_no_credito\(\);/.test(credito) &&
+    !/before (?:insert or )?update/.test(credito));
+  checar('crédito sem cartão: recusa com 23514 e hint cartao_obrigatorio',
+    /if new\.payment_method = 'credit' and new\.card_id is null/.test(fCredito) &&
+    fCredito.includes("using errcode = '23514', hint = 'cartao_obrigatorio'"));
+  checar('crédito sem cartão: continuação de série órfã isenta (a recorrência vai em lote único)',
+    /new\.parent_id is not null\s+and exists \(\s+select 1 from public\.transactions p\s+where p\.id = new\.parent_id\s+and p\.user_id = new\.user_id\s+and p\.payment_method = 'credit'\s+and p\.card_id is null/.test(fCredito));
+  const revogaCredito = /revoke all on function public\.exigir_cartao_no_credito\(\) from public, anon, authenticated;/;
+
   // `$$` virando `$` numa geração por script: pego no Postgres embutido em 23/09.
-  for (const [nome, texto] of [['voz', voz], ['pagar', pagar], ['trava', trava], ['schema.sql', sqlLf]] as const) {
+  checar('crédito sem cartão: trigger interno não exposto como RPC', revogaCredito.test(credito) && revogaCredito.test(sqlLf));
+  checar('crédito sem cartão: schema.sql igual à migration', fCredito !== '' && funcao(sqlLf, 'exigir_cartao_no_credito') === fCredito);
+
+  for (const [nome, texto] of [['voz 230000', vozCarteira], ['voz 230300', voz], ['pagar', pagar], ['trava', trava], ['credito', credito], ['schema.sql', sqlLf]] as const) {
     checar(`${nome}: nenhum bloco com '$' solto no lugar de '$$'`, !/^(?:do|end|as) \$;?$/m.test(texto));
   }
 

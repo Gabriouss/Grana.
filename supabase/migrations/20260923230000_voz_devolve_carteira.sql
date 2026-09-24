@@ -1,31 +1,24 @@
--- Voz, widget e Granabo: carteira gravada de novo, e credito so com cartao (23/09/2026).
+-- Voz, widget e Granabo voltam a gravar a carteira (23/09/2026).
 --
--- Dois defeitos na mesma RPC, corrigidos juntos porque so existe uma
--- definicao dela (regra 13: um nucleo para as tres entradas).
+-- 20260908000000_voice_wallets.sql passou a gravar `wallet_id` nas linhas
+-- criadas por voz. 20260914120000_lancamento_pelo_assistente.sql redefiniu a
+-- funcao a partir da migration ORIGINAL (20260905004109), so trocando a lista
+-- de origens, e com isso apagou a carteira: se ela e a versao em producao,
+-- toda compra por voz ou pelo Granabo cai sem `wallet_id`. O `schema.sql`
+-- guardava a versao com carteira, mas sem a origem 'assistente'. Esta
+-- migration junta as duas; o corpo foi gerado por script a partir do
+-- `schema.sql`.
 --
--- 1. Carteira. 20260908000000_voice_wallets.sql passou a gravar `wallet_id`
---    nas linhas criadas por voz. 20260914120000_lancamento_pelo_assistente.sql
---    redefiniu a funcao a partir da migration ORIGINAL (20260905004109), so
---    trocando a lista de origens, e com isso apagou a carteira: toda compra
---    por voz ou pelo Granabo voltou a cair sem `wallet_id`, e a conferencia de
---    que o cartao pertence a carteira sumiu. O `schema.sql` guardava a versao
---    certa (com carteira), mas sem a origem 'assistente'. Esta migration junta
---    as duas: o corpo e o do `schema.sql`, gerado por script, com a origem
---    'assistente' acrescentada.
+-- Ajustes:
+--   * sem `wallet_id` no pedido e com `card_id`, a carteira e a do cartao, e
+--     nao a Principal;
+--   * cartao de OUTRA carteira continua recusado (23503), mas cartao sem
+--     carteira (legado) e aceito: um APK antigo apaga a fala local em erro
+--     22/23, entao esta migration nao pode inventar recusa nova para ele.
 --
---    Ajuste novo: sem `wallet_id` no pedido e com `card_id`, a carteira passa
---    a ser a do cartao, e nao a Principal. Com os dois no pedido e divergentes,
---    continua a recusa 23503 da versao de 08/09.
---
--- 2. Credito sem cartao. Decisao do autor em 23/09/2026: "Lancamentos no
---    credito nunca podem ser lancados sem selecionar um cartao." O servidor
---    recusa com errcode 23514 e hint 'cartao_obrigatorio'. Contrato combinado
---    com o Forge: app, widget e Granabo checam antes de enviar, e quando a
---    recusa chega mesmo assim levam a fala para revisao (escolher o cartao) e
---    reenviam com request_id NOVO, em vez de apagar a fala. RAISE desfaz a
---    transacao inteira, entao nada fica pendente em voice_operations.
---
--- Nada muda para quem ja manda cartao e carteira coerentes.
+-- Separada da recusa de credito sem cartao (20260923230300) de proposito:
+-- esta e inofensiva para o APK instalado e pode ser aplicada antes; a recusa
+-- vai junto com o APK novo.
 --
 -- Antes de aplicar (regra 11): ler a definicao em producao
 --   select pg_get_functiondef('public.registrar_operacao_voz(uuid,text,text,jsonb)'::regprocedure);
@@ -211,16 +204,10 @@ begin
        )) then
       raise exception 'Lancamento de voz invalido' using errcode = '22023';
     end if;
-    -- Decisao do autor (23/09/2026): lancamento no credito nunca e gravado
-    -- sem cartao. A hint e o contrato com o app, o widget e o Granabo: eles
-    -- levam a fala para revisao (escolher o cartao) em vez de descartar.
-    if v_payment_method = 'credit' and v_card_id is null then
-      raise exception 'Lancamento no credito exige cartao'
-        using errcode = '23514', hint = 'cartao_obrigatorio';
-    end if;
     if v_card_id is not null and not exists (
       select 1 from public.credit_cards c
-      where c.id = v_card_id and c.user_id = v_user and c.wallet_id = v_wallet_id
+      where c.id = v_card_id and c.user_id = v_user
+        and (c.wallet_id = v_wallet_id or c.wallet_id is null)
     ) then
       raise exception 'Cartao nao pertence a carteira escolhida' using errcode = '23503';
     end if;

@@ -2266,6 +2266,44 @@ create trigger travar_fechamento_com_historico
   before update of closing_day on public.credit_cards
   for each row execute function public.travar_fechamento_com_historico();
 
+-- Crédito sem cartão recusado em todo INSERT (decisão 4 do autor, 23/09/2026).
+-- Ver 20260923230400_transacao_credito_exige_cartao.sql.
+create or replace function public.exigir_cartao_no_credito()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.payment_method = 'credit' and new.card_id is null
+     -- Continuacao de serie orfa (cartao excluido depois): a geracao de
+     -- recorrencias copia payment_method e card_id da cabeca e manda todas as
+     -- series num lote so. Recusar aqui derrubaria o lote inteiro, em
+     -- silencio, e nenhuma serie do usuario geraria mais nada.
+     and not (
+       new.parent_id is not null
+       and exists (
+         select 1 from public.transactions p
+         where p.id = new.parent_id
+           and p.user_id = new.user_id
+           and p.payment_method = 'credit'
+           and p.card_id is null
+       )
+     ) then
+    raise exception 'Lancamento no credito exige cartao'
+      using errcode = '23514', hint = 'cartao_obrigatorio';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.exigir_cartao_no_credito() from public, anon, authenticated;
+
+drop trigger if exists exigir_cartao_no_credito on public.transactions;
+create trigger exigir_cartao_no_credito
+  before insert on public.transactions
+  for each row execute function public.exigir_cartao_no_credito();
+
 create or replace function public.adicionar_compra_parcelada(
   p_description text,
   p_total_amount numeric,
@@ -4050,7 +4088,8 @@ begin
     end if;
     if v_card_id is not null and not exists (
       select 1 from public.credit_cards c
-      where c.id = v_card_id and c.user_id = v_user and c.wallet_id = v_wallet_id
+      where c.id = v_card_id and c.user_id = v_user
+        and (c.wallet_id = v_wallet_id or c.wallet_id is null)
     ) then
       raise exception 'Cartao nao pertence a carteira escolhida' using errcode = '23503';
     end if;
