@@ -12,7 +12,6 @@ import {
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from '@/lib/alert';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget, lh } from '@/lib/theme';
 import * as Clipboard from 'expo-clipboard';
@@ -37,7 +36,7 @@ import {
 } from '@/lib/diagnostico';
 import { layoutDoPreset, salvarLayoutHome, type HomePreset } from '@/lib/home-layout';
 import AppPressable from './AppPressable';
-import AppModal from './AppModal';
+import AppModal, { InsetsDoModal } from './AppModal';
 import { useKeyboardHeight } from './Sheet';
 import { useFlags } from '@/lib/feature-flags';
 
@@ -167,8 +166,7 @@ export default function OnboardingModal({
   const keyboardHeight = useKeyboardHeight();
   /* O <Modal> desenha por baixo da barra de status no modo edge-to-edge — sem
      este recuo a barra de progresso fica em cima do relógio e da bateria.
-     Mesmo tratamento do UpdateBanner. */
-  const insets = useSafeAreaInsets();
+     O recuo vem de `InsetsDoModal`, que mede a janela do próprio modal. */
 
   const soDiagnostico = modo === 'diagnostico';
   /* No modo diagnóstico as etapas visíveis são as perguntas 1 a 4; a
@@ -423,6 +421,7 @@ export default function OnboardingModal({
     <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent={false} onRequestClose={onClose}>
       {/* Tela cheia: o campo de renda ficaria atrás do teclado, já que no
           modo edge-to-edge a janela não encolhe sozinha. */}
+      <InsetsDoModal>{(insets) => (
       <View
         ref={modalRef}
         accessibilityViewIsModal
@@ -760,6 +759,7 @@ export default function OnboardingModal({
           )}
         </View>
       </View>
+      )}</InsetsDoModal>
     </AppModal>
   );
 }

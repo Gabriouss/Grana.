@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, lh } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import { hapticTap } from '@/lib/haptics';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
 import AppPressable from './AppPressable';
-import AppModal from './AppModal';
+import AppModal, { InsetsDoModal } from './AppModal';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import ExportPdfButton from './ExportPdfButton';
 import type { Bill, Transaction } from '@/lib/types';
@@ -179,8 +178,8 @@ export default function MonthlyWrappedModal({
   useModalAccessibility(modalRef, visible, onClose);
   /* O <Modal> desenha sob a barra de status no modo edge-to-edge; o 56 fixo
      que estava aqui acertava por acaso na maioria dos aparelhos e errava nos
-     de barra mais alta ou mais baixa. */
-  const insets = useSafeAreaInsets();
+     de barra mais alta ou mais baixa. O recuo vem de `InsetsDoModal`,
+     medido na janela do modal. */
 
   useEffect(() => {
     if (visible) setIndice(0);
@@ -208,6 +207,7 @@ export default function MonthlyWrappedModal({
 
   return (
     <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'fade'} onRequestClose={onClose}>
+      <InsetsDoModal>{(insets) => (
       <View ref={modalRef} style={[styles.fundo, { paddingTop: insets.top + spacing.xl }]} accessibilityViewIsModal role="dialog" focusable>
         {/* Barra de progresso dos slides */}
         <View style={styles.progressoRow}>
@@ -285,6 +285,7 @@ export default function MonthlyWrappedModal({
           </AppPressable>
         </View>
       </View>
+      )}</InsetsDoModal>
     </AppModal>
   );
 }

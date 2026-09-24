@@ -85,3 +85,38 @@ assert.equal(style.maxWidth, 520);
 assert.equal(panel.props.children.type, 'ScrollView');
 assert.equal(panel.props.children.props.keyboardShouldPersistTaps, 'handled');
 console.log('OK: Escape fecha apenas o topo; Sheet preserva teto calculado e rolagem.');
+
+// Executa o AppModal real. Cada Modal cria outra janela nativa; a área segura
+// precisa ser MEDIDA dentro dela (T7, S9, S40, T16), mas não aplicada em volta
+// de tudo: um SafeAreaView ali deixava a faixa das barras com o fundo branco
+// da janela nativa e tirava a barra de status de baixo do escurecido (T19).
+const insetsDoModal = { top: 42, bottom: 24, left: 0, right: 0 };
+const appModalMod = carregar('components/AppModal.tsx', {
+  'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
+  'react-native': { Platform: { OS: 'android' }, Modal: 'Modal' },
+  'react-native-safe-area-context': {
+    SafeAreaProvider: 'SafeAreaProvider',
+    SafeAreaView: 'SafeAreaView',
+    useSafeAreaInsets: () => insetsDoModal,
+  },
+  '@/lib/motion': { useReducedMotion: () => false },
+});
+const modalTree = appModalMod.default({ visible: true, transparent: true, children: 'conteudo' });
+assert.equal(modalTree.type, 'Modal');
+assert.equal(modalTree.props.statusBarTranslucent, true);
+assert.equal(modalTree.props.children.type, 'SafeAreaProvider');
+assert.equal(modalTree.props.children.props.children, 'conteudo', 'nada recua o conteúdo entre o provider e a tela');
+assert.ok(!JSON.stringify(modalTree).includes('SafeAreaView'), 'AppModal não pode envolver o conteúdo em SafeAreaView');
+let recebido = null;
+appModalMod.InsetsDoModal({ children: (insets) => { recebido = insets; return null; } });
+assert.deepEqual(recebido, insetsDoModal);
+console.log('OK: AppModal mede a área segura na própria janela nativa, sem recuar o fundo.');
+
+// As telas cheias precisam ler o recuo DENTRO do AppModal. Chamado fora, o
+// hook lê a janela de baixo, onde o topo vem zero no Android.
+for (const arquivo of ['components/OnboardingModal.tsx', 'components/QrScannerModal.tsx', 'components/MonthlyWrappedModal.tsx']) {
+  const fonte = fs.readFileSync(arquivo, 'utf8');
+  assert.ok(!/useSafeAreaInsets\(/.test(fonte), `${arquivo} lê o recuo fora da janela do modal`);
+  assert.ok(fonte.includes('<InsetsDoModal>'), `${arquivo} precisa do recuo medido no modal`);
+}
+console.log('OK: telas cheias em modal recuam pelo InsetsDoModal.');

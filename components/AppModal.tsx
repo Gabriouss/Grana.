@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { Modal, Platform, type ModalProps } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
 import { useReducedMotion } from '@/lib/motion';
 
 /**
@@ -18,6 +20,7 @@ export default function AppModal({
   hardwareAccelerated,
   navigationBarTranslucent,
   statusBarTranslucent,
+  children,
   ...props
 }: ModalProps) {
   const reduzirMovimento = useReducedMotion();
@@ -29,6 +32,28 @@ export default function AppModal({
       hardwareAccelerated={hardwareAccelerated ?? Platform.OS === 'android'}
       navigationBarTranslucent={navigationBarTranslucent ?? Platform.OS === 'android'}
       statusBarTranslucent={statusBarTranslucent ?? Platform.OS === 'android'}
-    />
+    >
+      {/* Modal abre uma janela nativa própria. O provider da tela de baixo
+          mede outra janela, e nele o topo vinha zero no Android: folhas,
+          diagnóstico e câmera entravam sob a barra de status (T7, S9, S40,
+          T16). Este provider mede a janela do modal.
+
+          Só mede, não recua. Recuar aqui (um SafeAreaView em volta de tudo)
+          deixava a faixa das barras com o fundo branco da janela nativa no
+          modal de tela cheia e tirava a barra de status de baixo do fundo
+          escurecido das folhas (T19). Quem pinta a borda recua o próprio
+          conteúdo: `Sheet` pelo `useSheetFlutuante`, e as telas cheias por
+          `InsetsDoModal`. */}
+      <SafeAreaProvider>{children}</SafeAreaProvider>
+    </Modal>
   );
+}
+
+/**
+ * Recuos das barras do sistema medidos na janela do modal. Para telas cheias
+ * que chamam o `useSafeAreaInsets` fora do `AppModal` e por isso leriam a
+ * janela de baixo: o valor só é certo quando lido aqui dentro.
+ */
+export function InsetsDoModal({ children }: { children: (insets: EdgeInsets) => ReactNode }) {
+  return <>{children(useSafeAreaInsets())}</>;
 }

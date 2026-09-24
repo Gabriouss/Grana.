@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { Alert } from '@/lib/alert';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
@@ -24,7 +23,7 @@ import { hapticSuccess, hapticTap } from '@/lib/haptics';
 import { LIMITS } from '@/lib/limits';
 import CategoryChips from './CategoryChips';
 import AppPressable from './AppPressable';
-import AppModal from './AppModal';
+import AppModal, { InsetsDoModal } from './AppModal';
 import Sheet from './Sheet';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
@@ -74,8 +73,8 @@ export default function QrScannerModal({
   const { activeWalletId, wallets } = useWallet();
   const [permissao, pedirPermissao] = useCameraPermissions();
   /* Overlay da câmera desenha até a borda física; sem o inset os botões de
-     fechar/lanterna ficam sob a barra de status em aparelhos de barra alta. */
-  const insets = useSafeAreaInsets();
+     fechar/lanterna ficam sob a barra de status em aparelhos de barra alta.
+     O recuo vem de `InsetsDoModal`, medido na janela do modal. */
 
   const [nota, setNota] = useState<NotaFiscal | null>(null);
   useModalAccessibility(modalRef, visible && !nota, fechar);
@@ -167,6 +166,7 @@ export default function QrScannerModal({
 
     return (
       <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} onRequestClose={fechar}>
+        <InsetsDoModal>{(insets) => (
         <View ref={modalRef} style={styles.camWrap} accessibilityViewIsModal role="dialog" focusable>
           {semPermissao ? (
             <View style={styles.permissaoWrap}>
@@ -222,6 +222,7 @@ export default function QrScannerModal({
             </>
           )}
         </View>
+        )}</InsetsDoModal>
       </AppModal>
     );
   }
