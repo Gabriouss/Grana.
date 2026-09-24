@@ -10294,3 +10294,40 @@ Relatórios do Harbor e do maestro, registrados pelo Ledger. Substitui o item
   `app.json` não tem `android.versionCode` (build local sairia com 1 e o
   Android recusa instalar por cima); três `EXPO_PUBLIC_` (download e os dois
   checkouts) só existem no ambiente "preview" do EAS, não no `eas.json`.
+
+## 23/09/2026 — M1 — Crédito por ciclo, etapa (c): crédito nunca grava sem cartão (`d10a79a`)
+
+Relatório do Forge, registrado pelo Ledger. Decisão 4 do autor, em toda
+entrada.
+
+- **Formulário do Crédito:** vinha com o primeiro cartão da carteira escolhido
+  sozinho (`walletCards[0]`); com 2+ cartões, a compra ia para um cartão que
+  ninguém escolheu. `cartaoPadraoDoFormulario()` só preenche o cartão aberto
+  na tela ou o único da carteira.
+- **Importação de extrato:** fatura sem cartão virava saída comum e sumia de
+  qualquer fatura. Agora pede "Escolha o cartão" e não importa até a escolha.
+- **Dados:** `exigirCartaoNoCredito` (inclusão, lote inteiro, parcelada) e
+  `edicaoTiraCartaoDoCredito` (edição, que o trigger `230400` não vê) em
+  `lib/transaction-rules.ts`, usadas por `lib/data.ts`.
+- **Voz, app e widget (núcleo comum):** a recusa `23514` /
+  `cartao_obrigatorio` leva à revisão "Qual cartão?"; na fila offline vira
+  notificação de revisão e só sai da fila depois de publicada, sem apagar a
+  fala e sem laço. A fila passa a guardar a transcrição.
+- **Estorno citando cartão:** a voz gravava como COMPRA no cartão e o Granabô
+  como entrada na carteira sem cartão. Agora as duas não gravam: revisão
+  "Estorno no cartão?" / "Ainda não registrei nada". "Recebi um crédito de
+  500" continua sendo entrada. O tipo passa a ser lido sem o nome do cartão
+  (cartão chamado "Salário" virava entrada).
+- **Pontos do Harbor:** comprovante colado mandando crédito sem cartão NÃO
+  procede (`parseFormaPagamento` só devolve débito/Pix/dinheiro; teste trava a
+  premissa); edição sem caminho na tela, fechada nos dados mesmo assim.
+- **Verificação:** `__tests__/credito-exige-cartao.cjs` (novo, 23, módulos
+  reais nas duas entradas da voz), caso novo em `granabo-estorno-credito.cjs`,
+  mutação 8/8, `tsc`, `deno check` e `test:ci` verdes.
+- **Não verificado / pendente:** aparelho e emulador; `criarLancamento` do
+  Granabô gravando no cartão de ponta a ponta; deploy do
+  `assistente-financeiro` com (b) e (c) (regra 11). Dívida achada: o `catch`
+  de `executarFerramentas` (`_shared/assistant-learning.ts:358`) engole erro
+  sem log (regra 9). **Pergunta ao autor:** com UM cartão na carteira, crédito
+  antigo sem `card_id` segue atribuído a ele (`resolverCartao`); o Forge
+  recomenda manter.
