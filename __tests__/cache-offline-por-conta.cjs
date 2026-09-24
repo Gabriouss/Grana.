@@ -43,6 +43,11 @@ const codigo = ts.transpileModule(fs.readFileSync('lib/offline-cache.ts', 'utf8'
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
 }).outputText;
 
+const codigoFila = ts.transpileModule(fs.readFileSync('lib/fila-pendente.ts', 'utf8'), {
+  fileName: 'lib/fila-pendente.ts',
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+}).outputText;
+
 function montar() {
   const disco = new Map();
   const estado = { usuario: 'conta-A' };
@@ -55,6 +60,18 @@ function montar() {
     getAllKeys: async () => [...disco.keys()],
     multiRemove: async (ks) => { ks.forEach((k) => disco.delete(k)); },
   };
+
+  /* A fila mora em lib/fila-pendente.ts desde 24/09/2026: carregada de
+     verdade, sobre o mesmo disco e o mesmo dono. */
+  const fila = { exports: {} };
+  vm.runInNewContext(codigoFila, {
+    module: fila, exports: fila.exports, console, Date, JSON, Math, Object, Array, Promise, Error, String, Number, Set,
+    require: (nome) => {
+      if (nome.includes('async-storage')) return { __esModule: true, default: AsyncStorage };
+      if (nome === './sessao-offline') return { idDoUsuarioLocal: async () => estado.usuario };
+      throw new Error(`import inesperado na fila: ${nome}`);
+    },
+  });
 
   const module = { exports: {} };
   vm.runInNewContext(codigo, {
@@ -74,11 +91,13 @@ function montar() {
       }
       if (nome === './goals') return { createGoal: async (input) => { enviados.push({ como: estado.usuario, input }); } };
       if (nome === './lancamentos-alterados') return { marcarLancamentosAlterados() {} };
+      if (nome === './fila-pendente') return fila.exports;
       if (nome === './cache-de-tela') {
         return {
           guardarTela: async () => {},
           lerTela: async () => null,
           isLikelyNetworkError: () => true,
+          avisarDadoNovo() {},
         };
       }
       throw new Error(`import inesperado: ${nome}`);

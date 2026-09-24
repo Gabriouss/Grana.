@@ -27,6 +27,7 @@ import { checarLimiteCartao } from './creditLimitAlert';
 import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito } from './transaction-rules';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 import { marcarLancamentosAlterados } from './lancamentos-alterados';
+import { juntarPendentes } from './fila-pendente';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
   Bill,
@@ -1014,8 +1015,18 @@ export async function deleteUserAccount(): Promise<{ completo: boolean }> {
 
    Erro que NÃO é de rede continua estourando — ver o comentário longo em
    `lib/cache-de-tela.ts` sobre a regra 9 do AGENTS.md. */
-export const fetchTransactions = comCacheOffline('transacoes', buscar_fetchTransactions, (opts?) => String(opts?.sinceDays ?? 'tudo'));
-export const fetchTransactionsDoPeriodo = comCacheOffline('transacoes-periodo', buscar_fetchTransactionsDoPeriodo, (inicio, fim) => `${inicio}..${fim}`);
+const fetchTransactionsComCache = comCacheOffline('transacoes', buscar_fetchTransactions, (opts?) => String(opts?.sinceDays ?? 'tudo'));
+const fetchTransactionsDoPeriodoComCache = comCacheOffline('transacoes-periodo', buscar_fetchTransactionsDoPeriodo, (inicio, fim) => `${inicio}..${fim}`);
+
+/* Os pendentes da fila offline entram DEPOIS do cache (T13, 23/09/2026): o
+   disco guarda só o que veio do banco, e sem rede é ele que volta como
+   resposta. Ver `juntarPendentes`. */
+export async function fetchTransactions(...args: Parameters<typeof buscar_fetchTransactions>): Promise<Transaction[]> {
+  return juntarPendentes(await fetchTransactionsComCache(...args));
+}
+export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: string): Promise<Transaction[]> {
+  return juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO);
+}
 export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);
 export const fetchCreditCards = comCacheOffline('cartoes', buscar_fetchCreditCards);
 export const fetchCardInvoicePayments = comCacheOffline('pagamentos-fatura', buscar_fetchCardInvoicePayments);

@@ -133,7 +133,7 @@ async function filaOffline() {
       addBill: async () => {},
     },
     './goals': { createGoal: async () => {} },
-    './cache-de-tela': { guardarTela: async () => {}, lerTela: async () => null },
+    './cache-de-tela': { guardarTela: async () => {}, lerTela: async () => null, avisarDadoNovo() {}, isLikelyNetworkError: (e) => /network/i.test(String(e?.message)) },
     './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
   });
 

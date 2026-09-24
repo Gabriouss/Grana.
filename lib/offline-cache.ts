@@ -1,13 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addBill, addTransaction } from './data';
 import { createGoal } from './goals';
-import { guardarTela, lerTela } from './cache-de-tela';
+import { avisarDadoNovo, guardarTela, isLikelyNetworkError, lerTela } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 import { marcarLancamentosAlterados } from './lancamentos-alterados';
-import type { Transaction, TxType } from './types';
+import {
+  getQueue,
+  otimistaDoItem,
+  separarPorDono,
+  setQueue,
+  type PendingInput,
+  type PendingItem,
+  type TipoPendente,
+} from './fila-pendente';
+import type { Transaction } from './types';
+
+/* A fila em si mora em `fila-pendente.ts` desde 24/09/2026, para `data.ts`
+   poder juntar os pendentes às listas sem ciclo de import. */
+export type { TipoPendente } from './fila-pendente';
 
 const CACHE_KEY = 'grana:cache:transactions';
-const QUEUE_KEY = 'grana:queue:transactions-pendentes';
 
 /* ── De quem é este dado ────────────────────────────────────────────────────
 
@@ -75,34 +87,6 @@ export async function esquecerLancamentosLocais(): Promise<void> {
   }
 }
 
-type PendingInput = {
-  type: TxType;
-  description: string;
-  amount: number;
-  category: string;
-  color: string;
-  occurred_on: string;
-  recurring?: boolean;
-  /** Carteira/método selecionados no formulário — sem eles aqui, o tipo
-      TypeScript não refletia o que `lancamentos.tsx` já enviava de verdade
-      (o valor sobrevivia por acidente, porque JS não apaga propriedade
-      extra que o tipo não declara), e o item OTIMISTA (`optimistic`,
-      abaixo) simplesmente não os carregava — enquanto o lançamento ficava
-      pendente, ele aparecia sem carteira/método na tela. */
-  wallet_id?: string | null;
-  payment_method?: string;
-  bank?: string;
-  card_id?: string | null;
-};
-
-type PendingItem = {
-  localId: string;
-  input: PendingInput;
-  tipo?: TipoPendente;
-  /** Dono do item. Opcional só por causa da fila gravada antes de 23/09/2026. */
-  userId?: string;
-};
-
 /* ── Fila para além do lançamento ───────────────────────────────────────────
 
    A fila nasceu só para transação, e por meses foi a única coisa que
@@ -114,7 +98,6 @@ type PendingItem = {
    itens gravados sem esse campo, e um item sem tipo é uma transação — era o
    único tipo que existia quando ele foi gravado. Ler como obrigatório
    descartaria em silêncio o lançamento que a pessoa fez no metrô. */
-export type TipoPendente = 'transacao' | 'boleto' | 'meta';
 
 /** Para onde cada tipo vai quando a rede volta. */
 const ENVIAR: Record<TipoPendente, (input: any) => Promise<unknown>> = {
@@ -148,8 +131,9 @@ export async function enfileirarPendente<T extends { id: string }>(
 ): Promise<T> {
   const userId = await idDoUsuarioLocal();
   const queue = await getQueue();
-  queue.push({ localId: otimista.id, tipo, input: input as PendingInput, userId: userId ?? undefined });
+  queue.push({ localId: otimista.id, tipo, input: input as PendingInput, userId: userId ?? undefined, criadoEm: new Date().toISOString() });
   await setQueue(queue);
+  agendarNovaTentativa();
 
   const chave = CACHE_DA_TELA[tipo];
   if (chave) {
@@ -157,43 +141,6 @@ export async function enfileirarPendente<T extends { id: string }>(
     await guardarTela(chave, [otimista, ...(guardado?.dados ?? [])]);
   }
   return otimista;
-}
-
-async function getQueue(): Promise<PendingItem[]> {
-  try {
-    const raw = await AsyncStorage.getItem(QUEUE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Separa a fila entre o que é desta conta e o que não é.
- *
- * Item SEM dono é de uma versão anterior do app, gravado quando a fila não
- * carimbava ninguém. Ele conta como desta conta, e não como de ninguém: quem
- * atualiza o app é quem está logado, e descartar seria perder um lançamento
- * que a pessoa fez e ainda não subiu. A janela em que isso erraria é estreita
- * (atualizar o app, sair, entrar com outra conta e só então recuperar a rede),
- * e o outro lado do erro — perder dinheiro registrado — é pior.
- */
-function separarPorDono(queue: PendingItem[], userId: string | null) {
-  const minhas: PendingItem[] = [];
-  const dosOutros: PendingItem[] = [];
-  for (const item of queue) {
-    if (!item.userId || item.userId === userId) minhas.push(item);
-    else dosOutros.push(item);
-  }
-  return { minhas, dosOutros };
-}
-
-async function setQueue(items: PendingItem[]): Promise<void> {
-  try {
-    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(items));
-  } catch {
-    // idem — best-effort.
-  }
 }
 
 /* Mudou para `cache-de-tela.ts` e é reexportado daqui: `data.ts` passou a
@@ -208,32 +155,21 @@ export { isLikelyNetworkError } from './cache-de-tela';
  * do Supabase assim que `flushPendingQueue` conseguir enviá-lo.
  */
 export async function queuePendingTransaction(input: PendingInput): Promise<Transaction> {
-  const localId = novoIdLocal();
-  const userId = await idDoUsuarioLocal();
+  const item: PendingItem = {
+    localId: novoIdLocal(),
+    tipo: 'transacao',
+    input,
+    userId: (await idDoUsuarioLocal()) ?? undefined,
+    criadoEm: new Date().toISOString(),
+  };
   const queue = await getQueue();
-  queue.push({ localId, tipo: 'transacao', input, userId: userId ?? undefined });
+  queue.push(item);
   await setQueue(queue);
 
-  const optimistic: Transaction = {
-    id: localId,
-    user_id: 'local',
-    type: input.type,
-    description: input.description,
-    amount: input.amount,
-    category: input.category,
-    color: input.color,
-    occurred_on: input.occurred_on,
-    recurring: !!input.recurring,
-    parent_id: null,
-    wallet_id: input.wallet_id ?? null,
-    payment_method: input.payment_method as Transaction['payment_method'],
-    bank: input.bank,
-    card_id: input.card_id ?? null,
-    created_at: new Date().toISOString(),
-  };
-
+  const optimistic = otimistaDoItem(item);
   const cached = (await getCachedTransactions()) ?? [];
   await setCachedTransactions([optimistic, ...cached]);
+  agendarNovaTentativa();
 
   return optimistic;
 }
@@ -280,7 +216,10 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
       await enviar(remaining[0].input);
       remaining.shift();
       synced++;
-    } catch {
+    } catch (erro) {
+      /* Falta de rede é o caso esperado e se resolve sozinho. Qualquer outra
+         recusa deixa o item parado na frente da fila: precisa aparecer. */
+      if (!isLikelyNetworkError(erro)) console.error('[offline] envio de item pendente recusado', { tipo, erro });
       break;
     }
   }
@@ -288,7 +227,62 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
   await setQueue([...dosOutros, ...remaining]);
   /* A fila também leva boletos e metas; marcar a mais só custa uma carga
      completa da Início, marcar a menos deixaria o item sincronizado fora de
-     "Últimos lançamentos". */
-  if (synced > 0) marcarLancamentosAlterados();
+     "Últimos lançamentos". O aviso de dado novo faz a tela aberta recarregar
+     e trocar o otimista pela linha real. */
+  if (synced > 0) {
+    marcarLancamentosAlterados();
+    avisarDadoNovo();
+  }
+  if (remaining.length > 0) agendarNovaTentativa();
   return { synced, remaining: remaining.length };
+}
+
+/* ── Nova tentativa enquanto houver fila ─────────────────────────────────────
+
+   Achado T13 do Sentinel (23/09/2026): o que foi salvo sem rede só subia
+   quando a pessoa reabria o app ou trocava de tela, porque a fila só era
+   enviada dentro da carga de uma tela. A rede voltar com o app aberto não
+   dispara nada (este app não tem detector de conectividade nativo).
+
+   Enquanto houver item desta conta na fila, tenta de novo a cada 30 s. Um
+   agendamento por vez; para sozinho quando a fila esvazia. Com o app em
+   segundo plano o React Native não roda o timer, então não gasta nada. */
+export const INTERVALO_NOVA_TENTATIVA_MS = 30_000;
+let novaTentativa: ReturnType<typeof setTimeout> | null = null;
+
+export function agendarNovaTentativa(): void {
+  if (novaTentativa) return;
+  novaTentativa = setTimeout(() => {
+    novaTentativa = null;
+    flushPendingQueue().catch((erro) => {
+      console.error('[offline] nova tentativa da fila falhou', erro);
+      agendarNovaTentativa();
+    });
+  }, INTERVALO_NOVA_TENTATIVA_MS);
+  /* Só existe no Node (testes): não segura o processo aberto. */
+  (novaTentativa as { unref?: () => void }).unref?.();
+}
+
+/**
+ * Salva o lançamento; sem rede, guarda no aparelho em vez de perder.
+ *
+ * É o `try/catch` que a Início e Lançamentos repetiam cada uma do seu jeito,
+ * num lugar só. `guardado: true` quer dizer "está na fila e já aparece nas
+ * listas" (ver `juntarPendentes`), e a tela diz isso à pessoa.
+ *
+ * Sem prazo próprio de propósito: `transactions` não tem chave de
+ * idempotência, então desistir de esperar e guardar na fila enquanto o
+ * primeiro envio ainda pode chegar ao banco gravaria o lançamento duas vezes.
+ * O teto de espera é o do cliente Supabase (`lib/fetch-com-prazo.ts`).
+ * Recusa que não é de rede (validação, crédito sem cartão) sobe como erro.
+ */
+export async function salvarOuGuardarNoAparelho(
+  input: PendingInput
+): Promise<{ lancamento: Transaction; guardado: boolean }> {
+  try {
+    return { lancamento: await addTransaction(input), guardado: false };
+  } catch (erro) {
+    if (!isLikelyNetworkError(erro)) throw erro;
+    return { lancamento: await queuePendingTransaction(input), guardado: true };
+  }
 }

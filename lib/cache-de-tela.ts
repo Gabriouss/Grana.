@@ -170,7 +170,8 @@ export function assinarDadoNovo(ouvinte: () => void): () => void {
   return () => ouvintesDeDadoNovo.delete(ouvinte);
 }
 
-function avisarDadoNovo() {
+/** Exportado também para a fila offline avisar que um pendente subiu. */
+export function avisarDadoNovo() {
   /* Uma tela abre com várias buscas em paralelo (lançamentos, contas, metas),
      e numa rede lenta as respostas atrasadas chegam quase juntas. Agrupar num
      aviso só evita a tela recarregar três vezes seguidas. */
