@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
+import { comPrazo } from './fetch-com-prazo';
 
 /**
  * expo-secure-store não guarda valores acima de ~2048 bytes, e a sessão do
@@ -132,7 +133,10 @@ async function fetchComRetentativaDeRelogio(
 }
 
 export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
-  global: { fetch: fetchComRetentativaDeRelogio },
+  /* O prazo fica POR FORA da repetição por relógio: a segunda tentativa cabe
+     no mesmo prazo, em vez de somar outro. O auth usa este mesmo fetch, então
+     a renovação do token também deixa de poder pendurar para sempre. */
+  global: { fetch: comPrazo(fetchComRetentativaDeRelogio) },
   auth: {
     storage: armazenamentoSessao,
     storageKey: CHAVE_SESSAO,
