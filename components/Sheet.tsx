@@ -41,6 +41,7 @@ export default function Sheet({
   sheetStyle,
   onClose,
   centered = false,
+  keyboardShouldPersistTaps = 'handled',
 }: {
   children: ReactNode;
   /** Estilo do container interno do conteúdo (o padrão já aplica o espaçamento entre campos). */
@@ -50,6 +51,7 @@ export default function Sheet({
       modal. Também é usado pelo Escape na web. */
   onClose: () => void;
   centered?: boolean;
+  keyboardShouldPersistTaps?: 'handled' | 'always';
 }) {
   const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const painelRef = useRef<View>(null);
@@ -85,7 +87,7 @@ export default function Sheet({
             { paddingBottom: spacing.lg },
             contentStyle,
           ]}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps={keyboardShouldPersistTaps}
           showsVerticalScrollIndicator={false}
         >
           {children}

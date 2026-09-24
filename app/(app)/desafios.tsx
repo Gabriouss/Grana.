@@ -231,6 +231,7 @@ export default function DesafiosScreen() {
     indicadores,
     totalBadgesCount,
   } = state;
+  const diasAtivosNaSemana = weekActivity.filter((day) => day.active).length;
 
 
   return (
@@ -350,7 +351,7 @@ export default function DesafiosScreen() {
               <Text style={styles.cardTitle}>Ritmo da semana</Text>
             </View>
             <Text style={styles.streakBadgeText}>
-              {streak} {streak === 1 ? 'dia ativo' : 'dias em dia'}
+              {diasAtivosNaSemana} {diasAtivosNaSemana === 1 ? 'dia ativo' : 'dias ativos'}
             </Text>
           </View>
 

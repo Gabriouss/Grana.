@@ -22,7 +22,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { fetchTransactions, fetchTransactionsDoPeriodo } from '@/lib/data';
-import { formatMoney, isCreditTx, todayISO, formatDateLabel } from '@/lib/format';
+import { formatMoney, formatBRLSaldo, isCreditTx, todayISO, formatDateLabel } from '@/lib/format';
 import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts, lh } from '@/lib/theme';
 import { percentualDaFatia, prepararFatias } from '@/lib/chart-colors';
 import type { Transaction } from '@/lib/types';
@@ -390,7 +390,7 @@ export default function GraficosScreen() {
               </View>
               <View style={styles.summaryGridItem}>
                 <Text style={styles.summaryGridLabel}>Saldo</Text>
-                <PrivacyValue><Text style={styles.summaryGridValue}>R$ {formatMoney(totaisGerais.entradas - totaisGerais.saidas)}</Text></PrivacyValue>
+                <PrivacyValue><Text style={styles.summaryGridValue}>{formatBRLSaldo(totaisGerais.entradas - totaisGerais.saidas)}</Text></PrivacyValue>
               </View>
             </View>
           ) : (

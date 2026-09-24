@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { mensagemErro } from '@/lib/erros';
+import { isLikelyNetworkError } from '@/lib/offline-cache';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -70,7 +71,10 @@ export default function ExportPdfButton({
         Alert.alert('Relatório gerado', `O compartilhamento não está disponível neste aparelho. O arquivo ficou em:\n${uri}`);
       }
     } catch (e: any) {
-      Alert.alert('Erro ao gerar relatório', mensagemErro(e, 'Tente novamente.'));
+      console.error('[relatorio-pdf] falha ao gerar relatório', e);
+      Alert.alert('Erro ao gerar relatório', isLikelyNetworkError(e)
+        ? mensagemErro(e)
+        : 'Não foi possível gerar o relatório. Tente novamente.');
     } finally {
       setGerando(false);
     }

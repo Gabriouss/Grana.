@@ -118,6 +118,12 @@ function registrouTodoDia(n: number, ate: string): Transaction[] {
     tx('2026-08-28T19:00:00-03:00'),
     tx('2026-08-27T19:00:00-03:00'),
   ];
+  const diasSeparados = calculateStreakAndWeek([
+    tx('2026-08-30T19:00:00-03:00'),
+    tx('2026-08-28T19:00:00-03:00'),
+  ], new Date('2026-08-30T20:00:00-03:00'));
+  checar('dois dias marcados na semana', diasSeparados.weekActivity.filter((dia) => dia.active).length, 2);
+  checar('sequência com intervalo vale só um dia', diasSeparados.streak, 1);
   checar(
     'um dia sem registrar quebra a sequência',
     calculateStreakAndWeek(comBuraco, new Date('2026-08-30T20:00:00-03:00')).streak,
