@@ -10575,4 +10575,15 @@ Repassadas pelo maestro ao Ledger. São **decisões e pendências**, não mudan�
 **Novos da QA do Sentinel:**
 
 - **S10 falhou depois de `345abfc`.** O Prism corrige. A leitura do Sentinel sobre `flexShrink` estava errada: `fieldValText` já tem `flexShrink: 1` (conferido pelo maestro). A causa real não está registrada.
-- **T20 (P1): acentuação quebrada nos nomes de categoria gravados** (o "SaÃºde/SalÃ¡rio/AlimentaÃ§Ã£o" do print de T18, antes marcado como hipótese de dado externo). O Harbor investiga só em leitura. **Causa não isolada.**
+- **T20 (P1): acentuação quebrada nos nomes de categoria gravados** (o "SaÃºde/SalÃ¡rio/AlimentaÃ§Ã£o" do print de T18, antes marcado como hipótese de dado externo). O Harbor investiga só em leitura. **Causa não isolada.** *(Corrigido na mesma noite: causa encontrada e T20 sobe para P0; ver a seção seguinte.)*
+
+## 24/09/2026 — M1 — T20 é P0 e bloqueia build: `fetch-com-prazo` decodifica o corpo em Latin-1 no React Native
+
+Atualiza a seção anterior, que dava T20 como P1 "sem causa isolada".
+
+- **Sintoma:** nomes com acento chegam quebrados ("SaÃºde", "SalÃ¡rio", "AlimentaÃ§Ã£o"). O Sentinel reproduziu com um lançamento novo (print `r24-006`, fora do repo e do vault). Toda leitura do Supabase com acento quebra, em qualquer conta.
+- **Causa, confirmada pelo maestro no código e conferida pelo Ledger:** `lib/fetch-com-prazo.ts:77-83` (entrou em `e5642dd`, T10/T11) lê o corpo com `resposta.arrayBuffer()` e devolve `new Response(corpo)`. No React Native, esse `Response` é o polyfill `whatwg-fetch`, cujo `text()`/`json()` passa o `ArrayBuffer` por `readArrayBufferAsText` (`node_modules/whatwg-fetch/dist/fetch.umd.js`, ~208-216). Essa função converte **um byte em um caractere** (`String.fromCharCode(view[i])`), ou seja, lê UTF-8 como Latin-1.
+- **Por que os testes não pegaram:** o Node tem `Response` nativo, que decodifica UTF-8 certo. Os 29/29 do `fetch-com-prazo.cjs` rodaram contra o `Response` do Node. É a mesma lição da regra 9: o teste exercitou o módulo real, mas não o ambiente real.
+- **Alcance:** só o `main`. Segundo o maestro, **nenhuma build contém `e5642dd`**, então quem usa o app instalado não é afetado. Não pode sair build do `main` até a correção.
+- **Registro anterior corrigido:** a entrada de T10/T11 acima vale como "passou nos testes do Node"; o comportamento no React Native quebrava o texto. E o "SaÃºde" do print de T18, que a entrada de T18 tratou como "hipótese de dado externo", tem esta causa.
+- **Em andamento:** o Harbor corrige (só código) e confere em leitura se algum dado já foi regravado quebrado no banco, por exemplo uma categoria editada e salva no `main` depois de ler o nome estragado. A categoria AUDIT do Sentinel entra nessa conferência. **Correção ainda não feita nem verificada.**
