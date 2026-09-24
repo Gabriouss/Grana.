@@ -10279,6 +10279,12 @@ Relatórios do Harbor e do maestro, registrados pelo Ledger. Substitui o item
   novo, nunca antes.** Guardas 79/79; as cinco migrations executadas em duas
   fases num Postgres embutido fora do repo, 56/56; `tsc` e `test:ci` verdes.
   Roteiro de aplicação em `E:\Grana-temporarios\credito-ciclo\harbor-aplicacao.md`.
+  Fase 1, antes da build: `230000`, `230100`, `230200`. Fase 2, no dia da
+  build do EAS: `230300`, `230400`. Hoje só a voz e o comprovante colado no
+  app (`PasteReceiptModal`) mandam crédito sem cartão; na 1.10.2, `23514`
+  apaga a fala no envio direto e deixa a fila offline em laço eterno. Buraco
+  aceito: editar um lançamento para crédito sem cartão (trigger só em INSERT,
+  porque em UPDATE quebraria excluir cartão).
 - **APK local abandonado pelo autor:** "vai dar muito trampo essa geração
   aí, né? Deixa, eu vou estar bem partindo do dia 1. Eu vou esperar resetar a
   cota." O APK dos testers sai pelo EAS a partir de 01/10/2026, com
