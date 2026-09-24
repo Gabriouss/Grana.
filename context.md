@@ -10617,3 +10617,28 @@ O teste `fetch-com-prazo.cjs` agora roda o módulo real com o `whatwg-fetch` ins
 
 - **S10:** verificado pelo Prism no emulador. O commit ainda está a caminho.
 - **Deploy:** o Harbor está publicando `assistente-financeiro` e `enviar-lembretes-habito` com **autorização direta do autor**. Isso muda a decisão anterior, que segurava os lembretes até a mudança do fim de semana no catálogo. **Resultado pendente:** não registrar como publicado até o relatório com versão, `updated_at` e `verify_jwt` de cada função.
+
+## 24/09/2026 — M1 — S10: nome da categoria inteiro na folha de lançamento (`5a771fd`), commit próprio de layout
+
+Relatório do Prism: `E:\Grana-temporarios\2026-09-24-prism\relatorio-prism-S10.md`. Atualiza a seção "S10 falhou após `345abfc`" acima.
+
+- **Pedido:** correção imediata, a pedido do autor. Na folha Nova saída (Débito e Pix > + > Saída), a categoria aparecia como "Alimentaçã", cortada, com espaço sobrando à esquerda (print `r24-005`).
+- **Causa medida no emulador** (densidade 356, `uiautomator dump`): o `TextView` do nome tinha a largura exata do texto (206 px) e uma linha de altura. O Android mandava a última letra para uma segunda linha, e a altura a cortava. O `345abfc` (`flexShrink: 0` e `maxWidth: '100%'` no valor) não mudava a largura da caixa do texto, por isso não resolveu. **Não isolado:** por que o Android precisa de um pouco mais que a medida do layout. As hipóteses são arredondamento na densidade fracionária ou diferença entre medida e desenho com a Neue Machina. A correção não depende disso.
+- **Mudança** em `components/TransactionSheet.tsx`, num commit próprio de layout (regra 14), sem medida copiada:
+  - `categoryRow` com `flexWrap: 'nowrap'`;
+  - `categoryValue` com `flex: 1` e `minWidth: 0`;
+  - `categoryText` com `flexGrow: 1` e `textAlign: 'right'`, então a caixa fica maior que o texto;
+  - o ponto de cor virou o glifo "●" colorido dentro do mesmo `Text`, e o estilo `dot` saiu.
+  - Nome longo quebra dentro da caixa, inteiro. Teste novo `__tests__/categoria-na-folha-inteira.cjs` no `test:ci`, com o `TransactionSheet` real; falha com a versão anterior.
+- **Descartado:**
+  - `textBreakStrategy="simple"`: testado ao vivo, sem efeito.
+  - Unicode decomposto: o nome está em NFC.
+  - `numberOfLines={1}`: trocaria o corte por reticências.
+  - Ponto como `View` separado: ficaria longe do nome.
+  - Posição absoluta ou largura fixa.
+- **Deu errado:** ao medir, o Prism abriu a folha no emulador que o Sentinel usava. Na janela cedida, a recarga do código reiniciou a folha, e o "AUDIT T2b" de R$ 3,21 que o Sentinel tinha digitado sumiu, sem ter sido salvo. Mudar a fonte para 130% reinicia o Expo Go. Um `uiautomator` saiu vazio por conversão de caminho do Git Bash, resolvido com `MSYS_NO_PATHCONV=1`.
+- **Verificado pelo Prism no emulador:** 100% e 130% com nome curto; nome longo em 130%, com a categoria AUDIT temporária criada e apagada. Prints `s10-*.png` na pasta do Prism, fora do repo e do vault. Também reportou `tsc` e `test:ci` verdes.
+- **Reexecutado pelo Ledger:** `categoria-na-folha-inteira.cjs` OK, e o teste consta do `test:ci`.
+- **Não visto:** nome longo em 100%, e o modo Crédito, que usa o mesmo componente.
+- **Sem confiabilidade suficiente:** o "●" do glifo parece um pouco menor e mais baixo que o ponto de 8 dp das listas. Não foi medido.
+- **Pendente:** reverificação do Sentinel. O relatório do deploy do Harbor (versão, `updated_at`, `verify_jwt`) também ainda não chegou.
