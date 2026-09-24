@@ -32,77 +32,77 @@ export type MensagemNotif = {
 /** Catálogo canônico da copy aprovada para os lembretes de hábito. */
 export const MENSAGENS: MensagemNotif[] = [
   // ---- noturno_humor: fechamento leve do dia ----
-  { id: 'noturno-1', categoria: 'noturno_humor', titulo: 'Fechando o dia?', texto: 'Aquele Pix de R$ 3 da água no sinal também conta, viu? Bora registrar antes de esquecer! 👀' },
-  { id: 'noturno-2', categoria: 'noturno_humor', titulo: 'Um minutinho só', texto: 'Seu futuro milionário agradece esse registro de 10 segundos 🚀' },
-  { id: 'noturno-3', categoria: 'noturno_humor', titulo: 'Antes de dormir', texto: 'Já que você tá com o celular na mão mesmo, aproveita e lança os gastos de hoje 😉' },
-  { id: 'noturno-4', categoria: 'noturno_humor', titulo: 'Resuminho do dia', texto: 'Como foi o dia no bolso? Registra rapidinho e durma tranquilo 🌙' },
-  { id: 'noturno-5', categoria: 'noturno_humor', titulo: 'Falta pouco', texto: 'Faltam só os lançamentos de hoje pra fechar o dia com o Grana. em dia 📒' },
-  { id: 'noturno-6', categoria: 'noturno_humor', titulo: 'Memória não é confiável', texto: 'Daqui a 2 dias você não vai lembrar quanto gastou hoje. Registra agora que é mais fácil 🧠' },
-  { id: 'noturno-7', categoria: 'noturno_humor', titulo: 'Passadinha rápida', texto: 'Passa aqui só pra contar pro Grana. o que rolou hoje. Prometo que é rápido 🙂' },
+  { id: 'noturno-1', categoria: 'noturno_humor', titulo: 'Fechando o dia?', texto: 'Teve algum gasto hoje? Se teve, dá pra registrar agora 👀' },
+  { id: 'noturno-2', categoria: 'noturno_humor', titulo: 'Um minutinho só', texto: 'Se quiser, registre o que rolou hoje. Leva pouco tempo 🚀' },
+  { id: 'noturno-3', categoria: 'noturno_humor', titulo: 'Antes de dormir', texto: 'Com o celular na mão, que tal ver se falta algum lançamento de hoje? 😉' },
+  { id: 'noturno-4', categoria: 'noturno_humor', titulo: 'Resuminho do dia', texto: 'Como foi o dia no bolso? Se tiver algo pra registrar, o Grana. está aqui 🌙' },
+  { id: 'noturno-5', categoria: 'noturno_humor', titulo: 'Antes de encerrar', texto: 'Se ficou algum gasto de hoje de fora, dá pra lançar agora 📒' },
+  { id: 'noturno-6', categoria: 'noturno_humor', titulo: 'Enquanto está fresco', texto: 'Gasto de hoje é mais fácil de lembrar hoje. Se teve algum, registre 🧠' },
+  { id: 'noturno-7', categoria: 'noturno_humor', titulo: 'Passadinha rápida', texto: 'Se rolou algum gasto hoje, conta pro Grana. quando puder 🙂' },
   { id: 'noturno-8', categoria: 'noturno_humor', titulo: 'Última chamada do dia', texto: 'Antes que o dia vire "ontem": tem algum gasto pra lançar? 📝' },
 
   // ---- streak_protecao: urgência/motivação pra sequência ativa ----
-  { id: 'streak-1', categoria: 'streak_protecao', titulo: 'Não deixa apagar!', texto: 'Não deixa o fogo apagar! 🔥 Você tá com {streak} dias seguidos. Registre 1 gasto pra manter a chama viva!' },
-  { id: 'streak-2', categoria: 'streak_protecao', titulo: 'Sua sequência te espera', texto: '{streak} dias de sequência não se constroem sozinhos. Falta só o de hoje 🔥' },
-  { id: 'streak-3', categoria: 'streak_protecao', titulo: 'Quase lá hoje', texto: 'Você chegou até aqui: {streak} dias seguidos. Não vai deixar hoje quebrar a corrente, vai? 💪' },
+  { id: 'streak-1', categoria: 'streak_protecao', titulo: 'Sua sequência segue viva 🔥', texto: 'São {streak} dias seguidos. Se tiver algo de hoje, dá pra continuar por aqui.' },
+  { id: 'streak-2', categoria: 'streak_protecao', titulo: 'Sua sequência te espera', texto: '{streak} dias seguidos até aqui. Um lançamento de hoje soma mais um 🔥' },
+  { id: 'streak-3', categoria: 'streak_protecao', titulo: 'Bela sequência', texto: 'Você chegou a {streak} dias seguidos. Quer somar o de hoje? 💪' },
   { id: 'streak-4', categoria: 'streak_protecao', titulo: 'Protege sua sequência', texto: 'Sua sequência de {streak} dias está de pé. Um lançamento rápido mantém.' },
-  { id: 'streak-5', categoria: 'streak_protecao', titulo: 'Não jogue fora', texto: '{streak} dias de esforço por um lançamento de 10 segundos? Vale a pena manter 🔥' },
+  { id: 'streak-5', categoria: 'streak_protecao', titulo: 'Vale continuar', texto: '{streak} dias seguidos. Se tiver um gasto de hoje, é só registrar 🔥' },
   { id: 'streak-6', categoria: 'streak_protecao', titulo: 'Ainda dá tempo', texto: 'Ainda dá tempo de manter os {streak} dias seguidos. Bora lá! ⏳' },
   { id: 'streak-7', categoria: 'streak_protecao', titulo: 'Recorde à vista', texto: 'Mais um dia e sua sequência de {streak} dias fica ainda mais forte 🔥' },
-  { id: 'streak-8', categoria: 'streak_protecao', titulo: 'A chama depende de você', texto: '{streak} dias seguidos de disciplina. Não deixa isso esfriar hoje 🔥' },
+  { id: 'streak-8', categoria: 'streak_protecao', titulo: 'Constância em dia', texto: '{streak} dias seguidos registrando. Hoje pode ser mais um, se fizer sentido 🔥' },
 
   // ---- micro_gastos: lembretes pós-almoço/tarde ----
-  { id: 'micro-1', categoria: 'micro_gastos', titulo: 'E aquele cafezinho?', texto: 'Aquele cafézinho da tarde também é gasto. Bora registrar? ☕' },
-  { id: 'micro-2', categoria: 'micro_gastos', titulo: 'Delivery de hoje', texto: 'Pediu alguma coisa no delivery hoje? Não esquece de lançar 🛵' },
-  { id: 'micro-3', categoria: 'micro_gastos', titulo: 'Lanchinho da tarde', texto: 'Aquele lanchinho rápido conta tanto quanto uma compra grande. Registra aí 🥪' },
+  { id: 'micro-1', categoria: 'micro_gastos', titulo: 'Um café também conta', texto: 'Se teve um café ou lanche hoje, ele também cabe no Grana. ☕' },
+  { id: 'micro-2', categoria: 'micro_gastos', titulo: 'Gastos do dia a dia', texto: 'Comida, transporte, um lanche: se teve algo hoje, dá pra registrar 🛵' },
+  { id: 'micro-3', categoria: 'micro_gastos', titulo: 'Lanche também conta', texto: 'Se teve um lanche rápido hoje, ele entra no controle do mesmo jeito 🥪' },
   { id: 'micro-4', categoria: 'micro_gastos', titulo: 'Gastos pequenos somam', texto: 'Gasto pequeno é o que mais escapa da memória. Bora garantir que ele entrou no controle? 💸' },
   { id: 'micro-5', categoria: 'micro_gastos', titulo: 'Uber ou app de transporte?', texto: 'Se rolou corrida de app hoje, já aproveita e lança 🚗' },
-  { id: 'micro-6', categoria: 'micro_gastos', titulo: 'Aquele agrado', texto: 'Se você se deu um agrado hoje (e tudo bem se deu!), só não esquece de registrar 🍫' },
-  { id: 'micro-7', categoria: 'micro_gastos', titulo: 'Estacionamento, app, assinatura...', texto: 'Estacionamento, aplicativo, assinatura: os pequenos também merecem um lugar no Grana. 🅿️' },
+  { id: 'micro-6', categoria: 'micro_gastos', titulo: 'Um agrado também conta', texto: 'Se você se deu um agrado hoje (e tudo bem!), ele também cabe no Grana. 🍫' },
+  { id: 'micro-7', categoria: 'micro_gastos', titulo: 'Pequenos também somam', texto: 'Estacionamento, aplicativo, assinatura: os pequenos também merecem um lugar no Grana. 🅿️' },
   { id: 'micro-8', categoria: 'micro_gastos', titulo: 'Nada é pequeno demais', texto: 'Não existe gasto pequeno demais pra registrar. Bora fechar a contagem de hoje? 📋' },
 
   // ---- fim_de_semana: sexta/sábado/domingo à noite ----
   { id: 'finde-1', dias: [5], categoria: 'fim_de_semana', titulo: 'Fim de semana chegando', texto: 'Antes do fim de semana começar valendo, que tal fechar os gastos da semana? 🎉' },
-  { id: 'finde-2', dias: [6], categoria: 'fim_de_semana', titulo: 'Sábado também conta', texto: 'Rolou programa hoje? Sábado também entra na conta. Registra o que gastou 🎊' },
+  { id: 'finde-2', dias: [6], categoria: 'fim_de_semana', titulo: 'Sábado sem pressa', texto: 'Se rolou algum gasto hoje, registre quando fizer sentido 🎊' },
   { id: 'finde-3', dias: [0], categoria: 'fim_de_semana', titulo: 'Fechando a semana', texto: 'Domingo à noite é um ótimo momento pra revisar como foi a semana no bolso 📊' },
-  { id: 'finde-4', dias: [6, 0], categoria: 'fim_de_semana', titulo: 'Balanço do fim de semana', texto: 'Curtiu o fim de semana? Só falta contar pro Grana. quanto ele custou 😄' },
-  { id: 'finde-5', dias: [5], categoria: 'fim_de_semana', titulo: 'Sexta é dia de gasto extra', texto: 'Sexta costuma ter aquele gasto a mais: bar, cinema, delivery. Bora registrar? 🍕' },
+  { id: 'finde-4', dias: [6, 0], categoria: 'fim_de_semana', titulo: 'Balanço do fim de semana', texto: 'Se o fim de semana teve gastos, dá pra registrar com calma 😄' },
+  { id: 'finde-5', dias: [5], categoria: 'fim_de_semana', titulo: 'Sexta chegou', texto: 'Antes de virar a página da semana, quer conferir seus lançamentos? 📋' },
   { id: 'finde-6', dias: [0], categoria: 'fim_de_semana', titulo: 'Antes da segunda chegar', texto: 'Fecha o fim de semana com o controle em dia. A segunda agradece 🗓️' },
   { id: 'finde-7', dias: [0], categoria: 'fim_de_semana', titulo: 'Domingo de organização', texto: 'Domingão é ótimo pra revisar a semana inteira, não só hoje. Já deu uma olhada? 🧾' },
-  { id: 'finde-8', dias: [0], categoria: 'fim_de_semana', titulo: 'Semana começando', texto: 'Comece a semana sabendo exatamente como terminou a anterior. Vamos fechar as contas? ✅' },
+  { id: 'finde-8', dias: [0], categoria: 'fim_de_semana', titulo: 'Semana começando', texto: 'Comece a semana sabendo como terminou a anterior. Quer dar uma olhada? ✅' },
 
-  // ---- saudade: 2+ dias sem abrir o app ----
-  { id: 'saudade-1', categoria: 'saudade', titulo: 'Sentimos sua falta', texto: 'Faz um tempinho que a gente não se vê por aqui. Como estão as finanças? 👋' },
+  // ---- saudade: 2+ dias sem registrar lançamento (não mede abertura do app) ----
+  { id: 'saudade-1', categoria: 'saudade', titulo: 'Voltar é simples', texto: 'Quer retomar pelo próximo lançamento? O resto pode esperar 👋' },
   { id: 'saudade-2', categoria: 'saudade', titulo: 'Volta que a gente te espera', texto: 'Uns dias sem registrar não é o fim do mundo, mas quanto antes voltar, mais fácil fica 🙂' },
-  { id: 'saudade-3', categoria: 'saudade', titulo: 'Bora recomeçar', texto: 'Ninguém é perfeito. O importante é retomar. Que tal registrar o que rolou nesses dias? 🔄' },
-  { id: 'saudade-4', categoria: 'saudade', titulo: 'Seu controle te espera', texto: 'Seu histórico continua aqui, intacto. Só falta você voltar a alimentar ele 📈' },
-  { id: 'saudade-5', categoria: 'saudade', titulo: 'Sem julgamento', texto: 'Pausa não é problema, só não deixa virar esquecimento total. Bora dar uma olhada? 😌' },
+  { id: 'saudade-3', categoria: 'saudade', titulo: 'Bora recomeçar', texto: 'Dá pra retomar de onde parou. Registre o que lembrar desses dias 🔄' },
+  { id: 'saudade-4', categoria: 'saudade', titulo: 'Seu histórico está aqui', texto: 'Quando quiser voltar a registrar, é só abrir o Grana. 📈' },
+  { id: 'saudade-5', categoria: 'saudade', titulo: 'Sem julgamento', texto: 'Pausa acontece. Quando quiser, dá uma olhada nos seus lançamentos 😌' },
   { id: 'saudade-6', categoria: 'saudade', titulo: 'Vale a pena retomar', texto: 'Toda sequência interrompida pode recomeçar hoje mesmo. Topa? 🔥' },
   { id: 'saudade-7', categoria: 'saudade', titulo: 'Um oi rapidinho', texto: 'Só passando pra lembrar que o Grana. tá aqui quando você quiser voltar 💚' },
   { id: 'saudade-8', categoria: 'saudade', titulo: 'Que tal um resumo?', texto: 'Já que faz uns dias, que tal abrir o app e dar uma geral no que ficou pra trás? 🗂️' },
 
   // ---- dicas_atalhos: voz, QR de nota fiscal, cofrinhos ----
-  { id: 'dica-1', categoria: 'dicas_atalhos', titulo: 'Sabia que dá pra falar?', texto: 'Você sabia que dá pra lançar um gasto só falando com o Grana.? Testa o lançamento por voz 🎙️' },
+  { id: 'dica-1', categoria: 'dicas_atalhos', titulo: 'Sabia que dá pra falar?', texto: 'Dá pra lançar um gasto só falando com o Grana. Experimente a voz 🎙️' },
   { id: 'dica-2', categoria: 'dicas_atalhos', titulo: 'Nota fiscal em segundos', texto: 'Escaneie o QR Code da nota fiscal e deixa o Grana. preencher o lançamento sozinho 📷' },
   { id: 'dica-3', categoria: 'dicas_atalhos', titulo: 'Já criou um cofrinho?', texto: 'Que tal criar um cofrinho pra aquele objetivo que você vem adiando? 🐷' },
   { id: 'dica-4', categoria: 'dicas_atalhos', titulo: 'Menos digitação, mais rapidez', texto: 'Falar é mais rápido que digitar. Experimenta o lançamento por voz hoje 🗣️' },
-  { id: 'dica-5', categoria: 'dicas_atalhos', titulo: 'Compra no mercado?', texto: 'Se acabou de sair do mercado, escaneia a nota e economiza uns bons minutos 🛒' },
+  { id: 'dica-5', categoria: 'dicas_atalhos', titulo: 'Compra no mercado?', texto: 'Na próxima compra, escaneie o QR da nota e o Grana. preenche o lançamento 🛒' },
   { id: 'dica-6', categoria: 'dicas_atalhos', titulo: 'Metas com cofrinho', texto: 'Cofrinhos ajudam a visualizar o quanto falta pra sua meta. Já deu uma olhada nos seus? 🎯' },
   /* `dica-7` ("Atalho pelo WhatsApp") saiu em 13/09/2026. O autor: "SEM
      WHATSAPP, NÃO IREMOS UTILIZAR WHATSAPP". O id não é reaproveitado, para
      `mensagens_recentes` antigas não apontarem para uma copy diferente. */
-  { id: 'dica-8', categoria: 'dicas_atalhos', titulo: 'Menos atrito, mais constância', texto: 'Quanto mais fácil for lançar, mais fácil manter o hábito. Já testou os atalhos do Grana.? ⚡' },
+  { id: 'dica-8', categoria: 'dicas_atalhos', titulo: 'Menos atrito, mais constância', texto: 'Quanto mais fácil lançar, mais fácil manter o hábito. Já viu os atalhos do Grana.? ⚡' },
 
   // ---- almoco: janela de 12h, dias úteis, tom descontraído ----
-  { id: 'almoco-1', categoria: 'almoco', titulo: 'Bateu a fome?', texto: 'Depois de resolver o almoço, resolve o lançamento também 🍴' },
-  { id: 'almoco-2', categoria: 'almoco', titulo: 'Marmita ou delivery?', texto: 'De qualquer jeito, vale registrar o que você gastou no almoço 🥡' },
-  { id: 'almoco-3', categoria: 'almoco', titulo: 'Hora do intervalo', texto: 'Aproveita a pausa pra lançar o gasto do almoço antes de esquecer 🕐' },
-  { id: 'almoco-4', categoria: 'almoco', titulo: 'Aquele suco também conta', texto: 'Água de coco, suco ou refrigerante do almoço soma no controle. Bora lançar? 🥤' },
-  { id: 'almoco-5', categoria: 'almoco', titulo: 'Voltando pro trabalho?', texto: 'Antes de sentar na mesa de novo, um lançamento rápido do almoço não faz mal 💼' },
-  { id: 'almoco-6', categoria: 'almoco', titulo: 'Restaurante, marmita ou vale-refeição?', texto: 'Não importa como foi o almoço, ele merece um lugar no Grana. 🍱' },
-  { id: 'almoco-7', categoria: 'almoco', titulo: 'Meio-dia bateu', texto: 'Já almoçou? Então já dá pra registrar também 🍽️' },
-  { id: 'almoco-8', categoria: 'almoco', titulo: 'Rapidinho antes de voltar', texto: '10 segundos pra registrar o almoço e você já pode voltar pro que estava fazendo 😉' },
-  { id: 'almoco-9', categoria: 'almoco', titulo: 'Cadê o lançamento do almoço?', texto: 'Já passou da hora e esse gasto ainda não apareceu no Grana. Bora resolver? 🍔' },
+  { id: 'almoco-1', categoria: 'almoco', titulo: 'Pausa do meio-dia', texto: 'Teve algo para registrar? Dá para fazer agora ou depois 🍴' },
+  { id: 'almoco-2', categoria: 'almoco', titulo: 'Hora do almoço', texto: 'Se o almoço teve gasto, ele cabe no Grana. 🥡' },
+  { id: 'almoco-3', categoria: 'almoco', titulo: 'Hora do intervalo', texto: 'Se teve algum gasto de manhã, a pausa é um bom momento pra registrar 🕐' },
+  { id: 'almoco-4', categoria: 'almoco', titulo: 'Pequenos também contam', texto: 'Suco, café ou sobremesa: se teve, dá pra registrar 🥤' },
+  { id: 'almoco-5', categoria: 'almoco', titulo: 'Antes de voltar', texto: 'Se ficou algum gasto de hoje pra trás, um lançamento rápido resolve 💼' },
+  { id: 'almoco-6', categoria: 'almoco', titulo: 'Do jeito que for', texto: 'Restaurante, marmita ou vale: se teve gasto, ele cabe no Grana. 🍱' },
+  { id: 'almoco-7', categoria: 'almoco', titulo: 'Meio-dia bateu', texto: 'Bom momento pra ver se falta algum lançamento de hoje 🍽️' },
+  { id: 'almoco-8', categoria: 'almoco', titulo: 'Rapidinho', texto: 'Se teve algum gasto até agora, dá pra registrar e seguir o dia 😉' },
+  { id: 'almoco-9', categoria: 'almoco', titulo: 'Olhada rápida', texto: 'Quer ver se os gastos da manhã já estão no Grana.? 🍔' },
 ];
 
 const CATEGORIA_GERAL: Record<JanelaLembrete, CategoriaMensagem[]> = {
