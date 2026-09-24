@@ -10139,3 +10139,44 @@ Primeira etapa da implementação autorizada do Crédito por ciclo de fatura
   schema" (`corpus-schema-guardas.ts`), que falha pelo `supabase/schema.sql`
   em edição pelo Harbor, ainda sem commit, e não por este commit. Os testes
   depois dela no `test:parser` foram rodados à mão e passaram.
+
+## 23/09/2026 — M1 — Crédito por ciclo, parte de banco (Harbor): três migrations escritas, NÃO aplicadas
+
+Commit `190fac7`. Nada foi aplicado em produção: aplicar depende de autorização
+do autor e do preflight da regra 11.
+
+- `20260923230000_voz_carteira_e_credito_exige_cartao.sql`: **defeito real
+  encontrado.** A migration `20260914120000_lancamento_pelo_assistente.sql`
+  redefiniu `registrar_operacao_voz` a partir da de 05/09 e apagou o
+  `wallet_id` que a de 08/09 gravava; o `schema.sql` tinha a carteira mas não a
+  origem 'assistente'. A nova junta as duas, recria a restrição de origem de
+  `voice_operations` (idempotente), usa a carteira do cartão quando o pedido
+  não traz carteira, e recusa crédito sem cartão com `23514` / hint
+  `cartao_obrigatorio` (decisão 4 do autor). Contrato combinado com o Forge:
+  o cliente leva a fala para revisão e reenvia com `request_id` novo.
+- `20260923230100_pagar_fatura_valida_ciclo.sql`: `pagar_fatura_cartao`
+  recusa fatura cujo ciclo ainda não começou (`22023` / `ciclo_invalido`), com
+  dia efetivo `min(closing_day, fim do mês)`, igual a `lib/faturaCiclo.ts`
+  (`1bfae42`). Pagamento repetido continua idempotente (conferido antes da
+  validação). Primeira migration com essa RPC; antes só existia no schema.
+- `20260923230200_travar_fechamento_com_historico.sql`: trigger recusa mudar
+  `closing_day` em cartão com compra ou fatura paga (`23514` /
+  `fechamento_bloqueado`), só quando o valor muda de fato (decisão 3).
+- `supabase/previa-faturas-mes-civil.sql`: SELECT, por usuário, das faturas
+  pagas no eixo antigo (mês civil), com os dois candidatos, somas, vencimentos
+  e colisão com a unique. Substitui a prévia de 06/09, que misturava os eixos.
+
+**Verificação:** `corpus-schema-guardas` 68/68 (contrato de erro, schema igual
+à migration, guarda de `$$`); as três migrations e a prévia foram EXECUTADAS
+num Postgres embutido (PGlite, fora do repositório, em
+`E:\Grana-temporarios\credito-ciclo\pglite\teste.mjs`): 38/38. Esse teste pegou
+um `$$` que a geração por script tinha virado `$`. `tsc` e `test:ci` verdes.
+
+**Não verificado:** o que está em produção. Antes de aplicar, ler
+`pg_get_functiondef` de `registrar_operacao_voz` e `pagar_fatura_cartao` e
+conferir a unique `(card_id, year, month)`. O teste embutido usa tabelas
+mínimas, não o schema inteiro, e não controla o relógio (o limite de fim de mês
+da RPC foi conferido com datas fixas na mesma expressão, não pela RPC).
+Pendente de decisão: guarda de crédito sem cartão nas OUTRAS entradas do
+servidor (`adicionar_compra_parcelada` e INSERT direto em `transactions`), que
+só um trigger de INSERT cobriria.
