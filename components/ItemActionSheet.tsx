@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import AppModal from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import AppPressable from './AppPressable';
 import AccessibleModalPanel from './AccessibleModalPanel';
@@ -26,7 +26,7 @@ export default function ItemActionSheet({
         <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, sheetStyle]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
-            <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>
@@ -74,7 +74,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular, flex: 1, minWidth: 0 },
+  closeBtn: { width: touchTarget, height: touchTarget, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',

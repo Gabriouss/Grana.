@@ -54,7 +54,7 @@ export default function HomeCustomizerModal({
     <AppModal visible={visible} transparent onRequestClose={onClose}>
       <Sheet onClose={onClose}>
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerText}>
             <Text style={styles.title}>Personalizar Início</Text>
             <Text style={styles.hint}>Escolha quais ferramentas exibir e a ordem do seu painel.</Text>
           </View>
@@ -172,6 +172,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: spacing.xs,
   },
+  headerText: { flex: 1, minWidth: 0 },
   title: {
     color: theme.ink,
     fontSize: type.titulo, fontFamily: fonts.regular },

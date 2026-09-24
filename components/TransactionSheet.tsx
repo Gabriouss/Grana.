@@ -275,9 +275,9 @@ export default function TransactionSheet({
             </View>
           )}
 
-          <AppPressable style={styles.fieldRow} onPress={() => setCatPickerOpen(true)} accessibilityRole="button" accessibilityLabel={`Categoria: ${category}`}>
+          <AppPressable style={[styles.fieldRow, styles.categoryRow]} onPress={() => setCatPickerOpen(true)} accessibilityRole="button" accessibilityLabel={`Categoria: ${category}`}>
             <Text style={styles.fieldKey}>Categoria</Text>
-            <View style={styles.fieldVal}>
+            <View style={[styles.fieldVal, styles.categoryValue]}>
               <View style={[styles.dot, { backgroundColor: catColor }]} />
               <Text style={styles.fieldValText}>{category}</Text>
               <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
@@ -486,6 +486,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
+  categoryRow: { alignItems: 'stretch' },
+  categoryValue: { maxWidth: '100%', flexShrink: 0 },
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, flexShrink: 1 },

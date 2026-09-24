@@ -194,23 +194,25 @@ export default function DesafiosScreen() {
           }
         />
         <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
-        <View style={[styles.loadingCard, colunaConteudo]}>
-          {loading && <ActivityIndicator color={theme.ink} />}
-          <Text style={styles.loadingTitle}>{loadError ?? 'Carregando seus desafios…'}</Text>
-          <Text style={styles.loadingText}>
-            {loadError ? 'Seus dados continuam protegidos. Tente atualizar novamente.' : 'Calculando seu ritmo, score e conquistas.'}
-          </Text>
-          {loadError && (
-            <AppPressable
-              style={styles.retryButton}
-              onPress={() => {
-                setLoading(true);
-                void loadData();
-              }}
-            >
-              <Text style={styles.retryButtonText}>Tentar novamente</Text>
-            </AppPressable>
-          )}
+        <View style={[styles.loadingCardWrap, colunaConteudo]}>
+          <View style={styles.loadingCard}>
+            {loading && <ActivityIndicator color={theme.ink} />}
+            <Text style={styles.loadingTitle}>{loadError ?? 'Carregando seus desafios…'}</Text>
+            <Text style={styles.loadingText}>
+              {loadError ? 'Seus dados continuam protegidos. Tente atualizar novamente.' : 'Calculando seu ritmo, score e conquistas.'}
+            </Text>
+            {loadError && (
+              <AppPressable
+                style={styles.retryButton}
+                onPress={() => {
+                  setLoading(true);
+                  void loadData();
+                }}
+              >
+                <Text style={styles.retryButtonText}>Tentar novamente</Text>
+              </AppPressable>
+            )}
+          </View>
         </View>
         <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
       </SafeAreaView>
@@ -515,6 +517,7 @@ const styles = StyleSheet.create({
   },
   screen: { flex: 1, backgroundColor: theme.paper },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.paper },
+  loadingCardWrap: { paddingHorizontal: screenRhythm.padding },
   loadingCard: {
     alignSelf: 'center',
     marginTop: spacing.xl,
