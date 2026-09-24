@@ -214,8 +214,8 @@ async function principal() {
   const comPrazo = prazoMod.comPrazo(fetch);
 
   modo = 'corpo-pendurado';
-  const corpo = await desfecho(comPrazo(`${url}/rest/v1/transactions`), 5_000);
-  ok(!corpo.pendurado, 'cabeçalhos 200 com o corpo pendurado: o prazo cobre o corpo');
+  const corpo = await desfecho(comPrazo(`${url}/rest/v1/transactions`).then((r) => r.text()), 5_000);
+  ok(!corpo.pendurado, 'cabeçalhos 200 com o corpo pendurado: o prazo cobre a leitura do corpo');
   ok(/network request failed/i.test(String(corpo.erro?.message)), 'corpo pendurado vira falha de rede');
 
   modo = 'mudo';
@@ -243,6 +243,41 @@ async function principal() {
   const cheio = await desfecho(comPrazo(`${url}/rest/v1/transactions`), 5_000);
   igual(await cheio.valor.json(), [], 'resposta saudável chega inteira');
   igual(cheio.valor.headers.get('content-type'), 'application/json', 'com os cabeçalhos originais');
+
+  /* ── T20: texto com acento no React Native ───────────────────────────────
+     No app, `Response` é o polyfill whatwg-fetch. A versão de e5642dd lia o
+     corpo como ArrayBuffer e recriava a resposta; o polyfill decodifica
+     ArrayBuffer como Latin-1, e "Alimentação" virava "AlimentaÃ§Ã£o" em toda
+     leitura do banco. O Node decodifica UTF-8, por isso o teste acima não
+     pegou. Aqui o módulo real roda com o Response do whatwg-fetch instalado. */
+  /* No RN o polyfill detecta Blob e FileReader e o XHR entrega o corpo como
+     Blob. O Node tem Blob mas não FileReader; este mínimo (texto em UTF-8,
+     como o nativo do RN) liga o mesmo caminho do app. */
+  globalThis.FileReader ??= class {
+    readAsText(blob) { blob.text().then((t) => { this.result = t; this.onload?.(); }, (e) => this.onerror?.(e)); }
+    readAsArrayBuffer(blob) { blob.arrayBuffer().then((b) => { this.result = b; this.onload?.(); }, (e) => this.onerror?.(e)); }
+  };
+  delete require.cache[require.resolve('whatwg-fetch/dist/fetch.umd.js')];
+  const whatwg = require('whatwg-fetch/dist/fetch.umd.js');
+  const bytesUtf8 = new TextEncoder().encode('Alimentação');
+  const armadilha = await new whatwg.Response(bytesUtf8.buffer).text();
+  igual(armadilha, 'AlimentaÃ§Ã£o', 'o polyfill decodifica ArrayBuffer como Latin-1 (a armadilha existe)');
+
+  const prazoRN = carregar('lib/fetch-com-prazo.ts', {}, { Response: whatwg.Response, Headers: whatwg.Headers });
+  /* O fetch do RN entrega o corpo já como texto decodificado (blob lido em
+     UTF-8); o dublê entrega o mesmo, e um corpo binário como ArrayBuffer. */
+  const JSON_ACENTUADO = '[{"category":"Alimentação","name":"Saúde","description":"Café gelado"}]';
+  const BINARIO = new Uint8Array([0xff, 0x00, 0xc3, 0x28, 0x89, 0x50, 0x4e, 0x47]);
+  const fetchRN = async (u) => (u.includes('/storage/')
+    ? new whatwg.Response(new Blob([BINARIO]), { status: 200, headers: { 'content-type': 'audio/mpeg' } })
+    : new whatwg.Response(new Blob([JSON_ACENTUADO]), { status: 200, headers: { 'content-type': 'application/json' } }));
+  const noApp = prazoRN.comPrazo(fetchRN);
+
+  igual(await (await noApp(`${url}/rest/v1/categories`)).text(), JSON_ACENTUADO, 'T20: texto com acento chega intacto no polyfill do RN');
+  const json = await (await noApp(`${url}/rest/v1/categories`)).json();
+  igual([json[0].category, json[0].name, json[0].description], ['Alimentação', 'Saúde', 'Café gelado'], 'T20: JSON com acento chega intacto');
+  const bin = new Uint8Array(await (await noApp(`${url}/storage/v1/object/audio.mp3`)).arrayBuffer());
+  igual([...bin], [...BINARIO], 'T20: corpo binário (storage, áudio) continua binário, byte a byte');
 
   console.log(`fetch-com-prazo: ${passou} checagens OK`);
 }

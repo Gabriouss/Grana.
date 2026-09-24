@@ -20,9 +20,10 @@
  * Com prazo, o pedido preso vira erro de rede, a trava é solta e o próximo
  * pedido sai por uma conexão nova.
  *
- * O prazo cobre o CORPO, não só os cabeçalhos: o corpo é lido aqui dentro,
- * antes de o prazo ser desarmado. Proteger só a chegada dos cabeçalhos deixava
- * sem proteção justamente o corpo pendurado (regra 9 do AGENTS.md).
+ * O prazo cobre o CORPO, não só os cabeçalhos: a leitura do corpo corre contra
+ * o mesmo prazo, que só é desarmado quando ela termina. Proteger só a chegada
+ * dos cabeçalhos deixava sem proteção justamente o corpo pendurado (regra 9 do
+ * AGENTS.md).
  *
  * Quem chama e já tem prazo próprio (um `signal`) continua mandando: o pedido
  * é abortado pelo que vencer primeiro, e o aborto de quem chama continua
@@ -44,8 +45,15 @@ function urlDe(input: RequestInfo | URL): string {
   return (input as Request).url;
 }
 
-/** Status que não podem carregar corpo: recriar a resposta com corpo lança erro. */
-const SEM_CORPO = new Set([101, 204, 205, 304]);
+/* Os métodos que leem o corpo. Embrulhados na própria resposta, e NÃO lidos
+   aqui para recriar outra: até o T20 (24/09/2026) este módulo lia
+   `arrayBuffer()` e devolvia `new Response(corpo)`. No React Native o
+   `Response` é o polyfill `whatwg-fetch`, que decodifica um ArrayBuffer byte a
+   byte com `String.fromCharCode`, isto é, como Latin-1: todo texto do banco
+   com acento chegava à tela como "AlimentaÃ§Ã£o". Deixar a resposta original
+   intacta mantém a decodificação do próprio fetch (UTF-8) e o corpo binário
+   como binário. */
+const LEITURAS_DO_CORPO = ['text', 'json', 'arrayBuffer', 'blob', 'formData'] as const;
 
 export function comPrazo(
   fetchBase: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
@@ -64,32 +72,44 @@ export function comPrazo(
       estourou = true;
       controle.abort();
     }, ms);
-
-    try {
-      const resposta = await fetchBase(input, { ...init, signal: controle.signal });
-      /* O corpo pode pendurar depois de cabeçalhos 200. Lido aqui, ele fica
-         debaixo do mesmo prazo; o aborto rejeita a leitura. */
-      const abortado = new Promise<never>((_, rejeitar) => {
-        if (controle.signal.aborted) rejeitar(new Error('abortado'));
-        controle.signal.addEventListener('abort', () => rejeitar(new Error('abortado')));
-      });
-      abortado.catch(() => {});
-      const corpo = await Promise.race([resposta.arrayBuffer(), abortado]);
-      const vazio = SEM_CORPO.has(resposta.status) || corpo.byteLength === 0;
-      return new Response(vazio ? null : corpo, {
-        status: resposta.status,
-        statusText: resposta.statusText,
-        headers: resposta.headers,
-      });
-    } catch (erro) {
-      /* Mensagem com "Network request failed", a mesma do fetch do React
-         Native sem rede: é o que `isLikelyNetworkError`, o auth do supabase-js
-         e a fila offline já reconhecem como falha TEMPORÁRIA. */
-      if (estourou) throw new TypeError(`Network request failed: sem resposta em ${Math.round(ms / 1000)} s`);
-      throw erro;
-    } finally {
+    const desarmar = () => {
       clearTimeout(corte);
       externo?.removeEventListener('abort', repassar);
+    };
+    /* Mensagem com "Network request failed", a mesma do fetch do React Native
+       sem rede: é o que `isLikelyNetworkError`, o auth do supabase-js e a fila
+       offline já reconhecem como falha TEMPORÁRIA. */
+    const traduzir = (erro: unknown) =>
+      estourou ? new TypeError(`Network request failed: sem resposta em ${Math.round(ms / 1000)} s`) : erro;
+
+    let resposta: Response;
+    try {
+      resposta = await fetchBase(input, { ...init, signal: controle.signal });
+    } catch (erro) {
+      desarmar();
+      throw traduzir(erro);
     }
+
+    /* O corpo pode pendurar depois de cabeçalhos 200: a leitura corre contra
+       o mesmo prazo, e o prazo só é desarmado quando ela termina. Corpo que
+       ninguém lê deixa o prazo vencer à toa, e abortar um pedido já
+       respondido não faz nada. */
+    const abortado = new Promise<never>((_, rejeitar) => {
+      if (controle.signal.aborted) rejeitar(new Error('abortado'));
+      controle.signal.addEventListener('abort', () => rejeitar(new Error('abortado')));
+    });
+    abortado.catch(() => {});
+    for (const metodo of LEITURAS_DO_CORPO) {
+      const original = (resposta as unknown as Record<string, unknown>)[metodo];
+      if (typeof original !== 'function') continue;
+      Object.defineProperty(resposta, metodo, {
+        configurable: true,
+        value: () =>
+          Promise.race([(original as () => Promise<unknown>).call(resposta), abortado])
+            .catch((erro) => { throw traduzir(erro); })
+            .finally(desarmar),
+      });
+    }
+    return resposta;
   };
 }
