@@ -10560,3 +10560,19 @@ Relatório: `E:\Grana-temporarios\2026-09-24-forge\relatorio-forge-copy-notifica
 `a3f8806` (só `package.json`, montado a partir do HEAD) põe `catalogo-notificacoes-copy.cjs` no `test:ci`, **fechando a lacuna registrada acima**; conferido no `package.json`. **Sem verificação:** tela bloqueada, corte de título e corpo, emojis no aparelho. O push só leva os textos com deploy autorizado do `enviar-lembretes-habito` (aguardam `4743718`, `bb019dd`, `c577258`, `4902af2`); o local, na próxima build.
 
 **Estado das três camadas ao fim de 24/09:** tudo só no repositório; sem QA no emulador ou aparelho, sem build, sem deploy. O relatório da retomada do Sentinel ainda não existe (só o pedido em `E:\Grana-temporarios\2026-09-23-QA\`).
+
+## 24/09/2026 — M1 — Decisões do autor (noite) e dois achados novos da QA
+
+Repassadas pelo maestro ao Ledger. São **decisões e pendências**, não mudança de código; nada abaixo foi executado nesta entrada.
+
+1. **Deploy e migrations.** O autor deu OK para publicar `assistente-financeiro` (leva `fe8e210` e os anteriores listados no preflight acima) e para aplicar a **fase 1** das migrations do crédito por ciclo. O pedido do maestro ao Harbor foi **barrado pelo classificador de permissões do terminal maestro** ("Production Deploy") e espera o autor decidir como executar. **Nada foi publicado nem aplicado.** `enviar-lembretes-habito` fica **segurada** até a mudança do fim de semana no catálogo (item 3), para sair num deploy só. Quando rodar, vale o preflight completo da regra 11.
+2. **Crédito antigo sem `card_id`.** Com um cartão só na carteira, esse crédito continua atribuído a ele. Nada a mudar.
+3. **Almoço de sexta sem as mensagens de fim de semana; sábado e domingo com notificações próprias.** Fecha a decisão aberta no `c577258`/`4902af2`. O Beacon escreve, o Forge implementa. Mexe no seletor, que a Edge compartilha, e por isso segura o deploy dos lembretes.
+4. **App Links.** O autor quer fazer ("me lembre depois"). Pendência com lembrete: depende da SHA-256 do certificado de assinatura, que está nas credenciais do EAS dele.
+5. **Usuário AUDIT não confirmado na Resend.** Apagar está autorizado, mas a execução está pendente pelo mesmo bloqueio de permissão do item 1.
+6. **Calendário de postagem** só depois das correções da terceira auditoria do Sentinel e da build nova. A6 (fundador em vídeo) e foto/OCR da nota: o autor respondeu "não sei", seguem abertas. Search Console: sem resposta.
+
+**Novos da QA do Sentinel:**
+
+- **S10 falhou depois de `345abfc`.** O Prism corrige. A leitura do Sentinel sobre `flexShrink` estava errada: `fieldValText` já tem `flexShrink: 1` (conferido pelo maestro). A causa real não está registrada.
+- **T20 (P1): acentuação quebrada nos nomes de categoria gravados** (o "SaÃºde/SalÃ¡rio/AlimentaÃ§Ã£o" do print de T18, antes marcado como hipótese de dado externo). O Harbor investiga só em leitura. **Causa não isolada.**
