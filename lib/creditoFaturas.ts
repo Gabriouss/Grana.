@@ -1,5 +1,5 @@
 import { isSameMonth } from './format';
-import { mesFaturaDoLancamento, type CicloFatura } from './faturaCiclo';
+import { deslocamentoEntre, mesFaturaDoLancamento, type CicloFatura } from './faturaCiclo';
 import type { CreditCard, CreditCardInvoicePayment, Transaction } from './types';
 
 export type SecaoLancamentosCartao = {
@@ -380,26 +380,85 @@ export function lembretesDeFatura(
 }
 
 /**
- * Qual fatura o resumo da Início deve somar para o mês selecionado.
+ * O resumo da Início, uma fatura por cartão.
  *
- * O resumo é a versão compacta da tela de Crédito, e desde `6a1ebb2` aquela
- * tela ABRE na fatura atual, não no mês do calendário. O resumo continuou no
- * mês civil, e as duas telas passaram a discordar: em 17/09/2026 a auditoria
- * fotografou o resumo com R$ 0,00 no mesmo instante em que a tela de Crédito
- * mostrava R$ 300,00 de fatura atual para o mesmo cartão — a compra estava no
- * ciclo seguinte, pela regra de fechamento.
+ * No mês corrente, cada cartão entra com a SUA fatura aberta (a que recebe
+ * compras hoje), cada uma no próprio ciclo. Até 23/09/2026 o resumo pegava UM
+ * ciclo para todos (`cicloDoResumoDeFaturas`) e, quando os cartões fechavam em
+ * dias diferentes, caía no mês civil: para um cartão que fecha dia 20, visto
+ * em 23/09, "setembro" é a fatura JÁ FECHADA. Era o mesmo buraco da tela de
+ * Crédito. Em outro mês do seletor, cada cartão entra com a fatura que fecha
+ * naquele mês, que é o que "setembro" quer dizer numa tela de mês civil.
  *
- * No mês corrente, manda a fatura atual (quando todos os cartões concordam);
- * em qualquer outro mês do seletor, manda o próprio mês, que é o que a pessoa
- * pediu para ver.
+ * Lançamento sem cartão fica fora do total: nenhum cartão responde por ele
+ * (decisão do autor de 23/09: órfão fica fora de qualquer total de cartão).
  */
-export function cicloDoResumoDeFaturas(
+export type ResumoDeFaturas = {
+  noMesCorrente: boolean;
+  total: number;
+  incerto: boolean;
+  porCartao: { cartao: CreditCard; ciclo: CicloFatura; valor: number; incerto: boolean }[];
+};
+
+export function resumoDeFaturas(
+  transacoes: Transaction[],
   cartoes: CreditCard[],
   year: number,
   month: number,
-  hojeISO: string
-): { year: number; month: number } {
-  const ehMesCorrente = Number(hojeISO.slice(0, 4)) === year && Number(hojeISO.slice(5, 7)) - 1 === month;
-  if (!ehMesCorrente) return { year, month };
-  return faturaAtualDeTodosOsCartoes(cartoes, hojeISO) ?? { year, month };
+  hojeISO: string,
+  datasExtras?: DatasDasCompras
+): ResumoDeFaturas {
+  const noMesCorrente = Number(hojeISO.slice(0, 4)) === year && Number(hojeISO.slice(5, 7)) - 1 === month;
+  const datas = datasCarregadas(transacoes, datasExtras);
+  const porCartao = cartoes.map((cartao) => {
+    const ciclo = noMesCorrente ? mesFaturaDoLancamento(hojeISO, cartao.closing_day) : { year, month };
+    const valor = somaDaFatura(filtrarLancamentosDaFatura(transacoes, cartoes, cartao.id, ciclo.year, ciclo.month, datasExtras));
+    /* Sem a compra original, a estimativa pela data pode estar UMA fatura
+       adiante ou atrás. Avisa nos dois ciclos próximos; só olhar os itens já
+       filtrados deixaria a fatura que perdeu a parcela parecer completa. */
+    const incerto = transacoes.some((t) => {
+      if (resolverCartao(t, cartoes)?.id !== cartao.id || t.payment_method !== 'credit') return false;
+      const resultado = cicloDoLancamento(t, cartao, datas);
+      return resultado.incerto && Math.abs(deslocamentoEntre(resultado.ciclo, ciclo)) <= 1;
+    });
+    return { cartao, ciclo, valor, incerto };
+  });
+  const total = porCartao.reduce((centavos, item) => centavos + Math.round(item.valor * 100), 0) / 100;
+  return { noMesCorrente, total, incerto: porCartao.some((item) => item.incerto), porCartao };
+}
+
+/**
+ * Lançamentos de crédito que pertencem a uma carteira. Um lançamento com
+ * cartão pertence à carteira do CARTÃO, seja qual for o `wallet_id` gravado
+ * nele (decisão P11 do autor: a carteira separa os cartões). Até 23/09/2026 o
+ * filtro usava o `wallet_id` do lançamento, e uma compra no cartão da mãe
+ * gravada com a carteira Principal (a voz e o Granabô gravavam assim) sumia
+ * da carteira da mãe e aparecia na Principal como órfã. Lançamento sem cartão,
+ * ou com cartão excluído, segue o próprio `wallet_id`. `'total'` é tudo.
+ */
+export function lancamentosDaCarteira(
+  transacoes: Transaction[],
+  todosOsCartoes: CreditCard[],
+  carteiraId: string
+): Transaction[] {
+  if (carteiraId === 'total') return transacoes;
+  const carteiraDoCartao = new Map(todosOsCartoes.map((c) => [c.id, c.wallet_id]));
+  return transacoes.filter((t) => {
+    if (t.card_id && carteiraDoCartao.has(t.card_id)) return carteiraDoCartao.get(t.card_id) === carteiraId;
+    return t.wallet_id === carteiraId;
+  });
+}
+
+/**
+ * Cartão selecionado depois de trocar de carteira. Se ele não é da carteira
+ * nova, volta para "todos": até 23/09/2026 a seleção ficava, `selectedCard`
+ * virava nulo e o filtro recebia o id de um cartão de fora, e a lista
+ * aparecia vazia sem nenhum cartão destacado.
+ */
+export function selecaoAposTrocarCarteira(
+  selecionado: string | 'all',
+  cartoesDaCarteira: CreditCard[]
+): string | 'all' {
+  if (selecionado === 'all') return 'all';
+  return cartoesDaCarteira.some((c) => c.id === selecionado) ? selecionado : 'all';
 }

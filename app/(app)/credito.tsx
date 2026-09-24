@@ -49,6 +49,8 @@ import { cicloRelativo, mesFaturaDoLancamento, dataVencimentoFatura, rotuloPerio
 import {
   agruparLancamentosPorCartao,
   comprasOriginaisAusentes,
+  lancamentosDaCarteira,
+  selecaoAposTrocarCarteira,
   faturaParaExibir,
   faturaAtualDeTodosOsCartoes,
   faturaTemParcelaIncerta,
@@ -407,10 +409,17 @@ export default function CreditoScreen() {
     () => (activeWalletId === 'total' ? cards : cards.filter((c) => c.wallet_id === activeWalletId)),
     [activeWalletId, cards]
   );
+  /* Crédito segue a carteira do CARTÃO, não o wallet_id gravado no
+     lançamento (P11; ver `lancamentosDaCarteira`). */
   const walletTransactions = useMemo(
-    () => (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)),
-    [activeWalletId, transactions]
+    () => lancamentosDaCarteira(transactions, cards, activeWalletId),
+    [activeWalletId, transactions, cards]
   );
+  /* Trocar de carteira com um cartão de outra selecionado deixava a lista
+     vazia, sem cartão destacado. Volta para "todos" (`selecaoAposTrocarCarteira`). */
+  useEffect(() => {
+    setSelectedCardId((atual) => selecaoAposTrocarCarteira(atual, walletCards));
+  }, [walletCards]);
 
   /* "Trocar de 'Total' para um cartão abre direto na fatura em aberto agora
      (calculada a partir de hoje), não recicla o índice do mês civil que

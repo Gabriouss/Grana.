@@ -159,8 +159,13 @@ checar('ciclos repetidos não repetem mês',
 for (const arquivo of ['app/(app)/credito.tsx', 'components/CreditSummaryCard.tsx']) {
   const fonte = readFileSync(join(__dirname, '..', arquivo), 'utf8');
   checar(`${arquivo}: nenhuma soma de fatura sem sinal`, /\+\s*Number\(\w+\.amount\)/.test(fonte), false);
-  checar(`${arquivo}: usa somaDaFatura`, fonte.includes('somaDaFatura('), true);
 }
+const creditoTela = readFileSync(join(__dirname, '..', 'app/(app)/credito.tsx'), 'utf8');
+const resumoTela = readFileSync(join(__dirname, '..', 'components/CreditSummaryCard.tsx'), 'utf8');
+const regra = readFileSync(join(__dirname, '..', 'lib/creditoFaturas.ts'), 'utf8');
+checar('Crédito usa somaDaFatura', creditoTela.includes('somaDaFatura('), true);
+checar('resumo usa a regra compartilhada', resumoTela.includes('resumoDeFaturas('), true);
+checar('regra do resumo soma com sinal', /function resumoDeFaturas\([\s\S]*?somaDaFatura\(filtrarLancamentosDaFatura\(/.test(regra), true);
 {
   const tela = readFileSync(join(__dirname, '..', 'app/(app)/credito.tsx'), 'utf8');
   checar('Crédito busca os meses pelas faturas', tela.includes('mesesCivisDasFaturas('), true);

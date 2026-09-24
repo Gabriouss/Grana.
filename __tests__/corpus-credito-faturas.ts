@@ -2,7 +2,10 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
   agruparLancamentosPorCartao,
-  cicloDoResumoDeFaturas,
+  lancamentosDaCarteira,
+  resumoDeFaturas,
+  selecaoAposTrocarCarteira,
+  somaDaFatura,
   faturaAtualDeTodosOsCartoes,
   faturaParaExibir,
   filtrarLancamentosDaFatura,
@@ -303,42 +306,109 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
   checar('a visão Total não abre mais no mês civil', tela.includes('faturaAtualDeTodosOsCartoes(walletCards, hojeISO)'), true);
 }
 
-/* ── O resumo da Início mostra a MESMA fatura que a tela de Crédito ───────
+/* ── O resumo da Início mostra a fatura aberta de CADA cartão ─────────────
  *
  * Achado V8 da varredura de 17/09/2026: o card "Faturas de crédito" da Início
  * mostrava R$ 0,00 no mesmo instante em que a tela de Crédito mostrava
- * R$ 300,00 de fatura atual para o mesmo cartão. A tela abre na fatura atual
- * desde `6a1ebb2`; o resumo tinha ficado no mês do calendário. */
+ * R$ 300,00 de fatura atual para o mesmo cartão. Em 23/09/2026 o resumo passou
+ * a ter um ciclo por cartão: antes, com cartões que fechavam em dias
+ * diferentes, ele caía no mês civil, que para um deles era a fatura fechada. */
 {
   const HOJE = '2026-09-16';
   const fechaDia15 = cartao('c15', 'Fecha dia 15', 15);
   const fechaDia25 = cartao('c25', 'Fecha dia 25', 25);
+  const txs = [
+    transacao('ago-15', 'c15', '2026-09-10', 100), // fatura de set do c15 (fechada)
+    transacao('out-15', 'c15', '2026-09-16', 30), // fatura de out do c15 (aberta)
+    transacao('set-25', 'c25', '2026-09-10', 50), // fatura de set do c25 (aberta)
+    transacao('orfa', null, '2026-09-12', 999), // sem cartão, com dois cartões: órfã
+  ];
 
-  checar(
-    'no mês corrente, segue a fatura atual (compra de 16/09 já é outubro)',
-    cicloDoResumoDeFaturas([fechaDia15], 2026, 8, HOJE),
-    { year: 2026, month: 9 }
-  );
-  checar(
-    'no mês corrente, com o ciclo ainda aberto, é o próprio mês',
-    cicloDoResumoDeFaturas([fechaDia25], 2026, 8, HOJE),
-    { year: 2026, month: 8 }
-  );
-  checar(
-    'em outro mês do seletor, manda o mês escolhido',
-    cicloDoResumoDeFaturas([fechaDia15], 2026, 7, HOJE),
-    { year: 2026, month: 7 }
-  );
-  checar(
-    'cartões que discordam não deixam afirmar uma fatura atual',
-    cicloDoResumoDeFaturas([fechaDia15, fechaDia25], 2026, 8, HOJE),
-    { year: 2026, month: 8 }
-  );
-  checar('sem cartão, o mês selecionado', cicloDoResumoDeFaturas([], 2026, 8, HOJE), { year: 2026, month: 8 });
+  const corrente = resumoDeFaturas(txs, [fechaDia15, fechaDia25], 2026, 8, HOJE);
+  checar('no mês corrente, cada cartão na SUA fatura aberta',
+    corrente.porCartao.map((p) => [p.cartao.id, p.ciclo.month, p.valor]),
+    [['c15', 9, 30], ['c25', 8, 50]]);
+  checar('total = soma das faturas abertas, sem a órfã', corrente.total, 80);
+  checar('marca que é o mês corrente', corrente.noMesCorrente, true);
+
+  const passado = resumoDeFaturas(txs, [fechaDia15, fechaDia25], 2026, 7, HOJE);
+  checar('em outro mês do seletor, as faturas que fecham naquele mês',
+    passado.porCartao.map((p) => [p.cartao.id, p.ciclo.month]), [['c15', 7], ['c25', 7]]);
+
+  const setembro = resumoDeFaturas(txs, [fechaDia15, fechaDia25], 2026, 8, '2026-10-02');
+  checar('setembro visto de outubro: fatura que fecha em setembro de cada um',
+    setembro.porCartao.map((p) => [p.cartao.id, p.valor]), [['c15', 100], ['c25', 50]]);
+
+  checar('sem cartão, total zero', resumoDeFaturas(txs, [], 2026, 8, HOJE).total, 0);
+
+  /* Sem a compra original, a parcela pode estar na fatura estimada pela data
+     ou na vizinha. O resumo precisa avisar em ambas, inclusive na que ficou
+     com zero e poderia parecer completa. */
+  const c29 = cartao('c29', 'Fecha 29', 29);
+  const parcela14 = {
+    ...transacao('p14', 'c29', '2027-02-28', 10),
+    installment_current: 14,
+    installment_total: 14,
+    parent_id: 'p1',
+  };
+  const fevereiroSemPai = resumoDeFaturas([parcela14], [c29], 2027, 1, '2027-01-15');
+  const marcoSemPai = resumoDeFaturas([parcela14], [c29], 2027, 2, '2027-01-15');
+  checar('sem compra original, a fatura que pode ter perdido parcela avisa',
+    [fevereiroSemPai.total, fevereiroSemPai.incerto], [0, true]);
+  checar('sem compra original, a fatura estimada também avisa',
+    [marcoSemPai.total, marcoSemPai.incerto], [10, true]);
+  checar('incerteza não contamina fatura distante',
+    resumoDeFaturas([parcela14], [c29], 2027, 5, '2027-01-15').incerto, false);
+  const compra = { ...transacao('p1', 'c29', '2026-01-28', 10), installment_current: 1, installment_total: 14 };
+  const fevereiroComPai = resumoDeFaturas([compra, parcela14], [c29], 2027, 1, '2027-01-15');
+  checar('com compra original, a parcela volta ao ciclo correto sem aviso',
+    [fevereiroComPai.total, fevereiroComPai.incerto], [10, false]);
 
   const resumo = readFileSync(join(__dirname, '..', 'components', 'CreditSummaryCard.tsx'), 'utf8');
-  checar('o resumo usa o ciclo, não o mês civil', resumo.includes('cicloDoResumoDeFaturas(cards, year, month'), true);
+  checar('o resumo usa uma fatura por cartão', resumo.includes('resumoDeFaturas(transactions, cards, year, month'), true);
   checar('e avisa quando o número é de outra fatura', resumo.includes('outraFatura'), true);
+  checar('e avisa quando uma parcela não tem a compra original', resumo.includes('resumo.incerto'), true);
+}
+
+/* ── A carteira separa os cartões (P11, 23/09/2026) ─────────────────────── */
+{
+  const w = (id: string, wallet: string, closing = 20): CreditCard => ({ ...cartao(id, id, closing), wallet_id: wallet });
+  const cartoes = [w('pessoal20', 'pessoal'), w('casal5', 'casal', 5), w('casal15', 'casal', 15), w('mae20', 'mae')];
+  const t = (id: string, card: string | null, wallet: string) => ({ ...transacao(id, card, '2026-09-22', 10), wallet_id: wallet });
+  const txs = [
+    t('compra-mae-gravada-na-pessoal', 'mae20', 'pessoal'), // o caso da voz sem carteira
+    t('compra-casal', 'casal5', 'casal'),
+    t('orfa-casal', null, 'casal'),
+    t('cartao-excluido', 'sumiu', 'mae'),
+  ];
+  const ids = (l: { id: string }[]) => l.map((x) => x.id).sort();
+  checar('Mãe: a compra no cartão dela aparece, seja qual for o wallet_id gravado',
+    ids(lancamentosDaCarteira(txs, cartoes, 'mae')), ['cartao-excluido', 'compra-mae-gravada-na-pessoal']);
+  checar('Pessoal: não recebe a compra do cartão da mãe, nem como órfã',
+    ids(lancamentosDaCarteira(txs, cartoes, 'pessoal')), []);
+  checar('Casal: cartão e órfã da própria carteira',
+    ids(lancamentosDaCarteira(txs, cartoes, 'casal')), ['compra-casal', 'orfa-casal']);
+  checar('Total: tudo', lancamentosDaCarteira(txs, cartoes, 'total').length, 4);
+
+  const casal = cartoes.filter((c) => c.wallet_id === 'casal');
+  const daCasal = lancamentosDaCarteira(txs, cartoes, 'casal');
+  checar('Casal "Todos": só a seção do cartão dela (a órfã fica no mês civil dela)',
+    agruparLancamentosPorCartao(filtrarLancamentosDaFatura(daCasal, casal, 'all', 2026, 9), casal).map((s) => s.chave),
+    ['casal5']);
+  checar('Pessoal-20 e Mãe-20 têm o mesmo fechamento e não se somam na Pessoal',
+    somaDaFatura(filtrarLancamentosDaFatura(lancamentosDaCarteira(txs, cartoes, 'pessoal'), cartoes.filter((c) => c.wallet_id === 'pessoal'), 'all', 2026, 9)), 0);
+
+  checar('trocar para a carteira Mãe com Casal-5 selecionado volta para todos',
+    selecaoAposTrocarCarteira('casal5', cartoes.filter((c) => c.wallet_id === 'mae')), 'all');
+  checar('trocar para Total mantém o cartão selecionado',
+    selecaoAposTrocarCarteira('casal5', cartoes), 'casal5');
+  checar('"todos" continua "todos"', selecaoAposTrocarCarteira('all', []), 'all');
+
+  const tela = readFileSync(join(__dirname, '..', 'app', '(app)', 'credito.tsx'), 'utf8');
+  checar('Crédito filtra pela carteira do cartão', tela.includes('lancamentosDaCarteira(transactions, cards, activeWalletId)'), true);
+  checar('Crédito reinicia a seleção ao trocar de carteira', tela.includes('selecaoAposTrocarCarteira(atual, walletCards)'), true);
+  const inicio = readFileSync(join(__dirname, '..', 'app', '(app)', 'index.tsx'), 'utf8');
+  checar('Início filtra o resumo pela carteira do cartão', inicio.includes('lancamentosDaCarteira(transactions, creditCards, activeWalletId)'), true);
 }
 
 /* ── Sem rede, a tela não afirma "Nenhum cartão cadastrado" (W1) ──────────

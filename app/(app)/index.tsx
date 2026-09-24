@@ -87,6 +87,7 @@ import GoalsCarousel from '@/components/GoalsCarousel';
 import SafeToSpendCard from '@/components/SafeToSpendCard';
 import FutureTimelineChart from '@/components/FutureTimelineChart';
 import CreditSummaryCard from '@/components/CreditSummaryCard';
+import { lancamentosDaCarteira } from '@/lib/creditoFaturas';
 import HomeCustomizerModal from '@/components/HomeCustomizerModal';
 import ToggleSwitch from '@/components/ToggleSwitch';
 import { isSameMonth, isCreditTx } from '@/lib/format';
@@ -1374,7 +1375,9 @@ export default function InicioScreen() {
         <CreditSummaryCard
           cards={activeWalletId === 'total' ? creditCards : creditCards.filter((c) => c.wallet_id === activeWalletId)}
           cartoesNaConta={creditCards.length}
-          transactions={walletTransactions}
+          /* Crédito segue a carteira do CARTÃO (P11), não o wallet_id gravado
+             no lançamento: mesmo filtro da tela de Crédito. */
+          transactions={lancamentosDaCarteira(transactions, creditCards, activeWalletId)}
           year={selectedYear}
           month={selectedMonth}
           onPress={() => router.push('/credito')}

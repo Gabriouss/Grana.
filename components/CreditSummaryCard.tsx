@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
 import { formatMoney, todayISO } from '@/lib/format';
-import { cicloDoResumoDeFaturas, filtrarLancamentosDaFatura, somaDaFatura } from '@/lib/creditoFaturas';
+import { resumoDeFaturas } from '@/lib/creditoFaturas';
 import { BANKS, type CreditCard, type Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
@@ -34,21 +34,20 @@ export default function CreditSummaryCard({
      tela de Crédito abre na fatura ATUAL. Este resumo seguia o mês do
      calendário e por isso mostrava R$ 0,00 enquanto aquela tela mostrava
      R$ 300,00 do mesmo cartão (achado V8 da varredura de 17/09/2026). */
-  const ciclo = cicloDoResumoDeFaturas(cards, year, month, todayISO());
-  const creditTx = filtrarLancamentosDaFatura(transactions, cards, 'all', ciclo.year, ciclo.month);
+  /* Uma fatura por cartão: no mês corrente, a aberta de cada um, no próprio
+     ciclo (ver `resumoDeFaturas`). Antes era UM ciclo para todos, que caía
+     no mês civil quando os cartões fechavam em dias diferentes. */
+  const resumo = resumoDeFaturas(transactions, cards, year, month, todayISO());
   /* Só avisa quando o número NÃO é do mês que a pessoa selecionou lá em cima:
-     mostrar o valor de outra fatura sem dizer qual é foi metade do defeito. */
-  const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-  const outraFatura = ciclo.year !== year || ciclo.month !== month
-    ? `Fatura de ${MESES[ciclo.month]}/${String(ciclo.year).slice(2)}`
+     mostrar o valor de outra fatura sem dizer qual é foi metade do defeito.
+     Texto mínimo; a apresentação é do Prism. */
+  const outraFatura = resumo.noMesCorrente && resumo.porCartao.some((p) => p.ciclo.year !== year || p.ciclo.month !== month)
+    ? 'Faturas em aberto'
     : null;
-  const totalMes = somaDaFatura(creditTx);
+  const totalMes = resumo.total;
 
-  const porCartao = cards
-    .map((card) => ({
-      card,
-      valor: somaDaFatura(creditTx.filter((t) => t.card_id === card.id)),
-    }))
+  const porCartao = resumo.porCartao
+    .map(({ cartao, valor }) => ({ card: cartao, valor }))
     .sort((a, b) => b.valor - a.valor)
     .slice(0, 3);
 
@@ -59,6 +58,9 @@ export default function CreditSummaryCard({
         <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
       </View>
       {outraFatura && <Text style={styles.cicloAviso}>{outraFatura}</Text>}
+      {resumo.incerto && (
+        <Text style={styles.cicloAviso}>Parcela incerta: não achei a compra original. O total pode estar incompleto.</Text>
+      )}
 
       {cards.length === 0 ? (
         <Text style={styles.emptyText}>

@@ -15,6 +15,7 @@
  */
 import * as app from '../lib/faturaCiclo';
 import * as deno from '../supabase/functions/_shared/fatura-ciclo';
+import * as creditoApp from '../lib/creditoFaturas';
 
 let total = 0;
 let falhas = 0;
@@ -73,6 +74,33 @@ for (const hoje of ['2026-01-05', '2026-02-28', '2026-09-23', '2026-12-31', '202
       const rd = deno.cicloRelativo(hoje, cd, k);
       checar(mesmo(ra, rd), `cicloRelativo ${hoje} fecha ${cd} k=${k}`);
       checar(app.deslocamentoEntre(app.cicloRelativo(hoje, cd, 0), ra) === k, `deslocamentoEntre inverso ${hoje} ${cd} ${k}`);
+    }
+  }
+}
+
+/* Parcela pelo ciclo da compra original: `cicloDoLancamento` (app) contra
+   `cicloDaLinha` (Granabô), com e sem a data da compra, para todo
+   fechamento 1-31 e compras de 2026, parcelas 1 a 13. */
+{
+  const addMonths = (s: string, k: number) => {
+    const [y, m, d] = s.split('-').map(Number);
+    const alvo = new Date(y, m - 1 + k, 1);
+    const ultimo = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+    return iso(new Date(alvo.getFullYear(), alvo.getMonth(), Math.min(d, ultimo)));
+  };
+  for (let cd = 1; cd <= 31; cd++) {
+    const cartao = { id: 'c', closing_day: cd } as never;
+    for (let d = new Date(2026, 0, 1); d.getFullYear() === 2026; d.setDate(d.getDate() + 3)) {
+      const compra = iso(d);
+      for (let k = 1; k <= 13; k++) {
+        const linha = { id: 'p' + k, occurred_on: addMonths(compra, k - 1), installment_current: k, installment_total: 13, parent_id: k === 1 ? null : 'pai' };
+        for (const datas of [new Map([['pai', compra]]), new Map<string, string>()]) {
+          const a = creditoApp.cicloDoLancamento(linha as never, cartao, datas);
+          const b = deno.cicloDaLinha(linha, cd, datas);
+          checar(mesmo(a.ciclo, b.ciclo) && a.incerto === b.incerto,
+            `parcela ${k} compra ${compra} fecha ${cd} (${datas.size ? 'com' : 'sem'} pai): app ${a.ciclo.year}/${a.ciclo.month}${a.incerto ? '?' : ''} deno ${b.ciclo.year}/${b.ciclo.month}${b.incerto ? '?' : ''}`);
+        }
+      }
     }
   }
 }
