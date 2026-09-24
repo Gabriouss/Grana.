@@ -73,6 +73,12 @@ export function contextoDasDatas(datas: string[], hoje: string): { streak: numbe
   return { streak, diasInativo };
 }
 
+/** Houve lançamento com `occurred_on` neste dia local? O mesmo critério do
+    `jaLancouHoje` do app (`t.occurred_on === todayISO()`). */
+export function lancouNoDia(datas: string[], dia: string): boolean {
+  return datas.includes(dia);
+}
+
 export function atrasoDaTentativa(tentativas: number): number {
   const minutos = Math.min(360, 5 * 2 ** Math.max(0, tentativas - 1));
   return minutos * 60_000;

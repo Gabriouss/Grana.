@@ -7,6 +7,7 @@ import {
   chegouHorarioAlmoco,
   contextoDasDatas,
   ehDiaUtil,
+  lancouNoDia,
   momentoNaZona,
   type MomentoLocal,
 } from '../_shared/push-habit.ts';
@@ -132,7 +133,12 @@ async function criarEntregasDoDia(tokens: PushToken[], agora: Date): Promise<num
 
   const userIds = [...new Set(vencidos.map(({ token }) => token.user_id))];
   const contextos = await contextosDosUsuarios(userIds);
-  const linhas = vencidos.map(({ token, momento, janela }) => {
+  /* Quem já lançou hoje não recebe o lembrete de hoje: é a mesma regra do
+     agendamento local (`jaLancouHoje` em lib/notification-schedule.ts), que o
+     app desliga quando o push remoto está ativo e deixa a decisão aqui. */
+  const aLembrar = vencidos.filter(({ token, momento }) => !lancouNoDia(contextos.get(token.user_id) ?? [], momento.data));
+  if (!aLembrar.length) return 0;
+  const linhas = aLembrar.map(({ token, momento, janela }) => {
     const contexto = contextoDasDatas(contextos.get(token.user_id) ?? [], momento.data);
     const mensagem = selecionarMensagem(
       { ...contexto, diaSemana: momento.diaSemana },
@@ -224,15 +230,24 @@ async function enviarPendentes(tokens: PushToken[], agora: Date): Promise<number
   if (error) throw error;
   const reivindicadas = (data ?? []) as Entrega[];
   const tokensPorId = new Map(tokens.map((token) => [token.expo_push_token, token]));
+  /* Uma retentativa pode sair horas depois da criação; se a pessoa lançou
+     nesse meio-tempo, o lembrete já não é verdade. */
+  const donos = [...new Set(reivindicadas.map((e) => tokensPorId.get(e.expo_push_token)?.user_id).filter((id): id is string => !!id))];
+  const contextos = await contextosDosUsuarios(donos);
   const pendentes: Entrega[] = [];
   for (const entrega of reivindicadas) {
     const token = tokensPorId.get(entrega.expo_push_token);
     const momento = token ? momentoNaZona(agora, token.timezone) : null;
-    if (token && momento?.data === entrega.data_local) {
+    const motivo = !token || momento?.data !== entrega.data_local
+      ? 'expired_local_date'
+      : lancouNoDia(contextos.get(token.user_id) ?? [], entrega.data_local)
+        ? 'already_logged_today'
+        : null;
+    if (!motivo) {
       pendentes.push(entrega);
     } else {
       await supabase.from('push_habit_deliveries').update({
-        status: 'failed', ultimo_erro: 'expired_local_date', atualizado_em: agora.toISOString(),
+        status: 'failed', ultimo_erro: motivo, atualizado_em: agora.toISOString(),
       }).eq('id', entrega.id);
     }
   }
