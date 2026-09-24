@@ -720,10 +720,22 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       passos para reproduzir, o que se esperava, o que apareceu, gravidade, e o
       caminho do print. Os prints ficam na pasta de temporários da sessão, fora
       do repositório e fora do vault.
-    - **Verificação não é correção.** Durante a varredura não se corrige nada:
-      mexer no código muda o app que está sendo auditado. As correções vêm
-      depois, a partir da lista. A exceção é o bug que impede de continuar; aí
-      registre o contorno usado e siga.
+    - **Achado confirmado no código é corrigido durante a varredura; o incerto
+      fica registrado.** Decisão do autor em 23/09/2026, que substitui o
+      "verificação não é correção" de 19/09: "Se o achado for constatado como
+      problemático para a usabilidade do produto ou para as questões visuais
+      do produto, eu quero que seja corrigido imediatamente [...] Caso o
+      achado dele for só uma teoria, um erro de navegação, algo que você não
+      tem certeza, pode deixar documentado e depois me informe que esses
+      achados não possuíam confiabilidade suficiente."
+      Na prática: quem varre continua sem parar e sem corrigir; cada achado é
+      conferido no código por quem coordena; o **confirmado** vai na hora ao
+      dono da área (app, visual, banco), em commit próprio, e a tela é
+      reverificada por quem varre antes do fim; o **não confirmado** fica
+      marcado "sem confiabilidade suficiente" e entra no relatório final ao
+      autor. Correção durante a varredura segue todas as outras regras (9,
+      11, 13, 14 e 15), e a tela corrigida é revista no fim da varredura,
+      porque o app mudou depois de ter sido visto.
     - **Falha técnica não é motivo para parar.** App que fecha, Metro com erro,
       emulador lento: reinicie o que for preciso (app, Metro, inicialização a
       frio do emulador) e retome do item em que parou. Se quem fechou foi o
@@ -769,3 +781,19 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     encaminha cada tarefa ao agente específico adequado, coordena a execução e,
     ao final, apresenta ao autor um resumo consolidado dos achados de todos os
     agentes envolvidos.
+
+    **No Maestri, "Codex" é o nome do terminal maestro, e ele pode estar
+    rodando uma sessão do Claude.** A regra vale para quem estiver nesse
+    terminal, seja qual for o modelo: não corrige código, não escreve
+    rascunho para outro agente terminar e não escreve registro. Em 23/09/2026
+    a sessão maestro começou uma correção sozinha e escreveu nota de sessão e
+    entrada de `context.md`, enquanto cada agente também documentava por conta
+    própria; o dono da documentação não recebeu nada até o autor cobrar.
+
+    **Documentação é do Ledger** (Documentation/Vault): `context.md`, vault do
+    Obsidian e notas de sessão. Os outros agentes não editam esses arquivos;
+    mandam o relatório ao maestro, num arquivo da pasta de trabalho da rodada
+    (`E:\Grana-temporarios\<rodada>\relatorio-<agente>-<etapa>.md`),
+    respondendo às seis perguntas da regra 12, e o maestro repassa ao Ledger.
+    Quando o Ledger não estiver no canvas, o maestro delega o registro a outro
+    agente, e não o escreve ele mesmo.
