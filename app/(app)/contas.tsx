@@ -33,6 +33,7 @@ import TransactionSheet, { type ValoresLancamento } from '@/components/Transacti
 import Toast from '@/components/Toast';
 import PrivacyValue from '@/components/PrivacyValue';
 import Sheet from '@/components/Sheet';
+import AppDialog from '@/components/AppDialog';
 import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, fetchCategories, payBill, reopenBill, updateBill } from '@/lib/data';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal } from '@/lib/offline-cache';
@@ -84,6 +85,7 @@ export default function ContasScreen() {
   // Aux Pickers & Sheets
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Bill | null>(null);
   const { hidden, toggle: togglePrivacy } = usePrivacy();
 
   // Toast
@@ -370,27 +372,17 @@ export default function ContasScreen() {
     }
   }
 
-  /* Excluir pede confirmação, como lançamento, compra parcelada e carteira.
-     Até 19/09/2026 o boleto sumia no primeiro toque em "Excluir", sem volta
-     (achado A30 da auditoria no emulador). */
+  /* O nome e a confirmação deixam claro que a ação exclui este boleto. */
   function handleDeleteSelectedBill() {
     if (!selectedBill) return;
-    const conta = selectedBill;
-    const detalhe =
-      conta.status === 'paid'
-        ? 'A saída já lançada quando ela foi paga continua em Lançamentos.'
-        : 'Os lembretes de vencimento dela também saem.';
-    Alert.alert('Excluir conta', `Remover "${conta.description}"? ${detalhe}`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: () => void excluirConta(conta) },
-    ]);
+    setDeleteTarget(selectedBill);
   }
 
   async function excluirConta(selectedBill: Bill) {
     if (isDemoMode) {
       setBills((prev) => prev.filter((b) => b.id !== selectedBill.id));
       hapticDelete();
-      triggerToast('Conta excluída');
+      triggerToast('Boleto excluído');
       return;
     }
 
@@ -399,7 +391,7 @@ export default function ContasScreen() {
       // load() só resincroniza lembretes de contas que ainda existem — a excluída precisa ser cancelada à parte.
       cancelBillReminders(selectedBill.id).catch(() => {});
       hapticDelete();
-      triggerToast('Conta excluída');
+      triggerToast('Boleto excluído');
       load();
     } catch (e: any) {
       Alert.alert('Erro ao excluir', e.message);
@@ -601,6 +593,20 @@ export default function ContasScreen() {
           if (selectedBill) openEditModal(selectedBill);
         }}
         onDelete={handleDeleteSelectedBill}
+      />
+
+      <AppDialog
+        visible={!!deleteTarget}
+        title="Excluir boleto?"
+        message={deleteTarget
+          ? `Remover “${deleteTarget.description}”? ${deleteTarget.status === 'paid'
+            ? 'A saída já lançada quando ele foi pago continua em Lançamentos.'
+            : 'Os lembretes de vencimento dele também saem.'}`
+          : ''}
+        confirmLabel="Excluir boleto"
+        destructive
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => { if (deleteTarget) void excluirConta(deleteTarget); }}
       />
 
       {/* Toast */}

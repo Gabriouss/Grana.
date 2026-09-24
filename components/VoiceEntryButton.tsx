@@ -15,6 +15,7 @@ import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
 import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz, ORCAMENTO_COM_PESSOA_ESPERANDO_MS } from '@/lib/voz';
 import AppPressable from './AppPressable';
+import AppDialog from './AppDialog';
 import { randomUUID } from 'expo-crypto';
 import { executarTarefa } from '@/lib/widget-voz-task';
 
@@ -89,6 +90,7 @@ export default function VoiceEntryButton({
 }) {
   const [gravando, setGravando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [avisoVoz, setAvisoVoz] = useState<{ titulo: string; texto: string } | null>(null);
   const gravador = useAudioRecorder(GRAVACAO_VOZ);
   /* O corte automático existe pra fala esquecida: se o toque de encerrar nunca
      vier (bolso, distração), a gravação para sozinha em vez de virar um
@@ -162,7 +164,8 @@ export default function VoiceEntryButton({
         },
         notificarFalha: async (codigo) => {
           const msg = mensagemDeErroVoz(codigo);
-          Alert.alert(msg.titulo, msg.texto);
+          if (codigo === 'nao_entendi') setAvisoVoz(msg);
+          else Alert.alert(msg.titulo, msg.texto);
         },
         notificarSalvoLocal: async () => { Alert.alert('Salvo no aparelho', 'O lançamento será sincronizado quando houver conexão.'); },
         notificarPendenteOffline: async () => { Alert.alert('Áudio salvo no aparelho', 'O reconhecimento será retomado quando houver conexão.'); },
@@ -249,7 +252,8 @@ export default function VoiceEntryButton({
   const rotulo = enviando ? 'Transcrevendo…' : gravando ? 'Ouvindo…' : label;
 
   return (
-    <AppPressable
+    <>
+      <AppPressable
       onPress={handlePress}
       accessibilityLabel={gravando ? 'Encerrar gravação e lançar' : 'Lançar por voz'}
       accessibilityState={{ busy: enviando }}
@@ -271,7 +275,15 @@ export default function VoiceEntryButton({
       {label && (
         <Text style={[styles.label, textStyle, gravando && styles.labelActive]}>{rotulo}</Text>
       )}
-    </AppPressable>
+      </AppPressable>
+      <AppDialog
+        visible={!!avisoVoz}
+        title={avisoVoz?.titulo ?? ''}
+        message={avisoVoz?.texto ?? ''}
+        confirmLabel="Entendi"
+        onClose={() => setAvisoVoz(null)}
+      />
+    </>
   );
 }
 
