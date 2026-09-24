@@ -1,5 +1,5 @@
 import { isSameMonth } from './format';
-import { mesFaturaDoLancamento } from './faturaCiclo';
+import { mesFaturaDoLancamento, type CicloFatura } from './faturaCiclo';
 import type { CreditCard, CreditCardInvoicePayment, Transaction } from './types';
 
 export type SecaoLancamentosCartao = {
@@ -23,6 +23,110 @@ function resolverCartao(transacao: Transaction, cartoes: CreditCard[]): CreditCa
      precisa separar. Um id explícito de cartão já excluído também fica órfão. */
   if (!transacao.card_id && cartoes.length === 1) return cartoes[0];
   return undefined;
+}
+
+/**
+ * Quanto um lançamento pesa na fatura. Estorno (`type: 'in'` no cartão)
+ * ABATE: até 23/09/2026 toda soma de fatura era `+ amount`, e um estorno de
+ * R$ 50 aumentava a fatura em R$ 50 em vez de diminuir. Vale para a tela, o
+ * resumo da Início, os lembretes e o limite, que somam por aqui.
+ */
+export function valorNaFatura(transacao: Pick<Transaction, 'amount' | 'type'>): number {
+  const valor = Number(transacao.amount);
+  return transacao.type === 'in' ? -valor : valor;
+}
+
+/** Soma de uma fatura em centavos inteiros, para R$ 0,10 + R$ 0,20 dar R$ 0,30. */
+export function somaDaFatura(transacoes: Pick<Transaction, 'amount' | 'type'>[]): number {
+  return transacoes.reduce((centavos, t) => centavos + Math.round(valorNaFatura(t) * 100), 0) / 100;
+}
+
+/** Data da compra original de cada parcelamento, pelo id da parcela 1. */
+export type DatasDasCompras = ReadonlyMap<string, string>;
+
+function ehParcelaSeguinte(transacao: Transaction): boolean {
+  return (transacao.installment_total ?? 1) > 1 && (transacao.installment_current ?? 1) > 1;
+}
+
+/**
+ * Fechamento 1-28: a data gravada da parcela já dá a fatura certa, porque as
+ * parcelas nascem com "compra + (k-1) meses" limitado ao fim do mês
+ * (`addMonthsToISO`, `somar_meses_data`). A varredura do
+ * `__tests__/corpus-credito-faturas.ts` prova isso. Com fechamento 29-31 a
+ * data da parcela pode cair no dia do fechamento limitado e pular ou repetir
+ * uma fatura (82 compras na varredura de 2026-27), então só a data da COMPRA
+ * decide.
+ */
+function precisaDaCompraOriginal(cartao: CreditCard): boolean {
+  return cartao.closing_day >= 29;
+}
+
+function datasCarregadas(transacoes: Transaction[], extras?: DatasDasCompras): Map<string, string> {
+  const datas = new Map<string, string>(extras ?? []);
+  for (const t of transacoes) {
+    if ((t.installment_total ?? 1) > 1 && (t.installment_current ?? 1) === 1) datas.set(t.id, t.occurred_on);
+  }
+  return datas;
+}
+
+/**
+ * A fatura de um lançamento no cartão. A parcela k pertence à fatura da
+ * compra + (k - 1), como no banco. `incerto` quer dizer que a data da compra
+ * original era necessária e não foi achada: o ciclo devolvido é a melhor
+ * estimativa (pela data da parcela), e quem mostra a fatura precisa dizer que
+ * ela está incompleta. Nunca é silencioso.
+ */
+export function cicloDoLancamento(
+  transacao: Transaction,
+  cartao: CreditCard,
+  datas: DatasDasCompras
+): { ciclo: CicloFatura; incerto: boolean } {
+  const pelaData = mesFaturaDoLancamento(transacao.occurred_on, cartao.closing_day);
+  if (!ehParcelaSeguinte(transacao) || !precisaDaCompraOriginal(cartao)) return { ciclo: pelaData, incerto: false };
+  const compra = transacao.parent_id ? datas.get(transacao.parent_id) : undefined;
+  if (!compra) return { ciclo: pelaData, incerto: true };
+  const daCompra = mesFaturaDoLancamento(compra, cartao.closing_day);
+  const alvo = new Date(daCompra.year, daCompra.month + (transacao.installment_current ?? 1) - 1, 1);
+  return { ciclo: { year: alvo.getFullYear(), month: alvo.getMonth() }, incerto: false };
+}
+
+/**
+ * Ids das compras originais que faltam para resolver as parcelas carregadas
+ * (só cartões com fechamento 29-31). Quem chama busca as datas delas e as
+ * passa como `extras`.
+ */
+export function comprasOriginaisAusentes(
+  transacoes: Transaction[],
+  cartoes: CreditCard[],
+  extras?: DatasDasCompras
+): string[] {
+  const datas = datasCarregadas(transacoes, extras);
+  const ausentes = new Set<string>();
+  for (const t of transacoes) {
+    if (!ehParcelaSeguinte(t) || !t.parent_id || datas.has(t.parent_id)) continue;
+    const cartao = resolverCartao(t, cartoes);
+    if (cartao && precisaDaCompraOriginal(cartao)) ausentes.add(t.parent_id);
+  }
+  return [...ausentes].sort();
+}
+
+/**
+ * Meses civis a buscar para montar estas faturas. A janela de uma fatura
+ * cobre o mês do fechamento e o anterior. Com fechamento 29-31, uma parcela
+ * de data vizinha pode pertencer à fatura pela compra original, então entram
+ * também um mês antes e um depois.
+ */
+export function mesesCivisDasFaturas(ciclos: CicloFatura[], cartoes: CreditCard[]): CicloFatura[] {
+  const folga = cartoes.some(precisaDaCompraOriginal);
+  const deslocamentos = folga ? [-2, -1, 0, 1] : [-1, 0];
+  const meses = new Map<string, CicloFatura>();
+  for (const { year, month } of ciclos) {
+    for (const k of deslocamentos) {
+      const d = new Date(year, month + k, 1);
+      meses.set(`${d.getFullYear()}-${d.getMonth()}`, { year: d.getFullYear(), month: d.getMonth() });
+    }
+  }
+  return [...meses.values()];
 }
 
 /** A fatura "atual" de um cartão, como a tela a calculou por último. */
@@ -95,8 +199,10 @@ export function filtrarLancamentosDaFatura(
   cartoes: CreditCard[],
   cartaoSelecionadoId: string | 'all',
   year: number,
-  month: number
+  month: number,
+  datasExtras?: DatasDasCompras
 ): Transaction[] {
+  const datas = datasCarregadas(transacoes, datasExtras);
   return transacoes.filter((transacao) => {
     if (transacao.payment_method !== 'credit' && !transacao.card_id) return false;
 
@@ -106,8 +212,29 @@ export function filtrarLancamentosDaFatura(
       return cartaoSelecionadoId === 'all' && isSameMonth(transacao.occurred_on, year, month);
     }
 
-    const ciclo = mesFaturaDoLancamento(transacao.occurred_on, cartao.closing_day);
+    const { ciclo } = cicloDoLancamento(transacao, cartao, datas);
     return ciclo.year === year && ciclo.month === month;
+  });
+}
+
+/**
+ * A fatura tem parcela cujo ciclo não pôde ser confirmado (compra original
+ * não achada, cartão com fechamento 29-31). O total mostrado pode estar
+ * errado, e a tela precisa dizer isso e não deixar pagar como se estivesse
+ * certo.
+ */
+export function faturaTemParcelaIncerta(
+  transacoes: Transaction[],
+  cartoes: CreditCard[],
+  cartaoSelecionadoId: string | 'all',
+  year: number,
+  month: number,
+  datasExtras?: DatasDasCompras
+): boolean {
+  const datas = datasCarregadas(transacoes, datasExtras);
+  return filtrarLancamentosDaFatura(transacoes, cartoes, cartaoSelecionadoId, year, month, datasExtras).some((t) => {
+    const cartao = resolverCartao(t, cartoes);
+    return !!cartao && cicloDoLancamento(t, cartao, datas).incerto;
   });
 }
 
@@ -134,7 +261,7 @@ export function agruparLancamentosPorCartao(
       cor: cartao?.color ?? null,
       cartao,
       data,
-      subtotal: data.reduce((soma, transacao) => soma + Number(transacao.amount), 0),
+      subtotal: somaDaFatura(data),
     };
   };
 
@@ -232,7 +359,8 @@ export function lembretesDeFatura(
   transacoes: Transaction[],
   cartoes: CreditCard[],
   pagamentos: CreditCardInvoicePayment[],
-  hojeISO: string
+  hojeISO: string,
+  datasExtras?: DatasDasCompras
 ): LembreteDeFatura[] {
   return cartoes.flatMap((cartao) => {
     const acumulando = mesFaturaDoLancamento(hojeISO, cartao.closing_day);
@@ -244,8 +372,7 @@ export function lembretesDeFatura(
       { year: anterior.getFullYear(), month: anterior.getMonth() },
     ];
     return ciclos.map(({ year, month }) => {
-      const total = filtrarLancamentosDaFatura(transacoes, cartoes, cartao.id, year, month)
-        .reduce((soma, transacao) => soma + Number(transacao.amount), 0);
+      const total = somaDaFatura(filtrarLancamentosDaFatura(transacoes, cartoes, cartao.id, year, month, datasExtras));
       const pagamento = pagamentos.find((p) => p.card_id === cartao.id && p.year === year && p.month === month);
       return { cartao, year, month, restante: situacaoDaFatura(total, pagamento, null).restante };
     });

@@ -65,6 +65,13 @@ export function janelaFatura(year: number, month: number, closingDay: number): J
   return { inicio, fim, rotulo: `${inicioLabel} a ${fimLabel}` };
 }
 
+/** Estorno no cartão (`type: 'in'`) abate a fatura. Mesma regra de
+ * `valorNaFatura` em `lib/creditoFaturas.ts`, travada pela paridade. */
+export function valorNaFatura(linha: { amount: number | string; type?: string | null }): number {
+  const valor = Number(linha.amount);
+  return linha.type === 'in' ? -valor : valor;
+}
+
 /** Vencimento da fatura que fecha em (`year`, `month`). Mesma regra do app. */
 export function dataVencimentoFatura(year: number, month: number, dueDay: number, closingDay: number): Date {
   const ref = new Date(year, dueDay >= closingDay ? month : month + 1, 1);

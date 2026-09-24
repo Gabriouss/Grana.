@@ -636,6 +636,21 @@ async function buscar_fetchCreditTransactionsForMonth(year: number, month: numbe
 }
 
 /**
+ * Data da compra original (parcela 1) de cada parcelamento, pelo id dela.
+ *
+ * Com fechamento 29-31, a parcela k pertence à fatura da COMPRA + (k-1), e a
+ * data gravada na parcela não basta (`lib/creditoFaturas.ts`,
+ * `cicloDoLancamento`). A compra original costuma estar num mês que a tela
+ * não carregou, então vem por esta consulta pequena, só com id e data.
+ */
+async function buscar_fetchDatasDeCompra(ids: string[]): Promise<Record<string, string>> {
+  if (ids.length === 0) return {};
+  const { data, error } = await supabase.from('transactions').select('id, occurred_on').in('id', ids);
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map((t: { id: string; occurred_on: string }) => [t.id, t.occurred_on]));
+}
+
+/**
  * Contexto limitado para catch-up de recorrências: cabeças ativas + filhos
  * dos últimos 24 meses (o mesmo teto aplicado por ocorrenciasFaltantes).
  */
@@ -989,6 +1004,7 @@ export const fetchTransactionsDoPeriodo = comCacheOffline('transacoes-periodo', 
 export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);
 export const fetchCreditCards = comCacheOffline('cartoes', buscar_fetchCreditCards);
 export const fetchCardInvoicePayments = comCacheOffline('pagamentos-fatura', buscar_fetchCardInvoicePayments);
+export const fetchDatasDeCompra = comCacheOffline('datas-de-compra', buscar_fetchDatasDeCompra, (ids) => ids.join(','));
 export const fetchConquistas = comCacheOffline('conquistas', buscar_fetchConquistas);
 export const fetchBills = comCacheOffline('boletos', buscar_fetchBills, (opts?) => String(opts?.status ?? 'todos'));
 export const fetchCreditTransactionsForMonth = comCacheOffline('credito-mes', buscar_fetchCreditTransactionsForMonth, (ano, mes) => `${ano}-${mes}`);

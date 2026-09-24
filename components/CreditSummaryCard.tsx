@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
 import { formatMoney, todayISO } from '@/lib/format';
-import { cicloDoResumoDeFaturas, filtrarLancamentosDaFatura } from '@/lib/creditoFaturas';
+import { cicloDoResumoDeFaturas, filtrarLancamentosDaFatura, somaDaFatura } from '@/lib/creditoFaturas';
 import { BANKS, type CreditCard, type Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
@@ -42,12 +42,12 @@ export default function CreditSummaryCard({
   const outraFatura = ciclo.year !== year || ciclo.month !== month
     ? `Fatura de ${MESES[ciclo.month]}/${String(ciclo.year).slice(2)}`
     : null;
-  const totalMes = creditTx.reduce((s, t) => s + Number(t.amount), 0);
+  const totalMes = somaDaFatura(creditTx);
 
   const porCartao = cards
     .map((card) => ({
       card,
-      valor: creditTx.filter((t) => t.card_id === card.id).reduce((s, t) => s + Number(t.amount), 0),
+      valor: somaDaFatura(creditTx.filter((t) => t.card_id === card.id)),
     }))
     .sort((a, b) => b.valor - a.valor)
     .slice(0, 3);

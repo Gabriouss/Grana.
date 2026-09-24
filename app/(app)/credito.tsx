@@ -37,6 +37,7 @@ import {
   fetchCategories,
   fetchRecurrenceContext,
   fetchCardInvoicePayments,
+  fetchDatasDeCompra,
   payCardInvoice,
   payCardInvoiceRemainder,
   reopenCardInvoice,
@@ -44,14 +45,19 @@ import {
   criarOcorrenciasRecorrentes,
 } from '@/lib/data';
 import { formatBRL, formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
+import { cicloRelativo, mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
 import {
   agruparLancamentosPorCartao,
+  comprasOriginaisAusentes,
   faturaParaExibir,
   faturaAtualDeTodosOsCartoes,
+  faturaTemParcelaIncerta,
   filtrarLancamentosDaFatura,
   lembretesDeFatura,
+  mesesCivisDasFaturas,
   situacaoDaFatura,
+  somaDaFatura,
+  type DatasDasCompras,
   type FaturaAtualDoCartao,
   type StatusDaFatura,
 } from '@/lib/creditoFaturas';
@@ -102,6 +108,9 @@ export default function CreditoScreen() {
      lê, então isso NÃO pode passar calado: calar seria trocar "não consegui
      carregar" por um total errado com cara de certo. */
   const [faturaIncompleta, setFaturaIncompleta] = useState(false);
+  /* Data da compra original de parcelas cujo pai não veio nos meses buscados
+     (só cartões com fechamento 29-31; ver `cicloDoLancamento`). */
+  const [datasDasCompras, setDatasDasCompras] = useState<DatasDasCompras>(new Map());
   const [cards, setCards] = useState<CreditCard[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | 'all'>('all');
@@ -275,19 +284,49 @@ export default function CreditoScreen() {
         }
       };
 
-      const [mesNavegado, mesAnteriorAoNavegado, mesAtualTx, mesAnteriorTx, p] = await Promise.all([
-        opcional(fetchCreditTransactionsForMonth(viewYear, viewMonth), [] as Transaction[]),
-        opcional(fetchCreditTransactionsForMonth(viewYear, viewMonth - 1), [] as Transaction[]),
-        opcional(fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()), [] as Transaction[]),
-        opcional(fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1), [] as Transaction[]),
+      /* Meses civis que cobrem a fatura navegada e, de cada cartão, a aberta
+         hoje e a anterior (carrossel e faixa de fechadas). A fatura aberta de
+         um cartão que fecha dia 14, vista em 23/09, é 14/09 a 13/10: sem o
+         mês de outubro, uma parcela futura dela ficava de fora. */
+      const hojeCarga = todayISO();
+      const mesesABuscar = mesesCivisDasFaturas(
+        [
+          { year: viewYear, month: viewMonth },
+          ...c.flatMap((cartao) => [cicloRelativo(hojeCarga, cartao.closing_day, 0), cicloRelativo(hojeCarga, cartao.closing_day, -1)]),
+        ],
+        c
+      );
+      const buscarMeses = (tolerante: boolean) =>
+        Promise.all(
+          mesesABuscar.map((m) =>
+            tolerante
+              ? opcional(fetchCreditTransactionsForMonth(m.year, m.month), [] as Transaction[])
+              : fetchCreditTransactionsForMonth(m.year, m.month)
+          )
+        );
+      const [porMes, p] = await Promise.all([
+        buscarMeses(true),
         opcional(fetchCardInvoicePayments(), [] as CreditCardInvoicePayment[]),
       ]);
 
       if (!vigente()) return;
-      setFaturaIncompleta(faltouAlgumMes);
       const dedup = (txs: Transaction[]) => Array.from(new Map(txs.map((t) => [t.id, t])).values());
 
-      let selectedTransactions = dedup([...mesNavegado, ...mesAnteriorAoNavegado, ...mesAtualTx, ...mesAnteriorTx]);
+      let selectedTransactions = dedup(porMes.flat());
+      /* Compra original de parcela em cartão 29-31 fora dos meses buscados.
+         Sem ela a parcela fica "incerta" e a fatura se declara incompleta. */
+      const ausentes = comprasOriginaisAusentes(selectedTransactions, c);
+      let datas: DatasDasCompras = new Map();
+      try {
+        datas = new Map(Object.entries(await fetchDatasDeCompra(ausentes)));
+      } catch (erro) {
+        /* Sem as datas, as parcelas ficam "incertas" e a faixa de fatura
+           incompleta aparece: é o recibo na tela. Este é o recibo no log. */
+        console.error('[credito] não consegui buscar a compra original de parcelas', erro);
+      }
+      if (!vigente()) return;
+      setFaturaIncompleta(faltouAlgumMes);
+      setDatasDasCompras(datas);
       setCards(c);
       setTransactions(selectedTransactions);
       setInvoicePayments(p);
@@ -308,14 +347,9 @@ export default function CreditoScreen() {
         const faltantes = ocorrenciasFaltantes(await fetchRecurrenceContext(), todayISO());
         if (faltantes.length > 0) {
           await criarOcorrenciasRecorrentes(faltantes);
-          const [a, b, d1, d2] = await Promise.all([
-            fetchCreditTransactionsForMonth(viewYear, viewMonth),
-            fetchCreditTransactionsForMonth(viewYear, viewMonth - 1),
-            fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth()),
-            fetchCreditTransactionsForMonth(now.getFullYear(), now.getMonth() - 1),
-          ]);
+          const recarregados = await buscarMeses(false);
           if (!vigente()) return;
-          selectedTransactions = dedup([...a, ...b, ...d1, ...d2]);
+          selectedTransactions = dedup(recarregados.flat());
           setTransactions(selectedTransactions);
         }
       } catch (erro) {
@@ -334,7 +368,7 @@ export default function CreditoScreen() {
       const { lembretesContasAtivo } = await carregarNotifPrefs();
       if (!vigente()) return;
       // Pagamento parcial continua lembrando, com o valor que falta.
-      for (const { cartao, year, month, restante } of lembretesDeFatura(selectedTransactions, c, p, todayISO())) {
+      for (const { cartao, year, month, restante } of lembretesDeFatura(selectedTransactions, c, p, todayISO(), datas)) {
         if (lembretesContasAtivo && restante > 0) {
           scheduleCardInvoiceReminders(cartao, year, month, restante).catch(() => {});
         } else {
@@ -504,8 +538,14 @@ export default function CreditoScreen() {
   const selectedCard = selectedCardId === 'all' ? null : walletCards.find((c) => c.id === selectedCardId) ?? null;
 
   const creditTransactions = useMemo(
-    () => filtrarLancamentosDaFatura(walletTransactions, walletCards, selectedCardId, viewYear, viewMonth),
-    [walletTransactions, walletCards, selectedCardId, viewYear, viewMonth]
+    () => filtrarLancamentosDaFatura(walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras),
+    [walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras]
+  );
+  /* Parcela de cartão 29-31 cuja compra original não foi achada: o total
+     desta fatura pode estar errado, e a tela diz isso. */
+  const parcelaIncerta = useMemo(
+    () => faturaTemParcelaIncerta(walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras),
+    [walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras]
   );
 
   const secoesDeLancamentos = useMemo(() => {
@@ -517,12 +557,12 @@ export default function CreditoScreen() {
       cor: selectedCard.color,
       cartao: selectedCard,
       data: creditTransactions,
-      subtotal: creditTransactions.reduce((soma, transacao) => soma + Number(transacao.amount), 0),
+      subtotal: somaDaFatura(creditTransactions),
     }];
   }, [selectedCardId, selectedCard, creditTransactions, walletCards]);
 
   const totalInvoice = useMemo(
-    () => creditTransactions.reduce((s, t) => s + Number(t.amount), 0),
+    () => somaDaFatura(creditTransactions),
     [creditTransactions]
   );
 
@@ -555,8 +595,7 @@ export default function CreditoScreen() {
     const fechamento = new Date(atual.year, atual.month - 1, 1);
     const year = fechamento.getFullYear();
     const month = fechamento.getMonth();
-    const total = filtrarLancamentosDaFatura(walletTransactions, walletCards, card.id, year, month)
-      .reduce((soma, transacao) => soma + Number(transacao.amount), 0);
+    const total = somaDaFatura(filtrarLancamentosDaFatura(walletTransactions, walletCards, card.id, year, month, datasDasCompras));
     const pagamento = invoicePayments.find(
       (inv) => inv.card_id === card.id && inv.year === year && inv.month === month
     ) ?? null;
@@ -566,7 +605,7 @@ export default function CreditoScreen() {
       dataVencimentoFatura(year, month, card.due_day, card.closing_day),
     );
     return situacao.restante > 0 ? [{ card, year, month, restante: situacao.restante }] : [];
-  }), [hojeISO, invoicePayments, walletCards, walletTransactions]);
+  }), [hojeISO, invoicePayments, walletCards, walletTransactions, datasDasCompras]);
 
   function abrirPagarFatura() {
     if (!selectedCard) return;
@@ -1138,6 +1177,15 @@ export default function CreditoScreen() {
       {/* A faixa acima diz "estou mostrando dado salvo"; esta diz outra coisa,
           mais grave: parte do dado NÃO existe no aparelho, e o total na tela é
           menor que o de verdade. Duas frases, porque são dois fatos. */}
+      {parcelaIncerta && (
+        <View style={[styles.avisoIncompleto, colunaConteudo]} accessibilityRole="alert">
+          <Ionicons name="alert-circle-outline" size={16} color={theme.danger} aria-hidden />
+          <Text style={styles.avisoIncompletoTexto}>
+            Não achei a compra original de uma parcela desta fatura, então o total pode estar
+            errado. Conecte para conferir.
+          </Text>
+        </View>
+      )}
       {faturaIncompleta && (
         <View style={[styles.avisoIncompleto, colunaConteudo]} accessibilityRole="alert">
           <Ionicons name="alert-circle-outline" size={16} color={theme.danger} aria-hidden />
@@ -1278,14 +1326,14 @@ export default function CreditoScreen() {
               const cicloAtualDoCard = mesFaturaDoLancamento(todayISO(), card.closing_day);
               const ehCicloAtual = cicloDoCard.year === cicloAtualDoCard.year && cicloDoCard.month === cicloAtualDoCard.month;
               const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-              const cardSpent = filtrarLancamentosDaFatura(
+              const cardSpent = somaDaFatura(filtrarLancamentosDaFatura(
                 walletTransactions,
                 walletCards,
                 card.id,
                 cicloDoCard.year,
-                cicloDoCard.month
-              )
-                .reduce((s, t) => s + Number(t.amount), 0);
+                cicloDoCard.month,
+                datasDasCompras
+              ));
               /* O que já foi pago devolve limite, como no banco. O valor exibido
                  continua sendo o total da fatura, igual ao painel abaixo. */
               const pagamentoDoCard = invoicePayments.find(
@@ -1792,7 +1840,8 @@ const CreditTransactionRow = memo(function CreditTransactionRow({
         <Text style={styles.txDate}>{`${formatDateLabel(tx.occurred_on)} • ${tx.category}`}</Text>
       </View>
       <PrivacyValue>
-        <Text style={styles.txAmount}>{`− R$ ${formatMoney(Number(tx.amount))}`}</Text>
+        {/* Estorno abate a fatura, então aparece com sinal de mais. */}
+        <Text style={styles.txAmount}>{`${tx.type === 'in' ? '+' : '−'} R$ ${formatMoney(Number(tx.amount))}`}</Text>
       </PrivacyValue>
     </AppPressable>
   );
