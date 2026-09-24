@@ -10587,3 +10587,33 @@ Atualiza a seção anterior, que dava T20 como P1 "sem causa isolada".
 - **Alcance:** só o `main`. Segundo o maestro, **nenhuma build contém `e5642dd`**, então quem usa o app instalado não é afetado. Não pode sair build do `main` até a correção.
 - **Registro anterior corrigido:** a entrada de T10/T11 acima vale como "passou nos testes do Node"; o comportamento no React Native quebrava o texto. E o "SaÃºde" do print de T18, que a entrada de T18 tratou como "hipótese de dado externo", tem esta causa.
 - **Em andamento:** o Harbor corrige (só código) e confere em leitura se algum dado já foi regravado quebrado no banco, por exemplo uma categoria editada e salva no `main` depois de ler o nome estragado. A categoria AUDIT do Sentinel entra nessa conferência. **Correção ainda não feita nem verificada.**
+
+## 24/09/2026 — M1 — Decisão do autor: todo lançamento entra na fila offline; T20 corrigido (`9c93feb`)
+
+**Decisão do autor, geral, vale para o produto** (repassada pelo maestro, texto literal):
+
+> "Os lançamentos no geral, seja por voz dentro do app, voz no widget, lançamentos em janelas, TODOS os lançamentos precisam ser guardados em uma fila de sincronização offline e precisam subir ao sistema após a reconexão com a internet. A não ser que isso gere um perigo de segurança ao nosso sistema em caso de ataque DDOS."
+
+Responde as duas perguntas abertas da seção de T13:
+
+- **Voz pendente na lista:** sim. Áudio ainda não transcrito aparece só como aviso, sem valor.
+- **Comprovante colado e QR guardam no aparelho:** sim.
+
+**Divisão do trabalho:**
+
+- **Harbor:** parecer de segurança (a ressalva de DDoS do autor) e contrato de idempotência. A migration fica escrita, **não aplicada**.
+- **Forge:** inventário das entradas que gravam sem fila, e a voz pendente na lista.
+- Nada disso foi implementado ainda. A regra 13 vale: a mesma regra no app e no widget, com teste nas duas entradas.
+
+**T20 corrigido em `9c93feb` (Harbor).** A resposta original volta intacta, e só os métodos de leitura do corpo (`text`, `json`, `arrayBuffer`, `blob`, `formData`) entram na corrida com o prazo. O prazo só é desarmado quando a leitura termina. A decodificação volta a ser a do próprio `fetch` (UTF-8), corpo binário continua binário, e o prazo do T10 segue cobrindo o corpo pendurado.
+
+O teste `fetch-com-prazo.cjs` agora roda o módulo real com o `whatwg-fetch` instalado, cobrindo texto e JSON com acento e corpo binário byte a byte. Ele falha no `e5642dd` exatamente na asserção do T20, e a mutação que desarma o prazo antes da leitura também derruba.
+
+- **Reportado pelo Harbor:** 33 checagens, `tsc` e `test:ci` verdes. O banco foi conferido **só em leitura**: nenhuma linha com mojibake em `transactions`, `categories`, `budgets`, `wallets`, `goals`, `credit_cards` e `bills`, em conta nenhuma.
+- **Reexecutado pelo Ledger no HEAD `9c93feb`:** `fetch-com-prazo.cjs` **33 OK**.
+- **Sem verificação:** reverificação dos acentos no emulador pelo Sentinel. T20 deixa de bloquear build pelo código, mas falta o QA.
+
+**Outros estados (relatados, sem conferência do Ledger):**
+
+- **S10:** verificado pelo Prism no emulador. O commit ainda está a caminho.
+- **Deploy:** o Harbor está publicando `assistente-financeiro` e `enviar-lembretes-habito` com **autorização direta do autor**. Isso muda a decisão anterior, que segurava os lembretes até a mudança do fim de semana no catálogo. **Resultado pendente:** não registrar como publicado até o relatório com versão, `updated_at` e `verify_jwt` de cada função.
