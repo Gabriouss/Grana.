@@ -207,11 +207,31 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
       && migrationVoz.includes('create or replace function public.registrar_operacao_voz(')
       && migrationVoz.includes('create or replace function public.desfazer_operacao_voz(')
   );
-  checar(
-    'a migration atual de voz com carteiras permanece idêntica ao baseline do schema',
-    inicioVoz >= 0 && inicioAssistente > inicioVoz
-      && normalizarSql(sql.slice(inicioVoz, inicioAssistente)) === migrationAPartirDe(migrationVozCarteiras, 'create table if not exists public.voice_operations')
-  );
+  {
+    /* A seção de voz do schema é a de 08/09 (carteiras) com duas camadas por
+       cima: a origem 'assistente' e o desfazer do Granabô (14/09), e a RPC de
+       23/09 (carteira de volta, crédito exige cartão). A de 14/09 sozinha NÃO
+       é baseline: ela foi escrita a partir da migration de 05/09 e apagou a
+       carteira, que é o defeito que a de 23/09 corrige. */
+    const trechoRegistrar = (fonte: string) => {
+      const fim = 'grant execute on function public.registrar_operacao_voz(uuid, text, text, jsonb) to authenticated;';
+      const i = fonte.indexOf('create or replace function public.registrar_operacao_voz(');
+      return i >= 0 ? normalizarSql(fonte.slice(i, fonte.indexOf(fim, i) + fim.length)) : '<ausente>';
+    };
+    const migrationAssistenteLanca = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20260914120000_lancamento_pelo_assistente.sql'), 'utf8');
+    const migrationVozCredito = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20260923230000_voz_carteira_e_credito_exige_cartao.sql'), 'utf8');
+    const fimDesfazer = 'grant execute on function public.desfazer_ultimo_lancamento_assistente() to authenticated;';
+    const inicioDesfazer = migrationAssistenteLanca.indexOf('create or replace function public.desfazer_ultimo_lancamento_assistente(');
+    const desfazerUltimo = normalizarSql(migrationAssistenteLanca.slice(inicioDesfazer, migrationAssistenteLanca.indexOf(fimDesfazer) + fimDesfazer.length));
+    const esperado = migrationAPartirDe(migrationVozCarteiras, 'create table if not exists public.voice_operations')
+      .replace(trechoRegistrar(migrationVozCarteiras), () => trechoRegistrar(migrationVozCredito) + ' ' + desfazerUltimo) // função, para o '$$' do corpo não virar '$'
+      .replace("check (source in ('app', 'widget'))", "check (source in ('app', 'widget', 'assistente'))");
+    checar(
+      'a seção de voz do schema = 08/09 + origem e desfazer de 14/09 + RPC de 23/09',
+      inicioVoz >= 0 && inicioAssistente > inicioVoz && inicioDesfazer >= 0
+        && normalizarSql(sql.slice(inicioVoz, inicioAssistente)) === esperado
+    );
+  }
   checar(
     'a migration do assistente permanece idêntica ao baseline do schema',
     inicioAssistente >= 0 && inicioMemoria > inicioAssistente
@@ -293,6 +313,74 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   }
   checar('o backfill casa por igualdade exata de created_at (mesma transação)',
     /proxima\.created_at = saida\.created_at/.test(migracao));
+}
+
+// ── Crédito por ciclo de fatura (23/09/2026) ────────────────────────────────
+// As três migrations também foram EXECUTADAS num Postgres embutido (PGlite),
+// fora do repositório porque o PGlite não é dependência do projeto. Estes
+// guardas travam o texto: o contrato de erro combinado com o Forge, e o
+// schema.sql igual à migration.
+{
+  const lerMig = (nome: string) =>
+    readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', nome), 'utf8').replace(/\r\n/g, '\n');
+  const sqlLf = sql.replace(/\r\n/g, '\n');
+  const funcao = (texto: string, nome: string) => {
+    const i = texto.indexOf(`create or replace function public.${nome}(`);
+    if (i < 0) return '';
+    return texto.slice(i, texto.indexOf('\n$$;', i) + 4);
+  };
+
+  const voz = lerMig('20260923230000_voz_carteira_e_credito_exige_cartao.sql');
+  const fVoz = funcao(voz, 'registrar_operacao_voz');
+  checar('voz: crédito sem cartão recusa com 23514 e hint cartao_obrigatorio',
+    /if v_payment_method = 'credit' and v_card_id is null then\s+raise exception '[^']+'\s+using errcode = '23514', hint = 'cartao_obrigatorio';/.test(fVoz));
+  checar('voz: aceita as três origens (app, widget, assistente), na RPC e na tabela',
+    fVoz.includes("p_source not in ('app', 'widget', 'assistente')") &&
+    voz.includes("check (source in ('app', 'widget', 'assistente'))"));
+  checar('voz: wallet_id gravado em lançamento, parcela e conta',
+    (fVoz.match(/card_id, wallet_id, payment_method/g) ?? []).length === 2 &&
+    fVoz.includes('recurring, wallet_id, source, source_event_id'));
+  checar('voz: sem carteira no pedido, usa a do cartão',
+    /select c\.wallet_id into v_wallet_id\s+from public\.credit_cards c/.test(fVoz));
+  checar('voz: cartão conferido contra a carteira', fVoz.includes('c.wallet_id = v_wallet_id'));
+  checar('voz: schema.sql igual à migration', fVoz !== '' && funcao(sqlLf, 'registrar_operacao_voz') === fVoz);
+
+  const pagar = lerMig('20260923230100_pagar_fatura_valida_ciclo.sql');
+  const fPagar = funcao(pagar, 'pagar_fatura_cartao');
+  checar('pagar_fatura: recusa ciclo que não começou com 22023 e hint ciclo_invalido',
+    /if v_inicio_ciclo > \(now\(\) at time zone 'America\/Sao_Paulo'\)::date then\s+raise exception '[^']+'\s+using errcode = '22023', hint = 'ciclo_invalido';/.test(fPagar));
+  checar('pagar_fatura: dia efetivo = min(closing_day, último dia do mês)', /least\(\s*v_card\.closing_day::int,/.test(fPagar));
+  const repetido = fPagar.indexOf('if found then\n    return v_invoice;');
+  checar('pagar_fatura: pagamento repetido devolvido ANTES da validação do ciclo',
+    repetido > 0 && repetido < fPagar.indexOf('v_inicio_ciclo :='));
+  checar('pagar_fatura: cartão do próprio usuário', fPagar.includes('where c.id = p_card_id and c.user_id = v_user'));
+  checar('pagar_fatura: execução revogada de anon',
+    pagar.includes('revoke all on function public.pagar_fatura_cartao(uuid, integer, integer, numeric, date, uuid) from public, anon;'));
+  checar('pagar_fatura: schema.sql igual à migration', fPagar !== '' && funcao(sqlLf, 'pagar_fatura_cartao') === fPagar);
+
+  const trava = lerMig('20260923230200_travar_fechamento_com_historico.sql');
+  const fTrava = funcao(trava, 'travar_fechamento_com_historico');
+  checar('fechamento: só recusa quando o closing_day MUDA (o app manda o valor inalterado em toda edição)',
+    fTrava.includes('new.closing_day is distinct from old.closing_day and ('));
+  checar('fechamento: histórico = lançamento OU fatura paga',
+    fTrava.includes('from public.transactions t where t.card_id = old.id') &&
+    fTrava.includes('from public.credit_card_invoices i where i.card_id = old.id'));
+  checar('fechamento: recusa com 23514 e hint fechamento_bloqueado',
+    fTrava.includes("using errcode = '23514', hint = 'fechamento_bloqueado'"));
+  checar('fechamento: trigger só em update de closing_day',
+    /before update of closing_day on public\.credit_cards\s+for each row execute function public\.travar_fechamento_com_historico\(\);/.test(trava));
+  const revogaTrava = /revoke all on function public\.travar_fechamento_com_historico\(\) from public, anon, authenticated;/;
+  checar('fechamento: trigger interno não fica exposto como RPC', revogaTrava.test(trava) && revogaTrava.test(sqlLf));
+  checar('fechamento: schema.sql igual à migration', fTrava !== '' && funcao(sqlLf, 'travar_fechamento_com_historico') === fTrava);
+
+  // `$$` virando `$` numa geração por script: pego no Postgres embutido em 23/09.
+  for (const [nome, texto] of [['voz', voz], ['pagar', pagar], ['trava', trava], ['schema.sql', sqlLf]] as const) {
+    checar(`${nome}: nenhum bloco com '$' solto no lugar de '$$'`, !/^(?:do|end|as) \$;?$/m.test(texto));
+  }
+
+  const previa = readFileSync(path.join(__dirname, '..', 'supabase', 'previa-faturas-mes-civil.sql'), 'utf8');
+  checar('prévia das faturas antigas é somente leitura',
+    !/\b(update|delete|insert|alter|drop|create|truncate|grant)\b/i.test(previa.replace(/--[^\n]*/g, '')));
 }
 
 console.log(`\n${total - falhas}/${total} guardas do schema passaram — ${falhas} falhas`);

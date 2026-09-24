@@ -2042,11 +2042,14 @@ declare
   v_card public.credit_cards;
   v_invoice public.credit_card_invoices;
   v_tx_id uuid;
+  v_mes_anterior date;
+  v_inicio_ciclo date;
 begin
   if v_user is null or not public.tem_direito_acesso() then
     raise exception 'Acesso não autorizado' using errcode = '42501';
   end if;
-  if p_month not between 0 and 11 or p_amount <= 0 or p_paid_on is null then
+  if p_month is null or p_month not between 0 and 11 or p_year is null or p_year not between 2000 and 2100
+     or p_amount is null or p_amount <= 0 or p_paid_on is null then
     raise exception 'Dados de fatura inválidos' using errcode = '22023';
   end if;
 
@@ -2069,6 +2072,22 @@ begin
   where c.id = p_card_id and c.user_id = v_user;
   if not found then
     raise exception 'Cartão não encontrado' using errcode = 'P0002';
+  end if;
+
+  -- (p_year, p_month) é o mês de FECHAMENTO da fatura (0-indexado). O ciclo
+  -- dela começa no fechamento do mês anterior. Dia efetivo do fechamento =
+  -- min(closing_day, último dia do mês): um cartão que fecha dia 31 fecha em
+  -- 28/29 de fevereiro e em 30 de abril, como nos bancos. Pagar antes de o
+  -- ciclo começar é pagar uma fatura que ainda não existe: recusa. A fatura
+  -- aberta (ciclo já começado) continua podendo ser paga antes do fechamento.
+  v_mes_anterior := (make_date(p_year, p_month + 1, 1) - interval '1 month')::date;
+  v_inicio_ciclo := v_mes_anterior + (least(
+    v_card.closing_day::int,
+    extract(day from (v_mes_anterior + interval '1 month' - interval '1 day'))::int
+  ) - 1);
+  if v_inicio_ciclo > (now() at time zone 'America/Sao_Paulo')::date then
+    raise exception 'Esta fatura ainda não começou'
+      using errcode = '22023', hint = 'ciclo_invalido';
   end if;
 
   if p_wallet_id is not null and not exists (
@@ -2217,6 +2236,35 @@ $$;
 
 revoke all on function public.reabrir_fatura_cartao(uuid) from public, anon;
 grant execute on function public.reabrir_fatura_cartao(uuid) to authenticated;
+
+-- Dia de fechamento travado em cartão com compras ou pagamentos (decisão do
+-- autor, 23/09/2026). Ver 20260923230200_travar_fechamento_com_historico.sql.
+create or replace function public.travar_fechamento_com_historico()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- O app manda o closing_day inalterado em toda edição de cartão (nome,
+  -- limite, carteira). Só a mudança de fato é recusada.
+  if new.closing_day is distinct from old.closing_day and (
+    exists (select 1 from public.transactions t where t.card_id = old.id)
+    or exists (select 1 from public.credit_card_invoices i where i.card_id = old.id)
+  ) then
+    raise exception 'O dia de fechamento não pode mudar em cartão com compras ou pagamentos'
+      using errcode = '23514', hint = 'fechamento_bloqueado';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.travar_fechamento_com_historico() from public, anon, authenticated;
+
+drop trigger if exists travar_fechamento_com_historico on public.credit_cards;
+create trigger travar_fechamento_com_historico
+  before update of closing_day on public.credit_cards
+  for each row execute function public.travar_fechamento_com_historico();
 
 create or replace function public.adicionar_compra_parcelada(
   p_description text,
@@ -3813,7 +3861,7 @@ alter table public.push_habit_deliveries
 create table if not exists public.voice_operations (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
-  source text not null check (source in ('app', 'widget')),
+  source text not null check (source in ('app', 'widget', 'assistente')),
   status text not null default 'processing'
     check (status in ('processing', 'committed', 'failed', 'undone')),
   kind text not null check (kind in ('transaction', 'installment', 'bill')),
@@ -3877,7 +3925,7 @@ begin
     raise exception 'Acesso nao autorizado' using errcode = '42501';
   end if;
   if p_request_id is null
-     or p_source is null or p_source not in ('app', 'widget')
+     or p_source is null or p_source not in ('app', 'widget', 'assistente')
      or p_kind is null or p_kind not in ('transaction', 'installment', 'bill')
      or p_payload is null or jsonb_typeof(p_payload) <> 'object' then
     raise exception 'Operacao de voz invalida' using errcode = '22023';
@@ -3918,6 +3966,14 @@ begin
   v_color := nullif(btrim(p_payload->>'color'), '');
   v_recurring := coalesce((p_payload->>'recurring')::boolean, false);
   v_wallet_id := nullif(p_payload->>'wallet_id', '')::uuid;
+  -- Sem carteira no pedido e com cartao: a carteira e a do cartao, nao a
+  -- Principal. Com as duas no pedido e divergentes, a conferencia do cartao
+  -- mais abaixo recusa (23503).
+  if v_wallet_id is null and p_kind <> 'bill' and nullif(p_payload->>'card_id', '') is not null then
+    select c.wallet_id into v_wallet_id
+    from public.credit_cards c
+    where c.id = nullif(p_payload->>'card_id', '')::uuid and c.user_id = v_user;
+  end if;
   if v_wallet_id is null then
     select w.id into v_wallet_id
     from public.wallets w
@@ -3984,6 +4040,13 @@ begin
          or v_payment_method is distinct from 'credit' or v_card_id is null
        )) then
       raise exception 'Lancamento de voz invalido' using errcode = '22023';
+    end if;
+    -- Decisao do autor (23/09/2026): lancamento no credito nunca e gravado
+    -- sem cartao. A hint e o contrato com o app, o widget e o Granabo: eles
+    -- levam a fala para revisao (escolher o cartao) em vez de descartar.
+    if v_payment_method = 'credit' and v_card_id is null then
+      raise exception 'Lancamento no credito exige cartao'
+        using errcode = '23514', hint = 'cartao_obrigatorio';
     end if;
     if v_card_id is not null and not exists (
       select 1 from public.credit_cards c
@@ -4081,6 +4144,61 @@ $$;
 
 revoke all on function public.registrar_operacao_voz(uuid, text, text, jsonb) from public, anon;
 grant execute on function public.registrar_operacao_voz(uuid, text, text, jsonb) to authenticated;
+
+-- Desfazer o ultimo lancamento que o PROPRIO assistente criou.
+--
+-- Existe porque o Granabo grava direto quando a leitura e inequivoca, igual a
+-- voz e ao widget. Gravar sem rede de seguranca seria pior: quem digita
+-- "lanca 20 de almoco" e ve "lancei R$ 20" precisa de um caminho de volta na
+-- mesma conversa, sem procurar a linha na tela de Lancamentos.
+--
+-- Sem argumento de proposito. O id da operacao existe no servidor, nao na
+-- conversa, e pedir ao modelo que guarde e repita um UUID entre turnos seria
+-- confiar num dado critico a memoria dele -- justamente o que o desenho com
+-- ferramentas deste projeto evita. O servidor descobre sozinho qual foi.
+--
+-- Tres limites deliberados:
+--   * so `source = 'assistente'`: dizer "desfaz" no chat nunca pode apagar um
+--     lancamento feito pela voz ou pelo widget;
+--   * so `status = 'committed'`: o que ja foi desfeito nao e desfeito de novo;
+--   * so os ultimos 30 minutos: "desfaz" nao pode alcancar para tras e remover
+--     algo de ontem que a pessoa nem tem mais em mente.
+create or replace function public.desfazer_ultimo_lancamento_assistente()
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_id uuid;
+begin
+  if v_user is null or not public.tem_direito_acesso() then
+    raise exception 'Acesso nao autorizado' using errcode = '42501';
+  end if;
+
+  select o.id into v_id
+  from public.voice_operations o
+  where o.user_id = v_user
+    and o.source = 'assistente'
+    and o.status = 'committed'
+    and o.created_at > now() - interval '30 minutes'
+  order by o.created_at desc
+  limit 1;
+
+  if v_id is null then
+    return jsonb_build_object('status', 'nada_para_desfazer');
+  end if;
+
+  -- Reusa a RPC da voz: a remocao das linhas e a marcacao do tombstone moram
+  -- la, e duplicar isso aqui criaria duas versoes da mesma regra para
+  -- divergirem depois.
+  return public.desfazer_operacao_voz(v_id);
+end;
+$$;
+
+revoke all on function public.desfazer_ultimo_lancamento_assistente() from public, anon;
+grant execute on function public.desfazer_ultimo_lancamento_assistente() to authenticated;
 
 create or replace function public.desfazer_operacao_voz(p_operation_id uuid)
 returns jsonb
