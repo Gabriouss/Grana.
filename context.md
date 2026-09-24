@@ -10076,8 +10076,9 @@ agente tem a própria nota de 23/09 (o Sentinel usa a de 22/09).
   1 min), por scripts em `E:\Grana-temporarios\` (fora do repo).
 - **Pendente de decisão do autor:** `.claude/settings.json` com `Bash(*)` e
   afins continua modificado e FORA de commit (repositório público). Os deploys
-  represados (`assistente-financeiro`, `whatsapp-webhook`,
-  `enviar-lembretes-habito`) seguem sem pedido (regra 11).
+  então represados foram publicados pela M2 em 23/09 e conferidos em
+  produção (ver registro no topo). O código posterior de crédito por ciclo
+  continua sem deploy.
 
 ## 23/09/2026 — M1 — erro do Supabase deixa de aparecer como "[object Object]"
 
@@ -10331,3 +10332,127 @@ entrada.
   sem log (regra 9). **Pergunta ao autor:** com UM cartão na carteira, crédito
   antigo sem `card_id` segue atribuído a ele (`resolverCartao`); o Forge
   recomenda manter.
+
+## 23/09/2026 — M1 — Crédito por ciclo, etapa (d): Granabô usa a compra original (`a249e96`)
+
+Relatório do Harbor, repassado ao Ledger. O commit publicado em `origin/main`
+altera exatamente `supabase/functions/_shared/fatura-ciclo.ts`,
+`supabase/functions/assistente-financeiro/index.ts`,
+`__tests__/granabo-parcelas-ciclo.cjs` e `package.json` (entrada do teste em
+`test:ci`, combinada com o Forge).
+
+- **Sintoma e causa:** em cartão que fecha nos dias 29 a 31, a parcela 14 de
+  compra em 28/01/2026, gravada em 28/02/2027, pertence à fatura de fevereiro
+  pelo ciclo da compra original, mas o Granabô a atribuía a março pela data da
+  parcela. A consulta só da janela corrente também podia deixar a parcela fora.
+- **Correção:** `cicloDaLinha` usa o ciclo da compra original e o número da
+  parcela; `resumoCredito` e `gastoPorCategoria` ampliam a busca em um mês,
+  consultam a compra original por id quando necessário e filtram pelo ciclo.
+  Se o pai falta, avisam quando a atribuição da parcela próxima pode ter
+  alterado o total, inclusive quando o fallback por data a excluiria.
+- **Descartado:** inferir a data da compra a partir da parcela, pois 28/02 pode
+  ter várias origens; buscar pais para fechamento 1 a 28, onde a data preserva
+  o ciclo. Uma primeira revisão avisava só quando o fallback incluía a
+  parcela; o caso de exclusão silenciosa foi corrigido antes do commit.
+- **Verificação reportada pelo Harbor:** handler real em
+  `granabo-parcelas-ciclo.cjs`, `granabo-estorno-credito.cjs`, `tsc --noEmit`,
+  `deno check` e paridade app × Granabô **206.398/206.398** passaram. O
+  `test:ci` completo não foi gate nesta etapa: há alterações simultâneas do
+  app, e uma execução anterior falhou na guarda de `CreditSummaryCard.tsx`,
+  fora do backend. `npx` encontrou restrição de acesso ao npm; executáveis em
+  cache serviram ao check e à paridade.
+- **Não verificado:** resposta do Granabô em produção e uso no aparelho.
+  **Nenhum deploy** foi feito. Antes de publicar `assistente-financeiro`, fazer
+  o preflight da regra 11; as migrations de crédito por ciclo seguem o roteiro
+  do Harbor. A pendência do Granabô descrita na etapa (b) acima fica resolvida
+  no código por este commit, mas ainda não está no servidor.
+
+## 23/09/2026 — M1 — Crédito por ciclo, etapa (d) do app: resumo por cartão (`99e4cc1`)
+
+Relatório do Forge, repassado ao Ledger. O commit `99e4cc1` está em
+`origin/main`, sobre o backend `a249e96`, e contém somente sete arquivos do
+app e seus corpora: `lib/creditoFaturas.ts`, `components/CreditSummaryCard.tsx`,
+`app/(app)/index.tsx`, `app/(app)/credito.tsx`,
+`__tests__/corpus-credito-faturas.ts`, `__tests__/corpus-parcelas-estorno.ts`
+e `__tests__/paridade-fatura-ciclo.ts`. Mudanças locais dos demais agentes
+ficaram fora.
+
+- **Pedido e causa:** o autor quer a fatura pelo ciclo de fechamento. O resumo
+  da Início tentava representar cartões com fechamentos diferentes por uma
+  chave de fatura só; quando os ciclos divergiam, voltava ao mês civil. O
+  Crédito filtrava por `transaction.wallet_id`, que pode ser a carteira ativa
+  gravada pela voz ou pelo Granabô mesmo quando o cartão pertence a outra.
+  Trocar de carteira mantinha um cartão anterior selecionado e esvaziava a
+  lista. Sem a compra original, uma parcela 29-31 podia cair no ciclo vizinho
+  sem o resumo avisar.
+- **Correção:** `resumoDeFaturas` resolve o ciclo de cada cartão, soma em
+  centavos, exclui crédito antigo sem cartão do total e marca como incertos os
+  dois ciclos próximos quando falta a compra pai. O filtro compartilhado
+  `lancamentosDaCarteira` segue a carteira do cartão; ao trocar de carteira,
+  `selecaoAposTrocarCarteira` limpa seleção inválida. O card da Início mostra
+  "Faturas em aberto" quando o fechamento aponta para outro mês e avisa sobre
+  parcela incerta.
+- **Descartado:** uma chave única de ciclo para cartões diferentes e confiar
+  no `wallet_id` do lançamento com `card_id` válido. O primeiro resumo só
+  implicava a incerteza; Forge acrescentou recibo visível nos dois ciclos.
+- **Dificuldades:** a guarda de estorno falhou 1/39 quando a soma saiu do
+  componente para a regra comum; foi atualizada para o novo ponto e passou
+  40/40. `npx tsx` tentou alcançar o npm no sandbox; os módulos reais foram
+  executados com hook temporário `ts.transpileModule`, fora do commit.
+- **Verificação reportada pelo Forge:** `tsc` limpo, corpus faturas **94/94**,
+  parcelas/estorno **40/40**, paridade app × Granabô **206.398/206.398**,
+  corpus do assistente por ciclo 4/4. O `test:ci` integral não rodou nesta
+  sessão. Sem teste visual no emulador/aparelho nem ponta a ponta com dados
+  reais. **Nenhum build ou deploy.**
+
+## 24/09/2026 — M1 — Correção da fila do Harbor após verificação da M2
+
+O topo deste arquivo já registra a publicação e a conferência em produção
+feitas pela M2 em 23/09. Portanto, **H1, H2 e os deploys pendentes de
+`whatsapp-webhook`/`enviar-lembretes-habito` saem da fila do Harbor**:
+`feedback_uso_publico`, `granabo_recusa_conta_bloqueada` e
+`restringir_execucao_triggers_internos` estão aplicadas; as quatro Edge
+Functions publicadas são `assistente-financeiro` v37, `delete-account` v7,
+`enviar-lembretes-habito` v12 e `whatsapp-webhook` v76, com `verify_jwt`
+preservado. Esta é correção de estado, sem novo deploy nesta sessão.
+
+**Permanece só no repositório:** as cinco migrations de crédito por ciclo
+`230000`–`230400` e `supabase/previa-faturas-mes-civil.sql` (prévia ainda
+não rodada). A fase 1 (`230000`, `230100`, `230200`) é anterior ao APK; a fase
+2 (`230300`, `230400`) fica para o dia da build EAS autorizada. Código
+posterior à v37/`fe0c75d` nos commits `1bfae42`, `37318e5`, `d10a79a` e
+`a249e96` também continua **sem deploy**. No próximo preflight da regra 11,
+confirmar `updated_at` do `assistente-financeiro` antes de publicar.
+
+**Árvore local, sem commit:** `lib/fetch-com-prazo.ts` e `lib/supabase.ts`
+(T10/T11) ainda não têm teste reportado; o Harbor assumiu T10/T11 e S43 no
+backend. O Forge assumiu T2 e a integração T13; o Prism, T19/UI. A conclusão
+dessas tarefas aguarda os relatórios dos responsáveis. Permanecem o `catch`
+sem log em `_shared/assistant-learning.ts:358` e P4 sem execução. Nenhum desses itens
+foi tratado como achado novo nesta atualização documental.
+
+## 24/09/2026 — M1 — Coordenação: tarefas atribuídas, sem resultado antecipado
+
+O Harbor assumiu T10/T11 e S43 no backend; o Forge assumiu T2 e a integração
+T13; o Prism assumiu T19/UI. O Sentinel retomou QA com ADB e Metro acessíveis.
+São atribuições e condições de trabalho confirmadas, **não** relatórios de
+correção ou de teste concluído. A documentação de cada entrega espera o
+relatório do agente responsável.
+
+**Três estados separados:** `a249e96` e `99e4cc1` estão no repositório; a
+produção mantém a publicação verificada pela M2 em 23/09, anterior a esses
+commits; o bundle instalado no aparelho ainda não foi verificado nesta
+rodada. Nenhum build ou deploy foi feito neste registro documental.
+
+## 24/09/2026 — M1 — QA do Sentinel: T19 confirmado em duas AppModal
+
+O Sentinel confirmou visualmente T19 em duas janelas `AppModal`.
+Os prints são `E:\Grana-temporarios\prints\qa-diagnostico-corrigido-2.png`
+e `E:\Grana-temporarios\prints\qa-qr-atual.png`, fora do repo e do
+vault. T16/T17 não reproduziram nesta passada; isso não os encerra.
+
+O Prism tem uma correção **local, sem commit** em `components/AppModal.tsx`:
+`SafeAreaProvider` e `InsetsDoModal`. A hipótese de mecanismo é o fundo
+branco da janela nativa do modal. A correção ainda **não passou por QA** e
+T19 **não está resolvido**. Produção e bundle do aparelho não mudaram por
+este registro. Nenhum build ou deploy.
