@@ -64,5 +64,23 @@ checar('texto longo é barrado', mensagemErro(new Error('erro '.repeat(60)), 'ap
 // Sem mensagem nenhuma, a frase de apoio.
 checar('erro vazio usa o apoio', mensagemErro(new Error(''), 'apoio'), 'apoio');
 
+/* O erro do PostgREST é objeto puro, não `Error`. Em 23/09/2026 o envio de
+   feedback mostrou "[object Object]" na tela por causa disso. */
+const postgrest = {
+  message: 'column feedbacks.public_use_consent does not exist',
+  details: null, hint: null, code: '42703',
+};
+checar('erro do PostgREST mostra a frase dele',
+  mensagemErro(postgrest, 'apoio'), 'column feedbacks.public_use_consent does not exist');
+checar('nunca "[object Object]"', /object Object/.test(mensagemErro({ code: '500' }, 'apoio')), false);
+
+logs.length = 0;
+checar('objeto sem message usa o apoio', mensagemErro({ code: '500' }, 'apoio'), 'apoio');
+checar('e deixa recibo no log', logs.length > 0, true);
+
+checar('objeto com despejo no message é barrado', mensagemErro({ message: despejo }, 'apoio'), 'apoio');
+checar('string solta passa', mensagemErro('falhou', 'apoio'), 'falhou');
+checar('null usa o apoio', mensagemErro(null, 'apoio'), 'apoio');
+
 console.log(`\n${total - falhas}/${total} checagens da faixa de erro passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);

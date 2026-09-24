@@ -36,11 +36,29 @@ function pareceDespejoDeDados(texto: string): boolean {
   return /[{}\[\]]/.test(texto) && /"[a-z_]+"\s*:/i.test(texto);
 }
 
+/* O erro do Supabase (PostgREST) chega como OBJETO puro, `{message, details,
+ * hint, code}`, e não como instância de `Error`. `String(objeto)` dava
+ * "[object Object]", e era isso que a pessoa lia ao falhar o envio de
+ * feedback (auditoria web da M2, 23/09/2026). Todo `if (error) throw error`
+ * do projeto passa por aqui, então a leitura do `message` vale para todos. */
+function textoDoErro(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e == null) return '';
+  if (typeof e === 'object') {
+    const message = (e as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+    // Objeto sem frase: nada a mostrar, mas a falha deixa recibo.
+    console.error('[erro] objeto de erro sem message', e);
+    return '';
+  }
+  return String(e);
+}
+
 export function mensagemErro(e: unknown, apoio = 'Tente novamente.'): string {
   if (isLikelyNetworkError(e)) {
     return 'Sem conexão com a internet. Verifique e tente de novo.';
   }
-  const bruta = e instanceof Error ? e.message : String(e ?? '');
+  const bruta = textoDoErro(e);
   if (pareceDespejoDeDados(bruta)) {
     /* Recibo no log, nunca na tela: sem isto a falha vira silêncio, que a
        regra 9 do AGENTS.md trata como o pior desfecho. Truncado porque o

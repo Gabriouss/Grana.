@@ -10078,3 +10078,29 @@ agente tem a própria nota de 23/09 (o Sentinel usa a de 22/09).
   afins continua modificado e FORA de commit (repositório público). Os deploys
   represados (`assistente-financeiro`, `whatsapp-webhook`,
   `enviar-lembretes-habito`) seguem sem pedido (regra 11).
+
+## 23/09/2026 — M1 — erro do Supabase deixa de aparecer como "[object Object]"
+
+Achado A1 da auditoria web da M2 (vault: `00 - Sessões/2026-09-23 - M2 -
+Auditoria completa do app na web`): ao falhar o envio de feedback, a faixa de
+erro mostrava "[object Object]".
+
+- **Causa (comprovada no código):** o erro do PostgREST chega como objeto puro
+  `{message, details, hint, code}`, não como `Error`, e `mensagemErro`
+  (`lib/erros.ts`) fazia `String(e)`.
+- **Correção:** nova `textoDoErro(e)` em `lib/erros.ts`. `Error` → `message`;
+  objeto com `message` string → `message`; objeto sem `message` → recibo no
+  `console.error` e cai na frase de apoio; `null` → apoio. A guarda
+  `pareceDespejoDeDados` continua valendo depois. Rascunho do Codex (maestro),
+  revisado e fechado pelo App Engineer.
+- **Varredura:** nenhum outro ponto do app converte erro com `String(e)` ou
+  `${e}` para a tela. `lib/exportar-meus-dados.ts:95` tem `String(erro)` só
+  como último recurso depois de ler `message`, e o texto vai para o arquivo
+  exportado, não para a tela. Os `Alert` de `perfil.tsx`, `OnboardingModal` e
+  `ExcluirContaSheet` recebem strings já lidas de `error.message`.
+- **Verificação:** `__tests__/erro-na-tela.cjs` com 7 checagens novas, 16/16;
+  conferido por mutação (voltar ao `String(e)` derruba 5). `npx tsc --noEmit`
+  limpo e `npm run test:ci` inteiro verde.
+- **Não verificado:** a tela de feedback no navegador ou no emulador depois da
+  correção. A falha de origem (coluna `feedbacks.public_use_consent`
+  ausente, se for o caso em produção) é outro achado e não foi mexida aqui.
