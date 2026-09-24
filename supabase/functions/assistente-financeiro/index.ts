@@ -27,6 +27,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    às vezes resolve pra "Alimentação" sozinho, "mercado" não — inconsistente).
    Ver casarPorPalavraChave, mais abaixo. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra, semValorMonetario } from '../_shared/category-keywords.ts';
+import { ehCompraNoCredito } from '../_shared/caixa.ts';
 /* Leitura determinística do lançamento escrito. Cópia guardada de
    `lib/heuristics.ts` (ver o cabeçalho do módulo e `__tests__/sync-parser.js`).
    Nada aqui vem do whatsapp-webhook: lançamento não pode depender de uma
@@ -1517,17 +1518,27 @@ async function executarFerramenta(
           (parcelaIncerta ? AVISO_PARCELA_INCERTA : '');
       }
 
+      /* Fora do modo fatura, o total é o do caixa, igual a Início e Gráficos:
+         compra no crédito fica de fora (entra quando a fatura é paga). O
+         filtro é em memória com a mesma regra do app, porque `neq credit`
+         no PostgREST perderia `payment_method` nulo com `card_id`. */
       const { data, error } = await supabase
         .from('transactions')
-        .select('amount')
+        .select('amount, payment_method, card_id')
         .eq('user_id', userId)
         .eq('type', 'out')
         .eq('category', casada)
         .gte('occurred_on', inicio)
         .lte('occurred_on', fim);
       if (error) throw error;
-      const total = (data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-      return `O usuário gastou R$ ${formatarBRL(total)} em ${casada}. Período consultado: ${rotulo}. Cite esse período na resposta.${AVISO_REGRA_CREDITO}`;
+      const linhasCategoria = (data ?? []) as Array<{ amount: number; payment_method: string | null; card_id: string | null }>;
+      const total = linhasCategoria.filter((t) => !ehCompraNoCredito(t)).reduce((s, t) => s + Number(t.amount), 0);
+      const noCredito = linhasCategoria.filter((t) => ehCompraNoCredito(t)).reduce((s, t) => s + Number(t.amount), 0);
+      return `O usuário gastou R$ ${formatarBRL(total)} em ${casada}, sem contar compras no crédito. Período consultado: ${rotulo}. Cite esse período na resposta.` +
+        (noCredito > 0
+          ? ` Além disso, houve R$ ${formatarBRL(noCredito)} em compras no crédito nessa categoria e período; elas não estão no total e entram no caixa quando a fatura é paga. Mencione esse valor separado.`
+          : '') +
+        AVISO_REGRA_CREDITO;
     }
 
     case 'boletosAVencer': {
@@ -1592,7 +1603,7 @@ async function executarFerramenta(
       const [txResult, billsResult, goalsResult] = await Promise.all([
         supabase
           .from('transactions')
-          .select('type, amount, occurred_on')
+          .select('type, amount, occurred_on, payment_method, card_id')
           .eq('user_id', userId)
           .gte('occurred_on', inicio)
           .lte('occurred_on', fim),
@@ -1612,7 +1623,10 @@ async function executarFerramenta(
       const ano = hoje.getFullYear();
       const mes = hoje.getMonth();
 
+      /* Saldo de caixa: compra e estorno no cartão ficam de fora, como na
+         Início; o pagamento da fatura (sem cartão) é que sai do caixa. */
       const saldo = (txResult.data ?? [])
+        .filter((t: { payment_method: string | null; card_id: string | null }) => !ehCompraNoCredito(t))
         .filter((t: { occurred_on: string }) => {
           const d = new Date(t.occurred_on + 'T00:00:00');
           return d.getFullYear() === ano && d.getMonth() === mes;
@@ -1649,24 +1663,33 @@ async function executarFerramenta(
     case 'resumoMes': {
       const { data, error } = await supabase
         .from('transactions')
-        .select('type, amount')
+        .select('type, amount, payment_method, card_id')
         .eq('user_id', userId)
         .gte('occurred_on', inicio)
         .lte('occurred_on', fim);
       if (error) throw error;
-      const linhas = data ?? [];
+      type LinhaResumo = { type: string; amount: number; payment_method: string | null; card_id: string | null };
+      const todas = (data ?? []) as LinhaResumo[];
+      /* Receitas, gastos e saldo são de caixa, como Início e Gráficos. */
+      const linhas = todas.filter((t) => !ehCompraNoCredito(t));
       const receitas = linhas
-        .filter((t: { type: string }) => t.type === 'in')
-        .reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
+        .filter((t) => t.type === 'in')
+        .reduce((s, t) => s + Number(t.amount), 0);
       const gastos = linhas
-        .filter((t: { type: string }) => t.type === 'out')
-        .reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
+        .filter((t) => t.type === 'out')
+        .reduce((s, t) => s + Number(t.amount), 0);
+      const comprasNoCredito = todas
+        .filter((t) => t.type === 'out' && ehCompraNoCredito(t))
+        .reduce((s, t) => s + Number(t.amount), 0);
       const saldo = receitas - gastos;
       return (
         `Resumo do período consultado (${rotulo}), que deve ser citado na resposta:\n` +
         `- Receitas: R$ ${formatarBRL(receitas)}\n` +
         `- Gastos: R$ ${formatarBRL(gastos)}\n` +
-        `- Saldo: R$ ${formatarBRL(saldo)} (${saldo >= 0 ? 'positivo' : 'negativo'})`
+        `- Saldo: R$ ${formatarBRL(saldo)} (${saldo >= 0 ? 'positivo' : 'negativo'})` +
+        (comprasNoCredito > 0
+          ? `\n- Compras no crédito no período, fora dos gastos acima: R$ ${formatarBRL(comprasNoCredito)}.${AVISO_REGRA_CREDITO}`
+          : '')
       );
     }
 
