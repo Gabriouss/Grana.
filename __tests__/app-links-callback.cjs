@@ -111,13 +111,20 @@ const CODE = 'a'.repeat(20);
   checar('recuperação nativa: não é App Link', r.viaAppLink === false);
 }
 
-/* ── cadastro confirmado por App Link (o caso novo desta rodada) ─────────── */
+/* ── cadastro confirmado por App Link (o caso novo desta rodada) ─────────── *
+ * www é o domínio real: o domínio nu redireciona pra www na borda do Vercel
+ * antes de qualquer JS rodar, então é sempre www que vai parar no e-mail. O
+ * domínio nu continua aceito como reforço (comentário em auth-context.tsx). */
 {
-  const r = extrairCallbackSeguro(`https://granaponto.com.br/auth/callback?code=${CODE}`);
-  checar('App Link: reconhece o domínio granaponto.com.br', r && 'code' in r);
+  const r = extrairCallbackSeguro(`https://www.granaponto.com.br/auth/callback?code=${CODE}`);
+  checar('App Link: reconhece www.granaponto.com.br (domínio real do e-mail)', r && 'code' in r);
   checar('App Link: viaAppLink=true', r.viaAppLink === true);
   checar('App Link: não é recuperação', r.recuperacao === false);
   checar('App Link: extrai o code', r.code === CODE);
+}
+{
+  const r = extrairCallbackSeguro(`https://granaponto.com.br/auth/callback?code=${CODE}`);
+  checar('App Link: domínio nu (reforço) também é reconhecido', r && r.viaAppLink === true);
 }
 
 /* ── recuperação por App Link: continua marcada, para NÃO cair na resposta

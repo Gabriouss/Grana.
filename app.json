@@ -32,6 +32,11 @@
           "data": [
             {
               "scheme": "https",
+              "host": "www.granaponto.com.br",
+              "pathPrefix": "/auth/callback"
+            },
+            {
+              "scheme": "https",
               "host": "granaponto.com.br",
               "pathPrefix": "/auth/callback"
             }

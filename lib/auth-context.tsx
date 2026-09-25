@@ -56,9 +56,15 @@ export function useSession() {
 
 const SCHEME_NATIVO = 'com.gabriouss.grana';
 const ROTA_CALLBACK = 'auth/callback';
-/** Domínio do App Link (assetlinks.json em public/.well-known/), pelo qual o
- *  MESMO link de callback pode chegar ao app sem passar pelo navegador. */
-const DOMINIO_APP_LINK = 'granaponto.com.br';
+/** Domínios do App Link (assetlinks.json em public/.well-known/), pelos quais
+ *  o MESMO link de callback pode chegar ao app sem passar pelo navegador.
+ *  `www` é o que aparece de fato nos e-mails: o domínio nu redireciona pra
+ *  `www` (308, na borda do Vercel) antes de qualquer JS rodar, então
+ *  `window.location.origin` — usado por `Linking.createURL` na web — já é
+ *  sempre `www` no momento em que alguém chama `signUp`. O domínio nu fica
+ *  como reforço (funciona na verificação do Android quando o aparelho segue
+ *  o redirecionamento, a partir do Android 12), não como caminho principal. */
+const DOMINIOS_APP_LINK = ['www.granaponto.com.br', 'granaponto.com.br'];
 
 /** Exportada só para o teste em __tests__/app-links-callback.cjs poder chamar
  *  a lógica real de classificação sem montar a árvore de contexto/hooks. */
@@ -67,7 +73,7 @@ export function extrairCallbackSeguro(
 ): { code: string; recuperacao: boolean; flowId?: string; viaAppLink: boolean } | { erro: string } | null {
   const parsed = Linking.parse(url);
   const schemeNativo = parsed.scheme === SCHEME_NATIVO || (__DEV__ && parsed.scheme === 'exp');
-  const viaAppLink = parsed.scheme === 'https' && parsed.hostname === DOMINIO_APP_LINK;
+  const viaAppLink = parsed.scheme === 'https' && DOMINIOS_APP_LINK.includes(parsed.hostname ?? '');
   if ((!schemeNativo && !viaAppLink) || parsed.path !== ROTA_CALLBACK) return null;
 
   const erro = parsed.queryParams?.error_description;
