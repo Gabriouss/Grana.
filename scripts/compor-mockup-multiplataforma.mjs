@@ -3,7 +3,13 @@
  * um com uma captura real do app (modo "Dados de exemplo", dado fictício), para
  * o passo "Confira onde quiser" da landing (`components/TrilhaPassos.tsx`).
  *
- *   node scripts/compor-mockup-multiplataforma.mjs
+ *   node scripts/compor-mockup-multiplataforma.mjs [--notebook]
+ *
+ * Com `--notebook`, grava também o notebook do herói
+ * (`public/notebook/notebook.webp`) com a captura web nova na tela, antes de
+ * montar a cena. Sem isso o herói continua mostrando a captura antiga: foi o
+ * que aconteceu em 25/09/2026, quando o cartão "Livre para gastar" perdeu a
+ * linha "Contas a vencer" (regra 20) e só as capturas planas foram refeitas.
  *
  * Precisa do `ffmpeg` no PATH (só para ler e gravar WebP). Rodar de novo
  * sempre que `public/telas/inicio-web.png` ou `inicio-mobile.png` mudarem.
@@ -32,12 +38,17 @@ const { PNG } = createRequire(import.meta.url)('pngjs');
 
 const SAIDA = 'public/telas/multiplataforma.webp';
 const LARGURA_SAIDA = 960;
+const NOTEBOOK = 'public/notebook/notebook.webp';
 
 /* Cantos no espaço de cada imagem de origem: [x, y], sentido horário a partir
    do superior esquerdo. */
 /* A borda direita foi medida pela barra de rolagem da captura antiga, que
-   não é petróleo: x = 1381 - 0,0678·(y - 60), meio pixel para fora. */
-const TELA_NOTEBOOK = [[480.3, 56.1], [1384.5, 16.1], [1338.2, 699.3], [436, 650.7]];
+   não é petróleo: x = 1381 - 0,0678·(y - 60), meio pixel para fora.
+   A esquerda foi medida de novo em 25/09/2026 contra a moldura preta do
+   render: x = 472 - 0,0778·(y - 60), meio pixel para fora. A medida anterior
+   ficava 8 a 10 px para dentro e deixava visível, no herói, uma faixa da
+   captura que o render trazia de fábrica. */
+const TELA_NOTEBOOK = [[471.8, 56.5], [1384.5, 16.1], [1338.2, 699.3], [425.5, 650.1]];
 const CELULAR_CONTORNO = [[829.3, 116.5], [1226.7, 116.5], [1232.3, 992.5], [823.7, 992.5]];
 const CELULAR_RAIO = 42;
 const CELULAR_TELA = [[849, 128], [1209.5, 128], [1210.5, 964], [847, 964]];
@@ -183,13 +194,26 @@ function sombraRetangulo(destino, x0, y0, L, A, r, desfoque, opacidade) {
 }
 
 try {
-  const notebook = lerImagem('public/notebook/notebook.webp');
+  const notebook = lerImagem(NOTEBOOK);
   const foto = lerImagem('design-system/marketing-mockups/celular-vazio.png');
   const web = lerImagem('public/telas/inicio-web.png');
   const mobile = lerImagem('public/telas/inicio-mobile.png');
 
   /* 1. Notebook com a captura web. */
   colarTela(notebook, TELA_NOTEBOOK, web, [0, 0, web.w, web.h], 10);
+  if (process.argv.includes('--notebook')) {
+    /* Mesmo tamanho do render (1403x914), para o herói não mudar de
+       proporção. A tela é coberta inteira, então rodar de novo não acumula. */
+    const png = new PNG({ width: notebook.w, height: notebook.h });
+    notebook.d.copy(png.data);
+    const arquivo = join(tmp, 'notebook.png');
+    writeFileSync(arquivo, PNG.sync.write(png));
+    execFileSync('ffmpeg', [
+      '-hide_banner', '-loglevel', 'error', '-y', '-i', arquivo,
+      '-c:v', 'libwebp', '-quality', '90', '-pix_fmt', 'yuva420p', NOTEBOOK,
+    ]);
+    console.log(`${NOTEBOOK}: ${notebook.w}x${notebook.h}`);
+  }
 
   /* 2. Celular recortado do fundo, com a captura mobile e a câmera por cima. */
   const [cx0, cy0, cx1, cy1] = caixa(CELULAR_CONTORNO);

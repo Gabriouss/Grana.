@@ -19,9 +19,10 @@
  *   Reservado em cofrinhos        − R$ 2.450,00
  *   Livre no total · 26 dias        R$ 3.365,00   → R$ 129,42/dia
  *
- * ATENÇÃO: as capturas `public/telas/inicio-web.png` e `inicio-mobile.png`
- * ainda mostram a conta antiga (com "Contas a vencer" e R$ 59,76/dia) até
- * serem refeitas no app com a regra nova.
+ * As capturas `public/telas/inicio-web.png` e `inicio-mobile.png`, e as cenas
+ * compostas a partir delas (`public/telas/multiplataforma.webp` e o notebook do
+ * herói), foram refeitas em 25/09/2026 com essa conta, sem a linha "Contas a
+ * vencer".
  *
  * Regra que este arquivo existe para manter: **nenhum componente da landing
  * escreve valor de Livre para Gastar à mão.** Todos importam daqui. Se as

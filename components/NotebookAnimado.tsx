@@ -218,7 +218,7 @@ export default function NotebookAnimado({ variante = 'fundo' }: Props) {
         },
       })}
       {createElement('img', {
-        src: '/notebook/notebook.webp',
+        src: '/notebook/notebook.webp?v=20260925',
         alt: 'Notebook exibindo o painel do Grana.',
         width: 1403,
         height: 914,

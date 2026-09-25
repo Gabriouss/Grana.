@@ -42,13 +42,13 @@ export default function PainelWebDestaque({ compacto = false }: { compacto?: boo
         : null)}
     >
       <MolduraNavegador
-        src="/telas/inicio-web.png?v=20260905"
+        src="/telas/inicio-web.png?v=20260925"
         legenda="Painel web do Grana. mostrando Livre para Gastar, comprometimento futuro e gastos por categoria de uma conta de exemplo"
         largura={larguraMoldura}
         inclinada={!compacto}
       />
       <AppPressable
-        href="/telas/inicio-web.png?v=20260905"
+        href="/telas/inicio-web.png?v=20260925"
         target="_blank"
         rel="noreferrer"
         accessibilityRole="link"

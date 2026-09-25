@@ -134,7 +134,7 @@ function CenaLugares({ ativo, instantaneo, compacto }: Cena) {
         ]}
       >
         {createElement('img', {
-          src: '/telas/multiplataforma.webp?v=20260917',
+          src: '/telas/multiplataforma.webp?v=20260925',
           alt: 'O Grana. aberto no notebook e no celular, com o mesmo mês e os mesmos valores nos dois',
           width: 960,
           height: 646,
