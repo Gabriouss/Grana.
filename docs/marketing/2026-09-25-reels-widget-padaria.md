@@ -250,3 +250,20 @@ Decisão do autor: a demonstração com a tela do app vira um criativo próprio.
 3. **Frase:** a mesma deste Reels.
 4. **Versão sem abrir o app:** tela inicial com o widget de voz e o widget "Livre para gastar". Fale a frase, espere a notificação do recibo e o "Livre para gastar" mudar de valor. O widget de voz atualiza o outro sozinho (`sincronizarWidgetsHome`), mas só tenta por 5 s: teste antes de gravar.
 5. **Versão com o app aberto:** toque na notificação e role devagar até o lançamento na lista e até o "Livre para gastar". Nesta versão, a narração não pode dizer "sem abrir o aplicativo".
+
+## Versão curta com a notificação na tela (25/09/2026)
+
+Pedido do autor: uma versão que começa na fala dela e, no "plim", mostra por cima da cena uma notificação igual à do Android, com os dados do lançamento. Ela precisa ficar sobre o "plim" e o sorriso.
+
+- **Montagem, sem crédito da ElevenLabs:** a cena 2 começa em 1,2 s, um instante antes da fala. Depois vêm a cena 3 e a dissolvência para o logotipo com a narração. Total: 16,8 s. A trilha pop foi gerada de novo no tamanho novo.
+- **Texto da notificação:** o mesmo que o app manda de verdade quando o widget lança um gasto (`notificarSucesso` em `lib/widget-voz-notificacoes.ts`, montado em `lib/widget-voz-task.ts`):
+  - título: `descrição · valor`, ou seja, "Pão na padaria · R$ 3,57";
+  - corpo: `categoria · forma · salvo no Grana.`, ou seja, "Alimentação · Débito · salvo no Grana." ("padaria" cai em Alimentação, em `lib/heuristics.ts`);
+  - botão: "Desfazer".
+  O ícone é o `android-icon-monochrome.png`, num círculo com a cor de notificação do `app.json` (`#052229`).
+- **Como foi feita:** HTML no estilo do Android 14 escuro, com a Roboto, fotografado com o Chromium sem cabeça. O arquivo é `criativos-locais/notificacao-android.html`, fora do git. Ela desce do topo em 0,35 s junto do "plim" (4,4 s), fica até 6,45 s e sobe antes do corte para a cena 3.
+- **Limites:**
+  - o celular da cena parece um iPhone, e a notificação é de Android;
+  - é uma sobreposição na tela do vídeo, não a tela do aparelho da moça;
+  - a notificação cobre o alto da cabeça dela, mas não o rosto;
+  - o texto não foi conferido num celular de verdade quanto ao tamanho de leitura.
