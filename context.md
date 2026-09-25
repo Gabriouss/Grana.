@@ -58,6 +58,54 @@ no `context.md`.
 
 ---
 
+# 25/09/2026 (M1) — dois commits trazidos da sessão na nuvem (`f14dc39`, `7f2a002`)
+
+Pedido do autor: uma sessão dele na nuvem (branch `origin/claude/cool-einstein-c63bq0`,
+autorizada por ele mesmo) tinha, entre commits de roteiro do Reels do padeiro,
+duas correções de verdade. Pedido foi trazer só as correções para a `main`; o
+Reels e o resto continuam só naquela branch, que esta sessão não tocou (sem
+merge, sem rebase, sem checkout nela).
+
+**O que foi conferido antes de trazer.** `git log origin/main..origin/claude/cool-einstein-c63bq0`
+listava 13 commits: 11 `docs(marketing)` do Reels (ficam lá), 1 `docs(context)`
+sobre instalar o "Jev" (TypeSafe AI) na M1 — também fica lá, por ser guia de
+instalação de outra sessão, não correção — e os dois abaixo, que a `main`
+realmente não tinha.
+
+- **`f14dc39` (era `2bf5474` na nuvem): `documentation/architecture.md`,
+  `.maestri/README.md` e `PRODUCT.md`.** Conferido antes: a `main` ainda dizia
+  "Kiwify" e "enforce_subscriptions desligado" no `architecture.md` (defasado
+  desde 09/09 e 22/09), e o `PRODUCT.md` tinha a seção "Copy and Marketing
+  Guidelines" duplicada linha por linha. Trocado Kiwify→Cakto, documentado que
+  o bloqueio está ligado desde 22/09, e removida a duplicata.
+- **`7f2a002` (era `ad4fcfa` na nuvem): paridade de voz entre app e widget
+  (regra 13).** Decisão do autor de 25/09 na outra sessão: "os dois precisam
+  se comportar exatamente iguais. Em tudo", respondendo ao achado F2. Um só
+  `PRAZO_TRANSCRICAO_MS = 15s` em `lib/voz.ts` (o widget usava 60s por
+  omissão); `lib/voz-captura.ts` novo replica a regra de encerrar 1,6s depois
+  do silêncio e de descartar toque duplo (arquivo ≤1KB) sem aviso, com os
+  mesmos números do `GranaVoiceCaptureService.kt`; `__tests__/voz-captura-paridade.cjs`
+  trava a paridade rodando o `VoiceEntryButton` real com relógio falso e
+  comparando com as constantes do Kotlin. Confirmado que o Kotlin já tinha
+  esses números antes do cherry-pick (`grep` em `GranaVoiceCaptureService.kt`),
+  então a correção era só do lado TypeScript, que tinha ficado para trás.
+
+**Verificação nesta sessão, antes de cada commit (regra 9).** `npx tsc --noEmit`
+limpo; `npm run test:voz` — as 6 baterias, incluindo a nova
+`voz-captura-paridade.cjs` — com 0 falhas. Nenhum build EAS disparado.
+
+**Como foi trazido.** `git cherry-pick -n` de cada commit, com o hunk de
+`context.md` de cada um descartado (`git checkout --ours context.md`) porque o
+`context.md` da `main` já tinha seguido por outro caminho desde 23/09; esta
+entrada substitui os dois registros. Nenhum conflito fora de `context.md`.
+
+**O que ficou sem verificação.** Não abri o emulador para testar o botão de
+voz nem o widget de verdade nesta sessão — a verificação foi só `tsc` + os
+testes automatizados que já existiam/vieram com a correção. Rodar no aparelho
+fica pendente para quando uma varredura tocar em voz de novo.
+
+---
+
 # 23/09/2026 (M2) — pendências do Supabase publicadas
 
 Pedido do autor: usar o acesso temporário fornecido nesta sessão para “alterar
