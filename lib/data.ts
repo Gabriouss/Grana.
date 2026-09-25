@@ -786,10 +786,6 @@ export async function updateBill(id: string, changes: Partial<Bill>): Promise<vo
   notificarDadosDosWidgetsAlterados();
 }
 
-export async function setBillStatus(id: string, status: BillStatus): Promise<void> {
-  await updateBill(id, { status });
-}
-
 /**
  * Marca a conta como paga e lança a saída correspondente em transactions, na
  * data do pagamento — sem isso, pagar um boleto não refletia no saldo do mês
