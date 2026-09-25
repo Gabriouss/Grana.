@@ -32,7 +32,8 @@ pessoa alimenta, e é exatamente por isso que ele pode oferecer os jeitos
 rápidos de entrada (voz no app, voz no widget, QR de nota) sem pedir
 credencial nenhuma. O mecanismo que um concorrente não copia casualmente:
 entrada por voz/QR alimentando um categorizador automático, mais um cálculo de
-"Livre para Gastar" que desconta contas e parcelas futuras já agendadas —
+"Livre para Gastar" que desconta contas e parcelas futuras já agendadas
+(sobre o saldo do mês vigente, nunca acumulado; regra 20 do `AGENTS.md`) —
 apps que exigem conexão bancária trocam privacidade por conveniência; o
 Grana. entrega a conveniência sem essa troca.
 
@@ -114,6 +115,18 @@ desconectado.
 - Repositório trabalhado em duas máquinas diferentes pelo mesmo autor —
   não afeta decisão de produto, mas é uma restrição permanente de como o
   trabalho é publicado (ver `AGENTS.md`).
+
+### Saldo e Livre para Gastar: só o mês vigente (decisão do autor, 24/09/2026)
+
+"Saldo atual" e "Livre para Gastar" contam **apenas o mês vigente**, nunca o
+saldo acumulado de meses anteriores nem o `initial_balance` da carteira:
+"não quero saldo acumulado, quero saldo apenas do mês vigente". Vale igual na
+Início, no seletor de carteira, nos widgets e no Granabô, porque a mesma
+palavra não pode mostrar dois números. Compra no crédito fica fora do caixa, e
+a fatura só conta quando é paga. Desfaz o saldo acumulado adotado em
+19/09/2026 (`867e1b5`, achado A12): com histórico importado incompleto, o
+acumulado ficava muito acima da realidade. É a regra 20 do `AGENTS.md`, e
+mudar esse cálculo exige pedido explícito do autor.
 
 ## Brand Commitments
 

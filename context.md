@@ -10842,3 +10842,13 @@ Relatório do Prism: `E:\Grana-temporarios\2026-09-24-prism\relatorio-prism-S9.m
 - **Não vistos no aparelho:** `DatePickerModal`, `ItemActionSheet`, Modelos de orçamento e Importar extrato. O Sentinel reverifica.
 
 **`42501` em `saldos_por_carteira` (entrada unificada, corrigida a pedido do maestro):** o Sentinel registrou uma vez, logo depois de mexer no relógio do emulador, com a sessão local válida (token com ~72 h pela frente). O `console.error` que o Prism viu no LogBox, `[data] 42501: chamada chegou ao banco sem usuário` (`lib/data.ts:87`), é **o mesmo evento**: é a instrumentação publicada em `223c088` (18/09, `diagnosticarChamadaAnonima`) para deixar recibo do estado da sessão no próximo 42501 de saldos. **Não é código local de outro agente**, como o relatório do Prism descreveu. O evento foi investigado pelo maestro. Fica **sem confiabilidade suficiente**, provavelmente efeito da troca de relógio do emulador, até reaparecer sem mexer no relógio.
+
+## 24/09/2026 — M1 — Decisão do autor: saldo só do mês vigente (regra 20)
+
+- **Pedido, nas palavras do autor:** "não quero saldo acumulado, quero saldo apenas do mês vigente". Na mesma noite: "anote isso como uma regra, não deveremos regredir para isso novamente". Virou a **regra 20 do `AGENTS.md`**, em commit próprio (`a225eb5`).
+- **Alcance:** "Saldo atual", "Livre para gastar", o seletor de carteira, os widgets e o Granabô. A mesma palavra não pode mostrar dois números (lição do A12). Crédito continua fora do caixa, e a fatura só conta quando paga.
+- **O que desfaz:** o `867e1b5` (19/09, A12), que passou a somar `initial_balance` e todo o histórico em `calcularSaldoAtual`/`calcularSafeToSpend` (`lib/safe-to-spend.ts`, com `saldoInicial` obrigatório), na Início e nos widgets, para bater com o seletor (`calcularSaldosWallets`). A mensagem daquele commit registra "decisão adotada como padrão reversível (a decisão era do autor)": ele entrou sem pedido explícito, o que a regra 20 agora proíbe.
+- **Motivo:** o histórico importado era incompleto, e o saldo acumulado ficava muito acima da realidade. Nenhum valor da conta do autor é registrado aqui (regra 15).
+- **Divisão:** o Forge muda o app (Início, seletor, widgets) e escreve o teste de trava; o Harbor muda o Granabô.
+- **Estado em 24/09:** **nada mudou no código ainda.** O cálculo em `main` e em produção continua acumulado.
+- `PRODUCT.md` ganhou a seção "Saldo e Livre para Gastar: só o mês vigente"; a perene [[Visão do Produto]] do vault também.
