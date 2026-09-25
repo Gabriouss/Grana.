@@ -43,23 +43,30 @@ const AsyncStorage = {
 const semRede = () => ({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
 
 function consulta() {
-  const q = { filtros: [], insercao: null, faixa: null };
-  for (const m of ['select', 'order', 'eq']) q[m] = () => q;
+  const q = { filtros: [], insercao: null, faixa: null, upsert: false, unico: false };
+  for (const m of ['select', 'order']) q[m] = () => q;
+  q.eq = (c, v) => { q.filtros.push((t) => t[c] === v); return q; };
   q.gte = (c, v) => { q.filtros.push((t) => t[c] >= v); return q; };
   q.lte = (c, v) => { q.filtros.push((t) => t[c] <= v); return q; };
   q.range = (de, ate) => { q.faixa = [de, ate]; return q; };
   q.insert = (linha) => { q.insercao = linha; return q; };
-  q.single = () => q;
+  /* Índice único (user_id, client_request_id) com ON CONFLICT DO NOTHING:
+     chave repetida não grava e não devolve linha. */
+  q.upsert = (linha) => { q.insercao = linha; q.upsert = true; return q; };
+  q.single = () => { q.unico = true; return q; };
   q.then = (res, rej) => Promise.resolve().then(() => {
     if (!estado.rede) return semRede();
     if (q.insercao) {
       if (estado.recusa) return { data: null, error: estado.recusa };
+      const k = q.insercao.client_request_id;
+      if (q.upsert && k && banco.some((t) => t.user_id === q.insercao.user_id && t.client_request_id === k)) return { data: [], error: null };
       const linha = { id: `db-${banco.length + 1}`, created_at: new Date().toISOString(), ...q.insercao };
       banco.push(linha);
       gravacoes.push(linha);
-      return { data: linha, error: null };
+      return { data: q.upsert ? [linha] : linha, error: null };
     }
     const linhas = banco.filter((t) => q.filtros.every((f) => f(t)));
+    if (q.unico) return linhas.length === 1 ? { data: linhas[0], error: null } : { data: null, error: { code: 'PGRST116', message: 'não achei' } };
     return { data: q.faixa ? linhas.slice(q.faixa[0], q.faixa[1] + 1) : linhas, error: null };
   }).then(res, rej);
   return q;

@@ -176,6 +176,45 @@ async function buscar_fetchSaldosPorCarteira(): Promise<{ wallet_id: string | nu
   }));
 }
 
+/**
+ * Insere uma linha; com `client_request_id`, repetir não grava de novo.
+ *
+ * Achado T22 do Sentinel (25/09/2026): três saídas salvas sem rede apareceram
+ * duas vezes cada no banco depois da sincronização (confirmado em produção,
+ * pares com ~1,5 s de diferença). Duas rodadas da fila liam os mesmos itens e
+ * inseriam os dois. Com a chave, o banco (índice único `(user_id,
+ * client_request_id)`, migration 20260924230000, aplicada) ignora a repetição:
+ * `upsert` com `ignoreDuplicates` vira `INSERT ... ON CONFLICT DO NOTHING` e
+ * não devolve linha, e aí a linha que já existe é lida pela chave. Nunca
+ * `merge`: um reenvio sobrescreveria uma edição feita no meio-tempo.
+ *
+ * Sem chave (formulário com rede, APK antigo), é o insert de sempre.
+ */
+async function inserirIdempotente<T>(tabela: 'transactions' | 'bills', linha: Record<string, unknown>): Promise<T> {
+  const chave = linha.client_request_id;
+  if (!chave) {
+    const { client_request_id: _semChave, ...semChave } = linha;
+    const { data, error } = await supabase.from(tabela).insert(semChave).select().single();
+    if (error) throw error;
+    return data as T;
+  }
+  const { data, error } = await supabase
+    .from(tabela)
+    .upsert(linha, { onConflict: 'user_id,client_request_id', ignoreDuplicates: true })
+    .select();
+  if (error) throw error;
+  const gravada = (data as T[] | null)?.[0];
+  if (gravada) return gravada;
+  const existente = await supabase
+    .from(tabela)
+    .select('*')
+    .eq('user_id', linha.user_id as string)
+    .eq('client_request_id', chave as string)
+    .single();
+  if (existente.error) throw existente.error;
+  return existente.data as T;
+}
+
 export async function addTransaction(input: {
   type: TxType;
   description: string;
@@ -190,15 +229,12 @@ export async function addTransaction(input: {
   installment_current?: number;
   installment_total?: number;
   wallet_id?: string | null;
+  /** Chave de idempotência da fila offline (ver `inserirIdempotente`). */
+  client_request_id?: string | null;
 }): Promise<Transaction> {
   exigirCartaoNoCredito(input);
   const user_id = await currentUserId();
-  const { data, error } = await supabase
-    .from('transactions')
-    .insert({ ...input, user_id })
-    .select()
-    .single();
-  if (error) throw error;
+  const data = await inserirIdempotente<Transaction>('transactions', { ...input, user_id });
 
   /* Só saída no crédito — sem `await`/sem propagar erro: checarLimiteCartao
      é fire-and-forget de propósito, uma notificação de limite atrasada ou
@@ -734,14 +770,11 @@ export async function addBill(input: {
   due_date: string;
   recurring?: boolean;
   wallet_id?: string | null;
+  /** Chave de idempotência da fila offline (ver `inserirIdempotente`). */
+  client_request_id?: string | null;
 }): Promise<Bill> {
   const user_id = await currentUserId();
-  const { data, error } = await supabase
-    .from('bills')
-    .insert({ ...input, user_id })
-    .select()
-    .single();
-  if (error) throw error;
+  const data = await inserirIdempotente<Bill>('bills', { ...input, user_id });
   notificarDadosDosWidgetsAlterados();
   return data;
 }

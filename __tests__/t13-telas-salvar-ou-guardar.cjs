@@ -51,15 +51,20 @@ function consulta() {
   for (const m of ['select', 'order', 'eq', 'gte', 'lte']) q[m] = () => q;
   q.range = (de, ate) => { q.faixa = [de, ate]; return q; };
   q.insert = (linha) => { q.insercao = linha; return q; };
+  /* Desde o T22 (25/09) o salvar manda client_request_id e usa upsert com
+     ignoreDuplicates: chave repetida não grava e não devolve linha. */
+  q.upsert = (linha) => { q.insercao = linha; q.upsert = true; return q; };
   q.single = () => q;
   q.then = (res, rej) => Promise.resolve().then(() => {
     if (!estado.rede) return semRede();
     if (q.insercao) {
       if (estado.recusa) return { data: null, error: estado.recusa };
+      const k = q.insercao.client_request_id;
+      if (q.upsert === true && k && banco.some((t) => t.client_request_id === k)) return { data: [], error: null };
       const linha = { id: `db-${banco.length + 1}`, created_at: new Date().toISOString(), ...q.insercao };
       banco.push(linha);
       gravacoes.push(linha);
-      return { data: linha, error: null };
+      return { data: q.upsert === true ? [linha] : linha, error: null };
     }
     return { data: q.faixa ? banco.slice(q.faixa[0], q.faixa[1] + 1) : [...banco], error: null };
   }).then(res, rej);

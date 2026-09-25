@@ -44,7 +44,33 @@ export type PendingItem = {
   userId?: string;
   /** Quando foi guardado. Opcional só por causa da fila gravada antes de 24/09/2026. */
   criadoEm?: string;
+  /**
+   * Chave de idempotência (`client_request_id`, única por usuário no banco).
+   * Gerada UMA vez, antes do primeiro envio, e gravada no item antes de
+   * qualquer envio: todo reenvio usa a mesma, e o banco ignora a repetição.
+   * Opcional só por causa da fila gravada antes de 25/09/2026 (T22); item
+   * sem chave recebe uma na primeira leitura.
+   */
+  clientRequestId?: string;
 };
+
+/**
+ * uuid v4 para `client_request_id`. `crypto.randomUUID` quando existir; senão
+ * `crypto.getRandomValues`, que o `react-native-get-random-values` põe no
+ * Hermes (importado em `lib/supabase.ts`). Sem nenhum dos dois, Math.random:
+ * a chave continua única na prática para um usuário, que é o escopo do índice.
+ */
+export function novaChaveIdempotencia(): string {
+  const c = (globalThis as { crypto?: { randomUUID?: () => string; getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto;
+  if (typeof c?.randomUUID === 'function') return c.randomUUID();
+  const b = new Uint8Array(16);
+  if (typeof c?.getRandomValues === 'function') c.getRandomValues(b);
+  else for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
 
 export async function getQueue(): Promise<PendingItem[]> {
   try {
@@ -61,6 +87,27 @@ export async function setQueue(items: PendingItem[]): Promise<void> {
   } catch {
     // idem — best-effort.
   }
+}
+
+let escritaEmCurso: Promise<unknown> = Promise.resolve();
+
+/**
+ * Lê, muda e grava a fila, UMA mudança por vez.
+ *
+ * Guardar um item e fechar uma rodada são ler-mudar-gravar na mesma chave do
+ * disco. Intercalados, a escrita de quem leu antes apaga a de quem leu depois:
+ * um item guardado durante a rodada sumia, ou um item já enviado voltava para
+ * a fila (visto no teste do T22, 25/09/2026). Toda mudança na fila passa por
+ * aqui, em série.
+ */
+export function atualizarFila(mudar: (fila: PendingItem[]) => PendingItem[] | Promise<PendingItem[]>): Promise<PendingItem[]> {
+  const proxima = escritaEmCurso.then(async () => {
+    const nova = await mudar(await getQueue());
+    await setQueue(nova);
+    return nova;
+  });
+  escritaEmCurso = proxima.catch(() => {});
+  return proxima;
 }
 
 /**

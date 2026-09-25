@@ -39,19 +39,28 @@ const AsyncStorage = {
   multiRemove: async (ks) => { ks.forEach((k) => disco.delete(k)); },
   getAllKeys: async () => [...disco.keys()],
 };
+/* Linhas gravadas com chave: o índice único (user_id, client_request_id). */
+const gravadasPorChave = new Map();
 function consulta() {
-  const q = { insercao: null };
-  for (const m of ['select', 'order', 'eq', 'gte', 'lte', 'range']) q[m] = () => q;
+  const q = { insercao: null, upsert: false, unico: false, chaveLida: null };
+  for (const m of ['select', 'order', 'gte', 'lte', 'range']) q[m] = () => q;
+  q.eq = (c, v) => { if (c === 'client_request_id') q.chaveLida = v; return q; };
   q.insert = (linha) => { q.insercao = linha; return q; };
-  q.single = () => q;
+  q.upsert = (linha) => { q.insercao = linha; q.upsert = true; return q; };
+  q.single = () => { q.unico = true; return q; };
   q.then = (res, rej) => Promise.resolve().then(() => {
     if (!estado.rede) return { data: null, error: { message: 'TypeError: Network request failed', code: '' } };
     if (q.insercao) {
+      const k = q.insercao.client_request_id;
+      if (q.upsert && k && gravadasPorChave.has(k)) return { data: [], error: null };
       const recusa = estado.recusar.get(q.insercao.description);
       gravacoes.push({ description: q.insercao.description, recusado: !!recusa });
       if (recusa) return { data: null, error: recusa };
-      return { data: { id: `db-${gravacoes.length}`, ...q.insercao }, error: null };
+      const linha = { id: `db-${gravacoes.length}`, ...q.insercao };
+      if (k) gravadasPorChave.set(k, linha);
+      return { data: q.upsert ? [linha] : linha, error: null };
     }
+    if (q.unico && q.chaveLida) return { data: gravadasPorChave.get(q.chaveLida) ?? null, error: null };
     return { data: [], error: null };
   }).then(res, rej);
   return q;
@@ -86,7 +95,10 @@ function carregar(arquivo, extras = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText, {
     exports, console: { ...console, error() {} }, JSON, Date, String, Object, Array, Error, TypeError, Promise, RegExp, Number,
-    Math: MathControlado, Set, Map, Intl, AbortController,
+    Math: MathControlado, Set, Map, Intl, AbortController, Uint8Array,
+    /* Como no aparelho (react-native-get-random-values): a chave de
+       idempotência sai do crypto, não do Math.random fixo deste teste. */
+    crypto: globalThis.crypto,
     setTimeout: setTimeoutControlado, clearTimeout, __DEV__: false,
     require: (id) => {
       if (id in extras) return extras[id];
@@ -116,7 +128,12 @@ const naFila = async () => fila.getPendingCount();
 const limpar = async () => {
   disco.clear();
   while (agendados.length) { agendados.shift().fn(); await esperar(20); }
-  gravacoes.length = 0; estado.notificacoes.length = 0; estado.recusar.clear();
+  /* Uma rodada por vez (T22): espera a que estiver em voo terminar, para a
+     próxima seção começar com a fila parada. */
+  await fila.flushPendingQueue();
+  while (agendados.length) { agendados.shift().fn(); await esperar(20); }
+  await fila.flushPendingQueue();
+  gravacoes.length = 0; estado.notificacoes.length = 0; estado.recusar.clear(); gravadasPorChave.clear();
 };
 
 (async () => {

@@ -10,12 +10,13 @@ import {
   ITENS_POR_RODADA,
   TETO_DA_FILA,
   ehErroPermanente,
+  novaChaveIdempotencia,
   getQueue,
   guardarEmRevisao,
   otimistaDoItem,
   proximaEspera,
   separarPorDono,
-  setQueue,
+  atualizarFila,
   type PendingInput,
   type PendingItem,
   type TipoPendente,
@@ -27,9 +28,13 @@ import type { Transaction } from './types';
 export type { TipoPendente, ItemEmRevisao } from './fila-pendente';
 export { FilaCheiaError, listarEmRevisao, tirarDaRevisao } from './fila-pendente';
 
-/** Recusa guardar acima do teto: a pessoa recebe a mensagem, nada é descartado. */
-async function garantirEspacoNaFila(userId: string | null): Promise<void> {
-  if (separarPorDono(await getQueue(), userId).minhas.length >= TETO_DA_FILA) throw new FilaCheiaError();
+/** Acrescenta à fila, dentro da mesma escrita em série que confere o teto:
+    acima dele recusa com a mensagem, e nada é descartado. */
+function guardarNaFila(item: PendingItem, userId: string | null): Promise<PendingItem[]> {
+  return atualizarFila((fila) => {
+    if (separarPorDono(fila, userId).minhas.length >= TETO_DA_FILA) throw new FilaCheiaError();
+    return [...fila, item];
+  });
 }
 
 const CACHE_KEY = 'grana:cache:transactions';
@@ -143,10 +148,11 @@ export async function enfileirarPendente<T extends { id: string }>(
   otimista: T
 ): Promise<T> {
   const userId = await idDoUsuarioLocal();
-  await garantirEspacoNaFila(userId);
-  const queue = await getQueue();
-  queue.push({ localId: otimista.id, tipo, input: input as PendingInput, userId: userId ?? undefined, criadoEm: new Date().toISOString() });
-  await setQueue(queue);
+  await guardarNaFila({
+    localId: otimista.id, tipo, input: input as PendingInput, userId: userId ?? undefined, criadoEm: new Date().toISOString(),
+    /* Meta não tem coluna de idempotência; boleto tem (T22). */
+    ...(tipo === 'boleto' ? { clientRequestId: novaChaveIdempotencia() } : null),
+  }, userId);
   agendarNovaTentativa();
 
   const chave = CACHE_DA_TELA[tipo];
@@ -168,19 +174,19 @@ export { isLikelyNetworkError } from './cache-de-tela';
  * UI exibir na hora, com um id local (`local-...`) — trocado pela linha real
  * do Supabase assim que `flushPendingQueue` conseguir enviá-lo.
  */
-export async function queuePendingTransaction(input: PendingInput): Promise<Transaction> {
+export async function queuePendingTransaction(input: PendingInput, clientRequestId?: string): Promise<Transaction> {
   const userId = await idDoUsuarioLocal();
-  await garantirEspacoNaFila(userId);
   const item: PendingItem = {
     localId: novoIdLocal(),
     tipo: 'transacao',
     input,
     userId: userId ?? undefined,
     criadoEm: new Date().toISOString(),
+    /* A MESMA chave de um envio que talvez já tenha chegado ao banco
+       (`salvarOuGuardarNoAparelho`), ou uma nova. */
+    clientRequestId: clientRequestId ?? novaChaveIdempotencia(),
   };
-  const queue = await getQueue();
-  queue.push(item);
-  await setQueue(queue);
+  await guardarNaFila(item, userId);
 
   const optimistic = otimistaDoItem(item);
   const cached = (await getCachedTransactions()) ?? [];
@@ -207,10 +213,23 @@ export async function getPendingCount(): Promise<number> {
  *   "precisa de revisão", com recibo visível, e a rodada segue com os outros.
  *   Antes, ele travava a fila e era retentado a cada 30 s para sempre.
  */
-export async function flushPendingQueue(): Promise<{ synced: number; remaining: number; emRevisao?: number }> {
+type ResultadoRodada = { synced: number; remaining: number; emRevisao?: number };
+let rodadaEmCurso: Promise<ResultadoRodada> | null = null;
+
+/* Uma rodada por vez (T22, 25/09/2026). A carga de Lançamentos, o timer de
+   nova tentativa e a volta da rede chamavam isto ao mesmo tempo; duas rodadas
+   liam a mesma fila e inseriam os mesmos itens (confirmado em produção: cada
+   saída salva sem rede apareceu duas vezes). Quem chega com uma rodada em
+   curso recebe o resultado dela. */
+export function flushPendingQueue(): Promise<ResultadoRodada> {
+  if (!rodadaEmCurso) rodadaEmCurso = executarRodada().finally(() => { rodadaEmCurso = null; });
+  return rodadaEmCurso;
+}
+
+async function executarRodada(): Promise<ResultadoRodada> {
   const userId = await idDoUsuarioLocal();
-  const { minhas, dosOutros } = separarPorDono(await getQueue(), userId);
-  if (minhas.length === 0) {
+  const { minhas: lidas } = separarPorDono(await getQueue(), userId);
+  if (lidas.length === 0) {
     /* Sem nada para enviar, não há falha em curso: a próxima começa da base,
        e não da espera longa de uma fila que esvaziou por outro caminho. */
     falhasSeguidas = 0;
@@ -220,7 +239,22 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
     return { synced: 0, remaining: 0 };
   }
 
+  /* Chave para item sem chave (fila gravada antes de 25/09/2026), GRAVADA no
+     disco antes de qualquer envio: se o envio chegar ao banco e a resposta se
+     perder, o reenvio usa a mesma e o banco não grava de novo. Meta não tem
+     coluna de idempotência. */
+  const semChave = lidas.filter((i) => (i.tipo ?? 'transacao') !== 'meta' && !i.clientRequestId);
+  if (semChave.length > 0) {
+    const chaves = new Map(semChave.map((i) => [i.localId, novaChaveIdempotencia()]));
+    await atualizarFila((fila) => fila.map((i) => (chaves.has(i.localId) ? { ...i, clientRequestId: chaves.get(i.localId) } : i)));
+  }
+  const minhas = semChave.length > 0 ? separarPorDono(await getQueue(), userId).minhas : lidas;
+
   const remaining = [...minhas];
+  /* O que esta rodada tirou da fila. No fim a fila é RELIDA e só esses saem:
+     sobrescrever com a foto do começo apagaria o que foi guardado durante a
+     rodada (a pessoa salvando sem rede enquanto a fila sobe). */
+  const saiu = new Set<string>();
   let synced = 0;
   let tentados = 0;
   let falhouTemporario = false;
@@ -236,13 +270,14 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
          downgrade): tira da frente em vez de travar a fila inteira para
          sempre. Barulhento, porque é perda de dado. */
       console.error('[offline] item pendente de tipo desconhecido, descartado', { tipo });
-      remaining.shift();
+      saiu.add(remaining.shift()!.localId);
       continue;
     }
     tentados++;
     try {
-      await enviar(remaining[0].input);
-      remaining.shift();
+      const item = remaining[0];
+      await enviar(item.clientRequestId ? { ...item.input, client_request_id: item.clientRequestId } : item.input);
+      saiu.add(remaining.shift()!.localId);
       synced++;
     } catch (erro) {
       if (ehErroPermanente(erro)) {
@@ -251,7 +286,9 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
         try {
           await guardarEmRevisao(remaining[0], erro);
           console.error('[offline] item recusado pelo banco foi para revisão', { tipo, erro });
-          paraRevisao.push(remaining.shift()!);
+          const recusado = remaining.shift()!;
+          saiu.add(recusado.localId);
+          paraRevisao.push(recusado);
           continue;
         } catch (erroRevisao) {
           console.error('[offline] não consegui mover o item recusado para revisão; ele fica na fila', erroRevisao);
@@ -264,7 +301,8 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
     }
   }
 
-  await setQueue([...dosOutros, ...remaining]);
+  const filaAgora = await atualizarFila((fila) => fila.filter((i) => !saiu.has(i.localId)));
+  const restantes = separarPorDono(filaAgora, userId).minhas.length;
   /* A fila também leva boletos e metas; marcar a mais só custa uma carga
      completa da Início, marcar a menos deixaria o item sincronizado fora de
      "Últimos lançamentos". O aviso de dado novo faz a tela aberta recarregar
@@ -276,8 +314,8 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
   if (paraRevisao.length > 0) await publicarReciboDeRevisao(paraRevisao);
 
   falhasSeguidas = falhouTemporario ? falhasSeguidas + 1 : 0;
-  if (remaining.length > 0) agendarNovaTentativa(falhouTemporario ? proximaEspera(falhasSeguidas) : ESPERA_BASE_MS);
-  return { synced, remaining: remaining.length, emRevisao: paraRevisao.length };
+  if (restantes > 0) agendarNovaTentativa(falhouTemporario ? proximaEspera(falhasSeguidas) : ESPERA_BASE_MS);
+  return { synced, remaining: restantes, emRevisao: paraRevisao.length };
 }
 
 /**
@@ -344,19 +382,20 @@ export function agendarNovaTentativa(ms: number = proximaEspera(falhasSeguidas))
  * num lugar só. `guardado: true` quer dizer "está na fila e já aparece nas
  * listas" (ver `juntarPendentes`), e a tela diz isso à pessoa.
  *
- * Sem prazo próprio de propósito: `transactions` não tem chave de
- * idempotência, então desistir de esperar e guardar na fila enquanto o
- * primeiro envio ainda pode chegar ao banco gravaria o lançamento duas vezes.
- * O teto de espera é o do cliente Supabase (`lib/fetch-com-prazo.ts`).
- * Recusa que não é de rede (validação, crédito sem cartão) sobe como erro.
+ * A chave de idempotência nasce ANTES do primeiro envio e vai junto para a
+ * fila (T22): se o envio chegou ao banco e só a resposta se perdeu, a fila
+ * reenvia com a mesma chave e o banco não grava de novo. O teto de espera é o
+ * do cliente Supabase (`lib/fetch-com-prazo.ts`). Recusa que não é de rede
+ * (validação, crédito sem cartão) sobe como erro.
  */
 export async function salvarOuGuardarNoAparelho(
   input: PendingInput
 ): Promise<{ lancamento: Transaction; guardado: boolean }> {
+  const chave = novaChaveIdempotencia();
   try {
-    return { lancamento: await addTransaction(input), guardado: false };
+    return { lancamento: await addTransaction({ ...input, client_request_id: chave }), guardado: false };
   } catch (erro) {
     if (!isLikelyNetworkError(erro)) throw erro;
-    return { lancamento: await queuePendingTransaction(input), guardado: true };
+    return { lancamento: await queuePendingTransaction(input, chave), guardado: true };
   }
 }
