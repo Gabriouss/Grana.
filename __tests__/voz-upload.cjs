@@ -81,18 +81,24 @@ async function main() {
   assert.match(corpoEnviado, /name="audio"; filename="lancamento.m4a"/);
   assert.match(corpoEnviado, /audio\/mp4/);
   assert.ok(corpoEnviado.includes('\u0001\u0002\u0003\u0004'));
-  assert.equal(prazo, 60_000);
-  tempoLocal = 30000;
+  // Um prazo só, igual para o botão do app e para o widget (autor, 25/09/2026).
+  assert.equal(cliente.PRAZO_TRANSCRICAO_MS, 15_000);
+  assert.equal(prazo, cliente.PRAZO_TRANSCRICAO_MS);
+  tempoLocal = 10000;
   await transcrever();
-  assert.equal(prazo, 30000, 'reconhecimento local e remoto compartilham prazo total');
+  assert.equal(prazo, 5000, 'reconhecimento local e remoto compartilham prazo total');
   tempoLocal = 0;
   // Widget e app usam o mesmo cliente, inclusive nome/opções do widget.
   assert.equal((await cliente.transcreverAudio('file:///widget.m4a', { mimeType: 'audio/m4a', nomeArquivo: 'widget.m4a' })).ok, true);
+  assert.equal(prazo, cliente.PRAZO_TRANSCRICAO_MS, 'o widget tem o mesmo prazo do botão');
   assert.match(corpoEnviado, /name="audio"; filename="widget.m4a"/);
   assert.match(corpoEnviado, /content-type: audio\/m4a/);
+  // Nenhum chamador consegue esticar o prazo: a opção nem existe mais.
+  await cliente.transcreverAudio('file:///widget.m4a', { orcamentoMs: 60_000 });
+  assert.equal(prazo, cliente.PRAZO_TRANSCRICAO_MS, 'prazo de fora é ignorado');
   let rodadas = 0;
   resposta = () => {
-    if (rodadas++ === 0) { relogio += 59000; return Response.json({}); }
+    if (rodadas++ === 0) { relogio += 14000; return Response.json({}); }
     return Response.json({ status: 'ready', transcript: 'mercado 32' });
   };
   assert.equal((await transcrever()).ok, true);

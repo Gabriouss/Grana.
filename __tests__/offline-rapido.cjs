@@ -270,34 +270,35 @@ async function vozAgendaRapido() {
     return { mod, reg, orcamentoMs };
   }
 
-  // 6. O botao do app desiste dentro do proprio orcamento, nao no do widget.
+  // 6. Com rede pendurada, a voz desiste dentro do prazo unico, sem retry.
   {
     const { mod, reg } = montarVoz();
-    const r = await comLimite(
-      mod.transcreverAudio('file:///a.m4a', { orcamentoMs: mod.ORCAMENTO_COM_PESSOA_ESPERANDO_MS }),
-      'botao de voz com rede pendurada',
-    );
+    const r = await comLimite(mod.transcreverAudio('file:///a.m4a'), 'voz com rede pendurada');
     assert.equal(r.ok, false);
     assert.equal(r.codigo, 'demorou');
     assert.equal(reg.envios, 1, 'nao pode tentar de novo fora do prazo');
-    ok('botao de voz com rede pendurada desiste e nao trava');
+    ok('voz com rede pendurada desiste e nao trava');
   }
 
-  // 7. O passo local nao pode gastar mais do que o total de quem chamou.
+  // 7. O passo local nao pode gastar mais do que o prazo total.
   {
     const { mod, reg } = montarVoz();
-    await comLimite(mod.transcreverAudio('file:///a.m4a', { orcamentoMs: 15000 }), 'prazo local');
-    assert.ok(reg.prazoLocalRecebido <= 15000,
-      'reconhecimento local recebeu ' + reg.prazoLocalRecebido + 'ms para um orcamento de 15000ms');
-    ok('o reconhecimento local cabe no orcamento de quem chamou');
+    await comLimite(mod.transcreverAudio('file:///a.m4a'), 'prazo local');
+    assert.ok(reg.prazoLocalRecebido <= mod.PRAZO_TRANSCRICAO_MS,
+      'reconhecimento local recebeu ' + reg.prazoLocalRecebido + 'ms para um prazo de ' + mod.PRAZO_TRANSCRICAO_MS + 'ms');
+    ok('o reconhecimento local cabe no prazo total');
   }
 
-  // 8. Sem orcamento explicito, o widget headless mantem o minuto inteiro.
+  // 8. Botao do app e widget tem o MESMO prazo (autor, 25/09/2026: "os dois
+  //    precisam se comportar exatamente iguais. Em tudo"). Nem um prazo
+  //    passado por fora estica o do widget de volta para 60s.
   {
     const { mod, reg } = montarVoz();
-    await comLimite(mod.transcreverAudio('file:///a.m4a'), 'prazo do widget');
-    assert.equal(reg.prazoLocalRecebido, 60000, 'o widget nao pode ter perdido o orcamento dele');
-    ok('sem orcamento explicito o widget segue com o minuto de sempre');
+    await comLimite(mod.transcreverAudio('file:///a.m4a', { orcamentoMs: 60000 }), 'prazo do widget');
+    assert.equal(reg.prazoLocalRecebido, mod.PRAZO_TRANSCRICAO_MS, 'prazo de fora nao pode mudar o prazo da voz');
+    assert.equal(mod.PRAZO_TRANSCRICAO_MS, 15000, 'o prazo unico e o de quem espera na tela');
+    assert.equal(mod.ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS, undefined, 'nao pode voltar a existir um prazo so do widget');
+    ok('um prazo so para o botao e para o widget');
   }
 
   // 9. Quem limita o reconhecimento local ao teto de 30s e o proprio modulo
@@ -316,35 +317,17 @@ async function vozAgendaRapido() {
     ok('o teto do reconhecimento local mora no proprio modulo local');
   }
 
-  // 10. O orcamento do botao precisa ser MENOR que o do widget, senao a
-  //     correcao nao existe.
+  // 10. Achado F2 (regra 13) e decisao do autor de 25/09: ninguem escolhe o
+  //     prazo por entrada, nem o nucleo pela origem, nem quem chama.
   {
-    const { mod } = montarVoz();
-    assert.ok(mod.ORCAMENTO_COM_PESSOA_ESPERANDO_MS < mod.ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS,
-      'o orcamento com pessoa esperando precisa ser menor que o de quem nao espera');
-    ok('o orcamento com pessoa esperando e menor que o do widget');
-  }
-
-  // 11. Achado F2 (regra 13): o nucleo compartilhado NAO escolhe prazo pela
-  //     origem da fala. Quem chama declara, o nucleo obedece. Os dois numeros
-  //     continuam diferentes porque os dois prazos reais sao diferentes; o que
-  //     nao pode existir e um 'if origem' decidindo isso la dentro.
-  {
-    const nucleo = require('node:fs').readFileSync('lib/widget-voz-task.ts', 'utf8');
-    assert.ok(
-      !nucleo.includes('orcamentoMs: payload.source'),
-      'o nucleo nao pode escolher o prazo olhando payload.source (regra 13)'
-    );
-    assert.ok(
-      nucleo.includes('orcamentoMs: payload.orcamentoMs ?? ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS'),
-      'o prazo vem de quem chama, com queda para o de quem nao espera'
-    );
-    const botao = require('node:fs').readFileSync('components/VoiceEntryButton.tsx', 'utf8');
-    assert.ok(
-      botao.includes('orcamentoMs: ORCAMENTO_COM_PESSOA_ESPERANDO_MS'),
-      'o botao do app declara o proprio prazo'
-    );
-    ok('o prazo e declarado por quem chama, nao decidido pela origem');
+    const fs = require('node:fs');
+    const nucleo = fs.readFileSync('lib/widget-voz-task.ts', 'utf8');
+    const botao = fs.readFileSync('components/VoiceEntryButton.tsx', 'utf8');
+    const voz = fs.readFileSync('lib/voz.ts', 'utf8');
+    for (const [nome, texto] of [['nucleo', nucleo], ['botao', botao], ['voz', voz]]) {
+      assert.ok(!/orcamentoMs|ORCAMENTO_/.test(texto), nome + ' nao pode declarar prazo proprio de voz');
+    }
+    ok('nenhuma entrada declara prazo proprio de voz');
   }
 }
 

@@ -45,7 +45,12 @@ class GranaVoiceCaptureService : Service() {
     private const val LIMITE_MS = 20_000L
 
     /* Silêncio: só corta DEPOIS de ter ouvido fala. Cortar por silêncio
-       inicial pegaria quem toca e leva um segundo pra começar a falar. */
+       inicial pegaria quem toca e leva um segundo pra começar a falar.
+
+       O botão de voz do app usa a MESMA regra e os mesmos números, copiados
+       em lib/voz-captura.ts (regra 13). Mudou algum valor aqui, ou a régua de
+       1024 bytes do `encerrarEEntregar`? Mude lá também:
+       __tests__/voz-captura-paridade.cjs falha se os dois divergirem. */
     private const val INTERVALO_AMOSTRA_MS = 200L
     private const val SILENCIO_PARA_CORTAR_MS = 1_600L
     /* Em aparelhos com microfone mais distante, a fala normal fica abaixo de

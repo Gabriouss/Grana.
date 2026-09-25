@@ -13,7 +13,8 @@ import {
 } from 'expo-audio';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
-import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz, ORCAMENTO_COM_PESSOA_ESPERANDO_MS } from '@/lib/voz';
+import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz } from '@/lib/voz';
+import { amplitudeDoMetering, criarDetectorDeSilencio, gravacaoValida, INTERVALO_AMOSTRA_MS } from '@/lib/voz-captura';
 import AppPressable from './AppPressable';
 import AppDialog from './AppDialog';
 import { randomUUID } from 'expo-crypto';
@@ -44,7 +45,33 @@ const GRAVACAO_VOZ: RecordingOptions = {
     linearPCMIsFloat: false,
   },
   web: { mimeType: 'audio/webm', bitsPerSecond: 64000 },
+  /* Lê o volume para encerrar no silêncio, como o widget (lib/voz-captura.ts). */
+  isMeteringEnabled: true,
 };
+
+/* Áudio financeiro não fica no aparelho. Mesmo descarte do widget
+   (`apagarArquivo` em lib/widget-voz-task.ts). */
+async function descartarAudio(uri: string) {
+  try {
+    const FileSystem = await import('expo-file-system/legacy');
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch {
+    // Já sumiu, ou o sistema limpou o cache: nada a fazer.
+  }
+}
+
+/* Tamanho do arquivo gravado, ou `null` se não der para ler. Na web o
+   `expo-audio` devolve um blob, sem arquivo para medir. */
+async function tamanhoDoAudio(uri: string): Promise<number | null> {
+  if (Platform.OS === 'web') return null;
+  try {
+    const { File } = await import('expo-file-system');
+    const arquivo = new File(uri);
+    return arquivo.exists ? arquivo.size : 0;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Botão de lançamento por voz: toque para começar a falar (ex: "Almoço de 38
@@ -96,6 +123,9 @@ export default function VoiceEntryButton({
      vier (bolso, distração), a gravação para sozinha em vez de virar um
      arquivo grande demais pro teto da função. */
   const cortePorTempo = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* Encerra sozinho depois de 1,6s de silêncio, quando já houve fala. É a
+     mesma regra do widget, com os mesmos números (lib/voz-captura.ts). */
+  const amostrador = useRef<ReturnType<typeof setInterval> | null>(null);
   /* Barra o segundo toque enquanto o primeiro ainda está abrindo o microfone:
      `gravando` só vira true depois do await, e dois toques rápidos criavam
      duas preparações concorrentes no mesmo gravador. */
@@ -105,6 +135,7 @@ export default function VoiceEntryButton({
   useEffect(() => {
     return () => {
       if (cortePorTempo.current) clearTimeout(cortePorTempo.current);
+      if (amostrador.current) clearInterval(amostrador.current);
     };
   }, []);
 
@@ -114,6 +145,10 @@ export default function VoiceEntryButton({
     if (cortePorTempo.current) {
       clearTimeout(cortePorTempo.current);
       cortePorTempo.current = null;
+    }
+    if (amostrador.current) {
+      clearInterval(amostrador.current);
+      amostrador.current = null;
     }
     setGravando(false);
     setEnviando(true);
@@ -127,22 +162,38 @@ export default function VoiceEntryButton({
          resolução tardia dele suba como rejeição sem dono. */
       const pararGravacao = gravador.stop();
       pararGravacao.catch(() => {});
-      await Promise.race([
-        pararGravacao,
-        new Promise<never>((_, rejeitar) => {
-          setTimeout(() => rejeitar(new Error('parar_gravacao_travou')), PRAZO_PARAR_GRAVACAO_MS);
-        }),
-      ]);
+      let parouDireito = true;
+      try {
+        await Promise.race([
+          pararGravacao,
+          new Promise<never>((_, rejeitar) => {
+            setTimeout(() => rejeitar(new Error('parar_gravacao_travou')), PRAZO_PARAR_GRAVACAO_MS);
+          }),
+        ]);
+      } catch (e: any) {
+        if (e?.message === 'parar_gravacao_travou') throw e;
+        /* `stop()` lança quando a gravação foi curta demais para o encoder
+           fechar um arquivo: toque duplo sem querer. Igual ao widget, não é
+           erro a relatar, é "não falou nada". */
+        parouDireito = false;
+      }
       const uri = gravador.uri;
       if (!uri) {
+        if (!parouDireito) return;
         const msg = mensagemDeErroVoz('audio_ausente');
         Alert.alert(msg.titulo, msg.texto);
         return;
       }
-      // Mesma execução do widget. Este adaptador só apresenta o recibo na tela.
-      /* O prazo de rede é declarado AQUI, por quem espera, e não escolhido lá
-         dentro pela origem da fala: quem espera nesta tela é uma pessoa. */
-      await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app', orcamentoMs: ORCAMENTO_COM_PESSOA_ESPERANDO_MS }, {
+      /* Mesma régua do widget: arquivo que não passa de 1 KB não é fala, e
+         volta ao repouso sem aviso, sem gastar transcrição. */
+      const tamanho = await tamanhoDoAudio(uri);
+      if (!parouDireito || (tamanho !== null && !gravacaoValida(tamanho))) {
+        await descartarAudio(uri);
+        return;
+      }
+      /* Mesma execução do widget, com o mesmo prazo de rede (lib/voz.ts).
+         Este adaptador só apresenta o recibo na tela. */
+      await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app' }, {
         podeNotificar: async () => true,
         notificarRevisao: async (titulo, texto) => {
           Alert.alert(titulo, 'Confira os dados antes de salvar. Se o valor estiver em branco, informe quanto você falou.');
@@ -239,6 +290,16 @@ export default function VoiceEntryButton({
       cortePorTempo.current = setTimeout(() => {
         void encerrarEEnviar();
       }, MAX_SEGUNDOS_GRAVACAO * 1000);
+      const detector = criarDetectorDeSilencio();
+      amostrador.current = setInterval(() => {
+        let amplitude: number | null = null;
+        try {
+          amplitude = amplitudeDoMetering(gravador.getStatus().metering);
+        } catch {
+          // Sem leitura nesta amostra: não corta, tenta na próxima.
+        }
+        if (amplitude !== null && detector.amostrar(amplitude, Date.now())) void encerrarEEnviar();
+      }, INTERVALO_AMOSTRA_MS);
     } catch {
       ocupado.current = false;
       setGravando(false);

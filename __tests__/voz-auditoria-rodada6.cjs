@@ -478,10 +478,11 @@ async function parteD() {
   }
 
   {
-    // Reconhecimento local gasta 30s e a rede PENDURA. Quem corta e o
-    // AbortController do proprio modulo; o relogio falso e o setTimeout
-    // encurtado fazem os 30s restantes passarem em milissegundos.
-    const { mod, reg } = montarVoz({ msLocal: 30000, pendurar: true, rapido: true });
+    // Reconhecimento local gasta metade do prazo e a rede PENDURA. Quem corta
+    // e o AbortController do proprio modulo; o relogio falso e o setTimeout
+    // encurtado fazem o resto do prazo passar em milissegundos. (Eram 30s de
+    // 60s ate 25/09/2026, quando o widget passou ao prazo unico de 15s.)
+    const { mod, reg } = montarVoz({ msLocal: 7500, pendurar: true, rapido: true });
     const r = await mod.transcreverAudio('file:///a.m4a');
     check(F, 'rede pendurada vira demorou, nao trava', r.ok === false && r.codigo, 'demorou');
     check(F, 'rede pendurada nao tenta de novo sem prazo', reg.envios, 1);
