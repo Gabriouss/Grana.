@@ -5,8 +5,15 @@ import { avisarDadoNovo, guardarTela, isLikelyNetworkError, lerTela } from './ca
 import { idDoUsuarioLocal } from './sessao-offline';
 import { marcarLancamentosAlterados } from './lancamentos-alterados';
 import {
+  ESPERA_BASE_MS,
+  FilaCheiaError,
+  ITENS_POR_RODADA,
+  TETO_DA_FILA,
+  ehErroPermanente,
   getQueue,
+  guardarEmRevisao,
   otimistaDoItem,
+  proximaEspera,
   separarPorDono,
   setQueue,
   type PendingInput,
@@ -17,7 +24,13 @@ import type { Transaction } from './types';
 
 /* A fila em si mora em `fila-pendente.ts` desde 24/09/2026, para `data.ts`
    poder juntar os pendentes às listas sem ciclo de import. */
-export type { TipoPendente } from './fila-pendente';
+export type { TipoPendente, ItemEmRevisao } from './fila-pendente';
+export { FilaCheiaError, listarEmRevisao, tirarDaRevisao } from './fila-pendente';
+
+/** Recusa guardar acima do teto: a pessoa recebe a mensagem, nada é descartado. */
+async function garantirEspacoNaFila(userId: string | null): Promise<void> {
+  if (separarPorDono(await getQueue(), userId).minhas.length >= TETO_DA_FILA) throw new FilaCheiaError();
+}
 
 const CACHE_KEY = 'grana:cache:transactions';
 
@@ -130,6 +143,7 @@ export async function enfileirarPendente<T extends { id: string }>(
   otimista: T
 ): Promise<T> {
   const userId = await idDoUsuarioLocal();
+  await garantirEspacoNaFila(userId);
   const queue = await getQueue();
   queue.push({ localId: otimista.id, tipo, input: input as PendingInput, userId: userId ?? undefined, criadoEm: new Date().toISOString() });
   await setQueue(queue);
@@ -155,11 +169,13 @@ export { isLikelyNetworkError } from './cache-de-tela';
  * do Supabase assim que `flushPendingQueue` conseguir enviá-lo.
  */
 export async function queuePendingTransaction(input: PendingInput): Promise<Transaction> {
+  const userId = await idDoUsuarioLocal();
+  await garantirEspacoNaFila(userId);
   const item: PendingItem = {
     localId: novoIdLocal(),
     tipo: 'transacao',
     input,
-    userId: (await idDoUsuarioLocal()) ?? undefined,
+    userId: userId ?? undefined,
     criadoEm: new Date().toISOString(),
   };
   const queue = await getQueue();
@@ -181,12 +197,17 @@ export async function getPendingCount(): Promise<number> {
 }
 
 /**
- * Tenta gravar no Supabase, em ordem, cada lançamento que ficou pendente
- * offline. Para no primeiro que falhar — se o primeiro da fila ainda não
- * conseguiu sair do aparelho, os de trás provavelmente também não vão
- * conseguir, e tentar mesmo assim só geraria mais chamadas de rede à toa.
+ * Tenta gravar no Supabase, em ordem, o que ficou pendente offline.
+ *
+ * - No máximo `ITENS_POR_RODADA` por chamada; o resto vai na próxima rodada.
+ * - Falha TEMPORÁRIA (rede, prazo, 5xx, sessão) para a rodada: se o primeiro
+ *   não saiu, os de trás também não vão sair, e insistir só gera tráfego. A
+ *   próxima tentativa espera mais a cada falha seguida (`proximaEspera`).
+ * - Recusa PERMANENTE do banco (`ehErroPermanente`) tira o item da fila para
+ *   "precisa de revisão", com recibo visível, e a rodada segue com os outros.
+ *   Antes, ele travava a fila e era retentado a cada 30 s para sempre.
  */
-export async function flushPendingQueue(): Promise<{ synced: number; remaining: number }> {
+export async function flushPendingQueue(): Promise<{ synced: number; remaining: number; emRevisao?: number }> {
   const userId = await idDoUsuarioLocal();
   const { minhas, dosOutros } = separarPorDono(await getQueue(), userId);
   if (minhas.length === 0) {
@@ -198,8 +219,11 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
 
   const remaining = [...minhas];
   let synced = 0;
+  let tentados = 0;
+  let falhouTemporario = false;
+  const paraRevisao: PendingItem[] = [];
 
-  while (remaining.length > 0) {
+  while (remaining.length > 0 && tentados < ITENS_POR_RODADA) {
     /* Item sem `tipo` é de uma versão anterior do app, quando só transação
        entrava na fila. Ver o comentário em `TipoPendente`. */
     const tipo = remaining[0].tipo ?? 'transacao';
@@ -212,14 +236,27 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
       remaining.shift();
       continue;
     }
+    tentados++;
     try {
       await enviar(remaining[0].input);
       remaining.shift();
       synced++;
     } catch (erro) {
-      /* Falta de rede é o caso esperado e se resolve sozinho. Qualquer outra
-         recusa deixa o item parado na frente da fila: precisa aparecer. */
-      if (!isLikelyNetworkError(erro)) console.error('[offline] envio de item pendente recusado', { tipo, erro });
+      if (ehErroPermanente(erro)) {
+        /* Só sai da fila se couber na revisão: se nem isso der, fica onde
+           está (retentar é melhor que perder). */
+        try {
+          await guardarEmRevisao(remaining[0], erro);
+          console.error('[offline] item recusado pelo banco foi para revisão', { tipo, erro });
+          paraRevisao.push(remaining.shift()!);
+          continue;
+        } catch (erroRevisao) {
+          console.error('[offline] não consegui mover o item recusado para revisão; ele fica na fila', erroRevisao);
+        }
+      } else if (!isLikelyNetworkError(erro)) {
+        console.error('[offline] envio de item pendente falhou (temporário)', { tipo, erro });
+      }
+      falhouTemporario = true;
       break;
     }
   }
@@ -228,13 +265,43 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
   /* A fila também leva boletos e metas; marcar a mais só custa uma carga
      completa da Início, marcar a menos deixaria o item sincronizado fora de
      "Últimos lançamentos". O aviso de dado novo faz a tela aberta recarregar
-     e trocar o otimista pela linha real. */
-  if (synced > 0) {
+     e trocar o otimista pela linha real (ou tirar o que foi para revisão). */
+  if (synced > 0 || paraRevisao.length > 0) {
     marcarLancamentosAlterados();
     avisarDadoNovo();
   }
-  if (remaining.length > 0) agendarNovaTentativa();
-  return { synced, remaining: remaining.length };
+  if (paraRevisao.length > 0) await publicarReciboDeRevisao(paraRevisao);
+
+  falhasSeguidas = falhouTemporario ? falhasSeguidas + 1 : 0;
+  if (remaining.length > 0) agendarNovaTentativa(falhouTemporario ? proximaEspera(falhasSeguidas) : ESPERA_BASE_MS);
+  return { synced, remaining: remaining.length, emRevisao: paraRevisao.length };
+}
+
+/**
+ * Recibo de "não foi salvo": notificação local, porque a recusa pode chegar com
+ * o app em outra tela, ou numa nova tentativa sem ninguém olhando. Guardado:
+ * se nem a notificação sair, fica o log, e o item continua listado em
+ * `listarEmRevisao` para a tela mostrar.
+ */
+async function publicarReciboDeRevisao(itens: PendingItem[]): Promise<void> {
+  try {
+    const { getNotifications } = await import('./notifications');
+    const Notifications = getNotifications();
+    if (!Notifications) return;
+    const primeiro = String((itens[0].input as { description?: string }).description ?? 'lançamento');
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: itens.length === 1 ? 'Um lançamento não foi salvo' : `${itens.length} lançamentos não foram salvos`,
+        body: itens.length === 1
+          ? `O Grana. não conseguiu salvar "${primeiro}". Abra o app para revisar.`
+          : `O Grana. não conseguiu salvar "${primeiro}" e outros. Abra o app para revisar.`,
+        data: { origem: 'fila', resultado: 'revisar' },
+      },
+      trigger: null,
+    });
+  } catch (erro) {
+    console.error('[offline] recibo de revisão não foi publicado', erro);
+  }
 }
 
 /* ── Nova tentativa enquanto houver fila ─────────────────────────────────────
@@ -244,21 +311,25 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
    enviada dentro da carga de uma tela. A rede voltar com o app aberto não
    dispara nada (este app não tem detector de conectividade nativo).
 
-   Enquanto houver item desta conta na fila, tenta de novo a cada 30 s. Um
-   agendamento por vez; para sozinho quando a fila esvazia. Com o app em
-   segundo plano o React Native não roda o timer, então não gasta nada. */
-export const INTERVALO_NOVA_TENTATIVA_MS = 30_000;
+   Enquanto houver item desta conta na fila, tenta de novo: 30 s depois de
+   uma rodada sem falha, e mais tempo a cada falha de rede seguida, até
+   15 min, com sorteio (`proximaEspera`). Um agendamento por vez; para
+   sozinho quando a fila esvazia. Com o app em segundo plano o React Native
+   não roda o timer, então não gasta nada. */
+export const INTERVALO_NOVA_TENTATIVA_MS = ESPERA_BASE_MS;
 let novaTentativa: ReturnType<typeof setTimeout> | null = null;
+let falhasSeguidas = 0;
 
-export function agendarNovaTentativa(): void {
+export function agendarNovaTentativa(ms: number = proximaEspera(falhasSeguidas)): void {
   if (novaTentativa) return;
   novaTentativa = setTimeout(() => {
     novaTentativa = null;
     flushPendingQueue().catch((erro) => {
       console.error('[offline] nova tentativa da fila falhou', erro);
+      falhasSeguidas++;
       agendarNovaTentativa();
     });
-  }, INTERVALO_NOVA_TENTATIVA_MS);
+  }, ms);
   /* Só existe no Node (testes): não segura o processo aberto. */
   (novaTentativa as { unref?: () => void }).unref?.();
 }

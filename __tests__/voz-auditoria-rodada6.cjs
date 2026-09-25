@@ -83,6 +83,11 @@ function montarOperacoes(opts) {
   const o = opts || {};
   const store = memoriaLocal();
   const mod = carregar('lib/voice-operations.ts', {
+    /* Limites e classificação de erro da fila (24/09/2026): módulo real. */
+    './fila-pendente': carregar('lib/fila-pendente.ts', {
+      '@react-native-async-storage/async-storage': { __esModule: true, default: store },
+      './sessao-offline': { idDoUsuarioLocal: async () => 'u1' },
+    }),
     './supabase': { supabase: {
       auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }) },
       rpc: () => {

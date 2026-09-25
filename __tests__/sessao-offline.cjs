@@ -103,6 +103,18 @@ const AsyncStorageDuble = {
   multiGet: async (ks) => ks.map((k) => [k, loja.get(k) ?? null]),
 };
 
+/* Limites e classificação de erro da fila (24/09/2026): módulo real, sobre o
+   mesmo armazenamento e a mesma sessão. */
+const filaPendente = {};
+vm.runInNewContext(compilar('lib/fila-pendente.ts'), {
+  exports: filaPendente, console: consoleDuble, JSON, Date, String, Object, Error, Promise, RegExp, Array, Math, Number, Set,
+  require: (nome) => {
+    if (nome === './sessao-offline') return { ...sessaoOffline, __esModule: true };
+    if (nome === '@react-native-async-storage/async-storage') return { ...AsyncStorageDuble, default: AsyncStorageDuble, __esModule: true };
+    throw new Error(`import inesperado em fila-pendente: ${nome}`);
+  },
+});
+
 const voiceOps = {};
 vm.runInNewContext(compilar('lib/voice-operations.ts'), {
   exports: voiceOps,
@@ -112,6 +124,7 @@ vm.runInNewContext(compilar('lib/voice-operations.ts'), {
   require: (nome) => {
     if (nome === './supabase') return { supabase: supabaseDuble, __esModule: true };
     if (nome === './sessao-offline') return { ...sessaoOffline, __esModule: true };
+    if (nome === './fila-pendente') return filaPendente;
     if (nome === './widgets-home-events') {
       return { notificarDadosDosWidgetsAlterados: () => {}, __esModule: true };
     }

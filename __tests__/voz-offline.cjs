@@ -22,6 +22,12 @@ function carregar(file, deps) {
       multiGet: async keys => keys.map(k => [k, storage.get(k)]),
     } },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
+    /* Limites e classificação de erro da fila (24/09/2026): módulo real. */
+    './fila-pendente': carregar('lib/fila-pendente.ts', {
+      '@react-native-async-storage/async-storage': { __esModule: true, default: {
+        getItem: async k => storage.get(k) ?? null, setItem: async (k, v) => storage.set(k, v) } },
+      './sessao-offline': { idDoUsuarioLocal: async () => usuario ?? null },
+    }),
     /* Dono da fila lido pelo aparelho desde 11/09/2026 — sem rede e com o
        token vencido, `getSession()` devolvia vazio e a fila RECUSAVA guardar
        a fala. Segue o mesmo `usuario` que este teste já troca para verificar

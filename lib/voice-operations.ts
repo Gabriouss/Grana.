@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { idDoUsuarioLocal } from './sessao-offline';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
+import { ITENS_POR_RODADA, ehErroPermanente } from './fila-pendente';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type BaseFinanceira = {
@@ -168,39 +169,58 @@ async function executarSincronizacao(): Promise<ResumoSync> {
   let mensagem: string | undefined;
     const userId = await idDoUsuarioLocal();
     if (!userId) return { sincronizadas, falhas: 1 };
-    const chaves = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith(`grana:voz:operacao:${userId}:`));
+    /* No máximo `ITENS_POR_RODADA` por sincronização (parecer do Harbor,
+       24/09/2026): o resto fica para a próxima. */
+    const chaves = (await AsyncStorage.getAllKeys())
+      .filter((key) => key.startsWith(`grana:voz:operacao:${userId}:`))
+      .slice(0, ITENS_POR_RODADA);
     for (const chave of chaves) {
       const raw = await AsyncStorage.getItem(chave);
       if (!raw) continue;
+      let item: { requestId: string; source: 'app' | 'widget'; payload: PayloadOperacaoVoz; transcricao?: string };
       try {
-        const item = JSON.parse(raw);
-        /* Guarda de troca de conta no meio da fila: se o dono mudou, para. Lê
-           pelo aparelho para não confundir "trocou de conta" com "o token
-           venceu e não há rede" — o segundo caso deve seguir tentando. */
-        if ((await idDoUsuarioLocal()) !== userId) break;
+        item = JSON.parse(raw);
+      } catch (erro) {
+        // Item ilegível no aparelho: não impede os demais de serem tentados.
+        console.error('[voz] item da fila ilegível', erro);
+        falhas++;
+        mensagem = explicarFalhaDeEnvio(erro);
+        continue;
+      }
+      /* Guarda de troca de conta no meio da fila: se o dono mudou, para. Lê
+         pelo aparelho para não confundir "trocou de conta" com "o token
+         venceu e não há rede" — o segundo caso deve seguir tentando. */
+      if ((await idDoUsuarioLocal()) !== userId) break;
+      try {
+        await enviarOperacaoVoz(item.requestId, item.source, item.payload);
+      } catch (erro) {
+        falhas++;
+        mensagem = explicarFalhaDeEnvio(erro);
+        if (!ehRecusaCartaoObrigatorio(erro) && !ehErroPermanente(erro)) {
+          /* Temporário (rede, prazo, servidor): para aqui. Até 24/09/2026 a
+             sincronização seguia pela fila inteira, e sem rede cada item virava
+             um pedido; se o primeiro não saiu, os outros também não saem. */
+          break;
+        }
+        /* Recusa do banco: tentar de novo não resolve. A fala vira revisão, e
+           só sai da fila depois que a notificação de revisão foi publicada: se
+           ela falhar, o item fica e a próxima sincronização tenta de novo.
+           Crédito sem cartão pergunta o cartão; o resto pede para revisar. */
         try {
-          await enviarOperacaoVoz(item.requestId, item.source, item.payload);
-        } catch (erro) {
-          if (!ehRecusaCartaoObrigatorio(erro)) throw erro;
-          /* Crédito sem cartão nunca grava. A fala vira revisão, e só sai da
-             fila depois que a notificação de revisão foi publicada: se ela
-             falhar, o item fica e a próxima sincronização tenta de novo. */
           const { notificarRevisao } = await import('./widget-voz-notificacoes');
-          await notificarRevisao('Qual cartão?', textoParaRevisao(item));
-          await AsyncStorage.removeItem(chave);
-          notificarDadosDosWidgetsAlterados();
-          falhas++;
-          mensagem = explicarFalhaDeEnvio(erro);
+          if (ehRecusaCartaoObrigatorio(erro)) await notificarRevisao('Qual cartão?', textoParaRevisao(item));
+          else await notificarRevisao('Não consegui salvar', item.transcricao || `${item.payload.description} ${String(item.payload.amount).replace('.', ',')}`);
+        } catch (erroRecibo) {
+          console.error('[voz] recibo de revisão não foi publicado; a fala fica na fila', erroRecibo);
           continue;
         }
         await AsyncStorage.removeItem(chave);
         notificarDadosDosWidgetsAlterados();
-        sincronizadas++;
-      } catch (erro) {
-        // Uma operação inválida não pode impedir as demais de serem tentadas.
-        falhas++;
-        mensagem = explicarFalhaDeEnvio(erro);
+        continue;
       }
+      await AsyncStorage.removeItem(chave);
+      notificarDadosDosWidgetsAlterados();
+      sincronizadas++;
     }
   return { sincronizadas, falhas, mensagem };
 }
