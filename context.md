@@ -11345,3 +11345,42 @@ T21 fica **FECHADO**. O próximo item do Sentinel é C1, notificações locais.
 Fica sem verificação visual no aparelho, por causa da armadilha de ambiente,
 mas a correção está comprovada pela leitura do código e pelo teste de
 regressão.
+
+## 25/09/2026 — sessão na nuvem (Claude Code web) — documentação desatualizada corrigida; RLS-001 segue aberto
+
+Pedido do autor, depois de uma leitura completa do repositório: corrigir quatro
+apontamentos dela. Três eram de documentação e foram corrigidos; o quarto
+exige migration e ficou de fora por instrução do autor ("não escreva
+migration").
+
+- **`documentation/architecture.md`** ainda descrevia a Kiwify como gateway e
+  dizia que `enforce_subscriptions` estava desligado. Agora diz Cakto (mensal
+  e anual, `cakto-webhook`, segredo `CAKTO_WEBHOOK_SECRET` no corpo do JSON),
+  que a Kiwify foi trocada em 09/09 e que `kiwify-webhook` segue na pasta sem
+  uso, que o bloqueio está ligado desde 22/09 com cortesia para as contas
+  antigas, e que o WhatsApp está desligado.
+  **Não corrigido, fora do pedido:** `flows.md`, `variables.md`, `emails.md`,
+  `permissions.md`, `operations.md`, `automation.md` e `tests.md`, na mesma
+  pasta, ainda falam em Kiwify.
+- **`.maestri/README.md`** listava o `FUNIL.md` entre os documentos
+  versionados. O arquivo não foi perdido: saiu do git de propósito em
+  `fa757e8` e está no `.gitignore`. O texto agora diz isso, e que um clone
+  novo não o traz.
+- **`PRODUCT.md`** tinha a seção "Copy and Marketing Guidelines" duplicada,
+  com texto idêntico (só a quebra de linha final diferia). A segunda cópia
+  saiu. O espelho no vault acompanha no próximo `espelhar-vault.sh`.
+- **RLS-001 (`user_achievements` com política FOR ALL), NÃO corrigido.** A
+  correção exige migration. Chegou a ser escrita (só SELECT e INSERT do dono,
+  INSERT restrito às colunas `user_id` e `badge_id`, e `badge_id` limitado às
+  12 medalhas de `lib/gamification.ts`) e foi descartada antes de qualquer
+  commit, a pedido do autor. Nada foi aplicado em produção. O achado continua
+  P2 e aberto; quem retomar precisa do aval do autor para a migration.
+
+**Verificação:** mudanças só de texto; nenhum teste lê esses arquivos. Na
+leitura anterior da mesma sessão, `tsc` e `npm run test:ci` passaram inteiros
+(o único vermelho era o clone raso, sem o commit `00de222` que
+`corpus-env-fora-da-build` lê; com o histórico completo, 273/273).
+
+**Branch:** o ambiente da nuvem exige a branch `claude/cool-einstein-c63bq0`,
+o que contraria a regra 10. Ela parte de `13ef097` (o `origin/main` do
+momento) e só tem este commit; precisa ser mesclada na `main` ou descartada.

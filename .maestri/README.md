@@ -25,6 +25,9 @@ com `maestri workspace create ... --from "Grana."`, que retargeta os caminhos
 para a nova raiz.
 
 Os documentos que formam o contexto compartilhado continuam versionados na
-raiz do repositório (`AGENTS.md`, `context.md`, `PRODUCT.md`, `DESIGN.md`,
-`FUNIL.md` e `CLAUDE.md`). Não coloque tokens, credenciais ou conteúdo de
-`.env` nesta pasta.
+raiz do repositório (`AGENTS.md`, `context.md`, `PRODUCT.md`, `DESIGN.md` e
+`CLAUDE.md`). O `FUNIL.md` também fica na raiz, mas só na cópia local de cada
+máquina: ele saiu do git em `fa757e8` e está no `.gitignore`, porque o
+planejamento de marketing é mantido fora do repositório público. Um clone novo
+não o traz. Não coloque tokens, credenciais ou conteúdo de `.env` nesta
+pasta.
