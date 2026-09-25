@@ -56,40 +56,25 @@ export const MAX_SEGUNDOS_GRAVACAO = 20;
    tarefa do widget segurava o widget em "Lançando…" até o Android matá-la aos
    dois minutos. São dois provedores sequenciais de até 30s cada, mais upload. */
 const TIMEOUT_MS = 75_000;
-// Deixa 30s para interpretação, gravação e recibo antes do headless (120s).
-const TIMEOUT_TOTAL_MS = 60_000;
 
-/* Orçamento de quem tem uma PESSOA esperando na tela.
-   O widget roda com o app fechado e pode gastar o minuto inteiro; o botão de
-   voz, não. Quando a rede aceita a conexão e não responde, o caminho completo
-   (reconhecimento local + upload) consumia os 60 segundos antes de o botão
-   poder salvar o áudio na fila — um minuto de "Transcrevendo…" para terminar
-   em "guardei no aparelho". Quinze segundos cobrem folgado uma transcrição
-   sadia, e o que passa disso vira fila, que preserva a fala e retoma sozinha
-   na próxima abertura com conexão. */
-export const ORCAMENTO_COM_PESSOA_ESPERANDO_MS = 15_000;
+/* Prazo total de rede da voz: UM número, igual para o botão do app e para o
+   widget, e ninguém de fora escolhe outro.
 
-/* Orçamento de quem NÃO tem ninguém esperando: a tarefa headless do widget,
-   com o app fechado. O teto é externo e duro — o Android mata a tarefa aos
-   120s —, e o que sobra precisa caber interpretação, gravação e recibo.
+   Até 25/09/2026 eram dois: 15s para o botão (achado A47, o botão ficava um
+   minuto em "Transcrevendo…") e 60s para o widget, que roda com o app fechado
+   e só é morto pelo Android aos 120s. O achado F2 (23/09) já tinha tirado a
+   escolha de dentro do núcleo; o número continuava diferente por entrada. O
+   autor decidiu: "os dois precisam se comportar exatamente iguais. Em tudo"
+   (regra 13).
 
-   Este valor já era usado, só que por omissão: o widget não passava orçamento
-   nenhum e herdava o padrão do módulo. Passou a ter nome em 23/09/2026 por
-   causa do achado F2, que apontou, com razão, que o núcleo decidia o prazo
-   olhando a ORIGEM (`source === 'app' ? ... : undefined`) — e a regra 13 do
-   AGENTS.md proíbe, na letra, "timeout, fallback ou política de retenção
-   próprios" por entrada.
+   Por que 15s, e não 60s: no widget também há alguém esperando, só que o
+   recibo dele é a notificação. Quinze segundos cobrem folgado uma transcrição
+   sadia, e o que passa disso não se perde nas duas entradas: vira fila, que
+   preserva a fala e retoma sozinha com conexão. Com o teto do Android em
+   120s, sobram 105s para interpretar, gravar e dar o recibo.
 
-   Agora quem chama declara o próprio prazo, e o núcleo obedece sem saber de
-   onde veio a fala. É a mesma exigência da regra 9 ("retry e fallback
-   precisam caber no prazo de quem chama") sem o ramo por origem que a regra
-   13 proíbe. Os dois números continuam diferentes porque os dois prazos REAIS
-   são diferentes; nenhuma decisão sobre o dinheiro muda com isso.
-
-   O que continua em aberto para o autor: se os 60s do widget devem cair para
-   os mesmos 15s. Não foi mexido aqui porque seria mudar comportamento numa
-   varredura de correção, e o widget é justamente quem pode esperar. */
-export const ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS = TIMEOUT_TOTAL_MS;
+   O reconhecimento no aparelho (`voz-local`) também sai deste prazo. */
+export const PRAZO_TRANSCRICAO_MS = 15_000;
 
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -212,14 +197,14 @@ async function tentarUmaVez(
  */
 export async function transcreverAudio(
   uri: string,
-  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number; orcamentoMs?: number } = {}
+  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number } = {}
 ): Promise<ResultadoVoz> {
-  // O reconhecimento local também consome o prazo de quem chamou.
-  const deadline = Date.now() + (opts.orcamentoMs ?? TIMEOUT_TOTAL_MS);
+  // O reconhecimento local também consome este prazo.
+  const deadline = Date.now() + PRAZO_TRANSCRICAO_MS;
   const { transcreverNoAparelho } = await import('./voz-local');
-  /* Passa o que RESTA do orçamento, e quem limita ao próprio teto é o módulo
+  /* Passa o que RESTA do prazo, e quem limita ao próprio teto é o módulo
      local. Ler a constante dele aqui criava um acoplamento silencioso: com um
-     orçamento de 15s, um teto local de 30s estouraria o prazo inteiro antes de
+     prazo de 15s, um teto local de 30s estouraria o prazo inteiro antes de
      a rede ser tentada, e um valor ausente pulava o reconhecimento no aparelho
      sem dizer nada, trocando trabalho de graça por chamada paga. */
   const local = await transcreverNoAparelho(uri, Math.max(0, deadline - Date.now()));

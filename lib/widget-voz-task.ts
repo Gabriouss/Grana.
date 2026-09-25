@@ -30,9 +30,9 @@ type Payload = {
   requestId?: string;
   source?: 'app' | 'widget';
   transcricao?: string;
-  /** Prazo total de rede que quem chamou consegue esperar. Ver ORCAMENTO_* em
-      lib/voz.ts: o núcleo obedece, não escolhe. */
-  orcamentoMs?: number;
+  /* Sem campo de prazo, de propósito: o prazo da voz é um só para as duas
+     entradas (`PRAZO_TRANSCRICAO_MS`, em lib/voz.ts). Até 25/09/2026 o botão
+     do app declarava 15s aqui e o widget ficava com 60s. */
 };
 
 type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarRevisao' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'>;
@@ -153,7 +153,7 @@ async function apagarArquivo(caminho: string) {
 }
 
 async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz): Promise<boolean> {
-  const [{ transcreverAudio, ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS }, heuristics, data, voiceOperations] = await Promise.all([
+  const [{ transcreverAudio }, heuristics, data, voiceOperations] = await Promise.all([
     import('./voz'),
     import('./heuristics'),
     import('./data'),
@@ -161,23 +161,14 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   ]);
 
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
-  /* O prazo vem de QUEM CHAMA, e não da origem da fala.
-
-     O app tem uma PESSOA esperando na tela; a tarefa headless roda com o app
-     fechado e pode gastar o minuto inteiro, porque só o Android a mata, aos
-     dois minutos. Sem prazo declarado, as duas entradas usavam o mesmo teto de
-     60s e o botão ficava "Transcrevendo…" o dobro do que `lib/voz.ts` promete
-     a quem espera (achado A47).
-
-     Até 23/09/2026 isto era decidido aqui dentro, por `payload.source`, o que
-     a regra 13 proíbe na letra (achado F2): o núcleo não pode ter timeout
-     próprio por entrada. O valor é o mesmo; o que mudou é quem decide. */
+  /* O prazo de rede é o mesmo nas duas entradas e mora em lib/voz.ts
+     (`PRAZO_TRANSCRICAO_MS`). Ninguém o escolhe aqui: nem pela origem da fala
+     (achado F2, regra 13), nem por quem chama (decisão do autor, 25/09/2026). */
   const transcricao = payload.transcricao
     ? { ok: true as const, transcript: payload.transcricao }
     : await transcreverAudio(uri, {
         mimeType: 'audio/m4a',
         nomeArquivo: 'widget.m4a',
-        orcamentoMs: payload.orcamentoMs ?? ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS,
       });
   if (!transcricao.ok) {
     if (transcricao.codigo === 'sem_rede' || transcricao.codigo === 'demorou') {

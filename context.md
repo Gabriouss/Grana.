@@ -58,6 +58,128 @@ no `context.md`.
 
 ---
 
+# PASSO A PASSO — instalar o Jev (TypeSafe AI) na M1, executado pelo maestro do Maestri
+
+> **Pedido do autor em 25/09/2026**, numa sessão na nuvem: "documente no início
+> do contexto um passo-a-passo para o maestro do maestri executar os comandos
+> para instalação", e "vou instalar lá na M1". Quando a instalação estiver
+> feita e conferida, troque este bloco por uma linha dizendo quem instalou,
+> quando e o resultado, e registre o detalhe numa entrada datada.
+
+**O que é e para que serve aqui.** O Jev é um modelo da TypeSafe AI que não
+conversa nem escreve código. Ele recebe um texto e uma pergunta com opções
+fechadas e devolve a opção escolhida, com a probabilidade de cada uma. Neste
+projeto ele entra como **auxiliar dos agentes (Claude e Codex)**, e **não
+dentro do Grana.**: decisão do autor em 25/09/2026. O uso começa pela
+conferência de copy contra as regras do projeto (travessão, "não é X, é Y",
+"apagão financeiro" dito de outro jeito, promessa que o app não cumpre,
+notificação que presume gasto).
+
+**Exceção à regra 19, autorizada pelo autor para esta instalação.** A regra 19
+diz que o terminal maestro não executa trabalho. Aqui o autor pediu que o
+maestro execute os comandos, porque a instalação é da máquina e vale para todos
+os agentes. A exceção vale só para os passos abaixo. O registro do resultado
+continua sendo do Ledger.
+
+**Fonte oficial.** A documentação da TypeSafe: `https://docs.typesafe.ai/agent-skill`
+e `https://docs.typesafe.ai/introduction/quickstart`. O repositório oficial da
+skill é `github.com/typesafe-ai/skills`. Os comandos abaixo foram copiados de
+lá por uma sessão na nuvem que **não conseguiu abrir** nem a documentação nem o
+GitHub (rede bloqueada); vieram do que o buscador leu das páginas. Por isso o
+passo 1 existe.
+
+**NÃO instale** nenhum destes, que são de terceiros e rodariam na máquina com o
+mesmo acesso dos agentes, `.env` incluído: `itsmostafa/typesafe-mcp`,
+`MattiooFR/mcp-server-jev`, `FrancoisChastel/jev-code`,
+`KHAEntertainment/jev-skill`, `liatrio-labs/jev-skills`. Nenhum MCP oficial
+foi encontrado.
+
+## Passos
+
+**0. Pré-condição: este bloco precisa estar na `main`.** Ele foi escrito na
+branch `claude/cool-einstein-c63bq0` (PR #5). Se a M1 não o encontra depois de
+`git pull`, o PR ainda não foi mesclado.
+
+**1. Conferir a fonte antes de instalar.** Abrir no navegador
+`https://docs.typesafe.ai/agent-skill` e confirmar que os comandos dos passos 4
+e 5 são os mesmos que estão lá. Abrir `https://github.com/typesafe-ai` e
+confirmar que a organização é a que o site `typesafe.ai` indica. Se algo
+divergir, **pare** e avise o autor. Vale o mesmo cuidado que se teve com o
+plugin do Codex (regra 16).
+
+**2. A chave de API: quem cria e cadastra é o autor, não o maestro.**
+
+- O autor cria a chave na conta dele em `typesafe.ai`.
+- O autor grava a chave como variável de ambiente **do usuário do Windows**,
+  com o nome `TYPESAFE_API_KEY`. Pode ser pelo painel "Variáveis de ambiente"
+  do Windows ou, num PowerShell dele, com
+  `[Environment]::SetEnvironmentVariable('TYPESAFE_API_KEY', '<valor>', 'User')`.
+- **A chave nunca passa por um agente.** Não colar em chat do Claude, do Codex
+  ou do Maestri, não escrever no `.env` do repositório, no
+  `.claude/settings*.json`, no vault nem em registro (regras 12 e 15).
+- Depois disso, **feche e reabra o Maestri**: terminal aberto antes não
+  enxerga variável nova.
+
+**3. Conferir que a chave existe, sem ler o valor.** No PowerShell:
+
+    if ($env:TYPESAFE_API_KEY) { 'TYPESAFE_API_KEY definida' } else { 'TYPESAFE_API_KEY ausente' }
+
+Se sair "ausente", pare e avise o autor. Não imprima nem copie o valor.
+
+**4. Claude Code.** Num PowerShell, fora de qualquer sessão do Claude:
+
+    claude plugin marketplace add typesafe-ai/skills
+    claude plugin install typesafe@typesafe-ai
+
+- O plugin entra no escopo `user`, então vale para **todos** os projetos e
+  todos os agentes Claude da M1, como o plugin do Codex (regra 16).
+- Nas sessões do Claude já abertas, rode `/reload-plugins`, ou reinicie os
+  agentes.
+- Uso: `/typesafe:typesafe-ai`.
+
+**5. Codex.** Em `E:\GranaPonto`:
+
+    npx skills add typesafe-ai/skills --skill typesafe-ai
+
+- O comando pergunta para qual agente instalar: escolha o Codex.
+- É o mesmo instalador das outras skills do projeto. Ele pode alterar arquivos
+  versionados (`skills-lock.json`, `.agents/`, `.claude/skills/`).
+- Confira com `git status`. Se mudou algo, é um commit próprio, com assunto
+  dizendo que a skill do Jev entrou (regra 10: sem branch, sem stash).
+
+**6. Teste sem dado do projeto.** Peça a um agente Claude, com a skill
+carregada, uma pergunta inventada e inofensiva. Exemplo: "use o Jev para dizer
+se a frase 'Saldo do mês atualizado' contém travessão: sim ou não". Deve voltar
+uma resposta tipada, com probabilidade.
+
+Se der erro de chave, volte ao passo 3. Se der erro de rede, anote e avise o
+autor.
+
+**7. Registrar.** O maestro repassa ao Ledger, que registra na nota da sessão e
+numa entrada do `context.md`: o que foi instalado (versão do plugin, se
+aparecer), onde, o resultado do teste, e se o passo 5 mudou arquivo
+versionado. **Nunca o valor da chave.**
+
+## Regras de uso depois de instalado
+
+- **O que o Jev devolve é hipótese, não veredito,** como o Codex (regra 16).
+  Quem conclui é o agente, conferindo no código ou no texto.
+- **Mande só o trecho que está sendo julgado.** Nunca a sessão inteira,
+  conteúdo do `.env`, nota do vault, `Feedbacks/`, `Screenshots/` ou dado de
+  conta real. O serviço fica nos EUA, e a política da TypeSafe não promete
+  prazo fixo de apagamento.
+- **Não serve de trava das regras duras.** `eas build`, deploy, `git init` e
+  `push --force` continuam barrados por regra e permissão, que não erram. O
+  Jev é probabilístico.
+- **A M2 não recebe nada por `git pull`.** Se o autor quiser o Jev lá, os
+  passos 1 a 6 se repetem na M2.
+- **Para desfazer:** `claude plugin uninstall typesafe@typesafe-ai` e
+  `claude plugin marketplace remove typesafe-ai`. No Codex, remova a skill pelo
+  mesmo `npx skills` (veja `npx skills --help`) e reverta os arquivos
+  versionados com um commit.
+
+---
+
 # 23/09/2026 (M2) — pendências do Supabase publicadas
 
 Pedido do autor: usar o acesso temporário fornecido nesta sessão para “alterar
@@ -11345,3 +11467,101 @@ T21 fica **FECHADO**. O próximo item do Sentinel é C1, notificações locais.
 Fica sem verificação visual no aparelho, por causa da armadilha de ambiente,
 mas a correção está comprovada pela leitura do código e pelo teste de
 regressão.
+
+## 25/09/2026 — sessão na nuvem (Claude Code web) — documentação desatualizada corrigida; RLS-001 segue aberto
+
+Pedido do autor, depois de uma leitura completa do repositório: corrigir quatro
+apontamentos dela. Três eram de documentação e foram corrigidos; o quarto
+exige migration e ficou de fora por instrução do autor ("não escreva
+migration").
+
+- **`documentation/architecture.md`** ainda descrevia a Kiwify como gateway e
+  dizia que `enforce_subscriptions` estava desligado. Agora diz Cakto (mensal
+  e anual, `cakto-webhook`, segredo `CAKTO_WEBHOOK_SECRET` no corpo do JSON),
+  que a Kiwify foi trocada em 09/09 e que `kiwify-webhook` segue na pasta sem
+  uso, que o bloqueio está ligado desde 22/09 com cortesia para as contas
+  antigas, e que o WhatsApp está desligado.
+  **Não corrigido, fora do pedido:** `flows.md`, `variables.md`, `emails.md`,
+  `permissions.md`, `operations.md`, `automation.md` e `tests.md`, na mesma
+  pasta, ainda falam em Kiwify.
+- **`.maestri/README.md`** listava o `FUNIL.md` entre os documentos
+  versionados. O arquivo não foi perdido: saiu do git de propósito em
+  `fa757e8` e está no `.gitignore`. O texto agora diz isso, e que um clone
+  novo não o traz.
+- **`PRODUCT.md`** tinha a seção "Copy and Marketing Guidelines" duplicada,
+  com texto idêntico (só a quebra de linha final diferia). A segunda cópia
+  saiu. O espelho no vault acompanha no próximo `espelhar-vault.sh`.
+- **RLS-001 (`user_achievements` com política FOR ALL), NÃO corrigido.** A
+  correção exige migration. Chegou a ser escrita (só SELECT e INSERT do dono,
+  INSERT restrito às colunas `user_id` e `badge_id`, e `badge_id` limitado às
+  12 medalhas de `lib/gamification.ts`) e foi descartada antes de qualquer
+  commit, a pedido do autor. Nada foi aplicado em produção. O achado continua
+  P2 e aberto; quem retomar precisa do aval do autor para a migration.
+
+**Verificação:** mudanças só de texto; nenhum teste lê esses arquivos. Na
+leitura anterior da mesma sessão, `tsc` e `npm run test:ci` passaram inteiros
+(o único vermelho era o clone raso, sem o commit `00de222` que
+`corpus-env-fora-da-build` lê; com o histórico completo, 273/273).
+
+**Branch:** o ambiente da nuvem exige a branch `claude/cool-einstein-c63bq0`,
+o que contraria a regra 10. Ela parte de `13ef097` (o `origin/main` do
+momento) e só tem este commit; precisa ser mesclada na `main` ou descartada.
+
+## 25/09/2026 — sessão na nuvem — voz: botão do app e widget iguais no prazo e na captura
+
+**Pedido do autor**, respondendo à pergunta F2 deixada em 23/09: "os dois
+precisam se comportar exatamente iguais. Em tudo". Trabalho feito na branch
+`claude/cool-einstein-c63bq0` (PR #5), a pedido do autor nesta sessão.
+
+**Divergências achadas entre as duas entradas, lendo o código:**
+
+1. **Prazo de rede:** botão 15s, widget 60s. O F2 já tinha tirado a escolha
+   de dentro do núcleo; o número continuava diferente por entrada.
+2. **Corte por silêncio:** só o widget (`GranaVoiceCaptureService.kt`)
+   encerrava sozinho 1,6s depois de ouvir fala; o botão gravava até o segundo
+   toque ou os 20s.
+3. **Toque duplo sem querer:** o widget descarta em silêncio o arquivo de até
+   1 KB (ou o `stop()` que lança); o botão mandava o arquivo vazio para a
+   transcrição, ou mostrava "Não deu para transcrever".
+4. **Cancelar durante a gravação:** só o widget tem ("Cancelar" na
+   notificação). **NÃO mexido:** é controle novo na tela, decisão do autor.
+
+**O que mudou (1 a 3):**
+
+- `lib/voz.ts`: um prazo só, `PRAZO_TRANSCRICAO_MS = 15_000`, para as duas
+  entradas; `transcreverAudio` não aceita mais prazo de fora. Saem
+  `ORCAMENTO_COM_PESSOA_ESPERANDO_MS`, `ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS` e
+  o campo `orcamentoMs` do payload de `executarTarefa`.
+- **Por que 15s e não 60s:** 60s no botão traria de volta o A47 (um minuto em
+  "Transcrevendo…"); no widget também há alguém esperando, pelo recibo na
+  notificação; e o que passa do prazo não se perde em nenhuma das duas: vira
+  fila e retoma com conexão. Com o teto de 120s do Android, sobram 105s.
+- `lib/voz-captura.ts` (novo): a regra de captura do widget em TypeScript,
+  com os mesmos números (amostra a cada 200ms, limiar 600, 1,6s de silêncio
+  depois de fala, arquivo mínimo acima de 1024 bytes). O botão passa a ler o
+  volume (`isMeteringEnabled`) e a usar o mesmo detector. No Android o
+  `metering` do `expo-audio` sai do mesmo `MediaRecorder.getMaxAmplitude()`
+  do widget, só em dBFS; `amplitudeDoMetering` faz a conta inversa exata.
+- O Kotlin só ganhou um comentário apontando para a cópia em TS.
+
+**Efeito que o autor pode notar:** no widget, rede lenta passa a cair na fila
+depois de 15s, e não de 60s. E o reconhecimento no aparelho também sai dos
+15s: se ele gastar o prazo inteiro, a fala vai para a fila em vez de tentar o
+servidor. No app, isso já era assim.
+
+**Testes:** `__tests__/voz-captura-paridade.cjs` (novo, no `test:voz`, 13
+checagens) compara os números com o Kotlin e EXECUTA o `VoiceEntryButton` real
+com relógio falso. Ele sai com código 1 se parar no meio: a primeira versão
+saiu com 0 sem rodar dois cenários, porque um `await` que nunca resolvia fez
+o Node encerrar calado. `offline-rapido.cjs` e `voz-upload.cjs` passam a
+travar o prazo único; `voz-auditoria-rodada6.cjs` teve o tempo simulado do
+reconhecimento local reduzido de 30s para 7,5s, porque 30s só cabiam no prazo
+antigo do widget (a intenção, uma tentativa só com rede pendurada, ficou).
+Mutação: seis quebras de propósito (sem detector, sem régua de tamanho, aviso
+no `stop()` que lança, Kotlin com outro silêncio, prazo de volta a 60s, botão
+declarando prazo) e todas derrubam algum teste. `tsc` e `test:ci` verdes.
+
+**Não verificado:** nada disto foi visto no aparelho. Falta conferir no
+Android o corte por silêncio no botão (o limiar é o mesmo número, mas ninguém
+ouviu), e no iOS e na web, onde o `metering` não é o do `MediaRecorder` e o
+limiar vale só por aproximação. Chega ao aparelho na próxima build.
