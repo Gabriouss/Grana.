@@ -118,7 +118,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
       titulo: c.nome,
       destaque: `R$ ${formatMoney(c.total)}`,
       destaqueCor: c.cor,
-      apoio: `${Math.round(c.fatiaDasSaidas * 100)}% de todas as suas saídas do mês foram para aqui.${sobreOrcamento}`,
+      apoio: `${Math.round(c.fatiaDasSaidas * 100)}% de todas as suas saídas do mês foram para esta categoria.${sobreOrcamento}`,
       icone: 'pie-chart-outline',
     });
   }

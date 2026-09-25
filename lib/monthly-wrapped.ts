@@ -10,6 +10,7 @@
 import type { Bill, Budget, Transaction } from './types';
 import { calcularLevelState, type LevelState } from './gamification-infinite';
 import { supabase } from './supabase';
+import { isCreditTx } from './transaction-rules';
 
 /* user_metadata do Supabase Auth, não AsyncStorage — mesmo motivo do
    lib/home-layout.ts: era guardado só no aparelho, e a flag de "já visto"
@@ -113,9 +114,17 @@ export function gerarMonthlyWrapped(
   const { ano, mes } = mesFechadoAnterior(hoje);
 
   const doMes = transactions.filter((t) => ehDoMes(t.occurred_on, ano, mes));
-  const saidasTx = doMes.filter((t) => t.type === 'out');
+  /* Só CAIXA entra nas somas (achado T21, 24/09/2026): compra no crédito só
+     sai do caixa quando a fatura é paga, e o pagamento da fatura já é uma
+     saída de caixa própria. Somar a compra contava o mesmo dinheiro duas
+     vezes e dava outro número que o da Início para o mesmo mês (mesma classe
+     do S43/A46). É a regra de `isCreditTx`, a mesma do "Orçamento do mês".
+     A contagem de lançamentos e de dias com registro segue com tudo: compra
+     no crédito também é registro. */
+  const caixaDoMes = doMes.filter((t) => !isCreditTx(t));
+  const saidasTx = caixaDoMes.filter((t) => t.type === 'out');
 
-  const entradas = doMes.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
+  const entradas = caixaDoMes.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
   const saidas = saidasTx.reduce((s, t) => s + Number(t.amount), 0);
 
   const maiorDespesa = saidasTx.reduce<Transaction | null>(
@@ -161,7 +170,7 @@ export function gerarMonthlyWrapped(
   const mesAnterior = refAnterior.getMonth();
   const doMesAnterior = transactions.filter((t) => ehDoMes(t.occurred_on, anoAnterior, mesAnterior));
   const saidasMesAnterior = doMesAnterior.length
-    ? doMesAnterior.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0)
+    ? doMesAnterior.filter((t) => t.type === 'out' && !isCreditTx(t)).reduce((s, t) => s + Number(t.amount), 0)
     : null;
 
   const recorrentes = saidasTx.filter((t) => t.recurring).reduce((s, t) => s + Number(t.amount), 0);
