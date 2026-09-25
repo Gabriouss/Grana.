@@ -10922,3 +10922,47 @@ Arquivo: `E:\Grana-temporarios\2026-09-24-beacon\copy-fim-de-semana.md`. Impleme
 - **Pergunta ao autor:** ele também quer lembrete ao meio-dia no sábado e no domingo? Isso mudaria o agendamento e pediria copy própria.
 - **Implementação:** Forge. Os critérios de aceite estão no arquivo. A mudança mexe no seletor compartilhado com a Edge, então sai no mesmo deploy de `enviar-lembretes-habito` (regra 11).
 - **Sem verificação:** tela bloqueada, corte de título e corpo, e os emojis novos no aparelho.
+
+## 25/09/2026 — M1 — Regra 20 implementada e publicada no `main` (web no ar); Granabô e RPC do seletor pendentes
+
+O conjunto foi publicado junto em `origin/main`, e a CI ficou verde em `61de5bb`, conferida pelo Forge num clone. Até lá, valeu "commit pode, push não" para todos, porque o `66d86b5` não podia subir sozinho: a Vercel publica a web do `main`.
+
+| Commit | O quê |
+|---|---|
+| `66d86b5` | layout da Início: "Contas a vencer este mês" sai do `SafeToSpendCard` |
+| `76cdf88` | layout da landing: a mesma linha sai de `CardLivreParaGastar` e `BentoFerramentas` |
+| `15637cb` | cálculo |
+| `d5e1048` | FAQ (`app/index.tsx:726`) e bento (`BentoFerramentas.tsx:118`) com o texto do Beacon, sem prometer desconto de contas |
+| `fce9a85` | Granabô com a regra 20 |
+| `61de5bb` | migration `20260925000000_entradas_por_carteira` para o seletor |
+
+- **Cálculo (`15637cb`):** `calcularSafeToSpend(transacoes, metas, hoje)` em `lib/safe-to-spend.ts`.
+  - Saldo = entradas − saídas de caixa do mês de hoje (crédito fora, pagamento de fatura dentro), sem `initial_balance`.
+  - Livre = max(0, saldo − cofrinhos) ÷ dias restantes. Boleto pendente não desconta.
+  - Início e widgets chamam a mesma função, e a sincronização dos widgets deixou de buscar carteiras.
+  - O exemplo da landing foi recalculado (R$ 3.365,00; R$ 129,42/dia).
+  - Trava `__tests__/regra-20-saldo-do-mes.cjs` no `test:ci`. Pela regra 20, **não se afrouxa para passar**.
+- **Granabô (`fce9a85`):** a mesma regra em `_shared/caixa.ts` e `assistente-financeiro`. Corrige também "hoje" calculado em UTC, as contas do período e a retrospectiva com crédito. Paridade app × Granabô de 3.002 checagens nos dois módulos reais.
+- **Reexecutado pelo Ledger**, todos no `test:ci`:
+  - `regra-20-saldo-do-mes` 6/0
+  - `exemplo-landing` 48
+  - `corpus-widgets-home` 72/72
+  - `paridade-livre-para-gastar` 3.002 OK
+  - `granabo-livre-mes-vigente` 19 OK
+  - `granabo-caixa-sem-credito` 39 OK
+  - `entradas-por-carteira` 12 OK
+
+**Estado das três camadas:**
+
+- **Web:** a Vercel já publica o cálculo novo.
+- **Granabô em produção:** ainda **v38, com a conta antiga**, até um deploy autorizado. Até lá, o app e o Granabô mostram números diferentes para "Livre para gastar", o que a regra 20 proíbe. O deploy fecha isso.
+- **APK:** só na próxima build.
+- **Seletor de carteira:** ainda com o número antigo. A RPC `entradas_por_carteira` **não foi aplicada**, porque o classificador barrou; espera o autor liberar.
+- **Capturas:** `public/telas/inicio-web.png` e `inicio-mobile.png` ainda mostram a conta antiga. O Prism refaz com dados de exemplo.
+
+**Harbor, mesma rodada:**
+
+- **Conferido em produção:** `pagar_conta` grava a saída de caixa e `reabrir_conta` a apaga. É o que faz o boleto pago pesar no Livre.
+- **`42501` na fila passa a ser temporário**, com autorização do maestro. Resolve a pendência de `ba59800`: com sessão válida, o `42501` não manda mais o item para "precisa de revisão". **Em andamento:** mudança local em `lib/fila-pendente.ts` e `__tests__/fila-endurecida.cjs`, sem commit quando esta entrada foi escrita.
+
+Perenes do vault atualizadas: Estrutura de Telas e Componentes, Cobertura de Testes, Módulos lib, Migrations, Schema do Banco e Edge Functions.
