@@ -10863,3 +10863,35 @@ Duas decisões do autor na mesma noite, repassadas pelo maestro. Completam a reg
 **Por que não viola "a mesma palavra, o mesmo número":** o seletor mostra outra grandeza, com outro nome. A regressão seria o seletor voltar a chamar esse número de "saldo", ou mostrar um saldo diferente do da Início. A regra 20 do `AGENTS.md` e a seção do `PRODUCT.md` foram ajustadas: o seletor saiu da lista de lugares que mostram "saldo".
 
 **Implementação:** Forge. **Estado em 24/09:** nada mudou no código.
+
+## 24/09/2026 — M1 — Fila offline endurecida (`ba59800`, Harbor), sem QA no aparelho
+
+Relatório: `E:\Grana-temporarios\2026-09-24-harbor\relatorio-harbor-fila-endurecida.md`. Executa os itens 1 a 5 do parecer de segurança (`contrato-fila-offline.md`), antes da parte do Forge.
+
+- **Pedido:** a decisão do autor de pôr todo lançamento na fila offline, salvo risco de DDoS. O maestro pediu o núcleo endurecido primeiro.
+- **Sintoma e causa:** não é defeito visto em campo. É o risco medido no parecer, com a causa no código:
+  - intervalo fixo de 30 s, sem sorteio;
+  - a fila inteira numa rodada;
+  - recusa do banco travando a fila e retentada para sempre;
+  - nenhum teto;
+  - a voz seguindo a fila inteira mesmo sem rede.
+- **Mudança:**
+  - `lib/fila-pendente.ts` ganha `proximaEspera`, `ehErroPermanente` (classes 22 e 23 e `42501`), `FilaCheiaError`, `TETO_DA_FILA = 500`, `ITENS_POR_RODADA = 50` e a lista de revisão (`guardarEmRevisao`, `listarEmRevisao`, `tirarDaRevisao`, chave `grana:queue:precisa-de-revisao`).
+  - `lib/offline-cache.ts`: teto ao guardar, rodada limitada, recusa permanente vai para revisão com notificação local (`publicarReciboDeRevisao`) e a rodada segue. A espera dobra a cada falha de rede seguida, de 30 s a 15 min, sorteada entre metade e o valor cheio, e volta a 30 s depois de uma rodada sem falha.
+  - `lib/voice-operations.ts`: rodada de 50, para no primeiro erro temporário, e a fala recusada só sai da fila depois do recibo publicado. É o núcleo único do app e do widget (regra 13).
+  - Se a revisão não couber no disco, o item fica na fila. Nada é descartado.
+- **Descartado:**
+  - sorteio entre 0 e o valor cheio, que o parecer propunha: um sorteio perto de zero martelaria o servidor, então o mínimo é metade, nunca abaixo de 30 s;
+  - descarte por idade, porque é dinheiro registrado;
+  - `PGRST202` como permanente, porque se resolve com deploy e o item precisa sobreviver até lá;
+  - espera crescente na voz, que não tem timer e roda por evento de uso.
+- **Deu errado:**
+  - o teste novo pegou três erros do próprio roteiro de teste, e um deles (a `mensagem` do resumo de item ilegível) virou correção no código;
+  - quatro testes de voz com dublês fechados precisaram conhecer o import novo;
+  - o Forge commitou a parte dele em `voice-operations.ts` (`22bb1de`) no meio do trabalho, e o diff final ficou só com os trechos do Harbor.
+- **Reportado pelo Harbor:** `fila-endurecida` 37/37, com oito mutações derrubando (uma por proteção); `tsc` e `test:ci` verdes.
+- **Reexecutado pelo Ledger:** `fila-endurecida.cjs` **37 OK**, e o teste está no `test:ci`.
+- **Não verificado:** aparelho, a notificação real (`expo-notifications`) e a tela da revisão.
+- **Pendente:**
+  - a tela que lista "precisa de revisão" (Forge; `listarEmRevisao` e `tirarDaRevisao` estão prontos);
+  - **`42501` com sessão válida talvez seja temporário** (observação do maestro, o Harbor avalia). Hoje ele está entre os permanentes e manda o item para revisão. O `42501` de `saldos_por_carteira` registrado hoje apareceu com sessão válida depois de mexer no relógio. Se esse caso for temporário, tratá-lo como permanente tira da fila, por engano, um lançamento que subiria sozinho.
