@@ -3,6 +3,7 @@ import { AppState, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppPressable from './AppPressable';
 import { listarOperacoesVozLocais, sincronizarOperacoesVoz } from '@/lib/voice-operations';
+import { contarFalasAguardandoConexao } from '@/lib/voz-pendente-na-lista';
 import { fonts, spacing, theme, touchTarget, type } from '@/lib/theme';
 import { observarDadosDosWidgets } from '@/lib/widgets-home-events';
 
@@ -10,17 +11,23 @@ export default function VozesSalvasLocalmente() {
   const [itens, setItens] = useState<Awaited<ReturnType<typeof listarOperacoesVozLocais>>>([]);
   const [ocupado, setOcupado] = useState(false);
   const [mensagem, setMensagem] = useState<string | null>(null);
+  /* Áudio gravado sem rede e ainda não transcrito: sem valor, então só conta. */
+  const [audios, setAudios] = useState(0);
   const insets = useSafeAreaInsets();
-  const carregar = () => listarOperacoesVozLocais().then(setItens).catch(() => {});
+  const carregar = () => Promise.all([
+    listarOperacoesVozLocais().then(setItens).catch(() => {}),
+    contarFalasAguardandoConexao().then(setAudios).catch(() => {}),
+  ]);
   useEffect(() => {
     void carregar();
     const remover = observarDadosDosWidgets(() => { void carregar(); });
     const evento = AppState.addEventListener('change', (estado) => { if (estado === 'active') void carregar(); });
     return () => { remover(); evento.remove(); };
   }, []);
-  if (!itens.length) return null;
+  if (!itens.length && !audios) return null;
   return <View style={[styles.container, { paddingTop: Math.max(12, insets.top + 8) }]}>
-    <Text style={styles.text}>{itens.length === 1 ? '1 lançamento por voz salvo neste aparelho.' : `${itens.length} lançamentos por voz salvos neste aparelho.`}</Text>
+    {itens.length > 0 && <Text style={styles.text}>{itens.length === 1 ? '1 lançamento por voz salvo neste aparelho.' : `${itens.length} lançamentos por voz salvos neste aparelho.`}</Text>}
+    {audios > 0 && <Text style={styles.text}>{audios === 1 ? '1 fala aguardando conexão.' : `${audios} falas aguardando conexão.`}</Text>}
     {/* `polite` porque a frase muda sozinha ao fim da sincronização: sem região
         viva, quem usa leitor de tela toca em "Tentar sincronizar" e nunca fica
         sabendo no que deu. `alert` seria grosseiro para um aviso de fundo. */}
