@@ -94,7 +94,11 @@ export async function registrarOperacaoVoz(
   if (!userId) throw new Error('Entre na conta para salvar o lançamento.');
   const chave = `grana:voz:operacao:${userId}:${requestId}`;
   const existente = await AsyncStorage.getItem(chave);
-  const operacao = existente ? JSON.parse(existente) : { requestId, source, payload, ...(transcricao ? { transcricao } : null) };
+  /* `criadoEm` é o dia em que a pessoa falou: a lista mostra a fala guardada
+     com ele (`lib/voz-pendente-na-lista.ts`), e a sequência conta por ele. */
+  const operacao = existente
+    ? JSON.parse(existente)
+    : { requestId, source, payload, criadoEm: new Date().toISOString(), ...(transcricao ? { transcricao } : null) };
   // Persiste ANTES da rede. O payload original permanece igual em toda retomada.
   await AsyncStorage.setItem(chave, JSON.stringify(operacao));
   notificarDadosDosWidgetsAlterados();

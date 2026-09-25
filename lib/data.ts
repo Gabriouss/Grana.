@@ -28,6 +28,7 @@ import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoC
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 import { marcarLancamentosAlterados } from './lancamentos-alterados';
 import { juntarPendentes } from './fila-pendente';
+import { juntarVozPendente } from './voz-pendente-na-lista';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
   Bill,
@@ -1020,12 +1021,13 @@ const fetchTransactionsDoPeriodoComCache = comCacheOffline('transacoes-periodo',
 
 /* Os pendentes da fila offline entram DEPOIS do cache (T13, 23/09/2026): o
    disco guarda só o que veio do banco, e sem rede é ele que volta como
-   resposta. Ver `juntarPendentes`. */
+   resposta. Ver `juntarPendentes`. As falas de voz guardadas entram do
+   mesmo jeito (`juntarVozPendente`, decisão do autor de 24/09/2026). */
 export async function fetchTransactions(...args: Parameters<typeof buscar_fetchTransactions>): Promise<Transaction[]> {
-  return juntarPendentes(await fetchTransactionsComCache(...args));
+  return juntarVozPendente(await juntarPendentes(await fetchTransactionsComCache(...args)));
 }
 export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: string): Promise<Transaction[]> {
-  return juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO);
+  return juntarVozPendente(await juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO), inicioISO, fimISO);
 }
 export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);
 export const fetchCreditCards = comCacheOffline('cartoes', buscar_fetchCreditCards);
