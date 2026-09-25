@@ -162,6 +162,8 @@ Na cena 1, a voz do padeiro vem de fora do quadro e não precisa de sincronia de
 - **Texto na tela:** "Grana." / "Fala o gasto. Pronto." / "Menos de R$ 0,37 por dia".
 - **Som:** o fim da narração.
 
+**Atualização do autor (25/09/2026, depois da geração):** "Pode deixar o rosto do padeiro." O rosto dele pode aparecer em versões futuras. A versão montada ficou só com as mãos, porque a cena em que o rosto aparecia tinha outro defeito: ela se virava para o fundo da loja, e não para a porta.
+
 ## Geração de 25/09/2026: o que aconteceu
 
 Flow na ElevenLabs: "Grana. - Reels widget padaria (25/09)". Os prompts desta página já são as versões que funcionaram.
@@ -176,6 +178,7 @@ Flow na ElevenLabs: "Grana. - Reels widget padaria (25/09)". Os prompts desta p�
 - **O "plim" entrou 5,6 s depois do início da cena 2.** A fala dela vai de 2,1 a 5,4 s, medida no áudio.
 - **Montagem feita fora da ElevenLabs,** com `ffmpeg`: cortes secos, dissolvência de 2 s da cena 3 para o fechamento, som ambiente da cena 3 a 35%, narração a partir de 16 s. O fechamento é uma imagem montada com o logotipo oficial (`design-system/marca/logotipo-gradiente.svg`) e a Neue Machina.
 - **Custo:** ≈ 23.400 créditos (≈ US$ 4,25), incluindo as duas cenas refeitas.
+- **Sincronia da boca:** as vozes saem do próprio modelo de vídeo, junto com a imagem. Não houve passo separado de lipsync. Na cena 2, a boca se mexe de ~1,5 s a ~4,5 s e a voz vai de 2,1 s a 5,4 s (quadros a cada 0,5 s, contra o áudio). A boca parece adiantada ~0,5 s. Se no ouvido estiver fora, dá para adiantar o áudio da cena 2 na montagem ou passar a cena por um nó `sync-lipsync-v3`.
 - **Não conferido:** o que as vozes dizem de fato, porque não há como ouvir no ambiente em que foi montado. Ouça antes de publicar.
 - **Detalhes que ficaram:** uma lousa com "SÃO PAULO" e "2,50" ao fundo da cena 1 e uma placa pequena na cena 3. As legendas não foram queimadas no vídeo.
 
