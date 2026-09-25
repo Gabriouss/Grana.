@@ -121,12 +121,21 @@ desconectado.
 "Saldo atual" e "Livre para Gastar" contam **apenas o mês vigente**, nunca o
 saldo acumulado de meses anteriores nem o `initial_balance` da carteira:
 "não quero saldo acumulado, quero saldo apenas do mês vigente". Vale igual na
-Início, no seletor de carteira, nos widgets e no Granabô, porque a mesma
-palavra não pode mostrar dois números. Compra no crédito fica fora do caixa, e
-a fatura só conta quando é paga. Desfaz o saldo acumulado adotado em
-19/09/2026 (`867e1b5`, achado A12): com histórico importado incompleto, o
-acumulado ficava muito acima da realidade. É a regra 20 do `AGENTS.md`, e
-mudar esse cálculo exige pedido explícito do autor.
+Início, nos widgets e no Granabô, porque a mesma palavra não pode mostrar dois
+números. Compra no crédito fica fora do caixa, e a fatura só conta quando é
+paga. Desfaz o saldo acumulado adotado em 19/09/2026 (`867e1b5`, achado A12):
+com histórico importado incompleto, o acumulado ficava muito acima da
+realidade. É a regra 20 do `AGENTS.md`, e mudar esse cálculo exige pedido
+explícito do autor.
+
+Duas decisões da mesma noite completam esta:
+
+- **O seletor de carteira mostra outra grandeza:** o total de todas as
+  entradas daquela carteira, em todo o período, só entradas, com um rótulo que
+  não diga "saldo". Como é outro número com outro nome, não contradiz o saldo
+  da Início.
+- **O campo "saldo inicial" da carteira sai da tela.** A coluna
+  `initial_balance` fica no banco, sem uso.
 
 ## Brand Commitments
 

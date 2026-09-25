@@ -10852,3 +10852,14 @@ Relatório do Prism: `E:\Grana-temporarios\2026-09-24-prism\relatorio-prism-S9.m
 - **Divisão:** o Forge muda o app (Início, seletor, widgets) e escreve o teste de trava; o Harbor muda o Granabô.
 - **Estado em 24/09:** **nada mudou no código ainda.** O cálculo em `main` e em produção continua acumulado.
 - `PRODUCT.md` ganhou a seção "Saldo e Livre para Gastar: só o mês vigente"; a perene [[Visão do Produto]] do vault também.
+
+## 24/09/2026 — M1 — Complemento da regra 20: seletor de carteira com outra grandeza e sem "saldo inicial"
+
+Duas decisões do autor na mesma noite, repassadas pelo maestro. Completam a regra 20 (`a225eb5`) e o `11d61b6`.
+
+1. **O campo "saldo inicial" da carteira sai da tela.** A coluna `initial_balance` fica no banco, sem uso, e não volta a entrar em cálculo de saldo sem pedido explícito do autor.
+2. **O seletor de carteira mostra outra grandeza.** O número de cada carteira passa a ser o total de TODAS as entradas daquela carteira, em todo o período, só entradas, com um rótulo que não diga "saldo". Início e widgets seguem com "Saldo atual" e "Livre para gastar" só do mês vigente, iguais ao Granabô.
+
+**Por que não viola "a mesma palavra, o mesmo número":** o seletor mostra outra grandeza, com outro nome. A regressão seria o seletor voltar a chamar esse número de "saldo", ou mostrar um saldo diferente do da Início. A regra 20 do `AGENTS.md` e a seção do `PRODUCT.md` foram ajustadas: o seletor saiu da lista de lugares que mostram "saldo".
+
+**Implementação:** Forge. **Estado em 24/09:** nada mudou no código.
