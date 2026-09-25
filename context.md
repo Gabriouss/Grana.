@@ -10757,3 +10757,56 @@ Relatório: `E:\Grana-temporarios\2026-09-24-harbor\relatorio-harbor-migrations.
 ### Análise do saldo da conta pessoal do autor (só leitura)
 
 O autor pediu ao Harbor uma análise, só em leitura, do saldo da conta pessoal dele. **Nenhum valor, e-mail ou descrição dessa conta é registrado aqui nem no vault** (repositório público, regra 15). Quando houver resultado, entra só o mecanismo.
+
+## 24/09/2026 — M1 — APLICADO E PUBLICADO: fase 1 do crédito por ciclo, idempotência da fila, `assistente-financeiro` v38 e `enviar-lembretes-habito` v13
+
+Substitui o estado "não aplicado / não publicado" das seções anteriores de 24/09.
+
+- **Pedido:** ordem direta do autor ao terminal maestro: "eu não vou aplicar nada no supabase, use a credencial do .env aplique você mesmo", e depois "aplica", com o autor fora do modo automático para aprovar cada ação.
+- **Quando:** ~21h09 (hora local).
+- **Exceção registrada:** a regra 19 diz que o maestro não executa. Aqui ele executou por ordem explícita do autor, depois de o classificador ter barrado o Harbor.
+
+### Migrations (Management API, cada uma em `begin`/`commit`)
+
+- **Script:** `E:\Grana-temporarios\2026-09-24-maestro\aplicar-migrations.cjs`.
+- **Aplicadas, todas com resposta 201:**
+  - `20260923230000_voz_devolve_carteira`
+  - `20260923230100_pagar_fatura_valida_ciclo`
+  - `20260923230200_travar_fechamento_com_historico`
+  - `20260924230000_idempotencia_fila_offline`
+- **Fase 2 (`20260923230300`, `20260923230400`) NÃO aplicada:** vai com a build.
+- **Conferido em leitura pelo maestro e de novo pelo Ledger** (Management API, `read_only`):
+  - `client_request_id` em `transactions` e `bills`;
+  - `transactions_user_client_request_uniq` e `bills_user_client_request_uniq`, não parciais;
+  - `adicionar_compra_parcelada` com uma assinatura de 11 parâmetros, `authenticated` sim e `anon` não;
+  - trigger `travar_fechamento_com_historico` em `credit_cards`, e `exigir_cartao_no_credito` ausente;
+  - `pagar_fatura_cartao` com `ciclo_invalido`;
+  - `registrar_operacao_voz` grava `wallet_id`, ainda **sem** a recusa `cartao_obrigatorio`.
+
+### Edge Functions (`deploy.cjs` do Harbor, preflight dele)
+
+| Função | Antes | Agora | `updated_at` | `verify_jwt` |
+|---|---|---|---|---|
+| `assistente-financeiro` | v37 | **v38** | 2026-09-25T00:09:02Z | true |
+| `enviar-lembretes-habito` | v12 | **v13** | 2026-09-25T00:09:09Z | false |
+
+- **Conferido pelo Ledger na Management API:** versões, `updated_at` e `verify_jwt` batem.
+- **As outras seis funções estão intactas:**
+  - `eas-build-webhook` v40
+  - `whatsapp-webhook` v76
+  - `kiwify-webhook` v24
+  - `processar-lancamento-voz` v15
+  - `delete-account` v7
+  - `cakto-webhook` v7
+- **Sondas sem credencial, relatadas pelo maestro:** `assistente-financeiro` 401 `UNAUTHORIZED_NO_AUTH_HEADER` (da plataforma); `enviar-lembretes-habito` 401 `unauthorized` do próprio código (o portão aberto foi preservado).
+- **O que entrou em produção:**
+  - no Granabô, S43 (`fe8e210`) e o crédito por ciclo (`1bfae42`, `37318e5`, `d10a79a`, `a249e96`);
+  - nos lembretes, `4743718`, `bb019dd` e a copy de `c577258` e `4902af2`.
+  - A decisão de segurar os lembretes até a mudança do fim de semana foi superada; o fim de semana vai num deploy seguinte.
+- **Sem verificação:** resposta real do Granabô em produção (S43 e crédito), entrega real de push por FCM.
+
+### ATENÇÃO: a ordem "migration antes do app" agora está cumprida
+
+A coluna `client_request_id` e os índices já existem em produção. **O código do Forge já pode mandar `client_request_id`, inclusive na web** que a Vercel publica do `main`. A fase 2 do crédito continua proibida antes do APK novo.
+
+Perenes do vault atualizadas: `Migrations`, `Schema do Banco` e `Edge Functions`.
