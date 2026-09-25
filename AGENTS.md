@@ -821,10 +821,20 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       em 24/09/2026; a proposta de descontar a fatura fechada e ainda não paga
       foi recusada duas vezes.
     - **A mesma palavra mostra o mesmo número em todo lugar.** "Saldo" e
-      "Livre para gastar" têm um valor só na Início, no seletor de carteira,
-      nos widgets e no Granabô. É a lição do A12 que continua valendo: o
-      defeito dele não era o cálculo, era haver dois. Corrigir um lado e
-      deixar o outro é a regressão de volta.
+      "Livre para gastar" têm um valor só na Início, nos widgets e no
+      Granabô. É a lição do A12 que continua valendo: o defeito dele não era
+      o cálculo, era haver dois. Corrigir um lado e deixar o outro é a
+      regressão de volta.
+    - **O seletor de carteira mostra outra grandeza, com outro nome.**
+      Decisão do autor na mesma noite: o número de cada carteira passa a ser o
+      total de TODAS as entradas daquela carteira, em todo o período, só
+      entradas, com um rótulo que não diga "saldo". Por ser outra grandeza com
+      outro nome, não viola a regra anterior. O que a viola é o seletor voltar
+      a chamar esse número de "saldo", ou a mostrar um saldo diferente do da
+      Início.
+    - **O campo "saldo inicial" da carteira sai da tela.** A coluna
+      `initial_balance` fica no banco, sem uso. Ela não volta a entrar em
+      nenhum cálculo de saldo sem pedido explícito do autor.
     - **Qualquer mudança nesse cálculo exige pedido explícito do autor na
       sessão.** Achado de auditoria, sugestão de outro agente ou "parece mais
       correto contabilmente" não bastam: foi assim que o `867e1b5` entrou.
