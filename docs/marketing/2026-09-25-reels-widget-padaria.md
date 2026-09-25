@@ -124,7 +124,7 @@ Todos os vídeos usam **Gemini Omni 1.1 Flash**, com `aspect_ratio` **9:16**, `r
 - **Referência:** a moça.
 - **Enquadramento:** a câmera fica do lado dela do balcão, levemente de lado. O balcão atravessa o quadro entre os dois. Do padeiro, só entram as mãos e os antebraços, por cima do balcão. Rosto e corpo dele ficam sempre fora do quadro.
 
-> Medium shot, one continuous shot, natural smartphone camera look, camera on the customer's side of the counter. Inside a small, cozy neighborhood bakery in São Paulo, warm morning sunlight through the front window. A wooden bakery counter with a glass display case of bread rolls runs across the frame, between the woman from the reference image and the baker. The baker is never shown: only his hands and forearms enter the frame from behind the counter, mature man's hands, light-blue short sleeves and the edge of a white apron at the frame border. His hands hold out a small card machine; she taps a debit card on it. His hands then place a small paper bag of warm bread rolls on the counter toward her, and his friendly voice, off-screen, says in Brazilian Portuguese: "Aqui está, seu pãozinho quentinho." She takes the bag with her left hand and keeps holding it in her left hand, smiles and says: "Obrigada!", then turns away from the counter toward the door, which is to the right of the frame. Her lips match her words. Ambient bakery sounds: soft chatter, a coffee machine, paper bag rustle. No music, no on-screen text. Grounded, realistic, warm tones.
+> Medium close shot on the woman from the reference image, one continuous shot, natural smartphone camera look, static camera on the customer's side of a wooden bakery counter in a small, cozy São Paulo bakery, warm morning sunlight. She stands at the left of the frame; the countertop fills the right side of the frame. The right edge of the frame cuts off everything behind the counter at chest height of the baker: the baker's head, face, shoulders and body are never in frame at any moment; only a man's hands and forearms reach in from the right edge, over the countertop, with light-blue short sleeves. His hands hold out a small card machine; she taps a debit card on it. His hands then slide a small paper bag of warm bread rolls across the counter to her, while his friendly voice, off-screen, says in Brazilian Portuguese: "Aqui está, seu pãozinho quentinho." She takes the bag with her LEFT hand, holds it against her body, smiles and says: "Obrigada!", then turns to her right and starts walking toward the door, out of the right side of the frame, still holding the bag in her left hand. Her lips match her words. Ambient bakery sounds: soft chatter, a coffee machine, paper bag rustle. No music, no on-screen text, no readable signs. Grounded, realistic, warm tones.
 
 ### Cena 2: lança por voz antes de sair (8 s)
 
@@ -152,15 +152,32 @@ Na cena 1, a voz do padeiro vem de fora do quadro e não precisa de sincronia de
 
 - **Duração:** `duration_secs` 6.
 - **Referência:** moça.
-- **Enquadramento:** do peito para cima, a câmera acompanhando, de frente ou levemente de lado. Braços e mãos **fora do quadro** (regra de continuidade 3). O celular já foi guardado no fim da cena 2 e não aparece mais.
+- **Enquadramento:** dos ombros para cima, a câmera acompanhando de frente, com a alça da bolsa aparecendo. Braços e mãos **fora do quadro** (regra de continuidade 3). O celular já foi guardado no fim da cena 2 e não aparece mais.
 
-> Tracking shot from the chest up, one continuous shot, natural smartphone camera look, camera moving backward in front of her. The woman from the reference image, with a relaxed happy smile, walks out through the open door of a small São Paulo bakery onto a sunny sidewalk, heading to the right of the frame, warm morning sunlight on her face, the bakery front softly out of focus behind her. Her arms and hands stay out of frame for the whole shot. Ambient street sounds: distant traffic, birds. No music, no dialogue, no on-screen text. Realistic, warm tones.
+> Tracking close-up from the shoulders up, one continuous shot, natural smartphone camera look, camera moving backward in front of her at face height. The woman from the reference image, wearing the same mustard-yellow t-shirt, gold hoop earrings and the beige crossbody bag strap clearly visible across her chest, walks out of a small São Paulo bakery onto a sunny sidewalk with a relaxed, happy smile, warm morning sunlight on her face, the street softly out of focus behind her. The frame is tight on her face, neck, shoulders and the bag strap: her arms, elbows and hands never enter the frame. No readable signs, no letters, no on-screen text anywhere in the background. Ambient street sounds: distant traffic, birds. No music, no dialogue. Realistic, warm tones.
 
 ### Cena 4: fechamento (4 s)
 
 - **Imagem:** a logo e a fonte são as reais. Não peça logo à IA, porque ela inventa uma marca parecida. Use `assets/icon.png` e o logotipo do site sobre o fundo petróleo `#052229`.
 - **Texto na tela:** "Grana." / "Fala o gasto. Pronto." / "Menos de R$ 0,37 por dia".
 - **Som:** o fim da narração.
+
+## Geração de 25/09/2026: o que aconteceu
+
+Flow na ElevenLabs: "Grana. - Reels widget padaria (25/09)". Os prompts desta página já são as versões que funcionaram.
+
+- **Primeira rodada das cenas 1 e 3 reprovada na conferência quadro a quadro:**
+  - na cena 1, o rosto do padeiro apareceu, apesar de "the baker is never shown". O que resolveu foi descrever o ENQUADRAMENTO ("the right edge of the frame cuts off everything behind the counter"), e não só a ausência;
+  - na cena 3, a bolsa transversal sumiu e os braços apareceram soltos. O que resolveu foi fechar dos ombros para cima e pedir a alça "clearly visible".
+- **A cena 2 saiu certa na primeira.**
+- **Os nós de vídeo não aceitam desligar a reescrita do prompt** (`enhance_prompt` não existe para o Gemini Omni 1.1).
+- **A imagem de referência veio com o celular no bolso da frente** e com rótulos de texto. Não afetou as cenas fechadas.
+- **A narração saiu com 8,2 s,** mais que os 6,7 s estimados. Coube, porque começa na cena 3 e termina no fechamento.
+- **O "plim" entrou 5,6 s depois do início da cena 2.** A fala dela vai de 2,1 a 5,4 s, medida no áudio.
+- **Montagem feita fora da ElevenLabs,** com `ffmpeg`: cortes secos, dissolvência de 2 s da cena 3 para o fechamento, som ambiente da cena 3 a 35%, narração a partir de 16 s. O fechamento é uma imagem montada com o logotipo oficial (`design-system/marca/logotipo-gradiente.svg`) e a Neue Machina.
+- **Custo:** ≈ 23.400 créditos (≈ US$ 4,25), incluindo as duas cenas refeitas.
+- **Não conferido:** o que as vozes dizem de fato, porque não há como ouvir no ambiente em que foi montado. Ouça antes de publicar.
+- **Detalhes que ficaram:** uma lousa com "SÃO PAULO" e "2,50" ao fundo da cena 1 e uma placa pequena na cena 3. As legendas não foram queimadas no vídeo.
 
 ## Legendas (para quem assiste sem som)
 
