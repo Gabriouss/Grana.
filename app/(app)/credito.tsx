@@ -69,7 +69,7 @@ import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh, touchTarget } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type CreditCardInvoicePayment, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -414,6 +414,7 @@ export default function CreditoScreen() {
     () => (activeWalletId === 'total' ? cards : cards.filter((c) => c.wallet_id === activeWalletId)),
     [activeWalletId, cards]
   );
+  const carteiraSemCartao = activeWalletId !== 'total' && cards.length > 0 && walletCards.length === 0;
   /* Crédito segue a carteira do CARTÃO, não o wallet_id gravado no
      lançamento (P11; ver `lancamentosDaCarteira`). */
   const walletTransactions = useMemo(
@@ -1458,16 +1459,32 @@ export default function CreditoScreen() {
         ) : (
           <View style={styles.emptyCardsCard}>
             <Ionicons name="card-outline" size={32} color={theme.inkFaint} />
-            <Text style={styles.emptyCardsTitle}>Nenhum cartão cadastrado</Text>
+            <Text style={styles.emptyCardsTitle}>
+              {carteiraSemCartao ? 'Nenhum cartão nesta carteira' : 'Nenhum cartão cadastrado'}
+            </Text>
             <Text style={styles.emptyCardsSub}>
-              Cadastre seus cartões (Nubank, Itaú, Inter, etc.) para acompanhar faturas e limites em tempo real.
+              {carteiraSemCartao
+                ? 'Cadastre um cartão nesta carteira para acompanhar faturas e limites.'
+                : 'Cadastre seus cartões (Nubank, Itaú, Inter, etc.) para acompanhar faturas e limites em tempo real.'}
             </Text>
             <AppPressable
               style={styles.emptyCardActionBtn}
               onPress={() => abrirNovoCartao()}
             >
-              <Text style={styles.emptyCardActionText}>+ Cadastrar primeiro cartão</Text>
+              <Text style={styles.emptyCardActionText}>
+                {carteiraSemCartao ? '+ Cadastrar cartão aqui' : '+ Cadastrar primeiro cartão'}
+              </Text>
             </AppPressable>
+            {carteiraSemCartao && (
+              <AppPressable
+                style={styles.emptyCardSwitchBtn}
+                onPress={() => setWalletModalOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Trocar de carteira"
+              >
+                <Text style={styles.emptyCardSwitchText}>Trocar de carteira</Text>
+              </AppPressable>
+            )}
           </View>
         )}
 
@@ -1476,7 +1493,11 @@ export default function CreditoScreen() {
           <View style={[styles.invoiceHeadRow, ehCompacto && styles.invoiceHeadRowCompact]}>
             <View style={[styles.invoiceInfo, ehCompacto && styles.invoiceInfoCompact]}>
               <Text style={styles.invoiceLabel}>
-                {selectedCardId === 'all' ? 'Total das faturas (todos os cartões)' : 'Fatura do cartão selecionado'}
+                {selectedCardId === 'all'
+                  ? activeWalletId === 'total'
+                    ? 'Total das faturas (todos os cartões)'
+                    : 'Total das faturas (cartões desta carteira)'
+                  : 'Fatura do cartão selecionado'}
               </Text>
               <PrivacyValue>
                 <Text style={styles.invoiceTotal}>{`R$ ${formatMoney(totalInvoice)}`}</Text>
@@ -2053,6 +2074,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: type.legenda,
     color: theme.accent2,
+  },
+  emptyCardSwitchBtn: {
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+  },
+  emptyCardSwitchText: {
+    fontFamily: fonts.light,
+    fontSize: type.legenda,
+    color: theme.inkSoft,
   },
   invoiceSummaryCard: {
     backgroundColor: theme.paperRaised,

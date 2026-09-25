@@ -411,6 +411,30 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
   checar('Início filtra o resumo pela carteira do cartão', inicio.includes('lancamentosDaCarteira(transactions, creditCards, activeWalletId)'), true);
 }
 
+/* ── Estado vazio por carteira (T24, 25/09/2026) ────────────────────────────
+ *
+ * Uma carteira sem cartão não é uma conta sem cartão: os cartões podem existir
+ * em outra carteira. O estado precisa orientar cadastro na carteira atual e
+ * oferecer a troca de carteira; "primeiro cartão" fica reservado ao vazio
+ * global. O resumo também não pode dizer "todos" quando está filtrado. */
+{
+  const creditoT24 = readFileSync(join(__dirname, '..', 'app', '(app)', 'credito.tsx'), 'utf8');
+  checar(
+    'T24 distingue carteira sem cartão de conta sem cartão',
+    /const carteiraSemCartao = activeWalletId !== 'total' && cards\.length > 0 && walletCards\.length === 0;/.test(creditoT24),
+    true
+  );
+  checar('T24 nomeia o estado vazio da carteira atual', creditoT24.includes('Nenhum cartão nesta carteira'), true);
+  checar('T24 oferece cadastro na carteira atual', creditoT24.includes('+ Cadastrar cartão aqui'), true);
+  checar('T24 oferece trocar de carteira', creditoT24.includes('Trocar de carteira'), true);
+  checar('T24 mantém primeiro cartão só no vazio global', creditoT24.includes('+ Cadastrar primeiro cartão'), true);
+  checar(
+    'T24 resume as faturas dos cartões da carteira',
+    creditoT24.includes('Total das faturas (cartões desta carteira)'),
+    true
+  );
+}
+
 /* ── Sem rede, a tela não afirma "Nenhum cartão cadastrado" (W1) ──────────
  *
  * Visto no emulador em 18/09/2026, modo avião: a conta tinha um cartão com
@@ -451,8 +475,10 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
   checar('mês faltando acende aviso na tela, em vez de um total menor calado',
     loadData.includes('setFaturaIncompleta(faltouAlgumMes)') && telaW1.includes('faturaIncompleta &&'), true);
 
+  const inicioVazioCartoes = telaW1.indexOf(') : erroCarga ? (');
+  const tituloVazioGlobal = telaW1.indexOf("'Nenhum cartão cadastrado'", inicioVazioCartoes);
   checar('o erro de carga vem ANTES do "Nenhum cartão cadastrado"',
-    telaW1.indexOf(') : erroCarga ? (') > 0 && telaW1.indexOf(') : erroCarga ? (') < telaW1.indexOf('>Nenhum cartão cadastrado</Text>'), true);
+    inicioVazioCartoes > 0 && inicioVazioCartoes < tituloVazioGlobal, true);
 }
 
 console.log(`\n${total - falhas}/${total} checagens da lista de faturas passaram — ${falhas} falhas`);
