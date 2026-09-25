@@ -10841,6 +10841,4 @@ Relatório do Prism: `E:\Grana-temporarios\2026-09-24-prism\relatorio-prism-S9.m
   - Reexecutado pelo Ledger: `modais-regressao.cjs` OK, com a guarda do S9.
 - **Não vistos no aparelho:** `DatePickerModal`, `ItemActionSheet`, Modelos de orçamento e Importar extrato. O Sentinel reverifica.
 
-**`42501` em `saldos_por_carteira`:** o Sentinel o registrou uma vez, logo depois de mexer no relógio do emulador, com a sessão local válida. Fica **sem confiabilidade suficiente** até reaparecer sem mexer no relógio.
-
-À parte, o Prism viu no LogBox um `console.error` de `lib/data.ts:87` ("42501: chamada chegou ao banco sem usuário"). Ele o atribuiu a código local de outro agente, ainda sem commit, e repassou ao maestro. Pode ou não ter relação com o registro do Sentinel; não foi investigado.
+**`42501` em `saldos_por_carteira` (entrada unificada, corrigida a pedido do maestro):** o Sentinel registrou uma vez, logo depois de mexer no relógio do emulador, com a sessão local válida (token com ~72 h pela frente). O `console.error` que o Prism viu no LogBox, `[data] 42501: chamada chegou ao banco sem usuário` (`lib/data.ts:87`), é **o mesmo evento**: é a instrumentação publicada em `223c088` (18/09, `diagnosticarChamadaAnonima`) para deixar recibo do estado da sessão no próximo 42501 de saldos. **Não é código local de outro agente**, como o relatório do Prism descreveu. O evento foi investigado pelo maestro. Fica **sem confiabilidade suficiente**, provavelmente efeito da troca de relógio do emulador, até reaparecer sem mexer no relógio.
