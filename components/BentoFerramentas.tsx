@@ -115,7 +115,7 @@ type BlocoDef = {
 };
 
 const BLOCOS: BlocoDef[] = [
-  { chave: 'livre', tamanho: 'alto', rotulo: 'Livre para Gastar', titulo: 'Veja quanto sobra no mês', texto: 'Contas e cofrinhos já descontados, dividido pelos dias que faltam.', Visual: VisualLivre },
+  { chave: 'livre', tamanho: 'alto', rotulo: 'Livre para Gastar', titulo: 'Veja quanto sobra no mês', texto: 'Saldo do mês menos os cofrinhos, dividido pelos dias que faltam.', Visual: VisualLivre },
   { chave: 'cartao', tamanho: 'padrao', rotulo: 'Cartões', titulo: 'A fatura pelo ciclo', texto: 'Limite usado e compras parceladas mês a mês.', Visual: VisualCartao },
   { chave: 'orcamento', tamanho: 'alto', rotulo: 'Orçamento', titulo: 'Um teto por categoria', texto: 'Veja como os gastos do mês se dividem e defina quanto quer gastar em cada uma.', Visual: VisualOrcamento },
   { chave: 'boletos', tamanho: 'padrao', rotulo: 'Boletos', titulo: 'Contas com vencimento', texto: 'Quantos dias faltam para cada conta.', Visual: VisualBoletos },
