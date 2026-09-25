@@ -219,31 +219,3 @@ Duas decisões da mesma noite completam esta:
   Pessoa fictícia demonstra o uso, mas nunca se apresenta como cliente real ou
   dá depoimento de resultado, conforme CDC/CONAR; seguir a política de conteúdo
   gerado por IA da plataforma.
-
-## Copy and Marketing Guidelines
-
-- **Conceito de dor sem rótulo explícito (decisão do autor em 18/09/2026):**
-  O "apagão financeiro" (a dor de ver o saldo evaporar sem saber onde, gastar
-  no escuro, medo de abrir o extrato, a surpresa com a fatura fechada) é um
-  modelo conceitual interno que define a dor e o inimigo do público, mas
-  **NUNCA DEVE SER NOMEADO EXPLICITAMENTE**. Proibido usar a expressão
-  "apagão financeiro" em qualquer copy externa, anúncio, vídeo, post,
-  carrossel, e-mail ou landing page. Descrever a dor sempre de forma direta,
-  tangível e situacional ("gastar no escuro", "não saber para onde o dinheiro
-  foi", "o saldo que sumiu antes do fim do mês").
-- **Diferencial central permanente:** A **praticidade** de uso (voz, colar
-  o Pix, escanear nota fiscal e saber quanto pode gastar hoje em 2 a 5
-  segundos, sem planilhas e sem conexões bancárias).
-- **Criativos sem rosto do autor nesta fase (decisão de 25/09/2026):** nenhum
-  criativo usa o rosto, a imagem ou a voz do autor. O conceito de fundador
-  falando para a câmera fica fora da aprovação inicial; o Beacon deve propor
-  um substituto antes de qualquer produção.
-- **Produção com IA e prompts por peça (decisão de 25/09/2026):** vídeos podem
-  usar modelos fictícios, narração, imagem e demais elementos gerados pelo
-  conector da ElevenLabs. Todo plano, calendário, roteiro ou briefing traz,
-  para cada peça, prompts prontos de cena/imagem, personagem fictício
-  consistente entre peças, narração/voz e texto na tela. Peça sem prompts é
-  incompleta. Telas do app continuam sendo capturas reais em Dados de exemplo.
-  Pessoa fictícia demonstra o uso, mas nunca se apresenta como cliente real ou
-  dá depoimento de resultado, conforme CDC/CONAR; seguir a política de conteúdo
-  gerado por IA da plataforma.

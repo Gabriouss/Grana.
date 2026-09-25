@@ -4,9 +4,10 @@
 
 O Grana. é um app de organização financeira pessoal. A pessoa registra
 lançamentos, contas, cartões, metas e categorias; pode usar voz, widget Android,
-QR Code, WhatsApp opcional e o Granabô. O acesso comercial é uma assinatura
-processada pela Kiwify; o Grana. não movimenta dinheiro nem conecta contas
-bancárias.
+QR Code e o Granabô. O WhatsApp está desligado por decisão do autor
+(05/09/2026) e não recebe evolução. O acesso comercial é uma assinatura
+processada pela Cakto (mensal ou anual); o Grana. não movimenta dinheiro nem
+conecta contas bancárias.
 
 ## Stack e fronteiras
 
@@ -15,9 +16,11 @@ bancárias.
 - IA: Groq/OpenAI para transcrição; Google Gemini para o Granabô.
 - Operação: Vercel para a web e URL estável do APK; GitHub Actions para CI;
   EAS para builds Android.
-- Pagamento: Kiwify por checkout e webhook autenticado.
+- Pagamento: Cakto, com checkout mensal e anual e o webhook `cakto-webhook`.
+  A Kiwify foi o gateway anterior, trocado em 09/09/2026; `kiwify-webhook`
+  continua na pasta, sem uso.
 
-O cliente usa somente a chave pública do Supabase. Chaves de serviço, Kiwify,
+O cliente usa somente a chave pública do Supabase. Chaves de serviço, Cakto,
 Groq, OpenAI, Gemini, Meta e FCM ficam em secrets de backend ou EAS. O JWT
 identifica o usuário; Edge Functions usam o JWT para RLS e RPCs protegidas.
 
@@ -27,13 +30,16 @@ identifica o usuário; Edge Functions usam o JWT para RLS e RPCs protegidas.
 2. O app tenta vincular compra por e-mail confirmado ou token de ativação.
 3. obter_estado_acesso devolve active, status, access_until e allowed.
 4. O layout protege as abas pelo campo allowed.
-5. Enquanto enforce_subscriptions estiver desligado, a regra de entitlement
-   continua observável, mas não bloqueia globalmente o app.
+5. `enforce_subscriptions` está ligado desde 22/09/2026 (decisão do autor):
+   quem não tem acesso é mandado para a tela de assinar. As contas que
+   existiam na data têm cortesia sem prazo.
 
 ## Riscos e premissas conhecidos
 
 - O primeiro build com google-services.json é necessário para push remoto.
-- O fluxo de pagamento depende do header secreto configurado na Kiwify.
+- O fluxo de pagamento depende do segredo do webhook configurado na Cakto
+  (`CAKTO_WEBHOOK_SECRET`). A Cakto manda o segredo no corpo do JSON, não em
+  header.
 - A quota de IA depende da migration ai_usage_counters estar aplicada antes
   de publicar as Edge Functions correspondentes.
 - A migration inicial de operações de voz é histórica; a migration posterior
