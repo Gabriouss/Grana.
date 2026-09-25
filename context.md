@@ -11021,3 +11021,137 @@ Confirmado pelo maestro: o deploy do `fce9a85` espera o autor liberar a execuç�
 - **Divisão:** o Harbor faz a migration das RPCs que gravam a descrição; o Forge faz o app (há trabalho local sem commit em `app/(app)/credito.tsx` e `__tests__/descricao-pagamento-fatura.cjs`).
 - **Pergunta ao autor:** os pagamentos antigos, já gravados com travessão, devem ser corrigidos no banco?
 - **Não conferido pelo Ledger no código;** relatado pelo maestro.
+
+## 25/09/2026 — M1 — fechamento da rodada de T21, T23, capturas e produção
+
+Pedido do autor: **"conclua o que está pela metade, pause, commite e publique tudo"**.
+O Ledger esperou os estados de Forge, Harbor, Prism, Beacon e Sentinel na pasta
+`E:\Grana-temporarios\2026-09-25-fechamento` e usou `filas-do-maestro.md` como a
+fila oficial do Forge, porque o estado dele dizia "nenhuma tarefa" depois de
+perder a lista. Esta entrada registra o que foi publicado, o que continuou
+aberto e o próximo passo de cada agente. Nenhum segredo, token ou valor da
+conta pessoal do autor foi registrado.
+
+### T21 — retrospectiva soma só caixa (`a23f080`)
+
+- **Sintoma:** a retrospectiva mensal contava compras no crédito como saídas
+  de caixa; isso alterava saídas, saldo, maior despesa, categoria campeã e uso
+  do orçamento, deixando esses números diferentes dos da Início.
+- **Causa:** `lib/monthly-wrapped.ts` filtrava `type === 'out'` sem aplicar a
+  regra `isCreditTx`; o pagamento da fatura já é a saída de caixa e a compra
+  no crédito não pode ser contada uma segunda vez.
+- **Mudança:** `lib/monthly-wrapped.ts` soma só caixa nos capítulos financeiros,
+  mas mantém crédito na contagem de lançamentos e dias; `components/
+  MonthlyWrappedModal.tsx` troca a copy para "foram para esta categoria".
+  `__tests__/retrospectiva-so-caixa.cjs` (módulo real, 7 checagens) entrou no
+  `test:ci`. Commit `a23f080` foi publicado.
+- **Descartado:** remover compras no crédito da contagem de registros. Isso
+  confundiria "quanto dinheiro saiu" com "quantos lançamentos foram feitos".
+- **Verificação:** a guarda nova foi incluída no `test:ci` e o commit foi
+  publicado; não houve nova execução independente do Ledger nesta rodada de
+  fechamento.
+
+### T23 — texto do pagamento de fatura sem travessão (`1270e34`, `b35d086`)
+
+- **Sintoma:** o app e as RPCs gravavam a descrição com travessão e sem o
+  artigo em "Pagamento fatura".
+- **Mudança no cliente:** `app/(app)/credito.tsx` passou a usar o texto sem
+  travessão e com "da"; `__tests__/descricao-pagamento-fatura.cjs` cobre os
+  dois caminhos. Commit `1270e34`.
+- **Mudança no banco:** `supabase/migrations/20260925010000_texto_pagamento_fatura.sql`
+  recria `pagar_fatura_cartao` e `pagar_restante_fatura_cartao` a partir das
+  versões de produção, alterando somente a string; `supabase/schema.sql` e
+  `__tests__/texto-pagamento-fatura.cjs` acompanham. Commit `b35d086`.
+- **Publicação:** inicialmente a migration estava apenas no repositório. O
+  maestro aplicou ambas as migrations da rodada em 25/09, cada uma com HTTP
+  201 e transação própria. Em leitura, `pagar_fatura_cartao` e
+  `pagar_restante_fatura_cartao` gravam "Pagamento da fatura ..." e, no
+  parcial, ", restante"; `ciclo_invalido` foi preservado. O acesso anônimo
+  continua recusado e `authenticated` continua autorizado. O diff dos corpos
+  aplicados contra as versões anteriores mostrou somente a troca da string.
+- **Pendente do autor:** pagamentos antigos permanecem com o texto velho até
+  decisão explícita de reescrevê-los. Nenhuma linha histórica foi alterada.
+
+### Capturas da landing — Prism (`0476282`)
+
+O Prism concluiu o que estava pela metade e publicou `0476282`, que atualiza
+as capturas de web, mobile, notebook e mockup multiplataforma em modo Dados de
+exemplo. O compositor passou a atualizar o notebook com `--notebook`, e
+`lib/exemplo-landing.ts` deixou de marcar as capturas como antigas. `tsc`,
+`test:ci` e a execução do compositor passaram; a primeira CI encontrou
+`EACCES` no cache do npm e passou na repetição com permissão elevada. Não houve
+QA no navegador publicado, emulador ou aparelho. Próximo passo do Prism:
+T24, o estado vazio de Crédito por carteira em
+`app/(app)/credito.tsx:1459-1479`.
+
+### Estado de produção confirmado no fechamento
+
+- `20260925000000_entradas_por_carteira` e
+  `20260925010000_texto_pagamento_fatura` foram aplicadas pelo maestro, com
+  resposta 201 em transações separadas. `entradas_por_carteira` está com
+  `execute` para `anon` recusado e para `authenticated` autorizado.
+- `assistente-financeiro` foi publicado em **v39**, com `updated_at`
+  `2026-09-25T10:25:58Z`, `verify_jwt=true` e o código de `fce9a85`. A sonda
+  sem credencial respondeu 401 da plataforma. O Granabô deixa de divergir do
+  app na regra 20.
+- `enviar-lembretes-habito` continua em v13. Nenhum EAS build foi disparado.
+
+### Estado de fechamento dos agentes
+
+- **Forge:** nenhum código dele ficou pela metade nesta rodada. A fila oficial
+  para a retomada é: T25 (faturas fechadas no resumo da Início), `setBillStatus`
+  sem saída de caixa própria, entradas pela fila offline em todos os pontos
+  listados pelo maestro e tela "precisa de revisão", seletor com total de
+  entradas agora que a RPC está em produção, investigação somente-leitura do
+  cinema gravado três vezes e notificações de fim de semana.
+- **Harbor:** nenhum código ficou pela metade; as duas migrations e o deploy
+  do Granabô foram concluídos pelo maestro. Próximos passos: aguardar a
+  decisão sobre pagamentos antigos e, quando houver nova tarefa, seguir o
+  preflight da regra 11.
+- **Prism:** capturas concluídas e publicadas em `0476282`; próximo passo T24.
+- **Beacon:** copy de fim de semana entregue em
+  `E:\Grana-temporarios\2026-09-24-beacon\copy-fim-de-semana.md`, com a copy
+  do FAQ/bento em `d5e1048`; não há código dele sem commit. Próximo passo:
+  aguardar a decisão sobre lembrete ao meio-dia no sábado e domingo e depois
+  preparar o calendário de postagem; a atualização do catálogo exige novo
+  deploy dos lembretes.
+- **Sentinel:** pausado no T25, com o ambiente limpo e sem folha ou diálogo
+  aberto. Ainda faltam reverificar S9 após `c80d5db`, os quatro painéis com
+  teclado, T13/T22 na reconexão e durante uma sincronização, T23 no bundle e
+  limpar os dados AUDIT autorizados. O resultado do T21 foi entregue ao
+  maestro; T22 permanece corrigido em `0398065`.
+
+### Decisões do autor após o fechamento (25/09/2026)
+
+- A saída do modo automático para aplicar as migrations e publicar o
+  `assistente-financeiro` com `fce9a85` foi feita nesta rodada.
+- **Estorno no cartão:** decisão do autor: "estorno de cartão é só excluir o
+  lançamento". Não há fluxo de estorno a construir; a soma de entradas do
+  seletor continua sem estornos no cartão, como a RPC já faz. Ao retomar,
+  Forge deve primeiro mostrar ao maestro se a voz e o Granabô, ao ouvirem
+  "estorno" citando cartão, devem orientar a excluir a compra; hoje eles abrem
+  a revisão "Estorno no cartão?". Nenhuma mudança foi feita ainda.
+- **Pagamentos antigos:** decisão do autor: "Reescreva". O maestro saiu do
+  modo automático e executou a reescrita em 25/09: 1 lançamento em 1 conta,
+  somente a descrição, para o formato "Pagamento da fatura <cartão>
+  (MM/AAAA)". A conferência posterior encontrou zero registros com o texto
+  antigo e zero com travessão. Nenhum valor nem nome de conta foi registrado.
+  O roteiro operacional foi `E:\Grana-temporarios\2026-09-24-maestro\pagamentos-antigos.cjs`.
+- **Lembrete ao meio-dia no fim de semana:** decisão do autor: "Sim". Ao
+  retomar, Beacon escreve a copy de sábado e domingo, Forge agenda o local e
+  o seletor, e Harbor ajusta a janela do push em
+  `enviar-lembretes-habito`; deve haver um único deploy dos lembretes junto
+  com as mensagens de fim de semana.
+- App Links continua como lembrete futuro do maestro.
+- A troca dos cinco segredos que foram enviados ao EAS continua adiada por
+  decisão anterior do autor; os nomes das variáveis permanecem apenas como
+  referência operacional, nunca os valores.
+
+### Verificação do vault no fechamento
+
+`node scripts/verificar-vault.mjs "G:/Meu Drive/Obsidian/Gabriel/Grana"` foi
+executado após as atualizações. Resultado: 0 links quebrados, 0 notas sem
+entrada, 0 fontes inexistentes e 0 perenes sem `fonte`. O verificador apontou
+2 perenes atrasadas e 20 perenes ainda sem `revisado`; são pendências de
+manutenção do vault, não foram alteradas nesta sessão porque não fazem parte
+do fechamento pedido.
