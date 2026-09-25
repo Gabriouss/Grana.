@@ -797,3 +797,38 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     respondendo às seis perguntas da regra 12, e o maestro repassa ao Ledger.
     Quando o Ledger não estiver no canvas, o maestro delega o registro a outro
     agente, e não o escreve ele mesmo.
+
+20. **"Saldo atual" e "Livre para gastar" usam SÓ o mês vigente. Nunca saldo
+    acumulado de meses anteriores, nunca `initial_balance`.** Decisão do autor
+    em 24/09/2026: "não quero saldo acumulado, quero saldo apenas do mês
+    vigente", e, na mesma noite, "anote isso como uma regra, não deveremos
+    regredir para isso novamente".
+
+    O motivo é a regressão que esta regra desfaz. Em 19/09/2026, o achado A12
+    mostrou que o "Saldo atual" da Início (só o mês) e o seletor de carteira
+    (acumulado) davam dois números diferentes para a mesma palavra. A correção
+    daquele dia, o `867e1b5`, escolheu o lado errado: passou a somar
+    `initial_balance` e todo o histórico. Com histórico importado incompleto,
+    o saldo acumulado ficou muito acima da realidade, e o número que o Grana.
+    mostrava como "saldo" deixou de ter relação com o dinheiro da pessoa. A
+    conta real do autor não tem os valores registrados aqui, de propósito
+    (regra 15).
+
+    As regras que andam junto com esta:
+
+    - **Compra no crédito fica fora do caixa, e a fatura só conta quando é
+      paga**, como saída de caixa no mês do pagamento. Reafirmado pelo autor
+      em 24/09/2026; a proposta de descontar a fatura fechada e ainda não paga
+      foi recusada duas vezes.
+    - **A mesma palavra mostra o mesmo número em todo lugar.** "Saldo" e
+      "Livre para gastar" têm um valor só na Início, no seletor de carteira,
+      nos widgets e no Granabô. É a lição do A12 que continua valendo: o
+      defeito dele não era o cálculo, era haver dois. Corrigir um lado e
+      deixar o outro é a regressão de volta.
+    - **Qualquer mudança nesse cálculo exige pedido explícito do autor na
+      sessão.** Achado de auditoria, sugestão de outro agente ou "parece mais
+      correto contabilmente" não bastam: foi assim que o `867e1b5` entrou.
+    - **O teste de trava desse cálculo não se afrouxa para passar.** Se ele
+      falhar depois de uma mudança, a mudança está errada, ou falta o pedido
+      do autor que a autoriza. Editar a asserção para caber no código novo é o
+      mesmo que apagar esta regra.
