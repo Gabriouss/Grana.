@@ -10642,3 +10642,80 @@ Relatório do Prism: `E:\Grana-temporarios\2026-09-24-prism\relatorio-prism-S10.
 - **Não visto:** nome longo em 100%, e o modo Crédito, que usa o mesmo componente.
 - **Sem confiabilidade suficiente:** o "●" do glifo parece um pouco menor e mais baixo que o ponto de 8 dp das listas. Não foi medido.
 - **Pendente:** reverificação do Sentinel. O relatório do deploy do Harbor (versão, `updated_at`, `verify_jwt`) também ainda não chegou.
+
+## 24/09/2026 — M1 — Deploy das Edge NÃO publicado; contrato da fila offline (`ec5dca3`, migration não aplicada); S9 falhou
+
+### Deploy: nada mudou em produção
+
+Relatório: `E:\Grana-temporarios\2026-09-24-harbor\relatorio-harbor-deploy.md`. Atualiza a seção anterior, que registrava o deploy "em andamento".
+
+- **Pedido:** o autor autorizou o deploy diretamente no terminal do Harbor.
+- **O que aconteceu:** o comando `supabase functions deploy <slug> --use-api` foi **negado pelo classificador de permissões do Claude Code** (modo automático), também no terminal do Harbor. Ele não contornou. O estado relido da Management API depois da tentativa é igual ao de antes:
+
+| Função | Versão | `updated_at` | `verify_jwt` |
+|---|---|---|---|
+| `assistente-financeiro` | v37 | 2026-09-23T21:06:05Z | true |
+| `enviar-lembretes-habito` | v12 | 2026-09-23T21:06:12Z | false |
+
+- **Preflight da regra 11 completo:**
+  - sem drift (os deploys de 23/09 são da M2, depois dos últimos commits de então);
+  - pacotes publicados baixados para retorno (`retorno-*-v37.eszip` e `retorno-*-v12.eszip`, na pasta do Harbor);
+  - nada sem commit em `supabase/functions/` nem no catálogo;
+  - `deno check` limpo nas duas.
+- **O que sobe quando publicar:**
+  - Granabô: `1bfae42`, `37318e5`, `d10a79a`, `a249e96`, `fe8e210`;
+  - lembretes: `4743718`, `bb019dd`, `c577258`, `4902af2`.
+- **Pendente com o autor:** rodar os comandos do relatório (script `deploy.cjs` na pasta do Harbor, que publica só a função nomeada, com `--no-verify-jwt` nos lembretes, e não imprime o token), ou liberar a permissão. Depois disso: reler versão, `updated_at` e `verify_jwt`, e sondar sem gravar (sem JWT no assistente e sem `x-cron-secret` nos lembretes, os dois devem dar 401).
+- **Continua pendente pelo mesmo bloqueio:** a fase 1 das migrations do crédito por ciclo e a remoção do usuário AUDIT na Resend.
+
+### Fila offline: parecer de segurança e contrato de idempotência (`ec5dca3`, NADA aplicado)
+
+Documento: `E:\Grana-temporarios\2026-09-24-harbor\contrato-fila-offline.md`. Pedido: a decisão do autor de pôr todo lançamento na fila offline, com a ressalva de DDoS.
+
+**Parecer:**
+
+- A fila **não dá vantagem a atacante**. Quem tem um JWT já chama o PostgREST direto. A fila não cria endpoint, não amplifica (um item, um pedido) e a chave nova é por usuário.
+- **O risco é do próprio app** (medido no código):
+  - `lib/offline-cache.ts` retenta em intervalo fixo de 30 s, sem espera crescente nem variação aleatória. Depois de uma queda do Supabase, todos os aparelhos voltam alinhados.
+  - Erro permanente na frente da fila (validação, `23514`, `42501`) trava o resto e é retentado para sempre, sem recibo na tela.
+  - Com sucesso, a fila sobe inteira, sem limite por rodada e sem teto de tamanho.
+  - `lib/voice-operations.ts` não para no primeiro erro de rede: com N itens e o servidor fora, faz N pedidos por disparo.
+- **Para chegar a "sem perigo":**
+  1. espera crescente com variação aleatória (base 30 s, teto 15 min);
+  2. no máximo 50 itens por rodada;
+  3. erro permanente vai para uma lista "precisa de revisão", com recibo visível;
+  4. a voz para no primeiro erro de rede;
+  5. teto de 500 itens por conta, com recusa visível e sem descarte por idade;
+  6. a chave de idempotência.
+
+**Contrato de idempotência:**
+
+- A migration `supabase/migrations/20260924230000_idempotencia_fila_offline.sql`, espelhada em `supabase/schema.sql`, cria:
+  - `client_request_id uuid` nulável em `transactions` e `bills`;
+  - `unique (user_id, client_request_id)` **não parcial**, porque o PostgREST não infere índice parcial no `ON CONFLICT` (mesma lição do `fitid`); NULL não colide;
+  - `p_client_request_id uuid default null` como último parâmetro de `adicionar_compra_parcelada`. A chave vai na primeira parcela, e o reenvio devolve a série existente. A assinatura de 10 parâmetros sai, para evitar ambiguidade no PostgREST; a chamada antiga casa pelo default.
+- O APK antigo grava com NULL, como hoje.
+- **Cliente, para o Forge:**
+  - a chave é gerada uma vez ao tocar em salvar, guardada no item da fila, e todo reenvio usa a mesma;
+  - `upsert` com `onConflict: 'user_id,client_request_id'` e `ignoreDuplicates: true`, nunca merge;
+  - recorrência e voz já são idempotentes;
+  - metas ficam para uma fase 2.
+
+**ORDEM OBRIGATÓRIA:**
+
+1. **A migration é aplicada antes de qualquer código que mande a coluna.** Sem ela, o app recebe `PGRST204` e não salva nada, e o `onConflict` sem o índice dá `42P10`. **Isso inclui a WEB: a Vercel publica a partir do `main`**, então um commit do cliente que mande a coluna antes da migration quebra o salvamento na web na hora, sem build nenhuma.
+2. Depois, o cliente com a chave, a espera crescente e a lista de revisão.
+3. Só então um prazo próprio curto em `salvarOuGuardarNoAparelho`.
+
+**Divisão:** o Harbor endurece a sincronização (itens 1 a 5 do parecer). O Forge passa as entradas pela fila **sem ativar o envio da chave antes da migration**.
+
+**Verificação:**
+
+- Reportado pelo Harbor: migration executada num Postgres embutido (PGlite) sobre a função de produção, 20/20; `idempotencia-fila-offline.cjs` com 21 guardas, `schema.sql` igual à migration, mutações derrubando; `corpus-schema-guardas` 79/79; `tsc` verde.
+- O `test:ci` do Harbor teve uma falha de design system, em modais editados por outro agente e ainda sem commit.
+- **Reexecutado pelo Ledger:** `idempotencia-fila-offline.cjs` **21 OK**, e o teste está no `test:ci`.
+- **Não verificado:** corrida entre duas sessões executada de verdade, RLS e PostgREST reais (o PGlite não tem), e carga em produção. **A migration não foi aplicada.**
+
+### S9 falhou depois de `90357dc`
+
+O Sentinel achou o `CategoryPickerModal` sem recuo do topo depois do `90357dc` (T19), que levou os recuos a Onboarding, QR e retrospectiva, mas não a esse modal. O dono é o Prism. Relatado pelo maestro; o Ledger não conferiu no código e nenhuma correção foi registrada ainda.
