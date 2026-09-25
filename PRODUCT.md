@@ -32,8 +32,8 @@ pessoa alimenta, e é exatamente por isso que ele pode oferecer os jeitos
 rápidos de entrada (voz no app, voz no widget, QR de nota) sem pedir
 credencial nenhuma. O mecanismo que um concorrente não copia casualmente:
 entrada por voz/QR alimentando um categorizador automático, mais um cálculo de
-"Livre para Gastar" que desconta contas e parcelas futuras já agendadas
-(sobre o saldo do mês vigente, nunca acumulado; regra 20 do `AGENTS.md`) —
+"Livre para Gastar" do mês vigente, que desconta o que já está guardado em
+cofrinhos e divide pelos dias restantes (regra 20 do `AGENTS.md`) —
 apps que exigem conexão bancária trocam privacidade por conveniência; o
 Grana. entrega a conveniência sem essa troca.
 
@@ -84,7 +84,7 @@ desconectado.
   por higiene de código, para as cópias não divergirem, mas o canal está
   desligado e a função não é republicada.
 - Funcionalidades centrais: lançamentos com valor/categoria/data, cálculo
-  de "Livre para Gastar" (desconta contas e parcelas futuras já agendadas),
+  de "Livre para Gastar" (saldo do mês menos cofrinhos, pelos dias restantes),
   segurança (bloqueio por biometria/senha do aparelho, modo privacidade
   que oculta valores, senha conferida contra vazamentos, bloqueio de
   print em tela com valor).
@@ -136,6 +136,11 @@ Duas decisões da mesma noite completam esta:
   da Início.
 - **O campo "saldo inicial" da carteira sai da tela.** A coluna
   `initial_balance` fica no banco, sem uso.
+- **Boleto e conta seguem o princípio da fatura (25/09/2026).** Conta pendente
+  ou atrasada não desconta nada do Livre para Gastar; ela entra quando é
+  marcada como paga e o dinheiro sai no Pix ou débito. Livre para Gastar =
+  (saldo do mês − guardado em cofrinhos) ÷ dias restantes, e a linha "Contas a
+  vencer" sai do cartão.
 
 ## Brand Commitments
 

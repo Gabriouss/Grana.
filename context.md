@@ -10895,3 +10895,30 @@ Relatório: `E:\Grana-temporarios\2026-09-24-harbor\relatorio-harbor-fila-endure
 - **Pendente:**
   - a tela que lista "precisa de revisão" (Forge; `listarEmRevisao` e `tirarDaRevisao` estão prontos);
   - **`42501` com sessão válida talvez seja temporário** (observação do maestro, o Harbor avalia). Hoje ele está entre os permanentes e manda o item para revisão. O `42501` de `saldos_por_carteira` registrado hoje apareceu com sessão válida depois de mexer no relógio. Se esse caso for temporário, tratá-lo como permanente tira da fila, por engano, um lançamento que subiria sozinho.
+
+## 25/09/2026 — M1 — Regra 20: boleto pendente sai do Livre para gastar; copy do fim de semana entregue
+
+### Decisão do autor: boleto e conta só contam quando pagos
+
+- **Pedido, nas palavras do autor:** "quero que seja removido os valores dos boletos pendentes e atrasados do cálculo do livre para gastar, eles entrarão no cálculo apenas após a saída do dinheiro registrado no pix/débito, após a classificação deles como pagos".
+- **Regra:** Livre para gastar = (saldo do mês − guardado em cofrinhos) ÷ dias restantes. A linha "Contas a vencer" sai do cartão.
+- **Registros ajustados:**
+  - a regra 20 do `AGENTS.md` ganhou o item ao lado de "crédito só conta quando a fatura é paga": o mesmo princípio vale para boleto;
+  - o `PRODUCT.md` e as perenes [[Visão do Produto]] e [[Regras de Sessão e Repositório]] deixam de dizer que o Livre para gastar "desconta contas e parcelas futuras já agendadas".
+- **Estado:** nada mudou no código. Hoje `calcularSafeToSpend` (`lib/safe-to-spend.ts`) ainda desconta `contasFixasPendentes` do mês. A implementação é do Forge (app e widgets) e do Harbor (Granabô).
+- **Efeito colateral a tratar, apontado pelo Ledger:** o FAQ da landing (`app/index.tsx:726`) diz que o Grana. "desconta as contas que ainda vencem no mês". Com a mudança, a frase fica falsa, e precisa mudar junto com o cálculo. Repassado ao maestro. O diferencial de produto descrito no `PRODUCT.md` também mudou de "desconta contas futuras" para "desconta cofrinhos".
+
+### Copy do fim de semana (Beacon)
+
+Arquivo: `E:\Grana-temporarios\2026-09-24-beacon\copy-fim-de-semana.md`. Implementa a decisão de 24/09 (almoço de sexta sem mensagens de fim de semana; sábado e domingo com mensagens próprias).
+
+- **Por dia:**
+  - sexta: até 2 notificações, o almoço sem nenhum `finde-*` e a noite do pool de sexta;
+  - sábado e domingo: 1 por dia, à noite, sem janela de almoço nova.
+- **Ids novos:** `finde-9` a `finde-16`, sem reaproveitar ids antigos (por causa de `mensagens_recentes`).
+- **Pools:** sexta `finde-1`, `5`, `9` e `10`; sábado `finde-2`, `4` e `11` a `14`; domingo `finde-3`, `4`, `6`, `7`, `8`, `15` e `16`.
+- **Os oito `finde-*` antigos ficam.** Há um ajuste opcional em `finde-6`.
+- **Decisão do maestro:** no almoço de sexta, a prioridade de dia útil continua (`saudade`, depois `streak_protecao`, depois o pool geral de almoço).
+- **Pergunta ao autor:** ele também quer lembrete ao meio-dia no sábado e no domingo? Isso mudaria o agendamento e pediria copy própria.
+- **Implementação:** Forge. Os critérios de aceite estão no arquivo. A mudança mexe no seletor compartilhado com a Edge, então sai no mesmo deploy de `enviar-lembretes-habito` (regra 11).
+- **Sem verificação:** tela bloqueada, corte de título e corpo, e os emojis novos no aparelho.
