@@ -392,12 +392,28 @@ export function lembretesDeFatura(
  *
  * Lançamento sem cartão fica fora do total: nenhum cartão responde por ele
  * (decisão do autor de 23/09: órfão fica fora de qualquer total de cartão).
+ *
+ * "A pagar agora" (T25, decisão 1 do autor de 23/09): no mês corrente, cada
+ * cartão também traz a fatura que JÁ FECHOU e ainda tem saldo a pagar. Até
+ * 25/09/2026 o resumo olhava só a aberta, e logo depois do fechamento
+ * mostrava R$ 0,00 justamente quando havia uma fatura inteira para pagar
+ * (print r24-061). O ciclo fechado é o mesmo de `lembretesDeFatura` e da
+ * faixa "Faturas fechadas" da tela de Crédito: o anterior ao aberto. `total`
+ * continua sendo só o "Em aberto"; o fechado soma em `totalAPagarAgora`.
+ * Fatura fechada paga, ou sem compra, fica `null`.
  */
 export type ResumoDeFaturas = {
   noMesCorrente: boolean;
   total: number;
+  totalAPagarAgora: number;
   incerto: boolean;
-  porCartao: { cartao: CreditCard; ciclo: CicloFatura; valor: number; incerto: boolean }[];
+  porCartao: {
+    cartao: CreditCard;
+    ciclo: CicloFatura;
+    valor: number;
+    incerto: boolean;
+    aPagarAgora: { ciclo: CicloFatura; valor: number } | null;
+  }[];
 };
 
 export function resumoDeFaturas(
@@ -406,6 +422,7 @@ export function resumoDeFaturas(
   year: number,
   month: number,
   hojeISO: string,
+  pagamentos: Pick<CreditCardInvoicePayment, 'card_id' | 'year' | 'month' | 'amount'>[] = [],
   datasExtras?: DatasDasCompras
 ): ResumoDeFaturas {
   const noMesCorrente = Number(hojeISO.slice(0, 4)) === year && Number(hojeISO.slice(5, 7)) - 1 === month;
@@ -421,10 +438,21 @@ export function resumoDeFaturas(
       const resultado = cicloDoLancamento(t, cartao, datas);
       return resultado.incerto && Math.abs(deslocamentoEntre(resultado.ciclo, ciclo)) <= 1;
     });
-    return { cartao, ciclo, valor, incerto };
+    let aPagarAgora: { ciclo: CicloFatura; valor: number } | null = null;
+    if (noMesCorrente) {
+      const d = new Date(ciclo.year, ciclo.month - 1, 1);
+      const fechado = { year: d.getFullYear(), month: d.getMonth() };
+      const totalFechado = somaDaFatura(filtrarLancamentosDaFatura(transacoes, cartoes, cartao.id, fechado.year, fechado.month, datasExtras));
+      const pagamento = pagamentos.find((p) => p.card_id === cartao.id && p.year === fechado.year && p.month === fechado.month);
+      const { restante } = situacaoDaFatura(totalFechado, pagamento, null);
+      if (restante > 0) aPagarAgora = { ciclo: fechado, valor: restante };
+    }
+    return { cartao, ciclo, valor, incerto, aPagarAgora };
   });
-  const total = porCartao.reduce((centavos, item) => centavos + Math.round(item.valor * 100), 0) / 100;
-  return { noMesCorrente, total, incerto: porCartao.some((item) => item.incerto), porCartao };
+  const somar = (valores: number[]) => valores.reduce((centavos, v) => centavos + Math.round(v * 100), 0) / 100;
+  const total = somar(porCartao.map((item) => item.valor));
+  const totalAPagarAgora = somar(porCartao.map((item) => item.aPagarAgora?.valor ?? 0));
+  return { noMesCorrente, total, totalAPagarAgora, incerto: porCartao.some((item) => item.incerto), porCartao };
 }
 
 /**

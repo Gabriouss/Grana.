@@ -341,6 +341,29 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
 
   checar('sem cartão, total zero', resumoDeFaturas(txs, [], 2026, 8, HOJE).total, 0);
 
+  /* T25 (print r24-061): a fatura que JÁ FECHOU e não foi paga aparece como
+     "A pagar agora", separada do "Em aberto". Antes o resumo só via a aberta. */
+  checar('fatura fechada sem pagamento entra em "A pagar agora"',
+    corrente.porCartao.map((p) => [p.cartao.id, p.aPagarAgora]),
+    [['c15', { ciclo: { year: 2026, month: 8 }, valor: 100 }], ['c25', null]]);
+  checar('"A pagar agora" soma à parte, sem mexer no total em aberto',
+    [corrente.total, corrente.totalAPagarAgora], [80, 100]);
+  const pagoParte = resumoDeFaturas(txs, [fechaDia15, fechaDia25], 2026, 8, HOJE,
+    [{ card_id: 'c15', year: 2026, month: 8, amount: 40 }]);
+  checar('pagamento parcial deixa só o que falta', pagoParte.porCartao[0].aPagarAgora?.valor, 60);
+  const pagoTudo = resumoDeFaturas(txs, [fechaDia15, fechaDia25], 2026, 8, HOJE,
+    [{ card_id: 'c15', year: 2026, month: 8, amount: 100 }]);
+  checar('fatura fechada paga sai de "A pagar agora"', [pagoTudo.porCartao[0].aPagarAgora, pagoTudo.totalAPagarAgora], [null, 0]);
+  const pagoOutroCartao = resumoDeFaturas(txs, [fechaDia15, fechaDia25], 2026, 8, HOJE,
+    [{ card_id: 'c25', year: 2026, month: 8, amount: 100 }]);
+  checar('pagamento de outro cartão não quita esta fatura', pagoOutroCartao.porCartao[0].aPagarAgora?.valor, 100);
+  checar('fora do mês corrente não há "A pagar agora"',
+    [passado.totalAPagarAgora, passado.porCartao.every((p) => p.aPagarAgora === null)], [0, true]);
+  const viradaDoAno = resumoDeFaturas(
+    [transacao('dez', 'c15', '2026-12-10', 70)], [fechaDia15], 2027, 0, '2027-01-05');
+  checar('em janeiro, a fatura fechada de dezembro vira "A pagar agora"',
+    viradaDoAno.porCartao[0].aPagarAgora, { ciclo: { year: 2026, month: 11 }, valor: 70 });
+
   /* Sem a compra original, a parcela pode estar na fatura estimada pela data
      ou na vizinha. O resumo precisa avisar em ambas, inclusive na que ficou
      com zero e poderia parecer completa. */
@@ -368,6 +391,12 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
   checar('o resumo usa uma fatura por cartão', resumo.includes('resumoDeFaturas(transactions, cards, year, month'), true);
   checar('e avisa quando o número é de outra fatura', resumo.includes('outraFatura'), true);
   checar('e avisa quando uma parcela não tem a compra original', resumo.includes('resumo.incerto'), true);
+  checar('o resumo passa os pagamentos para achar a fatura fechada', resumo.includes('todayISO(), pagamentos ?? [])'), true);
+  checar('e mostra "A pagar agora" só com os pagamentos carregados',
+    [resumo.includes('A pagar agora'), resumo.includes('pagamentos != null && resumo.totalAPagarAgora > 0')], [true, true]);
+  const inicio = readFileSync(join(__dirname, '..', 'app', '(app)', 'index.tsx'), 'utf8');
+  checar('a Início carrega e entrega os pagamentos ao resumo',
+    [inicio.includes('fetchCardInvoicePayments()'), inicio.includes('pagamentos={invoicePayments}')], [true, true]);
 }
 
 /* ── A carteira separa os cartões (P11, 23/09/2026) ─────────────────────── */

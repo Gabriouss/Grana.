@@ -25,7 +25,7 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
-import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, fetchBills, fetchBudgets, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
+import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, fetchBills, fetchBudgets, fetchCardInvoicePayments, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
@@ -94,7 +94,7 @@ import ToggleSwitch from '@/components/ToggleSwitch';
 import { isSameMonth, isCreditTx } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { DEMO_CREDIT_CARDS } from '@/lib/demo-data';
-import type { CreditCard } from '@/lib/types';
+import type { CreditCard, CreditCardInvoicePayment } from '@/lib/types';
 import { useReducedMotion } from '@/lib/motion';
 
 
@@ -114,6 +114,10 @@ export default function InicioScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  /* Pagamentos de fatura: só o resumo de faturas usa, para saber se a fatura
+     que já fechou ainda tem algo "A pagar agora" (T25). `null` = ainda não
+     carregou: sem eles o resumo não afirma dívida que pode já estar paga. */
+  const [invoicePayments, setInvoicePayments] = useState<CreditCardInvoicePayment[] | null>(null);
   const [bills, setBills] = useState<Bill[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -370,6 +374,7 @@ export default function InicioScreen() {
       setBudgets(DEMO_BUDGETS);
       setGoals(DEMO_GOALS);
       setLifetimeXp(DEMO_LIFETIME_XP);
+      setInvoicePayments([]);
       setCreditCards(DEMO_CREDIT_CARDS);
       versaoLancamentosCarregada.current = versaoAoComecar;
       setError(null);
@@ -433,6 +438,18 @@ export default function InicioScreen() {
         if (!vigente()) return;
         if (ehTabelaNovaAusente(erro)) setGoals([]);
         else if (!isLikelyNetworkError(erro)) console.error('[inicio] fetchGoals falhou', erro);
+      }
+      if (!vigente()) return;
+      /* Fora do Promise.all principal pelo mesmo motivo dos cofrinhos: sem os
+         pagamentos, o resumo de faturas esconde o "A pagar agora" (ver o
+         estado), e o resto da Início não pode cair junto. */
+      try {
+        const pagamentos = await fetchCardInvoicePayments();
+        if (!vigente()) return;
+        setInvoicePayments(pagamentos);
+      } catch (erro) {
+        if (!vigente()) return;
+        if (!isLikelyNetworkError(erro)) console.error('[inicio] fetchCardInvoicePayments falhou', erro);
       }
       if (!vigente()) return;
       try {
@@ -1370,6 +1387,7 @@ export default function InicioScreen() {
           /* Crédito segue a carteira do CARTÃO (P11), não o wallet_id gravado
              no lançamento: mesmo filtro da tela de Crédito. */
           transactions={lancamentosDaCarteira(transactions, creditCards, activeWalletId)}
+          pagamentos={invoicePayments}
           year={selectedYear}
           month={selectedMonth}
           onPress={() => router.push('/credito')}
