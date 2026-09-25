@@ -11284,3 +11284,23 @@ adiada, e o plano pago e `Purchase` ficam parados sem cobrança urgente.
 com 0 links quebrados, 0 fontes inexistentes e 0 perenes atrasadas. Restam 20
 perenes sem `revisado`, anteriores à manutenção desta rodada e fora do escopo
 do fechamento.
+
+## 25/09/2026 — M1 — falso positivo do cinema gravado 3x encerrado
+
+O Harbor havia apontado, na análise de saldo de 24/09, três lançamentos de
+cinema no mesmo dia como possível duplicata. O autor confirmou que lançou os
+três cinemas de verdade naquele dia. Portanto, o achado **não procede**: não
+há duplicata a corrigir, não há exclusão a fazer e não há investigação
+somente-leitura adicional para o Forge.
+
+A entrada correspondente da fila oficial em
+`E:\Grana-temporarios\2026-09-25-fechamento\filas-do-maestro.md` foi marcada
+como **FECHADA — NÃO PROCEDE**. O histórico do achado foi preservado para não
+confundir uma confirmação do autor com uma alteração de dados. Nenhum valor,
+nome de conta ou outro dado da conta pessoal foi registrado. O Forge segue
+para o próximo item real da fila, as notificações de fim de semana e do
+meio-dia.
+
+Verificação: a conclusão acima é a confirmação explícita do autor; o Ledger
+não consultou nem alterou os lançamentos da conta e não executou QA do app
+para este falso positivo.
