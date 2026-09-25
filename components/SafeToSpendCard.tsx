@@ -18,7 +18,7 @@ export default function SafeToSpendCard({
   data: SafeToSpend;
   sugestaoArquetipo?: Arquetipo | null;
 }) {
-  const { livrePorDia, livreTotal, saldoAtual, contasFixasPendentes, reservadoEmMetas, diasRestantes } = data;
+  const { livrePorDia, livreTotal, saldoAtual, reservadoEmMetas, diasRestantes } = data;
   const semSaldo = saldoAtual <= 0;
 
   return (
@@ -41,10 +41,9 @@ export default function SafeToSpendCard({
           <Text style={styles.rowKey}>Saldo atual</Text>
           <PrivacyValue><Text style={styles.rowVal}>{formatBRLSaldo(saldoAtual)}</Text></PrivacyValue>
         </View>
-        <View style={styles.row}>
-          <Text style={styles.rowKey}>Contas a vencer este mês</Text>
-          <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(contasFixasPendentes)}</Text></PrivacyValue>
-        </View>
+        {/* Sem "Contas a vencer este mês" (autor, 25/09/2026, regra 20): boleto
+            pendente ou atrasado não desconta do Livre. Ele pesa quando é pago,
+            porque o pagamento vira saída de caixa no Pix/débito. */}
         <View style={styles.row}>
           <Text style={styles.rowKey}>Reservado em cofrinhos</Text>
           <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(reservadoEmMetas)}</Text></PrivacyValue>
