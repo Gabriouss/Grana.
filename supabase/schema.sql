@@ -3541,6 +3541,40 @@ $$;
 revoke all on function public.saldos_por_carteira() from public, anon;
 grant execute on function public.saldos_por_carteira() to authenticated;
 
+-- Total de entradas por carteira, de todo o período (regra 20, 25/09/2026):
+-- migration 20260925000000_entradas_por_carteira.sql. É o número do seletor
+-- de carteira, que deixou de mostrar saldo.
+create or replace function public.entradas_por_carteira()
+returns table (wallet_id uuid, entradas numeric)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+begin
+  if v_user is null or not public.tem_direito_acesso() then
+    raise exception 'Acesso não autorizado' using errcode = '42501';
+  end if;
+
+  return query
+  select t.wallet_id, sum(t.amount)::numeric as entradas
+  from public.transactions t
+  where t.user_id = v_user
+    and t.type = 'in'
+    and coalesce(t.payment_method, '') <> 'credit'
+    and t.card_id is null
+  group by t.wallet_id;
+end;
+$$;
+
+comment on function public.entradas_por_carteira() is
+  'Total de entradas de caixa por carteira, de todo o período (sem saídas, sem estorno no cartão). Rótulo do seletor de carteira; não é saldo (regra 20).';
+
+revoke all on function public.entradas_por_carteira() from public, anon;
+grant execute on function public.entradas_por_carteira() to authenticated;
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- Conquistas desbloqueadas, uma linha por medalha
 --
