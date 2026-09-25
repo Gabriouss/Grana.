@@ -132,7 +132,7 @@ async function perguntar(mensagem, chamada) {
   casa(resumo, /Compras no crédito no período, fora dos gastos acima: R\$ 345,00/, 'resumoMes: crédito à parte');
 
   const livre = await perguntar('quanto posso gastar', tool('livreParaGastar', {}));
-  casa(livre, /saldo R\$ 658,59/, 'livreParaGastar: saldo de caixa, sem compra nem estorno no cartão');
+  casa(livre, /saldo do mês R\$ 658,59/, 'livreParaGastar: saldo de caixa do mês, sem compra nem estorno no cartão');
 
   ok(consultasTx.some((c) => /payment_method/.test(c) && /card_id/.test(c)), 'as consultas trazem payment_method e card_id para a regra');
 

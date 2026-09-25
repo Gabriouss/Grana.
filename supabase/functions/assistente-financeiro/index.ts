@@ -27,7 +27,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    às vezes resolve pra "Alimentação" sozinho, "mercado" não — inconsistente).
    Ver casarPorPalavraChave, mais abaixo. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra, semValorMonetario } from '../_shared/category-keywords.ts';
-import { ehCompraNoCredito } from '../_shared/caixa.ts';
+import { calcularLivreParaGastar, ehCompraNoCredito } from '../_shared/caixa.ts';
 /* Leitura determinística do lançamento escrito. Cópia guardada de
    `lib/heuristics.ts` (ver o cabeçalho do módulo e `__tests__/sync-parser.js`).
    Nada aqui vem do whatsapp-webhook: lançamento não pode depender de uma
@@ -167,6 +167,12 @@ const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 const hojeEmSaoPaulo = (agora = new Date()): string =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora);
 
+/** O mesmo dia como `Date` ao meio-dia, para quem faz conta com getFullYear/
+ *  getMonth/getDate. Com `new Date()` o servidor (UTC) já estava no dia
+ *  seguinte depois das 21h de Brasília: o mês, os dias restantes e a data que
+ *  o modelo lê no prompt saíam errados nessa janela. */
+const hojeLocal = (): Date => new Date(hojeEmSaoPaulo() + 'T12:00:00');
+
 /** '2026-09-06' -> '06/09/2026'. Só para o rótulo lido pelo usuário. */
 function dataBR(isoStr: string): string {
   const [a, m, d] = isoStr.split('-');
@@ -204,7 +210,7 @@ type Periodo = { inicio: string; fim: string; rotulo: string; ciclo?: CicloFatur
  * "nos últimos 15 dias") pra caber em qualquer frase.
  */
 function resolverPeriodo(args: ArgsPeriodo): Periodo | { erro: string } {
-  const hoje = new Date();
+  const hoje = hojeLocal();
 
   // 1. Janela móvel. Atravessa virada de mês e de ano sem tratamento
   //    especial: setDate() com valor negativo já rola pro mês anterior.
@@ -282,7 +288,7 @@ function periodoExplicito(args: ArgsPeriodo): boolean {
 
 /** Resolve a fatura pelo mês de FECHAMENTO, não pelo mês civil da compra. */
 function periodoDaFatura(args: ArgsPeriodo, closingDay: number): Periodo | { erro: string } {
-  const hoje = new Date();
+  const hoje = hojeLocal();
   let year: number;
   let month: number;
 
@@ -601,7 +607,8 @@ const TOOLS = [
       name: 'livreParaGastar',
       description:
         'Retorna quanto o usuário ainda pode gastar no MÊS ATUAL sem comprometer as contas fixas. ' +
-        'É o "livre para gastar": receitas menos gastos menos boletos pendentes. ' +
+        'É o "livre para gastar": entradas menos saídas de caixa do mês, menos o guardado em metas. ' +
+        'Boleto pendente ou atrasado não entra: ele pesa quando é pago. ' +
         'Use quando o usuário perguntar "quanto posso gastar", "quanto tenho livre", "quanto sobra". ' +
         'Só existe para o mês corrente, porque é uma projeção dos dias que ainda faltam. ' +
         'Para saber quanto sobrou num mês já fechado, use resumoMes.',
@@ -1600,63 +1607,36 @@ async function executarFerramenta(
     }
 
     case 'livreParaGastar': {
-      const [txResult, billsResult, goalsResult] = await Promise.all([
+      /* Sempre o mês vigente, no dia de quem pergunta (regra 20): "livre para
+         gastar" não existe para outro período, e o app mostra só este. O
+         período pedido é ignorado de propósito, para o número bater com a
+         Início, os widgets e o seletor de carteira. */
+      const hojeISO = hojeEmSaoPaulo();
+      const [anoH, mesH] = hojeISO.split('-').map(Number);
+      const inicioMes = `${hojeISO.slice(0, 7)}-01`;
+      const fimMes = `${hojeISO.slice(0, 7)}-${pad(new Date(Date.UTC(anoH, mesH, 0)).getUTCDate())}`;
+      /* Boleto pendente ou atrasado NÃO entra (decisão do autor, 25/09/2026):
+         ele pesa quando é marcado como pago, porque aí vira saída de caixa. */
+      const [txResult, goalsResult] = await Promise.all([
         supabase
           .from('transactions')
           .select('type, amount, occurred_on, payment_method, card_id')
           .eq('user_id', userId)
-          .gte('occurred_on', inicio)
-          .lte('occurred_on', fim),
-        supabase
-          .from('bills')
-          .select('amount, due_date, status')
-          .eq('user_id', userId)
-          .eq('status', 'due')
-          .gte('due_date', inicio)
-          .lte('due_date', fim),
+          .gte('occurred_on', inicioMes)
+          .lte('occurred_on', fimMes),
         supabase.from('goals').select('current_amount').eq('user_id', userId),
       ]);
       if (txResult.error) throw txResult.error;
-      if (billsResult.error) throw billsResult.error;
+      if (goalsResult.error) throw goalsResult.error;
 
-      const hoje = new Date();
-      const ano = hoje.getFullYear();
-      const mes = hoje.getMonth();
-
-      /* Saldo de caixa: compra e estorno no cartão ficam de fora, como na
-         Início; o pagamento da fatura (sem cartão) é que sai do caixa. */
-      const saldo = (txResult.data ?? [])
-        .filter((t: { payment_method: string | null; card_id: string | null }) => !ehCompraNoCredito(t))
-        .filter((t: { occurred_on: string }) => {
-          const d = new Date(t.occurred_on + 'T00:00:00');
-          return d.getFullYear() === ano && d.getMonth() === mes;
-        })
-        .reduce(
-          (s: number, t: { type: string; amount: number }) =>
-            s + (t.type === 'in' ? Number(t.amount) : -Number(t.amount)),
-          0
-        );
-
-      const contasPendentes = (billsResult.data ?? []).reduce(
-        (s: number, b: { amount: number }) => s + Number(b.amount),
-        0
-      );
-
-      const metas = (goalsResult.data ?? []).reduce(
-        (s: number, g: { current_amount: number }) => s + Number(g.current_amount),
-        0
-      );
-
-      const livre = Math.max(0, saldo - contasPendentes - metas);
-      const ultimoDia = new Date(ano, mes + 1, 0).getDate();
-      const diasRestantes = Math.max(1, ultimoDia - hoje.getDate() + 1);
-      const porDia = livre / diasRestantes;
-
+      const r = calcularLivreParaGastar(txResult.data ?? [], goalsResult.data ?? [], hojeISO);
+      const rotuloMes = `${dataBR(inicioMes)} a ${dataBR(fimMes)}`;
       return (
-        `Livre para gastar em ${rotulo}: R$ ${formatarBRL(livre)}\n` +
-        `Isso dá R$ ${formatarBRL(porDia)} por dia (${diasRestantes} dias restantes).\n` +
-        `Detalhes: saldo R$ ${formatarBRL(saldo)}, contas pendentes R$ ${formatarBRL(contasPendentes)}, ` +
-        `guardado em metas R$ ${formatarBRL(metas)}.`
+        `Livre para gastar no mês vigente (${rotuloMes}): R$ ${formatarBRL(r.livreTotal)}\n` +
+        `Isso dá R$ ${formatarBRL(r.livrePorDia)} por dia (${r.diasRestantes} dias restantes).\n` +
+        `Detalhes: saldo do mês R$ ${formatarBRL(r.saldoAtual)} (entradas menos saídas de caixa deste mês; compras no crédito ` +
+        `entram quando a fatura é paga, e boletos quando são pagos), guardado em metas R$ ${formatarBRL(r.reservadoEmMetas)}. ` +
+        'O saldo não inclui meses anteriores.'
       );
     }
 
@@ -1730,7 +1710,7 @@ async function executarFerramenta(
        mês de occurred_on. Nenhuma versão simplificada: mesmo cálculo. */
     case 'comprometimentoFuturo': {
       const meses = Math.min(Math.max(Math.round(Number(args.meses ?? 6)) || 6, 1), 24);
-      const hoje = new Date();
+      const hoje = hojeLocal();
 
       const [billsResult, txResult] = await Promise.all([
         supabase.from('bills').select('amount, recurring').eq('user_id', userId).eq('recurring', true),
@@ -1928,7 +1908,7 @@ async function executarFerramenta(
     }
 
     case 'retrospectivaDoMes': {
-      const hojeR = new Date();
+      const hojeR = hojeLocal();
       const refFechado = new Date(hojeR.getFullYear(), hojeR.getMonth() - 1, 1);
       const ano = refFechado.getFullYear();
       const mes = refFechado.getMonth(); // 0-11
@@ -1944,7 +1924,7 @@ async function executarFerramenta(
       const fimJanela = `${ano}-${pad(mes + 1)}-${pad(ultimoDiaMes)}`;
 
       const [txResult, billsResult, budgetsResult] = await Promise.all([
-        supabase.from('transactions').select('type, amount, category, color, recurring, occurred_on')
+        supabase.from('transactions').select('type, amount, category, color, recurring, occurred_on, payment_method, card_id')
           .eq('user_id', userId).gte('occurred_on', inicioJanela).lte('occurred_on', fimJanela),
         supabase.from('bills').select('amount, due_date, status').eq('user_id', userId).eq('status', 'paid')
           .gte('due_date', `${ano}-${pad(mes + 1)}-01`).lte('due_date', fimJanela),
@@ -1955,7 +1935,10 @@ async function executarFerramenta(
       if (budgetsResult.error) throw budgetsResult.error;
 
       type Tx = { type: string; amount: number; category: string; color: string; recurring: boolean; occurred_on: string };
-      const todasTx = (txResult.data ?? []) as Tx[];
+      /* Caixa, como Início e Gráficos: o "saldo" da retrospectiva somava as
+         compras no crédito, e a mesma palavra mostrava outro número (regra 20). */
+      const todasTx = ((txResult.data ?? []) as Array<Tx & { payment_method: string | null; card_id: string | null }>)
+        .filter((t) => !ehCompraNoCredito(t));
       const doMes = todasTx.filter((t) => ehDoMes(t.occurred_on, ano, mes));
       const saidasTx = doMes.filter((t) => t.type === 'out');
       const doMesAnterior = todasTx.filter((t) => ehDoMes(t.occurred_on, anoAnt, mesAnt));
@@ -2220,7 +2203,7 @@ async function carregarMemoria(supabase: SupabaseClient, userId: string, mensage
  * disso muda o modelo, só o que ele lê antes de responder.
  */
 function montarSystemPrompt(memoria: MemoriaAssistente = MEMORIA_VAZIA): string {
-  const hoje = new Date();
+  const hoje = hojeLocal();
   const porExtenso = hoje.toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
