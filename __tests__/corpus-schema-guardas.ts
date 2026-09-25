@@ -369,7 +369,11 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   checar('pagar_fatura: cartão do próprio usuário', fPagar.includes('where c.id = p_card_id and c.user_id = v_user'));
   checar('pagar_fatura: execução revogada de anon',
     pagar.includes('revoke all on function public.pagar_fatura_cartao(uuid, integer, integer, numeric, date, uuid) from public, anon;'));
-  checar('pagar_fatura: schema.sql igual à migration', fPagar !== '' && funcao(sqlLf, 'pagar_fatura_cartao') === fPagar);
+  /* Desde 25/09/2026 a definição mais recente é a 20260925010000 (T23), que
+     copia esta e troca só o texto gravado; __tests__/texto-pagamento-fatura.cjs
+     trava que a diferença é UMA linha. O schema.sql espelha a mais recente. */
+  const fPagarAtual = funcao(lerMig('20260925010000_texto_pagamento_fatura.sql'), 'pagar_fatura_cartao');
+  checar('pagar_fatura: schema.sql igual à migration mais recente', fPagarAtual !== '' && funcao(sqlLf, 'pagar_fatura_cartao') === fPagarAtual);
 
   const trava = lerMig('20260923230200_travar_fechamento_com_historico.sql');
   const fTrava = funcao(trava, 'travar_fechamento_com_historico');

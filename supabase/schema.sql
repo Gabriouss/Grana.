@@ -2101,7 +2101,7 @@ begin
   ) values (
     v_user,
     'out',
-    format('Pagamento fatura — %s (%s/%s)', v_card.name, lpad((p_month + 1)::text, 2, '0'), p_year),
+    format('Pagamento da fatura %s (%s/%s)', v_card.name, lpad((p_month + 1)::text, 2, '0'), p_year),
     p_amount,
     'Cartão de crédito',
     v_card.color,
@@ -2181,7 +2181,7 @@ begin
   ) values (
     v_user,
     'out',
-    format('Pagamento fatura — %s (%s/%s) — restante', v_card.name,
+    format('Pagamento da fatura %s (%s/%s), restante', v_card.name,
       lpad((v_invoice.month + 1)::text, 2, '0'), v_invoice.year),
     p_amount,
     'Cartão de crédito',
