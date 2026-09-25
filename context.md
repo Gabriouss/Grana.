@@ -11155,3 +11155,52 @@ entrada, 0 fontes inexistentes e 0 perenes sem `fonte`. O verificador apontou
 2 perenes atrasadas e 20 perenes ainda sem `revisado`; são pendências de
 manutenção do vault, não foram alteradas nesta sessão porque não fazem parte
 do fechamento pedido.
+
+## 25/09/2026 — M1 — retomada para fechar antes da build de 01/10
+
+Retomada pedida pelo autor em 25/09 para concluir o que falta antes da build
+de 01/10, cuja cota do EAS é compartilhada. A regra operacional desta
+retomada é registrar cada entrega assim que o maestro a repassar; nenhum EAS
+build é disparado nesta etapa documental.
+
+### Já concluído pelo maestro
+
+O pagamento de fatura histórico foi reescrito em 25/09, com autorização do
+autor fora do modo automático: 1 lançamento em 1 conta, somente a descrição,
+para o formato "Pagamento da fatura <cartão> (MM/AAAA)". A conferência depois
+encontrou zero registros com o texto antigo e zero com travessão. Nenhum valor
+ou nome de conta foi registrado.
+
+### Obrigatório antes da build
+
+1. Entradas pela fila offline nos pontos da fila do maestro, incluindo boleto,
+   compras no crédito, parceladas, comprovante colado sem voz e QR da nota,
+   além da tela "precisa de revisão" e da mensagem de `FilaCheiaError`.
+2. Seletor de carteira com total de entradas, rótulo sem "saldo" e campo
+   "saldo inicial" fora da tela; a RPC `entradas_por_carteira` já está em
+   produção.
+3. Notificações de fim de semana e lembrete ao meio-dia no sábado e domingo,
+   com um único deploy da função de lembretes junto com as mensagens novas.
+4. T25: resumo de faturas da Início incluindo a fatura fechada e vencida e
+   separando "A pagar agora" de "Em aberto".
+5. Investigação somente-leitura do cinema gravado três vezes, mostrando o
+   resultado ao maestro antes de qualquer correção.
+6. T24: estado vazio de Crédito por carteira.
+7. Varredura do Sentinel: retomar do estado pausado, reverificar S9, os quatro
+   painéis com teclado, T13/T22, T21 e T25, e limpar os dados AUDIT no fim.
+
+### Opcionais
+
+- App Links, dependente da SHA-256 fornecida pelo autor.
+- Os 25 pacotes `expo-*` apontados pelo `expo-doctor`.
+
+### No dia da build
+
+- aplicar a fase 2 das migrations de crédito (`20260923230300_voz_credito_exige_cartao.sql`
+  e `20260923230400_transacao_credito_exige_cartao.sql`), seguindo a regra 11;
+- rodar `npm run build:preparar` para a transição **1.10.4 → 1.10.5**;
+- fazer o deploy único de `enviar-lembretes-habito`;
+- executar QA no aparelho depois da build.
+
+Até nova autorização explícita, não executar build EAS, aplicar a fase 2,
+fazer deploy dos lembretes ou iniciar QA no aparelho antecipadamente.
