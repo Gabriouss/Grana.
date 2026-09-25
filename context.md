@@ -10966,3 +10966,28 @@ O conjunto foi publicado junto em `origin/main`, e a CI ficou verde em `61de5bb`
 - **`42501` na fila passa a ser temporário**, com autorização do maestro. Resolve a pendência de `ba59800`: com sessão válida, o `42501` não manda mais o item para "precisa de revisão". **Em andamento:** mudança local em `lib/fila-pendente.ts` e `__tests__/fila-endurecida.cjs`, sem commit quando esta entrada foi escrita.
 
 Perenes do vault atualizadas: Estrutura de Telas e Componentes, Cobertura de Testes, Módulos lib, Migrations, Schema do Banco e Edge Functions.
+
+## 25/09/2026 — M1 — `42501` temporário na fila (`c5b6dec`); T22 P1: lançamento offline duplicado ao sincronizar
+
+### `c5b6dec` (Harbor): `42501` deixa de ser permanente
+
+- **Pedido:** a pendência de `ba59800`, autorizada pelo maestro em 25/09.
+- **Causa:** o `42501` vem tanto de uma corrida na renovação do token (como o de `saldos_por_carteira` de 24/09, com a sessão válida) quanto de assinatura vencida. Nos dois casos o lançamento é legítimo e sobe sozinho quando a sessão ou a assinatura voltam. Tratá-lo como permanente o mandava para "precisa de revisão" por engano.
+- **Mudança:** `ehErroPermanente` (`lib/fila-pendente.ts`) fica só com as classes 22 e 23, na fila de lançamentos e na da voz. Junto, o contador de falhas seguidas passa a zerar quando a fila esvazia por outro caminho; antes, a próxima falha já começava na espera longa. Esse defeito foi achado pelo próprio teste novo.
+- **Custo aceito:** conta bloqueada com o app aberto faz no máximo ~4 pedidos por hora.
+- **Reportado pelo Harbor:** `fila-endurecida` 44 checagens, 10 mutações derrubando, `tsc` e `test:ci` verdes.
+- **Reexecutado pelo Ledger:** **44 OK**, rodado numa cópia do commit isolado (`git archive`, fora do repositório). A pasta compartilhada tinha mudanças sem commit do T22 e do T21 que fazem o teste falhar ali, e isso não é defeito do `c5b6dec`.
+- **Sem verificação:** aparelho.
+
+`247282f` e `c5b6dec` foram publicados juntos, com autorização do maestro. A trava "commit pode, push não" valia só para o conjunto do Forge e caiu quando ele foi publicado.
+
+### T22 (P1, Sentinel): lançamento salvo sem rede fica duplicado no banco ao sincronizar
+
+- **Sintoma:** um lançamento guardado sem rede aparece duas vezes no banco depois da reconexão.
+- **Causa, lida pelo maestro no código:** `flushPendingQueue` (`lib/offline-cache.ts`) não tem trava de execução única. É chamada pela carga de Lançamentos e pelo timer de nova tentativa, então duas rodadas podem enviar o mesmo item. E o cliente ainda não envia `client_request_id`, então o banco não tem como recusar o segundo envio, embora a coluna e o índice único estejam em produção desde 24/09.
+- **Correção em andamento (Harbor):** execução única da rodada e chave `client_request_id` gerada ao enfileirar, conforme o contrato de `ec5dca3`. Sem commit quando esta entrada foi escrita; há mudança local em `lib/offline-cache.ts`, `lib/fila-pendente.ts` e `lib/data.ts`.
+- **Consequência para registros anteriores:** o T13 (`03534c8`) já anotava como limite uma "janela curta de item duplicado numa recarga concorrente". O T22 mostra que a duplicata chega ao banco, não só à tela.
+
+### Granabô divergente do app
+
+Confirmado pelo maestro: o deploy do `fce9a85` espera o autor liberar a execução. Até lá, o "Livre para gastar" do Granabô em produção (v38) diverge do app, o que a regra 20 proíbe.
