@@ -200,6 +200,28 @@ const limpar = async () => {
   const r4 = await fila.flushPendingQueue();
   igual([gravacoes.length, r4.remaining, r4.emRevisao], [1, 2, 0], 'erro temporário do servidor para a rodada e mantém tudo');
 
+  /* 42501 é temporário (25/09/2026): corrida de renovação do token ou
+     assinatura vencida. O lançamento é legítimo: fica na fila, sem revisão
+     nem recibo, espera mais a cada falha e sobe sozinho quando o acesso volta. */
+  await limpar();
+  estado.rede = true;
+  estado.sorteio = 1;
+  encherFila(2, 'u-1', 'S');
+  estado.recusar.set('S 0', { code: '42501', message: 'permission denied for function' });
+  const r5 = await fila.flushPendingQueue();
+  igual([gravacoes.length, r5.remaining, r5.emRevisao], [1, 2, 0], '42501: para a rodada e mantém os itens na fila');
+  igual((await pendente.listarEmRevisao()).length, 0, '42501: nada vai para revisão');
+  igual(estado.notificacoes.length, 0, '42501: nenhum recibo de "não foi salvo"');
+  igual(agendados.map((a) => a.ms), [30000], '42501: nova tentativa com espera (1ª falha: 30 s)');
+  agendados.shift().fn();
+  await esperar(40);
+  igual(agendados.map((a) => a.ms), [60000], '42501 de novo: a espera cresce');
+  estado.recusar.delete('S 0');
+  agendados.shift().fn();
+  await esperar(40);
+  igual([await naFila(), gravacoes.filter((g) => !g.recusado).map((g) => g.description)], [0, ['S 0', 'S 1']],
+    'com o acesso de volta, os dois sobem sozinhos');
+
   /* ── 5. Teto de 500 por conta, com aviso e sem descarte ──────────────── */
   await limpar();
   estado.rede = false;
@@ -267,6 +289,18 @@ const limpar = async () => {
   await voz.sincronizarOperacoesVoz();
   igual(vozDisco.size, 1, 'sem recibo publicado, a fala fica na fila');
   vozEstado.falharRecibo = false;
+  vozEstado.recusa = null;
+  vozDisco.clear();
+
+  /* 42501 na fila da voz: temporário, a fala fica e ninguém recebe "revisar". */
+  vozEstado.rede = false;
+  await falar(2, 'S');
+  vozEstado.rede = true;
+  vozEstado.recusa = { alvo: 'S 0', erro: { code: '42501', message: 'permission denied' } };
+  revisoes.length = 0;
+  rpcs.length = 0;
+  await voz.sincronizarOperacoesVoz();
+  igual([rpcs.length, vozDisco.size, revisoes.length], [1, 2, 0], 'voz com 42501: para no primeiro, mantém as duas falas, sem revisão');
   vozEstado.recusa = null;
   vozDisco.clear();
 

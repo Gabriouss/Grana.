@@ -211,6 +211,9 @@ export async function flushPendingQueue(): Promise<{ synced: number; remaining: 
   const userId = await idDoUsuarioLocal();
   const { minhas, dosOutros } = separarPorDono(await getQueue(), userId);
   if (minhas.length === 0) {
+    /* Sem nada para enviar, não há falha em curso: a próxima começa da base,
+       e não da espera longa de uma fila que esvaziou por outro caminho. */
+    falhasSeguidas = 0;
     /* Nada desta conta. Os itens de outra conta ficam onde estão, esperando o
        dono voltar: enviá-los agora gravaria o lançamento de uma pessoa na
        conta de outra, que é metade do achado A1. */

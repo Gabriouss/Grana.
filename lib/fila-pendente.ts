@@ -172,13 +172,21 @@ export function proximaEspera(falhasSeguidas: number, aleatorio: () => number = 
  * O banco recusou este item de um jeito que tentar de novo não resolve?
  *
  * Classes do Postgres 22 (dado inválido) e 23 (restrição: crédito sem cartão,
- * carteira de outra conta, duplicata) e `42501` (sem permissão, conta sem
- * acesso). Rede, prazo do cliente, 5xx, sessão vencida e função fora do cache
- * (`PGRST202`) são temporários: o item fica e a fila tenta de novo.
+ * carteira de outra conta, duplicata). Rede, prazo do cliente, 5xx, sessão
+ * vencida, função fora do cache (`PGRST202`) e `42501` são temporários: o item
+ * fica e a fila tenta de novo, com a espera crescente.
+ *
+ * `42501` (sem permissão) é temporário de propósito (autorizado pelo maestro
+ * em 25/09/2026). O mesmo código sai de uma corrida de renovação do token (o
+ * pedido chega ao banco como `anon`, visto em `saldos_por_carteira` em 24/09
+ * com a sessão local válida) e de uma assinatura vencida. Nos dois casos o
+ * lançamento é legítimo e sobe sozinho quando a sessão ou a assinatura
+ * voltam; mandar para revisão exigiria ação manual por engano. Custo: conta
+ * bloqueada com o app aberto faz no máximo uns 4 pedidos por hora.
  */
 export function ehErroPermanente(erro: unknown): boolean {
   const codigo = String((erro as { code?: unknown } | null)?.code ?? '');
-  return /^(22|23)[0-9A-Z]{3}$/.test(codigo) || codigo === '42501';
+  return /^(22|23)[0-9A-Z]{3}$/.test(codigo);
 }
 
 /** Erro de "a fila chegou ao teto": a tela mostra a mensagem como está. */
