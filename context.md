@@ -10810,3 +10810,37 @@ Substitui o estado "não aplicado / não publicado" das seções anteriores de 2
 A coluna `client_request_id` e os índices já existem em produção. **O código do Forge já pode mandar `client_request_id`, inclusive na web** que a Vercel publica do `main`. A fase 2 do crédito continua proibida antes do APK novo.
 
 Perenes do vault atualizadas: `Migrations`, `Schema do Banco` e `Edge Functions`.
+
+## 24/09/2026 — M1 — S9: painéis de modal medem o topo na própria janela (`c80d5db`), commit próprio de layout
+
+Relatório do Prism: `E:\Grana-temporarios\2026-09-24-prism\relatorio-prism-S9.md`. Atualiza a seção "S9 falhou depois de `90357dc`" acima.
+
+- **Pedido:** correção imediata, pela triagem do autor. O pedido era resolver a classe, não só a tela: Débito e Pix > + > Saída > Categoria > "+ Criar categoria", e digitando com o teclado, o título "Categoria" e o X subiam até a linha do relógio (y≈95, print `r24-013`).
+- **Causa, confirmada no código e no emulador:** seis painéis chamavam `useSheetFlutuante()` no corpo do componente, **fora** do `AppModal`:
+  - `CategoryPickerModal`, `DatePickerModal`, `ItemActionSheet`, `BudgetTemplatesModal`, `FeedbackModal` e `ImportarExtratoModal`.
+  - Fora do modal, `useSafeAreaInsets` lê a janela de baixo, onde o topo é 0 no Android. Com o teclado, o painel ficava só com a margem mínima.
+  - É a mesma classe do `90357dc`, que levou o `InsetsDoModal` só às três telas cheias.
+  - O `maxHeight: '85%'` citado não era a causa.
+  - As folhas que usam o `Sheet` (Nova meta, carteira, cartão, `index.tsx`, `RecuperarSenhaModal`) já liam dentro do modal e foram conferidas sem defeito.
+- **Mudança:** `JanelaFlutuante`, novo em `components/AppModal.tsx`, chama o hook dentro da janela do modal e entrega o resultado por render-prop, aplicado nos seis.
+  - Guarda nova em `__tests__/modais-regressao.cjs`: nenhum arquivo que abre `AppModal` lê o recuo no próprio corpo. Ela falha no código anterior.
+  - `corpus-design-system.ts` passou a aceitar `JanelaFlutuante`.
+  - `categoria-edicao-visivel.cjs` ganhou o dublê do componente novo.
+- **Descartado:**
+  - recuo de topo fixo, que seria medida copiada à mão (regra 14);
+  - dividir cada componente em "de fora" e "de dentro";
+  - voltar o `SafeAreaView` ao `AppModal`, que era a causa do T19.
+- **Deu errado:**
+  - No `90357dc`, o próprio Prism varreu só as telas cheias, e a classe ficou pela metade.
+  - Um `\b` de regex virou caractere de controle ao passar pelo Python, e a primeira mutação passou quando devia falhar; foi corrigido editando o arquivo direto.
+  - A guarda do design system acusou dois painéis, porque só reconhecia o nome do hook, e foi ajustada.
+  - Um toque do script casou com o texto errado.
+- **Verificação:**
+  - Prism no emulador: Criar categoria com teclado (título em y=190), Nova meta com teclado (S40) e Enviar feedback com teclado. Prints `s9-*`, `s40-*` e `feedback-teclado.png` na pasta do Prism.
+  - Prism reportou `tsc` e `test:ci` verdes.
+  - Reexecutado pelo Ledger: `modais-regressao.cjs` OK, com a guarda do S9.
+- **Não vistos no aparelho:** `DatePickerModal`, `ItemActionSheet`, Modelos de orçamento e Importar extrato. O Sentinel reverifica.
+
+**`42501` em `saldos_por_carteira`:** o Sentinel o registrou uma vez, logo depois de mexer no relógio do emulador, com a sessão local válida. Fica **sem confiabilidade suficiente** até reaparecer sem mexer no relógio.
+
+À parte, o Prism viu no LogBox um `console.error` de `lib/data.ts:87` ("42501: chamada chegou ao banco sem usuário"). Ele o atribuiu a código local de outro agente, ainda sem commit, e repassou ao maestro. Pode ou não ter relação com o registro do Sentinel; não foi investigado.
