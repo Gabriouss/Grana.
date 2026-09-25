@@ -11204,3 +11204,37 @@ ou nome de conta foi registrado.
 
 Até nova autorização explícita, não executar build EAS, aplicar a fase 2,
 fazer deploy dos lembretes ou iniciar QA no aparelho antecipadamente.
+
+## 25/09/2026 — M1 — F1 concluído no emulador e App Links encaminhado
+
+### F1 — S9 e quatro painéis fechados no aparelho
+
+O Sentinel concluiu F1 no emulador com teclado de letras e numérico e fonte
+100%. Depois de `c80d5db`, S9 foi aprovado no aparelho: Criar categoria ficou
+com título e X abaixo da barra de status (print `r25-001`). Os quatro painéis
+que o Prism não tinha visto também passaram:
+
+- DatePicker, sem teclado (print `r25-002`);
+- ItemActionSheet (print `r25-004`);
+- Modelos de orçamento (print `r25-006`);
+- Importar extrato (print `r25-011`).
+
+Nenhum dado foi alterado. Os prints estão fora do repositório, em
+`E:\Grana-temporarios\prints`.
+
+F1 fecha S9 e esses quatro itens da lista do Sentinel. Continuam fora deste
+fechamento os itens ainda listados para a varredura: T13/T22, T21, T25 e a
+limpeza final dos dados AUDIT autorizados.
+
+### App Links — handoff ao Harbor
+
+App Links foi encaminhado ao Harbor. O maestro leu a SHA-256 do APK público
+com `apksigner`; o fingerprint registrado para implementação é
+`C9:02:CF:...:17:EF:61` e não é segredo.
+
+O cuidado de fluxo é o PKCE: quem se cadastra na web e abre o link no app não
+tem o `code_verifier` daquela sessão. Nesse caso, o app não deve tentar
+concluir a sessão por deep link; deve mostrar exatamente: **"E-mail confirmado.
+Entre com seu e-mail e senha"**. A implementação e a verificação continuam
+com o Harbor; nenhum link, credencial ou dado de conta foi alterado nesta
+entrega documental.
