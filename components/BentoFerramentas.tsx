@@ -264,7 +264,6 @@ function VisualLivre({ ativo, instantaneo, largura }: PropsVisual) {
   const compacto = largura < 330;
   const linhas: { chave: string; valor: string; forte?: boolean }[] = [
     { chave: 'Saldo atual', valor: emReais(EXEMPLO_LIVRE.saldo) },
-    { chave: 'Contas a vencer este mês', valor: `− ${emReais(EXEMPLO_LIVRE.contas)}` },
     { chave: 'Reservado em cofrinhos', valor: `− ${emReais(EXEMPLO_LIVRE.cofrinhos)}` },
     { chave: `Livre no total · ${EXEMPLO_LIVRE.diasRestantes} dias restantes`, valor: emReais(EXEMPLO_LIVRE.livreNoTotal), forte: true },
   ];
