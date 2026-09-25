@@ -100,6 +100,7 @@ const appModalMod = carregar('components/AppModal.tsx', {
     useSafeAreaInsets: () => insetsDoModal,
   },
   '@/lib/motion': { useReducedMotion: () => false },
+  '@/lib/breakpoints': { useSheetFlutuante: () => ({ janela: 'do modal' }) },
 });
 const modalTree = appModalMod.default({ visible: true, transparent: true, children: 'conteudo' });
 assert.equal(modalTree.type, 'Modal');
@@ -120,3 +121,30 @@ for (const arquivo of ['components/OnboardingModal.tsx', 'components/QrScannerMo
   assert.ok(fonte.includes('<InsetsDoModal>'), `${arquivo} precisa do recuo medido no modal`);
 }
 console.log('OK: telas cheias em modal recuam pelo InsetsDoModal.');
+
+// S9 (24/09/2026): a mesma classe nos painéis que montam o próprio fundo. O
+// useSheetFlutuante lê o recuo do topo; chamado no corpo do componente que
+// abre o AppModal, ele lia a janela de baixo e, com o teclado aberto, o painel
+// "Categoria" subia até a linha do relógio. O JanelaFlutuante chama o hook
+// dentro do modal e entrega o resultado ao conteúdo.
+let janela = null;
+appModalMod.JanelaFlutuante({ children: (j) => { janela = j; return null; } });
+assert.deepEqual({ ...janela }, { janela: 'do modal' });
+
+// Guarda da classe: nenhum arquivo que abre um AppModal lê o recuo no próprio
+// corpo. Quem precisa dele usa InsetsDoModal ou JanelaFlutuante (ou o Sheet).
+function tsx(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const caminho = `${dir}/${e.name}`;
+    if (e.isDirectory()) return tsx(caminho);
+    return e.name.endsWith('.tsx') ? [caminho] : [];
+  });
+}
+const culpados = [...tsx('components'), ...tsx('app')]
+  .filter((arquivo) => arquivo !== 'components/AppModal.tsx')
+  .filter((arquivo) => {
+    const fonte = fs.readFileSync(arquivo, 'utf8');
+    return fonte.includes('<AppModal') && /\b(useSheetFlutuante|useSafeAreaInsets)\(/.test(fonte);
+  });
+assert.deepEqual(culpados, [], `leem o recuo fora da janela do modal: ${culpados.join(', ')}`);
+console.log('OK: nenhum painel em AppModal lê o recuo fora da janela do modal (S9).');

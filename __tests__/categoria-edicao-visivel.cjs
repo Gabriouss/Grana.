@@ -49,7 +49,11 @@ const react = {
   },
 };
 
-const jsx = (type, props) => ({ type, props: props ?? {} });
+// O painel mede a janela pelo JanelaFlutuante do AppModal: executado na hora,
+// como faria o React, para o conteúdo entrar na árvore.
+const janelaDoModal = { aoMedirFundo: () => {}, scrimStyle: {}, sheetStyle: { maxHeight: 400 } };
+function JanelaFlutuante({ children }) { return children(janelaDoModal); }
+const jsx = (type, props) => (type === JanelaFlutuante ? type(props ?? {}) : { type, props: props ?? {} });
 const categorias = ['Alimentação', 'Moradia', 'Transporte', 'Lazer', 'Saúde', 'Assinaturas', 'Salário', 'Investimentos', 'Outros']
   .map((name, i) => ({ id: `p${i}`, name, color: '#111111', is_default: true }))
   .concat({ id: 'c1', name: 'AUDIT QA T18', color: '#222222', is_default: false });
@@ -62,7 +66,7 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
     ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView',
     StyleSheet: { create: (s) => s }, Text: 'Text', TextInput: 'TextInput', View: 'View',
   },
-  './AppModal': { default: 'AppModal' },
+  './AppModal': { __esModule: true, default: 'AppModal', JanelaFlutuante },
   '@/lib/alert': { Alert: { alert: () => {} } },
   '@expo/vector-icons/Ionicons': { default: 'Ionicons' },
   '@/lib/theme': {
@@ -74,7 +78,6 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
     fetchCategories: async () => categorias, seedDefaultCategories: async () => {},
   },
   '@/lib/cache-de-tela': { isLikelyNetworkError: () => false },
-  '@/lib/breakpoints': { useSheetFlutuante: () => ({ aoMedirFundo: () => {}, scrimStyle: {}, sheetStyle: { maxHeight: 400 } }) },
   '@/lib/demo-context': { useDemo: () => ({ isDemoMode: false }) },
   '@/lib/motion': { useReducedMotion: () => reduzir },
   '@/lib/limits': { LIMITS: { category: 30 } },

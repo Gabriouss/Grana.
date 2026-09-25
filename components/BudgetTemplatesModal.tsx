@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import AppModal from './AppModal';
+import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
@@ -16,7 +16,6 @@ import { BUDGET_TEMPLATES, type BudgetTemplate } from '@/lib/heuristics';
 import { CATEGORIES } from '@/lib/types';
 import { parseAmount, formatMoneyInput, formatBRL } from '@/lib/format';
 import { upsertBudgetsBatch } from '@/lib/data';
-import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
@@ -42,7 +41,6 @@ export default function BudgetTemplatesModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
-  const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const [income, setIncome] = useState('');
   /* Nenhum modelo vem marcado: o ✓ no primeiro, antes de qualquer toque,
      parecia dizer que ele já estava aplicado. */
@@ -115,6 +113,7 @@ export default function BudgetTemplatesModal({
 
   return (
     <AppModal visible={visible} transparent onRequestClose={fechar}>
+      <JanelaFlutuante>{({ aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle }) => (
       <Pressable style={[styles.modalScrim, scrimStyle]} onLayout={aoMedirFundo} onPress={fechar}>
         {/* Já tem ScrollView próprio para a lista de templates, então só
             precisa se afastar do teclado. */}
@@ -210,6 +209,7 @@ export default function BudgetTemplatesModal({
           </AppPressable>
         </AccessibleModalPanel>
       </Pressable>
+      )}</JanelaFlutuante>
     </AppModal>
   );
 }

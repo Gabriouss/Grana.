@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { mensagemErro } from '@/lib/erros';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import AppModal from './AppModal';
+import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
@@ -11,7 +11,6 @@ import { escolherArquivoDeExtrato } from '@/lib/escolher-arquivo';
 import { LIMITS } from '@/lib/limits';
 import { formatDateLabel, formatMoney } from '@/lib/format';
 import { addTransactionsBatch, fetchCreditCards } from '@/lib/data';
-import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import AppPressable from './AppPressable';
@@ -69,7 +68,6 @@ export default function ImportarExtratoModal({
   const { isDemoMode } = useDemo();
   const { activeWallet, wallets } = useWallet();
   const keyboardHeight = useKeyboardHeight();
-  const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
 
   const [textoColado, setTextoColado] = useState('');
   const [linhas, setLinhas] = useState<LinhaImportavel[]>([]);
@@ -262,6 +260,7 @@ export default function ImportarExtratoModal({
 
   return (
     <AppModal visible={visible} transparent onRequestClose={fechar}>
+      <JanelaFlutuante>{({ aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle }) => (
       <Pressable style={[styles.modalScrim, styles.modalScrimCentered, scrimStyle]} onLayout={aoMedirFundo} onPress={fechar}>
         {/* A prévia usa FlatList, então esta folha não entra no <Sheet> (que
             rolaria por fora); aqui basta afastar o conteúdo do teclado. */}
@@ -445,6 +444,7 @@ export default function ImportarExtratoModal({
           )}
         </AccessibleModalPanel>
       </Pressable>
+      )}</JanelaFlutuante>
     </AppModal>
   );
 }

@@ -311,12 +311,13 @@ for (const familia of unicas) {
  * de gestos do Android, e a de Gerenciar categorias. Toda janela de ação do
  * app flutua centralizada, em qualquer largura.
  *
- * Quem centraliza é `useSheetFlutuante` (lib/breakpoints.ts), direto ou por
- * dentro de `components/Sheet.tsx`. A guarda então é: arquivo que desenha um
+ * Quem centraliza é `useSheetFlutuante` (lib/breakpoints.ts), direto, por
+ * dentro de `components/Sheet.tsx` ou pelo `JanelaFlutuante` do AppModal, que
+ * chama o hook dentro da janela do modal (S9, 24/09/2026). A guarda então é: arquivo que desenha um
  * fundo escurecido colando o painel embaixo precisa passar por um dos dois,
  * senão ficou de fora da varredura. */
 {
-  const centralizadores = ['useSheetFlutuante', "from './Sheet'", "from '@/components/Sheet'", '<Sheet'];
+  const centralizadores = ['useSheetFlutuante', '<JanelaFlutuante', "from './Sheet'", "from '@/components/Sheet'", '<Sheet'];
   const scrimAncorado = /[Ss]crim\w*:\s*\{[^}]*justifyContent:\s*'flex-end'/;
   for (const caminho of [...arquivos('components'), ...arquivos('app')]) {
     const src = semComentarios(readFileSync(caminho, 'utf8'));

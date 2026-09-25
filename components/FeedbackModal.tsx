@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { mensagemErro } from '@/lib/erros';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import AppModal from './AppModal';
+import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { LIMITS } from '@/lib/limits';
 import { enviarFeedback, type FeedbackType } from '@/lib/feedback';
-import { useSheetFlutuante } from '@/lib/breakpoints';
 import { useDemo } from '@/lib/demo-context';
 import { hapticTap } from '@/lib/haptics';
 import AppPressable from './AppPressable';
@@ -32,7 +31,6 @@ export default function FeedbackModal({
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
-  const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const [tipo, setTipo] = useState<FeedbackType>('suggestion');
   const [rating, setRating] = useState<number | null>(null);
   const [message, setMessage] = useState('');
@@ -84,6 +82,7 @@ export default function FeedbackModal({
 
   return (
     <AppModal visible={visible} transparent onRequestClose={handleClose}>
+      <JanelaFlutuante>{({ aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle }) => (
       <Pressable style={[styles.modalScrim, scrimStyle]} onLayout={aoMedirFundo} onPress={handleClose}>
         <AccessibleModalPanel ativo={visible} onClose={handleClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
@@ -193,6 +192,7 @@ export default function FeedbackModal({
           </AppPressable>
         </AccessibleModalPanel>
       </Pressable>
+      )}</JanelaFlutuante>
     </AppModal>
   );
 }

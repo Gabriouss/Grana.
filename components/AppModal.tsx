@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Modal, Platform, type ModalProps } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
 import { useReducedMotion } from '@/lib/motion';
+import { useSheetFlutuante } from '@/lib/breakpoints';
 
 /**
  * Único ponto de entrada para modais animados do produto. A preferência de
@@ -56,4 +57,20 @@ export default function AppModal({
  */
 export function InsetsDoModal({ children }: { children: (insets: EdgeInsets) => ReactNode }) {
   return <>{children(useSafeAreaInsets())}</>;
+}
+
+/**
+ * `useSheetFlutuante` medido na janela do modal, para painéis que montam o
+ * próprio fundo escurecido em vez de usar o `Sheet`. O hook lê o recuo do
+ * topo; chamado no corpo do componente que abre o `AppModal`, ele lê a janela
+ * de baixo, onde o topo vem zero no Android, e com o teclado aberto o painel
+ * subia até a linha do relógio (S9, 24/09/2026). Aqui dentro ele lê a janela
+ * certa. O `Sheet` não precisa disto: ele já roda dentro do `AppModal`.
+ */
+export function JanelaFlutuante({
+  children,
+}: {
+  children: (janela: ReturnType<typeof useSheetFlutuante>) => ReactNode;
+}) {
+  return <>{children(useSheetFlutuante())}</>;
 }

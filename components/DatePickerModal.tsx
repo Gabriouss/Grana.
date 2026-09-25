@@ -5,10 +5,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import AppModal from './AppModal';
+import AppModal, { JanelaFlutuante } from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
-import { useSheetFlutuante } from '@/lib/breakpoints';
 import AppPressable from './AppPressable';
 import AccessibleModalPanel from './AccessibleModalPanel';
 
@@ -149,9 +148,9 @@ export default function DatePickerModal({
     });
   }
 
-  const { aoMedirFundo, scrimStyle, sheetStyle } = useSheetFlutuante();
   return (
     <AppModal visible={visible} transparent onRequestClose={onClose}>
+      <JanelaFlutuante>{({ aoMedirFundo, scrimStyle, sheetStyle }) => (
       <Pressable style={[styles.modalScrim, scrimStyle]} onLayout={aoMedirFundo} onPress={onClose}>
         <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, sheetStyle]}>
           <View style={styles.sheetHeader}>
@@ -256,6 +255,7 @@ export default function DatePickerModal({
           </View>
         </AccessibleModalPanel>
       </Pressable>
+      )}</JanelaFlutuante>
     </AppModal>
   );
 }
