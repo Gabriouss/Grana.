@@ -58,6 +58,128 @@ no `context.md`.
 
 ---
 
+# PASSO A PASSO — instalar o Jev (TypeSafe AI) na M1, executado pelo maestro do Maestri
+
+> **Pedido do autor em 25/09/2026**, numa sessão na nuvem: "documente no início
+> do contexto um passo-a-passo para o maestro do maestri executar os comandos
+> para instalação", e "vou instalar lá na M1". Quando a instalação estiver
+> feita e conferida, troque este bloco por uma linha dizendo quem instalou,
+> quando e o resultado, e registre o detalhe numa entrada datada.
+
+**O que é e para que serve aqui.** O Jev é um modelo da TypeSafe AI que não
+conversa nem escreve código. Ele recebe um texto e uma pergunta com opções
+fechadas e devolve a opção escolhida, com a probabilidade de cada uma. Neste
+projeto ele entra como **auxiliar dos agentes (Claude e Codex)**, e **não
+dentro do Grana.**: decisão do autor em 25/09/2026. O uso começa pela
+conferência de copy contra as regras do projeto (travessão, "não é X, é Y",
+"apagão financeiro" dito de outro jeito, promessa que o app não cumpre,
+notificação que presume gasto).
+
+**Exceção à regra 19, autorizada pelo autor para esta instalação.** A regra 19
+diz que o terminal maestro não executa trabalho. Aqui o autor pediu que o
+maestro execute os comandos, porque a instalação é da máquina e vale para todos
+os agentes. A exceção vale só para os passos abaixo. O registro do resultado
+continua sendo do Ledger.
+
+**Fonte oficial.** A documentação da TypeSafe: `https://docs.typesafe.ai/agent-skill`
+e `https://docs.typesafe.ai/introduction/quickstart`. O repositório oficial da
+skill é `github.com/typesafe-ai/skills`. Os comandos abaixo foram copiados de
+lá por uma sessão na nuvem que **não conseguiu abrir** nem a documentação nem o
+GitHub (rede bloqueada); vieram do que o buscador leu das páginas. Por isso o
+passo 1 existe.
+
+**NÃO instale** nenhum destes, que são de terceiros e rodariam na máquina com o
+mesmo acesso dos agentes, `.env` incluído: `itsmostafa/typesafe-mcp`,
+`MattiooFR/mcp-server-jev`, `FrancoisChastel/jev-code`,
+`KHAEntertainment/jev-skill`, `liatrio-labs/jev-skills`. Nenhum MCP oficial
+foi encontrado.
+
+## Passos
+
+**0. Pré-condição: este bloco precisa estar na `main`.** Ele foi escrito na
+branch `claude/cool-einstein-c63bq0` (PR #5). Se a M1 não o encontra depois de
+`git pull`, o PR ainda não foi mesclado.
+
+**1. Conferir a fonte antes de instalar.** Abrir no navegador
+`https://docs.typesafe.ai/agent-skill` e confirmar que os comandos dos passos 4
+e 5 são os mesmos que estão lá. Abrir `https://github.com/typesafe-ai` e
+confirmar que a organização é a que o site `typesafe.ai` indica. Se algo
+divergir, **pare** e avise o autor. Vale o mesmo cuidado que se teve com o
+plugin do Codex (regra 16).
+
+**2. A chave de API: quem cria e cadastra é o autor, não o maestro.**
+
+- O autor cria a chave na conta dele em `typesafe.ai`.
+- O autor grava a chave como variável de ambiente **do usuário do Windows**,
+  com o nome `TYPESAFE_API_KEY`. Pode ser pelo painel "Variáveis de ambiente"
+  do Windows ou, num PowerShell dele, com
+  `[Environment]::SetEnvironmentVariable('TYPESAFE_API_KEY', '<valor>', 'User')`.
+- **A chave nunca passa por um agente.** Não colar em chat do Claude, do Codex
+  ou do Maestri, não escrever no `.env` do repositório, no
+  `.claude/settings*.json`, no vault nem em registro (regras 12 e 15).
+- Depois disso, **feche e reabra o Maestri**: terminal aberto antes não
+  enxerga variável nova.
+
+**3. Conferir que a chave existe, sem ler o valor.** No PowerShell:
+
+    if ($env:TYPESAFE_API_KEY) { 'TYPESAFE_API_KEY definida' } else { 'TYPESAFE_API_KEY ausente' }
+
+Se sair "ausente", pare e avise o autor. Não imprima nem copie o valor.
+
+**4. Claude Code.** Num PowerShell, fora de qualquer sessão do Claude:
+
+    claude plugin marketplace add typesafe-ai/skills
+    claude plugin install typesafe@typesafe-ai
+
+- O plugin entra no escopo `user`, então vale para **todos** os projetos e
+  todos os agentes Claude da M1, como o plugin do Codex (regra 16).
+- Nas sessões do Claude já abertas, rode `/reload-plugins`, ou reinicie os
+  agentes.
+- Uso: `/typesafe:typesafe-ai`.
+
+**5. Codex.** Em `E:\GranaPonto`:
+
+    npx skills add typesafe-ai/skills --skill typesafe-ai
+
+- O comando pergunta para qual agente instalar: escolha o Codex.
+- É o mesmo instalador das outras skills do projeto. Ele pode alterar arquivos
+  versionados (`skills-lock.json`, `.agents/`, `.claude/skills/`).
+- Confira com `git status`. Se mudou algo, é um commit próprio, com assunto
+  dizendo que a skill do Jev entrou (regra 10: sem branch, sem stash).
+
+**6. Teste sem dado do projeto.** Peça a um agente Claude, com a skill
+carregada, uma pergunta inventada e inofensiva. Exemplo: "use o Jev para dizer
+se a frase 'Saldo do mês atualizado' contém travessão: sim ou não". Deve voltar
+uma resposta tipada, com probabilidade.
+
+Se der erro de chave, volte ao passo 3. Se der erro de rede, anote e avise o
+autor.
+
+**7. Registrar.** O maestro repassa ao Ledger, que registra na nota da sessão e
+numa entrada do `context.md`: o que foi instalado (versão do plugin, se
+aparecer), onde, o resultado do teste, e se o passo 5 mudou arquivo
+versionado. **Nunca o valor da chave.**
+
+## Regras de uso depois de instalado
+
+- **O que o Jev devolve é hipótese, não veredito,** como o Codex (regra 16).
+  Quem conclui é o agente, conferindo no código ou no texto.
+- **Mande só o trecho que está sendo julgado.** Nunca a sessão inteira,
+  conteúdo do `.env`, nota do vault, `Feedbacks/`, `Screenshots/` ou dado de
+  conta real. O serviço fica nos EUA, e a política da TypeSafe não promete
+  prazo fixo de apagamento.
+- **Não serve de trava das regras duras.** `eas build`, deploy, `git init` e
+  `push --force` continuam barrados por regra e permissão, que não erram. O
+  Jev é probabilístico.
+- **A M2 não recebe nada por `git pull`.** Se o autor quiser o Jev lá, os
+  passos 1 a 6 se repetem na M2.
+- **Para desfazer:** `claude plugin uninstall typesafe@typesafe-ai` e
+  `claude plugin marketplace remove typesafe-ai`. No Codex, remova a skill pelo
+  mesmo `npx skills` (veja `npx skills --help`) e reverta os arquivos
+  versionados com um commit.
+
+---
+
 # 23/09/2026 (M2) — pendências do Supabase publicadas
 
 Pedido do autor: usar o acesso temporário fornecido nesta sessão para “alterar
