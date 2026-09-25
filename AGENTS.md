@@ -820,6 +820,14 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       paga**, como saída de caixa no mês do pagamento. Reafirmado pelo autor
       em 24/09/2026; a proposta de descontar a fatura fechada e ainda não paga
       foi recusada duas vezes.
+    - **O mesmo princípio vale para boleto e conta.** Decisão do autor em
+      25/09/2026: "quero que seja removido os valores dos boletos pendentes e
+      atrasados do cálculo do livre para gastar, eles entrarão no cálculo
+      apenas após a saída do dinheiro registrado no pix/débito, após a
+      classificação deles como pagos". Conta pendente ou atrasada não desconta
+      nada; ela entra quando é marcada como paga e vira saída de caixa. A
+      fórmula fica: Livre para gastar = (saldo do mês − guardado em cofrinhos)
+      ÷ dias restantes, e a linha "Contas a vencer" sai do cartão.
     - **A mesma palavra mostra o mesmo número em todo lugar.** "Saldo" e
       "Livre para gastar" têm um valor só na Início, nos widgets e no
       Granabô. É a lição do A12 que continua valendo: o defeito dele não era
