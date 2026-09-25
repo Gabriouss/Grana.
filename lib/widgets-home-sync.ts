@@ -1,6 +1,5 @@
 import { fetchBills, fetchTransactions } from './data';
 import { fetchGoals } from './goals';
-import { fetchWallets } from './wallets';
 import { montarSnapshotWidgets } from './widgets-home-snapshot';
 import {
   atualizarSnapshot,
@@ -39,16 +38,14 @@ export function sincronizarWidgetsHome(userId: string, privacyHidden: boolean): 
   garantirUsuario(userId);
   definirPrivacidade(privacyHidden);
 
-  return Promise.all([fetchTransactions(), fetchBills(), fetchGoals(), fetchWallets()])
-    .then(([transactions, bills, goals, wallets]) => {
+  return Promise.all([fetchTransactions(), fetchBills(), fetchGoals()])
+    .then(([transactions, bills, goals]) => {
       if (
         geracaoDestaBusca !== geracao ||
         usuarioAtual !== userId ||
         numeroDestaBusca !== numeroDaBusca
       ) return false;
-      // O widget é sempre "Total": soma o saldo inicial de todas as carteiras.
-      const saldoInicial = wallets.reduce((soma, w) => soma + Number(w.initial_balance || 0), 0);
-      atualizarSnapshot(montarSnapshotWidgets({ userId, transactions, bills, goals, privacyHidden, saldoInicial }));
+      atualizarSnapshot(montarSnapshotWidgets({ userId, transactions, bills, goals, privacyHidden }));
       return true;
     })
     .catch(() => false);

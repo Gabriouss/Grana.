@@ -1,71 +1,72 @@
-import type { Bill, Goal, Transaction } from './types';
+import { isCreditTx } from './transaction-rules';
+import type { Goal, Transaction } from './types';
 
 export type SafeToSpend = {
   saldoAtual: number;
-  contasFixasPendentes: number;
   reservadoEmMetas: number;
   diasRestantes: number;
   livreTotal: number;
   livrePorDia: number;
 };
 
-/**
- * Saldo acumulado de caixa: saldo inicial da(s) carteira(s) em escopo mais
- * todo o fluxo já lançado, sem recorte de mês — a MESMA conta que o seletor
- * de carteira mostra (`lib/wallets.ts::calcularSaldosWallets`).
- *
- * Até 19/09/2026 esta função somava só o mês corrente, sem saldo inicial.
- * Quem tinha dinheiro guardado de antes (ou uma carteira criada com saldo
- * inicial) via o seletor de carteira dizer um número e o "Livre para gastar"
- * dizer outro para a MESMA carteira, na mesma tela — duas contas diferentes
- * para a palavra "saldo" (achado A12 da auditoria no emulador). Quem chama
- * já filtra crédito antes (compra no crédito não é saída de caixa até a
- * fatura ser paga), então esta função só soma o que já é caixa de verdade.
- */
-export function calcularSaldoAtual(transactions: Transaction[], saldoInicial: number): number {
-  return (
-    saldoInicial +
-    transactions.reduce((soma, t) => soma + (t.type === 'in' ? Number(t.amount) : -Number(t.amount)), 0)
+/* ── Regra 20 do AGENTS.md ────────────────────────────────────────────────
+   "Saldo atual" e "Livre para gastar" usam SÓ o mês vigente: nunca saldo
+   de meses anteriores, nunca `initial_balance` (decisão do autor em
+   24/09/2026: "não quero saldo acumulado, quero saldo apenas do mês
+   vigente"). O `867e1b5` (19/09, achado A12) tinha feito o contrário, e com
+   histórico importado incompleto o "saldo" ficou sem relação com o dinheiro
+   da pessoa. A lição do A12 continua: a palavra "saldo" tem um número só, e
+   ele sai daqui para a Início e para os widgets.
+
+   Compra no crédito fica fora do caixa; a fatura entra como saída no mês em
+   que é paga (a saída do pagamento não é crédito). Boleto pendente ou
+   atrasado também fica fora (autor, 25/09/2026): ele pesa quando é marcado
+   pago, porque `pagar_conta` grava a saída de caixa e `reabrir_conta` a
+   apaga, então o valor nunca conta duas vezes nem nenhuma. Qualquer mudança nesta
+   conta exige pedido explícito do autor, e a trava
+   `__tests__/regra-20-saldo-do-mes.cjs` não se afrouxa para passar. */
+
+function chaveDoMes(hoje: Date): string {
+  return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Lançamentos de CAIXA (sem crédito) com data dentro do mês de `hoje`. */
+export function transacoesDeCaixaDoMes(transactions: Transaction[], hoje: Date = new Date()): Transaction[] {
+  const mes = chaveDoMes(hoje);
+  return transactions.filter(
+    (t) => !isCreditTx(t) && typeof t.occurred_on === 'string' && t.occurred_on.slice(0, 7) === mes
   );
 }
+
+/** Entradas menos saídas de caixa do mês vigente. */
+export function calcularSaldoAtual(transactions: Transaction[], hoje: Date = new Date()): number {
+  return transacoesDeCaixaDoMes(transactions, hoje).reduce(
+    (soma, t) => soma + (t.type === 'in' ? Number(t.amount) : -Number(t.amount)),
+    0
+  );
+}
+
 function diasRestantesNoMes(hoje: Date): number {
   const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
   return Math.max(1, ultimoDia - hoje.getDate() + 1);
 }
 
 /**
- * Livre/dia = (saldo acumulado − contas pendentes do mês − total guardado em
- * cofrinhos) / dias restantes. É a fonte única para a Home e os widgets.
- *
- * `saldoInicial` é a soma de `initial_balance` das carteiras em escopo (uma
- * carteira selecionada, ou todas quando a visão é "Total") — sem parâmetro
- * padrão de propósito: um valor esquecido vira 0 em silêncio, e silêncio
- * aqui é exatamente o defeito que gerou o achado A12.
+ * Livre/dia = (saldo do mês − total guardado em cofrinhos) / dias restantes.
+ * Sem boletos (ver acima). Fonte única para a Início e os widgets.
  */
 export function calcularSafeToSpend(
   transactions: Transaction[],
-  bills: Bill[],
   goals: Goal[],
-  saldoInicial: number,
   hoje: Date = new Date()
 ): SafeToSpend {
-  const ano = hoje.getFullYear();
-  const mes = hoje.getMonth();
-  const saldoAtual = calcularSaldoAtual(transactions, saldoInicial);
-  const contasFixasPendentes = bills
-    .filter((b) => b.status === 'due')
-    .filter((b) => {
-      const d = new Date(b.due_date + 'T00:00:00');
-      return d.getFullYear() === ano && d.getMonth() === mes;
-    })
-    .reduce((soma, b) => soma + Number(b.amount), 0);
+  const saldoAtual = calcularSaldoAtual(transactions, hoje);
   const reservadoEmMetas = goals.reduce((soma, goal) => soma + Number(goal.current_amount), 0);
   const diasRestantes = diasRestantesNoMes(hoje);
-  const livreTotal = Math.max(0, saldoAtual - contasFixasPendentes - reservadoEmMetas);
+  const livreTotal = Math.max(0, saldoAtual - reservadoEmMetas);
 
   return {
     saldoAtual,
-    contasFixasPendentes,
     reservadoEmMetas,
     diasRestantes,
     livreTotal,

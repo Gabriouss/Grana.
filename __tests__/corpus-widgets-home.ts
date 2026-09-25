@@ -95,7 +95,7 @@ conferir('ignora boletos pagos', selecionarProximoCompromisso([bill({ id: 'pago'
   conferir('a lista respeita o teto, e o total conta todas', muitos.itens.length === LIMITE_COMPROMISSOS && muitos.total === 20, muitos.total);
 
   const snap = montarSnapshotWidgets({
-    userId: 'u1', transactions: [], goals: [], privacyHidden: false, hoje: dia19, saldoInicial: 0,
+    userId: 'u1', transactions: [], goals: [], privacyHidden: false, hoje: dia19,
     bills: [bill({ id: 'agosto-atrasado', due_date: '2026-08-15' }), bill({ id: 'setembro-25', due_date: '2026-09-25' })],
   });
   conferir('o snapshot leva a lista e o total', snap.commitments.length === 2 && snap.commitmentsCount === 2, snap.commitments);
@@ -122,39 +122,41 @@ const snapshot = montarSnapshotWidgets({
   goals: [goal({ id: 'meta', current_amount: 100, target_amount: 1000 })],
   privacyHidden: true,
   hoje,
-  saldoInicial: 0,
   updatedAt: '2026-09-04T15:00:00.000Z',
 });
 conferir('contrato versionado', snapshot.version === 1);
 conferir('preserva modo privacidade', snapshot.privacyHidden === true);
-conferir('não desconta compra no crédito do caixa', snapshot.safeToSpend.livreTotal === 600, snapshot.safeToSpend);
-conferir('usa total de todas as carteiras', snapshot.safeToSpend.livreTotal === 600);
+/* 1000 de entrada − 100 de débito − 100 no cofrinho. O crédito (500) fica
+   fora do caixa, e o boleto de 200 também (regra 20, 25/09/2026). */
+conferir('não desconta compra no crédito do caixa', snapshot.safeToSpend.livreTotal === 800, snapshot.safeToSpend);
+conferir('boleto pendente não desconta do livre (regra 20)', snapshot.safeToSpend.livreTotal === 800);
 conferir('data determinística', snapshot.updatedAt === '2026-09-04T15:00:00.000Z');
 
-/* ── A12: saldo inicial das carteiras entra na conta (19/09/2026) ────────
-   Antes o widget e a Home somavam só o fluxo lançado, sem o saldo com que a
-   carteira começou — a mesma conta que lib/wallets.ts::calcularSaldosWallets
-   já fazia para o seletor de carteira, gerando dois números pra "saldo" na
-   mesma tela. */
-const snapshotComSaldoInicial = montarSnapshotWidgets({
+/* ── Regra 20 (24/09/2026): só o mês vigente, sem saldo inicial ─────────
+   Desfaz o bloco A12 de 19/09, que fazia o saldo inicial entrar na conta.
+   Lançamento de mês anterior não conta no saldo do widget; a trava completa
+   está em __tests__/regra-20-saldo-do-mes.cjs. */
+const snapshotComMesAnterior = montarSnapshotWidgets({
   userId: 'u1',
-  transactions: [tx({ id: 'saida', amount: 200, type: 'out', payment_method: 'debit' })],
+  transactions: [
+    tx({ id: 'agosto', amount: 5000, type: 'in', occurred_on: '2026-08-20' }),
+    tx({ id: 'saida', amount: 200, type: 'out', payment_method: 'debit' }),
+  ],
   bills: [],
   goals: [],
   privacyHidden: false,
   hoje,
-  saldoInicial: 1000,
   updatedAt: '2026-09-04T15:00:00.000Z',
 });
 conferir(
-  'saldo inicial soma ao fluxo lançado, não fica de fora',
-  snapshotComSaldoInicial.safeToSpend.livreTotal === 800,
-  snapshotComSaldoInicial.safeToSpend
+  'regra 20: entrada de agosto não soma no saldo de setembro',
+  snapshotComMesAnterior.safeToSpend.livreTotal === 0 && snapshotComMesAnterior.safeToSpend.semSaldo === true,
+  snapshotComMesAnterior.safeToSpend
 );
 conferir(
-  'sem saldo inicial nem fluxo positivo, "sem saldo" continua certo',
+  'sem fluxo positivo no mês, "sem saldo" continua certo',
   montarSnapshotWidgets({
-    userId: 'u1', transactions: [], bills: [], goals: [], privacyHidden: false, hoje, saldoInicial: 0,
+    userId: 'u1', transactions: [], bills: [], goals: [], privacyHidden: false, hoje,
   }).safeToSpend.semSaldo === true
 );
 

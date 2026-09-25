@@ -614,21 +614,12 @@ export default function InicioScreen() {
     [walletTransactions]
   );
 
-  /* Soma o saldo inicial das carteiras em escopo — "Total" soma todas, uma
-     carteira específica só a dela. Sem isto, "Saldo atual" (abaixo) e o
-     seletor de carteira diziam dois números diferentes para a mesma
-     carteira (achado A12). */
-  const saldoInicialEmEscopo = useMemo(
-    () =>
-      (activeWalletId === 'total' ? wallets : wallets.filter((w) => w.id === activeWalletId)).reduce(
-        (soma, w) => soma + Number(w.initial_balance || 0),
-        0
-      ),
-    [activeWalletId, wallets]
-  );
+  /* "Saldo atual" e "Livre para gastar" só do mês vigente, sem saldo
+     inicial e sem boleto pendente (regra 20 do AGENTS.md). O recorte do mês é
+     feito dentro de `calcularSafeToSpend`, a mesma função dos widgets. */
   const safeToSpend = useMemo(
-    () => calcularSafeToSpend(walletCashTransactions, walletBills, walletGoals, saldoInicialEmEscopo),
-    [walletCashTransactions, walletBills, walletGoals, saldoInicialEmEscopo]
+    () => calcularSafeToSpend(walletCashTransactions, walletGoals),
+    [walletCashTransactions, walletGoals]
   );
   // `walletTransactions`, não `walletCashTransactions`: uma parcela de
   // compra no crédito É um comprometimento futuro de verdade (a fatura vai
