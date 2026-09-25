@@ -16,6 +16,13 @@ Roteiro e prompts para gerar na ElevenLabs. Estrutura decidida pelo autor em 25/
 > balcão, onde ele colhe o pagamento e entrega o pão para a moça. O balcão
 > estará entre os dois personagens.
 
+> Consistências de cena precisam ser mantidas. No vídeo anterior, a moça pegou
+> o pão, mas saiu do estabelecimento sem segurar nada. Quando a cena troca para
+> ela fazendo o lançamento por áudio e indo embora, não mostre o outro braço
+> dela, que está segurando o pão: deixe a captura focada no rosto dela e no
+> celular próximo à boca. Quando terminar o lançamento ela vai sorrir, guardar
+> o celular e continuar saindo da padaria.
+
 A demonstração da tela do app fica para **outro criativo** (ver o fim deste documento). Neste, a própria ação dela, lançando por voz sem abrir o app, é a demonstração.
 
 - **Formato:** Reels 9:16, 720×1280 ou maior.
@@ -69,14 +76,25 @@ A frase do celular foi conferida no código em 25/09/2026. É uma frase que o ap
 
 Para a aparência dela não mudar entre as cenas, gere primeiro a imagem de referência (cena 0). Depois ligue essa imagem como referência (`images`) em todos os nós de vídeo.
 
+## Continuidade entre as cenas
+
+Cada cena é gerada separadamente, e o modelo não lembra o que aconteceu na anterior. No primeiro teste, ela pegou o pão e saiu de mãos vazias. Estas regras valem para todos os prompts e para a conferência antes de publicar:
+
+1. **O pão fica sempre na mão ESQUERDA.** Ela o pega com a esquerda na cena 1 e não troca de mão.
+2. **O celular fica na mão DIREITA** e sai e volta pelo bolso de trás DIREITO.
+3. **Depois da cena 1, o braço esquerdo nunca entra no quadro.** As cenas 2 e 3 são fechadas no rosto: da altura do peito para cima, com o braço e a mão esquerdos fora do quadro. Assim não há como ela aparecer sem o pão.
+4. **O que se repete em todas as cenas:** a roupa (camiseta mostarda, rabo de cavalo alto, argolas douradas), a luz da manhã e a padaria. É por isso que a imagem da cena 0 entra como referência em todos os nós.
+5. **O sentido do movimento é o mesmo:** do balcão para a porta. Se na cena 1 ela vira para a direita do quadro, nas cenas 2 e 3 ela segue para a direita.
+6. **Se um corte ainda assim mostrar mãos vazias, braço trocado ou roupa diferente, a cena é gerada de novo.** Não se corrige na montagem.
+
 ## Estrutura
 
 | # | Tempo | Cena | Som |
 |---|---|---|---|
 | 0 | — | Imagem de referência da moça | — |
 | 1 | 0–8 s | O balcão entre os dois. Ela paga no débito na maquininha que as mãos do padeiro seguram. As mãos entregam o saquinho de pão, e a voz dele, fora de quadro, diz: "Aqui está, seu pãozinho quentinho." Ela pega o pão, agradece e se vira. | Voz do padeiro (fora de quadro), "Obrigada!" dela, ambiente de padaria |
-| 2 | 8–16 s | Antes de sair, tira o celular do bolso, toca no widget e fala a frase. O celular faz o "plim" e ela sorri. | A voz dela, o "plim", ambiente |
-| 3 | 16–22 s | Guarda o celular e sai para a rua, feliz. Nos últimos ~2 s, a imagem se dissolve aos poucos no fechamento. | Rua + **narração** |
+| 2 | 8–16 s | **Close no rosto e no celular** (o braço com o pão fica fora do quadro). Antes de sair, ela leva o celular à boca, toca no widget e fala a frase. O celular faz o "plim", ela sorri e baixa o celular para guardar. | A voz dela, o "plim", ambiente |
+| 3 | 16–22 s | **Ainda do peito para cima**, a câmera acompanha ela continuando a sair da padaria, feliz. Nos últimos ~2 s, a imagem se dissolve aos poucos no fechamento. | Rua + **narração** |
 | 4 | 22–26 s | Fechamento com a logo real | Fim da narração |
 
 ## Narração
@@ -106,15 +124,16 @@ Todos os vídeos usam **Gemini Omni 1.1 Flash**, com `aspect_ratio` **9:16**, `r
 - **Referência:** a moça.
 - **Enquadramento:** a câmera fica do lado dela do balcão, levemente de lado. O balcão atravessa o quadro entre os dois. Do padeiro, só entram as mãos e os antebraços, por cima do balcão. Rosto e corpo dele ficam sempre fora do quadro.
 
-> Medium shot, one continuous shot, natural smartphone camera look, camera on the customer's side of the counter. Inside a small, cozy neighborhood bakery in São Paulo, warm morning sunlight through the front window. A wooden bakery counter with a glass display case of bread rolls runs across the frame, between the woman from the reference image and the baker. The baker is never shown: only his hands and forearms enter the frame from behind the counter, mature man's hands, light-blue short sleeves and the edge of a white apron at the frame border. His hands hold out a small card machine; she taps a debit card on it. His hands then place a small paper bag of warm bread rolls on the counter toward her, and his friendly voice, off-screen, says in Brazilian Portuguese: "Aqui está, seu pãozinho quentinho." She takes the bag, smiles and says: "Obrigada!", then turns away from the counter toward the door. Her lips match her words. Ambient bakery sounds: soft chatter, a coffee machine, paper bag rustle. No music, no on-screen text. Grounded, realistic, warm tones.
+> Medium shot, one continuous shot, natural smartphone camera look, camera on the customer's side of the counter. Inside a small, cozy neighborhood bakery in São Paulo, warm morning sunlight through the front window. A wooden bakery counter with a glass display case of bread rolls runs across the frame, between the woman from the reference image and the baker. The baker is never shown: only his hands and forearms enter the frame from behind the counter, mature man's hands, light-blue short sleeves and the edge of a white apron at the frame border. His hands hold out a small card machine; she taps a debit card on it. His hands then place a small paper bag of warm bread rolls on the counter toward her, and his friendly voice, off-screen, says in Brazilian Portuguese: "Aqui está, seu pãozinho quentinho." She takes the bag with her left hand and keeps holding it in her left hand, smiles and says: "Obrigada!", then turns away from the counter toward the door, which is to the right of the frame. Her lips match her words. Ambient bakery sounds: soft chatter, a coffee machine, paper bag rustle. No music, no on-screen text. Grounded, realistic, warm tones.
 
 ### Cena 2: lança por voz antes de sair (8 s)
 
 - **Duração:** `duration_secs` 8.
 - **Referência:** moça.
+- **Enquadramento:** close, do peito para cima, no rosto dela e no celular perto da boca. O braço e a mão esquerdos, que seguram o pão, ficam **fora do quadro o tempo todo** (regras de continuidade 1 e 3).
 - **Som do "plim":** NÃO peça ao modelo de vídeo, porque ele inventa um som qualquer, em qualquer momento. O "plim" entra na montagem como faixa separada, no instante exato (ver "Montagem").
 
-> Medium close-up, one continuous shot, natural smartphone camera look. Near the open door of a small São Paulo bakery, warm morning light, the woman from the reference image holds a paper bag of bread in one arm, pauses before stepping outside, takes her phone out of her back pocket, taps the screen once with her thumb, then holds the phone near her mouth with the screen facing away from the camera and says clearly, in a relaxed natural Brazilian Portuguese voice: "Pão na padaria, três e cinquenta e sete, no débito." Her lips match the words. A second later she glances at the phone, the screen still facing away from the camera, and breaks into a small satisfied smile. Ambient bakery sounds, low. No music, no on-screen text. Realistic, warm.
+> Close-up from the chest up, one continuous shot, natural smartphone camera look, framed on her face and the phone. Near the open door of a small São Paulo bakery, warm morning light from the doorway. The woman from the reference image has paused before stepping outside. Only her right hand is visible: it raises her phone to near her mouth, the screen facing away from the camera, and she taps it once with her thumb. She says clearly, in a relaxed natural Brazilian Portuguese voice: "Pão na padaria, três e cinquenta e sete, no débito." Her lips match the words. A second later she glances at the phone, the screen still facing away from the camera, breaks into a small satisfied smile, and lowers the phone out of the bottom of the frame to put it away. Her left arm and left hand stay completely out of frame for the whole shot. Ambient bakery sounds, low. No music, no on-screen text. Realistic, warm.
 
 **Plano B, se a voz ou a boca saírem ruins:**
 1. Gere a mesma cena sem fala ("she speaks a short phrase to the phone").
@@ -129,12 +148,13 @@ Na cena 1, a voz do padeiro vem de fora do quadro e não precisa de sincronia de
 
 > A single short, bright, high-pitched positive notification chime from a smartphone, clean and pleasant, "plim", no reverb, no melody.
 
-### Cena 3: guarda o celular e segue a vida (6 s)
+### Cena 3: continua saindo da padaria, feliz (6 s)
 
 - **Duração:** `duration_secs` 6.
 - **Referência:** moça.
+- **Enquadramento:** do peito para cima, a câmera acompanhando, de frente ou levemente de lado. Braços e mãos **fora do quadro** (regra de continuidade 3). O celular já foi guardado no fim da cena 2 e não aparece mais.
 
-> Medium shot, one continuous shot, natural smartphone camera look. The woman from the reference image steps out of a small São Paulo bakery onto a sunny sidewalk, slides her phone back into her back pocket, adjusts the paper bag of bread on her arm and walks away down the street with a light, happy step and a relaxed smile. Ambient street sounds: distant traffic, birds. No music, no dialogue, no on-screen text. Realistic, warm tones.
+> Tracking shot from the chest up, one continuous shot, natural smartphone camera look, camera moving backward in front of her. The woman from the reference image, with a relaxed happy smile, walks out through the open door of a small São Paulo bakery onto a sunny sidewalk, heading to the right of the frame, warm morning sunlight on her face, the bakery front softly out of focus behind her. Her arms and hands stay out of frame for the whole shot. Ambient street sounds: distant traffic, birds. No music, no dialogue, no on-screen text. Realistic, warm tones.
 
 ### Cena 4: fechamento (4 s)
 
@@ -155,9 +175,9 @@ Na cena 1, a voz do padeiro vem de fora do quadro e não precisa de sincronia de
 
 Na ordem 1, 2, 3, 4.
 
-- **1 → 2:** corte seco, logo que ela se vira.
+- **1 → 2:** corte seco, logo que ela se vira. O corte passa do plano médio para o close.
 - **"Plim":** entra cerca de 0,5 s depois de ela terminar a frase, pouco antes do sorriso.
-- **2 → 3:** corte seco, depois do sorriso.
+- **2 → 3:** corte seco, quando o celular sai do quadro por baixo.
 - **Narração:** começa quando ela sai para a rua (início da cena 3).
 - **3 → 4:** **dissolvência gradual**, de cerca de 2 s, da rua para o logotipo, que é o "a tela muda gradualmente" pedido pelo autor.
 
@@ -176,6 +196,7 @@ Na ordem 1, 2, 3, 4.
 ## O que conferir antes de publicar
 
 - Mãos e dedos, dela e do padeiro, e a boca dela.
+- **Continuidade:** o pão na mão esquerda na cena 1. Nas cenas 2 e 3, o braço esquerdo nunca aparece. Mesma roupa e mesma luz em tudo. Ela nunca aparece de mãos vazias.
 - O padeiro não aparece: nem rosto nem corpo, só as mãos.
 - A voz dela bate com a boca.
 - A tela do celular nunca aparece de frente.
