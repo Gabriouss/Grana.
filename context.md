@@ -11304,3 +11304,44 @@ meio-dia.
 Verificação: a conclusão acima é a confirmação explícita do autor; o Ledger
 não consultou nem alterou os lançamentos da conta e não executou QA do app
 para este falso positivo.
+
+## 25/09/2026 — M1 — armadilha de relógio do emulador no Expo Go
+
+O Sentinel relatou um achado de **ambiente**, com confiabilidade insuficiente
+e sem classificação como bug do produto. O procedimento, já usado nas
+verificações de T19/T21 em 23–24/09, foi adiantar o relógio do emulador para
+um mês/ano futuro. O Expo Go passou a falhar com `Failed to download remote
+update` em `checkCodeSigningAndCreateManifest`. Devolver o relógio ao modo
+automático não resolveu na hora: foi preciso fechar e reabrir o app, e a
+sessão caiu, exigindo novo login.
+
+O fato confirmado é somente essa falha de recuperação do ambiente após o pulo
+do relógio. A hipótese do Sentinel — o salto derrubar a sessão do `supabase-js`
+e/ou corromper o cache do `expo-updates` — não foi investigada e não deve ser
+tratada como causa comprovada. Não é um achado do app nem uma regressão a
+corrigir.
+
+Armadilha operacional para sessões futuras: não usar o relógio futuro do
+emulador como parte da reverificação de T21; o Sentinel vai reverificar T21
+lendo o código. Se uma sessão precisar testar passagem de tempo, registrar
+separadamente qualquer falha do Expo Go e sua recuperação, sem convertê-la em
+defeito do produto.
+
+## 25/09/2026 — M1 — T21 fechado por código e teste
+
+O Sentinel confirmou T21 no código, no commit `a23f080`, por leitura e
+reexecução da cobertura correspondente. A reverificação não foi feita na tela
+porque a armadilha do relógio do emulador, registrada acima, tornou esse
+procedimento pouco confiável.
+
+`isCreditTx` filtra as compras no crédito dos números de caixa da
+retrospectiva: entradas, saídas, saldo, maior despesa, categoria campeã e
+comparativo com o mês anterior. A copy da retrospectiva também foi corrigida.
+O teste novo em `__tests__/retrospectiva-so-caixa.cjs` reproduz os três números
+originais do achado e falha quando executado contra o código anterior a
+`a23f080`; ele está incluído no `test:ci`.
+
+T21 fica **FECHADO**. O próximo item do Sentinel é C1, notificações locais.
+Fica sem verificação visual no aparelho, por causa da armadilha de ambiente,
+mas a correção está comprovada pela leitura do código e pelo teste de
+regressão.
