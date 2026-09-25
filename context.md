@@ -11384,3 +11384,62 @@ leitura anterior da mesma sessão, `tsc` e `npm run test:ci` passaram inteiros
 **Branch:** o ambiente da nuvem exige a branch `claude/cool-einstein-c63bq0`,
 o que contraria a regra 10. Ela parte de `13ef097` (o `origin/main` do
 momento) e só tem este commit; precisa ser mesclada na `main` ou descartada.
+
+## 25/09/2026 — sessão na nuvem — voz: botão do app e widget iguais no prazo e na captura
+
+**Pedido do autor**, respondendo à pergunta F2 deixada em 23/09: "os dois
+precisam se comportar exatamente iguais. Em tudo". Trabalho feito na branch
+`claude/cool-einstein-c63bq0` (PR #5), a pedido do autor nesta sessão.
+
+**Divergências achadas entre as duas entradas, lendo o código:**
+
+1. **Prazo de rede:** botão 15s, widget 60s. O F2 já tinha tirado a escolha
+   de dentro do núcleo; o número continuava diferente por entrada.
+2. **Corte por silêncio:** só o widget (`GranaVoiceCaptureService.kt`)
+   encerrava sozinho 1,6s depois de ouvir fala; o botão gravava até o segundo
+   toque ou os 20s.
+3. **Toque duplo sem querer:** o widget descarta em silêncio o arquivo de até
+   1 KB (ou o `stop()` que lança); o botão mandava o arquivo vazio para a
+   transcrição, ou mostrava "Não deu para transcrever".
+4. **Cancelar durante a gravação:** só o widget tem ("Cancelar" na
+   notificação). **NÃO mexido:** é controle novo na tela, decisão do autor.
+
+**O que mudou (1 a 3):**
+
+- `lib/voz.ts`: um prazo só, `PRAZO_TRANSCRICAO_MS = 15_000`, para as duas
+  entradas; `transcreverAudio` não aceita mais prazo de fora. Saem
+  `ORCAMENTO_COM_PESSOA_ESPERANDO_MS`, `ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS` e
+  o campo `orcamentoMs` do payload de `executarTarefa`.
+- **Por que 15s e não 60s:** 60s no botão traria de volta o A47 (um minuto em
+  "Transcrevendo…"); no widget também há alguém esperando, pelo recibo na
+  notificação; e o que passa do prazo não se perde em nenhuma das duas: vira
+  fila e retoma com conexão. Com o teto de 120s do Android, sobram 105s.
+- `lib/voz-captura.ts` (novo): a regra de captura do widget em TypeScript,
+  com os mesmos números (amostra a cada 200ms, limiar 600, 1,6s de silêncio
+  depois de fala, arquivo mínimo acima de 1024 bytes). O botão passa a ler o
+  volume (`isMeteringEnabled`) e a usar o mesmo detector. No Android o
+  `metering` do `expo-audio` sai do mesmo `MediaRecorder.getMaxAmplitude()`
+  do widget, só em dBFS; `amplitudeDoMetering` faz a conta inversa exata.
+- O Kotlin só ganhou um comentário apontando para a cópia em TS.
+
+**Efeito que o autor pode notar:** no widget, rede lenta passa a cair na fila
+depois de 15s, e não de 60s. E o reconhecimento no aparelho também sai dos
+15s: se ele gastar o prazo inteiro, a fala vai para a fila em vez de tentar o
+servidor. No app, isso já era assim.
+
+**Testes:** `__tests__/voz-captura-paridade.cjs` (novo, no `test:voz`, 13
+checagens) compara os números com o Kotlin e EXECUTA o `VoiceEntryButton` real
+com relógio falso. Ele sai com código 1 se parar no meio: a primeira versão
+saiu com 0 sem rodar dois cenários, porque um `await` que nunca resolvia fez
+o Node encerrar calado. `offline-rapido.cjs` e `voz-upload.cjs` passam a
+travar o prazo único; `voz-auditoria-rodada6.cjs` teve o tempo simulado do
+reconhecimento local reduzido de 30s para 7,5s, porque 30s só cabiam no prazo
+antigo do widget (a intenção, uma tentativa só com rede pendurada, ficou).
+Mutação: seis quebras de propósito (sem detector, sem régua de tamanho, aviso
+no `stop()` que lança, Kotlin com outro silêncio, prazo de volta a 60s, botão
+declarando prazo) e todas derrubam algum teste. `tsc` e `test:ci` verdes.
+
+**Não verificado:** nada disto foi visto no aparelho. Falta conferir no
+Android o corte por silêncio no botão (o limiar é o mesmo número, mas ninguém
+ouviu), e no iOS e na web, onde o `metering` não é o do `MediaRecorder` e o
+limiar vale só por aproximação. Chega ao aparelho na próxima build.
