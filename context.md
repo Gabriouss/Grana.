@@ -10719,3 +10719,41 @@ Documento: `E:\Grana-temporarios\2026-09-24-harbor\contrato-fila-offline.md`. Pe
 ### S9 falhou depois de `90357dc`
 
 O Sentinel achou o `CategoryPickerModal` sem recuo do topo depois do `90357dc` (T19), que levou os recuos a Onboarding, QR e retrospectiva, mas não a esse modal. O dono é o Prism. Relatado pelo maestro; o Ledger não conferiu no código e nenhuma correção foi registrada ainda.
+
+## 24/09/2026 — M1 — "Livre para gastar" reafirmado; migrations NÃO aplicadas; T21 na retrospectiva
+
+### Decisão do autor reafirmada: "Livre para gastar desconta apenas fatura já paga"
+
+- A decisão de 23/09 continua valendo.
+- A proposta C1 do Compass (descontar a fatura fechada e ainda não paga que vence no mês) foi **recusada de novo**.
+- **Nada muda no código:** a compra no crédito fica fora do caixa, e o pagamento da fatura entra como saída de caixa. É o mesmo critério que o `fe8e210` (S43) aplicou no Granabô.
+
+### Migrations NÃO aplicadas
+
+Relatório: `E:\Grana-temporarios\2026-09-24-harbor\relatorio-harbor-migrations.md`.
+
+- **O que aconteceu:** o classificador de permissões ("Production Deploy") negou ao Harbor até a escrita do script de aplicação. Ele não contornou, e a produção está como no preflight.
+- **Preflight da regra 11, só leitura, passou.** As saídas estão em `preflight-migrations/`, na pasta do Harbor, e servem de retorno.
+  - Os corpos de produção de `registrar_operacao_voz`, `pagar_fatura_cartao` e `adicionar_compra_parcelada` diferem das migrations **só no que elas pretendem mudar**, então nada da produção se perde.
+  - `client_request_id` e os índices novos não existem.
+  - Os nomes novos (`travar_fechamento_com_historico`, `exigir_cartao_no_credito`) não existem.
+  - Os grants atuais são `authenticated` sim e `anon` não.
+  - Há 38 lançamentos no crédito sem cartão, que são dado da fase 2.
+- **Como o autor aplica:** pelo SQL Editor do Supabase (que envia UTF-8, evitando o erro do PowerShell de 23/09), uma migration por vez, cada uma entre `begin;` e `commit;`, parando se alguma der erro, **nesta ordem**:
+  1. `20260923230000_voz_devolve_carteira.sql`
+  2. `20260923230100_pagar_fatura_valida_ciclo.sql`
+  3. `20260923230200_travar_fechamento_com_historico.sql`
+  4. `20260924230000_idempotencia_fila_offline.sql`
+- **NUNCA aplicar `20260923230300` nem `20260923230400`** (fase 2, só junto com o APK novo, como registrado em 23/09).
+- **Depois, o Harbor confere, só em leitura:** as funções, o gatilho presente e o ausente, as duas colunas e os índices não parciais, a parcelada com uma assinatura de 11 parâmetros, os grants, e a sonda com a chave anônima esperando `42501`.
+- **Retorno, se algo der errado:** as definições guardadas no preflight (`01-voz-def.json`, `02-pagar-def.json`, `03-parcelada-def.json`), o `drop` da parcelada de 11 parâmetros e o `drop trigger` do fechamento. As colunas da fila podem ficar.
+
+### T21: a retrospectiva mensal soma crédito como saída
+
+- **Achado do Sentinel:** a retrospectiva soma compra no crédito nos capítulos 1, 3, 4 e 6, e o capítulo 4 tem a copy "para aqui".
+- **Causa, confirmada pelo maestro e conferida pelo Ledger:** em `lib/monthly-wrapped.ts:115-119`, `saidasTx` filtra só `type === 'out'`, sem excluir crédito. É o mesmo defeito do S43, e vai contra a decisão acima.
+- **Dono:** o Forge. Nada corrigido ainda.
+
+### Análise do saldo da conta pessoal do autor (só leitura)
+
+O autor pediu ao Harbor uma análise, só em leitura, do saldo da conta pessoal dele. **Nenhum valor, e-mail ou descrição dessa conta é registrado aqui nem no vault** (repositório público, regra 15). Quando houver resultado, entra só o mecanismo.
