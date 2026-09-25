@@ -267,3 +267,10 @@ Pedido do autor: uma versão que começa na fala dela e, no "plim", mostra por c
   - é uma sobreposição na tela do vídeo, não a tela do aparelho da moça;
   - a notificação cobre o alto da cabeça dela, mas não o rosto;
   - o texto não foi conferido num celular de verdade quanto ao tamanho de leitura.
+
+## "Plim" definitivo (25/09/2026)
+
+O autor pediu para trocar o "plim" sem gastar créditos. Foram feitas três opções por código: duplo, sino e sucesso. Ele escolheu a **sucesso** e pediu que ela valha para os próximos materiais. O registro fica no `PRODUCT.md` e em `docs/marketing/identidade-sonora/`.
+
+- **Versão curta com notificação:** tem a trilha pop e o "plim" de sucesso.
+- **Reels completo (v9):** é o v8 com o "plim" de sucesso, em 12,3 s.

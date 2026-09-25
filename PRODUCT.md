@@ -210,6 +210,14 @@ Duas decisões da mesma noite completam esta:
   criativo usa o rosto, a imagem ou a voz do autor. O conceito de fundador
   falando para a câmera fica fora da aprovação inicial; o Beacon deve propor
   um substituto antes de qualquer produção.
+- **Identidade sonora dos vídeos (decisão do autor em 25/09/2026):** o som
+  que marca um lançamento salvo é o "plim" de sucesso
+  (`docs/marketing/identidade-sonora/plim-sucesso.wav`, quatro notas rápidas
+  subindo). A trilha de fundo segue a pegada pop, bem baixa, abaixando quando
+  alguém fala. Quando o vídeo mostra o lançamento, a notificação na tela usa o
+  texto real do app ("descrição · valor", "categoria · forma · salvo no
+  Grana.", botão "Desfazer"). Como gerar cada peça:
+  `docs/marketing/identidade-sonora/README.md`.
 - **Produção com IA e prompts por peça (decisão de 25/09/2026):** vídeos podem
   usar modelos fictícios, narração, imagem e demais elementos gerados pelo
   conector da ElevenLabs. Todo plano, calendário, roteiro ou briefing traz,
