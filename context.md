@@ -11238,3 +11238,49 @@ concluir a sessão por deep link; deve mostrar exatamente: **"E-mail confirmado.
 Entre com seu e-mail e senha"**. A implementação e a verificação continuam
 com o Harbor; nenhum link, credencial ou dado de conta foi alterado nesta
 entrega documental.
+
+## 25/09/2026 — M1 — F2 fechado no aparelho e regra de criativos com IA
+
+### F2 — T13/T22 fechados no aparelho
+
+QA do Sentinel em 25/09, depois de `0398065`: três saídas AUDIT sem rede,
+duas pelo botão + da Início e uma pelo + de Débito e Pix, entraram
+imediatamente na lista e nos totais. A rede voltou e foi cortada novamente por
+cerca de 2 segundos durante a sincronização. "Tudo" passou de 20 para 23;
+cada item apareceu uma única vez no banco, confirmado reabrindo o app a frio.
+Não houve duplicata. F2 fecha T13/T22 no aparelho. Próximo item do Sentinel:
+T21.
+
+### Nova regra para criativos com IA
+
+Decisão do autor: **"nós iremos criar vídeos com modelos de inteligência
+artificial fictício para os vídeos. Inclusive, narração, uso de imagem e tudo
+mais"** e **"o material do marketing terá todos, absolutamente todos os
+prompts para montar os criativos"**.
+
+Regra operacional: todo plano, calendário, roteiro ou briefing de criativo
+traz, para cada peça, prompts prontos de cena/imagem ou vídeo, pessoa fictícia
+com aparência consistente entre peças do mesmo personagem, narração/voz e
+texto na tela. Peça sem prompts é entrega incompleta. A geração deve usar o
+conector da ElevenLabs. As telas do app continuam sendo capturas reais em
+Dados de exemplo.
+
+Pessoa fictícia pode demonstrar o uso, mas nunca se apresenta como cliente
+real nem dá depoimento de resultado; seguir a política de conteúdo gerado por
+IA da plataforma. Continuam as restrições: o autor não aparece; copy sem
+travessão e sem "não é X, é Y"; não nomear o "apagão financeiro"; preço apenas
+como "menos de R$ 0,37 por dia".
+
+O `PRODUCT.md` e as perenes [[Plano Editorial de Conteúdo e Produção com IA]],
+[[Calendário do primeiro mês]] e [[Plano de Tráfego Pago - Primeiros 100 Assinantes]]
+foram atualizados. O A6 "Fundador falando para a câmera" segue
+reprovado; o Beacon deve propor o substituto. A configuração da conta da Meta
+(Business Manager, Pixel e API de Conversões) continua deliberadamente
+adiada, e o plano pago e `Purchase` ficam parados sem cobrança urgente.
+
+### Verificação após F2 e atualização de marketing
+
+`node scripts/verificar-vault.mjs "G:/Meu Drive/Obsidian/Gabriel/Grana"` passou
+com 0 links quebrados, 0 fontes inexistentes e 0 perenes atrasadas. Restam 20
+perenes sem `revisado`, anteriores à manutenção desta rodada e fora do escopo
+do fechamento.
