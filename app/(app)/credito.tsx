@@ -19,6 +19,8 @@ import AppModal from '@/components/AppModal';
 import AppDialog from '@/components/AppDialog';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import { isLikelyNetworkError } from '@/lib/cache-de-tela';
+import { salvarOuGuardarNoAparelho, salvarOuGuardarParceladaNoAparelho } from '@/lib/offline-cache';
+import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { Alert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,8 +29,6 @@ import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   addCreditCard,
-  addInstallmentPurchase,
-  addTransaction,
   deleteCreditCard,
   updateCreditCard,
   deleteTransaction,
@@ -1046,9 +1046,10 @@ export default function CreditoScreen() {
         operacaoVoz.current = null;
         if (resultado.status !== 'pending') await loadData();
       } else if (totalInst > 1) {
-        await addInstallmentPurchase({
+        const { guardado } = await salvarOuGuardarParceladaNoAparelho({
+          type: 'out',
           description: valores.description.trim(),
-          totalAmount: amount,
+          amount,
           category: valores.category,
           color: valores.color,
           occurred_on: valores.occurred_on,
@@ -1058,9 +1059,11 @@ export default function CreditoScreen() {
           card_id: targetCard?.id,
           wallet_id: valores.wallet_id,
         });
+        if (guardado) marcarLancamentosAlterados();
         await loadData();
+        triggerToast(guardado ? 'Sem conexão. Compra parcelada salva no aparelho' : 'Gasto no crédito registrado');
       } else {
-        await addTransaction({
+        const { guardado } = await salvarOuGuardarNoAparelho({
           type: 'out',
           description: valores.description.trim(),
           amount,
@@ -1071,14 +1074,13 @@ export default function CreditoScreen() {
           payment_method: 'credit',
           bank: targetCard?.bank || 'outro',
           card_id: targetCard?.id,
-          installment_current: 1,
-          installment_total: 1,
           wallet_id: valores.wallet_id,
         });
+        if (guardado) marcarLancamentosAlterados();
         await loadData();
+        triggerToast(guardado ? 'Sem conexão. Gasto no crédito salvo no aparelho' : 'Gasto no crédito registrado');
       }
       hapticSuccess();
-      triggerToast('Gasto no crédito registrado');
       setNewTxOpen(false);
       setTxDesc('');
       setTxAmount('');

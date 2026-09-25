@@ -22,7 +22,9 @@ import {
   limparReferenciaCarteira,
 } from '@/lib/heuristics';
 import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { addTransaction, fetchCategories } from '@/lib/data';
+import { fetchCategories } from '@/lib/data';
+import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
+import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
 import CategoryChips from './CategoryChips';
@@ -205,7 +207,16 @@ export default function PasteReceiptModal({
         const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', { kind: 'transaction', ...input });
         if (resultado.status === 'pending') Alert.alert('Salvo no aparelho', 'O lançamento será sincronizado ao abrir o Grana. com conexão.');
       } else {
-        await addTransaction(input);
+        /* Comprovante colado SEM voz não tinha fila offline (item 3 da
+           retomada de 25/09/2026): sem rede, `addTransaction` rejeitava e o
+           texto reconhecido se perdia atrás de um Alert de erro — a mesma
+           classe de defeito que T13/T20 já corrigiram para o lançamento
+           manual, e que a voz já tinha pelo ramo `origemVoz` acima. */
+        const { guardado } = await salvarOuGuardarNoAparelho(input);
+        if (guardado) {
+          marcarLancamentosAlterados();
+          Alert.alert('Salvo no aparelho', 'Sem conexão — o lançamento será sincronizado ao abrir o Grana. com conexão.');
+        }
       }
       resetState();
       onClose();

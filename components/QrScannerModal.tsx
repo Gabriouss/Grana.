@@ -15,7 +15,8 @@ import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/them
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
 import { guessCategoryFromText } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
-import { addTransaction } from '@/lib/data';
+import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
+import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -135,7 +136,11 @@ export default function QrScannerModal({
     savingRef.current = true;
     setSaving(true);
     try {
-      await addTransaction({
+      /* Sem fila offline até esta correção (item 3 da retomada de
+         25/09/2026): sem rede, a nota lida ficava perdida atrás de um Alert
+         de erro, a mesma classe que T13/T20 já corrigiram para o lançamento
+         manual. */
+      const { guardado } = await salvarOuGuardarNoAparelho({
         type: 'out',
         description: desc.trim() || 'Compra',
         amount: val,
@@ -147,6 +152,10 @@ export default function QrScannerModal({
             ? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null
             : activeWalletId,
       });
+      if (guardado) {
+        marcarLancamentosAlterados();
+        Alert.alert('Salvo no aparelho', 'Sem conexão — a nota será sincronizada ao abrir o Grana. com conexão.');
+      }
       hapticSuccess();
       resetState();
       onClose();

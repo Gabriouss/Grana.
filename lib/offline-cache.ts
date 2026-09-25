@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { addBill, addTransaction } from './data';
+import { addBill, addInstallmentPurchase, addTransaction } from './data';
 import { createGoal } from './goals';
 import { avisarDadoNovo, guardarTela, isLikelyNetworkError, lerTela } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
@@ -14,6 +14,7 @@ import {
   getQueue,
   guardarEmRevisao,
   otimistaDoItem,
+  otimistasDaParcela,
   proximaEspera,
   separarPorDono,
   atualizarFila,
@@ -117,16 +118,36 @@ export async function esquecerLancamentosLocais(): Promise<void> {
    único tipo que existia quando ele foi gravado. Ler como obrigatório
    descartaria em silêncio o lançamento que a pessoa fez no metrô. */
 
+/** `input.amount`/`installments` (fila) → `totalAmount`/`installments`
+    (`addInstallmentPurchase`); só troca o nome do campo, mesmo dado. */
+function enviarParcelaPendente(input: PendingInput & { client_request_id?: string }): Promise<Transaction[]> {
+  return addInstallmentPurchase({
+    description: input.description,
+    totalAmount: input.amount,
+    category: input.category,
+    color: input.color,
+    occurred_on: input.occurred_on,
+    installments: input.installments ?? 2,
+    payment_method: input.payment_method,
+    bank: input.bank,
+    card_id: input.card_id,
+    wallet_id: input.wallet_id,
+    client_request_id: input.client_request_id,
+  });
+}
+
 /** Para onde cada tipo vai quando a rede volta. */
 const ENVIAR: Record<TipoPendente, (input: any) => Promise<unknown>> = {
   transacao: addTransaction,
   boleto: addBill,
   meta: createGoal,
+  parcela: enviarParcelaPendente,
 };
 
 /** Qual cache de tela recebe o item otimista, para ele aparecer na hora. */
 const CACHE_DA_TELA: Record<TipoPendente, string | null> = {
   transacao: null, // tem cache próprio, com união de meses; ver getCachedTransactions
+  parcela: null, // idem: as N linhas entram no mesmo cache de transactions
   boleto: 'boletos:todos',
   meta: 'metas',
 };
@@ -191,6 +212,35 @@ export async function queuePendingTransaction(input: PendingInput, clientRequest
   const optimistic = otimistaDoItem(item);
   const cached = (await getCachedTransactions()) ?? [];
   await setCachedTransactions([optimistic, ...cached]);
+  agendarNovaTentativa();
+
+  return optimistic;
+}
+
+/**
+ * Mesma ideia de `queuePendingTransaction`, para compra parcelada: guarda um
+ * item `tipo: 'parcela'` na fila e devolve as N linhas otimistas (mesmo
+ * formato que `adicionar_compra_parcelada` grava), para a UI mostrar a série
+ * inteira na hora — não só a primeira parcela.
+ */
+export async function queuePendingInstallmentPurchase(
+  input: PendingInput,
+  clientRequestId?: string
+): Promise<Transaction[]> {
+  const userId = await idDoUsuarioLocal();
+  const item: PendingItem = {
+    localId: novoIdLocal(),
+    tipo: 'parcela',
+    input,
+    userId: userId ?? undefined,
+    criadoEm: new Date().toISOString(),
+    clientRequestId: clientRequestId ?? novaChaveIdempotencia(),
+  };
+  await guardarNaFila(item, userId);
+
+  const optimistic = otimistasDaParcela(item);
+  const cached = (await getCachedTransactions()) ?? [];
+  await setCachedTransactions([...optimistic, ...cached]);
   agendarNovaTentativa();
 
   return optimistic;
@@ -397,5 +447,22 @@ export async function salvarOuGuardarNoAparelho(
   } catch (erro) {
     if (!isLikelyNetworkError(erro)) throw erro;
     return { lancamento: await queuePendingTransaction(input, chave), guardado: true };
+  }
+}
+
+/** Mesma ideia de `salvarOuGuardarNoAparelho`, para compra parcelada:
+    `input.amount` é o valor TOTAL e `input.installments` o número de
+    parcelas (ver comentário em `PendingInput`). Recusa que não é de rede
+    (crédito sem cartão, parcelamento inválido) sobe como erro, sem entrar
+    na fila. */
+export async function salvarOuGuardarParceladaNoAparelho(
+  input: PendingInput
+): Promise<{ lancamentos: Transaction[]; guardado: boolean }> {
+  const chave = novaChaveIdempotencia();
+  try {
+    return { lancamentos: await enviarParcelaPendente({ ...input, client_request_id: chave }), guardado: false };
+  } catch (erro) {
+    if (!isLikelyNetworkError(erro)) throw erro;
+    return { lancamentos: await queuePendingInstallmentPurchase(input, chave), guardado: true };
   }
 }

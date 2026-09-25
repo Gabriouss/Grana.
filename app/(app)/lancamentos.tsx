@@ -36,7 +36,6 @@ import SegmentedTabs from '@/components/SegmentedTabs';
 import FabButton from '@/components/FabButton';
 import MonthSelector from '@/components/MonthSelector';
 import {
-  addInstallmentPurchase,
   criarOcorrenciasRecorrentes,
   deleteTransaction,
   deleteInstallmentPurchase,
@@ -52,6 +51,7 @@ import {
   getPendingCount,
   isLikelyNetworkError,
   salvarOuGuardarNoAparelho,
+  salvarOuGuardarParceladaNoAparelho,
   setCachedTransactions,
 } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
@@ -472,16 +472,21 @@ export default function LancamentosScreen() {
         });
         triggerToast('Lançamento atualizado');
       } else if (isInstallmentSave) {
-        await addInstallmentPurchase({
+        const { guardado } = await salvarOuGuardarParceladaNoAparelho({
+          type: 'out',
           description: v.description.trim(),
-          totalAmount: value,
+          amount: value,
           category: v.category,
           color: v.color,
           occurred_on: v.occurred_on,
           installments: parcelas,
           wallet_id: v.wallet_id,
         });
-        triggerToast(`Compra parcelada em ${parcelas}x`);
+        if (guardado) {
+          setPendingCount(await getPendingCount());
+          marcarLancamentosAlterados();
+        }
+        triggerToast(guardado ? 'Sem conexão. Compra parcelada salva no aparelho' : `Compra parcelada em ${parcelas}x`);
       } else {
         const input = {
           type: v.type,

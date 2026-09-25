@@ -589,6 +589,10 @@ export async function addInstallmentPurchase(input: {
   bank?: string;
   card_id?: string | null;
   wallet_id?: string | null;
+  /** Chave de idempotência da fila offline (ver `inserirIdempotente`): o
+      reenvio da mesma compra parcelada devolve a série já gravada em vez de
+      duplicá-la. */
+  client_request_id?: string;
 }): Promise<Transaction[]> {
   exigirCartaoNoCredito(input);
   const n = Math.max(2, Math.round(input.installments));
@@ -603,6 +607,7 @@ export async function addInstallmentPurchase(input: {
     p_bank: input.bank ?? null,
     p_card_id: input.card_id ?? null,
     p_wallet_id: input.wallet_id ?? null,
+    p_client_request_id: input.client_request_id ?? null,
   });
   if (error) throw error;
   const rows = (data ?? []) as Transaction[];
@@ -1064,6 +1069,24 @@ export const fetchCardInvoicePayments = comCacheOffline('pagamentos-fatura', bus
 export const fetchDatasDeCompra = comCacheOffline('datas-de-compra', buscar_fetchDatasDeCompra, (ids) => ids.join(','));
 export const fetchConquistas = comCacheOffline('conquistas', buscar_fetchConquistas);
 export const fetchBills = comCacheOffline('boletos', buscar_fetchBills, (opts?) => String(opts?.status ?? 'todos'));
-export const fetchCreditTransactionsForMonth = comCacheOffline('credito-mes', buscar_fetchCreditTransactionsForMonth, (ano, mes) => `${ano}-${mes}`);
+const comCache_fetchCreditTransactionsForMonth = comCacheOffline('credito-mes', buscar_fetchCreditTransactionsForMonth, (ano, mes) => `${ano}-${mes}`);
+
+/**
+ * `buscar_fetchCreditTransactionsForMonth` filtra no banco por
+ * `payment_method.eq.credit,card_id.not.is.null`; sem juntar a fila aqui, uma
+ * compra no crédito guardada sem rede (`salvarOuGuardarParceladaNoAparelho`/
+ * `salvarOuGuardarNoAparelho`) nunca aparecia na aba Crédito até sincronizar,
+ * porque este é o único ponto de leitura que ela tem — diferente da Início e
+ * de Lançamentos, que já passam por `juntarPendentes` dentro de
+ * `fetchTransactions...`. O filtro evita que uma saída comum pendente (sem
+ * cartão) entre na fatura por engano.
+ */
+export async function fetchCreditTransactionsForMonth(year: number, month: number): Promise<Transaction[]> {
+  const base = await comCache_fetchCreditTransactionsForMonth(year, month);
+  const inicio = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const fimDate = new Date(year, month + 1, 0);
+  const fim = `${fimDate.getFullYear()}-${String(fimDate.getMonth() + 1).padStart(2, '0')}-${String(fimDate.getDate()).padStart(2, '0')}`;
+  return juntarPendentes(base, inicio, fim, (input) => input.payment_method === 'credit' || !!input.card_id);
+}
 export const fetchBudgets = comCacheOffline('orcamentos', buscar_fetchBudgets);
 export const fetchCategories = comCacheOffline('categorias', buscar_fetchCategories);

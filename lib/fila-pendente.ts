@@ -14,7 +14,7 @@ import type { Transaction, TxType } from './types';
 
 export const QUEUE_KEY = 'grana:queue:transactions-pendentes';
 
-export type TipoPendente = 'transacao' | 'boleto' | 'meta';
+export type TipoPendente = 'transacao' | 'boleto' | 'meta' | 'parcela';
 
 export type PendingInput = {
   type: TxType;
@@ -34,6 +34,10 @@ export type PendingInput = {
   payment_method?: string;
   bank?: string;
   card_id?: string | null;
+  /** Só para `tipo: 'parcela'`: número de parcelas, e `amount` vira o valor
+      TOTAL da compra (o mesmo papel que `totalAmount` tem em
+      `addInstallmentPurchase`), não o valor de uma parcela. */
+  installments?: number;
 };
 
 export type PendingItem = {
@@ -153,6 +157,53 @@ export function otimistaDoItem(item: PendingItem): Transaction {
   };
 }
 
+/** Mesma conta de `somar_meses_data` no banco: primeiro dia do mês alvo, mais
+    o dia original, com o próprio teto no último dia do mês alvo (31/01 + 1 mês
+    = 28/02, não 03/03 como um `Date.setMonth` cru daria). As N parcelas de um
+    item `parcela` pendente têm de nascer na mesma data que
+    `adicionar_compra_parcelada` vai gravar, senão o otimista mostra um mês
+    errado até a fila subir. */
+function somarMesesComLimite(dataISO: string, meses: number): string {
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  const totalMeses = (mes - 1) + meses;
+  const anoAlvo = ano + Math.floor(totalMeses / 12);
+  const mesAlvo = ((totalMeses % 12) + 12) % 12;
+  const ultimoDiaDoMesAlvo = new Date(anoAlvo, mesAlvo + 1, 0).getDate();
+  const diaFinal = Math.min(dia, ultimoDiaDoMesAlvo);
+  const pad = (v: number) => String(v).padStart(2, '0');
+  return `${anoAlvo}-${pad(mesAlvo + 1)}-${pad(diaFinal)}`;
+}
+
+/** As N linhas otimistas de uma compra parcelada pendente, no mesmo formato
+    que `adicionar_compra_parcelada` grava no banco (arredondamento da última
+    parcela, texto "(i/n)" na descrição, `parent_id` na cabeça da série). */
+export function otimistasDaParcela(item: PendingItem): Transaction[] {
+  const input = item.input;
+  const n = Math.max(2, Math.round(input.installments ?? 2));
+  const base = Math.round((input.amount / n) * 100) / 100;
+  const last = Math.round((input.amount - base * (n - 1)) * 100) / 100;
+  const descricao = input.description.trim() || 'Compra parcelada';
+  return Array.from({ length: n }, (_, i) => ({
+    id: i === 0 ? item.localId : `${item.localId}-${i + 1}`,
+    user_id: 'local',
+    type: 'out' as const,
+    description: `${descricao} (${i + 1}/${n})`,
+    amount: i === n - 1 ? last : base,
+    category: input.category,
+    color: input.color,
+    occurred_on: somarMesesComLimite(input.occurred_on, i),
+    recurring: false,
+    parent_id: i === 0 ? null : item.localId,
+    wallet_id: input.wallet_id ?? null,
+    payment_method: input.payment_method as Transaction['payment_method'],
+    bank: input.bank,
+    card_id: input.card_id ?? null,
+    installment_current: i + 1,
+    installment_total: n,
+    created_at: item.criadoEm ?? new Date().toISOString(),
+  }));
+}
+
 /**
  * Junta à lista os lançamentos desta conta que ainda esperam na fila.
  *
@@ -164,15 +215,26 @@ export function otimistaDoItem(item: PendingItem): Transaction {
  * lançamentos (lista, totais da Início, Gráficos), com ou sem rede.
  *
  * `inicio`/`fim` limitam pela data do lançamento, como a busca do período.
+ * `filtro`, quando dado, decide por `PendingInput` — a Crédito usa para só
+ * juntar pendente de cartão (`payment_method === 'credit'` ou `card_id`
+ * presente), senão uma saída comum guardada sem rede apareceria na fatura.
  * Nunca lança: fila ilegível devolve a lista como veio.
  */
-export async function juntarPendentes(lista: Transaction[], inicio?: string, fim?: string): Promise<Transaction[]> {
+export async function juntarPendentes(
+  lista: Transaction[],
+  inicio?: string,
+  fim?: string,
+  filtro?: (input: PendingInput) => boolean
+): Promise<Transaction[]> {
   try {
     const { minhas } = separarPorDono(await getQueue(), await idDoUsuarioLocal());
     const jaNaLista = new Set(lista.map((t) => t.id));
     const pendentes = minhas
-      .filter((item) => (item.tipo ?? 'transacao') === 'transacao' && !jaNaLista.has(item.localId))
-      .map(otimistaDoItem)
+      .filter((item) => {
+        const tipo = item.tipo ?? 'transacao';
+        return (tipo === 'transacao' || tipo === 'parcela') && !jaNaLista.has(item.localId) && (!filtro || filtro(item.input));
+      })
+      .flatMap((item) => ((item.tipo ?? 'transacao') === 'parcela' ? otimistasDaParcela(item) : [otimistaDoItem(item)]))
       .filter((t) => (!inicio || t.occurred_on >= inicio) && (!fim || t.occurred_on <= fim));
     return pendentes.length ? [...pendentes, ...lista] : lista;
   } catch (erro) {
