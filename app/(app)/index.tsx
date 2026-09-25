@@ -109,7 +109,7 @@ export default function InicioScreen() {
   const reduzirMovimento = useReducedMotion();
   const { isDemoMode } = useDemo();
   const { session, sessaoNaoConfirmada } = useSession();
-  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, wallets, updateSaldosComTransacoes, refreshSaldos } = useWallet();
+  const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, wallets, updateSaldosComTransacoes, refreshSaldos, updateEntradasComTransacoes, refreshEntradas } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -544,10 +544,12 @@ export default function InicioScreen() {
   useEffect(() => {
     if (isDemoMode || sessaoNaoConfirmada) {
       updateSaldosComTransacoes(transactions);
+      updateEntradasComTransacoes(transactions);
       return;
     }
     void refreshSaldos();
-  }, [transactions, isDemoMode, sessaoNaoConfirmada, updateSaldosComTransacoes, refreshSaldos]);
+    void refreshEntradas();
+  }, [transactions, isDemoMode, sessaoNaoConfirmada, updateSaldosComTransacoes, refreshSaldos, updateEntradasComTransacoes, refreshEntradas]);
 
   // Entrada animada do gráfico de pizza toda vez que a aba Início ganha
   // foco (abrir o app ou tocar na tab), não só na primeira montagem.

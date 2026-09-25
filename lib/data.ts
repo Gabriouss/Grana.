@@ -27,7 +27,7 @@ import { checarLimiteCartao } from './creditLimitAlert';
 import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito } from './transaction-rules';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 import { marcarLancamentosAlterados } from './lancamentos-alterados';
-import { juntarPendentes } from './fila-pendente';
+import { entradasPendentesPorCarteira, juntarPendentes } from './fila-pendente';
 import { juntarVozPendente } from './voz-pendente-na-lista';
 import type { OcorrenciaFaltante } from './recorrencia';
 import type {
@@ -173,6 +173,23 @@ async function buscar_fetchSaldosPorCarteira(): Promise<{ wallet_id: string | nu
   return (data ?? []).map((linha: { wallet_id: string | null; delta: number | string }) => ({
     wallet_id: linha.wallet_id,
     delta: Number(linha.delta),
+  }));
+}
+
+/**
+ * Total de entradas de caixa por carteira, de todo o período (regra 20,
+ * complemento de 24/09/2026): o seletor de carteira mostra isso, não saldo.
+ * Aplicada em produção em 25/09 (`20260925000000_entradas_por_carteira.sql`).
+ */
+async function buscar_fetchEntradasPorCarteira(): Promise<{ wallet_id: string | null; entradas: number }[]> {
+  const { data, error } = await supabase.rpc('entradas_por_carteira');
+  if (error) {
+    if ((error as { code?: string }).code === '42501') await diagnosticarChamadaAnonima('entradas_por_carteira');
+    throw error;
+  }
+  return (data ?? []).map((linha: { wallet_id: string | null; entradas: number | string }) => ({
+    wallet_id: linha.wallet_id,
+    entradas: Number(linha.entradas),
   }));
 }
 
@@ -1064,6 +1081,16 @@ export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: stri
   return juntarVozPendente(await juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO), inicioISO, fimISO);
 }
 export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);
+const comCache_fetchEntradasPorCarteira = comCacheOffline('entradas-carteira', buscar_fetchEntradasPorCarteira);
+
+/** `comCache_fetchEntradasPorCarteira` + o que ainda está na fila offline —
+    senão uma entrada guardada sem rede (`salvarOuGuardarNoAparelho`) só
+    apareceria no seletor de carteira depois de sincronizar. */
+export async function fetchEntradasPorCarteira(): Promise<{ wallet_id: string | null; entradas: number }[]> {
+  const base = await comCache_fetchEntradasPorCarteira();
+  const pendentes = await entradasPendentesPorCarteira();
+  return [...base, ...pendentes];
+}
 export const fetchCreditCards = comCacheOffline('cartoes', buscar_fetchCreditCards);
 export const fetchCardInvoicePayments = comCacheOffline('pagamentos-fatura', buscar_fetchCardInvoicePayments);
 export const fetchDatasDeCompra = comCacheOffline('datas-de-compra', buscar_fetchDatasDeCompra, (ids) => ids.join(','));

@@ -214,6 +214,66 @@ export function calcularSaldosWallets(
   return { porCarteira, total };
 }
 
+/**
+ * Total de entradas por carteira, de todo o período (regra 20, complemento de
+ * 24/09/2026): o seletor de carteira deixou de mostrar saldo — mostra o total
+ * de TODAS as entradas de caixa já lançadas, sem descontar saída e sem somar
+ * `initial_balance` (o campo saiu da tela e não volta a entrar em cálculo
+ * nenhum sem pedido explícito do autor). `agregado` vem de
+ * `entradas_por_carteira()` mais o que ainda está na fila offline
+ * (`entradasPendentesPorCarteira`) — mesmo tratamento de `wallet_id`
+ * desconhecido/nulo que `calcularSaldosComAgregado` já tinha.
+ */
+export function calcularEntradasComAgregado(
+  wallets: Wallet[],
+  agregado: { wallet_id: string | null; entradas: number }[]
+): { porCarteira: Record<string, number>; total: number } {
+  const porCarteira: Record<string, number> = {};
+  wallets.forEach((w) => {
+    porCarteira[w.id] = 0;
+  });
+
+  const defaultWallet = wallets.find((w) => w.is_default) || wallets[0];
+  let total = 0;
+
+  agregado.forEach(({ wallet_id, entradas }) => {
+    const valor = Number(entradas || 0);
+    const conhecida = wallet_id && porCarteira[wallet_id] !== undefined;
+    const alvo = conhecida ? wallet_id : defaultWallet ? defaultWallet.id : null;
+    if (alvo && porCarteira[alvo] !== undefined) porCarteira[alvo] += valor;
+    total += valor;
+  });
+
+  return { porCarteira, total };
+}
+
+/** Mesma conta de `calcularEntradasComAgregado`, em memória — modo de
+    exemplo e sessão sem confirmação, que não têm RPC confirmada disponível
+    (ver `updateSaldosComTransacoes`). */
+export function calcularEntradasWallets(
+  wallets: Wallet[],
+  transactions: Transaction[]
+): { porCarteira: Record<string, number>; total: number } {
+  const porCarteira: Record<string, number> = {};
+  wallets.forEach((w) => {
+    porCarteira[w.id] = 0;
+  });
+  const defaultWallet = wallets.find((w) => w.is_default) || wallets[0];
+  let total = 0;
+
+  transactions.forEach((tx) => {
+    if (tx.type !== 'in' || isCreditTx(tx)) return;
+    const valor = Number(tx.amount || 0);
+    const targetWalletId = tx.wallet_id || (defaultWallet ? defaultWallet.id : null);
+    if (targetWalletId && porCarteira[targetWalletId] !== undefined) {
+      porCarteira[targetWalletId] += valor;
+    }
+    total += valor;
+  });
+
+  return { porCarteira, total };
+}
+
 /* ── Cache offline ─────────────────────────────────────────────────────────
    Os buscadores acima viraram privados e saem daqui envolvidos: gravam o que
    trouxeram e devolvem o guardado quando a REDE falha. A assinatura não muda,

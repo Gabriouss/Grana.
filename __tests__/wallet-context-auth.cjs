@@ -43,10 +43,13 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
       fetchWallets: async () => [],
       calcularSaldosWallets: () => ({ porCarteira: {}, total: 0 }),
       calcularSaldosComAgregado: () => ({ porCarteira: { principal: 10 }, total: 10 }),
+      calcularEntradasWallets: () => ({ porCarteira: {}, total: 0 }),
+      calcularEntradasComAgregado: () => ({ porCarteira: { principal: 5 }, total: 5 }),
     },
     './data': {
       fetchTransactions: async () => [],
       fetchSaldosPorCarteira: async () => { chamadasRpc++; return [{ wallet_id: 'principal', delta: 10 }]; },
+      fetchEntradasPorCarteira: async () => [{ wallet_id: 'principal', entradas: 5 }],
     },
     '@react-native-async-storage/async-storage': { __esModule: true, default: {
       getItem: async () => null,
@@ -63,6 +66,9 @@ function render() {
     [[carteira], () => {}],
     ['total', () => {}],
     [false, () => {}],
+    [{ porCarteira: {}, total: 0 }, () => {}],
+    /* `entradas` (regra 20, seletor de carteira): mesmo par saldos/entradas
+       de WalletProvider, useState declarado logo depois de `saldos`. */
     [{ porCarteira: {}, total: 0 }, () => {}],
   ];
   stateHook = () => valores.shift();

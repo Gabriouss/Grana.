@@ -13,7 +13,7 @@ import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { createWallet, updateWallet, deleteWallet } from '@/lib/wallets';
-import { formatBRLSaldo, parseAmount, formatMoneyInput } from '@/lib/format';
+import { formatBRL } from '@/lib/format';
 import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
 import AppPressable from './AppPressable';
@@ -29,22 +29,20 @@ export default function WalletPickerModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const { wallets, activeWalletId, setActiveWalletId, saldos, refreshWallets, refreshSaldos } = useWallet();
+  const { wallets, activeWalletId, setActiveWalletId, entradas, refreshWallets, refreshSaldos, refreshEntradas } = useWallet();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
 
   const [selectedId, setSelectedId] = useState(activeWalletId);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newBalance, setNewBalance] = useState('');
   const [newColor, setNewColor] = useState(WALLET_COLORS[0]);
   const [saving, setSaving] = useState(false);
 
-  // Edição de uma carteira já existente. Reaproveita o mesmo trio de campos
-  // da criação (nome, saldo, cor); só o alvo muda (update em vez de insert).
+  // Edição de uma carteira já existente. Reaproveita o mesmo par de campos
+  // da criação (nome, cor); só o alvo muda (update em vez de insert).
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editBalance, setEditBalance] = useState('');
   const [editColor, setEditColor] = useState(WALLET_COLORS[0]);
   const [deleteTarget, setDeleteTarget] = useState<(typeof wallets)[number] | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -62,7 +60,6 @@ export default function WalletPickerModal({
     }
     setEditingId(w.id);
     setEditName(w.name);
-    setEditBalance(formatMoneyInput(String(Math.round(Number(w.initial_balance || 0) * 100))));
     setEditColor(w.color || WALLET_COLORS[0]);
   }
 
@@ -76,11 +73,10 @@ export default function WalletPickerModal({
     try {
       await updateWallet(editingId, {
         name: editName.trim(),
-        initial_balance: parseAmount(editBalance) || 0,
         color: editColor,
       });
       const walletsAtualizadas = await refreshWallets();
-      await refreshSaldos(walletsAtualizadas);
+      await Promise.all([refreshSaldos(walletsAtualizadas), refreshEntradas(walletsAtualizadas)]);
       setEditingId(null);
     } catch (e: any) {
       Alert.alert('Erro ao salvar carteira', e.message);
@@ -103,7 +99,7 @@ export default function WalletPickerModal({
     try {
       await deleteWallet(deleteTarget.id);
       const walletsAtualizadas = await refreshWallets();
-      await refreshSaldos(walletsAtualizadas);
+      await Promise.all([refreshSaldos(walletsAtualizadas), refreshEntradas(walletsAtualizadas)]);
       setDeleteTarget(null);
     } catch (e: any) {
       Alert.alert('Erro ao excluir carteira', e.message);
@@ -122,7 +118,6 @@ export default function WalletPickerModal({
       Alert.alert('Informe o nome da carteira');
       return;
     }
-    const val = parseAmount(newBalance) || 0;
 
     if (isDemoMode) {
       Alert.alert('Modo de Exemplo', 'Criação de carteira é simulada no modo de exemplo.');
@@ -134,17 +129,15 @@ export default function WalletPickerModal({
     try {
       const created = await createWallet({
         name: newName.trim(),
-        initial_balance: val,
         color: newColor,
         icon: 'wallet-outline',
       });
       const walletsAtualizadas = await refreshWallets();
       // A11: criar carteira altera o consolidado imediatamente, igual à exclusão.
-      await refreshSaldos(walletsAtualizadas);
+      await Promise.all([refreshSaldos(walletsAtualizadas), refreshEntradas(walletsAtualizadas)]);
       setSelectedId(created.id);
       setCreating(false);
       setNewName('');
-      setNewBalance('');
     } catch (e: any) {
       Alert.alert('Erro ao criar carteira', e.message);
     } finally {
@@ -197,15 +190,21 @@ export default function WalletPickerModal({
             <View style={{ flex: 1 }}>
               <Text style={styles.walletName}>Total</Text>
             </View>
-            <PrivacyValue>
-              <Text style={styles.walletBalance}>{formatBRLSaldo(saldos.total)}</Text>
-            </PrivacyValue>
+            <View style={styles.walletValueCol}>
+              <PrivacyValue>
+                <Text style={styles.walletBalance}>{formatBRL(entradas.total)}</Text>
+              </PrivacyValue>
+              <Text style={styles.walletValueLabel}>entradas no período</Text>
+            </View>
           </AppPressable>
 
           {/* Opções Individuais */}
           {wallets.map((w) => {
             const isSelected = selectedId === w.id;
-            const saldoItem = saldos.porCarteira[w.id] ?? Number(w.initial_balance || 0);
+            /* Regra 20 (complemento de 24/09): total de entradas, não saldo —
+               nunca cai de volta pro `initial_balance` (a coluna existe no
+               banco, sem uso; ver `calcularEntradasComAgregado`). */
+            const entradasItem = entradas.porCarteira[w.id] ?? 0;
 
             if (editingId === w.id) {
               return (
@@ -218,15 +217,6 @@ export default function WalletPickerModal({
                     placeholderTextColor={theme.inkFaint}
                     value={editName}
                     onChangeText={setEditName}
-                  />
-                  <TextInput
-                    accessibilityLabel="Saldo inicial da carteira em reais"
-                    style={styles.input}
-                    placeholder="Saldo inicial (R$ 0,00)"
-                    placeholderTextColor={theme.inkFaint}
-                    keyboardType="number-pad"
-                    value={editBalance}
-                    onChangeText={(t) => setEditBalance(formatMoneyInput(t))}
                   />
                   <Text style={styles.colorLabel}>Cor do marcador</Text>
                   <View style={styles.colorRow}>
@@ -291,9 +281,12 @@ export default function WalletPickerModal({
                   <View style={{ flex: 1 }}>
                     <Text style={styles.walletName}>{w.name}</Text>
                   </View>
-                  <PrivacyValue>
-                    <Text style={[styles.walletBalance, styles.walletBalanceFixo]}>{formatBRLSaldo(saldoItem)}</Text>
-                  </PrivacyValue>
+                  <View style={[styles.walletValueCol, styles.walletBalanceFixo]}>
+                    <PrivacyValue>
+                      <Text style={styles.walletBalance}>{formatBRL(entradasItem)}</Text>
+                    </PrivacyValue>
+                    <Text style={styles.walletValueLabel}>entradas no período</Text>
+                  </View>
                 </AppPressable>
                 <AppPressable
                   hitSlop={8}
@@ -330,15 +323,6 @@ export default function WalletPickerModal({
                 placeholderTextColor={theme.inkFaint}
                 value={newName}
                 onChangeText={setNewName}
-              />
-              <TextInput
-                accessibilityLabel="Saldo inicial da nova carteira em reais"
-                style={styles.input}
-                placeholder="Saldo inicial (R$ 0,00)"
-                placeholderTextColor={theme.inkFaint}
-                keyboardType="number-pad"
-                value={newBalance}
-                onChangeText={(t) => setNewBalance(formatMoneyInput(t))}
               />
 
               <Text style={styles.colorLabel}>Cor do marcador</Text>
@@ -513,6 +497,17 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     fontSize: type.corpo, fontFamily: fonts.regular },
   walletBalanceFixo: { flexShrink: 0 },
+  /* Regra 20 (complemento): o número deixou de ser saldo, e o rótulo abaixo
+     dele é o que evita a pessoa ler "entradas do período" como "saldo
+     disponível". */
+  walletValueCol: {
+    alignItems: 'flex-end',
+  },
+  walletValueLabel: {
+    color: theme.inkFaint,
+    fontSize: type.nota,
+    fontFamily: fonts.light,
+  },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',

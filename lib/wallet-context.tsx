@@ -3,8 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDemo } from './demo-context';
 import { useSession } from './auth-context';
 import { DEMO_WALLETS } from './demo-data';
-import { fetchWallets, calcularSaldosWallets, calcularSaldosComAgregado } from './wallets';
-import { fetchTransactions, fetchSaldosPorCarteira } from './data';
+import {
+  fetchWallets,
+  calcularSaldosWallets,
+  calcularSaldosComAgregado,
+  calcularEntradasWallets,
+  calcularEntradasComAgregado,
+} from './wallets';
+import { fetchTransactions, fetchSaldosPorCarteira, fetchEntradasPorCarteira } from './data';
 import type { Transaction, Wallet } from './types';
 
 const STORAGE_KEY = '@grana_active_wallet_id';
@@ -19,12 +25,22 @@ type WalletContextType = {
     porCarteira: Record<string, number>;
     total: number;
   };
+  /** Total de entradas por carteira, de todo o período (regra 20) — o que o
+      seletor de carteira mostra. Não é saldo: nunca desconta saída nem soma
+      `initial_balance`. */
+  entradas: {
+    porCarteira: Record<string, number>;
+    total: number;
+  };
   loading: boolean;
   setActiveWalletId: (id: string) => void;
   refreshWallets: () => Promise<Wallet[]>;
   updateSaldosComTransacoes: (txs: Transaction[]) => void;
   /** Recarrega o saldo pelo agregado do banco. Use este no app real. */
   refreshSaldos: (walletsAtualizadas?: Wallet[]) => Promise<void>;
+  updateEntradasComTransacoes: (txs: Transaction[]) => void;
+  /** Recarrega as entradas por carteira pelo agregado do banco + fila offline. */
+  refreshEntradas: (walletsAtualizadas?: Wallet[]) => Promise<void>;
 };
 
 const WalletContext = createContext<WalletContextType | null>(null);
@@ -36,6 +52,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [activeWalletId, setActiveWalletIdState] = useState<string>('total');
   const [loading, setLoading] = useState(true);
   const [saldos, setSaldos] = useState<{ porCarteira: Record<string, number>; total: number }>({
+    porCarteira: {},
+    total: 0,
+  });
+  const [entradas, setEntradas] = useState<{ porCarteira: Record<string, number>; total: number }>({
     porCarteira: {},
     total: 0,
   });
@@ -154,6 +174,29 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [authLoading, isDemoMode, sessaoNaoConfirmada, session, wallets]);
 
+  /* Mesmo par soma-em-memória/soma-no-banco de `updateSaldosComTransacoes` e
+     `refreshSaldos`, para o seletor de carteira (regra 20): entradas, não
+     saldo, e sem `initial_balance`. */
+  const updateEntradasComTransacoes = useCallback(
+    (txs: Transaction[]) => {
+      setEntradas(calcularEntradasWallets(wallets, txs));
+    },
+    [wallets]
+  );
+
+  const refreshEntradas = useCallback(async (walletsAtualizadas?: Wallet[]) => {
+    if (isDemoMode) return;
+    if (authLoading || !session || sessaoNaoConfirmada) return;
+    const baseWallets = walletsAtualizadas ?? wallets;
+    if (baseWallets.length === 0) return;
+    try {
+      const agregado = await fetchEntradasPorCarteira();
+      setEntradas(calcularEntradasComAgregado(baseWallets, agregado));
+    } catch (e) {
+      console.warn('Erro ao carregar entradas por carteira:', e);
+    }
+  }, [authLoading, isDemoMode, sessaoNaoConfirmada, session, wallets]);
+
   return (
     <WalletContext.Provider
       value={{
@@ -163,11 +206,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         activeWalletName,
         activeWalletColor,
         saldos,
+        entradas,
         loading,
         setActiveWalletId,
         refreshWallets: loadWallets,
         updateSaldosComTransacoes,
         refreshSaldos,
+        updateEntradasComTransacoes,
+        refreshEntradas,
       }}
     >
       {children}

@@ -243,6 +243,33 @@ export async function juntarPendentes(
   }
 }
 
+/**
+ * Entradas ainda na fila, somadas por carteira — mesmo formato de linha que
+ * `entradas_por_carteira()` devolve (`{wallet_id, entradas}`), para o
+ * seletor de carteira (regra 20) não ficar um passo atrás do que a pessoa
+ * acabou de guardar sem rede. Só `tipo: 'transacao'` entra: `parcela` é
+ * sempre uma compra (`type: 'out'`, ver `otimistasDaParcela`), e `boleto`/
+ * `meta` não são entrada de caixa. Mesma regra da RPC: fora do cartão.
+ * Nunca lança: fila ilegível devolve nada, como `juntarPendentes`.
+ */
+export async function entradasPendentesPorCarteira(): Promise<{ wallet_id: string | null; entradas: number }[]> {
+  try {
+    const { minhas } = separarPorDono(await getQueue(), await idDoUsuarioLocal());
+    const porCarteira = new Map<string | null, number>();
+    for (const item of minhas) {
+      if ((item.tipo ?? 'transacao') !== 'transacao') continue;
+      const input = item.input;
+      if (input.type !== 'in' || input.payment_method === 'credit' || input.card_id) continue;
+      const chave = input.wallet_id ?? null;
+      porCarteira.set(chave, (porCarteira.get(chave) ?? 0) + input.amount);
+    }
+    return Array.from(porCarteira, ([wallet_id, entradas]) => ({ wallet_id, entradas }));
+  } catch (erro) {
+    console.error('[fila-pendente] não consegui somar entradas pendentes por carteira', erro);
+    return [];
+  }
+}
+
 /* ── Limites da sincronização (parecer do Harbor, 24/09/2026) ────────────────
 
    Decisão do autor: todo lançamento guardado sem rede sobe ao reconectar,
