@@ -48,13 +48,35 @@ Para a aparência não mudar entre as cenas, gere primeiro a imagem de referênc
 | # | Tempo | Cena | Origem | Som |
 |---|---|---|---|---|
 | 0 | — | Imagem de referência da personagem | ElevenLabs (imagem) | — |
-| 1 | 0–6 s | Paga e pega o pão no balcão | ElevenLabs (vídeo) | Ambiente de padaria |
+| 1 | 0–6 s | Paga e pega o pão no balcão | ElevenLabs (vídeo) | Ambiente de padaria + **narração de abertura** |
 | 2 | 6–14 s | Dá as costas, tira o celular, toca no widget e FALA a frase | ElevenLabs (vídeo) | **A voz dela** + ambiente |
-| 3 | 14–23 s | Recibo na notificação, app aberto, rolando até o lançamento e o Livre para gastar | **Gravação de tela do autor** | Ambiente baixo, ou uma trilha leve |
-| 4 | 23–28 s | Guarda o celular e vai embora feliz | ElevenLabs (vídeo) | Ambiente de rua |
-| 5 | 28–31 s | Fechamento com a marca | Montagem com a logo real | Narração curta **opcional** |
+| 3 | 14–23 s | Recibo na notificação e o widget "Livre para gastar" atualizando, na tela inicial (versão A) | **Gravação de tela do autor** | Ambiente baixo, ou uma trilha leve |
+| 4 | 23–28 s | Guarda o celular e vai embora feliz | ElevenLabs (vídeo) | Ambiente de rua + **narração de fechamento** |
+| 5 | 28–31 s | Fechamento com a marca | Montagem com a logo real | Fim da narração |
 
-**Narração:** nenhuma por cima da fala dela (pedido do autor). Se houver narração, ela entra só no fechamento (cena 5).
+## Narração
+
+Pedido do autor (25/09/2026): *"chega de dificuldade pra lançar coisinhas pequenas. Faz o pagamento e lança por voz. Rápido, fácil, sem abrir o aplicativo."*
+
+A narração nunca fica por cima da fala da personagem. Ela entra em dois pedaços: um ANTES de a personagem falar (cena 1) e outro DEPOIS (cenas 4 e 5).
+
+| Pedaço | Texto | Duração estimada |
+|---|---|---|
+| Abertura (cena 1) | "Chega de complicação pra lançar gasto pequeno." | ≈ 3 s |
+| Fechamento (cenas 4 e 5) | "Pagou, falou, lançou. Rápido, fácil e sem abrir o aplicativo." | ≈ 4 s |
+
+A duração foi estimada pela velocidade da voz "Beatriz - Warm and Natural" medida em 25/09/2026 (186 caracteres em 11,9 s). Gere cada pedaço como um nó de fala separado, com `eleven_multilingual_v2`, para encaixar cada um no seu corte.
+
+Alternativa de abertura: *"Gasto pequeno também conta, e anotar não precisa dar trabalho."* (≈ 4 s)
+
+**"Sem abrir o aplicativo" precisa ser verdade na tela.** O widget de voz lança com o app fechado e, depois de lançar, atualiza sozinho o widget "Livre para gastar" da tela inicial (`sincronizarWidgetsHome`, chamado por `lib/widget-voz-task.ts`, com prazo de 5 s). Por isso a cena 3 tem duas versões:
+
+- **Versão A (combina com esta narração):** a gravação mostra a notificação do recibo e o widget "Livre para gastar" mudando de valor, **sem abrir o app**.
+- **Versão B (o app aberto, rolando):** ela toca na notificação e o app abre. Nesta versão, a narração de fechamento **não pode** dizer "sem abrir o aplicativo". Use *"Pagou, falou, lançou. Rápido e fácil."*
+
+A versão B também serve de base para um segundo vídeo, focado em mostrar o app por dentro.
+
+**Só existe no Android.** Widget não existe no app para iPhone. Se o anúncio falar de widget ou de "sem abrir o aplicativo", segmente para Android.
 
 ## Prompts
 
@@ -100,28 +122,32 @@ Especificação da gravação no fim deste documento.
 
 - **Imagem:** a logo e a fonte são as reais. Não peça logo à IA, porque ela inventa uma marca parecida. Use `assets/icon.png` e o logotipo do site sobre o fundo petróleo `#052229`.
 - **Texto na tela:** "Grana." / "Fala o gasto. Pronto." / "Menos de R$ 0,37 por dia".
-- **Narração opcional** (voz "Beatriz - Warm and Natural", ~3 s): *"Grana. Fala o gasto e pronto."*
+- **Narração:** é o final da narração de fechamento (ver "Narração"). Não precisa de um terceiro pedaço.
 
 ## Legendas (para quem assiste sem som)
 
 | Cena | Legenda |
 |---|---|
 | 2 | "Pão na padaria, três e cinquenta e sete, no débito." |
-| 3 | "Lançado na hora" (quando aparece a notificação) e "Já conta no seu Livre para gastar" (no fim da rolagem) |
-| 4 | "Sem planilha. Sem conectar o banco." |
+| 1 | "Chega de complicação pra lançar gasto pequeno." |
+| 3 | "Lançado na hora" (quando aparece a notificação) e "Já conta no seu Livre para gastar" (quando o widget muda) |
+| 4 | "Pagou, falou, lançou. Rápido, fácil e sem abrir o aplicativo." |
 
 ## Gravação de tela: o que o autor grava (cena 3, ~9 s)
 
 1. **Conta:** use a conta de teste ou uma conta só com valores inventados. Nunca a conta pessoal: tudo o que aparecer na tela vai para um anúncio público. Confira que nenhum nome, saldo ou lançamento real aparece.
 2. **Aparelho:** celular em modo não perturbe (nenhuma notificação de outro app), bateria e hora sem nada estranho, tela cheia na vertical.
-3. **Roteiro da gravação:**
-   1. tela inicial com o widget de voz;
-   2. toque no widget;
+3. **Roteiro da gravação, versão A (sem abrir o app):**
+   1. tela inicial com o widget de voz e o widget "Livre para gastar", os dois visíveis na mesma tela;
+   2. toque no widget de voz;
    3. fale a MESMA frase ("Pão na padaria, três e cinquenta e sete, no débito");
    4. o widget encerra sozinho no silêncio;
    5. aparece a notificação "Pão na padaria · R$ 3,57 / Alimentação · Débito";
-   6. toque na notificação para abrir o app;
-   7. role devagar até o lançamento na lista e até o "Livre para gastar".
+   6. espere o widget "Livre para gastar" mudar de valor (até uns 5 s). Não abra o app.
+
+   **Versão B (app aberto):** mesmos passos 1 a 5; depois toque na notificação e role devagar até o lançamento na lista e até o "Livre para gastar".
+
+   **Conferir antes de gravar a versão A:** o widget "Livre para gastar" mudar sem abrir o app depende da rede e do Android. O código tenta por 5 s e desiste em silêncio. Se na sua tentativa ele não mudar, grave a versão B e use a narração da versão B.
 4. **Duração:** grave com folga (15 a 20 s) e corte na montagem para uns 9 s.
 5. **Ritmo:** role devagar. Rolagem rápida vira borrão em vídeo comprimido.
 
