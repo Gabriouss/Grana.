@@ -10991,3 +10991,33 @@ Perenes do vault atualizadas: Estrutura de Telas e Componentes, Cobertura de Tes
 ### Granabô divergente do app
 
 Confirmado pelo maestro: o deploy do `fce9a85` espera o autor liberar a execução. Até lá, o "Livre para gastar" do Granabô em produção (v38) diverge do app, o que a regra 20 proíbe.
+
+## 25/09/2026 — M1 — T22 corrigido (`0398065`, Harbor, publicado): lançamento offline não é mais gravado duas vezes; T23 aberto
+
+### T22
+
+- **Sintoma confirmado em produção**, só em leitura: três saídas "AUDIT T13" da conta de teste foram gravadas duas vezes cada. São seis linhas, em pares com ~1,5 s de diferença, intercaladas a-b-c-a-b-c, e todas com `client_request_id` nulo.
+- **Varredura em qualquer conta desde 24/09:** nenhum outro par. **Nada a limpar** além dessas linhas AUDIT, que o Sentinel apaga. Isso responde a pergunta de limpeza deixada ao autor na entrada anterior.
+- **Causa:** duas rodadas de `flushPendingQueue`, uma da carga de Lançamentos e outra do timer de nova tentativa, liam a mesma fila e inseriam os mesmos itens. Sem chave, o banco não tinha como recusar o segundo envio.
+- **Correção em camadas, no núcleo** (`lib/offline-cache.ts`, `lib/fila-pendente.ts`, `lib/data.ts`):
+  - **Uma rodada por vez:** quem chama durante uma rodada recebe a mesma.
+  - **Chave de idempotência:** o `client_request_id` (uuid v4) é gerado ao guardar e gravado no item antes de qualquer envio. Item antigo sem chave recebe uma antes do primeiro envio. `salvarOuGuardarNoAparelho` gera a chave antes do primeiro envio e guarda a mesma na fila. `data.ts` envia com `upsert` `onConflict: 'user_id,client_request_id'` e `ignoreDuplicates`, e, na repetição, lê a linha existente pela chave. É o contrato de `ec5dca3`, com a migration `20260924230000` já em produção. **Boleto tem chave; meta não**, porque não tem a coluna.
+  - **Dois defeitos extras achados no caminho:**
+    - a rodada terminava sobrescrevendo a fila com a foto do começo, e um item guardado durante ela sumia; agora só saem os que ela processou;
+    - guardar e fechar uma rodada, intercalados, faziam um item já enviado voltar à fila; agora toda mudança da fila passa por `atualizarFila`, em série. Este foi achado pelo teste novo.
+- **Teste novo:** `__tests__/fila-sem-duplicata.cjs`, no `test:ci`, com módulos reais e banco com índice único. Cobre duas rodadas simultâneas, resposta perdida depois de gravar, salvar direto com resposta perdida, item guardado durante a rodada, item antigo sem chave, boleto e meta.
+- **Reportado pelo Harbor:** 19/19, cinco mutações derrubando (uma por camada), `tsc` e `test:ci` verdes.
+- **Reexecutado pelo Ledger** na pasta compartilhada:
+  - `fila-sem-duplicata` **19 OK**
+  - `fila-endurecida` **44 OK**, verde de novo depois do T22
+  - `offline-pendente-na-lista` **23 OK**
+  - `t13-telas-salvar-ou-guardar` **7/0**
+- **Sem verificação:** reconexão real no emulador ou no aparelho.
+- **Isto também fecha o limite registrado no T13** (`03534c8`), de item duplicado numa recarga concorrente.
+
+### T23 (novo): texto do pagamento de fatura com travessão
+
+- **Achado do Sentinel:** a descrição gravada no pagamento de fatura usa travessão, o que fere a regra de copy do projeto.
+- **Divisão:** o Harbor faz a migration das RPCs que gravam a descrição; o Forge faz o app (há trabalho local sem commit em `app/(app)/credito.tsx` e `__tests__/descricao-pagamento-fatura.cjs`).
+- **Pergunta ao autor:** os pagamentos antigos, já gravados com travessão, devem ser corrigidos no banco?
+- **Não conferido pelo Ledger no código;** relatado pelo maestro.
