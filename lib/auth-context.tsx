@@ -56,13 +56,19 @@ export function useSession() {
 
 const SCHEME_NATIVO = 'com.gabriouss.grana';
 const ROTA_CALLBACK = 'auth/callback';
+/** Domínio do App Link (assetlinks.json em public/.well-known/), pelo qual o
+ *  MESMO link de callback pode chegar ao app sem passar pelo navegador. */
+const DOMINIO_APP_LINK = 'granaponto.com.br';
 
-function extrairCallbackSeguro(
+/** Exportada só para o teste em __tests__/app-links-callback.cjs poder chamar
+ *  a lógica real de classificação sem montar a árvore de contexto/hooks. */
+export function extrairCallbackSeguro(
   url: string
-): { code: string; recuperacao: boolean; flowId?: string } | { erro: string } | null {
+): { code: string; recuperacao: boolean; flowId?: string; viaAppLink: boolean } | { erro: string } | null {
   const parsed = Linking.parse(url);
-  const schemePermitido = parsed.scheme === SCHEME_NATIVO || (__DEV__ && parsed.scheme === 'exp');
-  if (!schemePermitido || parsed.path !== ROTA_CALLBACK) return null;
+  const schemeNativo = parsed.scheme === SCHEME_NATIVO || (__DEV__ && parsed.scheme === 'exp');
+  const viaAppLink = parsed.scheme === 'https' && parsed.hostname === DOMINIO_APP_LINK;
+  if ((!schemeNativo && !viaAppLink) || parsed.path !== ROTA_CALLBACK) return null;
 
   const erro = parsed.queryParams?.error_description;
   if (typeof erro === 'string' && erro) {
@@ -77,6 +83,7 @@ function extrairCallbackSeguro(
     code,
     recuperacao: type === 'recovery',
     flowId: typeof flowId === 'string' ? flowId : undefined,
+    viaAppLink,
   };
 }
 
@@ -195,6 +202,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
       if ('erro' in resultado) {
         Alert.alert('Não foi possível confirmar', resultado.erro);
+        return;
+      }
+
+      /* App Link (https://granaponto.com.br/auth/callback) do cadastro feito
+         pela web: o code_verifier do PKCE fica gravado no navegador que
+         chamou signUp, e o app nativo nunca tem acesso a ele — trocar o
+         código por aqui falharia sempre. O e-mail já está confirmado no
+         servidor (é o Supabase que gera esse link só depois da confirmação);
+         só falta avisar a pessoa e mandá-la pro login. Recuperação de senha
+         não entra aqui: continua tentando a troca, porque não é este ajuste
+         que resolve esse caso. */
+      if (resultado.viaAppLink && !resultado.recuperacao) {
+        Alert.alert('E-mail confirmado', 'Entre com seu e-mail e senha');
         return;
       }
 

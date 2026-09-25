@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.gabriouss.grana",
+      "sha256_cert_fingerprints": [
+        "C9:02:CF:9E:C1:E9:A9:CC:FC:D0:51:89:13:6F:3D:E3:5B:FA:4C:78:C3:F5:AD:52:4D:40:29:62:2A:17:EF:61"
+      ]
+    }
+  }
+]
