@@ -234,13 +234,16 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   const cartaoDaCategoria = heuristics.ehIntencaoCredito(texto)
     ? heuristics.matchCardByText(texto, cartoesDisponiveis.filter(c => !c.wallet_id || c.wallet_id === carteira.id)) : null;
   const textoDaCategoria = cartaoDaCategoria ? heuristics.limparReferenciaCartao(texto, cartaoDaCategoria) : texto;
-  /* Entrada que cita cartão ia para `lancarNoCredito`, que grava
-     `type: 'out'`: uma fala de dinheiro ENTRANDO virava compra no cartão. É
-     fala ambígua como qualquer outra: vai para a revisão padrão, sem gravar.
-     Mesma regra no app (a revisão abre o mesmo formulário) e no Granabô. */
+  /* Entrada com intenção de crédito ia para `lancarNoCredito`, que grava
+     `type: 'out'`: uma fala de dinheiro ENTRANDO virava compra no cartão.
+     Entrada no cartão não existe no Grana. (autor, 26/09/2026), então é fala
+     ambígua como qualquer outra: vai para a revisão padrão, sem gravar. Não
+     depende de citar cartão: "X de 40 no crédito" com um cartão só também
+     virava compra. "Recebi um crédito de 500" não é intenção de crédito
+     (`ehIntencaoCredito`) e continua entrada. Mesma regra no app (a revisão
+     abre o mesmo formulário) e no Granabô. */
   // Tipo lido SEM o nome do cartão: um cartão chamado "Salário" não faz de uma compra uma entrada.
-  if (heuristics.guessTypeFromText(textoDaCategoria) === 'in' && heuristics.ehIntencaoCredito(texto)
-    && (heuristics.matchCardByText(texto, cartoesDisponiveis) || /\bcart[aã]o\b/iu.test(texto))) {
+  if (heuristics.guessTypeFromText(textoDaCategoria) === 'in' && heuristics.ehIntencaoCredito(texto)) {
     await notificacoes.notificarRevisao('Não consegui salvar', transcricao.transcript);
     return false;
   }

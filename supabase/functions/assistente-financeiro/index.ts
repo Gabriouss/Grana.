@@ -1041,14 +1041,14 @@ async function executarCriarLancamento(
   };
 
   const categoriaExtras = categorias.filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color }));
-  /* Entrada que cita CARTÃO ("estorno de 50 no crédito do C6") não grava: até
-     23/09/2026 o chat gravava como entrada na carteira e a voz como COMPRA no
-     cartão. O Grana. não tem estorno, só excluir o lançamento (decisão do
-     autor, 26/09/2026), então a resposta é a de fala não entendida, sem
-     nomear nem explicar estorno. "Recebi um crédito de 500" não cita cartão e
-     continua sendo entrada. Mesma detecção em `lib/widget-voz-task.ts`. */
-  if (!ehIntencaoBoleto(financeiro) && tipo === 'in' && ehIntencaoCredito(financeiro)
-    && (matchCardByText(financeiro, cartoes) || /\b(?:cart[aã]o|estorn\w*)\b/iu.test(financeiro))) {
+  /* Entrada com intenção de crédito não grava: até 23/09/2026 o chat gravava
+     como entrada na carteira e a voz como COMPRA no cartão. Entrada no cartão
+     não existe no Grana. (decisão do autor, 26/09/2026), então a resposta é a
+     de fala não entendida. Não depende de citar cartão. "Recebi um crédito de
+     500" não é intenção de crédito (`ehIntencaoCredito`) e continua entrada.
+     Mesma detecção em `lib/widget-voz-task.ts`; paridade em
+     `__tests__/paridade-entrada-cartao-granabo-voz.cjs`. */
+  if (!ehIntencaoBoleto(financeiro) && tipo === 'in' && ehIntencaoCredito(financeiro)) {
     return 'Não entendi esse lançamento. Me diz o que foi e quanto, em reais (ex.: "almoço 38,50"). ' + AINDA_NAO_REGISTREI;
   }
 
