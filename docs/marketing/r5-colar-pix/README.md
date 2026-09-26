@@ -1,6 +1,6 @@
 # R5, "Recebeu um Pix e não quer digitar tudo?" (v2, 26/09/2026)
 
-Reel de 13,3 s em 1080×1920, sem narração e sem créditos da ElevenLabs. Foi montado com a gravação real `../material-video-2026-09-26/r5-clipe.mp4`.
+Reel de 16,4 s em 1080×1920, sem narração e sem créditos da ElevenLabs. Foi montado com a gravação real `../material-video-2026-09-26/r5-clipe.mp4`.
 
 ## Pedidos do autor que esta versão atende
 
@@ -13,7 +13,7 @@ Reel de 13,3 s em 1080×1920, sem narração e sem créditos da ElevenLabs. Foi 
   - confete no "salvo";
   - barra de progresso no topo;
   - legendas que pulsam no ritmo.
-- **Música diferente:** a trilha é própria desta peça, "house" a 128 bpm (`gerar-trilha-house.py`). Ela tem uma subida até o drop em 1,875 s e uma batida forte no logo em 10,31 s. Os cortes caem nas batidas.
+- **Música diferente:** a trilha é própria desta peça, "house" a 100 bpm (v3: o autor achou a v2, a 128 bpm, rápida demais) (`gerar-trilha-house.py`). Ela tem uma subida até o drop em 2,4 s e uma batida forte no logo em 13,2 s. Os cortes caem nas batidas.
 - **O R5 mantém o colar Pix.** O R9 vai mostrar **Importar extrato**. O pedido de gravação está na `main`, em `docs/marketing/solicitacoes/2026-09-26-gravar-r9-importar-extrato.md`.
 
 ## Correções na gravação
@@ -25,5 +25,5 @@ Reel de 13,3 s em 1080×1920, sem narração e sem créditos da ElevenLabs. Foi 
 ## Como regenerar
 
 1. **Tela recortada:** trechos do clipe 7,2–8,4 / 8,5–9,35 / 16,0–17,6 com o patch / 17,75–20,45 / 20,5–21,0 / 23,35–25,6 s, a 30 fps, em 720×1600. Extraia os quadros em `fr/%04d.jpg` com `-vf fps=30`. **Sem o `fps=30`, os quadros repetidos somem e os tempos se perdem.**
-2. `python3 render.py r5 video 13.3`, na pasta com `r5.html`, `fr/`, as fontes e o logotipo.
-3. **Som:** a trilha a −5 dB e o "plim" de sucesso (`../identidade-sonora/plim-sucesso.wav`) a −6 dB, em 8,44 s.
+2. `python3 render.py r5 video 16.4`, na pasta com `r5.html`, `fr/`, as fontes e o logotipo.
+3. **Som:** a trilha a −5 dB e o "plim" de sucesso (`../identidade-sonora/plim-sucesso.wav`) a −6 dB, em 10,8 s.

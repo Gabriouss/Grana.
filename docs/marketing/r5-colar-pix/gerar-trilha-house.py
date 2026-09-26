@@ -1,6 +1,6 @@
 # trilha "house" 128 bpm, com subida até o drop em 1,875 s e pausa + batida no logo
 import numpy as np, wave
-SR=48000; BPM=128; B=60/BPM; DUR=13.6; DROP=4*B; LOGO=22*B
+SR=48000; BPM=100; B=60/BPM; DUR=16.8; DROP=4*B; LOGO=22*B
 N=int(SR*DUR); L=np.zeros(N); R=np.zeros(N); rng=np.random.default_rng(3)
 def f(m): return 440*2**((m-69)/12)
 def add(sig,t,pan=0,g=1):
@@ -56,5 +56,5 @@ L*=env; R*=env
 mx=max(abs(L).max(),abs(R).max()); L/=mx*1.1; R/=mx*1.1
 fo=int(SR*(DUR-1.0)); fade=np.ones(N); fade[fo:]=np.linspace(1,0,N-fo); L*=fade; R*=fade
 d=(np.stack([L,R],1)*32767).astype('<i2')
-w=wave.open('musica-house-r5.wav','wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(d.tobytes()); w.close()
+w=wave.open('musica-house-r5-100.wav','wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(d.tobytes()); w.close()
 print('ok', 'drop',DROP,'logo',LOGO)
