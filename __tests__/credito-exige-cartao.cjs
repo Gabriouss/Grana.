@@ -223,7 +223,7 @@ async function nucleoDaVoz() {
   for (const fonte of ['app', 'widget']) {
     gravados.length = 0; revisoes.length = 0;
 
-    for (const frase of ['estorno de 50 no crédito do C6', 'estorno de 50 do mercado no crédito do C6', 'devolução de 80 no cartão C6']) {
+    for (const frase of ['estorno de 50 no crédito do C6', 'estorno de 50 do mercado no crédito do C6', 'devolução de 80 no cartão C6', 'devolução de 80 no cartão de crédito']) {
       transcricao = frase;
       await tarefa({ caminho: '/v.m4a', requestId: fonte + '-1-' + frase, source: fonte });
       assert.deepEqual(gravados, [], fonte + ': entrada citando cartão não grava: ' + frase);
