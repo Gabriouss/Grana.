@@ -61,6 +61,7 @@ import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import ImportarExtratoModal from '@/components/ImportarExtratoModal';
 import QrScannerModal from '@/components/QrScannerModal';
+import FotoNotaModal from '@/components/FotoNotaModal';
 import MonthlyWrappedModal from '@/components/MonthlyWrappedModal';
 import { carregarNotifPrefs, scheduleDailyHabitReminder, cancelDailyHabitReminder } from '@/lib/notifications';
 import { contextoDoLembrete } from '@/lib/contexto-lembrete';
@@ -154,6 +155,7 @@ export default function InicioScreen() {
   const [widgetGoalId, setWidgetGoalId] = useState<string | null>(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [fotoNotaOpen, setFotoNotaOpen] = useState(false);
   const [wrappedOpen, setWrappedOpen] = useState(false);
   const [wrapped, setWrapped] = useState<MonthlyWrapped | null>(null);
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
@@ -1629,6 +1631,15 @@ export default function InicioScreen() {
               <Text style={styles.smartActionText}>Escanear nota</Text>
             </AppPressable>
           )}
+          {ligado('foto_nota') && Platform.OS !== 'web' && (
+            <AppPressable
+              style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+              onPress={() => setFotoNotaOpen(true)}
+            >
+              <Ionicons name="camera-outline" size={16} color={theme.ink} />
+              <Text style={styles.smartActionText}>Fotografar nota</Text>
+            </AppPressable>
+          )}
           </ScrollView>
           </View>
         </FadeIn>
@@ -1902,6 +1913,16 @@ export default function InicioScreen() {
         onClose={() => setQrModalOpen(false)}
         onSuccess={() => {
           triggerToast('Nota fiscal lançada');
+          load();
+        }}
+      />
+
+      {/* Foto da nota: valor total lido no aparelho (OCR) */}
+      <FotoNotaModal
+        visible={fotoNotaOpen}
+        onClose={() => setFotoNotaOpen(false)}
+        onSuccess={() => {
+          triggerToast('Nota fotografada e lançada');
           load();
         }}
       />
