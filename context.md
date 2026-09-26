@@ -12529,3 +12529,53 @@ os 146 `Alert.alert` nativos por uma janela com o design do Grana. `8279263`
    câmera com cupom físico, tempo real da primeira leitura, aviso da prévia no
    emulador e substituição dos 146 alertas; migration, release e publicação
    permanecem pendentes.
+
+## 26/09/2026 — M1 — alertas do Grana concluídos em código; QA visual e foto ampliada pendentes
+
+O Ledger registrou `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Prism-alerta-design-system.md`.
+O pedido do autor de trocar o alerta nativo do Android pela janela do Grana foi
+concluído em código: `89b1fe8` criou a API e o host; `6781d72` migrou as
+telas, `6d71193` os componentes, `686567d` as bibliotecas e `5073da4`
+`FotoNota`, `ImportarExtrato` e `QrScanner`. As guardas/testes ficaram em
+`adcd3f1`, `069377d` e `5873108`.
+
+São 144 chamadas executáveis na API nova; a contagem inicial de 146 incluía
+ocorrências fora de chamada. Não restou `Alert` nativo fora da API, nem copy
+com travessão ou com “não é X, é Y”. `tsc`, `test:ci` e
+`corpus-design-system` 1456/1456 passaram. A nova janela ainda não foi vista
+no aparelho; portanto isso é verde de código/teste, não QA visual no Android.
+
+O Prism também entregou `8f0e400`, faixa global sem inset duplicado, aprovada
+pelo autor no aparelho, e `530a6a3`, faixa em uma linha conforme pedido. O
+Sentinel pausou a verificação da tarde no item 3 para ceder o emulador ao
+Forge, que está priorizando a foto da nota com uma lista de aceite de 11 itens.
+Dois lançamentos AUDIT do CSV ficaram no cartão “AUDIT cartao T25” para limpar
+na retomada.
+
+O novo pedido do autor, em andamento com o Forge, amplia a foto da nota para
+reconhecer forma de pagamento (crédito, débito ou Pix), data e estabelecimento
+do cupom. `8279263` continua sendo a entrega do Ledger para impedir falso
+positivo no verificador do vault.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** registrar o relatório do Prism, a migração dos alertas, as
+   guardas/testes, o aceite da faixa, a pausa do Sentinel e o novo escopo da
+   foto, sem afirmar QA visual que não ocorreu.
+2. **Sintoma e causa:** o Android mostrava alertas nativos fora do design; a
+   causa era a chamada direta à API nativa sem host único do Grana. A janela
+   nova foi migrada e testada em código, mas ainda não foi vista no aparelho.
+3. **Arquivos e identificadores:** `lib/alerta.ts`, `components/AlertaHost.tsx`,
+   `app/_layout.tsx`, `lib/alert.ts`, `__tests__/alerta.cjs`, commits
+   `89b1fe8`, `6781d72`, `6d71193`, `686567d`, `5073da4`, `adcd3f1`,
+   `069377d`, `5873108`, `8f0e400` e `530a6a3`.
+4. **Descartado:** Toast para confirmação com Desfazer, reescrever textos,
+   fallback nativo na web, segunda linha permanente na faixa e usar teste
+   estático como substituto do print no aparelho.
+5. **O que deu errado:** a primeira suíte encontrou dublês antigos importando
+   `@/lib/alert`, e o teste de `window.confirm` precisou consultar a fila
+   real; ambos foram corrigidos antes dos commits finais. O pedido de prints
+   da faixa foi cancelado após o aceite do autor.
+6. **Sem verificação:** janela nova no Android, tamanhos de fonte/plataformas,
+   falha real de sincronização, os 11 itens da foto no aparelho, limpeza dos
+   dois AUDIT do cartão T25 e a implementação de forma/data/estabelecimento.
