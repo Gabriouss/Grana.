@@ -56,24 +56,42 @@ function digitar(texto) {
   adbQuieto('shell', 'input', 'text', escapado);
 }
 
-function dump() {
-  adbQuieto('shell', 'uiautomator', 'dump', '/sdcard/grana-ui.xml');
-  const xml = adb('exec-out', 'cat', '/sdcard/grana-ui.xml');
+/* O uiautomator grava cada atributo entre aspas DUPLAS, menos quando o valor
+   contém aspas duplas: aí ele troca para aspas SIMPLES (text='… "desfaz".').
+   Até 26/09/2026 este leitor só entendia a primeira forma, e toda resposta do
+   Granabô com aspas sumia do `listar` e do `tem`. O Sentinel concluiu, por
+   isso, que o Granabô ficava mudo em pedidos de registro ("Lançamento
+   registrado: … é só dizer "desfaz"."), quando a bolha estava na tela. */
+const ENTIDADES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+const decodificar = (v) =>
+  v.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, e) =>
+    e[0] !== '#' ? ENTIDADES[e.toLowerCase()]
+      : String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : Number(e.slice(1))));
+
+function lerNos(xml) {
   const nos = [];
-  for (const m of xml.matchAll(/<node ([^>]*?)\/?>/g)) {
+  for (const m of xml.matchAll(/<node ((?:[^>"']|"[^"]*"|'[^']*')*?)\/?>/g)) {
     const a = m[1];
-    const pega = (nome) => (new RegExp(`${nome}="([^"]*)"`).exec(a) || [])[1] || '';
-    const b = /bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/.exec(a);
+    const pega = (nome) => {
+      const r = new RegExp(`(?:^|\\s)${nome}=(?:"([^"]*)"|'([^']*)')`).exec(a);
+      return r ? decodificar(r[1] ?? r[2]) : '';
+    };
+    const b = /\[(\d+),(\d+)\]\[(\d+),(\d+)\]/.exec(pega('bounds'));
     if (!b) continue;
     const [x1, y1, x2, y2] = b.slice(1).map(Number);
     nos.push({
-      texto: (pega('text') || pega('content-desc')).replace(/&#10;/g, ' ').replace(/&amp;/g, '&'),
+      texto: pega('text') || pega('content-desc'),
       classe: pega('class'),
       x: Math.round((x1 + x2) / 2),
       y: Math.round((y1 + y2) / 2),
     });
   }
   return nos;
+}
+
+function dump() {
+  adbQuieto('shell', 'uiautomator', 'dump', '/sdcard/grana-ui.xml');
+  return lerNos(adb('exec-out', 'cat', '/sdcard/grana-ui.xml'));
 }
 
 const achar = (nos, texto) => nos.filter((n) => n.texto && n.texto.toLowerCase().includes(texto.toLowerCase()));
@@ -162,7 +180,15 @@ function main() {
     case 'print': {
       fs.mkdirSync(PASTA_PRINTS, { recursive: true });
       const destino = path.join(PASTA_PRINTS, `${arg || 'print'}.png`);
-      fs.writeFileSync(destino, execFileSync(ADB, ['exec-out', 'screencap', '-p'], { maxBuffer: 1e8 }));
+      const png = execFileSync(ADB, ['exec-out', 'screencap', '-p'], { maxBuffer: 1e8 });
+      /* Com o bloqueio de captura ligado (FLAG_SECURE, padrão do app logado),
+         o Android devolve zero byte. Salvar o arquivo vazio e imprimir o
+         caminho parecia sucesso; agora a falha é dita. */
+      if (!png.length) {
+        console.log('PRINT VAZIO: o app bloqueia captura (FLAG_SECURE). Use "listar", ou desligue o bloqueio de captura no Perfil da conta de teste.');
+        process.exit(1);
+      }
+      fs.writeFileSync(destino, png);
       return console.log(destino);
     }
     default:
@@ -170,9 +196,13 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (e) {
-  console.error(`ERRO: ${e.message}`);
-  process.exit(1);
+module.exports = { lerNos };
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (e) {
+    console.error(`ERRO: ${e.message}`);
+    process.exit(1);
+  }
 }
