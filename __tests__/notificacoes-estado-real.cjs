@@ -211,6 +211,36 @@ async function fatura() {
   await api.scheduleCardInvoiceReminders({ id: 'c2', name: 'AUDIT', closing_day: 3, due_day: 10 }, 2027, 0, 100);
   assert.deepEqual([...agendadas.values()].map((r) => iso(new Date(r.trigger.date))).sort(), ['2027-01-07', '2027-01-10', '2027-01-11']);
   ok('caso comum (fecha 3, vence 10) segue igual');
+
+  /* C1-b (26/09/2026): lembrete de cartão excluído não pode sobrar. Ids de
+     cartão reais são uuid, com hífens: o id do lembrete tem de ser lido de
+     trás para frente. */
+  agendadas.clear();
+  const vivo = '11111111-aaaa-4bbb-8ccc-000000000001';
+  const apagado = '22222222-aaaa-4bbb-8ccc-000000000002';
+  const deOutroAparelho = '33333333-aaaa-4bbb-8ccc-000000000003';
+  for (const id of [vivo, apagado, deOutroAparelho]) {
+    await api.scheduleCardInvoiceReminders({ id, name: 'AUDIT', closing_day: 3, due_day: 10 }, 2027, 0, 100);
+    await api.scheduleCardInvoiceReminders({ id, name: 'AUDIT', closing_day: 3, due_day: 10 }, 2027, 1, 100);
+  }
+  agendadas.set('habito-x', { identifier: 'habito-x' });
+  assert.equal(api.cartaoDoLembreteDeFatura(`fatura-${apagado}-2027-10-venc`), apagado);
+  assert.equal(api.cartaoDoLembreteDeFatura('habito-x'), null);
+  ok('o id do cartão (uuid) é lido do identificador do lembrete');
+
+  assert.equal(await api.cancelarLembretesDoCartao(apagado), 6);
+  const cartoes = () => [...new Set([...agendadas.keys()].map((id) => api.cartaoDoLembreteDeFatura(id)).filter(Boolean))].sort();
+  assert.deepEqual(cartoes(), [vivo, deOutroAparelho].sort());
+  ok('excluir o cartão cancela os lembretes dele, de todos os meses, e só dele');
+
+  assert.equal(await api.cancelarLembretesDeCartoesRemovidos([vivo]), 6);
+  assert.deepEqual(cartoes(), [vivo]);
+  assert.ok(agendadas.has('habito-x'));
+  ok('a reconciliação cancela os de cartão fora da lista (apagado em outro aparelho) e não toca no resto');
+
+  assert.equal(await api.cancelarLembretesDeCartoesRemovidos([]), 6);
+  assert.deepEqual(cartoes(), []);
+  ok('sem nenhum cartão, nenhum lembrete de fatura sobra');
 }
 
 (async () => {

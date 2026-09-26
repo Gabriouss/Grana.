@@ -250,9 +250,63 @@ export async function cancelCardInvoiceReminders(cardId: string, year: number, m
   const etapas: EtapaFatura[] = ['3d', 'venc', 'atraso'];
   await Promise.all(
     etapas.map((etapa) =>
-      Notifications!.cancelScheduledNotificationAsync(idForFatura(cardId, year, month, etapa)).catch(() => {})
+      Notifications!.cancelScheduledNotificationAsync(idForFatura(cardId, year, month, etapa)).catch((erro) => {
+        console.error('[notificacoes] não consegui cancelar lembrete de fatura', { cardId, year, month, etapa, erro });
+      })
     )
   );
+}
+
+/* ── Lembretes de cartão que não existe mais ─────────────────────────────
+
+   Achado C1-b do Sentinel (26/09/2026): excluir o cartão não cancelava os
+   lembretes dele, e a reconciliação da tela Crédito só percorre os cartões
+   que ainda existem. No aparelho ficaram 6 lembretes de cartões apagados
+   enquanto a Início dizia "Nenhum cartão cadastrado". Cartão apagado em outro
+   aparelho, na web ou direto no banco cai no mesmo buraco; por isso a
+   reconciliação varre TUDO o que está agendado com o prefixo de fatura. */
+const RE_ID_FATURA = /^fatura-(.+)-(\d{4})-(\d{1,2})-(3d|venc|atraso)$/;
+
+/** O id do cartão dentro do identificador do lembrete (o cartão é uuid, com hífens). */
+export function cartaoDoLembreteDeFatura(identificador: string): string | null {
+  return RE_ID_FATURA.exec(identificador)?.[1] ?? null;
+}
+
+async function cancelarLembretesDeFaturaQueNao(manter: (cardId: string) => boolean): Promise<number> {
+  const Notifications = getNotifications();
+  if (!Notifications) return 0;
+  let agendadas: NotificationsModule.NotificationRequest[];
+  try {
+    agendadas = await Notifications.getAllScheduledNotificationsAsync();
+  } catch (erro) {
+    console.error('[notificacoes] não consegui listar os lembretes agendados', erro);
+    return 0;
+  }
+  const ids = agendadas
+    .map((item) => item.identifier)
+    .filter((id) => {
+      const cardId = cartaoDoLembreteDeFatura(id);
+      return cardId !== null && !manter(cardId);
+    });
+  await Promise.all(
+    ids.map((id) =>
+      Notifications.cancelScheduledNotificationAsync(id).catch((erro) => {
+        console.error('[notificacoes] não consegui cancelar lembrete de fatura', { id, erro });
+      })
+    )
+  );
+  return ids.length;
+}
+
+/** Todos os lembretes de fatura deste cartão, de qualquer mês. Chamar ao excluir o cartão. */
+export function cancelarLembretesDoCartao(cardId: string): Promise<number> {
+  return cancelarLembretesDeFaturaQueNao((id) => id !== cardId);
+}
+
+/** Cancela todo lembrete de fatura cujo cartão não está em `idsExistentes`. */
+export function cancelarLembretesDeCartoesRemovidos(idsExistentes: string[]): Promise<number> {
+  const existentes = new Set(idsExistentes);
+  return cancelarLembretesDeFaturaQueNao((id) => existentes.has(id));
 }
 
 /* ---- alerta de %-do-limite do cartão ---- */

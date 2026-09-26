@@ -68,7 +68,7 @@ import { descricaoDoLancamento, guessAmountFromText, guessCategoryFromText, matc
 import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
-import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, carregarNotifPrefs } from '@/lib/notifications';
+import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, cancelarLembretesDeCartoesRemovidos, cancelarLembretesDoCartao, carregarNotifPrefs } from '@/lib/notifications';
 import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh, touchTarget } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type CreditCardInvoicePayment, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
@@ -377,11 +377,20 @@ export default function CreditoScreen() {
       // Pagamento parcial continua lembrando, com o valor que falta.
       for (const { cartao, year, month, restante } of lembretesDeFatura(selectedTransactions, c, p, todayISO(), datas)) {
         if (lembretesContasAtivo && restante > 0) {
-          scheduleCardInvoiceReminders(cartao, year, month, restante).catch(() => {});
+          scheduleCardInvoiceReminders(cartao, year, month, restante).catch((erro) => {
+            console.error('[credito] não consegui agendar lembrete de fatura', erro);
+          });
         } else {
-          cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {});
+          cancelCardInvoiceReminders(cartao.id, year, month).catch((erro) => {
+            console.error('[credito] não consegui cancelar lembrete de fatura', erro);
+          });
         }
       }
+      /* Cartão apagado aqui, em outro aparelho, na web ou no banco: os
+         lembretes dele não passam pelo laço acima (achado C1-b, 26/09/2026). */
+      cancelarLembretesDeCartoesRemovidos(c.map((cartao) => cartao.id)).catch((erro) => {
+        console.error('[credito] não consegui limpar lembretes de cartões removidos', erro);
+      });
     } catch (erro) {
       if (!vigente()) return;
       /* As buscas acima têm cache offline, então chegar aqui quer dizer falha
@@ -1118,6 +1127,11 @@ export default function CreditoScreen() {
           }
           try {
             await deleteCreditCard(card.id);
+            /* Os lembretes de fatura do cartão iam ficar tocando para um
+               cartão que não existe (achado C1-b, 26/09/2026). */
+            cancelarLembretesDoCartao(card.id).catch((erro) => {
+              console.error('[credito] não consegui cancelar os lembretes do cartão excluído', erro);
+            });
             /* Sem `loadData()`: o mesmo risco do achado N1 (comentário na
                edição/criação, acima), só que ao contrário — um `fetchCreditCards`
                que voltasse com o disco de ANTES da exclusão traria o cartão
