@@ -26,3 +26,12 @@ Decisões do autor em 25/09/2026, válidas para os próximos vídeos e anúncios
 - **Para gerar a imagem:** Chromium sem cabeça, com `--force-device-scale-factor=3 --default-background-color=00000000 --window-size=412,300`. O alto da janela come ~87 px. Recorte 1236×400 e reduza para 720 de largura.
 - **Na montagem:** ela desce do topo em 0,35 s, junto com o "plim", e sobe antes do corte seguinte.
 - **Fonte:** a Roboto vem do Google Fonts, com licença Apache 2.0.
+
+## Narração grátis (Piper): não serve para anúncio (conferido em 26/09/2026)
+
+O Piper tem quatro vozes em português do Brasil: faber, cadu, jeff e edresson. Os áudios delas são livres: CC0 nas três primeiras, CC BY 4.0 no edresson. Mas os modelos foram treinados a partir de vozes em inglês, e essas vozes de base têm licença não comercial:
+
+- **faber, cadu e jeff:** saem da voz "lessac", que tem licença de pesquisa da Blizzard 2013;
+- **edresson:** sai da voz "ryan", que é CC BY-NC-SA 4.0.
+
+Por isso nenhuma delas vai em anúncio pago. Amostras só para avaliar foram entregues ao autor.
