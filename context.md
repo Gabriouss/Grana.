@@ -11492,7 +11492,9 @@ vault guarda o detalhe das seis perguntas da regra 12.
   confiabilidade suficiente para virar achado confirmado. As tentativas
   ocorreram sob RAM crítica, não houve confirmação estável de persistência e
   o mecanismo de cache ficou apenas como hipótese; não houve correção nem
-  mudança de dados por causa dele.
+  mudança de dados por causa dele. **Corrigido em 26/09: esta avaliação
+  estava errada.** O achado virou N1, confirmado e corrigido na tela em
+  `9243040`; ver a entrada "26/09/2026 — M1 — N1" no fim deste arquivo.
 - **`wallet-context`:** o `TypeError` visto no Expo Go logo após uma gravação
   não se repetiu depois de fechar/reabrir, e a leitura do código não isolou
   causa. Pode ter sido bundle servido no meio de edição; fica como observação
@@ -11585,3 +11587,56 @@ O autor aprovou a revisão de `E:\Grana-temporarios\2026-09-25-marketing\copy-se
   antes desta troca ainda mostra "Auditoria" em algum quadro e precisa ser
   refeita não foi conferido nesta entrada; quem for reaproveitar material
   antigo deve olhar isso antes de publicar.
+
+## 26/09/2026 — M1 — N1: cartão criado que nunca aparecia no Crédito (`9243040`), e a limpeza da conta de teste
+
+- **Pedido como chegou:** na madrugada de 26/09, a limpeza da conta de teste
+  (script `E:\Grana-temporarios\2026-09-26-limpeza-final\limpar-conta-teste.mjs`,
+  "pedido do autor em 26/09/2026") encontrou no banco, via REST com a sessão
+  da conta de teste e sob RLS, três cartões "AUDIT C1" que existiam de verdade
+  e nunca apareceram na tela em nenhuma sessão de QA. O maestro mandou o Forge
+  retomar a investigação sem descartar mais a hipótese.
+- **Sintoma e causa:** cartão salvo no banco não aparece na lista do Crédito,
+  e a pessoa tenta de novo. Causa confirmada por leitura e reproduzida com
+  `lib/data.ts` real: `fetchCreditCards` é `comCacheOffline('cartoes', ...)` e a
+  busca usa `referenciaLocal` (`lib/data.ts:6`). Numa falha **rápida** de rede,
+  `referenciaLocal` engole o erro e devolve a cópia antiga do disco sem
+  relançar; `comCacheOffline` trata isso como sucesso, grava a cópia velha no
+  próprio cache e marca modo online, sem faixa, aviso ou nova tentativa. Criar,
+  editar e excluir cartão chamavam `loadData()` logo depois da gravação.
+  **Hipótese, não confirmada:** por que os três cartões ficaram invisíveis em
+  todas as sessões seguintes (exigiria falhas repetidas de rede).
+- **Arquivos concretos:** `app/(app)/credito.tsx` passa a atualizar a lista
+  local com a linha devolvida por `addCreditCard`, `updateCreditCard` e
+  `deleteCreditCard`, sem `loadData()`, como `CategoryPickerModal` já fazia.
+  Teste novo `__tests__/credito-cartao-invisivel-n1.cjs`, no `test:ci`.
+  Relatório: `E:\Grana-temporarios\2026-09-26-limpeza-final\relatorio-Forge-N1.md`.
+- **Descartado:** corrigir já a causa raiz (`referenciaLocal` e a cópia em
+  `lib/wallets.ts`), porque `__tests__/voz-carteiras-offline.cjs` trava de
+  propósito o fallback de carteiras sem `comCacheOffline` e a mudança alteraria
+  a voz offline; fica para rodada dedicada (fila do Forge de 26/09). Também
+  descartado, por ora, o mesmo padrão no `WalletPickerModal`, que pediria API
+  nova no `wallet-context`.
+- **O que deu errado:** a primeira avaliação do Forge descartou o achado
+  olhando só `useRecarregarAoChegarDadoNovo` (`credito.tsx:405`), que cobre a
+  resposta atrasada e não a falha rápida. Essa avaliação levou à frase "não
+  alcançou confiabilidade suficiente" da consolidação de 25/09, agora marcada
+  como corrigida.
+- **Limpeza da conta de teste:** o modo `apagar` do script remove tudo da
+  conta de teste, não só o que tem "AUDIT" (`bills`, `credit_cards` com cascata
+  em `credit_card_invoices`, `goals`, `transactions`, carteiras e categorias
+  que não são padrão), e repete o inventário para conferir. Isso encerra a
+  pendência "limpeza final aguardando decisão do autor" da consolidação de
+  25/09. Não há relatório escrito do Sentinel sobre a limpeza; a saída do
+  inventário não foi guardada em arquivo.
+- **O que ficou sem verificação:** `tsc` limpo e `test:ci` verde, pelo
+  relatório do Forge. **N1 não visto no emulador**; QA pedido ao Sentinel:
+  criar, editar e excluir cartão com e sem rede instável. **Continua em aberto
+  pela mesma causa:** leitura de cartões, categorias e carteiras logo depois de
+  queda rápida de rede pode mostrar lista antiga sem aviso; criar ou editar
+  carteira segue vulnerável. **Resíduo depois da limpeza:** despejos de tela das
+  00h12 de 26/09 mostram três lançamentos de 26/09 na conta de teste somando
+  R$ 55,00 (entre eles "Mercado", lançado pelo Granabô, e "Cafe"), sem
+  marcação AUDIT e sem registro de remoção; o Sentinel confere antes de
+  qualquer gravação. Nota de sessão:
+  `2026-09-26 - M1 - N1 landing sem banco e limpeza da conta de teste`.
