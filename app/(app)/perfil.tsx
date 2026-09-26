@@ -629,7 +629,7 @@ export default function PerfilScreen() {
                   }}
                 />
                 <View style={[styles.rowInterna, { marginTop: spacing.md }]}>
-                  <Text style={styles.rowKey}>Lembrete na hora do almoço (dias úteis, 12h)</Text>
+                  <Text style={styles.rowKey}>Lembrete no meio-dia (12h)</Text>
                   <ToggleSwitch
                     value={notifPrefs?.almocoAtivo ?? true}
                     onToggle={() => alterarNotifPrefs({ almocoAtivo: !notifPrefs?.almocoAtivo })}

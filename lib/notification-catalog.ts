@@ -3,6 +3,7 @@ export type CategoriaMensagem =
   | 'streak_protecao'
   | 'micro_gastos'
   | 'fim_de_semana'
+  | 'fim_de_semana_meio_dia'
   | 'saudade'
   | 'dicas_atalhos'
   | 'almoco';
@@ -10,8 +11,12 @@ export type CategoriaMensagem =
 /** Janela de horário do lembrete — decide só o pool geral de fallback em
     `selecionarMensagem`; a prioridade de saudade/fim de semana/streak é
     igual e compartilhada entre as duas (ver spec
-    docs/superpowers/specs/2026-09-05-janelas-notificacao-design.md). */
-export type JanelaLembrete = 'noite' | 'almoco';
+    docs/superpowers/specs/2026-09-05-janelas-notificacao-design.md).
+    `meio_dia_finde` (25/09/2026, decisão do autor "Sim") é a mesma ideia do
+    `almoco`, só que o oposto no dia: só sábado e domingo, nunca dia útil —
+    por isso tem pool de fim de semana próprio (`fim_de_semana_meio_dia`),
+    em vez de reaproveitar `fim_de_semana` (que é a janela da NOITE). */
+export type JanelaLembrete = 'noite' | 'almoco' | 'meio_dia_finde';
 
 export type MensagemNotif = {
   id: string;
@@ -70,6 +75,30 @@ export const MENSAGENS: MensagemNotif[] = [
   { id: 'finde-6', dias: [0], categoria: 'fim_de_semana', titulo: 'Antes da segunda chegar', texto: 'Fecha o fim de semana com o controle em dia. A segunda agradece 🗓️' },
   { id: 'finde-7', dias: [0], categoria: 'fim_de_semana', titulo: 'Domingo de organização', texto: 'Domingão é ótimo pra revisar a semana inteira, não só hoje. Já deu uma olhada? 🧾' },
   { id: 'finde-8', dias: [0], categoria: 'fim_de_semana', titulo: 'Semana começando', texto: 'Comece a semana sabendo como terminou a anterior. Quer dar uma olhada? ✅' },
+  // finde-9/10 (sexta), finde-11 a 14 (sábado) e finde-15/16 (domingo):
+  // copy do Beacon de 24/09, janela da NOITE — a de sexta some do almoço
+  // (critério de aceite 1 do Beacon), que passa a seguir a prioridade de
+  // dia útil (ver `selecionarMensagem`).
+  { id: 'finde-9', dias: [5], categoria: 'fim_de_semana', titulo: 'Fim da semana útil', texto: 'Se algum gasto da semana ficou de fora, dá pra lançar agora 🗂️' },
+  { id: 'finde-10', dias: [5], categoria: 'fim_de_semana', titulo: 'Sextou', texto: 'Antes de desligar da semana, vale ver se ficou algum lançamento pra trás 🙂' },
+  { id: 'finde-11', dias: [6], categoria: 'fim_de_semana', titulo: 'Sábado no bolso', texto: 'Como foi o sábado? Se tiver algo pra registrar, dá pra fazer agora 🌤️' },
+  { id: 'finde-12', dias: [6], categoria: 'fim_de_semana', titulo: 'Sábado de descanso?', texto: 'Se o dia foi tranquilo, ótimo. Se teve gasto, dá pra registrar quando quiser 🛋️' },
+  { id: 'finde-13', dias: [6], categoria: 'fim_de_semana', titulo: 'Metade do fim de semana', texto: 'Quer adiantar os lançamentos de hoje antes do domingo? 📝' },
+  { id: 'finde-14', dias: [6], categoria: 'fim_de_semana', titulo: 'Lembrete de sábado', texto: 'Nada obrigatório: se algum gasto de hoje merecer registro, o Grana. anota 🙂' },
+  { id: 'finde-15', dias: [0], categoria: 'fim_de_semana', titulo: 'Olhada na semana?', texto: 'Seus lançamentos da semana estão aqui pra você conferir 📊' },
+  { id: 'finde-16', dias: [0], categoria: 'fim_de_semana', titulo: 'Domingo tranquilo', texto: 'Se quiser, confira a semana antes da segunda. Se não, tudo bem também 🌙' },
+
+  // ---- fim_de_semana_meio_dia: sábado e domingo ao meio-dia (25/09/2026) ----
+  // Copy do Beacon; pool PRÓPRIO da janela `meio_dia_finde`, nunca sai à
+  // noite nem se mistura com finde-1 a finde-16.
+  { id: 'finde-17', dias: [6], categoria: 'fim_de_semana_meio_dia', titulo: 'Sábado no seu ritmo', texto: 'Se algo ficou para registrar, você decide se e quando vale cuidar disso 🙂' },
+  { id: 'finde-18', dias: [6], categoria: 'fim_de_semana_meio_dia', titulo: 'Pausa para conferir', texto: 'Se quiser, confira o que já está organizado na semana. Sem pressa 🌤️' },
+  { id: 'finde-19', dias: [6], categoria: 'fim_de_semana_meio_dia', titulo: 'Seu sábado, sem pressa', texto: 'Qualquer ajuste pode esperar o momento certo. O ritmo é seu 🌿' },
+  { id: 'finde-20', dias: [6], categoria: 'fim_de_semana_meio_dia', titulo: 'Sábado com leveza', texto: 'Se algo financeiro pedir atenção, cuide disso no seu tempo 🤍' },
+  { id: 'finde-21', dias: [0], categoria: 'fim_de_semana_meio_dia', titulo: 'Domingo com calma', texto: 'Se quiser, dê uma olhada no que ficou registrado nesta semana 🌙' },
+  { id: 'finde-22', dias: [0], categoria: 'fim_de_semana_meio_dia', titulo: 'Antes da segunda', texto: 'Uma revisão pode ajudar. Deixar para amanhã também pode estar tudo bem 🙂' },
+  { id: 'finde-23', dias: [0], categoria: 'fim_de_semana_meio_dia', titulo: 'Seu domingo, seu ritmo', texto: 'Se houver algo para anotar, faça quando for melhor para você 📝' },
+  { id: 'finde-24', dias: [0], categoria: 'fim_de_semana_meio_dia', titulo: 'Fechando a semana', texto: 'O que merecer atenção pode entrar na sua lista, sem pressa 🌿' },
 
   // ---- saudade: 2+ dias sem registrar lançamento (não mede abertura do app) ----
   { id: 'saudade-1', categoria: 'saudade', titulo: 'Voltar é simples', texto: 'Quer retomar pelo próximo lançamento? O resto pode esperar 👋' },
@@ -108,6 +137,8 @@ export const MENSAGENS: MensagemNotif[] = [
 const CATEGORIA_GERAL: Record<JanelaLembrete, CategoriaMensagem[]> = {
   noite: ['noturno_humor', 'micro_gastos', 'dicas_atalhos'],
   almoco: ['almoco', 'micro_gastos', 'dicas_atalhos'],
+  /* Mesmo tom de meio-dia do `almoco` — só muda o dia. */
+  meio_dia_finde: ['almoco', 'micro_gastos', 'dicas_atalhos'],
 };
 
 /**
@@ -116,11 +147,20 @@ const CATEGORIA_GERAL: Record<JanelaLembrete, CategoriaMensagem[]> = {
  * escolhidos — se a categoria prioritária inteira já foi usada
  * recentemente, cai para o sorteio geral em vez de travar sem opção.
  *
- * `janela` só decide qual pool GERAL usar no fallback (`almoco` nunca sai
- * fora da janela de almoço, `noturno_humor` nunca sai fora da janela da
- * noite) — a prioridade de saudade/fim de semana/streak não muda entre
- * janelas, e por isso uma sexta-feira já produz tom de fim de semana nas
- * duas sem precisar de lógica extra.
+ * `janela` decide qual pool GERAL usar no fallback (`almoco` nunca sai fora
+ * da janela de almoço, `noturno_humor` nunca sai fora da janela da noite) —
+ * a prioridade de saudade/fim de semana/streak não muda entre `noite` e
+ * `almoco` de sábado/domingo (que na prática não existe, ver
+ * `notification-schedule.ts`), e por isso um sábado ou domingo à noite já
+ * produz tom de fim de semana sem precisar de lógica extra.
+ *
+ * A ÚNICA exceção é a janela de almoço de SEXTA (critério de aceite do
+ * Beacon, decisão do autor repassada pelo maestro em 25/09): ela segue a
+ * prioridade de dia útil (`saudade` > `streak_protecao` > pool geral de
+ * almoço), nunca `fim_de_semana` — sextar ao meio-dia com "Domingo à noite"
+ * ou títulos de fim de semana seria cedo demais. `meio_dia_finde` é o
+ * oposto: só existe aos sábados/domingos (nunca dia útil) e usa o pool
+ * PRÓPRIO `fim_de_semana_meio_dia`, nunca o de `fim_de_semana` da noite.
  */
 export function selecionarMensagem(contexto: {
   streak: number;
@@ -137,7 +177,8 @@ export function selecionarMensagem(contexto: {
 
   let categoriaPrioritaria: CategoriaMensagem | null = null;
   if (contexto.diasInativo >= 2) categoriaPrioritaria = 'saudade';
-  else if ([5, 6, 0].includes(contexto.diaSemana)) categoriaPrioritaria = 'fim_de_semana';
+  else if (janela === 'meio_dia_finde' && [6, 0].includes(contexto.diaSemana)) categoriaPrioritaria = 'fim_de_semana_meio_dia';
+  else if (janela !== 'almoco' && [5, 6, 0].includes(contexto.diaSemana)) categoriaPrioritaria = 'fim_de_semana';
   else if (contexto.streak > 1) categoriaPrioritaria = 'streak_protecao';
 
   let candidatas: MensagemNotif[] = [];

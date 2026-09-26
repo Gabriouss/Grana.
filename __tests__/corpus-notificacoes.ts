@@ -70,7 +70,9 @@ checar('não captura lembretes de conta', !ehIdLembreteHabito('conta-123-3d'));
 
 /* 56, e não mais 57: a `dica-7` ("Atalho pelo WhatsApp") saiu em 13/09/2026,
    quando o autor decidiu que o Grana. não usa WhatsApp. */
-checar('mantém as 56 copies aprovadas (47 + 9 de almoço)', MENSAGENS.length === 56);
+/* 72 desde 25/09/2026: as 56 acima mais finde-9 a finde-16 (Beacon, 24/09) e
+   finde-17 a finde-24 (meio-dia de sábado e domingo, Beacon, 25/09). */
+checar('mantém as 72 copies aprovadas (56 + 16 de fim de semana)', MENSAGENS.length === 72);
 checar(
   'nenhuma copy fala de WhatsApp',
   MENSAGENS.every((m) => !/whats\s*app/i.test(`${m.titulo} ${m.texto}`)),
@@ -140,7 +142,10 @@ checar('pool geral da janela de noite nunca sorteia almoco', poolNoiteNuncaSaiAl
 
 const sextaAlmoco = selecionarMensagem({ streak: 0, diasInativo: 0, diaSemana: 5 }, [], () => 0, 'almoco');
 const sextaNoite = selecionarMensagem({ streak: 0, diasInativo: 0, diaSemana: 5 }, [], () => 0, 'noite');
-checar('sexta produz tom de fim de semana na janela de almoço', sextaAlmoco.categoria === 'fim_de_semana');
+/* Decisão do maestro em 25/09/2026 (critério de aceite 1 do Beacon): o almoço
+   de sexta segue a prioridade de dia útil e nunca sai finde-*; o tom de fim
+   de semana da sexta fica só na noite. */
+checar('sexta NÃO produz tom de fim de semana na janela de almoço', sextaAlmoco.categoria !== 'fim_de_semana' && sextaAlmoco.categoria !== 'fim_de_semana_meio_dia');
 checar('sexta produz tom de fim de semana na janela de noite', sextaNoite.categoria === 'fim_de_semana');
 
 /* Regra de texto do projeto: sem travessão em copy. Doze notificações usavam

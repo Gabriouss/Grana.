@@ -63,6 +63,22 @@ const REESCRITAS = {
   'finde-4': ['Balanço do fim de semana', 'Se o fim de semana teve gastos, dá pra registrar com calma 😄'],
   'finde-5': ['Sexta chegou', 'Antes de virar a página da semana, quer conferir seus lançamentos? 📋'],
   'finde-8': ['Semana começando', 'Comece a semana sabendo como terminou a anterior. Quer dar uma olhada? ✅'],
+  'finde-9': ['Fim da semana útil', 'Se algum gasto da semana ficou de fora, dá pra lançar agora 🗂️'],
+  'finde-10': ['Sextou', 'Antes de desligar da semana, vale ver se ficou algum lançamento pra trás 🙂'],
+  'finde-11': ['Sábado no bolso', 'Como foi o sábado? Se tiver algo pra registrar, dá pra fazer agora 🌤️'],
+  'finde-12': ['Sábado de descanso?', 'Se o dia foi tranquilo, ótimo. Se teve gasto, dá pra registrar quando quiser 🛋️'],
+  'finde-13': ['Metade do fim de semana', 'Quer adiantar os lançamentos de hoje antes do domingo? 📝'],
+  'finde-14': ['Lembrete de sábado', 'Nada obrigatório: se algum gasto de hoje merecer registro, o Grana. anota 🙂'],
+  'finde-15': ['Olhada na semana?', 'Seus lançamentos da semana estão aqui pra você conferir 📊'],
+  'finde-16': ['Domingo tranquilo', 'Se quiser, confira a semana antes da segunda. Se não, tudo bem também 🌙'],
+  'finde-17': ['Sábado no seu ritmo', 'Se algo ficou para registrar, você decide se e quando vale cuidar disso 🙂'],
+  'finde-18': ['Pausa para conferir', 'Se quiser, confira o que já está organizado na semana. Sem pressa 🌤️'],
+  'finde-19': ['Seu sábado, sem pressa', 'Qualquer ajuste pode esperar o momento certo. O ritmo é seu 🌿'],
+  'finde-20': ['Sábado com leveza', 'Se algo financeiro pedir atenção, cuide disso no seu tempo 🤍'],
+  'finde-21': ['Domingo com calma', 'Se quiser, dê uma olhada no que ficou registrado nesta semana 🌙'],
+  'finde-22': ['Antes da segunda', 'Uma revisão pode ajudar. Deixar para amanhã também pode estar tudo bem 🙂'],
+  'finde-23': ['Seu domingo, seu ritmo', 'Se houver algo para anotar, faça quando for melhor para você 📝'],
+  'finde-24': ['Fechando a semana', 'O que merecer atenção pode entrar na sua lista, sem pressa 🌿'],
   'saudade-1': ['Voltar é simples', 'Quer retomar pelo próximo lançamento? O resto pode esperar 👋'],
   'saudade-2': ['A porta está aberta', 'Dá pra retomar com um lançamento só, do dia que você lembrar 🙂'],
   'saudade-3': ['Bora recomeçar', 'Dá pra retomar de onde parou. Registre o que lembrar desses dias 🔄'],
@@ -129,6 +145,7 @@ function contextoDe(m) {
     case 'saudade': return { ctx: { streak: 0, diasInativo: 3, diaSemana: dia }, janela: 'noite' };
     case 'streak_protecao': return { ctx: { streak: 5, diasInativo: 0, diaSemana: dia }, janela: 'noite' };
     case 'fim_de_semana': return { ctx: { streak: 0, diasInativo: 0, diaSemana: dia }, janela: 'noite' };
+    case 'fim_de_semana_meio_dia': return { ctx: { streak: 0, diasInativo: 0, diaSemana: dia }, janela: 'meio_dia_finde' };
     case 'almoco': return { ctx: { streak: 0, diasInativo: 0, diaSemana: dia }, janela: 'almoco' };
     default: return { ctx: { streak: 0, diasInativo: 0, diaSemana: dia }, janela: 'noite' };
   }
@@ -143,18 +160,42 @@ for (const id of Object.keys(REESCRITAS)) {
     }
   }
   if (m.categoria === 'almoco') assert.ok(!alcancaveis(ctx, [], 'noite').has(id), `${id} saiu à noite`);
+  if (m.categoria === 'fim_de_semana_meio_dia') {
+    assert.ok(!alcancaveis(ctx, [], 'noite').has(id), `${id} saiu à noite`);
+    assert.ok(!alcancaveis({ ...ctx, diaSemana: 5 }, [], 'almoco').has(id), `${id} saiu no almoço de sexta`);
+  }
 }
 ok('cada texto reescrito sai no contexto da própria categoria, e só nos seus dias e janela');
 
+/* Critério de aceite 1 do Beacon (24/09, decidido pelo maestro em 25/09):
+   almoço de SEXTA nunca sai `finde-*`, mesmo sem nada esgotado — segue a
+   prioridade de dia útil (saudade > streak_protecao > pool geral). Sem
+   `esgotar` nada aqui: é o comportamento normal, não o de fallback. */
+console.log('\nAlmoço de sexta');
+for (let streak = 0; streak <= 3; streak++) {
+  const vistas = alcancaveis({ streak, diasInativo: 0, diaSemana: 5 }, [], 'almoco');
+  for (const id of vistas) {
+    assert.ok(porId.get(id).categoria !== 'fim_de_semana', `almoço de sexta (streak ${streak}) saiu ${id}, de fim_de_semana`);
+    assert.ok(porId.get(id).categoria !== 'fim_de_semana_meio_dia', `almoço de sexta (streak ${streak}) saiu ${id}, de fim_de_semana_meio_dia`);
+  }
+}
+ok('almoço de sexta nunca sai finde-*, segue a prioridade de dia útil');
+
 /* ── 4. Fallback ────────────────────────────────────────────────────────── */
 console.log('\nFallback');
-const GERAL = { noite: ['noturno_humor', 'micro_gastos', 'dicas_atalhos'], almoco: ['almoco', 'micro_gastos', 'dicas_atalhos'] };
+const GERAL = {
+  noite: ['noturno_humor', 'micro_gastos', 'dicas_atalhos'],
+  almoco: ['almoco', 'micro_gastos', 'dicas_atalhos'],
+  meio_dia_finde: ['almoco', 'micro_gastos', 'dicas_atalhos'],
+};
 const casos = [
   ['saudade', { streak: 0, diasInativo: 4, diaSemana: QUARTA }, 'noite'],
   ['streak_protecao', { streak: 6, diasInativo: 0, diaSemana: QUARTA }, 'noite'],
   ['fim_de_semana', { streak: 0, diasInativo: 0, diaSemana: 5 }, 'almoco'],
   ['fim_de_semana', { streak: 0, diasInativo: 0, diaSemana: 6 }, 'noite'],
   ['fim_de_semana', { streak: 0, diasInativo: 0, diaSemana: 0 }, 'noite'],
+  ['fim_de_semana_meio_dia', { streak: 0, diasInativo: 0, diaSemana: 6 }, 'meio_dia_finde'],
+  ['fim_de_semana_meio_dia', { streak: 0, diasInativo: 0, diaSemana: 0 }, 'meio_dia_finde'],
 ];
 for (const [categoria, ctx, janela] of casos) {
   const esgotadas = MENSAGENS.filter((m) => m.categoria === categoria).map((m) => m.id);

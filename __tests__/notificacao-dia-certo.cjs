@@ -44,7 +44,13 @@ for (const dia of [0, 1, 2, 3, 4, 5, 6]) {
   }
   for (const m of vistas.values()) {
     for (const [re, diaDaCopy] of DIA_CITADO) {
-      if (re.test(m.texto) && diaDaCopy !== dia) {
+      /* "Antes do domingo" num sábado (finde-13, copy do Beacon de 24/09)
+         cita o dia SEGUINTE como referência futura, e é verdade. O que este
+         guarda barra é prometer que HOJE é outro dia ("Domingo à noite"
+         numa sexta), então só essa forma exata, no dia anterior, passa. */
+      const referenciaAoDiaSeguinte = diaDaCopy === (dia + 1) % 7 &&
+        new RegExp(`antes d[oa]\\s+${diaDaCopy === 0 ? 'domingo' : diaDaCopy === 6 ? 's[áa]bado' : 'sexta'}`, 'i').test(m.texto);
+      if (re.test(m.texto) && diaDaCopy !== dia && !referenciaAoDiaSeguinte) {
         checar(`dia ${dia} não recebe mensagem de outro dia`, false,
           `${m.id} diz "${m.texto.slice(0, 40)}..." mas saiu no dia ${dia}`);
       }

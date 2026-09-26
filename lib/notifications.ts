@@ -444,9 +444,15 @@ export async function scheduleDailyHabitReminder(opts: {
         agora, hour: opts.hour, minute: opts.minute, jaLancouHoje: opts.jaLancouHoje, janela: 'noite',
       }).map((p) => ({ ...p, janela: 'noite' as const })),
       // `almocoAtivo` por padrão true — só desliga se explicitamente false.
+      // O mesmo toggle liga o meio-dia de sábado/domingo (decisão do autor,
+      // "Sim", 25/09/2026): é a mesma ideia de lembrete de meio-dia, só que
+      // no fim de semana em vez de dia útil — sem opção nova no Perfil.
       ...(opts.almocoAtivo === false ? [] : planejarLembretesHabito({
         agora, hour: HORARIO_ALMOCO.hour, minute: HORARIO_ALMOCO.minute, jaLancouHoje: opts.jaLancouHoje, janela: 'almoco',
       }).map((p) => ({ ...p, janela: 'almoco' as const }))),
+      ...(opts.almocoAtivo === false ? [] : planejarLembretesHabito({
+        agora, hour: HORARIO_ALMOCO.hour, minute: HORARIO_ALMOCO.minute, jaLancouHoje: opts.jaLancouHoje, janela: 'meio_dia_finde',
+      }).map((p) => ({ ...p, janela: 'meio_dia_finde' as const }))),
     ];
     const contextoDoDia = (planejado: (typeof planejados)[number]) => ({
       streak: opts.streak,

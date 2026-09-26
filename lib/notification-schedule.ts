@@ -5,6 +5,10 @@ export const PREFIXO_ID_HABITO = 'habito-diario-';
 /** Prefixo da janela de almoço — precisa ser distinto do de `noite` pro
     mesmo dia poder ter as duas notificações agendadas sem colidir por ID. */
 export const PREFIXO_ID_HABITO_ALMOCO = 'habito-almoco-';
+/** Prefixo do lembrete de meio-dia de fim de semana (25/09/2026) — precisa
+    ser distinto dos outros dois pro mesmo dia poder ter até duas
+    notificações (meio-dia + noite) sem colidir por ID. */
+export const PREFIXO_ID_HABITO_MEIO_DIA_FINDE = 'habito-meiodia-finde-';
 export const QUANTIDADE_LEMBRETES_HABITO = 7;
 
 export type LembreteHabitoPlanejado = {
@@ -27,7 +31,12 @@ function ehFimDeSemana(data: Date): boolean {
 }
 
 export function ehIdLembreteHabito(id: string): boolean {
-  return id === ID_HABITO_LEGADO || id.startsWith(PREFIXO_ID_HABITO) || id.startsWith(PREFIXO_ID_HABITO_ALMOCO);
+  return (
+    id === ID_HABITO_LEGADO ||
+    id.startsWith(PREFIXO_ID_HABITO) ||
+    id.startsWith(PREFIXO_ID_HABITO_ALMOCO) ||
+    id.startsWith(PREFIXO_ID_HABITO_MEIO_DIA_FINDE)
+  );
 }
 
 /**
@@ -35,9 +44,11 @@ export function ehIdLembreteHabito(id: string): boolean {
  * DAILY porque ele repetiria para sempre o mesmo texto; IDs por data deixam o
  * catálogo escolher uma mensagem diferente em cada ocorrência.
  *
- * `janela` decide o prefixo do ID (pra não colidir com a outra janela no
- * mesmo dia) e se sábado/domingo entram na contagem — `almoco` pula os
- * dois, `noite` continua contando todo santo dia como sempre contou.
+ * `janela` decide o prefixo do ID (pra não colidir com as outras janelas no
+ * mesmo dia) e quais dias entram na contagem: `almoco` pula sábado e
+ * domingo (só dia útil), `meio_dia_finde` faz o OPOSTO — pula dia útil, só
+ * sábado e domingo —, e `noite` continua contando todo santo dia como
+ * sempre contou.
  */
 export function planejarLembretesHabito(opts: {
   agora: Date;
@@ -50,7 +61,10 @@ export function planejarLembretesHabito(opts: {
   const quantidade = opts.quantidade ?? QUANTIDADE_LEMBRETES_HABITO;
   if (quantidade <= 0) return [];
   const janela = opts.janela ?? 'noite';
-  const prefixo = janela === 'almoco' ? PREFIXO_ID_HABITO_ALMOCO : PREFIXO_ID_HABITO;
+  const prefixo =
+    janela === 'almoco' ? PREFIXO_ID_HABITO_ALMOCO
+    : janela === 'meio_dia_finde' ? PREFIXO_ID_HABITO_MEIO_DIA_FINDE
+    : PREFIXO_ID_HABITO;
 
   const planejados: LembreteHabitoPlanejado[] = [];
   let diasDesdeHoje = 0;
@@ -67,8 +81,9 @@ export function planejarLembretesHabito(opts: {
     );
 
     const foraDoDiaUtil = janela === 'almoco' && ehFimDeSemana(quando);
+    const foraDoFimDeSemana = janela === 'meio_dia_finde' && !ehFimDeSemana(quando);
     const hojeJaResolvido = diasDesdeHoje === 0 && opts.jaLancouHoje;
-    if (!foraDoDiaUtil && !hojeJaResolvido && quando.getTime() > opts.agora.getTime()) {
+    if (!foraDoDiaUtil && !foraDoFimDeSemana && !hojeJaResolvido && quando.getTime() > opts.agora.getTime()) {
       planejados.push({
         id: `${prefixo}${chaveDataLocal(quando)}`,
         quando,

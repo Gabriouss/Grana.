@@ -49,8 +49,10 @@ const PALAVRAS = [
   [/\bquinta\b/i, 4], [/\bsexta\b/i, 5], [/\bs[áa]bado\b/i, 6],
 ];
 /* "Antes da segunda chegar" é dito no domingo: citar a segunda como o dia
-   SEGUINTE não é prometer que hoje é segunda. */
-const EXCECOES = { 'finde-6': [1] };
+   SEGUINTE não é prometer que hoje é segunda. Mesma coisa em finde-13 ("antes
+   do domingo", dito no sábado), finde-16 e finde-22 ("antes da segunda",
+   ditos no domingo), copy do Beacon de 24 e 25/09. */
+const EXCECOES = { 'finde-6': [1], 'finde-13': [0], 'finde-16': [1], 'finde-22': [1] };
 function diasCitados(m) {
   const texto = `${m.titulo} ${m.texto}`;
   return PALAVRAS.filter(([re]) => re.test(texto)).map(([, d]) => d)
