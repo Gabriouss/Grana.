@@ -1920,7 +1920,8 @@ const CreditTransactionRow = memo(function CreditTransactionRow({
         <Text style={styles.txDate}>{`${formatDateLabel(tx.occurred_on)} • ${tx.category}`}</Text>
       </View>
       <PrivacyValue>
-        {/* Estorno abate a fatura, então aparece com sinal de mais. */}
+        {/* Entrada no cartão não se cria mais (26/09/2026); linha antiga desse
+            tipo abate a fatura e aparece com sinal de mais. */}
         <Text style={styles.txAmount}>{`${tx.type === 'in' ? '+' : '−'} R$ ${formatMoney(Number(tx.amount))}`}</Text>
       </PrivacyValue>
     </AppPressable>

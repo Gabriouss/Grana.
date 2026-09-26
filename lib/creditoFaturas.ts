@@ -26,10 +26,13 @@ function resolverCartao(transacao: Transaction, cartoes: CreditCard[]): CreditCa
 }
 
 /**
- * Quanto um lançamento pesa na fatura. Estorno (`type: 'in'` no cartão)
- * ABATE: até 23/09/2026 toda soma de fatura era `+ amount`, e um estorno de
- * R$ 50 aumentava a fatura em R$ 50 em vez de diminuir. Vale para a tela, o
- * resumo da Início, os lembretes e o limite, que somam por aqui.
+ * Quanto um lançamento pesa na fatura. Vale para a tela, o resumo da Início,
+ * os lembretes e o limite, que somam por aqui.
+ *
+ * Desde 26/09/2026 nenhum caminho cria entrada (`type: 'in'`) no cartão
+ * (`recusarEntradaNoCartao`, `lib/transaction-rules.ts`). O ramo de `in` fica
+ * só para as linhas ANTIGAS desse tipo que já estão no banco, que continuam
+ * abatendo como sempre abateram até haver decisão sobre elas.
  */
 export function valorNaFatura(transacao: Pick<Transaction, 'amount' | 'type'>): number {
   const valor = Number(transacao.amount);

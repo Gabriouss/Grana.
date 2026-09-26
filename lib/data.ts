@@ -12,7 +12,7 @@ import { idDoUsuarioLocal } from './sessao-offline';
 import { buscarTodasAsPaginas } from './paginacao';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
-import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito } from './transaction-rules';
+import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito, recusarEntradaNoCartao } from './transaction-rules';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 import { marcarLancamentosAlterados } from './lancamentos-alterados';
 import { entradasPendentesPorCarteira, juntarPendentes } from './fila-pendente';
@@ -238,6 +238,7 @@ export async function addTransaction(input: {
   client_request_id?: string | null;
 }): Promise<Transaction> {
   exigirCartaoNoCredito(input);
+  recusarEntradaNoCartao(input);
   const user_id = await currentUserId();
   const data = await inserirIdempotente<Transaction>('transactions', { ...input, user_id });
 
@@ -440,6 +441,9 @@ export async function addTransactionsBatch(
   if (inputs.length === 0) return { inseridos: 0, ignorados: 0 };
   // Nenhuma linha entra se alguma for crédito sem cartão: importar metade de uma fatura seria pior.
   inputs.forEach(exigirCartaoNoCredito);
+  /* A tela de importação já separa as linhas de entrada no cartão e conta
+     quantas ficaram de fora; esta é a guarda da camada de dados. */
+  inputs.forEach(recusarEntradaNoCartao);
   const user_id = await currentUserId();
   const rows = inputs.map((item) => ({ ...item, user_id }));
 

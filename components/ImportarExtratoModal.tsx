@@ -11,6 +11,7 @@ import { escolherArquivoDeExtrato } from '@/lib/escolher-arquivo';
 import { LIMITS } from '@/lib/limits';
 import { formatDateLabel, formatMoney } from '@/lib/format';
 import { addTransactionsBatch, fetchCreditCards } from '@/lib/data';
+import { avisoEntradasNoCartaoRecusadas } from '@/lib/transaction-rules';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import AppPressable from './AppPressable';
@@ -215,9 +216,20 @@ export default function ImportarExtratoModal({
       );
       return;
     }
+    /* O Grana. não registra entrada em cartão (decisão do autor, 26/09/2026).
+       Numa fatura, a linha de entrada (devolução, reembolso da operadora) fica
+       de fora, e a pessoa é avisada de quantas e do que fazer: sumir com elas
+       em silêncio deixaria a fatura importada diferente do arquivo sem
+       explicação. */
+    const aImportar = ehCartao ? linhas.filter((l) => l.type !== 'in') : linhas;
+    const avisoEntradas = avisoEntradasNoCartaoRecusadas(linhas.length - aImportar.length);
+    if (aImportar.length === 0) {
+      Alert.alert('Nada importado', avisoEntradas);
+      return;
+    }
     setImportando(true);
     try {
-      const prontos = linhas.map((l) => ({
+      const prontos = aImportar.map((l) => ({
         type: l.type,
         description: l.description,
         amount: l.amount,
@@ -242,12 +254,10 @@ export default function ImportarExtratoModal({
         (processados, total) => setProgresso({ processados, total })
       );
 
-      Alert.alert(
-        'Importação concluída',
-        ignorados > 0
-          ? `${inseridos} ${inseridos === 1 ? 'lançamento importado' : 'lançamentos importados'}. ${ignorados} ${ignorados === 1 ? 'já existia e foi ignorado' : 'já existiam e foram ignorados'}.`
-          : `${inseridos} ${inseridos === 1 ? 'lançamento importado' : 'lançamentos importados'}.`
-      );
+      const resumo = ignorados > 0
+        ? `${inseridos} ${inseridos === 1 ? 'lançamento importado' : 'lançamentos importados'}. ${ignorados} ${ignorados === 1 ? 'já existia e foi ignorado' : 'já existiam e foram ignorados'}.`
+        : `${inseridos} ${inseridos === 1 ? 'lançamento importado' : 'lançamentos importados'}.`;
+      Alert.alert('Importação concluída', avisoEntradas ? `${resumo}\n\n${avisoEntradas}` : resumo);
       limpar();
       onClose();
       onSuccess();
