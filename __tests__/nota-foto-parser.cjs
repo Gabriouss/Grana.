@@ -57,6 +57,11 @@ caso('texto vazio', '', null, 'sem_total');
 
 caso('total zerado não vale', 'VALOR TOTAL R$ 0,00', null, 'sem_total');
 
+/* Texto real do ML Kit no emulador (26/09/2026): o total em negrito saiu com
+   espaço depois da vírgula. */
+caso('"21, 35" com espaço depois da vírgula', 'Qtd. total de itens\nVALOR TOTAL R$ 21, 35\nFORMA DE PAGAMENTO VALOR PAGO\nCartao de Debito 21,35', 21.35, 'ok');
+caso('espaço antes da vírgula, valor na linha seguinte', 'VALOR TOTAL R$\n21 ,35', 21.35, 'ok');
+
 caso('número sem centavos não é valor', 'TOTAL DE ITENS 12\nVALOR TOTAL R$ 12', null, 'sem_total');
 
 /* Fileiras (26/09/2026). O ML Kit agrupa o cupom em blocos por COLUNA: os

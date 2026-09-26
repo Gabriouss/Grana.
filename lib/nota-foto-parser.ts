@@ -19,8 +19,12 @@ export type TotalDaFoto =
   | { valorTotal: number; motivo: 'ok' }
   | { valorTotal: null; motivo: MotivoSemTotal };
 
-/** Valor no formato brasileiro: `45,90`, `1.234,56`. Exige duas casas. */
-const VALOR = /(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})(?!\d)/g;
+/**
+ * Valor no formato brasileiro: `45,90`, `1.234,56`. Exige duas casas. Aceita
+ * um espaço em volta da vírgula: o ML Kit leu o total em negrito de um cupom
+ * como "21, 35" no emulador (26/09/2026), e sem isto a nota voltava sem total.
+ */
+const VALOR = /(\d{1,3}(?:\.\d{3})+|\d+) ?, ?(\d{2})(?!\d)/g;
 
 /**
  * O que a pessoa de fato pagou: vem depois do desconto e da taxa. Num cupom
@@ -55,7 +59,7 @@ function normalizarRotulo(linha: string): string {
 
 /** Linha que é só um valor, com ou sem "R$": onde o OCR deixa o número quando separa rótulo e valor. */
 function soUmValor(linha: string): number | null {
-  const m = linha.trim().match(/^(?:R\s*[S$5]\s*)?(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})$/i);
+  const m = linha.trim().match(/^(?:R\s*[S$5]\s*)?(\d{1,3}(?:\.\d{3})+|\d+) ?, ?(\d{2})$/i);
   return m ? paraNumero(m[1], m[2]) : null;
 }
 
