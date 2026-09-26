@@ -57,7 +57,7 @@ import WalletPill from '@/components/WalletPill';
 import WidgetGrid, { ESPACO_ALCA } from '@/components/WidgetGrid';
 import { useFlags } from '@/lib/feature-flags';
 import { colunaConteudo } from '@/lib/breakpoints';
-import { ehIntencaoBoleto, ehIntencaoCredito, matchWalletByText, limparReferenciaCarteira } from '@/lib/heuristics';
+import { destinoDaFala } from '@/lib/destino-da-fala';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import ImportarExtratoModal from '@/components/ImportarExtratoModal';
@@ -1513,13 +1513,12 @@ export default function InicioScreen() {
           style={[styles.smartActionBtn, styles.smartActionBtnPrimary]}
           hoverStyle={styles.smartActionBtnPrimaryHover}
           onTranscribed={(text) => {
-            const carteira = matchWalletByText(text, wallets);
-            const financeiro = carteira ? limparReferenciaCarteira(text, carteira.name) : text;
-            if (ehIntencaoBoleto(financeiro)) {
+            const destino = destinoDaFala(text, wallets, creditCards);
+            if (destino === 'contas') {
               router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto: text } });
               return;
             }
-            if (ehIntencaoCredito(financeiro)) {
+            if (destino === 'credito') {
               router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
               return;
             }
