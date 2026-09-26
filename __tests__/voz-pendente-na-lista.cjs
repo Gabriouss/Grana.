@@ -187,10 +187,12 @@ const soma = (itens) => itens.reduce((s, t) => s + (t.type === 'in' ? t.amount :
   /* Aviso no banner: contagem, sem valor, e aparece mesmo sem fala interpretada. */
   const banner = fs.readFileSync(path.join(root, 'components/VozesSalvasLocalmente.tsx'), 'utf8');
   assert.match(banner, /contarFalasAguardandoConexao\(\)\.then\(setAudios\)/);
-  assert.match(banner, /if \(!itens\.length && !audios\) return null;/);
-  assert.match(banner, /'1 fala aguardando conexão\.'/);
+  assert.match(banner, /const pendencias = itens\.length \+ audios;/);
+  assert.match(banner, /'1 lançamento aguardando conexão'/);
+  assert.match(banner, /numberOfLines=\{1\}/);
+  assert.doesNotMatch(banner, /Sincronização pendente/);
   assert.doesNotMatch(banner, /aguardando conexão[^\n]*(R\$|amount|formatMoney)/);
-  ok('banner avisa "fala aguardando conexão" só com a contagem');
+  ok('banner soma a fila pendente e avisa só com a contagem');
 
   console.log(`\n${aprovadas} checagens de voz guardada na lista passaram — 0 falhas`);
 })().catch((e) => {

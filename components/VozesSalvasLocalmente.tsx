@@ -25,42 +25,49 @@ export default function VozesSalvasLocalmente() {
     const evento = AppState.addEventListener('change', (estado) => { if (estado === 'active') void carregar(); });
     return () => { remover(); evento.remove(); };
   }, []);
-  const faixaVisivel = itens.length > 0 || audios > 0;
+  const pendencias = itens.length + audios;
+  const faixaVisivel = pendencias > 0;
   usePublicarFaixaTopo(faixaVisivel);
   if (!faixaVisivel) return null;
   /* A faixa ocupa o inset superior antes da rota montar seu cabeçalho. A tela
      abaixo deixa de reservá-lo por meio de SafeAreaViewComFaixa; não há margem
      negativa nem compensação dependente do contêiner do Stack. */
   return <View style={[styles.container, { paddingTop: Math.max(12, insets.top + 8) }]}>
-    {itens.length > 0 && <Text style={styles.text}>{itens.length === 1 ? '1 lançamento por voz salvo neste aparelho.' : `${itens.length} lançamentos por voz salvos neste aparelho.`}</Text>}
-    {audios > 0 && <Text style={styles.text}>{audios === 1 ? '1 fala aguardando conexão.' : `${audios} falas aguardando conexão.`}</Text>}
-    {/* `polite` porque a frase muda sozinha ao fim da sincronização: sem região
-        viva, quem usa leitor de tela toca em "Tentar sincronizar" e nunca fica
-        sabendo no que deu. `alert` seria grosseiro para um aviso de fundo. */}
-    <Text style={styles.subtext} accessibilityLiveRegion="polite" accessibilityRole="text">
-      {mensagem ?? 'Sincronização pendente.'}
-    </Text>
-    <AppPressable
-      disabled={ocupado}
-      accessibilityRole="button"
-      accessibilityLabel="Tentar sincronizar lançamentos salvos neste aparelho"
-      /* `busy` é o que anuncia "já entendi, estou trabalhando" — sem ele o
-         botão só fica mudo e desabilitado, indistinguível de quebrado. */
-      accessibilityState={{ disabled: ocupado, busy: ocupado }}
-      style={styles.botao}
-      onPress={async () => {
-      setOcupado(true);
-      setMensagem(null);
-      try {
-        const resultado = await sincronizarOperacoesVoz();
-        await carregar();
-        if (resultado.falhas) setMensagem(resultado.mensagem ?? 'Não foi possível confirmar todos os lançamentos.');
-      } catch { setMensagem('Não foi possível sincronizar agora. Tente novamente.'); }
-        finally { setOcupado(false); }
-      }}
-    >
-      <Text style={styles.action}>{ocupado ? 'Sincronizando…' : 'Tentar sincronizar'}</Text>
-    </AppPressable>
+    <View style={styles.row}>
+      {/* `polite` porque a frase muda sozinha ao fim da sincronização: sem região
+          viva, quem usa leitor de tela toca em "Tentar sincronizar" e nunca fica
+          sabendo no que deu. `alert` seria grosseiro para um aviso de fundo. */}
+      <Text
+        style={styles.text}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        accessibilityLiveRegion="polite"
+        accessibilityRole="text"
+      >
+        {mensagem ?? (pendencias === 1 ? '1 lançamento aguardando conexão' : `${pendencias} lançamentos aguardando conexão`)}
+      </Text>
+      <AppPressable
+        disabled={ocupado}
+        accessibilityRole="button"
+        accessibilityLabel="Tentar sincronizar lançamentos salvos neste aparelho"
+        /* `busy` é o que anuncia "já entendi, estou trabalhando" — sem ele o
+           botão só fica mudo e desabilitado, indistinguível de quebrado. */
+        accessibilityState={{ disabled: ocupado, busy: ocupado }}
+        style={styles.botao}
+        onPress={async () => {
+          setOcupado(true);
+          setMensagem(null);
+          try {
+            const resultado = await sincronizarOperacoesVoz();
+            await carregar();
+            if (resultado.falhas) setMensagem(resultado.mensagem ?? 'Não foi possível confirmar todos os lançamentos.');
+          } catch { setMensagem('Não foi possível sincronizar agora. Tente novamente.'); }
+          finally { setOcupado(false); }
+        }}
+      >
+        <Text style={styles.action}>{ocupado ? 'Sincronizando…' : 'Tentar sincronizar'}</Text>
+      </AppPressable>
+    </View>
   </View>;
 }
 
@@ -75,11 +82,11 @@ const styles = StyleSheet.create({
      na Início. O botão continua com o alvo de toque de `touchTarget`; só o
      respiro depois dele fica menor, e a Início sem faixa não muda. */
   container: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, backgroundColor: theme.paperRaised },
-  text: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: Math.round(type.apoio * 1.4) },
-  subtext: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: type.nota, lineHeight: Math.round(type.nota * 1.4), marginTop: spacing.xs / 2 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  text: { flex: 1, minWidth: 0, color: theme.ink, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: Math.round(type.apoio * 1.4) },
   /* O alvo vive no PRESSÁVEL, não no texto: `paddingVertical: 8` num texto de
      15px dava ~36dp, abaixo dos 48dp do Android. `justifyContent` centraliza o
      rótulo dentro da altura mínima em vez de esticá-lo. */
-  botao: { minHeight: touchTarget, justifyContent: 'center' },
+  botao: { minHeight: touchTarget, flexShrink: 0, justifyContent: 'center', paddingHorizontal: spacing.sm },
   action: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio },
 });
