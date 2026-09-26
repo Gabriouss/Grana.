@@ -18,6 +18,7 @@ import CategoryChips from './CategoryChips';
 import AppPressable from './AppPressable';
 import AppModal, { InsetsDoModal } from './AppModal';
 import Sheet from './Sheet';
+import PermissaoCamera from './PermissaoCamera';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
 
@@ -82,7 +83,7 @@ export default function FotoNotaModal({
     onClose();
   }
 
-  useModalAccessibility(modalRef, visible && etapa === 'camera', fechar);
+  useModalAccessibility(modalRef, visible && etapa !== 'confirmar', fechar);
 
   async function apagarFoto(uri: string) {
     try {
@@ -180,20 +181,12 @@ export default function FotoNotaModal({
         <InsetsDoModal>{(insets) => (
         <View ref={modalRef} style={styles.camWrap} accessibilityViewIsModal role="dialog" focusable>
           {semPermissao ? (
-            <View style={styles.permissaoWrap}>
-              <Ionicons name="camera-outline" size={44} color={theme.inkFaint} />
-              <Text style={styles.permissaoTitulo}>Acesso à câmera</Text>
-              <Text style={styles.permissaoTexto}>
-                O Grana. precisa da câmera para fotografar a nota e ler o valor total. A foto é lida no
-                aparelho, nada é enviado, e ela é apagada logo depois da leitura.
-              </Text>
-              <AppPressable style={styles.botaoPrimario} onPress={pedirPermissao}>
-                <Text style={styles.botaoPrimarioTexto}>Permitir câmera</Text>
-              </AppPressable>
-              <AppPressable onPress={fechar}>
-                <Text style={styles.linkSecundario}>Agora não</Text>
-              </AppPressable>
-            </View>
+            <PermissaoCamera
+              permissao={permissao}
+              pedirPermissao={pedirPermissao}
+              motivo="O Grana. precisa da câmera para fotografar a nota e ler o valor total. A foto é lida no aparelho, nada é enviado, e ela é apagada logo depois da leitura."
+              onFechar={fechar}
+            />
           ) : (
             <>
               <CameraView
@@ -318,13 +311,6 @@ export default function FotoNotaModal({
 
 const styles = StyleSheet.create({
   camWrap: { flex: 1, backgroundColor: '#000' },
-
-  permissaoWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xxl, backgroundColor: theme.paper },
-  permissaoTitulo: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  permissaoTexto: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), textAlign: 'center', fontFamily: fonts.light },
-  botaoPrimario: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, paddingHorizontal: spacing.xxl, marginTop: spacing.sm },
-  botaoPrimarioTexto: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
-  linkSecundario: { color: theme.inkFaint, fontSize: type.nota, paddingVertical: spacing.sm, fontFamily: fonts.light },
 
   overlayTopo: {
     position: 'absolute',
