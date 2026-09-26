@@ -12579,3 +12579,7 @@ positivo no verificador do vault.
 6. **Sem verificação:** janela nova no Android, tamanhos de fonte/plataformas,
    falha real de sincronização, os 11 itens da foto no aparelho, limpeza dos
    dois AUDIT do cartão T25 e a implementação de forma/data/estabelecimento.
+
+## 26/09/2026 — Pedido pendente para a M1: gravar o R9 com "Importar extrato"
+
+O autor pediu, pela sessão na nuvem, que o R9 mostre **Importar extrato** em vez do colar Pix, que fica só no R5. O passo a passo e o CSV fictício estão em `docs/marketing/solicitacoes/2026-09-26-gravar-r9-importar-extrato.md`. O vídeo deve ser entregue na branch `claude/cool-einstein-c63bq0`.
