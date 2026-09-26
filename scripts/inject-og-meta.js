@@ -15,7 +15,7 @@ const META_POR_ROTA = {
     title: 'Assinar o Grana. | Controle financeiro sem planilha',
     description: 'Assine o Grana. para registrar gastos por voz, Pix ou nota fiscal e saber quanto sobra para gastar hoje.',
     ogTitle: 'Assinar o Grana. | Controle financeiro sem planilha',
-    ogDescription: 'Registre seus gastos em segundos e acompanhe quanto pode gastar hoje, sem conectar sua conta bancária.',
+    ogDescription: 'Registre seus gastos em segundos por voz ou colando o Pix, e acompanhe quanto pode gastar hoje. Sem planilha e sem complicação.',
   },
   '/baixar': {
     title: 'Baixar o Grana. para Android',
