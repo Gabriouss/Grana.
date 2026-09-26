@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -1499,6 +1499,94 @@ export default function InicioScreen() {
     ),
   };
 
+  const smartActionCells: ReactElement[] = [
+    ligado('lancamento_voz') ? (
+      <View key="lancamento-voz" style={styles.smartActionCell}>
+        <VoiceEntryButton
+          label="Lançar por voz"
+          onSaved={() => { void load(); }}
+          textStyle={styles.smartActionPrimaryText}
+          /* O lançamento por voz é o atalho primário da Home: fica sempre
+             na primeira posição, tanto no desktop quanto no aplicativo. */
+          iconColor={theme.paper}
+          iconSize={22}
+          style={[styles.smartActionBtn, styles.smartActionBtnPrimary]}
+          hoverStyle={styles.smartActionBtnPrimaryHover}
+          onTranscribed={(text) => {
+            const carteira = matchWalletByText(text, wallets);
+            const financeiro = carteira ? limparReferenciaCarteira(text, carteira.name) : text;
+            if (ehIntencaoBoleto(financeiro)) {
+              router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto: text } });
+              return;
+            }
+            if (ehIntencaoCredito(financeiro)) {
+              router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
+              return;
+            }
+            setVoiceText(text);
+            setPasteModalOpen(true);
+          }}
+        />
+      </View>
+    ) : null,
+    ligado('colar_comprovante') ? (
+      <View key="colar-comprovante" style={styles.smartActionCell}>
+        <AppPressable
+          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+          onPress={() => setPasteModalOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Colar comprovante"
+        >
+          <Ionicons name="clipboard-outline" size={22} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={2}>Colar comprovante</Text>
+        </AppPressable>
+      </View>
+    ) : null,
+    ligado('importar_extrato') ? (
+      <View key="importar-extrato" style={styles.smartActionCell}>
+        <AppPressable
+          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+          onPress={() => setCsvModalOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Importar extrato"
+        >
+          <Ionicons name="document-text-outline" size={22} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={2}>Importar extrato</Text>
+        </AppPressable>
+      </View>
+    ) : null,
+    ligado('qr_nota') ? (
+      <View key="qr-nota" style={styles.smartActionCell}>
+        <AppPressable
+          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+          onPress={() => setQrModalOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Escanear QR code da nota"
+        >
+          <Ionicons name="qr-code-outline" size={22} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={2}>QR da nota</Text>
+        </AppPressable>
+      </View>
+    ) : null,
+    ligado('foto_nota') && Platform.OS !== 'web' ? (
+      <View key="foto-nota" style={styles.smartActionCell}>
+        <AppPressable
+          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+          onPress={() => setFotoNotaOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Fotografar nota"
+        >
+          <Ionicons name="camera-outline" size={22} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={2}>Foto da nota</Text>
+        </AppPressable>
+      </View>
+    ) : null,
+  ].filter((cell): cell is ReactElement => cell !== null);
+  const smartActionRows = Array.from(
+    { length: Math.ceil(smartActionCells.length / 2) },
+    (_, row) => smartActionCells.slice(row * 2, row * 2 + 2),
+  );
+
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
       {/* Fora do ScrollView de propósito: a marca fica fixa na tela em vez de
@@ -1570,12 +1658,9 @@ export default function InicioScreen() {
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
-        {/* Ações Inteligentes: Voz, Colar Comprovante, CSV e Nota Fiscal.
-            Rolagem horizontal em vez de `flex: 1` dividindo a largura: com o
-            quarto botão (escanear nota) os rótulos passaram a quebrar em duas
-            linhas e a fileira ficou espremida. Assim cada botão ocupa a
-            largura do próprio texto e a fileira desliza quando não couber —
-            mesmo padrão dos chips de categoria logo abaixo. */}
+        {/* Ações Inteligentes: todas as opções ficam visíveis na grade, sem
+            depender de arrastar para descobrir o que existe. A voz continua
+            sendo a primeira e única ação com destaque primário. */}
         <FadeIn delay={40}>
           <View
             ref={(n) => {
@@ -1583,75 +1668,14 @@ export default function InicioScreen() {
             }}
             collapsable={false}
           >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.smartActionsRow}
-          >
-          {ligado('lancamento_voz') && (
-          <VoiceEntryButton
-            label="Lançamento por voz"
-            onSaved={() => { void load(); }}
-            textStyle={styles.smartActionText}
-            /* O lançamento por voz é o atalho primário da Home: fica sempre
-               na primeira posição, tanto no desktop quanto no aplicativo. */
-            iconColor={theme.ink}
-            iconSize={16}
-            style={styles.smartActionBtn}
-            hoverStyle={styles.smartActionBtnHover}
-            onTranscribed={(text) => {
-              const carteira = matchWalletByText(text, wallets);
-              const financeiro = carteira ? limparReferenciaCarteira(text, carteira.name) : text;
-              if (ehIntencaoBoleto(financeiro)) {
-                router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto: text } });
-                return;
-              }
-              if (ehIntencaoCredito(financeiro)) {
-                router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
-                return;
-              }
-              setVoiceText(text);
-              setPasteModalOpen(true);
-            }}
-          />
-          )}
-          {ligado('colar_comprovante') && (
-            <AppPressable
-              style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-              onPress={() => setPasteModalOpen(true)}
-            >
-              <Ionicons name="clipboard-outline" size={16} color={theme.ink} />
-              <Text style={styles.smartActionText}>Colar comprovante</Text>
-            </AppPressable>
-          )}
-          {ligado('importar_extrato') && (
-            <AppPressable
-              style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-              onPress={() => setCsvModalOpen(true)}
-            >
-              <Ionicons name="document-text-outline" size={16} color={theme.ink} />
-              <Text style={styles.smartActionText}>Importar extrato</Text>
-            </AppPressable>
-          )}
-          {ligado('qr_nota') && (
-            <AppPressable
-              style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-              onPress={() => setQrModalOpen(true)}
-            >
-              <Ionicons name="qr-code-outline" size={16} color={theme.ink} />
-              <Text style={styles.smartActionText}>Escanear nota</Text>
-            </AppPressable>
-          )}
-          {ligado('foto_nota') && Platform.OS !== 'web' && (
-            <AppPressable
-              style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-              onPress={() => setFotoNotaOpen(true)}
-            >
-              <Ionicons name="camera-outline" size={16} color={theme.ink} />
-              <Text style={styles.smartActionText}>Fotografar nota</Text>
-            </AppPressable>
-          )}
-          </ScrollView>
+          <View style={styles.smartActionsGrid}>
+            {smartActionRows.map((row, index) => (
+              <View key={`smart-action-row-${index}`} style={styles.smartActionsGridRow}>
+                {row}
+                {row.length === 1 ? <View style={styles.smartActionSpacer} /> : null}
+              </View>
+            ))}
+          </View>
           </View>
         </FadeIn>
 
@@ -2065,27 +2089,42 @@ const styles = StyleSheet.create({
   quickChipHover: { backgroundColor: theme.hover },
   quickChipText: { color: theme.ink, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.regular },
-  /* Sem `flexWrap`: a fileira desliza, não empilha. Um passe de auditoria
-     (b34be61) trocou isto por `flexWrap: 'wrap'` e os quatro botões viraram
-     duas fileiras empilhadas, empurrando todo o resto da Início para baixo —
-     revertido a pedido do autor. O `paddingRight` é o respiro do fim da
-     rolagem, pra o último botão não colar na borda da tela. */
-  smartActionsRow: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.lg },
+  smartActionsGrid: { gap: spacing.sm },
+  smartActionsGridRow: { flexDirection: 'row', gap: spacing.sm },
+  smartActionCell: { flex: 1, aspectRatio: 1 },
+  smartActionSpacer: { flex: 1, aspectRatio: 1 },
   smartActionBtn: {
-    flexDirection: 'row',
+    flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: touchTarget,
     gap: spacing.icone,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderRadius: radius.md,
     backgroundColor: theme.paperRaised,
     borderWidth: 1,
     borderColor: theme.rule,
   },
   smartActionBtnHover: { borderColor: theme.ruleStrong },
-  smartActionText: { color: theme.ink, fontSize: type.nota, fontFamily: fonts.regular },
+  smartActionBtnPrimary: { backgroundColor: theme.ink, borderColor: theme.ink },
+  smartActionBtnPrimaryHover: { borderColor: theme.ink },
+  smartActionText: {
+    color: theme.ink,
+    fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
+    fontFamily: fonts.regular,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
+  smartActionPrimaryText: {
+    color: theme.paper,
+    fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
+    fontFamily: fonts.regular,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
   card: { backgroundColor: theme.paperRaised, borderRadius: cardTokens.radius, borderWidth: cardTokens.borderWidth, borderColor: theme.rule, padding: cardTokens.padding, gap: spacing.md },
   /* paddingRight na web: a alça de arraste (components/WidgetGrid.tsx) pousa
      no canto superior direito do card, e é exatamente onde estes cabeçalhos
