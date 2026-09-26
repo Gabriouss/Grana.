@@ -65,7 +65,10 @@ export default function VozesSalvasLocalmente() {
    commit, ver corpus-design-system.ts). Os tamanhos crus viraram `type.*`
    pelo mesmo motivo: a escala já resolve iOS e Android separadamente. */
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: theme.paperRaised },
+  /* A saída da faixa usa o mesmo espaçamento que separa as faixas do cabeçalho
+     na Início. O botão continua com o alvo de toque de `touchTarget`; só o
+     respiro depois dele fica menor, e a Início sem faixa não muda. */
+  container: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, backgroundColor: theme.paperRaised },
   text: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: Math.round(type.apoio * 1.4) },
   subtext: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: type.nota, lineHeight: Math.round(type.nota * 1.4), marginTop: spacing.xs / 2 },
   /* O alvo vive no PRESSÁVEL, não no texto: `paddingVertical: 8` num texto de
