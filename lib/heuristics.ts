@@ -544,14 +544,44 @@ function normalizarNomeCarteira(texto: string): string {
     .trim();
 }
 
+/**
+ * Onde a fala cita uma carteira: o índice logo depois de "carteira " ou
+ * "conta ", já pulando "corrente", "poupança" ou "digital". "Conta" só é
+ * carteira quando não é conta a pagar: "conta de luz", "conta do cartão" e
+ * "conta a pagar" ficam de fora, a menos que venham depois de "na", "pela",
+ * "numa" ("na conta do Nubank" continua sendo carteira). Achado B2 de
+ * 26/09/2026: "conta de luz 180 vence dia 10" perguntava "Qual carteira?".
+ * Mesma regra na voz (app e widget) e no Granabô.
+ */
+export function mencoesDeCarteira(text: string): number[] {
+  const inicios: number[] = [];
+  for (const m of text.matchAll(/\b(carteira|conta)\s+(?=[\p{L}\d])/giu)) {
+    let inicio = m.index! + m[0].length;
+    if (m[1].toLowerCase() === 'conta') {
+      const depois = text.slice(inicio);
+      const comPreposicao = /(?:^|\s)(?:na|pela|numa|nessa|nesta|minha)\s+$/iu.test(text.slice(0, m.index));
+      if (!comPreposicao && /^(?:de|do|da|dos|das|a\s+pagar|a\s+receber|pra\s+pagar|para\s+pagar)(?![\p{L}\d])/iu.test(depois)) continue;
+      const tipo = /^(?:corrente|poupan[cç]a|digital)\s+(?=[\p{L}\d])/iu.exec(depois);
+      if (tipo) inicio += tipo[0].length;
+    }
+    inicios.push(inicio);
+  }
+  return inicios;
+}
+
+/** A fala cita alguma carteira? Ver `mencoesDeCarteira`. */
+export function citaCarteira(text: string): boolean {
+  return mencoesDeCarteira(text).length > 0;
+}
+
 /** Encontra nomes personalizados somente quando a fala os ancora em "carteira" ou "conta". */
 export function matchWalletByText(text: string, wallets: CarteiraBusca[]): CarteiraBusca | null {
   const alvo = normalizarNomeCarteira(text);
   const ordenadas = [...wallets].sort((a, b) => b.name.length - a.name.length);
   const encontradas = new Map<string, CarteiraBusca>();
   // A preferência pelo nome longo vale por menção, não pela frase inteira.
-  for (const mencao of alvo.matchAll(/\b(?:carteira|conta)\s+/g)) {
-    const trecho = alvo.slice(mencao.index! + mencao[0].length);
+  for (const inicio of mencoesDeCarteira(alvo)) {
+    const trecho = alvo.slice(inicio);
     const candidatas = ordenadas.filter(wallet => {
       const nome = normalizarNomeCarteira(wallet.name);
       return !!nome && new RegExp(`^${nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\d])`, 'u').test(trecho);
@@ -567,7 +597,7 @@ export function matchWalletByText(text: string, wallets: CarteiraBusca[]): Carte
 export function limparReferenciaCarteira(text: string, walletName: string): string {
   const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const escaped = norm(walletName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`\\b(?:carteira|conta)\\s+${escaped}(?![\\p{L}\\d])`, 'gu');
+  const re = new RegExp(`\\b(?:carteira|conta)\\s+(?:(?:corrente|poupanca|digital)\\s+)?${escaped}(?![\\p{L}\\d])`, 'gu');
   // Busca sem acento, preservando a grafia do restante da descrição.
   const chars = Array.from(text.normalize('NFC'));
   const original = chars.join('');

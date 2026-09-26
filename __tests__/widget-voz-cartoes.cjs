@@ -21,6 +21,7 @@ const deps = {
     ehIntencaoCredito: () => true, matchCardByText: () => matched, matchWalletByText: () => null,
     /* Tipo 'out' acima: compra, então não é entrada com intenção de crédito. */
     entradaComIntencaoDeCredito: () => false,
+    citaCarteira: () => false,
     limparReferenciaCarteira: (t) => t, limparReferenciaCartao: (t) => t, parseParcelas: () => 1, parseRecorrencia: () => false },
   './data': { fetchCreditCards: async () => cards, fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => [{ id: 'wallet', name: 'Pessoal', is_default: true }] },

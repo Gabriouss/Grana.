@@ -34,6 +34,7 @@ import { calcularLivreParaGastar, ehCompraNoCredito } from '../_shared/caixa.ts'
    feature que será apagada. */
 import {
   CATEGORIES,
+  citaCarteira,
   descricaoDoLancamento,
   ehIntencaoBoleto,
   ehIntencaoCredito,
@@ -1017,7 +1018,9 @@ async function executarCriarLancamento(
   /* Carteira citada na frase manda; senão, a padrão. Citar uma que não existe
      é erro de quem falou, não motivo para jogar o dinheiro na padrão. */
   const carteiraCitada = matchWalletByText(frase, carteiras);
-  const mencionouCarteira = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(frase);
+  /* "Conta de luz" é conta a pagar, não carteira (achado B2, 26/09/2026):
+     mesma função da voz no app e no widget. */
+  const mencionouCarteira = citaCarteira(frase);
   if (mencionouCarteira && !carteiraCitada) {
     return 'Não existe carteira com esse nome. As carteiras do usuário são: ' +
       carteiras.map((c) => c.name).join(', ') + '. Pergunte qual é a certa. NÃO registrei nada.';

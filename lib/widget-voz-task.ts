@@ -210,7 +210,9 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   ]).finally(() => clearTimeout(prazoReferencias));
 
   const carteiraMencionada = heuristics.matchWalletByText(texto, carteiras);
-  const mencionaCarteira = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto);
+  /* "Conta de luz" é conta a pagar, não carteira (achado B2): a mesma regra
+     do Granabô, em `heuristics.citaCarteira`. */
+  const mencionaCarteira = heuristics.citaCarteira(texto);
   if (mencionaCarteira && !carteiraMencionada) {
     await notificacoes.notificarRevisao('Qual carteira?', texto);
     return false;

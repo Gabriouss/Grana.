@@ -114,7 +114,7 @@ const COMPARTILHADAS_CATEGORY_KEYWORDS = ['normalizarParaBusca', 'contemPalavra'
    WhatsApp for apagado, sobra só a de `_shared/`. */
 const COMPARTILHADAS_INTERPRETAR = [
   ...COMPARTILHADAS,
-  'normalizarNomeCarteira', 'matchWalletByText', 'limparReferenciaCarteira',
+  'normalizarNomeCarteira', 'mencoesDeCarteira', 'citaCarteira', 'matchWalletByText', 'limparReferenciaCarteira',
   'limparReferenciaCartao', 'entradaComIntencaoDeCredito', 'descricaoDoLancamento', 'guessCategoryFromText', 'guessTypeFromText',
   'MARCADORES_SAIDA', 'MARCADORES_ENTRADA',
 ];
