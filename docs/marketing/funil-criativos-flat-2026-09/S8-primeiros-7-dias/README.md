@@ -27,4 +27,4 @@ Carrossel de feed com 6 slides em 1080×1440, feito localmente sem créditos da 
 2. **Capa ganhou o notebook com a Início web.** Pedido do autor.
 3. **Último slide:** ganhou o celular com a tela inicial, o logotipo voltou ao lugar dos outros slides e o texto ficou centralizado.
 
-**Pendência para o dia D:** a Início do notebook é uma captura anterior à regra 20. Ela ainda mostra a linha "Contas a vencer este mês", que a regra tirou. Antes de publicar, é preciso recapturar a Início da build nova e trocar o `notebook.png` (a mesma pendência do S1 e do S3 no funil).
+**Captura anterior à regra 20, mantida por decisão do autor (26/09/2026):** a Início do notebook ainda mostra a linha "Contas a vencer este mês", e os números seguem a conta antiga (R$ 59,76/dia; pela regra 20 seriam R$ 129,42/dia). O autor decidiu que isso não precisa ser trocado: "as pessoas só vão olhar para o layout da capa, não vão prestar atenção aos números". A capa e o último slide vão ser refeitos por ele no Photoshop.
