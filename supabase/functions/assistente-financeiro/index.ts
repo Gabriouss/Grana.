@@ -56,7 +56,6 @@ import {
   mesFaturaDoLancamento,
   cicloRelativo,
   deslocamentoPedido,
-  valorNaFatura,
   cicloDaLinha,
   ehParcelaSeguinte,
   precisaDaCompraOriginal,
@@ -884,14 +883,14 @@ async function executarResumoCredito(
       .select('amount, category, type')
       .eq('user_id', userId)
       .eq('payment_method', 'credit')
+      .eq('type', 'out')
       .gte('occurred_on', periodo.inicio)
       .lte('occurred_on', periodo.fim);
     const { data, error } = await q;
     if (error) throw error;
     const linhas = (data ?? []) as Array<{ amount: number; category: string; type: string }>;
     const filtradas = categoriaCasada ? linhas.filter((l) => l.category === categoriaCasada) : linhas;
-    // Estorno (type 'in') abate, como na tela de Crédito.
-    const total = filtradas.reduce((soma, linha) => soma + valorNaFatura(linha), 0);
+    const total = filtradas.reduce((soma, linha) => soma + Number(linha.amount), 0);
     return 'O usuário gastou R$ ' + formatarBRL(total) + ' no crédito' +
       (categoriaCasada ? ' em ' + categoriaCasada : '') + '. Período consultado: ' + periodo.rotulo + '. Cite esse período na resposta.';
   }
@@ -916,11 +915,11 @@ async function executarResumoCredito(
     .select(COLUNAS_DE_FATURA)
     .eq('user_id', userId)
     .eq('payment_method', 'credit')
+    .eq('type', 'out')
     .gte('occurred_on', consulta.inicio)
     .lte('occurred_on', consulta.fim);
   if (error) throw error;
 
-  // Estorno (type 'in') entra e abate: `valorNaFatura`, igual à tela de Crédito.
   let linhas = (data ?? []) as Array<LinhaDeCredito & { category: string }>;
   const datas = usarCiclo ? await comprasOriginais(supabase, userId, linhas, cardsAlvo) : new Map<string, string>();
   if (categoriaCasada) linhas = linhas.filter((linha) => linha.category === categoriaCasada);
@@ -934,7 +933,7 @@ async function executarResumoCredito(
         if (incerto) parcelaIncerta = true;
         return dentro;
       })
-      .reduce((soma, linha) => soma + valorNaFatura(linha), 0);
+      .reduce((soma, linha) => soma + Number(linha.amount), 0);
 
   const totais = periodos.map(({ card, periodo }) => ({ card, periodo, total: somaDoCartao(card, periodo) }));
   const avisoParcela = parcelaIncerta ? AVISO_PARCELA_INCERTA : '';
@@ -949,7 +948,7 @@ async function executarResumoCredito(
   const idsConhecidos = new Set(cards.map((card) => card.id));
   const semCartao = linhas
     .filter((linha) => !linha.card_id || !idsConhecidos.has(linha.card_id))
-    .reduce((soma, linha) => soma + valorNaFatura(linha), 0);
+    .reduce((soma, linha) => soma + Number(linha.amount), 0);
   const detalhes = totais.map((item) =>
     '- ' + item.card.name + ': R$ ' + formatarBRL(item.total) + ' (' + item.periodo.rotulo + ')'
   );
@@ -1488,6 +1487,7 @@ async function executarFerramenta(
           .select(COLUNAS_DE_FATURA)
           .eq('user_id', userId)
           .eq('payment_method', 'credit')
+          .eq('type', 'out')
           .gte('occurred_on', consulta.inicio)
           .lte('occurred_on', consulta.fim)
           .eq('category', casada);
@@ -1508,7 +1508,7 @@ async function executarFerramenta(
               if (incerto) parcelaIncerta = true;
               return dentro;
             })
-            .reduce((soma, linha) => soma + valorNaFatura(linha), 0);
+            .reduce((soma, linha) => soma + Number(linha.amount), 0);
 
         const detalhes = periodosValidos.map(({ card, periodo }) =>
           '- ' + card.name + ': R$ ' + formatarBRL(somaDo(card, periodo)) + ' (' + periodo.rotulo + ')'
@@ -1584,6 +1584,7 @@ async function executarFerramenta(
           .select('amount, card_id')
           .eq('user_id', userId)
           .eq('payment_method', 'credit')
+          .eq('type', 'out')
           .gte('occurred_on', inicio)
           .lte('occurred_on', fim),
       ]);
@@ -1755,7 +1756,7 @@ async function executarFerramenta(
 
       const [cardsResult, txResult] = await Promise.all([
         supabase.from('credit_cards').select('id, name, limit_amount').eq('user_id', userId),
-        supabase.from('transactions').select('amount, card_id, type').eq('user_id', userId).eq('payment_method', 'credit')
+        supabase.from('transactions').select('amount, card_id, type').eq('user_id', userId).eq('payment_method', 'credit').eq('type', 'out')
           .gte('occurred_on', inicioMes).lte('occurred_on', fimMes),
       ]);
       if (cardsResult.error) throw cardsResult.error;
@@ -1766,7 +1767,7 @@ async function executarFerramenta(
       const txs = (txResult.data ?? []) as Array<{ amount: number; card_id: string | null; type: string }>;
 
       const linhasCartao = cards.map((c) => {
-        const gasto = txs.filter((t) => t.card_id === c.id).reduce((s, t) => s + valorNaFatura(t), 0);
+        const gasto = txs.filter((t) => t.card_id === c.id).reduce((s, t) => s + Number(t.amount), 0);
         const pct = c.limit_amount > 0 ? gasto / c.limit_amount : 0;
         const degrau = DEGRAUS.find((d) => pct * 100 >= d) ?? null;
         const aviso = degrau ? ` — atenção: já passou de ${degrau}% do limite` : '';

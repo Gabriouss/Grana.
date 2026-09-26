@@ -4762,3 +4762,14 @@ create policy "assistant_memory: dono com acesso escreve"
     (select auth.uid()) = user_id
     and (select public.tem_direito_acesso())
   );
+
+-- Entrada no cartão não existe (decisão do autor, 26/09/2026). Migration
+-- 20260926130000; ver o cabeçalho dela sobre a ordem de aplicação.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'transactions_entrada_nunca_no_cartao') then
+    alter table public.transactions
+      add constraint transactions_entrada_nunca_no_cartao
+        check (type <> 'in' or (card_id is null and payment_method is distinct from 'credit'));
+  end if;
+end $$;

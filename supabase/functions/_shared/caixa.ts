@@ -10,8 +10,8 @@
  * Cópia exata de `isCreditTx` em `lib/transaction-rules.ts` (o Deno não
  * importa de `lib/`); `__tests__/granabo-caixa-sem-credito.cjs` trava a
  * paridade. `card_id` sozinho basta: lançamento antigo pode ter cartão com
- * `payment_method` nulo, e estorno no cartão (`in` com `card_id`) também
- * fica fora do caixa.
+ * `payment_method` nulo. Entrada no cartão não existe no Grana. (decisão do
+ * autor, 26/09/2026; o banco recusa pela migration 20260926130000).
  */
 export function ehCompraNoCredito(t: { payment_method?: string | null; card_id?: string | null }): boolean {
   return t.payment_method === 'credit' || !!t.card_id;
@@ -31,7 +31,7 @@ export type LivreParaGastar = {
  * apenas do mês vigente"). Nunca `initial_balance`, nunca meses anteriores.
  *
  * - saldo = entradas − saídas de CAIXA com `occurred_on` no mês de `hojeISO`
- *   (compra e estorno no cartão fora; o pagamento da fatura, saída sem
+ *   (compra no cartão fora; o pagamento da fatura, saída sem
  *   cartão, dentro, no mês em que foi pago);
  * - metas = soma de `current_amount`;
  * - livre = max(0, saldo − metas); por dia = livre / dias restantes,

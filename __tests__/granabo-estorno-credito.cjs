@@ -1,5 +1,8 @@
-// Estorno no crédito abate a fatura também no Granabô (23/09/2026). Handler
-// real da Edge Function; banco e provedor simulados, mesmo andaime de
+// Entrada no cartão não existe no Grana. (decisão do autor, 26/09/2026): a
+// fatura do Granabô soma só compras, e uma linha `in` no cartão (a que uma
+// build antiga ainda gera ao importar fatura, antes da migration
+// 20260926130000) é IGNORADA, nunca abate nem soma. Handler real da Edge
+// Function; banco e provedor simulados, mesmo andaime de
 // assistant-memory-integration.cjs. Sem rede/contas.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -81,11 +84,11 @@ async function ask(mensagem, historico = []) {
 
   completions = [tool('resumoCredito', { cartao: 'C6' }), { content: 'ok' }];
   await ask('Quanto está a fatura do C6?');
-  assert.match(resultadoDaFerramenta(), /R\$ 100,00/, 'resumoCredito: compra de 130 com estorno de 30 dá 100');
+  assert.match(resultadoDaFerramenta(), /R\$ 130,00/, 'resumoCredito: só a compra de 130; a entrada no cartão não entra na conta');
 
   completions = [tool('resumoCredito', { cartao: 'C6', categoria: 'Alimentação' }), { content: 'ok' }];
   await ask('Quanto gastei em Alimentação no C6?');
-  assert.match(resultadoDaFerramenta(), /R\$ 100,00/, 'resumoCredito por categoria abate o estorno');
+  assert.match(resultadoDaFerramenta(), /R\$ 130,00/, 'resumoCredito por categoria: a entrada no cartão também fica fora');
 
   /* Lançar estorno pelo chat não grava (23/09/2026): antes virava entrada na
      carteira, sem cartão. O Grana. não tem estorno (autor, 26/09/2026): a
@@ -99,5 +102,5 @@ async function ask(mensagem, historico = []) {
   assert.equal(rpcs.slice(rpcsAntes).includes('registrar_operacao_voz'), false, 'nenhuma escrita');
   assert.equal(history.filter((r) => r.tabela === 'transactions').length, 0, 'nenhum lançamento inserido');
 
-  console.log('OK Granabô: estorno no cartão abate a fatura (resumoCredito, com e sem categoria) e não é lançado pelo chat.');
+  console.log('OK Granabô: fatura só com compras (entrada no cartão ignorada, com e sem categoria) e entrada citando cartão não é lançada pelo chat.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });
