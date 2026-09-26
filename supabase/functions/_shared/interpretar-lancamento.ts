@@ -524,7 +524,7 @@ export function guessAmountFromText(text: string): number {
    fronteira nenhuma. Com `\b` a regra casava só "anota", sobrava " aí", o
    CONECTOR_INICIAL comia o "a" solto, e a descrição saía "Í mercado". */
 const VERBOS_INICIAIS =
-  /^(?:me\s+pagaram|gastei|gasto|paguei|pagamento|comprei|compra|torrei|coloquei|investi|apliquei|recebi|recebido|ganhei|entrou|caiu|vendi|transferi|mandei|enviei|assinei|custou|saiu|foi|foram|(?:anota|anote|registra|registre|lan[çc]a|lance|adiciona|adicione)(?:\s+a[íi])?|(?:bota|bote|coloca|marca|marque|p[oõ]e)\s+a[íi])(?![a-zà-ÿ0-9])[\s,]*/i;
+  /^(?:(?:voc[êe]\s+)?(?:gastou|pagou|comprou|transferiu|recebeu|enviou)|me\s+pagaram|gastei|gasto|paguei|pagamento|comprei|compra|torrei|coloquei|investi|apliquei|recebi|recebido|ganhei|entrou|caiu|vendi|transferi|mandei|enviei|assinei|custou|saiu|foi|foram|(?:anota|anote|registra|registre|lan[çc]a|lance|adiciona|adicione)(?:\s+a[íi])?|(?:bota|bote|coloca|marca|marque|p[oõ]e)\s+a[íi])(?![a-zà-ÿ0-9])[\s,]*/i;
 /* Conectores que sobram grudados nas pontas depois que o valor sai. */
 const CONECTOR = '(?:de|do|da|dos|das|no|na|nos|nas|em|com|para|pra|pro|por|a|o|um|uma)';
 /* `(?![a-zà-ÿ0-9])` e não `\b`, pela terceira vez neste arquivo: no JavaScript
@@ -774,7 +774,13 @@ export function guessDescFromText(text: string, type: TxType): string {
     .replace(new RegExp(`[\\d.,]+\\s*(?:${MOEDA})\\b`, 'gi'), ' ')
     .replace(/(?<![a-zà-ÿ\d])\d[\d.,]*(?![a-zà-ÿ\d])/gi, ' ');
   const sobra = limparSobra(semValor);
-  if (sobra.length >= 2) return capitalizar(sobra.slice(0, 40));
+  /* "Você gastou R$ 32,50 no Mercado Modelo em Alimentação" (formato de
+     notificação de banco, achado G3 de 26/09/2026): a categoria citada no fim
+     com "em" não é nome. Só sai quando sobra nome antes: "gastei 50 em
+     alimentação" continua "Alimentação". */
+  const semCategoriaFinal = limparSobra(sobra.replace(new RegExp(`\\s+em\\s+(?:${NOMES_CATEGORIA})$`, 'i'), ''));
+  const nomeFinal = semCategoriaFinal.length >= 2 ? semCategoriaFinal : sobra;
+  if (nomeFinal.length >= 2) return capitalizar(nomeFinal.slice(0, 40));
 
   return type === 'in' ? 'Pix recebido' : 'Pagamento';
 }
