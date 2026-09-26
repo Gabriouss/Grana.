@@ -58,6 +58,63 @@ no `context.md`.
 
 ---
 
+# 25/09/2026 (M1) — foto da nota: valor total lido por OCR no aparelho (`988b92d`, `9fd6015`)
+
+**Pedido.** O autor: "iremos adicionar a função de foto da nota que captura o
+valor total", e depois "e a implementação da feature no app?". Decidiu que a
+mensagem de marketing troca QR Code por foto (o `FUNIL.md`, local e fora do
+git, foi atualizado), e escolheu o OCR **no aparelho** (ML Kit), sem mandar a
+foto para servidor.
+
+**Por que existe.** `lib/nfce-parser.ts` documenta que o QR de NFC-e em emissão
+online traz só a chave de acesso; o valor mora no site da SEFAZ (HTML por
+estado, com captcha). Por isso o `QrScannerModal` pede o valor na mão quase
+sempre. `PLANO_DE_EVOLUCAO.md:140` esperava o contrário. A foto lê o valor
+impresso e contorna a SEFAZ.
+
+**O que entrou.**
+- `lib/nota-foto-parser.ts`: acha o total no texto reconhecido. Prefere `null`
+  a número errado: sem rótulo de total, ou com dois totais diferentes, o campo
+  fica em branco e a tela pede o valor. Nunca chuta o maior valor. Ignora
+  subtotal, desconto, troco e tributos.
+- `lib/foto-nota-ocr.ts`: carrega o ML Kit só no uso. Sem o módulo nativo
+  (Expo Go, web, build antiga) devolve `indisponivel` com log, e a tela mostra
+  aviso em vez de quebrar.
+- `components/FotoNotaModal.tsx`: câmera, leitura e confirmação; o valor lido
+  sempre passa pela confirmação; a foto é apagada depois; salva pela fila
+  offline como o QR. Botão "Fotografar nota" na Início (`9fd6015`, commit de
+  tela próprio, regra 14), ao lado de "Escanear nota", que continua.
+- Interruptor `foto_nota` (agora 14 chaves) e a migration
+  `20260925020000_flag_foto_nota.sql`, **NÃO aplicada em produção**: sem a
+  linha, a chave desconhecida conta como ligada.
+- Dependência `@react-native-ml-kit/text-recognition` 2.0.0.
+
+**Descartado.** IA de visão no servidor (Gemini): mais robusta com cupom torto,
+mas a foto sairia do aparelho, teria custo por foto e quebraria a promessa de
+privacidade do QR. O autor escolheu o OCR local. Também descartado: chutar o
+maior valor quando não há rótulo.
+
+**Custos e riscos conhecidos, não resolvidos.**
+- Módulo nativo: exige build nova (regra 4, só com pedido do autor) e não roda
+  no Expo Go. `expo-camera` já é dependência; o ML Kit é novo.
+- O pacote traz os modelos de 5 alfabetos no Android (latino, chinês, devanágari,
+  japonês, coreano): o APK engorda. Não medi. Excluir os quatro que não servem
+  exigiria patch no gradle do pacote.
+- Usa `NativeModules` (ponte antiga); na nova arquitetura passa pela camada de
+  interoperabilidade. **Não testado.**
+- O parser cobre cupom térmico de NFC-e com texto sintético. Cupom real
+  amassado, com brilho ou coluna de rótulos separada de valores pode falhar; a
+  confirmação obrigatória é a rede de segurança.
+
+**Sem verificação.** Passaram: `tsc` limpo, `nota-foto-parser.cjs` (12),
+`foto-nota-ocr.cjs` (4, ML Kit simulado, checa os três desfechos), `corpus-flags`
+17/17. **Não exercitado no aparelho:** câmera, reconhecimento real, iOS, e o
+`test:ci` completo não rodou. Antes de publicar qualquer peça do Reel R6:
+checklist de QA com 5 a 10 cupons reais fotografados (mercado, farmácia,
+posto, padaria), anotando quantos o valor saiu certo, em branco ou errado.
+
+---
+
 # 25/09/2026 (M1) — dois commits trazidos da sessão na nuvem (`f14dc39`, `7f2a002`)
 
 Pedido do autor: uma sessão dele na nuvem (branch `origin/claude/cool-einstein-c63bq0`,
