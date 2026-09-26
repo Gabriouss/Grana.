@@ -44,3 +44,9 @@ O áudio da v3 foi aprovado: trilha "house" a 100 bpm e "plim" de sucesso no sal
 
 - **Sem o confete** depois do lançamento.
 - **O celular não pula mais no ritmo da música** e não treme nos cortes. Ele só flutua.
+
+## Versão final aprovada (26/09/2026)
+
+A v6 foi aprovada pelo autor ("Acho que ficou bom"). O arquivo final, entregue na conversa, é `grana-r5-colar-pix-v6.mp4`: 16,4 s, 1080×1920, sem zoom, sem confete, com o celular só flutuando, textos com entrada fluida, trilha "house" a 100 bpm e o "plim" a −16 dB.
+
+Fica o mesmo aviso de sempre: não publicar antes do dia D.
