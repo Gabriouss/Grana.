@@ -11770,3 +11770,59 @@ Relatório: `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Beacon-producao-
 - **Sem verificação:** nenhuma geração nova, publicação, revisão legal final ou
   QA de feed e story. R5 e a consulta do Granabô conferidos por existência e
   roteiro, não por edição final.
+
+## 26/09/2026 — M1 — Watchtower reprova as oito peças do Beacon; Granabô com total diferente da tela
+
+Relatório: `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Watchtower-pecas-beacon-26-09.md`.
+Corrige a entrada anterior do Beacon, que dava as peças como prontas.
+
+- **Pedido:** revisar, olhando a imagem, os cinco estáticos (E02, E05, E06, S4,
+  S2 web) e as gravações e roteiros de R5, R9 e Granabô consulta. O Watchtower
+  abriu os PNG e montou folhas de quadros dos vídeos com `ffmpeg`.
+- **Veredito:** nenhuma das oito peças passa no portão como está.
+- **Estáticos:**
+  - **P1, alta:** nome de banco na tela ("Nubank Ultravioleta", "Itaú
+    Personnalité", "Cartão · Nubank") em E05, S2 web, E06 e S4. Origem
+    confirmada pelo maestro nos dados de demonstração do próprio app:
+    `lib/demo-data.ts` e `lib/exemplo-landing.ts`.
+  - **P2, média:** marcas de terceiros nas demonstrações (supermercado, app de
+    corrida, cinema, streaming, operadora, academia, fabricantes). O R5 já usa
+    nomes inventados ("Mercado Modelo"). Aceitar ou não marca real é decisão
+    do autor.
+  - P3 captura repetida entre peças; P4 texto da interface ilegível no feed
+    (selo das parcelas no E05); P5 sem rodapé "dados fictícios" em S4 e S2 web;
+    P6 séries E e S desalinhadas; P7 telas datadas de setembro para peças que
+    saem depois de D.
+  - Por peça: E02 fala de café e delivery e mostra supermercado e condomínio;
+    E05 com o arco decorativo por cima de "FUTUROS"; E06 promete celular e só
+    mostra notebook; S4 abre com boletos "atrasada" numa peça sobre mês mais
+    claro.
+- **R5 e R9:** V1, alta, a gravação mostra a Início e o Livre para gastar, que
+  mudam na build nova e só podem aparecer depois de D. V2, média, texto colado
+  sem acento (o `adb` não digita acento; colar pela área de transferência
+  resolve). V3 a V5, baixas: fecho com saldo negativo, semicírculo de origem
+  desconhecida, barra de status do emulador. R9 herda tudo do R5.
+- **Granabô consulta:** G1, alta, gravação inutilizável (histórico de testes
+  com nome de banco e "AUDIT", pergunta repetida três vezes sem acento, 40 s de
+  tela parada). **G2, alta:** para "alimentação em setembro" o Granabô respondeu
+  R$ 440,30 e depois R$ 486,41, enquanto Lançamentos mostrava saídas de
+  R$ 100,00 no mesmo clipe. Causa **sem confiabilidade suficiente**: soma do
+  crédito, lançamentos desfeitos contados, ou outro agente escrevendo na conta
+  durante a gravação. Se for a segunda, é defeito de produto contra a regra 20.
+  Encaminhado ao Harbor. G3, média: o texto "Você gastou R$ X no Y em Z" colado
+  não extraiu o estabelecimento (o formato de Pix do R5 extraiu); Forge confere
+  `lib/heuristics.ts`.
+- **O que deu errado:** o Beacon conferiu R5 e a consulta "por existência e
+  roteiro" e afirmou conta limpa; só os quadros mostraram V1, V2 e G1. Mesma
+  lição da regra 9 sobre animação: olhar o que se vê, não o que o arquivo diz.
+- **Descartado:** sangria do celular no E02 e notebook genérico não viraram
+  achado.
+- **Sem verificação:** causa de G2 e V4; medidas P4 e P6 tiradas da imagem, sem
+  DOM; R7, R2, R3, R4, R11, R12 e R-P não revisados.
+- **Decisões do autor:** P2 (marcas reais ou nomes inventados); V1 (R5 e R9
+  esperam D e são regravados, ou saem cortando a Início).
+- **Encaminhamento:** Beacon e Prism refazem as capturas sem banco; Sentinel
+  regrava R5 e a consulta com a conta isolada; Harbor investiga G2; Forge olha
+  G3; os dados de demonstração com nome de banco em `lib/demo-data.ts` e
+  `lib/exemplo-landing.ts` também aparecem no app e na landing, não só nas
+  peças.
