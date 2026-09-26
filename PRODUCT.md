@@ -207,8 +207,9 @@ Duas decisões da mesma noite completam esta:
   tangível e situacional ("gastar no escuro", "não saber para onde o dinheiro
   foi", "o saldo que sumiu antes do fim do mês").
 - **Diferencial central permanente:** A **praticidade** de uso (voz, colar
-  o Pix, escanear nota fiscal e saber quanto pode gastar hoje em 2 a 5
-  segundos, sem planilhas e sem conexões bancárias).
+  o Pix, QR de nota fiscal e saber quanto pode gastar hoje em 2 a 5
+  segundos, sem planilhas). Ausência de conexão bancária não entra como
+  argumento de venda, conforme a regra de comunicação na seção Positioning.
 - **Criativos sem rosto do autor nesta fase (decisão de 25/09/2026):** nenhum
   criativo usa o rosto, a imagem ou a voz do autor. O conceito de fundador
   falando para a câmera fica fora da aprovação inicial; o Beacon deve propor
