@@ -641,9 +641,11 @@ const NOTIFICACAO_EXEMPLO = {
 };
 
 
-/* Ordenado por risco percebido, não por curiosidade: a conexão bancária vem
-   primeiro porque é a objeção que trava mais gente, e as três últimas tratam
-   de dinheiro (cobrança, controle dos dados). Duas perguntas cobrem objeções
+/* Ordenado por risco percebido, não por curiosidade: planilha e preço abrem a
+   dobra, e as últimas tratam de dinheiro (cobrança, controle dos dados). A
+   conexão bancária fica por ÚLTIMO, decisão do autor de 25/09/2026: o assunto
+   só existe como resposta a quem pergunta, e na posição de abertura ele
+   passava a valer como argumento de venda. Duas perguntas cobrem objeções
    decisivas que a página não respondia: o que acontece quando o
    reconhecimento erra e como o Livre para Gastar é calculado. A resposta
    comercial aponta para a seção de Preços, que concentra valor e forma de
@@ -666,11 +668,6 @@ const NOTIFICACAO_EXEMPLO = {
    três destes com os respiros. Acima disso a linha de texto fica longa. */
 const LARGURA_CARD_OBJECAO = 420;
 const OBJECOES = [
-  {
-    objecao: 'Mas eu não quero dar acesso à minha conta bancária.',
-    resposta:
-      'E você não vai dar. O Grana. não se conecta ao seu banco e não usa Open Finance. Você conta o que gastou e ele organiza. Senha de banco não entra nessa história em momento nenhum.',
-  },
   {
     objecao: 'Mas eu já tentei planilha e larguei no meio.',
     resposta:
@@ -700,6 +697,11 @@ const OBJECOES = [
     objecao: 'Mas o Grana. mexe no meu dinheiro?',
     resposta:
       'Não. Ele é um registro. Não é instituição financeira e não processa pagamento nenhum. Ele mostra pra onde seu dinheiro foi, a partir do que você mesmo conta pra ele.',
+  },
+  {
+    objecao: 'Mas eu não quero dar acesso à minha conta bancária.',
+    resposta:
+      'E você não vai dar. O Grana. não se conecta ao seu banco e não usa Open Finance. Você conta o que gastou e ele organiza. Senha de banco não entra nessa história em momento nenhum.',
   },
 ];
 
