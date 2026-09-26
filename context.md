@@ -11890,3 +11890,6 @@ do `test:ci` no export limpo.
 - **Pilha do Prism (commits locais, 26/09):** `3513e34` e `1f7121d` (Prism,
   câmera e foto da nota), `bcc144a`, `de5d4eb` e `af21712` (Forge), e os
   registros do Ledger `ea59d02`, `9c3f687`, `7fb62f4` e `b8ac034`.
+## 26/09/2026 — Pedido pendente para a M1: gravar o R9 com "Importar extrato"
+
+O autor pediu, pela sessão na nuvem, que o R9 mostre **Importar extrato** em vez do colar Pix, que fica só no R5. O passo a passo e o CSV fictício estão em `docs/marketing/solicitacoes/2026-09-26-gravar-r9-importar-extrato.md`. O vídeo deve ser entregue na branch `claude/cool-einstein-c63bq0`.
