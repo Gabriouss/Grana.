@@ -11833,3 +11833,60 @@ Corrige a entrada anterior do Beacon, que dava as peças como prontas.
   G3; os dados de demonstração com nome de banco em `lib/demo-data.ts` e
   `lib/exemplo-landing.ts` também aparecem no app e na landing, não só nas
   peças.
+
+## 26/09/2026 — M1 — Forge: tela "precisa de revisão", fila cheia lida como falta de rede, e hash da CSP (`de5d4eb`, `af21712`, `bcc144a`)
+
+Relatório: `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Forge-revisao-da-fila-e-csp.md`.
+Commits locais em 26/09; o Prism publica a pilha inteira num push único depois
+do `test:ci` no export limpo.
+
+- **Pedido:** item 1 do briefing do Forge (tela de revisão da fila offline e
+  mensagem de `FilaCheiaError`, item B4 do checklist da 1.10.5, que o Compass
+  recomendou como obrigatório) e, com prioridade, o hash da CSP que impedia a
+  landing do `9b40f71` de ir ao ar.
+- **Sintoma e causa, revisão:** item recusado de vez pelo banco (classes 22/23)
+  ia para `grana:queue:precisa-de-revisao` e a notificação dizia "Abra o app
+  para revisar", mas nenhuma tela listava esses itens, e o toque só abria o app
+  (`RespostaVozWidget` ignorava `origem: 'fila'`). Item recusado para sempre
+  ficava invisível (regra 9).
+- **Sintoma e causa, fila cheia (defeito novo, achado pelo teste):** a frase da
+  `FilaCheiaError` contém "esperando conexão", e `isLikelyNetworkError`
+  (`lib/cache-de-tela.ts`) procura "conex". Na Início, no QR, na foto da nota e
+  no colar comprovante, a fila cheia aparecia como "Sem conexão com a
+  internet". Os 30 usos de `isLikelyNetworkError` foram conferidos: nenhum
+  transformava fila cheia em "salvo no aparelho"; o dano era só a mensagem.
+- **Sintoma e causa, CSP:** o hash no `vercel.json` era o do JSON-LD anterior ao
+  `9b40f71` (conferido calculando sobre o `landing-meta.json` de `9b40f71^`).
+- **Arquivos:** `de5d4eb`: `lib/fila-pendente.ts` (`motivoDaRecusa`,
+  `resumoDaRevisao`), `lib/offline-cache.ts` (`devolverDaRevisaoParaFila`, que
+  tira da revisão ANTES de pôr na fila para não duplicar meta, que não tem chave
+  de idempotência, e mantém o `clientRequestId`), `lib/cache-de-tela.ts`
+  (`FilaCheiaError` pelo nome não é erro de rede). `af21712`, commit de layout
+  (regra 14): `components/LancamentosEmRevisao.tsx` (faixa no desenho da
+  `FaixaOffline` e janela com valor em `PrivacyValue`, tipo, data, motivo,
+  "Tentar de novo" e "Descartar" com confirmação), faixa na Início abaixo da
+  `FaixaOffline`, `acao=revisao` abre a janela, e a notificação da fila leva
+  até ela. Os seis ajustes visuais do Prism entraram antes do commit.
+  `bcc144a`: só o hash no `vercel.json`, sem afrouxar a CSP.
+- **Descartado:** pôr a voz recusada nesta lista (a voz já tem revisão própria,
+  igual no app e no widget; um segundo caminho violaria a regra 13); "Editar" o
+  item (feature maior); "Tentar todos de novo" (depois); trocar o texto da
+  `FilaCheiaError` em vez de corrigir a classificação.
+- **O que deu errado:** o Forge assumia que a mensagem da fila cheia já chegava
+  à tela, como dizia o comentário; o teste provou que não.
+- **Verificação:** `__tests__/fila-endurecida.cjs` 64/64 (27 novas; a da fila
+  cheia falhou antes e passou depois); `tsc` limpo; `test:ci` saída 0 antes dos
+  ajustes visuais, `tsc` de novo depois. CSP: `expo export` e `inject-og-meta.js`
+  com saída 0, 26 rotas, `dist/index.html` sem "conexão bancária".
+  **Não verificado:** a tela no emulador e a landing no ar (depende do push).
+  Checklist: faixa alinhada à margem da faixa offline com item AUDIT recusado;
+  "Tentar de novo" salva ou volta à fila sem rede; "Descartar" confirma e
+  remove; toque na notificação abre a janela; 500 itens na fila mostram a
+  mensagem de fila cheia; depois do push, a landing no ar sem "conexão
+  bancária".
+- **Achado do Forge, confirmado pelo maestro:** a `ogDescription` da `/assinar`
+  em `scripts/inject-og-meta.js:18` ainda dizia "sem conectar sua conta
+  bancária". O Forge corrige em seguida, por decisão do maestro.
+- **Pilha do Prism (commits locais, 26/09):** `3513e34` e `1f7121d` (Prism,
+  câmera e foto da nota), `bcc144a`, `de5d4eb` e `af21712` (Forge), e os
+  registros do Ledger `ea59d02`, `9c3f687`, `7fb62f4` e `b8ac034`.
