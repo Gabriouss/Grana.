@@ -240,7 +240,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
      Mesma regra no app (a revisão abre o mesmo formulário) e no Granabô. */
   // Tipo lido SEM o nome do cartão: um cartão chamado "Salário" não faz de uma compra uma entrada.
   if (heuristics.guessTypeFromText(textoDaCategoria) === 'in' && heuristics.ehIntencaoCredito(texto)
-    && (heuristics.matchCardByText(texto, cartoesDisponiveis) || /cart[aã]o/iu.test(texto))) {
+    && (heuristics.matchCardByText(texto, cartoesDisponiveis) || /\bcart[aã]o\b/iu.test(texto))) {
     await notificacoes.notificarRevisao('Não consegui salvar', transcricao.transcript);
     return false;
   }
