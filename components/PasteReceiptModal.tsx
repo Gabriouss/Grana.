@@ -215,7 +215,7 @@ export default function PasteReceiptModal({
         const { guardado } = await salvarOuGuardarNoAparelho(input);
         if (guardado) {
           marcarLancamentosAlterados();
-          Alert.alert('Salvo no aparelho', 'Sem conexão — o lançamento será sincronizado ao abrir o Grana. com conexão.');
+          Alert.alert('Salvo no aparelho', 'Sem conexão. O lançamento será sincronizado ao abrir o Grana. com conexão.');
         }
       }
       resetState();

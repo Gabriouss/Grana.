@@ -633,7 +633,7 @@ export default function PerfilScreen() {
                   <ToggleSwitch
                     value={notifPrefs?.almocoAtivo ?? true}
                     onToggle={() => alterarNotifPrefs({ almocoAtivo: !notifPrefs?.almocoAtivo })}
-                    label="Lembrete na hora do almoço"
+                    label="Lembrete no meio-dia (12h)"
                   />
                 </View>
               </View>

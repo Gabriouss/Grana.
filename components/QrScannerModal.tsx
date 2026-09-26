@@ -155,7 +155,7 @@ export default function QrScannerModal({
       });
       if (guardado) {
         marcarLancamentosAlterados();
-        Alert.alert('Salvo no aparelho', 'Sem conexão — a nota será sincronizada ao abrir o Grana. com conexão.');
+        Alert.alert('Salvo no aparelho', 'Sem conexão. A nota será sincronizada ao abrir o Grana. com conexão.');
       }
       hapticSuccess();
       resetState();
@@ -182,7 +182,7 @@ export default function QrScannerModal({
             <PermissaoCamera
               permissao={permissao}
               pedirPermissao={pedirPermissao}
-              motivo="O Grana. precisa da câmera para ler o QR Code da nota fiscal. A imagem é processada no aparelho e nada é enviado ou armazenado."
+              motivo="O Grana. precisa da câmera para ler o QR Code da nota fiscal. A imagem não sai do seu aparelho e não é guardada."
               onFechar={fechar}
             />
           ) : (
