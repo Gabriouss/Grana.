@@ -39,3 +39,8 @@ O áudio da v3 foi aprovado: trilha "house" a 100 bpm e "plim" de sucesso no sal
 - **Textos entram inteiros,** devagar e fluidos (subindo e saindo do desfoque em ~0,7 a 1,1 s), em vez de palavra por palavra ou linha por linha. Vale para o gancho, as legendas e a frase final.
 - **Etiquetas com entrada suave.** O logotipo entra sem o "soco".
 - **Mantidos:** o áudio aprovado, a entrada do celular, o flash nos cortes, o confete e a barra de progresso.
+
+## v5, ajustes do autor (26/09/2026)
+
+- **Sem o confete** depois do lançamento.
+- **O celular não pula mais no ritmo da música** e não treme nos cortes. Ele só flutua.

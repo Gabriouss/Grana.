@@ -74,7 +74,7 @@ function anim(t){
   {const a=eio(p(t,.15,1.25)),o=eio(p(t,DROP-.45,DROP+.1));const hk=$('hook');
    hk.style.opacity=a*(1-o);hk.style.transform=`translateY(${(1-a)*40-o*30}px)`;hk.style.filter=`blur(${(1-a)*8+o*6}px)`;}
   let sh=0;sh+=shake(t,DROP,12)+shake(t,7*B,8)+shake(t,18*B,14)+shake(t,LOGO,16);
-  $('world').style.transform=`translate(${sh}px,${sh*.6}px)`;
+  $('world').style.transform='none';
   // brilhos pulsando no ritmo
   $('g1').style.opacity=.3+pulse*.25;$('g1').style.transform=`translate(${Math.sin(t*.9)*50}px,${Math.cos(t*.7)*40-180*p(t,DROP,DROP+1)}px) scale(${1+pulse*.08})`;
   $('g2').style.transform=`translate(${Math.cos(t*.8)*60}px,${Math.sin(t*.6)*50}px)`;
@@ -91,7 +91,7 @@ function anim(t){
   const inY=(1-back(pin,2.2))*900, inR=(1-eo(pin))*-16, outS=1-eio(pout)*.5, outY=-eio(pout)*80;
   const ph=$('phone');ph.style.opacity=t<DROP?0:1-eio(p(t,21*B+.2,LOGO));
   ph.style.transformOrigin=`${px}px ${py}px`;
-  ph.style.transform=`translate(${fx}px,${fy+inY+bob+outY}px) rotate(${inR+drift*(1-pull*.6)}deg) scale(${z*(1+pulse*.012)*outS})`;
+  ph.style.transform=`translate(${fx}px,${fy+inY+bob+outY}px) rotate(${inR+drift*(1-pull*.6)}deg) scale(${z*outS})`;
   ph.style.filter=`blur(${(pin>0&&pin<1?(1-pin)*5:0)+eio(pout)*6}px)`;
   const Sv=cl(S(t),0,9.09), idx=Math.min(NF,Math.max(1,Math.floor(Sv*30)+1)), src='fr/'+String(idx).padStart(4,'0')+'.jpg';
   if(!$('shot').src.endsWith(src))$('shot').src=src;
@@ -113,7 +113,7 @@ function anim(t){
   $('cap').style.fontSize=(ci==1?64:36)+'px';$('cap').style.top=(ci==1?40:48)+'px';
   $('scrim').style.opacity=eo(p(t,DROP,DROP+.4))*(1-p(t,21*B,LOGO));
   // confete no "salvo"
-  const ct=t-18*B;CF.forEach(c=>{if(ct<0||ct>2.2){c.e.style.opacity=0;return}
+  const ct=-1;CF.forEach(c=>{if(ct<0||ct>2.2){c.e.style.opacity=0;return}
     const x=270+c.vx*ct, y=700+c.vy*ct+900*ct*ct; c.e.style.opacity=1-p(ct,1.4,2.2);
     c.e.style.transform=`translate(${x}px,${y}px) rotate(${c.r*ct}deg)`;c.e.style.width=c.w+'px'});
   // fechamento
