@@ -22,6 +22,7 @@ import { execFileSync } from 'node:child_process';
 
 const vault = process.argv[2];
 const estrito = process.argv.includes('--estrito');
+const gitCommand = process.env.GRANA_VERIFICAR_VAULT_GIT ?? 'git';
 const repo = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 
 if (!vault || !fs.existsSync(vault)) {
@@ -40,9 +41,10 @@ function percorrer(dir, acc = []) {
 
 function git(args) {
   try {
-    return execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
-  } catch {
-    return '';
+    return execFileSync(gitCommand, args, { cwd: repo, encoding: 'utf8' }).trim();
+  } catch (error) {
+    const detalhe = error instanceof Error ? error.message : String(error);
+    throw new Error(`não consegui rodar o git: ${detalhe}; o resultado não é confiável`);
   }
 }
 
