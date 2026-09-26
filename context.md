@@ -12182,3 +12182,49 @@ fatura (idem). Aprovados os textos propostos:
 anterior desta rodada, continua sem commit e sem decisão. Fica na lista de
 pendências do autor junto com A6 (recuperação de senha), o número de cupons
 do portão do dia D e a troca dos cinco segredos do EAS.
+
+## 26/09/2026 — M1 — N2/C1-c corrigido: OCR da foto com prazo de 20 s (`6b78880`)
+
+**Desbloqueia a flag `foto_nota`, achado P1 registrado na entrada anterior.**
+O Forge envolveu `reconhecedor.recognize(uri)` numa corrida
+(`Promise.race`) com um prazo, `lib/foto-nota-ocr.ts`, exportado como
+`PRAZO_LEITURA_MS = 20_000`. Estourado o prazo, a leitura cai em
+`{ ok: false, motivo: 'falhou' }`, que o `FotoNotaModal` já tratava: vai para
+a confirmação com o campo de valor vazio e o aviso "Não consegui ler a foto.
+Digite o valor...". A chamada nativa não pode ser cancelada de verdade; o
+resultado tardio, se vier, é ignorado. 20 s foi escolhido com margem real
+para aparelho lento e para a primeira leitura, que ainda baixa o modelo,
+contra 1 a 3 s de uma leitura sadia num aparelho comum. Teste:
+`__tests__/foto-nota-ocr.cjs`, 6/6 (2 novas): leitura que nunca termina cai
+em `falhou` no prazo de produção exato (20000 ms, sem encurtar a constante),
+com uma "vigia" que faz o próprio teste falhar (em vez de sair calado com
+código 0) se o prazo não existir; leitura normal desarma o timer. `tsc`
+limpo.
+
+## 26/09/2026 — M1 — o autor corrige o item 3: nenhum código ou copy dedicado a "estorno", em nenhuma entrada
+
+**Corrige o item 3 da entrada anterior ("decisões do maestro sobre as
+propostas do Forge"), aprovado horas antes.** O autor: "Nós não teremos nada
+relacionado a estorno, pelo amor de deus. Não tem estorno no Grana., se o
+usuário tiver tido um estorno, ele vai simplesmente apagar o lançamento."
+
+A aprovação anterior mandava criar mensagens dedicadas explicando a ausência
+de estorno (widget com `notificarEstorno`, `Alert` no app citando
+`ehEstornoNoCartao`, resposta específica do Granabô). O autor corrigiu a
+direção: fala que cita estorno no cartão não recebe tratamento especial
+nenhum; cai no mesmo fallback de entrada não reconhecida que qualquer outra
+fala ambígua, sem função, sem string e sem ramo de código dedicados à palavra
+"estorno", em nenhuma das três entradas (widget, app, Granabô). Isso reforça,
+não contradiz, a decisão já registrada na seção 5 da consolidação de 25/09
+("Estorno no cartão: encerrado por decisão do autor") e a regra 13 (mesma
+decisão nas duas entradas de voz): a diferença é que agora "mesma decisão"
+quer dizer "nenhuma decisão especial", não "a mesma mensagem explicativa nos
+três lugares".
+
+**O item 2 da mesma proposta (causa raiz do N1/A8, dois caches empilhados)
+não muda**; continua aprovado 1 a 5, como registrado.
+
+**Para o Forge:** não implementar `notificarEstorno`, `ehEstornoNoCartao` nem
+a resposta dedicada do Granabô descritas em
+`proposta-Forge-N1-causa-raiz-e-estorno.md`, item 3. Conferido no repositório:
+nenhum commit local ainda usava esses nomes, então não há nada para reverter.
