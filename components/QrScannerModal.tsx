@@ -266,7 +266,7 @@ export default function QrScannerModal({
 
         {nota && nota.valorTotal === null && (
           <Text style={styles.hint}>
-            O QR Code desta nota traz só a chave de acesso — o valor total não vem no código quando a
+            O QR Code desta nota traz só a chave de acesso. O valor total não vem no código quando a
             emissão é online. Digite o valor que está impresso no cupom.
           </Text>
         )}

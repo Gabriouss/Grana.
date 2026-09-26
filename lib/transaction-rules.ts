@@ -25,7 +25,7 @@ export function exigirCartaoNoCredito(t: { payment_method?: string | null; card_
 
 /**
  * O Grana. não registra entrada em cartão (decisão do autor, 26/09/2026:
- * "Não é para ter entrada de crédito no cartão"). Devolução de compra se
+ * "Não é para ter entrada de crédito no cartão"). Devolução inteira se
  * resolve excluindo a compra original. Vale para toda criação de lançamento;
  * linhas antigas desse tipo que já estão no banco não são tocadas aqui.
  *
@@ -35,7 +35,7 @@ export function exigirCartaoNoCredito(t: { payment_method?: string | null; card_
  * sempre.
  */
 export const MENSAGEM_ENTRADA_NO_CARTAO =
-  'O Grana. não registra entrada em cartão. Se foi a devolução de uma compra, exclua a compra original.';
+  'O Grana. não registra entrada em cartão. Se a compra foi devolvida inteira, exclua a compra original; se foi só uma parte, corrija o valor dela.';
 
 export function entradaNoCartao(t: { type?: string | null; payment_method?: string | null; card_id?: string | null }): boolean {
   return t.type === 'in' && (t.payment_method === 'credit' || !!t.card_id);
@@ -54,7 +54,7 @@ export function avisoEntradasNoCartaoRecusadas(quantas: number): string {
   const linhas = quantas === 1
     ? '1 linha de entrada no cartão não foi importada'
     : `${quantas} linhas de entrada no cartão não foram importadas`;
-  return `${linhas}, porque o Grana. não registra entrada em cartão. Se alguma for a devolução de uma compra, exclua a compra original.`;
+  return `${linhas}, porque o Grana. não registra entrada em cartão. Se alguma for a devolução de uma compra inteira, exclua a compra original; se foi só uma parte, corrija o valor dela.`;
 }
 
 /** Crédito só afeta o caixa quando a fatura é paga. */

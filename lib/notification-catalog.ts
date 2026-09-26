@@ -112,7 +112,7 @@ export const MENSAGENS: MensagemNotif[] = [
 
   // ---- dicas_atalhos: voz, QR de nota fiscal, cofrinhos ----
   { id: 'dica-1', categoria: 'dicas_atalhos', titulo: 'Sabia que dá pra falar?', texto: 'Dá pra lançar um gasto só falando com o Grana. Experimente a voz 🎙️' },
-  { id: 'dica-2', categoria: 'dicas_atalhos', titulo: 'Nota fiscal em segundos', texto: 'Escaneie o QR Code da nota fiscal e deixa o Grana. preencher o lançamento sozinho 📷' },
+  { id: 'dica-2', categoria: 'dicas_atalhos', titulo: 'Nota fiscal em segundos', texto: 'Escaneie o QR Code da nota fiscal e o Grana. adianta o lançamento. Você confere e salva 📷' },
   { id: 'dica-3', categoria: 'dicas_atalhos', titulo: 'Já criou um cofrinho?', texto: 'Que tal criar um cofrinho pra aquele objetivo que você vem adiando? 🐷' },
   { id: 'dica-4', categoria: 'dicas_atalhos', titulo: 'Menos digitação, mais rapidez', texto: 'Falar é mais rápido que digitar. Experimenta o lançamento por voz hoje 🗣️' },
   { id: 'dica-5', categoria: 'dicas_atalhos', titulo: 'Compra no mercado?', texto: 'Na próxima compra, escaneie o QR da nota e o Grana. ajuda a preencher o lançamento 🛒' },
