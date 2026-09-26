@@ -16,12 +16,13 @@
  * recuperação (`avisarDadoNovo` nunca dispara porque, do ponto de vista do
  * `comCacheOffline`, nada falhou).
  *
- * NÃO CORRIGIDO nesta rodada: mexer em `referenciaLocal`/`lib/wallets.ts`
- * exigiria também mudar `__tests__/voz-carteiras-offline.cjs`, que tranca de
- * propósito o comportamento de `buscar_fetchWallets` sozinho (sem
- * `comCacheOffline`) servindo o disco quando a voz precisa da lista offline
- * — os dois mecanismos nasceram em datas diferentes (10 e 11/09) e nunca
- * foram reconciliados. Corrigir os dois juntos é trabalho à parte.
+ * CAUSA RAIZ CORRIGIDA em 26/09/2026 (aprovada pelo maestro): o fallback de
+ * dentro saiu (`referenciaLocal` e a cópia em `wallets.ts`), e as escritas do
+ * próprio aparelho atualizam o disco da tela (`atualizarTelaGuardada`). A
+ * parte 1 deixou de reproduzir o defeito e passou a trancar o certo: o cartão
+ * criado aparece mesmo com um soluço de rede logo depois, e a faixa acende.
+ * `__tests__/voz-carteiras-offline.cjs` passou a rodar o `cache-de-tela.ts`
+ * real, com as mesmas asserções de antes.
  *
  * O que ESTA rodada corrigiu (parte 2, checagem de fonte): os três lugares
  * onde `app/(app)/credito.tsx` mutava um cartão e confiava num
@@ -60,8 +61,16 @@ const ok = (cond, nome) => { assert.ok(cond, nome); passou++; };
     q.eq = (c, v) => { q.filtros.push((t) => t[c] === v); return q; };
     q.insert = (linha) => { q.insercao = linha; return q; };
     q.single = () => { q.unico = true; return q; };
+    q.update = (mudanca) => { q.mudanca = mudanca; return q; };
+    q.delete = () => { q.apagar = true; return q; };
     q.then = (res, rej) => Promise.resolve().then(() => {
       if (!estado.rede) return semRede();
+      if (q.mudanca || q.apagar) {
+        const alvo = banco.filter((t) => q.filtros.every((f) => f(t)));
+        if (q.apagar) { alvo.forEach((t) => banco.splice(banco.indexOf(t), 1)); return { data: null, error: null }; }
+        alvo.forEach((t) => Object.assign(t, q.mudanca));
+        return { data: alvo[0] ?? null, error: null };
+      }
       if (q.insercao) {
         const linha = { id: `db-${banco.length + 1}`, created_at: new Date().toISOString(), ...q.insercao };
         banco.push(linha);
@@ -118,22 +127,31 @@ const ok = (cond, nome) => { assert.ok(cond, nome); passou++; };
     await data.addCreditCard({ name: 'AUDIT C1', bank: 'nubank', color: '#fff', limit_amount: 100, closing_day: 1, due_day: 10 });
     estado.rede = false;
     const listaLogoDepois = await data.fetchCreditCards();
-    ok(!listaLogoDepois.some((c) => c.name === 'AUDIT C1'),
-      'reproduzido: um soluço de rede bem depois do insert devolve a lista SEM o cartão recém-criado');
+    ok(listaLogoDepois.some((c) => c.name === 'AUDIT C1'),
+      'um soluço de rede logo depois do insert devolve a lista COM o cartão recém-criado (disco atualizado pela escrita)');
+    const cacheDeTela = carregar('lib/cache-de-tela.ts');
+    ok(cacheDeTela.estaServindoDoCache(), 'e a faixa offline acende: o dado do disco não se passa por dado de agora');
 
-    /* O pior: comCacheOffline não viu erro nenhum (referenciaLocal engoliu),
-       então ele GRAVOU o disco velho como se fosse fresco. Mesmo com a rede
-       de volta, uma nova chamada rápida demais para gerar outro soluço ainda
-       lê o que ficou persistido — a "invisibilidade permanente" do achado. */
     estado.rede = true;
     const chaves = await AsyncStorage.getAllKeys();
-    const chaveDoCacheExterno = chaves.find((k) => k.includes('cartoes') && !k.includes('voz:referencia'));
-    ok(!!chaveDoCacheExterno, 'comCacheOffline persistiu um cache próprio para "cartoes"');
-    const registro = JSON.parse(await AsyncStorage.getItem(chaveDoCacheExterno));
-    ok(!registro.dados.some((c) => c.name === 'AUDIT C1'),
-      'o cache do comCacheOffline ficou COM o disco velho gravado por cima do dele mesmo, sem nenhum erro registrado');
+    ok(!chaves.some((k) => k.includes('voz:referencia')), 'não existe mais o segundo cache (grana:voz:referencia)');
+    const chaveDoCache = chaves.find((k) => k.includes('cartoes'));
+    const registro = JSON.parse(await AsyncStorage.getItem(chaveDoCache));
+    ok(registro.dados.some((c) => c.name === 'AUDIT C1'), 'o disco da tela tem o cartão criado');
 
-    console.log('  mecanismo real confirmado (não corrigido nesta rodada, ver cabeçalho do arquivo)');
+    /* Editar e excluir também acompanham o disco. */
+    const criado = registro.dados.find((c) => c.name === 'AUDIT C1');
+    await data.updateCreditCard(criado.id, { name: 'AUDIT C1 editado' });
+    estado.rede = false;
+    ok((await data.fetchCreditCards()).some((c) => c.name === 'AUDIT C1 editado'), 'edição aparece sem rede logo depois');
+    estado.rede = true;
+    await data.deleteCreditCard(criado.id);
+    estado.rede = false;
+    ok(!(await data.fetchCreditCards()).some((c) => c.id === criado.id), 'exclusão some sem rede logo depois');
+    estado.rede = true;
+    await data.fetchCreditCards();
+    ok(!cacheDeTela.estaServindoDoCache(), 'com a rede de volta, a faixa apaga');
+    console.log('  causa raiz corrigida: o disco acompanha as escritas e a falha de rede aparece');
   })();
 })().then(() => {
 

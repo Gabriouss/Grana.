@@ -1,21 +1,21 @@
 import { supabase } from './supabase';
-import { comCacheOffline } from './cache-de-tela';
+import { atualizarTelaGuardada, comCacheOffline } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 import type { Transaction, Wallet } from './types';
 import { isCreditTx } from './format';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/* Sem rede, a lista vem do disco de `comCacheOffline('carteiras')`, que é o
+   que a voz no app e no widget usa (`fetchWallets`). Até 26/09/2026 havia um
+   segundo cache aqui dentro (`grana:voz:referencia:*`) que devolvia o disco
+   dele como SUCESSO: o cache de fora apagava a faixa offline e gravava o
+   dado velho por cima do seu. Causa raiz do N1; ver `lib/data.ts`. */
 async function buscar_fetchWallets(): Promise<Wallet[]> {
-  /* Id pelo aparelho: a busca no servidor abaixo continua exigindo token
-     válido e falha sem rede como sempre falhou, mas o cache local de
-     carteiras precisa continuar identificável quando o token vence — é dele
-     que o lançamento por voz offline tira a lista de carteiras. */
+  /* Id pelo aparelho: sem rede e com o token vencido, `getSession` volta
+     vazio; o id só filtra a busca, que continua passando pelo RLS. */
   const userId = await idDoUsuarioLocal();
   if (!userId) throw new Error('Entre na conta para carregar suas carteiras.');
   const user = { id: userId };
-  const chave = `grana:voz:referencia:${user.id}:carteiras`;
 
-  try {
   const { data, error } = await supabase
     .from('wallets')
     .select('*')
@@ -40,27 +40,11 @@ async function buscar_fetchWallets(): Promise<Wallet[]> {
       .select()
       .single();
 
-    if (!createError && created) {
-      await AsyncStorage.setItem(chave, JSON.stringify([created]));
-      return [created as Wallet];
-    }
+    if (!createError && created) return [created as Wallet];
     if (createError) throw createError;
   }
 
-  const carteiras = (data as Wallet[]) || [];
-  await AsyncStorage.setItem(chave, JSON.stringify(carteiras));
-  return carteiras;
-  } catch (erro) {
-    console.warn('[carteiras] falha ao buscar referências', (erro as { code?: string })?.code ?? 'rede/local');
-    if (/network|fetch|timeout|conex|connection/i.test(String((erro as { message?: string })?.message ?? erro))) {
-      const raw = await AsyncStorage.getItem(chave);
-      if (raw) {
-        const cache = JSON.parse(raw) as Wallet[];
-        if (Array.isArray(cache) && cache.every((w) => w.user_id === user.id)) return cache;
-      }
-    }
-    throw erro;
-  }
+  return (data as Wallet[]) || [];
 }
 
 export async function createWallet(input: {
@@ -88,7 +72,9 @@ export async function createWallet(input: {
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Wallet;
+  const criada = data as Wallet;
+  await atualizarTelaGuardada<Wallet[]>('carteiras', (lista) => [...lista.filter((w) => w.id !== criada.id), criada]);
+  return criada;
 }
 
 export async function updateWallet(
@@ -109,7 +95,9 @@ export async function updateWallet(
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Wallet;
+  const editada = data as Wallet;
+  await atualizarTelaGuardada<Wallet[]>('carteiras', (lista) => lista.map((w) => (w.id === id ? editada : w)));
+  return editada;
 }
 
 export async function deleteWallet(id: string): Promise<void> {
@@ -125,6 +113,7 @@ export async function deleteWallet(id: string): Promise<void> {
     .eq('user_id', user.id);
 
   if (error) throw new Error(error.message);
+  await atualizarTelaGuardada<Wallet[]>('carteiras', (lista) => lista.filter((w) => w.id !== id));
 }
 
 /**

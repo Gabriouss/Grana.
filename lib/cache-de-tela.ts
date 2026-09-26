@@ -85,6 +85,26 @@ export async function guardarTela<T>(nome: string, dados: T): Promise<void> {
   }
 }
 
+/**
+ * Aplica ao disco da tela (e ao dado atrasado em memória, se houver) uma
+ * escrita que o próprio aparelho acabou de fazer no servidor.
+ *
+ * Achado N1 (25-26/09/2026): o cartão recém-criado sumia porque o disco só era
+ * atualizado pela próxima busca com rede; se ela falhasse, o disco de ANTES da
+ * criação voltava para a tela. Com isto o disco acompanha as escritas do
+ * próprio aparelho. Sem disco ainda, não faz nada: a próxima busca preenche.
+ */
+export async function atualizarTelaGuardada<T>(nome: string, mudar: (dados: T) => T): Promise<void> {
+  try {
+    const atrasado = atrasados.get(nome);
+    if (atrasado) atrasado.dados = mudar(atrasado.dados as T);
+    const guardado = await lerTela<T>(nome);
+    if (guardado) await guardarTela(nome, mudar(guardado.dados));
+  } catch (erro) {
+    console.error('[cache-de-tela] não consegui atualizar o disco depois de uma escrita', nome, erro);
+  }
+}
+
 /** Devolve o guardado, e só se pertencer a ESTA conta. */
 export async function lerTela<T>(nome: string): Promise<{ dados: T; guardadoEm: string } | null> {
   try {

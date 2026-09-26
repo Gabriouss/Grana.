@@ -1,26 +1,14 @@
 import { supabase } from './supabase';
-import { comCacheOffline } from './cache-de-tela';
+import { atualizarTelaGuardada, comCacheOffline } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-async function referenciaLocal<T>(nome: string, buscar: () => Promise<T[]>): Promise<T[]> {
-  /* Pelo aparelho, não pela rede: este cache existe para responder sem
-     internet, e perguntar ao servidor quem é o dono dele derrubava a
-     referência inteira (categorias, carteiras) assim que o token vencia. */
-  const userId = await idDoUsuarioLocal();
-  if (!userId) throw new Error('Usuário não autenticado');
-  const chave = `grana:voz:referencia:${userId}:${nome}`;
-  try {
-    const itens = await buscar();
-    await AsyncStorage.setItem(chave, JSON.stringify(itens));
-    return itens;
-  } catch (erro) {
-    if (!/network|fetch|timeout|conex|connection/i.test(String((erro as {message?: string})?.message ?? erro))) throw erro;
-    const cache = await AsyncStorage.getItem(chave);
-    if (!cache) throw erro;
-    return JSON.parse(cache);
-  }
-}
+/* Até 26/09/2026 cartões e categorias passavam por uma `referenciaLocal`, um
+   SEGUNDO cache (`grana:voz:referencia:*`) por dentro do `comCacheOffline`: em
+   falha de rede ela devolvia o disco dela como SUCESSO. O cache de fora então
+   apagava a faixa offline e gravava o disco velho por cima do dele. Foi a
+   causa raiz do N1 (cartão recém-criado sumindo). Agora o buscador só busca;
+   quem serve o disco sem rede, e avisa, é `comCacheOffline`. As escritas
+   abaixo mantêm o disco em dia com `atualizarTelaGuardada`. */
 import { buscarTodasAsPaginas } from './paginacao';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
@@ -272,14 +260,12 @@ export async function addTransaction(input: {
 /* ---- cartões de crédito ---- */
 
 async function buscar_fetchCreditCards(): Promise<CreditCard[]> {
-  return referenciaLocal<CreditCard>('cartoes', async () => {
-    const { data, error } = await supabase
-      .from('credit_cards')
-      .select('*')
-      .order('created_at', { ascending: true });
-    if (error) throw error;
-    return data || [];
-  });
+  const { data, error } = await supabase
+    .from('credit_cards')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
 }
 
 export async function addCreditCard(input: {
@@ -299,6 +285,7 @@ export async function addCreditCard(input: {
     .select()
     .single();
   if (error) throw error;
+  await atualizarTelaGuardada<CreditCard[]>('cartoes', (lista) => [...lista.filter((c) => c.id !== data.id), data]);
   return data;
 }
 
@@ -315,6 +302,7 @@ export async function updateCreditCard(
     .select()
     .single();
   if (error) throw error;
+  await atualizarTelaGuardada<CreditCard[]>('cartoes', (lista) => lista.map((c) => (c.id === id ? data : c)));
   return data;
 }
 
@@ -322,6 +310,7 @@ export async function deleteCreditCard(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('credit_cards').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  await atualizarTelaGuardada<CreditCard[]>('cartoes', (lista) => lista.filter((c) => c.id !== id));
 }
 
 /* ---- pagamento de fatura de cartão ---- */
@@ -893,11 +882,9 @@ export async function deleteBudget(category: string): Promise<void> {
    abre o gerenciador de categorias. */
 
 async function buscar_fetchCategories(): Promise<Category[]> {
-  return referenciaLocal<Category>('categorias', async () => {
   const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
   if (error) throw error;
   return data;
-  });
 }
 
 /* O comentário que morava aqui (17/08/2026) dizia que a semeadura rodava uma
@@ -946,6 +933,7 @@ export async function addCategory(input: { name: string; color: string; type?: C
     .select()
     .single();
   if (error) throw error;
+  await atualizarTelaGuardada<Category[]>('categorias', (lista) => [...lista.filter((c) => c.id !== data.id), data]);
   return data;
 }
 
@@ -967,6 +955,9 @@ export async function updateCategory(
     p_color: changes.color,
   });
   if (error) throw error;
+  await atualizarTelaGuardada<Category[]>('categorias', (lista) =>
+    lista.map((c) => (c.id === id ? { ...c, name: changes.name, color: changes.color } : c))
+  );
 }
 
 /**
@@ -984,6 +975,7 @@ export async function deleteCategory(id: string, name: string): Promise<void> {
     p_fallback_color: outros.color,
   });
   if (error) throw error;
+  await atualizarTelaGuardada<Category[]>('categorias', (lista) => lista.filter((c) => c.id !== id));
 }
 
 /* ---- vínculo de WhatsApp ---- */
