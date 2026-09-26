@@ -11809,7 +11809,13 @@ Corrige a entrada anterior do Beacon, que dava as peças como prontas.
   R$ 100,00 no mesmo clipe. Causa **sem confiabilidade suficiente**: soma do
   crédito, lançamentos desfeitos contados, ou outro agente escrevendo na conta
   durante a gravação. Se for a segunda, é defeito de produto contra a regra 20.
-  Encaminhado ao Harbor. G3, média: o texto "Você gastou R$ X no Y em Z" colado
+  Encaminhado ao Harbor. **Fechado pelo Harbor no mesmo dia, NÃO é defeito:** os
+  R$ 440,30 e R$ 486,41 eram respostas antigas do histórico do chat da própria
+  conta de teste (19/09, 22/09 e 24/09, antes de `fce9a85`/v39), visíveis porque
+  o chat carrega as 50 últimas mensagens. A única consulta de 25-26/09 respondeu
+  R$ 100,00 (60 + 40), sem crédito. Nenhum dado de outra conta. Lição para
+  gravação: limpar a conversa do Granabô antes de gravar. Relatório completo do
+  Harbor chega junto com o do Granabô mudo. G3, média: o texto "Você gastou R$ X no Y em Z" colado
   não extraiu o estabelecimento (o formato de Pix do R5 extraiu); Forge confere
   `lib/heuristics.ts`.
 - **O que deu errado:** o Beacon conferiu R5 e a consulta "por existência e
