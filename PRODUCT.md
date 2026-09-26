@@ -218,6 +218,11 @@ Duas decisões da mesma noite completam esta:
   texto real do app ("descrição · valor", "categoria · forma · salvo no
   Grana.", botão "Desfazer"). Como gerar cada peça:
   `docs/marketing/identidade-sonora/README.md`.
+- **Estáticos sem sobretítulo e sem rodapé (decisão do autor em 26/09/2026):**
+  nenhum criativo leva a etiqueta pequena em caixa alta no canto (como
+  "LANÇAR POR VOZ", "NA VERSÃO WEB" ou "WEB + MOBILE") nem o rodapé
+  "Demonstração com dados fictícios.". A peça fica com logotipo, H1, H2 e
+  produto.
 - **Produção com IA e prompts por peça (decisão de 25/09/2026):** vídeos podem
   usar modelos fictícios, narração, imagem e demais elementos gerados pelo
   conector da ElevenLabs. Todo plano, calendário, roteiro ou briefing traz,
