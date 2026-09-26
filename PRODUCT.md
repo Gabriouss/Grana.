@@ -223,6 +223,12 @@ Duas decisões da mesma noite completam esta:
   "LANÇAR POR VOZ", "NA VERSÃO WEB" ou "WEB + MOBILE") nem o rodapé
   "Demonstração com dados fictícios.". A peça fica com logotipo, H1, H2 e
   produto.
+- **Números de demonstração nos estáticos (decisão do autor em 26/09/2026):**
+  nas telas e widgets que aparecem nos criativos estáticos, os valores
+  fictícios não precisam ser recalculados nem conferidos contra a regra 20
+  ou contra a build nova. "As pessoas só vão olhar para o layout". Continuam
+  valendo: nada de preço fora da formulação permitida, nada de número
+  apresentado como resultado real de cliente, e dados sempre fictícios.
 - **Produção com IA e prompts por peça (decisão de 25/09/2026):** vídeos podem
   usar modelos fictícios, narração, imagem e demais elementos gerados pelo
   conector da ElevenLabs. Todo plano, calendário, roteiro ou briefing traz,
