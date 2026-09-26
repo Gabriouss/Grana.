@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Alert } from '@/lib/alerta';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -6,7 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { guessCategoryFromText } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput, todayISO } from '@/lib/format';
-import { lerTotalDaFoto } from '@/lib/foto-nota-ocr';
+import { fotografarELer, prepararLeitura } from '@/lib/foto-nota-ocr';
 import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { mensagemErro } from '@/lib/erros';
@@ -93,23 +93,11 @@ export default function FotoNotaModal({
 
   useModalAccessibility(modalRef, visible && etapa !== 'confirmar', fechar);
 
-  /* A tela promete que a foto é apagada logo depois da leitura. Até 26/09/2026
-     a exclusão corria solta (`void`, sem esperar) e o erro era engolido, então
-     a promessa valia mais que o código (achado do Watchtower). Agora a leitura
-     só segue depois de apagar, e a exclusão é conferida: se o arquivo
-     continuar lá, fica log de erro, que é o recibo possível para um arquivo
-     do cache que a pessoa não vê. */
-  async function apagarFoto(uri: string) {
-    try {
-      const FileSystem = await import('expo-file-system/legacy');
-      await FileSystem.deleteAsync(uri, { idempotent: true });
-      if ((await FileSystem.getInfoAsync(uri)).exists) {
-        console.error('[foto-nota] a foto continuou no cache depois de apagada', uri);
-      }
-    } catch (e) {
-      console.error('[foto-nota] falha ao apagar a foto do cache', e);
-    }
-  }
+  /* Carrega o leitor ao abrir a câmera, fora do prazo da foto: em
+     desenvolvimento, o primeiro `import()` do módulo busca um pacote no Metro. */
+  useEffect(() => {
+    if (visible) void prepararLeitura();
+  }, [visible]);
 
   async function fotografar() {
     if (capturandoRef.current || !cameraPronta || !cameraRef.current) return;
@@ -118,31 +106,27 @@ export default function FotoNotaModal({
     setLanterna(false);
     setEtapa('lendo');
     const sessao = sessaoRef.current;
-    let uri: string | null = null;
+    const camera = cameraRef.current;
     try {
-      const foto = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-      uri = foto.uri;
-      const leitura = await lerTotalDaFoto(uri);
-      await apagarFoto(uri);
-      uri = null;
+      /* Foto, leitura e exclusão da foto num prazo só, do toque até aqui
+         (`fotografarELer`). Até 26/09/2026 o prazo cobria só o reconhecimento,
+         e a tela passou quase um minuto em "Lendo a nota..." (N2). */
+      const leitura = await fotografarELer(() => camera.takePictureAsync({ quality: 0.8 }));
       if (sessao !== sessaoRef.current) return; // fechada durante a leitura
       if (leitura.ok) {
         const { valorTotal, motivo } = leitura.total;
         setAmount(valorTotal ? formatMoney(valorTotal) : '');
         setAviso(AVISO_POR_MOTIVO[motivo]);
+      } else if (leitura.motivo === 'sem_foto') {
+        Alert.alert('Não consegui fotografar', 'Tente de novo. Se continuar, feche e abra a câmera.');
+        setEtapa('camera');
+        return;
       } else {
         setAmount('');
         setAviso(AVISO_POR_MOTIVO[leitura.motivo]);
       }
       setEtapa('confirmar');
-    } catch (e) {
-      console.error('[foto-nota] falha ao fotografar', e);
-      if (sessao !== sessaoRef.current) return;
-      Alert.alert('Não consegui fotografar', 'Tente de novo. Se continuar, feche e abra a câmera.');
-      setEtapa('camera');
     } finally {
-      // Só chega aqui com a foto ainda no cache se a leitura lançou.
-      if (uri) await apagarFoto(uri);
       capturandoRef.current = false;
     }
   }

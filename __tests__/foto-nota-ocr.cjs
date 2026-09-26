@@ -1,6 +1,9 @@
-// lib/foto-nota-ocr.ts: o módulo real, com o ML Kit simulado. Confere os três
-// desfechos, porque cada um vira uma mensagem diferente na tela e nenhum pode
-// ser engolido em silêncio: lido, módulo nativo ausente, leitura que falhou.
+// lib/foto-nota-ocr.ts: o módulo REAL, com o ML Kit, a câmera e o disco
+// simulados. Confere cada desfecho, porque cada um vira uma mensagem diferente
+// na tela e nenhum pode ser engolido em silêncio, e confere o PRAZO TOTAL: do
+// toque até o resultado, cobrindo a foto, o carregamento do módulo e a leitura
+// (N2, reaberto em 26/09/2026: o prazo cobria só o reconhecimento, e a tela
+// passou quase um minuto em "Lendo a nota...").
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -10,9 +13,9 @@ const compilar = (arq) => ts.transpileModule(fs.readFileSync(arq, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
 }).outputText;
 
-/* Relógio do sandbox: o prazo de produção (20 s) não é encurtado no código;
-   aqui um timer com esse tamanho dispara na hora, e o teste confere QUAL prazo
-   o módulo pediu. */
+/* Relógio do sandbox: o prazo de produção (20 s) não é encurtado no código.
+   Um timer desse tamanho dispara no próximo giro, e o teste confere QUAL prazo
+   o módulo pediu. Trabalho que resolve em microtarefas termina antes dele. */
 const timers = { pedidos: [], ativos: new Set() };
 function setTimeoutControlado(fn, ms) {
   timers.pedidos.push(ms);
@@ -22,9 +25,13 @@ function setTimeoutControlado(fn, ms) {
 }
 function clearTimeoutControlado(t) { timers.ativos.delete(t); clearTimeout(t); }
 
-function carregar(mlkit) {
+const nunca = () => new Promise(() => {});
+const giro = () => new Promise((r) => setTimeout(r, 5));
+
+function carregar({ mlkit, deleteAsync } = {}) {
   const parser = { exports: {} };
   vm.runInNewContext(compilar('lib/nota-foto-parser.ts'), { exports: parser.exports, module: parser, Number, Set, RegExp, String, Math });
+  const disco = { apagadas: [], existe: new Set() };
   const mod = { exports: {} };
   const avisos = [];
   vm.runInNewContext(compilar('lib/foto-nota-ocr.ts'), {
@@ -34,98 +41,162 @@ function carregar(mlkit) {
     require(id) {
       if (id === './nota-foto-parser') return parser.exports;
       if (id === '@react-native-ml-kit/text-recognition') return mlkit();
+      if (id === 'expo-file-system/legacy') return {
+        deleteAsync: deleteAsync ?? (async (uri) => { disco.apagadas.push(uri); disco.existe.delete(uri); }),
+        getInfoAsync: async (uri) => ({ exists: disco.existe.has(uri) }),
+      };
       throw new Error('Import não simulado: ' + id);
     },
   });
-  return { ...mod.exports, avisos };
+  const foto = (uri = 'file:///foto.jpg') => async () => { disco.existe.add(uri); return { uri }; };
+  return { ...mod.exports, avisos, disco, foto };
 }
+const kit = (recognize) => () => ({ __esModule: true, default: { recognize } });
 
 // Objetos criados dentro do vm têm outro Object.prototype; comparar como JSON.
 const plano = (x) => JSON.parse(JSON.stringify(x));
 let ok = 0;
 const passou = (n) => { ok++; console.log('  ok  ' + n); };
 
-/* Vigia: sem o prazo no módulo, a leitura pendurada deixaria o Node sair
+/* Vigia: sem o prazo no módulo, um desfecho pendurado deixaria o Node sair
    calado, com código 0, e o test:ci passaria. */
-const vigia = setTimeout(() => { console.error('FALHOU: a leitura ficou pendurada (sem prazo?)'); process.exit(1); }, 5000);
+const vigia = setTimeout(() => { console.error('FALHOU: ficou pendurado (sem prazo?)'); process.exit(1); }, 5000);
 
 (async () => {
   {
     const chamadas = [];
-    const m = carregar(() => ({ __esModule: true, default: { recognize: async (uri) => {
+    const m = carregar({ mlkit: kit(async (uri) => {
       chamadas.push(uri);
       return { text: '', blocks: [
         { lines: [{ text: 'MERCADO' }, { text: 'VALOR TOTAL R$ 42,50' }] },
         { lines: [{ text: 'CARTAO 42,50' }] },
       ] };
-    } } }));
-    const r = await m.lerTotalDaFoto('file:///foto.jpg');
+    }) });
+    timers.pedidos.length = 0;
+    const r = await m.fotografarELer(m.foto());
     assert.deepEqual(chamadas, ['file:///foto.jpg']);
     assert.equal(r.ok, true);
     assert.equal(r.total.valorTotal, 42.5);
-    assert.equal(r.texto.split('\n').length, 3, 'as linhas de todos os blocos entram no texto');
-    passou('foto lida: junta as linhas dos blocos e acha o total');
+    assert.deepEqual(timers.pedidos, [20000], 'um prazo só, o de produção');
+    assert.equal(timers.ativos.size, 0, 'o prazo é desarmado quando tudo termina antes');
+    await giro();
+    assert.deepEqual(m.disco.apagadas, ['file:///foto.jpg'], 'a foto é apagada depois da leitura');
+    assert.equal(m.avisos.length, 0);
+    passou('foto lida: acha o total, desarma o prazo e apaga a foto');
   }
   {
     /* Cupom em colunas, como o ML Kit devolve: rótulos num bloco, valores
        noutro. Antes de 26/09/2026 o módulo juntava bloco a bloco e voltava
        sem total; agora junta por fileira, pela caixa de cada linha. */
     const L = (text, top, left) => ({ text, frame: { top, left, height: 30, width: 200 } });
-    const m = carregar(() => ({ __esModule: true, default: { recognize: async () => ({ text: '', blocks: [
+    const m = carregar({ mlkit: kit(async () => ({ text: '', blocks: [
       { lines: [L('PADARIA AUDIT', 30, 90), L('VALOR TOTAL R$', 300, 40), L('Cartao de Debito', 345, 40)] },
       { lines: [L('18,75', 303, 610), L('18,75', 344, 610)] },
-    ] }) } }));
-    const r = await m.lerTotalDaFoto('file:///foto.jpg');
-    assert.equal(r.ok, true);
+    ] })) });
+    const r = await m.fotografarELer(m.foto());
     assert.equal(r.total.valorTotal, 18.75, JSON.stringify(plano(r)));
     assert.ok(r.texto.split('\n').includes('VALOR TOTAL R$ 18,75'));
     passou('cupom em colunas: rótulo e valor se encontram pela posição na foto');
   }
   {
-    const m = carregar(() => { throw new Error('Cannot find module'); });
-    const r = await m.lerTotalDaFoto('file:///foto.jpg');
+    const m = carregar({ mlkit: () => { throw new Error('Cannot find module'); } });
+    const r = await m.fotografarELer(m.foto());
     assert.deepEqual(plano(r), { ok: false, motivo: 'indisponivel' });
     assert.equal(m.avisos.length, 1, 'módulo ausente deixa log, não some calado');
-    passou('sem o módulo (Expo Go, build antiga): indisponível, com log');
+    await giro();
+    assert.deepEqual(m.disco.apagadas, ['file:///foto.jpg'], 'e a foto é apagada mesmo assim');
+    passou('sem o módulo (Expo Go, build antiga): indisponível, com log, foto apagada');
   }
   {
-    const m = carregar(() => ({ __esModule: true, default: { recognize: async () => {
+    const m = carregar({ mlkit: kit(async () => {
       throw new Error("The package '@react-native-ml-kit/text-recognition' doesn't seem to be linked.");
-    } } }));
-    const r = await m.lerTotalDaFoto('file:///foto.jpg');
+    }) });
+    const r = await m.fotografarELer(m.foto());
     assert.deepEqual(plano(r), { ok: false, motivo: 'indisponivel' });
     passou('módulo importa mas o nativo não está ligado: indisponível');
   }
   {
-    const m = carregar(() => ({ __esModule: true, default: { recognize: async () => { throw new Error('OOM'); } } }));
-    const r = await m.lerTotalDaFoto('file:///foto.jpg');
+    const m = carregar({ mlkit: kit(async () => { throw new Error('OOM'); }) });
+    const r = await m.fotografarELer(m.foto());
     assert.deepEqual(plano(r), { ok: false, motivo: 'falhou' });
     assert.equal(m.avisos[0][0], 'error', 'falha de leitura deixa log de erro');
     passou('leitura que falha: "falhou", com log de erro');
   }
   {
-    /* N2/C1-c (26/09/2026): recognize que nunca resolve nem rejeita, como o
-       ML Kit em laço de entrega do Play Services. Antes a tela ficava presa. */
+    const m = carregar({ mlkit: kit(async () => ({ blocks: [] })) });
+    const r = await m.fotografarELer(async () => { throw new Error('camera fechou'); });
+    assert.deepEqual(plano(r), { ok: false, motivo: 'sem_foto' });
+    assert.ok(m.avisos.some((a) => a[0] === 'error' && /fotografar/.test(a[1])));
+    passou('câmera que não entrega a foto: "sem_foto", com log');
+  }
+
+  /* ── Prazo total: cada etapa travada, uma de cada vez ─────────────────── */
+  {
+    // O reconhecimento nunca termina (o N2 original).
     timers.pedidos.length = 0;
-    let soltarTarde;
-    const m = carregar(() => ({ __esModule: true, default: { recognize: () => new Promise((r) => { soltarTarde = r; }) } }));
-    const r = await m.lerTotalDaFoto('file:///foto.jpg');
+    const m = carregar({ mlkit: kit(nunca) });
+    const r = await m.fotografarELer(m.foto());
     assert.deepEqual(plano(r), { ok: false, motivo: 'falhou' });
-    assert.deepEqual(timers.pedidos, [20000], 'o prazo pedido é o de produção, 20 s');
-    assert.equal(m.PRAZO_LEITURA_MS, 20000);
-    assert.ok(m.avisos.some((a) => a[0] === 'error' && /20 s/.test(String(a[2]?.message))), 'o estouro deixa log de erro com o prazo');
-    soltarTarde({ text: '', blocks: [{ lines: [{ text: 'TOTAL 10,00' }] }] });
-    await new Promise((res) => setTimeout(res, 5));
-    passou('leitura que não termina: "falhou" no prazo de 20 s, e a resposta tardia é ignorada');
+    assert.deepEqual(timers.pedidos, [20000]);
+    assert.ok(m.avisos.some((a) => a[0] === 'error' && /passaram de 20 s/.test(a[1])), 'o estouro deixa log com o prazo');
+    await giro();
+    assert.deepEqual(m.disco.apagadas, ['file:///foto.jpg'], 'a foto da leitura pendurada é apagada no estouro');
+    passou('reconhecimento pendurado: "falhou" em 20 s, e a foto não fica no cache');
   }
   {
-    /* Leitura normal não deixa o timer do prazo pendurado. */
+    // A FOTO nunca chega: antes, fora do prazo, a tela ficava em "Lendo a nota..." para sempre.
+    const m = carregar({ mlkit: kit(async () => ({ blocks: [] })) });
+    const r = await m.fotografarELer(nunca);
+    assert.deepEqual(plano(r), { ok: false, motivo: 'falhou' });
+    passou('foto pendurada: coberta pelo mesmo prazo');
+  }
+  {
+    // A foto chega DEPOIS do prazo: não é lida, é apagada na hora.
+    let entregar;
+    const lidas = [];
+    const m = carregar({ mlkit: kit(async (uri) => { lidas.push(uri); return { blocks: [] }; }) });
+    const r = await m.fotografarELer(() => new Promise((res) => { entregar = res; }));
+    assert.deepEqual(plano(r), { ok: false, motivo: 'falhou' });
+    m.disco.existe.add('file:///tarde.jpg');
+    entregar({ uri: 'file:///tarde.jpg' });
+    await giro();
+    assert.deepEqual(lidas, [], 'foto tardia não é lida');
+    assert.deepEqual(m.disco.apagadas, ['file:///tarde.jpg'], 'e é apagada');
+    passou('foto que chega depois do prazo: apagada sem ler');
+  }
+  {
+    // O carregamento do módulo nunca termina: também dentro do prazo.
+    const m = carregar({ mlkit: () => { throw new Error('nunca chamado'); } });
+    const r = await m.fotografarELer(async () => { await nunca(); });
+    assert.deepEqual(plano(r), { ok: false, motivo: 'falhou' });
+    passou('etapa antes da leitura pendurada: coberta');
+  }
+  {
+    // A exclusão da foto trava: o resultado sai mesmo assim (a tela não espera por ela).
+    const m = carregar({ mlkit: kit(async () => ({ blocks: [{ lines: [{ text: 'TOTAL R$ 5,00' }] }] })), deleteAsync: nunca });
     timers.pedidos.length = 0;
-    const m = carregar(() => ({ __esModule: true, default: { recognize: async () => ({ text: '', blocks: [{ lines: [{ text: 'TOTAL R$ 5,00' }] }] }) } }));
-    const r = await m.lerTotalDaFoto('file:///foto.jpg');
+    const r = await m.fotografarELer(m.foto());
     assert.equal(r.ok, true);
-    assert.equal(timers.ativos.size, 0, 'o prazo é desarmado quando a leitura termina antes');
-    passou('leitura dentro do prazo desarma o timer');
+    assert.equal(r.total.valorTotal, 5);
+    passou('exclusão da foto pendurada não segura a confirmação');
+  }
+  {
+    // Exclusão que falha deixa log.
+    const m = carregar({ mlkit: kit(async () => ({ blocks: [] })), deleteAsync: async () => { throw new Error('EACCES'); } });
+    await m.fotografarELer(m.foto());
+    await giro();
+    assert.ok(m.avisos.some((a) => a[0] === 'error' && /apagar a foto/.test(a[1])));
+    passou('exclusão que falha: log de erro');
+  }
+  {
+    // prepararLeitura: o módulo carrega uma vez, e a leitura usa o mesmo.
+    let imports = 0;
+    const m = carregar({ mlkit: () => { imports++; return { __esModule: true, default: { recognize: async () => ({ blocks: [] }) } }; } });
+    await m.prepararLeitura();
+    await m.prepararLeitura();
+    await m.fotografarELer(m.foto());
+    assert.equal(imports, 1);
+    passou('o módulo é carregado uma vez ao abrir a câmera e reaproveitado na leitura');
   }
   clearTimeout(vigia);
   console.log('\n' + ok + '/' + ok + ' checagens de foto-nota-ocr passaram\n');
