@@ -34,7 +34,7 @@ const EMAIL_CONTATO = '[gbr.design30@gmail.com](mailto:gbr.design30@gmail.com)';
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '23 de setembro de 2026',
+  atualizadoEm: '26 de setembro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -54,6 +54,8 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Perfil: nome de exibição e, opcionalmente, uma foto de perfil.',
         'Dados financeiros que você registra: lançamentos (descrição, valor, categoria, data), contas a pagar, orçamentos por categoria e categorias personalizadas. Esses dados existem só para o app funcionar, o Grana. não tem finalidade de análise de crédito, publicidade ou repasse a terceiros para fins comerciais.',
         'Voz no app e no widget (opcional): o áudio é enviado apenas para a transcrição do comando; guardamos o recibo técnico do lançamento e não mantemos o arquivo de áudio após o processamento.',
+        'Foto da nota (opcional): a câmera só é usada quando você toca em "Fotografar nota". A foto é lida no próprio aparelho e não é enviada ao Grana. nem a outro serviço. A leitura sugere o valor total, o nome do estabelecimento, a data da compra e a forma de pagamento; tudo aparece na tela para você conferir e editar, e só o que você confirma vira um lançamento. O arquivo temporário da foto é apagado assim que a leitura termina. Se o app for fechado no meio da leitura, o arquivo que sobrou é apagado na próxima vez que você abrir a câmera da nota.',
+        'QR Code da nota fiscal (opcional): a câmera só é usada quando você toca em "Escanear QR code da nota". Ela lê o código no próprio aparelho, e nada é guardado além do lançamento que você confirma.',
         'Assistente Granabô (opcional): guardamos as perguntas, respostas e memórias que você escolhe ou permite formar para manter o contexto do assistente. Esses dados podem conter informações financeiras que você escreveu na conversa.',
         'Notificações (opcional): guardamos o token técnico de push, o fuso horário, preferências de janela e o estado de entrega para enviar os lembretes que você ativou. O token pode ser removido pelo app ao sair da conta ou deixar de usar o aparelho.',
         'Dados técnicos mínimos: identificador interno da conta, horários de criação/atualização dos seus registros e recibos técnicos de operações, para o funcionamento normal do banco de dados.',
@@ -72,6 +74,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Enviar lembretes de vencimento de contas (notificações geradas e agendadas no próprio aparelho).',
         'Enviar notificações remotas de hábito e vencimento quando você ativa essa opção.',
         'Permitir o registro de lançamentos por voz no app/widget ou por texto colado, quando você opta por usar esses recursos.',
+        'Sugerir, a partir da foto da nota ou do QR Code da nota fiscal, os campos do lançamento que você confere antes de salvar.',
         'Responder perguntas financeiras pelo Granabô, consultando somente os dados da sua própria conta e guardando o histórico para manter a conversa.',
         'Manter sua sessão conectada com segurança entre usos do app.',
       ],
@@ -93,6 +96,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Supabase (banco de dados, autenticação e armazenamento de arquivos): infraestrutura que hospeda todos os dados descritos acima.',
         'OpenAI e Groq (Whisper), somente para transcrever mensagens de áudio enviadas pelo app ou widget, quando você usa voz. O áudio é enviado só para a transcrição e não é retido por nós após o processamento.',
         'Google (Gemini), somente para gerar a resposta textual do Granabô a partir da pergunta, do contexto da conversa e dos resultados financeiros necessários para responder. O modelo não recebe acesso direto ao banco.',
+        'Google (ML Kit), biblioteca que lê a foto da nota e o QR Code no próprio aparelho. A imagem e o texto lido não saem do aparelho. A biblioteca envia ao Google dados técnicos de diagnóstico e uso, incluindo informações do aparelho e do aplicativo, identificador por instalação, configuração da leitura e métricas de desempenho.',
         'Google Ads e Meta, somente se você chegou por um anúncio e seguiu dali para a compra: recebem o identificador daquele clique e a informação de que a compra aconteceu, para medir a campanha. Não recebem seus dados financeiros nem seu uso do app.',
         'Cakto, se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Cakto, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
       ],
