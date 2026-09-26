@@ -334,7 +334,7 @@ export default function VoiceEntryButton({
         <Ionicons name={gravando ? 'mic' : 'mic-outline'} size={iconSize} color={gravando ? theme.paper : iconColor} />
       )}
       {label && (
-        <Text style={[styles.label, textStyle, gravando && styles.labelActive]}>{rotulo}</Text>
+        <Text style={[styles.label, textStyle, gravando && styles.labelActive]} numberOfLines={1} adjustsFontSizeToFit>{rotulo}</Text>
       )}
       </AppPressable>
       <AppDialog

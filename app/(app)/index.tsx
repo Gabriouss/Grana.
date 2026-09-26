@@ -1194,7 +1194,7 @@ export default function InicioScreen() {
     atalhos: () => (
       <>
         <View style={styles.quickChipsHeadRow}>
-          <Text style={styles.sectionLabel}>Lançamento rápido</Text>
+          <Text style={styles.sectionLabel}>Categorias rápidas</Text>
           {/* Mesma solução do carrossel de cofrinhos: sem scrollbar do
               sistema (fora da identidade visual), setinhas só na web, onde
               não existe gesto de arrastar com o mouse. */}
@@ -1503,13 +1503,13 @@ export default function InicioScreen() {
     ligado('lancamento_voz') ? (
       <View key="lancamento-voz" style={styles.smartActionCell}>
         <VoiceEntryButton
-          label="Voz"
+          label="Lançar por voz"
           onSaved={() => { void load(); }}
           textStyle={styles.smartActionPrimaryText}
           /* O lançamento por voz é o atalho primário da Home: fica sempre
              na primeira posição, tanto no desktop quanto no aplicativo. */
-          iconColor={theme.paper}
-          iconSize={20}
+          iconColor={theme.accent2}
+          iconSize={18}
           style={[styles.smartActionBtn, styles.smartActionBtnPrimary]}
           hoverStyle={styles.smartActionBtnPrimaryHover}
           onTranscribed={(text) => {
@@ -1536,8 +1536,8 @@ export default function InicioScreen() {
           accessibilityRole="button"
           accessibilityLabel="Colar comprovante"
         >
-          <Ionicons name="clipboard-outline" size={20} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Colar</Text>
+          <Ionicons name="clipboard-outline" size={18} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Colar comprovante</Text>
         </AppPressable>
       </View>
     ) : null,
@@ -1549,8 +1549,8 @@ export default function InicioScreen() {
           accessibilityRole="button"
           accessibilityLabel="Importar extrato"
         >
-          <Ionicons name="document-text-outline" size={20} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Extrato</Text>
+          <Ionicons name="document-text-outline" size={18} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Importar extrato</Text>
         </AppPressable>
       </View>
     ) : null,
@@ -1562,12 +1562,18 @@ export default function InicioScreen() {
           accessibilityRole="button"
           accessibilityLabel="Fotografar nota"
         >
-          <Ionicons name="camera-outline" size={20} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Foto</Text>
+          <Ionicons name="camera-outline" size={18} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Fotografar nota</Text>
         </AppPressable>
       </View>
     ) : null,
   ].filter((cell): cell is ReactElement => cell !== null);
+  const smartActionRows = Platform.OS === 'web'
+    ? [smartActionCells.slice(0, 1), smartActionCells.slice(1)].filter((row) => row.length > 0)
+    : Array.from(
+      { length: Math.ceil(smartActionCells.length / 2) },
+      (_, row) => smartActionCells.slice(row * 2, row * 2 + 2),
+    );
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
@@ -1651,7 +1657,11 @@ export default function InicioScreen() {
             collapsable={false}
           >
           <View style={styles.smartActionsGrid}>
-            {smartActionCells}
+            {smartActionRows.map((row, index) => (
+              <View key={`smart-action-row-${index}`} style={styles.smartActionsGridRow}>
+                {row}
+              </View>
+            ))}
           </View>
           </View>
         </FadeIn>
@@ -2066,39 +2076,40 @@ const styles = StyleSheet.create({
   quickChipHover: { backgroundColor: theme.hover },
   quickChipText: { color: theme.ink, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.regular },
-  smartActionsGrid: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.sm },
-  smartActionCell: { flex: 1, aspectRatio: 1 },
+  smartActionsGrid: { gap: spacing.sm, marginBottom: spacing.sm },
+  smartActionsGridRow: { flexDirection: 'row', gap: spacing.sm },
+  smartActionCell: { flex: 1, minWidth: 0 },
   smartActionBtn: {
     flex: 1,
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    gap: spacing.icone,
     minHeight: touchTarget,
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.md,
+    paddingHorizontal: cardTokens.padding,
+    borderRadius: cardTokens.radius,
     backgroundColor: theme.paperRaised,
-    borderWidth: 1,
+    borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
   },
   smartActionBtnHover: { borderColor: theme.ruleStrong },
-  smartActionBtnPrimary: { backgroundColor: theme.ink, borderColor: theme.ink },
-  smartActionBtnPrimaryHover: { borderColor: theme.ink },
+  smartActionBtnPrimary: { backgroundColor: theme.paperSelected, borderColor: theme.accent2 },
+  smartActionBtnPrimaryHover: { backgroundColor: theme.hover, borderColor: theme.accent2 },
   smartActionText: {
     color: theme.ink,
     fontSize: type.legenda,
     lineHeight: lh(type.legenda, 'apoio'),
     fontFamily: fonts.regular,
-    textAlign: 'center',
+    textAlign: 'left',
     flexShrink: 1,
   },
   smartActionPrimaryText: {
-    color: theme.paper,
+    color: theme.ink,
     fontSize: type.legenda,
     lineHeight: lh(type.legenda, 'apoio'),
     fontFamily: fonts.regular,
-    textAlign: 'center',
+    textAlign: 'left',
     flexShrink: 1,
   },
   card: { backgroundColor: theme.paperRaised, borderRadius: cardTokens.radius, borderWidth: cardTokens.borderWidth, borderColor: theme.rule, padding: cardTokens.padding, gap: spacing.md },
