@@ -60,6 +60,10 @@ no `context.md`.
 
 # 25/09/2026 (M1) — foto da nota: valor total lido por OCR no aparelho (`988b92d`, `9fd6015`)
 
+Registro introduzido por `d4edc10`. Os commits de implementação continuam sendo
+`988b92d` (núcleo OCR) e `9fd6015` (atalho na Início); `d4edc10` é apenas o
+registro desta decisão, não uma terceira implementação.
+
 **Pedido.** O autor: "iremos adicionar a função de foto da nota que captura o
 valor total", e depois "e a implementação da feature no app?". Decidiu que a
 mensagem de marketing troca QR Code por foto (o `FUNIL.md`, local e fora do
@@ -113,9 +117,18 @@ maior valor quando não há rótulo.
 checklist de QA com 5 a 10 cupons reais fotografados (mercado, farmácia,
 posto, padaria), anotando quantos o valor saiu certo, em branco ou errado.
 
+**Estado revisado em 25/09:** a migration `20260925020000_flag_foto_nota.sql`
+continua **NÃO aplicada em produção** e nenhuma build contém a função. A
+mensagem do marketing já pode dizer "fotografar a nota", mas a peça só pode
+ser publicada depois da build e do teste com cupons reais; a versão do motion
+com essa cena está registrada em [[Estilos de Vídeo - Guia de Referência]].
+
 ---
 
 # 25/09/2026 (M1) — dois commits trazidos da sessão na nuvem (`f14dc39`, `7f2a002`)
+
+Registro introduzido por `ce8b4f4`. Os dois hashes abaixo são os commits de
+código/documentação trazidos para `main`; `ce8b4f4` é o registro do handoff.
 
 Pedido do autor: uma sessão dele na nuvem (branch `origin/claude/cool-einstein-c63bq0`,
 autorizada por ele mesmo) tinha, entre commits de roteiro do Reels do padeiro,
@@ -11450,3 +11463,46 @@ T21 fica **FECHADO**. O próximo item do Sentinel é C1, notificações locais.
 Fica sem verificação visual no aparelho, por causa da armadilha de ambiente,
 mas a correção está comprovada pela leitura do código e pelo teste de
 regressão.
+
+## 25/09/2026 — M1 — consolidação da retomada documental
+
+Esta entrada consolida os relatórios recebidos em
+`E:\\Grana-temporarios\\2026-09-25-retomada`,
+`E:\\Grana-temporarios\\2026-09-25-harbor-p0`,
+`E:\\Grana-temporarios\\2026-09-23-QA` e
+`E:\\Grana-temporarios\\2026-09-25-marketing`. A nota de sessão da M1 no
+vault guarda o detalhe das seis perguntas da regra 12.
+
+- **P0 do `client_request_id`:** a causa foi a coluna criada pela migration
+  `20260924230000_idempotencia_fila_offline.sql` sem `INSERT` para
+  `authenticated`; o cliente passou a enviar a chave e recebeu `permission
+  denied for table transactions`. O autor autorizou **somente** o grant
+  estreito `grant insert (client_request_id) on public.transactions to
+  authenticated`. A aplicação foi conferida no catálogo (`6739ff2`) e o
+  schema/teste ficaram alinhados em `6a96485`; o Sentinel confirmou no APK de
+  desenvolvimento uma entrada e uma saída salvas. Grant amplo e `UPDATE` da
+  chave foram descartados.
+- **Foto da nota:** OCR continua local, com `foto_nota`; a migration
+  `20260925020000_flag_foto_nota.sql` segue **NÃO aplicada** e a função não
+  está em build pública.
+- **Estorno:** encerrado por decisão do autor: não haverá fluxo de estorno;
+  excluir o lançamento é o procedimento. Nenhuma peça de marketing deve citar
+  estorno e nenhum código novo foi mantido para esse conceito.
+- **Cartão invisível:** o relato de um cartão novo não aparecer não alcançou
+  confiabilidade suficiente para virar achado confirmado. As tentativas
+  ocorreram sob RAM crítica, não houve confirmação estável de persistência e
+  o mecanismo de cache ficou apenas como hipótese; não houve correção nem
+  mudança de dados por causa dele.
+- **`wallet-context`:** o `TypeError` visto no Expo Go logo após uma gravação
+  não se repetiu depois de fechar/reabrir, e a leitura do código não isolou
+  causa. Pode ter sido bundle servido no meio de edição; fica como observação
+  sem confiabilidade suficiente, sem correção.
+- **Dados AUDIT:** as seis duplicatas T13 foram removidas no aparelho após a
+  confirmação do Harbor e a reverificação F2 não encontrou novas duplicatas.
+  A limpeza final do restante dos dados AUDIT continua aguardando decisão
+  explícita do autor; não apagar nem registrar valores pessoais antes dela.
+
+O `test:ci` do estado publicado inclui as guardas de foto/OCR e de grant,
+além das suítes dos fluxos tocados. O QA de aparelho ainda é necessário para
+foto/OCR real, para os caminhos offline específicos da rodada e para fechar a
+limpeza autorizada; nenhum EAS build foi disparado.
