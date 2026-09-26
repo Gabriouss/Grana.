@@ -27,3 +27,7 @@ Reel de 16,4 s em 1080×1920, sem narração e sem créditos da ElevenLabs. Foi 
 1. **Tela recortada:** trechos do clipe 7,2–8,4 / 8,5–9,35 / 16,0–17,6 com o patch / 17,75–20,45 / 20,5–21,0 / 23,35–25,6 s, a 30 fps, em 720×1600. Extraia os quadros em `fr/%04d.jpg` com `-vf fps=30`. **Sem o `fps=30`, os quadros repetidos somem e os tempos se perdem.**
 2. `python3 render.py r5 video 16.4`, na pasta com `r5.html`, `fr/`, as fontes e o logotipo.
 3. **Som:** a trilha a −5 dB e o "plim" de sucesso (`../identidade-sonora/plim-sucesso.wav`) a −6 dB, em 10,8 s.
+
+## Aprovação do autor (26/09/2026)
+
+O áudio da v3 foi aprovado: trilha "house" a 100 bpm e "plim" de sucesso no salvo. Fica assim.
