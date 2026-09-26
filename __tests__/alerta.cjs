@@ -45,6 +45,14 @@ assert.equal(alerta.dispensarAlerta(segundo.id), true, 'cancelamento por fechar 
 assert.equal(alerta.dispensarAlerta(segundo.id), false, 'cancelamento repetido não tem efeito');
 assert.equal(alerta.obterAlertaAtual(), undefined);
 
+alerta.Alert.alert('Terceiro', 'Ação destrutiva.', [
+  { text: 'Apagar', style: 'destructive', onPress: () => { destrutivos++; } },
+]);
+const terceiro = alerta.obterAlertaAtual();
+assert.equal(alerta.pressionarAlerta(terceiro.id, 0), true);
+assert.equal(alerta.pressionarAlerta(terceiro.id, 0), false);
+assert.equal(destrutivos, 1, 'onPress destrutivo acontece uma única vez');
+
 const host = fs.readFileSync(path.join('components', 'AlertaHost.tsx'), 'utf8');
 assert.match(host, /AppModal/);
 assert.match(host, /Sheet/);
