@@ -205,6 +205,11 @@ export default function ImportarExtratoModal({
   const aImportar = ehCartao ? linhasNaOrigem.filter((l) => l.type !== 'in') : linhasNaOrigem;
   const quantidadeEntradasRecusadas = linhasNaOrigem.length - aImportar.length;
   const avisoEntradas = avisoEntradasNoCartaoRecusadas(quantidadeEntradasRecusadas);
+  const rotuloImportar = aImportar.length === 0
+    ? 'Nenhum lançamento para importar'
+    : aImportar.length === 1
+      ? 'Importar 1 lançamento'
+      : `Importar ${aImportar.length} lançamentos`;
 
   async function confirmar() {
     if (linhas.length === 0) return;
@@ -411,6 +416,13 @@ export default function ImportarExtratoModal({
                   : 'Confira antes de salvar. Este formato não traz identificador de transação, então importar o mesmo arquivo duas vezes duplica os lançamentos.'}
               </Text>
 
+              {quantidadeEntradasRecusadas > 0 ? (
+                <View style={styles.avisoEntradas} accessibilityRole="alert" accessibilityLiveRegion="polite">
+                  <Ionicons name="alert-circle-outline" size={13} color={theme.danger} />
+                  <Text style={styles.avisoEntradasTexto}>{avisoEntradas}</Text>
+                </View>
+              ) : null}
+
               <FlatList
                 data={linhasNaOrigem}
                 keyExtractor={(item, i) => item.fitid ?? String(i)}
@@ -448,7 +460,7 @@ export default function ImportarExtratoModal({
                     ) : null}
                   </View>
                 ) : (
-                  <Text style={styles.saveBtnText}>{linhas.length === 1 ? 'Importar 1 lançamento' : `Importar ${linhas.length} lançamentos`}</Text>
+                  <Text style={styles.saveBtnText}>{rotuloImportar}</Text>
                 )}
               </AppPressable>
 
@@ -502,6 +514,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   avisoTexto: { flex: 1, color: theme.inkSoft, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
+  avisoEntradas: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.icone,
+    marginTop: spacing.sm,
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.icone,
+  },
+  avisoEntradasTexto: {
+    flex: 1,
+    minWidth: 0,
+    color: theme.ink,
+    fontSize: type.legenda,
+    lineHeight: lh(type.legenda, 'apoio'),
+    fontFamily: fonts.regular,
+  },
 
   separador: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, textAlign: 'center', marginTop: spacing.md },
 
