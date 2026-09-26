@@ -1,6 +1,6 @@
 import { createContext, use, useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { Platform } from 'react-native';
-import { Alert } from './alert';
+import { Alert } from './alerta';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';

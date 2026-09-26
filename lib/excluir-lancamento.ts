@@ -1,4 +1,4 @@
-import { Alert } from './alert';
+import { Alert } from './alerta';
 import type { Transaction } from './types';
 
 /**

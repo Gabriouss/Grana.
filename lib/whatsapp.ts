@@ -1,5 +1,5 @@
 import { Linking } from 'react-native';
-import { Alert } from './alert';
+import { Alert } from './alerta';
 
 /* ── Caminho do app até a conversa do bot ──────────────────────────────────
  *
