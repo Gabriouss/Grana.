@@ -11565,3 +11565,12 @@ declarando prazo) e todas derrubam algum teste. `tsc` e `test:ci` verdes.
 Android o corte por silêncio no botão (o limiar é o mesmo número, mas ninguém
 ouviu), e no iOS e na web, onde o `metering` não é o do `MediaRecorder` e o
 limiar vale só por aproximação. Chega ao aparelho na próxima build.
+
+## 26/09/2026 — Criativos em vídeo (sessão na nuvem, branch `claude/cool-einstein-c63bq0`)
+
+- **Reels "pão lançado pelo widget":** o roteiro, os prompts e o histórico de geração estão em `docs/marketing/2026-09-25-reels-widget-padaria.md`. Os vídeos prontos não estão no git e foram entregues ao autor na conversa:
+  - v9 completo, com 24,7 s;
+  - versão curta com a notificação do Android, com 16,8 s.
+- **Identidade sonora, decisão do autor:** o "plim" de sucesso marca o lançamento salvo, e a trilha segue a pegada pop. Os arquivos e os scripts que geram cada peça estão em `docs/marketing/identidade-sonora/`. A regra está no `PRODUCT.md`, em "Copy and Marketing Guidelines".
+- **Motion "desistiu porque cansa":** 20 s, sem rosto e sem narração, com telas do app recriadas em HTML. O autor autorizou a exceção à regra de captura real. A fonte e o gerador estão em `docs/marketing/motion-desistiu/`. O autor aprovou ("Ficou muito bom").
+- **Custo:** nenhum crédito da ElevenLabs no motion, na trilha nem no "plim". Narração sem crédito não foi possível: as vozes do Piper ficam no `huggingface.co`, bloqueado pela rede deste ambiente.
