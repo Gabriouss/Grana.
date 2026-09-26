@@ -85,7 +85,7 @@ export default function BaixarApp() {
           </AppPressable>
 
           <Text style={styles.rodape}>
-            O Grana. não conecta sua conta bancária. Seus dados ficam vinculados à sua conta e podem ser excluídos quando você quiser.
+            Seus dados ficam vinculados à sua conta e podem ser excluídos quando você quiser.
           </Text>
         </View>
       </ScrollView>

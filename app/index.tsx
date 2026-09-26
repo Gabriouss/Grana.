@@ -701,7 +701,7 @@ const OBJECOES = [
   {
     objecao: 'Mas eu não quero dar acesso à minha conta bancária.',
     resposta:
-      'E você não vai dar. O Grana. não se conecta ao seu banco e não usa Open Finance. Você conta o que gastou e ele organiza. Senha de banco não entra nessa história em momento nenhum.',
+      'Não precisa. Você registra os gastos por voz, por texto ou colando o Pix, e o Grana. organiza. O app não pede acesso à sua conta bancária.',
   },
 ];
 
@@ -798,7 +798,7 @@ const GANCHO_HERO = 'Cadê meu dinheiro?';
 const ROTULO_CTA_DECISAO = 'Já me decidi. Quero agora';
 const ROTULO_CTA_PLANOS = 'Ver os planos';
 const APOIO_HERO =
-  'Sem formulário, sem planilha, sem conectar banco. Só o seu dinheiro, do seu jeito.';
+  'Sem formulário e sem planilha. Só o seu dinheiro, do seu jeito.';
 
 function criarLetras(texto: string, valorInicial: number): Animated.Value[] {
   return [...texto].map(() => new Animated.Value(valorInicial));
@@ -1184,10 +1184,10 @@ function ConteudoWeb() {
       {/* Fatos verificáveis, não autoavaliação. "Sem burocracia", "Sem letra
           miúda" e "Preço simples e fixo" eram opinião da própria empresa sobre
           si mesma, que não funciona como prova. Cada item aqui é checável:
-          não existe conexão bancária e o app roda no navegador. */}
+          o app roda no navegador e aceita os jeitos de lançar listados. */}
       <TrustMarquee
         itens={[
-          'Sem conectar conta bancária',
+          'Lançamento por voz e Pix colado',
           'Funciona direto no navegador',
           'Controle no celular e no computador',
         ]}
@@ -1760,11 +1760,11 @@ function ConteudoWeb() {
                   Seu próximo gasto pode ser o primeiro passo.
                 </Text>
                 <Text style={[styles.ctaFinalTexto, styles.precoTextoCentralizado]}>
-                  Organize seus gastos com o Grana. no plano anual — equivalente a {emReais(PRECO_ANUAL / 12)} por mês —
+                  Organize seus gastos com o Grana. no plano anual, equivalente a {emReais(PRECO_ANUAL / 12)} por mês,
                   ou {emReais(PRECO_MENSAL)} por mês no plano mensal. Sem período de teste.
                 </Text>
                 <View style={[styles.ctaFinalFatos, styles.ctaFinalFatosCompacto]}>
-                  {['Sem conectar banco', 'Lançamentos organizados', 'Celular e computador'].map((fato) => (
+                  {['Voz e Pix colado', 'Lançamentos organizados', 'Celular e computador'].map((fato) => (
                     <View key={fato} style={styles.ctaFinalFato}>
                       <Ionicons name="checkmark-circle" size={15} color={theme.up} aria-hidden />
                       <Text style={styles.ctaFinalFatoTexto}>{fato}</Text>
