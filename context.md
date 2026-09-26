@@ -11554,3 +11554,34 @@ O autor aprovou a revisão de `E:\Grana-temporarios\2026-09-25-marketing\copy-se
 - **O que ficou sem verificação:** o número de cupons do portão (proposta de
   10) ainda não foi confirmado pelo autor; a estimativa de D em 05/10/2026
   (data de volta da cota do EAS) é estimativa, não data certa.
+
+## 25/09/2026 — M1 — nome de exibição da conta de teste trocado para "Ana"
+
+- **Pedido como chegou:** decisão do autor, ao vivo, numa conversa com o
+  maestro (não com esta sessão): o nome de exibição da conta de teste
+  aparecia como "Auditoria" nas telas — "Boa noite, Ana" na Início e "Como
+  podemos te chamar?" no Perfil eram, antes da troca, "Boa noite, Auditoria"
+  — e o autor não quis esse nome aparecendo nas gravações de marketing feitas
+  a partir de agora.
+- **Sintoma e causa:** sintoma era o nome "Auditoria" visível em qualquer
+  captura de tela ou gravação da conta de teste. Causa: o nome de exibição
+  tinha sido herdado de sessões de QA anteriores, que usaram "Auditoria"
+  como identificação, e ninguém trocou depois que a conta passou a servir
+  também para material de marketing.
+- **O que foi alterado, e onde:** só o campo de nome de exibição do perfil
+  (dado gravado no banco pela própria conta, não config nem código), trocado
+  pelo maestro dentro do app, em Perfil > Editar nome, na conta
+  `E2E_TEST_EMAIL`. **As credenciais da conta de teste (`E2E_TEST_EMAIL` e
+  `E2E_TEST_PASSWORD`) não mudaram.** Não há commit nem arquivo que
+  documente essa troca além desta entrada, porque é dado de conta, não
+  arquivo versionado — o `.env` de cada máquina continua sendo a fonte das
+  credenciais (regra 15/18).
+- **Descartado:** isso não é o personagem fictício "Carla" usado nos kits de
+  produção de Reels (`kits-de-producao-reels.md`) — são coisas diferentes: um
+  é o nome que a própria conta de teste mostra dentro do app, o outro é um
+  personagem gerado por IA nos vídeos. Não confundir os dois em peças
+  futuras.
+- **O que ficou sem verificação:** se alguma captura ou gravação já feita
+  antes desta troca ainda mostra "Auditoria" em algum quadro e precisa ser
+  refeita não foi conferido nesta entrada; quem for reaproveitar material
+  antigo deve olhar isso antes de publicar.
