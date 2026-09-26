@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:NM;src:url(../../../assets/fonts/NeueMachina-Regular.otf);font-weight:400}
+@font-face{font-family:NM;src:url(../../../assets/fonts/NeueMachina-Light.otf);font-weight:300}
+@font-face{font-family:Rb;src:url(../identidade-sonora/roboto-400.woff2);font-weight:100 900}
+@font-face{font-family:Emo;src:url(emoji.woff2)}
+:root{--paper:#052229;--raised:#0b2d35;--ink:#effffa;--soft:#a6d9ce;--faint:#7fa9a0;--menta:#aeffe3;
+  --rule:rgba(174,255,227,.14);--ruleS:rgba(174,255,227,.26)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:540px;height:960px;overflow:hidden;background:var(--paper)}
+#stage{position:absolute;inset:0;overflow:hidden;
+  background:radial-gradient(120% 70% at 50% 110%,#0b4f5c 0%,#052229 55%,#021419 100%)}
+.glow{position:absolute;width:520px;height:520px;border-radius:50%;filter:blur(70px);opacity:.35;
+  background:radial-gradient(circle,#22a1c1,transparent 70%)}
+/* legenda */
+#cap{position:absolute;left:36px;right:36px;top:64px;text-align:center;font-family:NM;font-weight:400;
+  color:var(--ink);font-size:34px;line-height:1.18;letter-spacing:-.3px}
+#cap .w{display:inline-block;will-change:transform,opacity}
+#cap em{font-style:normal;color:var(--menta)}
+#hook{position:absolute;left:40px;right:40px;top:0;bottom:0;display:flex;align-items:center;justify-content:center;
+  text-align:left;font-family:NM;color:var(--ink);font-size:46px;line-height:1.12;letter-spacing:-.6px}
+#hook .w{display:inline-block;margin-right:.24em}
+#hook em{font-style:normal;color:var(--menta)}
+/* celular */
+#phone{position:absolute;left:92px;top:196px;width:356px;height:736px;border-radius:54px;background:#0a0d0e;
+  box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1.5px #2a3336 inset,0 0 0 3px #111;transform-origin:50% 60%}
+#screen{position:absolute;left:10px;top:10px;width:336px;height:716px;border-radius:44px;overflow:hidden;background:#000}
+#dp{position:absolute;left:0;top:0;width:412px;height:882px;transform:scale(.8155);transform-origin:0 0}
+.layer{position:absolute;inset:0}
+.glass{position:absolute;inset:0;border-radius:44px;pointer-events:none;
+  background:linear-gradient(125deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 38%)}
+.hole{position:absolute;left:50%;top:14px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#050607;z-index:50}
+/* android */
+.sb{position:absolute;left:0;right:0;top:0;height:40px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 26px;font-family:Rb;font-size:15px;color:#fff;z-index:40}
+.sb .ic{display:flex;gap:6px;align-items:center}
+#home{background:
+  radial-gradient(90% 60% at 20% 15%,#1d6f7c 0%,transparent 60%),
+  radial-gradient(80% 60% at 90% 80%,#0d4a5e 0%,transparent 65%),
+  linear-gradient(180deg,#0a3440 0%,#06222b 100%)}
+.clock{position:absolute;left:28px;top:84px;font-family:Rb;color:#fff}
+.clock .h{font-size:64px;font-weight:300;letter-spacing:-1px;line-height:1}
+.clock .d{font-size:16px;margin-top:8px;opacity:.9}
+.wvoz{position:absolute;left:34px;top:300px;width:92px;display:flex;flex-direction:column;align-items:center}
+.circ{width:64px;height:64px;border-radius:50%;background:linear-gradient(90deg,#b0f7c9,#22a1c1);
+  border:1px solid #09384a;display:flex;align-items:center;justify-content:center;position:relative}
+.circ svg{width:32px;height:32px}
+.ring{position:absolute;inset:-2px;border-radius:50%;border:2px solid #aeffe3;opacity:0}
+.wvoz .lbl{margin-top:5px;font-family:Rb;font-size:12px;color:#e8f3f1;white-space:nowrap}
+.wlivre{position:absolute;left:150px;top:292px;width:228px;height:112px;border-radius:18px;background:#0b2d35;
+  border:1px solid #2a5660;padding:14px 16px;font-family:Rb}
+.wlivre .t{font-size:13px;color:#a6d9ce}
+.wlivre .v{font-size:25px;font-weight:700;color:#effffa;margin-top:2px;font-variant-numeric:tabular-nums}
+.wlivre .a{font-size:12px;color:#a6d9ce;margin-top:1px}
+.wlivre .u{font-size:10px;color:#a6d9ce;margin-top:5px}
+.dock{position:absolute;left:36px;right:36px;bottom:40px;display:flex;justify-content:space-between}
+.dock i{width:56px;height:56px;border-radius:50%;display:block;background:rgba(255,255,255,.14)}
+.search{position:absolute;left:24px;right:24px;bottom:120px;height:52px;border-radius:26px;background:rgba(255,255,255,.16)}
+.fala{position:absolute;left:28px;right:28px;top:430px;padding:16px 18px;border-radius:20px;background:rgba(5,34,41,.92);
+  border:1px solid rgba(174,255,227,.25);font-family:NM;font-weight:300;font-size:19px;line-height:1.35;color:#effffa}
+.fala .mic{display:flex;gap:4px;align-items:center;height:22px;margin-bottom:8px}
+.fala .mic b{display:block;width:4px;border-radius:2px;background:#aeffe3}
+.tap{position:absolute;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.55);
+  box-shadow:0 0 0 2px rgba(255,255,255,.35);opacity:0;z-index:60}
+/* notificação android */
+.nt{position:absolute;left:8px;right:8px;top:8px;background:#2b2d31;border-radius:26px;padding:16px 16px 8px;
+  box-shadow:0 6px 18px rgba(0,0,0,.35);font-family:Rb;z-index:45}
+.nt .row{display:flex;gap:14px}
+.nt .ico{width:40px;height:40px;border-radius:50%;background:#052229;flex:none;display:flex;align-items:center;justify-content:center}
+.nt .ico img{width:34px;height:34px}
+.nt .col{flex:1;min-width:0}
+.nt .l1{display:flex;align-items:baseline;gap:6px;color:#e3e3e6}
+.nt .tt{font-weight:500;font-size:16px;white-space:nowrap}
+.nt .hh{font-size:12px;color:#a9abb0}
+.nt .bb{font-size:14px;color:#c4c6cb;margin-top:3px;line-height:20px}
+.nt .acts{display:flex;margin:10px 0 0 42px}
+.nt .ac{font-size:14px;font-weight:500;color:#9cd3c9;padding:8px 12px}
+.emo{font-family:Emo}
+/* leitor QR */
+#cam{background:#000}
+.mesa{position:absolute;inset:0;background:
+  radial-gradient(70% 50% at 50% 55%,#6b5846 0%,#3b3027 60%,#1c1713 100%)}
+.cupom{position:absolute;left:96px;top:190px;width:220px;height:470px;background:#f3f1ea;border-radius:3px;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);padding:18px 16px;font-family:Rb;color:#333;font-size:10px;line-height:1.55;
+  transform:rotate(-4deg);transform-origin:0 0}
+.cupom .c{text-align:center;font-weight:700;font-size:11px}
+.cupom .ln{border-top:1px dashed #999;margin:6px 0}
+.cupom .it{display:flex;justify-content:space-between}
+.cupom .tot{display:flex;justify-content:space-between;font-weight:700;font-size:12px;margin-top:4px}
+.qr{margin:10px auto 0;width:150px;height:150px;display:grid;grid-template-columns:repeat(25,1fr)}
+.qr i{display:block}
+.cam-dim{position:absolute;inset:0;background:rgba(0,0,0,.28)}
+.mira{position:absolute;left:86px;top:300px;width:240px;height:240px}
+.mira .k{position:absolute;width:34px;height:34px;border-color:#aeffe3;border-style:solid;border-width:0}
+.mira .k1{left:0;top:0;border-top-width:3px;border-left-width:3px;border-top-left-radius:12px}
+.mira .k2{right:0;top:0;border-top-width:3px;border-right-width:3px;border-top-right-radius:12px}
+.mira .k3{left:0;bottom:0;border-bottom-width:3px;border-left-width:3px;border-bottom-left-radius:12px}
+.mira .k4{right:0;bottom:0;border-bottom-width:3px;border-right-width:3px;border-bottom-right-radius:12px}
+.mira .scan{position:absolute;left:6px;right:6px;height:2px;background:#aeffe3;opacity:.75}
+.dica{text-shadow:0 1px 6px rgba(0,0,0,.9);position:absolute;left:28px;right:28px;top:568px;text-align:center;font-family:NM;font-size:15px;color:#effffa}
+.topo{position:absolute;left:20px;right:20px;top:56px;display:flex;justify-content:space-between}
+.topo i{width:44px;height:44px;border-radius:50%;background:rgba(5,34,41,.7);border:1px solid rgba(174,255,227,.26);
+  display:flex;align-items:center;justify-content:center;color:#effffa;font-style:normal;font-family:Rb;font-size:20px}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#0b2d35;border-radius:22px 22px 0 0;padding:16px 20px 28px;
+  font-family:NM;display:flex;flex-direction:column;gap:12px}
+.sheet .hd{display:flex;justify-content:space-between;align-items:center;color:#effffa;font-size:20px}
+.sheet .hd span:last-child{color:#7fa9a0;font-family:Rb;font-size:22px}
+.nbox{background:#052229;border-radius:12px;border:1px solid var(--rule);padding:12px;display:flex;flex-direction:column;gap:4px}
+.nbox div{display:flex;justify-content:space-between;align-items:center}
+.nbox .r{color:#7fa9a0;font-size:12px;font-weight:300}
+.nbox .v{color:#a6d9ce;font-size:13px;font-weight:300}
+.desc{border-bottom:1px solid var(--rule);color:#effffa;font-size:17px;padding:8px 0}
+.amt{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--ruleS);padding-bottom:10px}
+.amt .p{color:#7fa9a0;font-size:22px;font-weight:300}
+.amt .n{color:#effffa;font-size:28px;font-variant-numeric:tabular-nums}
+.chips{display:flex;gap:4px;padding:4px 0;overflow:hidden;white-space:nowrap}
+.chip{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;border:1px solid var(--rule);
+  color:#a6d9ce;font-size:15px;font-weight:300;flex:none}
+.chip.sel{border-color:#effffa;background:#0b2d35;color:#effffa}
+.chip i{width:8px;height:8px;border-radius:4px;display:block}
+.save{background:#effffa;border-radius:12px;padding:14px 0;text-align:center;color:#052229;font-size:17px;margin-top:4px}
+.back{color:#7fa9a0;font-size:13px;font-weight:300;text-align:center}
+/* bloqueio à noite */
+#lock{background:
+  radial-gradient(80% 50% at 30% 20%,#0f3a52 0%,transparent 60%),
+  linear-gradient(180deg,#07141d 0%,#02080c 100%)}
+.lclock{position:absolute;left:0;right:0;top:120px;text-align:center;font-family:Rb;color:#dfe9f0}
+.lclock .h{font-size:92px;font-weight:300;line-height:1;letter-spacing:-2px}
+.lclock .d{font-size:16px;margin-top:10px;opacity:.85}
+/* fechamento */
+#end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px}
+#end img{width:300px}
+#end p{font-family:NM;color:var(--ink);font-size:26px;text-align:center;line-height:1.25}
+#end p em{font-style:normal;color:var(--menta)}
+</style></head>
+<body><div id="stage">
+<div class="glow" id="glow" style="left:10px;top:520px"></div>
+<div id="hook"><div id="hookIn"></div></div>
+<div id="cap"></div>
+
+<div id="phone"><div id="screen"><div id="dp">
+  <!-- tela inicial -->
+  <div class="layer" id="home">
+    <div class="clock"><div class="h">08:12</div><div class="d">sex., 26 de set.</div></div>
+    <div class="wvoz"><div class="circ" id="circ"><div class="ring" id="ring"></div>
+      <svg viewBox="0 0 24 24"><path fill="#052229" d="M12,14c1.66,0 3,-1.34 3,-3L15,5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3zM17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11L5,11c0,3.41 2.72,6.23 6,6.72L11,21h2v-3.28c3.28,-0.48 6,-3.3 6,-6.72h-1.7z"/></svg></div>
+      <div class="lbl" id="vlbl">Lançar por voz</div></div>
+    <div class="wlivre"><div class="t">Livre para gastar</div><div class="v" id="lv">R$ 42,00/dia</div>
+      <div class="a" id="la">R$ 840,00 no total · 20 dias</div><div class="u" id="lu">Atualizado agora</div></div>
+    <div class="fala" id="fala" style="opacity:0"><div class="mic" id="bars"></div><div id="falaTxt"></div></div>
+    <div class="search"></div>
+    <div class="dock"><i></i><i></i><i></i><i></i></div>
+    <div class="nt" id="nt1" style="transform:translateY(-200px)"><div class="row"><div class="ico"><img src="../../../assets/android-icon-monochrome.png"></div>
+      <div class="col"><div class="l1"><span class="tt">Pão na padaria · R$ 3,57</span><span class="hh">· agora</span></div>
+      <div class="bb">Alimentação · Débito · salvo no Grana.</div></div></div><div class="acts"><span class="ac">Desfazer</span></div></div>
+    <div class="tap" id="tap1"></div>
+  </div>
+  <!-- leitor de QR -->
+  <div class="layer" id="cam" style="opacity:0">
+    <div class="mesa"></div>
+    <div class="cupom" id="cupom">
+      <div class="c">MERCADINHO DO BAIRRO</div>
+      <div style="text-align:center">CNPJ 12.345.678/0001-90</div>
+      <div class="ln"></div><div class="c">DOCUMENTO AUXILIAR DA NFC-e</div><div class="ln"></div>
+      <div class="it"><span>ARROZ 5KG</span><span>24,90</span></div>
+      <div class="it"><span>FEIJAO 1KG</span><span>8,50</span></div>
+      <div class="it"><span>LEITE 1L</span><span>5,20</span></div>
+      <div class="it"><span>CAFE 500G</span><span>10,30</span></div>
+      <div class="ln"></div>
+      <div class="tot"><span>TOTAL R$</span><span>48,90</span></div>
+      <div class="it"><span>Cartão de débito</span><span>48,90</span></div>
+      <div class="ln"></div>
+      <div style="text-align:center">Consulte pela chave de acesso</div>
+      <div class="qr" id="qr"></div>
+    </div>
+    <div class="cam-dim"></div>
+    <div class="topo"><i>✕</i><i style="font-size:16px">ϟ</i></div>
+    <div class="mira" id="mira"><i class="k k1"></i><i class="k k2"></i><i class="k k3"></i><i class="k k4"></i><i class="scan" id="scan"></i></div>
+    <div class="dica">Aponte para o QR Code da nota fiscal</div>
+    <div class="scrim" id="scrim"></div>
+    <div class="sheet" id="sheet" style="transform:translateY(520px)">
+      <div class="hd"><span>Nota fiscal lida</span><span>✕</span></div>
+      <div class="nbox"><div><span class="r">Estabelecimento</span><span class="v">12.345.678/0001-90</span></div>
+        <div><span class="r">Emissão</span><span class="v">26/09/2026 · SP</span></div></div>
+      <div class="desc" id="desc">Mercado</div>
+      <div class="amt"><span class="p">R$</span><span class="n">48,90</span></div>
+      <div class="chips"><span class="chip sel"><i style="background:#bb6b60"></i>Alimentação</span>
+        <span class="chip"><i style="background:#93739e"></i>Moradia</span><span class="chip"><i style="background:#6b9dc2"></i>Transporte</span></div>
+      <div class="save" id="save">Salvar lançamento</div>
+      <div class="back">Escanear outra nota</div>
+    </div>
+    <div class="tap" id="tap2"></div>
+  </div>
+  <!-- bloqueio, à noite -->
+  <div class="layer" id="lock" style="opacity:0">
+    <div class="lclock"><div class="h">21:30</div><div class="d">sex., 26 de set.</div></div>
+    <div class="nt" id="nt2" style="top:300px;opacity:0"><div class="row"><div class="ico"><img src="../../../assets/android-icon-monochrome.png"></div>
+      <div class="col"><div class="l1"><span class="tt">Fechando o dia?</span><span class="hh">· agora</span></div>
+      <div class="bb">Teve algum gasto hoje? Se teve, dá pra registrar agora <span class="emo">👀</span></div></div></div></div>
+  </div>
+  <div class="sb" id="sb"><span id="hora">08:12</span><span class="ic">
+    <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5L0.5 3.5a10.6 10.6 0 0 1 15 0z" fill="#fff"/></svg>
+    <svg width="14" height="14" viewBox="0 0 14 14"><path d="M13 1v12H1z" fill="#fff"/></svg>
+    <svg width="22" height="12" viewBox="0 0 22 12"><rect x=".5" y=".5" width="18" height="11" rx="3" fill="none" stroke="#fff"/><rect x="2" y="2" width="12" height="8" rx="1.5" fill="#fff"/><rect x="19.5" y="4" width="2" height="4" rx="1" fill="#fff"/></svg></span></div>
+</div><div class="hole"></div><div class="glass"></div></div></div>
+
+<div id="end" style="opacity:0"><img src="../../../design-system/marca/logotipo-gradiente.svg"><p>Rápido, fácil e<br><em>sem complicação.</em></p></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const p=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3), eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const back=x=>{const c1=1.4,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+// QR fictício (não aponta para lugar nenhum)
+(function(){const n=25,q=$('qr');let s=7;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+ const fin=(x,y)=>{for(const[fx,fy]of[[0,0],[18,0],[0,18]]){const dx=x-fx,dy=y-fy;if(dx>=0&&dx<7&&dy>=0&&dy<7){
+  return (dx==0||dx==6||dy==0||dy==6)||(dx>=2&&dx<=4&&dy>=2&&dy<=4)?1:0}}return -1};
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){const f=fin(x,y);const on=f>=0?f:(r()<.47?1:0);
+  const i=document.createElement('i');i.style.background=on?'#111':'transparent';q.appendChild(i)}})();
+// barras do microfone
+for(let i=0;i<14;i++){const b=document.createElement('b');$('bars').appendChild(b)}
+const HOOK="Já <em>desistiu</em> de controlar seus gastos porque anotar tudo toda hora <em>cansa?</em>";
+function words(html){return html.replace(/(<em>)?([^\s<]+)(<\/em>)?/g,(m,a,w,c)=>`<span class="w">${a||''}${w}${c||''}</span>`)}
+$('hookIn').innerHTML=words(HOOK);
+const CAPS=[[4.3,8.9,"Pagou? É só <em>falar.</em>"],[9.2,13.4,"Ou aponta pro <em>QR code</em> da nota."],[13.7,16.8,"Esqueceu? O Grana. <em>te lembra.</em>"]];
+let capAtual=-1;
+const FALA="“Pão na padaria, três e cinquenta e sete, no débito.”";
+function setCap(i){if(i===capAtual)return;capAtual=i;$('cap').innerHTML=i<0?'':words(CAPS[i][2])}
+function anim(t){
+  // gancho
+  const hw=[...document.querySelectorAll('#hook .w')];
+  hw.forEach((w,i)=>{const a=p(t,.15+i*.13,.15+i*.13+.35);const out=p(t,3.55,3.95);
+    w.style.opacity=a*(1-out);w.style.transform=`translateY(${(1-eo(a))*18-eo(out)*24}px)`;});
+  // legendas
+  let ci=-1;CAPS.forEach((c,i)=>{if(t>=c[0]&&t<c[1])ci=i});setCap(ci);
+  if(ci>=0){const c=CAPS[ci];[...document.querySelectorAll('#cap .w')].forEach((w,i)=>{
+    const a=p(t,c[0]+i*.07,c[0]+i*.07+.3),o=p(t,c[1]-.3,c[1]);w.style.opacity=a*(1-o);
+    w.style.transform=`translateY(${(1-eo(a))*14-o*10}px)`})}
+  // celular: entra, zoom leve por etapa, sai
+  const pin=p(t,4.0,4.75),pout=p(t,16.9,17.5);
+  let ty=(1-back(pin))*760+eio(pout)*-40, sc=1-0*pin, rot=(1-eo(pin))*8, op=1-eo(pout);
+  const z1=eio(p(t,5.0,5.8))*(1-eio(p(t,8.2,8.9)));   // aproxima no widget
+  const z2=eio(p(t,10.7,11.3))*(1-eio(p(t,12.6,13.2)));// aproxima na folha
+  sc=1+z1*.08+z2*.06-eio(pout)*.08;
+  const phone=$('phone');phone.style.transform=`translateY(${ty+z1*40-z2*30}px) rotate(${rot}deg) scale(${sc})`;
+  phone.style.opacity=t<3.9?0:op;
+  $('glow').style.transform=`translate(${Math.sin(t*.6)*40}px,${Math.cos(t*.5)*30-200*p(t,4,6)}px)`;
+  // --- etapa voz (4 a 9 s)
+  const tap1=p(t,5.0,5.5);$('tap1').style.cssText=`left:${34+18}px;top:${300+4}px;opacity:${tap1>0&&tap1<1?Math.sin(tap1*Math.PI)*.9:0};transform:scale(${.6+tap1*.6})`;
+  const ouvindo=t>=5.2&&t<7.1, lancando=t>=7.1&&t<7.6;
+  $('vlbl').textContent=ouvindo?'Ouvindo…':lancando?'Lançando…':'Lançar por voz';
+  const pul=ouvindo?(Math.sin(t*9)*.5+.5):0;$('ring').style.opacity=ouvindo?.35+pul*.6:0;
+  $('ring').style.transform=`scale(${1+pul*.18})`;
+  $('circ').style.filter=lancando?'saturate(.6) brightness(.9)':'none';
+  const fa=p(t,5.3,5.6)*(1-p(t,7.3,7.6));$('fala').style.opacity=fa;$('fala').style.transform=`translateY(${(1-eo(p(t,5.3,5.7)))*16}px)`;
+  const nch=Math.floor(FALA.length*p(t,5.5,6.9));$('falaTxt').textContent=FALA.slice(0,nch);
+  [...$('bars').children].forEach((b,i)=>{const h=ouvindo?6+Math.abs(Math.sin(t*11+i*1.7))*16*(t<6.9?1:.2):4;b.style.height=h+'px'});
+  const n1=eo(p(t,7.5,7.85))*(1-eio(p(t,8.55,8.85)));$('nt1').style.transform=`translateY(${-200+208*n1}px)`;
+  const upd=t>=7.7;$('lv').textContent=upd?'R$ 41,82/dia':'R$ 42,00/dia';$('la').textContent=upd?'R$ 836,43 no total · 20 dias':'R$ 840,00 no total · 20 dias';
+  $('lv').style.color=upd&&t<8.6?'#aeffe3':'#effffa';
+  // --- etapa QR (9 a 13,4 s)
+  const cIn=eio(p(t,8.9,9.35));$('cam').style.opacity=cIn;$('cam').style.transform=`translateX(${(1-cIn)*60}px)`;
+  const drift=Math.sin(t*1.3)*6;{const k=eio(p(t,9.0,10.15));const mx=206,my=420;
+   const tx=mx-96-QRX, ty=my-190-QRY;  // desloca o cupom até o QR cair no centro da mira
+   const sx=tx+60, sy=ty+230;          // começa com o QR abaixo da mira
+   const x=sx+(tx-sx)*k+drift*(1-k*.7), y=sy+(ty-sy)*k+Math.cos(t*1.1)*4*(1-k*.7);
+   const r=(-9+7*k)+Math.sin(t*.9)*(1-k)*1.5;
+   $('cupom').style.transformOrigin=`${QRX}px ${QRY}px`;
+   $('cupom').style.transform=`translate(${x}px,${y}px) rotate(${r}deg)`;}
+  $('scan').style.top=(10+Math.abs(((t*1.1)%2)-1)*220)+'px';
+  const lido=p(t,10.25,10.45);$('mira').style.transform=`scale(${1-.06*Math.sin(lido*Math.PI)})`;
+  const sh=eo(p(t,10.45,10.9));$('sheet').style.transform=`translateY(${(1-sh)*520}px)`;$('scrim').style.opacity=sh;
+  const tap2=p(t,11.9,12.35);$('tap2').style.cssText=`left:${206-28}px;top:${740}px;opacity:${tap2>0&&tap2<1?Math.sin(tap2*Math.PI)*.9:0};transform:scale(${.6+tap2*.6})`;
+  $('save').style.opacity=t>=12.0&&t<12.3?.85:1;
+  $('save').textContent=t>=12.1?'Salvo ✓':'Salvar lançamento';
+  const shOut=eio(p(t,12.55,12.9));if(t>12.55){$('sheet').style.transform=`translateY(${shOut*520}px)`;$('scrim').style.opacity=1-shOut}
+  // --- etapa lembrete (13,4 a 17 s)
+  const lk=eio(p(t,13.3,13.8));$('lock').style.opacity=lk;
+  $('hora').textContent=t>=13.55?'21:30':'08:12';
+  const n2=eo(p(t,14.1,14.5));$('nt2').style.opacity=n2;$('nt2').style.transform=`translateY(${(1-n2)*-30}px) scale(${.96+.04*n2})`;
+  // --- fechamento
+  const e=eo(p(t,17.3,17.9));$('end').style.opacity=e;$('end').style.transform=`translateY(${(1-e)*20}px)`;
+  $('cap').style.display=t>=17?'none':'block';
+}
+let QRX=0,QRY=0;
+(function(){const c=$('cupom');c.style.transform='none';const q=$('qr');
+ QRX=q.offsetLeft+q.offsetWidth/2; QRY=q.offsetTop+q.offsetHeight/2;})();
+window.anim=anim;
+</script></body></html>
