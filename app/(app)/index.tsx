@@ -1503,13 +1503,13 @@ export default function InicioScreen() {
     ligado('lancamento_voz') ? (
       <View key="lancamento-voz" style={styles.smartActionCell}>
         <VoiceEntryButton
-          label="Lançar por voz"
+          label="Voz"
           onSaved={() => { void load(); }}
           textStyle={styles.smartActionPrimaryText}
           /* O lançamento por voz é o atalho primário da Home: fica sempre
              na primeira posição, tanto no desktop quanto no aplicativo. */
           iconColor={theme.paper}
-          iconSize={22}
+          iconSize={20}
           style={[styles.smartActionBtn, styles.smartActionBtnPrimary]}
           hoverStyle={styles.smartActionBtnPrimaryHover}
           onTranscribed={(text) => {
@@ -1536,8 +1536,8 @@ export default function InicioScreen() {
           accessibilityRole="button"
           accessibilityLabel="Colar comprovante"
         >
-          <Ionicons name="clipboard-outline" size={22} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={2}>Colar comprovante</Text>
+          <Ionicons name="clipboard-outline" size={20} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Colar</Text>
         </AppPressable>
       </View>
     ) : null,
@@ -1549,21 +1549,8 @@ export default function InicioScreen() {
           accessibilityRole="button"
           accessibilityLabel="Importar extrato"
         >
-          <Ionicons name="document-text-outline" size={22} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={2}>Importar extrato</Text>
-        </AppPressable>
-      </View>
-    ) : null,
-    ligado('qr_nota') ? (
-      <View key="qr-nota" style={styles.smartActionCell}>
-        <AppPressable
-          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-          onPress={() => setQrModalOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Escanear QR code da nota"
-        >
-          <Ionicons name="qr-code-outline" size={22} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={2}>QR da nota</Text>
+          <Ionicons name="document-text-outline" size={20} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Extrato</Text>
         </AppPressable>
       </View>
     ) : null,
@@ -1575,16 +1562,12 @@ export default function InicioScreen() {
           accessibilityRole="button"
           accessibilityLabel="Fotografar nota"
         >
-          <Ionicons name="camera-outline" size={22} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={2}>Foto da nota</Text>
+          <Ionicons name="camera-outline" size={20} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Foto</Text>
         </AppPressable>
       </View>
     ) : null,
   ].filter((cell): cell is ReactElement => cell !== null);
-  const smartActionRows = Array.from(
-    { length: Math.ceil(smartActionCells.length / 2) },
-    (_, row) => smartActionCells.slice(row * 2, row * 2 + 2),
-  );
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
@@ -1668,12 +1651,7 @@ export default function InicioScreen() {
             collapsable={false}
           >
           <View style={styles.smartActionsGrid}>
-            {smartActionRows.map((row, index) => (
-              <View key={`smart-action-row-${index}`} style={styles.smartActionsGridRow}>
-                {row}
-                {row.length === 1 ? <View style={styles.smartActionSpacer} /> : null}
-              </View>
-            ))}
+            {smartActionCells}
           </View>
           </View>
         </FadeIn>
@@ -2088,18 +2066,17 @@ const styles = StyleSheet.create({
   quickChipHover: { backgroundColor: theme.hover },
   quickChipText: { color: theme.ink, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.regular },
-  smartActionsGrid: { gap: spacing.sm },
-  smartActionsGridRow: { flexDirection: 'row', gap: spacing.sm },
+  smartActionsGrid: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.sm },
   smartActionCell: { flex: 1, aspectRatio: 1 },
-  smartActionSpacer: { flex: 1, aspectRatio: 1 },
   smartActionBtn: {
     flex: 1,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.icone,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    gap: spacing.xs,
+    minHeight: touchTarget,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
     borderRadius: radius.md,
     backgroundColor: theme.paperRaised,
     borderWidth: 1,
