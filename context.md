@@ -11691,7 +11691,7 @@ disparou build, deploy ou migration.
     a imagem (documentação de divulgação de dados do ML Kit). Forge.
   - **F3:** fechar o `FotoNotaModal` durante a leitura deixa o valor anterior
     na próxima abertura (lido pelo Watchtower, não reproduzido). Forge.
-  - **F4:** permissão negada de vez sem saída. **Já resolvido pelo Forge em
+  - **F4:** permissão negada de vez sem saída. **Já resolvido pelo Prism em
     `3513e34`** (26/09, `components/PermissaoCamera.tsx` com "Abrir
     configurações", nos dois leitores; teste `__tests__/permissao-camera.cjs`).
 - **Hipóteses, sem confiabilidade suficiente até teste:** A6 (recuperação de
@@ -11732,7 +11732,8 @@ disparou build, deploy ou migration.
   inclui `landing-meta.json` `description`) não está na CSP do `vercel.json`, e
   o `9b40f71` mudou a descrição sem recalcular o hash. Hash recalculado com o
   arquivo atual: ausente da CSP. Log de deploy da Vercel não conferido.
-  Repassado ao maestro.
+  Repassado ao maestro. Correção do Forge em `bcc144a` (hash do JSON-LD atualizado
+  na CSP), ainda sem push; conferir a landing no ar depois da publicação.
 
 ## 26/09/2026 — M1 — produção de marketing do Beacon: nada publicado, registro do Granabô bloqueado
 
