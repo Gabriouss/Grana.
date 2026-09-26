@@ -12583,3 +12583,59 @@ positivo no verificador do vault.
 ## 26/09/2026 — Pedido pendente para a M1: gravar o R9 com "Importar extrato"
 
 O autor pediu, pela sessão na nuvem, que o R9 mostre **Importar extrato** em vez do colar Pix, que fica só no R5. O passo a passo e o CSV fictício estão em `docs/marketing/solicitacoes/2026-09-26-gravar-r9-importar-extrato.md`. O vídeo deve ser entregue na branch `claude/cool-einstein-c63bq0`.
+
+
+## 26/09/2026 — M1 — foto da nota fecha a lista de aceite; prazo real ainda é o primeiro QA
+
+O Ledger registrou `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Forge-foto-da-nota-perfeita.md`.
+Os 11 itens da lista de aceite foram feitos e provados no emulador com ML Kit
+real: prazo com recibo, forma de pagamento, data, estabelecimento, categoria,
+valor a pagar, falha sem texto, offline, tela editável, testes com cupons
+fictícios e prova cronometrada. O crédito leu a forma, permitiu escolher o
+cartão e entrou na fatura, que passou de R$ 275,00 para R$ 312,80; o débito sem
+rede ficou salvo no aparelho e depois subiu ao caixa; data e loja também foram
+lidas.
+
+Commits do Forge: `b9806cf` (prazo total de 20 s do toque à confirmação,
+incluindo o trabalho antes e depois do reconhecimento), `2b6d9b4` (forma,
+data, estabelecimento e valor a pagar vencendo o bruto), `a61204c` (valor
+"21, 35") e `8810d03` (layout em commit próprio). A entrega anterior que
+tratava forma/data/estabelecimento como pedido aberto fica superada por esses
+commits.
+
+### Ressalva decisiva para o autor
+
+No emulador de debug, sob pouca memória, as leituras levaram de 22 a 38 s;
+com o prazo total de 20 s, toda tentativa nesse ambiente cai corretamente em
+"digite o valor". A build de release em aparelho real é a única prova de que
+20 s é suficiente. Medir isso é o primeiro item do QA depois da build, e o
+valor do prazo continua sendo decisão do autor. Não houve build nem teste no
+aparelho do autor nesta rodada.
+
+### Push e reconciliação
+
+O maestro fez o push a pedido do autor, levando `d776ba4..b1e5988` e o merge
+de `d776ba4`. Houve conflito somente no fim de `context.md`; foi resolvido
+mantendo as duas entradas documentais. O Ledger não fez push.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** registrar o relatório de foto perfeita, os quatro commits, a
+   prova dos 11 itens, a ressalva do prazo, o estado do aparelho real e o push
+   reconciliado pelo maestro.
+2. **Sintoma e causa:** o prazo anterior podia deixar trabalho fora da guarda;
+   `b9806cf` cobre do toque à confirmação. O emulador lento não é falha
+   silenciosa: aos 20 s ele entrega o recibo e pede o valor.
+3. **Arquivos e identificadores:** `lib/foto-nota-ocr.ts`,
+   `lib/nota-foto-parser.ts`, `lib/foto-nota-lancamento.ts`,
+   `components/FotoNotaModal.tsx`, testes de detalhes/parser/OCR/fechamento e
+   `b9806cf`, `2b6d9b4`, `a61204c`, `8810d03`, `d776ba4`, `b1e5988`.
+4. **Descartado:** aumentar o prazo sem medição real, tratar o emulador como
+   aparelho do autor, registrar a forma sem cartão quando há crédito ou
+   considerar o push do maestro como push do Ledger.
+5. **O que deu errado:** a medição com pouca memória mostrou 22–38 s, acima do
+   prazo escolhido; a decisão não pode ser fechada com esse ambiente. O merge
+   também exigiu resolver o fim de `context.md` preservando os dois registros.
+6. **Sem verificação:** leitura em aparelho real com build de release, foco e
+   reflexo de cupom físico, prazo de 20 s no aparelho, Pix/dinheiro/cartão
+   entre vários no aparelho, leitor de tela dos chips e calendário no Android.
