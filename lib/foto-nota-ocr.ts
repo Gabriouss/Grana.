@@ -95,6 +95,30 @@ export async function apagarFoto(uri: string): Promise<void> {
 }
 
 /**
+ * Apaga as fotos que sobraram na pasta de cache da câmera. Só a foto da nota
+ * tira foto no Grana. (`takePictureAsync`), então tudo ali é dela.
+ *
+ * Todo caminho da leitura já apaga a própria foto (`fotografarELer`). O que
+ * sobra é o app fechado à força no meio da leitura: a foto fica no cache
+ * (3 fotos das 14h de 26/09 ficaram assim no emulador, com o código antigo).
+ * A tela chama isto ao abrir a câmera, antes de tirar a próxima foto, e é por
+ * isso que a Política de Privacidade pode dizer que o arquivo que sobrou é
+ * apagado na próxima abertura.
+ */
+export async function limparFotosEsquecidas(): Promise<number> {
+  const pasta = `${FileSystem.cacheDirectory}Camera/`;
+  try {
+    if (!(await FileSystem.getInfoAsync(pasta)).exists) return 0;
+    const nomes = (await FileSystem.readDirectoryAsync(pasta)).filter((n) => /\.(jpe?g|png|heic)$/i.test(n));
+    for (const nome of nomes) await apagarFoto(`${pasta}${nome}`);
+    return nomes.length;
+  } catch (e) {
+    console.error('[foto-nota] não consegui limpar fotos esquecidas no cache', e);
+    return 0;
+  }
+}
+
+/**
  * Do toque até o resultado, dentro de `prazoMs`: tira a foto, lê e começa a
  * apagá-la. A foto é apagada assim que a leitura termina, e a exclusão NÃO
  * segura o resultado, porque a tela não depende dela. No estouro do prazo, a

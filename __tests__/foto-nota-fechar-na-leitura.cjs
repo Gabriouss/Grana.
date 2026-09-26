@@ -75,6 +75,8 @@ const imports = {
 const discoSimulado = {
   deleteAsync: async (uri) => { registro.apagadas.push(uri); if (!teimosas.has(uri)) noCache.delete(uri); },
   getInfoAsync: async (uri) => ({ exists: noCache.has(uri) }),
+  readDirectoryAsync: async () => [],
+  cacheDirectory: 'file:///cache/',
 };
 /* lib/foto-nota-ocr.ts REAL (prazo total, exclusão da foto), com o ML Kit e o
    disco simulados. A leitura é uma promessa controlada pelo teste. */

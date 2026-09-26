@@ -43,7 +43,9 @@ function carregar({ mlkit, deleteAsync } = {}) {
       if (id === '@react-native-ml-kit/text-recognition') return mlkit();
       if (id === 'expo-file-system/legacy') return {
         deleteAsync: deleteAsync ?? (async (uri) => { disco.apagadas.push(uri); disco.existe.delete(uri); }),
-        getInfoAsync: async (uri) => ({ exists: disco.existe.has(uri) }),
+        getInfoAsync: async (uri) => ({ exists: disco.existe.has(uri) || [...disco.existe].some((f) => f.startsWith(uri)) }),
+        readDirectoryAsync: async (pasta) => [...disco.existe].filter((f) => f.startsWith(pasta)).map((f) => f.slice(pasta.length)),
+        cacheDirectory: 'file:///cache/',
       };
       throw new Error('Import não simulado: ' + id);
     },
@@ -197,6 +199,19 @@ const vigia = setTimeout(() => { console.error('FALHOU: ficou pendurado (sem pra
     await m.fotografarELer(m.foto());
     assert.equal(imports, 1);
     passou('o módulo é carregado uma vez ao abrir a câmera e reaproveitado na leitura');
+  }
+  {
+    // App fechado à força no meio da leitura: a foto sobra no cache e é apagada na próxima abertura da câmera.
+    const m = carregar({ mlkit: kit(async () => ({ blocks: [] })) });
+    m.disco.existe.add('file:///cache/Camera/esquecida-1.jpg');
+    m.disco.existe.add('file:///cache/Camera/esquecida-2.jpg');
+    m.disco.existe.add('file:///cache/outra-coisa.txt');
+    const n = await m.limparFotosEsquecidas();
+    assert.equal(n, 2);
+    assert.deepEqual(m.disco.apagadas.sort(), ['file:///cache/Camera/esquecida-1.jpg', 'file:///cache/Camera/esquecida-2.jpg']);
+    assert.ok(m.disco.existe.has('file:///cache/outra-coisa.txt'), 'só a pasta da câmera');
+    assert.equal(await carregar({ mlkit: kit(async () => ({ blocks: [] })) }).limparFotosEsquecidas(), 0, 'sem pasta, nada a fazer');
+    passou('foto esquecida por uma leitura interrompida é apagada ao abrir a câmera de novo');
   }
   clearTimeout(vigia);
   console.log('\n' + ok + '/' + ok + ' checagens de foto-nota-ocr passaram\n');

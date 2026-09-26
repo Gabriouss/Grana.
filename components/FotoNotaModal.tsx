@@ -6,7 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { guessCategoryFromText } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput, todayISO, formatDateLabel } from '@/lib/format';
-import { fotografarELer, prepararLeitura } from '@/lib/foto-nota-ocr';
+import { fotografarELer, limparFotosEsquecidas, prepararLeitura } from '@/lib/foto-nota-ocr';
 import { extrairDetalhesDaNota } from '@/lib/nota-foto-parser';
 import { cartaoPadrao, montarLancamentoDaFoto } from '@/lib/foto-nota-lancamento';
 import { fetchCreditCards } from '@/lib/data';
@@ -124,7 +124,11 @@ export default function FotoNotaModal({
   /* Carrega o leitor ao abrir a câmera, fora do prazo da foto: em
      desenvolvimento, o primeiro `import()` do módulo busca um pacote no Metro. */
   useEffect(() => {
-    if (visible) void prepararLeitura();
+    if (!visible) return;
+    void prepararLeitura();
+    /* Foto que sobrou de uma leitura interrompida (app fechado à força no meio)
+       é apagada antes da próxima. É o que a Política de Privacidade promete. */
+    void limparFotosEsquecidas();
   }, [visible]);
 
   /* Cartões para a compra no crédito, pela mesma leitura (com cache offline)
