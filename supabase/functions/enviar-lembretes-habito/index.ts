@@ -138,14 +138,18 @@ async function atividadeDosUsuarios(userIds: string[], agora: Date): Promise<Map
   }
 }
 
-/** Quais janelas já venceram pra este token, nesta passada do cron — nunca
-    mais de uma por token aqui (`noite` e `almoco` são checadas cada uma
-    com seu próprio gate), mas um token pode aparecer 0, 1 ou 2 vezes na
-    lista combinada quando as duas vencem no mesmo ciclo de 5 min. */
+/** Quais janelas já venceram pra este token, nesta passada do cron — cada
+    uma com seu próprio gate, então um token pode aparecer 0, 1 ou 2 vezes na
+    lista combinada quando duas vencem no mesmo ciclo de 5 min. `almoco` e
+    `meio_dia_finde` são o mesmo meio-dia dividido pelo dia da semana e ligado
+    pelo MESMO `almoco_ativo`, igual ao agendamento local do app
+    (`lib/notifications.ts`, `0b8d2fe`): nunca vencem juntas. */
 function janelasVencidas(token: PushToken, momento: MomentoLocal): JanelaLembrete[] {
   const janelas: JanelaLembrete[] = [];
   if (chegouHorario(momento, token.horario_hora, token.horario_minuto)) janelas.push('noite');
-  if (token.almoco_ativo && ehDiaUtil(momento.diaSemana) && chegouHorarioAlmoco(momento)) janelas.push('almoco');
+  if (token.almoco_ativo && chegouHorarioAlmoco(momento)) {
+    janelas.push(ehDiaUtil(momento.diaSemana) ? 'almoco' : 'meio_dia_finde');
+  }
   return janelas;
 }
 
@@ -182,11 +186,27 @@ async function criarEntregasDoDia(tokens: PushToken[], agora: Date): Promise<num
       corpo: mensagem.texto.replace('{streak}', String(contexto.streak)),
     };
   });
-  const { error } = await supabase
+  const gravar = (lote: typeof linhas) => supabase
     .from('push_habit_deliveries')
-    .upsert(linhas, { onConflict: 'expo_push_token,data_local,janela', ignoreDuplicates: true });
-  if (error) throw error;
-  return linhas.length;
+    .upsert(lote, { onConflict: 'expo_push_token,data_local,janela', ignoreDuplicates: true });
+  /* `meio_dia_finde` precisa da migration 20260926120000, que amplia o CHECK
+     de `janela`. Gravada à parte: se a função subir antes dela, a recusa do
+     banco derruba só o meio-dia do fim de semana, com log, e não a noite de
+     todo mundo junto no mesmo upsert. */
+  const finde = linhas.filter((l) => l.janela === 'meio_dia_finde');
+  const demais = linhas.filter((l) => l.janela !== 'meio_dia_finde');
+  let criadas = 0;
+  if (demais.length) {
+    const { error } = await gravar(demais);
+    if (error) throw error;
+    criadas += demais.length;
+  }
+  if (finde.length) {
+    const { error } = await gravar(finde);
+    if (error) console.error('[enviar-lembretes-habito] meio_dia_finde recusado pelo banco', error.code ?? '', error.message ?? '');
+    else criadas += finde.length;
+  }
+  return criadas;
 }
 
 async function reagendarOuFalhar(entrega: Entrega, codigo: string): Promise<void> {

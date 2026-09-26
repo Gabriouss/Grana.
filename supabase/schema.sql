@@ -3975,6 +3975,14 @@ alter table public.push_habit_deliveries
   add constraint push_habit_deliveries_token_dia_janela_key
     unique (expo_push_token, data_local, janela);
 
+-- Meio-dia de sábado e domingo (`meio_dia_finde`), mesmo toggle do almoço.
+-- Migration 20260926120000.
+alter table public.push_habit_deliveries
+  drop constraint if exists push_habit_deliveries_janela_check;
+alter table public.push_habit_deliveries
+  add constraint push_habit_deliveries_janela_check
+    check (janela in ('noite', 'almoco', 'meio_dia_finde'));
+
 -- Operacoes financeiras criadas pela voz precisam sobreviver a reinicios e
 -- retentativas do Headless JS. O request_id gerado no Android e a chave: uma
 -- resposta de rede perdida nunca pode transformar a mesma fala em duas compras.

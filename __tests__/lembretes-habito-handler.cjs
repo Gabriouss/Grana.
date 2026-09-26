@@ -93,6 +93,13 @@ function criarBanco(estado) {
     }
     if (q.tabela === 'push_habit_deliveries' && q.acao === 'select') return { data: [], error: null };
     if (q.tabela === 'push_habit_deliveries' && q.acao === 'upsert') {
+      /* CHECK de `janela`, atômico como no Postgres: uma linha recusada
+         derruba o upsert inteiro. `janelasAceitas` simula o banco sem a
+         migration 20260926120000. */
+      const aceitas = estado.janelasAceitas ?? ['noite', 'almoco', 'meio_dia_finde'];
+      if (q.dados.some((l) => !aceitas.includes(l.janela))) {
+        return { data: null, error: { code: '23514', message: 'violates check constraint "push_habit_deliveries_janela_check"' } };
+      }
       for (const linha of q.dados) {
         const chave = `${linha.expo_push_token}|${linha.data_local}|${linha.janela}`;
         if (estado.entregas.has(chave)) continue; // ignoreDuplicates
@@ -219,9 +226,11 @@ async function principal() {
       const enviados = envios.filter((e) => e.url.endsWith('/push/send')).flatMap((e) => e.corpo);
       ok(enviados.length === entregas.length && enviados.every((p) => p.collapseId === `grana-habito-${caso.data}-${entregas.find((e) => e.expo_push_token === p.to && p.collapseId.endsWith(e.janela)).janela}`),
         `${caso.rotulo}: todo envio carrega a chave de colapso do dia local`);
-      /* Almoço: só em dia útil local. */
+      /* Almoço: só em dia útil local; meio-dia do fim de semana: o inverso. */
       const temAlmoco = entregas.some((e) => e.janela === 'almoco');
       igual(temAlmoco, caso.dia >= 1 && caso.dia <= 5, `${caso.rotulo}: almoço só em dia útil local`);
+      const temFinde = entregas.some((e) => e.janela === 'meio_dia_finde');
+      igual(temFinde, caso.dia === 0 || caso.dia === 6, `${caso.rotulo}: meio-dia do fim de semana só em sábado e domingo locais`);
     }
     ok(vistos.size >= 2, `${caso.rotulo}: o sorteio foi exercitado (${vistos.size} mensagens distintas)`);
   }
@@ -235,6 +244,61 @@ async function principal() {
   }
   ok([...domingo].some((id) => diasCitados(catalogo.MENSAGENS.find((m) => m.id === id)).includes(0)),
     'domingo ainda recebe copy de domingo (o filtro não apagou a categoria)');
+
+  /* Meio-dia de sábado e domingo (`meio_dia_finde`, 0b8d2fe no app). Sábado
+     12/09/2026 12:01 BRT = 15:01 UTC; a noite (20:30) ainda não venceu. */
+  {
+    const vistos = new Set();
+    for (let i = 0; i < 40; i++) {
+      const estado = { tokens: [token()], entregas: new Map(), transacoes: [reg('2026-09-11')] };
+      const m = montarHandler(estado, '2026-09-12T15:01:00Z', () => (i + 0.5) / 40);
+      igual((await m.chamar()).status, 200, 'sábado 12:01: 200');
+      const entregas = [...estado.entregas.values()];
+      igual(entregas.map((e) => e.janela).join(), 'meio_dia_finde', 'sábado 12:01: só o meio-dia do fim de semana');
+      const msg = catalogo.MENSAGENS.find((x) => x.id === entregas[0].mensagem_id);
+      vistos.add(msg.categoria);
+      ok(['fim_de_semana_meio_dia', 'almoco', 'micro_gastos', 'dicas_atalhos'].includes(msg.categoria),
+        `sábado 12:01: ${msg.id} vem do pool do meio-dia do fim de semana`);
+      const enviado = m.envios.filter((e) => e.url.endsWith('/push/send')).flatMap((e) => e.corpo)[0];
+      igual(enviado?.collapseId, 'grana-habito-2026-09-12-meio_dia_finde', 'sábado 12:01: chave de colapso própria da janela');
+    }
+    ok(vistos.has('fim_de_semana_meio_dia'), 'a copy própria do meio-dia do fim de semana sai');
+  }
+  {
+    /* Segunda 14/09 12:01 BRT: almoço, e o meio-dia do fim de semana não. */
+    const estado = { tokens: [token()], entregas: new Map(), transacoes: [reg('2026-09-13')] };
+    await montarHandler(estado, '2026-09-14T15:01:00Z').chamar();
+    igual([...estado.entregas.values()].map((e) => e.janela).join(), 'almoco', 'segunda 12:01: só o almoço');
+  }
+  {
+    /* O mesmo toggle desliga os dois meio-dias. */
+    const estado = { tokens: [token({ almoco_ativo: false })], entregas: new Map(), transacoes: [reg('2026-09-11')] };
+    await montarHandler(estado, '2026-09-12T15:01:00Z').chamar();
+    igual(estado.entregas.size, 0, 'almoço desligado: domingo e sábado também sem meio-dia');
+  }
+  {
+    /* Função publicada ANTES da migration: o CHECK recusa `meio_dia_finde`.
+       A noite, vencida na mesma passada, precisa sair do mesmo jeito. */
+    const estado = {
+      tokens: [token({ horario_hora: 12, horario_minuto: 0 })], entregas: new Map(),
+      transacoes: [reg('2026-09-11')], janelasAceitas: ['noite', 'almoco'],
+    };
+    const erros = [];
+    const erroOriginal = console.error;
+    console.error = (...a) => erros.push(a.join(' '));
+    let r;
+    try {
+      const m = montarHandler(estado, '2026-09-12T15:01:00Z');
+      r = await m.chamar();
+      igual(m.envios.filter((e) => e.url.endsWith('/push/send')).flatMap((e) => e.corpo).length, 1, 'sem migration: a noite vai ao Expo');
+    } finally {
+      console.error = erroOriginal;
+    }
+    igual(r.status, 200, 'sem migration: o handler não cai');
+    igual([...estado.entregas.values()].map((e) => e.janela).join(), 'noite', 'sem migration: a noite é criada');
+    ok(erros.some((e) => e.includes('meio_dia_finde recusado')), 'sem migration: a recusa deixa log');
+    igual((await r.json()).criadas, 1, 'sem migration: criadas conta só o que o banco aceitou');
+  }
 
   /* Quem já lançou hoje não recebe o lembrete de hoje (achado do
      Watchtower, 24/09): o app desliga o agendamento local quando o push
