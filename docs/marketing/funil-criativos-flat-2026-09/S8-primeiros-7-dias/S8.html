@@ -1,0 +1,118 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
+@font-face{font-family:NM;src:url(../../../../assets/fonts/NeueMachina-Regular.otf);font-weight:400}
+@font-face{font-family:NM;src:url(../../../../assets/fonts/NeueMachina-Light.otf);font-weight:300}
+@font-face{font-family:Rb;src:url(../../identidade-sonora/roboto-400.woff2);font-weight:100 900}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1440px;overflow:hidden;background:#052229}
+.s{position:absolute;inset:0;overflow:hidden;background:#052229;display:none;padding:68px 72px 170px;flex-direction:column}
+.s.on{display:flex}
+.cp{position:relative;z-index:2;margin-top:110px}
+.area{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:center}
+
+.logo{position:relative;z-index:2;width:210px}
+.h1{position:relative;width:900px;font-family:NM;font-size:78px;line-height:1.06;letter-spacing:-1.5px;color:#effffa}
+.h1 em{font-style:normal;color:#aeffe3}
+.h2{position:relative;margin-top:30px;width:800px;font-family:NM;font-weight:300;font-size:32px;line-height:1.38;color:#a6d9ce}
+/* rota dos 7 dias, igual em todos os slides */
+.rota{position:absolute;left:72px;right:72px;bottom:96px;z-index:2;height:40px}
+.rota .ln{position:absolute;left:0;right:0;top:19px;height:2px;background:rgba(174,255,227,.18)}
+.rota .lnOn{position:absolute;left:0;top:19px;height:2px;background:#aeffe3}
+.rota .n{position:absolute;top:8px;width:24px;height:24px;margin-left:-12px;border-radius:50%;border:2px solid rgba(174,255,227,.35);background:#052229}
+.rota .n.on{background:#aeffe3;border-color:#aeffe3}
+.rota .d{position:absolute;top:46px;width:60px;margin-left:-30px;text-align:center;font-family:NM;font-weight:300;font-size:18px;color:#7fa9a0}
+.rota .d.on{color:#aeffe3}
+.arc{position:absolute;border-radius:50%;z-index:0}
+/* peças gráficas */
+.nt{position:relative;background:#2b2d31;border-radius:30px;padding:20px 20px 10px;box-shadow:0 18px 40px rgba(0,0,0,.35);font-family:Rb}
+.nt .row{display:flex;gap:16px}.nt .ico{width:48px;height:48px;border-radius:50%;background:#052229;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid #174a55}
+.nt .ico img{width:40px;height:40px}.nt .col{flex:1;min-width:0}
+.nt .l1{display:flex;align-items:baseline;gap:8px;color:#e3e3e6}.nt .tt{font-weight:500;font-size:27px;white-space:nowrap}
+.nt .hh{font-size:19px;color:#a9abb0}.nt .bb{font-size:23px;color:#c4c6cb;margin-top:6px;line-height:32px}
+.nt .ac{display:inline-block;margin:12px 0 0 52px;font-size:19px;font-weight:500;color:#9cd3c9;padding:8px 12px}
+.wv{position:relative;display:flex;flex-direction:column;align-items:center}
+.circ{width:150px;height:150px;border-radius:50%;background:linear-gradient(90deg,#b0f7c9,#22a1c1);border:2px solid #09384a;display:flex;align-items:center;justify-content:center;position:relative}
+.circ svg{width:74px;height:74px}
+.ring{position:absolute;border-radius:50%;border:2px solid rgba(174,255,227,.5)}
+.wv .lbl{margin-top:16px;font-family:Rb;font-size:26px;color:#e8f3f1}
+.chips{display:flex;flex-wrap:wrap;gap:22px}.chip{position:relative;display:flex;align-items:center;gap:16px;padding:28px 42px;border-radius:999px;border:2px solid rgba(174,255,227,.2);font-family:NM;font-weight:300;font-size:42px;color:#a6d9ce}
+.chip i{width:18px;height:18px;border-radius:9px;display:block}
+.chip.sel{border-color:#effffa;background:#0b2d35;color:#effffa}
+.gauge{position:absolute}
+.lista{position:relative;display:flex;flex-direction:column;gap:30px}
+.lista div{display:flex;align-items:center;gap:26px;font-family:NM;font-size:40px;color:#effffa}
+.lista b{width:56px;height:56px;border-radius:50%;background:#aeffe3;display:flex;align-items:center;justify-content:center;flex:none}
+.lista b.off{background:transparent;border:2px solid rgba(174,255,227,.4)}
+.cta{position:absolute;left:72px;font-family:NM;font-size:60px;line-height:1.1;color:#effffa;letter-spacing:-1px}
+.cta em{font-style:normal;color:#aeffe3}
+</style></head><body>
+
+<!-- 1 capa -->
+<div class="s" id="s1">
+  <div class="arc" style="width:1100px;height:1100px;right:-520px;top:-420px;background:#0b2d35"></div>
+  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
+  <div class="cp" style="margin-top:300px"><div class="h1" style="font-size:104px;letter-spacing:-2.5px">O que fazer nos <em>primeiros 7 dias.</em></div>
+  <div class="h2">Um passo por vez. No fim da semana, o seu mês já tem forma.</div></div>
+  <div class="rota" data-on="0"></div>
+</div>
+
+<!-- 2 lançar -->
+<div class="s" id="s2">
+  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
+  <div class="cp"><div class="h1"><em>Dias 1 e 2.</em><br>Lance cada gasto na hora.</div>
+  <div class="h2">Pagou? Fala pro widget ou cola o comprovante do Pix. Leva segundos.</div></div><div class="area"><div class="nt"><div class="row"><div class="ico"><img src="../../../../assets/android-icon-monochrome.png"></div>
+    <div class="col"><div class="l1"><span class="tt">Pão na padaria · R$ 3,57</span><span class="hh">· agora</span></div>
+    <div class="bb">Alimentação · Débito · salvo no Grana.</div></div></div><span class="ac">Desfazer</span></div>
+  <div style="display:flex;align-items:center;gap:56px;margin-top:70px"><div class="wv"><div class="circ"><div class="ring" style="inset:-18px"></div><div class="ring" style="inset:-36px;opacity:.45"></div>
+    <svg viewBox="0 0 24 24"><path fill="#052229" d="M12,14c1.66,0 3,-1.34 3,-3L15,5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3zM17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11L5,11c0,3.41 2.72,6.23 6,6.72L11,21h2v-3.28c3.28,-0.48 6,-3.3 6,-6.72h-1.7z"/></svg></div>
+    <div class="lbl">Lançar por voz</div></div><div class="h2" style="margin:0;width:560px;font-size:30px">Esqueceu algum? À noite o Grana. te lembra.</div></div></div>
+  <div class="rota" data-on="2"></div>
+</div>
+
+<!-- 3 categorias -->
+<div class="s" id="s3">
+  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
+  <div class="cp"><div class="h1"><em>Dia 3.</em><br>Confira as categorias.</div>
+  <div class="h2">Veja se cada gasto caiu no lugar certo. Se não caiu, é só editar o lançamento.</div></div><div class="area"><div class="chips"><div class="chip sel"><i style="background:#bb6b60"></i>Alimentação</div><div class="chip"><i style="background:#6b9dc2"></i>Transporte</div><div class="chip"><i style="background:#93739e"></i>Moradia</div><div class="chip" style="opacity:.55"><i style="background:#7fa9a0"></i>…</div></div></div>
+  <div class="rota" data-on="3"></div>
+</div>
+
+<!-- 4 livre para gastar -->
+<div class="s" id="s4">
+  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
+  <div class="cp"><div class="h1"><em>Dias 4 e 5.</em><br>Olhe o Livre para Gastar.</div>
+  <div class="h2">Um número por dia: quanto dá para gastar até o fim do mês.</div></div><div class="area"><svg style="align-self:center" width="480" height="480" viewBox="0 0 480 480">
+    <circle cx="240" cy="240" r="200" fill="none" stroke="rgba(174,255,227,.14)" stroke-width="26" stroke-linecap="round" stroke-dasharray="1047 1257" transform="rotate(135 240 240)"/>
+    <circle cx="240" cy="240" r="200" fill="none" stroke="#aeffe3" stroke-width="26" stroke-linecap="round" stroke-dasharray="620 1257" transform="rotate(135 240 240)"/>
+    <text x="240" y="252" text-anchor="middle" font-family="NM" font-size="42" fill="#effffa">hoje</text></svg></div>
+  <div class="rota" data-on="5"></div>
+</div>
+
+<!-- 5 ajustar -->
+<div class="s" id="s5">
+  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
+  <div class="cp"><div class="h1"><em>Dias 6 e 7.</em><br>Ajuste a rotina.</div>
+  <div class="h2">Com uma semana lançada, dá para ver onde o dinheiro foi. Escolha um hábito para mudar.</div></div><div class="area"><div class="lista">
+    <div><b><svg width="28" height="28" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#052229" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></b>Lancei na hora</div>
+    <div><b><svg width="28" height="28" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#052229" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></b>Conferi as categorias</div>
+    <div><b><svg width="28" height="28" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#052229" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></b>Olhei o Livre para Gastar</div>
+    <div><b class="off"></b>Um hábito para mudar</div>
+  </div>
+  </div>
+  <div class="rota" data-on="7"></div>
+</div>
+
+<!-- 6 fechamento -->
+<div class="s" id="s6">
+  <div class="arc" style="width:1300px;height:1300px;left:-650px;bottom:-760px;border:2px solid rgba(174,255,227,.14)"></div>
+  <div class="arc" style="width:900px;height:900px;right:-460px;top:-380px;background:#0b2d35"></div>
+  <img src="../../../../design-system/marca/logotipo-gradiente.svg" style="position:absolute;left:72px;top:520px;width:520px">
+  <div class="cta" style="top:760px">Comece pelo<br><em>próximo gasto.</em></div>
+</div>
+
+<script>
+document.querySelectorAll('.rota').forEach(r=>{const on=+r.dataset.on;let h='<div class="ln"></div>';
+ const w=936; if(on>0)h+=`<div class="lnOn" style="width:${(on-1)/6*w}px"></div>`;
+ for(let i=1;i<=7;i++){const x=(i-1)/6*w;const a=i<=on;h+=`<div class="n ${a?'on':''}" style="left:${x}px"></div><div class="d ${a?'on':''}" style="left:${x}px">dia ${i}</div>`}
+ r.innerHTML=h});
+const n=new URLSearchParams(location.search).get('s')||'1';document.getElementById('s'+n).classList.add('on');
+</script></body></html>
