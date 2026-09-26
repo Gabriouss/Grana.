@@ -12228,3 +12228,128 @@ não muda**; continua aprovado 1 a 5, como registrado.
 a resposta dedicada do Granabô descritas em
 `proposta-Forge-N1-causa-raiz-e-estorno.md`, item 3. Conferido no repositório:
 nenhum commit local ainda usava esses nomes, então não há nada para reverter.
+
+## 26/09/2026 — M1 — fim dos criativos estáticos, entrada no cartão e portão da 1.10.5
+
+### Decisão do autor: fim da produção estática
+
+O autor decidiu em 26/09: **"não faremos mais isso"**. A produção de
+criativos estáticos está encerrada. O inventário E01, E02, E05, E06, S1, S2,
+S3 e S4, os stories, carrosséis, candidatos raster e prévias existentes ficam
+preservados como histórico congelado. Não devem ser normalizados, reeditados,
+recapturados, publicados ou tratados como fila ativa. O relatório que fechou o
+inventário é `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Beacon-fim-estaticos.md`.
+
+R5 continua bloqueado até o dia D e a build nova testada; R9 não foi gravado e
+continua aguardando a decisão do autor sobre a branch
+`claude/cool-einstein-c63bq0`. Nenhuma peça estática condiciona o dia D ou a
+build 1.10.5. As notas perenes de calendário, plano editorial e tráfego pago
+foram atualizadas no vault para deixar isso explícito.
+
+### Entregas de código, relatórios e triagem do maestro
+
+- **Forge, `83811b9`:** par cliente da proibição de entrada no cartão. As
+  guardas em `lib/data.ts` recusam entradas em `addTransaction` e
+  `addTransactionsBatch`; `components/ImportarExtratoModal.tsx` filtra as
+  entradas antes do envio, informa a contagem e mostra "Nada importado" quando
+  só há entradas. `__tests__/sem-entrada-no-cartao.cjs` tem 22 checagens e o
+  Forge reportou `tsc` e `test:ci` verdes. A migration
+  `20260926130000_transactions_sem_entrada_no_cartao.sql` continua não
+  aplicada; o aparelho ainda não foi verificado. Relatório:
+  `relatorio-Forge-sem-entrada-no-cartao.md`.
+- **Harbor, `9613f42`:** a guarda de entrada com intenção de crédito ficou
+  igual no núcleo de voz app/widget e no Granabô: tipo `in` sem nome do cartão
+  exige `ehIntencaoCredito(texto)`, sem ramo nem copy dedicado a estorno. O
+  teste de paridade dos módulos reais cobre 8 frases, um e dois cartões, em 32
+  comparações; passou, junto das suítes dirigidas, `test:voz`, `test:parser`,
+  `deno check` e `tsc`. Não houve deploy; `assistente-financeiro` em produção
+  continua v39. Relatório:
+  `relatorio-Harbor-entrada-credito-paridade.md`.
+- **Harbor, `d2a2fb3`:** corrigiu o conflito entre a migration do push de
+  meio-dia e `__tests__/corpus-schema-guardas.ts`; o corpus passou 80/80 e o
+  handler de lembretes passou 1976 checagens. Nada foi aplicado ou publicado.
+  Relatório: `relatorio-Harbor-dia-da-build.md`.
+- **Prism:** `relatorio-Prism-importacao-fatura-revisao.md` confirma o padrão
+  visual de `LancamentosEmRevisao.tsx` no código. Na importação de fatura, o
+  Forge já filtra e dá recibo depois da ação, mas a prévia ainda não avisa a
+  recusa antes do toque nem reduz o rótulo do botão à quantidade enviada; isso
+  permanece encaminhado ao Forge.
+- **Beacon:** `relatorio-Beacon-revisao-pecas-r5-r9-26-09.md` registra R5
+  bloqueado por mostrar a Início/Livre para Gastar antes da build e R9 não
+  gravado; `relatorio-Beacon-fim-estaticos.md` fecha o inventário congelado.
+- **Watchtower e triagem do maestro:**
+  `relatorio-Watchtower-83811b9-9613f42.md` trouxe o achado prioritário de que
+  `app/(app)/index.tsx:1609` manda toda fala com intenção de crédito para a
+  folha de compra, inclusive a entrada que `9613f42` recusa no widget. O
+  maestro confirmou o achado no código, encaminhou a função de destino
+  compartilhada ao Harbor com teste de paridade e a troca da chamada ao Prism,
+  que já reescreve o bloco. A prévia e o botão da importação ainda contam linhas
+  descartadas em diff local parcial do Forge. O Granabô pedir repetição de uma
+  frase que será recusada de novo foi encaminhado ao Harbor e não foi conferido
+  pelo maestro. Copy proibida ausente e nenhum achado novo de LGPD.
+
+### Portão da build e do dia D
+
+Os relatórios atualizados do Compass (`relatorio-Compass-checklist-build-1.10.5.md`
+e `relatorio-Compass-portao-dia-D.md`) registram que nenhuma peça estática
+condiciona D. A ordem dos bloqueios é:
+
+1. Forge fechar a foto da nota ponta a ponta e provar no aparelho o N2 visível:
+   uma leitura presa sai em 20 segundos para confirmação com valor vazio e
+   recibo, sem rejeição não tratada nem tela parada;
+2. Prism implementar a grade de quadrados de Lançamento rápido em commit
+   próprio de layout e passar QA no aparelho;
+3. A6, recuperação de senha via site, conforme decisão do autor;
+4. suíte final e QA de regressão no HEAD final, incluindo entrada no cartão,
+   paridade app/widget/Granabô, N1, fila, regra 20, foto e App Link;
+5. release, migrations e Edge Functions autorizadas pelo autor, na ordem do
+   relatório do Harbor e seguindo a regra 11.
+
+O estado informado nesta atualização é `main` 22 commits à frente e 1 atrás de
+`origin/main`. Não houve push, pull, build, deploy ou migration.
+
+### Incidente de ferramenta
+
+Após a atualização do Codex, o daemon executava
+`codex-windows-sandbox-setup` a cada aproximadamente 8 segundos e abria
+janelas do Windows Terminal. O maestro trocou o sandbox para `unelevated` e,
+por engano, desligou `code_mode_host`; todos os Codex passaram a falhar ao
+executar comandos com "code-mode host is disabled". O host foi religado. A
+hipótese de que as janelas visíveis eram do `codex-code-mode-host` foi medida,
+mas não foi confirmado se elas pararam depois da correção.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** registrar a decisão de encerrar criativos estáticos, as entregas
+   `83811b9`, `9613f42` e `d2a2fb3`, os relatórios novos, a triagem do
+   Watchtower e a ordem atual dos bloqueios da 1.10.5, sem publicar nada.
+2. **Sintoma e causa:** calendário, plano editorial, plano de tráfego e portão
+   ainda tratavam estáticos como fila ou condição de D. A causa da mudança é a
+   decisão explícita do autor de não produzir mais estáticos. Na voz, a entrada
+   com intenção de crédito ainda caía na folha de compra do app; o maestro
+   confirmou a causa em `index.tsx:1609` e encaminhou a correção compartilhada.
+3. **Arquivos e identificadores:** `context.md`; perenes do vault
+   `03 - Marketing/Calendário do primeiro mês.md`, `03 - Marketing/Plano Editorial de Conteúdo e Produção com IA.md` e
+   `04 - Tráfego/Plano de Tráfego Pago - Primeiros 100 Assinantes.md`;
+   `83811b9`, `9613f42`, `d2a2fb3`; `app/(app)/index.tsx:1609`; e os relatórios
+   Forge, Harbor, Prism, Beacon, Watchtower e Compass em
+   `E:\Grana-temporarios\2026-09-26-retomada`.
+4. **Descartado:** nova produção, normalização, reedição, recaptura ou
+   publicação dos estáticos; usar qualquer estático como condição de D;
+   aplicar migrations, publicar funções ou disparar build; corrigir a chamada
+   de voz só numa superfície; e tratar teste automatizado como substituto do
+   QA no APK.
+5. **O que deu errado:** o relatório anterior do Beacon tratou peças como
+   prontas antes da inspeção visual do Watchtower; o portão continuou carregando
+   esses critérios até a decisão do autor. O `7b2a9fd` expôs que a guarda de
+   schema precisava acompanhar a migration, corrigido em `d2a2fb3`. O app ainda
+   tinha uma rota de destino divergente mesmo depois da guarda `9613f42`. No
+   incidente do Codex, a correção de sandbox desligou o host por engano e
+   interrompeu os comandos até ser revertida.
+6. **Sem verificação:** foto da nota ponta a ponta e recibo visível do timeout
+   de 20 s; grade quadrada no APK; A6 e URL final de recuperação; correção da
+   chamada em `index.tsx:1609`; prévia/botão da importação após o diff do Forge;
+   repetição do Granabô; suíte e QA final após todos os commits; migrations,
+   Edge Functions e release em produção; e efeito real da correção nas janelas
+   do Windows Terminal. O relatório de estáticos fecha o inventário, mas não
+   reabre nem aprova nenhuma peça.
