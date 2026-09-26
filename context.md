@@ -11755,6 +11755,10 @@ Relatório: `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Beacon-producao-
   pedido de registro sem bolha, sem erro e sem lançamento, com consultas
   funcionando (item B3 do checklist da 1.10.5, com o Harbor).
   `granabo-registro-FALHOU.mp4` é só evidência e não entra em edição.
+  **Corrigido em 26/09 (Harbor, `4c17711`): o Granabô não ficou mudo.** As três
+  tentativas voltaram HTTP 200 em 2,8 a 6,6 s, com resposta e lançamento
+  gravados; o leitor de tela `scripts/emulador.cjs` não enxergava atributo
+  entre aspas simples. Ver a entrada "Granabô mudo era o leitor de tela" abaixo.
 - **Fora da produção até D:** foto da nota e o terceiro card do S2; R1, R6, R8,
   R10 e S3 nas partes que dependem da Início, do Livre para gastar ou da foto;
   E01; M-FN sem reconferência na build nova.
@@ -11890,3 +11894,60 @@ do `test:ci` no export limpo.
 - **Pilha do Prism (commits locais, 26/09):** `3513e34` e `1f7121d` (Prism,
   câmera e foto da nota), `bcc144a`, `de5d4eb` e `af21712` (Forge), e os
   registros do Ledger `ea59d02`, `9c3f687`, `7fb62f4` e `b8ac034`.
+
+## 26/09/2026 — M1 — Granabô mudo era o leitor de tela dos agentes (`4c17711`), não o produto
+
+Relatório: `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Harbor-granabo-mudo.md`.
+Commit `4c17711`, local, na pilha que o Prism publica.
+
+- **Pedido:** briefing do Harbor, fechar o caso do Granabô mudo relatado pelo
+  Sentinel em 25/09 (`2026-09-25-marketing\status-gravacao-sentinel.md`:
+  registro "sem resposta nenhuma, sem bolha, NENHUM lançamento criado"), dizer
+  se era o prazo de 35 s, e se o app precisa de recibo. Mais o G2 do Watchtower.
+- **Sintoma e causa:** **o Granabô respondeu; a ferramenta dos agentes não viu.**
+  Fatos em produção, só leitura: as três tentativas (26/09, 00h00 a 00h03 de
+  Brasília) voltaram HTTP 200 em 2,8 s, 6,6 s e 2,8 s; as três respostas estão
+  em `assistant_messages`; os três lançamentos foram criados, dois apagados
+  depois pelo app. O último quadro de `granabo-registro-FALHOU.mp4` mostra a
+  bolha "Lançamento registrado". Causa, comprovada no emulador: o
+  `uiautomator dump` grava o atributo entre **aspas simples** quando o texto
+  tem aspas duplas (as respostas de registro terminam com `"desfaz"`), e
+  `scripts/emulador.cjs` só lia `text="..."`. Consulta sem aspas aparecia;
+  registro com aspas sumia. Daí "consulta funciona, registro não".
+- **Arquivos:** `scripts/emulador.cjs` (`lerNos` aceita as duas aspas,
+  `decodificar` trata entidades como `&quot;` e emoji; `print` com captura
+  bloqueada pelo app, que gerava PNG de 0 byte dado como sucesso, agora diz
+  "PRINT VAZIO" e sai com erro); `__tests__/emulador-leitura-da-tela.cjs`
+  (falhou antes, passa depois; **fora do `test:ci`** porque o `package.json`
+  tinha alteração alheia em andamento).
+- **Recibo (regra 9):** já existe. `components/Granachat.tsx` troca para
+  "Ainda estou consultando seus dados…" aos 8 s e aborta aos 35 s com "A
+  consulta demorou demais ou foi cancelada. Tente novamente." Nada a mudar.
+- **Descartado:** prazo de 35 s (máximo nos logs foi 9,8 s, de uma sonda do
+  próprio Harbor); remontagem do chat no meio da resposta (nenhum GET de
+  `assistant_messages` no intervalo); mudança no `Granachat.tsx`.
+- **O que deu errado:** o endpoint antigo de logs do Supabase
+  (`analytics/endpoints/logs.all`) responde 410; o novo é
+  `/analytics/endpoints/logs`, tabela única `logs` com coluna `source`, e
+  janelas acima de ~24 h voltam truncadas. Harbor e Sentinel operaram o mesmo
+  emulador ao mesmo tempo e os toques de um caíram na sessão do outro.
+- **Verificação:** no emulador (APK de desenvolvimento, conta de teste),
+  "gastei 7 reais AUDIT no mercado" mostrou a bolha lida pelo `listar`, e
+  "desfaz" removeu o lançamento no banco. **Sem confiabilidade suficiente:** por
+  que o Sentinel viu "Tudo 0" em Lançamentos com os lançamentos no banco (não
+  houve GET de `transactions` no intervalo).
+- **Corrige registros anteriores:** a entrada do Beacon de 26/09 e o item B3 do
+  checklist da 1.10.5 tratavam o caso como falha do produto; estão marcados. O
+  motion de registro do Granabô deixa de estar bloqueado por defeito: pode ser
+  regravado com a conta limpa.
+- **Pendências:** um lançamento AUDIT de R$ 20,00 ("Gastei no mercado", 26/09)
+  continua na conta de teste e explica o "Saldo atual − R$ 20,00" da Início;
+  sai antes de qualquer gravação. Limpar o histórico do Granabô antes de gravar
+  (G2).
+- **Outros achados repassados pelo maestro ao Forge:** C1-b do Sentinel (P2,
+  confirmado pelo maestro): excluir cartão não cancela os lembretes de fatura
+  dele (`confirmDeleteCard`, `app/(app)/credito.tsx:1105-1131`; a reconciliação
+  só percorre cartões que existem), e a pessoa recebe "Fatura vence hoje" de
+  cartão que não existe mais. C1-a (P3, acessibilidade): em
+  `app/(app)/perfil.tsx:636` o interruptor mostra "Lembrete no meio-dia (12h)"
+  e o leitor de tela ainda lê "Lembrete na hora do almoço".
