@@ -61,10 +61,14 @@ function listarArquivos(diretorio) {
   });
 }
 
-const importNativo = /import\s*\{[^}]*\bAlert\b[^}]*}\s*from\s*['"]react-native['"]/s;
+const importNativo = /import\s+(?:Alert\s*,?\s*|\{[^}]*\bAlert\b[^}]*}\s*)from\s*['"]react-native['"]/s;
 for (const arquivo of ['app', 'components', 'lib'].flatMap(listarArquivos)) {
   if (path.normalize(arquivo) === path.normalize('lib/alerta.ts')) continue;
-  assert.doesNotMatch(fs.readFileSync(arquivo, 'utf8'), importNativo, `Alert nativo fora de lib/alerta.ts: ${arquivo}`);
+  const source = fs.readFileSync(arquivo, 'utf8');
+  assert.doesNotMatch(source, importNativo, `Alert nativo fora de lib/alerta.ts: ${arquivo}`);
+  if (/\bAlert\.alert\s*\(/.test(source)) {
+    assert.match(source, /from\s+['"](?:@\/lib\/alerta|\.\/alerta)['"]/, `alerta fora da API visual: ${arquivo}`);
+  }
 }
 
 console.log('OK alerta: fila, cancelamento, destrutivo, onDismiss único e guarda contra Alert nativo.');
