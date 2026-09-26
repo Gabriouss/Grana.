@@ -12472,3 +12472,60 @@ ou renomeação a apontar.
 6. **Sem verificação:** permanece apenas a triagem normal do vault: 19 notas
    sem `revisado` e 4 órfãs; a checagem de fontes ausentes está confirmada em
    execução elevada.
+
+
+## 26/09/2026 — M1 — Forge fecha foto da nota; CSV liberado após build; Prism atualiza Início
+
+O Ledger registrou `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Forge-foto-da-nota.md`.
+No emulador, em APK de debug com o ML Kit real, a foto da nota funcionou de
+ponta a ponta: cupom fictício lido como R$ 37,80, confirmado, salvo, visto na
+lista e excluído. A build que o autor precisa ver ainda não existe; nada foi
+conferido no aparelho do autor.
+
+As duas causas foram separadas: nenhuma build instalada tinha o módulo nativo
+de reconhecimento, e o ML Kit devolvia rótulo e valor em blocos separados,
+enquanto o parser juntava por bloco. `24503a4` passou a juntar as linhas por
+fileira/posição. A primeira leitura após instalação passou de 20 s e caiu no
+recibo de falha no debug; tempo em aparelho real e câmera com cupom físico
+continuam sem medição.
+
+Entregas do Forge: `24503a4` (foto), `39e3144` (CSV de fatura respeita a
+convenção de sinal e resolve o P1 do Harbor), `c508171` (prévia conta e avisa
+as linhas que ficam de fora) e `a8f76f9` (copy dos achados do Watchtower).
+`39e3144` libera a migration `20260926130000` do lado do app, mas ela só pode
+ser aplicada depois da build que leve o commit e da autorização do autor;
+continua não aplicada.
+
+Entregas do Prism: `3060552` (remove o vão entre faixa e cabeçalho), `e10ed6c`
+(atalhos 2x2 com os nomes do print, decisão do autor de manter esses nomes;
+botão visual de QR removido, leitor preservado pelo deep link) e `cc4c038`
+(entrelinha do campo colado do extrato). O pedido novo em andamento é trocar
+os 146 `Alert.alert` nativos por uma janela com o design do Grana. `8279263`
+é a correção do Ledger para o verificador do vault.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** registrar o relatório do Forge, os quatro commits do Forge, os
+   três commits do Prism, o pedido novo dos alertas e o estado de build/QA,
+   sem aplicar migration nem publicar.
+2. **Sintoma e causa:** a foto não funcionava nas builds instaladas por falta
+   do módulo nativo; mesmo com ML Kit, o total não era encontrado porque
+   rótulo e valor vinham em blocos diferentes e o parser os separava. O CSV
+   invertia a leitura de fatura; `39e3144` corrigiu isso.
+3. **Arquivos e identificadores:** relatório do Forge; `24503a4`,
+   `39e3144`, `c508171`, `a8f76f9`, `3060552`, `e10ed6c`, `cc4c038` e
+   `8279263`; `lib/nota-foto-parser.ts`, `lib/foto-nota-ocr.ts`,
+   `components/FotoNotaModal.tsx`, `lib/heuristics.ts` e
+   `components/ImportarExtratoModal.tsx`.
+4. **Descartado:** tratar APK antigo/Expo Go como prova da foto, aumentar o
+   prazo sem medir aparelho real, aplicar `20260926130000` antes da build,
+   retirar o leitor QR junto com o botão visual ou considerar o emulador como
+   QA no aparelho do autor.
+5. **O que deu errado:** o diagnóstico inicial confundia ausência do módulo
+   na build com falha do OCR; o parser também assumia que rótulo e valor
+   vinham no mesmo bloco. No caminho do Prism, o pedido visual de alertas ainda
+   não foi concluído.
+6. **Sem verificação:** build de release com ML Kit, aparelho do autor,
+   câmera com cupom físico, tempo real da primeira leitura, aviso da prévia no
+   emulador e substituição dos 146 alertas; migration, release e publicação
+   permanecem pendentes.
