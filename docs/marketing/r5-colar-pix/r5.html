@@ -54,7 +54,7 @@ function lerpKeys(keys,t){ // keys: [t, ...vals] ; ease in-out between keys
 const SEG=[[DROP,0.4,5.55*B,1.15],[5.55*B,1.2,7*B,2.0],[7*B,2.05,10*B,3.45],[10*B,3.55,11*B,4.47],[11*B,4.5,17*B,6.35],[17*B,6.35,18*B,6.7],[18*B,7.4,21*B,8.8],[21*B,8.8,LOGO,9.05]];
 function S(t){for(const [a,s0,b,s1] of SEG){if(t>=a&&t<b)return s0+(s1-s0)*(t-a)/(b-a)}return t<DROP?0.4:9.05}
 // câmera: [t, zoom, x, y] (pontos do clipe 1080x2400)
-const CAM=[[0,1,540,1200],[DROP+.3,1,540,1200],[5.2*B,1.08,688,700],[7*B-.01,1.08,688,900],[7*B,1.55,540,950],[10*B-.2,1.6,540,1000],[11*B,1.05,540,1200],[11*B+.35,1.7,330,1250],[14*B,1.7,330,1250],[15*B,1.45,540,1400],[17*B-.1,1.2,540,1500],[18*B,1.0,540,1500],[18*B+.25,1.45,540,2000],[21*B-.2,1.35,540,2000],[LOGO,1,540,1200]];
+const CAM=[[0,1,540,1200]];
 const TAPS=[[1.0,688,568],[3.4,540,1168],[6.45,540,1608]];
 const HOOK=[["Recebeu"],["um <em>Pix</em>"],["e não quer"],["<em>digitar tudo?</em>"]];
 $('hook').innerHTML=HOOK.map(h=>`<div>${h[0]}</div>`).join('');
@@ -70,10 +70,10 @@ function anim(t){
   const beatK=((t-DROP)/B)%1, onGroove=t>DROP&&t<LOGO, pulse=onGroove?Math.pow(1-beatK,4):0;
   // barra de progresso
   $('bar').style.width=(cl(t/DUR)*100)+'%';
-  // gancho: uma linha por batida
-  [...$('hook').children].forEach((d,i)=>{const t0=i*B,a=p(t,t0,t0+.22),o=p(t,DROP-.12,DROP+.18);
-    d.style.opacity=a*(1-o);d.style.transform=`scale(${(a<1?1.9-0.9*back(a):1)*(1+o*.6)}) translate(${o*-40}px,0)`;d.style.filter=`blur(${(1-a)*6+o*8}px)`});
-  let sh=0;for(let i=0;i<4;i++)sh+=shake(t,i*B,7);sh+=shake(t,DROP,12)+shake(t,7*B,8)+shake(t,18*B,14)+shake(t,LOGO,16);
+  // gancho: o texto inteiro entra junto, devagar
+  {const a=eio(p(t,.15,1.25)),o=eio(p(t,DROP-.45,DROP+.1));const hk=$('hook');
+   hk.style.opacity=a*(1-o);hk.style.transform=`translateY(${(1-a)*40-o*30}px)`;hk.style.filter=`blur(${(1-a)*8+o*6}px)`;}
+  let sh=0;sh+=shake(t,DROP,12)+shake(t,7*B,8)+shake(t,18*B,14)+shake(t,LOGO,16);
   $('world').style.transform=`translate(${sh}px,${sh*.6}px)`;
   // brilhos pulsando no ritmo
   $('g1').style.opacity=.3+pulse*.25;$('g1').style.transform=`translate(${Math.sin(t*.9)*50}px,${Math.cos(t*.7)*40-180*p(t,DROP,DROP+1)}px) scale(${1+pulse*.08})`;
@@ -99,17 +99,17 @@ function anim(t){
   let tp=null;TAPS.forEach(([s,x,y])=>{const k=(Sv-(s-.2))/.3;if(k>0&&k<1)tp=[k,x,y]});
   if(tp){$('tap').style.opacity=Math.sin(tp[0]*Math.PI);$('tap').style.left=(tp[1]/1080*330)+'px';$('tap').style.top=(tp[2]/2400*733)+'px';$('tap').style.transform=`scale(${.5+tp[0]*.9})`}else $('tap').style.opacity=0;
   // destaque no campo colado
-  const h=p(t,7*B+.05,7*B+.3)*(1-p(t,10*B-.3,10*B));const hl=$('hl');hl.style.opacity=h;
+  const hl=$('hl');hl.style.opacity=0;
   hl.style.left=(80/1080*330)+'px';hl.style.top=(840/2400*733)+'px';hl.style.width=(920/1080*330)+'px';hl.style.height=(110/2400*733)+'px';
   hl.style.transform=`scale(${1+(1-eo(p(t,7*B,7*B+.35)))*.25})`;
   // etiquetas saltando
-  [['t1',11*B+.25],['t2',12*B+.25],['t3',13*B+.25]].forEach(([id,t0])=>{const a=p(t,t0,t0+.3),o=p(t,17*B-.3,17*B);const e=$(id);
-    e.style.opacity=a*(1-o);e.style.transform=`scale(${a<1?back(a,2.5):1}) translateY(${Math.sin((t-t0)*2.4)*6-o*20}px) rotate(${(id=='t2'?-4:4)*(1-a)}deg)`});
+  [['t1',11*B+.25],['t2',12*B+.25],['t3',13*B+.25]].forEach(([id,t0])=>{const a=eio(p(t,t0,t0+.6)),o=p(t,17*B-.3,17*B);const e=$(id);
+    e.style.opacity=a*(1-o);e.style.transform=`scale(${.9+.1*eio(a)}) translateY(${Math.sin((t-t0)*2.4)*6-o*20}px) rotate(${(id=='t2'?-4:4)*(1-a)}deg)`});
   // legendas cinéticas
   let ci=-1;CAPS.forEach((c,i)=>{if(t>=c[0]&&t<c[1])ci=i});
   if(ci!==capI){capI=ci;$('cap').innerHTML=ci<0?'':CAPS[ci][2].replace(/(<em>)?([^\s<]+)(<\/em>)?/g,(m,a,w,c)=>`<span class="w">${a||''}${w}${c||''}</span>`)}
-  if(ci>=0){const c=CAPS[ci];[...document.querySelectorAll('#cap .w')].forEach((w,i)=>{const a=p(t,c[0]+i*.07,c[0]+i*.07+.22),o=p(t,c[1]-.15,c[1]);
-    w.style.opacity=a*(1-o);w.style.transform=`scale(${a<1?back(a,2.4):1+pulse*.04}) translateY(${-o*14}px)`})}
+  if(ci>=0){const c=CAPS[ci],a=eio(p(t,c[0],c[0]+.7)),o=eio(p(t,c[1]-.35,c[1]));const cp=$('cap');
+    cp.style.opacity=a*(1-o);cp.style.transform=`translateY(${(1-a)*18-o*10}px)`;cp.style.filter=`blur(${(1-a)*5}px)`;} else $('cap').style.opacity=0;
   $('cap').style.fontSize=(ci==1?64:36)+'px';$('cap').style.top=(ci==1?40:48)+'px';
   $('scrim').style.opacity=eo(p(t,DROP,DROP+.4))*(1-p(t,21*B,LOGO));
   // confete no "salvo"
@@ -117,9 +117,9 @@ function anim(t){
     const x=270+c.vx*ct, y=700+c.vy*ct+900*ct*ct; c.e.style.opacity=1-p(ct,1.4,2.2);
     c.e.style.transform=`translate(${x}px,${y}px) rotate(${c.r*ct}deg)`;c.e.style.width=c.w+'px'});
   // fechamento
-  const e=p(t,LOGO,LOGO+.3);$('end').style.opacity=e;
-  $('logo').style.transform=`scale(${e<1?2.2-1.2*back(e,2):1+Math.max(0,1-p(t,LOGO+.3,LOGO+.8))*.02})`;
-  [...$('endp').children].forEach((s,i)=>{const t0=LOGO+(i+1)*B,a=p(t,t0,t0+.22);s.style.opacity=a;s.style.transform=`scale(${a<1?back(a,2.4):1}) translateY(${(1-a)*20}px)`});
+  const e=eio(p(t,LOGO,LOGO+.6));$('end').style.opacity=e;
+  $('logo').style.transform=`scale(${1.15-0.15*eio(p(t,LOGO,LOGO+.8))})`;
+  {const a=eio(p(t,LOGO+.5,LOGO+1.3));const ep=$('endp');ep.style.opacity=a;ep.style.transform=`translateY(${(1-a)*20}px)`;ep.style.filter=`blur(${(1-a)*5}px)`;}
 }
 window.anim=anim;
 window.ready=()=>new Promise(r=>{const i=$('shot');if(i.complete)r();else i.onload=()=>r()});
