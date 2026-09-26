@@ -22,7 +22,13 @@ export type TotalDaFoto =
 /** Valor no formato brasileiro: `45,90`, `1.234,56`. Exige duas casas. */
 const VALOR = /(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})(?!\d)/g;
 
-/** Rótulos que dizem "este é o total a pagar". */
+/**
+ * O que a pessoa de fato pagou: vem depois do desconto e da taxa. Num cupom
+ * com desconto, "VALOR TOTAL" é o bruto e "VALOR A PAGAR" é o que saiu do
+ * bolso; os dois no mesmo nível deixavam a nota "ambígua" e o campo em branco.
+ */
+const ROTULO_A_PAGAR = /\b(TOTAL\s+A\s+PAGAR|VALOR\s+A\s+PAGAR|TOTAL\s+LIQUIDO|VALOR\s+LIQUIDO)\b/;
+/** Rótulos que dizem "este é o total da nota". */
 const ROTULO_FORTE = /\b(VALOR\s+TOTAL|TOTAL\s+A\s+PAGAR|VALOR\s+A\s+PAGAR|TOTAL\s+GERAL|TOTAL\s+R\s*[S$5])\b/;
 /** Só "TOTAL". Vale menos: aparece também em rodapés de tributos e de itens. */
 const ROTULO_FRACO = /\bTOTAL\b/;
@@ -111,10 +117,155 @@ export function textoPorFileira(linhas: LinhaLida[]): string {
 export function extrairTotalDaFoto(texto: string): TotalDaFoto {
   const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-  for (const rotulo of [ROTULO_FORTE, ROTULO_FRACO]) {
+  for (const rotulo of [ROTULO_A_PAGAR, ROTULO_FORTE, ROTULO_FRACO]) {
     const distintos = [...new Set(candidatosDoRotulo(linhas, rotulo))];
     if (distintos.length === 1) return { valorTotal: distintos[0], motivo: 'ok' };
     if (distintos.length > 1) return { valorTotal: null, motivo: 'ambiguo' };
   }
   return { valorTotal: null, motivo: 'sem_total' };
+}
+
+/* ───────────────────── Detalhes da nota: pagamento, data, loja ───────────── */
+
+export type FormaPagamentoDaFoto = 'credit' | 'debit' | 'pix' | 'cash';
+
+export type DetalhesDaNota = {
+  /** `null` quando a nota não diz, diz "Outros"/"Cartão", ou diz duas formas diferentes. */
+  pagamento: FormaPagamentoDaFoto | null;
+  /** Data de emissão em ISO, só se for plausível (até hoje, no máximo um ano atrás). */
+  data: string | null;
+  /** O cupom tinha uma data, mas ela era futura, impossível ou antiga demais: a tela usa hoje e pede conferência. */
+  dataRecusada: boolean;
+  /** Nome do estabelecimento, legível, ou `null`. */
+  estabelecimento: string | null;
+};
+
+/** Maiúsculas, sem acento, com os dígitos que o OCR põe no lugar de letras dentro das palavras. */
+function normalizarTexto(linha: string): string {
+  return linha
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/(?<=[A-Z])0|0(?=[A-Z])/g, 'O')
+    .replace(/(?<=[A-Z])1|1(?=[A-Z])/g, 'I');
+}
+
+/** Onde começa a região de pagamento de uma NFC-e. */
+const CABECALHO_PAGAMENTO = /FORMAS?\s+(DE\s+)?PAGAMENTO|FORMA\s+PAGTO|VALOR\s+PAGO/;
+/** Onde ela acaba: o que vem depois dos pagamentos no DANFE. */
+const FIM_PAGAMENTO = /TROCO|TRIBUT|IMPOSTO|ICMS|\bLEI\b|CONSUMIDOR|\bCPF\b|CNPJ|CHAVE|PROTOCOLO|EMISS|CONSULT|\bNFC|SERIE/;
+/** Linha de pagamento que não diz qual forma foi. */
+const FORMA_INDEFINIDA = /\bOUTROS?\b|\bVALE\b|\bCREDIARIO\b|\bCHEQUE\b|\bBOLETO\b|\bCARTAO\b/;
+
+function formaDaLinha(linha: string): FormaPagamentoDaFoto | 'indefinida' | null {
+  const t = linha.replace(VALOR, ' ');
+  if (/\bCREDITO\b/.test(t)) return 'credit';
+  if (/\bDEBITO\b/.test(t)) return 'debit';
+  if (/\bPIX\b|PAGAMENTO\s+INSTANTANEO/.test(t)) return 'pix';
+  if (/\bDINHEIRO\b|\bESPECIE\b/.test(t)) return 'cash';
+  if (FORMA_INDEFINIDA.test(t)) return 'indefinida';
+  return null;
+}
+
+/**
+ * Forma de pagamento, lida SÓ da região de pagamento do cupom: as linhas
+ * depois de "FORMA DE PAGAMENTO" (ou "VALOR PAGO"), até o troco, os tributos
+ * ou o rodapé. "Crédito" fora dali (crédito de ICMS, tributos, "crédito" no
+ * nome da loja) não conta. Sem cabeçalho, sem forma, com "Outros" ou só
+ * "Cartão", ou com duas formas diferentes, devolve `null`: a pessoa escolhe,
+ * porque crédito e débito mudam o saldo de jeitos diferentes (regra 20).
+ */
+function pagamentoDaNota(linhas: string[]): FormaPagamentoDaFoto | null {
+  const inicio = linhas.findIndex((l) => CABECALHO_PAGAMENTO.test(l));
+  if (inicio < 0) return null;
+  const formas = new Set<FormaPagamentoDaFoto | 'indefinida'>();
+  // A própria linha do cabeçalho pode trazer a forma ("FORMA DE PAGAMENTO: PIX").
+  const naLinha = formaDaLinha(linhas[inicio].replace(CABECALHO_PAGAMENTO, ' '));
+  if (naLinha) formas.add(naLinha);
+  for (const linha of linhas.slice(inicio + 1, inicio + 7)) {
+    if (FIM_PAGAMENTO.test(linha)) break;
+    const forma = formaDaLinha(linha);
+    if (forma) formas.add(forma);
+  }
+  if (formas.size !== 1 || formas.has('indefinida')) return null;
+  return [...formas][0] as FormaPagamentoDaFoto;
+}
+
+function isoValido(dia: number, mes: number, ano: number): string | null {
+  const d = new Date(Date.UTC(ano, mes - 1, dia));
+  if (d.getUTCFullYear() !== ano || d.getUTCMonth() !== mes - 1 || d.getUTCDate() !== dia) return null;
+  return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+/**
+ * Data de emissão. Prefere a linha que diz "EMISSÃO"; sem ela, a primeira data
+ * do cupom. Data impossível, futura ou de mais de um ano atrás é recusada: um
+ * "2062" lido de "2026" jogaria a compra num mês que a pessoa nunca vai abrir.
+ */
+function dataDaNota(linhas: string[], hojeISO: string): { data: string | null; recusada: boolean } {
+  const DATA = /(\d{2})[/.-](\d{2})[/.-](\d{4}|\d{2})(?!\d)/;
+  const comEmissao = linhas.find((l) => /EMISS/.test(l) && DATA.test(l));
+  const linha = comEmissao ?? linhas.find((l) => DATA.test(l));
+  if (!linha) return { data: null, recusada: false };
+  const m = linha.match(DATA)!;
+  const ano = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+  const iso = isoValido(Number(m[1]), Number(m[2]), ano);
+  if (!iso) return { data: null, recusada: true };
+  const [ah, mh, dh] = hojeISO.split('-').map(Number);
+  const umAnoAtras = isoValido(dh, mh, ah - 1) ?? `${ah - 1}-${String(mh).padStart(2, '0')}-28`;
+  if (iso > hojeISO || iso < umAnoAtras) return { data: null, recusada: true };
+  return { data: iso, recusada: false };
+}
+
+/** Linhas do topo que não são o nome da loja. */
+const NAO_E_NOME = /CNPJ|\bCPF\b|\bIE\b|INSCR|\bRUA\b|\bR\.\s|\bAV\b|AVENIDA|RODOVIA|\bROD\b|ESTRADA|\bCEP\b|BAIRRO|\bFONE\b|\bTEL\b|DOCUMENTO|AUXILIAR|\bNFC|NOTA\s+FISCAL|CUPOM|EXTRATO|DANFE|CONSUMIDOR|ELETRONICA|\bSAT\b/;
+const SUFIXO_SOCIETARIO = /\s+(LTDA|EIRELI|EPP|ME|MEI|S\/A|SA|S\.A|CIA)\.?$/;
+/* Palavras que ficam em maiúsculas depois de arrumar a caixa. */
+const SIGLAS = new Set(['AUDIT', 'BR', 'GNV']);
+
+/**
+ * Nome do estabelecimento: a primeira linha do topo do cupom que parece nome
+ * (letras, sem CNPJ, sem endereço, sem o título do documento), sem sufixo
+ * societário, com a caixa arrumada e encurtada na palavra.
+ */
+function estabelecimentoDaNota(originais: string[]): string | null {
+  for (const original of originais.slice(0, 5)) {
+    const t = normalizarTexto(original).trim();
+    // O nome fica acima dos itens: a primeira linha com dinheiro ou total encerra o topo.
+    if (new RegExp(VALOR.source).test(t) || /TOTAL/.test(t)) break;
+    if (!t || NAO_E_NOME.test(t)) continue;
+    const letras = (t.match(/[A-Z]/g) ?? []).length;
+    const digitos = (t.match(/\d/g) ?? []).length;
+    if (letras < 3 || digitos > letras / 2) continue;
+    let nome = t.replace(/[^A-Z0-9&'\s.-]/g, ' ').replace(/\s+/g, ' ').trim();
+    for (let i = 0; i < 3; i++) nome = nome.replace(SUFIXO_SOCIETARIO, '').trim();
+    if (nome.length < 3) continue;
+    const arrumado = nome
+      .split(' ')
+      .map((p) => (SIGLAS.has(p) ? p : p.charAt(0) + p.slice(1).toLowerCase()))
+      .join(' ');
+    if (arrumado.length <= 40) return arrumado;
+    const corte = arrumado.slice(0, 40);
+    const espaco = corte.lastIndexOf(' ');
+    return (espaco > 10 ? corte.slice(0, espaco) : corte).trim();
+  }
+  return null;
+}
+
+/**
+ * O resto do que a tela de confirmação precisa, além do total: forma de
+ * pagamento, data e estabelecimento. Recebe o texto JÁ em fileiras
+ * (`textoPorFileira`) e a data de hoje em ISO, para ser pura. Na dúvida, cada
+ * campo volta vazio e a pessoa preenche: nada aqui é adivinhado.
+ */
+export function extrairDetalhesDaNota(texto: string, hojeISO: string): DetalhesDaNota {
+  const originais = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const linhas = originais.map(normalizarTexto);
+  const { data, recusada } = dataDaNota(linhas, hojeISO);
+  return {
+    pagamento: pagamentoDaNota(linhas),
+    data,
+    dataRecusada: recusada,
+    estabelecimento: estabelecimentoDaNota(originais),
+  };
 }

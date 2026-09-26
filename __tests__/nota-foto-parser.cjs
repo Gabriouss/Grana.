@@ -83,13 +83,14 @@ const padaria = [
   ok++; console.log('  ok  por fileira, rótulo e valor da mesma altura viram uma linha, da esquerda para a direita');
 }
 caso('cupom em colunas: acha o total', textoPorFileira(padaria), 18.75, 'ok');
-/* Com desconto, "VALOR TOTAL" (antes do desconto) e "Valor a Pagar" diferem:
-   dois totais fortes diferentes. A regra do módulo manda pedir à mão. */
-caso('cupom em colunas com desconto: dois totais diferentes, ambíguo',
+/* Com desconto, "VALOR TOTAL" (antes do desconto) e "Valor a Pagar" diferem.
+   Até 26/09/2026 isso era "ambíguo" e o campo ficava em branco; o que saiu do
+   bolso é o "a pagar", que agora tem nível próprio acima do "valor total". */
+caso('cupom em colunas com desconto: vale o valor a pagar',
   textoPorFileira([
     L('VALOR TOTAL R$', 445, 40), L('Desconto R$', 490, 40), L('Valor a Pagar R$', 535, 40),
     L('52,40', 447, 600), L('6,50', 489, 610), L('45,90', 538, 600),
-  ]), null, 'ambiguo');
+  ]), 45.9, 'ok');
 caso('fileiras vizinhas não se misturam',
   textoPorFileira([L('TOTAL R$', 100, 40), L('9,99', 100, 600), L('TROCO', 140, 40), L('0,01', 141, 600)]), 9.99, 'ok');
 {
