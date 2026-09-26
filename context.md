@@ -12119,3 +12119,66 @@ Nenhuma das telas foi vista no emulador nesta rodada (Sentinel testou câmera,
 permissão e o travamento do OCR, não as correções de A1/P3/F2/F3/C1-b, que
 saíram depois). A URL final do redirect de recuperação de senha (A6) e a
 entrega real de push de meio-dia continuam pendentes de teste.
+
+## 26/09/2026 — M1 — decisões do maestro sobre as propostas do Forge: causa raiz do N1/A8 aprovada, textos de "estorno" aprovados, F1 pendente do autor
+
+Propostas: `proposta-Forge-N1-causa-raiz-e-estorno.md` e
+`proposta-Forge-F1-politica-foto-da-nota.md`, em
+`E:\Grana-temporarios\2026-09-26-retomada`. Nada tinha sido commitado até esta
+decisão; o Forge pediu aprovação antes por mexer num teste que tranca
+comportamento de propósito (item 2) e por decisão de produto (item 3).
+
+### Item 2, causa raiz do N1 e do A8 (disco velho dos cartões): APROVADO 1 a 5
+
+O mecanismo, confirmado pelo Forge: há dois caches empilhados para cartões,
+categorias e carteiras. Por dentro, `referenciaLocal` (`lib/data.ts:6`) e a
+cópia em `lib/wallets.ts:8-61` engolem erro de rede e devolvem o disco antigo
+**como sucesso**. Por fora, `comCacheOffline` (`lib/cache-de-tela.ts:213`) já
+sabe servir o disco quando a rede falha e acende a faixa; como o de dentro
+engole a falha primeiro, o de fora recebe `ok: true` com o disco velho, apaga
+a faixa offline e grava o disco velho por cima do cache de tela, que podia
+estar mais novo. Foi o mecanismo por trás do N1 (`9243040` só contornou na
+tela) e alcança categoria, carteira e a reconciliação de lembretes do C1-b.
+
+Aprovados os cinco passos: (1) tirar o fallback de dentro, relançando o erro
+de rede em `buscar_fetchCreditCards`, `buscar_fetchCategories` e
+`buscar_fetchWallets`, deixando o fallback só em `comCacheOffline`; (2)
+write-through nas próprias escritas (criar/editar/excluir cartão, carteira,
+categoria gravam o disco na hora, via `guardarTela`); (3) preservar a paridade
+de voz entre app e widget (regra 13), já garantida porque os dois usam o
+mesmo cache de tela desde 10/09/2026; (4) trocar o dublê de
+`__tests__/voz-carteiras-offline.cjs` (hoje `comCacheOffline` substituído pela
+identidade) pelo módulo real de `cache-de-tela.ts`, mantendo as mesmas
+promessas (lista offline, isolamento por conta, falha permanente visível) —
+muda de camada quem cumpre a asserção, não afrouxa nada; (5) teste novo:
+criar cartão com falha rápida de rede na recarga, a tela recebe o cartão do
+disco atualizado e a faixa acende. Risco aceito: um aparelho que nunca teve o
+cache de tela gravado (última carga com rede antes de 10/09) perde a lista
+offline até a próxima abertura com rede — na prática, nenhum, porque todo app
+em uso abriu com rede depois disso.
+
+### Item 3, textos de "estorno no cartão" no widget, no app e no Granabô: APROVADO
+
+Decisão do autor, reafirmada: estorno no cartão não existe no Grana.; é só
+excluir o lançamento. Hoje o widget convida a "revisar e salvar" uma compra
+nova (o que contradiz a decisão) e o Granabô sugere lançar pela importação da
+fatura (idem). Aprovados os textos propostos:
+
+- **Widget:** título "Estorno no cartão", corpo "Ouvi: "<fala>". Estorno não
+  é lançado no Grana.. Para desfazer uma compra, exclua o lançamento dela em
+  Crédito." (função nova `notificarEstorno` em
+  `lib/widget-voz-notificacoes.ts`).
+- **App:** mesma frase num `Alert` quando a fala for estorno citando cartão,
+  com a checagem movida para `lib/heuristics.ts` (`ehEstornoNoCartao`), usada
+  pelos dois caminhos (regra 13).
+- **Granabô:** "Estorno no cartão não é lançado no Grana.. Para desfazer uma
+  compra, exclua o lançamento dela na aba Crédito." + `AINDA_NAO_REGISTREI`.
+  É Edge Function: entra no repositório agora, mas o deploy só acontece com
+  pedido do autor (regra 11), no dia da build.
+
+### F1, texto da Política de Privacidade sobre foto/QR/ML Kit: PENDENTE do autor
+
+`proposta-Forge-F1-politica-foto-da-nota.md`, já registrada na entrada
+anterior desta rodada, continua sem commit e sem decisão. Fica na lista de
+pendências do autor junto com A6 (recuperação de senha), o número de cupons
+do portão do dia D e a troca dos cinco segredos do EAS.
