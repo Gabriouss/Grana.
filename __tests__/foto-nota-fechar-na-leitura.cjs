@@ -35,7 +35,8 @@ const react = {
 };
 
 /* ── dublês ────────────────────────────────────────────────────────────── */
-const registro = { alertas: [], apagadas: [], fechou: 0, leituras: [], erros: [] };
+const registro = { alertas: [], apagadas: [], fechou: 0, leituras: [], erros: [], gravados: [] };
+let cartoesDaConta = [];
 /* Cache simulado: a foto existe até ser apagada. `teimosa` é um arquivo que
    o sistema não deixa apagar, para provar que isso deixa log. */
 const noCache = new Set();
@@ -53,12 +54,14 @@ const imports = {
   '@expo/vector-icons/Ionicons': 'Ionicons',
   '@/lib/theme': { theme: {}, radius: {}, spacing: {}, type: {}, fonts: {}, touchTarget: 48, lh: () => 0 },
   '@/lib/heuristics': { guessCategoryFromText: (t) => ({ name: t, color: '#fff' }) },
-  '@/lib/format': { formatMoney: (v) => String(v).replace('.', ','), parseAmount: Number, formatMoneyInput: (v) => v, todayISO: () => '2026-09-26' },
-  '@/lib/offline-cache': { salvarOuGuardarNoAparelho: async () => ({ guardado: false }) },
+  '@/lib/format': { formatMoney: (v) => String(v).replace('.', ','), parseAmount: (v) => Number(String(v).replace(',', '.')), formatMoneyInput: (v) => v, todayISO: () => '2026-09-26', formatDateLabel: (d) => d },
+  '@/lib/offline-cache': { salvarOuGuardarNoAparelho: async (input) => { registro.gravados.push(input); return { guardado: false }; } },
+  '@/lib/data': { fetchCreditCards: async () => cartoesDaConta },
+  './DatePickerModal': 'DatePickerModal',
   '@/lib/lancamentos-alterados': { marcarLancamentosAlterados() {} },
   '@/lib/erros': { mensagemErro: (e) => String(e) },
   '@/lib/demo-context': { useDemo: () => ({ isDemoMode: false }) },
-  '@/lib/wallet-context': { useWallet: () => ({ activeWalletId: 'w', wallets: [] }) },
+  '@/lib/wallet-context': { useWallet: () => ({ activeWalletId: 'w', wallets: [{ id: 'w', is_default: true }] }) },
   '@/lib/haptics': { hapticSuccess() {}, hapticTap() {} },
   '@/lib/limits': { LIMITS: { descricao: 80 } },
   './CategoryChips': 'CategoryChips',
@@ -94,6 +97,11 @@ vm.runInNewContext(compilarTs('lib/foto-nota-ocr.ts'), {
   })[n],
 });
 imports['@/lib/foto-nota-ocr'] = ocr;
+imports['@/lib/nota-foto-parser'] = parser;
+/* A decisão de gravar (crédito na fatura, débito no caixa) é o módulo REAL. */
+const lancamento = {};
+vm.runInNewContext(compilarTs('lib/foto-nota-lancamento.ts'), { exports: lancamento });
+imports['@/lib/foto-nota-lancamento'] = lancamento;
 const cupom = (texto) => ({ blocks: [{ lines: texto.split(/\n/).map((t) => ({ text: t })) }] });
 
 const modulo = {};
@@ -192,6 +200,74 @@ function prepararCamera() {
   await tirando4;
   ok(naConfirmacao(render()), 'a confirmação aparece mesmo assim');
   ok(registro.erros.some((a) => /continuou no cache/.test(String(a[0]))), 'e a foto que ficou no cache deixa log de erro');
+
+  /* 5. Forma de pagamento lida da foto (pedido do autor, 26/09/2026). Crédito
+     grava na fatura, com o cartão; débito é saída de caixa na carteira. */
+  const NOTA = (forma) => cupom([
+    'MERCADO AUDIT FICTICIO LTDA', 'CNPJ 00.000.000/0000-00', 'VALOR TOTAL R$ 37,80',
+    'FORMA DE PAGAMENTO VALOR PAGO', `${forma} 37,80`, 'Emissão: 25/09/2026 14:32',
+  ].join('\n'));
+  async function fotografarNota(forma) {
+    porHandler(render(), 'fechar')();
+    prepararCamera();
+    const t = porHandler(render(), 'fotografar')();
+    await esperar();
+    resolverLeitura(NOTA(forma));
+    await t;
+    await esperar();
+    await esperar();
+    return render();
+  }
+  const salvar = async () => { await porHandler(render(), 'handleSave')(); await esperar(); };
+
+  cartoesDaConta = [{ id: 'cartao-1', name: 'AUDIT cartao', bank: 'nubank', wallet_id: 'w-cartao' }];
+  registro.gravados.length = 0;
+  let tela = await fotografarNota('Cartao de Credito');
+  ok(achar(tela, (n) => n.type === 'TextInput' && n.props.value === 'Mercado AUDIT Ficticio').length === 1, 'a descrição vem do estabelecimento');
+  ok(achar(tela, (n) => n.props?.accessibilityRole === 'radio' && n.props.accessibilityState?.checked).length === 2, 'crédito e o único cartão já marcados');
+  await salvar();
+  ok(registro.gravados.length === 1, 'crédito com um cartão grava');
+  const credito = registro.gravados[0];
+  ok(credito.payment_method === 'credit' && credito.card_id === 'cartao-1' && credito.bank === 'nubank', 'como compra no crédito, com o cartão');
+  ok(credito.wallet_id === 'w-cartao' && credito.occurred_on === '2026-09-25' && credito.type === 'out', 'na carteira do cartão e na data do cupom');
+
+  registro.gravados.length = 0;
+  await fotografarNota('Cartao de Debito');
+  await salvar();
+  const debito = registro.gravados[0];
+  ok(debito && debito.payment_method === 'debit' && !debito.card_id && debito.wallet_id === 'w', 'débito é saída de caixa na carteira, sem cartão');
+
+  /* Crédito com dois cartões: nenhum escolhido, nada grava até a pessoa escolher. */
+  cartoesDaConta = [{ id: 'c1', name: 'A', bank: 'x' }, { id: 'c2', name: 'B', bank: 'y' }];
+  registro.gravados.length = 0;
+  registro.alertas.length = 0;
+  await fotografarNota('Cartao de Credito');
+  await salvar();
+  ok(registro.gravados.length === 0 && /cartão/i.test(String(registro.alertas.at(-1)?.[0])), 'com vários cartões, pede o cartão antes de gravar');
+
+  /* Crédito sem cartão cadastrado: avisa e não grava. */
+  cartoesDaConta = [];
+  registro.alertas.length = 0;
+  await fotografarNota('Cartao de Credito');
+  await salvar();
+  ok(registro.gravados.length === 0 && registro.alertas.at(-1)?.[0] === 'Nenhum cartão cadastrado', 'sem cartão, avisa e oferece outra forma');
+
+  /* Foto escura ou sem texto: recibo claro e o campo de valor para digitar. */
+  porHandler(render(), 'fechar')();
+  prepararCamera();
+  const escura = porHandler(render(), 'fotografar')();
+  await esperar();
+  resolverLeitura({ blocks: [] });
+  await escura;
+  tela = render();
+  ok(naConfirmacao(tela) && achar(tela, (n) => n.type === 'Text' && /Não encontrei texto na foto/.test(String(n.props.children))).length === 1,
+    'foto sem texto: aviso de foto escura ou tremida, e a confirmação para digitar');
+
+  /* "Outros": nada marcado, a pessoa escolhe. */
+  registro.alertas.length = 0;
+  await fotografarNota('Outros');
+  await salvar();
+  ok(registro.gravados.length === 0 && registro.alertas.at(-1)?.[0] === 'Forma de pagamento', 'sem forma lida, pede a forma antes de gravar');
 
   console.log(`foto-nota-fechar-na-leitura: ${passou} checagens OK`);
 })().catch((e) => { console.error(e); process.exit(1); });

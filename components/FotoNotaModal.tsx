@@ -5,8 +5,12 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { guessCategoryFromText } from '@/lib/heuristics';
-import { formatMoney, parseAmount, formatMoneyInput, todayISO } from '@/lib/format';
+import { formatMoney, parseAmount, formatMoneyInput, todayISO, formatDateLabel } from '@/lib/format';
 import { fotografarELer, prepararLeitura } from '@/lib/foto-nota-ocr';
+import { extrairDetalhesDaNota } from '@/lib/nota-foto-parser';
+import { cartaoPadrao, montarLancamentoDaFoto } from '@/lib/foto-nota-lancamento';
+import { fetchCreditCards } from '@/lib/data';
+import type { CreditCard, PaymentMethod } from '@/lib/types';
 import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { mensagemErro } from '@/lib/erros';
@@ -19,6 +23,7 @@ import AppPressable from './AppPressable';
 import AppModal, { InsetsDoModal } from './AppModal';
 import Sheet from './Sheet';
 import PermissaoCamera from './PermissaoCamera';
+import DatePickerModal from './DatePickerModal';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
 
@@ -30,7 +35,15 @@ const AVISO_POR_MOTIVO = {
   ambiguo: 'Achei mais de um total na foto. Digite o valor certo, conforme o cupom.',
   indisponivel: 'A leitura por foto não está disponível nesta versão do app. Digite o valor impresso no cupom.',
   falhou: 'Não consegui ler a foto. Digite o valor impresso no cupom ou tente fotografar de novo.',
+  sem_texto: 'Não encontrei texto na foto. Ela pode ter saído escura ou tremida. Digite o valor ou fotografe de novo.',
 } as const;
+
+const FORMAS: { valor: PaymentMethod; rotulo: string }[] = [
+  { valor: 'debit', rotulo: 'Débito' },
+  { valor: 'credit', rotulo: 'Crédito' },
+  { valor: 'pix', rotulo: 'Pix' },
+  { valor: 'cash', rotulo: 'Dinheiro' },
+];
 
 /**
  * Foto da nota: a pessoa fotografa o cupom e o valor total é lido no próprio
@@ -64,6 +77,15 @@ export default function FotoNotaModal({
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Alimentação');
   const [saving, setSaving] = useState(false);
+  /* O que veio da foto fica marcado "lido da foto" até a pessoa mudar o campo.
+     Tudo continua editável: OCR erra. */
+  const [data, setData] = useState(todayISO());
+  const [pagamento, setPagamento] = useState<PaymentMethod | null>(null);
+  const [lido, setLido] = useState({ valor: false, descricao: false, data: false, pagamento: false });
+  const [dataRecusada, setDataRecusada] = useState(false);
+  const [calendarioAberto, setCalendarioAberto] = useState(false);
+  const [cartoes, setCartoes] = useState<CreditCard[]>([]);
+  const [cartaoId, setCartaoId] = useState<string | null>(null);
   /* Toque duplo no obturador ou no salvar dispara duas vezes antes de o React
      repintar; o ref barra a segunda chamada de forma síncrona. */
   const capturandoRef = useRef(false);
@@ -83,6 +105,12 @@ export default function FotoNotaModal({
     setAmount('');
     setCategory('Alimentação');
     setSaving(false);
+    setData(todayISO());
+    setPagamento(null);
+    setLido({ valor: false, descricao: false, data: false, pagamento: false });
+    setDataRecusada(false);
+    setCalendarioAberto(false);
+    setCartaoId(null);
   }
 
   function fechar() {
@@ -98,6 +126,23 @@ export default function FotoNotaModal({
   useEffect(() => {
     if (visible) void prepararLeitura();
   }, [visible]);
+
+  /* Cartões para a compra no crédito, pela mesma leitura (com cache offline)
+     que a tela Crédito usa. Um cartão só já vem escolhido. */
+  useEffect(() => {
+    if (!visible || etapa !== 'confirmar') return;
+    let vivo = true;
+    fetchCreditCards()
+      .then((lista) => {
+        if (!vivo) return;
+        setCartoes(lista);
+        setCartaoId((atual) => atual ?? cartaoPadrao(lista)?.id ?? null);
+      })
+      .catch((e) => console.error('[foto-nota] cartões não carregaram', e));
+    return () => {
+      vivo = false;
+    };
+  }, [visible, etapa]);
 
   async function fotografar() {
     if (capturandoRef.current || !cameraPronta || !cameraRef.current) return;
@@ -115,8 +160,22 @@ export default function FotoNotaModal({
       if (sessao !== sessaoRef.current) return; // fechada durante a leitura
       if (leitura.ok) {
         const { valorTotal, motivo } = leitura.total;
+        const detalhes = extrairDetalhesDaNota(leitura.texto, todayISO());
         setAmount(valorTotal ? formatMoney(valorTotal) : '');
-        setAviso(AVISO_POR_MOTIVO[motivo]);
+        setAviso(AVISO_POR_MOTIVO[leitura.texto.trim() ? motivo : 'sem_texto']);
+        if (detalhes.estabelecimento) {
+          setDesc(detalhes.estabelecimento);
+          setCategory(guessCategoryFromText(detalhes.estabelecimento).name);
+        }
+        setData(detalhes.data ?? todayISO());
+        setDataRecusada(detalhes.dataRecusada);
+        setPagamento(detalhes.pagamento);
+        setLido({
+          valor: !!valorTotal,
+          descricao: !!detalhes.estabelecimento,
+          data: !!detalhes.data,
+          pagamento: !!detalhes.pagamento,
+        });
       } else if (leitura.motivo === 'sem_foto') {
         Alert.alert('Não consegui fotografar', 'Tente de novo. Se continuar, feche e abra a câmera.');
         setEtapa('camera');
@@ -146,22 +205,31 @@ export default function FotoNotaModal({
       return;
     }
 
-    const catObj = guessCategoryFromText(category);
+    const lancamento = montarLancamentoDaFoto({
+      valor: val,
+      descricao: desc,
+      categoria: guessCategoryFromText(category),
+      data,
+      pagamento,
+      cartao: cartoes.find((c) => c.id === cartaoId) ?? null,
+      carteiraAtiva: activeWalletId,
+      carteiras: wallets,
+    });
+    if (!lancamento.ok) {
+      if (lancamento.motivo === 'sem_pagamento') {
+        Alert.alert('Forma de pagamento', 'Escolha como a compra foi paga: débito, crédito, Pix ou dinheiro.');
+      } else if (cartoes.length === 0) {
+        Alert.alert('Nenhum cartão cadastrado', 'Cadastre o cartão na aba Crédito ou escolha outra forma de pagamento.');
+      } else {
+        Alert.alert('Qual cartão?', 'Escolha o cartão em que a compra foi feita.');
+      }
+      return;
+    }
+
     savingRef.current = true;
     setSaving(true);
     try {
-      const { guardado } = await salvarOuGuardarNoAparelho({
-        type: 'out',
-        description: desc.trim() || 'Compra',
-        amount: val,
-        category: catObj.name,
-        color: catObj.color,
-        occurred_on: todayISO(),
-        wallet_id:
-          activeWalletId === 'total'
-            ? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null
-            : activeWalletId,
-      });
+      const { guardado } = await salvarOuGuardarNoAparelho(lancamento.input);
       if (guardado) {
         marcarLancamentosAlterados();
         Alert.alert('Salvo no aparelho', 'Sem conexão. A nota será sincronizada ao abrir o Grana. com conexão.');
@@ -259,6 +327,7 @@ export default function FotoNotaModal({
   /* ---- etapa 3: confirmação do lançamento ---- */
 
   return (
+    <>
     <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent onRequestClose={fechar}>
       <Sheet centered onClose={fechar}>
         <View style={styles.sheetHeader}>
@@ -270,30 +339,103 @@ export default function FotoNotaModal({
 
         {aviso && <Text style={styles.hint}>{aviso}</Text>}
 
-        <TextInput
-          accessibilityLabel="Descrição do lançamento"
-          maxLength={LIMITS.description}
-          style={styles.descInput}
-          placeholder="Descrição (ex: Supermercado)"
-          placeholderTextColor={theme.inkFaint}
-          value={desc}
-          onChangeText={setDesc}
-        />
-
-        <View style={styles.amountRow}>
-          <Text style={styles.amountPrefix}>R$</Text>
+        <View>
+          {lido.descricao && <Text style={styles.lido}>Estabelecimento lido da foto</Text>}
           <TextInput
-            accessibilityLabel="Valor do lançamento em reais"
-            maxLength={LIMITS.amount}
-            style={styles.amountInput}
-            placeholder="0,00"
+            accessibilityLabel={lido.descricao ? 'Descrição do lançamento, lida da foto' : 'Descrição do lançamento'}
+            maxLength={LIMITS.description}
+            style={styles.descInput}
+            placeholder="Descrição (ex: Supermercado)"
             placeholderTextColor={theme.inkFaint}
-            keyboardType="number-pad"
-            value={amount}
-            onChangeText={(t) => setAmount(formatMoneyInput(t))}
-            autoFocus={!amount}
+            value={desc}
+            onChangeText={(t) => {
+              setDesc(t);
+              setLido((l) => ({ ...l, descricao: false }));
+            }}
           />
         </View>
+
+        <View>
+          {lido.valor && <Text style={styles.lido}>Valor lido da foto</Text>}
+          <View style={styles.amountRow}>
+            <Text style={styles.amountPrefix}>R$</Text>
+            <TextInput
+              accessibilityLabel={lido.valor ? 'Valor do lançamento em reais, lido da foto' : 'Valor do lançamento em reais'}
+              maxLength={LIMITS.amount}
+              style={styles.amountInput}
+              placeholder="0,00"
+              placeholderTextColor={theme.inkFaint}
+              keyboardType="number-pad"
+              value={amount}
+              onChangeText={(t) => {
+                setAmount(formatMoneyInput(t));
+                setLido((l) => ({ ...l, valor: false }));
+              }}
+              autoFocus={!amount}
+            />
+          </View>
+        </View>
+
+        <AppPressable
+          onPress={() => setCalendarioAberto(true)}
+          style={styles.linhaData}
+          accessibilityRole="button"
+          accessibilityLabel={`Data da compra: ${formatDateLabel(data)}${lido.data ? ', lida da foto' : ''}. Toque para mudar`}
+        >
+          <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
+          <Text style={styles.textoData}>{formatDateLabel(data)}</Text>
+          {lido.data && <Text style={styles.lido}>lida da foto</Text>}
+        </AppPressable>
+        {dataRecusada && (
+          <Text style={styles.hint}>A data do cupom não parecia certa, então usei a de hoje. Confira antes de salvar.</Text>
+        )}
+
+        <View style={styles.grupo} accessibilityRole="radiogroup" accessibilityLabel="Forma de pagamento">
+          <Text style={styles.rotuloGrupo}>
+            {lido.pagamento ? 'Forma de pagamento, lida da foto' : 'Forma de pagamento'}
+          </Text>
+          <View style={styles.chips}>
+            {FORMAS.map((f) => (
+              <AppPressable
+                key={f.valor}
+                onPress={() => {
+                  setPagamento(f.valor);
+                  setLido((l) => ({ ...l, pagamento: false }));
+                }}
+                style={[styles.chip, pagamento === f.valor && styles.chipAtivo]}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: pagamento === f.valor }}
+              >
+                <Text style={[styles.chipTexto, pagamento === f.valor && styles.chipTextoAtivo]}>{f.rotulo}</Text>
+              </AppPressable>
+            ))}
+          </View>
+        </View>
+
+        {pagamento === 'credit' && (
+          cartoes.length === 0 ? (
+            <Text style={styles.hint}>
+              Nenhum cartão cadastrado. Cadastre o cartão na aba Crédito ou escolha outra forma de pagamento.
+            </Text>
+          ) : (
+            <View style={styles.grupo} accessibilityRole="radiogroup" accessibilityLabel="Cartão da compra">
+              <Text style={styles.rotuloGrupo}>Cartão</Text>
+              <View style={styles.chips}>
+                {cartoes.map((c) => (
+                  <AppPressable
+                    key={c.id}
+                    onPress={() => setCartaoId(c.id)}
+                    style={[styles.chip, cartaoId === c.id && styles.chipAtivo]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: cartaoId === c.id }}
+                  >
+                    <Text style={[styles.chipTexto, cartaoId === c.id && styles.chipTextoAtivo]}>{c.name}</Text>
+                  </AppPressable>
+                ))}
+              </View>
+            </View>
+          )
+        )}
 
         <CategoryChips value={category} onChange={setCategory} />
 
@@ -314,6 +456,19 @@ export default function FotoNotaModal({
         </AppPressable>
       </Sheet>
     </AppModal>
+    <DatePickerModal
+      visible={visible && calendarioAberto}
+      currentISO={data}
+      title="Data da compra"
+      onClose={() => setCalendarioAberto(false)}
+      onSelectDate={(iso) => {
+        setData(iso > todayISO() ? todayISO() : iso);
+        setDataRecusada(false);
+        setLido((l) => ({ ...l, data: false }));
+        setCalendarioAberto(false);
+      }}
+    />
+    </>
   );
 }
 
@@ -368,5 +523,15 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  lido: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular, marginBottom: 2 },
+  linhaData: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touchTarget },
+  textoData: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
+  grupo: { gap: spacing.sm },
+  rotuloGrupo: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: { minHeight: touchTarget, justifyContent: 'center', borderWidth: 1, borderColor: theme.rule, borderRadius: radius.pill, paddingHorizontal: spacing.md },
+  chipAtivo: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
+  chipTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.regular },
+  chipTextoAtivo: { color: theme.ink },
   backLink: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4, fontFamily: fonts.light },
 });
