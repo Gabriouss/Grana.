@@ -34,8 +34,10 @@ const AVISO_POR_MOTIVO = {
 
 /**
  * Foto da nota: a pessoa fotografa o cupom e o valor total é lido no próprio
- * aparelho (ML Kit). Nada sai do aparelho e a foto é apagada logo depois da
- * leitura. O valor lido sempre passa pela tela de confirmação: OCR erra, e
+ * aparelho (ML Kit). A foto não sai do aparelho e é apagada logo depois da
+ * leitura. (O ML Kit manda ao Google métricas de uso da biblioteca, sem a
+ * imagem nem o texto lido; por isso a tela não promete "nada é enviado".)
+ * O valor lido sempre passa pela tela de confirmação: OCR erra, e
  * lançar dinheiro sem a pessoa ver o número seria fé.
  */
 export default function FotoNotaModal({
@@ -66,6 +68,11 @@ export default function FotoNotaModal({
      repintar; o ref barra a segunda chamada de forma síncrona. */
   const capturandoRef = useRef(false);
   const savingRef = useRef(false);
+  /* Cada abertura é uma sessão. Fechar durante a leitura troca o número, e a
+     leitura que termina depois descobre que chegou tarde: sem isto ela punha
+     'confirmar' e o valor lido no estado, e a próxima abertura já nascia na
+     tela de confirmação com a nota anterior (achado F3, 26/09/2026). */
+  const sessaoRef = useRef(0);
 
   function resetState() {
     setEtapa('camera');
@@ -79,6 +86,7 @@ export default function FotoNotaModal({
   }
 
   function fechar() {
+    sessaoRef.current++;
     resetState();
     onClose();
   }
@@ -100,11 +108,13 @@ export default function FotoNotaModal({
     hapticTap();
     setLanterna(false);
     setEtapa('lendo');
+    const sessao = sessaoRef.current;
     let uri: string | null = null;
     try {
       const foto = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       uri = foto.uri;
       const leitura = await lerTotalDaFoto(uri);
+      if (sessao !== sessaoRef.current) return; // fechada durante a leitura
       if (leitura.ok) {
         const { valorTotal, motivo } = leitura.total;
         setAmount(valorTotal ? formatMoney(valorTotal) : '');
@@ -116,6 +126,7 @@ export default function FotoNotaModal({
       setEtapa('confirmar');
     } catch (e) {
       console.error('[foto-nota] falha ao fotografar', e);
+      if (sessao !== sessaoRef.current) return;
       Alert.alert('Não consegui fotografar', 'Tente de novo. Se continuar, feche e abra a câmera.');
       setEtapa('camera');
     } finally {
@@ -184,7 +195,7 @@ export default function FotoNotaModal({
             <PermissaoCamera
               permissao={permissao}
               pedirPermissao={pedirPermissao}
-              motivo="O Grana. precisa da câmera para fotografar a nota e ler o valor total. A foto é lida no aparelho, nada é enviado, e ela é apagada logo depois da leitura."
+              motivo="O Grana. precisa da câmera para fotografar a nota e ler o valor total. A foto não sai do seu aparelho e é apagada logo depois da leitura."
               onFechar={fechar}
             />
           ) : (
