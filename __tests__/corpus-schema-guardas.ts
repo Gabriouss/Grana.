@@ -201,6 +201,19 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
     inicioJanelas >= 0 && inicioVoz > inicioJanelas
       && normalizarSql(sql.slice(inicioJanelas, inicioVoz)) === migrationAPartirDe(migrationJanelas, 'alter table public.push_tokens')
   );
+  {
+    /* A janela `meio_dia_finde` (26/09/2026) mora no FIM do schema, fora da
+       fatia acima, que precisa continuar idêntica à migration de 05/09. */
+    const migrationFinde = readFileSync(
+      path.join(__dirname, '..', 'supabase', 'migrations', '20260926120000_push_janela_meio_dia_finde.sql'), 'utf8');
+    const ultimoCheck = sql.lastIndexOf('add constraint push_habit_deliveries_janela_check');
+    checar(
+      'o CHECK da janela aceita meio_dia_finde no schema e na migration de 26/09',
+      ultimoCheck > inicioVoz
+        && /check \(janela in \('noite', 'almoco', 'meio_dia_finde'\)\)/.test(sql.slice(ultimoCheck))
+        && /check \(janela in \('noite', 'almoco', 'meio_dia_finde'\)\)/.test(migrationFinde)
+    );
+  }
   checar(
     'a migration histórica base da voz continua versionada',
     migrationVoz.includes('create table if not exists public.voice_operations')
