@@ -11951,3 +11951,57 @@ Commit `4c17711`, local, na pilha que o Prism publica.
   cartão que não existe mais. C1-a (P3, acessibilidade): em
   `app/(app)/perfil.tsx:636` o interruptor mostra "Lembrete no meio-dia (12h)"
   e o leitor de tela ainda lê "Lembrete na hora do almoço".
+
+## 26/09/2026 — M1 — Prism: câmera negada, tela sem piscar, padrão visual da revisão; Sentinel: notificações locais e limpeza
+
+Relatórios: `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Prism-foto-da-nota-e-revisao.md`
+e `relatorio-Sentinel-retomada.md`.
+
+**Prism.** Commits locais `3513e34` e `1f7121d` (já registrados na entrada do
+Forge de 26/09; autoria corrigida para o Prism). Achados: botão de câmera
+morto com "não perguntar de novo" (faltava olhar `canAskAgain`); tela de
+pedido piscando entre `permissao === null` e a câmera abrir; dica de foto
+ilegível (texto claro sobre papel branco); salto de 72 px do obturador ao
+fotografar. Correção: `components/PermissaoCamera.tsx` comum aos dois
+leitores, com "Abrir configurações" (`Linking.openSettings`) quando
+`canAskAgain === false`; `1f7121d` põe dica e "lendo" na mesma pílula sobre
+véu escuro, obturador fixo desligado durante a leitura. Descartado: moldura de
+enquadramento (cupom tem altura variável, cortaria o total no pé) e mudar a
+ordem dos botões "Fotografar"/"Escanear" (pergunta ao autor). Revisão do
+padrão visual de `LancamentosEmRevisao.tsx` (não commitada pelo Prism, para o
+Forge aplicar): cabeçalho com X desalinhado do título, três botões cheios
+competindo, ícone da faixa em 15 em vez de 13, hierarquia do item, aviso de
+desfecho sem caixa própria, `numberOfLines={1}` cortando texto com fonte
+grande — nenhum bloqueia a entrega. **Não visto na tela**; checklist deixado
+para quando o emulador estiver livre. O que deu errado: `screencap`/`print`
+geravam PNG de 0 byte no ambiente (mesma causa do FLAG_SECURE já registrada na
+entrada do Harbor); documentado agora em
+`docs/operar-o-app-no-emulador.md` (`410ab2b`). Emulador estava em uso por
+outro agente ao mesmo tempo.
+
+**Sentinel, C1 (notificações locais).** Seis suítes de módulo real, 0 falhas.
+No aparelho, 27 notificações agendadas conferidas uma a uma: noite (7 dias),
+almoço em dia útil (7, nenhuma em fim de semana), meio-dia de fim de semana
+(7, só sábado e domingo, `0b8d2fe`), faturas (3 etapas para 2 cartões).
+Desligar o interruptor do meio-dia cancela os 14 de almoço/fim de semana e
+mantém os 7 da noite; religar traz os 14 de volta. Push remoto falha no
+emulador (`FIS_AUTH_ERROR`, sem FCM), cai no lembrete local com recibo.
+Disparo na hora marcada **não verificável** sem mexer no relógio (proibido:
+derruba o Expo Go). C1-a e C1-b (perfil.tsx:636 e credito.tsx:1105-1131) já
+registrados na entrada do Harbor.
+
+**Sentinel, itens 2 a 5.** N1, T25, seletor de carteira e fila
+parcelada/comprovante/QR verdes por módulo real e leitura de código; falta a
+parte no aparelho de cada um.
+
+**Sentinel, item 6.** Confirma o fechamento do Harbor sobre o Granabô: até o
+`4c17711` ser publicado, `listar` não é confiável em tela com aspas no texto.
+
+**Limpeza pendente, apontada pelo Sentinel:** o lançamento AUDIT de R$ 20,00
+que explica o saldo negativo da Início; os três lançamentos de 26/09 vistos
+pelo Ledger nos despejos das 00h12 (conferir se ainda existem); religar
+"Bloquear captura de tela" no Perfil, desligado durante a rodada para prints.
+
+**Descartado/sem verificação:** nada de novo além do já registrado nas
+entradas anteriores desta rodada; nenhum achado exige alerta fora da triagem
+do maestro.
