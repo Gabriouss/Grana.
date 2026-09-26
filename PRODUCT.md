@@ -26,16 +26,18 @@ precisar calcular.
 
 ## Positioning
 
-O Grana. nunca se conecta ao banco do usuário — não pede login bancário,
-não usa Open Finance, não é um agregador. É um registro que a própria
-pessoa alimenta, e é exatamente por isso que ele pode oferecer os jeitos
-rápidos de entrada (voz no app, voz no widget, QR de nota) sem pedir
-credencial nenhuma. O mecanismo que um concorrente não copia casualmente:
-entrada por voz/QR alimentando um categorizador automático, mais um cálculo de
-"Livre para Gastar" do mês vigente, que desconta o que já está guardado em
-cofrinhos e divide pelos dias restantes (regra 20 do `AGENTS.md`) —
-apps que exigem conexão bancária trocam privacidade por conveniência; o
-Grana. entrega a conveniência sem essa troca.
+O Grana. é um registro que a própria pessoa alimenta, e por isso oferece jeitos
+rápidos de entrada (voz no app, voz no widget e QR de nota até o dia D; foto da
+nota depois do dia D) sem pedir credencial nenhuma. O mecanismo que um
+concorrente não copia casualmente: entrada por voz/QR alimentando um
+categorizador automático até o dia D e por foto de nota depois do dia D, mais um
+cálculo de "Livre para Gastar" do mês vigente, que desconta o que já está
+guardado em cofrinhos e divide pelos dias restantes (regra 20 do
+`AGENTS.md`). Regra de comunicação: publicidade, landing e telas não usam a
+ausência de conexão bancária como argumento de venda; o assunto só aparece
+como resposta neutra na FAQ.
+O dia D só passa a valer quando o Sentinel o declarar após a build nova e o QA
+no aparelho.
 
 ## Operating Context
 
@@ -76,8 +78,9 @@ desconectado.
 
 ## Capabilities and Constraints
 
-- Nunca se conecta a banco/Open Finance — é sempre autodeclarado. Restrição
-  de privacidade deliberada, não uma feature que falta.
+- Nunca se conecta a banco ou Open Finance: é sempre autodeclarado. É uma
+  restrição de produto e de privacidade, e não entra em publicidade como
+  vantagem.
 - Os mecanismos de entrada (voz no app, voz no widget do Android, QR de
   nota) caem na mesma heurística de categorização (`lib/heuristics.ts`). O
   webhook do WhatsApp espelha essa heurística e continua recebendo correção

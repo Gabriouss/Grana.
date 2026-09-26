@@ -11506,3 +11506,14 @@ O `test:ci` do estado publicado inclui as guardas de foto/OCR e de grant,
 além das suítes dos fluxos tocados. O QA de aparelho ainda é necessário para
 foto/OCR real, para os caminhos offline específicos da rodada e para fechar a
 limpeza autorizada; nenhum EAS build foi disparado.
+
+## 25/09/2026 — M1 — posicionamento sem vantagem bancária
+
+O autor aprovou a revisão de `E:\Grana-temporarios\2026-09-25-marketing\copy-sem-vantagem-bancaria.md:29-37,79`: remover de `PRODUCT.md` a vantagem competitiva proibida — “apps que exigem conexão bancária trocam privacidade por conveniência” — e substituí-la pelo texto proposto pelo Beacon.
+
+- **Pedido e decisão:** manter voz/QR até o dia D e só mencionar foto da nota depois do dia D; o Sentinel é quem declara o dia D, após a build nova e o QA no aparelho.
+- **Sintoma e causa:** o texto de posicionamento apresentava a ausência de conexão bancária como comparação de privacidade contra concorrentes. A causa era copy desatualizada em `PRODUCT.md`, não um comportamento novo do app.
+- **Arquivos concretos:** `PRODUCT.md`, seções `Positioning` e `Capabilities and Constraints`; fonte da decisão em `E:\Grana-temporarios\2026-09-25-marketing\copy-sem-vantagem-bancaria.md:29-37,79`. O hash do commit desta revisão será registrado após o commit.
+- **Descartado:** não tocar no aviso do `ImportarExtratoModal`; não tocar na política de privacidade nem nas FAQs. Também não antecipar foto da nota antes da declaração do Sentinel.
+- **O que deu errado:** a copy anterior tratava uma restrição de produto como vantagem de venda. A correção ficou limitada à documentação de posicionamento; nenhum código, migration ou build foi alterado.
+- **Verificação:** conferido por diff que o trecho proibido saiu do `PRODUCT.md`, que a regra voz/QR até D/foto depois de D está explícita e que os arquivos de app não fazem parte da alteração. Falta apenas o commit/push e a verificação final do espelho e do verificador do vault; o dia D ainda não foi declarado.
