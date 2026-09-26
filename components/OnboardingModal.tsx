@@ -11,7 +11,7 @@ import {
    Início e do Perfil: URL remota decodificada em tamanho cheio, sem cache. */
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget, lh } from '@/lib/theme';
 import * as Clipboard from 'expo-clipboard';

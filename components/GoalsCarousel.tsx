@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
 import AppModal from './AppModal';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { ESPACO_ALCA } from './WidgetGrid';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget, menta } from '@/lib/theme';

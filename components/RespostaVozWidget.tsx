@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 import type * as NotificationsModule from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { deleteBill, deleteTransaction } from '@/lib/data';
 import { destinoDaFala } from '@/lib/destino-da-fala';
 import { getNotifications } from '@/lib/notifications';

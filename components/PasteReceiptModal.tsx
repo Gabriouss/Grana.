@@ -8,7 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import AppModal from './AppModal';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import {

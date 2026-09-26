@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { mensagemErro } from '@/lib/erros';
 import { isLikelyNetworkError } from '@/lib/offline-cache';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { MONTH_NAMES } from '@/lib/format';

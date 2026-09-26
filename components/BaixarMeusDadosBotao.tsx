@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { useSession } from '@/lib/auth-context';
 import { exportarMeusDados } from '@/lib/exportar-meus-dados';
 import { mensagemErro } from '@/lib/erros';

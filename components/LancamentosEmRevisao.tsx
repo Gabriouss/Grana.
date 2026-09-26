@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { assinarDadoNovo } from '@/lib/cache-de-tela';
 import { mensagemErro } from '@/lib/erros';
 import { formatBRL, formatDateLabel } from '@/lib/format';

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { deleteUserAccount, reauthenticate } from '@/lib/data';
 import { useSession } from '@/lib/auth-context';
 import { useKeyboardHeight } from '@/lib/teclado';

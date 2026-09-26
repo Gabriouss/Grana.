@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import AppModal, { JanelaFlutuante } from './AppModal';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, PALETTE_30, fonts, type } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
