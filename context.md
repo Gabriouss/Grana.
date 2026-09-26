@@ -12433,3 +12433,42 @@ nem autorização para aplicar a migration.
    arquivo real de banco exportado com compra positiva e confirmação da
    correção do Forge; a migration, release e qualquer publicação continuam
    pendentes de autorização do autor.
+
+## 26/09/2026 — M1 — diagnóstico da divergência do verificar-vault
+
+A rodada que exibiu 49 fontes ausentes foi executada com o argumento correto,
+`G:\Meu Drive\Obsidian`, mas no sandbox normal. Em
+`scripts/verificar-vault.mjs`, a função `git()` chama `execFileSync('git', ...)`
+e captura qualquer erro como string vazia. O subprocesso `git` falhou com
+`EPERM` no sandbox, então o conjunto de arquivos rastreados ficou vazio e
+todos os 49 perenes com fontes foram falsamente marcados como ausentes.
+
+Não alterei nenhum campo `fonte`: os sete perenes editados pelo Ledger mantêm
+as fontes declaradas; também não houve remoção ou renomeação de arquivo nos
+commits de 26/09 (incluindo `eb720e7`, `32d9efa`, `9591bb2`, `90718b1`,
+`9613f42`, `83811b9`, `d2a2fb3` e `d776ba4`). O relatório curto com a lista dos
+49 falsos positivos está em
+`E:\Grana-temporarios\2026-09-26-retomada\relatorio-Codex-verificar-vault-49-falsos-positivos.md`.
+
+Repetido com permissão para o subprocesso, usando a mesma pasta, o resultado
+real foi: 0 fontes ausentes, 0 perenes atrasadas, 19 perenes sem `revisado`,
+0 links quebrados e 4 notas sem link de entrada. Nenhum arquivo do repositório
+foi apagado por outro agente por causa deste episódio; não há commit de deleção
+ou renomeação a apontar.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** explicar a diferença entre 0 e 49 fontes ausentes, listar os
+   49, agrupar a causa e corrigir qualquer alteração documental do Ledger.
+2. **Sintoma e causa:** o sandbox normal mostrou 49; a causa foi `EPERM` no
+   `git` interno, convertido silenciosamente em conjunto vazio pelo script.
+3. **Arquivos e identificadores:** `scripts/verificar-vault.mjs`,
+   `G:\Meu Drive\Obsidian`, `eb720e7` e os commits do dia; relatório com a
+   lista completa no caminho acima.
+4. **Descartado:** alterar `fonte`, renomear notas, corrigir caminhos válidos,
+   puxar ou apagar arquivos; a pasta e o argumento estavam corretos.
+5. **O que deu errado:** eu dei como resultado final a execução sem escalada,
+   sem perceber que o `catch` do verificador mascarou o `EPERM`.
+6. **Sem verificação:** permanece apenas a triagem normal do vault: 19 notas
+   sem `revisado` e 4 órfãs; a checagem de fontes ausentes está confirmada em
+   execução elevada.
