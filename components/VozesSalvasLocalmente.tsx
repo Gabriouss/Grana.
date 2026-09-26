@@ -25,7 +25,11 @@ export default function VozesSalvasLocalmente() {
     return () => { remover(); evento.remove(); };
   }, []);
   if (!itens.length && !audios) return null;
-  return <View style={[styles.container, { paddingTop: Math.max(12, insets.top + 8) }]}>
+  /* A faixa já ocupa o inset superior antes da rota montar seu cabeçalho.
+     Sem esta compensação, a SafeAreaView da Início reserva o mesmo inset de
+     novo depois da faixa e cria um vazio grande entre ela e o avatar. A margem
+     só existe quando a faixa existe; sem faixa este componente retorna null. */
+  return <View style={[styles.container, { paddingTop: Math.max(12, insets.top + 8), marginBottom: -insets.top }]}>
     {itens.length > 0 && <Text style={styles.text}>{itens.length === 1 ? '1 lançamento por voz salvo neste aparelho.' : `${itens.length} lançamentos por voz salvos neste aparelho.`}</Text>}
     {audios > 0 && <Text style={styles.text}>{audios === 1 ? '1 fala aguardando conexão.' : `${audios} falas aguardando conexão.`}</Text>}
     {/* `polite` porque a frase muda sozinha ao fim da sincronização: sem região
