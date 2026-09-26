@@ -15,7 +15,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-17xIDrtPmWHM0Kk0UhlrPVHbznJFe7MZ3M2UwYNEaEU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cjnuzfbvfuauvlzfoutv.supabase.co; font-src 'self' data:; connect-src 'self' https://cjnuzfbvfuauvlzfoutv.supabase.co wss://cjnuzfbvfuauvlzfoutv.supabase.co https://api.pwnedpasswords.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'sha256-GtcxbiSLIDrJHd8A5SYDeKz+CmmLwd9paZYmvmHiIPg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cjnuzfbvfuauvlzfoutv.supabase.co; font-src 'self' data:; connect-src 'self' https://cjnuzfbvfuauvlzfoutv.supabase.co wss://cjnuzfbvfuauvlzfoutv.supabase.co https://api.pwnedpasswords.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
         },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
