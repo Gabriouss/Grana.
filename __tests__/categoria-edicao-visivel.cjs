@@ -67,7 +67,7 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
     StyleSheet: { create: (s) => s }, Text: 'Text', TextInput: 'TextInput', View: 'View',
   },
   './AppModal': { __esModule: true, default: 'AppModal', JanelaFlutuante },
-  '@/lib/alert': { Alert: { alert: () => {} } },
+  '@/lib/alerta': { Alert: { alert: () => {} } },
   '@expo/vector-icons/Ionicons': { default: 'Ionicons' },
   '@/lib/theme': {
     theme: {}, radius: {}, spacing: { xl: 24, md: 16 }, PALETTE_30: ['#000000'], fonts: {}, type: { apoio: 14 },

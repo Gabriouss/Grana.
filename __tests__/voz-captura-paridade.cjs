@@ -154,7 +154,7 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
       ActivityIndicator: 'ActivityIndicator', Text: 'Text', Platform: { OS: 'android' },
       StyleSheet: { create: (x) => x },
     },
-    '@/lib/alert': { Alert: { alert: (titulo, texto) => reg.alertas.push(titulo) } },
+    '@/lib/alerta': { Alert: { alert: (titulo, texto) => reg.alertas.push(titulo) } },
     '@expo/vector-icons/Ionicons': 'Ionicons',
     'expo-audio': {
       AudioQuality: { MEDIUM: 0 }, IOSOutputFormat: { MPEG4AAC: 0 },

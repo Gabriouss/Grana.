@@ -127,7 +127,7 @@ async function compraInteira() {
 function carregarPergunta() {
   const alertas = [];
   const mod = carregar('lib/excluir-lancamento.ts', {
-    './alert': { Alert: { alert: (titulo, msg, botoes) => alertas.push({ titulo, msg, botoes }) } },
+    './alerta': { Alert: { alert: (titulo, msg, botoes) => alertas.push({ titulo, msg, botoes }) } },
   });
   return { mod, alertas };
 }
@@ -178,19 +178,12 @@ async function pergunta() {
 }
 
 async function alertaNaWeb() {
-  console.log('\nTres botoes no navegador');
+  console.log('\nTres botoes na janela visual');
 
-  function carregarAlerta(respostas) {
-    const perguntas = [];
-    const mod = carregar('lib/alert.ts', {
-      'react-native': { Alert: { alert() { throw new Error('nativo nao deveria rodar na web'); } }, Platform: { OS: 'web' } },
-    }, {
-      window: {
-        alert() {},
-        confirm(texto) { perguntas.push(texto); return respostas.shift() ?? false; },
-      },
-    });
-    return { mod, perguntas };
+  function carregarAlerta() {
+    const api = carregar('lib/alerta.ts', {});
+    const mod = carregar('lib/alert.ts', { './alerta': api });
+    return { mod };
   }
   const botoes = (feito) => [
     { text: 'Cancelar', style: 'cancel', onPress: () => feito.push('cancelar') },
@@ -198,32 +191,39 @@ async function alertaNaWeb() {
     { text: 'A compra inteira', style: 'destructive', onPress: () => feito.push('inteira') },
   ];
 
-  // 8. OK na primeira pergunta escolhe a PRIMEIRA opção, não a última.
+  // 8. A janela conserva a ordem e a ação só acontece ao pressionar o botão.
   {
     const feito = [];
-    const { mod, perguntas } = carregarAlerta([true]);
+    const { mod } = carregarAlerta();
     mod.Alert.alert('Excluir compra parcelada', 'TV (2/3)', botoes(feito));
-    assert.deepEqual(feito, ['esta'], 'o antigo disparava "A compra inteira" aqui');
-    assert.ok(/Só esta parcela\?$/.test(perguntas[0]));
-    ok('OK na primeira pergunta apaga so a parcela');
+    const pedido = mod.obterAlertaAtual();
+    assert.equal(feito.length, 0, 'enfileirar não executa uma ação sozinho');
+    mod.pressionarAlerta(pedido.id, 1);
+    assert.deepEqual(feito, ['esta']);
+    ok('botão "Só esta parcela" apaga só a parcela');
   }
 
-  // 9. Recusar a primeira e aceitar a segunda escolhe a segunda.
+  // 9. A ação destrutiva mantém seu estilo e seu callback.
   {
     const feito = [];
-    const { mod } = carregarAlerta([false, true]);
+    const { mod } = carregarAlerta();
     mod.Alert.alert('t', 'm', botoes(feito));
+    const pedido = mod.obterAlertaAtual();
+    assert.equal(pedido.buttons[2].style, 'destructive');
+    mod.pressionarAlerta(pedido.id, 2);
     assert.deepEqual(feito, ['inteira']);
-    ok('recusar a primeira e aceitar a segunda apaga a compra inteira');
+    ok('botão destrutivo apaga a compra inteira');
   }
 
-  // 10. Recusar tudo é cancelar.
+  // 10. Cancelar fecha sem apagar.
   {
     const feito = [];
-    const { mod } = carregarAlerta([false, false]);
+    const { mod } = carregarAlerta();
     mod.Alert.alert('t', 'm', botoes(feito));
+    const pedido = mod.obterAlertaAtual();
+    mod.pressionarAlerta(pedido.id, 0);
     assert.deepEqual(feito, ['cancelar']);
-    ok('recusar todas as opcoes cancela, sem apagar nada');
+    ok('botão Cancelar não apaga nada');
   }
 }
 

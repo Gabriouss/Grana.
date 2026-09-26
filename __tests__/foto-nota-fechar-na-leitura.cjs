@@ -26,6 +26,7 @@ const react = {
     if (!(k in celulas)) celulas[k] = typeof inicial === 'function' ? inicial() : inicial;
     return [celulas[k], (v) => { celulas[k] = typeof v === 'function' ? v(celulas[k]) : v; }];
   },
+  useEffect(efeito) { efeito(); },
   useRef(inicial) {
     const k = cursor++;
     if (!(k in celulas)) celulas[k] = { current: inicial };
@@ -47,13 +48,12 @@ const imports = {
     jsxs: (type, props) => (typeof type === 'function' ? type(props) : { type, props }),
   },
   'react-native': { ActivityIndicator: 'ActivityIndicator', StyleSheet: { create: (s) => s }, Text: 'Text', TextInput: 'TextInput', View: 'View' },
-  '@/lib/alert': { Alert: { alert: (...a) => registro.alertas.push(a) } },
+  '@/lib/alerta': { Alert: { alert: (...a) => registro.alertas.push(a) } },
   'expo-camera': { CameraView: 'CameraView', useCameraPermissions: () => [{ granted: true }, async () => ({ granted: true })] },
   '@expo/vector-icons/Ionicons': 'Ionicons',
   '@/lib/theme': { theme: {}, radius: {}, spacing: {}, type: {}, fonts: {}, touchTarget: 48, lh: () => 0 },
   '@/lib/heuristics': { guessCategoryFromText: (t) => ({ name: t, color: '#fff' }) },
   '@/lib/format': { formatMoney: (v) => String(v).replace('.', ','), parseAmount: Number, formatMoneyInput: (v) => v, todayISO: () => '2026-09-26' },
-  '@/lib/foto-nota-ocr': { lerTotalDaFoto: (uri) => { registro.leituras.push(uri); return new Promise((r) => { resolverLeitura = r; }); } },
   '@/lib/offline-cache': { salvarOuGuardarNoAparelho: async () => ({ guardado: false }) },
   '@/lib/lancamentos-alterados': { marcarLancamentosAlterados() {} },
   '@/lib/erros': { mensagemErro: (e) => String(e) },
@@ -68,11 +68,33 @@ const imports = {
   './PermissaoCamera': 'PermissaoCamera',
   '@/lib/modal-accessibility': { useModalAccessibility() {} },
   '@/lib/motion': { useReducedMotion: () => true },
-  'expo-file-system/legacy': {
-    deleteAsync: async (uri) => { registro.apagadas.push(uri); if (!teimosas.has(uri)) noCache.delete(uri); },
-    getInfoAsync: async (uri) => ({ exists: noCache.has(uri) }),
-  },
 };
+const discoSimulado = {
+  deleteAsync: async (uri) => { registro.apagadas.push(uri); if (!teimosas.has(uri)) noCache.delete(uri); },
+  getInfoAsync: async (uri) => ({ exists: noCache.has(uri) }),
+};
+/* lib/foto-nota-ocr.ts REAL (prazo total, exclusão da foto), com o ML Kit e o
+   disco simulados. A leitura é uma promessa controlada pelo teste. */
+const compilarTs = (arq, jsx) => ts.transpileModule(fs.readFileSync(arq, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, ...(jsx ? { jsx: ts.JsxEmit.ReactJSX } : {}) },
+}).outputText;
+const parser = {};
+vm.runInNewContext(compilarTs('lib/nota-foto-parser.ts'), { exports: parser, Number, Set, RegExp, String, Math });
+const ocr = {};
+vm.runInNewContext(compilarTs('lib/foto-nota-ocr.ts'), {
+  exports: ocr, Promise, String, Error, setTimeout, clearTimeout,
+  console: { ...console, warn() {}, error: (...a) => registro.erros.push(a) },
+  require: (n) => ({
+    './nota-foto-parser': parser,
+    'expo-file-system/legacy': discoSimulado,
+    '@react-native-ml-kit/text-recognition': { __esModule: true, default: { recognize: (uri) => {
+      registro.leituras.push(uri);
+      return new Promise((r, j) => { resolverLeitura = (v) => Promise.resolve(v).then(r, j); });
+    } } },
+  })[n],
+});
+imports['@/lib/foto-nota-ocr'] = ocr;
+const cupom = (texto) => ({ blocks: [{ lines: texto.split(/\n/).map((t) => ({ text: t })) }] });
 
 const modulo = {};
 vm.runInNewContext(
@@ -114,15 +136,17 @@ function prepararCamera() {
   prepararCamera();
   const tirando = porHandler(render(), 'fotografar')();
   await esperar();
-  resolverLeitura({ ok: true, total: { valorTotal: 42.5, motivo: 'ok' } });
+  resolverLeitura(cupom('VALOR TOTAL R$ 42,50'));
   await tirando;
   const confirmacao = render();
   ok(naConfirmacao(confirmacao), 'sem fechar, a leitura leva à confirmação');
   ok(achar(confirmacao, (n) => n.type === 'TextInput' && n.props.value === '42,5').length === 1, 'com o valor lido');
   /* Achado do Watchtower (26/09/2026): a tela promete que a foto é apagada
-     logo depois da leitura. Com `void apagarFoto`, a confirmação aparecia com
-     a foto ainda no cache e uma falha ao apagar sumia calada. */
-  ok(registro.apagadas.includes('file://foto-0.jpg') && !noCache.has('file://foto-0.jpg'), 'a foto já saiu do cache quando a confirmação aparece');
+     logo depois da leitura. A exclusão começa assim que a leitura termina e é
+     conferida; ela não segura a confirmação (N2, 26/09 à tarde: esperar por
+     ela deixou a tela em "Lendo a nota..." além do prazo). */
+  await esperar();
+  ok(registro.apagadas.includes('file://foto-0.jpg') && !noCache.has('file://foto-0.jpg'), 'a foto sai do cache logo depois da leitura');
   ok(registro.erros.length === 0, 'exclusão normal não deixa erro')
 
   /* Volta ao estado inicial pelo próprio fechar da confirmação. */
@@ -137,7 +161,7 @@ function prepararCamera() {
   ok(registro.leituras.length === 2, 'a segunda leitura começou');
   porHandler(render(), 'fechar')();
   const fechamentos = registro.fechou;
-  resolverLeitura({ ok: true, total: { valorTotal: 99.9, motivo: 'ok' } });
+  resolverLeitura(cupom('VALOR TOTAL R$ 99,90'));
   await tirando2;
   await esperar();
   const reaberta = render();
@@ -164,7 +188,7 @@ function prepararCamera() {
   teimosas.add(`file://foto-${registro.leituras.length}.jpg`);
   const tirando4 = porHandler(render(), 'fotografar')();
   await esperar();
-  resolverLeitura({ ok: true, total: { valorTotal: 10, motivo: 'ok' } });
+  resolverLeitura(cupom('VALOR TOTAL R$ 10,00'));
   await tirando4;
   ok(naConfirmacao(render()), 'a confirmação aparece mesmo assim');
   ok(registro.erros.some((a) => /continuou no cache/.test(String(a[0]))), 'e a foto que ficou no cache deixa log de erro');
