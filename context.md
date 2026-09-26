@@ -12005,3 +12005,117 @@ pelo Ledger nos despejos das 00h12 (conferir se ainda existem); religar
 **Descartado/sem verificação:** nada de novo além do já registrado nas
 entradas anteriores desta rodada; nenhum achado exige alerta fora da triagem
 do maestro.
+
+## 26/09/2026 — M1 — N2/C1-c, P1 novo: OCR da foto da nota trava "Lendo a nota..." sem prazo; Harbor fecha A5, propõe A6, entrega push e flag; Forge fecha A1, P3, F2, F3, C1-b, propõe F1
+
+### N2/C1-c, achado novo do Sentinel, P1, encaminhado ao Forge com prioridade
+
+`lib/foto-nota-ocr.ts:26`: `await reconhecedor.recognize(uri)` não tem prazo
+nenhum. Reproduzido ao vivo: depois de fotografar, a tela ficou presa em
+"Lendo a nota..." por mais de 10 minutos reais, sem resolver para `ok` nem
+para `falhou`. `adb logcat` mostra o Google Play Services tentando entregar
+módulos do ML Kit em loop (erro de arquivo do módulo ausente, repetindo a cada
+~10 s); o próprio commit da feature já registrava o risco ("Usa
+NativeModules... Não testado"). A Promise do reconhecedor nunca chama
+`resolve` nem `reject`. A única saída é fechar pelo X (funciona, protegido por
+`sessaoRef`); sem prazo, ninguém recebe a chance de digitar o valor manualmente
+a não ser que perceba o travamento sozinho. **Bloqueante para ligar a flag
+`foto_nota`.** Viola a regra 9 (todo caminho de falha precisa de prazo e
+recibo). Sugestão do Sentinel: envolver o `recognize(uri)` numa corrida com
+timeout, a mesma técnica de `lib/fetch-com-prazo.ts`, caindo em
+`{ ok:false, motivo:'falhou' }`. **Não verificado se acontece em hardware
+real** (pode ser peculiaridade deste emulador sem Play Store completa); mesmo
+assim, o código não tem proteção nenhuma contra essa classe de problema em
+nenhum ambiente. Relatório:
+`E:\Grana-temporarios\2026-09-26-retomada\relatorio-Sentinel-retomada.md`.
+
+O mesmo relatório do Sentinel confirma, com prints, `1f7121d` (dica legível,
+sem salto ao fotografar) e `3513e34` (uma recusa já marca `canAskAgain=false`
+neste emulador; "Abrir configurações" abre a App Info de verdade).
+
+### Harbor: A5 corrigido, A6 proposto (não aplicado), push de meio-dia pronto, flag pronta, R1 apagado
+
+Relatório: `relatorio-Harbor-a5-a6-push-flag-r1.md`. Commits locais `2382ab6`
+(A5) e `7b2a9fd` (push), sem push (main local acima do origin).
+
+- **A5, corrigido:** `app.json` só declara `www.granaponto.com.br` no
+  `intentFilters`, por pedido do maestro. `granaponto.com.br` (sem www)
+  respondia 308 ao `assetlinks.json`, e até o Android 11 um host que falha
+  derruba o App Link de todos. Descartado servir o arquivo sem redirecionar no
+  domínio nu (nenhum e-mail usa esse domínio; ele segue liberado na
+  `uri_allow_list` do Supabase). `__tests__/app-links-callback.cjs` 20/20.
+- **A6, confirmado no código, proposta pendente do autor:** no PKCE, o tipo
+  `recovery` não viaja na URL do e-mail (lido em
+  `node_modules/@supabase/auth-js`); só volta `?code=`. Depois da build com
+  App Link, quem pede nova senha no site e abre o e-mail no celular cai no
+  app, que mostra "E-mail confirmado. Entre com seu e-mail e senha" — falso e
+  sem saída, porque a pessoa não sabe a senha. Hoje (1.10.4, sem App Link)
+  funciona pelo navegador. Proposta do Harbor, recomendada: a recuperação
+  pedida na web usa uma rota fora do `pathPrefix` do App Link
+  (`www.granaponto.com.br/auth/recuperar`), sempre abrindo no navegador.
+  Descartada: o app reabrir a URL no navegador ao falhar a troca (o Android
+  devolveria o link ao próprio app de novo). Precisa entrar na MESMA build do
+  App Link, ou a regressão sai junto. Não confirmado empiricamente (a URL
+  final do redirect, que exige ler o e-mail da conta de teste).
+- **Push de meio-dia de sábado e domingo, pronto sem deploy (`7b2a9fd`):**
+  `janelasVencidas` ganhou `meio_dia_finde`; migration
+  `20260926120000_push_janela_meio_dia_finde.sql` (escrita, **não aplicada**)
+  altera o CHECK de `janela` que hoje só aceita `noite`/`almoco`. A janela nova
+  é gravada num upsert separado de propósito: um upsert só faria o banco
+  recusar o lote inteiro antes da migration e derrubar a noite de todo mundo
+  no fim de semana. Teste do handler, 1976 checagens, reprova a versão antiga
+  da função e aprova a nova.
+- **Flag `foto_nota`, migration pronta e conferida em produção:** idempotente,
+  satisfaz o CHECK de mensagem. A linha ainda não existe; enquanto isso a
+  chave desconhecida conta como ligada.
+- **R1, histórico do Granabô da conta de teste apagado:** 82 linhas de
+  `assistant_messages`, às 11h22 de 26/09, só da conta de teste (login pelo
+  `E2E_TEST_EMAIL` dentro do script). Memória do assistente não apagada (não
+  aparece na tela; passo a mais se o autor quiser). Continua sobrando o AUDIT
+  de R$ 20,00 do Sentinel.
+
+### Forge: /assinar sem banco, A1, P3, F2, F3, C1-b; proposta F1
+
+Relatório: `relatorio-Forge-copy-foto-nota-e-lembretes.md`. Commits locais
+`d675b1f`, `faf031e`, `08d3e88`, `a029004`, sem push.
+
+- **`/assinar`:** `ogDescription` em `scripts/inject-og-meta.js` não fala mais
+  de conta bancária.
+- **A1:** travessão trocado por ponto em `PasteReceiptModal.tsx` e
+  `QrScannerModal.tsx`.
+- **P3:** `perfil.tsx:636`, `label` do interruptor alinhado ao texto visível
+  ("Lembrete no meio-dia (12h)").
+- **F2, e o mesmo defeito achado também no QR:** o leitor de QR usa
+  `com.google.mlkit:barcode-scanning` (conferido no `build.gradle` do pacote)
+  e a tela de permissão também dizia "nada é enviado". Corrigidos os dois
+  textos.
+- **F3:** `fechar()` da foto da nota agora marca `sessaoRef`; leitura que
+  termina depois de fechar só apaga a foto, sem tocar estado nem alerta.
+  Teste novo `foto-nota-fechar-na-leitura.cjs`, 14/14, no `test:ci`.
+- **C1-b, corrigido:** excluir cartão cancela os lembretes de fatura dele
+  (`cancelarLembretesDoCartao`); a carga reconcilia lembretes órfãos depois do
+  laço. Risco conhecido, registrado: se a lista vier só do disco (fallback do
+  item 2/N1), um cartão criado em outro aparelho e ausente do disco teria os
+  lembretes cancelados à toa; a próxima carga com rede reagenda.
+- **F1, proposta de texto para a Política de Privacidade, sem commit, decisão
+  do autor:** `proposta-Forge-F1-politica-foto-da-nota.md`. Três trechos novos
+  (seções "Quais dados coletamos", "Para que usamos" e "Com quem
+  compartilhamos"), citando o ML Kit do Google e que a imagem não sai do
+  aparelho. O texto de métricas do ML Kit **não foi reconferido nesta
+  sessão** contra a página do Google; pede confirmação antes de publicar.
+  Pergunta ao autor: incluir o ML Kit nos Termos, seção "Recursos que dependem
+  de terceiros"? Sugestão do Forge: não, porque a foto não depende de rede.
+- **Conflito entre agentes, achado pelo Forge:** o `test:ci` completo, depois
+  do C1-b, deu 1 falha fora do diff dele — `corpus-schema-guardas.ts`, "a
+  migration das janelas de notificação permanece idêntica ao baseline do
+  schema" — causada pelo `7b2a9fd` do Harbor (push de meio-dia), commitado
+  minutos antes. O `test:ci` anterior a esse commit estava verde. Fica para
+  quem reconciliar o schema-guardas com a migration nova do push antes do
+  push conjunto.
+
+### Sem verificação (as três entregas)
+
+Nenhuma das telas foi vista no emulador nesta rodada (Sentinel testou câmera,
+permissão e o travamento do OCR, não as correções de A1/P3/F2/F3/C1-b, que
+saíram depois). A URL final do redirect de recuperação de senha (A6) e a
+entrega real de push de meio-dia continuam pendentes de teste.
