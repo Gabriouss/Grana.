@@ -5,7 +5,7 @@ import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
-import { parseCsvTextDetalhado } from '@/lib/heuristics';
+import { parseCsvTextDetalhado, tiposDaFatura } from '@/lib/heuristics';
 import { parseOfx, type LancamentoOfx, type OrigemOfx } from '@/lib/ofx-parser';
 import { escolherArquivoDeExtrato } from '@/lib/escolher-arquivo';
 import { LIMITS } from '@/lib/limits';
@@ -198,6 +198,13 @@ export default function ImportarExtratoModal({
   const ehCartao = origem === 'cartao';
   const cartaoEscolhido = cartoes.find((c) => c.id === cartaoId) ?? null;
   const comFitid = linhas.filter((l) => l.fitid).length;
+  /* Numa fatura o sinal do CSV segue a convenção da fatura, não a do extrato
+     (`tiposDaFatura`). A prévia, a contagem e o envio usam esta mesma lista,
+     para a tela mostrar exatamente o que será gravado. */
+  const linhasNaOrigem = ehCartao ? tiposDaFatura(linhas) : linhas;
+  const aImportar = ehCartao ? linhasNaOrigem.filter((l) => l.type !== 'in') : linhasNaOrigem;
+  const quantidadeEntradasRecusadas = linhasNaOrigem.length - aImportar.length;
+  const avisoEntradas = avisoEntradasNoCartaoRecusadas(quantidadeEntradasRecusadas);
 
   async function confirmar() {
     if (linhas.length === 0) return;
@@ -221,8 +228,6 @@ export default function ImportarExtratoModal({
        de fora, e a pessoa é avisada de quantas e do que fazer: sumir com elas
        em silêncio deixaria a fatura importada diferente do arquivo sem
        explicação. */
-    const aImportar = ehCartao ? linhas.filter((l) => l.type !== 'in') : linhas;
-    const avisoEntradas = avisoEntradasNoCartaoRecusadas(linhas.length - aImportar.length);
     if (aImportar.length === 0) {
       Alert.alert('Nada importado', avisoEntradas);
       return;
@@ -407,7 +412,7 @@ export default function ImportarExtratoModal({
               </Text>
 
               <FlatList
-                data={linhas}
+                data={linhasNaOrigem}
                 keyExtractor={(item, i) => item.fitid ?? String(i)}
                 style={styles.previewList}
                 contentContainerStyle={{ gap: 6, paddingVertical: 4 }}

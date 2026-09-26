@@ -133,8 +133,8 @@ const base = { description: 'AUDIT', amount: 50, category: 'Outros', color: '#ff
 
   /* ── 4. A tela de importação ──────────────────────────────────────── */
   const tela = fs.readFileSync(path.join(root, 'components/ImportarExtratoModal.tsx'), 'utf8');
-  ok(/const aImportar = ehCartao \? linhas\.filter\(\(l\) => l\.type !== 'in'\) : linhas;/.test(tela), 'numa fatura, as linhas de entrada ficam de fora antes de enviar');
-  ok(/avisoEntradasNoCartaoRecusadas\(linhas\.length - aImportar\.length\)/.test(tela), 'e a contagem vira o recibo');
+  ok(/const aImportar = ehCartao \? linhasNaOrigem\.filter\(\(l\) => l\.type !== 'in'\) : linhasNaOrigem;/.test(tela), 'numa fatura, as linhas de entrada ficam de fora antes de enviar');
+  ok(/avisoEntradasNoCartaoRecusadas\(quantidadeEntradasRecusadas\)/.test(tela), 'e a contagem vira o recibo');
   ok(/if \(aImportar\.length === 0\) \{\s*Alert\.alert\('Nada importado', avisoEntradas\);/.test(tela), 'fatura só com entradas: avisa e não importa nada');
   ok(/avisoEntradas \? `\$\{resumo\}/.test(tela), 'o recibo entra no alerta de importação concluída');
   ok(/const prontos = aImportar\.map/.test(tela), 'só as linhas aceitas são enviadas');

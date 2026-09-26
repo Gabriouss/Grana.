@@ -1150,6 +1150,10 @@ export type ParsedCsvTransaction = {
   occurred_on: string; // 'YYYY-MM-DD'
   /** Chave sintética de deduplicação — ver gerarFitidSintetico(). */
   fitid: string;
+  /** Sinal do valor como veio no arquivo. `type` segue a convenção de
+      EXTRATO; numa fatura a convenção é outra, e `tiposDaFatura` precisa do
+      sinal original para reclassificar. */
+  sinal: 1 | -1;
 };
 
 /**
@@ -1338,6 +1342,7 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
       color: catObj.color,
       occurred_on,
       fitid: gerarFitidSintetico(occurred_on, type, amount, desc),
+      sinal: negativo ? -1 : 1,
     });
 
     /* Teto de linhas: o insert em lote vai numa requisição só, então sem isto
@@ -1351,6 +1356,42 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
     totalLinhas: dataLines.length,
     truncado: dataLines.length > results.length,
   };
+}
+
+/**
+ * Tipos das linhas de um CSV quando a pessoa diz que o arquivo é FATURA de
+ * cartão (achado P1 do Harbor, 26/09/2026).
+ *
+ * `parseCsvTextDetalhado` classifica pela convenção de extrato: negativo é
+ * saída, positivo é entrada. Fatura usa, na maioria dos bancos (o CSV do
+ * Nubank, por exemplo), a convenção inversa: a compra vem POSITIVA e o que
+ * abate a fatura (pagamento, devolução) vem NEGATIVO. Com a convenção de
+ * extrato, marcar "fatura de cartão" deixava as compras de fora, como
+ * entradas recusadas, e o pagamento entrava como compra.
+ *
+ * Numa fatura, o sinal das COMPRAS é o da maioria das linhas: fatura é quase
+ * toda compra, e o que abate aparece poucas vezes. Isso cobre também o banco
+ * que exporta a fatura com a compra negativa, como um extrato. Empate fica com
+ * a convenção mais comum (compra positiva). Arquivo sem nenhum negativo é
+ * todo compra. As linhas do outro sinal viram `in`, e a tela de importação as
+ * deixa de fora e conta no aviso, porque o Grana. não registra entrada em
+ * cartão.
+ *
+ * Linha sem `sinal` (OFX, onde o tipo já é fato do arquivo) passa intacta.
+ */
+export function tiposDaFatura<T extends { type: TxType; sinal?: 1 | -1; occurred_on: string; amount: number; description: string; fitid?: string | null }>(
+  linhas: T[]
+): T[] {
+  const comSinal = linhas.filter((l) => l.sinal !== undefined);
+  if (comSinal.length === 0) return linhas;
+  const negativos = comSinal.filter((l) => l.sinal === -1).length;
+  const sinalDaCompra = negativos > comSinal.length - negativos ? -1 : 1;
+  return linhas.map((l) => {
+    if (l.sinal === undefined) return l;
+    const type: TxType = l.sinal === sinalDaCompra ? 'out' : 'in';
+    if (type === l.type) return l;
+    return { ...l, type, fitid: gerarFitidSintetico(l.occurred_on, type, l.amount, l.description) };
+  });
 }
 
 export type BudgetTemplate = {
