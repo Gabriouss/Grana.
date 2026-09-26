@@ -19,6 +19,8 @@ const deps = {
   './heuristics': { guessAmountFromText: () => 32, guessCategoryFromText: () => ({ name: 'Alimentação', color: '#fff' }),
     guessTypeFromText: () => 'out', descricaoDoLancamento: () => 'mercado', ehIntencaoBoleto: () => false,
     ehIntencaoCredito: () => true, matchCardByText: () => matched, matchWalletByText: () => null,
+    /* Tipo 'out' acima: compra, então não é entrada com intenção de crédito. */
+    entradaComIntencaoDeCredito: () => false,
     limparReferenciaCarteira: (t) => t, limparReferenciaCartao: (t) => t, parseParcelas: () => 1, parseRecorrencia: () => false },
   './data': { fetchCreditCards: async () => cards, fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => [{ id: 'wallet', name: 'Pessoal', is_default: true }] },

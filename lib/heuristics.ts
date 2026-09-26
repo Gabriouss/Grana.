@@ -523,6 +523,20 @@ export function limparReferenciaCartao(text: string, card: CartaoBusca): string 
   return resultado;
 }
 
+/**
+ * Fala de dinheiro ENTRANDO com intenção de crédito ("X de 40 no crédito",
+ * "devolução de 80 no cartão C6"). Entrada no cartão não existe no Grana.
+ * (autor, 26/09/2026): nenhuma entrada grava essa fala, ela vai para a
+ * revisão. O tipo é lido SEM o nome do cartão citado: um cartão chamado
+ * "Salário" não faz de uma compra uma entrada. "Recebi um crédito de 500" não
+ * é intenção de crédito e continua entrada. Uma regra só para a voz (app e widget) e o destino da fala na tela; cópia em `supabase/functions/_shared/interpretar-lancamento.ts` (Granabô), travada pelo `sync-parser`.
+ */
+export function entradaComIntencaoDeCredito(text: string, cards: CartaoBusca[]): boolean {
+  if (!ehIntencaoCredito(text)) return false;
+  const cartao = matchCardByText(text, cards);
+  return guessTypeFromText(cartao ? limparReferenciaCartao(text, cartao) : text) === 'in';
+}
+
 function normalizarNomeCarteira(texto: string): string {
   return normalizarParaBusca(texto)
     .normalize('NFD')

@@ -37,6 +37,7 @@ import {
   descricaoDoLancamento,
   ehIntencaoBoleto,
   ehIntencaoCredito,
+  entradaComIntencaoDeCredito,
   guessAmountFromText,
   guessCategoryFromText,
   guessTypeFromText,
@@ -371,6 +372,14 @@ function linhaNoPeriodo(
 }
 
 const AVISO_PARCELA_INCERTA = ' Atenção: não achei a compra original de uma parcela próxima a esta fatura, então o total pode estar incompleto.';
+
+/* Dinheiro entrando com intenção de crédito: não grava (ver
+   `entradaComIntencaoDeCredito`). Não convida a repetir a mesma frase, que
+   seria recusada de novo; aponta os dois caminhos que gravam. */
+const RESPOSTA_ENTRADA_NO_CREDITO =
+  'No cartão do Grana. só entram compras, então esse valor ficou de fora. ' +
+  'Se foi uma compra no cartão, me diga o que comprou e quanto foi. ' +
+  'Se o dinheiro caiu numa carteira, me diga quanto recebeu e em qual carteira.';
 
 function intervaloMaisAmplo(periodos: Periodo[]): Periodo {
   if (!periodos.length) return { inicio: '9999-12-31', fim: '1900-01-01', rotulo: '' };
@@ -1041,15 +1050,14 @@ async function executarCriarLancamento(
   };
 
   const categoriaExtras = categorias.filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color }));
-  /* Entrada com intenção de crédito não grava: até 23/09/2026 o chat gravava
-     como entrada na carteira e a voz como COMPRA no cartão. Entrada no cartão
-     não existe no Grana. (decisão do autor, 26/09/2026), então a resposta é a
-     de fala não entendida. Não depende de citar cartão. "Recebi um crédito de
-     500" não é intenção de crédito (`ehIntencaoCredito`) e continua entrada.
-     Mesma detecção em `lib/widget-voz-task.ts`; paridade em
-     `__tests__/paridade-entrada-cartao-granabo-voz.cjs`. */
-  if (!ehIntencaoBoleto(financeiro) && tipo === 'in' && ehIntencaoCredito(financeiro)) {
-    return 'Não entendi esse lançamento. Me diz o que foi e quanto, em reais (ex.: "almoço 38,50"). ' + AINDA_NAO_REGISTREI;
+  /* Entrada com intenção de crédito não grava (decisão do autor, 26/09/2026:
+     entrada no cartão não existe). Mesma função da voz no app e no widget
+     (`entradaComIntencaoDeCredito`, boleto antes), paridade em
+     `__tests__/paridade-entrada-cartao-granabo-voz.cjs`. A resposta não pede
+     para repetir a frase, que seria recusada de novo: oferece os dois
+     caminhos que gravam, compra no cartão ou dinheiro recebido numa carteira. */
+  if (!ehIntencaoBoleto(financeiro) && entradaComIntencaoDeCredito(financeiro, cartoes)) {
+    return RESPOSTA_ENTRADA_NO_CREDITO + ' ' + AINDA_NAO_REGISTREI;
   }
 
   const categoria = guessCategoryFromText(financeiro, categoriaExtras);

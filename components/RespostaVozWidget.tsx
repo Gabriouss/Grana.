@@ -4,7 +4,7 @@ import type * as NotificationsModule from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { Alert } from '@/lib/alert';
 import { deleteBill, deleteTransaction } from '@/lib/data';
-import { ehIntencaoBoleto, ehIntencaoCredito } from '@/lib/heuristics';
+import { destinoDaFala } from '@/lib/destino-da-fala';
 import { getNotifications } from '@/lib/notifications';
 import { desfazerOperacaoVoz } from '@/lib/voice-operations';
 import { ACAO_DESFAZER, podeNotificar, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
@@ -114,14 +114,15 @@ export default function RespostaVozWidget() {
         router.push('/(app)/');
         return;
       }
-      /* Mesma ordem de roteamento do botão de voz das telas (boleto antes de
-         crédito): um caminho só, pra fala do widget e fala do app abrirem a
-         mesma coisa. */
-      if (ehIntencaoBoleto(texto)) {
+      /* A mesma decisão do botão de voz da Início (`destinoDaFala`): entrada
+         com intenção de crédito, que o widget recusou, abre a revisão padrão,
+         nunca a folha de compra do cartão. */
+      const destino = destinoDaFala(texto);
+      if (destino === 'contas') {
         router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto } });
         return;
       }
-      if (ehIntencaoCredito(texto)) {
+      if (destino === 'credito') {
         router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto } });
         return;
       }
