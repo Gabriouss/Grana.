@@ -6,6 +6,7 @@ import { listarOperacoesVozLocais, sincronizarOperacoesVoz } from '@/lib/voice-o
 import { contarFalasAguardandoConexao } from '@/lib/voz-pendente-na-lista';
 import { fonts, spacing, theme, touchTarget, type } from '@/lib/theme';
 import { observarDadosDosWidgets } from '@/lib/widgets-home-events';
+import { usePublicarFaixaTopo } from '@/lib/faixa-topo';
 
 export default function VozesSalvasLocalmente() {
   const [itens, setItens] = useState<Awaited<ReturnType<typeof listarOperacoesVozLocais>>>([]);
@@ -24,12 +25,13 @@ export default function VozesSalvasLocalmente() {
     const evento = AppState.addEventListener('change', (estado) => { if (estado === 'active') void carregar(); });
     return () => { remover(); evento.remove(); };
   }, []);
-  if (!itens.length && !audios) return null;
-  /* A faixa já ocupa o inset superior antes da rota montar seu cabeçalho.
-     Sem esta compensação, a SafeAreaView da Início reserva o mesmo inset de
-     novo depois da faixa e cria um vazio grande entre ela e o avatar. A margem
-     só existe quando a faixa existe; sem faixa este componente retorna null. */
-  return <View style={[styles.container, { paddingTop: Math.max(12, insets.top + 8), marginBottom: -insets.top }]}>
+  const faixaVisivel = itens.length > 0 || audios > 0;
+  usePublicarFaixaTopo(faixaVisivel);
+  if (!faixaVisivel) return null;
+  /* A faixa ocupa o inset superior antes da rota montar seu cabeçalho. A tela
+     abaixo deixa de reservá-lo por meio de SafeAreaViewComFaixa; não há margem
+     negativa nem compensação dependente do contêiner do Stack. */
+  return <View style={[styles.container, { paddingTop: Math.max(12, insets.top + 8) }]}>
     {itens.length > 0 && <Text style={styles.text}>{itens.length === 1 ? '1 lançamento por voz salvo neste aparelho.' : `${itens.length} lançamentos por voz salvos neste aparelho.`}</Text>}
     {audios > 0 && <Text style={styles.text}>{audios === 1 ? '1 fala aguardando conexão.' : `${audios} falas aguardando conexão.`}</Text>}
     {/* `polite` porque a frase muda sozinha ao fim da sincronização: sem região

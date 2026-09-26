@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { Alert } from '@/lib/alerta';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaLista, useBreakpoint } from '@/lib/breakpoints';
 import { textoDaFaixaOffline, useModoOffline, useMotivoOffline, useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';

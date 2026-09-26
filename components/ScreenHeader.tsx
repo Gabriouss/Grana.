@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { fonts, spacing, theme, type, textStyles } from '@/lib/theme';
 import { colunaConteudo } from '@/lib/breakpoints';
+import { useFaixaTopoVisivel } from '@/lib/faixa-topo';
 
 /**
  * Cabeçalho padrão das telas principais. Antes cada tela tinha seu próprio
@@ -38,8 +39,9 @@ export default function ScreenHeader({
      justamente por isso que este prop existe. */
   coluna?: StyleProp<ViewStyle>;
 }) {
+  const faixaTopoVisivel = useFaixaTopoVisivel();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, faixaTopoVisivel && styles.headerComFaixa]}>
       <View style={[styles.interno, coluna]}>
         <View style={styles.row}>
           <View style={styles.leftCol}>
@@ -88,6 +90,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
+  headerComFaixa: { paddingTop: spacing.sm },
   interno: { gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   /* Regra dura, não negociável: o seletor de carteira e os botões de ação

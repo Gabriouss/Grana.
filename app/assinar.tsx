@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as Linking from 'expo-linking';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useEntitlement } from '@/lib/entitlement-context';
 import { useSession } from '@/lib/auth-context';
 import { Alert } from '@/lib/alerta';

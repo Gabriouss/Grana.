@@ -9,7 +9,7 @@ import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { useRouter } from 'expo-router';

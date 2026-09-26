@@ -22,6 +22,7 @@ import WebPhoneFrame from '@/components/WebPhoneFrame';
 import AppLockGate from '@/components/AppLockGate';
 import AppPressable from '@/components/AppPressable';
 import AlertaHost from '@/components/AlertaHost';
+import { FaixaTopoProvider } from '@/lib/faixa-topo';
 import { AppLockProvider } from '@/lib/app-lock-context';
 import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
@@ -114,8 +115,9 @@ export default function RootLayout() {
     <>
       {identidadeWeb}
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        <AlertaHost />
-        <SessionProvider>
+        <FaixaTopoProvider>
+          <AlertaHost />
+          <SessionProvider>
           {/* Dentro do SessionProvider porque a leitura de `feature_flags`
               passa por RLS e exige sessão; por fora do resto porque qualquer
               tela pode precisar perguntar se uma ferramenta está no ar. */}
@@ -142,7 +144,8 @@ export default function RootLayout() {
             </PrivacyProvider>
           </EntitlementProvider>
           </FlagsProvider>
-        </SessionProvider>
+          </SessionProvider>
+        </FaixaTopoProvider>
       </SafeAreaProvider>
     </>
   );

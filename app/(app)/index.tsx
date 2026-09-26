@@ -21,7 +21,7 @@ import LancamentosEmRevisao from '@/components/LancamentosEmRevisao';
 import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
 import { Alert } from '@/lib/alerta';
 import { mensagemErro } from '@/lib/erros';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';

@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import { Alert } from '@/lib/alerta';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaLista } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';

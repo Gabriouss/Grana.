@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';

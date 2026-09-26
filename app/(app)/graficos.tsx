@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo, controleCompacto, useBreakpoint, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
