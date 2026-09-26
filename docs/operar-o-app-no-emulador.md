@@ -102,6 +102,9 @@ ler a tela e tocar por texto. Rode a partir da raiz do repositório:
 | Faixa de debug do Metro cobre a barra de abas | Toque no X da faixa (canto direito, perto de x=996, y=2208 no Pixel_8) |
 | Teclado cobre um botão | `node scripts/emulador.cjs voltar` fecha só o teclado |
 | Toque não faz nada | Rode `listar` de novo: a posição muda quando a tela rola |
+| `print` diz "PRINT VAZIO" (PNG de 0 byte) | O app logado bloqueia captura (FLAG_SECURE). Na conta de teste, desligue Perfil > "Bloquear captura de tela" e **religue no fim da sessão**. Alternativa sem mexer no app: `adb emu screenrecord screenshot <arquivo.png>`, pelo console do emulador. Antes de `4c17711` o print vazio saía como sucesso |
+| Resposta que está na tela não aparece no `listar` | Texto com aspas duplas (por exemplo `"desfaz"`) sai do `uiautomator` entre aspas simples. O leitor só entende isso desde `4c17711`; antes, a resposta sumia e o Granabô parecia mudo (26/09/2026). Confirme no banco ou no print antes de dar o app como culpado |
+| Toques caem em outra tela, ou o app relança sozinho | Outro agente está usando o mesmo emulador. Um agente por vez: combine com o maestro quem está com o emulador antes de começar |
 
 ## Regras que continuam valendo enquanto você usa o app
 
