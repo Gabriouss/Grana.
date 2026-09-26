@@ -123,8 +123,8 @@ const seed = new Set(
   [...bloco.slice(0, bloco.indexOf('on conflict')).matchAll(/\('([a-z_]+)',/g)].map((m) => m[1])
 );
 
-checar('ChaveFlag tem 13 chaves', uniao.size === 13, 'tem ' + uniao.size);
-checar('o seed do schema tem 13 chaves', seed.size === 13, 'tem ' + seed.size);
+checar('ChaveFlag tem 14 chaves', uniao.size === 14, 'tem ' + uniao.size);
+checar('o seed do schema tem 14 chaves', seed.size === 14, 'tem ' + seed.size);
 checar(
   'ChaveFlag e o seed do banco têm exatamente as mesmas chaves',
   uniao.size === seed.size && [...uniao].every((k) => seed.has(k)),

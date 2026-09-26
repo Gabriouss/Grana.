@@ -3799,6 +3799,7 @@ insert into feature_flags (key, enabled) values
   ('importar_extrato',    true),
   ('colar_comprovante',   true),
   ('qr_nota',             true),
+  ('foto_nota',            true),
   ('lancamento_voz',      true),
   ('relatorio_pdf',       true),
   ('foto_perfil',         true),

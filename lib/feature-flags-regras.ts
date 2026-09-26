@@ -34,7 +34,7 @@ import { compararVersoes } from './versao';
  */
 
 /**
- * As 13 ferramentas do app. Esta união e o `insert` de `feature_flags`
+ * As 14 ferramentas do app. Esta união e o `insert` de `feature_flags`
  * (supabase/schema.sql) precisam andar juntos: chave no banco e não aqui não
  * compila na chamada; chave aqui sem linha no banco cai no caminho
  * "desconhecida = ligada" e nunca desliga.
@@ -45,6 +45,7 @@ export type ChaveFlag =
   | 'importar_extrato'
   | 'colar_comprovante'
   | 'qr_nota'
+  | 'foto_nota'
   | 'lancamento_voz'
   | 'relatorio_pdf'
   | 'foto_perfil'
