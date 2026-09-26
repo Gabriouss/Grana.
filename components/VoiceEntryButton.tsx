@@ -20,6 +20,8 @@ import AppPressable from './AppPressable';
 import AppDialog from './AppDialog';
 import { randomUUID } from 'expo-crypto';
 import { executarTarefa } from '@/lib/widget-voz-task';
+import { File } from 'expo-file-system';
+import * as FileSystemLegado from 'expo-file-system/legacy';
 
 /* Voz de lançamento, não música: mono e bitrate baixo. 20 segundos saem em
    torno de 150 KB, bem abaixo do teto de 2 MB da Edge Function, e o Whisper
@@ -54,22 +56,28 @@ const GRAVACAO_VOZ: RecordingOptions = {
    (`apagarArquivo` em lib/widget-voz-task.ts). */
 async function descartarAudio(uri: string) {
   try {
-    const FileSystem = await import('expo-file-system/legacy');
-    await FileSystem.deleteAsync(uri, { idempotent: true });
-  } catch {
-    // Já sumiu, ou o sistema limpou o cache: nada a fazer.
+    await FileSystemLegado.deleteAsync(uri, { idempotent: true });
+  } catch (e) {
+    console.warn('[voz] áudio curto não foi apagado do cache', e);
   }
 }
 
 /* Tamanho do arquivo gravado, ou `null` se não der para ler. Na web o
-   `expo-audio` devolve um blob, sem arquivo para medir. */
-async function tamanhoDoAudio(uri: string): Promise<number | null> {
+   `expo-audio` devolve um blob, sem arquivo para medir.
+
+   Import estático: até 26/09/2026 era `await import('expo-file-system')`, e no
+   emulador, em desenvolvimento, o botão ficou mais de três minutos em
+   "Transcrevendo…" com o `stop()` concluído em 0,8 s e a medição sem voltar
+   (marcadores de tempo no logcat). Em desenvolvimento cada `import()` espera um
+   pacote do Metro; o módulo já está no bundle (lib/voz.ts o importa), e não há
+   por que esperar por ele aqui. */
+function tamanhoDoAudio(uri: string): number | null {
   if (Platform.OS === 'web') return null;
   try {
-    const { File } = await import('expo-file-system');
     const arquivo = new File(uri);
     return arquivo.exists ? arquivo.size : 0;
-  } catch {
+  } catch (e) {
+    console.warn('[voz] não deu para medir o áudio', e);
     return null;
   }
 }
@@ -191,7 +199,7 @@ export default function VoiceEntryButton({
       /* Mesma régua do widget: arquivo que não passa de 1 KB não é fala, e
          não gasta transcrição. Até 26/09/2026 voltava ao repouso sem aviso
          (achado V3 do Watchtower); agora os dois dão o mesmo recibo curto. */
-      const tamanho = await tamanhoDoAudio(uri);
+      const tamanho = tamanhoDoAudio(uri);
       if (!parouDireito || (tamanho !== null && !gravacaoValida(tamanho))) {
         await descartarAudio(uri);
         Alert.alert(RECIBOS_VOZ.naoOuvi.titulo, RECIBOS_VOZ.naoOuvi.texto);
