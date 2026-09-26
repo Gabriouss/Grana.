@@ -11640,3 +11640,133 @@ O autor aprovou a revisão de `E:\Grana-temporarios\2026-09-25-marketing\copy-se
   marcação AUDIT e sem registro de remoção; o Sentinel confere antes de
   qualquer gravação. Nota de sessão:
   `2026-09-26 - M1 - N1 landing sem banco e limpeza da conta de teste`.
+
+## 26/09/2026 — M1 — checklist da build 1.10.5, portão do dia D e auditoria do Watchtower
+
+Relatórios em `E:\Grana-temporarios\2026-09-26-retomada`:
+`relatorio-Compass-checklist-build-1.10.5.md`, `relatorio-Compass-portao-dia-D.md`,
+`relatorio-Watchtower-auditoria-26-09.md`, e a triagem do maestro
+`triagem-maestro-compass-watchtower.md`. Nenhum dos três agentes alterou código,
+disparou build, deploy ou migration.
+
+- **Pedido:** briefings da retomada de 26/09. Compass: checklist da 1.10.5
+  separando repositório, produção e aparelho, e o portão do dia D em itens de
+  sim ou não. Watchtower: conformidade da foto da nota, commits de 25/09 à noite
+  contra as regras 9, 13, 14 e 20, e texto base das peças do Beacon.
+- **Checklist da 1.10.5 (Compass):** 15 itens prontos no repositório (A1 a A15),
+  só a fila offline sem duplicata vista no aparelho. APK público continua 1.10.2;
+  `app.json` em 1.10.4, que nunca foi compilada. `tsc` e `test:ci` verdes no
+  `7f4c22c`. Ordem proposta do dia: `build:preparar`, build, deploy único de
+  `enviar-lembretes-habito` com a migration nova, APK aprovado no aparelho, e
+  **só então** fase 2 do crédito (`20260923230300`, `20260923230400`) e a flag
+  `foto_nota` (`20260925020000`). Riscos R1 (fase 2 quebra crédito sem cartão
+  na 1.10.2), R2 (flag sem linha conta como ligada), R4 (ML Kit pela ponte
+  antiga), R5 (cota apertada). Rascunho de nota do build ainda não passou pelo
+  validador.
+- **Portão do dia D (Compass):** sete blocos marcáveis (build publicada, foto
+  com cupons reais, regra 20, voz nas duas entradas, Granabô, marketing,
+  estabilidade). Proposta: 10 cupons, pelo menos 8 certos e nenhum valor errado
+  gravado sem confirmação; abaixo de 8, a peça da foto sai da fila de D. Push
+  FCM, iOS e tablet ficam fora do portão.
+- **Confirmados no código pelo maestro (triagem):**
+  - **Janela do push:** `push_habit_deliveries.janela` tem
+    `check (janela in ('noite','almoco'))` (`supabase/schema.sql:3970`,
+    `20260905140000_janelas_notificacao.sql:14`). O push de `meio_dia_finde`
+    precisa de migration nova aplicada antes do deploy da função. Harbor.
+  - **A5, alta:** `app.json` declara `granaponto.com.br` e
+    `www.granaponto.com.br` com `autoVerify`; o `assetlinks.json` no domínio sem
+    `www` responde 308. A documentação do Android exige o arquivo sem
+    redirecionamento, e até o Android 11 um host que falha derruba todos. A
+    mensagem do `060724f` dizia que o Android 12+ segue redirecionamento; a
+    documentação não diz isso. Harbor, antes da build.
+  - **A1:** travessão em `components/PasteReceiptModal.tsx:218` e
+    `components/QrScannerModal.tsx:158` ("Sem conexão — ..."). Forge. Ainda no
+    código às 11h de 26/09.
+  - **A3:** `lib/wallets.ts:152, 171, 187, 211` ainda somam `initial_balance`
+    num `saldos` do contexto que nenhuma tela mostra. Pela regra 20, remover
+    exige o sim do autor.
+  - **F1:** `lib/legal-content.ts` não cita câmera, foto da nota, QR nem ML Kit.
+  - **F2:** a permissão diz "nada é enviado" (`components/FotoNotaModal.tsx`),
+    mas o ML Kit manda ao Google métricas e identificador por instalação, sem
+    a imagem (documentação de divulgação de dados do ML Kit). Forge.
+  - **F3:** fechar o `FotoNotaModal` durante a leitura deixa o valor anterior
+    na próxima abertura (lido pelo Watchtower, não reproduzido). Forge.
+  - **F4:** permissão negada de vez sem saída. **Já resolvido pelo Forge em
+    `3513e34`** (26/09, `components/PermissaoCamera.tsx` com "Abrir
+    configurações", nos dois leitores; teste `__tests__/permissao-camera.cjs`).
+- **Hipóteses, sem confiabilidade suficiente até teste:** A6 (recuperação de
+  senha pedida no site pode cair no app sem o `code_verifier` do PKCE e mostrar
+  "E-mail confirmado", porque o callback só marca recuperação com
+  `type=recovery`; Harbor confere pela URL final do redirect), A7 (App Link
+  que chega por 302 do `*.supabase.co`, só no aparelho), A8 (o cache em disco
+  dos cartões não é atualizado depois da mutação; a próxima carga com rede
+  instável pode trazer a lista velha de volta, resto da causa do N1), A2, A4,
+  A9 (baixas), M2 (widget "sem abrir o app" vale só para fala sem ambiguidade).
+- **Correto segundo o Watchtower:** a foto não sai do aparelho e é apagada no
+  `finally`; o texto do OCR não é salvo; o valor sempre passa pela
+  confirmação; `5226628` reproduz o arredondamento do banco nas parcelas;
+  `0b8d2fe` sem achado; preço "menos de R$ 0,37 por dia" bate com a nota de
+  preço vigente do vault.
+- **Decisões pendentes do autor:** (1) A3, remover o saldo acumulado sem tela;
+  (2) F1, texto da política sobre foto da nota e ML Kit, no ar antes ou junto
+  da build que liga `foto_nota`; (3) M1, "7 dias de garantia" nas peças (o CDC,
+  art. 49, já garante; sugestão "7 dias para desistir, com reembolso total");
+  (4) fase 2 no dia da build ou depois do APK aprovado (Compass recomenda
+  depois); (5) portão com 10 cupons e mínimo de 8 certos; (6) Compass recomenda
+  a tela "precisa de revisão" da fila como obrigatória antes da build.
+- **Descartado:** Compass não sondou produção com o token de gestão (leitura de
+  produção é do Harbor) nem propôs adiar a foto da nota; Watchtower não tratou
+  como achado a troca de `installment_total: 1` por nulo (todos os leitores usam
+  `?? 1`) nem o pool de fallback do meio-dia.
+- **O que deu errado:** as sondas anônimas do Compass em `app_release` e
+  `feature_flags` voltaram vazias ou com `42501` por RLS e não provam o estado
+  real. O Watchtower achou a regra de redirecionamento só na segunda página da
+  documentação do Android.
+- **Sem verificação:** nada rodou em emulador ou aparelho nesta rodada. Estado
+  real de `app_release` e `feature_flags` em produção; A5 no aparelho só depois
+  da build (`adb shell pm get-app-links com.gabriouss.grana`); A6 e A7.
+- **Achado do Ledger na mesma manhã:** a landing sem vantagem bancária
+  (`9b40f71`) **não está no ar**. `granaponto.com.br` ainda serve a descrição
+  antiga, com nota fiscal e "conexão bancária". O `buildCommand` da Vercel roda
+  `scripts/inject-og-meta.js`, que sai com erro quando o hash do JSON-LD (que
+  inclui `landing-meta.json` `description`) não está na CSP do `vercel.json`, e
+  o `9b40f71` mudou a descrição sem recalcular o hash. Hash recalculado com o
+  arquivo atual: ausente da CSP. Log de deploy da Vercel não conferido.
+  Repassado ao maestro.
+
+## 26/09/2026 — M1 — produção de marketing do Beacon: nada publicado, registro do Granabô bloqueado
+
+Relatório: `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Beacon-producao-2026-09-26.md`.
+
+- **Pedido:** seguir a produção das peças que não dependem da build nova, sem
+  publicar nada antes de D, e esperar o Harbor para o motion de registro do
+  Granabô.
+- **Prontos e conferidos (só esperam Watchtower e D):** estáticos E02, E05 e E06
+  (`docs/marketing/funil-criativos-flat-2026-09/revisao-05/`), S4 e S2 web
+  (`revisao-04/`), todos 1080x1440, sem banco, Open Finance, estorno, preço
+  proibido, CTA dentro da arte nem interface gerada por IA.
+- **Reels:** R5 gravado (`r5-clipe.mp4`, nota de edição `nota-edicao-r5-r9.md`);
+  R9 reaproveita o clipe do R5 (`roteiro-motion-r9.md`); Granabô consulta
+  gravado (`granabo-consulta.mp4`); R7 com roteiro, sem gravação; R2, R3, R4,
+  R11 e R12 com kits e prompts completos, geração não iniciada; R-P já existe
+  (`grana-reels-v8-pop.mp4`). Arquivos em `E:\Grana-temporarios\2026-09-25-marketing`.
+- **Bloqueado:** motion de registro do Granabô. O Sentinel reproduziu três vezes
+  pedido de registro sem bolha, sem erro e sem lançamento, com consultas
+  funcionando (item B3 do checklist da 1.10.5, com o Harbor).
+  `granabo-registro-FALHOU.mp4` é só evidência e não entra em edição.
+- **Fora da produção até D:** foto da nota e o terceiro card do S2; R1, R6, R8,
+  R10 e S3 nas partes que dependem da Início, do Livre para gastar ou da foto;
+  E01; M-FN sem reconferência na build nova.
+- **Descartado:** publicar antes de D; usar a gravação que falhou; pedir novas
+  falas ao Sentinel antes do Harbor fechar a causa; capturar foto ou Início
+  antes da build; gerar mídia paga sem aprovação de custo por peça.
+- **O que deu errado:** o Beacon encontrou o `main` local em `3513e34` com
+  alterações de outros agentes, diferente do `7f4c22c` do contexto comum; não
+  tocou na árvore, não commitou nem publicou.
+- **Decisões pendentes do autor:** formulação do S7 ("7 dias de garantia" ou
+  "7 dias para desistir, com reembolso total", a mesma M1 do Watchtower);
+  aprovação do custo de cada geração de vídeo e voz antes dos rascunhos 360p;
+  política de privacidade falando da foto antes de qualquer peça que a venda.
+- **Sem verificação:** nenhuma geração nova, publicação, revisão legal final ou
+  QA de feed e story. R5 e a consulta do Granabô conferidos por existência e
+  roteiro, não por edição final.
