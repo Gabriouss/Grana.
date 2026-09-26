@@ -19,7 +19,7 @@ import AppModal from '@/components/AppModal';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import LancamentosEmRevisao from '@/components/LancamentosEmRevisao';
 import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { mensagemErro } from '@/lib/erros';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';

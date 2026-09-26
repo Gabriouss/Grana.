@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEntitlement } from '@/lib/entitlement-context';
 import { useSession } from '@/lib/auth-context';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import BaixarMeusDadosBotao from '@/components/BaixarMeusDadosBotao';
 import ExcluirContaSheet from '@/components/ExcluirContaSheet';
 import { checkoutComEmail } from '@/lib/checkout';

@@ -5,7 +5,7 @@ import { ActivityIndicator, AppState, Platform, ScrollView, StyleSheet, Text, Te
    remota e era decodificada em tamanho cheio a cada montagem de tela, sem
    cache em disco no Android. Com `cachePolicy="disk"` ela é lida uma vez. */
 import { Image } from 'expo-image';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import { requestRecordingPermissionsAsync } from 'expo-audio';

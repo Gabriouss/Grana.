@@ -22,7 +22,7 @@ import { isLikelyNetworkError } from '@/lib/cache-de-tela';
 import { salvarOuGuardarNoAparelho, salvarOuGuardarParceladaNoAparelho } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';

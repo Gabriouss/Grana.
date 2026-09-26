@@ -14,7 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/lib/tab-bar';
 import { colunaLista, useBreakpoint } from '@/lib/breakpoints';
