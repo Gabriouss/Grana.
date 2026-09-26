@@ -24,7 +24,7 @@ function clearTimeoutControlado(t) { timers.ativos.delete(t); clearTimeout(t); }
 
 function carregar(mlkit) {
   const parser = { exports: {} };
-  vm.runInNewContext(compilar('lib/nota-foto-parser.ts'), { exports: parser.exports, module: parser, Number, Set, RegExp, String });
+  vm.runInNewContext(compilar('lib/nota-foto-parser.ts'), { exports: parser.exports, module: parser, Number, Set, RegExp, String, Math });
   const mod = { exports: {} };
   const avisos = [];
   vm.runInNewContext(compilar('lib/foto-nota-ocr.ts'), {
@@ -65,6 +65,21 @@ const vigia = setTimeout(() => { console.error('FALHOU: a leitura ficou pendurad
     assert.equal(r.total.valorTotal, 42.5);
     assert.equal(r.texto.split('\n').length, 3, 'as linhas de todos os blocos entram no texto');
     passou('foto lida: junta as linhas dos blocos e acha o total');
+  }
+  {
+    /* Cupom em colunas, como o ML Kit devolve: rótulos num bloco, valores
+       noutro. Antes de 26/09/2026 o módulo juntava bloco a bloco e voltava
+       sem total; agora junta por fileira, pela caixa de cada linha. */
+    const L = (text, top, left) => ({ text, frame: { top, left, height: 30, width: 200 } });
+    const m = carregar(() => ({ __esModule: true, default: { recognize: async () => ({ text: '', blocks: [
+      { lines: [L('PADARIA AUDIT', 30, 90), L('VALOR TOTAL R$', 300, 40), L('Cartao de Debito', 345, 40)] },
+      { lines: [L('18,75', 303, 610), L('18,75', 344, 610)] },
+    ] }) } }));
+    const r = await m.lerTotalDaFoto('file:///foto.jpg');
+    assert.equal(r.ok, true);
+    assert.equal(r.total.valorTotal, 18.75, JSON.stringify(plano(r)));
+    assert.ok(r.texto.split('\n').includes('VALOR TOTAL R$ 18,75'));
+    passou('cupom em colunas: rótulo e valor se encontram pela posição na foto');
   }
   {
     const m = carregar(() => { throw new Error('Cannot find module'); });

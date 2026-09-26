@@ -34,7 +34,11 @@ const react = {
 };
 
 /* ── dublês ────────────────────────────────────────────────────────────── */
-const registro = { alertas: [], apagadas: [], fechou: 0, leituras: [] };
+const registro = { alertas: [], apagadas: [], fechou: 0, leituras: [], erros: [] };
+/* Cache simulado: a foto existe até ser apagada. `teimosa` é um arquivo que
+   o sistema não deixa apagar, para provar que isso deixa log. */
+const noCache = new Set();
+const teimosas = new Set();
 let resolverLeitura = null;
 const imports = {
   react,
@@ -64,7 +68,10 @@ const imports = {
   './PermissaoCamera': 'PermissaoCamera',
   '@/lib/modal-accessibility': { useModalAccessibility() {} },
   '@/lib/motion': { useReducedMotion: () => true },
-  'expo-file-system/legacy': { deleteAsync: async (uri) => { registro.apagadas.push(uri); } },
+  'expo-file-system/legacy': {
+    deleteAsync: async (uri) => { registro.apagadas.push(uri); if (!teimosas.has(uri)) noCache.delete(uri); },
+    getInfoAsync: async (uri) => ({ exists: noCache.has(uri) }),
+  },
 };
 
 const modulo = {};
@@ -72,7 +79,7 @@ vm.runInNewContext(
   ts.transpileModule(fs.readFileSync('components/FotoNotaModal.tsx', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText,
-  { exports: modulo, console: { ...console, error() {} }, Promise, String, Number, Object, Array, JSON,
+  { exports: modulo, console: { ...console, error: (...a) => registro.erros.push(a) }, Promise, String, Number, Object, Array, JSON,
     require: (n) => { assert.ok(n in imports, `import não simulado: ${n}`); return imports[n]; } },
 );
 const FotoNotaModal = modulo.default;
@@ -94,7 +101,11 @@ function prepararCamera() {
   const arvore = render();
   const camera = achar(arvore, (n) => n.type === 'CameraView')[0];
   ok(camera, 'a janela abre na câmera');
-  camera.props.ref.current = { takePictureAsync: async () => ({ uri: `file://foto-${registro.leituras.length}.jpg` }) };
+  camera.props.ref.current = { takePictureAsync: async () => {
+    const uri = `file://foto-${registro.leituras.length}.jpg`;
+    noCache.add(uri);
+    return { uri };
+  } };
   camera.props.onCameraReady();
 }
 
@@ -108,6 +119,11 @@ function prepararCamera() {
   const confirmacao = render();
   ok(naConfirmacao(confirmacao), 'sem fechar, a leitura leva à confirmação');
   ok(achar(confirmacao, (n) => n.type === 'TextInput' && n.props.value === '42,5').length === 1, 'com o valor lido');
+  /* Achado do Watchtower (26/09/2026): a tela promete que a foto é apagada
+     logo depois da leitura. Com `void apagarFoto`, a confirmação aparecia com
+     a foto ainda no cache e uma falha ao apagar sumia calada. */
+  ok(registro.apagadas.includes('file://foto-0.jpg') && !noCache.has('file://foto-0.jpg'), 'a foto já saiu do cache quando a confirmação aparece');
+  ok(registro.erros.length === 0, 'exclusão normal não deixa erro')
 
   /* Volta ao estado inicial pelo próprio fechar da confirmação. */
   porHandler(confirmacao, 'fechar')();
@@ -140,6 +156,18 @@ function prepararCamera() {
   await tirando3;
   ok(registro.alertas.length === 0, 'falha tardia depois de fechar não mostra alerta');
   ok(!naConfirmacao(render()), 'e a janela continua na câmera');
+
+  /* 4. Foto que o sistema não deixa apagar: a confirmação segue, com log de erro. */
+  porHandler(render(), 'fechar')();
+  registro.erros.length = 0;
+  prepararCamera();
+  teimosas.add(`file://foto-${registro.leituras.length}.jpg`);
+  const tirando4 = porHandler(render(), 'fotografar')();
+  await esperar();
+  resolverLeitura({ ok: true, total: { valorTotal: 10, motivo: 'ok' } });
+  await tirando4;
+  ok(naConfirmacao(render()), 'a confirmação aparece mesmo assim');
+  ok(registro.erros.some((a) => /continuou no cache/.test(String(a[0]))), 'e a foto que ficou no cache deixa log de erro');
 
   console.log(`foto-nota-fechar-na-leitura: ${passou} checagens OK`);
 })().catch((e) => { console.error(e); process.exit(1); });

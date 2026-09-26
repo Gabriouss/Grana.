@@ -93,12 +93,21 @@ export default function FotoNotaModal({
 
   useModalAccessibility(modalRef, visible && etapa !== 'confirmar', fechar);
 
+  /* A tela promete que a foto é apagada logo depois da leitura. Até 26/09/2026
+     a exclusão corria solta (`void`, sem esperar) e o erro era engolido, então
+     a promessa valia mais que o código (achado do Watchtower). Agora a leitura
+     só segue depois de apagar, e a exclusão é conferida: se o arquivo
+     continuar lá, fica log de erro, que é o recibo possível para um arquivo
+     do cache que a pessoa não vê. */
   async function apagarFoto(uri: string) {
     try {
       const FileSystem = await import('expo-file-system/legacy');
       await FileSystem.deleteAsync(uri, { idempotent: true });
-    } catch {
-      // Já sumiu, ou o sistema limpou o cache: nada a fazer.
+      if ((await FileSystem.getInfoAsync(uri)).exists) {
+        console.error('[foto-nota] a foto continuou no cache depois de apagada', uri);
+      }
+    } catch (e) {
+      console.error('[foto-nota] falha ao apagar a foto do cache', e);
     }
   }
 
@@ -114,6 +123,8 @@ export default function FotoNotaModal({
       const foto = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       uri = foto.uri;
       const leitura = await lerTotalDaFoto(uri);
+      await apagarFoto(uri);
+      uri = null;
       if (sessao !== sessaoRef.current) return; // fechada durante a leitura
       if (leitura.ok) {
         const { valorTotal, motivo } = leitura.total;
@@ -130,7 +141,8 @@ export default function FotoNotaModal({
       Alert.alert('Não consegui fotografar', 'Tente de novo. Se continuar, feche e abra a câmera.');
       setEtapa('camera');
     } finally {
-      if (uri) void apagarFoto(uri);
+      // Só chega aqui com a foto ainda no cache se a leitura lançou.
+      if (uri) await apagarFoto(uri);
       capturandoRef.current = false;
     }
   }

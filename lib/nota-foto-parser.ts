@@ -69,6 +69,45 @@ function candidatosDoRotulo(linhas: string[], rotulo: RegExp): number[] {
   return achados.filter((v) => v > 0);
 }
 
+/** Uma linha como o ML Kit a devolve: texto e, quase sempre, a caixa dela na foto. */
+export type LinhaLida = { text: string; frame?: { top: number; left: number; height: number; width?: number } };
+
+/**
+ * Texto da foto numa linha por FILEIRA visual, da esquerda para a direita.
+ *
+ * O ML Kit agrupa o texto em blocos por coluna: num cupom, o rótulo "VALOR
+ * TOTAL R$" cai no bloco da esquerda e o "45,90" alinhado à direita cai noutro
+ * bloco, muitas linhas depois. Juntar bloco por bloco separa o rótulo do valor,
+ * e a nota inteira volta "sem total". Aqui as linhas que dividem a mesma altura
+ * na foto viram uma só.
+ *
+ * Duas linhas estão na mesma fileira quando o centro vertical de uma cai a
+ * menos de meia altura (da menor das duas) do centro da fileira. Fileiras
+ * vizinhas de um cupom ficam a pelo menos uma altura de linha uma da outra,
+ * então não se misturam. Foto torta demais não junta nada: o rótulo continua
+ * sem valor e a tela pede o número à mão, nunca um valor errado.
+ *
+ * Sem caixa em alguma linha, devolve a ordem original.
+ */
+export function textoPorFileira(linhas: LinhaLida[]): string {
+  const validas = linhas.filter((l) => l.text.trim());
+  if (validas.some((l) => !l.frame || !(l.frame.height > 0))) return validas.map((l) => l.text).join('\n');
+
+  const centro = (l: LinhaLida) => l.frame!.top + l.frame!.height / 2;
+  const fileiras: { centro: number; altura: number; linhas: LinhaLida[] }[] = [];
+  for (const linha of [...validas].sort((a, b) => centro(a) - centro(b))) {
+    const f = fileiras[fileiras.length - 1];
+    if (f && Math.abs(centro(linha) - f.centro) <= Math.min(f.altura, linha.frame!.height) / 2) {
+      f.linhas.push(linha);
+    } else {
+      fileiras.push({ centro: centro(linha), altura: linha.frame!.height, linhas: [linha] });
+    }
+  }
+  return fileiras
+    .map((f) => [...f.linhas].sort((a, b) => a.frame!.left - b.frame!.left).map((l) => l.text).join(' '))
+    .join('\n');
+}
+
 export function extrairTotalDaFoto(texto: string): TotalDaFoto {
   const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
