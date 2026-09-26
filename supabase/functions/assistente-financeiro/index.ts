@@ -1042,15 +1042,15 @@ async function executarCriarLancamento(
   };
 
   const categoriaExtras = categorias.filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color }));
-  /* Entrada que cita CARTÃO ("estorno de 50 no crédito do C6") é estorno na
-     fatura, e isso ainda não se lança pelo chat nem pela voz. Até 23/09/2026 o
-     chat gravava como entrada na carteira e a voz como COMPRA no cartão: as
-     duas erradas, e diferentes. Agora nenhuma grava. "Recebi um crédito de 500"
-     não cita cartão e continua sendo entrada. Mesma regra em
-     `lib/widget-voz-task.ts` (voz no app e no widget). */
+  /* Entrada que cita CARTÃO ("estorno de 50 no crédito do C6") não grava: até
+     23/09/2026 o chat gravava como entrada na carteira e a voz como COMPRA no
+     cartão. O Grana. não tem estorno, só excluir o lançamento (decisão do
+     autor, 26/09/2026), então a resposta é a de fala não entendida, sem
+     nomear nem explicar estorno. "Recebi um crédito de 500" não cita cartão e
+     continua sendo entrada. Mesma detecção em `lib/widget-voz-task.ts`. */
   if (!ehIntencaoBoleto(financeiro) && tipo === 'in' && ehIntencaoCredito(financeiro)
     && (matchCardByText(financeiro, cartoes) || /\b(?:cart[aã]o|estorn\w*)\b/iu.test(financeiro))) {
-    return 'Isso parece um estorno no cartão, e estorno ainda não é lançado por aqui. Peça para lançar pela importação da fatura do cartão ou confirmar se foi um dinheiro recebido na conta. ' + AINDA_NAO_REGISTREI;
+    return 'Não entendi esse lançamento. Me diz o que foi e quanto, em reais (ex.: "almoço 38,50"). ' + AINDA_NAO_REGISTREI;
   }
 
   const categoria = guessCategoryFromText(financeiro, categoriaExtras);

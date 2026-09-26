@@ -88,11 +88,13 @@ async function ask(mensagem, historico = []) {
   assert.match(resultadoDaFerramenta(), /R\$ 100,00/, 'resumoCredito por categoria abate o estorno');
 
   /* Lançar estorno pelo chat não grava (23/09/2026): antes virava entrada na
-     carteira, sem cartão. Mesma decisão da voz. */
+     carteira, sem cartão. O Grana. não tem estorno (autor, 26/09/2026): a
+     resposta é a de fala não entendida, sem nomear nem explicar estorno. */
   const rpcsAntes = rpcs.length;
   completions = [tool('criarLancamento', { texto: 'estorno de 50 do mercado no crédito do C6' }), { content: 'ok' }];
   await ask('estorno de 50 do mercado no crédito do C6');
-  assert.match(resultadoDaFerramenta(), /estorno/i);
+  assert.match(resultadoDaFerramenta(), /^Não entendi esse lançamento\./);
+  assert.doesNotMatch(resultadoDaFerramenta(), /estorn/i, 'a resposta não fala de estorno');
   assert.match(resultadoDaFerramenta(), /Ainda não registrei nada/);
   assert.equal(rpcs.slice(rpcsAntes).includes('registrar_operacao_voz'), false, 'nenhuma escrita');
   assert.equal(history.filter((r) => r.tabela === 'transactions').length, 0, 'nenhum lançamento inserido');
