@@ -12353,3 +12353,83 @@ mas não foi confirmado se elas pararam depois da correção.
    Edge Functions e release em produção; e efeito real da correção nas janelas
    do Windows Terminal. O relatório de estáticos fecha o inventário, mas não
    reabre nem aprova nenhuma peça.
+
+## 26/09/2026 — M1 — quatro perenes de código reconciliadas com as fontes
+
+O verificador do vault havia marcado quatro perenes porque os commits de
+26/09 mudaram suas fontes depois do `revisado` anterior. O Ledger releu as
+fontes e marcou `revisado: 2026-09-26`, sem alterar código, produção ou aparelho:
+
+- `01 - Código/Schema do Banco.md`: registra `d2a2fb3` e o CHECK de
+  `meio_dia_finde`, além de `ab25e2f`/`20260926130000` e a fase 2 do crédito
+  como escritos no repositório, mas não aplicados em produção.
+- `01 - Código/Migrations.md`: registra as migrations pendentes da janela de
+  build e deixa explícito que guarda/corpus verde não significa aplicação no
+  banco.
+- `01 - Código/Edge Functions.md`: registra `assistente-financeiro` v39 e
+  `enviar-lembretes-habito` v13 no ar, os commits locais aguardando autorização
+  e a proibição de publicar `whatsapp-webhook` nesta rodada.
+- `06 - Produto/Assistente de IA.md`: registra a v39 com Regra 20 em produção,
+  `9613f42` ainda local e o destino divergente do app em
+  `app/(app)/index.tsx:1609`, encaminhado ao núcleo compartilhado.
+
+O verificador será repetido após estas edições; continuam separadas as notas
+que nunca receberam `revisado` e as quatro perenes que dependem de fontes ainda
+mais recentes.
+
+
+## 26/09/2026 — M1 — destino único da fala e P1 no CSV de fatura
+
+O Ledger registrou o relatório
+`E:\Grana-temporarios\2026-09-26-retomada\relatorio-Harbor-destino-da-fala.md`
+e o commit local `9591bb2` do Harbor. A guarda
+`entradaComIntencaoDeCredito` passou a ser única em `lib/heuristics.ts` e
+`supabase/functions/_shared/interpretar-lancamento.ts`; `lib/destino-da-fala.ts`
+expõe `destinoDaFala` para decidir entre contas, crédito e revisão. O toque da
+notificação em `components/RespostaVozWidget.tsx` foi corrigido, defeito que o
+Harbor confirmou, e a paridade foi estendida à gravação e ao destino: 71
+comparações verdes. A nova resposta do Granabô recusa a entrada no crédito sem
+pedir que a pessoa repita a frase e sem registrar nada.
+
+O botão de voz da Início ainda fica registrado como pendência: o bloco de
+`app/(app)/index.tsx` precisa receber a troca para `destinoDaFala` pelo Prism,
+conforme o encaminhamento. A paridade do núcleo não encerra o defeito da
+superfície enquanto essa aplicação e o QA correspondente não forem conferidos.
+
+O maestro confirmou no código um P1 novo em `lib/heuristics.ts:1300-1307`:
+quando um CSV de fatura usa a convenção de sinal de fatura (compra positiva),
+o heurístico que detecta sinal invertido trata compras como entradas e
+pagamento/estorno como compras. Resultado: compras são descartadas e
+pagamento/estorno pode ser importado como compra. O achado foi encaminhado ao
+Forge e segura a migration `20260926130000`. Foi conferido no código, mas não
+com um arquivo real de banco; portanto não há validação de exportação bancária
+nem autorização para aplicar a migration.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** registrar o relatório do Harbor, `9591bb2`, a correção do
+   destino da fala, o estado ainda pendente da Início e o P1 de sinal do CSV,
+   sem editar código nem aplicar a migration.
+2. **Sintoma e causa:** a fala de entrada no crédito ainda podia cair na folha
+   de compra pela rota da Início; a causa era a decisão duplicada nessa
+   superfície, apesar da guarda comum. No CSV, a causa lida no código é a
+   inferência de sinal invertido aplicada a uma fatura em que compra é
+   positiva.
+3. **Arquivos e identificadores:** `9591bb2`, `lib/heuristics.ts`,
+   `supabase/functions/_shared/interpretar-lancamento.ts`,
+   `lib/destino-da-fala.ts`, `components/RespostaVozWidget.tsx`,
+   `app/(app)/index.tsx`, `lib/heuristics.ts:1300-1307`, migration
+   `20260926130000` e o relatório do Harbor citado acima.
+4. **Descartado:** duplicar a guarda em cada tela, considerar as 71
+   comparações como substituto do QA da Início, aplicar a migration antes da
+   correção do CSV e tratar o comportamento do CSV como confirmado em banco
+   sem arquivo real.
+5. **O que deu errado:** a correção de `9613f42` deixou uma rota de destino
+   divergente no app; o Harbor confirmou também que o toque da notificação
+   precisava da mesma decisão compartilhada. A análise do CSV revelou que a
+   heurística não distingue a convenção de sinal da fatura antes de descartar
+   ou classificar linhas.
+6. **Sem verificação:** aplicação efetiva da troca na Início, QA no aparelho,
+   arquivo real de banco exportado com compra positiva e confirmação da
+   correção do Forge; a migration, release e qualquer publicação continuam
+   pendentes de autorização do autor.
