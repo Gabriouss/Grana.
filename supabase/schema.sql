@@ -1659,7 +1659,7 @@ revoke insert on public.transactions from authenticated;
 grant insert (
   user_id, type, description, amount, category, color, occurred_on, recurring,
   parent_id, installment_current, installment_total, payment_method, bank,
-  card_id, wallet_id, fitid
+  card_id, wallet_id, fitid, client_request_id
 ) on public.transactions to authenticated;
 revoke update on public.transactions from authenticated;
 grant update (
