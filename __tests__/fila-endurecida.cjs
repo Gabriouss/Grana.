@@ -200,6 +200,81 @@ const limpar = async () => {
   const devolvido = await pendente.tirarDaRevisao('local-P-0');
   ok(devolvido && (await pendente.listarEmRevisao()).length === 0, 'a tela pode tirar da revisão (devolver ou descartar por escolha)');
 
+  /* ── 4b. "Tentar de novo" da tela de revisão (26/09/2026) ─────────────── */
+  const revisar = async (desc, code) => {
+    encherFila(1, 'u-1', desc);
+    estado.recusar.set(`${desc} 0`, { code, message: 'recusado' });
+    await fila.flushPendingQueue();
+    return `local-${desc}-0`;
+  };
+  await limpar();
+  const idR = await revisar('R', '23514');
+  estado.notificacoes.length = 0;
+  gravacoes.length = 0;
+  igual(await fila.devolverDaRevisaoParaFila(idR), 'recusado', 'recusado de novo: a tela diz isso');
+  igual([gravacoes.length, (await pendente.listarEmRevisao()).map((i) => i.localId), await naFila()], [1, [idR], 0],
+    'uma tentativa só, e o item volta para a revisão, fora da fila');
+  igual(estado.notificacoes.length, 1, 'com recibo, como qualquer recusa');
+  const chaveAntes = (await pendente.listarEmRevisao())[0].clientRequestId;
+  estado.recusar.clear();
+  gravacoes.length = 0;
+  igual(await fila.devolverDaRevisaoParaFila(idR), 'salvo', 'o banco aceitou: salvo');
+  igual([gravacoes.map((g) => g.description), (await pendente.listarEmRevisao()).length, await naFila()], [['R 0'], 0, 0],
+    'gravado uma vez, some da revisão e da fila');
+  ok(chaveAntes && gravadasPorChave.has(chaveAntes), 'a chave de idempotência original foi mantida no reenvio');
+  igual(await fila.devolverDaRevisaoParaFila(idR), null, 'item que já saiu da revisão: null, sem gravar nada');
+  igual(gravacoes.length, 1, 'nenhum envio extra');
+
+  await limpar();
+  const idS = await revisar('W', '23503');
+  estado.recusar.clear();
+  estado.rede = false;
+  gravacoes.length = 0;
+  igual(await fila.devolverDaRevisaoParaFila(idS), 'aguardando', 'sem rede: aguardando');
+  igual([(await pendente.listarEmRevisao()).length, await naFila()], [0, 1], 'o item está na fila e fora da revisão');
+  estado.rede = true;
+
+  await limpar();
+  const idC = await revisar('C', '22023');
+  estado.recusar.clear();
+  estado.rede = false;
+  encherFila(500);
+  await assert.rejects(fila.devolverDaRevisaoParaFila(idC), (e) => e.name === 'FilaCheiaError');
+  passou++;
+  igual((await pendente.listarEmRevisao()).map((i) => [i.localId, i.motivo.code]), [[idC, '22023']],
+    'fila cheia: o item volta para a revisão com o mesmo motivo');
+  igual(await naFila(), 500, 'e a fila não passou do teto');
+  estado.rede = true;
+
+  /* O que a tela mostra de cada item. */
+  const base = { localId: 'x', motivo: { code: '23503', message: 'fk' }, revisaoDesde: '2026-09-26T00:00:00Z' };
+  igual(pendente.resumoDaRevisao({ ...base, input: entrada('Café') }),
+    { titulo: 'Café', tipo: 'Saída', valor: 10, data: '2026-09-24', motivo: 'Um cartão, carteira ou categoria usado nele não existe mais.' },
+    'transação: descrição, saída, valor e data');
+  igual(pendente.resumoDaRevisao({ ...base, tipo: 'parcela', input: { ...entrada('TV'), amount: 900, installments: 3 } }).tipo,
+    'Compra parcelada em 3x', 'parcela diz em quantas vezes');
+  igual(pendente.resumoDaRevisao({ ...base, tipo: 'boleto', input: { description: 'Luz', amount: 80, due_date: '2026-10-05' } }),
+    { titulo: 'Luz', tipo: 'Conta', valor: 80, data: '2026-10-05', motivo: 'Um cartão, carteira ou categoria usado nele não existe mais.' },
+    'boleto usa o vencimento');
+  igual(pendente.resumoDaRevisao({ ...base, tipo: 'meta', input: { title: 'Viagem', target_amount: 3000 } }),
+    { titulo: 'Viagem', tipo: 'Meta', valor: 3000, data: null, motivo: 'Um cartão, carteira ou categoria usado nele não existe mais.' },
+    'meta usa título e alvo');
+  igual(['23505', '23514', '22P02', ''].map((code) => pendente.motivoDaRecusa({ code, message: '' })), [
+    'Ele parece já ter sido salvo antes. Confira seus lançamentos antes de tentar de novo.',
+    'Faltou um dado obrigatório, ou algum valor ficou fora do permitido.',
+    'Algum valor ficou num formato que o Grana. não aceita.',
+    'O Grana. recusou este lançamento.',
+  ], 'motivo em frase de gente, por classe');
+  const textos = [...['23505', '23503', '23514', '22P02', ''].map((code) => pendente.motivoDaRecusa({ code, message: '' }))];
+  ok(textos.every((t) => !/[—–]/.test(t)), 'copy sem travessão');
+
+  /* A mensagem da fila cheia chega inteira a toda tela que usa `mensagemErro`
+     (Início, QR, foto da nota, colar comprovante): o teto de 180 caracteres
+     de `lib/erros.ts` a trocaria pela frase genérica em silêncio. */
+  const erros = carregar('lib/erros.ts');
+  const cheia = new pendente.FilaCheiaError();
+  igual(erros.mensagemErro(cheia), cheia.message, 'mensagemErro mostra a mensagem da fila cheia sem cortar');
+
   /* Se nem a revisão couber, o item fica na fila (perder é pior que retentar). */
   await limpar();
   encherFila(1, 'u-1', 'Q');

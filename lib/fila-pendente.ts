@@ -378,6 +378,55 @@ export async function listarEmRevisao(): Promise<ItemEmRevisao[]> {
   return (await lerRevisao()).filter((item) => !item.userId || item.userId === userId);
 }
 
+/**
+ * A recusa do banco em frase de gente, para a tela de revisão.
+ *
+ * O `motivo.message` é o texto cru do Postgres ("new row violates check
+ * constraint ..."), que não diz nada a quem lançou um café. O código da classe
+ * diz o bastante para orientar a escolha entre tentar de novo e descartar.
+ */
+export function motivoDaRecusa(motivo: { code: string; message: string }): string {
+  const codigo = motivo.code;
+  if (codigo === '23505') return 'Ele parece já ter sido salvo antes. Confira seus lançamentos antes de tentar de novo.';
+  if (codigo === '23503') return 'Um cartão, carteira ou categoria usado nele não existe mais.';
+  if (codigo.startsWith('23')) return 'Faltou um dado obrigatório, ou algum valor ficou fora do permitido.';
+  if (codigo.startsWith('22')) return 'Algum valor ficou num formato que o Grana. não aceita.';
+  return 'O Grana. recusou este lançamento.';
+}
+
+export type ResumoDaRevisao = {
+  titulo: string;
+  /** Para a legenda: "Saída", "Conta", "Compra parcelada em 3x"... */
+  tipo: string;
+  valor: number | null;
+  /** AAAA-MM-DD, ou null quando o item não tem data (meta sem prazo). */
+  data: string | null;
+  motivo: string;
+};
+
+/**
+ * O que a tela mostra de cada item em revisão. Só leitura do que foi guardado:
+ * meta guarda `title`/`target_amount`, boleto guarda `due_date`, e o resto tem
+ * o formato do lançamento. Item antigo sem `tipo` é transação (ver
+ * `TipoPendente`).
+ */
+export function resumoDaRevisao(item: ItemEmRevisao): ResumoDaRevisao {
+  const tipo = item.tipo ?? 'transacao';
+  const input = item.input as PendingInput & { title?: string; target_amount?: number; due_date?: string; deadline?: string | null };
+  const motivo = motivoDaRecusa(item.motivo);
+  if (tipo === 'meta') {
+    return { titulo: input.title?.trim() || 'Meta', tipo: 'Meta', valor: Number(input.target_amount) || null, data: input.deadline ?? null, motivo };
+  }
+  const titulo = input.description?.trim() || 'Lançamento';
+  const valor = Number(input.amount) || null;
+  if (tipo === 'boleto') return { titulo, tipo: 'Conta', valor, data: input.due_date ?? null, motivo };
+  if (tipo === 'parcela') {
+    const n = Math.max(2, Math.round(input.installments ?? 2));
+    return { titulo, tipo: `Compra parcelada em ${n}x`, valor, data: input.occurred_on ?? null, motivo };
+  }
+  return { titulo, tipo: input.type === 'in' ? 'Entrada' : 'Saída', valor, data: input.occurred_on ?? null, motivo };
+}
+
 /** Tira um item da revisão (a tela devolve à fila ou descarta por escolha da pessoa). */
 export async function tirarDaRevisao(localId: string): Promise<ItemEmRevisao | null> {
   const userId = await idDoUsuarioLocal();

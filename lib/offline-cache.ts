@@ -13,7 +13,9 @@ import {
   novaChaveIdempotencia,
   getQueue,
   guardarEmRevisao,
+  listarEmRevisao,
   otimistaDoItem,
+  tirarDaRevisao,
   otimistasDaParcela,
   proximaEspera,
   separarPorDono,
@@ -26,8 +28,8 @@ import type { Transaction } from './types';
 
 /* A fila em si mora em `fila-pendente.ts` desde 24/09/2026, para `data.ts`
    poder juntar os pendentes às listas sem ciclo de import. */
-export type { TipoPendente, ItemEmRevisao } from './fila-pendente';
-export { FilaCheiaError, listarEmRevisao, tirarDaRevisao } from './fila-pendente';
+export type { TipoPendente, ItemEmRevisao, ResumoDaRevisao } from './fila-pendente';
+export { FilaCheiaError, listarEmRevisao, resumoDaRevisao, tirarDaRevisao } from './fila-pendente';
 
 /** Acrescenta à fila, dentro da mesma escrita em série que confere o teto:
     acima dele recusa com a mensagem, e nada é descartado. */
@@ -366,6 +368,49 @@ async function executarRodada(): Promise<ResultadoRodada> {
   falhasSeguidas = falhouTemporario ? falhasSeguidas + 1 : 0;
   if (restantes > 0) agendarNovaTentativa(falhouTemporario ? proximaEspera(falhasSeguidas) : ESPERA_BASE_MS);
   return { synced, remaining: restantes, emRevisao: paraRevisao.length };
+}
+
+/** No que deu "Tentar de novo" na tela de revisão. */
+export type DesfechoDaDevolucao = 'salvo' | 'aguardando' | 'recusado';
+
+/**
+ * Devolve à fila um item de "precisa de revisão" e tenta enviá-lo já.
+ *
+ * Tira da revisão ANTES de pôr na fila: na ordem inversa, uma falha no meio
+ * deixaria o item nos dois lugares, e a meta (que não tem chave de
+ * idempotência) seria gravada duas vezes. Se a fila recusar (cheia), o item
+ * volta para a revisão com o mesmo motivo e o erro sobe para a tela: nada se
+ * perde. Mantém o `clientRequestId`: se a primeira tentativa chegou a gravar,
+ * o banco reconhece a chave e não duplica.
+ *
+ * Devolve o que aconteceu, para a tela dizer à pessoa, ou `null` se o item já
+ * não estava na revisão (outra ação chegou antes).
+ */
+export async function devolverDaRevisaoParaFila(localId: string): Promise<DesfechoDaDevolucao | null> {
+  const item = await tirarDaRevisao(localId);
+  if (!item) return null;
+  const { motivo, revisaoDesde: _desde, ...pendente } = item;
+  const userId = await idDoUsuarioLocal();
+  try {
+    await guardarNaFila(pendente, userId);
+  } catch (erro) {
+    try {
+      await guardarEmRevisao(pendente, motivo);
+    } catch (erroRevisao) {
+      console.error('[offline] item devolvido não coube na fila nem voltou para a revisão', { localId, erro, erroRevisao });
+    }
+    throw erro;
+  }
+  /* O otimista volta às listas enquanto o envio não termina. */
+  marcarLancamentosAlterados();
+  avisarDadoNovo();
+  await flushPendingQueue();
+  if ((await listarEmRevisao()).some((i) => i.localId === localId)) return 'recusado';
+  if ((await getQueue()).some((i) => i.localId === localId)) {
+    agendarNovaTentativa();
+    return 'aguardando';
+  }
+  return 'salvo';
 }
 
 /**

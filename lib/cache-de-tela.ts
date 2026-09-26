@@ -42,6 +42,12 @@ import { idDoUsuarioLocal } from './sessao-offline';
  * conectividade à disposição, é o sinal mais confiável sem módulo nativo novo.
  */
 export function isLikelyNetworkError(e: unknown): boolean {
+  /* A fila cheia (`FilaCheiaError`) diz "esperando conexão" na própria frase,
+     e o "conex" abaixo a lia como falta de rede: `mensagemErro` trocava o
+     aviso por "Sem conexão com a internet" e a pessoa nunca sabia que a fila
+     tinha enchido (achado em 26/09/2026 pelo teste da fila). Conferido pelo
+     nome, sem importar a classe, para não criar ciclo com `fila-pendente.ts`. */
+  if ((e as { name?: unknown } | null)?.name === 'FilaCheiaError') return false;
   const msg = String((e as { message?: string })?.message ?? e ?? '').toLowerCase();
   return msg.includes('network') || msg.includes('fetch') || msg.includes('conex') || msg.includes('timeout');
 }
