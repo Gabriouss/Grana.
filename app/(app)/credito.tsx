@@ -815,8 +815,16 @@ export default function CreditoScreen() {
         if (isDemoMode) {
           setCards((prev) => prev.map((c) => (c.id === editingCardId ? { ...c, ...alteracoes } : c)));
         } else {
-          await updateCreditCard(editingCardId, alteracoes);
-          await loadData();
+          /* Atualiza a lista com a própria linha que o banco devolveu, em vez
+             de pedir `loadData()` de novo: `fetchCreditCards` (via
+             `comCacheOffline`) pode, numa falha de rede rápida bem no
+             instante seguinte, devolver o disco de ANTES da edição sem
+             avisar ninguém (achado N1, confirmado em 26/09 com 3 cartões
+             "AUDIT" criados de verdade no banco e nunca vistos em nenhuma
+             sessão de QA). A linha que voltou do próprio `update`/`insert`
+             já é a fonte de verdade — não precisa ser buscada de novo. */
+          const atualizado = await updateCreditCard(editingCardId, alteracoes);
+          setCards((prev) => prev.map((c) => (c.id === editingCardId ? atualizado : c)));
         }
         hapticSuccess();
         triggerToast('Cartão atualizado');
@@ -837,7 +845,10 @@ export default function CreditoScreen() {
         hapticSuccess();
         triggerToast('Cartão cadastrado com sucesso');
       } else {
-        await addCreditCard({
+        /* Mesmo motivo do ramo de edição acima: a lista ganha a linha que o
+           `insert` devolveu, sem depender de um `loadData()` que pode voltar
+           com o disco de antes do cartão existir. */
+        const criado = await addCreditCard({
           name: cardName.trim(),
           bank: cardBank,
           color: bankObj.color,
@@ -847,7 +858,7 @@ export default function CreditoScreen() {
           due_day: Number(cardDueDay) || 22,
           wallet_id: activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
         });
-        await loadData();
+        setCards((prev) => [...prev, criado]);
         hapticSuccess();
         triggerToast('Cartão cadastrado com sucesso');
       }
@@ -1107,9 +1118,13 @@ export default function CreditoScreen() {
           }
           try {
             await deleteCreditCard(card.id);
+            /* Sem `loadData()`: o mesmo risco do achado N1 (comentário na
+               edição/criação, acima), só que ao contrário — um `fetchCreditCards`
+               que voltasse com o disco de ANTES da exclusão traria o cartão
+               apagado de volta pra lista. */
+            setCards((prev) => prev.filter((c) => c.id !== card.id));
             if (selectedCardId === card.id) setSelectedCardId('all');
             triggerToast('Cartão removido');
-            await loadData();
           } catch (e: any) {
             Alert.alert('Erro ao excluir cartão', e.message);
           }
