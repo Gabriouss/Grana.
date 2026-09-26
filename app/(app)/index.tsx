@@ -17,6 +17,7 @@ import {
 import { Image } from 'expo-image';
 import AppModal from '@/components/AppModal';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
+import LancamentosEmRevisao from '@/components/LancamentosEmRevisao';
 import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
 import { Alert } from '@/lib/alert';
 import { mensagemErro } from '@/lib/erros';
@@ -112,6 +113,7 @@ export default function InicioScreen() {
   const { session, sessaoNaoConfirmada } = useSession();
   const { activeWalletId, activeWallet, activeWalletName, activeWalletColor, wallets, updateSaldosComTransacoes, refreshSaldos, updateEntradasComTransacoes, refreshEntradas } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [revisaoAberta, setRevisaoAberta] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -503,6 +505,9 @@ export default function InicioScreen() {
       openTxModal(params.type === 'in' ? 'in' : 'out', params.category);
       if (params.amount) setTxAmount(params.amount);
       if (params.desc) setTxDesc(params.desc);
+    } else if (params.acao === 'revisao') {
+      // Toque na notificação "não foi salvo" da fila offline.
+      setRevisaoAberta(true);
     } else if (params.acao === 'scan-qr') {
       setQrModalOpen(true);
     } else if (params.acao === 'deposit-goal' && params.goalId) {
@@ -1537,6 +1542,12 @@ export default function InicioScreen() {
         }
       />
       <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
+      <LancamentosEmRevisao
+        estilo={[colunaConteudo, { marginTop: spacing.sm }]}
+        aberta={revisaoAberta}
+        onAbrir={() => setRevisaoAberta(true)}
+        onFechar={() => setRevisaoAberta(false)}
+      />
 
       <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 

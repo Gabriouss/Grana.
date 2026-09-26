@@ -68,7 +68,14 @@ export default function RespostaVozWidget() {
     if (!Notifications) return;
 
     async function tratar(resposta: NotificationsModule.NotificationResponse) {
-      const dados = resposta.notification.request.content.data as unknown as DadosNotifVoz | undefined;
+      const dados = resposta.notification.request.content.data as unknown as DadosNotifVoz | { origem: 'fila'; resultado: 'revisar' } | undefined;
+      /* Recibo da fila offline ("não foi salvo", `publicarReciboDeRevisao`):
+         abre a revisão na Início. Até 26/09/2026 o toque só abria o app, e a
+         notificação prometia uma revisão que não existia em tela nenhuma. */
+      if (dados?.origem === 'fila') {
+        router.push({ pathname: '/(app)/', params: { acao: 'revisao' } });
+        return;
+      }
       if (!dados || dados.origem !== 'voz') return;
 
       if (dados.resultado === 'salvo') {
