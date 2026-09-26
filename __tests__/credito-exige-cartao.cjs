@@ -226,10 +226,10 @@ async function nucleoDaVoz() {
     for (const frase of ['estorno de 50 no crédito do C6', 'estorno de 50 do mercado no crédito do C6', 'devolução de 80 no cartão C6']) {
       transcricao = frase;
       await tarefa({ caminho: '/v.m4a', requestId: fonte + '-1-' + frase, source: fonte });
-      assert.deepEqual(gravados, [], fonte + ': estorno citando cartão não grava: ' + frase);
-      assert.equal(revisoes.at(-1)?.[0], 'Estorno no cartão?', frase);
+      assert.deepEqual(gravados, [], fonte + ': entrada citando cartão não grava: ' + frase);
+      assert.equal(revisoes.at(-1)?.[0], 'Não consegui salvar', frase);
     }
-    ok(fonte + ': "estorno de 50 no crédito do C6" vai para revisão (antes virava COMPRA no cartão)');
+    ok(fonte + ': entrada citando cartão vai para a revisão padrão (antes virava COMPRA no cartão)');
 
     transcricao = 'recebi um crédito de 500 do salário';
     await tarefa({ caminho: '/v.m4a', requestId: fonte + '-2', source: fonte });

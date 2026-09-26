@@ -234,14 +234,14 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   const cartaoDaCategoria = heuristics.ehIntencaoCredito(texto)
     ? heuristics.matchCardByText(texto, cartoesDisponiveis.filter(c => !c.wallet_id || c.wallet_id === carteira.id)) : null;
   const textoDaCategoria = cartaoDaCategoria ? heuristics.limparReferenciaCartao(texto, cartaoDaCategoria) : texto;
-  /* Entrada que cita cartão ("estorno de 50 no crédito do C6") ia para
-     `lancarNoCredito`, que grava `type: 'out'`: o estorno virava COMPRA no
-     cartão. Estorno ainda não se lança por voz, então vai para revisão, sem
-     gravar. Mesma regra no Granabô (`assistente-financeiro`). */
+  /* Entrada que cita cartão ia para `lancarNoCredito`, que grava
+     `type: 'out'`: uma fala de dinheiro ENTRANDO virava compra no cartão. É
+     fala ambígua como qualquer outra: vai para a revisão padrão, sem gravar.
+     Mesma regra no app (a revisão abre o mesmo formulário) e no Granabô. */
   // Tipo lido SEM o nome do cartão: um cartão chamado "Salário" não faz de uma compra uma entrada.
   if (heuristics.guessTypeFromText(textoDaCategoria) === 'in' && heuristics.ehIntencaoCredito(texto)
-    && (heuristics.matchCardByText(texto, cartoesDisponiveis) || /\b(?:cart[aã]o|estorn\w*)\b/iu.test(texto))) {
-    await notificacoes.notificarRevisao('Estorno no cartão?', transcricao.transcript);
+    && (heuristics.matchCardByText(texto, cartoesDisponiveis) || /cart[aã]o/iu.test(texto))) {
+    await notificacoes.notificarRevisao('Não consegui salvar', transcricao.transcript);
     return false;
   }
 
