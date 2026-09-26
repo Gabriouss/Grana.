@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { RECIBOS_VOZ } from '@/lib/voz-recibos';
 import { ActivityIndicator, Platform, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -173,22 +174,27 @@ export default function VoiceEntryButton({
       } catch (e: any) {
         if (e?.message === 'parar_gravacao_travou') throw e;
         /* `stop()` lança quando a gravação foi curta demais para o encoder
-           fechar um arquivo: toque duplo sem querer. Igual ao widget, não é
-           erro a relatar, é "não falou nada". */
+           fechar um arquivo: toque duplo sem querer. Igual ao widget, é "não
+           falou nada", e ganha o recibo curto `naoOuvi` logo abaixo. */
         parouDireito = false;
       }
       const uri = gravador.uri;
       if (!uri) {
-        if (!parouDireito) return;
+        if (!parouDireito) {
+          Alert.alert(RECIBOS_VOZ.naoOuvi.titulo, RECIBOS_VOZ.naoOuvi.texto);
+          return;
+        }
         const msg = mensagemDeErroVoz('audio_ausente');
         Alert.alert(msg.titulo, msg.texto);
         return;
       }
       /* Mesma régua do widget: arquivo que não passa de 1 KB não é fala, e
-         volta ao repouso sem aviso, sem gastar transcrição. */
+         não gasta transcrição. Até 26/09/2026 voltava ao repouso sem aviso
+         (achado V3 do Watchtower); agora os dois dão o mesmo recibo curto. */
       const tamanho = await tamanhoDoAudio(uri);
       if (!parouDireito || (tamanho !== null && !gravacaoValida(tamanho))) {
         await descartarAudio(uri);
+        Alert.alert(RECIBOS_VOZ.naoOuvi.titulo, RECIBOS_VOZ.naoOuvi.texto);
         return;
       }
       /* Mesma execução do widget, com o mesmo prazo de rede (lib/voz.ts).
@@ -196,13 +202,15 @@ export default function VoiceEntryButton({
       await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app' }, {
         podeNotificar: async () => true,
         notificarRevisao: async (titulo, texto) => {
-          Alert.alert(titulo, 'Confira os dados antes de salvar. Se o valor estiver em branco, informe quanto você falou.');
+          const recibo = RECIBOS_VOZ.revisao(titulo, texto);
+          Alert.alert(recibo.titulo, recibo.texto);
           onTranscribed(texto);
         },
         notificarSucesso: async (dados) => {
           hapticSuccess();
           onSaved?.();
-          Alert.alert(dados.titulo, dados.texto, [
+          const recibo = RECIBOS_VOZ.sucesso(dados.titulo, dados.texto);
+          Alert.alert(recibo.titulo, recibo.texto, [
             { text: 'OK' },
             { text: 'Desfazer', onPress: () => {
               if (!dados.operationId) return;
@@ -218,8 +226,8 @@ export default function VoiceEntryButton({
           if (codigo === 'nao_entendi') setAvisoVoz(msg);
           else Alert.alert(msg.titulo, msg.texto);
         },
-        notificarSalvoLocal: async () => { Alert.alert('Salvo no aparelho', 'O lançamento será sincronizado quando houver conexão.'); },
-        notificarPendenteOffline: async () => { Alert.alert('Áudio salvo no aparelho', 'O reconhecimento será retomado quando houver conexão.'); },
+        notificarSalvoLocal: async () => { Alert.alert(RECIBOS_VOZ.salvoLocal.titulo, RECIBOS_VOZ.salvoLocal.texto); },
+        notificarPendenteOffline: async () => { Alert.alert(RECIBOS_VOZ.pendenteOffline.titulo, RECIBOS_VOZ.pendenteOffline.texto); },
       });
     } catch (e: any) {
       if (__DEV__) console.warn('[voz:diag] botao lancou', e?.name, String(e?.message ?? e));

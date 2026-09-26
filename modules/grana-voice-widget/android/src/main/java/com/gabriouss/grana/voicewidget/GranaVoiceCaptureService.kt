@@ -38,6 +38,9 @@ class GranaVoiceCaptureService : Service() {
 
     const val CANAL = "lancamento-voz"
     private const val NOTIF_ID = 4711
+    private const val NOTIF_RECIBO_ID = 4712
+    /** Mesma pasta de `PASTA_ORFA` em lib/widget-voz-pendentes.ts (`documentDirectory` = `filesDir`). */
+    const val PASTA_ORFA = "voz-orfa"
 
     /* Teto absoluto. Espelha MAX_SEGUNDOS_GRAVACAO de lib/voz.ts e o teto de
        tamanho da Edge Function — um comando de lançamento não passa disso, e
@@ -246,8 +249,8 @@ class GranaVoiceCaptureService : Service() {
       arquivoValido = destino != null && destino.exists() && destino.length() > 1024
     } catch (e: Exception) {
       /* `stop()` lança quando a gravação foi curta demais pro encoder fechar
-         um arquivo válido — toque duplo acidental, quase sempre. Não é erro
-         a relatar, é "não falou nada". */
+         um arquivo válido: toque duplo acidental, quase sempre. É "não falou
+         nada", e ganha o recibo curto logo abaixo. */
       arquivoValido = false
     } finally {
       liberar()
@@ -255,6 +258,11 @@ class GranaVoiceCaptureService : Service() {
 
     if (!arquivoValido || destino == null || id == null) {
       destino?.delete()
+      /* Até 26/09/2026 voltava ao repouso sem aviso (achado V3 do Watchtower).
+         O mesmo recibo do botão do app (`RECIBOS_VOZ.naoOuvi` em
+         lib/voz-recibos.ts; o texto aqui é a cópia vigiada por
+         __tests__/voz-recibos-paridade.cjs). Nada é enviado nem transcrito. */
+      publicarRecibo(R.string.grana_voice_nao_ouvi_titulo, R.string.grana_voice_nao_ouvi_texto)
       finalizar(EstadoWidget.OCIOSO)
       return
     }
@@ -272,8 +280,17 @@ class GranaVoiceCaptureService : Service() {
     try {
       startService(ponte)
     } catch (e: Exception) {
-      destino.delete()
-      finalizar(EstadoWidget.OCIOSO)
+      /* A fala é válida e o JavaScript não pôde recebê-la agora. Até 26/09/2026
+         o áudio era APAGADO aqui e o widget voltava ao repouso sem recibo
+         (achado V4 do Watchtower): uma fala perdida em silêncio. Agora ele vai
+         para `filesDir/voz-orfa/<requestId>.m4a`, e a fila do app o adota ao
+         abrir (`adotarVozesOrfas` em lib/widget-voz-pendentes.ts), com o mesmo
+         requestId, e o processa pelo núcleo comum. O widget fica em atenção:
+         o toque abre o app. */
+      android.util.Log.w("GranaVoz", "ponte recusada; fala guardada para o app", e)
+      guardarParaOApp(destino, id)
+      publicarRecibo(R.string.grana_voice_guardada_titulo, R.string.grana_voice_guardada_texto)
+      finalizar(EstadoWidget.ATENCAO)
       return
     }
 
@@ -295,6 +312,44 @@ class GranaVoiceCaptureService : Service() {
     arquivo = null
     if (motivo != null) android.util.Log.w("GranaVoz", "gravação abortada: $motivo")
     finalizar(estado)
+  }
+
+  /** Move o áudio do cache para a pasta que o app adota ao abrir. Se nem isso
+   *  der, o arquivo fica onde está: melhor sobrar no cache que sumir. */
+  private fun guardarParaOApp(arquivoGravado: File, id: String) {
+    try {
+      val pasta = File(filesDir, PASTA_ORFA).apply { mkdirs() }
+      val alvo = File(pasta, "$id.m4a")
+      if (!arquivoGravado.renameTo(alvo)) {
+        arquivoGravado.copyTo(alvo, overwrite = true)
+        arquivoGravado.delete()
+      }
+    } catch (e: Exception) {
+      android.util.Log.e("GranaVoz", "não consegui guardar a fala para o app", e)
+    }
+  }
+
+  /** Recibo curto no canal do lançamento por voz. Tocar abre o app. Falhar ao
+   *  publicar deixa log: o recibo não pode derrubar o resto da saída. */
+  private fun publicarRecibo(titulo: Int, texto: Int) {
+    try {
+      val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      val abrir = packageManager.getLaunchIntentForPackage(packageName)?.let {
+        it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        PendingIntent.getActivity(this, 3, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+      }
+      val recibo = NotificationCompat.Builder(this, CANAL)
+        .setContentTitle(getString(titulo))
+        .setContentText(getString(texto))
+        .setStyle(NotificationCompat.BigTextStyle().bigText(getString(texto)))
+        .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+        .setAutoCancel(true)
+        .apply { if (abrir != null) setContentIntent(abrir) }
+        .build()
+      manager.notify(NOTIF_RECIBO_ID, recibo)
+    } catch (e: Exception) {
+      android.util.Log.e("GranaVoz", "recibo da voz não publicado", e)
+    }
   }
 
   private fun cancelarAgendados() {

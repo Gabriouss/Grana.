@@ -11,6 +11,12 @@
   <string name="grana_voice_gravando_texto">Fale o lançamento. Toque no widget para encerrar.</string>
   <string name="grana_voice_encerrar">Encerrar</string>
   <string name="grana_voice_cancelar">Cancelar</string>
+  <!-- Cópias de RECIBOS_VOZ.naoOuvi e .falaGuardada (lib/voz-recibos.ts),
+       vigiadas por __tests__/voz-recibos-paridade.cjs. Mude lá e aqui juntos. -->
+  <string name="grana_voice_nao_ouvi_titulo">Não ouvi nada</string>
+  <string name="grana_voice_nao_ouvi_texto">Nada foi lançado. Toque no microfone e fale o gasto.</string>
+  <string name="grana_voice_guardada_titulo">Fala guardada no aparelho</string>
+  <string name="grana_voice_guardada_texto">Não deu para processar agora. Abra o Grana. para concluir o lançamento.</string>
 
   <string name="grana_widget_sem_dados">Ainda sem dados</string>
   <string name="grana_widget_abrir_atualizar">Abra o Grana. para atualizar</string>

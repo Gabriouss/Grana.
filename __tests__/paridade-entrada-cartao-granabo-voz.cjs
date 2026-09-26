@@ -223,7 +223,9 @@ async function peloGranabo(frase) {
   }
   /* O toque na notificação decide pela função, não por regra própria. */
   const toque = fs.readFileSync(path.join(root, 'components/RespostaVozWidget.tsx'), 'utf8');
-  assert.match(toque, /destinoDaFala\(texto\)/, 'RespostaVozWidget usa destinoDaFala');
+  /* Desde 26/09/2026 (V2) com as mesmas carteiras e cartões da Início; o
+     teste dessa parte está em voz-recibos-paridade.cjs. */
+  assert.match(toque, /destinoDaFalaComReferencias\(texto\)/, 'RespostaVozWidget usa destinoDaFala, com as listas');
   assert.doesNotMatch(toque, /ehIntencaoCredito|ehIntencaoBoleto/, 'RespostaVozWidget sem regra própria');
 
   /* Nenhuma guarda trata a palavra "estorno" (autor, 26/09/2026). */

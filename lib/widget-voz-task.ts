@@ -442,7 +442,7 @@ export async function tentarVozesPendentes(): Promise<void> {
   if (filaEmExecucao || Platform.OS !== 'android') return;
   filaEmExecucao = true;
   try {
-    const [{ listarVozesPendentes, removerVozPendente }, { podeNotificar }, { idDoUsuarioLocal }] = await Promise.all([
+    const [{ listarVozesPendentes, adotarVozesOrfas }, { podeNotificar }, { idDoUsuarioLocal }] = await Promise.all([
       import('./widget-voz-pendentes'),
       import('./widget-voz-notificacoes'),
       import('./sessao-offline'),
@@ -450,13 +450,17 @@ export async function tentarVozesPendentes(): Promise<void> {
     if (!(await podeNotificar())) return;
     const userId = await idDoUsuarioLocal();
     if (!userId) return;
+    /* Fala que o widget gravou e não conseguiu entregar (V4): entra na fila
+       antes da leitura, para ser processada nesta mesma passada. */
+    await adotarVozesOrfas(userId);
 
     for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId)) {
       // Mantém o item até a tarefa concluir; uma interrupção permite retomada.
       await executarTarefa(item);
     }
-  } catch {
+  } catch (e) {
     // A fila permanece no aparelho; a próxima abertura/retomada tenta de novo.
+    console.error('[voz] retomada da fila de falas falhou', e);
   } finally {
     filaEmExecucao = false;
   }

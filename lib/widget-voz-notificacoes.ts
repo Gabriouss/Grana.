@@ -1,4 +1,5 @@
 import { getNotifications } from './notifications';
+import { ACAO_DA_NOTIFICACAO, RECIBOS_VOZ } from './voz-recibos';
 import { mensagemDeErroVoz, type CodigoErroVoz } from './voz';
 
 /**
@@ -115,9 +116,10 @@ export async function notificarSucesso(args: {
   ids: string[];
   operationId: string;
 }) {
+  const recibo = RECIBOS_VOZ.sucesso(args.titulo, args.texto);
   await publicar(
-    args.titulo,
-    `${args.texto} · salvo no Grana.`,
+    recibo.titulo,
+    recibo.texto,
     {
       origem: 'voz', resultado: 'salvo', tipo: args.tipo,
       ids: args.ids, operationId: args.operationId,
@@ -132,9 +134,10 @@ export async function notificarSucesso(args: {
  * transcrição já preenchida, pra não obrigar a repetir a fala.
  */
 export async function notificarRevisao(titulo: string, transcricao: string) {
+  const recibo = RECIBOS_VOZ.revisao(titulo, transcricao);
   await publicar(
-    titulo,
-    `Ouvi: "${transcricao}". Toque para revisar e salvar.`,
+    recibo.titulo,
+    `${recibo.texto} ${ACAO_DA_NOTIFICACAO.revisao}`,
     { origem: 'voz', resultado: 'revisar', transcricao }
   );
 }
@@ -148,14 +151,13 @@ export async function notificarFalha(codigo: CodigoErroVoz) {
 /** O áudio foi guardado; falta só a rede para transcrever e salvar. */
 export async function notificarPendenteOffline() {
   await publicar(
-    'Lançamento aguardando conexão',
-    'O áudio foi guardado. Abra o Grana. com conexão para tentar novamente.',
+    RECIBOS_VOZ.pendenteOffline.titulo,
+    RECIBOS_VOZ.pendenteOffline.texto,
     { origem: 'voz', resultado: 'pendente', transcricao: '' }
   );
 }
 
 export async function notificarSalvoLocal() {
-  await publicar('Lançamento salvo no aparelho',
-    'Será sincronizado com sua conta ao abrir o Grana. com conexão.',
+  await publicar(RECIBOS_VOZ.salvoLocal.titulo, RECIBOS_VOZ.salvoLocal.texto,
     { origem: 'voz', resultado: 'pendente', transcricao: '' });
 }

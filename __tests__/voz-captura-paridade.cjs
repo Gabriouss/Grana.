@@ -7,7 +7,8 @@
 //      GranaVoiceCaptureService.kt, e que a regra do detector é a mesma;
 //   2. executa o VoiceEntryButton REAL (transpilado, com dublês nos imports e
 //      um relógio falso) e confere o que ele faz: encerra no silêncio depois
-//      de ouvir fala, descarta o toque duplo sem aviso nem transcrição, e
+//      de ouvir fala, descarta o toque duplo sem transcrição e com o recibo
+//      curto "Não ouvi nada" (o mesmo do widget, V3 de 26/09/2026), e
 //      entrega ao núcleo sem prazo próprio.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -39,6 +40,7 @@ function carregar(arquivo, dependencias = {}, globais = {}) {
 }
 
 const captura = carregar('lib/voz-captura.ts');
+const recibos = carregar('lib/voz-recibos.ts');
 
 // ── 1. Números e regra iguais aos do Kotlin ────────────────────────────────
 console.log('\nCaptura: mesmos números do widget');
@@ -60,6 +62,13 @@ console.log('\nCaptura: mesmos números do widget');
   assert.ok(regua, 'régua de tamanho não encontrada no Kotlin');
   assert.equal(captura.TAMANHO_MINIMO_AUDIO_BYTES, Number(regua[1]));
   ok('intervalo, silêncio, limiar, teto e tamanho mínimo iguais aos do Kotlin');
+
+  // V3: o ramo do arquivo curto (ou `stop()` que lançou) publica o recibo
+  // "Não ouvi nada" antes de voltar ao repouso, como o botão do app.
+  const ramoCurto = kt.slice(kt.indexOf('if (!arquivoValido || destino == null || id == null) {'), kt.indexOf('EstadoWidget.definir(this, EstadoWidget.PROCESSANDO)'));
+  assert.ok(ramoCurto.includes('publicarRecibo(R.string.grana_voice_nao_ouvi_titulo, R.string.grana_voice_nao_ouvi_texto)'), 'o widget precisa do recibo curto');
+  assert.ok(ramoCurto.indexOf('publicarRecibo') < ramoCurto.indexOf('finalizar(EstadoWidget.OCIOSO)'));
+  ok('o widget também dá o recibo "Não ouvi nada" na gravação curta');
 
   // A mesma regra do `amostrador`: fala zera o silêncio; silêncio só conta
   // depois de ter ouvido fala; a primeira amostra calada só marca o início.
@@ -115,7 +124,7 @@ console.log('\nCaptura: o detector');
 
 // ── 2. O botão real ────────────────────────────────────────────────────────
 function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () => -160 } = {}) {
-  const reg = { tarefas: [], alertas: [], apagados: [], gravando: false };
+  const reg = { tarefas: [], alertas: [], alertasCompletos: [], apagados: [], gravando: false, adaptador: null };
   let relogio = 1_000_000;
   const timers = [];
   let proximoId = 1;
@@ -154,7 +163,7 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
       ActivityIndicator: 'ActivityIndicator', Text: 'Text', Platform: { OS: 'android' },
       StyleSheet: { create: (x) => x },
     },
-    '@/lib/alerta': { Alert: { alert: (titulo, texto) => reg.alertas.push(titulo) } },
+    '@/lib/alerta': { Alert: { alert: (titulo, texto) => { reg.alertas.push(titulo); reg.alertasCompletos.push({ titulo, texto }); } } },
     '@expo/vector-icons/Ionicons': 'Ionicons',
     'expo-audio': {
       AudioQuality: { MEDIUM: 0 }, IOSOutputFormat: { MPEG4AAC: 0 },
@@ -167,10 +176,11 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
     '@/lib/haptics': { hapticSuccess: () => {} },
     '@/lib/voz': { MAX_SEGUNDOS_GRAVACAO: 20, mensagemDeErroVoz: (c) => ({ titulo: 'erro:' + c, texto: '' }) },
     '@/lib/voz-captura': captura,
+    '@/lib/voz-recibos': recibos,
     './AppPressable': { __esModule: true, default: AppPressable },
     './AppDialog': { __esModule: true, default: function AppDialog() {} },
     'expo-crypto': { randomUUID: () => 'req-1' },
-    '@/lib/widget-voz-task': { executarTarefa: async (payload) => { reg.tarefas.push(payload); } },
+    '@/lib/widget-voz-task': { executarTarefa: async (payload, adaptador) => { reg.tarefas.push(payload); reg.adaptador = adaptador; } },
     'expo-file-system': { File: class { constructor(uri) { this.uri = uri; } get exists() { return true; } get size() { return tamanho; } } },
     'expo-file-system/legacy': { deleteAsync: async (uri) => { reg.apagados.push(uri); } },
   };
@@ -256,9 +266,9 @@ process.exitCode = 1;
     await b.tocar();
     await b.tocar();
     assert.equal(b.reg.tarefas.length, 0, 'toque duplo não gasta transcrição');
-    assert.deepEqual(b.reg.alertas, [], 'toque duplo volta ao repouso sem aviso');
+    assert.deepEqual(b.reg.alertas, ['Não ouvi nada'], 'toque duplo dá o recibo curto (V3)');
     assert.deepEqual(b.reg.apagados, ['file:///cache/voz.m4a'], 'o arquivo curto é apagado');
-    ok('gravação de até 1 KB é descartada sem aviso, como o widget');
+    ok('gravação de até 1 KB é descartada com o recibo "Não ouvi nada", como o widget');
   }
 
   {
@@ -266,9 +276,9 @@ process.exitCode = 1;
     await b.tocar();
     await b.tocar();
     assert.equal(b.reg.tarefas.length, 0);
-    assert.deepEqual(b.reg.alertas, [], '`stop()` que lança é toque curto, não erro');
+    assert.deepEqual(b.reg.alertas, ['Não ouvi nada'], '`stop()` que lança é toque curto, com o mesmo recibo');
     assert.deepEqual(b.reg.apagados, ['file:///cache/voz.m4a']);
-    ok('`stop()` que lança volta ao repouso sem aviso, como o widget');
+    ok('`stop()` que lança dá o recibo "Não ouvi nada", como o widget');
   }
 
   {
@@ -288,6 +298,42 @@ process.exitCode = 1;
     assert.equal(b.reg.tarefas.length, 1, 'gravação normal segue para o núcleo');
     assert.deepEqual(b.reg.apagados, [], 'quem apaga a gravação boa é o núcleo, depois de usar');
     ok('gravação normal segue para o núcleo');
+
+    /* V1 (26/09/2026): o mesmo desfecho, o mesmo texto nas duas entradas. O
+       adaptador que o botão REAL entrega ao núcleo contra o módulo REAL de
+       notificações do widget. Só a notificação de revisão acrescenta a
+       instrução de ação da superfície ("Toque para revisar."). */
+    const publicadas = [];
+    const notif = carregar('lib/widget-voz-notificacoes.ts', {
+      './notifications': { getNotifications: () => ({
+        scheduleNotificationAsync: async ({ content }) => { publicadas.push({ titulo: content.title, texto: content.body }); },
+        setNotificationChannelAsync: async () => {}, setNotificationCategoryAsync: async () => {},
+        getPermissionsAsync: async () => ({ granted: true }), AndroidImportance: { HIGH: 4, DEFAULT: 3 },
+      }) },
+      './voz-recibos': recibos,
+      './voz': { mensagemDeErroVoz: (c) => ({ titulo: 'erro:' + c, texto: 'texto:' + c }) },
+    }, { JSON, Object, Array, String });
+    const app = b.reg.adaptador;
+    const ultimaDoApp = () => b.reg.alertasCompletos[b.reg.alertasCompletos.length - 1];
+    const ultimaDoWidget = () => publicadas[publicadas.length - 1];
+    const antes = [];
+    const casos = [
+      ['revisão', () => app.notificarRevisao('Qual cartão?', 'uber 25 no crédito'), () => notif.notificarRevisao('Qual cartão?', 'uber 25 no crédito'), ' ' + recibos.ACAO_DA_NOTIFICACAO.revisao],
+      ['sucesso', () => app.notificarSucesso({ titulo: 'Almoço · R$ 38,50', texto: 'Alimentação · Pix', operationId: 'op' }), () => notif.notificarSucesso({ titulo: 'Almoço · R$ 38,50', texto: 'Alimentação · Pix', tipo: 'transaction', ids: ['t1'], operationId: 'op' }), ''],
+      ['salvo no aparelho', () => app.notificarSalvoLocal(), () => notif.notificarSalvoLocal(), ''],
+      ['aguardando conexão', () => app.notificarPendenteOffline(), () => notif.notificarPendenteOffline(), ''],
+    ];
+    for (const [nome, noApp, noWidget, acao] of casos) {
+      await noApp();
+      await noWidget();
+      const a = ultimaDoApp();
+      const w = ultimaDoWidget();
+      assert.equal(a.titulo, w.titulo, nome + ': título igual');
+      assert.equal(a.texto + acao, w.texto, nome + ': corpo igual (fora a instrução de ação da notificação)');
+      assert.doesNotMatch(a.titulo + a.texto + w.texto, /[—–]/, nome + ': sem travessão');
+      antes.push(nome);
+    }
+    ok('revisão, sucesso, salvo no aparelho e aguardando conexão: mesmo título e mesmo corpo no app e no widget');
   }
 
   console.log('\n' + aprovadas + '/' + aprovadas + ' checagens da captura de voz passaram — 0 falhas\n');

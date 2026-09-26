@@ -52,6 +52,48 @@ export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'>):
   await gravar(itens);
 }
 
+/**
+ * Pasta onde o Kotlin do widget guarda uma fala que não conseguiu entregar ao
+ * JavaScript (`startService` da ponte recusado). É `filesDir/voz-orfa/` no
+ * nativo, o mesmo lugar que `documentDirectory` aponta aqui. Cada arquivo se
+ * chama `<requestId>.m4a`. Mesma constante que `PASTA_ORFA` em
+ * GranaVoiceCaptureService.kt.
+ */
+export const PASTA_ORFA = 'voz-orfa';
+
+/**
+ * Traz para esta fila as falas que o widget guardou sem conseguir entregar
+ * (achado V4 do Watchtower, 26/09/2026: antes o áudio era apagado). O
+ * requestId vem do nome do arquivo, o mesmo que o widget gerou, então a
+ * idempotência do servidor continua valendo. O arquivo de origem só é apagado
+ * depois de copiado para a fila; falha deixa log e o arquivo, para a próxima
+ * abertura tentar de novo.
+ */
+export async function adotarVozesOrfas(userId: string): Promise<number> {
+  const fs = await import('expo-file-system/legacy');
+  const pasta = `${fs.documentDirectory}${PASTA_ORFA}/`;
+  let nomes: string[];
+  try {
+    if (!(await fs.getInfoAsync(pasta)).exists) return 0;
+    nomes = await fs.readDirectoryAsync(pasta);
+  } catch (e) {
+    console.error('[voz] não consegui ler as falas guardadas pelo widget', e);
+    return 0;
+  }
+  let adotadas = 0;
+  for (const nome of nomes.filter((n) => n.endsWith('.m4a'))) {
+    const caminho = `${pasta}${nome}`;
+    try {
+      await adicionarVozPendente({ caminho, requestId: nome.slice(0, -'.m4a'.length), userId, source: 'widget' });
+      await fs.deleteAsync(caminho, { idempotent: true });
+      adotadas++;
+    } catch (e) {
+      console.error('[voz] fala guardada pelo widget não entrou na fila', nome, e);
+    }
+  }
+  return adotadas;
+}
+
 export async function listarVozesPendentes(): Promise<VozPendente[]> {
   return ler();
 }
