@@ -11513,7 +11513,44 @@ O autor aprovou a revisão de `E:\Grana-temporarios\2026-09-25-marketing\copy-se
 
 - **Pedido e decisão:** manter voz/QR até o dia D e só mencionar foto da nota depois do dia D; o Sentinel é quem declara o dia D, após a build nova e o QA no aparelho.
 - **Sintoma e causa:** o texto de posicionamento apresentava a ausência de conexão bancária como comparação de privacidade contra concorrentes. A causa era copy desatualizada em `PRODUCT.md`, não um comportamento novo do app.
-- **Arquivos concretos:** `PRODUCT.md`, seções `Positioning` e `Capabilities and Constraints`; fonte da decisão em `E:\Grana-temporarios\2026-09-25-marketing\copy-sem-vantagem-bancaria.md:29-37,79`. O hash do commit desta revisão será registrado após o commit.
+- **Arquivos concretos:** `PRODUCT.md`, seções `Positioning` e `Capabilities and Constraints`; fonte da decisão em `E:\Grana-temporarios\2026-09-25-marketing\copy-sem-vantagem-bancaria.md:29-37,79`. Commit da seção `Positioning`: `e599553`.
 - **Descartado:** não tocar no aviso do `ImportarExtratoModal`; não tocar na política de privacidade nem nas FAQs. Também não antecipar foto da nota antes da declaração do Sentinel.
-- **O que deu errado:** a copy anterior tratava uma restrição de produto como vantagem de venda. A correção ficou limitada à documentação de posicionamento; nenhum código, migration ou build foi alterado.
-- **Verificação:** conferido por diff que o trecho proibido saiu do `PRODUCT.md`, que a regra voz/QR até D/foto depois de D está explícita e que os arquivos de app não fazem parte da alteração. Falta apenas o commit/push e a verificação final do espelho e do verificador do vault; o dia D ainda não foi declarado.
+- **O que deu errado:** a copy anterior tratava uma restrição de produto como vantagem de venda. A correção ficou limitada à documentação de posicionamento; nenhum código, migration ou build foi alterado. O commit `e599553` não tocou a seção **Copy and Marketing Guidelines** do mesmo arquivo, que ainda trazia "escanear nota fiscal e saber quanto pode gastar hoje em 2 a 5 segundos, sem planilhas e sem conexões bancárias" como diferencial — a mesma vantagem banida sobrevivendo no mesmo arquivo. O Watchtower achou a contradição e o Ledger corrigiu em commit próprio (`3dd18f1`): "escanear nota fiscal" virou "QR de nota fiscal" (a foto só existe depois do dia D) e a frase remete à regra de comunicação da seção Positioning em vez de repetir o argumento bancário.
+- **Copy externa (Forge):** a mesma regra alcançou a landing (`app/index.tsx`) em dois commits — `06db912` desce o card "Mas eu não quero dar acesso à minha conta bancária." para o último lugar da grade de objeções, e `9b40f71` tira "Sem conectar banco"/"sem conexão bancária" do herói, da faixa (`TrustMarquee`), dos chips do CTA final e da FAQ. Revisado pelo Watchtower (`revisao-watchtower-copy-bancaria.md`) e pelo Prism em navegador, 390/1440/1920 px, com e sem `prefers-reduced-motion` (`revisao-prism-landing.md`): sem linha órfã no subtítulo do herói, faixa legível parada e rolando, três chips do CTA sem quebra, grade de objeções coerente com o card bancário no fim. Não verificado: tablet, fonte de sistema ampliada, e a build publicada em produção (a checagem usou export web local).
+- **Verificação:** conferido por diff que o trecho proibido saiu do `PRODUCT.md` (Positioning) e, depois, da seção Copy and Marketing Guidelines do mesmo arquivo; que a regra voz/QR até D/foto depois de D está explícita nos dois lugares; que os arquivos de app (fora da landing e da doc) não fazem parte da alteração. Commits publicados em `origin/main`; espelho do vault (`Produto - Estado Atual - Grana.md`) conferido depois do `3dd18f1`, sem ocorrências residuais. O dia D ainda não foi declarado.
+
+## 25/09/2026 — M1 — calendário de marketing vira fila única a partir do dia D
+
+- **Pedido como chegou:** o Beacon tinha proposto um calendário em duas fases
+  (Fase A publicava logo o que não dependia da build nova; Fase B esperava o
+  dia D). O autor substituiu a divisão: "Tudo só começará a ser publicado
+  após a build nova, então todo o marketing será feito baseando-se na build
+  nova, pois nada será publicado antes disso."
+- **O que muda:** nenhuma peça é publicada antes de D, nem as que já estão
+  prontas e sem dependência nenhuma (E02, E05, E06, S4, S2 web). Existe uma
+  fila só, numerada a partir de D+0 em dias úteis (fim de semana não conta:
+  se D cair em fim de semana, D+0 é a segunda seguinte), com a cadência-base
+  de 3 Reels e 2 estáticos por semana. A distinção que continua importando é
+  só de PRODUÇÃO: gravar, gerar e montar pode e deve acontecer antes de D
+  sempre que a peça não depender de uma função só existente na build nova
+  (foto da nota, ou a Início/`Livre para Gastar` pela regra 20); só a
+  PUBLICAÇÃO espera D, sem exceção.
+- **Quem declara D:** o Sentinel (QA), quando o portão do dia D estiver
+  cumprido (build publicada com versão maior que a anunciada, foto da nota
+  testada no aparelho com cupons reais — proposta de mínimo 10 cupons ainda
+  pendente de confirmação do autor —, Início/widgets/Granabô mostrando o
+  mesmo número pela regra 20, voz paritária nas duas entradas pela regra 13,
+  capturas só em dado de exemplo/conta de teste, e revisão do Watchtower em
+  cada peça). O autor só aprova a publicação em si.
+- **Arquivos concretos:** `FUNIL.md`, seção 5 ("Calendário de publicação"),
+  reescrita duas vezes no mesmo dia; fila completa com todas as peças e a
+  coluna "Produção" (pode produzir agora vs. só depois de D) nas linhas
+  186-215. Fonte da decisão em
+  `E:\Grana-temporarios\2026-09-25-marketing\pedido-beacon-calendario.md` e
+  `relatorio-beacon-calendario.md`.
+- **Descartado:** a divisão em Fase A/Fase B foi descartada pelo autor depois
+  de já estar escrita uma vez nesta mesma sessão de reescrita; não é uma
+  proposta alternativa em aberto, é uma decisão já substituída.
+- **O que ficou sem verificação:** o número de cupons do portão (proposta de
+  10) ainda não foi confirmado pelo autor; a estimativa de D em 05/10/2026
+  (data de volta da cota do EAS) é estimativa, não data certa.
