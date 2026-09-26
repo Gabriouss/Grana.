@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     color: theme.ink,
     fontSize: type.nota,
-    lineHeight: lh(type.nota, 'apoio'),
+    lineHeight: lh(type.nota, 'corpo'),
     fontFamily: fonts.light,
     backgroundColor: theme.paper,
     marginTop: spacing.xs,
