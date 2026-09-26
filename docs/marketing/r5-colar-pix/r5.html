@@ -1,0 +1,126 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
+@font-face{font-family:NM;src:url(NeueMachina-Regular.otf);font-weight:400}
+@font-face{font-family:NM;src:url(NeueMachina-Light.otf);font-weight:300}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:540px;height:960px;overflow:hidden;background:#052229}
+#stage{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 70% at 50% 110%,#0b4f5c 0%,#052229 55%,#021419 100%)}
+#world{position:absolute;inset:0}
+.glow{position:absolute;border-radius:50%;filter:blur(60px);background:radial-gradient(circle,#22a1c1,transparent 70%)}
+#flash{position:absolute;inset:0;background:#aeffe3;opacity:0;pointer-events:none;mix-blend-mode:screen}
+#bar{position:absolute;left:0;top:0;height:5px;background:linear-gradient(90deg,#b0f7c9,#22a1c1);z-index:20}
+#hook{position:absolute;left:36px;right:36px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;font-family:NM;color:#effffa;font-size:62px;line-height:1.05;letter-spacing:-1.2px}
+#hook div{transform-origin:0 60%}
+em{font-style:normal;color:#aeffe3}
+#cap{position:absolute;left:24px;right:24px;top:48px;text-align:center;font-family:NM;color:#effffa;font-size:36px;line-height:1.1;z-index:10;text-shadow:0 4px 18px rgba(0,0,0,.45)}
+#cap .w{display:inline-block;margin-right:.22em}
+#phone{position:absolute;left:95px;top:176px;width:350px;height:753px;border-radius:52px;background:#0a0d0e;
+  box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1.5px #2a3336 inset,0 0 0 3px #111}
+#screen{position:absolute;left:10px;top:10px;width:330px;height:733px;border-radius:42px;overflow:hidden;background:#000}
+#screen img{width:100%;height:100%;display:block}
+.glass{position:absolute;inset:0;border-radius:42px;background:linear-gradient(125deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,0) 38%)}
+.tap{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,255,255,.6);box-shadow:0 0 0 3px rgba(174,255,227,.5);opacity:0}
+#hl{position:absolute;border:3px solid #aeffe3;border-radius:14px;box-shadow:0 0 22px rgba(174,255,227,.7);opacity:0}
+.tag{position:absolute;z-index:12;padding:12px 20px;border-radius:999px;background:rgba(11,45,53,.92);border:2px solid #aeffe3;font-family:NM;font-size:26px;color:#effffa;box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;white-space:nowrap}
+.tag b{color:#aeffe3;font-weight:400}
+.cf{position:absolute;width:10px;height:16px;border-radius:2px;z-index:11}
+#end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;opacity:0;z-index:15}
+#end img{width:320px}
+#end p{font-family:NM;color:#effffa;font-size:34px;text-align:center}
+#end p span{display:inline-block;margin:0 .12em}
+</style></head><body><div id="stage">
+<div id="world">
+ <div class="glow" id="g1" style="width:520px;height:520px;left:10px;top:520px;opacity:.35"></div>
+ <div class="glow" id="g2" style="width:380px;height:380px;left:260px;top:-80px;opacity:.18;background:radial-gradient(circle,#b0f7c9,transparent 70%)"></div>
+ <div id="hook"></div>
+ <div id="phone"><div id="screen"><img id="shot" src="fr/0001.jpg"><div id="hl"></div><div class="tap" id="tap"></div></div><div class="glass"></div></div>
+</div>
+<div id="scrim" style="position:absolute;left:0;right:0;top:0;height:190px;z-index:9;background:linear-gradient(180deg,rgba(2,20,25,.92) 0%,rgba(2,20,25,.75) 55%,rgba(2,20,25,0) 100%);opacity:0"></div><div id="cap"></div>
+<div class="tag" id="t1" style="right:18px;top:330px">R$ <b>32,90</b></div>
+<div class="tag" id="t2" style="left:18px;top:470px">● <b>Alimentação</b></div>
+<div class="tag" id="t3" style="right:18px;top:600px">Saída · <b>Pix</b></div>
+<div id="conf"></div>
+<div id="end"><img id="logo" src="logotipo-gradiente.svg"><p id="endp"><span>Recebeu,</span><span>colou,</span><span><em>lançou.</em></span></p></div>
+<div id="flash"></div><div id="bar"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),p=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3),eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const back=(x,c1=1.7)=>{const c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+const B=60/128, DROP=4*B, LOGO=22*B, DUR=13.3, NF=274;
+function lerpKeys(keys,t){ // keys: [t, ...vals] ; ease in-out between keys
+  if(t<=keys[0][0])return keys[0].slice(1); for(let i=1;i<keys.length;i++){if(t<=keys[i][0]){const a=keys[i-1],b=keys[i],k=eio((t-a[0])/(b[0]-a[0]));return a.slice(1).map((v,j)=>v+(b[j+1]-v)*k)}} return keys[keys.length-1].slice(1)}
+// tempo do clipe (S) por trechos lineares; null = corte seco
+const SEG=[[DROP,0.4,2.60,1.15],[2.60,1.2,7*B,2.0],[7*B,2.05,10*B,3.45],[10*B,3.55,11*B,4.47],[11*B,4.5,17*B,6.35],[17*B,6.35,18*B,6.7],[18*B,7.4,21*B,8.8],[21*B,8.8,LOGO,9.05]];
+function S(t){for(const [a,s0,b,s1] of SEG){if(t>=a&&t<b)return s0+(s1-s0)*(t-a)/(b-a)}return t<DROP?0.4:9.05}
+// câmera: [t, zoom, x, y] (pontos do clipe 1080x2400)
+const CAM=[[0,1,540,1200],[DROP+.3,1,540,1200],[2.45,1.08,688,700],[7*B-.01,1.08,688,900],[7*B,1.55,540,950],[10*B-.2,1.6,540,1000],[11*B,1.05,540,1200],[11*B+.35,1.7,330,1250],[14*B,1.7,330,1250],[15*B,1.45,540,1400],[17*B-.1,1.2,540,1500],[18*B,1.0,540,1500],[18*B+.25,1.45,540,2000],[21*B-.2,1.35,540,2000],[LOGO,1,540,1200]];
+const TAPS=[[1.0,688,568],[3.4,540,1168],[6.45,540,1608]];
+const HOOK=[["Recebeu"],["um <em>Pix</em>"],["e não quer"],["<em>digitar tudo?</em>"]];
+$('hook').innerHTML=HOOK.map(h=>`<div>${h[0]}</div>`).join('');
+const CAPS=[[DROP+.1,7*B-.05,"Copiou o comprovante?"],[7*B,11*B-.05,"<em>Cola.</em>"],[11*B,17*B-.05,"O Grana. <em>lê tudo sozinho.</em>"],[17*B,21*B,"Salva num <em>toque.</em>"]];
+let capI=-2;
+// confete (semente fixa)
+let sd=11;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+const CF=[];const cols=['#aeffe3','#b0f7c9','#22a1c1','#effffa','#1fa98d'];
+for(let i=0;i<70;i++){const e=document.createElement('div');e.className='cf';e.style.background=cols[i%5];$('conf').appendChild(e);
+  const a=-Math.PI/2+(rnd()-.5)*2.4,v=380+rnd()*520;CF.push({e,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:rnd()*720-360,w:6+rnd()*8})}
+function shake(t,t0,amp){const k=p(t,t0,t0+.35);return k>0&&k<1?amp*(1-k)*Math.sin(k*60):0}
+function anim(t){
+  const beatK=((t-DROP)/B)%1, onGroove=t>DROP&&t<LOGO, pulse=onGroove?Math.pow(1-beatK,4):0;
+  // barra de progresso
+  $('bar').style.width=(cl(t/DUR)*100)+'%';
+  // gancho: uma linha por batida
+  [...$('hook').children].forEach((d,i)=>{const t0=i*B,a=p(t,t0,t0+.22),o=p(t,DROP-.12,DROP+.18);
+    d.style.opacity=a*(1-o);d.style.transform=`scale(${(a<1?1.9-0.9*back(a):1)*(1+o*.6)}) translate(${o*-40}px,0)`;d.style.filter=`blur(${(1-a)*6+o*8}px)`});
+  let sh=0;for(let i=0;i<4;i++)sh+=shake(t,i*B,7);sh+=shake(t,DROP,12)+shake(t,7*B,8)+shake(t,18*B,14)+shake(t,LOGO,16);
+  $('world').style.transform=`translate(${sh}px,${sh*.6}px)`;
+  // brilhos pulsando no ritmo
+  $('g1').style.opacity=.3+pulse*.25;$('g1').style.transform=`translate(${Math.sin(t*.9)*50}px,${Math.cos(t*.7)*40-180*p(t,DROP,DROP+1)}px) scale(${1+pulse*.08})`;
+  $('g2').style.transform=`translate(${Math.cos(t*.8)*60}px,${Math.sin(t*.6)*50}px)`;
+  // flash nos cortes
+  const fl=Math.max(0,1-p(t,DROP,DROP+.25))*(t>=DROP?.55:0)+Math.max(0,1-p(t,7*B,7*B+.2))*(t>=7*B?.45:0)+Math.max(0,1-p(t,18*B,18*B+.3))*(t>=18*B?.5:0)+Math.max(0,1-p(t,LOGO,LOGO+.35))*(t>=LOGO?.6:0);
+  $('flash').style.opacity=fl;
+  // celular: entrada em chicote, deriva contínua, zoom de câmera
+  const pin=p(t,DROP,DROP+.42),pout=p(t,21*B,LOGO);
+  const [z,tx,ty]=lerpKeys(CAM,t);
+  const px=10+tx/1080*330, py=10+ty/2400*733;
+  const pull=cl((z-1)/0.7); // quanto puxar o alvo para o centro
+  const fx=(270-(95+px))*pull, fy=(560-(176+py))*pull;
+  const drift=Math.sin(t*1.3)*2.2, bob=Math.sin(t*2.1)*5;
+  const inY=(1-back(pin,2.2))*900, inR=(1-eo(pin))*-16, outS=1-eio(pout)*.5, outY=-eio(pout)*80;
+  const ph=$('phone');ph.style.opacity=t<DROP?0:1-eio(p(t,21*B+.2,LOGO));
+  ph.style.transformOrigin=`${px}px ${py}px`;
+  ph.style.transform=`translate(${fx}px,${fy+inY+bob+outY}px) rotate(${inR+drift*(1-pull*.6)}deg) scale(${z*(1+pulse*.012)*outS})`;
+  ph.style.filter=`blur(${(pin>0&&pin<1?(1-pin)*5:0)+eio(pout)*6}px)`;
+  const Sv=cl(S(t),0,9.09), idx=Math.min(NF,Math.max(1,Math.floor(Sv*30)+1)), src='fr/'+String(idx).padStart(4,'0')+'.jpg';
+  if(!$('shot').src.endsWith(src))$('shot').src=src;
+  // toques
+  let tp=null;TAPS.forEach(([s,x,y])=>{const k=(Sv-(s-.2))/.3;if(k>0&&k<1)tp=[k,x,y]});
+  if(tp){$('tap').style.opacity=Math.sin(tp[0]*Math.PI);$('tap').style.left=(tp[1]/1080*330)+'px';$('tap').style.top=(tp[2]/2400*733)+'px';$('tap').style.transform=`scale(${.5+tp[0]*.9})`}else $('tap').style.opacity=0;
+  // destaque no campo colado
+  const h=p(t,7*B+.05,7*B+.3)*(1-p(t,10*B-.3,10*B));const hl=$('hl');hl.style.opacity=h;
+  hl.style.left=(80/1080*330)+'px';hl.style.top=(840/2400*733)+'px';hl.style.width=(920/1080*330)+'px';hl.style.height=(110/2400*733)+'px';
+  hl.style.transform=`scale(${1+(1-eo(p(t,7*B,7*B+.35)))*.25})`;
+  // etiquetas saltando
+  [['t1',11*B+.25],['t2',12*B+.25],['t3',13*B+.25]].forEach(([id,t0])=>{const a=p(t,t0,t0+.3),o=p(t,17*B-.3,17*B);const e=$(id);
+    e.style.opacity=a*(1-o);e.style.transform=`scale(${a<1?back(a,2.5):1}) translateY(${Math.sin((t-t0)*2.4)*6-o*20}px) rotate(${(id=='t2'?-4:4)*(1-a)}deg)`});
+  // legendas cinéticas
+  let ci=-1;CAPS.forEach((c,i)=>{if(t>=c[0]&&t<c[1])ci=i});
+  if(ci!==capI){capI=ci;$('cap').innerHTML=ci<0?'':CAPS[ci][2].replace(/(<em>)?([^\s<]+)(<\/em>)?/g,(m,a,w,c)=>`<span class="w">${a||''}${w}${c||''}</span>`)}
+  if(ci>=0){const c=CAPS[ci];[...document.querySelectorAll('#cap .w')].forEach((w,i)=>{const a=p(t,c[0]+i*.07,c[0]+i*.07+.22),o=p(t,c[1]-.15,c[1]);
+    w.style.opacity=a*(1-o);w.style.transform=`scale(${a<1?back(a,2.4):1+pulse*.04}) translateY(${-o*14}px)`})}
+  $('cap').style.fontSize=(ci==1?64:36)+'px';$('cap').style.top=(ci==1?40:48)+'px';
+  $('scrim').style.opacity=eo(p(t,DROP,DROP+.4))*(1-p(t,21*B,LOGO));
+  // confete no "salvo"
+  const ct=t-18*B;CF.forEach(c=>{if(ct<0||ct>2.2){c.e.style.opacity=0;return}
+    const x=270+c.vx*ct, y=700+c.vy*ct+900*ct*ct; c.e.style.opacity=1-p(ct,1.4,2.2);
+    c.e.style.transform=`translate(${x}px,${y}px) rotate(${c.r*ct}deg)`;c.e.style.width=c.w+'px'});
+  // fechamento
+  const e=p(t,LOGO,LOGO+.3);$('end').style.opacity=e;
+  $('logo').style.transform=`scale(${e<1?2.2-1.2*back(e,2):1+Math.max(0,1-p(t,LOGO+.3,LOGO+.8))*.02})`;
+  [...$('endp').children].forEach((s,i)=>{const t0=LOGO+(i+1)*B,a=p(t,t0,t0+.22);s.style.opacity=a;s.style.transform=`scale(${a<1?back(a,2.4):1}) translateY(${(1-a)*20}px)`});
+}
+window.anim=anim;
+window.ready=()=>new Promise(r=>{const i=$('shot');if(i.complete)r();else i.onload=()=>r()});
+</script></body></html>
