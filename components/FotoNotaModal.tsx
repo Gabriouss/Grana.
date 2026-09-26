@@ -220,25 +220,26 @@ export default function FotoNotaModal({
               </View>
 
               <View style={[styles.overlayBase, { bottom: insets.bottom + spacing.xl, pointerEvents: 'box-none' }]}>
-                {etapa === 'lendo' ? (
-                  <View style={styles.lendo} accessibilityLiveRegion="polite">
-                    <ActivityIndicator color={theme.ink} />
-                    <Text style={styles.dica}>Lendo a nota...</Text>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={styles.dica}>Enquadre o cupom inteiro, com o valor total visível</Text>
-                    <AppPressable
-                      onPress={fotografar}
-                      disabled={!cameraPronta}
-                      style={[styles.obturador, !cameraPronta && styles.obturadorDesligado]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Fotografar a nota"
-                    >
-                      <View style={styles.obturadorMiolo} />
-                    </AppPressable>
-                  </>
-                )}
+                {/* A dica e o "lendo" dividem a mesma pílula, e o obturador fica
+                    no lugar durante a leitura: nada salta quando a foto é tirada.
+                    A pílula escura existe porque o assunto da foto é papel
+                    branco, e texto claro solto sobre ele some. */}
+                <View style={styles.pilula} accessibilityLiveRegion="polite">
+                  {etapa === 'lendo' && <ActivityIndicator color={theme.ink} size="small" />}
+                  <Text style={styles.dica}>
+                    {etapa === 'lendo' ? 'Lendo a nota...' : 'Enquadre o cupom inteiro, com o valor total visível'}
+                  </Text>
+                </View>
+                <AppPressable
+                  onPress={fotografar}
+                  disabled={!cameraPronta || etapa === 'lendo'}
+                  style={[styles.obturador, (!cameraPronta || etapa === 'lendo') && styles.obturadorDesligado]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Fotografar a nota"
+                  accessibilityState={{ disabled: !cameraPronta || etapa === 'lendo', busy: etapa === 'lendo' }}
+                >
+                  <View style={styles.obturadorMiolo} />
+                </AppPressable>
               </View>
             </>
           )}
@@ -331,9 +332,20 @@ const styles = StyleSheet.create({
   },
   botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
 
-  overlayBase: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: spacing.lg },
-  lendo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: 'rgba(5,34,41,0.66)', borderRadius: radius.pill, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg },
-  dica: { color: theme.ink, fontSize: type.apoio, textAlign: 'center', paddingHorizontal: spacing.xxl, fontFamily: fonts.regular },
+  overlayBase: { position: 'absolute', left: spacing.xl, right: spacing.xl, alignItems: 'center', gap: spacing.lg },
+  /* Mesmo véu dos botões redondos do topo. `radius.lg`, e não pílula, porque
+     com fonte grande do sistema a dica quebra em duas linhas. */
+  pilula: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    maxWidth: '100%',
+    backgroundColor: 'rgba(5,34,41,0.66)',
+    borderRadius: radius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  dica: { flexShrink: 1, color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio'), textAlign: 'center', fontFamily: fonts.regular },
   obturador: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
   obturadorDesligado: { opacity: 0.4 },
   obturadorMiolo: { width: 54, height: 54, borderRadius: 27, backgroundColor: theme.ink },
