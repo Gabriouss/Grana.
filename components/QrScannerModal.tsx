@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Alert } from '@/lib/alert';
+import { Alert } from '@/lib/alerta';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
