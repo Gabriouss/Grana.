@@ -26,12 +26,16 @@ export const RECIBOS_VOZ = {
   sucesso: (titulo: string, resumo: string): ReciboVoz => ({ titulo, texto: `${resumo}. Salvo no Grana.` }),
 
   /** Nada foi salvo: falta uma escolha da pessoa. `titulo` diz qual (ex.: "Qual cartão?"). */
-  revisao: (titulo: string, transcricao: string): ReciboVoz => ({
-    titulo,
-    texto: transcricao
-      ? `Ouvi: "${transcricao}". Confira os dados antes de salvar.`
-      : 'Confira os dados antes de salvar.',
-  }),
+  revisao: (titulo: string, transcricao: string): ReciboVoz => {
+    /* O reconhecedor devolve a frase com ponto final ("Mercado R$ 120 no
+       débito."), e o recibo saía com `."` seguido de outro ponto (achado B3
+       do Harbor, 26/09/2026). A pontuação final sai antes das aspas. */
+    const ouvido = transcricao.trim().replace(/[\s.!?…,;:]+$/u, '');
+    return {
+      titulo,
+      texto: ouvido ? `Ouvi: "${ouvido}". Confira os dados antes de salvar.` : 'Confira os dados antes de salvar.',
+    };
+  },
 
   /** Gravado na fila do aparelho: faltou rede na hora de salvar. */
   salvoLocal: {

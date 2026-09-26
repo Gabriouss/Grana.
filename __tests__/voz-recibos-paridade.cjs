@@ -72,6 +72,14 @@ function carregar(arquivo, dubles = {}, globais = {}) {
   }
   passou('catálogo sem travessão e sem "não é X, é Y"');
 
+  // B3 (Harbor, 26/09/2026): transcrição com ponto final não dobra a pontuação.
+  const r3 = recibos.RECIBOS_VOZ.revisao('Confirme o valor que ouvi', 'Mercado R$ 120 no débito.');
+  assert.equal(r3.texto, 'Ouvi: "Mercado R$ 120 no débito". Confira os dados antes de salvar.');
+  assert.equal(recibos.RECIBOS_VOZ.revisao('X', 'uber 25 no crédito?!  ').texto, 'Ouvi: "uber 25 no crédito". Confira os dados antes de salvar.');
+  assert.equal(recibos.RECIBOS_VOZ.revisao('X', ' . ').texto, 'Confira os dados antes de salvar.', 'só pontuação é o mesmo que nada ouvido');
+  assert.equal(recibos.RECIBOS_VOZ.revisao('X', 'R$ 18,99').texto, 'Ouvi: "R$ 18,99". Confira os dados antes de salvar.', 'a vírgula do valor fica');
+  passou('recibo de revisão sem pontuação dobrada quando a transcrição já termina em ponto');
+
   /* ── 2. V2: mesmo destino com as mesmas listas ──────────────────────── */
   const carteiras = [{ id: 'w1', name: 'Crédito Casa' }, { id: 'w2', name: 'Nubank' }];
   const cartoes = [{ id: 'c1', name: 'Nubank', bank: 'nubank', wallet_id: 'w2' }];
