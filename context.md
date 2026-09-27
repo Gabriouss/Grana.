@@ -12916,3 +12916,77 @@ O índice 00 - Índice - Sessões já liga a nota 2026-09-27 - M1 - retomada Led
 4. **Descartado:** tratar a nota v2 ou o bruto R5 como aprovação final; congelar quadros para simular a confirmação; editar relatórios históricos de outros agentes; build, deploy, migration ou emulador por este agente.
 5. **O que deu errado:** reinícios e tarefas coladas no shell sem execução presumida; a primeira versão do código de revisão quebrou o teste isolado e exigiu 37ce0b8. O estado transitório do Git nos registros anteriores ficou desatualizado após os pushes.
 6. **Sem verificação:** QA no APK físico, sequência inversa da revisão, texto final e pop-up de release, edição/exportação/aceite do R5, preflight e liberações de produção. O roteiro Sentinel ainda carrega a nota v2 como referência até ser alinhado à mensagem final.
+
+## 27/09/2026 (M1) — Granabô v40 publicado, prova pós-deploy, decisões do autor e entregas da rodada
+
+Registro feito pelo Harbor (Claude), no lugar do Ledger. Pela regra 19, o maestro delegou a documentação a outro agente porque o Ledger (Codex) bateu o limite de uso. Beacon e Watchtower, também no Codex, bateram o mesmo limite nesta rodada.
+
+### Deploy do `assistente-financeiro` (v39 → v40)
+
+- **Estado publicado:** v40, `updated_at` `2026-09-27T16:55:09.811Z`, `verify_jwt=true`, a partir de `origin/main` `404092a`.
+- **Quem publicou:** o maestro, a pedido explícito do autor, depois do preflight da regra 11.
+- **Sem mudança em produção:** `enviar-lembretes-habito` continua na v13 (`2026-09-25T00:09:09.488Z`, `verify_jwt=false`). A migration `20260926120000` continua sem aplicar.
+- **Retorno da v39:** `E:\Grana-temporarios\2026-09-27-retomada\retorno\retorno-assistente-financeiro-v39-antes-do-deploy.eszip`. Há também uma cópia anterior na mesma pasta (sha256 `535f6f75…74f3`).
+- **Preflight** (`relatorio-Harbor-preflight.md`), feito só com leitura antes do deploy:
+  - produção igual à de 26/09, sem deploy fora do histórico;
+  - `deno check` limpo nas duas funções;
+  - `lembretes-habito-handler` com 1976 checagens, `corpus-schema-guardas` 80/80 e `granabo-fatura-centavos` OK;
+  - o `npm run test:ci` completo **não** foi rodado pelo Harbor.
+- **Commits que a v40 levou** (fontes: `index.ts` mais os `_shared` `ai-quota`, `assistant-learning`, `caixa`, `category-keywords`, `fatura-ciclo`, `interpretar-lancamento` e `seguranca`):
+  - `840ee9f`, `c6e378f`, `ab25e2f`, `9613f42`, `9591bb2`, `7b47064`, autorizados em 26/09;
+  - `c4a7a66` e o revert `02f66a5`, que se anulam;
+  - `46dcce0` (B4), `a8d1b6b` (centavos) e `da4c936` (B6). O autor confirmou hoje que publicava com esses três.
+- **Correção do preflight de 26/09:** o deploy dos lembretes leva também `0b8d2fe` e `a8f76f9`, porque a função importa `lib/notification-catalog.ts`. Não é só o `7b2a9fd`.
+- **Scripts deixados para o dia da build:** `retorno\publicar-funcao.cjs` e `retorno\aplicar-migration.cjs`. Os dois têm lista fechada e leem o token do `.env` sem imprimir.
+
+### Prova pós-deploy (`relatorio-Harbor-pos-deploy.md`)
+
+As três falas foram enviadas direto à função v40, com o JWT da conta de teste obtido dentro do processo e `historico` vazio. É a mesma chamada de `lib/assistente.ts`, mas **sem passar pela tela do app**.
+
+| Fala | Resultado |
+|---|---|
+| "conta de luz 180 vence dia 10" | Virou conta a pagar "Luz", R$ 180, Moradia, vence 2026-10-10, carteira Principal, **sem perguntar carteira** |
+| "quanto eu gastei em Alimentação esse mês?" (AUDIT: R$ 40 no débito + R$ 25 no crédito) | Respondeu R$ 40,00 "sem contar compras no crédito" e citou os R$ 25 do cartão à parte |
+| "recebi 150 do João" | Perguntou "Qual destas é a certa: …? Ainda não registrei nada." e **nada foi gravado** |
+
+A conta, a operação de voz, os dois lançamentos AUDIT e as 6 mensagens foram apagados. A conta de teste terminou com 0 lançamentos, 0 contas e 0 mensagens.
+
+**Não verificado:** a tela do Granabô no app, o "desfaz" e outras falas do B4/B6.
+
+### Decisões do autor em 27/09
+
+- **Lembretes e migration do push:** `enviar-lembretes-habito` e a migration `20260926120000` saem **só junto com a build**. O motivo é que a 1.10.4 (`3f23c6d`) não tem o `0b8d2fe`; publicar antes daria o meio-dia de fim de semana só pelo servidor a quem ainda está nela. Os comandos estão no bloco "No dia da build" do preflight.
+- **Data no Colar comprovante:** deve usar a **data do texto colado**. Hoje grava a data do dia; o sintoma foi observado na gravação do R5.
+- **Entrada sem categoria clara:** pergunta a categoria em **todas as entradas**. O Colar comprovante gravava "Outros" sem perguntar: `components/PasteReceiptModal.tsx` aplica `guessCategoryFromText`, que cai em "Outros". Achado confirmado no banco e no código e encaminhado ao Forge; a correção dele ainda não tinha commit na hora deste registro.
+- **Migrations do cartão** (`20260923230300`, `230400` e `20260926130000`) e a **flag `foto_nota`:** dias depois da build.
+- **Entradas antigas no cartão:** ficam invisíveis.
+- **A palavra na lista genérica de entrada do parser** (`MARCADORES_ENTRADA`, em `_shared/interpretar-lancamento.ts`) fica. Não se cria tratamento dedicado.
+- **O Codex fica sem atualizar**, por causa das janelas piscando.
+- **Permissões do Codex:** seguem as registradas acima em `C:/Users/user/.codex/config.toml` (`approval_policy = "never"`, `sandbox_mode = "danger-full-access"`), gravadas pelo autor.
+
+### Entregas da pasta `E:\Grana-temporarios\2026-09-27-retomada`
+
+**Gravações do Harbor no emulador** (`relatorio-Harbor-gravacoes.md`): todas em 1080x1920, 30 fps, sem barra de status, LogBox nem avisos do Android, só com a conta de teste. Cada uma tem o bruto 1080x2400 ao lado.
+- **`r9-importar-extrato.mp4`:** prévia de 8 lançamentos e "8 lançamentos importados". As 8 linhas conferem com o CSV no banco; 3 delas não aparecem no vídeo.
+- **`granabo-consulta-limpa.mp4`:** feito na v39, responde R$ 100,00 com dados de R$ 40 + R$ 60. A espera real é de cerca de 30 s e deve ser cortada na edição.
+- **`r5-pix-entrada-v2.mp4`:** confirmação estável por cerca de 2,75 s reais e aviso de salvo por cerca de 2 s. As laterais foram completadas com a própria borda do fundo.
+- **Limpeza:** os dados das gravações foram apagados. Antes de gravar, o Harbor apagou 5 lançamentos AUDIT de crédito que sobraram de 26/09 e não eram dele. A cópia está em `backup-audit-sobras-antes-das-gravacoes.json`.
+
+**Documentos dos outros agentes:**
+- **Beacon, roteiros fechados** (`relatorio-Beacon-roteiros-fechados.md`): R2, R3, R4, R7, R10, R12 e R11 (reserva). São roteiros de produção, sem mídia gerada.
+- **Prism, direção visual** (`relatorio-Prism-direcao-roteiros.md` e `relatorio-Prism-edicao-r5.md`): direção de edição para R9, consulta do Granabô e R5, e de produção para R2 a R12.
+- **Sentinel, roteiro de QA no aparelho** (`relatorio-Sentinel-roteiro-qa-aparelho.md`): roteiro para a 1.10.5. Nada foi executado ainda.
+- **Compass, plano e portão** (`relatorio-Compass-plano-dia-D.md` e `relatorio-Compass-portao-final.md`): proposta D+0 a D+32, em dias úteis. D espera a flag `foto_nota` e o QA físico; se o autor abrir D sem foto, entra o R-P v8. O portão foi atualizado com a suíte do Forge verde em `37ce0b8`.
+- **Watchtower, auditoria 2** (`relatorio-Watchtower-auditoria-2.md`):
+  - **Nota "O que mudou" v2 do Beacon reprovada para o pop-up.** Motivos: mistura saldo mensal com valor por dia; promete reenvio "quando a conexão volta", gatilho que não existe; erra onde termina a troca de senha, que é no site; promete a foto, adiada; e promete exclusão marcada por linha na importação.
+  - **Redação conservadora proposta**, validada em `lib/notas-release.ts` com 360 caracteres e sem problemas: "O Saldo atual considera apenas os lançamentos deste mês. O Livre para gastar usa esse saldo, o valor guardado em cofrinhos e os dias restantes. Lançamentos feitos sem internet aparecem na lista enquanto aguardam envio. Com o app aberto e a conexão disponível, o Grana. tenta reenviá-los. Falas guardadas que não foram entendidas ficam disponíveis para revisão." O Beacon ainda precisa avaliar esse texto.
+  - **Achado alto, condicional:** a revisão de voz ainda pode duplicar quando a limpeza local falha depois de gravar. `lib/voice-operations.ts:91-108` engole o erro, e a retomada usa o `requestId` original. Foi encaminhado.
+
+### Regra 12 — seis perguntas
+
+1. **Pedido:** registrar o deploy v40, a prova, as decisões do autor, as permissões do Codex, as entregas da pasta da rodada e o limite de uso dos agentes Codex. O Harbor faz isso no lugar do Ledger.
+2. **Sintoma e causa:** o Ledger ficou sem uso do Codex. O Colar comprovante gravava "Outros" e a data do dia, porque o reconhecimento cai no palpite padrão e não usa a data do texto.
+3. **Arquivos e IDs:** `context.md`; nota de sessão `2026-09-27 - M1 - retomada Ledger após reinício do Maestri`; `404092a`; v40 `2026-09-27T16:55:09.811Z`; `components/PasteReceiptModal.tsx`; relatórios nomeados acima.
+4. **Descartado:** publicar os lembretes e a migration do push hoje; publicar sem os três commits posteriores; aplicar as migrations do cartão ou a flag; corrigir o Colar comprovante por conta do Harbor, que não é a área dele; regravar a consulta do Granabô para a nova frase sobre o crédito.
+5. **O que deu errado:** três tomadas do R5 foram descartadas por tempo de colagem, pelo fim perdido do `screenrecord` e pelo corte inicial que tirava o aviso de salvo. Também houve uma tomada descartada do R9. O Fast Refresh e o LogBox atrapalharam o emulador e foram contornados no enquadramento.
+6. **Sem verificação:** a tela do Granabô na v40, o `test:ci` completo no momento do deploy, a correção do Forge para categoria e data, a nota final e o pop-up, o QA no APK, a duplicata residual da revisão e o retorno a partir do ESZIP.
