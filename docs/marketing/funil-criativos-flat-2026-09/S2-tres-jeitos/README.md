@@ -26,3 +26,8 @@ Carrossel de feed com 7 slides em 1080×1440. É o S2 do calendário do `FUNIL.m
 **Segunda revisão do autor (27/09/2026):** nem como detalhe. Os ícones saíram das páginas 1, 2 e 4, e o indicador de passos (os três selos no alto) saiu de todas. Na capa, a lista virou "1. Fale / 2. Cole o Pix / 3. Fotografe a nota", só em texto, com o número em menta.
 
 **Página 3 (27/09/2026):** o autor achou o celular "muito mal feito". A montagem sobre a foto do `celular-vazio.png` saiu. Entrou a mesma moldura de celular dos vídeos aprovados, com a tela real do "Colar comprovante ou Pix" já com o acento corrigido (`telas/cel-colado.png`).
+
+**Páginas 2, 3 e 4 alinhadas (27/09/2026):**
+- as três usam o mesmo celular do motion aprovado, na mesma posição (x 600, y 480, 410 px de largura, sem inclinação), inteiro dentro do card;
+- a página 4 mostra a câmera enquadrando o cupom (`telas/cel-foto-nota-motion.png`, quadro em 10,2 s do motion, **sem a frase "Aponte para o QR Code" e sem a linha de varredura**, para servir de "fotografar a nota");
+- **quando a foto da nota estiver publicada,** trocar pela captura real do fluxo novo.
