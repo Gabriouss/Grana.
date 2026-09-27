@@ -43,6 +43,7 @@ export default function PasteReceiptModal({
   onClose,
   onSuccess,
   initialText,
+  falaGuardada,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -50,6 +51,9 @@ export default function PasteReceiptModal({
   /** Texto já pronto pra reconhecer, pulando a etapa de colar — usado pelo
       lançamento por voz, que chega aqui como transcrição. */
   initialText?: string;
+  /** `requestId` da fala guardada que esta revisão salva; ver
+      `registrarOperacaoVoz`. */
+  falaGuardada?: string;
 }) {
   const { isDemoMode } = useDemo();
   const { wallets, activeWallet } = useWallet();
@@ -207,7 +211,7 @@ export default function PasteReceiptModal({
       };
       if (origemVoz) {
         operacaoVoz.current ??= randomUUID();
-        const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', { kind: 'transaction', ...input });
+        const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', { kind: 'transaction', ...input }, undefined, falaGuardada);
         if (resultado.status === 'pending') Alert.alert('Salvo no aparelho', 'O lançamento será sincronizado ao abrir o Grana. com conexão.');
       } else {
         /* Comprovante colado SEM voz não tinha fila offline (item 3 da

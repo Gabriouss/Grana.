@@ -80,7 +80,35 @@ function textoObrigatorio(valor: unknown, campo: string): string {
  * devolve o primeiro resultado; inclusive depois de desfazer, quando o
  * tombstone `undone` impede a fala antiga de reaparecer.
  */
+/**
+ * `falaGuardada`: o `requestId` da fala da fila de áudios que esta operação
+ * REVISA (o "Revisar" do aviso de fala guardada). Achado do Watchtower de
+ * 27/09/2026: salvar pela revisão deixava a fala na fila, e "Tentar de novo"
+ * depois gravava de novo. Agora a fala sai da fila, com o áudio, só DEPOIS de
+ * o lançamento estar gravado ou guardado na fila de operações (que tem
+ * idempotência própria); se a gravação falhar, a fala continua lá.
+ */
 export async function registrarOperacaoVoz(
+  requestId: string,
+  source: 'app' | 'widget',
+  payload: PayloadOperacaoVoz,
+  transcricao?: string,
+  falaGuardada?: string
+): Promise<ResultadoOperacaoVoz> {
+  const resultado = await gravarOperacaoVoz(requestId, source, payload, transcricao);
+  if (falaGuardada) {
+    try {
+      const { concluirVozRevisada } = await import('./widget-voz-pendentes');
+      await concluirVozRevisada(falaGuardada);
+    } catch (erro) {
+      // O lançamento já está salvo; só a fala não saiu da fila.
+      console.error('[voz] fala revisada não saiu da fila', falaGuardada, erro);
+    }
+  }
+  return resultado;
+}
+
+async function gravarOperacaoVoz(
   requestId: string,
   source: 'app' | 'widget',
   payload: PayloadOperacaoVoz,

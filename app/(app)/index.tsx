@@ -154,6 +154,8 @@ export default function InicioScreen() {
 
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [voiceText, setVoiceText] = useState<string | undefined>(undefined);
+  /* Fala da fila de áudios em revisão: o salvamento a tira da fila. */
+  const [falaGuardadaDaRevisao, setFalaGuardadaDaRevisao] = useState<string | undefined>(undefined);
   const [widgetGoalId, setWidgetGoalId] = useState<string | null>(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
@@ -484,6 +486,7 @@ export default function InicioScreen() {
   const params = useLocalSearchParams<{
     acao?: string; amount?: string; desc?: string; type?: string; category?: string;
     colarTexto?: string;
+    falaGuardada?: string;
     goalId?: string;
   }>();
 
@@ -493,6 +496,7 @@ export default function InicioScreen() {
   useEffect(() => {
     if (!params.colarTexto) return;
     setVoiceText(params.colarTexto);
+    setFalaGuardadaDaRevisao(params.falaGuardada);
     setPasteModalOpen(true);
     router.replace('/(app)/');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1904,10 +1908,12 @@ export default function InicioScreen() {
       <PasteReceiptModal
         visible={pasteModalOpen}
         initialText={voiceText}
-        onClose={() => { setPasteModalOpen(false); setVoiceText(undefined); }}
+        falaGuardada={falaGuardadaDaRevisao}
+        onClose={() => { setPasteModalOpen(false); setVoiceText(undefined); setFalaGuardadaDaRevisao(undefined); }}
         onSuccess={() => {
           triggerToast('Lançamento reconhecido e salvo');
           setVoiceText(undefined);
+          setFalaGuardadaDaRevisao(undefined);
           load();
         }}
       />

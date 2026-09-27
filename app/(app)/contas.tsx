@@ -52,7 +52,9 @@ import { LIMITS } from '@/lib/limits';
 export default function ContasScreen() {
   const operacaoVoz = useRef<string | null>(null);
   const router = useRouter();
-  const { novaConta, texto } = useLocalSearchParams<{ novaConta?: string; texto?: string }>();
+  const { novaConta, texto, falaGuardada } = useLocalSearchParams<{ novaConta?: string; texto?: string; falaGuardada?: string }>();
+  /* Fala da fila de áudios em revisão: o salvamento a tira da fila. */
+  const falaGuardadaDaRevisao = useRef<string | undefined>(undefined);
   const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, wallets } = useWallet();
@@ -160,15 +162,17 @@ export default function ContasScreen() {
   useAberturaPorParametro(novaConta === '1', () => {
     if (texto) {
       abrirNovaContaDoTexto(texto);
+      falaGuardadaDaRevisao.current = falaGuardada;
     } else {
       openNewModal();
     }
-    router.setParams({ novaConta: undefined, texto: undefined });
+    router.setParams({ novaConta: undefined, texto: undefined, falaGuardada: undefined });
   });
 
   function openNewModal() {
     setVozWalletId(null);
     operacaoVoz.current = null;
+    falaGuardadaDaRevisao.current = undefined;
     setEditingBillId(null);
     setDesc('');
     setAmount('');
@@ -188,6 +192,7 @@ export default function ContasScreen() {
      parseDiaVencimento — mesmo motor do bot do WhatsApp. */
   function abrirNovaContaDoTexto(texto: string) {
     operacaoVoz.current = randomUUID();
+    falaGuardadaDaRevisao.current = undefined;
     setEditingBillId(null);
     const carteira = matchWalletByText(texto, wallets);
     const financeiro = carteira ? limparReferenciaCarteira(texto, carteira.name) : texto;
@@ -265,8 +270,9 @@ export default function ContasScreen() {
             kind: 'bill', description: v.description.trim() || 'Sem descrição',
             amount: value, category: v.category, color: v.color,
             due_date: v.occurred_on, recurring: v.recurring, wallet_id: v.wallet_id,
-          });
+          }, undefined, falaGuardadaDaRevisao.current);
           operacaoVoz.current = null;
+          falaGuardadaDaRevisao.current = undefined;
           triggerToast(resultado.status === 'pending' ? 'Conta salva no aparelho; sincronização pendente' : 'Conta salva');
         } else {
         const entrada = {

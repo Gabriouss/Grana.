@@ -37,17 +37,21 @@ export default function RespostaVozWidget() {
      MESMAS carteiras e cartões (achado V2, 26/09/2026): entrada com intenção
      de crédito, que o widget recusou, abre a revisão padrão, nunca a folha de
      compra do cartão. Usada pelo toque na notificação e pelo recibo na tela. */
-  async function abrirFala(texto: string) {
+  /* `falaGuardada`: o `requestId` quando a revisão é de uma fala da fila de
+     áudios. Vai até o salvamento, que tira a fala da fila só depois de gravar
+     (`registrarOperacaoVoz`), para "Tentar de novo" não gravar duas vezes. */
+  async function abrirFala(texto: string, falaGuardada?: string) {
     const destino = await destinoDaFalaComReferencias(texto);
+    const extra = falaGuardada ? { falaGuardada } : {};
     if (destino === 'contas') {
-      router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto } });
+      router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto, ...extra } });
       return;
     }
     if (destino === 'credito') {
-      router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto } });
+      router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto, ...extra } });
       return;
     }
-    router.push({ pathname: '/(app)/', params: { colarTexto: texto } });
+    router.push({ pathname: '/(app)/', params: { colarTexto: texto, ...extra } });
   }
 
   /* Recibo das falas guardadas que a fila retomou SEM poder notificar
@@ -95,7 +99,7 @@ export default function RespostaVozWidget() {
                   .catch((erro) => console.error('[voz] nova tentativa da fala guardada falhou', erro));
               } },
               ...(recibo.transcricao ? [{ text: 'Revisar', onPress: () => {
-                abrirFala(recibo.transcricao!).catch((erro) => console.error('[voz] revisão da fala não abriu', erro));
+                abrirFala(recibo.transcricao!, recibo.id).catch((erro) => console.error('[voz] revisão da fala não abriu', erro));
               } }] : []),
             ], { onDismiss: fechar });
           } else if (recibo.tipo === 'revisao') {

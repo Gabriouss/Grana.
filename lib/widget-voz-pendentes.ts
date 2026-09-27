@@ -131,6 +131,15 @@ export async function descartarVozPendente(requestId: string): Promise<void> {
   await removerVozPendente(requestId);
 }
 
+/** A fala foi salva pela revisão (`registrarOperacaoVoz` com `falaGuardada`):
+    sai da fila com o áudio e o aviso, para "Tentar de novo" não gravar outra
+    vez. Idempotente: chamada de novo, não faz nada. Só depois de salvar. */
+export async function concluirVozRevisada(requestId: string): Promise<void> {
+  await descartarVozPendente(requestId);
+  const { removerReciboDaFila } = await import('./voz-recibos-da-fila');
+  await removerReciboDaFila(requestId);
+}
+
 /** O botão "Revisar" da faixa: publica de novo o recibo de cada fala em
     revisão desta conta, com o mesmo texto do catálogo. Devolve quantas. */
 export async function reabrirRevisoesDeFala(userId: string): Promise<number> {

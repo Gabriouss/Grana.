@@ -96,7 +96,9 @@ export default function CreditoScreen() {
   const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
   const router = useRouter();
-  const { novaCompra, texto } = useLocalSearchParams<{ novaCompra?: string; texto?: string }>();
+  const { novaCompra, texto, falaGuardada } = useLocalSearchParams<{ novaCompra?: string; texto?: string; falaGuardada?: string }>();
+  /* Fala da fila de áudios em revisão: o salvamento a tira da fila. */
+  const falaGuardadaDaRevisao = useRef<string | undefined>(undefined);
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, wallets } = useWallet();
@@ -547,10 +549,11 @@ export default function CreditoScreen() {
   useAberturaPorParametro(novaCompra === '1' && !loading, () => {
     if (texto) {
       abrirNovaCompraDoTexto(texto);
+      falaGuardadaDaRevisao.current = falaGuardada;
     } else {
       abrirNovaCompra();
     }
-    router.setParams({ novaCompra: undefined, texto: undefined });
+    router.setParams({ novaCompra: undefined, texto: undefined, falaGuardada: undefined });
   });
 
   /* Esta tela renderiza um carrossel de cartões e uma FlatList de compras;
@@ -888,6 +891,7 @@ export default function CreditoScreen() {
      Crédito" abriria com os dados do último lançamento aberto. */
   function abrirNovaCompra() {
     operacaoVoz.current = null;
+    falaGuardadaDaRevisao.current = undefined;
     setEditingTxId(null);
     setTxDesc('');
     setTxAmount('');
@@ -908,6 +912,7 @@ export default function CreditoScreen() {
      vem preenchido quando não há escolha (ver cartaoPadraoDoFormulario). */
   function abrirNovaCompraDoTexto(texto: string) {
     operacaoVoz.current = randomUUID();
+    falaGuardadaDaRevisao.current = undefined;
     setEditingTxId(null);
     const carteiraCasada = matchWalletByText(texto, wallets);
     const textoFinanceiro = carteiraCasada ? limparReferenciaCarteira(texto, carteiraCasada.name) : texto;
@@ -1061,9 +1066,11 @@ export default function CreditoScreen() {
         };
         const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app',
           totalInst > 1 ? { ...base, kind: 'installment', installments: totalInst }
-            : { ...base, kind: 'transaction', recurring: valores.recurring });
+            : { ...base, kind: 'transaction', recurring: valores.recurring },
+          undefined, falaGuardadaDaRevisao.current);
         if (resultado.status === 'pending') Alert.alert('Salvo no aparelho', 'A compra será sincronizada quando houver conexão.');
         operacaoVoz.current = null;
+        falaGuardadaDaRevisao.current = undefined;
         if (resultado.status !== 'pending') await loadData();
       } else if (totalInst > 1) {
         const { guardado } = await salvarOuGuardarParceladaNoAparelho({
