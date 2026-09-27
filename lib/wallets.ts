@@ -118,7 +118,8 @@ export async function deleteWallet(id: string): Promise<void> {
 
 /**
  * Calcula os saldos individuais de cada carteira e o saldo consolidado total
- * considerando o saldo inicial cadastrado + todas as transações realizadas.
+ * a partir das transações realizadas. `initial_balance` NÃO entra (regra 20,
+ * autorizado pelo autor em 27/09/2026): a coluna fica no banco, sem uso.
  */
 /**
  * Mesmo saldo, a partir do agregado que o banco já somou.
@@ -129,8 +130,8 @@ export async function deleteWallet(id: string): Promise<void> {
  * recebe uma linha por carteira, vinda de `saldos_por_carteira()`.
  *
  * As duas dividem as mesmas duas regras, e é por isso que ficam lado a lado:
- * a carteira padrão recebe o que não tem `wallet_id`, e o total consolidado
- * soma os saldos iniciais no fim. O crédito já foi excluído no banco.
+ * a carteira padrão recebe o que não tem `wallet_id`, e nenhuma soma
+ * `initial_balance` (regra 20). O crédito já foi excluído no banco.
  */
 export function calcularSaldosComAgregado(
   wallets: Wallet[],
@@ -138,7 +139,7 @@ export function calcularSaldosComAgregado(
 ): { porCarteira: Record<string, number>; total: number } {
   const porCarteira: Record<string, number> = {};
   wallets.forEach((w) => {
-    porCarteira[w.id] = Number(w.initial_balance || 0);
+    porCarteira[w.id] = 0;
   });
 
   const defaultWallet = wallets.find((w) => w.is_default) || wallets[0];
@@ -157,7 +158,6 @@ export function calcularSaldosComAgregado(
     total += valor;
   });
 
-  total += wallets.reduce((acc, w) => acc + Number(w.initial_balance || 0), 0);
   return { porCarteira, total };
 }
 
@@ -171,9 +171,8 @@ export function calcularSaldosWallets(
   const porCarteira: Record<string, number> = {};
   let total = 0;
 
-  // Inicializa com os saldos iniciais de cada carteira
   wallets.forEach((w) => {
-    porCarteira[w.id] = Number(w.initial_balance || 0);
+    porCarteira[w.id] = 0;
   });
 
   // A carteira padrão (is_default) acumula transações sem wallet_id
@@ -195,10 +194,6 @@ export function calcularSaldosWallets(
 
     total += delta;
   });
-
-  // Soma os saldos iniciais ao total consolidado
-  const totalSaldosIniciais = wallets.reduce((acc, w) => acc + Number(w.initial_balance || 0), 0);
-  total += totalSaldosIniciais;
 
   return { porCarteira, total };
 }

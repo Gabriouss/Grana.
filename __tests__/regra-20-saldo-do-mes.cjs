@@ -145,6 +145,37 @@ const contas = [
     'a Início passa outra coisa para calcularSafeToSpend (contas ou saldo inicial?)'
   );
   trava(!/saldoInicialEmEscopo/.test(inicio), 'a Início voltou a somar o saldo inicial das carteiras');
+  /* lib/wallets.ts: autorizado pelo autor em 27/09/2026, as duas somas de
+     saldo por carteira deixaram de somar `initial_balance`. Módulo real: uma
+     carteira com saldo inicial de 5.000 dá o MESMO saldo que com zero. */
+  {
+    const { calcularSaldosWallets, calcularSaldosComAgregado } = carregar('lib/wallets.ts', {
+      './supabase': { supabase: {} },
+      './cache-de-tela': { atualizarTelaGuardada: async () => {}, comCacheOffline: (_n, f) => f },
+      './sessao-offline': { idDoUsuarioLocal: async () => null },
+      './format': { isCreditTx: (t) => t.payment_method === 'credit' || !!t.card_id },
+    });
+    const carteiras = (inicial) => [
+      { id: 'w-1', name: 'Principal', is_default: true, initial_balance: inicial },
+      { id: 'w-2', name: 'Reserva', is_default: false, initial_balance: inicial },
+    ];
+    const semInicial = calcularSaldosWallets(carteiras(0), transacoes);
+    const comInicial = calcularSaldosWallets(carteiras(5000), transacoes);
+    trava(centavos(comInicial.total) === centavos(semInicial.total),
+      'lib/wallets.ts calcularSaldosWallets voltou a somar initial_balance no total');
+    trava(JSON.stringify(comInicial.porCarteira) === JSON.stringify(semInicial.porCarteira),
+      'lib/wallets.ts calcularSaldosWallets voltou a somar initial_balance por carteira');
+    const agregado = [{ wallet_id: 'w-1', delta: 100 }, { wallet_id: null, delta: 20 }, { wallet_id: 'w-2', delta: -5 }];
+    const agSem = calcularSaldosComAgregado(carteiras(0), agregado);
+    const agCom = calcularSaldosComAgregado(carteiras(5000), agregado);
+    trava(centavos(agCom.total) === 11500 && centavos(agSem.total) === 11500,
+      'lib/wallets.ts calcularSaldosComAgregado voltou a somar initial_balance no total');
+    trava(agCom.porCarteira['w-1'] === 120 && agCom.porCarteira['w-2'] === -5,
+      'lib/wallets.ts calcularSaldosComAgregado voltou a somar initial_balance por carteira');
+    const codigo = fs.readFileSync(path.join(root, 'lib/wallets.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    trava(!/Number\(\s*w\.initial_balance/.test(codigo), 'lib/wallets.ts volta a ler initial_balance como número de saldo');
+  }
   ok('initial_balance não entra na conta nem nas telas');
 
   /* 4. Crédito fora, pagamento de fatura dentro. */
