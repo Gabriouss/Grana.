@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { idDoUsuarioLocal } from './sessao-offline';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
+import { lancamentoGravado } from './cache-de-tela';
 import { ITENS_POR_RODADA, ehErroPermanente } from './fila-pendente';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -114,6 +115,8 @@ export async function registrarOperacaoVoz(
   falaGuardada?: string
 ): Promise<ResultadoOperacaoVoz> {
   const resultado = await gravarOperacaoVoz(falaGuardada ?? requestId, source, payload, transcricao);
+  // As telas montadas (a aba Lançamentos) recarregam agora, não só no foco.
+  if (resultado.status === 'committed' || resultado.status === 'pending') lancamentoGravado();
   if (falaGuardada) {
     try {
       const { concluirVozRevisada } = await import('./widget-voz-pendentes');

@@ -209,6 +209,23 @@ export function avisarDadoNovo() {
 }
 
 /**
+ * Um lançamento acabou de ser gravado (no banco ou na fila do aparelho).
+ * Chamada pelos pontos comuns de gravação: `registrarOperacaoVoz` (voz no app
+ * e no widget, Colar com voz) e `salvarOuGuardarNoAparelho`/
+ * `salvarOuGuardarParceladaNoAparelho` (janelas, Colar sem voz).
+ *
+ * Achado do Harbor de 27/09/2026: a aba Lançamentos, montada em segundo
+ * plano, só buscava de novo ao ganhar foco, e numa rede lenta mostrava a lista
+ * velha por uns 6 s. Agora as telas montadas recarregam no momento em que
+ * alguém grava. O dado atrasado sai junto: ele é anterior à gravação e, se
+ * ficasse, a recarga o devolveria sem o lançamento novo pelos 15 s de validade.
+ */
+export function lancamentoGravado(): void {
+  atrasados.clear();
+  avisarDadoNovo();
+}
+
+/**
  * Envolve um buscador para que ele grave o que trouxe e devolva o guardado
  * quando a REDE falhar.
  *

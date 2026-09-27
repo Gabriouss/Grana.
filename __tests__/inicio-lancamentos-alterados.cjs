@@ -165,7 +165,8 @@ async function filaOffline() {
 /* ── 3. Início ──────────────────────────────────────────────────────────── */
 function inicio() {
   console.log('\nInício (fonte)');
-  const fonte = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
+  // Sem o CRLF que o `core.autocrlf` do Windows põe na cópia local.
+  const fonte = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8').replace(/\r\n/g, '\n');
 
   const foco = fonte.slice(fonte.indexOf('useFocusEffect(\n'), fonte.indexOf('carregarPerfil().then', fonte.indexOf('useFocusEffect(\n')));
   assert.match(foco, /versaoLancamentosCarregada\.current === versaoDosLancamentos\(\)[\s\S]*carregarDadosLeves\(\)/);

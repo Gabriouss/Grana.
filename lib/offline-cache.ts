@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addBill, addInstallmentPurchase, addTransaction } from './data';
 import { createGoal } from './goals';
-import { avisarDadoNovo, guardarTela, isLikelyNetworkError, lerTela } from './cache-de-tela';
+import { avisarDadoNovo, guardarTela, isLikelyNetworkError, lancamentoGravado, lerTela } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 import { marcarLancamentosAlterados } from './lancamentos-alterados';
 import {
@@ -487,12 +487,15 @@ export async function salvarOuGuardarNoAparelho(
   input: PendingInput
 ): Promise<{ lancamento: Transaction; guardado: boolean }> {
   const chave = novaChaveIdempotencia();
+  let resultado: { lancamento: Transaction; guardado: boolean };
   try {
-    return { lancamento: await addTransaction({ ...input, client_request_id: chave }), guardado: false };
+    resultado = { lancamento: await addTransaction({ ...input, client_request_id: chave }), guardado: false };
   } catch (erro) {
     if (!isLikelyNetworkError(erro)) throw erro;
-    return { lancamento: await queuePendingTransaction(input, chave), guardado: true };
+    resultado = { lancamento: await queuePendingTransaction(input, chave), guardado: true };
   }
+  lancamentoGravado();
+  return resultado;
 }
 
 /** Mesma ideia de `salvarOuGuardarNoAparelho`, para compra parcelada:
@@ -504,10 +507,13 @@ export async function salvarOuGuardarParceladaNoAparelho(
   input: PendingInput
 ): Promise<{ lancamentos: Transaction[]; guardado: boolean }> {
   const chave = novaChaveIdempotencia();
+  let resultado: { lancamentos: Transaction[]; guardado: boolean };
   try {
-    return { lancamentos: await enviarParcelaPendente({ ...input, client_request_id: chave }), guardado: false };
+    resultado = { lancamentos: await enviarParcelaPendente({ ...input, client_request_id: chave }), guardado: false };
   } catch (erro) {
     if (!isLikelyNetworkError(erro)) throw erro;
-    return { lancamentos: await queuePendingInstallmentPurchase(input, chave), guardado: true };
+    resultado = { lancamentos: await queuePendingInstallmentPurchase(input, chave), guardado: true };
   }
+  lancamentoGravado();
+  return resultado;
 }

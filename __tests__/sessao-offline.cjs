@@ -125,6 +125,7 @@ vm.runInNewContext(compilar('lib/voice-operations.ts'), {
     if (nome === './supabase') return { supabase: supabaseDuble, __esModule: true };
     if (nome === './sessao-offline') return { ...sessaoOffline, __esModule: true };
     if (nome === './fila-pendente') return filaPendente;
+    if (nome === './cache-de-tela') return { lancamentoGravado() {} };
     if (nome === './widgets-home-events') {
       return { notificarDadosDosWidgetsAlterados: () => {}, __esModule: true };
     }

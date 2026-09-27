@@ -382,6 +382,31 @@ async function tentarDeNovo(requestId) {
   assert.deepEqual(entreExecucoes.app, entreExecucoes.widget, 'entre execuções: mesmo desfecho no app e no widget (regra 13)');
   ok('entre execuções (reabrir, Revisar, Tentar de novo): uma linha só, fala sai da fila, recibo "já lançada", nas duas entradas');
 
+  /* ── 9. Fala gravada pela tarefa avisa as telas montadas ─────────────
+     Achado do Harbor de 27/09/2026 (aba Lançamentos atrasada): o aviso sai
+     do núcleo `registrarOperacaoVoz`, então vale igual para a fala do app e
+     a do widget, pelo `executarTarefa` real. */
+  {
+    const tela = carregar('lib/cache-de-tela.ts');
+    let avisos = 0;
+    const parar = tela.assinarDadoNovo(() => { avisos++; });
+    for (const source of ['app', 'widget']) {
+      const requestId = `req-aviso-${source}`;
+      const origem = `file:///cache/${requestId}.m4a`;
+      disco.set(origem, 'AUDIO');
+      await fila.adicionarVozPendente({ caminho: origem, requestId, userId: 'u-1', source });
+      transcricoes[`file:///files/voz-pendente/${requestId}.m4a`] = { ok: true, transcript: FALA };
+      const antes = linhas.length;
+      avisos = 0;
+      await tarefa.tentarVozesPendentes();
+      await new Promise((r) => setTimeout(r, 300));
+      assert.equal(linhas.length - antes, 1, `${source}: a fala gravou`);
+      assert.ok(avisos >= 1, `${source}: as telas que assinam assinarDadoNovo foram avisadas`);
+    }
+    parar();
+  }
+  ok('fala gravada pela tarefa (app e widget) avisa as telas montadas');
+
   console.log(`\n${checagens} checagens de revisão sem duplicata passaram — 0 falhas`);
 })().catch((erro) => {
   console.error(erro);

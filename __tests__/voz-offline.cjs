@@ -22,6 +22,7 @@ function carregar(file, deps) {
       multiGet: async keys => keys.map(k => [k, storage.get(k)]),
     } },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
+    './cache-de-tela': { lancamentoGravado() {} },
     /* Limites e classificação de erro da fila (24/09/2026): módulo real. */
     './fila-pendente': carregar('lib/fila-pendente.ts', {
       '@react-native-async-storage/async-storage': { __esModule: true, default: {

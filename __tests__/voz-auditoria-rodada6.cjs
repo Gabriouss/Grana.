@@ -104,6 +104,7 @@ function montarOperacoes(opts) {
        do Supabase acima. */
     './sessao-offline': { idDoUsuarioLocal: async () => 'u1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
+    './cache-de-tela': { lancamentoGravado() {} },
     '@react-native-async-storage/async-storage': { __esModule: true, default: store },
   });
   return { mod, store };
