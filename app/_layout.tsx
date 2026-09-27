@@ -359,6 +359,9 @@ function RootNavigator() {
         {/* Callback PKCE dedicado: recebe somente um código curto e de uso
             único; a troca pela sessão acontece em auth-context. */}
         <Stack.Screen name="auth/callback" />
+        {/* Recuperação de senha pedida no site (A6): fora do App Link, abre
+            sempre no navegador e leva a `nova-senha`. */}
+        <Stack.Screen name="auth/recuperar" />
         {/* Também sem Stack.Protected: Termos, Privacidade e Exclusão de
             dados precisam abrir de qualquer lugar — do cadastro (antes de
             existir conta), do Perfil (já logado), e de fora do app (link do

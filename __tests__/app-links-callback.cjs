@@ -162,6 +162,41 @@ checar('sem code nem erro é ignorado',
   checar('scheme exp dentro do __DEV__ é aceito', carregarModulo(true).extrairCallbackSeguro(url) !== null);
 }
 
+/* ── A6 (decisão do autor, 27/09/2026): recuperação pedida no SITE volta por
+ *    um caminho FORA do App Link. No PKCE o link do e-mail chega só com
+ *    `?code=` (sem `type=recovery`) e o verifier mora no navegador; pelo
+ *    callback, o App Link o entregaria ao app, que mostraria "E-mail
+ *    confirmado" a quem não sabe a senha. ─────────────────────────────── */
+{
+  const { rotaDaRecuperacao } = carregarModulo(false);
+  checar('A6: rotaDaRecuperacao exportada', typeof rotaDaRecuperacao === 'function');
+  checar('A6: na web a recuperação volta por auth/recuperar', rotaDaRecuperacao('web') === 'auth/recuperar');
+  checar('A6: no Android continua no callback pelo scheme nativo', rotaDaRecuperacao('android') === 'auth/callback');
+  checar('A6: no iOS continua no callback pelo scheme nativo', rotaDaRecuperacao('ios') === 'auth/callback');
+
+  const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'app.json'), 'utf8'));
+  const prefixos = (appJson.expo.android.intentFilters || []).flatMap((f) => (f.data || []).map((d) => d.pathPrefix || d.path || d.pathPattern || ''));
+  checar('A6: há App Link declarado para conferir', prefixos.length > 0 && prefixos.every((p) => p));
+  checar('A6: nenhum App Link cobre /auth/recuperar', prefixos.every((p) => !'/auth/recuperar'.startsWith(p)));
+  checar('A6: o App Link continua cobrindo /auth/callback', prefixos.some((p) => '/auth/callback'.startsWith(p)));
+
+  checar('A6: link de recuperação da web não é tratado como callback no app',
+    extrairCallbackSeguro(`https://www.granaponto.com.br/auth/recuperar?code=${CODE}`) === null);
+
+  const auth = fs.readFileSync(path.join(__dirname, '..', 'lib', 'auth-context.tsx'), 'utf8');
+  const recuperar = auth.slice(auth.indexOf('async recuperarSenha('), auth.indexOf('async definirNovaSenha('));
+  checar('A6: recuperarSenha usa rotaDaRecuperacao(Platform.OS)', recuperar.includes('rotaDaRecuperacao(Platform.OS)'));
+  checar('A6: recuperarSenha não usa mais o callback fixo', !recuperar.includes('ROTA_CALLBACK'));
+
+  const telaPath = path.join(__dirname, '..', 'app', 'auth', 'recuperar.tsx');
+  const tela = fs.existsSync(telaPath) ? fs.readFileSync(telaPath, 'utf8') : '';
+  checar('A6: a rota web app/auth/recuperar.tsx existe', tela.length > 0);
+  checar('A6: a rota leva a nova-senha quando a recuperação chega', /emRecuperacao[\s\S]*router\.replace\('\/nova-senha'\)/.test(tela));
+  checar('A6: link que falha tem recibo na tela, não gira para sempre', tela.includes('PRAZO_RECUPERACAO_MS') && tela.includes('Peça um novo e-mail'));
+  const layout = fs.readFileSync(path.join(__dirname, '..', 'app', '_layout.tsx'), 'utf8');
+  checar('A6: a rota está registrada fora de Stack.Protected', layout.includes('<Stack.Screen name="auth/recuperar" />'));
+}
+
 console.log(passou > 0 && falhou === 0
   ? `OK app-links-callback: ${passou} verificações.`
   : `FALHOU app-links-callback: ${passou} ok, ${falhou} falharam.`);

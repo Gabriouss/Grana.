@@ -56,6 +56,22 @@ export function useSession() {
 
 const SCHEME_NATIVO = 'com.gabriouss.grana';
 const ROTA_CALLBACK = 'auth/callback';
+/** Recuperação de senha pedida no SITE (A6, decisão do autor em 27/09/2026).
+ *  Fica fora do `pathPrefix` do App Link (`/auth/callback`, app.json) de
+ *  propósito: no PKCE o `code_verifier` da recuperação mora no navegador que
+ *  pediu, e o link do e-mail volta só com `?code=`, sem `type=recovery`. Pelo
+ *  callback, o App Link entregaria o link ao app, que não tem o verifier e
+ *  mostraria "E-mail confirmado" a quem não sabe a senha. Por este caminho o
+ *  link abre sempre no navegador, onde `detectSessionInUrl` troca o código e
+ *  emite `PASSWORD_RECOVERY`. */
+const ROTA_RECUPERAR_WEB = 'auth/recuperar';
+
+/** Para onde o e-mail de recuperação volta. Na web, a rota fora do App Link;
+ *  no app, o callback de sempre pelo scheme nativo, que já funciona.
+ *  Exportada para __tests__/app-links-callback.cjs. */
+export function rotaDaRecuperacao(plataforma: string): string {
+  return plataforma === 'web' ? ROTA_RECUPERAR_WEB : ROTA_CALLBACK;
+}
 /** Domínios do App Link (assetlinks.json em public/.well-known/), pelos quais
  *  o MESMO link de callback pode chegar ao app sem passar pelo navegador.
  *  `www` é o que aparece de fato nos e-mails: o domínio nu redireciona pra
@@ -256,7 +272,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     },
     async recuperarSenha(email) {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: Linking.createURL(`/${ROTA_CALLBACK}`),
+        redirectTo: Linking.createURL(`/${rotaDaRecuperacao(Platform.OS)}`),
       });
       return { error: traduzirErroAuth(error) };
     },
