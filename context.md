@@ -12856,3 +12856,42 @@ Não verificados: texto/alerta da faixa no aparelho; reconhecedor local Android;
 5. **Erro:** reset sem perda e status de push incorreto; Ledger não publicou.
 6. **Sem verificação:** liberação de deploy, publicação, gravações finais e QA em aparelho.
 
+
+## 27/09/2026 (M1) — retomada Ledger após reinício do Maestri
+
+Esta entrada atualiza a consolidação de 26/09 com os fatos recebidos após o reinício. O Forge publicou `0fd6114`, `a1b4025` e `888eca6` em `origin/main` (push de `a9dbeab` até `888eca6`). `0fd6114` preserva para revisão a gravação de voz que o reconhecimento não entende; `a1b4025` completa o tratamento de “conta de luz” na revisão, em Contas e no Crédito; `888eca6` conclui no app a Decisão A para linhas antigas de entrada no cartão nos cálculos de fatura, total, limite, lembretes e aviso de total incerto. O relatório do Forge registra `npx tsc --noEmit` limpo e `npm run test:ci` com saída zero antes do commit. A conferência do Forge não encontrou um caminho alternativo de soma nos lembretes. A mudança não foi vista em emulador ou aparelho; permanece para o autor a pergunta se a linha antiga segue visível em Lançamentos para exclusão.
+
+Os relatórios de status de 27/09 estão em `E:\Grana-temporarios\2026-09-27-status\` (oito relatórios individuais e a consolidação do maestro). A nota de status correspondente no vault foi escrita antes do reinício e é uma fotografia anterior a estes fatos; este registro de sessão complementa-a sem reescrever o registro histórico.
+
+Incidente operacional do Codex relatado pelo autor: o executável antigo do Codex desapareceu, os terminais voltaram ao bash e o texto das tarefas caiu no shell sem executar. Foi necessário novo login. A atualização oferecida foi pulada porque o autor associa a atualização às janelas piscando; os modelos foram trocados pelo autor. Nenhuma execução das tarefas coladas no shell foi presumida.
+
+### Regra 12 — seis perguntas
+
+1. **Pedido:** retomar após reinício do Maestri e registrar desde a consolidação de 26/09 os commits, o push, os relatórios de status e o incidente operacional do Codex.
+2. **Sintoma e causa:** as mudanças e o push ocorreram depois da fotografia de status pré-reinício; os fatos foram confirmados pelos relatórios do Forge, Harbor e pelo estado do Git. No incidente, o executável antigo sumiu, os terminais voltaram ao bash e texto colado foi interpretado como entrada do shell sem execução.
+3. **Arquivos e identificadores:** `context.md`; nota de sessão `2026-09-27 - M1 - retomada Ledger após reinício do Maestri.md`; commits `0fd6114`, `a1b4025`, `888eca6`; relatórios em `E:\Grana-temporarios\2026-09-27-status\` e `E:\Grana-temporarios\2026-09-27-retomada\relatorio-Forge-decisao-A.md`.
+4. **Descartado:** editar a nota de status histórica do vault; afirmar que houve conferência visual em aparelho; iniciar build, deploy, migration ou emulador nesta tarefa.
+5. **O que deu errado:** o incidente operacional exigiu novo login; atualização oferecida não foi aplicada por decisão do autor. Após `git fetch`, constatou-se que o clone tem dois commits locais adicionais além de `origin/main` (`6dc037f`, `b11ca00`) e duas alterações de trabalho alheias; por isso o push deste registro não pode incluir esses commits sem nova instrução.
+6. **Sem verificação:** não foi verificada a visibilidade da linha antiga em Lançamentos, nem a mudança em emulador/aparelho. Não foi possível publicar o commit documental sem incluir commits alheios; aguarda reconciliação autorizada do estado Git.
+## 27/09/2026 (M1) — continuação Ledger após segundo reinício do Codex
+
+O autor retomou o trabalho após um segundo reinício dos terminais Codex. A atualização do Codex não foi aplicada por decisão do autor, pois a atualização anterior trouxe janelas piscando. Isso é um segundo evento operacional, separado do desaparecimento do executável antigo e do retorno ao bash já registrados acima.
+
+Decisões do autor para a 1.10.5 e o marketing: A6 segue pela rota web de recuperação de senha; migrations do cartão e a flag `foto_nota` ficam para alguns dias depois da build; entradas antigas no cartão ficam invisíveis; a palavra existente na lista genérica de entrada do parser permanece; não criar nem mencionar a operação financeira excluída em código, copy, roteiro ou proposta; deploy do Granabô e dos lembretes depende de liberação do autor. Sem build, deploy, migration ou emulador nesta tarefa.
+
+Commits recebidos como base: `6dc037f` (recuperação de senha pela rota web), `11100dd` (saldo por carteira sem `initial_balance`), `b11ca00` (comentário da decisão A) e `3752072` (recibo de voz substituído sem duplicação e desfazer). Depois, Forge concluiu a correção da gravação pela revisão em `213b59f` e o ajuste do teste isolado em `37ce0b8`. Na fotografia após `git fetch`, `origin/main` está em `3752072` e esses dois commits do Forge estão locais; o Forge ainda executa/precisa registrar a suíte final. Este registro não autoriza publicar commits de outros agentes.
+
+O portão de build e marketing permanece condicionado à suíte final do Forge, publicação dos commits que compõem a entrega pelo responsável, revisão da nota de release, QA no APK e edição/revisão do material R5. A captura R5 é bruto aproveitável com cortes, não peça final aprovada; conferir o cabeçalho/identidade e a duração legível da confirmação. A nota de release segue condicionada à revisão final; não anunciar lembretes remotos sem deploy liberado.
+
+### Regra 12 — seis perguntas desta continuação
+
+1. **Pedido:** após o segundo reinício, completar o registro da retomada com as decisões atuais, os commits da base e o estado do Forge para preparar a 1.10.5 e o marketing.
+2. **Sintoma e causa:** o Codex reiniciou novamente; o autor escolheu não aplicar a atualização por causa das janelas piscando. A correção da duplicação ao salvar uma fala pela revisão chegou em `213b59f`/`37ce0b8`; suíte final ainda não confirmada nesta atualização.
+3. **Arquivos e IDs:** `context.md`; nota `2026-09-27 - M1 - retomada Ledger após reinício do Maestri.md`; `6dc037f`, `11100dd`, `b11ca00`, `3752072`, `213b59f`, `37ce0b8`; relatórios de portão e arte da rodada em `E:\Grana-temporarios\2026-09-27-retomada\`.
+4. **Descartado:** incluir a operação financeira excluída em qualquer código, copy, roteiro ou proposta; tornar visíveis entradas antigas no cartão; antecipar migrations/flag; realizar build, deploy, migration, emulador ou push nesta tarefa.
+5. **O que deu errado:** novo reinício do Codex; a atualização ficou pendente por decisão do autor. Não se presumiu execução de tarefas que estavam em terminais reiniciados.
+6. **Sem verificação:** suíte final do Forge, build/APK, QA físico, edição/aprovação/publicação do R5 e liberação de deploys. A nota de release ainda aguarda revisão; o estado visual da captura final não foi aprovado.
+
+### Atualização do Git após o registro
+
+Após concluir o commit documental, nova conferência mostrou que Forge publicou `213b59f` e `37ce0b8`: `origin/main` está agora em `37ce0b8`, contendo também `3752072`, `11100dd` e `b11ca00`; `6dc037f` não aparece nesta linha atual. A fotografia anterior com `origin/main=3752072` descrevia o estado no momento daquela primeira conferência e foi superada pelo push do Forge. O commit Ledger é o único commit local à frente; não foi feito push dele. A suíte final do Forge ainda precisa de resultado registrado neste contexto.
