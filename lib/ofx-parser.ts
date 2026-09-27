@@ -1,5 +1,5 @@
 import type { TxType } from './types';
-import { guessCategoryFromText } from './heuristics';
+import { categoriaReconhecida } from './heuristics';
 import { LIMITS } from './limits';
 
 /**
@@ -174,14 +174,15 @@ export function parseOfx(texto: string): ResultadoOfx {
 
     const trnType = lerTag(bloco, 'TRNTYPE');
     const type = tipoDoLancamento(valorBruto, trnType);
-    const categoria = guessCategoryFromText(descricao);
+    // Sem palpite reconhecido, sem categoria: a importação pergunta antes de gravar.
+    const categoria = categoriaReconhecida(descricao);
 
     lancamentos.push({
       type,
       description: descricao,
       amount: Math.abs(valorBruto),
-      category: categoria.name,
-      color: categoria.color,
+      category: categoria?.name ?? '',
+      color: categoria?.color ?? '',
       occurred_on,
       fitid: lerTag(bloco, 'FITID'),
     });

@@ -13,7 +13,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import {
   guessAmountFromText,
-  guessCategoryFromText,
+  categoriaEscolhida,
+  categoriaReconhecida,
+  PERGUNTA_CATEGORIA,
   guessDescFromText,
   guessTypeFromText,
   parseFormaPagamento,
@@ -62,7 +64,8 @@ export default function PasteReceiptModal({
   const [type, setType] = useState<TxType>('out');
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Alimentação');
+  // Vazia até ser reconhecida no texto ou escolhida: nunca uma categoria padrão.
+  const [category, setCategory] = useState('');
   const [saving, setSaving] = useState(false);
   /* `saving` (estado) já desabilita o botão visualmente, mas o próprio
      `AppPressable` só reflete o novo valor de `disabled` depois de um
@@ -108,6 +111,7 @@ export default function PasteReceiptModal({
     setType('out');
     setSaving(false);
     setOrigemVoz(false);
+    setCategory('');
     setFormaPagamento(null);
     setRecorrente(false);
     setWalletId('');
@@ -137,13 +141,13 @@ export default function PasteReceiptModal({
     setWalletId(wallet?.id ?? (mencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
     const guessedAmount = voz ? valorSeguroParaRevisaoVoz(textoFinanceiro) : guessAmountFromText(textoFinanceiro);
     const guessedType = guessTypeFromText(textoFinanceiro);
-    const guessedCat = guessCategoryFromText(textoFinanceiro, categoriasExtras);
+    const guessedCat = categoriaReconhecida(textoFinanceiro, categoriasExtras);
     const guessedDesc = guessDescFromText(textoFinanceiro, guessedType);
 
     setType(guessedType);
     setDesc(guessedDesc);
     setAmount(guessedAmount != null && guessedAmount > 0 ? formatMoney(guessedAmount) : '');
-    setCategory(guessedCat.name);
+    setCategory(guessedCat?.name ?? '');
     /* Forma de pagamento e recorrência ditas na frase eram simplesmente
        jogadas fora aqui: "mercado 120 no pix" salvava sem payment_method
        nenhum, e "aluguel 1500 todo mês" salvava avulso. O bot do WhatsApp já
@@ -194,7 +198,11 @@ export default function PasteReceiptModal({
        uma categoria custom reconhecida no texto voltava a cair em "Outros" na
        hora de salvar — o nome certo aparecia na tela e o lançamento gravava
        outro. */
-    const catObj = guessCategoryFromText(category, categoriasExtras);
+    const catObj = categoriaEscolhida(category, categoriasExtras);
+    if (!catObj) {
+      Alert.alert(PERGUNTA_CATEGORIA.titulo, PERGUNTA_CATEGORIA.texto);
+      return;
+    }
     savingRef.current = true;
     setSaving(true);
     try {

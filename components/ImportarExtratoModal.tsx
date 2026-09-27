@@ -6,6 +6,7 @@ import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { parseCsvTextDetalhado, tiposDaFatura } from '@/lib/heuristics';
+import { PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { parseOfx, type LancamentoOfx, type OrigemOfx } from '@/lib/ofx-parser';
 import { escolherArquivoDeExtrato } from '@/lib/escolher-arquivo';
 import { LIMITS } from '@/lib/limits';
@@ -18,6 +19,7 @@ import AppPressable from './AppPressable';
 import ToggleSwitch from './ToggleSwitch';
 import { useKeyboardHeight } from './Sheet';
 import AccessibleModalPanel from './AccessibleModalPanel';
+import CategoryPickerModal from './CategoryPickerModal';
 import type { CreditCard } from '@/lib/types';
 
 /**
@@ -87,6 +89,7 @@ export default function ImportarExtratoModal({
   const [progresso, setProgresso] = useState<{ processados: number; total: number } | null>(null);
   const [cartoes, setCartoes] = useState<CreditCard[]>([]);
   const [cartaoId, setCartaoId] = useState<string | null>(null);
+  const [escolhendoCategoria, setEscolhendoCategoria] = useState(false);
 
   /* Os cartões só importam quando o arquivo é de fatura, mas carregar aqui na
      abertura evita um segundo tempo de espera bem no meio do fluxo. */
@@ -205,6 +208,9 @@ export default function ImportarExtratoModal({
   const aImportar = ehCartao ? linhasNaOrigem.filter((l) => l.type !== 'in') : linhasNaOrigem;
   const quantidadeEntradasRecusadas = linhasNaOrigem.length - aImportar.length;
   const avisoEntradas = avisoEntradasNoCartaoRecusadas(quantidadeEntradasRecusadas);
+  /* Linhas sem categoria reconhecida (nem no arquivo, nem pelo palpite):
+     a importação pergunta antes de gravar, nunca "Outros" sem escolha. */
+  const semCategoria = aImportar.filter((l) => !l.category).length;
   const rotuloImportar = aImportar.length === 0
     ? 'Nenhum lançamento para importar'
     : aImportar.length === 1
@@ -235,6 +241,17 @@ export default function ImportarExtratoModal({
        explicação. */
     if (aImportar.length === 0) {
       Alert.alert('Nada importado', avisoEntradas);
+      return;
+    }
+    if (semCategoria > 0) {
+      Alert.alert(
+        PERGUNTA_CATEGORIA.titulo,
+        `${semCategoria === 1 ? '1 lançamento está' : `${semCategoria} lançamentos estão`} sem categoria reconhecida. Escolha a categoria deles antes de importar. Nada foi importado ainda.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Escolher categoria', onPress: () => setEscolhendoCategoria(true) },
+        ]
+      );
       return;
     }
     setImportando(true);
@@ -279,6 +296,7 @@ export default function ImportarExtratoModal({
   }
 
   return (
+    <>
     <AppModal visible={visible} transparent onRequestClose={fechar}>
       <JanelaFlutuante>{({ aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle }) => (
       <Pressable style={[styles.modalScrim, styles.modalScrimCentered, scrimStyle]} onLayout={aoMedirFundo} onPress={fechar}>
@@ -435,7 +453,7 @@ export default function ImportarExtratoModal({
                         {item.description}
                       </Text>
                       <Text style={styles.previewSub}>
-                        {formatDateLabel(item.occurred_on)} · {item.category}
+                        {formatDateLabel(item.occurred_on)} · {item.category || 'Sem categoria'}
                       </Text>
                     </View>
                     <Text style={[styles.previewAmount, { color: item.type === 'in' ? theme.up : theme.down }]}>
@@ -473,6 +491,16 @@ export default function ImportarExtratoModal({
       </Pressable>
       )}</JanelaFlutuante>
     </AppModal>
+
+    {/* Categoria das linhas que chegaram sem nenhuma: vale para todas elas. */}
+    <CategoryPickerModal
+      visible={escolhendoCategoria}
+      onSelectCategory={({ name, color }) => {
+        setLinhas((atuais) => atuais.map((l) => (l.category ? l : { ...l, category: name, color })));
+      }}
+      onClose={() => setEscolhendoCategoria(false)}
+    />
+    </>
   );
 }
 

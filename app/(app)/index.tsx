@@ -764,10 +764,11 @@ export default function InicioScreen() {
     setTxType(type);
     setTxDesc('');
     setTxAmount('');
-    const cName = prefillCat || (type === 'in' ? 'Salário' : CATEGORIES[0].name);
-    const catObj = CATEGORIES.find((c) => c.name === cName) ?? CATEGORIES[0];
-    setTxCategory(catObj.name);
-    setTxCatColor(catObj.color);
+    /* Só a categoria pedida de propósito (atalho com categoria); sem ela, o
+       formulário abre sem nenhuma e pergunta ao salvar. Nunca uma padrão. */
+    const catObj = prefillCat ? CATEGORIES.find((c) => c.name === prefillCat) : undefined;
+    setTxCategory(catObj?.name ?? '');
+    setTxCatColor(catObj?.color ?? '');
 
     const isCurrent = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -794,9 +795,9 @@ export default function InicioScreen() {
   function openBillModal() {
     setBillDesc('');
     setBillAmount('');
-    const catObj = CATEGORIES[CATEGORIES.length - 1];
-    setBillCategory(catObj.name);
-    setBillCatColor(catObj.color);
+    // Sem categoria padrão: o formulário pergunta ao salvar.
+    setBillCategory('');
+    setBillCatColor('');
     setBillDueDate(todayISO());
     setBillRecurring(false);
     setBillSheetOpen(true);

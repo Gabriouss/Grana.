@@ -11,6 +11,7 @@ import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount, todayISO }
 import { LIMITS } from '@/lib/limits';
 import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
 import type { CreditCard, TxType, Wallet } from '@/lib/types';
+import { PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 
 /* Sheet de lançamento — um só, usado pela tela de Lançamentos e pela de
    Crédito. Antes eram dois blocos de JSX quase iguais em arquivos separados,
@@ -147,6 +148,13 @@ export default function TransactionSheet({
       setFormError('Informe um valor maior que zero.');
       return;
     }
+    /* Lançamento novo abre sem categoria (nunca uma padrão, decisão do autor
+       de 26/09/2026): sem escolha, pergunta e abre a lista. */
+    if (!category.trim()) {
+      setFormError(`${PERGUNTA_CATEGORIA.titulo} ${PERGUNTA_CATEGORIA.texto}`);
+      setCatPickerOpen(true);
+      return;
+    }
     if (ehCredito && (!cardId || cartoesDaCarteira.length === 0)) {
       setFormError(cartoesDaCarteira.length === 0 ? 'Esta carteira não possui cartão cadastrado.' : 'Escolha em qual cartão esta compra foi feita.');
       return;
@@ -275,7 +283,7 @@ export default function TransactionSheet({
             </View>
           )}
 
-          <AppPressable style={[styles.fieldRow, styles.categoryRow]} onPress={() => setCatPickerOpen(true)} accessibilityRole="button" accessibilityLabel={`Categoria: ${category}`}>
+          <AppPressable style={[styles.fieldRow, styles.categoryRow]} onPress={() => setCatPickerOpen(true)} accessibilityRole="button" accessibilityLabel={`Categoria: ${category || 'não escolhida'}`}>
             <Text style={styles.fieldKey}>Categoria</Text>
             {/* O nome recebe TODA a sobra da linha, alinhado à direita, em vez
                 de uma caixa do tamanho exato do texto. Com a caixa exata, no
@@ -284,9 +292,13 @@ export default function TransactionSheet({
                 de cor vai dentro do mesmo texto para continuar colado ao nome
                 e crescer junto com a fonte do sistema. */}
             <View style={styles.categoryValue}>
-              <Text style={[styles.fieldValText, styles.categoryText]}>
-                <Text style={{ color: catColor }}>●</Text>{'\u2002'}{category}
-              </Text>
+              {category ? (
+                <Text style={[styles.fieldValText, styles.categoryText]}>
+                  <Text style={{ color: catColor }}>●</Text>{'\u2002'}{category}
+                </Text>
+              ) : (
+                <Text style={[styles.fieldValText, styles.categoryText, { color: theme.inkFaint }]}>Escolher</Text>
+              )}
               <Ionicons name="chevron-forward" size={14} color={theme.inkFaint} />
             </View>
           </AppPressable>

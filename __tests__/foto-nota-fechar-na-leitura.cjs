@@ -53,7 +53,14 @@ const imports = {
   'expo-camera': { CameraView: 'CameraView', useCameraPermissions: () => [{ granted: true }, async () => ({ granted: true })] },
   '@expo/vector-icons/Ionicons': 'Ionicons',
   '@/lib/theme': { theme: {}, radius: {}, spacing: {}, type: {}, fonts: {}, touchTarget: 48, lh: () => 0 },
-  '@/lib/heuristics': { guessCategoryFromText: (t) => ({ name: t, color: '#fff' }) },
+  /* Este teste é sobre fechar durante a leitura, não sobre categoria: a
+     categoria obrigatória tem teste próprio (categoria-obrigatoria.cjs). */
+  '@/lib/heuristics': {
+    guessCategoryFromText: (t) => ({ name: t, color: '#fff' }),
+    categoriaReconhecida: (t) => ({ name: t, color: '#fff' }),
+    categoriaEscolhida: (t) => (t ? { name: t, color: '#fff' } : null),
+    PERGUNTA_CATEGORIA: { titulo: 'Qual categoria?', texto: 'Escolha a categoria antes de salvar.' },
+  },
   '@/lib/format': { formatMoney: (v) => String(v).replace('.', ','), parseAmount: (v) => Number(String(v).replace(',', '.')), formatMoneyInput: (v) => v, todayISO: () => '2026-09-26', formatDateLabel: (d) => d },
   '@/lib/offline-cache': { salvarOuGuardarNoAparelho: async (input) => { registro.gravados.push(input); return { guardado: false }; } },
   '@/lib/data': { fetchCreditCards: async () => cartoesDaConta },

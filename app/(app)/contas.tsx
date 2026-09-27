@@ -37,7 +37,7 @@ import AppDialog from '@/components/AppDialog';
 import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, fetchCategories, payBill, reopenBill, updateBill } from '@/lib/data';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal } from '@/lib/offline-cache';
-import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento, parseRecorrencia, matchWalletByText, limparReferenciaCarteira, citaCarteira } from '@/lib/heuristics';
+import { guessAmountFromText, categoriaReconhecida, guessDescFromText, parseDiaVencimento, parseRecorrencia, matchWalletByText, limparReferenciaCarteira, citaCarteira } from '@/lib/heuristics';
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
@@ -176,9 +176,9 @@ export default function ContasScreen() {
     setEditingBillId(null);
     setDesc('');
     setAmount('');
-    const catObj = CATEGORIES[CATEGORIES.length - 1];
-    setCategory(catObj.name);
-    setCatColor(catObj.color);
+    // Sem categoria padrão: o formulário pergunta ao salvar.
+    setCategory('');
+    setCatColor('');
     setDueDate(todayISO());
     setRecurring(false);
     setModalOpen(true);
@@ -202,12 +202,12 @@ export default function ContasScreen() {
     }
     setVozWalletId(carteira?.id ?? (citaCarteira(texto) ? '' : null));
     const guessedAmount = valorSeguroParaRevisaoVoz(financeiro);
-    const guessedCat = guessCategoryFromText(financeiro, categoriasExtras);
+    const guessedCat = categoriaReconhecida(financeiro, categoriasExtras);
     const guessedDesc = guessDescFromText(financeiro, 'out');
     setDesc(guessedDesc);
     setAmount(guessedAmount != null && guessedAmount > 0 ? formatMoney(guessedAmount) : '');
-    setCategory(guessedCat.name);
-    setCatColor(guessedCat.color);
+    setCategory(guessedCat?.name ?? '');
+    setCatColor(guessedCat?.color ?? '');
     setDueDate(vencimento);
     /* Era `false` fixo: "internet 99 vence dia 15 todo mês" virava um boleto
        único, e no mês seguinte a conta não existia mais. */

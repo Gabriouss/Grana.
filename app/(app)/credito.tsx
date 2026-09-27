@@ -64,7 +64,7 @@ import {
   type FaturaAtualDoCartao,
   type StatusDaFatura,
 } from '@/lib/creditoFaturas';
-import { descricaoDoLancamento, guessAmountFromText, guessCategoryFromText, matchCardByText, matchWalletByText, citaCarteira, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
+import { descricaoDoLancamento, guessAmountFromText, categoriaReconhecida, matchCardByText, matchWalletByText, citaCarteira, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
@@ -898,8 +898,9 @@ export default function CreditoScreen() {
     setTxInstallments('1');
     setTxRecurring(false);
     setTxDate(todayISO());
-    setTxCategory(CATEGORIES[0].name);
-    setTxCatColor(CATEGORIES[0].color);
+    // Sem categoria padrão: o formulário pergunta ao salvar.
+    setTxCategory('');
+    setTxCatColor('');
     setTxCardId(cartaoPadraoDoFormulario());
     setNewTxOpen(true);
   }
@@ -924,13 +925,13 @@ export default function CreditoScreen() {
     const cartaoCasado = matchCardByText(textoFinanceiro, cartoesElegiveis);
     // Com o cartão já casado, para "crédito C6" não virar parte do nome.
     const guessedDesc = descricaoDoLancamento(textoFinanceiro, 'out', cartaoCasado);
-    const guessedCat = guessCategoryFromText(cartaoCasado ? limparReferenciaCartao(textoFinanceiro, cartaoCasado) : textoFinanceiro, categoriasExtras);
+    const guessedCat = categoriaReconhecida(cartaoCasado ? limparReferenciaCartao(textoFinanceiro, cartaoCasado) : textoFinanceiro, categoriasExtras);
     const carteiraMencionada = citaCarteira(texto);
     setTxWalletId(carteiraCasada?.id ?? (carteiraMencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
     setTxDesc(guessedDesc);
     setTxAmount(guessedAmount != null && guessedAmount > 0 ? formatMoney(guessedAmount) : '');
-    setTxCategory(guessedCat.name);
-    setTxCatColor(guessedCat.color);
+    setTxCategory(guessedCat?.name ?? '');
+    setTxCatColor(guessedCat?.color ?? '');
     setTxCardId(cartaoCasado?.id || '');
     setTxInstallments(String(parseParcelas(textoFinanceiro) ?? 1));
     /* Era `false` fixo: "Netflix 39,90 no crédito todo mês" abria como compra

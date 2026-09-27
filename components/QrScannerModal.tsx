@@ -13,7 +13,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
-import { guessCategoryFromText } from '@/lib/heuristics';
+import { categoriaEscolhida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
@@ -83,7 +83,8 @@ export default function QrScannerModal({
   const [lanterna, setLanterna] = useState(false);
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Alimentação');
+  // A nota fiscal não diz a categoria: a pessoa escolhe, nunca uma padrão.
+  const [category, setCategory] = useState('');
   const [saving, setSaving] = useState(false);
   /* Mesmo raciocínio de PasteReceiptModal.tsx: `saving` (estado) só
      desabilita o botão depois de um re-render, e um toque duplo rápido
@@ -96,7 +97,7 @@ export default function QrScannerModal({
     setLanterna(false);
     setDesc('');
     setAmount('');
-    setCategory('Alimentação');
+    setCategory('');
     setSaving(false);
   }
 
@@ -133,7 +134,11 @@ export default function QrScannerModal({
       return;
     }
 
-    const catObj = guessCategoryFromText(category);
+    const catObj = categoriaEscolhida(category);
+    if (!catObj) {
+      Alert.alert(PERGUNTA_CATEGORIA.titulo, PERGUNTA_CATEGORIA.texto);
+      return;
+    }
     savingRef.current = true;
     setSaving(true);
     try {

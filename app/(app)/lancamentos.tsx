@@ -351,10 +351,11 @@ export default function LancamentosScreen() {
     setType(kind);
     setDesc('');
     setAmount('');
-    const cName = prefillCat || (kind === 'in' ? 'Salário' : CATEGORIES[0].name);
-    const catObj = CATEGORIES.find((c) => c.name === cName) ?? CATEGORIES[0];
-    setCategory(catObj.name);
-    setCatColor(catObj.color);
+    /* Só a categoria pedida de propósito; sem ela, o formulário abre sem
+       nenhuma e pergunta ao salvar. Nunca uma padrão. */
+    const catObj = prefillCat ? CATEGORIES.find((c) => c.name === prefillCat) : undefined;
+    setCategory(catObj?.name ?? '');
+    setCatColor(catObj?.color ?? '');
 
     const isCurrent = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
     const pad = (n: number) => String(n).padStart(2, '0');

@@ -324,6 +324,8 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
 
+  /* Mesma regra de `categoriaReconhecida` (lib/heuristics.ts), que as outras
+     entradas usam: palpite "Outros" é categoria não reconhecida e pergunta. */
   const categoria = heuristics.guessCategoryFromText(textoDaCategoria, extras);
   if (categoria.name === 'Outros') {
     await notificacoes.notificarRevisao('Qual categoria?', transcricao.transcript);

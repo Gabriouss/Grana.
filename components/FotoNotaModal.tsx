@@ -4,7 +4,7 @@ import { Alert } from '@/lib/alerta';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
-import { guessCategoryFromText } from '@/lib/heuristics';
+import { categoriaEscolhida, categoriaReconhecida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput, todayISO, formatDateLabel } from '@/lib/format';
 import { fotografarELer, limparFotosEsquecidas, prepararLeitura } from '@/lib/foto-nota-ocr';
 import { extrairDetalhesDaNota } from '@/lib/nota-foto-parser';
@@ -75,7 +75,8 @@ export default function FotoNotaModal({
   const [aviso, setAviso] = useState<string | null>(null);
   const [desc, setDesc] = useState('Compra');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Alimentação');
+  // Reconhecida pelo estabelecimento ou escolhida: nunca uma categoria padrão.
+  const [category, setCategory] = useState('');
   const [saving, setSaving] = useState(false);
   /* O que veio da foto fica marcado "lido da foto" até a pessoa mudar o campo.
      Tudo continua editável: OCR erra. */
@@ -103,7 +104,7 @@ export default function FotoNotaModal({
     setAviso(null);
     setDesc('Compra');
     setAmount('');
-    setCategory('Alimentação');
+    setCategory('');
     setSaving(false);
     setData(todayISO());
     setPagamento(null);
@@ -169,7 +170,7 @@ export default function FotoNotaModal({
         setAviso(AVISO_POR_MOTIVO[leitura.texto.trim() ? motivo : 'sem_texto']);
         if (detalhes.estabelecimento) {
           setDesc(detalhes.estabelecimento);
-          setCategory(guessCategoryFromText(detalhes.estabelecimento).name);
+          setCategory(categoriaReconhecida(detalhes.estabelecimento)?.name ?? '');
         }
         setData(detalhes.data ?? todayISO());
         setDataRecusada(detalhes.dataRecusada);
@@ -209,10 +210,15 @@ export default function FotoNotaModal({
       return;
     }
 
+    const categoria = categoriaEscolhida(category);
+    if (!categoria) {
+      Alert.alert(PERGUNTA_CATEGORIA.titulo, PERGUNTA_CATEGORIA.texto);
+      return;
+    }
     const lancamento = montarLancamentoDaFoto({
       valor: val,
       descricao: desc,
-      categoria: guessCategoryFromText(category),
+      categoria,
       data,
       pagamento,
       cartao: cartoes.find((c) => c.id === cartaoId) ?? null,

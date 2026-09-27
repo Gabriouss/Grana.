@@ -780,6 +780,40 @@ export function guessCategoryFromText(
   );
 }
 
+/**
+ * O palpite de categoria do texto, ou `null` quando nada foi reconhecido.
+ * `guessCategoryFromText` devolve "Outros" nesse caso, e nenhum lançamento é
+ * gravado em "Outros" ou em categoria padrão sem a pessoa escolher (decisão
+ * do autor de 26/09/2026): toda entrada pergunta "Qual categoria?". É a mesma
+ * regra da voz (`lib/widget-voz-task.ts`), do colar, do QR, da foto da nota e
+ * da importação de extrato. Fica fora das cópias do servidor de propósito
+ * (`__tests__/sync-parser.js` compara só `guessCategoryFromText`).
+ */
+export function categoriaReconhecida(
+  text: string,
+  extras: { name: string; color: string }[] = []
+): { name: string; color: string } | null {
+  const categoria = guessCategoryFromText(text, extras);
+  return categoria.name === 'Outros' ? null : categoria;
+}
+
+/** A categoria que a pessoa deixou marcada na tela, pelo nome exato, ou
+    `null` se nenhuma. "Outros" escolhido de propósito vale. */
+export function categoriaEscolhida(
+  nome: string,
+  extras: { name: string; color: string }[] = []
+): { name: string; color: string } | null {
+  const alvo = nome.trim();
+  if (!alvo) return null;
+  return CATEGORIES.find((c) => c.name === alvo) ?? extras.find((c) => c.name === alvo) ?? null;
+}
+
+/** O pedido, com o mesmo título que a voz usa ("Qual categoria?"). */
+export const PERGUNTA_CATEGORIA = {
+  titulo: 'Qual categoria?',
+  texto: 'Escolha a categoria antes de salvar.',
+};
+
 /* Marcadores de saída, conferidos ANTES dos de entrada. A ordem importa:
    "paguei o salário do estagiário" tem 'salário' (entrada) e 'paguei'
    (saída) na mesma frase, e o verbo que a pessoa escolheu diz mais sobre a
@@ -1362,9 +1396,12 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
     const type: TxType = isIncome ? 'in' : 'out';
 
     const catNameRaw = (idxCat !== -1 ? cols[idxCat] : '') || '';
+    /* Sem categoria no arquivo e sem palpite reconhecido, a linha chega sem
+       categoria, e a importação pergunta antes de gravar (nunca "Outros"
+       sem escolha, decisão do autor de 26/09/2026). */
     const catObj =
       CATEGORIES.find((c) => c.name.toLowerCase() === catNameRaw.trim().toLowerCase()) ||
-      guessCategoryFromText(desc);
+      categoriaReconhecida(desc);
 
     const occurred_on = parseCsvDate((cols[idxDate] || '').trim());
 
@@ -1372,8 +1409,8 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
       type,
       description: desc,
       amount,
-      category: catObj.name,
-      color: catObj.color,
+      category: catObj?.name ?? '',
+      color: catObj?.color ?? '',
       occurred_on,
       fitid: gerarFitidSintetico(occurred_on, type, amount, desc),
       sinal: negativo ? -1 : 1,
