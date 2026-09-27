@@ -37,7 +37,7 @@ import AppDialog from '@/components/AppDialog';
 import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, fetchCategories, payBill, reopenBill, updateBill } from '@/lib/data';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal } from '@/lib/offline-cache';
-import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento, parseRecorrencia, matchWalletByText, limparReferenciaCarteira } from '@/lib/heuristics';
+import { guessAmountFromText, guessCategoryFromText, guessDescFromText, parseDiaVencimento, parseRecorrencia, matchWalletByText, limparReferenciaCarteira, citaCarteira } from '@/lib/heuristics';
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
 import { addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
@@ -196,7 +196,7 @@ export default function ContasScreen() {
       Alert.alert('Confirme o vencimento', 'Não reconheci uma data válida. Repita o lançamento com o vencimento correto.');
       return;
     }
-    setVozWalletId(carteira?.id ?? (/\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto) ? '' : null));
+    setVozWalletId(carteira?.id ?? (citaCarteira(texto) ? '' : null));
     const guessedAmount = valorSeguroParaRevisaoVoz(financeiro);
     const guessedCat = guessCategoryFromText(financeiro, categoriasExtras);
     const guessedDesc = guessDescFromText(financeiro, 'out');

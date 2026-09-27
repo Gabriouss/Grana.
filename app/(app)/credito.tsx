@@ -64,7 +64,7 @@ import {
   type FaturaAtualDoCartao,
   type StatusDaFatura,
 } from '@/lib/creditoFaturas';
-import { descricaoDoLancamento, guessAmountFromText, guessCategoryFromText, matchCardByText, matchWalletByText, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
+import { descricaoDoLancamento, guessAmountFromText, guessCategoryFromText, matchCardByText, matchWalletByText, citaCarteira, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
@@ -921,7 +921,7 @@ export default function CreditoScreen() {
     // Com o cartão já casado, para "crédito C6" não virar parte do nome.
     const guessedDesc = descricaoDoLancamento(textoFinanceiro, 'out', cartaoCasado);
     const guessedCat = guessCategoryFromText(cartaoCasado ? limparReferenciaCartao(textoFinanceiro, cartaoCasado) : textoFinanceiro, categoriasExtras);
-    const carteiraMencionada = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(texto);
+    const carteiraMencionada = citaCarteira(texto);
     setTxWalletId(carteiraCasada?.id ?? (carteiraMencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
     setTxDesc(guessedDesc);
     setTxAmount(guessedAmount != null && guessedAmount > 0 ? formatMoney(guessedAmount) : '');

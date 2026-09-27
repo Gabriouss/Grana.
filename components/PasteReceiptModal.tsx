@@ -20,6 +20,7 @@ import {
   parseRecorrencia,
   matchWalletByText,
   limparReferenciaCarteira,
+  citaCarteira,
 } from '@/lib/heuristics';
 import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { fetchCategories } from '@/lib/data';
@@ -126,7 +127,9 @@ export default function PasteReceiptModal({
   function processText(text: string, voz = false) {
     const wallet = matchWalletByText(text, wallets);
     const textoFinanceiro = wallet ? limparReferenciaCarteira(text, wallet.name) : text;
-    const mencionada = /\b(?:carteira|conta)\s+[\p{L}\d]/iu.test(text);
+    /* Mesma regra da voz e do Granabô: "conta de luz" é conta a pagar, não
+       carteira (achado B2, 26/09/2026). */
+    const mencionada = citaCarteira(text);
     setWalletId(wallet?.id ?? (mencionada ? '' : activeWallet?.id ?? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? ''));
     const guessedAmount = voz ? valorSeguroParaRevisaoVoz(textoFinanceiro) : guessAmountFromText(textoFinanceiro);
     const guessedType = guessTypeFromText(textoFinanceiro);

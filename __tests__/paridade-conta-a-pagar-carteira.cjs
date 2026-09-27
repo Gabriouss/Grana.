@@ -183,5 +183,18 @@ async function peloGranabo(frase) {
     if (!esperado) assert.match(respostas.at(-1) ?? '', /Não existe carteira com esse nome/, `Granabô, "${frase}"`);
     console.log(`  ok  ${JSON.stringify(frase)} -> ${granabo.grava ? `${granabo.kind} ${granabo.amount} na carteira ${granabo.wallet_id}` : 'pergunta a carteira'} (Granabô, app e widget)`);
   }
-  console.log(`OK conta a pagar x carteira: ${checagens} comparações Granabô x voz (app e widget).`);
+  /* As telas de revisão (colar/voz, Contas, Crédito) usavam a regex antiga e
+     deixavam a carteira em branco para "conta de luz". Nenhuma cópia dela
+     pode voltar fora das heurísticas. */
+  const copias = [];
+  const varrer = (dir) => {
+    for (const e of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+      const rel = path.join(dir, e.name);
+      if (e.isDirectory()) varrer(rel);
+      else if (/\.tsx?$/.test(e.name) && fs.readFileSync(path.join(root, rel), 'utf8').includes('(?:carteira|conta)\\s+[\\p{L}\\d]/')) copias.push(rel);
+    }
+  };
+  ['app', 'components', 'lib', 'supabase/functions/assistente-financeiro'].forEach(varrer);
+  assert.deepEqual(copias, [], 'regex antiga de carteira fora de citaCarteira');
+  console.log(`OK conta a pagar x carteira: ${checagens} comparações Granabô x voz (app e widget); nenhuma tela com a regra antiga.`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });
