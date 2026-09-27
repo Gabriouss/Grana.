@@ -213,12 +213,37 @@ function dataDaNota(linhas: string[], hojeISO: string): { data: string | null; r
   if (!linha) return { data: null, recusada: false };
   const m = linha.match(DATA)!;
   const ano = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
-  const iso = isoValido(Number(m[1]), Number(m[2]), ano);
+  return dentroDoPrazo(isoValido(Number(m[1]), Number(m[2]), ano), hojeISO);
+}
+
+/** Data impossível, futura ou de mais de um ano atrás é recusada. */
+function dentroDoPrazo(iso: string | null, hojeISO: string): { data: string | null; recusada: boolean } {
   if (!iso) return { data: null, recusada: true };
   const [ah, mh, dh] = hojeISO.split('-').map(Number);
   const umAnoAtras = isoValido(dh, mh, ah - 1) ?? `${ah - 1}-${String(mh).padStart(2, '0')}-28`;
   if (iso > hojeISO || iso < umAnoAtras) return { data: null, recusada: true };
   return { data: iso, recusada: false };
+}
+
+const MESES: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+
+/**
+ * Data de um texto colado (comprovante de Pix, transferência, e-mail de
+ * compra). Decisão do autor de 27/09/2026: o Colar comprovante grava na data
+ * do texto ("26/09/2026 às 18:42" grava em 26/09), e hoje só quando o texto
+ * não trouxer data. A mesma leitura e as mesmas recusas da foto da nota,
+ * mais o mês por extenso, comum em comprovante de banco ("26 SET 2026",
+ * "26 de setembro de 2026").
+ */
+export function dataDoTexto(texto: string, hojeISO: string): { data: string | null; recusada: boolean } {
+  const linhas = texto.split(/\r?\n/).map((l) => l.toUpperCase());
+  const numerica = dataDaNota(linhas, hojeISO);
+  if (numerica.data || numerica.recusada) return numerica;
+  const m = texto.match(/\b(\d{1,2})\s+(?:de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\.?\s+(?:de\s+)?(\d{4})\b/i);
+  if (!m) return { data: null, recusada: false };
+  return dentroDoPrazo(isoValido(Number(m[1]), MESES[m[2].toLowerCase()], Number(m[3])), hojeISO);
 }
 
 /** Linhas do topo que não são o nome da loja. */

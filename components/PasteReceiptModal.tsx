@@ -25,6 +25,7 @@ import {
   citaCarteira,
 } from '@/lib/heuristics';
 import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { dataDoTexto } from '@/lib/nota-foto-parser';
 import { fetchCategories } from '@/lib/data';
 import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
@@ -94,6 +95,11 @@ export default function PasteReceiptModal({
   const [formaPagamento, setFormaPagamento] = useState<string | null>(null);
   const [recorrente, setRecorrente] = useState(false);
   const [walletId, setWalletId] = useState('');
+  /* Data lida do texto colado (decisão do autor, 27/09/2026): grava nela, e
+     hoje só sem data. `dataRecusada` quando havia uma data impossível, futura
+     ou de mais de um ano: vai com hoje, e a tela diz. */
+  const [dataDoComprovante, setDataDoComprovante] = useState<string | null>(null);
+  const [dataRecusada, setDataRecusada] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -112,6 +118,8 @@ export default function PasteReceiptModal({
     setSaving(false);
     setOrigemVoz(false);
     setCategory('');
+    setDataDoComprovante(null);
+    setDataRecusada(false);
     setFormaPagamento(null);
     setRecorrente(false);
     setWalletId('');
@@ -128,6 +136,8 @@ export default function PasteReceiptModal({
     credit: 'Crédito',
   };
   const detalhesReconhecidos = [
+    dataDoComprovante ? `data ${dataDoComprovante.split('-').reverse().join('/')}` : null,
+    dataRecusada ? 'data do texto ignorada, vai com a de hoje' : null,
     formaPagamento ? NOME_DA_FORMA[formaPagamento] ?? formaPagamento : null,
     recorrente ? 'repete todo mês' : null,
   ].filter((d): d is string => !!d);
@@ -164,6 +174,11 @@ export default function PasteReceiptModal({
       return;
     }
     processText(text, origemVoz);
+    /* Só no texto colado. A fala revisada aqui segue a data da voz (hoje),
+       a mesma do widget, que não lê data (regra 13). */
+    const lida = origemVoz ? { data: null, recusada: false } : dataDoTexto(text, todayISO());
+    setDataDoComprovante(lida.data);
+    setDataRecusada(lida.recusada);
   }
 
   useEffect(() => {
@@ -212,7 +227,7 @@ export default function PasteReceiptModal({
         amount: val,
         category: catObj.name,
         color: catObj.color,
-        occurred_on: todayISO(),
+        occurred_on: dataDoComprovante ?? todayISO(),
         ...(formaPagamento ? { payment_method: formaPagamento } : null),
         ...(recorrente ? { recurring: true } : null),
         wallet_id: walletId,
