@@ -1,5 +1,11 @@
 # Guia de produção de criativos do Grana. (vigente desde 27/09/2026)
 
+## Regra rígida do autor para toda tela em material visual (27/09/2026)
+
+**Toda tela do aplicativo aparece SEMPRE dentro de uma moldura realista de celular.** Não usar desenho de celular flat 2D, screenshot solta nem tela do app colada em uma forma que só sugere o aparelho. Quando a peça mostrar a versão web em notebook, a moldura do notebook também precisa ser realista. A mesma exigência vale para estático, Story, carrossel, Reel, motion e widget recriado em HTML.
+
+**Encaixe é critério de aceite:** medir no arquivo final as bordas retas e os quatro cantos da área de tela do mockup. Manter respiro visível entre conteúdo do app e borda interna do aparelho/notebook; nenhum texto, ícone, botão, notificação, barra ou valor pode ficar cortado, encostado na borda ou escondido pelo arredondamento dos cantos. Recortar a imagem pela geometria real da tela, preservando proporção e perspectiva, e conferir o resultado exportado em pixels nos quatro lados e cantos. Se o mockup não comportar a tela inteira com margem, trocar o enquadramento ou o mockup antes de entregar; não esconder o corte com máscara ou sobreposição. Esta regra prevalece sobre exemplos antigos e aprovações anteriores de layout.
+
 Leia este guia **antes de produzir qualquer criativo**: estático, carrossel, Story, Reel ou motion. Ele junta os materiais que o autor aprovou até 27/09/2026 e diz quando usar cada um. As regras de fundo continuam no `PRODUCT.md` ("Copy and Marketing Guidelines") e no `FUNIL.md`, que é local, das máquinas do autor.
 
 ## 1. Comece pelo que já existe
@@ -8,10 +14,10 @@ Leia este guia **antes de produzir qualquer criativo**: estático, carrossel, St
 |---|---|---|
 | Notificação do Grana. na tela | uma das 21 notificações prontas, com texto real do app | `arsenal/notificacoes/` |
 | Ícone, selo ou símbolo de função | os 28 ícones do app (Ionicons) em 5 estilos | `arsenal/icones/` |
-| Celular com tela real | `celular-1.png` (Início) e `celular-2.png` (Lançamentos) | `funil-criativos-flat-2026-09/revisao-04/assets/` |
-| Notebook com tela real | `notebook.png` (Início web) | `funil-criativos-flat-2026-09/revisao-03/assets/` |
-| Celular vazio, para compor tela recriada | `celular-vazio.png` | `../../design-system/marketing-mockups/` |
-| Widget de voz, widget "Livre para gastar" ou notificação na tela do celular | recriar em HTML com texto e cor do código | modelos em `funil-criativos-flat-2026-09/exemplo-widget-voz/` e `motion-desistiu/` |
+| Celular com tela real | `celular-1.png` e `celular-2.png` **somente se** a moldura permanecer realista e a tela exportada tiver respiro medido nos quatro lados e cantos, sem corte; revisar cada composição, não presumir aprovação pelo nome do asset | `funil-criativos-flat-2026-09/revisao-04/assets/` |
+| Notebook com tela real | `notebook.png` (e variantes) **somente se** a moldura for realista e a imagem web estiver inteira, com margem interna inclusive nos cantos arredondados | `funil-criativos-flat-2026-09/revisao-03/assets/` e `revisao-04/assets/` |
+| Celular vazio, para compor tela real | `celular-vazio.png` **somente se** a composição final mantiver o corpo fotorealista, a perspectiva, os cantos reais e margem entre a interface e a borda interna | `../../design-system/marketing-mockups/` |
+| Widget de voz, widget "Livre para gastar" ou notificação na tela do celular | HTML pode recriar o conteúdo fiel ao código **somente dentro de mockup realista**, com margem medida e sem encostar ou cortar conteúdo nos lados e cantos; modelo flat não passa | modelos em `funil-criativos-flat-2026-09/exemplo-widget-voz/` e `motion-desistiu/` |
 | Logotipo e símbolo | sempre os arquivos oficiais, nunca redesenhados | `../../design-system/marca/` |
 | Som | "plim" de sucesso a −16 dB sob música; trilha pop (motion) ou "house" 100 bpm (Reels de tela) | `identidade-sonora/`, `r5-colar-pix/gerar-trilha-house.py` |
 
