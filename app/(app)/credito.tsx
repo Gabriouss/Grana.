@@ -912,7 +912,6 @@ export default function CreditoScreen() {
      vem preenchido quando não há escolha (ver cartaoPadraoDoFormulario). */
   function abrirNovaCompraDoTexto(texto: string) {
     operacaoVoz.current = randomUUID();
-    falaGuardadaDaRevisao.current = undefined;
     setEditingTxId(null);
     const carteiraCasada = matchWalletByText(texto, wallets);
     const textoFinanceiro = carteiraCasada ? limparReferenciaCarteira(texto, carteiraCasada.name) : texto;

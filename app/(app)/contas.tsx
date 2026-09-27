@@ -192,7 +192,6 @@ export default function ContasScreen() {
      parseDiaVencimento — mesmo motor do bot do WhatsApp. */
   function abrirNovaContaDoTexto(texto: string) {
     operacaoVoz.current = randomUUID();
-    falaGuardadaDaRevisao.current = undefined;
     setEditingBillId(null);
     const carteira = matchWalletByText(texto, wallets);
     const financeiro = carteira ? limparReferenciaCarteira(texto, carteira.name) : texto;
