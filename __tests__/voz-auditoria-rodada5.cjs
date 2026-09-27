@@ -83,6 +83,7 @@ async function localTimeout(stage) {
   const pending = new Promise(() => {});
   const api = load('lib/voz-local.ts', {
     'react-native': { Platform: { OS: 'android', Version: 33 } },
+    'expo-modules-core': { requireOptionalNativeModule: () => ({}) },
     'expo-speech-recognition': { ExpoSpeechRecognitionModule: {
       supportsOnDeviceRecognition: () => true,
       getSupportedLocales: () => stage === 'idiomas' ? pending : Promise.resolve({ installedLocales: ['pt-BR'] }),
@@ -105,6 +106,7 @@ async function cicloLocal() {
   const pending = () => new Promise(resolve => { release = resolve; });
   const api = load('lib/voz-local.ts', {
     'react-native': { Platform: { OS: 'android', Version: 33 } },
+    'expo-modules-core': { requireOptionalNativeModule: () => ({}) },
     'expo-speech-recognition': { ExpoSpeechRecognitionModule: {
       supportsOnDeviceRecognition: () => true,
       getSupportedLocales: () => mode === 'idiomas' ? pending() : Promise.resolve({ installedLocales: ['pt-BR'] }),

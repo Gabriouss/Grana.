@@ -87,6 +87,7 @@ function carregar(file, deps) {
     '@/modules/grana-voice-widget': { prepararAudioLocal: async () => ({ uri: 'file:///voz.pcm', sampleRate: 44100, audioChannels: 1, audioEncoding: 2 }) },
     'expo-file-system/legacy': { deleteAsync: async uri => assert.equal(uri, 'file:///voz.pcm') },
     'react-native': { Platform: { OS: 'android', Version: 33 } },
+    'expo-modules-core': { requireOptionalNativeModule: () => ({}) },
     'expo-speech-recognition': { ExpoSpeechRecognitionModule: {
       supportsOnDeviceRecognition: () => true,
       getSupportedLocales: async () => ({ installedLocales: installed ? ['pt-BR'] : [] }),

@@ -1,4 +1,17 @@
 import { Platform } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
+
+/**
+ * O reconhecedor do aparelho existe nesta instalação? No Expo Go ele não
+ * existe, e `import('expo-speech-recognition')` lança ao carregar: o Metro
+ * manda o erro ao LogBox como "Uncaught Error" e devolve `undefined` em vez
+ * de rejeitar (metro-runtime, `guardedLoadModule`). O fluxo seguia certo para
+ * o servidor, mas com um erro solto na tela (visto no celular do autor em
+ * 26/09/2026). Perguntar antes evita carregar o que não existe.
+ */
+export function reconhecedorLocalPresente(): boolean {
+  return !!requireOptionalNativeModule('ExpoSpeechRecognition');
+}
 
 let ocupado = false;
 
@@ -16,6 +29,8 @@ export const PRAZO_LOCAL_PADRAO_MS = 30_000;
  */
 export async function transcreverNoAparelho(uri: string, prazoMs = PRAZO_LOCAL_PADRAO_MS): Promise<string | null> {
   if (Platform.OS !== 'android' || Number(Platform.Version) < 33 || ocupado) return null;
+  // Sem o módulo (Expo Go), a transcrição segue pelo servidor, como antes.
+  if (!reconhecedorLocalPresente()) return null;
   ocupado = true;
   let pcmUri: string | undefined;
   let expirou = false;

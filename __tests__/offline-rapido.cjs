@@ -308,6 +308,7 @@ async function vozAgendaRapido() {
     const prazos = [];
     const local = carregar('lib/voz-local.ts', {
       'react-native': { Platform: { OS: 'android', Version: 34 } },
+      'expo-modules-core': { requireOptionalNativeModule: () => ({}) },
     }, { setTimeout: (fn, ms) => { prazos.push(ms); return rapido(fn, ms); } });
 
     await local.transcreverNoAparelho('file:///a.m4a', 60000);

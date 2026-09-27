@@ -115,6 +115,7 @@ async function localRecognition() {
     } };
   const local = load('lib/voz-local.ts', {
     'react-native': { Platform: { OS: 'android', Version: 33 } },
+    'expo-modules-core': { requireOptionalNativeModule: () => ({}) },
     'expo-speech-recognition': { ExpoSpeechRecognitionModule: native },
     '@/modules/grana-voice-widget': { prepararAudioLocal: async () => ({ uri: 'file:///fake.pcm' }) },
     'expo-file-system/legacy': { deleteAsync: async () => { cleanups++; } },

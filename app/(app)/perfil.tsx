@@ -535,6 +535,13 @@ export default function PerfilScreen() {
             <Text style={styles.sectionLabel}>Widgets da tela inicial</Text>
             <AppPressable onPress={async () => {
               try {
+                /* Sem o módulo (Expo Go), o import lançaria um erro solto no
+                   LogBox: ver `reconhecedorLocalPresente` em lib/voz-local.ts. */
+                const { reconhecedorLocalPresente } = await import('@/lib/voz-local');
+                if (!reconhecedorLocalPresente()) {
+                  Alert.alert('Voz offline indisponível', 'Este aparelho não oferece reconhecimento local compatível.');
+                  return;
+                }
                 const { ExpoSpeechRecognitionModule: motor } = await import('expo-speech-recognition');
                 if (!motor.supportsOnDeviceRecognition()) {
                   Alert.alert('Voz offline indisponível', 'Este aparelho não oferece reconhecimento local compatível.');
