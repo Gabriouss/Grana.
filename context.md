@@ -12725,3 +12725,53 @@ Atualização registrada em `E:\Grana-temporarios\2026-09-26-retomada\relatorio-
    no banco, auditoria do Watchtower de B1, microfone no celular real, tempo da
    foto em celular real, publicação autorizada da Edge Function, aplicação da
    migration (continua explicitamente fora do deploy) e build EAS.
+
+## 26/09/2026 — M1 — decisão sobre entradas antigas no cartão e achados B4–B6
+
+### Decisão do autor: entradas no cartão são ignoradas nos cálculos
+
+Na noite de 26/09, o autor decidiu: **entrada no cartão, inclusive registro antigo ou criado por uma versão 1.10.4, é ignorada em todo lugar**. Não abate nem compõe fatura, total de crédito, uso de limite ou lembretes, tanto no app quanto no Granabô.
+
+O commit `c4a7a66` tinha recriado no servidor o abatimento de entradas antigas e invertido as travas por uma instrução incorreta do maestro. Harbor já o reverteu em `02f66a5`. O ajuste cliente de `lib/creditoFaturas.ts` ainda está em andamento com Forge: no `HEAD` observado, `valorNaFatura` ainda transforma `type: 'in'` em valor negativo, e isso precisa ser removido para a regra alcançar fatura, total, limite e lembretes no app. Nenhum deploy foi feito aqui.
+
+### Faixa presa na conta do autor: áudio na fila do widget
+
+O relatório de Forge em `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Forge-faixa-presa.md` identificou o item contado pela faixa “1 lançamento aguardando conexão” como áudio não transcrito. `tentarVozesPendentes` retornava quando `podeNotificar()` era falso (`lib/widget-voz-task.ts:452` no relatório); por isso a fila não era retomada no Expo Go e também podia ficar presa numa build quando a permissão de notificação fosse negada. A faixa não mudava ao tocar “Tentar sincronizar”, que só sincronizava operações já interpretadas. A conclusão sobre o conteúdo exato do AsyncStorage do celular não foi verificada diretamente; foi inferida pelo sintoma e pelo fluxo de código. Forge está corrigindo o caminho para processar a fila com recibo visível no app aberto; a alteração observada ainda não estava commitada nem validada nesta nota.
+
+### Etapa B da voz
+
+- `46dcce0` registra B4: corrige a descrição do lançamento para não capturar o “R” de `R$` nem um “dia 10” solto como parte do nome. Os arquivos incluem as três cópias de parser e `__tests__/descricao-com-simbolo-moeda.cjs`.
+- O maestro também informou achados B5 e B6 do Harbor. A pasta da rodada ainda não contém relato com seus sintomas, causas ou hashes; esses detalhes ficam pendentes de fonte e não são inferidos aqui.
+
+### Atualização do relatório Harbor sobre fatura
+
+`E:\Grana-temporarios\2026-09-26-retomada\relatorio-Harbor-fatura-igual-ao-app.md` descreve `c4a7a66`, baseado no pedido anterior do maestro. Esta decisão do autor substitui aquele pedido: entradas antigas não abatem a fatura. `02f66a5` é o revert confirmado. A nova orientação vale também para total, limite e lembretes dos dois produtos.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** registrar a decisão do autor para ignorar entradas no cartão, o revert de Harbor, a correção cliente pendente, a causa da faixa presa e os achados B4–B6.
+2. **Sintoma e causa:** o Granabô havia sido alterado para subtrair linhas `in` antigas por uma instrução incorreta; o autor decidiu ignorá-las em todo cálculo. A faixa presa corresponde a áudio não transcrito que não era reprocessado quando a permissão de notificação estava ausente.
+3. **Arquivos e identificadores:** `lib/creditoFaturas.ts`, `supabase/functions/_shared/fatura-ciclo.ts`, `supabase/functions/assistente-financeiro/index.ts`, `lib/widget-voz-task.ts`, `components/VozesSalvasLocalmente.tsx`; `c4a7a66`, `02f66a5`, `46dcce0`; relatórios Harbor fatura, Forge faixa presa e Harbor etapa B na pasta da rodada.
+4. **Descartado:** subtrair `type: 'in'` antigo, inclusive só no backend; tratar o item da faixa como operação já interpretada; afirmar causa direta no AsyncStorage sem leitura do aparelho; completar detalhes de B5/B6 sem relatório.
+5. **O que deu errado:** `c4a7a66` implementou no servidor uma instrução errada do maestro e inverteu os filtros. Foi revertido em `02f66a5`; falta o par do app. A correção da fila ainda está em desenvolvimento.
+6. **Sem verificação:** alteração final de `lib/creditoFaturas.ts` e seus lembretes, suíte da correção final, confirmação no celular do autor, conclusão do Forge para a faixa, resultados detalhados de B5/B6, deploy posterior do Granabô.
+### Estado do repositório nesta atualização
+
+`git fetch origin` confirmou `main` 14 commits à frente de `origin/main` antes do próximo commit documental do Ledger. Há alterações compartilhadas não commitadas de Forge e Harbor; não as incluí nem alterei. O Ledger fará commit somente do `context.md`, sem push. O maestro mantém o push geral para depois das revisões combinadas.
+
+## 26/09/2026 — M1 — atualização Harbor: centavos inteiros no Granabô
+
+Depois do registro anterior, Harbor concluiu `a8d1b6b`: `somaEmCentavos` em `supabase/functions/_shared/fatura-ciclo.ts` agora acumula em centavos inteiros os totais de fatura e uso de limite do `assistente-financeiro`. O teste `__tests__/granabo-fatura-centavos.cjs` entrou em `test:ci`; inclui a trava da decisão A: `type: 'in'` no cartão continua ignorado. O exemplo do limite de R$ 1,60 evita que 0,10 + 0,70 em ponto flutuante fique abaixo de 50%.
+
+Harbor reportou `test:ci` incompleto/falhando no teste de paridade dos recibos de fila devido ao trabalho de Forge ainda sem commit (`lib/widget-voz-task.ts` e `lib/voz-recibos-da-fila.ts`); as demais partes do CI passaram. Não houve deploy, e nada desta alteração está confirmado em produção. `c4a7a66` segue revertido por `02f66a5`; a retirada do ramo de abatimento do cliente em `lib/creditoFaturas.ts` continua pendente no HEAD.
+
+Na fotografia do git desta atualização, `main` estava 15 commits à frente de `origin/main`, e Forge mantinha alterações não commitadas na retomada da fila. O Ledger não incluiu arquivos desses agentes.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** incorporar o resultado posterior de Harbor sem perder a decisão do autor e o estado pendente do app.
+2. **Sintoma e causa:** soma em ponto flutuante podia colocar R$ 0,80 de R$ 1,60 abaixo do degrau de 50%; arredondar cada valor para centavos inteiros elimina o erro. CI ainda colide com o trabalho de fila de Forge.
+3. **Arquivos e identificadores:** `_shared/fatura-ciclo.ts`, `assistente-financeiro/index.ts`, `__tests__/granabo-fatura-centavos.cjs`, `package.json`; commits `a8d1b6b`, `02f66a5`, `c4a7a66`.
+4. **Descartado:** reintroduzir abatimento da linha antiga `in`; afirmar que o ajuste já está em produção ou que CI passou completo.
+5. **O que deu errado:** instrução incorreta do maestro gerou `c4a7a66`, revertido por `02f66a5`; execução integral de `test:ci` foi bloqueada pelo teste que conflita com as mudanças não commitadas de Forge.
+6. **Sem verificação:** deploy, app após retirar o abatimento, conclusão do teste de recibos/fila e detalhes formais dos achados B5/B6.
