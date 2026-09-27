@@ -139,10 +139,9 @@ checar('ciclos repetidos não repetem mês',
     lanc('c6', '2026-09-22', 0.2),
   ];
   checar('valorNaFatura: estorno é negativo', valorNaFatura(txs[1]), -30);
-  /* Lado do servidor (Harbor, 26/09/2026): nenhum caminho grava entrada no
-     cartão, mas a linha antiga abate no Granabô como no app. */
-  checar('Granabô: linha de compra pesa igual ao app', deno.valorNaFatura(txs[0]), valorNaFatura(txs[0]));
-  checar('Granabô: linha antiga de entrada pesa igual ao app', deno.valorNaFatura(txs[1]), valorNaFatura(txs[1]));
+  /* Lado do servidor (Harbor, 26/09/2026): entrada no cartão não existe, e o
+     Granabô soma a fatura pelo valor, sem ramo de abate. */
+  checar('Granabô sem regra de abate na fatura', 'valorNaFatura' in deno, false);
   const fatura = filtrarLancamentosDaFatura(txs, [c], 'c6', 2026, 9);
   checar('estorno entra na lista da fatura', fatura.length, 4);
   checar('soma da fatura: 130 - 30 + 0,10 + 0,20, em centavos', somaDaFatura(fatura), 100.3);
