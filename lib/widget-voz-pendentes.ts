@@ -39,11 +39,26 @@ async function ler(): Promise<VozPendente[]> {
   }
 }
 
+/**
+ * Falas já salvas pela revisão nesta execução do app (achado do Watchtower,
+ * 27/09/2026). Marcadas ANTES de qualquer acesso ao disco: mesmo que tirar a
+ * fala da fila falhe, ela não é mais listada, adotada nem retomada, e
+ * "Tentar de novo" não grava o mesmo gasto outra vez. A fila persistida
+ * continua sendo a garantia entre execuções; esta é a trava para quando o
+ * disco falha no meio.
+ */
+const concluidas = new Set<string>();
+
+/** Áudios de falas já concluídas cuja exclusão falhou: tentados de novo a
+    cada retomada da fila (`apagarAudiosPendentes`). */
+const CHAVE_APAGAR = 'grana:queue:widget-voz-apagar-v1';
+
 async function gravar(itens: VozPendente[]): Promise<void> {
     await AsyncStorage.setItem(CHAVE, JSON.stringify(itens));
 }
 
 export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'>): Promise<void> {
+  if (concluidas.has(item.requestId)) return;
   const itens = await ler();
   if (itens.some((existente) => existente.requestId === item.requestId)) return;
   const fs = await import('expo-file-system/legacy');
@@ -98,7 +113,7 @@ export async function adotarVozesOrfas(userId: string): Promise<number> {
 }
 
 export async function listarVozesPendentes(): Promise<VozPendente[]> {
-  return ler();
+  return (await ler()).filter((item) => !concluidas.has(item.requestId));
 }
 
 /** Marca a fala como "precisa de revisão": ela sai das retomadas automáticas,
@@ -131,13 +146,85 @@ export async function descartarVozPendente(requestId: string): Promise<void> {
   await removerVozPendente(requestId);
 }
 
-/** A fala foi salva pela revisão (`registrarOperacaoVoz` com `falaGuardada`):
-    sai da fila com o áudio e o aviso, para "Tentar de novo" não gravar outra
-    vez. Idempotente: chamada de novo, não faz nada. Só depois de salvar. */
+/** A limpeza da fala concluída não terminou; o lançamento já está salvo. */
+export class LimpezaDaFalaIncompleta extends Error {
+  constructor(readonly etapa: 'fila' | 'recibo', causa: unknown) {
+    super(`fala concluída, limpeza incompleta: ${etapa}`);
+    this.cause = causa;
+  }
+}
+
+/**
+ * A fala foi salva pela revisão (`registrarOperacaoVoz` com `falaGuardada`).
+ * Chamar só DEPOIS de salvar. Idempotente. A ordem é o que impede a segunda
+ * gravação (achado do Watchtower, 27/09/2026: apagar o arquivo vinha antes de
+ * tirar da fila, e uma falha no arquivo deixava a fala retomável):
+ *   1. marcada como concluída nesta execução, antes de qualquer disco;
+ *   2. tirada da fila persistida;
+ *   3. só então o áudio é apagado; se falhar, fica para a próxima retomada;
+ *   4. o aviso da fala sai da tela.
+ * Lança `LimpezaDaFalaIncompleta` se 2 ou 4 falharem, para quem chama deixar
+ * recibo; a trava 1 já vale nesse caso.
+ */
 export async function concluirVozRevisada(requestId: string): Promise<void> {
-  await descartarVozPendente(requestId);
-  const { removerReciboDaFila } = await import('./voz-recibos-da-fila');
-  await removerReciboDaFila(requestId);
+  concluidas.add(requestId);
+  const item = (await ler()).find((i) => i.requestId === requestId);
+  try {
+    await removerVozPendente(requestId);
+  } catch (erro) {
+    throw new LimpezaDaFalaIncompleta('fila', erro);
+  }
+  if (item) await apagarAudio(item.caminho);
+  try {
+    const { removerReciboDaFila } = await import('./voz-recibos-da-fila');
+    await removerReciboDaFila(requestId);
+  } catch (erro) {
+    throw new LimpezaDaFalaIncompleta('recibo', erro);
+  }
+}
+
+/** Apaga o áudio da pasta da fila; se falhar, guarda o caminho para tentar
+    de novo, com log. Áudio financeiro não fica no aparelho sem ninguém saber. */
+async function apagarAudio(caminho: string): Promise<void> {
+  const fs = await import('expo-file-system/legacy');
+  // Só a pasta privada gerenciada pela fila é um alvo válido de exclusão.
+  if (!caminho.startsWith(`${fs.documentDirectory}voz-pendente/`)) return;
+  try {
+    await fs.deleteAsync(caminho, { idempotent: true });
+  } catch (erro) {
+    console.error('[voz] áudio da fala concluída não foi apagado; nova tentativa na próxima retomada', erro);
+    try {
+      const bruto = await AsyncStorage.getItem(CHAVE_APAGAR);
+      const lista: string[] = bruto ? JSON.parse(bruto) : [];
+      if (!lista.includes(caminho)) await AsyncStorage.setItem(CHAVE_APAGAR, JSON.stringify([...lista, caminho]));
+    } catch (erroLista) {
+      console.error('[voz] caminho do áudio a apagar não foi guardado', erroLista);
+    }
+  }
+}
+
+/** Nova tentativa de apagar os áudios de falas concluídas. Chamada no início
+    de cada retomada da fila. */
+export async function apagarAudiosPendentes(): Promise<void> {
+  let lista: string[] = [];
+  try {
+    const bruto = await AsyncStorage.getItem(CHAVE_APAGAR);
+    lista = bruto ? JSON.parse(bruto) : [];
+  } catch {
+    return;
+  }
+  if (!lista.length) return;
+  const fs = await import('expo-file-system/legacy');
+  const restantes: string[] = [];
+  for (const caminho of lista) {
+    try {
+      await fs.deleteAsync(caminho, { idempotent: true });
+    } catch (erro) {
+      console.error('[voz] áudio da fala concluída segue sem apagar', erro);
+      restantes.push(caminho);
+    }
+  }
+  await AsyncStorage.setItem(CHAVE_APAGAR, JSON.stringify(restantes));
 }
 
 /** O botão "Revisar" da faixa: publica de novo o recibo de cada fala em
@@ -147,7 +234,7 @@ export async function reabrirRevisoesDeFala(userId: string): Promise<number> {
     import('./voz-recibos-da-fila'),
     import('./voz-recibos'),
   ]);
-  const emRevisao = (await ler()).filter((item) => item.userId === userId && item.revisao);
+  const emRevisao = (await ler()).filter((item) => item.userId === userId && item.revisao && !concluidas.has(item.requestId));
   for (const item of emRevisao) {
     const transcricao = item.transcricao ?? '';
     await guardarReciboDaFila({

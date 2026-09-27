@@ -56,6 +56,18 @@ type Payload = {
 
 type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarRevisao' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'>;
 
+/** A checagem roda dentro do `catch` da tarefa: se ela mesma falhar, a fala
+    segue pelo caminho de falha de sempre, em vez de escapar do `catch`. */
+async function ehFalaJaLancada(erro: unknown): Promise<boolean> {
+  try {
+    const { ehOperacaoJaRegistrada } = await import('./voice-operations');
+    return ehOperacaoJaRegistrada(erro);
+  } catch (erroChecagem) {
+    console.error('[voz] não consegui conferir se a fala já foi lançada', erroChecagem);
+    return false;
+  }
+}
+
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
 export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Promise<DesfechoTarefa> {
   const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
@@ -156,6 +168,23 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
         } else {
           await notificacoes.notificarFalha('sem_sessao');
         }
+      }
+    } else if (requestId && (await ehFalaJaLancada(erro))) {
+      /* A fala já foi lançada pela revisão (que grava com o id dela) e voltou
+         porque a limpeza local falhou. Nada a lançar e nada a revisar: a fala
+         sai da fila, e o recibo diz por quê. Oferecer "Não consegui salvar"
+         aqui convidaria a pessoa a lançar o mesmo gasto à mão. */
+      estadoFinal = 'ocioso';
+      try {
+        const { concluirVozRevisada } = await import('./widget-voz-pendentes');
+        await concluirVozRevisada(requestId);
+      } catch (erroLimpeza) {
+        console.error('[voz] fala já lançada não saiu da fila', requestId, erroLimpeza);
+      }
+      try {
+        await notificacoes.notificarFalha('ja_lancada');
+      } catch (erroRecibo) {
+        console.error('[voz] recibo de fala já lançada não foi entregue', erroRecibo);
       }
     } else {
       try {
@@ -552,7 +581,7 @@ export function tentarVozesPendentes(): Promise<ResumoFilaDeFalas> {
 async function retomarFilaDeFalas(): Promise<ResumoFilaDeFalas> {
   let resumo: ResumoFilaDeFalas = { restantes: 0 };
   try {
-    const [{ listarVozesPendentes, adotarVozesOrfas }, { podeNotificar }, { idDoUsuarioLocal }, { reciboDaFilaNaTela }] = await Promise.all([
+    const [{ listarVozesPendentes, adotarVozesOrfas, apagarAudiosPendentes }, { podeNotificar }, { idDoUsuarioLocal }, { reciboDaFilaNaTela }] = await Promise.all([
       import('./widget-voz-pendentes'),
       import('./widget-voz-notificacoes'),
       import('./sessao-offline'),
@@ -560,6 +589,7 @@ async function retomarFilaDeFalas(): Promise<ResumoFilaDeFalas> {
     ]);
     const userId = await idDoUsuarioLocal();
     if (!userId) return resumo;
+    await apagarAudiosPendentes().catch((erro) => console.error('[voz] limpeza de áudios concluídos falhou', erro));
     /* Fala que o widget gravou e não conseguiu entregar (V4): entra na fila
        antes da leitura, para ser processada nesta mesma passada. */
     await adotarVozesOrfas(userId);

@@ -34,19 +34,28 @@ const ok = (nome) => { checagens++; console.log('  ok  ' + nome); };
 
 /* ── Dublês ─────────────────────────────────────────────────────────────── */
 const armazem = new Map();
+/** Chaves cuja escrita falha (disco cheio, simulado). */
+const escritaFalha = new Set();
 const AsyncStorage = {
   getItem: async (k) => (armazem.has(k) ? armazem.get(k) : null),
-  setItem: async (k, v) => { armazem.set(k, v); },
+  setItem: async (k, v) => {
+    if (escritaFalha.has(k)) throw new Error('disco cheio (simulado): ' + k);
+    armazem.set(k, v);
+  },
   removeItem: async (k) => { armazem.delete(k); },
   getAllKeys: async () => [...armazem.keys()],
   multiGet: async (ks) => ks.map((k) => [k, armazem.get(k) ?? null]),
 };
 const disco = new Map();
+let exclusaoFalha = false;
 const fsDuble = {
   documentDirectory: 'file:///files/',
   makeDirectoryAsync: async () => {},
   copyAsync: async ({ from, to }) => { disco.set(to, disco.get(from)); },
-  deleteAsync: async (uri) => { disco.delete(uri); },
+  deleteAsync: async (uri) => {
+    if (exclusaoFalha) throw new Error('exclusão falhou (simulado): ' + uri);
+    disco.delete(uri);
+  },
   getInfoAsync: async () => ({ exists: false }),
   readDirectoryAsync: async () => [],
 };
@@ -61,11 +70,17 @@ function rpc(nome, args) {
     assert.equal(nome, 'registrar_operacao_voz');
     if (modoBanco === 'offline') throw Object.assign(new TypeError('Network request failed'), { code: '' });
     if (modoBanco === 'recusa') return { data: null, error: { code: '23514', message: 'recusado (simulado)' } };
+    const hash = JSON.stringify([args.p_kind, args.p_payload]);
     if (!operacoes.has(args.p_request_id)) {
       const id = 'tx-' + args.p_request_id;
       linhas.push({ id, request_id: args.p_request_id, source: args.p_source, ...args.p_payload });
-      operacoes.set(args.p_request_id, { ids: [id] });
+      operacoes.set(args.p_request_id, { ids: [id], hash });
       return { data: { status: 'committed', operation_id: args.p_request_id, ids: [id], replayed: false }, error: null };
+    }
+    /* Mesmo request_id com outro conteúdo: a RPC real levanta 22023
+       (supabase/migrations/20260923230300_voz_credito_exige_cartao.sql). */
+    if (operacoes.get(args.p_request_id).hash !== hash) {
+      return { data: null, error: { code: '22023', message: 'request_id ja pertence a outra operacao' } };
     }
     return { data: { status: 'committed', operation_id: args.p_request_id, ids: operacoes.get(args.p_request_id).ids, replayed: true }, error: null };
   };
@@ -75,6 +90,7 @@ function rpc(nome, args) {
 const transcricoes = {};
 const cache = new Map();
 function carregar(arquivo) {
+  arquivo = path.normalize(arquivo);
   if (cache.has(arquivo)) return cache.get(arquivo);
   const exports = {};
   cache.set(arquivo, exports);
@@ -124,10 +140,17 @@ function carregar(arquivo) {
   return exports;
 }
 
-const tarefa = carregar('lib/widget-voz-task.ts');
-const fila = carregar('lib/widget-voz-pendentes.ts');
-const recibos = carregar('lib/voz-recibos-da-fila.ts');
-const { registrarOperacaoVoz } = carregar('lib/voice-operations.ts');
+let tarefa, fila, recibos, registrarOperacaoVoz;
+/** Abre o app de novo: módulos novos (memória zerada), mesmo disco e mesmo
+    AsyncStorage. É o que separa "na mesma execução" de "entre execuções". */
+function abrirApp() {
+  cache.clear();
+  tarefa = carregar('lib/widget-voz-task.ts');
+  fila = carregar('lib/widget-voz-pendentes.ts');
+  recibos = carregar('lib/voz-recibos-da-fila.ts');
+  ({ registrarOperacaoVoz } = carregar('lib/voice-operations.ts'));
+}
+abrirApp();
 
 const FALA = 'Mercado R$ 120 no débito.';
 const payloadDaRevisao = {
@@ -180,7 +203,7 @@ async function tentarDeNovo(requestId) {
     await tentarDeNovo(requestId);
     const novas = linhas.slice(antes);
     assert.equal(novas.length, 1, `${source}: revisão + dois "Tentar de novo" gravam UMA linha`);
-    assert.equal(novas[0].request_id, `rev-${source}`);
+    assert.equal(novas[0].request_id, requestId, `${source}: a revisão grava com o id da própria fala`);
     porEntrada[source] = novas.map(({ id, request_id, ...resto }) => resto);
   }
   assert.deepEqual(porEntrada.app, porEntrada.widget, 'app e widget: mesma gravação (regra 13)');
@@ -213,12 +236,14 @@ async function tentarDeNovo(requestId) {
     modoBanco = 'offline';
     const r = await registrarOperacaoVoz('rev-offline', 'app', payloadDaRevisao, undefined, 'req-offline');
     assert.equal(r.status, 'pending');
-    assert.ok(armazem.has('grana:voz:operacao:u-1:rev-offline'), 'o lançamento está guardado na fila de operações');
+    assert.ok(armazem.has('grana:voz:operacao:u-1:req-offline'), 'o lançamento está guardado na fila de operações, com o id da fala');
     assert.deepEqual(await naFila(), [], 'a fala saiu: o lançamento já está seguro no aparelho');
     assert.equal(disco.has(audio), false);
     modoBanco = 'online';
     await tentarDeNovo('req-offline');
-    await registrarOperacaoVoz('rev-offline', 'app', payloadDaRevisao);
+    await tarefa.tentarVozesPendentes();
+    const { sincronizarOperacoesVoz } = carregar('lib/voice-operations.ts');
+    await sincronizarOperacoesVoz();
     assert.equal(linhas.length - antes, 1, 'quando a rede volta, uma linha só');
   }
   ok('sem rede: a revisão fica na fila de operações, a fala sai, e sobe uma vez só');
@@ -231,6 +256,131 @@ async function tentarDeNovo(requestId) {
   assert.match(ler('app/(app)/contas.tsx'), /registrarOperacaoVoz\([\s\S]{0,400}?falaGuardadaDaRevisao\.current\)/, 'Contas: a revisão passa a fala');
   assert.match(ler('app/(app)/credito.tsx'), /registrarOperacaoVoz\([\s\S]{0,400}?falaGuardadaDaRevisao\.current\)/, 'Crédito: a revisão passa a fala');
   ok('Início, Contas e Crédito ligam a revisão à fala guardada');
+
+  /* ── 6. Limpeza falha DEPOIS de gravar: nenhuma segunda gravação ─────
+     Achado do Watchtower de 27/09/2026: o lançamento já está no banco e a
+     limpeza local falha; a fala não pode voltar a ser retomada com o
+     request_id original, que a idempotência do servidor não une à revisão. */
+  const CHAVE_FILA = 'grana:queue:widget-voz-pendente-v1';
+  const CHAVE_APAGAR = 'grana:queue:widget-voz-apagar-v1';
+  const CHAVE_RECIBOS = 'grana:voz:recibos-da-fila-v1';
+  const desfechoFalha = { audio: {}, fila: {} };
+  for (const source of ['app', 'widget']) {
+    /* 6a. O áudio não apaga: a fala sai da fila mesmo assim, e o áudio fica
+       marcado para a próxima retomada. */
+    {
+      const requestId = `req-disco-${source}`;
+      const audio = await falaEmRevisao(requestId, source);
+      const antes = linhas.length;
+      exclusaoFalha = true;
+      const r = await registrarOperacaoVoz(`rev-disco-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+      exclusaoFalha = false;
+      assert.equal(r.status, 'committed');
+      assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila mesmo com o áudio preso`);
+      assert.ok(!JSON.parse(armazem.get(CHAVE_FILA)).some((i) => i.requestId === requestId), `${source}: fora da fila persistida`);
+      assert.equal(disco.has(audio), true, `${source}: o áudio ainda está no disco`);
+      assert.deepEqual(JSON.parse(armazem.get(CHAVE_APAGAR)), [audio], `${source}: o áudio ficou marcado para apagar`);
+      assert.equal((await recibos.listarRecibosDaFila('u-1')).some((x) => x.id === requestId), false, `${source}: o aviso da fala saiu`);
+      await tentarDeNovo(requestId);
+      await tentarDeNovo(requestId);
+      assert.equal(disco.has(audio), false, `${source}: a retomada seguinte apagou o áudio`);
+      assert.deepEqual(JSON.parse(armazem.get(CHAVE_APAGAR)), [], `${source}: nada mais a apagar`);
+      const novas = linhas.slice(antes);
+      assert.equal(novas.length, 1, `${source}: áudio preso + dois "Tentar de novo" gravam UMA linha`);
+      desfechoFalha.audio[source] = novas.map(({ id, request_id, ...resto }) => resto);
+    }
+    /* 6b. A fila persistida não grava: a trava da execução impede a
+       retomada, e um aviso visível explica o que fazer se a fala voltar. */
+    {
+      const requestId = `req-fila-${source}`;
+      const audio = await falaEmRevisao(requestId, source);
+      const antes = linhas.length;
+      escritaFalha.add(CHAVE_FILA);
+      const r = await registrarOperacaoVoz(`rev-fila-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+      assert.equal(r.status, 'committed', `${source}: o lançamento salvo não vira erro por causa da limpeza`);
+      assert.ok(JSON.parse(armazem.get(CHAVE_FILA)).some((i) => i.requestId === requestId), `${source}: a fila no disco não mudou (a falha simulada)`);
+      assert.deepEqual(await naFila(), [], `${source}: mas a fala não é mais listada nesta execução`);
+      assert.equal(disco.has(audio), true, `${source}: o áudio não é apagado antes de a fala sair da fila`);
+      const aviso = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
+      assert.equal(aviso?.tipo, 'aviso', `${source}: o recibo com "Tentar de novo" virou aviso visível`);
+      assert.match(aviso.texto, /Descartar/);
+      escritaFalha.delete(CHAVE_FILA);
+      await fila.adicionarVozPendente({ caminho: audio, requestId, userId: 'u-1', source });
+      await tentarDeNovo(requestId);
+      await tentarDeNovo(requestId);
+      const novas = linhas.slice(antes);
+      assert.equal(novas.length, 1, `${source}: fila sem gravar + dois "Tentar de novo" gravam UMA linha`);
+      assert.equal(novas[0].request_id, requestId);
+      desfechoFalha.fila[source] = novas.map(({ id, request_id, ...resto }) => resto);
+      await fila.descartarVozPendente(requestId);
+    }
+  }
+  assert.deepEqual(desfechoFalha.audio.app, desfechoFalha.audio.widget, 'áudio preso: mesmo desfecho no app e no widget (regra 13)');
+  assert.deepEqual(desfechoFalha.fila.app, desfechoFalha.fila.widget, 'fila sem gravar: mesmo desfecho no app e no widget (regra 13)');
+  ok('limpeza que falha depois de gravar: uma linha só, recibo visível, nas duas entradas');
+
+  /* ── 7. Nem a fila nem o aviso gravam: o salvamento continua valendo ── */
+  {
+    const requestId = 'req-tudo-falha';
+    await falaEmRevisao(requestId, 'widget');
+    const antes = linhas.length;
+    escritaFalha.add(CHAVE_FILA);
+    escritaFalha.add(CHAVE_RECIBOS);
+    const r = await registrarOperacaoVoz('rev-tudo-falha', 'app', payloadDaRevisao, undefined, requestId);
+    escritaFalha.clear();
+    assert.equal(r.status, 'committed', 'o aviso que falha também não derruba o salvamento');
+    assert.deepEqual(await naFila(), [], 'e a trava da execução continua valendo');
+    await tentarDeNovo(requestId);
+    assert.equal(linhas.length - antes, 1, 'uma linha só');
+    await fila.descartarVozPendente(requestId);
+  }
+  ok('aviso que também falha: salvamento mantido, retomada travada, falha no log');
+
+  /* ── 8. ENTRE EXECUÇÕES: a trava da memória some, o servidor segura ────
+     Sequência do Watchtower (27/09/2026): a revisão grava, a fila no disco
+     não grava, o app fecha. Ao reabrir, a fala volta com `revisao: true`; a
+     faixa "Revisar" (`reabrirRevisoesDeFala`) troca o aviso de "Descartar"
+     pelo recibo de áudio; o "Tentar de novo" tira a marca e reenvia a fala. */
+  const entreExecucoes = {};
+  for (const source of ['app', 'widget']) {
+    const requestId = `req-reinicio-${source}`;
+    const audio = await falaEmRevisao(requestId, source);
+    const antes = linhas.length;
+    escritaFalha.add(CHAVE_FILA);
+    const r = await registrarOperacaoVoz(`rev-reinicio-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+    escritaFalha.delete(CHAVE_FILA);
+    assert.equal(r.status, 'committed');
+    assert.equal(linhas.length - antes, 1, `${source}: a revisão gravou`);
+
+    abrirApp();
+    const voltou = (await fila.listarVozesPendentes()).find((i) => i.requestId === requestId);
+    assert.equal(voltou?.revisao, true, `${source}: depois de reabrir, a fala voltou em revisão (a trava da memória sumiu)`);
+    assert.equal((await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId)?.tipo, 'aviso', `${source}: o aviso de "Descartar" sobreviveu ao reinício`);
+    await fila.reabrirRevisoesDeFala('u-1');
+    assert.equal((await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId)?.tipo, 'audio', `${source}: "Revisar" trocou o aviso pelo recibo de áudio`);
+    await tentarDeNovo(requestId);
+
+    const novas = linhas.slice(antes);
+    assert.equal(novas.length, 1, `${source}: revisão + reinício + "Revisar" + "Tentar de novo" gravam UMA linha`);
+    assert.equal(novas[0].request_id, requestId);
+    assert.deepEqual(await naFila(), [], `${source}: a fala já lançada saiu da fila`);
+    assert.ok(!JSON.parse(armazem.get(CHAVE_FILA)).some((i) => i.requestId === requestId), `${source}: e da fila persistida`);
+    assert.equal(disco.has(audio), false, `${source}: o áudio foi apagado`);
+    const recibo = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
+    assert.equal(recibo?.tipo, 'aviso', `${source}: recibo visível`);
+    assert.equal(recibo.titulo, 'Erro ja_lancada', `${source}: o recibo diz que a fala já foi lançada, e não "Não consegui salvar"`);
+    await tentarDeNovo(requestId);
+    assert.equal(linhas.length - antes, 1, `${source}: outro "Tentar de novo" também não grava`);
+    entreExecucoes[source] = novas.map(({ id, request_id, ...resto }) => resto);
+
+    /* Mesmo conteúdo com o mesmo id (a outra resposta possível do servidor):
+       replay, sem linha nova. */
+    const replay = await registrarOperacaoVoz(`outra-tela-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+    assert.equal(replay.replayed, true, `${source}: mesma revisão salva de novo é replay`);
+    assert.equal(linhas.length - antes, 1);
+  }
+  assert.deepEqual(entreExecucoes.app, entreExecucoes.widget, 'entre execuções: mesmo desfecho no app e no widget (regra 13)');
+  ok('entre execuções (reabrir, Revisar, Tentar de novo): uma linha só, fala sai da fila, recibo "já lançada", nas duas entradas');
 
   console.log(`\n${checagens} checagens de revisão sem duplicata passaram — 0 falhas`);
 })().catch((erro) => {

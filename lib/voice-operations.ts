@@ -49,6 +49,18 @@ export type ResultadoOperacaoVoz = {
  * fala vai para REVISÃO, onde a pessoa escolhe o cartão e o reenvio sai com
  * outro request_id (o payload muda, e o id antigo seria um replay).
  */
+/**
+ * O servidor já tem uma operação com este `request_id` e outro conteúdo
+ * (`registrar_operacao_voz` levanta 22023). Acontece quando a fala guardada
+ * já foi lançada pela revisão, que grava com o id da própria fala, e depois
+ * volta pelo "Tentar de novo" com outra interpretação: não é recusa do
+ * lançamento, é a prova de que ele já existe.
+ */
+export function ehOperacaoJaRegistrada(erro: unknown): boolean {
+  const e = erro as { code?: unknown; message?: unknown } | null;
+  return String(e?.code ?? '') === '22023' && /request_id ja pertence a outra operacao/i.test(String(e?.message ?? ''));
+}
+
 export function ehRecusaCartaoObrigatorio(erro: unknown): boolean {
   const e = erro as { code?: unknown; hint?: unknown } | null;
   return String(e?.code ?? '') === '23514' && e?.hint === 'cartao_obrigatorio';
@@ -84,9 +96,15 @@ function textoObrigatorio(valor: unknown, campo: string): string {
  * `falaGuardada`: o `requestId` da fala da fila de áudios que esta operação
  * REVISA (o "Revisar" do aviso de fala guardada). Achado do Watchtower de
  * 27/09/2026: salvar pela revisão deixava a fala na fila, e "Tentar de novo"
- * depois gravava de novo. Agora a fala sai da fila, com o áudio, só DEPOIS de
- * o lançamento estar gravado ou guardado na fila de operações (que tem
- * idempotência própria); se a gravação falhar, a fala continua lá.
+ * depois gravava de novo. Duas travas:
+ *   1. a revisão grava com o id DA FALA, e não com o da tela. Se a limpeza
+ *      local falhar e a fala voltar depois de reabrir o app, o "Tentar de
+ *      novo" usa o mesmo id: o servidor devolve a operação que já existe
+ *      (mesmo conteúdo) ou recusa com 22023 (`ehOperacaoJaRegistrada`), e
+ *      nunca cria a segunda. Vale sem depender de nada gravado no aparelho;
+ *   2. a fala sai da fila, com o áudio, só DEPOIS de o lançamento estar
+ *      gravado ou guardado na fila de operações; se a gravação falhar, a
+ *      fala continua lá.
  */
 export async function registrarOperacaoVoz(
   requestId: string,
@@ -95,17 +113,36 @@ export async function registrarOperacaoVoz(
   transcricao?: string,
   falaGuardada?: string
 ): Promise<ResultadoOperacaoVoz> {
-  const resultado = await gravarOperacaoVoz(requestId, source, payload, transcricao);
+  const resultado = await gravarOperacaoVoz(falaGuardada ?? requestId, source, payload, transcricao);
   if (falaGuardada) {
     try {
       const { concluirVozRevisada } = await import('./widget-voz-pendentes');
       await concluirVozRevisada(falaGuardada);
     } catch (erro) {
-      // O lançamento já está salvo; só a fala não saiu da fila.
+      /* O lançamento já está salvo, e a fala já está marcada como concluída
+         nesta execução (não é retomada). Mas a fila no disco pode não ter
+         sido atualizada: a pessoa precisa saber, para descartar a fala se
+         ela reaparecer depois de reabrir o app (regra 9). */
       console.error('[voz] fala revisada não saiu da fila', falaGuardada, erro);
+      await avisarFalaNaoConcluida(falaGuardada);
     }
   }
   return resultado;
+}
+
+async function avisarFalaNaoConcluida(falaGuardada: string): Promise<void> {
+  try {
+    const dono = await idDoUsuarioLocal();
+    if (!dono) return;
+    const { guardarReciboDaFila } = await import('./voz-recibos-da-fila');
+    await guardarReciboDaFila({
+      id: falaGuardada, dono, tipo: 'aviso',
+      titulo: 'Lançamento salvo',
+      texto: 'A fala guardada que você revisou pode voltar a aparecer. Se aparecer, toque em "Descartar": ela já foi lançada.',
+    });
+  } catch (erro) {
+    console.error('[voz] aviso da fala não concluída não foi guardado', falaGuardada, erro);
+  }
 }
 
 async function gravarOperacaoVoz(
