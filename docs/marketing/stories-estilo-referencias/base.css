@@ -1,0 +1,16 @@
+@font-face{font-family:NM;src:url(../../../assets/fonts/NeueMachina-Regular.otf);font-weight:400}
+@font-face{font-family:NM;src:url(../../../assets/fonts/NeueMachina-Light.otf);font-weight:300}
+@font-face{font-family:Rb;src:url(../identidade-sonora/roboto-400.woff2);font-weight:100 900}
+@font-face{font-family:Emo;src:url(../motion-desistiu/emoji.woff2)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#052229}
+.st{position:relative;width:1080px;height:1920px;overflow:hidden}
+em{font-style:normal;color:#aeffe3}
+.nt{position:absolute;background:rgba(43,45,49,.96);border:1px solid rgba(255,255,255,.08);border-radius:34px;padding:24px 26px;font-family:Rb;box-shadow:0 24px 60px rgba(0,0,0,.5);z-index:5}
+.nt .row{display:flex;gap:18px;align-items:flex-start}
+.nt .ico{width:58px;height:58px;border-radius:50%;background:#052229;border:1px solid #174a55;flex:none;display:flex;align-items:center;justify-content:center}
+.nt .ico img{width:48px;height:48px}
+.nt .l1{display:flex;justify-content:space-between;align-items:baseline;gap:14px;color:#e3e3e6}
+.nt .tt{font-weight:500;font-size:30px}.nt .hh{font-size:22px;color:#a9abb0}
+.nt .bb{font-size:28px;line-height:38px;color:#d4d6da;margin-top:4px}
+.emo{font-family:Emo}
