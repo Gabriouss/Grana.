@@ -58,6 +58,7 @@ import {
   mesFaturaDoLancamento,
   cicloRelativo,
   deslocamentoPedido,
+  somaEmCentavos,
   cicloDaLinha,
   ehParcelaSeguinte,
   precisaDaCompraOriginal,
@@ -900,7 +901,7 @@ async function executarResumoCredito(
     if (error) throw error;
     const linhas = (data ?? []) as Array<{ amount: number; category: string; type: string }>;
     const filtradas = categoriaCasada ? linhas.filter((l) => l.category === categoriaCasada) : linhas;
-    const total = filtradas.reduce((soma, linha) => soma + Number(linha.amount), 0);
+    const total = somaEmCentavos(filtradas.map((linha) => linha.amount));
     return 'O usuário gastou R$ ' + formatarBRL(total) + ' no crédito' +
       (categoriaCasada ? ' em ' + categoriaCasada : '') + '. Período consultado: ' + periodo.rotulo + '. Cite esse período na resposta.';
   }
@@ -934,7 +935,7 @@ async function executarResumoCredito(
   const datas = usarCiclo ? await comprasOriginais(supabase, userId, linhas, cardsAlvo) : new Map<string, string>();
   if (categoriaCasada) linhas = linhas.filter((linha) => linha.category === categoriaCasada);
   let parcelaIncerta = false;
-  const somaDoCartao = (card: CartaoAssistente, periodo: Periodo) =>
+  const somaDoCartao = (card: CartaoAssistente, periodo: Periodo) => somaEmCentavos(
     linhas
       .filter((linha) => {
         const pertence = linha.card_id === card.id || (linha.card_id === null && cards.length === 1);
@@ -943,11 +944,11 @@ async function executarResumoCredito(
         if (incerto) parcelaIncerta = true;
         return dentro;
       })
-      .reduce((soma, linha) => soma + Number(linha.amount), 0);
+      .map((linha) => linha.amount));
 
   const totais = periodos.map(({ card, periodo }) => ({ card, periodo, total: somaDoCartao(card, periodo) }));
   const avisoParcela = parcelaIncerta ? AVISO_PARCELA_INCERTA : '';
-  const totalCartoes = totais.reduce((soma, item) => soma + item.total, 0);
+  const totalCartoes = somaEmCentavos(totais.map((item) => item.total));
   const textoCategoria = categoriaCasada ? ' em ' + categoriaCasada : '';
   if (cartaoPedida || cardsAlvo.length === 1) {
     const item = totais[0];
@@ -956,9 +957,9 @@ async function executarResumoCredito(
   }
 
   const idsConhecidos = new Set(cards.map((card) => card.id));
-  const semCartao = linhas
+  const semCartao = somaEmCentavos(linhas
     .filter((linha) => !linha.card_id || !idsConhecidos.has(linha.card_id))
-    .reduce((soma, linha) => soma + Number(linha.amount), 0);
+    .map((linha) => linha.amount));
   const detalhes = totais.map((item) =>
     '- ' + item.card.name + ': R$ ' + formatarBRL(item.total) + ' (' + item.periodo.rotulo + ')'
   );
@@ -1510,7 +1511,7 @@ async function executarFerramenta(
            assim a busca é por id, sem filtro de categoria. */
         const datas = await comprasOriginais(supabase, userId, linhas, cardsAlvo);
         let parcelaIncerta = false;
-        const somaDo = (card: CartaoAssistente, periodo: Periodo) =>
+        const somaDo = (card: CartaoAssistente, periodo: Periodo) => somaEmCentavos(
           linhas
             .filter((linha) => {
               const pertenceAoCartao = linha.card_id === card.id || (linha.card_id === null && cards.length === 1);
@@ -1519,7 +1520,7 @@ async function executarFerramenta(
               if (incerto) parcelaIncerta = true;
               return dentro;
             })
-            .reduce((soma, linha) => soma + Number(linha.amount), 0);
+            .map((linha) => linha.amount));
 
         const detalhes = periodosValidos.map(({ card, periodo }) =>
           '- ' + card.name + ': R$ ' + formatarBRL(somaDo(card, periodo)) + ' (' + periodo.rotulo + ')'
@@ -1601,16 +1602,16 @@ async function executarFerramenta(
       ]);
       if (gastosResult.error) throw gastosResult.error;
       const linhas = gastosResult.data ?? [];
-      const total = linhas.reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
+      const total = somaEmCentavos(linhas.map((t: { amount: number }) => t.amount));
       const cards = cartoes.data ?? [];
       if (cards.length <= 1) {
         return `O usuário gastou R$ ${formatarBRL(total)} no crédito. Período consultado: ${rotulo}. Cite esse período na resposta.`;
       }
       const porCartao = cards
         .map((c: { id: string; name: string; limit_amount: number }) => {
-          const gastoCartao = linhas
+          const gastoCartao = somaEmCentavos(linhas
             .filter((t: { card_id: string }) => t.card_id === c.id)
-            .reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
+            .map((t: { amount: number }) => t.amount));
           return `- ${c.name}: R$ ${formatarBRL(gastoCartao)} (limite: R$ ${formatarBRL(Number(c.limit_amount))})`;
         })
         .join('\n');
@@ -1778,7 +1779,7 @@ async function executarFerramenta(
       const txs = (txResult.data ?? []) as Array<{ amount: number; card_id: string | null; type: string }>;
 
       const linhasCartao = cards.map((c) => {
-        const gasto = txs.filter((t) => t.card_id === c.id).reduce((s, t) => s + Number(t.amount), 0);
+        const gasto = somaEmCentavos(txs.filter((t) => t.card_id === c.id).map((t) => t.amount));
         const pct = c.limit_amount > 0 ? gasto / c.limit_amount : 0;
         const degrau = DEGRAUS.find((d) => pct * 100 >= d) ?? null;
         const aviso = degrau ? ` — atenção: já passou de ${degrau}% do limite` : '';

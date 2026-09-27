@@ -99,6 +99,13 @@ export function cicloDaLinha(
   return { ciclo: { year: alvo.getFullYear(), month: alvo.getMonth() }, incerto: false };
 }
 
+/** Soma de fatura e de uso do limite em centavos inteiros, como `somaDaFatura`
+ *  no app: R$ 0,10 + R$ 0,70 dá R$ 0,80, e não 0,7999..., que com limite de
+ *  R$ 1,60 ficava abaixo do degrau de 50% (achado do Watchtower, 26/09/2026). */
+export function somaEmCentavos(valores: Array<number | string>): number {
+  return valores.reduce<number>((centavos, v) => centavos + Math.round(Number(v) * 100), 0) / 100;
+}
+
 
 /** Vencimento da fatura que fecha em (`year`, `month`). Mesma regra do app. */
 export function dataVencimentoFatura(year: number, month: number, dueDay: number, closingDay: number): Date {
