@@ -5,7 +5,7 @@ Carrossel de feed com 7 slides em 1080×1440. É o S2 do calendário do `FUNIL.m
 | Slide | Texto | Visual |
 |---|---|---|
 | 1 | Três jeitos de lançar um gasto **sem interromper o dia.** | lista "Fale / Cole o Pix / Fotografe a nota", com ícones pequenos do arsenal só de detalhe, e o celular com a tela real de Lançamentos |
-| 2 | **1.** Fale o que aconteceu. | a fala entre aspas, grande, e a notificação real "Pão na padaria · R$ 3,57" |
+| 2 | **1.** Fale o que aconteceu. | a fala entre aspas e o celular do motion "desistiu" aprovado: tela inicial com o widget de voz, o widget "Livre para gastar" e a notificação "Pão na padaria · R$ 3,57" (`telas/cel-widget-motion.png`, quadro em 8,1 s de `../../motion-desistiu/index.html`) |
 | 3 | **2.** Cole o texto do Pix. | celular com a **tela real** "Colar comprovante ou Pix" (quadro do `r5-clipe.mp4`, com o acento corrigido) |
 | 4 | **3.** Fotografe a nota. | cupom estilizado, sem texto legível, dentro dos cantos de mira em menta, como a moldura do leitor do app. Não há tela, porque a função ainda não está publicada |
 | 5 | O Grana. **organiza** o lançamento. | celular com a **tela real** "Confirmar lançamento" (Mercado Modelo, R$ 32,90, Alimentação) |
