@@ -641,7 +641,7 @@ const PARCELAMENTO_FINAL =
    pelo parseDiaVencimento do bot. Sem tirar daqui, a conta a pagar nascia
    chamada "Conta de luz boleto que vence dia". */
 const VENCIMENTO_FINAL =
-  /\s+(?:(?:que|e)\s+)?(?:vencimento|vencendo|vence|venc\.?)\s*(?:em|no|na|dia|pro\s+dia)?\s*(?:\d{1,2}(?:[\/-]\d{1,2}(?:[\/-]\d{2,4})?)?)?\s*$/i;
+  /\s+(?:(?:(?:que|e)\s+)?(?:vencimento|vencendo|vence|venc\.?)\s*(?:em|no|na|dia|pro\s+dia)?\s*(?:\d{1,2}(?:[\/-]\d{1,2}(?:[\/-]\d{2,4})?)?)?|(?:(?:para|pra|pro|no)\s+(?:o\s+)?)?dia\s+\d{1,2}(?:[\/-]\d{1,2}(?:[\/-]\d{2,4})?)?)\s*$/i;
 
 /* "Todo mês" diz COMO o lançamento se repete, não o que ele é — sem tirar
    daqui, a série virava um gasto chamado "Aluguel todo mês", e o nome errado
@@ -789,7 +789,7 @@ export function guessDescFromText(text: string, type: TxType): string {
   /* 2º) "<algo> de/para <Nome>" — "Pizza para Maria", "transferiu para
      Restaurante Sabor da Terra", "2000 reais de salário". O `(?!\d)` recusa
      números logo depois do conector, para nunca capturar o próprio valor. */
-  const nomeDepois = texto.match(/\b(?:de|para)\b\s+((?!\d)[A-ZÀ-Úa-zà-ú0-9 .]{3,40})/i);
+  const nomeDepois = texto.match(/\b(?:de|para)\b\s+((?!\d)(?:(?!r\s*\$)[A-ZÀ-Úa-zà-ú0-9 .]){3,40})/i);
   if (nomeDepois) {
     const nome = limparSobra(nomeDepois[1].replace(/\s+em\s+.*$/i, ''));
     if (nome.length >= 2) return capitalizar(nome);
