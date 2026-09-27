@@ -12775,3 +12775,84 @@ Na fotografia do git desta atualização, `main` estava 15 commits à frente de 
 4. **Descartado:** reintroduzir abatimento da linha antiga `in`; afirmar que o ajuste já está em produção ou que CI passou completo.
 5. **O que deu errado:** instrução incorreta do maestro gerou `c4a7a66`, revertido por `02f66a5`; execução integral de `test:ci` foi bloqueada pelo teste que conflita com as mudanças não commitadas de Forge.
 6. **Sem verificação:** deploy, app após retirar o abatimento, conclusão do teste de recibos/fila e detalhes formais dos achados B5/B6.
+
+# 26/09/2026 (M1) — consolidação da rodada após reinício do Maestri
+
+Pedido do autor: “documentar tudo o que estamos fazendo, erros, acertos, pendências e tudo mais. Tudo tudo.” Complementa os registros anteriores; decisão mais recente do autor prevalece. Fontes: relatórios em E:\Grana-temporarios\2026-09-26-retomada\ e E:\Grana-temporarios\2026-09-26-harbor-voz-b\ e git log origin/main..HEAD.
+
+## Estado e decisões
+
+Os 18 commits pedidos vão de a61204c a da4c936. Durante esta documentação Forge acrescentou 6b3544c; HEAD observado tem 19 commits locais até 6b3544c, sem push. Inventário: somente main, uma worktree, nenhum stash. A árvore estava limpa na primeira conferência; antes do commit documental, Forge tinha alterações não commitadas nos arquivos da fila, que ficaram fora deste commit. Ledger não fez push, build, deploy ou migration.
+
+Decisões do autor: entrada sem categoria clara, como “recebi um crédito de 500”, continua perguntando “Qual categoria?”; não gravar em Outros nem categoria padrão. Entrada no cartão, antiga ou da 1.10.4, é ignorada em fatura, total, limite e lembretes no app e Granabô. Publicar assistente-financeiro após revisão, mas deploy parado até commits no GitHub (regra 11) e desbloqueio do controle de permissão pelo autor. Migration 20260926130000 só após build. Vídeos liberados; estáticos suspensos, substituindo a proibição anterior. Build EAS só com pedido explícito.
+
+## Acertos e mudanças
+
+**Voz B1–B6.** f9c53a1: valor redondo até três dígitos com evidência monetária grava; “1899 reais” e “R$ 1899” pedem confirmação, revogando risco aceito em 14/09. 7b47064: “conta de luz” não dispara “Qual carteira?”. 41647c3: recibo não duplica ponto final. 46dcce0: tira “R” de R$ e “dia 10” solto do nome. B5: notificação sem identifier, correção/verificação pendentes. da4c936: tira “de” solto do nome. Harbor deve terminar etapa B com gravação real no banco de teste e remover dados AUDIT, incluindo f9e37c51, aefff324, 4a21b97b e outros dos relatórios.
+
+**Fila/faixa.** 3bc4224 corrige saída prematura de tentarVozesPendentes em lib/widget-voz-task.ts:452 sem permissão de notificação; valia em Expo Go e builds, e a faixa mostra o motivo real. A fala do autor, contudo, foi perdida: na retomada o Whisper respondeu “Não entendi” e o finally de executarTarefa apagou o áudio. Forge ainda deve transformar esse caso em revisão e manter a gravação. 078fee6 centraliza recibos/destino app/widget (V1–V4); d946786 usa import estático para medir áudio; 6b3544c evita erro solto no LogBox sem reconhecedor nativo no Expo Go. Watchtower só leu código, sem executar testes. Texto/alerta novo e reconhecedor Android local não foram verificados no aparelho.
+
+**Decisão A.** Orientação do maestro para alinhar Granabô ao app estava no sentido errado. c4a7a66 abateu entradas de cartão e inverteu as travas; Forge apontou, Harbor reverteu em 02f66a5. a8d1b6b soma em centavos; erro de float já existia na v39. Forge ainda deve tirar o ramo de abatimento de lib/creditoFaturas.ts. Sem deploy.
+
+**Foto/F1.** a61204c corrige valor com espaços na vírgula; 8810d03 inclui estabelecimento, valor, data, pagamento em revisão editável e seletor de cartão; 6d79ab6 limpa foto residual após force close ao abrir câmera novamente; cd4a593 atualiza política sobre foto, QR e ML Kit. Emulador levou 22–38 s contra prazo de 20 s. Telefone real pendente. Questões jurídicas abertas: dados exatos enviados pelas versões empacotadas e base legal das métricas.
+
+Sentinel deve gravar clipe R5/R9 quando o emulador liberar. Vídeos liberados, estáticos suspensos; esta documentação não produziu mídia.
+
+## Erros operacionais
+
+- Orientação errada do maestro levou a c4a7a66; Forge denunciou e Harbor reverteu.
+- Watchtower commitou o B2 do Harbor e fez reset por conta própria. Sem perda; correção reapareceu como 7b47064. Erro de processo.
+- Agentes nos terminais Codex assinaram como “Codex”; Prism assumiu B1 sem ser o dono. Este agente é Ledger, documentação/vault, sem coordenar a rodada.
+- Instruções do maestro ficaram presas nas caixas de texto; Enter precisou ser enviado separado, com pausa.
+- Janelas de erro Git surgiram no Windows Terminal, atribuídas ao daemon Codex; terminal padrão mudou para Console Host.
+- Fala enfileirada do autor foi perdida: Whisper “Não entendi”, depois finally de executarTarefa apagou áudio.
+- Registro anterior de publicação estava incorreto; fetch/log confirma commits locais.
+
+## Pendências e não verificado
+
+Push dos 18 commits pedidos e do posterior 6b3544c. Deploy de assistente-financeiro após GitHub e liberação do bloqueio de permissão. Migration 20260926130000 após build. Forge: verificar alcance de 6b3544c para LogBox/módulo ausente; “Não entendi” vira revisão com áudio mantido; aplicar Decisão A em lib/creditoFaturas.ts. Harbor: encerrar B, gravar banco de teste e remover dados AUDIT. Sentinel: clipe R5/R9. Autor: testar microfone/reconhecedor local Android e prazo da foto em telefone real; resolver duas questões jurídicas do ML Kit. Build somente sob pedido.
+
+Não verificados: texto/alerta da faixa no aparelho; reconhecedor local Android; captura pelo microfone real; tempo da foto no telefone; gravação B/limpeza AUDIT; correção cliente da Decisão A; deploy/migration. Watchtower não rodou testes. Nenhuma credencial ou dado financeiro real do autor foi copiado.
+
+## Regra 12 — seis perguntas por mudança
+
+### Voz B1–B6
+1. **Pedido:** registrar correções da etapa B e decisões.
+2. **Sintoma/causa:** B1 valor inteiro em revisão; B2 conta de luz como carteira; B3 ponto duplicado; B4 “R”/“dia 10” no nome; B5 notificação sem identifier; B6 “de” no nome. Causa final B5 não registrada.
+3. **Arquivos/IDs:** intérprete compartilhado/cópias, recibos e notificações; f9c53a1, 7b47064, 41647c3, 46dcce0, da4c936.
+4. **Descartado:** aceitar 1899 sem confirmação; gravar sem categoria em Outros; declarar B5 resolvido sem evidência.
+5. **Erro:** reset Watchtower após commit B2; sem perda.
+6. **Sem verificação:** gravação em banco na etapa B, B5, microfone Android e testes Watchtower.
+
+### Fila e fala perdida
+1. **Pedido:** liberar faixa presa e preservar áudio.
+2. **Sintoma/causa:** gate de permissão encerrava retomada; “Não entendi” seguido do finally apagou arquivo.
+3. **Arquivos/IDs:** lib/widget-voz-task.ts:452, executarTarefa, faixa; 078fee6, d946786, 3bc4224, 6b3544c.
+4. **Descartado:** dizer que gate recupera áudio perdido ou que o áudio era operação interpretada.
+5. **Erro:** fala do autor perdida.
+6. **Sem verificação:** faixa/alerta no aparelho e revisão de “Não entendi” com áudio mantido.
+
+### Decisão A
+1. **Pedido:** ignorar entradas de cartão em todo cálculo, app e Granabô.
+2. **Sintoma/causa:** orientação para alinhar Granabô levou ao abatimento de entradas antigas.
+3. **Arquivos/IDs:** lib/creditoFaturas.ts, _shared/fatura-ciclo.ts, assistente-financeiro; c4a7a66, 02f66a5, a8d1b6b.
+4. **Descartado:** descontar em fatura, total, limite ou lembrete.
+5. **Erro:** instrução errada do maestro; Forge apontou e Harbor reverteu.
+6. **Sem verificação:** remoção no app, testes finais e deploy.
+
+### Foto/F1
+1. **Pedido:** registrar correções de OCR, confirmação e privacidade.
+2. **Sintoma/causa:** parser não aceitava espaço na vírgula; foto podia sobrar após force close, limpa na próxima abertura.
+3. **Arquivos/IDs:** lib/nota-foto-parser.ts, FotoNotaModal.tsx, lib/legal-content.ts; a61204c, 8810d03, 6d79ab6, cd4a593.
+4. **Descartado:** declarar prazo do emulador suficiente ou omitir ML Kit da política.
+5. **Erro:** emulador marcou 22–38 s contra prazo 20 s.
+6. **Sem verificação:** telefone real, página, dados exatos do SDK, base legal.
+
+### Processo/publicação
+1. **Pedido:** registrar rodada inteira.
+2. **Sintoma/causa:** identidade/autoria cruzadas; input reteve instruções; erro Git em Windows Terminal; histórico de push incorreto.
+3. **Arquivos/IDs:** relatórios das duas pastas; a61204c..da4c936 e atualização 6b3544c.
+4. **Descartado:** push/build/deploy/migration nesta documentação; estáticos; credenciais ou dados reais.
+5. **Erro:** reset sem perda e status de push incorreto; Ledger não publicou.
+6. **Sem verificação:** liberação de deploy, publicação, gravações finais e QA em aparelho.
+
