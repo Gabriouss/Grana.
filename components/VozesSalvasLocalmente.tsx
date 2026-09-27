@@ -4,9 +4,29 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppPressable from './AppPressable';
 import { listarOperacoesVozLocais, sincronizarOperacoesVoz } from '@/lib/voice-operations';
 import { contarFalasAguardandoConexao } from '@/lib/voz-pendente-na-lista';
+import { tentarVozesPendentes, ultimoResumoDaFilaDeFalas, type ResumoFilaDeFalas } from '@/lib/widget-voz-task';
 import { fonts, spacing, theme, touchTarget, type } from '@/lib/theme';
 import { observarDadosDosWidgets } from '@/lib/widgets-home-events';
 import { usePublicarFaixaTopo } from '@/lib/faixa-topo';
+
+/**
+ * O que a faixa diz. "Aguardando conexão" só quando a última tentativa de
+ * fato ficou sem rede: até 26/09/2026 era o texto de sempre, e o autor viu a
+ * faixa prometendo conexão com a internet ligada, enquanto a fala estava presa
+ * por outro motivo. Sem tentativa ainda, a frase só diz o que é certo.
+ */
+function textoDaFaixa(pendencias: number, audios: number, resumo: ResumoFilaDeFalas | null): string {
+  const plural = pendencias !== 1;
+  if (audios > 0 && resumo?.motivo) {
+    switch (resumo.motivo) {
+      case 'sem_rede': return plural ? `${pendencias} lançamentos aguardando conexão` : '1 lançamento aguardando conexão';
+      case 'demorou': return 'O serviço demorou a responder. A fala segue guardada';
+      case 'sessao': return 'Renovando o acesso à conta. A fala segue guardada';
+      default: return 'Não consegui processar a fala guardada';
+    }
+  }
+  return plural ? `${pendencias} lançamentos guardados no aparelho` : '1 lançamento guardado no aparelho';
+}
 
 export default function VozesSalvasLocalmente() {
   const [itens, setItens] = useState<Awaited<ReturnType<typeof listarOperacoesVozLocais>>>([]);
@@ -14,11 +34,12 @@ export default function VozesSalvasLocalmente() {
   const [mensagem, setMensagem] = useState<string | null>(null);
   /* Áudio gravado sem rede e ainda não transcrito: sem valor, então só conta. */
   const [audios, setAudios] = useState(0);
+  const [resumoFala, setResumoFala] = useState<ResumoFilaDeFalas | null>(() => ultimoResumoDaFilaDeFalas());
   const insets = useSafeAreaInsets();
   const carregar = () => Promise.all([
-    listarOperacoesVozLocais().then(setItens).catch(() => {}),
-    contarFalasAguardandoConexao().then(setAudios).catch(() => {}),
-  ]);
+    listarOperacoesVozLocais().then(setItens).catch((erro) => console.error('[voz] faixa não leu os lançamentos guardados', erro)),
+    contarFalasAguardandoConexao().then(setAudios).catch((erro) => console.error('[voz] faixa não contou as falas guardadas', erro)),
+  ]).then(() => setResumoFala(ultimoResumoDaFilaDeFalas()));
   useEffect(() => {
     void carregar();
     const remover = observarDadosDosWidgets(() => { void carregar(); });
@@ -44,7 +65,7 @@ export default function VozesSalvasLocalmente() {
         accessibilityLiveRegion="polite"
         accessibilityRole="text"
       >
-        {mensagem ?? (pendencias === 1 ? '1 lançamento aguardando conexão' : `${pendencias} lançamentos aguardando conexão`)}
+        {mensagem ?? textoDaFaixa(pendencias, audios, resumoFala)}
       </Text>
       <AppPressable
         disabled={ocupado}
@@ -58,10 +79,17 @@ export default function VozesSalvasLocalmente() {
           setOcupado(true);
           setMensagem(null);
           try {
-            const resultado = await sincronizarOperacoesVoz();
+            /* As duas filas: a das falas já entendidas e a dos áudios. Até
+               26/09/2026 o toque só olhava a primeira, e com um áudio preso a
+               faixa voltava igual, sem dizer nada. */
+            const [resultado, fala] = await Promise.all([sincronizarOperacoesVoz(), tentarVozesPendentes()]);
             await carregar();
             if (resultado.falhas) setMensagem(resultado.mensagem ?? 'Não foi possível confirmar todos os lançamentos.');
-          } catch { setMensagem('Não foi possível sincronizar agora. Tente novamente.'); }
+            else if (fala.restantes !== 0) setMensagem(textoDaFaixa(Math.max(1, fala.restantes), Math.max(1, fala.restantes), fala));
+          } catch (erro) {
+            console.error('[voz] sincronização pela faixa falhou', erro);
+            setMensagem('Não foi possível sincronizar agora. Tente novamente.');
+          }
           finally { setOcupado(false); }
         }}
       >

@@ -168,7 +168,7 @@ function carregar(arquivo, dubles = {}, globais = {}) {
   passou('cópia que falha mantém a fala guardada para a próxima abertura, com log');
 
   const tarefa = fs.readFileSync(path.join(root, 'lib/widget-voz-task.ts'), 'utf8');
-  const retomada = tarefa.slice(tarefa.indexOf('export async function tentarVozesPendentes'));
+  const retomada = tarefa.slice(tarefa.indexOf('async function retomarFilaDeFalas'));
   assert.ok(retomada.indexOf('await adotarVozesOrfas(userId)') > 0
     && retomada.indexOf('await adotarVozesOrfas(userId)') < retomada.indexOf('listarVozesPendentes()).filter'),
     'a retomada da fila adota as falas guardadas antes de ler a fila');

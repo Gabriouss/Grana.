@@ -2,9 +2,19 @@ import { AppRegistry, Platform } from 'react-native';
 import { isLikelyNetworkError } from './offline-cache';
 import type { CreditCard } from './types';
 
+/** Por que a fala voltou para a fila. A faixa do topo diz isto, e não um
+    "aguardando conexão" genérico (26/09/2026). */
+export type MotivoFalaGuardada = 'sem_rede' | 'demorou' | 'sessao' | 'sem_notificacao';
+
 class VozPendenteOffline extends Error {
   readonly nome = 'VozPendenteOffline';
+  constructor(mensagem: string, readonly motivo: MotivoFalaGuardada) {
+    super(mensagem);
+  }
 }
+
+/** Como terminou uma execução: `guardada` quando a fala continua na fila. */
+export type DesfechoTarefa = { guardada: false } | { guardada: true; motivo: MotivoFalaGuardada };
 
 /**
  * Tarefa headless do widget Android de lançamento por voz.
@@ -38,7 +48,7 @@ type Payload = {
 type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarRevisao' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'>;
 
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
-export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
+export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Promise<DesfechoTarefa> {
   const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
   const notificacoes = recibo ?? await import('./widget-voz-notificacoes');
   const caminho = payload?.caminho;
@@ -50,9 +60,10 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
   let estadoFinal: 'ocioso' | 'atencao' = 'ocioso';
   let manterArquivo = false;
   const contexto: { transcricao?: string } = {};
+  let desfecho: DesfechoTarefa = { guardada: false };
 
   try {
-    if (!caminho) return;
+    if (!caminho) return desfecho;
     if (!requestId) throw new Error('request_id_ausente');
 
     /* Antes de gastar transcrição, e muito antes de gravar qualquer coisa:
@@ -73,7 +84,8 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
           manterArquivo = true;
         }
       }
-      return;
+      if (manterArquivo) desfecho = { guardada: true, motivo: 'sem_notificacao' };
+      return desfecho;
     }
 
     const salvou = await processar(caminho, requestId, contexto, payload, notificacoes);
@@ -99,6 +111,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
         if (userId) {
           await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao });
           manterArquivo = true;
+          desfecho = { guardada: true, motivo: erro instanceof VozPendenteOffline ? erro.motivo : 'sem_rede' };
           try {
             await notificacoes.notificarPendenteOffline();
           } catch (erroRecibo) {
@@ -124,9 +137,16 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
         } else {
           await notificacoes.notificarFalha('erro_interno');
         }
-      } catch {
+      } catch (erroRecibo) {
         // O estado de atenção continua sendo o recibo mínimo se a notificação
         // também falhar: o próximo toque abre o app em vez de parecer perdido.
+        console.error('[voz] recibo da falha não foi entregue', erroRecibo);
+        /* Fala que veio da fila e cujo recibo não foi entregue: sair da fila
+           seria perdê-la sem ninguém saber. Fica, e a próxima retomada tenta. */
+        if (caminho?.includes('/voz-pendente/')) {
+          manterArquivo = true;
+          desfecho = { guardada: true, motivo: 'sem_notificacao' };
+        }
       }
     }
   } finally {
@@ -140,6 +160,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz) {
     }
     definirEstado(estadoFinal);
   }
+  return desfecho;
 }
 
 async function apagarArquivo(caminho: string) {
@@ -172,7 +193,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
       });
   if (!transcricao.ok) {
     if (transcricao.codigo === 'sem_rede' || transcricao.codigo === 'demorou') {
-      throw new VozPendenteOffline('A transcrição será retomada quando houver conexão.');
+      throw new VozPendenteOffline('A transcrição será retomada quando houver conexão.', transcricao.codigo);
     }
     /* Recusa por credencial COM uma sessão gravada no aparelho é temporária,
        não definitiva: o token de acesso venceu e a renovação ainda não passou
@@ -183,7 +204,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     if (transcricao.codigo === 'nao_autenticado' || transcricao.codigo === 'sem_sessao') {
       const { lerSessaoDoDisco } = await import('./sessao-offline');
       if (await lerSessaoDoDisco()) {
-        throw new VozPendenteOffline('A sessão será renovada quando houver conexão.');
+        throw new VozPendenteOffline('A sessão será renovada quando houver conexão.', 'sessao');
       }
     }
     await notificacoes.notificarFalha(transcricao.codigo);
@@ -205,7 +226,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   const [extras, carteiras, cartoesDisponiveis] = await Promise.race([
     Promise.all([categoriasDaPessoa(data), fetchWallets(), heuristics.ehIntencaoCredito(texto) ? data.fetchCreditCards() : Promise.resolve([])]),
     new Promise<never>((_, reject) => {
-      prazoReferencias = setTimeout(() => reject(new VozPendenteOffline('timeout ao carregar referências')), 8_000);
+      prazoReferencias = setTimeout(() => reject(new VozPendenteOffline('timeout ao carregar referências', 'demorou')), 8_000);
     }),
   ]).finally(() => clearTimeout(prazoReferencias));
 
@@ -437,35 +458,82 @@ async function lancarNoCredito(args: {
   return true;
 }
 
-let filaEmExecucao = false;
+/** Resultado da última retomada da fila de áudios, lido pela faixa do topo. */
+export type ResumoFilaDeFalas = {
+  /** Falas desta conta que continuam guardadas depois da passada. */
+  restantes: number;
+  /** Por que a última que ficou não foi processada; ausente se nada ficou. */
+  motivo?: MotivoFalaGuardada | 'erro';
+};
 
-/** Retoma áudios que foram gravados sem internet quando o app volta à frente. */
-export async function tentarVozesPendentes(): Promise<void> {
-  if (filaEmExecucao || Platform.OS !== 'android') return;
-  filaEmExecucao = true;
+let filaEmExecucao: Promise<ResumoFilaDeFalas> | null = null;
+let ultimoResumo: ResumoFilaDeFalas | null = null;
+
+export function ultimoResumoDaFilaDeFalas(): ResumoFilaDeFalas | null {
+  return ultimoResumo;
+}
+
+/**
+ * Retoma áudios gravados sem internet. Roda ao abrir o app, a cada 30 s com
+ * ele aberto (`app/_layout.tsx`) e no "Tentar sincronizar" da faixa. Quem
+ * chama durante uma passada recebe a MESMA passada, não uma segunda.
+ *
+ * Até 26/09/2026 esta função começava por `if (!(await podeNotificar()))
+ * return;`: sem permissão de notificação, ou no Expo Go, a fila nunca era
+ * processada, e a fala ficava guardada para sempre sem nenhum log (achado da
+ * faixa presa no celular do autor, regra 9). Agora a fila é processada sempre;
+ * sem notificação, o recibo vai para a tela (`voz-recibos-da-fila`), e o app
+ * está aberto em toda chamada desta função.
+ */
+export function tentarVozesPendentes(): Promise<ResumoFilaDeFalas> {
+  if (Platform.OS !== 'android') return Promise.resolve({ restantes: 0 });
+  if (!filaEmExecucao) filaEmExecucao = retomarFilaDeFalas().finally(() => { filaEmExecucao = null; });
+  return filaEmExecucao;
+}
+
+async function retomarFilaDeFalas(): Promise<ResumoFilaDeFalas> {
+  let resumo: ResumoFilaDeFalas = { restantes: 0 };
   try {
-    const [{ listarVozesPendentes, adotarVozesOrfas }, { podeNotificar }, { idDoUsuarioLocal }] = await Promise.all([
+    const [{ listarVozesPendentes, adotarVozesOrfas }, { podeNotificar }, { idDoUsuarioLocal }, { reciboDaFilaNaTela }] = await Promise.all([
       import('./widget-voz-pendentes'),
       import('./widget-voz-notificacoes'),
       import('./sessao-offline'),
+      import('./voz-recibos-da-fila'),
     ]);
-    if (!(await podeNotificar())) return;
     const userId = await idDoUsuarioLocal();
-    if (!userId) return;
+    if (!userId) return resumo;
     /* Fala que o widget gravou e não conseguiu entregar (V4): entra na fila
        antes da leitura, para ser processada nesta mesma passada. */
     await adotarVozesOrfas(userId);
 
+    const notificar = await podeNotificar();
+    let motivo: ResumoFilaDeFalas['motivo'];
     for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId)) {
-      // Mantém o item até a tarefa concluir; uma interrupção permite retomada.
-      await executarTarefa(item);
+      /* Mantém o item até a tarefa concluir; uma interrupção permite retomada.
+         Um item que lança não impede os de trás. */
+      try {
+        const desfecho = await executarTarefa(item, notificar ? undefined : reciboDaFilaNaTela(userId, item.requestId));
+        if (desfecho.guardada) motivo = desfecho.motivo;
+      } catch (erro) {
+        console.error('[voz] fala guardada não foi retomada', item.requestId, erro);
+        motivo = 'erro';
+      }
     }
+    const restantes = (await listarVozesPendentes()).filter((item) => item.userId === userId).length;
+    resumo = restantes ? { restantes, motivo: motivo ?? 'erro' } : { restantes: 0 };
   } catch (e) {
     // A fila permanece no aparelho; a próxima abertura/retomada tenta de novo.
     console.error('[voz] retomada da fila de falas falhou', e);
-  } finally {
-    filaEmExecucao = false;
+    resumo = { restantes: -1, motivo: 'erro' };
   }
+  ultimoResumo = resumo;
+  try {
+    const { notificarDadosDosWidgetsAlterados } = await import('./widgets-home-events');
+    notificarDadosDosWidgetsAlterados();
+  } catch (erro) {
+    console.error('[voz] faixa não foi avisada do fim da retomada', erro);
+  }
+  return resumo;
 }
 
 /* O recibo (Alert de sucesso, ou notificação do widget) já foi entregue
@@ -529,5 +597,5 @@ function nomeDaForma(forma: string | null): string | null {
 /* Só Android tem widget. Registrar em outra plataforma seria ruído — e na web
    `AppRegistry.registerHeadlessTask` nem existe do mesmo jeito. */
 if (Platform.OS === 'android') {
-  AppRegistry.registerHeadlessTask('GranaVoiceTask', () => executarTarefa);
+  AppRegistry.registerHeadlessTask('GranaVoiceTask', () => async (payload: Payload) => { await executarTarefa(payload); });
 }

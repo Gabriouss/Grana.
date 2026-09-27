@@ -8,6 +8,8 @@ import { destinoDaFalaComReferencias } from '@/lib/destino-da-fala-referencias';
 import { getNotifications } from '@/lib/notifications';
 import { desfazerOperacaoVoz } from '@/lib/voice-operations';
 import { ACAO_DESFAZER, podeNotificar, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
+import { idDoUsuarioLocal } from '@/lib/sessao-offline';
+import { listarRecibosDaFila, observarRecibosDaFila, removerReciboDaFila } from '@/lib/voz-recibos-da-fila';
 import {
   definirEstado as definirEstadoWidgetVoz,
   estadoAtual as estadoWidgetVoz,
@@ -30,6 +32,75 @@ import {
  */
 export default function RespostaVozWidget() {
   const router = useRouter();
+
+  /* A mesma decisão do botão de voz da Início (`destinoDaFala`), com as
+     MESMAS carteiras e cartões (achado V2, 26/09/2026): entrada com intenção
+     de crédito, que o widget recusou, abre a revisão padrão, nunca a folha de
+     compra do cartão. Usada pelo toque na notificação e pelo recibo na tela. */
+  async function abrirFala(texto: string) {
+    const destino = await destinoDaFalaComReferencias(texto);
+    if (destino === 'contas') {
+      router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto } });
+      return;
+    }
+    if (destino === 'credito') {
+      router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto } });
+      return;
+    }
+    router.push({ pathname: '/(app)/', params: { colarTexto: texto } });
+  }
+
+  /* Recibo das falas guardadas que a fila retomou SEM poder notificar
+     (permissão negada, ou Expo Go): `lib/voz-recibos-da-fila.ts`. Mostrado ao
+     chegar e, se o app fechou antes, na próxima abertura. A revisão só sai
+     por escolha ("Revisar" ou "Descartar"): fechar pelo voltar a mantém para
+     a próxima abertura, porque ali está a única cópia da fala. */
+  useEffect(() => {
+    let vivo = true;
+    const vistos = new Set<string>();
+    async function mostrar() {
+      try {
+        const dono = await idDoUsuarioLocal();
+        if (!dono || !vivo) return;
+        for (const recibo of await listarRecibosDaFila(dono)) {
+          if (vistos.has(recibo.id)) continue;
+          vistos.add(recibo.id);
+          const tirar = () => {
+            removerReciboDaFila(recibo.id).catch((erro) => console.error('[voz] recibo da fila não saiu da lista', erro));
+          };
+          if (recibo.tipo === 'revisao') {
+            Alert.alert(recibo.titulo, recibo.texto, [
+              { text: 'Descartar', style: 'destructive', onPress: tirar },
+              { text: 'Revisar', onPress: () => {
+                tirar();
+                abrirFala(recibo.transcricao).catch((erro) => console.error('[voz] revisão da fala não abriu', erro));
+              } },
+            ]);
+          } else if (recibo.tipo === 'sucesso') {
+            Alert.alert(recibo.titulo, recibo.texto, [
+              { text: 'OK' },
+              { text: 'Desfazer', onPress: () => {
+                if (!recibo.operationId) return;
+                desfazerOperacaoVoz(recibo.operationId)
+                  .then(() => Alert.alert('Desfeito', 'O lançamento criado por voz foi removido.'))
+                  .catch((erro) => {
+                    console.warn('[voz] desfazer falhou', erro);
+                    Alert.alert('Não consegui desfazer', 'O lançamento continua salvo. Abra Lançamentos e apague manualmente.');
+                  });
+              } },
+            ], { onDismiss: tirar });
+          } else {
+            Alert.alert(recibo.titulo, recibo.texto, undefined, { onDismiss: tirar });
+          }
+        }
+      } catch (erro) {
+        console.error('[voz] recibos da fila não foram mostrados', erro);
+      }
+    }
+    void mostrar();
+    const parar = observarRecibosDaFila(() => { void mostrar(); });
+    return () => { vivo = false; parar(); };
+  }, []);
 
   /* O widget acende "Toque p/ ativar" quando não consegue notificar, e não
      tem como descobrir sozinho que a permissão voltou — ele só é redesenhado
@@ -114,20 +185,7 @@ export default function RespostaVozWidget() {
         router.push('/(app)/');
         return;
       }
-      /* A mesma decisão do botão de voz da Início (`destinoDaFala`), com as
-         MESMAS carteiras e cartões (achado V2, 26/09/2026): entrada com
-         intenção de crédito, que o widget recusou, abre a revisão padrão,
-         nunca a folha de compra do cartão. */
-      const destino = await destinoDaFalaComReferencias(texto);
-      if (destino === 'contas') {
-        router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto } });
-        return;
-      }
-      if (destino === 'credito') {
-        router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto } });
-        return;
-      }
-      router.push({ pathname: '/(app)/', params: { colarTexto: texto } });
+      await abrirFala(texto);
     }
 
     /* Duas fontes, e as duas importam: `getLastNotificationResponseAsync`
