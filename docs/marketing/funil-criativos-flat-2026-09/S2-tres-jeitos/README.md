@@ -22,3 +22,5 @@ Carrossel de feed com 7 slides em 1080×1440. É o S2 do calendário do `FUNIL.m
 **Para regenerar:** abra `S2.html?s=N`, com N de 1 a 7, no Chromium em 1080×1440 e fotografe.
 
 **Revisão do autor (27/09/2026):** ícones grandes em destaque não. Eles ficam só como detalhe visual, pequenos e discretos. Na capa, os ícones viraram marcadores de 58 px. No slide 2, o selo grande saiu. No slide 4, a câmera grande deu lugar ao cupom com a mira.
+
+**Segunda revisão do autor (27/09/2026):** nem como detalhe. Os ícones saíram das páginas 1, 2 e 4, e o indicador de passos (os três selos no alto) saiu de todas. Na capa, a lista virou "1. Fale / 2. Cole o Pix / 3. Fotografe a nota", só em texto, com o número em menta.

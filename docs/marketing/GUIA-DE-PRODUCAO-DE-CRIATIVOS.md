@@ -40,7 +40,7 @@ Leia este guia **antes de produzir qualquer criativo**: estático, carrossel, St
 
 ## 3. Regras de composição que o autor já cobrou
 
-- **Ícone é detalhe, nunca protagonista** (autor, 27/09/2026): use os do arsenal pequenos (marcador de lista, selo no canto, indicador de passo), sem ocupar o centro do card.
+- **Ícones do arsenal com muita parcimônia** (autor, 27/09/2026, duas revisões no S2): ícone grande em destaque não; marcador de lista e indicador de passos também não. Prefira número ou texto. O uso aprovado até aqui é um selo único no canto de um aparelho, como no Story 2. Na dúvida, não use.
 - **Sem sobretítulo** (etiqueta em caixa alta no canto) e **sem o rodapé** "Demonstração com dados fictícios.".
 - **Sem botão desenhado na arte.** O "Saiba mais" é do Instagram.
 - **Stories:** o texto fica entre y ≈ 230 e 1400. A parte de baixo pode ser coberta pela barra de resposta e pelo "Saiba mais".

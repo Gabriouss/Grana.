@@ -35,17 +35,17 @@ em{font-style:normal;color:#aeffe3}
  <div class="arc" style="width:1100px;height:1100px;right:-560px;top:-480px;background:#0b2d35"></div>
  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
  <div class="h1" style="top:230px;width:960px;font-size:88px">Três jeitos de lançar um gasto <em>sem interromper o dia.</em></div>
- <img class="big" src="../../arsenal/icones/voz-petroleo.png" style="left:72px;top:772px;width:58px">
- <img class="big" src="../../arsenal/icones/colar-comprovante-petroleo.png" style="left:72px;top:872px;width:58px">
- <img class="big" src="../../arsenal/icones/foto-da-nota-petroleo.png" style="left:72px;top:972px;width:58px">
- <div class="fala" style="left:150px;top:776px;font-size:40px">Fale</div>
- <div class="fala" style="left:150px;top:876px;font-size:40px">Cole o Pix</div>
- <div class="fala" style="left:150px;top:976px;font-size:40px">Fotografe a nota</div>
+ 
+ 
+ 
+ <div class="fala" style="left:72px;top:776px;font-size:40px"><b>1.</b> Fale</div>
+ <div class="fala" style="left:72px;top:876px;font-size:40px"><b>2.</b> Cole o Pix</div>
+ <div class="fala" style="left:72px;top:976px;font-size:40px"><b>3.</b> Fotografe a nota</div>
  <div class="ph" data-k="1.05" style="left:640px;top:700px;transform:rotate(4deg)"><div class="body"></div><div class="scr"><img src="telas/cel-lanc-tela.png"></div></div>
 </div>
 <!-- 2 fale -->
 <div class="s" id="s2">
- <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg"><div class="passos" data-on="0"></div>
+ <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
  <div class="h1"><em>1.</em> Fale o que aconteceu.</div>
  <div class="h2" style="top:420px">Pagou? Toque no widget e fale o gasto. O Grana. lança sem abrir o app.</div>
  
@@ -54,14 +54,14 @@ em{font-style:normal;color:#aeffe3}
 </div>
 <!-- 3 cole -->
 <div class="s" id="s3">
- <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg"><div class="passos" data-on="1"></div>
+ <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
  <div class="h1"><em>2.</em> Cole o texto do Pix.</div>
  <div class="h2" style="top:420px">Copiou o comprovante? Cola no Grana. e ele reconhece valor, categoria e tipo.</div>
  <div class="ph" data-k="1.2" style="left:560px;top:540px;transform:rotate(4deg)"><div class="body"></div><div class="scr"><img src="telas/tela-colado.png"></div></div>
 </div>
 <!-- 4 fotografe -->
 <div class="s" id="s4">
- <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg"><div class="passos" data-on="2"></div>
+ <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
  <div class="h1"><em>3.</em> Fotografe a nota.</div>
  <div class="h2" style="top:420px">Uma foto do cupom e o Grana. lê o valor total sozinho.</div>
  <div class="cupom"><i></i><i style="width:70%"></i><i style="width:85%"></i><i style="width:60%"></i><i style="width:78%"></i><i style="width:52%"></i><b></b><i style="width:66%"></i><i style="width:74%"></i></div>
@@ -94,6 +94,6 @@ em{font-style:normal;color:#aeffe3}
 document.querySelectorAll('.ph').forEach(p=>{const k=+p.dataset.k;const W=401*k,H=876*k;p.style.width=W+'px';p.style.height=H+'px';
  const b=p.querySelector('.body');b.style.borderRadius=(58*k)+'px';b.style.backgroundSize=`${2048*k}px ${1152*k}px`;b.style.backgroundPosition=`${-831*k}px ${-115*k}px`;
  const s=p.querySelector('.scr');Object.assign(s.style,{left:14*k+'px',top:16*k+'px',width:373*k+'px',height:846*k+'px',borderRadius:40*k+'px'})});
-document.querySelectorAll('.passos').forEach(p=>{const on=+p.dataset.on;p.innerHTML=['voz','colar-comprovante','foto-da-nota'].map((n,i)=>`<img class="${i==on?'on':''}" src="../../arsenal/icones/${n}-${i==on?'gradiente':'petroleo'}.png">`).join('')});
+document.querySelectorAll('.passos').forEach(p=>{const on=+p.dataset.on;p.innerHTML=['voz','colar-comprovante','foto-da-nota'].map((n,i)=>`<img class="${i==on?'on':''}" src="${n}-${i==on?'gradiente':'petroleo'}.png">`).join('')});
 const n=new URLSearchParams(location.search).get('s')||'1';document.getElementById('s'+n).classList.add('on');
 </script></body></html>
