@@ -7,7 +7,7 @@ import { deleteBill, deleteTransaction } from '@/lib/data';
 import { destinoDaFalaComReferencias } from '@/lib/destino-da-fala-referencias';
 import { getNotifications } from '@/lib/notifications';
 import { desfazerOperacaoVoz } from '@/lib/voice-operations';
-import { ACAO_DESFAZER, podeNotificar, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
+import { ACAO_DESFAZER, podeNotificar, tirarDaBandeja, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
 import { idDoUsuarioLocal } from '@/lib/sessao-offline';
 import { listarRecibosDaFila, observarRecibosDaFila, removerReciboDaFila } from '@/lib/voz-recibos-da-fila';
 import {
@@ -178,6 +178,10 @@ export default function RespostaVozWidget() {
         return;
       }
       if (!dados || dados.origem !== 'voz') return;
+      /* O recibo já cumpriu o papel ao ser tocado. O toque no corpo fecha a
+         notificação sozinho, mas o botão "Desfazer" não, e o "Salvo" ficava
+         na bandeja depois de desfeito (B5, 27/09/2026). */
+      tirarDaBandeja(resposta.notification.request.identifier).catch(() => {});
 
       if (dados.resultado === 'salvo') {
         /* Só desfaz quando o botão foi o "Desfazer". Tocar no CORPO da

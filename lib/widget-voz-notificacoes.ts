@@ -87,7 +87,31 @@ async function prepararCategoria() {
   }
 }
 
-async function publicar(titulo: string, corpo: string, dados: DadosNotifVoz, categoria?: string) {
+/**
+ * Identidade de uma fala na bandeja (B5, 27/09/2026). Todo recibo da MESMA
+ * fala (o `requestId`, que é o mesmo na gravação e em cada retomada da fila)
+ * usa o mesmo identificador, e o Android troca o anterior pelo novo: o
+ * "Salvo" substitui o "Áudio guardado" em vez de ficar embaixo dele. Até
+ * 27/09 cada recibo era uma notificação nova e nenhum saía da bandeja.
+ */
+export function idNaBandeja(requestId?: string): string | undefined {
+  return requestId ? `voz-${requestId}` : undefined;
+}
+
+/** Tira um recibo da bandeja. Usado depois do "Desfazer", que no Android não
+    fecha a notificação sozinho como o toque no corpo. */
+export async function tirarDaBandeja(identificador: string): Promise<void> {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
+  try {
+    await Notifications.dismissNotificationAsync(identificador);
+  } catch (erro) {
+    // O recibo continua na bandeja; nada foi perdido, só não foi limpo.
+    console.warn('[voz] recibo não saiu da bandeja', identificador, erro);
+  }
+}
+
+async function publicar(titulo: string, corpo: string, dados: DadosNotifVoz, categoria?: string, requestId?: string) {
   const Notifications = getNotifications();
   /* `podeNotificar()` já é o gate de verdade antes do widget tentar lançar;
      esta checagem aqui é só a segunda camada, pro caso de `publicar` ser
@@ -95,7 +119,9 @@ async function publicar(titulo: string, corpo: string, dados: DadosNotifVoz, cat
   if (!Notifications) return;
   await prepararCanal();
   if (categoria) await prepararCategoria();
+  const identifier = idNaBandeja(requestId);
   await Notifications.scheduleNotificationAsync({
+    ...(identifier ? { identifier } : null),
     content: {
       title: titulo,
       body: corpo,
@@ -115,7 +141,7 @@ export async function notificarSucesso(args: {
   tipo: 'transaction' | 'bill';
   ids: string[];
   operationId: string;
-}) {
+}, requestId?: string) {
   const recibo = RECIBOS_VOZ.sucesso(args.titulo, args.texto);
   await publicar(
     recibo.titulo,
@@ -124,7 +150,8 @@ export async function notificarSucesso(args: {
       origem: 'voz', resultado: 'salvo', tipo: args.tipo,
       ids: args.ids, operationId: args.operationId,
     },
-    CATEGORIA_SUCESSO
+    CATEGORIA_SUCESSO,
+    requestId
   );
 }
 
@@ -133,31 +160,35 @@ export async function notificarSucesso(args: {
  * reconhecido, categoria incerta, crédito sem cartão). Tocar abre o app com a
  * transcrição já preenchida, pra não obrigar a repetir a fala.
  */
-export async function notificarRevisao(titulo: string, transcricao: string) {
+export async function notificarRevisao(titulo: string, transcricao: string, requestId?: string) {
   const recibo = RECIBOS_VOZ.revisao(titulo, transcricao);
   await publicar(
     recibo.titulo,
     `${recibo.texto} ${ACAO_DA_NOTIFICACAO.revisao}`,
-    { origem: 'voz', resultado: 'revisar', transcricao }
+    { origem: 'voz', resultado: 'revisar', transcricao },
+    undefined,
+    requestId
   );
 }
 
 /** Falhou antes de haver o que revisar (rede, sessão, áudio inaudível). */
-export async function notificarFalha(codigo: CodigoErroVoz) {
+export async function notificarFalha(codigo: CodigoErroVoz, requestId?: string) {
   const msg = mensagemDeErroVoz(codigo);
-  await publicar(msg.titulo, msg.texto, { origem: 'voz', resultado: 'revisar', transcricao: '' });
+  await publicar(msg.titulo, msg.texto, { origem: 'voz', resultado: 'revisar', transcricao: '' }, undefined, requestId);
 }
 
 /** O áudio foi guardado; falta só a rede para transcrever e salvar. */
-export async function notificarPendenteOffline() {
+export async function notificarPendenteOffline(requestId?: string) {
   await publicar(
     RECIBOS_VOZ.pendenteOffline.titulo,
     RECIBOS_VOZ.pendenteOffline.texto,
-    { origem: 'voz', resultado: 'pendente', transcricao: '' }
+    { origem: 'voz', resultado: 'pendente', transcricao: '' },
+    undefined,
+    requestId
   );
 }
 
-export async function notificarSalvoLocal() {
+export async function notificarSalvoLocal(requestId?: string) {
   await publicar(RECIBOS_VOZ.salvoLocal.titulo, RECIBOS_VOZ.salvoLocal.texto,
-    { origem: 'voz', resultado: 'pendente', transcricao: '' });
+    { origem: 'voz', resultado: 'pendente', transcricao: '' }, undefined, requestId);
 }

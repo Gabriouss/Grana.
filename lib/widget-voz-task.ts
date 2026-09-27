@@ -59,9 +59,9 @@ type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
 export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Promise<DesfechoTarefa> {
   const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
-  const notificacoes = recibo ?? await import('./widget-voz-notificacoes');
   const caminho = payload?.caminho;
   const requestId = payload?.requestId;
+  const notificacoes = recibo ?? daFala(await import('./widget-voz-notificacoes'), requestId);
   /* O estado final do widget é decidido aqui e não no `finally` de sempre:
      quando não há como avisar a pessoa, ele NÃO pode voltar ao repouso como
      se nada tivesse acontecido — é justamente esse "nada aconteceu" que
@@ -144,7 +144,11 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
           manterArquivo = true;
           desfecho = { guardada: true, motivo: erro instanceof VozPendenteOffline ? erro.motivo : 'sem_rede' };
           try {
-            await notificacoes.notificarPendenteOffline();
+            /* Só na PRIMEIRA vez que a fala fica guardada. A retomada roda a
+               cada 30 s com o app aberto e, sem rede, cada passada publicava
+               outro "Áudio guardado" (B5, 27/09/2026). A faixa do topo já diz
+               que ela continua na fila. */
+            if (!caminho.includes('/voz-pendente/')) await notificacoes.notificarPendenteOffline();
           } catch (erroRecibo) {
             console.warn('[voz] recibo de pendência falhou', erroRecibo);
             // A fila continua sendo a fonte de verdade se a notificação falhar.
@@ -192,6 +196,22 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
     definirEstado(estadoFinal);
   }
   return desfecho;
+}
+
+/**
+ * O módulo de notificação, preso a UMA fala: cada recibo dela sai com a mesma
+ * identidade na bandeja (`idNaBandeja`), e o seguinte substitui o anterior.
+ * Vale para a fala do botão do app e do widget, que passam por aqui (regra 13).
+ */
+function daFala(modulo: ReciboVoz, requestId: string | undefined): ReciboVoz {
+  return {
+    podeNotificar: () => modulo.podeNotificar(),
+    notificarRevisao: (titulo, transcricao) => modulo.notificarRevisao(titulo, transcricao, requestId),
+    notificarSucesso: (dados) => modulo.notificarSucesso(dados, requestId),
+    notificarFalha: (codigo) => modulo.notificarFalha(codigo, requestId),
+    notificarSalvoLocal: () => modulo.notificarSalvoLocal(requestId),
+    notificarPendenteOffline: () => modulo.notificarPendenteOffline(requestId),
+  };
 }
 
 async function apagarArquivo(caminho: string) {
