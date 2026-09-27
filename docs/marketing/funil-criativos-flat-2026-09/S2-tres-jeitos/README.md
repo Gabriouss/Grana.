@@ -4,10 +4,10 @@ Carrossel de feed com 7 slides em 1080×1440. É o S2 do calendário do `FUNIL.m
 
 | Slide | Texto | Visual |
 |---|---|---|
-| 1 | Três jeitos de lançar um gasto **sem interromper o dia.** | três selos do arsenal (voz, colar, foto da nota) e celular com a tela real de Lançamentos |
-| 2 | **1.** Fale o que aconteceu. | selo de voz, a fala entre aspas e a notificação real "Pão na padaria · R$ 3,57" |
+| 1 | Três jeitos de lançar um gasto **sem interromper o dia.** | lista "Fale / Cole o Pix / Fotografe a nota", com ícones pequenos do arsenal só de detalhe, e o celular com a tela real de Lançamentos |
+| 2 | **1.** Fale o que aconteceu. | a fala entre aspas, grande, e a notificação real "Pão na padaria · R$ 3,57" |
 | 3 | **2.** Cole o texto do Pix. | celular com a **tela real** "Colar comprovante ou Pix" (quadro do `r5-clipe.mp4`, com o acento corrigido) |
-| 4 | **3.** Fotografe a nota. | selo da câmera, grande. Não há tela, porque a função ainda não está publicada |
+| 4 | **3.** Fotografe a nota. | cupom estilizado, sem texto legível, dentro dos cantos de mira em menta, como a moldura do leitor do app. Não há tela, porque a função ainda não está publicada |
 | 5 | O Grana. **organiza** o lançamento. | celular com a **tela real** "Confirmar lançamento" (Mercado Modelo, R$ 32,90, Alimentação) |
 | 6 | E você volta para o que **estava fazendo.** | três notificações de gasto salvo do arsenal, empilhadas |
 | 7 | Veja como **funciona.** | celular com Lançamentos e o logotipo |
@@ -20,3 +20,5 @@ Carrossel de feed com 7 slides em 1080×1440. É o S2 do calendário do `FUNIL.m
 - quando estiver, vale trocar o selo do slide 4 por uma captura real do fluxo.
 
 **Para regenerar:** abra `S2.html?s=N`, com N de 1 a 7, no Chromium em 1080×1440 e fotografe.
+
+**Revisão do autor (27/09/2026):** ícones grandes em destaque não. Eles ficam só como detalhe visual, pequenos e discretos. Na capa, os ícones viraram marcadores de 58 px. No slide 2, o selo grande saiu. No slide 4, a câmera grande deu lugar ao cupom com a mira.

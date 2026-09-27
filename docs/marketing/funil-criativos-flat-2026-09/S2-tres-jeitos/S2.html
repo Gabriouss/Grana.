@@ -21,18 +21,26 @@ em{font-style:normal;color:#aeffe3}
 .fala b{font-weight:400;color:#aeffe3}
 .arc{position:absolute;border-radius:50%}
 .cta{position:absolute;left:0;right:0;text-align:center;font-family:NM;color:#effffa}
+.cupom{position:absolute;left:390px;top:640px;width:300px;height:520px;background:#eef1ea;border-radius:6px;padding:40px 34px;transform:rotate(-6deg);box-shadow:0 30px 60px rgba(0,0,0,.45);z-index:2}
+.cupom i{display:block;height:14px;border-radius:7px;background:#c9cfc8;margin:0 0 22px;width:90%}
+.cupom b{display:block;height:3px;background:repeating-linear-gradient(90deg,#b7beb6 0 10px,transparent 10px 18px);margin:10px 0 30px}
+.mira{position:absolute;left:330px;top:600px;width:420px;height:600px;z-index:3}
+.mira span{position:absolute;width:70px;height:70px;border:6px solid #aeffe3;border-radius:0}
+.mira .k1{left:0;top:0;border-right:0;border-bottom:0;border-top-left-radius:24px}.mira .k2{right:0;top:0;border-left:0;border-bottom:0;border-top-right-radius:24px}
+.mira .k3{left:0;bottom:0;border-right:0;border-top:0;border-bottom-left-radius:24px}.mira .k4{right:0;bottom:0;border-left:0;border-top:0;border-bottom-right-radius:24px}
+.passos img{width:52px;height:52px}
 </style></head><body>
 <!-- 1 capa -->
 <div class="s" id="s1">
  <div class="arc" style="width:1100px;height:1100px;right:-560px;top:-480px;background:#0b2d35"></div>
  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg">
  <div class="h1" style="top:230px;width:960px;font-size:88px">Três jeitos de lançar um gasto <em>sem interromper o dia.</em></div>
- <img class="big" src="../../arsenal/icones/voz-gradiente.png" style="left:72px;top:720px;width:150px">
- <img class="big" src="../../arsenal/icones/colar-comprovante-gradiente.png" style="left:72px;top:900px;width:150px">
- <img class="big" src="../../arsenal/icones/foto-da-nota-gradiente.png" style="left:72px;top:1080px;width:150px">
- <div class="fala" style="left:250px;top:763px;font-size:42px">Fale</div>
- <div class="fala" style="left:250px;top:943px;font-size:42px">Cole o Pix</div>
- <div class="fala" style="left:250px;top:1123px;font-size:42px">Fotografe a nota</div>
+ <img class="big" src="../../arsenal/icones/voz-petroleo.png" style="left:72px;top:772px;width:58px">
+ <img class="big" src="../../arsenal/icones/colar-comprovante-petroleo.png" style="left:72px;top:872px;width:58px">
+ <img class="big" src="../../arsenal/icones/foto-da-nota-petroleo.png" style="left:72px;top:972px;width:58px">
+ <div class="fala" style="left:150px;top:776px;font-size:40px">Fale</div>
+ <div class="fala" style="left:150px;top:876px;font-size:40px">Cole o Pix</div>
+ <div class="fala" style="left:150px;top:976px;font-size:40px">Fotografe a nota</div>
  <div class="ph" data-k="1.05" style="left:640px;top:700px;transform:rotate(4deg)"><div class="body"></div><div class="scr"><img src="telas/cel-lanc-tela.png"></div></div>
 </div>
 <!-- 2 fale -->
@@ -40,8 +48,8 @@ em{font-style:normal;color:#aeffe3}
  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg"><div class="passos" data-on="0"></div>
  <div class="h1"><em>1.</em> Fale o que aconteceu.</div>
  <div class="h2" style="top:420px">Pagou? Toque no widget e fale o gasto. O Grana. lança sem abrir o app.</div>
- <img class="big" src="../../arsenal/icones/voz-gradiente.png" style="left:72px;top:690px;width:230px">
- <div class="fala" style="left:340px;top:700px;width:670px">“Pão na padaria, <b>três e cinquenta e sete</b>, no débito.”</div>
+ 
+ <div class="fala" style="left:72px;top:660px;width:900px;font-size:50px">“Pão na padaria, <b>três e cinquenta e sete</b>, no débito.”</div>
  <img class="nt" src="../../arsenal/notificacoes/gasto-salvo-padaria.png" style="left:110px;top:1000px;width:860px">
 </div>
 <!-- 3 cole -->
@@ -56,7 +64,8 @@ em{font-style:normal;color:#aeffe3}
  <img class="logo" src="../../../../design-system/marca/logotipo-gradiente.svg"><div class="passos" data-on="2"></div>
  <div class="h1"><em>3.</em> Fotografe a nota.</div>
  <div class="h2" style="top:420px">Uma foto do cupom e o Grana. lê o valor total sozinho.</div>
- <img class="big" src="../../arsenal/icones/foto-da-nota-gradiente.png" style="left:50%;top:700px;width:400px;margin-left:-200px">
+ <div class="cupom"><i></i><i style="width:70%"></i><i style="width:85%"></i><i style="width:60%"></i><i style="width:78%"></i><i style="width:52%"></i><b></b><i style="width:66%"></i><i style="width:74%"></i></div>
+ <div class="mira"><span class="k1"></span><span class="k2"></span><span class="k3"></span><span class="k4"></span></div>
 </div>
 <!-- 5 organiza -->
 <div class="s" id="s5">
@@ -85,6 +94,6 @@ em{font-style:normal;color:#aeffe3}
 document.querySelectorAll('.ph').forEach(p=>{const k=+p.dataset.k;const W=401*k,H=876*k;p.style.width=W+'px';p.style.height=H+'px';
  const b=p.querySelector('.body');b.style.borderRadius=(58*k)+'px';b.style.backgroundSize=`${2048*k}px ${1152*k}px`;b.style.backgroundPosition=`${-831*k}px ${-115*k}px`;
  const s=p.querySelector('.scr');Object.assign(s.style,{left:14*k+'px',top:16*k+'px',width:373*k+'px',height:846*k+'px',borderRadius:40*k+'px'})});
-document.querySelectorAll('.passos').forEach(p=>{const on=+p.dataset.on;p.innerHTML=['voz','colar-comprovante','foto-da-nota'].map((n,i)=>`<img class="${i==on?'on':''}" src="${n}-${i==on?'gradiente':'petroleo'}.png">`).join('')});
+document.querySelectorAll('.passos').forEach(p=>{const on=+p.dataset.on;p.innerHTML=['voz','colar-comprovante','foto-da-nota'].map((n,i)=>`<img class="${i==on?'on':''}" src="../../arsenal/icones/${n}-${i==on?'gradiente':'petroleo'}.png">`).join('')});
 const n=new URLSearchParams(location.search).get('s')||'1';document.getElementById('s'+n).classList.add('on');
 </script></body></html>
