@@ -229,6 +229,12 @@ Duas decisões da mesma noite completam esta:
   ou contra a build nova. "As pessoas só vão olhar para o layout". Continuam
   valendo: nada de preço fora da formulação permitida, nada de número
   apresentado como resultado real de cliente, e dados sempre fictícios.
+- **Guia de produção de criativos (decisão do autor em 27/09/2026):** toda
+  produção de criativo começa por `docs/marketing/GUIA-DE-PRODUCAO-DE-CRIATIVOS.md`
+  e usa primeiro o que já existe: o arsenal de notificações e ícones
+  (`docs/marketing/arsenal/`), os mockups com telas reais, os estilos de Story
+  aprovados e a identidade sonora. Não se inventa ícone nem elemento de
+  interface que o app não tenha.
 - **Produção com IA e prompts por peça (decisão de 25/09/2026):** vídeos podem
   usar modelos fictícios, narração, imagem e demais elementos gerados pelo
   conector da ElevenLabs. Todo plano, calendário, roteiro ou briefing traz,
