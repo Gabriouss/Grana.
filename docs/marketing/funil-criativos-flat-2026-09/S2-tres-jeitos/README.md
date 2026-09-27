@@ -24,3 +24,5 @@ Carrossel de feed com 7 slides em 1080×1440. É o S2 do calendário do `FUNIL.m
 **Revisão do autor (27/09/2026):** ícones grandes em destaque não. Eles ficam só como detalhe visual, pequenos e discretos. Na capa, os ícones viraram marcadores de 58 px. No slide 2, o selo grande saiu. No slide 4, a câmera grande deu lugar ao cupom com a mira.
 
 **Segunda revisão do autor (27/09/2026):** nem como detalhe. Os ícones saíram das páginas 1, 2 e 4, e o indicador de passos (os três selos no alto) saiu de todas. Na capa, a lista virou "1. Fale / 2. Cole o Pix / 3. Fotografe a nota", só em texto, com o número em menta.
+
+**Página 3 (27/09/2026):** o autor achou o celular "muito mal feito". A montagem sobre a foto do `celular-vazio.png` saiu. Entrou a mesma moldura de celular dos vídeos aprovados, com a tela real do "Colar comprovante ou Pix" já com o acento corrigido (`telas/cel-colado.png`).
