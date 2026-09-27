@@ -1,9 +1,11 @@
-// Entrada no cartão não existe no Grana. (decisão do autor, 26/09/2026): a
-// fatura do Granabô soma só compras, e uma linha `in` no cartão (a que uma
-// build antiga ainda gera ao importar fatura, antes da migration
-// 20260926130000) é IGNORADA, nunca abate nem soma. Handler real da Edge
-// Function; banco e provedor simulados, mesmo andaime de
-// assistant-memory-integration.cjs. Sem rede/contas.
+// Entrada no cartão não existe no Grana. (decisão do autor, 26/09/2026) e
+// nenhum caminho grava mais uma. A linha `in` ANTIGA no cartão (ou a que uma
+// build antiga ainda grava ao importar fatura, antes da migration
+// 20260926130000) abate a fatura no app (`somaDaFatura`, lib/creditoFaturas.ts),
+// e o Granabô soma EXATAMENTE igual: fatura, fatura por categoria, crédito do
+// mês e uso do limite batem com o app (revisão do Watchtower, 26/09/2026).
+// Handler real da Edge Function e `somaDaFatura` real do app; banco e provedor
+// simulados, mesmo andaime de assistant-memory-integration.cjs. Sem rede/contas.
 const fs = require('node:fs');
 const path = require('node:path');
 const Module = require('node:module');
@@ -74,6 +76,13 @@ function load(file) {
 }
 global.Deno = { env: { get: () => 'test' }, serve: (fn) => { handler = fn; } };
 load(path.resolve(__dirname, '../supabase/functions/assistente-financeiro/index.ts'));
+/* Soma do app, módulo real. Os imports dele não entram nesta conta. */
+const faturasApp = new Module('creditoFaturas', module);
+faturasApp.require = () => ({});
+faturasApp._compile(ts.transpileModule(fs.readFileSync(path.resolve(__dirname, '../lib/creditoFaturas.ts'), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, 'creditoFaturas.ts');
+const { somaDaFatura } = faturasApp.exports;
 const tool = (name, args) => ({ role: 'assistant', content: null, tool_calls: [{ id: '1', function: { name, arguments: JSON.stringify(args) } }] });
 async function ask(mensagem, historico = []) {
   const res = await handler(new Request('http://local', { method: 'POST', headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' }, body: JSON.stringify({ mensagem, historico }) }));
@@ -82,13 +91,32 @@ async function ask(mensagem, historico = []) {
 (async () => {
   const resultadoDaFerramenta = () => prompts.at(-1).messages.filter((m) => m.role === 'tool').at(-1).content;
 
+  /* A fatura do app para as mesmas linhas: 130 de compra, 30 de entrada antiga. */
+  const doApp = somaDaFatura([{ amount: 130, type: 'out' }, { amount: 30, type: 'in' }]);
+  assert.equal(doApp, 100, 'app: a entrada antiga abate');
+  const totalDoApp = 'R$ ' + doApp.toFixed(2).replace('.', ',');
+  const igualAoApp = (onde) => {
+    const r = resultadoDaFerramenta();
+    assert.ok(r.includes(totalDoApp), onde + ': mesma soma do app (' + totalDoApp + '), veio: ' + r);
+    assert.doesNotMatch(r, /R\$ 130,00|R\$ 160,00/, onde + ': nem ignora nem soma a entrada');
+  };
+
   completions = [tool('resumoCredito', { cartao: 'C6' }), { content: 'ok' }];
   await ask('Quanto está a fatura do C6?');
-  assert.match(resultadoDaFerramenta(), /R\$ 130,00/, 'resumoCredito: só a compra de 130; a entrada no cartão não entra na conta');
+  igualAoApp('resumoCredito do C6');
 
   completions = [tool('resumoCredito', { cartao: 'C6', categoria: 'Alimentação' }), { content: 'ok' }];
   await ask('Quanto gastei em Alimentação no C6?');
-  assert.match(resultadoDaFerramenta(), /R\$ 130,00/, 'resumoCredito por categoria: a entrada no cartão também fica fora');
+  igualAoApp('resumoCredito por categoria');
+
+  completions = [tool('resumoCredito', {}), { content: 'ok' }];
+  await ask('Quanto gastei no crédito este mês?');
+  igualAoApp('resumoCredito sem cartão');
+
+  completions = [tool('alertaDeLimiteCartao', {}), { content: 'ok' }];
+  await ask('Como está o limite do meu cartão?');
+  igualAoApp('uso do limite');
+  assert.match(resultadoDaFerramenta(), /de R\$ 1\.000,00 \(10% do limite\)/, 'uso do limite: 100 de 1.000');
 
   /* Lançar estorno pelo chat não grava (23/09/2026): antes virava entrada na
      carteira, sem cartão. O Grana. não tem estorno (autor, 26/09/2026): a
@@ -104,5 +132,5 @@ async function ask(mensagem, historico = []) {
   assert.equal(rpcs.slice(rpcsAntes).includes('registrar_operacao_voz'), false, 'nenhuma escrita');
   assert.equal(history.filter((r) => r.tabela === 'transactions').length, 0, 'nenhum lançamento inserido');
 
-  console.log('OK Granabô: fatura só com compras (entrada no cartão ignorada, com e sem categoria) e entrada citando cartão não é lançada pelo chat.');
+  console.log('OK Granabô: fatura, fatura por categoria, crédito do mês e uso do limite iguais a somaDaFatura do app com 1 entrada antiga no cartão; entrada citando cartão não é lançada pelo chat.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

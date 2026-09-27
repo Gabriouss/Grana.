@@ -99,6 +99,16 @@ export function cicloDaLinha(
   return { ciclo: { year: alvo.getFullYear(), month: alvo.getMonth() }, incerto: false };
 }
 
+/** Quanto a linha pesa na fatura: a mesma conta de `valorNaFatura` em
+ *  `lib/creditoFaturas.ts`. Nenhum caminho grava mais entrada no cartão, mas
+ *  a linha `in` antiga (ou gravada por build antiga antes da migration
+ *  20260926130000) abate, como na tela de Crédito. Sem isso o Granabô
+ *  mostrava fatura maior que o app (revisão do Watchtower, 26/09/2026). */
+export function valorNaFatura(linha: { amount: number | string; type?: string | null }): number {
+  const valor = Number(linha.amount);
+  return linha.type === 'in' ? -valor : valor;
+}
+
 
 /** Vencimento da fatura que fecha em (`year`, `month`). Mesma regra do app. */
 export function dataVencimentoFatura(year: number, month: number, dueDay: number, closingDay: number): Date {

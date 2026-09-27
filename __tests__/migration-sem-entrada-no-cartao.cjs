@@ -28,15 +28,17 @@ ok(migration.includes(CHECK), 'recusa entrada com cartão OU com método crédit
 ok(!/\bdelete\b|\bupdate\b|not valid/i.test(migration), 'não apaga, não altera dado e nasce validada');
 ok(semComentario(ler('supabase/schema.sql')).includes(CHECK), 'schema.sql traz a mesma restrição');
 
-/* Soma de fatura do servidor: sem ramo de abate, e só compras. */
+/* Soma de fatura do servidor: a MESMA do app (revisão do Watchtower,
+   26/09/2026). A linha `in` antiga no cartão abate no app (`somaDaFatura`);
+   se o Granabô a ignorasse, mostraria fatura maior que a tela de Crédito.
+   Os valores são conferidos em __tests__/granabo-estorno-credito.cjs. */
 const fatura = ler('supabase/functions/_shared/fatura-ciclo.ts');
-ok(!/valorNaFatura|type === 'in'/.test(fatura), '_shared/fatura-ciclo.ts não tem mais regra para entrada no cartão');
+ok(/export function valorNaFatura/.test(fatura), '_shared/fatura-ciclo.ts tem a mesma conta de fatura do app');
 const granabo = ler('supabase/functions/assistente-financeiro/index.ts');
-ok(!/valorNaFatura/.test(granabo), 'Granabô soma a fatura pelo valor, sem ramo de abate');
 const consultasDeCredito = granabo.match(/\.eq\('payment_method', 'credit'\)(\s*\.eq\('type', 'out'\))?/g) ?? [];
 ok(consultasDeCredito.length >= 5, `acha as consultas de fatura (${consultasDeCredito.length})`);
-ok(consultasDeCredito.every((c) => c.includes("eq('type', 'out')")),
-  "toda consulta de crédito do Granabô filtra type = 'out': entrada no cartão gravada por build antiga é ignorada, nunca somada");
+ok(consultasDeCredito.every((c) => !c.includes("eq('type', 'out')")),
+  "nenhuma consulta de crédito do Granabô descarta a linha antiga: ela abate, como no app");
 ok(!/estorn/i.test(ler('supabase/functions/_shared/caixa.ts')), '_shared/caixa.ts não fala mais de estorno');
 
 console.log(`migration-sem-entrada-no-cartao: ${passou} checagens OK`);
