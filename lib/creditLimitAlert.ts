@@ -55,7 +55,10 @@ export async function checarLimiteCartao(cardId: string): Promise<void> {
       .from('transactions')
       .select('amount, occurred_on')
       .eq('card_id', cardId)
-      .eq('payment_method', 'credit');
+      .eq('payment_method', 'credit')
+      /* Entrada no cartão, mesmo antiga, não conta no limite (decisão A do
+         autor, 26/09/2026). Antes ela somava como se fosse gasto. */
+      .eq('type', 'out');
     if (erroTx || !transacoes) return;
 
     const hoje = new Date();

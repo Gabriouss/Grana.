@@ -30,13 +30,15 @@ function resolverCartao(transacao: Transaction, cartoes: CreditCard[]): CreditCa
  * os lembretes e o limite, que somam por aqui.
  *
  * Desde 26/09/2026 nenhum caminho cria entrada (`type: 'in'`) no cartão
- * (`recusarEntradaNoCartao`, `lib/transaction-rules.ts`). O ramo de `in` fica
- * só para as linhas ANTIGAS desse tipo que já estão no banco, que continuam
- * abatendo como sempre abateram até haver decisão sobre elas.
+ * (`recusarEntradaNoCartao`, `lib/transaction-rules.ts`). Decisão do autor na
+ * mesma noite (opção A): entrada no cartão, inclusive a linha ANTIGA que já
+ * está no banco, é IGNORADA em todo lugar: não abate a fatura, o total, o
+ * limite nem os lembretes. No Grana. não existe estorno; lançamento errado se
+ * exclui. `filtrarLancamentosDaFatura` já tira essas linhas; o zero aqui é a
+ * defesa de quem somar sem passar por ele.
  */
 export function valorNaFatura(transacao: Pick<Transaction, 'amount' | 'type'>): number {
-  const valor = Number(transacao.amount);
-  return transacao.type === 'in' ? -valor : valor;
+  return transacao.type === 'in' ? 0 : Number(transacao.amount);
 }
 
 /** Soma de uma fatura em centavos inteiros, para R$ 0,10 + R$ 0,20 dar R$ 0,30. */
@@ -208,6 +210,8 @@ export function filtrarLancamentosDaFatura(
   const datas = datasCarregadas(transacoes, datasExtras);
   return transacoes.filter((transacao) => {
     if (transacao.payment_method !== 'credit' && !transacao.card_id) return false;
+    // Entrada no cartão, mesmo antiga, não entra na fatura (decisão A, 26/09/2026).
+    if (transacao.type === 'in') return false;
 
     const cartao = resolverCartao(transacao, cartoes);
     if (cartaoSelecionadoId !== 'all' && cartao?.id !== cartaoSelecionadoId) return false;
@@ -438,6 +442,8 @@ export function resumoDeFaturas(
        filtrados deixaria a fatura que perdeu a parcela parecer completa. */
     const incerto = transacoes.some((t) => {
       if (resolverCartao(t, cartoes)?.id !== cartao.id || t.payment_method !== 'credit') return false;
+      // Entrada no cartão é ignorada (decisão A): não deixa o total "incerto".
+      if (t.type === 'in') return false;
       const resultado = cicloDoLancamento(t, cartao, datas);
       return resultado.incerto && Math.abs(deslocamentoEntre(resultado.ciclo, ciclo)) <= 1;
     });

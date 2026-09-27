@@ -1,4 +1,4 @@
-/* Parcelas pelo ciclo da compra original, e estorno que abate a fatura
+/* Parcelas pelo ciclo da compra original, e entrada no cartão ignorada na fatura
  * (Crédito por ciclo, etapa b, 23/09/2026). Módulos reais:
  * `lib/creditoFaturas.ts`, `lib/faturaCiclo.ts`, `lib/format.ts` e o
  * `_shared/fatura-ciclo.ts` do Granabô.
@@ -12,6 +12,7 @@ import {
   filtrarLancamentosDaFatura,
   lembretesDeFatura,
   mesesCivisDasFaturas,
+  resumoDeFaturas,
   somaDaFatura,
   valorNaFatura,
 } from '../lib/creditoFaturas';
@@ -129,29 +130,49 @@ checar('com cartão 29-31: um mês de folga de cada lado',
 checar('ciclos repetidos não repetem mês',
   mesesCivisDasFaturas([{ year: 2026, month: 5 }, { year: 2026, month: 5 }, { year: 2026, month: 6 }], [cartao('a', 10)]).length, 3);
 
-/* ---------- 5. Estorno abate ---------- */
+/* ---------- 5. Entrada no cartão é ignorada (decisão A, 26/09/2026) ----------
+   Decisão do autor: entrada no cartão, inclusive a linha ANTIGA que já está
+   no banco, é ignorada em todo lugar (fatura, total, limite, lembretes). No
+   Grana. não existe estorno; lançamento errado se exclui. Até esta noite a
+   linha `in` abatia a fatura, e esta seção afirmava isso. Trava: a fatura com
+   uma linha `in` antiga dá o MESMO total que sem ela. */
 {
   const c = cartao('c6', 14);
-  const txs = [
+  const compras = [
     lanc('c6', '2026-09-15', 130),
-    lanc('c6', '2026-09-20', 30, { type: 'in' }),
     lanc('c6', '2026-09-21', 0.1),
     lanc('c6', '2026-09-22', 0.2),
   ];
-  checar('valorNaFatura: estorno é negativo', valorNaFatura(txs[1]), -30);
-  /* Lado do servidor (Harbor, 26/09/2026): entrada no cartão não existe, e o
-     Granabô soma a fatura pelo valor, sem ramo de abate. */
+  const comEntradaAntiga = [...compras, lanc('c6', '2026-09-20', 30, { type: 'in' })];
+  checar('valorNaFatura: entrada no cartão pesa zero', valorNaFatura(comEntradaAntiga[3]), 0);
+  /* Lado do servidor (Harbor, 26/09/2026): o Granabô soma a fatura pelo valor,
+     sem ramo de abate. */
   checar('Granabô sem regra de abate na fatura', 'valorNaFatura' in deno, false);
-  const fatura = filtrarLancamentosDaFatura(txs, [c], 'c6', 2026, 9);
-  checar('estorno entra na lista da fatura', fatura.length, 4);
-  checar('soma da fatura: 130 - 30 + 0,10 + 0,20, em centavos', somaDaFatura(fatura), 100.3);
-  const [lembrete] = lembretesDeFatura(txs, [c], [], '2026-09-23');
-  checar('lembrete da fatura aberta usa o total com estorno', lembrete.restante, 100.3);
-  const pago = lembretesDeFatura(txs, [c], [{
-    id: 'p', user_id: 't', card_id: 'c6', year: 2026, month: 9, amount: 100.3, paid_on: '2026-09-23',
+  const fatura = filtrarLancamentosDaFatura(comEntradaAntiga, [c], 'c6', 2026, 9);
+  checar('entrada antiga não entra na lista da fatura', fatura.length, 3);
+  checar('total com a entrada antiga = total sem ela, em centavos',
+    somaDaFatura(fatura), somaDaFatura(filtrarLancamentosDaFatura(compras, [c], 'c6', 2026, 9)));
+  checar('soma da fatura: 130 + 0,10 + 0,20', somaDaFatura(fatura), 130.3);
+  checar('somaDaFatura direto na lista crua também ignora a entrada', somaDaFatura(comEntradaAntiga), 130.3);
+  const [lembrete] = lembretesDeFatura(comEntradaAntiga, [c], [], '2026-09-23');
+  checar('lembrete da fatura aberta ignora a entrada', lembrete.restante, 130.3);
+  const pago = lembretesDeFatura(comEntradaAntiga, [c], [{
+    id: 'p', user_id: 't', card_id: 'c6', year: 2026, month: 9, amount: 130.3, paid_on: '2026-09-23',
     wallet_id: null, paid_transaction_id: null, created_at: '2026-09-23',
   }], '2026-09-23')[0];
-  checar('pagar o total com estorno quita a fatura', pago.restante, 0);
+  checar('pagar o total das compras quita a fatura', pago.restante, 0);
+  const alerta = readFileSync(join(__dirname, '..', 'lib/creditLimitAlert.ts'), 'utf8');
+  const consultaDoLimite = alerta.slice(alerta.indexOf(".eq('payment_method', 'credit')"), alerta.indexOf('if (erroTx'));
+  checar('alerta de limite só soma saída no cartão', consultaDoLimite.includes(".eq('type', 'out')"), true);
+  /* Uma entrada antiga com cara de parcela sem a compra original, em cartão
+     de fechamento 30, deixaria o resumo "incerto" se fosse olhada. Ignorada,
+     não pode. */
+  const c30 = cartao('c30e', 30);
+  const entradaParcela = lanc('c30e', '2026-09-05', 10, { type: 'in', id: 'in-2', parent_id: 'pai-sumido', installment_current: 2, installment_total: 3 });
+  checar('entrada antiga não deixa o resumo incerto',
+    resumoDeFaturas([entradaParcela], [c30], 2026, 8, '2026-09-10').incerto, false);
+  checar('nem a fatura incompleta',
+    faturaTemParcelaIncerta([entradaParcela], [c30], c30.id, 2026, 8), false);
 }
 
 /* ---------- 6. Tela de Crédito e resumo da Início somam pelo mesmo lugar ----------
