@@ -12612,11 +12612,15 @@ com o prazo total de 20 s, toda tentativa nesse ambiente cai corretamente em
 valor do prazo continua sendo decisão do autor. Não houve build nem teste no
 aparelho do autor nesta rodada.
 
-### Push e reconciliação
+### Push e reconciliação — correção de 26/09/2026
 
-O maestro fez o push a pedido do autor, levando `d776ba4..b1e5988` e o merge
-de `d776ba4`. Houve conflito somente no fim de `context.md`; foi resolvido
-mantendo as duas entradas documentais. O Ledger não fez push.
+Correção do registro anterior após `git fetch origin`: o push levou apenas
+`b9806cf` e `2b6d9b4` da entrega da foto. `a61204c` e `8810d03` não foram
+publicados. O relatório de estado do Forge confirma também como locais e sem
+push `078fee6`, `d946786`, `6d79ab6`, `cd4a593` e `41647c3`; o `git log
+origin/main..HEAD` desta retomada acrescenta `7b47064` e `f9c53a1`. O merge
+mencionado no registro anterior não muda esse resultado. A alegação de que o
+maestro levou `d776ba4..b1e5988` fica corrigida por esta entrada.
 
 ### As seis perguntas da regra 12
 
@@ -12639,3 +12643,85 @@ mantendo as duas entradas documentais. O Ledger não fez push.
 6. **Sem verificação:** leitura em aparelho real com build de release, foco e
    reflexo de cupom físico, prazo de 20 s no aparelho, Pix/dinheiro/cartão
    entre vários no aparelho, leitor de tela dos chips e calendário no Android.
+
+## 26/09/2026 — M1 — retomada Ledger: voz B1–B3 e reconciliação de estado
+
+O autor corrigiu a identidade deste terminal: este agente é Ledger, responsável
+por documentação e vault. A resposta anterior assumiu coordenação e assinou
+como Codex; isso foi interrompido e corrigido. Nenhuma mensagem de coordenação
+foi enviada aos demais agentes.
+
+### Estado Git e correção do push da foto
+
+Depois de `git fetch origin`, `main` está 10 commits à frente de `origin/main`,
+sem alterações de árvore de trabalho, branches extras, worktrees ou stash. A
+entrada acima corrige a afirmação incorreta de que o push levou `a61204c` e
+`8810d03`: somente `b9806cf` e `2b6d9b4` foram enviados. Os commits locais sem
+push incluem `a61204c`, `8810d03`, `078fee6`, `d946786`, `6d79ab6`, `cd4a593`,
+`41647c3`, `7b47064` e `f9c53a1`, além de `f46634a` (documentação do Ledger).
+O maestro fará o push da rodada depois da auditoria do Watchtower; o Ledger não
+publicou commits.
+
+### Voz: decisão e andamento da etapa B
+
+- `f9c53a1` fecha B1 no núcleo compartilhado: inteiros reconhecidos como `R$
+  120` podem seguir sem confirmação; quatro dígitos sem separador, como `R$
+  1899`, continuam pedindo confirmação. A decisão do autor de 26/09 revoga o
+  risco aceito em 14/09 para “1899 reais”: tanto “1899 reais” quanto “R$ 1899”
+  pedem confirmação.
+- `7b47064` corrige B2, separando “conta de luz” de referência a carteira.
+  Harbor deve conferir a correção e concluir a etapa B no emulador com gravação
+  real no banco de teste.
+- `41647c3` corrige B3: o recibo de revisão não duplica o ponto final da
+  transcrição.
+- A decisão do autor resolve a pergunta sobre “recebi um crédito de 500”:
+  entrada sem categoria clara continua perguntando “Qual categoria?”. Não
+  gravar diretamente em Outros nem em categoria padrão. Comportamento atual,
+  sem defeito.
+- Ordem estabelecida pelo autor: Forge fecha B1; Harbor confere B2 e termina
+  a etapa B no emulador, incluindo gravação real no banco; Watchtower audita
+  B1; depois o maestro publica os commits da rodada. A conclusão real de fala
+  pelo microfone no botão do app continua dependendo de aparelho ou entrada de
+  áudio que o emulador não oferece.
+
+### Publicação e pendências autorizadas
+
+O autor autorizou publicar `assistente-financeiro` com `840ee9f`, `c6e378f`,
+`ab25e2f`, `9613f42`, `9591bb2` e `7b47064`, após revisão do Watchtower. A
+migration de `ab25e2f` não foi aplicada e está fora do deploy. Nenhuma Edge
+Function foi publicada nesta retomada. Build EAS só com pedido explícito do
+autor. O teste em celular real do microfone e do tempo da foto permanece
+pendente; no emulador a leitura levou 22–38 s contra o limite de 20 s.
+
+A decisão desta retomada proíbe produzir criativos estáticos ou de vídeo.
+
+### Relatório de Forge
+
+Atualização registrada em `E:\Grana-temporarios\2026-09-26-retomada\relatorio-Forge-estado-voz-e-foto.md`, incluindo a correção dos hashes publicados, o estado de B1–B3 e as decisões do autor.
+
+### As seis perguntas da regra 12
+
+1. **Pedido:** corrigir o registro da foto, resolver a decisão de entrada sem
+   categoria, atualizar o estado da voz e deixar documentada a autorização
+   condicionada de deploy e a ordem da rodada.
+2. **Sintoma e causa:** o `context.md` afirmava que o push incluíra `a61204c` e
+   `8810d03`, mas `git fetch` e `git log origin/main..HEAD` confirmaram que
+   continuam locais. B1 decorria da regra que só confiava em inteiro seguido
+   de “reais”; B2 confundia “conta de” com nome de carteira; B3 resultava do
+   ponto final dentro das aspas combinado com pontuação fixa no recibo.
+3. **Arquivos e identificadores:** `context.md`; relatório Forge indicado
+   acima; commits `a61204c`, `8810d03`, `078fee6`, `d946786`, `6d79ab6`,
+   `cd4a593`, `41647c3`, `7b47064` e `f9c53a1`; `origin/main` e o intervalo
+   local de 10 commits.
+4. **Descartado:** considerar os commits da foto como publicados; aceitar
+   “1899 reais” sem confirmação; gravar crédito sem categoria em Outros; aplicar
+   a migration de `ab25e2f` ou publicar a função antes da revisão do Watchtower;
+   produzir criativos estáticos ou de vídeo.
+5. **O que deu errado:** a resposta inicial deste agente confundiu o papel de
+   Ledger com o terminal maestro e declarou uma ação de coordenação; corrigida
+   ao receber a identidade correta. O registro anterior reproduziu um status de
+   push incorreto.
+6. **Sem verificação:** conclusão E2E da etapa B no emulador com gravação real
+   no banco, auditoria do Watchtower de B1, microfone no celular real, tempo da
+   foto em celular real, publicação autorizada da Edge Function, aplicação da
+   migration (continua explicitamente fora do deploy) e build EAS.
