@@ -456,10 +456,14 @@ function guessDescFromText(text: string, type: 'in' | 'out'): string {
      motor RECUA pra só "9", cujo próximo caractere é "9" — não é letra, então
      passa, e a descrição saía "9pop". Exigindo que não haja dígito de nenhum
      dos lados, o recuo também é reprovado e "99pop" fica inteiro. */
+  /* O "de"/"por" que apresenta o valor sai junto com ele (achado B6 do
+     Harbor, 26/09/2026): "Almoço de 40 reais no restaurante" virava
+     "Almoço de no restaurante". O "de" DEPOIS do valor ("200 reais de
+     aluguel") não é tocado. */
   const semValor = texto
-    .replace(/r\$\s*[\d.,]+/gi, ' ')
-    .replace(new RegExp(`[\\d.,]+\\s*(?:${MOEDA})\\b`, 'gi'), ' ')
-    .replace(/(?<![a-zà-ÿ\d])\d[\d.,]*(?![a-zà-ÿ\d])/gi, ' ');
+    .replace(/(?:\b(?:de|por)\s+)?r\$\s*[\d.,]+/gi, ' ')
+    .replace(new RegExp(`(?:\\b(?:de|por)\\s+)?[\\d.,]+\\s*(?:${MOEDA})\\b`, 'gi'), ' ')
+    .replace(/(?:\b(?:de|por)\s+)?(?<![a-zà-ÿ\d])\d[\d.,]*(?![a-zà-ÿ\d])/gi, ' ');
   const sobra = limparSobra(semValor);
   /* "Você gastou R$ 32,50 no Mercado Modelo em Alimentação" (formato de
      notificação de banco, achado G3 de 26/09/2026): a categoria citada no fim

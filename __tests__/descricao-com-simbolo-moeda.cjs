@@ -64,6 +64,18 @@ const casos = [
   // "dia 5" solto no fim é vencimento, não parte do nome.
   ['Aluguel R$ 1.500,00 dia 5', 'Aluguel'],
   ['boleto da luz 180 reais dia 10', 'Boleto da luz'],
+  // B6 (Harbor, 26/09/2026): o "de" que apresenta o valor ficava solto.
+  ['Almoço de 40 reais no restaurante.', 'Almoço no restaurante'],
+  ['Devolução de 40 reais da farmácia no crédito.', 'Devolução da farmácia'],
+  ['Almoço de R$ 40 no restaurante.', 'Almoço no restaurante'],
+  ['Almoço de 40 no restaurante', 'Almoço no restaurante'],
+  ['Café por 7 reais na padaria', 'Café na padaria'],
+  // E os que já davam certo com "de" perto do valor.
+  ['Compra de 50 reais no mercado.', 'Mercado'],
+  ['Recebi 200 reais de aluguel.', 'Aluguel'],
+  ['Reembolso da farmácia de 40 reais no crédito.', 'Reembolso da farmácia'],
+  ['Energia de 350 reais', 'Energia'],
+  ['Chip de 22 reais, outros', 'Chip'],
 ];
 
 let checagens = 0;
