@@ -92,6 +92,32 @@ for (const frase of [
   checks += 2;
 }
 
+/* B1 (26/09/2026): o Whisper escreve "R$ 120" e a palavra "reais" some, e todo
+   valor redondo voltava a "Confirme o valor que ouvi". As transcrições abaixo
+   são as que o emulador devolveu naquela noite (e as duas do Harbor), não
+   frases inventadas. O símbolo antes vale a prova da palavra depois; quatro
+   dígitos sem ponto de milhar continuam em revisão nas duas formas, porque um
+   valor real acima de mil chega como "R$ 1.899,00". */
+for (const [frase, esperado] of [
+  ['Mercado R$ 120 no débito.', 120],
+  ['Uber R$ 25 no crédito.', 25],
+  ['Mercado R$120', 120],
+  ['Mercado R$ 120,00', 120],
+  ['Café R$ 7,00', 7],
+  ['Mercado R$ 18,99', 18.99],
+  ['Mercado 18,99 reais.', 18.99],
+  ['Mercado R$ 1.899,00', 1899],
+]) {
+  assert.equal(precisaRevisarValorVoz(frase), false, 'B1, valor lança sozinho: ' + frase);
+  assert.equal(valorSeguroParaRevisaoVoz(frase), esperado, 'B1, valor sugerido: ' + frase);
+  checks += 2;
+}
+for (const frase of ['Mercado R$ 1899', 'Mercado R$ 1899 no débito.', 'Mercado 1899 reais', 'Notebook R$ 2500', 'Carro R$ 45 mil', 'Mercado R$ 12,50 e farmácia R$ 20']) {
+  assert.equal(precisaRevisarValorVoz(frase), true, 'B1, pode ser centavo colado ou ambíguo: ' + frase);
+  assert.equal(valorSeguroParaRevisaoVoz(frase), null, 'B1, e não sugere valor: ' + frase);
+  checks += 2;
+}
+
 // Fluxo REAL do widget + parser REAL: assere payload, recibo e ausência de RPC.
 let task, texto = '', writes = [], revisoes = [];
 carregar('lib/widget-voz-task.ts', {
@@ -152,5 +178,24 @@ carregar('lib/widget-voz-task.ts', {
   await task({ caminho: '/teste.m4a', requestId: 'sem-palavra' });
   assert.equal(writes.length, 6, 'sem a palavra "reais" o inteiro solto não grava');
   assert.equal(revisoes.length, revisoesAntes + 1, 'e deixa recibo de revisão');
+
+  /* B1 no fluxo REAL, nas duas entradas (regra 13): "R$ 120" grava, e com a
+     mesma decisão; "R$ 1899" não chega à gravação em nenhuma. */
+  for (const source of [undefined, 'app']) {
+    const antes = writes.length;
+    texto = 'Mercado R$ 120 no débito.';
+    await task({ caminho: '/teste.m4a', requestId: `b1-120-${source ?? 'widget'}`, source });
+    assert.equal(writes.length, antes + 1, `B1: "R$ 120" grava sem confirmação (${source ?? 'widget'})`);
+    assert.equal(writes.at(-1).amount, 120);
+    assert.equal(writes.at(-1).payment_method, 'debit');
+    const revAntes = revisoes.length;
+    texto = 'Mercado R$ 1899';
+    await task({ caminho: '/teste.m4a', requestId: `b1-1899-${source ?? 'widget'}`, source });
+    assert.equal(writes.length, antes + 1, `B1: "R$ 1899" não grava (${source ?? 'widget'})`);
+    assert.equal(revisoes.length, revAntes + 1);
+    assert.equal(revisoes.at(-1), 'Confirme o valor que ouvi');
+  }
+  const [w120, a120] = writes.slice(-2);
+  assert.deepEqual({ ...w120 }, { ...a120 }, 'B1: widget e app gravam o mesmo lançamento');
   console.log(`OK: ${checks} verificações de valores + fluxo real do widget, cartão, boleto e revisão.`);
 })().catch(e => { console.error(e); process.exitCode = 1; });

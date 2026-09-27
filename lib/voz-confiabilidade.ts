@@ -50,7 +50,15 @@ export function precisaRevisarValorVoz(texto: string): boolean {
      que a trava nasceu para pegar, passava direto. A trava estava barrando o
      comum e deixando passar o raro.
      Risco residual aceito pelo autor em 14/09/2026: o reconhecedor entregar
-     literalmente "1899 reais", já colado e com a palavra intacta. */
+     literalmente "1899 reais", já colado e com a palavra intacta.
+     O símbolo ANTES do número vale a mesma prova (achado B1, 26/09/2026): o
+     Whisper escreve "cento e vinte reais" como "R$ 120" e a palavra some, então
+     todo valor redondo voltava à revisão. Medido no emulador na mesma noite,
+     com oito falas sintetizadas: "dezoito reais e noventa e nove" chega como
+     "R$ 18,99", e um valor que de fato passa de mil chega com ponto de milhar
+     ("R$ 1.899,00"). Por isso quatro dígitos ou mais sem ponto ("1899") não
+     contam como valor cheio em NENHUMA das duas formas: é a forma que a
+     colagem de reais e centavos teria, e fecha o risco de 14/09 junto. */
   /* Multiplicador falado ("45 mil") não é dígito lido: quem expande é a
      normalização, e neste repositório "45 mil" já virou R$ 1.000 — erro de mil
      vezes. A palavra "reais" ao lado não prova nada sobre a expansão, então
@@ -58,8 +66,9 @@ export function precisaRevisarValorVoz(texto: string): boolean {
   const temMultiplicador = /\b(?:mil|milh(?:ão|ao|ões|oes))\b/i.test(texto);
   const inteiroEmReaisCheios = (n: string) =>
     !temMultiplicador &&
-    !/[.,]/.test(n) &&
-    new RegExp(`(?<![\\p{L}\\d])${n}\\s*(?:reais|real)\\b`, 'iu').test(t);
+    /^\d{1,3}$/.test(n) &&
+    (new RegExp(`(?<![\\p{L}\\d])${n}\\s*(?:reais|real)\\b`, 'iu').test(t) ||
+      new RegExp(`R\\$\\s*${n}(?![\\p{L}\\d]|[.,]\\d)`, 'u').test(t));
   if (!valores.some(n => /[.,]\d{1,2}$/.test(n) || inteiroEmReaisCheios(n))) return true;
   /* Duas quantias na mesma fala continuam ambíguas depois da saída acima:
      "carteira Reserva 2,50 mercado 18 reais" tem um decimal E um inteiro cheio,
