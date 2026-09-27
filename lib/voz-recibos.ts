@@ -56,6 +56,18 @@ export const RECIBOS_VOZ = {
   } as ReciboVoz,
 
   /** O widget gravou, mas não conseguiu entregar o áudio ao app. A fala ficou guardada. */
+  /** Fala GUARDADA que o reconhecimento não entendeu. Não é apagada: fica à
+      espera de a pessoa revisar, tentar de novo ou descartar (26/09/2026). */
+  falaGuardadaSemEntender: (transcricao: string): ReciboVoz => {
+    const ouvido = transcricao.trim().replace(/[\s.!?…,;:]+$/u, '');
+    return {
+      titulo: 'Não entendi a fala guardada',
+      texto: ouvido
+        ? `Ouvi: "${ouvido}". Nada foi lançado, e a fala continua guardada até você decidir.`
+        : 'Nada foi lançado, e a fala continua guardada até você decidir.',
+    };
+  },
+
   falaGuardada: {
     titulo: 'Fala guardada no aparelho',
     texto: 'Não deu para processar agora. Abra o Grana. para concluir o lançamento.',

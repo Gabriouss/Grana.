@@ -126,8 +126,22 @@ export async function contarFalasAguardandoConexao(): Promise<number> {
     if (!dono) return 0;
     const bruto = await AsyncStorage.getItem(CHAVE_AUDIO);
     const itens = bruto ? JSON.parse(bruto) : [];
-    return Array.isArray(itens) ? itens.filter((item) => item && item.userId === dono).length : 0;
+    return Array.isArray(itens) ? itens.filter((item) => item && item.userId === dono && !item.revisao).length : 0;
   } catch {
+    return 0;
+  }
+}
+
+/** Falas guardadas que o reconhecimento não entendeu e esperam a pessoa. */
+export async function contarFalasEmRevisao(): Promise<number> {
+  try {
+    const dono = await idDoUsuarioLocal();
+    if (!dono) return 0;
+    const bruto = await AsyncStorage.getItem(CHAVE_AUDIO);
+    const itens = bruto ? JSON.parse(bruto) : [];
+    return Array.isArray(itens) ? itens.filter((item) => item && item.userId === dono && item.revisao).length : 0;
+  } catch (erro) {
+    console.error('[voz] não consegui contar as falas em revisão', erro);
     return 0;
   }
 }

@@ -68,7 +68,37 @@ export default function RespostaVozWidget() {
           const tirar = () => {
             removerReciboDaFila(recibo.id).catch((erro) => console.error('[voz] recibo da fila não saiu da lista', erro));
           };
-          if (recibo.tipo === 'revisao') {
+          if (recibo.tipo === 'audio') {
+            /* Fala guardada que não foi entendida. O áudio continua na fila,
+               marcado; só "Descartar" o apaga, ou uma nova tentativa que grave.
+               Fechar o aviso não decide nada: a faixa do topo segue dizendo
+               "precisa de revisão" e reabre este aviso. */
+            const fechar = () => { vistos.delete(recibo.id); tirar(); };
+            const avisarFaixa = () => import('@/lib/widgets-home-events')
+              .then(({ notificarDadosDosWidgetsAlterados }) => notificarDadosDosWidgetsAlterados());
+            Alert.alert(recibo.titulo, recibo.texto, [
+              { text: 'Descartar', style: 'destructive', onPress: () => {
+                import('@/lib/widget-voz-pendentes')
+                  .then(({ descartarVozPendente }) => descartarVozPendente(recibo.id))
+                  .then(avisarFaixa)
+                  .catch((erro) => {
+                    console.error('[voz] fala guardada não foi descartada', erro);
+                    Alert.alert('Não consegui descartar', 'A fala continua guardada. Tente de novo pela faixa do topo.');
+                  });
+              } },
+              { text: 'Tentar de novo', onPress: () => {
+                import('@/lib/widget-voz-pendentes')
+                  .then(({ tirarVozDaRevisao }) => tirarVozDaRevisao(recibo.id))
+                  .then(() => import('@/lib/widget-voz-task'))
+                  .then(({ tentarVozesPendentes }) => tentarVozesPendentes())
+                  .then(avisarFaixa)
+                  .catch((erro) => console.error('[voz] nova tentativa da fala guardada falhou', erro));
+              } },
+              ...(recibo.transcricao ? [{ text: 'Revisar', onPress: () => {
+                abrirFala(recibo.transcricao!).catch((erro) => console.error('[voz] revisão da fala não abriu', erro));
+              } }] : []),
+            ], { onDismiss: fechar });
+          } else if (recibo.tipo === 'revisao') {
             Alert.alert(recibo.titulo, recibo.texto, [
               { text: 'Descartar', style: 'destructive', onPress: tirar },
               { text: 'Revisar', onPress: () => {

@@ -3,7 +3,7 @@ import { AppState, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppPressable from './AppPressable';
 import { listarOperacoesVozLocais, sincronizarOperacoesVoz } from '@/lib/voice-operations';
-import { contarFalasAguardandoConexao } from '@/lib/voz-pendente-na-lista';
+import { contarFalasAguardandoConexao, contarFalasEmRevisao } from '@/lib/voz-pendente-na-lista';
 import { tentarVozesPendentes, ultimoResumoDaFilaDeFalas, type ResumoFilaDeFalas } from '@/lib/widget-voz-task';
 import { fonts, spacing, theme, touchTarget, type } from '@/lib/theme';
 import { observarDadosDosWidgets } from '@/lib/widgets-home-events';
@@ -34,11 +34,14 @@ export default function VozesSalvasLocalmente() {
   const [mensagem, setMensagem] = useState<string | null>(null);
   /* Áudio gravado sem rede e ainda não transcrito: sem valor, então só conta. */
   const [audios, setAudios] = useState(0);
+  /* Fala guardada que o reconhecimento não entendeu: espera a pessoa, não a rede. */
+  const [emRevisao, setEmRevisao] = useState(0);
   const [resumoFala, setResumoFala] = useState<ResumoFilaDeFalas | null>(() => ultimoResumoDaFilaDeFalas());
   const insets = useSafeAreaInsets();
   const carregar = () => Promise.all([
     listarOperacoesVozLocais().then(setItens).catch((erro) => console.error('[voz] faixa não leu os lançamentos guardados', erro)),
     contarFalasAguardandoConexao().then(setAudios).catch((erro) => console.error('[voz] faixa não contou as falas guardadas', erro)),
+    contarFalasEmRevisao().then(setEmRevisao),
   ]).then(() => setResumoFala(ultimoResumoDaFilaDeFalas()));
   useEffect(() => {
     void carregar();
@@ -47,7 +50,10 @@ export default function VozesSalvasLocalmente() {
     return () => { remover(); evento.remove(); };
   }, []);
   const pendencias = itens.length + audios;
-  const faixaVisivel = pendencias > 0;
+  const faixaVisivel = pendencias + emRevisao > 0;
+  /* A revisão vem primeiro porque só ela depende da pessoa: o resto a
+     retomada automática tenta sozinha a cada 30 s. */
+  const revisar = emRevisao > 0;
   usePublicarFaixaTopo(faixaVisivel);
   if (!faixaVisivel) return null;
   /* A faixa ocupa o inset superior antes da rota montar seu cabeçalho. A tela
@@ -65,12 +71,14 @@ export default function VozesSalvasLocalmente() {
         accessibilityLiveRegion="polite"
         accessibilityRole="text"
       >
-        {mensagem ?? textoDaFaixa(pendencias, audios, resumoFala)}
+        {mensagem ?? (revisar
+          ? (emRevisao === 1 ? '1 fala guardada precisa de revisão' : `${emRevisao} falas guardadas precisam de revisão`)
+          : textoDaFaixa(pendencias, audios, resumoFala))}
       </Text>
       <AppPressable
         disabled={ocupado}
         accessibilityRole="button"
-        accessibilityLabel="Tentar sincronizar lançamentos salvos neste aparelho"
+        accessibilityLabel={revisar ? 'Revisar falas guardadas que não foram entendidas' : 'Tentar sincronizar lançamentos salvos neste aparelho'}
         /* `busy` é o que anuncia "já entendi, estou trabalhando" — sem ele o
            botão só fica mudo e desabilitado, indistinguível de quebrado. */
         accessibilityState={{ disabled: ocupado, busy: ocupado }}
@@ -79,6 +87,15 @@ export default function VozesSalvasLocalmente() {
           setOcupado(true);
           setMensagem(null);
           try {
+            if (revisar) {
+              const [{ idDoUsuarioLocal }, { reabrirRevisoesDeFala }] = await Promise.all([
+                import('@/lib/sessao-offline'),
+                import('@/lib/widget-voz-pendentes'),
+              ]);
+              const dono = await idDoUsuarioLocal();
+              if (dono) await reabrirRevisoesDeFala(dono);
+              return;
+            }
             /* As duas filas: a das falas já entendidas e a dos áudios. Até
                26/09/2026 o toque só olhava a primeira, e com um áudio preso a
                faixa voltava igual, sem dizer nada. */
@@ -93,7 +110,7 @@ export default function VozesSalvasLocalmente() {
           finally { setOcupado(false); }
         }}
       >
-        <Text style={styles.action}>{ocupado ? 'Sincronizando…' : 'Tentar sincronizar'}</Text>
+        <Text style={styles.action}>{revisar ? 'Revisar' : ocupado ? 'Sincronizando…' : 'Tentar sincronizar'}</Text>
       </AppPressable>
     </View>
   </View>;

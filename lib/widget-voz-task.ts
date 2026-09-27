@@ -4,12 +4,21 @@ import type { CreditCard } from './types';
 
 /** Por que a fala voltou para a fila. A faixa do topo diz isto, e não um
     "aguardando conexão" genérico (26/09/2026). */
-export type MotivoFalaGuardada = 'sem_rede' | 'demorou' | 'sessao' | 'sem_notificacao';
+export type MotivoFalaGuardada = 'sem_rede' | 'demorou' | 'sessao' | 'sem_notificacao' | 'revisao';
 
 class VozPendenteOffline extends Error {
   readonly nome = 'VozPendenteOffline';
   constructor(mensagem: string, readonly motivo: MotivoFalaGuardada) {
     super(mensagem);
+  }
+}
+
+/** Fala GUARDADA que o reconhecimento não entendeu. Apagá-la, como se faz com
+    a fala nova (a pessoa está ali e repete), perdeu a fala do autor em
+    26/09/2026: ela tinha sido gravada horas antes e não havia outra cópia. */
+class FalaParaRevisar extends Error {
+  constructor(readonly transcricao: string) {
+    super('fala guardada não entendida');
   }
 }
 
@@ -94,7 +103,29 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
   } catch (erro) {
     console.warn('[voz:widget] tarefa interrompida', (erro as { code?: string })?.code ?? 'falha');
     estadoFinal = 'atencao';
-    if (erro instanceof VozPendenteOffline || isLikelyNetworkError(erro)) {
+    if (erro instanceof FalaParaRevisar && requestId) {
+      /* Sem lançar e sem apagar: a fala fica na fila, marcada, e o recibo
+         (na tela, guardado até ser visto) oferece revisar, tentar de novo ou
+         descartar. Mesma saída para fala do app e do widget (regra 13). */
+      manterArquivo = true;
+      desfecho = { guardada: true, motivo: 'revisao' };
+      try {
+        const [{ marcarVozEmRevisao }, { guardarReciboDaFila }, { idDoUsuarioLocal }, { RECIBOS_VOZ }] = await Promise.all([
+          import('./widget-voz-pendentes'),
+          import('./voz-recibos-da-fila'),
+          import('./sessao-offline'),
+          import('./voz-recibos'),
+        ]);
+        await marcarVozEmRevisao(requestId, erro.transcricao || undefined);
+        const dono = await idDoUsuarioLocal();
+        if (dono) {
+          await guardarReciboDaFila({ id: requestId, dono, tipo: 'audio', ...RECIBOS_VOZ.falaGuardadaSemEntender(erro.transcricao), ...(erro.transcricao ? { transcricao: erro.transcricao } : null) });
+        }
+      } catch (erroRevisao) {
+        // A fala continua na fila mesmo assim; a próxima retomada tenta de novo.
+        console.error('[voz] fala guardada não entrou em revisão', requestId, erroRevisao);
+      }
+    } else if (erro instanceof VozPendenteOffline || isLikelyNetworkError(erro)) {
       /* A gravação já aconteceu. Não apagá-la é a diferença entre "sem rede"
          ser uma espera transparente e perder a fala junto com a notificação. */
       if (caminho && requestId) {
@@ -182,6 +213,9 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   ]);
 
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
+  /* Fala que veio da fila de áudios guardados (`widget-voz-pendentes`): a
+     pessoa não está ali para repetir, então "não entendi" não pode apagá-la. */
+  const daFila = caminho.includes('/voz-pendente/');
   /* O prazo de rede é o mesmo nas duas entradas e mora em lib/voz.ts
      (`PRAZO_TRANSCRICAO_MS`). Ninguém o escolhe aqui: nem pela origem da fala
      (achado F2, regra 13), nem por quem chama (decisão do autor, 25/09/2026). */
@@ -207,6 +241,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
         throw new VozPendenteOffline('A sessão será renovada quando houver conexão.', 'sessao');
       }
     }
+    if (transcricao.codigo === 'nao_entendi' && daFila) throw new FalaParaRevisar('');
     await notificacoes.notificarFalha(transcricao.codigo);
     return false;
   }
@@ -215,6 +250,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   contexto.transcricao = texto;
   const confiabilidade = await import('./voz-confiabilidade');
   if (!confiabilidade.transcricaoPareceLancamentoVoz(texto)) {
+    if (daFila) throw new FalaParaRevisar(texto);
     await notificacoes.notificarFalha('nao_entendi');
     return false;
   }
@@ -508,7 +544,8 @@ async function retomarFilaDeFalas(): Promise<ResumoFilaDeFalas> {
 
     const notificar = await podeNotificar();
     let motivo: ResumoFilaDeFalas['motivo'];
-    for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId)) {
+    /* Fala em revisão espera a pessoa: não volta ao servidor a cada 30 s. */
+    for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId && !item.revisao)) {
       /* Mantém o item até a tarefa concluir; uma interrupção permite retomada.
          Um item que lança não impede os de trás. */
       try {
@@ -519,7 +556,7 @@ async function retomarFilaDeFalas(): Promise<ResumoFilaDeFalas> {
         motivo = 'erro';
       }
     }
-    const restantes = (await listarVozesPendentes()).filter((item) => item.userId === userId).length;
+    const restantes = (await listarVozesPendentes()).filter((item) => item.userId === userId && !item.revisao).length;
     resumo = restantes ? { restantes, motivo: motivo ?? 'erro' } : { restantes: 0 };
   } catch (e) {
     // A fila permanece no aparelho; a próxima abertura/retomada tenta de novo.

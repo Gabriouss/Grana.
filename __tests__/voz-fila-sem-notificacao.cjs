@@ -210,6 +210,82 @@ const naFila = async () => (await fila.listarVozesPendentes()).map((i) => i.requ
   assert.equal(chamadasTranscricao.length, 1, 'a fala é transcrita uma vez só');
   ok('"Tentar sincronizar" durante a retomada automática não processa a fala duas vezes');
 
+  /* ── 9. "Não entendi" numa fala GUARDADA não a apaga (26/09/2026) ────── */
+  /* A fala presa do autor voltou do Whisper como "Não entendi" e o áudio foi
+     apagado: não havia outra cópia. Fala da fila vira revisão, nas duas
+     entradas, com o áudio mantido. */
+  const lista = carregar('lib/voz-pendente-na-lista.ts');
+  const escritasAntes = escritas.length;
+  const audioApp = await guardarFala('req-nao-app', 'app', { ok: false, codigo: 'nao_entendi' });
+  const audioWidget = await guardarFala('req-nao-widget', 'widget', { ok: false, codigo: 'nao_entendi' });
+  const comRevisao = await tarefa.tentarVozesPendentes();
+  assert.equal(escritas.length, escritasAntes, 'nada é gravado');
+  assert.deepEqual(await naFila(), ['req-nao-app', 'req-nao-widget'], 'as duas falas continuam na fila');
+  assert.ok(disco.has(audioApp) && disco.has(audioWidget), 'e o áudio das duas continua no aparelho');
+  assert.ok((await fila.listarVozesPendentes()).every((i) => i.revisao === true), 'marcadas como "precisa de revisão"');
+  assert.deepEqual({ ...comRevisao }, { restantes: 0 }, 'revisão não é "aguardando conexão"');
+  assert.equal(await lista.contarFalasEmRevisao(), 2, 'a faixa conta as duas como revisão');
+  assert.equal(await lista.contarFalasAguardandoConexao(), 0, 'e nenhuma como aguardando conexão');
+  const recibosAudio = (await recibos.listarRecibosDaFila('u-1')).filter((r) => r.tipo === 'audio');
+  assert.deepEqual(recibosAudio.map((r) => r.id), ['req-nao-app', 'req-nao-widget']);
+  assert.equal(recibosAudio[0].titulo, 'Não entendi a fala guardada');
+  assert.equal(recibosAudio[0].texto, recibosAudio[1].texto, 'mesmo recibo no app e no widget (regra 13)');
+  ok('"Não entendi" numa fala guardada: nada gravado, áudio mantido, revisão, igual no app e no widget');
+
+  chamadasTranscricao = [];
+  await tarefa.tentarVozesPendentes();
+  assert.equal(chamadasTranscricao.length, 0, 'fala em revisão não volta ao servidor a cada 30 s');
+  ok('fala em revisão sai das retomadas automáticas');
+
+  /* Texto sem valor ("Obrigado por assistir"): a transcrição vai junto, para
+     "Revisar" abrir preenchido. */
+  await guardarFala('req-sem-valor', 'widget', { ok: true, transcript: 'Obrigado por assistir.' });
+  await tarefa.tentarVozesPendentes();
+  const semValor = (await fila.listarVozesPendentes()).find((i) => i.requestId === 'req-sem-valor');
+  assert.equal(semValor?.revisao, true);
+  assert.equal(semValor.transcricao, 'Obrigado por assistir.');
+  const reciboSemValor = (await recibos.listarRecibosDaFila('u-1')).find((r) => r.id === 'req-sem-valor');
+  assert.equal(reciboSemValor.transcricao, 'Obrigado por assistir.');
+  assert.match(reciboSemValor.texto, /^Ouvi: "Obrigado por assistir"\. Nada foi lançado/);
+  ok('texto sem valor também vira revisão, com o que foi ouvido');
+
+  /* "Tentar de novo": volta à fila e, gravando, o áudio sai. */
+  await fila.tirarVozDaRevisao('req-nao-app');
+  transcricoes[audioApp] = { ok: true, transcript: 'Mercado R$ 120 no débito.' };
+  await tarefa.tentarVozesPendentes();
+  assert.equal(escritas.at(-1).requestId, 'req-nao-app', 'a nova tentativa grava');
+  assert.ok(!disco.has(audioApp), 'e só então o áudio é apagado');
+  assert.ok(!(await naFila()).includes('req-nao-app'));
+  ok('"Tentar de novo" grava e só então apaga o áudio');
+
+  /* "Descartar": a única saída que apaga sem gravar. */
+  await fila.descartarVozPendente('req-nao-widget');
+  assert.ok(!disco.has(audioWidget), 'Descartar apaga o áudio');
+  assert.ok(!(await naFila()).includes('req-nao-widget'));
+  ok('"Descartar" apaga o áudio e tira da fila');
+
+  /* O botão "Revisar" da faixa republica o recibo de quem está em revisão. */
+  await recibos.removerReciboDaFila('req-sem-valor');
+  assert.equal(await fila.reabrirRevisoesDeFala('u-1'), 1);
+  assert.ok((await recibos.listarRecibosDaFila('u-1')).some((r) => r.id === 'req-sem-valor' && r.tipo === 'audio'));
+  ok('o botão da faixa reabre o recibo da fala em revisão');
+
+  /* Fala NOVA (a pessoa está ali): "Não entendi" continua como antes. */
+  const falhas = [];
+  disco.set('file:///cache/req-nova.m4a', 'AUDIO');
+  transcricoes['file:///cache/req-nova.m4a'] = { ok: false, codigo: 'nao_entendi' };
+  await tarefa.executarTarefa({ caminho: 'file:///cache/req-nova.m4a', requestId: 'req-nova', source: 'app' }, {
+    podeNotificar: async () => true,
+    notificarFalha: async (codigo) => { falhas.push(codigo); },
+    notificarRevisao: async () => assert.fail('revisão inesperada'),
+    notificarSucesso: async () => assert.fail('sucesso inesperado'),
+    notificarSalvoLocal: async () => assert.fail('salvo local inesperado'),
+    notificarPendenteOffline: async () => assert.fail('pendente inesperado'),
+  });
+  assert.deepEqual(falhas, ['nao_entendi'], 'fala nova recebe "Não entendi" na hora');
+  assert.ok(!disco.has('file:///cache/req-nova.m4a'), 'e o áudio dela sai: a pessoa repete');
+  ok('fala nova com "Não entendi" segue como antes: recibo na hora, áudio apagado');
+
   /* ── 8. O retorno antigo não volta ──────────────────────────────────── */
   const fonte = fs.readFileSync(path.join(root, 'lib/widget-voz-task.ts'), 'utf8');
   const retomada = fonte.slice(fonte.indexOf('async function retomarFilaDeFalas'), fonte.indexOf('/* O recibo (Alert de sucesso'));

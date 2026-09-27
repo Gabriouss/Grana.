@@ -26,7 +26,9 @@ const CHAVE = 'grana:voz:recibos-da-fila-v1';
 export type ReciboDaFila =
   | { id: string; dono: string; tipo: 'sucesso'; titulo: string; texto: string; operationId?: string; destino: 'transaction' | 'bill' }
   | { id: string; dono: string; tipo: 'revisao'; titulo: string; texto: string; transcricao: string }
-  | { id: string; dono: string; tipo: 'aviso'; titulo: string; texto: string };
+  | { id: string; dono: string; tipo: 'aviso'; titulo: string; texto: string }
+  /** Fala guardada que não foi entendida: o áudio segue na fila, em revisão. */
+  | { id: string; dono: string; tipo: 'audio'; titulo: string; texto: string; transcricao?: string };
 
 type Ouvinte = () => void;
 const ouvintes = new Set<Ouvinte>();

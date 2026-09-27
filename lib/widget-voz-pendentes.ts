@@ -16,6 +16,9 @@ export type VozPendente = {
   criadoEm: number;
   source?: 'app' | 'widget';
   transcricao?: string;
+  /** A transcrição não entendeu a fala. Ela fica guardada, fora das
+      retomadas automáticas, até a pessoa revisar ou descartar (26/09/2026). */
+  revisao?: boolean;
 };
 
 async function ler(): Promise<VozPendente[]> {
@@ -96,6 +99,55 @@ export async function adotarVozesOrfas(userId: string): Promise<number> {
 
 export async function listarVozesPendentes(): Promise<VozPendente[]> {
   return ler();
+}
+
+/** Marca a fala como "precisa de revisão": ela sai das retomadas automáticas,
+    mas o áudio continua no aparelho. */
+export async function marcarVozEmRevisao(requestId: string, transcricao?: string): Promise<void> {
+  await gravar((await ler()).map((item) => (item.requestId === requestId
+    ? { ...item, revisao: true, ...(transcricao ? { transcricao } : null) }
+    : item)));
+}
+
+/** "Tentar de novo": a fala volta às retomadas, com o mesmo áudio. A
+    transcrição antiga sai, para o servidor ouvir de novo. */
+export async function tirarVozDaRevisao(requestId: string): Promise<void> {
+  await gravar((await ler()).map((item) => {
+    if (item.requestId !== requestId) return item;
+    const { revisao: _revisao, transcricao: _transcricao, ...resto } = item;
+    return resto;
+  }));
+}
+
+/** "Descartar": a única saída de uma fala em revisão que apaga o áudio. */
+export async function descartarVozPendente(requestId: string): Promise<void> {
+  const item = (await ler()).find((i) => i.requestId === requestId);
+  if (!item) return;
+  const fs = await import('expo-file-system/legacy');
+  // Só a pasta privada gerenciada pela fila é um alvo válido de exclusão.
+  if (item.caminho.startsWith(`${fs.documentDirectory}voz-pendente/`)) {
+    await fs.deleteAsync(item.caminho, { idempotent: true });
+  }
+  await removerVozPendente(requestId);
+}
+
+/** O botão "Revisar" da faixa: publica de novo o recibo de cada fala em
+    revisão desta conta, com o mesmo texto do catálogo. Devolve quantas. */
+export async function reabrirRevisoesDeFala(userId: string): Promise<number> {
+  const [{ guardarReciboDaFila }, { RECIBOS_VOZ }] = await Promise.all([
+    import('./voz-recibos-da-fila'),
+    import('./voz-recibos'),
+  ]);
+  const emRevisao = (await ler()).filter((item) => item.userId === userId && item.revisao);
+  for (const item of emRevisao) {
+    const transcricao = item.transcricao ?? '';
+    await guardarReciboDaFila({
+      id: item.requestId, dono: userId, tipo: 'audio',
+      ...RECIBOS_VOZ.falaGuardadaSemEntender(transcricao),
+      ...(transcricao ? { transcricao } : null),
+    });
+  }
+  return emRevisao.length;
 }
 
 export async function removerVozPendente(requestId: string): Promise<void> {
