@@ -33,8 +33,8 @@ function resolverCartao(transacao: Transaction, cartoes: CreditCard[]): CreditCa
  * (`recusarEntradaNoCartao`, `lib/transaction-rules.ts`). Decisão do autor na
  * mesma noite (opção A): entrada no cartão, inclusive a linha ANTIGA que já
  * está no banco, é IGNORADA em todo lugar: não abate a fatura, o total, o
- * limite nem os lembretes. No Grana. não existe estorno; lançamento errado se
- * exclui. `filtrarLancamentosDaFatura` já tira essas linhas; o zero aqui é a
+ * limite nem os lembretes. Lançamento errado se exclui.
+ * `filtrarLancamentosDaFatura` já tira essas linhas; o zero aqui é a
  * defesa de quem somar sem passar por ele.
  */
 export function valorNaFatura(transacao: Pick<Transaction, 'amount' | 'type'>): number {
