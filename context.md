@@ -12990,3 +12990,7 @@ A conta, a operação de voz, os dois lançamentos AUDIT e as 6 mensagens foram 
 4. **Descartado:** publicar os lembretes e a migration do push hoje; publicar sem os três commits posteriores; aplicar as migrations do cartão ou a flag; corrigir o Colar comprovante por conta do Harbor, que não é a área dele; regravar a consulta do Granabô para a nova frase sobre o crédito.
 5. **O que deu errado:** três tomadas do R5 foram descartadas por tempo de colagem, pelo fim perdido do `screenrecord` e pelo corte inicial que tirava o aviso de salvo. Também houve uma tomada descartada do R9. O Fast Refresh e o LogBox atrapalharam o emulador e foram contornados no enquadramento.
 6. **Sem verificação:** a tela do Granabô na v40, o `test:ci` completo no momento do deploy, a correção do Forge para categoria e data, a nota final e o pop-up, o QA no APK, a duplicata residual da revisão e o retorno a partir do ESZIP.
+
+## 27/09/2026 — Segundo pedido para a M1: final do R5 na aba "Débito e Pix"
+
+O autor quer que, no R5, depois do "salvo", apareça a aba "Débito e Pix" com o lançamento "Mercado Modelo" no topo, em vez da Início vazia. O passo a passo está em `docs/marketing/solicitacoes/2026-09-27-gravar-r5-final-lancamentos.md`. O vídeo deve ser entregue na branch `claude/cool-einstein-c63bq0`. Está pendente junto com o pedido do R9 ("Importar extrato").
