@@ -65,9 +65,12 @@ const fsDuble = {
 const operacoes = new Map();
 const linhas = [];
 let modoBanco = 'online';
+/** Toda chamada que chegou ao banco, para afirmar QUAIS aconteceram (regra 9). */
+const chamadasRpc = [];
 function rpc(nome, args) {
   const executar = async () => {
     assert.equal(nome, 'registrar_operacao_voz');
+    chamadasRpc.push({ requestId: args.p_request_id, source: args.p_source, amount: args.p_payload?.amount });
     if (modoBanco === 'offline') throw Object.assign(new TypeError('Network request failed'), { code: '' });
     if (modoBanco === 'recusa') return { data: null, error: { code: '23514', message: 'recusado (simulado)' } };
     const hash = JSON.stringify([args.p_kind, args.p_payload]);
@@ -406,6 +409,78 @@ async function tentarDeNovo(requestId) {
     parar();
   }
   ok('fala gravada pela tarefa (app e widget) avisa as telas montadas');
+
+  /* ── 10. A1 do Lynx (29/09/2026): 22023 na REVISÃO vira "Fala já lançada" ──
+     A revisão grava, a fila no disco não grava, o app reabre, a pessoa toca
+     em "Revisar" e salva com OUTRO valor. O servidor recusa com 22023. Antes
+     disso caía no `catch` das telas ("Erro ao salvar") com a fala na fila. */
+  const a1 = {};
+  for (const source of ['app', 'widget']) {
+    const requestId = `req-a1-${source}`;
+    const audio = await falaEmRevisao(requestId, source);
+    const antes = linhas.length;
+    escritaFalha.add(CHAVE_FILA);
+    await registrarOperacaoVoz(`rev-a1-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+    escritaFalha.delete(CHAVE_FILA);
+    abrirApp();
+    await fila.reabrirRevisoesDeFala('u-1');
+    assert.equal((await fila.listarVozesPendentes()).find((i) => i.requestId === requestId)?.revisao, true, `${source}: a fala voltou em revisão`);
+
+    const chamadasAntes = chamadasRpc.length;
+    const r = await registrarOperacaoVoz(`rev-a1-bis-${source}`, 'app', { ...payloadDaRevisao, amount: 130 }, undefined, requestId);
+    assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => [c.requestId, c.amount]), [[requestId, 130]], `${source}: uma chamada só, com o id da fala`);
+    assert.equal(r.status, 'committed', `${source}: 22023 na revisão não vira erro`);
+    assert.equal(r.replayed, true, `${source}: o desfecho é "já lançada" (replayed), que as telas mostram como "Fala já lançada"`);
+    assert.equal(r.ids.length, 0, `${source}: nenhum id novo`);
+    assert.equal(linhas.length - antes, 1, `${source}: nenhuma linha nova`);
+    assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila`);
+    assert.ok(!JSON.parse(armazem.get(CHAVE_FILA)).some((i) => i.requestId === requestId), `${source}: e da fila persistida`);
+    assert.equal(disco.has(audio), false, `${source}: o áudio foi apagado`);
+    assert.equal(armazem.has(`grana:voz:operacao:u-1:${requestId}`), false, `${source}: nada ficou na fila de operações para subir depois`);
+    assert.equal((await recibos.listarRecibosDaFila('u-1')).some((x) => x.id === requestId), false, `${source}: o recibo "Revisar" saiu`);
+    await tentarDeNovo(requestId);
+    assert.equal(chamadasRpc.length - chamadasAntes, 1, `${source}: "Tentar de novo" depois não chama o banco`);
+    a1[source] = { status: r.status, replayed: r.replayed, ids: r.ids.length };
+  }
+  assert.deepEqual(a1.app, a1.widget, 'A1: mesma decisão no app e no widget (regra 13)');
+  /* Controle: 22023 fora de uma revisão de fala guardada continua erro. */
+  await assert.rejects(registrarOperacaoVoz('req-a1-app', 'app', { ...payloadDaRevisao, amount: 140 }), (e) => e.code === '22023');
+  for (const tela of ['components/PasteReceiptModal.tsx', 'app/(app)/contas.tsx', 'app/(app)/credito.tsx']) {
+    assert.match(ler(tela), /if \(resultado\.replayed\) \{ const m = mensagemDeErroVoz\('ja_lancada'\); Alert\.alert\(m\.titulo, m\.texto\); \}/, `${tela}: mostra "Fala já lançada"`);
+  }
+  ok('A1: 22023 na revisão de fala guardada vira "Fala já lançada", fala sai da fila, nas duas entradas e nas três telas');
+
+  /* ── 11. A2 do Lynx (29/09/2026): replay na tarefa não se anuncia como novo ──
+     A tarefa gravou a fala, a limpeza falhou e a fala voltou à fila. O
+     "Tentar de novo" manda o mesmo conteúdo com o mesmo id: o servidor
+     devolve replayed=true, e o recibo antes dizia "salvo" como se fosse
+     lançamento novo. */
+  const a2 = {};
+  for (const source of ['app', 'widget']) {
+    const requestId = `req-a2-${source}`;
+    const colocarNaFila = async (n) => {
+      const origem = `file:///cache/${requestId}-${n}.m4a`;
+      disco.set(origem, 'AUDIO');
+      await fila.adicionarVozPendente({ caminho: origem, requestId, userId: 'u-1', source });
+    };
+    transcricoes[`file:///files/voz-pendente/${requestId}.m4a`] = { ok: true, transcript: FALA };
+    const antes = linhas.length;
+    const chamadasAntes = chamadasRpc.length;
+    await colocarNaFila(1);
+    await tarefa.tentarVozesPendentes();
+    assert.equal((await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId)?.tipo, 'sucesso', `${source}: a primeira vez é lançamento novo`);
+    await colocarNaFila(2);
+    await tentarDeNovo(requestId);
+    assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => c.requestId), [requestId, requestId], `${source}: duas chamadas, o mesmo id`);
+    assert.equal(linhas.length - antes, 1, `${source}: uma linha só`);
+    const recibo = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
+    assert.equal(recibo?.tipo, 'aviso', `${source}: o replay não publica recibo de sucesso`);
+    assert.equal(recibo.titulo, 'Erro ja_lancada', `${source}: o replay diz "Fala já lançada"`);
+    assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila`);
+    a2[source] = { tipo: recibo.tipo, titulo: recibo.titulo };
+  }
+  assert.deepEqual(a2.app, a2.widget, 'A2: mesmo recibo no app e no widget (regra 13)');
+  ok('A2: replay do "Tentar de novo" mostra "Fala já lançada", nas duas entradas');
 
   console.log(`\n${checagens} checagens de revisão sem duplicata passaram — 0 falhas`);
 })().catch((erro) => {

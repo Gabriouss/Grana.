@@ -68,6 +68,17 @@ async function ehFalaJaLancada(erro: unknown): Promise<boolean> {
   }
 }
 
+/** Nada foi gravado agora: a fala já estava lançada (22023 aqui no `catch`,
+    ou replay do servidor em `processar`, achado A2 do Lynx de 29/09/2026).
+    O recibo diz isso, e nunca o de lançamento novo. */
+async function avisarFalaJaLancada(notificacoes: ReciboVoz): Promise<void> {
+  try {
+    await notificacoes.notificarFalha('ja_lancada');
+  } catch (erroRecibo) {
+    console.error('[voz] recibo de fala já lançada não foi entregue', erroRecibo);
+  }
+}
+
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
 export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Promise<DesfechoTarefa> {
   const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
@@ -181,11 +192,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
       } catch (erroLimpeza) {
         console.error('[voz] fala já lançada não saiu da fila', requestId, erroLimpeza);
       }
-      try {
-        await notificacoes.notificarFalha('ja_lancada');
-      } catch (erroRecibo) {
-        console.error('[voz] recibo de fala já lançada não foi entregue', erroRecibo);
-      }
+      await avisarFalaJaLancada(notificacoes);
     } else {
       try {
         if (contexto.transcricao) {
@@ -386,6 +393,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     });
     if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
     if (resultado.status === 'undone') return true;
+    if (resultado.replayed) { await avisarFalaJaLancada(notificacoes); return true; }
     try {
       await notificacoes.notificarSucesso({
         titulo: `${descricao} · ${formatarBRL(valor)}`,
@@ -422,6 +430,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   });
   if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
   if (resultado.status === 'undone') return true;
+  if (resultado.replayed) { await avisarFalaJaLancada(notificacoes); return true; }
 
   try {
     await notificacoes.notificarSucesso({
@@ -498,6 +507,7 @@ async function lancarNoCredito(args: {
     }, texto);
     if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
     if (resultado.status === 'undone') return true;
+    if (resultado.replayed) { await avisarFalaJaLancada(notificacoes); return true; }
     const { checarLimiteCartao } = await import('./creditLimitAlert');
     checarLimiteCartao(cartao.id).catch(() => {});
     try {
@@ -529,6 +539,7 @@ async function lancarNoCredito(args: {
   }, texto);
   if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
   if (resultado.status === 'undone') return true;
+  if (resultado.replayed) { await avisarFalaJaLancada(notificacoes); return true; }
   const { checarLimiteCartao } = await import('./creditLimitAlert');
   checarLimiteCartao(cartao.id).catch(() => {});
   try {

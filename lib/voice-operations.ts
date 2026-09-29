@@ -40,6 +40,9 @@ export type ResultadoOperacaoVoz = {
   operationId: string;
   kind: PayloadOperacaoVoz['kind'];
   ids: string[];
+  /** Nada foi gravado agora: a fala já estava lançada (replay do servidor, ou
+      22023 na revisão de fala guardada). App e widget mostram o recibo "Fala
+      já lançada", nunca o de lançamento novo (regra 13). */
   replayed: boolean;
 };
 
@@ -114,9 +117,21 @@ export async function registrarOperacaoVoz(
   transcricao?: string,
   falaGuardada?: string
 ): Promise<ResultadoOperacaoVoz> {
-  const resultado = await gravarOperacaoVoz(falaGuardada ?? requestId, source, payload, transcricao);
+  let resultado: ResultadoOperacaoVoz;
+  try {
+    resultado = await gravarOperacaoVoz(falaGuardada ?? requestId, source, payload, transcricao);
+  } catch (erro) {
+    /* Achado A1 do Lynx (29/09/2026): a fala revisada já tinha sido lançada
+       por uma revisão anterior, voltou depois de reabrir o app, e esta
+       revisão mudou o conteúdo. O 22023 é a prova de que o lançamento
+       existe: devolve o mesmo desfecho do replay (nada gravado agora), a
+       fala sai da fila logo abaixo, e a tela mostra "Fala já lançada" em vez
+       de "Erro ao salvar", que convidaria a lançar à mão. */
+    if (!falaGuardada || !ehOperacaoJaRegistrada(erro)) throw erro;
+    resultado = { status: 'committed', operationId: falaGuardada, kind: payload.kind, ids: [], replayed: true };
+  }
   // As telas montadas (a aba Lançamentos) recarregam agora, não só no foco.
-  if (resultado.status === 'committed' || resultado.status === 'pending') lancamentoGravado();
+  if ((resultado.status === 'committed' && !resultado.replayed) || resultado.status === 'pending') lancamentoGravado();
   if (falaGuardada) {
     try {
       const { concluirVozRevisada } = await import('./widget-voz-pendentes');

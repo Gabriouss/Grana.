@@ -38,6 +38,7 @@ import type { TxType } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 import { randomUUID } from 'expo-crypto';
 import { registrarOperacaoVoz } from '@/lib/voice-operations';
+import { mensagemDeErroVoz } from '@/lib/voz';
 import { useWallet } from '@/lib/wallet-context';
 import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 
@@ -236,6 +237,7 @@ export default function PasteReceiptModal({
         operacaoVoz.current ??= randomUUID();
         const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', { kind: 'transaction', ...input }, undefined, falaGuardada);
         if (resultado.status === 'pending') Alert.alert('Salvo no aparelho', 'O lançamento será sincronizado ao abrir o Grana. com conexão.');
+        else if (resultado.replayed) { const m = mensagemDeErroVoz('ja_lancada'); Alert.alert(m.titulo, m.texto); }
       } else {
         /* Comprovante colado SEM voz não tinha fila offline (item 3 da
            retomada de 25/09/2026): sem rede, `addTransaction` rejeitava e o
