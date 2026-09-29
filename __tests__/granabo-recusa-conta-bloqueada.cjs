@@ -20,8 +20,14 @@
  *    asserção em QUAIS chamadas aconteceram, porque o custo é o ponto;
  * 3. falha ao CONSULTAR o direito de acesso recusa, não libera: portão que
  *    abre quando o banco tosse não é portão;
- * 4. com direito de acesso, o pedido passa do portão normalmente;
+ * 4. com direito de acesso, o pedido passa do portão normalmente, carrega a
+ *    memória do usuário de verdade (as três leituras de `carregarMemoria`) e
+ *    ela chega ao prompt; a conta bloqueada, ao contrário, nem lê a memória;
  * 5. a porta de trás do banco continua fechada, com a leitura livre.
+ *
+ * O dublê do cliente grava cada consulta encadeada. Até 29/09/2026 ele não
+ * tinha `.neq`: `carregarMemoria` caía no `catch`, voltava vazia, e o caso 4
+ * passava com 500 porque só conferia "não é 403".
  */
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -44,27 +50,59 @@ const codigo = ts.transpileModule(fs.readFileSync(FONTE, 'utf8'), {
 
 /* Carrega o módulo e devolve o handler que ele registrou em `Deno.serve`,
    junto com o diário do que foi chamado. */
+/* Memória que o banco "devolve" para o usuário do teste. Cada item tem um
+   marcador próprio para conferir, no prompt, que ele chegou lá. */
+const MEMORIA = {
+  vocabulario: [{ chave: 'categoria:rango', valor: 'Alimentacao' }],
+  fatos: [
+    { chave: 'salario', valor: 'recebe no dia 5' },
+    { chave: 'preferencia:formato', valor: 'respostas curtas' },
+  ],
+  exemplos: [{ chave: 'quanto gastei com rango?', valor: JSON.stringify({ versao: 2, validacao: 'execucao_verificada', plano: [] }) }],
+};
+
+/* O que a leitura encadeada devolve, decidido pelos filtros que ela recebeu. */
+function dadosDaConsulta(consulta) {
+  if (consulta.tabela !== 'assistant_memory') return [];
+  const tipo = consulta.ops.find(([op, args]) => op === 'eq' && args[0] === 'tipo')?.[1][1];
+  if (tipo === 'vocabulario') return MEMORIA.vocabulario;
+  if (tipo === 'fato') return MEMORIA.fatos;
+  return [];
+}
+
 function carregar({ acesso, acessoError = null }) {
-  const diario = { cota: 0, modelo: 0, rpcs: [] };
+  const diario = { cota: 0, modelo: 0, rpcs: [], consultas: [], erros: [], prompts: [] };
   let handler = null;
 
   const clienteFake = {
     auth: { getUser: async () => ({ data: { user: { id: 'usuario-1' } }, error: null }) },
-    rpc: async (nome) => {
+    rpc: async (nome, args) => {
       diario.rpcs.push(nome);
       if (nome === 'tem_direito_acesso') return { data: acesso, error: acessoError };
+      if (nome === 'buscar_exemplos_similares') return { data: MEMORIA.exemplos, error: null };
       return { data: null, error: null };
     },
-    from: () => {
-      const q = {
-        select: () => q, eq: () => q, order: () => q, limit: () => q, gte: () => q,
-        lte: () => q, not: () => q, insert: async () => ({ error: null }),
-        maybeSingle: async () => ({ data: null, error: null }),
-        single: async () => ({ data: null, error: null }),
-        then: (resolver) => resolver({ data: [], error: null }),
-      };
+    from: (tabela) => {
+      const consulta = { tabela, ops: [] };
+      diario.consultas.push(consulta);
+      const q = {};
+      for (const op of ['select', 'eq', 'neq', 'order', 'limit', 'gte', 'lte', 'not', 'delete']) {
+        q[op] = (...args) => { consulta.ops.push([op, args]); return q; };
+      }
+      q.insert = async (...args) => { consulta.ops.push(['insert', args]); return { error: null }; };
+      q.maybeSingle = async () => ({ data: null, error: null });
+      q.single = async () => ({ data: null, error: null });
+      q.then = (resolver, rejeitar) => Promise.resolve({ data: dadosDaConsulta(consulta), error: null }).then(resolver, rejeitar);
       return q;
     },
+  };
+
+  /* O console do módulo é gravado, para o teste afirmar que NENHUM erro foi
+     logado no caminho feliz (o `catch` de `carregarMemoria` só loga). */
+  const consoleFake = {
+    ...console,
+    error: (...args) => { diario.erros.push(args.map(String).join(' ')); },
+    log: () => {},
   };
 
   const requireStub = (nome) => {
@@ -74,6 +112,19 @@ function carregar({ acesso, acessoError = null }) {
       return {
         consumirCotaIA: async () => { diario.cota++; return { permitido: true }; },
         mensagemCotaEsgotada: () => 'cota esgotada',
+      };
+    }
+    if (nome.includes('assistant-learning')) {
+      /* A conversa com o modelo tem suíte própria (test:assistente-*). Aqui
+         ela só grava o prompt que recebeu, que é onde a memória tem de chegar. */
+      return {
+        conduzirConversa: async ({ messages }) => {
+          diario.prompts.push(messages[0].content);
+          return { resposta: 'resposta do teste', registros: [], recuperado: false };
+        },
+        respostaFinalSegura: (resposta) => resposta,
+        exemploElegivel: () => false,
+        feedbackExplicito: () => null,
       };
     }
     if (nome.includes('seguranca')) {
@@ -99,7 +150,7 @@ function carregar({ acesso, acessoError = null }) {
     module,
     exports: module.exports,
     require: requireStub,
-    console,
+    console: consoleFake,
     Date, JSON, Math, String, Number, Object, Array, Set, Map, RegExp, Error, Promise,
     Response, Request, Headers, URL, TextEncoder, TextDecoder,
     setTimeout, clearTimeout, AbortController,
@@ -140,6 +191,10 @@ function pedido() {
     conferir('a cota de IA NAO e consumida', diario.cota === 0, diario.cota);
     conferir('o modelo nao chega a ser chamado', diario.modelo === 0, diario.modelo);
     conferir('o direito de acesso foi de fato consultado', diario.rpcs.includes('tem_direito_acesso'), diario.rpcs);
+    conferir('conta bloqueada nem le a memoria do assistente',
+      !diario.consultas.some((c) => c.tabela === 'assistant_memory') && !diario.rpcs.includes('buscar_exemplos_similares'),
+      diario.consultas.map((c) => c.tabela));
+    conferir('e a recusa nao loga erro', diario.erros.length === 0, diario.erros);
   }
 
   /* -- 3. Nao deu para confirmar -> recusa ------------------------------ */
@@ -148,14 +203,36 @@ function pedido() {
     const res = await handler(pedido());
     conferir('falha ao consultar o acesso recusa, e nao libera', res.status === 503, res.status);
     conferir('e tambem nao gasta cota', diario.cota === 0, diario.cota);
+    conferir('e deixa recibo no log', diario.erros.some((e) => e.includes('direito de acesso')), diario.erros);
   }
 
   /* -- 4. Conta com acesso passa do portao ------------------------------ */
   {
     const { handler, diario } = carregar({ acesso: true });
     const res = await handler(pedido());
+    const corpo = await res.json();
     conferir('conta com acesso nao e barrada pelo portao', res.status !== 403, res.status);
     conferir('e o fluxo segue ate consumir a cota', diario.cota === 1, diario.cota);
+    conferir('e termina em 200 com a resposta da conversa', res.status === 200 && corpo.resposta === 'resposta do teste', { status: res.status, corpo });
+    conferir('sem nenhum erro no log (memoria e resposta)', diario.erros.length === 0, diario.erros);
+
+    const memoria = diario.consultas.filter((c) => c.tabela === 'assistant_memory');
+    const temOp = (c, op, a, b) => c.ops.some(([o, args]) => o === op && args[0] === a && (b === undefined || args[1] === b));
+    conferir('le o vocabulario do proprio usuario',
+      memoria.some((c) => temOp(c, 'eq', 'user_id', 'usuario-1') && temOp(c, 'eq', 'tipo', 'vocabulario') && temOp(c, 'limit', 20)),
+      memoria.map((c) => c.ops));
+    conferir('le os fatos sem o estado da conversa (.neq chave __conversa)',
+      memoria.some((c) => temOp(c, 'eq', 'user_id', 'usuario-1') && temOp(c, 'eq', 'tipo', 'fato') && temOp(c, 'neq', 'chave', '__conversa') && temOp(c, 'limit', 10)),
+      memoria.map((c) => c.ops));
+    conferir('busca os exemplos parecidos', diario.rpcs.includes('buscar_exemplos_similares'), diario.rpcs);
+
+    const prompt = diario.prompts[0] ?? '';
+    conferir('a conversa recebe um prompt so', diario.prompts.length === 1, diario.prompts.length);
+    conferir('o vocabulario carregado chega ao prompt', prompt.includes('"rango" = Alimentacao'), prompt.slice(0, 400));
+    conferir('o fato carregado chega ao prompt', prompt.includes('chave=salario: recebe no dia 5'));
+    conferir('a preferencia carregada chega ao prompt', prompt.includes('chave=formato: respostas curtas'));
+    conferir('o exemplo verificado chega ao prompt', prompt.includes('quanto gastei com rango?'));
+    conferir('o modelo real continua sem ser chamado', diario.modelo === 0, diario.modelo);
   }
 
   /* -- 5. A porta de tras do banco -------------------------------------- */
