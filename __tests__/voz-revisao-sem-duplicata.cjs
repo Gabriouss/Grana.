@@ -63,6 +63,8 @@ const fsDuble = {
 /* O banco: uma operação por request_id (idempotência do servidor) e as
    linhas de lançamento que cada operação nova cria. */
 const operacoes = new Map();
+/** Operações desfeitas pelo "Desfazer" (tombstone `undone` do servidor). */
+const desfeitas = new Set();
 const linhas = [];
 let modoBanco = 'online';
 /** Toda chamada que chegou ao banco, para afirmar QUAIS aconteceram (regra 9). */
@@ -76,7 +78,7 @@ function rpc(nome, args) {
     const hash = JSON.stringify([args.p_kind, args.p_payload]);
     if (!operacoes.has(args.p_request_id)) {
       const id = 'tx-' + args.p_request_id;
-      linhas.push({ id, request_id: args.p_request_id, source: args.p_source, ...args.p_payload });
+      linhas.push({ id, request_id: args.p_request_id, source: args.p_source, kind: args.p_kind, ...args.p_payload });
       operacoes.set(args.p_request_id, { ids: [id], hash });
       return { data: { status: 'committed', operation_id: args.p_request_id, ids: [id], replayed: false }, error: null };
     }
@@ -85,13 +87,18 @@ function rpc(nome, args) {
     if (operacoes.get(args.p_request_id).hash !== hash) {
       return { data: null, error: { code: '22023', message: 'request_id ja pertence a outra operacao' } };
     }
+    if (desfeitas.has(args.p_request_id)) return { data: { status: 'undone', operation_id: args.p_request_id, ids: [], replayed: true }, error: null };
     return { data: { status: 'committed', operation_id: args.p_request_id, ids: operacoes.get(args.p_request_id).ids, replayed: true }, error: null };
   };
   return { abortSignal: () => executar() };
 }
 
 const transcricoes = {};
+/** Um cartão na carteira da fala: crédito à vista e parcelado gravam nele. */
+const cartoes = [{ id: 'c6', name: 'C6', bank: 'c6', wallet_id: 'pessoal' }];
 const cache = new Map();
+/** O que os módulos escreveram com `console.warn` (regra 9: erro virando desfecho deixa rastro). */
+const avisosNoLog = [];
 function carregar(arquivo) {
   arquivo = path.normalize(arquivo);
   if (cache.has(arquivo)) return cache.get(arquivo);
@@ -120,7 +127,7 @@ function carregar(arquivo) {
       },
       mensagemDeErroVoz: (codigo) => ({ titulo: 'Erro ' + codigo, texto: 'Texto ' + codigo }),
     },
-    './data': { fetchCategories: async () => [], fetchCreditCards: async () => [] },
+    './data': { fetchCategories: async () => [], fetchCreditCards: async () => cartoes },
     './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './supabase': { supabase: { rpc, auth: { getUser: async () => ({ data: { user: null } }) } } },
@@ -132,7 +139,7 @@ function carregar(arquivo) {
   }).outputText;
   vm.runInNewContext(js, {
     exports,
-    console: { ...console, log() {}, warn: (...a) => process.env.DEBUG && console.warn(...a), error: (...a) => process.env.DEBUG && console.error(...a) },
+    console: { ...console, log() {}, warn: (...a) => { avisosNoLog.push(a.map(String).join(' ')); if (process.env.DEBUG) console.warn(...a); }, error: (...a) => process.env.DEBUG && console.error(...a) },
     Promise, JSON, Object, Array, String, Number, Error, TypeError, RegExp, Set, Map, Math, Date, setTimeout, clearTimeout, AbortController,
     require(id) {
       if (id in dubles) return dubles[id];
@@ -430,6 +437,7 @@ async function tentarDeNovo(requestId) {
     const r = await registrarOperacaoVoz(`rev-a1-bis-${source}`, 'app', { ...payloadDaRevisao, amount: 130 }, undefined, requestId);
     assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => [c.requestId, c.amount]), [[requestId, 130]], `${source}: uma chamada só, com o id da fala`);
     assert.equal(r.status, 'committed', `${source}: 22023 na revisão não vira erro`);
+    assert.ok(avisosNoLog.some((l) => l.includes('22023 na revisão') && l.includes(requestId) && l.endsWith(' 22023')), `${source}: a conversão do 22023 deixou log com a fala e o código (B2)`);
     assert.equal(r.replayed, true, `${source}: o desfecho é "já lançada" (replayed), que as telas mostram como "Fala já lançada"`);
     assert.equal(r.ids.length, 0, `${source}: nenhum id novo`);
     assert.equal(linhas.length - antes, 1, `${source}: nenhuma linha nova`);
@@ -446,7 +454,10 @@ async function tentarDeNovo(requestId) {
   /* Controle: 22023 fora de uma revisão de fala guardada continua erro. */
   await assert.rejects(registrarOperacaoVoz('req-a1-app', 'app', { ...payloadDaRevisao, amount: 140 }), (e) => e.code === '22023');
   for (const tela of ['components/PasteReceiptModal.tsx', 'app/(app)/contas.tsx', 'app/(app)/credito.tsx']) {
-    assert.match(ler(tela), /if \(resultado\.replayed\) \{ const m = mensagemDeErroVoz\('ja_lancada'\); Alert\.alert\(m\.titulo, m\.texto\); \}/, `${tela}: mostra "Fala já lançada"`);
+    const codigo = ler(tela);
+    assert.match(codigo, /const desfecho = desfechoDaOperacaoVoz\(resultado\);/, `${tela}: a decisão vem do núcleo`);
+    assert.match(codigo, /if \(desfecho === 'ja_lancada'\) \{ const m = mensagemDeErroVoz\('ja_lancada'\); Alert\.alert\(m\.titulo, m\.texto\); \}/, `${tela}: mostra "Fala já lançada"`);
+    assert.doesNotMatch(codigo, /resultado\.replayed/, `${tela}: não decide por conta própria (B1)`);
   }
   ok('A1: 22023 na revisão de fala guardada vira "Fala já lançada", fala sai da fila, nas duas entradas e nas três telas');
 
@@ -455,32 +466,102 @@ async function tentarDeNovo(requestId) {
      "Tentar de novo" manda o mesmo conteúdo com o mesmo id: o servidor
      devolve replayed=true, e o recibo antes dizia "salvo" como se fosse
      lançamento novo. */
-  const a2 = {};
-  for (const source of ['app', 'widget']) {
-    const requestId = `req-a2-${source}`;
+  /* B3 (Lynx, 29/09/2026): os quatro pontos de gravação da tarefa, e não só
+     a transação comum. */
+  const FALAS_POR_TIPO = {
+    transacao: { fala: FALA, kind: 'transaction', cartao: undefined },
+    conta: { fala: 'Conta de luz R$ 120 vence dia 10', kind: 'bill', cartao: undefined },
+    credito: { fala: 'Mercado R$ 120 no crédito', kind: 'transaction', cartao: 'c6' },
+    parcelado: { fala: 'Mercado R$ 120 em 3x no crédito', kind: 'installment', cartao: 'c6' },
+  };
+  /** A fala da fila roda uma vez (lançamento novo) e volta à fila, como se a
+      limpeza tivesse falhado. Devolve o recibo publicado na primeira vez. */
+  async function falaGravadaQueVolta(requestId, source, fala) {
     const colocarNaFila = async (n) => {
       const origem = `file:///cache/${requestId}-${n}.m4a`;
       disco.set(origem, 'AUDIO');
       await fila.adicionarVozPendente({ caminho: origem, requestId, userId: 'u-1', source });
     };
-    transcricoes[`file:///files/voz-pendente/${requestId}.m4a`] = { ok: true, transcript: FALA };
-    const antes = linhas.length;
-    const chamadasAntes = chamadasRpc.length;
+    transcricoes[`file:///files/voz-pendente/${requestId}.m4a`] = { ok: true, transcript: fala };
     await colocarNaFila(1);
     await tarefa.tentarVozesPendentes();
-    assert.equal((await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId)?.tipo, 'sucesso', `${source}: a primeira vez é lançamento novo`);
+    const primeiro = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
     await colocarNaFila(2);
-    await tentarDeNovo(requestId);
-    assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => c.requestId), [requestId, requestId], `${source}: duas chamadas, o mesmo id`);
-    assert.equal(linhas.length - antes, 1, `${source}: uma linha só`);
-    const recibo = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
-    assert.equal(recibo?.tipo, 'aviso', `${source}: o replay não publica recibo de sucesso`);
-    assert.equal(recibo.titulo, 'Erro ja_lancada', `${source}: o replay diz "Fala já lançada"`);
-    assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila`);
-    a2[source] = { tipo: recibo.tipo, titulo: recibo.titulo };
+    return primeiro;
   }
-  assert.deepEqual(a2.app, a2.widget, 'A2: mesmo recibo no app e no widget (regra 13)');
-  ok('A2: replay do "Tentar de novo" mostra "Fala já lançada", nas duas entradas');
+  const a2 = {};
+  for (const [tipo, { fala, kind, cartao }] of Object.entries(FALAS_POR_TIPO)) {
+    for (const source of ['app', 'widget']) {
+      const requestId = `req-a2-${tipo}-${source}`;
+      const antes = linhas.length;
+      const chamadasAntes = chamadasRpc.length;
+      const primeiro = await falaGravadaQueVolta(requestId, source, fala);
+      assert.equal(primeiro?.tipo, 'sucesso', `${tipo}/${source}: a primeira vez é lançamento novo`);
+      assert.equal(linhas.length - antes, 1, `${tipo}/${source}: a primeira vez gravou`);
+      assert.equal(linhas.at(-1).kind, kind, `${tipo}/${source}: passou pelo ponto de gravação de ${kind}`);
+      assert.equal(linhas.at(-1).card_id, cartao, `${tipo}/${source}: gravou no cartão certo`);
+      await tentarDeNovo(requestId);
+      assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => c.requestId), [requestId, requestId], `${tipo}/${source}: duas chamadas, o mesmo id`);
+      assert.equal(linhas.length - antes, 1, `${tipo}/${source}: uma linha só`);
+      const recibo = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
+      assert.equal(recibo?.tipo, 'aviso', `${tipo}/${source}: o replay não publica recibo de sucesso`);
+      assert.equal(recibo.titulo, 'Erro ja_lancada', `${tipo}/${source}: o replay diz "Fala já lançada"`);
+      assert.deepEqual(await naFila(), [], `${tipo}/${source}: a fala saiu da fila`);
+      a2[`${tipo}/${source}`] = { tipo: recibo.tipo, titulo: recibo.titulo };
+    }
+    assert.deepEqual(a2[`${tipo}/app`], a2[`${tipo}/widget`], `A2 ${tipo}: mesmo recibo no app e no widget (regra 13)`);
+  }
+  ok('A2: replay do "Tentar de novo" mostra "Fala já lançada" em transação, conta, crédito à vista e parcelado, nas duas entradas');
+
+  /* ── 12. B1 do Lynx (29/09/2026): operação DESFEITA não é "já lançada" ──
+     Quem tocou em "Desfazer" e depois reenvia a mesma fala recebe do
+     servidor status 'undone' com replayed=true. O lançamento não existe mais:
+     a tarefa sempre ficou em silêncio, e as telas diziam "Fala já lançada".
+     A decisão agora é uma só, `desfechoDaOperacaoVoz`. */
+  const { desfechoDaOperacaoVoz } = carregar('lib/voice-operations.ts');
+  assert.equal(desfechoDaOperacaoVoz({ status: 'pending', replayed: false }), 'pendente');
+  assert.equal(desfechoDaOperacaoVoz({ status: 'undone', replayed: true }), 'desfeita');
+  assert.equal(desfechoDaOperacaoVoz({ status: 'committed', replayed: true }), 'ja_lancada');
+  assert.equal(desfechoDaOperacaoVoz({ status: 'committed', replayed: false }), 'nova');
+  const b1 = {};
+  for (const source of ['app', 'widget']) {
+    /* Tarefa: a fala volta e é reenviada depois do "Desfazer". */
+    {
+      const requestId = `req-b1-tarefa-${source}`;
+      const antes = linhas.length;
+      await falaGravadaQueVolta(requestId, source, FALA);
+      desfeitas.add(requestId);
+      await recibos.removerReciboDaFila(requestId);
+      const chamadasAntes = chamadasRpc.length;
+      await tentarDeNovo(requestId);
+      assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => c.requestId), [requestId], `${source}: a tarefa chamou o banco uma vez`);
+      assert.equal(linhas.length - antes, 1, `${source}: nada gravado de novo`);
+      assert.equal((await recibos.listarRecibosDaFila('u-1')).some((x) => x.id === requestId), false, `${source}: a tarefa fica em silêncio, sem "Fala já lançada"`);
+      assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila`);
+      b1[`tarefa/${source}`] = 'desfeita';
+    }
+    /* Revisão: a fala revisada foi lançada, desfeita, e volta a ser salva. */
+    {
+      const requestId = `req-b1-revisao-${source}`;
+      await falaEmRevisao(requestId, source);
+      escritaFalha.add(CHAVE_FILA);
+      await registrarOperacaoVoz(`rev-b1-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+      escritaFalha.delete(CHAVE_FILA);
+      desfeitas.add(requestId);
+      abrirApp();
+      const antes = linhas.length;
+      const r = await registrarOperacaoVoz(`rev-b1-bis-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+      assert.equal(r.status, 'undone');
+      assert.equal(linhas.length - antes, 0, `${source}: nada gravado de novo`);
+      assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila, respeitando o "Desfazer"`);
+      b1[`revisao/${source}`] = carregar('lib/voice-operations.ts').desfechoDaOperacaoVoz(r);
+    }
+  }
+  assert.deepEqual(new Set(Object.values(b1)), new Set(['desfeita']), 'B1: tarefa e revisão, app e widget, a mesma decisão (regra 13)');
+  /* Contas é a única tela que dá recibo de sucesso sem ser Alert: no
+     'desfeita' ela não pode dizer "Conta salva". */
+  assert.match(ler('app/(app)/contas.tsx'), /else if \(desfecho !== 'desfeita'\) triggerToast\(/, 'Contas: nada de "Conta salva" para operação desfeita');
+  ok('B1: operação desfeita não vira "Fala já lançada" nem "salva", na tarefa e na revisão, nas duas entradas');
 
   console.log(`\n${checagens} checagens de revisão sem duplicata passaram — 0 falhas`);
 })().catch((erro) => {

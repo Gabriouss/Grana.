@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { randomUUID } from 'expo-crypto';
-import { registrarOperacaoVoz } from '@/lib/voice-operations';
+import { desfechoDaOperacaoVoz, registrarOperacaoVoz } from '@/lib/voice-operations';
 import { mensagemDeErroVoz } from '@/lib/voz';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
@@ -1069,8 +1069,9 @@ export default function CreditoScreen() {
           totalInst > 1 ? { ...base, kind: 'installment', installments: totalInst }
             : { ...base, kind: 'transaction', recurring: valores.recurring },
           undefined, falaGuardadaDaRevisao.current);
-        if (resultado.status === 'pending') Alert.alert('Salvo no aparelho', 'A compra será sincronizada quando houver conexão.');
-        else if (resultado.replayed) { const m = mensagemDeErroVoz('ja_lancada'); Alert.alert(m.titulo, m.texto); }
+        const desfecho = desfechoDaOperacaoVoz(resultado);
+        if (desfecho === 'pendente') Alert.alert('Salvo no aparelho', 'A compra será sincronizada quando houver conexão.');
+        else if (desfecho === 'ja_lancada') { const m = mensagemDeErroVoz('ja_lancada'); Alert.alert(m.titulo, m.texto); }
         operacaoVoz.current = null;
         falaGuardadaDaRevisao.current = undefined;
         if (resultado.status !== 'pending') await loadData();

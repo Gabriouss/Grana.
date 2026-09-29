@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { randomUUID } from 'expo-crypto';
-import { registrarOperacaoVoz } from '@/lib/voice-operations';
+import { desfechoDaOperacaoVoz, registrarOperacaoVoz } from '@/lib/voice-operations';
 import { mensagemDeErroVoz } from '@/lib/voz';
 import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
@@ -273,8 +273,9 @@ export default function ContasScreen() {
           }, undefined, falaGuardadaDaRevisao.current);
           operacaoVoz.current = null;
           falaGuardadaDaRevisao.current = undefined;
-          if (resultado.replayed) { const m = mensagemDeErroVoz('ja_lancada'); Alert.alert(m.titulo, m.texto); }
-          else triggerToast(resultado.status === 'pending' ? 'Conta salva no aparelho; sincronização pendente' : 'Conta salva');
+          const desfecho = desfechoDaOperacaoVoz(resultado);
+          if (desfecho === 'ja_lancada') { const m = mensagemDeErroVoz('ja_lancada'); Alert.alert(m.titulo, m.texto); }
+          else if (desfecho !== 'desfeita') triggerToast(desfecho === 'pendente' ? 'Conta salva no aparelho; sincronização pendente' : 'Conta salva');
         } else {
         const entrada = {
           description: v.description.trim() || 'Sem descrição',

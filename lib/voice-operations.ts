@@ -47,6 +47,26 @@ export type ResultadoOperacaoVoz = {
 };
 
 /**
+ * O que a pessoa fica sabendo depois de uma gravação por voz. Uma decisão só,
+ * lida pelas três telas de revisão e pela tarefa da voz (regra 13; achado B1
+ * do Lynx, 29/09/2026, em que as telas olhavam só `replayed`):
+ *   - 'pendente': guardado no aparelho, sobe quando houver rede;
+ *   - 'desfeita': o servidor já tinha esta operação e ela foi desfeita pelo
+ *     "Desfazer". Nada existe e nada foi gravado: silêncio, como a tarefa
+ *     sempre fez. Dizer "Fala já lançada" aqui seria falso;
+ *   - 'ja_lancada': já existia (replay, ou 22023 na revisão): recibo "Fala já
+ *     lançada", nunca o de lançamento novo;
+ *   - 'nova': lançamento novo.
+ */
+export type DesfechoOperacaoVoz = 'nova' | 'pendente' | 'desfeita' | 'ja_lancada';
+
+export function desfechoDaOperacaoVoz(resultado: Pick<ResultadoOperacaoVoz, 'status' | 'replayed'>): DesfechoOperacaoVoz {
+  if (resultado.status === 'pending') return 'pendente';
+  if (resultado.status === 'undone') return 'desfeita';
+  return resultado.replayed ? 'ja_lancada' : 'nova';
+}
+
+/**
  * Recusa do servidor para crédito sem cartão (contrato do Harbor, 23/09/2026:
  * `registrar_operacao_voz` levanta 23514 com hint `cartao_obrigatorio`).
  * O cliente já não manda crédito sem cartão; isto é a rede de proteção. A
@@ -128,7 +148,12 @@ export async function registrarOperacaoVoz(
        fala sai da fila logo abaixo, e a tela mostra "Fala já lançada" em vez
        de "Erro ao salvar", que convidaria a lançar à mão. */
     if (!falaGuardada || !ehOperacaoJaRegistrada(erro)) throw erro;
-    resultado = { status: 'committed', operationId: falaGuardada, kind: payload.kind, ids: [], replayed: true };
+    /* Erro virando desfecho benigno deixa rastro (regra 9, achado B2). O
+       22023 não diz se a operação existente está ativa ou desfeita: revisar
+       com outro conteúdo uma fala já DESFEITA também cai aqui (limite
+       conhecido, depende do servidor dizer o estado). */
+    console.warn('[voz] 22023 na revisão: fala já lançada', falaGuardada, (erro as { code?: unknown })?.code);
+    resultado ={ status: 'committed', operationId: falaGuardada, kind: payload.kind, ids: [], replayed: true };
   }
   // As telas montadas (a aba Lançamentos) recarregam agora, não só no foco.
   if ((resultado.status === 'committed' && !resultado.replayed) || resultado.status === 'pending') lancamentoGravado();

@@ -70,7 +70,12 @@ async function ehFalaJaLancada(erro: unknown): Promise<boolean> {
 
 /** Nada foi gravado agora: a fala já estava lançada (22023 aqui no `catch`,
     ou replay do servidor em `processar`, achado A2 do Lynx de 29/09/2026).
-    O recibo diz isso, e nunca o de lançamento novo. */
+    O recibo diz isso, e nunca o de lançamento novo. A ordem das checagens em
+    `processar` e `lancarNoCredito` (pending, undone, replayed, novo) é a de
+    `desfechoDaOperacaoVoz`, lida pelas telas de revisão: a mesma decisão nas
+    duas entradas, conferida em __tests__/voz-revisao-sem-duplicata.cjs.
+    Não chama a função daqui porque os testes da tarefa trocam o módulo
+    `./voice-operations` inteiro por dublês. */
 async function avisarFalaJaLancada(notificacoes: ReciboVoz): Promise<void> {
   try {
     await notificacoes.notificarFalha('ja_lancada');
