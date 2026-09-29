@@ -233,14 +233,24 @@ const MESES: Record<string, number> = {
  * Data de um texto colado (comprovante de Pix, transferência, e-mail de
  * compra). Decisão do autor de 27/09/2026: o Colar comprovante grava na data
  * do texto ("26/09/2026 às 18:42" grava em 26/09), e hoje só quando o texto
- * não trouxer data. A mesma leitura e as mesmas recusas da foto da nota,
- * mais o mês por extenso, comum em comprovante de banco ("26 SET 2026",
+ * não trouxer data. As mesmas recusas da foto da nota, com dia/mês de um ou
+ * dois dígitos, ISO e mês por extenso, comum em comprovante de banco ("26 SET 2026",
  * "26 de setembro de 2026").
  */
 export function dataDoTexto(texto: string, hojeISO: string): { data: string | null; recusada: boolean } {
   const linhas = texto.split(/\r?\n/).map((l) => l.toUpperCase());
-  const numerica = dataDaNota(linhas, hojeISO);
-  if (numerica.data || numerica.recusada) return numerica;
+  /* O parser da foto continua restrito ao formato do cupom. No texto colado,
+     a borda antes da data evita ler o fim de um ano ISO como DD/MM/AA. */
+  const DATA_TEXTO = /(?:^|[^\d])(?:(\d{4})-(\d{1,2})-(\d{1,2})|(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2}))(?!\d)/;
+  const comEmissao = linhas.find((l) => /EMISS/.test(l) && DATA_TEXTO.test(l));
+  const linha = comEmissao ?? linhas.find((l) => DATA_TEXTO.test(l));
+  if (linha) {
+    const m = linha.match(DATA_TEXTO)!;
+    const ano = m[1] ? Number(m[1]) : m[6].length === 2 ? 2000 + Number(m[6]) : Number(m[6]);
+    const mes = Number(m[2] ?? m[5]);
+    const dia = Number(m[3] ?? m[4]);
+    return dentroDoPrazo(isoValido(dia, mes, ano), hojeISO);
+  }
   const m = texto.match(/\b(\d{1,2})\s+(?:de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\.?\s+(?:de\s+)?(\d{4})\b/i);
   if (!m) return { data: null, recusada: false };
   return dentroDoPrazo(isoValido(Number(m[1]), MESES[m[2].toLowerCase()], Number(m[3])), hojeISO);

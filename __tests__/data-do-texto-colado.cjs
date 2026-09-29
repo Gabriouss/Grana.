@@ -41,6 +41,9 @@ for (const [texto, esperado] of [
   ['Pix enviado\nR$ 45,00\n26/09/2026 às 18:42\nPara Fulano', '2026-09-26'],
   ['Comprovante de transferência 26/09/2026 - 18:42:03 valor 45,00', '2026-09-26'],
   ['Pagamento de R$ 30,00 em 20.09.26', '2026-09-20'],
+  ['Pix enviado em 3/9/2026 às 18:42', '2026-09-03'],
+  ['Transferência em 03/9/26', '2026-09-03'],
+  ['Compra aprovada em 2026-09-03T18:42:00', '2026-09-03'],
   ['Transferência enviada\n26 SET 2026 - 18:42:03\nR$ 45,00', '2026-09-26'],
   ['Você pagou R$ 12,90 em 3 de setembro de 2026', '2026-09-03'],
   ['Compra aprovada 15 ago. 2026 Loja X R$ 99,00', '2026-08-15'],
@@ -55,7 +58,12 @@ assert.deepEqual({ ...dataDoTexto('mercado 120 no pix', HOJE) }, { data: null, r
 ok('sem data no texto, nenhuma data lida (grava hoje)');
 
 /* ── 3. Recusadas: futura, impossível, mais de um ano ───────────────────── */
-for (const texto of ['Pix 45,00 em 28/09/2026', 'Pix 45,00 em 31/02/2026', 'Pix 45,00 em 10/09/2024', 'Pix 45,00 em 30 set 2026']) {
+for (const texto of [
+  'Pix 45,00 em 28/09/2026', 'Pix 45,00 em 31/02/2026', 'Pix 45,00 em 10/09/2024',
+  'Pix 45,00 em 28/9/2026', 'Pix 45,00 em 31/2/2026', 'Pix 45,00 em 10/9/2024',
+  'Pix 45,00 em 2026-09-28', 'Pix 45,00 em 2026-02-31', 'Pix 45,00 em 2024-09-10',
+  'Pix 45,00 em 30 set 2026',
+]) {
   assert.deepEqual({ ...dataDoTexto(texto, HOJE) }, { data: null, recusada: true }, texto);
 }
 ok('data futura, impossível ou de mais de um ano é recusada (vai com hoje, e a tela diz)');
@@ -65,6 +73,7 @@ ok('data futura, impossível ou de mais de um ano é recusada (vai com hoje, e a
   const d = extrairDetalhesDaNota('MERCADO BOM PRECO\nCNPJ 00.000.000/0001-00\nEMISSAO 25/09/2026 10:11\nTOTAL R$ 30,00', HOJE);
   assert.equal(d.data, '2026-09-25');
   assert.equal(extrairDetalhesDaNota('MERCADO\nTOTAL 30,00\n01/10/2026', HOJE).dataRecusada, true, 'futura recusada na foto também');
+  assert.equal(extrairDetalhesDaNota('MERCADO\nTOTAL 30,00\n3/9/2026', HOJE).data, null, 'foto preserva o formato de cupom');
 }
 ok('a foto da nota lê a data como antes (mesma função de prazo)');
 
