@@ -36,6 +36,21 @@ function carregar(arquivo) {
 const { dataDoTexto, extrairDetalhesDaNota } = carregar('lib/nota-foto-parser.ts');
 const HOJE = '2026-09-27';
 
+/* A3: metadado de versão não é a data do comprovante. Texto sintético,
+   reproduzindo o contexto do Colar; não é comprovante coletado de um banco. */
+for (const versao of ['Versao 1.5.26', 'Versão: 1.5.26']) {
+  assert.deepEqual({ ...dataDoTexto(versao, HOJE) }, { data: null, recusada: false }, versao);
+  for (const data of ['3/9/2026', '2026-09-03T18:42:00', '3 de setembro de 2026']) {
+    for (const separador of ['\n', ' — ']) {
+      const texto = `Comprovante de Pix\n${versao}${separador}Pagamento em ${data}\nValor R$ 45,00`;
+      assert.deepEqual({ ...dataDoTexto(texto, HOJE) }, { data: '2026-09-03', recusada: false }, texto);
+    }
+  }
+}
+assert.deepEqual({ ...dataDoTexto('Pagamento em 1.5.26', HOJE) }, { data: '2026-05-01', recusada: false },
+  'a data com pontos sem rótulo de versão continua válida');
+ok('versão não vira data nem esconde a data real do comprovante');
+
 /* ── 1. Datas que valem ─────────────────────────────────────────────────── */
 for (const [texto, esperado] of [
   ['Pix enviado\nR$ 45,00\n26/09/2026 às 18:42\nPara Fulano', '2026-09-26'],

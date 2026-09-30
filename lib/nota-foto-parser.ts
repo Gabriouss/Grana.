@@ -238,7 +238,10 @@ const MESES: Record<string, number> = {
  * "26 de setembro de 2026").
  */
 export function dataDoTexto(texto: string, hojeISO: string): { data: string | null; recusada: boolean } {
-  const linhas = texto.split(/\r?\n/).map((l) => l.toUpperCase());
+  // Metadado explícito de versão não é data, mesmo com números válidos.
+  // Remover só o token preserva uma data real na mesma linha.
+  const linhas = texto.split(/\r?\n/).map((l) => l.toUpperCase()
+    .replace(/\bVERS[ÃA]O\s*:?\s*V?\d+(?:\.\d+){2,}\b/g, ' '));
   /* O parser da foto continua restrito ao formato do cupom. No texto colado,
      a borda antes da data evita ler o fim de um ano ISO como DD/MM/AA. */
   const DATA_TEXTO = /(?:^|[^\d])(?:(\d{4})-(\d{1,2})-(\d{1,2})|(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2}))(?!\d)/;
