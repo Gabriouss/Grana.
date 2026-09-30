@@ -15,6 +15,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.join(__dirname, '..');
+/* Módulos puros reais (data da fala, fatura): nunca dublê (data na voz). */
+const PUROS = require('./modulos-puros-reais.cjs');
 
 function carregar(arquivo, dependencias = {}, globais = {}) {
   const exports = {};
@@ -28,6 +30,7 @@ function carregar(arquivo, dependencias = {}, globais = {}) {
     Uint8Array, TextEncoder, TextDecoder, __DEV__: false,
     require(id) {
       if (id in dependencias) return dependencias[id];
+      if (id in PUROS) return PUROS[id];
       throw new Error('Import nao simulado em ' + arquivo + ': ' + id);
     },
     ...globais,

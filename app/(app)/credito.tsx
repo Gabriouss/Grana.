@@ -47,6 +47,7 @@ import {
   criarOcorrenciasRecorrentes,
 } from '@/lib/data';
 import { formatBRL, formatDateLabel, formatMoney, formatMonthYear, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { dataInicialDaRevisao, referenciaDosParametros, type ReferenciaDaFala } from '@/lib/data-da-fala';
 import { cicloRelativo, mesFaturaDoLancamento, dataVencimentoFatura, rotuloPeriodoFatura } from '@/lib/faturaCiclo';
 import {
   agruparLancamentosPorCartao,
@@ -97,7 +98,7 @@ export default function CreditoScreen() {
   const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
   const router = useRouter();
-  const { novaCompra, texto, falaGuardada } = useLocalSearchParams<{ novaCompra?: string; texto?: string; falaGuardada?: string }>();
+  const { novaCompra, texto, falaGuardada, referencia, aproximada } = useLocalSearchParams<{ novaCompra?: string; texto?: string; falaGuardada?: string; referencia?: string; aproximada?: string }>();
   /* Fala da fila de áudios em revisão: o salvamento a tira da fila. */
   const falaGuardadaDaRevisao = useRef<string | undefined>(undefined);
   const { hidden, toggle: togglePrivacy } = usePrivacy();
@@ -549,12 +550,12 @@ export default function CreditoScreen() {
      duas armadilhas que ele resolve. */
   useAberturaPorParametro(novaCompra === '1' && !loading, () => {
     if (texto) {
-      abrirNovaCompraDoTexto(texto);
+      abrirNovaCompraDoTexto(texto, referenciaDosParametros({ referencia, aproximada }, todayISO()));
       falaGuardadaDaRevisao.current = falaGuardada;
     } else {
       abrirNovaCompra();
     }
-    router.setParams({ novaCompra: undefined, texto: undefined, falaGuardada: undefined });
+    router.setParams({ novaCompra: undefined, texto: undefined, falaGuardada: undefined, referencia: undefined, aproximada: undefined });
   });
 
   /* Esta tela renderiza um carrossel de cartões e uma FlatList de compras;
@@ -912,9 +913,14 @@ export default function CreditoScreen() {
      extrator do modal (valor/descrição/categoria); o cartão é casado pelo
      nome/banco citado (matchCardByText). Sem cartão casado, o formulário só
      vem preenchido quando não há escolha (ver cartaoPadraoDoFormulario). */
-  function abrirNovaCompraDoTexto(texto: string) {
+  function abrirNovaCompraDoTexto(textoDaFala: string, ref: ReferenciaDaFala = { referencia: todayISO(), aproximada: true }) {
     operacaoVoz.current = randomUUID();
     setEditingTxId(null);
+    /* A data dita na fala, pela MESMA função da tarefa do app e do widget
+       (data na voz, 30/09/2026; regra 13). Valor e descrição leem o texto
+       sem ela. Data duvidosa deixa o campo vazio: a pessoa escolhe. */
+    const inicial = dataInicialDaRevisao(textoDaFala, ref);
+    const texto = inicial.textoSemData;
     const carteiraCasada = matchWalletByText(texto, wallets);
     const textoFinanceiro = carteiraCasada ? limparReferenciaCarteira(texto, carteiraCasada.name) : texto;
     if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(textoFinanceiro) && parseParcelas(textoFinanceiro) === null) {
@@ -940,8 +946,12 @@ export default function CreditoScreen() {
        devolve false sozinha quando há parcelamento na frase — as duas coisas
        são contraditórias e o parcelamento vence. */
     setTxRecurring(parseRecorrencia(textoFinanceiro));
-    setTxDate(todayISO());
+    setTxDate(inicial.data ?? '');
     setNewTxOpen(true);
+    /* Campo vazio precisa de explicação: a dica do núcleo, a mesma do Colar,
+       cita a data que a fala indicou, sem pré-selecioná-la. Um aviso, e não
+       um elemento novo no formulário compartilhado. */
+    if (!inicial.data) Alert.alert('Escolha a data', inicial.dica ?? 'A data da fala não ficou clara. Escolha a data.');
   }
 
   /* Crédito nunca grava sem a pessoa escolher o cartão (decisão do autor,
@@ -1800,6 +1810,7 @@ export default function CreditoScreen() {
           wallet_id: txWalletId || cards.find((c) => c.id === txCardId)?.wallet_id || activeWallet?.id || wallets.find((w) => w.is_default)?.id || wallets[0]?.id || '',
         }}
         onSalvar={handleSaveCreditTx}
+        semDataFutura={!!operacaoVoz.current}
       />
 
       {/* Modal: Pagar Fatura */}

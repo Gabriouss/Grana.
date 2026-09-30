@@ -59,6 +59,7 @@ import { useFlags } from '@/lib/feature-flags';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { destinoDaFala } from '@/lib/destino-da-fala';
 import PasteReceiptModal from '@/components/PasteReceiptModal';
+import { referenciaDosParametros, referenciaParaParametros, type ReferenciaDaFala } from '@/lib/data-da-fala';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import ImportarExtratoModal from '@/components/ImportarExtratoModal';
 import QrScannerModal from '@/components/QrScannerModal';
@@ -154,6 +155,8 @@ export default function InicioScreen() {
 
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [voiceText, setVoiceText] = useState<string | undefined>(undefined);
+  /* A data da captura da fala em revisão (data na voz, 30/09/2026). */
+  const [referenciaDaVoz, setReferenciaDaVoz] = useState<ReferenciaDaFala | undefined>(undefined);
   /* Fala da fila de áudios em revisão: o salvamento a tira da fila. */
   const [falaGuardadaDaRevisao, setFalaGuardadaDaRevisao] = useState<string | undefined>(undefined);
   const [widgetGoalId, setWidgetGoalId] = useState<string | null>(null);
@@ -487,6 +490,8 @@ export default function InicioScreen() {
     acao?: string; amount?: string; desc?: string; type?: string; category?: string;
     colarTexto?: string;
     falaGuardada?: string;
+    referencia?: string;
+    aproximada?: string;
     goalId?: string;
   }>();
 
@@ -497,6 +502,7 @@ export default function InicioScreen() {
     if (!params.colarTexto) return;
     setVoiceText(params.colarTexto);
     setFalaGuardadaDaRevisao(params.falaGuardada);
+    setReferenciaDaVoz(referenciaDosParametros(params, todayISO()));
     setPasteModalOpen(true);
     router.replace('/(app)/');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1517,16 +1523,17 @@ export default function InicioScreen() {
           iconSize={18}
           style={[styles.smartActionBtn, styles.smartActionBtnPrimary]}
           hoverStyle={styles.smartActionBtnPrimaryHover}
-          onTranscribed={(text) => {
+          onTranscribed={(text, ref) => {
             const destino = destinoDaFala(text, wallets, creditCards);
             if (destino === 'contas') {
               router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto: text } });
               return;
             }
             if (destino === 'credito') {
-              router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text } });
+              router.push({ pathname: '/(app)/credito', params: { novaCompra: '1', texto: text, ...referenciaParaParametros(ref) } });
               return;
             }
+            setReferenciaDaVoz(ref);
             setVoiceText(text);
             setPasteModalOpen(true);
           }}
@@ -1910,7 +1917,8 @@ export default function InicioScreen() {
         visible={pasteModalOpen}
         initialText={voiceText}
         falaGuardada={falaGuardadaDaRevisao}
-        onClose={() => { setPasteModalOpen(false); setVoiceText(undefined); setFalaGuardadaDaRevisao(undefined); }}
+        referenciaDaVoz={referenciaDaVoz}
+        onClose={() => { setPasteModalOpen(false); setVoiceText(undefined); setFalaGuardadaDaRevisao(undefined); setReferenciaDaVoz(undefined); }}
         onSuccess={() => {
           triggerToast('Lançamento reconhecido e salvo');
           setVoiceText(undefined);

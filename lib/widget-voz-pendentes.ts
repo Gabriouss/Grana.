@@ -13,7 +13,14 @@ export type VozPendente = {
   caminho: string;
   requestId: string;
   userId: string;
+  /** Instante da captura quando conhecido (desde 30/09/2026); antes, o da entrada na fila. */
   criadoEm: number;
+  /** Data CIVIL da captura (`AAAA-MM-DD`), gravada no início dela e nunca
+      recalculada: é a referência de "ontem" e "na sexta" (data na voz). */
+  dataCaptura?: string;
+  /** A referência foi reconstruída (órfã sem metadados): expressão relativa
+      vai para revisão. */
+  referenciaAproximada?: boolean;
   source?: 'app' | 'widget';
   transcricao?: string;
   /** A transcrição não entendeu a fala. Ela fica guardada, fora das
@@ -57,7 +64,7 @@ async function gravar(itens: VozPendente[]): Promise<void> {
     await AsyncStorage.setItem(CHAVE, JSON.stringify(itens));
 }
 
-export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'>): Promise<void> {
+export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'> & { criadoEm?: number }): Promise<void> {
   if (concluidas.has(item.requestId)) return;
   const itens = await ler();
   if (itens.some((existente) => existente.requestId === item.requestId)) return;
@@ -66,7 +73,7 @@ export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'>):
   await fs.makeDirectoryAsync(pasta, { intermediates: true });
   const destino = `${pasta}${item.requestId}.m4a`;
   await fs.copyAsync({ from: item.caminho.startsWith('file://') ? item.caminho : `file://${item.caminho}`, to: destino });
-  itens.push({ ...item, caminho: destino, criadoEm: Date.now() });
+  itens.push({ ...item, caminho: destino, criadoEm: item.criadoEm ?? Date.now() });
   await gravar(itens);
 }
 
@@ -86,7 +93,43 @@ export const PASTA_ORFA = 'voz-orfa';
  * idempotência do servidor continua valendo. O arquivo de origem só é apagado
  * depois de copiado para a fila; falha deixa log e o arquivo, para a próxima
  * abertura tentar de novo.
+ *
+ * A data da captura (data na voz, 30/09/2026): o widget grava, ao lado do
+ * áudio, `<requestId>.json` com `{ capturadoEm, dataCaptura }`, anotados no
+ * INÍCIO da gravação. É a referência de "ontem" mesmo que a órfã seja adotada
+ * dias depois. Sem esse arquivo, ou com ele ilegível (órfã de antes desta
+ * versão), a referência é a data de modificação do áudio, que é o FIM da
+ * gravação: marcada aproximada, e expressão relativa vai para revisão. Um
+ * metadado ruim nunca custa o áudio. O `.json` só é apagado depois de a fala
+ * estar na fila.
  */
+async function capturaDaOrfa(
+  fs: typeof import('expo-file-system/legacy'),
+  audio: string,
+): Promise<{ criadoEm?: number; dataCaptura?: string; referenciaAproximada?: boolean }> {
+  const metadados = audio.replace(/\.m4a$/, '.json');
+  try {
+    if ((await fs.getInfoAsync(metadados)).exists) {
+      const lido = JSON.parse(await fs.readAsStringAsync(metadados)) as { capturadoEm?: unknown; dataCaptura?: unknown };
+      const { ehDataISO } = await import('./data-da-fala');
+      if (ehDataISO(lido?.dataCaptura) && typeof lido.capturadoEm === 'number' && Number.isFinite(lido.capturadoEm) && lido.capturadoEm > 0) {
+        return { criadoEm: lido.capturadoEm, dataCaptura: lido.dataCaptura };
+      }
+      console.warn('[voz] metadados da fala guardada pelo widget inválidos; data aproximada', metadados);
+    }
+  } catch (e) {
+    console.warn('[voz] metadados da fala guardada pelo widget ilegíveis; data aproximada', metadados, e);
+  }
+  try {
+    const info = await fs.getInfoAsync(audio);
+    const mtime = info.exists ? (info as { modificationTime?: number }).modificationTime : undefined;
+    if (typeof mtime === 'number' && mtime > 0) return { criadoEm: mtime * 1000, referenciaAproximada: true };
+  } catch (e) {
+    console.warn('[voz] data do áudio guardado pelo widget ilegível', audio, e);
+  }
+  return { referenciaAproximada: true };
+}
+
 export async function adotarVozesOrfas(userId: string): Promise<number> {
   const fs = await import('expo-file-system/legacy');
   const pasta = `${fs.documentDirectory}${PASTA_ORFA}/`;
@@ -102,8 +145,11 @@ export async function adotarVozesOrfas(userId: string): Promise<number> {
   for (const nome of nomes.filter((n) => n.endsWith('.m4a'))) {
     const caminho = `${pasta}${nome}`;
     try {
-      await adicionarVozPendente({ caminho, requestId: nome.slice(0, -'.m4a'.length), userId, source: 'widget' });
+      const captura = await capturaDaOrfa(fs, caminho);
+      await adicionarVozPendente({ caminho, requestId: nome.slice(0, -'.m4a'.length), userId, source: 'widget', ...captura });
       await fs.deleteAsync(caminho, { idempotent: true });
+      await fs.deleteAsync(caminho.replace(/\.m4a$/, '.json'), { idempotent: true })
+        .catch((e) => console.warn('[voz] metadados da fala adotada ficaram na pasta', nome, e));
       adotadas++;
     } catch (e) {
       console.error('[voz] fala guardada pelo widget não entrou na fila', nome, e);

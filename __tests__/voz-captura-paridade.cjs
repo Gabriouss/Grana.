@@ -32,6 +32,7 @@ function carregar(arquivo, dependencias = {}, globais = {}) {
     exports: modulo.exports, module: modulo, console, Math, Number, Promise, Error,
     require(id) {
       if (id in dependencias) return dependencias[id];
+      if (id in require('./modulos-puros-reais.cjs')) return require('./modulos-puros-reais.cjs')[id];
       throw new Error('Import não simulado: ' + id);
     },
     ...globais,
@@ -256,8 +257,12 @@ process.exitCode = 1;
     ok('fala seguida de 1,6s de silêncio encerra e envia, como o widget');
 
     const payload = b.reg.tarefas[0];
-    assert.deepEqual(Object.keys(payload).sort(), ['caminho', 'requestId', 'source']);
+    /* Data na voz (30/09/2026): o botão anota a captura no INÍCIO da
+       gravação, o mesmo par que o widget manda pelo Kotlin. Nada de prazo. */
+    assert.deepEqual(Object.keys(payload).sort(), ['caminho', 'capturadoEm', 'dataCaptura', 'requestId', 'source']);
     assert.equal(payload.source, 'app');
+    assert.ok(typeof payload.capturadoEm === 'number' && payload.capturadoEm <= inicio, 'a captura é anotada antes da fala, no início');
+    assert.equal(payload.dataCaptura, require('./data-da-fala-real.cjs').dataLocal(payload.capturadoEm), 'dataCaptura é a data local do início');
     ok('o botão entrega ao núcleo sem prazo próprio');
   }
 

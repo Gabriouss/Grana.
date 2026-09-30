@@ -36,6 +36,7 @@ import AppPressable from './AppPressable';
 import Sheet from './Sheet';
 import DatePickerModal from './DatePickerModal';
 import LinhaDataDaCompra, { dataEscolhidaNoSeletor } from './LinhaDataDaCompra';
+import { dataInicialDaRevisao, type ReferenciaDaFala } from '@/lib/data-da-fala';
 import type { TxType } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 import { randomUUID } from 'expo-crypto';
@@ -50,6 +51,7 @@ export default function PasteReceiptModal({
   onSuccess,
   initialText,
   falaGuardada,
+  referenciaDaVoz,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -60,6 +62,9 @@ export default function PasteReceiptModal({
   /** `requestId` da fala guardada que esta revisão salva; ver
       `registrarOperacaoVoz`. */
   falaGuardada?: string;
+  /** A data da captura da fala (data na voz, 30/09/2026). Sem ela, hoje,
+      como referência aproximada: data relativa fica para a pessoa escolher. */
+  referenciaDaVoz?: ReferenciaDaFala;
 }) {
   const { isDemoMode } = useDemo();
   const { wallets, activeWallet } = useWallet();
@@ -106,6 +111,9 @@ export default function PasteReceiptModal({
   const [dataDoComprovante, setDataDoComprovante] = useState<string | null>(null);
   const [dataRecusada, setDataRecusada] = useState(false);
   const [dataLida, setDataLida] = useState(false);
+  /* Na revisão de voz, a dica do campo quando a data da fala precisa de
+     escolha ("Você disse 01/10, que ainda não chegou."). */
+  const [dicaDaVoz, setDicaDaVoz] = useState<string | null>(null);
   const [calendarioAberto, setCalendarioAberto] = useState(false);
 
   useEffect(() => {
@@ -128,6 +136,7 @@ export default function PasteReceiptModal({
     setDataDoComprovante(null);
     setDataRecusada(false);
     setDataLida(false);
+    setDicaDaVoz(null);
     setCalendarioAberto(false);
     setFormaPagamento(null);
     setRecorrente(false);
@@ -181,8 +190,8 @@ export default function PasteReceiptModal({
       return;
     }
     processText(text, origemVoz);
-    /* Só no texto colado. A fala revisada aqui segue a data da voz (hoje),
-       a mesma do widget, que não lê data (regra 13). */
+    /* Só no texto colado. A fala revisada aqui lê a data pelo núcleo da voz,
+       no efeito de `initialText` abaixo, como a tarefa do widget (regra 13). */
     const lida = origemVoz ? { data: null, recusada: false } : dataDoTexto(text, todayISO());
     setDataDoComprovante(lida.data ?? (lida.recusada ? null : todayISO()));
     setDataRecusada(lida.recusada);
@@ -193,7 +202,13 @@ export default function PasteReceiptModal({
     if (!visible || !initialText) return;
     setRawText(initialText);
     setOrigemVoz(true);
-    processText(initialText, true);
+    /* A data dita na fala, pela MESMA função da tarefa do app e do widget
+       (regra 13), contada da captura. Valor, descrição e categoria leem o
+       texto sem ela. Data duvidosa deixa o campo vazio, com a dica. */
+    const inicial = dataInicialDaRevisao(initialText, referenciaDaVoz ?? { referencia: todayISO(), aproximada: true });
+    processText(inicial.textoSemData, true);
+    setDataDoComprovante(inicial.data);
+    setDicaDaVoz(inicial.dica);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialText]);
 
@@ -209,9 +224,9 @@ export default function PasteReceiptModal({
       Alert.alert('Escolha uma carteira', 'Informe em qual carteira o lançamento deve entrar.');
       return;
     }
-    /* Data recusada deixa o campo sem data: nada é salvo com uma data que
-       ninguém escolheu. */
-    if (!origemVoz && !dataDoComprovante) {
+    /* Data recusada (do texto ou da fala) deixa o campo sem data: nada é
+       salvo com uma data que ninguém escolheu. */
+    if (!dataDoComprovante) {
       Alert.alert('Escolha a data');
       return;
     }
@@ -241,7 +256,7 @@ export default function PasteReceiptModal({
         amount: val,
         category: catObj.name,
         color: catObj.color,
-        occurred_on: (origemVoz ? null : dataDoComprovante) ?? todayISO(),
+        occurred_on: dataDoComprovante,
         ...(formaPagamento ? { payment_method: formaPagamento } : null),
         ...(recorrente ? { recurring: true } : null),
         wallet_id: walletId,
@@ -389,14 +404,12 @@ export default function PasteReceiptModal({
                 />
               </View>
 
-              {!origemVoz && (
-                <LinhaDataDaCompra
-                  data={dataDoComprovante}
-                  selo={dataLida ? 'lida do texto' : null}
-                  dica={dataRecusada ? 'A data do texto não foi usada. Escolha a data.' : null}
-                  onPress={() => setCalendarioAberto(true)}
-                />
-              )}
+              <LinhaDataDaCompra
+                data={dataDoComprovante}
+                selo={!origemVoz && dataLida ? 'lida do texto' : null}
+                dica={origemVoz ? dicaDaVoz : dataRecusada ? 'A data do texto não foi usada. Escolha a data.' : null}
+                onPress={() => setCalendarioAberto(true)}
+              />
 
               <CategoryChips value={category} onChange={setCategory} extras={categoriasExtras} />
 
@@ -448,6 +461,7 @@ export default function PasteReceiptModal({
         setDataDoComprovante(dataEscolhidaNoSeletor(iso, todayISO()));
         setDataRecusada(false);
         setDataLida(false);
+        setDicaDaVoz(null);
         setCalendarioAberto(false);
       }}
     />

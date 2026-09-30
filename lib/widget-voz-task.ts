@@ -2,6 +2,7 @@ import { AppRegistry, Platform } from 'react-native';
 import { isLikelyNetworkError } from './offline-cache';
 import type { CreditCard } from './types';
 import type { DesfechoOperacaoVoz } from './voice-operations';
+import { dataDaFala, referenciaDaFala, resumoDaDataDoLancamento, type ReferenciaDaFala } from './data-da-fala';
 
 /** Por que a fala voltou para a fila. A faixa do topo diz isto, e não um
     "aguardando conexão" genérico (26/09/2026). */
@@ -50,12 +51,28 @@ type Payload = {
   requestId?: string;
   source?: 'app' | 'widget';
   transcricao?: string;
+  /* A captura (data na voz, 30/09/2026), anotada NO INÍCIO da gravação pelo
+     botão do app ou pelo widget: `dataCaptura` é a data civil local, e é ela
+     que resolve "ontem" e "na sexta", nunca a hora em que a fala é
+     processada. Da fila chegam também `criadoEm` e `referenciaAproximada`. */
+  capturadoEm?: number;
+  dataCaptura?: string;
+  criadoEm?: number;
+  referenciaAproximada?: boolean;
   /* Sem campo de prazo, de propósito: o prazo da voz é um só para as duas
      entradas (`PRAZO_TRANSCRICAO_MS`, em lib/voz.ts). Até 25/09/2026 o botão
      do app declarava 15s aqui e o widget ficava com 60s. */
 };
 
-type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarRevisao' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'>;
+type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'> & {
+  /** `ref`: a data da captura, que a revisão usa para ler a data dita. */
+  notificarRevisao: (titulo: string, transcricao: string, ref?: ReferenciaDaFala) => Promise<void>;
+};
+
+/** Toda revisão desta fala leva a referência dela, sem cada chamada lembrar. */
+function comReferencia(base: ReciboVoz, ref: ReferenciaDaFala): ReciboVoz {
+  return { ...base, notificarRevisao: (titulo, transcricao) => base.notificarRevisao(titulo, transcricao, ref) };
+}
 
 /** O erro da gravação visto pelo núcleo (`desfechoDoErroVoz`, a mesma
     decisão da revisão). Roda dentro do `catch` da tarefa: se a checagem
@@ -101,7 +118,17 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
   const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
   const caminho = payload?.caminho;
   const requestId = payload?.requestId;
-  const notificacoes = recibo ?? daFala(await import('./widget-voz-notificacoes'), requestId);
+  /* A data da captura acompanha a fala até a revisão (data na voz,
+     30/09/2026): toda revisão pedida por esta execução leva a referência,
+     para a tela contar "ontem" a partir do dia em que a fala foi dita. */
+  const referencia = referenciaDaFala(payload, hojeISO());
+  const notificacoes = comReferencia(recibo ?? daFala(await import('./widget-voz-notificacoes'), requestId), referencia);
+  /* A mesma captura, se a fala precisar ir (ou voltar) para a fila. */
+  const captura = {
+    ...(payload.capturadoEm ?? payload.criadoEm ? { criadoEm: payload.capturadoEm ?? payload.criadoEm } : null),
+    ...(payload.dataCaptura ? { dataCaptura: payload.dataCaptura } : null),
+    ...(payload.referenciaAproximada ? { referenciaAproximada: true } : null),
+  };
   /* O estado final do widget é decidido aqui e não no `finally` de sempre:
      quando não há como avisar a pessoa, ele NÃO pode voltar ao repouso como
      se nada tivesse acontecido — é justamente esse "nada aconteceu" que
@@ -130,7 +157,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
         const userId = await idDoUsuarioLocal();
         if (userId) {
           const { adicionarVozPendente } = await import('./widget-voz-pendentes');
-          await adicionarVozPendente({ caminho, requestId, userId, source: payload.source });
+          await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, ...captura });
           manterArquivo = true;
         }
       }
@@ -138,7 +165,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
       return desfecho;
     }
 
-    const salvou = await processar(caminho, requestId, contexto, payload, notificacoes);
+    const salvou = await processar(caminho, requestId, contexto, payload, notificacoes, referencia);
     if (salvou) await sincronizarResumoDepoisDaVoz();
     else estadoFinal = 'atencao';
   } catch (erro) {
@@ -181,7 +208,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
            dono descartava a gravação em vez de guardá-la. */
         const userId = await idDoUsuarioLocal();
         if (userId) {
-          await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao });
+          await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
           manterArquivo = true;
           desfecho = { guardada: true, motivo: erro instanceof VozPendenteOffline ? erro.motivo : 'sem_rede' };
           try {
@@ -258,10 +285,10 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
  * identidade na bandeja (`idNaBandeja`), e o seguinte substitui o anterior.
  * Vale para a fala do botão do app e do widget, que passam por aqui (regra 13).
  */
-function daFala(modulo: ReciboVoz, requestId: string | undefined): ReciboVoz {
+function daFala(modulo: typeof import('./widget-voz-notificacoes'), requestId: string | undefined): ReciboVoz {
   return {
     podeNotificar: () => modulo.podeNotificar(),
-    notificarRevisao: (titulo, transcricao) => modulo.notificarRevisao(titulo, transcricao, requestId),
+    notificarRevisao: (titulo, transcricao, ref) => modulo.notificarRevisao(titulo, transcricao, requestId, ref),
     notificarSucesso: (dados) => modulo.notificarSucesso(dados, requestId),
     notificarFalha: (codigo) => modulo.notificarFalha(codigo, requestId),
     notificarSalvoLocal: () => modulo.notificarSalvoLocal(requestId),
@@ -279,7 +306,7 @@ async function apagarArquivo(caminho: string) {
   }
 }
 
-async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz): Promise<boolean> {
+async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz, referencia: ReferenciaDaFala): Promise<boolean> {
   const [{ transcreverAudio }, heuristics, data, voiceOperations] = await Promise.all([
     import('./voz'),
     import('./heuristics'),
@@ -332,6 +359,21 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   // A forma curta "cartão C6" tem a mesma intenção de "no cartão C6".
   // A heurística existente já preserva débito e recebimentos explicitados.
   texto = texto.replace(/\bcart[aã]o\b/giu, 'no cartão');
+  /* A data do gasto dita na fala (data na voz, 30/09/2026), ANTES de
+     carteira, valor, categoria e descrição: todo o resto lê o texto sem ela,
+     para "farmácia dia 12 40 reais" não virar R$ 12. Conta a pagar pula: lá
+     a data dita é o vencimento. Data duvidosa vai para a revisão, com a
+     referência, e nada é gravado. */
+  let dataDoGasto = referencia.referencia;
+  if (!heuristics.ehIntencaoBoleto(texto)) {
+    const lida = dataDaFala(texto, referencia);
+    if (lida.revisao) {
+      await notificacoes.notificarRevisao(lida.revisao.titulo, transcricao.transcript);
+      return false;
+    }
+    texto = lida.textoSemData;
+    dataDoGasto = lida.data;
+  }
   const { fetchWallets } = await import('./wallets');
   let prazoReferencias: ReturnType<typeof setTimeout> | undefined;
   const [extras, carteiras, cartoesDisponiveis] = await Promise.race([
@@ -426,9 +468,18 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return true;
   }
 
+  /* Série (recorrente ou parcelada) nasce da data: uma data errada se
+     repete por N meses. Com data diferente da fala, a pessoa confirma. */
+  const serie = heuristics.parseRecorrencia(texto);
+  if (serie && dataDoGasto !== referencia.referencia) {
+    await notificacoes.notificarRevisao('Confirme a data', transcricao.transcript);
+    return false;
+  }
+
   if (heuristics.ehIntencaoCredito(texto)) {
     return lancarNoCredito({
       requestId, source: payload.source ?? 'widget', texto, valor, descricao, categoria, carteiraId: carteira.id, cartoesDisponiveis, heuristics, data, notificacoes, voiceOperations,
+      dataDoGasto, referencia: referencia.referencia, transcricao: transcricao.transcript,
     });
   }
 
@@ -440,8 +491,8 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     amount: valor,
     category: categoria.name,
     color: categoria.color,
-    occurred_on: hojeISO(),
-    recurring: heuristics.parseRecorrencia(texto),
+    occurred_on: dataDoGasto,
+    recurring: serie,
     ...(formaPagamento ? { payment_method: formaPagamento } : null),
     wallet_id: carteira.id,
   });
@@ -450,7 +501,8 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   try {
     await notificacoes.notificarSucesso({
       titulo: `${descricao} · ${formatarBRL(valor)}`,
-      texto: [categoria.name, nomeDaForma(formaPagamento), heuristics.parseRecorrencia(texto) ? 'todo mês' : null]
+      texto: [categoria.name, nomeDaForma(formaPagamento), serie ? 'todo mês' : null,
+        resumoDaDataDoLancamento({ dataISO: dataDoGasto, hojeISO: hojeISO(), destino: 'caixa' })]
         .filter(Boolean)
         .join(' · '),
       tipo: 'transaction',
@@ -477,8 +529,12 @@ async function lancarNoCredito(args: {
   data: typeof import('./data');
   notificacoes: ReciboVoz;
   voiceOperations: typeof import('./voice-operations');
+  /** A data resolvida da fala e a da captura (data na voz). */
+  dataDoGasto: string;
+  referencia: string;
+  transcricao: string;
 }): Promise<boolean> {
-  const { requestId, texto, valor, descricao, categoria, carteiraId, heuristics, data, notificacoes, voiceOperations } = args;
+  const { requestId, texto, valor, descricao, categoria, carteiraId, heuristics, data, notificacoes, voiceOperations, dataDoGasto, referencia } = args;
 
   const cartoes = args.cartoesDisponiveis.filter(c => !c.wallet_id || c.wallet_id === carteiraId);
   /* Sem cartão cadastrado, crédito NÃO vira Pix nem débito caladinho: a
@@ -506,6 +562,25 @@ async function lancarNoCredito(args: {
      `descricaoDoLancamento`. */
   const descricaoNoCartao = heuristics.descricaoDoLancamento(texto, 'out', cartao) || descricao;
 
+  /* No crédito a data decide a fatura (data na voz, regras 3.5 e 3.6): uma
+     data em outra fatura pode cair numa fatura fechada ou já paga, e o
+     parcelado nasce da data e repete o erro em cada parcela. Nos dois casos,
+     a pessoa confirma na revisão do Crédito. */
+  const { mesFaturaDoLancamento } = await import('./faturaCiclo');
+  // O cartão casado pelo nome vem sem o fechamento; o da lista tem.
+  const fechamento = cartoes.find((c) => c.id === cartao.id)?.closing_day ?? 1;
+  const fatura = mesFaturaDoLancamento(dataDoGasto, fechamento);
+  const faturaDaFala = mesFaturaDoLancamento(referencia, fechamento);
+  if (dataDoGasto !== referencia && (fatura.year !== faturaDaFala.year || fatura.month !== faturaDaFala.month)) {
+    await notificacoes.notificarRevisao('Confirme a data da compra', args.transcricao);
+    return false;
+  }
+  if (dataDoGasto !== referencia && parcelas && parcelas > 1) {
+    await notificacoes.notificarRevisao('Confirme a data', args.transcricao);
+    return false;
+  }
+  const quando = resumoDaDataDoLancamento({ dataISO: dataDoGasto, hojeISO: hojeISO(), destino: 'credito', fatura });
+
   if (parcelas && parcelas > 1) {
     const resultado = await voiceOperations.registrarOperacaoVoz(requestId, args.source, {
       kind: 'installment',
@@ -514,7 +589,7 @@ async function lancarNoCredito(args: {
       amount: valor,
       category: categoria.name,
       color: categoria.color,
-      occurred_on: hojeISO(),
+      occurred_on: dataDoGasto,
       payment_method: 'credit',
       card_id: cartao.id,
       installments: parcelas,
@@ -526,7 +601,7 @@ async function lancarNoCredito(args: {
     try {
       await notificacoes.notificarSucesso({
         titulo: `${descricaoNoCartao} · ${formatarBRL(valor)}`,
-        texto: `${parcelas}x no ${cartao.name} · ${categoria.name}`,
+        texto: [`${parcelas}x no ${cartao.name}`, categoria.name, quando].filter(Boolean).join(' · '),
         tipo: 'transaction',
         ids: resultado.ids,
         operationId: resultado.operationId,
@@ -544,7 +619,7 @@ async function lancarNoCredito(args: {
     amount: valor,
     category: categoria.name,
     color: categoria.color,
-    occurred_on: hojeISO(),
+    occurred_on: dataDoGasto,
     payment_method: 'credit',
     card_id: cartao.id,
     recurring: heuristics.parseRecorrencia(texto),
@@ -556,7 +631,7 @@ async function lancarNoCredito(args: {
   try {
     await notificacoes.notificarSucesso({
       titulo: `${descricaoNoCartao} · ${formatarBRL(valor)}`,
-      texto: `Crédito · ${cartao.name} · ${categoria.name}`,
+      texto: ['Crédito', cartao.name, categoria.name, quando].filter(Boolean).join(' · '),
       tipo: 'transaction',
       ids: resultado.ids,
       operationId: resultado.operationId,

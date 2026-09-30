@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CodigoErroVoz } from './voz';
+import type { ReferenciaDaFala } from './data-da-fala';
 import { RECIBOS_VOZ } from './voz-recibos';
 
 /**
@@ -25,7 +26,9 @@ const CHAVE = 'grana:voz:recibos-da-fila-v1';
 
 export type ReciboDaFila =
   | { id: string; dono: string; tipo: 'sucesso'; titulo: string; texto: string; operationId?: string; destino: 'transaction' | 'bill' }
-  | { id: string; dono: string; tipo: 'revisao'; titulo: string; texto: string; transcricao: string }
+  /** `referencia`/`aproximada`: a data da captura, para a revisão ler "ontem"
+      a partir do dia em que a fala foi dita (data na voz, 30/09/2026). */
+  | { id: string; dono: string; tipo: 'revisao'; titulo: string; texto: string; transcricao: string; referencia?: string; aproximada?: boolean }
   | { id: string; dono: string; tipo: 'aviso'; titulo: string; texto: string }
   /** Fala guardada que não foi entendida: o áudio segue na fila, em revisão. */
   | { id: string; dono: string; tipo: 'audio'; titulo: string; texto: string; transcricao?: string };
@@ -80,8 +83,8 @@ export function reciboDaFilaNaTela(dono: string, requestId: string) {
     guardarReciboDaFila({ ...recibo, id: requestId, dono } as ReciboDaFila);
   return {
     podeNotificar: async () => true,
-    notificarRevisao: async (titulo: string, transcricao: string) => {
-      await guardar({ tipo: 'revisao', ...RECIBOS_VOZ.revisao(titulo, transcricao), transcricao });
+    notificarRevisao: async (titulo: string, transcricao: string, ref?: ReferenciaDaFala) => {
+      await guardar({ tipo: 'revisao', ...RECIBOS_VOZ.revisao(titulo, transcricao), transcricao, ...(ref ? { referencia: ref.referencia, aproximada: ref.aproximada } : null) });
     },
     notificarSucesso: async (dados: { titulo: string; texto: string; tipo: 'transaction' | 'bill'; ids: string[]; operationId: string }) => {
       await guardar({ tipo: 'sucesso', ...RECIBOS_VOZ.sucesso(dados.titulo, dados.texto), operationId: dados.operationId, destino: dados.tipo });

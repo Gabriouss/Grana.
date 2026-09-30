@@ -42,7 +42,7 @@ const deps = {
 };
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-}).outputText, { exports: {}, require: (id) => { if (!(id in deps)) throw new Error(id); return deps[id]; }, console, setTimeout, clearTimeout });
+}).outputText, { exports: {}, require: (id) => { if (id in require('./modulos-puros-reais.cjs')) return require('./modulos-puros-reais.cjs')[id]; if (!(id in deps)) throw new Error(id); return deps[id]; }, console, setTimeout, clearTimeout });
 (async () => {
   cards = [{ id: 'c6', name: 'QA C6', wallet_id: 'wallet' }, { id: 'nubank', name: 'QA Nubank', wallet_id: 'wallet' }];
   await task({ caminho: '/qa.m4a', requestId: '1' });

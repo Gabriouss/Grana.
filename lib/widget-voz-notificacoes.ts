@@ -1,6 +1,7 @@
 import { getNotifications } from './notifications';
 import { ACAO_DA_NOTIFICACAO, RECIBOS_VOZ } from './voz-recibos';
 import { mensagemDeErroVoz, type CodigoErroVoz } from './voz';
+import type { ReferenciaDaFala } from './data-da-fala';
 
 /**
  * As notificações que o widget publica quando o app está fechado.
@@ -51,7 +52,9 @@ export type DadosNotifVoz =
       /** Ausente apenas em notificacoes antigas, anteriores ao undo atomico. */
       operationId?: string;
     }
-  | { origem: 'voz'; resultado: 'revisar'; transcricao: string }
+  /** `referencia`/`aproximada`: a data da captura da fala, para a revisão
+      contar "ontem" a partir do dia em que ela foi dita (30/09/2026). */
+  | { origem: 'voz'; resultado: 'revisar'; transcricao: string; referencia?: string; aproximada?: boolean }
   | { origem: 'voz'; resultado: 'pendente'; transcricao: string };
 
 async function prepararCanal() {
@@ -160,12 +163,12 @@ export async function notificarSucesso(args: {
  * reconhecido, categoria incerta, crédito sem cartão). Tocar abre o app com a
  * transcrição já preenchida, pra não obrigar a repetir a fala.
  */
-export async function notificarRevisao(titulo: string, transcricao: string, requestId?: string) {
+export async function notificarRevisao(titulo: string, transcricao: string, requestId?: string, ref?: ReferenciaDaFala) {
   const recibo = RECIBOS_VOZ.revisao(titulo, transcricao);
   await publicar(
     recibo.titulo,
     `${recibo.texto} ${ACAO_DA_NOTIFICACAO.revisao}`,
-    { origem: 'voz', resultado: 'revisar', transcricao },
+    { origem: 'voz', resultado: 'revisar', transcricao, ...(ref ? { referencia: ref.referencia, aproximada: ref.aproximada } : null) },
     undefined,
     requestId
   );

@@ -36,6 +36,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/TransactionShe
     '@/components/AppPressable': es('AppPressable'),
     '@/components/Sheet': es('Sheet'),
     '@/components/DatePickerModal': es('DatePickerModal'),
+    '@/components/LinhaDataDaCompra': { dataEscolhidaNoSeletor: (iso, hoje) => (iso > hoje ? hoje : iso) },
     '@/components/CategoryPickerModal': es('CategoryPickerModal'),
     '@/lib/format': {
       formatDateLabel: () => '24 set 2026', formatMoney: (v) => String(v), formatMoneyInput: (v) => v,

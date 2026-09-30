@@ -200,6 +200,9 @@ async function nucleoDaVoz() {
     './data': { fetchCreditCards: async () => cartoes, fetchCategories: async () => [] },
     './wallets': { fetchWallets: async () => [{ id: 'w', name: 'Pessoal', is_default: true }] },
     './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
+      /* O 22023 lido pelo núcleo REAL (C3): sem ela, a checagem do `catch`
+         caía em TypeError e seguia o caminho de falha por acidente. */
+      desfechoDoErroVoz: require('./desfecho-voz-real.cjs').desfechoDoErroVoz,
       ehRecusaCartaoObrigatorio: (e) => e?.code === '23514' && e?.hint === 'cartao_obrigatorio',
       registrarOperacaoVoz: async (_id, fonte, entrada) => {
         if (recusarNoServidor) throw recusa;

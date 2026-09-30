@@ -9,6 +9,8 @@ import { getNotifications } from '@/lib/notifications';
 import { desfazerOperacaoVoz } from '@/lib/voice-operations';
 import { ACAO_DESFAZER, podeNotificar, tirarDaBandeja, type DadosNotifVoz } from '@/lib/widget-voz-notificacoes';
 import { idDoUsuarioLocal } from '@/lib/sessao-offline';
+import { referenciaDaFala, referenciaParaParametros, type ReferenciaDaFala } from '@/lib/data-da-fala';
+import { todayISO } from '@/lib/format';
 import { listarRecibosDaFila, observarRecibosDaFila, removerReciboDaFila } from '@/lib/voz-recibos-da-fila';
 import {
   definirEstado as definirEstadoWidgetVoz,
@@ -30,6 +32,18 @@ import {
  *
  * Montado uma vez em app/_layout.tsx. Não desenha nada.
  */
+/** A data da captura de uma fala que ainda está na fila de áudios. */
+async function referenciaDaFalaGuardada(requestId: string): Promise<ReferenciaDaFala | undefined> {
+  try {
+    const { listarVozesPendentes } = await import('@/lib/widget-voz-pendentes');
+    const item = (await listarVozesPendentes()).find((i) => i.requestId === requestId);
+    return item ? referenciaDaFala(item, todayISO()) : undefined;
+  } catch (erro) {
+    console.warn('[voz] não consegui ler a data da fala guardada', requestId, erro);
+    return undefined;
+  }
+}
+
 export default function RespostaVozWidget() {
   const router = useRouter();
 
@@ -40,9 +54,14 @@ export default function RespostaVozWidget() {
   /* `falaGuardada`: o `requestId` quando a revisão é de uma fala da fila de
      áudios. Vai até o salvamento, que tira a fala da fila só depois de gravar
      (`registrarOperacaoVoz`), para "Tentar de novo" não gravar duas vezes. */
-  async function abrirFala(texto: string, falaGuardada?: string) {
+  /* `ref`: a data da captura (data na voz, 30/09/2026), para a revisão
+     contar "ontem" a partir do dia em que a fala foi dita. Sem ela, a fala da
+     fila traz a sua; sem nenhuma, a tela usa hoje como referência aproximada,
+     e data relativa vai para escolha. */
+  async function abrirFala(texto: string, falaGuardada?: string, ref?: ReferenciaDaFala) {
     const destino = await destinoDaFalaComReferencias(texto);
-    const extra = falaGuardada ? { falaGuardada } : {};
+    const referencia = ref ?? (falaGuardada ? await referenciaDaFalaGuardada(falaGuardada) : undefined);
+    const extra = { ...(falaGuardada ? { falaGuardada } : {}), ...referenciaParaParametros(referencia) };
     if (destino === 'contas') {
       router.push({ pathname: '/(app)/contas', params: { novaConta: '1', texto, ...extra } });
       return;
@@ -107,7 +126,8 @@ export default function RespostaVozWidget() {
               { text: 'Descartar', style: 'destructive', onPress: tirar },
               { text: 'Revisar', onPress: () => {
                 tirar();
-                abrirFala(recibo.transcricao).catch((erro) => console.error('[voz] revisão da fala não abriu', erro));
+                abrirFala(recibo.transcricao, undefined, recibo.referencia
+                  ? { referencia: recibo.referencia, aproximada: recibo.aproximada !== false } : undefined).catch((erro) => console.error('[voz] revisão da fala não abriu', erro));
               } },
             ]);
           } else if (recibo.tipo === 'sucesso') {
@@ -223,7 +243,8 @@ export default function RespostaVozWidget() {
         router.push('/(app)/');
         return;
       }
-      await abrirFala(texto);
+      await abrirFala(texto, undefined, dados.resultado === 'revisar' && dados.referencia
+        ? { referencia: dados.referencia, aproximada: dados.aproximada !== false } : undefined);
     }
 
     /* Duas fontes, e as duas importam: `getLastNotificationResponseAsync`

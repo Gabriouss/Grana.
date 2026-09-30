@@ -134,6 +134,8 @@ function screen(file, name, text) {
   const context = { ...h, precisaRevisarValorVoz, valorSeguroParaRevisaoVoz,
     wallets, cards, walletCards: cards, activeWallet: wallets[0], categoriasExtras: [],
     operacaoVoz: {}, randomUUID: () => 'fake', todayISO: () => '2026-09-10',
+    /* A revisão lê a data da fala no núcleo (data na voz, 30/09/2026). */
+    dataInicialDaRevisao: require('./data-da-fala-real.cjs').dataInicialDaRevisao,
     formatMoney: value => value, input: text };
   for (const field of ['VozWalletId', 'EditingBillId', 'Desc', 'Amount', 'Category', 'CatColor', 'DueDate', 'Recurring', 'ModalOpen',
     'EditingTxId', 'TxWalletId', 'TxDesc', 'TxAmount', 'TxCategory', 'TxCatColor', 'TxCardId', 'TxInstallments',

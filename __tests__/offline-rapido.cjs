@@ -34,6 +34,7 @@ function carregar(arquivo, dependencias = {}, globais = {}) {
     setTimeout, clearTimeout, __DEV__: false,
     require(id) {
       if (id in dependencias) return dependencias[id];
+      if (id in require('./modulos-puros-reais.cjs')) return require('./modulos-puros-reais.cjs')[id];
       throw new Error('Import nao simulado em ' + arquivo + ': ' + id);
     },
     ...globais,

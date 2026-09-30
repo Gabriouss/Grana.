@@ -189,7 +189,9 @@ const NO_CREDITO = [
           return { status: 'committed', ids: ['t1'], operationId: 'op1' };
         },
       });
-      await task({ caminho: '/cache/a.m4a', requestId: 'r-hoje', source });
+      /* Fala da build nova: leva a data da captura (data na voz). Sem ela, a
+         referência é aproximada e "hoje" pede confirmação (r2 do Forge). */
+      await task({ caminho: '/cache/a.m4a', requestId: 'r-hoje', source, capturadoEm: Date.now(), dataCaptura: require('./data-da-fala-real.cjs').dataLocal(Date.now()) });
       igual(gravados.map((g) => g.description), [esperado], `${source}: "${frase}" grava "${esperado}" (${JSON.stringify(reg.notificacoes)})`);
     }
   }

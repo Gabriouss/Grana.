@@ -20,6 +20,7 @@ import AppPressable from './AppPressable';
 import AppDialog from './AppDialog';
 import { randomUUID } from 'expo-crypto';
 import { executarTarefa } from '@/lib/widget-voz-task';
+import { dataLocal, type ReferenciaDaFala } from '@/lib/data-da-fala';
 import { File } from 'expo-file-system';
 import * as FileSystemLegado from 'expo-file-system/legacy';
 
@@ -107,7 +108,8 @@ export default function VoiceEntryButton({
   iconSize = 17,
   iconColor = theme.accent2,
 }: {
-  onTranscribed: (text: string) => void;
+  /** `ref`: a data da captura, que a revisão usa para ler a data dita. */
+  onTranscribed: (text: string, ref?: ReferenciaDaFala) => void;
   onSaved?: () => void;
   /** Com rótulo, vira uma pílula (ex: ao lado de "Colar comprovante" no Início). Sem rótulo, vira só o ícone (ex: cabeçalho de Lançamentos). */
   label?: string;
@@ -140,6 +142,10 @@ export default function VoiceEntryButton({
      duas preparações concorrentes no mesmo gravador. */
   const ocupado = useRef(false);
   const encerrando = useRef(false);
+  /* A captura (data na voz, 30/09/2026): anotada quando a gravação COMEÇA e
+     levada com a fala, para "ontem" contar do dia em que ela foi dita. É o
+     mesmo par que o widget anota no Kotlin (regra 13). */
+  const captura = useRef<{ capturadoEm: number; dataCaptura: string } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -207,12 +213,12 @@ export default function VoiceEntryButton({
       }
       /* Mesma execução do widget, com o mesmo prazo de rede (lib/voz.ts).
          Este adaptador só apresenta o recibo na tela. */
-      await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app' }, {
+      await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app', ...captura.current }, {
         podeNotificar: async () => true,
-        notificarRevisao: async (titulo, texto) => {
+        notificarRevisao: async (titulo, texto, ref) => {
           const recibo = RECIBOS_VOZ.revisao(titulo, texto);
           Alert.alert(recibo.titulo, recibo.texto);
-          onTranscribed(texto);
+          onTranscribed(texto, ref);
         },
         notificarSucesso: async (dados) => {
           hapticSuccess();
@@ -301,6 +307,8 @@ export default function VoiceEntryButton({
          modo de reprodução) e o Whisper recebe quase silêncio. */
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await gravador.prepareToRecordAsync();
+      const agora = Date.now();
+      captura.current = { capturadoEm: agora, dataCaptura: dataLocal(agora) };
       gravador.record();
       setGravando(true);
       cortePorTempo.current = setTimeout(() => {

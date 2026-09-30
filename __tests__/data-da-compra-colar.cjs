@@ -13,8 +13,11 @@
  *   2. texto sem data: hoje, sem selo;
  *   3. data recusada: campo sem data, dica, e o Salvar não grava até a
  *      pessoa escolher;
- *   4. revisão de voz: sem a linha e com a data de hoje, como o widget
- *      (a data da fala entra na feature da voz, num commit só).
+ *   4. revisão de voz (data na voz): a linha aparece com a data da fala,
+ *      lida pela mesma função da tarefa do app e do widget, contada da
+ *      captura; data duvidosa deixa o campo vazio com a dica, e o Salvar
+ *      não grava até a escolha; a data editada vai no `occurred_on`
+ *      (casos 28, 30 e 31 da spec).
  */
 process.env.TZ = 'America/Sao_Paulo';
 const fs = require('node:fs');
@@ -76,6 +79,8 @@ const react = {
 };
 
 const registro = { alertas: [], gravados: [], voz: [] };
+/** O que o núcleo devolve na próxima gravação de voz (caso 31). */
+let respostaDaVoz = null;
 const imports = {
   react,
   'react/jsx-runtime': {
@@ -108,10 +113,11 @@ const imports = {
     desfechoDaOperacaoVoz: desfechoReal,
     registrarOperacaoVoz: async (id, source, payload, transcricao, falaGuardada) => {
       registro.voz.push({ id, source, payload, falaGuardada });
-      return { status: 'committed', operationId: id, kind: payload.kind, ids: ['tx'], replayed: false };
+      return respostaDaVoz ?? { status: 'committed', operationId: id, kind: payload.kind, ids: ['tx'], replayed: false };
     },
   },
   '@/lib/voz': { mensagemDeErroVoz: (c) => ({ titulo: 'Erro ' + c, texto: '' }) },
+  '@/lib/data-da-fala': lib('data-da-fala'),
 };
 function componente(arquivo) {
   const exports = {};
@@ -191,14 +197,70 @@ async function salvar() {
   await salvar();
   ok(registro.gravados.length === 1 && registro.gravados[0].occurred_on === '2026-09-28', 'e grava a data escolhida');
 
-  /* ── 4. Revisão de voz: comportamento de hoje (sem linha, data de hoje) ─ */
-  abrir({ initialText: 'mercado 50 reais ontem', falaGuardada: 'fala-1' });
+  /* ── 4. Revisão de voz: a data da fala, pelo núcleo ───────────────────── */
+  const REF = (referencia, aproximada = false) => ({ referencia, aproximada });
+  const descricao = (arvore) => porRotulo(arvore, /^Descrição do lançamento$/)?.props.value;
+  abrir({ initialText: 'mercado 50 reais ontem', falaGuardada: 'fala-1', referenciaDaVoz: REF('2026-09-30') });
   tela = render();
-  ok(!linhaData(tela), 'a revisão de voz não mostra a linha neste commit');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 29 set 2026. Toque para mudar', 'voz: "ontem" vira 29/09 no campo, sem selo');
+  ok(descricao(tela) === 'Mercado', 'e a descrição fica sem "ontem"');
   registro.voz.length = 0;
   await salvar();
-  ok(registro.voz.length === 1 && registro.voz[0].payload.occurred_on === '2026-09-30' && registro.voz[0].falaGuardada === 'fala-1',
-    'a revisão de voz grava hoje, como o widget, com a fala guardada');
+  ok(registro.voz.length === 1 && registro.voz[0].payload.occurred_on === '2026-09-29' && registro.voz[0].falaGuardada === 'fala-1',
+    'grava 29/09, com a fala guardada');
+
+  /* Caso 28: fala guardada revista 3 dias depois conta da captura. */
+  abrir({ initialText: 'almoço ontem 30 reais', falaGuardada: 'fala-2', referenciaDaVoz: REF('2026-09-27') });
+  ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: 26 set 2026. Toque para mudar', 'caso 28: captura em 27/09, "ontem" é 26/09 mesmo revisto em 30/09');
+
+  /* Caso 30: data futura dita. Campo vazio, dica, Salvar bloqueado; a data
+     escolhida é a enviada. */
+  abrir({ initialText: 'cinema amanhã 40 reais', referenciaDaVoz: REF('2026-09-30') });
+  tela = render();
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: Escolha a data. Toque para escolher', 'futura: campo vazio, nada pré-selecionado');
+  ok(textos(tela).includes('Você disse 01/10, que ainda não chegou.'), 'com a dica da data dita');
+  registro.voz.length = 0;
+  registro.alertas.length = 0;
+  await salvar();
+  ok(registro.voz.length === 0 && registro.alertas.at(-1)?.[0] === 'Escolha a data', 'o Salvar não grava sem a escolha');
+  linhaData(render()).props.onPress();
+  seletor(render()).props.onSelectDate('2026-10-01');
+  ok(linhaData(render()).props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'o seletor não aceita a futura: vira hoje');
+  seletor(render()).props.onSelectDate('2026-09-28');
+  ok(!textos(render()).includes('Você disse 01/10, que ainda não chegou.'), 'escolhida a data, a dica some');
+  await salvar();
+  ok(registro.voz.length === 1 && registro.voz[0].payload.occurred_on === '2026-09-28', 'caso 30: a data editada vai no occurred_on');
+
+  /* Referência aproximada (fala antiga) e sem referência: relativa pede escolha. */
+  abrir({ initialText: 'almoço ontem 30 reais', referenciaDaVoz: REF('2026-09-30', true) });
+  ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: Escolha a data. Toque para escolher', 'aproximada: "ontem" fica para a pessoa escolher');
+  /* r2 do Forge: a incerteza é explicada, com a data que a fala indicou, sem
+     pré-selecioná-la; e nada é gravado antes da escolha. */
+  ok(textos(render()).includes('Você disse ontem. Entendi 29/09.'), 'aproximada: a dica mostra a proposta');
+  registro.voz.length = 0;
+  registro.alertas.length = 0;
+  await salvar();
+  ok(registro.voz.length === 0 && registro.alertas.at(-1)?.[0] === 'Escolha a data', 'aproximada: nada gravado antes da escolha');
+  abrir({ initialText: 'mercado 50 reais hoje', referenciaDaVoz: REF('2026-09-30', true) });
+  ok(textos(render()).includes('Você disse hoje. Entendi 30/09.'), 'aproximada: "hoje" também pede escolha, com a dica');
+  abrir({ initialText: 'almoço ontem 30 reais' });
+  ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: Escolha a data. Toque para escolher', 'sem referência: idem');
+  ok(textos(render()).includes('Você disse ontem. Entendi 30/09.'.replace('30/09', '29/09')), 'sem referência: a dica também aparece');
+  abrir({ initialText: 'mercado dia 30 de fevereiro 20 reais', referenciaDaVoz: REF('2026-09-30') });
+  ok(textos(render()).includes('Você disse 30/02, que não existe.'), 'impossível: a dica aparece');
+  abrir({ initialText: 'mercado 50 reais' });
+  ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'sem data dita: hoje');
+
+  /* Caso 31: a revisão troca a data de uma fala que já foi ao servidor; o
+     núcleo devolve o 22023 como "já usada" (C3), e a tela mostra o recibo. */
+  abrir({ initialText: 'mercado 50 reais ontem', falaGuardada: 'fala-3', referenciaDaVoz: REF('2026-09-30') });
+  linhaData(render()).props.onPress();
+  seletor(render()).props.onSelectDate('2026-09-27');
+  respostaDaVoz = { status: 'committed', operationId: 'fala-3', kind: 'transaction', ids: [], replayed: true, conflito: true };
+  registro.alertas.length = 0;
+  await salvar();
+  respostaDaVoz = null;
+  ok(registro.alertas.at(-1)?.[0] === 'Erro ja_usada', 'caso 31: "Fala já usada", sem recibo de lançamento novo');
 
   console.log(`\n${checagens} checagens da data da compra no Colar passaram — 0 falhas`);
 })().catch((e) => { console.error(e); process.exit(1); });

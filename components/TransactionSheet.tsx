@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
 import Sheet from '@/components/Sheet';
 import DatePickerModal from '@/components/DatePickerModal';
+import { dataEscolhidaNoSeletor } from '@/components/LinhaDataDaCompra';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount, todayISO } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
@@ -52,6 +53,9 @@ type Props = {
   carteiras: Wallet[];
   salvando: boolean;
   onSalvar: (valores: ValoresLancamento) => void;
+  /** Revisão de uma fala (data na voz, 30/09/2026): o seletor não aceita
+      data futura, como a foto e o Colar; futura vira hoje. */
+  semDataFutura?: boolean;
 };
 
 function ontemISO(): string {
@@ -71,6 +75,7 @@ export default function TransactionSheet({
   carteiras,
   salvando,
   onSalvar,
+  semDataFutura = false,
 }: Props) {
   const [type, setType] = useState<TxType>(inicial.type);
   const [desc, setDesc] = useState(inicial.description);
@@ -148,6 +153,12 @@ export default function TransactionSheet({
       setFormError('Informe um valor maior que zero.');
       return;
     }
+    /* A revisão de uma fala com data duvidosa abre sem data (data na voz):
+       nada é salvo com uma data que ninguém escolheu. */
+    if (!occurredOn) {
+      setFormError('Escolha a data');
+      return;
+    }
     /* Lançamento novo abre sem categoria (nunca uma padrão, decisão do autor
        de 26/09/2026): sem escolha, pergunta e abre a lista. */
     if (!category.trim()) {
@@ -179,7 +190,8 @@ export default function TransactionSheet({
   }
 
   const yISO = ontemISO();
-  const dataCustomizada = occurredOn !== todayISO() && occurredOn !== yISO;
+  const dataCustomizada = !!occurredOn && occurredOn !== todayISO() && occurredOn !== yISO;
+  const rotuloDaData = occurredOn ? formatDateLabel(occurredOn) : 'Escolha a data';
 
   return (
     <>
@@ -304,10 +316,10 @@ export default function TransactionSheet({
           </AppPressable>
 
           <View style={{ gap: 6 }}>
-            <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)} accessibilityRole="button" accessibilityLabel={`${ehBoleto ? 'Vencimento' : 'Data do lançamento'}: ${formatDateLabel(occurredOn)}`}>
+            <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)} accessibilityRole="button" accessibilityLabel={`${ehBoleto ? 'Vencimento' : 'Data do lançamento'}: ${rotuloDaData}`}>
               <Text style={styles.fieldKey}>{ehBoleto ? 'Vencimento' : 'Data do lançamento'}</Text>
               <View style={styles.fieldVal}>
-                <Text style={styles.fieldValText}>{formatDateLabel(occurredOn)}</Text>
+                <Text style={styles.fieldValText}>{rotuloDaData}</Text>
                 <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
               </View>
             </AppPressable>
@@ -429,9 +441,9 @@ export default function TransactionSheet({
 
       <DatePickerModal
         visible={datePickerOpen}
-        currentISO={occurredOn}
+        currentISO={occurredOn || todayISO()}
         title={ehBoleto ? 'Vencimento' : 'Data do lançamento'}
-        onSelectDate={(iso) => setOccurredOn(iso)}
+        onSelectDate={(iso) => setOccurredOn(semDataFutura ? dataEscolhidaNoSeletor(iso, todayISO()) : iso)}
         onClose={() => setDatePickerOpen(false)}
       />
 

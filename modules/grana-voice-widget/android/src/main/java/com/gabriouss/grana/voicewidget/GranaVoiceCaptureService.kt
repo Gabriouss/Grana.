@@ -18,6 +18,9 @@ import android.os.Looper
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.io.File
 import java.util.UUID
 
@@ -66,6 +69,13 @@ class GranaVoiceCaptureService : Service() {
   private var recorder: MediaRecorder? = null
   private var arquivo: File? = null
   private var requestId: String? = null
+  /* A captura (data na voz, 30/09/2026): o instante e a data civil local do
+     INÍCIO da gravação. Vão ao JavaScript com a fala, e ao lado da órfã em
+     `<requestId>.json`, para "ontem" contar do dia em que ela foi dita, e
+     não da hora em que o app a processa. Mesmo par que o botão do app anota
+     (regra 13). */
+  private var capturadoEm = 0L
+  private var dataCaptura: String? = null
   private var wakelock: PowerManager.WakeLock? = null
   private val handler = Handler(Looper.getMainLooper())
 
@@ -219,6 +229,8 @@ class GranaVoiceCaptureService : Service() {
     recorder = novoRecorder
     arquivo = destino
     requestId = novoRequestId
+    capturadoEm = System.currentTimeMillis()
+    dataCaptura = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(capturadoEm))
     gravando = true
     ouviuFala = false
     silencioDesde = 0L
@@ -243,6 +255,8 @@ class GranaVoiceCaptureService : Service() {
 
     val destino = arquivo
     val id = requestId
+    val inicio = capturadoEm
+    val dataDaFala = dataCaptura
     var arquivoValido = false
     try {
       recorder?.stop()
@@ -276,6 +290,11 @@ class GranaVoiceCaptureService : Service() {
     val ponte = Intent(this, GranaVoiceHeadlessService::class.java).apply {
       putExtra("caminho", destino.absolutePath)
       putExtra("requestId", id)
+      // Double: é o número que `Arguments.fromBundle` entrega ao JavaScript.
+      if (dataDaFala != null) {
+        putExtra("capturadoEm", inicio.toDouble())
+        putExtra("dataCaptura", dataDaFala)
+      }
     }
     try {
       startService(ponte)
@@ -288,7 +307,7 @@ class GranaVoiceCaptureService : Service() {
          requestId, e o processa pelo núcleo comum. O widget fica em atenção:
          o toque abre o app. */
       android.util.Log.w("GranaVoz", "ponte recusada; fala guardada para o app", e)
-      guardarParaOApp(destino, id)
+      guardarParaOApp(destino, id, inicio, dataDaFala)
       publicarRecibo(R.string.grana_voice_guardada_titulo, R.string.grana_voice_guardada_texto)
       finalizar(EstadoWidget.ATENCAO)
       return
@@ -316,9 +335,19 @@ class GranaVoiceCaptureService : Service() {
 
   /** Move o áudio do cache para a pasta que o app adota ao abrir. Se nem isso
    *  der, o arquivo fica onde está: melhor sobrar no cache que sumir. */
-  private fun guardarParaOApp(arquivoGravado: File, id: String) {
+  private fun guardarParaOApp(arquivoGravado: File, id: String, inicio: Long, dataDaFala: String?) {
     try {
       val pasta = File(filesDir, PASTA_ORFA).apply { mkdirs() }
+      /* Metadados ANTES do áudio: a fila do app só adota o `.m4a`, então um
+         `.json` sozinho nunca vira fala. Falhar aqui não pode custar o áudio;
+         sem o arquivo, o app usa a data do áudio como aproximada. */
+      if (dataDaFala != null) {
+        try {
+          File(pasta, "$id.json").writeText("{\"capturadoEm\":$inicio,\"dataCaptura\":\"$dataDaFala\"}")
+        } catch (e: Exception) {
+          android.util.Log.w("GranaVoz", "não consegui guardar a data da fala", e)
+        }
+      }
       val alvo = File(pasta, "$id.m4a")
       if (!arquivoGravado.renameTo(alvo)) {
         arquivoGravado.copyTo(alvo, overwrite = true)

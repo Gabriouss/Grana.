@@ -36,6 +36,7 @@ function carregar(arquivo, dubles = {}, globais = {}) {
     setTimeout: globais.setTimeout ?? setTimeout, clearTimeout,
     require(id) {
       if (id in dubles) return dubles[id];
+      if (id in require('./modulos-puros-reais.cjs')) return require('./modulos-puros-reais.cjs')[id];
       if (id.startsWith('./')) {
         const alvo = path.join(path.dirname(arquivo), id.slice(2) + '.ts');
         if (fs.existsSync(path.join(root, alvo))) return carregar(alvo, dubles, globais);
@@ -127,9 +128,12 @@ function carregar(arquivo, dubles = {}, globais = {}) {
     getItem: async (k) => disco.get('as:' + k) ?? null,
     setItem: async (k, v) => { disco.set('as:' + k, v); },
   };
+  /* Data de modificação (segundos) dos arquivos, como o expo-file-system dá. */
+  const mtimes = new Map();
   const fsDuble = {
     documentDirectory: 'file:///files/',
-    getInfoAsync: async (p) => ({ exists: [...disco.keys()].some((k) => k.startsWith(p)) }),
+    getInfoAsync: async (p) => ({ exists: [...disco.keys()].some((k) => k.startsWith(p)), ...(mtimes.has(p) ? { modificationTime: mtimes.get(p) } : null) }),
+    readAsStringAsync: async (p) => { if (!disco.has(p)) throw new Error('sem arquivo'); return disco.get(p); },
     readDirectoryAsync: async (p) => [...disco.keys()].filter((k) => k.startsWith(p)).map((k) => k.slice(p.length)),
     makeDirectoryAsync: async () => {},
     copyAsync: async ({ from, to }) => {
@@ -153,7 +157,9 @@ function carregar(arquivo, dubles = {}, globais = {}) {
   assert.equal(adotadas, 1);
   const fila = await pendentes.listarVozesPendentes();
   assert.deepEqual(JSON.parse(JSON.stringify(fila.map(({ criadoEm, ...r }) => r))), [
-    { caminho: 'file:///files/voz-pendente/req-orfa-1.m4a', requestId: 'req-orfa-1', userId: 'u-1', source: 'widget' },
+    /* Órfã sem o `.json` da captura (de antes da data na voz): a referência
+       é aproximada, e expressão relativa vai para revisão (F1). */
+    { caminho: 'file:///files/voz-pendente/req-orfa-1.m4a', requestId: 'req-orfa-1', userId: 'u-1', source: 'widget', referenciaAproximada: true },
   ], 'entra na fila com o requestId do widget');
   assert.equal(disco.get('file:///files/voz-pendente/req-orfa-1.m4a'), 'AUDIO', 'o áudio foi copiado para a fila');
   assert.ok(!disco.has('file:///files/voz-orfa/req-orfa-1.m4a'), 'e só então sai da pasta de guardados');
@@ -167,6 +173,38 @@ function carregar(arquivo, dubles = {}, globais = {}) {
   assert.ok(log.some((a) => /não entrou na fila/.test(String(a[0]))), 'e deixa log');
   passou('cópia que falha mantém a fala guardada para a próxima abertura, com log');
 
+  /* Data na voz (F1, 30/09/2026): a órfã carrega a captura num `.json` ao
+     lado do áudio, escrito pelo Kotlin no INÍCIO da gravação. Adotada dias
+     depois, ela continua com a data de quando foi dita. */
+  const capturaAntesDaMeiaNoite = new Date(2026, 8, 29, 23, 58).getTime();
+  disco.set('file:///files/voz-orfa/req-orfa-3.m4a', 'AUDIO3');
+  disco.set('file:///files/voz-orfa/req-orfa-3.json', JSON.stringify({ capturadoEm: capturaAntesDaMeiaNoite, dataCaptura: '2026-09-29' }));
+  mtimes.set('file:///files/voz-orfa/req-orfa-3.m4a', new Date(2026, 8, 30, 0, 2).getTime() / 1000);
+  assert.equal(await pendentes.adotarVozesOrfas('u-1'), 1);
+  let item = (await pendentes.listarVozesPendentes()).find((i) => i.requestId === 'req-orfa-3');
+  assert.equal(item.dataCaptura, '2026-09-29', 'a data da captura vem do .json (início às 23h58), e não do fim do áudio (00h02)');
+  assert.equal(item.criadoEm, capturaAntesDaMeiaNoite, 'o instante é o do início');
+  assert.equal(item.referenciaAproximada, undefined, 'e não é aproximada');
+  assert.ok(!disco.has('file:///files/voz-orfa/req-orfa-3.json') && !disco.has('file:///files/voz-orfa/req-orfa-3.m4a'), 'o .json sai junto, depois da adoção');
+  passou('órfã com .json: a data é a do início da captura, mesmo que o áudio termine depois da meia-noite');
+
+  /* .json ilegível ou com data inválida: o áudio nunca se perde; a data vira a
+     do fim do áudio, marcada aproximada. */
+  for (const [id, conteudo] of [['req-orfa-4', '{quebrado'], ['req-orfa-5', JSON.stringify({ capturadoEm: 1, dataCaptura: '2026-02-30' })]]) {
+    disco.set(`file:///files/voz-orfa/${id}.m4a`, 'AUDIO');
+    disco.set(`file:///files/voz-orfa/${id}.json`, conteudo);
+    mtimes.set(`file:///files/voz-orfa/${id}.m4a`, new Date(2026, 8, 30, 0, 2).getTime() / 1000);
+  }
+  assert.equal(await pendentes.adotarVozesOrfas('u-1'), 2, 'metadado ruim não impede a adoção');
+  for (const id of ['req-orfa-4', 'req-orfa-5']) {
+    item = (await pendentes.listarVozesPendentes()).find((i) => i.requestId === id);
+    assert.ok(item && disco.get(`file:///files/voz-pendente/${id}.m4a`) === 'AUDIO', `${id}: o áudio está na fila`);
+    assert.equal(item.referenciaAproximada, true, `${id}: referência aproximada`);
+    assert.equal(item.dataCaptura, undefined, `${id}: sem data de captura inventada`);
+    assert.equal(item.criadoEm, new Date(2026, 8, 30, 0, 2).getTime(), `${id}: o instante é o fim do áudio`);
+  }
+  passou('órfã com .json ilegível ou inválido: áudio na fila, data aproximada pelo fim do áudio');
+
   const tarefa = fs.readFileSync(path.join(root, 'lib/widget-voz-task.ts'), 'utf8');
   const retomada = tarefa.slice(tarefa.indexOf('async function retomarFilaDeFalas'));
   assert.ok(retomada.indexOf('await adotarVozesOrfas(userId)') > 0
@@ -177,13 +215,25 @@ function carregar(arquivo, dubles = {}, globais = {}) {
   // Kotlin: o ramo do `startService` recusado guarda, avisa e deixa o widget em atenção.
   const ramo = kt.slice(kt.indexOf('startService(ponte)'), kt.indexOf('finalizar(null)'));
   assert.doesNotMatch(ramo, /destino\.delete\(\)/, 'o áudio válido não é mais apagado');
-  assert.match(ramo, /guardarParaOApp\(destino, id\)/);
+  assert.match(ramo, /guardarParaOApp\(destino, id, inicio, dataDaFala\)/);
   assert.match(ramo, /publicarRecibo\(R\.string\.grana_voice_guardada_titulo, R\.string\.grana_voice_guardada_texto\)/);
   assert.match(ramo, /finalizar\(EstadoWidget\.ATENCAO\)/);
   const guardar = kt.slice(kt.indexOf('private fun guardarParaOApp'), kt.indexOf('private fun publicarRecibo'));
   assert.match(guardar, /File\(filesDir, PASTA_ORFA\)/);
   assert.match(guardar, /"\$id\.m4a"/, 'o nome do arquivo é o requestId');
   passou('Kotlin: ponte recusada guarda o áudio em filesDir/voz-orfa, publica o recibo e põe o widget em atenção');
+
+  /* Data na voz (F1): conferência de FONTE do Kotlin, não execução. O que o
+     JavaScript faz com o .json e com os extras está executado acima e em
+     voz-data-paridade.cjs; a escrita real no aparelho depende do APK (QA do
+     Vigil/Sentinel), e não está validada por este teste. */
+  assert.match(kt, /capturadoEm = System\.currentTimeMillis\(\)\s*\n\s*dataCaptura = SimpleDateFormat\("yyyy-MM-dd", Locale\.US\)\.format\(Date\(capturadoEm\)\)/,
+    'o início da captura é anotado junto com o requestId');
+  assert.ok(guardar.indexOf('"$id.json"') > 0 && guardar.indexOf('"$id.json"') < guardar.indexOf('"$id.m4a"'), 'o .json é escrito antes de o áudio ir para a pasta');
+  const ponte = kt.slice(kt.indexOf('val ponte = Intent'), kt.indexOf('startService(ponte)'));
+  assert.match(ponte, /putExtra\("capturadoEm", inicio\.toDouble\(\)\)/);
+  assert.match(ponte, /putExtra\("dataCaptura", dataDaFala\)/);
+  passou('Kotlin (fonte; a execução depende do APK): captura anotada no início, extras na ponte e .json antes do áudio');
 
   console.log(`\n${ok}/${ok} checagens de paridade dos recibos de voz passaram\n`);
 })().catch((e) => { console.error(e); process.exit(1); });
