@@ -187,14 +187,14 @@ export default function WalletPickerModal({
             <View style={[styles.walletIconWrap, { backgroundColor: 'rgba(31,169,141,0.16)' }]}>
               <Ionicons name="cash-outline" size={20} color={theme.accent} />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.walletInfo}>
               <Text style={styles.walletName}>Total</Text>
-            </View>
-            <View style={styles.walletValueCol}>
-              <PrivacyValue>
-                <Text style={styles.walletBalance}>{formatBRL(entradas.total)}</Text>
-              </PrivacyValue>
-              <Text style={styles.walletValueLabel}>entradas no período</Text>
+              <View style={styles.walletValueCol}>
+                <PrivacyValue>
+                  <Text style={styles.walletBalance}>{formatBRL(entradas.total)}</Text>
+                </PrivacyValue>
+                <Text style={styles.walletValueLabel}>entradas no período</Text>
+              </View>
             </View>
           </AppPressable>
 
@@ -272,20 +272,20 @@ export default function WalletPickerModal({
                       color={w.color || theme.accent}
                     />
                   </View>
-                  {/* O nome quebra inteiro, sem teto de linhas, e o saldo não
+                  {/* O nome quebra inteiro, sem teto de linhas, e o valor não
                       encolhe. Um teto de duas linhas foi tentado (19/09/2026) e
                       desfeito no mesmo dia: "AUDIT carteira teste" virava
                       "AUDIT carteira ...", e duas carteiras como "Conta
                       conjunta" e "Conta pessoal" ficariam iguais. Linha mais
                       alta custa menos que nome ambíguo (achado G7). */}
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.walletInfo}>
                     <Text style={styles.walletName}>{w.name}</Text>
-                  </View>
-                  <View style={[styles.walletValueCol, styles.walletBalanceFixo]}>
-                    <PrivacyValue>
-                      <Text style={styles.walletBalance}>{formatBRL(entradasItem)}</Text>
-                    </PrivacyValue>
-                    <Text style={styles.walletValueLabel}>entradas no período</Text>
+                    <View style={styles.walletValueCol}>
+                      <PrivacyValue>
+                        <Text style={styles.walletBalance}>{formatBRL(entradasItem)}</Text>
+                      </PrivacyValue>
+                      <Text style={styles.walletValueLabel}>entradas no período</Text>
+                    </View>
                   </View>
                 </AppPressable>
                 <AppPressable
@@ -421,12 +421,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
     marginBottom: spacing.sm,
   },
+  /* `flex: 1` deixa o texto quebrar em vez de empurrar o interruptor para
+     fora da folha (a 130% da fonte ele ficava cortado na borda direita). */
   privacyLabel: {
+    flex: 1,
     color: theme.inkFaint,
     fontSize: type.corpo, fontFamily: fonts.light },
   confirmText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.45, fontFamily: fonts.light },
@@ -487,7 +491,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  /* Nome e valor dividem uma linha que quebra. Até 30/09/2026 o nome ficava
+     numa View `flex: 1` (base zero) ao lado da coluna do valor, que no Yoga
+     não encolhe: a 130% da fonte do sistema a coluna "entradas no período"
+     levava quase a linha toda e o nome, com ~70dp, partia letra a letra
+     ("Pri/nci/pal"). Agora o nome ocupa a largura do próprio texto e, quando
+     os dois não cabem juntos, o valor desce para baixo dele, alinhado à
+     direita. Nenhuma largura escrita à mão (regra 14).
+     Visto no emulador a 130%: uma 1ª versão, com `flexGrow: 1` e
+     `flexShrink: 1` no nome, não quebrava a fileira, e o nome continuava
+     partido letra a letra. A causa exata não foi fechada: duas simulações no
+     Yoga divergiram sobre qual das duas propriedades trava a quebra. Sem
+     crescer nem encolher, o nome é medido até a largura da linha, e um nome
+     maior que ela quebra por palavra (conferido no emulador). */
+  walletInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: spacing.md,
+    rowGap: 2,
+  },
   walletName: {
+    flexShrink: 0,
     color: theme.ink,
     fontSize: type.corpo, fontFamily: fonts.regular },
   walletBalance: {
@@ -496,11 +522,12 @@ const styles = StyleSheet.create({
        fixa, e param de saltar quando um valor muda. */
     fontVariant: ['tabular-nums'],
     fontSize: type.corpo, fontFamily: fonts.regular },
-  walletBalanceFixo: { flexShrink: 0 },
   /* Regra 20 (complemento): o número deixou de ser saldo, e o rótulo abaixo
      dele é o que evita a pessoa ler "entradas do período" como "saldo
      disponível". */
   walletValueCol: {
+    marginLeft: 'auto',
+    flexShrink: 0,
     alignItems: 'flex-end',
   },
   walletValueLabel: {
