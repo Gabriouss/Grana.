@@ -507,12 +507,19 @@ async function parteD() {
   {
     const { mod } = montarVoz();
     const codigos = ['nao_autenticado', 'sem_sessao', 'audio_ausente', 'audio_grande', 'formato_invalido',
-      'muitas_tentativas', 'sem_provedor', 'nao_entendi', 'erro_interno', 'sem_rede', 'demorou'];
+      'muitas_tentativas', 'sem_provedor', 'nao_entendi', 'erro_interno', 'sem_rede', 'demorou', 'ja_lancada'];
     for (const c of codigos) {
       const m = mod.mensagemDeErroVoz(c);
       check(F, 'mensagem de ' + c + ' tem titulo', typeof m.titulo === 'string' && m.titulo.length > 0, true);
       check(F, 'mensagem de ' + c + ' nao vaza jargao', /erro_|_invalido|undefined/.test(m.texto), false);
     }
+    /* O mesmo recibo serve à revisão (22023) e ao replay do "Tentar de novo",
+       no app e no widget: sem "pela revisão", que era falso no replay
+       (achado do Anvil, 29/09/2026). Regra de copy: sem travessão. */
+    const jaLancada = mod.mensagemDeErroVoz('ja_lancada');
+    check(F, 'ja_lancada: titulo', jaLancada.titulo, 'Fala já lançada');
+    check(F, 'ja_lancada: texto vale para revisao e replay', jaLancada.texto, 'Esta fala já foi lançada. Nada foi gravado de novo.');
+    check(F, 'ja_lancada: sem travessao', /[—–]/.test(jaLancada.titulo + jaLancada.texto), false);
   }
 }
 

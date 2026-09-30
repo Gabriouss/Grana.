@@ -37,8 +37,8 @@ export type CodigoErroVoz =
   | 'erro_interno'
   | 'sem_rede'
   | 'demorou'
-  /** A fala já foi lançada pela revisão (o servidor tem a operação com o
-      mesmo id e outro conteúdo). Só do cliente; o servidor nunca manda. */
+  /** A fala já foi lançada (replay ou mesmo id com outro conteúdo).
+      Só do cliente; o servidor nunca manda. */
   | 'ja_lancada';
 
 export type ResultadoVoz = { ok: true; transcript: string } | { ok: false; codigo: CodigoErroVoz };
@@ -277,7 +277,7 @@ export function mensagemDeErroVoz(codigo: CodigoErroVoz): { titulo: string; text
     case 'ja_lancada':
       return {
         titulo: 'Fala já lançada',
-        texto: 'Esta fala já foi lançada pela revisão. Nada foi gravado de novo.',
+        texto: 'Esta fala já foi lançada. Nada foi gravado de novo.',
       };
     case 'audio_ausente':
       return {
