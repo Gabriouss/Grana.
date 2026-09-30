@@ -378,7 +378,9 @@ async function tentarDeNovo(requestId) {
     assert.equal(disco.has(audio), false, `${source}: o áudio foi apagado`);
     const recibo = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
     assert.equal(recibo?.tipo, 'aviso', `${source}: recibo visível`);
-    assert.equal(recibo.titulo, 'Erro ja_lancada', `${source}: o recibo diz que a fala já foi lançada, e não "Não consegui salvar"`);
+    /* 22023: o servidor não diz se a operação existente está ativa ou foi
+       desfeita, então o recibo é "Fala já usada" (C3, 30/09/2026). */
+    assert.equal(recibo.titulo, 'Erro ja_usada', `${source}: o recibo diz "Fala já usada", e não "Não consegui salvar" nem "já lançada"`);
     await tentarDeNovo(requestId);
     assert.equal(linhas.length - antes, 1, `${source}: outro "Tentar de novo" também não grava`);
     entreExecucoes[source] = novas.map(({ id, request_id, ...resto }) => resto);
@@ -390,7 +392,7 @@ async function tentarDeNovo(requestId) {
     assert.equal(linhas.length - antes, 1);
   }
   assert.deepEqual(entreExecucoes.app, entreExecucoes.widget, 'entre execuções: mesmo desfecho no app e no widget (regra 13)');
-  ok('entre execuções (reabrir, Revisar, Tentar de novo): uma linha só, fala sai da fila, recibo "já lançada", nas duas entradas');
+  ok('entre execuções (reabrir, Revisar, Tentar de novo): uma linha só, fala sai da fila, recibo "já usada", nas duas entradas');
 
   /* ── 9. Fala gravada pela tarefa avisa as telas montadas ─────────────
      Achado do Harbor de 27/09/2026 (aba Lançamentos atrasada): o aviso sai
@@ -438,7 +440,8 @@ async function tentarDeNovo(requestId) {
     assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => [c.requestId, c.amount]), [[requestId, 130]], `${source}: uma chamada só, com o id da fala`);
     assert.equal(r.status, 'committed', `${source}: 22023 na revisão não vira erro`);
     assert.ok(avisosNoLog.some((l) => l.includes('22023 na revisão') && l.includes(requestId) && l.endsWith(' 22023')), `${source}: a conversão do 22023 deixou log com a fala e o código (B2)`);
-    assert.equal(r.replayed, true, `${source}: o desfecho é "já lançada" (replayed), que as telas mostram como "Fala já lançada"`);
+    assert.equal(r.replayed, true, `${source}: nada gravado agora (replayed)`);
+    assert.equal(carregar('lib/voice-operations.ts').desfechoDaOperacaoVoz(r), 'ja_usada', `${source}: o desfecho é "já usada" (C3), que as telas mostram como "Fala já usada"`);
     assert.equal(r.ids.length, 0, `${source}: nenhum id novo`);
     assert.equal(linhas.length - antes, 1, `${source}: nenhuma linha nova`);
     assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila`);
@@ -456,10 +459,12 @@ async function tentarDeNovo(requestId) {
   for (const tela of ['components/PasteReceiptModal.tsx', 'app/(app)/contas.tsx', 'app/(app)/credito.tsx']) {
     const codigo = ler(tela);
     assert.match(codigo, /const desfecho = desfechoDaOperacaoVoz\(resultado\);/, `${tela}: a decisão vem do núcleo`);
-    assert.match(codigo, /if \(desfecho === 'ja_lancada'\) \{ const m = mensagemDeErroVoz\('ja_lancada'\); Alert\.alert\(m\.titulo, m\.texto\); \}/, `${tela}: mostra "Fala já lançada"`);
+    /* Todo desfecho sem lançamento novo (já lançada, desfeita) mostra o recibo
+       do catálogo, pelo nome do próprio desfecho (C2, 30/09/2026). */
+    assert.match(codigo, /const m = mensagemDeErroVoz\(desfecho\); Alert\.alert\(m\.titulo, m\.texto\);/, `${tela}: mostra o recibo do desfecho`);
     assert.doesNotMatch(codigo, /resultado\.replayed/, `${tela}: não decide por conta própria (B1)`);
   }
-  ok('A1: 22023 na revisão de fala guardada vira "Fala já lançada", fala sai da fila, nas duas entradas e nas três telas');
+  ok('A1: 22023 na revisão de fala guardada vira "Fala já usada", fala sai da fila, nas duas entradas e nas três telas');
 
   /* ── 11. A2 do Lynx (29/09/2026): replay na tarefa não se anuncia como novo ──
      A tarefa gravou a fala, a limpeza falhou e a fala voltou à fila. O
@@ -523,6 +528,7 @@ async function tentarDeNovo(requestId) {
   assert.equal(desfechoDaOperacaoVoz({ status: 'undone', replayed: true }), 'desfeita');
   assert.equal(desfechoDaOperacaoVoz({ status: 'committed', replayed: true }), 'ja_lancada');
   assert.equal(desfechoDaOperacaoVoz({ status: 'committed', replayed: false }), 'nova');
+  assert.equal(desfechoDaOperacaoVoz({ status: 'committed', replayed: true, conflito: true }), 'ja_usada');
   const b1 = {};
   for (const source of ['app', 'widget']) {
     /* Tarefa: a fala volta e é reenviada depois do "Desfazer". */
@@ -536,7 +542,8 @@ async function tentarDeNovo(requestId) {
       await tentarDeNovo(requestId);
       assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => c.requestId), [requestId], `${source}: a tarefa chamou o banco uma vez`);
       assert.equal(linhas.length - antes, 1, `${source}: nada gravado de novo`);
-      assert.equal((await recibos.listarRecibosDaFila('u-1')).some((x) => x.id === requestId), false, `${source}: a tarefa fica em silêncio, sem "Fala já lançada"`);
+      const recibo = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
+      assert.equal(recibo?.titulo, 'Erro desfeita', `${source}: a tarefa diz "Fala já desfeita" (C2), nem silêncio nem "Fala já lançada"`);
       assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila`);
       b1[`tarefa/${source}`] = 'desfeita';
     }
@@ -558,10 +565,57 @@ async function tentarDeNovo(requestId) {
     }
   }
   assert.deepEqual(new Set(Object.values(b1)), new Set(['desfeita']), 'B1: tarefa e revisão, app e widget, a mesma decisão (regra 13)');
-  /* Contas é a única tela que dá recibo de sucesso sem ser Alert: no
-     'desfeita' ela não pode dizer "Conta salva". */
-  assert.match(ler('app/(app)/contas.tsx'), /else if \(desfecho !== 'desfeita'\) triggerToast\(/, 'Contas: nada de "Conta salva" para operação desfeita');
+  /* Contas é a única tela que dá recibo de sucesso sem ser Alert: só a
+     conta nova ou pendente diz "Conta salva"; a desfeita dá o recibo dela. */
+  assert.match(ler('app/(app)/contas.tsx'), /if \(desfecho === 'nova' \|\| desfecho === 'pendente'\) triggerToast\(/, 'Contas: "Conta salva" só para conta nova ou pendente');
   ok('B1: operação desfeita não vira "Fala já lançada" nem "salva", na tarefa e na revisão, nas duas entradas');
+
+  /* ── 13. C3 do Lynx (30/09/2026): 22023 DEPOIS de desfazer ──────────────
+     A fala foi lançada pela revisão, desfeita, e volta com OUTRO conteúdo.
+     O servidor responde 22023 sem dizer que ela foi desfeita. Antes, a tela
+     e a tarefa diziam "Fala já lançada", falso aqui. Agora "Fala já usada",
+     que vale para os dois estados, e a fala sai da fila com o recibo. */
+  const c3 = {};
+  for (const source of ['app', 'widget']) {
+    /* Revisão: salva com outro valor depois do "Desfazer". */
+    {
+      const requestId = `req-c3-revisao-${source}`;
+      await falaEmRevisao(requestId, source);
+      escritaFalha.add(CHAVE_FILA);
+      await registrarOperacaoVoz(`rev-c3-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+      escritaFalha.delete(CHAVE_FILA);
+      desfeitas.add(requestId);
+      abrirApp();
+      const antes = linhas.length;
+      const r = await registrarOperacaoVoz(`rev-c3-bis-${source}`, 'app', { ...payloadDaRevisao, amount: 150 }, undefined, requestId);
+      assert.equal(linhas.length - antes, 0, `${source}: nada gravado de novo`);
+      assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila`);
+      c3[`revisao/${source}`] = desfechoDaOperacaoVoz(r);
+    }
+    /* Tarefa: a fala revisada e desfeita volta pelo "Tentar de novo" com a
+       transcrição original, que difere do que a revisão gravou. */
+    {
+      const requestId = `req-c3-tarefa-${source}`;
+      await falaEmRevisao(requestId, source);
+      escritaFalha.add(CHAVE_FILA);
+      await registrarOperacaoVoz(`rev-c3t-${source}`, 'app', payloadDaRevisao, undefined, requestId);
+      escritaFalha.delete(CHAVE_FILA);
+      desfeitas.add(requestId);
+      abrirApp();
+      await fila.reabrirRevisoesDeFala('u-1');
+      const antes = linhas.length;
+      const chamadasAntes = chamadasRpc.length;
+      await tentarDeNovo(requestId);
+      assert.deepEqual(chamadasRpc.slice(chamadasAntes).map((c) => c.requestId), [requestId], `${source}: a tarefa chamou o banco uma vez`);
+      assert.equal(linhas.length - antes, 0, `${source}: nada gravado de novo`);
+      const recibo = (await recibos.listarRecibosDaFila('u-1')).find((x) => x.id === requestId);
+      assert.equal(recibo?.titulo, 'Erro ja_usada', `${source}: a tarefa diz "Fala já usada", nem "já lançada" nem silêncio`);
+      assert.deepEqual(await naFila(), [], `${source}: a fala saiu da fila, agora com recibo`);
+      c3[`tarefa/${source}`] = 'ja_usada';
+    }
+  }
+  assert.deepEqual(new Set(Object.values(c3)), new Set(['ja_usada']), 'C3: tarefa e revisão, app e widget, a mesma decisão (regra 13)');
+  ok('C3: 22023 depois de desfazer vira "Fala já usada", fala sai da fila com recibo, na tarefa e na revisão, nas duas entradas');
 
   console.log(`\n${checagens} checagens de revisão sem duplicata passaram — 0 falhas`);
 })().catch((erro) => {

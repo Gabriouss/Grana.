@@ -138,7 +138,7 @@ export default function PasteReceiptModal({
   };
   const detalhesReconhecidos = [
     dataDoComprovante ? `data ${dataDoComprovante.split('-').reverse().join('/')}` : null,
-    dataRecusada ? 'data do texto ignorada, vai com a de hoje' : null,
+    dataRecusada ? 'data do texto não usada, vai com a de hoje' : null,
     formaPagamento ? NOME_DA_FORMA[formaPagamento] ?? formaPagamento : null,
     recorrente ? 'repete todo mês' : null,
   ].filter((d): d is string => !!d);
@@ -238,7 +238,7 @@ export default function PasteReceiptModal({
         const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', { kind: 'transaction', ...input }, undefined, falaGuardada);
         const desfecho = desfechoDaOperacaoVoz(resultado);
         if (desfecho === 'pendente') Alert.alert('Salvo no aparelho', 'O lançamento será sincronizado ao abrir o Grana. com conexão.');
-        else if (desfecho === 'ja_lancada') { const m = mensagemDeErroVoz('ja_lancada'); Alert.alert(m.titulo, m.texto); }
+        else if (desfecho !== 'nova') { const m = mensagemDeErroVoz(desfecho); Alert.alert(m.titulo, m.texto); }
       } else {
         /* Comprovante colado SEM voz não tinha fila offline (item 3 da
            retomada de 25/09/2026): sem rede, `addTransaction` rejeitava e o

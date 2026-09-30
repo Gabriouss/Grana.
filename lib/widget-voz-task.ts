@@ -57,26 +57,29 @@ type Payload = {
 
 type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarRevisao' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'>;
 
-/** A checagem roda dentro do `catch` da tarefa: se ela mesma falhar, a fala
-    segue pelo caminho de falha de sempre, em vez de escapar do `catch`. */
-async function ehFalaJaLancada(erro: unknown): Promise<boolean> {
+/** O erro da gravação visto pelo núcleo (`desfechoDoErroVoz`, a mesma
+    decisão da revisão). Roda dentro do `catch` da tarefa: se a checagem
+    falhar, a fala segue pelo caminho de falha de sempre, em vez de escapar
+    do `catch`. */
+async function desfechoDoErro(erro: unknown): Promise<DesfechoOperacaoVoz | null> {
   try {
-    const { ehOperacaoJaRegistrada } = await import('./voice-operations');
-    return ehOperacaoJaRegistrada(erro);
+    const { desfechoDoErroVoz } = await import('./voice-operations');
+    return desfechoDoErroVoz(erro);
   } catch (erroChecagem) {
-    console.error('[voz] não consegui conferir se a fala já foi lançada', erroChecagem);
-    return false;
+    console.error('[voz] não consegui conferir se a fala já foi usada', erroChecagem);
+    return null;
   }
 }
 
-/** Nada foi gravado agora: a fala já estava lançada (22023 aqui no `catch`,
-    ou replay do servidor em `processar`, achado A2 do Lynx de 29/09/2026).
-    O recibo diz isso, e nunca o de lançamento novo. */
-async function avisarFalaJaLancada(notificacoes: ReciboVoz): Promise<void> {
+/** Nada foi gravado agora: a fala já estava lançada (replay do servidor,
+    achado A2 do Lynx de 29/09/2026), já tinha sido desfeita (C2) ou já foi
+    usada com outro conteúdo (22023, C3). O recibo diz qual, e nunca o de
+    lançamento novo. A falha do recibo não provoca nova gravação. */
+async function avisarSemLancamentoNovo(notificacoes: ReciboVoz, codigo: 'ja_lancada' | 'desfeita' | 'ja_usada'): Promise<void> {
   try {
-    await notificacoes.notificarFalha('ja_lancada');
+    await notificacoes.notificarFalha(codigo);
   } catch (erroRecibo) {
-    console.error('[voz] recibo de fala já lançada não foi entregue', erroRecibo);
+    console.error('[voz] recibo de fala sem lançamento novo não foi entregue', codigo, erroRecibo);
   }
 }
 
@@ -89,8 +92,7 @@ async function avisarFalaJaLancada(notificacoes: ReciboVoz): Promise<void> {
 async function reciboSemLancamentoNovo(desfecho: DesfechoOperacaoVoz, notificacoes: ReciboVoz): Promise<boolean> {
   if (desfecho === 'nova') return false;
   if (desfecho === 'pendente') await notificacoes.notificarSalvoLocal();
-  else if (desfecho === 'ja_lancada') await avisarFalaJaLancada(notificacoes);
-  // 'desfeita': a pessoa desfez esta operação antes; nada foi gravado agora.
+  else await avisarSemLancamentoNovo(notificacoes, desfecho);
   return true;
 }
 
@@ -108,6 +110,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
   let manterArquivo = false;
   const contexto: { transcricao?: string } = {};
   let desfecho: DesfechoTarefa = { guardada: false };
+  let desfechoDoConflito: DesfechoOperacaoVoz | null = null;
 
   try {
     if (!caminho) return desfecho;
@@ -195,19 +198,20 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
           await notificacoes.notificarFalha('sem_sessao');
         }
       }
-    } else if (requestId && (await ehFalaJaLancada(erro))) {
-      /* A fala já foi lançada pela revisão (que grava com o id dela) e voltou
+    } else if (requestId && (desfechoDoConflito = await desfechoDoErro(erro))) {
+      /* A fala já foi usada pela revisão (que grava com o id dela) e voltou
          porque a limpeza local falhou. Nada a lançar e nada a revisar: a fala
-         sai da fila, e o recibo diz por quê. Oferecer "Não consegui salvar"
-         aqui convidaria a pessoa a lançar o mesmo gasto à mão. */
+         sai da fila, e o recibo diz por quê, com a mesma decisão e o mesmo
+         texto da revisão ("Fala já usada", C3). Oferecer "Não consegui
+         salvar" aqui convidaria a pessoa a lançar o mesmo gasto à mão. */
       estadoFinal = 'ocioso';
       try {
         const { concluirVozRevisada } = await import('./widget-voz-pendentes');
         await concluirVozRevisada(requestId);
       } catch (erroLimpeza) {
-        console.error('[voz] fala já lançada não saiu da fila', requestId, erroLimpeza);
+        console.error('[voz] fala já usada não saiu da fila', requestId, erroLimpeza);
       }
-      await avisarFalaJaLancada(notificacoes);
+      await reciboSemLancamentoNovo(desfechoDoConflito, notificacoes);
     } else {
       try {
         if (contexto.transcricao) {

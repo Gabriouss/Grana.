@@ -1071,7 +1071,7 @@ export default function CreditoScreen() {
           undefined, falaGuardadaDaRevisao.current);
         const desfecho = desfechoDaOperacaoVoz(resultado);
         if (desfecho === 'pendente') Alert.alert('Salvo no aparelho', 'A compra será sincronizada quando houver conexão.');
-        else if (desfecho === 'ja_lancada') { const m = mensagemDeErroVoz('ja_lancada'); Alert.alert(m.titulo, m.texto); }
+        else if (desfecho !== 'nova') { const m = mensagemDeErroVoz(desfecho); Alert.alert(m.titulo, m.texto); }
         operacaoVoz.current = null;
         falaGuardadaDaRevisao.current = undefined;
         if (resultado.status !== 'pending') await loadData();

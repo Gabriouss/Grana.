@@ -40,10 +40,13 @@ export type ResultadoOperacaoVoz = {
   operationId: string;
   kind: PayloadOperacaoVoz['kind'];
   ids: string[];
-  /** Nada foi gravado agora: a fala já estava lançada (replay do servidor, ou
-      22023 na revisão de fala guardada). App e widget mostram o recibo "Fala
-      já lançada", nunca o de lançamento novo (regra 13). */
+  /** Nada foi gravado agora: a fala já tinha uma operação (replay do
+      servidor, ou 22023). Nunca o recibo de lançamento novo (regra 13). */
   replayed: boolean;
+  /** O servidor recusou com 22023: este `request_id` já tem uma operação com
+      OUTRO conteúdo, e ele não diz se ela está ativa ou foi desfeita. O
+      recibo não pode afirmar nenhum dos dois (achado C3 do Lynx, 30/09/2026). */
+  conflito?: boolean;
 };
 
 /**
@@ -52,18 +55,35 @@ export type ResultadoOperacaoVoz = {
  * do Lynx, 29/09/2026, em que as telas olhavam só `replayed`):
  *   - 'pendente': guardado no aparelho, sobe quando houver rede;
  *   - 'desfeita': o servidor já tinha esta operação e ela foi desfeita pelo
- *     "Desfazer". Nada existe e nada foi gravado: silêncio, como a tarefa
- *     sempre fez. Dizer "Fala já lançada" aqui seria falso;
- *   - 'ja_lancada': já existia (replay, ou 22023 na revisão): recibo "Fala já
- *     lançada", nunca o de lançamento novo;
+ *     "Desfazer". Nada existe e nada foi gravado: recibo "Fala já desfeita"
+ *     (achado C2 do Lynx, 30/09/2026: o silêncio era indistinguível de "nada
+ *     aconteceu"). Dizer "Fala já lançada" aqui seria falso;
+ *   - 'ja_lancada': o servidor confirma que a operação existe (replay):
+ *     recibo "Fala já lançada", nunca o de lançamento novo;
+ *   - 'ja_usada': 22023, a fala já teve uma operação com outro conteúdo, que
+ *     pode ter sido desfeita depois: recibo "Fala já usada", que não afirma
+ *     nenhum dos dois (achado C3 do Lynx, 30/09/2026);
  *   - 'nova': lançamento novo.
  */
-export type DesfechoOperacaoVoz = 'nova' | 'pendente' | 'desfeita' | 'ja_lancada';
+export type DesfechoOperacaoVoz = 'nova' | 'pendente' | 'desfeita' | 'ja_lancada' | 'ja_usada';
 
-export function desfechoDaOperacaoVoz(resultado: Pick<ResultadoOperacaoVoz, 'status' | 'replayed'>): DesfechoOperacaoVoz {
+export function desfechoDaOperacaoVoz(resultado: Pick<ResultadoOperacaoVoz, 'status' | 'replayed' | 'conflito'>): DesfechoOperacaoVoz {
   if (resultado.status === 'pending') return 'pendente';
   if (resultado.status === 'undone') return 'desfeita';
+  if (resultado.conflito) return 'ja_usada';
   return resultado.replayed ? 'ja_lancada' : 'nova';
+}
+
+/** O 22023 visto como resultado: nada gravado agora, e a operação existente
+    pode estar ativa ou desfeita. A revisão (em `registrarOperacaoVoz`) e o
+    `catch` da tarefa da voz partem daqui, para as duas entradas dizerem a
+    mesma coisa. */
+const RESULTADO_DO_CONFLITO = { status: 'committed', replayed: true, conflito: true } as const;
+
+/** O desfecho de um ERRO da gravação por voz, ou `null` se o erro não for um
+    desfecho (é falha de verdade, e segue o caminho de falha de quem chamou). */
+export function desfechoDoErroVoz(erro: unknown): DesfechoOperacaoVoz | null {
+  return ehOperacaoJaRegistrada(erro) ? desfechoDaOperacaoVoz(RESULTADO_DO_CONFLITO) : null;
 }
 
 /**
@@ -143,17 +163,15 @@ export async function registrarOperacaoVoz(
   } catch (erro) {
     /* Achado A1 do Lynx (29/09/2026): a fala revisada já tinha sido lançada
        por uma revisão anterior, voltou depois de reabrir o app, e esta
-       revisão mudou o conteúdo. O 22023 é a prova de que o lançamento
-       existe: devolve o mesmo desfecho do replay (nada gravado agora), a
-       fala sai da fila logo abaixo, e a tela mostra "Fala já lançada" em vez
-       de "Erro ao salvar", que convidaria a lançar à mão. */
+       revisão mudou o conteúdo. Nada é gravado agora, a fala sai da fila
+       logo abaixo, e a tela mostra "Fala já usada" em vez de "Erro ao
+       salvar". O 22023 não diz se a operação existente está ativa ou foi
+       desfeita (C3): o recibo diz as duas possibilidades e pede para
+       conferir antes de lançar de novo. Distinguir exigiria o servidor. */
     if (!falaGuardada || !ehOperacaoJaRegistrada(erro)) throw erro;
-    /* Erro virando desfecho benigno deixa rastro (regra 9, achado B2). O
-       22023 não diz se a operação existente está ativa ou desfeita: revisar
-       com outro conteúdo uma fala já DESFEITA também cai aqui (limite
-       conhecido, depende do servidor dizer o estado). */
-    console.warn('[voz] 22023 na revisão: fala já lançada', falaGuardada, (erro as { code?: unknown })?.code);
-    resultado ={ status: 'committed', operationId: falaGuardada, kind: payload.kind, ids: [], replayed: true };
+    // Erro virando desfecho deixa rastro (regra 9, achado B2).
+    console.warn('[voz] 22023 na revisão: fala já usada', falaGuardada, (erro as { code?: unknown })?.code);
+    resultado = { ...RESULTADO_DO_CONFLITO, operationId: falaGuardada, kind: payload.kind, ids: [] };
   }
   // As telas montadas (a aba Lançamentos) recarregam agora, não só no foco.
   if ((resultado.status === 'committed' && !resultado.replayed) || resultado.status === 'pending') lancamentoGravado();

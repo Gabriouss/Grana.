@@ -27,3 +27,5 @@ if (typeof modulo.desfechoDaOperacaoVoz !== 'function') {
   throw new Error('lib/voice-operations.ts não exporta desfechoDaOperacaoVoz');
 }
 module.exports = modulo.desfechoDaOperacaoVoz;
+/* O 22023 visto pelo núcleo (C3, 30/09/2026): o `catch` da tarefa lê daqui. */
+module.exports.desfechoDoErroVoz = modulo.desfechoDoErroVoz;

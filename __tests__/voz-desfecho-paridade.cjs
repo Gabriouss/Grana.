@@ -13,7 +13,8 @@
  *  1. Efeito por resposta do servidor, 4 tipos × 2 entradas (app e widget):
  *     nova → um recibo de sucesso; replay → "Fala já lançada" e nenhum
  *     sucesso; pending (com ou sem replayed) → "salvo no aparelho"; undone
- *     (com ou sem replayed) → nada. Uma gravação por fala, nunca outra.
+ *     (com ou sem replayed) → "Fala já desfeita" (C2). Uma gravação por fala,
+ *     nunca outra.
  *  2. Obediência: um espião envolve a função REAL e conta uma chamada por
  *     gravação, com o objeto devolvido pelo servidor. Forçado a responder
  *     'ja_lancada' ou 'desfeita' para uma gravação nova, a tarefa segue o
@@ -21,6 +22,9 @@
  *  3. O recibo que falha não provoca nova gravação.
  *  4. Fonte: a tarefa não lê `resultado.status` nem `.replayed`.
  *  5. Todo dublê de `./voice-operations` em __tests__/ traz a função real.
+ *  6. 22023 no `catch` da tarefa (C3): "Fala já usada", a mesma decisão da
+ *     revisão, nos 4 pontos e nas 2 entradas, e a falha do recibo não grava
+ *     de novo.
  *
  * Módulos REAIS: a tarefa, as heurísticas, a fila de falas e a
  * `desfechoDaOperacaoVoz` (por __tests__/desfecho-voz-real.cjs). Dublês:
@@ -70,9 +74,10 @@ const voiceOperations = {
   },
   registrarOperacaoVoz: async (requestId, source, payload) => {
     gravacoes.push({ requestId, source, kind: payload.kind });
+    if (respostaDoServidor.erro) throw respostaDoServidor.erro;
     return respostaDoServidor;
   },
-  ehOperacaoJaRegistrada: () => false,
+  desfechoDoErroVoz: (erro) => desfechoReal.desfechoDoErroVoz(erro),
   ehRecusaCartaoObrigatorio: () => false,
 };
 
@@ -158,14 +163,14 @@ const EFEITO_ESPERADO = {
   replay: ['falha:ja_lancada'],
   pendente: ['salvo_local'],
   pendente_replayed: ['salvo_local'],
-  desfeita: [],
-  desfeita_replayed: [],
+  desfeita: ['falha:desfeita'],
+  desfeita_replayed: ['falha:desfeita'],
 };
 
 let seq = 0;
 async function gravar(tipo, source, resposta, opcoes = {}) {
   const requestId = `req-${++seq}`;
-  respostaDoServidor = { ...resposta, operationId: requestId, kind: FALAS[tipo].kind, ids: resposta.status === 'committed' && !resposta.replayed ? ['tx-' + requestId] : [] };
+  respostaDoServidor = resposta.erro ? resposta : { ...resposta, operationId: requestId, kind: FALAS[tipo].kind, ids: resposta.status === 'committed' && !resposta.replayed ? ['tx-' + requestId] : [] };
   const antesGravacoes = gravacoes.length;
   const antesDesfecho = chamadasDoDesfecho.length;
   const { publicados, recibo } = novoRecibo(opcoes);
@@ -192,7 +197,7 @@ async function gravar(tipo, source, resposta, opcoes = {}) {
         /* A revisão (as três telas) lê a mesma função com a mesma resposta. */
         const daRevisao = desfechoReal(r.resposta);
         assert.equal(
-          { nova: 'sucesso', ja_lancada: 'falha:ja_lancada', pendente: 'salvo_local', desfeita: undefined }[daRevisao],
+          { nova: 'sucesso', ja_lancada: 'falha:ja_lancada', pendente: 'salvo_local', desfeita: 'falha:desfeita' }[daRevisao],
           EFEITO_ESPERADO[nome][0],
           `${rotulo}: a revisão decide o mesmo (${daRevisao})`
         );
@@ -221,7 +226,7 @@ async function gravar(tipo, source, resposta, opcoes = {}) {
       const forcadoDesfeita = await gravar(tipo, source, RESPOSTAS.nova);
       desfechoForcado = null;
       assert.deepEqual(forcadoJa.publicados, ['falha:ja_lancada'], `${rotulo}: o núcleo diz "já lançada" e a tarefa segue`);
-      assert.deepEqual(forcadoDesfeita.publicados, [], `${rotulo}: o núcleo diz "desfeita" e a tarefa segue`);
+      assert.deepEqual(forcadoDesfeita.publicados, ['falha:desfeita'], `${rotulo}: o núcleo diz "desfeita" e a tarefa segue`);
     }
   }
   ok('obediência: nos 4 pontos e nas 2 entradas, a tarefa chama o núcleo uma vez e segue o que ele decide');
@@ -229,12 +234,14 @@ async function gravar(tipo, source, resposta, opcoes = {}) {
   /* ── 3. Recibo que falha não grava de novo ─────────────────────────────── */
   for (const tipo of Object.keys(FALAS)) {
     for (const source of ['app', 'widget']) {
-      const r = await gravar(tipo, source, RESPOSTAS.replay, { falhaAoAvisar: true });
-      assert.equal(r.gravacoes.length, 1, `${tipo}/${source}: nenhuma nova tentativa`);
-      assert.ok(!r.publicados.includes('sucesso'), `${tipo}/${source}: nenhum recibo de sucesso`);
+      for (const nome of ['replay', 'desfeita']) {
+        const r = await gravar(tipo, source, RESPOSTAS[nome], { falhaAoAvisar: true });
+        assert.equal(r.gravacoes.length, 1, `${tipo}/${source}/${nome}: nenhuma nova tentativa`);
+        assert.ok(!r.publicados.includes('sucesso'), `${tipo}/${source}/${nome}: nenhum recibo de sucesso`);
+      }
     }
   }
-  ok('replay com recibo que falha: uma gravação só e nenhum sucesso, nos 4 pontos e nas 2 entradas');
+  ok('replay e desfeita com recibo que falha: uma gravação só e nenhum sucesso, nos 4 pontos e nas 2 entradas');
 
   /* ── 4. Fonte: nenhuma decisão própria sobre o resultado ──────────────── */
   {
@@ -259,6 +266,25 @@ async function gravar(tipo, source, resposta, opcoes = {}) {
     assert.deepEqual(sem, [], 'dublês de ./voice-operations sem desfechoDaOperacaoVoz: ' + sem.join(', '));
   }
   ok('todo dublê de ./voice-operations em __tests__/ traz a desfechoDaOperacaoVoz real');
+
+  /* ── 6. C3: 22023 no `catch` da tarefa é "Fala já usada" ─────────────── */
+  {
+    const conflito = { erro: { code: '22023', message: 'request_id ja pertence a outra operacao' } };
+    assert.equal(desfechoReal.desfechoDoErroVoz(conflito.erro), 'ja_usada', 'o núcleo lê o 22023 como "já usada"');
+    assert.equal(desfechoReal.desfechoDoErroVoz({ code: '22023', message: 'Parcelamento inválido' }), null, 'outro 22023 continua falha');
+    assert.equal(desfechoReal({ status: 'committed', replayed: true, conflito: true }), 'ja_usada', 'a revisão decide o mesmo');
+    for (const tipo of Object.keys(FALAS)) {
+      for (const source of ['app', 'widget']) {
+        const r = await gravar(tipo, source, conflito);
+        assert.equal(r.gravacoes.length, 1, `${tipo}/${source}: uma gravação`);
+        assert.deepEqual(r.publicados, ['falha:ja_usada'], `${tipo}/${source}: recibo "Fala já usada", nem "já lançada" nem "Não consegui salvar"`);
+        const falhou = await gravar(tipo, source, conflito, { falhaAoAvisar: true });
+        assert.equal(falhou.gravacoes.length, 1, `${tipo}/${source}: recibo que falha não grava de novo`);
+        assert.ok(!falhou.publicados.includes('sucesso'), `${tipo}/${source}: nenhum sucesso`);
+      }
+    }
+  }
+  ok('C3: 22023 na tarefa dá "Fala já usada" nos 4 pontos e nas 2 entradas, igual à revisão');
 
   console.log(`\n${checagens} checagens de desfecho da voz passaram — 0 falhas`);
 })().catch((erro) => {

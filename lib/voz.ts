@@ -37,9 +37,16 @@ export type CodigoErroVoz =
   | 'erro_interno'
   | 'sem_rede'
   | 'demorou'
-  /** A fala já foi lançada (replay ou mesmo id com outro conteúdo).
+  /** A fala já foi lançada (replay: o servidor confirma a operação).
       Só do cliente; o servidor nunca manda. */
-  | 'ja_lancada';
+  | 'ja_lancada'
+  /** 22023: a fala já teve uma operação com outro conteúdo, que pode ter
+      sido desfeita depois. Só do cliente. */
+  | 'ja_usada'
+  /** O servidor já tinha esta operação e ela foi desfeita pelo "Desfazer"
+      (só a pessoa desfaz; conferido em produção em 30/09/2026). Só do
+      cliente; o servidor nunca manda. */
+  | 'desfeita';
 
 export type ResultadoVoz = { ok: true; transcript: string } | { ok: false; codigo: CodigoErroVoz };
 
@@ -277,7 +284,17 @@ export function mensagemDeErroVoz(codigo: CodigoErroVoz): { titulo: string; text
     case 'ja_lancada':
       return {
         titulo: 'Fala já lançada',
-        texto: 'Esta fala já foi lançada. Nada foi gravado de novo.',
+        texto: 'Nada foi lançado de novo. Esta fala já foi lançada.',
+      };
+    case 'ja_usada':
+      return {
+        titulo: 'Fala já usada',
+        texto: 'Nada foi lançado agora. Esta fala já foi usada em um lançamento, que pode ter sido desfeito depois. Confira seus lançamentos e contas antes de lançar de novo.',
+      };
+    case 'desfeita':
+      return {
+        titulo: 'Fala já desfeita',
+        texto: 'Nada foi lançado agora. Você já tinha desfeito o lançamento desta fala. Se ainda quiser, lance de novo.',
       };
     case 'audio_ausente':
       return {

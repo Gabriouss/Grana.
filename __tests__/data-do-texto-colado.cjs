@@ -98,7 +98,9 @@ ok('a foto da nota lê a data como antes (mesma função de prazo)');
   assert.match(tela, /occurred_on: dataDoComprovante \?\? todayISO\(\)/, 'grava na data do texto, hoje só sem ela');
   assert.match(tela, /const lida = origemVoz \? \{ data: null, recusada: false \} : dataDoTexto\(text, todayISO\(\)\);/,
     'só o texto colado tem a data lida; a revisão da voz segue hoje, como o widget');
-  assert.match(tela, /dataRecusada \? 'data do texto ignorada, vai com a de hoje' : null/, 'data recusada deixa recibo na tela');
+  assert.match(tela, /dataRecusada \? 'data do texto não usada, vai com a de hoje' : null/, 'data recusada deixa recibo na tela');
+  /* 4c (Flare e Beacon, 30/09/2026): "ignorada" soava a defeito e não dizia o que aconteceu. */
+  assert.doesNotMatch(tela, /data do texto ignorada/, 'o chip não diz mais "ignorada"');
   assert.match(tela, /dataDoComprovante \? `data \$\{dataDoComprovante\.split\('-'\)\.reverse\(\)\.join\('\/'\)\}` : null/,
     'a data lida aparece na confirmação');
   const qr = fs.readFileSync(path.join(root, 'components/QrScannerModal.tsx'), 'utf8');

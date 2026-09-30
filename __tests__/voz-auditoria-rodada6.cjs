@@ -507,7 +507,7 @@ async function parteD() {
   {
     const { mod } = montarVoz();
     const codigos = ['nao_autenticado', 'sem_sessao', 'audio_ausente', 'audio_grande', 'formato_invalido',
-      'muitas_tentativas', 'sem_provedor', 'nao_entendi', 'erro_interno', 'sem_rede', 'demorou', 'ja_lancada'];
+      'muitas_tentativas', 'sem_provedor', 'nao_entendi', 'erro_interno', 'sem_rede', 'demorou', 'ja_lancada', 'desfeita', 'ja_usada'];
     for (const c of codigos) {
       const m = mod.mensagemDeErroVoz(c);
       check(F, 'mensagem de ' + c + ' tem titulo', typeof m.titulo === 'string' && m.titulo.length > 0, true);
@@ -518,8 +518,24 @@ async function parteD() {
        (achado do Anvil, 29/09/2026). Regra de copy: sem travessão. */
     const jaLancada = mod.mensagemDeErroVoz('ja_lancada');
     check(F, 'ja_lancada: titulo', jaLancada.titulo, 'Fala já lançada');
-    check(F, 'ja_lancada: texto vale para revisao e replay', jaLancada.texto, 'Esta fala já foi lançada. Nada foi gravado de novo.');
+    check(F, 'ja_lancada: texto vale para revisao e replay', jaLancada.texto, 'Nada foi lançado de novo. Esta fala já foi lançada.');
+    /* 4a (Flare e Beacon, 30/09/2026): "gravado" é o verbo do áudio em
+       `audio_ausente`; aqui é o lançamento. O desfecho vem na frente, como
+       nos recibos de fala desfeita e de fala já usada. */
+    check(F, 'ja_lancada: sem "gravado"', /gravad/.test(jaLancada.texto), false);
     check(F, 'ja_lancada: sem travessao', /[—–]/.test(jaLancada.titulo + jaLancada.texto), false);
+    /* C2 (Lynx, 30/09/2026): operação desfeita pelo "Desfazer" deixa recibo
+       em vez de silêncio. Texto do Flare, julgado pelo Meridian. */
+    const desfeita = mod.mensagemDeErroVoz('desfeita');
+    check(F, 'desfeita: titulo', desfeita.titulo, 'Fala já desfeita');
+    check(F, 'desfeita: texto', desfeita.texto, 'Nada foi lançado agora. Você já tinha desfeito o lançamento desta fala. Se ainda quiser, lance de novo.');
+    check(F, 'desfeita: sem travessao', /[—–]/.test(desfeita.titulo + desfeita.texto), false);
+    /* C3 (Lynx, 30/09/2026): 22023, a operação pode estar ativa ou desfeita;
+       o texto vale para os dois. Texto do Flare, julgado pelo Meridian. */
+    const jaUsada = mod.mensagemDeErroVoz('ja_usada');
+    check(F, 'ja_usada: titulo', jaUsada.titulo, 'Fala já usada');
+    check(F, 'ja_usada: texto', jaUsada.texto, 'Nada foi lançado agora. Esta fala já foi usada em um lançamento, que pode ter sido desfeito depois. Confira seus lançamentos e contas antes de lançar de novo.');
+    check(F, 'ja_usada: sem travessao', /[—–]/.test(jaUsada.titulo + jaUsada.texto), false);
   }
 }
 

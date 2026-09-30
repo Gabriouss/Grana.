@@ -274,8 +274,8 @@ export default function ContasScreen() {
           operacaoVoz.current = null;
           falaGuardadaDaRevisao.current = undefined;
           const desfecho = desfechoDaOperacaoVoz(resultado);
-          if (desfecho === 'ja_lancada') { const m = mensagemDeErroVoz('ja_lancada'); Alert.alert(m.titulo, m.texto); }
-          else if (desfecho !== 'desfeita') triggerToast(desfecho === 'pendente' ? 'Conta salva no aparelho; sincronização pendente' : 'Conta salva');
+          if (desfecho === 'nova' || desfecho === 'pendente') triggerToast(desfecho === 'pendente' ? 'Conta salva no aparelho; sincronização pendente' : 'Conta salva');
+          else { const m = mensagemDeErroVoz(desfecho); Alert.alert(m.titulo, m.texto); }
         } else {
         const entrada = {
           description: v.description.trim() || 'Sem descrição',
