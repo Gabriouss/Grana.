@@ -95,14 +95,15 @@ ok('a foto da nota lê a data como antes (mesma função de prazo)');
 /* ── 5. A tela: grava na data lida, só no texto colado ──────────────────── */
 {
   const tela = fs.readFileSync(path.join(root, 'components/PasteReceiptModal.tsx'), 'utf8');
-  assert.match(tela, /occurred_on: dataDoComprovante \?\? todayISO\(\)/, 'grava na data do texto, hoje só sem ela');
+  /* A data gravada, o campo editável e a recusa são provados EXECUTANDO a
+     tela em __tests__/data-da-compra-colar.cjs (30/09/2026). Aqui fica o que
+     é de fonte: a revisão da voz não lê a data do texto colado. */
   assert.match(tela, /const lida = origemVoz \? \{ data: null, recusada: false \} : dataDoTexto\(text, todayISO\(\)\);/,
     'só o texto colado tem a data lida; a revisão da voz segue hoje, como o widget');
-  assert.match(tela, /dataRecusada \? 'data do texto não usada, vai com a de hoje' : null/, 'data recusada deixa recibo na tela');
-  /* 4c (Flare e Beacon, 30/09/2026): "ignorada" soava a defeito e não dizia o que aconteceu. */
-  assert.doesNotMatch(tela, /data do texto ignorada/, 'o chip não diz mais "ignorada"');
-  assert.match(tela, /dataDoComprovante \? `data \$\{dataDoComprovante\.split\('-'\)\.reverse\(\)\.join\('\/'\)\}` : null/,
-    'a data lida aparece na confirmação');
+  /* 4c (Flare e Beacon, 30/09/2026) e campo de data (30/09): a data saiu dos
+     chips de "Também reconhecido"; recusada, ela vira a dica do campo. */
+  assert.doesNotMatch(tela, /data do texto ignorada|vai com a de hoje/, 'nenhum chip de data recusada');
+  assert.match(tela, /'A data do texto não foi usada\. Escolha a data\.'/, 'a recusa vira a dica do campo');
   const qr = fs.readFileSync(path.join(root, 'components/QrScannerModal.tsx'), 'utf8');
   assert.match(qr, /occurred_on: nota\.dataEmissao/, 'QR: grava na data de emissão lida do QR');
   const foto = fs.readFileSync(path.join(root, 'components/FotoNotaModal.tsx'), 'utf8');

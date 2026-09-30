@@ -5,7 +5,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { categoriaEscolhida, categoriaReconhecida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
-import { formatMoney, parseAmount, formatMoneyInput, todayISO, formatDateLabel } from '@/lib/format';
+import { formatMoney, parseAmount, formatMoneyInput, todayISO } from '@/lib/format';
 import { fotografarELer, limparFotosEsquecidas, prepararLeitura } from '@/lib/foto-nota-ocr';
 import { extrairDetalhesDaNota } from '@/lib/nota-foto-parser';
 import { cartaoPadrao, montarLancamentoDaFoto } from '@/lib/foto-nota-lancamento';
@@ -24,6 +24,7 @@ import AppModal, { InsetsDoModal } from './AppModal';
 import Sheet from './Sheet';
 import PermissaoCamera from './PermissaoCamera';
 import DatePickerModal from './DatePickerModal';
+import LinhaDataDaCompra, { dataEscolhidaNoSeletor } from './LinhaDataDaCompra';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
 
@@ -386,19 +387,12 @@ export default function FotoNotaModal({
           </View>
         </View>
 
-        <AppPressable
+        <LinhaDataDaCompra
+          data={data}
+          selo={lido.data ? 'lida da foto' : null}
+          dica={dataRecusada ? 'A data do cupom não parecia certa, então usei a de hoje. Confira antes de salvar.' : null}
           onPress={() => setCalendarioAberto(true)}
-          style={styles.linhaData}
-          accessibilityRole="button"
-          accessibilityLabel={`Data da compra: ${formatDateLabel(data)}${lido.data ? ', lida da foto' : ''}. Toque para mudar`}
-        >
-          <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
-          <Text style={styles.textoData}>{formatDateLabel(data)}</Text>
-          {lido.data && <Text style={styles.lido}>lida da foto</Text>}
-        </AppPressable>
-        {dataRecusada && (
-          <Text style={styles.hint}>A data do cupom não parecia certa, então usei a de hoje. Confira antes de salvar.</Text>
-        )}
+        />
 
         <View style={styles.grupo} accessibilityRole="radiogroup" accessibilityLabel="Forma de pagamento">
           <Text style={styles.rotuloGrupo}>
@@ -472,7 +466,7 @@ export default function FotoNotaModal({
       title="Data da compra"
       onClose={() => setCalendarioAberto(false)}
       onSelectDate={(iso) => {
-        setData(iso > todayISO() ? todayISO() : iso);
+        setData(dataEscolhidaNoSeletor(iso, todayISO()));
         setDataRecusada(false);
         setLido((l) => ({ ...l, data: false }));
         setCalendarioAberto(false);
@@ -534,8 +528,6 @@ const styles = StyleSheet.create({
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
   lido: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular, marginBottom: 2 },
-  linhaData: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touchTarget },
-  textoData: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   grupo: { gap: spacing.sm },
   rotuloGrupo: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

@@ -34,6 +34,8 @@ import { useDemo } from '@/lib/demo-context';
 import CategoryChips from './CategoryChips';
 import AppPressable from './AppPressable';
 import Sheet from './Sheet';
+import DatePickerModal from './DatePickerModal';
+import LinhaDataDaCompra, { dataEscolhidaNoSeletor } from './LinhaDataDaCompra';
 import type { TxType } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
 import { randomUUID } from 'expo-crypto';
@@ -96,11 +98,15 @@ export default function PasteReceiptModal({
   const [formaPagamento, setFormaPagamento] = useState<string | null>(null);
   const [recorrente, setRecorrente] = useState(false);
   const [walletId, setWalletId] = useState('');
-  /* Data lida do texto colado (decisão do autor, 27/09/2026): grava nela, e
-     hoje só sem data. `dataRecusada` quando havia uma data impossível, futura
-     ou de mais de um ano: vai com hoje, e a tela diz. */
+  /* Data do texto colado (decisão do autor, 27/09/2026), agora num campo
+     editável, a mesma linha "Data da compra" da foto (30/09/2026). Sem data no
+     texto, hoje. `dataRecusada` quando havia uma data impossível, futura ou
+     de mais de um ano: o campo fica sem data e a pessoa escolhe, em vez de ir
+     com hoje em silêncio. `dataLida` liga o selo "lida do texto". */
   const [dataDoComprovante, setDataDoComprovante] = useState<string | null>(null);
   const [dataRecusada, setDataRecusada] = useState(false);
+  const [dataLida, setDataLida] = useState(false);
+  const [calendarioAberto, setCalendarioAberto] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -121,6 +127,8 @@ export default function PasteReceiptModal({
     setCategory('');
     setDataDoComprovante(null);
     setDataRecusada(false);
+    setDataLida(false);
+    setCalendarioAberto(false);
     setFormaPagamento(null);
     setRecorrente(false);
     setWalletId('');
@@ -137,8 +145,6 @@ export default function PasteReceiptModal({
     credit: 'Crédito',
   };
   const detalhesReconhecidos = [
-    dataDoComprovante ? `data ${dataDoComprovante.split('-').reverse().join('/')}` : null,
-    dataRecusada ? 'data do texto não usada, vai com a de hoje' : null,
     formaPagamento ? NOME_DA_FORMA[formaPagamento] ?? formaPagamento : null,
     recorrente ? 'repete todo mês' : null,
   ].filter((d): d is string => !!d);
@@ -178,8 +184,9 @@ export default function PasteReceiptModal({
     /* Só no texto colado. A fala revisada aqui segue a data da voz (hoje),
        a mesma do widget, que não lê data (regra 13). */
     const lida = origemVoz ? { data: null, recusada: false } : dataDoTexto(text, todayISO());
-    setDataDoComprovante(lida.data);
+    setDataDoComprovante(lida.data ?? (lida.recusada ? null : todayISO()));
     setDataRecusada(lida.recusada);
+    setDataLida(!!lida.data);
   }
 
   useEffect(() => {
@@ -200,6 +207,12 @@ export default function PasteReceiptModal({
     }
     if (!walletId) {
       Alert.alert('Escolha uma carteira', 'Informe em qual carteira o lançamento deve entrar.');
+      return;
+    }
+    /* Data recusada deixa o campo sem data: nada é salvo com uma data que
+       ninguém escolheu. */
+    if (!origemVoz && !dataDoComprovante) {
+      Alert.alert('Escolha a data');
       return;
     }
     if (isDemoMode) {
@@ -228,7 +241,7 @@ export default function PasteReceiptModal({
         amount: val,
         category: catObj.name,
         color: catObj.color,
-        occurred_on: dataDoComprovante ?? todayISO(),
+        occurred_on: (origemVoz ? null : dataDoComprovante) ?? todayISO(),
         ...(formaPagamento ? { payment_method: formaPagamento } : null),
         ...(recorrente ? { recurring: true } : null),
         wallet_id: walletId,
@@ -263,6 +276,7 @@ export default function PasteReceiptModal({
   }
 
   return (
+    <>
     <AppModal
       visible={visible}
       transparent
@@ -375,6 +389,15 @@ export default function PasteReceiptModal({
                 />
               </View>
 
+              {!origemVoz && (
+                <LinhaDataDaCompra
+                  data={dataDoComprovante}
+                  selo={dataLida ? 'lida do texto' : null}
+                  dica={dataRecusada ? 'A data do texto não foi usada. Escolha a data.' : null}
+                  onPress={() => setCalendarioAberto(true)}
+                />
+              )}
+
               <CategoryChips value={category} onChange={setCategory} extras={categoriasExtras} />
 
               {detalhesReconhecidos.length > 0 && (
@@ -416,6 +439,19 @@ export default function PasteReceiptModal({
           )}
       </Sheet>
     </AppModal>
+    <DatePickerModal
+      visible={visible && calendarioAberto}
+      currentISO={dataDoComprovante ?? todayISO()}
+      title="Data da compra"
+      onClose={() => setCalendarioAberto(false)}
+      onSelectDate={(iso) => {
+        setDataDoComprovante(dataEscolhidaNoSeletor(iso, todayISO()));
+        setDataRecusada(false);
+        setDataLida(false);
+        setCalendarioAberto(false);
+      }}
+    />
+    </>
   );
 }
 

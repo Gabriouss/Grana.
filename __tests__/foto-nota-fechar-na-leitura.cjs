@@ -113,6 +113,14 @@ vm.runInNewContext(compilarTs('lib/foto-nota-lancamento.ts'), { exports: lancame
 imports['@/lib/foto-nota-lancamento'] = lancamento;
 const cupom = (texto) => ({ blocks: [{ lines: texto.split(/\n/).map((t) => ({ text: t })) }] });
 
+/* A linha "Data da compra" é o componente REAL compartilhado com o Colar
+   (30/09/2026): a foto precisa continuar igual depois da extração. */
+const linhaData = {};
+vm.runInNewContext(compilarTs('components/LinhaDataDaCompra.tsx', true), {
+  exports: linhaData, require: (n) => { assert.ok(n in imports, `import não simulado: ${n}`); return imports[n]; },
+});
+imports['./LinhaDataDaCompra'] = linhaData;
+
 const modulo = {};
 vm.runInNewContext(
   ts.transpileModule(fs.readFileSync('components/FotoNotaModal.tsx', 'utf8'), {
@@ -277,6 +285,36 @@ function prepararCamera() {
   await fotografarNota('Outros');
   await salvar();
   ok(registro.gravados.length === 0 && registro.alertas.at(-1)?.[0] === 'Forma de pagamento', 'sem forma lida, pede a forma antes de gravar');
+
+  /* 6. A linha "Data da compra" depois da extração para o componente
+     compartilhado (30/09/2026): selo, dica, seletor sem futuro e a data
+     escolhida gravada. Hoje dos dublês: 26/09/2026. */
+  const rotuloData = (arvore) => achar(arvore, (n) => /^Data da compra:/.test(String(n.props?.accessibilityLabel)))[0]?.props.accessibilityLabel;
+  const seletor = (arvore) => achar(arvore, (n) => n.type === 'DatePickerModal')[0];
+  cartoesDaConta = [];
+  tela = await fotografarNota('Cartao de Debito');
+  ok(rotuloData(tela) === 'Data da compra: 2026-09-25, lida da foto. Toque para mudar', 'data do cupom com o selo "lida da foto"');
+  ok(!achar(tela, (n) => n.type === 'Text' && /não parecia certa/.test(String(n.props.children))).length, 'sem dica quando a data foi aceita');
+  achar(tela, (n) => /^Data da compra:/.test(String(n.props?.accessibilityLabel)))[0].props.onPress();
+  ok(seletor(render()).props.visible === true && seletor(render()).props.currentISO === '2026-09-25', 'o toque abre o seletor na data lida');
+  seletor(render()).props.onSelectDate('2026-10-03');
+  ok(rotuloData(render()) === 'Data da compra: 2026-09-26. Toque para mudar', 'data futura no seletor vira hoje, sem o selo');
+  ok(seletor(render()).props.visible === false, 'e o seletor fecha');
+  seletor(render()).props.onSelectDate('2026-09-20');
+  registro.gravados.length = 0;
+  await salvar();
+  ok(registro.gravados[0]?.occurred_on === '2026-09-20', 'grava a data escolhida');
+
+  porHandler(render(), 'fechar')();
+  prepararCamera();
+  const futura = porHandler(render(), 'fotografar')();
+  await esperar();
+  resolverLeitura(cupom(['MERCADO', 'VALOR TOTAL R$ 30,00', 'DEBITO 30,00', '01/10/2026'].join('\n')));
+  await futura;
+  await esperar();
+  tela = render();
+  ok(rotuloData(tela) === 'Data da compra: 2026-09-26. Toque para mudar', 'data do cupom recusada: hoje, sem selo');
+  ok(achar(tela, (n) => n.type === 'Text' && /A data do cupom não parecia certa/.test(String(n.props.children))).length === 1, 'com a dica de antes');
 
   console.log(`foto-nota-fechar-na-leitura: ${passou} checagens OK`);
 })().catch((e) => { console.error(e); process.exit(1); });
