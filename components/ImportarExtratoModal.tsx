@@ -246,7 +246,7 @@ export default function ImportarExtratoModal({
     if (semCategoria > 0) {
       Alert.alert(
         PERGUNTA_CATEGORIA.titulo,
-        `${semCategoria === 1 ? '1 lançamento está' : `${semCategoria} lançamentos estão`} sem categoria reconhecida. Escolha a categoria deles antes de importar. Nada foi importado ainda.`,
+        `${semCategoria === 1 ? '1 lançamento está' : `${semCategoria} lançamentos estão`} sem categoria reconhecida. Escolha uma categoria para cada lançamento antes de importar. Nada foi importado ainda.`,
         [
           { text: 'Cancelar', style: 'cancel' },
           { text: 'Escolher categoria', onPress: () => setEscolhendoCategoria(true) },

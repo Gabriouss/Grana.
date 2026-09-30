@@ -92,6 +92,38 @@ ok('a voz continua perguntando no mesmo caso (mesmo critério)');
 }
 ok('importação: CSV e OFX sem palpite chegam sem categoria, e a tela pergunta antes de gravar');
 
+/* ── 3b. O aviso da importação concorda com 1 e com N (item 4b, 30/09/2026) ──
+   Com uma linha, a frase dizia "1 lançamento está [...] Escolha a categoria
+   deles" (Flare). O texto do Alert é tirado do fonte pela árvore do
+   TypeScript (o segundo argumento do Alert dentro de `if (semCategoria > 0)`,
+   que tem template aninhado) e AVALIADO com 1 e com 3. */
+function avisoSemCategoria(fonte) {
+  const sf = ts.createSourceFile('ImportarExtratoModal.tsx', fonte, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TSX);
+  let alvo = null;
+  (function visitar(no) {
+    if (ts.isIfStatement(no) && no.expression.getText(sf) === 'semCategoria > 0') {
+      (function acharAlert(n) {
+        if (!alvo && ts.isCallExpression(n) && n.expression.getText(sf) === 'Alert.alert') alvo = n.arguments[1];
+        ts.forEachChild(n, acharAlert);
+      })(no.thenStatement);
+    }
+    if (!alvo) ts.forEachChild(no, visitar);
+  })(sf);
+  assert.ok(alvo, 'o Alert de "sem categoria" da importação existe');
+  const js = ts.transpileModule('module.exports = (semCategoria) => ' + alvo.getText(sf) + ';', {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const m = { exports: {} };
+  vm.runInNewContext(js, { module: m });
+  return m.exports;
+}
+{
+  const aviso = avisoSemCategoria(fs.readFileSync(path.join(root, 'components/ImportarExtratoModal.tsx'), 'utf8'));
+  assert.equal(aviso(1), '1 lançamento está sem categoria reconhecida. Escolha uma categoria para cada lançamento antes de importar. Nada foi importado ainda.');
+  assert.equal(aviso(3), '3 lançamentos estão sem categoria reconhecida. Escolha uma categoria para cada lançamento antes de importar. Nada foi importado ainda.');
+}
+ok('importação: o aviso "sem categoria" concorda no singular e no plural');
+
 /* ── 4. Formulário comum executado: sem categoria, não grava ─────────────── */
 {
   const jsx = (type, props) => ({ type, props: props ?? {} });
