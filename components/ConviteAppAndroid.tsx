@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { obterUrlDownloadAndroid } from '@/lib/download-app';
+import { deveConvidarParaAppAndroid, plataformaDoNavegador } from '@/lib/plataforma-web';
 import AppModal from './AppModal';
 import AppPressable from './AppPressable';
 import AccessibleModalPanel from './AccessibleModalPanel';
@@ -19,7 +20,9 @@ import AccessibleModalPanel from './AccessibleModalPanel';
  * comprar.
  *
  * Só na WEB de propósito: dentro do aplicativo instalado, oferecer o download
- * do próprio aplicativo é ruído. E só quando existe endereço de distribuição
+ * do próprio aplicativo é ruído. E só no navegador de um ANDROID: o botão
+ * baixa o `.apk`, que não instala no iPhone, no iPad nem no computador
+ * (`lib/plataforma-web.ts`). E só quando existe endereço de distribuição
  * configurado (`EXPO_PUBLIC_ANDROID_DOWNLOAD_URL`) — sem ele não há o que
  * oferecer, e um pop-up que não leva a lugar nenhum é pior que silêncio.
  *
@@ -37,6 +40,10 @@ export default function ConviteAppAndroid() {
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !urlDownload) return;
+    /* Só no navegador de um Android (achado do Flare, 30/09/2026): no iPhone,
+       no iPad e no computador o `.apk` não instala. Ver lib/plataforma-web.ts. */
+    const nav = typeof navigator === 'undefined' ? undefined : navigator;
+    if (!deveConvidarParaAppAndroid(plataformaDoNavegador(nav?.userAgent ?? '', nav?.maxTouchPoints ?? 0))) return;
     let cancelado = false;
 
     AsyncStorage.getItem(CHAVE_VISTO)
