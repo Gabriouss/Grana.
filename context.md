@@ -13179,3 +13179,53 @@ A pedido do autor, o Ledger registrou a aplicação feita por Keel conforme `E:/
 6. **Sem verificação pelo Ledger.** Os MD5, atributos e testes transacionais em produção acima são evidências reportadas por Keel, não repetidas pelo Ledger. Não foi testada a apresentação das mensagens na tela do app nem a cascata real de exclusão de conta (`pg_trigger_depth() > 1`). Os sete U+FFFD restantes em comentários são relatados como intencionais e fora do escopo.
 
 A nota de sessão correspondente é [[2026-09-29 - M1 - Registro T-UTF8]]. O item 6 do ticket `E:/Grana-temporarios/2026-09-29-pre-build/TICKET-PRE-BUILD-1.10.5.md` ainda inclui registrar o ticket após fechar e receber os handoffs; esse registro fica em aberto.
+
+## 30/09/2026 (M1) — estado dos dois times na pausa por limite (para a retomada)
+
+Registro pedido pelo autor, via maestro Shell #2 e orquestrador Claude Code: onde parou cada agente dos dois times, para retomar sem refazer trabalho. As fontes são a fotografia das telas do time Codex às 11h00 (`E:/Grana-temporarios/2026-09-30-retomada/estado-time-codex-telas.txt`) e os `estado-*.md` do time Claude, das 11h04, na mesma pasta. **É estado visto na tela ou relatado pelo agente. Não foi reconferido com cada um.**
+
+**Limites.** A fotografia das 11h00 mostra o time Codex com o limite de 5h esgotado ("You've hit your usage limit", "try again at 3:19 PM"). Janela de 5h a 96-97% e volta às 15h19, segundo o maestro Shell #2; semanal em 31%, segundo o maestro Shell #2. Esses números não estão na fotografia. Por ordem do autor, ele não é chamado nesta sessão, mesmo depois das 15h19, e todas as pendências passaram ao time Claude. Depois, a conta Claude chegou a 97% da sessão, com volta às 15h10, segundo o maestro Shell #2. O time Claude ficou parado de ~11h30 às 15h10, sem nenhum commit nesse intervalo. Por isso este registro foi escrito antes do P7.
+
+**Regras de coordenação em vigor.** (1) Às 10h40, o autor determinou os dois times 100% juntos: o Claude executa e o Codex julga, do plano ao diff. (2) Com o Codex sem limite, o autor mandou fazer o julgamento **cruzado dentro do time Claude**, com a mesma exigência: o Lynx julga o código do Anvil, do Keel e do Lumen; o Meridian julga o texto do Quill e do Flare e o parecer do Lynx; o Anvil julga a verificação do Vigil e a spec do Meridian. Voz, dinheiro, fatura e migration passam sempre pelo Lynx. O commit diz "par Codex sem limite; julgado por <agente Claude>". Palavra do autor: lançamento por voz é sempre o botão do app E o widget, com funcionamento igual e teste de paridade (regra 13).
+
+**Modelos do dia (relatado, não conferido no arquivo).** O orquestrador Codex e o Ledger estavam em Luna xhigh e o Beacon em Sol medium, só nesta sessão. O `config.toml` do Codex tem xhigh como padrão. O mapa de 29/09 dava Ledger em Luna high e o orquestrador em Sol medium.
+
+### Time Codex (tela das 11h00)
+
+| Agente | Par Claude | Onde parou | Juiz substituto e próximo passo | Ler primeiro (em `2026-09-30-retomada/`) |
+|---|---|---|---|---|
+| Orquestrador Codex | Claude Code | Recebeu às 11h o estado com P5 e P6 fechadas. O `TICKET-DATA-NA-VOZ.md` chegou a ele já sem limite, sem ter sido lido | Reler este registro e o estado do Claude Code antes de agir | `estado-orquestrador-claude.md` |
+| Forge | Anvil | Aprovou o plano do 4b. Diff do 4b, plano do C1 e plano do D5 **sem julgamento** | Juiz substituto: **Lynx** (4b, D5 e C1). Não são mais pendências do Forge | `anvil-4b.diff` |
+| Watchtower | Lynx | P3 (`b7774ea`) **julgado**: procede, com ressalvas (UA, lacunas L1/L2 não bloqueantes, navegador real não confirmado). P4 **sem julgamento** | Juiz substituto do P4: **Meridian** | `../2026-09-29-pre-build/relatorio-Lynx-copys-finais.md` |
+| Prism | Lumen | Plano do E1 (seletor de carteira a 130%) recebido, **sem julgamento** | Juiz substituto: **Lynx** | `diff-Lumen-seletor-carteira.patch` |
+| Harbor | Keel | Consenso no P6 na rodada 2. O Keel aplicou a migration **com autorização do autor** ("pode aplicar a migration da Principal, autorizo", só para este arquivo; `relatorio-Keel-aplicacao-principal.md`). Começou a ler o `aplicacao-log.txt` e parou | Juiz substituto: **Lynx**, que faz a conferência do log depois da aplicação | `keel-principal/aplicacao-log.txt` |
+| Sentinel | Vigil | Plano do P2 com consenso na rodada 1 (ajustes 1 a 6). Esperava prints e logs | Juiz substituto: **Anvil** | `resp-vigil-e1-r2.txt` |
+| Beacon | Flare | Aplicou F1 a F7 às 10h29 e reconstruiu `CHECKLIST-PEDIDOS-AUTOR.md` e `relatorio-Beacon-finalizacao-copy.md`. O Flare assumiu e fechou o P5 em `82f42c7`, com o Beacon julgando o diff na rodada 2. O parecer dos textos C2/C3/4a/4c ficou **sem julgamento** | Juiz substituto dos textos: **Meridian** | `parecer-flare-textos-anvil.md` |
+| Ledger | Quill | Plano do P7 **aprovado na rodada 2** (`plano-quill-p7.md`) | Juiz substituto do diff do P7: **Meridian** | `plano-quill-p7.md` |
+| Compass | Meridian | P9 revisado na rodada 1 e fechado | Nada do P9. A spec da data na voz é julgada pelo **Anvil**, não pelo Compass | `../2026-09-29-pre-build/portao-1.10.5-meridian.md` |
+
+### Time Claude (11h04, com o Anvil e o Meridian atualizados às 15h12)
+
+| Agente | Onde parou | Próximo passo |
+|---|---|---|
+| Anvil | 4b e D5 prontos, **sem commit**, verdes (tsc, test:ci e, no D5, deno check), com prova vermelha antes da correção (`estado-Anvil.md`). D5 é o "1 dia restantes" no card, no widget Kotlin e no Granabô, sem deploy. Plano do C1 com o Lynx, sem edição. Textos C2/C3/4a/4c com o parecer do Flare | Commit do 4b e do D5 depois do julgamento do Lynx. C1 depois do plano aprovado |
+| Lumen | Diff do E1 verificado nos 4 estados, **sem commit**, com o Lynx (`julgar-Lumen-E1.md`) | Commit próprio de layout (regra 14) depois do Lynx |
+| Vigil | P2: (b), (c), (d) e E1 OK. Achados: D5 e E1. **Não verificados:** (a) e a parte web do (f). O (g), do 4b, só depois do commit | Rever as telas corrigidas depois dos commits |
+| Lynx | P3 fechado. Parecer do P4 gravado (`relatorio-Lynx-copys-finais.md`), esperando o Meridian. Julgando E1, 4b e C1 | Julgamentos e conferência do log do P6 |
+| Keel | P6 **aplicado** em produção: `20260930120000`, com autorização do autor, consenso com o Harbor na rodada 2, 15 conferências true e teste revertido OK (`relatorio-Keel-aplicacao-principal.md`). Leitura do `occurred_on` pronta, sem migration e sem deploy (`relatorio-Keel-occurred-on.md`). Nenhum arquivo do repositório alterado | Julgamento do Lynx nos dois |
+| Flare | P5 fechado em `82f42c7`. Parecer dos textos pronto (`parecer-flare-textos-anvil.md`) | Julgamento do Meridian (até 2 rodadas) |
+| Meridian | P9 fechado. Spec da data na voz **pronta** (`spec-data-na-voz.md`; decisão: vai para a 1.10.6, sem migration), esperando o julgamento do Anvil. Plano do Quill julgado (rodadas 1 e 2). Textos do Flare e P4 do Lynx em julgamento. Achado da spec, seção 5: a data da voz é calculada na hora de processar, não na hora de falar, o que já afeta a fila offline na virada do dia e pode gerar 22023 falso na nova tentativa | Anvil julga a spec. Implementação só depois do C1, que mexe no mesmo núcleo de voz |
+| Quill | Este registro. P7 com o plano aprovado | P7 depois da liberação, com o Meridian julgando |
+| P8 | Consulta da cota Android às 21h04, agendada só nesta sessão | Se a sessão cair, alguém pede ao Anvil às 21h |
+
+**Muda o item 7 do portão.** A migration `20260930120000` foi aplicada. O item 7 do portão (`portao-1.10.5-meridian.md`) e a `RETOMADA-30-09.md`, que diziam "não aplicada", ficam superados por este registro. O P7 registra a correção.
+
+**Pendências do autor, sem mudança.** Nada de build. O deploy da `assistente-financeiro`, que leva o texto do D5 ao Granabô, depende da regra 11. O C06 do P4 é risco na política da Meta e a decisão é do autor. A trava de plataforma do `b7774ea` não foi provada no navegador. Pergunta nova: se o time Codex rejulga na volta o que subiu com juiz Claude.
+
+**Seis perguntas da regra 12.**
+1. **Pedido:** registrar o estado dos dois times para a retomada, com prioridade sobre o P7.
+2. **Sintoma e causa:** as trilhas pararam no meio porque o limite de uso acabou, primeiro no Codex e depois no Claude. O consumo alto do fluxo "100% juntos" em esforço xhigh é hipótese, não foi medido.
+3. **Arquivos:** este `context.md`; as fontes estão em `E:/Grana-temporarios/2026-09-30-retomada/` (`estado-time-codex-telas.txt`, `estado-orquestrador-claude.md`, `estado-Flare.md`, `estado-Keel.md`, `RETOMADA-30-09.md`, `TICKET-DATA-NA-VOZ.md`); o plano é `julgar-Quill-estado-codex.md` e o parecer do Meridian é `parecer-Meridian-Quill-estado-codex.md`.
+4. **Descartado:** esperar as 15h19 e chamar o Codex (o autor recusou); uma tabela de retomada só com o time Codex (ampliada aos dois times por ordem do maestro); duas notas de sessão no dia (o maestro decidiu por uma só, com seções).
+5. **O que deu errado:** vários pedidos ficaram parados nas telas do Codex quando o limite bateu, e o ticket da data na voz chegou ao orquestrador Codex já sem limite.
+6. **Sem verificação:** o estado vem da fotografia e dos `estado-*.md`. Não conferi com cada agente, não li o `config.toml` (o Meridian dispensou, porque o rodapé das telas já mostra o modelo) e não medi o consumo. Julgamento: o Meridian julgou na rodada 1 (favorável com 5 ajustes) e na rodada 2 (3 correções curtas, depois favorável sem nova rodada), com tudo aplicado. Os diffs sem commit do Anvil e do Lumen estão na árvore de trabalho e não fazem parte deste commit.
