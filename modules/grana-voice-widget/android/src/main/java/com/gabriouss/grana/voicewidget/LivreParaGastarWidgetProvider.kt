@@ -15,7 +15,7 @@ class LivreParaGastarWidgetProvider : GranaResumoWidgetProvider() {
       views.setTextViewText(R.id.grana_livre_atualizado, "")
     } else if (snapshot.safeToSpend.semSaldo) {
       views.setTextViewText(R.id.grana_livre_valor, context.getString(R.string.grana_livre_sem_saldo))
-      views.setTextViewText(R.id.grana_livre_apoio, "${snapshot.safeToSpend.diasRestantes} dias restantes")
+      views.setTextViewText(R.id.grana_livre_apoio, WidgetText.diasRestantes(snapshot.safeToSpend.diasRestantes))
       views.setTextViewText(R.id.grana_livre_atualizado, WidgetText.atualizado(snapshot.updatedAt))
     } else {
       views.setTextViewText(
@@ -24,7 +24,7 @@ class LivreParaGastarWidgetProvider : GranaResumoWidgetProvider() {
       )
       views.setTextViewText(
         R.id.grana_livre_apoio,
-        "${WidgetText.valor(snapshot.safeToSpend.livreTotal, privado)} no total · ${snapshot.safeToSpend.diasRestantes} dias",
+        "${WidgetText.valor(snapshot.safeToSpend.livreTotal, privado)} no total · ${WidgetText.dias(snapshot.safeToSpend.diasRestantes)}",
       )
       views.setTextViewText(R.id.grana_livre_atualizado, WidgetText.atualizado(snapshot.updatedAt))
     }

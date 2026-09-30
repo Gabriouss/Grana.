@@ -144,7 +144,7 @@ const caixa = (type, amount, occurred_on, extra = {}) => ({ type, amount, occurr
   TX.push(caixa('in', 1000, '2026-10-01'));
   const virada = await perguntar(tool('livreParaGastar'));
   casa(virada, /mês vigente \(01\/09\/2026 a 30\/09\/2026\)/, 'às 23h30 de 30/09 em Brasília, o mês ainda é setembro');
-  casa(virada, /\(1 dias restantes\)/, 'e resta 1 dia (hoje), não o mês de outubro inteiro');
+  casa(virada, /\(1 dia restante\)/, 'e resta 1 dia (hoje), não o mês de outubro inteiro');
   casa(virada, /saldo do mês R\$ 142,67/, 'lançamento de outubro não entra no saldo de setembro');
   TX.pop();
 

@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
 import { formatBRLSaldo, formatBRLSubtraido, formatMoney } from '@/lib/format';
+import { rotuloDiasRestantes } from '@/lib/safe-to-spend';
 import type { SafeToSpend } from '@/lib/projections';
 import type { Arquetipo } from '@/lib/diagnostico';
 import PrivacyValue from './PrivacyValue';
@@ -49,7 +50,7 @@ export default function SafeToSpendCard({
           <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(reservadoEmMetas)}</Text></PrivacyValue>
         </View>
         <View style={styles.row}>
-          <Text style={styles.rowKey}>Livre no total · {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'} restantes</Text>
+          <Text style={styles.rowKey}>{`Livre no total · ${rotuloDiasRestantes(diasRestantes)}`}</Text>
           <PrivacyValue><Text style={[styles.rowVal, styles.rowValStrong]}>{`R$ ${formatMoney(livreTotal)}`}</Text></PrivacyValue>
         </View>
       </View>

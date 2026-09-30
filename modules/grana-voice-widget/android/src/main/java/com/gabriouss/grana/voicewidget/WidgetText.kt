@@ -15,6 +15,13 @@ object WidgetText {
 
   fun valor(valor: Double, privado: Boolean): String = if (privado) "••••" else dinheiro(valor)
 
+  /** Mesmo texto de `rotuloDiasRestantes` (lib/safe-to-spend.ts), que a Início
+      e o Granabô usam: "1 dia restante" no último dia do mês. */
+  fun diasRestantes(dias: Int): String = if (dias == 1) "1 dia restante" else "$dias dias restantes"
+
+  /** Versão curta, na linha do total: "1 dia" / "N dias". */
+  fun dias(dias: Int): String = if (dias == 1) "1 dia" else "$dias dias"
+
   fun atualizado(iso: String): String {
     val data = parseInstant(iso) ?: return "Última atualização"
     val hoje = Calendar.getInstance()

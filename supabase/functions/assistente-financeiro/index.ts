@@ -27,7 +27,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
    às vezes resolve pra "Alimentação" sozinho, "mercado" não — inconsistente).
    Ver casarPorPalavraChave, mais abaixo. */
 import { CATEGORY_KEYWORDS, normalizarParaBusca, contemPalavra, semValorMonetario } from '../_shared/category-keywords.ts';
-import { calcularLivreParaGastar, ehCompraNoCredito } from '../_shared/caixa.ts';
+import { calcularLivreParaGastar, ehCompraNoCredito, rotuloDiasRestantes } from '../_shared/caixa.ts';
 /* Leitura determinística do lançamento escrito. Cópia guardada de
    `lib/heuristics.ts` (ver o cabeçalho do módulo e `__tests__/sync-parser.js`).
    Nada aqui vem do whatsapp-webhook: lançamento não pode depender de uma
@@ -1646,7 +1646,7 @@ async function executarFerramenta(
       const rotuloMes = `${dataBR(inicioMes)} a ${dataBR(fimMes)}`;
       return (
         `Livre para gastar no mês vigente (${rotuloMes}): R$ ${formatarBRL(r.livreTotal)}\n` +
-        `Isso dá R$ ${formatarBRL(r.livrePorDia)} por dia (${r.diasRestantes} dias restantes).\n` +
+        `Isso dá R$ ${formatarBRL(r.livrePorDia)} por dia (${rotuloDiasRestantes(r.diasRestantes)}).\n` +
         `Detalhes: saldo do mês R$ ${formatarBRL(r.saldoAtual)} (entradas menos saídas de caixa deste mês; compras no crédito ` +
         `entram quando a fatura é paga, e boletos quando são pagos), guardado em metas R$ ${formatarBRL(r.reservadoEmMetas)}. ` +
         'O saldo não inclui meses anteriores.'

@@ -46,6 +46,13 @@ export function calcularSaldoAtual(transactions: Transaction[], hoje: Date = new
   );
 }
 
+/** "1 dia restante" / "N dias restantes". Mesmo texto no Granabô
+    (`supabase/functions/_shared/caixa.ts`) e no widget
+    (`WidgetText.diasRestantes`), conferido em __tests__/dias-restantes-singular.cjs. */
+export function rotuloDiasRestantes(dias: number): string {
+  return dias === 1 ? '1 dia restante' : `${dias} dias restantes`;
+}
+
 function diasRestantesNoMes(hoje: Date): number {
   const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
   return Math.max(1, ultimoDia - hoje.getDate() + 1);

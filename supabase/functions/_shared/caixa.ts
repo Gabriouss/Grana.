@@ -66,3 +66,11 @@ export function calcularLivreParaGastar(
   const livreTotal = Math.max(0, saldoAtual - reservadoEmMetas);
   return { saldoAtual, reservadoEmMetas, diasRestantes, livreTotal, livrePorDia: livreTotal / diasRestantes };
 }
+
+/** "1 dia restante" / "N dias restantes": o mesmo texto de
+    `rotuloDiasRestantes` em lib/safe-to-spend.ts (Início) e de
+    `WidgetText.diasRestantes` (widget), conferido em
+    __tests__/dias-restantes-singular.cjs. */
+export function rotuloDiasRestantes(dias: number): string {
+  return dias === 1 ? '1 dia restante' : `${dias} dias restantes`;
+}
