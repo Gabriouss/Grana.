@@ -58,6 +58,39 @@ no `context.md`.
 
 ---
 
+# 30/09/2026 (M1) — pausa de material estático e de vídeo até o fim de semana
+
+**Pedido.** O autor: "Nós não produziremos nenhum material estático ou de
+vídeo por enquanto. Eu quero fazer a produção desses materiais apenas no
+próximo fim de semana." Pediu que isso virasse regra do projeto e ficasse
+nesta nota e na última nota de sessão do vault.
+
+**O que vale.** Regra 21 do `AGENTS.md`. Quarta-feira 30/09/2026: o próximo
+fim de semana é sábado 03/10 e domingo 04/10, hora de Brasília. Até a abertura
+de sábado, ninguém produz post, carrossel, Stories, imagem de anúncio, Reel,
+motion, nem gera ou reedita imagem ou vídeo. O inventário já pronto fica
+onde está. A produção desses materiais só acontece em 03/10 e 04/10, e só
+quando o autor pedir na sessão daquele fim de semana. A data sozinha não
+autoriza um agente a começar. Fora desses dois dias, a pausa continua até o
+autor abrir de novo.
+
+**O que esta decisão suspende.** Em 26/09 o autor tinha encerrado estático,
+carrossel e Stories e mantido só vídeo. Neste intervalo o vídeo também para.
+Trecho de calendário, do `FUNIL.md` ou de nota antiga que mande produzir
+esta semana não autoriza a produção. Trabalho no app, na landing e em texto
+que não seja peça de campanha continua permitido.
+
+**Onde ficou escrito.** `AGENTS.md` (regra 21), esta seção, o aviso no topo
+de `00 - Sessões/2026-09-29 - M1 - Registro T-UTF8` (a nota de sessão mais
+recente; o registro original da T-UTF8 não foi reescrito) e o aviso de
+30/09 em `03 - Marketing/Calendário do primeiro mês` e no topo do `FUNIL.md`
+local.
+
+**Sem verificação.** Conferido lendo os quatro textos. Nenhuma peça foi
+gerada, publicada ou apagada nesta decisão.
+
+---
+
 # 25/09/2026 (M1) — foto da nota: valor total lido por OCR no aparelho (`988b92d`, `9fd6015`)
 
 Registro introduzido por `d4edc10`. Os commits de implementação continuam sendo

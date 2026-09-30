@@ -850,3 +850,26 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       falhar depois de uma mudança, a mudança está errada, ou falta o pedido
       do autor que a autoriza. Editar a asserção para caber no código novo é o
       mesmo que apagar esta regra.
+
+21. **Nenhum material estático nem de vídeo é produzido antes do fim de
+    semana de 3 e 4 de outubro de 2026.** Decisão do autor em 30/09/2026:
+    "Nós não produziremos nenhum material estático ou de vídeo por enquanto.
+    Eu quero fazer a produção desses materiais apenas no próximo fim de
+    semana." A decisão caiu numa quarta-feira, 30/09/2026. O fim de semana
+    seguinte é sábado 03/10 e domingo 04/10, hora de Brasília.
+
+    Na prática:
+
+    - **Até a abertura de sábado 03/10/2026, agente nenhum produz peça.**
+      Entram post, carrossel, Stories, imagem de anúncio, Reel, motion e
+      qualquer geração ou reedição de imagem ou de vídeo. Inventário já
+      pronto fica onde está. Publicar, regravar ou enfileirar também fica
+      parado.
+    - **A produção cabe só em 03/10 e 04/10, e só quando o autor pedir na
+      sessão daquele fim de semana.** A data sozinha não autoriza um agente
+      a começar. Fora desses dois dias, a pausa continua até o autor abrir
+      de novo.
+    - **Calendário, `FUNIL.md` e nota antiga não furam esta regra.** A
+      decisão de 26/09, que tinha encerrado o estático e mantido o vídeo,
+      fica suspensa neste intervalo: vídeo também para. Trabalho no app, na
+      landing e em texto que não seja peça de campanha continua permitido.
