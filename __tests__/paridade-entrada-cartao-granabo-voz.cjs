@@ -100,7 +100,7 @@ carregarVm('lib/widget-voz-task.ts', {
   },
   './data': { fetchCreditCards: async () => CARTOES, fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => CARTEIRAS },
-  './voice-operations': {
+  './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
     ehRecusaCartaoObrigatorio: () => false,
     registrarOperacaoVoz: async (_id, _fonte, entrada) => { gravadosVoz.push(entrada); return { status: 'committed', ids: ['tx'], operationId: 'op' }; },
   },

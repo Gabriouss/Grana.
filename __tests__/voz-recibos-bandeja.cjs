@@ -95,7 +95,7 @@ function carregar(arquivo) {
     },
     './data': { fetchCategories: async () => [], fetchCreditCards: async () => [] },
     './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
-    './voice-operations': {
+    './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
       registrarOperacaoVoz: async (requestId, source, payload) => {
         escritas.push({ requestId, source, payload: JSON.parse(JSON.stringify(payload)) });
         return { status: 'committed', ids: ['tx-' + requestId], operationId: 'op-' + requestId, kind: payload.kind };

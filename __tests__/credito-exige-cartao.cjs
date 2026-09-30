@@ -199,7 +199,7 @@ async function nucleoDaVoz() {
     },
     './data': { fetchCreditCards: async () => cartoes, fetchCategories: async () => [] },
     './wallets': { fetchWallets: async () => [{ id: 'w', name: 'Pessoal', is_default: true }] },
-    './voice-operations': {
+    './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
       ehRecusaCartaoObrigatorio: (e) => e?.code === '23514' && e?.hint === 'cartao_obrigatorio',
       registrarOperacaoVoz: async (_id, fonte, entrada) => {
         if (recusarNoServidor) throw recusa;

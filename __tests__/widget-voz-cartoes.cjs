@@ -25,7 +25,7 @@ const deps = {
     limparReferenciaCarteira: (t) => t, limparReferenciaCartao: (t) => t, parseParcelas: () => 1, parseRecorrencia: () => false },
   './data': { fetchCreditCards: async () => cards, fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => [{ id: 'wallet', name: 'Pessoal', is_default: true }] },
-  './voice-operations': { registrarOperacaoVoz: async (_, __, input) => { saved.push(input); return { ids: ['tx'], operationId: 'op' }; } },
+  './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_, __, input) => { saved.push(input); return { ids: ['tx'], operationId: 'op' }; } },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: { user: { id: 'qa-user' } } } }) } } },
   /* Dono da fila lido pelo aparelho desde 11/09/2026. Sem este dublê o

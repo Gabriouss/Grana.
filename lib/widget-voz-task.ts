@@ -1,6 +1,7 @@
 import { AppRegistry, Platform } from 'react-native';
 import { isLikelyNetworkError } from './offline-cache';
 import type { CreditCard } from './types';
+import type { DesfechoOperacaoVoz } from './voice-operations';
 
 /** Por que a fala voltou para a fila. A faixa do topo diz isto, e não um
     "aguardando conexão" genérico (26/09/2026). */
@@ -70,18 +71,27 @@ async function ehFalaJaLancada(erro: unknown): Promise<boolean> {
 
 /** Nada foi gravado agora: a fala já estava lançada (22023 aqui no `catch`,
     ou replay do servidor em `processar`, achado A2 do Lynx de 29/09/2026).
-    O recibo diz isso, e nunca o de lançamento novo. A ordem das checagens em
-    `processar` e `lancarNoCredito` (pending, undone, replayed, novo) é a de
-    `desfechoDaOperacaoVoz`, lida pelas telas de revisão: a mesma decisão nas
-    duas entradas, conferida em __tests__/voz-revisao-sem-duplicata.cjs.
-    Não chama a função daqui porque os testes da tarefa trocam o módulo
-    `./voice-operations` inteiro por dublês. */
+    O recibo diz isso, e nunca o de lançamento novo. */
 async function avisarFalaJaLancada(notificacoes: ReciboVoz): Promise<void> {
   try {
     await notificacoes.notificarFalha('ja_lancada');
   } catch (erroRecibo) {
     console.error('[voz] recibo de fala já lançada não foi entregue', erroRecibo);
   }
+}
+
+/** O recibo quando a gravação NÃO criou lançamento novo. A decisão é a de
+    `desfechoDaOperacaoVoz` (lib/voice-operations.ts), a mesma que as três
+    telas de revisão leem: aqui só se apresenta, nada se decide (regra 13;
+    achado C1 do Lynx, 30/09/2026, em que a tarefa repetia a ordem à mão nos
+    quatro tipos de lançamento). Devolve `false` só para lançamento novo,
+    que segue para o recibo de sucesso. */
+async function reciboSemLancamentoNovo(desfecho: DesfechoOperacaoVoz, notificacoes: ReciboVoz): Promise<boolean> {
+  if (desfecho === 'nova') return false;
+  if (desfecho === 'pendente') await notificacoes.notificarSalvoLocal();
+  else if (desfecho === 'ja_lancada') await avisarFalaJaLancada(notificacoes);
+  // 'desfeita': a pessoa desfez esta operação antes; nada foi gravado agora.
+  return true;
 }
 
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
@@ -396,9 +406,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
       recurring: heuristics.parseRecorrencia(texto),
       wallet_id: carteira.id,
     });
-    if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
-    if (resultado.status === 'undone') return true;
-    if (resultado.replayed) { await avisarFalaJaLancada(notificacoes); return true; }
+    if (await reciboSemLancamentoNovo(voiceOperations.desfechoDaOperacaoVoz(resultado), notificacoes)) return true;
     try {
       await notificacoes.notificarSucesso({
         titulo: `${descricao} · ${formatarBRL(valor)}`,
@@ -433,9 +441,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     ...(formaPagamento ? { payment_method: formaPagamento } : null),
     wallet_id: carteira.id,
   });
-  if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
-  if (resultado.status === 'undone') return true;
-  if (resultado.replayed) { await avisarFalaJaLancada(notificacoes); return true; }
+  if (await reciboSemLancamentoNovo(voiceOperations.desfechoDaOperacaoVoz(resultado), notificacoes)) return true;
 
   try {
     await notificacoes.notificarSucesso({
@@ -510,9 +516,7 @@ async function lancarNoCredito(args: {
       installments: parcelas,
       wallet_id: carteiraId,
     }, texto);
-    if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
-    if (resultado.status === 'undone') return true;
-    if (resultado.replayed) { await avisarFalaJaLancada(notificacoes); return true; }
+    if (await reciboSemLancamentoNovo(voiceOperations.desfechoDaOperacaoVoz(resultado), notificacoes)) return true;
     const { checarLimiteCartao } = await import('./creditLimitAlert');
     checarLimiteCartao(cartao.id).catch(() => {});
     try {
@@ -542,9 +546,7 @@ async function lancarNoCredito(args: {
     recurring: heuristics.parseRecorrencia(texto),
     wallet_id: carteiraId,
   }, texto);
-  if (resultado.status === 'pending') { await notificacoes.notificarSalvoLocal(); return true; }
-  if (resultado.status === 'undone') return true;
-  if (resultado.replayed) { await avisarFalaJaLancada(notificacoes); return true; }
+  if (await reciboSemLancamentoNovo(voiceOperations.desfechoDaOperacaoVoz(resultado), notificacoes)) return true;
   const { checarLimiteCartao } = await import('./creditLimitAlert');
   checarLimiteCartao(cartao.id).catch(() => {});
   try {

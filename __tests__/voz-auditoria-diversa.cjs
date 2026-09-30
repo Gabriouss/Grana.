@@ -78,7 +78,7 @@ load('lib/widget-voz-task.ts', {
   './heuristics': h, './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz },
   './data': { fetchCategories: async () => categories, fetchCreditCards: async () => cards },
   './wallets': { fetchWallets: async () => wallets },
-  './voice-operations': { registrarOperacaoVoz: async (_id, _source, payload) => {
+  './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_id, _source, payload) => {
     writes.push(payload); return { status: 'committed', ids: ['fake'], operationId: 'fake' };
   } },
   './widget-voz-notificacoes': { podeNotificar: async () => true,

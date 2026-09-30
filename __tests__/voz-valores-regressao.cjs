@@ -129,7 +129,7 @@ carregar('lib/widget-voz-task.ts', {
   './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz },
   './data': { fetchCategories: async () => [], fetchCreditCards: async () => [{ id: 'c6', name: 'C6', bank: 'C6', wallet_id: 'pessoal' }] },
   './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
-  './voice-operations': { registrarOperacaoVoz: async (_id, _source, payload) => { writes.push(payload); return { status: 'committed', ids: ['tx'], operationId: 'op' }; } },
+  './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_id, _source, payload) => { writes.push(payload); return { status: 'committed', ids: ['tx'], operationId: 'op' }; } },
   './widget-voz-notificacoes': { podeNotificar: async () => true, notificarRevisao: async titulo => revisoes.push(titulo), notificarSucesso: async () => {}, notificarFalha: async () => assert.fail('falha inesperada') },
   './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }) } } },
   './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},

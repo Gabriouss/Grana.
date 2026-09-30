@@ -184,7 +184,7 @@ function montarWidget(opts) {
     './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz },
     './data': { fetchCategories: async () => [], fetchCreditCards: async () => (o.cartoes || []) },
     './wallets': { fetchWallets: async () => (o.carteiras || [{ id: 'w1', name: 'Pessoal', is_default: true }]) },
-    './voice-operations': { registrarOperacaoVoz: o.registrar || (async () => ({ status: 'committed', ids: ['t1'], operationId: 'op1' })) },
+    './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: o.registrar || (async () => ({ status: 'committed', ids: ['t1'], operationId: 'op1' })) },
     './widget-voz-notificacoes': {
       podeNotificar: async () => o.podeNotificar !== false,
       notificarRevisao: async (t) => reg.notificacoes.push(['revisao', t]),
