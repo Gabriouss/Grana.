@@ -4710,6 +4710,33 @@ drop trigger if exists reatribuir_wallet_antes_de_excluir on public.wallets;
 create trigger reatribuir_wallet_antes_de_excluir before delete on public.wallets
 for each row execute procedure public.reatribuir_wallet_antes_de_excluir();
 
+-- A Principal nunca deixa de ser a Principal (20260930120000). Sem isto, um
+-- PATCH direto com o JWT do dono tirava o is_default e abria caminho para
+-- excluir a antiga Principal pelo gatilho acima.
+create or replace function public.proteger_wallet_principal()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if old.is_default and new.is_default is distinct from true then
+    raise exception using
+      errcode = 'check_violation',
+      message = 'A carteira Principal n' || chr(227) || 'o pode deixar de ser a Principal';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.proteger_wallet_principal()
+  from public, anon, authenticated;
+
+drop trigger if exists proteger_wallet_principal on public.wallets;
+create trigger proteger_wallet_principal
+  before update of is_default on public.wallets
+  for each row execute procedure public.proteger_wallet_principal();
+
 -- O Granabô faz parte da assinatura, então conta bloqueada não escreve
 -- histórico nem memória do assistente. A LEITURA fica livre de propósito: o
 -- histórico já é da pessoa, e "Baixar meus dados" (art. 18 da LGPD) lê estas
