@@ -124,6 +124,113 @@ async function compraInteira() {
   }
 }
 
+/* ── Apagar a ocorrência de uma assinatura ────────────────────────────────
+ *
+ * Relato do autor em 01/10/2026, dia em que a build 1.10.5 saiu: "não está
+ * sendo possível excluir lançamentos da lista de débito/pix".
+ *
+ * O `delete` saía e voltava 204. Quem desfazia a exclusão era a recarga logo
+ * em seguida: `ocorrenciasFaltantes` via o mês da série sem lançamento e o
+ * recriava. Na rede: DELETE 204 e, na mesma carga, as duas buscas do contexto
+ * de recorrência. A correção é marcar o mês na cabeça da série, e ela mora em
+ * `deleteTransaction`, que é por onde as quatro telas passam.
+ *
+ * Aqui se afirma QUAIS chamadas saem, não só que a função terminou: o efeito
+ * que importa é uma escrita no banco. */
+function supabaseDeExclusao(linhaApagada, erroDoPulo = null) {
+  const chamadas = [];
+  const q = {};
+  for (const m of ['delete', 'eq', 'select']) {
+    q[m] = (...args) => { chamadas.push([m, ...args]); return q; };
+  }
+  q.then = (resolve) => resolve({ data: linhaApagada ? [linhaApagada] : [], error: null });
+  return {
+    chamadas,
+    supabase: {
+      from: (tabela) => { chamadas.push(['from', tabela]); return q; },
+      rpc: async (nome, args) => { chamadas.push(['rpc', nome, args]); return { error: erroDoPulo }; },
+    },
+  };
+}
+const rpcs = (chamadas) => chamadas.filter((c) => c[0] === 'rpc');
+
+async function ocorrenciaDeSerie() {
+  console.log('\nApagar a ocorrencia de uma assinatura');
+
+  // A. Ocorrência de série: apaga E marca o mês na cabeça.
+  {
+    const { chamadas, supabase } = supabaseDeExclusao({ parent_id: 'cabeca-1', occurred_on: '2026-10-05', recurring: true, installment_total: null });
+    await carregarData(supabase).deleteTransaction('filho-out');
+    assert.ok(chamadas.some((c) => c[0] === 'delete'), 'o delete precisa sair');
+    /* Por JSON: o objeto de argumentos nasce dentro do `vm`, em outro
+       contexto, e o `deepEqual` estrito o trata como de outra "classe". */
+    assert.equal(
+      JSON.stringify(rpcs(chamadas)),
+      JSON.stringify([['rpc', 'pular_mes_da_recorrencia', { p_cabeca: 'cabeca-1', p_mes: '2026-10' }]])
+    );
+    assert.ok(
+      chamadas.findIndex((c) => c[0] === 'delete') < chamadas.findIndex((c) => c[0] === 'rpc'),
+      'marca o mes depois de apagar de verdade, nunca antes'
+    );
+    ok('ocorrencia de assinatura: apaga e marca o mes 2026-10 na cabeca');
+  }
+
+  // B. Lançamento avulso: nenhuma marca.
+  {
+    const { chamadas, supabase } = supabaseDeExclusao({ parent_id: null, occurred_on: '2026-10-05', recurring: false, installment_total: null });
+    await carregarData(supabase).deleteTransaction('avulso');
+    assert.equal(rpcs(chamadas).length, 0);
+    ok('avulso: nao marca mes nenhum');
+  }
+
+  // C. Parcela também tem parent_id, e NÃO é assinatura.
+  {
+    const { chamadas, supabase } = supabaseDeExclusao({ parent_id: 'compra', occurred_on: '2026-10-05', recurring: false, installment_total: 3 });
+    await carregarData(supabase).deleteTransaction('parcela-2');
+    assert.equal(rpcs(chamadas).length, 0, 'parcela nao pode marcar mes de recorrencia');
+    const { chamadas: c2, supabase: s2 } = supabaseDeExclusao({ parent_id: 'compra', occurred_on: '2026-10-05', recurring: true, installment_total: 3 });
+    await carregarData(s2).deleteTransaction('parcela-marcada-por-engano');
+    assert.equal(rpcs(c2).length, 0, 'installment_total > 1 separa parcela de assinatura mesmo com recurring ligado');
+    ok('parcela: nao marca mes, mesmo com recurring ligado por engano');
+  }
+
+  // D. A cabeça da série: a cascata leva os filhos, não há mês para marcar.
+  {
+    const { chamadas, supabase } = supabaseDeExclusao({ parent_id: null, occurred_on: '2026-08-05', recurring: true, installment_total: null });
+    await carregarData(supabase).deleteTransaction('cabeca-1');
+    assert.equal(rpcs(chamadas).length, 0);
+    ok('cabeca da serie: nada a marcar');
+  }
+
+  // E. Nada foi apagado (id de outra conta, ou já apagado): nenhuma marca.
+  {
+    const { chamadas, supabase } = supabaseDeExclusao(null);
+    await carregarData(supabase).deleteTransaction('inexistente');
+    assert.equal(rpcs(chamadas).length, 0);
+    ok('delete que nao apagou linha nenhuma nao marca mes');
+  }
+
+  // F. A marca falhou (migration não aplicada): a exclusão JÁ aconteceu, então
+  //    não vira "erro ao excluir" — mas vai para o log, que é a única pista.
+  {
+    const { supabase } = supabaseDeExclusao(
+      { parent_id: 'cabeca-1', occurred_on: '2026-10-05', recurring: true, installment_total: null },
+      { code: 'PGRST202', message: 'Could not find the function' }
+    );
+    const erros = [];
+    const original = console.error;
+    console.error = (...args) => erros.push(args);
+    try {
+      await carregarData(supabase).deleteTransaction('filho-out');
+    } finally {
+      console.error = original;
+    }
+    assert.equal(erros.length, 1, 'a falha da marca precisa ir para o log');
+    assert.ok(JSON.stringify(erros[0]).includes('PGRST202'), 'e o log precisa dizer o codigo');
+    ok('marca que falha nao vira erro de exclusao, e deixa recibo no log');
+  }
+}
+
 function carregarPergunta() {
   const alertas = [];
   const mod = carregar('lib/excluir-lancamento.ts', {
@@ -225,6 +332,26 @@ async function alertaNaWeb() {
     assert.deepEqual(feito, ['cancelar']);
     ok('botão Cancelar não apaga nada');
   }
+
+  // 11. Assinatura: a pergunta diz o que "excluir" faz com ESTA linha da série.
+  {
+    const { mod, alertas } = carregarPergunta();
+    const feito = [];
+    mod.confirmarExclusaoDeLancamento({ description: 'Netflix', installment_total: null, recurring: true, parent_id: 'cabeca' }, {
+      apagarEste: () => feito.push('este'),
+    });
+    assert.equal(alertas[0].titulo, 'Excluir só este mês');
+    assert.ok(/só o deste mês/.test(alertas[0].msg), 'a ocorrencia avisa que so este mes sai');
+    alertas[0].botoes[1].onPress();
+    assert.deepEqual(feito, ['este']);
+
+    mod.confirmarExclusaoDeLancamento({ description: 'Netflix', installment_total: null, recurring: true, parent_id: null }, {
+      apagarEste: () => feito.push('serie'),
+    });
+    assert.equal(alertas[1].titulo, 'Excluir a série inteira');
+    assert.ok(/outros meses/.test(alertas[1].msg), 'a origem avisa que os outros meses vao junto');
+    ok('assinatura: ocorrencia avisa "so este mes", origem avisa que leva a serie');
+  }
 }
 
 function telas() {
@@ -269,6 +396,7 @@ async function diagnostico42501() {
 (async () => {
   await diagnostico42501();
   await compraInteira();
+  await ocorrenciaDeSerie();
   await pergunta();
   await alertaNaWeb();
   telas();

@@ -4800,3 +4800,41 @@ alter table public.push_habit_deliveries
 alter table public.push_habit_deliveries
   add constraint push_habit_deliveries_janela_check
     check (janela in ('noite', 'almoco', 'meio_dia_finde'));
+
+-- O mês apagado de uma série recorrente continua apagado.
+-- Ver 20261001120000_recorrencia_mes_pulado.sql, que explica o defeito.
+alter table public.transactions
+  add column if not exists recurrence_skipped_months text[] not null default '{}';
+
+comment on column public.transactions.recurrence_skipped_months is
+  'Na cabeça de uma série recorrente: meses (AAAA-MM) cuja ocorrência a pessoa apagou de propósito e que não devem ser recriados.';
+
+-- UPDATE é o que a função abaixo usa. INSERT entra junto pela regra de
+-- __tests__/transactions-grant-colunas.cjs: coluna nova sem grant de INSERT já
+-- derrubou gravação com "permission denied" (25/09/2026) quando um insert
+-- passou a enviar o campo. É dado do próprio dono; conceder não abre nada.
+grant insert (recurrence_skipped_months) on public.transactions to authenticated;
+grant update (recurrence_skipped_months) on public.transactions to authenticated;
+
+create or replace function public.pular_mes_da_recorrencia(p_cabeca uuid, p_mes text)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if p_mes !~ '^\d{4}-(0[1-9]|1[0-2])$' then
+    raise exception 'Mês inválido: %', p_mes using errcode = '22023';
+  end if;
+
+  update public.transactions
+     set recurrence_skipped_months = array(
+           select distinct m from unnest(recurrence_skipped_months || p_mes) as m order by m
+         )
+   where id = p_cabeca
+     and user_id = (select auth.uid());
+end;
+$$;
+
+revoke all on function public.pular_mes_da_recorrencia(uuid, text) from public, anon;
+grant execute on function public.pular_mes_da_recorrencia(uuid, text) to authenticated;

@@ -61,6 +61,10 @@ export type Transaction = {
   color: string;
   occurred_on: string; // 'YYYY-MM-DD'
   recurring: boolean;
+  /** Só na CABEÇA de uma série recorrente: meses (`AAAA-MM`) cuja ocorrência a
+      pessoa apagou de propósito. A geração automática não os recria. Opcional
+      porque linha antiga e banco sem a migration não trazem o campo. */
+  recurrence_skipped_months?: string[] | null;
   parent_id: string | null;
   /** Método de pagamento da movimentação */
   payment_method?: PaymentMethod;

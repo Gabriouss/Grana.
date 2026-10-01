@@ -13,7 +13,7 @@ import type { Transaction } from './types';
  * decide o que perguntar e qual ação cada resposta dispara.
  */
 export function confirmarExclusaoDeLancamento(
-  tx: Pick<Transaction, 'description' | 'installment_total'>,
+  tx: Pick<Transaction, 'description' | 'installment_total'> & Partial<Pick<Transaction, 'recurring' | 'parent_id'>>,
   acoes: {
     apagarEste: () => void;
     /** Só oferecida quando o lançamento é parcela de uma compra parcelada. */
@@ -29,6 +29,25 @@ export function confirmarExclusaoDeLancamento(
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Só esta parcela', onPress: acoes.apagarEste },
         { text: 'A compra inteira', style: 'destructive', onPress: acoes.apagarCompraInteira },
+      ]
+    );
+    return;
+  }
+  /* Lançamento que se repete todo mês: o que "excluir" faz depende de QUAL
+     linha da série é esta, e a pergunta antiga ("Remover X?") era a mesma
+     para as duas. A ocorrência de um mês sai sozinha. Já a ORIGEM da série
+     leva junto todos os outros meses, porque `parent_id` é
+     `on delete cascade` — e isso acontecia sem uma palavra de aviso. */
+  if (tx.recurring && parcelas <= 1) {
+    const ehOrigem = !tx.parent_id;
+    Alert.alert(
+      ehOrigem ? 'Excluir a série inteira' : 'Excluir só este mês',
+      ehOrigem
+        ? `"${tx.description}" é o primeiro lançamento de uma série que se repete todo mês. Apagar este remove também os dos outros meses e encerra a repetição.`
+        : `"${tx.description}" se repete todo mês. Apagar remove só o deste mês; os outros continuam e a repetição segue nos próximos.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: ehOrigem ? 'Excluir a série' : 'Excluir este mês', style: 'destructive', onPress: acoes.apagarEste },
       ]
     );
     return;

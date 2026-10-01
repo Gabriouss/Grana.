@@ -535,8 +535,43 @@ export async function criarOcorrenciasRecorrentes(faltantes: OcorrenciaFaltante[
 
 export async function deleteTransaction(id: string): Promise<void> {
   const user_id = await currentUserId();
-  const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user_id);
+  /* O `select` devolve a linha apagada. É por ele que esta função descobre,
+     sem uma leitura a mais e sem mudar a assinatura para os quatro lugares que
+     a chamam, se o que saiu era a ocorrência de uma série recorrente. */
+  const { data: apagadas, error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user_id)
+    .select('parent_id, occurred_on, recurring, installment_total');
   if (error) throw error;
+
+  /* Ocorrência de assinatura apagada: o mês fica marcado na cabeça, senão a
+     próxima carga da tela recria o lançamento e a exclusão "não pega". Ver
+     `ocorrenciasFaltantes` e a migration 20261001120000.
+
+     Parcela também usa `parent_id`; `installment_total > 1` é o que separa
+     as duas coisas, pela mesma regra de lib/recorrencia.ts. */
+  const linha = apagadas?.[0];
+  const ehOcorrenciaDeSerie =
+    !!linha?.parent_id && !!linha.recurring && !((linha.installment_total ?? 1) > 1);
+  if (linha && ehOcorrenciaDeSerie) {
+    const { error: erroDoPulo } = await supabase.rpc('pular_mes_da_recorrencia', {
+      p_cabeca: linha.parent_id,
+      p_mes: String(linha.occurred_on).slice(0, 7),
+    });
+    /* O lançamento JÁ foi apagado; estourar aqui diria "erro ao excluir" sobre
+       uma exclusão que aconteceu. Mas calar também não serve: sem a marca, o
+       mês volta na próxima carga, e este log é a única pista do porquê —
+       inclusive a de que a migration não foi aplicada (PGRST202). */
+    if (erroDoPulo) {
+      console.error('[recorrencia] apaguei a ocorrência mas não marquei o mês; ela vai ser recriada', {
+        code: erroDoPulo.code,
+        message: erroDoPulo.message,
+      });
+    }
+  }
+
   marcarLancamentosAlterados();
   notificarDadosDosWidgetsAlterados();
 }

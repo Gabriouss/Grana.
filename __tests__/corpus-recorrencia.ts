@@ -46,6 +46,28 @@ checar(
   ['2026-02-10', '2026-03-10', '2026-04-10', '2026-05-10']
 );
 
+/* Mês que a pessoa APAGOU não é mês faltando.
+   Relato do autor em 01/10/2026: "não está sendo possível excluir lançamentos
+   da lista de débito/pix". O delete saía, e a recarga seguinte recriava a
+   ocorrência, porque a regra só conhecia "o mês não tem lançamento". A lista
+   de meses pulados, guardada na cabeça, é o que separa os dois estados. */
+{
+  const comPulo = tx({ id: 'serie-1', occurred_on: '2026-01-10', recurring: true, recurrence_skipped_months: ['2026-03'] });
+  checar(
+    'mês apagado de propósito não é recriado, e os outros continuam',
+    meses(ocorrenciasFaltantes([comPulo], '2026-05-20')),
+    ['2026-02-10', '2026-04-10', '2026-05-10']
+  );
+  const tudoPulado = tx({ id: 'serie-1', occurred_on: '2026-01-10', recurring: true, recurrence_skipped_months: ['2026-02', '2026-03', '2026-04', '2026-05'] });
+  checar('série com todos os meses pulados não gera nada', ocorrenciasFaltantes([tudoPulado], '2026-05-20').length, 0);
+  const semCampo = tx({ id: 'serie-1', occurred_on: '2026-01-10', recurring: true, recurrence_skipped_months: null });
+  checar(
+    'linha antiga, sem a lista, gera como sempre gerou',
+    meses(ocorrenciasFaltantes([semCampo], '2026-03-20')),
+    ['2026-02-10', '2026-03-10']
+  );
+}
+
 // Idempotência: com as ocorrências já criadas, não gera nada de novo.
 const jaCriadas = [
   cabeca,

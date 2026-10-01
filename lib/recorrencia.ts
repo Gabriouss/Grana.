@@ -80,13 +80,19 @@ export function ocorrenciasFaltantes(transactions: Transaction[], hojeISO: strin
   const faltantes: OcorrenciaFaltante[] = [];
   for (const cabeca of cabecas) {
     const ocupados = mesesPorSerie.get(cabeca.id) ?? new Set<string>();
+    /* Mês que a pessoa APAGOU não é mês faltando. Sem isto, excluir a
+       ocorrência de uma assinatura era impossível: a recarga logo depois do
+       `delete` via o mês vazio e recriava a linha (relato do autor em
+       01/10/2026). "Não existe" e "foi apagado de propósito" precisam ser
+       estados diferentes, e é esta lista, guardada na cabeça, que os separa. */
+    const pulados = new Set(cabeca.recurrence_skipped_months ?? []);
     const total = mesesEntre(cabeca.occurred_on, hojeISO);
     if (total <= 0) continue; // série começa no mês corrente ou no futuro
 
     const primeiro = Math.max(1, total - MAX_MESES_RETROATIVOS + 1);
     for (let i = primeiro; i <= total; i++) {
       const data = addMonthsToISO(cabeca.occurred_on, i);
-      if (ocupados.has(chaveMes(data))) continue;
+      if (ocupados.has(chaveMes(data)) || pulados.has(chaveMes(data))) continue;
       faltantes.push({ cabeca, occurred_on: data });
     }
   }
