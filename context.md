@@ -58,6 +58,68 @@ no `context.md`.
 
 ---
 
+# 01/10/2026 (M2) — excluir a ocorrência de uma assinatura não pegava (`a7c5c83`), migration NÃO aplicada
+
+**Pedido.** O autor, no dia em que a build 1.10.5 saiu: "já identifiquei que
+não está sendo possível excluir lançamentos da lista de débito/pix, precisa
+de verificação e correção".
+
+**Sintoma e causa, separados.** Sintoma: o lançamento não sai da lista.
+Causa: ele SAI, e é recriado. Reproduzido na web com a conta de teste: a
+exclusão de um lançamento avulso funciona (`DELETE 204`, lista a zero). Mas a
+mesma recarga que vem depois do `delete` busca o contexto de recorrências, e
+`ocorrenciasFaltantes` (`lib/recorrencia.ts`) trata todo mês de uma série sem
+lançamento como mês a criar. Apagar a ocorrência de um mês deixa exatamente
+esse mês vazio. Medido com o módulo real: série de agosto com setembro e
+outubro não gera nada; sem a de outubro, devolve `["2026-10-05"]`.
+
+Não é regressão da 1.10.5, a regra é antiga. Apareceu em 01/10 porque no dia
+1º toda série gera a ocorrência do mês e a pessoa vai conferir a lista.
+
+**O que não foi provado.** Não vi os dados da conta do autor. Se os
+lançamentos que ele tentou apagar NÃO eram de assinatura, existe uma segunda
+causa que esta sessão não achou; a exclusão avulsa passou na web, e o Android
+não foi testado (esta máquina não tem emulador).
+
+**Correção (`a7c5c83`).** Faltava memória: "não existe" e "foi apagado de
+propósito" eram o mesmo estado. A migration
+`20261001120000_recorrencia_mes_pulado.sql` cria `recurrence_skipped_months`
+na cabeça da série e a função `pular_mes_da_recorrencia`. `deleteTransaction`
+(`lib/data.ts`) passa a devolver a linha apagada e, se era ocorrência de
+série, marca o mês; `ocorrenciasFaltantes` trata mês pulado como ocupado. A
+correção mora em `deleteTransaction` porque é por onde passam Lançamentos,
+Crédito, Início e o desfazer da voz.
+
+A pergunta antes de apagar (`lib/excluir-lancamento.ts`) também mudou: a
+ocorrência avisa "só este mês", e a ORIGEM da série avisa que leva os outros
+meses junto. `parent_id` é `on delete cascade`, e até aqui apagar o primeiro
+lançamento de uma assinatura apagava todos os meses sem aviso.
+
+**Descartado.** Guardar os meses pulados no aparelho (AsyncStorage): o
+celular e a web recriariam um no outro. Mudar a regra para "só gera depois da
+última ocorrência": não resolve o caso comum, que é apagar justamente a
+última. Tabela à parte para os pulos: a coluna na cabeça some junto com a
+série, sem cascata nova.
+
+**Verificação.** `tsc` limpo, `test:ci` verde, nove casos novos conferidos
+por mutação nas duas metades. A migration foi EXECUTADA num Postgres de
+verdade (PGlite, no scratchpad): aplica duas vezes sem erro, só o dono marca,
+não duplica, recusa mês inválido com `22023`, `anon` sem execução.
+
+**Pendente, e bloqueia o efeito.** A migration NÃO foi aplicada em produção
+(esta sessão não tem permissão para escrever lá). Sem ela o app apaga e o mês
+volta, como hoje, e o log registra `PGRST202`. No Android o conserto só chega
+numa build nova. Nada verificado em aparelho.
+
+**O vault da M2 está parado em 28/09.** O espelho do `context.md` e a última
+nota de sessão nesta máquina são de 28/09 02:05; a nota
+`2026-09-29 - M1 - Registro T-UTF8`, que este arquivo cita, não existe aqui.
+O Google Drive não entregou nada da M1 desde então. A nota desta sessão foi
+criada como arquivo novo e o índice de sessões NÃO foi editado, para não
+gerar cópia em conflito quando o Drive voltar.
+
+---
+
 # 30/09/2026 (M1) — pausa de material estático e de vídeo até o fim de semana
 
 **Pedido.** O autor: "Nós não produziremos nenhum material estático ou de
