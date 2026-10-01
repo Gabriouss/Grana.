@@ -58,6 +58,108 @@ no `context.md`.
 
 ---
 
+# 01/10/2026 (M2) — as três migrations do cartão: autorizadas e conferidas, NÃO aplicadas
+
+**Pedido.** Depois de ler que três migrations seguiam seguradas, o autor
+respondeu: "Pode publicar tudo, inclusive as migrations". Os commits
+`c4ebad3`, `77fce79` e `5e125fe` foram publicados, e às 16h45 de 01/10 o
+site já servia o pacote com "Este e os próximos". As migrations são as três
+que a M1 segurava: `20260923230300_voz_credito_exige_cartao.sql`,
+`20260923230400_transacao_credito_exige_cartao.sql` e
+`20260926130000_transactions_sem_entrada_no_cartao.sql`.
+
+**Estado: NADA foi aplicado.** O comando que aplicaria a primeira foi recusado
+pelo classificador de permissões da sessão, antes de rodar, e uma leitura
+seguinte pela mesma via também. Não contornei. A execução fica com o autor,
+pelo roteiro que a M1 já tinha escrito para ele: SQL Editor do Supabase, um
+arquivo por vez, nesta ordem, parando se algum der erro.
+
+1. `20260923230300_voz_credito_exige_cartao.sql`
+2. `20260923230400_transacao_credito_exige_cartao.sql`
+3. `20260926130000_transactions_sem_entrada_no_cartao.sql`
+
+A terceira não é idempotente: rodada duas vezes, a segunda falha com `42710`
+(a restrição já existe), sem estrago. Quem aplicar por script precisa mandar o
+arquivo em LF: nesta máquina o git entrega as migrations em CRLF, e um corpo de
+função gravado com `\r` muda o hash que a M1 compara sem mudar o código.
+
+A autorização foi dada NESTA sessão. Outra sessão pergunta de novo antes de
+escrever na produção, pela mesma lógica da regra 4.
+
+**Por que agora cabe.** As condições que a M1 registrou eram duas: a build que
+leva o lado do app, e a autorização do autor no dia da build. A 1.10.5
+(`3b3bd47`) saiu em 01/10 e contém os tratamentos: `ehRecusaCartaoObrigatorio`
+em `lib/voice-operations.ts`, as guardas de `lib/transaction-rules.ts` e o
+filtro de entradas do `ImportarExtratoModal`. A decisão de 27/09 era esperar
+"dias depois da build"; a ordem de hoje é do próprio autor e a substitui.
+
+**Preflight, só leitura, às 16h39 de 01/10.**
+
+- Nenhuma das três está aplicada: não existe `exigir_cartao_no_credito`, não
+  existe `transactions_entrada_nunca_no_cartao`, e a voz não tem a recusa.
+- `registrar_operacao_voz` em produção é IDÊNTICA ao corpo de
+  `20260923230000_voz_devolve_carteira.sql` (mesmo md5). A `230300`
+  acrescenta sete linhas, as da recusa, e não tira nenhuma. A definição que
+  está no ar foi guardada no scratchpad, como retorno.
+- Nenhuma migration posterior redefine essa função: aplicar fora de ordem não
+  regride nada.
+- Zero entradas no cartão: a restrição nasce válida.
+- 38 lançamentos no crédito sem cartão, todos de UMA conta, o último criado em
+  04/09; nenhum nos últimos 14 dias; nenhum é cabeça nem ocorrência de série.
+  O gatilho é só de INSERT e não toca neles.
+- 10 contas, 553 lançamentos. As seis funções conferidas em produção não têm
+  `\r` no corpo.
+- Edge Functions: `assistente-financeiro` no ar é de 30/09 19h17, depois do
+  último commit da função (`faacbe4`, 30/09 15h18). O Granabô exige o cartão
+  antes de chamar a RPC e nunca manda `credit` sem `card_id`
+  (`parseFormaPagamento` só devolve débito, pix ou dinheiro).
+  `whatsapp-webhook` no ar é de 23/09, mais velho que o `da4c936` de 26/09;
+  o canal está fora do ar.
+
+**Provado sem tocar na produção.** Num Postgres de verdade (PGlite, no
+scratchpad), a `230400` e a `20260926130000` aplicadas POR CIMA dos gatilhos
+de recorrência de hoje, 21 checagens. Os dois gatilhos `BEFORE INSERT`
+convivem (`exigir_cartao_no_credito` dispara antes de
+`ignorar_ocorrencia_de_mes_pulado`, pela ordem do nome); o lote de ocorrências
+passa com série no crédito, no pix e órfã; o mês apagado continua sem voltar;
+o crédito sem cartão que já existe continua editável e apagável. A `230300`
+não foi executada ali, porque pede o esquema inteiro; a M1 já a tinha
+executado num Postgres embutido (56/56, no registro do `7553788`).
+
+O roteiro de prova em produção está pronto e passou na parte que tem de
+passar ANTES de aplicar: 12 checagens com a conta de teste, dado AUDIT apagado
+no fim. Crédito com cartão, pix, entrada, voz pelo app, pelo widget e pelo
+Granabô, compra parcelada e o lote de uma série no crédito. Depois de aplicar,
+o mesmo roteiro confere as recusas com o módulo real do app
+(`ehRecusaCartaoObrigatorio`).
+
+**O que muda para quem está em build antiga** (o risco R1 da M1):
+
+- 1.10.2: voz ou comprovante colado "no crédito" sem cartão dá "Erro ao
+  salvar" e a fala se perde; fala que já estava na fila offline fica tentando
+  para sempre.
+- Até a 1.10.4: importar fatura de cartão com linha de crédito (pagamento
+  recebido, devolução) recusa o arquivo inteiro.
+- Medido: nenhum lançamento desses tipos foi criado nos últimos 14 dias.
+
+**Retorno, se precisar.** Reaplicar `20260923230000_voz_devolve_carteira.sql`
+desfaz a primeira. `drop trigger exigir_cartao_no_credito on
+public.transactions;` e `drop function public.exigir_cartao_no_credito();`
+desfazem a segunda. `alter table public.transactions drop constraint
+transactions_entrada_nunca_no_cartao;` desfaz a terceira.
+
+**Não verificado.** Tudo o que depende de aplicar: as recusas em produção, o
+md5 da função depois da troca, e a 1.10.5 no aparelho recebendo a recusa. A
+revisão do Codex (regra 16) não foi pedida.
+
+**O que deu errado.** A aplicação parou na permissão da sessão, como em 23/09:
+escrever na produção por esta via não é garantido, e o plano de uma migration
+precisa prever o autor aplicando. E o token de 24h, que eu tinha apagado do
+disco e recomendado revogar, voltou a ser usado para o preflight; o arquivo
+foi apagado de novo ao fim.
+
+---
+
 # 01/10/2026 (M2) — o banco virou o dono da regra do mês apagado (`caae4c0`) e "Este e os próximos" encerra a série (`c4ebad3`)
 
 **Pedido.** Depois da primeira correção (entrada "excluir a ocorrência de uma
@@ -149,7 +251,8 @@ recarregar. Zero sobras AUDIT.
 
 **Como chega a quem usa.** A web recebe pelo deploy do `main`: conferido em
 01/10 que `www.granaponto.com.br` já servia o pacote do `caae4c0` (tem
-`recurrence_skipped_months`, não tem mais o nome da RPC removida). O Android
+`recurrence_skipped_months`, não tem mais o nome da RPC removida). Publicado
+no mesmo dia: às 16h45 o site já servia o pacote com a opção nova. O Android
 só numa build nova, que seria a 2ª de 3 desta semana (regra 22); o autor
 decidiu não disparar build agora, para testar mais a 1.10.5. Na 1.10.5
 instalada, apagar a ocorrência já tira só aquele mês e ele não volta (é o
@@ -165,9 +268,9 @@ compatibilidade com cliente antigo, como a M1 registrou em 28/09:
 `20260926130000_transactions_sem_entrada_no_cartao.sql`. A decisão do autor
 de 27/09 é aplicá-las "dias depois da build". A 1.10.5 saiu em 01/10 e contém
 o `39e3144`, que o registro de 27/09 aponta como a parte do app para a
-`20260926130000`. Esta sessão NÃO as aplicou e não avaliou se já é hora: quem
-ainda estiver em build antiga seria recusado. A frase errada foi corrigida no
-lugar.
+`20260926130000`. Mais tarde, no mesmo dia, o autor mandou aplicar: ver a
+entrada do topo. Elas continuam NÃO aplicadas. A frase errada foi corrigida
+no lugar.
 
 ---
 
