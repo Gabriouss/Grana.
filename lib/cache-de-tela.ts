@@ -124,6 +124,9 @@ export async function lerTela<T>(nome: string): Promise<{ dados: T; guardadoEm: 
 
 /** Some com tudo — usar ao sair da conta. */
 export async function esquecerTelas(): Promise<void> {
+  /* Antes de qualquer acesso ao disco, e fora do try: a memória não pode
+     sobreviver à saída da conta nem quando o disco falha. */
+  invalidarRespostasAtrasadas();
   try {
     const chaves = await AsyncStorage.getAllKeys();
     const nossas = chaves.filter((k) => k.startsWith(PREFIXO));
@@ -187,7 +190,12 @@ function definirModo(motivo: MotivoOffline | null) {
    sem correr contra rede nenhuma, então ela funciona mesmo que a rede continue
    lenta. */
 const VALIDADE_DO_DADO_ATRASADO_MS = 15_000;
-const atrasados = new Map<string, { dados: unknown; em: number }>();
+/* `userId` é o dono do dado: a memória não pode servir a uma conta o que a
+   outra buscou (achado Q5 da auditoria de 01/10/2026). `geracao` sobe a cada
+   escrita e a cada saída de conta; resposta que saiu ANTES da subida não pode
+   mais ser guardada nem servida, porque é anterior ao que mudou (Q3). */
+const atrasados = new Map<string, { dados: unknown; em: number; userId: string }>();
+let geracao = 0;
 const ouvintesDeDadoNovo = new Set<() => void>();
 let avisoPendente: ReturnType<typeof setTimeout> | undefined;
 
@@ -221,8 +229,19 @@ export function avisarDadoNovo() {
  * ficasse, a recarga o devolveria sem o lançamento novo pelos 15 s de validade.
  */
 export function lancamentoGravado(): void {
-  atrasados.clear();
+  invalidarRespostasAtrasadas();
   avisarDadoNovo();
+}
+
+/**
+ * Descarta o dado atrasado em memória e impede que respostas ainda a caminho
+ * (pedidos que saíram antes desta chamada) sejam guardadas ou servidas.
+ * Chamada por `lancamentoGravado` e por `esquecerTelas`; qualquer outra escrita
+ * que queira o mesmo efeito (boleto, orçamento, meta) chama daqui.
+ */
+export function invalidarRespostasAtrasadas(): void {
+  geracao += 1;
+  atrasados.clear();
 }
 
 /**
@@ -265,10 +284,16 @@ export function comCacheOffline<A extends unknown[], T>(
        e apagar a faixa mesmo com a rede ainda lenta. Não é apagado ao ser
        lido, porque telas diferentes pedem a mesma chave (`fetchTransactions`
        serve Início, Lançamentos e Gráficos). */
+    /* Só pergunta quem é o dono quando há dado atrasado: a pergunta passa pela
+       sessão e não deve atrasar o pedido no caso comum. */
+    const geracaoDoPedido = geracao;
     const atrasado = atrasados.get(chave);
     if (atrasado && Date.now() - atrasado.em < VALIDADE_DO_DADO_ATRASADO_MS) {
-      definirModo(null);
-      return atrasado.dados as T;
+      if (atrasado.userId === (await idDoUsuario())) {
+        definirModo(null);
+        return atrasado.dados as T;
+      }
+      atrasados.delete(chave);
     }
 
     /* Mapear para um objeto, em vez de deixar rejeitar, é o que permite
@@ -286,6 +311,7 @@ export function comCacheOffline<A extends unknown[], T>(
     const primeiro = await Promise.race([pedido, prazo]).finally(() => clearTimeout(cortar));
 
     if (primeiro !== 'prazo') return concluir(primeiro);
+    const donoDoPedido = await idDoUsuario();
 
     /* Estourou o prazo. Servir o disco só vale se houver disco: sem nada
        guardado, esperar a resposta de verdade continua sendo melhor que
@@ -306,8 +332,16 @@ export function comCacheOffline<A extends unknown[], T>(
        o erro para ela; o que dá para fazer é parar de culpar a rede. */
     void pedido.then(async (tardio) => {
       if (tardio.ok) {
+        /* Houve escrita (ou troca de conta) depois que o pedido saiu: a
+           resposta é do passado. Guardá-la apagaria do disco o que acabou de
+           ser gravado e a serviria por 15 s; a tela busca de novo. */
+        if (geracaoDoPedido !== geracao || !donoDoPedido) {
+          avisarDadoNovo();
+          return;
+        }
         await guardarTela(chave, tardio.dados);
-        atrasados.set(chave, { dados: tardio.dados, em: Date.now() });
+        if (geracaoDoPedido !== geracao) return;
+        atrasados.set(chave, { dados: tardio.dados, em: Date.now(), userId: donoDoPedido });
         avisarDadoNovo();
         return;
       }
@@ -320,7 +354,9 @@ export function comCacheOffline<A extends unknown[], T>(
 
     async function concluir(desfecho: Desfecho<T>): Promise<T> {
       if (desfecho.ok) {
-        await guardarTela(chave, desfecho.dados);
+        /* Mesma regra da resposta tardia: pedido anterior a uma escrita ou à
+           saída da conta não vai para o disco. */
+        if (geracaoDoPedido === geracao) await guardarTela(chave, desfecho.dados);
         definirModo(null);
         return desfecho.dados;
       }
