@@ -229,6 +229,18 @@ Regras permanentes para qualquer sessão que abrir este repositório:
      dia. Ao capturar um erro, decida explicitamente se ele é temporário
      (vale enfileirar e tentar de novo) ou permanente (precisa aparecer),
      e nunca deixe um `catch` sem log.
+   - **Correção que mora só no cliente não corrige quem está em build
+     antiga.** O APK instalado não recebe código novo sem build, e build tem
+     teto (regra 22). Em 01/10/2026 a exclusão de ocorrência de assinatura
+     foi corrigida primeiro no app (`a7c5c83`): a web ficou certa, e o celular
+     com a 1.10.5 continuaria apagando e vendo o mês voltar, além de recriar
+     o que a web tinha apagado. Durou horas, até a regra ir para o banco em
+     gatilho (`caae4c0`). Antes de dar uma correção de dado por pronta,
+     pergunte: isso funciona na versão que está no aparelho HOJE? Regra que
+     precisa valer para todo mundo mora no servidor. E o que o servidor passa
+     a recusar tem de ser tolerado pelo cliente antigo: aquele gatilho devolve
+     `NULL` em vez de erro porque a build antiga insere os meses de todas as
+     séries num lote só, e um erro derrubaria o lote inteiro.
 
    A versão longa desta análise, com os commits e trechos de código de cada
    caso, está na memória do Claude, em
