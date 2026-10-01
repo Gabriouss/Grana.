@@ -26,7 +26,7 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
-import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, fetchBills, fetchBudgets, fetchCardInvoicePayments, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
+import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, encerrarSerieAPartirDe, fetchBills, fetchBudgets, fetchCardInvoicePayments, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
@@ -1055,6 +1055,23 @@ export default function InicioScreen() {
           load();
         } catch (e: any) {
           Alert.alert('Erro ao excluir', e.message);
+        }
+      },
+      /* "Este e os próximos": encerra a série e mantém os meses anteriores. */
+      encerrarSerie: async () => {
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => !(t.parent_id === tx.parent_id && t.occurred_on >= tx.occurred_on)));
+          hapticDelete();
+          triggerToast('Repetição encerrada (exemplo)');
+          return;
+        }
+        try {
+          await encerrarSerieAPartirDe(tx);
+          hapticDelete();
+          triggerToast('Repetição encerrada');
+          load();
+        } catch (e: any) {
+          Alert.alert('Erro ao encerrar a repetição', e.message);
         }
       },
     });

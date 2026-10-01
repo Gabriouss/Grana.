@@ -39,6 +39,7 @@ import {
   criarOcorrenciasRecorrentes,
   deleteTransaction,
   deleteInstallmentPurchase,
+  encerrarSerieAPartirDe,
   fetchRecurrenceContext,
   fetchTransactionsDoPeriodo,
   updateTransaction,
@@ -562,6 +563,23 @@ export default function LancamentosScreen() {
           load();
         } catch (e: any) {
           Alert.alert('Erro ao excluir', e.message);
+        }
+      },
+      /* "Este e os próximos": encerra a série e mantém os meses anteriores. */
+      encerrarSerie: async () => {
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => !(t.parent_id === tx.parent_id && t.occurred_on >= tx.occurred_on)));
+          hapticDelete();
+          triggerToast('Repetição encerrada (exemplo)');
+          return;
+        }
+        try {
+          await encerrarSerieAPartirDe(tx);
+          hapticDelete();
+          triggerToast('Repetição encerrada');
+          load();
+        } catch (e: any) {
+          Alert.alert('Erro ao encerrar a repetição', e.message);
         }
       },
     });

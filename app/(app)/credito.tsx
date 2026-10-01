@@ -34,6 +34,7 @@ import {
   updateCreditCard,
   deleteTransaction,
   deleteInstallmentPurchase,
+  encerrarSerieAPartirDe,
   fetchCreditTransactionsForMonth,
   fetchCreditCards,
   fetchCategories,
@@ -1200,6 +1201,24 @@ export default function CreditoScreen() {
           await loadData();
         } catch (e: any) {
           Alert.alert('Erro ao excluir', e.message);
+        }
+      },
+      /* "Este e os próximos": encerra a cobrança recorrente e mantém as dos
+         meses anteriores. */
+      encerrarSerie: async () => {
+        if (isDemoMode) {
+          setTransactions((prev) => prev.filter((t) => !(t.parent_id === tx.parent_id && t.occurred_on >= tx.occurred_on)));
+          hapticDelete();
+          triggerToast('Repetição encerrada (exemplo)');
+          return;
+        }
+        try {
+          await encerrarSerieAPartirDe(tx);
+          hapticDelete();
+          triggerToast('Repetição encerrada');
+          await loadData();
+        } catch (e: any) {
+          Alert.alert('Erro ao encerrar a repetição', e.message);
         }
       },
     });

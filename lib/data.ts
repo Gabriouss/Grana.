@@ -556,6 +556,56 @@ export async function deleteTransaction(id: string): Promise<void> {
 }
 
 /**
+ * Encerra uma série recorrente a partir de uma ocorrência: ela e as dos meses
+ * seguintes saem, a repetição para, e os meses ANTERIORES ficam como estão.
+ *
+ * Pedido do autor em 01/10/2026, sobre a assinatura e o investimento que ele
+ * tentava apagar: "A intenção é encerrar de vez, os lançamentos passados
+ * permanecem". Até aqui o app não tinha como fazer isso a partir do lançamento
+ * que a pessoa está vendo. O interruptor da série mora na ORIGEM, o primeiro
+ * lançamento, lá no mês em que ela foi criada; desmarcar "repetir" numa
+ * ocorrência não encerra nada, e apagar a origem leva todos os meses embora.
+ *
+ * A ordem dos dois passos é o que protege de uma falha no meio. Primeiro a
+ * série para de repetir; depois os lançamentos saem. Se o segundo passo
+ * falhar, o lançamento continua na lista e a pessoa repete o gesto. Na ordem
+ * inversa, o lançamento sumiria com a série ainda viva, sem ter de onde
+ * repetir: ela voltaria a gerar no mês seguinte e ninguém saberia por quê.
+ *
+ * Devolve quantos lançamentos saíram.
+ */
+export async function encerrarSerieAPartirDe(
+  tx: Pick<Transaction, 'parent_id' | 'occurred_on' | 'installment_total'>
+): Promise<number> {
+  /* Parcela também usa `parent_id`. Sem esta guarda, "encerrar" numa parcela
+     apagaria as parcelas seguintes de uma compra, que é outra operação
+     (`deleteInstallmentPurchase`) com outra pergunta. */
+  if (!tx.parent_id || (tx.installment_total ?? 1) > 1) {
+    throw new Error('Este lançamento não faz parte de uma série que se repete.');
+  }
+  const user_id = await currentUserId();
+
+  const { error: erroAoParar } = await supabase
+    .from('transactions')
+    .update({ recurring: false })
+    .eq('id', tx.parent_id)
+    .eq('user_id', user_id);
+  if (erroAoParar) throw erroAoParar;
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('user_id', user_id)
+    .eq('parent_id', tx.parent_id)
+    .gte('occurred_on', tx.occurred_on)
+    .select('id');
+  if (error) throw error;
+  marcarLancamentosAlterados();
+  notificarDadosDosWidgetsAlterados();
+  return data?.length ?? 0;
+}
+
+/**
  * Apaga a compra parcelada INTEIRA, a partir de qualquer uma das parcelas.
  *
  * Até 19/09/2026 só existia apagar parcela por parcela: tirar a "(2/3)" deixava

@@ -329,7 +329,8 @@ async function alertaNaWeb() {
       apagarEste: () => feito.push('este'),
     });
     assert.equal(alertas[0].titulo, 'Excluir só este mês');
-    assert.ok(/só o deste mês/.test(alertas[0].msg), 'a ocorrencia avisa que so este mes sai');
+    assert.ok(/só o lançamento deste mês/.test(alertas[0].msg), 'a ocorrencia avisa que so este mes sai');
+    assert.ok(!/segue|continua repetindo/.test(alertas[0].msg), 'a pergunta nao afirma que a serie esta ativa: ela aparece tambem para serie ja encerrada');
     alertas[0].botoes[1].onPress();
     assert.deepEqual(feito, ['este']);
 
@@ -345,9 +346,129 @@ async function alertaNaWeb() {
       apagarEste: () => feito.push('desmarcada'),
     });
     assert.equal(alertas[2].titulo, 'Excluir só este mês', 'ocorrencia se reconhece pelo parent_id');
-    assert.ok(/outros meses/.test(alertas[1].msg), 'a origem avisa que os outros meses vao junto');
+    assert.ok(/meses seguintes/.test(alertas[1].msg), 'a origem avisa que os meses seguintes vao junto');
+    assert.ok(/desligue a repetição/.test(alertas[1].msg), 'e ensina a parar de repetir sem apagar nada');
     ok('assinatura: ocorrencia avisa "so este mes", origem avisa que leva a serie');
   }
+}
+
+/* ── Encerrar a série: este e os próximos saem, o passado fica ────────────
+ *
+ * Pedido do autor em 01/10/2026, sobre a assinatura e o investimento que ele
+ * tentava apagar: "A intenção é encerrar de vez, os lançamentos passados
+ * permanecem". Até aqui a única forma de encerrar era achar a ORIGEM da série,
+ * no mês em que ela foi criada, e desligar "repetir". */
+function supabaseDeEncerrar({ erroAoParar = null, apagadas = [] } = {}) {
+  const chamadas = [];
+  const montar = (resposta) => {
+    const q = {};
+    for (const m of ['update', 'delete', 'eq', 'gte', 'select']) {
+      q[m] = (...args) => { chamadas.push([m, ...args]); return q; };
+    }
+    q.then = (resolve) => resolve(resposta());
+    return q;
+  };
+  let pedidos = 0;
+  return {
+    chamadas,
+    supabase: {
+      from: (tabela) => {
+        chamadas.push(['from', tabela]);
+        pedidos += 1;
+        /* O primeiro pedido é o que para a série; o segundo, o que apaga. */
+        return pedidos === 1
+          ? montar(() => ({ data: null, error: erroAoParar }))
+          : montar(() => ({ data: apagadas, error: null }));
+      },
+    },
+  };
+}
+
+async function encerrarSerie() {
+  console.log('\nEncerrar a serie: este e os proximos');
+
+  // A. Para de repetir ANTES de apagar, e apaga só deste mês em diante.
+  {
+    const { chamadas, supabase } = supabaseDeEncerrar({ apagadas: [{ id: 'out' }, { id: 'nov' }] });
+    const n = await carregarData(supabase).encerrarSerieAPartirDe({ parent_id: 'cabeca', occurred_on: '2026-10-05', installment_total: null });
+    assert.equal(n, 2);
+    const nomes = chamadas.map((c) => c[0]);
+    assert.ok(nomes.indexOf('update') >= 0 && nomes.indexOf('delete') > nomes.indexOf('update'),
+      'a serie para de repetir antes de qualquer lancamento sair');
+    assert.equal(JSON.stringify(chamadas.find((c) => c[0] === 'update')[1]), JSON.stringify({ recurring: false }));
+    const depoisDoUpdate = chamadas.slice(nomes.indexOf('update'), nomes.indexOf('delete'));
+    assert.ok(depoisDoUpdate.some((c) => c[0] === 'eq' && c[1] === 'id' && c[2] === 'cabeca'), 'quem para de repetir e a CABECA');
+    const depoisDoDelete = chamadas.slice(nomes.indexOf('delete'));
+    assert.ok(depoisDoDelete.some((c) => c[0] === 'eq' && c[1] === 'parent_id' && c[2] === 'cabeca'), 'apaga so ocorrencias desta serie');
+    assert.ok(depoisDoDelete.some((c) => c[0] === 'gte' && c[1] === 'occurred_on' && c[2] === '2026-10-05'),
+      'apaga deste mes em diante: os meses anteriores ficam');
+    assert.ok(!depoisDoDelete.some((c) => c[0] === 'eq' && c[1] === 'id'), 'o delete nao pode mirar a cabeca: ela e um mes passado');
+    for (const trecho of [depoisDoUpdate, depoisDoDelete]) {
+      assert.ok(trecho.some((c) => c[0] === 'eq' && c[1] === 'user_id' && c[2] === 'u-1'), 'os dois passos sao restritos ao dono');
+    }
+    ok('para de repetir primeiro, depois apaga este mes e os seguintes, so desta serie');
+  }
+
+  // B. Se parar a série falhar, NADA é apagado.
+  {
+    const { chamadas, supabase } = supabaseDeEncerrar({ erroAoParar: { code: '42501', message: 'sem permissao' } });
+    await assert.rejects(
+      carregarData(supabase).encerrarSerieAPartirDe({ parent_id: 'cabeca', occurred_on: '2026-10-05', installment_total: null })
+    );
+    assert.ok(!chamadas.some((c) => c[0] === 'delete'), 'sem parar a serie, nenhum lancamento pode sair');
+    ok('falha ao parar a serie: nada e apagado');
+  }
+
+  // C. Parcela e lançamento avulso não chegam ao banco.
+  {
+    const { chamadas, supabase } = supabaseDeEncerrar();
+    const data = carregarData(supabase);
+    await assert.rejects(data.encerrarSerieAPartirDe({ parent_id: 'compra', occurred_on: '2026-10-05', installment_total: 3 }), /não faz parte de uma série/);
+    await assert.rejects(data.encerrarSerieAPartirDe({ parent_id: null, occurred_on: '2026-10-05', installment_total: null }), /não faz parte de uma série/);
+    assert.equal(chamadas.length, 0, 'parcela e avulso nao podem tocar o banco');
+    ok('parcela e lancamento avulso sao recusados sem tocar o banco');
+  }
+
+  // D. A pergunta oferece as duas saídas, e cada botão faz só a sua.
+  {
+    const { mod, alertas } = carregarPergunta();
+    const feito = [];
+    mod.confirmarExclusaoDeLancamento({ description: 'Netflix', installment_total: null, recurring: true, parent_id: 'cabeca' }, {
+      apagarEste: () => feito.push('este'),
+      encerrarSerie: () => feito.push('encerrar'),
+    });
+    assert.deepEqual([...alertas[0].botoes.map((b) => b.text)], ['Cancelar', 'Só este mês', 'Este e os próximos']);
+    assert.ok(/meses anteriores ficam/.test(alertas[0].msg), 'a pergunta diz que o passado permanece');
+    assert.equal(feito.length, 0, 'perguntar nao pode ja ter apagado');
+    alertas[0].botoes[1].onPress();
+    assert.deepEqual(feito, ['este']);
+    alertas[0].botoes[2].onPress();
+    assert.deepEqual(feito, ['este', 'encerrar']);
+    assert.equal(alertas[0].botoes[2].style, 'destructive');
+    ok('ocorrencia: "So este mes" e "Este e os proximos" disparam acoes separadas');
+  }
+
+  // E. A ORIGEM e a parcela não ganham a opção: para elas ela não existe.
+  {
+    const { mod, alertas } = carregarPergunta();
+    mod.confirmarExclusaoDeLancamento({ description: 'Netflix', installment_total: null, recurring: true, parent_id: null }, {
+      apagarEste: () => {}, encerrarSerie: () => {},
+    });
+    assert.deepEqual([...alertas[0].botoes.map((b) => b.text)], ['Cancelar', 'Excluir a série']);
+    mod.confirmarExclusaoDeLancamento({ description: 'TV', installment_total: 3, parent_id: 'compra' }, {
+      apagarEste: () => {}, apagarCompraInteira: () => {}, encerrarSerie: () => {},
+    });
+    assert.deepEqual([...alertas[1].botoes.map((b) => b.text)], ['Cancelar', 'Só esta parcela', 'A compra inteira']);
+    ok('origem e parcela nao oferecem "Este e os proximos"');
+  }
+
+  // F. As três telas oferecem a saída.
+  for (const arquivo of ['app/(app)/lancamentos.tsx', 'app/(app)/credito.tsx', 'app/(app)/index.tsx']) {
+    const fonte = fs.readFileSync(path.join(root, arquivo), 'utf8');
+    assert.ok(/encerrarSerie: async \(\) => \{/.test(fonte), arquivo + ' precisa oferecer encerrar a serie');
+    assert.ok(/await encerrarSerieAPartirDe\(tx\)/.test(fonte), arquivo + ' precisa encerrar pela funcao compartilhada');
+  }
+  ok('as tres telas oferecem "Este e os proximos" pela mesma funcao');
 }
 
 function telas() {
@@ -394,6 +515,7 @@ async function diagnostico42501() {
   await compraInteira();
   await ocorrenciaDeSerie();
   await pergunta();
+  await encerrarSerie();
   await alertaNaWeb();
   telas();
   console.log('\n' + aprovadas + '/' + aprovadas + ' guardas de exclusao passaram — 0 falhas\n');

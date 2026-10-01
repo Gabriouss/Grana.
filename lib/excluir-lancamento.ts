@@ -18,6 +18,9 @@ export function confirmarExclusaoDeLancamento(
     apagarEste: () => void;
     /** Só oferecida quando o lançamento é parcela de uma compra parcelada. */
     apagarCompraInteira?: () => void;
+    /** Só oferecida quando o lançamento é a ocorrência de uma série mensal:
+        apaga este e os dos meses seguintes e encerra a repetição. */
+    encerrarSerie?: () => void;
   }
 ): void {
   const parcelas = tx.installment_total ?? 1;
@@ -44,12 +47,39 @@ export function confirmarExclusaoDeLancamento(
      É a mesma condição do gatilho do banco. */
   const ehOcorrencia = !!tx.parent_id && parcelas <= 1;
   const ehOrigem = !tx.parent_id && !!tx.recurring && parcelas <= 1;
+
+  /* Quem apaga o lançamento de uma assinatura quase sempre quer ENCERRAR a
+     assinatura, e não pular um mês. O autor disse isso em 01/10/2026: "A
+     intenção é encerrar de vez, os lançamentos passados permanecem". Com uma
+     opção só ("apagar este mês"), o lançamento voltava no mês seguinte e a
+     pessoa não tinha como saber que o interruptor da série mora na origem,
+     lá no primeiro mês. As duas saídas ficam lado a lado, como já acontece
+     com a compra parcelada.
+
+     O texto não afirma que a série ainda está ativa: esta mesma pergunta
+     aparece para os lançamentos antigos de uma série já encerrada, e para
+     eles "a repetição continua" seria falso. */
+  if (ehOcorrencia && acoes.encerrarSerie) {
+    Alert.alert(
+      'Excluir lançamento que se repete',
+      `"${tx.description}" faz parte de uma série mensal. Apague só o deste mês, ou este e os próximos: aí a repetição é encerrada e os meses anteriores ficam como estão.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Só este mês', onPress: acoes.apagarEste },
+        { text: 'Este e os próximos', style: 'destructive', onPress: acoes.encerrarSerie },
+      ]
+    );
+    return;
+  }
   if (ehOcorrencia || ehOrigem) {
     Alert.alert(
       ehOrigem ? 'Excluir a série inteira' : 'Excluir só este mês',
       ehOrigem
-        ? `"${tx.description}" é o primeiro lançamento de uma série que se repete todo mês. Apagar este remove também os dos outros meses e encerra a repetição.`
-        : `"${tx.description}" se repete todo mês. Apagar remove só o deste mês; os outros continuam e a repetição segue nos próximos.`,
+        /* Para a origem, "este e os próximos" É a série inteira: não existe
+           mês anterior a ela. O que a pessoa pode não saber é que dá para
+           parar de repetir sem apagar nada, e a pergunta diz onde. */
+        ? `"${tx.description}" é o primeiro lançamento de uma série que se repete todo mês. Apagar este remove também os dos meses seguintes. Para só parar de repetir, sem apagar nada, edite este lançamento e desligue a repetição.`
+        : `"${tx.description}" faz parte de uma série mensal. Apagar remove só o lançamento deste mês; os dos outros meses continuam.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: ehOrigem ? 'Excluir a série' : 'Excluir este mês', style: 'destructive', onPress: acoes.apagarEste },
