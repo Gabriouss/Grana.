@@ -67,6 +67,7 @@ import {
   type DatasDasCompras,
   type FaturaAtualDoCartao,
   type StatusDaFatura,
+  ordenarLancamentosRecentesPrimeiro,
 } from '@/lib/creditoFaturas';
 import { descricaoDoLancamento, guessAmountFromText, categoriaReconhecida, matchCardByText, matchWalletByText, citaCarteira, limparReferenciaCarteira, limparReferenciaCartao, parseParcelas, parseRecorrencia } from '@/lib/heuristics';
 import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
@@ -323,7 +324,12 @@ export default function CreditoScreen() {
       ]);
 
       if (!vigente()) return;
-      const dedup = (txs: Transaction[]) => Array.from(new Map(txs.map((t) => [t.id, t])).values());
+      /* Cada mês civil chega em ordem decrescente, mas os meses vêm um depois
+         do outro: numa fatura que atravessa dois meses (14/09 a 13/10), os
+         lançamentos de outubro caíam depois dos de setembro. Reordena do mais
+         recente para o mais antigo, como a busca de cada mês já faz. */
+      const dedup = (txs: Transaction[]) =>
+        ordenarLancamentosRecentesPrimeiro(Array.from(new Map(txs.map((t) => [t.id, t])).values()));
 
       let selectedTransactions = dedup(porMes.flat());
       /* Compra original de parcela em cartão 29-31 fora dos meses buscados.
@@ -569,7 +575,9 @@ export default function CreditoScreen() {
   const selectedCard = selectedCardId === 'all' ? null : walletCards.find((c) => c.id === selectedCardId) ?? null;
 
   const creditTransactions = useMemo(
-    () => filtrarLancamentosDaFatura(walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras),
+    () => ordenarLancamentosRecentesPrimeiro(
+      filtrarLancamentosDaFatura(walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras)
+    ),
     [walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras]
   );
   /* Parcela de cartão 29-31 cuja compra original não foi achada: o total

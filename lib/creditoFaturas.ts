@@ -196,6 +196,23 @@ export function faturaAtualDeTodosOsCartoes(
 }
 
 /**
+ * Mais recente primeiro: data do lançamento, depois criação, depois id. A busca
+ * de cada mês já vem assim, mas o Crédito junta os meses um depois do outro, e
+ * numa fatura que atravessa dois meses (14/09 a 13/10) os lançamentos de
+ * outubro caíam depois dos de setembro. Também vale para o que a tela insere
+ * antes da próxima carga (pagamento, compra recém-criada). Não muda o array
+ * recebido.
+ */
+export function ordenarLancamentosRecentesPrimeiro<T extends { id: string; occurred_on: string; created_at?: string | null }>(
+  transacoes: T[]
+): T[] {
+  return [...transacoes].sort((a, b) => {
+    if (a.occurred_on !== b.occurred_on) return b.occurred_on.localeCompare(a.occurred_on);
+    return String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')) || String(b.id).localeCompare(String(a.id));
+  });
+}
+
+/**
  * Resolve cada compra pelo ciclo do cartão ao qual ela pertence. O mês civil
  * só é usado quando o cartão já não existe e, portanto, não há closing_day.
  */
