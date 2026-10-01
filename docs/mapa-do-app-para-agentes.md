@@ -69,8 +69,15 @@ emulador). Atalhos `grana://` existem em `lib/deep-links.ts` (`add-tx`,
 ### Débito e Pix (`lancamentos.tsx`)
 Seletor de mês, resumo (Entradas, Saídas, Saldo), busca, filtro de categoria e
 lista. Toque na linha abre **Editar / Excluir** (`ItemActionSheet`); excluir
-pede confirmação nomeada; compra parcelada oferece três opções (só esta, esta e
-as futuras, a compra inteira). Não há seleção múltipla.
+pede confirmação nomeada (`lib/excluir-lancamento.ts`, a mesma em Débito e
+Pix, Crédito e Início). Compra parcelada oferece **Só esta parcela** e **A
+compra inteira**. Lançamento que se repete, quando é ocorrência de uma série,
+oferece **Só este mês** e **Este e os próximos** (encerra a repetição e mantém
+os meses anteriores); o primeiro lançamento da série só oferece **Excluir a
+série**, que leva os meses seguintes junto. Na 1.10.5 instalada a pergunta do
+lançamento que se repete ainda é a genérica ("Remover X?"): as opções novas
+estão na web desde 01/10/2026 e chegam ao Android na build seguinte. Não há
+seleção múltipla.
 
 ### Crédito (`credito.tsx`)
 Faixa de faturas fechadas pendentes (toque abre o ciclo), carrossel de cartões

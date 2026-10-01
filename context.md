@@ -58,6 +58,60 @@ no `context.md`.
 
 ---
 
+# 01/10/2026 (M2) — encerramento da sessão: o estado em que a M2 parou
+
+Sessão encerrada pelo autor às 17h40: "encerramos o trabalho hoje na M2,
+commita, publica tudo e atualiza as documentações de contexto". O detalhe está
+nas entradas de 01/10 logo abaixo; aqui fica só o estado.
+
+**Publicado e no ar.**
+
+- `a7c5c83` e `caae4c0`: apagar a ocorrência de uma série não volta mais. A
+  regra mora no banco (dois gatilhos em `public.transactions`), está aplicada
+  em produção e vale para qualquer versão instalada.
+- `c4ebad3`: a pergunta de excluir ganhou "Este e os próximos", que encerra a
+  série e mantém os meses anteriores. No ar na web; no Android, só com build.
+- `150d3ac`: teto de 3 builds por semana (regra 22).
+- `5e125fe`: item novo na regra 9 do `AGENTS.md` (correção que mora só no
+  cliente não corrige build antiga).
+
+**Pendente, com dono.**
+
+- **As três migrations do cartão** (`20260923230300`, `20260923230400` e
+  `20260926130000`): o autor autorizou em 01/10 e elas NÃO estão aplicadas.
+  Sondado de novo às 17h40 com a conta de teste: crédito sem cartão ainda é
+  aceito. A escrita foi barrada pela permissão da sessão. Fica com o autor,
+  pelo SQL Editor, na ordem da entrada abaixo; depois, conferir as recusas com
+  a conta de teste.
+- **Token do Supabase** que passou pelo chat em 01/10: revogar no painel. O
+  arquivo foi apagado do disco.
+- **Build**: 1 de 3 na semana de 28/09 a 04/10 (a 1.10.5). O autor quer testar
+  mais a 1.10.5 antes de disparar outra. Só chegam ao Android com build o
+  botão "Este e os próximos" e os avisos da pergunta de excluir. Na 1.10.5 a
+  pergunta ainda é "Remover X?", e apagar o PRIMEIRO lançamento de uma série
+  leva todos os meses junto, sem avisar.
+
+**Em aberto, sem dono ainda.**
+
+- Apagar a origem de uma série JÁ encerrada leva os meses seguintes junto, por
+  cascata, com a pergunta de lançamento avulso. Dá para fechar no banco.
+- O mapa de respostas atrasadas de `lib/cache-de-tela.ts` não é invalidado por
+  escrita: a lista pode mostrar o estado anterior por até 15 s em rede lenta.
+- Boletos têm recorrência própria (`bills.parent_id`), não auditada.
+- Nada desta sessão foi visto em aparelho Android: esta máquina não tem
+  emulador.
+
+**Vault.** O Drive da M2 segue sem receber nada da M1 desde 28/09 02:05. A
+nota desta sessão existe só nesta máquina (`2026-10-01 - M2 - Excluir
+ocorrencia de assinatura`). O índice de sessões e as perenes que este trabalho
+deixou atrasadas NÃO foram editados, para não criar cópia em conflito quando o
+Drive voltar.
+
+**Inventário ao sair.** Uma branch (`master`, rastreando `origin/main`), uma
+worktree, nenhum stash, árvore limpa, local igual ao remoto.
+
+---
+
 # 01/10/2026 (M2) — as três migrations do cartão: autorizadas e conferidas, NÃO aplicadas
 
 **Pedido.** Depois de ler que três migrations seguiam seguradas, o autor
