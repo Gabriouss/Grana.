@@ -63,12 +63,12 @@ export const ARQUETIPOS: Record<ArquetipoId, Arquetipo> = {
     emoji: '🛡️',
     nome: 'Organizador & Resgate',
     retrato:
-      'Hoje o cartão manda mais no seu mês do que você. Não é falta de disciplina — é que parcela antiga cobra do salário de amanhã, e isso não aparece em lugar nenhum até a fatura chegar.',
+      'Hoje o cartão manda mais no seu mês do que você. Parcela antiga cobra do salário de amanhã, e isso não aparece em lugar nenhum até a fatura chegar. Falta de disciplina não explica.',
     missao: 'Tirar o compromisso futuro da sombra e cortar o que drena sem você perceber.',
     plano: [
       'Cadastre todas as parcelas em aberto como contas a pagar, com a data de cada uma. Ver o total comprometido dos próximos meses é o passo que muda o comportamento.',
       'Importe o extrato do último mês por CSV. O diagnóstico só fica honesto quando você olha o que gastou de verdade, não o que acha que gastou.',
-      'Ative o modo privacidade se for usar o app em público — os valores ficam borrados.',
+      'Ative o modo privacidade se for usar o app em público: os valores ficam borrados.',
       'Antes de qualquer corte, quite a menor dívida até o fim. A sensação de ter fechado uma sustenta as próximas.',
     ],
   },
@@ -77,7 +77,7 @@ export const ARQUETIPOS: Record<ArquetipoId, Arquetipo> = {
     emoji: '🧱',
     nome: 'Construtor de Reserva',
     retrato:
-      'Suas contas fecham, mas o que sobra some sem deixar rastro. O que falta não é renda — é dar um destino ao excedente antes que o mês o encontre.',
+      'Suas contas fecham, mas o que sobra some sem deixar rastro. Falta dar um destino ao excedente antes que o mês o encontre.',
     missao: 'Transformar sobra eventual em reserva previsível.',
     plano: [
       'Trate a reserva como uma conta a pagar com vencimento no dia do salário, não como o que sobrar no fim.',
@@ -91,10 +91,10 @@ export const ARQUETIPOS: Record<ArquetipoId, Arquetipo> = {
     emoji: '🚀',
     nome: 'Otimizador & Investidor',
     retrato:
-      'Você já tem o controle resolvido. O ganho agora não vem de cortar cafés — vem de enxergar padrões que só aparecem quando se olha o ano inteiro.',
+      'Você já tem o controle resolvido. O ganho agora vem de enxergar padrões que só aparecem quando se olha o ano inteiro, e cortar cafés rende pouco.',
     missao: 'Aumentar a taxa de sobra sem apertar a vida.',
     plano: [
-      'Compare os mesmos meses ano a ano. Sazonalidade — IPVA, material escolar, festas — é o que quebra orçamento de quem já é organizado.',
+      'Compare os mesmos meses ano a ano. Sazonalidade (IPVA, material escolar, festas) é o que quebra orçamento de quem já é organizado.',
       'Registre também os aportes, como saída da categoria correspondente. Sem isso a taxa de poupança é chute.',
       'Use os orçamentos como alarme, não como amarra: o valor existe para avisar o desvio, não para você obedecer.',
       'Uma vez por trimestre, revise os limites por categoria. Orçamento que nunca muda vira ficção.',
@@ -105,7 +105,7 @@ export const ARQUETIPOS: Record<ArquetipoId, Arquetipo> = {
     emoji: '🌊',
     nome: 'Estrategista de Renda Variável',
     retrato:
-      'Seu mês bom paga o mês ruim — o problema é que os dois chegam fora de ordem. Orçamento baseado em média mensal não funciona para você, porque a média não paga aluguel em julho.',
+      'Seu mês bom paga o mês ruim, mas os dois chegam fora de ordem. Orçamento baseado em média mensal não funciona para você, porque a média não paga aluguel em julho.',
     missao: 'Criar um piso previsível sobre uma renda que não é.',
     plano: [
       'Calcule seu piso: a média dos três piores meses do último ano. É sobre esse número que o orçamento deve ser montado, não sobre o mês bom.',
