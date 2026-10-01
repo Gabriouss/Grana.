@@ -38,6 +38,38 @@ export async function createGoal(input: {
   return data as unknown as Goal;
 }
 
+/**
+ * A meta guardada sem rede já foi gravada por uma tentativa anterior?
+ *
+ * `criar_meta` não tem chave de idempotência (isso pediria migration). Quando
+ * a tentativa chegou ao banco e a resposta, ou a gravação local que tira o item
+ * da fila, se perdeu, o reenvio criaria a meta de novo. Esta consulta procura
+ * uma meta igual criada DEPOIS do carimbo da tentativa (`tentadoEm`), então não
+ * confunde com uma meta antiga igual nem com a de outro item da fila.
+ */
+export async function metaJaGravada(input: {
+  title: string;
+  target_amount: number;
+  color: string;
+  icon: string;
+  deadline?: string | null;
+  wallet_id?: string | null;
+}, desde: string): Promise<boolean> {
+  let q = supabase
+    .from('goals')
+    .select('id')
+    .eq('title', input.title)
+    .eq('target_amount', input.target_amount)
+    .eq('color', input.color)
+    .eq('icon', input.icon)
+    .gte('created_at', desde);
+  q = input.deadline ? q.eq('deadline', input.deadline) : q.is('deadline', null);
+  q = input.wallet_id ? q.eq('wallet_id', input.wallet_id) : q.is('wallet_id', null);
+  const { data, error } = await q.limit(1);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
+
 export async function deleteGoal(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('goals').delete().eq('id', id).eq('user_id', user_id);

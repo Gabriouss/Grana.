@@ -56,6 +56,10 @@ export type PendingItem = {
    * sem chave recebe uma na primeira leitura.
    */
   clientRequestId?: string;
+  /** Meta: quando o envio foi tentado pela primeira vez. Gravado ANTES de enviar;
+      com ele, o reenvio confere se a meta já existe em vez de criá-la de novo
+      (a meta não tem chave de idempotência no banco). */
+  tentadoEm?: string;
 };
 
 /**

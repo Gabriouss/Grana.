@@ -26,12 +26,14 @@ const igual = (a, b, nome) => { assert.equal(JSON.stringify(a), JSON.stringify(b
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ── Ambiente simulado ─────────────────────────────────────────────────── */
-const estado = { discoCheio: false, rede: true, usuario: 'u-1', recusar: new Map(), falharRevisao: false, sorteio: 0.5, notificacoes: [] };
+const estado = { falharNa: 0, metaNoBanco: false, discoCheio: false, rede: true, usuario: 'u-1', recusar: new Map(), falharRevisao: false, sorteio: 0.5, notificacoes: [] };
 const gravacoes = [];
+const metasCriadas = [];
 const disco = new Map();
 const AsyncStorage = {
   getItem: async (k) => (disco.has(k) ? disco.get(k) : null),
   setItem: async (k, v) => {
+    if (estado.falharNa > 0 && k === 'grana:queue:transactions-pendentes' && --estado.falharNa === 0) throw new Error('sem espaço (n-ésima gravação)');
     if (estado.discoCheio && k === 'grana:queue:transactions-pendentes') throw new Error('sem espaço');
     if (estado.falharRevisao && k === 'grana:queue:precisa-de-revisao') throw new Error('disco cheio');
     disco.set(k, v);
@@ -82,7 +84,7 @@ const dubles = {
   './sessao-offline': { idDoUsuarioLocal: async () => estado.usuario },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
-  './goals': { createGoal: async () => {} },
+  './goals': { createGoal: async (i) => { metasCriadas.push(i.title); }, metaJaGravada: async () => estado.metaNoBanco },
   './recorrencia': {},
   './notifications': { getNotifications: () => ({ scheduleNotificationAsync: async (n) => { estado.notificacoes.push(n); } }) },
 };
@@ -136,6 +138,8 @@ const limpar = async () => {
   await fila.flushPendingQueue();
   gravacoes.length = 0; estado.notificacoes.length = 0; estado.recusar.clear(); gravadasPorChave.clear();
 };
+
+const limpar8 = async () => { while (agendados.length) { agendados.shift().fn(); await esperar(20); } await fila.flushPendingQueue(); };
 
 (async () => {
   /* ── 1. Espera crescente com sorteio ─────────────────────────────────── */
@@ -429,6 +433,36 @@ const limpar = async () => {
   await pendente.getQueue();
   ok([...disco.keys()].filter((k) => k.startsWith('grana:queue:transactions-pendentes:corrompida')).length === 2, 'um segundo bruto ilegível não sobrescreve o primeiro');
   await limpar();
+
+  /* ── 8. Gravação final da fila falha: nada lança, nada duplica, e há recibo ─ */
+  await limpar();
+  estado.metaNoBanco = false; metasCriadas.length = 0;
+  const metaInput = { title: 'MetaX', target_amount: 100, color: '#fff', icon: 'star', deadline: null, wallet_id: null };
+  await fila.enfileirarPendente('meta', metaInput, { id: 'local-meta-x' });
+  estado.notificacoes.length = 0;
+  estado.falharNa = 2; // 1ª: o carimbo da tentativa; 2ª: tirar o item da fila
+  let r8 = null; let lancou = false;
+  try { r8 = await fila.flushPendingQueue(); } catch { lancou = true; }
+  ok(!lancou, 'falha ao tirar da fila não derruba quem chamou a rodada');
+  igual(metasCriadas, ['MetaX'], 'a meta foi enviada uma vez');
+  ok(r8.remaining === 0 && r8.synced === 1, 'o resultado conta o enviado');
+  ok(estado.notificacoes.some((n) => /não conseguiu atualizar a fila/.test(n.content.title)), 'a falha deixa recibo visível');
+  ok((await pendente.getQueue()).length === 1, 'o item continua na fila (disco não deixou tirar)');
+  estado.falharNa = 0;
+  estado.metaNoBanco = true; // a tentativa anterior chegou ao banco
+  await limpar8();
+  igual(metasCriadas, ['MetaX'], 'a repetição reconhece a meta já gravada e NÃO cria de novo');
+  igual((await pendente.getQueue()).length, 0, 'e a fila esvazia');
+
+  await limpar();
+  metasCriadas.length = 0; estado.metaNoBanco = false;
+  await fila.enfileirarPendente('meta', metaInput, { id: 'local-meta-y' });
+  estado.falharNa = 1; // nem o carimbo cabe
+  await fila.flushPendingQueue();
+  igual(metasCriadas, [], 'sem poder gravar o carimbo, a meta não é enviada');
+  estado.falharNa = 0;
+  await limpar8();
+  igual(metasCriadas, ['MetaX'], 'com o disco de volta, envia (uma vez)');
 
   console.log(`fila-endurecida: ${passou} checagens OK`);
   process.exit(0);

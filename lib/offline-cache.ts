@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addBill, addInstallmentPurchase, addTransaction } from './data';
-import { createGoal } from './goals';
+import { createGoal, metaJaGravada } from './goals';
 import { avisarDadoNovo, guardarTela, isLikelyNetworkError, lancamentoGravado, lerTela } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 import { marcarLancamentosAlterados } from './lancamentos-alterados';
@@ -328,6 +328,20 @@ async function executarRodada(): Promise<ResultadoRodada> {
     tentados++;
     try {
       const item = remaining[0];
+      if (tipo === 'meta') {
+        if (!item.tentadoEm) {
+          /* Carimbo gravado ANTES do envio. Se nem ele couber no disco, a meta
+             não é enviada: um envio sem carimbo, seguido de falha ao tirar da
+             fila, a criaria de novo na próxima rodada. */
+          const tentadoEm = new Date().toISOString();
+          await atualizarFila((fila) => fila.map((i) => (i.localId === item.localId ? { ...i, tentadoEm } : i)));
+          item.tentadoEm = tentadoEm;
+        } else if (await metaJaGravada(item.input as unknown as Parameters<typeof metaJaGravada>[0], item.tentadoEm)) {
+          saiu.add(remaining.shift()!.localId);
+          synced++;
+          continue;
+        }
+      }
       await enviar(item.clientRequestId ? { ...item.input, client_request_id: item.clientRequestId } : item.input);
       saiu.add(remaining.shift()!.localId);
       synced++;
@@ -353,7 +367,20 @@ async function executarRodada(): Promise<ResultadoRodada> {
     }
   }
 
-  const filaAgora = await atualizarFila((fila) => fila.filter((i) => !saiu.has(i.localId)));
+  let filaAgora: PendingItem[];
+  try {
+    filaAgora = await atualizarFila((fila) => fila.filter((i) => !saiu.has(i.localId)));
+  } catch (erro) {
+    /* Os itens foram enviados (ou foram para a revisão), mas o disco não deixou
+       tirá-los da fila. Não derruba quem chamou: segue como falha temporária,
+       com recibo visível e nova tentativa. Transação, boleto e parcela são
+       reconhecidos pelo banco na repetição; a meta, pelo carimbo `tentadoEm`. */
+    console.error('[offline] não consegui atualizar a fila depois do envio', erro);
+    await publicarReciboDeFilaPresa();
+    falhasSeguidas++;
+    agendarNovaTentativa(proximaEspera(falhasSeguidas));
+    return { synced, remaining: Math.max(0, minhas.length - synced), emRevisao: paraRevisao.length };
+  }
   const restantes = separarPorDono(filaAgora, userId).minhas.length;
   /* A fila também leva boletos e metas; marcar a mais só custa uma carga
      completa da Início, marcar a menos deixaria o item sincronizado fora de
@@ -419,6 +446,24 @@ export async function devolverDaRevisaoParaFila(localId: string): Promise<Desfec
  * se nem a notificação sair, fica o log, e o item continua listado em
  * `listarEmRevisao` para a tela mostrar.
  */
+async function publicarReciboDeFilaPresa(): Promise<void> {
+  try {
+    const { getNotifications } = await import('./notifications');
+    const Notifications = getNotifications();
+    if (!Notifications) return;
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'O Grana. não conseguiu atualizar a fila',
+        body: 'Seus lançamentos guardados estão a salvo, mas o aparelho está sem espaço para atualizar a fila. Libere espaço e abra o app.',
+        data: { origem: 'fila', resultado: 'fila-presa' },
+      },
+      trigger: null,
+    });
+  } catch (erro) {
+    console.error('[offline] recibo da fila presa não foi publicado', erro);
+  }
+}
+
 async function publicarReciboDeRevisao(itens: PendingItem[]): Promise<void> {
   try {
     const { getNotifications } = await import('./notifications');
