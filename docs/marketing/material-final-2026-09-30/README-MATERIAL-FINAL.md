@@ -10,6 +10,8 @@ O README anterior atribui a conclusão editorial a Beacon, a partir do rascunho 
 
 ## Índice e precedência
 
+**Retorno posterior, 01/10:** o autor solicitou uma prévia estática pontual de C01, rejeitou o calendário e pediu o logotipo oficial no topo. Ver [feedback da prévia](../2026-10-01-feedback-previa-estatica.md). A revisão foi exibida, sem aprovação visual ou comercial. O pedido não reabre a produção do pacote inteiro nem a publicação.
+
 | Arquivo | Uso |
 |---|---|
 | [COPYS-FINAIS.md](COPYS-FINAIS.md) | Única fonte de texto comercial deste pacote: título, apoio, legenda e CTA de C01 a C13 |

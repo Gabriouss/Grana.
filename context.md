@@ -160,6 +160,12 @@ foi apagado de novo ao fim.
 
 ---
 
+# 01/10/2026 (M2) — feedback da prévia estática de marketing
+
+Após pedir uma prévia estática, o autor apontou: "Não gosto desse calendário. O logotipo oficial não está lá no topo." Registrado em `docs/marketing/2026-10-01-feedback-previa-estatica.md`, com link no README do pacote final de marketing. O calendário foi retirado na segunda prévia e o arquivo `public/email/grana-logo.png` foi fornecido como referência à edição generativa. A primeira tentativa errou ao usar a marca em texto comum. Para arte final, aplicar o arquivo oficial diretamente: fidelidade exata da edição generativa não foi comprovada. Segunda prévia exibida, sem aprovação visual ou comercial; nenhuma publicação. Pedido tratado como abertura pontual da pausa para esta prévia, sem reabrir o pacote inteiro. Só documentação alterada no repositório; imagens de conceito permanecem locais, fora do Git.
+
+---
+
 # 01/10/2026 (M2) — o banco virou o dono da regra do mês apagado (`caae4c0`) e "Este e os próximos" encerra a série (`c4ebad3`)
 
 **Pedido.** Depois da primeira correção (entrada "excluir a ocorrência de uma
