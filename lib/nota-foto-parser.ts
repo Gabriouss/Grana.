@@ -259,6 +259,34 @@ export function dataDoTexto(texto: string, hojeISO: string): { data: string | nu
   return dentroDoPrazo(isoValido(Number(m[1]), MESES[m[2].toLowerCase()], Number(m[3])), hojeISO);
 }
 
+/**
+ * O texto colado sem as datas que `dataDoTexto` sabe ler (achado do P2,
+ * 30/09/2026): "Pix recebido em 29/09/2026 R$ 500,00" virava a descrição
+ * "Pix recebido em / /", porque a leitura da descrição tira os dígitos e
+ * deixa os separadores. A data continua lida do texto ORIGINAL; isto só
+ * limpa o que vai para valor e descrição.
+ *
+ * Só sai o trecho INTEIRO, com limites dos dois lados, nos mesmos formatos
+ * de `dataDoTexto` (ISO com hora, `d/m/aaaa`, "26 de setembro de 2026"),
+ * junto com o conectivo e a hora ligados a ele ("em", "dia", "às 18:42").
+ * Formato que não casa inteiro fica inteiro: ISO com sufixo estranho,
+ * `dd/mm` sem ano, número dentro de sequência maior. Parcela ("parcela 2/12")
+ * e valor ("1.250,50") nunca casam.
+ */
+export function semDatasDoTexto(texto: string): string {
+  const MES = '(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\\.?';
+  const ISO = '\\d{4}-\\d{1,2}-\\d{1,2}(?:T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:Z|[+-]\\d{2}:?\\d{2})?)?';
+  const DMA = '\\d{1,2}[/.-]\\d{1,2}[/.-](?:\\d{4}|\\d{2})';
+  const EXTENSO = `\\d{1,2}\\s+(?:de\\s+)?${MES}\\s+(?:de\\s+)?\\d{4}`;
+  const CONECTIVO = '(?:(?:em|no\\s+dia|dia|de|data)\\s*:?\\s+)?';
+  const HORA = '(?:\\s*,?\\s*(?:[àa]s\\s+)?\\d{1,2}(?::\\d{2}(?::\\d{2})?|h\\d{2}))?';
+  const DATA = new RegExp(
+    `(?<![\\p{L}\\d/.,-])(?<!parc\\p{L}*\\s*)${CONECTIVO}(?:${ISO}|${DMA}|${EXTENSO})${HORA}(?![\\p{L}\\d/:-]|[.,]\\d)`,
+    'giu',
+  );
+  return texto.replace(DATA, ' ').replace(/[ \t]+([.,;])/g, '$1').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/^[ \t]+/gm, '');
+}
+
 /** Linhas do topo que não são o nome da loja. */
 const NAO_E_NOME = /CNPJ|\bCPF\b|\bIE\b|INSCR|\bRUA\b|\bR\.\s|\bAV\b|AVENIDA|RODOVIA|\bROD\b|ESTRADA|\bCEP\b|BAIRRO|\bFONE\b|\bTEL\b|DOCUMENTO|AUXILIAR|\bNFC|NOTA\s+FISCAL|CUPOM|EXTRATO|DANFE|CONSUMIDOR|ELETRONICA|\bSAT\b/;
 const SUFIXO_SOCIETARIO = /\s+(LTDA|EIRELI|EPP|ME|MEI|S\/A|SA|S\.A|CIA)\.?$/;

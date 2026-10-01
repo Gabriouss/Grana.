@@ -29,11 +29,16 @@ function carregar(arquivo) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, {
     exports, console, JSON, Date, String, Object, Array, Error, RegExp, Number, Math, Set, Map,
-    require: (id) => { throw new Error(`import não simulado em ${arquivo}: ${id}`); },
+    /* lib/heuristics.ts (descrição e valor reais) importa módulos irmãos. */
+    require: (id) => {
+      if (id.startsWith('./')) return carregar(path.join(path.dirname(arquivo), id.slice(2) + '.ts'));
+      throw new Error(`import não simulado em ${arquivo}: ${id}`);
+    },
   }, { filename: arquivo });
   return exports;
 }
-const { dataDoTexto, extrairDetalhesDaNota } = carregar('lib/nota-foto-parser.ts');
+const { dataDoTexto, extrairDetalhesDaNota, semDatasDoTexto } = carregar('lib/nota-foto-parser.ts');
+const heuristicas = carregar('lib/heuristics.ts');
 const HOJE = '2026-09-27';
 
 /* A3: metadado de versão não é a data do comprovante. Texto sintético,
@@ -91,6 +96,41 @@ ok('data futura, impossível ou de mais de um ano é recusada (vai com hoje, e a
   assert.equal(extrairDetalhesDaNota('MERCADO\nTOTAL 30,00\n3/9/2026', HOJE).data, null, 'foto preserva o formato de cupom');
 }
 ok('a foto da nota lê a data como antes (mesma função de prazo)');
+
+/* ── 4b. Descrição sem o resto da data (achado do P2, 30/09/2026) ──────────
+   A data sai inteira, com o conectivo e a hora ligados a ela, nos formatos
+   que dataDoTexto lê; o que não casa inteiro fica inteiro; parcela e valor
+   nunca são tocados. Plano R2 aprovado pelo Forge. */
+{
+  const limpo = (t) => semDatasDoTexto(t);
+  const desc = (t) => heuristicas.guessDescFromText(limpo(t), 'out');
+  /* Os três exemplos da triagem do Lynx. */
+  assert.equal(desc('AUDIT Pix recebido em 29/09/2026 R$ 500,00'), 'AUDIT Pix recebido');
+  assert.equal(desc('AUDIT Mercado em 2026-09-03T18:00 R$ 30,00'), 'AUDIT Mercado');
+  assert.equal(desc('Mercado 30,00 03/09/2026'), 'Mercado');
+  /* Hora, "às", ISO completo com fração e offset, mês por extenso. */
+  assert.equal(limpo('Transferência realizada 26/09/2026 às 18:42 R$ 45,90 para Restaurante'), 'Transferência realizada R$ 45,90 para Restaurante');
+  assert.equal(limpo('Loja 2026-09-03T18:00:00.123-03:00 R$ 10,00'), 'Loja R$ 10,00');
+  assert.equal(limpo('Loja 2026-09-03T18:00:00Z R$ 10,00'), 'Loja R$ 10,00');
+  assert.equal(limpo('Mercado 26 de setembro de 2026 R$ 10'), 'Mercado R$ 10');
+  assert.equal(limpo('Mercado 26 SET 2026 R$ 10'), 'Mercado R$ 10');
+  assert.equal(limpo('Mercado em 26/09/2026. R$ 10'), 'Mercado. R$ 10');
+  /* Inteiro ou nada: sufixo estranho, ISO sem minuto, dd/mm sem ano e
+     sequência maior ficam como estão (sem prefixo limpo pela metade). */
+  for (const t of ['Loja 2026-09-03T18:00Zx R$ 10,00', 'Loja 2026-09-03T18 R$ 10', 'Loja 03/09 R$ 10', 'Loja 1203/09/20260 R$ 10', 'Loja a/03/09/2026/b R$ 10']) {
+    assert.equal(limpo(t), t, `"${t}" fica inteiro`);
+  }
+  /* Conectivo sem data fica; parcela e valor ficam. */
+  assert.equal(limpo('Pix recebido em Mercado R$ 10'), 'Pix recebido em Mercado R$ 10');
+  for (const t of ['TV parcela 2/12 R$ 100,00', 'TV 2/12 parcelas R$ 100,00', 'TV em 12x de R$ 1.250,50', 'Mercado R$ 12,09']) {
+    assert.equal(limpo(t), t, `"${t}" fica inteiro`);
+  }
+  assert.equal(limpo('Mercado parcela 1/3 em 26/09/2026 R$ 10'), 'Mercado parcela 1/3 R$ 10', 'a parcela fica, a data sai');
+  assert.equal(heuristicas.guessAmountFromText(limpo('AUDIT Pix recebido em 29/09/2026 R$ 500,00')), 500, 'o valor continua lido');
+  /* A data em si continua lida do texto original. */
+  assert.equal(dataDoTexto('AUDIT Pix recebido em 29/09/2026 R$ 500,00', '2026-09-30').data, '2026-09-29');
+}
+ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor intactos');
 
 /* ── 5. A tela: grava na data lida, só no texto colado ──────────────────── */
 {

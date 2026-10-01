@@ -25,7 +25,7 @@ import {
   citaCarteira,
 } from '@/lib/heuristics';
 import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { dataDoTexto } from '@/lib/nota-foto-parser';
+import { dataDoTexto, semDatasDoTexto } from '@/lib/nota-foto-parser';
 import { fetchCategories } from '@/lib/data';
 import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
@@ -189,7 +189,10 @@ export default function PasteReceiptModal({
       Alert.alert('Texto vazio', 'Cole o texto do comprovante ou Pix para reconhecer.');
       return;
     }
-    processText(text, origemVoz);
+    /* Valor e descrição leem o texto SEM a data (achado do P2, 30/09/2026:
+       "Pix recebido em 29/09/2026" virava "Pix recebido em / /"); a data
+       continua lida do texto original, logo abaixo. A voz não passa aqui. */
+    processText(origemVoz ? text : semDatasDoTexto(text), origemVoz);
     /* Só no texto colado. A fala revisada aqui lê a data pelo núcleo da voz,
        no efeito de `initialText` abaixo, como a tarefa do widget (regra 13). */
     const lida = origemVoz ? { data: null, recusada: false } : dataDoTexto(text, todayISO());

@@ -176,6 +176,22 @@ async function salvar() {
   await salvar();
   ok(registro.gravados.length === 1 && registro.gravados[0].occurred_on === '2026-09-20', 'grava a data escolhida no campo');
 
+  /* ── 1b. Descrição sem o resto da data (achado do P2, 30/09/2026) ─────── */
+  tela = colar('AUDIT Pix recebido em 29/09/2026 R$ 500,00');
+  ok(porRotulo(tela, /^Descrição do lançamento$/)?.props.value === 'AUDIT Pix recebido', 'a descrição sai sem "em / /"');
+  ok(porRotulo(tela, /^Valor do lançamento em reais$/)?.props.value === '500,00', 'o valor é 500,00');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 29 set 2026, lida do texto. Toque para mudar', 'a data continua lida do texto original, com o selo');
+  /* "AUDIT Pix recebido" não tem categoria reconhecida: a pessoa escolhe. */
+  achar(render(), (n) => n.type === 'CategoryChips')[0].props.onChange('Alimentação');
+  registro.gravados.length = 0;
+  await salvar();
+  ok(registro.gravados[0]?.occurred_on === '2026-09-29' && registro.gravados[0]?.description === 'AUDIT Pix recebido' && registro.gravados[0]?.amount === 500,
+    'grava a descrição limpa, o valor e a data do texto');
+  tela = colar('TV parcela 2/12 R$ 1.250,50 em 26/09/2026');
+  ok(porRotulo(tela, /^Valor do lançamento em reais$/)?.props.value === '1.250,50', 'valor decimal intacto');
+  ok(/parcela/i.test(porRotulo(tela, /^Descrição do lançamento$/)?.props.value ?? ''), 'a parcela "2/12" não é lida como data');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 26 set 2026, lida do texto. Toque para mudar', 'e a data certa é a 26/09');
+
   /* ── 2. Sem data no texto: hoje, sem selo ─────────────────────────────── */
   tela = colar('Pix enviado para Mercado AUDIT R$ 50,00');
   ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'sem data no texto, hoje e sem selo');
