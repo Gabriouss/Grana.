@@ -58,6 +58,119 @@ no `context.md`.
 
 ---
 
+# 01/10/2026 (M2) — o banco virou o dono da regra do mês apagado (`caae4c0`) e "Este e os próximos" encerra a série (`c4ebad3`)
+
+**Pedido.** Depois da primeira correção (entrada "excluir a ocorrência de uma
+assinatura não pegava", mais abaixo), o autor contou o que tentava apagar:
+"Tentei apagar um lançamento recorrente de assinatura e outro de
+investimento", "ambos recorrentes". E o que queria de fato: "A intenção é
+encerrar de vez, os lançamentos passados permanecem. Pode aplicar a
+migration".
+
+Isso fecha a dúvida que aquela entrada deixava aberta: os dois lançamentos
+eram mesmo de série. Os dados da conta dele continuam sem ter sido vistos.
+
+**Por que a primeira correção não bastava.** Ela morava no cliente:
+`deleteTransaction` apagava e depois chamava uma RPC para marcar o mês. A
+1.10.5 instalada não tem esse código. Apagar pelo celular não marcava nada, e
+o celular ainda recriava o que fosse apagado pela web, porque a geração de
+ocorrências dele não conhece mês pulado. Regra que depende de todo cliente
+estar atualizado não é regra. Durou algumas horas.
+
+**Correção no servidor (`caae4c0`).** A migration
+`20261001130000_recorrencia_mes_pulado_no_servidor.sql` põe dois gatilhos em
+`public.transactions`:
+
+- `pular_mes_ao_apagar_ocorrencia` (`AFTER DELETE`): quando sai a ocorrência
+  de uma série, grava o mês em `recurrence_skipped_months` da origem, na mesma
+  transação. Parcela não entra (`installment_total > 1`).
+- `ignorar_ocorrencia_de_mes_pulado` (`BEFORE INSERT`): descarta, devolvendo
+  `NULL`, a ocorrência de um mês que a origem marca como pulado. Devolver
+  `NULL` em vez de erro é o ponto: a build antiga cria os meses faltantes de
+  todas as séries num insert só, e um erro derrubaria os meses legítimos
+  junto.
+
+A RPC `pular_mes_da_recorrencia` foi removida e `deleteTransaction` voltou a
+ser um `delete` simples. Vale para qualquer versão instalada, sem build.
+
+**Aplicada e provada em produção em 01/10**, pela Management API, com o token
+de 24h que o autor forneceu. Antes, a migration foi EXECUTADA num Postgres de
+verdade (PGlite, no scratchpad), 17 checagens. Em produção, com a conta de
+teste fazendo o papel da build antiga: o `delete` simples marca `["2026-10"]`
+na origem; o insert em lote da build antiga cria só o mês legítimo, sem erro;
+o mês seguinte continua sendo gerado; a RPC antiga responde `PGRST202`; lançar
+à mão num mês pulado funciona. Dado AUDIT apagado, zero sobras. O arquivo do
+token foi apagado do scratchpad ao fim. O token passou pelo chat: vence
+sozinho em 24h, e revogar antes disso é com o autor.
+
+**"Este e os próximos" (`c4ebad3`).** Apagar um mês não era o que o autor
+queria: ele queria encerrar a série. O interruptor dela mora na ORIGEM, o
+primeiro lançamento, lá no mês em que foi criada, e quem está olhando outubro
+não tem como saber disso. A pergunta de excluir (`lib/excluir-lancamento.ts`),
+quando o lançamento é ocorrência de uma série mensal, passa a ter três botões
+em Lançamentos, Crédito e Início: "Cancelar", "Só este mês" e "Este e os
+próximos". O terceiro chama `encerrarSerieAPartirDe` (`lib/data.ts`), dois
+passos nesta ordem: a origem deixa de repetir (`recurring = false`); depois
+saem as ocorrências da série com data igual ou posterior à tocada. A origem e
+os meses anteriores ficam. Se o segundo passo falhar, o lançamento continua na
+lista e a pessoa repete o gesto; na ordem inversa ele sumiria com a série
+ainda viva. Não precisou de migration.
+
+A origem e a parcela não ganham a opção: para a origem, "este e os próximos"
+já é a série inteira. A pergunta da origem passou a dizer onde se desliga a
+repetição sem apagar nada (editar o lançamento).
+
+**Descartado.** Uma RPC para os dois passos numa transação só: seria mais uma
+função no servidor para um caso em que a ordem dos passos já torna inofensiva
+a falha no meio. "Parar a partir do mês que vem", sem apagar o mês tocado: não
+foi o pedido, e continua possível editando a origem.
+
+**Verificação.** `tsc` limpo, `test:ci` verde.
+`__tests__/excluir-lancamento.cjs` tem 26 checagens, seis novas, conferidas
+por mutação: tirar o filtro de data, tirar a guarda de parcela ou ignorar a
+falha do primeiro passo derruba o teste. A função REAL rodou contra a produção
+com a conta de teste: série AUDIT de julho a novembro encerrada a partir de
+outubro; saem dois lançamentos, julho a setembro ficam, a origem para de
+repetir, o gatilho marca os dois meses, `ocorrenciasFaltantes` (módulo real)
+não pede mais nada, e o insert que uma build antiga faria é descartado pelo
+banco. Visto na TELA, na web local, com a conta de teste: a pergunta com os
+três botões em 1264 px e em 360 px, nada cortado; `PATCH 204` e `DELETE 200`
+depois do toque; outubro vazio, setembro intacto; outubro não volta ao
+recarregar. Zero sobras AUDIT.
+
+**Não verificado.**
+
+- [ ] Android: esta máquina não tem emulador. A pergunta é desenhada pelo
+  mesmo `AlertaHost` da web, mas ninguém a viu no aparelho.
+- [ ] Crédito e Início na tela: o teste confere que as três telas chamam a
+  mesma função; percorrida de fato, só Lançamentos.
+- [ ] Os dados da conta do autor.
+- [ ] Revisão do Codex (regra 16): não foi pedida nem rodada.
+
+**Como chega a quem usa.** A web recebe pelo deploy do `main`: conferido em
+01/10 que `www.granaponto.com.br` já servia o pacote do `caae4c0` (tem
+`recurrence_skipped_months`, não tem mais o nome da RPC removida). O Android
+só numa build nova, que seria a 2ª de 3 desta semana (regra 22); o autor
+decidiu não disparar build agora, para testar mais a 1.10.5. Na 1.10.5
+instalada, apagar a ocorrência já tira só aquele mês e ele não volta (é o
+gatilho); para ENCERRAR a série por lá, o caminho é editar o lançamento de
+origem e desligar a repetição.
+
+**Correção de um registro desta mesma sessão.** A entrada da primeira correção
+dizia que, depois dela, não havia migration do repositório pendente de
+aplicação. Estava errado. Três seguem SEGURADAS de propósito, por
+compatibilidade com cliente antigo, como a M1 registrou em 28/09:
+`20260923230300_voz_credito_exige_cartao.sql`,
+`20260923230400_transacao_credito_exige_cartao.sql` e
+`20260926130000_transactions_sem_entrada_no_cartao.sql`. A decisão do autor
+de 27/09 é aplicá-las "dias depois da build". A 1.10.5 saiu em 01/10 e contém
+o `39e3144`, que o registro de 27/09 aponta como a parte do app para a
+`20260926130000`. Esta sessão NÃO as aplicou e não avaliou se já é hora: quem
+ainda estiver em build antiga seria recusado. A frase errada foi corrigida no
+lugar.
+
+---
+
 # 01/10/2026 (M2) — teto de 3 builds por semana, de segunda a domingo (regra 22)
 
 **Pedido.** O autor: "Tendo conhecimento de que temos apenas 15 builds por
@@ -105,6 +218,11 @@ rodado no repositório de verdade, porque isso subiria a versão.
 
 ---
 # 01/10/2026 (M2) — excluir a ocorrência de uma assinatura não pegava (`a7c5c83`), migration APLICADA em produção
+
+**Superada no mesmo dia.** A regra saiu do cliente e foi para o banco
+(`caae4c0`): ver a entrada do topo. O que segue descreve a PRIMEIRA correção
+e fica como registro do que não bastou. Onde este texto diz que
+`deleteTransaction` marca o mês por uma RPC, isso já não existe.
 
 **Pedido.** O autor, no dia em que a build 1.10.5 saiu: "já identifiquei que
 não está sendo possível excluir lançamentos da lista de débito/pix, precisa
@@ -172,19 +290,21 @@ devolve vazio para outubro e ainda devolve `2026-11-05` para o mês seguinte;
 mês inválido é recusado com `22023`. A série AUDIT foi apagada no fim, zero
 sobras.
 
-**O que ainda falta.** A web recebe a correção pelo deploy do `main`. No
-Android ela só chega numa build nova, e o autor decidiu não disparar build por
-enquanto: até lá, a 1.10.5 instalada continua apagando e vendo o mês voltar,
-porque o código dela não chama a função. Nada foi verificado em aparelho, e os
-dados da conta do autor não foram vistos.
+**O que faltava, e foi o que derrubou esta correção.** A 1.10.5 instalada
+continuava apagando e vendo o mês voltar, porque o código dela não chama a
+função. Resolvido horas depois pelos gatilhos do `caae4c0`, que valem para
+qualquer versão. Nada foi verificado em aparelho, e os dados da conta do
+autor não foram vistos.
 
 **Correção de um registro antigo.** A migration
 `20260930120000_principal_nunca_deixa_de_ser_principal.sql`, que o commit
 `8d7b461` da M1 descreve como "escrita, não aplicada", JÁ ESTÁ em produção:
 conferido em 01/10, o gatilho `proteger_wallet_principal` existe em
-`public.wallets`, e as 10 contas têm exatamente uma Principal cada. Ou seja,
-depois desta sessão não há migration do repositório pendente de aplicação
-que esta sessão conheça.
+`public.wallets`, e as 10 contas têm exatamente uma Principal cada.
+
+**Aqui havia uma frase errada**, dizendo que depois desta sessão não restava
+migration pendente de aplicação. Três seguem seguradas de propósito: ver
+"Correção de um registro desta mesma sessão", na entrada do topo.
 
 **O vault da M2 está parado em 28/09.** O espelho do `context.md` e a última
 nota de sessão nesta máquina são de 28/09 02:05; a nota
