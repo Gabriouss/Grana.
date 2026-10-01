@@ -533,45 +533,24 @@ export async function criarOcorrenciasRecorrentes(faltantes: OcorrenciaFaltante[
   return criadas;
 }
 
+/**
+ * Apaga um lançamento.
+ *
+ * É um `delete` simples de propósito. Quando a linha apagada é a ocorrência de
+ * uma série recorrente, QUEM marca o mês como "apagado de propósito" é o
+ * banco, pelo gatilho `pular_mes_ao_apagar_ocorrencia` (migration
+ * 20261001130000), na mesma transação do `delete`.
+ *
+ * Em 01/10/2026 esta função chegou a fazer isso ela mesma, chamando uma RPC
+ * depois de apagar. Durou algumas horas: build antiga instalada não tem esse
+ * código, então apagar pelo celular não marcava nada, e o celular ainda
+ * recriava o que tinha sido apagado pela web. Regra que depende de todo
+ * cliente estar atualizado não é regra. Não traga a chamada de volta.
+ */
 export async function deleteTransaction(id: string): Promise<void> {
   const user_id = await currentUserId();
-  /* O `select` devolve a linha apagada. É por ele que esta função descobre,
-     sem uma leitura a mais e sem mudar a assinatura para os quatro lugares que
-     a chamam, se o que saiu era a ocorrência de uma série recorrente. */
-  const { data: apagadas, error } = await supabase
-    .from('transactions')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user_id)
-    .select('parent_id, occurred_on, recurring, installment_total');
+  const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
-
-  /* Ocorrência de assinatura apagada: o mês fica marcado na cabeça, senão a
-     próxima carga da tela recria o lançamento e a exclusão "não pega". Ver
-     `ocorrenciasFaltantes` e a migration 20261001120000.
-
-     Parcela também usa `parent_id`; `installment_total > 1` é o que separa
-     as duas coisas, pela mesma regra de lib/recorrencia.ts. */
-  const linha = apagadas?.[0];
-  const ehOcorrenciaDeSerie =
-    !!linha?.parent_id && !!linha.recurring && !((linha.installment_total ?? 1) > 1);
-  if (linha && ehOcorrenciaDeSerie) {
-    const { error: erroDoPulo } = await supabase.rpc('pular_mes_da_recorrencia', {
-      p_cabeca: linha.parent_id,
-      p_mes: String(linha.occurred_on).slice(0, 7),
-    });
-    /* O lançamento JÁ foi apagado; estourar aqui diria "erro ao excluir" sobre
-       uma exclusão que aconteceu. Mas calar também não serve: sem a marca, o
-       mês volta na próxima carga, e este log é a única pista do porquê —
-       inclusive a de que a migration não foi aplicada (PGRST202). */
-    if (erroDoPulo) {
-      console.error('[recorrencia] apaguei a ocorrência mas não marquei o mês; ela vai ser recriada', {
-        code: erroDoPulo.code,
-        message: erroDoPulo.message,
-      });
-    }
-  }
-
   marcarLancamentosAlterados();
   notificarDadosDosWidgetsAlterados();
 }

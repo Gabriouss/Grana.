@@ -38,8 +38,13 @@ export function confirmarExclusaoDeLancamento(
      para as duas. A ocorrência de um mês sai sozinha. Já a ORIGEM da série
      leva junto todos os outros meses, porque `parent_id` é
      `on delete cascade` — e isso acontecia sem uma palavra de aviso. */
-  if (tx.recurring && parcelas <= 1) {
-    const ehOrigem = !tx.parent_id;
+  /* A ocorrência se reconhece pelo `parent_id`, e não pelo `recurring` dela:
+     quem desmarca "repetir" numa ocorrência não encerra a série (isso é da
+     origem), e ela continua sendo recriada se for apagada sem o mês marcado.
+     É a mesma condição do gatilho do banco. */
+  const ehOcorrencia = !!tx.parent_id && parcelas <= 1;
+  const ehOrigem = !tx.parent_id && !!tx.recurring && parcelas <= 1;
+  if (ehOcorrencia || ehOrigem) {
     Alert.alert(
       ehOrigem ? 'Excluir a série inteira' : 'Excluir só este mês',
       ehOrigem

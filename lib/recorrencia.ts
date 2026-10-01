@@ -84,7 +84,13 @@ export function ocorrenciasFaltantes(transactions: Transaction[], hojeISO: strin
        ocorrência de uma assinatura era impossível: a recarga logo depois do
        `delete` via o mês vazio e recriava a linha (relato do autor em
        01/10/2026). "Não existe" e "foi apagado de propósito" precisam ser
-       estados diferentes, e é esta lista, guardada na cabeça, que os separa. */
+       estados diferentes, e é esta lista, guardada na cabeça, que os separa.
+
+       Quem ESCREVE a lista é o banco, num gatilho de `delete` (migration
+       20261001130000), e o banco também descarta a tentativa de recriar um
+       mês pulado. Esta checagem aqui só evita o pedido inútil: sem ela a
+       tela mandaria o insert a cada carga, o banco o descartaria, e a lista
+       seria buscada de novo à toa. */
     const pulados = new Set(cabeca.recurrence_skipped_months ?? []);
     const total = mesesEntre(cabeca.occurred_on, hojeISO);
     if (total <= 0) continue; // série começa no mês corrente ou no futuro

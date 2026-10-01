@@ -4802,39 +4802,90 @@ alter table public.push_habit_deliveries
     check (janela in ('noite', 'almoco', 'meio_dia_finde'));
 
 -- O mês apagado de uma série recorrente continua apagado.
--- Ver 20261001120000_recorrencia_mes_pulado.sql, que explica o defeito.
+-- "Não existe" e "foi apagado de propósito" são estados diferentes: a coluna
+-- guarda, na CABEÇA da série, os meses (AAAA-MM) que a pessoa removeu.
+--
+-- Quem cuida da regra é o BANCO, pelos dois gatilhos abaixo, e não o
+-- aplicativo: build antiga instalada não conhece a lista, e sem os gatilhos
+-- ela recria o mês apagado, inclusive o apagado em outro aparelho.
+-- Ver 20261001120000 (a coluna) e 20261001130000 (os gatilhos).
 alter table public.transactions
   add column if not exists recurrence_skipped_months text[] not null default '{}';
 
 comment on column public.transactions.recurrence_skipped_months is
   'Na cabeça de uma série recorrente: meses (AAAA-MM) cuja ocorrência a pessoa apagou de propósito e que não devem ser recriados.';
 
--- UPDATE é o que a função abaixo usa. INSERT entra junto pela regra de
--- __tests__/transactions-grant-colunas.cjs: coluna nova sem grant de INSERT já
--- derrubou gravação com "permission denied" (25/09/2026) quando um insert
--- passou a enviar o campo. É dado do próprio dono; conceder não abre nada.
+-- INSERT pela regra de __tests__/transactions-grant-colunas.cjs: coluna nova
+-- sem grant de INSERT já derrubou gravação com "permission denied"
+-- (25/09/2026). É dado do próprio dono; conceder não abre nada.
 grant insert (recurrence_skipped_months) on public.transactions to authenticated;
 grant update (recurrence_skipped_months) on public.transactions to authenticated;
 
-create or replace function public.pular_mes_da_recorrencia(p_cabeca uuid, p_mes text)
-returns void
+create or replace function public.pular_mes_ao_apagar_ocorrencia()
+returns trigger
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
+declare
+  v_mes text;
 begin
-  if p_mes !~ '^\d{4}-(0[1-9]|1[0-2])$' then
-    raise exception 'Mês inválido: %', p_mes using errcode = '22023';
+  if old.parent_id is null or coalesce(old.installment_total, 1) > 1 then
+    return null;
   end if;
+
+  v_mes := to_char(old.occurred_on, 'YYYY-MM');
 
   update public.transactions
      set recurrence_skipped_months = array(
-           select distinct m from unnest(recurrence_skipped_months || p_mes) as m order by m
+           select distinct m
+             from unnest(recurrence_skipped_months || v_mes) as m
+            order by m
          )
-   where id = p_cabeca
-     and user_id = (select auth.uid());
+   where id = old.parent_id
+     and user_id = old.user_id
+     and not (v_mes = any (recurrence_skipped_months));
+
+  return null;
 end;
 $$;
 
-revoke all on function public.pular_mes_da_recorrencia(uuid, text) from public, anon;
-grant execute on function public.pular_mes_da_recorrencia(uuid, text) to authenticated;
+revoke all on function public.pular_mes_ao_apagar_ocorrencia()
+  from public, anon, authenticated;
+
+drop trigger if exists pular_mes_ao_apagar_ocorrencia on public.transactions;
+create trigger pular_mes_ao_apagar_ocorrencia
+  after delete on public.transactions
+  for each row execute function public.pular_mes_ao_apagar_ocorrencia();
+
+create or replace function public.ignorar_ocorrencia_de_mes_pulado()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.parent_id is not null
+     and coalesce(new.installment_total, 1) <= 1
+     and exists (
+       select 1
+         from public.transactions cabeca
+        where cabeca.id = new.parent_id
+          and cabeca.user_id = new.user_id
+          and to_char(new.occurred_on, 'YYYY-MM') = any (cabeca.recurrence_skipped_months)
+     )
+  then
+    return null;
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.ignorar_ocorrencia_de_mes_pulado()
+  from public, anon, authenticated;
+
+drop trigger if exists ignorar_ocorrencia_de_mes_pulado on public.transactions;
+create trigger ignorar_ocorrencia_de_mes_pulado
+  before insert on public.transactions
+  for each row execute function public.ignorar_ocorrencia_de_mes_pulado();

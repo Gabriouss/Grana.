@@ -127,108 +127,96 @@ async function compraInteira() {
 /* ── Apagar a ocorrência de uma assinatura ────────────────────────────────
  *
  * Relato do autor em 01/10/2026, dia em que a build 1.10.5 saiu: "não está
- * sendo possível excluir lançamentos da lista de débito/pix".
+ * sendo possível excluir lançamentos da lista de débito/pix", e depois: "ambos
+ * recorrentes".
  *
  * O `delete` saía e voltava 204. Quem desfazia a exclusão era a recarga logo
  * em seguida: `ocorrenciasFaltantes` via o mês da série sem lançamento e o
- * recriava. Na rede: DELETE 204 e, na mesma carga, as duas buscas do contexto
- * de recorrência. A correção é marcar o mês na cabeça da série, e ela mora em
- * `deleteTransaction`, que é por onde as quatro telas passam.
+ * recriava.
  *
- * Aqui se afirma QUAIS chamadas saem, não só que a função terminou: o efeito
- * que importa é uma escrita no banco. */
-function supabaseDeExclusao(linhaApagada, erroDoPulo = null) {
+ * A primeira correção, do mesmo dia, pôs o APLICATIVO para marcar o mês
+ * apagado, chamando uma RPC depois do delete. Não servia: a build instalada
+ * não tem esse código, então o celular não marcava nada e ainda recriava o
+ * que fosse apagado pela web. A regra foi para o BANCO, em dois gatilhos de
+ * `transactions` (migration 20261001130000), e vale para qualquer versão.
+ *
+ * O comportamento dos gatilhos foi provado num Postgres de verdade (PGlite,
+ * fora do repositório) e em produção com a conta de teste; os dois estão
+ * descritos no context.md. Aqui ficam as guardas que rodam em toda suíte: o
+ * app não volta a ser dono da regra, e o SQL não perde as três decisões que
+ * o fazem funcionar. */
+function supabaseDeExclusao() {
   const chamadas = [];
   const q = {};
   for (const m of ['delete', 'eq', 'select']) {
     q[m] = (...args) => { chamadas.push([m, ...args]); return q; };
   }
-  q.then = (resolve) => resolve({ data: linhaApagada ? [linhaApagada] : [], error: null });
+  q.then = (resolve) => resolve({ data: null, error: null });
   return {
     chamadas,
     supabase: {
       from: (tabela) => { chamadas.push(['from', tabela]); return q; },
-      rpc: async (nome, args) => { chamadas.push(['rpc', nome, args]); return { error: erroDoPulo }; },
+      rpc: async (nome, args) => { chamadas.push(['rpc', nome, args]); return { error: null }; },
     },
   };
 }
-const rpcs = (chamadas) => chamadas.filter((c) => c[0] === 'rpc');
 
 async function ocorrenciaDeSerie() {
   console.log('\nApagar a ocorrencia de uma assinatura');
 
-  // A. Ocorrência de série: apaga E marca o mês na cabeça.
+  // A. O aplicativo só apaga. Marcar o mês é do banco.
   {
-    const { chamadas, supabase } = supabaseDeExclusao({ parent_id: 'cabeca-1', occurred_on: '2026-10-05', recurring: true, installment_total: null });
+    const { chamadas, supabase } = supabaseDeExclusao();
     await carregarData(supabase).deleteTransaction('filho-out');
-    assert.ok(chamadas.some((c) => c[0] === 'delete'), 'o delete precisa sair');
-    /* Por JSON: o objeto de argumentos nasce dentro do `vm`, em outro
-       contexto, e o `deepEqual` estrito o trata como de outra "classe". */
-    assert.equal(
-      JSON.stringify(rpcs(chamadas)),
-      JSON.stringify([['rpc', 'pular_mes_da_recorrencia', { p_cabeca: 'cabeca-1', p_mes: '2026-10' }]])
-    );
+    assert.equal(JSON.stringify(chamadas.map((c) => c[0])), JSON.stringify(['from', 'delete', 'eq', 'eq']),
+      'deleteTransaction e um delete simples: sem rpc e sem leitura a mais');
+    const data = fs.readFileSync(path.join(root, 'lib/data.ts'), 'utf8');
+    assert.ok(!/rpc\(\s*'pular_mes_da_recorrencia'/.test(data), 'a chamada do app nao pode voltar');
+    ok('o app so apaga: nao chama rpc nem tenta marcar o mes');
+  }
+
+  const ler = (f) => fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
+  const semComentario = (sql) => sql.split('\n').map((l) => l.replace(/--.*$/, '')).join('\n');
+  const fontes = {
+    migration: semComentario(ler('supabase/migrations/20261001130000_recorrencia_mes_pulado_no_servidor.sql')),
+    schema: semComentario(ler('supabase/schema.sql')),
+  };
+
+  for (const [nome, sql] of Object.entries(fontes)) {
+    // B. Apagar marca o mês, na mesma transação.
     assert.ok(
-      chamadas.findIndex((c) => c[0] === 'delete') < chamadas.findIndex((c) => c[0] === 'rpc'),
-      'marca o mes depois de apagar de verdade, nunca antes'
+      /create trigger pular_mes_ao_apagar_ocorrencia\s+after delete on public\.transactions\s+for each row/.test(sql),
+      nome + ': falta o gatilho AFTER DELETE por linha'
     );
-    ok('ocorrencia de assinatura: apaga e marca o mes 2026-10 na cabeca');
-  }
+    const apagar = sql.slice(sql.indexOf('function public.pular_mes_ao_apagar_ocorrencia()'), sql.indexOf('create trigger pular_mes_ao_apagar_ocorrencia'));
+    assert.ok(/old\.parent_id is null or coalesce\(old\.installment_total, 1\) > 1/.test(apagar), nome + ': parcela nao pode marcar mes');
+    assert.ok(/where id = old\.parent_id\s+and user_id = old\.user_id/.test(apagar), nome + ': a marca vai so para a cabeca, do mesmo dono');
 
-  // B. Lançamento avulso: nenhuma marca.
-  {
-    const { chamadas, supabase } = supabaseDeExclusao({ parent_id: null, occurred_on: '2026-10-05', recurring: false, installment_total: null });
-    await carregarData(supabase).deleteTransaction('avulso');
-    assert.equal(rpcs(chamadas).length, 0);
-    ok('avulso: nao marca mes nenhum');
-  }
-
-  // C. Parcela também tem parent_id, e NÃO é assinatura.
-  {
-    const { chamadas, supabase } = supabaseDeExclusao({ parent_id: 'compra', occurred_on: '2026-10-05', recurring: false, installment_total: 3 });
-    await carregarData(supabase).deleteTransaction('parcela-2');
-    assert.equal(rpcs(chamadas).length, 0, 'parcela nao pode marcar mes de recorrencia');
-    const { chamadas: c2, supabase: s2 } = supabaseDeExclusao({ parent_id: 'compra', occurred_on: '2026-10-05', recurring: true, installment_total: 3 });
-    await carregarData(s2).deleteTransaction('parcela-marcada-por-engano');
-    assert.equal(rpcs(c2).length, 0, 'installment_total > 1 separa parcela de assinatura mesmo com recurring ligado');
-    ok('parcela: nao marca mes, mesmo com recurring ligado por engano');
-  }
-
-  // D. A cabeça da série: a cascata leva os filhos, não há mês para marcar.
-  {
-    const { chamadas, supabase } = supabaseDeExclusao({ parent_id: null, occurred_on: '2026-08-05', recurring: true, installment_total: null });
-    await carregarData(supabase).deleteTransaction('cabeca-1');
-    assert.equal(rpcs(chamadas).length, 0);
-    ok('cabeca da serie: nada a marcar');
-  }
-
-  // E. Nada foi apagado (id de outra conta, ou já apagado): nenhuma marca.
-  {
-    const { chamadas, supabase } = supabaseDeExclusao(null);
-    await carregarData(supabase).deleteTransaction('inexistente');
-    assert.equal(rpcs(chamadas).length, 0);
-    ok('delete que nao apagou linha nenhuma nao marca mes');
-  }
-
-  // F. A marca falhou (migration não aplicada): a exclusão JÁ aconteceu, então
-  //    não vira "erro ao excluir" — mas vai para o log, que é a única pista.
-  {
-    const { supabase } = supabaseDeExclusao(
-      { parent_id: 'cabeca-1', occurred_on: '2026-10-05', recurring: true, installment_total: null },
-      { code: 'PGRST202', message: 'Could not find the function' }
+    // C. Recriar mês pulado é DESCARTADO, não recusado.
+    assert.ok(
+      /create trigger ignorar_ocorrencia_de_mes_pulado\s+before insert on public\.transactions\s+for each row/.test(sql),
+      nome + ': falta o gatilho BEFORE INSERT por linha'
     );
-    const erros = [];
-    const original = console.error;
-    console.error = (...args) => erros.push(args);
-    try {
-      await carregarData(supabase).deleteTransaction('filho-out');
-    } finally {
-      console.error = original;
+    const inserir = sql.slice(sql.indexOf('function public.ignorar_ocorrencia_de_mes_pulado()'), sql.indexOf('create trigger ignorar_ocorrencia_de_mes_pulado'));
+    assert.ok(/coalesce\(new\.installment_total, 1\) <= 1/.test(inserir), nome + ': parcela nao pode ser barrada');
+    assert.ok(/then\s+return null;/.test(inserir), nome + ': mes pulado e descartado com return null');
+    /* Uma exceção aqui derrubaria o INSERT de várias linhas do app antigo, e
+       as assinaturas que a pessoa NÃO apagou deixariam de ser geradas. */
+    assert.ok(!/raise\s+exception/i.test(inserir), nome + ': o gatilho de insert nao pode lancar excecao');
+
+    // D. As funções de gatilho não ficam chamáveis por fora.
+    for (const fn of ['pular_mes_ao_apagar_ocorrencia', 'ignorar_ocorrencia_de_mes_pulado']) {
+      assert.ok(new RegExp('revoke all on function public\\.' + fn + '\\(\\)\\s+from public, anon, authenticated').test(sql), nome + ': ' + fn + ' sem revoke');
     }
-    assert.equal(erros.length, 1, 'a falha da marca precisa ir para o log');
-    assert.ok(JSON.stringify(erros[0]).includes('PGRST202'), 'e o log precisa dizer o codigo');
-    ok('marca que falha nao vira erro de exclusao, e deixa recibo no log');
   }
+  ok('migration e schema.sql: apagar marca o mes; parcela fica de fora; so a cabeca do mesmo dono');
+  ok('migration e schema.sql: recriar mes pulado e descartado por linha, sem excecao');
+  ok('migration e schema.sql: funcoes de gatilho com revoke');
+
+  // E. A RPC da primeira tentativa sai do banco e do schema canônico.
+  assert.ok(/drop function if exists public\.pular_mes_da_recorrencia\(uuid, text\)/.test(fontes.migration), 'a migration remove a RPC');
+  assert.ok(!fontes.schema.includes('pular_mes_da_recorrencia'), 'o schema.sql nao recria a RPC');
+  ok('a RPC da primeira tentativa foi removida');
 }
 
 function carregarPergunta() {
@@ -349,6 +337,14 @@ async function alertaNaWeb() {
       apagarEste: () => feito.push('serie'),
     });
     assert.equal(alertas[1].titulo, 'Excluir a série inteira');
+
+    /* Ocorrência em que alguém desmarcou "repetir": continua sendo ocorrência.
+       A série é da origem, e sem o aviso a pessoa não saberia que só este mês
+       sai. É a mesma condição do gatilho do banco (parent_id, e não recurring). */
+    mod.confirmarExclusaoDeLancamento({ description: 'Netflix', installment_total: null, recurring: false, parent_id: 'cabeca' }, {
+      apagarEste: () => feito.push('desmarcada'),
+    });
+    assert.equal(alertas[2].titulo, 'Excluir só este mês', 'ocorrencia se reconhece pelo parent_id');
     assert.ok(/outros meses/.test(alertas[1].msg), 'a origem avisa que os outros meses vao junto');
     ok('assinatura: ocorrencia avisa "so este mes", origem avisa que leva a serie');
   }
