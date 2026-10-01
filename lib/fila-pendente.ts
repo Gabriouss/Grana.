@@ -76,20 +76,50 @@ export function novaChaveIdempotencia(): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
-export async function getQueue(): Promise<PendingItem[]> {
+/** Onde fica o bruto de uma fila que não foi possível ler. */
+export const QUEUE_CORROMPIDA_KEY = `${QUEUE_KEY}:corrompida`;
+
+/**
+ * Lê a fila do disco. Falha de LEITURA do disco sobe (quem vai gravar em
+ * seguida não pode tratar "não consegui ler" como "está vazia"). JSON ilegível
+ * é preservado, intacto, numa chave à parte antes de devolver `[]`: a próxima
+ * gravação sobrescreve a chave da fila, e a fila é a única cópia do que a
+ * pessoa registrou sem rede.
+ */
+async function lerFila(): Promise<PendingItem[]> {
+  const raw = await AsyncStorage.getItem(QUEUE_KEY);
+  if (!raw) return [];
   try {
-    const raw = await AsyncStorage.getItem(QUEUE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
+    return JSON.parse(raw);
+  } catch (erro) {
+    console.error('[fila-pendente] a fila está ilegível; o conteúdo foi guardado à parte', erro);
+    try {
+      const jaTem = await AsyncStorage.getItem(QUEUE_CORROMPIDA_KEY);
+      await AsyncStorage.setItem(jaTem && jaTem !== raw ? `${QUEUE_CORROMPIDA_KEY}:${Date.now()}` : QUEUE_CORROMPIDA_KEY, raw);
+    } catch (erroAoGuardar) {
+      console.error('[fila-pendente] não consegui guardar o conteúdo ilegível da fila', erroAoGuardar);
+    }
     return [];
   }
 }
 
+export async function getQueue(): Promise<PendingItem[]> {
+  try {
+    return await lerFila();
+  } catch (erro) {
+    console.error('[fila-pendente] não consegui ler a fila', erro);
+    return [];
+  }
+}
+
+/** Grava a fila. Falha SOBE: a fila não é cache, é a única cópia do lançamento
+    feito sem rede, e quem chama precisa saber que não ficou guardado. */
 export async function setQueue(items: PendingItem[]): Promise<void> {
   try {
     await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(items));
-  } catch {
-    // idem — best-effort.
+  } catch (erro) {
+    console.error('[fila-pendente] não consegui gravar a fila', erro);
+    throw erro;
   }
 }
 
@@ -106,7 +136,7 @@ let escritaEmCurso: Promise<unknown> = Promise.resolve();
  */
 export function atualizarFila(mudar: (fila: PendingItem[]) => PendingItem[] | Promise<PendingItem[]>): Promise<PendingItem[]> {
   const proxima = escritaEmCurso.then(async () => {
-    const nova = await mudar(await getQueue());
+    const nova = await mudar(await lerFila());
     await setQueue(nova);
     return nova;
   });

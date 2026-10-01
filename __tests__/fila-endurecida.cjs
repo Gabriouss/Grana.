@@ -26,12 +26,13 @@ const igual = (a, b, nome) => { assert.equal(JSON.stringify(a), JSON.stringify(b
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ── Ambiente simulado ─────────────────────────────────────────────────── */
-const estado = { rede: true, usuario: 'u-1', recusar: new Map(), falharRevisao: false, sorteio: 0.5, notificacoes: [] };
+const estado = { discoCheio: false, rede: true, usuario: 'u-1', recusar: new Map(), falharRevisao: false, sorteio: 0.5, notificacoes: [] };
 const gravacoes = [];
 const disco = new Map();
 const AsyncStorage = {
   getItem: async (k) => (disco.has(k) ? disco.get(k) : null),
   setItem: async (k, v) => {
+    if (estado.discoCheio && k === 'grana:queue:transactions-pendentes') throw new Error('sem espaço');
     if (estado.falharRevisao && k === 'grana:queue:precisa-de-revisao') throw new Error('disco cheio');
     disco.set(k, v);
   },
@@ -402,6 +403,32 @@ const limpar = async () => {
   rpcs.length = 0;
   const s3 = await voz.sincronizarOperacoesVoz();
   igual([rpcs.length, s3.sincronizadas, vozDisco.size], [50, 50, 10], 'voz: no máximo 50 por sincronização');
+
+  /* ── 7. A fila é a única cópia: gravação que falha sobe, leitura ilegível é preservada ─ */
+  await limpar();
+  encherFila(2, 'u-1', 'KEEP');
+  estado.discoCheio = true;
+  let recusou = null;
+  estado.rede = false;
+  try { await fila.queuePendingTransaction(entrada('NOVO'), undefined); } catch (e) { recusou = e; }
+  estado.rede = true;
+  ok(recusou && /sem espaço/.test(recusou.message), 'disco cheio: guardar sem rede LANÇA, em vez de dizer que guardou');
+  estado.discoCheio = false;
+  igual((await pendente.getQueue()).map((i) => i.input.description), ['KEEP 0', 'KEEP 1'], 'a falha não altera o que já estava na fila');
+
+  await limpar();
+  const quebrada = '[{"localId":"local-1","tipo":"transacao","input":{"description":"DINHEIRO"';
+  disco.set(QUEUE, quebrada);
+  igual(await pendente.getQueue(), [], 'fila ilegível devolve vazio');
+  igual(disco.get('grana:queue:transactions-pendentes:corrompida'), quebrada, 'o bruto ilegível fica guardado à parte');
+  estado.rede = false;
+  await fila.queuePendingTransaction(entrada('DEPOIS'), undefined);
+  estado.rede = true;
+  igual(disco.get('grana:queue:transactions-pendentes:corrompida'), quebrada, 'a gravação seguinte não apaga o bruto preservado');
+  disco.set(QUEUE, '{outra quebra');
+  await pendente.getQueue();
+  ok([...disco.keys()].filter((k) => k.startsWith('grana:queue:transactions-pendentes:corrompida')).length === 2, 'um segundo bruto ilegível não sobrescreve o primeiro');
+  await limpar();
 
   console.log(`fila-endurecida: ${passou} checagens OK`);
   process.exit(0);
