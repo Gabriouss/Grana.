@@ -75,8 +75,15 @@ function padraoParaRegex(padrao: string): RegExp {
   return new RegExp('^' + r + '$');
 }
 
-/** Se um arquivo da raiz fica FORA do pacote, segundo estas regras. */
-export function ficaForaDoPacote(nome: string, regras: string): boolean {
+/**
+ * Pastas da raiz com dado financeiro de terceiros (regra 12 do AGENTS.md):
+ * feedbacks de usuários e prints de tela. Ficam só na máquina local, e pelo
+ * mesmo motivo do `.env` subiriam ao servidor do EAS em toda build — 24
+ * arquivos, até serem excluídas no `.easignore`.
+ */
+export const PASTAS_SENSIVEIS = ['Feedbacks', 'Screenshots'];
+
+function foraPelasRegras(nome: string, regras: string, ehPasta: boolean): boolean {
   let fora = false;
   for (const bruta of regras.split(/\r?\n/)) {
     let linha = bruta.replace(/(?<!\\)\s+$/, '');
@@ -86,7 +93,10 @@ export function ficaForaDoPacote(nome: string, regras: string): boolean {
       devolve = true;
       linha = linha.slice(1);
     }
-    if (linha.endsWith('/')) continue; // só pasta
+    if (linha.endsWith('/')) {
+      if (!ehPasta) continue; // padrão com barra no fim só vale para pasta
+      linha = linha.slice(0, -1);
+    }
     if (linha.startsWith('/')) linha = linha.slice(1);
     else if (linha.startsWith('**/')) linha = linha.slice(3);
     if (linha.includes('/')) continue; // aponta para dentro de uma pasta
@@ -95,11 +105,23 @@ export function ficaForaDoPacote(nome: string, regras: string): boolean {
   return fora;
 }
 
+/** Se um arquivo da raiz fica FORA do pacote, segundo estas regras. */
+export function ficaForaDoPacote(nome: string, regras: string): boolean {
+  return foraPelasRegras(nome, regras, false);
+}
+
+/** Se uma pasta da raiz fica FORA do pacote, segundo estas regras. */
+export function pastaFicaForaDoPacote(nome: string, regras: string): boolean {
+  return foraPelasRegras(nome, regras, true);
+}
+
 export type ResultadoDoPacote = {
   /** De onde o EAS tira as regras: `.easignore` manda sozinho quando existe. */
   fonte: '.easignore' | '.gitignore' | 'nenhuma';
   /** Arquivos de variáveis que IRIAM para o servidor de build. */
   vaoNoPacote: string[];
+  /** Pastas de material sensível (`PASTAS_SENSIVEIS`) que IRIAM para o servidor. */
+  pastasNoPacote: string[];
 };
 
 export function variaveisNoPacoteDaBuild(raiz: string): ResultadoDoPacote {
@@ -109,5 +131,9 @@ export function variaveisNoPacoteDaBuild(raiz: string): ResultadoDoPacote {
   const regras = fonte === 'nenhuma' ? '' : readFileSync(join(raiz, fonte), 'utf8');
   const presentes = readdirSync(raiz).filter((nome) => /^\.env(?:\.|$)/.test(nome));
   const nomes = [...new Set([...NOMES_DE_VARIAVEIS, ...presentes])].filter((nome) => !PODE_IR.has(nome));
-  return { fonte, vaoNoPacote: nomes.filter((nome) => !ficaForaDoPacote(nome, regras)) };
+  return {
+    fonte,
+    vaoNoPacote: nomes.filter((nome) => !ficaForaDoPacote(nome, regras)),
+    pastasNoPacote: PASTAS_SENSIVEIS.filter((nome) => !pastaFicaForaDoPacote(nome, regras)),
+  };
 }

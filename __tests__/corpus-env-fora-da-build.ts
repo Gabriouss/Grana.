@@ -12,7 +12,13 @@ import { execFileSync, spawnSync } from 'child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { ficaForaDoPacote, NOMES_DE_VARIAVEIS, variaveisNoPacoteDaBuild } from '../scripts/env-fora-da-build';
+import {
+  ficaForaDoPacote,
+  NOMES_DE_VARIAVEIS,
+  PASTAS_SENSIVEIS,
+  pastaFicaForaDoPacote,
+  variaveisNoPacoteDaBuild,
+} from '../scripts/env-fora-da-build';
 
 const RAIZ = join(__dirname, '..');
 let passaram = 0;
@@ -27,7 +33,45 @@ function checar(descricao: string, obtido: unknown, esperado: unknown) {
 }
 
 /* ── 1. O repositório de hoje passa; o .easignore de 01/09 não ──────────── */
-checar('o projeto atual não manda arquivo de variáveis', variaveisNoPacoteDaBuild(RAIZ), { fonte: '.easignore', vaoNoPacote: [] });
+checar('o projeto atual não manda arquivo de variáveis nem pasta sensível', variaveisNoPacoteDaBuild(RAIZ), {
+  fonte: '.easignore',
+  vaoNoPacote: [],
+  pastasNoPacote: [],
+});
+/* Feedbacks/ e Screenshots/ (dado financeiro de terceiros) subiram ao EAS em
+   toda build, porque o .easignore substitui o .gitignore. Este é o guarda: se
+   alguém tirar as linhas, o teste cai. */
+checar('as pastas sensíveis são Feedbacks e Screenshots', PASTAS_SENSIVEIS, ['Feedbacks', 'Screenshots']);
+const easignoreAtual = readFileSync(join(RAIZ, '.easignore'), 'utf8');
+for (const pasta of PASTAS_SENSIVEIS) {
+  checar(`o .easignore atual exclui ${pasta}/`, pastaFicaForaDoPacote(pasta, easignoreAtual), true);
+  checar(`o .easignore de 01/09 deixava ${pasta}/ ir`, pastaFicaForaDoPacote(pasta, execFileSync('git', ['show', '00de222:.easignore'], { cwd: RAIZ, encoding: 'utf8' })), false);
+}
+const PASTAS_REGRAS: [string, boolean][] = [
+  ['Feedbacks/', true],
+  ['/Feedbacks/', true],
+  ['Feedbacks', true], // sem barra casa arquivo e pasta
+  ['**/Feedbacks/', true],
+  ['Feedbacks/\n!Feedbacks/', false], // a última regra decide
+  ['!Feedbacks/\nFeedbacks/', true],
+  ['Feedbacks/\n!Feedbacks', false],
+  ['Feedbacks/*', false], // só o conteúdo: a pasta em si não é excluída, o guarda recusa por cautela
+  ['# Feedbacks/', false],
+  ['', false],
+];
+for (const [regras, fora] of PASTAS_REGRAS) {
+  checar(`pasta: regras ${JSON.stringify(regras)} → Feedbacks ${fora ? 'fora' : 'no pacote'}`, pastaFicaForaDoPacote('Feedbacks', regras), fora);
+}
+checar('padrão com barra no fim não casa arquivo de mesmo nome', ficaForaDoPacote('Feedbacks', 'Feedbacks/'), false);
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const ignorar = require('ignore');
+  for (const [regras] of PASTAS_REGRAS) {
+    checar(`pasta igual ao "ignore": ${JSON.stringify(regras)}`, pastaFicaForaDoPacote('Feedbacks', regras), ignorar().add(regras).ignores('Feedbacks/'));
+  }
+} catch {
+  console.log('aviso: pacote "ignore" ausente — comparação das pastas com o eas-cli pulada');
+}
 
 const easignoreDe0109 = execFileSync('git', ['show', '00de222:.easignore'], { cwd: RAIZ, encoding: 'utf8' });
 checar('com o .easignore de 01/09, o .env ia no pacote', ficaForaDoPacote('.env', easignoreDe0109), false);
@@ -100,7 +144,11 @@ if (ignore) {
 /* ── 4. De onde vêm as regras, e arquivos que existem de fato ──────────── */
 const pasta = mkdtempSync(join(tmpdir(), 'grana-env-'));
 try {
-  checar('sem regra nenhuma, tudo vai', variaveisNoPacoteDaBuild(pasta), { fonte: 'nenhuma', vaoNoPacote: NOMES_DE_VARIAVEIS });
+  checar('sem regra nenhuma, tudo vai', variaveisNoPacoteDaBuild(pasta), {
+    fonte: 'nenhuma',
+    vaoNoPacote: NOMES_DE_VARIAVEIS,
+    pastasNoPacote: PASTAS_SENSIVEIS,
+  });
 
   writeFileSync(join(pasta, '.gitignore'), '.env\n.env*.local\n');
   writeFileSync(join(pasta, '.env'), 'X=1\n');
@@ -111,6 +159,7 @@ try {
   checar('sem .easignore, vale o .gitignore — e o antigo não cobria .env.production', variaveisNoPacoteDaBuild(pasta), {
     fonte: '.gitignore',
     vaoNoPacote: ['.env.development', '.env.production', '.env.test'],
+    pastasNoPacote: PASTAS_SENSIVEIS,
   });
 
   writeFileSync(join(pasta, '.easignore'), '.agents/\n');
@@ -119,6 +168,12 @@ try {
   writeFileSync(join(pasta, '.easignore'), '.env\n.env.*\n!.env.example\n');
   writeFileSync(join(pasta, '.env.minha'), 'X=1\n');
   checar('regra completa: nada vai, e .env.example nunca é acusado', variaveisNoPacoteDaBuild(pasta).vaoNoPacote, []);
+  checar('sem as linhas das pastas sensíveis, elas são acusadas', variaveisNoPacoteDaBuild(pasta).pastasNoPacote, PASTAS_SENSIVEIS);
+  writeFileSync(join(pasta, '.easignore'), '.env\n.env.*\nFeedbacks/\n');
+  checar('só Feedbacks/ excluída: Screenshots/ continua acusada', variaveisNoPacoteDaBuild(pasta).pastasNoPacote, ['Screenshots']);
+  writeFileSync(join(pasta, '.easignore'), '.env\n.env.*\nFeedbacks/\nScreenshots/\n');
+  checar('as duas pastas excluídas: nada acusado', variaveisNoPacoteDaBuild(pasta).pastasNoPacote, []);
+  writeFileSync(join(pasta, '.easignore'), '.env\n.env.*\n!.env.example\n');
 
   writeFileSync(join(pasta, '.easignore'), '.env\n');
   checar('arquivo que existe e não tem regra é acusado', variaveisNoPacoteDaBuild(pasta).vaoNoPacote.includes('.env.minha'), true);
@@ -164,7 +219,14 @@ try {
   checar('e diz por quê', /BLOQUEADO[\s\S]*\.env[\s\S]*4ce2242/.test(recusa.stderr), true);
   checar('e não sobe a versão', readFileSync(join(projeto, 'app.json'), 'utf8'), APP);
 
-  writeFileSync(join(projeto, '.easignore'), readFileSync(join(RAIZ, '.easignore'), 'utf8'));
+  /* O .easignore atual SEM as linhas das pastas sensíveis: o preparo recusa. */
+  writeFileSync(join(projeto, '.easignore'), easignoreAtual.replace(/^(Feedbacks|Screenshots)\/\r?\n/gm, ''));
+  const recusaPastas = rodar();
+  checar('sem as linhas das pastas sensíveis, o preparo sai com erro', recusaPastas.status, 1);
+  checar('e cita Feedbacks/ e Screenshots/', /BLOQUEADO[\s\S]*Feedbacks\/[\s\S]*Screenshots\//.test(recusaPastas.stderr), true);
+  checar('e não sobe a versão por causa delas', readFileSync(join(projeto, 'app.json'), 'utf8'), APP);
+
+  writeFileSync(join(projeto, '.easignore'), easignoreAtual);
   const aceita = rodar();
   checar('com o .easignore atual, o preparo passa', aceita.status, 0);
   checar('e sobe a versão', /"version": "1\.0\.1"/.test(readFileSync(join(projeto, 'app.json'), 'utf8')), true);

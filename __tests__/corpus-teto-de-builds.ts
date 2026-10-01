@@ -94,7 +94,7 @@ const iso = (d: Date) => d.toISOString();
     for (const f of ['scripts/preparar-lancamento.ts', 'scripts/teto-de-builds.ts', 'scripts/env-fora-da-build.ts', 'lib/notas-release.ts']) {
       cpSync(join(RAIZ, f), join(pasta, f));
     }
-    writeFileSync(join(pasta, '.easignore'), '.env\n.env.*\n!.env.example\n');
+    writeFileSync(join(pasta, '.easignore'), '.env\n.env.*\n!.env.example\nFeedbacks/\nScreenshots/\n');
     writeFileSync(join(pasta, 'app.json'), '{\n  "expo": {\n    "version": "1.0.0"\n  }\n}\n');
     git('init', '-q', '-b', 'master');
     git('config', 'user.email', 'teste@exemplo.com');

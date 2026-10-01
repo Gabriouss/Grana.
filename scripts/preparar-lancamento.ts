@@ -57,13 +57,14 @@ if (!mensagem.trim()) {
 }
 
 const pacote = variaveisNoPacoteDaBuild(join(__dirname, '..'));
-if (pacote.vaoNoPacote.length > 0) {
-  console.error('BLOQUEADO — estes arquivos de variáveis iriam para o servidor do EAS:\n');
+if (pacote.vaoNoPacote.length > 0 || pacote.pastasNoPacote.length > 0) {
+  console.error('BLOQUEADO — estes itens iriam para o servidor do EAS:\n');
   for (const nome of pacote.vaoNoPacote) console.error('  ' + nome);
+  for (const nome of pacote.pastasNoPacote) console.error('  ' + nome + '/ (dado financeiro de terceiros, regra 12)');
   console.error('\nRegras lidas de: ' + pacote.fonte + '. Com .easignore presente, o EAS não lê o .gitignore');
   console.error('e copia a pasta de trabalho inteira — foi assim que a build 1.10.2 levou os segredos da');
   console.error('Cakto, do GitHub, do Supabase e da Vercel. Rode "git pull" (a correção é o commit 4ce2242)');
-  console.error('ou acrescente ao .easignore as linhas ".env", ".env.*" e "!.env.example".');
+  console.error('ou acrescente ao .easignore as linhas ".env", ".env.*", "!.env.example", "Feedbacks/" e "Screenshots/".');
   console.error('Nenhum arquivo foi alterado. Ver o alerta no topo do AGENTS.md e a regra 15.');
   process.exit(1);
 }

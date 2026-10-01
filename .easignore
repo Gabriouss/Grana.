@@ -18,6 +18,12 @@ design-system/marketing-mockups/
 .env.*
 !.env.example
 
+# Material de suporte com dado financeiro de terceiros (regra 12 do AGENTS.md):
+# fica só na máquina local. Com `.easignore` presente o EAS não lê o
+# `.gitignore`, então sem estas linhas as duas pastas subiam em toda build.
+Feedbacks/
+Screenshots/
+
 # Nativo gerado por `expo prebuild` local. Este projeto é managed: o EAS gera
 # android/ e ios/ no servidor. Uma pasta local (mesmo vazia) subiria junto e
 # faria o EAS tratar o projeto como nativo pronto, pulando o prebuild. Em
