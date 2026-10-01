@@ -127,6 +127,11 @@ const palavras: Record<string, number> = {
 const NUMERAIS = Object.keys(palavras).sort((a, b) => b.length - a.length).join('|');
 const NUMERO = `(?:\\d{1,4}|(?:${NUMERAIS})(?:\\s+e\\s+(?:${NUMERAIS}))?)`;
 const FIM = '(?![\\p{L}\\d])';
+/** "reais" logo depois do número: "passe do dia 10 reais" é R$ 10, não o
+    dia 10 (achado 8 do Lynx, 30/09/2026). Só "reais", o caso demonstrado
+    (decisão do maestro e do Forge); "R$" vem ANTES do valor, e em "almoço
+    dia 12 R$ 30" o 12 continua sendo o dia. */
+const DINHEIRO_EM_SEGUIDA = `(?!\\s*reais${FIM})`;
 
 function numero(s: string): number {
   if (/^\d+$/.test(s)) return Number(s);
@@ -290,8 +295,9 @@ export function dataDaFala(texto: string, { referencia, aproximada = false }: Op
   procurar(new RegExp(`(?<![\\p{L}\\d])(?:n[ao]\\s+)?(${NOME_SEMANA})\\s+passad[ao]${FIM}`), (m) => semana(m[1], true));
   procurar(new RegExp(`(?<![\\p{L}\\d])n[ao]\\s+(${NOME_SEMANA})${FIM}(?!\\s+(?:parcela|vez|via|m[ãa]o)${FIM})`), (m) => semana(m[1], false));
   procurar(new RegExp(`(?:^|\\s)(${NOME_SEMANA})\\s*[.!?]?\\s*$`), (m) => semana(m[1], false));
-  /* 6. "dia N", "no dia N", "dia doze" (fora de recorrência) */
-  procurar(new RegExp(`(?<![\\p{L}\\d])(?:n?o\\s+)?dia\\s+(${NUMERO})${FIM}`), (m) => {
+  /* 6. "dia N", "no dia N", "dia doze" (fora de recorrência). Seguido de
+     palavra de dinheiro, o número é o valor, e fica no texto. */
+  procurar(new RegExp(`(?<![\\p{L}\\d])(?:n?o\\s+)?dia\\s+(${NUMERO})${FIM}${DINHEIRO_EM_SEGUIDA}`), (m) => {
     const i = m.index ?? 0;
     if (reservado(i, i + m[0].length)) return null;
     const dia = numero(m[1]);

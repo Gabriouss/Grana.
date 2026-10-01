@@ -158,6 +158,24 @@ caso('aprox: sem data', 'mercado 50', { data: REF }, REF, { aproximada: true });
   ok('revisão: campo vazio, com a dica e a proposta do núcleo (futura, impossível, vaga e referência aproximada)');
 }
 
+/* ── Achado 8 (Lynx/Watchtower, 30/09/2026): "dia N" seguido de "reais" ──
+   "passe do dia 10 reais" é R$ 10, não o dia 10. A alegação é só esta frase;
+   os controles provam que "dia N" continua data quando o dinheiro vem depois
+   por "R$" (dígito ou extenso) ou por outro número. */
+caso('achado 8', 'passe do dia 10 reais', { data: REF, fica: 'passe do dia 10 reais' });
+{
+  const { dataInicialDaRevisao } = require('./data-da-fala-real.cjs');
+  const r = JSON.parse(JSON.stringify(dataInicialDaRevisao('passe do dia 10 reais', { referencia: REF, aproximada: false })));
+  assert.deepEqual(r, { textoSemData: 'passe do dia 10 reais', data: REF, dica: null, proposta: null }, 'achado 8: a revisão abre na data da captura, com o texto e o 10 intactos');
+  assert.equal(h.guessAmountFromText(r.textoSemData), 10, 'achado 8: o valor 10 é lido');
+  ok('achado 8: dataInicialDaRevisao real preserva o texto, o 10 e a data da captura');
+}
+caso('controle: R$ com dígito', 'almoço dia 12 R$ 30', { data: '2026-09-12', valor: 30 });
+caso('controle: R$ por extenso', 'almoço dia 12 R$ trinta', { data: '2026-09-12', fica: 'R\\$ trinta' });
+caso('controle: dia por extenso', 'almoço dia doze R$ 30', { data: '2026-09-12', valor: 30 });
+caso('controle: outro número depois', 'farmácia dia 12 40 reais', { data: '2026-09-12', valor: 40 });
+caso('controle: palavra começada por "real"', 'mercado dia 10 realizado 20 reais', { data: '2026-09-10', valor: 20 });
+
 /* ── Mapa de extenso igual ao de parseDiaVencimento (AST) ──────────────── */
 {
   function mapa(arquivo, funcao) {

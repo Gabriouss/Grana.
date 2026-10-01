@@ -103,6 +103,12 @@ function abrirNovaCompra(texto, ref) {
   assert.deepEqual(r.alertas.at(-1), ['Escolha a data', 'Você disse 30/02, que não existe.'], 'impossível: o aviso explica');
   r = abrirNovaCompra('almoço 30 reais no crédito C6', { referencia: HOJE, aproximada: false });
   assert.equal(r.estado.TxDate, HOJE, 'sem data dita: a data da captura');
+  /* Achado 8: "dia 10 reais" é o valor. A revisão do Crédito abre na data
+     da captura, com R$ 10, e sem aviso de data. */
+  r = abrirNovaCompra('passe do dia 10 reais no crédito C6', { referencia: HOJE, aproximada: false });
+  assert.equal(r.estado.TxDate, HOJE, 'achado 8: na data da captura, nunca 10/09');
+  assert.equal(r.estado.TxAmount, '10', 'achado 8: o valor é 10');
+  assert.equal(r.alertas.length, 0, 'achado 8: sem aviso de data');
 }
 ok('Crédito: a data inicial da revisão vem do núcleo, contada da captura; duvidosa começa vazia, com aviso e proposta');
 

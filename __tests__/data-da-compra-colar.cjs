@@ -251,6 +251,14 @@ async function salvar() {
   abrir({ initialText: 'mercado 50 reais' });
   ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'sem data dita: hoje');
 
+  /* Achado 8: "passe do dia 10 reais" abre na data da captura, com o 10
+     como valor e "dia" no nome, e grava assim. */
+  abrir({ initialText: 'passe do dia 10 reais', referenciaDaVoz: REF('2026-09-30') });
+  tela = render();
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'achado 8: campo na data da captura, nunca 10/09');
+  ok(porRotulo(tela, /^Valor do lançamento em reais$/)?.props.value === '10,00', 'achado 8: o valor é 10');
+  ok(/dia/i.test(descricao(tela) ?? ''), `achado 8: o "dia" fica no nome (${descricao(tela)})`);
+
   /* Caso 31: a revisão troca a data de uma fala que já foi ao servidor; o
      núcleo devolve o 22023 como "já usada" (C3), e a tela mostra o recibo. */
   abrir({ initialText: 'mercado 50 reais ontem', falaGuardada: 'fala-3', referenciaDaVoz: REF('2026-09-30') });

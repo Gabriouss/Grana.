@@ -260,6 +260,17 @@ const em = (d, h = 12, m = 0) => new Date(2026, 8, d, h, m).getTime(); // setemb
   ok('22, 23 e 24: parcelado com data diferente revisa; outra fatura revisa; mesma fatura grava, e o recibo fala da fatura, nunca de saldo');
 
   gravou(await falar('Sexta Feira Bar 50 reais'), { data: '2026-09-30', valor: 50 }, '25');
+  /* Achado 8: "dia 10 reais" é o valor, não a data. Nas duas entradas, a
+     fala não pede revisão de data e nada é gravado com 10/09. */
+  {
+    const r8 = await falar('passe do dia 10 reais');
+    checar.equal(r8.gravacoes.filter((g) => g.occurred_on === '2026-09-10').length, 0, 'achado 8: nada gravado em 10/09');
+    checar.equal(['Confirme a data', 'Qual foi a data?', 'Confirme a data da compra'].includes(r8.publicados[0]?.revisao), false,
+      `achado 8: sem revisão de data (${JSON.stringify(r8.publicados[0])})`);
+    if (r8.gravacoes.length) { checar.equal(r8.gravacoes[0].occurred_on, '2026-09-30', 'achado 8: na data da captura'); checar.equal(r8.gravacoes[0].amount, 10, 'achado 8: R$ 10'); }
+    gravou(await falar('uber do dia 10 reais'), { data: '2026-09-30', valor: 10 }, 'achado 8: uber do dia 10 reais');
+    ok(`achado 8: "passe do dia 10 reais" sem data de 10/09 nas duas entradas (${JSON.stringify(r8.publicados[0])}); "uber do dia 10 reais" grava R$ 10 na captura`);
+  }
   ok('25: nome de loja com dia da semana não é data');
 
   /* Crédito e Pix na MESMA data do mês anterior: recibos diferentes (F2). */
