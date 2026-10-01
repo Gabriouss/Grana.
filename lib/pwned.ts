@@ -87,7 +87,7 @@ export async function checarSenhaVazada(senha: string): Promise<PwnedResult> {
 export function mensagemSenhaVazada(vezes: number): string {
   const contagem = vezes.toLocaleString('pt-BR');
   return (
-    `Essa senha já apareceu em ${contagem} vazamento(s) de dados públicos. ` +
-    'Ela pode ser forte, mas já está em listas usadas por atacantes — escolha outra.'
+    `Essa senha já apareceu em ${contagem} ${vezes === 1 ? 'vazamento' : 'vazamentos'} de dados públicos. ` +
+    'Ela pode ser forte, mas já está em listas usadas por atacantes. Escolha outra.'
   );
 }

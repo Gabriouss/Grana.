@@ -561,7 +561,7 @@ ${blocoRetrospectiva(wrapped)}
 
   <footer>
     <span>Gerado pelo app Grana. em ${escaparHtml(geradoEm)}</span>
-    <span>Documento de uso pessoal — sem valor fiscal</span>
+    <span>Documento de uso pessoal, sem valor fiscal</span>
   </footer>
 </body>
 </html>`;

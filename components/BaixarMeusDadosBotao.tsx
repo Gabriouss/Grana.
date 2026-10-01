@@ -36,7 +36,7 @@ export default function BaixarMeusDadosBotao({ rotulo }: { rotulo?: string }) {
       if (indisponiveis.length > 0) {
         Alert.alert(
           'Cópia gerada, com partes de fora',
-          `O arquivo ${nomeArquivo} tem ${linhas} registros, mas ${indisponiveis.length} parte(s) não puderam ser lidas agora: ${indisponiveis
+          `O arquivo ${nomeArquivo} tem ${linhas} registros, mas ${indisponiveis.length === 1 ? '1 parte não pôde ser lida' : `${indisponiveis.length} partes não puderam ser lidas`} agora: ${indisponiveis
             .map((i) => i.tabela)
             .join(', ')}. O motivo de cada uma está escrito dentro do arquivo. Tente de novo mais tarde para uma cópia completa.`
         );

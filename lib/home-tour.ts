@@ -40,7 +40,7 @@ export const HOME_TOUR_STEPS: HomeTourStep[] = [
     id: 'lancar',
     titulo: 'Lance em um toque',
     texto:
-      'Colar comprovante, importar CSV, escanear nota ou falar por voz — qualquer um desses vira lançamento sem digitar linha por linha.',
+      'Colar comprovante, importar CSV, escanear nota ou falar por voz: qualquer um desses vira lançamento sem digitar linha por linha.',
   },
   {
     id: 'credito',

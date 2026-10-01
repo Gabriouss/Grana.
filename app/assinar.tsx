@@ -220,7 +220,7 @@ export default function AssinarScreen() {
           {verificando ? (
             <ActivityIndicator color={theme.ink} />
           ) : (
-            <Text style={styles.secondaryText}>Já paguei — verificar acesso</Text>
+            <Text style={styles.secondaryText}>Já paguei, verificar acesso</Text>
           )}
         </Pressable>
       </View>

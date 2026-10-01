@@ -1854,7 +1854,7 @@ export default function InicioScreen() {
       <AppModal visible={budgetModalOpen} transparent onRequestClose={() => setBudgetModalOpen(false)}>
         <Sheet onClose={() => setBudgetModalOpen(false)}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Orçamento — {budgetCategory}</Text>
+              <Text style={styles.sheetTitle}>Orçamento de {budgetCategory}</Text>
               <AppPressable onPress={() => setBudgetModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
