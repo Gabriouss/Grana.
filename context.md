@@ -58,7 +58,7 @@ no `context.md`.
 
 ---
 
-# 01/10/2026 (M2) — excluir a ocorrência de uma assinatura não pegava (`a7c5c83`), migration NÃO aplicada
+# 01/10/2026 (M2) — excluir a ocorrência de uma assinatura não pegava (`a7c5c83`), migration APLICADA em produção
 
 **Pedido.** O autor, no dia em que a build 1.10.5 saiu: "já identifiquei que
 não está sendo possível excluir lançamentos da lista de débito/pix, precisa
@@ -106,10 +106,39 @@ por mutação nas duas metades. A migration foi EXECUTADA num Postgres de
 verdade (PGlite, no scratchpad): aplica duas vezes sem erro, só o dono marca,
 não duplica, recusa mês inválido com `22023`, `anon` sem execução.
 
-**Pendente, e bloqueia o efeito.** A migration NÃO foi aplicada em produção
-(esta sessão não tem permissão para escrever lá). Sem ela o app apaga e o mês
-volta, como hoje, e o log registra `PGRST202`. No Android o conserto só chega
-numa build nova. Nada verificado em aparelho.
+**Aplicada em produção em 01/10/2026**, pela Management API, com um token de
+24h que o autor forneceu na sessão ("aplique as migrations. Não dispararemos
+build ainda"). O token ficou num arquivo do scratchpad, fora do repositório e
+do vault, e foi apagado ao fim. Diferente de 23/09, o classificador de
+permissões desta vez deixou a escrita passar.
+
+Conferido por leitura logo depois: a coluna existe (`text[]`, `default '{}'`,
+`not null`), `authenticated` tem INSERT e UPDATE nela e EXECUTE na função,
+`anon` não tem EXECUTE, a função é `security invoker`, e os acentos chegaram
+inteiros na função e no comentário (a lição do T-UTF8). Nenhuma das 552
+linhas de `transactions` nasceu com mês pulado.
+
+**Provado de ponta a ponta em produção**, com o JWT da conta de teste passando
+pela RLS, nos mesmos dois passos de `deleteTransaction`: série AUDIT de agosto
+com setembro e outubro; apagar outubro devolve 1 linha; a RPC responde sem
+erro; a cabeça fica com `["2026-10"]`; `ocorrenciasFaltantes` (módulo real)
+devolve vazio para outubro e ainda devolve `2026-11-05` para o mês seguinte;
+mês inválido é recusado com `22023`. A série AUDIT foi apagada no fim, zero
+sobras.
+
+**O que ainda falta.** A web recebe a correção pelo deploy do `main`. No
+Android ela só chega numa build nova, e o autor decidiu não disparar build por
+enquanto: até lá, a 1.10.5 instalada continua apagando e vendo o mês voltar,
+porque o código dela não chama a função. Nada foi verificado em aparelho, e os
+dados da conta do autor não foram vistos.
+
+**Correção de um registro antigo.** A migration
+`20260930120000_principal_nunca_deixa_de_ser_principal.sql`, que o commit
+`8d7b461` da M1 descreve como "escrita, não aplicada", JÁ ESTÁ em produção:
+conferido em 01/10, o gatilho `proteger_wallet_principal` existe em
+`public.wallets`, e as 10 contas têm exatamente uma Principal cada. Ou seja,
+depois desta sessão não há migration do repositório pendente de aplicação
+que esta sessão conheça.
 
 **O vault da M2 está parado em 28/09.** O espelho do `context.md` e a última
 nota de sessão nesta máquina são de 28/09 02:05; a nota
