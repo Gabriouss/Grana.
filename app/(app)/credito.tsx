@@ -32,6 +32,7 @@ import {
   addCreditCard,
   deleteCreditCard,
   updateCreditCard,
+  contarMesesDaSerie,
   deleteTransaction,
   deleteInstallmentPurchase,
   encerrarSerieAPartirDe,
@@ -1168,7 +1169,10 @@ export default function CreditoScreen() {
     ]);
   }
 
-  function confirmDeleteTx(tx: Transaction) {
+  async function confirmDeleteTx(tx: Transaction) {
+    /* Origem de série encerrada parece lançamento avulso; a pergunta precisa
+       saber quantos meses saem junto (contarMesesDaSerie, lib/data.ts). */
+    const mesesDaSerie = isDemoMode ? 0 : await contarMesesDaSerie(tx);
     confirmarExclusaoDeLancamento(tx, {
       apagarEste: async () => {
         if (isDemoMode) {
@@ -1221,7 +1225,7 @@ export default function CreditoScreen() {
           Alert.alert('Erro ao encerrar a repetição', e.message);
         }
       },
-    });
+    }, { mesesDaSerie });
   }
 
   if (loading) {

@@ -21,9 +21,14 @@ export function confirmarExclusaoDeLancamento(
     /** Só oferecida quando o lançamento é a ocorrência de uma série mensal:
         apaga este e os dos meses seguintes e encerra a repetição. */
     encerrarSerie?: () => void;
-  }
+  },
+  /** `mesesDaSerie`: quantos lançamentos de outros meses saem junto com este
+      (`contarMesesDaSerie`, lib/data.ts). Sem ele a origem ENCERRADA parece
+      um lançamento avulso. */
+  opcoes?: { mesesDaSerie?: number }
 ): void {
   const parcelas = tx.installment_total ?? 1;
+  const mesesDaSerie = opcoes?.mesesDaSerie ?? 0;
   if (parcelas > 1 && acoes.apagarCompraInteira) {
     Alert.alert(
       'Excluir compra parcelada',
@@ -67,6 +72,28 @@ export function confirmarExclusaoDeLancamento(
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Só este mês', onPress: acoes.apagarEste },
         { text: 'Este e os próximos', style: 'destructive', onPress: acoes.encerrarSerie },
+      ]
+    );
+    return;
+  }
+  /* Origem que parou de repetir (`recurring = false`) mas ainda tem meses
+     ligados a ela. Apagar leva todos eles, inclusive os que "Este e os
+     próximos" tinha mantido de propósito, e a pergunta simples não dizia nada.
+     O texto descreve o `on delete cascade` de hoje: se o banco passar a
+     soltar as filhas ao apagar a origem (migration
+     20261001140000_origem_encerrada_solta_filhas), este aviso fica falso e
+     deve sair junto. */
+  if (!tx.parent_id && !tx.recurring && parcelas <= 1 && mesesDaSerie > 0) {
+    Alert.alert(
+      'Excluir a série inteira',
+      `"${tx.description}" é o primeiro lançamento de uma série que já parou de repetir, e ${
+        mesesDaSerie === 1 ? 'há 1 lançamento' : `há ${mesesDaSerie} lançamentos`
+      } de outros meses ligados a ele. Apagar este remove também ${
+        mesesDaSerie === 1 ? 'esse lançamento' : 'todos eles'
+      }, inclusive os de meses que já passaram.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir a série', style: 'destructive', onPress: acoes.apagarEste },
       ]
     );
     return;
