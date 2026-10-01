@@ -38,6 +38,7 @@ import AppDialog from '@/components/AppDialog';
 import MonthSelector from '@/components/MonthSelector';
 import { addBill, deleteBill, fetchBills, fetchCategories, payBill, reopenBill, updateBill } from '@/lib/data';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal } from '@/lib/offline-cache';
+import { mensagemExcluirBoleto } from '@/lib/excluir-boleto';
 import { guessAmountFromText, categoriaReconhecida, guessDescFromText, parseDiaVencimento, parseRecorrencia, matchWalletByText, limparReferenciaCarteira, citaCarteira } from '@/lib/heuristics';
 import { scheduleBillReminders, cancelBillReminders, carregarNotifPrefs } from '@/lib/notifications';
 import { hapticSuccess, hapticTap, hapticDelete } from '@/lib/haptics';
@@ -606,11 +607,7 @@ export default function ContasScreen() {
       <AppDialog
         visible={!!deleteTarget}
         title="Excluir boleto?"
-        message={deleteTarget
-          ? `Remover “${deleteTarget.description}”? ${deleteTarget.status === 'paid'
-            ? 'A saída já lançada quando ele foi pago continua em Lançamentos.'
-            : 'Os lembretes de vencimento dele também saem.'}`
-          : ''}
+        message={deleteTarget ? mensagemExcluirBoleto(deleteTarget, bills) : ''}
         confirmLabel="Excluir boleto"
         destructive
         onClose={() => setDeleteTarget(null)}

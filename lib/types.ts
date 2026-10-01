@@ -97,6 +97,8 @@ export type Bill = {
   due_date: string; // 'YYYY-MM-DD'
   status: BillStatus;
   recurring: boolean;
+  /** Cabeça da série mensal, nos boletos gerados por ela; apagar a cabeça apaga a série (cascade). */
+  parent_id?: string | null;
   /** Id da saída lançada automaticamente quando a conta foi paga */
   paid_transaction_id: string | null;
   /** Carteira vinculada ao boleto/conta fixa */
