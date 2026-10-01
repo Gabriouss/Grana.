@@ -58,6 +58,95 @@ no `context.md`.
 
 ---
 
+# 01/10/2026 (M2) — as três migrations do cartão APLICADAS e provadas em produção (17h47)
+
+**Pedido.** Minutos depois do encerramento, o autor voltou: "Aplique as 3
+migrations do cartão, você tem elas aí salvas?". Estavam no repositório, sem
+alteração desde o `ab25e2f` (26/09).
+
+**O que foi aplicado**, pela Management API, um arquivo por pedido, em LF, às
+17h47 de 01/10, nesta ordem, cada um com resposta 201:
+
+1. `20260923230300_voz_credito_exige_cartao.sql`: `registrar_operacao_voz`
+   recusa crédito sem cartão com `23514` e hint `cartao_obrigatorio`.
+2. `20260923230400_transacao_credito_exige_cartao.sql`: gatilho
+   `BEFORE INSERT` `exigir_cartao_no_credito` em `public.transactions`, com o
+   mesmo contrato.
+3. `20260926130000_transactions_sem_entrada_no_cartao.sql`: restrição
+   `transactions_entrada_nunca_no_cartao`.
+
+Desta vez a escrita passou pela permissão da sessão; uma hora antes o mesmo
+comando tinha sido barrado. A diferença visível entre as duas tentativas é a
+ordem explícita do autor. O token foi o de 24h que ele tinha dado de manhã,
+ainda válido; o arquivo foi apagado ao fim e o token segue por revogar.
+
+**Preflight repetido às 17h46**, igual ao das 16h39: nada aplicado, função de
+voz idêntica à `20260923230000`, zero entradas no cartão.
+
+**Conferido por leitura logo depois (15 checagens).** O corpo de
+`registrar_operacao_voz` e o de `exigir_cartao_no_credito` em produção têm o
+mesmo md5 do corpo das migrations, sem `\r`. As duas são `security definer`
+com `search_path` vazio. A função do gatilho não é executável por `PUBLIC`,
+`anon` nem `authenticated`. O gatilho é `BEFORE INSERT`, por linha, ligado.
+Os quatro gatilhos que já existiam em `transactions` continuam lá. A restrição
+nasceu validada. Os 38 créditos sem cartão continuam intocados, não há entrada
+no cartão, e a tabela segue com 553 lançamentos.
+
+**Provado de ponta a ponta com a conta de teste (23 checagens)**, pela API
+normal do app, com o JWT passando pela RLS:
+
+- insert direto no crédito sem cartão: `23514` com hint `cartao_obrigatorio`,
+  e o módulo REAL do app reconhece (`ehRecusaCartaoObrigatorio`, de
+  `lib/voice-operations.ts`); com cartão e no pix, passa;
+- entrada no crédito, ou no pix com `card_id`: `23514` pela restrição, e essa
+  recusa não se confunde com a de cartão obrigatório; entrada no pix passa;
+  editar uma compra no cartão para entrada também é recusado;
+- voz no crédito sem cartão: recusada com o mesmo contrato, sem deixar
+  lançamento nem operação pendente em `voice_operations`; com cartão grava,
+  com o cartão e a carteira certos; voz no pix pelo widget grava; compra em 3x
+  pelo Granabô grava as três parcelas;
+- `adicionar_compra_parcelada` sem cartão: recusada; com cartão, duas
+  parcelas;
+- série no crédito: o lote de ocorrências passa, o mês apagado não volta e o
+  mês seguinte nasce, no mesmo lote e sem erro.
+
+Dado AUDIT apagado no fim, zero sobras. A voz foi desfeita pelo caminho do
+próprio app (`desfazer_operacao_voz`): ficam em `voice_operations` nove
+operações da conta de teste com status `undone`, três por rodada da prova,
+que guardam só o hash do pedido.
+
+**O que muda para quem usa.** Nada na web nem na 1.10.5: os dois já pedem o
+cartão antes de enviar e tratam a recusa. Em build antiga:
+
+- 1.10.2: voz ou comprovante colado "no crédito" sem cartão dá "Erro ao
+  salvar" e a fala se perde; fala que já estava na fila offline fica tentando
+  para sempre.
+- Até a 1.10.4: importar fatura de cartão com linha de crédito (pagamento
+  recebido, devolução) recusa o arquivo inteiro.
+- Medido antes de aplicar: nenhum lançamento desses tipos nos últimos 14 dias.
+
+**Retorno, se precisar.** Reaplicar `20260923230000_voz_devolve_carteira.sql`
+desfaz a primeira. `drop trigger exigir_cartao_no_credito on
+public.transactions;` e `drop function public.exigir_cartao_no_credito();`
+desfazem a segunda. `alter table public.transactions drop constraint
+transactions_entrada_nunca_no_cartao;` desfaz a terceira.
+
+**Não verificado.**
+
+- [ ] A 1.10.5 no aparelho recebendo a recusa (a fala indo para "Qual
+  cartão?"). Só o módulo foi exercitado, fora do aparelho.
+- [ ] Um usuário real em build antiga batendo na recusa.
+- [ ] Revisão do Codex (regra 16): não foi pedida.
+
+**Isto supera** as linhas antigas deste arquivo que dizem "NUNCA aplicar" e
+"dias depois da build", e o estado "não aplicadas" das duas entradas de 01/10
+logo abaixo, corrigidas no lugar. Com isto, esta sessão não conhece migration
+do repositório que esteja SEGURADA de propósito. Não é o mesmo que afirmar que
+todas estão aplicadas: o registro de 28/09 lista treze rotinas antigas com
+corpo diferente do repositório, e a `20260929120000` não foi conferida aqui.
+
+---
+
 # 01/10/2026 (M2) — encerramento da sessão: o estado em que a M2 parou
 
 Sessão encerrada pelo autor às 17h40: "encerramos o trabalho hoje na M2,
@@ -78,11 +167,8 @@ nas entradas de 01/10 logo abaixo; aqui fica só o estado.
 **Pendente, com dono.**
 
 - **As três migrations do cartão** (`20260923230300`, `20260923230400` e
-  `20260926130000`): o autor autorizou em 01/10 e elas NÃO estão aplicadas.
-  Sondado de novo às 17h40 com a conta de teste: crédito sem cartão ainda é
-  aceito. A escrita foi barrada pela permissão da sessão. Fica com o autor,
-  pelo SQL Editor, na ordem da entrada abaixo; depois, conferir as recusas com
-  a conta de teste.
+  `20260926130000`): RESOLVIDO. Estavam sem aplicar às 17h40 e foram aplicadas
+  às 17h47, a pedido do autor. Ver a entrada do topo.
 - **Token do Supabase** que passou pelo chat em 01/10: revogar no painel. O
   arquivo foi apagado do disco.
 - **Build**: 1 de 3 na semana de 28/09 a 04/10 (a 1.10.5). O autor quer testar
@@ -112,7 +198,7 @@ worktree, nenhum stash, árvore limpa, local igual ao remoto.
 
 ---
 
-# 01/10/2026 (M2) — as três migrations do cartão: autorizadas e conferidas, NÃO aplicadas
+# 01/10/2026 (M2) — as três migrations do cartão: o preflight e a primeira tentativa, barrada (aplicadas depois, às 17h47)
 
 **Pedido.** Depois de ler que três migrations seguiam seguradas, o autor
 respondeu: "Pode publicar tudo, inclusive as migrations". Os commits
@@ -122,7 +208,9 @@ que a M1 segurava: `20260923230300_voz_credito_exige_cartao.sql`,
 `20260923230400_transacao_credito_exige_cartao.sql` e
 `20260926130000_transactions_sem_entrada_no_cartao.sql`.
 
-**Estado: NADA foi aplicado.** O comando que aplicaria a primeira foi recusado
+**Estado às 16h50: nada aplicado. Superado às 17h47**, quando as três foram
+aplicadas a pedido do autor (entrada do topo). O que segue é o registro da
+primeira tentativa. O comando que aplicaria a primeira foi recusado
 pelo classificador de permissões da sessão, antes de rodar, e uma leitura
 seguinte pela mesma via também. Não contornei. A execução fica com o autor,
 pelo roteiro que a M1 já tinha escrito para ele: SQL Editor do Supabase, um
@@ -329,8 +417,8 @@ compatibilidade com cliente antigo, como a M1 registrou em 28/09:
 de 27/09 é aplicá-las "dias depois da build". A 1.10.5 saiu em 01/10 e contém
 o `39e3144`, que o registro de 27/09 aponta como a parte do app para a
 `20260926130000`. Mais tarde, no mesmo dia, o autor mandou aplicar: ver a
-entrada do topo. Elas continuam NÃO aplicadas. A frase errada foi corrigida
-no lugar.
+entrada do topo. Foram aplicadas às 17h47 do mesmo dia. A frase errada foi
+corrigida no lugar.
 
 ---
 
