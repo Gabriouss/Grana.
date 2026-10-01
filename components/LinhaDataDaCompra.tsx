@@ -51,7 +51,10 @@ export function dataEscolhidaNoSeletor(iso: string, hojeISO: string): string {
 }
 
 const styles = StyleSheet.create({
-  linhaData: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touchTarget },
+  /* Com fonte grande (1.3), ícone, data e selo não cabem numa fileira: o
+     selo desce de linha, no fluxo (achado do P2, 30/09/2026). Sem encolher
+     o texto: grow/shrink em Text travaram a quebra no 424dd7a. */
+  linhaData: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, rowGap: spacing.xs, minHeight: touchTarget },
   textoData: { color: theme.ink, fontSize: type.corpo, fontFamily: fonts.regular },
   textoSemData: { color: theme.inkFaint, fontSize: type.corpo, fontFamily: fonts.regular },
   lido: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular, marginBottom: 2 },

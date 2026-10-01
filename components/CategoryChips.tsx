@@ -1,4 +1,4 @@
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { CATEGORIES } from '@/lib/types';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
@@ -22,7 +22,7 @@ export default function CategoryChips({
   const lista = [...CATEGORIES, ...extras.filter((c) => !nomesPadrao.has(c.name))];
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+    <View style={styles.row}>
       {lista.map((c) => {
         const selected = c.name === value;
         return (
@@ -43,16 +43,23 @@ export default function CategoryChips({
           </AppPressable>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { gap: spacing.xs, paddingVertical: spacing.xs },
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    maxWidth: '100%',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.pill,
@@ -61,5 +68,5 @@ const styles = StyleSheet.create({
   },
   chipHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  label: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
+  label: { flexShrink: 1, color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
 });

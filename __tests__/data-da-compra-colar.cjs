@@ -166,6 +166,16 @@ async function salvar() {
   let tela = colar('Pix enviado para Mercado AUDIT R$ 50,00 em 26/09/2026 18:42');
   ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 26 set 2026, lida do texto. Toque para mudar', 'a data do texto aparece no campo, com o selo');
   ok(!textos(tela).some((t) => /Também reconhecido:.*data/.test(t)), 'a data não aparece mais como chip em "Também reconhecido"');
+  {
+    /* Selo cortado a 1.3 (achado do P2, 30/09/2026): a linha quebra no fluxo,
+       e nenhum texto dela encolhe ou cresce (424dd7a). O estilo é provado
+       aqui; a geometria do Yoga em tela fica no P2, a 1.0 e 1.3. */
+    const linha = linhaData(tela);
+    const estilo = linha.props.style;
+    ok(estilo.flexWrap === 'wrap' && 'rowGap' in estilo && estilo.flexDirection === 'row', 'a linha "Data da compra" quebra quando não cabe (flexWrap + rowGap)');
+    const textos = achar(linha, (n) => n.type === 'Text');
+    ok(textos.length >= 2 && textos.every((t) => !('flexShrink' in (t.props.style ?? {})) && !('flexGrow' in (t.props.style ?? {}))), 'nenhum texto da linha usa flexShrink ou flexGrow');
+  }
   linhaData(tela).props.onPress();
   ok(seletor(render()).props.visible === true && seletor(render()).props.currentISO === '2026-09-26', 'o toque abre o seletor na data lida');
   seletor(render()).props.onSelectDate('2026-10-02');

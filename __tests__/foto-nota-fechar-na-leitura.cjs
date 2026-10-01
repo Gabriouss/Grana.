@@ -295,6 +295,16 @@ function prepararCamera() {
   tela = await fotografarNota('Cartao de Debito');
   ok(rotuloData(tela) === 'Data da compra: 2026-09-25, lida da foto. Toque para mudar', 'data do cupom com o selo "lida da foto"');
   ok(!achar(tela, (n) => n.type === 'Text' && /não parecia certa/.test(String(n.props.children))).length, 'sem dica quando a data foi aceita');
+  {
+    /* Selo cortado a 1.3 (achado do P2, 30/09/2026): a linha quebra no fluxo,
+       e nenhum texto dela encolhe ou cresce (424dd7a). O estilo é provado
+       aqui; a geometria do Yoga em tela fica no P2, a 1.0 e 1.3. */
+    const linha = achar(tela, (n) => /^Data da compra:/.test(String(n.props?.accessibilityLabel)))[0];
+    const estilo = linha.props.style;
+    ok(estilo.flexWrap === 'wrap' && 'rowGap' in estilo && estilo.flexDirection === 'row', 'foto: a linha "Data da compra" quebra quando não cabe (flexWrap + rowGap)');
+    const textos = achar(linha, (n) => n.type === 'Text');
+    ok(textos.length >= 2 && textos.every((t) => !('flexShrink' in (t.props.style ?? {})) && !('flexGrow' in (t.props.style ?? {}))), 'foto: nenhum texto da linha usa flexShrink ou flexGrow');
+  }
   achar(tela, (n) => /^Data da compra:/.test(String(n.props?.accessibilityLabel)))[0].props.onPress();
   ok(seletor(render()).props.visible === true && seletor(render()).props.currentISO === '2026-09-25', 'o toque abre o seletor na data lida');
   seletor(render()).props.onSelectDate('2026-10-03');
