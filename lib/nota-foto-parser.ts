@@ -37,7 +37,7 @@ const ROTULO_FORTE = /\b(VALOR\s+TOTAL|TOTAL\s+A\s+PAGAR|VALOR\s+A\s+PAGAR|TOTAL
 /** Só "TOTAL". Vale menos: aparece também em rodapés de tributos e de itens. */
 const ROTULO_FRACO = /\bTOTAL\b/;
 /** Linhas que têm a palavra total, mas falam de outra coisa. */
-const NAO_E_O_TOTAL = /SUBTOTAL|SUB\s+TOTAL|TROCO|DESCONTO|ACRESCIMO|TRIBUT|IMPOSTO|ITENS|QTD|QUANTIDADE|PAGO|RECEBIDO|APROXIMAD/;
+const NAO_E_O_TOTAL = /SUBTOTAL|SUB\s+TOTAL|TROCO|DESCONTO|ACRESCIMO|TRIBUT|IMPOSTO|ITENS|QTD|QUANTIDADE|PAGO|RECEBIDO|APROXIMAD|DESCRICAO|CODIGO|VL\.?\s*UNIT|UNIT\b/;
 
 function paraNumero(inteiro: string, centavos: string): number {
   return Number(inteiro.replace(/\./g, '') + '.' + centavos);
@@ -54,7 +54,22 @@ function normalizarRotulo(linha: string): string {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toUpperCase()
-    .replace(/0/g, 'O');
+    .replace(/0/g, 'O')
+    // "TOTAL" em negrito e espaçado ("T O T A L"), ou com o "T" lido como "I" ou "1".
+    .replace(/\b[TI1] ?O ?T ?A ?L\b/g, 'TOTAL')
+    // "VALORTOTAL" colado, quando o OCR perde o espaço do rótulo espaçado.
+    .replace(/\bVALORTOTAL\b/g, 'VALOR TOTAL');
+}
+
+/**
+ * Casas decimais com ponto ("7.49"), que o OCR devolve no lugar da vírgula
+ * quando o total vem em negrito e espaçado (cupom de 26/09/2026, visto no
+ * vídeo do autor em 01/10). Só vira vírgula o ponto com exatamente dois
+ * dígitos depois e nada de número, ponto ou barra em volta: "1.234,56",
+ * "26.09.26" e "12.741/2012" ficam como estão.
+ */
+function pontoDecimalParaVirgula(linha: string): string {
+  return linha.replace(/(?<![\d.,])(\d+) ?\. ?(\d{2})(?![\d.,/])/g, '$1,$2');
 }
 
 /** Linha que é só um valor, com ou sem "R$": onde o OCR deixa o número quando separa rótulo e valor. */
@@ -113,13 +128,68 @@ export function textoPorFileira(linhas: LinhaLida[]): string {
       fileiras.push({ centro: centro(linha), altura: linha.frame!.height, linhas: [linha] });
     }
   }
-  return fileiras
-    .map((f) => [...f.linhas].sort((a, b) => a.frame!.left - b.frame!.left).map((l) => l.text).join(' '))
-    .join('\n');
+  const textos = fileiras.map((f) => [...f.linhas].sort((a, b) => a.frame!.left - b.frame!.left).map((l) => l.text).join(' '));
+  fileiras.forEach((f, i) => {
+    const extra = valorDaFotoInclinada(f.linhas, validas);
+    if (extra) textos[i] += ' ' + extra;
+  });
+  return textos.join('\n');
+}
+
+/**
+ * Foto inclinada: o lado direito do cupom cai mais baixo que o esquerdo, e o
+ * "7.49" do total deixa de dividir a fileira com o "VALOR TOTAL:" (cupom de
+ * 26/09/2026: valor uns 18 px abaixo do rótulo, com linhas de 48 px; medido
+ * no quadro do vídeo, não na saída do ML Kit). O agrupamento por fileira não
+ * junta os dois, e o rótulo ficava sem valor. Aqui, rótulo de total sem valor
+ * na própria fileira procura, à direita dele, a linha que é SÓ um valor e a
+ * mais próxima na vertical. Só vale se a escolha for clara: dentro de uma
+ * altura de linha e bem mais perto que a segunda colocada. Na dúvida devolve
+ * nada e o campo fica em branco: melhor vazio do que o número da linha vizinha
+ * (o troco, o "Cartao de Credito").
+ */
+function valorDaFotoInclinada(linhasDaFileira: LinhaLida[], todas: LinhaLida[]): string | null {
+  const centro = (l: LinhaLida) => l.frame!.top + l.frame!.height / 2;
+  const texto = linhasDaFileira.map((l) => l.text).join(' ');
+  if (valoresDaLinha(pontoDecimalParaVirgula(texto)).length > 0) return null;
+  const rotulo = linhasDaFileira.find((l) => {
+    const t = normalizarRotulo(l.text);
+    return (ROTULO_A_PAGAR.test(t) || ROTULO_FORTE.test(t) || ROTULO_FRACO.test(t)) && !NAO_E_O_TOTAL.test(t);
+  });
+  if (!rotulo) return null;
+  const meio = rotulo.frame!.left + (rotulo.frame!.width ?? 0) / 2;
+  const candidatos = todas
+    .filter((l) => !linhasDaFileira.includes(l) && l.frame!.left > meio && soUmValor(pontoDecimalParaVirgula(l.text.trim())) !== null)
+    .map((l) => ({ l, dy: Math.abs(centro(l) - centro(rotulo)) }))
+    .sort((a, b) => a.dy - b.dy);
+  if (candidatos.length === 0) return null;
+  const altura = Math.max(rotulo.frame!.height, candidatos[0].l.frame!.height);
+  if (candidatos[0].dy > altura) return null;
+  if (candidatos.length > 1 && candidatos[1].dy - candidatos[0].dy < altura / 2) return null;
+  return candidatos[0].l.text.trim();
+}
+
+/**
+ * Resumo da leitura SEM o conteúdo da nota, para o log de desenvolvimento: os
+ * dígitos viram 9, então "VALOR TOTAL: 7.49" aparece como "VALOR TOTAL: 9.99".
+ * Mostra o que decide o resultado (formato do decimal, se rótulo e valor ficaram
+ * na mesma linha, se havia caixas) sem expor loja, itens nem valores. Só as
+ * linhas que falam de total entram, com a seguinte.
+ */
+export function diagnosticoDaLeitura(texto: string, total: TotalDaFoto, comCaixas: boolean): string {
+  const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const mascara = (l: string) => l.replace(/\d/g, '9').slice(0, 60);
+  const marcadas: string[] = [];
+  linhas.forEach((l, i) => {
+    if (/TOTAL|PAGAR|LIQUIDO/.test(normalizarRotulo(l))) {
+      marcadas.push(`#${i + 1} "${mascara(l)}"` + (i + 1 < linhas.length ? ` -> "${mascara(linhas[i + 1])}"` : ''));
+    }
+  });
+  return `linhas=${linhas.length} caixas=${comCaixas} resultado=${total.motivo} rotulos=[${marcadas.join(' | ')}]`;
 }
 
 export function extrairTotalDaFoto(texto: string): TotalDaFoto {
-  const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const linhas = texto.split(/\r?\n/).map((l) => pontoDecimalParaVirgula(l.trim())).filter(Boolean);
 
   for (const rotulo of [ROTULO_A_PAGAR, ROTULO_FORTE, ROTULO_FRACO]) {
     const distintos = [...new Set(candidatosDoRotulo(linhas, rotulo))];

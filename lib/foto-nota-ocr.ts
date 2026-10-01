@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { extrairTotalDaFoto, textoPorFileira, type TotalDaFoto } from './nota-foto-parser';
+import { diagnosticoDaLeitura, extrairTotalDaFoto, textoPorFileira, type TotalDaFoto } from './nota-foto-parser';
 
 export type LeituraDaFoto =
   | { ok: true; texto: string; total: TotalDaFoto }
@@ -66,8 +66,22 @@ export async function lerTotalDaFoto(uri: string): Promise<LeituraDaFoto> {
   if (!reconhecedor) return { ok: false, motivo: 'indisponivel' };
   try {
     const resultado = await reconhecedor.recognize(uri);
-    const texto = textoPorFileira(resultado.blocks.flatMap((b) => b.lines));
-    return { ok: true, texto, total: extrairTotalDaFoto(texto) };
+    const linhas = resultado.blocks.flatMap((b) => b.lines);
+    const texto = textoPorFileira(linhas);
+    const total = extrairTotalDaFoto(texto);
+    /* Só em desenvolvimento: a causa de "Não achei o valor total" no cupom de
+       26/09/2026 nunca foi vista na saída real do ML Kit. Os dígitos saem
+       mascarados (9), então o log mostra o formato do decimal e a linha do
+       rótulo sem expor loja, itens nem valores. */
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      try {
+        const comCaixas = linhas.length > 0 && linhas.every((l) => !!l.frame && l.frame.height > 0);
+        console.log('[foto-nota] leitura:', diagnosticoDaLeitura(texto, total, comCaixas));
+      } catch {
+        /* diagnóstico nunca derruba a leitura */
+      }
+    }
+    return { ok: true, texto, total };
   } catch (e: any) {
     if (String(e?.message).includes("doesn't seem to be linked")) {
       console.warn('[foto-nota] módulo nativo ausente nesta build');

@@ -12,7 +12,7 @@ const js = ts.transpileModule(fs.readFileSync('lib/nota-foto-parser.ts', 'utf8')
 }).outputText;
 const mod = { exports: {} };
 vm.runInNewContext(js, { exports: mod.exports, module: mod, Number, Set, RegExp, String, Math });
-const { extrairTotalDaFoto, textoPorFileira } = mod.exports;
+const { extrairTotalDaFoto, textoPorFileira, diagnosticoDaLeitura } = mod.exports;
 
 let ok = 0;
 function caso(nome, texto, valorTotal, motivo) {
@@ -112,5 +112,78 @@ caso('fileiras vizinhas não se misturam',
   assert.ok(r.valorTotal === null || r.valorTotal === 18.75, JSON.stringify(r));
   ok++; console.log('  ok  foto torta: ou acha o valor certo, ou deixa em branco');
 }
+
+/* Cupom de 26/09/2026 (video do autor, 01/10): "VALOR TOTAL:" em negrito
+   espacado. HIPOTESE, nao fato: a saida real do ML Kit nao foi vista; estes
+   casos cobrem as duas formas plausiveis (ponto no lugar da virgula, "IOTAL"). */
+caso('ponto decimal no lugar da virgula (7.49)',
+  'MERCADINHO\nQTD. TOTAL DE ITENS 1\nVALOR TOTAL: 7.49\nDINHEIRO 10,00', 7.49, 'ok');
+caso('ponto decimal com espaco em volta e R$',
+  'MERCADINHO\nVALOR TOTAL R$ 7 . 49', 7.49, 'ok');
+caso('T de TOTAL lido como I',
+  'MERCADINHO\nVALOR IOTAL: 7,49', 7.49, 'ok');
+caso('T de TOTAL lido como 1, com ponto decimal',
+  'MERCADINHO\nVALOR 1OTAL 7.49', 7.49, 'ok');
+caso('data 26.09.26 e lei 12.741/2012 nao viram valor',
+  'MERCADINHO\nEmissao 26.09.26 20:10\nLei 12.741/2012 tributos 1,10\nVALOR TOTAL', null, 'sem_total');
+caso('milhar com ponto continua milhar',
+  'LOJA\nVALOR TOTAL 1.234,56', 1234.56, 'ok');
+
+/* O CUPOM DO VIDEO (NFC-e, Mercadinho, 26/09/2026), com as caixas medidas no
+   quadro do video. FATO, visto na imagem: o proprio cupom imprime o total em
+   negrito com PONTO ("7.49"), as outras linhas com virgula, e a foto esta
+   inclinada (o lado direito cai ~18 px abaixo do esquerdo). NAO e fato: o que o
+   ML Kit devolveu; cada variacao abaixo e uma saida plausivel dele. */
+const cupomLinhas = (valorTotal, rotulo = 'VALOR TOTAL:', desce = 18) => [
+  L('Item Codigo Descricao Qtde. Unid. Vl.unit. Valor total', 35, 85, 36),
+  L('001 0789644549120 ENERGETICO NIGHT POWER LT 473ML', 80, 85, 36),
+  L('1 unid X 7,49', 128, 85, 30), L('7,49', 128 + desce, 1220, 34),
+  L(rotulo, 215, 85, 44), L(valorTotal, 215 + desce, 1150, 48),
+  L('Cartao de Credito', 270, 85, 32), L('7,49', 270 + desce, 1215, 34),
+  L('Valor aprox. dos trib. (Lei Federal 12.741/2012)', 325, 85, 32), L('R$ 2,63', 325 + desce, 1160, 34),
+  L('Trib. aprox.: Federal R$1,13 Estadual R$1,50 Municipal R$0,00', 380, 85, 32),
+  L('26/09/26 13:30 LJ1 OP000197 CX005 SQ824787', 530, 285, 44),
+];
+for (const [nome, valor, rotulo] of [
+  ['cupom do video, decimal com ponto', '7.49', 'VALOR TOTAL:'],
+  ['cupom do video, decimal com virgula', '7,49', 'VALOR TOTAL:'],
+  ['cupom do video, ponto com espaco', '7 .49', 'VALOR TOTAL:'],
+  ['cupom do video, R$ e ponto', 'R$ 7.49', 'VALOR TOTAL:'],
+  ['cupom do video, rotulo IOTAL', '7.49', 'VALOR IOTAL:'],
+  ['cupom do video, rotulo com zero no lugar do O', '7.49', 'VAL0R T0TAL:'],
+  ['cupom do video, rotulo espacado T O T A L', '7.49', 'VALOR T O T A L:'],
+  ['cupom do video, rotulo colado VALORTOTAL', '7.49', 'VALORTOTAL:'],
+]) {
+  for (const desce of [0, 18, 24]) {
+    caso(nome + ', foto desalinhada ' + desce + ' px', textoPorFileira(cupomLinhas(valor, rotulo, desce)), 7.49, 'ok');
+  }
+}
+caso('cupom do video em texto corrido (sem caixas), rotulo e valor na mesma linha',
+  'Item Codigo Descricao Qtde. Unid. Vl.unit. Valor total\n1 unid X 7,49 7,49\nVALOR TOTAL: 7.49\nCartao de Credito 7,49\nValor aprox. dos trib. (Lei Federal 12.741/2012) R$ 2,63', 7.49, 'ok');
+caso('cupom do video, rotulo e valor em linhas separadas, cabecalho "Valor total" antes',
+  'Item Codigo Descricao Qtde. Unid. Vl.unit. Valor total\n001 0789644549120 ENERGETICO\nVALOR TOTAL:\n7.49\nCartao de Credito 7,49', 7.49, 'ok');
+/* Foto torta com linhas vizinhas a pouca distancia: sem escolha clara, o campo fica em branco. */
+caso('valor a direita mais de uma altura abaixo do rotulo, com outra linha no meio: em branco',
+  textoPorFileira([L('VALOR TOTAL:', 100, 40, 40), L('Cartao de Credito', 170, 40, 40), L('7.49', 220, 900, 40)]), null, 'sem_total');
+caso('rotulo sem nenhum valor a direita: em branco',
+  textoPorFileira([L('VALOR TOTAL:', 100, 40, 40), L('Cartao de Credito', 150, 40, 40)]), null, 'sem_total');
+caso('foto inclinada: o valor cai na fileira da linha de baixo e o rotulo o pega pela proximidade',
+  textoPorFileira([L('VALOR TOTAL:', 100, 40, 40), L('7.49', 128, 900, 40), L('Cartao de Credito', 130, 40, 40)]), 7.49, 'ok');
+{
+  const txt = ['MERCADINHO TRMAOS GEMEOS', 'VALOR TOTAL:', '7.49', 'Cartao de Credito 7,49'].join('\n');
+  const d = diagnosticoDaLeitura(txt, extrairTotalDaFoto(txt), true);
+  assert.ok(!/[1-8]/.test(d.replace(/linhas=\d+|#\d+/g, '')), 'diagnostico nao pode conter digitos de valor: ' + d);
+  assert.ok(d.includes('"VALOR TOTAL:" -> "9.99"') && d.includes('resultado=ok'), d);
+  assert.ok(!d.includes('MERCADINHO'), 'nao expoe a loja');
+  ok++; console.log('  ok  diagnostico de dev mascara digitos e nao expoe loja: ' + d);
+}
+/* Total com varios itens: a linha de item nao vira o total. */
+caso('varios itens: o total e o da linha de TOTAL, nao o primeiro item',
+  textoPorFileira([
+    L('Item Codigo Descricao Qtde. Unid. Vl.unit. Valor total', 35, 85, 36),
+    L('ENERGETICO 1 X 7,49', 80, 85, 36), L('7,49', 98, 1220, 34),
+    L('AGUA 1 X 3,00', 128, 85, 36), L('3,00', 146, 1220, 34),
+    L('VALOR TOTAL:', 215, 85, 44), L('10.49', 233, 1150, 48),
+  ]), 10.49, 'ok');
 
 console.log('\n' + ok + '/' + ok + ' checagens do parser da foto da nota passaram\n');
