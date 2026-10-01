@@ -58,6 +58,52 @@ no `context.md`.
 
 ---
 
+# 01/10/2026 (M2) — teto de 3 builds por semana, de segunda a domingo (regra 22)
+
+**Pedido.** O autor: "Tendo conhecimento de que temos apenas 15 builds por
+mês, gostaria de definir um teto de disparo de builds por semana". Propus 3,
+com janela móvel de sete dias; ele decidiu "3 por semana, segunda a domingo".
+
+**O motivo, medido no histórico.** Preparos de build por semana: 17/08, cinco;
+31/08, oito; 07/09, nove; depois um por semana. A cota de um mês foi gasta em
+duas semanas, e em 22/09 a 1.10.4 foi recusada pelo EAS por cota esgotada.
+Três por semana gastam 12 a 13 e deixam 2 ou 3 de reserva.
+
+**O que foi feito.** Regra 22 no `AGENTS.md` e trava em
+`npm run build:preparar`: `scripts/teto-de-builds.ts` (função pura) conta, no
+histórico do git, os commits da semana que mudaram `"version"` no `app.json`,
+e o script recusa a quarta com "BLOQUEADO", sem tocar no `app.json`. Faz
+`git fetch` antes de contar. `--emergencia` libera fora do teto, só com pedido
+explícito do autor na sessão. Na saída normal ele diz "Build N de 3 desta
+semana".
+
+**Estado em 01/10:** a semana de 28/09 a 04/10 tem 1 build (a 1.10.5).
+Restam 2.
+
+**Escolhas e o que deu errado.**
+
+- Conta o PREPARO, não o sucesso: build recusada pelo EAS também conta.
+  Consultar o EAS daria o número exato, mas exigiria login e rede, e errar
+  para mais só pede uma liberação.
+- A primeira versão da busca devolveu ZERO builds, sem erro: o padrão do
+  `git log -G` tinha aspas e barra invertida, e no Windows os dois se perdem a
+  caminho do git. Uma contagem vazia liberaria toda build em silêncio. O
+  padrão ficou sem aspas e sem barra, e o motivo está escrito no script.
+- Eu tinha dito ao autor que setembro teve "três builds". Estava errado: eu
+  tinha contado só os commits com "prepara build" no assunto. Pela mudança de
+  versão foram dezenove.
+- Sem histórico legível o script RECUSA. Isso quebrou o teste vizinho
+  (`corpus-env-fora-da-build`), que rodava o script numa pasta sem git; o
+  cenário dele passou a criar um repositório.
+
+**Verificação.** `tsc` limpo, `test:ci` verde. `corpus-teto-de-builds.ts`, 29
+checagens: a conta com datas locais e o script REAL num repositório
+descartável (três preparos passam, o quarto é recusado sem escrever, a
+emergência libera). Conferido por mutação: ignorar o teto ou começar a semana
+no domingo derruba sete checagens cada. **Não verificado:** o script não foi
+rodado no repositório de verdade, porque isso subiria a versão.
+
+---
 # 01/10/2026 (M2) — excluir a ocorrência de uma assinatura não pegava (`a7c5c83`), migration APLICADA em produção
 
 **Pedido.** O autor, no dia em que a build 1.10.5 saiu: "já identifiquei que

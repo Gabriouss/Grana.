@@ -29,10 +29,12 @@
  * para o servidor (ver `env-fora-da-build.ts`): a 1.10.2 levou os segredos da
  * máquina que buildou, e uma build preparada aqui não pode repetir isso.
  */
+import { execFileSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { validarNotaRelease } from '../lib/notas-release';
 import { variaveisNoPacoteDaBuild } from './env-fora-da-build';
+import { situacaoDoTeto } from './teto-de-builds';
 
 const APP_JSON = join(__dirname, '..', 'app.json');
 
@@ -45,10 +47,12 @@ const grau: 'patch' | 'minor' | 'major' = args.includes('--major')
   : args.includes('--minor')
     ? 'minor'
     : 'patch';
-const mensagem = args.filter((a) => a !== '--major' && a !== '--minor').join(' ').trim();
+/* Só com pedido explícito do autor na sessão (regra 22 do AGENTS.md). */
+const emergencia = args.includes('--emergencia');
+const mensagem = args.filter((a) => a !== '--major' && a !== '--minor' && a !== '--emergencia').join(' ').trim();
 
 if (!mensagem.trim()) {
-  console.error('Uso: npm run build:preparar -- ["--minor" | "--major"] "<mensagem do build>"');
+  console.error('Uso: npm run build:preparar -- ["--minor" | "--major"] ["--emergencia"] "<mensagem do build>"');
   process.exit(2);
 }
 
@@ -62,6 +66,49 @@ if (pacote.vaoNoPacote.length > 0) {
   console.error('ou acrescente ao .easignore as linhas ".env", ".env.*" e "!.env.example".');
   console.error('Nenhum arquivo foi alterado. Ver o alerta no topo do AGENTS.md e a regra 15.');
   process.exit(1);
+}
+
+/* Teto de 3 builds por semana, de segunda a domingo (regra 22 do AGENTS.md).
+   O livro-caixa é o histórico do git: cada preparo sobe "version" no
+   app.json, e o histórico é o mesmo nas duas máquinas.
+
+   O padrão do `-G` não usa aspas nem barra invertida, de propósito: no Windows
+   os dois se perdem a caminho do git e a busca volta VAZIA, sem erro — o que
+   liberaria toda build em silêncio. Foi o que aconteceu na primeira versão
+   desta contagem, em 01/10/2026. */
+const RAIZ = join(__dirname, '..');
+try {
+  execFileSync('git', ['fetch', 'origin', '--quiet'], { cwd: RAIZ, stdio: 'ignore', timeout: 30_000 });
+} catch {
+  console.error('AVISO — não consegui consultar o GitHub. A contagem de builds da semana usa só o que');
+  console.error('já está nesta máquina, e pode faltar o que a outra máquina preparou.\n');
+}
+let datasDosPreparos: string[];
+try {
+  datasDosPreparos = execFileSync(
+    'git',
+    ['log', 'HEAD', 'origin/main', '--since=21 days ago', '--format=%cI', '-G', '.version.: *.[0-9]+[.][0-9]+[.][0-9]+.', '--', 'app.json'],
+    { cwd: RAIZ, encoding: 'utf8' }
+  ).split('\n').filter(Boolean);
+} catch (erro) {
+  /* Sem contagem não há como afirmar que cabe. Recusar é o lado seguro: a
+     cota é justamente o que o teto existe para proteger. */
+  console.error('BLOQUEADO — não consegui ler o histórico do git para contar as builds da semana.');
+  console.error(String((erro as Error)?.message ?? erro));
+  console.error('Nenhum arquivo foi alterado.');
+  process.exit(1);
+}
+const teto = situacaoDoTeto(datasDosPreparos, new Date());
+if (!teto.podePreparar && !emergencia) {
+  console.error(`BLOQUEADO — esta semana já teve ${teto.feitos} builds, e o teto é ${teto.teto} (segunda a domingo).\n`);
+  for (const iso of teto.daSemana) console.error('  ' + new Date(iso).toLocaleString('pt-BR'));
+  console.error(`\nO teto zera na segunda, ${teto.zeraEm.toLocaleDateString('pt-BR')}. A cota do EAS é de 15 por mês nas duas`);
+  console.error('máquinas juntas, e o teto guarda a reserva do fim do mês. Se o autor pedir esta build mesmo');
+  console.error('assim, NESTA sessão, repita o comando com --emergencia. Nenhum arquivo foi alterado.');
+  process.exit(1);
+}
+if (!teto.podePreparar && emergencia) {
+  console.error(`ATENÇÃO — fora do teto: esta será a build ${teto.feitos + 1} da semana (teto ${teto.teto}), liberada por --emergencia.\n`);
 }
 
 const problemas = validarNotaRelease(mensagem);
@@ -93,6 +140,7 @@ const versaoAntiga = `${major}.${minor}.${patch}`;
 writeFileSync(APP_JSON, bruto.replace(linhaCompleta, linhaCompleta.replace(`"${versaoAntiga}"`, `"${versaoNova}"`)));
 
 console.log(`OK — app.json: ${versaoAntiga} → ${versaoNova}`);
+console.log(`Build ${teto.feitos + 1} de ${teto.teto} desta semana (o teto zera na segunda, ${teto.zeraEm.toLocaleDateString('pt-BR')}).`);
 console.log('\nNota aprovada:\n');
 console.log('  ' + mensagem.split('\n').join('\n  '));
 console.log('\nPode buildar:\n');

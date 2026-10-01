@@ -131,11 +131,25 @@ const projeto = mkdtempSync(join(tmpdir(), 'grana-preparar-'));
 try {
   mkdirSync(join(projeto, 'scripts'));
   mkdirSync(join(projeto, 'lib'));
-  for (const arquivo of ['scripts/preparar-lancamento.ts', 'scripts/env-fora-da-build.ts', 'lib/notas-release.ts']) {
+  for (const arquivo of ['scripts/preparar-lancamento.ts', 'scripts/env-fora-da-build.ts', 'scripts/teto-de-builds.ts', 'lib/notas-release.ts']) {
     copyFileSync(join(RAIZ, arquivo), join(projeto, arquivo));
   }
   const APP = '{\n  "expo": {\n    "version": "1.0.0"\n  }\n}\n';
   writeFileSync(join(projeto, 'app.json'), APP);
+  /* Desde 01/10/2026 o preparo conta as builds da semana no histórico do git
+     (regra 22), e recusa quando não consegue ler histórico nenhum. A cópia
+     temporária precisa, então, ser um repositório, com o commit que cria o
+     app.json datado no passado para não contar como build desta semana. O
+     teto em si tem teste próprio, em corpus-teto-de-builds.ts. */
+  const git = (args: string[], env: NodeJS.ProcessEnv = process.env) =>
+    execFileSync('git', args, { cwd: projeto, stdio: 'ignore', env });
+  const passado = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  git(['init', '-q', '-b', 'master']);
+  git(['config', 'user.email', 'teste@exemplo.com']);
+  git(['config', 'user.name', 'Teste']);
+  git(['add', 'app.json']);
+  git(['commit', '-q', '-m', 'base'], { ...process.env, GIT_COMMITTER_DATE: passado, GIT_AUTHOR_DATE: passado });
+  git(['update-ref', 'refs/remotes/origin/main', 'HEAD']);
   writeFileSync(join(projeto, '.env'), 'SEGREDO=de-mentira\n');
   writeFileSync(join(projeto, '.easignore'), easignoreDe0109);
 

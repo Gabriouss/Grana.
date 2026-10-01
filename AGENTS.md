@@ -873,3 +873,39 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       decisão de 26/09, que tinha encerrado o estático e mantido o vídeo,
       fica suspensa neste intervalo: vídeo também para. Trabalho no app, na
       landing e em texto que não seja peça de campanha continua permitido.
+
+22. **No máximo 3 builds por semana, de segunda a domingo.** Regra dada pelo
+    autor em 01/10/2026: "Tendo conhecimento de que temos apenas 15 builds por
+    mês, gostaria de definir um teto de disparo de builds por semana", e em
+    seguida: "3 por semana, segunda a domingo".
+
+    O motivo está no histórico. A cota do EAS é de 15 builds por mês, somadas
+    as duas máquinas (regra 4). A semana de 31/08 teve oito preparos de build e
+    a de 07/09 teve nove: a cota de um mês foi gasta em duas semanas. Em
+    22/09/2026 a 1.10.4 foi preparada e o EAS recusou por cota esgotada, com o
+    reset só em 01/10, e a correção do widget de voz ficou nove dias sem
+    chegar ao aparelho. Três por semana gastam 12 a 13 no mês e deixam 2 ou 3
+    de reserva para a emergência do fim do mês.
+
+    - **A semana vai de segunda 00:00 a domingo 23:59, na hora local.** Não é
+      janela móvel de sete dias: o autor escolheu a semana de calendário. Build
+      de domingo à noite pertence à semana que está acabando.
+    - **O que conta é o preparo, não o sucesso.** Cada `npm run build:preparar`
+      sobe `"version"` no `app.json`, e é esse commit que entra na conta. Build
+      que o EAS recusou depois também conta: errar para mais só pede uma
+      liberação, errar para menos gasta a cota.
+    - **A trava é do script, não da memória de ninguém.** `build:preparar`
+      conta os preparos da semana no histórico do git (`scripts/teto-de-builds.ts`),
+      que é o mesmo nas duas máquinas, e se recusa a preparar a quarta, saindo
+      com "BLOQUEADO" e sem tocar no `app.json`. Ele faz `git fetch` antes de
+      contar; sem rede, avisa que a contagem pode estar incompleta.
+    - **`--emergencia` libera a build fora do teto, e só com pedido explícito do
+      autor NESTA sessão.** Pedido de sessão anterior não vale, pela mesma
+      lógica da regra 4. Ao usar, diga ao autor quantas builds a semana já teve
+      e quantas restam no mês.
+    - **Antes de propor uma build, diga o saldo.** "Esta seria a build 2 de 3
+      desta semana" é informação que o autor precisa para decidir, e ela sai de
+      graça do script.
+    - **Não contorne chamando `eas build` direto.** A regra 5 já proíbe pular o
+      `build:preparar`; aqui o motivo é outro, e é a cota. Junte correções numa
+      build só em vez de disparar uma por correção.
