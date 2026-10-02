@@ -4889,3 +4889,36 @@ drop trigger if exists ignorar_ocorrencia_de_mes_pulado on public.transactions;
 create trigger ignorar_ocorrencia_de_mes_pulado
   before insert on public.transactions
   for each row execute function public.ignorar_ocorrencia_de_mes_pulado();
+
+-- Ver 20261001140000: apagar a origem de uma serie ENCERRADA (recurring = false)
+-- solta as filhas em vez de leva-las em cascata.
+create or replace function public.soltar_filhas_da_origem_encerrada()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if old.recurring is not distinct from true
+     or coalesce(old.installment_total, 1) > 1 then
+    return null;
+  end if;
+
+  update public.transactions
+     set parent_id = null,
+         recurring = false
+   where parent_id = old.id
+     and user_id = old.user_id
+     and coalesce(installment_total, 1) <= 1;
+
+  return null;
+end;
+$$;
+
+revoke all on function public.soltar_filhas_da_origem_encerrada()
+  from public, anon, authenticated;
+
+drop trigger if exists "A0_soltar_filhas_da_origem_encerrada" on public.transactions;
+create trigger "A0_soltar_filhas_da_origem_encerrada"
+  after delete on public.transactions
+  for each row execute function public.soltar_filhas_da_origem_encerrada();
