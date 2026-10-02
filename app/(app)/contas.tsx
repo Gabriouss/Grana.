@@ -607,7 +607,7 @@ export default function ContasScreen() {
       <AppDialog
         visible={!!deleteTarget}
         title="Excluir boleto?"
-        message={deleteTarget ? mensagemExcluirBoleto(deleteTarget, bills) : ''}
+        message={deleteTarget ? mensagemExcluirBoleto(deleteTarget) : ''}
         confirmLabel="Excluir boleto"
         destructive
         onClose={() => setDeleteTarget(null)}
