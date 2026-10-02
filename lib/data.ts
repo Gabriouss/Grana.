@@ -606,37 +606,6 @@ export async function encerrarSerieAPartirDe(
 }
 
 /**
- * Quantos lançamentos de outros meses dependem deste por `parent_id` e saem
- * junto se ele for apagado (`on delete cascade`).
- *
- * Existe para a pergunta de excluir. Uma origem de série que parou de repetir
- * (`recurring = false`, por "Este e os próximos" ou por edição) é igual a um
- * lançamento avulso na tela, mas apagá-la leva embora todos os meses que
- * ficaram. Só consulta quando o lançamento PODE ser origem; ocorrência,
- * parcela e origem ainda ativa já têm pergunta própria. Falha de rede devolve
- * `undefined` (e fica no log): a pergunta cai no texto simples, como antes.
- */
-export async function contarMesesDaSerie(
-  tx: Pick<Transaction, 'id' | 'parent_id' | 'recurring' | 'installment_total'>
-): Promise<number | undefined> {
-  if (tx.parent_id || tx.recurring || (tx.installment_total ?? 1) > 1) return 0;
-  try {
-    const user_id = await currentUserId();
-    const { count, error } = await supabase
-      .from('transactions')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user_id)
-      .eq('parent_id', tx.id)
-      .or('installment_total.is.null,installment_total.lte.1');
-    if (error) throw error;
-    return count ?? 0;
-  } catch (e) {
-    console.warn('[excluir] não deu para contar os meses da série', e);
-    return undefined;
-  }
-}
-
-/**
  * Apaga a compra parcelada INTEIRA, a partir de qualquer uma das parcelas.
  *
  * Até 19/09/2026 só existia apagar parcela por parcela: tirar a "(2/3)" deixava

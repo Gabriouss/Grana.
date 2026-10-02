@@ -26,7 +26,7 @@ import { useTabBarInset } from '@/lib/tab-bar';
 import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
-import { addBill, contarMesesDaSerie, deleteBudget, deleteInstallmentPurchase, deleteTransaction, encerrarSerieAPartirDe, fetchBills, fetchBudgets, fetchCardInvoicePayments, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
+import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, encerrarSerieAPartirDe, fetchBills, fetchBudgets, fetchCardInvoicePayments, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
@@ -1023,9 +1023,6 @@ export default function InicioScreen() {
   async function handleDeleteSelectedTx() {
     const tx = selectedTx;
     if (!tx) return;
-    /* Origem de série encerrada parece lançamento avulso; a pergunta precisa
-       saber quantos meses saem junto (contarMesesDaSerie, lib/data.ts). */
-    const mesesDaSerie = isDemoMode ? 0 : await contarMesesDaSerie(tx);
     confirmarExclusaoDeLancamento(tx, {
       apagarEste: async () => {
         if (isDemoMode) {
@@ -1077,7 +1074,7 @@ export default function InicioScreen() {
           Alert.alert('Erro ao encerrar a repetição', e.message);
         }
       },
-    }, { mesesDaSerie });
+    });
   }
 
   async function handleCreateGoal(input: { title: string; target_amount: number; color: string; icon: string; deadline: string | null }) {
