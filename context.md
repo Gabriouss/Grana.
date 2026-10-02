@@ -58,6 +58,68 @@ no `context.md`.
 
 ---
 
+# 02/10/2026 (M2) — o que a M1 publicou na noite de 01/10 (9 commits), conferido, e o aviso falso retirado
+
+**Origem deste registro.** A M1 publicou nove commits entre 20h37 e 20h51 de
+01/10 (`da997fb` a `79e2c4f`) sem tocar no `context.md`: o único registro eram
+as mensagens dos commits. O autor pediu à M2 que recolhesse o contexto pelo
+git, sem confiar no vault (parado por falha do Drive). Conferido em 02/10: o
+`main` foi puxado para `79e2c4f`, `tsc` limpo e `test:ci` verde. Nada da M1
+de 02/10 estava publicado às 13h38. Os achados que os commits citam (Q3, Q5,
+L-A1, L-A2, "Keel") vêm de uma auditoria de 01/10 cujo relatório não está no
+repositório.
+
+**O que a M1 fez.**
+
+- `da997fb`, `79e2c4f` (fila offline): `setQueue` deixa de engolir erro, e a
+  tela de quem guarda sem rede mostra o erro em vez de "guardado". Fila
+  ilegível é preservada em `:corrompida` antes de devolver vazia. Se a
+  gravação final da rodada falha (item já enviado que não sai da fila), a
+  rodada captura, loga, publica notificação e reagenda. Meta não tem
+  `client_request_id`: o item ganha `tentadoEm`, gravado ANTES do envio, e o
+  reenvio confere `metaJaGravada` (`lib/goals.ts`) para não criar duas.
+- `1b653b7` (cache): o mapa de respostas atrasadas de `lib/cache-de-tela.ts`
+  passa a ter dono (`userId`) e geração. Resposta que sai antes de uma escrita
+  de lançamento ou da saída da conta é descartada. Fecha o item "não é
+  invalidado por escrita" desta nota, SÓ para lançamento: boleto, orçamento e
+  meta ainda não chamam `invalidarRespostasAtrasadas`.
+- `9f550d5`, `d0e2551`, `7c33b5f` (série): achado do Keel sobre o nosso "Este e
+  os próximos" (`c4ebad3`): a origem que parou de repetir parece lançamento
+  avulso, mas `parent_id` é cascade e apagá-la levava os meses antigos. A M1
+  avisou na pergunta, avisou nos boletos (`lib/excluir-boleto.ts`, cascade de
+  `bills.parent_id`) e escreveu a migration
+  `20261001140000_origem_encerrada_solta_filhas.sql`: gatilho `AFTER DELETE`
+  `A0_soltar_filhas_da_origem_encerrada`, que solta as filhas da origem com
+  `recurring = false` como lançamentos comuns. O nome começa com `A0_` para
+  disparar antes do cascade (`RI_`); `BEFORE` quebrava a exclusão da conta
+  (27000, provado no PGlite).
+- `7804d57` (crédito): fatura que atravessa dois meses lista outubro antes de
+  setembro (`ordenarLancamentosRecentesPrimeiro`, `lib/creditoFaturas.ts`).
+- `3f2f318` (foto da nota): o parser lê total com ponto decimal (7.49),
+  "IOTAL", "T O T A L" e foto inclinada. O cupom veio de um quadro de vídeo;
+  a saída real do ML Kit no aparelho NÃO foi vista.
+- `bd58983` (copy): diagnóstico sem travessão.
+
+**Divergência achada e resolvida pela M2.** A mensagem do `7c33b5f` diz "NÃO
+aplicada", mas a migration ESTÁ em produção: sonda de 02/10 com a conta de
+teste (origem encerrada com duas filhas, origem apagada, as filhas sobraram com
+`parent_id` nulo e `recurring` falso; zero sobras AUDIT). A M1 aplicou depois
+de commitar e não registrou. Com isso o aviso novo da pergunta ("apagar leva
+todos os meses") ficou FALSO, e a própria migration mandava retirá-lo ao ser
+aplicada. Foi retirado: `contarMesesDaSerie`, a opção `mesesDaSerie` da
+pergunta e as chamadas nas três telas saíram, e a origem encerrada volta a ser
+a pergunta simples. O aviso dos boletos fica: a migration não toca em `bills`.
+`__tests__/excluir-lancamento.cjs` (28 checagens) trava a volta do aviso.
+
+**Ainda aberto.**
+
+- [ ] Boleto, orçamento e meta invalidando `invalidarRespostasAtrasadas`.
+- [ ] A M1 registrar a aplicação da `20261001140000` (quando, por quem).
+- [ ] Foto da nota com cupom real no aparelho; fila e cache no aparelho.
+- [ ] Revisão do Codex (regra 16) de qualquer um desses commits: não foi pedida.
+
+---
+
 # 01/10/2026 (M2) — as três migrations do cartão APLICADAS e provadas em produção (17h47)
 
 **Pedido.** Minutos depois do encerramento, o autor voltou: "Aplique as 3
