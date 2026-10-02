@@ -108,7 +108,7 @@ const LinhaLancamento = memo(function LinhaLancamento({
             cor de tinta e quem carrega a identidade é o avatar. */}
         <Text style={styles.rowSub}>
           {item.category}
-          {item.recurring ? ' · recorrente' : ''} · {formatDateLabel(item.occurred_on)}
+          {item.parent_id && (item.installment_total ?? 1) <= 1 ? ' · série mensal' : item.recurring ? ' · recorrente' : ''} · {formatDateLabel(item.occurred_on)}
           {item.id.startsWith('local-') ? ' · aguardando envio' : ''}
         </Text>
       </View>
@@ -818,7 +818,9 @@ export default function LancamentosScreen() {
             <Text style={styles.emptyText}>
               {search || categoryFilter
                 ? 'Nenhum lançamento encontrado com esse filtro.'
-                : 'Nenhum lançamento ainda. Toque no "+" para registrar o primeiro lançamento.'}
+                : walletTransactions.length > 0
+                  ? 'Nenhum lançamento neste mês. Toque no "+" para registrar.'
+                  : 'Nenhum lançamento ainda. Toque no "+" para registrar o primeiro.'}
             </Text>
           }
           renderItem={renderizarLinha}
@@ -1032,5 +1034,4 @@ const styles = StyleSheet.create({
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   categoryChipTextActive: { color: theme.ink},
 });
-
 

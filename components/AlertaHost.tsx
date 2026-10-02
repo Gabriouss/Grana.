@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { fonts, radius, spacing, theme, touchTarget, type } from '@/lib/theme';
+import { fonts, radius, spacing, theme, touchTarget, type, lh } from '@/lib/theme';
 import {
   assinarAlertas,
   dispensarAlerta,
@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
   message: {
     color: theme.inkSoft,
     fontSize: type.apoio,
+    lineHeight: lh(type.apoio),
     fontFamily: fonts.light,
   },
   actions: {

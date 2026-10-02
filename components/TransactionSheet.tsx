@@ -10,7 +10,7 @@ import { dataEscolhidaNoSeletor } from '@/components/LinhaDataDaCompra';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount, todayISO } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
-import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget, lh } from '@/lib/theme';
 import type { CreditCard, TxType, Wallet } from '@/lib/types';
 import { PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 
@@ -372,7 +372,7 @@ export default function TransactionSheet({
                 ? 'A cobrança reaparece sozinha na fatura de cada mês, até você desligar isto.'
                 : ehBoleto
                   ? 'Ao marcar esta conta como paga, a do mês seguinte é criada sozinha.'
-                  : 'O lançamento se repete todo mês, até você desligar isto.'}
+                  : 'Repete todo mês até você desligar a repetição.'}
             </Text>
           )}
 
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   stepperVal: { color: theme.ink, fontSize: type.apoio, minWidth: 26, textAlign: 'center', fontFamily: fonts.regular },
-  installmentHint: { color: theme.inkFaint, fontSize: type.legenda, marginTop: 2, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
+  installmentHint: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda), marginTop: 2, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
   formError: { color: theme.danger, fontSize: type.legenda, fontFamily: fonts.regular, marginTop: spacing.xs },
   saveBtn: {
     backgroundColor: theme.ink,

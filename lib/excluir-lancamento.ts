@@ -90,7 +90,7 @@ export function confirmarExclusaoDeLancamento(
         mesesDaSerie === 1 ? 'há 1 lançamento' : `há ${mesesDaSerie} lançamentos`
       } de outros meses ligados a ele. Apagar este remove também ${
         mesesDaSerie === 1 ? 'esse lançamento' : 'todos eles'
-      }, inclusive os de meses que já passaram.`,
+      }, inclusive ${mesesDaSerie === 1 ? 'o de mês que já passou' : 'os de meses que já passaram'}.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Excluir a série', style: 'destructive', onPress: acoes.apagarEste },

@@ -292,6 +292,7 @@ async function origemEncerrada() {
     assert.deepEqual(feito, ['serie']);
     mod.confirmarExclusaoDeLancamento(origem, { apagarEste: () => {} }, { mesesDaSerie: 1 });
     assert.ok(/1 lançamento de outros meses/.test(alertas[1].msg), 'singular');
+    assert.ok(/inclusive o de mês que já passou/.test(alertas[1].msg) && !/os de meses/.test(alertas[1].msg), 'singular em todo o texto');
     ok('origem encerrada com meses ligados: avisa quantos saem junto');
   }
 
