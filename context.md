@@ -58,6 +58,62 @@ no `context.md`.
 
 ---
 
+# 02/10/2026 (M2) — toda escrita invalida a resposta atrasada do cache; recorrência de boletos auditada
+
+**Pedido.** Depois de listar o que seguia aberto, o autor: "Pode resolver tudo
+aí". Do que podia ser resolvido em código sem build, restavam dois itens: o
+cache de boleto, orçamento e meta, e a recorrência de boletos.
+
+**Cache: sintoma e causa.** Em rede lenta, uma resposta que passa do prazo fica
+15 s no mapa de `lib/cache-de-tela.ts` e é servida de novo. A M1 (`1b653b7`)
+fez `lancamentoGravado` invalidar, mas só o caminho de CRIAR lançamento passa
+por ele. Conferido no código: excluir, editar, encerrar série, parcelada,
+boleto, orçamento e meta não chamavam `invalidarRespostasAtrasadas`, então a
+lista podia mostrar o estado anterior à escrita. Isto vai além do que a nota
+da M1 dizia (só boleto, orçamento e meta): excluir e editar lançamento também
+estavam de fora.
+
+**O que foi feito.** Todas as escritas de `lib/data.ts` (lançamento, cartão,
+boleto, orçamento) e de `lib/goals.ts` invalidam o mapa logo depois de gravar,
+no ponto em que já avisavam os widgets. A invalidação vem DEPOIS do sucesso:
+escrita recusada não invalida, porque nada mudou. Nova suíte
+`__tests__/escritas-invalidam-cache.cjs` (no `test:ci`), com os módulos reais:
+14 escritas conferidas nas duas pontas. Conferido por mutação: com `data.ts` e
+`goals.ts` antigos, 14 de 14 falham. Três testes antigos ganharam a função no
+dublê do cache (`credito-exige-cartao`, `excluir-lancamento`,
+`inicio-lancamentos-alterados`).
+
+**Descartado.** Fazer `notificarDadosDosWidgetsAlterados` invalidar: mistura o
+sinal dos widgets com o cache e arrasta `cache-de-tela` para um módulo que
+não importa nada. Observar o sinal de dentro de `cache-de-tela`: quebraria todo
+teste que carrega o cache real com dublê de `widgets-home-events`.
+
+**Recorrência de boletos: auditada, sem defeito de "volta".** Lendo
+`pagar_conta` em `supabase/schema.sql`: não existe gerador mensal de boletos.
+A próxima conta nasce NO PAGAMENTO da anterior, com `on conflict (user_id,
+parent_id, due_date) do nothing`, e `reabrir_conta` desfaz só a que aquele
+pagamento criou. Apagar um boleto não faz nada voltar, ao contrário dos
+lançamentos. Para encerrar uma série de boletos basta apagar o boleto em
+aberto: a próxima só nasceria ao pagá-lo.
+
+**Decisão que não é minha: o histórico pago de uma série de boletos.** Todas as
+contas de uma série apontam para a primeira (`parent_id` = cabeça, cascade).
+Apagar a primeira leva TODAS, inclusive as já pagas. A pergunta avisa (`d0e2551`
+da M1) e a saída em Lançamentos continua. Para lançamentos o autor decidiu que
+"os passados permanecem" e a migration `20261001140000` solta as filhas; para
+boletos não há decisão. Se ele quiser a mesma regra, é um gatilho igual ao de
+lançamentos, e o aviso da pergunta sai junto. Não foi feito.
+
+**Sem verificação.** Nada em aparelho. A auditoria de boletos foi por leitura
+do SQL do repositório, não por sonda em produção.
+
+**Ainda aberto, do que esta nota supera.** O item "boleto, orçamento e meta
+invalidando" da entrada abaixo está FECHADO. Seguem: a M1 registrar a
+aplicação da `20261001140000`, a decisão sobre o histórico de boletos, a build
+com "Este e os próximos", revogar o token do Supabase e os testes em aparelho.
+
+---
+
 # 02/10/2026 (M2) — o que a M1 publicou na noite de 01/10 (9 commits), conferido, e o aviso falso retirado
 
 **Origem deste registro.** A M1 publicou nove commits entre 20h37 e 20h51 de
