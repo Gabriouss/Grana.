@@ -27,15 +27,15 @@ Fontes do pedido: `TICKET-MKT-PLATAFORMAS.md`, `p-flare-copys.txt`, `p-flare-r3.
 | Mesma conta no Android e navegador; download pelo site | C12 e Q3 | Sem promessa de Play Store ou sincronização instantânea; instalação e sincronização reais pendentes |
 | Verba curta, plano de ação e Meta | plano-verba-curta e retomada | Proposta interna, sem autorização de gasto. Item 3 do ticket MKT (Meta) adiado; conta, APIs, campanhas e orçamento não foram executados nesta tarefa |
 | `plano-3-publicos.md`, entrega 2 do ticket inicial | README e COPYS-FINAIS | Arquivo não entregue no pacote nem localizado nos temporários. A direção de três públicos foi superada pelas duas frentes; o papel editorial passou ao README e a COPYS-FINAIS. Referências antigas ao nome do plano não indicam arquivo disponível |
-| `conformidade-anuncios.md`, entrega 4 do ticket inicial | Parecer histórico Lynx e P4 da retomada | Arquivo não entregue no pacote nem localizado nos temporários. O parecer disponível cobre só o rascunho 2. P4 audita o texto final; configuração Meta e LGPD do Pixel continuam abertas, sem implementação nesta P5 |
+| `conformidade-anuncios.md`, entrega 4 do ticket inicial | Parecer histórico Lynx e parecer P4 de 30/09 sobre COPYS-FINAIS | Arquivo não entregue no pacote nem localizado nos temporários. O parecer P4 do texto final está disponível nos temporários; julgamento do par não concluído naquele registro. C06, configuração Meta e tratamento real de dados continuam abertos, sem liberação de publicação |
 
 ## Portões que continuam abertos
 
 - [ ] Aprovação comercial do pacote pelo autor. Aceites literais de títulos não equivalem ao aceite de todas as peças.
-- [ ] Auditoria do texto final de CDC, LGPD e políticas da Meta (P4 da retomada). O parecer histórico não fecha esta etapa.
+- [ ] Concluir o julgamento do parecer P4 do texto final, disponível em `E:/Grana-temporarios/2026-09-29-pre-build/relatorio-Lynx-copys-finais.md` (30/09/2026). O documento registra julgamento do par ainda não realizado e não libera publicação: C06 depende da decisão do autor sobre o risco apontado; categoria especial/serviço financeiro, download de APK e tratamento real de dados, inclusive Pixel, continuam sem confirmação. Q1 a Q5 permanecem abertos.
 - [ ] Q1: Chrome real no computador, função da peça até o resultado persistido.
 - [ ] Q2: Safari em iPhone real e Chrome em Android real, inclusive CSV/OFX, checkout e comportamento do convite de APK.
-- [ ] Q3: APK 1.10.5 disponível e testado em Android físico, com widgets, voz, biometria, instalação e sincronização conforme a peça.
+- [ ] Q3: APK 1.10.5 disponível e testado em Android físico, com widgets, voz, biometria, instalação e sincronização conforme a peça. Correções de 01 e 02/10 (foto da nota, fila offline, texto do Granabô, avisos do topo) estão no código, não na 1.10.5 instalada: testar a build que as contiver. A C10 promete a leitura do total, com conferência antes de salvar; a acurácia depende deste teste e da Q5.
 - [ ] Q4: preço vigente, totais por período/parcelamento, renovação e reembolso na Cakto e na página de planos.
 - [ ] Q5: dez cupons em aparelho físico, mínimo de oito totais corretos conforme o requisito registrado no README; nenhum resultado obtido na P5.
 - [ ] Dia D declarado pelo responsável após build publicada e testada. A P5 não libera build nem publicação.
