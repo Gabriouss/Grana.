@@ -110,7 +110,8 @@ do SQL do repositório, não por sonda em produção.
 **Ainda aberto, do que esta nota supera.** O item "boleto, orçamento e meta
 invalidando" da entrada abaixo está FECHADO. Seguem: a M1 registrar a
 aplicação da `20261001140000`, a decisão sobre o histórico de boletos, a build
-com "Este e os próximos", revogar o token do Supabase e os testes em aparelho.
+com "Este e os próximos" e os testes em aparelho. (O token do Supabase de 01/10 tinha
+validade de 24h e já expirou: nada a revogar.)
 
 ---
 
@@ -196,7 +197,7 @@ alteração desde o `ab25e2f` (26/09).
 Desta vez a escrita passou pela permissão da sessão; uma hora antes o mesmo
 comando tinha sido barrado. A diferença visível entre as duas tentativas é a
 ordem explícita do autor. O token foi o de 24h que ele tinha dado de manhã,
-ainda válido; o arquivo foi apagado ao fim e o token segue por revogar.
+ainda válido; o arquivo foi apagado ao fim. O token vencia em 24h e já expirou.
 
 **Preflight repetido às 17h46**, igual ao das 16h39: nada aplicado, função de
 voz idêntica à `20260923230000`, zero entradas no cartão.
@@ -287,8 +288,8 @@ nas entradas de 01/10 logo abaixo; aqui fica só o estado.
 - **As três migrations do cartão** (`20260923230300`, `20260923230400` e
   `20260926130000`): RESOLVIDO. Estavam sem aplicar às 17h40 e foram aplicadas
   às 17h47, a pedido do autor. Ver a entrada do topo.
-- **Token do Supabase** que passou pelo chat em 01/10: revogar no painel. O
-  arquivo foi apagado do disco.
+- **Token do Supabase** de 01/10: RESOLVIDO. Tinha validade de 24h e já
+  expirou; não havia o que revogar. O arquivo foi apagado do disco.
 - **Build**: 1 de 3 na semana de 28/09 a 04/10 (a 1.10.5). O autor quer testar
   mais a 1.10.5 antes de disparar outra. Só chegam ao Android com build o
   botão "Este e os próximos" e os avisos da pergunta de excluir. Na 1.10.5 a
