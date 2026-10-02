@@ -58,6 +58,56 @@ no `context.md`.
 
 ---
 
+# 02/10/2026 (M2) — apagar a primeira conta de uma série de boletos mantém as outras (`2394e9d`), migration APLICADA
+
+**Pedido.** A entrada abaixo deixava uma decisão para o autor: apagar a primeira
+conta de uma série de boletos levava a série inteira, inclusive as já pagas.
+Perguntado se queria manter o histórico, como em lançamentos, respondeu
+"quero", e depois "pois aplique a migration", com um token de 24h.
+
+**O que foi feito.** Migration
+`20261002120000_apagar_primeira_conta_mantem_a_serie.sql`: gatilho
+`AFTER DELETE` `A0_promover_proxima_conta_da_serie` em `public.bills`. Quando
+sai uma conta que é cabeça (`parent_id` nulo) e tem filhas, a de vencimento
+mais antigo vira a nova cabeça e as outras passam a apontar para ela. O aviso
+de `lib/excluir-boleto.ts` ("os N dos meses seguintes também serão removidos")
+saiu no mesmo commit, porque ficou falso.
+
+**Descartado.** Soltar as filhas (`parent_id` nulo em todas), como a
+`20261001140000` faz em `transactions`: cada conta viraria cabeça da própria
+série, e `pagar_conta`, que gera o mês seguinte com `coalesce(parent_id, id)`,
+deixaria de esbarrar no índice único `(user_id, parent_id, due_date)`. Pagar o
+mesmo mês duas vezes criaria boleto duplicado. Promovendo, a série continua
+uma só. `BEFORE DELETE`: quebra o delete em massa (27000), como a M1 já tinha
+provado para lançamentos.
+
+**Aplicada em produção em 02/10, às 16h39**, pela Management API, em LF,
+resposta 201. Preflight antes: 17 boletos, 4 séries com uma filha cada, zero
+órfãs, e as duas chaves estrangeiras de `parent_id` iguais às do modelo usado
+no PGlite. Leitura depois: corpo da função com o mesmo md5 do repositório, sem
+`\r`, `security definer`, `search_path` vazio, executável só por `postgres` e
+`service_role`; gatilho ligado; os dois gatilhos de carteira intactos; os 17
+boletos e as 4 filhas como antes.
+
+**Provado.** PGlite, 12 checagens (promove a seguinte, mantém pagas e em
+aberto, não duplica o mês, delete em massa e exclusão da conta passam,
+`next_bill_id` intacto). Produção, 7 checagens com a conta de teste, pela API
+do app e pelas RPCs reais: série montada por `pagar_conta`; apagar a primeira
+deixa setembro (paga) e outubro, com setembro de cabeça; pagar outubro gera
+novembro na mesma série; `reabrir_conta` desfaz novembro; apagar a conta em
+aberto só tira ela. Zero sobras AUDIT. O arquivo do token foi apagado.
+
+**Ordem que importa.** O código só pode ser publicado DEPOIS da migration: sem
+o gatilho, a web apagaria a série inteira já sem aviso. Aplicada primeiro.
+
+**Não verificado.** A tela de Contas no navegador e no aparelho. A 1.10.5
+instalada tem o texto antigo de "Excluir boleto?" (sem aviso de série), que
+voltou a ser verdadeiro.
+
+**Isto fecha** a "decisão que não é minha" da entrada abaixo.
+
+---
+
 # 02/10/2026 (M2) — toda escrita invalida a resposta atrasada do cache; recorrência de boletos auditada
 
 **Pedido.** Depois de listar o que seguia aberto, o autor: "Pode resolver tudo
