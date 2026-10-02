@@ -5,8 +5,8 @@
  * no Node. Testar uma cópia passaria mesmo com a produção errada, que é o erro
  * que `__tests__/sync-parser.js` existe para impedir.
  *
- * O payload base é o exemplo LITERAL da documentação oficial da Cakto
- * ("Pagamento Recorrente"), não um inventado: se o formato deles mudar, é aqui
+ * O payload base segue o exemplo da documentação oficial da Cakto
+ * ("Pagamento Recorrente"), com segredo fictício de teste: se o formato deles mudar, é aqui
  * que se descobre, e não em produção com alguém sem acesso.
  *
  * Contexto de risco, registrado porque molda o que se testa: a Cakto manda o
@@ -35,9 +35,9 @@ const cakto = carregar('supabase/functions/_shared/cakto.ts', (nome) => {
   return helpers;
 });
 
-/* Exemplo literal da documentação da Cakto. */
+/* Exemplo da documentação da Cakto, com segredo fictício de teste. */
 const BASE = {
-  secret: '8402b43f-c839-4090-bbd1-186725d185c7',
+  secret: 'SEGREDO_FICTICIO_APENAS_PARA_TESTE',
   event: 'purchase_approved',
   data: {
     id: '1f1c81d2-088a-412d-8bb7-3d5269d64f58',
@@ -208,7 +208,7 @@ checar('renovação anual estende',
 
 // ---- validação do segredo ----
 const comparar = (a, b) => a === b;
-const SEGREDO = '8402b43f-c839-4090-bbd1-186725d185c7';
+const SEGREDO = 'SEGREDO_FICTICIO_APENAS_PARA_TESTE';
 checar('segredo correto', cakto.segredoCaktoValido(BASE, SEGREDO, comparar), true);
 checar('segredo errado', cakto.segredoCaktoValido(clone({ secret: 'outro' }), SEGREDO, comparar), false);
 checar('segredo ausente', cakto.segredoCaktoValido({ event: 'purchase_approved' }, SEGREDO, comparar), false);
