@@ -67,7 +67,7 @@ async function camadaDeDados() {
   };
   const data = carregar('lib/data.ts', {
     './supabase': { supabase },
-    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar },
+    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() {} },
     './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },

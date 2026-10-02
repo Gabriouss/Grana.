@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { comCacheOffline } from './cache-de-tela';
+import { comCacheOffline, invalidarRespostasAtrasadas } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 import type { Goal } from './types';
 import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
@@ -34,6 +34,7 @@ export async function createGoal(input: {
     p_wallet_id: input.wallet_id ?? null,
   });
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as unknown as Goal;
 }
@@ -74,6 +75,7 @@ export async function deleteGoal(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('goals').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
 }
 
@@ -96,6 +98,7 @@ export async function updateGoal(
     .select('*')
     .single();
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as Goal;
 }
@@ -112,6 +115,7 @@ export async function depositToGoal(goal: Goal, delta: number): Promise<Goal> {
     p_delta: delta,
   });
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as unknown as Goal;
 }

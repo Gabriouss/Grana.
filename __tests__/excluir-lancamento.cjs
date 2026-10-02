@@ -58,7 +58,7 @@ function supabaseQueAnota(linhasApagadas) {
 function carregarData(supabase) {
   return carregar('lib/data.ts', {
     './supabase': { supabase },
-    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar },
+    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() {} },
     './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './lancamentos-alterados': { marcarLancamentosAlterados() {} },
