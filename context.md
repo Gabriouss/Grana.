@@ -58,6 +58,67 @@ no `context.md`.
 
 ---
 
+# 02/10/2026 (M1): onze correções sem registro da noite de 01/10, e a retomada com o time Claude
+
+**Por que esta entrada existe.** Na noite de 01/10 (20h37 a 20h54) a M1 commitou onze correções da auditoria do dia, sem registro e sem `test:ci` conferido depois do último commit. Em 02/10 o autor mandou retomar ("resolve tudo, nao me pergunte nada"); a Grok e depois o Codex bateram o limite de uso na manhã de 02/10 e o maestro passou as trilhas dos pares Codex aos agentes Claude. O registro detalhado, com as seis perguntas da regra 12 por mudança, está na pasta temporária `E:\Grana-temporarios\2026-10-02-retomada\` (`REGISTRO-SESSAO-02-10.md` e `relatorio-*.md`), fora do git e do vault, porque o vault está parado (Google Drive sem espaço). Quando o vault voltar, essa pasta é a fonte para a nota da sessão.
+
+**Alcance, para ninguém se enganar.** Tudo abaixo está no repositório e NADA chegou a um aparelho: não houve build (regras 4 e 22) e a 1.10.5 em campo não tem nenhuma destas correções de cliente. Só o gatilho do banco e a trava de build valem sem build nova.
+
+## As onze de 01/10 (20h37 a 20h54), do mais antigo ao mais novo
+
+| Hash | O que muda | Origem do achado |
+|---|---|---|
+| `da997fb` | `lib/fila-pendente.ts`: fila ilegível é preservada numa chave `:corrompida` e `setQueue` passa a lançar em vez de engolir a falha, então a tela não diz "guardado" sem ter guardado | auditoria offline B1 e B2 (P1) |
+| `d0e2551` | "Excluir boleto?" avisa que apagar a cabeça da série leva os meses seguintes (`bills.parent_id` é cascade) | boletos B1 |
+| `bd58983` | `lib/diagnostico.ts` sem travessão e sem "não é X, é Y" | Lumen L-A1, L-A2 |
+| `1b653b7` | `lib/cache-de-tela.ts`: o mapa de respostas atrasadas passa a ter dono (`userId`), `esquecerTelas` o esvazia, e resposta que sai antes de uma escrita ou da saída da conta é descartada | Quill Q3 e Q5 (P2, medidos) |
+| `9f550d5` | a pergunta de excluir a origem de uma série encerrada conta os meses ligados (`contarMesesDaSerie`) e avisa | Keel A1 (P1) |
+| `7c33b5f` | migration `20261001140000`: gatilho `AFTER DELETE` que solta as filhas da origem encerrada | Keel A1, boletos parte 2 |
+| `7804d57` | Crédito: fatura que atravessa dois meses lista outubro antes de setembro (`ordenarLancamentosRecentesPrimeiro`) | varredura do Crédito no emulador |
+| `3f2f318` | foto da nota lê o total impresso com ponto (`7.49`), rótulos mal lidos (`IOTAL`, `T O T A L`) e deixa log de dev com dígitos mascarados | vídeo do autor de 26/09 |
+| `79e2c4f` | a rodada da fila não cai se a gravação final falhar, deixa recibo, e a meta ganha `tentadoEm` e `metaJaGravada` | offline B3 |
+| `d947274` | travessão e "(s)" fora de seis textos de interface | Lumen L-A2, L-A3 |
+| `507976c` | `.easignore` exclui `Feedbacks/` e `Screenshots/`; `build:preparar` recusa a build se elas fossem no pacote | segurança S1 (P1) |
+
+Pontos que valem mais que o hash:
+- **`metaJaGravada` é heurística de cliente, não idempotência.** Compara título, valor, cor, ícone, prazo e carteira e exige `created_at` depois do carimbo. Não protege a 1.10.5. Duplicata de meta só deixa de existir com `client_request_id` e migration, decisão pendente. Relógio do aparelho muito diferente do do servidor pode derrotar a heurística (não medido).
+- **Os onze não são disjuntos**: `fila-endurecida.cjs` e `fila-pendente.ts` (`da997fb` e `79e2c4f`, o segundo depende do primeiro), `credito.tsx` (`9f550d5` e `7804d57`) e `package.json`.
+- **Voz sem paridade presumida.** `lib/voice-operations.ts` importa `ehErroPermanente` e `ITENS_POR_RODADA` de `fila-pendente.ts` e chama `lancamentoGravado()` do cache, que o `1b653b7` mudou; o widget importa `isLikelyNetworkError` de `offline-cache.ts`. Nenhum dos onze tem teste de paridade app e widget (regra 13). Lacuna registrada, não bug provado.
+- **Q4 segue aberta**: escritas de boleto, orçamento e meta ainda não chamam `invalidarRespostasAtrasadas` (declarado no próprio `1b653b7`).
+- **Teste e mutação**: `da997fb`, `d0e2551`, `1b653b7`, `79e2c4f` e `507976c` têm teste que falha sem a correção (mutação conferida pela sessão que escreveu). Nada visto no aparelho.
+
+## O que aconteceu em 02/10
+
+- **Banco (T4, Harbor/Keel).** O preflight de 11h03 mostrou que a migration `20261001140000` JÁ ESTAVA em produção (gatilho `A0_soltar_filhas_da_origem_encerrada` e a função listados em `public.transactions`), apesar de o `7c33b5f` dizer "NÃO aplicada". Quem aplicou e quando não está registrado; hipótese não verificada: na noite de 01/10, depois das 20h57. A prova em transação revertida devolveu `filhas_ficaram=3 soltas_sem_recurring=3 ativa_restante=0`: origem encerrada solta as filhas, série ativa segue em cascata. O `586707e` fez o `supabase/schema.sql` espelhar o gatilho. Backup das quatro funções envolvidas em `harbor-t4-backup.json`. Consequência: o aviso que o `9f550d5` põe na pergunta ("os meses antigos saem junto") é falso para o banco atual; retirá-lo é pendência (nasceu da hipótese de que a migration não estaria aplicada).
+- **Sonda S2.** `reivindicar_webhook_evento` devolveu `42501` para a chave anônima e as permissões confirmam `anon` e `authenticated` sem execução: protegida em produção, a migration de revoke não foi criada. A divergência entre as migrations (sem revoke) e o `schema.sql` (com revoke) continua no repositório.
+- **UI (T2, Prism começou, Lumen terminou).** Dois commits: `66c8b4c` (layout: só a primeira faixa visível do topo ocupa o inset, via ordem explícita em `lib/faixa-topo.tsx`; Débito e Pix e Crédito sem eyebrow repetido; F1, F3, F12) e `cefa1bd` (copy e tipografia: "série mensal" no lugar do "recorrente" herdado, vazio de mês com "neste mês", plural do aviso de excluir, entrelinha no alerta e na ajuda da folha; F2, F4, F5, F6). F7, F11 e o toque no rótulo ficaram "sem confiabilidade suficiente". Nada visto no emulador.
+- **Granabô (T3) e base verde (T1), Forge começou, Anvil terminou: `97b64a9`.** O chat usa texto puro e a resposta do assistente traz `**negrito**`; `textoDoAssistente` em `lib/assistente.ts` tira só os pares fechados de `**`, na resposta nova e no histórico, sem mexer na Edge Function (regra 11); `R$ 20 * 2` fica. `foto-nota-ocr.cjs` trocou o vigia de 5 s de relógio real por relógio virtual do sandbox. Os dublês de tema de `categoria-obrigatoria.cjs`, `categoria-na-folha-inteira.cjs` e `app-dialog.cjs` ganharam `lh`.
+- **Lacunas de teste (T5), `ad6945c`.** As migrations reais `20261001120000`, `130000` e `140000`, e as do cartão (`20260923230400`, `20260926130000`) passam a rodar num PGlite em memória (`@electric-sql/pglite` 0.5.8, fixa, sem rede nem credencial; a tabela `transactions` sai do `schema.sql` por trecho). `__tests__/recorrencia-servidor.cjs` (marcar mês, lote misto sem derrubar, parcela e avulso, dono, origem encerrada solta as filhas, delete em lote com `27000`, "este e os próximos" mais apagar a origem; 4 mutantes mortos), `cartao-servidor.cjs` (`23514` com `cartao_obrigatorio`, entrada no cartão, série órfã, legado e UPDATE; 3 mutantes mortos), `encerrar-serie-falhas.cjs` (`lib/data.ts` real contra o PGlite: falha no delete depois de parar, contagem, idempotência, escopo por dono) e `preparo-build-falhas.cjs` (`preparar-lancamento.ts` real: `--emergencia`, `git fetch` sem rede, nota reprovada, zero escrita). `test:t5` entra no `test:ci` antes do `test:parser`. **Não coberto, dito no commit:** a RPC `registrar_operacao_voz` e a paridade app e widget da recusa do servidor. Isso responde as lacunas 1 a 5 do relatório de suítes, menos a paridade de voz.
+- **Falha que a retomada causou e pegou.** O `cefa1bd` fez `TransactionSheet` importar `lh`, e três testes quebraram (`theme_1.lh is not a function`). O Quill reproduziu e avisou às 11h09, o Anvil consertou no `97b64a9`. Lição para a regra 9: mudança de UI exige `test:ci` completo, não só as suítes da tela.
+- **Segurança.** `39e7d55`: a fixture de `__tests__/cakto-webhook.cjs` passou a usar `SEGREDO_FICTICIO_APENAS_PARA_TESTE`. O autor informou que o UUID anterior era o exemplo literal da documentação da Cakto; isso não foi comparado com produção. A troca da fixture não substitui a rotação de segredos (pendência S3).
+- **Marketing (T9).** Sem peça (regra 21). `ee80bc6`: o checklist aponta o parecer P4 do texto final e limita a Q3 a uma build que traga as correções. A copy C10 promete a leitura do total da nota, então a acurácia precisa de prova em aparelho físico. Julgamentos da Meridian e da Flare sobre os textos novos não foram concluídos até este registro.
+
+## Verificação desta entrada
+
+- `npx tsc --noEmit`: exit 0, rodado pelo Quill após o `97b64a9` (`quill-tsc.log`).
+- `npm run test:ci` completo: ver o resultado abaixo (`quill-testci.log`).
+
+Resultado: `npm run test:ci` completo com exit 0 no HEAD `ad6945c` (já com `test:t5` no encadeamento e o `test:parser` no fim, terminando em "78/78 em sincronia"), `quill-final.log`, árvore limpa antes e depois. Uma rodada anterior no `97b64a9` também deu exit 0 (`quill-testci.log`). O flaky do `foto-nota-ocr.cjs` não reapareceu, mas passar duas vezes não prova que acabou: o que o corrige é o relógio virtual, com mutação mostrada em `forge-mutacao-ocr.log`.
+
+## O que NÃO foi verificado
+
+- Nada em aparelho ou emulador: foto da nota (saída real do ML Kit e o valor 7,49), fatura de dois meses, perguntas de excluir, inset com os dois avisos juntos, balão do Granabô sem asteriscos. A lista de cobertura do Sentinel está toda PENDENTE; o Vigil é o único operador do emulador.
+- Os dados AUDIT de ontem (cartão "AUDIT cartao T25" com fechamento 14, cartão "AUDIT cartao B", compras "AUDIT outubro 01" e "AUDIT setembro 16") seguem sem confirmação de limpeza.
+- Os testes da T5 rodam num PGlite, não no Postgres 17.6 do Supabase, e não conferi se `auth.uid()`, RLS e extensões reais entram na prova. O gatilho em produção foi provado à parte, em transação revertida, pelo Harbor.
+- Boletos B2 a B8 (T7): nada corrigido; B2 a B5 são P2 confirmados no schema, não na produção.
+- Paridade de voz entre app e widget para os commits `da997fb`, `1b653b7` e `79e2c4f`.
+
+## Pendências só do autor
+
+Trocar `CAKTO_CLIENT_ID`, `CAKTO_CLIENT_SECRET`, `GITHUB_TOKEN`, `SUPABASE_ACCESS_TOKEN` e `VERCEL_TOKEN` (expostos no servidor do EAS desde a build 1.10.2); revogar o token do Supabase enviado no chat em 01/10; S3 (segredos expostos há mais de 15 dias); decisão C06 da Meta; decisão sobre `client_request_id` para meta; restringir a chave do Firebase (S5); nomear controlador e encarregado na política de privacidade (S8). Nenhum valor de credencial está neste arquivo.
+
+---
+
 # 01/10/2026 (M2) — as três migrations do cartão APLICADAS e provadas em produção (17h47)
 
 **Pedido.** Minutos depois do encerramento, o autor voltou: "Aplique as 3
