@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { verificarAtualizacao, dispensarAtualizacao, type InfoAtualizacao } from '@/lib/atualizacao';
 import AppPressable from './AppPressable';
+import { usePublicarFaixaTopo } from '@/lib/faixa-topo';
 
 /**
  * Faixa fina no topo da área logada, avisando de uma versão nova do APK.
@@ -18,6 +19,7 @@ export default function UpdateBanner() {
   const [info, setInfo] = useState<InfoAtualizacao | null>(null);
   const [abrindo, setAbrindo] = useState(false);
   const insets = useSafeAreaInsets();
+  const ocupaTopo = usePublicarFaixaTopo(Platform.OS === 'android' && !!info, 0);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -47,7 +49,7 @@ export default function UpdateBanner() {
      e a bateria, e os toques em "Atualizar" e no "X" iam para o sistema em
      vez de para o app — o banner aparecia mas não respondia a nada. */
   return (
-    <View style={[styles.faixa, { paddingTop: insets.top + 8 }]}>
+    <View style={[styles.faixa, { paddingTop: (ocupaTopo ? insets.top : 0) + spacing.sm }]}>
       <Ionicons name="arrow-up-circle-outline" size={17} color={theme.accent2} />
       <Text style={styles.texto} numberOfLines={1}>
         Versão {info.versao} disponível

@@ -1247,7 +1247,6 @@ export default function CreditoScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <ScreenHeader
-        eyebrow="Cartões & faturas"
         title="Crédito"
         right={
           <>

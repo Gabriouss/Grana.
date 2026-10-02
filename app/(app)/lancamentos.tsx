@@ -669,7 +669,6 @@ export default function LancamentosScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <ScreenHeader
         coluna={colunaLista}
-        eyebrow="Movimentações"
         title="Lançamentos"
         right={
           <>

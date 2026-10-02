@@ -21,7 +21,7 @@ export default function ScreenHeader({
   coluna = colunaConteudo,
 }: {
   left?: ReactNode;
-  eyebrow: string;
+  eyebrow?: string;
   /** Selos curtos ("exemplo", "oculto") ao lado do eyebrow — ex.: modo demo na Início. */
   eyebrowBadges?: ReactNode;
   title: string;
@@ -47,8 +47,8 @@ export default function ScreenHeader({
           <View style={styles.leftCol}>
             {left}
             <View style={styles.texts}>
-              <View style={styles.eyebrowRow}>
-                <Text style={styles.eyebrow}>{eyebrow}</Text>
+              {eyebrow || eyebrowBadges ? <View style={styles.eyebrowRow}>
+                {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
                 {/* Os selos moram num contêiner de altura zero, centrado na
                     linha do texto: aparecem, mas não entram na conta da altura
                     da linha. Antes, a pílula "oculto" (entrelinha própria mais
@@ -63,7 +63,7 @@ export default function ScreenHeader({
                     <View style={styles.selosLinha}>{eyebrowBadges}</View>
                   </View>
                 ) : null}
-              </View>
+              </View> : null}
               {/* Duas linhas, não uma. Com o teto em 1, "Lançamentos" virava
                   "Lança..." assim que a direita do cabeçalho enchia — a palavra
                   era mutilada mesmo havendo altura de sobra logo abaixo. Com 2,

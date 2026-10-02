@@ -54,12 +54,12 @@ export default function VozesSalvasLocalmente() {
   /* A revisão vem primeiro porque só ela depende da pessoa: o resto a
      retomada automática tenta sozinha a cada 30 s. */
   const revisar = emRevisao > 0;
-  usePublicarFaixaTopo(faixaVisivel);
+  const ocupaTopo = usePublicarFaixaTopo(faixaVisivel, 1);
   if (!faixaVisivel) return null;
   /* A faixa ocupa o inset superior antes da rota montar seu cabeçalho. A tela
      abaixo deixa de reservá-lo por meio de SafeAreaViewComFaixa; não há margem
      negativa nem compensação dependente do contêiner do Stack. */
-  return <View style={[styles.container, { paddingTop: Math.max(12, insets.top + 8) }]}>
+  return <View style={[styles.container, { paddingTop: ocupaTopo ? Math.max(spacing.md, insets.top + spacing.sm) : spacing.md }]}>
     <View style={styles.row}>
       {/* `polite` porque a frase muda sozinha ao fim da sincronização: sem região
           viva, quem usa leitor de tela toca em "Tentar sincronizar" e nunca fica
