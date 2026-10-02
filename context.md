@@ -58,6 +58,57 @@ no `context.md`.
 
 ---
 
+# 02/10/2026 (M2) — encerramento da sessão: o estado em que a M2 parou
+
+Sessão encerrada pelo autor às 17h40 de 02/10. O detalhe está nas três entradas
+de 02/10 logo abaixo; aqui fica só o estado. Esta entrada SUPERA o
+"encerramento" de 01/10, mais abaixo.
+
+**Publicado em 02/10, tudo no `main` (`c767cbc`).**
+
+- `a94de84`: saiu o aviso de que apagar a origem de uma série encerrada leva
+  os meses antigos. A migration `20261001140000` da M1 já estava aplicada, e o
+  banco solta esses meses.
+- `623d4a7`: toda escrita de `lib/data.ts` e `lib/goals.ts` invalida a resposta
+  atrasada do cache, não só criar lançamento.
+- `2394e9d`: apagar a primeira conta de uma série de boletos mantém as outras.
+  Migration `20261002120000` aplicada e provada em produção.
+- Os nove commits da M1 da noite de 01/10 foram puxados e conferidos
+  (`tsc` limpo, `test:ci` verde).
+
+**Banco.** Aplicadas em produção, do repositório: tudo até `20261002120000`
+que esta máquina conferiu, incluindo as três do cartão (01/10), a
+`20261001140000` (M1, sem registro de quando) e a `20261002120000` (M2,
+02/10 16h39). Continua valendo a ressalva de 28/09: treze rotinas antigas com
+corpo diferente do repositório, e a `20260929120000` não conferida aqui.
+
+**Build.** Nenhuma preparada desde a 1.10.5 (`app.json` em 1.10.5). Saldo da
+semana de 28/09 a 04/10: 1 de 3. Só chegam ao Android com build: o botão "Este
+e os próximos", os avisos da pergunta de excluir lançamento e a invalidação do
+cache nas escritas. As regras que moram no banco já valem na 1.10.5.
+
+**Pendente.**
+
+- [ ] A M1 registrar quando aplicou a `20261001140000`.
+- [ ] Nada de 01 e 02/10 foi visto em aparelho Android: fala "no crédito" sem
+  cartão indo para "Qual cartão?", foto da nota com cupom real, fila offline,
+  cache, e as perguntas de excluir. Esta máquina não tem emulador.
+- [ ] As telas mexidas em 02/10 (excluir lançamento, excluir boleto) não foram
+  vistas no navegador depois do deploy; só os testes.
+- [ ] Revisão do Codex (regra 16): não foi pedida para nenhum commit.
+
+**Resolvido, para ninguém cobrar de novo.** Os tokens do Supabase de 01 e
+02/10 tinham validade de 24h e expiram sozinhos; nenhum arquivo ficou no disco.
+
+**Vault.** O Drive da M2 segue sem receber nada da M1 desde 28/09. As notas de
+sessão de 01 e 02/10 existem só nesta máquina; o índice de sessões e as
+perenes atrasadas NÃO foram editados, para não criar cópia em conflito.
+
+**Inventário ao sair.** Uma branch (`master`, rastreando `origin/main`), uma
+worktree, nenhum stash, árvore limpa, local igual ao remoto.
+
+---
+
 # 02/10/2026 (M2) — apagar a primeira conta de uma série de boletos mantém as outras (`2394e9d`), migration APLICADA
 
 **Pedido.** A entrada abaixo deixava uma decisão para o autor: apagar a primeira
@@ -317,6 +368,8 @@ corpo diferente do repositório, e a `20260929120000` não foi conferida aqui.
 ---
 
 # 01/10/2026 (M2) — encerramento da sessão: o estado em que a M2 parou
+
+**Superado pelo encerramento de 02/10, no topo.**
 
 Sessão encerrada pelo autor às 17h40: "encerramos o trabalho hoje na M2,
 commita, publica tudo e atualiza as documentações de contexto". O detalhe está
