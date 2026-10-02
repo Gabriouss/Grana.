@@ -37,6 +37,12 @@ export type MensagemLocal = {
 
 /* ── Buscar histórico ─────────────────────────────────────────────────────── */
 
+/* O chat usa Text puro: a resposta do assistente traz **negrito** em markdown,
+   que apareceria com os asteriscos literais. Tira só os pares fechados. */
+function textoDoAssistente(texto: string): string {
+  return texto.replace(/\*\*([^*]+)\*\*/g, '$1');
+}
+
 /**
  * Busca as últimas mensagens do histórico do assistente. Ordena do mais
  * antigo para o mais recente (a FlatList invertida cuida de exibir na ordem
@@ -69,7 +75,9 @@ export async function fetchMensagens(limit = 50): Promise<MensagemAssistente[]> 
 
   // A query vem desc (mais recente primeiro) para o limit pegar as últimas.
   // Revertemos para asc para a exibição na tela.
-  return (data ?? []).reverse() as MensagemAssistente[];
+  return ((data ?? []).reverse() as MensagemAssistente[]).map((m) =>
+    m.papel === 'assistente' ? { ...m, texto: textoDoAssistente(m.texto) } : m
+  );
 }
 
 /* ── Enviar pergunta ──────────────────────────────────────────────────────── */
@@ -120,7 +128,7 @@ export async function enviarPergunta(
 
   const body = await res.json();
   return {
-    resposta: body.resposta ?? 'Desculpa, não entendi.',
+    resposta: textoDoAssistente(body.resposta ?? 'Desculpa, não entendi.'),
     ferramenta: body.ferramenta ?? null,
   };
 }

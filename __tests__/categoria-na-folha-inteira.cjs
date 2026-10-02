@@ -45,7 +45,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/TransactionShe
     '@/lib/limits': { LIMITS: new Proxy({}, { get: () => 100 }) },
     '@/lib/heuristics': { PERGUNTA_CATEGORIA: { titulo: 'Qual categoria?', texto: 'Escolha a categoria antes de salvar.' } },
     '@/lib/theme': {
-      theme: new Proxy({}, { get: (_, k) => String(k) }), radius: {}, fonts: {}, touchTarget: 48,
+      theme: new Proxy({}, { get: (_, k) => String(k) }), radius: {}, fonts: {}, touchTarget: 48, lh: (n) => n * 1.4,
       spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 }, type: new Proxy({}, { get: () => 14 }),
     },
   };

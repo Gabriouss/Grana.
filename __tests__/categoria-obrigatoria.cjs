@@ -165,7 +165,7 @@ ok('importação: o aviso "sem categoria" concorda no singular e no plural');
       '@/lib/limits': { LIMITS: new Proxy({}, { get: () => 100 }) },
       '@/lib/heuristics': h,
       '@/lib/theme': {
-        theme: new Proxy({}, { get: (_, k) => String(k) }), radius: {}, fonts: {}, touchTarget: 48,
+        theme: new Proxy({}, { get: (_, k) => String(k) }), radius: {}, fonts: {}, touchTarget: 48, lh: (n) => n * 1.4,
         spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 }, type: new Proxy({}, { get: () => 14 }),
       },
     };
