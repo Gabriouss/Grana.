@@ -43,6 +43,7 @@ import {
   encerrarSerieAPartirDe,
   fetchRecurrenceContext,
   fetchTransactionsDoPeriodo,
+  fetchTemLancamento,
   updateTransaction,
 } from '@/lib/data';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
@@ -65,6 +66,7 @@ import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import type { Transaction, TxType } from '@/lib/types';
+import { textoDaListaVazia } from '@/lib/lancamentos-vazio';
 
 /**
  * Uma linha da lista, memorizada.
@@ -156,6 +158,7 @@ export default function LancamentosScreen() {
   const [offlineLocal, setOffline] = useState(false);
   const offline = offlineGlobal || offlineLocal;
   const [pendingCount, setPendingCount] = useState(0);
+  const [temHistorico, setTemHistorico] = useState(false);
 
   // Mês e Ano Selecionados (inicializa com o mês atual)
   const now = new Date();
@@ -245,6 +248,10 @@ export default function LancamentosScreen() {
          por cima da lista do mês que a pessoa já tinha trocado. */
       if (!vigente()) return;
       setTransactions(tx);
+      /* Só decide o texto do mês vazio; falhar aqui não pode derrubar a lista. */
+      fetchTemLancamento().then((tem) => { if (vigente()) setTemHistorico(tem); }).catch((erro) => {
+        if (!isLikelyNetworkError(erro)) console.error('[lancamentos] consulta de historico falhou', erro);
+      });
       const pendentes = await getPendingCount();
       if (!vigente()) return;
       setPendingCount(pendentes);
@@ -816,11 +823,7 @@ export default function LancamentosScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
-              {search || categoryFilter
-                ? 'Nenhum lançamento encontrado com esse filtro.'
-                : walletTransactions.length > 0
-                  ? 'Nenhum lançamento neste mês. Toque no "+" para registrar.'
-                  : 'Nenhum lançamento ainda. Toque no "+" para registrar o primeiro.'}
+              {textoDaListaVazia(!!(search || categoryFilter), temHistorico || walletTransactions.length > 0)}
             </Text>
           }
           renderItem={renderizarLinha}

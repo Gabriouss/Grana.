@@ -1172,6 +1172,14 @@ export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: stri
   return juntarVozPendente(await juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO), inicioISO, fimISO);
 }
 export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);
+/** Existe algum lançamento na conta, em qualquer mês? Consulta de existência
+    (1 linha, sem valor): só decide o texto da lista vazia, não entra em saldo. */
+async function buscar_fetchTemLancamento(): Promise<boolean> {
+  const { data, error } = await supabase.from('transactions').select('id').limit(1);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
+export const fetchTemLancamento = comCacheOffline('tem-lancamento', buscar_fetchTemLancamento);
 const comCache_fetchEntradasPorCarteira = comCacheOffline('entradas-carteira', buscar_fetchEntradasPorCarteira);
 
 /** `comCache_fetchEntradasPorCarteira` + o que ainda está na fila offline —
