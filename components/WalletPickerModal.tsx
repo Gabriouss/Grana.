@@ -14,7 +14,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { createWallet, updateWallet, deleteWallet } from '@/lib/wallets';
 import { formatBRL } from '@/lib/format';
-import { theme, radius, spacing, type, fonts, touchTarget, hitSlopPara } from '@/lib/theme';
+import { theme, radius, spacing, type, lh, fonts, touchTarget, hitSlopPara } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
 import AppPressable from './AppPressable';
 import ToggleSwitch from './ToggleSwitch';
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   walletName: {
     flexShrink: 0,
     color: theme.ink,
-    fontSize: type.corpo, fontFamily: fonts.regular },
+    fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
   walletBalance: {
     color: theme.ink,
     /* Saldos empilhados numa lista: alinham na vírgula com dígito de largura
