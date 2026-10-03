@@ -133,6 +133,203 @@ no `context.md`.
 
 ---
 
+# 03/10/2026 (M1): auditoria 100% do app no emulador (Vigil), 26 achados, 2 corrigidos
+
+Fontes: `E:\Grana-temporarios\auditoria-vigil-0310\` (`relatorio-vigil-auditoria.md`,
+`achados.md`, `relatorio-anvil-correcoes.md`), prints em
+`E:\Grana-temporarios\prints\` (fora do repositório e do vault) e o `git log`.
+Registro feito pelo Quill a partir dos relatórios; o que está marcado como
+hipótese NÃO foi comprovado.
+
+**Ambiente.** Emulador Pixel_8 (Android 15), APK de desenvolvimento
+`com.gabriouss.grana` (não o Expo Go), Metro `-c`, conta de teste com acesso de
+cortesia. Login só por `node scripts/emulador.cjs login` (regra 18). Nada de
+`eas build`, Edge Function, migration nem credencial fora do `.env`. HEAD no
+início `07fb951`.
+
+**Estado real pelo git (conferido em 03/10, ~11h40).** HEAD `409813b`, 10
+commits à frente do `origin/main`, nada publicado. Os dois commits da rodada
+são `6979616` (V05) e `409813b` (V03). Há trabalho de correção NÃO commitado na
+árvore (`app/sign-in.tsx`, `app/sign-up.tsx`, `lib/assistente.ts`, `lib/data.ts`,
+`lib/home-layout.ts`, `package.json`, `__tests__/boleto-pago-avisa-inicio.cjs`
+e o teste novo `__tests__/auditoria-0310-textos-e-projecao.cjs`): é de Anvil e
+Lumen em andamento, e o que ele resolve só vale como feito quando virar commit.
+
+## Achados corrigidos e reverificados na tela
+
+- **V05 (P1), `6979616`.** Sintoma: depois de pagar um boleto, o "Saldo atual"
+  da Início ficou R$ -25,50 enquanto Débito e Pix dizia R$ -145,50 (mesma
+  palavra, dois números, a lição do A12 da regra 20). Causa comprovada no
+  código: `payBill` e `reopenBill` em `lib/data.ts` não chamavam
+  `marcarLancamentosAlterados()`, e a Início só recarrega as transações quando
+  a versão muda (`app/(app)/index.tsx` ~595). Correção: duas linhas em
+  `lib/data.ts`; teste novo `__tests__/boleto-pago-avisa-inicio.cjs` (módulo
+  real; RPC que falha NÃO marca). O cálculo do saldo não foi tocado. Vigil
+  reverificou: pagar "AUDIT agua" levou a Início a R$ 4.754,50 na hora.
+- **V03 (P2), `409813b`.** Sintoma: "Vence esta semana" dizia "Nenhuma conta a
+  vencer" com um boleto atrasado. Causa comprovada: filtro `diffDays >= 0` em
+  `dueThisWeek` (`app/(app)/index.tsx` ~700). Correção: função pura
+  `lib/boletos-da-semana.ts` (`boletosDaSemana`, `boletoAtrasado`), data da
+  linha vira "venceu 02 out 2026" quando atrasado; teste
+  `__tests__/boletos-da-semana.cjs`. O Livre para gastar não muda (atrasado
+  continua fora, regra 20). O título "Vence esta semana" foi mantido; a
+  decisão de copy ficou com o Lumen. Reverificado na tela.
+
+## Achados confirmados e ABERTOS (sem commit até a escrita deste registro)
+
+Todos confirmados no código ou na árvore de acessibilidade pelo Vigil.
+- **V19 (P2, copy).** `lib/home-layout.ts:53` descreve o Livre para gastar como
+  "considerando contas e reservas"; desde 25/09 (regra 20) conta pendente não
+  entra. A frase promete o que o app não faz. Sugestão do Vigil: "considerando
+  o saldo do mês e o que está guardado em cofrinhos".
+- **V22 (P3, usabilidade).** `app/sign-in.tsx` sem `returnKeyType` nem
+  `onSubmitEditing`: o check do teclado no e-mail não leva à Senha e Enter na
+  Senha não envia; o texto seguinte é concatenado no e-mail. `PasswordInput` já
+  aceita as props.
+- **V13 (P2, acessibilidade).** Seletor de cor (Nova meta e nova categoria): 30
+  amostras com nome acessível repetido ("ciano" x7, "verde" x3...).
+- **V06 (P3).** Exportar relatório compartilha `bc4b6e1f-...uuid.pdf`; sugestão
+  de nome descritivo. Se o botão "Exportar relatório de Outubro" exporta só o
+  mês mesmo em Ano a Ano/Período: sem confiabilidade suficiente.
+- **V08 (P3).** Resposta do Granabô mostra markdown cru (`*(Além disso ...)*`)
+  e emoji de gráfico. `lib/assistente.ts` já está modificado na árvore, não
+  commitado.
+- **V16 (P3).** Cor padrão da meta deixa o ícone do card quase invisível.
+- **V20 (P3).** Faixa offline pós-gravação truncada: "Atualização pendente,
+  mostrando dados salvos no apa...".
+- **V25 (P3).** Ripple retangular (quadrado cinza) atrás do avatar, do olho e
+  do "Voltar".
+- **V26 (P3).** Seletor de carteira com nome longo: entrelinha justa e
+  alinhamento irregular.
+- **Decisão do autor, não defeito:** V02/V04 (aba "Débito e Pix" com título
+  "Lançamentos"; aba "Boletos" com título "Contas a pagar", "Pagamentos" e
+  "Nova conta a pagar"); V23 (placeholder da senha "mínimo 9 caracteres, com
+  número" x checklist "Letras e números misturados").
+- **P3 sem decisão de dono:** V07 (selo "% concluído" muda de posição nos cards
+  de Desafios), V14 (rodapé do widget "Contas do mês" truncado em "Toque para
+  ver suas"), "Reservado em cofrinhos" aparece como "- R$ 300,00" (leitura de
+  dedução, desenho).
+
+## SEM CONFIABILIDADE SUFICIENTE (hipótese, não fato; vai ao relatório ao autor)
+
+- **V09/V10.** Havia uma fala guardada com transcrição "." (ruído). O botão
+  "Revisar" republica o recibo, e o diálogo "Não entendi a fala guardada"
+  reaparece por cima de qualquer tela toda vez que o app volta ao primeiro
+  plano, até Descartar; roubou o foco e o texto de uma folha em preenchimento.
+  O EFEITO foi visto; se é desenho ou falha NÃO foi decidido. Origem:
+  `lib/voz-recibos.ts:60` (`falaGuardadaSemEntender`),
+  `lib/widget-voz-pendentes.ts:277` (`reabrirRevisoesDeFala`). O "." era dado de
+  sessões anteriores e foi descartado. V10 (latência após cold boot, folhas
+  sobrepostas) pode ser só emulador lento.
+- **V11.** Uma única vez: Render Error "AudioRecorder.constructor ... current
+  activity is no longer available" em `components/VoiceEntryButton.tsx:132`
+  (`useAudioRecorder` no render), com o ErrorBoundary repetindo o erro até
+  `force-stop`. Duas tentativas de reproduzir NÃO reproduziram.
+- **V17.** Boleto criado pelo + da Início demorou a aparecer na aba Boletos;
+  pode ser só atraso (o Vigil repetiu o salvamento e criou duplicata sua).
+  `addBill` e o foco de `contas.tsx` NÃO foram lidos.
+- **V18.** Selo "lida da foto" na data com foto sem nota
+  (`components/FotoNotaModal.tsx:392`); pode ser OCR da cena virtual.
+- **V24, RETRATADO pelo Vigil.** O "Comprometimento futuro R$ 360" depois de
+  excluir o cartão era cache da Início (mesma classe do V05), e voltou a R$ 60
+  sozinho, sem commit novo. Não prova parcela órfã. Se as compras do cartão
+  excluído seguem no banco, nenhuma tela as mostra e a UI não confirmou.
+- Também sem confiabilidade: o toque em "Criar meta" que exigiu repetir
+  (primeiro toque perdido, classe A48/A51) e "Colar comprovante" com texto
+  curto devolvendo descrição "Pix" em vez do estabelecimento.
+
+## Retirados (erro do ambiente ou do QA, não são defeito)
+
+V12 (Voltar saindo do app) e V15 (tela em branco ao digitar): o dev client
+recarrega o JS com dois "R" em menos de 200 ms (`Running main` no logcat) e os
+textos do Vigil tinham vários. V01 (o "1" cortado) é o glifo da Neue Machina.
+V21: tela vermelha sem rede é `console.error`, só em desenvolvimento.
+
+## Regra 20 conferida na UI (fato)
+
+Entrada AUDIT de R$ 5.000 + saídas = Saldo atual R$ 4.854,50; Livre = R$
+167,40/dia = 4.854,50 / 29. Boleto pendente (2 x R$ 100), boleto atrasado e
+fatura de crédito (R$ 150) NÃO alteram Saldo nem Livre. Pagar fatura de R$ 80 e
+desfazer: 4.854,50 → 4.774,50 → 4.854,50, com a Início atualizando na hora
+(`credito.tsx` já marca a alteração: a fatura NÃO tem o defeito do V05). Sem
+rede: lançamento offline "aguardando envio", Saldo e Início concordam em R$
+4.742,16 e R$ 163,52/dia. Seletor de carteira mostra "entradas no período".
+
+## Lista de cobertura (regra 17)
+
+**Verificado no emulador:** Início (livre, saldo, cofrinhos, comprometimento,
+faturas, Vence esta semana, gastos, fluxo, personalizar, valores ocultos);
+Débito e Pix (criar, erro de validação, teclados, editar/excluir com
+confirmação, série recorrente); Crédito (cartão, compra parcelada, fatura
+fechada, pagar, desfazer, excluir cartão); Boletos (criar, pagar, reabrir,
+excluir, atrasado); Gráficos (Despesas/Renda/Geral x Ano/Mês/Período, PDF);
+Desafios; Granabô (pergunta e resposta); Perfil e subtelas (categorias,
+orçamento sugerido, diagnóstico, legal, baixar dados, sair, excluir conta até a
+tela da senha); carteiras (criar, nome longo, excluir); metas (criar, guardar,
+resgatar acima do guardado, excluir); fonte a 130%; sem rede (lançar offline e
+sincronizar); login (vazio e senha errada); cadastro e recuperação até o
+formulário; Colar comprovante; Importar extrato vazio; Fotografar nota (câmera
+virtual); voz no app com microfone mudo; widgets no launcher.
+
+**Não verificável no emulador, com motivo:** fala real por voz e widget de voz
+em tarefa headless (microfone mudo, widget precisa de aparelho); pagamento e
+fluxo `assinar`/`ativar` (conta com cortesia: o link `assinar` não sai da
+Início); push pelo FCM (`FIS_AUTH_ERROR` esperado) e disparo dos lembretes
+locais (19:00, 20:30, 21:30); leitura real de nota fiscal/QR e importar OFX/CSV
+de verdade; animações (não sondadas quadro a quadro, regra 9); edição de
+categoria/carteira/meta além de abrir; texto longo em todas as telas (só
+carteira e meta); tablet, web e landing.
+
+## As seis respostas (regra 12)
+
+1. **Pedido:** Orquestrador Supremo, em nome do autor ausente: "auditoria 100%
+   do app Grana. no emulador Pixel 8, no app de desenvolvimento, não no Expo
+   Go", regras 17 e 18 inteiras, sem parar nem perguntar; confirmado vai ao
+   dono em commit próprio e a tela é reverificada; incerto fica "sem
+   confiabilidade suficiente".
+2. **Sintoma e causa:** separados em cada achado acima. Causa comprovada em V05,
+   V03, V19, V22 (código lido); V13 pela árvore de acessibilidade; V06, V16,
+   V20, V25, V26 e V08 só vistos na tela. Sem causa: V09 a V11, V17, V18.
+3. **Arquivos e hashes:** `lib/data.ts`, `lib/lancamentos-alterados.ts`,
+   `lib/boletos-da-semana.ts`, `app/(app)/index.tsx`, `lib/home-layout.ts:53`,
+   `app/sign-in.tsx`, `components/PasswordInput.tsx`,
+   `components/VoiceEntryButton.tsx:132`, `lib/voz-recibos.ts`,
+   `lib/widget-voz-pendentes.ts`, `components/FotoNotaModal.tsx:392`,
+   `lib/projections.ts:44`; commits `6979616` e `409813b`.
+4. **Descartado:** mexer no cálculo do saldo ou do Livre (regra 20); mudar o
+   título "Vence esta semana" sem o Lumen; pedir o Sentinel como par (sem
+   necessidade). O Vigil não enviou e-mail de recuperação, não criou conta, não
+   confirmou "Excluir conta e dados", não tocou em "Dados de exemplo" nem em
+   "Bloquear captura de tela".
+5. **O que deu errado:** cold boot com Metro frio abriu o app em tela preta
+   (`adb reverse`, reload e `force-stop` resolveram); latência derrubou toques em
+   telas em transição; o Vigil gerou dois falsos alarmes (V12, V15) digitando
+   "r" repetido e os retirou pelo logcat; V24 foi registrado como parcela
+   órfã e depois retratado (era cache); um `Voltar` do script saiu do app e foi
+   assim que a V11 apareceu. Aprendizado: evitar "rr" no dev client. Só duas
+   das skills da regra 17 foram carregadas.
+6. **Sem verificação:** tudo da lista "não verificável" acima; V05 e V03
+   reverificados na tela, mas a paridade de voz de `da997fb`, `1b653b7` e
+   `79e2c4f` segue SEM prova em aparelho; Anvil rodou `tsc` e `test:ci`
+   (exit 0) nos dois commits, e o Vigil rodou `test:ci` em ~`07fb951` (verde;
+   as linhas "falhou" no log são mensagens esperadas de testes verdes).
+   **Skills usadas:** `test-scenarios` (roteiro e cenários) e
+   `ui-visual-composition` (hierarquia, estados, acessibilidade). NÃO
+   carregadas: impeccable, interface-design, apple-design, emil-design-eng,
+   review-animations, copywriting, grammar-check, intended-vs-implemented;
+   movimento não foi auditado.
+
+## Dados AUDIT e ambiente ao fim
+
+Removidos pelo Vigil: lançamentos, boletos, metas, categoria, carteira e
+cartão; a fala "." foi descartada. **A limpeza dos dados AUDIT de 01/10
+(cartão "AUDIT cartão T25", "AUDIT cartão B", compras "AUDIT outubro 01" e
+"AUDIT setembro 16") NÃO foi confirmada**, e o Vigil lista como pendente a
+possível sobra de compras de crédito ("AUDIT tv 1/2 e 2/2", "AUDIT antiga")
+sem tela que as mostre. Só o Keel confirma por consulta ao banco e só limpa se
+achar linhas AUDIT. Rede religada, `font_scale` 1.0, conta logada, emulador e
+Metro (porta 8081) ligados. Inventário git: só `main`, sem worktree nem stash.
+
 # 02/10/2026 (M2) — encerramento da sessão: o estado em que a M2 parou
 
 Sessão encerrada pelo autor às 17h40 de 02/10. O detalhe está nas três entradas
