@@ -897,6 +897,7 @@ export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
     p_paid_on: paidOn,
   });
   if (error) throw error;
+  marcarLancamentosAlterados();
   invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as unknown as Bill;
@@ -910,6 +911,7 @@ export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
 export async function reopenBill(bill: Bill): Promise<Bill> {
   const { data, error } = await supabase.rpc('reabrir_conta', { p_bill_id: bill.id });
   if (error) throw error;
+  marcarLancamentosAlterados();
   invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as unknown as Bill;
