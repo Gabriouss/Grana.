@@ -25,6 +25,9 @@ const root = path.join(__dirname, '..');
 let aprovadas = 0;
 const ok = (r) => { aprovadas++; console.log('  ok  ' + r); };
 
+/* Linha do tempo das chamadas ao banco e das invalidações do cache (F3, Watchtower 02/10). */
+const ordem = [];
+
 function carregarData(supabase, userId, eventos) {
   const exports = {};
   const js = ts.transpileModule(fs.readFileSync(path.join(root, 'lib/data.ts'), 'utf8'), {
@@ -36,7 +39,7 @@ function carregarData(supabase, userId, eventos) {
   }).outputText, { exports: regras.exports, module: regras, console, require: () => ({}) });
   const deps = {
     './supabase': { supabase },
-    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() {} },
+    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() { ordem.push('invalida'); } },
     './sessao-offline': { idDoUsuarioLocal: async () => userId },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() { eventos.push('widgets'); } },
     './lancamentos-alterados': { marcarLancamentosAlterados() { eventos.push('alterados'); } },
@@ -73,6 +76,7 @@ function adaptador(db, { falhaNoDelete = null } = {}) {
           select(cols) { assert.equal(cols, 'id'); op.select = true; return q; },
           then(resolve, reject) {
             chamadas.push(op.tipo);
+            ordem.push(op.tipo);
             const colunasOk = ['id', 'user_id', 'parent_id', 'occurred_on'];
             op.filtros.forEach(([c]) => assert.ok(colunasOk.includes(c), 'coluna nao prevista no adaptador: ' + c));
             const where = op.filtros.map(([c, o], i) => c + ' ' + o + ' $' + (i + 1 + (op.tipo === 'update' ? Object.keys(op.set).length : 0))).join(' and ');
@@ -117,6 +121,7 @@ const estado = async (db, ids) =>
   // 1. Falha NO delete depois de parar: a serie fica parada, nada sai, o erro chega a quem chamou.
   {
     const eventos = [];
+    ordem.length = 0;
     const { supabase, chamadas } = adaptador(db, { falhaNoDelete: { code: '57014', message: 'tempo esgotado' } });
     const data = carregarData(supabase, u, eventos);
     await assert.rejects(data.encerrarSerieAPartirDe(tocada), (e) => e.code === '57014', 'o erro do delete sobe, nao e engolido');
@@ -126,16 +131,20 @@ const estado = async (db, ids) =>
     assert.deepEqual(cabeca.m, [], 'nenhum mes foi marcado, porque nada foi apagado');
     assert.equal((await estado(db, filhas)).length, 4, 'os meses seguintes continuam la');
     assert.deepEqual(eventos, [], 'sem sucesso, as telas/widgets nao sao avisados de mudanca');
+    assert.deepEqual(ordem, ['update', 'invalida', 'delete'], 'F3: o UPDATE ja mudou o banco, entao o cache e invalidado ANTES do delete que falhou');
+    ok('F3: falha no delete apos parar invalida o cache (update, invalida, delete)');
     ok('falha no delete apos parar: erro sobe, serie parada, 4 meses intactos, sem aviso falso de sucesso');
   }
 
   // 2. Repetir o gesto depois da falha conclui o trabalho, e devolve a contagem certa.
   {
     const eventos = [];
+    ordem.length = 0;
     const data = carregarData(adaptador(db).supabase, u, eventos);
     const n = await data.encerrarSerieAPartirDe(tocada);
     assert.equal(n, 2, 'a contagem e a de linhas realmente apagadas (abril e maio)');
     assert.deepEqual(eventos.sort(), ['alterados', 'widgets']);
+    assert.ok(ordem.includes('invalida') && ordem.lastIndexOf('invalida') > ordem.indexOf('delete'), 'F3: no sucesso ainda invalida depois do delete');
     assert.deepEqual((await estado(db, filhas)).map((r) => r.d), ['2026-02-05', '2026-03-05'], 'os meses anteriores ficam');
     const m = (await db.query('select recurrence_skipped_months m from public.transactions where id=$1', [cab])).rows[0].m;
     assert.deepEqual(m, ['2026-04', '2026-05'], 'o gatilho marcou so os meses apagados');

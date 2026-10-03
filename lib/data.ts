@@ -601,6 +601,10 @@ export async function encerrarSerieAPartirDe(
     .eq('id', tx.parent_id)
     .eq('user_id', user_id);
   if (erroAoParar) throw erroAoParar;
+  /* O UPDATE já mudou o banco. Se o DELETE abaixo falhar, o erro sobe e as
+     linhas do fim desta função não rodam: a resposta guardada antes da escrita
+     continuaria elegível, com a série ainda "recorrente". */
+  invalidarRespostasAtrasadas();
 
   const { data, error } = await supabase
     .from('transactions')
