@@ -40,11 +40,12 @@ export type MensagemLocal = {
 /* O chat usa Text puro: a resposta do assistente traz **negrito** em markdown,
    que apareceria com os asteriscos literais. Tira pares fechados de ** e de *
    (negrito, itálico), títulos `#` e crases; item de lista vira "•". Um * solto
-   (multiplicação, "R$ 20 * 2") fica. */
+   ou de multiplicação ("R$ 20 * 2", "20*2 + 10*3") fica: o par só vale se
+   nenhum asterisco encosta em letra ou número por fora. */
 export function textoDoAssistente(texto: string): string {
   return texto
     .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*(?!\s)([^*\n]+?)(?<!\s)\*/g, '$1')
+    .replace(/(?<![\w*])\*(?![\s*])([^*\n]+?)(?<![\s*])\*(?!\w)/g, '$1')
     .replace(/^\s*[*-]\s+/gm, '• ')
     .replace(/^\s{0,3}#{1,6}\s+/gm, '')
     .replace(/`+/g, '');

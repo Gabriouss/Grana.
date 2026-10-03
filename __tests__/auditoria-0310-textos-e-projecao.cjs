@@ -29,6 +29,7 @@ assert.equal(textoDoAssistente('*(Além disso, a fatura for paga).*'), '(Além d
 assert.equal(textoDoAssistente('um *itálico* e 2 * 3'), 'um itálico e 2 * 3');
 assert.equal(textoDoAssistente('## Resumo\n* item um\n- item dois'), 'Resumo\n• item um\n• item dois');
 assert.equal(textoDoAssistente('use `código`'), 'use código');
+assert.equal(textoDoAssistente('R$ 20*2 + R$ 10*3'), 'R$ 20*2 + R$ 10*3');
 assert.ok(!/[*`]/.test(textoDoAssistente('**a** *b* c `d`')));
 assert.equal(textoDoAssistente('*(Além disso, fatura paga).* 📊'), '(Além disso, fatura paga). 📊');
 console.log('  ok  V08 texto do assistente sem markdown cru');
