@@ -1,3 +1,78 @@
+# REGRA DO TRABALHO COM MULTIAGENTES (fixa no topo)
+
+> **Pedido do autor em 02/10/2026: "Mova a regra do trabalho com multi agentes
+> para o topo do context.md e nunca tire ela do topo."** Este bloco fica COMO
+> PRIMEIRO do arquivo, acima do alerta de segurança. Nenhuma entrada nova entra
+> acima dele, nem as de sessão: entradas novas entram DEPOIS dele e do alerta.
+
+**Quando vale.** Nas sessões da M1 (repositório em `E:\GranaPonto`) todo
+trabalho vai a agentes. Nas sessões da M2 os multiagentes NÃO são usados
+(autor, 02/10/2026: só deixam de ser usados quando a sessão acontece na M2).
+
+**Quem faz o quê.**
+
+- O terminal maestro/"Codex" só encaminha, coordena e consolida; não corrige
+  código, não escreve rascunho para outro agente terminar e não escreve
+  registro (`AGENTS.md`, regra 19). Vale seja qual for o modelo rodando nele.
+- **Documentação é do Ledger** (time Codex) **ou do Quill** (time Claude):
+  `context.md`, notas de sessão, vault. Os outros agentes não editam esses
+  arquivos; mandam o relatório ao maestro em
+  `E:\Grana-temporarios\<rodada>\relatorio-<agente>-<etapa>.md`, respondendo
+  às seis perguntas da regra 12, e o maestro repassa ao documentador.
+- **Dois times, Codex e Claude, com pares por papel.** Quando um bate o limite
+  de uso, quem tem limite executa, o outro julga, e há consenso.
+- **Regra 10:** uma linha de trabalho só. Sem branch, sem worktree, sem stash.
+- **Regra 16:** o Codex é revisor e o que ele acha é hipótese até alguém
+  conferir no código.
+- **Regra 17:** o maestro confere cada achado no código; o confirmado vai ao
+  dono da área, em commit próprio; o incerto fica marcado "sem confiabilidade
+  suficiente" e vai ao relatório final ao autor.
+- **Regras 4 e 22:** build (`eas build`) só com pedido explícito do autor na
+  sessão, e no máximo 3 por semana, de segunda a domingo.
+
+**Modelos do time Codex (sempre, e na inicialização).** Sol 6.1 medium
+(`gpt-6.1-sol`) em Forge, Harbor e Watchtower; Luna 6 xhigh (`gpt-6-luna`) nos
+demais. O modelo vai no `--command` ao recrutar, trocar ou reiniciar: reiniciar
+sem ele cai no padrão do `~/.codex/config.toml`. O script é
+`.maestri/codex-modelos.sh`.
+
+**Como enviar mensagem a um agente.**
+
+- Terminal Codex: SÓ por `bash .maestri/enviar.sh "Agente" "texto"`. Nunca
+  `maestri ask` puro: o Enter vai colado no texto e o texto fica PARADO na
+  caixa do Codex. Só vale como entregue se a saída for "enviado para <agente>".
+- Terminal Claude: `maestri ask "Agente" --raw "texto"`, depois um segundo
+  `--raw` com só o Enter (`\r`), e conferir com `maestri check` que a caixa
+  ficou vazia.
+- O guardião `.maestri/guardiao-caixas.sh` libera o que ainda assim ficar
+  parado na caixa de um Codex (sobe junto com o Maestri). Para ver se uma caixa
+  tem texto parado, olhe a ÚLTIMA linha com `›`: se não for "Ask Codex to do
+  anything", há texto nela.
+
+**Notas do fichário do workspace do Maestri = memória do projeto** (decisão do
+autor, 02/10/2026). Funcionam como a memória de trabalho dos agentes, parecida
+com o vault: uma nota de entrada, notas perenes por assunto (com tipo, fonte e
+revisado), um registro por sessão (`AAAA-MM-DD - M1 - assunto`, com as seis
+respostas da regra 12) e espelhos resumidos dos arquivos do repositório
+(Contexto - AGENTS, context, PRODUCT, DESIGN, CLAUDE e FUNIL). **O repositório
+continua sendo a fonte; a nota é resumo e, em contradição, vale o arquivo.** O
+vault do Obsidian NÃO é fonte (está desatualizado).
+
+- **No INÍCIO de toda sessão de trabalho**, todo agente lê essas notas
+  (`maestri note read`) para recuperar o contexto quando ele foi perdido
+  (reinício do terminal, `/clear`, sessão nova), e depois lê o arquivo do
+  repositório quando o trabalho depender do detalhe. ("Todos os agentes em
+  início de sessão de trabalho deverão ler as notas do workspace para recuperar
+  seus contextos quando perdidos.")
+- **No FINAL de toda sessão de trabalho**, o Ledger (time Codex) ou o Quill
+  (time Claude) atualiza as seis notas a partir dos arquivos atuais do
+  repositório e confere que não contradizem o repositório (por exemplo: bloqueio
+  de assinatura, regras 15 a 22, este bloco do topo). Ao encerrar a sessão, o
+  maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
+  sempre em todo o final das sessões de trabalho.")
+
+---
+
 # ALERTA CRÍTICO DE SEGURANÇA — LER ANTES DE QUALQUER OUTRA COISA
 
 > **Registrado pela M2 em 16/09/2026, a pedido do autor, como informação
