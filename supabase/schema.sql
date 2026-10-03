@@ -1901,6 +1901,62 @@ $$;
 
 revoke all on function public.somar_meses_data(date, integer) from public, anon, authenticated;
 
+-- B3 (20261002140000): dia desejado da serie de boletos.
+alter table public.bills
+  add column if not exists recurrence_day smallint
+  check (recurrence_day is null or recurrence_day between 1 and 31);
+
+comment on column public.bills.recurrence_day is
+  'Dia do mes desejado para a serie (1 a 31). Gravado por pagar_conta e pelo gatilho de promocao da cabeca; so vale se for coerente com due_date (ver dia_desejado_da_serie).';
+
+-- Dia desejado, validado contra a data da conta.
+create or replace function public.dia_desejado_da_serie(
+  p_due date, p_guardado integer, p_cabeca_due date
+)
+returns integer
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  with c as (
+    select extract(day from p_due)::integer as proprio,
+           extract(day from (date_trunc('month', p_due) + interval '1 month - 1 day'))::integer as ultimo,
+           coalesce(p_guardado, extract(day from p_cabeca_due)::integer,
+                    extract(day from p_due)::integer) as candidato
+  )
+  select case
+    when c.candidato >= c.proprio and c.proprio = least(c.candidato, c.ultimo)
+      then c.candidato
+    else c.proprio
+  end
+  from c;
+$$;
+
+-- Vencimento do mes seguinte para o dia desejado, com o fim do mes respeitado.
+create or replace function public.proximo_vencimento_da_serie(p_due date, p_dia integer)
+returns date
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  with alvo as (
+    select (date_trunc('month', p_due) + interval '1 month')::date as primeiro
+  )
+  select (
+    alvo.primeiro
+    + least(p_dia, extract(day from (alvo.primeiro + interval '1 month - 1 day'))::integer)
+    - 1
+  )::date
+  from alvo;
+$$;
+
+revoke all on function public.dia_desejado_da_serie(date, integer, date)
+  from public, anon, authenticated;
+revoke all on function public.proximo_vencimento_da_serie(date, integer)
+  from public, anon, authenticated;
+
 create or replace function public.pagar_conta(p_bill_id uuid, p_paid_on date)
 returns public.bills
 language plpgsql
@@ -1912,6 +1968,8 @@ declare
   v_bill public.bills;
   v_tx_id uuid;
   v_parent uuid;
+  v_dia integer;
+  v_cabeca_due date;
   v_next_due date;
   v_next_id uuid;
 begin
@@ -1948,25 +2006,29 @@ begin
 
   if v_bill.recurring then
     v_parent := coalesce(v_bill.parent_id, v_bill.id);
-    v_next_due := public.somar_meses_data(v_bill.due_date, 1);
+    select h.due_date into v_cabeca_due
+    from public.bills h
+    where h.id = v_bill.parent_id and h.user_id = v_user;
+    v_dia := public.dia_desejado_da_serie(
+      v_bill.due_date, v_bill.recurrence_day, v_cabeca_due);
+    v_next_due := public.proximo_vencimento_da_serie(v_bill.due_date, v_dia);
     -- Com o conflito, nada é inserido e o RETURNING não devolve linha:
     -- v_next_id fica nulo. É isso que separa "este pagamento criou" de
     -- "já existia", e só a primeira é desfeita ao reabrir.
     insert into public.bills (
       user_id, description, amount, category, color, due_date, status,
-      recurring, wallet_id, parent_id
+      recurring, wallet_id, parent_id, recurrence_day
     ) values (
       v_user, v_bill.description, v_bill.amount, v_bill.category, v_bill.color,
-      v_next_due, 'due', true, v_bill.wallet_id, v_parent
+      v_next_due, 'due', true, v_bill.wallet_id, v_parent, v_dia
     ) on conflict (user_id, parent_id, due_date) do nothing
     returning id into v_next_id;
 
-    if v_next_id is not null then
-      update public.bills
-      set next_bill_id = v_next_id
-      where id = v_bill.id and user_id = v_user
-      returning * into v_bill;
-    end if;
+    update public.bills
+    set recurrence_day = v_dia,
+        next_bill_id = coalesce(v_next_id, next_bill_id)
+    where id = v_bill.id and user_id = v_user
+    returning * into v_bill;
   end if;
 
   return v_bill;
@@ -1985,6 +2047,7 @@ as $$
 declare
   v_user uuid := (select auth.uid());
   v_bill public.bills;
+  v_dia integer;
 begin
   if v_user is null or not public.tem_direito_acesso() then
     raise exception 'Acesso não autorizado' using errcode = '42501';
@@ -2003,14 +2066,23 @@ begin
     where id = v_bill.paid_transaction_id and user_id = v_user;
   end if;
 
-  -- A conta do mês seguinte que ESTE pagamento criou sai junto. Se ela já foi
-  -- paga, fica: apagá-la levaria um pagamento de verdade embora.
+  -- A conta do mês seguinte que ESTE pagamento criou sai junto, se ainda for
+  -- igual ao que foi criado. Paga ou editada, fica.
   if v_bill.next_bill_id is not null then
-    delete from public.bills
-    where id = v_bill.next_bill_id
-      and user_id = v_user
-      and status = 'due'
-      and paid_transaction_id is null;
+    v_dia := public.dia_desejado_da_serie(v_bill.due_date, v_bill.recurrence_day, null);
+    delete from public.bills n
+    where n.id = v_bill.next_bill_id
+      and n.user_id = v_user
+      and n.status = 'due'
+      and n.paid_transaction_id is null
+      and n.recurring
+      and n.parent_id is not distinct from coalesce(v_bill.parent_id, v_bill.id)
+      and n.description = v_bill.description
+      and n.amount = v_bill.amount
+      and n.category = v_bill.category
+      and n.color = v_bill.color
+      and n.wallet_id is not distinct from v_bill.wallet_id
+      and n.due_date = public.proximo_vencimento_da_serie(v_bill.due_date, v_dia);
   end if;
 
   update public.bills
@@ -4922,3 +4994,119 @@ drop trigger if exists "A0_soltar_filhas_da_origem_encerrada" on public.transact
 create trigger "A0_soltar_filhas_da_origem_encerrada"
   after delete on public.transactions
   for each row execute function public.soltar_filhas_da_origem_encerrada();
+
+-- Ver 20261002120000 (apagar a cabeca de uma serie de boletos promove a proxima)
+-- e 20261002140000 (a promocao leva o dia desejado).
+create or replace function public.promover_proxima_conta_da_serie()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_nova uuid;
+begin
+  if old.parent_id is not null then
+    return null;
+  end if;
+
+  select b.id into v_nova
+  from public.bills b
+  where b.parent_id = old.id and b.user_id = old.user_id
+  order by b.due_date asc, b.created_at asc, b.id asc
+  limit 1;
+
+  if v_nova is null then
+    return null;
+  end if;
+
+  update public.bills
+     set parent_id = null,
+         recurrence_day = coalesce(recurrence_day, old.recurrence_day,
+                                   extract(day from old.due_date)::integer)
+   where id = v_nova and user_id = old.user_id;
+
+  update public.bills
+     set parent_id = v_nova,
+         recurrence_day = coalesce(recurrence_day, old.recurrence_day,
+                                   extract(day from old.due_date)::integer)
+   where parent_id = old.id and user_id = old.user_id;
+
+  return null;
+end;
+$$;
+
+revoke all on function public.promover_proxima_conta_da_serie()
+  from public, anon, authenticated;
+
+drop trigger if exists "A0_promover_proxima_conta_da_serie" on public.bills;
+create trigger "A0_promover_proxima_conta_da_serie"
+  after delete on public.bills
+  for each row execute function public.promover_proxima_conta_da_serie();
+
+-- Ver 20261002160000 (B5): apagar a saida vinculada reabre o boleto.
+create or replace function public.reabrir_conta_da_saida_apagada()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.bills
+     set status = 'due',
+         paid_transaction_id = null,
+         next_bill_id = null
+   where paid_transaction_id = old.id
+     and user_id = old.user_id
+     and status = 'paid';
+  return null;
+end;
+$$;
+
+revoke all on function public.reabrir_conta_da_saida_apagada()
+  from public, anon, authenticated;
+
+drop trigger if exists "A0_reabrir_conta_da_saida_apagada" on public.transactions;
+create trigger "A0_reabrir_conta_da_saida_apagada"
+  after delete on public.transactions
+  for each row execute function public.reabrir_conta_da_saida_apagada();
+
+-- Ver 20261002170000 (B4): editar boleto pago atualiza a saida vinculada.
+create or replace function public.sincronizar_saida_da_conta_paga()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.status is distinct from 'paid'
+     or old.status is distinct from 'paid'
+     or new.paid_transaction_id is null then
+    return null;
+  end if;
+
+  update public.transactions
+     set description = new.description,
+         amount = new.amount,
+         category = new.category,
+         color = new.color,
+         wallet_id = new.wallet_id
+   where id = new.paid_transaction_id
+     and user_id = new.user_id;
+  return null;
+end;
+$$;
+
+revoke all on function public.sincronizar_saida_da_conta_paga()
+  from public, anon, authenticated;
+
+drop trigger if exists "A0_sincronizar_saida_da_conta_paga" on public.bills;
+create trigger "A0_sincronizar_saida_da_conta_paga"
+  after update of description, amount, category, color, wallet_id on public.bills
+  for each row
+  when (old.description is distinct from new.description
+     or old.amount is distinct from new.amount
+     or old.category is distinct from new.category
+     or old.color is distinct from new.color
+     or old.wallet_id is distinct from new.wallet_id)
+  execute function public.sincronizar_saida_da_conta_paga();
