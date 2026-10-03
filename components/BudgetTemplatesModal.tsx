@@ -11,7 +11,7 @@ import {
 import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, hitSlopPara } from '@/lib/theme';
 import { BUDGET_TEMPLATES, type BudgetTemplate } from '@/lib/heuristics';
 import { CATEGORIES } from '@/lib/types';
 import { parseAmount, formatMoneyInput, formatBRL } from '@/lib/format';
@@ -125,7 +125,7 @@ export default function BudgetTemplatesModal({
                 resetState();
                 onClose();
               }}
-              hitSlop={12}
+              hitSlop={hitSlopPara(22)}
               accessibilityRole="button"
               accessibilityLabel="Fechar"
             >

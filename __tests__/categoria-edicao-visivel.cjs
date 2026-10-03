@@ -70,7 +70,7 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
   '@/lib/alerta': { Alert: { alert: () => {} } },
   '@expo/vector-icons/Ionicons': { default: 'Ionicons' },
   '@/lib/theme': {
-    theme: {}, radius: {}, spacing: { xl: 24, md: 16 }, PALETTE_30: ['#000000'], fonts: {}, type: { apoio: 14 },
+    theme: {}, radius: {}, spacing: { xl: 24, md: 16 }, PALETTE_30: ['#000000'], fonts: {}, type: { apoio: 14 }, hitSlopPara: () => 0,
   },
   '@/lib/types': { CATEGORIES: [] },
   '@/lib/data': {

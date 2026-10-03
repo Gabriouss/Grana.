@@ -59,7 +59,7 @@ import {
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { hapticDelete } from '@/lib/haptics';
 import { formatBRL, addMonthsToISO, formatDateLabel, formatMoney, isSameMonth, isCreditTx, parseAmount, todayISO } from '@/lib/format';
-import { theme, radius, spacing, screenRhythm, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, fonts, type, lh, hitSlopPara } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
@@ -778,7 +778,7 @@ export default function LancamentosScreen() {
             returnKeyType="search"
           />
           {search.length > 0 && (
-            <AppPressable onPress={() => setSearch('')} hitSlop={10} accessibilityLabel="Limpar busca">
+            <AppPressable onPress={() => setSearch('')} hitSlop={hitSlopPara(16)} accessibilityLabel="Limpar busca">
               <Ionicons name="close-circle" size={16} color={theme.inkFaint} />
             </AppPressable>
           )}

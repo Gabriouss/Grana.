@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View, StyleSheet } from 'react-native';
 import AppModal from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, hitSlopPara } from '@/lib/theme';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import type { Goal } from '@/lib/types';
@@ -56,7 +56,7 @@ export default function GoalDepositModal({
       <Sheet onClose={onClose} keyboardShouldPersistTaps="always">
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={2}>{goal.title}</Text>
-          <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+          <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>

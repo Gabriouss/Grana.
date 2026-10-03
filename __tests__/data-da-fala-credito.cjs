@@ -146,7 +146,7 @@ const mods = {
   '@/lib/format': format,
   '@/lib/limits': { LIMITS: new Proxy({}, { get: () => 100 }) },
   '@/lib/heuristics': h,
-  '@/lib/theme': { theme: new Proxy({}, { get: (_, k) => String(k) }), radius: {}, fonts: {}, touchTarget: 48, spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 }, type: new Proxy({}, { get: () => 14 }), lh: () => 0 },
+  '@/lib/theme': { theme: new Proxy({}, { get: (_, k) => String(k) }), radius: {}, fonts: {}, touchTarget: 48, hitSlopPara: () => 0, spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 }, type: new Proxy({}, { get: () => 14 }), lh: () => 0 },
 };
 function componente(arquivo) {
   const exports = {};

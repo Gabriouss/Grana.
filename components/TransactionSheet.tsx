@@ -10,7 +10,7 @@ import { dataEscolhidaNoSeletor } from '@/components/LinhaDataDaCompra';
 import CategoryPickerModal from '@/components/CategoryPickerModal';
 import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount, todayISO } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
-import { theme, radius, spacing, fonts, type, touchTarget, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget, lh, hitSlopPara } from '@/lib/theme';
 import type { CreditCard, TxType, Wallet } from '@/lib/types';
 import { PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 
@@ -199,7 +199,7 @@ export default function TransactionSheet({
         <Sheet onClose={onClose} centered sheetStyle={styles.centeredSheet}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle} accessibilityRole="header">{titulo}</Text>
-            <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

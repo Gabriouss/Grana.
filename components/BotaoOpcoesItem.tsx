@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius } from '@/lib/theme';
+import { theme, radius, hitSlopPara } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 /**
@@ -47,7 +47,7 @@ export default function BotaoOpcoesItem({
   return (
     <AppPressable
       onPress={onPress}
-      hitSlop={8}
+      hitSlop={hitSlopPara(28)}
       scaleOnPress={false}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
@@ -59,9 +59,9 @@ export default function BotaoOpcoesItem({
 }
 
 const styles = StyleSheet.create({
-  /* 28px de desenho com `hitSlop` de 8 leva a área tocável a 44, que atende
-     iOS e Android. O `AppPressable` devolve esse acréscimo também na web, onde
-     o `hitSlop` do react-native-web é inerte. */
+  /* 28px de desenho; o `hitSlopPara` completa a área tocável até `touchTarget`
+     (48 no Android, 44 no iOS). O `AppPressable` devolve esse acréscimo também
+     na web, onde o `hitSlop` do react-native-web é inerte. */
   botao: {
     width: 28,
     height: 28,

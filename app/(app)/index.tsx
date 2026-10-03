@@ -37,7 +37,7 @@ import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, for
 import { hapticDelete } from '@/lib/haptics';
 import { carregarPerfil, nomeDeExibicao, type Perfil } from '@/lib/profile';
 import PrivacyValue from '@/components/PrivacyValue';
-import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type, touchTarget, lh } from '@/lib/theme';
+import { theme, radius, spacing, screenRhythm, card as cardTokens, fonts, type, touchTarget, lh, hitSlopPara } from '@/lib/theme';
 import { percentualDaFatia, prepararFatias } from '@/lib/chart-colors';
 import { CATEGORIES } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
@@ -1773,7 +1773,7 @@ export default function InicioScreen() {
         <Sheet centered onClose={() => setBillSheetOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle} accessibilityRole="header">Nova conta a pagar</Text>
-              <AppPressable onPress={() => setBillSheetOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+              <AppPressable onPress={() => setBillSheetOpen(false)} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
             </View>
@@ -1852,7 +1852,7 @@ export default function InicioScreen() {
         <Sheet onClose={() => setBudgetModalOpen(false)}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle} accessibilityRole="header">Orçamento de {budgetCategory}</Text>
-              <AppPressable onPress={() => setBudgetModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+              <AppPressable onPress={() => setBudgetModalOpen(false)} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
             </View>

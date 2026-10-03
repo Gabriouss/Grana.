@@ -73,7 +73,7 @@ import { valorSeguroParaRevisaoVoz } from '@/lib/voz-confiabilidade';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
 import { hapticDelete, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { scheduleCardInvoiceReminders, cancelCardInvoiceReminders, cancelarLembretesDeCartoesRemovidos, cancelarLembretesDoCartao, carregarNotifPrefs } from '@/lib/notifications';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh, touchTarget } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh, touchTarget, hitSlopPara } from '@/lib/theme';
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type CreditCardInvoicePayment, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
@@ -1677,7 +1677,7 @@ export default function CreditoScreen() {
         <Sheet onClose={() => setNewCardOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle} accessibilityRole="header">{editingCardId ? 'Editar cartão de crédito' : 'Novo cartão de crédito'}</Text>
-            <AppPressable onPress={() => setNewCardOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={() => setNewCardOpen(false)} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>
@@ -1844,7 +1844,7 @@ export default function CreditoScreen() {
         <Sheet centered onClose={() => setPayInvoiceOpen(false)}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle} accessibilityRole="header">{pagandoRestante ? 'Pagar restante' : 'Pagar fatura'}</Text>
-            <AppPressable onPress={() => setPayInvoiceOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={() => setPayInvoiceOpen(false)} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

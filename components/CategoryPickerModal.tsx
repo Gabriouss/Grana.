@@ -11,7 +11,7 @@ import {
 import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, PALETTE_30, fonts, type } from '@/lib/theme';
+import { theme, radius, spacing, PALETTE_30, fonts, type, hitSlopPara } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import type { Category, TxType } from '@/lib/types';
 import { addCategory, deleteCategory, fetchCategories, seedDefaultCategories, updateCategory } from '@/lib/data';
@@ -229,7 +229,7 @@ export default function CategoryPickerModal({
         <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle} accessibilityRole="header">{mode === 'manage' ? 'Gerenciar categorias' : 'Categoria'}</Text>
-            <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

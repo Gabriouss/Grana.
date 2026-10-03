@@ -296,6 +296,10 @@ export const textStyles = {
 /** Área física mínima dos controles, preservando a métrica de cada sistema. */
 export const touchTarget = Platform.OS === 'android' ? 48 : 44;
 
+/** `hitSlop` que completa um desenho de `tamanho` até a área mínima de toque
+ *  da plataforma. Fica fora da view, então não mexe no layout. */
+export const hitSlopPara = (tamanho: number) => Math.max(0, Math.ceil((touchTarget - tamanho) / 2));
+
 /* Tokens da marca, extraídos dos vetores de design-system/marca/.
    Valem para peças de marca — ícone, splash, logotipo — e não para a
    interface: a UI é inteiramente de cores chapadas, e o gradiente ser

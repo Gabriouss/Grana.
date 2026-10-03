@@ -14,7 +14,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { createWallet, updateWallet, deleteWallet } from '@/lib/wallets';
 import { formatBRL } from '@/lib/format';
-import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget, hitSlopPara } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
 import AppPressable from './AppPressable';
 import ToggleSwitch from './ToggleSwitch';
@@ -156,7 +156,7 @@ export default function WalletPickerModal({
       <Sheet onClose={onClose}>
         <View style={styles.header}>
           <Text style={styles.title}>Selecionar carteira</Text>
-          <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+          <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>
@@ -386,7 +386,7 @@ export default function WalletPickerModal({
       <Sheet centered onClose={() => setDeleteTarget(null)}>
         <View style={styles.header}>
           <Text style={styles.title}>Excluir carteira?</Text>
-          <AppPressable onPress={() => setDeleteTarget(null)} hitSlop={12} accessibilityLabel="Fechar">
+          <AppPressable onPress={() => setDeleteTarget(null)} hitSlop={hitSlopPara(22)} accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>

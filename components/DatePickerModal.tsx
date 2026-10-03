@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import AppModal, { JanelaFlutuante } from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget, hitSlopPara } from '@/lib/theme';
 import AppPressable from './AppPressable';
 import AccessibleModalPanel from './AccessibleModalPanel';
 
@@ -155,7 +155,7 @@ export default function DatePickerModal({
         <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, sheetStyle]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle} accessibilityRole="header">{title}</Text>
-            <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

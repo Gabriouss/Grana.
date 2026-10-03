@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, hitSlopPara } from '@/lib/theme';
 import { LIMITS } from '@/lib/limits';
 import { enviarFeedback, type FeedbackType } from '@/lib/feedback';
 import { useDemo } from '@/lib/demo-context';
@@ -87,7 +87,7 @@ export default function FeedbackModal({
         <AccessibleModalPanel ativo={visible} onClose={handleClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle} accessibilityRole="header">Enviar feedback</Text>
-            <AppPressable onPress={handleClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={handleClose} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

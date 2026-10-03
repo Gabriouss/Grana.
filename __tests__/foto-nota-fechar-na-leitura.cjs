@@ -52,7 +52,7 @@ const imports = {
   '@/lib/alerta': { Alert: { alert: (...a) => registro.alertas.push(a) } },
   'expo-camera': { CameraView: 'CameraView', useCameraPermissions: () => [{ granted: true }, async () => ({ granted: true })] },
   '@expo/vector-icons/Ionicons': 'Ionicons',
-  '@/lib/theme': { theme: {}, radius: {}, spacing: {}, type: {}, fonts: {}, touchTarget: 48, lh: () => 0 },
+  '@/lib/theme': { theme: {}, radius: {}, spacing: {}, type: {}, fonts: {}, touchTarget: 48, hitSlopPara: () => 0, lh: () => 0 },
   /* Este teste é sobre fechar durante a leitura, não sobre categoria: a
      categoria obrigatória tem teste próprio (categoria-obrigatoria.cjs). */
   '@/lib/heuristics': {

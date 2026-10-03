@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-nati
 import { Alert } from '@/lib/alerta';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget, lh, hitSlopPara } from '@/lib/theme';
 import { categoriaEscolhida, categoriaReconhecida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput, todayISO } from '@/lib/format';
 import { fotografarELer, limparFotosEsquecidas, prepararLeitura } from '@/lib/foto-nota-ocr';
@@ -343,7 +343,7 @@ export default function FotoNotaModal({
       <Sheet centered onClose={fechar}>
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle} accessibilityRole="header">Nota fotografada</Text>
-          <AppPressable onPress={fechar} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+          <AppPressable onPress={fechar} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>

@@ -4,7 +4,7 @@ import AppModal from './AppModal';
 import { Alert } from '@/lib/alerta';
 import { ESPACO_ALCA } from './WidgetGrid';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, touchTarget, menta } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, touchTarget, menta, hitSlopPara } from '@/lib/theme';
 import { formatMoney, formatDateLabel, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
 import { calcularLevelState } from '@/lib/gamification-infinite';
 import { LIMITS } from '@/lib/limits';
@@ -288,7 +288,7 @@ export default function GoalsCarousel({
         <Sheet onClose={() => { setCreateOpen(false); resetCreateForm(); }}>
           <View style={styles.header}>
             <Text style={styles.sheetTitle} accessibilityRole="header">{editingGoal ? 'Editar meta' : 'Nova meta'}</Text>
-            <AppPressable onPress={() => { setCreateOpen(false); resetCreateForm(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={() => { setCreateOpen(false); resetCreateForm(); }} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

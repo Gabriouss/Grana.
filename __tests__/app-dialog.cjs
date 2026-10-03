@@ -21,7 +21,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/AppDialog.tsx'
     'react-native': { StyleSheet: { create: (s) => s }, Text: 'Text', View: 'View' },
     '@expo/vector-icons/Ionicons': { __esModule: true, default: 'Ionicons' },
     '@/lib/theme': {
-      fonts: {}, radius: {}, spacing: {}, type: {}, touchTarget: 48, lh: (n) => n * 1.4,
+      fonts: {}, radius: {}, spacing: {}, type: {}, touchTarget: 48, hitSlopPara: () => 0, lh: (n) => n * 1.4,
       theme: { ink: 'INK', danger: 'DANGER', paper: 'PAPER', inkSoft: 'SOFT', inkFaint: 'FAINT' },
     },
     './AppModal': { __esModule: true, default: 'AppModal' },

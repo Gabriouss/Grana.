@@ -10,7 +10,7 @@ import {
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, hitSlopPara } from '@/lib/theme';
 import {
   guessAmountFromText,
   categoriaEscolhida,
@@ -319,7 +319,7 @@ export default function PasteReceiptModal({
                 resetState();
                 onClose();
               }}
-              hitSlop={12}
+              hitSlop={hitSlopPara(22)}
               accessibilityRole="button"
               accessibilityLabel="Fechar"
             >

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, spacing, radius, type, fonts, lh } from '@/lib/theme';
+import { theme, spacing, radius, type, fonts, lh, hitSlopPara } from '@/lib/theme';
 import { useSession } from '@/lib/auth-context';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
@@ -69,7 +69,7 @@ export default function RecuperarSenhaModal({
       <Sheet onClose={fechar}>
         <View style={styles.cabecalho}>
           <Text style={styles.titulo}>{enviado ? 'E-mail a caminho' : 'Recuperar senha'}</Text>
-          <AppPressable onPress={fechar} hitSlop={12} accessibilityLabel="Fechar">
+          <AppPressable onPress={fechar} hitSlop={hitSlopPara(22)} accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>

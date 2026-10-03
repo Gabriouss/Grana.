@@ -1,7 +1,7 @@
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppModal from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget, hitSlopPara } from '@/lib/theme';
 import {
   HOME_BLOCK_DESCRIPTIONS,
   HOME_BLOCK_ICONS,
@@ -58,7 +58,7 @@ export default function HomeCustomizerModal({
             <Text style={styles.title}>Personalizar Início</Text>
             <Text style={styles.hint}>Escolha quais ferramentas exibir e a ordem do seu painel.</Text>
           </View>
-          <AppPressable onPress={onClose} hitSlop={12} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Fechar">
+          <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>

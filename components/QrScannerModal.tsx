@@ -11,7 +11,7 @@ import {
 import { Alert } from '@/lib/alerta';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget, lh, hitSlopPara } from '@/lib/theme';
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
 import { categoriaEscolhida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
@@ -241,7 +241,7 @@ export default function QrScannerModal({
       <Sheet centered onClose={fechar}>
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle} accessibilityRole="header">Nota fiscal lida</Text>
-          <AppPressable onPress={fechar} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+          <AppPressable onPress={fechar} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>

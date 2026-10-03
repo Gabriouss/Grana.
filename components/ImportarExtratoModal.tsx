@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, T
 import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, hitSlopPara } from '@/lib/theme';
 import { parseCsvTextDetalhado, tiposDaFatura } from '@/lib/heuristics';
 import { PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { parseOfx, type LancamentoOfx, type OrigemOfx } from '@/lib/ofx-parser';
@@ -311,7 +311,7 @@ export default function ImportarExtratoModal({
             <Text style={styles.sheetTitle} accessibilityRole="header">
               {linhas.length > 0 ? `Prévia: ${linhas.length} ${linhas.length === 1 ? 'lançamento' : 'lançamentos'}` : 'Importar extrato'}
             </Text>
-            <AppPressable onPress={fechar} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+            <AppPressable onPress={fechar} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
           </View>

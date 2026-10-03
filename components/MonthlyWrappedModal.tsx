@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, lh } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, lh, hitSlopPara } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import { hapticTap } from '@/lib/haptics';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
@@ -220,7 +220,7 @@ export default function MonthlyWrappedModal({
 
         <View style={styles.topoRow}>
           <Text style={styles.rotulo}>{slide.rotulo}</Text>
-          <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
+          <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
         </View>

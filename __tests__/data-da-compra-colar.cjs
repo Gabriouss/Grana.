@@ -92,7 +92,7 @@ const imports = {
   './AppModal': { __esModule: true, default: 'AppModal' },
   '@/lib/alerta': { Alert: { alert: (...a) => registro.alertas.push(a) } },
   '@expo/vector-icons/Ionicons': 'Ionicons',
-  '@/lib/theme': { theme: {}, radius: {}, spacing: {}, type: {}, fonts: {}, touchTarget: 48, lh: () => 0 },
+  '@/lib/theme': { theme: {}, radius: {}, spacing: {}, type: {}, fonts: {}, touchTarget: 48, hitSlopPara: () => 0, lh: () => 0 },
   '@/lib/heuristics': lib('heuristics'),
   '@/lib/format': lib('format'),
   '@/lib/nota-foto-parser': lib('nota-foto-parser'),
