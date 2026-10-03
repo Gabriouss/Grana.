@@ -42,6 +42,10 @@ export const LIMITS = {
   csvRows: 10_000,
   /** goals.title */
   goalTitle: 100,
+  /** wallets.name (wallets_name_len) */
+  walletName: 60,
+  /** credit_cards.name (credit_cards_name_len) */
+  cardName: 100,
   /** feedbacks.message */
   feedbackMessage: 2000,
 };

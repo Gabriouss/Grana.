@@ -16,6 +16,7 @@ import { createWallet, updateWallet, deleteWallet } from '@/lib/wallets';
 import { formatBRL } from '@/lib/format';
 import { theme, radius, spacing, type, lh, fonts, touchTarget, hitSlopPara } from '@/lib/theme';
 import PrivacyValue from './PrivacyValue';
+import { LIMITS } from '@/lib/limits';
 import AppPressable from './AppPressable';
 import ToggleSwitch from './ToggleSwitch';
 import Sheet from './Sheet';
@@ -212,6 +213,7 @@ export default function WalletPickerModal({
                   <Text style={styles.createTitle}>Editar carteira</Text>
                   <TextInput
                     accessibilityLabel="Nome da carteira"
+                    maxLength={LIMITS.walletName}
                     style={styles.input}
                     placeholder="Nome da carteira"
                     placeholderTextColor={theme.inkFaint}
@@ -318,6 +320,7 @@ export default function WalletPickerModal({
               <Text style={styles.createTitle}>Nova carteira</Text>
               <TextInput
                 accessibilityLabel="Nome da nova carteira"
+                maxLength={LIMITS.walletName}
                 style={styles.input}
                 placeholder="Nome da carteira, ex.: Casamento"
                 placeholderTextColor={theme.inkFaint}

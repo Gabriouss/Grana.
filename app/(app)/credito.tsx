@@ -1684,7 +1684,7 @@ export default function CreditoScreen() {
 
           <TextInput
             accessibilityLabel="Nome do cartão"
-            maxLength={LIMITS.description}
+            maxLength={LIMITS.cardName}
             style={styles.input}
             placeholder="Nome do cartão (ex.: Nubank Black)"
             placeholderTextColor={theme.inkFaint}

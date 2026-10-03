@@ -54,11 +54,25 @@ function textoDoErro(e: unknown): string {
   return String(e);
 }
 
+/* O banco recusa nome acima do teto com o nome cru da constraint
+   ("wallets_name_len"), que a pessoa não entende. Os campos já cortam no
+   digitar (LIMITS), então isto só aparece para quem chega por outro caminho
+   (build antiga, importação). Os números espelham supabase/schema.sql. */
+const NOMES_LONGOS: Record<string, string> = {
+  wallets_name_len: 'O nome da carteira aceita até 60 caracteres.',
+  credit_cards_name_len: 'O nome do cartão aceita até 100 caracteres.',
+  categories_name_len: 'O nome da categoria aceita até 60 caracteres.',
+  goals_title_len: 'O nome da meta aceita até 100 caracteres.',
+};
+
 export function mensagemErro(e: unknown, apoio = 'Tente novamente.'): string {
   if (isLikelyNetworkError(e)) {
     return 'Sem conexão com a internet. Verifique e tente de novo.';
   }
   const bruta = textoDoErro(e);
+  for (const [constraint, frase] of Object.entries(NOMES_LONGOS)) {
+    if (bruta.includes(constraint)) return frase;
+  }
   if (pareceDespejoDeDados(bruta)) {
     /* Recibo no log, nunca na tela: sem isto a falha vira silêncio, que a
        regra 9 do AGENTS.md trata como o pior desfecho. Truncado porque o
