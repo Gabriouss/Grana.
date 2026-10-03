@@ -64,6 +64,7 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
+      android:gravity="bottom"
       android:orientation="horizontal">
     <TextView
         android:id="@+id/grana_compromisso_mais"
@@ -72,7 +73,8 @@
         android:layout_weight="1"
         android:textColor="@color/grana_widget_menta"
         android:textSize="8sp"
-        android:maxLines="1" />
+        android:maxLines="2"
+        android:ellipsize="end" />
     <TextView
         android:id="@+id/grana_compromisso_atualizado"
         android:layout_width="wrap_content"
