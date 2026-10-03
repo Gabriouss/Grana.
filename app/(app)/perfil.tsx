@@ -96,6 +96,24 @@ const CONTAGEM_WIDGETS_INICIAL: Record<TipoWidget, number> = {
   cofrinho: 0,
 };
 
+/** Texto de ação e seta de "abre algo" no fim de uma linha. A seta é ícone
+ *  escondido do leitor de tela: o TalkBack lê só o texto ("Ver todas"), e não
+ *  "maior que". */
+function ValorComSeta({ texto }: { texto?: string }) {
+  return (
+    <View style={styles.valorComSeta}>
+      {texto ? <Text style={styles.rowValue}>{texto}</Text> : null}
+      <Ionicons
+        name="chevron-forward"
+        size={type.nota}
+        color={theme.inkFaint}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
+    </View>
+  );
+}
+
 export default function PerfilScreen() {
   const { ligado, flag } = useFlags();
   const { paddingConteudo } = useTabBarInset();
@@ -499,7 +517,7 @@ export default function PerfilScreen() {
             onPress={() => setCategoriasOpen(true)}
           >
             <Text style={styles.rowKey}>Categorias</Text>
-            <Text style={styles.rowValue}>Ver todas &gt;</Text>
+            <ValorComSeta texto="Ver todas" />
           </AppPressable>
           <View style={styles.row}>
             <Text style={styles.rowKey}>Sincronização</Text>
@@ -512,7 +530,7 @@ export default function PerfilScreen() {
           {perfil?.fotoUrl && (
             <AppPressable style={styles.tappableRow} onPress={confirmarRemocaoFoto}>
               <Text style={styles.rowKey}>Foto de perfil</Text>
-              <Text style={styles.rowValue}>Remover &gt;</Text>
+              <ValorComSeta texto="Remover" />
             </AppPressable>
           )}
           <View style={styles.row}>
@@ -523,7 +541,7 @@ export default function PerfilScreen() {
           </View>
           <AppPressable style={[styles.tappableRow, { borderBottomWidth: 0 }]} onPress={() => setFeedbackOpen(true)}>
             <Text style={styles.rowKey}>Enviar feedback ou sugestão</Text>
-            <Text style={styles.rowValue}>Abrir &gt;</Text>
+            <ValorComSeta texto="Abrir" />
           </AppPressable>
         </View>
 
@@ -574,9 +592,7 @@ export default function PerfilScreen() {
                       </Text>
                       <Text style={styles.widgetRowHint}>{widget.descricao}</Text>
                     </View>
-                    <Text style={styles.rowValue}>
-                      {vozDesativada ? 'Instável' : instalado ? 'Adicionado ✓' : 'Adicionar'} &gt;
-                    </Text>
+                    <ValorComSeta texto={vozDesativada ? 'Instável' : instalado ? 'Adicionado ✓' : 'Adicionar'} />
                   </AppPressable>
                 );
               })}
@@ -710,7 +726,7 @@ export default function PerfilScreen() {
           {ligado('orcamento_sugerido') && (
             <AppPressable style={styles.tappableRow} onPress={() => setTemplatesOpen(true)}>
               <Text style={styles.rowKey}>Orçamento sugerido</Text>
-              <Text style={styles.rowValue}>Aplicar modelo &gt;</Text>
+              <ValorComSeta texto="Aplicar modelo" />
             </AppPressable>
           )}
 
@@ -726,7 +742,7 @@ export default function PerfilScreen() {
           {ligado('diagnostico') && (
             <AppPressable style={styles.tappableRow} onPress={() => setOnboardingOpen(true)}>
               <Text style={styles.rowKey}>{diagnostico ? 'Diagnóstico financeiro' : 'Diagnóstico inicial'}</Text>
-              <Text style={styles.rowValue}>Refazer diagnóstico &gt;</Text>
+              <ValorComSeta texto="Refazer diagnóstico" />
             </AppPressable>
           )}
         </View>
@@ -736,15 +752,15 @@ export default function PerfilScreen() {
         <View style={styles.sectionCard}>
           <AppPressable style={styles.tappableRow} onPress={() => router.push('/termos')}>
             <Text style={styles.rowKey}>Termos de Uso</Text>
-            <Text style={styles.rowValue}>&gt;</Text>
+            <ValorComSeta />
           </AppPressable>
           <AppPressable style={styles.tappableRow} onPress={() => router.push('/privacidade')}>
             <Text style={styles.rowKey}>Política de Privacidade</Text>
-            <Text style={styles.rowValue}>&gt;</Text>
+            <ValorComSeta />
           </AppPressable>
           <AppPressable style={[styles.tappableRow, { borderBottomWidth: 0 }]} onPress={() => router.push('/exclusao-de-dados')}>
             <Text style={styles.rowKey}>Como excluir meus dados</Text>
-            <Text style={styles.rowValue}>&gt;</Text>
+            <ValorComSeta />
           </AppPressable>
         </View>
 
@@ -935,6 +951,7 @@ const styles = StyleSheet.create({
      Rótulos curtos ficam iguais a antes. */
   rowKey: { flex: 1, flexShrink: 1, marginRight: spacing.md, color: theme.ink, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
+  valorComSeta: { flexDirection: 'row', alignItems: 'center' },
   rowValue: { color: theme.inkFaint, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
   signOutBtn: { borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
