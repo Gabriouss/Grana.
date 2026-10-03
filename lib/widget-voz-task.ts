@@ -349,13 +349,17 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   }
 
   let texto = transcricao.transcript;
-  contexto.transcricao = texto;
   const confiabilidade = await import('./voz-confiabilidade');
   if (!confiabilidade.transcricaoPareceLancamentoVoz(texto)) {
-    if (daFila) throw new FalaParaRevisar(texto);
+    /* Frase sem relação com dinheiro é o que o provedor devolve para ruído ou
+       silêncio: o recibo não a mostra como "Ouvi:", porque a pessoa leria algo
+       que nunca disse. Texto com cara de lançamento incompleto ("mercado")
+       continua aparecendo, para completar à mão. */
+    if (daFila) throw new FalaParaRevisar(confiabilidade.transcricaoForaDeContexto(texto) ? '' : texto);
     await notificacoes.notificarFalha('nao_entendi');
     return false;
   }
+  contexto.transcricao = texto;
   // A forma curta "cartão C6" tem a mesma intenção de "no cartão C6".
   // A heurística existente já preserva débito e recebimentos explicitados.
   texto = texto.replace(/\bcart[aã]o\b/giu, 'no cartão');

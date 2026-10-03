@@ -218,7 +218,31 @@ export async function transcreverAudio(
      a rede ser tentada, e um valor ausente pulava o reconhecimento no aparelho
      sem dizer nada, trocando trabalho de graça por chamada paga. */
   const local = await transcreverNoAparelho(uri, Math.max(0, deadline - Date.now()));
-  if (local) return { ok: true, transcript: local };
+  /* Texto sem cara de lançamento NÃO encerra a busca. Uma frase fluente e sem
+     relação com a fala já chegou ao autor ("Acompanhe o processo de produção de
+     um produto de qualidade", widget, 02/10/2026, no lugar de "Uber ... crédito
+     C6"). A ORIGEM dela não está provada: o servidor, com o recorte do áudio do
+     vídeo, devolveu a fala certa, e não temos o M4A que o widget gravou nem o
+     log do provedor; pode ter sido o reconhecedor do aparelho, o provedor sobre
+     o áudio real, ou o áudio. A defesa vale em qualquer dos casos: o servidor
+     ouve o mesmo áudio, dentro do MESMO prazo, e a frase nunca vira "ouvido".
+     Vale para o botão do app e para o widget, que passam por aqui (regra 13). */
+  if (local) {
+    const { transcricaoPareceLancamentoVoz } = await import('./voz-confiabilidade');
+    if (transcricaoPareceLancamentoVoz(local)) return { ok: true, transcript: local };
+    console.warn('[voz] o reconhecimento do aparelho devolveu texto sem lançamento; tentando o servidor');
+  }
+  /* Se o servidor também falha, a FALHA dele é o resultado, nunca o texto do
+     aparelho que não presta: rede ausente ou prazo viram fila (a fala espera
+     com o áudio e volta ao servidor), e não "Ouvi: ..." com frase inventada. */
+  return transcreverNoServidor(uri, opts, deadline);
+}
+
+async function transcreverNoServidor(
+  uri: string,
+  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number },
+  deadline: number
+): Promise<ResultadoVoz> {
   const url = urlDaFuncao();
   if (!url) return { ok: false, codigo: 'erro_interno' };
 

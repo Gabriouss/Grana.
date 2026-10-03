@@ -237,17 +237,24 @@ const naFila = async () => (await fila.listarVozesPendentes()).map((i) => i.requ
   assert.equal(chamadasTranscricao.length, 0, 'fala em revisão não volta ao servidor a cada 30 s');
   ok('fala em revisão sai das retomadas automáticas');
 
-  /* Texto sem valor ("Obrigado por assistir"): a transcrição vai junto, para
-     "Revisar" abrir preenchido. */
+  /* Texto sem valor E sem relação com dinheiro ("Obrigado por assistir"):
+     antes de 02/10/2026 a transcrição ia junto e o recibo dizia "Ouvi: ...".
+     Agora (transcricaoForaDeContexto) a frase NÃO é mostrada como ouvida: a
+     pessoa leria algo que nunca disse, e "Revisar" abriria com o lixo na
+     descrição (caso do autor, "Uber 825 crédito C6" virou uma frase sobre
+     produção). A fala continua em revisão, com o áudio, e o recibo diz que
+     nada foi lançado. Texto com cara de lançamento ("mercado") continua
+     aparecendo: coberto em voz-transcricao-sem-relacao.cjs. */
   await guardarFala('req-sem-valor', 'widget', { ok: true, transcript: 'Obrigado por assistir.' });
   await tarefa.tentarVozesPendentes();
   const semValor = (await fila.listarVozesPendentes()).find((i) => i.requestId === 'req-sem-valor');
   assert.equal(semValor?.revisao, true);
-  assert.equal(semValor.transcricao, 'Obrigado por assistir.');
+  assert.equal(semValor.transcricao, undefined);
   const reciboSemValor = (await recibos.listarRecibosDaFila('u-1')).find((r) => r.id === 'req-sem-valor');
-  assert.equal(reciboSemValor.transcricao, 'Obrigado por assistir.');
-  assert.match(reciboSemValor.texto, /^Ouvi: "Obrigado por assistir"\. Nada foi lançado/);
-  ok('texto sem valor também vira revisão, com o que foi ouvido');
+  assert.equal(reciboSemValor.transcricao, undefined);
+  assert.match(reciboSemValor.texto, /^Nada foi lançado, e a fala continua guardada/);
+  assert.ok(!/Ouvi/.test(reciboSemValor.texto));
+  ok('texto sem valor e sem relação com dinheiro vira revisão, sem ser mostrado como ouvido');
 
   /* "Tentar de novo": volta à fila e, gravando, o áudio sai. */
   await fila.tirarVozDaRevisao('req-nao-app');

@@ -372,6 +372,11 @@ function montarVoz(opts) {
   const reg = { envios: 0, locais: 0 };
   let relogio = 1000000;
   const mod = carregar('lib/voz.ts', {
+    /* Esta parte mede PRAZO e retentativa, não o conteúdo da fala. Com a
+       decisão "texto do aparelho tem cara de lançamento?" sempre verdadeira,
+       o texto local segue sendo aceito como antes. A decisão real (lixo do
+       aparelho cai no servidor) é de voz-transcricao-sem-relacao.cjs. */
+    './voz-confiabilidade': { transcricaoPareceLancamentoVoz: () => true },
     './voz-local': {
       /* O modulo real exporta o teto padrao, e `transcreverAudio` usa esse
          valor para caber no orcamento de quem chamou. Um duble sem ele fazia

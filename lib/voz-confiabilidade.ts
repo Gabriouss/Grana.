@@ -1,4 +1,4 @@
-import { guessAmountFromText, normalizarTexto } from './heuristics';
+import { guessAmountFromText, guessCategoryFromText, normalizarTexto } from './heuristics';
 
 /**
  * Recusa transcrições típicas de silêncio antes que qualquer heurística
@@ -14,6 +14,26 @@ export function transcricaoPareceLancamentoVoz(texto: string): boolean {
   if (/\b(?:obrigad[oa]\s+por\s+assistir|inscreva-se|legendas?\s+(?:pela|por)|acesse\s+o\s+site|todos\s+os\s+direitos\s+reservados)\b/i.test(t)) return false;
   const valor = guessAmountFromText(t);
   return Number.isFinite(valor) && valor > 0;
+}
+
+/**
+ * O texto não tem relação com dinheiro: nenhum valor, nenhuma categoria que não
+ * seja a de reserva ("Outros") e nenhuma palavra de lançamento. Frase assim já
+ * apareceu no widget ("Acompanhe o processo de produção de um produto de
+ * qualidade", 02/10/2026; origem não provada). Texto assim não pode
+ * aparecer num recibo como "Ouvi: ...": a pessoa leria uma frase que ela nunca
+ * disse. "mercado" (sem valor) NÃO entra aqui: tem categoria, e mostrar o que
+ * foi ouvido ajuda a completar o lançamento à mão.
+ */
+export function transcricaoForaDeContexto(texto: string): boolean {
+  const original = texto.trim();
+  if (!original) return true;
+  const t = normalizarTexto(original);
+  const valor = guessAmountFromText(t);
+  if (Number.isFinite(valor) && valor > 0) return false;
+  if (guessCategoryFromText(t).name !== 'Outros') return false;
+  return !/(?:gast|pag(?:u|ar|o|a)|compr|receb|ganh|transfer|pix|debito|credito|cartao|boleto|conta|parcel|fatura|salario|dinheiro|reais|real|lanc|despesa|renda|vendi|caiu)/i
+    .test(t.normalize('NFD').replace(/[̀-ͯ]/g, ''));
 }
 
 /** Único valor que as telas de revisão podem sugerir a partir de uma fala. */
