@@ -1,3 +1,4 @@
+import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -698,15 +699,7 @@ export default function InicioScreen() {
      recarrega `bills` a cada foco (useFocusEffect → load()), então a virada
      de dia sempre chega junto com dado novo. */
   const dueThisWeek = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return walletBills
-      .filter((b) => {
-        if (b.status === 'paid') return false;
-        const diffDays = Math.round((new Date(b.due_date + 'T00:00:00').getTime() - today.getTime()) / 86400000);
-        return diffDays >= 0 && diffDays <= 6;
-      })
-      .sort((a, b) => a.due_date.localeCompare(b.due_date));
+    return boletosDaSemana(walletBills, new Date());
   }, [walletBills]);
 
   /* Gasto por categoria do mês. Alimenta DUAS seções — o donut e a barra de
@@ -1446,7 +1439,7 @@ export default function InicioScreen() {
                     <Ionicons name="repeat-outline" size={11} color={theme.inkFaint} style={{ marginLeft: spacing.xs }} />
                   )}
                 </View>
-                <Text style={styles.dueDate}>vence {formatDateLabel(b.due_date)}</Text>
+                <Text style={styles.dueDate}>{boletoAtrasado(b, new Date()) ? 'venceu' : 'vence'} {formatDateLabel(b.due_date)}</Text>
               </View>
               <PrivacyValue>
                 <Text style={styles.dueAmount}>{`R$ ${formatMoney(Number(b.amount))}`}</Text>
