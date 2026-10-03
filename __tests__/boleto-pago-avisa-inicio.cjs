@@ -1,5 +1,5 @@
 /*
- * Pagar ou reabrir boleto marca os lancamentos como alterados, para a Inicio
+ * Pagar ou reabrir boleto, e excluir cartao (V05/P3 de 03/10), marca os lancamentos como alterados, para a Inicio
  * recarregar as transacoes e o Saldo atual nao ficar velho (achado P1 da
  * auditoria de 03/10/2026). O modulo e o real (`lib/data.ts`); so Supabase e
  * dependencias sao dubles. Falha do rpc NAO marca (nada mudou no banco).
@@ -23,7 +23,7 @@ function carregar(erro) {
   const q = new Proxy(function () {}, { get: (_a, p) => (p === 'then' ? (r) => r(resposta) : () => q) });
   const deps = {
     './supabase': { supabase: { from: () => q, rpc: () => Promise.resolve(resposta) } },
-    './cache-de-tela': { comCacheOffline: (_n, f) => f, invalidarRespostasAtrasadas() {} },
+    './cache-de-tela': { comCacheOffline: (_n, f) => f, invalidarRespostasAtrasadas() {}, atualizarTelaGuardada: async () => {} },
     './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './lancamentos-alterados': { marcarLancamentosAlterados() { marcas.n++; } },
@@ -47,6 +47,7 @@ function carregar(erro) {
   for (const [nome, rodar] of [
     ['payBill', (m) => m.data.payBill({ id: 'b' }, '2026-10-03')],
     ['reopenBill', (m) => m.data.reopenBill({ id: 'b' })],
+    ['deleteCreditCard', (m) => m.data.deleteCreditCard('c')],
   ]) {
     const bom = carregar(null);
     await rodar(bom);

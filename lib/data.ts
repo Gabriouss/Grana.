@@ -312,6 +312,8 @@ export async function deleteCreditCard(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('credit_cards').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  marcarLancamentosAlterados();
+  invalidarRespostasAtrasadas();
   await atualizarTelaGuardada<CreditCard[]>('cartoes', (lista) => lista.filter((c) => c.id !== id));
 }
 
