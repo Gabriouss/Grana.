@@ -198,7 +198,7 @@ export default function TransactionSheet({
       <AppModal visible={visible} transparent onRequestClose={onClose}>
         <Sheet onClose={onClose} centered sheetStyle={styles.centeredSheet}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{titulo}</Text>
+            <Text style={styles.sheetTitle} accessibilityRole="header">{titulo}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>

@@ -287,7 +287,7 @@ export default function GoalsCarousel({
       <AppModal visible={createOpen} transparent onRequestClose={() => { setCreateOpen(false); resetCreateForm(); }}>
         <Sheet onClose={() => { setCreateOpen(false); resetCreateForm(); }}>
           <View style={styles.header}>
-            <Text style={styles.sheetTitle}>{editingGoal ? 'Editar meta' : 'Nova meta'}</Text>
+            <Text style={styles.sheetTitle} accessibilityRole="header">{editingGoal ? 'Editar meta' : 'Nova meta'}</Text>
             <AppPressable onPress={() => { setCreateOpen(false); resetCreateForm(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>

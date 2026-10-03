@@ -342,7 +342,7 @@ export default function FotoNotaModal({
     <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent onRequestClose={fechar}>
       <Sheet centered onClose={fechar}>
         <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Nota fotografada</Text>
+          <Text style={styles.sheetTitle} accessibilityRole="header">Nota fotografada</Text>
           <AppPressable onPress={fechar} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>

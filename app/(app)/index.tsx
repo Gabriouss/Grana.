@@ -1772,7 +1772,7 @@ export default function InicioScreen() {
       <AppModal visible={billSheetOpen} transparent onRequestClose={() => setBillSheetOpen(false)}>
         <Sheet centered onClose={() => setBillSheetOpen(false)}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Nova conta a pagar</Text>
+              <Text style={styles.sheetTitle} accessibilityRole="header">Nova conta a pagar</Text>
               <AppPressable onPress={() => setBillSheetOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>
@@ -1851,7 +1851,7 @@ export default function InicioScreen() {
       <AppModal visible={budgetModalOpen} transparent onRequestClose={() => setBudgetModalOpen(false)}>
         <Sheet onClose={() => setBudgetModalOpen(false)}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Orçamento de {budgetCategory}</Text>
+              <Text style={styles.sheetTitle} accessibilityRole="header">Orçamento de {budgetCategory}</Text>
               <AppPressable onPress={() => setBudgetModalOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
                 <Ionicons name="close" size={22} color={theme.inkFaint} />
               </AppPressable>

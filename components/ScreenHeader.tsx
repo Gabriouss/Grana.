@@ -70,7 +70,7 @@ export default function ScreenHeader({
                   o título continua numa linha só onde cabe (nada muda em tela
                   folgada) e QUEBRA em vez de truncar onde aperta. Reticências
                   voltam a ser o último recurso, não o primeiro. */}
-              <Text style={styles.title} numberOfLines={2}>
+              <Text style={styles.title} numberOfLines={2} accessibilityRole="header">
                 {title}
               </Text>
             </View>

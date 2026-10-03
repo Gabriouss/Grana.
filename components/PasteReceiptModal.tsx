@@ -311,7 +311,7 @@ export default function PasteReceiptModal({
         }}
       >
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>
+            <Text style={styles.sheetTitle} accessibilityRole="header">
               {recognized ? 'Confirmar lançamento' : 'Colar comprovante ou Pix'}
             </Text>
             <AppPressable

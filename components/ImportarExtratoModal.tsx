@@ -308,7 +308,7 @@ export default function ImportarExtratoModal({
           style={[styles.sheet, styles.sheetCentered, flutuanteStyle, { paddingBottom: spacing.xl }]}
         >
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>
+            <Text style={styles.sheetTitle} accessibilityRole="header">
               {linhas.length > 0 ? `Prévia: ${linhas.length} ${linhas.length === 1 ? 'lançamento' : 'lançamentos'}` : 'Importar extrato'}
             </Text>
             <AppPressable onPress={fechar} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">

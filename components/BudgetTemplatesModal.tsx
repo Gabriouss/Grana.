@@ -119,7 +119,7 @@ export default function BudgetTemplatesModal({
             precisa se afastar do teclado. */}
         <AccessibleModalPanel ativo={visible} onClose={fechar} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Orçamento sugerido</Text>
+            <Text style={styles.sheetTitle} accessibilityRole="header">Orçamento sugerido</Text>
             <AppPressable
               onPress={() => {
                 resetState();

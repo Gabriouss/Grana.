@@ -1676,7 +1676,7 @@ export default function CreditoScreen() {
       <AppModal visible={newCardOpen} transparent onRequestClose={() => setNewCardOpen(false)}>
         <Sheet onClose={() => setNewCardOpen(false)}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{editingCardId ? 'Editar cartão de crédito' : 'Novo cartão de crédito'}</Text>
+            <Text style={styles.sheetTitle} accessibilityRole="header">{editingCardId ? 'Editar cartão de crédito' : 'Novo cartão de crédito'}</Text>
             <AppPressable onPress={() => setNewCardOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
@@ -1843,7 +1843,7 @@ export default function CreditoScreen() {
       <AppModal visible={payInvoiceOpen} transparent onRequestClose={() => setPayInvoiceOpen(false)}>
         <Sheet centered onClose={() => setPayInvoiceOpen(false)}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{pagandoRestante ? 'Pagar restante' : 'Pagar fatura'}</Text>
+            <Text style={styles.sheetTitle} accessibilityRole="header">{pagandoRestante ? 'Pagar restante' : 'Pagar fatura'}</Text>
             <AppPressable onPress={() => setPayInvoiceOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>

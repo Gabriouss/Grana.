@@ -228,7 +228,7 @@ export default function CategoryPickerModal({
       <Pressable style={[styles.modalScrim, scrimStyle]} onLayout={aoMedirFundo} onPress={onClose}>
         <AccessibleModalPanel ativo={visible} onClose={onClose} style={[styles.sheet, flutuanteStyle, { paddingBottom: spacing.xl }]}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{mode === 'manage' ? 'Gerenciar categorias' : 'Categoria'}</Text>
+            <Text style={styles.sheetTitle} accessibilityRole="header">{mode === 'manage' ? 'Gerenciar categorias' : 'Categoria'}</Text>
             <AppPressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fechar">
               <Ionicons name="close" size={22} color={theme.inkFaint} />
             </AppPressable>
