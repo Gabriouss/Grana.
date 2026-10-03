@@ -58,7 +58,7 @@ function supabaseQueAnota(linhasApagadas) {
 function carregarData(supabase) {
   return carregar('lib/data.ts', {
     './supabase': { supabase },
-    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar },
+    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() {} },
     './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './lancamentos-alterados': { marcarLancamentosAlterados() {} },
@@ -272,87 +272,28 @@ async function pergunta() {
   }
 }
 
-/* Origem de série ENCERRADA (revisão do Keel, 01/10/2026). "Este e os
- * próximos" desliga `recurring` na origem e deixa os meses anteriores; depois
- * disso a origem parece um lançamento avulso, mas `parent_id` é cascade e apagar
- * a origem leva todos eles. A pergunta tem de dizer isso. */
+/* Origem de série ENCERRADA. A 20261001140000 (aplicada em produção em
+ * 01/10/2026) faz o banco soltar os meses antigos quando a origem é apagada,
+ * então a pergunta é a de um lançamento avulso: dizer que "leva os meses" seria
+ * mentira. Esta seção trava a mentira de volta. */
 async function origemEncerrada() {
   console.log('\nOrigem de serie encerrada');
   const origem = { description: 'Netflix', installment_total: null, recurring: false, parent_id: null };
-
-  // G. Com meses ligados, a pergunta avisa e só o botão destrutivo apaga.
   {
     const { mod, alertas } = carregarPergunta();
     const feito = [];
-    mod.confirmarExclusaoDeLancamento(origem, { apagarEste: () => feito.push('serie') }, { mesesDaSerie: 8 });
-    assert.equal(alertas[0].titulo, 'Excluir a série inteira');
-    assert.ok(/8 lançamentos/.test(alertas[0].msg) && /já passaram/.test(alertas[0].msg), 'diz quantos saem e que inclui os passados');
-    assert.equal(feito.length, 0);
+    mod.confirmarExclusaoDeLancamento(origem, { apagarEste: () => feito.push('este') });
+    assert.equal(alertas[0].titulo, 'Excluir lançamento');
+    assert.ok(!/série|meses|todos eles/.test(alertas[0].msg), 'nao promete o que o banco nao faz');
     alertas[0].botoes[1].onPress();
-    assert.deepEqual(feito, ['serie']);
-    mod.confirmarExclusaoDeLancamento(origem, { apagarEste: () => {} }, { mesesDaSerie: 1 });
-    assert.ok(/1 lançamento de outros meses/.test(alertas[1].msg), 'singular');
-    assert.ok(/inclusive o de mês que já passou/.test(alertas[1].msg) && !/os de meses/.test(alertas[1].msg), 'singular em todo o texto');
-    ok('origem encerrada com meses ligados: avisa quantos saem junto');
+    assert.deepEqual(feito, ['este']);
+    ok('origem encerrada: pergunta simples, sem aviso de meses');
   }
-
-  // H. Sem meses (ou contagem desconhecida), continua a pergunta simples.
-  {
-    const { mod, alertas } = carregarPergunta();
-    mod.confirmarExclusaoDeLancamento(origem, { apagarEste: () => {} }, { mesesDaSerie: 0 });
-    mod.confirmarExclusaoDeLancamento(origem, { apagarEste: () => {} }, {});
-    mod.confirmarExclusaoDeLancamento(origem, { apagarEste: () => {} });
-    for (const a of alertas) assert.equal(a.titulo, 'Excluir lançamento');
-    // Parcela e ocorrência não mudam por causa da contagem.
-    mod.confirmarExclusaoDeLancamento({ description: 'TV', installment_total: 3, recurring: false, parent_id: null }, { apagarEste: () => {}, apagarCompraInteira: () => {} }, { mesesDaSerie: 5 });
-    assert.equal(alertas[3].titulo, 'Excluir compra parcelada');
-    ok('sem meses ligados ou sem contagem: pergunta simples; parcela intacta');
-  }
-
-  // I. A contagem só consulta quem PODE ser origem encerrada, e só da própria conta.
-  {
-    const passos = [];
-    const q = {};
-    for (const m of ['select', 'eq', 'or']) q[m] = (...a) => { passos.push([m, ...a]); return q; };
-    q.then = (resolve) => resolve({ count: 4, error: null });
-    const data = carregarData({ from: (t) => { passos.push(['from', t]); return q; } });
-    assert.equal(await data.contarMesesDaSerie({ id: 'o', parent_id: null, recurring: false, installment_total: null }), 4);
-    assert.ok(passos.some((p) => p[0] === 'eq' && p[1] === 'parent_id' && p[2] === 'o'));
-    assert.ok(passos.some((p) => p[0] === 'eq' && p[1] === 'user_id' && p[2] === 'u-1'));
-    assert.ok(passos.some((p) => p[0] === 'or' && /installment_total/.test(p[1])), 'parcelas nao contam como meses da serie');
-    passos.length = 0;
-    for (const t of [
-      { id: 'a', parent_id: 'x', recurring: false, installment_total: null },
-      { id: 'b', parent_id: null, recurring: true, installment_total: null },
-      { id: 'c', parent_id: null, recurring: false, installment_total: 3 },
-    ]) assert.equal(await data.contarMesesDaSerie(t), 0);
-    assert.equal(passos.length, 0, 'ocorrencia, origem ativa e parcela nao consultam o banco');
-    ok('contarMesesDaSerie consulta so a origem encerrada, da propria conta');
-  }
-
-  // J. Falha de rede: sem contagem, e com recibo no log.
-  {
-    const avisos = [];
-    const original = console.warn;
-    console.warn = (...a) => avisos.push(a);
-    try {
-      const q = {};
-      for (const m of ['select', 'eq', 'or']) q[m] = () => q;
-      q.then = (_r, rejeitar) => rejeitar(new Error('sem rede'));
-      const data = carregarData({ from: () => q });
-      assert.equal(await data.contarMesesDaSerie({ id: 'o', parent_id: null, recurring: false, installment_total: null }), undefined);
-      assert.equal(avisos.length, 1, 'a falha deixa recibo no log');
-    } finally { console.warn = original; }
-    ok('falha ao contar devolve undefined e deixa recibo');
-  }
-
-  // K. As três telas contam antes de perguntar.
-  for (const arquivo of ['app/(app)/lancamentos.tsx', 'app/(app)/credito.tsx', 'app/(app)/index.tsx']) {
+  for (const arquivo of ['lib/data.ts', 'lib/excluir-lancamento.ts', 'app/(app)/lancamentos.tsx', 'app/(app)/credito.tsx', 'app/(app)/index.tsx']) {
     const fonte = fs.readFileSync(path.join(root, arquivo), 'utf8');
-    assert.ok(/await contarMesesDaSerie\(tx\)/.test(fonte), arquivo + ' precisa contar os meses da serie');
-    assert.ok(/\}, \{ mesesDaSerie \}\);/.test(fonte), arquivo + ' precisa passar a contagem para a pergunta');
+    assert.ok(!/contarMesesDaSerie|mesesDaSerie/.test(fonte), arquivo + ' nao conta mais os meses da serie');
   }
-  ok('as tres telas contam os meses da serie antes de perguntar');
+  ok('nenhuma tela nem modulo conta meses da serie');
 }
 
 async function alertaNaWeb() {

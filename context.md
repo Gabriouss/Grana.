@@ -58,6 +58,226 @@ no `context.md`.
 
 ---
 
+# 02/10/2026 (M2) — encerramento da sessão: o estado em que a M2 parou
+
+Sessão encerrada pelo autor às 17h40 de 02/10. O detalhe está nas três entradas
+de 02/10 logo abaixo; aqui fica só o estado. Esta entrada SUPERA o
+"encerramento" de 01/10, mais abaixo.
+
+**Publicado em 02/10, tudo no `main` (`c767cbc`).**
+
+- `a94de84`: saiu o aviso de que apagar a origem de uma série encerrada leva
+  os meses antigos. A migration `20261001140000` da M1 já estava aplicada, e o
+  banco solta esses meses.
+- `623d4a7`: toda escrita de `lib/data.ts` e `lib/goals.ts` invalida a resposta
+  atrasada do cache, não só criar lançamento.
+- `2394e9d`: apagar a primeira conta de uma série de boletos mantém as outras.
+  Migration `20261002120000` aplicada e provada em produção.
+- Os nove commits da M1 da noite de 01/10 foram puxados e conferidos
+  (`tsc` limpo, `test:ci` verde).
+
+**Banco.** Aplicadas em produção, do repositório: tudo até `20261002120000`
+que esta máquina conferiu, incluindo as três do cartão (01/10), a
+`20261001140000` (M1, sem registro de quando) e a `20261002120000` (M2,
+02/10 16h39). Continua valendo a ressalva de 28/09: treze rotinas antigas com
+corpo diferente do repositório, e a `20260929120000` não conferida aqui.
+
+**Build.** Nenhuma preparada desde a 1.10.5 (`app.json` em 1.10.5). Saldo da
+semana de 28/09 a 04/10: 1 de 3. Só chegam ao Android com build: o botão "Este
+e os próximos", os avisos da pergunta de excluir lançamento e a invalidação do
+cache nas escritas. As regras que moram no banco já valem na 1.10.5.
+
+**Pendente.**
+
+- [ ] A M1 registrar quando aplicou a `20261001140000`.
+- [ ] Nada de 01 e 02/10 foi visto em aparelho Android: fala "no crédito" sem
+  cartão indo para "Qual cartão?", foto da nota com cupom real, fila offline,
+  cache, e as perguntas de excluir. Esta máquina não tem emulador.
+- [ ] As telas mexidas em 02/10 (excluir lançamento, excluir boleto) não foram
+  vistas no navegador depois do deploy; só os testes.
+- [ ] Revisão do Codex (regra 16): não foi pedida para nenhum commit.
+
+**Resolvido, para ninguém cobrar de novo.** Os tokens do Supabase de 01 e
+02/10 tinham validade de 24h e expiram sozinhos; nenhum arquivo ficou no disco.
+
+**Vault.** O Drive da M2 segue sem receber nada da M1 desde 28/09. As notas de
+sessão de 01 e 02/10 existem só nesta máquina; o índice de sessões e as
+perenes atrasadas NÃO foram editados, para não criar cópia em conflito.
+
+**Inventário ao sair.** Uma branch (`master`, rastreando `origin/main`), uma
+worktree, nenhum stash, árvore limpa, local igual ao remoto.
+
+---
+
+# 02/10/2026 (M2) — apagar a primeira conta de uma série de boletos mantém as outras (`2394e9d`), migration APLICADA
+
+**Pedido.** A entrada abaixo deixava uma decisão para o autor: apagar a primeira
+conta de uma série de boletos levava a série inteira, inclusive as já pagas.
+Perguntado se queria manter o histórico, como em lançamentos, respondeu
+"quero", e depois "pois aplique a migration", com um token de 24h.
+
+**O que foi feito.** Migration
+`20261002120000_apagar_primeira_conta_mantem_a_serie.sql`: gatilho
+`AFTER DELETE` `A0_promover_proxima_conta_da_serie` em `public.bills`. Quando
+sai uma conta que é cabeça (`parent_id` nulo) e tem filhas, a de vencimento
+mais antigo vira a nova cabeça e as outras passam a apontar para ela. O aviso
+de `lib/excluir-boleto.ts` ("os N dos meses seguintes também serão removidos")
+saiu no mesmo commit, porque ficou falso.
+
+**Descartado.** Soltar as filhas (`parent_id` nulo em todas), como a
+`20261001140000` faz em `transactions`: cada conta viraria cabeça da própria
+série, e `pagar_conta`, que gera o mês seguinte com `coalesce(parent_id, id)`,
+deixaria de esbarrar no índice único `(user_id, parent_id, due_date)`. Pagar o
+mesmo mês duas vezes criaria boleto duplicado. Promovendo, a série continua
+uma só. `BEFORE DELETE`: quebra o delete em massa (27000), como a M1 já tinha
+provado para lançamentos.
+
+**Aplicada em produção em 02/10, às 16h39**, pela Management API, em LF,
+resposta 201. Preflight antes: 17 boletos, 4 séries com uma filha cada, zero
+órfãs, e as duas chaves estrangeiras de `parent_id` iguais às do modelo usado
+no PGlite. Leitura depois: corpo da função com o mesmo md5 do repositório, sem
+`\r`, `security definer`, `search_path` vazio, executável só por `postgres` e
+`service_role`; gatilho ligado; os dois gatilhos de carteira intactos; os 17
+boletos e as 4 filhas como antes.
+
+**Provado.** PGlite, 12 checagens (promove a seguinte, mantém pagas e em
+aberto, não duplica o mês, delete em massa e exclusão da conta passam,
+`next_bill_id` intacto). Produção, 7 checagens com a conta de teste, pela API
+do app e pelas RPCs reais: série montada por `pagar_conta`; apagar a primeira
+deixa setembro (paga) e outubro, com setembro de cabeça; pagar outubro gera
+novembro na mesma série; `reabrir_conta` desfaz novembro; apagar a conta em
+aberto só tira ela. Zero sobras AUDIT. O arquivo do token foi apagado.
+
+**Ordem que importa.** O código só pode ser publicado DEPOIS da migration: sem
+o gatilho, a web apagaria a série inteira já sem aviso. Aplicada primeiro.
+
+**Não verificado.** A tela de Contas no navegador e no aparelho. A 1.10.5
+instalada tem o texto antigo de "Excluir boleto?" (sem aviso de série), que
+voltou a ser verdadeiro.
+
+**Isto fecha** a "decisão que não é minha" da entrada abaixo.
+
+---
+
+# 02/10/2026 (M2) — toda escrita invalida a resposta atrasada do cache; recorrência de boletos auditada
+
+**Pedido.** Depois de listar o que seguia aberto, o autor: "Pode resolver tudo
+aí". Do que podia ser resolvido em código sem build, restavam dois itens: o
+cache de boleto, orçamento e meta, e a recorrência de boletos.
+
+**Cache: sintoma e causa.** Em rede lenta, uma resposta que passa do prazo fica
+15 s no mapa de `lib/cache-de-tela.ts` e é servida de novo. A M1 (`1b653b7`)
+fez `lancamentoGravado` invalidar, mas só o caminho de CRIAR lançamento passa
+por ele. Conferido no código: excluir, editar, encerrar série, parcelada,
+boleto, orçamento e meta não chamavam `invalidarRespostasAtrasadas`, então a
+lista podia mostrar o estado anterior à escrita. Isto vai além do que a nota
+da M1 dizia (só boleto, orçamento e meta): excluir e editar lançamento também
+estavam de fora.
+
+**O que foi feito.** Todas as escritas de `lib/data.ts` (lançamento, cartão,
+boleto, orçamento) e de `lib/goals.ts` invalidam o mapa logo depois de gravar,
+no ponto em que já avisavam os widgets. A invalidação vem DEPOIS do sucesso:
+escrita recusada não invalida, porque nada mudou. Nova suíte
+`__tests__/escritas-invalidam-cache.cjs` (no `test:ci`), com os módulos reais:
+14 escritas conferidas nas duas pontas. Conferido por mutação: com `data.ts` e
+`goals.ts` antigos, 14 de 14 falham. Três testes antigos ganharam a função no
+dublê do cache (`credito-exige-cartao`, `excluir-lancamento`,
+`inicio-lancamentos-alterados`).
+
+**Descartado.** Fazer `notificarDadosDosWidgetsAlterados` invalidar: mistura o
+sinal dos widgets com o cache e arrasta `cache-de-tela` para um módulo que
+não importa nada. Observar o sinal de dentro de `cache-de-tela`: quebraria todo
+teste que carrega o cache real com dublê de `widgets-home-events`.
+
+**Recorrência de boletos: auditada, sem defeito de "volta".** Lendo
+`pagar_conta` em `supabase/schema.sql`: não existe gerador mensal de boletos.
+A próxima conta nasce NO PAGAMENTO da anterior, com `on conflict (user_id,
+parent_id, due_date) do nothing`, e `reabrir_conta` desfaz só a que aquele
+pagamento criou. Apagar um boleto não faz nada voltar, ao contrário dos
+lançamentos. Para encerrar uma série de boletos basta apagar o boleto em
+aberto: a próxima só nasceria ao pagá-lo.
+
+**Decisão que não é minha: o histórico pago de uma série de boletos.** Todas as
+contas de uma série apontam para a primeira (`parent_id` = cabeça, cascade).
+Apagar a primeira leva TODAS, inclusive as já pagas. A pergunta avisa (`d0e2551`
+da M1) e a saída em Lançamentos continua. Para lançamentos o autor decidiu que
+"os passados permanecem" e a migration `20261001140000` solta as filhas; para
+boletos não há decisão. Se ele quiser a mesma regra, é um gatilho igual ao de
+lançamentos, e o aviso da pergunta sai junto. Não foi feito.
+
+**Sem verificação.** Nada em aparelho. A auditoria de boletos foi por leitura
+do SQL do repositório, não por sonda em produção.
+
+**Ainda aberto, do que esta nota supera.** O item "boleto, orçamento e meta
+invalidando" da entrada abaixo está FECHADO. Seguem: a M1 registrar a
+aplicação da `20261001140000`, a decisão sobre o histórico de boletos, a build
+com "Este e os próximos" e os testes em aparelho. (O token do Supabase de 01/10 tinha
+validade de 24h e já expirou: nada a revogar.)
+
+---
+
+# 02/10/2026 (M2) — o que a M1 publicou na noite de 01/10 (9 commits), conferido, e o aviso falso retirado
+
+**Origem deste registro.** A M1 publicou nove commits entre 20h37 e 20h51 de
+01/10 (`da997fb` a `79e2c4f`) sem tocar no `context.md`: o único registro eram
+as mensagens dos commits. O autor pediu à M2 que recolhesse o contexto pelo
+git, sem confiar no vault (parado por falha do Drive). Conferido em 02/10: o
+`main` foi puxado para `79e2c4f`, `tsc` limpo e `test:ci` verde. Nada da M1
+de 02/10 estava publicado às 13h38. Os achados que os commits citam (Q3, Q5,
+L-A1, L-A2, "Keel") vêm de uma auditoria de 01/10 cujo relatório não está no
+repositório.
+
+**O que a M1 fez.**
+
+- `da997fb`, `79e2c4f` (fila offline): `setQueue` deixa de engolir erro, e a
+  tela de quem guarda sem rede mostra o erro em vez de "guardado". Fila
+  ilegível é preservada em `:corrompida` antes de devolver vazia. Se a
+  gravação final da rodada falha (item já enviado que não sai da fila), a
+  rodada captura, loga, publica notificação e reagenda. Meta não tem
+  `client_request_id`: o item ganha `tentadoEm`, gravado ANTES do envio, e o
+  reenvio confere `metaJaGravada` (`lib/goals.ts`) para não criar duas.
+- `1b653b7` (cache): o mapa de respostas atrasadas de `lib/cache-de-tela.ts`
+  passa a ter dono (`userId`) e geração. Resposta que sai antes de uma escrita
+  de lançamento ou da saída da conta é descartada. Fecha o item "não é
+  invalidado por escrita" desta nota, SÓ para lançamento: boleto, orçamento e
+  meta ainda não chamam `invalidarRespostasAtrasadas`.
+- `9f550d5`, `d0e2551`, `7c33b5f` (série): achado do Keel sobre o nosso "Este e
+  os próximos" (`c4ebad3`): a origem que parou de repetir parece lançamento
+  avulso, mas `parent_id` é cascade e apagá-la levava os meses antigos. A M1
+  avisou na pergunta, avisou nos boletos (`lib/excluir-boleto.ts`, cascade de
+  `bills.parent_id`) e escreveu a migration
+  `20261001140000_origem_encerrada_solta_filhas.sql`: gatilho `AFTER DELETE`
+  `A0_soltar_filhas_da_origem_encerrada`, que solta as filhas da origem com
+  `recurring = false` como lançamentos comuns. O nome começa com `A0_` para
+  disparar antes do cascade (`RI_`); `BEFORE` quebrava a exclusão da conta
+  (27000, provado no PGlite).
+- `7804d57` (crédito): fatura que atravessa dois meses lista outubro antes de
+  setembro (`ordenarLancamentosRecentesPrimeiro`, `lib/creditoFaturas.ts`).
+- `3f2f318` (foto da nota): o parser lê total com ponto decimal (7.49),
+  "IOTAL", "T O T A L" e foto inclinada. O cupom veio de um quadro de vídeo;
+  a saída real do ML Kit no aparelho NÃO foi vista.
+- `bd58983` (copy): diagnóstico sem travessão.
+
+**Divergência achada e resolvida pela M2.** A mensagem do `7c33b5f` diz "NÃO
+aplicada", mas a migration ESTÁ em produção: sonda de 02/10 com a conta de
+teste (origem encerrada com duas filhas, origem apagada, as filhas sobraram com
+`parent_id` nulo e `recurring` falso; zero sobras AUDIT). A M1 aplicou depois
+de commitar e não registrou. Com isso o aviso novo da pergunta ("apagar leva
+todos os meses") ficou FALSO, e a própria migration mandava retirá-lo ao ser
+aplicada. Foi retirado: `contarMesesDaSerie`, a opção `mesesDaSerie` da
+pergunta e as chamadas nas três telas saíram, e a origem encerrada volta a ser
+a pergunta simples. O aviso dos boletos fica: a migration não toca em `bills`.
+`__tests__/excluir-lancamento.cjs` (28 checagens) trava a volta do aviso.
+
+**Ainda aberto.**
+
+- [ ] Boleto, orçamento e meta invalidando `invalidarRespostasAtrasadas`.
+- [ ] A M1 registrar a aplicação da `20261001140000` (quando, por quem).
+- [ ] Foto da nota com cupom real no aparelho; fila e cache no aparelho.
+- [ ] Revisão do Codex (regra 16) de qualquer um desses commits: não foi pedida.
+
+---
+
 # 02/10/2026 (M1): onze correções sem registro da noite de 01/10, e a retomada com o time Claude
 
 **Por que esta entrada existe.** Na noite de 01/10 (20h37 a 20h54) a M1 commitou onze correções da auditoria do dia, sem registro e sem `test:ci` conferido depois do último commit. Em 02/10 o autor mandou retomar ("resolve tudo, nao me pergunte nada"); a Grok e depois o Codex bateram o limite de uso na manhã de 02/10 e o maestro passou as trilhas dos pares Codex aos agentes Claude. O registro detalhado, com as seis perguntas da regra 12 por mudança, está na pasta temporária `E:\Grana-temporarios\2026-10-02-retomada\` (`REGISTRO-SESSAO-02-10.md` e `relatorio-*.md`), fora do git e do vault, porque o vault está parado (Google Drive sem espaço). Quando o vault voltar, essa pasta é a fonte para a nota da sessão.
@@ -139,7 +359,7 @@ alteração desde o `ab25e2f` (26/09).
 Desta vez a escrita passou pela permissão da sessão; uma hora antes o mesmo
 comando tinha sido barrado. A diferença visível entre as duas tentativas é a
 ordem explícita do autor. O token foi o de 24h que ele tinha dado de manhã,
-ainda válido; o arquivo foi apagado ao fim e o token segue por revogar.
+ainda válido; o arquivo foi apagado ao fim. O token vencia em 24h e já expirou.
 
 **Preflight repetido às 17h46**, igual ao das 16h39: nada aplicado, função de
 voz idêntica à `20260923230000`, zero entradas no cartão.
@@ -210,6 +430,8 @@ corpo diferente do repositório, e a `20260929120000` não foi conferida aqui.
 
 # 01/10/2026 (M2) — encerramento da sessão: o estado em que a M2 parou
 
+**Superado pelo encerramento de 02/10, no topo.**
+
 Sessão encerrada pelo autor às 17h40: "encerramos o trabalho hoje na M2,
 commita, publica tudo e atualiza as documentações de contexto". O detalhe está
 nas entradas de 01/10 logo abaixo; aqui fica só o estado.
@@ -230,8 +452,8 @@ nas entradas de 01/10 logo abaixo; aqui fica só o estado.
 - **As três migrations do cartão** (`20260923230300`, `20260923230400` e
   `20260926130000`): RESOLVIDO. Estavam sem aplicar às 17h40 e foram aplicadas
   às 17h47, a pedido do autor. Ver a entrada do topo.
-- **Token do Supabase** que passou pelo chat em 01/10: revogar no painel. O
-  arquivo foi apagado do disco.
+- **Token do Supabase** de 01/10: RESOLVIDO. Tinha validade de 24h e já
+  expirou; não havia o que revogar. O arquivo foi apagado do disco.
 - **Build**: 1 de 3 na semana de 28/09 a 04/10 (a 1.10.5). O autor quer testar
   mais a 1.10.5 antes de disparar outra. Só chegam ao Android com build o
   botão "Este e os próximos" e os avisos da pergunta de excluir. Na 1.10.5 a

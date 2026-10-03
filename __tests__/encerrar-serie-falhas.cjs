@@ -36,7 +36,7 @@ function carregarData(supabase, userId, eventos) {
   }).outputText, { exports: regras.exports, module: regras, console, require: () => ({}) });
   const deps = {
     './supabase': { supabase },
-    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar },
+    './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() {} },
     './sessao-offline': { idDoUsuarioLocal: async () => userId },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() { eventos.push('widgets'); } },
     './lancamentos-alterados': { marcarLancamentosAlterados() { eventos.push('alterados'); } },

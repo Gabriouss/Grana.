@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { atualizarTelaGuardada, comCacheOffline } from './cache-de-tela';
+import { atualizarTelaGuardada, comCacheOffline, invalidarRespostasAtrasadas } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 
 /* Até 26/09/2026 cartões e categorias passavam por uma `referenciaLocal`, um
@@ -253,6 +253,7 @@ export async function addTransaction(input: {
   }
 
   marcarLancamentosAlterados();
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
 
   return data;
@@ -349,6 +350,7 @@ export async function payCardInvoice(input: {
       p_wallet_id: input.wallet_id,
     });
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as unknown as CreditCardInvoicePayment;
 }
@@ -377,6 +379,7 @@ export async function payCardInvoiceRemainder(input: {
     p_wallet_id: input.wallet_id,
   });
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as unknown as CreditCardInvoicePayment;
 }
@@ -390,6 +393,7 @@ export async function payCardInvoiceRemainder(input: {
 export async function reopenCardInvoice(invoice: CreditCardInvoicePayment): Promise<void> {
   const { error } = await supabase.rpc('reabrir_fatura_cartao', { p_invoice_id: invoice.id });
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
 }
 
@@ -402,6 +406,7 @@ export async function updateTransaction(id: string, changes: Partial<Transaction
   const { error } = await supabase.from('transactions').update(changes).eq('id', id).eq('user_id', user_id);
   if (error) throw error;
   marcarLancamentosAlterados();
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
 }
 
@@ -487,6 +492,7 @@ export async function addTransactionsBatch(
 
   if (inseridos > 0) {
     marcarLancamentosAlterados();
+    invalidarRespostasAtrasadas();
     notificarDadosDosWidgetsAlterados();
   }
   return { inseridos, ignorados };
@@ -529,7 +535,10 @@ export async function criarOcorrenciasRecorrentes(faltantes: OcorrenciaFaltante[
     .select('id');
   if (error) throw error;
   const criadas = data?.length ?? 0;
-  if (criadas > 0) notificarDadosDosWidgetsAlterados();
+  if (criadas > 0) {
+    invalidarRespostasAtrasadas();
+    notificarDadosDosWidgetsAlterados();
+  }
   return criadas;
 }
 
@@ -552,6 +561,7 @@ export async function deleteTransaction(id: string): Promise<void> {
   const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
   marcarLancamentosAlterados();
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
 }
 
@@ -601,39 +611,9 @@ export async function encerrarSerieAPartirDe(
     .select('id');
   if (error) throw error;
   marcarLancamentosAlterados();
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data?.length ?? 0;
-}
-
-/**
- * Quantos lançamentos de outros meses dependem deste por `parent_id` e saem
- * junto se ele for apagado (`on delete cascade`).
- *
- * Existe para a pergunta de excluir. Uma origem de série que parou de repetir
- * (`recurring = false`, por "Este e os próximos" ou por edição) é igual a um
- * lançamento avulso na tela, mas apagá-la leva embora todos os meses que
- * ficaram. Só consulta quando o lançamento PODE ser origem; ocorrência,
- * parcela e origem ainda ativa já têm pergunta própria. Falha de rede devolve
- * `undefined` (e fica no log): a pergunta cai no texto simples, como antes.
- */
-export async function contarMesesDaSerie(
-  tx: Pick<Transaction, 'id' | 'parent_id' | 'recurring' | 'installment_total'>
-): Promise<number | undefined> {
-  if (tx.parent_id || tx.recurring || (tx.installment_total ?? 1) > 1) return 0;
-  try {
-    const user_id = await currentUserId();
-    const { count, error } = await supabase
-      .from('transactions')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user_id)
-      .eq('parent_id', tx.id)
-      .or('installment_total.is.null,installment_total.lte.1');
-    if (error) throw error;
-    return count ?? 0;
-  } catch (e) {
-    console.warn('[excluir] não deu para contar os meses da série', e);
-    return undefined;
-  }
 }
 
 /**
@@ -667,6 +647,7 @@ export async function deleteInstallmentPurchase(
     .select('id');
   if (error) throw error;
   marcarLancamentosAlterados();
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data?.length ?? 0;
 }
@@ -728,6 +709,7 @@ export async function addInstallmentPurchase(input: {
   }
 
   marcarLancamentosAlterados();
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
 
   return rows;
@@ -885,6 +867,7 @@ export async function addBill(input: {
 }): Promise<Bill> {
   const user_id = await currentUserId();
   const data = await inserirIdempotente<Bill>('bills', { ...input, user_id });
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data;
 }
@@ -893,6 +876,7 @@ export async function updateBill(id: string, changes: Partial<Bill>): Promise<vo
   const user_id = await currentUserId();
   const { error } = await supabase.from('bills').update(changes).eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
 }
 
@@ -909,6 +893,7 @@ export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
     p_paid_on: paidOn,
   });
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as unknown as Bill;
 }
@@ -921,6 +906,7 @@ export async function payBill(bill: Bill, paidOn: string): Promise<Bill> {
 export async function reopenBill(bill: Bill): Promise<Bill> {
   const { data, error } = await supabase.rpc('reabrir_conta', { p_bill_id: bill.id });
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data as unknown as Bill;
 }
@@ -929,6 +915,7 @@ export async function deleteBill(id: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('bills').delete().eq('id', id).eq('user_id', user_id);
   if (error) throw error;
+  invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
 }
 
@@ -946,6 +933,7 @@ export async function upsertBudget(category: string, amount: number, color: stri
     .from('budgets')
     .upsert({ user_id, category, amount, color, updated_at: new Date().toISOString() });
   if (error) throw error;
+  invalidarRespostasAtrasadas();
 }
 
 export async function upsertBudgetsBatch(
@@ -963,12 +951,14 @@ export async function upsertBudgetsBatch(
   }));
   const { error } = await supabase.from('budgets').upsert(rows);
   if (error) throw error;
+  invalidarRespostasAtrasadas();
 }
 
 export async function deleteBudget(category: string): Promise<void> {
   const user_id = await currentUserId();
   const { error } = await supabase.from('budgets').delete().eq('user_id', user_id).eq('category', category);
   if (error) throw error;
+  invalidarRespostasAtrasadas();
 }
 
 /* ---- categorias ----

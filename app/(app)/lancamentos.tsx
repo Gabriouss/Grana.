@@ -37,7 +37,6 @@ import FabButton from '@/components/FabButton';
 import MonthSelector from '@/components/MonthSelector';
 import {
   criarOcorrenciasRecorrentes,
-  contarMesesDaSerie,
   deleteTransaction,
   deleteInstallmentPurchase,
   encerrarSerieAPartirDe,
@@ -539,9 +538,6 @@ export default function LancamentosScreen() {
   async function handleDeleteSelectedTx() {
     const tx = selectedTx;
     if (!tx) return;
-    /* Origem de série encerrada parece lançamento avulso; a pergunta precisa
-       saber quantos meses saem junto (contarMesesDaSerie, lib/data.ts). */
-    const mesesDaSerie = isDemoMode ? 0 : await contarMesesDaSerie(tx);
     confirmarExclusaoDeLancamento(tx, {
       apagarEste: async () => {
         if (isDemoMode) {
@@ -593,7 +589,7 @@ export default function LancamentosScreen() {
           Alert.alert('Erro ao encerrar a repetição', e.message);
         }
       },
-    }, { mesesDaSerie });
+    });
   }
 
   // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado em index.tsx e graficos.tsx.
