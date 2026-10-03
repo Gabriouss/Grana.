@@ -50,7 +50,7 @@ export const HOME_BLOCK_ICONS: Record<HomeBlockKey, keyof typeof import('@expo/v
 };
 
 export const HOME_BLOCK_DESCRIPTIONS: Record<HomeBlockKey, string> = {
-  saldo: 'Quanto ainda dá para gastar hoje, considerando contas e reservas.',
+  saldo: 'Quanto ainda dá para gastar por dia: o saldo do mês, menos o que você guardou nos cofrinhos.',
   cofrinhos: 'Suas metas de economia, com progresso e atalho para guardar.',
   atalhos: 'Chips de categoria para lançar uma saída em um toque.',
   fluxo: 'Entradas e saídas ao longo do mês, da semana ou do ano.',
