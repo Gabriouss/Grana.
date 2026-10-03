@@ -38,9 +38,16 @@ export type MensagemLocal = {
 /* ── Buscar histórico ─────────────────────────────────────────────────────── */
 
 /* O chat usa Text puro: a resposta do assistente traz **negrito** em markdown,
-   que apareceria com os asteriscos literais. Tira só os pares fechados. */
-function textoDoAssistente(texto: string): string {
-  return texto.replace(/\*\*([^*]+)\*\*/g, '$1');
+   que apareceria com os asteriscos literais. Tira pares fechados de ** e de *
+   (negrito, itálico), títulos `#` e crases; item de lista vira "•". Um * solto
+   (multiplicação, "R$ 20 * 2") fica. */
+export function textoDoAssistente(texto: string): string {
+  return texto
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*(?!\s)([^*\n]+?)(?<!\s)\*/g, '$1')
+    .replace(/^\s*[*-]\s+/gm, '• ')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/`+/g, '');
 }
 
 /**
