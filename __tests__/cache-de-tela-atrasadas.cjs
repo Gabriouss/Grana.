@@ -35,6 +35,8 @@ const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
 function montar(usuarioInicial) {
   const disco = new Map();
   let usuario = usuarioInicial;
+  /* Sessão controlável: com `sessao.segurar`, a pergunta de quem é o dono fica pendurada até `sessao.liberar()`. */
+  const sessao = { segurar: false, liberar: null, perguntas: 0 };
   const relogio = { t: 1_000_000_000_000 };
   const AsyncStorage = {
     async getItem(k) { return disco.has(k) ? disco.get(k) : null; },
@@ -57,7 +59,11 @@ function montar(usuarioInicial) {
       clearTimeout,
       require: (id) => {
         if (id === '@react-native-async-storage/async-storage') return { __esModule: true, default: AsyncStorage };
-        if (id === './sessao-offline') return { idDoUsuarioLocal: async () => usuario ?? null };
+        if (id === './sessao-offline') return { idDoUsuarioLocal: () => {
+          if (!sessao.segurar) return Promise.resolve(usuario ?? null);
+          sessao.perguntas++;
+          return new Promise((r) => { sessao.liberar = () => r(usuario ?? null); });
+        } };
         throw Error(id);
       },
     }
@@ -66,7 +72,7 @@ function montar(usuarioInicial) {
     const bruto = disco.get('grana:cache:tela:' + nome);
     return bruto ? JSON.parse(bruto).dados : null;
   };
-  return { api: exports, relogio, lerDisco, trocarUsuario: (id) => { usuario = id; } };
+  return { api: exports, relogio, lerDisco, sessao, trocarUsuario: (id) => { usuario = id; } };
 }
 
 /** Uma busca controlável: 'inicial' e 'fresca' respondem na hora, 'lenta' fica pendurada até soltar(). */
@@ -166,6 +172,54 @@ function buscaControlavel(valores) {
     checar('sem escrita: a recarga encontra o dado tardio', JSON.stringify(await f()) === JSON.stringify(['D1-tardio']));
     relogio.t += 16_000;
     checar('sem escrita: passada a validade, volta à rede', JSON.stringify(await f()) === JSON.stringify(['nunca-lido']));
+  }
+
+  /* ── F2 (Watchtower, 02/10): escrita DURANTE a espera da sessão ───────────
+     A leitura já tinha o dado atrasado na mão quando perguntou o dono. Se a
+     escrita invalida o mapa nesse intervalo, o dado de antes dela não pode ser
+     servido: a leitura segue para a busca. */
+  for (const caminho of ['lancamentoGravado', 'invalidarRespostasAtrasadas']) {
+    const { api, sessao, relogio } = montar('conta-A');
+    const buscas = { n: 0 };
+    const b = buscaControlavel({ inicial: ['D0'], fresca: ['D2-com-a-escrita'] });
+    const f = api.comCacheOffline('boletos', (...a) => { buscas.n++; return b.buscar(...a); });
+    await f();
+    b.fase = 'lenta';
+    await f();
+    b.soltar(['D1-de-antes-da-escrita']);
+    await pausa(30);                              // o dado atrasado está no mapa
+    buscas.n = 0;
+    sessao.segurar = true;
+    const leitura = f();                          // acha o atrasado e espera a sessão
+    await pausa(5);
+    checar('F2 (' + caminho + '): a leitura está esperando a sessão', sessao.perguntas === 1, 'perguntas: ' + sessao.perguntas);
+    api[caminho]();                               // a escrita acontece aqui
+    b.fase = 'fresca';
+    sessao.segurar = false;
+    sessao.liberar();
+    const lido = await leitura;
+    checar('F2 (' + caminho + '): não serve o dado anterior à escrita', JSON.stringify(lido) === JSON.stringify(['D2-com-a-escrita']), 'leu ' + JSON.stringify(lido));
+    checar('F2 (' + caminho + '): foi à busca (uma chamada)', buscas.n === 1, 'buscas: ' + buscas.n);
+    relogio.t += 16_000;
+  }
+  /* Controle: sem escrita no intervalo, o dado atrasado continua sendo servido, sem ir à rede. */
+  {
+    const { api, sessao } = montar('conta-A');
+    const buscas = { n: 0 };
+    const b = buscaControlavel({ inicial: ['D0'], fresca: ['nunca-lido'] });
+    const f = api.comCacheOffline('boletos', (...a) => { buscas.n++; return b.buscar(...a); });
+    await f();
+    b.fase = 'lenta';
+    await f();
+    b.soltar(['D1-tardio']);
+    await pausa(30);
+    buscas.n = 0;
+    sessao.segurar = true;
+    const leitura = f();
+    await pausa(5);
+    sessao.segurar = false;
+    sessao.liberar();
+    checar('F2 controle: sem escrita, serve o dado atrasado sem buscar', JSON.stringify(await leitura) === JSON.stringify(['D1-tardio']) && buscas.n === 0, 'buscas: ' + buscas.n);
   }
 
   console.log(`${total - falhas}/${total} verificações`);

@@ -289,11 +289,19 @@ export function comCacheOffline<A extends unknown[], T>(
     const geracaoDoPedido = geracao;
     const atrasado = atrasados.get(chave);
     if (atrasado && Date.now() - atrasado.em < VALIDADE_DO_DADO_ATRASADO_MS) {
-      if (atrasado.userId === (await idDoUsuario())) {
-        definirModo(null);
-        return atrasado.dados as T;
+      const donoAgora = await idDoUsuario();
+      /* A pergunta passa pela sessão e pode demorar: uma escrita (ou a saída
+         da conta) pode ter invalidado o mapa enquanto esperava. `atrasado` é
+         uma variável local e continua viva depois de `atrasados.clear()`;
+         sem esta conferência, o dado de ANTES da escrita era servido. Se a
+         geração mudou, segue para a busca como se nada houvesse guardado. */
+      if (geracaoDoPedido === geracao) {
+        if (atrasado.userId === donoAgora) {
+          definirModo(null);
+          return atrasado.dados as T;
+        }
+        atrasados.delete(chave);
       }
-      atrasados.delete(chave);
     }
 
     /* Mapear para um objeto, em vez de deixar rejeitar, é o que permite
