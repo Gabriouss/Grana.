@@ -197,7 +197,7 @@ export default function SignUp() {
             ref={campoSenha}
             accessibilityLabel="Senha"
             maxLength={LIMITS.password}
-            placeholder={`mínimo ${MIN_PASSWORD} caracteres, com número`}
+            placeholder="Crie sua senha"
             autoComplete="password-new"
             returnKeyType="next"
             onSubmitEditing={() => campoConfirmar.current?.focus()}
@@ -208,7 +208,7 @@ export default function SignUp() {
             <RequisitoSenha atende={password.length >= MIN_PASSWORD} texto={`Pelo menos ${MIN_PASSWORD} caracteres`} />
             <RequisitoSenha
               atende={/[a-zA-Z]/.test(password) && /[0-9]/.test(password)}
-              texto="Letras e números misturados"
+              texto="Letras e números"
             />
           </View>
         </View>
