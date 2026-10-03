@@ -109,6 +109,8 @@ export default function SignIn() {
             maxLength={LIMITS.password}
             placeholder="Digite sua senha"
             autoComplete="password"
+            returnKeyType="go"
+            onSubmitEditing={handleSignIn}
             value={password}
             onChangeText={setPassword}
           />

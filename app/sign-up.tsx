@@ -217,6 +217,8 @@ export default function SignUp() {
             maxLength={LIMITS.password}
             placeholder="digite a senha de novo"
             autoComplete="password-new"
+            returnKeyType="go"
+            onSubmitEditing={handleSignUp}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
           />

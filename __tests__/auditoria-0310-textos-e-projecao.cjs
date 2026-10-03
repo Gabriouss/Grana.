@@ -45,4 +45,8 @@ for (const f of ['app/sign-in.tsx', 'app/sign-up.tsx']) {
   const s = ler(f);
   assert.ok(/returnKeyType="next"\s+onSubmitEditing=\{\(\) => campoSenha\.current\?\.focus\(\)\}/.test(s), f + ' sem next no e-mail');
 }
-console.log('  ok  V22 e-mail foca a senha');
+/* Enter na ultima senha envia pelo MESMO handler do botao. */
+assert.ok(/returnKeyType="go"\s+onSubmitEditing=\{handleSignIn\}/.test(ler('app/sign-in.tsx')));
+assert.ok(/returnKeyType="go"\s+onSubmitEditing=\{handleSignUp\}/.test(ler('app/sign-up.tsx')));
+assert.ok(/onPress=\{handleSignIn\}/.test(ler('app/sign-in.tsx')) && /onPress=\{handleSignUp\}/.test(ler('app/sign-up.tsx')));
+console.log('  ok  V22 e-mail foca a senha; Enter na senha envia');
