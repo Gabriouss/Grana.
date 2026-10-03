@@ -77,7 +77,7 @@ export default function FaixaOffline({ estilo }: { estilo?: object }) {
     <View style={[estilo, styles.recuo]}>
       <View style={styles.faixa} accessibilityRole="alert" accessibilityLiveRegion="polite">
         <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
-        <Text style={styles.texto} numberOfLines={1}>
+        <Text style={styles.texto} numberOfLines={2}>
           {textoDaFaixaOffline(motivo)}
         </Text>
       </View>
