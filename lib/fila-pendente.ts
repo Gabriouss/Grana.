@@ -88,7 +88,8 @@ export const QUEUE_CORROMPIDA_KEY = `${QUEUE_KEY}:corrompida`;
  * seguida não pode tratar "não consegui ler" como "está vazia"). JSON ilegível
  * é preservado, intacto, numa chave à parte antes de devolver `[]`: a próxima
  * gravação sobrescreve a chave da fila, e a fila é a única cópia do que a
- * pessoa registrou sem rede.
+ * pessoa registrou sem rede. Se a preservação falha, SOBE em vez de devolver
+ * `[]` (a gravação seguinte destruiria o bruto).
  */
 async function lerFila(): Promise<PendingItem[]> {
   const raw = await AsyncStorage.getItem(QUEUE_KEY);
@@ -101,7 +102,12 @@ async function lerFila(): Promise<PendingItem[]> {
       const jaTem = await AsyncStorage.getItem(QUEUE_CORROMPIDA_KEY);
       await AsyncStorage.setItem(jaTem && jaTem !== raw ? `${QUEUE_CORROMPIDA_KEY}:${Date.now()}` : QUEUE_CORROMPIDA_KEY, raw);
     } catch (erroAoGuardar) {
-      console.error('[fila-pendente] não consegui guardar o conteúdo ilegível da fila', erroAoGuardar);
+      /* Sem backup, devolver `[]` deixaria `atualizarFila` gravar uma fila nova
+         por cima da única cópia do que a pessoa registrou sem rede. Sobe: quem
+         vai gravar não grava (a fila fica intacta no disco e o salvamento
+         avisa que falhou), e quem só lê (`getQueue`) trata como "não li". */
+      console.error('[fila-pendente] não consegui guardar o conteúdo ilegível da fila; nada foi gravado por cima', erroAoGuardar);
+      throw erroAoGuardar;
     }
     return [];
   }
