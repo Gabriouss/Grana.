@@ -17,6 +17,7 @@
 import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { Directory, File, Paths } from 'expo-file-system';
 import { formatMoney, MONTH_NAMES } from './format';
 import type { Bill, Transaction } from './types';
 import type { MonthlyWrapped } from './monthly-wrapped';
@@ -64,7 +65,21 @@ export async function gerarRelatorioPdf(dados: DadosRelatorio): Promise<{ uri: s
     return { uri: '', compartilhado: true };
   }
 
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  const impresso = await Print.printToFileAsync({ html, base64: false });
+  /* O UUID fica na pasta, não no nome enviado. Cada geração tem sua própria
+     pasta para não substituir um PDF que ainda está sendo compartilhado. Se o
+     arquivo não puder ser movido, o PDF com nome feio ainda é melhor que
+     nenhum PDF: segue com o original, e a falha fica no log. */
+  let uri = impresso.uri;
+  try {
+    const arquivo = new File(impresso.uri);
+    const pasta = new Directory(Paths.cache, 'relatorios-grana', arquivo.name.replace(/\.pdf$/i, ''));
+    pasta.create({ intermediates: true });
+    await arquivo.move(new File(pasta, `Grana-relatorio-${dados.ano}-${String(dados.mes + 1).padStart(2, '0')}.pdf`));
+    uri = arquivo.uri;
+  } catch (erro) {
+    console.warn('[pdf-report] nome descritivo não aplicado, usando o arquivo original', erro);
+  }
 
   if (!(await Sharing.isAvailableAsync())) {
     return { uri, compartilhado: false };
