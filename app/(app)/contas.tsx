@@ -490,6 +490,9 @@ export default function ContasScreen() {
         <FlatList
           data={monthBills}
           keyExtractor={(b) => b.id}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={7}
           contentContainerStyle={[styles.listContent, colunaLista, { paddingBottom: paddingConteudoComFab }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
           ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma conta vencendo neste mês. Toque no botão "+" para registrar.</Text>}
