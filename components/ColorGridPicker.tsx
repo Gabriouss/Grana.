@@ -10,6 +10,26 @@ const COLUNAS = 6;
 const ROWS = Array.from({ length: 5 }, (_, i) => PALETTE_30.slice(i * COLUNAS, i * COLUNAS + COLUNAS));
 const norm = (c: string) => c.toLowerCase();
 
+/* O matiz derivado repete: 7 amostras são "ciano", 3 são "verde". Num leitor de
+   tela isso é uma grade de botões iguais. Quando o nome se repete, a posição
+   dentro do grupo desempata ("ciano 3 de 7"). Calculado da própria paleta, sem
+   tabela escrita à mão. */
+function nomesUnicos(): Map<string, string> {
+  const base = PALETTE_30.map((c) => [c, nomeDaCor(c)] as const);
+  const total = new Map<string, number>();
+  for (const [, n] of base) total.set(n, (total.get(n) ?? 0) + 1);
+  const visto = new Map<string, number>();
+  const out = new Map<string, string>();
+  for (const [c, n] of base) {
+    const i = (visto.get(n) ?? 0) + 1;
+    visto.set(n, i);
+    out.set(norm(c), total.get(n)! > 1 ? `${n} ${i} de ${total.get(n)}` : n);
+  }
+  return out;
+}
+const NOMES = nomesUnicos();
+const nomeAcessivel = (hex: string) => NOMES.get(norm(hex)) ?? nomeDaCor(hex);
+
 /* Nome falado de cada cor da grade. Um leitor de tela anunciando "#4f9bab"
    não diz nada a ninguém, e "cor 7 de 30" não deixa escolher: numa grade em
    que a cor é a ÚNICA informação, o nome da cor É o rótulo acessível. Deriva
@@ -92,7 +112,7 @@ export default function ColorGridPicker({
                   // O ponto de "cor já usada" é a única informação que a bolinha
                   // carrega além da cor — sem repeti-la no rótulo, quem usa
                   // leitor de tela não tem como saber que ela existe.
-                  accessibilityLabel={uso ? `${nomeDaCor(color)}, em uso por ${uso.label}` : nomeDaCor(color)}
+                  accessibilityLabel={uso ? `${nomeAcessivel(color)}, em uso por ${uso.label}` : nomeAcessivel(color)}
                   style={({ hovered }) => [
                     styles.swatch,
                     { backgroundColor: color },
