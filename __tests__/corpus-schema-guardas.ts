@@ -315,9 +315,9 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
     const reabrir = texto.slice(texto.indexOf('create or replace function public.reabrir_conta'));
     checar(`${onde}: pagar_conta guarda a conta seguinte que ELA criou`,
       /on conflict \(user_id, parent_id, due_date\) do nothing\s+returning id into v_next_id;/.test(pagar) &&
-      /set next_bill_id = v_next_id/.test(pagar));
+      /(set next_bill_id = v_next_id|next_bill_id = coalesce\(v_next_id, next_bill_id\))/.test(pagar));
     checar(`${onde}: reabrir_conta apaga a conta seguinte só se ainda não foi paga`,
-      /delete from public\.bills\s+where id = v_bill\.next_bill_id\s+and user_id = v_user\s+and status = 'due'\s+and paid_transaction_id is null;/.test(reabrir));
+      /delete from public\.bills( n)?\s+where (n\.)?id = v_bill\.next_bill_id\s+and (n\.)?user_id = v_user\s+and (n\.)?status = 'due'\s+and (n\.)?paid_transaction_id is null/.test(reabrir));
     checar(`${onde}: reabrir_conta limpa o vínculo`,
       /set status = 'due', paid_transaction_id = null, next_bill_id = null/.test(reabrir));
     checar(`${onde}: coluna com FK de mesmo dono e índice`,
