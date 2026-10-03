@@ -179,6 +179,9 @@ export default function SignUp() {
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
+            returnKeyType="next"
+            onSubmitEditing={() => campoSenha.current?.focus()}
+            blurOnSubmit={false}
             value={email}
             onChangeText={setEmail}
           />
@@ -192,6 +195,8 @@ export default function SignUp() {
             maxLength={LIMITS.password}
             placeholder={`mínimo ${MIN_PASSWORD} caracteres, com número`}
             autoComplete="password-new"
+            returnKeyType="next"
+            onSubmitEditing={() => campoConfirmar.current?.focus()}
             value={password}
             onChangeText={setPassword}
           />

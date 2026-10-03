@@ -93,6 +93,9 @@ export default function SignIn() {
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
+            returnKeyType="next"
+            onSubmitEditing={() => campoSenha.current?.focus()}
+            blurOnSubmit={false}
             value={email}
             onChangeText={setEmail}
           />
