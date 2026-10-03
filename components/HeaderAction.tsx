@@ -1,4 +1,4 @@
-import { StyleSheet, Text } from 'react-native';
+import { Platform, StyleSheet, Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
 import AppPressable from './AppPressable';
@@ -30,6 +30,7 @@ export default function HeaderAction({
     <AppPressable
       onPress={onPress}
       hitSlop={8}
+      android_ripple={{ color: theme.hover, borderless: false, foreground: true }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       style={({ hovered }) => [
@@ -50,6 +51,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     borderRadius: radius.pill,
+    /* Recorta o feedback nativo; na web o hitSlop usa um filho externo. */
+    overflow: Platform.OS === 'android' ? 'hidden' : 'visible',
     borderWidth: 1,
     borderColor: theme.rule,
     backgroundColor: theme.paperRaised,

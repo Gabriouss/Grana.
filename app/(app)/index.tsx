@@ -1611,7 +1611,7 @@ export default function InicioScreen() {
         }
         title={saudacaoDoDia(nomeExibicao)}
         left={
-          <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn} accessibilityLabel="Abrir perfil">
+          <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn} android_ripple={{ color: theme.hover, borderless: false, foreground: true }} accessibilityLabel="Abrir perfil">
             {perfil?.fotoUrl ? (
               <Image
                 source={{ uri: perfil.fotoUrl }}
@@ -2068,7 +2068,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   customizeBtnText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
-  avatarBtn: { padding: spacing.fio },
+  avatarBtn: { padding: spacing.fio, borderRadius: radius.pill, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
   /* 44, não 34: a foto é a identidade da pessoa na tela e estava menor que
      os botões de ação ao lado. Passa a ser o maior elemento circular do
      cabeçalho, com os botões de ícone em 36. */
