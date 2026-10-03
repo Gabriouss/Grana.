@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { envioUnico } from '@/lib/envio-unico';
 import { useSession } from '@/lib/auth-context';
 import { theme, spacing, radius, fonts, type, lh } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
@@ -58,7 +59,10 @@ export default function SignUp() {
   const campoSenha = useRef<TextInput>(null);
   const campoConfirmar = useRef<TextInput>(null);
 
-  async function handleSignUp() {
+  /* `envioUnico`: o Enter do teclado chama este handler sem passar pelo
+     `disabled` do botão; sem o ferrolho, dois Enter faziam dois pedidos. */
+  const travaDeEnvio = useRef(false);
+  const handleSignUp = envioUnico(travaDeEnvio, async () => {
     setError(null);
     /* Cada recusa leva o foco ao campo que precisa de conserto. Sem isto o
         foco ficava no botão e a mensagem aparecia longe de onde a pessoa
@@ -110,7 +114,7 @@ export default function SignUp() {
     }
     // se não precisar de confirmação, a sessão já foi criada — o listener
     // em SessionProvider detecta e o Stack.Protected leva pro app sozinho.
-  }
+  });
 
   if (confirmationSentTo) {
     return (

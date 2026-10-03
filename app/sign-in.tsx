@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { envioUnico } from '@/lib/envio-unico';
 import { useSession } from '@/lib/auth-context';
 import { theme, spacing, radius, fonts, type, lh } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
@@ -35,7 +36,10 @@ export default function SignIn() {
   const campoEmail = useRef<TextInput>(null);
   const campoSenha = useRef<TextInput>(null);
 
-  async function handleSignIn() {
+  /* `envioUnico`: o Enter do teclado chama este handler sem passar pelo
+     `disabled` do botão; sem o ferrolho, dois Enter faziam dois pedidos. */
+  const travaDeEnvio = useRef(false);
+  const handleSignIn = envioUnico(travaDeEnvio, async () => {
     setError(null);
     if (!email.trim() || !password) {
       setError({ mensagem: 'Preencha e-mail e senha.' });
@@ -50,7 +54,7 @@ export default function SignIn() {
     const { error: signInError } = await signIn(email.trim(), password);
     setLoading(false);
     if (signInError) setError(signInError);
-  }
+  });
 
   return (
     <KeyboardAvoidingView
