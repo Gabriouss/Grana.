@@ -82,6 +82,8 @@ function carregar({ plataforma = 'android', disponivel = true, falhaMover = fals
     assert.equal(compartilhados[0][2].UTI, 'com.adobe.pdf');
     console.log('ok nome e conteudo preservados, concorrencia e compartilhamento em ' + plataforma);
   }
+  const comPeriodo = await carregar().gerar({ ano: 2026, mes: 9, periodo: { inicio: '2026-06-01', fim: '2026-07-31' } });
+  assert.equal(path.posix.basename(comPeriodo.uri), 'Grana-relatorio-2026-06-01-a-2026-07-31.pdf', 'periodo nomeia pelo intervalo');
   const semSharing = carregar({ disponivel: false });
   const local = await semSharing.gerar({ ano: 2027, mes: 0 });
   assert.equal(path.posix.basename(local.uri), 'Grana-relatorio-2027-01.pdf');

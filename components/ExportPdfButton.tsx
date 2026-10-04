@@ -29,6 +29,7 @@ export default function ExportPdfButton({
   bills,
   wrapped,
   rotulo,
+  periodo,
 }: {
   ano: number;
   mes: number; // 0-11
@@ -42,6 +43,8 @@ export default function ExportPdfButton({
   wrapped?: MonthlyWrapped | null;
   /** Texto do botão. O padrão serve às telas de Gráficos e Lançamentos. */
   rotulo?: string;
+  /** Intervalo ISO escolhido em Gráficos; substitui o recorte por mês. */
+  periodo?: { inicio: string; fim: string };
 }) {
   const { ligado } = useFlags();
   const { isDemoMode } = useDemo();
@@ -63,7 +66,7 @@ export default function ExportPdfButton({
         }
       }
 
-      const { compartilhado, uri } = await gerarRelatorioPdf({ ano, mes, transactions, bills: contas, carteira, wrapped });
+      const { compartilhado, uri } = await gerarRelatorioPdf({ ano, mes, transactions, bills: contas, carteira, wrapped, periodo });
       /* `uri` vazio é o caminho da web, onde o relatório abre numa janela
          própria e quem salva o PDF é a caixa de impressão do navegador — não
          existe arquivo local pra citar num alerta. */

@@ -106,5 +106,43 @@ const base = { ano: 2026, mes: 6, transactions: transacoes, bills: contas, carte
   checar('e o texto continua legível escapado', html.includes('&lt;script&gt;'));
 }
 
+// ── V06: "Período" exporta o intervalo escolhido, não só o mês corrente ────
+{
+  // mes/ano apontam para OUTUBRO (como o botão faz: mês corrente); o intervalo é jun a jul.
+  const periodo = { inicio: '2026-06-01', fim: '2026-07-31' };
+  const dados = { ano: 2026, mes: 9, transactions: transacoes, bills: contas, carteira: 'Total' };
+  const html = montarHtml({ ...dados, periodo });
+  checar('período sem o mês corrente NÃO sai vazio', !html.includes('Nenhum lançamento neste'));
+  checar('entram lançamentos de junho e de julho', html.includes('Aluguel') && html.includes('Salário'));
+  checar('lançamentos: 5 no intervalo', /<div class="valor">5<\/div>/.test(html));
+  checar('cabeçalho mostra o intervalo', html.includes('01/06/2026 a 31/07/2026'));
+  checar('rótulo fala de período, não de mês', html.includes('Resultado do período') && !html.includes('Resultado do mês'));
+  checar('sem comparação com mês anterior', !html.includes('mês anterior'));
+  const recorte = montarHtml({ ...dados, periodo: { inicio: '2026-07-06', fim: '2026-07-12' } });
+  checar('só o dia 11 entra no recorte 06 a 12', recorte.includes('Mercado') && !recorte.includes('Aluguel') && !recorte.includes('Farmácia') && !recorte.includes('Salário'));
+  const exato = montarHtml({ ...dados, periodo: { inicio: '2026-07-11', fim: '2026-07-11' } });
+  checar('extremo inclusivo (início = fim)', exato.includes('Mercado') && !exato.includes('Farmácia'));
+  // Boletos pagos: due_date nos extremos entra, fora ou pendente não.
+  const boleto = (id: string, due_date: string, status: string, description: string) =>
+    ({ id, user_id: 'u', description, category: 'Moradia', amount: 100, due_date, status } as unknown as Bill);
+  const comBoletos = montarHtml({
+    ...dados,
+    periodo: { inicio: '2026-06-10', fim: '2026-07-20' },
+    bills: [
+      boleto('b1', '2026-06-10', 'paid', 'BOL-INICIO'),
+      boleto('b2', '2026-07-20', 'paid', 'BOL-FIM'),
+      boleto('b3', '2026-06-09', 'paid', 'BOL-ANTES'),
+      boleto('b4', '2026-07-21', 'paid', 'BOL-DEPOIS'),
+      boleto('b5', '2026-07-01', 'pending', 'BOL-PENDENTE'),
+      boleto('b6', '2026-10-05', 'paid', 'BOL-MES-CORRENTE'),
+    ],
+  });
+  checar('boletos pagos nos extremos entram', comBoletos.includes('BOL-INICIO') && comBoletos.includes('BOL-FIM'));
+  checar('boleto fora do intervalo, pendente ou do mês corrente não entra',
+    !comBoletos.includes('BOL-ANTES') && !comBoletos.includes('BOL-DEPOIS') && !comBoletos.includes('BOL-PENDENTE') && !comBoletos.includes('BOL-MES-CORRENTE'));
+  const mensal = montarHtml({ ...dados, mes: 9 });
+  checar('sem período, o recorte mensal de outubro continua vazio', mensal.includes('Nenhum lançamento neste mês') && mensal.includes('Resultado do mês'));
+}
+
 console.log(`\n${total - falhas}/${total} checagens do relatório passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);

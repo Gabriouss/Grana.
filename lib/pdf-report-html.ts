@@ -62,6 +62,14 @@ export type DadosRelatorio = {
    * repetir o que a "Leitura do mês" já diz.
    */
   wrapped?: MonthlyWrapped | null;
+  /**
+   * Intervalo escolhido pela pessoa (datas ISO, extremos inclusos). Quando
+   * existe, o relatório cobre ESSE intervalo e ignora `ano`/`mes` no recorte:
+   * em Gráficos, "Período" exportava só o mês corrente e saía vazio para um
+   * intervalo que não o contivesse (V06, 03/10/2026). Sem mês anterior para
+   * comparar: a comparação mensal não faz sentido num intervalo livre.
+   */
+  periodo?: { inicio: string; fim: string };
 };
 
 /**
@@ -117,8 +125,10 @@ function gerarInsights(dados: {
   saidasMesAnterior: number | null;
   diasNoMes: number;
   boletosPagos: Bill[];
+  /** 'mês' ou 'período', conforme o recorte do relatório. */
+  ref: string;
 }): Insight[] {
-  const { entradas, saidas, saldo, saidasTx, doMes, categorias, saidasMesAnterior, diasNoMes, boletosPagos } = dados;
+  const { entradas, saidas, saldo, saidasTx, doMes, categorias, saidasMesAnterior, diasNoMes, boletosPagos, ref } = dados;
   const out: Insight[] = [];
   const pct = (parte: number, todo: number) => (todo > 0 ? (parte / todo) * 100 : 0);
 
@@ -129,12 +139,12 @@ function gerarInsights(dados: {
     out.push(
       saldo >= 0
         ? {
-            titulo: 'Sobrou no mês',
-            texto: `De cada R$ 100 que entraram, R$ ${formatMoney(Math.max(0, taxa))} ficaram. O resultado do mês foi de R$ ${formatMoney(saldo)}.`,
+            titulo: `Sobrou no ${ref}`,
+            texto: `De cada R$ 100 que entraram, R$ ${formatMoney(Math.max(0, taxa))} ficaram. O resultado do ${ref} foi de R$ ${formatMoney(saldo)}.`,
           }
         : {
             titulo: 'Saiu mais do que entrou',
-            texto: `As saídas passaram as entradas em R$ ${formatMoney(Math.abs(saldo))}, o equivalente a ${Math.abs(taxa).toFixed(0)}% do que foi recebido no mês.`,
+            texto: `As saídas passaram as entradas em R$ ${formatMoney(Math.abs(saldo))}, o equivalente a ${Math.abs(taxa).toFixed(0)}% do que foi recebido no ${ref}.`,
           }
     );
   }
@@ -164,7 +174,7 @@ function gerarInsights(dados: {
     }
     const [nomeLider, dadosLider] = categorias[0];
     out.push({
-      titulo: 'Onde o mês se concentrou',
+      titulo: `Onde o ${ref} se concentrou`,
       texto:
         quantas === 1
           ? `${nomeLider} sozinha responde por ${pct(dadosLider.total, saidas).toFixed(0)}% das saídas, R$ ${formatMoney(dadosLider.total)}.`
@@ -180,8 +190,8 @@ function gerarInsights(dados: {
     const fixo = recorrentes + boletos;
     if (fixo > 0) {
       out.push({
-        titulo: 'Quanto do mês já estava comprometido',
-        texto: `R$ ${formatMoney(fixo)} saíram de contas recorrentes e boletos, ${pct(fixo, saidas).toFixed(0)}% das saídas. O restante, R$ ${formatMoney(saidas - fixo)}, foi decidido ao longo do mês.`,
+        titulo: `Quanto do ${ref} já estava comprometido`,
+        texto: `R$ ${formatMoney(fixo)} saíram de contas recorrentes e boletos, ${pct(fixo, saidas).toFixed(0)}% das saídas. O restante, R$ ${formatMoney(saidas - fixo)}, foi decidido ao longo do ${ref}.`,
       });
     }
   }
@@ -194,7 +204,7 @@ function gerarInsights(dados: {
     if (fatia >= 12) {
       out.push({
         titulo: 'Maior saída isolada',
-        texto: `"${maior.description}" custou R$ ${formatMoney(Number(maior.amount))} e sozinha responde por ${fatia.toFixed(0)}% do que saiu no mês.`,
+        texto: `"${maior.description}" custou R$ ${formatMoney(Number(maior.amount))} e sozinha responde por ${fatia.toFixed(0)}% do que saiu no ${ref}.`,
       });
     }
   }
@@ -219,7 +229,7 @@ function gerarInsights(dados: {
     );
     out.push({
       titulo: 'Compras parceladas',
-      texto: `R$ ${formatMoney(valorParcelas)} do mês vieram de ${parcelados.length} ${parcelados.length === 1 ? 'parcela' : 'parcelas'}${restantes > 0 ? `, e a mais longa ainda tem ${restantes} ${restantes === 1 ? 'mês' : 'meses'} pela frente` : ''}.`,
+      texto: `R$ ${formatMoney(valorParcelas)} do ${ref} vieram de ${parcelados.length} ${parcelados.length === 1 ? 'parcela' : 'parcelas'}${restantes > 0 ? `, e a mais longa ainda tem ${restantes} ${restantes === 1 ? 'mês' : 'meses'} pela frente` : ''}.`,
     });
   }
 
@@ -293,13 +303,16 @@ function blocoRetrospectiva(w: MonthlyWrapped | null | undefined): string {
 }
 
 export function montarHtml(
-  { ano, mes, transactions, bills, carteira, wrapped }: DadosRelatorio,
+  { ano, mes, transactions, bills, carteira, wrapped, periodo }: DadosRelatorio,
   fonte: CabecalhoDaFonte = { base: '', faces: '' }
 ): string {
-  const doMes = transactions.filter((t) => {
-    const [y, m] = t.occurred_on.split('-').map(Number);
+  const ref = periodo ? 'período' : 'mês';
+  const noRecorte = (iso: string) => {
+    if (periodo) return iso >= periodo.inicio && iso <= periodo.fim;
+    const [y, m] = iso.split('-').map(Number);
     return y === ano && m - 1 === mes;
-  });
+  };
+  const doMes = transactions.filter((t) => noRecorte(t.occurred_on));
 
   const entradasTx = doMes.filter((t) => t.type === 'in');
   const saidasTx = doMes.filter((t) => t.type === 'out');
@@ -315,10 +328,7 @@ export function montarHtml(
   }
   const categorias = [...porCategoria.entries()].sort((a, b) => b[1].total - a[1].total);
 
-  const boletosPagos = bills.filter((b) => {
-    const [y, m] = b.due_date.split('-').map(Number);
-    return b.status === 'paid' && y === ano && m - 1 === mes;
-  });
+  const boletosPagos = bills.filter((b) => b.status === 'paid' && noRecorte(b.due_date));
 
   /* Mês anterior para comparação. A lista que chega aqui é a que a tela já
      tinha carregado, e nem sempre alcança o mês passado — em Gráficos ela
@@ -331,11 +341,13 @@ export function montarHtml(
     const [y, m] = t.occurred_on.split('-').map(Number);
     return y === anoAnterior && m - 1 === mesAnterior;
   });
-  const saidasMesAnterior = doMesAnterior.length
+  const saidasMesAnterior = !periodo && doMesAnterior.length
     ? doMesAnterior.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0)
     : null;
 
-  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const diasNoMes = periodo
+    ? Math.round((Date.parse(`${periodo.fim}T00:00:00Z`) - Date.parse(`${periodo.inicio}T00:00:00Z`)) / 86400000) + 1
+    : new Date(ano, mes + 1, 0).getDate();
 
   const insights = gerarInsights({
     entradas,
@@ -347,11 +359,12 @@ export function montarHtml(
     saidasMesAnterior,
     diasNoMes,
     boletosPagos,
+    ref,
   });
 
   const blocoInsights = insights.length
     ? `
-  <h2>Leitura do mês</h2>
+  <h2>Leitura do ${ref}</h2>
   <div class="insights">
     ${insights
       .map(
@@ -391,7 +404,7 @@ export function montarHtml(
         </tr>`
         )
         .join('')
-    : '<tr><td colspan="4" class="vazio">Nenhum boleto quitado neste mês.</td></tr>';
+    : `<tr><td colspan="4" class="vazio">Nenhum boleto quitado neste ${ref}.</td></tr>`;
 
   const extrato = [...doMes].sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
   const linhasExtrato = extrato.length
@@ -408,7 +421,7 @@ export function montarHtml(
         </tr>`
         )
         .join('')
-    : '<tr><td colspan="4" class="vazio">Nenhum lançamento neste mês.</td></tr>';
+    : `<tr><td colspan="4" class="vazio">Nenhum lançamento neste ${ref}.</td></tr>`;
 
   const geradoEm = new Date().toLocaleString('pt-BR');
 
@@ -512,7 +525,7 @@ ${fonte.faces}
     <div class="marca">Grana<span>.</span></div>
     <div class="cabecalho-meta">
       <strong>Relatório Executivo</strong>
-      ${escaparHtml(MONTH_NAMES[mes])} de ${ano} · Carteira: ${escaparHtml(carteira)}
+      ${periodo ? `${dataBr(periodo.inicio)} a ${dataBr(periodo.fim)}` : `${escaparHtml(MONTH_NAMES[mes])} de ${ano}`} · Carteira: ${escaparHtml(carteira)}
     </div>
   </header>
 
@@ -527,7 +540,7 @@ ${fonte.faces}
       <div class="valor negativo">R$ ${formatMoney(saidas)}</div>
     </div>
     <div class="card destaque">
-      <div class="rotulo">Resultado do mês</div>
+      <div class="rotulo">Resultado do ${ref}</div>
       <div class="valor ${saldo >= 0 ? 'positivo' : 'negativo'}">
         ${saldo >= 0 ? '+' : '−'} R$ ${formatMoney(Math.abs(saldo))}
       </div>
@@ -544,7 +557,7 @@ ${blocoRetrospectiva(wrapped)}
   <h2>Divisão das saídas por categoria</h2>
   <table>
     <thead><tr><th>Categoria</th><th>Participação</th><th class="num">%</th><th class="num">Valor</th></tr></thead>
-    <tbody>${linhasCategorias || '<tr><td colspan="4" class="vazio">Nenhuma saída registrada neste mês.</td></tr>'}</tbody>
+    <tbody>${linhasCategorias || `<tr><td colspan="4" class="vazio">Nenhuma saída registrada neste ${ref}.</td></tr>`}</tbody>
   </table>
 
   <h2>Boletos quitados</h2>

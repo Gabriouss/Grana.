@@ -440,6 +440,9 @@ export default function GraficosScreen() {
           /* A36: com "Período" ativo o relatório cobre o intervalo escolhido, e
              o botão continuava dizendo o mês corrente. */
           rotulo={granularidade === 'periodo' ? 'Exportar relatório do período' : undefined}
+          /* V06: com "Período" o documento cobre o intervalo escolhido, não só o
+             mês corrente (antes saía vazio para intervalo sem o mês atual). */
+          periodo={granularidade === 'periodo' ? { inicio: periodoInicio, fim: periodoFim } : undefined}
         />
 
         <View style={{ height: 100 }} />

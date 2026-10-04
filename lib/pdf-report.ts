@@ -75,7 +75,7 @@ export async function gerarRelatorioPdf(dados: DadosRelatorio): Promise<{ uri: s
     const arquivo = new File(impresso.uri);
     const pasta = new Directory(Paths.cache, 'relatorios-grana', arquivo.name.replace(/\.pdf$/i, ''));
     pasta.create({ intermediates: true });
-    await arquivo.move(new File(pasta, `Grana-relatorio-${dados.ano}-${String(dados.mes + 1).padStart(2, '0')}.pdf`));
+    await arquivo.move(new File(pasta, `Grana-relatorio-${dados.periodo ? `${dados.periodo.inicio}-a-${dados.periodo.fim}` : `${dados.ano}-${String(dados.mes + 1).padStart(2, '0')}`}.pdf`));
     uri = arquivo.uri;
   } catch (erro) {
     console.warn('[pdf-report] nome descritivo não aplicado, usando o arquivo original', erro);
@@ -87,7 +87,7 @@ export async function gerarRelatorioPdf(dados: DadosRelatorio): Promise<{ uri: s
 
   await Sharing.shareAsync(uri, {
     mimeType: 'application/pdf',
-    dialogTitle: `Relatório Grana. de ${MONTH_NAMES[dados.mes]} de ${dados.ano}`,
+    dialogTitle: dados.periodo ? `Relatório Grana. de ${dados.periodo.inicio} a ${dados.periodo.fim}` : `Relatório Grana. de ${MONTH_NAMES[dados.mes]} de ${dados.ano}`,
     UTI: 'com.adobe.pdf',
   });
   return { uri, compartilhado: true };
