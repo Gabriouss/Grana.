@@ -133,6 +133,12 @@ no `context.md`.
 
 ---
 
+# 04/10/2026 (M1, Quill): REGRA PERMANENTE, ElevenLabs só com aprovação prévia do autor, toda vez
+
+Pedido do autor, como chegou: "NENHUM uso da ElevenLabs que gaste crédito sem a aprovação do autor antes, toda vez. Não gere nem regere imagem, vídeo, áudio, voz ou recorte de fundo. Se precisar, rode só a estimativa, mande o custo em créditos e em dólar ao Orquestrador Supremo e ESPERE o sim do autor. Aprovação anterior não vale para nova geração. Prefira caminho local e gratuito (ffmpeg, rembg, PIL)." Vale já e para sempre. Registrada em `AGENTS.md` (regra 24), na nota do vault `03 - Marketing/Regras de Criativo e Estilo de Vídeo` (seção 2, regra 6) e na nota do canvas `Contexto - AGENTS`. Contexto que a motivou, conforme os relatórios do Flare e do Orquestrador (não reconferido pelo Quill): o Reel gastou US$ 1,149 (6.319,27 créditos) dentro de um teto autorizado e o clipe saiu em formato errado (1280x720, 16:9, 10 s, em vez de 9:16, 5 s); regerar custaria cerca de US$ 1,11 a mais e não foi feito; cada foto de aparelho vazio custou 818 créditos. Descartado: tratar teto já autorizado como licença para regerar. Não verificado: nenhum agente foi auditado quanto a gasto posterior a esta regra.
+
+---
+
 # 04/10/2026 (M1, Quill): REGRA PERMANENTE de vídeo e regras de criativo
 
 Pedido do autor, como chegou: "Registre isso na documentação do projeto." Registro feito pelo Quill, dono da documentação enquanto o Ledger está sem limite do Codex (até 16h52). Base: `E:\Grana-temporarios\2026-10-04-marketing\relatorio-orquestrador-estaticos-e-mockups.md` e `beacon\relatorio-e-copy.md`. Nada foi produzido, publicado nem gerado; vale a regra 21.

@@ -947,3 +947,19 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       não sai dela.
 
     A produção segue sujeita à regra 21 (só quando o autor pedir na sessão).
+
+24. **Nenhum uso da ElevenLabs que gaste crédito sem a aprovação do autor
+    ANTES, toda vez.** Regra dada pelo autor em 04/10/2026, "vale já e para
+    sempre". Vale para gerar ou regerar imagem, vídeo, áudio, voz ou recorte
+    de fundo, por qualquer agente, conector ou script.
+
+    - **Só a estimativa é livre.** Rode só a estimativa de custo, mande o
+      valor em créditos e em dólar ao Orquestrador Supremo e ESPERE o "sim" do
+      autor. Sem o "sim", não gere.
+    - **Aprovação anterior não vale para nova geração.** Cada geração ou
+      regeração pede de novo, inclusive refazer peça que saiu errada e
+      inclusive dentro de um teto já autorizado para outra peça.
+    - **Prefira o caminho local e gratuito:** `ffmpeg`, `rembg`, PIL.
+    - Convive com a regra 23 (ElevenLabs só para áudio, vídeo e foto de
+      aparelho vazio) e com a regra 21 (produção só quando o autor pedir):
+      ser a ferramenta permitida não é autorização de gasto.
