@@ -133,6 +133,20 @@ no `context.md`.
 
 ---
 
+# 04/10/2026 (M1, Quill): REGRA PERMANENTE de vídeo e regras de criativo
+
+Pedido do autor, como chegou: "Registre isso na documentação do projeto." Registro feito pelo Quill, dono da documentação enquanto o Ledger está sem limite do Codex (até 16h52). Base: `E:\Grana-temporarios\2026-10-04-marketing\relatorio-orquestrador-estaticos-e-mockups.md` e `beacon\relatorio-e-copy.md`. Nada foi produzido, publicado nem gerado; vale a regra 21.
+
+**Regra de vídeo (permanente).** O vídeo aprovado `grana-motion-desistiu-foto-da-nota.mp4` (raiz de `Gabriel/Grana` do vault, 5,5 MB, aprovado em 25/09/2026) é a referência de estilo de edição e motion de TODOS os vídeos do Grana.; todo vídeo novo replica esse estilo, medido contra o arquivo, não "parecido". É o "Estilo B" de `Estilos de Vídeo - Guia de Referência`. Vale para o ESTILO; não autoriza prometer a função "fotografar a nota" antes de build pública e teste com cupons reais.
+
+**Regras de criativo dadas pelo autor em 04/10 (permanentes).** (1) Celular e notebook nunca cortados na borda, sempre margem segura (≥ 80 px em canvas de 1080 px). (2) Sem contador de página nem aviso de exemplo dentro da arte; o aviso de dado fictício vai na legenda. (3) Logotipo sempre o gradiente oficial (`design-system/marca/logotipo-gradiente.svg`). (4) Mockup é foto de aparelho vazio com o print real por homografia, atento aos cantos arredondados; CSS 3D foi reprovado. (5) ElevenLabs só para áudio, vídeo e foto de aparelho vazio; estático não sai dela.
+
+**Onde está registrado.** `AGENTS.md`, regra 23; nota perene do vault `03 - Marketing/Regras de Criativo e Estilo de Vídeo` (tipo perene, `revisado` 2026-10-04) e linha no índice de Marketing; nota do canvas `Contexto - FUNIL`.
+
+**Pendente (checklist).** O guia numérico que o Flare está medindo, `E:\Grana-temporarios\2026-10-04-marketing\flare\guia-de-estilo-de-video.md`, NÃO existia quando isto foi escrito (conferido no disco). Quando chegar: levar o conteúdo à seção 3 da nota perene, a esta entrada e ao canvas, separando o MEDIDO da hipótese do Flare. Descartado: esperar o guia para registrar a regra. Não verificado: o Quill não abriu o vídeo nem mediu nada.
+
+---
+
 # 04/10/2026 (M1): retomada de contexto, estáticos e mockups — Ledger
 
 Fontes: `E:\Grana-temporarios\2026-10-04-marketing\relatorio-orquestrador-estaticos-e-mockups.md`, complementos Beacon `E:\Grana-temporarios\2026-10-04-marketing\beacon\relatorio-e-copy.md` e Flare `E:\Grana-temporarios\rodada-2026-10-04\relatorio-flare-prints.md`, e os relatórios de retomada em `E:\Grana-temporarios\rodada-2026-10-04\` (`relatorio-anvil.md`, `relatorio-keel.md`, `relatorio-lumen.md`, `relatorio-lynx.md`). Sessão de documentação/vault/canvas; nenhum segredo foi copiado. O conteúdo dos relatórios é atribuído a seus autores; esta sessão não reexecutou testes nem validou visualmente o app.

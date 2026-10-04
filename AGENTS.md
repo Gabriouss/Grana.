@@ -921,3 +921,27 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Não contorne chamando `eas build` direto.** A regra 5 já proíbe pular o
       `build:preparar`; aqui o motivo é outro, e é a cota. Junte correções numa
       build só em vez de disparar uma por correção.
+
+23. **O vídeo `grana-motion-desistiu-foto-da-nota.mp4` é a referência de estilo
+    de edição e motion de TODOS os vídeos do Grana.; todo vídeo novo replica
+    esse estilo.** Regra permanente dada pelo autor em 04/10/2026 ("Registre
+    isso na documentação do projeto"). O arquivo está na raiz de
+    `Gabriel/Grana` do vault (aprovado em 25/09/2026); a nota perene é
+    `03 - Marketing/Regras de Criativo e Estilo de Vídeo`. Quem produz mede o
+    arquivo de referência e compara o resultado com ele antes de entregar. O
+    guia numérico do Flare (`guia-de-estilo-de-video.md`) entra no vault quando
+    existir. A referência vale para o ESTILO, não autoriza prometer a função
+    mostrada antes de build pública e QA.
+
+    Regras de criativo dadas na mesma data, também permanentes:
+
+    - **Celular e notebook nunca cortados na borda;** sempre margem segura.
+    - **Sem contador de página e sem aviso de exemplo dentro da arte;** o aviso
+      de dado fictício vai na legenda.
+    - **Logotipo sempre o gradiente oficial** (`design-system/marca/logotipo-gradiente.svg`).
+    - **Mockup é foto de aparelho vazio com o print real colado por
+      homografia,** com atenção aos cantos arredondados; CSS 3D foi reprovado.
+    - **ElevenLabs só para áudio, vídeo e foto de aparelho vazio;** estático
+      não sai dela.
+
+    A produção segue sujeita à regra 21 (só quando o autor pedir na sessão).
