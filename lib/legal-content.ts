@@ -114,7 +114,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Há uma única exceção, e ela fica registrada aqui por inteiro: os feedbacks que você enviar pelo app continuam guardados depois da exclusão, de forma anonimizada. Apagamos o vínculo com a sua conta, a identificação do aparelho e qualquer imagem anexada; ficam o tipo, a nota, o texto e a data, que é o que nos ajuda a corrigir e melhorar o app. Dado anonimizado está fora do alcance da LGPD (art. 12), e a partir daí não há mais como ligá-lo a você.',
+        `Há uma única exceção, e ela fica registrada aqui por inteiro: os feedbacks que você enviar pelo app continuam guardados depois da exclusão, com os campos de vínculo anonimizados. Apagamos o vínculo com a sua conta, a identificação do aparelho e qualquer imagem anexada; ficam o tipo, a nota, o texto e a data, que é o que nos ajuda a corrigir e melhorar o app. O texto que você escreveu é mantido como está. Se ele contiver dado pessoal, peça a remoção por ${EMAIL_CONTATO} e apagamos o comentário.`,
     },
     {
       tipo: 'paragrafo',
@@ -226,7 +226,7 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
 
 export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
   titulo: 'Como excluir seus dados do Grana.',
-  atualizadoEm: '23 de setembro de 2026',
+  atualizadoEm: '4 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -263,7 +263,7 @@ export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
     },
     {
       tipo: 'paragrafo',
-      texto: `Não mantemos cópias de backup dos dados apagados. A única coisa que continua guardada são os feedbacks que você tiver enviado pelo app, e de forma anonimizada: sai o vínculo com a sua conta, sai a identificação do aparelho, sai qualquer imagem anexada, e ficam o tipo, a nota, o texto e a data. Mais detalhes sobre quais dados coletamos e por quê estão na nossa [Política de Privacidade](/privacidade).`,
+      texto: `Não mantemos cópias de backup dos dados apagados. A única coisa que continua guardada são os feedbacks que você tiver enviado pelo app, com os campos de vínculo anonimizados: sai o vínculo com a sua conta, sai a identificação do aparelho, sai qualquer imagem anexada, e ficam o tipo, a nota, o texto e a data. O texto é mantido como está; se ele contiver dado pessoal, escreva para ${EMAIL_CONTATO} e apagamos o comentário. Mais detalhes sobre quais dados coletamos e por quê estão na nossa [Política de Privacidade](/privacidade).`,
     },
   ],
 };
