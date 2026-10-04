@@ -11,7 +11,7 @@ import {
 import AppModal, { JanelaFlutuante } from './AppModal';
 import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, PALETTE_30, fonts, type, hitSlopPara } from '@/lib/theme';
+import { theme, radius, spacing, PALETTE_30, fonts, type, hitSlopPara, touchTarget } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
 import type { Category, TxType } from '@/lib/types';
 import { addCategory, deleteCategory, fetchCategories, seedDefaultCategories, updateCategory } from '@/lib/data';
@@ -278,7 +278,6 @@ export default function CategoryPickerModal({
                     <View style={styles.rowActions}>
                       <AppPressable
                         onPress={() => openEdit(item)}
-                        hitSlop={8}
                         style={styles.rowActionBtn}
                         accessibilityLabel={`Editar categoria ${item.name}`}
                       >
@@ -294,7 +293,6 @@ export default function CategoryPickerModal({
                       {!item.isDefault && (
                         <AppPressable
                           onPress={() => confirmDelete(item)}
-                          hitSlop={8}
                           style={styles.rowActionBtn}
                           accessibilityLabel={`Excluir categoria ${item.name}`}
                         >
@@ -430,8 +428,10 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5 },
   catName: { color: theme.inkSoft, fontSize: type.apoio, flex: 1, flexShrink: 1, fontFamily: fonts.light },
   defaultTag: { color: theme.inkFaint, fontSize: type.micro, letterSpacing: 0.5, fontFamily: fonts.light },
-  rowActions: { flexDirection: 'row', gap: 4, paddingRight: 8 },
-  rowActionBtn: { padding: 4 },
+  /* Cada botão é uma caixa de `touchTarget` no fluxo da linha, sem `hitSlop`: as
+     duas áreas tocáveis nunca se sobrepõem, então errar o lápis não cai na lixeira. */
+  rowActions: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.xs },
+  rowActionBtn: { minWidth: touchTarget, minHeight: touchTarget, alignItems: 'center', justifyContent: 'center' },
   createToggle: { color: theme.inkSoft, fontSize: type.apoio, paddingVertical: 6, fontFamily: fonts.light },
   newForm: { gap: 10, paddingVertical: 10, paddingHorizontal: 4 },
   nomeFixo: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.4, fontFamily: fonts.light },
