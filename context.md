@@ -198,6 +198,58 @@ Depois do handoff, o autor pediu: “Produza o vídeo completo pra eu avaliar, s
 
 # 03/10/2026 (M1): auditoria 100% do app no emulador (Vigil), 26 achados, 2 corrigidos
 
+## ATUALIZAÇÃO 04/10/2026 (M1, Quill): o que a rodada de 04/10 corrigiu, e o que segue aberto
+
+Fontes: `E:\Grana-temporarios\rodada-2026-10-04\` (`relatorio-anvil.md`, `relatorio-lumen.md`, `relatorio-lumen-r2.md`, `relatorio-keel.md`, `relatorio-keel-r2.md`, `relatorio-keel-seed.md`, `relatorio-lynx.md`, `relatorio-lynx-r2.md`, `relatorio-vigil-r2.md`) e o `git log`. Esta atualização SUPERA, onde divergir, as listas "abertos" e "sem confiabilidade" da entrada de 03/10 logo abaixo, que fica como estava (registro não se reescreve). O Quill não reexecutou testes nem operou o emulador: "provado na tela" é do Vigil; "teste/leitura" é do autor do commit. Sem `eas build`, Edge Function, migration aplicada ou credencial. HEAD ao escrever: `512cb33`, sem push. Detalhe das seis perguntas por mudança: nota do vault `2026-10-04 - M1 - Rodada de correções da auditoria (Quill)`.
+
+### FATO: corrigido, com commit
+
+| Achado | Commit(s) | Como foi provado |
+|---|---|---|
+| V05 saldo após pagar boleto (P1), V03 "vence esta semana" (P2) | `6979616`, `409813b` | tela (Vigil, 03/10) e teste do módulo real |
+| V19 descrição do Livre para gastar | `d050b20` | tela (Vigil 04/10) |
+| V22 Enter na senha dispara dois envios (regressão de `d39de2c`) | `1fb1bb4` | `lib/envio-unico.ts` testado de verdade; Enter no e-mail e na senha na tela. Enter duplo NÃO exercitado |
+| V23 checklist do cadastro | `4fb5d12` | tela. **Autorização do autor para a redação NÃO conferida** (V23 é copy do autor): ratificar ou reverter |
+| V24 cache de cartão excluído | `a1747b9` | teste; limpa o cache, NÃO as compras órfãs (ver "aberto") |
+| V08 asterisco do Granabô | `c3d7390` (origem `50ab2b8`) | tela: "20 * 2 + 10 * 3 é igual a 70" sem itálico |
+| V13 nomes das amostras de cor | `8ae5ae0` | tela (27 amostras sem nome repetido) |
+| V16 ícone e barra da meta escura | `622b678`, `16a4341` | contraste medido 3,02 a 3,26 nas 30 cores; ícone visto na tela. **Traço da barra acima de 0% NÃO visto** |
+| V20 faixa offline | `88b4775` (FaixaOffline), `ba661d2` (Lançamentos) | leitura/teste. **Duas linhas NÃO vistas na tela** |
+| V26 nome longo no seletor de carteira | `068ffc0` | tela |
+| V25 quadrado cinza do toque | `8077268` | tela (avatar e olho); "Voltar" NÃO conferido |
+| V06 nome do PDF e PERÍODO exportado | `b1d64c9`, `1aca323` | tela e `pdftotext`: período 01/05 a 30/09 sai com categoria e extrato de setembro (antes só o mês corrente) |
+| V09 fala guardada só com pontuação | `3bf4257` | teste de módulos reais, app e widget (`voz-fala-legada-sem-ruido.cjs`). **NÃO visto no aparelho** |
+| V14 rodapé do widget Contas do mês | `f41c2a8` | NÃO verificável sem build nova (XML nativo) |
+| Limites de nome (carteira 60, cartão 100) | `89689d0` | não revisado a fundo |
+| L3 captura de tela e L2 "anonimizado" (copy legal) | `072d88b`, `e4833a9`, `4546864` | leitura do código; revisão do Forge no L3 |
+| Cabeçalhos de acessibilidade em texto simples; alvo de 48 dp (Fechar da conquista, Voltar dos legais) | `7c9fc8e`, `8b01f0a` | grep, aritmética e `tsc`; TalkBack NÃO ouvido |
+| Lápis e lixeira de categorias (layout, regra 14) | `79820d0` | tela a 100% e 130% (Vigil); 48 dp NÃO medidos em pixel |
+
+Regra 20 INTACTA: `regra-20-saldo-do-mes`, `paridade-livre-para-gastar` e `granabo-livre-mes-vigente` verdes no Lynx, sem asserção afrouxada. Lynx sobre `3bf4257`: `tsc`, os seis scripts de teste e 13 testes sem script, todos exit 0. `test:ci` e `test:t5` completos NÃO rodados.
+
+### FATO: confirmado e ABERTO (decisão ou dado do autor)
+
+- **V24 compras órfãs.** Provado pelo Keel com dado inventado: excluir cartão deixa a compra no crédito com `card_id` nulo (FK `ON DELETE SET NULL`, `schema.sql:595`); `lib/projections.ts:42-44` soma `installment_total > 1` sem olhar `card_id`, então a parcela órfã entra no "Comprometimento futuro" e nenhuma tela do Crédito a mostra; o diálogo de `credito.tsx:1145` promete que os lançamentos "continuam no histórico". **Decisão do autor:** (A) apagar as compras junto (migration + novo texto do diálogo) ou (B) manter o histórico e ignorar órfãs na projeção (com teste). A migration `20261004120000_excluir_cartao_apaga_compras_no_credito.sql` está como PROPOSTA em `d5493a3`: **NÃO aplicada**, sem PGlite, sem Harbor. A não aplicação é inferida pelo efeito da prova (sem service_role para ver `pg_trigger`): conferir antes de aplicar. A migration de revoke `20261002130000` também segue NÃO aplicada.
+- **L1** (identificação do controlador e canal do encarregado, LGPD art. 9º e 41) e **C3** (Termos mandam o reembolso ao "parceiro" enquanto a landing promete 7 dias; "como está" sem ressalva do CDC): `lib/legal-content.ts` NÃO tocado nesses pontos. Dependem do autor (nome, documento, canal; texto do prazo, que vem da Cakto). Parecer técnico do Lynx, não jurídico.
+- **V23**: ver tabela.
+
+### SEM CONFIABILIDADE SUFICIENTE (hipótese, não fato; vai ao relatório final ao autor)
+
+- **V10, V11, V17, V18**: conferidos uma vez e NÃO confirmados. V11: `useAudioRecorder` no render (`VoiceEntryButton.tsx:132`) é o caminho do erro, mas houve UMA ocorrência (após `Voltar` do script) e duas tentativas não reproduziram; reabrir se aparecer em release. V10: "Revisar" só republica no toque. V17: `addBill` invalida o cache e `contas.tsx:146-147` recarrega. V18: selo depende de `lido.data` (`FotoNotaModal.tsx:392`); sem o OCR real não há prova.
+- Toque perdido em "Criar meta" e comprovante curto com "Pix": sem causa no código (provável latência do emulador).
+- Foco entre modais e ordem de leitura do TalkBack: `Sheet.tsx:69-70` já marca `accessibilityViewIsModal`; nada ouvido.
+- **NA1** (novo): o Granabô citou R$ 100,00 a 150,00 de compras no crédito com as telas zeradas; pode ser sobra de servidor sem tela ou recorte diferente; o quadro mudou durante a semeadura do Keel.
+- Nome de carteira digitado por `adb` parou em 44 de 59 caracteres (`maxLength` 60 em `lib/limits.ts`): provável corte da digitação.
+- **Dev client branco depois do ANR.** FATO (logcat): ANR "bg" em `APPWIDGET_ENABLED` de `GranaVoiceWidgetProvider` e `LivreParaGastarWidgetProvider` logo após o boot frio, junto com ANR de outros sete apps do emulador; processo morto; sem Metro respondendo o dev client mostra tela escura, e o Fast Refresh recarregou o JS por edição de outros agentes. HIPÓTESE: sobrecarga do emulador no boot; trace não lido (permissão negada).
+
+### Dados AUDIT e conta de teste
+
+Keel (RLS, valores não impressos): limpeza de 01/10 **CONFIRMADA** (0 linhas AUDIT; um boleto e um cartão de prova apagados). Depois semeou a conta de teste com dado FICTÍCIO sem prefixo AUDIT, mês vigente (manifesto em `E:\Grana-temporarios\rodada-2026-10-04\keel\seed-manifest.json`): Livre pelo `lib/safe-to-spend.ts` real = R$ 107,87/dia (saldo R$ 3.970,30, cofrinhos R$ 950,00, 28 dias). Apagar só por ordem do autor; apagar o cartão NÃO leva as compras (V24). RPCs: `pagar_conta`, `reabrir_conta` e `registrar_operacao_voz` existem (anon 42501); `reivindicar_webhook_evento` não sondada.
+
+### NÃO verificado (checklist)
+
+Aparelho ou build: V14, V09 (paridade app x widget), V20 em duas linhas, barra da meta escura acima de 0%, Enter duplo no login e no cadastro, 48 dp, TalkBack, animações quadro a quadro, remoção por e-mail da L2. Revisão do Codex quase toda ausente (limite do plano, Sentinel só volta às 16h52; Prism sem resposta); só o Forge revisou L3, V06 e V09.
+
 Fontes: `E:\Grana-temporarios\auditoria-vigil-0310\` (`relatorio-vigil-auditoria.md`,
 `achados.md`, `relatorio-anvil-correcoes.md`), prints em
 `E:\Grana-temporarios\prints\` (fora do repositório e do vault) e o `git log`.
