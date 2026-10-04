@@ -34,7 +34,7 @@ const EMAIL_CONTATO = '[gbr.design30@gmail.com](mailto:gbr.design30@gmail.com)';
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '27 de setembro de 2026',
+  atualizadoEm: '4 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -137,7 +137,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'O acesso aos seus dados no banco é restrito por políticas de Row Level Security; cada conta só enxerga os próprios dados, mesmo internamente. No aparelho, a sessão de login é armazenada de forma criptografada, e capturas de tela são bloqueadas nas telas com informação financeira.',
+        'O acesso aos seus dados no banco é restrito por políticas de Row Level Security; cada conta só enxerga os próprios dados, mesmo internamente. No aparelho, a sessão de login é armazenada de forma criptografada. No Android, o bloqueio de captura de tela vem ligado e você pode desligá-lo em Perfil; no iPhone e na versão web o sistema não permite impedir a captura.',
     },
     { tipo: 'subtitulo', texto: '8. Crianças e adolescentes' },
     {
