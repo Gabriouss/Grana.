@@ -929,8 +929,10 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     `Gabriel/Grana` do vault (aprovado em 25/09/2026); a nota perene é
     `03 - Marketing/Regras de Criativo e Estilo de Vídeo`. Quem produz mede o
     arquivo de referência e compara o resultado com ele antes de entregar. O
-    guia numérico do Flare (`guia-de-estilo-de-video.md`) entra no vault quando
-    existir. A referência vale para o ESTILO, não autoriza prometer a função
+    guia medido do Flare está em `docs/marketing/guia-de-estilo-de-video.md`.
+    Em aberto para o autor: a sangria do aparelho pela borda de baixo no vídeo
+    aprovado (contraria o aparelho inteiro; vale o inteiro) e a cama musical
+    (vídeo novo sai sem música até decidir). A referência vale para o ESTILO, não autoriza prometer a função
     mostrada antes de build pública e QA.
 
     Regras de criativo dadas na mesma data, também permanentes:
