@@ -137,7 +137,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'O acesso aos seus dados no banco é restrito por políticas de Row Level Security; cada conta só enxerga os próprios dados, mesmo internamente. No aparelho, a sessão de login é armazenada de forma criptografada. No Android, o bloqueio de captura de tela vem ligado e você pode desligá-lo em Perfil; no iPhone e na versão web o sistema não permite impedir a captura.',
+        'O acesso aos seus dados no banco é restrito por políticas de Row Level Security; cada conta só enxerga os próprios dados, mesmo internamente. No aparelho, a sessão de login é armazenada de forma criptografada. No Android, o bloqueio de captura de tela vem ligado e você pode desligá-lo em Perfil; no iPhone e na versão web o Grana. não bloqueia capturas de tela.',
     },
     { tipo: 'subtitulo', texto: '8. Crianças e adolescentes' },
     {
