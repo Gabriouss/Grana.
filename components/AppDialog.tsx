@@ -32,7 +32,7 @@ export default function AppDialog({
     <AppModal visible={visible} transparent onRequestClose={onClose}>
       <Sheet centered onClose={onClose}>
         <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title} accessibilityRole="header">{title}</Text>
           <AppPressable onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>

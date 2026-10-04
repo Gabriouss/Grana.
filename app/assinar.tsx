@@ -101,7 +101,7 @@ export default function AssinarScreen() {
         <Text style={styles.eyebrow}>GRANA. COMPLETO</Text>
         {/* O preço saiu do título e foi para os cartões de plano: com dois
             preços na tela, cravar um deles aqui em cima contradiz o outro. */}
-        <Text style={styles.title}>Seu controle financeiro continua.</Text>
+        <Text style={styles.title} accessibilityRole="header">Seu controle financeiro continua.</Text>
         <Text style={styles.body}>
           {/* Dizia "o assistente pelo WhatsApp". Esse canal está desligado
               por decisão (flag `whatsapp`), e prometer num ecrã de COBRANÇA

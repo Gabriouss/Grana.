@@ -55,7 +55,7 @@ export default function HomeCustomizerModal({
       <Sheet onClose={onClose}>
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <Text style={styles.title}>Personalizar Início</Text>
+            <Text style={styles.title} accessibilityRole="header">Personalizar Início</Text>
             <Text style={styles.hint}>Escolha quais ferramentas exibir e a ordem do seu painel.</Text>
           </View>
           <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Fechar">

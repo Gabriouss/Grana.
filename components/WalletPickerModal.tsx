@@ -156,7 +156,7 @@ export default function WalletPickerModal({
     >
       <Sheet onClose={onClose}>
         <View style={styles.header}>
-          <Text style={styles.title}>Selecionar carteira</Text>
+          <Text style={styles.title} accessibilityRole="header">Selecionar carteira</Text>
           <AppPressable onPress={onClose} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>
@@ -388,7 +388,7 @@ export default function WalletPickerModal({
     <AppModal visible={!!deleteTarget} transparent onRequestClose={() => setDeleteTarget(null)}>
       <Sheet centered onClose={() => setDeleteTarget(null)}>
         <View style={styles.header}>
-          <Text style={styles.title}>Excluir carteira?</Text>
+          <Text style={styles.title} accessibilityRole="header">Excluir carteira?</Text>
           <AppPressable onPress={() => setDeleteTarget(null)} hitSlop={hitSlopPara(22)} accessibilityLabel="Fechar">
             <Ionicons name="close" size={22} color={theme.inkFaint} />
           </AppPressable>

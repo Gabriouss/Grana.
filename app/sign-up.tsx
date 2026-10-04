@@ -134,7 +134,7 @@ export default function SignUp() {
       >
       <View style={[styles.content, colunaFormulario, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
           <Text style={styles.eyebrow}>Quase lá</Text>
-          <Text style={styles.title}>Confirme seu e-mail</Text>
+          <Text style={styles.title} accessibilityRole="header">Confirme seu e-mail</Text>
           <Text style={styles.subtitle}>
             Enviamos um link de confirmação para{' '}
             <Text style={{ color: theme.ink }}>{confirmationSentTo}</Text>. Abra o e-mail e toque no link para
@@ -166,7 +166,7 @@ export default function SignUp() {
       >
       <View style={[styles.content, colunaFormulario, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
         <Text style={styles.eyebrow}>Boas-vindas ao Grana.</Text>
-        <Text style={styles.title}>Criar conta</Text>
+        <Text style={styles.title} accessibilityRole="header">Criar conta</Text>
         <Text style={styles.subtitle}>Seus lançamentos ficam salvos na nuvem e sincronizados entre aparelhos.</Text>
 
         <View style={styles.field}>
