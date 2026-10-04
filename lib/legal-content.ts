@@ -39,12 +39,12 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Grana. é um aplicativo de controle financeiro pessoal. Esta política explica quais dados o aplicativo coleta, para que servem, com quem podem ser compartilhados e como você pode acessá-los, corrigi-los ou excluí-los, em conformidade com a Lei Geral de Proteção de Dados (LGPD, Lei nº 13.709/2018).',
+        'Grana. é um aplicativo de controle financeiro pessoal. Esta política explica quais dados o aplicativo coleta, para que servem, com quem podem ser compartilhados e como você pode acessá-los, corrigi-los ou excluí-los. A referência legal é a Lei Geral de Proteção de Dados (LGPD, Lei nº 13.709/2018).',
     },
-    { tipo: 'subtitulo', texto: '1. Quem é o responsável pelos dados' },
+    { tipo: 'subtitulo', texto: '1. Contato sobre seus dados' },
     {
       tipo: 'paragrafo',
-      texto: `O Grana. é desenvolvido e operado de forma independente. Dúvidas, solicitações sobre seus dados ou pedidos de exclusão podem ser enviados para ${EMAIL_CONTATO}.`,
+      texto: `O Grana. é desenvolvido e operado de forma independente. Para dúvidas e solicitações sobre seus dados pessoais, utilize ${EMAIL_CONTATO}.`,
     },
     { tipo: 'subtitulo', texto: '2. Quais dados coletamos' },
     {
