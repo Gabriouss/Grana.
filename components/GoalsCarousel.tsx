@@ -19,6 +19,7 @@ import ItemActionSheet from './ItemActionSheet';
 import PrivacyValue from './PrivacyValue';
 import Sheet from './Sheet';
 import { useFlags } from '@/lib/feature-flags';
+import { corVisivel } from '@/lib/cor-visivel';
 
 const ICONES: string[] = ['flag', 'airplane', 'car-sport', 'home', 'gift', 'shield-checkmark', 'school', 'heart'];
 
@@ -36,19 +37,6 @@ const NOME_ICONE: Record<string, string> = {
 };
 
 export type NovaMeta = { title: string; target_amount: number; color: string; icon: string; deadline: string | null };
-
-/* A cor padrão da meta (#0b4f6c) é quase a cor do cartão: o ícone e a barra
-   sumiam. Cor de luminância baixa é clareada em direção ao sea foam só para o
-   TRAÇO; a cor guardada na meta não muda. */
-function corVisivel(hex: string): string {
-  const n = parseInt(hex.slice(1), 16);
-  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  const lum = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
-  if (lum >= 0.3) return hex;
-  const t = 0.55;
-  const alvo = [0xef, 0xff, 0xfa];
-  return '#' + c.map((v, i) => Math.round(v + (alvo[i] - v) * t).toString(16).padStart(2, '0')).join('');
-}
 
 export default function GoalsCarousel({
   goals,
