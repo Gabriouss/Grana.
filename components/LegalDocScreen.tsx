@@ -3,7 +3,7 @@ import { useRouter, usePathname } from 'expo-router';
 import { Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, spacing, radius, fonts, type } from '@/lib/theme';
+import { theme, spacing, radius, fonts, type, hitSlopPara } from '@/lib/theme';
 import { colunaLeitura, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
@@ -96,7 +96,7 @@ export default function LegalDocScreen({ doc }: Props) {
         <View style={[colunaLeitura, styles.cabecalho]}>
           <AppPressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-            hitSlop={12}
+            hitSlop={hitSlopPara(22)}
             style={styles.voltar}
           >
             <Ionicons name="chevron-back" size={18} color={theme.inkSoft} />

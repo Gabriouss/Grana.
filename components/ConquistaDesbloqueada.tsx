@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Animated, Platform, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, lh, sombras } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, sombras, hitSlopPara } from '@/lib/theme';
 import { useReducedMotion } from '@/lib/motion';
 import AppPressable from './AppPressable';
 
@@ -74,7 +74,7 @@ export default function ConquistaDesbloqueada({
       </View>
       <AppPressable
         onPress={onFechar}
-        hitSlop={10}
+        hitSlop={hitSlopPara(22)}
         accessibilityRole="button"
         accessibilityLabel="Fechar aviso de conquista"
         style={styles.fechar}
