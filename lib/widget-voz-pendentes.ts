@@ -276,7 +276,7 @@ export async function apagarAudiosPendentes(): Promise<void> {
 /** O botão "Revisar" da faixa: publica de novo o recibo de cada fala em
     revisão desta conta, com o mesmo texto do catálogo. Devolve quantas. */
 export async function reabrirRevisoesDeFala(userId: string): Promise<number> {
-  const [{ guardarReciboDaFila }, { RECIBOS_VOZ }] = await Promise.all([
+  const [{ guardarReciboDaFila }, { reciboDaFalaGuardada }] = await Promise.all([
     import('./voz-recibos-da-fila'),
     import('./voz-recibos'),
   ]);
@@ -285,8 +285,7 @@ export async function reabrirRevisoesDeFala(userId: string): Promise<number> {
     const transcricao = item.transcricao ?? '';
     await guardarReciboDaFila({
       id: item.requestId, dono: userId, tipo: 'audio',
-      ...RECIBOS_VOZ.falaGuardadaSemEntender(transcricao),
-      ...(transcricao ? { transcricao } : null),
+      ...reciboDaFalaGuardada(transcricao),
     });
   }
   return emRevisao.length;

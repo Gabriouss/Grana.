@@ -74,5 +74,17 @@ export const RECIBOS_VOZ = {
   } as ReciboVoz,
 };
 
+/** O recibo da fala guardada que o reconhecimento não entendeu, com a
+    transcrição só quando ela diz algo. Ponto ÚNICO para o widget (ao guardar) e
+    para o "Revisar" (ao republicar), no app e no widget (regra 13). Só some a
+    transcrição sem letra nem número (o "." de ruído guardado antes do filtro
+    de 07fb951, V09): "roupa" ou "manicure", sem valor mas com sentido, seguem
+    aparecendo para a pessoa completar. Frase sem relação com dinheiro já é
+    barrada na origem, em `processar` (`transcricaoForaDeContexto`). */
+export function reciboDaFalaGuardada(transcricao: string): ReciboVoz & { transcricao?: string } {
+  const util = /[\p{L}\p{N}]/u.test(transcricao) ? transcricao : '';
+  return { ...RECIBOS_VOZ.falaGuardadaSemEntender(util), ...(util ? { transcricao: util } : null) };
+}
+
 /** A instrução que só a notificação tem, porque é nela que se toca. */
 export const ACAO_DA_NOTIFICACAO = { revisao: 'Toque para revisar.' };

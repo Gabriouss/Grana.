@@ -178,7 +178,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
       manterArquivo = true;
       desfecho = { guardada: true, motivo: 'revisao' };
       try {
-        const [{ marcarVozEmRevisao }, { guardarReciboDaFila }, { idDoUsuarioLocal }, { RECIBOS_VOZ }] = await Promise.all([
+        const [{ marcarVozEmRevisao }, { guardarReciboDaFila }, { idDoUsuarioLocal }, { reciboDaFalaGuardada }] = await Promise.all([
           import('./widget-voz-pendentes'),
           import('./voz-recibos-da-fila'),
           import('./sessao-offline'),
@@ -187,7 +187,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
         await marcarVozEmRevisao(requestId, erro.transcricao || undefined);
         const dono = await idDoUsuarioLocal();
         if (dono) {
-          await guardarReciboDaFila({ id: requestId, dono, tipo: 'audio', ...RECIBOS_VOZ.falaGuardadaSemEntender(erro.transcricao), ...(erro.transcricao ? { transcricao: erro.transcricao } : null) });
+          await guardarReciboDaFila({ id: requestId, dono, tipo: 'audio', ...reciboDaFalaGuardada(erro.transcricao) });
         }
       } catch (erroRevisao) {
         // A fala continua na fila mesmo assim; a próxima retomada tenta de novo.
