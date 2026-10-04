@@ -233,6 +233,18 @@ Este adendo atualiza os snapshots de marketing anteriores sem reescrevê-los. Fo
 **Snapshot Git antes deste commit documental (04/10/2026):** após git fetch origin, git log --oneline origin/main..HEAD foi inspecionado; HEAD 9e9c8f2, 50 commits locais à frente de origin/main, nenhum atrás. git status --short --branch exato: ## main...origin/main [ahead 50]; modificados context.md, docs/marketing/material-final-2026-09-30/COPYS-FINAIS.md, docs/marketing/material-final-2026-09-30/README-MATERIAL-FINAL.md e docs/marketing/material-final-2026-09-30/inventario-criativos.md; nenhum não rastreado. Só context.md foi editado por Ledger. Os três arquivos de marketing foram preservados, não abertos e sem atribuição. Os commits locais de outros agentes não serão publicados sem autorização dos donos.
 
 
+## Qualificação posterior do Watchtower sobre o R13 (04/10/2026)
+
+Atualização lida no terminal do Orquestrador Supremo via maestri check. Ela qualifica o resumo anterior “R13 aprovado com ajuste”: o Watchtower aprova com ajuste quanto à transparência, mas **não aprova a versão atual sem aviso**. Recomenda aviso legível durante as capturas do app, pois só a legenda pode se perder em compartilhamento/anúncio; “Ana” foi confirmada como fictícia pelo autor, mas isso não informa que os valores são inventados. O Watchtower descreve recomendação técnica de risco, não parecer jurídico, e não afirma que a lei exija literalmente aquela frase na imagem.
+
+**Música sem liberação:** a licença/origem da trilha não está comprovada para reutilização em publicidade. Até confirmar arquivo/ID, origem, data/modelo/plano e cobertura comercial/anúncios, o Watchtower pede usar a variante sem música ou trilha licenciada. O resumo anterior de aprovação com ajuste não deve ser lido como licença musical.
+
+**Próximo passo reportado pelo Orquestrador:** Flare recebeu pedido de remontar localmente, sem custo adicional, duas variantes ambas com aviso legível: uma sem música e outra com música. O arquivo atual fica intacto até decisão do autor; Flare também deve explicar a origem da faixa e o motivo da versão sem aviso/sem clipe. A rodada 2 do Beacon ainda não respondeu à pergunta direta sobre versão sem aviso e abertura sem o b-roll. A regra geral do autor de manter contador e aviso de exemplo fora da arte e a recomendação do Watchtower de inserir aviso visível no vídeo ainda precisam de decisão de posicionamento do autor; Ledger não escolheu em seu lugar. Nada autoriza publicação.
+
+### Snapshot Git antes da qualificação final do R13
+
+Após novo git fetch origin, git log --oneline origin/main..HEAD foi inspecionado: HEAD b14d5de, main 51 commits à frente de origin/main, nenhum atrás. git status --short --branch exato: “## main...origin/main [ahead 51]”; modificados context.md, docs/marketing/material-final-2026-09-30/COPYS-FINAIS.md, docs/marketing/material-final-2026-09-30/README-MATERIAL-FINAL.md e docs/marketing/material-final-2026-09-30/inventario-criativos.md; nenhum caminho não rastreado. Ledger alterou apenas context.md; os três arquivos de marketing ficaram preservados, sem leitura nem atribuição. Os commits prévios de outros agentes não serão publicados sem os donos.
+
 # 03/10/2026 (M1): auditoria 100% do app no emulador (Vigil), 26 achados, 2 corrigidos
 
 ## ATUALIZAÇÃO 04/10/2026 (M1, Quill): o que a rodada de 04/10 corrigiu, e o que segue aberto
