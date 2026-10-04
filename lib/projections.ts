@@ -1,5 +1,6 @@
 import { ARQUETIPOS, type ArquetipoId } from './diagnostico';
 import type { Bill, Budget, Transaction } from './types';
+import { creditoSemCartao } from './transaction-rules';
 
 export { calcularSafeToSpend, calcularSaldoAtual } from './safe-to-spend';
 export type { SafeToSpend } from './safe-to-spend';
@@ -40,7 +41,13 @@ export function projetarComprometimentoFuturo(
   const contasRecorrentes = bills.filter((b) => b.recurring);
   const totalRecorrentes = contasRecorrentes.reduce((soma, b) => soma + Number(b.amount), 0);
 
-  const parcelasFuturas = transactions.filter((t) => t.type === 'out' && (t.installment_total ?? 1) > 1);
+  /* Crédito sem cartão (o cartão foi excluído e a compra ficou no histórico, V24,
+     decisão B do autor em 04/10/2026) não vence em fatura nenhuma: não é
+     comprometimento futuro. Continua no histórico e na lista de lançamentos.
+     Regra de `creditoSemCartao`, a mesma da guarda da camada de dados. */
+  const parcelasFuturas = transactions.filter(
+    (t) => t.type === 'out' && (t.installment_total ?? 1) > 1 && !creditoSemCartao(t)
+  );
 
   const resultado: MesProjetado[] = [];
   for (let i = 0; i < meses; i++) {
