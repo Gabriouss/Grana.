@@ -157,7 +157,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
 
 export const TERMOS_DE_SERVICO: DocumentoLegal = {
   titulo: 'Termos de Uso',
-  atualizadoEm: '23 de setembro de 2026',
+  atualizadoEm: '4 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -200,13 +200,13 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'O Grana. atualmente oferece acesso pago. A cobrança é processada por um parceiro de pagamento (atualmente Cakto), e não diretamente por nós. As condições de cobrança, renovação, período de acesso e cancelamento válidas são as apresentadas na página de compra no momento da assinatura. Cancelamento, reembolso ou contestação de cobrança são tratados pelo parceiro de pagamento conforme a política aplicável; o acesso ao app é ajustado automaticamente a partir dessas notificações.',
+        'O Grana. atualmente oferece acesso pago. A cobrança é processada por um parceiro de pagamento (atualmente Cakto), e não diretamente por nós. As condições de cobrança, renovação, período de acesso e cancelamento válidas são as apresentadas na página de compra no momento da assinatura. Cancelamento e contestação de cobrança são tratados pelo parceiro de pagamento conforme a política aplicável; o acesso ao app é ajustado automaticamente a partir dessas notificações. Nas contratações a distância, você pode exercer o direito de arrependimento em até 7 dias, nos termos do art. 49 do CDC. Solicite pelo canal de atendimento indicado ou pelo checkout da Cakto. O processamento pelo parceiro de pagamento não limita seus direitos nem afasta as responsabilidades legais do fornecedor.',
     },
-    { tipo: 'subtitulo', texto: '6. Sem garantias' },
+    { tipo: 'subtitulo', texto: '6. Limites técnicos do serviço' },
     {
       tipo: 'paragrafo',
       texto:
-        'O Grana. é fornecido "como está". Fazemos o possível para manter o serviço no ar e os dados corretos, mas não garantimos disponibilidade contínua nem ausência total de erros, inclusive nas heurísticas automáticas de categorização e leitura de valores (por texto ou voz), que são estimativas e podem errar. Revise os lançamentos importantes antes de tomar decisões financeiras com base neles.',
+        'Fazemos o possível para manter o serviço no ar e os dados corretos, mas não garantimos disponibilidade contínua nem ausência total de erros, inclusive nas heurísticas automáticas de categorização e leitura de valores (por texto ou voz), que são estimativas e podem errar. As leituras automáticas podem conter erros; confira os lançamentos. Essa limitação técnica não exclui os direitos e garantias previstos em lei. Revise os lançamentos importantes antes de tomar decisões financeiras com base neles.',
     },
     { tipo: 'subtitulo', texto: '7. Limitação de responsabilidade' },
     {
