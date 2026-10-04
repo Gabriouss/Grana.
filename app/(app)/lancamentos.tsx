@@ -695,7 +695,7 @@ export default function LancamentosScreen() {
         {(offline || pendingCount > 0) && (
           <View style={styles.offlineBanner}>
             <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
-            <Text style={styles.offlineBannerText} numberOfLines={1}>
+            <Text style={styles.offlineBannerText} numberOfLines={2}>
               {offline
                 ? textoDaFaixaOffline(motivoOffline)
                 : `${pendingCount} lançamento${pendingCount > 1 ? 's' : ''} aguardando conexão para sincronizar`}
