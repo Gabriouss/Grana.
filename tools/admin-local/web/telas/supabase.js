@@ -43,15 +43,18 @@ export async function montar(raiz, ctx) {
     const maisNova = (f) => f.producaoMaisNova === true || f.comparacao === 'producao-mais-nova-que-o-repositorio';
     const maisNovas = funcoes.filter(maisNova);
     const jwtErrado = funcoes.filter((f) => f.slug === 'whatsapp-webhook' && f.verify_jwt === true);
+    const conferida = (f) => f.comparacao === 'publicada-depois-com-codigo-conferido';
+    const recibosVencidos = maisNovas.filter((f) => f.recibo && f.recibo.estado === 'invalido');
     return [
       maisNovas.length ? ctx.alerta('atencao',
-        `${maisNovas.length === 1 ? 'Uma função está' : `${maisNovas.length} funções estão`} no ar com data mais nova que o último commit do repositório: ${maisNovas.map((f) => f.slug).join(', ')}. Publicar a partir do repositório pode apagar código que só existe em produção (regra 11).`) : null,
+        `${maisNovas.length === 1 ? 'Uma função está' : `${maisNovas.length} funções estão`} no ar com data mais nova que o último commit do repositório: ${maisNovas.map((f) => f.slug).join(', ')}. Publicar a partir do repositório pode apagar código que só existe em produção (regra 11). O alerta só sai com uma conferência de conteúdo registrada para esta publicação.`) : null,
+      recibosVencidos.map((f) => ctx.alerta('atencao', `${f.slug}: a conferência registrada deixou de valer. ${f.recibo.motivo} Confira de novo antes de qualquer publicação.`)),
       jwtErrado.length ? ctx.alerta('critico', 'O whatsapp-webhook está com verify_jwt ligado. A Meta não manda JWT, então toda mensagem é recusada.') : null,
       ctx.tabela([
         { titulo: 'Função', valor: (f) => f.slug, classe: 'mono' },
         { titulo: 'Versão', valor: (f) => f.version, classe: 'num' },
         { titulo: 'No ar desde', valor: (f) => ctx.formatar.dataHora(f.updated_at) },
-        // o commit que decide a situação: o mais novo entre a pasta da função e os _shared que ela importa
+        // o commit que decide a situação: o mais novo entre a pasta da função e os arquivos que ela importa
         { titulo: 'Último commit que entra no pacote', valor: (f) => {
           const c = f.commitDeReferencia || f.ultimoCommitLocal;
           if (!c) return 'sem commit no repositório';
@@ -64,6 +67,11 @@ export async function montar(raiz, ctx) {
         { titulo: 'Situação', valor: (f) => {
           if (f.status && f.status !== 'ACTIVE') return ctx.selo('alerta', f.status);
           if (maisNova(f)) return ctx.selo('alerta', 'No ar mais nova que o repositório');
+          if (conferida(f)) {
+            const r = f.recibo && f.recibo.recibo;
+            return h('span', null, ctx.selo('ok', 'Publicada depois, código conferido igual'),
+              r && r.conferidoEm ? h('span', { class: 'texto-fraco', texto: ` em ${ctx.formatar.dataHora(r.conferidoEm)}` }) : null);
+          }
           if (f.comparacao === 'repositorio-mais-novo-que-a-producao') return ctx.selo('neutro', 'Repositório tem mudança não publicada');
           return ctx.selo('ok', 'Em dia');
         } },
