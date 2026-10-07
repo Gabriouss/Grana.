@@ -7,6 +7,7 @@
 // as chaves e só devolve status e dados já sanitizados.
 
 import { SIMULADO } from './simulado.js';
+import { criarAcesso, CODIGOS_LOGIN } from './telas/_acesso.js';
 
 const ROTAS = {
   'visao-geral': { modulo: 'visao-geral', titulo: 'Visão geral' },
@@ -127,13 +128,65 @@ class ErroApi extends Error {
 function lerErro(corpo, status) {
   // aceita o formato do contrato ({ok:false, erro}) e o alternativo ({error:{code,message}})
   const e = (corpo && (corpo.erro || corpo.error)) || {};
-  return new ErroApi(e.codigo || e.code || `http-${status}`, e.mensagem || e.message || `O servidor respondeu ${status}.`, status);
+  const err = new ErroApi(e.codigo || e.code || `http-${status}`, e.mensagem || e.message || `O servidor respondeu ${status}.`, status);
+  // Sessão sem pareamento ou antiga: nada na tela funciona até reabrir pelo atalho.
+  // Isso tapa o painel inteiro e nunca vira modo simulado.
+  if (status === 401 && err.codigo === 'nao-pareado') bloquearPainel('nao-pareado');
+  if (status === 403 && err.codigo === 'sessao-antiga') bloquearPainel('sessao-antiga');
+  // Login pendente, vencido ou encerrado por inatividade: a tela de acesso assume.
+  if (status === 401 && CODIGOS_LOGIN.includes(err.codigo) && acesso) acesso.exigir(err.codigo);
+  if (status === 503 && err.codigo === 'login-nao-configurado' && acesso) acesso.exigirSemConta();
+  // erros 429 carregam o tempo de espera
+  if (e.tentarEmSeg !== undefined) err.tentarEmSeg = e.tentarEmSeg;
+  return err;
 }
+
+const TEXTO_BLOQUEIO = {
+  'nao-pareado': {
+    titulo: 'Painel não pareado',
+    texto: 'Painel não pareado. Abra pelo atalho Grana. Admin na Área de Trabalho.',
+  },
+  'sessao-antiga': {
+    titulo: 'Sessão antiga',
+    texto: 'Esta aba é de uma sessão antiga do painel, e a última ação não foi feita. Feche esta aba e abra o painel de novo pelo atalho Grana. Admin na Área de Trabalho.',
+  },
+};
+let bloqueado = null;
+
+export function bloquearPainel(motivo) {
+  if (bloqueado) return;
+  bloqueado = motivo;
+  const t = TEXTO_BLOQUEIO[motivo] || TEXTO_BLOQUEIO['nao-pareado'];
+  const casca = document.querySelector('.casca');
+  // some com o painel inteiro: a mensagem ocupa a tela mesmo sem o estilo.css
+  if (casca) { casca.inert = true; casca.hidden = true; }
+  const faixaSim = faixa();
+  if (faixaSim) faixaSim.hidden = true;
+  for (const d of document.querySelectorAll('dialog[open]')) d.close();
+  const tela = h('div', { class: 'bloqueio', role: 'alert', 'aria-labelledby': 'bloqueio-titulo' },
+    h('div', { class: 'bloqueio-caixa' },
+      h('img', { class: 'bloqueio-marca', src: '/design-system/marca/logotipo-gradiente.svg', alt: 'Grana.', width: '120', height: '34' }),
+      h('h1', { class: 'bloqueio-titulo', id: 'bloqueio-titulo', tabindex: '-1', texto: t.titulo }),
+      h('p', { class: 'bloqueio-texto', texto: t.texto }),
+      h('p', { class: 'bloqueio-ajuda', texto: 'Por segurança, o painel só responde à janela aberta pelo atalho. Nenhum dado foi mostrado e nenhuma ação foi enviada.' })));
+  document.body.appendChild(tela);
+  tela.querySelector('h1').focus();
+  document.title = `${t.titulo} · Grana. Administração local`;
+}
+
+// Só pedido nascido de gesto da pessoa (clique, tecla, envio, troca de tela) renova a inatividade
+// no servidor. Recarga automática e temporizador vão sem o cabeçalho.
+let ultimoGesto = 0;
+const JANELA_GESTO_MS = 3000;
+for (const tipo of ['pointerdown', 'keydown', 'submit']) document.addEventListener(tipo, () => { ultimoGesto = Date.now(); }, true);
+window.addEventListener('hashchange', () => { ultimoGesto = Date.now(); }, true);
 
 async function pedir(caminho, opcoes, prazoMs = PRAZO_MS) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), prazoMs);
   const ehAcao = opcoes && opcoes.method === 'POST';
+  const deGesto = caminho.startsWith('/api/') && caminho !== '/api/saude' && Date.now() - ultimoGesto < JANELA_GESTO_MS;
+  if (deGesto) opcoes = { ...opcoes, headers: { ...(opcoes.headers || {}), 'X-Grana-Atividade': '1' } };
   try {
     // o corpo é lido dentro do prazo também: um corpo pendurado não pode travar a tela
     const resp = await fetch(caminho, { ...opcoes, signal: ctrl.signal, credentials: 'same-origin', cache: 'no-store' });
@@ -144,6 +197,7 @@ async function pedir(caminho, opcoes, prazoMs = PRAZO_MS) {
       if (!corpo) throw new ErroApi(`http-${resp.status}`, `O servidor respondeu ${resp.status} sem JSON.`, resp.status);
       throw lerErro(corpo, resp.status);
     }
+    if (deGesto && acesso) acesso.registrarAtividade();
     return corpo;
   } catch (err) {
     if (err instanceof ErroApi) throw err;
@@ -161,6 +215,7 @@ async function pedir(caminho, opcoes, prazoMs = PRAZO_MS) {
 // Só cai no simulado a rota que o servidor declara que não existe. 404 de domínio (peça inexistente,
 // projeto não encontrado) e queda de rede no meio do uso são erros reais e aparecem como erro (achado A4 do Lynx).
 function deveSimular(err) {
+  if (bloqueado || (acesso && (acesso.ativo || acesso.entrou))) return false;
   return modoSimulado || (err instanceof ErroApi && err.status === 404 && err.codigo === 'rota-inexistente');
 }
 
@@ -197,7 +252,18 @@ async function postar(caminho, corpo, forcarToken) {
   }, prazoDaAcao(caminho));
 }
 
+// POST sem CSRF: só o pareamento, que acontece antes de existir sessão.
+async function enviarSemCsrf(caminho, corpo) {
+  return pedir(caminho, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Grana-Admin': '1' },
+    body: JSON.stringify(corpo || {}),
+  });
+}
+
 async function acao(caminho, corpo) {
+  if (bloqueado) throw new ErroApi(bloqueado, TEXTO_BLOQUEIO[bloqueado].texto, bloqueado === 'nao-pareado' ? 401 : 403);
+  if (acesso && acesso.ativo) throw new ErroApi('nao-autenticado', 'Entre no painel antes de fazer qualquer ação.', 401);
   if (!modoSimulado) {
     try {
       try {
@@ -206,6 +272,11 @@ async function acao(caminho, corpo) {
         // sessão expirada ou token trocado: renova uma vez e tenta de novo
         if (err instanceof ErroApi && err.status === 403 && ['sessao-expirada', 'csrf-invalido'].includes(err.codigo)) {
           return await postar(caminho, corpo, true);
+        }
+        // ação destrutiva com código velho: pede o código de novo e repete UMA vez
+        if (err instanceof ErroApi && err.status === 403 && err.codigo === 'reautenticar' && acesso) {
+          if (!(await acesso.reautenticar())) throw new ErroApi('cancelado', 'Ação cancelada: o código não foi confirmado, nada foi feito.', 0);
+          return await postar(caminho, corpo, false);
         }
         throw err;
       }
@@ -670,6 +741,8 @@ let limpezaAtual = null;
 let geracao = 0;
 
 async function renderizar() {
+  if (bloqueado || (acesso && !podeDesenhar())) return;
+  if (acesso && !acesso.legado && !acesso.entrou) return;
   const { rota, params } = lerHash();
   const def = ROTAS[rota];
   if (!def) { location.replace(`#/${ROTA_PADRAO}`); return; }
@@ -788,7 +861,36 @@ async function checarServidor() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Acesso (pareamento, senha, código, inatividade)
+
+let acesso = null;
+const podeDesenhar = () => acesso && (acesso.legado || acesso.entrou);
+
+function esconderPainel() {
+  const casca = document.querySelector('.casca');
+  if (casca) { casca.inert = true; casca.hidden = true; }
+  // nada de dado na tela enquanto não houver sessão
+  const raiz = document.getElementById('tela');
+  if (raiz) limpar(raiz);
+  if (typeof limpezaAtual === 'function') { try { limpezaAtual(); } catch { /* tela já saiu */ } }
+  limpezaAtual = null;
+  geracao++;
+  for (const d of document.querySelectorAll('dialog[open]')) d.close();
+  for (const a of document.querySelectorAll('.avisos .aviso')) a.remove();
+}
+
+function mostrarPainel() {
+  const casca = document.querySelector('.casca');
+  if (casca) { casca.hidden = false; casca.inert = false; }
+}
+
 async function iniciar() {
+  // origem canônica: 127.0.0.1 (o cookie de pareamento vale só nela)
+  if (location.hostname === 'localhost' && location.protocol === 'http:') {
+    location.replace(`http://127.0.0.1:${location.port}${location.pathname}${location.search}${location.hash}`);
+    return;
+  }
   ligarMenu();
   window.addEventListener('hashchange', renderizar);
   // âncoras internas do documento rolam sem trocar de rota
@@ -798,9 +900,35 @@ async function iniciar() {
     e.preventDefault();
     document.getElementById(a.getAttribute('href').slice(1))?.scrollIntoView({ block: 'start' });
   });
+  acesso = criarAcesso({
+    h,
+    ler: (c) => pedir(c, { method: 'GET', headers: { Accept: 'application/json', 'X-Grana-Admin': '1' } }),
+    enviar: (c, corpo) => postar(c, corpo, false),
+    enviarSemCsrf,
+    definirCsrf: (t) => { csrfToken = t || null; },
+    esconderPainel,
+    mostrarPainel,
+    aoEntrar: () => { if (!lerHash().rota || !ROTAS[lerHash().rota]) location.replace(`#/${ROTA_PADRAO}`); renderizar(); },
+    aviso,
+    bloquear: bloquearPainel,
+  });
+  document.querySelector('.botao-sair')?.addEventListener('click', () => acesso.sair());
+
   const ok = await checarServidor();
-  if (!ok) marcarSimulado(location.protocol === 'file:' ? 'O painel foi aberto como arquivo, sem o servidor local.' : 'O servidor local não respondeu em /api/saude.');
-  if (!location.hash) location.replace(`#/${ROTA_PADRAO}`);
+  if (!ok) {
+    // sem servidor não há login a fazer: modo simulado, como antes
+    acesso = null;
+    if (!bloqueado) marcarSimulado(location.protocol === 'file:' ? 'O painel foi aberto como arquivo, sem o servidor local.' : 'O servidor local não respondeu em /api/saude.');
+    if (!location.hash) location.replace(`#/${ROTA_PADRAO}`);
+    renderizar();
+    return;
+  }
+  esconderPainel();
+  const liberado = await acesso.verificar();
+  if (!liberado || bloqueado) return;
+  mostrarPainel();
+  if (acesso.legado) document.querySelector('.botao-sair')?.setAttribute('hidden', '');
+  if (!location.hash || !ROTAS[lerHash().rota]) location.replace(`#/${ROTA_PADRAO}`);
   renderizar();
 }
 

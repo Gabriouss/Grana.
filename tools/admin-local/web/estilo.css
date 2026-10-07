@@ -1283,6 +1283,194 @@ button.cal-item { cursor: pointer; }
 /* Gaveta fechada no estreito: o app.js põe inert; o clique também não atravessa */
 .lateral[inert] { pointer-events: none; }
 
+/* ── Adendo 2 do Anvil: acesso, bloqueio, inatividade, sair ───────────── */
+/* Ficam direto no body, fora da .casca (escondida sem sessão). Tom calmo: a
+   tela explica o que houve e o próximo passo; danger só no erro de fato. */
+
+.acesso,
+.bloqueio {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: var(--s-xxl) var(--s-lg);
+  background: var(--paper);
+}
+.acesso[hidden], .bloqueio[hidden] { display: none; }
+
+.acesso-caixa,
+.bloqueio-caixa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-lg);
+  width: min(100%, 420px);
+  padding: var(--s-xxl);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-xl);
+  background: var(--paper-raised);
+  animation: acesso-entra 320ms var(--ease-saida);
+}
+@keyframes acesso-entra { from { opacity: 0; transform: translateY(10px); } }
+
+.acesso-marca, .bloqueio-marca { height: 30px; width: auto; align-self: flex-start; }
+.acesso-selo {
+  margin-top: calc(-1 * var(--s-sm));
+  font-size: var(--t-micro);
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+.acesso-titulo, .bloqueio-titulo { font-size: var(--t-cabecalho); line-height: 1.2; margin-top: var(--s-sm); }
+.acesso-texto, .bloqueio-texto { font-size: var(--t-nota); line-height: 1.55; color: var(--ink-soft); }
+.bloqueio-ajuda { font-size: var(--t-legenda); font-weight: 300; line-height: 1.5; color: var(--ink-faint); }
+.bloqueio-ajuda code, .acesso-dica code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-size: 0.92em;
+}
+
+/* motivo da volta ("Você saiu", "Sessão encerrada por inatividade"): informativo, não erro */
+.acesso-mensagem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-sm);
+  padding: var(--s-md) var(--s-lg);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  background: var(--paper);
+  font-size: var(--t-nota);
+  color: var(--ink-soft);
+}
+.acesso-mensagem::before {
+  content: '';
+  flex: none;
+  width: 8px; height: 8px; margin-top: 7px;
+  border-radius: 50%;
+  background: var(--down);
+}
+.acesso-mensagem:empty, .acesso-erro:empty { display: none; }
+
+.acesso-form { display: flex; flex-direction: column; gap: var(--s-lg); }
+.acesso-form .bloco-acao { margin-top: var(--s-xs); }
+.acesso-form .bloco-acao .botao-primario { flex: 1 1 auto; }
+
+/* código de 6 dígitos: grande, espaçado, tabular, na fonte da marca */
+.acesso-form input.mono,
+.acesso-form input[autocomplete="one-time-code"],
+.modal input[autocomplete="one-time-code"] {
+  min-height: 64px;
+  padding: var(--s-sm) 0;
+  font-family: var(--font);
+  font-size: 34px;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em; /* compensa o espaço depois do último dígito */
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  caret-color: var(--accent-2);
+}
+.acesso-form input.mono::placeholder,
+.acesso-form input[autocomplete="one-time-code"]::placeholder { color: rgba(127, 169, 160, 0.45); letter-spacing: 0.42em; }
+
+.acesso-erro {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-sm);
+  margin: 0;
+  padding: var(--s-md) var(--s-lg);
+  border: 1px solid rgba(224, 138, 125, 0.35);
+  border-radius: var(--r-md);
+  background: var(--danger-fundo);
+  font-size: var(--t-nota);
+  line-height: 1.5;
+  color: var(--ink);
+}
+.acesso-erro::before {
+  content: '';
+  flex: none;
+  width: 8px; height: 8px; margin-top: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+.acesso-erro[hidden] { display: none; }
+
+.acesso-dica { font-size: var(--t-legenda); font-weight: 300; line-height: 1.5; color: var(--ink-faint); }
+.acesso-rodape {
+  padding-top: var(--s-md);
+  border-top: 1px solid var(--rule);
+  font-size: var(--t-micro);
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.botao[aria-busy="true"]::after {
+  content: '';
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: girar 0.8s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
+@media (max-width: 480px) {
+  .acesso, .bloqueio { place-items: start center; padding-top: 12vh; }
+  .acesso-caixa, .bloqueio-caixa { padding: var(--s-xl); }
+  .acesso-form input.mono,
+  .acesso-form input[autocomplete="one-time-code"] { font-size: 28px; letter-spacing: 0.32em; text-indent: 0.32em; }
+}
+
+/* aviso de inatividade: canto inferior, acima dos toasts, sem urgência fabricada */
+.aviso-inatividade {
+  position: fixed;
+  right: var(--s-xl);
+  bottom: var(--s-xl);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-md);
+  width: min(380px, calc(100vw - 32px));
+  padding: var(--s-lg) var(--s-xl);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-lg);
+  background: var(--paper-raised);
+  box-shadow: var(--sombra-painel);
+  animation: aviso-entra var(--dur-toast) var(--ease-saida);
+}
+.aviso-inatividade[hidden] { display: none; }
+.aviso-inatividade-texto { font-size: var(--t-nota); line-height: 1.5; color: var(--ink); }
+.aviso-inatividade .botao-primario { align-self: flex-start; }
+@media (max-width: 640px) {
+  .aviso-inatividade { left: var(--s-lg); right: var(--s-lg); bottom: var(--s-lg); width: auto; }
+}
+body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
+
+/* botão Sair na lateral, antes do rodapé */
+.botao-sair {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  width: 100%;
+  min-height: var(--alvo);
+  margin-top: auto;
+  padding: 0 var(--s-md);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--t-nota);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) ease-out, color var(--dur-hover) ease-out;
+}
+.botao-sair:hover { background: var(--hover); color: var(--ink); }
+.botao-sair + .lateral-rodape { margin-top: 0; }
+
 /* ═══════════════════════════════════════════════════════════════════════
  * Design System (Lumen) — web/telas/design-system.js
  * ═══════════════════════════════════════════════════════════════════════ */
