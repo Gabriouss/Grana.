@@ -14509,3 +14509,13 @@ Estado operacional adicional da M2: o painel não foi iniciado. %APPDATA%\grana-
 **Trava de custo.** A exigência é não iniciar cobrança nova: não contratar nem mudar para plano pago, não habilitar billing por uso e não criar recursos pagos. O uso do mesmo projeto Vercel evita uma nova assinatura de projeto, mas não prova custo incremental zero; a tela e as consultas podem aumentar uso. A Vercel Hobby é restrita a uso pessoal/não comercial e o Pro pode cobrar uso acima dos créditos incluídos ([preços da Vercel](https://vercel.com/pricing), [planos Hobby](https://vercel.com/docs/plans/hobby)). Antes de implementar ou publicar, a M1 deve confirmar no painel da Vercel o plano da equipe, o projeto ligado ao domínio, o orçamento/limite de gastos e se a rota e o backend propostos não geram cobrança adicional. Se não for possível garantir custo adicional zero, manter o painel apenas local. A discussão tratou o Supabase atual como Free, mas o plano e o consumo atuais também não foram conferidos no painel; usar somente o projeto e a cota existentes, sem upgrade. No Free, exceder cota restringe o serviço em vez de faturar excedentes ([controle de custos do Supabase](https://supabase.com/docs/guides/platform/cost-control)).
 
 **Não verificado / próximo passo da M1.** Nenhum código, esquema, usuário admin web, configuração MFA, DNS, recurso de hospedagem ou deploy foi alterado nesta sessão; nenhuma suíte de testes foi executada. Antes da implementação, conferir plano, domínio, uso e limites de gasto na Vercel; conferir plano e consumo do Supabase; então desenhar e revisar a autorização server-side e o acesso MFA. Não colocar segredo em arquivo versionado, bundle web ou registro. Fontes de segurança: [MFA TOTP do Supabase](https://supabase.com/docs/guides/auth/auth-mfa/totp).
+
+## 07/10/2026 — Mascote Granabô: prancha de construção (sessão na nuvem)
+
+- Nova pasta `docs/mascote/` com a prancha de construção do Granabô em quatro
+  vistas e o código Python que gera as imagens (`numpy` + `Pillow`, sem IA
+  generativa). Detalhes e passo a passo em `docs/mascote/README.md`.
+- Versão escolhida pelo autor: W3 (ponta do G girada 14°, olhos grandes,
+  bordas arredondadas, menta leitoso) com boca L3 → `granabo-prancha-w3.png`.
+- Nada no app mudou. Não foi verificado no vault (sem acesso da nuvem): a nota
+  de sessão no Obsidian (regra 12) fica pendente para a M1.
