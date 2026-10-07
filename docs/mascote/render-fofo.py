@@ -9,15 +9,15 @@ R2=1.0; T=0.13; R1=R2-T
 col=M0[:,int(MW*0.97)]; gaprows=np.where(~col[int(MH*.2):int(MH*.6)])[0]+int(MH*.2)
 BC=(gaprows.min()+gaprows.max())/2
 def build(widen,blur):
-    vv,uu=np.mgrid[0:MH,0:MW]
-    M=M0.copy()
+    M=M0
     if widen:
-        s=int(widen*MH); right=uu>MW*0.55
-        up=np.zeros_like(M0); up[:-s]=M0[s:]   # move content up
-        dn=np.zeros_like(M0); dn[s:]=M0[:-s]   # move content down
-        M=np.where(right&(vv<BC),up,np.where(right&(vv>=BC),dn,M0))
-        rho=np.hypot((uu-MW/2)/(MW/2),(vv-MH/2)/(MH/2))
-        M=M|(M0&(rho>0.80)&~(right&(abs(vv-BC)<s+ (gaprows.max()-gaprows.min())/2+2)))
+        vv,uu=np.mgrid[0:MH,0:MW].astype(float); cx,cy=(MW-1)/2,(MH-1)/2
+        phi=np.degrees(np.arctan2(-(vv-cy),uu-cx)); rho=np.hypot(uu-cx,vv-cy)
+        w=np.clip((80-phi)/40,0,1)*(vv<192)*(uu>cx)
+        ps=np.radians(phi-widen*w)
+        su=np.clip(np.round(cx+rho*np.cos(ps)),0,MW-1).astype(int); sv=np.clip(np.round(cy-rho*np.sin(ps)),0,MH-1).astype(int)
+        src=M0[sv,su]&(sv<150)
+        M=np.where(w>0,src,M0)
     B=np.array(Image.fromarray((M*255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(blur)))/255. if blur else M.astype(float)
     return B
 def lookup(B,z,y):
@@ -89,9 +89,23 @@ def render(V,N=520,S=1.25,deg=0):
             q=rr
         halo=np.exp(-(np.maximum(q-1,0)/0.5)**2)*0.30 if V['shape']!='happy' else np.exp(-(band/0.3)**2)*0.25*(dy>-0.5*V['eye_h'])
         glow=np.maximum(glow,np.maximum(core,halo))
+    mo=V.get('mouth')
+    mouthc=np.zeros((N,N)); mouths=np.zeros((N,N))
+    if mo:
+        cy,w,hh,th=mo['y'],mo['w'],mo['h'],mo['t']
+        dx=lon; dy=lat-cy
+        rr=np.hypot(dx/w,(dy-hh)/hh); arc=np.clip((th-np.abs(rr-1))/0.04,0,1)*(dy<hh*0.8)
+        if mo['on']=='core': mouthc=arc
+        else:
+            pn=P/np.maximum(np.linalg.norm(P,axis=-1,keepdims=True),1e-6)
+            lon2=np.arctan2(pn[...,0],pn[...,2]); lat2=np.arcsin(np.clip(pn[...,1],-1,1))
+            rr2=np.hypot(lon2/w,(lat2-cy-hh)/hh); mouths=np.clip((th-np.abs(rr2-1))/0.04,0,1)*((lat2-cy)<hh*0.8)
+    glow=np.maximum(glow,mouthc)
     glow*=m2; white*=m2
     ec=np.array([0.62,1.0,0.86])
     c2=c2*(1-glow[...,None])+glow[...,None]*ec
     c2=c2*(1-white[...,None])+white[...,None]*np.array([1,1,1])
+    if mo and mo['on']=='shell':
+        c1=c1*(1-mouths[...,None])+mouths[...,None]*np.array([0.05,0.15,0.18])
     img=np.zeros((N,N,3)); img[m]=c1[m]; img[m2]=c2[m2]
     return np.clip(img,0,1),(kind>0).astype(float)

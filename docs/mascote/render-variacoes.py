@@ -4,12 +4,16 @@ A=dict(base)
 Bv=dict(base,widen=0,blur=7,round=True,shape='oval',eye_x=0.30,eye_y=0.32,eye_w=0.10,eye_h=0.13)
 C=dict(Bv,mint=[0.66,0.90,0.80],spec=0.18,amb=0.45)
 Dv=dict(C,shape='happy',eye_h=0.11,eye_w=0.11)
-vs=[(A,'A · ATUAL'),(Bv,'B · OLHOS GRANDES + BORDAS SUAVES'),(C,'C · B + MENTA LEITOSO'),(Dv,'D · C COM EXPRESSÃO FELIZ')]
+W1=dict(C,widen=8,eye_y=0.36,eye_h=0.16,eye_w=0.11)
+W2=dict(C,widen=14,eye_y=0.40,eye_h=0.19,eye_w=0.12)
+W3=dict(W2,mouth=dict(on='shell',y=-0.10,w=0.17,h=0.07,t=0.10))
+vs=[(C,'C · G EXATO DO LOGO'),(W1,'W1 · PONTA DO G GIRADA 8°'),(W2,'W2 · PONTA DO G GIRADA 14°'),(W3,'W3 · W2 + BOCA GRAVADA')]
+_=[(A,'A · ATUAL'),(Bv,'B · OLHOS GRANDES + BORDAS SUAVES'),(C,'C · B + MENTA LEITOSO'),(Dv,'D · C COM EXPRESSÃO FELIZ')]
 N=520; BG=np.array([0.88,0.885,0.89]); H=N+110
 sheet=Image.new('RGB',(N*4,H+130),tuple((BG*255).astype(int))); dr=ImageDraw.Draw(sheet)
 F=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',26); Fs=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',18); Fm=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',17)
-dr.text((30,30),'GRANABÔ — VARIAÇÕES MAIS AMIGÁVEIS (VISTA FRONTAL)',fill=(30,50,60),font=F)
-dr.text((30,66),'Mesma esfera, mesmo G do logo. Mudam olhos, arredondamento das bordas e tom da carcaça.',fill=(80,95,100),font=Fs)
+dr.text((30,30),'GRANABÔ — FAIXA DOS OLHOS MAIS ALTA (VISTA FRONTAL)',fill=(30,50,60),font=F)
+dr.text((30,66),'Mesma esfera, mesmo G do logo. A faixa abre girando só a ponta de cima do G; o anel, a barra e os cortes ficam como no logo.',fill=(80,95,100),font=Fs)
 for i,(V,lab) in enumerate(vs):
     img,al=render(V); oy=20
     sh=Image.new('L',(N,H),0); sd=ImageDraw.Draw(sh); gy=oy+int(N*(0.5+1/2.5))+28
@@ -18,4 +22,4 @@ for i,(V,lab) in enumerate(vs):
     base_[oy:oy+N]=base_[oy:oy+N]*(1-al[...,None])+img*al[...,None]
     sheet.paste(Image.fromarray((base_*255).astype(np.uint8)),(i*N,120))
     dr.text((i*N+N//2,120+H-40),lab,fill=(30,50,60),font=Fm,anchor='mm')
-sheet.save('granabo-variacoes.png'); print('ok')
+sheet.save('granabo-faixa.png'); print('ok')
