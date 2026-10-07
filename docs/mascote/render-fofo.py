@@ -15,10 +15,20 @@ def build(widen,blur):
         phi=np.degrees(np.arctan2(-(vv-cy),uu-cx)); rho=np.hypot(uu-cx,vv-cy)
         w=np.clip((80-phi)/40,0,1)*(vv<192)*(uu>cx)
         ps=np.radians(phi-widen*w)
-        su=np.clip(np.round(cx+rho*np.cos(ps)),0,MW-1).astype(int); sv=np.clip(np.round(cy-rho*np.sin(ps)),0,MH-1).astype(int)
-        src=M0[sv,su]&(sv<150)
+        su=np.clip(cx+rho*np.cos(ps),0,MW-1); sv=np.clip(cy-rho*np.sin(ps),0,MH-1)
+        u0=np.floor(su).astype(int); v0=np.floor(sv).astype(int); u1=np.minimum(u0+1,MW-1); v1=np.minimum(v0+1,MH-1); fu=su-u0; fv=sv-v0
+        F0=M0.astype(float)
+        val=(F0[v0,u0]*(1-fu)+F0[v0,u1]*fu)*(1-fv)+(F0[v1,u0]*(1-fu)+F0[v1,u1]*fu)*fv
+        src=(val>0.5)&(sv<150)
         M=np.where(w>0,src,M0)
-    B=np.array(Image.fromarray((M*255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(blur)))/255. if blur else M.astype(float)
+    if blur:
+        vv,uu=np.mgrid[0:MH,0:MW].astype(float); cx,cy=(MW-1)/2,(MH-1)/2
+        rx=(uu-cx)/(MW/2); ry=(vv-cy)/(MH/2); rho=np.hypot(rx,ry)
+        iu=np.clip(np.round(cx+rx/np.maximum(rho,1e-6)*0.93*MW/2),0,MW-1).astype(int); iv=np.clip(np.round(cy+ry/np.maximum(rho,1e-6)*0.93*MH/2),0,MH-1).astype(int)
+        M=np.where(rho>0.95,M[iv,iu],M)
+        pd=30; Mp=np.pad(M.astype(np.uint8)*255,pd,mode='edge')
+        B=np.array(Image.fromarray(Mp).filter(ImageFilter.GaussianBlur(blur)))[pd:-pd,pd:-pd]/255.
+    else: B=M.astype(float)
     return B
 def lookup(B,z,y):
     u=np.clip(((z/R2+1)/2*(MW-1)),0,MW-1); v=np.clip(((1-(y/R2+1)/2)*(MH-1)),0,MH-1)
@@ -40,7 +50,7 @@ def render(V,N=520,S=1.25,deg=0):
     b=(o*d).sum(-1); disc=b*b-((o*o).sum(-1)-R2**2); hit=disc>0
     t=np.where(hit,-b-np.sqrt(np.maximum(disc,0)),0); tex=np.where(hit,-b+np.sqrt(np.maximum(disc,0)),0)
     done=~hit; kind=np.zeros((N,N),int); P=np.zeros((N,N,3))
-    for i in range(500):
+    for i in range(1400):
         idx=~done
         if not idx.any(): break
         p=o[idx]+t[idx,None]*d; r=np.linalg.norm(p,axis=-1)
@@ -48,7 +58,7 @@ def render(V,N=520,S=1.25,deg=0):
         k=np.where(sh,1,np.where(co,2,0)); sub=kind[idx]; sub[k>0]=k[k>0]; kind[idx]=sub
         PP=P[idx]; PP[k>0]=p[k>0]; P[idx]=PP
         dd=done[idx]; dd|=(k>0)|(t[idx]>tex[idx]); done[idx]=dd
-        t[idx]+=0.004
+        t[idx]+=0.0015
     n=P/np.maximum(np.linalg.norm(P,axis=-1,keepdims=True),1e-6)
     m=kind==1
     if m.any() and V["round"]:
