@@ -19,11 +19,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const vault = process.argv[2];
 const estrito = process.argv.includes('--estrito');
 const gitCommand = process.env.GRANA_VERIFICAR_VAULT_GIT ?? 'git';
-const repo = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 if (!vault || !fs.existsSync(vault)) {
   console.log('vault não encontrado, nada a verificar:', vault ?? '(sem argumento)');
