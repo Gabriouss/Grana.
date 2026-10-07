@@ -285,8 +285,12 @@ export function criarAcesso(deps) {
       if (caixaAviso) { caixaAviso.remove(); caixaAviso = null; }
       deps.aviso('Sessão renovada.', 'ok');
     } catch (err) {
-      // 401 de sessão já trocou a tela pelo app.js; outro erro fica visível e o prazo não muda
-      if (!CODIGOS_LOGIN.includes(err.codigo)) deps.aviso(`Não deu para renovar a sessão: ${err.message}`, 'erro');
+      // 401 de sessão e servidor fora já trocaram a tela pelo app.js; resposta velha não diz nada.
+      // Servidor lento fica visível e o prazo não muda (o botão continua para tentar de novo).
+      if (CODIGOS_LOGIN.includes(err.codigo) || ['servidor-fora', 'descartado', 'nao-pareado'].includes(err.codigo)) return;
+      deps.aviso(err.codigo === 'prazo'
+        ? 'O servidor local está lento e não confirmou a renovação. A sessão não foi renovada.'
+        : `Não deu para renovar a sessão: ${err.message}`, 'erro');
     }
   }
 

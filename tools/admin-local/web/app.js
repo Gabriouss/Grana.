@@ -148,6 +148,10 @@ const TEXTO_BLOQUEIO = {
     titulo: 'Painel não pareado',
     texto: 'Painel não pareado. Abra pelo atalho Grana. Admin na Área de Trabalho.',
   },
+  'servidor-fora': {
+    titulo: 'Sem contato com o servidor',
+    texto: 'O painel perdeu contato com o servidor local. Abra de novo pelo atalho Grana. Admin.',
+  },
   saiu: {
     titulo: 'Você saiu do painel',
     texto: 'A sessão foi encerrada neste navegador. Para entrar de novo, abra o painel pelo atalho Grana. Admin na Área de Trabalho.',
@@ -162,6 +166,7 @@ let bloqueado = null;
 export function bloquearPainel(motivo) {
   // "saiu" substitui o "não pareado" que a própria saída provoca; o resto não troca de motivo
   if (bloqueado && !(motivo === 'saiu' && bloqueado === 'nao-pareado')) return;
+  for (const a of document.querySelectorAll('.avisos .aviso')) a.remove();
   if (bloqueado) for (const el of document.querySelectorAll('.bloqueio')) el.remove();
   bloqueado = motivo;
   epoca++;
@@ -180,7 +185,9 @@ export function bloquearPainel(motivo) {
       h('img', { class: 'bloqueio-marca', src: '/design-system/marca/logotipo-gradiente.svg', alt: 'Grana.', width: '120', height: '34' }),
       h('h1', { class: 'bloqueio-titulo', id: 'bloqueio-titulo', tabindex: '-1', texto: t.titulo }),
       h('p', { class: 'bloqueio-texto', texto: t.texto }),
-      h('p', { class: 'bloqueio-ajuda', texto: 'Por segurança, o painel só responde à janela aberta pelo atalho. Nenhum dado foi mostrado e nenhuma ação foi enviada.' })));
+      h('p', { class: 'bloqueio-ajuda', texto: motivo === 'servidor-fora'
+        ? 'O atalho liga o servidor de novo e pareia este navegador. Nada mais é tentado sozinho por esta aba.'
+        : 'Por segurança, o painel só responde à janela aberta pelo atalho. Nenhum dado foi mostrado e nenhuma ação foi enviada.' })));
   document.body.appendChild(tela);
   tela.querySelector('h1').focus();
   document.title = `${t.titulo} · Grana. Administração local`;
@@ -226,6 +233,12 @@ async function pedir(caminho, opcoes, prazoMs = PRAZO_MS) {
     if (ehAcao && err && err.name === 'AbortError') {
       throw new ErroApi('resultado-desconhecido', `Resultado desconhecido: o servidor local não respondeu em ${Math.round(prazoMs / 1000)} segundos e a ação pode ter sido feita. Confira antes de repetir.`, 0);
     }
+    // Conexão recusada ou rede caída: se o servidor sumiu de vez, o painel para tudo e diz isso.
+    if (err instanceof TypeError && caminho !== '/api/saude' && !modoSimulado && (await servidorCaiu())) {
+      bloquearPainel('servidor-fora');
+      throw new ErroApi('servidor-fora', TEXTO_BLOQUEIO['servidor-fora'].texto, 0);
+    }
+    // Só ação com efeito (redeploy, build, gravação) fica com resultado desconhecido.
     if (ehAcao && err instanceof TypeError) {
       throw new ErroApi('resultado-desconhecido', 'Resultado desconhecido: a conexão com o servidor local caiu no meio do envio e a ação pode ter sido feita. Confira antes de repetir.', 0);
     }
@@ -233,6 +246,21 @@ async function pedir(caminho, opcoes, prazoMs = PRAZO_MS) {
     throw new ErroApi('rede', 'Não consegui falar com o servidor local. Ele está aberto?', 0);
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// Confirma a queda com uma sonda curta em /api/saude, para um tropeço isolado não fechar o painel.
+async function servidorCaiu() {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const r = await fetch('/api/saude', { signal: ctrl.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
+    return !r.ok;
+  } catch (e) {
+    // sonda que só demorou é servidor lento, não servidor fora
+    return !(e && e.name === 'AbortError');
+  } finally {
+    clearTimeout(t);
   }
 }
 
@@ -338,7 +366,10 @@ export function aviso(texto, tipo = 'info', { mesmoSemPainel = false } = {}) {
   // com o painel escondido (sem sessão), aviso de tela antiga não aparece: pode carregar dado
   const casca = document.querySelector('.casca');
   if (!mesmoSemPainel && casca && casca.hidden) return;
-  const el = h('div', { class: `aviso aviso-${tipo}`, role: tipo === 'erro' ? 'alert' : 'status' },
+  // mesma mensagem já na tela: não empilha outra igual
+  const chave = `${tipo}|${texto}`;
+  for (const existente of caixa.querySelectorAll('.aviso')) if (existente.dataset.chave === chave) return;
+  const el = h('div', { class: `aviso aviso-${tipo}`, role: tipo === 'erro' ? 'alert' : 'status', dados: { chave } },
     h('span', { texto }),
     h('button', { class: 'botao botao-fantasma', type: 'button', 'aria-label': 'Fechar aviso', texto: 'Fechar', onclick: () => el.remove() }));
   caixa.appendChild(el);
