@@ -109,6 +109,14 @@ def render(V,N=520,S=1.25,deg=0):
                 for sx in (-1,1):
                     a=np.radians(-35); cxp=sx*w*0.82; cyp=hh-hh*0.57
                     mouths=np.maximum(mouths,np.clip((th-np.hypot(dx-cxp,dy-cyp))/sm,0,1)*0)
+            elif k=='smile':
+                r_=mo['r']; a_=np.radians(mo['a']); qx=dx; qy=dy-r_   # circle center above
+                ang=np.arctan2(qx,-qy)
+                d_arc=np.abs(np.hypot(qx,qy)-r_)
+                ex=r_*np.sin(a_); ey=-r_*np.cos(a_)
+                d_cap=np.minimum(np.hypot(qx-ex,qy-ey),np.hypot(qx+ex,qy-ey))
+                dist=np.where(np.abs(ang)<=a_,d_arc,d_cap)
+                mouths=np.clip((th-dist)/0.006,0,1)
             elif k=='open':
                 q=np.hypot(dx/w,dy/hh); mouths=np.clip((1-q)*hh/sm,0,1)*np.clip(-dy/sm,0,1)
                 # rounded top corners

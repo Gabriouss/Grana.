@@ -8,17 +8,15 @@ W1=dict(C,widen=8,eye_y=0.36,eye_h=0.16,eye_w=0.11)
 W2=dict(C,widen=14,eye_y=0.40,eye_h=0.19,eye_w=0.12)
 W3=dict(W2,mouth=dict(on='shell',y=-0.10,w=0.17,h=0.07,t=0.10))
 base3=dict(W2)
-M1=dict(base3,mouth=dict(on='shell',kind='u',y=-0.07,w=0.12,h=0.08,t=0.024))
-M2=dict(base3,mouth=dict(on='shell',kind='open',y=-0.01,w=0.13,h=0.13,t=0))
-M3=dict(base3,mouth=dict(on='shell',kind='open',y=-0.01,w=0.13,h=0.13,t=0,tongue=True))
-M4=dict(base3,mouth=dict(on='shell',kind='w',y=-0.06,w=0.13,h=0.055,t=0.02))
-vs=[(M1,'M1 · SORRISO PEQUENO'),(M2,'M2 · SORRISO ABERTO'),(M3,'M3 · ABERTO COM LÍNGUA'),(M4,'M4 · BOCA DE GATINHO')]
+def sm(r,a,t,y): return dict(base3,mouth=dict(on='shell',kind='smile',y=y,r=r,a=a,t=t,w=0,h=0))
+S1=sm(0.10,45,0.016,-0.035); S2=sm(0.075,60,0.016,-0.035); S3=sm(0.06,75,0.015,-0.04); S4=sm(0.085,55,0.022,-0.035)
+vs=[(S1,'S1 · SORRISO SUAVE'),(S2,'S2 · SORRISO MÉDIO'),(S3,'S3 · SORRISO REDONDO'),(S4,'S4 · MÉDIO, TRAÇO MAIS GROSSO')]
 _=[(A,'A · ATUAL'),(Bv,'B · OLHOS GRANDES + BORDAS SUAVES'),(C,'C · B + MENTA LEITOSO'),(Dv,'D · C COM EXPRESSÃO FELIZ')]
 N=520; BG=np.array([0.88,0.885,0.89]); H=N+110
 sheet=Image.new('RGB',(N*4,H+130),tuple((BG*255).astype(int))); dr=ImageDraw.Draw(sheet)
 F=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',26); Fs=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',18); Fm=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',17)
-dr.text((30,30),'GRANABÔ — BOCAS PARA O W3 (VISTA FRONTAL)',fill=(30,50,60),font=F)
-dr.text((30,66),'Mesma esfera, mesmo G do logo. Base W3 (ponta do G girada 14°). Muda só a boca, gravada na barra do G.',fill=(80,95,100),font=Fs)
+dr.text((30,30),'GRANABÔ — SORRISOS PARA O W3 (VISTA FRONTAL)',fill=(30,50,60),font=F)
+dr.text((30,66),'Mesma esfera, mesmo G do logo. Base W3 (ponta do G girada 14°). Sorriso em arco de círculo com pontas arredondadas, gravado na barra do G.',fill=(80,95,100),font=Fs)
 for i,(V,lab) in enumerate(vs):
     img,al=render(V); oy=20
     sh=Image.new('L',(N,H),0); sd=ImageDraw.Draw(sh); gy=oy+int(N*(0.5+1/2.5))+28
@@ -27,4 +25,4 @@ for i,(V,lab) in enumerate(vs):
     base_[oy:oy+N]=base_[oy:oy+N]*(1-al[...,None])+img*al[...,None]
     sheet.paste(Image.fromarray((base_*255).astype(np.uint8)),(i*N,120))
     dr.text((i*N+N//2,120+H-40),lab,fill=(30,50,60),font=Fm,anchor='mm')
-sheet.save('granabo-bocas-w3.png'); print('ok')
+sheet.save('granabo-sorrisos-w3.png'); print('ok')
