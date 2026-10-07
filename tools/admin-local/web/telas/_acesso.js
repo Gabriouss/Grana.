@@ -24,14 +24,13 @@ const AVISO_ANTES_SEG = 60;
 const TEXTO_SEM_CONTA = 'A conta admin ainda não foi criada. Feche o painel e abra pelo atalho Grana. Admin: ele pede para criar senha e autenticador no terminal.';
 
 // deps: { h, ler(caminho), enviar(caminho, corpo), enviarSemCsrf(caminho, corpo), definirCsrf(token),
-//         esconderPainel(), mostrarPainel(), aoEntrar(), aviso(), bloquear(motivo) }
+//         esconderPainel(), mostrarPainel(), aoEntrar(), aviso(), bloquear(motivo), limparContexto() }
 export function criarAcesso(deps) {
   const { h } = deps;
   let tela = null; // elemento da tela de acesso aberta, ou null
   let etapaAtual = null;
   let inatividadeSeg = null;
   let expiraEm = null; // limite absoluto da sessão admin (ms), vindo do servidor
-  let ultimaAtividade = Date.now();
   let relogio = null;
   let caixaAviso = null;
   let legado = false; // servidor sem login (antes da blindagem): o painel segue como antes
@@ -63,6 +62,9 @@ export function criarAcesso(deps) {
 
   function mostrarErro(el, err, campo, botao) {
     el.hidden = false;
+    // o motivo da volta ("Você saiu", "Senha ou código incorreto") dá lugar ao erro novo
+    const anterior = tela && tela.querySelector('.acesso-mensagem');
+    if (anterior) anterior.remove();
     if (err && err.codigo === 'bloqueado') {
       let seg = Math.max(1, Number(err.tentarEmSeg) || 60);
       campo.disabled = true;
@@ -177,7 +179,7 @@ export function criarAcesso(deps) {
 
   function telaSemConta() {
     etapaAtual = 'sem-conta';
-    clearInterval(relogio);
+    pararRelogio();
     moldura('Conta admin não criada', null, null, h('p', { class: 'acesso-texto', role: 'alert', texto: TEXTO_SEM_CONTA }));
     tela.querySelector('h1').focus();
   }
@@ -207,67 +209,116 @@ export function criarAcesso(deps) {
     deps.aoEntrar();
   }
 
-  // -- inatividade
+  // -- inatividade (L26)
+  // O relógio trabalha com HORÁRIO ABSOLUTO: prazoInatividade e expiraEm são instantes, não contadores.
+  // Assim um salto de relógio, aba em segundo plano (o navegador estrangula o setInterval para
+  // 1 vez por minuto) ou gesto sem pedido não fazem a janela do aviso sumir sem ninguém ver:
+  // ao voltar a aba ou o foco, avaliar() roda na hora e mostra o estado verdadeiro.
+  let prazoInatividade = null;
+
+  function definirPrazo(restanteSeg) {
+    if (typeof restanteSeg === 'number') prazoInatividade = Date.now() + restanteSeg * 1000;
+    else if (inatividadeSeg) prazoInatividade = Date.now() + inatividadeSeg * 1000;
+  }
+
+  // Chamado pelo app.js quando um pedido de GESTO volta ok: foi o que o servidor contou como atividade.
   function registrarAtividade() {
-    ultimaAtividade = Date.now();
+    definirPrazo();
     if (caixaAviso) { caixaAviso.remove(); caixaAviso = null; }
   }
 
+  function avaliar() {
+    if (etapaAtual !== 'ok') return;
+    const agora = Date.now();
+    if (expiraEm && agora >= expiraEm) { pararRelogio(); telaSenha(MENSAGEM_ENTRADA['sessao-expirada']); return; }
+    if (prazoInatividade && agora >= prazoInatividade) { pararRelogio(); telaSenha(MENSAGEM_ENTRADA.inatividade); return; }
+    const faltaIdle = prazoInatividade ? Math.ceil((prazoInatividade - agora) / 1000) : Infinity;
+    const faltaLimite = expiraEm ? Math.ceil((expiraEm - agora) / 1000) : Infinity;
+    if (faltaLimite <= AVISO_ANTES_SEG && faltaLimite <= faltaIdle) avisar(faltaLimite, 'limite');
+    else if (faltaIdle <= AVISO_ANTES_SEG) avisar(faltaIdle, 'inatividade');
+  }
+
+  function pararRelogio() {
+    clearInterval(relogio);
+    relogio = null;
+    if (caixaAviso) { caixaAviso.remove(); caixaAviso = null; }
+  }
+
+  let ouvindoVisibilidade = false;
   function ligarRelogio() {
     clearInterval(relogio);
-    if (!inatividadeSeg && !expiraEm) return;
-    relogio = setInterval(() => {
-      if (etapaAtual !== 'ok') return;
-      if (expiraEm && Date.now() >= expiraEm) { clearInterval(relogio); telaSenha(MENSAGEM_ENTRADA['sessao-expirada']); return; }
-      if (!inatividadeSeg) return;
-      const restante = Math.round(inatividadeSeg - (Date.now() - ultimaAtividade) / 1000);
-      if (restante <= 0) { encerrarPorInatividade(); return; }
-      if (restante <= AVISO_ANTES_SEG) avisarInatividade(restante);
-    }, 1000);
+    relogio = setInterval(avaliar, 1000);
+    if (!ouvindoVisibilidade && typeof document.addEventListener === 'function') {
+      ouvindoVisibilidade = true;
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) avaliar(); });
+      if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('focus', avaliar);
+    }
+    avaliar();
   }
 
-  function avisarInatividade(restante) {
-    const texto = `Sem uso há algum tempo. A sessão encerra em ${restante} s.`;
-    if (caixaAviso) { caixaAviso.querySelector('.aviso-inatividade-texto').textContent = texto; return; }
-    caixaAviso = h('div', { class: 'aviso-inatividade', role: 'alertdialog', 'aria-labelledby': 'aviso-inatividade-texto' },
-      h('p', { class: 'aviso-inatividade-texto', id: 'aviso-inatividade-texto', texto }),
-      h('button', { class: 'botao botao-primario', type: 'button', texto: 'Continuar conectado',
-        onclick: async () => {
-          try {
-            const r = await deps.enviar(ROTAS_SESSAO.renovar, {});
-            const d = r.dados || {};
-            if (d.etapa && d.etapa !== 'ok') { seguir(d); return; }
-            if (typeof d.inatividadeSeg === 'number') inatividadeSeg = d.inatividadeSeg;
-            registrarAtividade();
-            if (typeof d.restanteSeg === 'number' && inatividadeSeg) ultimaAtividade = Date.now() - (inatividadeSeg - d.restanteSeg) * 1000;
-            deps.aviso('Sessão renovada.', 'ok');
-          } catch (err) {
-            // 401 de sessão já trocou a tela pelo app.js; outro erro fica visível
-            if (!CODIGOS_LOGIN.includes(err.codigo)) deps.aviso(`Não deu para renovar a sessão: ${err.message}`, 'erro');
-          }
-        } }));
+  function avisar(restante, tipo) {
+    const texto = tipo === 'limite'
+      ? `A sessão chega ao limite de 1 hora em ${restante} s. Depois disso, entre de novo.`
+      : `Sem uso há algum tempo. A sessão encerra em ${restante} s.`;
+    if (caixaAviso && caixaAviso.dataset.tipo === tipo) {
+      caixaAviso.querySelector('.aviso-inatividade-texto').textContent = texto;
+      return;
+    }
+    if (caixaAviso) caixaAviso.remove();
+    caixaAviso = h('div', { class: 'aviso-inatividade', role: 'alertdialog', 'aria-labelledby': 'aviso-inatividade-texto', dados: { tipo } },
+      h('p', { class: 'aviso-inatividade-texto', id: 'aviso-inatividade-texto', 'aria-live': 'polite', texto }),
+      // o limite absoluto não se estende: só o aviso de inatividade tem "continuar"
+      tipo === 'inatividade' ? h('button', { class: 'botao botao-primario', type: 'button', texto: 'Continuar conectado', onclick: continuar }) : null);
+    caixaAviso.dataset.tipo = tipo;
     document.body.appendChild(caixaAviso);
-    caixaAviso.querySelector('button').focus();
+    caixaAviso.querySelector('button')?.focus();
   }
 
-  function encerrarPorInatividade() {
-    clearInterval(relogio);
-    registrarAtividade();
-    // o servidor também encerra; avisar é só cortesia, sem esperar
-    deps.enviar(ROTAS_SESSAO.sair, {}).catch(() => {});
-    telaSenha(MENSAGEM_ENTRADA.inatividade);
-  }
-
-  async function sair(mensagem = MENSAGEM_ENTRADA.saiu) {
-    clearInterval(relogio);
-    registrarAtividade();
+  // Só mantém o login se o SERVIDOR confirmar a renovação.
+  async function continuar() {
     try {
-      await deps.enviar(ROTAS_SESSAO.sair, {});
+      const r = await deps.enviar(ROTAS_SESSAO.renovar, {});
+      const d = r.dados || {};
+      if (d.etapa && d.etapa !== 'ok') { pararRelogio(); seguir(d); return; }
+      lerTempos(d);
+      definirPrazo(typeof d.restanteSeg === 'number' ? d.restanteSeg : undefined);
+      if (caixaAviso) { caixaAviso.remove(); caixaAviso = null; }
+      deps.aviso('Sessão renovada.', 'ok');
     } catch (err) {
-      if (!CODIGOS_LOGIN.includes(err.codigo)) deps.aviso(`O servidor não confirmou a saída: ${err.message}. Feche esta aba para garantir.`, 'erro');
+      // 401 de sessão já trocou a tela pelo app.js; outro erro fica visível e o prazo não muda
+      if (!CODIGOS_LOGIN.includes(err.codigo)) deps.aviso(`Não deu para renovar a sessão: ${err.message}`, 'erro');
+    }
+  }
+
+  // -- saída (F5)
+  // Primeiro apaga tudo deste lado (tela, modais, avisos, token, estado e tempos) e invalida
+  // as respostas que ainda estão no caminho; só depois avisa o servidor. Uma resposta que
+  // chegue depois do Sair é descartada pelo app.js e não repinta nada.
+  function esquecerSessao() {
+    pararRelogio();
+    etapaAtual = null;
+    inatividadeSeg = null;
+    expiraEm = null;
+    prazoInatividade = null;
+    deps.definirCsrf(null);
+    deps.limparContexto();
+  }
+
+  async function sair() {
+    esquecerSessao();
+    let d = null;
+    try {
+      d = (await deps.enviar(ROTAS_SESSAO.sair, {})).dados || {};
+    } catch (err) {
+      // nao-pareado também é saída concluída: o servidor já não reconhece este navegador
+      if (err.codigo !== 'nao-pareado' && !CODIGOS_LOGIN.includes(err.codigo)) {
+        deps.aviso(`O servidor não confirmou a saída: ${err.message}. Feche esta aba para garantir.`, 'erro', { mesmoSemPainel: true });
+      }
     }
     deps.definirCsrf(null);
-    telaSenha(mensagem);
+    // servidor com F5 destrói o pareamento: a próxima entrada é pelo atalho
+    if (!d || d.etapa === 'nao-pareado' || !d.etapa) { deps.bloquear('saiu'); return; }
+    telaSenha(MENSAGEM_ENTRADA.saiu);
   }
 
   // Lê o #par= do lançador uma vez, apaga da barra e troca pelo pareamento.
@@ -285,8 +336,9 @@ export function criarAcesso(deps) {
     get entrou() { return etapaAtual === 'ok'; },
     exigirSemConta: () => telaSemConta(),
     get legado() { return legado; },
-    registrarAtividade,
+    registrarAtividade: () => { if (etapaAtual === 'ok') registrarAtividade(); },
     sair: () => sair(),
+    parar: () => { pararRelogio(); etapaAtual = null; fecharTela(); },
 
     // Devolve true quando o painel pode desenhar (sessão ok ou servidor sem login).
     async verificar() {
@@ -319,7 +371,7 @@ export function criarAcesso(deps) {
       lerTempos(d);
       if (d.etapa === 'ok') {
         etapaAtual = 'ok';
-        if (typeof d.restanteSeg === 'number' && inatividadeSeg) ultimaAtividade = Date.now() - (inatividadeSeg - d.restanteSeg) * 1000;
+        definirPrazo(typeof d.restanteSeg === 'number' ? d.restanteSeg : undefined);
         ligarRelogio();
         return true;
       }
@@ -330,7 +382,7 @@ export function criarAcesso(deps) {
     // Chamado pelo app.js quando um pedido volta 401 de login.
     exigir(codigo) {
       if (legado) return;
-      clearInterval(relogio);
+      pararRelogio();
       if (codigo === 'totp-pendente') { if (etapaAtual !== 'totp') telaCodigo(); return; }
       if (etapaAtual === 'senha' && tela) return;
       telaSenha(MENSAGEM_ENTRADA[codigo]);

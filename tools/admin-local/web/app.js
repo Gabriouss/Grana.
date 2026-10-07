@@ -7,7 +7,9 @@
 // as chaves e só devolve status e dados já sanitizados.
 
 import { SIMULADO } from './simulado.js';
-import { criarAcesso, CODIGOS_LOGIN } from './telas/_acesso.js';
+import { criarAcesso, CODIGOS_LOGIN, ROTAS_SESSAO } from './telas/_acesso.js';
+
+const ROTAS_SEM_EFEITO = new Set(Object.values(ROTAS_SESSAO));
 
 const ROTAS = {
   'visao-geral': { modulo: 'visao-geral', titulo: 'Visão geral' },
@@ -146,6 +148,10 @@ const TEXTO_BLOQUEIO = {
     titulo: 'Painel não pareado',
     texto: 'Painel não pareado. Abra pelo atalho Grana. Admin na Área de Trabalho.',
   },
+  saiu: {
+    titulo: 'Você saiu do painel',
+    texto: 'A sessão foi encerrada neste navegador. Para entrar de novo, abra o painel pelo atalho Grana. Admin na Área de Trabalho.',
+  },
   'sessao-antiga': {
     titulo: 'Sessão antiga',
     texto: 'Esta aba é de uma sessão antiga do painel, e a última ação não foi feita. Feche esta aba e abra o painel de novo pelo atalho Grana. Admin na Área de Trabalho.',
@@ -154,8 +160,12 @@ const TEXTO_BLOQUEIO = {
 let bloqueado = null;
 
 export function bloquearPainel(motivo) {
-  if (bloqueado) return;
+  // "saiu" substitui o "não pareado" que a própria saída provoca; o resto não troca de motivo
+  if (bloqueado && !(motivo === 'saiu' && bloqueado === 'nao-pareado')) return;
+  if (bloqueado) for (const el of document.querySelectorAll('.bloqueio')) el.remove();
   bloqueado = motivo;
+  epoca++;
+  if (acesso) acesso.parar();
   const t = TEXTO_BLOQUEIO[motivo] || TEXTO_BLOQUEIO['nao-pareado'];
   const casca = document.querySelector('.casca');
   // some com o painel inteiro: a mensagem ocupa a tela mesmo sem o estilo.css
@@ -163,6 +173,8 @@ export function bloquearPainel(motivo) {
   const faixaSim = faixa();
   if (faixaSim) faixaSim.hidden = true;
   for (const d of document.querySelectorAll('dialog[open]')) d.close();
+  // a tela de login ou o aviso de inatividade não podem ficar por cima do bloqueio
+  for (const el of document.querySelectorAll('.acesso, .aviso-inatividade')) el.remove();
   const tela = h('div', { class: 'bloqueio', role: 'alert', 'aria-labelledby': 'bloqueio-titulo' },
     h('div', { class: 'bloqueio-caixa' },
       h('img', { class: 'bloqueio-marca', src: '/design-system/marca/logotipo-gradiente.svg', alt: 'Grana.', width: '120', height: '34' }),
@@ -181,16 +193,24 @@ const JANELA_GESTO_MS = 3000;
 for (const tipo of ['pointerdown', 'keydown', 'submit']) document.addEventListener(tipo, () => { ultimoGesto = Date.now(); }, true);
 window.addEventListener('hashchange', () => { ultimoGesto = Date.now(); }, true);
 
+// Época da sessão na tela. Sair, bloquear ou esconder o painel avança a época, e qualquer resposta
+// de um pedido feito antes disso é descartada sem efeito: não repinta tela, não mostra aviso,
+// não renova a inatividade (F5).
+let epoca = 0;
+
 async function pedir(caminho, opcoes, prazoMs = PRAZO_MS) {
+  const minhaEpoca = epoca;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), prazoMs);
-  const ehAcao = opcoes && opcoes.method === 'POST';
+  // Login, pareamento, saída e renovação podem ser repetidos sem efeito colateral: não são "ação".
+  const ehAcao = opcoes && opcoes.method === 'POST' && !ROTAS_SEM_EFEITO.has(caminho);
   const deGesto = caminho.startsWith('/api/') && caminho !== '/api/saude' && Date.now() - ultimoGesto < JANELA_GESTO_MS;
   if (deGesto) opcoes = { ...opcoes, headers: { ...(opcoes.headers || {}), 'X-Grana-Atividade': '1' } };
   try {
     // o corpo é lido dentro do prazo também: um corpo pendurado não pode travar a tela
     const resp = await fetch(caminho, { ...opcoes, signal: ctrl.signal, credentials: 'same-origin', cache: 'no-store' });
     const texto = await resp.text();
+    if (minhaEpoca !== epoca) throw new ErroApi('descartado', 'Resposta de antes da saída, descartada.', 0);
     let corpo = null;
     try { corpo = texto ? JSON.parse(texto) : null; } catch { corpo = null; }
     if (!resp.ok || !corpo || corpo.ok === false) {
@@ -201,9 +221,13 @@ async function pedir(caminho, opcoes, prazoMs = PRAZO_MS) {
     return corpo;
   } catch (err) {
     if (err instanceof ErroApi) throw err;
+    if (minhaEpoca !== epoca) throw new ErroApi('descartado', 'Resposta de antes da saída, descartada.', 0);
     // Numa ação, prazo esgotado ou conexão caída não provam falha: o servidor pode ter concluído.
-    if (ehAcao && err && (err.name === 'AbortError' || err instanceof TypeError)) {
+    if (ehAcao && err && err.name === 'AbortError') {
       throw new ErroApi('resultado-desconhecido', `Resultado desconhecido: o servidor local não respondeu em ${Math.round(prazoMs / 1000)} segundos e a ação pode ter sido feita. Confira antes de repetir.`, 0);
+    }
+    if (ehAcao && err instanceof TypeError) {
+      throw new ErroApi('resultado-desconhecido', 'Resultado desconhecido: a conexão com o servidor local caiu no meio do envio e a ação pode ter sido feita. Confira antes de repetir.', 0);
     }
     if (err && err.name === 'AbortError') throw new ErroApi('prazo', `O servidor local demorou mais de ${Math.round(prazoMs / 1000)} segundos para responder.`, 0);
     throw new ErroApi('rede', 'Não consegui falar com o servidor local. Ele está aberto?', 0);
@@ -308,9 +332,12 @@ function marcarSimulado(motivo) {
   }
 }
 
-export function aviso(texto, tipo = 'info') {
+export function aviso(texto, tipo = 'info', { mesmoSemPainel = false } = {}) {
   const caixa = document.querySelector('.avisos');
   if (!caixa) return;
+  // com o painel escondido (sem sessão), aviso de tela antiga não aparece: pode carregar dado
+  const casca = document.querySelector('.casca');
+  if (!mesmoSemPainel && casca && casca.hidden) return;
   const el = h('div', { class: `aviso aviso-${tipo}`, role: tipo === 'erro' ? 'alert' : 'status' },
     h('span', { texto }),
     h('button', { class: 'botao botao-fantasma', type: 'button', 'aria-label': 'Fechar aviso', texto: 'Fechar', onclick: () => el.remove() }));
@@ -868,6 +895,7 @@ let acesso = null;
 const podeDesenhar = () => acesso && (acesso.legado || acesso.entrou);
 
 function esconderPainel() {
+  epoca++;
   const casca = document.querySelector('.casca');
   if (casca) { casca.inert = true; casca.hidden = true; }
   // nada de dado na tela enquanto não houver sessão
@@ -909,8 +937,9 @@ async function iniciar() {
     esconderPainel,
     mostrarPainel,
     aoEntrar: () => { if (!lerHash().rota || !ROTAS[lerHash().rota]) location.replace(`#/${ROTA_PADRAO}`); renderizar(); },
-    aviso,
+    aviso: (texto, tipo, opcoes) => aviso(texto, tipo, { mesmoSemPainel: true, ...(opcoes || {}) }),
     bloquear: bloquearPainel,
+    limparContexto: esconderPainel,
   });
   document.querySelector('.botao-sair')?.addEventListener('click', () => acesso.sair());
 
