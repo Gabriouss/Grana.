@@ -114,17 +114,64 @@ async function resumo() {
   };
 }
 
+function memo(fn) {
+  const cache = new Map();
+  return (k) => { if (!cache.has(k)) cache.set(k, fn(k)); return cache.get(k); };
+}
+
+// Arquivos de supabase/functions/_shared/ que a função importa, seguindo também
+// os imports relativos entre os próprios arquivos de _shared. Só lê .ts locais.
+const RE_IMPORT = /(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g;
+function lerImports(arquivo) {
+  let texto = '';
+  try { texto = fs.readFileSync(arquivo, 'utf8'); } catch { return []; }
+  return [...texto.matchAll(RE_IMPORT)].map((m) => m[1]);
+}
+function sharedImportados(slug) {
+  const base = path.join(RAIZ, 'supabase', 'functions');
+  const pastaShared = path.join(base, '_shared');
+  const achados = new Set();
+  const fila = [];
+  const visitar = (deArquivo) => {
+    for (const alvo of lerImports(deArquivo)) {
+      if (!alvo.startsWith('.')) continue;
+      const abs = path.resolve(path.dirname(deArquivo), alvo);
+      const rel = path.relative(pastaShared, abs);
+      if (rel.startsWith('..') || path.isAbsolute(rel)) continue;
+      const chave = rel.split(path.sep).join('/');
+      if (!achados.has(chave)) { achados.add(chave); fila.push(abs); }
+    }
+  };
+  let arquivos = [];
+  try {
+    arquivos = fs.readdirSync(path.join(base, slug), { recursive: true })
+      .map(String).filter((n) => /\.(ts|tsx|js|mjs)$/.test(n)).map((n) => path.join(base, slug, n));
+  } catch { return []; }
+  arquivos.forEach(visitar);
+  while (fila.length) visitar(fila.shift());
+  return [...achados].sort();
+}
+
 async function funcoes() {
   const falta = pronto();
   if (falta) return falta;
   const lista = await mgmt('/functions');
-  const shared = gitLocal.ultimoCommit('supabase/functions/_shared/');
+  const commitDoArquivo = memo((rel) => gitLocal.ultimoCommit(`supabase/functions/_shared/${rel}`));
   const itens =(Array.isArray(lista) ? lista : []).map((f) => {
     const atualizadoMs = typeof f.updated_at === 'number' ? f.updated_at : Date.parse(f.updated_at);
-    // O pacote publicado inclui _shared, então vale o commit mais novo entre os dois.
+    // O pacote publicado leva a pasta da função e os arquivos de _shared que ela
+    // IMPORTA (direta ou indiretamente). Comparar com o commit mais novo de
+    // _shared inteiro acusava 7 de 8 funções por um arquivo que só o assistente
+    // importa (P1 do Vigil, 07/10/2026). Vale o commit mais novo entre a pasta
+    // da função e os arquivos de _shared que estão no grafo de imports dela.
     const daFuncao = gitLocal.ultimoCommit(`supabase/functions/${f.slug}/`);
-    const doShared = daFuncao ? shared : null;
-    const commit = doShared && Date.parse(doShared.data) > Date.parse(daFuncao.data) ? doShared : daFuncao;
+    const importados = sharedImportados(f.slug);
+    let commit = daFuncao;
+    let arquivoDeReferencia = null;
+    for (const rel of importados) {
+      const c = commitDoArquivo(rel);
+      if (c && (!commit || Date.parse(c.data) > Date.parse(commit.data))) { commit = c; arquivoDeReferencia = `_shared/${rel}`; }
+    }
     const commitMs = commit ? Date.parse(commit.data) : null;
     // Regra 11: deploy sem commit "por perto" é o sinal de código em produção
     // sem origem no main. Deploy até 24h depois do commit é o fluxo normal.
@@ -143,8 +190,9 @@ async function funcoes() {
       verify_jwt: f.verify_jwt,
       updated_at: Number.isFinite(atualizadoMs) ? new Date(atualizadoMs).toISOString() : null,
       ultimoCommitLocal: daFuncao, // último commit que tocou supabase/functions/<slug>/
-      ultimoCommitShared: doShared, // _shared entra no pacote publicado
-      commitDeReferencia: commit ? (commit === doShared ? 'shared' : 'funcao') : null,
+      sharedImportados: importados.map((rel) => `_shared/${rel}`),
+      commitDeReferencia: commit, // o mais novo entre a pasta da função e os _shared que ela importa
+      arquivoDeReferencia, // null = a própria pasta da função; senão o arquivo de _shared que decidiu
       comparacao,
     };
   });

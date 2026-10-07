@@ -51,7 +51,15 @@ export async function montar(raiz, ctx) {
         { titulo: 'Função', valor: (f) => f.slug, classe: 'mono' },
         { titulo: 'Versão', valor: (f) => f.version, classe: 'num' },
         { titulo: 'No ar desde', valor: (f) => ctx.formatar.dataHora(f.updated_at) },
-        { titulo: 'Último commit local', valor: (f) => (f.ultimoCommitLocal ? `${f.ultimoCommitLocal.curto || String(f.ultimoCommitLocal.hash || '').slice(0, 7)} · ${ctx.formatar.dataHora(f.ultimoCommitLocal.data)}` : 'sem commit no repositório') },
+        // o commit que decide a situação: o mais novo entre a pasta da função e os _shared que ela importa
+        { titulo: 'Último commit que entra no pacote', valor: (f) => {
+          const c = f.commitDeReferencia || f.ultimoCommitLocal;
+          if (!c) return 'sem commit no repositório';
+          const texto = `${c.curto || String(c.hash || '').slice(0, 7)} · ${ctx.formatar.dataHora(c.data)}`;
+          return f.arquivoDeReferencia
+            ? h('span', null, texto, h('br'), h('span', { class: 'texto-fraco mono', texto: `via ${f.arquivoDeReferencia}` }))
+            : texto;
+        } },
         { titulo: 'verify_jwt', valor: (f) => (f.verify_jwt === true ? 'ligado' : f.verify_jwt === false ? 'desligado' : 'sem dado') },
         { titulo: 'Situação', valor: (f) => {
           if (f.status && f.status !== 'ACTIVE') return ctx.selo('alerta', f.status);

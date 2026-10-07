@@ -134,7 +134,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4, strong, b, th { font-weight: 400; }
+h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 em, i { font-style: normal; color: var(--ink-soft); }
 h1, h2, h3, h4, p { margin: 0; }
 h1, h2, h3 { text-wrap: balance; }
@@ -782,6 +782,16 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
 .previa img, .previa video { max-height: calc(72vh - 32px); width: auto; border-radius: var(--r-md); }
 .previa-grande { min-height: 420px; }
 .previa-texto { color: var(--ink-faint); font-size: var(--t-nota); }
+.previa-documento {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-lg);
+  overflow-y: auto;
+  padding: var(--s-xl) var(--s-xxl);
+  background: var(--paper-raised);
+}
+.previa-documento .documento { max-width: 72ch; }
 .previa-carrossel { grid-template-rows: minmax(0, 1fr) auto auto; gap: var(--s-md); }
 .previa-palco { display: grid; place-items: center; min-height: 0; }
 .previa-palco img, .previa-palco video { max-height: calc(72vh - 120px); width: auto; border-radius: var(--r-md); }
@@ -1057,7 +1067,7 @@ pre.saida {
 /* Aprovação: fila | detalhe */
 .aprovacao {
   display: grid;
-  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
   gap: var(--s-xxl);
   align-items: start;
 }
@@ -1083,6 +1093,19 @@ pre.saida {
   line-height: 1.3;
 }
 .fila-item-meta { display: block; font-size: var(--t-micro); font-weight: 300; color: var(--ink-faint); }
+/* título e meta na coluna da esquerda, selo à direita: em fileira única o selo
+   espremia o título no meio do nome do arquivo (F3 do Vigil) */
+.aprovacao .fila-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'titulo selo' 'meta selo';
+  align-items: center;
+  gap: 2px var(--s-sm);
+  padding: var(--s-sm) var(--s-md);
+}
+.aprovacao .fila-item-titulo { grid-area: titulo; overflow-wrap: anywhere; }
+.aprovacao .fila-item-meta { grid-area: meta; }
+.aprovacao .fila-item > .selo { grid-area: selo; }
 .trilha-rotulo { color: inherit; }
 .trilha-estado { font-size: var(--t-micro); font-weight: 300; color: var(--ink-faint); }
 .peca-legenda {
@@ -1137,7 +1160,7 @@ details.peca-indice[open] { padding-bottom: var(--s-lg); }
 /* Calendário: mês | coluna sem data. O JS desenha grade e agenda; o CSS escolhe pela largura. */
 .calendario-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: var(--s-xl);
   align-items: start;
 }
@@ -1155,7 +1178,30 @@ button.cal-item { cursor: pointer; }
 .cal-dia .cal-item-canal { display: none; }
 .cal-sem-data { position: sticky; top: var(--s-xl); }
 .lista-sem-data { display: flex; flex-direction: column; gap: var(--s-xs); margin: 0; padding: 0; list-style: none; }
-.lista-sem-data .cal-item { min-height: 36px; font-size: var(--t-legenda); }
+/* coluna sem data: capa e título em cima, botão embaixo; o título quebra em vez
+   de ser cortado (achado do Vigil, 07/10/2026) */
+.lista-sem-data .cal-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'capa titulo' 'acao acao';
+  align-items: center;
+  gap: var(--s-xs) var(--s-sm);
+  padding: var(--s-sm);
+  font-size: var(--t-legenda);
+  overflow: visible;
+}
+.lista-sem-data .cal-item-capa { grid-area: capa; width: 40px; height: 40px; border-radius: var(--r-sm); }
+.lista-sem-data .cal-item-titulo {
+  grid-area: titulo;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+.lista-sem-data .cal-item:not(:has(.cal-item-capa)) .cal-item-titulo { grid-column: 1 / -1; }
+.lista-sem-data .cal-item > .botao { grid-area: acao; justify-self: start; padding: 0 var(--s-sm); }
 .agenda { margin: 0; padding: 0; list-style: none; }
 .agenda-item {
   display: grid;

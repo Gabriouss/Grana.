@@ -99,7 +99,7 @@ export async function montar(raiz, ctx) {
     h('h2', { class: 'secao-titulo', id: 'cal-sem-data-titulo', texto: 'Aprovados sem data' }),
     semData.length
       ? h('ul', { class: 'lista-sem-data' }, semData.map((p) => {
-        const li = h('li', { class: 'cal-item', draggable: 'true', dados: { id: p.id } },
+        const li = h('li', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
           h('span', { class: 'cal-item-titulo', texto: p.titulo || p.id }),
           h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }));

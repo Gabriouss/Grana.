@@ -32,16 +32,23 @@ export async function montar(raiz, ctx) {
   const deploy = d.vercel?.ultimoDeploy;
   const commit = d.git?.commit;
   const versaoLocal = d.app?.versao;
-  const versaoAnunciada = d.app?.versaoAnunciada;
+  // o servidor manda { versao, apk, atualizadaEm } ou { status, motivo }; aceita texto também
+  const anunciadaBruta = d.app?.versaoAnunciada;
+  const versaoAnunciada = typeof anunciadaBruta === 'string' ? anunciadaBruta : (anunciadaBruta && anunciadaBruta.versao) || null;
+  const anunciadaFalhou = anunciadaBruta && typeof anunciadaBruta === 'object' && !anunciadaBruta.versao && anunciadaBruta.status;
+  const ordem = versaoAnunciada && versaoLocal ? compararVersao(versaoLocal, versaoAnunciada) : null;
+  let detalheVersao = 'Versão do app.json desta máquina.';
+  if (ordem === 0) detalheVersao = 'Igual à versão anunciada no app_release.';
+  else if (ordem > 0) detalheVersao = `O app_release ainda anuncia ${versaoAnunciada}. Falta a build desta versão sair e o EAS avisar o Supabase.`;
+  else if (ordem < 0) detalheVersao = `O app_release já anuncia ${versaoAnunciada}. Esta máquina está atrás: faça git pull.`;
+  else if (anunciadaFalhou) detalheVersao = `Versão do app.json desta máquina. Não consegui ler o app_release (${anunciadaBruta.motivo || anunciadaBruta.status}).`;
 
   const cartoes = [
     ctx.cartao({
       titulo: 'Versão do app',
       valor: versaoLocal || 'sem dado',
-      detalhe: versaoAnunciada
-        ? (versaoAnunciada === versaoLocal ? 'Igual à versão anunciada no app_release.' : `Anunciada no app_release: ${versaoAnunciada}.`)
-        : 'Versão do app.json desta máquina.',
-      status: versaoAnunciada && versaoLocal && versaoAnunciada !== versaoLocal ? 'alerta' : undefined,
+      detalhe: detalheVersao,
+      status: ordem ? 'alerta' : ordem === 0 ? 'ok' : undefined,
       link: '#/eas', rotuloLink: 'Ver builds',
     }),
     ctx.cartao({
@@ -109,7 +116,7 @@ function normalizar(d) {
   const alertasFuncoes = (integ.funcoes?.alertas || []).map((a) => (typeof a === 'string' ? { nivel: 'atencao', texto: a } : a));
   return {
     ...d,
-    app: d.app || { versao: d.versaoApp, versaoAnunciada: d.versaoAnunciada },
+    app: d.app || { versao: d.versaoApp, versaoAnunciada: d.versaoAnunciada?.versao ?? d.versaoAnunciada },
     builds: d.builds || (bs ? { semana: { usadas: bs.feitos, teto: bs.teto }, mes: bs.mes ? { usadas: bs.mes.preparos, cota: bs.mes.cota } : undefined } : undefined),
     vercel: d.vercel || { ultimoDeploy: d.ultimoDeploy || integ.vercel?.ultimoProducao },
     git: { ...(d.git || {}), commit: d.git?.commit || d.ultimoCommit },
@@ -143,4 +150,15 @@ function textoSincronia(git) {
   if (git.aFrente > 0) partes.push(`${git.aFrente} à frente do GitHub`);
   if (git.atras > 0) partes.push(`${git.atras} atrás do GitHub`);
   return partes.length ? `. Local ${partes.join(' e ')}.` : '.';
+}
+
+// 1.10.6 > 1.10.5; compara número a número, sem depender de semver completo
+function compararVersao(a, b) {
+  const pa = String(a).split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  const pb = String(b).split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0 ? 1 : -1;
+  }
+  return 0;
 }

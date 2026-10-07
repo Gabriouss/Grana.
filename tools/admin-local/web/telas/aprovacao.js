@@ -58,7 +58,7 @@ export async function montar(raiz, ctx) {
     detalhe.setAttribute('aria-label', `Detalhe de ${tituloPeca(p)}`);
     detalhe.appendChild(h('h2', { class: 'secao-titulo', texto: tituloPeca(p) }));
     detalhe.appendChild(trilha(ctx, p));
-    detalhe.appendChild(ctx.midia(p, { grande: true }));
+    detalhe.appendChild(p.tipo === 'texto' ? previaTexto(ctx, p) : ctx.midia(p, { grande: true }));
     detalhe.appendChild(h('div', { class: 'peca-legenda' },
       h('h3', { texto: 'Legenda' }),
       p.legenda ? h('p', { class: 'texto-legenda', texto: p.legenda }) : h('p', { class: 'texto-fraco', texto: 'Sem legenda registrada para esta peça.' }),
@@ -134,4 +134,34 @@ async function pedirAjuste(ctx, p) {
   } catch (err) {
     ctx.aviso(`O pedido não foi registrado: ${err.message}`, 'erro');
   }
+}
+
+// Peça só de texto (copys, roteiro): mostra o próprio arquivo, para dar para ler
+// o que se aprova sem sair do painel (achado F4 do Vigil). Markdown seguro do
+// app.js, nunca HTML; .txt entra como texto corrido.
+function previaTexto(ctx, p) {
+  const { h } = ctx;
+  const caixa = h('div', { class: 'previa previa-texto previa-documento' },
+    h('p', { class: 'estado-texto', texto: 'Lendo o texto da peça…' }));
+  const arq = (p.arquivos || []).map((a) => (typeof a === 'string' ? a : a && (a.url || a.caminho))).find((u) => /\.(md|txt)$/i.test(u || ''));
+  if (!arq) {
+    caixa.replaceChildren(h('p', { class: 'estado-texto', texto: 'Peça só de texto, sem arquivo .md ou .txt para mostrar. A legenda abaixo é o que existe.' }));
+    return caixa;
+  }
+  const ctrl = new AbortController();
+  const prazo = setTimeout(() => ctrl.abort(), 15000);
+  fetch(ctx.urlArquivo(arq), { signal: ctrl.signal, cache: 'no-store' })
+    .then((r) => { if (!r.ok) throw new Error(`o servidor respondeu ${r.status}`); return r.text(); })
+    .then((texto) => {
+      const limite = 200_000;
+      const corpo = texto.length > limite ? `${texto.slice(0, limite)}\n\n(texto cortado no painel; abra o arquivo para ler o resto)` : texto;
+      caixa.replaceChildren(/\.md$/i.test(arq) ? ctx.markdown(corpo) : h('p', { class: 'texto-legenda', texto: corpo }),
+        h('a', { class: 'botao botao-fantasma', href: ctx.urlArquivo(arq), target: '_blank', rel: 'noopener', texto: 'Abrir o arquivo em outra aba' }));
+    })
+    .catch((err) => {
+      caixa.replaceChildren(h('p', { class: 'estado-texto', texto: `Não consegui ler o texto da peça (${err.name === 'AbortError' ? 'demorou mais de 15 segundos' : err.message}).` }),
+        h('a', { class: 'botao', href: ctx.urlArquivo(arq), target: '_blank', rel: 'noopener', texto: 'Tentar abrir o arquivo' }));
+    })
+    .finally(() => clearTimeout(prazo));
+  return caixa;
 }
