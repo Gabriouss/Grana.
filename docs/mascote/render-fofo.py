@@ -99,13 +99,36 @@ def render(V,N=520,S=1.25,deg=0):
         else:
             pn=P/np.maximum(np.linalg.norm(P,axis=-1,keepdims=True),1e-6)
             lon2=np.arctan2(pn[...,0],pn[...,2]); lat2=np.arcsin(np.clip(pn[...,1],-1,1))
-            rr2=np.hypot(lon2/w,(lat2-cy-hh)/hh); mouths=np.clip((th-np.abs(rr2-1))/0.04,0,1)*((lat2-cy)<hh*0.8)
+            dx=lon2; dy=lat2-cy; k=mo.get('kind','arc'); sm=0.012
+            if k=='arc':
+                rr2=np.hypot(dx/w,(dy-hh)/hh); mouths=np.clip((th-np.abs(rr2-1))/0.04,0,1)*(dy<hh*0.8)
+            elif k=='u':
+                rr2=np.hypot(dx/w,(dy-hh)/hh); band=np.abs(rr2-1)*hh
+                mouths=np.clip((th-band)/sm,0,1)*(dy<hh*0.9)
+                # round caps
+                for sx in (-1,1):
+                    a=np.radians(-35); cxp=sx*w*0.82; cyp=hh-hh*0.57
+                    mouths=np.maximum(mouths,np.clip((th-np.hypot(dx-cxp,dy-cyp))/sm,0,1)*0)
+            elif k=='open':
+                q=np.hypot(dx/w,dy/hh); mouths=np.clip((1-q)*hh/sm,0,1)*np.clip(-dy/sm,0,1)
+                # rounded top corners
+            elif k=='w':
+                m_=np.zeros_like(dx)
+                for sx in (-1,1):
+                    rr2=np.hypot((dx-sx*w/2)/(w/2),(dy-hh)/hh); m_=np.maximum(m_,np.clip((th-np.abs(rr2-1)*hh)/sm,0,1)*(dy<hh))
+                mouths=m_
+            mouths*=(pn[...,2]>0)
+            mf=mo.get('fill','dark')
     glow=np.maximum(glow,mouthc)
     glow*=m2; white*=m2
     ec=np.array([0.62,1.0,0.86])
     c2=c2*(1-glow[...,None])+glow[...,None]*ec
     c2=c2*(1-white[...,None])+white[...,None]*np.array([1,1,1])
     if mo and mo['on']=='shell':
-        c1=c1*(1-mouths[...,None])+mouths[...,None]*np.array([0.05,0.15,0.18])
+        mc=np.array([0.05,0.15,0.18])*(0.6+0.5*ndl)[...,None] if mo.get('fill','dark')=='dark' else np.array([0.62,1.0,0.86])[None,None,:]*np.ones((N,N,1))
+        if mo.get('tongue'):
+            tq=np.clip((0.55-np.hypot(lon2/(w*0.55),(lat2-cy+hh*0.85)/(hh*0.45)))/0.08,0,1)
+            mc=mc*(1-tq[...,None])+tq[...,None]*np.array([0.45,0.80,0.68])*(0.7+0.3*ndl)[...,None]
+        c1=c1*(1-mouths[...,None])+mouths[...,None]*mc
     img=np.zeros((N,N,3)); img[m]=c1[m]; img[m2]=c2[m2]
     return np.clip(img,0,1),(kind>0).astype(float)
