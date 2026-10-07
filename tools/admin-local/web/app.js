@@ -135,13 +135,20 @@ function lerErro(corpo, status) {
   // Isso tapa o painel inteiro e nunca vira modo simulado.
   if (status === 401 && err.codigo === 'nao-pareado') bloquearPainel('nao-pareado');
   if (status === 403 && err.codigo === 'sessao-antiga') bloquearPainel('sessao-antiga');
-  // Login pendente, vencido ou encerrado por inatividade: a tela de acesso assume.
-  if (status === 401 && CODIGOS_LOGIN.includes(err.codigo) && acesso) acesso.exigir(err.codigo);
+  // Vencimento (10 min sem uso ou 1 h de login): o servidor destrói o pareamento junto, então a
+  // tela de senha não funciona mais. Vira tela cheia com o motivo e a orientação do atalho.
+  if (status === 401 && MOTIVOS_VENCIMENTO.includes(err.codigo)) bloquearPainel(err.codigo);
+  // Login pendente: a tela de acesso assume.
+  else if (status === 401 && CODIGOS_LOGIN.includes(err.codigo) && acesso) acesso.exigir(err.codigo);
   if (status === 503 && err.codigo === 'login-nao-configurado' && acesso) acesso.exigirSemConta();
   // erros 429 carregam o tempo de espera
   if (e.tentarEmSeg !== undefined) err.tentarEmSeg = e.tentarEmSeg;
   return err;
 }
+
+const MOTIVOS_VENCIMENTO = ['inatividade', 'sessao-expirada'];
+// motivos que dizem POR QUE o painel deixou de estar pareado: valem mais que o "não pareado" genérico
+const MOTIVOS_COM_CAUSA = ['saiu', ...MOTIVOS_VENCIMENTO];
 
 const TEXTO_BLOQUEIO = {
   'nao-pareado': {
@@ -156,6 +163,14 @@ const TEXTO_BLOQUEIO = {
     titulo: 'Você saiu do painel',
     texto: 'A sessão foi encerrada neste navegador. Para entrar de novo, abra o painel pelo atalho Grana. Admin na Área de Trabalho.',
   },
+  inatividade: {
+    titulo: 'Sessão vencida',
+    texto: 'A sessão venceu depois de 10 minutos sem uso. Reabra o painel pelo atalho Grana. Admin na Área de Trabalho.',
+  },
+  'sessao-expirada': {
+    titulo: 'Sessão vencida',
+    texto: 'A sessão venceu ao completar 1 hora de login. Reabra o painel pelo atalho Grana. Admin na Área de Trabalho.',
+  },
   'sessao-antiga': {
     titulo: 'Sessão antiga',
     texto: 'Esta aba é de uma sessão antiga do painel, e a última ação não foi feita. Feche esta aba e abra o painel de novo pelo atalho Grana. Admin na Área de Trabalho.',
@@ -164,8 +179,9 @@ const TEXTO_BLOQUEIO = {
 let bloqueado = null;
 
 export function bloquearPainel(motivo) {
-  // "saiu" substitui o "não pareado" que a própria saída provoca; o resto não troca de motivo
-  if (bloqueado && !(motivo === 'saiu' && bloqueado === 'nao-pareado')) return;
+  // "saiu" e o vencimento substituem o "não pareado" que eles mesmos provocam (depois de sair ou
+  // vencer, todo pedido volta nao-pareado); o resto não troca de motivo
+  if (bloqueado && !(MOTIVOS_COM_CAUSA.includes(motivo) && bloqueado === 'nao-pareado')) return;
   for (const a of document.querySelectorAll('.avisos .aviso')) a.remove();
   if (bloqueado) for (const el of document.querySelectorAll('.bloqueio')) el.remove();
   bloqueado = motivo;
@@ -187,7 +203,9 @@ export function bloquearPainel(motivo) {
       h('p', { class: 'bloqueio-texto', texto: t.texto }),
       h('p', { class: 'bloqueio-ajuda', texto: motivo === 'servidor-fora'
         ? 'O atalho liga o servidor de novo e pareia este navegador. Nada mais é tentado sozinho por esta aba.'
-        : 'Por segurança, o painel só responde à janela aberta pelo atalho. Nenhum dado foi mostrado e nenhuma ação foi enviada.' })));
+        : MOTIVOS_COM_CAUSA.includes(motivo)
+          ? 'O atalho pareia este navegador de novo e pede a senha e o código. Esta aba não envia mais nada: pode fechá-la.'
+          : 'Por segurança, o painel só responde à janela aberta pelo atalho. Nenhum dado foi mostrado e nenhuma ação foi enviada.' })));
   document.body.appendChild(tela);
   tela.querySelector('h1').focus();
   document.title = `${t.titulo} · Grana. Administração local`;

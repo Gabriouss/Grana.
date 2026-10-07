@@ -14,6 +14,9 @@ export const ROTAS_SESSAO = {
 
 // 401 que pedem login (o 'nao-pareado' é tela de bloqueio, tratada no app.js)
 export const CODIGOS_LOGIN = ['nao-autenticado', 'totp-pendente', 'sessao-expirada', 'inatividade'];
+// Vencimento: desde o 2666ffa o servidor destrói o pareamento junto com o login, então estes dois
+// NÃO voltam para a tela de senha. Viram tela cheia "sessão vencida, reabra pelo atalho".
+const VENCIMENTO = ['sessao-expirada', 'inatividade'];
 
 const MENSAGEM_ENTRADA = {
   'sessao-expirada': 'Sua sessão expirou. Entre de novo.',
@@ -150,6 +153,7 @@ export function criarAcesso(deps) {
         // O servidor só julga senha e código juntos, aqui. Errou qualquer um: a sessão volta para a senha.
         if (err.codigo === 'credencial-invalida') { telaSenha('Senha ou código incorreto.'); return; }
         if (err.codigo === 'login-nao-configurado') { telaSemConta(); return; }
+        if (VENCIMENTO.includes(err.codigo)) return; // o app.js já pôs a tela cheia de sessão vencida
         if (CODIGOS_LOGIN.includes(err.codigo) && err.codigo !== 'totp-pendente') { telaSenha(MENSAGEM_ENTRADA[err.codigo]); return; }
         mostrarErro(erro, err, campo, botao);
         if (err.codigo !== 'bloqueado') { botao.disabled = false; campo.focus(); }
@@ -230,8 +234,10 @@ export function criarAcesso(deps) {
   function avaliar() {
     if (etapaAtual !== 'ok') return;
     const agora = Date.now();
-    if (expiraEm && agora >= expiraEm) { pararRelogio(); telaSenha(MENSAGEM_ENTRADA['sessao-expirada']); return; }
-    if (prazoInatividade && agora >= prazoInatividade) { pararRelogio(); telaSenha(MENSAGEM_ENTRADA.inatividade); return; }
+    // O prazo venceu deste lado: quem encerra é o servidor, e ele também desfaz o pareamento.
+    // A tela vai direto para "sessão vencida", sem oferecer senha que não funcionaria.
+    if (expiraEm && agora >= expiraEm) { vencer('sessao-expirada'); return; }
+    if (prazoInatividade && agora >= prazoInatividade) { vencer('inatividade'); return; }
     const faltaIdle = prazoInatividade ? Math.ceil((prazoInatividade - agora) / 1000) : Infinity;
     const faltaLimite = expiraEm ? Math.ceil((expiraEm - agora) / 1000) : Infinity;
     if (faltaLimite <= AVISO_ANTES_SEG && faltaLimite <= faltaIdle) avisar(faltaLimite, 'limite');
@@ -308,6 +314,11 @@ export function criarAcesso(deps) {
     deps.limparContexto();
   }
 
+  function vencer(motivo) {
+    esquecerSessao();
+    deps.bloquear(motivo);
+  }
+
   async function sair() {
     esquecerSessao();
     let d = null;
@@ -367,7 +378,8 @@ export function criarAcesso(deps) {
         return false; // nao-pareado e 401 de login já trocaram a tela
       }
       // Camadas em ordem: sem pareamento, nada mais importa (nem dizer se a conta existe).
-      if (d.etapa === 'nao-pareado') { deps.bloquear('nao-pareado'); return false; }
+      // Se o servidor disser que o pareamento caiu por vencimento, a tela conta o motivo.
+      if (d.etapa === 'nao-pareado') { deps.bloquear(VENCIMENTO.includes(d.motivo) ? d.motivo : 'nao-pareado'); return false; }
       if (d.loginConfigurado === false) { telaSemConta(); return false; }
       // servidor antigo: /api/sessao sem etapa = só CSRF, sem login
       if (!d.etapa) { legado = true; if (d.csrfToken) deps.definirCsrf(d.csrfToken); return true; }
@@ -387,6 +399,7 @@ export function criarAcesso(deps) {
     exigir(codigo) {
       if (legado) return;
       pararRelogio();
+      if (VENCIMENTO.includes(codigo)) { vencer(codigo); return; }
       if (codigo === 'totp-pendente') { if (etapaAtual !== 'totp') telaCodigo(); return; }
       if (etapaAtual === 'senha' && tela) return;
       telaSenha(MENSAGEM_ENTRADA[codigo]);
