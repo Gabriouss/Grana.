@@ -133,6 +133,37 @@ no `context.md`.
 
 ---
 
+# ACERVO DE MARKETING — USAR EM TODA PRODUÇÃO DE MATERIAL DO GRANA. (07/10/2026)
+
+> **Pedido do autor em 07/10/2026:** este acervo existe e deve ser utilizado na
+> produção de todo material de marketing do Grana. Fica logo abaixo do alerta
+> de segurança.
+
+Antes de produzir qualquer estático, carrossel, Story, Reel, motion, landing
+ou peça com o mascote, comece por aqui, e não refaça do zero o que já existe:
+
+- **`docs/marketing/GUIA-DE-PRODUCAO-DE-CRIATIVOS.md`**: leitura obrigatória
+  antes de qualquer criativo. Diz o que usar em cada caso e traz a regra do
+  mockup realista.
+- **`docs/marketing/arsenal/`**: 28 ícones do app (Ionicons) em 5 estilos e 21
+  notificações com texto real do código; `gerar.py` cria mais. Não inventar
+  ícone nem notificação que o app não tenha.
+- **`docs/mascote/`**: prancha de construção do Granabô (versão W3 com boca
+  L3, escolhida pelo autor) e os scripts que a geram.
+- **Estilos e peças aprovados:** `stories-estilo-referencias/`,
+  `funil-criativos-flat-2026-09/`, `r5-colar-pix/`, `motion-desistiu/`,
+  `material-final-2026-09-30/` (copys finais e inventário).
+- **Som:** `identidade-sonora/`. **Vídeo:** `guia-de-estilo-de-video.md`.
+- **Planejamento:** `painel/` (calendário, aprovações, tráfego) e
+  `meta-configuracao-checklist.md`.
+- **Marca:** logotipo e símbolo sempre de `design-system/marca/`.
+
+O acervo foi produzido na branch `claude/cool-einstein-c63bq0` entre 25/09 e
+07/10/2026 e trazido para a `main` em 07/10/2026 (só `docs/marketing/` e
+`docs/mascote/`; o código de voz daquela branch continua fora da `main`).
+
+---
+
 # 04/10/2026 (M1, Quill): REGRA PERMANENTE, ElevenLabs só com aprovação prévia do autor, toda vez
 
 Pedido do autor, como chegou: "NENHUM uso da ElevenLabs que gaste crédito sem a aprovação do autor antes, toda vez. Não gere nem regere imagem, vídeo, áudio, voz ou recorte de fundo. Se precisar, rode só a estimativa, mande o custo em créditos e em dólar ao Orquestrador Supremo e ESPERE o sim do autor. Aprovação anterior não vale para nova geração. Prefira caminho local e gratuito (ffmpeg, rembg, PIL)." Vale já e para sempre. Registrada em `AGENTS.md` (regra 24), na nota do vault `03 - Marketing/Regras de Criativo e Estilo de Vídeo` (seção 2, regra 6) e na nota do canvas `Contexto - AGENTS`. Contexto que a motivou, conforme os relatórios do Flare e do Orquestrador (não reconferido pelo Quill): o Reel gastou US$ 1,149 (6.319,27 créditos) dentro de um teto autorizado e o clipe saiu em formato errado (1280x720, 16:9, 10 s, em vez de 9:16, 5 s); regerar custaria cerca de US$ 1,11 a mais e não foi feito; cada foto de aparelho vazio custou 818 créditos. Descartado: tratar teto já autorizado como licença para regerar. Não verificado: nenhum agente foi auditado quanto a gasto posterior a esta regra.
