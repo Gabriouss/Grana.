@@ -1,0 +1,15 @@
+{
+  "formato": 1,
+  "descricao": "Aceites do autor e pedidos de ajuste registrados pelo painel local. Cada aceite vale só para a versão (sha1 dos arquivos e da legenda) indicada.",
+  "levantamentoInicial": {
+    "feitoEm": "2026-10-07",
+    "resultado": "Nenhum aceite explícito do autor localizado nos INDICE.md das semanas 36 a 40. Lista começa vazia.",
+    "casosConferidos": [
+      "Semana 39, E01, E02, E05 e E06: o índice registra GO condicionado de revisão, que é parecer de revisor e não aceite do autor.",
+      "Semana 39, grana-reels-v8-pop.mp4: o inventário de 30/09 diz 'montagem aprovada 25/09', mas o índice da semana não registra aceite do autor para este arquivo e a peça foi mantida em para-aprovacao pela migração. Sem evidência da versão, não entra aqui.",
+      "Semana 40, C01 a C14 e R13: o índice registra revisões de Beacon e Watchtower e diz que não há aceite final do autor."
+    ]
+  },
+  "aprovacoes": [],
+  "ajustes": []
+}

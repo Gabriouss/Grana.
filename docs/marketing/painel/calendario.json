@@ -1,0 +1,172 @@
+{
+  "formato": 1,
+  "descricao": "Planejamento de publicação do painel local. Guarda só peça, versão, data, hora e canal. Planejar não publica nem agenda.",
+  "diaD": null,
+  "diaDObservacao": "Dia D não declarado. Pela decisão do autor de 25/09/2026 nada da campanha é publicado antes da build nova publicada e testada; o portão está em FUNIL.md, seção 5.",
+  "planejados": [],
+  "referenciaFunilFonte": "FUNIL.md, seção 5 (Calendário único da campanha, após o dia D). Posições relativas em dias úteis; não autorizam publicar nem gastar.",
+  "referenciaFunil": [
+    {
+      "ordem": "D+0",
+      "diasUteis": 0,
+      "peca": "M-FN",
+      "situacao": "Motion existente; reconferir a foto da nota contra a build."
+    },
+    {
+      "ordem": "D+1",
+      "diasUteis": 1,
+      "peca": "E02",
+      "situacao": "Estático: corrigir copy para os lançamentos visíveis; arte revista por outro agente."
+    },
+    {
+      "ordem": "D+2",
+      "diasUteis": 2,
+      "peca": "R6",
+      "situacao": "Foto da nota: gravação e QA reais pendentes."
+    },
+    {
+      "ordem": "D+3",
+      "diasUteis": 3,
+      "peca": "S4",
+      "situacao": "Estático: substituir frase genérica por fato que a tela de contas mostre."
+    },
+    {
+      "ordem": "D+4",
+      "diasUteis": 4,
+      "peca": "R-P",
+      "situacao": "Padeiro v8 aprovado; rever portão antes de publicar."
+    },
+    {
+      "ordem": "D+7",
+      "diasUteis": 7,
+      "peca": "E01",
+      "situacao": "Estático: recapturar Início após a build e alinhar o texto."
+    },
+    {
+      "ordem": "D+8",
+      "diasUteis": 8,
+      "peca": "R1",
+      "situacao": "Captura do resumo na build nova pendente."
+    },
+    {
+      "ordem": "D+9",
+      "diasUteis": 9,
+      "peca": "E06",
+      "situacao": "Estático: mostrar uma tarefa real na versão web, sem rótulo decorativo."
+    },
+    {
+      "ordem": "D+10",
+      "diasUteis": 10,
+      "peca": "R-GB1",
+      "situacao": "Consulta real do assistente e montagem pendentes."
+    },
+    {
+      "ordem": "D+11",
+      "diasUteis": 11,
+      "peca": "S3",
+      "situacao": "Estático: valor e período do resumo real na build nova."
+    },
+    {
+      "ordem": "D+14",
+      "diasUteis": 14,
+      "peca": "R5",
+      "situacao": "Pix colado, com confirmação e salvamento reais."
+    },
+    {
+      "ordem": "D+15",
+      "diasUteis": 15,
+      "peca": "E05",
+      "situacao": "Estático: manter frase das parcelas e retirar rótulo redundante."
+    },
+    {
+      "ordem": "D+16",
+      "diasUteis": 16,
+      "peca": "R-GB2",
+      "situacao": "Registro real pelo assistente pendente."
+    },
+    {
+      "ordem": "D+17",
+      "diasUteis": 17,
+      "peca": "S2",
+      "situacao": "Carrossel de voz, Pix e foto, cada quadro com prova real."
+    },
+    {
+      "ordem": "D+18",
+      "diasUteis": 18,
+      "peca": "R3",
+      "situacao": "Roteiro v3: farmácia, R$ 18,90, captação local; captura pendente."
+    },
+    {
+      "ordem": "D+21",
+      "diasUteis": 21,
+      "peca": "S2 web",
+      "situacao": "Estático reserva: texto e captura web conferidos antes de usar."
+    },
+    {
+      "ordem": "D+22",
+      "diasUteis": 22,
+      "peca": "R2",
+      "situacao": "Roteiro v3; único clipe de IA que cabe no saldo até o dia 29; provar recibo real."
+    },
+    {
+      "ordem": "D+23",
+      "diasUteis": 23,
+      "peca": "R9",
+      "situacao": "Importação de extrato real, conforme decisão posterior de produção."
+    },
+    {
+      "ordem": "D+24",
+      "diasUteis": 24,
+      "peca": "R8",
+      "situacao": "Captura do valor da build nova pendente."
+    },
+    {
+      "ordem": "D+25",
+      "diasUteis": 25,
+      "peca": "S7",
+      "situacao": "Estático de oferta: usar apenas formulação de preço permitida."
+    },
+    {
+      "ordem": "D+28",
+      "diasUteis": 28,
+      "peca": "R10",
+      "situacao": "Roteiro v3: voz, Pix, foto de cupom de limpeza e resumo reais; foto exige QA."
+    },
+    {
+      "ordem": "D+29",
+      "diasUteis": 29,
+      "peca": "S8",
+      "situacao": "Carrossel de ações dos primeiros dias, com capturas verificadas."
+    },
+    {
+      "ordem": "D+30",
+      "diasUteis": 30,
+      "peca": "R4",
+      "situacao": "Roteiro v3: botijão de gás, R$ 110,00, captação local; provar salvamento direto."
+    },
+    {
+      "ordem": "D+31",
+      "diasUteis": 31,
+      "peca": "R7",
+      "situacao": "Roteiro v3: presente, R$ 45,00; widget em HTML, formulário e salvamento reais."
+    },
+    {
+      "ordem": "D+32",
+      "diasUteis": 32,
+      "peca": "R12",
+      "situacao": "Roteiro v3: estacionamento, R$ 12,00; formulário e linha reais."
+    },
+    {
+      "ordem": "Reserva",
+      "diasUteis": null,
+      "peca": "R11",
+      "situacao": "Produzir somente se o autor acionar a reserva."
+    },
+    {
+      "ordem": "Reserva",
+      "diasUteis": null,
+      "peca": "S1",
+      "situacao": "Estático: título e arte revistos; captura da Início reconferida."
+    }
+  ]
+}

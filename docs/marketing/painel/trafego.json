@@ -1,0 +1,82 @@
+{
+  "formato": 1,
+  "descricao": "Tráfego pago planejado no painel local. Nada aqui foi criado, pausado ou pago na Meta.",
+  "fonte": [
+    "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/apoio/briefings/plano-verba-curta.md (rascunho 1 de 30/09/2026, sem aprovação do autor)",
+    "FUNIL.md, seção 13 (Distribuição paga) e seção 14 (Métricas)"
+  ],
+  "situacao": "Rascunho. Nenhum gasto autorizado. O próprio plano diz que não autoriza gasto e que a verba de teste depende de decisão do autor.",
+  "portas": [
+    { "id": "build-publicada", "texto": "Build nova publicada e testada pelo QA (dia D declarado pelo QA).", "estado": "fechada", "fonte": "plano-verba-curta.md, seção 3" },
+    { "id": "visita-para-plano", "texto": "Visita da landing que vira clique em plano acima de 5% (número de mercado, a recalibrar).", "estado": "nao-medida", "fonte": "plano-verba-curta.md, seção 3" },
+    { "id": "compra-organica", "texto": "Pelo menos uma compra real vinda de origem orgânica, provando o checkout de ponta a ponta.", "estado": "nao-medida", "fonte": "plano-verba-curta.md, seção 3" },
+    { "id": "pixel-medido", "texto": "Pixel e InitiateCheckout medidos no Gerenciador de Eventos.", "estado": "nao-medida", "fonte": "plano-verba-curta.md, seção 3" }
+  ],
+  "prerequisitos": [
+    { "id": "pixel-consentimento", "texto": "Pixel com consentimento LGPD", "estado": "pendente" },
+    { "id": "evento-initiatecheckout", "texto": "Evento InitiateCheckout no clique do plano", "estado": "pendente" },
+    { "id": "evento-purchase", "texto": "Evento Purchase com valor vindo do webhook da Cakto", "estado": "pendente" },
+    { "id": "utm-por-peca", "texto": "UTM por origem e por peça na landing", "estado": "a-conferir" }
+  ],
+  "limitesDeReferencia": {
+    "aviso": "Números de mercado do plano antigo, não medidos no Grana. Recalibrar ao fim da sonda.",
+    "itens": [
+      { "sinal": "CTR de link", "limite": "abaixo de 0,8%", "decisao": "trocar o criativo" },
+      { "sinal": "Custo por InitiateCheckout", "limite": "acima de R$ 25", "decisao": "trocar o criativo" },
+      { "sinal": "Visita que vira checkout", "limite": "abaixo de 5%", "decisao": "parar o pago e consertar a página" },
+      { "sinal": "Checkout que vira compra", "limite": "abaixo de 20%", "decisao": "parar o pago" }
+    ],
+    "tetoSemanalAutor": "Nunca mais de R$ 100 por semana sem nova decisão do autor (parâmetro de 22/09/2026).",
+    "pararTudo": [
+      "A Meta reprovar ou limitar a conta ou o anúncio. Não abrir segunda conta nem contornar restrição.",
+      "O anúncio prometer algo que a matriz de plataformas não confirma para o público mirado.",
+      "Checkout ou acesso pós-compra quebrar.",
+      "Saldo pré-pago zerado: decidir de novo antes de recarregar."
+    ],
+    "naoFazer": [
+      "Impulsionar publicação sem UTM.",
+      "Campanha de instalação de app (o Grana. é APK fora da loja).",
+      "Destino que baixa o .apk direto; o destino é sempre a landing.",
+      "Declarar categoria especial de serviços financeiros sem a Meta pedir.",
+      "Falar de conexão bancária ou Open Finance (decisão do autor de 25/09/2026)."
+    ]
+  },
+  "angulosPorEtapa": {
+    "fonte": "FUNIL.md, seção 13",
+    "prospeccao": "R1, R2, R4, R5, R6, R10; S1, S2, S3; cortes de até 15 s com uma demonstração",
+    "consideracaoRetargeting": "R7, R8, R9, R11; S8; objeções, oferta, garantia e primeiros passos",
+    "conversao": "R12; S7; oferta com garantia e CTA direto, preço só como 'menos de R$ 0,37 por dia'"
+  },
+  "campanhas": [
+    {
+      "id": "plano-sonda",
+      "origem": "plano-verba-curta.md, seção 2, fase 2 (rascunho)",
+      "nome": "Sonda de aprovação da conta",
+      "objetivo": "Vendas para o site, otimizando InitiateCheckout (hipótese do rascunho, não confirmada). Testar se a conta nova aprova o anúncio com a menor exposição.",
+      "publico": "Uma campanha e um conjunto. Os três públicos entram como ângulos de criativo no mesmo conjunto, cada um com sua UTM (hipótese do plano).",
+      "orcamentoDiario": 7,
+      "dias": 7,
+      "periodo": { "inicio": null, "fim": null, "relativo": "D+15 a D+21" },
+      "pecas": [],
+      "status": "rascunho",
+      "observacoes": "Só começa se as quatro portas abrirem. Não editar por 7 dias. Verba depende de aprovação do autor (R$ 147 no teste inteiro, ou zero pago até haver 5 compras orgânicas).",
+      "criadoEm": "2026-10-07",
+      "atualizadoEm": "2026-10-07"
+    },
+    {
+      "id": "plano-teste-criativo",
+      "origem": "plano-verba-curta.md, seção 2, fase 2 (rascunho)",
+      "nome": "Teste de criativo",
+      "objetivo": "Descobrir qual dos três ângulos tem o menor custo por InitiateCheckout.",
+      "publico": "Mesmo conjunto da sonda, três ângulos de criativo com UTM própria.",
+      "orcamentoDiario": 14,
+      "dias": 7,
+      "periodo": { "inicio": null, "fim": null, "relativo": "D+22 a D+28" },
+      "pecas": [],
+      "status": "rascunho",
+      "observacoes": "Só se a sonda passar. Decisão de parar, manter ou escalar em D+29. Nenhuma peça vinculada porque nenhuma tem aceite do autor ainda.",
+      "criadoEm": "2026-10-07",
+      "atualizadoEm": "2026-10-07"
+    }
+  ]
+}

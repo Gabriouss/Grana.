@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Grana. Administração local</title>
+  <link rel="icon" href="/design-system/marca/icone-circular.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/estilo.css">
+  <style>
+    /* Base mínima para o painel continuar legível se o estilo.css ainda não existir.
+       O estilo.css (Lumen) sobrescreve tudo isto. */
+    html, body { margin: 0; background: #052229; color: #effffa; }
+    body { font-family: "Neue Machina", sans-serif; font-weight: 300; }
+    [hidden] { display: none !important; }
+  </style>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="pular-para-conteudo" href="#conteudo">Ir para o conteúdo</a>
+  <div class="casca">
+    <header class="barra-topo">
+      <button class="botao botao-fantasma botao-menu" type="button" aria-controls="lateral" aria-expanded="false">Menu</button>
+      <img class="barra-topo-marca" src="/design-system/marca/logotipo-gradiente.svg" alt="Grana." width="96" height="28">
+    </header>
+
+    <nav class="lateral" id="lateral" aria-label="Seções do painel">
+      <a class="lateral-marca" href="#/visao-geral">
+        <img src="/design-system/marca/logotipo-gradiente.svg" alt="Grana." width="120" height="34">
+        <span class="lateral-marca-sub">Administração local</span>
+      </a>
+      <ul class="nav">
+        <li><a class="nav-link" href="#/visao-geral">Visão geral</a></li>
+        <li><a class="nav-link" href="#/supabase">Supabase</a></li>
+        <li><a class="nav-link" href="#/vercel">Vercel</a></li>
+        <li><a class="nav-link" href="#/eas">EAS e builds</a></li>
+        <li><a class="nav-link" href="#/github">GitHub</a></li>
+        <li><a class="nav-link" href="#/vendas">Vendas (Cakto)</a></li>
+        <li class="nav-grupo">
+          <span class="nav-grupo-titulo" id="nav-marketing">Marketing</span>
+          <ul class="nav-sub" aria-labelledby="nav-marketing">
+            <li><a class="nav-link" href="#/marketing/documento">Documento</a></li>
+            <li><a class="nav-link" href="#/marketing/aprovacao">Aprovação</a></li>
+            <li><a class="nav-link" href="#/marketing/feed">Feed</a></li>
+            <li><a class="nav-link" href="#/marketing/calendario">Calendário</a></li>
+            <li><a class="nav-link" href="#/marketing/trafego">Tráfego pago</a></li>
+            <li><a class="nav-link" href="#/marketing/acervo">Acervo</a></li>
+          </ul>
+        </li>
+        <li><a class="nav-link" href="#/design-system">Design System</a></li>
+      </ul>
+      <p class="lateral-rodape">Só neste computador. Nenhuma chave sai do servidor local.</p>
+    </nav>
+
+    <main class="conteudo" id="conteudo" tabindex="-1">
+      <div class="faixa-simulado" role="status" hidden></div>
+      <div class="tela" id="tela" aria-live="polite">
+        <div class="estado estado-carregando"><p class="estado-texto">Abrindo o painel…</p></div>
+      </div>
+    </main>
+  </div>
+
+  <div class="avisos" role="status" aria-live="polite"></div>
+  <noscript><p>O painel precisa de JavaScript ligado.</p></noscript>
+</body>
+</html>
