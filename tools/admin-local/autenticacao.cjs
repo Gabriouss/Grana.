@@ -140,34 +140,119 @@ function uriOtpauth(segredoBase32, usuario) {
 }
 
 // ---------- conta ----------
+//
+// `geracao`: id aleatório da credencial vigente. Muda quando a conta é criada,
+// recriada ou tem o TOTP trocado (F1 do Sentinel/Watchtower). Sessão e
+// desafio guardam a geração em que nasceram; geração diferente = revogados no
+// próximo pedido, sem reiniciar o servidor. O consumo normal de código NÃO
+// muda a geração.
+//
+// Trava entre processos: o servidor (consumo do passo TOTP) e o terminal
+// (cadastro e recadastro) escrevem no mesmo conta.json. Toda escrita passa por
+// `comTrava`, que cria conta.lock em modo exclusivo; quem lê para gravar relê
+// DENTRO da trava, para não sobrescrever uma revogação feita pelo outro.
+
+const ARQUIVO_TRAVA = path.join(PASTA, 'conta.lock');
+
+function dormir(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); }
+
+function comTrava(fn) {
+  const limite = Date.now() + 3000;
+  for (;;) {
+    let fd;
+    try {
+      fs.mkdirSync(PASTA, { recursive: true });
+      fd = fs.openSync(ARQUIVO_TRAVA, 'wx');
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      // Trava esquecida por processo morto: vale 10s.
+      try { if (Date.now() - fs.statSync(ARQUIVO_TRAVA).mtimeMs > 10_000) { fs.unlinkSync(ARQUIVO_TRAVA); continue; } } catch { continue; }
+      if (Date.now() > limite) throw Object.assign(new Error('conta ocupada'), { code: 'TRAVA' });
+      dormir(25);
+      continue;
+    }
+    try { return fn(); } finally { fs.closeSync(fd); try { fs.unlinkSync(ARQUIVO_TRAVA); } catch {} }
+  }
+}
+
+/**
+ * Situação da conta, lida do disco a cada chamada (barata: arquivo pequeno).
+ * { estado: 'ok', conta, geracao } | { estado: 'ausente' } | { estado: 'corrompida' }
+ * Falha de leitura conta como corrompida: na dúvida, fecha (F2).
+ */
+function situacaoConta() {
+  let texto;
+  try { texto = fs.readFileSync(ARQUIVO_CONTA, 'utf8'); } catch (e) {
+    return e.code === 'ENOENT' ? { estado: 'ausente' } : { estado: 'corrompida' };
+  }
+  let c;
+  try { c = JSON.parse(texto); } catch { return { estado: 'corrompida' }; }
+  // Conta criada antes da geração existir (formato 1): ganha uma geração uma
+  // vez, sob a trava, sem mexer em senha nem fator. Só quando falta o campo.
+  if (c && c.formato === 1 && c.geracao === undefined) {
+    try {
+      comTrava(() => {
+        const atual = JSON.parse(fs.readFileSync(ARQUIVO_CONTA, 'utf8'));
+        if (atual.geracao === undefined) {
+          atual.geracao = novaGeracao();
+          atual.formato = 2;
+          gravarAtomico(ARQUIVO_CONTA, atual);
+        }
+        c = atual;
+      });
+    } catch { return { estado: 'corrompida' }; }
+  }
+  const valida = c && typeof c === 'object' && typeof c.usuario === 'string' && c.senha && c.senha.alg === 'scrypt'
+    && typeof c.senha.sal === 'string' && typeof c.senha.hash === 'string'
+    && c.totp && typeof c.totp.segredo === 'string' && /^[A-Z2-7]{16,}$/.test(c.totp.segredo)
+    && typeof c.geracao === 'string' && c.geracao.length >= 16;
+  return valida ? { estado: 'ok', conta: c, geracao: c.geracao } : { estado: 'corrompida' };
+}
 
 function conta() {
-  const c = lerJson(ARQUIVO_CONTA);
-  if (!c || !c.usuario || !c.senha || !c.totp || !c.totp.segredo) return null;
-  return c;
+  const s = situacaoConta();
+  return s.estado === 'ok' ? s.conta : null;
 }
 
 function configurado() {
   return !!conta();
 }
 
-async function salvarConta({ usuario, senha, segredoTotp }) {
+function geracaoAtual() {
+  const s = situacaoConta();
+  return s.estado === 'ok' ? s.geracao : null;
+}
+
+function novaGeracao() {
+  return crypto.randomBytes(18).toString('base64url');
+}
+
+/** `passoDoCadastro`: o passo do código conferido no cadastro, já consumido (F3). */
+async function salvarConta({ usuario, senha, segredoTotp, passoDoCadastro = null }) {
   protegerPasta();
-  gravarAtomico(ARQUIVO_CONTA, {
-    formato: 1,
+  const hash = await hashSenha(senha);
+  comTrava(() => gravarAtomico(ARQUIVO_CONTA, {
+    formato: 2,
     usuario,
-    senha: await hashSenha(senha),
-    totp: { segredo: segredoTotp, ultimoPasso: null },
+    senha: hash,
+    totp: { segredo: segredoTotp, ultimoPasso: passoDoCadastro },
+    geracao: novaGeracao(),
     criadoEm: new Date().toISOString(),
-  });
+  }));
   zerarBloqueio();
 }
 
-async function trocarTotp(segredoTotp) {
-  const c = conta();
-  c.totp = { segredo: segredoTotp, ultimoPasso: null };
-  c.totpTrocadoEm = new Date().toISOString();
-  gravarAtomico(ARQUIVO_CONTA, c);
+/** Recadastro do TOTP: fator novo, passo do cadastro consumido e geração nova, numa gravação só. */
+async function trocarTotp(segredoTotp, passoDoCadastro = null) {
+  comTrava(() => {
+    const atual = situacaoConta();
+    if (atual.estado !== 'ok') throw new Error('Conta ilegível; use --refazer para recriar.');
+    const c = atual.conta;
+    c.totp = { segredo: segredoTotp, ultimoPasso: passoDoCadastro };
+    c.geracao = novaGeracao();
+    c.totpTrocadoEm = new Date().toISOString();
+    gravarAtomico(ARQUIVO_CONTA, c);
+  });
   zerarBloqueio();
 }
 
@@ -225,54 +310,68 @@ async function exclusivo(fn) {
 
 /**
  * Passo 1: confere a senha e devolve o resultado SÓ para o servidor guardar na
- * sessão. A resposta HTTP é a mesma, certa ou errada.
+ * sessão, junto com a geração da conta em que o desafio nasceu (F1).
+ * A resposta HTTP é a mesma, certa ou errada.
  */
 function conferirSenha(senha) {
   const c = conta();
   if (!c) return Promise.resolve(NAO_CONFIGURADO);
   const espera = bloqueadoPor();
   if (espera) return Promise.resolve(recusaBloqueio(espera));
-  if (typeof senha !== 'string' || !senha || senha.length > 256) return Promise.resolve({ ok: true, senhaOk: false });
-  return exclusivo(async () => ({ ok: true, senhaOk: await conferirHash(senha, c.senha) }));
-}
-
-/** Grava o passo aceito antes de qualquer sessão nascer. */
-function consumirPasso(passo) {
-  const atual = conta();
-  if (typeof atual.totp.ultimoPasso === 'number' && passo <= atual.totp.ultimoPasso) return false; // corrida
-  atual.totp.ultimoPasso = passo;
-  gravarAtomico(ARQUIVO_CONTA, atual);
-  return true;
+  if (typeof senha !== 'string' || !senha || senha.length > 256) return Promise.resolve({ ok: true, senhaOk: false, geracao: c.geracao });
+  return exclusivo(async () => ({ ok: true, senhaOk: await conferirHash(senha, c.senha), geracao: c.geracao }));
 }
 
 /**
- * Passo 2: veredito. `senhaOk` vem da sessão (passo 1). Qualquer falha devolve
- * o mesmo erro; o fator que falhou vai só para a auditoria (`fatorFalho`).
+ * Grava o passo aceito antes de qualquer sessão nascer. Relê a conta DENTRO da
+ * trava: se a geração mudou no meio (recadastro concorrente), recusa e não grava,
+ * para não ressuscitar o fator antigo.
  */
-function concluirLogin({ senhaOk, codigo }) {
+function consumirPasso(passo, geracao) {
+  return comTrava(() => {
+    const atual = situacaoConta();
+    if (atual.estado !== 'ok' || atual.geracao !== geracao) return 'geracao';
+    const c = atual.conta;
+    if (typeof c.totp.ultimoPasso === 'number' && passo <= c.totp.ultimoPasso) return 'reuso';
+    c.totp.ultimoPasso = passo;
+    gravarAtomico(ARQUIVO_CONTA, c);
+    return 'ok';
+  });
+}
+
+/**
+ * Passo 2: veredito. `senhaOk` e `geracao` vêm da sessão (passo 1). Qualquer
+ * falha devolve o mesmo erro; o fator que falhou vai só para a auditoria.
+ * Desafio de uma geração antiga nunca vira login (F1).
+ */
+function concluirLogin({ senhaOk, codigo, geracao }) {
   const c = conta();
   if (!c) return Promise.resolve(NAO_CONFIGURADO);
   const espera = bloqueadoPor();
   if (espera) return Promise.resolve(recusaBloqueio(espera));
+  if (!geracao || geracao !== c.geracao) return Promise.resolve({ ...RECUSADO, fatorFalho: 'geracao' });
   return exclusivo(async () => {
     const passo = conferirTotp(c.totp.segredo, String(codigo || '').replace(/\s/g, ''), c.totp.ultimoPasso);
     if (!senhaOk || passo === null) {
       registrarFalha(!senhaOk ? 'senha' : 'codigo');
       return { ...RECUSADO, fatorFalho: !senhaOk ? 'senha' : 'codigo' };
     }
-    if (!consumirPasso(passo)) { registrarFalha('codigo'); return { ...RECUSADO, fatorFalho: 'codigo-reusado' }; }
+    let r;
+    try { r = consumirPasso(passo, geracao); } catch { return { ok: false, status: 503, codigo: 'conta-ocupada', mensagem: 'A conta está sendo alterada agora. Tente de novo em instantes.' }; }
+    if (r === 'geracao') return { ...RECUSADO, fatorFalho: 'geracao' };
+    if (r === 'reuso') { registrarFalha('codigo'); return { ...RECUSADO, fatorFalho: 'codigo-reusado' }; }
     zerarBloqueio();
-    return { ok: true };
+    return { ok: true, geracao };
   });
 }
 
 /** Reconfirmação (step-up) para ação destrutiva: só o código, com a sessão já aberta. */
-function reconfirmar(codigo) {
-  return concluirLogin({ senhaOk: true, codigo });
+function reconfirmar(codigo, geracao) {
+  return concluirLogin({ senhaOk: true, codigo, geracao });
 }
 
 module.exports = {
-  PASTA, ARQUIVO_CONTA, protegerPasta, configurado, conta, conferirSenha, concluirLogin, reconfirmar,
+  PASTA, ARQUIVO_CONTA, protegerPasta, configurado, conta, situacaoConta, geracaoAtual, conferirSenha, concluirLogin, reconfirmar,
   salvarConta, trocarTotp, novoSegredoTotp, uriOtpauth, conferirTotp, hotp, base32, deBase32,
   conferirHash, bloqueadoPor, zerarBloqueio,
 };

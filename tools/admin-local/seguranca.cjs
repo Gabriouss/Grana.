@@ -21,7 +21,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { RAIZ, PORTA } = require('./config.cjs');
+const { RAIZ, RAIZ_DADOS, PORTA } = require('./config.cjs');
+const { registrar } = require('./auditoria.cjs');
 
 const ORIGEM_CANONICA = `http://127.0.0.1:${PORTA}`;
 const HOST_CANONICO = `127.0.0.1:${PORTA}`;
@@ -138,31 +139,51 @@ const MAX_SESSOES = 20;
 
 function criarSessao(base) {
   const agora = Date.now();
-  for (const [k, s] of sessoes) if (agora - s.ultimoUso > PAREAMENTO_INATIVO_MS) sessoes.delete(k);
+  for (const [k, s] of sessoes) {
+    if (agora - s.ultimoUso > PAREAMENTO_INATIVO_MS) { sessoes.delete(k); registrar('sessao-encerrada', { motivo: 'pareamento-inativo', sessao: k }); }
+  }
   // Só quem tem o código de pareamento cria sessão, então o teto não vira
   // arma de quem está de fora (achado R1 do Lynx).
-  while (sessoes.size >= MAX_SESSOES) sessoes.delete(sessoes.keys().next().value);
+  while (sessoes.size >= MAX_SESSOES) {
+    const velha = sessoes.keys().next().value;
+    sessoes.delete(velha);
+    registrar('sessao-encerrada', { motivo: 'teto-de-sessoes', sessao: velha });
+  }
   const id = crypto.randomBytes(32).toString('base64url');
-  sessoes.set(id, { pareadaEm: agora, ultimoUso: agora, etapa: 'senha', senhaOk: false, senhaEm: 0, loginEm: 0, atividadeEm: 0, totpEm: 0, ...base });
+  sessoes.set(id, { pareadaEm: agora, ultimoUso: agora, etapa: 'senha', senhaOk: false, senhaEm: 0, loginEm: 0, atividadeEm: 0, totpEm: 0, geracao: null, ...base });
   return id;
 }
 
 /** Troca o id mantendo o estado. Devolve o id novo. */
 function rotacionar(id) {
   const s = sessoes.get(id);
+  if (!s) return null; // destruída no meio do caminho (revogação, sair): não promove
   sessoes.delete(id);
   const novo = crypto.randomBytes(32).toString('base64url');
   sessoes.set(novo, s);
   return novo;
 }
 
+/** Destrói o contexto (e com ele o CSRF, que deriva do id). Devolve se existia. */
 function encerrarSessao(id) {
-  sessoes.delete(id);
+  return sessoes.delete(id);
+}
+
+/** Destrói todas as sessões (revogação geral). Devolve quantas. */
+function encerrarTodas() {
+  const n = sessoes.size;
+  sessoes.clear();
+  return n;
 }
 
 function cookieDaSessao(id) {
   // Sem Max-Age nem Domain: cookie de sessão do navegador. A validade real é a do servidor.
   return `${COOKIE}=${id}; HttpOnly; SameSite=Strict; Path=/`;
+}
+
+/** Apaga o cookie no navegador: mesmo nome, Path e escopo host-only (F5). */
+function cookieExpirado() {
+  return `${COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 function lerCookie(req) {
@@ -182,22 +203,26 @@ function lerCookie(req) {
  */
 function sessaoDe(req, humano) {
   const id = lerCookie(req);
-  if (!id || !/^[A-Za-z0-9_-]{43}$/.test(id)) return null;
+  if (!id) return null;
+  if (!/^[A-Za-z0-9_-]{43}$/.test(id)) return { cookieMorto: true };
   const s = sessoes.get(id);
-  if (!s) return null;
+  if (!s) return { cookieMorto: true }; // cookie de contexto que não existe mais: o navegador deve apagá-lo
   const agora = Date.now();
-  if (agora - s.ultimoUso > PAREAMENTO_INATIVO_MS) { sessoes.delete(id); return null; }
-  s.ultimoUso = agora;
+  // Vencimento destrói o contexto inteiro, com o CSRF dele (F5). Voltar exige
+  // novo pareamento pelo atalho. Uma linha de auditoria por transição (F6).
   let motivo = null;
-  if (s.etapa === 'ok') {
-    if (agora - s.loginEm > LOGIN_ABSOLUTO_MS) motivo = 'sessao-expirada';
-    else if (agora - s.atividadeEm > LOGIN_INATIVO_MS) motivo = 'inatividade';
-    if (motivo) Object.assign(s, { etapa: 'senha', senhaOk: false, loginEm: 0, totpEm: 0, motivoSaida: motivo });
-    else if (humano) s.atividadeEm = agora;
-  } else if (s.etapa === 'totp' && agora - s.senhaEm > PASSO_SENHA_MS) {
-    Object.assign(s, { etapa: 'senha', senhaOk: false });
+  if (agora - s.ultimoUso > PAREAMENTO_INATIVO_MS) motivo = 'pareamento-inativo';
+  else if (s.etapa === 'ok' && agora - s.loginEm > LOGIN_ABSOLUTO_MS) motivo = 'sessao-expirada';
+  else if (s.etapa === 'ok' && agora - s.atividadeEm > LOGIN_INATIVO_MS) motivo = 'inatividade';
+  if (motivo) {
+    sessoes.delete(id);
+    registrar('sessao-encerrada', { motivo, sessao: id });
+    return { encerrada: motivo };
   }
-  return { id, s, motivo };
+  s.ultimoUso = agora;
+  if (s.etapa === 'ok' && humano) s.atividadeEm = agora;
+  if (s.etapa === 'totp' && agora - s.senhaEm > PASSO_SENHA_MS) Object.assign(s, { etapa: 'senha', senhaOk: false, geracao: null });
+  return { id, s };
 }
 
 function resumoDaSessao(sessao) {
@@ -209,8 +234,6 @@ function resumoDaSessao(sessao) {
     r.expiraEm = new Date(s.loginEm + LOGIN_ABSOLUTO_MS).toISOString();
     r.inatividadeSeg = LOGIN_INATIVO_MS / 1000;
     r.restanteSeg = Math.max(0, Math.floor(Math.min(LOGIN_INATIVO_MS - (agora - s.atividadeEm), LOGIN_ABSOLUTO_MS - (agora - s.loginEm)) / 1000));
-  } else if (s.motivoSaida) {
-    r.motivo = s.motivoSaida;
   }
   return r;
 }
@@ -295,7 +318,9 @@ const MONTAGENS = [
   { prefixo: '/design-system/marketing-mockups/', raiz: path.join(RAIZ, 'design-system', 'marketing-mockups'), ext: new Set(['.png', '.jpg', '.jpeg', '.webp']) },
   { prefixo: '/assets/fonts/', raiz: path.join(RAIZ, 'assets', 'fonts'), ext: new Set(['.otf', '.ttf', '.woff', '.woff2']), publico: true },
   // .md e .txt para a prévia de peças de texto (F4 do Lumen): saem como text/plain em sandbox.
-  { prefixo: '/docs/marketing/', raiz: path.join(RAIZ, 'docs', 'marketing'), ext: new Set([...EXT_MIDIA, '.md', '.txt']) },
+  // L03: o acervo sai da MESMA raiz de dados das APIs de marketing. Na instância
+  // de QA (GRANA_ADMIN_RAIZ_DADOS), só a cópia é servida, sem cair no acervo real.
+  { prefixo: '/docs/marketing/', raiz: path.join(RAIZ_DADOS, 'docs', 'marketing'), ext: new Set([...EXT_MIDIA, '.md', '.txt']) },
   { prefixo: '/', raiz: WEB, proprio: true, publico: true, ext: new Set(['.html', '.js', '.css', '.svg', '.png', '.ico', '.json', '.woff2', '.otf']) },
 ];
 
@@ -387,6 +412,6 @@ function resolverEstatico(pathname) {
 module.exports = {
   HOSTS, ORIGENS, ORIGEM_CANONICA, HOST_CANONICO, CSP, ARQUIVO_PAREAMENTO, PASTA_DADOS,
   cabecalhosBase, enderecoLocal, hostValido, hostCanonico, origemValida, deOutroSite, hostDuplicado,
-  novoCodigo, apagarCodigo, girarSeVencido, parear, criarSessao, rotacionar, encerrarSessao, cookieDaSessao,
+  novoCodigo, apagarCodigo, girarSeVencido, parear, criarSessao, rotacionar, encerrarSessao, encerrarTodas, cookieDaSessao, cookieExpirado,
   sessaoDe, resumoDaSessao, stepUpValido, csrfDe, checarApi, checarCabecalhos, dentroDoLimite, resolverEstatico, lerCookie,
 };

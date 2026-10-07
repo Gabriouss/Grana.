@@ -264,6 +264,52 @@ async function tratarAcao(req, res, url, corpo, sessao) {
   return responderErro(res, 404, 'rota-inexistente', 'Rota não encontrada.');
 }
 
+// ---------- guarda comum de sessão (API e arquivos protegidos) ----------
+//
+// Um só lugar decide se a sessão vale (F1, F2, F5):
+// - contexto vencido ou cookie de contexto inexistente: o cookie é apagado;
+// - sessão com login (ou desafio de TOTP em curso) é conferida contra a conta
+//   NO DISCO a cada pedido: conta ausente, ilegível ou com outra geração
+//   (TOTP trocado/conta recriada no terminal) destrói o contexto na hora,
+//   sem precisar reiniciar o servidor.
+
+const NAO_PAREADO = { status: 401, codigo: 'nao-pareado', mensagem: 'Painel não pareado. Abra pelo atalho Grana. Admin na Área de Trabalho.' };
+const MENSAGEM_FIM = {
+  inatividade: 'Sessão encerrada por inatividade. Abra pelo atalho Grana. Admin para entrar de novo.',
+  'sessao-expirada': 'Sua sessão expirou. Abra pelo atalho Grana. Admin para entrar de novo.',
+};
+
+/**
+ * { sessao } quando há contexto válido (pode estar só pareado), ou
+ * { sessao: null, fim } quando o contexto acabou de ser encerrado ou não existe.
+ * `fim` é a recusa a devolver; o cookie já foi expirado em `res`.
+ */
+function guarda(req, res, humano) {
+  const r = seg.sessaoDe(req, humano);
+  if (!r) return { sessao: null, fim: NAO_PAREADO };
+  if (r.cookieMorto) {
+    res.setHeader('Set-Cookie', seg.cookieExpirado());
+    return { sessao: null, fim: NAO_PAREADO };
+  }
+  if (r.encerrada) {
+    res.setHeader('Set-Cookie', seg.cookieExpirado());
+    const codigo = r.encerrada === 'pareamento-inativo' ? 'nao-pareado' : r.encerrada;
+    return { sessao: null, fim: { status: 401, codigo, mensagem: MENSAGEM_FIM[codigo] || NAO_PAREADO.mensagem } };
+  }
+  const sessao = r;
+  if (sessao.s.etapa === 'ok' || sessao.s.etapa === 'totp') {
+    const sit = auth.situacaoConta();
+    const motivo = sit.estado !== 'ok' ? `conta-${sit.estado}` : sit.geracao !== sessao.s.geracao ? 'credencial-trocada' : null;
+    if (motivo) {
+      seg.encerrarSessao(sessao.id);
+      registrar('revogacao', { motivo, passo: sessao.s.etapa, sessao: sessao.id });
+      res.setHeader('Set-Cookie', seg.cookieExpirado());
+      return { sessao: null, fim: { status: 401, codigo: 'nao-pareado', mensagem: 'A conta admin mudou ou está ilegível. Abra pelo atalho Grana. Admin e entre de novo.' } };
+    }
+  }
+  return { sessao };
+}
+
 // ---------- sessão e login ----------
 
 function dadosSessao(sessao) {
@@ -274,13 +320,18 @@ function definirCookie(res, id) {
   res.setHeader('Set-Cookie', seg.cookieDaSessao(id));
 }
 
-async function tratarSessaoELogin(req, res, url, sessao) {
+async function tratarSessaoELogin(req, res, url, sessao, fim) {
   const p = url.pathname;
-  if (p === '/api/sessao' && req.method === 'GET') return responderOk(res, dadosSessao(sessao));
+  if (p === '/api/sessao' && req.method === 'GET') {
+    const d = dadosSessao(sessao);
+    if (!sessao && fim && fim.codigo !== 'nao-pareado') d.motivo = fim.codigo; // diz por que saiu
+    return responderOk(res, d);
+  }
 
   if (req.method !== 'POST') return responderErro(res, 405, 'metodo-recusado', 'Método não permitido.');
 
-  // Pareamento: sem sessão ainda, então sem CSRF, mas com Origin canônica obrigatória.
+  // F4: Origin canônica obrigatória em TODO POST, antes de ler o corpo.
+  // Pareamento: ainda sem sessão, então sem CSRF.
   if (p === '/api/parear') {
     const rc = seg.checarCabecalhos(req, { exigeCsrf: false, exigeOrigem: true });
     if (rc) return recusar(res, rc);
@@ -293,16 +344,18 @@ async function tratarSessaoELogin(req, res, url, sessao) {
     return responderOk(res, dadosSessao({ id: r.id, s: { etapa: 'senha' } }));
   }
 
-  // Daqui em diante: sessão pareada e CSRF.
-  if (!sessao) return recusar(res, { status: 401, codigo: 'nao-pareado', mensagem: 'Painel não pareado. Abra pelo atalho Grana. Admin na Área de Trabalho.' });
-  const rc = seg.checarCabecalhos(req, { exigeCsrf: true, sessao });
+  if (!sessao) return recusar(res, fim || NAO_PAREADO);
+  const rc = seg.checarCabecalhos(req, { exigeCsrf: true, sessao, exigeOrigem: true });
   if (rc) return recusar(res, rc);
   const corpo = await lerCorpo(req);
 
+  // F5: sair destrói o contexto inteiro (e o CSRF) e apaga o cookie.
+  // Voltar exige novo pareamento pelo atalho.
   if (p === '/api/sair') {
-    registrar('logout', { sessao: sessao.id });
-    Object.assign(sessao.s, { etapa: 'senha', senhaOk: false, loginEm: 0, totpEm: 0, motivoSaida: undefined });
-    return responderOk(res, { etapa: 'senha' });
+    seg.encerrarSessao(sessao.id);
+    registrar('logout', { passo: sessao.s.etapa, sessao: sessao.id });
+    res.setHeader('Set-Cookie', seg.cookieExpirado());
+    return responderOk(res, { etapa: 'nao-pareado' });
   }
 
   if (p === '/api/sessao/renovar') {
@@ -315,14 +368,15 @@ async function tratarSessaoELogin(req, res, url, sessao) {
     const r = await auth.conferirSenha(corpo.senha);
     if (!r.ok) { registrar('login', { passo: 'senha', resultado: r.codigo, sessao: sessao.id }); return recusar(res, r); }
     // A resposta é a mesma com senha certa ou errada; o veredito sai no passo do código.
-    Object.assign(sessao.s, { etapa: 'totp', senhaOk: r.senhaOk, senhaEm: Date.now(), motivoSaida: undefined });
+    // O desafio guarda a geração da conta em que nasceu (F1).
+    Object.assign(sessao.s, { etapa: 'totp', senhaOk: r.senhaOk, senhaEm: Date.now(), geracao: r.geracao });
     return responderOk(res, dadosSessao(sessao));
   }
 
   if (p === '/api/login/totp') {
     // Step-up: sessão já completa, só o código.
     if (sessao.s.etapa === 'ok') {
-      const r = await auth.reconfirmar(corpo.codigo);
+      const r = await auth.reconfirmar(corpo.codigo, sessao.s.geracao);
       registrar('login', { passo: 'step-up', resultado: r.ok ? 'ok' : r.codigo, fator: r.fatorFalho, sessao: sessao.id });
       if (!r.ok) return recusar(res, r); // errar o step-up não derruba o login
       sessao.s.totpEm = Date.now();
@@ -330,16 +384,20 @@ async function tratarSessaoELogin(req, res, url, sessao) {
       return responderOk(res, dadosSessao(sessao));
     }
     if (sessao.s.etapa !== 'totp') return recusar(res, { status: 401, codigo: 'nao-autenticado', mensagem: 'Digite a senha primeiro.' });
-    const r = await auth.concluirLogin({ senhaOk: sessao.s.senhaOk, codigo: corpo.codigo });
+    const r = await auth.concluirLogin({ senhaOk: sessao.s.senhaOk, codigo: corpo.codigo, geracao: sessao.s.geracao });
     registrar('login', { passo: 'final', resultado: r.ok ? 'ok' : r.codigo, fator: r.fatorFalho, sessao: sessao.id });
     if (!r.ok) {
-      Object.assign(sessao.s, { etapa: 'senha', senhaOk: false }); // volta para a senha
+      Object.assign(sessao.s, { etapa: 'senha', senhaOk: false, geracao: null }); // volta para a senha
       return recusar(res, r);
     }
     const agora = Date.now();
-    // O mesmo objeto de estado passa para um id novo (contra fixação de sessão).
-    Object.assign(sessao.s, { etapa: 'ok', senhaOk: false, loginEm: agora, atividadeEm: agora, totpEm: agora, motivoSaida: undefined });
+    // Contexto destruído durante o await (sair, revogação, poda) não é promovido.
     const novoId = seg.rotacionar(sessao.id);
+    if (!novoId) {
+      res.setHeader('Set-Cookie', seg.cookieExpirado());
+      return recusar(res, NAO_PAREADO);
+    }
+    Object.assign(sessao.s, { etapa: 'ok', senhaOk: false, loginEm: agora, atividadeEm: agora, totpEm: agora, geracao: r.geracao });
     definirCookie(res, novoId);
     return responderOk(res, dadosSessao({ id: novoId, s: sessao.s }));
   }
@@ -363,14 +421,13 @@ async function tratarApi(req, res, url) {
     if (req.headers['x-grana-admin'] !== '1') return recusar(res, { status: 403, codigo: 'cabecalho-ausente', mensagem: 'Falta o cabeçalho X-Grana-Admin.' });
 
     const humano = req.headers['x-grana-atividade'] === '1';
-    const sessao = seg.sessaoDe(req, humano);
+    const { sessao, fim } = guarda(req, res, humano);
 
-    if (ROTAS_SESSAO.has(p)) return await tratarSessaoELogin(req, res, url, sessao);
+    if (ROTAS_SESSAO.has(p)) return await tratarSessaoELogin(req, res, url, sessao, fim);
 
     // Tudo o mais exige login completo.
-    if (!sessao) return recusar(res, { status: 401, codigo: 'nao-pareado', mensagem: 'Painel não pareado. Abra pelo atalho Grana. Admin na Área de Trabalho.' });
+    if (!sessao) return recusar(res, fim);
     if (sessao.s.etapa !== 'ok') {
-      if (sessao.motivo) return recusar(res, { status: 401, codigo: sessao.motivo, mensagem: sessao.motivo === 'inatividade' ? 'Sessão encerrada por inatividade.' : 'Sua sessão expirou. Entre de novo.' });
       if (sessao.s.etapa === 'totp') return recusar(res, { status: 401, codigo: 'totp-pendente', mensagem: 'Digite o código do autenticador.' });
       return recusar(res, { status: 401, codigo: 'nao-autenticado', mensagem: 'Entre com a senha e o código do autenticador.' });
     }
@@ -380,7 +437,7 @@ async function tratarApi(req, res, url) {
       if (!h) return responderErro(res, 404, 'rota-inexistente', 'Rota não encontrada.');
       return await h(req, res, url);
     }
-    const rc = seg.checarCabecalhos(req, { exigeCsrf: true, sessao });
+    const rc = seg.checarCabecalhos(req, { exigeCsrf: true, sessao, exigeOrigem: true });
     if (rc) return recusar(res, rc);
     const corpo = await lerCorpo(req);
     return await tratarAcao(req, res, url, corpo, sessao);
@@ -396,10 +453,10 @@ async function tratarApi(req, res, url) {
   }
 }
 
-/** Sessão completa para servir arquivos protegidos do repositório. */
-function sessaoCompleta(req) {
-  const s = seg.sessaoDe(req, false);
-  return !!(s && s.s.etapa === 'ok');
+/** Arquivos protegidos: mesmo guarda da API (F2/F5), sem renovar a inatividade. */
+function sessaoCompleta(req, res) {
+  const { sessao } = guarda(req, res, false);
+  return !!(sessao && sessao.s.etapa === 'ok');
 }
 
 module.exports = { tratarApi, responderErro, agoraLocalIso, sessaoCompleta, pareceCredencial };

@@ -24,7 +24,8 @@ o endereço não basta: o atalho é quem pareia o navegador com o painel.
 3. Na tela do painel: **senha** e, em seguida, o **código de 6 dígitos** do app.
 
 O login vence com 10 minutos sem uso e, de qualquer forma, 1 hora depois de
-entrar. Redeploy e preparar build pedem o código do app de novo quando o
+entrar. **Sair, vencer ou trocar o autenticador encerra também o pareamento**:
+para voltar, abra de novo pelo atalho. Redeploy e preparar build pedem o código do app de novo quando o
 último código tem mais de 5 minutos. **Para desligar o painel, feche a janela
 "Grana. Admin".**
 
@@ -45,7 +46,10 @@ permissão da pasta fica só com o seu usuário do Windows.
 | `conta.json` | Usuário, hash scrypt da senha e segredo do autenticador |
 | `bloqueio.json` | Contadores de tentativas erradas (o bloqueio sobrevive a reinício) |
 | `pareamento-4317.txt` | Código de pareamento de uso único, apagado quando o painel desliga |
-| `auditoria.log` | Uma linha por login, pareamento e ação, sem senha, código ou token |
+| `auditoria.log` | Uma linha por login, pareamento, ação, saída, revogação e por subida, batimento (5 min) e encerramento do servidor, sem senha, código ou token |
+| `servidor.log` | Erros do servidor (sem segredo), para diagnosticar uma queda |
+| `servidor-4317.vivo` | Tocado a cada minuto; se sobrar depois de uma queda, a próxima subida registra a janela da queda |
+| `conta.lock` | Trava breve entre o servidor e o terminal ao gravar a conta |
 
 ## De onde vêm as credenciais das integrações
 

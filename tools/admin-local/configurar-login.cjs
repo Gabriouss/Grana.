@@ -10,9 +10,15 @@
 // (fora do repositório, com permissão só deste usuário). A senha é guardada como
 // hash scrypt. A chave do autenticador aparece só nesta tela, uma vez: ela não é
 // gravada em log nem enviada a lugar nenhum.
+//
+// Trocar o autenticador ou recriar a conta muda a "geração" da conta: quem
+// estiver logado no painel sai no próximo pedido, sem reiniciar o servidor.
+// O código conferido aqui fica marcado como usado e não serve para o login.
+// Cada cadastro e recadastro deixa uma linha na auditoria, sem segredo.
 
 const readline = require('readline');
 const auth = require('./autenticacao.cjs');
+const { registrar } = require('./auditoria.cjs'); // módulo isolado: não carrega o .env
 
 const args = new Set(process.argv.slice(2));
 
@@ -50,7 +56,8 @@ async function novaSenha() {
   }
 }
 
-async function cadastrarAutenticador(usuario) {
+/** Devolve { segredo, passo }: o passo do código conferido, para gravar como consumido. */
+async function cadastrarAutenticador(usuario, acao) {
   const segredo = auth.novoSegredoTotp();
   const agrupado = segredo.match(/.{1,4}/g).join(' ');
   console.log('\nNo app autenticador do celular (Google Authenticator, Microsoft Authenticator, 1Password...),');
@@ -63,45 +70,69 @@ async function cadastrarAutenticador(usuario) {
   console.log('Esta chave aparece só agora. Não tire print nem cole em lugar nenhum.');
   for (let tentativa = 1; tentativa <= 5; tentativa++) {
     const codigo = (await perguntar('Digite o código de 6 dígitos que o app mostra agora: ')).replace(/\s/g, '');
-    if (auth.conferirTotp(segredo, codigo, null) !== null) return segredo;
+    const passo = auth.conferirTotp(segredo, codigo, null);
+    if (passo !== null) return { segredo, passo };
     console.log('  Código não confere. Confira se o relógio do celular está certo e tente de novo.');
   }
+  registrar('conta', { acao, resultado: 'recusado', motivo: 'codigo-errado' });
   console.log('\nCinco códigos errados. Nada foi gravado. Rode o comando de novo.');
   process.exit(1);
 }
 
 async function principal() {
   console.log('\nGrana. Admin: cadastro da conta do painel local\n');
-  const existe = auth.configurado();
+  const situacao = auth.situacaoConta();
 
   if (args.has('--refazer-totp')) {
-    if (!existe) { console.log('Ainda não há conta. Rode sem --refazer-totp para criar.'); process.exit(1); }
+    if (situacao.estado !== 'ok') {
+      registrar('conta', { acao: 'recovery', resultado: 'recusado', motivo: `conta-${situacao.estado}` });
+      console.log(situacao.estado === 'ausente' ? 'Ainda não há conta. Rode sem --refazer-totp para criar.' : 'A conta está ilegível. Use --refazer para recriar.');
+      process.exit(1);
+    }
     const senha = await perguntar('Senha atual (não aparece na tela): ', { oculto: true });
-    if (!(await auth.conferirHash(senha, auth.conta().senha))) { console.log('Senha incorreta. Nada foi alterado.'); process.exit(1); }
-    const segredo = await cadastrarAutenticador(auth.conta().usuario);
-    await auth.trocarTotp(segredo);
-    console.log('\nAutenticador trocado. O antigo deixou de funcionar. Reinicie o painel se ele estiver aberto.');
+    if (!(await auth.conferirHash(senha, situacao.conta.senha))) {
+      registrar('conta', { acao: 'recovery', resultado: 'recusado', motivo: 'senha' });
+      console.log('Senha incorreta. Nada foi alterado.');
+      process.exit(1);
+    }
+    const { segredo, passo } = await cadastrarAutenticador(situacao.conta.usuario, 'recovery');
+    await auth.trocarTotp(segredo, passo);
+    registrar('conta', { acao: 'recovery', resultado: 'ok' });
+    console.log('\nAutenticador trocado. O antigo deixou de funcionar, e quem estava logado no painel sai no próximo clique.');
     return;
   }
 
+  const existe = situacao.estado !== 'ausente';
   if (existe && !args.has('--refazer')) {
-    console.log('A conta admin já existe. Para trocar só o autenticador: --refazer-totp. Para recriar tudo: --refazer.');
+    console.log(situacao.estado === 'ok'
+      ? 'A conta admin já existe. Para trocar só o autenticador: --refazer-totp. Para recriar tudo: --refazer.'
+      : 'Há uma conta admin ilegível. Para recriar: --refazer.');
     process.exit(1);
   }
   if (existe) {
     const conf = await perguntar('Isto APAGA a conta atual e cria outra. Digite RECRIAR para seguir: ');
-    if (conf.trim() !== 'RECRIAR') { console.log('Cancelado. Nada foi alterado.'); process.exit(1); }
+    if (conf.trim() !== 'RECRIAR') {
+      registrar('conta', { acao: 'recriar', resultado: 'cancelado' });
+      console.log('Cancelado. Nada foi alterado.');
+      process.exit(1);
+    }
   }
 
-  let usuario = (await perguntar('Nome de usuário (Enter para "admin"): ')).trim().toLowerCase() || 'admin';
+  const acao = existe ? 'recriar' : 'bootstrap';
+  const usuario = (await perguntar('Nome de usuário (Enter para "admin"): ')).trim().toLowerCase() || 'admin';
   if (!/^[a-z0-9._-]{3,40}$/.test(usuario)) { console.log('Use de 3 a 40 letras minúsculas, números, ponto, hífen ou sublinhado.'); process.exit(1); }
   const senha = await novaSenha();
-  const segredo = await cadastrarAutenticador(usuario);
+  const { segredo, passo } = await cadastrarAutenticador(usuario, acao);
   process.stdout.write('\nGravando (o cálculo da senha leva alguns segundos)... ');
-  await auth.salvarConta({ usuario, senha, segredoTotp: segredo });
+  await auth.salvarConta({ usuario, senha, segredoTotp: segredo, passoDoCadastro: passo });
+  registrar('conta', { acao, resultado: 'ok' });
   console.log('pronto.');
-  console.log(`\nConta criada em ${auth.PASTA}. Para entrar: senha + código do app.`);
+  console.log(`\nConta criada em ${auth.PASTA}. Para entrar: senha + um código NOVO do app (o que você digitou agora já foi usado).`);
   console.log('Perdeu o celular? Rode este comando com --refazer-totp, nesta máquina.');
 }
 
-principal().catch((e) => { console.error('Falhou: ' + (e && e.message)); process.exit(1); });
+principal().catch((e) => {
+  registrar('conta', { acao: 'cadastro', resultado: 'erro' });
+  console.error('Falhou: ' + (e && e.message));
+  process.exit(1);
+});

@@ -15,12 +15,56 @@ const fs = require('fs');
 const { PORTA, SIMULAR, ocultar } = require('./config.cjs');
 const seg = require('./seguranca.cjs');
 const auth = require('./autenticacao.cjs');
-const { registrar } = require('./auditoria.cjs');
+const { registrar, definirFiltro } = require('./auditoria.cjs');
+
+definirFiltro(ocultar); // nenhum valor do .env chega à auditoria
 const { tratarApi, responderErro, sessaoCompleta } = require('./rotas.cjs');
 
-// O servidor nunca cai por exceção esquecida; o log sai sem segredo e sem pilha.
-process.on('uncaughtException', (e) => console.error('[painel] exceção não tratada: ' + ocultar(e && e.message).slice(0, 200)));
-process.on('unhandledRejection', (e) => console.error('[painel] promessa rejeitada: ' + ocultar(e && e.message).slice(0, 200)));
+// ---------- diário do processo ----------
+//
+// A queda de 07/10/2026 (entre 19:03 e 19:17) não deixou rastro: o processo
+// morreu sem passar por nenhum tratador. Daqui em diante:
+// - todo erro do console também vai para servidor.log, na pasta protegida;
+// - um arquivo de vida (servidor-<porta>.vivo) é tocado a cada minuto e apagado
+//   na saída normal. Se ele existir ao subir, a execução anterior morreu sem
+//   registro, e a auditoria ganha a janela: último sinal de vida -> agora;
+// - 'servidor/no-ar' com PID, 'servidor/vivo' a cada 5 min, e
+//   'servidor/encerrado' com motivo em todo sinal, exceção fatal e saída.
+const path = require('path');
+const ARQ_LOG = path.join(seg.PASTA_DADOS, 'servidor.log');
+const ARQ_VIVO = path.join(seg.PASTA_DADOS, `servidor-${PORTA}.vivo`);
+
+const errorOriginal = console.error.bind(console);
+console.error = (...partes) => {
+  const linha = ocultar(partes.map(String).join(' ')).slice(0, 400);
+  errorOriginal(linha);
+  try {
+    try { if (fs.statSync(ARQ_LOG).size > 1024 * 1024) fs.renameSync(ARQ_LOG, ARQ_LOG + '.1'); } catch {}
+    fs.appendFileSync(ARQ_LOG, `${new Date().toISOString()} pid=${process.pid} ${linha}\n`, { mode: 0o600 });
+  } catch { /* sem disco: fica só o console */ }
+};
+
+let encerrando = false;
+let donoDosArquivos = false; // vira true quando este processo consegue a porta
+function registrarEncerramento(motivo, codigoSaida) {
+  if (encerrando) return;
+  encerrando = true;
+  registrar('servidor', { resultado: 'encerrado', motivo, pid: process.pid, codigoSaida });
+  if (donoDosArquivos) {
+    seg.apagarCodigo();
+    try { fs.unlinkSync(ARQ_VIVO); } catch {}
+  }
+}
+
+// Exceção esquecida não derruba o servidor; fica no log e na auditoria, sem segredo nem pilha.
+process.on('uncaughtException', (e) => {
+  console.error('[painel] exceção não tratada: ' + ocultar(e && e.message).slice(0, 200));
+  registrar('servidor', { resultado: 'erro', motivo: 'excecao-nao-tratada', pid: process.pid });
+});
+process.on('unhandledRejection', (e) => {
+  console.error('[painel] promessa rejeitada: ' + ocultar(e && e.message).slice(0, 200));
+  registrar('servidor', { resultado: 'erro', motivo: 'promessa-rejeitada', pid: process.pid });
+});
 
 function texto(res, status, msg, extra = {}) {
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', ...extra });
@@ -33,7 +77,7 @@ function servirEstatico(req, res, pathname) {
   if (!alvo) return texto(res, 404, 'Não encontrado.');
   // Acervo e design system exigem login completo; a casca, a marca e a fonte não,
   // porque a tela de login precisa delas (e já são públicas no repositório).
-  if (!alvo.publico && !sessaoCompleta(req)) return texto(res, 401, 'Entre no painel para ver este arquivo.');
+  if (!alvo.publico && !sessaoCompleta(req, res)) return texto(res, 401, 'Entre no painel para ver este arquivo.');
 
   let tamanho;
   try { tamanho = fs.statSync(alvo.arquivo).size; } catch { return texto(res, 404, 'Não encontrado.'); }
@@ -104,22 +148,41 @@ servidor.on('error', (e) => {
   process.exit(1);
 });
 
-function encerrar() {
-  seg.apagarCodigo();
-  registrar('servidor', { resultado: 'encerrado' });
-  process.exit(0);
+// Sinais. No Windows, fechar a janela do console chega como SIGHUP (o Windows
+// dá alguns segundos antes de matar), Ctrl+C como SIGINT e Ctrl+Break como SIGBREAK.
+for (const [sinal, motivo] of [['SIGINT', 'ctrl-c'], ['SIGTERM', 'sigterm'], ['SIGBREAK', 'ctrl-break'], ['SIGHUP', 'janela-fechada']]) {
+  process.on(sinal, () => { registrarEncerramento(motivo, 0); process.exit(0); });
 }
-process.on('SIGINT', encerrar);
-process.on('SIGTERM', encerrar);
-process.on('SIGBREAK', encerrar); // fechar a janela do console no Windows
-process.on('exit', () => seg.apagarCodigo());
+// Qualquer outra saída (process.exit, fim do laço, erro de porta) também deixa recibo.
+process.on('exit', (codigo) => registrarEncerramento(codigo === 0 ? 'saida-normal' : 'saida-com-erro', codigo));
 
 const pastaOk = auth.protegerPasta();
-seg.novoCodigo();
-setInterval(() => seg.girarSeVencido(), 60_000).unref();
 
+function tocarVivo() {
+  try { fs.writeFileSync(ARQ_VIVO, `${process.pid} ${new Date().toISOString()}`, { mode: 0o600 }); } catch {}
+}
+
+// Só quem CONSEGUIU a porta mexe no código de pareamento e no arquivo de vida:
+// uma segunda instância que falha com "porta em uso" não pode apagar nem trocar
+// os arquivos da que está no ar (achado do teste de encerramento, 07/10).
 servidor.listen(PORTA, '127.0.0.1', () => {
-  registrar('servidor', { resultado: 'no-ar', simulado: SIMULAR });
+  donoDosArquivos = true;
+  // A execução anterior morreu sem registro? (arquivo de vida que ninguém apagou)
+  let anterior = null;
+  try {
+    const st = fs.statSync(ARQ_VIVO);
+    anterior = { pid: Number(fs.readFileSync(ARQ_VIVO, 'utf8').split(' ')[0]) || null, ultimoSinal: st.mtime.toISOString() };
+  } catch { /* saída anterior foi normal, ou primeira vez */ }
+  seg.novoCodigo();
+  setInterval(() => seg.girarSeVencido(), 60_000).unref();
+  setInterval(tocarVivo, 60_000).unref();
+  setInterval(() => registrar('servidor', { resultado: 'vivo', pid: process.pid }), 5 * 60_000).unref();
+  if (anterior) {
+    registrar('servidor', { resultado: 'encerrado', motivo: 'sem-registro-detectado-ao-subir', pid: anterior.pid, ultimoSinalDeVida: anterior.ultimoSinal });
+    console.error(`[painel] a execução anterior (pid ${anterior.pid}) terminou sem registro; último sinal de vida: ${anterior.ultimoSinal}`);
+  }
+  tocarVivo();
+  registrar('servidor', { resultado: 'no-ar', pid: process.pid, simulado: SIMULAR });
   console.log(`Grana. Admin no ar: ${seg.ORIGEM_CANONICA}/  (só neste computador${SIMULAR ? ', modo SIMULADO' : ''})`);
   if (!pastaOk) console.log('AVISO: não consegui restringir a permissão da pasta de dados do painel.');
   if (!auth.configurado()) console.log('A conta admin ainda não existe. Rode: node tools/admin-local/configurar-login.cjs');

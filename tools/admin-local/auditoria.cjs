@@ -1,18 +1,28 @@
 'use strict';
 // Auditoria local do painel (dono: Keel). Uma linha JSON por evento em
-// %APPDATA%\grana-admin\auditoria.log, pasta com permissão só do usuário
-// (fora do git, do EAS e do Google Drive). Nunca grava senha, código, token,
-// cookie, corpo de pedido nem valor do .env: só o evento, o resultado e um
-// apelido curto da sessão (hash), que não serve para entrar.
+// %APPDATA%\grana-admin\auditoria.log (ou GRANA_ADMIN_PASTA_CONTA), pasta com
+// permissão só do usuário (fora do git, do EAS e do Google Drive).
+//
+// Módulo sem dependência do servidor: o terminal (configurar-login.cjs) usa o
+// mesmo registro sem carregar o .env nem as integrações (F6). O servidor liga
+// o filtro de segredos com `definirFiltro(ocultar)`.
+//
+// Só entram campos da lista abaixo. Nunca: senha, segredo/URI do TOTP, código,
+// cookie, CSRF, hash, corpo de pedido ou valor do .env. A sessão vira um
+// apelido (hash curto), que não serve para entrar.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { ocultar } = require('./config.cjs');
-const { PASTA_DADOS } = require('./seguranca.cjs');
 
-const ARQUIVO = path.join(PASTA_DADOS, 'auditoria.log');
+const PASTA = process.env.GRANA_ADMIN_PASTA_CONTA || path.join(process.env.APPDATA || os.homedir(), 'grana-admin');
+const ARQUIVO = path.join(PASTA, 'auditoria.log');
 const LIMITE_BYTES = 5 * 1024 * 1024;
+const CAMPOS = new Set(['passo', 'resultado', 'codigo', 'fator', 'motivo', 'rota', 'acao', 'origem', 'simulado', 'quantas', 'pid', 'codigoSaida', 'ultimoSinalDeVida']);
+
+let filtro = (t) => t;
+function definirFiltro(fn) { if (typeof fn === 'function') filtro = fn; }
 
 function agoraLocal() {
   const d = new Date();
@@ -22,26 +32,32 @@ function agoraLocal() {
 }
 
 function apelido(idSessao) {
-  return idSessao ? crypto.createHash('sha256').update(idSessao).digest('hex').slice(0, 10) : null;
+  return idSessao ? crypto.createHash('sha256').update(String(idSessao)).digest('hex').slice(0, 10) : null;
 }
 
-/** evento: 'login' | 'pareamento' | 'acao' | 'logout' | 'recusa'... ; campos sem segredo. */
+/**
+ * evento: 'servidor' | 'pareamento' | 'login' | 'logout' | 'sessao-encerrada' |
+ * 'revogacao' | 'conta' | 'acao' | 'recusa'. Campos fora da lista são ignorados.
+ */
 function registrar(evento, campos = {}) {
   const linha = { em: agoraLocal(), evento };
   for (const [k, v] of Object.entries(campos)) {
+    if (v === undefined || v === null) continue;
     if (k === 'sessao') linha.sessao = apelido(v);
-    else if (v !== undefined) linha[k] = typeof v === 'string' ? v.slice(0, 200) : v;
+    else if (CAMPOS.has(k)) linha[k] = typeof v === 'string' ? v.slice(0, 120) : v;
   }
   try {
-    fs.mkdirSync(PASTA_DADOS, { recursive: true });
+    fs.mkdirSync(PASTA, { recursive: true });
     try {
       if (fs.statSync(ARQUIVO).size > LIMITE_BYTES) fs.renameSync(ARQUIVO, ARQUIVO + '.1'); // gira um arquivo
     } catch { /* ainda não existe */ }
-    fs.appendFileSync(ARQUIVO, ocultar(JSON.stringify(linha)) + '\n', { encoding: 'utf8', mode: 0o600 });
+    fs.appendFileSync(ARQUIVO, filtro(JSON.stringify(linha)) + '\n', { encoding: 'utf8', mode: 0o600 });
+    return true;
   } catch (e) {
-    // Falha de auditoria não derruba o painel, mas deixa recibo no console.
-    console.error('[painel] auditoria não gravou: ' + (e && e.code));
+    // Falha de auditoria não derruba o painel, mas deixa recibo visível.
+    console.error('[painel] AUDITORIA NÃO GRAVOU (' + (e && e.code) + '): evento ' + evento);
+    return false;
   }
 }
 
-module.exports = { registrar, ARQUIVO };
+module.exports = { registrar, definirFiltro, ARQUIVO };
