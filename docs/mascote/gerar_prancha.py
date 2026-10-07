@@ -1,5 +1,5 @@
-import sys; sys.path.insert(0,'.')
-exec(open('comparar.py').read().split('N=520')[0])
+import os, sys; AQUI=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,AQUI)
+exec(open(os.path.join(AQUI,'gerar_comparativo.py')).read().split('N=520')[0])
 V=L3
 F=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',26); Fs=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',18)
 N=520; S=1.25; BG=np.array([0.88,0.885,0.89]); H=N+110
@@ -17,4 +17,4 @@ for i,(deg,lab) in enumerate(views):
     dr.text((i*N+N//2,120+H-40),lab,fill=(30,50,60),font=F,anchor='mm')
 for yy in [120+oy+int(N*(0.5-1/(2*S))),120+oy+N//2,120+oy+int(N*(0.5+1/(2*S)))]:
     for x in range(0,N*4,14): dr.line([x,yy,x+6,yy],fill=(150,160,165))
-sheet.save('granabo-prancha-w3.png'); print('ok')
+sheet.save(os.path.join(AQUI,'granabo-prancha-w3.png')); print('ok')

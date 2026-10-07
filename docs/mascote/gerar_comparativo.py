@@ -1,4 +1,5 @@
-import sys; sys.path.insert(0,'.'); from fofo import *
+import os, sys; AQUI=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,AQUI)
+from granabo_modelo import *
 base=dict(widen=0,blur=0,round=False,mint=[0.55,0.86,0.74],spec=0.25,shape='dot',eye_x=0.25,eye_y=0.30,eye_w=0.07,eye_h=0.07)
 A=dict(base)
 Bv=dict(base,widen=0,blur=7,round=True,shape='oval',eye_x=0.30,eye_y=0.32,eye_w=0.10,eye_h=0.13)
@@ -25,4 +26,4 @@ for i,(V,lab) in enumerate(vs):
     base_[oy:oy+N]=base_[oy:oy+N]*(1-al[...,None])+img*al[...,None]
     sheet.paste(Image.fromarray((base_*255).astype(np.uint8)),(i*N,120))
     dr.text((i*N+N//2,120+H-40),lab,fill=(30,50,60),font=Fm,anchor='mm')
-sheet.save('granabo-sorrisos-largos.png'); print('ok')
+sheet.save(os.path.join(AQUI,'granabo-sorrisos-largos.png')); print('ok')

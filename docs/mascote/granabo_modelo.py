@@ -1,7 +1,8 @@
 import numpy as np, sys
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-D='/tmp/claude-0/-home-user-Grana-/9370b940-4925-51a0-ac92-ff52a48d29da/'
-im=np.array(Image.open(D+'images/2.png').convert('RGBA')).astype(float)
+import os
+AQUI=os.path.dirname(os.path.abspath(__file__))
+im=np.array(Image.open(os.path.join(AQUI,'logo-g.png')).convert('RGBA')).astype(float)
 dark=(im[...,3]>128)&(im[...,:3].mean(-1)<160)
 ys,xs=np.where(dark); M0=dark[ys.min():ys.max()+1,xs.min():xs.max()+1]; MH,MW=M0.shape
 R2=1.0; T=0.13; R1=R2-T

@@ -1,7 +1,9 @@
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-import os; D=os.environ.get('GRANABO_DIR','./')
-im=np.array(Image.open(D+'images/2.png').convert('RGBA')).astype(float)
+import os
+AQUI=os.path.dirname(os.path.abspath(__file__))
+D=AQUI+'/'
+im=np.array(Image.open(os.path.join(AQUI,'logo-g.png')).convert('RGBA')).astype(float)
 dark=(im[...,3]>128)&(im[...,:3].mean(-1)<160)
 ys,xs=np.where(dark); y0,y1,x0,x1=ys.min(),ys.max(),xs.min(),xs.max()
 M=dark[y0:y1+1,x0:x1+1]; MH,MW=M.shape
@@ -97,4 +99,4 @@ for i,(deg,lab) in enumerate(views):
 # guides
 for yy in [top-10+oy+int(N*(0.5-1/(2*S))) , top-10+oy+N//2, top-10+oy+int(N*(0.5+1/(2*S)))]:
     for x in range(0,cellW*4,14): dr.line([x,yy,x+6,yy],fill=(150,160,165))
-sheet.save(D+'scratchpad/granabo-prancha.png'); print('saved')
+sheet.save(D+'granabo-prancha.png'); print('saved')
