@@ -6,7 +6,7 @@
 // Minimização (LGPD): do comprador sai só o e-mail mascarado; nome, telefone
 // e documento nunca deixam este módulo.
 
-const { ler, tem } = require('../config.cjs');
+const { ler, tem, registrarSegredo } = require('../config.cjs');
 const { pedirJson, ErroIntegracao } = require('./_http.cjs');
 const { mascararEmail } = require('./supabase.cjs');
 
@@ -22,6 +22,7 @@ async function obterToken() {
   if (r.status >= 400 || !r.dados || !r.dados.access_token) {
     throw new ErroIntegracao('cakto-token', `Cakto: não consegui autenticar (HTTP ${r.status}). A credencial do .env pode ter sido trocada.`);
   }
+  registrarSegredo(r.dados.access_token);
   token = { valor: r.dados.access_token, expiraEm: Date.now() + (Number(r.dados.expires_in) || 3600) * 1000 };
   return token.valor;
 }

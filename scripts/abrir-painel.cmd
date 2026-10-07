@@ -1,16 +1,19 @@
 @echo off
 rem Grana. Admin - painel administrativo local (dono: Keel).
 rem
-rem   scripts\abrir-painel.cmd                -> sobe o painel (se preciso) e abre http://localhost:4317/
+rem   scripts\abrir-painel.cmd                -> sobe o painel (se preciso), pareia e abre o navegador
 rem   scripts\abrir-painel.cmd --criar-atalho -> cria o atalho "Grana. Admin" na Area de Trabalho
 rem
 rem O painel escuta so em 127.0.0.1. Nada aqui imprime valor do .env.
+rem O codigo de pareamento vai no fragmento (#par=), que o navegador nunca manda
+rem ao servidor nem grava em log; ele e de uso unico e gira a cada 10 minutos.
 setlocal
 cd /d "%~dp0.."
 set "PORTA=4317"
 rem Abre 127.0.0.1, e nao localhost: o navegador resolve localhost primeiro para ::1,
 rem onde outro programa poderia estar escutando (achado A7 do Lynx).
 set "URL=http://127.0.0.1:%PORTA%/"
+set "DADOS=%APPDATA%\grana-admin"
 
 if /i "%~1"=="--criar-atalho" goto criar_atalho
 
@@ -21,11 +24,21 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem Primeira vez: cria a conta admin (senha + autenticador) aqui mesmo no terminal.
+if not exist "%DADOS%\conta.json" (
+  echo A conta admin do painel ainda nao existe. Vamos criar agora.
+  node tools\admin-local\configurar-login.cjs
+  if errorlevel 1 (
+    pause
+    exit /b 1
+  )
+)
+
 rem Ja esta no ar? Confere que quem responde e o painel, nao outro programa.
 call :painel_no_ar
 if not errorlevel 1 goto abrir
 
-rem Porta ocupada por outro programa: nao derruba nada, so avisa.
+rem Porta ocupada por outro programa (em qualquer endereco, IPv4 ou IPv6): so avisa.
 netstat -ano | findstr /r /c:":%PORTA%  *[^ ]*  *LISTENING" >nul
 if not errorlevel 1 (
   echo A porta %PORTA% esta ocupada por outro programa, que nao e o painel.
@@ -48,16 +61,24 @@ pause
 exit /b 1
 
 :abrir
-start "" "%URL%"
+set "CODIGO="
+if exist "%DADOS%\pareamento-%PORTA%.txt" set /p CODIGO=<"%DADOS%\pareamento-%PORTA%.txt"
+if not defined CODIGO (
+  echo Nao achei o codigo de pareamento. Feche a janela "Grana. Admin" e abra pelo atalho de novo.
+  pause
+  exit /b 1
+)
+start "" "%URL%#par=%CODIGO%"
+set "CODIGO="
 exit /b 0
 
 :painel_no_ar
-curl.exe -s -m 2 -H "Host: localhost:%PORTA%" "http://127.0.0.1:%PORTA%/api/saude" 2>nul | findstr /c:"grana-admin" >nul
+curl.exe -s -m 2 -H "Host: 127.0.0.1:%PORTA%" "http://127.0.0.1:%PORTA%/api/saude" 2>nul | findstr /c:"grana-admin" >nul
 exit /b %errorlevel%
 
 :criar_atalho
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$d=[Environment]::GetFolderPath('Desktop'); $s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d 'Grana. Admin.lnk'));" ^
-  "$s.TargetPath='%~f0'; $s.WorkingDirectory='%CD%'; $s.WindowStyle=7; $s.Description='Painel administrativo local do Grana. (so neste computador)';" ^
+  "$s.TargetPath='%~f0'; $s.WorkingDirectory='%CD%'; $s.WindowStyle=1; $s.Description='Painel administrativo local do Grana. (so neste computador)';" ^
   "$s.IconLocation=\"$env:SystemRoot\System32\shell32.dll,13\"; $s.Save(); Write-Output ('Atalho criado em ' + (Join-Path $d 'Grana. Admin.lnk'))"
 exit /b %errorlevel%

@@ -117,7 +117,7 @@ async function listarPelaCli() {
 async function builds() {
   if (!emCurso) emCurso = listarPelaCli().finally(() => { emCurso = null; });
   const lista = await emCurso;
-  return { ...lista, saldo: saldo(), comoDisparar: 'O painel só prepara a build. O disparo (eas build) é colado pelo autor no terminal (regra 4).' };
+  return { ...lista, saldo: saldo(), preparoPendente: versaoPendente(), comoDisparar: 'O painel só prepara a build. O disparo (eas build) é colado pelo autor no terminal (regra 4).' };
 }
 
 async function status() {
@@ -126,6 +126,20 @@ async function status() {
 }
 
 // ---------- preparar build ----------
+
+function versaoDoTexto(texto) {
+  const m = String(texto || '').match(/"version"\s*:\s*"(\d+\.\d+\.\d+)"/);
+  return m ? m[1] : null;
+}
+
+/** { pasta, head } quando a versão do app.json na pasta difere da do HEAD; senão null. */
+function versaoPendente() {
+  let pasta = null, head = null;
+  try { pasta = versaoDoTexto(fs.readFileSync(path.join(RAIZ, 'app.json'), 'utf8')); } catch { /* sem app.json */ }
+  try { head = versaoDoTexto(require('child_process').execFileSync('git', ['show', 'HEAD:app.json'], { cwd: RAIZ, encoding: 'utf8', timeout: 10_000, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] })); } catch { /* sem git */ }
+  if (pasta && head && pasta !== head) return { pasta, head };
+  return null;
+}
 
 // Um preparo por vez (achado A2 do Lynx): dois preparo-lancamento.ts
 // simultâneos leriam e gravariam o mesmo app.json, com bump duplo.
@@ -148,6 +162,13 @@ async function prepararBuildUmaVez({ tipo, mensagem }) {
   if (nota.length > 600) return { ok: false, status: 400, codigo: 'mensagem-longa', mensagem: 'A nota passa de 600 caracteres.' };
   if (/[\u0000-\u001f"]/.test(nota.replace(/\n/g, ''))) return { ok: false, status: 400, codigo: 'mensagem-invalida', mensagem: 'A nota não pode ter aspas duplas nem caracteres de controle.' };
 
+  // F8 do Vigil: um preparo anterior subiu a versão e ainda não foi commitado.
+  // Preparar de novo pularia uma versão (1.10.6 -> 1.10.7) e o teto não contaria
+  // nenhuma das duas, porque o teto lê commits.
+  const pendente = versaoPendente();
+  if (pendente) {
+    return { ok: false, status: 409, codigo: 'preparo-pendente', mensagem: `Há um preparo de build não commitado: o app.json da pasta está em ${pendente.pasta} e o último commit em ${pendente.head}. Commite esse preparo (ou desfaça, se foi engano) antes de preparar outra build.` };
+  }
   const antes = saldo();
   if (antes.status !== 'ok') return { ok: false, status: 503, codigo: 'saldo-indisponivel', mensagem: antes.erro.mensagem };
   if (!antes.semana.podePreparar) {

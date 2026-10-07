@@ -58,9 +58,17 @@ function tem(nome) {
   return !!ler(nome);
 }
 
+// Segredos derivados (token OAuth obtido em tempo de execução, hipótese H2 do
+// Lynx): também saem de qualquer resposta ou log.
+const derivados = new Set();
+function registrarSegredo(valor) {
+  if (typeof valor === 'string' && valor.length >= 8) derivados.add(valor);
+}
+
 /** Troca qualquer valor sensível presente no texto por "[oculto]". */
 function ocultar(texto) {
   let s = String(texto == null ? '' : texto);
+  for (const v of derivados) s = s.split(v).join('[oculto]');
   for (const [nome, v] of valores) {
     if (!v || v.length < 6) continue;
     if (nome.startsWith('EXPO_PUBLIC_SUPABASE_URL')) continue; // URL pública, não é segredo
@@ -80,4 +88,8 @@ const PORTA = Number(process.env.GRANA_ADMIN_PORTA) || 4317;
 const SIMULAR = process.env.GRANA_ADMIN_SIMULAR === '1';
 const REPO_GITHUB = 'Gabriouss/Grana.';
 
-module.exports = { RAIZ, PORTA, SIMULAR, REPO_GITHUB, ler, tem, ocultar, refSupabase, _parse: parse };
+// Raiz alternativa SÓ para os dados de marketing (teste de escrita numa cópia,
+// sem tocar no aprovacoes.json real).
+const RAIZ_DADOS = process.env.GRANA_ADMIN_RAIZ_DADOS ? path.resolve(process.env.GRANA_ADMIN_RAIZ_DADOS) : RAIZ;
+
+module.exports = { RAIZ, RAIZ_DADOS, PORTA, SIMULAR, REPO_GITHUB, ler, tem, ocultar, registrarSegredo, refSupabase, _parse: parse };

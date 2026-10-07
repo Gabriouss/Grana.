@@ -14,7 +14,9 @@ class ErroIntegracao extends Error {
     this.integracao = true;
     this.codigo = codigo;
     this.status = status;
-    this.causa = causa ? ocultar(String(causa)).slice(0, 300) : undefined;
+    // Só a mensagem técnica curta (rede, prazo), nunca corpo de resposta do
+    // provedor, que pode ecoar dado pessoal (hipótese H1 do Lynx).
+    this.causa = causa ? ocultar(String(causa)).slice(0, 120) : undefined;
   }
 }
 
@@ -39,10 +41,10 @@ async function pedirJson(nome, url, { metodo = 'GET', cabecalhos = {}, corpo, pr
     let dados = null;
     try { dados = texto ? JSON.parse(texto) : null; } catch { dados = null; }
     if (r.status === 401 || r.status === 403) {
-      throw new ErroIntegracao(`${nome}-credencial-recusada`, `${nome}: a credencial do .env foi recusada (HTTP ${r.status}). Pode ter sido trocada ou estar sem permissão.`, 502, texto);
+      throw new ErroIntegracao(`${nome}-credencial-recusada`, `${nome}: a credencial do .env foi recusada (HTTP ${r.status}). Pode ter sido trocada ou estar sem permissão.`, 502);
     }
     if (r.status === 429) throw new ErroIntegracao(`${nome}-limite`, `${nome}: limite de requisições atingido. Tente de novo em instantes.`, 502);
-    if (r.status >= 500) throw new ErroIntegracao(`${nome}-indisponivel`, `${nome}: serviço respondeu HTTP ${r.status}.`, 502, texto);
+    if (r.status >= 500) throw new ErroIntegracao(`${nome}-indisponivel`, `${nome}: serviço respondeu HTTP ${r.status}.`, 502);
     return { status: r.status, dados };
   } catch (e) {
     if (e instanceof ErroIntegracao) throw e;
