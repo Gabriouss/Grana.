@@ -1237,7 +1237,8 @@ button.cal-item { cursor: pointer; }
 .porta {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: var(--s-md);
   padding: var(--s-md) 0;
   border-bottom: 1px solid var(--rule);
@@ -2138,3 +2139,8 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
 
 /* Links operacionais: a caixa inteira continua clicável em telas estreitas. */
 .tabela a[href] { display: inline-flex; align-items: center; min-height: var(--alvo); min-width: var(--alvo); overflow-wrap: anywhere; }
+
+.porta > .selo { flex: none; }
+.porta > span:not(.selo):not(.campo-ajuda) { flex: 1; min-width: min(100%, 16ch); }
+.porta > .campo-ajuda { flex-basis: 100%; }
+.tela-trafego .secao-corpo > h3 { margin-top: var(--s-xl); }
