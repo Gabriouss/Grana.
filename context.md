@@ -162,9 +162,11 @@ no `context.md`.
 - 10h13: republicado v45 (`4bd909d`), `verify_jwt` true, sonda com a conta de teste 200. Deploy só de `assistente-financeiro`, pela regra 11 (autorização literal do autor: "Publique").
 - Sugestão do Keel fora desta build: quando os dois modelos falham, dizer que o assistente está fora do ar, em vez de "Algo deu errado" (o código `sem_provedor` com 503 já existe). Não é regressão da v43.
 
-## DEFEITO ABERTO: nota da build 1.10.6 perdeu 9 de 10 linhas
+## Nota da build 1.10.6 perdeu 9 de 10 linhas, depois CORRIGIDA
 
-A nota aprovada pelo autor tem 10 linhas (`nota-build-1.10.6-FINAL.txt`). No `--message` do Windows, a multilinha foi truncada: `app_release.notes` ficou só com a primeira linha (a do lançamento apagado de assinatura). **O aviso do Flare sobre esse risco foi ignorado pelo maestro.** O pop-up "O que mudou no Grana." mostra, portanto, uma linha só. A correção depende de autorização do autor (mexe em `app_release` e/ou em nova build, que conta na cota da regra 22). Não corrigido por Quill.
+A nota aprovada pelo autor tem 10 linhas (`nota-build-1.10.6-FINAL.txt`). No `--message` do Windows, a multilinha foi truncada: `app_release.notes` ficou só com a primeira linha (a do lançamento apagado de assinatura). **O aviso do Flare sobre esse risco foi ignorado pelo maestro.** O pop-up "O que mudou no Grana." mostra, portanto, uma linha só. A correção dependia de autorização do autor (mexe em `app_release`).
+
+**Atualização (08/10, a pedido do Orquestrador Supremo): CORRIGIDA com autorização do autor.** `app_release.notes` agora tem as 10 linhas, 859 caracteres, validadas por `validarNotaRelease` antes de gravar. Quem viu o pop-up antes da correção viu só a primeira linha. A causa (truncamento da multilinha no `--message` do Windows) segue como hipótese forte, não isolada em teste próprio; não fiz a correção, só registro.
 
 ## Verificação
 
