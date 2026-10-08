@@ -274,7 +274,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   left: var(--s-lg);
   top: -60px;
   z-index: 80;
-  padding: var(--s-sm) var(--s-lg);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s-lg);
   border-radius: var(--r-md);
   background: var(--ink);
   color: var(--paper);
@@ -666,7 +669,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
   display: inline-flex;
   align-items: center;
   gap: var(--s-icone);
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--rule);
   border-radius: var(--r-pill);
@@ -1686,7 +1689,7 @@ body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
   border: 1px solid var(--rule);
 }
 .ds-segmento button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 var(--s-lg);
   border: 0;
   border-radius: calc(var(--r-sm) - 2px);
@@ -1706,6 +1709,7 @@ body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
   cursor: pointer;
   transition: background-color 180ms ease-out;
 }
+.ds-switch::before { content: ''; position: absolute; inset: -8px 0; } /* área de toque de 44 px, desenho de 28 */
 .ds-switch::after {
   content: '';
   position: absolute;
