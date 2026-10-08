@@ -26,9 +26,9 @@ Mês-pai 2026-09: a quinta-feira foi 2026-09-24. Revisões 04 e 05 foram incluí
 
 ## Pastas de status
 
-- para-aprovacao: E01, E02, E05 e E06.
+- para-aprovacao: E01, E02, E05 e E06 da revisão 06 (`para-aprovacao/pecas/funil/revisao-06/`).
 - aprovados: vazia; .gitkeep mantém a pasta no Git. Nenhum aceite expresso do autor para esses arquivos foi localizado.
-- historico: revisão 04.
+- historico: revisão 04 e revisão 05 de E01, E02, E05 e E06 (`historico/pecas/funil/revisao-05/`), substituída pela 06.
 - apoio: mockups, capturas, relatórios de verificação, pré-vias, briefs, manifest e CSV.
 
 ## Regra futura
@@ -40,3 +40,14 @@ Use data prevista de publicação; sem data, produção/criação. A primeira in
 Cada linha registra o aceite explícito do autor dado no painel local, para a versão indicada. Versão diferente precisa de novo aceite.
 
 - 07/10/2026 10:31 (-03:00): aceite pelo autor no painel local. Peça `para-aprovacao/pecas/reels/grana-reels-v8-pop.mp4`, versão `bc01c04e92ba`. Registro em `docs/marketing/painel/aprovacoes.json`. Aceite não é publicação.
+
+## Correções pedidas no painel local · recibo 08/10/2026
+
+Correção pronta, aguardando aceite do autor. Os quatro pedidos de 07/10 sobre E01, E02, E05 e E06 geraram a revisão 06, em `para-aprovacao/pecas/funil/revisao-06/` (HTML e PNG 1080×1440). A versão anterior foi para o histórico. Nenhuma versão nova entrou em aprovacoes[]: aceite é decisão do autor. Logotipo é o gradiente oficial, sem aviso de dado fictício na arte, aparelho inteiro dentro da margem. Sem ElevenLabs e sem publicação. Verificado: render em Chrome e leitura visual dos quatro PNG. Não verificado: leitura em telefone e conformidade fina com o design system.
+
+| Peça | SHA1 antigo | SHA1 novo |
+|---|---|---|
+| E01 | e4a24c3e9006 | bdf9fce74b18 |
+| E02 | 4396fe4e863d | c089529d7daf |
+| E05 | d43a0cfde4616 | 7ecae57067dc |
+| E06 | 9ec5b2ded738 | da00f8ec9ddb |
