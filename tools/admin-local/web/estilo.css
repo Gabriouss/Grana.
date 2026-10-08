@@ -1222,7 +1222,7 @@ button.cal-item { cursor: pointer; }
 }
 
 /* Tráfego pago */
-.grade-campanhas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--s-md); }
+.grade-campanhas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: var(--s-md); }
 .campanha {
   display: flex;
   flex-direction: column;
@@ -1275,6 +1275,10 @@ button.cal-item { cursor: pointer; }
 .documento-sumario a:hover { color: var(--ink); background: var(--hover); }
 .documento-sumario .sumario-sub a { padding-left: var(--s-xl); font-size: var(--t-micro); }
 .documento-corpo { min-width: 0; }
+.documento { min-width: 0; overflow-wrap: anywhere; }
+.documento pre { max-width: 100%; overflow-x: auto; }
+.documento table { display: block; max-width: 100%; overflow-x: auto; }
+.documento img { max-width: 100%; height: auto; }
 .documento [id^="doc-"] { scroll-margin-top: var(--s-xl); }
 @media (max-width: 1023px) {
   .documento-layout { grid-template-columns: minmax(0, 1fr); }
