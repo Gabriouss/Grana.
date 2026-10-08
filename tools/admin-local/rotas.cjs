@@ -196,6 +196,7 @@ const GET = {
     semana: url.searchParams.get('semana') || undefined,
     tipo: url.searchParams.get('tipo') || undefined,
   }], { pecas: [], semanas: [], total: 0 }),
+  '/api/marketing/ajustes': (req, res) => responderOk(res, { pedidos: marketing('ajustes-fila').fila.listar(), armazenamento: 'privado-local', remoto: false }),
   '/api/marketing/feed': (req, res) => rotaMarketingGet(res, 'catalogo', ['feed'], [], { pecas: [], total: 0 }),
   '/api/marketing/documento': (req, res) => rotaMarketingGet(res, 'catalogo', ['documento'], [], { markdown: '' }),
   '/api/marketing/calendario': (req, res, url) => {
@@ -209,7 +210,7 @@ const GET = {
 // ---------- ações (POST, login completo + CSRF) ----------
 
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste)$/;
-const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego']);
+const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry']);
 const ACOES_BUILD = {
   '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
   '/api/eas/disparar-build': ['DISPARAR BUILD', 'dispararBuild'],
@@ -232,6 +233,26 @@ async function tratarAcao(req, res, url, corpo, sessao) {
     }
     const m = ID_PECA.exec(p);
     let r;
+    if (p === '/api/marketing/ajustes/aceitar' || p === '/api/marketing/ajustes/retry') {
+      try {
+        const fila = marketing('ajustes-fila').fila;
+        if (p === '/api/marketing/ajustes/retry') {
+          if (corpo.confirmacao !== 'TENTAR ENTREGA NOVAMENTE') return responderErro(res, 400, 'confirmacao-invalida', 'Digite TENTAR ENTREGA NOVAMENTE.');
+          responderOk(res, { pedido: await fila.retry(corpo.pedidoId) });
+        } else {
+          if (corpo.confirmacao !== 'APROVAR') return responderErro(res, 400, 'confirmacao-invalida', 'Digite APROVAR.');
+          const peca = marketing('catalogo').obterPeca(RAIZ_DADOS, corpo.pecaId);
+          if (peca.versao !== corpo.versao) return responderErro(res, 409, 'versao-mudou', 'Revise a versao atual.');
+          // Queue first: an acceptance in aprovacoes.json without the matching request would
+          // be an orphan the author never saw corrected.
+          fila.conferirAceite(peca, corpo.pedidoId);
+          const aceite = await marketing('aprovacoes').aprovar(RAIZ_DADOS, peca.id, { versao: peca.versao, confirmacao: 'APROVAR' });
+          responderOk(res, { aceite, pedido: await fila.aceitar(peca, corpo.pedidoId) });
+        }
+      } catch (e) { erroDeMarketing(res, e); }
+      registrar('acao', { rota: p, resultado: res.statusCode, sessao: sessao.id });
+      return undefined;
+    }
     if (m) r = rotaMarketingPost(res, 'aprovacoes', m[2] === 'aprovar' ? ['aprovar'] : ['pedirAjuste', 'ajuste'], [m[1], corpo]);
     else if (p === '/api/marketing/calendario') r = rotaMarketingPost(res, 'calendario', ['planejar', 'salvar', 'gravar'], [corpo]);
     else r = rotaMarketingPost(res, 'trafego', ['salvarCampanha', 'salvar', 'gravar'], [corpo]);

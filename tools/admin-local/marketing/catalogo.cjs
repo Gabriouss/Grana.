@@ -347,6 +347,14 @@ function enriquecer(raiz, pecas) {
   const cal = lerJson(caminhoPainel(raiz, 'calendario.json'), { planejados: [] });
   const aprovacoes = Array.isArray(ap.aprovacoes) ? ap.aprovacoes : [];
   const ajustes = Array.isArray(ap.ajustes) ? ap.ajustes : [];
+  // Pedidos novos vivem na fila privada (fora do repositório), não em ajustes[]. Pedido
+  // ainda aberto para a versão na tela mantém o selo "Ajuste pedido".
+  let fila = [];
+  try { fila = require('./ajustes-fila.cjs').fila.listar(); } catch { fila = []; }
+  const ABERTOS = new Set(['novo', 'em-correcao', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'precisa-de-atencao']);
+  for (const r of fila) {
+    if (ABERTOS.has(r.estado)) ajustes.push({ id: r.pecaId, caminho: r.caminho, versao: r.versaoAlvo, pedidoEm: r.criadoEm, motivo: r.textoOriginal, origem: 'fila privada do painel local', pedidoId: r.id, estado: r.estado });
+  }
   const planejados = Array.isArray(cal.planejados) ? cal.planejados : [];
   return pecas.map((p) => {
     const aceite = aprovacoes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;

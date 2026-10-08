@@ -131,28 +131,11 @@ function aprovar(raiz, id, corpo = {}) {
 }
 
 // POST /api/marketing/pecas/:id/ajuste  { versao, motivo }
-function pedirAjuste(raiz, id, corpo = {}) {
-  return serializar(() => {
-    const motivo = textoCurto(corpo.motivo, 2000);
-    if (!motivo) throw new ErroMarketing('motivo-vazio', 'Descreva o ajuste que a peça precisa.', 400);
-    const peca = obterPeca(raiz, id);
-    conferirVersao(peca, corpo.versao);
-    if (peca.estado === 'historico') {
-      throw new ErroMarketing('peca-no-historico', 'Peça do histórico não recebe pedido de ajuste.', 409);
-    }
-    const dados = ler(raiz);
-    const registro = {
-      id: peca.id,
-      caminho: peca.caminho,
-      versao: peca.versao,
-      pedidoEm: agoraLocalIso(),
-      motivo,
-      origem: 'pedido do autor no painel local',
-    };
-    dados.ajustes.push(registro);
-    gravarJsonAtomico(caminhoPainel(raiz, ARQUIVO), dados);
-    return { ajuste: registro, avisos: ['Pedido de ajuste registrado. A peça continua aguardando aceite.'] };
-  });
+async function pedirAjuste(raiz, id, corpo = {}) {
+  const peca = obterPeca(raiz, id);
+  conferirVersao(peca, corpo.versao);
+  const ajuste = await require('./ajustes-fila.cjs').fila.solicitar(peca, corpo);
+  return { ajuste, avisos: ['Pedido recebido na fila privada. Ninguem pegou ainda; o vigia tenta entregar automaticamente. Nada foi aprovado, publicado ou agendado.'] };
 }
 
 module.exports = { listarAprovacoes, aprovar, pedirAjuste, FRASE_APROVAR };
