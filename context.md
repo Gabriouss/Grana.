@@ -14666,3 +14666,6 @@ Estado operacional adicional da M2: o painel não foi iniciado. %APPDATA%\grana-
   bordas arredondadas, menta leitoso) com boca L3 → `granabo-prancha-w3.png`.
 - Nada no app mudou. Não foi verificado no vault (sem acesso da nuvem): a nota
   de sessão no Obsidian (regra 12) fica pendente para a M1.
+
+Atualização 14h50 (Quill): **/admin está no ar** em `www.granaponto.com.br/admin` (`0528ada`, `fdb3229`, `6e5bbe6`), com `no-store`, `noindex, nofollow`, `X-Frame-Options: DENY` e CSP conferidos ao vivo; Lynx aprovou o push e a varredura do `dist` final não achou segredo privado. A `admin-consulta` NÃO está publicada (`keel-deploy-admin-consulta.md`), então a página só mostra erro com recibo; falta o secret `ADMIN_USER_IDS` e o modo manual do autor, e a sonda XFF está escrita e não publicada (deploy bloqueado pelo auto mode). C: `d6c7170` (fila privada com vigia, migration da M2 só proposta, entrega real ao Beacon sem verificar). A: `14a4d86` corrige o overflow de 320 px. D e ajustes de material parados por ordem do autor. Esta atualização substitui o "sem publicar" do bloco de 14h27 sobre `/admin`.
+
