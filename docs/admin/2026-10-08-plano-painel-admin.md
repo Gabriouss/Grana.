@@ -149,3 +149,6 @@ do fichário. Quill confere. Seis perguntas da regra 12 por frente.
 ## Andamento
 
 - 13h05: plano publicado e distribuído.
+- 13h08: Ledger releu o plano e assumiu a frente F; relatório parcial em `E:\Grana-temporarios\2026-10-08-painel\relatorio-ledger-painel-admin.md`.
+- 13h56: Watchtower comunicou achados preliminares em E (limite global em memória pode bloquear usuário legítimo; aal2 por telefone aceito sem TOTP específico). Aguardam confirmação Harbor, retorno dos executores e segundo olhar Lynx; sem liberação para publicar.
+- 14h00: na pasta da rodada, `keel-criterios-B-e-D.md` é critério de julgamento e `watchtower-admin-sondas.cjs` é sonda, não fechamento. Relatórios formais A–E seguem pendentes. Estado e lacunas: `E:\Grana-temporarios\2026-10-08-painel\estado-Ledger.md`.
