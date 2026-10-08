@@ -44,21 +44,24 @@ function carregar(file, deps) {
     } },
   });
   const payload = { kind: 'transaction', type: 'out', amount: 25.17, description: 'Merenda', category: 'Alimentação', color: '#fff', occurred_on: '2026-09-07' };
-  assert.equal((await operacoes.registrarOperacaoVoz('id1', 'widget', payload)).status, 'pending');
+  // Mesmos cenários nas duas entradas; origem persiste em todos os reenvios.
+  for (const source of ['widget', 'app']) {
+  storage.clear(); envios = []; usuario = 'a'; offline = true; erroRpc = null;
+  assert.equal((await operacoes.registrarOperacaoVoz('id1', source, payload)).status, 'pending');
   assert.equal(storage.size, 1);
   usuario = 'b'; offline = false;
   await operacoes.sincronizarOperacoesVoz();
   assert.equal(envios.length, 1, 'outra conta não sincroniza o gasto');
   usuario = 'a';
-  await operacoes.registrarOperacaoVoz('id1', 'widget', { ...payload, amount: 100 });
+  await operacoes.registrarOperacaoVoz('id1', source, { ...payload, amount: 100 });
   assert.equal(envios.at(-1).p_payload.amount, 25.17, 'retomada conserva valor original');
   assert.equal(storage.size, 0);
   await operacoes.sincronizarOperacoesVoz();
   assert.equal(envios.length, 2);
 
   offline = true;
-  await operacoes.registrarOperacaoVoz('id2', 'widget', payload);
-  await operacoes.registrarOperacaoVoz('id3', 'widget', payload);
+  await operacoes.registrarOperacaoVoz('id2', source, payload);
+  await operacoes.registrarOperacaoVoz('id3', source, payload);
   storage.set('grana:voz:operacao:a:corrompida', '{');
   offline = false;
   const primeiraSync = operacoes.sincronizarOperacoesVoz();
@@ -74,13 +77,16 @@ function carregar(file, deps) {
   // exibido como "continua salvo no aparelho", indistinguível de espera de rede.
   storage.clear();
   erroRpc = { code: 'PGRST202', message: 'Could not find the function public.registrar_operacao_voz' };
-  assert.equal((await operacoes.registrarOperacaoVoz('id4', 'widget', payload)).status, 'pending');
+  assert.equal((await operacoes.registrarOperacaoVoz('id4', source, payload)).status, 'pending');
   const permanente = await operacoes.sincronizarOperacoesVoz();
   assert.match(permanente.mensagem, /não se resolve sozinho/, 'objeto ausente no servidor não é fila de espera');
   assert.ok(!permanente.mensagem.includes('conexão'), 'RPC ausente não é apresentada como falta de internet');
   assert.equal(storage.size, 1, 'falha permanente não descarta o lançamento');
   erroRpc = null;
   storage.clear();
+  assert.ok(envios.length > 0);
+  for (const envio of envios) assert.equal(envio.p_source, source, 'origem mantida no envio e retomada');
+  }
 
   const listeners = new Map();
   let installed = true, starts = 0;

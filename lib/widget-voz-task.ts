@@ -28,6 +28,108 @@ class FalaParaRevisar extends Error {
 export type DesfechoTarefa = { guardada: false } | { guardada: true; motivo: MotivoFalaGuardada };
 
 /**
+ * Prazo TOTAL de uma execução (07/10/2026). O Android mata a tarefa headless
+ * aos 120 s (GranaVoiceHeadlessService.kt) sem avisar ninguém; aqui a tarefa
+ * desiste antes, com 20 s de folga para guardar a fala, dar o recibo e
+ * limpar. Estourou: a fala fica na fila ("demorou") e sobe na próxima
+ * retomada, com o mesmo requestId.
+ *
+ * As etapas já tinham prazos próprios (15 s de transcrição, 8 s de
+ * referências, 15 s de gravação, 5 s de resumo). Este é o teto que vale para
+ * a SOMA, inclusive para o que ninguém previu.
+ */
+export const PRAZO_TOTAL_TAREFA_MS = 100_000;
+/** Quanto a tarefa espera o cliente dizer quem é o dono antes de ler o aparelho. */
+const PRAZO_DONO_MS = 3_000;
+/** Quanto a tarefa espera o sistema dizer se pode notificar. */
+const PRAZO_PERMISSAO_MS = 5_000;
+/**
+ * Teto de PONTA A PONTA (achado R2 do Watchtower, 08/10/2026). O prazo total
+ * acima só envolve o processamento; a preparação (reserva, permissão) e o
+ * desfecho (guardar, recibo, limpeza) ficavam fora de qualquer relógio, e um
+ * recibo que nunca respondesse deixava o widget em "Lançando…" até o Android
+ * matar a tarefa aos 120 s, em silêncio. Aqui a tarefa devolve o controle
+ * antes disso, com o widget em atenção. A fala nova já está reservada na fila
+ * desde o começo, e a reserva vencida a devolve à retomada.
+ */
+export const PRAZO_FIM_DA_TAREFA_MS = 112_000;
+
+/** A permissão de notificação, com prazo. Sem resposta, vale "não pode":
+    a tarefa não lança sem ter como entregar o recibo, e a fala fica guardada. */
+function podeAvisar(notificacoes: Pick<ReciboVoz, 'podeNotificar'>): Promise<boolean> {
+  let corte: ReturnType<typeof setTimeout> | undefined;
+  const consulta = notificacoes.podeNotificar();
+  consulta.catch(() => {});
+  const estouro = new Promise<boolean>((resolver) => {
+    corte = setTimeout(() => {
+      console.error('[voz] a permissão de notificação não respondeu no prazo; a fala fica guardada');
+      resolver(false);
+    }, PRAZO_PERMISSAO_MS);
+  });
+  return Promise.race([consulta, estouro]).finally(() => clearTimeout(corte));
+}
+
+function comPrazoTotal<T>(trabalho: Promise<T>, restaMs: number, cancelar: () => void): Promise<T> {
+  let corte: ReturnType<typeof setTimeout> | undefined;
+  const estouro = new Promise<never>((_, rejeitar) => {
+    corte = setTimeout(
+      () => {
+        cancelar();
+        rejeitar(new VozPendenteOffline('A tarefa passou do prazo total; a fala fica guardada.', 'demorou'));
+      },
+      Math.max(1, restaMs),
+    );
+  });
+  // O trabalho abandonado não pode virar rejeição sem dono.
+  trabalho.catch(() => {});
+  return Promise.race([trabalho, estouro]).finally(() => clearTimeout(corte));
+}
+
+type ExecucaoDaFala = { encerrada: boolean; gravouDepois: boolean; finalizada: Promise<void> };
+function conferirExecucao(execucao: ExecucaoDaFala): void {
+  if (execucao.encerrada) throw new VozPendenteOffline('A execução desta fala terminou.', 'demorou');
+}
+
+/** Só a confirmação de uma RPC que JÁ saiu pode ter recibo depois do prazo. */
+function recibosDuranteExecucao(base: ReciboVoz, execucao: ExecucaoDaFala): ReciboVoz {
+  const conferir = () => { if (!execucao.gravouDepois) conferirExecucao(execucao); };
+  return {
+    podeNotificar: () => { conferir(); return base.podeNotificar(); },
+    notificarRevisao: (...args) => { conferir(); return base.notificarRevisao(...args); },
+    notificarSucesso: (...args) => { conferir(); return base.notificarSucesso(...args); },
+    notificarFalha: (...args) => { conferir(); return base.notificarFalha(...args); },
+    notificarSalvoLocal: () => { conferir(); return base.notificarSalvoLocal(); },
+    notificarPendenteOffline: () => { conferir(); return base.notificarPendenteOffline(); },
+  };
+}
+
+/**
+ * RESERVA a fala na fila antes de qualquer rede (07/10/2026). Até aqui o
+ * áudio vivia só no cache enquanto a tarefa rodava: se o Android a matasse
+ * no meio, nada apontava para ele e a fala se perdia em silêncio. Reservada,
+ * ela vira fala guardada sozinha quando a reserva vence (ver
+ * `reservarFalaEmAndamento` em widget-voz-pendentes) e sobe na próxima
+ * abertura do app. Vale para o botão do app e para o widget (regra 13).
+ *
+ * Falhar aqui não impede o lançamento: a tarefa segue como antes, só sem a
+ * rede de segurança, e fica o log.
+ */
+async function reservarFala(caminho: string, requestId: string, source: Payload['source'], captura: object): Promise<boolean> {
+  try {
+    const [{ reservarFalaEmAndamento }, { idDoUsuarioLocal }] = await Promise.all([
+      import('./widget-voz-pendentes'),
+      import('./sessao-offline'),
+    ]);
+    const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
+    if (!userId) return false;
+    return await reservarFalaEmAndamento({ caminho, requestId, userId, source, ...captura });
+  } catch (erro) {
+    console.error('[voz] a fala não foi reservada na fila; segue sem a rede de segurança', requestId, erro);
+    return false;
+  }
+}
+
+/**
  * Tarefa headless do widget Android de lançamento por voz.
  *
  * Roda com o app FECHADO, sem React e sem tela: o serviço nativo grava o
@@ -116,6 +218,29 @@ async function reciboSemLancamentoNovo(desfecho: DesfechoOperacaoVoz, notificaco
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
 export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Promise<DesfechoTarefa> {
   const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
+  const trabalho = executarAteODesfecho(payload, recibo, definirEstado);
+  // O trabalho que passou do teto não pode virar rejeição sem dono.
+  trabalho.catch(() => {});
+  let corte: ReturnType<typeof setTimeout> | undefined;
+  const teto = new Promise<DesfechoTarefa>((resolver) => {
+    corte = setTimeout(() => {
+      console.error('[voz] a tarefa não chegou ao desfecho no teto de ponta a ponta', payload?.requestId);
+      try {
+        definirEstado('atencao');
+      } catch (erroEstado) {
+        console.error('[voz] o widget não pôde ser posto em atenção', erroEstado);
+      }
+      resolver({ guardada: true, motivo: 'demorou' });
+    }, PRAZO_FIM_DA_TAREFA_MS);
+  });
+  return Promise.race([trabalho, teto]).finally(() => clearTimeout(corte));
+}
+
+async function executarAteODesfecho(
+  payload: Payload,
+  recibo: ReciboVoz | undefined,
+  definirEstado: (estado: 'ocioso' | 'atencao') => unknown,
+): Promise<DesfechoTarefa> {
   const caminho = payload?.caminho;
   const requestId = payload?.requestId;
   /* A data da captura acompanha a fala até a revisão (data na voz,
@@ -135,6 +260,13 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
      esconderia um lançamento perdido. */
   let estadoFinal: 'ocioso' | 'atencao' = 'ocioso';
   let manterArquivo = false;
+  /* A fala foi reservada na fila por ESTA execução (fala nova). */
+  let reservada = false;
+  let copiaDuravel = false;
+  const inicio = Date.now();
+  let finalizar!: () => void;
+  const execucao: ExecucaoDaFala = { encerrada: false, gravouDepois: false,
+    finalizada: new Promise<void>((resolve) => { finalizar = resolve; }) };
   const contexto: { transcricao?: string } = {};
   let desfecho: DesfechoTarefa = { guardada: false };
   let desfechoDoConflito: DesfechoOperacaoVoz | null = null;
@@ -142,19 +274,22 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
   try {
     if (!caminho) return desfecho;
     if (!requestId) throw new Error('request_id_ausente');
+    /* Antes de tudo: a fala nova fica reservada na fila. Fala que já veio
+       da fila não precisa, ela já está lá. */
+    if (!caminho.includes('/voz-pendente/')) reservada = await reservarFala(caminho, requestId, payload.source, captura);
 
     /* Antes de gastar transcrição, e muito antes de gravar qualquer coisa:
        sem permissão de notificação o widget não tem como entregar o recibo
        nem o "Desfazer". Nesse caso ele não lança — acende o estado de
        atenção, e um toque abre o app pra resolver a permissão. */
-    if (!(await notificacoes.podeNotificar())) {
+    if (!(await podeAvisar(notificacoes))) {
       estadoFinal = 'atencao';
       // A permissão pode ter mudado depois da gravação. Preservar com dono;
       // nunca atribuir uma fala sem sessão à próxima conta do aparelho.
       manterArquivo = caminho.includes('/voz-pendente/');
       if (!manterArquivo) {
         const { idDoUsuarioLocal } = await import('./sessao-offline');
-        const userId = await idDoUsuarioLocal();
+        const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
         if (userId) {
           const { adicionarVozPendente } = await import('./widget-voz-pendentes');
           await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, ...captura });
@@ -165,7 +300,11 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
       return desfecho;
     }
 
-    const salvou = await processar(caminho, requestId, contexto, payload, notificacoes, referencia);
+    const salvou = await comPrazoTotal(
+      processar(caminho, requestId, contexto, payload, recibosDuranteExecucao(notificacoes, execucao), referencia, execucao),
+      PRAZO_TOTAL_TAREFA_MS - (Date.now() - inicio),
+      () => { execucao.encerrada = true; },
+    );
     if (salvou) await sincronizarResumoDepoisDaVoz();
     else estadoFinal = 'atencao';
   } catch (erro) {
@@ -185,7 +324,7 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
           import('./voz-recibos'),
         ]);
         await marcarVozEmRevisao(requestId, erro.transcricao || undefined);
-        const dono = await idDoUsuarioLocal();
+        const dono = await idDoUsuarioLocal(PRAZO_DONO_MS);
         if (dono) {
           await guardarReciboDaFila({ id: requestId, dono, tipo: 'audio', ...reciboDaFalaGuardada(erro.transcricao) });
         }
@@ -197,32 +336,66 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
       /* A gravação já aconteceu. Não apagá-la é a diferença entre "sem rede"
          ser uma espera transparente e perder a fala junto com a notificação. */
       if (caminho && requestId) {
-        const [{ adicionarVozPendente }, { idDoUsuarioLocal }] = await Promise.all([
-          import('./widget-voz-pendentes'),
-          import('./sessao-offline'),
-        ]);
-        /* A fila é vinculada ao usuário autenticado. Sem isso, alguém que
-           saia da conta antes da rede voltar poderia lançar o áudio antigo na
-           conta seguinte do mesmo aparelho. Lido pelo aparelho: este é o
-           caminho DE FALHA POR FALTA DE REDE, e perguntar pela rede quem é o
-           dono descartava a gravação em vez de guardá-la. */
-        const userId = await idDoUsuarioLocal();
-        if (userId) {
-          await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
-          manterArquivo = true;
-          desfecho = { guardada: true, motivo: erro instanceof VozPendenteOffline ? erro.motivo : 'sem_rede' };
-          try {
+        const motivo: MotivoFalaGuardada = erro instanceof VozPendenteOffline ? erro.motivo : 'sem_rede';
+        let userId: string | null = null;
+        /* Este bloco roda DENTRO do `catch`: até 07/10/2026 nada aqui tinha
+           guarda própria, e uma falha ao gravar a fila escapava do `catch`,
+           caía no `finally` com `manterArquivo` falso e APAGAVA o áudio
+           (regra 9: o catch que trata a falha também pode falhar). */
+        try {
+          const [{ adicionarVozPendente }, { idDoUsuarioLocal }] = await Promise.all([
+            import('./widget-voz-pendentes'),
+            import('./sessao-offline'),
+          ]);
+          /* A fila é vinculada ao usuário autenticado. Sem isso, alguém que
+             saia da conta antes da rede voltar poderia lançar o áudio antigo na
+             conta seguinte do mesmo aparelho. Lido pelo aparelho: este é o
+             caminho DE FALHA POR FALTA DE REDE, e perguntar pela rede quem é o
+             dono descartava a gravação em vez de guardá-la. */
+          userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
+          if (userId) {
+            await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
+            manterArquivo = true;
+            desfecho = { guardada: true, motivo };
+          }
+        } catch (erroFila) {
+          console.error('[voz] a fala não pôde ser regravada na fila', requestId, erroFila);
+          /* A reserva feita no começo continua valendo: a fala está na fila
+             com o áudio copiado, e vira fala guardada quando a reserva vence. */
+          if (reservada || caminho.includes('/voz-pendente/')) {
+            manterArquivo = true;
+            desfecho = { guardada: true, motivo };
+          } else if (userId) {
+            try {
+              const { guardarVozOrfa } = await import('./widget-voz-pendentes');
+              await guardarVozOrfa({ caminho, requestId, userId, source: payload.source,
+                transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
+              copiaDuravel = true;
+              manterArquivo = true;
+              desfecho = { guardada: true, motivo };
+            } catch (erroOrfa) {
+              /* Nem a fila nem a pasta de recuperação gravaram (achado R3 do
+                 Watchtower, 08/10/2026). Nada retoma um áudio solto no cache:
+                 dizer "Áudio guardado" seria prometer o que não vai acontecer
+                 (regra 9). O recibo logo abaixo é o de falha, e o áudio sai. */
+              console.error('[voz] não consegui guardar a fala para recuperação', requestId, erroOrfa);
+            }
+          }
+        }
+        try {
+          if (manterArquivo) {
             /* Só na PRIMEIRA vez que a fala fica guardada. A retomada roda a
                cada 30 s com o app aberto e, sem rede, cada passada publicava
                outro "Áudio guardado" (B5, 27/09/2026). A faixa do topo já diz
                que ela continua na fila. */
             if (!caminho.includes('/voz-pendente/')) await notificacoes.notificarPendenteOffline();
-          } catch (erroRecibo) {
-            console.warn('[voz] recibo de pendência falhou', erroRecibo);
-            // A fila continua sendo a fonte de verdade se a notificação falhar.
+          } else {
+            await notificacoes.notificarFalha(userId ? 'erro_interno' : 'sem_sessao');
           }
-        } else {
-          await notificacoes.notificarFalha('sem_sessao');
+        } catch (erroRecibo) {
+          console.warn('[voz] recibo de pendência falhou', erroRecibo);
+          // A fila continua sendo a fonte de verdade se a notificação falhar;
+          // o estado de atenção do widget é o recibo mínimo.
         }
       }
     } else if (requestId && (desfechoDoConflito = await desfechoDoErro(erro))) {
@@ -260,9 +433,41 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
         console.error('[voz] recibo da falha não foi entregue', erroRecibo);
         /* Fala que veio da fila e cujo recibo não foi entregue: sair da fila
            seria perdê-la sem ninguém saber. Fica, e a próxima retomada tenta. */
-        if (caminho?.includes('/voz-pendente/')) {
+        if (reservada || caminho?.includes('/voz-pendente/')) {
           manterArquivo = true;
           desfecho = { guardada: true, motivo: 'sem_notificacao' };
+          if (reservada && caminho && requestId) {
+            try {
+              const [{ adicionarVozPendente }, { idDoUsuarioLocal }] = await Promise.all([
+                import('./widget-voz-pendentes'), import('./sessao-offline'),
+              ]);
+              const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
+              if (userId) await adicionarVozPendente({ caminho, requestId, userId, source: payload.source,
+                transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
+            } catch (erroFila) {
+              console.error('[voz] recibo falhou; a reserva da fala continua para recuperação', requestId, erroFila);
+            }
+          }
+        } else if (caminho && requestId) {
+          // Reserva e recibo podem falhar juntos. Recuperação não depende de AsyncStorage.
+          try {
+            const [{ guardarVozOrfa }, { idDoUsuarioLocal }] = await Promise.all([
+              import('./widget-voz-pendentes'), import('./sessao-offline'),
+            ]);
+            const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
+            if (userId) {
+              await guardarVozOrfa({ caminho, requestId, userId, source: payload.source,
+                transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
+              copiaDuravel = true;
+              manterArquivo = true;
+              desfecho = { guardada: true, motivo: 'sem_notificacao' };
+            }
+          } catch (erroOrfa) {
+            /* Recibo, fila e pasta de recuperação falharam juntos. Nada foi
+               guardado e nada é anunciado como guardado; o estado de atenção
+               do widget é o recibo que resta (achado R3). */
+            console.error('[voz] reserva, recibo e recuperação falharam; a fala não ficou guardada', requestId, erroOrfa);
+          }
         }
       }
     }
@@ -270,12 +475,25 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
     /* Áudio financeiro não fica no aparelho depois de usado, e o widget não
        pode ficar preso em "Lançando…" — os dois valem em QUALQUER saída,
        inclusive erro. */
-    if (caminho && !manterArquivo) await apagarArquivo(caminho);
-    if (requestId && !manterArquivo) {
-      const { removerVozPendente } = await import('./widget-voz-pendentes');
-      await removerVozPendente(requestId);
+    /* O arquivo que a captura entregou sai sempre que a fila já tem a cópia
+       dela (fala reservada) ou a fala não vai ficar guardada. Fala que veio
+       da fila e continua nela mantém o áudio, que É a cópia da fila. */
+    if (caminho && (!manterArquivo || reservada || copiaDuravel)) await apagarArquivo(caminho);
+    /* Com guarda própria (07/10/2026): se a limpeza da fila falhasse, o
+       `definirEstado` de baixo não rodava e o widget ficava preso em
+       "Lançando…" com o lançamento já salvo. */
+    try {
+      if (requestId && !manterArquivo) {
+        const { removerVozPendente, liberarFalaEmAndamento } = await import('./widget-voz-pendentes');
+        if (reservada) await liberarFalaEmAndamento(requestId);
+        else await removerVozPendente(requestId);
+      }
+    } catch (erroLimpeza) {
+      console.error('[voz] a fala concluída não saiu da fila; a próxima retomada resolve pelo mesmo requestId', requestId, erroLimpeza);
     }
     definirEstado(estadoFinal);
+    execucao.encerrada = true;
+    finalizar();
   }
   return desfecho;
 }
@@ -306,13 +524,35 @@ async function apagarArquivo(caminho: string) {
   }
 }
 
-async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz, referencia: ReferenciaDaFala): Promise<boolean> {
-  const [{ transcreverAudio }, heuristics, data, voiceOperations] = await Promise.all([
+async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz, referencia: ReferenciaDaFala, execucao: ExecucaoDaFala): Promise<boolean> {
+  const [{ transcreverAudio }, heuristics, data, operacoes] = await Promise.all([
     import('./voz'),
     import('./heuristics'),
     import('./data'),
     import('./voice-operations'),
   ]);
+  conferirExecucao(execucao);
+  const voiceOperations: typeof operacoes = {
+    ...operacoes,
+    registrarOperacaoVoz: async (...args) => {
+      conferirExecucao(execucao); // vale também para crédito/boleto/parcelado: antes de QUALQUER escrita.
+      const resultado = await operacoes.registrarOperacaoVoz(...args);
+      if (execucao.encerrada) {
+        /* A gravação já tinha saído quando o prazo estourou e respondeu
+           depois. Nada é reenviado: espera a tarefa terminar de guardar a
+           fala, tira-a da fila e deixa passar o recibo DESTE resultado. Aqui
+           não se decide nada sobre o resultado (achado R1 do Watchtower,
+           08/10/2026, regra 13): quem o lê é `desfechoDaOperacaoVoz`, nos
+           mesmos quatro pontos de sempre. Pendente, a operação já está na
+           fila de operações do aparelho, como no caminho normal. */
+        await execucao.finalizada;
+        const { concluirVozRevisada } = await import('./widget-voz-pendentes');
+        await concluirVozRevisada(requestId);
+        execucao.gravouDepois = true;
+      }
+      return resultado;
+    },
+  };
 
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
   /* Fala que veio da fila de áudios guardados (`widget-voz-pendentes`): a
@@ -327,6 +567,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
         mimeType: 'audio/m4a',
         nomeArquivo: 'widget.m4a',
       });
+  conferirExecucao(execucao);
   if (!transcricao.ok) {
     if (transcricao.codigo === 'sem_rede' || transcricao.codigo === 'demorou') {
       throw new VozPendenteOffline('A transcrição será retomada quando houver conexão.', transcricao.codigo);
@@ -386,6 +627,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
       prazoReferencias = setTimeout(() => reject(new VozPendenteOffline('timeout ao carregar referências', 'demorou')), 8_000);
     }),
   ]).finally(() => clearTimeout(prazoReferencias));
+  conferirExecucao(execucao);
 
   const carteiraMencionada = heuristics.matchWalletByText(texto, carteiras);
   /* "Conta de luz" é conta a pagar, não carteira (achado B2): a mesma regra
@@ -688,7 +930,7 @@ async function retomarFilaDeFalas(): Promise<ResumoFilaDeFalas> {
       import('./sessao-offline'),
       import('./voz-recibos-da-fila'),
     ]);
-    const userId = await idDoUsuarioLocal();
+    const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
     if (!userId) return resumo;
     await apagarAudiosPendentes().catch((erro) => console.error('[voz] limpeza de áudios concluídos falhou', erro));
     /* Fala que o widget gravou e não conseguiu entregar (V4): entra na fila

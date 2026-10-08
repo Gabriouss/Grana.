@@ -26,14 +26,56 @@ export type VozPendente = {
   /** A transcrição não entendeu a fala. Ela fica guardada, fora das
       retomadas automáticas, até a pessoa revisar ou descartar (26/09/2026). */
   revisao?: boolean;
+  /** RESERVA (07/10/2026): a tarefa que está processando esta fala anotou
+      aqui quando começou. Enquanto a reserva vale (`PRAZO_RESERVA_MS`), a
+      fala não é listada nem retomada: a tarefa ainda está viva. Se a tarefa
+      morrer (o Android mata a tarefa headless aos 120 s, ou mata o processo),
+      a reserva vence e a fala vira uma fala guardada comum, retomada na
+      próxima abertura do app com o mesmo requestId. */
+  emAndamentoDesde?: number;
+  /** O arquivo que a captura entregou (cache), para apagá-lo quando a fala
+      sair da fila por uma retomada que não o conhece mais. */
+  origem?: string;
 };
 
-async function ler(): Promise<VozPendente[]> {
+/**
+ * Quanto dura a reserva de uma fala em processamento. Maior que o teto de
+ * 120 s da tarefa headless (GranaVoiceHeadlessService.kt): antes disso a
+ * tarefa pode estar viva, e retomar a fala seria processá-la duas vezes.
+ */
+export const PRAZO_RESERVA_MS = 150_000;
+
+function reservaVale(item: VozPendente): boolean {
+  return typeof item.emAndamentoDesde === 'number' && Date.now() - item.emAndamentoDesde < PRAZO_RESERVA_MS;
+}
+
+/**
+ * Fila ilegível NUNCA vira fila vazia calada (regra 9; 07/10/2026). Até aqui
+ * um JSON truncado devolvia `[]` sem log, e a gravação seguinte passava por
+ * cima: as falas guardadas sumiam sem ninguém saber. Agora o conteúdo é
+ * copiado para outra chave antes de qualquer coisa, e fica o log. Os áudios
+ * continuam em `voz-pendente/`.
+ */
+async function preservarFilaIlegivel(bruto: string, causa: unknown): Promise<void> {
+  console.error('[voz] fila de falas guardadas ilegível; conteúdo preservado para recuperação', causa);
   try {
-    const bruto = await AsyncStorage.getItem(CHAVE);
+    const copia = `${CHAVE}:ilegivel`;
+    if (!(await AsyncStorage.getItem(copia))) await AsyncStorage.setItem(copia, bruto);
+  } catch (erroCopia) {
+    console.error('[voz] não consegui preservar a fila ilegível', erroCopia);
+  }
+}
+
+async function ler(): Promise<VozPendente[]> {
+  let bruto: string | null = null;
+  try {
+    bruto = await AsyncStorage.getItem(CHAVE);
     if (!bruto) return [];
     const itens = JSON.parse(bruto) as unknown;
-    if (!Array.isArray(itens)) return [];
+    if (!Array.isArray(itens)) {
+      await preservarFilaIlegivel(bruto, 'não é uma lista');
+      return [];
+    }
     return itens.filter((item): item is VozPendente => (
       !!item && typeof item === 'object' &&
       typeof (item as VozPendente).caminho === 'string' &&
@@ -41,7 +83,9 @@ async function ler(): Promise<VozPendente[]> {
       typeof (item as VozPendente).userId === 'string' &&
       typeof (item as VozPendente).criadoEm === 'number'
     ));
-  } catch {
+  } catch (erro) {
+    if (bruto) await preservarFilaIlegivel(bruto, erro);
+    else console.error('[voz] não consegui ler a fila de falas guardadas', erro);
     return [];
   }
 }
@@ -64,17 +108,129 @@ async function gravar(itens: VozPendente[]): Promise<void> {
     await AsyncStorage.setItem(CHAVE, JSON.stringify(itens));
 }
 
-export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'> & { criadoEm?: number }): Promise<void> {
+// App e HeadlessJsTaskService usam o runtime React Native da aplicação.
+// Serializar o ciclo inteiro, inclusive cópia, impede snapshots de disco concorrentes.
+// Só as mutações folhas entram aqui: adoção/conclusão chamam essas folhas.
+let mutacaoEmCurso: Promise<unknown> = Promise.resolve();
+
+/**
+ * Prazo de UMA mutação da fila (achado R5 do Lynx, 08/10/2026). Sem ele, uma
+ * cópia de áudio que o disco nunca termina segurava a vez para sempre: a
+ * fala seguinte, a limpeza do fim da tarefa e a retomada ficavam todas
+ * esperando, fora de qualquer prazo, sem recibo. Quem chama recebe o erro e
+ * segue pelo próprio caminho de falha.
+ */
+export const PRAZO_MUTACAO_FILA_MS = 10_000;
+
+/** A vez de uma mutação. `vencida`: o prazo passou e a vez já é de outra. */
+type Vez = { vencida: boolean };
+
+function naVez<T>(trabalho: (vez: Vez) => Promise<T>): Promise<T> {
+  const executar = (): Promise<T> => {
+    const vez: Vez = { vencida: false };
+    const feito = trabalho(vez);
+    // A mutação abandonada não pode virar rejeição sem dono.
+    feito.catch(() => {});
+    let corte: ReturnType<typeof setTimeout> | undefined;
+    const estouro = new Promise<never>((_, rejeitar) => {
+      corte = setTimeout(() => {
+        vez.vencida = true;
+        console.error('[voz] uma mutação da fila de falas não terminou no prazo; a vez foi liberada');
+        rejeitar(new Error('a fila de falas não respondeu no prazo'));
+      }, PRAZO_MUTACAO_FILA_MS);
+    });
+    return Promise.race([feito, estouro]).finally(() => clearTimeout(corte));
+  };
+  const proxima = mutacaoEmCurso.then(executar, executar);
+  mutacaoEmCurso = proxima.catch(() => {});
+  return proxima;
+}
+
+/**
+ * A ÚNICA escrita da fila dentro de uma mutação. Liberar a vez no prazo, só,
+ * traria a corrida de volta: a mutação vencida, ao terminar depois, gravaria
+ * por cima o retrato velho que leu. Vencida, ela não escreve mais.
+ */
+async function gravarNaVez(vez: Vez, itens: VozPendente[]): Promise<void> {
+  if (vez.vencida) throw new Error('mutação vencida não grava a fila');
+  await gravar(itens);
+}
+
+/** `file://` na frente, como o disco do Expo espera. */
+function uriDe(caminho: string): string {
+  return caminho.startsWith('file://') ? caminho : `file://${caminho}`;
+}
+
+/**
+ * RESERVA a fala na fila no começo do processamento (07/10/2026): copia o
+ * áudio para `voz-pendente/` e anota quando a tarefa começou. É o que impede
+ * a fala de se perder se a tarefa for morta no meio: até aqui o áudio ficava
+ * no cache, sem ninguém apontando para ele, e nada o trazia de volta.
+ *
+ * Devolve `true` se reservou. `false` quando a fala já está na fila (veio
+ * dela, ou já foi reservada) ou já foi concluída nesta execução.
+ */
+async function reservarSemConcorrencia(vez: Vez, item: Omit<VozPendente, 'criadoEm' | 'emAndamentoDesde' | 'origem'> & { criadoEm?: number }): Promise<boolean> {
+  if (concluidas.has(item.requestId)) return false;
+  const itens = await ler();
+  if (itens.some((existente) => existente.requestId === item.requestId)) return false;
+  const fs = await import('expo-file-system/legacy');
+  const pasta = `${fs.documentDirectory}voz-pendente/`;
+  await fs.makeDirectoryAsync(pasta, { intermediates: true });
+  const destino = `${pasta}${item.requestId}.m4a`;
+  const origem = uriDe(item.caminho);
+  await fs.copyAsync({ from: origem, to: destino });
+  itens.push({ ...item, caminho: destino, origem, criadoEm: item.criadoEm ?? Date.now(), emAndamentoDesde: Date.now() });
+  try { await gravarNaVez(vez, itens); }
+  catch (erro) {
+    // Não deixar cópia sem índice. O original ainda pertence à captura.
+    await fs.deleteAsync(destino, { idempotent: true }).catch((e) => console.error('[voz] cópia sem índice não saiu', e));
+    throw erro;
+  }
+  return true;
+}
+
+/**
+ * A tarefa terminou e a fala NÃO precisa ficar guardada (lançou, pediu
+ * revisão por notificação ou foi descartada): desfaz a reserva e apaga a
+ * cópia do áudio. Só mexe em fala ainda reservada; a que virou fala guardada
+ * de verdade fica.
+ */
+async function liberarSemConcorrencia(vez: Vez, requestId: string): Promise<void> {
+  const itens = await ler();
+  const item = itens.find((i) => i.requestId === requestId);
+  if (!item || typeof item.emAndamentoDesde !== 'number') return;
+  await gravarNaVez(vez, itens.filter((i) => i.requestId !== requestId));
+  await apagarAudio(item.caminho);
+}
+
+async function adicionarSemConcorrencia(vez: Vez, item: Omit<VozPendente, 'criadoEm'> & { criadoEm?: number }): Promise<void> {
   if (concluidas.has(item.requestId)) return;
   const itens = await ler();
-  if (itens.some((existente) => existente.requestId === item.requestId)) return;
+  const existente = itens.find((i) => i.requestId === item.requestId);
+  if (existente) {
+    /* A fala estava RESERVADA pela tarefa e agora fica guardada de verdade
+       (sem rede, sem notificação, prazo): sai a reserva, para ela aparecer e
+       ser retomada já, e entra o que a tarefa aprendeu (a transcrição). O
+       áudio é a cópia feita na reserva. */
+    if (typeof existente.emAndamentoDesde !== 'number') return;
+    const { emAndamentoDesde: _reserva, ...semReserva } = existente;
+    await gravarNaVez(vez, itens.map((i) => (i.requestId === item.requestId
+      ? { ...semReserva, ...(item.transcricao ? { transcricao: item.transcricao } : null) }
+      : i)));
+    return;
+  }
   const fs = await import('expo-file-system/legacy');
   const pasta = `${fs.documentDirectory}voz-pendente/`;
   await fs.makeDirectoryAsync(pasta, { intermediates: true });
   const destino = `${pasta}${item.requestId}.m4a`;
   await fs.copyAsync({ from: item.caminho.startsWith('file://') ? item.caminho : `file://${item.caminho}`, to: destino });
   itens.push({ ...item, caminho: destino, criadoEm: item.criadoEm ?? Date.now() });
-  await gravar(itens);
+  try { await gravarNaVez(vez, itens); }
+  catch (erro) {
+    await fs.deleteAsync(destino, { idempotent: true }).catch((e) => console.error('[voz] cópia sem índice não saiu', e));
+    throw erro;
+  }
 }
 
 /**
@@ -85,6 +241,28 @@ export async function adicionarVozPendente(item: Omit<VozPendente, 'criadoEm'> &
  * GranaVoiceCaptureService.kt.
  */
 export const PASTA_ORFA = 'voz-orfa';
+
+/** Fallback durável quando AsyncStorage falha. Só adotar pela conta dona. */
+export async function guardarVozOrfa(item: Omit<VozPendente, 'criadoEm'> & { criadoEm?: number }): Promise<void> {
+  const fs = await import('expo-file-system/legacy');
+  const pasta = `${fs.documentDirectory}${PASTA_ORFA}/`;
+  await fs.makeDirectoryAsync(pasta, { intermediates: true });
+  const destino = `${pasta}${item.requestId}.m4a`;
+  // Metadados ANTES do áudio: nunca adotar sem o dono de uma fala do JS.
+  await fs.writeAsStringAsync(destino.replace(/\.m4a$/, '.json'), JSON.stringify({
+    userId: item.userId, source: item.source ?? 'widget', capturadoEm: item.criadoEm ?? Date.now(),
+    dataCaptura: item.dataCaptura, referenciaAproximada: item.referenciaAproximada,
+    transcricao: item.transcricao,
+  }));
+  try {
+    await fs.copyAsync({ from: uriDe(item.caminho), to: destino });
+  } catch (erro) {
+    // Metadados sem áudio não servem a ninguém.
+    await fs.deleteAsync(destino.replace(/.m4a$/, '.json'), { idempotent: true })
+      .catch((e) => console.warn('[voz] metadados sem áudio ficaram na pasta', item.requestId, e));
+    throw erro;
+  }
+}
 
 /**
  * Traz para esta fila as falas que o widget guardou sem conseguir entregar
@@ -106,15 +284,23 @@ export const PASTA_ORFA = 'voz-orfa';
 async function capturaDaOrfa(
   fs: typeof import('expo-file-system/legacy'),
   audio: string,
-): Promise<{ criadoEm?: number; dataCaptura?: string; referenciaAproximada?: boolean }> {
+): Promise<{ criadoEm?: number; dataCaptura?: string; referenciaAproximada?: boolean;
+  userId?: string; source?: 'app' | 'widget'; transcricao?: string }> {
   const metadados = audio.replace(/\.m4a$/, '.json');
   try {
     if ((await fs.getInfoAsync(metadados)).exists) {
-      const lido = JSON.parse(await fs.readAsStringAsync(metadados)) as { capturadoEm?: unknown; dataCaptura?: unknown };
+      const lido = JSON.parse(await fs.readAsStringAsync(metadados)) as {
+        capturadoEm?: unknown; dataCaptura?: unknown; userId?: unknown; source?: unknown; transcricao?: unknown;
+      };
+      const dono = typeof lido?.userId === 'string' ? lido.userId : undefined;
+      const source = lido?.source === 'app' || lido?.source === 'widget' ? lido.source : undefined;
+      const transcricao = typeof lido?.transcricao === 'string' ? lido.transcricao : undefined;
       const { ehDataISO } = await import('./data-da-fala');
       if (ehDataISO(lido?.dataCaptura) && typeof lido.capturadoEm === 'number' && Number.isFinite(lido.capturadoEm) && lido.capturadoEm > 0) {
-        return { criadoEm: lido.capturadoEm, dataCaptura: lido.dataCaptura };
+        return { criadoEm: lido.capturadoEm, dataCaptura: lido.dataCaptura, userId: dono, source, transcricao };
       }
+      // Mesmo com data ruim, não descartar a propriedade da fala de JS.
+      if (dono) return { userId: dono, source, transcricao, referenciaAproximada: true };
       console.warn('[voz] metadados da fala guardada pelo widget inválidos; data aproximada', metadados);
     }
   } catch (e) {
@@ -146,7 +332,8 @@ export async function adotarVozesOrfas(userId: string): Promise<number> {
     const caminho = `${pasta}${nome}`;
     try {
       const captura = await capturaDaOrfa(fs, caminho);
-      await adicionarVozPendente({ caminho, requestId: nome.slice(0, -'.m4a'.length), userId, source: 'widget', ...captura });
+      if (captura.userId && captura.userId !== userId) continue;
+      await adicionarVozPendente({ caminho, requestId: nome.slice(0, -'.m4a'.length), ...captura, source: captura.source ?? 'widget', userId });
       await fs.deleteAsync(caminho, { idempotent: true });
       await fs.deleteAsync(caminho.replace(/\.m4a$/, '.json'), { idempotent: true })
         .catch((e) => console.warn('[voz] metadados da fala adotada ficaram na pasta', nome, e));
@@ -158,22 +345,24 @@ export async function adotarVozesOrfas(userId: string): Promise<number> {
   return adotadas;
 }
 
+/** As falas guardadas. Fala RESERVADA por uma tarefa ainda dentro do prazo
+    não aparece: ela está sendo processada agora. */
 export async function listarVozesPendentes(): Promise<VozPendente[]> {
-  return (await ler()).filter((item) => !concluidas.has(item.requestId));
+  return (await ler()).filter((item) => !concluidas.has(item.requestId) && !reservaVale(item));
 }
 
 /** Marca a fala como "precisa de revisão": ela sai das retomadas automáticas,
     mas o áudio continua no aparelho. */
-export async function marcarVozEmRevisao(requestId: string, transcricao?: string): Promise<void> {
-  await gravar((await ler()).map((item) => (item.requestId === requestId
+async function marcarSemConcorrencia(vez: Vez, requestId: string, transcricao?: string): Promise<void> {
+  await gravarNaVez(vez, (await ler()).map((item) => (item.requestId === requestId
     ? { ...item, revisao: true, ...(transcricao ? { transcricao } : null) }
     : item)));
 }
 
 /** "Tentar de novo": a fala volta às retomadas, com o mesmo áudio. A
     transcrição antiga sai, para o servidor ouvir de novo. */
-export async function tirarVozDaRevisao(requestId: string): Promise<void> {
-  await gravar((await ler()).map((item) => {
+async function tirarSemConcorrencia(vez: Vez, requestId: string): Promise<void> {
+  await gravarNaVez(vez, (await ler()).map((item) => {
     if (item.requestId !== requestId) return item;
     const { revisao: _revisao, transcricao: _transcricao, ...resto } = item;
     return resto;
@@ -291,13 +480,26 @@ export async function reabrirRevisoesDeFala(userId: string): Promise<number> {
   return emRevisao.length;
 }
 
-export async function removerVozPendente(requestId: string): Promise<void> {
-  await gravar((await ler()).filter((item) => item.requestId !== requestId));
+async function removerSemConcorrencia(vez: Vez, requestId: string): Promise<void> {
+  const itens = await ler();
+  const item = itens.find((i) => i.requestId === requestId);
+  await gravarNaVez(vez, itens.filter((i) => i.requestId !== requestId));
+  /* Fala de tarefa morta, retomada depois: o original que a captura deixou
+     no cache sai junto (é o mesmo arquivo que a tarefa apaga quando termina).
+     Nunca a própria cópia da fila. */
+  if (item?.origem && !item.origem.includes('/voz-pendente/')) {
+    try {
+      const fs = await import('expo-file-system/legacy');
+      await fs.deleteAsync(item.origem, { idempotent: true });
+    } catch (erro) {
+      console.warn('[voz] original da fala retomada ficou no cache', requestId, erro);
+    }
+  }
 }
 
 /** Saída explícita da conta elimina suas gravações financeiras, não as de
  * outra conta. Não expirar silenciosamente uma fala ainda não sincronizada. */
-export async function limparVozesDaConta(userId: string): Promise<void> {
+async function limparSemConcorrencia(vez: Vez, userId: string): Promise<void> {
   const itens = await ler();
   const fs = await import('expo-file-system/legacy');
   for (const item of itens.filter(item => item.userId === userId)) {
@@ -306,5 +508,16 @@ export async function limparVozesDaConta(userId: string): Promise<void> {
       await fs.deleteAsync(item.caminho, { idempotent: true });
     }
   }
-  await gravar(itens.filter(item => item.userId !== userId));
+  await gravarNaVez(vez, itens.filter(item => item.userId !== userId));
 }
+
+/** Os argumentos de uma mutação, sem a vez, que é `naVez` quem entrega. */
+type SemVez<F> = F extends (vez: Vez, ...resto: infer R) => unknown ? R : never;
+
+export const reservarFalaEmAndamento = (...args: SemVez<typeof reservarSemConcorrencia>) => naVez((vez) => reservarSemConcorrencia(vez, ...args));
+export const liberarFalaEmAndamento = (...args: SemVez<typeof liberarSemConcorrencia>) => naVez((vez) => liberarSemConcorrencia(vez, ...args));
+export const adicionarVozPendente = (...args: SemVez<typeof adicionarSemConcorrencia>) => naVez((vez) => adicionarSemConcorrencia(vez, ...args));
+export const marcarVozEmRevisao = (...args: SemVez<typeof marcarSemConcorrencia>) => naVez((vez) => marcarSemConcorrencia(vez, ...args));
+export const tirarVozDaRevisao = (...args: SemVez<typeof tirarSemConcorrencia>) => naVez((vez) => tirarSemConcorrencia(vez, ...args));
+export const removerVozPendente = (...args: SemVez<typeof removerSemConcorrencia>) => naVez((vez) => removerSemConcorrencia(vez, ...args));
+export const limparVozesDaConta = (...args: SemVez<typeof limparSemConcorrencia>) => naVez((vez) => limparSemConcorrencia(vez, ...args));

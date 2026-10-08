@@ -44,6 +44,7 @@ const captura = carregar('lib/voz-captura.ts');
 const recibos = carregar('lib/voz-recibos.ts');
 
 // ── 1. Números e regra iguais aos do Kotlin ────────────────────────────────
+if (require.main === module) {
 console.log('\nCaptura: mesmos números do widget');
 {
   const kt = fs.readFileSync(path.join(root,
@@ -123,8 +124,9 @@ console.log('\nCaptura: o detector');
   ok('metering do expo-audio volta para a escala do widget, sem erro de arredondamento');
 }
 
+}
 // ── 2. O botão real ────────────────────────────────────────────────────────
-function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () => -160 } = {}) {
+function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () => -160, tarefaReal, aoCapturar, aoRevisar } = {}) {
   const reg = { tarefas: [], alertas: [], alertasCompletos: [], apagados: [], gravando: false, adaptador: null };
   let relogio = 1_000_000;
   const timers = [];
@@ -181,7 +183,11 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
     './AppPressable': { __esModule: true, default: AppPressable },
     './AppDialog': { __esModule: true, default: function AppDialog() {} },
     'expo-crypto': { randomUUID: () => 'req-1' },
-    '@/lib/widget-voz-task': { executarTarefa: async (payload, adaptador) => { reg.tarefas.push(payload); reg.adaptador = adaptador; } },
+    '@/lib/widget-voz-task': { executarTarefa: async (payload, adaptador) => {
+      reg.tarefas.push(payload); reg.adaptador = adaptador;
+      aoCapturar?.(payload);
+      if (tarefaReal) return tarefaReal(payload, adaptador);
+    } },
     'expo-file-system': { File: class { constructor(uri) { this.uri = uri; } get exists() { return true; } get size() { return tamanho; } } },
     'expo-file-system/legacy': { deleteAsync: async (uri) => { reg.apagados.push(uri); } },
   };
@@ -197,7 +203,7 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
 
   function render() {
     posicao = 0;
-    const arvore = VoiceEntryButton({ onTranscribed: () => {}, label: 'Voz' });
+    const arvore = VoiceEntryButton({ onTranscribed: aoRevisar ?? (() => {}), label: 'Voz' });
     const achar = (no) => {
       if (!no || typeof no !== 'object') return null;
       if (no.type === AppPressable) return no;
@@ -229,6 +235,8 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
 
 // Um `await` que nunca resolve faz o Node sair calado, com código 0, sem rodar
 // o resto. Só o fim do roteiro zera este código.
+module.exports = { montarBotao };
+if (require.main === module) {
 process.exitCode = 1;
 
 (async () => {
@@ -347,3 +355,4 @@ process.exitCode = 1;
   console.error('\nFALHOU: ' + (erro && erro.stack || erro) + '\n');
   process.exit(1);
 });
+}

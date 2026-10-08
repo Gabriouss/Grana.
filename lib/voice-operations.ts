@@ -217,7 +217,10 @@ async function gravarOperacaoVoz(
      o token vencido, `getSession()` devolvia vazio e esta linha recusava
      GRAVAR o lançamento, exatamente na situação em que a fila existe para
      servir. O envio logo abaixo continua exigindo credencial válida. */
-  const userId = await idDoUsuarioLocal();
+  /* Com prazo (07/10/2026): o dono vem do aparelho se o cliente estiver
+     ocupado renovando o token. Sem isso a gravação esperava a renovação
+     inteira antes mesmo de começar a contar os 15 s do envio. */
+  const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
   if (!userId) throw new Error('Entre na conta para salvar o lançamento.');
   const chave = `grana:voz:operacao:${userId}:${requestId}`;
   const existente = await AsyncStorage.getItem(chave);
@@ -351,17 +354,34 @@ async function executarSincronizacao(): Promise<ResumoSync> {
   return { sincronizadas, falhas, mensagem };
 }
 
+/** Quanto a gravação espera o cliente dizer quem é o dono antes de ler o aparelho. */
+const PRAZO_DONO_MS = 3_000;
+/** Prazo do envio de uma operação de voz, de ponta a ponta. */
+const PRAZO_ENVIO_MS = 15_000;
+
 async function enviarOperacaoVoz(requestId: string, source: 'app' | 'widget', payload: PayloadOperacaoVoz): Promise<ResultadoOperacaoVoz> {
   const { kind, ...dados } = payload;
   const controle = new AbortController();
-  const prazo = setTimeout(() => controle.abort(), 15_000);
+  const prazo = setTimeout(() => controle.abort(), PRAZO_ENVIO_MS);
+  /* O prazo vale para o envio INTEIRO (07/10/2026). O `abortSignal` só
+     alcança o `fetch`, e o cliente espera a renovação do token ANTES de
+     chamá-lo: com a renovação pendurada, os "15 s" viravam uns 40. A corrida
+     contra o próprio aborto encerra a espera no prazo. Se o pedido ainda
+     chegar ao servidor depois, o mesmo requestId o torna idempotente: a
+     operação fica pendente no aparelho e a próxima sincronização recebe o
+     resultado já gravado, sem duplicar. */
+  const estouro = new Promise<never>((_, rejeitar) => {
+    controle.signal.addEventListener('abort', () => rejeitar(new Error('timeout ao sincronizar lançamento')), { once: true });
+  });
+  estouro.catch(() => {});
   try {
-  const { data, error } = await supabase.rpc('registrar_operacao_voz', {
+  const envio = supabase.rpc('registrar_operacao_voz', {
     p_request_id: requestId,
     p_source: source,
     p_kind: kind,
     p_payload: dados,
   }).abortSignal(controle.signal);
+  const { data, error } = await Promise.race([envio, estouro]);
   if (controle.signal.aborted) throw new Error('timeout ao sincronizar lançamento');
   if (error) throw error;
 

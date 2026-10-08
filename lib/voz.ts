@@ -85,6 +85,9 @@ const TIMEOUT_MS = 75_000;
 
    O reconhecimento no aparelho (`voz-local`) também sai deste prazo. */
 export const PRAZO_TRANSCRICAO_MS = 15_000;
+/** Quanto a transcrição espera o cliente devolver o token antes de usar o
+    do aparelho. Faz parte dos 15 s, não se soma a eles. */
+const PRAZO_TOKEN_MS = 3_000;
 
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -259,7 +262,11 @@ async function transcreverNoServidor(
      `fetch` falha por rede, o código vira `sem_rede`, e a fala espera na fila
      até a conexão voltar. `sem_sessao` volta a significar o que diz: não há
      conta nenhuma neste aparelho. */
-  const token = await tokenDeAcessoLocal();
+  /* Com prazo (07/10/2026): a renovação do token pendurada ficava FORA dos
+     15 s desta transcrição e podia segurar a tarefa por mais uns 40 s. No
+     máximo `PRAZO_TOKEN_MS`, e nunca além do que resta do prazo; depois
+     disso vale o token do aparelho, e a tentativa acontece do mesmo jeito. */
+  const token = await tokenDeAcessoLocal(Math.max(1, Math.min(PRAZO_TOKEN_MS, deadline - Date.now())));
   if (!token) return { ok: false, codigo: 'sem_sessao' };
 
   const primeira = await tentarUmaVez(url, token, uri, opts, deadline);

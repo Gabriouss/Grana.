@@ -111,14 +111,37 @@ export function sessaoNaoConfirmada(): boolean {
  * Tenta o cliente primeiro: quando há rede, ele renova e devolve o id já
  * reconfirmado. O disco é a queda, não o caminho principal.
  */
-export async function idDoUsuarioLocal(): Promise<string | null> {
+export async function idDoUsuarioLocal(prazoMs?: number): Promise<string | null> {
   try {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await sessaoDoCliente(prazoMs);
     if (data.session?.user?.id) return data.session.user.id;
   } catch {
     // Segue para o disco: é exatamente para isto que ele existe.
   }
   return (await lerSessaoDoDisco())?.user?.id ?? null;
+}
+
+/**
+ * `getSession()` com prazo (07/10/2026).
+ *
+ * Com o token vencido, `getSession()` RENOVA antes de responder. Sem rede
+ * boa, a renovação só desiste depois de umas duas tentativas de 20 s
+ * (`PRAZO_PEDIDO_MS`), isto é, uns 40 s. A tarefa do widget tem 120 s de
+ * vida e faz essa pergunta mais de uma vez; nenhuma delas cabia nos prazos
+ * de 15 s da transcrição e da gravação. Quem passa `prazoMs` espera só isso
+ * e cai para o registro do aparelho, que responde na hora. A renovação
+ * continua por conta própria, e quem não passa prazo se comporta como antes.
+ */
+function sessaoDoCliente(prazoMs?: number): ReturnType<typeof supabase.auth.getSession> {
+  const consulta = supabase.auth.getSession();
+  if (prazoMs === undefined) return consulta;
+  let corte: ReturnType<typeof setTimeout> | undefined;
+  const estouro = new Promise<never>((_, rejeitar) => {
+    corte = setTimeout(() => rejeitar(new Error('sessão não respondeu no prazo')), Math.max(1, prazoMs));
+  });
+  // A consulta abandonada não pode virar rejeição sem dono.
+  consulta.catch(() => {});
+  return Promise.race([consulta, estouro]).finally(() => clearTimeout(corte)) as ReturnType<typeof supabase.auth.getSession>;
 }
 
 /**
@@ -133,9 +156,9 @@ export async function idDoUsuarioLocal(): Promise<string | null> {
  * por falta de rede, o código vira `sem_rede`, e a fala espera na fila até a
  * conexão voltar, que é o comportamento que já existia e funcionava.
  */
-export async function tokenDeAcessoLocal(): Promise<string | null> {
+export async function tokenDeAcessoLocal(prazoMs?: number): Promise<string | null> {
   try {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await sessaoDoCliente(prazoMs);
     if (data.session?.access_token) return data.session.access_token;
   } catch {
     // Segue para o disco.

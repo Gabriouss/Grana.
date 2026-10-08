@@ -64,8 +64,10 @@ load('lib/widget-voz-task.ts', {
   'expo-file-system/legacy': { deleteAsync: async () => {} },
 });
 async function widget(text, expected) {
+  let primeiro;
+  for (const source of ['widget', 'app']) {
   writes = []; reviews = [];
-  await task({ caminho: '/fake.m4a', requestId: text, transcricao: text });
+  await task({ caminho: '/fake.m4a', requestId: text, transcricao: text, source });
   if (expected === null) {
     check('widget precisa revisar', text, writes.length, 0);
     check('revisão deixa recibo', text, reviews.length > 0, true);
@@ -74,7 +76,10 @@ async function widget(text, expected) {
     check('widget precisa gravar', text, writes.length, 1);
     if (writes.length === 1) for (const [key, value] of Object.entries(expected)) check('widget ' + key, text, writes[0][key], value);
   }
-  
+  const resultado = JSON.stringify({ writes, reviews });
+  if (primeiro !== undefined) check('paridade app x widget', text, resultado, primeiro);
+  primeiro = resultado;
+  }
 }
 
 
