@@ -102,7 +102,23 @@ function rotaDoArquivo(caminho) {
   return `/${relativo.replace(/\/index\.html$/, '').replace(/\.html$/, '').replace(/(?:^|\/)\([^/]+\)(?=\/|$)/g, '')}` || '/';
 }
 
+// Rota privada: sem canonical, sem og/twitter e com noindex já no HTML
+// estático, antes de o JavaScript rodar (o X-Robots-Tag do vercel.json cobre
+// o cabeçalho; este cobre quem lê só o HTML).
+const ROTAS_PRIVADAS = {
+  '/admin': { title: 'Painel administrativo | Grana.', description: 'Área restrita.' },
+};
+
 function gerarMetaTags(rota) {
+  if (ROTAS_PRIVADAS[rota]) {
+    return `
+    <title>${escaparHtml(ROTAS_PRIVADAS[rota].title)}</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="${meta.themeColor}" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=grana-gradiente-20260830" />
+  `;
+  }
   const atual = META_POR_ROTA[rota] ?? meta;
   const url = `${meta.siteUrl}${rota === '/' ? '/' : rota}`;
   const schema = rota === '/' ? `<script type="application/ld+json">${jsonLd}</script>` : '';
@@ -133,7 +149,7 @@ function gerarMetaTags(rota) {
 }
 
 function gerarFallback(rota) {
-  const atual = META_POR_ROTA[rota] ?? meta;
+  const atual = ROTAS_PRIVADAS[rota] ?? META_POR_ROTA[rota] ?? meta;
   return `
     <noscript>
       <main style="max-width:720px;margin:48px auto;padding:24px;font:16px sans-serif;color:#effffa;background:#052229">
@@ -166,8 +182,15 @@ for (const caminho of listarHtml(path.join(__dirname, '..', 'dist'))) {
     .replace('</head>', `${gerarMetaTags(rota)}</head>`)
     .replace('</body>', `${gerarFallback(rota)}</body>`);
 
-  const atual = META_POR_ROTA[rota] ?? meta;
-  for (const esperado of [`<title>${escaparHtml(atual.title)}</title>`, `href="${meta.siteUrl}${rota === '/' ? '/' : rota}"`]) {
+  const atual = ROTAS_PRIVADAS[rota] ?? META_POR_ROTA[rota] ?? meta;
+  const esperados = ROTAS_PRIVADAS[rota]
+    ? [`<title>${escaparHtml(atual.title)}</title>`, '<meta name="robots" content="noindex, nofollow" />']
+    : [`<title>${escaparHtml(atual.title)}</title>`, `href="${meta.siteUrl}${rota === '/' ? '/' : rota}"`];
+  if (ROTAS_PRIVADAS[rota] && /rel="canonical"|property="og:/.test(html)) {
+    console.error(`[inject-og-meta] rota privada ${rota} com canonical ou og.`);
+    process.exit(1);
+  }
+  for (const esperado of esperados) {
     if (!html.includes(esperado)) {
       console.error(`[inject-og-meta] falha ao injetar em ${rota}: ${esperado}`);
       process.exit(1);

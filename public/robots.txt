@@ -13,5 +13,6 @@ Disallow: /lancamentos
 Disallow: /perfil
 Disallow: /nova-senha
 Disallow: /auth/
+Disallow: /admin
 
 Sitemap: https://granaponto.com.br/sitemap.xml
