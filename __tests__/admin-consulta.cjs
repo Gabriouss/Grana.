@@ -34,7 +34,7 @@ function harness(opts = {}) {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     }).outputText;
     vm.runInNewContext(code, {
-      exports, Request, Response, Headers, AbortController, TextDecoder, TextEncoder,
+      exports, Request, Response, Headers, URL, AbortController, TextDecoder, TextEncoder,
       Date: opts.virtual ? ClockDate : Date,
       setTimeout: opts.virtual ? virtualTimer : timer, clearTimeout: opts.virtual ? (id) => pendingTimers.delete(id) : clearTimeout, atob, crypto: webcrypto, Error,
       console: { log: (s) => logs.push(s) },
@@ -202,14 +202,41 @@ function safe(json) {
   });
   await test('120/min global independente do usuário', async () => {
     const ids = Array.from({ length: 5 }, (_, i) => `22222222-2222-4222-8222-${String(i).padStart(12, '0')}`); const h = harness({ ids: ids.join(',') });
-    for (let i = 0; i < 120; i++) assert.equal((await h.request({ headers: { Authorization: 'Bearer ' + token(ids[i % 5]) }, body: '{"recurso":"acesso"}' })).r.status, 200);
+    for (let i = 0; i < 120; i++) assert.equal((await h.request({ headers: { Authorization: 'Bearer ' + token(ids[i % 5]), 'x-forwarded-for': '192.0.2.' + (i % 5 + 1) }, body: '{"recurso":"acesso"}' })).r.status, 200);
     assert.equal((await h.request({ headers: { Authorization: 'Bearer ' + token(ids[4]) } })).r.status, 429); noQueries(h);
   });
-  await test('limite global protege Auth inclusive token invalido', async () => {
+  await test('orcamento admin separado: invalido de outro IP nao tranca admin', async () => {
     const h = harness();
-    for (let i = 0; i < 120; i++) assert.equal((await h.request({ headers: { Authorization: 'Bearer broken' } })).r.status, 401);
-    assert.equal((await h.request()).r.status, 429);
-    assert.equal(h.authCalls.length, 120); noQueries(h);
+    for (let i = 0; i < 1000; i++) await h.request({ headers: { Authorization: 'Bearer broken', 'x-forwarded-for': '192.0.2.1' } });
+    assert.equal((await h.request({ headers: { 'x-forwarded-for': '192.0.2.2' } })).r.status, 200);
+    assert.equal(h.authCalls.length, 61);
+  });
+  await test('TOTP verificado obrigatorio para dados mesmo com aal2', async () => {
+    for (const factors of [[], [{ factor_type: 'phone', status: 'verified' }], [{ factor_type: 'totp', status: 'unverified' }]]) {
+      const h = harness({ factors }); assert.equal((await h.request()).r.status, 403); noQueries(h);
+    }
+  });
+  await test('IP janela deslizante e IPv6 invalidos/aliases agrupados', async () => {
+    const h = harness({ virtual: true }); const req = { headers: { Authorization: 'Bearer broken', 'x-forwarded-for': '198.51.100.2' } };
+    await h.request(req); await h.advance(59000);
+    for (let i = 0; i < 59; i++) assert.equal((await h.request(req)).r.status, 401);
+    await h.advance(1001); assert.equal((await h.request(req)).r.status, 401);
+    assert.equal((await h.request(req)).r.status, 429); assert.equal(h.authCalls.length, 61);
+    const invalid = harness();
+    for (let i = 0; i < 60; i++) await invalid.request({ headers: { Authorization: 'Bearer broken', 'x-forwarded-for': ':::a' } });
+    assert.equal((await invalid.request({ headers: { 'x-forwarded-for': ':::b' } })).r.status, 429);
+    const aliases = harness();
+    for (let i = 0; i < 60; i++) await aliases.request({ headers: { Authorization: 'Bearer broken', 'x-forwarded-for': '2001:db8::1' } });
+    assert.equal((await aliases.request({ headers: { 'x-forwarded-for': '2001:0db8:0:0:0:0:0:1' } })).r.status, 429);
+  });
+  await test('60/min por IP antes Auth; headers invalidos agrupados; recusas sem crescimento', async () => {
+    const h = harness({ virtual: true }); const req = { headers: { Authorization: 'Bearer broken', 'x-forwarded-for': '198.51.100.2' } };
+    for (let i = 0; i < 60; i++) assert.equal((await h.request(req)).r.status, 401);
+    for (let i = 0; i < 1000; i++) assert.equal((await h.request(req)).r.status, 429);
+    assert.equal(h.authCalls.length, 60); noQueries(h);
+    await h.advance(60001); assert.equal((await h.request(req)).r.status, 401);
+    const missing = harness(); for (let i = 0; i < 60; i++) await missing.request({ headers: { Authorization: 'Bearer broken', 'x-forwarded-for': 'invalid' } });
+    assert.equal((await missing.request()).r.status, 429); assert.equal(missing.authCalls.length, 60);
   });
   await test('query pendurada aborta prazo incluindo corpo; demais blocos respondem', async () => {
     const h = harness({ pendurar: 'subscriptions', rapido: true }); const { json } = await h.request(); assert.equal(json.dados.assinaturas.indisponivel, true); assert.equal(json.dados.uso.voz7d, 12); assert(h.signals.some((s) => s.aborted));

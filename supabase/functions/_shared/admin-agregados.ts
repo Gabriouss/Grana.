@@ -50,7 +50,7 @@ export async function consultarAgregados(cliente: SupabaseClient, agora: Date, t
   falhas.push('contas');
   // Mesma regra temporal de public.usuario_tem_direito; sem ler registros.
   const ativas = () => cliente.from('subscriptions').select('id', { count: 'exact', head: true })
-    .or(`access_until.gte.${isoAgora},and(status.eq.past_due,grace_until.gte.${isoAgora})`);
+    .or(`access_until.gte."${isoAgora}",and(status.eq.past_due,grace_until.gte."${isoAgora}")`);
   const assinaturas = bloco('assinaturas', async () => {
     const [ativasTotal, mensal, anual, venda, cortesia] = await Promise.all([
       contar(ativas()), contar(ativas().ilike('plan', '%mensal%')), contar(ativas().ilike('plan', '%anual%')),

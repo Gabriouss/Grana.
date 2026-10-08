@@ -45,13 +45,13 @@ export async function autorizarAdmin(
   if (!admin) return recurso === 'acesso'
     ? { ok: true, admin: false, userId: data.user.id }
     : { ok: false, status: 403, codigo: 'nao-autorizado' };
-  if (recurso !== 'acesso' && claims.aal !== 'aal2') {
+  const totp = data.user.factors?.some((f) => f.factor_type === 'totp' && f.status === 'verified') ? 'verificado' : 'ausente';
+  if (recurso !== 'acesso' && (claims.aal !== 'aal2' || totp !== 'verificado')) {
     return { ok: false, status: 403, codigo: 'mfa-necessario' };
   }
   return {
     ok: true, admin: true, userId: data.user.id, aal: claims.aal as 'aal1' | 'aal2',
-    totp: data.user.factors?.some((f) => f.factor_type === 'totp' && f.status === 'verified')
-      ? 'verificado' : 'ausente',
+    totp,
   };
 }
 
@@ -103,9 +103,42 @@ async function lerPedido(req: Request, signal: AbortSignal): Promise<RecursoAdmi
   }
 }
 
+// Admission queue never retains denied attempts; unlike an unbounded timestamp array.
+function admissaoLimitada(maximo: number, janela = 60_000) {
+  let recentes: number[] = [];
+  return () => {
+    const agora = Date.now(); recentes = recentes.filter((t) => agora - t < janela);
+    if (recentes.length >= maximo) return true;
+    recentes.push(agora); return false;
+  };
+}
+// Forwarded address is an extra throttle, NOT an authentication boundary.
+// Trust/rewriting by the production gateway must be verified before release.
+function chaveIp(req: Request): string {
+  const header = req.headers.get('x-forwarded-for');
+  if (!header || header.length > 256) return 'sem-ip';
+  const ip = header.split(',').at(-1)?.trim() ?? '';
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(ip) && ip.split('.').every((v) => Number(v) <= 255)) return ip.split('.').map(Number).join('.');
+  if (ip.includes(':')) {
+    try { return new URL(`http://[${ip}]/`).hostname.toLowerCase(); } catch { return 'sem-ip'; }
+  }
+  return 'sem-ip';
+}
+
 export function criarHandlerAdmin(deps: DependenciasAdmin) {
-  const porUsuario = criarRateLimiter(60_000, 30);
+  const usuarios = new Map<string, { expira: number; limitar: () => boolean }>();
+  const porUsuario = (id: string) => {
+    const agora = Date.now();
+    for (const [chave, item] of usuarios) if (item.expira <= agora) usuarios.delete(chave);
+    let item = usuarios.get(id);
+    if (!item) { item = { expira: agora + 60_000, limitar: admissaoLimitada(30) }; usuarios.set(id, item); }
+    item.expira = agora + 60_000;
+    return item.limitar();
+  };
   const global = criarRateLimiter(60_000, 120);
+  const admissaoAdmin = admissaoLimitada(120);
+  const overflow = admissaoLimitada(60);
+  const ips = new Map<string, { expira: number; limitar: () => boolean }>();
   return async (req: Request): Promise<Response> => {
     const inicio = Date.now();
     const ocorrencia = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -135,10 +168,13 @@ export function criarHandlerAdmin(deps: DependenciasAdmin) {
         return new Response(null, { status, headers });
       }
       if (req.method !== 'POST') return erro(405, 'metodo-invalido');
-      if (global('total')) {
-        headers.set('Retry-After', '60');
-        return erro(429, 'limite');
-      }
+      const ip = chaveIp(req);
+      const agora = Date.now();
+      for (const [chave, item] of ips) if (item.expira <= agora) ips.delete(chave);
+      let item = ips.get(ip);
+      if (!item && ips.size < 256) { item = { expira: agora + 60_000, limitar: admissaoLimitada(60) }; ips.set(ip, item); }
+      if (item) item.expira = agora + 60_000;
+      if ((item?.limitar ?? overflow)()) { headers.set('Retry-After', '60'); return erro(429, 'limite'); }
       try { recurso = await lerPedido(req, total.signal); }
       catch (e) {
         const codigo = e instanceof Error ? e.message : '';
@@ -168,6 +204,8 @@ export function criarHandlerAdmin(deps: DependenciasAdmin) {
         return responder(200, { ok: true, contrato: 1, geradoEm: new Date().toISOString(), dados: { admin: false } });
       }
       autorizacao = 'admin';
+      // Only authenticated allowlisted requests consume the admin's budget.
+      if (admissaoAdmin() || global('total')) { headers.set('Retry-After', '60'); return erro(429, 'limite'); }
       if (recurso === 'acesso') return responder(200, {
         ok: true, contrato: 1, geradoEm: new Date().toISOString(),
         dados: { admin: true, aal: acesso.aal, totp: acesso.totp },
