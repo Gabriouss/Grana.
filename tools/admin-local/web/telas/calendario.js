@@ -22,6 +22,9 @@ export async function montar(raiz, ctx) {
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Hoje', onclick: () => ctx.navegar('#/marketing/calendario') }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Próximo mês', onclick: () => irPara(1) }),
   ]);
+  const ensaio = h('section', { class: 'secao', 'aria-label': 'Ensaio do calendário Meta' });
+  raiz.appendChild(ensaio);
+  montarEnsaioCalendario(ensaio, ctx);
   const corpo = h('div', { class: 'tela-corpo' });
   raiz.appendChild(corpo);
   ctx.estado.carregando(corpo, 'Lendo o calendário…');
@@ -132,6 +135,75 @@ export async function montar(raiz, ctx) {
         { titulo: 'Situação', valor: (r) => r.situacao },
       ], d.referenciaFunil, { legenda: 'Calendário relativo do funil' })));
   }
+}
+
+// Leitura independente: falha do ensaio não apaga o calendário editorial.
+export function montarEnsaioCalendario(raiz, ctx) {
+  const { h } = ctx;
+  let ocupado = false;
+  const texto = (valor) => typeof valor === 'string' && valor ? valor : 'Não informado';
+  const motivos = {
+    'dia-d-nao-declarado': 'O dia D ainda não foi declarado.',
+    'calendario-sem-planejamentos': 'O calendário ainda não tem planejamentos.',
+    'antes-do-dia-d': 'A data está antes do dia D.',
+    'data-ou-hora-invalida': 'Informe uma data e um horário válidos.',
+    'horario-nao-futuro': 'O horário marcado já passou.',
+    'peca-ausente': 'A peça não foi encontrada.',
+    'versao-ou-caminho-mudou': 'A versão ou a localização da peça mudou.',
+    'fora-de-aprovados': 'A peça ainda não está na pasta de aprovados.',
+    'sem-evidencia-datada-desta-versao': 'Falta evidência datada de aceite desta versão.',
+    'canal-invalido': 'O canal não é válido para este ensaio.',
+    'anuncio-fora-do-fluxo-organico': 'Anúncios exigem um fluxo separado.',
+    'formato-de-midia-nao-validado': 'O formato da mídia não foi validado.',
+    'planejamento-duplicado': 'Este planejamento está duplicado.',
+    'julgamento-keel-e-aviso-orquestrador': 'Faltam o julgamento e a liberação da etapa real.',
+    'confirmacao-real-do-autor': 'A execução real exige confirmação do autor.',
+    'conta-permissoes-token-e-quota': 'Conta, permissões e limites da Meta precisam ser conferidos.',
+    'midia-remota-validada': 'A mídia remota precisa ser validada.',
+    'agendador-e-outbox-com-reconciliacao': 'Falta o serviço de execução com registros persistentes e conferência de resultados.',
+  };
+  const lista = (valores) => h('ul', {}, (Array.isArray(valores) ? valores : []).map((v) => h('li', { texto: motivos[v] || texto(v) })));
+  async function ler() {
+    if (ocupado || ctx.obsoleta()) return;
+    ocupado = true;
+    raiz.replaceChildren(h('h2', { class: 'secao-titulo', texto: 'Ensaio do calendário Meta' }));
+    const corpo = h('div', { class: 'secao-corpo quebra', role: 'status', 'aria-live': 'polite' });
+    raiz.appendChild(corpo);
+    ctx.estado.carregando(corpo, 'Lendo o ensaio…');
+    try {
+      const resposta = await ctx.api('/api/marketing/calendario/ensaio');
+      if (ctx.obsoleta()) return;
+      const d = resposta.dados;
+      if (!d || d.modo !== 'ensaio' || d.realHabilitado !== false || d.chamadasMeta !== 0 || !Array.isArray(d.itens)) {
+        throw Object.assign(new Error('O servidor não devolveu um ensaio válido. Nenhuma ação real foi habilitada.'), { codigo: 'ensaio-invalido' });
+      }
+      corpo.replaceChildren();
+      corpo.appendChild(ctx.alerta('info', 'Somente simulação. Nenhuma publicação foi agendada ou enviada à Meta. Um item ensaiado não está autorizado para execução real.'));
+      if (d.aviso) corpo.appendChild(h('p', { class: 'nota-explicativa', texto: texto(d.aviso) }));
+      corpo.appendChild(h('p', { class: 'campo-ajuda', texto: `Leitura: ${texto(d.geradoEm || resposta.atualizadoEm)} · Fuso: ${texto(d.fuso)} · Dia D: ${d.diaD || 'não declarado'}` }));
+      corpo.appendChild(h('p', { texto: `${d.itens.length} ${d.itens.length === 1 ? 'item' : 'itens'} · ${d.itens.filter((i) => i.estado === 'ensaio').length} ensaiados · ${d.itens.filter((i) => i.estado === 'bloqueado').length} bloqueados` }));
+      if (d.bloqueiosGerais?.length) corpo.appendChild(h('div', {}, h('h3', { texto: 'Bloqueios do ensaio' }), lista(d.bloqueiosGerais)));
+      if (!d.itens.length) corpo.appendChild(h('p', { texto: 'Nenhum planejamento disponível para ensaiar. Declare o dia D e marque as datas no calendário editorial.' }));
+      for (const i of d.itens) {
+        corpo.appendChild(h('article', { class: 'secao' },
+          h('h3', { class: 'secao-titulo', texto: `${texto(i.pecaId)} · ${i.estado === 'ensaio' ? 'Ensaiado, sem agendamento real' : 'Bloqueado no ensaio'}` }),
+          h('div', { class: 'secao-corpo' },
+            h('p', { texto: `Canal: ${texto(i.canal)} · Data: ${texto(i.data)} · Hora: ${texto(i.hora)} · Fuso: ${texto(i.fuso)}` }),
+            h('p', { class: 'campo-ajuda', texto: `Versão: ${texto(i.versao)} · Instante UTC: ${texto(i.quandoUtc)} · Evidência: ${texto(i.evidenciaEm)}` }),
+            h('p', { class: 'campo-ajuda', texto: `Recibo de simulação: ${texto(i.recibo)}` }),
+            lista(i.bloqueios),
+            h('ul', {}, (Array.isArray(i.midias) ? i.midias : []).map((m) => h('li', { texto: `${texto(m.nome)} (${texto(m.tipo)})` }))))));
+      }
+      if (d.pendenciasReais?.length) corpo.appendChild(h('details', {}, h('summary', { texto: 'Pendências da etapa real. Elas não autorizam publicação.' }), lista(d.pendenciasReais)));
+      corpo.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Atualizar ensaio', onclick: ler }));
+    } catch (err) {
+      if (!ctx.obsoleta()) {
+        console.warn('[calendario-ensaio]', err.codigo || 'falha');
+        ctx.estado.erro(corpo, err, ler);
+      }
+    } finally { ocupado = false; }
+  }
+  return ler();
 }
 
 function itemCalendario(ctx, i, aoClicar) {
