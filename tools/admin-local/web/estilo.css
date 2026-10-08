@@ -162,7 +162,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .num { font-variant-numeric: tabular-nums; }
 .mono {
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; /* só para hash, código e caminho */
+  font-family: var(--font); /* hash, código e caminho: Neue Machina, sem terceira família */
+  font-variant-numeric: tabular-nums;
   font-size: 0.88em;
   letter-spacing: 0;
 }
