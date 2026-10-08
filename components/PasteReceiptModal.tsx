@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
   View,
-  ScrollView,
 } from 'react-native';
 import AppModal from './AppModal';
 import { Alert } from '@/lib/alerta';
@@ -24,7 +22,7 @@ import {
   limparReferenciaCarteira,
   citaCarteira,
 } from '@/lib/heuristics';
-import { formatMoney, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
+import { formatMoney, parseAmount, todayISO } from '@/lib/format';
 import { dataDoTexto, semDatasDoTexto } from '@/lib/nota-foto-parser';
 import { fetchCategories } from '@/lib/data';
 import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
@@ -139,10 +137,6 @@ export default function PasteReceiptModal({
     setWalletId('');
   }
 
-  /* O que foi reconhecido mas não tem campo próprio nesta tela. Sem isto a
-     pessoa salvava sem saber que "todo mês" tinha virado uma série que se
-     repete sozinha — e recorrência criada sem querer é dinheiro que aparece
-     nos meses seguintes. */
   function processText(text: string, voz = false) {
     const wallet = matchWalletByText(text, wallets);
     const textoFinanceiro = wallet ? limparReferenciaCarteira(text, wallet.name) : text;
@@ -196,7 +190,7 @@ export default function PasteReceiptModal({
     const inicial = dataInicialDaRevisao(initialText, referenciaDaVoz ?? { referencia: todayISO(), aproximada: true });
     processText(inicial.textoSemData, true);
     setDataDoComprovante(inicial.data);
-    setDicaDaVoz(inicial.dica);
+    setDicaDaVoz(inicial.data ? inicial.dica : inicial.dica ?? 'A data da fala não ficou clara. Escolha a data.');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialText]);
 
@@ -333,18 +327,10 @@ export default function PasteReceiptModal({
 }
 
 const styles = StyleSheet.create({
-sheet: {
-    backgroundColor: theme.paperRaised,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    gap: spacing.md,
-    maxHeight: '90%',
-  },
-sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
-textArea: {
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
+  textArea: {
     backgroundColor: theme.paper,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -361,7 +347,7 @@ textArea: {
     outlineWidth: 2,
     outlineOffset: -1,
   },
-saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
-saveBtnHover: { opacity: 0.88 },
-saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular }
+  saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
+  saveBtnHover: { opacity: 0.88 },
+  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
 });

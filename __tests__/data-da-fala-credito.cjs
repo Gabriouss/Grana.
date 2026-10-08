@@ -67,7 +67,7 @@ function extrair(nome) {
 }
 
 /* ── 1. abrirNovaCompraDoTexto, extraída e executada ───────────────────── */
-function abrirNovaCompra(texto, ref) {
+function abrirNovaCompra(texto, ref, extra = {}) {
   const estado = {};
   const alertas = [];
   const wallets = [{ id: 'p', name: 'Pessoal', is_default: true }];
@@ -76,7 +76,7 @@ function abrirNovaCompra(texto, ref) {
     ...h, valorSeguroParaRevisaoVoz: conf.valorSeguroParaRevisaoVoz, dataInicialDaRevisao: dataDaFala.dataInicialDaRevisao,
     Alert: { alert: (...a) => alertas.push(a) }, wallets, cards, walletCards: cards, activeWallet: wallets[0], categoriasExtras: [],
     operacaoVoz: {}, randomUUID: () => 'op', todayISO: () => HOJE, formatMoney: (v) => String(v),
-    texto, referencia: ref,
+    texto, referencia: ref, ...extra,
   };
   for (const campo of ['FalaOuvida', 'DicaDaDataVoz', 'EditingTxId', 'TxWalletId', 'TxDesc', 'TxAmount', 'TxCategory', 'TxCatColor', 'TxCardId', 'TxInstallments', 'TxRecurring', 'TxDate', 'NewTxOpen']) {
     contexto['set' + campo] = (v) => { estado[campo] = v; };
@@ -109,6 +109,13 @@ function abrirNovaCompra(texto, ref) {
   assert.equal(r.estado.TxDate, HOJE, 'achado 8: na data da captura, nunca 10/09');
   assert.equal(r.estado.TxAmount, '10', 'achado 8: o valor é 10');
   assert.equal(r.alertas.length, 0, 'achado 8: sem aviso de data');
+  /* Sem dica do núcleo e sem data, a janela não fica muda: texto de reserva
+     (janela única, 08/10/2026). Com data segura, nenhuma dica. */
+  r = abrirNovaCompra('almoço 30 reais no crédito C6', { referencia: HOJE, aproximada: false },
+    { dataInicialDaRevisao: (t) => ({ data: null, dica: null, textoSemData: t }) });
+  assert.equal(r.estado.DicaDaDataVoz, 'A data da fala não ficou clara. Escolha a data.', 'sem dica do núcleo: texto de reserva');
+  r = abrirNovaCompra('almoço 30 reais no crédito C6', { referencia: HOJE, aproximada: false });
+  assert.equal(r.estado.DicaDaDataVoz, null, 'data segura: sem dica');
 }
 ok('Crédito: a data inicial da revisão vem do núcleo, contada da captura; duvidosa começa vazia, com aviso e proposta');
 

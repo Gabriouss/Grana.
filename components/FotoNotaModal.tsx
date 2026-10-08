@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Alert } from '@/lib/alerta';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, touchTarget, lh, hitSlopPara } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { categoriaEscolhida, categoriaReconhecida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
-import { formatMoney, parseAmount, formatMoneyInput, todayISO } from '@/lib/format';
+import { formatMoney, parseAmount, todayISO } from '@/lib/format';
 import { fotografarELer, limparFotosEsquecidas, prepararLeitura } from '@/lib/foto-nota-ocr';
 import { extrairDetalhesDaNota } from '@/lib/nota-foto-parser';
 import { cartaoPadrao, montarLancamentoDaFoto } from '@/lib/foto-nota-lancamento';
@@ -17,11 +17,9 @@ import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { hapticSuccess, hapticTap } from '@/lib/haptics';
-import { LIMITS } from '@/lib/limits';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import AppPressable from './AppPressable';
 import AppModal, { InsetsDoModal } from './AppModal';
-import Sheet from './Sheet';
 import PermissaoCamera from './PermissaoCamera';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
@@ -407,15 +405,16 @@ export default function FotoNotaModal({
 }
 
 const styles = StyleSheet.create({
-camWrap: { flex: 1, backgroundColor: '#000' },
-overlayTopo: {
+  camWrap: { flex: 1, backgroundColor: '#000' },
+
+  overlayTopo: {
     position: 'absolute',
     left: spacing.xl,
     right: spacing.xl,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-botaoRedondo: {
+  botaoRedondo: {
     width: touchTarget,
     height: touchTarget,
     borderRadius: touchTarget / 2,
@@ -425,9 +424,12 @@ botaoRedondo: {
     borderWidth: 1,
     borderColor: theme.ruleStrong,
   },
-botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
-overlayBase: { position: 'absolute', left: spacing.xl, right: spacing.xl, alignItems: 'center', gap: spacing.lg },
-pilula: {
+  botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
+
+  overlayBase: { position: 'absolute', left: spacing.xl, right: spacing.xl, alignItems: 'center', gap: spacing.lg },
+  /* Mesmo véu dos botões redondos do topo. `radius.lg`, e não pílula, porque
+     com fonte grande do sistema a dica quebra em duas linhas. */
+  pilula: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -437,16 +439,16 @@ pilula: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-dica: { flexShrink: 1, color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio'), textAlign: 'center', fontFamily: fonts.regular },
-obturador: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
-obturadorDesligado: { opacity: 0.4 },
-obturadorMiolo: { width: 54, height: 54, borderRadius: 27, backgroundColor: theme.ink },
-hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
-grupo: { gap: spacing.sm },
-rotuloGrupo: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
-chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-chip: { minHeight: touchTarget, justifyContent: 'center', borderWidth: 1, borderColor: theme.rule, borderRadius: radius.pill, paddingHorizontal: spacing.md },
-chipAtivo: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
-chipTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.regular },
-chipTextoAtivo: { color: theme.ink }
+  dica: { flexShrink: 1, color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio'), textAlign: 'center', fontFamily: fonts.regular },
+  obturador: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
+  obturadorDesligado: { opacity: 0.4 },
+  obturadorMiolo: { width: 54, height: 54, borderRadius: 27, backgroundColor: theme.ink },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
+  grupo: { gap: spacing.sm },
+  rotuloGrupo: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: { minHeight: touchTarget, justifyContent: 'center', borderWidth: 1, borderColor: theme.rule, borderRadius: radius.pill, paddingHorizontal: spacing.md },
+  chipAtivo: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
+  chipTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.regular },
+  chipTextoAtivo: { color: theme.ink },
 });

@@ -1,31 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Easing,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Alert } from '@/lib/alerta';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, touchTarget, lh, hitSlopPara } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, touchTarget, lh } from '@/lib/theme';
 import { parseNfceQrCode, formatarCnpj, type NotaFiscal } from '@/lib/nfce-parser';
 import { categoriaEscolhida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
-import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
+import { formatMoney, parseAmount } from '@/lib/format';
 import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { hapticSuccess, hapticTap } from '@/lib/haptics';
-import { LIMITS } from '@/lib/limits';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import AppPressable from './AppPressable';
 import AppModal, { InsetsDoModal } from './AppModal';
-import Sheet from './Sheet';
 import PermissaoCamera from './PermissaoCamera';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
@@ -289,8 +285,9 @@ export default function QrScannerModal({
 const LADO_MIRA = 240;
 
 const styles = StyleSheet.create({
-camWrap: { flex: 1, backgroundColor: '#000' },
-overlayTopo: {
+  camWrap: { flex: 1, backgroundColor: '#000' },
+
+  overlayTopo: {
     position: 'absolute',
     /* `top` vem do inset no JSX. */
     left: spacing.xl,
@@ -298,7 +295,7 @@ overlayTopo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-botaoRedondo: {
+  botaoRedondo: {
     width: touchTarget,
     height: touchTarget,
     borderRadius: touchTarget / 2,
@@ -308,20 +305,29 @@ botaoRedondo: {
     borderWidth: 1,
     borderColor: theme.ruleStrong,
   },
-botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
-overlayCentro: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xl },
-mira: { width: LADO_MIRA, height: LADO_MIRA, overflow: 'hidden' },
-cantoBase: { position: 'absolute', width: 34, height: 34, borderColor: theme.accent2 },
-cantoTopoEsq: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.md },
-cantoTopoDir: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.md },
-cantoBaixoEsq: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.md },
-cantoBaixoDir: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: radius.md },
-linhaVarredura: { position: 'absolute', left: 6, right: 6, height: 2, backgroundColor: theme.accent2, opacity: 0.75 },
-dicaMira: { color: theme.ink, fontSize: type.apoio, textAlign: 'center', paddingHorizontal: spacing.xxl, fontFamily: fonts.regular },
-hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
-aviso: { color: theme.danger, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.regular },
-notaBox: { backgroundColor: theme.paper, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },
-notaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-notaRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
-notaValor: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light }
+  botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
+
+  overlayCentro: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xl },
+  mira: { width: LADO_MIRA, height: LADO_MIRA, overflow: 'hidden' },
+  cantoBase: { position: 'absolute', width: 34, height: 34, borderColor: theme.accent2 },
+  cantoTopoEsq: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.md },
+  cantoTopoDir: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.md },
+  cantoBaixoEsq: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.md },
+  cantoBaixoDir: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: radius.md },
+  linhaVarredura: { position: 'absolute', left: 6, right: 6, height: 2, backgroundColor: theme.accent2, opacity: 0.75 },
+  dicaMira: { color: theme.ink, fontSize: type.apoio, textAlign: 'center', paddingHorizontal: spacing.xxl, fontFamily: fonts.regular },
+  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
+  /* `theme.danger`, cujo próprio comentário em lib/theme.ts diz "perigo/atenção",
+     e não o âmbar que estava aqui: `#d3b869` é a cor da categoria Assinaturas,
+     emprestada como cor semântica — exatamente o acidente que fez o token
+     `danger` existir (o botão "Excluir conta" tinha pegado a cor de
+     Alimentação do mesmo jeito). O aviso é de integridade do dado ("isto não é
+     uma compra real"), que é o papel do token; um terceiro tom semântico
+     reintroduziria o semáforo que a No-Red Rule mantém fora da paleta. */
+  aviso: { color: theme.danger, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.regular },
+
+  notaBox: { backgroundColor: theme.paper, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },
+  notaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  notaRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  notaValor: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
 });

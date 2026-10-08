@@ -963,9 +963,10 @@ export default function CreditoScreen() {
     setTxDate(inicial.data ?? '');
     setNewTxOpen(true);
     /* Campo vazio precisa de explicação: a dica do núcleo, a mesma do Colar,
-       cita a data que a fala indicou, sem pré-selecioná-la. Um aviso, e não
-       um elemento novo no formulário compartilhado. */
-    setDicaDaDataVoz(inicial.dica);
+       cita a data que a fala indicou, sem pré-selecioná-la. Ela aparece na
+       própria janela, abaixo da data (janela única, 08/10/2026); sem dica do
+       núcleo, um texto de reserva, para o campo vazio nunca ficar mudo. */
+    setDicaDaDataVoz(inicial.data ? inicial.dica : inicial.dica ?? 'A data da fala não ficou clara. Escolha a data.');
   }
 
   /* Crédito nunca grava sem a pessoa escolher o cartão (decisão do autor,
