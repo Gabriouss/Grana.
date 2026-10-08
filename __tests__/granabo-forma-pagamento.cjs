@@ -122,6 +122,11 @@ async function perguntar(mensagem, chamada) {
   casa(credito, /Total: R\$ 816,51 em 1 lançamento/, 'crédito soma só o cartão');
   casa(credito, /pagos no crédito/, 'filtro citado com nome de gente');
 
+  /* 4b. "cartao" sozinho (achado do Lynx em 468b0c9) é crédito. */
+  const cartao = await perguntar('quanto gastei no cartão em alimentação',
+    tool('consultarLancamentos', { operacao: 'somar', categoria: 'alimentação', forma_pagamento: 'cartão' }));
+  casa(cartao, /Total: R\$ 816,51 em 1 lançamento/, '"cartão" cai no crédito');
+
   /* 5. O parâmetro e as regras do prompt, como o modelo os recebe. */
   const req = prompts.at(-1);
   const param = req.tools.find((t) => t.function.name === 'consultarLancamentos').function.parameters.properties.forma_pagamento;

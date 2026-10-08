@@ -1338,7 +1338,7 @@ async function executarFerramenta(
         const pedida = normalizarParaBusca(String(args.forma_pagamento)).trim();
         /* "fora_do_credito" contém "credito": o fora vem antes. */
         const fora = /fora|debit|pix|dinheiro|cash|especie/.test(pedida);
-        if (!fora && /credit/.test(pedida)) {
+        if (!fora && /credit|cartao/.test(pedida)) {
           q = q.or('payment_method.eq.credit,card_id.not.is.null');
           aplicados.push('pagos no crédito');
         } else {
