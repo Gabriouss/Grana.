@@ -218,7 +218,11 @@ async function reciboSemLancamentoNovo(desfecho: DesfechoOperacaoVoz, notificaco
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
 export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Promise<DesfechoTarefa> {
   const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
-  const trabalho = executarAteODesfecho(payload, recibo, definirEstado);
+  /* O que já tem índice de retomada (fila ou pasta de recuperação). O teto
+     só afirma "guardada" com isso: sem índice, nada retomaria a fala, e a
+     promessa seria falsa (resíduo da leitura final do Lynx, 08/10/2026). */
+  const andamento = { indexada: false };
+  const trabalho = executarAteODesfecho(payload, recibo, definirEstado, andamento);
   // O trabalho que passou do teto não pode virar rejeição sem dono.
   trabalho.catch(() => {});
   let corte: ReturnType<typeof setTimeout> | undefined;
@@ -230,7 +234,8 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz): Prom
       } catch (erroEstado) {
         console.error('[voz] o widget não pôde ser posto em atenção', erroEstado);
       }
-      resolver({ guardada: true, motivo: 'demorou' });
+      const daFila = !!payload?.caminho?.includes('/voz-pendente/');
+      resolver(andamento.indexada || daFila ? { guardada: true, motivo: 'demorou' } : { guardada: false });
     }, PRAZO_FIM_DA_TAREFA_MS);
   });
   return Promise.race([trabalho, teto]).finally(() => clearTimeout(corte));
@@ -240,6 +245,7 @@ async function executarAteODesfecho(
   payload: Payload,
   recibo: ReciboVoz | undefined,
   definirEstado: (estado: 'ocioso' | 'atencao') => unknown,
+  andamento: { indexada: boolean },
 ): Promise<DesfechoTarefa> {
   const caminho = payload?.caminho;
   const requestId = payload?.requestId;
@@ -277,6 +283,7 @@ async function executarAteODesfecho(
     /* Antes de tudo: a fala nova fica reservada na fila. Fala que já veio
        da fila não precisa, ela já está lá. */
     if (!caminho.includes('/voz-pendente/')) reservada = await reservarFala(caminho, requestId, payload.source, captura);
+    if (reservada) andamento.indexada = true;
 
     /* Antes de gastar transcrição, e muito antes de gravar qualquer coisa:
        sem permissão de notificação o widget não tem como entregar o recibo
@@ -293,6 +300,7 @@ async function executarAteODesfecho(
         if (userId) {
           const { adicionarVozPendente } = await import('./widget-voz-pendentes');
           await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, ...captura });
+          andamento.indexada = true;
           manterArquivo = true;
         }
       }
@@ -355,6 +363,7 @@ async function executarAteODesfecho(
           userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
           if (userId) {
             await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
+            andamento.indexada = true;
             manterArquivo = true;
             desfecho = { guardada: true, motivo };
           }
@@ -371,6 +380,7 @@ async function executarAteODesfecho(
               await guardarVozOrfa({ caminho, requestId, userId, source: payload.source,
                 transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
               copiaDuravel = true;
+              andamento.indexada = true;
               manterArquivo = true;
               desfecho = { guardada: true, motivo };
             } catch (erroOrfa) {
@@ -459,6 +469,7 @@ async function executarAteODesfecho(
               await guardarVozOrfa({ caminho, requestId, userId, source: payload.source,
                 transcricao: contexto.transcricao ?? payload.transcricao, ...captura });
               copiaDuravel = true;
+              andamento.indexada = true;
               manterArquivo = true;
               desfecho = { guardada: true, motivo: 'sem_notificacao' };
             }

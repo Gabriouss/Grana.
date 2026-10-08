@@ -156,6 +156,23 @@ async function gravarNaVez(vez: Vez, itens: VozPendente[]): Promise<void> {
   await gravar(itens);
 }
 
+/**
+ * Cópia que a mutação fez e não conseguiu indexar. Fora do prazo (`vencida`),
+ * a vez já é de outra mutação, que pode ter guardado A MESMA fala no mesmo
+ * caminho (`voz-pendente/<requestId>.m4a`): apagar na hora levaria o áudio
+ * que a fila passou a apontar (resíduo da leitura final do Lynx, 08/10/2026).
+ * Então a limpeza entra na fila de mutações e só apaga se nenhum item usar o
+ * arquivo. Dentro do prazo ninguém mais mexeu na fila, e apaga já.
+ */
+async function apagarCopiaSemIndice(vez: Vez, destino: string): Promise<void> {
+  const fs = await import('expo-file-system/legacy');
+  const apagar = () => fs.deleteAsync(destino, { idempotent: true }).catch((e) => console.error('[voz] cópia sem índice não saiu', e));
+  if (!vez.vencida) { await apagar(); return; }
+  void naVez(async () => {
+    if (!(await ler()).some((i) => i.caminho === destino)) await apagar();
+  }).catch((e) => console.error('[voz] limpeza da cópia da mutação vencida não rodou', e));
+}
+
 /** `file://` na frente, como o disco do Expo espera. */
 function uriDe(caminho: string): string {
   return caminho.startsWith('file://') ? caminho : `file://${caminho}`;
@@ -184,7 +201,7 @@ async function reservarSemConcorrencia(vez: Vez, item: Omit<VozPendente, 'criado
   try { await gravarNaVez(vez, itens); }
   catch (erro) {
     // Não deixar cópia sem índice. O original ainda pertence à captura.
-    await fs.deleteAsync(destino, { idempotent: true }).catch((e) => console.error('[voz] cópia sem índice não saiu', e));
+    await apagarCopiaSemIndice(vez, destino);
     throw erro;
   }
   return true;
@@ -228,7 +245,7 @@ async function adicionarSemConcorrencia(vez: Vez, item: Omit<VozPendente, 'criad
   itens.push({ ...item, caminho: destino, criadoEm: item.criadoEm ?? Date.now() });
   try { await gravarNaVez(vez, itens); }
   catch (erro) {
-    await fs.deleteAsync(destino, { idempotent: true }).catch((e) => console.error('[voz] cópia sem índice não saiu', e));
+    await apagarCopiaSemIndice(vez, destino);
     throw erro;
   }
 }

@@ -818,6 +818,49 @@ function falaNova(id, source, extras = {}) {
     } finally { fsDuble.writeAsStringAsync = escritaReal; }
   }
 
+  /* ── 20. Resíduos da leitura final (Lynx, 08/10/2026) ──────────────────────── */
+  if (rodar(20)) {
+    const escritaReal = fsDuble.writeAsStringAsync;
+    const copiaReal = fsDuble.copyAsync;
+    try {
+      // 20a. O teto de ponta a ponta só diz "guardada" se a fala tiver índice.
+      fsDuble.writeAsStringAsync = async () => { throw new Error('IO indisponível (simulado)'); };
+      for (const source of ['widget', 'app']) {
+        limparAparelho();
+        const p = novoProcesso(); escala = 1000;
+        ctl.falharEscritaDaFilaApos = 0; // a reserva não grava
+        ctl.transcrever = async () => ({ ok: false, codigo: 'sem_rede' });
+        ctl.pendurarNotificacao = new Set(['notificarFalha']); // e o recibo de falha nunca volta
+        const d = await comLimite(p.tarefa.executarTarefa(falaNova('teto-' + source, source)), 3000, 'tarefa presa no recibo de falha');
+        assert.deepEqual({ ...d }, { guardada: false }, 'nem fila nem recuperação: o teto não pode prometer retomada');
+        assert.deepEqual(filaBruta(), []);
+        if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao');
+        ok(`[${source}] teto de ponta a ponta sem fala indexada: não anuncia "guardada"`);
+      }
+      fsDuble.writeAsStringAsync = escritaReal;
+
+      // 20b. A cópia de uma reserva vencida que termina DEPOIS não apaga o áudio
+      //      da mesma fala, guardada nesse meio tempo por outra mutação.
+      limparAparelho();
+      const p = novoProcesso(); escala = 1000;
+      const fala = falaNova('tardia', 'widget');
+      let soltar; let primeira = true;
+      fsDuble.copyAsync = (a) => {
+        if (primeira && a.to.includes('/voz-pendente/')) { primeira = false; return new Promise((r) => { soltar = () => r(copiaReal(a)); }); }
+        return copiaReal(a);
+      };
+      await assert.rejects(comLimite(p.fila.reservarFalaEmAndamento({ ...fala, userId: 'u-1' }), 2000, 'reserva sem prazo'));
+      await p.fila.adicionarVozPendente({ ...fala, userId: 'u-1' });
+      soltar();
+      await tique(40);
+      const fila = filaBruta();
+      assert.deepEqual(fila.map((i) => i.requestId), ['tardia']);
+      assert.equal(disco.has(fila[0].caminho), true, 'o áudio que a fila aponta continua no aparelho');
+      assert.deepEqual(audios().filter((a) => a.includes('/voz-pendente/')), [fila[0].caminho], 'e a cópia da reserva vencida não sobra');
+      ok('cópia tardia de reserva vencida não apaga o áudio da fala guardada depois');
+    } finally { fsDuble.writeAsStringAsync = escritaReal; fsDuble.copyAsync = copiaReal; }
+  }
+
   console.log(`\n${checagens} checagens do widget de voz em segundo plano passaram — 0 falhas`);
   process.exit(0);
 })().catch((erro) => {
