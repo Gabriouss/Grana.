@@ -4,9 +4,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const m = { exports: {} };
+const remotoMod = require('../tools/admin-local/marketing/ajustes-remoto.cjs');
 vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../tools/admin-local/marketing/ajustes-fila.cjs'), 'utf8'), {
   module: m, exports: m.exports, process, Date, structuredClone, setTimeout, setInterval, clearInterval,
-  require: (id) => id === '../config.cjs' ? { RAIZ: '/fixture', RAIZ_DADOS: '/fixture' } : id === 'child_process' ? { execFile() { throw new Error('REAL PROCESS FORBIDDEN'); } } : require(id),
+  require: (id) => id === '../config.cjs' ? { RAIZ: '/fixture', RAIZ_DADOS: '/fixture', tem: () => false, ler: () => undefined }
+    : id === 'child_process' ? { execFile() { throw new Error('REAL PROCESS FORBIDDEN'); } }
+    : id === './ajustes-remoto.cjs' ? remotoMod : require(id),
 });
 function setup(opts = {}) {
   let now = Date.parse('2026-10-08T17:00:00Z'), n = 0;
@@ -19,6 +22,7 @@ function setup(opts = {}) {
     obterPeca: () => ({ ...peca }), verificarCommit: async (...args) => { calls.push(['commit', ...args]); if (opts.commitFalha) throw new Error('commit desconhecido'); },
     entregar: async (r) => { calls.push(['entregar', r.id, r.lease.id]); if (opts.entregaFalha) throw new Error('offline'); },
     log: (s) => calls.push(['log', s]),
+    remoto: opts.remoto || null, remotoAusente: opts.remotoAusente || null,
   };
   return { fila: m.exports.criarFila(deps), db, peca, calls, deps, advance: (ms) => { now += ms; } };
 }
@@ -102,6 +106,78 @@ async function test(name, fn) { await fn(); count++; console.log('OK ' + name); 
       assert.equal(fs.existsSync(lock), false); assert.equal(repo.ler().pedidos.length, 1);
       fs.writeFileSync(lock, String(process.pid)); await assert.rejects(() => repo.transacao(() => {}), /ocupada/); assert.equal(fs.existsSync(lock), true);
     } finally { if (antes === undefined) delete process.env.GRANA_ADMIN_PASTA_CONTA; else process.env.GRANA_ADMIN_PASTA_CONTA = antes; fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+  // ---- ponte com a tabela remota (painel web) ----
+  const RID = '33333333-3333-4333-8333-333333333333';
+  const remotoNovo = (extra = {}) => ({ id: RID, peca_id: 'a'.repeat(16), caminho: 'docs/marketing/fixture/para-aprovacao/p', versao_alvo: 'a'.repeat(40), texto_original: ' TEXTO WEB PRIVADO ', criado_em: '2026-10-08T16:59:00Z', ...extra });
+  function remotoFalso(opts = {}) {
+    const chamadas = []; let lista = opts.lista ?? [remotoNovo()];
+    return { chamadas, r: {
+      novos: async () => { chamadas.push(['novos']); if (opts.falhaNovos) throw Object.assign(new Error('x'), { codigo: 'remoto-http' }); return lista; },
+      marcarImportado: async (id) => { chamadas.push(['importado', id]); if (opts.falhaMarcar) throw Object.assign(new Error('x'), { codigo: 'remoto-sem-resposta' }); lista = lista.filter((n) => n.id !== id); },
+      refletir: async (r) => { chamadas.push(['refletir', r.remotoId, r.estado]); },
+    } };
+  }
+  await test('ponte: importa pedido web uma vez, marca DEPOIS de gravar, e entrega pelo mesmo caminho', async () => {
+    const rf = remotoFalso(); const h = setup({ remoto: rf.r });
+    await h.fila.tick();
+    assert.equal(h.db.pedidos.length, 1); const p = h.db.pedidos[0];
+    assert.equal(p.remotoId, RID); assert.equal(p.origem, 'painel-web'); assert.equal(p.textoOriginal, 'TEXTO WEB PRIVADO');
+    assert.deepEqual(rf.chamadas.slice(0, 2), [['novos'], ['importado', RID]]);
+    assert.equal(h.calls.filter((c) => c[0] === 'entregar').length, 1); assert.equal(p.estado, 'em-correcao');
+    h.advance(30_001); await h.fila.tick();
+    assert.ok(rf.chamadas.some((c) => c[0] === 'refletir' && c[2] === 'em-correcao')); assert.equal(h.db.pedidos[0].remotoEstado, 'em-correcao');
+    assert.equal(JSON.stringify(h.calls).includes('TEXTO WEB'), false);
+  });
+  await test('ponte: queda entre gravar e marcar reimporta sem duplicar', async () => {
+    const rf = remotoFalso({ falhaMarcar: true }); const h = setup({ remoto: rf.r });
+    await h.fila.sincronizarRemoto(); h.advance(30_001); await h.fila.sincronizarRemoto();
+    assert.equal(h.db.pedidos.length, 1); assert.equal(h.fila.remotoStatus().ultimoErro, 'remoto-sem-resposta');
+    assert.deepEqual(h.calls.filter((c) => c[0] === 'log').map((c) => c[1]), ['ajuste-remoto-falhou', 'ajuste-remoto-falhou']);
+  });
+  await test('ponte: linha remota fora do formato nao entra; falha remota nao para a fila local', async () => {
+    const rf = remotoFalso({ lista: [remotoNovo({ caminho: 7 }), remotoNovo({ id: 'x' }), remotoNovo({ texto_original: '' })] }); const h = setup({ remoto: rf.r });
+    await h.fila.tick(); assert.equal(h.db.pedidos.length, 0);
+    const caiu = remotoFalso({ falhaNovos: true }); const l = setup({ remoto: caiu.r });
+    await l.fila.solicitar(l.peca, { versao: l.peca.versao, motivo: 'local' }); await l.fila.tick();
+    assert.equal(l.calls.filter((c) => c[0] === 'entregar').length, 1); assert.equal(l.fila.remotoStatus().ultimoErro, 'remoto-http');
+  });
+  await test('ponte (achado Harbor): texto contado por caractere como a Edge; linha invalida tem recibo e sai de novo', async () => {
+    const emoji = '😀'.repeat(1001);
+    const rf = remotoFalso({ lista: [remotoNovo({ texto_original: emoji })] }); const h = setup({ remoto: rf.r });
+    await h.fila.sincronizarRemoto(); assert.equal(h.db.pedidos.length, 1, '1001 emoji (2002 unidades UTF-16) importados');
+    const local = setup(); await local.fila.solicitar(local.peca, { versao: local.peca.versao, motivo: '😀'.repeat(2000) });
+    await assert.rejects(() => local.fila.solicitar(local.peca, { versao: local.peca.versao, motivo: '😀'.repeat(2001) }));
+    const ruim = remotoFalso({ lista: [remotoNovo({ caminho: 7 })] }); const r = setup({ remoto: ruim.r });
+    await r.fila.sincronizarRemoto();
+    assert.equal(r.db.pedidos.length, 0); assert.deepEqual(ruim.chamadas.filter((c) => c[0] === 'refletir'), [['refletir', RID, 'precisa-de-atencao']]);
+    assert.equal(r.fila.remotoStatus().ultimoErro, 'remoto-linha-invalida');
+    assert.ok(r.calls.some((c) => c[0] === 'log' && c[1] === 'ajuste-remoto-linha-invalida'));
+  });
+  await test('ponte: sem chave a fila fica com status ausente e motivo, e nao tenta rede', async () => {
+    const h = setup({ remotoAusente: 'SUPABASE_SERVICE_ROLE_KEY nao esta no .env' });
+    await h.fila.tick(); assert.deepEqual({ ...h.fila.remotoStatus(), ultimaSync: null }, { status: 'ausente', motivo: 'SUPABASE_SERVICE_ROLE_KEY nao esta no .env', ultimaSync: null, ultimoErro: null });
+    assert.match(remotoMod.remotoDoEnv({ tem: () => false, ler: () => undefined }).ausente, /SUPABASE_SERVICE_ROLE_KEY/);
+    assert.match(remotoMod.remotoDoEnv({ tem: () => true, ler: (k) => (k === 'EXPO_PUBLIC_SUPABASE_URL' ? 'https://evil.example.com' : 'k') }).ausente, /formato/);
+  });
+  await test('criarRemoto real: URLs, metodos e corpos certos; lease e aceite no formato das constraints; erro sem corpo', async () => {
+    const req = []; const resp = (status, body) => ({ ok: status < 300, status, json: async () => body });
+    let proximo = resp(200, [remotoNovo()]);
+    const r = remotoMod.criarRemoto({ url: 'https://abc.supabase.co/', chave: 'CHAVE', agora: () => '2026-10-08T17:00:00.000Z',
+      fetch: async (u, init) => { req.push({ u, m: init.method || 'GET', b: init.body ? JSON.parse(init.body) : null, h: init.headers }); const x = proximo; proximo = resp(204); return x; } });
+    const lista = await r.novos();
+    assert.equal(lista[0].id, RID); assert.match(req[0].u, /^https:\/\/abc\.supabase\.co\/rest\/v1\/admin_ajuste_pedidos\?select=id,peca_id,caminho,versao_alvo,texto_original,criado_em&estado=eq\.novo&importado_em=is\.null/);
+    assert.equal(req[0].h.Authorization, 'Bearer CHAVE');
+    await r.marcarImportado(RID);
+    assert.deepEqual([req[1].m, req[1].u.split('/rest/v1')[1], req[1].b], ['PATCH', `/admin_ajuste_pedidos?id=eq.${RID}&importado_em=is.null`, { importado_em: '2026-10-08T17:00:00.000Z' }]);
+    assert.deepEqual(req[2].b, { pedido_id: RID, estado: 'novo', codigo: 'importado-m1' });
+    await r.refletir({ remotoId: RID, estado: 'em-correcao', tentativas: 1, lease: { id: 'L', agente: 'Beacon', inicio: 'I', expiraEm: 'E' } });
+    assert.deepEqual([req[3].b.lease_id, req[3].b.lease_agente, req[3].b.lease_expira_em, req[3].b.aceite_em], ['L', 'Beacon', 'E', null]);
+    await r.refletir({ remotoId: RID, estado: 'aceito', tentativas: 99, lease: null, versaoCorrigida: 'b'.repeat(40), commit: 'c'.repeat(40), aceite: { versao: 'b'.repeat(40), em: 'T' } });
+    assert.deepEqual([req[5].b.lease_id, req[5].b.tentativas, req[5].b.aceite_versao, req[5].b.versao_corrigida], [null, 10, 'b'.repeat(40), 'b'.repeat(40)]);
+    assert.ok(req.every((x) => !JSON.stringify(x.b || '').includes('TEXTO')), 'texto nunca vai em PATCH/evento');
+    proximo = { ok: false, status: 400, json: async () => ({ message: 'TEXTO WEB PRIVADO' }) };
+    await assert.rejects(() => r.novos(), (e) => e.codigo === 'remoto-http' && !String(e.message).includes('TEXTO'));
   });
   console.log(`admin-ajustes: ${count} grupos verdes; zero processo/rede/publicacao real`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });

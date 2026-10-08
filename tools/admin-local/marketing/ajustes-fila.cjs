@@ -6,6 +6,9 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 const cfg = require('../config.cjs');
 
+// Characters as the Edge Function and Postgres char_length count them (code points), not
+// UTF-16 units: 1001 emoji are 1001 characters there and 2002 units in .length.
+const caracteres = (s) => [...s].length;
 function erro(codigo, mensagem, status = 409) { return Object.assign(new Error(mensagem), { codigo, status }); }
 function criarFila(deps) {
   const mudar = (db, r, estado, codigo) => {
@@ -16,7 +19,7 @@ function criarFila(deps) {
   async function solicitar(peca, corpo) {
     if (peca.estado === 'historico') throw erro('peca-no-historico', 'Peca do historico nao recebe ajuste.');
     if (peca.versao !== corpo.versao) throw erro('versao-mudou', 'A peca mudou. Recarregue antes de pedir o ajuste.');
-    if (typeof corpo.motivo !== 'string' || !corpo.motivo.trim() || corpo.motivo.length > 2000) throw erro('motivo-invalido', 'Descreva o ajuste em ate 2000 caracteres.', 400);
+    if (typeof corpo.motivo !== 'string' || !corpo.motivo.trim() || caracteres(corpo.motivo.trim()) > 2000) throw erro('motivo-invalido', 'Descreva o ajuste em ate 2000 caracteres.', 400);
     return deps.transacao((db) => {
       if (db.pedidos.length >= 1000) throw erro('fila-cheia', 'A fila atingiu o limite. Preserve o historico e revise a retencao.', 503);
       const anterior = db.pedidos.filter((p) => p.pecaId === peca.id).at(-1);
@@ -96,10 +99,55 @@ function criarFila(deps) {
       r.aceite = { versao: peca.versao, em: deps.agora() }; mudar(db, r, 'aceito', 'autor-aceitou'); return r;
     });
   }
+  // Remote bridge (web panel -> table -> this queue). The local queue stays the only one
+  // that delivers; remote rows are imported once (idempotent by remotoId) and every local
+  // state change is mirrored back so the web panel can show progress.
+  const remoto = { status: deps.remoto ? 'ativo' : 'ausente', motivo: deps.remotoAusente || null, ultimaSync: null, ultimoErro: null };
+  let proximaSync = 0;
+  const remotoValido = (n) => n && /^[0-9a-f-]{36}$/i.test(n.id) && /^[0-9a-f]{16}$/.test(n.peca_id) && /^[0-9a-f]{40}$/.test(n.versao_alvo)
+    && typeof n.caminho === 'string' && typeof n.texto_original === 'string' && n.texto_original.trim() && caracteres(n.texto_original.trim()) <= 2000;
+  async function sincronizarRemoto() {
+    if (!deps.remoto) return;
+    const agora = Date.parse(deps.agora()); if (agora < proximaSync) return; proximaSync = agora + SYNC_MS;
+    try {
+      const lidos = await deps.remoto.novos();
+      const novos = lidos.filter(remotoValido);
+      // A row this queue cannot take is never dropped in silence: it is moved out of 'novo'
+      // remotely (so it cannot starve the 20-row page forever) and leaves a visible receipt.
+      const invalidos = lidos.filter((n) => !remotoValido(n));
+      for (const n of invalidos) {
+        if (n && /^[0-9a-f-]{36}$/i.test(n.id)) await deps.remoto.refletir({ remotoId: n.id, estado: 'precisa-de-atencao', tentativas: 0, lease: null });
+      }
+      if (novos.length) {
+        await deps.transacao((db) => {
+          for (const n of novos) {
+            if (db.pedidos.some((p) => p.remotoId === n.id)) continue;
+            if (db.pedidos.length >= 1000) throw erro('fila-cheia', 'fila-cheia', 503);
+            const anterior = db.pedidos.filter((p) => p.pecaId === n.peca_id).at(-1);
+            const r = { id: deps.id(), remotoId: n.id, remotoEstado: 'novo', origem: 'painel-web', pai: anterior?.id ?? null,
+              pecaId: n.peca_id, caminho: n.caminho, versaoAlvo: n.versao_alvo, textoOriginal: n.texto_original.trim(),
+              criadoEm: n.criado_em || deps.agora(), estado: 'novo', tentativas: 0, lease: null, versaoCorrigida: null, commit: null, aceite: null };
+            db.pedidos.push(r); mudar(db, r, 'novo', 'importado-do-painel-web');
+          }
+        });
+        // Marked only AFTER the local write: a crash in between just re-imports, and the
+        // remotoId check above skips it.
+        for (const n of novos) await deps.remoto.marcarImportado(n.id);
+      }
+      for (const r of deps.ler().pedidos.filter((p) => p.remotoId && p.remotoEstado !== p.estado)) {
+        await deps.remoto.refletir(r);
+        await deps.transacao((db) => { const x = achar(db, r.id); if (x.estado === r.estado) x.remotoEstado = r.estado; });
+      }
+      remoto.ultimaSync = deps.agora();
+      remoto.ultimoErro = invalidos.length ? 'remoto-linha-invalida' : null;
+      if (invalidos.length) deps.log('ajuste-remoto-linha-invalida');
+    } catch (e) { remoto.ultimoErro = e?.codigo || 'remoto-falhou'; deps.log('ajuste-remoto-falhou'); }
+  }
   let ticking = false;
   async function tick() {
     if (ticking) return; ticking = true;
     try {
+      await sincronizarRemoto();
       const r = await claim(); if (!r) return;
       const peca = deps.obterPeca(r.pecaId);
       if (!peca || peca.versao !== r.versaoAlvo) { await marcar(r.id, r.lease.id, 'desatualizado', { pecaId: r.pecaId }); return; }
@@ -109,9 +157,11 @@ function criarFila(deps) {
     } catch { deps.log('ajuste-vigia-falhou'); }
     finally { ticking = false; }
   }
-  return { solicitar, claim, renovar, lerPedido, marcar, retry, conferirAceite, aceitar, tick, listar: () => deps.ler().pedidos };
+  return { solicitar, claim, renovar, lerPedido, marcar, retry, conferirAceite, aceitar, tick, sincronizarRemoto,
+    listar: () => deps.ler().pedidos, remotoStatus: () => ({ ...remoto }) };
 }
 const LEASE_MS = 45 * 60_000;
+const SYNC_MS = 30_000;
 // A lock left by a crashed process would block the queue forever; it is removed only when
 // its owner pid is gone, never while a live process holds it.
 function lockOrfao(lock) {
@@ -152,7 +202,9 @@ function repositorioPrivado() {
 const repo = repositorioPrivado();
 // Marketing agent that receives requests; Codex terminals only (enviar.sh).
 const AGENTE = process.env.GRANA_AJUSTES_AGENTE || 'Beacon';
+const ponte = require('./ajustes-remoto.cjs').remotoDoEnv(cfg);
 const fila = criarFila({ ...repo,
+  remoto: ponte.remoto || null, remotoAusente: ponte.ausente || null,
   agora: () => new Date().toISOString(), id: () => crypto.randomUUID(),
   obterPeca: (id) => require('./catalogo.cjs').obterPeca(cfg.RAIZ_DADOS, id),
   verificarCommit: (commit, caminho) => new Promise((resolve, reject) => {
@@ -175,5 +227,8 @@ const fila = criarFila({ ...repo,
     });
   }),
 });
-function iniciarVigia() { const timer = setInterval(() => void fila.tick(), 5000); timer.unref(); void fila.tick(); return () => clearInterval(timer); }
+function iniciarVigia() {
+  // Visible receipt: without the key, web-panel requests never reach this queue.
+  if (ponte.ausente) console.error(JSON.stringify({ codigo: 'ajuste-remoto-ausente', motivo: ponte.ausente }));
+  const timer = setInterval(() => void fila.tick(), 5000); timer.unref(); void fila.tick(); return () => clearInterval(timer); }
 module.exports = { criarFila, repositorioPrivado, fila, iniciarVigia };

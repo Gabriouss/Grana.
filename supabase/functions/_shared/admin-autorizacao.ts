@@ -8,7 +8,9 @@ function idsAdminValidos(valor: string): boolean {
   return ids.length > 0 && ids.every((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
 }
 
-export type RecursoAdmin = 'acesso' | 'visao-geral';
+// 'acesso' is the only resource open to a non-admin (answers admin:false); every other
+// resource needs an allowlisted admin with aal2 and a verified TOTP.
+export type RecursoAdmin = string;
 export type AutorizacaoAdmin =
   | { ok: false; status: number; codigo: string }
   | { ok: true; admin: false; userId: string }
@@ -71,9 +73,35 @@ export type DependenciasAdmin = {
   log: (linha: string) => void;
 };
 
-async function lerPedido(req: Request, signal: AbortSignal): Promise<RecursoAdmin> {
+// What one admin Edge Function does after the shared gate (CORS, IP/user/admin limits,
+// JWT, allowlist, aal2+TOTP, total deadline). `validar` throws 'pedido-invalido' on any
+// shape it does not accept; `executar` only runs for an authorized admin, with the
+// service_role client, and returns data that is already a closed DTO.
+export type PedidoAdmin = { recurso: RecursoAdmin };
+export type OperacaoAdmin<P extends PedidoAdmin> = {
+  limiteCorpo: number;
+  validar: (pedido: unknown) => P;
+  executar: (cliente: SupabaseClient, pedido: P, contexto: { userId: string; agora: Date; signal: AbortSignal })
+    => Promise<{ dados: unknown; falhas?: string[] }>;
+};
+
+export const operacaoConsulta: OperacaoAdmin<PedidoAdmin> = {
+  limiteCorpo: 1024,
+  validar: (pedido) => {
+    const p = pedido as Record<string, unknown> | null;
+    if (!p || Array.isArray(p) || typeof p !== 'object'
+      || Object.keys(p).length !== 1 || !['acesso', 'visao-geral'].includes(p.recurso as string)) {
+      throw new Error('pedido-invalido');
+    }
+    return { recurso: p.recurso as string };
+  },
+  executar: (cliente, _pedido, { agora, signal }) => consultarAgregados(cliente, agora, signal),
+};
+
+async function lerPedido<P extends PedidoAdmin>(req: Request, signal: AbortSignal, operacao: OperacaoAdmin<P>): Promise<P> {
+  const limite = operacao.limiteCorpo;
   const tamanho = Number(req.headers.get('Content-Length'));
-  if (tamanho > 1024) throw new Error('corpo-grande');
+  if (tamanho > limite) throw new Error('corpo-grande');
   if (!req.body) throw new Error('pedido-invalido');
   const reader = req.body.getReader();
   let texto = '';
@@ -86,17 +114,14 @@ async function lerPedido(req: Request, signal: AbortSignal): Promise<RecursoAdmi
         const { done, value } = await reader.read();
         if (done) break;
         bytes += value.byteLength;
-        if (bytes > 1024) throw new Error('corpo-grande');
+        if (bytes > limite) throw new Error('corpo-grande');
         texto += decoder.decode(value, { stream: true });
       }
       texto += decoder.decode();
     }, signal, 5_000);
-    const pedido = JSON.parse(texto);
-    if (!pedido || Array.isArray(pedido) || typeof pedido !== 'object'
-      || Object.keys(pedido).length !== 1 || !['acesso', 'visao-geral'].includes(pedido.recurso)) {
-      throw new Error('pedido-invalido');
-    }
-    return pedido.recurso;
+    let pedido: unknown;
+    try { pedido = JSON.parse(texto); } catch { throw new Error('pedido-invalido'); }
+    try { return operacao.validar(pedido); } catch { throw new Error('pedido-invalido'); }
   } finally {
     // Não esperar cancel(), que também pode pendurar num cliente desconectado.
     void reader.cancel().catch(() => {});
@@ -134,7 +159,10 @@ function chaveIp(req: Request): string {
   return normalizarIp(xff.split(',')[0]) ?? 'sem-ip';
 }
 
-export function criarHandlerAdmin(deps: DependenciasAdmin) {
+export function criarHandlerAdmin<P extends PedidoAdmin = PedidoAdmin>(
+  deps: DependenciasAdmin,
+  operacao: OperacaoAdmin<P> = operacaoConsulta as unknown as OperacaoAdmin<P>,
+) {
   const usuarios = new Map<string, { expira: number; limitar: () => boolean }>();
   const porUsuario = (id: string) => {
     const agora = Date.now();
@@ -184,7 +212,8 @@ export function criarHandlerAdmin(deps: DependenciasAdmin) {
       if (!item && ips.size < 256) { item = { expira: agora + 60_000, limitar: admissaoLimitada(60) }; ips.set(ip, item); }
       if (item) item.expira = agora + 60_000;
       if ((item?.limitar ?? overflow)()) { headers.set('Retry-After', '60'); return erro(429, 'limite'); }
-      try { recurso = await lerPedido(req, total.signal); }
+      let pedido: P;
+      try { pedido = await lerPedido(req, total.signal, operacao); recurso = pedido.recurso; }
       catch (e) {
         const codigo = e instanceof Error ? e.message : '';
         return codigo === 'corpo-grande' ? erro(413, codigo)
@@ -220,9 +249,10 @@ export function criarHandlerAdmin(deps: DependenciasAdmin) {
         dados: { admin: true, aal: acesso.aal, totp: acesso.totp },
       });
       // O cliente privilegiado só nasce DEPOIS de autorização e limite aprovados.
-      const agregado = await consultarAgregados(deps.cliente(url, service, total.signal), new Date(), total.signal);
-      falhas = agregado.falhas;
-      return responder(200, { ok: true, contrato: 1, geradoEm: new Date().toISOString(), dados: agregado.dados });
+      const resultado = await operacao.executar(deps.cliente(url, service, total.signal), pedido,
+        { userId: acesso.userId, agora: new Date(), signal: total.signal });
+      falhas = resultado.falhas ?? [];
+      return responder(200, { ok: true, contrato: 1, geradoEm: new Date().toISOString(), dados: resultado.dados });
     } catch (e) {
       const prazo = total.signal.aborted || (e instanceof Error && e.message === 'prazo');
       autorizacao = autorizacao === 'nao-verificada' ? (prazo ? 'prazo' : 'indisponivel') : autorizacao;

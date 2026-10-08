@@ -59,5 +59,38 @@ const falha = async (p, re, n) => { await assert.rejects(p, re); passou++; conso
   const { rows: [fim] } = await db.query('select estado, lease_id from public.admin_ajuste_pedidos where id = $1', [r1.id]);
   ok(c4.length === 0 && fim.estado === 'precisa-de-atencao' && fim.lease_id === null, 'tres leases vencidos levam a precisa-de-atencao');
 
+  // 20261008190000: escrita remota (criado_por, importado_em, admin_ajuste_criar), sobre a anterior.
+  const sql2 = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261008190000_admin_ajustes_escrita_remota.sql'), 'utf8');
+  await db.exec('reset role'); await db.exec(sql2); await db.exec(sql2); ok(true, 'escrita remota roda duas vezes sobre a fila ja aplicada');
+  const A = '11111111-1111-4111-8111-111111111111', CAM = 'docs/marketing/x/E01.png';
+  await db.exec('set role service_role');
+  const criar = (texto, autor = A, versao = V) => db.query('select * from public.admin_ajuste_criar($1,$2,$3,$4,$5)', [autor, P, CAM, versao, texto]).then((r) => r.rows[0]);
+  const n1 = await criar('  AUDIT novo pedido  ');
+  const { rows: [l1] } = await db.query('select pai, criado_por, texto_original, estado, importado_em from public.admin_ajuste_pedidos where id = $1', [n1.id]);
+  ok(n1.estado === 'novo' && l1.criado_por === A && l1.texto_original === 'AUDIT novo pedido' && l1.importado_em === null, 'criar grava autor, texto aparado e nao importado');
+  ok(l1.pai === r1.id, 'pai e o pedido anterior da mesma peca');
+  const { rows: ev2 } = await db.query('select codigo from public.admin_ajuste_eventos where pedido_id = $1', [n1.id]);
+  ok(ev2.length === 1 && ev2[0].codigo === 'pedido-recebido', 'evento criado na mesma transacao');
+  const n2 = await criar('AUDIT novo pedido');
+  ok(n2.id === n1.id, 'mesmo texto do mesmo autor em 2 min devolve o pedido existente');
+  const n3 = await criar('AUDIT outro texto');
+  ok(n3.id !== n1.id, 'texto diferente cria pedido novo');
+  await falha(db.query(`update public.admin_ajuste_pedidos set criado_por = $1 where id = $2`, ['22222222-2222-4222-8222-222222222222', n1.id]), /imutavel/, 'autor imutavel');
+  await db.query(`update public.admin_ajuste_pedidos set importado_em = now() where id = $1`, [n1.id]); ok(true, 'importado_em pode ser marcado');
+  await falha(criar('x', null), /autor/, 'sem autor recusado');
+  // pglite tem uma conexao so; a corrida real nao se reproduz aqui. Prova-se que a trava
+  // existe e vem ANTES da checagem de repeticao e do limite (achado do Harbor, 08/10).
+  const { rows: [fn] } = await db.query(`select prosrc from pg_proc where proname = 'admin_ajuste_criar'`);
+  ok(fn.prosrc.indexOf('pg_advisory_xact_lock') > -1 && fn.prosrc.indexOf('pg_advisory_xact_lock') < fn.prosrc.indexOf('interval \'2 minutes\'')
+    && fn.prosrc.indexOf('pg_advisory_xact_lock') < fn.prosrc.indexOf('>= 200'), 'criacoes serializadas por trava antes de repeticao e limite');
+  await db.exec(`reset role; insert into public.admin_ajuste_pedidos (peca_id, caminho, versao_alvo, texto_original)
+    select '${P}', 'c', '${V}', 'AUDIT ' || g from generate_series(1, 200) g; set role service_role`);
+  await falha(criar('AUDIT alem do limite'), /fila-cheia/, 'acima de 200 abertos recusa');
+  for (const papel of ['anon', 'authenticated']) {
+    await db.exec(`reset role; set role ${papel}`);
+    await falha(db.query('select * from public.admin_ajuste_criar($1,$2,$3,$4,$5)', [A, P, CAM, V, 't']), /permission denied/, `${papel} nao cria pedido`);
+  }
+  await db.exec('reset role');
+
   console.log(`admin-ajustes-migration: ${passou} verificacoes verdes`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });
