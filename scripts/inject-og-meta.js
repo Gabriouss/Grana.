@@ -200,6 +200,18 @@ for (const caminho of listarHtml(path.join(__dirname, '..', 'dist'))) {
     console.error(`[inject-og-meta] idioma ausente em ${rota}.`);
     process.exit(1);
   }
+  // Todo script inline executável (hoje só o `__EXPO_ROUTER_HYDRATE__` do
+  // expo-router) precisa estar liberado por hash no script-src. Sem isso a
+  // CSP o bloqueia em silêncio e a página renderiza do zero no cliente em vez
+  // de hidratar. Se o Expo mudar o conteúdo, o build para aqui.
+  for (const [, atributos, corpo] of html.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    if (!corpo.trim() || /application\/ld\+json/i.test(atributos)) continue;
+    const hash = crypto.createHash('sha256').update(corpo).digest('base64');
+    if (!csp.includes(`'sha256-${hash}'`)) {
+      console.error(`[inject-og-meta] script inline sem hash na CSP em ${rota}: sha256-${hash}`);
+      process.exit(1);
+    }
+  }
   if (rota === '/' && !html.includes('application/ld+json')) {
     console.error('[inject-og-meta] JSON-LD ausente na home.');
     process.exit(1);
