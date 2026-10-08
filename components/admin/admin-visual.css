@@ -10,8 +10,13 @@
   --admin-perigo: #e08a7d;
   box-sizing: border-box;
   width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* A raiz web do expo-router trava a rolagem do documento (body com
+     overflow: hidden) e a tela da pilha corta o que passa da altura. O painel
+     ocupa a tela pelo flex do pai e rola dentro de si mesmo. */
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   background: var(--admin-fundo);
   color: var(--admin-tinta);
   color-scheme: dark;
