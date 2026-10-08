@@ -138,6 +138,60 @@ no `context.md`.
 
 ---
 
+# 08/10/2026 (M1, Quill): rodada da build 1.10.6, voz do widget, janela única e painel web
+
+> Registro da rodada de 08/10, a pedido do Orquestrador Supremo (`ORDEM-quill-registro.md`). Base: relatórios em `E:\Grana-temporarios\2026-10-08-build-e-admin\` (cito o nome de cada um) e `git log`. Rascunho do Ledger usado como apoio: `relatorio-ledger-reequilibrio-marco.md`, `relatorio-ledger-painel-web.md`. Nota de sessão no vault: `00 - Sessões/2026-10-08 - M1 - Build 1.10.6, voz do widget e janela única`.
+
+## O que saiu
+
+- **Merge da M2 fechado:** `2495d27` e `5be3373` (integra `39ed168`, prévia do Reel do Granabô). Publicado.
+- **L2 Boletos:** `fa20dd5`, botão de opções entra na fileira do card, sem sobrepor nome longo (Lumen; Prism: "procede" por leitura do diff).
+- **Voz do widget em segundo plano:** `08b55a7` (Keel), depois do diff do Harbor e de 4 achados do Watchtower confirmados (`relatorio-watchtower-voz.md`, `estado-harbor-voz.md`, `estado-keel.md`, `keel-voz-fechamento.md`). Resíduos do Lynx em `6367066` (teto só diz "guardada" com índice; cópia vencida não apaga áudio de fala guardada; `lynx-voz-leitura-final.md`).
+- **Janela única de lançamento** (voz, Colar, foto e QR confirmam na janela do manual): Forge implementou, Anvil commitou e corrigiu: `35256c9`, `72938f9` (B1, categoria criada no seletor vale em Colar e voz no débito), `e4dda60` (dica de data nunca muda na voz; estilos dos modais restaurados), `5d843ff` (teste de paridade pelos módulos reais), `c5c6f18` (Foto no crédito esconde o seletor de carteira, decisão do autor). Julgamentos de Anvil, Prism e Lynx (`lynx-janela-e-L1.md`).
+- **L1** `9217d17`: apagar a saída que pagou uma conta avisa que a conta reabre.
+- **Granabô sem travessão** `cf3e615` (Meridian): travessão no início da linha vira marcador de lista, sem asterisco na tela.
+- **Granabô "Não informado / Outros":** `468b0c9` (crédito e débito nos grupos do app) e `4bd909d` (forma de pagamento "cartão" sozinha conta como crédito). Ver incidente abaixo.
+- **Painel web, sem deploy e sem rota:** `da627b8` (Edge Function `admin-consulta`, só leitura e só agregado) e `9b9731a` (página `/admin` só web, SEM rota: não entra em nenhum bundle). Não publicados. Pendências do painel local: `relatorio-compass-painel-local-pendencias.md`. Parecer preliminar `relatorio-watchtower-admin-web.md` (suspenso pelo reequilíbrio): sem aprovação para publicar função ou página.
+- **Build 1.10.6:** preparo `9f67b4a`, EAS `8a0710fd-7c2f-4f74-9782-5d614e4e5b1e`, versionCode 19, pronta 10h28. Build 1 de 3 da semana (regra 22), 2ª de outubro.
+
+## Incidente do Granabô (v43 a v45), com erro do maestro
+
+- 09h29: deploy da v43 (`468b0c9`). 10h02: o Vigil viu "Algo deu errado do meu lado" em três perguntas seguidas, inclusive "oi".
+- 10h03: o maestro voltou ao código antigo (v44) **sem ler os logs**, concluindo pelo horário que a v43 era a causa. **Erro do maestro: rollback desnecessário por diagnóstico pelo horário.**
+- O Keel leu os logs (`keel/granabo/causa-v43.md`): o Gemini devolveu 503 nos dois modelos e estourou prazo de 10h00 a 10h04 local, e a v44 falhou igual às 10h04. A coincidência foi entre deploy e queda do provedor; a volta não resolveu nada. O código da v43 sobe no Deno real e responde 200; a diferença entre as versões é só texto do prompt.
+- 10h13: republicado v45 (`4bd909d`), `verify_jwt` true, sonda com a conta de teste 200. Deploy só de `assistente-financeiro`, pela regra 11 (autorização literal do autor: "Publique").
+- Sugestão do Keel fora desta build: quando os dois modelos falham, dizer que o assistente está fora do ar, em vez de "Algo deu errado" (o código `sem_provedor` com 503 já existe). Não é regressão da v43.
+
+## DEFEITO ABERTO: nota da build 1.10.6 perdeu 9 de 10 linhas
+
+A nota aprovada pelo autor tem 10 linhas (`nota-build-1.10.6-FINAL.txt`). No `--message` do Windows, a multilinha foi truncada: `app_release.notes` ficou só com a primeira linha (a do lançamento apagado de assinatura). **O aviso do Flare sobre esse risco foi ignorado pelo maestro.** O pop-up "O que mudou no Grana." mostra, portanto, uma linha só. A correção depende de autorização do autor (mexe em `app_release` e/ou em nova build, que conta na cota da regra 22). Não corrigido por Quill.
+
+## Verificação
+
+- `test:ci`: 1ª rodada falhou no T10 de `fetch-com-prazo.cjs` (máquina carregada pelo emulador); 2ª verde. Keel 184/184. Final verde em `6367066`.
+- Emulador (Vigil, `relatorio-vigil-build-0810.md`, HEAD `9217d17` + `6367066`): sem P0/P1 no app publicado. Verificado: Colar no débito, categoria criada na hora, voz no crédito simulada por link, Foto crédito/débito, L1, Granabô v44 sem travessão. V-3 (Colar deixa "em /" quando a data veio sem ano) é P3 confirmado e já existia: `diagnostico-anvil-V3-colar.md`, fica para depois.
+- **Primeiro teste do autor no aparelho:** voz no crédito OK.
+
+## Decisões do autor (`DECISOES-autor-0810.md`)
+
+1. Granabô "Não informado / Outros": "Publique" (feito, v45).
+2. Cartão excluído cuja compra cai na fatura do único cartão restante (P1 do Lynx): "aprovo assim". Fica como está.
+3. Foto da nota paga no crédito: "Esconda" o seletor de carteira (`c5c6f18`).
+4. Fala com áudio apagado quando reserva e fallback falham, com aviso honesto: "mantenha".
+
+Também: nota da build aprovada às 09h00 ("aprovo a nota"); reequilíbrio Codex executa / Claude julga (`REEQUILIBRIO-codex-executa.md`); depois, "Claude verifica a correção do Codex e termina"; Desktop Commander registrado no Claude Code (escopo local deste projeto).
+
+## Seis perguntas da regra 12
+
+1. **Pedido:** do autor, "volte ao trabalho, precisamos disparar build e terminar o painel administrativo. Usaremos time codex e claude". Depois: "mande todo mundo voltar aos seus afazeres específicos, trabalhando sempre em par com o codex".
+2. **Sintoma e causa:** (a) Granabô "Algo deu errado": sintoma na v43; causa confirmada nos logs, 503/timeout do Gemini, não o código. (b) Nota da build com 1 linha: sintoma visto em `app_release.notes`; causa provável, truncamento da multilinha no `--message` do Windows (hipótese forte, não isolada em teste próprio). (c) Voz do widget perdia a fala: causa e correção em `keel-voz-fechamento.md`.
+3. **Arquivos e hashes:** nas listas acima. Relatórios em `E:\Grana-temporarios\2026-10-08-build-e-admin\`.
+4. **Descartado:** rollback do Granabô (feito por engano, desfeito na v45); corrigir cartão excluído (autor: "aprovo assim"); publicar `admin-consulta` e `/admin` (sem deploy nem rota, ficam para depois); P1 e P2 do Lynx sobre cartão excluído fora desta build.
+5. **O que deu errado:** o rollback sem ler logs; o aviso do Flare ignorado, que custou a nota; `test:ci` com falha transitória por carga da máquina; no meio do dia a revisão de voz ocorreu em snapshot enquanto o Harbor ainda alterava arquivos.
+6. **Sem verificação:** voz real no widget com app fechado e sem internet; QR; push (FCM); L2 no emulador (o app dev caiu duas vezes); dica de data vazia (não deu para provocar; sem confiabilidade suficiente); leitura real de foto; qualquer aprovação final do painel (rota, TOTP, QA no navegador, custo zero na Vercel e no Supabase).
+
+---
+
 # ACERVO DE MARKETING — USAR EM TODA PRODUÇÃO DE MATERIAL DO GRANA. (07/10/2026)
 
 > **Pedido do autor em 07/10/2026:** este acervo existe e deve ser utilizado na
