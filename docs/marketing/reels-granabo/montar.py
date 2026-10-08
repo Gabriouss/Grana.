@@ -100,32 +100,57 @@ def cola_mascote(fr, nome, cx, cy, escala=1.0, alfa=1.0, sombra=True, chao=None)
         fr.alpha_composite(preto)
     fr.alpha_composite(sp, (int(cx - sp.width / 2), int(cy - sp.height / 2)))
 
-# ---------- celular (marcador da cena real) ----------
-CEL = dict(x=223, y=300, w=634, h=1400, r=92, borda=22)
-def celular(fr, t, rotulo, sub, dy=0, escala=1.0, alfa=1.0, botao_brilho=0.0):
-    w, h = CEL['w'] * escala, CEL['h'] * escala
-    x = W / 2 - w / 2; y = CEL['y'] + dy - (h - CEL['h']) / 2 * 0  # topo parado no push-in
-    c = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(c)
-    # sombra
-    sh = Image.new('L', (W, H), 0); ImageDraw.Draw(sh).rounded_rectangle([x - 10, y + 30, x + w + 10, y + h + 40], CEL['r'], fill=150)
-    sh = sh.filter(ImageFilter.GaussianBlur(40)); s = Image.new('RGBA', (W, H), (0, 0, 0, 255)); s.putalpha(sh)
-    c.alpha_composite(s)
-    d.rounded_rectangle([x, y, x + w, y + h], CEL['r'] * escala, fill=(7, 11, 13, 255), outline=(40, 52, 56, 255), width=3)
-    b = CEL['borda'] * escala
-    d.rounded_rectangle([x + b, y + b, x + w - b, y + h - b], (CEL['r'] - 20) * escala, fill=(10, 30, 37, 255))
-    d.ellipse([W / 2 - 9, y + b + 18, W / 2 + 9, y + b + 36], fill=(0, 0, 0, 255))
+# ---------- celular real (foto do acervo, recortada) ----------
+# celular-real-recorte.png sai de design-system/marketing-mockups/celular-vazio.png.
+# Na M1, trocar pelo recorte de maior resolução de mockups-foto/recortados-final
+# e atualizar TELA_SRC com os quatro cantos medidos da tela daquele arquivo.
+CEL_SRC = Image.open(os.path.join(AQUI, 'celular-real-recorte.png')).convert('RGBA')
+TELA_SRC = (20, 24, 385, 863)              # tela útil dentro do recorte
+CEL_H = 1400                                # altura do aparelho no quadro
+K = CEL_H / CEL_SRC.height
+CEL_IMG = CEL_SRC.resize((round(CEL_SRC.width * K), CEL_H), Image.LANCZOS)
+TX0, TY0, TX1, TY1 = [round(v * K) for v in TELA_SRC]
+CEL = dict(y=300)
+
+def tela(rotulo, sub):
+    w, h = TX1 - TX0, TY1 - TY0
+    t = Image.new('RGBA', (w, h), (10, 30, 37, 255)); d = ImageDraw.Draw(t)
+    f1 = ImageFont.truetype(FONTE, 40); f2 = ImageFont.truetype(FONTE, 28)
+    d.text((w / 2, h * 0.40), rotulo, font=f1, fill=DEST + (255,), anchor='mm')
+    d.multiline_text((w / 2, h * 0.47), sub, font=f2, fill=(150, 190, 190, 255), anchor='ma', align='center', spacing=14)
     # barra de abas com o disco do Granabô
-    by = y + h - b - 90 * escala
-    d.rectangle([x + b, by, x + w - b, y + h - b - 40], fill=(5, 22, 28, 255))
-    bx, bcy, br = W / 2, by + 10 * escala, 44 * escala
-    d.ellipse([bx - br, bcy - br, bx + br, bcy + br], fill=(174, 255, 227, 255))
-    f1 = ImageFont.truetype(FONTE, int(40 * escala)); f2 = ImageFont.truetype(FONTE, int(28 * escala))
-    d.text((W / 2, y + h * 0.42), rotulo, font=f1, fill=DEST + (255,), anchor='mm', align='center')
-    d.multiline_text((W / 2, y + h * 0.52), sub, font=f2, fill=(150, 190, 190, 255), anchor='ma', align='center', spacing=14)
+    d.rectangle([0, h - 150, w, h], fill=(5, 22, 28, 255))
+    d.ellipse([w / 2 - 46, h - 150 - 30, w / 2 + 46, h - 150 + 62], fill=(174, 255, 227, 255))
+    # reflexo diagonal de vidro (~10%) e cantos arredondados
+    ref = Image.new('L', (w, h), 0); ImageDraw.Draw(ref).polygon([(0, 0), (w * 0.55, 0), (0, h * 0.45)], fill=12)
+    t.alpha_composite(Image.merge('RGBA', [Image.new('L', (w, h), 255)] * 3 + [ref]))
+    m = Image.new('L', (w * 3, h * 3), 0); ImageDraw.Draw(m).rounded_rectangle([0, 0, w * 3, h * 3], 40 * 3, fill=255)
+    t.putalpha(m.resize((w, h), Image.LANCZOS))
+    return t
+
+_telas = {}
+def celular(fr, t, rotulo, sub, dy=0, escala=1.0, alfa=1.0):
+    chave = (rotulo, sub)
+    if chave not in _telas:
+        c = CEL_IMG.copy(); c.alpha_composite(tela(rotulo, sub), (TX0, TY0))
+        # furo da câmera frontal da foto (em 1028,156 no original), por cima da tela
+        cx, cy, r = round((1028 - 822) * K), round((156 - 111) * K), round(8 * K)
+        dd = ImageDraw.Draw(c); dd.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(2, 3, 4, 255))
+        dd.ellipse([cx - r * 0.35, cy - r * 0.45, cx + r * 0.05, cy - r * 0.05], fill=(40, 60, 70, 255))
+        _telas[chave] = c
+    c = _telas[chave]
+    if escala != 1.0:
+        c = c.resize((round(c.width * escala), round(c.height * escala)), Image.LANCZOS)
+    x = round(W / 2 - c.width / 2); y = round(CEL['y'] + dy)
+    sh = Image.new('L', (W, H), 0)
+    ImageDraw.Draw(sh).rounded_rectangle([x + 10, y + 40, x + c.width - 10, y + c.height + 30], 60, fill=int(160 * alfa))
+    sh = sh.filter(ImageFilter.GaussianBlur(40)); s = Image.new('RGBA', (W, H), (0, 0, 0, 255)); s.putalpha(sh)
+    fr.alpha_composite(s)
     if alfa < 1:
-        a = c.getchannel('A').point(lambda v: int(v * alfa)); c.putalpha(a)
-    fr.alpha_composite(c)
-    return bx, bcy
+        c = c.copy(); c.putalpha(c.getchannel('A').point(lambda v: int(v * alfa)))
+    if y < H:
+        fr.alpha_composite(c, (x, y)) if y + c.height <= H else fr.alpha_composite(c.crop((0, 0, c.width, H - y)), (x, y))
+    return W / 2, y + TY1 - 150 + 16
 
 LOGO = Image.open(os.path.join(AQUI, 'logo-gradiente-1200.png')).convert('RGBA')
 LOGO = LOGO.crop(LOGO.getbbox()); LOGO = LOGO.resize((600, int(LOGO.height * 600 / LOGO.width)), Image.LANCZOS)
@@ -154,7 +179,7 @@ def quadro(t):
         if 6.2 <= t < 7.6: cy = 900 - 8 * math.sin((t - 6.2) / 1.4 * 2 * math.pi)
         if t >= 7.6:
             q = easeio((t - 7.6) / 0.8)
-            alvo_x, alvo_y = 540, 300 + 1400 - 22 - 80   # disco da barra, celular já assentado
+            alvo_x, alvo_y = 540, CEL['y'] + TY1 - 150 + 16   # disco da barra, celular já assentado
             cx = 540 + (alvo_x - 540) * q
             cy = 900 + (alvo_y - 900) * q - 120 * math.sin(math.pi * q)
             esc = 1 + (0.14 - 1) * q
