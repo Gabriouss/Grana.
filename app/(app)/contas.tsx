@@ -499,18 +499,18 @@ export default function ContasScreen() {
           renderItem={({ item }) => {
             const info = statusInfo(item);
             return (
-              // `position:'relative'` aqui, não na própria AppPressable: o botão de
-              // opções precisa ser IRMÃO do card na árvore do DOM, nunca filho dele.
-              // O `AppPressable` (com onPress) vira um `<button>` de verdade na web
-              // (react-native-web mapeia accessibilityRole="button" pra a tag nativa,
-              // não um `<div role="button">` como um comentário antigo achava) — um
-              // `BotaoOpcoesItem` (também `<button>`) dentro dele seria
-              // `<button><button>...` inválido, e o navegador conserta a árvore
-              // fechando o botão de fora antes da hora, quebrando o toque de verdade,
-              // não só um aviso no console.
-              <View style={{ position: 'relative' }}>
+              // O botão de opções é IRMÃO do card pressionável, nunca filho: o
+              // `AppPressable` (com onPress) vira um `<button>` de verdade na web
+              // (react-native-web mapeia accessibilityRole="button" pra a tag
+              // nativa), e um `BotaoOpcoesItem` (também `<button>`) dentro dele
+              // seria `<button><button>...` inválido, o navegador fecha o de fora
+              // antes da hora e o toque quebra de verdade. Em vez de flutuar por
+              // cima com medida copiada à mão, os dois dividem a MESMA fileira
+              // dentro da moldura do card: o texto ocupa o que sobra (`flex:1`) e
+              // o botão ocupa o próprio tamanho, em qualquer largura e escala de fonte.
+              <View style={styles.card}>
                 <AppPressable
-                  style={({ hovered }) => [styles.card, hovered && styles.cardHover]}
+                  style={({ hovered }) => [styles.cardCorpo, hovered && styles.cardHover]}
                   onPress={() => toggleStatus(item)}
                   accessibilityHint="Alterna entre paga e em aberto. Para editar ou excluir, use o botão de opções."
                   onLongPress={() => {
@@ -528,14 +528,8 @@ export default function ContasScreen() {
                       </View>
                       <Text style={styles.cardCat}>{item.category}</Text>
                     </View>
-                    <View style={styles.cardTopAcoes}>
-                      <View style={[styles.pill, info.style]}>
-                        <Text style={[styles.pillText, info.style === styles.pillLate && styles.pillLateText]}>{info.text}</Text>
-                      </View>
-                      {/* Espaço reservado do mesmo tamanho do botão real (28×28,
-                          ver `BotaoOpcoesItem`), só pra a pílula não esticar pro
-                          lugar que o botão flutuante por cima vai ocupar. */}
-                      <View style={{ width: 28, height: 28 }} />
+                    <View style={[styles.pill, info.style]}>
+                      <Text style={[styles.pillText, info.style === styles.pillLate && styles.pillLateText]}>{info.text}</Text>
                     </View>
                   </View>
                   <View style={styles.cardBottom}>
@@ -547,18 +541,13 @@ export default function ContasScreen() {
                     </Text>
                   </View>
                 </AppPressable>
-                {/* `box-none`: a própria View não captura toque nenhum, só o
-                    `BotaoOpcoesItem` dentro dela — o resto da área do card continua
-                    chegando à `AppPressable` por baixo normalmente. */}
-                <View style={styles.botaoOpcoesFlutuante}>
-                  <BotaoOpcoesItem
-                    accessibilityLabel={`Opções de ${item.description}`}
-                    onPress={() => {
-                      setSelectedBill(item);
-                      setActionSheetOpen(true);
-                    }}
-                  />
-                </View>
+                <BotaoOpcoesItem
+                  accessibilityLabel={`Opções de ${item.description}`}
+                  onPress={() => {
+                    setSelectedBill(item);
+                    setActionSheetOpen(true);
+                  }}
+                />
               </View>
             );
           }}
@@ -639,19 +628,15 @@ const styles = StyleSheet.create({
   /* Sem marginBottom aqui: o espaço entre itens já vem do `gap` de
      styles.listContent — somar os dois dobraria a distância entre um card e
      o próximo em relação à distância do primeiro card até o filtro acima. */
-  card: { borderWidth: 1, borderColor: theme.rule, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
-  cardHover: { backgroundColor: theme.paperRaised, borderColor: theme.ruleStrong },
+  card: { flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderColor: theme.rule, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs },
+  /* `minWidth: 0` deixa o texto ceder ao botão de opções, que mora na mesma fileira. */
+  cardCorpo: { flex: 1, minWidth: 0, gap: spacing.sm, borderRadius: radius.sm },
+  cardHover: { backgroundColor: theme.paperRaised },
   /* Descrição da conta (dado do usuário, pode ser longa) some contra a
      pílula de status sem espaço pra ceder — mesma causa do `cardBottom`
      logo abaixo, só que no bloco de cima do card. */
   cardTop: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', rowGap: 2 },
   cardNameRow: { flexDirection: 'row', alignItems: 'center' },
-  /* Pílula de status e botão de opções na mesma coluna direita do card. */
-  cardTopAcoes: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  // Mesma posição visual que o botão sempre teve dentro de `cardTopAcoes`
-  // (canto superior direito do card, respeitando o padding do card) — só que
-  // agora fora da árvore da `AppPressable`, ver comentário acima do card.
-  botaoOpcoesFlutuante: { position: 'absolute', top: spacing.md, right: spacing.md, pointerEvents: 'box-none' },
   cardName: { color: theme.ink, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular },
   cardCat: { color: theme.inkFaint, fontSize: type.legenda,
