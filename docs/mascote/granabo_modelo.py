@@ -139,7 +139,7 @@ def render(V,N=520,S=1.25,deg=0):
             mouths*=(pn[...,2]>0)
             mf=mo.get('fill','dark')
     glow=np.maximum(glow,mouthc)
-    glow*=m2; white*=m2
+    glow*=m2*V.get("glow",1.0); white*=m2*V.get("glow",1.0)
     ec=np.array([0.62,1.0,0.86])
     c2=c2*(1-glow[...,None])+glow[...,None]*ec
     c2=c2*(1-white[...,None])+white[...,None]*np.array([1,1,1])
