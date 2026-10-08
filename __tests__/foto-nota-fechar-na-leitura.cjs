@@ -245,6 +245,12 @@ function prepararCamera() {
   let tela = await fotografarNota('Cartao de Credito');
   ok(achar(tela, (n) => n.type === 'TextInput' && n.props.value === 'Mercado AUDIT Ficticio').length === 1, 'a descrição vem do estabelecimento');
   ok(achar(tela, (n) => n.props?.accessibilityRole === 'radio' && n.props.accessibilityState?.checked).length === 2, 'crédito e o único cartão já marcados');
+  /* Decisão do autor (08/10/2026, "Esconda"): no crédito a compra vai para a
+     carteira do cartão, então o seletor de carteira, que ali não mandava em
+     nada, some da janela. */
+  const seletorDeCarteira = (arvore) => achar(arvore, (n) => /^Carteira /.test(String(n.props?.accessibilityLabel))).length
+    + achar(arvore, (n) => n.type === 'Text' && n.props.children === 'Carteira').length;
+  ok(seletorDeCarteira(tela) === 0, 'crédito: sem seletor de carteira na janela');
   await salvar();
   ok(registro.gravados.length === 1, 'crédito com um cartão grava');
   const credito = registro.gravados[0];
@@ -252,7 +258,8 @@ function prepararCamera() {
   ok(credito.wallet_id === 'w-cartao' && credito.occurred_on === '2026-09-25' && credito.type === 'out', 'na carteira do cartão e na data do cupom');
 
   registro.gravados.length = 0;
-  await fotografarNota('Cartao de Debito');
+  tela = await fotografarNota('Cartao de Debito');
+  ok(seletorDeCarteira(tela) > 0, 'débito: o seletor de carteira continua na janela');
   await salvar();
   const debito = registro.gravados[0];
   ok(debito && debito.payment_method === 'debit' && !debito.card_id && debito.wallet_id === 'w', 'débito é saída de caixa na carteira, sem cartão');

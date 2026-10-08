@@ -82,6 +82,10 @@ type Props = {
   semCarteiraPadrao?: boolean;
   /** Abre com o teclado no valor quando ele chega vazio. */
   focoNoValor?: boolean;
+  /** Esconde o seletor de carteira quando quem chama decide a carteira por
+      outra regra (foto paga no crédito vai para a carteira do cartão;
+      decisão do autor de 08/10/2026). A validação continua. */
+  ocultarCarteira?: boolean;
 };
 
 function ontemISO(): string {
@@ -112,6 +116,7 @@ export default function TransactionSheet({
   descricaoPadrao,
   semCarteiraPadrao = false,
   focoNoValor = false,
+  ocultarCarteira = false,
 }: Props) {
   const [type, setType] = useState<TxType>(inicial.type);
   const [desc, setDesc] = useState(inicial.description);
@@ -284,7 +289,7 @@ export default function TransactionSheet({
             </View>
           )}
 
-          <View style={{ gap: 4 }}>
+          {!ocultarCarteira && <View style={{ gap: 4 }}>
             <Text style={styles.inputLabel}>Carteira</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.banksRow}>
               {carteirasReais.map((wallet) => (
@@ -304,7 +309,7 @@ export default function TransactionSheet({
                 </AppPressable>
               ))}
             </ScrollView>
-          </View>
+          </View>}
 
           <TextInput
             accessibilityLabel={ehBoleto ? 'Descrição da conta a pagar' : ehCredito ? 'Descrição da compra no cartão' : 'Descrição do lançamento'}

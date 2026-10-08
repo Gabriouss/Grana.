@@ -340,6 +340,7 @@ export default function FotoNotaModal({
     descricaoPadrao="Compra"
     focoNoValor
     semDataFutura
+    ocultarCarteira={pagamento === 'credit'}
     carteiras={wallets}
     salvando={saving}
     onSalvar={handleSave}
