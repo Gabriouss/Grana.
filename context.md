@@ -194,6 +194,23 @@ Também: nota da build aprovada às 09h00 ("aprovo a nota"); reequilíbrio Codex
 
 ---
 
+# 08/10/2026 (M1, Ledger): registro parcial da rodada do painel administrativo
+
+Fonte e detalhe completo: `docs/admin/2026-10-08-plano-painel-admin.md` e `E:\Grana-temporarios\2026-10-08-painel\relatorio-ledger-painel-admin.md` (seis perguntas da regra 12 por frente). Estado até 14h12; F continua em andamento.
+
+- **A:** Forge publicou `8e4755e`, `a171210`, `37ed5a4`, `866b82d`; Lumen aprovou o diff de Tráfego com ressalvas. QA de fixture 32 casos não fecha as seis telas; Sentinel/Vigil, tabela real e favicon global ainda pendentes.
+- **B:** Keel aprovou o backend após B1–B7; Harbor reporta 15 grupos verdes. `a5fe70c` está publicado. N1/N2 baixos continuam anotados. Não houve preparo de release nem EAS real.
+- **C:** desenho Compass aprovado com mudanças por Meridian; Beacon iniciou piloto manual. Contrato Harbor e fila/integração ainda pendentes.
+- **D:** pesquisa Compass concluída; Instagram consultado sem agendamento futuro demonstrado no fluxo de publicação e Page do Facebook com recursos de agendamento. Quotas, versão, token, permissões, conta real e scheduler seguem sem validação; `diaD: null`, sem chamada Meta ou código.
+- **E:** backend `35a01d0` publicado; 21 grupos e `deno check` foram reportados, e Watchtower/Lynx confirmaram correções locais H1/H2/H3 e TOTP. Publicação segue bloqueada por `SEM_IP_RESIDUAL`/`OVERFLOW_RESIDUAL`, confiança XFF/cota não comprovadas e validações E3/E5. Watchtower relatou preliminarmente quebra entre payload de indisponibilidade e `AdminVisual.web.tsx`; adendo formal e revalidação aguardados. `/admin` não foi publicado.
+- **Limites:** cinco arquivos de voz do Keel e `__tests__/widget-voz-segundo-plano.cjs` continuam propriedade dele; Codex não altera/adiciona e Watchtower apenas lê. Nenhuma credencial foi escrita; Ledger não rodou build, deploy, migration ou ação real da Meta.
+
+Commits B/E já estão em `origin/main`; arquivos de página/view E continuam no working tree dos donos.
+
+Atualização 14h27 (Quill): `9fb1a16` (visual Prism) publicado. F1 da página E encerrado pelo Watchtower nos hashes revistos, sem liberar a frente; faltam segundo olhar Lynx, E5, sonda XFF, cota e `dist` final (export externo varrido: sem segredo privado, uma coincidência pública rastreada). A: overflow em 320 px (Documento, Tráfego) com Lumen. B: tela com T1 médio a fechar antes do commit. O time Codex bateu o limite de 5 h (volta 18h17) e o par Claude assumiu a trilha. Nota parcial, não aceite final.
+
+---
+
 # ACERVO DE MARKETING — USAR EM TODA PRODUÇÃO DE MATERIAL DO GRANA. (07/10/2026)
 
 > **Pedido do autor em 07/10/2026:** este acervo existe e deve ser utilizado na
