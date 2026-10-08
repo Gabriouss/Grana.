@@ -1,0 +1,46 @@
+.admin-pagina { --admin-fundo:#052229; --admin-elevado:#0b2d35; --admin-tinta:#effffa; --admin-apoio:#a6d9ce; --admin-menta:#aeffe3; --admin-linha:rgba(174,255,227,.14); background:var(--admin-fundo); color:var(--admin-tinta); font-family:NeueMachina-Light,sans-serif; height:100dvh; overflow:auto; width:100%; color-scheme:dark; }
+.admin-pagina * { box-sizing:border-box; }
+.admin-conteudo { max-width:1184px; padding:32px; margin:auto; }
+.admin-topo { display:flex; align-items:center; gap:24px; border-bottom:1px solid var(--admin-linha); padding-bottom:24px; }
+.admin-topo img { object-fit:contain; }
+.admin-identificacao { color:var(--admin-apoio); flex:1; font-size:14px; }
+.admin-cabecalho { margin:48px 0 32px; }
+.admin-sobretitulo { color:var(--admin-menta); font-size:12px; letter-spacing:1px; }
+.admin-pagina h1,.admin-pagina h2,.admin-pagina button,.admin-numero,.admin-pagina dd { font-family:NeueMachina-Regular,sans-serif; }
+.admin-pagina h1,.admin-pagina h2 { font-weight:normal; }
+.admin-pagina h1 { font-size:40px; line-height:1.15; margin:12px 0; letter-spacing:-1px; }
+.admin-pagina h2 { font-size:20px; line-height:1.35; margin:0 0 12px; }
+.admin-pagina p { line-height:1.5; }
+.admin-cabecalho > p:last-child,.admin-acesso > p,.admin-cartao > p:not(.admin-numero) { color:var(--admin-apoio); }
+.admin-acesso { max-width:480px; padding:32px; border:1px solid var(--admin-linha); background:var(--admin-elevado); border-radius:16px; }
+.admin-pagina form { display:flex; flex-direction:column; gap:12px; margin-top:24px; }
+.admin-pagina label { font-size:14px; color:var(--admin-apoio); }
+.admin-pagina input { width:100%; min-height:48px; border:1px solid rgba(174,255,227,.26); border-radius:8px; padding:12px; background:var(--admin-fundo); color:var(--admin-tinta); font:inherit; font-size:16px; margin-bottom:8px; }
+.admin-pagina button { min-height:44px; padding:12px 20px; border-radius:8px; font-size:14px; cursor:pointer; }
+.admin-primario { background:var(--admin-menta); color:var(--admin-fundo); border:1px solid var(--admin-menta); }
+.admin-secundario { background:transparent; color:var(--admin-menta); border:1px solid rgba(174,255,227,.26); }
+.admin-pagina button:disabled { opacity:.6; cursor:default; }
+.admin-pagina :focus-visible { outline:2px solid var(--admin-menta); outline-offset:4px; }
+.admin-pagina button:not(:disabled):hover { filter:brightness(.93); }
+.admin-recibo { padding:24px; margin-bottom:24px; border:1px solid #e08a7d; border-radius:12px; max-width:640px; }
+.admin-recibo h2 { color:#e08a7d; }
+.admin-referencia { font-size:12px; color:var(--admin-apoio); overflow-wrap:anywhere; }
+.admin-qr { display:block; background:white; padding:8px; border-radius:8px; max-width:100%; height:auto; margin:24px 0 12px; }
+.admin-pagina summary { min-height:44px; display:flex; align-items:center; cursor:pointer; color:var(--admin-menta); }
+.admin-segredo { overflow-wrap:anywhere; user-select:all; }
+.admin-leitura { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; color:var(--admin-apoio); font-size:14px; }
+.admin-grade { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.admin-cartao { background:var(--admin-elevado); border:1px solid var(--admin-linha); border-radius:12px; padding:24px; min-width:0; display:flex; flex-direction:column; }
+.admin-cartao header span { color:var(--admin-apoio); font-size:12px; line-height:1.5; display:block; }
+.admin-numero { font-size:40px; letter-spacing:-1px; margin:24px 0; overflow-wrap:anywhere; }
+.admin-moeda { font-size:32px; }
+.admin-pagina dl { display:grid; gap:12px; font-size:14px; margin:24px 0; }
+.admin-pagina dl > div { display:flex; justify-content:space-between; gap:16px; align-items:baseline; }
+.admin-pagina dt { color:var(--admin-apoio); line-height:1.5; }
+.admin-pagina dd { margin:0; flex-shrink:0; }
+.admin-cartao footer { margin-top:auto; padding-top:24px; color:#7fa9a0; font-size:12px; }
+.admin-indisponivel { font-size:16px; padding:16px 0; }
+.admin-rodape { padding-top:40px; color:#7fa9a0; font-size:12px; }
+@media(max-width:900px) { .admin-grade { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:560px) { .admin-conteudo { padding:24px 16px; } .admin-topo { gap:12px; flex-wrap:wrap; } .admin-topo img { width:96px; } .admin-identificacao { font-size:12px; } .admin-topo button { margin-left:auto; } .admin-cabecalho { margin-top:32px; } .admin-pagina h1 { font-size:32px; } .admin-acesso,.admin-cartao { padding:24px; } .admin-grade { grid-template-columns:minmax(0,1fr); } .admin-leitura { align-items:flex-start; flex-direction:column; } }
+@media(prefers-reduced-motion:reduce) { .admin-pagina * { scroll-behavior:auto; transition:none; animation:none; } }
