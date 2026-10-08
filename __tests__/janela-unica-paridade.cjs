@@ -10,7 +10,7 @@ const libs = {};
 function lib(name) {
   if (libs[name]) return libs[name];
   const exports = libs[name] = {};
-  vm.runInNewContext(compile(read(`lib/${name}.ts`)), { exports, Date: Clock, console, require: (id) => lib(id.replace('./', '')) });
+  vm.runInNewContext(compile(read(`lib/${name}.ts`)), { exports, Date: Clock, console, setTimeout, clearTimeout, require: (id) => lib(id.replace('./', '')) });
   return exports;
 }
 function extract(file, predicate) {
@@ -24,12 +24,17 @@ const appCallback = extract('app/(app)/index.tsx', (n) => ts.isJsxAttribute(n) &
 const widgetEffect = extract('app/(app)/index.tsx', (n) => ts.isCallExpression(n) && n.expression.getText() === 'useEffect' && n.arguments[0].getText().includes('params.colarTexto'));
 const wallets = [{ id: 'p', name: 'Pessoal', is_default: true, color: '#fff' }];
 const cards = [{ id: 'c6', name: 'C6', bank: 'c6', wallet_id: 'p', closing_day: 10 }];
+/* Destino da fala pelos módulos REAIS (r1 do Anvil): só a leitura das listas
+   no servidor é dublê, devolvendo as mesmas carteiras e cartões da Início. */
+libs.data = { fetchCreditCards: async () => cards };
+libs.wallets = { fetchWallets: async () => wallets };
+const destino = lib('destino-da-fala'), destinoRefs = lib('destino-da-fala-referencias');
 const h = lib('heuristics'), fmt = lib('format'), dates = lib('data-da-fala');
 async function entrada(source, text, ref, saved) {
   const state = {}, router = { push: (v) => { state.route = v; }, replace() {} };
   const ctx = { ...h, ...dates, wallets, creditCards: cards, router,
-    destinoDaFala: (t) => /cr[eé]dito/.test(t) ? 'credito' : 'carteira',
-    destinoDaFalaComReferencias: async (t) => /cr[eé]dito/.test(t) ? 'credito' : 'carteira',
+    destinoDaFala: destino.destinoDaFala,
+    destinoDaFalaComReferencias: destinoRefs.destinoDaFalaComReferencias,
     referenciaDaFalaGuardada: async () => ref, todayISO: () => '2026-09-30',
     setVoiceText: (v) => { state.initialText = v; }, setReferenciaDaVoz: (v) => { state.referenciaDaVoz = v; },
     setFalaGuardadaDaRevisao: (v) => { state.falaGuardada = v; }, setPasteModalOpen: (v) => { state.open = v; },
