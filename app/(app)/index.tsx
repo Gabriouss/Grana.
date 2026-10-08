@@ -28,7 +28,7 @@ import { supabase } from '@/lib/supabase';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, encerrarSerieAPartirDe, fetchBills, fetchBudgets, fetchCardInvoicePayments, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
-import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
+import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
 import { calcularLevelState } from '@/lib/gamification-infinite';
@@ -1016,6 +1016,9 @@ export default function InicioScreen() {
   async function handleDeleteSelectedTx() {
     const tx = selectedTx;
     if (!tx) return;
+    /* Se este lançamento pagou uma conta, apagar reabre a conta (gatilho do
+       servidor), e a pergunta tem de dizer isso (L1, 08/10/2026). */
+    const conta = isDemoMode ? undefined : await conferirContaPaga(tx, () => fetchBills({ status: 'paid' }));
     confirmarExclusaoDeLancamento(tx, {
       apagarEste: async () => {
         if (isDemoMode) {
@@ -1067,7 +1070,7 @@ export default function InicioScreen() {
           Alert.alert('Erro ao encerrar a repetição', e.message);
         }
       },
-    });
+    }, conta);
   }
 
   async function handleCreateGoal(input: { title: string; target_amount: number; color: string; icon: string; deadline: string | null }) {

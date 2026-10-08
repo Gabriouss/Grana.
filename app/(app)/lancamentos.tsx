@@ -40,13 +40,14 @@ import {
   deleteTransaction,
   deleteInstallmentPurchase,
   encerrarSerieAPartirDe,
+  fetchBills,
   fetchRecurrenceContext,
   fetchTransactionsDoPeriodo,
   fetchTemLancamento,
   updateTransaction,
 } from '@/lib/data';
 import { ocorrenciasFaltantes } from '@/lib/recorrencia';
-import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
+import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-lancamento';
 import {
   flushPendingQueue,
   getCachedTransactions,
@@ -538,6 +539,9 @@ export default function LancamentosScreen() {
   async function handleDeleteSelectedTx() {
     const tx = selectedTx;
     if (!tx) return;
+    /* Se este lançamento pagou uma conta, apagar reabre a conta (gatilho do
+       servidor), e a pergunta tem de dizer isso (L1, 08/10/2026). */
+    const conta = isDemoMode ? undefined : await conferirContaPaga(tx, () => fetchBills({ status: 'paid' }));
     confirmarExclusaoDeLancamento(tx, {
       apagarEste: async () => {
         if (isDemoMode) {
@@ -589,7 +593,7 @@ export default function LancamentosScreen() {
           Alert.alert('Erro ao encerrar a repetição', e.message);
         }
       },
-    });
+    }, conta);
   }
 
   // Só a carteira ativa — "Total" mantém tudo. Mesmo filtro usado em index.tsx e graficos.tsx.
