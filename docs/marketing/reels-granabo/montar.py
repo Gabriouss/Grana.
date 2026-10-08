@@ -250,7 +250,7 @@ ICONES = [
     # dispostos em triângulo em volta do texto: alto à esquerda, alto à direita, embaixo no centro
     ('graficos-petroleo.png', 250, 420, 140, 7.0, 0.55, 0.5),   # fundo: pequeno, desfocado
     ('dinheiro-gradiente.png', 850, 600, 190, 0.0, 1.00, 1.0),  # plano médio: nítido
-    ('carteira-menta.png', 560, 1560, 330, 13.0, 0.55, 1.7),    # primeiro plano: grande, bem desfocado
+    ('carteira-menta.png', 330, 1720, 330, 13.0, 0.55, 1.7),    # primeiro plano: grande, bem desfocado
 ]
 _ico = {}
 def icone(nome, tam, blur):
