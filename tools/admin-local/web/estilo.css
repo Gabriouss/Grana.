@@ -252,7 +252,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .nav-grupo-titulo {
   display: flex;
   align-items: center;
-  min-height: 36px;
+  min-height: var(--alvo);
   padding: 0 var(--s-md);
   font-size: var(--t-micro);
   font-weight: 300;
@@ -260,7 +260,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   letter-spacing: 0.04em;
 }
 .nav-sub { padding-left: var(--s-sm); }
-.nav-sub .nav-link { min-height: 40px; font-size: var(--t-nota); }
+.nav-sub .nav-link { min-height: var(--alvo); font-size: var(--t-nota); }
 .lateral-rodape {
   margin-top: auto;
   padding: var(--s-md);
@@ -883,7 +883,7 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
   display: flex;
   align-items: center;
   gap: var(--s-icone);
-  min-height: 28px;
+  min-height: var(--alvo);
   padding: 2px var(--s-sm) 2px 2px;
   border-radius: var(--r-sm);
   background: var(--paper-raised);
@@ -1264,7 +1264,7 @@ button.cal-item { cursor: pointer; }
 .documento-sumario a {
   display: flex;
   align-items: center;
-  min-height: 32px;
+  min-height: var(--alvo);
   padding: 2px var(--s-sm);
   border-radius: var(--r-sm);
   color: var(--ink-faint);
@@ -1487,7 +1487,7 @@ body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
 .ds-indice a {
   display: flex;
   align-items: center;
-  min-height: 36px;
+  min-height: var(--alvo);
   padding: 0 var(--s-md);
   border-radius: var(--r-sm);
   color: var(--ink-faint);
@@ -2135,3 +2135,6 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
   }
   .estado-carregando .estado-texto::before { opacity: 1; }
 }
+
+/* Links operacionais: a caixa inteira continua clicável em telas estreitas. */
+.tabela a[href] { display: inline-flex; align-items: center; min-height: var(--alvo); min-width: var(--alvo); overflow-wrap: anywhere; }
