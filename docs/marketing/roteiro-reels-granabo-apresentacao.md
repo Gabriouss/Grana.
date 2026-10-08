@@ -16,9 +16,11 @@ fluxo da M1) antes da produção.
 - **Mascote:** `docs/mascote/`, versão W3 com boca L3. É um modelo 3D renderizado
   por `docs/mascote/granabo_modelo.py`, então toda pose do roteiro é o MESMO
   objeto girando, piscando ou mudando os olhos. Nada de redesenhar à mão.
-- **Telas do app:** só gravação real. `material-video-2026-09-26/granabo-consulta-limpa.mp4`
-  e `granabo-registro.mp4` (produção v40), com as regras de corte de
-  `DIRECAO-EDICAO-R5-R9-GRANABO.md`.
+- **Telas do app:** só gravação real, com as regras de corte de
+  `DIRECAO-EDICAO-R5-R9-GRANABO.md`. As gravações v40 que existem
+  (`granabo-consulta-limpa.mp4`, R$ 100,00 de 40 + 60, e `granabo-registro.mp4`,
+  "gastei 20 no mercado") **não servem**, porque usam valores redondos. É preciso
+  regravar com os valores da seção "Valores na tela".
 - **Regras de criativo:** celular sempre inteiro, com margem ≥ 80 px; mockup
   realista; logo gradiente oficial; sem sobretítulo, sem rodapé de aviso, sem
   botão desenhado; sem banco, Open Finance, WhatsApp, foto da nota ou preço.
@@ -43,13 +45,29 @@ sem grão. Texto em Neue Machina Light: base `#EFFFFE`, destaque `#ADFBE3`.
 | 5,8–6,2 s | Piscada e sorriso. | Título 1: "Esse é o **Granabô.**" | Piscada de 4 quadros (olho achata e volta). Título centralizado no topo, palavra por palavra, passo de 0,07 s. |
 | 6,2–7,6 s | Flutua parado, com leve subida e descida. | — | ±8 px em 1,4 s, sem rotação. |
 | 7,6–8,4 s | **Ele mostra onde mora.** O Granabô encolhe e desce até o lugar do botão central da barra de abas, enquanto o celular sobe por baixo e assenta. O mascote se dissolve sobre o disco menta do botão. Título 1 sai. | — | Escala de 620 para cerca de 90 px com trajetória curva. Celular entra com passada e assenta. Dissolve de 0,25 s. |
-| 8,4–13,4 s | **Consulta (tela real).** Abre a conversa, pergunta enviada, 0,5 s do "pensando", **corte franco** da espera, resposta inteira e estável. | Título 2: "Pergunte o que **quiser.**" | Empurrão lento de +7% no celular. Título 2 entra antes da pergunta aparecer na tela. |
+| 8,4–13,4 s | **Consulta (tela real).** Abre a conversa, pergunta "quanto eu gastei em Alimentação esse mês?" enviada, 0,5 s do "pensando", **corte franco** da espera, resposta inteira e estável. | Título 2: "Pergunte o que **quiser.**" | Empurrão lento de +7% no celular. Título 2 entra antes da pergunta aparecer na tela. |
 | 13,4–13,7 s | Troca de cena. Título 2 sai. | — | Dissolve de 0,27 s dentro da moldura. |
-| 13,7–18,2 s | **Registro (tela real).** "gastei 20 no mercado", resposta confirmando o lançamento salvo. Corta antes de o teclado voltar. | Título 3: "Ou só conte o **gasto.**" | Celular parado. "Plim" de sucesso a −16 dB quando a confirmação aparece. |
+| 13,7–18,2 s | **Registro (tela real).** "gastei 23,90 no mercado", resposta confirmando o lançamento salvo. Corta antes de o teclado voltar. | Título 3: "Ou só conte o **gasto.**" | Celular parado. "Plim" de sucesso a −16 dB quando a confirmação aparece. |
 | 18,2–18,6 s | Celular e título saem juntos. | — | Fade de 0,40 s. |
 | 18,6–21,5 s | **O Granabô volta, de frente, em tamanho cheio**, com os olhos em arco (expressão feliz). | Título 4: "Ele cuida das **contas.** Você vive." | Sobe e assenta como na entrada. Olhos passam de ovais para arco. |
 | 21,5–21,9 s | Mascote e título saem. | — | Fade de 0,40 s. |
 | 21,9–24,0 s | Fecho: logo "Grana." gradiente com 600 px, centrado. | (sem tagline até haver uma aprovada) | Fade de 0,47 s e retenção. |
+
+## Valores na tela
+
+Regra do autor (08/10/2026): **evitar números redondos** (15, 20, 30, 50, 100)
+em tudo o que aparece no vídeo. Valor quebrado parece gasto de verdade.
+
+- **Consulta:** antes de gravar, deixar na conta de teste exatamente duas
+  saídas em Alimentação no mês, R$ 38,70 e R$ 64,35, sem crédito. Resposta
+  esperada: **R$ 103,05**. Preparar pela folha "Colar comprovante", com o mesmo
+  passo a passo de `material-video-2026-09-26/roteiro-motion-granabo-consulta.md`,
+  trocando os valores.
+- **Registro:** a fala digitada é **"gastei 23,90 no mercado"**.
+- Conferir no quadro final que nenhum outro número redondo aparece por acaso:
+  saldo, "Livre para gastar", total do mês ou hora do relógio. Se aparecer,
+  ajustar os dados da conta de teste antes de gravar, nunca editar a tela.
+- Depois de gravar, apagar a conversa e os três lançamentos de teste.
 
 ## O mascote em cada momento
 
@@ -88,7 +106,9 @@ mascote levam de 10 a 20 minutos na máquina. Isso não tem custo de crédito.
    liga os dois de propósito, mas quem baixar o app não vai ver o rosto do
    Granabô. Se isso incomodar, a alternativa é trocar essa cena por um corte
    direto para o celular.
-4. **Deploy:** o texto do Granabô em produção pode mudar com o deploy pendente
+4. **Regravação:** as duas cenas do app precisam ser gravadas de novo na M1,
+   pelo emulador (`scripts/emulador.cjs`), com os valores acima.
+5. **Deploy:** o texto do Granabô em produção pode mudar com o deploy pendente
    da `assistente-financeiro` (registrado no `context.md`). Se mudar, as
    gravações v40 deixam de bater com o app e precisam ser refeitas antes da
    publicação.

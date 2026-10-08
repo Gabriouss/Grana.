@@ -50,6 +50,7 @@ Leia este guia **antes de produzir qualquer criativo**: estático, carrossel, St
 - **Sem sobretítulo** (etiqueta em caixa alta no canto) e **sem o rodapé** "Demonstração com dados fictícios.".
 - **Sem botão desenhado na arte.** O "Saiba mais" é do Instagram.
 - **Stories:** o texto fica entre y ≈ 230 e 1400. A parte de baixo pode ser coberta pela barra de resposta e pelo "Saiba mais".
+- **Evitar números redondos** (15, 20, 30, 50, 100) em valor que aparece na peça, na tela do app ou no texto (autor, 08/10/2026). Use valor quebrado, como R$ 23,90 ou R$ 103,05; prepare os dados da conta de teste para isso antes de gravar ou capturar, em vez de editar a tela depois. O preço segue como "menos de R$ 0,37 por dia".
 - **Números fictícios nas telas não precisam seguir a regra 20** (decisão de 26/09). Preço só como "menos de R$ 0,37 por dia".
 - **Nunca** falar de banco, conexão bancária ou Open Finance. Nenhum logo de banco ou marca real inventado.
 - **Marca bem visível:** existe um concorrente chamado "Grana Smart". O logotipo com o ponto e a paleta petróleo e menta precisam ser reconhecíveis.
