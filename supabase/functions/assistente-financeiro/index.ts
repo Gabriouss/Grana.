@@ -528,7 +528,12 @@ const TOOLS = [
           tipo: { type: 'string', enum: ['in', 'out'], description: '"out" para gastos/saídas, "in" para receitas/entradas. Omita para incluir os dois.' },
           categoria: { type: 'string', description: 'Nome da categoria, do jeito que o usuário falou. Será casado com as categorias reais dele.' },
           descricao_contem: { type: 'string', description: 'Trecho do texto da descrição. Ex.: "iFood", "Uber", "farmácia".' },
-          forma_pagamento: { type: 'string', description: 'Forma de pagamento. Ex.: "credit", "debit", "pix", "dinheiro".' },
+          forma_pagamento: {
+            type: 'string',
+            description: 'Use "credito" para compras no cartão de crédito e "fora_do_credito" para débito, Pix e dinheiro. ' +
+              'O Grana. junta débito, Pix e dinheiro num grupo só, porque a forma só fica registrada quando é dita no lançamento. ' +
+              'Sem enum de propósito: o validador recusa valor fora da lista, e um "débito" vindo do modelo tem de virar fora_do_credito, não erro.',
+          },
           cartao: { type: 'string', description: 'Nome do cartão de crédito, do jeito que o usuário falou.' },
           carteira: { type: 'string', description: 'Nome da carteira/conta, do jeito que o usuário falou.' },
           banco: { type: 'string', description: 'Nome do banco.' },
@@ -1321,9 +1326,28 @@ async function executarFerramenta(
         q = q.ilike('description', `%${termo}%`);
         aplicados.push(`descrição contém "${termo}"`);
       }
+      /* "Não informado / Outros" (Meridian, 07/10/2026). O formulário manual
+         não pede a forma de pagamento, e a fala só a grava quando diz
+         "débito", "pix" ou "dinheiro"; a maioria das saídas fora do crédito
+         fica com `payment_method` nulo, e é isso que o app chama de "Débito e
+         Pix". Filtrar por igualdade com "debit" somava só o que tinha a
+         palavra e deixava o resto num grupo que o modelo explicava culpando
+         a pessoa. Os dois grupos aqui são os do app, pela mesma regra de
+         `ehCompraNoCredito`. */
       if (args.forma_pagamento !== undefined && String(args.forma_pagamento).trim()) {
-        q = q.eq('payment_method', String(args.forma_pagamento).trim());
-        aplicados.push(`forma de pagamento: ${String(args.forma_pagamento).trim()}`);
+        const pedida = normalizarParaBusca(String(args.forma_pagamento)).trim();
+        /* "fora_do_credito" contém "credito": o fora vem antes. */
+        const fora = /fora|debit|pix|dinheiro|cash|especie/.test(pedida);
+        if (!fora && /credit/.test(pedida)) {
+          q = q.or('payment_method.eq.credit,card_id.not.is.null');
+          aplicados.push('pagos no crédito');
+        } else {
+          q = q.is('card_id', null).or('payment_method.is.null,payment_method.neq.credit');
+          aplicados.push('pagos fora do crédito (débito, Pix e dinheiro juntos)');
+          if (pedida !== 'fora do credito' && pedida !== 'fora_do_credito') {
+            aplicados.push('o Grana. não separa débito, Pix e dinheiro quando a forma não foi dita no lançamento, então o total junta os três');
+          }
+        }
       }
       if (args.banco !== undefined && String(args.banco).trim()) {
         q = q.ilike('bank', `%${String(args.banco).trim()}%`);
@@ -1384,7 +1408,7 @@ async function executarFerramenta(
         const chaveDe = (t: LinhaTx): string => {
           if (agruparPor === 'categoria') return t.category;
           if (agruparPor === 'mes') return t.occurred_on.slice(0, 7);
-          if (agruparPor === 'forma_pagamento') return t.payment_method ?? 'não informado';
+          if (agruparPor === 'forma_pagamento') return ehCompraNoCredito(t) ? GRUPO_CREDITO : GRUPO_FORA_DO_CREDITO;
           if (agruparPor === 'cartao') {
             return t.card_id ? nomePorCartao.get(t.card_id) ?? 'cartão removido' : 'sem cartão';
           }
@@ -1399,8 +1423,22 @@ async function executarFerramenta(
           grupos.set(k, g);
         }
         const ordenados = [...grupos.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, limite);
+        /* Dentro de "Débito, Pix e dinheiro", o que teve a forma dita vira
+           detalhe, nunca um grupo à parte. */
+        const ditas = new Map<string, number>();
+        if (agruparPor === 'forma_pagamento') {
+          for (const t of linhasTx) {
+            const nome = !ehCompraNoCredito(t) && t.payment_method ? NOME_FORMA[t.payment_method] : undefined;
+            if (nome) ditas.set(nome, (ditas.get(nome) ?? 0) + Number(t.amount));
+          }
+        }
         const detalhe = ordenados
-          .map(([k, g]) => `- ${k}: R$ ${formatarBRL(g.total)} (${g.qtd} lançamento(s))`)
+          .map(([k, g]) => {
+            const linha = `- ${k}: R$ ${formatarBRL(g.total)} (${g.qtd} lançamento(s))`;
+            if (k !== GRUPO_FORA_DO_CREDITO || ditas.size === 0) return linha;
+            const partes = [...ditas].map(([n, v]) => `R$ ${formatarBRL(v)} marcados como ${n}`).join(', ');
+            return `${linha}; dentro dele, ${partes}. O resto não teve a forma dita no lançamento, e isso é normal no Grana.`;
+          })
           .join('\n');
         return `${cabecalho}\nAgrupado por ${agruparPor}. ` +
           `Total geral: R$ ${formatarBRL(soma(linhasTx))} em ${linhasTx.length} lançamento(s).\n${detalhe}`;
@@ -2266,10 +2304,16 @@ Regras invioláveis:
 13. O casamento automático de categoria/cartão/carteira só reconhece nomes parecidos por trecho de texto — nunca um sinônimo de verdade ("comida" não é trecho de "Alimentação"). Quando o usuário usar um termo assim e você já souber (nesta conversa, ou por ser um sinônimo óbvio) a qual categoria/cartão/carteira real ele se refere, use ensinarApelido pra guardar essa correspondência.
 14. Você REGISTRA lançamento, além de consultar. Quando o usuário pedir para lançar, anotar, registrar ou adicionar um gasto ou uma receita, chame criarLancamento passando a frase dele como está. Passe a frase inteira, com valor, o que foi e o que ele disser sobre forma de pagamento, cartão, carteira ou repetição — quem lê o valor é o servidor, não você.
 15. Comentar um gasto NÃO é pedir para registrá-lo. "Gastei muito com comida esse mês" e "acho que paguei 200 no mercado" são conversa, e não podem virar lançamento. Na dúvida entre conversar e registrar, pergunte antes — criar um lançamento que ninguém pediu coloca dinheiro errado na conta da pessoa, e ela pode nem perceber.
-16. Depois de registrar, diga o que foi registrado (valor, categoria e carteira) e lembre que dá para desfazer dizendo "desfaz". Se ele disser que errou logo em seguida, chame desfazerUltimoLancamento.`;
+16. Depois de registrar, diga o que foi registrado (valor, categoria e carteira) e lembre que dá para desfazer dizendo "desfaz". Se ele disser que errou logo em seguida, chame desfazerUltimoLancamento.
+17. Forma de pagamento: o Grana. separa só Crédito de um lado e Débito, Pix e dinheiro do outro. A forma só fica registrada quando é dita no lançamento, então uma saída sem forma é uma saída comum, paga fora do crédito. NUNCA crie um grupo "Não informado" ou "Outros" para forma de pagamento, e NUNCA diga que o usuário deixou de preencher, cadastrar ou informar algo que o app não pede.
+18. Escreva em texto simples: sem negrito, sem asteriscos, sem títulos com # e sem travessão. Para listar, use uma linha por item.`;
 }
 
 
+
+const GRUPO_CREDITO = 'Crédito';
+const GRUPO_FORA_DO_CREDITO = 'Débito, Pix e dinheiro';
+const NOME_FORMA: Record<string, string> = { debit: 'débito', pix: 'Pix', cash: 'dinheiro' };
 
 const REGRAS_PRIORITARIAS =
   'Continuidade: interprete cada mensagem junto do histórico e do plano da última consulta. Em continuações altere apenas os filtros pedidos; preserve o restante. Se houver ambiguidade real, faça uma pergunta curta. Mudança de assunto inicia nova intenção. ' +
