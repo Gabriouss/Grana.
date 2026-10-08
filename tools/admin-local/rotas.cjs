@@ -210,7 +210,15 @@ const GET = {
 
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste)$/;
 const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego']);
-const DESTRUTIVAS = new Set(['/api/vercel/redeploy', '/api/eas/preparar-build']);
+const ACOES_BUILD = {
+  '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
+  '/api/eas/disparar-build': ['DISPARAR BUILD', 'dispararBuild'],
+  '/api/eas/publicar-preparo': ['PUBLICAR PREPARO', 'retomarPreparo'],
+  '/api/eas/resolver-disparo': ['CONFERI NO EAS: NAO SAIU', 'resolverDisparo'],
+  '/api/eas/verificar-nota': ['CONFERIR NOTA', 'verificarNota'],
+  '/api/eas/regravar-nota': ['REGRAVAR NOTA', 'regravarNota'],
+};
+const DESTRUTIVAS = new Set(['/api/vercel/redeploy', ...Object.keys(ACOES_BUILD)]);
 
 async function tratarAcao(req, res, url, corpo, sessao) {
   const p = url.pathname;
@@ -232,12 +240,16 @@ async function tratarAcao(req, res, url, corpo, sessao) {
     return undefined;
   }
 
+  if (p === '/api/eas/verificar-nota') {
+    const r = await adaptador('eas').verificarNota(corpo);
+    return r.ok ? responderOk(res, r.dados) : responderErro(res, r.status || 503, r.codigo, r.mensagem);
+  }
   if (DESTRUTIVAS.has(p)) {
     if (!seg.stepUpValido(sessao.s)) {
       return responderErro(res, 403, 'reautenticar', 'Confirme o código do autenticador para continuar.');
     }
     if (!seg.dentroDoLimite(p, 3, 10 * 60_000)) return responderErro(res, 429, 'limite', 'Essa ação já foi pedida 3 vezes em 10 minutos. Espere.', null, { tentarEmSeg: 600 });
-    const confirmacao = p === '/api/vercel/redeploy' ? CONFIRMACOES.redeploy : CONFIRMACOES.build;
+    const confirmacao = p === '/api/vercel/redeploy' ? CONFIRMACOES.redeploy : ACOES_BUILD[p][0];
     if (corpo.confirmacao !== confirmacao) return responderErro(res, 400, 'confirmacao-invalida', `Digite ${confirmacao} para confirmar.`);
     let resultado;
     try {
@@ -247,7 +259,7 @@ async function tratarAcao(req, res, url, corpo, sessao) {
         resultado = { status: 200, codigo: r.simulado ? 'simulado' : 'ok' };
         responderOk(res, r);
       } else {
-        const r = await adaptador('eas').prepararBuild({ tipo: corpo.tipo, mensagem: corpo.mensagem });
+        const r = await adaptador('eas')[ACOES_BUILD[p][1]](corpo);
         cache.delete('eas');
         resultado = { status: r.ok ? 200 : r.status || 409, codigo: r.ok ? (r.dados.simulado ? 'simulado' : 'ok') : r.codigo };
         if (!r.ok) responderErro(res, r.status || 409, r.codigo, r.mensagem);

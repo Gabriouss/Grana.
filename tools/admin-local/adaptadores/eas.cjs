@@ -9,9 +9,8 @@
 // carregado direto pelo Node 24, que remove os tipos), sobre o mesmo critério
 // do git log. Regra 22: 3 por semana, segunda a domingo; cota de 15 por mês.
 //
-// Ação: preparar build = rodar scripts/preparar-lancamento.ts (o que o
-// `npm run build:preparar` roda), sem shell. NUNCA roda `eas build` (regra 4):
-// devolve o comando pronto para o autor colar.
+// Acoes locais: preparo por script, commit/publicacao do app.json e disparo
+// separado com frase digitada (plano13h). Nunca acionar sem clique do autor.
 
 const fs = require('fs');
 const path = require('path');
@@ -54,7 +53,7 @@ function noCacheDoNpx(pacote) {
 
 function rodar(args, prazo) {
   return new Promise((resolve) => {
-    execFile(process.execPath, args, { cwd: RAIZ, timeout: prazo, windowsHide: true, maxBuffer: 8 * 1024 * 1024 },
+    execFile(process.execPath, args, { cwd: RAIZ, timeout: prazo, windowsHide: true, shell: false, maxBuffer: 8 * 1024 * 1024 },
       (erro, stdout, stderr) => resolve({ codigo: erro ? (typeof erro.code === 'number' ? erro.code : -1) : 0, morto: !!(erro && erro.killed), stdout: String(stdout || ''), stderr: String(stderr || '') }));
   });
 }
@@ -117,7 +116,7 @@ async function listarPelaCli() {
 async function builds() {
   if (!emCurso) emCurso = listarPelaCli().finally(() => { emCurso = null; });
   const lista = await emCurso;
-  return { ...lista, saldo: saldo(), preparoPendente: versaoPendente(), comoDisparar: 'O painel só prepara a build. O disparo (eas build) é colado pelo autor no terminal (regra 4).' };
+  return { ...lista, saldo: saldo(), preparoPendente: versaoPendente(), preparoPersistido: acoes.estado(), comoDisparar: 'O disparo exige DISPARAR BUILD no painel local.' };
 }
 
 async function status() {
@@ -158,9 +157,9 @@ async function prepararBuild(pedido) {
 async function prepararBuildUmaVez({ tipo, mensagem }) {
   if (tipo !== 'patch' && tipo !== 'minor') return { ok: false, status: 400, codigo: 'tipo-invalido', mensagem: 'Tipo deve ser patch ou minor.' };
   if (typeof mensagem !== 'string' || !mensagem.trim()) return { ok: false, status: 400, codigo: 'mensagem-vazia', mensagem: 'Escreva a nota da build (vai para o pop-up "O que mudou no Grana.").' };
-  const nota = mensagem.trim();
-  if (nota.length > 600) return { ok: false, status: 400, codigo: 'mensagem-longa', mensagem: 'A nota passa de 600 caracteres.' };
-  if (/[\u0000-\u001f"]/.test(nota.replace(/\n/g, ''))) return { ok: false, status: 400, codigo: 'mensagem-invalida', mensagem: 'A nota não pode ter aspas duplas nem caracteres de controle.' };
+  const nota = mensagem.replace(/\r\n/g, '\n').trim();
+  if (nota.length > 1024) return { ok: false, status: 400, codigo: 'mensagem-longa', mensagem: 'A nota passa de 1024 caracteres.' };
+  if (/[\u0000-\u001f]/.test(nota.replace(/\n/g, ''))) return { ok: false, status: 400, codigo: 'mensagem-invalida', mensagem: 'A nota não pode ter caracteres de controle.' };
 
   // F8 do Vigil: um preparo anterior subiu a versão e ainda não foi commitado.
   // Preparar de novo pularia uma versão (1.10.6 -> 1.10.7) e o teto não contaria
@@ -194,4 +193,19 @@ async function prepararBuildUmaVez({ tipo, mensagem }) {
   return { ok: true, dados: { simulado: false, saldoAntes: antes, comando, saida, easBuild: linhaEas, aviso: 'O app.json mudou e precisa ser commitado. O disparo do eas build é do autor.' } };
 }
 
-module.exports = { builds, saldo, status, prepararBuild };
+const { criarAcoesBuild, persistencia, gitReal, hashApp } = require('./build-acoes.cjs');
+const acoes = criarAcoesBuild({
+  log: (evento, codigo) => console.error(JSON.stringify({ evento, codigo })),
+  ...persistencia(), simular: SIMULAR, git: gitReal,
+  preparar: prepararBuild,
+  appSha: () => hashApp(fs.readFileSync(path.join(RAIZ, 'app.json'), 'utf8')),
+  versao: () => JSON.parse(fs.readFileSync(path.join(RAIZ, 'app.json'), 'utf8')).expo.version,
+  id: () => require('crypto').randomUUID(), agora: () => new Date().toISOString(),
+  cli: () => { const c = noCacheDoNpx('eas-cli'); return c && path.join(c.dir, 'bin', 'run'); },
+  eas: (cli, args) => rodar([cli, ...args], PRAZO_CLI_MS),
+  pacoteSeguro: () => { const p = require(path.join(RAIZ, 'scripts', 'env-fora-da-build.ts')).variaveisNoPacoteDaBuild(RAIZ); return !p.vaoNoPacote.length && !p.pastasNoPacote.length; },
+  release: () => require('./supabase.cjs').appRelease(),
+  regravar: (...args) => require('./supabase.cjs').regravarNotaRelease(...args),
+});
+module.exports = { builds, saldo, status, prepararBuild: acoes.preparar,
+  dispararBuild: acoes.disparar, retomarPreparo: acoes.retomar, verificarNota: acoes.verificar, resolverDisparo: acoes.resolver, regravarNota: acoes.regravar };

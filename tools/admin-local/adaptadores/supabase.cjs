@@ -226,4 +226,15 @@ async function status() {
   return { status: 'ok', estado: p.estado, regiao: p.regiao };
 }
 
-module.exports = { projeto, resumo, funcoes, migrations, appRelease, status, mascararEmail };
+// Fixed, version-scoped CAS; only the local panel can call it after TOTP step-up.
+async function regravarNotaRelease(versao, antes, aprovada) {
+  if (pronto()) throw new ErroIntegracao('supabase-ausente', 'Supabase indisponivel.');
+  if (!/^\d+\.\d+\.\d+$/.test(versao) || typeof antes !== 'string' || typeof aprovada !== 'string' || aprovada.length > 1024) throw new Error('nota-invalida');
+  const literal = (v) => "'" + v.replace(/'/g, "''") + "'";
+  const query = `update public.app_release set notes=${literal(aprovada)} where id=1 and version=${literal(versao)} and notes=${literal(antes)} returning version`;
+  const r = await pedirJson('Supabase', `${API}/projects/${refSupabase()}/database/query`, { metodo: 'POST', cabecalhos: cab(), corpo: { query } });
+  if (r.status >= 400 || !Array.isArray(r.dados) || r.dados.length !== 1) throw new ErroIntegracao('nota-nao-regravada', 'A nota mudou durante a conferencia ou a gravacao falhou. Confira de novo.');
+  return { status: 'ok', versao };
+}
+
+module.exports = { projeto, resumo, funcoes, migrations, appRelease, regravarNotaRelease, status, mascararEmail };
