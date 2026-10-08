@@ -2144,3 +2144,9 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
 .porta > span:not(.selo):not(.campo-ajuda) { flex: 1; min-width: min(100%, 16ch); }
 .porta > .campo-ajuda { flex-basis: 100%; }
 .tela-trafego .secao-corpo > h3 { margin-top: var(--s-xl); }
+
+@media (max-width: 640px) {
+  .faixa-simulado { flex-wrap: wrap; }
+  .faixa-simulado > p { flex-basis: 100%; }
+  .faixa-simulado > button { white-space: normal; }
+}
