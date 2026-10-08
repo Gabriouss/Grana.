@@ -1,5 +1,6 @@
 // EAS e builds: saldo da semana (regra 22), cota do mês, builds recentes e o preparo de build (regra 5).
-// O painel roda só o build:preparar. O eas build continua com o autor (regra 4).
+// O autor confirma separadamente preparo/publicação e disparo (regra 4).
+import { montarReciboBuild } from './build-painel.js';
 
 export async function montar(raiz, ctx) {
   const { h } = ctx;
@@ -9,10 +10,12 @@ export async function montar(raiz, ctx) {
 
   let saldoAtual = null;
   const preparo = h('div', { class: 'secao-corpo' });
+  const recibo = h('div', { class: 'secao-corpo' });
 
   raiz.appendChild(ctx.bloco('Saldo e builds recentes', '/api/eas/builds', (d) => {
     saldoAtual = normalizarSaldo(d.saldo);
-    desenharPreparo(ctx, preparo, saldoAtual);
+    desenharPreparo(ctx, preparo, saldoAtual, d.preparoPersistido);
+    montarReciboBuild(ctx, recibo, d.preparoPersistido, ctx.obsoleta);
     const sem = saldoAtual?.semana;
     const mes = saldoAtual?.mes;
     const builds = d.builds || d.itens || [];
@@ -43,6 +46,7 @@ export async function montar(raiz, ctx) {
   }, { integracao: 'eas' }));
 
   raiz.appendChild(h('section', { class: 'secao' }, h('h2', { class: 'secao-titulo', texto: 'Preparar uma build' }), preparo));
+  raiz.appendChild(h('section', { class: 'secao' }, h('h2', { class: 'secao-titulo', texto: 'Recibo do preparo e do disparo' }), recibo));
   desenharPreparo(ctx, preparo, null);
 }
 
@@ -59,13 +63,15 @@ function seloBuild(ctx, e) {
   return ctx.selo(s, t);
 }
 
-function desenharPreparo(ctx, raiz, saldo) {
+function desenharPreparo(ctx, raiz, saldo, persistido) {
   const { h } = ctx;
   while (raiz.firstChild) raiz.removeChild(raiz.firstChild);
   const sem = saldo?.semana;
   const mes = saldo?.mes;
   const esgotada = sem && sem.usadas >= (sem.teto ?? 3);
-  raiz.appendChild(h('p', { class: 'nota-explicativa', texto: 'O painel roda o npm run build:preparar, que sobe a versão e confere a nota do "O que mudou". Ele não dispara a build: no fim aparece o comando eas build pronto para você colar no terminal.' }));
+  const pendente = persistido && ['preparando', 'preparado', 'disparando', 'desconhecido', 'push-falhou', 'commit-falhou'].includes(persistido.estado);
+  if (pendente) raiz.appendChild(ctx.alerta('atencao', 'Há um preparo pendente. Continue pelo recibo abaixo antes de preparar outra versão.'));
+  raiz.appendChild(h('p', { class: 'nota-explicativa', texto: 'Preparar valida a nota, sobe a versão e publica o preparo no GitHub. Disparar é uma etapa separada: exige sua confirmação e envia a nota inteira ao EAS.' }));
   if (sem) {
     raiz.appendChild(ctx.alerta(esgotada ? 'critico' : 'info', esgotada
       ? `Esta semana já teve ${sem.usadas} de ${sem.teto ?? 3} builds. O preparo será recusado pelo script.`
@@ -74,7 +80,7 @@ function desenharPreparo(ctx, raiz, saldo) {
     raiz.appendChild(ctx.alerta('atencao', 'Saldo da semana ainda não lido. O script confere de novo antes de preparar.'));
   }
   const saida = h('div', { class: 'resultado-preparo' });
-  const botao = h('button', { class: 'botao botao-primario', type: 'button', texto: 'Preparar build', disabled: !!esgotada,
+  const botao = h('button', { class: 'botao botao-primario', type: 'button', texto: 'Preparar build', disabled: !!esgotada || !!pendente,
     onclick: () => preparar(ctx, saldo, saida, botao) });
   raiz.appendChild(h('div', { class: 'bloco-acao' }, botao));
   raiz.appendChild(saida);
@@ -97,7 +103,7 @@ async function preparar(ctx, saldo, saida, botao) {
   const sem = saldo?.semana;
   const ok = await ctx.confirmar({
     titulo: 'Confirmar o preparo',
-    texto: 'Isto altera o app.json desta máquina e conta como uma build da semana, mesmo que você não dispare depois.',
+    texto: 'Isto altera e publica o app.json desta máquina. O preparo conta na semana mesmo que você não dispare depois. Nenhum build é disparado nesta etapa.',
     detalhes: [
       `Tipo: ${valores.tipo === 'minor' ? 'novidade' : 'correção'}`,
       `Nota: ${valores.mensagem}`,
@@ -109,28 +115,28 @@ async function preparar(ctx, saldo, saida, botao) {
   botao.disabled = true;
   botao.textContent = 'Preparando…';
   while (saida.firstChild) saida.removeChild(saida.firstChild);
-  const andamento = ctx.alerta('info', 'Preparando a build. Pode levar até 2 minutos; não feche nem recarregue esta página.');
+  const andamento = ctx.alerta('info', 'Validando a nota, preparando e publicando a versão. Pode levar até 8 minutos; não feche nem recarregue esta página.');
   andamento.setAttribute('role', 'status');
   saida.appendChild(andamento);
   let liberar = true;
   try {
     const r = await ctx.acao('/api/eas/preparar-build', { tipo: valores.tipo, mensagem: valores.mensagem, confirmacao: 'PREPARAR BUILD' });
     const d = r.dados || {};
+    if (d.preparoPersistido && !d.simulado) liberar = false;
     andamento.remove();
-    saida.appendChild(ctx.alerta(d.simulado ? 'info' : 'info', d.simulado ? 'Preparo simulado: nada foi alterado.' : 'Preparo feito. Falta só disparar a build no terminal.'));
+    saida.appendChild(ctx.alerta('info', d.simulado ? 'Preparo simulado: nada foi alterado.' : 'Preparo publicado. Confira a nota e confirme o disparo abaixo.'));
+    const recibo = h('div', {});
+    saida.appendChild(recibo);
+    montarReciboBuild(ctx, recibo, d.preparoPersistido, ctx.obsoleta);
     if (d.saida) saida.appendChild(h('pre', { class: 'saida', tabindex: '0' }, h('code', { texto: d.saida })));
-    if (d.comando) {
-      saida.appendChild(h('div', { class: 'comando-pronto' },
-        h('p', { texto: 'Comando para colar no terminal:' }),
-        h('pre', { class: 'saida mono', tabindex: '0' }, h('code', { texto: d.comando })),
-        h('button', { class: 'botao', type: 'button', texto: 'Copiar comando', onclick: () => ctx.copiar(d.comando, 'Comando copiado.') })));
-    }
   } catch (err) {
     andamento.remove();
-    if (err.codigo === 'resultado-desconhecido') {
+    if (['resultado-desconhecido', 'preparo-nao-publicado', 'preparo-pendente'].includes(err.codigo)) {
       // não sabemos se o app.json subiu: nada de convidar a repetir na hora
       liberar = false;
-      saida.appendChild(ctx.alerta('critico', 'Resultado desconhecido: o servidor não respondeu a tempo e o preparo pode ter acontecido. Confira em EAS e builds (e a versão no app.json) antes de repetir.'));
+      saida.appendChild(ctx.alerta('critico', err.codigo === 'resultado-desconhecido'
+        ? 'Resultado desconhecido: a ação pode continuar no servidor e o preparo pode ter acontecido. Reabra EAS e builds para consultar o recibo antes de repetir.'
+        : 'Existe um preparo pendente. Confira o recibo em EAS e builds e retome sua publicação; não prepare outra versão.'));
       saida.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Conferir EAS e builds', onclick: () => ctx.recarregar() }));
     } else {
       saida.appendChild(ctx.alerta(err.codigo === 'bloqueado' || /BLOQUEADO/.test(err.message) ? 'critico' : 'atencao', `O preparo não foi feito: ${err.message}`));

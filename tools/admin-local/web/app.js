@@ -31,7 +31,11 @@ const PRAZO_MS = 20000; // o servidor corta cada adaptador em 15s; 5s de folga p
 // Ações cujo pior caso no servidor passa dos 20s. O prazo daqui tem de cobrir o de lá com folga,
 // senão a tela diz falha enquanto o servidor ainda conclui (achado A1 do Lynx).
 const PRAZO_ACAO_MS = {
-  '/api/eas/preparar-build': 130000, // preparar-lancamento.ts tem até 120s no servidor
+  '/api/eas/preparar-build': 460000, // script120s + até11 operações git30s; 10s de folga
+  '/api/eas/publicar-preparo': 310000, // retomada/commit/publicação: até10 operações git30s
+  '/api/eas/disparar-build': 280000, // até6 operações git30s + CLI90s; 10s de folga
+  '/api/eas/verificar-nota': 30000, // consulta fixa do anúncio, sem escrita
+  '/api/eas/regravar-nota': 60000, // duas leituras + escrita fixa, 15s por chamada
   '/api/vercel/redeploy': 45000, // descobrir projeto + lista + POST, 15s cada
 };
 export const prazoDaAcao = (caminho) => PRAZO_ACAO_MS[caminho.split('?')[0]] || PRAZO_MS;
