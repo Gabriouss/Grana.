@@ -13,7 +13,8 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.abspath(os.path.join(AQUI, '..', '..', '..'))
-W, H, FPS, DUR = 1080, 1920, 30, 24.0
+W, H, FPS, DUR = 1080, 1920, 30, 25.0
+ATRASO = 1.0     # a abertura em duas telas empurra o resto do vídeo em 1 s
 BASE = (239, 255, 254)       # #EFFFFE
 DEST = (173, 251, 227)       # #ADFBE3
 FONTE = os.path.join(RAIZ, 'assets', 'fonts', 'NeueMachina-Light.otf')
@@ -173,13 +174,8 @@ LOGO = Image.open(os.path.join(AQUI, 'logo-gradiente-1200.png')).convert('RGBA')
 LOGO = LOGO.crop(LOGO.getbbox()); LOGO = LOGO.resize((600, int(LOGO.height * 600 / LOGO.width)), Image.LANCZOS)
 
 # ---------- linha do tempo ----------
-def quadro(t):
-    fr = BG.copy()
+def cena(t, fr):
     # 1. bloco de abertura
-    if t < 4.1:
-        desenha_texto(fr, 'Tem dúvida sobre o seu *dinheiro?* Pergunte para quem anota *tudo.*',
-                      82, entra=0.2, passo=0.133, dur_p=0.267, sobe=19, x0=84, y0=960 - 2.5 * 103,
-                      entrelinha=103, sai=3.6, sai_sobe=44, t=t, largura=880)
     # 2-4. mascote: entrada, giro, piscada, flutuação, vai para o botão
     if 3.9 <= t < 8.4:
         cx, cy, esc, alfa = 540, 900, 1.0, 1.0
@@ -243,11 +239,59 @@ def quadro(t):
         fr.alpha_composite(lg, (240, 960 - lg.height // 2))
     return fr
 
+# ---------- ícones do acervo flutuando, com profundidade de campo ----------
+ICO = os.path.join(AQUI, '..', 'arsenal', 'icones')
+# (arquivo, centro x, centro y, tamanho, desfoque, opacidade, velocidade de deriva)
+ICONES = [
+    ('graficos-petroleo.png', 840, 330, 130, 7.0, 0.55, 0.5),   # fundo: pequeno, desfocado
+    ('dinheiro-gradiente.png', 860, 560, 190, 0.0, 1.00, 1.0),  # plano médio: nítido
+    ('carteira-menta.png', 250, 1560, 330, 13.0, 0.55, 1.7),    # primeiro plano: grande, bem desfocado
+]
+_ico = {}
+def icone(nome, tam, blur):
+    k = (nome, tam, blur)
+    if k not in _ico:
+        im = Image.open(os.path.join(ICO, nome)).convert('RGBA').resize((tam, tam), Image.LANCZOS)
+        pad = int(blur * 3) + 2
+        b = Image.new('RGBA', (tam + 2 * pad, tam + 2 * pad), (0, 0, 0, 0)); b.alpha_composite(im, (pad, pad))
+        _ico[k] = b.filter(ImageFilter.GaussianBlur(blur)) if blur else b
+    return _ico[k]
+
+def icones(fr, t, lista):
+    # entram em fade entre 0,3 e 1,1 s e saem entre 4,5 e 5,0 s, quando o Granabô sobe
+    a0 = easeout((t - 0.3) / 0.8) * (1 - lin((t - 4.5) / 0.5))
+    if a0 <= 0: return
+    for nome, x, y, tam, blur, op, vel in lista:
+        i = ICONES.index((nome, x, y, tam, blur, op, vel))
+        dx = 10 * vel * math.sin(2 * math.pi * t / 7.0 + i * 1.7)
+        dy = -14 * vel * t / 5.0 + 9 * vel * math.sin(2 * math.pi * t / 5.5 + i)
+        im = icone(nome, tam, blur)
+        a = a0 * op
+        if a < 1:
+            im = im.copy(); im.putalpha(im.getchannel('A').point(lambda v: int(v * a)))
+        fr.alpha_composite(im, (int(x + dx - im.width / 2), int(y + dy - im.height / 2)))
+
+def quadro(t):
+    fr = BG.copy()
+    # fundo e plano médio ficam atrás do texto; o primeiro plano passa por cima
+    if t < 5.0: icones(fr, t, ICONES[:2])
+    # abertura em duas telas
+    if t < 2.4:
+        desenha_texto(fr, 'Tem dúvida sobre o seu *dinheiro?*', 82, entra=0.2, passo=0.133, dur_p=0.267,
+                      sobe=19, x0=84, y0=960 - 103, entrelinha=103, sai=2.0, sai_sobe=44, t=t, largura=880)
+    if 2.27 <= t < 5.1:
+        desenha_texto(fr, 'Pergunte para quem anota *tudo.*', 82, entra=2.27, passo=0.133, dur_p=0.267,
+                      sobe=19, x0=84, y0=960 - 103, entrelinha=103, sai=4.6, sai_sobe=44, t=t, largura=880)
+    if t >= ATRASO:
+        cena(t - ATRASO, fr)
+    if t < 5.0: icones(fr, t, ICONES[2:])
+    return fr
+
 if __name__ == '__main__':
     saida = os.path.join(AQUI, 'granabo-reels-previa.mp4')
     plim = os.path.join(AQUI, '..', 'identidade-sonora', 'plim-sucesso.wav')
     cmd = ['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
-           '-i', plim, '-filter_complex', '[1:a]adelay=16000|16000,apad,atrim=0:24,volume=0.6[a]',
+           '-i', plim, '-filter_complex', '[1:a]adelay=17000|17000,apad,atrim=0:25,volume=0.6[a]',
            '-map', '0:v', '-map', '[a]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-c:a', 'aac', '-b:a', '192k',
            '-movflags', '+faststart', saida]
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
