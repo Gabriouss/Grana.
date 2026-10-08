@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const path = require('node:path');
 const catalogo = require('./catalogo.cjs');
+const { aceiteValido } = require('./aceite-evidencia.cjs');
 const FUSO = 'America/Sao_Paulo';
 const FORMATADOR = new Intl.DateTimeFormat('sv-SE', {
   timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit',
@@ -22,15 +23,6 @@ function instante(data, hora) {
   const p = Object.fromEntries(FORMATADOR.formatToParts(utc).map((v) => [v.type, v.value]));
   if (`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}` !== `${data}T${hora}`) return null;
   return new Date(utc).toISOString();
-}
-
-function evidenciaValida(a, p, agora) {
-  return !!a && a.id === p.id && a.versao === p.versao && a.caminho === p.caminho
-    && typeof a.evidencia === 'string' && a.evidencia.trim().length > 0
-    && typeof a.aprovadoEm === 'string'
-    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(a.aprovadoEm)
-    && catalogo.dataValida(a.aprovadoEm.slice(0, 10))
-    && Number.isFinite(Date.parse(a.aprovadoEm)) && Date.parse(a.aprovadoEm) <= agora;
 }
 
 function criarEnsaio(deps) {
@@ -57,7 +49,7 @@ function criarEnsaio(deps) {
       if (!p) negar('peca-ausente');
       if (!versao || !p || versao !== p.versao || r.caminho !== p.caminho) negar('versao-ou-caminho-mudou');
       if (!p || p.estado !== 'aprovados' || !/^docs\/marketing\/\d{4}-\d{2}\/semana-[^/]+\/aprovados\//.test(p.caminho)) negar('fora-de-aprovados');
-      const aceite = p && aceites.find((a) => evidenciaValida(a, p, agora));
+      const aceite = p && aceites.find((a) => aceiteValido(a, p, agora));
       if (!aceite) negar('sem-evidencia-datada-desta-versao');
       if (!canal) negar('canal-invalido');
       if (canal === 'anuncio') negar('anuncio-fora-do-fluxo-organico');

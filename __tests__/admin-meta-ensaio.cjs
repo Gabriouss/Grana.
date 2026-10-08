@@ -22,11 +22,11 @@ function carregar(rel, imports = {}) {
   }, { filename: rel });
   return mod.exports;
 }
-const real = carregar('tools/admin-local/marketing/meta-ensaio.cjs', { './catalogo.cjs': catalogo });
+const real = carregar('tools/admin-local/marketing/meta-ensaio.cjs', { './catalogo.cjs': catalogo, './aceite-evidencia.cjs': require('../tools/admin-local/marketing/aceite-evidencia.cjs') });
 function fixture() {
   const p = { id: 'a'.repeat(16), versao: 'b'.repeat(40), estado: 'aprovados', caminho: 'docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/card.jpg', arquivos: [{ nome: 'card.jpg', tipo: 'imagem' }] };
   const plano = { diaD: '2026-10-09', planejados: [{ id: p.id, versao: p.versao, caminho: p.caminho, data: '2026-10-10', hora: '14:30', canal: 'instagram-feed' }] };
-  const a = { id: p.id, versao: p.versao, caminho: p.caminho, aprovadoEm: '2026-10-08T10:00:00-03:00', evidencia: 'aceite explícito do autor' };
+  const a = { id: p.id, versao: p.versao, caminho: p.caminho, aprovadoEm: '2026-10-08T10:00:00-03:00', evidencia: 'aceite pelo autor no painel local' };
   const leituras = [];
   const ensaiar = real.criarEnsaio({ agora: () => Date.parse('2026-10-08T18:00:00Z'), lerPlano: () => { leituras.push('plano'); return plano; }, pecas: () => { leituras.push('pecas'); return [p]; }, aceites: () => { leituras.push('aceites'); return [a]; } });
   return { p, plano, a, leituras, run: () => ensaiar('/fixture') };
@@ -48,7 +48,7 @@ test('pasta para-aprovacao mesmo com aceite nunca entra', () => {
   h.plano.planejados[0].caminho = h.p.caminho; h.a.caminho = h.p.caminho; negado(h, 'fora-de-aprovados');
 });
 test('evidencia datada exige caminho, SHA, autor e data real nao futura', () => {
-  for (const patch of [{ evidencia: '' }, { aprovadoEm: null }, { aprovadoEm: '2026-02-30T10:00:00Z' }, { aprovadoEm: '2026-10-09T10:00:00Z' }, { versao: 'c'.repeat(40) }, { caminho: 'outro' }]) {
+  for (const patch of [{ evidencia: '' }, { evidencia: 'parecer do Keel aprovado' }, { evidencia: 'aceite explícito do autor' }, { aprovadoEm: null }, { aprovadoEm: '2026-02-30T10:00:00Z' }, { aprovadoEm: '2026-10-09T10:00:00Z' }, { versao: 'c'.repeat(40) }, { caminho: 'outro' }]) {
     const h = fixture(); Object.assign(h.a, patch); negado(h, 'sem-evidencia-datada-desta-versao');
   }
 });
@@ -98,7 +98,7 @@ test('fonte real em disco: catalogo recalcula SHA e JSON nao muda', () => {
     const p = catalogo.montarCatalogo(dir).find((i) => i.tipo === 'imagem'); assert(p);
     const base = path.join(dir, 'docs/marketing/painel'); fs.mkdirSync(base, { recursive: true });
     fs.writeFileSync(path.join(base, 'calendario.json'), JSON.stringify({ diaD: '2099-01-01', planejados: [{ id: p.id, versao: p.versao, caminho: p.caminho, canal: 'instagram-feed', data: '2099-01-02', hora: '09:00' }] }));
-    fs.writeFileSync(path.join(base, 'aprovacoes.json'), JSON.stringify({ aprovacoes: [{ id: p.id, versao: p.versao, caminho: p.caminho, aprovadoEm: '2026-10-01T10:00:00Z', evidencia: 'aceite datado fixture' }] }));
+    fs.writeFileSync(path.join(base, 'aprovacoes.json'), JSON.stringify({ aprovacoes: [{ id: p.id, versao: p.versao, caminho: p.caminho, aprovadoEm: '2026-10-01T10:00:00Z', evidencia: 'aceite pelo autor no painel local' }] }));
     const antes = fs.readFileSync(path.join(base, 'calendario.json'), 'utf8'); assert.equal(real.ensaiar(dir).itens[0].estado, 'ensaio');
     fs.writeFileSync(path.join(pasta, 'card.jpg'), 'fixture-alterada-maior'); negado({ run: () => real.ensaiar(dir) }, 'versao-ou-caminho-mudou');
     assert.equal(fs.readFileSync(path.join(base, 'calendario.json'), 'utf8'), antes); assert.deepEqual(calls, []);

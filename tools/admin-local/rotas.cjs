@@ -210,7 +210,7 @@ const GET = {
 
 // ---------- ações (POST, login completo + CSRF) ----------
 
-const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste)$/;
+const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover)$/;
 const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry']);
 const ACOES_BUILD = {
   '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
@@ -254,7 +254,8 @@ async function tratarAcao(req, res, url, corpo, sessao) {
       registrar('acao', { rota: p, resultado: res.statusCode, sessao: sessao.id });
       return undefined;
     }
-    if (m) r = rotaMarketingPost(res, 'aprovacoes', m[2] === 'aprovar' ? ['aprovar'] : ['pedirAjuste', 'ajuste'], [m[1], corpo]);
+    if (m && m[2] === 'promover') r = rotaMarketingPost(res, 'promocao', ['promover'], [m[1], corpo]);
+    else if (m) r = rotaMarketingPost(res, 'aprovacoes', m[2] === 'aprovar' ? ['aprovar'] : ['pedirAjuste', 'ajuste'], [m[1], corpo]);
     else if (p === '/api/marketing/calendario') r = rotaMarketingPost(res, 'calendario', ['planejar', 'salvar', 'gravar'], [corpo]);
     else r = rotaMarketingPost(res, 'trafego', ['salvarCampanha', 'salvar', 'gravar'], [corpo]);
     await r;
