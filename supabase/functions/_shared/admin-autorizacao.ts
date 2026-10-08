@@ -112,17 +112,26 @@ function admissaoLimitada(maximo: number, janela = 60_000) {
     recentes.push(agora); return false;
   };
 }
-// Forwarded address is an extra throttle, NOT an authentication boundary.
-// Trust/rewriting by the production gateway must be verified before release.
-function chaveIp(req: Request): string {
-  const header = req.headers.get('x-forwarded-for');
-  if (!header || header.length > 256) return 'sem-ip';
-  const ip = header.split(',').at(-1)?.trim() ?? '';
+// Client address is an extra throttle, NOT an authentication boundary.
+// Gateway verified in production on 08/10/2026 (sonda-xff): the client-sent X-Forwarded-For
+// is discarded and rewritten; entry 0 equals cf-connecting-ip (the real client) and the LAST
+// entry is a proxy shared by everyone, so keying on it put all callers in one bucket and
+// anyone could lock /admin out with 429. A forged CF-Connecting-IP is refused by Cloudflare.
+function normalizarIp(valor: string | null | undefined): string | null {
+  const ip = valor?.trim() ?? '';
+  if (!ip || ip.length > 64) return null;
   if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(ip) && ip.split('.').every((v) => Number(v) <= 255)) return ip.split('.').map(Number).join('.');
   if (ip.includes(':')) {
-    try { return new URL(`http://[${ip}]/`).hostname.toLowerCase(); } catch { return 'sem-ip'; }
+    try { return new URL(`http://[${ip}]/`).hostname.toLowerCase(); } catch { return null; }
   }
-  return 'sem-ip';
+  return null;
+}
+function chaveIp(req: Request): string {
+  const cf = normalizarIp(req.headers.get('cf-connecting-ip'));
+  if (cf) return cf;
+  const xff = req.headers.get('x-forwarded-for');
+  if (!xff || xff.length > 256) return 'sem-ip';
+  return normalizarIp(xff.split(',')[0]) ?? 'sem-ip';
 }
 
 export function criarHandlerAdmin(deps: DependenciasAdmin) {

@@ -238,6 +238,21 @@ function safe(json) {
     const missing = harness(); for (let i = 0; i < 60; i++) await missing.request({ headers: { Authorization: 'Bearer broken', 'x-forwarded-for': 'invalid' } });
     assert.equal((await missing.request()).r.status, 429); assert.equal(missing.authCalls.length, 60);
   });
+  await test('IP real do gateway (08/10): cf-connecting-ip e XFF[0], nunca o proxy no fim', async () => {
+    // Formato visto em producao: o gateway reescreve o XFF com o cliente na posicao 0 e a borda no fim.
+    const PROXY = '203.0.113.9';
+    const cf = harness();
+    for (let i = 0; i < 60; i++) await cf.request({ headers: { Authorization: 'Bearer broken', 'cf-connecting-ip': '198.51.100.7', 'x-forwarded-for': `198.51.100.7, 192.0.2.50, ${PROXY}` } });
+    assert.equal((await cf.request({ headers: { Authorization: 'Bearer broken', 'cf-connecting-ip': '198.51.100.7', 'x-forwarded-for': `198.51.100.7, 192.0.2.50, ${PROXY}` } })).r.status, 429);
+    assert.equal((await cf.request({ headers: { 'cf-connecting-ip': '198.51.100.8', 'x-forwarded-for': `198.51.100.8, 192.0.2.50, ${PROXY}` } })).r.status, 200, 'outro cliente atras do mesmo proxy nao e trancado');
+    const xff = harness();
+    for (let i = 0; i < 60; i++) await xff.request({ headers: { Authorization: 'Bearer broken', 'x-forwarded-for': `198.51.100.7, ${PROXY}` } });
+    assert.equal((await xff.request({ headers: { 'x-forwarded-for': `198.51.100.8, ${PROXY}` } })).r.status, 200, 'sem cf-connecting-ip vale a entrada 0');
+    assert.equal((await xff.request({ headers: { 'x-forwarded-for': `198.51.100.7, ${PROXY}` } })).r.status, 429);
+    const invalido = harness();
+    for (let i = 0; i < 60; i++) await invalido.request({ headers: { Authorization: 'Bearer broken', 'cf-connecting-ip': 'lixo', 'x-forwarded-for': `198.51.100.7, ${PROXY}` } });
+    assert.equal((await invalido.request({ headers: { 'cf-connecting-ip': 'outro-lixo', 'x-forwarded-for': `198.51.100.7, ${PROXY}` } })).r.status, 429, 'cf invalido cai no XFF[0] validado');
+  });
   await test('query pendurada aborta prazo incluindo corpo; demais blocos respondem', async () => {
     const h = harness({ pendurar: 'subscriptions', rapido: true }); const { json } = await h.request(); assert.equal(json.dados.assinaturas.indisponivel, true); assert.equal(json.dados.uso.voz7d, 12); assert(h.signals.some((s) => s.aborted));
   });
