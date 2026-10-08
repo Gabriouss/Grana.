@@ -299,5 +299,33 @@ async function salvar() {
   respostaDaVoz = null;
   ok(registro.alertas.at(-1)?.[0] === 'Erro ja_usada', 'caso 31: "Fala já usada", sem recibo de lançamento novo');
 
+  /* ── 5. Categoria criada na própria lista (B1, 08/10/2026) ─────────────── */
+  /* Com a janela única a categoria vem do seletor, que também CRIA e renomeia
+     categoria. A lista que o Colar buscou ao abrir não a conhece (aqui
+     `fetchCategories` devolve vazio): a escolha da pessoa vale, com o nome e
+     a cor que o seletor entregou. Antes o Salvar respondia "Qual categoria?"
+     com a categoria escolhida na tela, e nunca gravava. */
+  const escolher = (categoria) => achar(render(), (n) => n.type === 'CategoryPickerModal')[0].props.onSelectCategory(categoria);
+  colar('AUDIT Pix recebido em 29/09/2026 R$ 500,00');
+  escolher({ name: 'Freela AUDIT', color: '#3fd46a' });
+  registro.gravados.length = 0;
+  registro.alertas.length = 0;
+  await salvar();
+  ok(registro.gravados.length === 1 && registro.gravados[0].category === 'Freela AUDIT' && registro.gravados[0].color === '#3fd46a',
+    'Colar: categoria criada no seletor é gravada, com o nome e a cor escolhidos');
+  ok(!registro.alertas.some((a) => a[0] === 'Qual categoria?'), 'Colar: sem a pergunta "Qual categoria?" depois da escolha');
+  abrir({ initialText: 'bico de sábado 80 reais', referenciaDaVoz: REF('2026-09-30') });
+  escolher({ name: 'Freela AUDIT', color: '#3fd46a' });
+  registro.voz.length = 0;
+  registro.alertas.length = 0;
+  await salvar();
+  ok(registro.voz.length === 1 && registro.voz[0].payload.category === 'Freela AUDIT' && registro.voz[0].payload.color === '#3fd46a',
+    'voz no débito: categoria criada no seletor é gravada pelo núcleo da voz');
+  /* E continua valendo: sem categoria nenhuma, nada é gravado. */
+  colar('AUDIT Pix recebido em 29/09/2026 R$ 500,00');
+  registro.gravados.length = 0;
+  await salvar();
+  ok(registro.gravados.length === 0, 'Colar: sem categoria escolhida, continua sem gravar');
+
   console.log(`\n${checagens} checagens da data da compra no Colar passaram — 0 falhas`);
 })().catch((e) => { console.error(e); process.exit(1); });

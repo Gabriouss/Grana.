@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   ecoVozTexto: { flex: 1, color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   seloData: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
   acaoSecundaria: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4, fontFamily: fonts.light },
-  acaoSecundariaAlvo: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  acaoSecundariaAlvo: { minHeight: touchTarget, alignItems: 'center', justifyContent: 'center' },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },

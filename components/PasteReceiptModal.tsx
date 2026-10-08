@@ -230,7 +230,7 @@ export default function PasteReceiptModal({
        uma categoria custom reconhecida no texto voltava a cair em "Outros" na
        hora de salvar — o nome certo aparecia na tela e o lançamento gravava
        outro. */
-    const catObj = categoriaEscolhida(v.category, categoriasExtras);
+    const catObj = categoriaEscolhida(v.category, v.color ? [...categoriasExtras, { name: v.category, color: v.color }] : categoriasExtras);
     if (!catObj) {
       Alert.alert(PERGUNTA_CATEGORIA.titulo, PERGUNTA_CATEGORIA.texto);
       return;
