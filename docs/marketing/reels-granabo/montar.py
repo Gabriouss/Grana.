@@ -18,6 +18,7 @@ ATRASO = 1.0     # a abertura em duas telas empurra o resto do vídeo em 1 s
 BASE = (239, 255, 254)       # #EFFFFE
 DEST = (173, 251, 227)       # #ADFBE3
 FONTE = os.path.join(RAIZ, 'assets', 'fonts', 'NeueMachina-Light.otf')
+FONTE_DEST = os.path.join(RAIZ, 'assets', 'fonts', 'NeueMachina-Regular.otf')   # palavra em menta: peso mais forte
 SPR = os.path.join(AQUI, 'sprites')
 
 def easeout(t): t = min(1, max(0, t)); return 1 - (1 - t) ** 3
@@ -37,23 +38,26 @@ BG = fundo()
 
 # ---------- texto ----------
 def layout(texto, tam, largura, track):
-    f = ImageFont.truetype(FONTE, tam)
+    f = ImageFont.truetype(FONTE, tam); fd = ImageFont.truetype(FONTE_DEST, tam)
     palavras = texto.split()
-    def larg(p): return sum(f.getlength(c) + track for c in p) - track
+    def fonte(p): return fd if p.startswith('*') else f
+    def larg(p):
+        ft = fonte(p); q = p.strip('*')
+        return sum(ft.getlength(c) + track for c in q) - track
     esp = f.getlength(' ') + track
     linhas, atual, w = [], [], 0
     for p in palavras:
-        lp = larg(p.strip('*'))
+        lp = larg(p)
         if atual and w + esp + lp > largura:
             linhas.append(atual); atual, w = [], 0
         atual.append(p); w += (esp if w else 0) + lp
     linhas.append(atual)
-    return f, linhas, larg, esp
+    return fonte, linhas, larg, esp
 
 def desenha_texto(fr, texto, tam, entra, passo, dur_p, sobe, x0, y0, centro=False,
                   sai=None, sai_dur=0.4, sai_sobe=0, t=0, entrelinha=None, largura=800, track=None):
     track = tam * 0.05 if track is None else track
-    f, linhas, larg, esp = layout(texto, tam, largura, track)
+    fonte, linhas, larg, esp = layout(texto, tam, largura, track)
     lh = entrelinha or tam * 1.25
     camada = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(camada)
     k = 0
@@ -61,19 +65,19 @@ def desenha_texto(fr, texto, tam, entra, passo, dur_p, sobe, x0, y0, centro=Fals
     if sai is not None and t > sai:
         q = lin((t - sai) / sai_dur); a_sai = 1 - q; dy_sai = -sai_sobe * q
     for i, linha in enumerate(linhas):
-        wl = sum(larg(p.strip('*')) for p in linha) + esp * (len(linha) - 1)
+        wl = sum(larg(p) for p in linha) + esp * (len(linha) - 1)
         x = (W - wl) / 2 if centro else x0
         y = y0 + i * lh
         for p in linha:
-            dest = p.startswith('*'); p = p.strip('*')
+            ft = fonte(p); dest = p.startswith('*'); pal = p.strip('*')
             q = easeout((t - (entra + k * passo)) / dur_p)
             a = q * a_sai
             if a > 0.01:
                 cor = DEST if dest else BASE
                 xx = x
-                for c in p:
-                    d.text((xx, y + sobe * (1 - q) + dy_sai), c, font=f, fill=cor + (int(255 * a),))
-                    xx += f.getlength(c) + track
+                for c in pal:
+                    d.text((xx, y + sobe * (1 - q) + dy_sai), c, font=ft, fill=cor + (int(255 * a),))
+                    xx += ft.getlength(c) + track
             x += larg(p) + esp; k += 1
     fr.alpha_composite(camada)
 
