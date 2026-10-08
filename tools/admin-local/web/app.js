@@ -820,8 +820,8 @@ async function renderizar() {
   if (bloqueado || (acesso && !podeDesenhar())) return;
   if (acesso && !acesso.legado && !acesso.entrou) return;
   const { rota, params } = lerHash();
-  const def = ROTAS[rota];
-  if (!def) { location.replace(`#/${ROTA_PADRAO}`); return; }
+  const def = ROTAS[rota] || { modulo: 'nao-encontrada', titulo: 'Página não encontrada' };
+  if (!ROTAS[rota]) params.caminho = rota;
   const minha = ++geracao;
 
   for (const a of document.querySelectorAll('.nav-link')) {
@@ -985,7 +985,7 @@ async function iniciar() {
     definirCsrf: (t) => { csrfToken = t || null; },
     esconderPainel,
     mostrarPainel,
-    aoEntrar: () => { if (!lerHash().rota || !ROTAS[lerHash().rota]) location.replace(`#/${ROTA_PADRAO}`); renderizar(); },
+    aoEntrar: () => { renderizar(); },
     aviso: (texto, tipo, opcoes) => aviso(texto, tipo, { mesmoSemPainel: true, ...(opcoes || {}) }),
     bloquear: bloquearPainel,
     limparContexto: esconderPainel,
@@ -1006,7 +1006,7 @@ async function iniciar() {
   if (!liberado || bloqueado) return;
   mostrarPainel();
   if (acesso.legado) document.querySelector('.botao-sair')?.setAttribute('hidden', '');
-  if (!location.hash || !ROTAS[lerHash().rota]) location.replace(`#/${ROTA_PADRAO}`);
+  if (!location.hash) location.replace(`#/${ROTA_PADRAO}`);
   renderizar();
 }
 
