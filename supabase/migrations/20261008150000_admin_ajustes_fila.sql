@@ -1,6 +1,10 @@
--- PROPOSTA, NAO APLICADA. Fica fora de supabase/migrations de proposito, para nenhum
--- `supabase db push` aplica-la sem decisao. Aplicar exige pedido explicito do autor
--- (regra 11) e a funcao de escrita da M2 revisada antes.
+-- APLICADA EM PRODUCAO em 08/10/2026, a pedido do autor, pelo Orquestrador Supremo
+-- (HTTP 201). Conferido depois: 2 tabelas com RLS e 0 policies, anon/authenticated sem
+-- select, service_role sem delete, REST e RPC anonimos recusados (401). Escrita pela
+-- nota de 08/10 em docs/admin/migrations-propostas e movida para ca depois de aplicada.
+--
+-- Ainda NAO existe a Edge Function de escrita da M2: hoje so service_role alcanca as
+-- tabelas, e a fila em uso continua sendo a local da M1.
 --
 -- Frente C do painel admin (plano docs/admin/2026-10-08-plano-painel-admin.md):
 -- fila de pedidos de ajuste de marketing que a M2 tambem possa usar. Hoje a fila e

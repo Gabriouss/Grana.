@@ -1,20 +1,20 @@
-/* Migration PROPOSTA da fila de ajustes (frente C), executada num Postgres embutido.
- * Ela NAO esta em supabase/migrations e NAO foi aplicada em producao; este teste so
- * prova que o texto roda e que as travas valem antes de alguem pedir para aplicar.
+/* Migration da fila de ajustes (frente C), executada num Postgres embutido.
+ * Aplicada em producao em 08/10/2026 a pedido do autor; este teste prova que o texto
+ * versionado roda de novo sem erro e que as travas de acesso continuam valendo.
  *
  *   node __tests__/admin-ajustes-migration.cjs */
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 
-const ARQ = 'docs/admin/migrations-propostas/20261008150000_admin_ajustes_fila.sql';
+const ARQ = 'supabase/migrations/20261008150000_admin_ajustes_fila.sql';
 const sql = fs.readFileSync(path.join(__dirname, '..', ARQ), 'utf8');
 let passou = 0;
 const ok = (c, n) => { assert.ok(c, n); passou++; console.log('OK ' + n); };
 const falha = async (p, re, n) => { await assert.rejects(p, re); passou++; console.log('OK ' + n); };
 
 (async () => {
-  ok(!fs.existsSync(path.join(__dirname, '..', 'supabase/migrations', path.basename(ARQ))), 'proposta fora de supabase/migrations');
+  ok(!fs.existsSync(path.join(__dirname, '..', 'docs/admin/migrations-propostas', path.basename(ARQ))), 'sem copia esquecida em migrations-propostas');
   const { PGlite } = await import('@electric-sql/pglite');
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
@@ -59,5 +59,5 @@ const falha = async (p, re, n) => { await assert.rejects(p, re); passou++; conso
   const { rows: [fim] } = await db.query('select estado, lease_id from public.admin_ajuste_pedidos where id = $1', [r1.id]);
   ok(c4.length === 0 && fim.estado === 'precisa-de-atencao' && fim.lease_id === null, 'tres leases vencidos levam a precisa-de-atencao');
 
-  console.log(`admin-ajustes-migration: ${passou} verificacoes verdes; proposta nao aplicada`);
+  console.log(`admin-ajustes-migration: ${passou} verificacoes verdes`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });
