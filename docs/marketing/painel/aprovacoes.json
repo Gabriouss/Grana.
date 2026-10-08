@@ -10,6 +10,81 @@
       "Semana 40, C01 a C14 e R13: o índice registra revisões de Beacon e Watchtower e diz que não há aceite final do autor."
     ]
   },
-  "aprovacoes": [],
-  "ajustes": []
+  "aprovacoes": [
+    {
+      "id": "44f4151757801600",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-reels-v8-pop.mp4",
+      "versao": "bc01c04e92badb8c64de75c15d46eb13e7a920cb",
+      "aprovadoEm": "2026-10-07T10:31:32-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    }
+  ],
+  "ajustes": [
+    {
+      "id": "4a270fa0c3d9886e",
+      "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/r13-v3/reel-r13-v3.mp4",
+      "versao": "178ec3794a8e337115654a2ae9d4f31d325487b7",
+      "pedidoEm": "2026-10-07T10:24:10-03:00",
+      "motivo": "R13 · reel-r13-final.mp4 < versão melhorada, trocar por ele",
+      "origem": "pedido do autor no painel local"
+    },
+    {
+      "id": "8942b800bef825f0",
+      "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v6/carrossel-*",
+      "versao": "62c2e93f0fa7a48ff5e2ac537ed95041e285c0ef",
+      "pedidoEm": "2026-10-07T10:24:54-03:00",
+      "motivo": "A capa está igual à ultima página, praticamente. Precisa alterar a última página para encerrar o carrossel e adicionar CTA",
+      "origem": "pedido do autor no painel local"
+    },
+    {
+      "id": "019d5b922cd94eb9",
+      "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v6/card.png",
+      "versao": "1c398ea8564f05f9d8b97daa4bd77bb15c88a9de",
+      "pedidoEm": "2026-10-07T10:25:35-03:00",
+      "motivo": "Adicionar mais elementos de enfeite no criativo, deixando seu visual mais atrativo",
+      "origem": "pedido do autor no painel local"
+    },
+    {
+      "id": "1619d029006510a1",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-05/E01-feed-1080x1440.png",
+      "versao": "e4a24c3e9006fb0019dd3349bac9d45b0babb42c",
+      "pedidoEm": "2026-10-07T10:27:34-03:00",
+      "motivo": "Adicionar mais elementos de enfeite no criativo, deixando seu visual mais atrativo. Corrigir área do celular cortada na borda do criativo. A frase está esquisita, preferiria que fosse (O salário caiu, você sabe quanto dele já está comprometido? O Grana. te ajuda!) O criativo precisa reconhecer a dor do público e mostrar a solução na mesma peça.",
+      "origem": "pedido do autor no painel local"
+    },
+    {
+      "id": "e785d6ce73ede62b",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-05/E02-feed-1080x1440.png",
+      "versao": "4396fe4e863d79d8ff995cde770f8738a3fd27f3",
+      "pedidoEm": "2026-10-07T10:28:42-03:00",
+      "motivo": "Copy boa, tem que remover as bolinhas ali que não tem a ver com nosso design system e o (Demonstração com dados fictícios) isso é informação interna do setor de marketing, o publico não precisa saber disso. Corrigir o celular cortado na borda do criativo",
+      "origem": "pedido do autor no painel local"
+    },
+    {
+      "id": "e785d6ce73ede62b",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-05/E02-feed-1080x1440.png",
+      "versao": "4396fe4e863d79d8ff995cde770f8738a3fd27f3",
+      "pedidoEm": "2026-10-07T10:28:56-03:00",
+      "motivo": "Adicionar mais enfeites",
+      "origem": "pedido do autor no painel local"
+    },
+    {
+      "id": "df528936ff930fdb",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-05/E05-feed-1080x1440.png",
+      "versao": "d43a0cfde4616976a4960a98b6c1b468ebf6a185",
+      "pedidoEm": "2026-10-07T10:30:29-03:00",
+      "motivo": "Texto fora da conformidade gramatical do português brasileiro. O correto seria ( O mês que vem já começou nas parcelas deste mês!) Remover a informação de dados fictícios. Ajustar decoração do criativo conforme nosso design system",
+      "origem": "pedido do autor no painel local"
+    },
+    {
+      "id": "9345b63bec288055",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-05/E06-feed-1080x1440.png",
+      "versao": "9ec5b2ded73803edb899aeb0faca249aae4f0f1a",
+      "pedidoEm": "2026-10-07T10:31:14-03:00",
+      "motivo": "Copy tá estranha. Prefiro (Organize no computador e acompanhe no seu celular, na mesma conta!) Remover informação de dados fictícios",
+      "origem": "pedido do autor no painel local"
+    }
+  ]
 }

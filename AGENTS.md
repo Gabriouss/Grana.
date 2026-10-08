@@ -929,7 +929,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     `Gabriel/Grana` do vault (aprovado em 25/09/2026); a nota perene é
     `03 - Marketing/Regras de Criativo e Estilo de Vídeo`. Quem produz mede o
     arquivo de referência e compara o resultado com ele antes de entregar. O
-    guia medido do Flare está em `docs/marketing/guia-de-estilo-de-video.md`.
+    guia medido do Flare está em `docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/apoio/referencias/guia-de-estilo-de-video.md`.
     Em aberto para o autor: a sangria do aparelho pela borda de baixo no vídeo
     aprovado (contraria o aparelho inteiro; vale o inteiro) e a cama musical
     (vídeo novo sai sem música até decidir). A referência vale para o ESTILO, não autoriza prometer a função
@@ -963,3 +963,14 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - Convive com a regra 23 (ElevenLabs só para áudio, vídeo e foto de
       aparelho vazio) e com a regra 21 (produção só quando o autor pedir):
       ser a ferramenta permitida não é autorização de gasto.
+
+25. **Todo material de marketing versionado fica sob `docs/marketing/` e
+    segue o índice `docs/marketing/README.md`.** Use semana ISO de segunda a
+    domingo e o mês da quinta-feira como pasta mensal; a data é publicação
+    prevista ou, sem previsão, produção/criação. Criativo sem aceite explícito
+    do autor fica em `para-aprovacao`; `aprovados` exige evidência datada do
+    aceite para aquela versão; rejeitados/substituídos vão a `historico`;
+    briefing, pesquisa, relatório, referência, ferramenta, evidência e
+    captura-fonte ficam em `apoio`. Parecer de revisor não é aceite do autor.
+    Atualize o índice semanal e links/manifests/scripts ativos junto com cada
+    inclusão ou mudança de caminho.

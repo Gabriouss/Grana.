@@ -1,5 +1,7 @@
 const fs=require('fs'),path=require('path');
-const root=process.cwd(),out=path.join(root,'docs/marketing/funil-criativos-flat-2026-09/revisao-02');
+const destinoMarketing=require('./destino-marketing.cjs');
+const root=process.cwd(),out=destinoMarketing('para-aprovacao','funil-revisao-02');
+const apoio=destinoMarketing('apoio','evidencias','funil-revisao-02');
 const runtime='C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/';
 const {chromium}=require(runtime+'playwright');
 const sharp=require(runtime+'sharp');
@@ -13,7 +15,7 @@ const items=[
 ['S2','Três jeitos de<br>lançar um gasto.','Fale o gasto. Cole o Pix.<br>Leia o QR Code da nota.','lancamentos-mobile.png'],
 ['S3','Livre para Gastar.<br>Clareza para hoje.','Consulte o valor no app<br>ou na versão web.','inicio-mobile.png'],
 ['S4','Do gasto lançado<br>ao mês mais claro.','Registre. Acompanhe os compromissos.<br>Decida com mais clareza.','contas-mobile.png']];
-(async()=>{fs.mkdirSync(out,{recursive:true});const browser=await chromium.launch({headless:true,channel:'msedge'});
+(async()=>{fs.mkdirSync(out,{recursive:true});fs.mkdirSync(apoio,{recursive:true});const browser=await chromium.launch({headless:true,channel:'msedge'});
 for(const [id,h1,h2,screen] of items)for(const story of [false,true]){
 const height=story?1920:1440;
 const mobile=data('public/telas/'+screen,'image/png');
@@ -33,5 +35,5 @@ await page.screenshot({path:path.join(out,name+'.png')});
 const bad=await page.evaluate(()=>{const p=document.querySelector('.phone').getBoundingClientRect(),c=document.querySelector('.copy').getBoundingClientRect();return p.bottom>c.top-20});if(bad)throw Error(name+' overlaps');
 await page.close();console.log(name+' verified '+1080+'x'+height);}
 await browser.close();
-await sharp({create:{width:1080,height:360,channels:3,background:'#052229'}}).composite(await Promise.all(items.map(async([id],i)=>({input:await sharp(path.join(out,id+'-feed.png')).resize(270,360).toBuffer(),left:i*270,top:0})))).png().toFile(path.join(out,'previa-feed.png'));
+await sharp({create:{width:1080,height:360,channels:3,background:'#052229'}}).composite(await Promise.all(items.map(async([id],i)=>({input:await sharp(path.join(out,id+'-feed.png')).resize(270,360).toBuffer(),left:i*270,top:0})))).png().toFile(path.join(apoio,'previa-feed.png'));
 })();

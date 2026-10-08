@@ -1,7 +1,8 @@
 const fs=require('fs'),path=require('path');
 const {chromium}=require('C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 process.loadEnvFile();
-const out=path.resolve('docs/marketing/funil-criativos-flat-2026-09/revisao-04/telas');
+const destinoMarketing=require('./destino-marketing.cjs');
+const out=destinoMarketing('apoio','capturas-fonte','funil-revisao-04');
 async function visibleText(page){return page.evaluate(()=>{
  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),texts=[];
  while(walker.nextNode()){const n=walker.currentNode,e=n.parentElement,r=e.getBoundingClientRect();
@@ -44,7 +45,7 @@ async function clean(page){
   await page.evaluate(()=>document.fonts.ready);
   if(await page.evaluate(()=>performance.timeOrigin)!==origin)throw Error('Navegacao recarregou');
   const text=await visibleText(page);
-  if(text.includes('AUDIT ')||!text.toLowerCase().includes(expected.toLowerCase())){console.log({name,audit:text.includes('AUDIT '),expected:text.toLowerCase().includes(expected.toLowerCase())});await page.screenshot({path:'E:/Grana-temporarios/prints/captura-diagnostico.png'});throw Error('Dados invalidos: '+name);}
+  if(text.includes('AUDIT ')||!text.toLowerCase().includes(expected.toLowerCase())){console.log({name,audit:text.includes('AUDIT '),expected:text.toLowerCase().includes(expected.toLowerCase())});await page.screenshot({path:path.join(out,'captura-diagnostico.png')});throw Error('Dados invalidos: '+name);}
   await clean(page);
   await page.screenshot({path:path.join(out,name+'-web.png')});
   console.log(name+' web: exemplo validado');

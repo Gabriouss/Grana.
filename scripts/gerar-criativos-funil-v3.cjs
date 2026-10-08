@@ -1,7 +1,10 @@
 const fs=require('fs'),path=require('path');
 const runtime=process.env.GRANA_NODE_MODULES||'C:/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/';
 const {chromium}=require(runtime+'playwright'),sharp=require(runtime+'sharp');
-const out=path.resolve('docs/marketing/funil-criativos-flat-2026-09/revisao-03'),asset=path.join(out,'assets');
+const destinoMarketing=require('./destino-marketing.cjs');
+const out=destinoMarketing('para-aprovacao','funil-revisao-03');
+const asset=destinoMarketing('apoio','referencias','mockups','funil-revisao-03');
+const apoio=destinoMarketing('apoio','evidencias','funil-revisao-03');
 const uri=(p,m)=>'data:'+m+';base64,'+fs.readFileSync(p).toString('base64');
 async function assets(){
  fs.mkdirSync(asset,{recursive:true});
@@ -18,6 +21,8 @@ async function assets(){
 }
 (async()=>{
  await assets();
+ fs.mkdirSync(out,{recursive:true});
+ fs.mkdirSync(apoio,{recursive:true});
  const logo=uri('design-system/marca/logotipo-gradiente.svg','image/svg+xml');
  const mark=uri('design-system/marca/simbolo-menta-sem-ponto.svg','image/svg+xml');
  const font=uri('assets/fonts/NeueMachina-Regular.otf','font/otf');
@@ -69,7 +74,7 @@ async function assets(){
  await browser.close();
  for(const kind of ['feed','story']){
  const h=kind==='feed'?720:960;
- await sharp({create:{width:2160,height:h,channels:3,background:'#052229'}}).composite(await Promise.all([1,2,3,4].map(async(n)=>({input:await sharp(path.join(out,'S'+n+'-'+kind+'.png')).resize(540,h).toBuffer(),left:(n-1)*540,top:0})))).png().toFile(path.join(out,'previa-'+kind+'.png'));
+ await sharp({create:{width:2160,height:h,channels:3,background:'#052229'}}).composite(await Promise.all([1,2,3,4].map(async(n)=>({input:await sharp(path.join(out,'S'+n+'-'+kind+'.png')).resize(540,h).toBuffer(),left:(n-1)*540,top:0})))).png().toFile(path.join(apoio,'previa-'+kind+'.png'));
  }
- fs.writeFileSync(path.join(out,'verificacao.json'),JSON.stringify(results,null,2));
+ fs.writeFileSync(path.join(apoio,'verificacao.json'),JSON.stringify(results,null,2));
 })().catch(e=>{console.error(e);process.exit(1)});

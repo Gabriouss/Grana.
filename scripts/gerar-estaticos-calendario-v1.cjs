@@ -6,9 +6,12 @@ const { chromium } = require(runtime + 'playwright');
 const sharp = require(runtime + 'sharp');
 
 const root = process.cwd();
-const sourceDir = path.join(root, 'docs/marketing/funil-criativos-flat-2026-09/revisao-04');
-const out = path.join(root, 'docs/marketing/funil-criativos-flat-2026-09/revisao-05');
-const assetDir = path.join(sourceDir, 'assets');
+const destinoMarketing = require('./destino-marketing.cjs');
+const out = destinoMarketing('para-aprovacao', 'funil-revisao-05');
+const evidencias = destinoMarketing('apoio', 'evidencias', 'funil-revisao-05');
+const ferramentas = destinoMarketing('apoio', 'ferramentas', 'manifests', 'funil');
+const briefings = destinoMarketing('apoio', 'briefings', 'funil');
+const assetDir = destinoMarketing('apoio', 'referencias', 'mockups', 'funil-revisao-04');
 
 const uri = (file, mime) => 'data:' + mime + ';base64,' + fs.readFileSync(file).toString('base64');
 const esc = (value) => String(value)
@@ -97,6 +100,9 @@ async function qaPage(page) {
 
 async function main() {
   fs.mkdirSync(out, { recursive: true });
+  fs.mkdirSync(evidencias, { recursive: true });
+  fs.mkdirSync(ferramentas, { recursive: true });
+  fs.mkdirSync(briefings, { recursive: true });
   const browser = await chromium.launch({ headless: true, channel: 'msedge' });
   const result = [];
   try {
@@ -118,9 +124,9 @@ async function main() {
     }
   } finally { await browser.close(); }
 
-  await sharp({ create: { width: 2160, height: 720, channels: 3, background: '#052229' } }).composite(await Promise.all(cards.map(async (card, index) => ({ input: await sharp(path.join(out, card.id + '-feed-1080x1440.png')).resize(540, 720).toBuffer(), left: index * 540, top: 0 })))).png().toFile(path.join(out, 'previa-feed-1080x1440.png'));
-  fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify({ generatedAt: new Date().toISOString(), note: 'Lote inicial dos estáticos do novo calendário. E03 e E04 aguardam capturas reais de Pix e QR Code.', cards: result }, null, 2));
-  fs.writeFileSync(path.join(out, 'prompts.md'), '# Prompts e conteúdo — lote inicial\n\n' + result.map((item) => '## ' + item.id + ' — Dia ' + item.day + '\n\n**Arquivo:** `' + item.file + '`  \n**H1:** ' + item.copy.h1 + '  \n**H2:** ' + item.copy.h2 + '  \n**Legenda:** ' + item.caption + '\n\n**Prompt copiável:**\n\n> ' + item.prompt + '\n').join('\n'));
+  await sharp({ create: { width: 2160, height: 720, channels: 3, background: '#052229' } }).composite(await Promise.all(cards.map(async (card, index) => ({ input: await sharp(path.join(out, card.id + '-feed-1080x1440.png')).resize(540, 720).toBuffer(), left: index * 540, top: 0 })))).png().toFile(path.join(evidencias, 'previa-feed-1080x1440.png'));
+  fs.writeFileSync(path.join(ferramentas, 'manifest.json'), JSON.stringify({ generatedAt: new Date().toISOString(), artifactsDir: path.relative(ferramentas, out).replaceAll('\\', '/'), note: 'Lote inicial dos estáticos do novo calendário. E03 e E04 aguardam capturas reais de Pix e QR Code.', cards: result }, null, 2));
+  fs.writeFileSync(path.join(briefings, 'prompts.md'), '# Prompts e conteúdo — lote inicial\n\n' + result.map((item) => '## ' + item.id + ' — Dia ' + item.day + '\n\n**Arquivo:** `' + path.relative(briefings, path.join(out, item.file)).replaceAll('\\', '/') + '`  \n**H1:** ' + item.copy.h1 + '  \n**H2:** ' + item.copy.h2 + '  \n**Legenda:** ' + item.caption + '\n\n**Prompt copiável:**\n\n> ' + item.prompt + '\n').join('\n'));
   console.log('Prévia e manifest OK');
 }
 

@@ -1,0 +1,92 @@
+GRANA. | TEXTOS PARA AS ARTES
+Arquivo de produção para Photoshop
+Fonte: FUNIL.md e docs/marketing/funil-criativos-flat-2026-09/revisao-05/prompts.md
+
+REGRAS RÁPIDAS
+- Use o logotipo oficial completo “Grana.” com gradiente.
+- Não inserir botão/CTA publicitário na arte. CTA fica na legenda ou no recurso nativo.
+- Não mencionar bancos nem Open Finance.
+- Não usar preço mensal ou anual. Se necessário: “menos de R$ 0,37 por dia”.
+- Não inventar número, tela, depoimento ou resultado.
+- Onde indicado, usar “Demonstração com dados fictícios.”
+
+ESTÁTICOS E CARROSSEIS
+
+E01 | O salário caiu
+H1: O salário caiu.
+H2: Quanto dele já tem destino?
+Rodapé: Demonstração com dados fictícios.
+Nota de produção: refazer a captura da Início depois da build nova; a arte antiga usa a Início anterior.
+
+E02 | Pequenos gastos
+H1: O café, o delivery, a corrida.
+H2: Separados parecem pouco. Juntos, fazem parte do mês.
+Rodapé: Demonstração com dados fictícios.
+
+E05 | Parcelas
+H1: O mês que vem já começou.
+H2: Nas parcelas deste mês.
+Rodapé: Demonstração com dados fictícios.
+
+E06 | Computador e celular
+H1: Organize no computador.
+H2: Acompanhe no celular, com a mesma conta.
+Rodapé: Demonstração com dados fictícios.
+
+S1 | Controle sem parar sua vida
+H1: Controle sem parar sua vida.
+Nota de produção: peça de reserva. Revalidar a captura da Início após a build nova.
+
+S2 | Três caminhos
+Capa: Três jeitos de lançar um gasto.
+Card 1: Por voz.
+Card 2: Colando o texto do Pix.
+Card 3: Fotografando a nota.
+Nota de produção: só fechar/publicar o card de foto depois da validação da função na build nova.
+
+S3 | Livre para Gastar
+H1: Livre para Gastar: o número que importa hoje.
+Nota de produção: inserir captura e valor reais somente depois da validação pós-build. Não usar valor fictício na arte.
+
+S4 | Do gasto lançado ao mês mais claro
+Capa: Do gasto lançado ao mês mais claro.
+Passos: Lançar | Organizar | Compromissos | Saldo | Decisão.
+
+S2 WEB | Faturas na tela grande
+H1: Suas faturas.
+H2: Na tela grande.
+
+S7 | Oferta
+H1: Seu assistente financeiro.
+H2 opcional: Por menos de R$ 0,37 por dia.
+Linha opcional: 7 dias de garantia.
+Nota de produção: não mostrar preço mensal/anual, selo de desconto ou urgência artificial.
+
+S8 | Primeiros 7 dias
+Capa: O que fazer nos primeiros 7 dias.
+Checklist: Lançar | Categorizar | Olhar o Livre para Gastar | Ajustar a rotina.
+
+GANCHOS APROVADOS PARA REELS
+Use como texto de abertura/capa. Os roteiros definem os demais blocos na tela.
+
+M-FN: Desistiu porque cansa.
+R6: Fotografe a nota. O Grana. lê o valor.
+R-P: Lançar o gasto por voz pelo widget, sem abrir o app.
+R1: Você olha o saldo e pensa: onde foi parar?
+R-GB1: Você lembra quanto gastou?
+R5: Recebeu um Pix e não quer digitar tudo?
+R-GB2: Ou só manda registrar.
+R3: Se anotar depende de lembrar, você perde o momento.
+R2: Gastei trinta e dois reais no mercado.
+R9: Planilha aberta versus lançamento simples.
+R8: Quanto dá para gastar por dia até o fim do mês?
+R10: Um dia comum usando os três caminhos.
+R4: Fala. O Grana. organiza.
+R7: O lançamento acompanha o dia, não o contrário.
+R12: Seu próximo gasto pode ser o começo.
+R11 (reserva): Você não precisa saber tudo sobre finanças para começar.
+
+AINDA SEM TEXTO FINAL DE ARTE
+E03 e E04 aguardam nova pauta/capturas. Não reaproveitar a copy antiga.
+R-RE: definir a capa depois de identificar o Reel com melhor retenção real.
+

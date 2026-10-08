@@ -21,6 +21,11 @@ trabalho vai a agentes. Nas sessões da M2 os multiagentes NÃO são usados
   às seis perguntas da regra 12, e o maestro repassa ao documentador.
 - **Dois times, Codex e Claude, com pares por papel.** Quando um bate o limite
   de uso, quem tem limite executa, o outro julga, e há consenso.
+- **Workspace e delegação (pedido do autor em 07/10/2026).** Este trabalho
+  vive em um workspace Maestri com dois times paralelos, Codex e Claude,
+  compostos por agentes de funções específicas correspondentes que trabalham
+  em pares. No início de cada sessão, situe-se no workspace ativo, liste os
+  agentes disponíveis e suas funções e delegue pelo time correto.
 - **Regra 10:** uma linha de trabalho só. Sem branch, sem worktree, sem stash.
 - **Regra 16:** o Codex é revisor e o que ele acha é hipótese até alguém
   conferir no código.
@@ -132,6 +137,36 @@ uma linha dizendo quem resolveu, o quê e quando. O registro detalhado continua
 no `context.md`.
 
 ---
+
+# 05/10/2026 (M1): migração do acervo de marketing para semanas ISO
+
+**Pedido do autor:** organizar os 136 arquivos já em `docs/marketing` sob `AAAA-MM/semana-NN-AAAA-MM-DD-a-AAAA-MM-DD/{para-aprovacao,aprovados,historico,apoio}`, pela semana ISO de segunda a domingo e mês da quinta-feira. A data-base é publicação prevista; sem ela, produção/criação. Criar README e índice por semana; atualizar referências ativas. Preservar os três diffs locais; não mover `E:\Grana-temporarios`, não atribuir autoria, e não fazer commit/push antes da revisão.
+
+**Resultado e estado editorial.** Criadas `docs/marketing/README.md` e cinco `INDICE.md`, semanas 36 a 40. Migrados 136 arquivos: W36 36, W37 9, W38 38, W39 42, W40 11. Classificação por status: 76 apoio, 56 histórico, 9 para aprovação; 0 aprovados. Conteúdo aprovado só com aceite explícito do autor; GO/parecer de revisor permanece evidência de revisão e não muda status. Em especial, E01/E02/E05/E06 têm GO condicionado e questões P1, sem aceite do autor. Os materiais externos em `E:\Grana-temporarios` não foram lidos nem movidos nesta etapa.
+
+**Mapa antigo → novo (grupos de origem; os índices semanais registram arquivos e conteúdo).**
+
+| Origem anterior | Destino canônico |
+|---|---|
+| Os cinco documentos datados de 03 a 06/09 na raiz (`2026-09-03-*`, `2026-09-05-*`, `2026-09-06-*`) | `2026-09/semana-36-2026-08-31-a-2026-09-06/apoio/{pesquisas,briefings,relatorios}` |
+| `auditoria-visual-2026-09-06/**` | Semana 36, `apoio/relatorios/auditoria-visual-2026-09-06/**` e `apoio/evidencias/auditoria-visual-2026-09-06/**` |
+| `funil-criativos-flat-2026-09/S1-*.svg` a `S4-*.svg` | Semana 37, `historico/pecas/funil/revisao-01/**` |
+| `funil-criativos-flat-2026-09/revisao-02/**` e `revisao-03/**` | Semana 38: peças substituídas em `historico/pecas/funil/{revisao-02,revisao-03}/`; prévias, fontes e verificações em `apoio/{evidencias,referencias}/funil/**` |
+| `funil-criativos-flat-2026-09/revisao-04/**` e `revisao-05/**` | Semana 39: revisão 04 em `historico/pecas/funil/revisao-04/**`; E01/E02/E05/E06 em `para-aprovacao/pecas/funil/revisao-05/**`; prompts, manifesto, capturas-fonte, mockups e prévias em `apoio/**` |
+| `2026-09-12-plano-vendas-landing-v2.md` | Semana 37, `apoio/briefings/` |
+| `solicitacoes/{2026-09-26-*,2026-09-27-*,extrato-exemplo-r9.csv}` | Semana 39, briefs em `apoio/briefings/solicitacoes/`; CSV em `apoio/capturas-fonte/fixtures/` |
+| `material-final-2026-09-30/**` | Semana 40: `COPYS-FINAIS.md` em `para-aprovacao/pecas/`; demais oito arquivos distribuídos em `apoio/{briefings,inventarios,referencias,relatorios}/` |
+| `2026-10-01-feedback-previa-estatica.md` e `guia-de-estilo-de-video.md` | Semana 40, `apoio/relatorios/` e `apoio/referencias/` |
+
+O arquivo exato de 136 linhas origem/destino, com status, base de data, tamanho e SHA-256, ficou fora do repositório em `E:\GranaPonto-migracao-marketing-20261005-preservacao\mapa-antigo-novo.csv`. Não manter cópia paralela dos materiais no repositório. As quatro árvores antigas vazias foram removidas sem exclusóo recursiva.
+
+**Arquivos e referências.** Links ativos foram ajustados em `plans/README.md`, `AGENTS.md`, `FUNIL.md`, nos docs de marketing, no manifesto da revisão 05 e nos geradores de `scripts/`; `scripts/destino-marketing.cjs` calcula semana ISO e mês da quinta-feira e aceita `GRANA_MARKETING_DATA`. As cinco cópias dos índices descrevem peça/fonte/status, responsóvel ou ausóncia de registro, evidência de aceite, QA/publicação e regra futura. Um texto de inventário que menciona historicamente os prompts sob o antigo diretório do funil foi mantido como registro, sem link ativo. Os registros antigos de `context.md` foram preservados.
+
+**Proteção dos três diffs locais.** Antes do movimento, foram salvos fora do repositório cópias binárias, patches `git diff --binary` e hashes em `E:\GranaPonto-migracao-marketing-20261005-preservacao`. `COPYS-FINAIS.md` chegou idêntico byte a byte. Em `README-MATERIAL-FINAL.md` e `inventario-criativos.md`, o diff de destino contra a cópia preservada contêm somente atualização de links relativos necessária à nova árvore; conteúdo do diff local foi mantido. A autoria desses três diffs não foi inferida. Hashes originais e patches estão no manifesto externo.
+
+**Base de data, correção e ambiguidades.** A primeira inclusóo no Git foi usada como evidência de criação quando não havia data interna; autoria do commit não foi atribuída às peças. Uma atribuição inicial das fontes da revisão 04 à semana 38 foi corrigida: o histórico mostrou primeira inclusóo em 21/09, portanto foram para semana 39. O mapa/hash foi recalculado e conferido depois da correção. Responsóveis não identificados continuam marcados “não registrado”; não foi possóvel estabelecer aceite explícito do autor para qualquer criativo migrado. Nomes “final”, revisão, QA e aprovação de revisor não foram tratados como aceite.
+
+**Verificação.** SHA-256 dos 136 arquivos no destino comparado com os valores do mapa: sem divergências. Conferidos 101 links Markdown locais na árvore de marketing: zero quebrados. Criadas as 20 pastas de status (quatro por semana); pastas sem conteúdo têm `.gitkeep`. Nenhuma suíte de teste, build, commit ou push foi executado. `E:\Grana-temporarios` permaneceu intocado. Os próximos passos sóo revisar o diff e os índices, e só então decidir sobre commit; Beacon continua classificando fontes externas em paralelo.
 
 # 04/10/2026 (M1, Quill): REGRA PERMANENTE, ElevenLabs só com aprovação prévia do autor, toda vez
 

@@ -37,8 +37,8 @@ bastante pra não precisar):
 ## Plano maior em andamento
 
 O plano de 7 seções novas inspiradas no teardown da Dinzo
-(`docs/marketing/2026-09-03-dinzo-design-teardown.md`) vive em
-[`docs/marketing/2026-09-03-plano-secoes-landing-dinzo.md`](../docs/marketing/2026-09-03-plano-secoes-landing-dinzo.md)
+(`docs/marketing/2026-09/semana-36-2026-08-31-a-2026-09-06/apoio/pesquisas/2026-09-03-dinzo-design-teardown.md`) vive em
+[`docs/marketing/2026-09/semana-36-2026-08-31-a-2026-09-06/apoio/briefings/2026-09-03-plano-secoes-landing-dinzo.md`](../docs/marketing/2026-09/semana-36-2026-08-31-a-2026-09-06/apoio/briefings/2026-09-03-plano-secoes-landing-dinzo.md)
 — trazido pro repositório em 04/09/2026 (vivia antes só em
 `C:\Users\user\.claude\plans\`, fora do controle de versão e inacessível
 de outra máquina). 4 dos 7 itens já implementados na sessão de 03/09/2026
