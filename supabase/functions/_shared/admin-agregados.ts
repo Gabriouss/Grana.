@@ -44,10 +44,15 @@ export async function consultarAgregados(cliente: SupabaseClient, agora: Date, t
     if (r.error) throw new Error('consulta');
     return contagem(r.count);
   };
-  // auth.users n?o possui fronteira agregada autorizada nesta rodada.
-  // N?o chamar RPC inexistente nem listar usu?rios para contar no cliente.
-  const contas = { total: 0, novas7d: 0, novas30d: 0, indisponivel: true as const };
-  falhas.push('contas');
+  // auth.users so pela fronteira agregada public.admin_contar_contas (security definer,
+  // execute so para service_role): tres numeros, sem argumento, sem linha de usuario.
+  // Nunca listar usuarios para contar no cliente. Campo extra no retorno e descartado.
+  const contas = bloco('contas', async () => {
+    const r = await consultaComPrazo((signal) => cliente.rpc('admin_contar_contas').abortSignal(signal), total);
+    const d = r.data as Record<string, unknown> | null;
+    if (r.error || !d || typeof d !== 'object') throw new Error('consulta');
+    return { total: contagem(d.total), novas7d: contagem(d.novas7d), novas30d: contagem(d.novas30d) };
+  }, { total: 0, novas7d: 0, novas30d: 0 });
   // Mesma regra temporal de public.usuario_tem_direito; sem ler registros.
   const ativas = () => cliente.from('subscriptions').select('id', { count: 'exact', head: true })
     .or(`access_until.gte."${isoAgora}",and(status.eq.past_due,grace_until.gte."${isoAgora}")`);

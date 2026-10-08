@@ -148,7 +148,7 @@ function safe(json) {
   });
   await test('W05 DTO expresso ignora dados individuais do dublê', async () => {
     const h = harness(); const { r, json } = await h.request(); assert.equal(r.status, 200); safe(json);
-    assert.equal(json.dados.contas.indisponivel, true); assert.equal(json.dados.receita.disponivel, false); assert.equal(json.dados.receita.soma30d, null);
+    assert.deepEqual(json.dados.contas, { total: 15, novas7d: 10, novas30d: 11 }); assert.equal(json.dados.receita.disponivel, false); assert.equal(json.dados.receita.soma30d, null);
     assert.equal(json.dados.app.versaoAnunciada, '1.10.5'); assert.equal(json.dados.uso.voz7d, 12);
     assert.equal(h.authCalls.length, 1); assert.deepEqual(h.clients, ['anon', 'service']);
     for (const q of h.calls.filter((q) => !q.rpc && q.table !== 'app_release')) {
@@ -156,7 +156,7 @@ function safe(json) {
     }
     const voz = h.calls.find((q) => q.table === 'voice_operations'); assert(voz.filters.some((f) => f[1] === 'status' && f[2] === 'committed'));
     const push = h.calls.find((q) => q.table === 'push_tokens'); assert(push.filters.some((f) => f[1] === 'ativo' && f[2] === true));
-    assert.equal(h.calls.filter((q) => q.rpc).length, 0);
+    assert.deepEqual(h.calls.filter((q) => q.rpc).map((q) => q.table), ['admin_contar_contas']);
     for (const q of h.calls.filter((q) => q.table === 'subscriptions')) assert(q.filters.some((f) => f[0] === 'or' && f[1].includes('grace_until.gte.')));
   });
   await test('W06 CORS exato, preflight restrito, origem ausente não concede CORS', async () => {
@@ -181,10 +181,14 @@ function safe(json) {
   await test('tabela falha/rejeita: só seu bloco indisponível e log sanitizado', async () => {
     for (const opt of ['falhar', 'rejeitar']) {
       const h = harness({ [opt]: 'subscriptions' }); const { json } = await h.request();
-      assert.equal(json.dados.assinaturas.indisponivel, true); assert.equal(json.dados.contas.indisponivel, true); assert.equal(json.dados.uso.voz7d, 12); safe(json);
+      assert.equal(json.dados.assinaturas.indisponivel, true); assert.equal(json.dados.contas.total, 15); assert.equal(json.dados.uso.voz7d, 12); safe(json);
       assert.equal(h.logs.length, 1); assert(h.logs[0].blocosIndisponiveis.includes('assinaturas')); safe(h.logs);
     }
-    const h = harness(); const { json } = await h.request(); assert.equal(json.dados.contas.indisponivel, true); assert.equal(h.calls.some((q) => q.rpc), false);
+    for (const opt of ['falhar', 'rejeitar', 'pendurar']) {
+      const c = harness({ [opt]: 'admin_contar_contas', rapido: true }); const { json } = await c.request();
+      assert.equal(json.dados.contas.indisponivel, true); assert.equal(json.dados.contas.total, 0); assert.equal(json.dados.assinaturas.ativas, 12); safe(json);
+      assert.deepEqual(c.logs.at(-1).blocosIndisponiveis, ['contas']); safe(c.logs);
+    }
   });
   await test('strings de sistema/contagens inválidas não vazam e não viram resultado real', async () => {
     const h = harness({ versao: 'user@example.com' }); const { json } = await h.request(); assert.equal(json.dados.app.indisponivel, true); safe(json);
