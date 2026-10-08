@@ -78,7 +78,7 @@ function abrirNovaCompra(texto, ref) {
     operacaoVoz: {}, randomUUID: () => 'op', todayISO: () => HOJE, formatMoney: (v) => String(v),
     texto, referencia: ref,
   };
-  for (const campo of ['EditingTxId', 'TxWalletId', 'TxDesc', 'TxAmount', 'TxCategory', 'TxCatColor', 'TxCardId', 'TxInstallments', 'TxRecurring', 'TxDate', 'NewTxOpen']) {
+  for (const campo of ['FalaOuvida', 'DicaDaDataVoz', 'EditingTxId', 'TxWalletId', 'TxDesc', 'TxAmount', 'TxCategory', 'TxCatColor', 'TxCardId', 'TxInstallments', 'TxRecurring', 'TxDate', 'NewTxOpen']) {
     contexto['set' + campo] = (v) => { estado[campo] = v; };
   }
   vm.runInNewContext(extrair('abrirNovaCompraDoTexto') + '\nabrirNovaCompraDoTexto(texto, referencia);', contexto);
@@ -95,12 +95,12 @@ function abrirNovaCompra(texto, ref) {
   assert.equal(r.alertas.length, 0, 'data segura: nenhum aviso');
   r = abrirNovaCompra('cinema amanhã 40 reais no crédito C6', { referencia: HOJE, aproximada: false });
   assert.equal(r.estado.TxDate, '', 'futura: o campo começa vazio, nada pré-selecionado');
-  assert.deepEqual(r.alertas.at(-1), ['Escolha a data', 'Você disse 01/10, que ainda não chegou.'], 'futura: o aviso explica, com a data dita');
+  assert.equal(r.estado.DicaDaDataVoz, 'Você disse 01/10, que ainda não chegou.', 'futura: o aviso explica, com a data dita');
   r = abrirNovaCompra('almoço ontem 30 reais no crédito C6', { referencia: HOJE, aproximada: true });
   assert.equal(r.estado.TxDate, '', 'referência aproximada: "ontem" fica para a pessoa escolher');
-  assert.deepEqual(r.alertas.at(-1), ['Escolha a data', 'Você disse ontem. Entendi 29/09.'], 'aproximada: o aviso mostra a proposta');
+  assert.equal(r.estado.DicaDaDataVoz, 'Você disse ontem. Entendi 29/09.', 'aproximada: o aviso mostra a proposta');
   r = abrirNovaCompra('almoço 30 reais no crédito C6 dia 30 de fevereiro', { referencia: HOJE, aproximada: false });
-  assert.deepEqual(r.alertas.at(-1), ['Escolha a data', 'Você disse 30/02, que não existe.'], 'impossível: o aviso explica');
+  assert.equal(r.estado.DicaDaDataVoz, 'Você disse 30/02, que não existe.', 'impossível: o aviso explica');
   r = abrirNovaCompra('almoço 30 reais no crédito C6', { referencia: HOJE, aproximada: false });
   assert.equal(r.estado.TxDate, HOJE, 'sem data dita: a data da captura');
   /* Achado 8: "dia 10 reais" é o valor. A revisão do Crédito abre na data

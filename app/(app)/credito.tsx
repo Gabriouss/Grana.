@@ -180,6 +180,8 @@ export default function CreditoScreen() {
      atualiza aquele lançamento em vez de criar um novo. */
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [txDesc, setTxDesc] = useState('');
+  const [falaOuvida, setFalaOuvida] = useState<string | undefined>();
+  const [dicaDaDataVoz, setDicaDaDataVoz] = useState<string | null>(null);
   const [txAmount, setTxAmount] = useState('');
   const [txCardId, setTxCardId] = useState<string>('');
   const [txWalletId, setTxWalletId] = useState<string>('');
@@ -901,6 +903,8 @@ export default function CreditoScreen() {
      sheet pode ter acabado de ser usado pra editar — sem isto, "Lançar no
      Crédito" abriria com os dados do último lançamento aberto. */
   function abrirNovaCompra() {
+    setFalaOuvida(undefined);
+    setDicaDaDataVoz(null);
     operacaoVoz.current = null;
     falaGuardadaDaRevisao.current = undefined;
     setEditingTxId(null);
@@ -923,6 +927,7 @@ export default function CreditoScreen() {
      nome/banco citado (matchCardByText). Sem cartão casado, o formulário só
      vem preenchido quando não há escolha (ver cartaoPadraoDoFormulario). */
   function abrirNovaCompraDoTexto(textoDaFala: string, ref: ReferenciaDaFala = { referencia: todayISO(), aproximada: true }) {
+    setFalaOuvida(textoDaFala);
     operacaoVoz.current = randomUUID();
     setEditingTxId(null);
     /* A data dita na fala, pela MESMA função da tarefa do app e do widget
@@ -960,7 +965,7 @@ export default function CreditoScreen() {
     /* Campo vazio precisa de explicação: a dica do núcleo, a mesma do Colar,
        cita a data que a fala indicou, sem pré-selecioná-la. Um aviso, e não
        um elemento novo no formulário compartilhado. */
-    if (!inicial.data) Alert.alert('Escolha a data', inicial.dica ?? 'A data da fala não ficou clara. Escolha a data.');
+    setDicaDaDataVoz(inicial.dica);
   }
 
   /* Crédito nunca grava sem a pessoa escolher o cartão (decisão do autor,
@@ -974,6 +979,8 @@ export default function CreditoScreen() {
 
   /* Abrir o sheet já preenchido com um lançamento existente. */
   function abrirEdicaoCompra(tx: Transaction) {
+    setFalaOuvida(undefined);
+    setDicaDaDataVoz(null);
     setEditingTxId(tx.id);
     setTxDesc(tx.description);
     setTxAmount(formatMoney(Number(tx.amount)));
@@ -1837,6 +1844,10 @@ export default function CreditoScreen() {
         }}
         onSalvar={handleSaveCreditTx}
         semDataFutura={!!operacaoVoz.current}
+        falaOuvida={falaOuvida}
+        dicaDaData={dicaDaDataVoz}
+        focoNoValor={!!falaOuvida}
+        acaoSecundaria={falaOuvida ? { rotulo: 'Gravar de novo', onPress: () => setNewTxOpen(false) } : undefined}
       />
 
       {/* Modal: Pagar Fatura */}

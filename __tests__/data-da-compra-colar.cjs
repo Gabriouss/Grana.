@@ -128,6 +128,7 @@ function componente(arquivo) {
   return exports;
 }
 imports['./LinhaDataDaCompra'] = componente('components/LinhaDataDaCompra.tsx');
+imports['./TransactionSheet'] = require('./sheet-real.cjs')(imports, DataFalsa);
 const PasteReceiptModal = componente('components/PasteReceiptModal.tsx').default;
 
 let props;
@@ -140,13 +141,14 @@ function achar(no, pred, acc = []) {
   return acc;
 }
 const porRotulo = (arvore, re) => achar(arvore, (n) => re.test(String(n.props?.accessibilityLabel)))[0];
-const linhaData = (arvore) => porRotulo(arvore, /^Data da compra:/);
+const linhaData = (arvore) => porRotulo(arvore, /^Data do lançamento:/);
 const seletor = (arvore) => achar(arvore, (n) => n.type === 'DatePickerModal')[0];
 const textos = (arvore) => achar(arvore, (n) => n.type === 'Text').map((n) => [].concat(n.props.children).join(''));
 const esperar = () => new Promise((r) => setImmediate(r));
 
 function abrir(extra = {}) {
   celulas.length = 0;
+  imports['./TransactionSheet'].reset();
   props = { visible: true, onClose() {}, onSuccess() {}, ...extra };
   return render();
 }
@@ -157,14 +159,14 @@ function colar(texto) {
   return render();
 }
 async function salvar() {
-  await achar(render(), (n) => n.props?.onPress?.name === 'handleSave')[0].props.onPress();
+  await achar(render(), (n) => n.props?.onPress?.name === 'salvar')[0].props.onPress();
   await esperar();
 }
 
 (async () => {
   /* ── 1. Data lida do texto: selo, edição e a data gravada ─────────────── */
   let tela = colar('Pix enviado para Mercado AUDIT R$ 50,00 em 26/09/2026 18:42');
-  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 26 set 2026, lida do texto. Toque para mudar', 'a data do texto aparece no campo, com o selo');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 26 set 2026, lida do texto', 'a data do texto aparece no campo, com o selo');
   ok(!textos(tela).some((t) => /Também reconhecido:.*data/.test(t)), 'a data não aparece mais como chip em "Também reconhecido"');
   {
     /* Selo cortado a 1.3 (achado do P2, 30/09/2026): a linha quebra no fluxo,
@@ -179,7 +181,8 @@ async function salvar() {
   linhaData(tela).props.onPress();
   ok(seletor(render()).props.visible === true && seletor(render()).props.currentISO === '2026-09-26', 'o toque abre o seletor na data lida');
   seletor(render()).props.onSelectDate('2026-10-02');
-  ok(linhaData(render()).props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'futura no seletor vira hoje, sem selo');
+  seletor(render()).props.onClose();
+  ok(linhaData(render()).props.accessibilityLabel === 'Data do lançamento: 30 set 2026', 'futura no seletor vira hoje, sem selo');
   ok(seletor(render()).props.visible === false, 'o seletor fecha');
   seletor(render()).props.onSelectDate('2026-09-20');
   registro.gravados.length = 0;
@@ -190,9 +193,9 @@ async function salvar() {
   tela = colar('AUDIT Pix recebido em 29/09/2026 R$ 500,00');
   ok(porRotulo(tela, /^Descrição do lançamento$/)?.props.value === 'AUDIT Pix recebido', 'a descrição sai sem "em / /"');
   ok(porRotulo(tela, /^Valor do lançamento em reais$/)?.props.value === '500,00', 'o valor é 500,00');
-  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 29 set 2026, lida do texto. Toque para mudar', 'a data continua lida do texto original, com o selo');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 29 set 2026, lida do texto', 'a data continua lida do texto original, com o selo');
   /* "AUDIT Pix recebido" não tem categoria reconhecida: a pessoa escolhe. */
-  achar(render(), (n) => n.type === 'CategoryChips')[0].props.onChange('Alimentação');
+  achar(render(), (n) => n.type === 'CategoryPickerModal')[0].props.onSelectCategory({ name: 'Alimentação', color: '#123456' });
   registro.gravados.length = 0;
   await salvar();
   ok(registro.gravados[0]?.occurred_on === '2026-09-29' && registro.gravados[0]?.description === 'AUDIT Pix recebido' && registro.gravados[0]?.amount === 500,
@@ -200,23 +203,23 @@ async function salvar() {
   tela = colar('TV parcela 2/12 R$ 1.250,50 em 26/09/2026');
   ok(porRotulo(tela, /^Valor do lançamento em reais$/)?.props.value === '1.250,50', 'valor decimal intacto');
   ok(/parcela/i.test(porRotulo(tela, /^Descrição do lançamento$/)?.props.value ?? ''), 'a parcela "2/12" não é lida como data');
-  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 26 set 2026, lida do texto. Toque para mudar', 'e a data certa é a 26/09');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 26 set 2026, lida do texto', 'e a data certa é a 26/09');
 
   /* ── 2. Sem data no texto: hoje, sem selo ─────────────────────────────── */
   tela = colar('Pix enviado para Mercado AUDIT R$ 50,00');
-  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'sem data no texto, hoje e sem selo');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 30 set 2026', 'sem data no texto, hoje e sem selo');
   registro.gravados.length = 0;
   await salvar();
   ok(registro.gravados[0]?.occurred_on === '2026-09-30', 'grava hoje');
 
   /* ── 3. Data recusada: campo sem data, dica e Salvar bloqueado ────────── */
   tela = colar('Pix enviado para Mercado AUDIT R$ 50,00 em 05/10/2026 18:42');
-  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: Escolha a data. Toque para escolher', 'data futura no texto: o campo fica sem data');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: Escolha a data', 'data futura no texto: o campo fica sem data');
   ok(textos(tela).includes('A data do texto não foi usada. Escolha a data.'), 'com a dica');
   registro.gravados.length = 0;
   registro.alertas.length = 0;
   await salvar();
-  ok(registro.gravados.length === 0 && registro.alertas.at(-1)?.[0] === 'Escolha a data', 'o Salvar não grava sem data e pede a escolha');
+  ok(registro.gravados.length === 0 && textos(render()).includes('Escolha a data'), 'o Salvar não grava sem data e pede a escolha');
   linhaData(render()).props.onPress();
   seletor(render()).props.onSelectDate('2026-09-28');
   ok(!textos(render()).includes('A data do texto não foi usada. Escolha a data.'), 'escolhida a data, a dica some');
@@ -228,7 +231,7 @@ async function salvar() {
   const descricao = (arvore) => porRotulo(arvore, /^Descrição do lançamento$/)?.props.value;
   abrir({ initialText: 'mercado 50 reais ontem', falaGuardada: 'fala-1', referenciaDaVoz: REF('2026-09-30') });
   tela = render();
-  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 29 set 2026. Toque para mudar', 'voz: "ontem" vira 29/09 no campo, sem selo');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 29 set 2026', 'voz: "ontem" vira 29/09 no campo, sem selo');
   ok(descricao(tela) === 'Mercado', 'e a descrição fica sem "ontem"');
   registro.voz.length = 0;
   await salvar();
@@ -237,21 +240,21 @@ async function salvar() {
 
   /* Caso 28: fala guardada revista 3 dias depois conta da captura. */
   abrir({ initialText: 'almoço ontem 30 reais', falaGuardada: 'fala-2', referenciaDaVoz: REF('2026-09-27') });
-  ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: 26 set 2026. Toque para mudar', 'caso 28: captura em 27/09, "ontem" é 26/09 mesmo revisto em 30/09');
+  ok(linhaData(render())?.props.accessibilityLabel === 'Data do lançamento: 26 set 2026', 'caso 28: captura em 27/09, "ontem" é 26/09 mesmo revisto em 30/09');
 
   /* Caso 30: data futura dita. Campo vazio, dica, Salvar bloqueado; a data
      escolhida é a enviada. */
   abrir({ initialText: 'cinema amanhã 40 reais', referenciaDaVoz: REF('2026-09-30') });
   tela = render();
-  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: Escolha a data. Toque para escolher', 'futura: campo vazio, nada pré-selecionado');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: Escolha a data', 'futura: campo vazio, nada pré-selecionado');
   ok(textos(tela).includes('Você disse 01/10, que ainda não chegou.'), 'com a dica da data dita');
   registro.voz.length = 0;
   registro.alertas.length = 0;
   await salvar();
-  ok(registro.voz.length === 0 && registro.alertas.at(-1)?.[0] === 'Escolha a data', 'o Salvar não grava sem a escolha');
+  ok(registro.voz.length === 0 && textos(render()).includes('Escolha a data'), 'o Salvar não grava sem a escolha');
   linhaData(render()).props.onPress();
   seletor(render()).props.onSelectDate('2026-10-01');
-  ok(linhaData(render()).props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'o seletor não aceita a futura: vira hoje');
+  ok(linhaData(render()).props.accessibilityLabel === 'Data do lançamento: 30 set 2026', 'o seletor não aceita a futura: vira hoje');
   seletor(render()).props.onSelectDate('2026-09-28');
   ok(!textos(render()).includes('Você disse 01/10, que ainda não chegou.'), 'escolhida a data, a dica some');
   await salvar();
@@ -259,29 +262,29 @@ async function salvar() {
 
   /* Referência aproximada (fala antiga) e sem referência: relativa pede escolha. */
   abrir({ initialText: 'almoço ontem 30 reais', referenciaDaVoz: REF('2026-09-30', true) });
-  ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: Escolha a data. Toque para escolher', 'aproximada: "ontem" fica para a pessoa escolher');
+  ok(linhaData(render())?.props.accessibilityLabel === 'Data do lançamento: Escolha a data', 'aproximada: "ontem" fica para a pessoa escolher');
   /* r2 do Forge: a incerteza é explicada, com a data que a fala indicou, sem
      pré-selecioná-la; e nada é gravado antes da escolha. */
   ok(textos(render()).includes('Você disse ontem. Entendi 29/09.'), 'aproximada: a dica mostra a proposta');
   registro.voz.length = 0;
   registro.alertas.length = 0;
   await salvar();
-  ok(registro.voz.length === 0 && registro.alertas.at(-1)?.[0] === 'Escolha a data', 'aproximada: nada gravado antes da escolha');
+  ok(registro.voz.length === 0 && textos(render()).includes('Escolha a data'), 'aproximada: nada gravado antes da escolha');
   abrir({ initialText: 'mercado 50 reais hoje', referenciaDaVoz: REF('2026-09-30', true) });
   ok(textos(render()).includes('Você disse hoje. Entendi 30/09.'), 'aproximada: "hoje" também pede escolha, com a dica');
   abrir({ initialText: 'almoço ontem 30 reais' });
-  ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: Escolha a data. Toque para escolher', 'sem referência: idem');
+  ok(linhaData(render())?.props.accessibilityLabel === 'Data do lançamento: Escolha a data', 'sem referência: idem');
   ok(textos(render()).includes('Você disse ontem. Entendi 30/09.'.replace('30/09', '29/09')), 'sem referência: a dica também aparece');
   abrir({ initialText: 'mercado dia 30 de fevereiro 20 reais', referenciaDaVoz: REF('2026-09-30') });
   ok(textos(render()).includes('Você disse 30/02, que não existe.'), 'impossível: a dica aparece');
   abrir({ initialText: 'mercado 50 reais' });
-  ok(linhaData(render())?.props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'sem data dita: hoje');
+  ok(linhaData(render())?.props.accessibilityLabel === 'Data do lançamento: 30 set 2026', 'sem data dita: hoje');
 
   /* Achado 8: "passe do dia 10 reais" abre na data da captura, com o 10
      como valor e "dia" no nome, e grava assim. */
   abrir({ initialText: 'passe do dia 10 reais', referenciaDaVoz: REF('2026-09-30') });
   tela = render();
-  ok(linhaData(tela)?.props.accessibilityLabel === 'Data da compra: 30 set 2026. Toque para mudar', 'achado 8: campo na data da captura, nunca 10/09');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 30 set 2026', 'achado 8: campo na data da captura, nunca 10/09');
   ok(porRotulo(tela, /^Valor do lançamento em reais$/)?.props.value === '10,00', 'achado 8: o valor é 10');
   ok(/dia/i.test(descricao(tela) ?? ''), `achado 8: o "dia" fica no nome (${descricao(tela)})`);
 

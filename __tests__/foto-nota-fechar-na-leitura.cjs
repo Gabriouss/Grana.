@@ -120,6 +120,7 @@ vm.runInNewContext(compilarTs('components/LinhaDataDaCompra.tsx', true), {
   exports: linhaData, require: (n) => { assert.ok(n in imports, `import não simulado: ${n}`); return imports[n]; },
 });
 imports['./LinhaDataDaCompra'] = linhaData;
+imports['./TransactionSheet'] = require('./sheet-real.cjs')(imports);
 
 const modulo = {};
 vm.runInNewContext(
@@ -145,6 +146,7 @@ const naConfirmacao = (arvore) => achar(arvore, (n) => n.type === 'TextInput').l
 const esperar = () => new Promise((r) => setImmediate(r));
 
 function prepararCamera() {
+  imports['./TransactionSheet'].reset();
   const arvore = render();
   const camera = achar(arvore, (n) => n.type === 'CameraView')[0];
   ok(camera, 'a janela abre na câmera');
@@ -225,6 +227,7 @@ function prepararCamera() {
     'FORMA DE PAGAMENTO VALOR PAGO', `${forma} 37,80`, 'Emissão: 25/09/2026 14:32',
   ].join('\n'));
   async function fotografarNota(forma) {
+    imports['./TransactionSheet'].reset();
     porHandler(render(), 'fechar')();
     prepararCamera();
     const t = porHandler(render(), 'fotografar')();
@@ -235,7 +238,7 @@ function prepararCamera() {
     await esperar();
     return render();
   }
-  const salvar = async () => { await porHandler(render(), 'handleSave')(); await esperar(); };
+  const salvar = async () => { await porHandler(render(), 'salvar')(); await esperar(); };
 
   cartoesDaConta = [{ id: 'cartao-1', name: 'AUDIT cartao', bank: 'nubank', wallet_id: 'w-cartao' }];
   registro.gravados.length = 0;
@@ -289,26 +292,27 @@ function prepararCamera() {
   /* 6. A linha "Data da compra" depois da extração para o componente
      compartilhado (30/09/2026): selo, dica, seletor sem futuro e a data
      escolhida gravada. Hoje dos dublês: 26/09/2026. */
-  const rotuloData = (arvore) => achar(arvore, (n) => /^Data da compra:/.test(String(n.props?.accessibilityLabel)))[0]?.props.accessibilityLabel;
+  const rotuloData = (arvore) => achar(arvore, (n) => /^Data do lançamento:/.test(String(n.props?.accessibilityLabel)))[0]?.props.accessibilityLabel;
   const seletor = (arvore) => achar(arvore, (n) => n.type === 'DatePickerModal')[0];
   cartoesDaConta = [];
   tela = await fotografarNota('Cartao de Debito');
-  ok(rotuloData(tela) === 'Data da compra: 2026-09-25, lida da foto. Toque para mudar', 'data do cupom com o selo "lida da foto"');
+  ok(rotuloData(tela) === 'Data do lançamento: 2026-09-25, lida da foto', 'data do cupom com o selo "lida da foto"');
   ok(!achar(tela, (n) => n.type === 'Text' && /não parecia certa/.test(String(n.props.children))).length, 'sem dica quando a data foi aceita');
   {
     /* Selo cortado a 1.3 (achado do P2, 30/09/2026): a linha quebra no fluxo,
        e nenhum texto dela encolhe ou cresce (424dd7a). O estilo é provado
        aqui; a geometria do Yoga em tela fica no P2, a 1.0 e 1.3. */
-    const linha = achar(tela, (n) => /^Data da compra:/.test(String(n.props?.accessibilityLabel)))[0];
+    const linha = achar(tela, (n) => /^Data do lançamento:/.test(String(n.props?.accessibilityLabel)))[0];
     const estilo = linha.props.style;
     ok(estilo.flexWrap === 'wrap' && 'rowGap' in estilo && estilo.flexDirection === 'row', 'foto: a linha "Data da compra" quebra quando não cabe (flexWrap + rowGap)');
     const textos = achar(linha, (n) => n.type === 'Text');
     ok(textos.length >= 2 && textos.every((t) => !('flexShrink' in (t.props.style ?? {})) && !('flexGrow' in (t.props.style ?? {}))), 'foto: nenhum texto da linha usa flexShrink ou flexGrow');
   }
-  achar(tela, (n) => /^Data da compra:/.test(String(n.props?.accessibilityLabel)))[0].props.onPress();
+  achar(tela, (n) => /^Data do lançamento:/.test(String(n.props?.accessibilityLabel)))[0].props.onPress();
   ok(seletor(render()).props.visible === true && seletor(render()).props.currentISO === '2026-09-25', 'o toque abre o seletor na data lida');
   seletor(render()).props.onSelectDate('2026-10-03');
-  ok(rotuloData(render()) === 'Data da compra: 2026-09-26. Toque para mudar', 'data futura no seletor vira hoje, sem o selo');
+  seletor(render()).props.onClose();
+  ok(rotuloData(render()) === 'Data do lançamento: 2026-09-26', 'data futura no seletor vira hoje, sem o selo');
   ok(seletor(render()).props.visible === false, 'e o seletor fecha');
   seletor(render()).props.onSelectDate('2026-09-20');
   registro.gravados.length = 0;
@@ -323,7 +327,7 @@ function prepararCamera() {
   await futura;
   await esperar();
   tela = render();
-  ok(rotuloData(tela) === 'Data da compra: 2026-09-26. Toque para mudar', 'data do cupom recusada: hoje, sem selo');
+  ok(rotuloData(tela) === 'Data do lançamento: 2026-09-26', 'data do cupom recusada: hoje, sem selo');
   ok(achar(tela, (n) => n.type === 'Text' && /A data do cupom não parecia certa/.test(String(n.props.children))).length === 1, 'com a dica de antes');
 
   console.log(`foto-nota-fechar-na-leitura: ${passou} checagens OK`);

@@ -74,6 +74,7 @@ export default function ContasScreen() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [desc, setDesc] = useState('');
+  const [falaOuvida, setFalaOuvida] = useState<string | undefined>();
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState(CATEGORIES[CATEGORIES.length - 1].name);
   const [catColor, setCatColor] = useState(CATEGORIES[CATEGORIES.length - 1].color);
@@ -172,6 +173,7 @@ export default function ContasScreen() {
   });
 
   function openNewModal() {
+    setFalaOuvida(undefined);
     setVozWalletId(null);
     operacaoVoz.current = null;
     falaGuardadaDaRevisao.current = undefined;
@@ -193,6 +195,7 @@ export default function ContasScreen() {
      pra valor/descrição/categoria; a data de vencimento vem de
      parseDiaVencimento — mesmo motor do bot do WhatsApp. */
   function abrirNovaContaDoTexto(texto: string) {
+    setFalaOuvida(texto);
     operacaoVoz.current = randomUUID();
     setEditingBillId(null);
     const carteira = matchWalletByText(texto, wallets);
@@ -218,6 +221,7 @@ export default function ContasScreen() {
   }
 
   function openEditModal(bill: Bill) {
+    setFalaOuvida(undefined);
     setVozWalletId(null);
     setEditingBillId(bill.id);
     setDesc(bill.description);
@@ -567,6 +571,9 @@ export default function ContasScreen() {
         visible={modalOpen}
         onClose={() => setModalOpen(false)}
         modo="boleto"
+        falaOuvida={falaOuvida}
+        focoNoValor={!!falaOuvida}
+        acaoSecundaria={falaOuvida ? { rotulo: 'Gravar de novo', onPress: () => setModalOpen(false) } : undefined}
         editando={!!editingBillId}
         salvando={saving}
         carteiras={wallets}

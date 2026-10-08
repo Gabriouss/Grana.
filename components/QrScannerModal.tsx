@@ -22,7 +22,7 @@ import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { hapticSuccess, hapticTap } from '@/lib/haptics';
 import { LIMITS } from '@/lib/limits';
-import CategoryChips from './CategoryChips';
+import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import AppPressable from './AppPressable';
 import AppModal, { InsetsDoModal } from './AppModal';
 import Sheet from './Sheet';
@@ -102,6 +102,7 @@ export default function QrScannerModal({
   }
 
   function fechar() {
+    if (savingRef.current) return;
     resetState();
     onClose();
   }
@@ -119,9 +120,9 @@ export default function QrScannerModal({
     setAmount(lida.valorTotal ? formatMoney(lida.valorTotal) : '');
   }
 
-  async function handleSave() {
+  async function handleSave(v: ValoresLancamento) {
     if (!nota || savingRef.current) return;
-    const val = parseAmount(amount);
+    const val = parseAmount(v.amount);
     if (!val || val <= 0) {
       Alert.alert('Valor inválido', 'Informe o valor total da nota em R$.');
       return;
@@ -134,7 +135,7 @@ export default function QrScannerModal({
       return;
     }
 
-    const catObj = categoriaEscolhida(category);
+    const catObj = categoriaEscolhida(v.category, [{ name: v.category, color: v.color }]);
     if (!catObj) {
       Alert.alert(PERGUNTA_CATEGORIA.titulo, PERGUNTA_CATEGORIA.texto);
       return;
@@ -148,15 +149,13 @@ export default function QrScannerModal({
          manual. */
       const { guardado } = await salvarOuGuardarNoAparelho({
         type: 'out',
-        description: desc.trim() || 'Compra',
+        description: v.description.trim() || 'Compra',
         amount: val,
         category: catObj.name,
         color: catObj.color,
-        occurred_on: nota.dataEmissao,
-        wallet_id:
-          activeWalletId === 'total'
-            ? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null
-            : activeWalletId,
+        occurred_on: v.occurred_on,
+        ...(v.recurring ? { recurring: true } : null),
+        wallet_id: v.wallet_id,
       });
       if (guardado) {
         marcarLancamentosAlterados();
@@ -234,18 +233,23 @@ export default function QrScannerModal({
     );
   }
 
-  /* ---- etapa 2: confirmação do lançamento ---- */
-
-  return (
-    <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent onRequestClose={fechar}>
-      <Sheet centered onClose={fechar}>
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle} accessibilityRole="header">Nota fiscal lida</Text>
-          <AppPressable onPress={fechar} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
-            <Ionicons name="close" size={22} color={theme.inkFaint} />
-          </AppPressable>
-        </View>
-
+  /* Confirmação na mesma janela do lançamento manual. */
+  return <TransactionSheet
+    visible={visible && !!nota}
+    onClose={fechar}
+    modo="carteira"
+    editando={false}
+    somenteSaida
+    descricaoPadrao="Compra"
+    focoNoValor
+    semDataFutura
+    carteiras={wallets}
+    salvando={saving}
+    onSalvar={handleSave}
+    inicial={{ type: 'out', description: desc, amount, category, color: '',
+      occurred_on: nota?.dataEmissao ?? '', recurring: false, installments: 1, card_id: null,
+      wallet_id: activeWalletId === 'total' ? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '' : activeWalletId ?? '' }}
+    avisoDeOrigem={<>
         {nota && (
           <View style={styles.notaBox}>
             <View style={styles.notaLinha}>
@@ -276,59 +280,17 @@ export default function QrScannerModal({
           </Text>
         )}
 
-        <TextInput
-          accessibilityLabel="Descrição do lançamento"
-          maxLength={LIMITS.description}
-          style={styles.descInput}
-          placeholder="Descrição (ex: Supermercado)"
-          placeholderTextColor={theme.inkFaint}
-          value={desc}
-          onChangeText={setDesc}
-        />
 
-        <View style={styles.amountRow}>
-          <Text style={styles.amountPrefix}>R$</Text>
-          <TextInput
-            accessibilityLabel="Valor do lançamento em reais"
-            maxLength={LIMITS.amount}
-            style={styles.amountInput}
-            placeholder="0,00"
-            placeholderTextColor={theme.inkFaint}
-            keyboardType="number-pad"
-            value={amount}
-            onChangeText={(t) => setAmount(formatMoneyInput(t))}
-            autoFocus={nota?.valorTotal === null}
-          />
-        </View>
-
-        <CategoryChips value={category} onChange={setCategory} />
-
-        <AppPressable
-          style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color={theme.paper} />
-          ) : (
-            <Text style={styles.saveBtnText}>Salvar lançamento</Text>
-          )}
-        </AppPressable>
-
-        <AppPressable onPress={resetState}>
-          <Text style={styles.backLink}>Escanear outra nota</Text>
-        </AppPressable>
-      </Sheet>
-    </AppModal>
-  );
+    </>}
+    acaoSecundaria={{ rotulo: 'Escanear outra nota', onPress: () => { if (!savingRef.current) resetState(); } }}
+  />;
 }
 
 const LADO_MIRA = 240;
 
 const styles = StyleSheet.create({
-  camWrap: { flex: 1, backgroundColor: '#000' },
-
-  overlayTopo: {
+camWrap: { flex: 1, backgroundColor: '#000' },
+overlayTopo: {
     position: 'absolute',
     /* `top` vem do inset no JSX. */
     left: spacing.xl,
@@ -336,7 +298,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  botaoRedondo: {
+botaoRedondo: {
     width: touchTarget,
     height: touchTarget,
     borderRadius: touchTarget / 2,
@@ -346,41 +308,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.ruleStrong,
   },
-  botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
-
-  overlayCentro: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xl },
-  mira: { width: LADO_MIRA, height: LADO_MIRA, overflow: 'hidden' },
-  cantoBase: { position: 'absolute', width: 34, height: 34, borderColor: theme.accent2 },
-  cantoTopoEsq: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.md },
-  cantoTopoDir: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.md },
-  cantoBaixoEsq: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.md },
-  cantoBaixoDir: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: radius.md },
-  linhaVarredura: { position: 'absolute', left: 6, right: 6, height: 2, backgroundColor: theme.accent2, opacity: 0.75 },
-  dicaMira: { color: theme.ink, fontSize: type.apoio, textAlign: 'center', paddingHorizontal: spacing.xxl, fontFamily: fonts.regular },
-
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
-  /* `theme.danger`, cujo próprio comentário em lib/theme.ts diz "perigo/atenção",
-     e não o âmbar que estava aqui: `#d3b869` é a cor da categoria Assinaturas,
-     emprestada como cor semântica — exatamente o acidente que fez o token
-     `danger` existir (o botão "Excluir conta" tinha pegado a cor de
-     Alimentação do mesmo jeito). O aviso é de integridade do dado ("isto não é
-     uma compra real"), que é o papel do token; um terceiro tom semântico
-     reintroduziria o semáforo que a No-Red Rule mantém fora da paleta. */
-  aviso: { color: theme.danger, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.regular },
-
-  notaBox: { backgroundColor: theme.paper, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },
-  notaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  notaRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
-  notaValor: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
-
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
-  saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
-  backLink: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4, fontFamily: fonts.light },
+botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
+overlayCentro: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xl },
+mira: { width: LADO_MIRA, height: LADO_MIRA, overflow: 'hidden' },
+cantoBase: { position: 'absolute', width: 34, height: 34, borderColor: theme.accent2 },
+cantoTopoEsq: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.md },
+cantoTopoDir: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.md },
+cantoBaixoEsq: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.md },
+cantoBaixoDir: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: radius.md },
+linhaVarredura: { position: 'absolute', left: 6, right: 6, height: 2, backgroundColor: theme.accent2, opacity: 0.75 },
+dicaMira: { color: theme.ink, fontSize: type.apoio, textAlign: 'center', paddingHorizontal: spacing.xxl, fontFamily: fonts.regular },
+hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
+aviso: { color: theme.danger, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.regular },
+notaBox: { backgroundColor: theme.paper, borderRadius: radius.md, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },
+notaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+notaRotulo: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+notaValor: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light }
 });

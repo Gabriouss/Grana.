@@ -231,7 +231,7 @@ ok('formulário comum (Início, Lançamentos, Contas, Crédito): sem categoria, 
     const fonte = ler(arquivo);
     assert.doesNotMatch(fonte, /useState\('Alimentação'\)|setCategory\('Alimentação'\)/, `${arquivo}: não abre com "Alimentação"`);
     assert.doesNotMatch(fonte.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''), /guessCategoryFromText/, `${arquivo}: não usa o palpite cru (que cai em "Outros")`);
-    const salvar = fonte.slice(fonte.indexOf('async function handleSave()'));
+    const salvar = fonte.slice(fonte.indexOf('async function handleSave('));
     const iPergunta = salvar.indexOf('PERGUNTA_CATEGORIA.titulo');
     const iGrava = Math.min(...['registrarOperacaoVoz(', 'salvarOuGuardarNoAparelho(', 'montarLancamentoDaFoto(']
       .map((f) => salvar.indexOf(f)).filter((i) => i >= 0));

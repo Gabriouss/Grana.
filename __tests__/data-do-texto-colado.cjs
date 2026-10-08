@@ -145,7 +145,8 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
   assert.doesNotMatch(tela, /data do texto ignorada|vai com a de hoje/, 'nenhum chip de data recusada');
   assert.match(tela, /'A data do texto não foi usada\. Escolha a data\.'/, 'a recusa vira a dica do campo');
   const qr = fs.readFileSync(path.join(root, 'components/QrScannerModal.tsx'), 'utf8');
-  assert.match(qr, /occurred_on: nota\.dataEmissao/, 'QR: grava na data de emissão lida do QR');
+  assert.match(qr, /occurred_on: nota\?\.dataEmissao/, 'QR: começa na data de emissão lida do QR');
+  assert.match(qr, /occurred_on: v\.occurred_on/, 'QR: grava a data revisada na janela comum');
   const foto = fs.readFileSync(path.join(root, 'components/FotoNotaModal.tsx'), 'utf8');
   assert.match(foto, /setData\(detalhes\.data \?\? todayISO\(\)\)/, 'foto: data lida do cupom, hoje só sem ela');
 }

@@ -121,7 +121,7 @@ function appFunction(file, name, text) {
     /* A revisão lê a data da fala no núcleo (data na voz, 30/09/2026). */
     dataInicialDaRevisao: require('./data-da-fala-real.cjs').dataInicialDaRevisao,
     formatMoney: value => value, input: text };
-  for (const field of ['WalletId', 'Type', 'Desc', 'Amount', 'Category', 'FormaPagamento', 'Recorrente', 'Recognized',
+  for (const field of ['FalaOuvida', 'DicaDaDataVoz', 'WalletId', 'Type', 'Desc', 'Amount', 'Category', 'FormaPagamento', 'Recorrente', 'Recognized',
     'EditingTxId', 'TxWalletId', 'TxDesc', 'TxAmount', 'TxCategory', 'TxCatColor', 'TxCardId', 'TxInstallments',
     'TxRecurring', 'TxDate', 'NewTxOpen']) context['set' + field] = value => { state[field] = value; };
   vm.runInNewContext(ts.transpileModule(found.getText(source), {

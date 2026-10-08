@@ -31,11 +31,9 @@ import { salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
-import CategoryChips from './CategoryChips';
+import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import AppPressable from './AppPressable';
 import Sheet from './Sheet';
-import DatePickerModal from './DatePickerModal';
-import LinhaDataDaCompra, { dataEscolhidaNoSeletor } from './LinhaDataDaCompra';
 import { dataInicialDaRevisao, type ReferenciaDaFala } from '@/lib/data-da-fala';
 import type { TxType } from '@/lib/types';
 import { LIMITS } from '@/lib/limits';
@@ -114,7 +112,6 @@ export default function PasteReceiptModal({
   /* Na revisão de voz, a dica do campo quando a data da fala precisa de
      escolha ("Você disse 01/10, que ainda não chegou."). */
   const [dicaDaVoz, setDicaDaVoz] = useState<string | null>(null);
-  const [calendarioAberto, setCalendarioAberto] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -137,7 +134,6 @@ export default function PasteReceiptModal({
     setDataRecusada(false);
     setDataLida(false);
     setDicaDaVoz(null);
-    setCalendarioAberto(false);
     setFormaPagamento(null);
     setRecorrente(false);
     setWalletId('');
@@ -147,17 +143,6 @@ export default function PasteReceiptModal({
      pessoa salvava sem saber que "todo mês" tinha virado uma série que se
      repete sozinha — e recorrência criada sem querer é dinheiro que aparece
      nos meses seguintes. */
-  const NOME_DA_FORMA: Record<string, string> = {
-    pix: 'Pix',
-    debit: 'Débito',
-    cash: 'Dinheiro',
-    credit: 'Crédito',
-  };
-  const detalhesReconhecidos = [
-    formaPagamento ? NOME_DA_FORMA[formaPagamento] ?? formaPagamento : null,
-    recorrente ? 'repete todo mês' : null,
-  ].filter((d): d is string => !!d);
-
   function processText(text: string, voz = false) {
     const wallet = matchWalletByText(text, wallets);
     const textoFinanceiro = wallet ? limparReferenciaCarteira(text, wallet.name) : text;
@@ -215,21 +200,21 @@ export default function PasteReceiptModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialText]);
 
-  async function handleSave() {
+  async function handleSave(v: ValoresLancamento) {
     if (savingRef.current) return;
 
-    const val = parseAmount(amount);
+    const val = parseAmount(v.amount);
     if (!val || val <= 0) {
       Alert.alert('Valor inválido', 'Informe um valor maior que zero.');
       return;
     }
-    if (!walletId) {
+    if (!v.wallet_id) {
       Alert.alert('Escolha uma carteira', 'Informe em qual carteira o lançamento deve entrar.');
       return;
     }
     /* Data recusada (do texto ou da fala) deixa o campo sem data: nada é
        salvo com uma data que ninguém escolheu. */
-    if (!dataDoComprovante) {
+    if (!v.occurred_on) {
       Alert.alert('Escolha a data');
       return;
     }
@@ -245,7 +230,7 @@ export default function PasteReceiptModal({
        uma categoria custom reconhecida no texto voltava a cair em "Outros" na
        hora de salvar — o nome certo aparecia na tela e o lançamento gravava
        outro. */
-    const catObj = categoriaEscolhida(category, categoriasExtras);
+    const catObj = categoriaEscolhida(v.category, categoriasExtras);
     if (!catObj) {
       Alert.alert(PERGUNTA_CATEGORIA.titulo, PERGUNTA_CATEGORIA.texto);
       return;
@@ -254,15 +239,15 @@ export default function PasteReceiptModal({
     setSaving(true);
     try {
       const input = {
-        type,
-        description: desc.trim() || 'Sem descrição',
+        type: v.type,
+        description: v.description.trim() || 'Sem descrição',
         amount: val,
         category: catObj.name,
         color: catObj.color,
-        occurred_on: dataDoComprovante,
+        occurred_on: v.occurred_on,
         ...(formaPagamento ? { payment_method: formaPagamento } : null),
-        ...(recorrente ? { recurring: true } : null),
-        wallet_id: walletId,
+        ...(v.recurring ? { recurring: true } : null),
+        wallet_id: v.wallet_id,
       };
       if (origemVoz) {
         operacaoVoz.current ??= randomUUID();
@@ -293,188 +278,62 @@ export default function PasteReceiptModal({
     }
   }
 
-  return (
-    <>
-    <AppModal
+  function fechar() {
+    if (savingRef.current) return;
+    resetState();
+    onClose();
+  }
+
+  if (recognized) {
+    const cat = categoriaEscolhida(category, categoriasExtras);
+    return <TransactionSheet
       visible={visible}
-      transparent
-      onRequestClose={() => {
-        resetState();
-        onClose();
-      }}
-    >
-      <Sheet
-        centered
-        onClose={() => {
-          resetState();
-          onClose();
-        }}
-      >
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle} accessibilityRole="header">
-              {recognized ? 'Confirmar lançamento' : 'Colar comprovante ou Pix'}
-            </Text>
-            <AppPressable
-              onPress={() => {
-                resetState();
-                onClose();
-              }}
-              hitSlop={hitSlopPara(22)}
-              accessibilityRole="button"
-              accessibilityLabel="Fechar"
-            >
-              <Ionicons name="close" size={22} color={theme.inkFaint} />
-            </AppPressable>
-          </View>
+      onClose={fechar}
+      modo="carteira"
+      editando={false}
+      inicial={{ type, description: desc, amount, category, color: cat?.color ?? '',
+        occurred_on: dataDoComprovante ?? '', recurring: recorrente, installments: 1,
+        card_id: null, wallet_id: walletId }}
+      carteiras={wallets}
+      salvando={saving}
+      onSalvar={handleSave}
+      semDataFutura
+      semCarteiraPadrao
+      descricaoPadrao="Sem descrição"
+      focoNoValor={origemVoz}
+      falaOuvida={origemVoz ? rawText : undefined}
+      seloDaData={!origemVoz && dataLida ? 'lida do texto' : null}
+      dicaDaData={origemVoz ? dicaDaVoz : dataRecusada ? 'A data do texto não foi usada. Escolha a data.' : null}
+      acaoSecundaria={{ rotulo: origemVoz ? 'Gravar de novo' : 'Colar outro texto', onPress: () => {
+        if (savingRef.current) return;
+        if (origemVoz) fechar();
+        else { setOrigemVoz(false); setRecognized(false); }
+      } }}
+    />;
+  }
 
-          {!recognized ? (
-            <>
-              <Text style={styles.hint}>
-                Cole o texto copiado de um comprovante Pix, fatura ou recibo. Identificamos o valor, categoria e tipo automaticamente.
-              </Text>
-              <TextInput
-                accessibilityLabel="Texto do comprovante"
-                maxLength={LIMITS.pastedText}
-                style={styles.textArea}
-                placeholder="Ex.: Você transferiu R$ 45,90 para Restaurante Sabor da Terra..."
-                placeholderTextColor={theme.inkFaint}
-                multiline
-                numberOfLines={5}
-                value={rawText}
-                onChangeText={setRawText}
-                textAlignVertical="top"
-                autoFocus
-              />
-              <AppPressable
-                style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
-                onPress={handleProcessText}
-              >
-                <Text style={styles.saveBtnText}>Reconhecer dados</Text>
-              </AppPressable>
-            </>
-          ) : (
-            <>
-              {origemVoz && (
-                <View style={styles.ecoVoz}>
-                  <Ionicons name="mic-outline" size={13} color={theme.inkFaint} />
-                  <Text style={styles.ecoVozTexto}>Ouvi: "{rawText}"</Text>
-                </View>
-              )}
-
-              <View style={styles.typeRow}>
-                <AppPressable
-                  onPress={() => setType('out')}
-                  style={[styles.typeBtn, type === 'out' && styles.typeBtnOut]}
-                >
-                  <Text style={[styles.typeText, type === 'out' && styles.typeTextOn]}>Saída</Text>
-                </AppPressable>
-                <AppPressable
-                  onPress={() => setType('in')}
-                  style={[styles.typeBtn, type === 'in' && styles.typeBtnIn]}
-                >
-                  <Text style={[styles.typeText, type === 'in' && styles.typeTextOn]}>Entrada</Text>
-                </AppPressable>
-              </View>
-
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletRow}>
-                {wallets.map((wallet) => (
-                  <AppPressable key={wallet.id} onPress={() => setWalletId(wallet.id)}
-                    style={[styles.walletChip, walletId === wallet.id && { borderColor: wallet.color }]}
-                    accessibilityRole="radio" accessibilityState={{ selected: walletId === wallet.id }}>
-                    <View style={[styles.walletDot, { backgroundColor: wallet.color }]} />
-                    <Text style={styles.walletText}>{wallet.name}</Text>
-                  </AppPressable>
-                ))}
-              </ScrollView>
-
-              <TextInput accessibilityLabel="Descrição do lançamento" maxLength={LIMITS.description}
-                style={styles.descInput}
-                placeholder="Descrição"
-                placeholderTextColor={theme.inkFaint}
-                value={desc}
-                onChangeText={setDesc}
-              />
-
-              <View style={styles.amountRow}>
-                <Text style={styles.amountPrefix}>R$</Text>
-                <TextInput accessibilityLabel="Valor do lançamento em reais" maxLength={LIMITS.amount}
-                  style={styles.amountInput}
-                  placeholder="0,00"
-                  placeholderTextColor={theme.inkFaint}
-                  keyboardType="number-pad"
-                  value={amount}
-                  onChangeText={(t) => setAmount(formatMoneyInput(t))}
-                />
-              </View>
-
-              <LinhaDataDaCompra
-                data={dataDoComprovante}
-                selo={!origemVoz && dataLida ? 'lida do texto' : null}
-                dica={origemVoz ? dicaDaVoz : dataRecusada ? 'A data do texto não foi usada. Escolha a data.' : null}
-                onPress={() => setCalendarioAberto(true)}
-              />
-
-              <CategoryChips value={category} onChange={setCategory} extras={categoriasExtras} />
-
-              {detalhesReconhecidos.length > 0 && (
-                <View style={styles.detalhesRow}>
-                  <Ionicons name="checkmark-circle-outline" size={14} color={theme.accent2} aria-hidden />
-                  <Text style={styles.detalhesTexto}>
-                    Também reconhecido: {detalhesReconhecidos.join(' · ')}
-                  </Text>
-                </View>
-              )}
-
-              <AppPressable
-                style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
-                onPress={handleSave}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color={theme.paper} />
-                ) : (
-                  <Text style={styles.saveBtnText}>Salvar lançamento</Text>
-                )}
-              </AppPressable>
-
-              <AppPressable
-                onPress={() => {
-                  if (origemVoz) {
-                    resetState();
-                    onClose();
-                    return;
-                  }
-                  // Volta pra textarea editável — a pessoa vai VER o texto ali.
-                  setOrigemVoz(false);
-                  setRecognized(false);
-                }}
-              >
-                <Text style={styles.backLink}>{origemVoz ? 'Gravar de novo' : 'Colar outro texto'}</Text>
-              </AppPressable>
-            </>
-          )}
-      </Sheet>
-    </AppModal>
-    <DatePickerModal
-      visible={visible && calendarioAberto}
-      currentISO={dataDoComprovante ?? todayISO()}
-      title="Data da compra"
-      onClose={() => setCalendarioAberto(false)}
-      onSelectDate={(iso) => {
-        setDataDoComprovante(dataEscolhidaNoSeletor(iso, todayISO()));
-        setDataRecusada(false);
-        setDataLida(false);
-        setDicaDaVoz(null);
-        setCalendarioAberto(false);
-      }}
-    />
-    </>
-  );
+  return <AppModal visible={visible} transparent onRequestClose={fechar}>
+    <Sheet centered onClose={fechar}>
+      <View style={styles.sheetHeader}>
+        <Text style={styles.sheetTitle} accessibilityRole="header">Colar comprovante ou Pix</Text>
+        <AppPressable onPress={fechar} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
+          <Ionicons name="close" size={22} color={theme.inkFaint} />
+        </AppPressable>
+      </View>
+      <Text style={styles.hint}>Cole o texto copiado de um comprovante Pix, fatura ou recibo. Identificamos o valor, categoria e tipo automaticamente.</Text>
+      <TextInput accessibilityLabel="Texto do comprovante" maxLength={LIMITS.pastedText}
+        style={styles.textArea} placeholder="Ex.: Você transferiu R$ 45,90 para Restaurante Sabor da Terra..."
+        placeholderTextColor={theme.inkFaint} multiline numberOfLines={5} value={rawText}
+        onChangeText={setRawText} textAlignVertical="top" autoFocus />
+      <AppPressable style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]} onPress={handleProcessText}>
+        <Text style={styles.saveBtnText}>Reconhecer dados</Text>
+      </AppPressable>
+    </Sheet>
+  </AppModal>;
 }
 
 const styles = StyleSheet.create({
-  modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: {
+sheet: {
     backgroundColor: theme.paperRaised,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
@@ -482,18 +341,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     maxHeight: '90%',
   },
-  detalhesRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  detalhesTexto: {
-    flex: 1,
-    color: theme.inkFaint,
-    fontSize: type.nota,
-    lineHeight: lh(type.nota, 'apoio'),
-    fontFamily: fonts.light,
-  },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
-  textArea: {
+sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
+textArea: {
     backgroundColor: theme.paper,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -510,34 +361,7 @@ const styles = StyleSheet.create({
     outlineWidth: 2,
     outlineOffset: -1,
   },
-  ecoVoz: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: theme.paper,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    paddingVertical: 8,
-    paddingHorizontal: spacing.sm,
-  },
-  ecoVozTexto: { flex: 1, color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
-  typeRow: { flexDirection: 'row', gap: spacing.xs },
-  typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
-  typeBtnOut: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },
-  typeBtnIn: { backgroundColor: theme.entradaFundo, borderWidth: 1, borderColor: theme.entradaBorda },
-  typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
-  typeTextOn: { color: theme.ink},
-  walletRow: { flexDirection: 'row', gap: 6, paddingVertical: 4 },
-  walletChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: theme.rule, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 7 },
-  walletDot: { width: 7, height: 7, borderRadius: 4 },
-  walletText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.regular },
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
-  saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
-  backLink: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4, fontFamily: fonts.light },
+saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
+saveBtnHover: { opacity: 0.88 },
+saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular }
 });

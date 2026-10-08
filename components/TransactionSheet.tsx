@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppModal from './AppModal';
 import ToggleSwitch from './ToggleSwitch';
@@ -56,6 +56,32 @@ type Props = {
   /** Revisão de uma fala (data na voz, 30/09/2026): o seletor não aceita
       data futura, como a foto e o Colar; futura vira hoje. */
   semDataFutura?: boolean;
+  /* Extras das origens de captura (janela única, pedido do autor de
+     07/10/2026): voz, Colar, foto e QR confirmam NESTA janela, a do manual,
+     e o que é só deles entra por cima, no fluxo da folha. Sem estas props a
+     janela do manual não muda. */
+  /** Revisão de uma fala: a faixa "Ouvi: ..." logo abaixo do título. */
+  falaOuvida?: string;
+  /** Aviso próprio da origem (foto, QR), antes dos campos. */
+  avisoDeOrigem?: ReactNode;
+  /** Campos que só a origem tem, entre o valor e a categoria (forma de pagamento da foto). */
+  camposExtras?: ReactNode;
+  /** Link abaixo do Salvar: "Gravar de novo", "Colar outro texto". */
+  acaoSecundaria?: { rotulo: string; onPress: () => void };
+  /** De onde veio a data ("lida do texto"); some quando a pessoa escolhe outra. */
+  seloDaData?: string | null;
+  /** Por que a data não veio preenchida, ou o que falta escolher; some com a escolha. */
+  dicaDaData?: string | null;
+  /** Foto e QR são sempre compra: sem Saída | Entrada. */
+  somenteSaida?: boolean;
+  /** Com a descrição vazia, grava este texto em vez de bloquear (voz e Colar
+      sempre gravaram "Sem descrição"; o manual continua exigindo). */
+  descricaoPadrao?: string;
+  /** Com `inicial.wallet_id` vazio, abre sem carteira e o Salvar pede a
+      escolha: a fala citou uma carteira que não foi reconhecida. */
+  semCarteiraPadrao?: boolean;
+  /** Abre com o teclado no valor quando ele chega vazio. */
+  focoNoValor?: boolean;
 };
 
 function ontemISO(): string {
@@ -76,6 +102,16 @@ export default function TransactionSheet({
   salvando,
   onSalvar,
   semDataFutura = false,
+  falaOuvida,
+  avisoDeOrigem,
+  camposExtras,
+  acaoSecundaria,
+  seloDaData,
+  dicaDaData,
+  somenteSaida = false,
+  descricaoPadrao,
+  semCarteiraPadrao = false,
+  focoNoValor = false,
 }: Props) {
   const [type, setType] = useState<TxType>(inicial.type);
   const [desc, setDesc] = useState(inicial.description);
@@ -93,10 +129,13 @@ export default function TransactionSheet({
   const carteirasReais = useMemo(() => carteiras.filter((wallet) => wallet.id !== 'total'), [carteiras]);
   const carteiraInicial = useMemo(() => {
     if (carteirasReais.some((wallet) => wallet.id === inicial.wallet_id)) return inicial.wallet_id;
+    if (semCarteiraPadrao && !inicial.wallet_id) return '';
     return carteirasReais.find((wallet) => wallet.is_default)?.id ?? carteirasReais[0]?.id ?? '';
-  }, [carteirasReais, inicial.wallet_id]);
+  }, [carteirasReais, inicial.wallet_id, semCarteiraPadrao]);
   const [walletId, setWalletId] = useState(carteiraInicial);
   const [formError, setFormError] = useState<string | null>(null);
+  /* O selo e a dica falam da data que a origem propôs; escolhida outra, somem. */
+  const [dataEscolhida, setDataEscolhida] = useState(false);
 
   const [catPickerOpen, setCatPickerOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -118,6 +157,7 @@ export default function TransactionSheet({
     setCardId(inicial.card_id);
     setWalletId(carteiraInicial);
     setFormError(null);
+    setDataEscolhida(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, carteiraInicial]);
 
@@ -142,8 +182,13 @@ export default function TransactionSheet({
           ? 'Nova entrada'
           : 'Nova saída';
 
+  function escolherData(iso: string) {
+    setOccurredOn(iso);
+    setDataEscolhida(true);
+  }
+
   function salvar() {
-    const descricao = desc.trim();
+    const descricao = desc.trim() || descricaoPadrao?.trim() || '';
     const valor = parseAmount(amount);
     if (!descricao) {
       setFormError('Informe uma descrição para o lançamento.');
@@ -176,7 +221,7 @@ export default function TransactionSheet({
     }
     setFormError(null);
     onSalvar({
-      type: ehCredito || ehBoleto ? 'out' : type,
+      type: ehCredito || ehBoleto || somenteSaida ? 'out' : type,
       description: descricao,
       amount,
       category,
@@ -192,6 +237,8 @@ export default function TransactionSheet({
   const yISO = ontemISO();
   const dataCustomizada = !!occurredOn && occurredOn !== todayISO() && occurredOn !== yISO;
   const rotuloDaData = occurredOn ? formatDateLabel(occurredOn) : 'Escolha a data';
+  const selo = !dataEscolhida && occurredOn ? seloDaData : null;
+  const dica = !dataEscolhida ? dicaDaData : null;
 
   return (
     <>
@@ -204,8 +251,17 @@ export default function TransactionSheet({
             </AppPressable>
           </View>
 
+          {!!falaOuvida && (
+            <View style={styles.ecoVoz}>
+              <Ionicons name="mic-outline" size={13} color={theme.inkFaint} />
+              <Text style={styles.ecoVozTexto}>Ouvi: "{falaOuvida}"</Text>
+            </View>
+          )}
+
+          {avisoDeOrigem}
+
           {/* No crédito não existe "entrada": uma fatura só acumula gastos. */}
-          {!ehCredito && !ehBoleto && (
+          {!ehCredito && !ehBoleto && !somenteSaida && (
             <View style={styles.typeRow}>
               <AppPressable
                 onPress={() => setType('out')}
@@ -271,6 +327,7 @@ export default function TransactionSheet({
               keyboardType="number-pad"
               value={amount}
               onChangeText={(t) => { setAmount(formatMoneyInput(t)); if (formError) setFormError(null); }}
+              autoFocus={focoNoValor && !inicial.amount}
             />
           </View>
 
@@ -295,6 +352,8 @@ export default function TransactionSheet({
             </View>
           )}
 
+          {camposExtras}
+
           <AppPressable style={[styles.fieldRow, styles.categoryRow]} onPress={() => setCatPickerOpen(true)} accessibilityRole="button" accessibilityLabel={`Categoria: ${category || 'não escolhida'}`}>
             <Text style={styles.fieldKey}>Categoria</Text>
             {/* O nome recebe TODA a sobra da linha, alinhado à direita, em vez
@@ -316,10 +375,11 @@ export default function TransactionSheet({
           </AppPressable>
 
           <View style={{ gap: 6 }}>
-            <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)} accessibilityRole="button" accessibilityLabel={`${ehBoleto ? 'Vencimento' : 'Data do lançamento'}: ${rotuloDaData}`}>
+            <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)} accessibilityRole="button" accessibilityLabel={`${ehBoleto ? 'Vencimento' : 'Data do lançamento'}: ${rotuloDaData}${selo ? `, ${selo}` : ''}`}>
               <Text style={styles.fieldKey}>{ehBoleto ? 'Vencimento' : 'Data do lançamento'}</Text>
-              <View style={styles.fieldVal}>
-                <Text style={styles.fieldValText}>{rotuloDaData}</Text>
+              <View style={styles.dateFieldVal}>
+                {!!selo && <Text style={styles.seloData}>{selo}</Text>}
+                <Text style={styles.dateFieldValText}>{rotuloDaData}</Text>
                 <Ionicons name="calendar-outline" size={16} color={theme.inkSoft} />
               </View>
             </AppPressable>
@@ -327,7 +387,7 @@ export default function TransactionSheet({
             <View style={styles.dateQuickRow}>
               <AppPressable
                 style={[styles.dateQuickChip, occurredOn === todayISO() && styles.dateQuickChipActive]}
-                onPress={() => setOccurredOn(todayISO())}
+                onPress={() => escolherData(todayISO())}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: occurredOn === todayISO() }}
                 accessibilityLabel="Data: hoje"
@@ -336,7 +396,7 @@ export default function TransactionSheet({
               </AppPressable>
               <AppPressable
                 style={[styles.dateQuickChip, occurredOn === yISO && styles.dateQuickChipActive]}
-                onPress={() => setOccurredOn(yISO)}
+                onPress={() => escolherData(yISO)}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: occurredOn === yISO }}
                 accessibilityLabel="Data: ontem"
@@ -353,6 +413,7 @@ export default function TransactionSheet({
                 <Text style={[styles.dateQuickText, dataCustomizada && styles.dateQuickTextActive]}>Calendário</Text>
               </AppPressable>
             </View>
+            {!!dica && <Text style={styles.installmentHint}>{dica}</Text>}
           </View>
 
           {!installment && (
@@ -436,6 +497,11 @@ export default function TransactionSheet({
               {formError}
             </Text>
           )}
+          {acaoSecundaria && (
+            <AppPressable onPress={acaoSecundaria.onPress} disabled={salvando} style={styles.acaoSecundariaAlvo} accessibilityRole="button" accessibilityLabel={acaoSecundaria.rotulo}>
+              <Text style={styles.acaoSecundaria}>{acaoSecundaria.rotulo}</Text>
+            </AppPressable>
+          )}
         </Sheet>
       </AppModal>
 
@@ -443,13 +509,13 @@ export default function TransactionSheet({
         visible={datePickerOpen}
         currentISO={occurredOn || todayISO()}
         title={ehBoleto ? 'Vencimento' : 'Data do lançamento'}
-        onSelectDate={(iso) => setOccurredOn(semDataFutura ? dataEscolhidaNoSeletor(iso, todayISO()) : iso)}
+        onSelectDate={(iso) => escolherData(semDataFutura ? dataEscolhidaNoSeletor(iso, todayISO()) : iso)}
         onClose={() => setDatePickerOpen(false)}
       />
 
       <CategoryPickerModal
         visible={catPickerOpen}
-        tipo={type}
+        tipo={somenteSaida ? 'out' : type}
         currentCategory={category}
         onSelectCategory={({ name, color }) => {
           setCategory(name);
@@ -465,6 +531,21 @@ const styles = StyleSheet.create({
   centeredSheet: { width: '100%', maxWidth: 520, borderRadius: radius.xl },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
+  ecoVoz: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: theme.paper,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: theme.rule,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
+  },
+  ecoVozTexto: { flex: 1, color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
+  seloData: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular },
+  acaoSecundaria: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4, fontFamily: fonts.light },
+  acaoSecundariaAlvo: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
   typeBtnOut: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },
@@ -523,6 +604,8 @@ const styles = StyleSheet.create({
   fieldKey: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light },
   fieldVal: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   fieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, flexShrink: 1 },
+  dateFieldVal: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  dateFieldValText: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   dateQuickRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   dateQuickChip: {
     flex: 1,

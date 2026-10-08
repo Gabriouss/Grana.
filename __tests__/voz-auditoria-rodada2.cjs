@@ -109,14 +109,20 @@ load('lib/widget-voz-task.ts', {
   'expo-file-system/legacy': { deleteAsync: async () => {} },
 });
 async function widget(text, expected) {
+  let primeiro;
+  for (const source of ['widget', 'app']) {
   writes = []; reviews = [];
-  await task({ caminho: '/fake.m4a', requestId: text, transcricao: text, source: 'widget' });
+  await task({ caminho: '/fake.m4a', requestId: text, transcricao: text, source });
   if (expected === null) check('widget deveria revisar', text, writes.length, 0);
   else {
     check('widget deveria gravar', text, writes.length, 1);
     if (writes.length === 1) for (const [key, value] of Object.entries(expected)) check('widget ' + key, text, writes[0][key], value);
   }
   console.log('WIDGET', JSON.stringify({ text, writes, reviews }));
+  const resultado = JSON.stringify({ writes, reviews });
+  if (primeiro !== undefined) check('paridade app x widget', text, resultado, primeiro);
+  primeiro = resultado;
+  }
 }
 function screen(file, name, text) {
   const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -137,7 +143,7 @@ function screen(file, name, text) {
     /* A revisão lê a data da fala no núcleo (data na voz, 30/09/2026). */
     dataInicialDaRevisao: require('./data-da-fala-real.cjs').dataInicialDaRevisao,
     formatMoney: value => value, input: text };
-  for (const field of ['VozWalletId', 'EditingBillId', 'Desc', 'Amount', 'Category', 'CatColor', 'DueDate', 'Recurring', 'ModalOpen',
+  for (const field of ['FalaOuvida', 'DicaDaDataVoz', 'VozWalletId', 'EditingBillId', 'Desc', 'Amount', 'Category', 'CatColor', 'DueDate', 'Recurring', 'ModalOpen',
     'EditingTxId', 'TxWalletId', 'TxDesc', 'TxAmount', 'TxCategory', 'TxCatColor', 'TxCardId', 'TxInstallments',
     'TxRecurring', 'TxDate', 'NewTxOpen']) context['set' + field] = value => { state[field] = value; };
   vm.runInNewContext(ts.transpileModule(found.getText(source), {

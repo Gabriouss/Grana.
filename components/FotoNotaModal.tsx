@@ -18,13 +18,11 @@ import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { hapticSuccess, hapticTap } from '@/lib/haptics';
 import { LIMITS } from '@/lib/limits';
-import CategoryChips from './CategoryChips';
+import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import AppPressable from './AppPressable';
 import AppModal, { InsetsDoModal } from './AppModal';
 import Sheet from './Sheet';
 import PermissaoCamera from './PermissaoCamera';
-import DatePickerModal from './DatePickerModal';
-import LinhaDataDaCompra, { dataEscolhidaNoSeletor } from './LinhaDataDaCompra';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
 
@@ -85,7 +83,6 @@ export default function FotoNotaModal({
   const [pagamento, setPagamento] = useState<PaymentMethod | null>(null);
   const [lido, setLido] = useState({ valor: false, descricao: false, data: false, pagamento: false });
   const [dataRecusada, setDataRecusada] = useState(false);
-  const [calendarioAberto, setCalendarioAberto] = useState(false);
   const [cartoes, setCartoes] = useState<CreditCard[]>([]);
   const [cartaoId, setCartaoId] = useState<string | null>(null);
   /* Toque duplo no obturador ou no salvar dispara duas vezes antes de o React
@@ -111,11 +108,11 @@ export default function FotoNotaModal({
     setPagamento(null);
     setLido({ valor: false, descricao: false, data: false, pagamento: false });
     setDataRecusada(false);
-    setCalendarioAberto(false);
     setCartaoId(null);
   }
 
   function fechar() {
+    if (savingRef.current) return;
     sessaoRef.current++;
     resetState();
     onClose();
@@ -196,9 +193,9 @@ export default function FotoNotaModal({
     }
   }
 
-  async function handleSave() {
+  async function handleSave(v: ValoresLancamento) {
     if (savingRef.current) return;
-    const val = parseAmount(amount);
+    const val = parseAmount(v.amount);
     if (!val || val <= 0) {
       Alert.alert('Valor inválido', 'Informe o valor total da nota em R$.');
       return;
@@ -211,19 +208,19 @@ export default function FotoNotaModal({
       return;
     }
 
-    const categoria = categoriaEscolhida(category);
+    const categoria = categoriaEscolhida(v.category, [{ name: v.category, color: v.color }]);
     if (!categoria) {
       Alert.alert(PERGUNTA_CATEGORIA.titulo, PERGUNTA_CATEGORIA.texto);
       return;
     }
     const lancamento = montarLancamentoDaFoto({
       valor: val,
-      descricao: desc,
+      descricao: v.description,
       categoria,
-      data,
+      data: v.occurred_on,
       pagamento,
       cartao: cartoes.find((c) => c.id === cartaoId) ?? null,
-      carteiraAtiva: activeWalletId,
+      carteiraAtiva: v.wallet_id,
       carteiras: wallets,
     });
     if (!lancamento.ok) {
@@ -240,7 +237,7 @@ export default function FotoNotaModal({
     savingRef.current = true;
     setSaving(true);
     try {
-      const { guardado } = await salvarOuGuardarNoAparelho(lancamento.input);
+      const { guardado } = await salvarOuGuardarNoAparelho({ ...lancamento.input, ...(v.recurring ? { recurring: true } : null) });
       if (guardado) {
         marcarLancamentosAlterados();
         Alert.alert('Salvo no aparelho', 'Sem conexão. A nota será sincronizada ao abrir o Grana. com conexão.');
@@ -335,65 +332,27 @@ export default function FotoNotaModal({
     );
   }
 
-  /* ---- etapa 3: confirmação do lançamento ---- */
-
-  return (
-    <>
-    <AppModal visible={visible} animationType={reduzirMovimento ? 'none' : 'slide'} transparent onRequestClose={fechar}>
-      <Sheet centered onClose={fechar}>
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle} accessibilityRole="header">Nota fotografada</Text>
-          <AppPressable onPress={fechar} hitSlop={hitSlopPara(22)} accessibilityRole="button" accessibilityLabel="Fechar">
-            <Ionicons name="close" size={22} color={theme.inkFaint} />
-          </AppPressable>
-        </View>
-
-        {aviso && <Text style={styles.hint}>{aviso}</Text>}
-
-        <View>
-          {lido.descricao && <Text style={styles.lido}>Estabelecimento lido da foto</Text>}
-          <TextInput
-            accessibilityLabel={lido.descricao ? 'Descrição do lançamento, lida da foto' : 'Descrição do lançamento'}
-            maxLength={LIMITS.description}
-            style={styles.descInput}
-            placeholder="Descrição (ex: Supermercado)"
-            placeholderTextColor={theme.inkFaint}
-            value={desc}
-            onChangeText={(t) => {
-              setDesc(t);
-              setLido((l) => ({ ...l, descricao: false }));
-            }}
-          />
-        </View>
-
-        <View>
-          {lido.valor && <Text style={styles.lido}>Valor lido da foto</Text>}
-          <View style={styles.amountRow}>
-            <Text style={styles.amountPrefix}>R$</Text>
-            <TextInput
-              accessibilityLabel={lido.valor ? 'Valor do lançamento em reais, lido da foto' : 'Valor do lançamento em reais'}
-              maxLength={LIMITS.amount}
-              style={styles.amountInput}
-              placeholder="0,00"
-              placeholderTextColor={theme.inkFaint}
-              keyboardType="number-pad"
-              value={amount}
-              onChangeText={(t) => {
-                setAmount(formatMoneyInput(t));
-                setLido((l) => ({ ...l, valor: false }));
-              }}
-              autoFocus={!amount}
-            />
-          </View>
-        </View>
-
-        <LinhaDataDaCompra
-          data={data}
-          selo={lido.data ? 'lida da foto' : null}
-          dica={dataRecusada ? 'A data do cupom não parecia certa, então usei a de hoje. Confira antes de salvar.' : null}
-          onPress={() => setCalendarioAberto(true)}
-        />
-
+  /* Confirmação na mesma janela do lançamento manual. */
+  return <TransactionSheet
+    visible={visible && etapa === 'confirmar'}
+    onClose={fechar}
+    modo="carteira"
+    editando={false}
+    somenteSaida
+    descricaoPadrao="Compra"
+    focoNoValor
+    semDataFutura
+    carteiras={wallets}
+    salvando={saving}
+    onSalvar={handleSave}
+    inicial={{ type: 'out', description: desc, amount, category,
+      color: categoriaEscolhida(category)?.color ?? '', occurred_on: data,
+      recurring: false, installments: 1, card_id: null,
+      wallet_id: activeWalletId === 'total' ? wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? '' : activeWalletId ?? '' }}
+    seloDaData={lido.data ? 'lida da foto' : null}
+    dicaDaData={dataRecusada ? 'A data do cupom não parecia certa, então usei a de hoje. Confira antes de salvar.' : null}
+    avisoDeOrigem={aviso ? <Text style={styles.hint}>{aviso}</Text> : null}
+    camposExtras={<>
         <View style={styles.grupo} accessibilityRole="radiogroup" accessibilityLabel="Forma de pagamento">
           <Text style={styles.rotuloGrupo}>
             {lido.pagamento ? 'Forma de pagamento, lida da foto' : 'Forma de pagamento'}
@@ -441,52 +400,22 @@ export default function FotoNotaModal({
           )
         )}
 
-        <CategoryChips value={category} onChange={setCategory} />
 
-        <AppPressable
-          style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color={theme.paper} />
-          ) : (
-            <Text style={styles.saveBtnText}>Salvar lançamento</Text>
-          )}
-        </AppPressable>
-
-        <AppPressable onPress={resetState}>
-          <Text style={styles.backLink}>Fotografar outra nota</Text>
-        </AppPressable>
-      </Sheet>
-    </AppModal>
-    <DatePickerModal
-      visible={visible && calendarioAberto}
-      currentISO={data}
-      title="Data da compra"
-      onClose={() => setCalendarioAberto(false)}
-      onSelectDate={(iso) => {
-        setData(dataEscolhidaNoSeletor(iso, todayISO()));
-        setDataRecusada(false);
-        setLido((l) => ({ ...l, data: false }));
-        setCalendarioAberto(false);
-      }}
-    />
-    </>
-  );
+    </>}
+    acaoSecundaria={{ rotulo: 'Fotografar outra nota', onPress: () => { if (!savingRef.current) resetState(); } }}
+  />;
 }
 
 const styles = StyleSheet.create({
-  camWrap: { flex: 1, backgroundColor: '#000' },
-
-  overlayTopo: {
+camWrap: { flex: 1, backgroundColor: '#000' },
+overlayTopo: {
     position: 'absolute',
     left: spacing.xl,
     right: spacing.xl,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  botaoRedondo: {
+botaoRedondo: {
     width: touchTarget,
     height: touchTarget,
     borderRadius: touchTarget / 2,
@@ -496,12 +425,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.ruleStrong,
   },
-  botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
-
-  overlayBase: { position: 'absolute', left: spacing.xl, right: spacing.xl, alignItems: 'center', gap: spacing.lg },
-  /* Mesmo véu dos botões redondos do topo. `radius.lg`, e não pílula, porque
-     com fonte grande do sistema a dica quebra em duas linhas. */
-  pilula: {
+botaoRedondoAtivo: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
+overlayBase: { position: 'absolute', left: spacing.xl, right: spacing.xl, alignItems: 'center', gap: spacing.lg },
+pilula: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -511,29 +437,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-  dica: { flexShrink: 1, color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio'), textAlign: 'center', fontFamily: fonts.regular },
-  obturador: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
-  obturadorDesligado: { opacity: 0.4 },
-  obturadorMiolo: { width: 54, height: 54, borderRadius: 27, backgroundColor: theme.ink },
-
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: theme.ink, fontSize: type.titulo, fontFamily: fonts.regular },
-  hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
-
-  descInput: { borderBottomWidth: 1, borderBottomColor: theme.rule, color: theme.ink, fontSize: type.corpo, paddingVertical: 8, fontFamily: fonts.regular },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
-  amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.marca, flex: 1, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
-  saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
-  saveBtnHover: { opacity: 0.88 },
-  saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
-  lido: { color: theme.accent2, fontSize: type.legenda, fontFamily: fonts.regular, marginBottom: 2 },
-  grupo: { gap: spacing.sm },
-  rotuloGrupo: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { minHeight: touchTarget, justifyContent: 'center', borderWidth: 1, borderColor: theme.rule, borderRadius: radius.pill, paddingHorizontal: spacing.md },
-  chipAtivo: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
-  chipTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.regular },
-  chipTextoAtivo: { color: theme.ink },
-  backLink: { color: theme.inkFaint, fontSize: type.nota, textAlign: 'center', paddingVertical: 4, fontFamily: fonts.light },
+dica: { flexShrink: 1, color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio'), textAlign: 'center', fontFamily: fonts.regular },
+obturador: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: theme.ink, alignItems: 'center', justifyContent: 'center' },
+obturadorDesligado: { opacity: 0.4 },
+obturadorMiolo: { width: 54, height: 54, borderRadius: 27, backgroundColor: theme.ink },
+hint: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
+grupo: { gap: spacing.sm },
+rotuloGrupo: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
+chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+chip: { minHeight: touchTarget, justifyContent: 'center', borderWidth: 1, borderColor: theme.rule, borderRadius: radius.pill, paddingHorizontal: spacing.md },
+chipAtivo: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
+chipTexto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.regular },
+chipTextoAtivo: { color: theme.ink }
 });
