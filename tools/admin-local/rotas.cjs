@@ -204,6 +204,7 @@ const GET = {
     if (mes && !/^\d{4}-\d{2}$/.test(mes)) return responderErro(res, 400, 'mes-invalido', 'Use mes=AAAA-MM.');
     return rotaMarketingGet(res, 'calendario', ['calendario', 'listarCalendario', 'listar', 'mes'], [mes || undefined], { itens: [], semData: [] });
   },
+  '/api/marketing/calendario/ensaio': (req, res) => rotaMarketingGet(res, 'meta-ensaio', ['ensaiar'], [], { modo: 'ensaio', realHabilitado: false, itens: [] }),
   '/api/marketing/trafego': (req, res) => rotaMarketingGet(res, 'trafego', ['listarCampanhas', 'listarTrafego', 'listar', 'trafego'], [], { campanhas: [] }),
 };
 
