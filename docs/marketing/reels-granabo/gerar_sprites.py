@@ -35,6 +35,9 @@ def poses():
     out.append(('frente', L3, 0))
     feliz = dict(L3, shape='happy', eye_h=0.11, eye_w=0.11)
     out.append(('feliz', feliz, 0))
+    # olhando para a direita (para o celular), usadas no estilo 'apresentador'
+    out.append(('olha-dir', L3, -28))
+    out.append(('olha-dir-feliz', feliz, -28))
     return out
 
 def render_um(args):

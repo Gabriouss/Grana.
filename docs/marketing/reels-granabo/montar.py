@@ -77,13 +77,25 @@ def desenha_texto(fr, texto, tam, entra, passo, dur_p, sobe, x0, y0, centro=Fals
     fr.alpha_composite(camada)
 
 # ---------- mascote ----------
+BLENDER = os.path.join(AQUI, 'blender')
+def quadro_blender(t):
+    """Quadro do Granabô renderizado no Blender para o instante t (trechos A e B)."""
+    f = round(t * FPS)
+    for trecho, ini, fim in (('A', 117, 252), ('B', 558, 657)):
+        if ini <= f <= fim or (trecho == 'A' and 252 < f <= 260):
+            caminho = os.path.join(BLENDER, f'{trecho}_{min(f, fim):04d}.png')
+            if os.path.exists(caminho):
+                return Image.open(caminho).convert('RGBA')
+    return None
+
 _cache = {}
 def sprite(nome):
     if nome not in _cache: _cache[nome] = Image.open(os.path.join(SPR, nome + '.png')).convert('RGBA')
     return _cache[nome]
 
-def cola_mascote(fr, nome, cx, cy, escala=1.0, alfa=1.0, sombra=True, chao=None):
-    sp = sprite(nome)
+def cola_mascote(fr, nome, cx, cy, escala=1.0, alfa=1.0, sombra=True, chao=None, t=None):
+    sp = quadro_blender(t) if t is not None else None
+    if sp is None: sp = sprite(nome)
     if escala != 1.0:
         n = max(2, int(sp.width * escala)); sp = sp.resize((n, n), Image.LANCZOS)
     if alfa < 1:
@@ -181,7 +193,7 @@ def quadro(t):
             nome = 'frente'
             k = int((t - 5.95) * FPS)
             if 0 <= k < 5: nome = ['piscada-0', 'piscada-1', 'piscada-2', 'piscada-1', 'piscada-0'][k]
-        if 6.2 <= t < 7.6: cy = 900 - 6 * math.sin((t - 6.2) / 3.0 * 2 * math.pi)
+        if 6.2 <= t < 7.6 and quadro_blender(t) is None: cy = 900 - 6 * math.sin((t - 6.2) / 3.0 * 2 * math.pi)
         if t >= 7.6:
             q = easeio((t - 7.6) / 0.8)
             alvo_x, alvo_y = 540, CEL['y'] + TY1 - 150 + 16   # disco da barra, celular já assentado
@@ -192,7 +204,7 @@ def quadro(t):
         if t >= 7.6:
             dyc = 1300 * (1 - easeout((t - 7.6) / 0.6))
             celular(fr, t, 'CENA A GRAVAR NA M1', 'Consulta ao Granabô\n"quanto eu gastei em\nAlimentação esse mês?"\nresposta: R$ 103,05', dy=dyc)
-        cola_mascote(fr, nome, cx, cy, esc, alfa, sombra=t < 7.8)
+        cola_mascote(fr, nome, cx, cy, esc, alfa, sombra=t < 7.8, t=t)
     # título 1
     if 5.8 <= t < 8.0:
         desenha_texto(fr, 'Esse é o *Granabô.*', 59, entra=5.8, passo=0.07, dur_p=0.25, sobe=12,
@@ -214,11 +226,14 @@ def quadro(t):
         cy = 900
         if t < 19.13: cy = 2300 + (840 - 2300) * easeout((t - 18.6) / 0.53)
         elif t < 19.5: cy = 840 + 60 * easeio((t - 19.13) / 0.37)
-        else: cy = 900 - 6 * math.sin((t - 19.5) / 3.0 * 2 * math.pi)
+        elif quadro_blender(t) is None: cy = 900 - 6 * math.sin((t - 19.5) / 3.0 * 2 * math.pi)
         alfa = 1 - lin((t - 21.5) / 0.4)
-        q = lin((t - 19.6) / 0.2)
-        cola_mascote(fr, 'frente', 540, cy, 1, alfa * (1 - q), sombra=q < 0.5)
-        if q > 0: cola_mascote(fr, 'feliz', 540, cy, 1, alfa * q, sombra=q >= 0.5)
+        if quadro_blender(t) is not None:
+            cola_mascote(fr, 'frente', 540, cy, 1, alfa, t=t)
+        else:
+            q = lin((t - 19.6) / 0.2)
+            cola_mascote(fr, 'frente', 540, cy, 1, alfa * (1 - q), sombra=q < 0.5)
+            if q > 0: cola_mascote(fr, 'feliz', 540, cy, 1, alfa * q, sombra=q >= 0.5)
         desenha_texto(fr, 'Ele cuida das *contas.* Você vive.', 59, entra=19.3, passo=0.07, dur_p=0.25, sobe=12,
                       x0=0, y0=130, centro=True, sai=21.5, sai_dur=0.4, t=t, largura=700, entrelinha=76)
     # 8. fecho
