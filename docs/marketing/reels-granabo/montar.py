@@ -217,10 +217,10 @@ def quadro(t):
         else: cy = 900 - 6 * math.sin((t - 19.5) / 3.0 * 2 * math.pi)
         alfa = 1 - lin((t - 21.5) / 0.4)
         q = lin((t - 19.6) / 0.2)
-        cola_mascote(fr, 'frente', 540, cy, 1, alfa * (1 - q))
-        if q > 0: cola_mascote(fr, 'feliz', 540, cy, 1, alfa * q, sombra=False)
+        cola_mascote(fr, 'frente', 540, cy, 1, alfa * (1 - q), sombra=q < 0.5)
+        if q > 0: cola_mascote(fr, 'feliz', 540, cy, 1, alfa * q, sombra=q >= 0.5)
         desenha_texto(fr, 'Ele cuida das *contas.* Você vive.', 59, entra=19.3, passo=0.07, dur_p=0.25, sobe=12,
-                      x0=0, y0=130, centro=True, sai=21.5, sai_dur=0.4, t=t, largura=1000, entrelinha=76)
+                      x0=0, y0=130, centro=True, sai=21.5, sai_dur=0.4, t=t, largura=700, entrelinha=76)
     # 8. fecho
     if t >= 21.9:
         a = easeout((t - 21.9) / 0.47)
