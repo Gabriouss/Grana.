@@ -149,3 +149,5 @@ supabase/.temp/
 # portáveis versionados acima continuam rastreáveis, mas essas cópias não são
 # estado compartilhado do projeto.
 /.maestri/roles/*/
+
+__pycache__/

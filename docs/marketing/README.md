@@ -32,6 +32,7 @@ As subpastas de apoio separam o tipo de material: briefings, pesquisas, relatori
 - [Semana 38 · 2026-09-14 a 2026-09-20](2026-09/semana-38-2026-09-14-a-2026-09-20/INDICE.md)
 - [Semana 39 · 2026-09-21 a 2026-09-27](2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md)
 - [Semana 40 · 2026-09-28 a 2026-10-04](2026-10/semana-40-2026-09-28-a-2026-10-04/INDICE.md)
+- [Semana 41 · 2026-10-05 a 2026-10-11](2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md)
 
 ## Regra para material futuro
 
@@ -41,6 +42,10 @@ As subpastas de apoio separam o tipo de material: briefings, pesquisas, relatori
 4. Briefing, pesquisa, relatório, referência, ferramenta, evidência de QA e captura-fonte ficam em apoio, mesmo quando associados a uma peça aprovada.
 5. Atualize o índice da semana e todos os links, manifests e scripts ativos no mesmo trabalho. Registre separadamente revisão, QA, aceite do autor e publicação.
 6. Não atribua responsável pela autoria a partir do autor do commit ou do revisor; registre somente o responsável explicitamente indicado na fonte.
+
+## Material ainda fora das pastas por semana
+
+O acervo trazido pela M2 em 07 e 08/10/2026 (guia de produção, `arsenal/`, `identidade-sonora/`, `stories-estilo-referencias/`, `motion-desistiu/`, `r5-colar-pix/`, `material-video-2026-09-26/`, `reels-granabo/`, o roteiro do Reels do Granabô, `meta-configuracao-checklist.md` e três pastas novas de `funil-criativos-flat-2026-09/`) continua na raiz de docs/marketing. São ferramentas e guias sem semana própria, material com scripts de caminho relativo em produção na M2, ou peças sem data de produção nem aceite registrados. A classificação depende de decisão do autor; não mova por conta própria. `painel/` é ferramenta permanente e também fica na raiz.
 
 Esta migração organiza os 136 arquivos que já estavam em docs/marketing. Materiais fora do repositório, inclusive os que estão em E:/Grana-temporarios, não fazem parte desta árvore nem foram movidos.
 

@@ -138,6 +138,45 @@ no `context.md`.
 
 ---
 
+# ACERVO DE MARKETING — USAR EM TODA PRODUÇÃO DE MATERIAL DO GRANA. (07/10/2026)
+
+> **Pedido do autor em 07/10/2026:** este acervo existe e deve ser utilizado na
+> produção de todo material de marketing do Grana. Fica logo abaixo do alerta
+> de segurança.
+
+Antes de produzir qualquer estático, carrossel, Story, Reel, motion, landing
+ou peça com o mascote, comece por aqui, e não refaça do zero o que já existe:
+
+- **`docs/marketing/GUIA-DE-PRODUCAO-DE-CRIATIVOS.md`**: leitura obrigatória
+  antes de qualquer criativo. Diz o que usar em cada caso e traz a regra do
+  mockup realista.
+- **`docs/marketing/arsenal/`**: 28 ícones do app (Ionicons) em 5 estilos e 21
+  notificações com texto real do código; `gerar.py` cria mais. Não inventar
+  ícone nem notificação que o app não tenha.
+- **`docs/mascote/`**: prancha de construção do Granabô (versão W3 com boca
+  L3, escolhida pelo autor) e os scripts que a geram.
+- **Estilos e peças aprovados:** `stories-estilo-referencias/`,
+  `funil-criativos-flat-2026-09/`, `r5-colar-pix/`, `motion-desistiu/`,
+  `material-final-2026-09-30/` (copys finais e inventário).
+- **Som:** `identidade-sonora/`. **Vídeo:** `guia-de-estilo-de-video.md`.
+- **Planejamento:** `painel/` (calendário, aprovações, tráfego) e
+  `meta-configuracao-checklist.md`.
+- **Marca:** logotipo e símbolo sempre de `design-system/marca/`.
+
+**Caminhos depois da reconciliação com as pastas por semana (M1, 07/10/2026).**
+A `main` da M1 já tinha reorganizado `docs/marketing` por semana ISO (regra 25
+do `AGENTS.md`; índice em `docs/marketing/README.md`). Do que este bloco cita,
+mudaram de lugar: as revisões 01 a 05 de `funil-criativos-flat-2026-09/` (semanas
+37 a 39), `material-final-2026-09-30/` e `guia-de-estilo-de-video.md` (semana 40,
+este em `apoio/referencias/`). O restante do acervo continua na raiz de
+`docs/marketing`, onde a M2 pôs, até o autor decidir a classificação.
+
+O acervo foi produzido na branch `claude/cool-einstein-c63bq0` entre 25/09 e
+07/10/2026 e trazido para a `main` em 07/10/2026 (só `docs/marketing/` e
+`docs/mascote/`; o código de voz daquela branch continua fora da `main`).
+
+---
+
 # 05/10/2026 (M1): migração do acervo de marketing para semanas ISO
 
 **Pedido do autor:** organizar os 136 arquivos já em `docs/marketing` sob `AAAA-MM/semana-NN-AAAA-MM-DD-a-AAAA-MM-DD/{para-aprovacao,aprovados,historico,apoio}`, pela semana ISO de segunda a domingo e mês da quinta-feira. A data-base é publicação prevista; sem ela, produção/criação. Criar README e índice por semana; atualizar referências ativas. Preservar os três diffs locais; não mover `E:\Grana-temporarios`, não atribuir autoria, e não fazer commit/push antes da revisão.
@@ -14544,3 +14583,13 @@ Estado operacional adicional da M2: o painel não foi iniciado. %APPDATA%\grana-
 **Trava de custo.** A exigência é não iniciar cobrança nova: não contratar nem mudar para plano pago, não habilitar billing por uso e não criar recursos pagos. O uso do mesmo projeto Vercel evita uma nova assinatura de projeto, mas não prova custo incremental zero; a tela e as consultas podem aumentar uso. A Vercel Hobby é restrita a uso pessoal/não comercial e o Pro pode cobrar uso acima dos créditos incluídos ([preços da Vercel](https://vercel.com/pricing), [planos Hobby](https://vercel.com/docs/plans/hobby)). Antes de implementar ou publicar, a M1 deve confirmar no painel da Vercel o plano da equipe, o projeto ligado ao domínio, o orçamento/limite de gastos e se a rota e o backend propostos não geram cobrança adicional. Se não for possível garantir custo adicional zero, manter o painel apenas local. A discussão tratou o Supabase atual como Free, mas o plano e o consumo atuais também não foram conferidos no painel; usar somente o projeto e a cota existentes, sem upgrade. No Free, exceder cota restringe o serviço em vez de faturar excedentes ([controle de custos do Supabase](https://supabase.com/docs/guides/platform/cost-control)).
 
 **Não verificado / próximo passo da M1.** Nenhum código, esquema, usuário admin web, configuração MFA, DNS, recurso de hospedagem ou deploy foi alterado nesta sessão; nenhuma suíte de testes foi executada. Antes da implementação, conferir plano, domínio, uso e limites de gasto na Vercel; conferir plano e consumo do Supabase; então desenhar e revisar a autorização server-side e o acesso MFA. Não colocar segredo em arquivo versionado, bundle web ou registro. Fontes de segurança: [MFA TOTP do Supabase](https://supabase.com/docs/guides/auth/auth-mfa/totp).
+
+## 07/10/2026 — Mascote Granabô: prancha de construção (sessão na nuvem)
+
+- Nova pasta `docs/mascote/` com a prancha de construção do Granabô em quatro
+  vistas e o código Python que gera as imagens (`numpy` + `Pillow`, sem IA
+  generativa). Detalhes e passo a passo em `docs/mascote/README.md`.
+- Versão escolhida pelo autor: W3 (ponta do G girada 14°, olhos grandes,
+  bordas arredondadas, menta leitoso) com boca L3 → `granabo-prancha-w3.png`.
+- Nada no app mudou. Não foi verificado no vault (sem acesso da nuvem): a nota
+  de sessão no Obsidian (regra 12) fica pendente para a M1.

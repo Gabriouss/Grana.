@@ -39,6 +39,9 @@ Legenda: **[M]** medido nos quadros ou no áudio; **[C]** calibrado (ajuste de c
 **Só há um corte seco de verdade (o flash, 10,30 s).** O resto é fade, dissolve ou movimento contínuo. A pontuação de cena do `ffmpeg` fica abaixo de 0,06 em tudo, exceto 0,53 no flash.
 
 ## 3. Texto [M, C]
+
+> **Atualização do autor (08/10/2026):** a palavra de destaque em menta (`#ADFBE3`) passa a usar o peso **Regular** da Neue Machina; o resto do texto continua em Light. O vídeo de referência usa Light em tudo, e esta regra prevalece sobre a medição abaixo para vídeos novos.
+
 - **Fonte:** Neue Machina **Light** (peso 300) em tudo, também nos destaques. Sem negrito. [C: largura das palavras na fonte real bate com a medida dentro de 3 px]
 - **Bloco inicial:** corpo ≈ **82,5 px**, tracking **+0,05 em (≈ 4 px)**, entrelinha ≈ **103 px**, alinhado à esquerda em **x = 84**, caixa de 800 px, 5 linhas ocupando y = 720 a 1200 (centro ≈ 960).
 - **Título de cena:** corpo ≈ **59 px (58,6 a 60)**, tracking ≈ +0,05 a 0,066 em, **centralizado** em x = 540, tinta em y = 130 a 206.
