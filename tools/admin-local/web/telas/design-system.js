@@ -92,7 +92,7 @@ const PREVIEWS = [
 ];
 
 const SECOES = [
-  ['ds-marca', 'Marca'], ['ds-cores', 'Cores'], ['ds-tipografia', 'Tipografia'], ['ds-espaco', 'Espaço e forma'],
+  ['ds-marca', 'Marca'], ['ds-mascote', 'Mascote Granabô'], ['ds-cores', 'Cores'], ['ds-tipografia', 'Tipografia'], ['ds-espaco', 'Espaço e forma'],
   ['ds-elevacao', 'Elevação'], ['ds-movimento', 'Movimento'], ['ds-componentes', 'Componentes'], ['ds-voz', 'Tom de voz'],
   ['ds-criativo', 'Criativo e mockups'], ['ds-referencias', 'Referências e auditoria'],
 ];
@@ -128,6 +128,7 @@ export async function montar(raiz, ctx) {
   const limpezas = [];
   corpo.append(
     secaoMarca(h, tokens),
+    secaoMascote(h),
     secaoCores(h, tokens),
     secaoTipografia(h, tokens),
     secaoEspaco(h),
@@ -237,6 +238,54 @@ function secaoMarca(h, tokens) {
 
 function regra(h, titulo, texto) {
   return h('li', null, h('strong', { texto: titulo }), texto);
+}
+
+// ---------------------------------------------------------------------------
+// Mascote
+// Espelha a seção "Mascote Granabô" de design-system/pagina/design-system.src.html.
+
+function secaoMascote(h) {
+  const legenda = 'Prancha escolhida, quatro vistas (0°, 45°, 90° e 180°), câmera ortográfica.';
+  const img = h('img', { src: '/design-system/previews-img/granabo-prancha-w3.webp', alt: 'Prancha do Granabô com as quatro vistas: 0, 45, 90 e 180 graus', loading: 'lazy' });
+  // a prancha é larga (1100×402): inteira, sem o recorte 16:9 dos aparelhos vazios
+  img.style.setProperty('aspect-ratio', '1100 / 402');
+  img.style.setProperty('object-fit', 'contain');
+  const prancha = h('div', { class: 'ds-mockups' },
+    h('figure', null, img,
+      h('figcaption', null, legenda, h('br'), h('span', { class: 'mono fraco', texto: 'docs/mascote/granabo-prancha-w3.png' }))));
+  // A animação do Blender (animar.py) só existe renderizada dentro desta prévia: os quadros soltos ficam fora do git.
+  const video = h('video', { src: '/docs/marketing/reels-granabo/granabo-reels-previa.mp4#t=0.1', controls: true, preload: 'metadata', playsinline: true, 'aria-label': 'Prévia de Reels com o Granabô animado no Blender, 25 segundos' });
+  video.style.setProperty('width', '100%');
+  video.style.setProperty('max-width', '320px');
+  video.style.setProperty('aspect-ratio', '9 / 16');
+  video.style.setProperty('border-radius', 'var(--r-lg)');
+  video.style.setProperty('background', 'var(--paper-deep)');
+  const movimento = h('div', { class: 'ds-mockups' },
+    h('figure', null, video,
+      h('figcaption', null, 'Animação feita no Blender (giro, olhos ligando, piscada, flutuação), montada numa prévia de Reels de 25 s. É prévia, sem aceite e sem publicação.',
+        h('br'), h('span', { class: 'mono fraco', texto: 'docs/marketing/reels-granabo/granabo-reels-previa.mp4 · docs/mascote/blender/animar.py' }))));
+  return secao(h, 'ds-mascote', 'Mascote Granabô', 'O Granabô é o "G." da marca em volume: uma esfera com a carcaça do G oficial, olhos e um sorriso gravado na barra. É um modelo 3D feito por código, então todas as vistas são coerentes entre si. A fonte é a única verdade; as imagens são renders dela.',
+    prancha,
+    sub(h, 'Versão escolhida pelo autor'),
+    h('ul', { class: 'ds-regras' },
+      regra(h, 'W3', 'Ponta de cima do G girada 14° para abrir a faixa dos olhos, olhos grandes e ovais, bordas arredondadas, menta leitoso.'),
+      regra(h, 'L3', 'Sorriso em arco, pontas arredondadas, gravado na barra do G.'),
+      regra(h, 'Cor', 'Menta leitoso sobre o petróleo do app. Segue as cores da marca; não há cor nova fora dos tokens.')),
+    sub(h, 'Pode'),
+    h('ul', { class: 'ds-regras' },
+      regra(h, 'Inteiro', 'Aparecer inteiro, com margem segura, em fundo escuro como o app.'),
+      regra(h, 'Referência de desenho', 'Usar as vistas da prancha como referência.'),
+      regra(h, 'Novas poses pelo modelo', 'Gerar poses novas por docs/mascote/blender/construir.py e animar.py.')),
+    sub(h, 'Não pode'),
+    h('ul', { class: 'ds-regras' },
+      regra(h, 'IA generativa', 'Ser redesenhado ou regenerado por IA.'),
+      regra(h, 'Trocar a carcaça', 'O G vem de logo-g.png; mexer nele muda todas as vistas.'),
+      regra(h, 'Substituir o logotipo', 'O logotipo continua sendo o gradiente oficial.'),
+      regra(h, 'Cortado', 'Aparecer cortado na borda de peça estática.')),
+    h('p', { class: 'ds-nota', texto: 'Limitação conhecida: leve ondulação na parte de baixo da ponta superior do G, na vista frontal. É limite do render. A prancha é referência, e a arte final sai do modelo.' }),
+    sub(h, 'Em movimento'),
+    movimento,
+    h('p', { class: 'ds-nota', texto: 'Fonte: docs/mascote/ (modelo em Python, pranchas e histórico das escolhas) e docs/mascote/blender/. Para gerar a prancha: python docs/mascote/gerar_prancha.py.' }));
 }
 
 // ---------------------------------------------------------------------------

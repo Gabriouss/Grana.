@@ -315,6 +315,7 @@ const MONTAGENS = [
   { prefixo: '/design-system/tokens/', raiz: path.join(RAIZ, 'design-system', 'tokens'), ext: new Set(['.css', '.json']) },
   { prefixo: '/design-system/pagina/', raiz: path.join(RAIZ, 'design-system', 'pagina'), ext: new Set(['.html']) },
   { prefixo: '/design-system/previews/', raiz: path.join(RAIZ, 'design-system', 'previews'), ext: new Set(['.html']) },
+  { prefixo: '/design-system/previews-img/', raiz: path.join(RAIZ, 'design-system', 'previews-img'), ext: new Set(['.webp']) },
   { prefixo: '/design-system/marketing-mockups/', raiz: path.join(RAIZ, 'design-system', 'marketing-mockups'), ext: new Set(['.png', '.jpg', '.jpeg', '.webp']) },
   { prefixo: '/assets/fonts/', raiz: path.join(RAIZ, 'assets', 'fonts'), ext: new Set(['.otf', '.ttf', '.woff', '.woff2']), publico: true },
   // .md e .txt para a prévia de peças de texto (F4 do Lumen): saem como text/plain em sandbox.
