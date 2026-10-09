@@ -4,6 +4,14 @@
 import { tituloPeca, rotuloSemana, rotuloEstado, trilha } from './_pecas.js';
 import { montarFila, secaoAjustesDaPeca, seloDoAjuste } from './ajustes.js';
 
+// Mesmos rótulos de estado usados no detalhe dos pedidos em ajustes.js.
+const ESTADOS_AJUSTE = {
+  novo: 'Recebido, aguardando entrega', 'em-correcao': 'Em correção',
+  'corrigido-aguardando-aceite': 'Corrigido, aguardando seu aceite', aceito: 'Aceito nesta versão',
+  'falha-de-envio': 'Falha na entrega', 'aguardando-aprovacao-de-custo': 'Pausado para aprovação de custo',
+  desatualizado: 'Versão desatualizada', 'precisa-de-atencao': 'Precisa de atenção',
+};
+
 export async function montar(raiz, ctx) {
   const { h } = ctx;
   ctx.cabecalho(raiz, 'Aprovação', 'Aprovar registra o seu aceite desta versão exata. Nada é publicado nem agendado no Instagram.', [
@@ -72,7 +80,7 @@ export async function montar(raiz, ctx) {
       h('dt', { texto: 'Versão' }), h('dd', { class: 'mono', texto: String(p.versao || '').slice(0, 12) }),
       h('dt', { texto: 'Arquivo' }), h('dd', { class: 'mono quebra', texto: p.caminho }),
       p.aceite ? [h('dt', { texto: 'Aceite' }), h('dd', { texto: `${ctx.formatar.dataHora(p.aceite.aprovadoEm)}${p.aceite.evidencia ? `, ${p.aceite.evidencia}` : ''}` })] : null,
-      p.ajuste ? [h('dt', { texto: 'Ajuste pedido' }), h('dd', { texto: `${p.ajuste.motivo || ''}${p.ajuste.pedidoEm ? ` (${ctx.formatar.dataHora(p.ajuste.pedidoEm)})` : ''}` })] : null));
+      p.ajuste ? [h('dt', { texto: 'Ajuste pedido' }), h('dd', { texto: `${Object.hasOwn(ESTADOS_AJUSTE, p.ajuste.estado) ? ESTADOS_AJUSTE[p.ajuste.estado] : 'Estado não reconhecido. Atualize antes de agir.'}${p.ajuste.pedidoEm ? ` (${ctx.formatar.dataHora(p.ajuste.pedidoEm)})` : ''}` })] : null));
     const ajustesDaPeca = secaoAjustesDaPeca(ctx, pedidos, p.id);
     if (ajustesDaPeca) detalhe.appendChild(ajustesDaPeca);
     if (p.aceiteDeVersaoAnterior) detalhe.appendChild(ctx.alerta('atencao', 'Uma versão anterior desta peça foi aprovada, mas o arquivo mudou depois. O aceite antigo não vale para esta versão.'));
