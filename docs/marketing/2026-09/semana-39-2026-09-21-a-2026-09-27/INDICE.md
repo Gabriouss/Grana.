@@ -27,13 +27,17 @@ Mês-pai 2026-09: a quinta-feira foi 2026-09-24. Revisões 04 e 05 foram incluí
 ## Pastas de status
 
 - para-aprovacao: E01, E02, E05 e E06 da revisão 06 (`para-aprovacao/pecas/funil/revisao-06/`).
-- aprovados: vazia; .gitkeep mantém a pasta no Git. Nenhum aceite expresso do autor para esses arquivos foi localizado.
+- aprovados: `aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4` (ver Aceites). Nenhum outro arquivo tem aceite expresso do autor localizado.
 - historico: revisão 04 e revisão 05 de E01, E02, E05 e E06 (`historico/pecas/funil/revisao-05/`), substituída pela 06.
 - apoio: mockups, capturas, relatórios de verificação, pré-vias, briefs, manifest e CSV.
 
 ## Regra futura
 
 Use data prevista de publicação; sem data, produção/criação. A primeira inclusão no Git em 21/09 é a evidência de criação de revisão 04/05, não de autoria. Consulte [a regra comum](../../README.md). Um GO condicionado ou ajuste de revisor nunca move uma peça para aprovados.
+
+## Aguardando narração
+
+- 09/10/2026: `para-aprovacao/pecas/reels/grana-r5-colar-pix-v6.mp4` (R5, colar Pix, v6), copiado do vault sem alterar o original. Semana pela data de produção do arquivo (26/09/2026), sem publicação prevista. Autor: "esse aqui também, precisa apenas da narração". **Falta a narração**; nenhuma foi gerada (regras 21 e 24). Não é peça aprovada: sem aceite do autor para esta versão. Fonte de render em `docs/marketing/r5-colar-pix/`.
 
 ## Aceites registrados no painel local
 
@@ -51,3 +55,4 @@ Correção pronta, aguardando aceite do autor. Os quatro pedidos de 07/10 sobre 
 | E02 | 4396fe4e863d | c089529d7daf |
 | E05 | d43a0cfde4616 | 7ecae57067dc |
 | E06 | 9ec5b2ded738 | da00f8ec9ddb |
+- 25/09/2026: aceite pelo autor do vídeo `aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4` (motion "desistiu porque cansa", 20 s, dados fictícios). Evidência: regra 23 do `AGENTS.md` ("aprovado em 25/09/2026", referência de estilo de todos os vídeos) e a frase do autor em 09/10/2026: "Temos outro reels aprovado, já: grana-motion-desistiu-foto-da-nota.mp4, esse aqui que está no vault". Cópia do arquivo do vault, original intacto; fonte de render em `docs/marketing/motion-desistiu/`. Semana 39 pela data de produção/aceite, sem publicação prevista registrada. Aceite não é publicação e não autoriza prometer a função mostrada antes de build pública e QA.
