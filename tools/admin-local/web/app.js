@@ -808,6 +808,7 @@ function lerHash() {
 
 let limpezaAtual = null;
 let geracao = 0;
+let rotaMostrada = null;
 
 async function renderizar() {
   if (bloqueado || (acesso && !podeDesenhar())) return;
@@ -822,6 +823,8 @@ async function renderizar() {
     else a.removeAttribute('aria-current');
   }
   fecharMenu();
+  // Aviso de erro fica até a pessoa fechar, mas é da tela que o gerou: ao trocar de tela some.
+  if (rota !== rotaMostrada) { for (const e of document.querySelectorAll('.avisos .aviso-erro')) e.remove(); rotaMostrada = rota; }
   document.title = `${def.titulo} · Grana. Administração local`;
 
   if (typeof limpezaAtual === 'function') { try { limpezaAtual(); } catch (e) { console.error('[painel] limpeza da tela falhou', e); } }

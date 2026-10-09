@@ -16,7 +16,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
     acao: async (url, corpo) => { calls.push(['POST', url, corpo]); if (resolver) return new Promise((r) => { resolver = r; }); },
     aviso: (t, tipo) => avisos.push([t, tipo]),
   };
-  const root = node('main'), sandbox = { root, ctx };
+  const logs = [], root = node('main'), sandbox = { root, ctx, console: { warn: (...a) => logs.push(a) } };
   vm.runInNewContext(source, sandbox);
   const render = async () => { root.replaceChildren(); await vm.runInNewContext('montarFila(root,ctx)', sandbox); return text(root); };
   assert.ok((await render()).includes('Nenhum pedido'));
@@ -48,6 +48,16 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   root.replaceChildren(); await vm.runInNewContext('montar(root,ctx)', sandbox);
   const generico = walk(root).find((n) => n.attrs?.texto === 'Aceite pela fila de ajustes');
   assert.ok(generico?.attrs.disabled, 'pedido aberto não é contornado pela aprovação genérica');
+  // Toast de erro: texto humano, sem codigo interno cru; o codigo vai so para o console.
+  pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio', tentativas: 1 });
+  ctx.api = async () => ({ dados: { pedidos, remoto: { status: 'ausente' } } });
+  for (const [codigo, trecho] of [['confirmacao-invalida', 'código antigo. Feche a janela "Grana. Admin"'], ['versao-mudou', 'A ação não foi confirmada. Atualize os recibos']]) {
+    avisos.length = 0; logs.length = 0; ctx.acao = async () => { throw Object.assign(new Error('x'), { codigo }); };
+    await render(); const b = walk(root).find((n) => n.tag === 'button'); await b.attrs.onclick();
+    assert.ok(avisos.at(-1)[0].includes(trecho) && avisos.at(-1)[1] === 'erro', codigo);
+    assert.ok(!avisos.at(-1)[0].includes(codigo) && !/(w+-w+)/.test(avisos.at(-1)[0]), 'sem codigo cru no toast');
+    assert.deepEqual(JSON.parse(JSON.stringify(logs)), [['[ajustes]', codigo]]);
+  }
   // Entrega: vigia parado, servidor com codigo antigo e motivo da falha (sem consumir tentativa).
   pedidos.splice(0, pedidos.length, { ...base, estado: 'novo', tentativas: 0 });
   extra = { vigia: { ativo: false, ultimoBatimento: null }, servidor: { desatualizado: true } };

@@ -80,6 +80,10 @@ export async function agir(ctx, pedido, tipo, botao) {
     await ctx.acao(`/api/marketing/ajustes/${tipo}`, corpo);
     if (!ctx.obsoleta()) { ctx.aviso(tipo === 'aceitar' ? 'Aceite registrado para esta versão.' : 'Nova tentativa registrada. A entrega ainda precisa de confirmação.', 'ok'); ctx.recarregar(); }
   } catch (err) {
-    if (!ctx.obsoleta()) ctx.aviso(`A ação não foi confirmada (${err.codigo || 'falha'}). ${err.codigo === 'confirmacao-invalida' ? 'O painel pode estar rodando código antigo: feche a janela "Grana. Admin" e abra pelo atalho. ' : ''}Atualize os recibos antes de repetir.`, 'erro');
+    console.warn('[ajustes]', err.codigo || 'falha');
+    // O código interno fica no console; a pessoa lê o que fazer.
+    if (!ctx.obsoleta()) ctx.aviso(err.codigo === 'confirmacao-invalida'
+      ? 'O servidor recusou a confirmação: o painel pode estar rodando código antigo. Feche a janela "Grana. Admin" e abra pelo atalho.'
+      : 'A ação não foi confirmada. Atualize os recibos antes de repetir.', 'erro');
   } finally { if (!ctx.obsoleta()) botao.disabled = false; }
 }

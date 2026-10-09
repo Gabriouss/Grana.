@@ -200,7 +200,7 @@ const GET = {
     semana: url.searchParams.get('semana') || undefined,
     tipo: url.searchParams.get('tipo') || undefined,
   }], { pecas: [], semanas: [], total: 0 }),
-  '/api/marketing/ajustes': (req, res) => responderOk(res, { pedidos: marketing('ajustes-fila').fila.listar().map(pedidoPublico), armazenamento: 'privado-local', remoto: false,
+  '/api/marketing/ajustes': (req, res) => responderOk(res, { pedidos: pedidosComTitulo(marketing('ajustes-fila').fila.listar()), armazenamento: 'privado-local', remoto: false,
     vigia: marketing('ajustes-fila').vigiaEstado(), servidor: { desatualizado: require('./versao-codigo.cjs').desatualizado() } }),
   '/api/marketing/feed': (req, res) => rotaMarketingGet(res, 'catalogo', ['feed'], [], { pecas: [], total: 0 }),
   '/api/marketing/documento': (req, res) => rotaMarketingGet(res, 'catalogo', ['documento'], [], { markdown: '' }),
@@ -216,6 +216,18 @@ const GET = {
 
 // ---------- ações (POST, login completo + CSRF) ----------
 
+// O autor reconhece o pedido pelo nome da peça, não pelo identificador: resolve o título uma vez por peça.
+function pedidosComTitulo(lista) {
+  const titulos = new Map();
+  const titulo = (id) => {
+    if (!titulos.has(id)) {
+      try { const t = marketing('catalogo').obterPeca(RAIZ_DADOS, id).titulo; titulos.set(id, typeof t === 'string' && t.trim() ? t.trim().slice(0, 120) : null); }
+      catch { titulos.set(id, null); }
+    }
+    return titulos.get(id);
+  };
+  return lista.map((p) => ({ ...pedidoPublico(p), pecaTitulo: titulo(p.pecaId) }));
+}
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover)$/;
 const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo']);
 const ACOES_BUILD = {
