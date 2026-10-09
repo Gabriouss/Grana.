@@ -1214,7 +1214,22 @@ button.cal-item { cursor: pointer; }
 }
 
 /* Tráfego pago */
-.grade-campanhas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: var(--s-md); }
+/* auto-fit: com poucos cartões eles se repartem a largura, em vez de deixar colunas vazias à direita. */
+.grade-campanhas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr)); gap: var(--s-md); }
+.campanha .cartao-topo { flex-wrap: wrap; }
+.campanha .cartao-topo > .selo { flex: none; }
+.campanha .cartao-titulo { flex: 1 1 12ch; min-width: 0; overflow-wrap: anywhere; }
+.campanha-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+  gap: var(--s-md) var(--s-lg);
+  margin: 0;
+  font-size: var(--t-nota);
+}
+.campanha-campo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.campanha-campo-longo { grid-column: 1 / -1; }
+.campanha-campo dt { color: var(--ink-faint); font-weight: 300; }
+.campanha-campo dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
 .campanha {
   display: flex;
   flex-direction: column;

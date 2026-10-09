@@ -90,6 +90,10 @@ export async function montar(raiz, ctx) {
   }
 }
 
+function campo(h, rotulo, valor, { longo = false, num = false } = {}) {
+  return h('div', { class: `campanha-campo${longo ? ' campanha-campo-longo' : ''}` }, h('dt', { texto: rotulo }), h('dd', { class: num ? 'num' : null, texto: valor }));
+}
+
 function cartaoCampanha(ctx, c, disponiveis) {
   const { h } = ctx;
   const periodo = c.periodo || {};
@@ -100,13 +104,14 @@ function cartaoCampanha(ctx, c, disponiveis) {
   return h('article', { class: 'cartao campanha' },
     h('div', { class: 'cartao-topo' }, h('h3', { class: 'cartao-titulo', texto: c.nome }),
       ctx.selo(c.status === 'no-ar' ? 'ok' : c.status === 'pronta' ? 'alerta' : 'neutro', rotuloStatus(c.status))),
-    h('dl', { class: 'lista-chave-valor' },
-      c.objetivo ? [h('dt', { texto: 'Objetivo' }), h('dd', { texto: c.objetivo })] : null,
-      c.publico ? [h('dt', { texto: 'Público' }), h('dd', { texto: c.publico })] : null,
-      h('dt', { texto: 'Verba diária' }), h('dd', { class: 'num', texto: typeof c.orcamentoDiario === 'number' ? ctx.formatar.reais(c.orcamentoDiario) : 'sem verba' }),
-      typeof c.orcamentoTotal === 'number' ? [h('dt', { texto: 'Total previsto' }), h('dd', { class: 'num', texto: ctx.formatar.reais(c.orcamentoTotal) })] : null,
-      h('dt', { texto: 'Período' }), h('dd', { texto: `${textoPeriodo}${c.dias ? ` (${c.dias} dias)` : ''}` }),
-      h('dt', { texto: 'Peças' }), h('dd', { texto: vinculadas.length ? vinculadas.map((p) => (typeof p === 'string' ? p : tituloPeca(p))).join(', ') : 'nenhuma vinculada' })),
+    // Texto longo ocupa a largura do cartão (rótulo em cima, texto embaixo); valores curtos ficam em pares.
+    h('dl', { class: 'campanha-campos' },
+      c.objetivo ? campo(h, 'Objetivo', c.objetivo, { longo: true }) : null,
+      c.publico ? campo(h, 'Público', c.publico, { longo: true }) : null,
+      campo(h, 'Verba diária', typeof c.orcamentoDiario === 'number' ? ctx.formatar.reais(c.orcamentoDiario) : 'sem verba', { num: true }),
+      typeof c.orcamentoTotal === 'number' ? campo(h, 'Total previsto', ctx.formatar.reais(c.orcamentoTotal), { num: true }) : null,
+      campo(h, 'Período', `${textoPeriodo}${c.dias ? ` (${c.dias} dias)` : ''}`),
+      campo(h, 'Peças', vinculadas.length ? vinculadas.map((p) => (typeof p === 'string' ? p : tituloPeca(p))).join(', ') : 'nenhuma vinculada', { longo: vinculadas.length > 0 })),
     c.observacoes ? h('p', { class: 'cartao-detalhe', texto: c.observacoes }) : null,
     c.origem ? h('p', { class: 'campo-ajuda', texto: `Origem: ${c.origem}` }) : null,
     h('button', { class: 'botao', type: 'button', texto: 'Editar', onclick: () => editar(ctx, c, disponiveis) }));
