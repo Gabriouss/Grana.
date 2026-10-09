@@ -1,6 +1,6 @@
 'use strict';
 // Vercel (dono: Keel). Leitura de deployments e projeto; uma única ação,
-// redeploy de produção, só com confirmação digitada na tela e só de um
+// redeploy de produção, só com confirmação por clique na tela e só de um
 // deployment que pertença ao projeto do Grana. GRANA_ADMIN_SIMULAR=1 não chama a API.
 
 const { ler, tem, SIMULAR, REPO_GITHUB } = require('../config.cjs');

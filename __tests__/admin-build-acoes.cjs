@@ -37,9 +37,9 @@ function fixture(opts = {}) {
 }
 let passed = 0;
 async function check(name, fn) { await fn(); console.log('OK ' + name); passed++; }
-const pedido = { confirmacao: 'PREPARAR BUILD', tipo: 'patch', mensagem: nota };
+const pedido = { confirmacao: true, tipo: 'patch', mensagem: nota };
 const enviado = { id: 'fixture-id', versao: '1.10.7', nota, commit: 'own', estado: 'enviado' };
-const disparo = { confirmacao: 'DISPARAR BUILD', preparoId: 'fixture-id' };
+const disparo = { confirmacao: true, preparoId: 'fixture-id' };
 (async () => {
   await check('frases no servidor; nenhum processo no ensaio', async () => {
     const f = fixture({ simular: true }); assert.equal((await f.api.preparar({ ...pedido, confirmacao: 'sim' })).ok, false);
@@ -93,8 +93,8 @@ const disparo = { confirmacao: 'DISPARAR BUILD', preparoId: 'fixture-id' };
   });
   await check('nota divergente: escrita fixa CAS e repetir nao regrava', async () => {
     const f = fixture({ state: enviado }); assert.equal((await f.api.verificar(disparo)).dados.estado, 'nota-divergente');
-    assert.equal((await f.api.regravar({ ...disparo, confirmacao: 'REGRAVAR NOTA' })).dados.estado, 'nota-confirmada');
-    await f.api.regravar({ ...disparo, confirmacao: 'REGRAVAR NOTA' }); assert.equal(f.calls.filter((c) => c[0] === 'regravar').length, 1);
+    assert.equal((await f.api.regravar({ ...disparo, confirmacao: true })).dados.estado, 'nota-confirmada');
+    await f.api.regravar({ ...disparo, confirmacao: true }); assert.equal(f.calls.filter((c) => c[0] === 'regravar').length, 1);
     const c = f.calls.find((c) => c[0] === 'regravar'); assert.equal(c[1], '1.10.7'); assert.equal(c[2], 'nota truncada'); assert.equal(c[3], nota);
   });
   await check('adaptador EAS real chama script sem shell e preserva nota longa/multiline', async () => {
@@ -144,7 +144,7 @@ const disparo = { confirmacao: 'DISPARAR BUILD', preparoId: 'fixture-id' };
     }
     const denied = routes(false); assert.equal((await denied.request(disparo)).status, 403); assert.equal(denied.calls.length, 0);
     const allowed = routes(true); assert.equal((await allowed.request({ ...disparo, confirmacao: 'sim' })).status, 400); assert.equal(allowed.calls.length, 0);
-    assert.equal((await allowed.request(disparo)).status, 200); assert.equal(allowed.calls.length, 1); assert.equal(allowed.calls[0].confirmacao, 'DISPARAR BUILD');
+    assert.equal((await allowed.request(disparo)).status, 200); assert.equal(allowed.calls.length, 1); assert.equal(allowed.calls[0].confirmacao, true);
   });
   await check('falha de release tem recibo; nao vira aguardando anuncio', async () => {
     const f = fixture({ state: enviado }); f.deps.release = async () => ({ status: 'erro' });
@@ -175,14 +175,14 @@ const disparo = { confirmacao: 'DISPARAR BUILD', preparoId: 'fixture-id' };
     assert.equal((await f.api.preparar(pedido)).codigo, 'preparo-pendente');
     const baseGit = f.deps.git;
     f.deps.git = async (args) => args[0] === 'commit' ? '' : baseGit(args);
-    assert.equal((await f.api.retomar({ preparoId: 'fixture-id', confirmacao: 'PUBLICAR PREPARO' })).ok, true);
+    assert.equal((await f.api.retomar({ preparoId: 'fixture-id', confirmacao: true })).ok, true);
     assert.equal(f.calls.filter((c) => c[0] === 'preparar').length, 1); assert.equal(f.state().estado, 'preparado');
   });
   await check('B2 desconhecido: anuncio confirma; conferencia manual libera sem build', async () => {
     const f = fixture({ state: { ...enviado, estado: 'desconhecido' } }); await f.api.verificar(disparo); assert.equal(f.state().estado, 'enviado');
     const manual = fixture({ state: { ...enviado, estado: 'desconhecido' } });
     assert.equal((await manual.api.resolver({ ...disparo, confirmacao: 'sim' })).ok, false);
-    assert.equal((await manual.api.resolver({ ...disparo, confirmacao: 'CONFERI NO EAS: NAO SAIU' })).ok, true);
+    assert.equal((await manual.api.resolver({ ...disparo, confirmacao: true })).ok, true);
     assert.equal(manual.state().estado, 'preparado'); assert(!manual.calls.some((c) => c[0] === 'eas'));
   });
   console.log(`admin-build-acoes: ${passed} grupos passaram; zero processo/rede real`);

@@ -31,10 +31,10 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   let b = walk(root).find((n) => n.tag === 'button'); confirmado = false; await b.attrs.onclick(); assert.equal(calls.filter((c) => c[0] === 'POST').length, 0);
   confirmado = true; resolver = true; const first = b.attrs.onclick(); await Promise.resolve(); await Promise.resolve(); await b.attrs.onclick();
   assert.equal(calls.filter((c) => c[0] === 'POST').length, 1, 'clique duplo não grava duas vezes');
-  const body = calls.find((c) => c[0] === 'POST')[2]; assert.equal(body.pedidoId, base.id); assert.equal(body.versao, base.versaoCorrigida); assert.equal(body.confirmacao, 'APROVAR');
+  const body = calls.find((c) => c[0] === 'POST')[2]; assert.equal(body.pedidoId, base.id); assert.equal(body.versao, base.versaoCorrigida); assert.equal(body.confirmacao, true);
   resolver({}); await first; resolver = null;
   pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio' }); await render(); b = walk(root).find((n) => n.tag === 'button'); await b.attrs.onclick();
-  assert.equal(calls.filter((c) => c[0] === 'POST').at(-1)[2].confirmacao, 'TENTAR ENTREGA NOVAMENTE');
+  assert.equal(calls.filter((c) => c[0] === 'POST').at(-1)[2].confirmacao, true);
   erro = true; assert.ok((await render()).includes('Falha com recibo')); erro = false; antigo = true; assert.equal((await render()).includes('pedido-ficticio'), false);
   assert.equal(JSON.stringify([calls, avisos]).includes(base.textoOriginal), false);
   assert.equal(fs.readFileSync('tools/admin-local/web/telas/aprovacao.js', 'utf8').includes('vai para o GitHub público'), false);

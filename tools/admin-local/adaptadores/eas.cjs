@@ -10,7 +10,7 @@
 // do git log. Regra 22: 3 por semana, segunda a domingo; cota de 15 por mês.
 //
 // Acoes locais: preparo por script, commit/publicacao do app.json e disparo
-// separado com frase digitada (plano13h). Nunca acionar sem clique do autor.
+// separado, com diálogo de confirmação (plano13h). Nunca acionar sem clique do autor.
 
 const fs = require('fs');
 const path = require('path');

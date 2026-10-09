@@ -5,7 +5,6 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const c = require('./catalogo.cjs');
 const { aceiteValido } = require('./aceite-evidencia.cjs');
-const FRASE = 'PROMOVER PARA APROVADOS';
 const PREFIXO = /^docs\/marketing\/\d{4}-\d{2}\/semana-\d{2}-\d{4}-\d{2}-\d{2}-a-\d{4}-\d{2}-\d{2}\/para-aprovacao\//;
 
 function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({ codigo }))) {
@@ -55,7 +54,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
   }
   return function promover(raiz, id, corpo = {}) {
     return c.serializar(() => {
-      if (corpo.confirmacao !== FRASE) throw new c.ErroMarketing('confirmacao-invalida', `Digite ${FRASE}.`, 400);
+      if (corpo.confirmacao !== true) throw new c.ErroMarketing('confirmacao-invalida', 'Confirme a promoção.', 400);
       if (!/^[a-f0-9]{16}$/.test(id) || !/^[a-f0-9]{40}$/.test(corpo.versao)) throw new c.ErroMarketing('versao-invalida', 'Informe a peça e a versão atual.', 400);
       const arq = c.caminhoPainel(raiz, 'aprovacoes.json');
       const dados = c.lerJson(arq, { formato: 1, aprovacoes: [], ajustes: [] });
@@ -142,4 +141,4 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
     });
   };
 }
-module.exports = { promover: criarPromocao(), criarPromocao, FRASE };
+module.exports = { promover: criarPromocao(), criarPromocao };

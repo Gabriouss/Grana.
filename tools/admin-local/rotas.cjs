@@ -9,7 +9,8 @@
 // Camadas, nesta ordem (server.cjs já barrou Host e socket não local):
 //   Origin / Sec-Fetch-Site -> X-Grana-Admin -> pareamento -> login (senha +
 //   TOTP) -> CSRF nos POSTs -> step-up (TOTP dos últimos 5 min) nas ações
-//   destrutivas -> limite de frequência -> confirmação digitada.
+//   destrutivas -> limite de frequência -> confirmação explícita (confirmacao: true, enviada só
+//   pelo botão Confirmar do diálogo).
 
 const path = require('path');
 const { RAIZ_DADOS, SIMULAR, ocultar } = require('./config.cjs');
@@ -159,8 +160,6 @@ function forcar(url) {
 
 // ---------- rotas de leitura (exigem login completo) ----------
 
-const CONFIRMACOES = { redeploy: 'REDEPLOY', build: 'PREPARAR BUILD' };
-
 function erroDeMarketing(res, e) {
   if (e && e.codigo) return responderErro(res, e.status || 400, e.codigo, e.message);
   return responderErro(res, 500, 'marketing-falhou', 'O módulo de marketing falhou.', e);
@@ -244,16 +243,16 @@ async function tratarAcao(req, res, url, corpo, sessao) {
       try {
         const fila = marketing('ajustes-fila').fila;
         if (p === '/api/marketing/ajustes/retry') {
-          if (corpo.confirmacao !== 'TENTAR ENTREGA NOVAMENTE') return responderErro(res, 400, 'confirmacao-invalida', 'Digite TENTAR ENTREGA NOVAMENTE.');
+          if (corpo.confirmacao !== true) return responderErro(res, 400, 'confirmacao-invalida', 'Confirme a ação para continuar.');
           responderOk(res, { pedido: pedidoPublico(await fila.retry(corpo.pedidoId)) });
         } else {
-          if (corpo.confirmacao !== 'APROVAR') return responderErro(res, 400, 'confirmacao-invalida', 'Digite APROVAR.');
+          if (corpo.confirmacao !== true) return responderErro(res, 400, 'confirmacao-invalida', 'Confirme a ação para continuar.');
           const peca = marketing('catalogo').obterPeca(RAIZ_DADOS, corpo.pecaId);
           if (peca.versao !== corpo.versao) return responderErro(res, 409, 'versao-mudou', 'Revise a versao atual.');
           // Queue first: an acceptance in aprovacoes.json without the matching request would
           // be an orphan the author never saw corrected.
           fila.conferirAceite(peca, corpo.pedidoId);
-          await marketing('aprovacoes').aprovar(RAIZ_DADOS, peca.id, { versao: peca.versao, confirmacao: 'APROVAR' });
+          await marketing('aprovacoes').aprovar(RAIZ_DADOS, peca.id, { versao: peca.versao, confirmacao: true });
           responderOk(res, { aceite: { registrado: true, versao: peca.versao }, pedido: pedidoPublico(await fila.aceitar(peca, corpo.pedidoId)) });
         }
       } catch (e) { erroDeMarketing(res, e); }
@@ -280,8 +279,7 @@ async function tratarAcao(req, res, url, corpo, sessao) {
       return responderErro(res, 403, 'reautenticar', 'Confirme o código do autenticador para continuar.');
     }
     if (!seg.dentroDoLimite(p, 3, 10 * 60_000)) return responderErro(res, 429, 'limite', 'Essa ação já foi pedida 3 vezes em 10 minutos. Espere.', null, { tentarEmSeg: 600 });
-    const confirmacao = p === '/api/vercel/redeploy' ? CONFIRMACOES.redeploy : ACOES_BUILD[p][0];
-    if (corpo.confirmacao !== confirmacao) return responderErro(res, 400, 'confirmacao-invalida', `Digite ${confirmacao} para confirmar.`);
+    if (corpo.confirmacao !== true) return responderErro(res, 400, 'confirmacao-invalida', 'Confirme a ação para continuar.');
     let resultado;
     try {
       if (p === '/api/vercel/redeploy') {

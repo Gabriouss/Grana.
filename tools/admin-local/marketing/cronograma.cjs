@@ -94,7 +94,7 @@ function salvarManifesto(raiz, corpo = {}) {
       }
     }
     const antes = atual?.diaD || null;
-    if (nova.diaD !== antes && corpo.confirmacao !== 'DECLARAR DIA D') erro('confirmacao-dia-d', 'Declare ou altere o dia D somente por confirmação explícita do autor.');
+    if (nova.diaD !== antes && corpo.confirmacao !== true) erro('confirmacao-dia-d', 'Declare ou altere o dia D somente por confirmação explícita do autor.');
     nova.recibos = [...(atual?.recibos || [])];
     if (nova.diaD !== antes) nova.recibos.push({ acao: 'dia-d', antes, depois: nova.diaD, em: c.agoraLocalIso() });
     c.gravarJsonAtomico(c.caminhoPainel(raiz, 'cronograma.json'), nova);

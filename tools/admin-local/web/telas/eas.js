@@ -109,7 +109,7 @@ async function preparar(ctx, saldo, saida, botao) {
       `Nota: ${valores.mensagem}`,
       sem ? `Saldo depois: ${sem.usadas + 1} de ${sem.teto ?? 3} na semana` : 'Saldo da semana não lido',
     ],
-    frase: 'PREPARAR BUILD', rotuloBotao: 'Preparar', perigo: true,
+    rotuloBotao: 'Preparar', perigo: true,
   });
   if (!ok) return;
   botao.disabled = true;
@@ -120,7 +120,7 @@ async function preparar(ctx, saldo, saida, botao) {
   saida.appendChild(andamento);
   let liberar = true;
   try {
-    const r = await ctx.acao('/api/eas/preparar-build', { tipo: valores.tipo, mensagem: valores.mensagem, confirmacao: 'PREPARAR BUILD' });
+    const r = await ctx.acao('/api/eas/preparar-build', { tipo: valores.tipo, mensagem: valores.mensagem, confirmacao: true });
     const d = r.dados || {};
     if (d.preparoPersistido && !d.simulado) liberar = false;
     andamento.remove();

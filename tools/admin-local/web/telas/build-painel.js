@@ -17,14 +17,14 @@ export function montarReciboBuild(ctx, raiz, inicial, obsoleta = () => false) {
     raiz.appendChild(h('pre', { class: 'saida', tabindex: '0' }, h('code', { texto: preparo.nota })));
     const acoes = h('div', { class: 'bloco-acao' });
     const botao = (texto, fn) => acoes.appendChild(h('button', { type: 'button', class: 'botao', texto, disabled: ocupado, onclick: fn }));
-    if (['push-falhou', 'commit-falhou', 'preparando'].includes(preparo.estado)) botao('Publicar este preparo', () => executar('publicar-preparo', 'PUBLICAR PREPARO', 'Publicar preparo', 'Retoma o mesmo preparo e publica seu commit. A versão não sobe novamente e a build ainda não será disparada.'));
-    if (preparo.estado === 'preparado') botao('Disparar build', () => executar('disparar-build', 'DISPARAR BUILD', 'Disparar build Android', 'Envia esta versão e a nota inteira ao EAS. Esta ação consome uma build da cota.'));
+    if (['push-falhou', 'commit-falhou', 'preparando'].includes(preparo.estado)) botao('Publicar este preparo', () => executar('publicar-preparo', 'Publicar preparo', 'Retoma o mesmo preparo e publica seu commit. A versão não sobe novamente e a build ainda não será disparada.'));
+    if (preparo.estado === 'preparado') botao('Disparar build', () => executar('disparar-build', 'Disparar build Android', 'Envia esta versão e a nota inteira ao EAS. Esta ação consome uma build da cota.'));
     if (['enviado', 'desconhecido', 'disparando'].includes(preparo.estado)) {
-      botao('Conferir nota anunciada', () => executar('verificar-nota', 'CONFERIR NOTA'));
+      botao('Conferir nota anunciada', () => executar('verificar-nota'));
     }
     if (['desconhecido', 'disparando'].includes(preparo.estado)) {
       raiz.appendChild(ctx.alerta('atencao', 'Confira EAS e builds antes de qualquer novo disparo. Um pedido sem resposta pode ter sido recebido.'));
-      botao('Registrar que não saiu no EAS', () => executar('resolver-disparo', 'CONFERI NO EAS: NAO SAIU', 'Registrar conferência manual', 'Só confirme depois de verificar no EAS que esta build não foi recebida. O registro libera um novo disparo; não dispara agora.'));
+      botao('Registrar que não saiu no EAS', () => executar('resolver-disparo', 'Registrar conferência manual', 'Só confirme depois de verificar no EAS que esta build não foi recebida. O registro libera um novo disparo; não dispara agora.'));
     }
     if (nota?.estado === 'nota-divergente') {
       raiz.appendChild(ctx.alerta('atencao', 'A nota anunciada difere da nota aprovada. Confira as duas versões abaixo.'));
@@ -32,18 +32,18 @@ export function montarReciboBuild(ctx, raiz, inicial, obsoleta = () => false) {
       raiz.appendChild(h('pre', { class: 'saida', tabindex: '0', texto: nota.notaAprovada }));
       raiz.appendChild(h('h4', { texto: 'Nota anunciada' }));
       raiz.appendChild(h('pre', { class: 'saida', tabindex: '0', texto: nota.notaAnunciada }));
-      botao('Regravar nota aprovada', () => executar('regravar-nota', 'REGRAVAR NOTA', 'Regravar nota da versão', 'Grava a nota aprovada nesta versão anunciada. Não gera outra build.'));
+      botao('Regravar nota aprovada', () => executar('regravar-nota', 'Regravar nota da versão', 'Grava a nota aprovada nesta versão anunciada. Não gera outra build.'));
     }
     raiz.appendChild(acoes);
   }
-  async function executar(rota, frase, titulo, texto) {
+  async function executar(rota, titulo, texto) {
     if (ocupado || obsoleta()) return;
     ocupado = true; desenhar();
     try {
-      if (titulo && !await ctx.confirmar({ titulo, texto, detalhes: [`Versão: ${preparo.versao}`, `Nota: ${preparo.nota}`], frase, rotuloBotao: titulo, perigo: true })) return;
+      if (titulo && !await ctx.confirmar({ titulo, texto, detalhes: [`Versão: ${preparo.versao}`, `Nota: ${preparo.nota}`], rotuloBotao: titulo, perigo: true })) return;
       if (obsoleta()) return;
       mensagem = { tipo: 'info', texto: 'Aguardando o recibo do servidor…' }; desenhar();
-      const resposta = await ctx.acao(`/api/eas/${rota}`, { preparoId: preparo.id, confirmacao: frase });
+      const resposta = await ctx.acao(`/api/eas/${rota}`, { preparoId: preparo.id, confirmacao: true });
       if (obsoleta()) return;
       const d = resposta.dados || {};
       if (d.preparoPersistido) preparo = d.preparoPersistido;

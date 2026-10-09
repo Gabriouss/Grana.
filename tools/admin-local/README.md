@@ -71,11 +71,11 @@ Trocou um segredo no `.env`? Reinicie o painel (feche a janela e abra pelo atalh
 
 ## O que o painel faz e o que ele não faz
 
-Ações disponíveis, todas com frase de confirmação digitada na tela:
+Ações disponíveis, todas com diálogo de confirmação (resumo da ação, Cancelar e Confirmar; nada é digitado):
 
 - **Redeploy de produção na Vercel** (`REDEPLOY`), só do último deployment de
   produção pronto. Preview nunca vai para produção por aqui.
-- **Preparar build** (`PREPARAR BUILD`). Roda o mesmo script do
+- **Preparar build**. Roda o mesmo script do
   `npm run build:preparar` (regra 5), que valida a nota, respeita o teto de 3
   builds por semana (regra 22) e sobe a versão do `app.json`. **O painel não
   dispara o `eas build`** (regra 4): ele devolve o comando pronto para colar no

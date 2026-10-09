@@ -27,7 +27,7 @@ function res(){return {statusCode:0,writeHead(n){this.statusCode=n;},end(s){this
 function conferir(r){assert.equal(r.statusCode,200);assert.ok(!JSON.stringify(r.json).includes('CANARIO_'),'nenhum dado privado/lease/extras no JSON');const p=r.json.dados.pedidos?.[0]||r.json.dados.pedido||r.json.dados.ajuste;assert.equal(p.id,id);assert.equal(p.pecaId,pecaId);assert.equal(p.lease.agente,'Beacon');assert.equal(p.lease.expiraEm,raw.lease.expiraEm);assert.equal(p.lease.id,undefined);assert.equal(p.textoOriginal,undefined);}
 (async()=>{
  let r=res();await mod.exports._GET['/api/marketing/ajustes']({},r);conferir(r);
- for(const action of ['retry','aceitar']){r=res();await mod.exports._acao({},r,new URL('http://127.0.0.1/api/marketing/ajustes/'+action),{pedidoId:id,pecaId,versao,confirmacao:action==='retry'?'TENTAR ENTREGA NOVAMENTE':'APROVAR'},{id:'sessao-ficticia'});conferir(r);}
+ for(const action of ['retry','aceitar']){r=res();await mod.exports._acao({},r,new URL('http://127.0.0.1/api/marketing/ajustes/'+action),{pedidoId:id,pecaId,versao,confirmacao:true},{id:'sessao-ficticia'});conferir(r);}
  r=res();await mod.exports._acao({},r,new URL('http://127.0.0.1/api/marketing/pecas/'+pecaId+'/ajuste'),{versao,motivo:'ajuste ficticio'},{id:'sessao-ficticia'});conferir(r);
  assert.deepEqual(calls,['retry','conferir','aprovar','aceitar','solicitar']);
  console.log('admin-ajustes-dto: 4 rotas reais, DTO fechado, chamadas exatas, zero rede/env');

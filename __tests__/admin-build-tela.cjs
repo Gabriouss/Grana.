@@ -28,7 +28,7 @@ function ambiente(estado, resposta, confirmar = true) {
   let resolver;
   const a = ambiente('preparado', () => new Promise((r) => resolver = r));
   const button = find(a.root, 'Disparar build'); const p1 = button.attrs.onclick(), p2 = button.attrs.onclick();
-  await tick(); assert.equal(a.calls.length, 1); assert.equal(a.confirms[0].frase, 'DISPARAR BUILD');
+  await tick(); assert.equal(a.calls.length, 1); assert.equal(a.confirms[0].frase, undefined); assert.equal(a.calls[0].pedido.confirmacao, true);
   assert.ok(a.confirms[0].detalhes.some((x) => x.includes('Linha 1\nLinha 2\nLinha 3')));
   resolver({ dados: { preparoPersistido: { id: 'preparo-fixture', estado: 'enviado', versao: '1.10.7', nota: 'Nota' } } }); await Promise.all([p1, p2]);
   assert.equal(find(a.root, 'Disparar build'), undefined);
@@ -39,7 +39,7 @@ function ambiente(estado, resposta, confirmar = true) {
   await find(nota.root, 'Conferir nota anunciada').attrs.onclick();
   assert.ok(find(nota.root, 'A\nB')); assert.ok(find(nota.root, 'AB'));
   await find(nota.root, 'Regravar nota aprovada').attrs.onclick();
-  assert.equal(nota.confirms[0].frase, 'REGRAVAR NOTA'); assert.equal(nota.calls[1].pedido.preparoId, 'preparo-fixture');
+  assert.equal(nota.confirms[0].frase, undefined); assert.equal(nota.calls[1].pedido.preparoId, 'preparo-fixture');
   assert.equal(find(nota.root, 'Regravar nota aprovada'), undefined);
   for (const estado of ['nota-confirmada', 'nota-divergente']) {
     const anunciado = ambiente('desconhecido', () => ({ dados: { estado } }));
@@ -54,7 +54,7 @@ function ambiente(estado, resposta, confirmar = true) {
   assert.ok(find(prazo.root, 'Conferir nota anunciada'));
   const push = ambiente('push-falhou', () => ({ dados: {} }));
   assert.equal(find(push.root, 'Disparar build'), undefined); await find(push.root, 'Publicar este preparo').attrs.onclick();
-  assert.equal(push.confirms[0].frase, 'PUBLICAR PREPARO');
+  assert.equal(push.confirms[0].frase, undefined);
   const telaEas = fs.readFileSync('tools/admin-local/web/telas/eas.js', 'utf8').replace(/^import .*\n/m, '').replace('export async function ', 'async function ');
   const root = node('section'), botaoPreparo = node('button'), avisos = [], acoes = [];
   const ctx = { h: node, alerta: (tipo, texto) => { avisos.push(texto); return node('p', { tipo, texto }); },

@@ -28,7 +28,7 @@ const source=fs.readFileSync('tools/admin-local/web/telas/calendario.js','utf8')
   const manifesto={formato:1,manifestoId:'campanha-teste',versao:1,fuso:'America/Sao_Paulo',diaD:null,itens:[{id:'peca-teste',dataPrevista:{modo:'diaD',diasUteis:4}}],removidos:[]};
   await cr.salvarManifesto(dir,{manifesto,versaoEsperada:0});
   await cr.registrarVinculo(dir,p.id,{versao:p.versao,versaoEsperada:1,manifestoId:manifesto.manifestoId,itemId:'peca-teste'});
-  await ap.aprovar(dir,p.id,{versao:p.versao,confirmacao:'APROVAR'});
+  await ap.aprovar(dir,p.id,{versao:p.versao,confirmacao:true});
   let dto=cal.obterCalendario(dir,'2099-01');
   assert.equal(dto.aguardandoDiaD.length,1);
   let obsoleta=false, reject=false, late=false, resolver; const calls=[], errors=[], root=node('main');
@@ -47,7 +47,7 @@ const source=fs.readFileSync('tools/admin-local/web/telas/calendario.js','utf8')
   assert.ok(t.includes('Aguardando dia D')); assert.ok(t.includes('D+4 dias úteis')); assert.ok(t.includes('campanha-teste')); assert.ok(t.includes('peca-teste'));
   assert.ok(t.includes('horário pendente')); assert.ok(t.includes('canal pendente'));
   assert.equal(t.includes('undefined'),false);
-  const m=cr.ler(dir); await cr.salvarManifesto(dir,{manifesto:{...m,versao:m.versao+1,diaD:'2099-01-01'},versaoEsperada:m.versao,confirmacao:'DECLARAR DIA D'});
+  const m=cr.ler(dir); await cr.salvarManifesto(dir,{manifesto:{...m,versao:m.versao+1,diaD:'2099-01-01'},versaoEsperada:m.versao,confirmacao:true});
   await cal.planejar(dir,{id:p.id,versao:p.versao,data:'2099-01-22',hora:'20:00',canal:'instagram-feed'});
   dto=cal.obterCalendario(dir,'2099-01'); root.replaceChildren(); await render();t=text(root);
   assert.ok(t.includes('Previsão resolvida:')); assert.ok(t.includes('Data alterada pelo autor: 22/01/2099 às 20:00'));

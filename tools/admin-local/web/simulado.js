@@ -132,7 +132,7 @@ const acoes = [
   [/^\/api\/marketing\/pecas\/([^/]+)\/aprovar$/, (m, corpo) => {
     const peca = pecas.find((x) => x.id === decodeURIComponent(m[1]));
     if (!peca) falha('nao-encontrada', 'Peça não encontrada.', 404);
-    if (corpo.confirmacao !== 'APROVAR') falha('confirmacao', 'Confirmação diferente da pedida.', 400);
+    if (corpo.confirmacao !== true) falha('confirmacao', 'Confirme a ação para continuar.', 400);
     if (corpo.versao !== peca.versao) falha('versao-mudou', 'A peça mudou depois que você abriu. Recarregue e revise de novo.', 409);
     peca.estado = 'aprovados';
     peca.aceite = { aprovadoEm: new Date().toISOString(), evidencia: 'aceite simulado nesta aba' };
@@ -158,11 +158,11 @@ const acoes = [
     return c;
   }],
   [/^\/api\/vercel\/redeploy$/, (m, corpo) => {
-    if (corpo.confirmacao !== 'REDEPLOY') falha('confirmacao', 'Confirmação diferente da pedida.', 400);
+    if (corpo.confirmacao !== true) falha('confirmacao', 'Confirme a ação para continuar.', 400);
     return { simulado: true, mensagem: 'Redeploy simulado. Nada foi enviado à Vercel.' };
   }],
   [/^\/api\/eas\/preparar-build$/, (m, corpo) => {
-    if (corpo.confirmacao !== 'PREPARAR BUILD') falha('confirmacao', 'Confirmação diferente da pedida.', 400);
+    if (corpo.confirmacao !== true) falha('confirmacao', 'Confirme a ação para continuar.', 400);
     return {
       simulado: true,
       saida: 'Simulado: o build:preparar não rodou. Nenhum arquivo foi alterado.',

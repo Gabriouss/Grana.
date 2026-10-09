@@ -408,36 +408,25 @@ function abrirDialogo(conteudo, aoFechar) {
   return dlg;
 }
 
-// Confirmação digitada: o botão só liga quando o texto é exatamente a frase pedida.
-export function confirmar({ titulo, texto, detalhes, frase, rotuloBotao = 'Confirmar', perigo = false }) {
+// Confirmação por clique: o diálogo mostra o resumo e só o botão Confirmar resolve com verdadeiro.
+export function confirmar({ titulo, texto, detalhes, rotuloBotao = 'Confirmar', perigo = false }) {
   return new Promise((resolver) => {
     let resultado = false;
     const idTitulo = `modal-t-${Math.random().toString(36).slice(2)}`;
-    const entrada = frase ? h('input', {
-      type: 'text', autocomplete: 'off', spellcheck: 'false', autocapitalize: 'characters',
-      'aria-describedby': `${idTitulo}-frase`,
-    }) : null;
     const botaoOk = h('button', {
-      class: `botao ${perigo ? 'botao-perigo' : 'botao-primario'}`, type: 'button', texto: rotuloBotao, disabled: !!frase,
+      class: `botao ${perigo ? 'botao-perigo' : 'botao-primario'}`, type: 'button', texto: rotuloBotao,
       onclick: () => { resultado = true; dlg.close(); },
     });
-    if (entrada) {
-      entrada.addEventListener('input', () => { botaoOk.disabled = entrada.value.trim() !== frase; });
-      entrada.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !botaoOk.disabled) { e.preventDefault(); botaoOk.click(); } });
-    }
     const dlg = abrirDialogo([
       h('h2', { class: 'modal-titulo', id: idTitulo, texto: titulo }),
       texto ? h('p', { class: 'modal-texto', texto }) : null,
       detalhes && detalhes.length ? h('ul', { class: 'modal-detalhes' }, detalhes.map((d) => h('li', { texto: d }))) : null,
-      frase ? h('div', { class: 'campo' },
-        h('label', { id: `${idTitulo}-frase` }, 'Para continuar, digite ', h('span', { class: 'modal-frase mono', texto: frase })),
-        entrada) : null,
       h('div', { class: 'modal-acoes' },
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Cancelar', onclick: () => dlg.close() }),
         botaoOk),
     ], () => resolver(resultado));
     dlg.setAttribute('aria-labelledby', idTitulo);
-    (entrada || botaoOk).focus();
+    botaoOk.focus();
   });
 }
 

@@ -59,14 +59,14 @@ async function redeploy(ctx, dep, botao) {
     titulo: 'Refazer o deploy de produção',
     texto: 'A Vercel vai publicar de novo o último deploy de produção, com o mesmo código. Nenhum código local sobe. O site fica no ar durante a troca.',
     detalhes: [`Deploy de origem: ${dep.url || dep.id}`, `Criado ${ctx.formatar.dataHora(dep.criadoEm)}`],
-    frase: 'REDEPLOY', rotuloBotao: 'Refazer deploy', perigo: true,
+    rotuloBotao: 'Refazer deploy', perigo: true,
   });
   if (!ok) return;
   botao.disabled = true;
   const textoOriginal = botao.textContent;
   botao.textContent = 'Pedindo à Vercel…';
   try {
-    const r = await ctx.acao('/api/vercel/redeploy', { deploymentId: dep.id, confirmacao: 'REDEPLOY' });
+    const r = await ctx.acao('/api/vercel/redeploy', { deploymentId: dep.id, confirmacao: true });
     ctx.aviso(r.dados?.mensagem || 'A Vercel aceitou o pedido. O novo deploy aparece na lista em instantes.', 'ok');
     ctx.recarregar();
   } catch (err) {

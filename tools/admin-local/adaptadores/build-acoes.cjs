@@ -34,7 +34,7 @@ function criarAcoesBuild(deps) {
   }
   async function preparar(pedido) {
     return exclusivo(async () => {
-      if (pedido.confirmacao !== 'PREPARAR BUILD') return fail('confirmacao-invalida', 'Digite PREPARAR BUILD.', 400);
+      if (pedido.confirmacao !== true) return fail('confirmacao-invalida', 'Confirme a ação para continuar.', 400);
       const atual = deps.ler();
       if (atual && ['preparando', 'preparado', 'disparando', 'desconhecido', 'push-falhou', 'commit-falhou'].includes(atual.estado)) return fail('preparo-pendente', 'Ha um preparo com resultado pendente. Confira seu recibo antes de preparar outra versao.');
       if (deps.simular) return { ok: true, dados: { simulado: true, aviso: 'Ensaio: nao prepara, nao commita, nao publica e nao dispara.' } };
@@ -64,7 +64,7 @@ function criarAcoesBuild(deps) {
   }
   async function retomar(pedido) {
     return exclusivo(async () => {
-      if (pedido.confirmacao !== 'PUBLICAR PREPARO') return fail('confirmacao-invalida', 'Digite PUBLICAR PREPARO.', 400);
+      if (pedido.confirmacao !== true) return fail('confirmacao-invalida', 'Confirme a ação para continuar.', 400);
       const e = deps.ler();
       if (!e || e.id !== pedido.preparoId || !['push-falhou', 'commit-falhou', 'preparando'].includes(e.estado)) return fail('preparo-invalido', 'Nao ha commit de preparo para retomar. Confira o git.');
       try {
@@ -86,7 +86,7 @@ function criarAcoesBuild(deps) {
   }
   async function disparar(pedido) {
     return exclusivo(async () => {
-      if (pedido.confirmacao !== 'DISPARAR BUILD') return fail('confirmacao-invalida', 'Digite DISPARAR BUILD.', 400);
+      if (pedido.confirmacao !== true) return fail('confirmacao-invalida', 'Confirme a ação para continuar.', 400);
       const e = deps.ler();
       if (!e || e.id !== pedido.preparoId || e.estado !== 'preparado') return fail('preparo-invalido', 'O preparo nao esta pronto para disparar ou ja foi enviado.');
       if (deps.simular) return { ok: true, dados: { simulado: true, preparoPersistido: e } };
@@ -123,7 +123,7 @@ function criarAcoesBuild(deps) {
   }
   async function resolver(pedido) {
     return exclusivo(async () => {
-      if (pedido.confirmacao !== 'CONFERI NO EAS: NAO SAIU') return fail('confirmacao-invalida', 'Digite CONFERI NO EAS: NAO SAIU.', 400);
+      if (pedido.confirmacao !== true) return fail('confirmacao-invalida', 'Confirme a ação para continuar.', 400);
       const e = deps.ler();
       if (!e || e.id !== pedido.preparoId || !['desconhecido', 'disparando'].includes(e.estado)) return fail('preparo-invalido', 'Nao ha disparo desconhecido para resolver.');
       e.estado = 'preparado'; e.conferidoNaoSaiuEm = deps.agora(); salvar(e);
@@ -132,7 +132,7 @@ function criarAcoesBuild(deps) {
   }
   async function regravar(pedido) {
     return exclusivo(async () => {
-      if (pedido.confirmacao !== 'REGRAVAR NOTA') return fail('confirmacao-invalida', 'Digite REGRAVAR NOTA.', 400);
+      if (pedido.confirmacao !== true) return fail('confirmacao-invalida', 'Confirme a ação para continuar.', 400);
       const antes = await verificar(pedido);
       if (!antes.ok || antes.dados.estado === 'aguardando-anuncio') return antes;
       if (antes.dados.estado === 'nota-confirmada') return antes;

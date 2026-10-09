@@ -51,9 +51,9 @@ async function fixture(fn, padaria = false, nomes = ['E01.jpg']) {
       dataPrevista: padaria ? { modo: 'diaD', diasUteis: 4 } : { modo: 'diaD', diasUteis: 4, hora: '19:00', canal: 'instagram-feed' } }], removidos: [] };
   const h = { dir, rel, p, indice, painel, manifesto,
     iniciar: async () => { await cr.salvarManifesto(dir, { manifesto, versaoEsperada: 0 }); await cr.registrarVinculo(dir, p.id, { versao: p.versao, versaoEsperada: 1, manifestoId: manifesto.manifestoId, itemId: manifesto.itens[0].id }); },
-    aprovar: () => ap.aprovar(dir, p.id, { versao: p.versao, confirmacao: 'APROVAR' }),
-    promover: () => promo.promover(dir, p.id, { versao: p.versao, confirmacao: promo.FRASE }),
-    declararD: async (diaD = '2026-10-09') => { const m = cr.ler(dir); return cr.salvarManifesto(dir, { manifesto: { ...m, versao: m.versao + 1, diaD }, versaoEsperada: m.versao, confirmacao: 'DECLARAR DIA D' }); },
+    aprovar: () => ap.aprovar(dir, p.id, { versao: p.versao, confirmacao: true }),
+    promover: () => promo.promover(dir, p.id, { versao: p.versao, confirmacao: true }),
+    declararD: async (diaD = '2026-10-09') => { const m = cr.ler(dir); return cr.salvarManifesto(dir, { manifesto: { ...m, versao: m.versao + 1, diaD }, versaoEsperada: m.versao, confirmacao: true }); },
     raw: () => JSON.parse(fs.readFileSync(path.join(painel, 'calendario.json'), 'utf8')),
   };
   try { await fn(h); } finally { assert.equal(path.dirname(path.resolve(dir)), base); assert(path.basename(dir).startsWith('grana-cronograma-')); fs.rmSync(dir, { recursive: true, force: true }); }
@@ -167,7 +167,7 @@ async function test(nome, fn, padaria, nomes) { await fixture(fn, padaria, nomes
   await test('índice falha na promoção: origem e vínculo preservados; retomada repara sem duplicar', async (h) => {
     await h.iniciar(); await h.aprovar(); await h.declararD();
     const fn = promo.criarPromocao({ ...fs, readFileSync(abs, ...a) { if (abs === h.indice) throw new Error('DISCO'); return fs.readFileSync(abs, ...a); } }, () => {});
-    const r = await fn(h.dir, h.p.id, { versao: h.p.versao, confirmacao: promo.FRASE });
+    const r = await fn(h.dir, h.p.id, { versao: h.p.versao, confirmacao: true });
     assert(r.avisos.some((s) => s.includes('índice'))); assert(fs.existsSync(path.join(h.dir, h.rel))); assert.equal(cr.vinculo(h.dir, h.p).itemId, 'peca-teste');
     const again = await h.promover(); assert.equal(again.jaExistia, true); assert(!fs.existsSync(path.join(h.dir, h.rel))); assert.equal(cal.obterCalendario(h.dir, '2026-10').itens.length, 1);
   });
@@ -192,7 +192,7 @@ async function test(nome, fn, padaria, nomes) { await fixture(fn, padaria, nomes
   });
   await test('datasComAviso versionadas: feriado avisa sem bloquear cálculo; valores inválidos recusados', async (h) => {
     await h.iniciar(); await h.aprovar(); const m = cr.ler(h.dir); m.versao = 2; m.diaD = '2026-10-06';
-    await cr.salvarManifesto(h.dir, { manifesto: m, versaoEsperada: 1, confirmacao: 'DECLARAR DIA D' });
+    await cr.salvarManifesto(h.dir, { manifesto: m, versaoEsperada: 1, confirmacao: true });
     const r = cal.obterCalendario(h.dir, '2026-10'); assert.equal(r.itens[0].data, '2026-10-12'); assert(r.avisos.some((s) => s.includes('Feriado nacional')));
     assert.throws(() => cr.validar({ ...m, datasComAviso: [{ data: '2026-02-31', motivo: 'aviso' }] }));
   });

@@ -23,7 +23,6 @@ const {
 } = require('./catalogo.cjs');
 
 const ARQUIVO = 'aprovacoes.json';
-const FRASE_APROVAR = 'APROVAR';
 const EVIDENCIA = 'aceite pelo autor no painel local';
 const TITULO_SECAO_INDICE = '## Aceites registrados no painel local';
 
@@ -88,11 +87,11 @@ function anotarNoIndice(raiz, peca, registro) {
   return rel;
 }
 
-// POST /api/marketing/pecas/:id/aprovar  { versao, confirmacao: "APROVAR" }
+// POST /api/marketing/pecas/:id/aprovar  { versao, confirmacao: true }
 function aprovar(raiz, id, corpo = {}) {
   return serializar(() => {
-    if (corpo.confirmacao !== FRASE_APROVAR) {
-      throw new ErroMarketing('confirmacao-invalida', `Digite ${FRASE_APROVAR} para confirmar o aceite desta versão.`, 400);
+    if (corpo.confirmacao !== true) {
+      throw new ErroMarketing('confirmacao-invalida', 'Confirme o aceite desta versão.', 400);
     }
     const peca = obterPeca(raiz, id);
     conferirVersao(peca, corpo.versao);
@@ -143,4 +142,4 @@ async function pedirAjuste(raiz, id, corpo = {}) {
   return { ajuste, avisos: ['Pedido recebido na fila privada. Ninguem pegou ainda; o vigia tenta entregar automaticamente. Nada foi aprovado, publicado ou agendado.'] };
 }
 
-module.exports = { listarAprovacoes, aprovar, pedirAjuste, FRASE_APROVAR };
+module.exports = { listarAprovacoes, aprovar, pedirAjuste };

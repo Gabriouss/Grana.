@@ -105,13 +105,13 @@ async function aprovar(ctx, p, botao) {
     titulo: 'Aprovar esta versão',
     texto: 'Isto registra o seu aceite desta peça e desta legenda, na versão que está na tela. Não publica, não agenda e não envia nada ao Instagram ou à Meta. Se o arquivo mudar depois, o aceite deixa de valer.',
     detalhes: [tituloPeca(p), `Versão ${String(p.versao || '').slice(0, 12)}`, p.legenda ? `Legenda: ${p.legenda.slice(0, 140)}${p.legenda.length > 140 ? '…' : ''}` : 'Sem legenda registrada'],
-    frase: 'APROVAR', rotuloBotao: 'Aprovar',
+    rotuloBotao: 'Aprovar',
   });
   if (!ok) return;
   botao.disabled = true;
   botao.textContent = 'Gravando aceite…';
   try {
-    const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/aprovar`, { versao: p.versao, confirmacao: 'APROVAR' });
+    const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/aprovar`, { versao: p.versao, confirmacao: true });
     ctx.aviso('Aceite gravado para esta versão. Confira a previsão e o recibo na tela de Calendário.', 'ok');
     for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
     ctx.navegar(`#/marketing/aprovacao?peca=${encodeURIComponent(p.id)}`);

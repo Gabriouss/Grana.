@@ -58,13 +58,12 @@ function cartaoPedido(ctx, p) {
 export async function agir(ctx, pedido, tipo, botao) {
   if (botao.disabled || ctx.obsoleta()) return;
   botao.disabled = true;
-  const frase = tipo === 'aceitar' ? 'APROVAR' : 'TENTAR ENTREGA NOVAMENTE';
   try {
     if (!await ctx.confirmar({ titulo: tipo === 'aceitar' ? 'Aceitar esta correção' : 'Tentar entrega novamente',
       texto: tipo === 'aceitar' ? 'Confirme somente depois de revisar a versão corrigida. Nada será publicado ou enviado à Meta.' : 'Confira primeiro se o agente recebeu o pedido. Repetir uma entrega incerta pode duplicar trabalho.',
-      detalhes: [pedido.id, pedido.versaoCorrigida || pedido.versaoAlvo], frase, rotuloBotao: 'Confirmar' })) return;
+      detalhes: [pedido.id, pedido.versaoCorrigida || pedido.versaoAlvo], rotuloBotao: 'Confirmar' })) return;
     if (ctx.obsoleta()) return;
-    const corpo = { pedidoId: pedido.id, confirmacao: frase };
+    const corpo = { pedidoId: pedido.id, confirmacao: true };
     if (tipo === 'aceitar') { corpo.pecaId = pedido.pecaId; corpo.versao = pedido.versaoCorrigida; }
     await ctx.acao(`/api/marketing/ajustes/${tipo}`, corpo);
     if (!ctx.obsoleta()) { ctx.aviso(tipo === 'aceitar' ? 'Aceite registrado para esta versão.' : 'Nova tentativa registrada. A entrega ainda precisa de confirmação.', 'ok'); ctx.recarregar(); }

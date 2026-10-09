@@ -38,8 +38,8 @@ async function fixture(fn, nomes = ['E01.jpg']) {
   const p = c.montarCatalogo(dir).find((p) => p.tipo === (nomes.length > 1 ? 'carrossel' : 'imagem'));
   assert(p);
   const h = { dir, semana, media, indice, p, apPath: path.join(pastaPainel, 'aprovacoes.json'),
-    aprovar: () => ap.aprovar(dir, p.id, { versao: p.versao, confirmacao: 'APROVAR' }),
-    promover: (f = promo.promover) => f(dir, p.id, { versao: p.versao, confirmacao: promo.FRASE }),
+    aprovar: () => ap.aprovar(dir, p.id, { versao: p.versao, confirmacao: true }),
+    promover: (f = promo.promover) => f(dir, p.id, { versao: p.versao, confirmacao: true }),
     destino: (nome = nomes[0]) => path.join(dir, semana, 'aprovados/pecas', nome),
     lerAceites: () => JSON.parse(fs.readFileSync(path.join(pastaPainel, 'aprovacoes.json'), 'utf8')),
   };
@@ -169,7 +169,7 @@ async function test(nome, fn, nomes) { await fixture(fn, nomes); grupos++; conso
       // tratarApi consulta as guardas antes de entrar na leitura assíncrona do corpo.
       req.emit('data', Buffer.from(JSON.stringify(body))); req.emit('end'); await promise; return { status, saida };
     }
-    await h.aprovar(); const body = { versao: h.p.versao, confirmacao: promo.FRASE };
+    await h.aprovar(); const body = { versao: h.p.versao, confirmacao: true };
     assert.equal((await post(body)).status, 403); assert.equal(chamados, 0); assert(!fs.existsSync(h.destino()));
     csrf = true; etapa = 'totp'; assert.equal((await post(body)).status, 401); assert.equal(chamados, 0);
     etapa = 'ok'; assert.equal((await post({ ...body, confirmacao: 'sim' })).status, 400); assert.equal(chamados, 1); assert(!fs.existsSync(h.destino()));

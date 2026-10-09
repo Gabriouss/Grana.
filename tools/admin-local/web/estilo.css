@@ -704,18 +704,6 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
 @keyframes modal-entra { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
 .modal-titulo { font-size: var(--t-titulo); line-height: 1.25; margin-bottom: var(--s-md); }
 .modal-texto { color: var(--ink-soft); font-size: var(--t-apoio); margin-bottom: var(--s-lg); }
-.modal-frase {
-  display: inline-block;
-  margin: 0 0 var(--s-md);
-  padding: var(--s-xs) var(--s-sm);
-  border-radius: var(--r-sm);
-  background: var(--paper);
-  border: 1px solid var(--rule-strong);
-  color: var(--accent-2);
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  font-size: var(--t-nota);
-  user-select: all;
-}
 .modal-acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-sm); margin-top: var(--s-xl); }
 
 /* ── Avisos (toast: superfície invertida, como no app) ────────────────── */
