@@ -181,7 +181,7 @@ servidor.listen(PORTA, '127.0.0.1', () => {
     registrar('servidor', { resultado: 'encerrado', motivo: 'sem-registro-detectado-ao-subir', pid: anterior.pid, ultimoSinalDeVida: anterior.ultimoSinal });
     console.error(`[painel] a execução anterior (pid ${anterior.pid}) terminou sem registro; último sinal de vida: ${anterior.ultimoSinal}`);
   }
-  if (!SIMULAR && pastaOk) require('./marketing/ajustes-fila.cjs').iniciarVigia();
+  if (!SIMULAR && pastaOk) require('./marketing/ajustes-fila.cjs').iniciarRecepcao();
   tocarVivo();
   registrar('servidor', { resultado: 'no-ar', pid: process.pid, simulado: SIMULAR });
   console.log(`Grana. Admin no ar: ${seg.ORIGEM_CANONICA}/  (só neste computador${SIMULAR ? ', modo SIMULADO' : ''})`);

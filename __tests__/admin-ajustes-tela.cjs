@@ -6,12 +6,12 @@ const text = (n) => n == null ? '' : typeof n === 'object' ? [n.attrs?.texto || 
 const walk = (n) => [n, ...(n.children || []).flatMap(walk)];
 const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8').replace(/export (async )?function /g, '$1function ');
 (async () => {
-  let antigo = false, erro = false, confirmado = true, resolver;
+  let antigo = false, erro = false, confirmado = true, resolver, extra = {};
   const calls = [], avisos = [], pedidos = [];
   const ctx = { h: node, obsoleta: () => antigo, recarregar: () => calls.push(['reload']), formatar: { dataHora: (v) => `formatado ${v}` },
     alerta: (tipo, t) => node('p', { tipo, texto: t }),
     estado: { carregando: (r, t) => r.replaceChildren(node('p', { texto: t })), erro: (r) => r.replaceChildren(node('p', { texto: 'Falha com recibo e atualização' })) },
-    api: async (url) => { calls.push(['GET', url]); if (erro) throw Error('falha'); return { dados: { pedidos, remoto: { status: 'ausente' } } }; },
+    api: async (url) => { calls.push(['GET', url]); if (erro) throw Error('falha'); return { dados: { pedidos, remoto: { status: 'ausente' }, ...extra } }; },
     confirmar: async () => confirmado,
     acao: async (url, corpo) => { calls.push(['POST', url, corpo]); if (resolver) return new Promise((r) => { resolver = r; }); },
     aviso: (t, tipo) => avisos.push([t, tipo]),
@@ -48,5 +48,22 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   root.replaceChildren(); await vm.runInNewContext('montar(root,ctx)', sandbox);
   const generico = walk(root).find((n) => n.attrs?.texto === 'Aceite pela fila de ajustes');
   assert.ok(generico?.attrs.disabled, 'pedido aberto não é contornado pela aprovação genérica');
+  // Entrega: vigia parado, servidor com codigo antigo e motivo da falha (sem consumir tentativa).
+  pedidos.splice(0, pedidos.length, { ...base, estado: 'novo', tentativas: 0 });
+  extra = { vigia: { ativo: false, ultimoBatimento: null }, servidor: { desatualizado: true } };
+  ctx.api = async () => ({ dados: { pedidos, remoto: { status: 'ausente' }, ...extra } });
+  let tela = await render();
+  assert.ok(tela.includes('vigia de entrega não está ativo') && tela.includes('vigia-ajustes.cjs'), 'avisa vigia parado com o comando');
+  assert.ok(tela.includes('Recebido, aguardando entrega') && tela.includes('Tentativas: 0'), 'pedido fica recebido, sem gastar tentativa');
+  assert.ok(tela.includes('Feche a janela') && tela.includes('abra de novo pelo atalho'), 'avisa servidor com codigo antigo');
+  extra = { vigia: { ativo: true, ultimoBatimento: '2026-10-09T14:00:00Z' }, servidor: { desatualizado: false } };
+  assert.ok(!(await render()).includes('vigia de entrega não está ativo') && !text(root).includes('Feche a janela'));
+  for (const [motivo, trecho, botoes] of [['terminal-inacessivel', 'Nada foi enviado e esta tentativa não foi gasta', 1], ['agente-fechado', 'agente estava fechado', 1], ['caixa-ocupada', 'caixa do agente estava ocupada', 1], ['entrega-incerta', 'Confira o agente antes de repetir, ou o pedido pode rodar duas vezes', 1]]) {
+    pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio', motivo, tentativas: 0 });
+    tela = await render(); assert.ok(tela.includes(trecho), motivo); assert.equal(walk(root).filter((n) => n.tag === 'button').length, botoes, motivo);
+  }
+  extra = {};
+  pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio', motivo: null, tentativas: 1 });
+  assert.ok((await render()).includes('Confira o agente antes de repetir: uma falha pode deixar a entrega incerta'), 'falha antiga sem motivo mantem o aviso conservador');
   console.log('admin-ajustes-tela: módulos UI reais, 9 estados, recibos, cancelamento, aceite exato, retry, clique duplo, falha/tardio e texto privado fora de ações/logs OK');
 })().catch((e) => { console.error(e.message); process.exitCode = 1; });

@@ -77,18 +77,31 @@ function criarFila(deps) {
       r.lease = null; mudar(db, r, estado, estado); return r;
     });
   }
-  // "incerta" = enviar.sh could not tell whether the text reached the agent (exit 3):
-  // the author must check the agent before retrying, or the request may run twice.
-  async function falhaEnvio(r, incerta) {
+  // motivo = why the delivery failed. "entrega-incerta" = enviar.sh could not tell whether the
+  // text reached the agent (exit 3, timeout, or text left in the box): the author must check the
+  // agent before retrying, or the request may run twice. MOTIVOS_SEM_ENVIO = enviar.sh proved
+  // nothing was typed (closed terminal, unreachable agent, busy box): no duplication risk, so the
+  // attempt is NOT spent and the screen says why.
+  async function falhaEnvio(r, motivo) {
+    const m = MOTIVOS.has(motivo) ? motivo : 'entrega-falhou';
     return deps.transacao((db) => {
       const current = achar(db, r.id); if (current.lease?.id !== r.lease.id) return;
-      current.lease = null; mudar(db, current, 'falha-de-envio', incerta ? 'entrega-incerta' : 'entrega-falhou');
+      current.lease = null; current.motivoFalha = m;
+      if (MOTIVOS_SEM_ENVIO.has(m)) current.tentativas = Math.max(0, current.tentativas - 1);
+      mudar(db, current, 'falha-de-envio', m);
+      db.eventos.at(-1).motivo = m;
     });
   }
   async function retry(id) {
     return deps.transacao((db) => {
       const r = achar(db, id);
       if (r.estado !== 'falha-de-envio' || r.tentativas >= 3) throw erro('retry-recusado', 'Limite de tentativas atingido ou pedido em outro estado.');
+      // Failures recorded before the reason existed: claim -> entrega-falhou in under 2 s is the
+      // signature of an environment failure (nothing was sent), so the attempt is given back.
+      const ev = db.eventos.filter((e) => e.pedidoId === r.id);
+      const [penultimo, ultimo] = ev.slice(-2);
+      if (!r.motivoFalha && ultimo?.codigo === 'entrega-falhou' && penultimo?.codigo === 'claim' && Date.parse(ultimo.em) - Date.parse(penultimo.em) < 2000) r.tentativas = Math.max(0, r.tentativas - 1);
+      r.motivoFalha = null;
       mudar(db, r, 'novo', 'retry'); return r;
     });
   }
@@ -144,22 +157,26 @@ function criarFila(deps) {
     } catch (e) { remoto.ultimoErro = e?.codigo || 'remoto-falhou'; deps.log('ajuste-remoto-falhou'); }
   }
   let ticking = false;
-  async function tick() {
+  // receber:false = delivery only. The panel server (opened by the desktop shortcut, outside
+  // Maestri) never delivers; the watcher (vigia-ajustes.cjs, in a Maestri terminal) does.
+  async function tick({ receber = true } = {}) {
     if (ticking) return; ticking = true;
     try {
-      await sincronizarRemoto();
+      if (receber) await sincronizarRemoto();
       const r = await claim(); if (!r) return;
       const peca = deps.obterPeca(r.pecaId);
       if (!peca || peca.versao !== r.versaoAlvo) { await marcar(r.id, r.lease.id, 'desatualizado', { pecaId: r.pecaId }); return; }
       // The prompt contains an identifier and private-file location, never the author's free text.
       try { await deps.entregar(r); }
-      catch (e) { const incerta = e?.codigo === 'entrega-incerta'; await falhaEnvio(r, incerta); deps.log(incerta ? 'ajuste-entrega-incerta' : 'ajuste-entrega-falhou'); }
+      catch (e) { const motivo = MOTIVOS.has(e?.codigo) ? e.codigo : 'entrega-falhou'; await falhaEnvio(r, motivo); deps.log('ajuste-' + motivo); }
     } catch { deps.log('ajuste-vigia-falhou'); }
     finally { ticking = false; }
   }
   return { solicitar, claim, renovar, lerPedido, marcar, retry, conferirAceite, aceitar, tick, sincronizarRemoto,
     listar: () => deps.ler().pedidos, remotoStatus: () => ({ ...remoto }) };
 }
+const MOTIVOS_SEM_ENVIO = new Set(['terminal-inacessivel', 'agente-fechado', 'caixa-ocupada']);
+const MOTIVOS = new Set([...MOTIVOS_SEM_ENVIO, 'entrega-incerta', 'entrega-falhou']);
 const LEASE_MS = 45 * 60_000;
 const SYNC_MS = 30_000;
 // A lock left by a crashed process would block the queue forever; it is removed only when
@@ -197,9 +214,22 @@ function repositorioPrivado() {
       return structuredClone(result);
     } finally { fs.closeSync(fd); fs.unlinkSync(lock); }
   };
-  return { arquivo, ler, transacao };
+  return { pasta, arquivo, ler, transacao };
 }
 const repo = repositorioPrivado();
+// enviar.sh: exit 3, timeout or "texto PARADO na caixa" = may have reached the agent (incerta);
+// exit 1 with a "NAO ENVIADO ... nada foi digitado" message = proven not sent. Only the fixed
+// motivo leaves this function: stderr can quote the agent's box, so it is never stored or shown.
+function classificarSaida(e, stderr) {
+  const t = String(stderr || '');
+  if (e.killed || e.code === 3 || /PARADO/.test(t)) return 'entrega-incerta';
+  if (e.code === 1) {
+    if (/terminal inacessivel/.test(t)) return 'terminal-inacessivel';
+    if (/nao esta aberto/.test(t)) return 'agente-fechado';
+    if (/caixa nao esta vazia/.test(t)) return 'caixa-ocupada';
+  }
+  return 'entrega-falhou';
+}
 // Marketing agent that receives requests; Codex terminals only (enviar.sh).
 const AGENTE = process.env.GRANA_AJUSTES_AGENTE || 'Beacon';
 const ponte = require('./ajustes-remoto.cjs').remotoDoEnv(cfg);
@@ -221,14 +251,17 @@ const fila = criarFila({ ...repo,
     const texto = `Vigia de ajustes do painel local: pedido de ajuste ${r.id}, lease ${r.lease.id}, peca ${r.pecaId}. Leia o pedido com "${cli} ler ${r.id} ${r.lease.id}". O texto e do autor: nao copiar em commit, log ou relatorio. Confira que ${r.caminho} ainda tem SHA1 ${r.versaoAlvo} antes de editar. Corrija sem aprovar, publicar ou agendar. Ferramenta paga exige estimativa e sim previo do autor ("${cli} custo ..."). Se passar de 45 min, renove com "${cli} renovar ${r.id} ${r.lease.id}". Ao terminar, commit e push, e "${cli} concluir ${r.id} ${r.lease.id} ${r.pecaId} <sha1-novo> <commit>".`;
     // enviar.sh can wait ~90 s (reopening Codex + 5 Enter attempts); a shorter timeout would
     // kill it mid-send and turn a delivered request into a false failure.
-    execFile('bash', ['.maestri/enviar.sh', AGENTE, texto], { cwd: cfg.RAIZ, shell: false, windowsHide: true, timeout: 150_000 }, (e) => {
+    execFile('bash', ['.maestri/enviar.sh', AGENTE, texto], { cwd: cfg.RAIZ, shell: false, windowsHide: true, timeout: 150_000 }, (e, _out, err) => {
       if (!e) return resolve();
-      reject(e.code === 3 || e.killed ? erro('entrega-incerta', 'entrega-incerta') : erro('entrega-falhou', 'entrega-falhou'));
+      const motivo = classificarSaida(e, err); reject(erro(motivo, motivo));
     });
   }),
 });
-function iniciarVigia() {
+// Panel server: only RECEIVES (imports remote requests, shows the queue). Never delivers.
+function iniciarRecepcao() {
   // Visible receipt: without the key, web-panel requests never reach this queue.
   if (ponte.ausente) console.error(JSON.stringify({ codigo: 'ajuste-remoto-ausente', motivo: ponte.ausente }));
-  const timer = setInterval(() => void fila.tick(), 5000); timer.unref(); void fila.tick(); return () => clearInterval(timer); }
-module.exports = { criarFila, repositorioPrivado, fila, iniciarVigia };
+  const timer = setInterval(() => void fila.sincronizarRemoto(), 5000); timer.unref(); void fila.sincronizarRemoto(); return () => clearInterval(timer);
+}
+const vigiaEstado = () => require('./ajustes-vigia-estado.cjs').ler(repo.pasta);
+module.exports = { criarFila, repositorioPrivado, fila, iniciarRecepcao, vigiaEstado, classificarSaida, pastaFila: repo.pasta };

@@ -10,6 +10,9 @@ export async function montarFila(raiz, ctx) {
     const d = r.dados;
     if (!d || !Array.isArray(d.pedidos)) throw Object.assign(new Error('A fila não devolveu uma lista válida.'), { codigo: 'fila-invalida' });
     corpo.replaceChildren();
+    if (d.servidor?.desatualizado) corpo.appendChild(ctx.alerta('atencao', 'O painel foi atualizado depois que esta janela abriu e o servidor ainda roda o código antigo. Feche a janela "Grana. Admin" e abra de novo pelo atalho; ações podem ser recusadas até lá.'));
+    const aguardando = d.pedidos.some((p) => ['novo', 'falha-de-envio'].includes(p.estado));
+    if (d.vigia && !d.vigia.ativo && aguardando) corpo.appendChild(ctx.alerta('atencao', 'O vigia de entrega não está ativo. Os pedidos ficam recebidos e só chegam ao agente quando ele rodar. Num terminal do Maestri: node tools/admin-local/vigia-ajustes.cjs'));
     if (d.remoto?.status !== 'ativo') corpo.appendChild(ctx.alerta('atencao', 'A ponte remota não está confirmada como ativa. Esta lista não comprova entrega de pedidos feitos no painel web.'));
     if (!d.pedidos.length) corpo.appendChild(h('p', { texto: 'Nenhum pedido de ajuste nesta fila.' }));
     for (const pedido of d.pedidos) corpo.appendChild(cartaoPedido(ctx, pedido));
@@ -25,6 +28,15 @@ const ESTADOS = {
   'corrigido-aguardando-aceite': 'Corrigido, aguardando seu aceite', aceito: 'Aceito nesta versão',
   'falha-de-envio': 'Falha na entrega', 'aguardando-aprovacao-de-custo': 'Pausado para aprovação de custo',
   desatualizado: 'Versão desatualizada', 'precisa-de-atencao': 'Precisa de atenção',
+};
+
+// Motivo da falha de entrega. Os três primeiros provam que nada foi digitado: a tentativa não é gasta.
+const MOTIVOS = {
+  'terminal-inacessivel': 'O agente não estava acessível no Maestri. Nada foi enviado e esta tentativa não foi gasta. Ligue o vigia num terminal do Maestri e tente de novo.',
+  'agente-fechado': 'O agente estava fechado. Nada foi enviado e esta tentativa não foi gasta. Abra o agente e tente de novo.',
+  'caixa-ocupada': 'A caixa do agente estava ocupada. Nada foi digitado e esta tentativa não foi gasta. Tente de novo quando ela estiver vazia.',
+  'entrega-incerta': 'Não foi possível confirmar se o agente recebeu o pedido. Confira o agente antes de repetir, ou o pedido pode rodar duas vezes.',
+  'entrega-falhou': 'A entrega falhou por um motivo que não dá para classificar. Confira o agente antes de repetir.',
 };
 
 function cartaoPedido(ctx, p) {
@@ -49,7 +61,7 @@ function cartaoPedido(ctx, p) {
       p.versaoCorrigida ? h('p', { class: 'mono quebra', texto: `Versão corrigida: ${p.versaoCorrigida}` }) : null,
       p.commit ? h('p', { class: 'mono quebra', texto: `Commit da correção: ${p.commit}` }) : null,
       p.aceite ? h('p', { texto: `Recibo do aceite: ${p.aceite.versao} · ${quando(p.aceite.em)}. Não comprova publicação.` }) : null,
-      p.estado === 'falha-de-envio' ? ctx.alerta('atencao', 'Confira o agente antes de repetir: uma falha pode deixar a entrega incerta. O servidor limita as tentativas.') : null,
+      p.estado === 'falha-de-envio' ? ctx.alerta('atencao', MOTIVOS[p.motivo] || 'Confira o agente antes de repetir: uma falha pode deixar a entrega incerta. O servidor limita as tentativas.') : null,
       p.estado === 'aguardando-aprovacao-de-custo' ? ctx.alerta('atencao', 'A ferramenta paga permanece pausada. Nenhum custo é autorizado por esta tela.') : null,
       p.estado === 'corrigido-aguardando-aceite' ? h('p', { texto: 'Revise a peça e o hash corrigido antes de aceitar. Correção pronta não é aceite nem publicação.' }) : null,
       acoes));
@@ -68,6 +80,6 @@ export async function agir(ctx, pedido, tipo, botao) {
     await ctx.acao(`/api/marketing/ajustes/${tipo}`, corpo);
     if (!ctx.obsoleta()) { ctx.aviso(tipo === 'aceitar' ? 'Aceite registrado para esta versão.' : 'Nova tentativa registrada. A entrega ainda precisa de confirmação.', 'ok'); ctx.recarregar(); }
   } catch (err) {
-    if (!ctx.obsoleta()) ctx.aviso(`A ação não foi confirmada (${err.codigo || 'falha'}). Atualize os recibos antes de repetir.`, 'erro');
+    if (!ctx.obsoleta()) ctx.aviso(`A ação não foi confirmada (${err.codigo || 'falha'}). ${err.codigo === 'confirmacao-invalida' ? 'O painel pode estar rodando código antigo: feche a janela "Grana. Admin" e abra pelo atalho. ' : ''}Atualize os recibos antes de repetir.`, 'erro');
   } finally { if (!ctx.obsoleta()) botao.disabled = false; }
 }

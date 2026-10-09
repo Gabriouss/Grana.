@@ -200,7 +200,8 @@ const GET = {
     semana: url.searchParams.get('semana') || undefined,
     tipo: url.searchParams.get('tipo') || undefined,
   }], { pecas: [], semanas: [], total: 0 }),
-  '/api/marketing/ajustes': (req, res) => responderOk(res, { pedidos: marketing('ajustes-fila').fila.listar().map(pedidoPublico), armazenamento: 'privado-local', remoto: false }),
+  '/api/marketing/ajustes': (req, res) => responderOk(res, { pedidos: marketing('ajustes-fila').fila.listar().map(pedidoPublico), armazenamento: 'privado-local', remoto: false,
+    vigia: marketing('ajustes-fila').vigiaEstado(), servidor: { desatualizado: require('./versao-codigo.cjs').desatualizado() } }),
   '/api/marketing/feed': (req, res) => rotaMarketingGet(res, 'catalogo', ['feed'], [], { pecas: [], total: 0 }),
   '/api/marketing/documento': (req, res) => rotaMarketingGet(res, 'catalogo', ['documento'], [], { markdown: '' }),
   '/api/marketing/calendario': (req, res, url) => {

@@ -90,6 +90,29 @@ Fora do painel, de propósito: deploy de Edge Function e migration (regra 11),
 SQL livre, comando livre, proxy para qualquer URL e leitura de arquivo fora das
 pastas liberadas.
 
+## Entrega dos pedidos de ajuste: o vigia
+
+O painel aberto pelo atalho roda fora do Maestri e não alcança agente nenhum, então ele só
+RECEBE e mostra os pedidos de ajuste. Quem entrega ao agente é o vigia, um processo à parte.
+Para ligar, num terminal do Maestri:
+
+    node tools/admin-local/vigia-ajustes.cjs
+
+Pode deixar aberto. Ele reserva cada pedido (lock e lease) e entrega pelo `.maestri/enviar.sh`;
+dois vigias ao mesmo tempo não entregam o mesmo pedido duas vezes. A cada 5 s ele grava um
+batimento (`ajustes-vigia.json`, na pasta de dados do painel).
+
+O que a tela mostra:
+
+- **Sem vigia** (sem batimento nos últimos 20 s): o aviso "O vigia de entrega não está ativo" com o
+  comando acima; o pedido fica "Recebido, aguardando entrega", sem gastar tentativa.
+- **Falha com motivo.** Agente inacessível, fechado ou com a caixa ocupada provam que nada foi
+  digitado: o motivo aparece e a tentativa NÃO é gasta. Timeout, exit 3 e texto parado na caixa
+  são entrega incerta: a tentativa é gasta e a tela manda conferir o agente antes de repetir.
+  O motivo é sempre um código fixo; a saída do `enviar.sh` nunca é guardada nem mostrada.
+- **Painel desatualizado.** Se o código do servidor mudou no disco depois que a janela abriu, a tela
+  avisa para fechar "Grana. Admin" e abrir de novo pelo atalho (ações podem ser recusadas até lá).
+
 ## Segurança, camada por camada
 
 1. **Rede:** escuta só em `127.0.0.1` e derruba conexão que não venha da
