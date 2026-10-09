@@ -4,8 +4,8 @@ import { consultarAdmin, ErroAdmin, reciboLocal, type AcessoAdmin, type Resposta
 import { criarPrazoAdmin, type PrazoAdmin } from '@/lib/admin-auth-web';
 import AdminVisual from './AdminVisual.web';
 
-type Etapa = 'carregando' | 'sem-sessao' | 'nao-admin' | 'cadastrar-totp' | 'pedir-totp' | 'pronto' | 'erro' | 'limite';
-type Fator = { id: string; qr?: string; segredo?: string };
+type Etapa = 'carregando' | 'sem-sessao' | 'nao-admin' | 'pedir-totp' | 'pronto' | 'erro' | 'limite';
+type Fator = { id: string };
 export default function PainelAdmin() {
   const [etapa, setEtapa] = useState<Etapa>('carregando');
   const [erro, setErro] = useState<ErroAdmin | null>(null);
@@ -69,20 +69,8 @@ export default function PainelAdmin() {
       if (verificado) {
         fatorMemoria.current = { id: verificado.id }; setFator(fatorMemoria.current); setEtapa('pedir-totp'); return;
       }
-      if (fatorMemoria.current?.segredo) { setFator(fatorMemoria.current); setEtapa('cadastrar-totp'); return; }
-      // Retomada após recarregar: um fator não verificado não permite recuperar
-      // seu QR. Remover somente o cadastro incompleto deste painel, nunca outro fator.
-      for (const incompleto of factors.data.all.filter((f) => f.factor_type === 'totp' && f.status !== 'verified' && f.friendly_name === 'Grana Admin')) {
-        if (atual !== versao.current) return;
-        const removido = await prazo.aguardar(() => supabase.auth.mfa.unenroll({ factorId: incompleto.id }));
-        if (removido.error) throw reciboLocal('mfa', 'Não foi possível retomar o cadastro do autenticador. Tente de novo.');
-      }
-      if (atual !== versao.current) return;
-      const cadastro = await prazo.aguardar(() => supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Grana Admin', issuer: 'Grana.' }));
-      if (cadastro.error) throw reciboLocal('mfa', 'Não foi possível cadastrar seu autenticador. Tente de novo.');
-      if (atual !== versao.current) return;
-      fatorMemoria.current = { id: cadastro.data.id, qr: cadastro.data.totp.qr_code, segredo: cadastro.data.totp.secret };
-      setFator(fatorMemoria.current); setEtapa('cadastrar-totp');
+      fatorMemoria.current = null; setFator(null); setCodigo('');
+      throw reciboLocal('mfa-precadastro', 'O autenticador precisa ser cadastrado por um canal administrativo seguro antes de acessar este painel. Depois do cadastro, confira o acesso novamente.');
     } catch (error) {
       if (atual !== versao.current) return;
       const recibo = falhou(error, 'Não foi possível conferir o acesso. Tente de novo.');
@@ -153,7 +141,7 @@ export default function PainelAdmin() {
   }
 
   return <AdminVisual etapa={etapa} erro={erro} ocupado={ocupado}
-    email={email} senha={senha} codigo={codigo} fator={fator} resumo={resumo}
+    email={email} senha={senha} codigo={codigo} resumo={resumo}
     onEmailChange={setEmail} onSenhaChange={setSenha}
     onCodigoChange={(valor) => setCodigo(valor.replace(/\D/g, '').slice(0, 6))}
     onEntrar={entrar} onVerificar={verificar}

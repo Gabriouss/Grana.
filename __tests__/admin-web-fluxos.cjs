@@ -40,7 +40,7 @@ function ambiente(opcoes = {}) {
       if (opcoes.pendurado === nome) return new Promise((resolve) => pendente = resolve);
       if (opcoes.erro === nome) return { data: null, error: { message: 'SEGREDO-NAO-ECOAR' } };
       if (nome === 'getSession') return { data: { session }, error: null };
-      if (nome === 'listFactors') return { data: { totp: opcoes.cadastro ? [] : [{ id: 'f', status: 'verified' }], all: opcoes.incompleto ? [{ id: 'velho', factor_type: 'totp', status: 'unverified', friendly_name: 'Grana Admin' }] : [] }, error: null };
+      if (nome === 'listFactors') return { data: { totp: opcoes.totp ?? (opcoes.cadastro ? [] : [{ id: 'f', status: 'verified' }]), all: opcoes.outrosFatores ?? (opcoes.incompleto ? [{ id: 'velho', factor_type: 'totp', status: 'unverified', friendly_name: 'Grana Admin' }] : []) }, error: null };
       if (nome === 'enroll') return { data: { id: 'f', totp: { qr_code: '<svg/>', secret: 'SEGREDO-TOTP-FICTICIO' } }, error: null };
       if (nome === 'challenge') return { data: { id: 'desafio' }, error: null };
       return { data: {}, error: null };
@@ -52,6 +52,7 @@ function ambiente(opcoes = {}) {
   const consultarAdmin = async (recurso) => {
     chamadas.push({ nome: recurso });
     if (opcoes.limite) throw new client.ErroAdmin('limite', 'Muitas consultas.', 'fixture');
+    if (recurso === 'visao-geral' && opcoes.recusarVisao) throw new client.ErroAdmin('mfa-necessario', 'Confirme o autenticador.', 'fixture');
     return { ok: true, contrato: 1, geradoEm: '2026-10-08T12:00:00Z', dados: recurso === 'acesso' ? opcoes.naoAdmin ? { admin: false } : { admin: true, aal: opcoes.pronto ? 'aal2' : 'aal1', totp: 'verificado' } : { fixture: true } };
   };
   const React = {
@@ -61,6 +62,10 @@ function ambiente(opcoes = {}) {
     useEffect: (f) => { const i = cursor++; if (!celulas[i]) { celulas[i] = true; effects.push(f); } },
   };
   const jsx = (type, props) => ({ type, props });
+  const visual = carregar('components/admin/AdminVisual.web.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
+    'expo-router/head': { default: () => null }, './admin-visual.css': {},
+  });
   const page = carregar('components/admin/PainelAdmin.web.tsx', {
     react: React, 'react/jsx-runtime': { jsx, jsxs: jsx }, '@/lib/supabase': { supabase },
     '@/lib/admin-web': { ...client, consultarAdmin }, '@/lib/admin-auth-web': deadline,
@@ -68,6 +73,7 @@ function ambiente(opcoes = {}) {
   });
   return {
     render() { cursor = 0; return page.default().props; },
+    visual() { return visual.default(this.render()); },
     async iniciar() { this.render(); effects.forEach((f) => f()); await tick(); return this.render(); },
     async expirar() { agora = 15001; for (const [id, t] of timers) { if (t.fim <= agora) { timers.delete(id); t.f(); } } await tick(); },
     async resolverTarde(data) { pendente?.(data); await tick(); },
@@ -76,8 +82,8 @@ function ambiente(opcoes = {}) {
 }
 
 (async () => {
-  for (const pendurado of ['getSession', 'listFactors', 'enroll', 'unenroll']) {
-    const a = ambiente({ pendurado, cadastro: ['enroll', 'unenroll'].includes(pendurado), incompleto: pendurado === 'unenroll' });
+  for (const pendurado of ['getSession', 'listFactors']) {
+    const a = ambiente({ pendurado });
     let p = await a.iniciar(); assert.equal(p.etapa, 'carregando');
     await a.expirar(); p = a.render(); assert.equal(p.etapa, 'erro', pendurado); assert.equal(p.erro.codigo, 'prazo');
     const antes = a.chamadas.length;
@@ -97,8 +103,38 @@ function ambiente(opcoes = {}) {
   }
   {
     const a = ambiente({ pronto: true }); let p = await a.iniciar(); assert.equal(p.etapa, 'pronto');
-    a.eventos.pagehide(); assert.equal(a.render().resumo, null); assert.equal(a.render().fator, null);
+    a.eventos.pagehide(); assert.equal(a.render().resumo, null); assert.equal(a.render().fator, undefined);
     a.authEvent('SIGNED_OUT'); p = a.render(); assert.equal(p.etapa, 'sem-sessao'); assert.equal(p.resumo, null);
+  }
+  for (const caso of [
+    {}, { incompleto: true },
+    { totp: [{ id: 'pendente', status: 'unverified' }] },
+    { outrosFatores: [{ id: 'telefone', factor_type: 'phone', status: 'verified' }] },
+    { pronto: true, recusarVisao: true },
+  ]) {
+    const a = ambiente({ cadastro: true, ...caso });
+    const p = await a.iniciar();
+    assert.equal(p.etapa, 'erro'); assert.equal(p.erro.codigo, 'mfa-precadastro');
+    assert.ok(p.erro.ocorrencia); assert.ok(p.erro.message.includes('canal administrativo seguro'));
+    assert.equal(p.fator, undefined); assert.equal(p.resumo, null);
+    const markup = JSON.stringify(a.visual());
+    assert.ok(markup.includes('canal administrativo seguro')); assert.ok(markup.includes('referencia-local'));
+    assert.ok(!markup.includes('SEGREDO-TOTP')); assert.ok(!markup.includes('data:image'));
+    assert.ok(!a.chamadas.some(c => ['enroll', 'unenroll', 'challenge', 'verify'].includes(c.nome)));
+    assert.equal(a.chamadas.filter(c => c.nome === 'visao-geral').length, caso.recusarVisao ? 1 : 0);
+    assert.ok(!JSON.stringify(p).includes('SEGREDO-TOTP'));
+    await p.onAtualizar(); await tick();
+    assert.ok(!a.chamadas.some(c => ['enroll', 'unenroll'].includes(c.nome)), 'reconferir tambem nao cadastra nem remove fatores');
+    await p.onSair(); await tick();
+    assert.equal(a.render().etapa, 'sem-sessao');
+  }
+  {
+    const a = ambiente({ incompleto: true }); const p = await a.iniciar();
+    assert.equal(p.etapa, 'pedir-totp'); assert.equal(p.fator, undefined);
+    p.onCodigoChange('123456'); const q = a.render(); await q.onVerificar({ preventDefault() {} });
+    assert.deepEqual(JSON.parse(JSON.stringify(a.chamadas.find(c => c.nome === 'challenge').args)), [{ factorId: 'f' }]);
+    assert.deepEqual(JSON.parse(JSON.stringify(a.chamadas.find(c => c.nome === 'verify').args)), [{ factorId: 'f', challengeId: 'desafio', code: '123456' }]);
+    assert.ok(!a.chamadas.some(c => ['enroll', 'unenroll'].includes(c.nome)));
   }
   for (const opcoes of [{ naoAdmin: true }, { limite: true }, { erro: 'listFactors' }]) {
     const a = ambiente(opcoes); const p = await a.iniciar();
@@ -106,5 +142,5 @@ function ambiente(opcoes = {}) {
     assert.equal(p.etapa, opcoes.naoAdmin ? 'nao-admin' : opcoes.limite ? 'limite' : 'erro');
     assert.ok(!JSON.stringify(a.logs).includes('SEGREDO'));
   }
-  console.log('admin-web-fluxos: 8 prazos Auth/MFA, resposta tardia, saída, acesso e recibos OK');
+  console.log('admin-web-fluxos: 6 prazos Auth/MFA, resposta tardia, 5 recusas de pré-cadastro, fator TOTP verificado, OTP, saída, acesso e recibos OK');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

@@ -30,10 +30,22 @@ const dadosValidos = () => ({
       fetch: async () => ({ ok: true, status: 200, json: async () => ({ ok: true, contrato: 1, geradoEm: '2026-10-08T12:00:00Z', dados }) }),
     });
     const resumo = await client.consultarAdmin('visao-geral');
-    const rendered = texto(visual.default({ etapa: 'pronto', resumo, erro: null, ocupado: false, email: '', senha: '', codigo: '', fator: null }));
+    const rendered = texto(visual.default({ etapa: 'pronto', resumo, erro: null, ocupado: false, email: '', senha: '', codigo: '' }));
     assert.equal((rendered.match(/Não foi possível ler este bloco/g) || []).length, falhas, 'combinação ' + mask);
     assert.ok(rendered.includes('Saúde'), 'bloco saudável permanece');
     assert.equal((rendered.match(/Lido às/g) || []).length, 6);
+  }
+  // Dados legados/maliciosos não podem reativar o cadastro nem renderizar uma seed.
+  const canarios = { qr: 'data:image/svg+xml,QR-PRIVADO-FICTICIO', segredo: 'SEED-PRIVADA-FICTICIA' };
+  for (const etapa of ['pedir-totp', 'erro', 'cadastrar-totp']) {
+    const props = { etapa, resumo: null, erro: etapa === 'erro' ? { codigo: 'mfa-precadastro', message: 'Cadastre por canal administrativo seguro.', ocorrencia: 'fixture-recibo', hora: '2026-10-09T03:00:00Z' } : null, ocupado: false, email: '', senha: '', codigo: '', fator: canarios };
+    const arvore = visual.default(props);
+    const serializado = JSON.stringify(arvore);
+    assert.ok(!serializado.includes(canarios.qr), 'QR não entra no markup: ' + etapa);
+    assert.ok(!serializado.includes(canarios.segredo), 'seed não entra no markup: ' + etapa);
+    assert.ok(!serializado.includes('data:image'), 'sem imagem de cadastro: ' + etapa);
+    if (etapa === 'pedir-totp') assert.ok(texto(arvore).includes('Confirme seu acesso'));
+    if (etapa === 'erro') assert.ok(texto(arvore).includes('fixture-recibo'));
   }
   console.log('admin-web-integracao: cliente + visual reais, 32 combinações de blocos indisponíveis com recibos OK');
 })().catch((e) => { console.error(e); process.exitCode = 1; });
