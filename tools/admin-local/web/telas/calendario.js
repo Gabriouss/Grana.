@@ -188,7 +188,7 @@ export function montarEnsaioCalendario(raiz, ctx) {
       corpo.replaceChildren();
       corpo.appendChild(ctx.alerta('info', 'Somente simulação. Nenhuma publicação foi agendada ou enviada à Meta. Um item ensaiado não está autorizado para execução real.'));
       if (d.aviso) corpo.appendChild(h('p', { class: 'nota-explicativa', texto: texto(d.aviso) }));
-      corpo.appendChild(h('p', { class: 'campo-ajuda', texto: `Leitura: ${texto(d.geradoEm || resposta.atualizadoEm)} · Fuso: ${texto(d.fuso)} · Dia D: ${d.diaD || 'não declarado'}` }));
+      corpo.appendChild(h('p', { class: 'campo-ajuda', texto: `Leitura: ${ctx.formatar.dataHora(d.geradoEm || resposta.atualizadoEm)} · Fuso: ${texto(d.fuso)} · Dia D: ${d.diaD || 'não declarado'}` }));
       corpo.appendChild(h('p', { texto: `${d.itens.length} ${d.itens.length === 1 ? 'item' : 'itens'} · ${d.itens.filter((i) => i.estado === 'ensaio').length} ensaiados · ${d.itens.filter((i) => i.estado === 'bloqueado').length} bloqueados` }));
       if (d.bloqueiosGerais?.length) corpo.appendChild(h('div', {}, h('h3', { texto: 'Bloqueios do ensaio' }), lista(d.bloqueiosGerais)));
       if (!d.itens.length) corpo.appendChild(h('p', { texto: 'Nenhum planejamento disponível para ensaiar. Declare o dia D e marque as datas no calendário editorial.' }));

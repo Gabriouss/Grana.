@@ -20,7 +20,7 @@ export async function montar(raiz, ctx) {
       dominios.length ? ctx.tabela([
         { titulo: 'Domínio', valor: (x) => (typeof x === 'string' ? x : x.nome), classe: 'mono' },
         { titulo: 'Verificado', valor: (x) => (typeof x === 'string' || x.verificado === undefined ? 'sem dado' : x.verificado ? ctx.selo('ok', 'Sim') : ctx.selo('alerta', 'Não')) },
-        { titulo: 'Redireciona para', valor: (x) => x.redireciona, classe: 'mono' },
+        { titulo: 'Redireciona para', valor: (x) => x.redireciona, classe: 'mono', vazio: 'nenhum' },
       ], dominios, { legenda: 'Domínios' }) : ctx.estado.bloco.vazio('Nenhum domínio informado.'),
     ];
   }, { integracao: 'vercel' }));

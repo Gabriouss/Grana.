@@ -568,7 +568,7 @@ export function tabela(colunas, linhas, { legenda } = {}) {
       h('thead', null, h('tr', null, colunas.map((c) => h('th', { scope: 'col', class: c.classe, texto: c.titulo })))),
       h('tbody', null, linhas.map((l) => h('tr', null, colunas.map((c) => {
         const v = c.valor(l);
-        return h('td', { class: c.classe }, v === undefined || v === null || v === '' ? 'sem valor' : v);
+        return h('td', { class: c.classe }, v === undefined || v === null || v === '' ? (c.vazio ?? 'sem valor') : v);
       }))))));
 }
 

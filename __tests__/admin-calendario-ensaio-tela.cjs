@@ -11,7 +11,7 @@ function setup(api) {
  let obsoleta = false;
  const ctx = { h: node, obsoleta: () => obsoleta, api: async (path) => { calls.push(path); return api(); },
    acao: () => { throw Error('escrita proibida'); }, alerta: (tipo, texto) => node('p', { tipo, texto }),
-   estado: { carregando: (root, texto) => root.replaceChildren(node('p', { texto })), erro: (root, err, retry) => { erros.push(err); root.replaceChildren(node('p', { texto: 'Leitura falhou' }), node('button', { texto: 'Tentar novamente', onclick: retry })); } } };
+   formatar: { dataHora: (v) => `local ${v}` }, estado: { carregando: (root, texto) => root.replaceChildren(node('p', { texto })), erro: (root, err, retry) => { erros.push(err); root.replaceChildren(node('p', { texto: 'Leitura falhou' }), node('button', { texto: 'Tentar novamente', onclick: retry })); } } };
  const sandbox = { ctx, root, console: { warn: (...v) => logs.push(v) } };
  vm.runInNewContext(source, sandbox);
  return { root, calls, erros, logs, start: () => vm.runInNewContext('montarEnsaioCalendario(root,ctx)', sandbox), obsolete: () => { obsoleta = true; } };
@@ -20,6 +20,7 @@ function setup(api) {
  const vazio = setup(async () => ({ dados: dto() })); await vazio.start();
  assert.ok(text(vazio.root).includes('Somente simulação'));
  assert.ok(text(vazio.root).includes('não declarado'));
+ assert.ok(text(vazio.root).includes('Leitura: local 2026-10-08T21:00:00Z'), 'Leitura passa pelo formatador local, nao ISO cru');
  assert.ok(text(vazio.root).includes('Nenhum planejamento'));
  assert.deepEqual(vazio.calls, ['/api/marketing/calendario/ensaio']);
  assert.deepEqual(buttons(vazio.root).map((b) => b.attrs.texto), ['Atualizar ensaio']);
