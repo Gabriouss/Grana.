@@ -69,6 +69,8 @@ function normalizar(lista, ctx) {
       titulo: p.titulo || nomeDoArquivo(p.caminho || todos[0]) || 'Peça sem título',
       legenda: p.legenda || '',
       midias,
+      // capa pareada pelo catálogo (<video>-capa.png); a rota do feed já tira a capa da grade como peça solta
+      capa: p.capa && p.capa.url ? { url: ctx.urlArquivo ? ctx.urlArquivo(p.capa.url) : url(p.capa.url), aprovada: !!p.capa.aprovada } : null,
       tipo,
       ehVideo: tipo === 'video' || tipo === 'reels' || (midias.length === 1 && temVideo),
       data: pub && pub.data ? pub.data : null,
@@ -199,16 +201,21 @@ function celula(h, p, abrir) {
   let midia;
   if (!capa) {
     midia = h('span', { class: 'feed-celula-texto', texto: p.legenda ? resumo(p.legenda, 140) : p.titulo });
+  } else if (p.ehVideo && p.capa) {
+    // capa 1080x1920: a grade recorta o centro (object-fit: cover), como o Instagram
+    midia = h('img', { src: p.capa.url, alt: '', loading: 'lazy', decoding: 'async' });
   } else if (EXT_VIDEO.test(capa)) {
-    // primeiro quadro como capa; sem som e sem tocar
+    // sem capa: primeiro quadro, e o selo abaixo avisa (recibo, nunca fundo vazio)
     midia = h('video', { src: capa.includes('#') ? capa : `${capa}#t=0.1`, preload: 'metadata', muted: true, playsinline: true, tabindex: '-1', 'aria-hidden': 'true' });
   } else {
     midia = h('img', { src: capa, alt: '', loading: 'lazy', decoding: 'async' });
   }
   const tipoIcone = p.midias.length > 1 ? iconeSvg('carrossel') : p.ehVideo ? iconeSvg('reels') : null;
   if (tipoIcone) tipoIcone.classList.add('feed-celula-tipo');
-  const rotuloData = p.data ? dataCurta(p.data) : 'Sem data';
-  return h('button', { class: 'feed-celula', type: 'button', onclick: abrir, 'aria-label': `${p.titulo}. ${p.data ? `Publicação em ${dataCurta(p.data)}` : 'Aprovada, sem data de publicação'}. Abrir.` },
+  const dataTexto = p.data ? dataCurta(p.data) : 'Sem data';
+  const avisoCapa = !p.ehVideo ? '' : !p.capa ? ' · Sem capa' : !p.capa.aprovada ? ' · Capa não aceita' : '';
+  const rotuloData = dataTexto + avisoCapa;
+  return h('button', { class: 'feed-celula', type: 'button', onclick: abrir, 'aria-label': `${p.titulo}${avisoCapa ? `. ${avisoCapa.slice(3)}` : ''}. ${p.data ? `Publicação em ${dataCurta(p.data)}` : 'Aprovada, sem data de publicação'}. Abrir.` },
     midia,
     tipoIcone,
     h('span', { class: 'feed-celula-selo', 'aria-hidden': 'true', texto: rotuloData }),
@@ -230,6 +237,10 @@ function abrirPost(area, lista, indice, ctx) {
 
   // mídia
   const midiaEl = h('div', { class: 'feed-post-midia' });
+  // A área de mídia toma a proporção da peça (como o Instagram abre o post) e a mídia aparece
+  // inteira (contain). Reel com capa já nasce 9:16; o resto lê a proporção natural ao carregar.
+  const proporcaoDaPeca = (w, hh) => { if (w > 0 && hh > 0) midiaEl.style.aspectRatio = `${w} / ${hh}`; };
+  if (p.ehVideo) proporcaoDaPeca(9, 16);
   let pausarTudo = () => {};
   if (!p.midias.length) {
     midiaEl.appendChild(h('div', { class: 'feed-celula-texto', texto: p.legenda || p.titulo }));
@@ -238,12 +249,22 @@ function abrirPost(area, lista, indice, ctx) {
     const slides = p.midias.map((arq, i) => {
       const alt = p.midias.length > 1 ? `${p.titulo}, ${i + 1} de ${p.midias.length}` : p.titulo;
       const el = EXT_VIDEO.test(arq)
-        ? h('video', { src: arq, controls: true, preload: 'metadata', playsinline: true, 'aria-label': alt })
+        ? h('video', { src: arq, controls: true, preload: 'metadata', playsinline: true, 'aria-label': alt, ...(p.capa ? { poster: p.capa.url } : {}) })
         : h('img', { src: arq, alt, decoding: 'async' });
-      return h('div', { class: 'feed-slide', role: 'group', 'aria-roledescription': 'slide', 'aria-label': `${i + 1} de ${p.midias.length}` }, el);
+      Object.assign(el.style, { width: '100%', height: '100%', objectFit: 'contain' });
+      if (i === 0) {
+        if (el.tagName === 'VIDEO') el.addEventListener('loadedmetadata', () => proporcaoDaPeca(el.videoWidth, el.videoHeight), { once: true });
+        else if (el.complete && el.naturalWidth) proporcaoDaPeca(el.naturalWidth, el.naturalHeight);
+        else el.addEventListener('load', () => proporcaoDaPeca(el.naturalWidth, el.naturalHeight), { once: true });
+      }
+      const slide = h('div', { class: 'feed-slide', role: 'group', 'aria-roledescription': 'slide', 'aria-label': `${i + 1} de ${p.midias.length}` }, el);
+      slide.style.display = 'block'; // altura definida: a mídia com height:100% cabe na área em vez de crescer pela proporção natural
+      slide.style.height = '100%';
+      return slide;
     });
     trilho.append(...slides);
     midiaEl.appendChild(trilho);
+    midiaEl.style.justifySelf = 'center'; // coluna larga: a mídia fica centrada na proporção dela
     pausarTudo = () => trilho.querySelectorAll('video').forEach((v) => v.pause());
 
     if (slides.length > 1) {
@@ -293,7 +314,7 @@ function abrirPost(area, lista, indice, ctx) {
 
   const legenda = p.legenda
     ? h('div', { class: 'feed-legenda' }, h('b', { texto: nomePerfil }), p.legenda)
-    : h('div', { class: 'feed-legenda feed-legenda-vazia', texto: 'Sem legenda registrada para esta peça. A legenda entra quando houver um .txt ou .md ao lado do arquivo, ou uma linha no índice da semana.' });
+    : h('div', { class: 'feed-legenda feed-legenda-vazia', texto: 'Sem legenda ainda.' });
 
   const dados = [
     p.data ? `Publicação planejada: ${ctx.formatar ? ctx.formatar.data(p.data) : p.data}${p.hora ? ` às ${p.hora}` : ''}` : 'Aprovada, ainda sem data de publicação',
