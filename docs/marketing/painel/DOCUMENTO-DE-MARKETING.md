@@ -4,11 +4,13 @@ Consolidação do material de marketing que já existe no repositório, montada 
 
 Fontes principais: `PRODUCT.md`, `FUNIL.md`, `AGENTS.md` (regras 21 a 25), `docs/marketing/README.md`, os `INDICE.md` semanais e o material de apoio da semana 40 (`plano-verba-curta.md`, `matriz-plataformas.md`, `inventario-criativos.md`, `CHECKLIST-PEDIDOS-AUTOR.md`, `COPYS-FINAIS.md`).
 
+Para execução operacional das frentes C e D, consulte também [Guia operacional C/D](GUIA-OPERACIONAL-C-D.md). As regras atualizadas abaixo refletem os contratos de 08/10/2026.
+
 ## 1. Estado agora
 
 - Nada da campanha foi publicado, agendado ou impulsionado.
-- Nenhuma peça tem aceite explícito do autor registrado. A pasta `aprovados` está vazia em todas as semanas, e `aprovacoes.json` começa vazio (os casos conferidos estão no próprio arquivo).
-- O dia D não foi declarado. Pela decisão do autor de 25/09/2026, nada vai ao ar antes da build nova publicada e testada.
+- Há aceite explícito registrado para o Reel da padaria v8, para o SHA1 indicado no índice da semana 39 e em `aprovacoes.json`. O aceite não significa publicação nem agendamento.
+- O manifesto `docs/marketing/painel/cronograma.json` ainda não existe e `calendario.json` mantém `diaD: null` e nenhuma programação efetiva. Nada vai ao ar antes dos portões definidos pelo autor.
 - A produção de peça está pausada fora das janelas que o autor abre na sessão (regra 21). A última janela foi 04/10/2026.
 
 ## 2. Posicionamento
@@ -55,7 +57,7 @@ Fontes: `FUNIL.md` seção 2, `AGENTS.md`, memória do projeto sobre copy.
 - Sem travessão e sem a construção "não é X, é Y".
 - Sem escassez inventada, contagem regressiva falsa ou prova social sem origem verificável.
 - Tela do app é sempre captura real, com conta de teste e dados inventados. IA nunca desenha tela do app.
-- Dado fictício é avisado na legenda; no Reel, sobreposição durante as capturas.
+- Dado fictício é avisado na legenda. Não inserir aviso de exemplo dentro da arte ou do vídeo.
 
 ## 6. Regras de criativo (regras 21 a 25 do AGENTS.md)
 
@@ -70,37 +72,38 @@ Fontes: `FUNIL.md` seção 2, `AGENTS.md`, memória do projeto sobre copy.
 - O painel lê `docs/marketing/` direto, sem copiar arquivo. Cada peça tem um `id` estável (hash do caminho) e uma `versao` (sha1 dos arquivos e da legenda). Mudar a arte ou só a legenda gera versão nova, e o aceite anterior deixa de valer.
 - Imagens numeradas na mesma pasta (`carrossel-1.png` a `carrossel-5.png`) formam um carrossel. O HTML de render não é peça; o PNG ao lado dele é.
 - A legenda vem do `COPYS-FINAIS.md` da semana. A ligação peça e copy é por regra explícita: pasta `r13` ou arquivo `reel-r13` para R13; `lumen*/carrossel-N` para C14; `lumen*/card.png` para C01; e, no resto, um código no início do nome do arquivo (`E01-`, `S2-`, `R5-`). Peça sem código fica sem legenda, sem palpite.
-- **Aprovar** no painel exige digitar APROVAR e grava, para aquela versão, um registro em `docs/marketing/painel/aprovacoes.json` e uma linha de evidência datada (hora local com fuso) no `INDICE.md` da semana. A peça não muda de pasta. Aprovar não publica, não agenda e não escolhe data.
-- **Pedir ajuste** grava o motivo para aquela versão; a peça segue aguardando aceite.
+- **Aceitar** no painel registra o aceite para o SHA1 exato em `docs/marketing/painel/aprovacoes.json` e no `INDICE.md` semanal. O aceite projeta automaticamente a previsão no calendário quando existe vínculo válido com o manifesto. Não publica nem agenda na Meta.
+- **Pedir ajuste** cria uma solicitação na fila privada, ligada ao SHA1 visto pelo autor. A peça corrigida fica em `para-aprovacao`; `aprovacoes[]` não recebe a versão corrigida antes do aceite explícito do autor. Motivos de pedidos novos não devem ir a arquivo público, commit, log ou relatório.
 - As alterações ficam locais até alguém commitar; o painel não faz commit nem push.
 
 ## 8. Calendário
 
-Fonte: `FUNIL.md`, seção 5; dados em `docs/marketing/painel/calendario.json`.
+Fonte editorial: `docs/marketing/painel/cronograma.json`. `calendario.json` guarda a projeção operacional e dados legados.
 
-- Só peça aprovada naquela versão recebe data. Aprovada sem data aparece em "Aprovados sem data".
-- Planejar não publica nem agenda no Instagram ou na Meta.
-- O calendário traz como referência as 27 posições relativas do FUNIL (D+0 a D+32 em dias úteis, mais duas reservas). Quando o dia D for declarado no `calendario.json`, o painel calcula as datas; D no fim de semana passa para a segunda. As posições são referência editorial, não obrigação de publicar.
-- O card, o carrossel e o Reel do lote piloto de 04/10 ainda não têm posição D+ (`FUNIL.md`, seção 5).
-- **Portão do dia D:** build nova publicada e instalável; foto da nota testada em aparelho; Início, widgets e assistente com os mesmos números; voz no app e no widget aprovada no QA; capturas só com conta de teste; cada peça revisada e aprovada pelo autor.
+- Cada item tem ID estável e data absoluta ou posição `diaD + N` em dias úteis. O vínculo fica no índice semanal como `manifestoId#itemId@manifestoVersao`; não inferir item pela pasta ou pelo nome do arquivo.
+- O aceite exato projeta a previsão no calendário. Uma mudança no conteúdo invalida o aceite da versão anterior. Uma mudança só de data preserva o aceite; a substituição manual precisa de recibo.
+- Posições relativas não resolvem enquanto o autor não declarar dia D com `DECLARAR DIA D`. Hora ou canal ausentes também bloqueiam o ensaio Meta. O cálculo usa segunda a sexta e não exclui feriados.
+- Planejar e ensaiar não publica nem cria agendador. O ensaio local informa `realHabilitado: false` e `chamadasMeta: 0`. Integração real exige os portões técnicos, julgamento e autorização específica do autor.
+- Portão editorial do dia D: build nova publicada e testada, QA da função nas plataformas anunciadas, capturas com conta de teste e aceite do autor para cada versão.
 
 ## 9. Tráfego pago
 
 Fonte: `plano-verba-curta.md` (rascunho de 30/09/2026, sem aprovação do autor) e `FUNIL.md`, seção 13; dados em `docs/marketing/painel/trafego.json`.
 
 - **Ordem:** orgânico primeiro (D até D+14), teste pago mínimo só se as portas abrirem (a partir de D+15), depois decisão.
-- **Portas:** build publicada e testada; visita que vira clique em plano acima de 5%; pelo menos uma compra orgânica real; Pixel e InitiateCheckout medidos. Hoje nenhuma está aberta.
+- **Portas:** build publicada e testada; visita que vira clique em plano acima de 5%; pelo menos uma compra orgânica real; Pixel e InitiateCheckout medidos. No `trafego.json` de 08/10, a build está fechada e as demais portas não foram medidas.
 - **Pré-requisitos técnicos:** Pixel com consentimento LGPD, InitiateCheckout no clique do plano, Purchase com valor vindo do webhook da Cakto, UTM por peça.
-- **Campanhas em rascunho:** "Sonda de aprovação da conta" (R$ 7 por dia, 7 dias, D+15 a D+21) e "Teste de criativo" (R$ 14 por dia, 7 dias, D+22 a D+28). Total proposto R$ 147. Pede decisão do autor, que pode preferir zero pago até haver 5 compras orgânicas.
+- **Campanhas em rascunho, sem gasto autorizado:** "Sonda de aprovação da conta" (R$ 7 por dia, 7 dias, total R$ 49) e "Teste de criativo" (R$ 14 por dia, 7 dias, total R$ 98). São hipóteses sem datas absolutas nem peças vinculadas; o total proposto é R$ 147 e depende de decisão explícita do autor.
 - **Teto:** nunca mais de R$ 100 por semana sem nova decisão do autor (22/09/2026). O painel avisa quando uma campanha passa disso.
 - **Limites de referência** (mercado, não medidos no Grana.): CTR de link abaixo de 0,8% troca o criativo; custo por InitiateCheckout acima de R$ 25 troca o criativo; visita que vira checkout abaixo de 5% para o pago e conserta a página; checkout que vira compra abaixo de 20% para o pago.
 - Destino sempre a landing, nunca o `.apk` direto. Sem campanha de instalação de app. Anúncio só usa peça aprovada.
-- O painel só planeja. Criar, pausar ou pagar anúncio continua no Gerenciador de Anúncios, pelo autor.
+- Os status locais `rascunho`, `pronta`, `no-ar` e `encerrada` organizam o plano. `pronta` não autoriza gasto e `no-ar` não prova veiculação. Criar, pausar ou pagar anúncio continua no Gerenciador de Anúncios e exige autorização do autor.
 
 ## 10. O que depende do autor
 
-- Aceite de cada peça em `para-aprovacao` (E01, E02, E05, E06, Reel do padeiro v8, C01 card, C14 carrossel, R13 e o documento de copys).
-- Declarar o dia D depois do portão.
-- Verba de teste: R$ 147 ou zero pago até 5 compras orgânicas.
+- Manifesto, vínculo, data, hora e canal de cada item, depois das decisões editoriais necessárias.
+- Declarar o dia D depois dos portões; isso exige a confirmação literal `DECLARAR DIA D`.
+- Autorizar ou rejeitar um orçamento específico. Os R$ 147 são apenas hipótese de rascunho; o teto vigente é R$ 100 por semana sem nova decisão.
+- Aceite explícito de cada versão que ainda esteja sem recibo exato. O Reel da padaria v8 já tem aceite registrado para seu SHA1 indicado no índice semanal.
 - Bio do perfil do Instagram: nenhum material existente a define, e o feed simulado mostra o espaço vazio.
 - Nova janela de produção, se quiser peça nova (regra 21).
