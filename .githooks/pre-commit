@@ -1,0 +1,5 @@
+#!/bin/sh
+# Trava 3 (08/10/2026): nenhum commit com formato de token conhecido nas linhas
+# adicionadas, nem com valor do .env local. Ligado por `core.hooksPath`
+# (scripts/ligar-hooks.cjs, rodado no `npm install`). Nunca use --no-verify.
+exec node scripts/varrer-segredos.cjs --staged --valores

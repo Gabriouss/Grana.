@@ -35,6 +35,18 @@ jobs:
       - name: Suítes determinísticas do app, voz, widget, assistente e schema
         run: npm run test:ci
 
+      # Trava 2 (08/10/2026): o mesmo export que a Vercel publica, varrido por
+      # formato de token. Os dois valores abaixo são FICTÍCIOS e públicos por
+      # natureza (EXPO_PUBLIC_ vai embutido no site); este job não usa secret.
+      - name: Export web e varredura de segredos
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://ci-sem-projeto.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: chave-anon-ficticia-do-ci
+        run: |
+          npx expo export --platform web
+          node scripts/inject-og-meta.js
+          node scripts/varrer-segredos.cjs dist
+
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x

@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx expo export --platform web && node scripts/inject-og-meta.js",
+  "buildCommand": "npx expo export --platform web && node scripts/inject-og-meta.js && node scripts/varrer-segredos.cjs dist",
   "outputDirectory": "dist",
   "redirects": [
     {
