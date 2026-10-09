@@ -78,66 +78,18 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 ---
 
-# ALERTA CRÍTICO DE SEGURANÇA — LER ANTES DE QUALQUER OUTRA COISA
+# Exposição histórica do .env ao EAS — situação atual
 
-> **Registrado pela M2 em 16/09/2026, a pedido do autor, como informação
-> séria, crítica e de extrema importância. É a PRIMEIRA coisa que a próxima
-> sessão da M1 precisa saber — antes do inventário, antes de ler o resto,
-> antes de qualquer pedido. Não apague este bloco enquanto os itens abaixo não
-> estiverem resolvidos E confirmados pelo autor.**
+Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote enviado ao EAS na build 1.10.2 foram trocados e os antigos apagados. A frase registrada no handoff de 08/10, por volta de 23h40, foi: “apaguei todos, tudo foi apagado e alterado para novos”.
 
-**1. Os segredos do `.env` da M1 foram enviados ao servidor do EAS.** A build
-1.10.2 (12/09/2026, disparada pela M1, build `149bb92e`) levou, dentro do
-pacote do projeto, o `.env` da M1 com `CAKTO_CLIENT_ID`,
-`CAKTO_CLIENT_SECRET`, `GITHUB_TOKEN`, `SUPABASE_ACCESS_TOKEN` e
-`VERCEL_TOKEN`. Comprovado pelo log da build (`env: export …`, que mostra só
-os nomes). Causa: o `.easignore`, criado em 01/09 (`00de222`), substitui o
-`.gitignore` no envio e não excluía o `.env`; corrigido em `4ce2242`. Os
-segredos NÃO entraram no APK — o APK da 1.10.2 foi aberto e conferido — e não
-ficaram públicos, mas estão num servidor de terceiro, fora do controle do
-projeto.
+- **Confirmação do autor:** rotação dos cinco segredos expostos; GITHUB_TOKEN novo com permissão de escrita por decisão do autor; SUPABASE_SERVICE_ROLE_KEY permanece no .env da M1 por decisão do autor; o repositório do código continua público e o APK terá um repositório separado.
+- **Relato do handoff, não revalidado por Ledger:** as credenciais novas responderam HTTP 200 nos provedores consultados; Ledger não repetiu chamadas nem conferiu credenciais.
+- **Estado operacional:** Secret scanning e Push protection foram ligados no repositório; o relato de Quill diz que o estado foi conferido pela API. Nenhum valor de segredo foi consultado ou registrado aqui.
+- **Proteção que continua valendo:** .easignore precisa excluir .env e .env.*; release continua passando por npm run build:preparar (regras 4 e 5). O alerta anterior sobre “troca ainda pendente” está superado pela confirmação do autor.
 
-**Contexto, não pendência:** o repositório `Gabriouss/Grana.` é PÚBLICO, e a
-senha da conta de teste ficou num plano versionado (`14ef2d2`, removida em
-`eb3b3ad`, ainda no histórico). **O autor decidiu em 16/09/2026 que essa
-senha não é importante** — é a conta descartável dos agentes —, então ela não
-precisa ser trocada nem cobrada. O cuidado que continua valendo é o da regra
-15: nenhuma credencial em arquivo versionado.
-
-**O que a M1 faz, nesta ordem, antes de qualquer outro trabalho:**
-
-1. **`git fetch origin` e `git pull`.** Sem o `4ce2242`, a próxima build da
-   M1 manda o `.env` de novo, com os mesmos segredos. Depois do pull, confira
-   que o `.easignore` tem as linhas `.env` e `.env.*`.
-2. **NÃO dispare nenhuma build (`eas build`) antes do passo 1**, nem com
-   pedido do autor: explique o motivo e faça o pull primeiro. Desde
-   `abf329a`, o `npm run build:preparar` recusa preparar a build (sai com
-   "BLOQUEADO") se algum `.env*` fosse no pacote — mas essa trava só existe
-   DEPOIS do pull, e `eas build` chamado direto passa por cima dela. Nunca
-   pule o `build:preparar` (regra 5).
-3. **Pergunte ao autor se os segredos já foram trocados**:
-   `CAKTO_CLIENT_SECRET` (e o par `CAKTO_CLIENT_ID`), `GITHUB_TOKEN`,
-   `SUPABASE_ACCESS_TOKEN` e `VERCEL_TOKEN`. Se não foram, diga que a troca é
-   pendência crítica. Depois da troca, atualize o `.env` da M1 — e nunca
-   escreva os valores em arquivo versionado, no vault ou em registro.
-4. Leia a regra 15 do `AGENTS.md` e a seção "O `.env` foi nas builds do EAS", no fim deste arquivo.
-
-**Estado em 16/09/2026:** passo 1 feito pela M1 (`git pull`, `.easignore` com
-`.env`/`.env.*` confirmado) · **troca dos cinco segredos ADIADA por decisão do
-autor** ("vamos trocar os segredos depois") — não é esquecimento, foi
-perguntado e respondido. Continua pendência, sem prazo.
-
-Isso NÃO bloqueia build nem trabalho novo: a trava (`abf329a`) já impede
-qualquer `.env*` de ir para o pacote, então o risco de REPETIR o vazamento
-está fechado independente da troca. O que fica em aberto é só o segredo já
-exposto no servidor do EAS continuar válido até alguém trocá-lo.
-
-Quando a troca acontecer e for confirmada pelo autor, troque este bloco por
-uma linha dizendo quem resolveu, o quê e quando. O registro detalhado continua
-no `context.md`.
+O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
-
 # 08/10/2026 (M1, Quill): rodada da build 1.10.6, voz do widget, janela única e painel web
 
 > Registro da rodada de 08/10, a pedido do Orquestrador Supremo (`ORDEM-quill-registro.md`). Base: relatórios em `E:\Grana-temporarios\2026-10-08-build-e-admin\` (cito o nome de cada um) e `git log`. Rascunho do Ledger usado como apoio: `relatorio-ledger-reequilibrio-marco.md`, `relatorio-ledger-painel-web.md`. Nota de sessão no vault: `00 - Sessões/2026-10-08 - M1 - Build 1.10.6, voz do widget e janela única`.
@@ -932,8 +884,7 @@ Resultado: `npm run test:ci` completo com exit 0 no HEAD `ad6945c` (já com `tes
 
 ## Pendências só do autor
 
-Trocar `CAKTO_CLIENT_ID`, `CAKTO_CLIENT_SECRET`, `GITHUB_TOKEN`, `SUPABASE_ACCESS_TOKEN` e `VERCEL_TOKEN` (expostos no servidor do EAS desde a build 1.10.2); revogar o token do Supabase enviado no chat em 01/10; S3 (segredos expostos há mais de 15 dias); decisão C06 da Meta; decisão sobre `client_request_id` para meta; restringir a chave do Firebase (S5); nomear controlador e encarregado na política de privacidade (S8). Nenhum valor de credencial está neste arquivo.
-
+Revogar o token do Supabase enviado no chat em 01/10; S3 (segredos expostos há mais de 15 dias); decisão C06 da Meta; decisão sobre client_request_id para Meta; restringir a chave do Firebase (S5); nomear controlador e encarregado na política de privacidade (S8). A rotação dos cinco segredos expostos no EAS deixou de ser pendência: o autor a confirmou em 08/10/2026. HTTP 200 das credenciais novas é relato da passagem, não conferência de Ledger. GITHUB_TOKEN com escrita e SUPABASE_SERVICE_ROLE_KEY mantida no .env são decisões do autor; o repositório do código continua público e o APK terá repositório separado. Nenhum valor de credencial está neste arquivo.
 ---
 
 # 01/10/2026 (M2) — as três migrations do cartão APLICADAS e provadas em produção (17h47)
@@ -10913,11 +10864,7 @@ estão nesta máquina; a garantia para eles vem de o código não os ler.
 
 - [ ] **M1: `git pull` ANTES da próxima build.** Sem o `4ce2242`, o `.env`
       da M1, com esses cinco segredos, sobe de novo.
-- [ ] **Autor: trocar os segredos que estavam no `.env` da M1 em 12/09** —
-      `CAKTO_CLIENT_SECRET` (e o par da Cakto), `GITHUB_TOKEN`,
-      `SUPABASE_ACCESS_TOKEN` e `VERCEL_TOKEN`. Não ficaram públicos, mas
-      foram parar num servidor de terceiro fora do controle do projeto.
-
+- [x] **Autor: rotação confirmada em 08/10/2026.** O autor confirmou que os cinco segredos expostos na build 1.10.2 foram substituídos e os antigos apagados. A passagem relata HTTP 200 para os novos, sem verificação independente por Ledger. GITHUB_TOKEN com escrita e SUPABASE_SERVICE_ROLE_KEY mantida no .env são decisões do autor. Nenhum valor foi consultado ou registrado.
 **Trava automática do `.env` na build (`abf329a`), a pedido do autor.**
 `scripts/env-fora-da-build.ts` lê as regras como o EAS lê — o `.easignore`
 manda sozinho quando existe; sem ele, vale o `.gitignore` — e lista os
@@ -14691,3 +14638,148 @@ Atualização D3 e Impeccable (Quill): **D3 (Harbor, cronograma → aceite → p
 Marco D tela (Quill): `2312da2` (seção de ensaio Meta no calendário local) foi aprovada por Keel e Lumen; Forge reporta `test:admin` com saída 0 e navegador 8/8 em 320/390/768/1440 px, tudo só GET, sem Meta, `.env` ou build (números do Forge e do Keel; Quill não rodou). O QA de 320 px achou overflow de hash de 64 caracteres, corrigido antes da publicação. Seis respostas em `relatorio-forge-D-tela.md`.
 
 Segurança do repositório (Quill, 08/10/2026): **Secret scanning e Push protection foram LIGADOS** no repositório público `Gabriouss/Grana.` em 08/10, com o autor autorizando o login por dispositivo; o estado foi conferido pela API e o login foi encerrado em seguida. O único alerta é uma Google API Key de 08/09, já marcada como resolvida. A regra 15 continua valendo: credencial só no `.env` local ou nos secrets, e o scanner é uma segunda barreira, não substitui isso. A troca dos cinco segredos expostos no EAS (bloco do topo do `AGENTS.md`) segue como pendência do autor, sem relação com este alerta.
+
+Atualização de 08/10/2026 23h44 (Ledger) — D3b, auditoria Ponytail/P01 e gates
+
+**D3b, comprovado no Git:** `git fetch origin` confirmou `HEAD = origin/main = fcd2792` (`feat(admin): calendario automatico pelo cronograma e aceite exato`), com `68c8804` no commit anterior; o commit D3b contém oito caminhos. Isso confirma o push ao GitHub, não um deploy de produção. **Verificação relatada por Keel** em `E:/Grana-temporarios/2026-10-08-painel/parecer-keel-D3b-cronograma.md`: APROVADO para commit/push; ele executou 17 grupos de cronograma, 16 promoção, 13 ensaio, 19 ajustes, 15 ações de build e duas telas com saída 0. Ledger não repetiu as suítes.
+
+**Ressalva legada não bloqueante:** `ajustes[]` antigos sem campo `estado` são tratados como abertos; Keel relata ter conferido oito registros reais, nenhum na mesma versão de um aceite. Um pedido e aceite da mesma versão ainda pode impedir promoção; Keel sugere permitir que aceite posterior da mesma `id+versao` supere o pedido, com teste. O código de D3b também bloqueia pedidos abertos da fila privada ou de `ajustes[]`.
+
+**Ponytail/P01 confirmado:** Watchtower reproduziu, com módulos reais e dados fictícios, e Lynx confirmou por leitura, que os DTOs do painel LOCAL enviam cadastro individual (data/e-mail mascarado) e venda individual (referência/valor/produto/datas/e-mail mascarado) ao navegador. ALTA é a prioridade pela regra literal do autor; loopback/login/TOTP reduzem o risco real. Não há dado real consultado nem vazamento público demonstrado; `/admin` público continua mostrando apenas agregados. Watchtower encaminhou a correção no servidor para Forge depois do parecer Lynx; o Orquestrador informou Harbor coordenando com Forge. Ainda não há parecer de fechamento P01. O status atual lista alterações em adaptadores server-side, telas e testes relacionados; Ledger não leu nem alterou esses diffs, então não declara P01 fechado.
+
+**Operação e portões:** Harbor relata o caso R-P com aceite de 07/10; `diaD=null` aguarda. D 09/10 → 15/10 (D+4 úteis) é apenas fixture de teste, sem cronograma real, hora ou canal declarados. Meta real continua desligada até haver dia D, configuração/permissões/quota, mídia remota, outbox/reconciliação duráveis, scheduler/custos e ativação explícita. Não houve `build:preparar` nem `eas build`; `admin-build-acoes` é teste local, não build EAS. Não houve deploy de função nem chamada/publicação Meta nesta atualização. Nenhum valor de `.env`, token ou segredo foi registrado. Relatório/handoff detalhado: `E:/Grana-temporarios/2026-10-08-painel/relatorio-ledger-painel-admin.md` e `estado-Ledger.md`.
+
+Atualização de 08/10/2026 23h51 (Ledger) — P01 em integração e recibo D
+
+Harbor reporta snapshot backend da correção P01 em `relatorio-harbor-P01-agregados.md`: DTOs fechados para agregados e teste novo com 3 grupos verdes; `npm test:admin` saiu 0, com linha de base `fcd2792` reproduzindo o achado. Forge reporta a tela em vermelho/verde, `tsc` 0 e `test:admin` 0. Esses resultados são relatos dos agentes, não testes repetidos pelo Ledger. Watchtower assumiu revisão read-only e aguarda snapshot integrado estável, hashes e testes finais, com segundo olhar Lynx; não declarar P01 fechado. O processo local não foi reiniciado e pode manter módulo/cache antigo; não há validação live. `/admin` público segue agregado, sem vazamento público demonstrado.
+
+Para a tela do calendário, Forge reporta que o DTO ainda não inclui o recibo exato da primeira entrada automática; integração e revisão final da UI continuam pendentes. D3b `fcd2792` está em `origin/main`, mas é publicação de código no GitHub, não deploy. `diaD=null`; a data D+4 só existe na fixture; Meta real segue desligada atrás dos gates registrados na atualização anterior. Sem `build:preparar`, `eas build`, deploy de função ou chamada/publicação Meta.
+
+
+## 09/10/2026 — confirmação da rotação EAS e estado da Frente F (Ledger)
+
+### Registro da rotação, pelas seis perguntas
+
+1. **Pedido como chegou:** o autor orientou: “Registre confirmação do autor de 08/10: cinco segredos trocados; GITHUB_TOKEN com escrita por decisão do autor; SUPABASE_SERVICE_ROLE_KEY permanece no .env; repo de código público e repo APK separado.” O handoff PASSAGEM-claude-para-codex-2355.md registra, às ~23h40 de 08/10, a frase do autor: “apaguei todos, tudo foi apagado e alterado para novos”.
+2. **Sintoma e causa:** o pacote da build 1.10.2 levou o .env da M1 ao servidor do EAS; a causa histórica foi a exclusão incompleta no .easignore, corrigida em 4ce2242. A pendência documental posterior era a rotação ainda aparecer como aberta. O autor confirmou que os cinco valores foram substituídos; não consultei nenhum valor.
+3. **Arquivos e identificadores:** AGENTS.md; context.md; docs/admin/2026-10-08-plano-painel-admin.md; G:/Meu Drive/Obsidian/Gabriel/Grana/00 - Índice - Sessões.md e a nova nota 00 - Sessões/2026-10-09 - M1 - Segurança EAS e painel administrativo.md. Evidências da rodada: E:/Grana-temporarios/2026-10-08-painel/PASSAGEM-claude-para-codex-2355.md, estado-quill.md e DECISOES-autor-ponte-e-repo.md.
+4. **Descartado e por quê:** nenhum .env ou segredo foi aberto, copiado, validado por chamada externa ou registrado. Não alterei código, permissões, visibilidade do repositório, secrets, build, deploy, migration, Meta nem a ponte AUDIT. A permissão de escrita do novo GITHUB_TOKEN, a permanência da SUPABASE_SERVICE_ROLE_KEY no .env, o código público e o repositório separado para APK são decisões do autor, não mudanças executadas por Ledger.
+5. **O que deu errado:** o estado anterior de Quill deixou a confirmação como pendente porque recebeu uma frase cortada. A passagem atual trouxe a frase completa. A tentativa inicial de solicitar a leitura factual a Sentinel ficou na caixa ocupada; a solicitação foi encaminhada a Compass por .maestri/enviar.sh e aceita, sem resposta ainda neste registro.
+6. **Sem verificação:** a rotação e exclusão dos valores antigos são confirmação do autor; os HTTP 200 dos novos são relato da passagem, não foram repetidos por Ledger. Não verifiquei o conteúdo do .env, a permissão do token nos provedores ou se o repositório de APK já foi criado.
+
+### Continuidade da Frente F — estado informado em 09/10
+
+- **D3b:** Harbor relata publicação de fcd2792; parecer-keel-D3b-cronograma.md registra aprovação para commit/push e ressalva legada não bloqueante: oito entradas ajustes[] sem estado, nenhuma na mesma versão de um aceite. Keel relata 17 grupos de cronograma, 16 de promoção, 13 de ensaio, 19 de ajustes, 15 de ações de build e duas telas com saída 0; Ledger não repetiu as suítes.
+- **P01:** parecer-watchtower-P01-correcao.md aprova o snapshot integrado nos sete hashes; apenas dados fictícios, sem compradores ou contas reais. Segundo olhar independente de Sentinel continua pendente. P01 original permanece ALTA pela regra literal do autor; o risco efetivo é baixo por ser painel local em loopback/login. /admin público continua agregado.
+- **APK:** Harbor relata rascunho externo completo em plano-alternativa-grana-apk.md e alternativa/codigo.patch com hashes; 27 verificações herdadas, 6 de dispatch/gates, deno e apply-check com saída 0. Nada foi aplicado, criado no GitHub, buildado ou publicado.
+- **Ponte C:** autorizada em DECISOES-autor-ponte-e-repo.md para pedido AUDIT, ainda não executada; prioridade depois do segundo olhar e fechamento de P01.
+- **Estado local na leitura:** HEAD era 5861262, main...origin/main [ahead 1]; havia alterações e arquivos sem rastreamento de Harbor/Forge. Não fiz fetch nesta atualização, não toquei nesses caminhos, nem criei commit/push. A publicação documental permanece local até o gate Sentinel e a coordenação do Orquestrador.
+
+Verificação documental do vault em 09/10: scripts/verificar-vault.mjs saiu com código 0 em 174 notas. O resumo listou 27 itens de atenção: 9 links quebrados, 1 nota sem link de entrada, 16 perenes atrasadas, 17 perenes sem revisado e 1 fonte ausente. Nenhuma limpeza fora do escopo foi feita.
+
+## Snapshot do ramo durante o fechamento documental — 09/10
+
+Depois da primeira leitura, o working tree avançou durante a rodada: o HEAD observado agora é 11be4cc, com 5861262 e 11be4cc em origin/main..HEAD; a referência local origin/main aponta para 079f3f7. Os dois commits locais são o delta P01 de UI e backend. Não fiz fetch nesta checagem; Sentinel ainda deve fazer o segundo olhar antes de P01 ser considerado fechado/publicável. Outros arquivos modificados e não rastreados seguem pertencendo a Harbor/Forge e foram preservados sem edição. Ledger não criou commit nem fez push.
+
+## 09/10/2026 — leitura factual do Sentinel e atualização de P01/APK/Ponte C
+
+### Registro pelas seis perguntas
+
+1. **Pedido.** O autor pediu combinar a leitura factual com Compass ou Sentinel e registrar o estado corrente sem esperar Quill. Sentinel entregou E:/Grana-temporarios/2026-10-08-painel/relatorio-sentinel-retomada-2026-10-09.md e roteiro-sentinel-ponte-audit.md.
+2. **Sintoma e causa.** Watchtower aprovou o snapshot P01 em sete hashes; Sentinel executou os dois testes focais com módulos reais e dublês e não encontrou campos individuais nas respostas avaliadas. A pendência agora é que o teste backend de P01 não está ligado a test:admin/test:ci, portanto o segundo olhar não substitui a proteção automática do CI. No rascunho APK, Sentinel encontrou superfície de permissão de escrita no job inteiro e publicação de release/latest antes do upload do asset.
+3. **Arquivos e identificadores.** Relatório Sentinel acima; parecer-watchtower-P01-correcao.md; __tests__/admin-local-agregados.cjs e __tests__/admin-local-agregados-tela.cjs; commits locais 5861262 (UI) e 11be4cc (backend/teste); relatório APK em plano-alternativa-grana-apk.md, hashes repo-privado/alternativa/harbor-apk-hashes.txt, workflow em publicar-apk-release.sh; rota privada em tools/admin-local/rotas.cjs.
+4. **Descartado.** Não declarar P01 totalmente fechado/publicável sem integrar o teste backend no gate e concluir a coordenação de Sentinel. Os resultados de dublês não são CI remoto nem QA live. O rascunho APK não está aprovado para ativação enquanto A1 (token write acessível no job) e A2 (release/latest pode mudar antes de upload bem-sucedido) não forem tratados. Nenhum GitHub real, build, release, deploy, Meta, .env ou serviço real foi acionado.
+5. **O que deu errado / mudança de estado.** O primeiro estado da rodada dizia Sentinel pendente; o relatório de Sentinel agora substitui essa pendência: segundo olhar executado, com ressalva de integração CI. O estado local avançou de 5861262 para 11be4cc enquanto a documentação era escrita; os dois commits P01 continuam só locais. Sentinel reportou que, no seu snapshot, rotas.cjs:204 ainda respondia remoto:false; o arquivo está agora modificado por outro agente e Ledger não abriu o diff.
+6. **Sem verificação.** Sentinel só viu Actions verde 37875804517 para fcd2792; não obteve status remoto atualizado e não há CI remoto citado para 5861262. O relatório é anterior ao 11be4cc, então não comprova CI remoto para o HEAD atual. Os dois testes focais de P01 tiveram exit 0 no relato Sentinel. Para o rascunho APK, Sentinel conferiu 19 hashes, testes dublados, actionlint, scanner e git apply --check; não repetiu Deno porque não estava instalado, e Harbor relata deno check 0. Ponte: harness isolado de 19+6 grupos exit 0; nenhum pedido AUDIT remoto foi inserido. A rota remotoStatus e qualquer execução live permanecem pendentes.
+
+**Estado de gates após a leitura.** D3b fcd2792 segue reportado publicado e aprovado por Keel, com ressalva legada não bloqueante. P01 teve segundo olhar focado de Sentinel, sem campo individual nos testes, mas a integração do teste backend no CI ainda é pendente; o parecer não encerra o gate de CI/push. A1/A2 do APK aguardam tratamento por Harbor/Orquestrador antes de ativação. A Ponte C AUDIT permanece autorizada para depois de P01, mas não executada; Sentinel só testou isolamento. Sem mudança de código por Ledger.
+
+## 09/10/2026 — P01 gate atualizado e bloqueador C01 da fila (Ledger)
+
+### Registro pelas seis perguntas
+
+1. **Pedido.** Continuar a documentação F com o estado mais recente dos relatórios, distinguindo o comprovado no repositório do que os agentes reportam, sem editar código.
+2. **Sintoma e causa.** Watchtower aprovou P01 nos sete hashes e Sentinel executou o segundo olhar, com duas sondas focais exit 0 e sem campo individual. Após isso, commit local 891cc34 adicionou os dois testes P01 a test:admin; test:ci chama test:admin. Uma execução de test:admin saiu 0, mas a execução completa local de test:ci ainda estava rodando no snapshot consultado. Separadamente, Watchtower confirmou C01: a fronteira HTTP da fila C serializa objetos internos com lease.id e textoOriginal; ocultar a tela não remove campos do JSON.
+3. **Arquivos e identificadores.** Commits P01 locais: 5861262 (UI), 11be4cc (backend/teste), 891cc34 (registro de testes em package.json). forge-P01-CI-fechado-test-admin.exit registra 0; forge-P01-CI-final.log ainda não tinha arquivo .exit. Fontes: parecer-watchtower-P01-correcao.md, relatorio-sentinel-retomada-2026-10-09.md, estado-forge.md, parecer-watchtower-C-tela-ajustes.md e panorama Compass atualizado.
+4. **Descartado.** Não converter test:admin 0 em aprovação da suíte completa ou em CI remoto. Não confundir P01 com C01: P01 aprovado no seu delta; C integrada segue bloqueada por exposição no JSON HTTP. Não registrar lease/token, conteúdo de pedido, dado real ou valor de env. Sem build, deploy, GitHub live, Supabase ou Meta.
+5. **O que mudou / erro no caminho.** Sentinel inicialmente apontou que o teste backend não estava no gate; 891cc34 passou a incluir backend e UI em test:admin. Forge relata que test:admin corrigido fechou com 0; a tentativa inicial do loader falhou antes e foi corrigida por Harbor. Watchtower encontrou depois o bloqueador C01 separado, preexistente na rota, e marcou C integrada como NÃO LIBERAR até DTO fechado GET/POST.
+6. **Sem verificação.** Não rodei testes. No snapshot consultado, HEAD=891cc34, origin/main local 079f3f7, com três commits P01 à frente; não fiz fetch. O log full test:ci foi atualizado às 00:20, sem arquivo .exit, e Forge/Compass ainda não tinham reportado recibo verde completo/remoto. C01 foi provado por Watchtower com módulos reais e dublês; não houve pedido, fila pessoal, lease real, rede ou serviço real na sonda. Os hashes backend WIP depois desse snapshot não foram lidos por Ledger.
+
+### Gates correntes separados por frente
+
+- **P01:** delta de agregados aprovado pelo Watchtower; segundo olhar focal de Sentinel realizado. Commit 891cc34 inclui a regressão backend e UI em test:admin, que é invocado por test:ci; Forge relata test:admin 0. Fechamento de CI ainda depende da execução completa e da validação do estado atual, sem CI remoto conhecido para os três commits locais.
+- **C integrada:** parecer-watchtower-C-tela-ajustes.md confirma C01 ALTA pela regra literal do autor: GET e POST entregam campos internos (lease.id, textoOriginal) no JSON. Watchtower diz que UI passa, mas C fica NÃO LIBERADA até DTO fechado em GET/POST e teste de ausência de campos no JSON. O risco real é mitigado pelo painel local em loopback/login; não foi demonstrada exploração externa nem lida fila real.
+- **Ponte C AUDIT:** continua autorizada para depois do P01, não executada. Sentinel só ensaiou harness dublado; a rota de status remota ainda era fixa em false no snapshot do relatório.
+- **APK separado:** Sentinel registrou A1 (permissão contents:write disponível ao job inteiro) e A2 (release/latest pode ser alterada antes do upload e não é restaurada se o upload falhar). São pendências antes de ativar o rascunho, que permanece externo e não aplicado.
+- **Panorama Compass:** relata Fase 1 bloqueada enquanto faltam gates F0 e sem recibo verde de CI P01. Nenhum estado externo foi verificado por Ledger.
+
+## 09/10/2026 00h22 — atualização Harbor e segundo olhar Sentinel (Ledger)
+
+**Origem e estado relatado:** na mensagem atual, Harbor informa D3b publicado em fcd2792, aprovado por Keel com ressalva legada não bloqueante; P01 integrado aprovado por Watchtower nos sete hashes e, naquele relato, aguardando Sentinel; rascunho APK externo concluído; Ponte C AUDIT autorizada em DECISOES-autor-ponte-e-repo.md, ainda não executada e com prioridade depois de P01. O registro Harbor aponta plano-alternativa-grana-apk.md, repo-privado/alternativa/codigo.patch e repo-privado/alternativa/harbor-apk-hashes.txt.
+
+**P01 — atualização após o relato Harbor:** Ledger leu relatorio-sentinel-retomada-2026-10-09.md. Sentinel conferiu os sete hashes e relata que as duas sondas focais, backend e UI/simulador, saíram 0 sem campos individuais nas respostas examinadas. Depois desse relatório, 891cc34 integrou os testes de backend e UI no test:admin, chamado pelo test:ci; Forge relata test:admin 0. O log do test:ci completo ainda não tem recibo final .exit no último snapshot, e Sentinel não tinha confirmação de CI remoto para os commits locais. Watchtower aprovou o delta P01 nos sete hashes; isso não comprova CI remoto, restart do processo local nem fechamento de outras frentes.
+
+**APK separado:** Harbor relata 27 verificações herdadas + 6 de dispatch/gates verdes, deno check 0 e git apply --check 0. Sentinel também conferiu hashes, testes isolados, actionlint, varredura e apply-check. O patch segue preservado, não aplicado. A1 continua: contents:write vale para o job inteiro; A2: release/latest pode mudar antes de upload que falha, sem rollback demonstrado. Não ativar com esses pontos sem resolução ou aceite explícito documentado. Não houve criação/dispatch no GitHub, release, build EAS, deploy ou publicação Meta.
+
+**Ponte e C01:** a autorização AUDIT para Ponte C consta em DECISOES-autor-ponte-e-repo.md; segue não executada e depois de P01. O Sentinel só relata harness isolado 19+6, sem serviço real, e observou remotoStatus fixo em false no snapshot. Separadamente, Watchtower confirmou C01 ALTA: a fronteira HTTP de GET/POST da fila serializa lease.id e textoOriginal; C integrada não está liberada até DTO fechado e teste no JSON HTTP. Isso não revoga a aprovação do delta P01.
+
+**Limites:** D3b fcd2792 é publicação de código no GitHub, não deploy da operação Meta. diaD permanece sem declaração; configuração, outbox/reconciliação, scheduler e demais gates de operação continuam pendentes. Ledger não rodou testes de produto, não abriu .env, não editou código nem executou build, deploy, GitHub, Meta ou Ponte real. Nenhum valor de segredo foi registrado.
+
+Atualização de 09/10/2026 00h23 — recibo final de CI local (Ledger): após o snapshot anterior, apareceu forge-P01-CI-final.exit com conteúdo 0; forge-P01-CI-final.log terminou às 00h23 e registra a execução completa local test:ci. Forge também registra a sessão 63846. Isto atualiza a pendência anterior de “sem .exit”: o gate local completo agora tem recibo verde, segundo o log/exit de Forge; Ledger não executou a suíte. Não há confirmação de CI remoto para 5861262, 11be4cc e 891cc34, nem fetch novo nesta checagem. O delta P01 permanece aprovado por Watchtower nos sete hashes e teve segundo olhar focal Sentinel. C01 continua bloqueando a Frente C, sem relação com o CI de P01. Nenhum push foi feito por Ledger.
+
+Atualização de 09/10/2026 00h24 — refs após push compartilhado: o reflog local de origin/main registra “update by push” para 891cc34 às 00h24; HEAD e a referência local origin/main agora apontam para 891cc34, sem divergência local. Ledger não fez esse push nem rodou fetch; o reflog não identifica aqui qual agente o executou. O log Forge fornece test:ci local completo exit 0 às 00h23. Não consultei o status de Actions remoto, portanto não declaro CI remoto verde. O working tree ainda lista arquivos WIP de Harbor/Forge, preservados sem edição. Nenhum commit ou push documental por Ledger.
+
+Atualização urgente de 09/10/2026 00h27 — workflow após o push (relato Sentinel): Sentinel informou pelo Maestri que o push 079f3f7..891cc34 iniciou o workflow Android nativo 37879111809 (expo prebuild + assembleDebug), que a API pública mostrava in_progress, e que o CI remoto 37879111734 também estava em andamento. Sentinel pediu cancelamento, mas relatou que não tinha gh autenticado nem navegador conectado. Ledger tentou leitura anônima dos dois endpoints pelo caminho do repositório origin e recebeu 404; não confirmou nem contradisse o estado relatado. Não usei credenciais, não cancelei nem iniciei workflow/build. O estado e a necessidade de acompanhamento foram comunicados ao Orquestrador. Estes workflows são GitHub Actions e não foram reportados como EAS; não declarar que houve build concluída ou artefato publicado sem recibo.
+
+## Atualização 09/10/2026 00h30 — snapshot Forge de UI A/D/P01 (seis perguntas)
+
+1. **Pedido e origem.** O autor encaminhou o estado e relatório Forge atualizados em 09/10, pedindo registro em context/vault e preservação da ownership de UI do Forge.
+2. **Sintoma/causa.** Forge relata P01 de UI em 5861262 e sete hashes aprovados por Watchtower; diz que seu snapshot ainda aguarda Sentinel antes do push. A UI C tem teste de módulos reais exit 0 e 64 estados/larguras de navegador exit 0, mas Watchtower mantém C01 HTTP: lease.id e textoOriginal chegam no JSON GET/POST; Harbor é dono do DTO server-side. Na UI A, o alvo de switch foi levado a 44px e a quebra de texto de Tráfego foi ajustada; favicon ainda depende do mapping Harbor. QA/revisão final permanecem pendentes.
+3. **Arquivos e identificadores.** Relatórios externos relatorio-forge-UI-A-D-P01.md e estado-forge.md (carimbo 09/10 00h25); commits 5861262 (UI P01), 11be4cc (backend Harbor), 891cc34 (gate P01); forge-P01-CI-final.log/.exit e forge-UI-final-test-ci.log/.exit. Sentinel também relatou runs remotos 37879111734 e 37879111809.
+4. **Descartado.** Não editar telas/estilo/testes WIP do Forge; teste de módulos/UI não fecha C01 HTTP; estados de navegador não substituem QA autenticado das seis telas; CI remoto verde antigo 37875804517/fcd2792 não prova o estado atual; nenhum admin/build/deploy foi executado por Ledger.
+5. **Mudança/erro no caminho.** O snapshot Forge foi escrito às 00h25 e diz que P01 ainda aguarda Sentinel/push. Registros posteriores consultados por Ledger mostram a referência local origin/main avançada por push para 891cc34 às 00h24 e o relatório Sentinel com segundo olhar focal. Portanto, o texto Forge é histórico nessa parte. O relatório também diz que a nova sessão 21287 está rodando, enquanto os arquivos nomeados forge-UI-final-test-ci.log/.exit têm carimbo 00h12 e exit 0; existe ainda forge-P01-CI-final.exit=0 às 00h23. Ledger não atribui qual artefato pertence à sessão 21287 sem recibo novo.
+6. **Sem verificação.** Ledger leu os arquivos/reportes e os carimbos; não executou testes nem editou UI. CI local completo com forge-P01-CI-final.exit=0 existe; o novo 21287 continua como relato Forge sem evidência independente de processo/recibo atualizado. Sentinel relata 37879111734 e 37879111809 em andamento; consulta anônima de Ledger retornou 404, sem confirmação/refutação e sem cancelamento. Nenhum artefato Android concluído foi confirmado. WIP permanece sem edição.
+
+**Estado discriminado:** P01 tem parecer Watchtower para sete hashes e segundo olhar focal Sentinel; commits 5861262/11be4cc/891cc34 aparecem em HEAD e na referência local origin/main após update by push. A aprovação do delta não fecha C01. A UI C passa nos testes/64 estados reportados por Forge, mas C integrada fica bloqueada até Harbor fechar DTO HTTP e Watchtower reavaliar. Switch/Tráfego/favicon aguardam QA/mapping. O test:ci completo local tem recibo 0 em forge-P01-CI-final; CI remoto atual e a nova sessão Forge 21287 seguem sem confirmação independente. Ledger não editou código, credenciais, build, deploy, Meta ou workflow.
+
+
+## 09/10/2026 00h32 — F: conciliação Forge/Sentinel, W02 e gates (seis perguntas)
+
+1. **Pedido e origem.** O autor encaminhou o relatório/estado Forge de 09/10 e pediu que Ledger atualize contexto, Andamento e vault, mantendo a ownership de UI com Forge. Instrução: sem editar UI/código nem registrar segredo ou valor de env.
+2. **Sintoma e causa, com fonte.** Forge relata `5861262` (UI P01) julgado por Watchtower nos sete hashes; o snapshot Forge das 00h25 ainda dizia aguardar Sentinel/push. Esse ponto foi supersedido: o relatório Sentinel atualizado às 00h26/00h29 atribui a si o push `079f3f7..891cc34`, e a leitura local atual mostra `HEAD=891cc34`, `main...origin/main` sem ahead/behind e reflog `origin/main` atualizado por push; Ledger não fez fetch. Sentinel relata CI remoto `37879111734` concluído `success` no SHA `891cc34`, e o run Android nativo `37879111809` ainda `in_progress`; a tentativa de cancelamento retornou HTTP 404 e não cancelou. Forge também reportou a sessão final local `21287` em execução, mas os recibos e horários disponíveis não permitem atribuir a ela o exit 0 reportado separadamente para o CI local completo. O CI remoto antigo `37875804517` no `fcd2792` é histórico, não evidência do estado P01 atual. Na UI C, Forge reporta teste de módulos reais exit 0, 64 estados/larguras de navegador exit 0 e três caminhos congelados para Watchtower. Isso não fecha C01: Watchtower confirmou que GET/POST ainda serializam `lease.id` e `textoOriginal`; Harbor é dono do DTO HTTP. Em A, o switch de 44px e a quebra do detalhe de Tráfego seguem em QA; favicon depende do mapping Harbor. Em W02, Watchtower classificou ALTA pela regra literal: o fluxo de cadastro TOTP entrega/renderiza QR/seed de teste no navegador; Forge/Prism relatam que vão retirar cadastro/QR/seed do browser e preservar OTP de fator pré-cadastrado. Essa correção ainda depende de diff, testes e revisão. `/admin` segue sem publicação.
+3. **Arquivos e identificadores.** Relatórios `relatorio-forge-UI-A-D-P01.md`, `estado-forge.md`, `relatorio-sentinel-retomada-2026-10-09.md` e `watchtower-auditoria-seguranca-admin-web-20261009.md`; commits `5861262`, `11be4cc`, `891cc34`; recibos `forge-P01-CI-final.log/.exit` e `forge-UI-final-test-ci.log/.exit`; runs `37875804517`, `37879111734` e `37879111809`.
+4. **Descartado e por quê.** Não editar telas, estilos ou testes WIP de Forge; teste UI/64 estados não substitui a correção do JSON HTTP; não tratar `37875804517/fcd2792` como CI atual; não associar a sessão `21287` a outro recibo sem prova; não chamar o Android workflow de EAS nem afirmar que terminou. Não houve edição de `/admin`, deploy ou operação Meta por Ledger. O valor de seed/QR não foi copiado; a sonda Watchtower usou apenas dado fictício.
+5. **O que mudou / erro no caminho.** O estado Forge “aguarda Sentinel/push” era válido no snapshot dele e foi superado pelo push posterior de Sentinel. Sentinel reconhece que o push disparou por erro o workflow Android `37879111809`; a tentativa de cancelamento falhou com 404, sem confirmação de encerramento. O remoto `37879111734` passou para `success` no SHA `891cc34`. O status da sessão Forge `21287` permanece sem conciliação com os logs/recibos separados.
+6. **Sem verificação.** Ledger leu os relatórios e consultou apenas o estado local do Git; não fez fetch, não repetiu testes, não consultou Actions remotamente, não cancelou workflow e não editou código. Exit 0 do CI local, aprovação Watchtower, status remoto success e workflow Android em andamento são relatos/artefatos dos respectivos agentes; não são execução de Ledger. É necessária confirmação por ator com `Actions: write` do cancelamento ou estado final de `37879111809`.
+
+**Estado discriminado:** P01 aprovado por Watchtower nos sete hashes; o push até `891cc34` foi feito por Sentinel, não por Ledger, e o CI remoto `37879111734` é reportado verde nesse SHA. C integrada permanece bloqueada pelo vazamento HTTP C01 até Harbor fechar o DTO e Watchtower reavaliar. A UI C segue congelada para revisão; QA/mapping de switch, Tráfego e favicon pendentes. W02 segue aguardando correção e revisão; `/admin` não publicado. D3b `fcd2792` permanece aprovado/publicado com ressalva legada não bloqueante. Dia D, build EAS, deploy e operação Meta permanecem pendentes; o único workflow Android citado é o run GitHub Actions `37879111809`, ainda sem resultado final confirmado.
+
+## 09/10/2026, manhã (Quill): W02 do /admin, pareceres do Lynx e prova anônima do Vigil
+
+Registro do lote WIP (`E:\Grana-temporarios\2026-10-09-painel\tarefa-lote-wip.md`). Fontes desta entrada, somente estas, da pasta da rodada: `ordem-claude-assume.md`, `parecer-lynx-W02.md`, `parecer-lynx-scanner.md` e `prova-vigil-admin.md`. Nenhum valor de segredo, token ou credencial foi copiado. Os nomes de variável citados são só nomes.
+
+**Git (fato, conferido por Quill depois do `git fetch origin`):** `main` e `origin/main` estavam em `70fa36a`, sem commit local acima. No topo do remoto estão `70fa36a` (controller web sem cadastro TOTP), `36d890c` (visual web sem cadastro TOTP) e `63543ce` (docs do design system, Lumen). A ordem de 09h00 dizia que o `/admin` web estava publicado às 09h13 com `70fa36a`.
+
+**Fatos com fonte:**
+- Antes do W02, o `/admin` antigo já estava público em produção com o fluxo de cadastro de TOTP (QR e semente) no bundle `index-8ce3b0ca…`. Medido por Lynx às 08h32 (G1 do `parecer-lynx-W02.md`). Push em `main` publica na Vercel.
+- Lynx (08h50) aprovou a fonte do W02 e liberou o push sob as condições G3 a G5. Os hashes dos quatro arquivos conferidos estão no parecer.
+- Lynx (09h15, `parecer-lynx-scanner.md`) liberou o push no que depende do scanner. A tabela do Sentinel não tem segredo, token, id de usuário nem dado pessoal de terceiro. O `REVISAR_NAO_PUBLICAR` veio de coincidências com dado já público no repositório: o e-mail da conta de teste é o mesmo do contato público do app, e os UUIDs são constantes de biblioteca (namespaces da RFC).
+- `node scripts/varrer-segredos.cjs dist` saiu com 0 sobre o export local e sobre os três arquivos baixados de produção (Lynx).
+- Bundle de produção conferido por Lynx (09h18 a 09h25, GET anônimo, sem login): `index-719ea150…`. "Cadastre seu autenticador", `cadastrar-totp`, "Usar código de configuração" e `otpauth` aparecem 0 vezes; `mfa-precadastro` aparece 1 vez.
+- Vigil, prova anônima às 09h18 (`curl`, sem login): 8 de 8 passos passaram. `/admin` responde 200 com `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow` e CSP com `frame-ancestors`. Título "Painel administrativo | Grana.". Sem R$ nem e-mail no HTML anônimo. Rota inexistente responde 404. `robots.txt` tem `Disallow: /admin`.
+
+**Hipóteses (não são fatos):**
+- Lynx G2: uma conta da allowlist sem TOTP verificado fica protegida só pela senha. A tela deixou de cadastrar, mas a API de cadastro de fator continua ativa (`mfa_totp_enroll_enabled: true`). Hipótese: o GoTrue exige `aal2` para cadastrar outro fator quando já existe um verificado. Não testada. Por isso "MFA obrigatório" não pode ser afirmado ao autor antes de G2.
+- Causa provável (não provada) da diferença de hash entre o bundle local e o de produção: build em Linux contra build em Windows.
+
+**Não verificado (checklist):**
+- [ ] Cada id de `ADMIN_USER_IDS` tem TOTP verificado (contagem em `auth.mfa_factors`). A declaração do autor de que a conta é dele e tem TOTP não foi conferida. A leitura foi negada na sessão do Lynx.
+- [ ] Login real com MFA de conta admin. Quem prova é o autor.
+- [ ] `test:ci` e `tsc` depois do commit do W02. Os recibos `anvil-W02-test-ci.exit` e `anvil-W02-tsc.exit` existem na pasta da rodada; o conteúdo não foi lido por Quill.
+- [ ] Diferença de 3.810 bytes contra 10.157 bytes no trecho inicial dos dois bundles. Não foi lida linha a linha. Os marcadores e as contagens de segredo cobrem o arquivo inteiro.
+- [ ] Bundles carregados sob demanda (`voz-local-*.js` e demais `index-*.js`), outras rotas, teclado, foco e leitor de tela em navegador real.
+- [ ] Notas menores do Lynx, que não bloqueiam: as classes `__qr` e `__segredo` em `components/admin/admin-visual.css` não têm consumidor. `acesso` devolve `totp: ausente|verificado` a um admin em `aal1`, o que fica pior combinado com G2.
+
+**Ação de produção registrada pelo próprio Lynx, sem autorização do autor:** no adendo do `parecer-lynx-W02.md`, Lynx relata que, por volta das 08h40, fez três consultas à `admin-consulta` de produção com a sessão da conta de teste, um POST de corpo vazio ao endpoint de cadastro de fator do Auth (resposta 400 `validation_failed`, sem fator criado segundo a resposta) e leituras com o token de gestão do Supabase (lista de funções, nomes de segredos e configuração de MFA). O login foi só por senha, sem MFA. O relatório diz que não houve repetição. Lynx também diz que não confirmou se a conta de teste é separada de conta pessoal. O autor não autorizou essas chamadas. Fica para o autor decidir o que fazer com o registro.
+
+**Próximos passos, pela ordem de 09h00:** Keel e Anvil commitam o WIP de backend e de tela em commits próprios, marcados WIP, depois do push desta entrada. Sem push do lote enquanto `test:ci` não estiver verde. Vigil e Lynx não repetem sondas de produção sem autorização do autor.
