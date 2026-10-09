@@ -23,6 +23,8 @@ const amostras = {
   'deploy-hook-vercel': 'https://api.vercel' + '.com/v1/integrations/deploy/prj_FIXTURE/abcDEF123',
   'chave-aws': 'AKIA' + 'ABCDEFGHIJKLMNOP',
   'token-slack': 'xox' + 'b-1234567890-fixture',
+  'chave-groq': 'gs' + 'k_' + A,
+  'chave-google': 'AI' + 'za' + 'B'.repeat(35),
 };
 const regras = (t, valores = []) => varrerTexto(t, 'f.js', valores).filter((a) => !a.aviso).map((a) => a.regra);
 
@@ -34,6 +36,9 @@ assert.deepEqual(regras(`k="${jwt('anon')}"`), []);
 assert.deepEqual(regras(`k="${jwt('service_role')}"`), ['jwt-papel-service_role']);
 assert.deepEqual(regras(`k="${jwt('authenticated')}"`), ['jwt-papel-authenticated']);
 assert.deepEqual(regras(`k="${jwt(undefined)}"`), ['jwt-papel-sem-papel']);
+// A chave do Firebase só é aceita no google-services.json versionado.
+assert.deepEqual(varrerTexto(amostras['chave-google'], 'google-services.json', []), []);
+assert.equal(varrerTexto(amostras['chave-google'], 'app/x.ts', []).length, 1);
 // Texto comum que cita os prefixos não reprova.
 assert.deepEqual(regras('tokens sbp_, ghp_ e github_pat_ nunca entram; sk_ idem. eyJ sozinho também não.'), []);
 
@@ -78,15 +83,18 @@ fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
 fs.mkdirSync(path.join(repo, '.githooks'));
 const git = (...a) => execFileSync('git', a, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 fs.copyFileSync(script, path.join(repo, 'scripts', 'varrer-segredos.cjs'));
-fs.copyFileSync(path.join(__dirname, '..', '.githooks', 'pre-commit'), path.join(repo, '.githooks', 'pre-commit'));
+for (const hook of ['pre-commit', 'commit-msg']) {
+  fs.copyFileSync(path.join(__dirname, '..', '.githooks', hook), path.join(repo, '.githooks', hook));
+  fs.chmodSync(path.join(repo, '.githooks', hook), 0o755);
+}
 fs.writeFileSync(path.join(repo, '.env'), `MEU_SEGREDO='${segredo}'\n`);
 fs.writeFileSync(path.join(repo, '.gitignore'), '.env\n');
 git('init', '-q');
 git('config', 'user.email', 't@example.invalid');
 git('config', 'user.name', 't');
 git('config', 'core.hooksPath', '.githooks');
-git('add', '.githooks/pre-commit', 'scripts/varrer-segredos.cjs', '.gitignore');
-git('update-index', '--chmod=+x', '.githooks/pre-commit');
+git('add', '.githooks/pre-commit', '.githooks/commit-msg', 'scripts/varrer-segredos.cjs', '.gitignore');
+git('update-index', '--chmod=+x', '.githooks/pre-commit', '.githooks/commit-msg');
 git('commit', '-q', '-m', 'base');
 const tentar = (nome, conteudo) => {
   fs.writeFileSync(path.join(repo, nome), conteudo);
@@ -105,6 +113,19 @@ assert.notEqual(c.status, 0, 'commit com valor do .env é recusado');
 assert.ok(!(c.stdout + c.stderr).includes(segredo));
 c = tentar('papel.md', jwt('service_role') + '\n');
 assert.notEqual(c.status, 0, 'commit com JWT de service_role é recusado');
+// Mensagem do commit: arquivo limpo, mas token ou valor do .env na MENSAGEM é recusado.
+const comMensagem = (nome, mensagem) => {
+  fs.writeFileSync(path.join(repo, nome), 'limpo\n');
+  git('add', nome);
+  const m = spawnSync('git', ['commit', '-q', '-m', mensagem], { cwd: repo, encoding: 'utf8' });
+  if (m.status !== 0) git('reset', '-q', 'HEAD', '--', nome);
+  return m;
+};
+c = comMensagem('m1.md', `troca do token ${amostras['token-supabase-pessoal']}`);
+assert.notEqual(c.status, 0, 'token na mensagem é recusado');
+assert.ok((c.stdout + c.stderr).includes('mensagem do commit'));
+assert.ok(!(c.stdout + c.stderr).includes(amostras['token-supabase-pessoal']));
+assert.notEqual(comMensagem('m2.md', `senha ${segredo}`).status, 0, 'valor do .env na mensagem é recusado');
 assert.equal(git('log', '--oneline').trim().split('\n').length, 2, 'só a base e o commit limpo existem');
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log('varrer-segredos: 11 formatos de token, JWT por papel, valor do .env em 4 formas, export e hook pre-commit real OK; saída sem valor');
+console.log('varrer-segredos: 13 formatos de token, JWT por papel, valor do .env em 4 formas, export e hooks pre-commit e commit-msg reais OK; saída sem valor');

@@ -1,0 +1,4 @@
+#!/bin/sh
+# A mensagem do commit também é pública e fica no histórico para sempre: mesma
+# varredura do pre-commit, no texto da mensagem. Nunca use --no-verify.
+exec node scripts/varrer-segredos.cjs --arquivo "$1" --valores

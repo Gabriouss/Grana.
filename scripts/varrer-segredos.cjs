@@ -5,6 +5,7 @@
 //
 //   node scripts/varrer-segredos.cjs dist             varre um diretório (export web)
 //   node scripts/varrer-segredos.cjs --staged         varre as linhas adicionadas do git diff --cached
+//   node scripts/varrer-segredos.cjs --arquivo <f>    varre um arquivo só (a mensagem, no hook commit-msg)
 //   --valores [--env-file <arquivo>]                  também compara com os VALORES do .env (só local:
 //                                                     o CI e a Vercel não têm .env, e não devem ter)
 //
@@ -30,6 +31,10 @@ const PADROES = [
   { nome: 'deploy-hook-vercel', re: /api\.vercel\.com\/v1\/integrations\/deploy\/[A-Za-z0-9_]+\/[A-Za-z0-9_]+/g },
   { nome: 'chave-aws', re: /\bAKIA[0-9A-Z]{16}\b/g },
   { nome: 'token-slack', re: /\bxox[abpr]-[A-Za-z0-9-]{10,}/g },
+  { nome: 'chave-groq', re: /\bgsk_[A-Za-z0-9]{30,}/g },
+  // A chave Android do Firebase mora de propósito no google-services.json
+  // versionado; em qualquer outro lugar (e no export web) é vazamento.
+  { nome: 'chave-google', re: /\bAIza[0-9A-Za-z_-]{35}/g, excetoEm: /(^|\/)google-services\.json$/ },
 ];
 const JWT = /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g;
 // Arquivo binário grande (imagem, fonte) não carrega token legível; texto sim.
@@ -65,7 +70,8 @@ function lerEnv(arquivo) {
 // Devolve [{ regra, arquivo }] para um texto.
 function varrerTexto(texto, arquivo, valores) {
   const achados = [];
-  for (const { nome, re } of PADROES) {
+  for (const { nome, re, excetoEm } of PADROES) {
+    if (excetoEm && excetoEm.test(arquivo)) continue;
     const n = (texto.match(re) || []).length;
     for (let i = 0; i < n; i++) achados.push({ regra: nome, arquivo });
   }
@@ -131,12 +137,17 @@ function principal(argv) {
   const comValores = argv.includes('--valores');
   const iEnv = argv.indexOf('--env-file');
   const envFile = iEnv >= 0 ? argv[iEnv + 1] : path.join(__dirname, '..', '.env');
-  const alvo = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--env-file');
+  const iArq = argv.indexOf('--arquivo');
+  const arquivo = iArq >= 0 ? argv[iArq + 1] : null;
+  const alvo = arquivo ? 'mensagem do commit' : argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--env-file');
   const valores = comValores ? lerEnv(envFile) : [];
   if (comValores && !valores.length) console.log('[varrer-segredos] --valores sem .env legível: só os padrões foram conferidos.');
   let achados;
   if (staged) achados = varrerStaged(valores);
-  else {
+  else if (arquivo) {
+    if (!fs.existsSync(arquivo)) { console.error('[varrer-segredos] arquivo da mensagem ausente.'); return 2; }
+    achados = varrerTexto(fs.readFileSync(arquivo, 'utf8'), alvo, valores);
+  } else {
     if (!alvo || !fs.existsSync(alvo)) { console.error(`[varrer-segredos] diretório ausente: ${alvo || '(nenhum)'}`); return 2; }
     // Diretório vazio é export que falhou: "ok" aqui seria trava que não trava.
     if (!listar(alvo).length) { console.error(`[varrer-segredos] nada para varrer em ${alvo}: o export falhou ou está vazio.`); return 2; }
@@ -145,7 +156,7 @@ function principal(argv) {
   const linhas = resumir(achados);
   linhas.forEach((l) => console.log(`[varrer-segredos] ${l}`));
   if (achados.some((a) => !a.aviso)) {
-    console.error(`[varrer-segredos] BLOQUEADO: possível segredo ${staged ? 'no commit' : `em ${alvo}`}. Nada foi impresso além de regra, arquivo e contagem. Remova o valor; nunca use --no-verify.`);
+    console.error(`[varrer-segredos] BLOQUEADO: possível segredo ${staged ? 'no commit' : arquivo ? 'na mensagem do commit' : `em ${alvo}`}. Nada foi impresso além de regra, arquivo e contagem. Remova o valor; nunca use --no-verify.`);
     return 1;
   }
   console.log(`[varrer-segredos] ok: ${staged ? 'commit' : alvo} sem token conhecido${comValores ? ` e sem valor do .env (${valores.length} comparados)` : ''}.`);

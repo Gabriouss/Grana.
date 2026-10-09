@@ -35,18 +35,6 @@ jobs:
       - name: Suítes determinísticas do app, voz, widget, assistente e schema
         run: npm run test:ci
 
-      # Trava 2 (08/10/2026): o mesmo export que a Vercel publica, varrido por
-      # formato de token. Os dois valores abaixo são FICTÍCIOS e públicos por
-      # natureza (EXPO_PUBLIC_ vai embutido no site); este job não usa secret.
-      - name: Export web e varredura de segredos
-        env:
-          EXPO_PUBLIC_SUPABASE_URL: https://ci-sem-projeto.supabase.co
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: chave-anon-ficticia-do-ci
-        run: |
-          npx expo export --platform web
-          node scripts/inject-og-meta.js
-          node scripts/varrer-segredos.cjs dist
-
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -56,3 +44,32 @@ jobs:
           deno check supabase/functions/_shared/ai-quota.ts
           deno check supabase/functions/assistente-financeiro/index.ts
           deno check supabase/functions/processar-lancamento-voz/index.ts
+
+  # Trava 2 (08/10/2026): o mesmo export que a Vercel publica, varrido por
+  # formato de token. Job PRÓPRIO: não pode ficar pulado quando uma suíte do
+  # job de testes falha. Os dois valores abaixo são FICTÍCIOS e públicos por
+  # natureza (EXPO_PUBLIC_ vai embutido no site); este job não usa secret
+  # nem environment.
+  segredos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Scanner contra amostras falsas
+        run: node __tests__/varrer-segredos.cjs
+
+      - name: Export web e varredura de segredos
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://ci-sem-projeto.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: chave-anon-ficticia-do-ci
+        run: |
+          npx expo export --platform web
+          node scripts/inject-og-meta.js
+          node scripts/varrer-segredos.cjs dist
