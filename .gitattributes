@@ -1,2 +1,4 @@
 # Script de shell precisa de fim de linha LF para o bash executar.
 *.sh text eol=lf
+# Hook do git nao tem extensao e tambem roda no sh: CRLF quebraria o argumento final.
+.githooks/* text eol=lf
