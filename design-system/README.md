@@ -179,10 +179,7 @@ ser mantida.
 
 A página de referência tem duas seções que **apontam** para o material em vez de
 copiá-lo: o Granabô 3D (`docs/mascote/`, com fonte em Blender e Python) e o
-pacote de ícones de marketing (`docs/marketing/arsenal/`). As imagens da página
-usam caminho relativo (`../../docs/...`), então aparecem ao abrir
-`pagina/design-system.html` dentro do repositório; publicada isolada, a página
-mostra o texto sem as duas prévias. O Reels do Granabô é prévia, não publicado.
+pacote de ícones de marketing (`docs/marketing/arsenal/`). As imagens da página são prévias leves em WebP (`previews-img/`, cerca de 155 KB no total), embutidas em base64 pelo `build.js` no marcador `@IMG:arquivo`, então a página gerada é auto-contida. Os originais seguem só em `docs/`. O Reels do Granabô é prévia, não publicado.
 
 ## Divergências entre a identidade e o app
 

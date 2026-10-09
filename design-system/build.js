@@ -59,7 +59,12 @@ function injetar(srcPath, destPath, limiteKB) {
   if (!src.includes('<!--@FONTS@-->')) {
     throw new Error(`${nome} não tem o marcador <!--@FONTS@--> — sairia sem a fonte.`);
   }
-  const out = src.replace('<!--@FONTS@-->', `<style>${fontCss}</style>`);
+  const out = src
+    .replace('<!--@FONTS@-->', `<style>${fontCss}</style>`)
+    .replace(/@IMG:([\w.-]+)/g, (_, f) => {
+      const b = fs.readFileSync(path.join(ROOT, 'previews-img', f)).toString('base64');
+      return `data:image/webp;base64,${b}`;
+    });
   fs.writeFileSync(destPath, out);
   const kb = Number((Buffer.byteLength(out) / 1024).toFixed(0));
   if (limiteKB && kb > limiteKB) {
