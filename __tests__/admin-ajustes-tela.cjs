@@ -9,7 +9,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   let antigo = false, erro = false, confirmado = true, resolver, extra = {};
   const calls = [], avisos = [], pedidos = [];
   const ctx = { h: node, obsoleta: () => antigo, recarregar: () => calls.push(['reload']), formatar: { dataHora: (v) => `formatado ${v}` },
-    alerta: (tipo, t) => node('p', { tipo, texto: t }),
+    alerta: (tipo, t) => node('p', { tipo, texto: t }), selo: (nivel, t) => node('span', { nivel, texto: t }),
     estado: { carregando: (r, t) => r.replaceChildren(node('p', { texto: t })), erro: (r) => r.replaceChildren(node('p', { texto: 'Falha com recibo e atualização' })) },
     api: async (url) => { calls.push(['GET', url]); if (erro) throw Error('falha'); return { dados: { pedidos, remoto: { status: 'ausente' }, ...extra } }; },
     confirmar: async () => confirmado,
@@ -18,13 +18,18 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   };
   const logs = [], root = node('main'), sandbox = { root, ctx, console: { warn: (...a) => logs.push(a) } };
   vm.runInNewContext(source, sandbox);
-  const render = async () => { root.replaceChildren(); await vm.runInNewContext('montarFila(root,ctx)', sandbox); return text(root); };
+  // Como a Aprovacao monta: resumo no topo + secao dos ajustes no detalhe da peca (onde moram as acoes).
+  const render = async () => {
+    root.replaceChildren(); const lista = await vm.runInNewContext('montarFila(root,ctx)', sandbox);
+    if (Array.isArray(lista)) { Object.assign(sandbox, { lista, idDaPeca: 'a'.repeat(16) }); const sec = vm.runInNewContext('secaoAjustesDaPeca(ctx, lista, idDaPeca)', sandbox); if (sec) root.appendChild(sec); }
+    return text(root);
+  };
   assert.ok((await render()).includes('Nenhum pedido'));
-  assert.ok(text(root).includes('ponte remota não está confirmada'));
+  assert.ok(text(root).includes('Nenhum pedido de ajuste.') && walk(root).every((n) => n.tag !== 'details'), 'sem pedidos: uma linha, sem lista');
   const base = { id: 'pedido-ficticio', pecaTitulo: 'Reel de teste', pecaId: 'a'.repeat(16), versaoAlvo: 'a'.repeat(40), versaoCorrigida: 'b'.repeat(40), commit: 'c'.repeat(40), tentativas: 1, criadoEm: '2026-10-08T10:00:00-03:00', textoOriginal: 'CANARIO_PRIVADO_NAO_LOGAR' };
   for (const estado of ['novo', 'em-correcao', 'corrigido-aguardando-aceite', 'aceito', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'desatualizado', 'precisa-de-atencao', 'desconhecido']) {
     pedidos.splice(0, pedidos.length, { ...base, estado });
-    const t = await render(); assert.ok(t.includes('Reel de teste · pedido de') && t.includes('Pedido pedido-f'), 'titulo pelo nome da peca, id curto'); assert.ok(!t.includes('pedido-ficticio') && !t.includes('a'.repeat(40)) && !t.includes('b'.repeat(40)) && !t.includes('c'.repeat(40)), 'nem id nem SHA inteiros ao autor'); assert.equal(t.includes(base.textoOriginal), false);
+    const t = await render(); assert.ok(t.includes('Reel de teste · ') && t.includes('Pedido pedido-f'), 'lista pelo nome da peca, id curto'); assert.ok(!t.includes('pedido-ficticio') && !t.includes('a'.repeat(40)) && !t.includes('b'.repeat(40)) && !t.includes('c'.repeat(40)), 'nem id nem SHA inteiros ao autor'); assert.equal(t.includes(base.textoOriginal), false);
     assert.equal(walk(root).filter((n) => n.tag === 'button').length, ['corrigido-aguardando-aceite', 'falha-de-envio'].includes(estado) ? 1 : 0);
   }
   pedidos.splice(0, pedidos.length, { ...base, estado: 'corrigido-aguardando-aceite' }); await render();
@@ -64,7 +69,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   ctx.api = async () => ({ dados: { pedidos, remoto: { status: 'ausente' }, ...extra } });
   let tela = await render();
   assert.ok(tela.includes('vigia de entrega não está ativo') && tela.includes('vigia-ajustes.cjs'), 'avisa vigia parado com o comando');
-  assert.ok(tela.includes('Recebido, aguardando entrega') && tela.includes('Tentativas: 0'), 'pedido fica recebido, sem gastar tentativa');
+  assert.ok(tela.includes('Recebido, aguardando entrega') && tela.includes('tentativas 0'), 'pedido fica recebido, sem gastar tentativa');
   assert.ok(tela.includes('Feche a janela') && tela.includes('abra de novo pelo atalho'), 'avisa servidor com codigo antigo');
   extra = { vigia: { ativo: true, ultimoBatimento: '2026-10-09T14:00:00Z' }, servidor: { desatualizado: false } };
   assert.ok(!(await render()).includes('vigia de entrega não está ativo') && !text(root).includes('Feche a janela'));
@@ -75,5 +80,22 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   extra = {};
   pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio', motivo: null, tentativas: 1 });
   assert.ok((await render()).includes('Confira o agente antes de repetir: uma falha pode deixar a entrega incerta'), 'falha antiga sem motivo mantem o aviso conservador');
+  // Topo da Aprovacao: UMA linha, que nao cresce com a quantidade; ordem estavel, mais recente primeiro.
+  extra = { vigia: { ativo: false, ultimoBatimento: null } };
+  for (const n of [1, 4, 12]) {
+    pedidos.splice(0, pedidos.length, ...Array.from({ length: n }, (_, i) => ({ ...base, id: 'p' + String(i).padStart(2, '0') + 'xxxxxx', estado: i % 2 ? 'falha-de-envio' : 'novo', criadoEm: '2026-10-08T' + String(10 + i).padStart(2, '0') + ':00:00-03:00' })));
+    await render(); const secao = root.children[0];
+    assert.equal(secao.children.length, 1, 'topo e um bloco so, com ' + n + ' pedidos');
+    const det = walk(secao).find((x) => x.tag === 'details'); assert.ok(det && !det.attrs.open, 'lista recolhida por padrao');
+    const resumo = walk(secao).find((x) => x.attrs?.class === 'pedidos-texto').attrs.texto;
+    assert.ok(resumo.startsWith(n + (n === 1 ? ' pedido de ajuste' : ' pedidos de ajuste')), resumo);
+    assert.ok(walk(secao).some((x) => x.attrs?.texto === 'Entrega parada'), 'um aviso curto, para o autor');
+    assert.equal(walk(secao).filter((x) => x.attrs?.tipo === 'atencao').length, 0, 'sem blocos amarelos no topo');
+    const ids = walk(secao).filter((x) => x.attrs?.class === 'campo-ajuda mono quebra').map((x) => x.attrs.texto.slice(7, 10));
+    assert.deepEqual([...ids], [...ids].sort().reverse(), 'mais recente primeiro');
+  }
+  const ant = text(root); await render(); assert.equal(text(root), ant, 'recarregar nao muda a ordem nem o conteudo');
+  const cmd = walk(root).find((x) => x.attrs?.class === 'pedidos-tecnico'); assert.ok(cmd && !cmd.attrs.open && text(cmd).includes('vigia-ajustes.cjs'), 'comando do vigia dentro de Detalhes recolhido');
+  extra = {};
   console.log('admin-ajustes-tela: módulos UI reais, 9 estados, recibos, cancelamento, aceite exato, retry, clique duplo, falha/tardio e texto privado fora de ações/logs OK');
 })().catch((e) => { console.error(e.message); process.exitCode = 1; });

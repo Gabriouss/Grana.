@@ -2,7 +2,7 @@
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
 import { tituloPeca, rotuloSemana, rotuloEstado, trilha } from './_pecas.js';
-import { montarFila } from './ajustes.js';
+import { montarFila, secaoAjustesDaPeca, seloDoAjuste } from './ajustes.js';
 
 export async function montar(raiz, ctx) {
   const { h } = ctx;
@@ -49,7 +49,7 @@ export async function montar(raiz, ctx) {
       },
       h('span', { class: 'fila-item-titulo', texto: tituloPeca(p) }),
       h('span', { class: 'fila-item-meta', texto: `${rotuloSemana(p.semana)} · ${p.tipo}` }),
-      ctx.selo(p.aprovada ? 'ok' : p.ajuste ? 'alerta' : 'neutro', p.aprovada ? 'Aprovada' : p.ajuste ? 'Ajuste pedido' : 'Esperando')));
+      seloDaPeca(ctx, p, pedidos)));
       lista.appendChild(item);
     }
   };
@@ -73,6 +73,8 @@ export async function montar(raiz, ctx) {
       h('dt', { texto: 'Arquivo' }), h('dd', { class: 'mono quebra', texto: p.caminho }),
       p.aceite ? [h('dt', { texto: 'Aceite' }), h('dd', { texto: `${ctx.formatar.dataHora(p.aceite.aprovadoEm)}${p.aceite.evidencia ? `, ${p.aceite.evidencia}` : ''}` })] : null,
       p.ajuste ? [h('dt', { texto: 'Ajuste pedido' }), h('dd', { texto: `${p.ajuste.motivo || ''}${p.ajuste.pedidoEm ? ` (${ctx.formatar.dataHora(p.ajuste.pedidoEm)})` : ''}` })] : null));
+    const ajustesDaPeca = secaoAjustesDaPeca(ctx, pedidos, p.id);
+    if (ajustesDaPeca) detalhe.appendChild(ajustesDaPeca);
     if (p.aceiteDeVersaoAnterior) detalhe.appendChild(ctx.alerta('atencao', 'Uma versão anterior desta peça foi aprovada, mas o arquivo mudou depois. O aceite antigo não vale para esta versão.'));
     if (p.indice) {
       detalhe.appendChild(h('details', { class: 'peca-indice' },
@@ -93,6 +95,14 @@ export async function montar(raiz, ctx) {
 
   desenharLista();
   desenharDetalhe();
+}
+
+// Selo da peça na lista: aprovada, ajuste (com o estado da entrega em poucas palavras) ou esperando.
+function seloDaPeca(ctx, p, pedidos) {
+  if (p.aprovada) return ctx.selo('ok', 'Aprovada');
+  const doPedido = Array.isArray(pedidos) && pedidos.some((x) => x.pecaId === p.id);
+  if (doPedido) { const { nivel, texto } = seloDoAjuste(pedidos, p.id); return ctx.selo(nivel, texto); }
+  return p.ajuste ? ctx.selo('alerta', 'Ajuste pedido') : ctx.selo('neutro', 'Esperando');
 }
 
 function contagem(fila) {
