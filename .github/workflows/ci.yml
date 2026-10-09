@@ -20,7 +20,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # Histórico completo SÓ neste job: há suíte que lê arquivo de commit
+      # antigo (`git show 00de222:.easignore` em corpus-env-fora-da-build, e a
+      # linha de base das auditorias de voz). No clone raso padrão o commit não
+      # existe no runner e a suíte morre com "invalid object name".
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
