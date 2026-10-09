@@ -203,5 +203,20 @@ async function test(nome, fn, padaria, nomes) { await fixture(fn, padaria, nomes
       pedidos[0].estado = 'aceito'; await h.promover(); assert(!fs.existsSync(path.join(h.dir, h.rel))); assert.equal(pedidos[0].estado, 'aceito');
     } finally { pedidos = []; }
   });
+  await test('recibo real de primeira entrada é persistido uma vez; GET e promoção não inventam outro', async (h) => {
+    await h.iniciar(); await h.aprovar();
+    const arq = path.join(h.painel, 'calendario.json'), antes = fs.readFileSync(arq, 'utf8');
+    let r = cal.obterCalendario(h.dir, '2026-10').aguardandoDiaD[0];
+    assert.equal(r.recibo.tipo, 'entrada-automatica'); assert(r.recibo.id); assert(Number.isFinite(Date.parse(r.recibo.em))); assert.equal(r.recibos.length, 1);
+    assert.equal(r.reciboAceite.tipo, 'aceite-autor'); assert.equal(r.reciboAceite.versaoPeca, r.peca.versao);
+    const aceiteOriginal = JSON.stringify(r.reciboAceite);
+    assert.ok(!antes.includes('aceite-autor'), 'recibo do aceite nao e gravado no calendario');
+    const id = r.recibo.id; cal.obterCalendario(h.dir, '2026-10'); assert.equal(fs.readFileSync(arq, 'utf8'), antes);
+    await h.aprovar(); await h.declararD(); await h.promover(); r = cal.obterCalendario(h.dir, '2026-10').itens[0];
+    assert.equal(r.recibo.id, id); assert.equal(r.recibos.filter((v) => v.tipo === 'entrada-automatica').length, 1);
+    assert.equal(JSON.stringify(r.reciboAceite), aceiteOriginal, 'promocao espelha registro exato sem novo aceite');
+    await cal.planejar(h.dir, { id: r.peca.id, versao: r.peca.versao, data: '2026-10-22', hora: '20:00', canal: 'stories' });
+    r = cal.obterCalendario(h.dir, '2026-10').itens[0]; assert.equal(r.previsaoResolvida.data, '2026-10-15'); assert.equal(r.data, '2026-10-22'); assert.equal(r.previsaoResolvida.canal, 'instagram-feed'); assert.equal(r.canal, 'stories'); assert.equal(r.recibo.id, id);
+  });
   assert.deepEqual(chamadas, []); console.log(`admin-cronograma: ${grupos} grupos passaram, módulos reais, zero rede/Meta`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });

@@ -382,6 +382,15 @@ function resolverEstatico(pathname) {
   const partes = decodificado.split('/').filter(Boolean);
   for (const p of partes) if (segmentoRuim(p)) return null;
   if (decodificado.endsWith('/') || partes.length === 0) decodificado = (decodificado.replace(/\/+$/, '') || '') + '/index.html';
+  // Favicon canonico, arquivo exato; nao monta a pasta public.
+  if (decodificado === '/favicon.svg') {
+    try {
+      const esperado = path.resolve(RAIZ, 'public', 'favicon.svg');
+      const real = fs.realpathSync(esperado);
+      if (path.relative(esperado, real) !== '' || !fs.statSync(real).isFile()) return null;
+      return { arquivo: real, mime: MIME['.svg'], publico: true, extras: cabecalhosDoArquivo('.svg', false, 'favicon.svg') };
+    } catch { return null; }
+  }
   const avulso = AVULSOS[decodificado];
   if (avulso) {
     try {

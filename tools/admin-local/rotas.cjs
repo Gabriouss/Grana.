@@ -124,6 +124,7 @@ function tentar(caminho) {
 }
 const adaptador = (nome) => require(`./adaptadores/${nome}.cjs`);
 const marketing = (nome) => tentar(path.join(__dirname, 'marketing', `${nome}.cjs`));
+const pedidoPublico = (p) => marketing('ajustes-dto').pedidoPublico(p);
 
 function funcao(mod, nomes) {
   if (!mod) return null;
@@ -174,7 +175,11 @@ async function rotaMarketingGet(res, nomeModulo, nomesFuncao, args, vazio) {
 async function rotaMarketingPost(res, nomeModulo, nomesFuncao, args) {
   const fn = funcao(marketing(nomeModulo), nomesFuncao);
   if (!fn) return responderErro(res, 503, 'modulo-pendente', 'Módulo de marketing ainda não instalado.');
-  try { responderOk(res, await fn(RAIZ_DADOS, ...args)); } catch (e) { erroDeMarketing(res, e); }
+  try {
+    const resultado = await fn(RAIZ_DADOS, ...args);
+    responderOk(res, nomeModulo === 'aprovacoes' && nomesFuncao.includes('pedirAjuste')
+      ? { ajuste: pedidoPublico(resultado.ajuste), avisos: ['Pedido recebido na fila privada. Nada foi aprovado ou publicado.'] } : resultado);
+  } catch (e) { erroDeMarketing(res, e); }
 }
 
 const GET = {
@@ -196,7 +201,7 @@ const GET = {
     semana: url.searchParams.get('semana') || undefined,
     tipo: url.searchParams.get('tipo') || undefined,
   }], { pecas: [], semanas: [], total: 0 }),
-  '/api/marketing/ajustes': (req, res) => responderOk(res, { pedidos: marketing('ajustes-fila').fila.listar(), armazenamento: 'privado-local', remoto: false }),
+  '/api/marketing/ajustes': (req, res) => responderOk(res, { pedidos: marketing('ajustes-fila').fila.listar().map(pedidoPublico), armazenamento: 'privado-local', remoto: false }),
   '/api/marketing/feed': (req, res) => rotaMarketingGet(res, 'catalogo', ['feed'], [], { pecas: [], total: 0 }),
   '/api/marketing/documento': (req, res) => rotaMarketingGet(res, 'catalogo', ['documento'], [], { markdown: '' }),
   '/api/marketing/calendario': (req, res, url) => {
@@ -240,7 +245,7 @@ async function tratarAcao(req, res, url, corpo, sessao) {
         const fila = marketing('ajustes-fila').fila;
         if (p === '/api/marketing/ajustes/retry') {
           if (corpo.confirmacao !== 'TENTAR ENTREGA NOVAMENTE') return responderErro(res, 400, 'confirmacao-invalida', 'Digite TENTAR ENTREGA NOVAMENTE.');
-          responderOk(res, { pedido: await fila.retry(corpo.pedidoId) });
+          responderOk(res, { pedido: pedidoPublico(await fila.retry(corpo.pedidoId)) });
         } else {
           if (corpo.confirmacao !== 'APROVAR') return responderErro(res, 400, 'confirmacao-invalida', 'Digite APROVAR.');
           const peca = marketing('catalogo').obterPeca(RAIZ_DADOS, corpo.pecaId);
@@ -248,8 +253,8 @@ async function tratarAcao(req, res, url, corpo, sessao) {
           // Queue first: an acceptance in aprovacoes.json without the matching request would
           // be an orphan the author never saw corrected.
           fila.conferirAceite(peca, corpo.pedidoId);
-          const aceite = await marketing('aprovacoes').aprovar(RAIZ_DADOS, peca.id, { versao: peca.versao, confirmacao: 'APROVAR' });
-          responderOk(res, { aceite, pedido: await fila.aceitar(peca, corpo.pedidoId) });
+          await marketing('aprovacoes').aprovar(RAIZ_DADOS, peca.id, { versao: peca.versao, confirmacao: 'APROVAR' });
+          responderOk(res, { aceite: { registrado: true, versao: peca.versao }, pedido: pedidoPublico(await fila.aceitar(peca, corpo.pedidoId)) });
         }
       } catch (e) { erroDeMarketing(res, e); }
       registrar('acao', { rota: p, resultado: res.statusCode, sessao: sessao.id });

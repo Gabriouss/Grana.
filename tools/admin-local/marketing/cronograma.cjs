@@ -150,6 +150,13 @@ function sincronizar(raiz) {
   if (!ler(raiz)) return null;
   const arq = c.caminhoPainel(raiz, 'calendario.json'), atual = c.lerJson(arq, { formato: 1, planejados: [] });
   const nova = projetar(raiz, atual);
+  // Recibo é efeito de escrita durável, nunca inferido pelo GET ou pelo navegador.
+  for (const plano of nova.planejados) {
+    if (!plano.manifestoId || !['planejado', 'aguardando dia D'].includes(plano.estado)) continue;
+    if (!plano.recibos.some((r) => r.tipo === 'entrada-automatica')) plano.recibos.push({
+      id: crypto.randomUUID(), tipo: 'entrada-automatica', em: c.agoraLocalIso(), estado: plano.estado,
+    });
+  }
   const base = atual.versaoOperacional || 0;
   const relida = c.lerJson(arq, { versaoOperacional: 0 });
   if ((relida.versaoOperacional || 0) !== base) erro('calendario-conflito', 'O calendário mudou; tente novamente.');

@@ -353,7 +353,7 @@ function enriquecer(raiz, pecas) {
   try { fila = require('./ajustes-fila.cjs').fila.listar(); } catch { fila = []; }
   const ABERTOS = new Set(['novo', 'em-correcao', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'precisa-de-atencao']);
   for (const r of fila) {
-    if (ABERTOS.has(r.estado)) ajustes.push({ id: r.pecaId, caminho: r.caminho, versao: r.versaoAlvo, pedidoEm: r.criadoEm, motivo: r.textoOriginal, origem: 'fila privada do painel local', pedidoId: r.id, estado: r.estado });
+    if (ABERTOS.has(r.estado)) ajustes.push({ id: r.pecaId, versao: r.versaoAlvo, pedidoEm: r.criadoEm, pedidoId: r.id, estado: r.estado });
   }
   const planejados = Array.isArray(cal.planejados) ? cal.planejados : [];
   return pecas.map((p) => {
@@ -372,7 +372,13 @@ function enriquecer(raiz, pecas) {
       aceite,
       // Aceite dado a uma versão anterior não vale para esta (Sentinel A07).
       aceiteDeVersaoAnterior: aceiteAntigo,
-      ajuste,
+      // Catalogo/feed tambem chegam ao navegador: nunca copiar o texto da fila.
+      ajuste: ajuste ? {
+        id: p.id, versao: p.versao,
+        pedidoId: typeof ajuste.pedidoId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ajuste.pedidoId) ? ajuste.pedidoId : null,
+        pedidoEm: typeof ajuste.pedidoEm === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(ajuste.pedidoEm) && Number.isFinite(Date.parse(ajuste.pedidoEm)) ? ajuste.pedidoEm : null,
+        estado: ABERTOS.has(ajuste.estado) ? ajuste.estado : 'precisa-de-atencao',
+      } : null,
       planejamento: plano ? { data: plano.data, hora: plano.hora || null, canal: plano.canal } : null,
       trilha: {
         versao: true,

@@ -1,0 +1,20 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const { pedidoPublico } = require('../tools/admin-local/marketing/ajustes-dto.cjs');
+const n = (tag, attrs = {}, ...children) => ({ tag, attrs, children: children.flat(Infinity).filter(Boolean), appendChild(x) { this.children.push(x); }, replaceChildren(...x) { this.children=x; } });
+const walk = (x) => [x,...(x.children||[]).flatMap(walk)];
+(async () => {
+  const canario = 'CREDENCIAL_FICTICIA_NUNCA_TRANSPORTAR';
+  const raw={id:'12345678-1234-4234-8234-1234567890ab',pecaId:'1234567890abcdef',estado:'corrigido-aguardando-aceite',tentativas:1,versaoAlvo:'a'.repeat(40),versaoCorrigida:'b'.repeat(40),commit:'c'.repeat(40),criadoEm:'2026-10-08T10:00:00Z',textoOriginal:canario,segredoFuturo:canario,lease:{id:canario,agente:'Beacon',expiraEm:'2026-10-08T11:00:00Z'}};
+  const dto=pedidoPublico(raw); assert.equal(JSON.stringify(dto).includes(canario),false);
+  const root=n('main'),calls=[];
+  const ctx={h:n,obsoleta:()=>false,recarregar:()=>{},formatar:{dataHora:(v)=>v},alerta:(_tipo,t)=>n('p',{texto:t}),estado:{carregando:()=>{},erro:()=>assert.fail('DTO real deve renderizar')},api:async()=>({dados:{pedidos:[dto],remoto:{status:'ativo'}}}),confirmar:async()=>true,acao:async(url,body)=>calls.push({url,body}),aviso:()=>{}};
+  const sandbox={ctx,root};vm.runInNewContext(fs.readFileSync('tools/admin-local/web/telas/ajustes.js','utf8').replace(/export (async )?function /g,'$1function '),sandbox);
+  await vm.runInNewContext('montarFila(root,ctx)',sandbox);
+  assert.equal(JSON.stringify(root).includes(canario),false);
+  const botao=walk(root).find((x)=>x.attrs?.texto==='Aceitar versão corrigida');assert(botao);await botao.attrs.onclick();
+  assert.equal(calls.length,1);assert.equal(calls[0].body.versao,raw.versaoCorrigida);assert.equal(calls[0].body.pedidoId,raw.id);
+  assert.equal(JSON.stringify(calls).includes(canario),false);
+  console.log('admin-ajustes-tela-integracao: DTO fechado real + UI real + aceite explícito da versão, zero credencial/texto privado/POST real');
+})().catch((e)=>{console.error(e.message);process.exitCode=1;});

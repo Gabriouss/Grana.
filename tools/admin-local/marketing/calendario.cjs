@@ -44,8 +44,18 @@ function somarDiasUteis(dataIso, n) {
   return dt.toISOString().slice(0, 10);
 }
 
-function resumoPeca(p) {
+function detalhesPlano(plano) {
+  return {
+    dataPrevista: plano?.dataPrevista || null,
+    previsaoResolvida: plano?.dataPrevista ? { data: plano.dataPrevista.dataResolvida, hora: plano.dataPrevista.hora || null, canal: plano.dataPrevista.canal || null } : null,
+    origem: plano?.origem || null, substituicaoManual: plano?.substituicaoManual || null,
+    recibos: plano?.recibos || [], recibo: plano?.recibos?.find((r) => r.tipo === 'entrada-automatica') || null,
+    legado: !!plano?.legado,
+  };
+}
+function resumoPeca(p, plano = null) {
   const capa = p.arquivos[0] || null;
+  const aceite = require('./aceite-evidencia.cjs').aceiteValido(p.aceite, p) ? p.aceite : null;
   return {
     id: p.id,
     versao: p.versao,
@@ -55,6 +65,9 @@ function resumoPeca(p) {
     estadoEfetivo: p.estadoEfetivo,
     capa: capa ? { url: capa.url, tipo: capa.tipo } : null,
     semana: p.semana,
+    // Projecao do registro exato; nunca um novo aceite no calendario.json.
+    reciboAceite: aceite ? { tipo: 'aceite-autor', versaoPeca: aceite.versao, aprovadoEm: aceite.aprovadoEm, evidencia: aceite.evidencia } : null,
+    ...detalhesPlano(plano),
   };
 }
 
@@ -80,7 +93,7 @@ function obterCalendario(raiz, mes) {
       continue;
     }
     const registro = { data: plano.data, hora: plano.hora || null, canal: plano.canal, observacao: plano.observacao || null, peca: resumoPeca(p),
-      estado: plano.estado || 'planejado', origem: plano.origem || null, dataPrevista: plano.dataPrevista || null, substituicaoManual: plano.substituicaoManual || null };
+      estado: plano.estado || 'planejado', reciboAceite: resumoPeca(p).reciboAceite, ...detalhesPlano(plano) };
     if (plano.estado === 'aguardando dia D') { aguardandoDiaD.push(registro); continue; }
     if (plano.estado === 'cronograma inválido') { suspensos.push(registro); continue; }
     if (!plano.data || !['planejado', undefined].includes(plano.estado)) continue;
@@ -92,7 +105,7 @@ function obterCalendario(raiz, mes) {
   const planejadosValidos = new Set(dados.planejados.filter((c) => c.estado === 'aguardando dia D' || (c.data && ['planejado', undefined].includes(c.estado))).map((c) => `${c.id}:${c.versao}`));
   const aprovadosSemData = pecas
     .filter((p) => p.aprovada && p.tipo !== 'texto' && !planejadosValidos.has(`${p.id}:${p.versao}`))
-    .map(resumoPeca);
+    .map((p) => resumoPeca(p, dados.planejados.find((r) => r.id === p.id && r.versao === p.versao)));
 
   const referenciaFunil = dados.referenciaFunil.map((r) => ({
     ...r,
