@@ -7,7 +7,6 @@ export type EtapaAdminVisual =
   | 'carregando'
   | 'sem-sessao'
   | 'nao-admin'
-  | 'cadastrar-totp'
   | 'pedir-totp'
   | 'pronto'
   | 'erro'
@@ -20,7 +19,6 @@ export type AdminVisualProps = {
   email: string;
   senha: string;
   codigo: string;
-  fator: { qr?: string; segredo?: string } | null;
   resumo: RespostaAdmin<VisaoAdmin> | null;
   onEmailChange: (valor: string) => void;
   onSenhaChange: (valor: string) => void;
@@ -81,14 +79,10 @@ function ValorDestaque({ valor, classe = '' }: { valor: string; classe?: string 
 }
 
 export default function AdminVisual({
-  etapa, erro, ocupado, email, senha, codigo, fator, resumo,
+  etapa, erro, ocupado, email, senha, codigo, resumo,
   onEmailChange, onSenhaChange, onCodigoChange, onEntrar, onVerificar, onSair, onAtualizar,
 }: AdminVisualProps) {
   const dados = resumo?.dados;
-  const autenticando = etapa === 'cadastrar-totp' || etapa === 'pedir-totp';
-  const qr = fator?.qr?.startsWith('data:image/svg+xml')
-    ? fator.qr
-    : fator?.qr ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fator.qr)}` : undefined;
 
   return (
     <>
@@ -182,31 +176,20 @@ export default function AdminVisual({
               </section>
             )}
 
-            {autenticando && (
+            {etapa === 'pedir-totp' && (
               <section className="admin-visual__acesso" aria-labelledby="admin-totp-titulo">
-                <h2 id="admin-totp-titulo">{etapa === 'cadastrar-totp' ? 'Cadastre seu autenticador' : 'Confirme seu acesso'}</h2>
-                <p>{etapa === 'cadastrar-totp'
-                  ? 'Escaneie o QR no seu autenticador e informe o código de seis dígitos.'
-                  : 'Informe o código de seis dígitos do seu autenticador.'}</p>
-                {etapa === 'cadastrar-totp' && (
-                  <>
-                    {qr && <img className="admin-visual__qr" src={qr} alt="QR para cadastrar o autenticador" width="200" height="200" />}
-                    {fator?.segredo && (
-                      <details className="admin-visual__segredo">
-                        <summary>Usar código de configuração</summary>
-                        <p>{fator.segredo}</p>
-                      </details>
-                    )}
-                  </>
-                )}
+                <h2 id="admin-totp-titulo">Confirme seu acesso</h2>
+                <p>Informe o código de seis dígitos do seu autenticador já cadastrado.</p>
                 <form className="admin-visual__formulario" onSubmit={onVerificar}>
                   <label htmlFor="admin-totp">Código do autenticador</label>
                   <p id="admin-totp-ajuda" className="admin-visual__ajuda">Digite os seis números exibidos no autenticador.</p>
                   <input
                     id="admin-totp"
+                    name="codigo"
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
+                    spellCheck={false}
                     pattern="[0-9]{6}"
                     maxLength={6}
                     aria-describedby="admin-totp-ajuda"
