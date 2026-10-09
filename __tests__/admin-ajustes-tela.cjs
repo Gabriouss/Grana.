@@ -30,7 +30,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   for (const estado of ['novo', 'em-correcao', 'corrigido-aguardando-aceite', 'aceito', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'desatualizado', 'precisa-de-atencao', 'desconhecido']) {
     pedidos.splice(0, pedidos.length, { ...base, estado });
     const t = await render(); assert.ok(t.includes('Reel de teste · ') && t.includes('Pedido pedido-f'), 'lista pelo nome da peca, id curto'); assert.ok(!t.includes('pedido-ficticio') && !t.includes('a'.repeat(40)) && !t.includes('b'.repeat(40)) && !t.includes('c'.repeat(40)), 'nem id nem SHA inteiros ao autor'); assert.equal(t.includes(base.textoOriginal), false);
-    assert.equal(walk(root).filter((n) => n.tag === 'button').length, ['corrigido-aguardando-aceite', 'falha-de-envio'].includes(estado) ? 1 : 0);
+    assert.equal(walk(root).filter((n) => n.tag === 'button').length, ['corrigido-aguardando-aceite', 'falha-de-envio', 'precisa-de-atencao'].includes(estado) ? 1 : 0);
   }
   pedidos.splice(0, pedidos.length, { ...base, estado: 'corrigido-aguardando-aceite' }); await render();
   let b = walk(root).find((n) => n.tag === 'button'); confirmado = false; await b.attrs.onclick(); assert.equal(calls.filter((c) => c[0] === 'POST').length, 0);
@@ -85,7 +85,8 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   for (const n of [1, 4, 12]) {
     pedidos.splice(0, pedidos.length, ...Array.from({ length: n }, (_, i) => ({ ...base, id: 'p' + String(i).padStart(2, '0') + 'xxxxxx', estado: i % 2 ? 'falha-de-envio' : 'novo', criadoEm: '2026-10-08T' + String(10 + i).padStart(2, '0') + ':00:00-03:00' })));
     await render(); const secao = root.children[0];
-    assert.equal(secao.children.length, 1, 'topo e um bloco so, com ' + n + ' pedidos');
+    assert.equal(secao.children.filter((x) => x.tag === 'details').length, 1, 'uma lista recolhida, com ' + n + ' pedidos');
+    assert.ok(secao.children.some((x) => x.attrs?.['aria-live'] === 'polite' && text(x).includes('Ponte remota ausente')), 'aviso de ponte visível fora da lista recolhida');
     const det = walk(secao).find((x) => x.tag === 'details'); assert.ok(det && !det.attrs.open, 'lista recolhida por padrao');
     const resumo = walk(secao).find((x) => x.attrs?.class === 'pedidos-texto').attrs.texto;
     assert.ok(resumo.startsWith(n + (n === 1 ? ' pedido de ajuste' : ' pedidos de ajuste')), resumo);
@@ -97,5 +98,147 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   const ant = text(root); await render(); assert.equal(text(root), ant, 'recarregar nao muda a ordem nem o conteudo');
   const cmd = walk(root).find((x) => x.attrs?.class === 'pedidos-tecnico'); assert.ok(cmd && !cmd.attrs.open && text(cmd).includes('vigia-ajustes.cjs'), 'comando do vigia dentro de Detalhes recolhido');
   extra = {};
+  // Relógio e timers controlados: GET real da UI, sem rede, fila ou conta real.
+  const agora = Date.parse('2026-10-09T18:00:00Z');
+  class Relogio extends Date { static now() { return agora; } }
+  const timers = [], gets = [], raizPolling = node('main');
+  let obsoleta = false, falharGet = false, getPendente = null;
+  const privado = 'CANARIO_ERRO_BRUTO_NUNCA_EXIBIR';
+  let dados = {
+    pedidos: [{ ...base, estado: 'em-correcao', espelho: { estado: 'falha', codigo: 'remoto-estado-recusado', em: '2026-10-09T17:59:00Z' }, evidencia: privado, lease: { id: privado } }],
+    remoto: { status: 'ativo', ultimaSync: null, ultimoErro: null },
+  };
+  const contextoPolling = {
+    ...ctx, obsoleta: () => obsoleta,
+    api: async (url) => {
+      gets.push(url);
+      if (getPendente) await new Promise((resolve) => { getPendente = resolve; });
+      if (falharGet) throw new Error(privado);
+      return { dados };
+    },
+  };
+  const ambientePolling = { ctx: contextoPolling, root: raizPolling, Date: Relogio, setTimeout: (fn, ms) => { assert.equal(ms, 15000); timers.push(fn); } };
+  vm.runInNewContext(source, ambientePolling);
+  const listaPolling = await vm.runInNewContext('montarFila(root,ctx)', ambientePolling);
+  Object.assign(ambientePolling, { listaPolling, pecaId: base.pecaId });
+  const detalhePolling = vm.runInNewContext('secaoAjustesDaPeca(ctx,listaPolling,pecaId)', ambientePolling);
+  raizPolling.appendChild(detalhePolling);
+  const avisoVisivel = () => text(raizPolling.children[0].children.find((x) => x.attrs?.['aria-live'] === 'polite'));
+  assert.ok(avisoVisivel().includes('configurada ativa; sincronização recente não confirmada'));
+  assert.ok(!avisoVisivel().includes('ausente') && !avisoVisivel().includes('inativa'), 'configuração ativa não vira ponte desligada');
+  assert.ok(avisoVisivel().includes('não suporta o estado'), 'recusa visível sem abrir lista');
+  assert.ok(text(detalhePolling).includes('Em correção') && text(detalhePolling).includes('não suporta este estado'));
+  assert.ok(text(detalhePolling).includes('formatado 2026-10-09T17:59:00Z'), 'momento seguro do recibo');
+  assert.equal(timers.length, 1);
+  // Reiniciar a tela usa o mesmo recibo persistido, não ultimoErro global.
+  const raizReaberta = node('main'); ambientePolling.reaberta = raizReaberta;
+  await vm.runInNewContext('montarFila(reaberta,ctx)', ambientePolling);
+  assert.ok(text(raizReaberta).includes('não suporta o estado'));
+  timers.pop(); // timer da segunda montagem; exercitamos só a primeira abaixo.
+  // Nova ação local e ciclo de GET não apagam o recibo de falha.
+  dados = { ...dados, pedidos: [{ ...dados.pedidos[0], estado: 'aceito' }] };
+  await timers.shift()();
+  assert.ok(text(detalhePolling).includes('Aceito nesta versão') && text(detalhePolling).includes('não suporta este estado'));
+  falharGet = true;
+  await timers.shift()();
+  await timers.shift()();
+  assert.ok(avisoVisivel().includes('não suporta o estado') && avisoVisivel().includes('Não foi possível atualizar'));
+  assert.equal((avisoVisivel().match(/Não foi possível atualizar/g) || []).length, 1, 'erro de GET não empilha avisos');
+  assert.ok(text(detalhePolling).includes('Aceito nesta versão'), 'GET falho conserva estado local');
+  falharGet = false;
+  dados = { ...dados, remoto: { status: 'ausente' }, pedidos: [{ ...dados.pedidos[0], espelho: { estado: 'indisponivel', codigo: 'ponte-ausente', em: null } }] };
+  await timers.shift()();
+  assert.ok(avisoVisivel().includes('Ponte remota ausente') && text(detalhePolling).includes('Ponte remota indisponível'));
+  for (const status of ['inativo', undefined]) {
+    dados = { ...dados, remoto: { status } }; await timers.shift()();
+    assert.ok(avisoVisivel().includes('inativa ou não confirmada'));
+  }
+  dados = { ...dados, remoto: { status: 'ativo', ultimaSync: '2026-10-09T17:00:00Z' } };
+  await timers.shift()();
+  assert.ok(avisoVisivel().includes('configurada ativa; sincronização recente não confirmada'), 'carimbo antigo não confirma saúde');
+  dados = { ...dados, pedidos: [{ ...dados.pedidos[0], espelho: { estado: 'pendente', codigo: null, em: null } }] };
+  await timers.shift()();
+  assert.ok(text(detalhePolling).includes('espelhamento pendente'));
+  dados = { ...dados, pedidos: [{ ...dados.pedidos[0], espelho: { estado: 'falha', codigo: privado, em: privado } }] };
+  await timers.shift()();
+  assert.ok(text(detalhePolling).includes('não confirmou a mudança'));
+  assert.equal(JSON.stringify(raizPolling).includes(privado), false, 'nenhum código/erro bruto/evidência/lease no aviso');
+  assert.equal(JSON.stringify(raizPolling).includes(base.textoOriginal), false);
+  dados = { ...dados, remoto: { status: 'ativo', ultimaSync: '2026-10-09T18:00:00Z' }, pedidos: [{ ...dados.pedidos[0], espelho: { estado: 'sincronizado', codigo: null, em: '2026-10-09T18:00:00Z' } }] };
+  await timers.shift()();
+  assert.ok(!text(raizPolling).includes('não suporta') && !text(raizPolling).includes('espelhamento pendente'));
+  assert.ok(!avisoVisivel().includes('não confirmada'), 'sucesso atual limpa aviso');
+  assert.ok(text(detalhePolling).includes('Aceito nesta versão'), 'sucesso remoto não troca estado local');
+  // Falha global de importação não pode sumir por carimbo recente ou lista vazia.
+  dados = { pedidos: [], remoto: { status: 'ativo', ultimaSync: '2026-10-09T17:59:30Z', ultimoErro: 'remoto-sem-resposta' } };
+  await timers.shift()();
+  assert.ok(avisoVisivel().includes('Falha na importação remota'), 'ultimoErro prevalece sobre ultimaSync recente sem pedidos pendentes');
+  assert.ok(avisoVisivel().includes('fila local continua disponível') && avisoVisivel().includes('sincronização não confirmada'));
+  assert.ok(text(raizPolling).includes('Nenhum pedido de ajuste.'));
+  assert.equal(JSON.stringify(raizPolling).includes(privado), false, 'erro global bruto não chega ao aviso');
+  await timers.shift()();
+  assert.ok(avisoVisivel().includes('Falha na importação remota'), 'aviso global persiste no polling');
+  dados = { ...dados, pedidos: [{ ...base, estado: 'aceito', espelho: { estado: 'sincronizado', codigo: null, em: '2026-10-09T17:59:30Z' } }] };
+  await timers.shift()();
+  assert.ok(avisoVisivel().includes('Falha na importação remota'), 'ultimoErro global aparece mesmo com todos os pedidos sincronizados');
+  assert.ok(!avisoVisivel().includes('pedido sem confirmação'), 'falha global não inventa falha por pedido');
+  assert.equal(text(raizPolling).includes('remoto-sem-resposta'), false, 'código seguro vira mensagem fixa');
+  dados = { ...dados, remoto: { ...dados.remoto, ultimoErro: privado } };
+  await timers.shift()();
+  assert.ok(avisoVisivel().includes('Falha na importação remota'));
+  assert.equal(JSON.stringify(raizPolling).includes(privado), false, 'valor inesperado do erro global nunca é exibido');
+  dados = { ...dados, remoto: { ...dados.remoto, ultimoErro: null } };
+  await timers.shift()();
+  assert.ok(!avisoVisivel().includes('Falha na importação remota'), 'recibo global limpo remove o aviso');
+  // Polling serial: nenhuma nova chamada enquanto GET anterior está pendente.
+  getPendente = true; const antes = gets.length;
+  const ciclo = timers.shift()(); await Promise.resolve();
+  assert.equal(gets.length, antes + 1); assert.equal(timers.length, 0);
+  getPendente(); getPendente = null; await ciclo; assert.equal(timers.length, 1);
+  obsoleta = true; await timers.shift()();
+  assert.equal(timers.length, 0); assert.equal(gets.length, antes + 1, 'tela obsoleta para polling');
+  assert.ok(gets.every((url) => url === '/api/marketing/ajustes'));
+  assert.equal(walk(raizPolling).some((x) => /autorizar.*custo/i.test(x.attrs?.texto || '')), false);
+  // Encerrar: motivo aparado, 1–500 pontos de código Unicode, sem truncar,
+  // sem texto anterior e confirmação estritamente booleana após o clique.
+  const postsEncerrar = [], formulariosEncerrar = [], confirmacoesEncerrar = [];
+  let valoresEncerrar = null, respostaConfirmacao = true;
+  const contextoEncerrar = {
+    ...ctx, obsoleta: () => false,
+    formulario: async (opcoes) => { formulariosEncerrar.push(opcoes); return valoresEncerrar; },
+    confirmar: async (opcoes) => { confirmacoesEncerrar.push(opcoes); return respostaConfirmacao; },
+    acao: async (url, body) => { postsEncerrar.push({ url, body }); return { dados: { gravadoLocalmente: true, espelhamentoPendente: true } }; },
+    recarregar: () => {},
+  };
+  Object.assign(sandbox, { contextoEncerrar, pedidoEncerrar: { ...base, estado: 'precisa-de-atencao' } });
+  const encerrar = async () => {
+    sandbox.botaoEncerrar = { disabled: false };
+    await vm.runInNewContext('agir(contextoEncerrar,pedidoEncerrar,"encerrar",botaoEncerrar)', sandbox);
+    assert.equal(sandbox.botaoEncerrar.disabled, false);
+  };
+  for (const motivo of ['', '   ', 'x'.repeat(501), '😀'.repeat(501), 123, undefined]) {
+    valoresEncerrar = { motivo }; await encerrar();
+    assert.equal(postsEncerrar.length, 0); assert.equal(confirmacoesEncerrar.length, 0, 'motivo inválido não avança à confirmação');
+  }
+  valoresEncerrar = null; await encerrar(); assert.equal(postsEncerrar.length, 0, 'cancelar formulário não encerra');
+  for (const resposta of [false, undefined, null, 'true', 1]) {
+    valoresEncerrar = { motivo: 'Motivo novo' }; respostaConfirmacao = resposta; await encerrar();
+    assert.equal(postsEncerrar.length, 0, 'somente boolean true confirma');
+  }
+  respostaConfirmacao = true;
+  for (const motivo of [' x ', 'x'.repeat(500), ' 😀'.repeat(250) + ' ']) {
+    valoresEncerrar = { motivo }; await encerrar();
+    const post = postsEncerrar.at(-1);
+    assert.equal(post.url, '/api/marketing/ajustes/encerrar');
+    assert.equal(post.body.motivo, motivo.trim()); assert.equal(post.body.confirmacao, true); assert.equal(post.body.pedidoId, base.id);
+  }
+  valoresEncerrar = { motivo: '😀'.repeat(500) }; await encerrar();
+  assert.equal(postsEncerrar.at(-1).body.motivo, '😀'.repeat(500), '500 caracteres fora do BMP aceitos sem truncamento');
+  assert.equal(postsEncerrar.length, 4);
+  assert.equal(JSON.stringify([formulariosEncerrar, confirmacoesEncerrar, postsEncerrar]).includes(base.textoOriginal), false);
+  assert.ok(formulariosEncerrar[0].campos[0].ajuda.includes('500'));
+  assert.ok(!avisos.at(-1)[0].includes('entregue') && avisos.at(-1)[0].includes('localmente'));
+  console.log('admin-ajustes-tela: Encerrar motivo aparado 1–500 Unicode, confirmação true estrita após diálogo, cancelamentos e zero texto original: OK');
+  console.log('admin-ajustes-tela: espelho por pedido persistente, ponte ativa sem saúde inferida, polling serial, GET falho conserva recibos, sucesso limpa e tela obsoleta encerra: OK');
   console.log('admin-ajustes-tela: módulos UI reais, 9 estados, recibos, cancelamento, aceite exato, retry, clique duplo, falha/tardio e texto privado fora de ações/logs OK');
 })().catch((e) => { console.error(e.message); process.exitCode = 1; });

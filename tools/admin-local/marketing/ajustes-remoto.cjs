@@ -51,10 +51,16 @@ function criarRemoto({ url, chave, fetch: fazer = fetch, agora = () => new Date(
         aceite_versao: r.estado === 'aceito' && r.aceite ? r.aceite.versao : null,
         aceite_em: r.estado === 'aceito' && r.aceite ? r.aceite.em : null,
       };
-      await pedir(`/admin_ajuste_pedidos?id=eq.${encodeURIComponent(r.remotoId)}`, {
-        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(corpo),
-      });
-      await evento(r.remotoId, r.estado, 'espelho-m1');
+      try {
+        await pedir(`/admin_ajuste_pedidos?id=eq.${encodeURIComponent(r.remotoId)}`, {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(corpo),
+        });
+        await evento(r.remotoId, r.estado, 'espelho-m1');
+      } catch (e) {
+        // Only a fixed code, never the provider body/message or request text.
+        const codigo = e.codigo === 'remoto-http' && [400, 409, 422].includes(e.status) ? 'remoto-estado-recusado' : e.codigo;
+        throw Object.assign(new Error(codigo), { codigo, status: e.status });
+      }
     },
   };
 }

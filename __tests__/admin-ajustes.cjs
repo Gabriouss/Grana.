@@ -70,7 +70,7 @@ async function test(name, fn) { await fn(); count++; console.log('OK ' + name); 
   });
   await test('custo pago pausa: nao corrige nem aceita automaticamente', async () => {
     const h = setup(); await h.fila.solicitar(h.peca, { versao: h.peca.versao, motivo: 'ajuste' }); const r = await h.fila.claim();
-    await h.fila.marcar(r.id, r.lease.id, 'aguardando-aprovacao-de-custo', { pecaId: h.peca.id }); await h.fila.tick();
+    await h.fila.marcar(r.id, r.lease.id, 'aguardando-aprovacao-de-custo', { pecaId: h.peca.id, estimativa: { ferramenta: 'fixture', gerado: 'artefato ficticio', creditos: 2, valorReais: 3, cotacao: 5, motivoNaoLocal: 'motivo ficticio' } }); await h.fila.tick();
     assert.equal(h.db.pedidos[0].estado, 'aguardando-aprovacao-de-custo'); assert.equal(h.db.pedidos[0].aceite, null); assert.equal(h.calls.length, 0);
   });
   await test('lease longo e renovavel; trabalho em andamento nao e reentregue', async () => {

@@ -125,7 +125,19 @@ function tentar(caminho) {
 }
 const adaptador = (nome) => require(`./adaptadores/${nome}.cjs`);
 const marketing = (nome) => tentar(path.join(__dirname, 'marketing', `${nome}.cjs`));
-const pedidoPublico = (p) => marketing('ajustes-dto').pedidoPublico(p);
+const ESTADOS_ESPELHO = new Set(['local', 'pendente', 'sincronizado', 'falha', 'indisponivel']);
+const CODIGOS_ESPELHO = new Set(['ponte-ausente', 'remoto-http', 'remoto-sem-resposta', 'remoto-formato', 'remoto-estado-recusado', 'remoto-linha-invalida', 'remoto-falhou']);
+function espelhoPublico(p) {
+  const r = p.espelho;
+  const estado = ESTADOS_ESPELHO.has(r?.estado) ? r.estado : p.remotoId ? 'pendente' : 'local';
+  const em = typeof r?.em === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(r.em) && Number.isFinite(Date.parse(r.em)) ? r.em : null;
+  return { estado, codigo: CODIGOS_ESPELHO.has(r?.codigo) ? r.codigo : null, em };
+}
+const pedidoPublico = (p) => {
+  let atual;
+  try { atual = marketing('catalogo').obterPeca(RAIZ_DADOS, p.pecaId); } catch { atual = null; }
+  return { ...marketing('ajustes-dto').pedidoPublico(p, atual), espelho: espelhoPublico(p) };
+};
 
 function funcao(mod, nomes) {
   if (!mod) return null;
@@ -229,7 +241,7 @@ function pedidosComTitulo(lista) {
   return lista.map((p) => ({ ...pedidoPublico(p), pecaTitulo: titulo(p.pecaId) }));
 }
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover)$/;
-const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo']);
+const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo']);
 const ACOES_BUILD = {
   '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
   '/api/eas/disparar-build': ['DISPARAR BUILD', 'dispararBuild'],
@@ -252,6 +264,17 @@ async function tratarAcao(req, res, url, corpo, sessao) {
     }
     const m = ID_PECA.exec(p);
     let r;
+    if (p === '/api/marketing/ajustes/reenviar' || p === '/api/marketing/ajustes/encerrar') {
+      try {
+        if (typeof corpo.pedidoId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(corpo.pedidoId)) return responderErro(res, 400, 'pedido-invalido', 'Pedido invalido.');
+        if (corpo.confirmacao !== true) return responderErro(res, 400, 'confirmacao-invalida', 'Confirme a acao para continuar.');
+        const fila = marketing('ajustes-fila').fila;
+        const pedido = p.endsWith('/reenviar') ? await fila.reenviar(corpo.pedidoId, corpo) : await fila.encerrar(corpo.pedidoId, corpo);
+        responderOk(res, { gravadoLocalmente: true, espelhamentoPendente: !!pedido.remotoId, pedido: pedidoPublico(pedido) });
+      } catch (e) { erroDeMarketing(res, e); }
+      registrar('acao', { rota: p, resultado: res.statusCode, sessao: sessao.id });
+      return undefined;
+    }
     if (p === '/api/marketing/ajustes/aceitar' || p === '/api/marketing/ajustes/retry') {
       try {
         const fila = marketing('ajustes-fila').fila;
@@ -484,6 +507,10 @@ async function tratarApi(req, res, url) {
     if (sessao.s.etapa !== 'ok') {
       if (sessao.s.etapa === 'totp') return recusar(res, { status: 401, codigo: 'totp-pendente', mensagem: 'Digite o código do autenticador.' });
       return recusar(res, { status: 401, codigo: 'nao-autenticado', mensagem: 'Entre com a senha e o código do autenticador.' });
+    }
+
+    if ((p === '/api/marketing/ajustes/reenviar' || p === '/api/marketing/ajustes/encerrar') && req.method !== 'POST') {
+      return responderErro(res, 405, 'metodo-recusado', 'Metodo nao permitido.');
     }
 
     if (req.method === 'GET' || req.method === 'HEAD') {

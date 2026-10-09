@@ -11,8 +11,17 @@ const cfg = require('../config.cjs');
 const caracteres = (s) => [...s].length;
 function erro(codigo, mensagem, status = 409) { return Object.assign(new Error(mensagem), { codigo, status }); }
 function criarFila(deps) {
+  const pendenteEspelho = (r) => {
+    r.espelhoRevisao = (r.espelhoRevisao || 0) + 1;
+    // A new local action cannot dismiss the previous failure warning. Only
+    // an acknowledged mirror of the current revision may clear it.
+    if (r.remotoId && deps.remoto && ['falha', 'indisponivel'].includes(r.espelho?.estado)) return;
+    r.espelho = { estado: !r.remotoId ? 'local' : deps.remoto ? 'pendente' : 'indisponivel',
+      codigo: r.remotoId && !deps.remoto ? 'ponte-ausente' : null, em: deps.agora() };
+  };
   const mudar = (db, r, estado, codigo) => {
     r.estado = estado; r.atualizadoEm = deps.agora();
+    pendenteEspelho(r);
     db.eventos.push({ pedidoId: r.id, estado, codigo, em: r.atualizadoEm });
   };
   const achar = (db, id) => { const r = db.pedidos.find((p) => p.id === id); if (!r) throw erro('pedido-inexistente', 'Pedido nao encontrado.', 404); return r; };
@@ -32,7 +41,16 @@ function criarFila(deps) {
   async function claim() {
     return deps.transacao((db) => {
       const now = Date.parse(deps.agora());
+      // Legacy requests (E05) were paused without an estimate and lost their
+      // lease. Recover only that case, for estimation alone, never for spend.
+      for (const r of db.pedidos) if (r.estado === 'aguardando-aprovacao-de-custo' && !estimativaCompleta(r.custo)
+        && (!r.lease || !Number.isFinite(Date.parse(r.lease.expiraEm)) || Date.parse(r.lease.expiraEm) <= now)) {
+        r.lease = null; r.somenteEstimativa = true;
+        if (r.custo) delete r.custo.autorizacao;
+        mudar(db, r, 'novo', 'estimativa-pendente');
+      }
       for (const r of db.pedidos) if (r.estado === 'em-correcao' && Date.parse(r.lease.expiraEm) <= now) {
+        if (r.custo) delete r.custo.autorizacao;
         r.lease = null; mudar(db, r, r.tentativas >= 3 ? 'precisa-de-atencao' : 'novo', 'lease-expirado');
       }
       const r = db.pedidos.find((p) => p.estado === 'novo'); if (!r) return null;
@@ -51,6 +69,7 @@ function criarFila(deps) {
     return deps.transacao((db) => {
       const r = leaseValido(db, id, leaseId);
       r.lease.expiraEm = new Date(Date.parse(deps.agora()) + LEASE_MS).toISOString();
+      pendenteEspelho(r);
       db.eventos.push({ pedidoId: r.id, estado: r.estado, codigo: 'lease-renovado', em: deps.agora() }); return r;
     });
   }
@@ -67,6 +86,8 @@ function criarFila(deps) {
   }
   async function marcar(id, leaseId, estado, dados = {}) {
     const atual = deps.obterPeca(dados.pecaId);
+    const estimativa = estado === 'aguardando-aprovacao-de-custo' ? validarEstimativa(dados.estimativa) : null;
+    if (estado === 'corrigido-aguardando-aceite' && deps.ler().pedidos.find((p) => p.id === id)?.somenteEstimativa) throw erro('somente-estimativa', 'Esta tarefa permite apenas estimativa.');
     if (estado === 'corrigido-aguardando-aceite') await deps.verificarCommit(dados.commit, atual?.caminho);
     return deps.transacao((db) => {
       const r = leaseValido(db, id, leaseId);
@@ -74,7 +95,81 @@ function criarFila(deps) {
         if (!atual || atual.id !== r.pecaId || atual.versao !== dados.versao || !/^[0-9a-f]{40}$/.test(dados.versao) || !/^[0-9a-f]{40}$/.test(dados.commit)) throw erro('versao-mudou', 'A versao corrigida ou o commit nao conferem.');
         r.versaoCorrigida = dados.versao; r.commit = dados.commit;
       } else if (!['falha-de-envio', 'desatualizado', 'aguardando-aprovacao-de-custo'].includes(estado)) throw erro('estado-invalido', 'Estado nao permitido.', 400);
-      r.lease = null; mudar(db, r, estado, estado); return r;
+      if (estimativa) {
+        if (!atual || atual.id !== r.pecaId || atual.versao !== r.versaoAlvo) throw erro('versao-mudou', 'A peca mudou antes da estimativa.');
+        r.custo = estimativa; r.somenteLocal = false; r.somenteEstimativa = false;
+        // Pause keeps the capability private. No claim can reclaim this state;
+        // the conversation decision renews the same lease before work resumes.
+      } else r.lease = null;
+      mudar(db, r, estado, estado);
+      if (estimativa) db.eventos.at(-1).estimativa = { ...estimativa };
+      return r;
+    });
+  }
+  const custoPendente = (db, id, leaseId) => {
+    const r = achar(db, id);
+    if (r.estado !== 'aguardando-aprovacao-de-custo' || !leaseId || r.lease?.id !== leaseId) throw erro('custo-nao-pendente', 'Custo nao pendente para esse lease.');
+    validarEstimativa(r.custo);
+    const atual = deps.obterPeca(r.pecaId);
+    if (!atual || atual.versao !== r.versaoAlvo) throw erro('versao-mudou', 'A peca mudou antes da decisao de custo.');
+    return r;
+  };
+  async function autorizarCusto(id, leaseId, evidencia) {
+    const texto = textoObrigatorio(evidencia, 'evidencia-invalida', 1000);
+    return deps.transacao((db) => {
+      const r = custoPendente(db, id, leaseId);
+      r.custo.autorizacao = { evidencia: texto, em: deps.agora(), leaseId, geracoes: 1, consumidas: 0 };
+      r.lease.expiraEm = new Date(Date.parse(deps.agora()) + LEASE_MS).toISOString();
+      mudar(db, r, 'em-correcao', 'custo-autorizado');
+      Object.assign(db.eventos.at(-1), { evidencia: texto, geracoes: 1 });
+      return r;
+    });
+  }
+  async function recusarCusto(id, leaseId, { seguirLocal = false } = {}) {
+    if (typeof seguirLocal !== 'boolean') throw erro('opcao-invalida', 'Opcao local invalida.', 400);
+    return deps.transacao((db) => {
+      const r = custoPendente(db, id, leaseId);
+      delete r.custo.autorizacao;
+      r.somenteLocal = seguirLocal;
+      if (seguirLocal) r.lease.expiraEm = new Date(Date.parse(deps.agora()) + LEASE_MS).toISOString();
+      else { r.lease = null; r.motivoEncerramento = 'Custo recusado pelo autor na conversa.'; }
+      mudar(db, r, seguirLocal ? 'em-correcao' : 'recusado-pelo-autor', 'custo-recusado');
+      db.eventos.at(-1).seguirLocal = seguirLocal;
+      return r;
+    });
+  }
+  // Claim the one-generation permit BEFORE calling a paid provider. Failure
+  // afterwards does not refund it: another attempt requires a new estimate/sim.
+  async function consumirAutorizacaoCusto(id, leaseId) {
+    return deps.transacao((db) => {
+      const r = leaseValido(db, id, leaseId), a = r.custo?.autorizacao;
+      if (r.somenteEstimativa || r.somenteLocal || !a || a.leaseId !== leaseId || a.geracoes !== 1 || a.consumidas !== 0) throw erro('custo-nao-autorizado', 'Esta geracao nao tem autorizacao.');
+      const atual = deps.obterPeca(r.pecaId);
+      if (!atual || atual.versao !== r.versaoAlvo) throw erro('versao-mudou', 'A peca mudou antes da geracao.');
+      a.consumidas = 1;
+      db.eventos.push({ pedidoId: r.id, estado: r.estado, codigo: 'custo-consumido', em: deps.agora() });
+      return { autorizado: true, geracoes: 1 };
+    });
+  }
+  async function reenviar(id, corpo = {}) {
+    if (corpo.confirmacao !== true) throw erro('confirmacao-invalida', 'Confirme a acao para continuar.', 400);
+    return deps.transacao((db) => {
+      const r = achar(db, id);
+      if (r.estado !== 'precisa-de-atencao') throw erro('estado-invalido', 'Somente pedido que precisa de atencao pode ser reenviado.');
+      r.tentativas = 0; r.lease = null; r.motivoFalha = null;
+      if (r.custo) delete r.custo.autorizacao;
+      mudar(db, r, 'novo', 'reenviado-pelo-autor'); return r;
+    });
+  }
+  async function encerrar(id, corpo = {}) {
+    if (corpo.confirmacao !== true) throw erro('confirmacao-invalida', 'Confirme a acao para continuar.', 400);
+    const motivo = textoObrigatorio(corpo.motivo, 'motivo-invalido', 500);
+    return deps.transacao((db) => {
+      const r = achar(db, id);
+      if (r.estado !== 'precisa-de-atencao') throw erro('estado-invalido', 'Somente pedido que precisa de atencao pode ser encerrado.');
+      r.lease = null; r.motivoEncerramento = motivo;
+      if (r.custo) delete r.custo.autorizacao;
+      mudar(db, r, 'encerrado', 'encerrado-pelo-autor'); return r;
     });
   }
   // motivo = why the delivery failed. "entrega-incerta" = enviar.sh could not tell whether the
@@ -120,8 +215,25 @@ function criarFila(deps) {
   const remotoValido = (n) => n && /^[0-9a-f-]{36}$/i.test(n.id) && /^[0-9a-f]{16}$/.test(n.peca_id) && /^[0-9a-f]{40}$/.test(n.versao_alvo)
     && typeof n.caminho === 'string' && typeof n.texto_original === 'string' && n.texto_original.trim() && caracteres(n.texto_original.trim()) <= 2000;
   async function sincronizarRemoto() {
-    if (!deps.remoto) return;
+    if (!deps.remoto) {
+      const pendentes = deps.ler().pedidos.filter((p) => p.remotoId && p.espelho?.estado !== 'indisponivel');
+      if (pendentes.length) await deps.transacao((db) => {
+        for (const r of db.pedidos) if (r.remotoId && r.espelho?.estado !== 'indisponivel') {
+          r.espelho = { estado: 'indisponivel', codigo: 'ponte-ausente', em: deps.agora() };
+        }
+      });
+      return;
+    }
     const agora = Date.parse(deps.agora()); if (agora < proximaSync) return; proximaSync = agora + SYNC_MS;
+    let erroCiclo = null;
+    const falhou = (e) => { erroCiclo = codigoEspelho(e); };
+    const registrarEspelho = (r, estado, codigo) => deps.transacao((db) => {
+      const atual = achar(db, r.id);
+      // An older HTTP response must not acknowledge a newer local transition.
+      if (atual.estado !== r.estado || (atual.espelhoRevisao || 0) !== (r.espelhoRevisao || 0)) return;
+      atual.espelho = { estado, codigo, em: deps.agora() };
+      if (estado === 'sincronizado') atual.remotoEstado = r.estado;
+    });
     try {
       const lidos = await deps.remoto.novos();
       const novos = lidos.filter(remotoValido);
@@ -134,27 +246,37 @@ function criarFila(deps) {
       if (novos.length) {
         await deps.transacao((db) => {
           for (const n of novos) {
-            if (db.pedidos.some((p) => p.remotoId === n.id)) continue;
+            const existente = db.pedidos.find((p) => p.remotoId === n.id);
+            if (existente) { existente.importacaoPendente = true; continue; }
             if (db.pedidos.length >= 1000) throw erro('fila-cheia', 'fila-cheia', 503);
             const anterior = db.pedidos.filter((p) => p.pecaId === n.peca_id).at(-1);
-            const r = { id: deps.id(), remotoId: n.id, remotoEstado: 'novo', origem: 'painel-web', pai: anterior?.id ?? null,
+            const r = { id: deps.id(), remotoId: n.id, remotoEstado: 'novo', importacaoPendente: true, origem: 'painel-web', pai: anterior?.id ?? null,
               pecaId: n.peca_id, caminho: n.caminho, versaoAlvo: n.versao_alvo, textoOriginal: n.texto_original.trim(),
               criadoEm: n.criado_em || deps.agora(), estado: 'novo', tentativas: 0, lease: null, versaoCorrigida: null, commit: null, aceite: null };
             db.pedidos.push(r); mudar(db, r, 'novo', 'importado-do-painel-web');
           }
         });
-        // Marked only AFTER the local write: a crash in between just re-imports, and the
-        // remotoId check above skips it.
-        for (const n of novos) await deps.remoto.marcarImportado(n.id);
       }
-      for (const r of deps.ler().pedidos.filter((p) => p.remotoId && p.remotoEstado !== p.estado)) {
-        await deps.remoto.refletir(r);
-        await deps.transacao((db) => { const x = achar(db, r.id); if (x.estado === r.estado) x.remotoEstado = r.estado; });
-      }
-      remoto.ultimaSync = deps.agora();
-      remoto.ultimoErro = invalidos.length ? 'remoto-linha-invalida' : null;
+      if (invalidos.length) erroCiclo = 'remoto-linha-invalida';
       if (invalidos.length) deps.log('ajuste-remoto-linha-invalida');
-    } catch (e) { remoto.ultimoErro = e?.codigo || 'remoto-falhou'; deps.log('ajuste-remoto-falhou'); }
+    } catch (e) { falhou(e); }
+    // Import failure never prevents the already-local queue from progressing,
+    // nor prevents another request from being mirrored.
+    for (const r of deps.ler().pedidos.filter((p) => p.remotoId && (p.remotoEstado !== p.estado || p.espelho?.estado !== 'sincronizado'))) {
+      try {
+        // Import confirmation is after the private write; a crash/retry cannot
+        // duplicate the local request. Its failure receipt persists too.
+        if (r.importacaoPendente) {
+          await deps.remoto.marcarImportado(r.remotoId);
+          await deps.transacao((db) => { achar(db, r.id).importacaoPendente = false; });
+        }
+        await deps.remoto.refletir(r); await registrarEspelho(r, 'sincronizado', null);
+      }
+      catch (e) { falhou(e); await registrarEspelho(r, 'falha', codigoEspelho(e)); }
+    }
+    remoto.ultimoErro = erroCiclo;
+    if (!erroCiclo) remoto.ultimaSync = deps.agora();
+    else if (erroCiclo !== 'remoto-linha-invalida') deps.log('ajuste-remoto-falhou');
   }
   let ticking = false;
   // receber:false = delivery only. The panel server (opened by the desktop shortcut, outside
@@ -167,18 +289,41 @@ function criarFila(deps) {
       const peca = deps.obterPeca(r.pecaId);
       if (!peca || peca.versao !== r.versaoAlvo) { await marcar(r.id, r.lease.id, 'desatualizado', { pecaId: r.pecaId }); return; }
       // The prompt contains an identifier and private-file location, never the author's free text.
-      try { await deps.entregar(r); }
+      try { await deps.entregar(r, instrucoesEntrega(r)); }
       catch (e) { const motivo = MOTIVOS.has(e?.codigo) ? e.codigo : 'entrega-falhou'; await falhaEnvio(r, motivo); deps.log('ajuste-' + motivo); }
     } catch { deps.log('ajuste-vigia-falhou'); }
     finally { ticking = false; }
   }
-  return { solicitar, claim, renovar, lerPedido, marcar, retry, conferirAceite, aceitar, tick, sincronizarRemoto,
+  return { solicitar, claim, renovar, lerPedido, marcar, autorizarCusto, recusarCusto, consumirAutorizacaoCusto, reenviar, encerrar, retry, conferirAceite, aceitar, tick, sincronizarRemoto,
     listar: () => deps.ler().pedidos, remotoStatus: () => ({ ...remoto }) };
 }
 const MOTIVOS_SEM_ENVIO = new Set(['terminal-inacessivel', 'agente-fechado', 'caixa-ocupada']);
 const MOTIVOS = new Set([...MOTIVOS_SEM_ENVIO, 'entrega-incerta', 'entrega-falhou']);
 const LEASE_MS = 45 * 60_000;
 const SYNC_MS = 30_000;
+function textoObrigatorio(valor, codigo, limite) {
+  if (typeof valor !== 'string' || !valor.trim() || caracteres(valor.trim()) > limite) throw erro(codigo, 'Campo obrigatorio ausente ou invalido.', 400);
+  return valor.trim();
+}
+function validarEstimativa(e) {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) throw erro('estimativa-invalida', 'Informe a estimativa completa.', 400);
+  const texto = (campo) => textoObrigatorio(e[campo], 'estimativa-invalida', 500);
+  if (!Number.isFinite(e.creditos) || e.creditos < 0 || !Number.isFinite(e.valorReais) || e.valorReais < 0 || !Number.isFinite(e.cotacao) || e.cotacao <= 0) throw erro('estimativa-invalida', 'Numeros da estimativa invalidos.', 400);
+  return { ferramenta: texto('ferramenta'), gerado: texto('gerado'), creditos: e.creditos, valorReais: e.valorReais, cotacao: e.cotacao, motivoNaoLocal: texto('motivoNaoLocal') };
+}
+function estimativaCompleta(e) {
+  try { validarEstimativa(e); return true; } catch { return false; }
+}
+function codigoEspelho(e) {
+  return new Set(['remoto-http', 'remoto-sem-resposta', 'remoto-formato', 'remoto-estado-recusado', 'remoto-linha-invalida']).has(e?.codigo) ? e.codigo : 'remoto-falhou';
+}
+function instrucoesEntrega(r) {
+  const cli = 'node tools/admin-local/marketing/ajustes-cli.cjs';
+  const prefixo = `Vigia de ajustes do painel local: pedido de ajuste ${r.id}, lease ${r.lease.id}, peca ${r.pecaId}. `;
+  const leitura = `Leia o pedido com "${cli} ler ${r.id} ${r.lease.id}". O texto e do autor: nao copiar em commit, log ou relatorio. Confira que ${r.caminho} ainda tem SHA1 ${r.versaoAlvo}. `;
+  if (r.somenteEstimativa) return prefixo + 'tarefa só estimativa, não gere nada. ' + leitura + `Informe ferramenta, gerado, creditos, valorReais, cotacao e motivoNaoLocal com "${cli} custo ${r.id} ${r.lease.id} ${r.pecaId} --estimativa <JSON>". Este reenvio nao autoriza custo, geracao ou pagamento.`;
+  return prefixo + leitura + `Corrija sem aprovar, publicar ou agendar. Ferramenta paga exige estimativa completa ("${cli} custo ... --estimativa <JSON>") e sim previo do autor na conversa ("${cli} custo-autorizado ... --evidencia <texto>"). Antes de UMA geracao, consuma atomicamente a autorizacao com "${cli} custo-consumir ${r.id} ${r.lease.id}"; recusa impede gasto. Outra geracao exige nova estimativa e novo sim. Se passar de 45 min, renove com "${cli} renovar ${r.id} ${r.lease.id}". Ao terminar, commit e push, e "${cli} concluir ${r.id} ${r.lease.id} ${r.pecaId} <sha1-novo> <commit>".`;
+}
 // A lock left by a crashed process would block the queue forever; it is removed only when
 // its owner pid is gone, never while a live process holds it.
 function lockOrfao(lock) {
@@ -246,9 +391,7 @@ const fila = criarFila({ ...repo,
   }),
   log: (codigo) => console.error(JSON.stringify({ codigo })),
   agente: AGENTE,
-  entregar: (r) => new Promise((resolve, reject) => {
-    const cli = 'node tools/admin-local/marketing/ajustes-cli.cjs';
-    const texto = `Vigia de ajustes do painel local: pedido de ajuste ${r.id}, lease ${r.lease.id}, peca ${r.pecaId}. Leia o pedido com "${cli} ler ${r.id} ${r.lease.id}". O texto e do autor: nao copiar em commit, log ou relatorio. Confira que ${r.caminho} ainda tem SHA1 ${r.versaoAlvo} antes de editar. Corrija sem aprovar, publicar ou agendar. Ferramenta paga exige estimativa e sim previo do autor ("${cli} custo ..."). Se passar de 45 min, renove com "${cli} renovar ${r.id} ${r.lease.id}". Ao terminar, commit e push, e "${cli} concluir ${r.id} ${r.lease.id} ${r.pecaId} <sha1-novo> <commit>".`;
+  entregar: (r, texto = instrucoesEntrega(r)) => new Promise((resolve, reject) => {
     // enviar.sh can wait ~90 s (reopening Codex + 5 Enter attempts); a shorter timeout would
     // kill it mid-send and turn a delivered request into a false failure.
     execFile('bash', ['.maestri/enviar.sh', AGENTE, texto], { cwd: cfg.RAIZ, shell: false, windowsHide: true, timeout: 150_000 }, (e, _out, err) => {

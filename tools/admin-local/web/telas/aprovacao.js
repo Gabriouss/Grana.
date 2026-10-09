@@ -83,6 +83,16 @@ export async function montar(raiz, ctx) {
       p.ajuste ? [h('dt', { texto: 'Ajuste pedido' }), h('dd', { texto: `${Object.hasOwn(ESTADOS_AJUSTE, p.ajuste.estado) ? ESTADOS_AJUSTE[p.ajuste.estado] : 'Estado não reconhecido. Atualize antes de agir.'}${p.ajuste.pedidoEm ? ` (${ctx.formatar.dataHora(p.ajuste.pedidoEm)})` : ''}` })] : null));
     const ajustesDaPeca = secaoAjustesDaPeca(ctx, pedidos, p.id);
     if (ajustesDaPeca) detalhe.appendChild(ajustesDaPeca);
+    const pedidoComVersaoAtual = pedidos?.find((r) => r.pecaId === p.id &&
+      typeof r.versaoAtual === 'string' &&
+      /^[a-f0-9]{40}$/.test(r.versaoAtual || '') &&
+      (r.estado === 'desatualizado' || r.versaoAtual !== r.versaoAlvo));
+    if (pedidoComVersaoAtual) {
+      detalhe.appendChild(h('button', {
+        class: 'botao', type: 'button', texto: 'Pedir ajuste na versão atual',
+        onclick: () => pedirAjuste(ctx, { ...p, versao: pedidoComVersaoAtual.versaoAtual }),
+      }));
+    }
     if (p.aceiteDeVersaoAnterior) detalhe.appendChild(ctx.alerta('atencao', 'Uma versão anterior desta peça foi aprovada, mas o arquivo mudou depois. O aceite antigo não vale para esta versão.'));
     if (p.indice) {
       detalhe.appendChild(h('details', { class: 'peca-indice' },

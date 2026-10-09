@@ -92,5 +92,32 @@ const falha = async (p, re, n) => { await assert.rejects(p, re); passou++; conso
   }
   await db.exec('reset role');
 
+  // Fase 1: apenas Postgres embutido, nunca servidor/producao.
+  const sql3 = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261009100000_admin_ajustes_estados_terminal.sql'), 'utf8');
+  const { rows: antes } = await db.query(`select conname, pg_get_constraintdef(oid) as definicao
+    from pg_constraint where conrelid = 'public.admin_ajuste_pedidos'::regclass and conname <> 'admin_ajuste_pedidos_estado_check' order by conname`);
+  await db.exec(sql3); await db.exec(sql3); ok(true, 'migration terminal aditiva roda duas vezes sobre a sequencia existente');
+  const { rows: depois } = await db.query(`select conname, pg_get_constraintdef(oid) as definicao
+    from pg_constraint where conrelid = 'public.admin_ajuste_pedidos'::regclass and conname <> 'admin_ajuste_pedidos_estado_check' order by conname`);
+  assert.deepEqual(depois, antes); ok(true, 'demais constraints permanecem identicas');
+  await db.exec('set role service_role');
+  for (const estado of ['encerrado', 'recusado-pelo-autor']) {
+    const { rows: [r] } = await db.query(`insert into public.admin_ajuste_pedidos (peca_id, caminho, versao_alvo, texto_original, estado)
+      values ($1, 'fixture', $2, 'AUDIT terminal ficticio', $3) returning id, estado`, [P, V, estado]);
+    ok(r.estado === estado, `service_role aceita estado ${estado}`);
+    await db.query(`insert into public.admin_ajuste_eventos (pedido_id, estado, codigo) values ($1, $2, 'terminal-ficticio')`, [r.id, estado]);
+    await falha(db.query(`update public.admin_ajuste_pedidos set estado = 'desconhecido' where id = $1`, [r.id]), /check/, 'estado desconhecido continua recusado');
+    await falha(db.query(`update public.admin_ajuste_pedidos set lease_id = gen_random_uuid(), lease_expira_em = now() where id = $1`, [r.id]), /check/, 'terminal nao aceita lease ativo');
+    await falha(db.query(`update public.admin_ajuste_pedidos set estado = 'aceito' where id = $1`, [r.id]), /check/, 'terminal nao contorna regras de aceite');
+    await falha(db.query(`update public.admin_ajuste_pedidos set texto_original = 'alterado' where id = $1`, [r.id]), /imutavel/, 'texto continua imutavel apos migration aditiva');
+    await falha(db.query(`delete from public.admin_ajuste_pedidos where id = $1`, [r.id]), /permission denied/, 'terminal continua indelevel por service_role');
+  }
+  await falha(db.query('delete from public.admin_ajuste_eventos'), /permission denied/, 'eventos continuam append-only apos migration aditiva');
+  for (const papel of ['anon', 'authenticated']) {
+    await db.exec(`reset role; set role ${papel}`);
+    await falha(db.query('select * from public.admin_ajuste_pedidos'), /permission denied/, `${papel} continua sem leitura apos migration aditiva`);
+  }
+  await db.exec('reset role'); await db.close();
+
   console.log(`admin-ajustes-migration: ${passou} verificacoes verdes`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });

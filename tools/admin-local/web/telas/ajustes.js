@@ -6,6 +6,37 @@
 const curto = (v) => (typeof v === 'string' && v ? v.slice(0, 8) : 'não informado');
 // A lista recolhe e abre por escolha da pessoa; recarregar a tela não muda isso nem faz a tela pular.
 const estadoLista = { aberta: false };
+const detalhesDasFilas = new WeakMap();
+const POLLING_MS = 15000;
+const SYNC_RECENTE_MS = 60000;
+
+function momentoSeguro(v) {
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})$/.test(v) && Number.isFinite(Date.parse(v)) ? v : null;
+}
+
+function avisoEspelho(p) {
+  const recibo = p.espelho;
+  if (!recibo || ['local', 'sincronizado'].includes(recibo.estado)) return null;
+  if (recibo.estado === 'falha') return recibo.codigo === 'remoto-estado-recusado'
+    ? 'O espelho remoto não suporta este estado. A mudança local foi preservada e a fila local continua. Aguardando confirmação de sincronização.'
+    : 'O espelho remoto não confirmou a mudança. O estado local foi preservado e a fila local continua. Aguardando confirmação de sincronização.';
+  if (recibo.estado === 'indisponivel') return 'Ponte remota indisponível para este pedido. O estado local foi preservado e a fila local continua. Aguardando confirmação de sincronização.';
+  if (recibo.estado === 'pendente') return 'Mudança gravada localmente; espelhamento pendente. A entrega remota ainda não foi confirmada.';
+  return 'Sincronização deste pedido não confirmada. Confira novamente os recibos; o estado local foi preservado.';
+}
+
+function avisoPonte(d) {
+  // O erro global de importação também é recibo: um sucesso recente ou a
+  // ausência de pedidos pendentes não pode escondê-lo. Nunca mostra erro bruto.
+  if (d.remoto?.ultimoErro !== null && d.remoto?.ultimoErro !== undefined) return 'Falha na importação remota. A fila local continua disponível; sincronização não confirmada.';
+  if (d.remoto?.status === 'ausente') return 'Ponte remota ausente. A fila local continua disponível; sincronização remota indisponível.';
+  if (d.remoto?.status !== 'ativo') return 'Ponte remota inativa ou não confirmada. A fila local continua disponível; confira a configuração da ponte.';
+  const em = momentoSeguro(d.remoto.ultimaSync);
+  const idade = em ? Date.now() - Date.parse(em) : null;
+  // Um carimbo recente registra uma sincronização, nunca saúde permanente.
+  if (idade === null || idade < 0 || idade > SYNC_RECENTE_MS) return 'Ponte configurada ativa; sincronização recente não confirmada.';
+  return null;
+}
 
 // Mais recente primeiro, com desempate pelo id: a ordem não muda quando a lista atualiza.
 export function ordenarPedidos(lista) {
@@ -42,25 +73,67 @@ export async function montarFila(raiz, ctx) {
   const { h } = ctx;
   const secao = h('section', { class: 'pedidos-resumo', 'aria-label': 'Pedidos de ajuste' });
   raiz.appendChild(secao);
-  try {
-    const r = await ctx.api('/api/marketing/ajustes');
-    if (ctx.obsoleta()) return;
-    const d = r.dados;
-    if (!d || !Array.isArray(d.pedidos)) throw Object.assign(new Error('A fila não devolveu uma lista válida.'), { codigo: 'fila-invalida' });
-    const pedidos = ordenarPedidos(d.pedidos);
-    if (!pedidos.length) { secao.appendChild(h('p', { class: 'pedidos-vazio', texto: 'Nenhum pedido de ajuste.' })); return pedidos; }
+  const pedidos = [];
+  const avisos = h('div', { 'aria-live': 'polite' });
+  let avisoFalhaPolling = null;
+  function desenhar(d) {
+    avisos.replaceChildren();
+    avisoFalhaPolling = null;
+    const ponte = avisoPonte(d);
+    if (ponte) avisos.appendChild(h('p', { class: 'campo-ajuda quebra', role: 'status', texto: ponte }));
+    const naoConfirmados = pedidos.filter((p) => avisoEspelho(p));
+    if (naoConfirmados.length) avisos.appendChild(h('p', {
+      class: 'campo-ajuda quebra', role: 'status',
+      texto: `${naoConfirmados.length} ${naoConfirmados.length === 1 ? 'pedido sem confirmação de sincronização' : 'pedidos sem confirmação de sincronização'}. O estado local foi preservado.`,
+    }));
+    // A recusa de estado precisa ser visível mesmo com a lista recolhida.
+    if (naoConfirmados.some((p) => p.espelho.estado === 'falha' && p.espelho.codigo === 'remoto-estado-recusado')) {
+      avisos.appendChild(h('p', { class: 'campo-ajuda quebra', role: 'status', texto: 'O espelho remoto não suporta o estado de um pedido. A fila local continua; aguardando confirmação de sincronização.' }));
+    }
+    secao.replaceChildren(avisos);
+    if (!pedidos.length) { secao.appendChild(h('p', { class: 'pedidos-vazio', texto: 'Nenhum pedido de ajuste.' })); return; }
     const parada = situacaoEntrega(d);
     const resumo = resumoPedidos(pedidos);
-    const detalhes = h('details', { class: 'pedidos-lista', open: estadoLista.aberta ? true : undefined, ontoggle: (e) => { estadoLista.aberta = !!e.target.open; } },
+    secao.appendChild(h('details', { class: 'pedidos-lista', open: estadoLista.aberta ? true : undefined, ontoggle: (e) => { estadoLista.aberta = !!e.target.open; } },
       h('summary', { class: 'pedidos-linha', title: resumo },
         h('span', { class: 'pedidos-texto', texto: resumo }),
         parada ? ctx.selo('alerta', parada) : null,
         h('span', { class: 'pedidos-ver', texto: 'Ver todos' })),
       h('div', { class: 'secao-corpo quebra' },
         parada ? h('p', { texto: d.servidor?.desatualizado ? 'O painel foi atualizado depois que esta janela abriu.' : 'A entrega dos pedidos está parada.' }) : null,
-        parada || d.remoto?.status !== 'ativo' ? tecnico(ctx, d) : null,
-        h('ul', { class: 'pedidos-itens' }, pedidos.map((p) => linhaPedido(ctx, p, { acoes: false })))));
-    secao.appendChild(detalhes);
+        parada || avisoPonte(d) ? tecnico(ctx, d) : null,
+        h('ul', { class: 'pedidos-itens' }, pedidos.map((p) => linhaPedido(ctx, p, { acoes: false }))))));
+  }
+  async function atualizar() {
+    const r = await ctx.api('/api/marketing/ajustes');
+    if (ctx.obsoleta()) return;
+    const d = r.dados;
+    if (!d || !Array.isArray(d.pedidos)) throw new Error('fila-invalida');
+    pedidos.splice(0, pedidos.length, ...ordenarPedidos(d.pedidos));
+    desenhar(d);
+    for (const redesenhar of detalhesDasFilas.get(pedidos) || []) redesenhar();
+  }
+  function agendar() {
+    if (ctx.obsoleta() || typeof setTimeout !== 'function') return;
+    setTimeout(async () => {
+      if (ctx.obsoleta()) return;
+      try { await atualizar(); }
+      catch {
+        if (!ctx.obsoleta()) {
+          // Não apaga o último recibo por falha no GET, nem mostra erro bruto.
+          const texto = 'Não foi possível atualizar a sincronização. Os últimos recibos e o estado local continuam visíveis; uma nova conferência será feita.';
+          if (avisoFalhaPolling) avisos.removeChild(avisoFalhaPolling);
+          avisoFalhaPolling = h('p', { class: 'campo-ajuda quebra', role: 'status', texto });
+          avisos.appendChild(avisoFalhaPolling);
+        }
+      }
+      agendar();
+    }, POLLING_MS);
+  }
+  try {
+    await atualizar();
+    if (ctx.obsoleta()) return;
+    agendar();
     return pedidos;
   } catch (err) {
     if (!ctx.obsoleta()) ctx.estado.erro(secao, err, () => ctx.recarregar());
@@ -83,9 +156,13 @@ export function secaoAjustesDaPeca(ctx, pedidos, pecaId) {
   const { h } = ctx;
   const meus = ordenarPedidos((pedidos || []).filter((p) => p.pecaId === pecaId));
   if (!meus.length) return null;
-  return h('section', { class: 'peca-ajustes', 'aria-label': 'Ajustes pedidos' },
-    h('h3', { texto: 'Ajustes pedidos' }),
-    h('ul', { class: 'pedidos-itens' }, meus.map((p) => linhaPedido(ctx, p, { acoes: true }))));
+  const secao = h('section', { class: 'peca-ajustes', 'aria-label': 'Ajustes pedidos' });
+  const redesenhar = () => secao.replaceChildren(h('h3', { texto: 'Ajustes pedidos' }),
+    h('ul', { class: 'pedidos-itens' }, ordenarPedidos(pedidos.filter((p) => p.pecaId === pecaId)).map((p) => linhaPedido(ctx, p, { acoes: true }))));
+  if (!detalhesDasFilas.has(pedidos)) detalhesDasFilas.set(pedidos, new Set());
+  detalhesDasFilas.get(pedidos).add(redesenhar);
+  redesenhar();
+  return secao;
 }
 
 function linhaPedido(ctx, p, { acoes }) {
@@ -95,7 +172,7 @@ function linhaPedido(ctx, p, { acoes }) {
   const retry = p.estado === 'falha-de-envio' && Number.isInteger(p.tentativas) && p.tentativas < 3;
   const bloco = h('div', { class: 'bloco-acao' });
   if (acoes) {
-    for (const [permitida, tipo, rotulo] of [[aceitar, 'aceitar', 'Aceitar versão corrigida'], [retry, 'retry', 'Tentar entrega novamente']]) {
+    for (const [permitida, tipo, rotulo] of [[aceitar, 'aceitar', 'Aceitar versão corrigida'], [retry, 'retry', 'Tentar entrega novamente'], [p.estado === 'precisa-de-atencao', 'encerrar', 'Encerrar pedido']]) {
       if (!permitida) continue;
       const botao = h('button', { class: 'botao', type: 'button', texto: rotulo, onclick: () => agir(ctx, p, tipo, botao) });
       bloco.appendChild(botao);
@@ -106,8 +183,11 @@ function linhaPedido(ctx, p, { acoes }) {
   const ids = [`Pedido ${curto(p.id)}`, `Versão alvo ${curto(p.versaoAlvo)}`, p.versaoCorrigida ? `Versão corrigida ${curto(p.versaoCorrigida)}` : null, p.commit ? `Commit ${curto(p.commit)}` : null, p.aceite ? `Aceite ${curto(p.aceite.versao)}` : null].filter(Boolean).join(' · ');
   const estado = ESTADOS[p.estado] || `Estado não reconhecido: ${p.estado || 'ausente'}. Atualize antes de agir.`;
   const nomeDaPeca = acoes ? '' : `${p.pecaTitulo || 'Peça sem nome'} · `;
+  const espelho = avisoEspelho(p);
+  const emEspelho = momentoSeguro(p.espelho?.em);
   return h('li', { class: 'pedido-linha' },
     h('p', { class: 'pedido-titulo quebra', role: 'status', texto: `${nomeDaPeca}${quando(p.criadoEm)} · ${estado}` }),
+    espelho ? h('p', { class: 'campo-ajuda quebra', role: 'status', texto: `${espelho}${emEspelho ? ` Recibo em ${quando(emEspelho)}.` : ''}` }) : null,
     p.estado === 'falha-de-envio' ? h('p', { class: 'campo-ajuda quebra', texto: MOTIVOS[p.motivo] || 'Confira o agente antes de repetir: uma falha pode deixar a entrega incerta. O servidor limita as tentativas.' }) : null,
     p.estado === 'aguardando-aprovacao-de-custo' ? h('p', { class: 'campo-ajuda', texto: 'A ferramenta paga permanece pausada. Nenhum custo é autorizado por esta tela.' }) : null,
     p.estado === 'corrigido-aguardando-aceite' ? h('p', { class: 'campo-ajuda', texto: 'Revise a peça e a versão corrigida antes de aceitar. Correção pronta não é aceite nem publicação.' }) : null,
@@ -121,6 +201,7 @@ const ESTADOS = {
   'corrigido-aguardando-aceite': 'Corrigido, aguardando seu aceite', aceito: 'Aceito nesta versão',
   'falha-de-envio': 'Falha na entrega', 'aguardando-aprovacao-de-custo': 'Pausado para aprovação de custo',
   desatualizado: 'Versão desatualizada', 'precisa-de-atencao': 'Precisa de atenção',
+  encerrado: 'Pedido encerrado', 'recusado-pelo-autor': 'Recusado pelo autor',
 };
 
 // Motivo da falha de entrega. Os três primeiros provam que nada foi digitado: a tentativa não é gasta.
@@ -136,14 +217,30 @@ export async function agir(ctx, pedido, tipo, botao) {
   if (botao.disabled || ctx.obsoleta()) return;
   botao.disabled = true;
   try {
-    if (!await ctx.confirmar({ titulo: tipo === 'aceitar' ? 'Aceitar esta correção' : 'Tentar entrega novamente',
-      texto: tipo === 'aceitar' ? 'Confirme somente depois de revisar a versão corrigida. Nada será publicado ou enviado à Meta.' : 'Confira primeiro se o agente recebeu o pedido. Repetir uma entrega incerta pode duplicar trabalho.',
-      detalhes: [pedido.pecaTitulo || 'Peça sem nome', `Pedido ${curto(pedido.id)} · versão ${curto(pedido.versaoCorrigida || pedido.versaoAlvo)}`], rotuloBotao: 'Confirmar' })) return;
+    let motivo;
+    if (tipo === 'encerrar') {
+      const valores = await ctx.formulario({
+        titulo: 'Encerrar pedido', texto: 'Informe um novo motivo para encerrar este pedido. O texto original permanece oculto.',
+        campos: [{ nome: 'motivo', rotulo: 'Motivo do encerramento', tipo: 'textarea', obrigatorio: true, linhas: 4, ajuda: 'De 1 a 500 caracteres Unicode, sem contar espaços nas pontas.' }],
+        rotuloBotao: 'Revisar encerramento',
+      });
+      if (!valores || ctx.obsoleta()) return;
+      motivo = typeof valores.motivo === 'string' ? valores.motivo.trim() : '';
+      if (!motivo || Array.from(motivo).length > 500) {
+        ctx.aviso('Informe um motivo de 1 a 500 caracteres para encerrar o pedido.', 'erro');
+        return;
+      }
+    }
+    const confirmado = await ctx.confirmar({ titulo: tipo === 'encerrar' ? 'Confirmar encerramento' : tipo === 'aceitar' ? 'Aceitar esta correção' : 'Tentar entrega novamente',
+      texto: tipo === 'encerrar' ? 'O pedido será encerrado localmente. A sincronização remota ainda precisa de confirmação. Nenhum custo é autorizado.' : tipo === 'aceitar' ? 'Confirme somente depois de revisar a versão corrigida. Nada será publicado ou enviado à Meta.' : 'Confira primeiro se o agente recebeu o pedido. Repetir uma entrega incerta pode duplicar trabalho.',
+      detalhes: [pedido.pecaTitulo || 'Peça sem nome', `Pedido ${curto(pedido.id)} · versão ${curto(pedido.versaoCorrigida || pedido.versaoAlvo)}`], rotuloBotao: 'Confirmar' });
+    if (confirmado !== true) return;
     if (ctx.obsoleta()) return;
     const corpo = { pedidoId: pedido.id, confirmacao: true };
+    if (tipo === 'encerrar') corpo.motivo = motivo;
     if (tipo === 'aceitar') { corpo.pecaId = pedido.pecaId; corpo.versao = pedido.versaoCorrigida; }
     await ctx.acao(`/api/marketing/ajustes/${tipo}`, corpo);
-    if (!ctx.obsoleta()) { ctx.aviso(tipo === 'aceitar' ? 'Aceite registrado para esta versão.' : 'Nova tentativa registrada. A entrega ainda precisa de confirmação.', 'ok'); ctx.recarregar(); }
+    if (!ctx.obsoleta()) { ctx.aviso(tipo === 'encerrar' ? 'Pedido encerrado localmente. Confira o recibo de sincronização.' : tipo === 'aceitar' ? 'Aceite registrado para esta versão.' : 'Nova tentativa registrada. A entrega ainda precisa de confirmação.', 'ok'); ctx.recarregar(); }
   } catch (err) {
     console.warn('[ajustes]', err.codigo || 'falha');
     // O código interno fica no console; a pessoa lê o que fazer.
