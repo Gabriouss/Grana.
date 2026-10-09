@@ -38,6 +38,7 @@ Use data prevista de publicação; sem data, produção/criação. A primeira in
 ## Aguardando narração
 
 - 09/10/2026: `para-aprovacao/pecas/reels/grana-r5-colar-pix-v6.mp4` (R5, colar Pix, v6), copiado do vault sem alterar o original. Semana pela data de produção do arquivo (26/09/2026), sem publicação prevista. Autor: "esse aqui também, precisa apenas da narração". **Falta a narração**; nenhuma foi gerada (regras 21 e 24). Não é peça aprovada: sem aceite do autor para esta versão. Fonte de render em `docs/marketing/r5-colar-pix/`.
+- 09/10/2026: capas 1080x1920 dos dois reels, feitas localmente (PIL, sem ElevenLabs), pedido do autor ("capas para esses reels. Formato 1080 x 1920 (vertical) com margem de 1080 x 1440"). Cada capa fica ao lado do vídeo, com o nome `<vídeo>-capa.png`: `para-aprovacao/pecas/reels/grana-r5-colar-pix-v6-capa.png` e `aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota-capa.png`. **Só o vídeo `desistiu` tem aceite; as capas NÃO têm aceite do autor** (a pasta `aprovados` é só onde o vídeo está, por convenção de nome). Título e aparelho dentro do centro 1080x1080; logotipo dentro de 1080x1350. Base: aparelho `design-system/marketing-mockups/celular-vazio.png` com quadro real do vídeo (7,0 s) ou da gravação `material-video-2026-09-26/r5-clipe.mp4` (20,0 s) colado por homografia. Conferência com as molduras fora do repositório, em `E:\Grana-temporarios6-10-09-paineleels\capas\conferencia\`. QA e publicação: não feitos.
 
 ## Aceites registrados no painel local
 
