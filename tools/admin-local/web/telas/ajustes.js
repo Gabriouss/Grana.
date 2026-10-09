@@ -39,6 +39,9 @@ const MOTIVOS = {
   'entrega-falhou': 'A entrega falhou por um motivo que não dá para classificar. Confira o agente antes de repetir.',
 };
 
+// Identificadores são para conferência, não para leitura: oito caracteres bastam e ficam em segundo plano.
+const curto = (v) => (typeof v === 'string' && v ? v.slice(0, 8) : 'não informado');
+
 function cartaoPedido(ctx, p) {
   const { h } = ctx;
   const quando = (v) => v ? ctx.formatar.dataHora(v) : 'não informado';
@@ -52,19 +55,17 @@ function cartaoPedido(ctx, p) {
     acoes.appendChild(botao);
   }
   return h('article', { class: 'secao' },
-    h('h3', { class: 'secao-titulo quebra', texto: `Pedido ${p.id}` }),
+    h('h3', { class: 'secao-titulo quebra', texto: `${p.pecaTitulo || 'Peça sem nome'} · pedido de ${quando(p.criadoEm)}` }),
     h('div', { class: 'secao-corpo quebra' },
       h('p', { role: 'status', texto: ESTADOS[p.estado] || `Estado não reconhecido: ${p.estado || 'ausente'}. Atualize antes de agir.` }),
       h('p', { class: 'campo-ajuda', texto: `Recebido: ${quando(p.criadoEm)} · Atualizado: ${quando(p.atualizadoEm)} · Tentativas: ${p.tentativas ?? 'não informadas'}` }),
       p.lease ? h('p', { texto: `Agente: ${p.lease.agente || 'não informado'} · Reserva válida até ${quando(p.lease.expiraEm)}` }) : null,
-      h('p', { class: 'mono quebra', texto: `Versão alvo: ${p.versaoAlvo || 'não informada'}` }),
-      p.versaoCorrigida ? h('p', { class: 'mono quebra', texto: `Versão corrigida: ${p.versaoCorrigida}` }) : null,
-      p.commit ? h('p', { class: 'mono quebra', texto: `Commit da correção: ${p.commit}` }) : null,
-      p.aceite ? h('p', { texto: `Recibo do aceite: ${p.aceite.versao} · ${quando(p.aceite.em)}. Não comprova publicação.` }) : null,
+      p.aceite ? h('p', { texto: `Aceito em ${quando(p.aceite.em)}. O aceite não comprova publicação.` }) : null,
       p.estado === 'falha-de-envio' ? ctx.alerta('atencao', MOTIVOS[p.motivo] || 'Confira o agente antes de repetir: uma falha pode deixar a entrega incerta. O servidor limita as tentativas.') : null,
       p.estado === 'aguardando-aprovacao-de-custo' ? ctx.alerta('atencao', 'A ferramenta paga permanece pausada. Nenhum custo é autorizado por esta tela.') : null,
       p.estado === 'corrigido-aguardando-aceite' ? h('p', { texto: 'Revise a peça e o hash corrigido antes de aceitar. Correção pronta não é aceite nem publicação.' }) : null,
-      acoes));
+      acoes,
+      h('p', { class: 'campo-ajuda mono quebra', texto: [`Pedido ${curto(p.id)}`, `Versão alvo ${curto(p.versaoAlvo)}`, p.versaoCorrigida ? `Versão corrigida ${curto(p.versaoCorrigida)}` : null, p.commit ? `Commit ${curto(p.commit)}` : null, p.aceite ? `Aceite ${curto(p.aceite.versao)}` : null].filter(Boolean).join(' · ') })));
 }
 
 export async function agir(ctx, pedido, tipo, botao) {
@@ -73,7 +74,7 @@ export async function agir(ctx, pedido, tipo, botao) {
   try {
     if (!await ctx.confirmar({ titulo: tipo === 'aceitar' ? 'Aceitar esta correção' : 'Tentar entrega novamente',
       texto: tipo === 'aceitar' ? 'Confirme somente depois de revisar a versão corrigida. Nada será publicado ou enviado à Meta.' : 'Confira primeiro se o agente recebeu o pedido. Repetir uma entrega incerta pode duplicar trabalho.',
-      detalhes: [pedido.id, pedido.versaoCorrigida || pedido.versaoAlvo], rotuloBotao: 'Confirmar' })) return;
+      detalhes: [pedido.pecaTitulo || 'Peça sem nome', `Pedido ${curto(pedido.id)} · versão ${curto(pedido.versaoCorrigida || pedido.versaoAlvo)}`], rotuloBotao: 'Confirmar' })) return;
     if (ctx.obsoleta()) return;
     const corpo = { pedidoId: pedido.id, confirmacao: true };
     if (tipo === 'aceitar') { corpo.pecaId = pedido.pecaId; corpo.versao = pedido.versaoCorrigida; }

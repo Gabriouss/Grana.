@@ -21,10 +21,10 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   const render = async () => { root.replaceChildren(); await vm.runInNewContext('montarFila(root,ctx)', sandbox); return text(root); };
   assert.ok((await render()).includes('Nenhum pedido'));
   assert.ok(text(root).includes('ponte remota não está confirmada'));
-  const base = { id: 'pedido-ficticio', pecaId: 'a'.repeat(16), versaoAlvo: 'a'.repeat(40), versaoCorrigida: 'b'.repeat(40), commit: 'c'.repeat(40), tentativas: 1, criadoEm: '2026-10-08T10:00:00-03:00', textoOriginal: 'CANARIO_PRIVADO_NAO_LOGAR' };
+  const base = { id: 'pedido-ficticio', pecaTitulo: 'Reel de teste', pecaId: 'a'.repeat(16), versaoAlvo: 'a'.repeat(40), versaoCorrigida: 'b'.repeat(40), commit: 'c'.repeat(40), tentativas: 1, criadoEm: '2026-10-08T10:00:00-03:00', textoOriginal: 'CANARIO_PRIVADO_NAO_LOGAR' };
   for (const estado of ['novo', 'em-correcao', 'corrigido-aguardando-aceite', 'aceito', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'desatualizado', 'precisa-de-atencao', 'desconhecido']) {
     pedidos.splice(0, pedidos.length, { ...base, estado });
-    const t = await render(); assert.ok(t.includes('pedido-ficticio')); assert.equal(t.includes(base.textoOriginal), false);
+    const t = await render(); assert.ok(t.includes('Reel de teste · pedido de') && t.includes('Pedido pedido-f'), 'titulo pelo nome da peca, id curto'); assert.ok(!t.includes('pedido-ficticio') && !t.includes('a'.repeat(40)) && !t.includes('b'.repeat(40)) && !t.includes('c'.repeat(40)), 'nem id nem SHA inteiros ao autor'); assert.equal(t.includes(base.textoOriginal), false);
     assert.equal(walk(root).filter((n) => n.tag === 'button').length, ['corrigido-aguardando-aceite', 'falha-de-envio'].includes(estado) ? 1 : 0);
   }
   pedidos.splice(0, pedidos.length, { ...base, estado: 'corrigido-aguardando-aceite' }); await render();
@@ -35,7 +35,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   resolver({}); await first; resolver = null;
   pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio' }); await render(); b = walk(root).find((n) => n.tag === 'button'); await b.attrs.onclick();
   assert.equal(calls.filter((c) => c[0] === 'POST').at(-1)[2].confirmacao, true);
-  erro = true; assert.ok((await render()).includes('Falha com recibo')); erro = false; antigo = true; assert.equal((await render()).includes('pedido-ficticio'), false);
+  erro = true; assert.ok((await render()).includes('Falha com recibo')); erro = false; antigo = true; assert.equal((await render()).includes('Pedido pedido-f'), false);
   assert.equal(JSON.stringify([calls, avisos]).includes(base.textoOriginal), false);
   assert.equal(fs.readFileSync('tools/admin-local/web/telas/aprovacao.js', 'utf8').includes('vai para o GitHub público'), false);
   antigo = false; erro = false;
