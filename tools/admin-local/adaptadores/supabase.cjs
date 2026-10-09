@@ -50,13 +50,8 @@ async function sql(consulta) {
   return r.dados || [];
 }
 
-/** g***@gmail.com */
-function mascararEmail(email) {
-  const s = String(email || '');
-  const i = s.indexOf('@');
-  if (i < 1) return s ? '***' : null;
-  return `${s[0]}***${s.slice(i)}`;
-}
+const contagem = (v) => Number.isSafeInteger(v) && v >= 0 ? v : null;
+const STATUS_ASSINATURA = new Set(['active', 'ativa', 'trialing', 'paid', 'aprovada', 'canceled', 'cancelled', 'inactive', 'expired', 'past_due', 'unpaid', 'pending', 'incomplete', 'incomplete_expired', 'paused']);
 
 async function tabelaExiste(nome) {
   const r = await sql(`select to_regclass('public.${nome}') is not null as existe`);
@@ -80,17 +75,17 @@ async function resumo() {
     sql(`select json_build_object(
       'usuarios', (select json_build_object(
           'total', count(*)::int,
+          'hoje', count(*) filter (where created_at >= (date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo'))::int,
           'ultimos7', count(*) filter (where created_at > now() - interval '7 days')::int,
           'ultimos30', count(*) filter (where created_at > now() - interval '30 days')::int,
           'confirmados', count(*) filter (where email_confirmed_at is not null)::int) from auth.users),
-      'cadastros', (select coalesce(json_agg(c), '[]'::json) from (select created_at, email from auth.users order by created_at desc limit 10) c),
       'temAssinaturas', to_regclass('public.subscriptions') is not null,
       'temPush', to_regclass('public.push_tokens') is not null
     ) as r`),
   ]);
   const base = (linhas[0] && linhas[0].r) || {};
-  const usuarios = [base.usuarios || null];
-  const cadastros = base.cadastros || [];
+  const usuarios = base.usuarios && ['total', 'hoje', 'ultimos7', 'ultimos30', 'confirmados'].every((k) => contagem(base.usuarios[k]) !== null)
+    ? Object.fromEntries(['total', 'hoje', 'ultimos7', 'ultimos30', 'confirmados'].map((k) => [k, base.usuarios[k]])) : null;
 
   const extras = await Promise.all([
     base.temAssinaturas ? sql(`select coalesce(status::text, 'sem status') as status, count(*)::int as total from public.subscriptions group by 1 order by 2 desc`) : null,
@@ -100,18 +95,22 @@ async function resumo() {
   let assinaturas = { status: 'ausente', motivo: 'Tabela de assinaturas não encontrada.' };
   if (extras[0]) {
     const ls = extras[0];
-    assinaturas = { status: 'ok', tabela: 'subscriptions', porStatus: ls, ativas: ls.filter((l) => /^(active|ativa|trialing|paid|aprovada)$/i.test(l.status)).reduce((s, l) => s + l.total, 0) };
+    if (Array.isArray(ls) && ls.every((l) => l && contagem(l.total) !== null)) {
+      const agrupados = new Map();
+      for (const l of ls) { const conhecido = typeof l.status === 'string' && STATUS_ASSINATURA.has(l.status.toLowerCase()); const status = conhecido ? l.status.toLowerCase() : 'outros'; agrupados.set(status, (agrupados.get(status) || 0) + l.total); }
+      const porStatus = [...agrupados].map(([status, total]) => ({ status, total }));
+      assinaturas = { status: 'ok', tabela: 'subscriptions', porStatus, ativas: porStatus.filter((l) => /^(active|ativa|trialing|paid|aprovada)$/.test(l.status)).reduce((s, l) => s + l.total, 0) };
+    } else assinaturas = { status: 'indisponivel', motivo: 'Contagens de assinaturas indisponíveis.' };
   }
   let pushTokens = { status: 'ausente', motivo: 'Tabela push_tokens não encontrada.' };
-  if (extras[1]) pushTokens = { status: 'ok', ...extras[1][0] };
+  if (extras[1]) { const r = extras[1][0]; pushTokens = r && contagem(r.total) !== null && contagem(r.usuarios) !== null ? { status: 'ok', total: r.total, usuarios: r.usuarios } : { status: 'indisponivel', motivo: 'Contagens de push indisponíveis.' }; }
 
   return {
     status: 'ok',
     projeto: proj,
-    usuarios: usuarios[0] || null,
+    usuarios,
     assinaturas,
     pushTokens,
-    ultimosCadastros: cadastros.map((c) => ({ data: c.created_at, email: mascararEmail(c.email) })),
   };
 }
 
@@ -237,4 +236,4 @@ async function regravarNotaRelease(versao, antes, aprovada) {
   return { status: 'ok', versao };
 }
 
-module.exports = { projeto, resumo, funcoes, migrations, appRelease, regravarNotaRelease, status, mascararEmail };
+module.exports = { projeto, resumo, funcoes, migrations, appRelease, regravarNotaRelease, status };

@@ -3,12 +3,10 @@
 //
 // OAuth2 client credentials (docs.cakto.com.br/authentication) e
 // GET /public_api/orders/ (docs.cakto.com.br/api-reference/orders/list).
-// Minimização (LGPD): do comprador sai só o e-mail mascarado; nome, telefone
-// e documento nunca deixam este módulo.
+// Ao navegador só contagens e somas por período; nenhuma linha de comprador/pedido.
 
 const { ler, tem, registrarSegredo } = require('../config.cjs');
 const { pedirJson, ErroIntegracao } = require('./_http.cjs');
-const { mascararEmail } = require('./supabase.cjs');
 
 const API = 'https://api.cakto.com.br/public_api';
 let token = null; // { valor, expiraEm }
@@ -48,11 +46,14 @@ async function resumo() {
   const porStatus = {};
   let pagos30 = 0, valor30 = 0, pagos7 = 0, valor7 = 0, pagosHoje = 0, valorHoje = 0;
   const hoje = dataLocal(new Date());
+  const STATUS = new Set(['paid', 'refunded', 'chargedback', 'waiting_payment', 'canceled', 'refused']);
   for (const p of pedidos) {
-    porStatus[p.status] = (porStatus[p.status] || 0) + 1;
+    const status = STATUS.has(p.status) ? p.status : 'outros';
+    porStatus[status] = (porStatus[status] || 0) + 1;
     if (p.status !== 'paid' || !p.paidAt) continue;
     const quando = Date.parse(p.paidAt);
-    const valor = Number(p.amount) || 0;
+    const valor = Number(p.amount);
+    if (!Number.isFinite(quando) || quando > agora || agora - quando > 30 * 86_400_000 || !Number.isFinite(valor) || valor < 0) continue;
     pagos30 += 1; valor30 += valor;
     if (agora - quando <= 7 * 86_400_000) { pagos7 += 1; valor7 += valor; }
     if (dataLocal(new Date(quando)) === hoje) { pagosHoje += 1; valorHoje += valor; }
@@ -69,16 +70,7 @@ async function resumo() {
       ultimos30: { pedidos: pagos30, valor: centavos(valor30) },
       moeda: 'BRL',
     },
-    recentes: pedidos.slice(0, 10).map((p) => ({
-      ref: p.refId,
-      status: p.status,
-      valor: Number(p.amount) || 0,
-      metodo: p.paymentMethod || null,
-      produto: (p.product && p.product.name) || null,
-      criadoEm: p.createdAt,
-      pagoEm: p.paidAt || null,
-      email: mascararEmail(p.customer && p.customer.email),
-    })),
+    amostra: { pedidosLidos: pedidos.length, limite: 100, completa: !(r.dados && typeof r.dados.count === 'number' && r.dados.count > pedidos.length) },
   };
 }
 
