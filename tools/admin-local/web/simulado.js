@@ -80,10 +80,9 @@ const leituras = {
   }),
   '/api/supabase/resumo': () => ({
     status: 'ok', projeto: { ref: 'simulado', regiao: 'sa-east-1', status: 'ACTIVE_HEALTHY' },
-    usuarios: { total: 0, ultimos7: 0, ultimos30: 0 },
-    assinaturas: { porStatus: { active: 0, trialing: 0, canceled: 0 } },
-    pushTokens: { total: 0 },
-    ultimosCadastros: [{ data: diasAtras(1), email: 'e***@exemplo.com' }],
+    usuarios: { total: 0, hoje: 0, ultimos7: 0, ultimos30: 0, confirmados: 0 },
+    assinaturas: { porStatus: [{ status: 'active', total: 0 }, { status: 'trialing', total: 0 }, { status: 'canceled', total: 0 }] },
+    pushTokens: { total: 0, usuarios: 0 },
   }),
   '/api/supabase/funcoes': () => ({
     status: 'ok',

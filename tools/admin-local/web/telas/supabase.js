@@ -18,7 +18,8 @@ export async function montar(raiz, ctx) {
       typeof d.assinaturas?.ativas === 'number' ? ctx.cartao({ titulo: 'Assinaturas ativas', valor: ctx.formatar.numero(d.assinaturas.ativas),
         detalhe: 'Inclui cortesias. Número agregado, sem dado pessoal.' }) : null,
       ctx.cartao({ titulo: 'Contas', valor: ctx.formatar.numero(d.usuarios?.total),
-        detalhe: [typeof d.usuarios?.ultimos7 === 'number' && `${d.usuarios.ultimos7} nos últimos 7 dias`,
+        detalhe: [typeof d.usuarios?.hoje === 'number' && `${d.usuarios.hoje} hoje`,
+          typeof d.usuarios?.ultimos7 === 'number' && `${d.usuarios.ultimos7} nos últimos 7 dias`,
           typeof d.usuarios?.ultimos30 === 'number' && `${d.usuarios.ultimos30} nos últimos 30`].filter(Boolean).join(', ') || undefined }),
       ctx.cartao({ titulo: 'Push tokens', valor: ctx.formatar.numero(d.pushTokens?.total ?? d.pushTokens),
         detalhe: (d.pushTokens?.total ?? d.pushTokens) === 0 ? 'Vazio: nenhuma notificação push chega a ninguém.' : 'Aparelhos que podem receber push.',
@@ -30,10 +31,6 @@ export async function montar(raiz, ctx) {
         { titulo: 'Assinatura', valor: ([s]) => rotuloAssinatura(s) },
         { titulo: 'Quantidade', valor: ([, n]) => ctx.formatar.numero(n), classe: 'num' },
       ], linhasAss, { legenda: 'Assinaturas por status' }) : null,
-      Array.isArray(d.ultimosCadastros) && d.ultimosCadastros.length ? ctx.tabela([
-        { titulo: 'Cadastro', valor: (l) => ctx.formatar.dataHora(l.data) },
-        { titulo: 'E-mail (mascarado)', valor: (l) => l.email, classe: 'mono' },
-      ], d.ultimosCadastros, { legenda: 'Últimos cadastros' }) : null,
     ];
   }, { integracao: 'supabase' }));
 
