@@ -293,6 +293,15 @@ function montarCatalogo(raiz) {
       }
       for (const [, arquivos] of porDiretorio) {
         arquivos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+        // Capa de vídeo: <nome-do-video>-capa.png na MESMA pasta. A capa continua sendo uma peça
+        // (o autor precisa aceitá-la), mas aponta para o vídeo (capaDe) e o vídeo para ela (capa).
+        const capaDoVideo = new Map(); // nome do vídeo -> arquivo da capa
+        const capasPareadas = new Set();
+        for (const v of arquivos.filter((x) => x.tipo === 'video')) {
+          const stem = v.nome.slice(0, v.nome.length - path.extname(v.nome).length).toLowerCase();
+          const c = arquivos.find((x) => x.tipo === 'imagem' && x.nome.toLowerCase() === stem + '-capa.png');
+          if (c) { capaDoVideo.set(v.nome, c); capasPareadas.add(c.nome); }
+        }
         for (const grupo of agrupar(arquivos)) {
           const relRepo = (a) => path.relative(raiz, a.abs).split(path.sep).join('/');
           const primeiro = grupo[0];
@@ -313,8 +322,14 @@ function montarCatalogo(raiz) {
             .update(shas.join('\n') + '\nlegenda:' + (legenda || ''))
             .digest('hex');
           const nomeCurto = relNoEstado.replace(/^pecas\//, '');
+          const capaArq = !ehCarrossel && primeiro.tipo === 'video' ? capaDoVideo.get(primeiro.nome) : null;
+          const ehCapa = !ehCarrossel && capasPareadas.has(primeiro.nome);
+          const videoDaCapa = ehCapa ? [...capaDoVideo].find(([, c]) => c.nome === primeiro.nome)[0] : null;
           pecas.push({
             id: idDe(relPeca),
+            capa: capaArq ? { pecaId: idDe(relRepo(capaArq)), nome: capaArq.nome, url: urlServivel(relRepo(capaArq)), sha1: sha1Arquivo(capaArq.abs) } : null,
+            capaDe: videoDaCapa ? idDe(path.posix.dirname(relPeca) + '/' + videoDaCapa) : null,
+            capaOrfa: !ehCarrossel && primeiro.tipo === 'imagem' && /-capa.png$/i.test(primeiro.nome) && !ehCapa,
             caminho: relPeca,
             versao,
             semana: { numero: semana.numero, inicio: semana.inicio, fim: semana.fim, mes: semana.mes },
@@ -356,17 +371,26 @@ function enriquecer(raiz, pecas) {
     if (ABERTOS.has(r.estado)) ajustes.push({ id: r.pecaId, versao: r.versaoAlvo, pedidoEm: r.criadoEm, pedidoId: r.id, estado: r.estado });
   }
   const planejados = Array.isArray(cal.planejados) ? cal.planejados : [];
+  // Capa só conta como aceita com evidência PRÓPRIA da versão dela (aprovacoes[]). Estar na pasta
+  // aprovados porque o vídeo está lá não é aceite da capa (regra 25).
+  const capaAprovada = (id) => {
+    const cp = pecas.find((x) => x.id === id);
+    return !!cp && aprovacoes.some((a) => a.id === cp.id && a.versao === cp.versao);
+  };
   return pecas.map((p) => {
     const aceite = aprovacoes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
     const aceiteAntigo = !aceite && aprovacoes.some((a) => a.id === p.id);
     const ajuste = ajustes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
     const plano = planejados.find((c) => c.id === p.id && c.versao === p.versao) || null;
-    const aprovada = p.estado === 'aprovados' || !!aceite;
+    const capaSemAceite = !!p.capaDe && p.estado !== 'historico' && !aceite;
+    const aprovada = !capaSemAceite && (p.estado === 'aprovados' || !!aceite);
     let estadoEfetivo = p.estado;
-    if (p.estado === 'para-aprovacao') estadoEfetivo = aceite ? 'aprovada' : ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
+    if (capaSemAceite) estadoEfetivo = ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
+    else if (p.estado === 'para-aprovacao') estadoEfetivo = aceite ? 'aprovada' : ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
     else if (p.estado === 'aprovados') estadoEfetivo = 'aprovada';
     return {
       ...p,
+      capa: p.capa ? { ...p.capa, aprovada: capaAprovada(p.capa.pecaId) } : null,
       aprovada,
       estadoEfetivo,
       aceite,
@@ -409,7 +433,7 @@ function obterPeca(raiz, id) {
 
 // GET /api/marketing/feed: só aprovadas, sem texto; data planejada, depois aceite.
 function feed(raiz) {
-  const pecas = enriquecer(raiz, montarCatalogo(raiz)).filter((p) => p.aprovada && p.tipo !== 'texto');
+  const pecas = enriquecer(raiz, montarCatalogo(raiz)).filter((p) => p.aprovada && p.tipo !== 'texto' && !p.capaDe);
   const chave = (p) => [p.planejamento ? `${p.planejamento.data}T${p.planejamento.hora || '00:00'}` : '9999', p.aceite ? p.aceite.aprovadoEm : ''];
   pecas.sort((a, b) => {
     const [a1, a2] = chave(a);
