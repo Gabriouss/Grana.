@@ -23,6 +23,11 @@ name: Android nativo
 # que é justamente a outra metade do que foi escrito à mão. Em debug o Expo
 # não empacota o JavaScript, então isto não depende de nenhum segredo nem das
 # variáveis `EXPO_PUBLIC_*`.
+# Gatilho: `package.json` fica FORA dos `paths` (decisão do autor, 09/10/2026).
+# Mudança só de script (test:ci, test:admin etc.) não toca o código nativo e
+# gastava um build Android à toa. Dependência nova de verdade altera também o
+# `package-lock.json`, que continua no gatilho. Ressalva: mudança nativa no
+# `package.json` sem mexer no lock (raro) deixa de disparar este workflow.
 on:
   push:
     branches: [main]
@@ -30,7 +35,6 @@ on:
       - 'modules/**'
       - 'plugins/**'
       - 'app.json'
-      - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/android.yml'
   pull_request:
@@ -39,7 +43,6 @@ on:
       - 'modules/**'
       - 'plugins/**'
       - 'app.json'
-      - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/android.yml'
   # Para rodar à mão antes de disparar uma build do EAS, mesmo sem ter
