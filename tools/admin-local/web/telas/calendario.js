@@ -43,8 +43,8 @@ export async function montar(raiz, ctx) {
   const semData = d.aprovadosSemData || d.semData || [];
   const canais = (d.canais && d.canais.length ? d.canais : CANAIS.map((c) => c.valor));
 
-  for (const a of d.avisos || []) corpo.appendChild(ctx.alerta('info', a));
-  if (d.diaD) corpo.appendChild(ctx.alerta('info', `Dia D declarado: ${ctx.formatar.data(d.diaD)}.`));
+  const avisos = [...(d.avisos || []).map((a) => ctx.alerta('info', a)), d.diaD ? ctx.alerta('info', `Dia D declarado: ${ctx.formatar.data(d.diaD)}.`) : null].filter(Boolean);
+  if (avisos.length) corpo.appendChild(h('div', { class: 'lista-alertas' }, avisos));
 
   const planejar = (peca, dataInicial) => escolherData(ctx, peca, dataInicial, canais);
 
