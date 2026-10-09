@@ -260,8 +260,16 @@ do fichário. Quill confere. Seis perguntas da regra 12 por frente.
 ## Andamento — 09/10/2026, implementação do item 6 (Ledger)
 
 - **Pedido aprovado:** incluir no painel local 145 ícones originais, a prancha do Granabô e link para o `.blend`, sem duplicar assets. Cadeia de ownership/ordem: Forge → Harbor → Prism.
-- **Implementação:** commit local `93ce3469bfea1c6c7e6321dd502a079ff7ddc6c0` (`feat(admin): inclui originais de marca no painel`), em `main`, um commit à frente do tracking ref local `origin/main=b5dd34e7d6ac7d1a8d0ece53fe4368259ca5bbf7`. Arquivos: `__tests__/admin-arsenal-allowlist.cjs` (novo), `package.json`, `tools/admin-local/adaptadores/design-system.cjs`, `tools/admin-local/seguranca.cjs`, `tools/admin-local/web/estilo.css` e `tools/admin-local/web/telas/design-system.js`. Assets referenciados sem cópia: `docs/marketing/arsenal/icones/`, `docs/mascote/granabo-prancha-w3.png` e `docs/mascote/blender/granabo.blend`; originais não alterados.
+- **Implementação:** commit local `93ce3469bfea1c6c7e6321dd502a079ff7ddc6c0` (`feat(admin): inclui originais de marca no painel`), em `main`; na primeira conferência estava um commit à frente de `origin/main=b5dd34e7d6ac7d1a8d0ece53fe4368259ca5bbf7`. O push posterior foi concluído, conforme apêndice factual abaixo. Arquivos: `__tests__/admin-arsenal-allowlist.cjs` (novo), `package.json`, `tools/admin-local/adaptadores/design-system.cjs`, `tools/admin-local/seguranca.cjs`, `tools/admin-local/web/estilo.css` e `tools/admin-local/web/telas/design-system.js`. Assets referenciados sem cópia: `docs/marketing/arsenal/icones/`, `docs/mascote/granabo-prancha-w3.png` e `docs/mascote/blender/granabo.blend`; originais não alterados.
 - **Verificações recebidas:** regressão de 21 grupos; `test:admin`, `npm run test:ci`, `npx tsc --noEmit` e `git diff --check` com exit 0. CI e tsc finais correram em sequência (`semOverlap: true`), ambos exit 0. Recibos em `E:/Grana-temporarios/2026-10-09-painel/harbor-arsenal-integracao/`; Ledger não executou testes.
 - **Watchtower:** sem bloqueador. Riscos/limites restantes: TOCTOU entre validação e abertura do caminho e custo de revalidar a pasta.
 - **QA visual pendente:** item 6 continua PENDENTE porque o portal local serviu CJS antigo; a sessão remota M2 só envia mensagens, sem desktop M1 ou relogin. Handoff registra portal restaurado em `#/visao-geral`; Ledger não fez inspeção visual. QA visual do item 4 também continua PENDENTE, sem dispensa.
-- **Limites da rodada:** sem ação em produção, edição dos assets originais ou uso de viewer. Ledger alterou somente documentação/vault; o commit de implementação já existia localmente e não foi publicado nesta atualização.
+- **Limites da rodada:** sem ação em produção, edição dos assets originais ou uso de viewer. Ledger alterou somente documentação/vault; o commit de implementação já existia localmente e ainda não havia sido publicado naquela atualização documental. O push posterior consta no apêndice factual abaixo.
+
+## Apêndice factual — push posterior do item 6
+
+Push concluído após o registro anterior: `b5dd34e..f59e4a5`, incluindo `93ce346` e `f59e4a5`. Na conferência local, `HEAD=origin/main=f59e4a576f7902f5fa037e68e4246f72da5964bc`; `origin/main..HEAD` está vazio. A árvore estava limpa no início desta atualização, antes das novas edições documentais.
+
+QA visual do item 6 e QA visual do item 4 permanecem PENDENTES; o QA do item 4 não foi dispensado.
+
+Ledger apenas registrou o estado informado/conferido localmente. Os dois QA visuais seguem como checklist pendente.
