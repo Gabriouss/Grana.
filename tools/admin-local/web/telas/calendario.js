@@ -1,5 +1,5 @@
 // Calendário de publicações: mês em grade (desktop) e agenda em lista (estreito; o CSS escolhe qual mostrar).
-// Só peça aprovada recebe data. Aprovar não inventa data: aprovado sem data fica na coluna própria.
+// O aceite projeta a previsão do cronograma. Sem previsão, a peça fica na coluna própria.
 // Arrastar da coluna para o dia abre o mesmo formulário do botão "Escolher data".
 
 import { CANAIS, rotuloCanal } from './_pecas.js';
@@ -17,7 +17,7 @@ export async function montar(raiz, ctx) {
     ctx.navegar(`#/marketing/calendario?mes=${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   };
 
-  ctx.cabecalho(raiz, 'Calendário', 'Cada peça aprovada vai para o dia em que deve ser publicada. Marcar data não publica nada.', [
+  ctx.cabecalho(raiz, 'Calendário', 'Ao aprovar uma versão, sua previsão do cronograma entra no calendário. Datas podem ser alteradas aqui. Nenhuma publicação é enviada à Meta por esta tela.', [
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mês anterior', onclick: () => irPara(-1) }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Hoje', onclick: () => ctx.navegar('#/marketing/calendario') }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Próximo mês', onclick: () => irPara(1) }),
@@ -109,12 +109,20 @@ export async function montar(raiz, ctx) {
         li.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/x-grana-peca', p.id); e.dataTransfer.effectAllowed = 'move'; });
         return li;
       }))
-      : h('p', { class: 'texto-fraco', texto: 'Nenhuma peça aprovada esperando data. Peça aprovada aparece aqui até você marcar o dia.' }),
+      : h('p', { class: 'texto-fraco', texto: 'Nenhuma peça aprovada sem previsão válida. As previsões vinculadas entram automaticamente no calendário.' }),
     semData.length ? h('p', { class: 'campo-ajuda', texto: 'Arraste para um dia ou use "Escolher data".' }) : null);
 
   corpo.appendChild(h('div', { class: 'calendario-layout' },
     h('section', { class: 'secao calendario-mes' }, titulo, grade, agenda),
     coluna));
+
+  const entradas = [...itens, ...(Array.isArray(d.aguardandoDiaD) ? d.aguardandoDiaD : []), ...(Array.isArray(d.suspensos) ? d.suspensos : [])];
+  if (entradas.length) {
+    corpo.appendChild(ctx.secao('Previsões e entradas no calendário',
+      h('p', { class: 'nota-explicativa', texto: 'A previsão vem do cronograma. Uma alteração manual preserva essa origem; o recibo do calendário não comprova publicação na Meta.' }),
+      ...entradas.map((i) => h('article', { class: 'secao' },
+        h('h3', { class: 'secao-titulo quebra', texto: i.peca?.titulo || i.peca?.id || 'Peça' }), detalhesCronograma(ctx, i)))));
+  }
 
   if ((d.desatualizados || []).length) {
     corpo.appendChild(ctx.secao('Planejamentos que perderam a validade',
@@ -214,6 +222,49 @@ function itemCalendario(ctx, i, aoClicar) {
     h('span', { class: 'cal-item-canal', texto: rotuloCanal(i.canal) }));
   el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/x-grana-peca', i.peca.id); e.dataTransfer.effectAllowed = 'move'; });
   return el;
+}
+
+// Apresenta a previsão recebida; resolução e identidade pertencem ao servidor.
+export function detalhesCronograma(ctx, previsao) {
+  if (!previsao) return null;
+  const { h } = ctx;
+  const p = previsao.dataPrevista;
+  const origem = previsao.origem;
+  const data = (valor) => valor ? ctx.formatar.data(valor) : 'não resolvida';
+  const horario = (valor) => valor ? `às ${valor}` : 'horário pendente';
+  const canal = (valor) => valor ? rotuloCanal(valor) : 'canal pendente';
+  let prevista = 'Sem data no cronograma';
+  if (p?.modo === 'absoluta') prevista = `${data(p.data)} ${horario(p.hora)} · ${canal(p.canal)}`;
+  if (p?.modo === 'diaD') prevista = Number.isInteger(p.diasUteis) && p.diasUteis >= 0
+    ? `D+${p.diasUteis} ${p.diasUteis === 1 ? 'dia útil' : 'dias úteis'} ${horario(p.hora)} · ${canal(p.canal)}`
+    : 'Posição relativa não informada. Confira o cronograma.';
+  const estados = {
+    'aguardando-dia-d': 'Aguardando dia D. A data sai quando o dia D for marcado.',
+    'aguardando dia D': 'Aguardando dia D. A data sai quando o dia D for marcado.',
+    'sem-data-no-cronograma': 'Sem data no cronograma.',
+    'vinculo-invalido': 'O vínculo do cronograma precisa ser corrigido.',
+    'vinculo-pendente': 'Vínculo do cronograma pendente.',
+    'duplicado': 'Mais de uma peça reivindica este item. Corrija o vínculo.',
+    'desatualizado': 'A peça mudou depois do aceite. O planejamento anterior perdeu a validade.',
+    'data-passada': 'A data prevista já passou. Nada será publicado imediatamente.',
+    'sem data no cronograma': 'Sem data no cronograma.',
+    'vínculo inválido': 'O vínculo do cronograma precisa ser corrigido.',
+    'vínculo duplicado': 'Mais de uma peça reivindica este item. Corrija o vínculo.',
+    'cronograma inválido': 'Cronograma inválido. As previsões estão suspensas até a correção.',
+  };
+  const manual = previsao.substituicaoManual;
+  const recibos = (Array.isArray(previsao.recibos) && previsao.recibos.length ? previsao.recibos : previsao.recibo ? [previsao.recibo] : []).filter((r) => r && typeof r === 'object');
+  return h('div', { class: 'secao-corpo quebra' },
+    h('p', { texto: `Data prevista: ${prevista}` }),
+    origem ? h('p', { class: 'campo-ajuda', texto: `Origem: ${origem.manifestoId || 'manifesto não informado'} · ${origem.itemId || 'item não informado'} · revisão ${origem.manifestoVersao ?? 'não informada'}` }) : h('p', { class: 'campo-ajuda', texto: 'Origem do cronograma não informada.' }),
+    p?.modo === 'diaD' && (p.dataResolvida || previsao.dataResolvida) ? h('p', { texto: `Previsão resolvida: ${data(p.dataResolvida || previsao.dataResolvida)}` }) : null,
+    estados[previsao.estado] ? ctx.alerta('atencao', estados[previsao.estado]) : previsao.estado && !['resolvido', 'planejado'].includes(previsao.estado) ? ctx.alerta('atencao', `Estado do cronograma: ${previsao.estado}. Confira antes de seguir.`) : null,
+    manual ? h('p', { texto: `Data alterada pelo autor: ${data(manual.data)} ${horario(manual.hora)} · ${canal(manual.canal)}. A previsão de origem foi preservada.` }) : null,
+    ...recibos.map((r) => h('p', { role: 'status', class: 'campo-ajuda', texto: r.tipo === 'aceite-autor'
+      ? `Recibo do aceite: aceite-autor · versão ${r.versaoPeca || 'não informada'}${r.aprovadoEm ? ` · ${ctx.formatar.dataHora(r.aprovadoEm)}` : ''}${r.evidencia ? ` · ${r.evidencia}` : ''}. Não comprova publicação na Meta.`
+      : `Recibo do calendário: ${r.tipo || r.acao || 'tipo não informado'}${r.id ? ` · ${r.id}` : ''}${r.em ? ` · ${ctx.formatar.dataHora(r.em)}` : ''}${r.estado ? ` · ${r.estado}` : ''}. Não comprova publicação na Meta.` })),
+    origem && !recibos.length ? ctx.alerta('atencao', 'Recibo do calendário ainda não informado. Atualize para conferir o registro.') : null,
+    ...(Array.isArray(previsao.avisos) ? previsao.avisos : []).map((aviso) => ctx.alerta('atencao', aviso)));
 }
 
 async function escolherData(ctx, peca, dataInicial, canais) {

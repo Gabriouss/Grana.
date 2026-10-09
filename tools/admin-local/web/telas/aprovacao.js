@@ -2,12 +2,15 @@
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
 import { tituloPeca, rotuloSemana, rotuloEstado, trilha } from './_pecas.js';
+import { montarFila } from './ajustes.js';
 
 export async function montar(raiz, ctx) {
   const { h } = ctx;
   ctx.cabecalho(raiz, 'Aprovação', 'Aprovar registra o seu aceite desta versão exata. Nada é publicado nem agendado no Instagram.', [
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar', onclick: () => ctx.recarregar() }),
   ]);
+  const pedidos = await montarFila(raiz, ctx);
+  if (ctx.obsoleta()) return;
   const corpo = h('div', { class: 'tela-corpo' });
   raiz.appendChild(corpo);
   ctx.estado.carregando(corpo, 'Lendo o acervo de marketing…');
@@ -77,7 +80,11 @@ export async function montar(raiz, ctx) {
         h('p', { class: 'campo-ajuda', texto: 'Parecer de revisor não é aceite seu. Só o botão abaixo registra aceite.' }),
         ctx.markdown(p.indice.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((x) => `- ${x.trim()}`).join('\n'))));
     }
-    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : 'Aprovar esta versão', disabled: !!p.aprovada,
+    const pedidoAberto = pedidos?.some((r) => r.pecaId === p.id && !['aceito', 'desatualizado'].includes(r.estado));
+    const filaIndisponivel = !Array.isArray(pedidos);
+    if (pedidoAberto) detalhe.appendChild(ctx.alerta('atencao', 'Esta peça tem pedido aberto. Revise a correção e dê o aceite pelo pedido na fila de ajustes.'));
+    if (filaIndisponivel) detalhe.appendChild(ctx.alerta('atencao', 'A fila não pôde ser conferida. Atualize antes de registrar aceite.'));
+    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : pedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: !!p.aprovada || pedidoAberto || filaIndisponivel,
       onclick: () => aprovar(ctx, p, botaoAprovar) });
     const botaoAjuste = h('button', { class: 'botao', type: 'button', texto: 'Pedir ajuste', onclick: () => pedirAjuste(ctx, p) });
     detalhe.appendChild(h('div', { class: 'bloco-acao' }, botaoAprovar, botaoAjuste,
@@ -105,7 +112,7 @@ async function aprovar(ctx, p, botao) {
   botao.textContent = 'Gravando aceite…';
   try {
     const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/aprovar`, { versao: p.versao, confirmacao: 'APROVAR' });
-    ctx.aviso('Aceite gravado. A peça já aparece no feed e em "Aprovados sem data" no calendário.', 'ok');
+    ctx.aviso('Aceite gravado para esta versão. Confira a previsão e o recibo na tela de Calendário.', 'ok');
     for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
     ctx.navegar(`#/marketing/aprovacao?peca=${encodeURIComponent(p.id)}`);
   } catch (err) {
@@ -122,7 +129,7 @@ async function pedirAjuste(ctx, p) {
   const v = await ctx.formulario({
     titulo: 'Pedir ajuste',
     texto: `O pedido fica registrado junto de "${tituloPeca(p)}", nesta versão. A peça continua na fila.`,
-    campos: [{ nome: 'motivo', rotulo: 'O que precisa mudar', tipo: 'textarea', obrigatorio: true, linhas: 5, ajuda: 'Este texto fica gravado em docs/marketing/painel e vai para o GitHub público no próximo commit.' }],
+    campos: [{ nome: 'motivo', rotulo: 'O que precisa mudar', tipo: 'textarea', obrigatorio: true, linhas: 5, ajuda: 'Este pedido fica visível apenas no painel administrativo e acompanha esta versão da peça.' }],
     rotuloBotao: 'Registrar pedido',
   });
   if (!v) return;
