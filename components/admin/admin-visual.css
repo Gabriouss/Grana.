@@ -248,6 +248,40 @@
   margin-block-start: 4px;
 }
 
+.admin-visual--acesso {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Etapas de acesso: titulo, aviso e cartao formam uma coluna so, centrada pelo
+   fluxo. As margens automaticas dividem o espaco livre entre cabecalho e rodape;
+   em tela baixa o espaco some e a rolagem segue normal. */
+.admin-visual--acesso .admin-visual__conteudo {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+
+.admin-visual--acesso .admin-visual__abertura,
+.admin-visual--acesso .admin-visual__principal {
+  width: min(100%, 480px);
+  margin-inline: auto;
+}
+
+.admin-visual--acesso .admin-visual__abertura {
+  margin-block: auto 24px;
+  text-align: center;
+}
+
+.admin-visual--acesso .admin-visual__principal {
+  margin-block-end: auto;
+}
+
+.admin-visual--acesso .admin-visual__recibo,
+.admin-visual--acesso .admin-visual__acesso {
+  width: 100%;
+}
+
 .admin-visual__recibo {
   width: min(100%, 680px);
   margin-block-end: 20px;

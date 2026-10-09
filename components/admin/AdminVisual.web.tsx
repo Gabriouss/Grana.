@@ -83,6 +83,7 @@ export default function AdminVisual({
   onEmailChange, onSenhaChange, onCodigoChange, onEntrar, onVerificar, onSair, onAtualizar,
 }: AdminVisualProps) {
   const dados = resumo?.dados;
+  const emAcesso = etapa === 'sem-sessao' || etapa === 'pedir-totp';
 
   return (
     <>
@@ -90,7 +91,7 @@ export default function AdminVisual({
         <title>Painel administrativo | Grana.</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
-      <main className="admin-visual">
+      <main className={emAcesso ? 'admin-visual admin-visual--acesso' : 'admin-visual'}>
         <a className="admin-visual__pular" href="#admin-titulo">Pular para o conteúdo</a>
         <div className="admin-visual__conteudo">
           <header className="admin-visual__topo">
