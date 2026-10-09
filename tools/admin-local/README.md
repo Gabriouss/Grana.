@@ -23,7 +23,7 @@ o endereço não basta: o atalho é quem pareia o navegador com o painel.
    abre o navegador já pareado.
 3. Na tela do painel: **senha** e, em seguida, o **código de 6 dígitos** do app.
 
-O login vence com 10 minutos sem uso e, de qualquer forma, 1 hora depois de
+O login vence com 30 minutos sem uso e, de qualquer forma, 1 hora depois de
 entrar. **Sair, vencer ou trocar o autenticador encerra também o pareamento**:
 para voltar, abra de novo pelo atalho. Redeploy e preparar build pedem o código do app de novo quando o
 último código tem mais de 5 minutos. **Para desligar o painel, feche a janela
@@ -109,7 +109,7 @@ pastas liberadas.
    cada erro até 24h, com contadores separados para senha e código, gravados
    em disco.
 5. **Sessão:** cookie `HttpOnly; SameSite=Strict`, sem `Domain`, com id trocado
-   no pareamento e no login. Morre com o servidor, com 10 minutos sem gesto da
+   no pareamento e no login. Morre com o servidor, com 30 minutos sem gesto da
    pessoa (consulta automática não conta) e 1 hora depois do login.
 6. **Ações:** POST em JSON com `X-Grana-Admin: 1` e `X-CSRF-Token` ligado à
    sessão. Redeploy e preparar build exigem um código do app dos últimos

@@ -139,7 +139,7 @@ function lerErro(corpo, status) {
   // Isso tapa o painel inteiro e nunca vira modo simulado.
   if (status === 401 && err.codigo === 'nao-pareado') bloquearPainel('nao-pareado');
   if (status === 403 && err.codigo === 'sessao-antiga') bloquearPainel('sessao-antiga');
-  // Vencimento (10 min sem uso ou 1 h de login): o servidor destrói o pareamento junto, então a
+  // Vencimento (30 min sem uso ou 1 h de login): o servidor destrói o pareamento junto, então a
   // tela de senha não funciona mais. Vira tela cheia com o motivo e a orientação do atalho.
   if (status === 401 && MOTIVOS_VENCIMENTO.includes(err.codigo)) bloquearPainel(err.codigo);
   // Login pendente: a tela de acesso assume.
@@ -169,7 +169,7 @@ const TEXTO_BLOQUEIO = {
   },
   inatividade: {
     titulo: 'Sessão vencida',
-    texto: 'A sessão venceu depois de 10 minutos sem uso. Reabra o painel pelo atalho Grana. Admin na Área de Trabalho.',
+    texto: 'A sessão venceu depois de 30 minutos sem uso. Reabra o painel pelo atalho Grana. Admin na Área de Trabalho.',
   },
   'sessao-expirada': {
     titulo: 'Sessão vencida',
