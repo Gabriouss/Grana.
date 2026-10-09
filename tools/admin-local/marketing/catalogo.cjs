@@ -232,6 +232,96 @@ function limparTitulo(t) {
     .replace(/\s{2,}/g, ' ');
 }
 
+// Decisão editorial do autor: são variantes, não duplicatas a apagar. O
+// vínculo é explícito para estes arquivos; não inferimos famílias pelo nome.
+const SEMANA_39_EDITORIAL = 'docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27';
+const REELS_EDITORIAIS = [
+  {
+    familia: 'R5',
+    codigo: 'R5',
+    base: 'grana-r5-colar-pix-v6',
+    pastas: {
+      base: `${SEMANA_39_EDITORIAL}/para-aprovacao/pecas/reels`,
+      narrado: `${SEMANA_39_EDITORIAL}/para-aprovacao/pecas/reels`,
+    },
+    copyCanonica: 'Recebeu um Pix e não quer digitar tudo?',
+    fonteCopy: 'docs/marketing/r5-colar-pix/README.md',
+    duracaoSegundos: 16.4,
+    sha1CapasConfirmado: '646be9950a3347ecfbbc51383ee4a329c562f274',
+  },
+  {
+    familia: 'motion-desistiu',
+    codigo: null,
+    base: 'grana-motion-desistiu-foto-da-nota',
+    pastas: {
+      base: `${SEMANA_39_EDITORIAL}/aprovados/pecas/reels`,
+      narrado: `${SEMANA_39_EDITORIAL}/para-aprovacao/pecas/reels`,
+    },
+    copyCanonica: 'Já desistiu de controlar seus gastos porque anotar tudo toda hora cansa?\nPagou? É só falar.\nOu aponta pro QR code da nota.\nEsqueceu? O Grana. te lembra.\nRápido, fácil e sem complicação.',
+    fonteCopy: 'docs/marketing/motion-desistiu/README.md',
+    duracaoSegundos: 20,
+    sha1CapasConfirmado: 'c34c5d2eea37158015b3ad9b44dbd4f4ca945eba',
+  },
+];
+
+const PASTA_REVISAO_06 = 'docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06';
+const ARTES_EDITORIAIS = {
+  'E01-feed-1080x1440.png': {
+    codigo: 'E01',
+    copyCanonica: 'O salário caiu. Quanto já tem destino?',
+    avisoHarmonizacao: 'Candidata visual da revisão 06. A copy da arte diverge da canônica do FUNIL 17.3; harmonização pendente.',
+  },
+  'E02-feed-1080x1440.png': {
+    codigo: 'E02',
+    copyCanonica: 'Mercado de R$ 187,40. Salário, condomínio e assinaturas no mesmo mês.',
+    avisoHarmonizacao: 'Candidata visual da revisão 06. A arte repete a copy da revisão 05; harmonização com o FUNIL 17.3 pendente.',
+  },
+  'E06-feed-1080x1440.png': {
+    codigo: 'E06',
+    copyCanonica: 'Os lançamentos do mês também cabem na tela grande.',
+    avisoHarmonizacao: 'Candidata visual da revisão 06. A copy da arte diverge da canônica do FUNIL 17.3; harmonização pendente.',
+  },
+};
+
+function editorialDaPeca(nome, relativoRepo) {
+  const arte = ARTES_EDITORIAIS[nome];
+  if (arte && relativoRepo === `${PASTA_REVISAO_06}/${nome}`) {
+    return {
+      ...arte,
+      familia: arte.codigo,
+      tipo: 'visual-candidata',
+      variante: 'revisao-06',
+      copyEmbutida: 'divergente',
+      fonteCopy: 'FUNIL 17.3 — decisão editorial do autor',
+    };
+  }
+  for (const reel of REELS_EDITORIAIS) {
+    for (const variante of ['base', 'narrado']) {
+      const stem = reel.base + (variante === 'narrado' ? '-narrado' : '');
+      if (nome !== `${stem}.mp4` && nome !== `${stem}-capa.png`) continue;
+      if (relativoRepo !== `${reel.pastas[variante]}/${nome}`) continue;
+      const ehCapa = nome.endsWith('-capa.png');
+      return {
+        familia: reel.familia,
+        codigo: reel.codigo,
+        tipo: ehCapa ? 'capa' : variante === 'base' ? 'canonico' : 'variante',
+        variante,
+        copyCanonica: reel.copyCanonica,
+        fonteCopy: reel.fonteCopy,
+        ...(ehCapa ? {
+          duplicataVisual: {
+            sha1Confirmado: reel.sha1CapasConfirmado,
+            fonteConfirmacao: 'Autor — hash confirmado',
+            arquivos: [`${reel.base}-capa.png`, `${reel.base}-narrado-capa.png`],
+          },
+        } : {}),
+        ...(!ehCapa ? { duracaoSegundos: reel.duracaoSegundos } : {}),
+      };
+    }
+  }
+  return null;
+}
+
 // Liga a peça ao código de copy. Só regras explícitas, documentadas no
 // DOCUMENTO-DE-MARKETING.md; sem palpite por semelhança.
 function codigoDaPeca(relNaSemana) {
@@ -312,9 +402,13 @@ function montarCatalogo(raiz) {
           const relNaSemana = relPeca.slice(semana.relativo.length + 1);
           const relNoEstado = relNaSemana.slice(estado.length + 1);
           const shas = grupo.map((a) => sha1Arquivo(a.abs));
-          const codigo = codigoDaPeca(relNaSemana);
-          const copy = codigo && copys[codigo];
+          const editorial = !ehCarrossel ? editorialDaPeca(primeiro.nome, relRepo(primeiro)) : null;
+          const codigoOriginal = codigoDaPeca(relNaSemana);
+          const codigo = editorial ? editorial.codigo : codigoOriginal;
+          const copy = codigoOriginal && copys[codigoOriginal];
           const ehDocCopy = primeiro.nome === 'COPYS-FINAIS.md';
+          // A referência editorial fica separada da legenda incorporada à
+          // versão aceita. Classificar uma variante não altera seu aceite.
           const legenda = copy && !ehDocCopy ? copy.legenda : null;
           // A legenda entra na versão: mudar só o texto gera versão nova,
           // e o aceite anterior deixa de valer para ela.
@@ -323,11 +417,20 @@ function montarCatalogo(raiz) {
             .digest('hex');
           const nomeCurto = relNoEstado.replace(/^pecas\//, '');
           const capaArq = !ehCarrossel && primeiro.tipo === 'video' ? capaDoVideo.get(primeiro.nome) : null;
+          const editorialCapa = capaArq ? editorialDaPeca(capaArq.nome, relRepo(capaArq)) : null;
           const ehCapa = !ehCarrossel && capasPareadas.has(primeiro.nome);
           const videoDaCapa = ehCapa ? [...capaDoVideo].find(([, c]) => c.nome === primeiro.nome)[0] : null;
           pecas.push({
             id: idDe(relPeca),
-            capa: capaArq ? { pecaId: idDe(relRepo(capaArq)), nome: capaArq.nome, url: urlServivel(relRepo(capaArq)), sha1: sha1Arquivo(capaArq.abs) } : null,
+            capa: capaArq ? {
+              pecaId: idDe(relRepo(capaArq)),
+              nome: capaArq.nome,
+              url: urlServivel(relRepo(capaArq)),
+              sha1: sha1Arquivo(capaArq.abs),
+              ...(editorialCapa?.duplicataVisual
+                ? { duplicataVisual: editorialCapa.duplicataVisual }
+                : {}),
+            } : null,
             capaDe: videoDaCapa ? idDe(path.posix.dirname(relPeca) + '/' + videoDaCapa) : null,
             capaOrfa: !ehCarrossel && primeiro.tipo === 'imagem' && /-capa.png$/i.test(primeiro.nome) && !ehCapa,
             caminho: relPeca,
@@ -340,6 +443,26 @@ function montarCatalogo(raiz) {
             codigo: codigo || null,
             legenda,
             fonteLegenda: legenda ? copy.fonte : null,
+            editorial: editorial ? {
+              familia: editorial.familia,
+              tipo: editorial.tipo,
+              variante: editorial.variante,
+              copyCanonica: editorial.copyCanonica,
+              fonteCopy: editorial.fonteCopy,
+              ...(editorial.duplicataVisual
+                ? { duplicataVisual: editorial.duplicataVisual }
+                : {}),
+              ...(editorial.copyEmbutida
+                ? { copyEmbutida: editorial.copyEmbutida }
+                : {}),
+              ...(editorial.avisoHarmonizacao
+                ? { avisoHarmonizacao: editorial.avisoHarmonizacao }
+                : {}),
+              ...(editorial.duracaoSegundos !== undefined
+                ? { duracaoSegundos: editorial.duracaoSegundos }
+                : {}),
+              canonicoId: null,
+            } : null,
             indice: linhaDoIndice(indice, ehCarrossel ? relNaSemana.replace(/[^/]+$/, '') : relNaSemana),
             arquivos: grupo.map((a, i) => ({
               nome: a.nome,
@@ -352,6 +475,17 @@ function montarCatalogo(raiz) {
         }
       }
     }
+  }
+  // A base pode estar em aprovados e a variante em para-aprovacao. Ligamos
+  // depois de montar a semana inteira, sem trocar IDs, estados ou aceites.
+  for (const peca of pecas) {
+    if (!peca.editorial) continue;
+    const reel = REELS_EDITORIAIS.find((r) => r.familia === peca.editorial.familia);
+    if (!reel) continue;
+    const canonico = pecas.find((p) => p.editorial?.tipo === 'canonico' &&
+      p.editorial.familia === peca.editorial.familia &&
+      p.caminho === `${reel.pastas.base}/${reel.base}.mp4`);
+    peca.editorial.canonicoId = canonico ? canonico.id : null;
   }
   return pecas;
 }
