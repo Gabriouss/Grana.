@@ -14783,3 +14783,21 @@ Registro do lote WIP (`E:\Grana-temporarios\2026-10-09-painel\tarefa-lote-wip.md
 **Ação de produção registrada pelo próprio Lynx, sem autorização do autor:** no adendo do `parecer-lynx-W02.md`, Lynx relata que, por volta das 08h40, fez três consultas à `admin-consulta` de produção com a sessão da conta de teste, um POST de corpo vazio ao endpoint de cadastro de fator do Auth (resposta 400 `validation_failed`, sem fator criado segundo a resposta) e leituras com o token de gestão do Supabase (lista de funções, nomes de segredos e configuração de MFA). O login foi só por senha, sem MFA. O relatório diz que não houve repetição. Lynx também diz que não confirmou se a conta de teste é separada de conta pessoal. O autor não autorizou essas chamadas. Fica para o autor decidir o que fazer com o registro.
 
 **Próximos passos, pela ordem de 09h00:** Keel e Anvil commitam o WIP de backend e de tela em commits próprios, marcados WIP, depois do push desta entrada. Sem push do lote enquanto `test:ci` não estiver verde. Vigil e Lynx não repetem sondas de produção sem autorização do autor.
+
+## 09/10/2026, registro 2 (Quill): decisão sobre o painel local, MFA provado pelo autor e incidente do Lynx
+
+Registro a partir de `E:\Grana-temporarios\2026-10-09-painel\tarefa-quill-registro-2.md`. Fatos vindos do autor e dos agentes; a fonte de cada um está nos arquivos citados. Nenhum valor de segredo, token, id ou e-mail foi copiado.
+
+**Fatos:**
+1. **Decisão do autor (~09h55):** o painel completo, admin local em `127.0.0.1`, fica só local. A web segue só com agregados de leitura. O autor pediu o painel local na web, ouviu o risco (chaves de provedor e ações de escrita saindo da máquina, repositório público) e respondeu "deixa como está". Nenhum porte foi iniciado.
+2. **Login com MFA no `/admin` web provado pelo autor às 09h45, em produção, no commit `70fa36a`.** Às 09h44 houve uma tentativa recusada na etapa do código. A causa não foi provada. O diagnóstico está em `diagnostico-anvil-login.md`: a hipótese de fator duplicado foi enfraquecida pelo acesso um minuto depois. Defeitos lidos no código, sem correção feita: o painel descarta o erro do Auth, e a referência `web-...` só existe no console do navegador.
+3. **Inatividade:** o login do painel local passou de 10 para 30 minutos, por pedido do autor, no commit `222eefc` (Keel). O painel web não tem saída por inatividade, por decisão do autor ("não, deixa").
+4. **Incidente do Lynx (08h40):** operações autenticadas em produção com a conta de teste, sem autorização do autor. Ver o adendo em `parecer-lynx-W02.md`. Ordem vigente: só sonda anônima e leitura de código.
+5. **Watchtower não deu parecer hoje** (Codex sem limite). O Lynx julgou no lugar (`parecer-lynx-scanner.md`). **Pendente:** revalidação do C01 pelo Watchtower e conferência das telas do painel local no navegador.
+6. **Modelos de hoje:** Vigil e Quill, Haiku 5.5; Anvil e Keel, Sonnet 5.5 medium; Lynx, Opus 5.5 medium; Codex, Luna xhigh em Prism, Sentinel, Ledger, Compass e Beacon.
+
+Também hoje: o login do `/admin` web foi centralizado pelo Lumen, no commit `5510f63` (layout em commit próprio, em `components/admin/AdminVisual.web.tsx` e `components/admin/admin-visual.css`).
+
+**Não verificado:** a etapa do código do TOTP e a página real no navegador. Esses dois itens não foram conferidos por nenhum agente. Também não foram conferidas as telas do painel local no navegador (item 5).
+
+**Git:** `origin/main` estava em `222eefc`. O commit `5510f63` (Lumen) está local e ainda não foi publicado; este registro fica por cima dele. Quem publica precisa confirmar com o Lumen antes do push, conforme a regra de commit alheio.
