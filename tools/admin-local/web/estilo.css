@@ -1964,6 +1964,31 @@ body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
   color: #fff;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
+.feed-celula-editorial-stack {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: calc(100% - 48px);
+  text-align: left;
+}
+.feed-celula-editorial,
+.feed-celula-harmonizacao {
+  display: block;
+  max-width: 100%;
+  padding: 3px 7px;
+  border-radius: var(--r-pill);
+  background: rgba(2, 20, 26, 0.9);
+  color: var(--ink);
+  font-size: 10px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.feed-celula-harmonizacao { color: var(--accent-2); }
 .feed-celula-selo {
   position: absolute;
   left: 8px; bottom: 8px;
@@ -2131,6 +2156,41 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
 }
 .feed-legenda b { color: var(--ink); margin-right: 6px; }
 .feed-legenda-vazia { color: var(--ink-faint); font-weight: 300; }
+.feed-editorial {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(30vh, 220px);
+  overflow: auto;
+  margin: 0 var(--s-lg) var(--s-md);
+  padding: var(--s-md);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-size: var(--t-legenda);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.feed-editorial-identidade {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--t-nota);
+}
+.feed-editorial-copy { display: grid; gap: var(--s-xs); margin-top: var(--s-sm); }
+.feed-editorial-rotulo,
+.feed-editorial-fonte { color: var(--ink-faint); font-size: var(--t-micro); }
+.feed-editorial-copy p,
+.feed-editorial-aviso,
+.feed-editorial-capa { margin: 0; white-space: pre-line; }
+.feed-editorial-copy p { color: var(--ink-soft); }
+.feed-editorial-aviso,
+.feed-editorial-capa {
+  margin-top: var(--s-sm);
+  padding-top: var(--s-sm);
+  border-top: 1px solid var(--rule);
+}
+.feed-editorial-aviso { color: var(--ink-soft); }
+.feed-editorial-capa { color: var(--accent-2); }
 .feed-post-meta {
   display: flex;
   flex-direction: column;

@@ -68,7 +68,7 @@
     "segredos:dist": "node scripts/varrer-segredos.cjs dist --valores",
     "build:preparar": "npx --yes tsx scripts/preparar-lancamento.ts",
     "test:saldos": "node __tests__/saldos-carteira.cjs",
-    "test:admin": "node __tests__/admin-consulta.cjs && node __tests__/admin-build-acoes.cjs && node __tests__/admin-web-cliente.cjs && node __tests__/admin-web-fluxos.cjs && node __tests__/admin-web-integracao.cjs && node __tests__/admin-build-tela.cjs && node __tests__/admin-calendario-ensaio-tela.cjs && node __tests__/admin-local-agregados.cjs && node __tests__/admin-local-agregados-tela.cjs && node __tests__/admin-sessao-inatividade.cjs && node __tests__/admin-catalogo-capa.cjs && node __tests__/admin-ajustes-dto.cjs"
+    "test:admin": "node __tests__/admin-consulta.cjs && node __tests__/admin-build-acoes.cjs && node __tests__/admin-web-cliente.cjs && node __tests__/admin-web-fluxos.cjs && node __tests__/admin-web-integracao.cjs && node __tests__/admin-build-tela.cjs && node __tests__/admin-calendario-ensaio-tela.cjs && node __tests__/admin-local-agregados.cjs && node __tests__/admin-local-agregados-tela.cjs && node __tests__/admin-sessao-inatividade.cjs && node __tests__/admin-catalogo-capa.cjs && node __tests__/admin-ajustes-dto.cjs && node __tests__/admin-catalogo-editorial.cjs"
   },
   "private": true,
   "overrides": {

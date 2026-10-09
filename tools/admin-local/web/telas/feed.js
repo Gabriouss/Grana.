@@ -63,6 +63,10 @@ function normalizar(lista, ctx) {
     const temVideo = midias.some((a) => EXT_VIDEO.test(a));
     const tipo = p.tipo || (midias.length > 1 ? 'carrossel' : temVideo ? 'video' : midias.length ? 'imagem' : 'texto');
     const pub = p.planejamento || p.publicacao || (p.data ? { data: p.data, hora: p.hora, canal: p.canal } : null);
+    const editorial = p.editorial && typeof p.editorial === 'object' ? p.editorial : null;
+    const duplicataCapa = p.capa?.duplicataVisual && typeof p.capa.duplicataVisual === 'object'
+      ? p.capa.duplicataVisual
+      : null;
     return {
       bruto: p,
       id: p.id,
@@ -70,7 +74,12 @@ function normalizar(lista, ctx) {
       legenda: p.legenda || '',
       midias,
       // capa pareada pelo catálogo (<video>-capa.png); a rota do feed já tira a capa da grade como peça solta
-      capa: p.capa && p.capa.url ? { url: ctx.urlArquivo ? ctx.urlArquivo(p.capa.url) : url(p.capa.url), aprovada: !!p.capa.aprovada } : null,
+      capa: p.capa && p.capa.url ? {
+        url: ctx.urlArquivo ? ctx.urlArquivo(p.capa.url) : url(p.capa.url),
+        aprovada: !!p.capa.aprovada,
+        duplicataVisual: duplicataCapa,
+      } : null,
+      editorial,
       tipo,
       ehVideo: tipo === 'video' || tipo === 'reels' || (midias.length === 1 && temVideo),
       data: pub && pub.data ? pub.data : null,
@@ -212,14 +221,29 @@ function celula(h, p, abrir) {
   }
   const tipoIcone = p.midias.length > 1 ? iconeSvg('carrossel') : p.ehVideo ? iconeSvg('reels') : null;
   if (tipoIcone) tipoIcone.classList.add('feed-celula-tipo');
+  const editorialLabel = rotuloEditorial(p.editorial);
+  const harmonizacaoPendente = !!(p.editorial && p.editorial.avisoHarmonizacao);
   const dataTexto = p.data ? dataCurta(p.data) : 'Sem data';
   const avisoCapa = !p.ehVideo ? '' : !p.capa ? ' · Sem capa' : !p.capa.aprovada ? ' · Capa não aceita' : '';
   const rotuloData = dataTexto + avisoCapa;
-  return h('button', { class: 'feed-celula', type: 'button', onclick: abrir, 'aria-label': `${p.titulo}${avisoCapa ? `. ${avisoCapa.slice(3)}` : ''}. ${p.data ? `Publicação em ${dataCurta(p.data)}` : 'Aprovada, sem data de publicação'}. Abrir.` },
+  return h('button', { class: 'feed-celula', type: 'button', onclick: abrir, 'aria-label': `${p.titulo}${editorialLabel ? `. ${editorialLabel}` : ''}${harmonizacaoPendente ? '. Harmonização de copy pendente.' : ''}${avisoCapa ? `. ${avisoCapa.slice(3)}` : ''}. ${p.data ? `Publicação em ${dataCurta(p.data)}` : 'Aprovada, sem data de publicação'}. Abrir.` },
     midia,
     tipoIcone,
+    editorialLabel || harmonizacaoPendente ? h('span', { class: 'feed-celula-editorial-stack', 'aria-hidden': 'true' },
+      editorialLabel ? h('span', { class: 'feed-celula-editorial', texto: editorialLabel }) : null,
+      harmonizacaoPendente ? h('span', { class: 'feed-celula-harmonizacao', texto: 'Harmonizar copy' }) : null) : null,
     h('span', { class: 'feed-celula-selo', 'aria-hidden': 'true', texto: rotuloData }),
     h('span', { class: 'feed-celula-veu', 'aria-hidden': 'true', texto: p.titulo }));
+}
+
+function rotuloEditorial(e) {
+  if (!e) return '';
+  const familia = e.familia ? `${e.familia} · ` : '';
+  if (e.tipo === 'canonico') return `${familia}Base canônica`;
+  if (e.tipo === 'variante') return `${familia}${e.variante === 'narrado' ? 'Variante narrada' : `Variante ${e.variante || ''}`.trim()}`;
+  if (e.tipo === 'visual-candidata') return `${familia}Revisão visual 06`;
+  if (e.tipo === 'capa') return `${familia}Capa`;
+  return familia ? familia.trim().replace(/\s*·$/, '') : '';
 }
 
 // ---------------------------------------------------------------------------
@@ -315,6 +339,7 @@ function abrirPost(area, lista, indice, ctx) {
   const legenda = p.legenda
     ? h('div', { class: 'feed-legenda' }, h('b', { texto: nomePerfil }), p.legenda)
     : h('div', { class: 'feed-legenda feed-legenda-vazia', texto: 'Sem legenda ainda.' });
+  const editorial = blocoEditorial(h, p);
 
   const dados = [
     p.data ? `Publicação planejada: ${ctx.formatar ? ctx.formatar.data(p.data) : p.data}${p.hora ? ` às ${p.hora}` : ''}` : 'Aprovada, ainda sem data de publicação',
@@ -331,7 +356,7 @@ function abrirPost(area, lista, indice, ctx) {
       h('a', { class: 'botao botao-fantasma', href: '#/marketing/calendario', texto: p.data ? 'Ver no calendário' : 'Marcar data no calendário' }),
       lista.length > 1 ? navPost(h, area, lista, indice, ctx, dlg) : null));
 
-  corpo.append(midiaEl, h('div', { class: 'feed-post-lado' }, topo, legenda, meta));
+  corpo.append(midiaEl, h('div', { class: 'feed-post-lado' }, topo, legenda, editorial, meta));
 
   dlg.addEventListener('close', () => {
     pausarTudo();
@@ -345,6 +370,22 @@ function abrirPost(area, lista, indice, ctx) {
   dlg.showModal();
   fechar.focus();
   area.dispatchEvent(new CustomEvent('feed:abrir', { detail: dlg }));
+}
+
+function blocoEditorial(h, p) {
+  const e = p.editorial;
+  const duplicataVisual = (e && e.duplicataVisual) || (p.capa && p.capa.duplicataVisual);
+  if (!e && !duplicataVisual) return null;
+
+  const identidade = rotuloEditorial(e);
+  return h('section', { class: 'feed-editorial', 'aria-label': 'Referência editorial' },
+    identidade ? h('p', { class: 'feed-editorial-identidade', texto: identidade }) : null,
+    e?.copyCanonica ? h('div', { class: 'feed-editorial-copy' },
+      h('span', { class: 'feed-editorial-rotulo', texto: 'Copy canônica · referência' }),
+      h('p', { texto: e.copyCanonica }),
+      e.fonteCopy ? h('small', { class: 'feed-editorial-fonte', texto: `Fonte: ${e.fonteCopy}` }) : null) : null,
+    e?.avisoHarmonizacao ? h('p', { class: 'feed-editorial-aviso', role: 'note', texto: e.avisoHarmonizacao }) : null,
+    duplicataVisual ? h('p', { class: 'feed-editorial-capa', role: 'note', texto: 'Capa igual nas versões base e narrada.' }) : null);
 }
 
 function navPost(h, area, lista, indice, ctx, dlg) {
