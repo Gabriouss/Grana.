@@ -311,6 +311,67 @@ function dentroDoLimite(chave, maximo, janelaMs) {
 const WEB = path.join(__dirname, 'web');
 const EXT_MIDIA = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.mp4', '.webm', '.mov', '.mp3', '.m4a', '.wav', '.pdf']);
 
+// Originais do item 6: somente estes arquivos, sem montagem genérica de docs/mascote.
+const PASTA_ICONES_ORIGINAIS = 'docs/marketing/arsenal/icones';
+const ORIGINAIS_MASCOTE = [
+  'docs/mascote/granabo-prancha-w3.png',
+  'docs/mascote/blender/granabo.blend',
+];
+
+function arquivoOriginalSeguro(relativo) {
+  try {
+    const raiz = path.resolve(RAIZ_DADOS);
+    const raizReal = fs.realpathSync(raiz);
+    const partes = relativo.split('/');
+    if (partes.some((p) => !p || segmentoRuim(p) || p.includes('\\') || p.includes(':'))) return null;
+    let alvo = raiz;
+    for (const parte of partes) {
+      alvo = path.join(alvo, parte);
+      if (fs.lstatSync(alvo).isSymbolicLink()) return null;
+    }
+    const real = fs.realpathSync(alvo);
+    if (!dentro(raizReal, real) || path.relative(path.join(raizReal, ...partes), real) !== '') return null;
+    if (!fs.lstatSync(alvo).isFile()) return null;
+    return real;
+  } catch { return null; }
+}
+
+/** Allowlist de arquivos existentes: PNGs diretos do pacote e dois originais do mascote. */
+function listarAssetsDesignSystem() {
+  let nomes = [];
+  try {
+    // Valida também os diretórios antes de enumerar; não segue symlink/junção.
+    const partes = PASTA_ICONES_ORIGINAIS.split('/');
+    let dir = path.resolve(RAIZ_DADOS);
+    for (const parte of partes) {
+      dir = path.join(dir, parte);
+      const st = fs.lstatSync(dir);
+      if (st.isSymbolicLink() || !st.isDirectory()) throw new Error('diretorio-recusado');
+    }
+    const raizReal = fs.realpathSync(RAIZ_DADOS);
+    if (path.relative(path.join(raizReal, ...partes), fs.realpathSync(dir)) !== '') throw new Error('diretorio-recusado');
+    nomes = fs.readdirSync(dir).filter((n) => /\.png$/i.test(n) && !segmentoRuim(n)).sort();
+  } catch { nomes = []; }
+  const caminhos = [...nomes.map((n) => `${PASTA_ICONES_ORIGINAIS}/${n}`), ...ORIGINAIS_MASCOTE];
+  return caminhos.flatMap((relativo) => {
+    const arquivo = arquivoOriginalSeguro(relativo);
+    if (!arquivo) return [];
+    const download = relativo === ORIGINAIS_MASCOTE[1];
+    return [{
+      caminho: relativo,
+      nome: path.basename(relativo),
+      url: '/' + relativo.split('/').map(encodeURIComponent).join('/'),
+      arquivo,
+      mime: download ? 'application/octet-stream' : 'image/png',
+      publico: false,
+      extras: {
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Disposition': download ? 'attachment; filename="granabo.blend"' : `inline; filename="${path.basename(relativo).replace(/[^A-Za-z0-9._-]/g, '_')}"`,
+      },
+    }];
+  });
+}
+
 // prefixo de URL -> raiz física, extensões permitidas (sem `ext` = qualquer uma do MIME)
 const MONTAGENS = [
   // publico: carrega sem login (a tela de login precisa da marca e da fonte,
@@ -387,6 +448,12 @@ function resolverEstatico(pathname) {
   const partes = decodificado.split('/').filter(Boolean);
   for (const p of partes) if (segmentoRuim(p)) return null;
   if (decodificado.endsWith('/') || partes.length === 0) decodificado = (decodificado.replace(/\/+$/, '') || '') + '/index.html';
+  // Intercepta antes da montagem ampla de marketing. Só a allowlist exata sai,
+  // sempre privada; o servidor deve exigir sessão local completa (etapa ok).
+  if (decodificado === '/docs/marketing/arsenal' || decodificado.startsWith('/docs/marketing/arsenal/') ||
+      decodificado === '/docs/mascote' || decodificado.startsWith('/docs/mascote/')) {
+    return listarAssetsDesignSystem().find((a) => '/' + a.caminho === decodificado) || null;
+  }
   // Favicon canonico, arquivo exato; nao monta a pasta public.
   if (decodificado === '/favicon.svg') {
     try {
@@ -428,4 +495,5 @@ module.exports = {
   cabecalhosBase, enderecoLocal, hostValido, hostCanonico, origemValida, deOutroSite, hostDuplicado,
   novoCodigo, apagarCodigo, girarSeVencido, parear, criarSessao, rotacionar, encerrarSessao, encerrarTodas, cookieDaSessao, cookieExpirado,
   sessaoDe, resumoDaSessao, stepUpValido, csrfDe, checarApi, checarCabecalhos, dentroDoLimite, resolverEstatico, lerCookie,
+  listarAssetsDesignSystem,
 };

@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { RAIZ } = require('../config.cjs');
+const { listarAssetsDesignSystem } = require('../seguranca.cjs');
 
 const DS = path.join(RAIZ, 'design-system');
 
@@ -21,6 +22,18 @@ function texto(rel) {
 function variante(nome) {
   const [familia, ...resto] = nome.replace(/\.svg$/, '').split('-');
   return { familia, variante: resto.join('-') };
+}
+
+// Contrato para Harbor: metadados públicos do arquivo, nunca caminho físico.
+// URLs privadas resolvidas por seguranca.resolverEstatico; GET/HEAD com sessão
+// local completa. Nenhuma escrita, cópia ou visualização 3D.
+function originais() {
+  const assets = listarAssetsDesignSystem().map(({ caminho, nome, url, mime }) => ({ caminho, nome, url, mime, somenteLeitura: true }));
+  return {
+    icones: assets.filter((a) => a.caminho.startsWith('docs/marketing/arsenal/icones/')),
+    prancha: assets.find((a) => a.caminho === 'docs/mascote/granabo-prancha-w3.png') || null,
+    blender: assets.find((a) => a.caminho === 'docs/mascote/blender/granabo.blend') || null,
+  };
 }
 
 function resumo() {
@@ -44,7 +57,8 @@ function resumo() {
     mockups: listar('marketing-mockups', /\.(png|jpe?g|webp)$/i),
     tomDeVoz: texto('TOM_DE_VOZ.md'),
     readme: texto('README.md'),
+    originais: originais(),
   };
 }
 
-module.exports = { resumo };
+module.exports = { resumo, originais };

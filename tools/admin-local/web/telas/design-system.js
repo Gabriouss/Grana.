@@ -118,6 +118,14 @@ export async function montar(raiz, ctx) {
   } catch (err) {
     erroTokens = err;
   }
+  let originais = null;
+  let erroOriginais = false;
+  try {
+    const resposta = await ctx.api('/api/design-system');
+    originais = resposta?.dados?.originais || null;
+  } catch {
+    erroOriginais = true;
+  }
   if (ctx.obsoleta && ctx.obsoleta()) return undefined;
   if (carregando) carregando.remove();
   if (erroTokens) {
@@ -127,8 +135,8 @@ export async function montar(raiz, ctx) {
 
   const limpezas = [];
   corpo.append(
-    secaoMarca(h, tokens),
-    secaoMascote(h),
+    secaoMarca(h, tokens, originais, erroOriginais),
+    secaoMascote(h, originais, erroOriginais),
     secaoCores(h, tokens),
     secaoTipografia(h, tokens),
     secaoEspaco(h),
@@ -203,7 +211,7 @@ function amostraCor(h, nome, valor, uso, orig) {
 // ---------------------------------------------------------------------------
 // Marca
 
-function secaoMarca(h, tokens) {
+function secaoMarca(h, tokens, originais, erroOriginais) {
   const id = tokens && tokens.identidade;
   const destaque = h('figure', { class: 'ds-marca ds-marca-destaque' },
     h('div', { class: 'ds-marca-palco' }, h('img', { src: `${MARCA}logotipo-gradiente.svg`, alt: 'Logotipo Grana. em gradiente', loading: 'lazy' })),
@@ -230,8 +238,23 @@ function secaoMarca(h, tokens) {
     regra(h, 'Ícone circular é o avatar', 'Perfil, favicon e foto de conta usam icone-circular.svg. O raio do ícone quadrado (18,65% do lado) é forma de marca, não raio de interface.'),
     regra(h, 'Peças de campanha', 'Logotipo sempre o gradiente oficial. Celular e notebook inteiros, com margem segura, nunca cortados na borda.'));
 
+  const icones = Array.isArray(originais?.icones)
+    ? originais.icones.filter((icone) => icone && typeof icone.url === 'string' && icone.url.startsWith('/'))
+    : [];
+  const galeriaIcones = erroOriginais
+    ? h('p', { class: 'ds-nota', role: 'status', texto: 'Não foi possível carregar os ícones originais do pacote local.' })
+    : icones.length
+      ? h('div', { class: 'ds-originais-grade', role: 'group', 'aria-label': 'Galeria de ícones originais' }, icones.map((icone) => {
+        const nome = icone.nome || icone.caminho || 'Ícone original';
+        return h('figure', { class: 'ds-original-icone' },
+          h('div', { class: 'ds-original-icone-palco' }, h('img', { src: icone.url, alt: `Ícone original ${nome}`, width: '512', height: '512', loading: 'lazy', decoding: 'async' })),
+          h('figcaption', { class: 'mono', texto: nome }));
+      }))
+      : h('p', { class: 'ds-nota', role: 'status', texto: 'O pacote local não contém ícones originais disponíveis.' });
+
   return secao(h, 'ds-marca', 'Marca', 'Vetores originais de design-system/marca/, cada um sobre o fundo para o qual foi desenhado.',
     destaque, gradiente, sub(h, 'Todas as variantes'), grade,
+    sub(h, 'Ícones originais do pacote'), galeriaIcones,
     coresMarca ? sub(h, 'Cores da identidade (dos vetores)') : null, coresMarca,
     sub(h, 'Regras'), regras);
 }
@@ -244,15 +267,42 @@ function regra(h, titulo, texto) {
 // Mascote
 // Espelha a seção "Mascote Granabô" de design-system/pagina/design-system.src.html.
 
-function secaoMascote(h) {
+function secaoMascote(h, originais, erroOriginais) {
   const legenda = 'Prancha escolhida, quatro vistas (0°, 45°, 90° e 180°), câmera ortográfica.';
-  const img = h('img', { src: '/design-system/previews-img/granabo-prancha-w3.webp', alt: 'Prancha do Granabô com as quatro vistas: 0, 45, 90 e 180 graus', loading: 'lazy' });
+  const pranchaOriginal = originais?.prancha;
+  const urlPrancha = pranchaOriginal && typeof pranchaOriginal.url === 'string' && pranchaOriginal.url.startsWith('/')
+    ? pranchaOriginal.url
+    : null;
+  const img = urlPrancha
+    ? h('img', { class: 'ds-prancha-img', src: urlPrancha, alt: 'Prancha original do Granabô W3 com quatro vistas: 0, 45, 90 e 180 graus', width: '1100', height: '402', loading: 'lazy', decoding: 'async' })
+    : null;
   // a prancha é larga (1100×402): inteira, sem o recorte 16:9 dos aparelhos vazios
-  img.style.setProperty('aspect-ratio', '1100 / 402');
-  img.style.setProperty('object-fit', 'contain');
+  if (img) {
+    img.style.setProperty('aspect-ratio', '1100 / 402');
+    img.style.setProperty('object-fit', 'contain');
+  }
   const prancha = h('div', { class: 'ds-mockups' },
-    h('figure', null, img,
-      h('figcaption', null, legenda, h('br'), h('span', { class: 'mono fraco', texto: 'docs/mascote/granabo-prancha-w3.png' }))));
+    img
+      ? h('figure', { class: 'ds-prancha' }, img,
+        h('figcaption', null, legenda, h('br'), h('span', { class: 'mono fraco', texto: 'docs/mascote/granabo-prancha-w3.png' })))
+      : h('p', { class: 'ds-nota', role: 'status', texto: erroOriginais
+        ? 'Não foi possível carregar a prancha original do Granabô.'
+        : 'A prancha original do Granabô não está disponível no pacote local.' }));
+  const arquivoBlender = originais?.blender;
+  const urlBlender = arquivoBlender && typeof arquivoBlender.url === 'string' && arquivoBlender.url.startsWith('/')
+    ? arquivoBlender.url
+    : null;
+  const baixarBlender = urlBlender
+    ? h('a', {
+      class: 'botao botao-fantasma ds-original-link',
+      href: urlBlender,
+      download: arquivoBlender.nome || 'granabo.blend',
+      'aria-label': 'Baixar o arquivo original do Granabô para Blender',
+      texto: 'Baixar modelo original do Blender',
+    })
+    : h('p', { class: 'ds-nota', role: 'status', texto: erroOriginais
+      ? 'Não foi possível carregar o arquivo original do Blender.'
+      : 'O arquivo original do Blender não está disponível no pacote local.' });
   // A animação do Blender (animar.py) só existe renderizada dentro desta prévia: os quadros soltos ficam fora do git.
   const video = h('video', { src: '/docs/marketing/reels-granabo/granabo-reels-previa.mp4#t=0.1', controls: true, preload: 'metadata', playsinline: true, 'aria-label': 'Prévia de Reels com o Granabô animado no Blender, 25 segundos' });
   video.style.setProperty('width', '100%');
@@ -265,7 +315,7 @@ function secaoMascote(h) {
       h('figcaption', null, 'Animação feita no Blender (giro, olhos ligando, piscada, flutuação), montada numa prévia de Reels de 25 s. É prévia, sem aceite e sem publicação.',
         h('br'), h('span', { class: 'mono fraco', texto: 'docs/marketing/reels-granabo/granabo-reels-previa.mp4 · docs/mascote/blender/animar.py' }))));
   return secao(h, 'ds-mascote', 'Mascote Granabô', 'O Granabô é o "G." da marca em volume: uma esfera com a carcaça do G oficial, olhos e um sorriso gravado na barra. É um modelo 3D feito por código, então todas as vistas são coerentes entre si. A fonte é a única verdade; as imagens são renders dela.',
-    prancha,
+    prancha, baixarBlender,
     sub(h, 'Versão escolhida pelo autor'),
     h('ul', { class: 'ds-regras' },
       regra(h, 'W3', 'Ponta de cima do G girada 14° para abrir a faixa dos olhos, olhos grandes e ovais, bordas arredondadas, menta leitoso.'),
