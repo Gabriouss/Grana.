@@ -131,8 +131,12 @@ const SEGREDO_PROCESSO = crypto.randomBytes(32);
 const sessoes = new Map();
 const COOKIE = 'grana_admin';
 const PAREAMENTO_INATIVO_MS = 8 * 60 * 60 * 1000;
-const LOGIN_ABSOLUTO_MS = 60 * 60 * 1000; // Watchtower: 1h
-const LOGIN_INATIVO_MS = 30 * 60 * 1000; // decisao do autor em 09/10/2026 (era 10 min do Watchtower): 30 min de inatividade humana
+// Duração do login (único lugar). Decisão do autor em 09/10/2026: "logado o dia todo", então 12 h de
+// inatividade e 12 h de teto absoluto. Não é "sem limite": a sessão continua morrendo com o servidor,
+// com Sair e com a troca do autenticador. Valores anteriores, para voltar fácil: inatividade 30 min
+// (antes 10 min, Watchtower) e teto absoluto 1 h (Watchtower). Step-up (5 min) não muda.
+const LOGIN_ABSOLUTO_MS = 12 * 60 * 60 * 1000;
+const LOGIN_INATIVO_MS = 12 * 60 * 60 * 1000;
 const PASSO_SENHA_MS = 5 * 60 * 1000; // a senha recebida vale 5 min para o código chegar
 const STEP_UP_MS = 5 * 60 * 1000; // ação destrutiva: TOTP dos últimos 5 min
 const MAX_SESSOES = 20;

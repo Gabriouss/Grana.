@@ -264,7 +264,7 @@ export function criarAcesso(deps) {
 
   function avisar(restante, tipo) {
     const texto = tipo === 'limite'
-      ? `A sessão chega ao limite de 1 hora em ${restante} s. Depois disso, entre de novo.`
+      ? `A sessão chega ao limite de tempo em ${restante} s. Depois disso, entre de novo.`
       : `Sem uso há algum tempo. A sessão encerra em ${restante} s.`;
     if (caixaAviso && caixaAviso.dataset.tipo === tipo) {
       caixaAviso.querySelector('.aviso-inatividade-texto').textContent = texto;

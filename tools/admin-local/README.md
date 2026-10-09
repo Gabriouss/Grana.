@@ -23,8 +23,8 @@ o endereço não basta: o atalho é quem pareia o navegador com o painel.
    abre o navegador já pareado.
 3. Na tela do painel: **senha** e, em seguida, o **código de 6 dígitos** do app.
 
-O login vence com 30 minutos sem uso e, de qualquer forma, 1 hora depois de
-entrar. **Sair, vencer ou trocar o autenticador encerra também o pareamento**:
+O login vence com 12 horas sem uso e, de qualquer forma, 12 horas depois de
+entrar (decisão do autor em 09/10/2026; eram 30 minutos e 1 hora). **Sair, vencer ou trocar o autenticador encerra também o pareamento**:
 para voltar, abra de novo pelo atalho. Redeploy e preparar build pedem o código do app de novo quando o
 último código tem mais de 5 minutos. **Para desligar o painel, feche a janela
 "Grana. Admin".**
@@ -132,8 +132,8 @@ O que a tela mostra:
    cada erro até 24h, com contadores separados para senha e código, gravados
    em disco.
 5. **Sessão:** cookie `HttpOnly; SameSite=Strict`, sem `Domain`, com id trocado
-   no pareamento e no login. Morre com o servidor, com 30 minutos sem gesto da
-   pessoa (consulta automática não conta) e 1 hora depois do login.
+   no pareamento e no login. Morre com o servidor, com 12 horas sem gesto da
+   pessoa (consulta automática não conta) e 12 horas depois do login.
 6. **Ações:** POST em JSON com `X-Grana-Admin: 1` e `X-CSRF-Token` ligado à
    sessão. Redeploy e preparar build exigem um código do app dos últimos
    5 minutos, no máximo 3 vezes em 10 minutos por ação. Gravações de marketing:
