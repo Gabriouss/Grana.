@@ -23,6 +23,14 @@
  * abaixo. Zip é um formato de diretório no fim do arquivo; achar uma entrada
  * é ler o rodapé e caminhar.
  *
+ * ── O que se exige, desde 08/10/2026 (R1 do Lynx) ──────────────────────────
+ *
+ * Pacote e versão lidos dos ATRIBUTOS do manifesto, assinatura v2/v3 conferida
+ * de verdade, e certificado igual ao fixado em `CERTIFICADOS_GRANA`. Antes
+ * bastava o texto do pacote aparecer no manifesto e existir a marca de um bloco
+ * de assinatura: qualquer APK montado para isso passava. Testes em
+ * `__tests__/verificar-apk.cjs`.
+ *
  * Uso:
  *   node scripts/verificar-apk.mjs <arquivo.apk> <versao-esperada>
  *   node scripts/verificar-apk.mjs --autoteste
@@ -31,11 +39,30 @@
  * Actions) quando tudo confere; sai 1 e explica o quê, quando não.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, createPublicKey, verify as verificarAssinaturaCripto, X509Certificate, constants as cripto } from 'node:crypto';
 import { inflateRawSync, deflateRawSync } from 'node:zlib';
+import { pathToFileURL } from 'node:url';
 
 const ASSINATURA_EOCD = 0x06054b50;
 const ASSINATURA_CENTRAL = 0x02014b50;
+
+/** Pacote do Grana. Conferido como atributo `package` do manifesto, não como texto solto. */
+export const PACOTE_GRANA = 'com.gabriouss.grana';
+
+/**
+ * SHA-256 do certificado que assina o Grana. (a chave que o EAS guarda).
+ *
+ * É dado público: qualquer um lê do APK publicado. Tirado da release v1.10.6 em
+ * 08/10/2026 com `apksigner verify --print-certs` e igual ao que este script
+ * calcula. Fixar aqui é o que impede o workflow de publicar, no endereço
+ * permanente de download, um APK com o pacote e a versão certos mas assinado por
+ * outra chave (achado R1 do Lynx). Se a chave do EAS for trocada de propósito,
+ * acrescente o novo valor aqui num commit próprio; o Android também recusaria a
+ * atualização por cima do app instalado, então a troca nunca é silenciosa.
+ */
+export const CERTIFICADOS_GRANA = Object.freeze([
+  'c902cf9ec1e9a9ccfcd05189136f3de35bfa4c78c3f5ad524d4029622a17ef61',
+]);
 
 /** Índice do "fim do diretório central" — o rodapé que diz onde tudo está. */
 function acharEocd(buf) {
@@ -120,6 +147,174 @@ export function assinadoV2(buf) {
   return false;
 }
 
+const ID_V2 = 0x7109871a;
+const ID_V3 = 0xf05368c0;
+/* id -> [hash do Node, padding, tamanho do sal]. Os que o esquema v2/v3 define para
+   APK comum; os de fs-verity (0x04xx) não entram no cálculo de conteúdo abaixo. */
+const ALGORITMOS = new Map([
+  [0x0101, ['sha256', 'pss', 32]], [0x0102, ['sha512', 'pss', 64]],
+  [0x0103, ['sha256', 'pkcs1', 0]], [0x0104, ['sha512', 'pkcs1', 0]],
+  [0x0201, ['sha256', 'ec', 0]], [0x0202, ['sha512', 'ec', 0]],
+  [0x0301, ['sha256', 'dsa', 0]],
+]);
+
+/** Leitor de campos "tamanho (uint32) + bytes", o tijolo do bloco de assinatura. */
+function leitor(buf) {
+  let p = 0;
+  return {
+    fim: () => p >= buf.length,
+    u32: () => { if (p + 4 > buf.length) throw new Error('truncado'); const v = buf.readUInt32LE(p); p += 4; return v; },
+    campo() { const n = this.u32(); if (p + n > buf.length) throw new Error('truncado'); const v = buf.subarray(p, p + n); p += n; return v; },
+    lista() { const r = leitor(this.campo()); const itens = []; while (!r.fim()) itens.push(r.campo()); return itens; },
+  };
+}
+
+/**
+ * Resumo do conteúdo como o Android calcula (APK Signature Scheme v2, "content
+ * digest"): o arquivo sem o bloco de assinatura, em três seções (entradas do zip,
+ * diretório central, rodapé com o offset do diretório apontando para onde o bloco
+ * começa), cada uma em pedaços de 1 MB.
+ */
+function resumoDoConteudo(buf, hash, inicioBloco, inicioCentral, eocd) {
+  const rodape = Buffer.from(buf.subarray(eocd));
+  rodape.writeUInt32LE(inicioBloco, 16);
+  const secoes = [buf.subarray(0, inicioBloco), buf.subarray(inicioCentral, eocd), rodape];
+  const MB = 1024 * 1024;
+  const resumos = [];
+  for (const s of secoes) {
+    for (let i = 0; i < s.length; i += MB) {
+      const pedaco = s.subarray(i, Math.min(i + MB, s.length));
+      const cab = Buffer.alloc(5); cab[0] = 0xa5; cab.writeUInt32LE(pedaco.length, 1);
+      resumos.push(createHash(hash).update(cab).update(pedaco).digest());
+    }
+  }
+  const cab = Buffer.alloc(5); cab[0] = 0x5a; cab.writeUInt32LE(resumos.length, 1);
+  return createHash(hash).update(cab).update(Buffer.concat(resumos)).digest();
+}
+
+/**
+ * Verifica DE VERDADE a assinatura v2/v3 e devolve o SHA-256 do certificado de
+ * cada assinante.
+ *
+ * Só ler o certificado do bloco não prova nada: basta colar o certificado certo
+ * num bloco falso. Aqui, para cada assinante: (1) a assinatura confere com a
+ * chave pública sobre os dados assinados; (2) a chave pública é a do certificado;
+ * (3) o resumo assinado é o do conteúdo deste arquivo. Qualquer falha devolve
+ * `{ erro }` e nenhum certificado.
+ */
+export function conferirAssinatura(buf) {
+  try {
+    const eocd = acharEocd(buf);
+    if (eocd < 0) return { erro: 'sem rodapé de zip' };
+    const inicioCentral = buf.readUInt32LE(eocd + 16);
+    /* O bloco fica imediatamente antes do diretório central; a marca em outro
+       lugar do arquivo não é o bloco que o Android lê. */
+    if (inicioCentral < 32 || buf.toString('latin1', inicioCentral - 16, inicioCentral) !== 'APK Sig Block 42') return { erro: 'sem bloco de assinatura v2/v3' };
+    const tamanho = Number(buf.readBigUInt64LE(inicioCentral - 24));
+    const inicioBloco = inicioCentral - tamanho - 8;
+    if (inicioBloco < 0 || Number(buf.readBigUInt64LE(inicioBloco)) !== tamanho) return { erro: 'bloco de assinatura inconsistente' };
+
+    const pares = new Map();
+    for (let p = inicioBloco + 8; p < inicioCentral - 24;) {
+      const tam = Number(buf.readBigUInt64LE(p));
+      if (tam < 4 || p + 8 + tam > inicioCentral - 24) return { erro: 'bloco de assinatura inconsistente' };
+      pares.set(buf.readUInt32LE(p + 8), buf.subarray(p + 12, p + 8 + tam));
+      p += 8 + tam;
+    }
+    /* Quando existe v3, é ele que o Android confere; senão v2. */
+    const v3 = pares.has(ID_V3);
+    const valor = pares.get(v3 ? ID_V3 : ID_V2);
+    if (!valor) return { erro: 'sem assinatura v2/v3' };
+
+    const assinantes = leitor(valor).lista();
+    if (assinantes.length === 0) return { erro: 'nenhum assinante' };
+    const certificados = [];
+    for (const bruto of assinantes) {
+      const s = leitor(bruto);
+      const dadosAssinados = s.campo();
+      if (v3) { s.u32(); s.u32(); }
+      const assinaturas = s.lista().map((a) => { const r = leitor(a); return { id: r.u32(), valor: r.campo() }; });
+      const chavePublica = s.campo();
+
+      const d = leitor(dadosAssinados);
+      const resumos = d.lista().map((x) => { const r = leitor(x); return { id: r.u32(), valor: r.campo() }; });
+      const certs = d.lista();
+      if (certs.length === 0) return { erro: 'assinante sem certificado' };
+
+      /* Como o Android: a mais forte entre as suportadas (SHA-512 antes de SHA-256). */
+      const escolhida = assinaturas.filter((a) => ALGORITMOS.has(a.id) && resumos.some((r) => r.id === a.id))
+        .sort((a, b) => (ALGORITMOS.get(b.id)[0] === 'sha512') - (ALGORITMOS.get(a.id)[0] === 'sha512'))[0];
+      if (!escolhida) return { erro: 'algoritmo de assinatura não suportado' };
+      const [hash, tipo, sal] = ALGORITMOS.get(escolhida.id);
+      const chave = createPublicKey({ key: chavePublica, format: 'der', type: 'spki' });
+      const opcoes = tipo === 'pss' ? { key: chave, padding: cripto.RSA_PKCS1_PSS_PADDING, saltLength: sal }
+        : tipo === 'pkcs1' ? { key: chave, padding: cripto.RSA_PKCS1_PADDING } : { key: chave };
+      if (!verificarAssinaturaCripto(hash, dadosAssinados, opcoes, escolhida.valor)) return { erro: 'assinatura não confere com a chave' };
+
+      const doCert = new X509Certificate(certs[0]).publicKey.export({ type: 'spki', format: 'der' });
+      if (!doCert.equals(chavePublica)) return { erro: 'chave pública diferente da do certificado' };
+
+      const esperado = resumos.find((r) => r.id === escolhida.id).valor;
+      if (!resumoDoConteudo(buf, hash, inicioBloco, inicioCentral, eocd).equals(esperado)) return { erro: 'conteúdo alterado depois de assinado' };
+
+      certificados.push(createHash('sha256').update(certs[0]).digest('hex'));
+    }
+    return { certificados, esquema: v3 ? 'v3' : 'v2' };
+  } catch {
+    return { erro: 'bloco de assinatura ilegível' };
+  }
+}
+
+/**
+ * Atributos `package` e `versionName` da tag <manifest>, lidos do XML binário.
+ *
+ * Procurar o texto no arquivo (como `manifestoDeclara` faz) aceitaria qualquer app
+ * que apenas CITE o pacote do Grana. em outro lugar do manifesto. Aqui o valor é o
+ * do atributo. `null` se o formato não for o esperado: recusa, nunca adivinha.
+ */
+export function atributosDoManifesto(axml) {
+  try {
+    if (axml.readUInt16LE(0) !== 0x0003) return null;
+    let textos = null;
+    for (let p = axml.readUInt16LE(2); p + 8 <= axml.length;) {
+      const tipo = axml.readUInt16LE(p), cab = axml.readUInt16LE(p + 2), tam = axml.readUInt32LE(p + 4);
+      if (tam < 8 || p + tam > axml.length) return null;
+      if (tipo === 0x0001) {
+        const total = axml.readUInt32LE(p + 8), utf8 = (axml.readUInt32LE(p + 16) & 0x100) !== 0, inicio = p + axml.readUInt32LE(p + 20);
+        const indice = p + cab; // fixado aqui: `p` anda antes de `textos` ser chamada
+        textos = (i) => {
+          if (i >= total) return null;
+          let q = inicio + axml.readUInt32LE(indice + i * 4);
+          if (utf8) {
+            if (axml[q] & 0x80) q += 2; else q += 1;
+            let n = axml[q++]; if (n & 0x80) n = ((n & 0x7f) << 8) | axml[q++];
+            return axml.toString('utf8', q, q + n);
+          }
+          let n = axml.readUInt16LE(q); q += 2;
+          if (n & 0x8000) { n = ((n & 0x7fff) << 16) | axml.readUInt16LE(q); q += 2; }
+          return axml.toString('utf16le', q, q + n * 2);
+        };
+      } else if (tipo === 0x0102 && textos) {
+        const base = p + cab;
+        if (textos(axml.readUInt32LE(base + 4)) !== 'manifest') return null; // a primeira tag tem de ser <manifest>
+        const inicioAttr = base + axml.readUInt16LE(base + 8), tamAttr = axml.readUInt16LE(base + 10), n = axml.readUInt16LE(base + 12);
+        const achados = {};
+        for (let i = 0; i < n; i++) {
+          const a = inicioAttr + i * tamAttr;
+          const nome = textos(axml.readUInt32LE(a + 4));
+          if (axml[a + 15] !== 0x03) continue; // só valor de texto
+          if (nome === 'package' || nome === 'versionName') achados[nome] = textos(axml.readUInt32LE(a + 16));
+        }
+        return achados;
+      }
+      p += tam;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * `versionName` lido do AndroidManifest.xml binário.
  *
@@ -133,29 +328,47 @@ export function manifestoDeclara(manifesto, texto) {
   return manifesto.includes(Buffer.from(texto, 'utf16le'));
 }
 
-function verificar(caminho, versaoEsperada) {
-  const buf = readFileSync(caminho);
+/**
+ * Tudo o que se exige de um APK antes de publicar, sem tocar em disco nem sair do
+ * processo: é o que o teste chama. `problemas` vazio quer dizer aceito.
+ */
+export function analisar(buf, versaoEsperada, certificadosAceitos = CERTIFICADOS_GRANA) {
   const problemas = [];
 
   const entradas = listarEntradas(buf);
   if (entradas.length === 0) problemas.push('não é um zip válido (sem diretório central)');
   if (!entradas.includes('AndroidManifest.xml')) problemas.push('sem AndroidManifest.xml');
   if (!entradas.some((n) => /^classes\d*\.dex$/.test(n))) problemas.push('sem classes.dex (não é um APK)');
-  if (!assinadoV2(buf)) problemas.push('sem assinatura v2/v3');
 
-  const manifesto = lerEntrada(buf, 'AndroidManifest.xml');
+  /* Assinatura conferida de verdade e certificado fixado: é isto que separa o
+     APK do Grana. de um APK qualquer que declare o mesmo pacote e a mesma versão. */
+  const assinatura = entradas.length === 0 ? { erro: 'sem assinatura v2/v3' } : conferirAssinatura(buf);
+  if (assinatura.erro) {
+    problemas.push(`assinatura recusada: ${assinatura.erro}`);
+  } else {
+    const estranhos = assinatura.certificados.filter((c) => !certificadosAceitos.includes(c));
+    if (estranhos.length > 0) problemas.push(`assinado por certificado que não é o do Grana. (sha256 ${estranhos.join(', ')})`);
+  }
+
+  const manifesto = entradas.length === 0 ? null : lerEntrada(buf, 'AndroidManifest.xml');
   if (!manifesto) {
     problemas.push('não consegui ler o AndroidManifest.xml');
   } else {
-    if (!manifestoDeclara(manifesto, versaoEsperada)) {
-      problemas.push(`o manifesto não declara a versão ${versaoEsperada}`);
-    }
-    if (!manifestoDeclara(manifesto, 'com.gabriouss.grana')) {
-      problemas.push('o manifesto não declara o pacote com.gabriouss.grana');
+    const atributos = atributosDoManifesto(manifesto);
+    if (!atributos) {
+      problemas.push('AndroidManifest.xml fora do formato esperado');
+    } else {
+      if (atributos.versionName !== versaoEsperada) problemas.push(`o manifesto não declara a versão ${versaoEsperada}`);
+      if (atributos.package !== PACOTE_GRANA) problemas.push(`o pacote do manifesto não é ${PACOTE_GRANA}`);
     }
   }
 
-  const sha256 = createHash('sha256').update(buf).digest('hex');
+  return { problemas, sha256: createHash('sha256').update(buf).digest('hex'), certificados: assinatura.certificados ?? [] };
+}
+
+function verificar(caminho, versaoEsperada) {
+  const buf = readFileSync(caminho);
+  const { problemas, sha256, certificados } = analisar(buf, versaoEsperada);
   if (problemas.length > 0) {
     console.error(`APK RECUSADO (${caminho}):`);
     for (const p of problemas) console.error('  - ' + p);
@@ -164,6 +377,7 @@ function verificar(caminho, versaoEsperada) {
 
   const saida = [`sha256=${sha256}`, `tamanho=${buf.length}`, `versao=${versaoEsperada}`];
   console.log(saida.join('\n'));
+  console.log(`certificado=${certificados.join(',')}`);
   if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, saida.join('\n') + '\n', { flag: 'a' });
 }
 
@@ -230,8 +444,10 @@ function autoteste() {
   if (!process.exitCode) console.log('OK verificador de APK: leitor de zip, versão no manifesto e bloco de assinatura.');
 }
 
+/* Só age quando chamado direto: o teste importa as funções sem disparar a CLI. */
 const [, , arg1, arg2] = process.argv;
-if (arg1 === '--autoteste') autoteste();
+const chamadoDireto = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (!chamadoDireto) { /* importado */ } else if (arg1 === '--autoteste') autoteste();
 else if (!arg1 || !arg2) {
   console.error('uso: node scripts/verificar-apk.mjs <arquivo.apk> <versao-esperada>');
   console.error('     node scripts/verificar-apk.mjs --autoteste');

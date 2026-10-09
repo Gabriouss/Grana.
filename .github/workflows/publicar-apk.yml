@@ -78,7 +78,9 @@ jobs:
 
       # O passo que não existia em lugar nenhum: até aqui a versão publicada
       # era a que o EAS AFIRMOU no payload, sem ninguém abrir o arquivo. Este
-      # script recusa binário truncado, sem assinatura, ou de outra versão.
+      # script recusa binário truncado, de outra versão, de outro pacote, ou que
+      # não esteja assinado pelo certificado do Grana. (assinatura conferida de
+      # verdade, certificado fixado no próprio script).
       - name: Verificar o APK
         id: apk
         env:
