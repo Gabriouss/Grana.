@@ -84,10 +84,14 @@ function assinar(z, id, o = {}) {
   const dadosAssinados = Buffer.concat([lp(lp(u32(alg), lp(o.resumo ?? resumo(z, hash)))), lp(lp(o.cert ?? id.cert)), ...(v3 ? [u32(24), u32(0x7fffffff)] : []), lp()]);
   const assinatura = crypto.sign(hash, dadosAssinados, chave((o.assinaCom ?? id).privateKey));
   const assinante = Buffer.concat([lp(dadosAssinados), ...(v3 ? [u32(24), u32(0x7fffffff)] : []), lp(lp(u32(alg), lp(assinatura))), lp(o.spki ?? id.spki)]);
-  const valor = lp(lp(assinante));
-  const par = Buffer.concat([u64(4 + valor.length), u32(v3 ? 0xf05368c0 : 0x7109871a), valor]);
-  const tamanho = par.length + 24;
-  return Buffer.concat([u64(tamanho), par, u64(tamanho), Buffer.from('APK Sig Block 42')]);
+  const valor = o.semAssinante ? lp() : lp(lp(assinante));
+  const par = Buffer.concat([u64(4 + valor.length), u32(o.idPar ?? (v3 ? 0xf05368c0 : 0x7109871a)), valor]);
+  return o.soPar ? par : bloco(par);
+}
+/** Bloco de assinatura com os pares na ordem dada (o Android le o primeiro de cada id). */
+function bloco(...pares) {
+  const tamanho = pares.reduce((t, p) => t + p.length, 0) + 24;
+  return Buffer.concat([u64(tamanho), ...pares, u64(tamanho), Buffer.from('APK Sig Block 42')]);
 }
 
 (async () => {
@@ -127,6 +131,32 @@ function assinar(z, id, o = {}) {
     recusa(apk(undefined, grana, { assinaCom: outro }), /assinatura não confere com a chave/);
     // em nenhum dos dois o certificado do Grana. chega a ser devolvido
     assert.deepEqual(m.analisar(apk(undefined, outro, { cert: grana.cert }), '1.2.3', [grana.sha]).certificados, []);
+  });
+
+  // D1 e D2 do parecer do Lynx: o bloco de assinatura fica fora do resumo, entao da
+  // para acrescentar pares a um APK genuino. O que o Android leria tem de ser o conferido.
+  test('par extra num APK genuino: id repetido e v3.1 recusados; v2 e v3 juntos, os dois conferidos', () => {
+    const z = base(), par = (id, o) => assinar(z, id, { ...o, soPar: true });
+    const com = (...pares) => juntar(z, bloco(...pares));
+    assert.deepEqual(problemas(com(par(grana))), [], 'um par so, montado pelo mesmo caminho, passa');
+    // dois pares v2: o do atacante antes ou depois do genuino
+    recusa(com(par(outro), par(grana)), /assinatura recusada: bloco de assinatura com id repetido/);
+    recusa(com(par(grana), par(outro)), /id repetido/);
+    recusa(com(par(grana), par(grana)), /id repetido/);
+    // par v3.1 de terceiro ao lado do v2 genuino (o Android 13+ leria o v3.1)
+    recusa(com(par(grana), par(outro, { v3: true, idPar: 0x1b93ad61 })), /esquema v3\.1 presente/);
+    recusa(com(par(grana, { v3: true, idPar: 0x1b93ad61 })), /esquema v3\.1 presente/);
+    // v2 e v3 juntos: os dois do Grana. passam; v3 genuino com v2 de terceiro (ou o contrario) nao
+    assert.deepEqual(problemas(com(par(grana), par(grana, { v3: true }))), []);
+    assert.equal(m.conferirAssinatura(com(par(grana), par(grana, { v3: true }))).esquema, 'v2+v3');
+    recusa(com(par(outro), par(grana, { v3: true })), /certificado que não é o do Grana/);
+    recusa(com(par(grana), par(outro, { v3: true })), /certificado que não é o do Grana/);
+    recusa(com(par(grana), par(grana, { v3: true, assinaCom: outro })), /assinatura não confere com a chave/);
+    // par presente sem assinante nenhum nao pega carona no outro esquema
+    recusa(com(par(grana), par(grana, { v3: true, semAssinante: true })), /nenhum assinante/);
+    // pares de outros ids (metadados, preenchimento) continuam aceitos, como na release real
+    const neutro = Buffer.concat([u64(8), u32(0x42726577), u32(0)]);
+    assert.deepEqual(problemas(com(par(grana), neutro)), []);
   });
 
   test('conteudo trocado depois de assinado e recusado', () => {

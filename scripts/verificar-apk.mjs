@@ -149,6 +149,7 @@ export function assinadoV2(buf) {
 
 const ID_V2 = 0x7109871a;
 const ID_V3 = 0xf05368c0;
+const ID_V31 = 0x1b93ad61;
 /* id -> [hash do Node, padding, tamanho do sal]. Os que o esquema v2/v3 define para
    APK comum; os de fs-verity (0x04xx) não entram no cálculo de conteúdo abaixo. */
 const ALGORITMOS = new Map([
@@ -218,18 +219,29 @@ export function conferirAssinatura(buf) {
     for (let p = inicioBloco + 8; p < inicioCentral - 24;) {
       const tam = Number(buf.readBigUInt64LE(p));
       if (tam < 4 || p + 8 + tam > inicioCentral - 24) return { erro: 'bloco de assinatura inconsistente' };
-      pares.set(buf.readUInt32LE(p + 8), buf.subarray(p + 12, p + 8 + tam));
+      const id = buf.readUInt32LE(p + 8);
+      /* O bloco de assinatura fica FORA do resumo de conteúdo, então dá para
+         acrescentar pares a um APK genuíno sem quebrar a assinatura dele. Com o
+         id repetido, este script leria um par e o Android outro (D1 do Lynx). */
+      if (pares.has(id)) return { erro: 'bloco de assinatura com id repetido' };
+      pares.set(id, buf.subarray(p + 12, p + 8 + tam));
       p += 8 + tam;
     }
-    /* Quando existe v3, é ele que o Android confere; senão v2. */
-    const v3 = pares.has(ID_V3);
-    const valor = pares.get(v3 ? ID_V3 : ID_V2);
-    if (!valor) return { erro: 'sem assinatura v2/v3' };
+    /* O Android 13+ consulta o v3.1 antes dos outros, e aqui ele não é conferido:
+       um par v3.1 de terceiro passaria pela assinatura v2 do Grana. (D2). As
+       releases do Grana. são só v2; se um dia vierem com v3.1, implementar antes. */
+    if (pares.has(ID_V31)) return { erro: 'esquema v3.1 presente, não conferido por este script' };
+    /* Cada versão do Android lê um esquema (v3 no 9+, v2 no 7 e 8): todos os
+       presentes são conferidos, e os certificados de todos entram na resposta. */
+    const esquemas = [ID_V2, ID_V3].filter((id) => pares.has(id));
+    if (esquemas.length === 0) return { erro: 'sem assinatura v2/v3' };
 
-    const assinantes = leitor(valor).lista();
-    if (assinantes.length === 0) return { erro: 'nenhum assinante' };
+    /* Par presente e sem assinante nenhum não prova nada. */
+    if (esquemas.some((id) => leitor(pares.get(id)).lista().length === 0)) return { erro: 'nenhum assinante' };
+
     const certificados = [];
-    for (const bruto of assinantes) {
+    for (const esquema of esquemas) for (const bruto of leitor(pares.get(esquema)).lista()) {
+      const v3 = esquema === ID_V3;
       const s = leitor(bruto);
       const dadosAssinados = s.campo();
       if (v3) { s.u32(); s.u32(); }
@@ -259,7 +271,7 @@ export function conferirAssinatura(buf) {
 
       certificados.push(createHash('sha256').update(certs[0]).digest('hex'));
     }
-    return { certificados, esquema: v3 ? 'v3' : 'v2' };
+    return { certificados: [...new Set(certificados)], esquema: esquemas.map((id) => (id === ID_V3 ? 'v3' : 'v2')).join('+') };
   } catch {
     return { erro: 'bloco de assinatura ilegível' };
   }
