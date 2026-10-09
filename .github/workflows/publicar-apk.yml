@@ -54,40 +54,36 @@ jobs:
         with:
           node-version: 24
 
-      - name: Reunir os dados dos dois gatilhos
+      # Dado externo (payload do webhook e campos do disparo manual) entra SÓ por
+      # `env:` e é lido entre aspas pelo script. Nunca `${{ }}` desses dados dentro
+      # de `run:`: o GitHub cola o valor no texto do script antes do shell, e um
+      # `$(...)` no payload virava comando com `contents: write` (C3 do Lynx, 08/10).
+      # O script valida versão, URL e notas antes de qualquer uso.
+      - name: Reunir e conferir os dados dos dois gatilhos
         id: dados
-        run: |
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            echo "versao=${{ github.event.client_payload.versao }}" >> "$GITHUB_OUTPUT"
-            echo "apk_url=${{ github.event.client_payload.apk_url }}" >> "$GITHUB_OUTPUT"
-            printf 'notas<<FIM\n%s\nFIM\n' "${{ github.event.client_payload.notas }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "versao=${{ inputs.versao }}" >> "$GITHUB_OUTPUT"
-            echo "apk_url=${{ inputs.apk_url }}" >> "$GITHUB_OUTPUT"
-            printf 'notas<<FIM\n%s\nFIM\n' "${{ inputs.notas }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Recusar versão fora do formato
         env:
-          VERSAO: ${{ steps.dados.outputs.versao }}
-          APK_URL: ${{ steps.dados.outputs.apk_url }}
-        run: |
-          # A versão vira nome de tag e o URL vira um download: os dois entram
-          # em comandos, então nenhum dos dois passa sem conferir a forma.
-          echo "$VERSAO" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "versão inválida: $VERSAO"; exit 1; }
-          echo "$APK_URL" | grep -qE '^https://[a-z0-9.-]*expo\.dev/' || { echo "URL fora do domínio do EAS: $APK_URL"; exit 1; }
+          EVENTO: ${{ github.event_name }}
+          P_VERSAO: ${{ github.event.client_payload.versao }}
+          P_APK_URL: ${{ github.event.client_payload.apk_url }}
+          P_NOTAS: ${{ github.event.client_payload.notas }}
+          I_VERSAO: ${{ inputs.versao }}
+          I_APK_URL: ${{ inputs.apk_url }}
+          I_NOTAS: ${{ inputs.notas }}
+        run: bash scripts/publicar-apk-dados.sh
 
       - name: Baixar o artefato
         env:
           APK_URL: ${{ steps.dados.outputs.apk_url }}
-        run: curl --fail --location --silent --show-error "$APK_URL" -o grana.apk
+        run: curl --proto '=https' --proto-redir '=https' --fail --location --silent --show-error "$APK_URL" -o grana.apk
 
       # O passo que não existia em lugar nenhum: até aqui a versão publicada
       # era a que o EAS AFIRMOU no payload, sem ninguém abrir o arquivo. Este
       # script recusa binário truncado, sem assinatura, ou de outra versão.
       - name: Verificar o APK
         id: apk
-        run: node scripts/verificar-apk.mjs grana.apk "${{ steps.dados.outputs.versao }}"
+        env:
+          VERSAO: ${{ steps.dados.outputs.versao }}
+        run: node scripts/verificar-apk.mjs grana.apk "$VERSAO"
 
       - name: Publicar a release
         env:
@@ -127,7 +123,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --notes-file corpo.md
           else
-            gh release create "$TAG" --title "Grana. $VERSAO" --notes-file corpo.md --target "${{ github.sha }}"
+            gh release create "$TAG" --title "Grana. $VERSAO" --notes-file corpo.md --target "$GITHUB_SHA"
           fi
           gh release upload "$TAG" grana.apk --clobber
 
@@ -140,8 +136,8 @@ jobs:
           SHA256: ${{ steps.apk.outputs.sha256 }}
         run: |
           set -euo pipefail
-          curl --fail --location --silent --show-error \
-            "https://github.com/${{ github.repository }}/releases/latest/download/grana.apk" -o publicado.apk
+          curl --proto '=https' --proto-redir '=https' --fail --location --silent --show-error \
+            "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/grana.apk" -o publicado.apk
           PUBLICADO=$(sha256sum publicado.apk | cut -d' ' -f1)
           if [ "$PUBLICADO" != "$SHA256" ]; then
             echo "o endereço permanente devolveu outro arquivo"
