@@ -139,6 +139,10 @@
   .props b{color:var(--ink-soft);font-weight:400}
   .props .k{font-family:var(--f-mono);font-size:11px}
 
+  .fig{margin:0;display:flex;flex-direction:column;gap:var(--sp-2)}
+  .fig img{width:100%;height:auto;border-radius:12px;border:1px solid var(--rule);background:var(--surface)}
+  .fig figcaption{font-size:11.5px;color:var(--ink-faint);line-height:1.6}
+
   .callout{border-left:2px solid var(--rule-strong);background:var(--surface);
            border-radius:0 12px 12px 0;padding:var(--sp-3) var(--sp-4);max-width:70ch}
   .callout p{margin:0;font-size:13px}
@@ -338,6 +342,8 @@
       <div class="nav-group">
         <span class="nav-eyebrow">Identidade</span>
         <a href="#marca">Marca</a>
+        <a href="#mascote">Mascote Granabô</a>
+        <a href="#icones">Pacote de ícones</a>
       </div>
       <div class="nav-group">
         <span class="nav-eyebrow">Fundações</span>
@@ -847,6 +853,106 @@
         <p>Estourar o orçamento é um <strong>sinal fraco</strong>: não há vermelho, alerta ou
            ícone. É coerente com a paleta — saída é ciano, gastar não é erro — mas é fácil passar
            batido.</p>
+      </div>
+    </section>
+
+    <!-- ============ MASCOTE ============ -->
+    <section id="mascote">
+      <div class="eyebrow">Identidade</div>
+      <h2>Mascote Granabô</h2>
+      <p>O Granabô é o “G.” da marca em volume: uma esfera com a carcaça do G oficial, olhos e
+         um sorriso gravado na barra. É um <strong>modelo 3D feito por código</strong>, não
+         imagem de IA generativa, então todas as vistas são coerentes entre si por construção.
+         A fonte é a única verdade; as imagens são renders dela.</p>
+
+      <div class="row-2">
+        <figure class="fig">
+          <img src="../../docs/mascote/granabo-prancha-w3.png" alt="Prancha do Granabô com as quatro vistas: 0, 45, 90 e 180 graus" loading="lazy">
+          <figcaption>Prancha escolhida, quatro vistas (0°, 45°, 90° e 180°), câmera ortográfica.
+            Arquivo de origem: <code>docs/mascote/granabo-prancha-w3.png</code>.</figcaption>
+        </figure>
+        <div class="panel">
+          <span class="lbl">Versão escolhida pelo autor</span>
+          <span class="props"><b>W3:</b> ponta de cima do G girada 14° para abrir a faixa dos olhos,
+            olhos grandes e ovais, bordas arredondadas, menta leitoso.<br>
+            <b>L3:</b> sorriso em arco, pontas arredondadas, gravado na barra do G.</span>
+          <span class="lbl">Cor</span>
+          <span class="props">Menta leitoso sobre o petróleo do app. Segue as cores da marca
+            (menta e petróleo desta página); não há cor nova fora dos tokens.</span>
+        </div>
+      </div>
+
+      <h3>Pode e não pode</h3>
+      <div class="cols">
+        <div class="panel"><span class="lbl">Pode</span>
+          <span class="props">Aparecer inteiro, com margem segura.<br>
+            Usar as vistas da prancha como referência de desenho.<br>
+            Gerar novas poses pelo modelo (<code>construir.py</code>, <code>animar.py</code>).<br>
+            Ficar em fundo escuro, como o app.</span></div>
+        <div class="panel"><span class="lbl">Não pode</span>
+          <span class="props">Ser redesenhado ou regenerado por IA.<br>
+            Trocar a carcaça: o G vem de <code>logo-g.png</code> e mexer nele muda todas as vistas.<br>
+            Substituir o logotipo, que continua sendo o gradiente oficial.<br>
+            Aparecer cortado na borda de peça estática.</span></div>
+        <div class="panel"><span class="lbl">Limitação conhecida</span>
+          <span class="props">Leve ondulação na parte de baixo da ponta superior do G, na vista
+            frontal. É limite do render, não do desenho. A prancha é referência, não arte final.</span></div>
+      </div>
+
+      <h3>Fonte e como gerar</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Caminho</th><th>O que é</th></tr></thead>
+        <tbody>
+          <tr><td><code>docs/mascote/</code></td><td>Modelo em Python (<code>granabo_modelo.py</code>), pranchas e histórico das escolhas (<code>README.md</code>)</td></tr>
+          <tr><td><code>docs/mascote/blender/</code></td><td><code>granabo.blend</code>, <code>construir.py</code> e <code>animar.py</code></td></tr>
+          <tr><td><code>python docs/mascote/gerar_prancha.py</code></td><td>Prancha final W3 + L3, cerca de 15 s (Python 3 com numpy e Pillow)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Em movimento</h3>
+      <p>Existe uma prévia de Reels com o Granabô animado, 25 s, em
+         <code>docs/marketing/reels-granabo/granabo-reels-previa.mp4</code>. É
+         <strong>prévia, não publicado</strong>: serve só como referência do mascote em movimento
+         e não é peça aprovada.</p>
+    </section>
+
+    <!-- ============ ÍCONES ============ -->
+    <section id="icones">
+      <div class="eyebrow">Identidade</div>
+      <h2>Pacote de ícones</h2>
+      <p>Os ícones de marketing são os <strong>mesmos do app</strong>: Ionicons
+         (<code>@expo/vector-icons</code>, licença MIT). Assim nenhum ícone de peça deixa de
+         existir no Grana. São 28 ícones, cada um em 5 estilos, 512×512, PNG com fundo
+         transparente.</p>
+
+      <figure class="fig">
+        <img src="../../docs/marketing/arsenal/previa-icones.png" alt="Prévia do acervo de 28 ícones nos cinco estilos" loading="lazy">
+        <figcaption>Prévia do acervo. Arquivos em <code>docs/marketing/arsenal/icones/</code>
+          (145 arquivos); notificações de exemplo em <code>docs/marketing/arsenal/notificacoes/</code>.</figcaption>
+      </figure>
+
+      <h3>Estilos de cor</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Sufixo</th><th>Aparência</th></tr></thead>
+        <tbody>
+          <tr><td><code>-menta</code></td><td>Círculo menta <span class="num">#AEFFE3</span> com o ícone em petróleo</td></tr>
+          <tr><td><code>-petroleo</code></td><td>Círculo <span class="num">#0B2D35</span> com borda, ícone em menta</td></tr>
+          <tr><td><code>-gradiente</code></td><td>Círculo no gradiente da marca, ícone em petróleo</td></tr>
+          <tr><td><code>-contorno</code></td><td>Só a borda menta</td></tr>
+          <tr><td><code>-simbolo-menta</code></td><td>Só o ícone em menta, sem círculo</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Como é gerado</h3>
+      <p>Por <code>docs/marketing/arsenal/gerar.py</code>. Para um ícone novo, acrescente uma
+         linha em <code>ICONES</code> com qualquer nome do Ionicons e rode <code>python3 gerar.py</code>
+         (precisa de <code>Ionicons.ttf</code> e das fontes listadas no
+         <code>README.md</code> do arsenal). Não duplique os PNGs aqui: a origem é a pasta do arsenal.</p>
+
+      <div class="callout" style="margin-top:var(--sp-3)">
+        <p><strong>Regra de uso: ícone é detalhe.</strong> Ele apoia a mensagem e nunca é a
+           mensagem. Conforme o guia de criativos, entra pequeno, com o logotipo gradiente oficial
+           como assinatura, em fundo escuro e sem texto de preço ou menção a banco.</p>
       </div>
     </section>
 
