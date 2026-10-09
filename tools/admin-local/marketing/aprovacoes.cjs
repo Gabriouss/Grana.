@@ -7,7 +7,7 @@
 // movido de pasta: a peça continua em para-aprovacao e passa a contar como
 // aprovada porque a versão dela tem aceite registrado.
 //
-// Aprovar NÃO publica, NÃO agenda e NÃO inventa data (Sentinel A05 e A13).
+// Aceitar projeta a previsão do cronograma no calendário. Nunca publica na Meta.
 
 const fs = require('fs');
 const path = require('path');
@@ -104,7 +104,11 @@ function aprovar(raiz, id, corpo = {}) {
     }
     const dados = ler(raiz);
     const existente = dados.aprovacoes.find((a) => a.id === peca.id && a.versao === peca.versao);
-    if (existente) return { aprovacao: existente, jaExistia: true, avisos: [] };
+    if (existente) {
+      const avisos = [];
+      const calendario = require('./cronograma.cjs').sincronizarComAviso(raiz, avisos, 'Aceite preservado');
+      return { aprovacao: existente, jaExistia: true, calendario, avisos };
+    }
 
     const registro = {
       id: peca.id,
@@ -118,7 +122,7 @@ function aprovar(raiz, id, corpo = {}) {
     dados.aprovacoes.push(registro);
     gravarJsonAtomico(caminhoPainel(raiz, ARQUIVO), dados);
 
-    const avisos = ['Aceite registrado. Nada foi publicado nem agendado; a data de publicação é escolhida no calendário.'];
+    const avisos = ['Aceite registrado. A previsão do cronograma entra no calendário quando houver vínculo; nada foi publicado ou agendado na Meta.'];
     try {
       registro.indice = anotarNoIndice(raiz, peca, registro);
       gravarJsonAtomico(caminhoPainel(raiz, ARQUIVO), dados);
@@ -126,7 +130,8 @@ function aprovar(raiz, id, corpo = {}) {
       avisos.push('O aceite foi gravado em aprovacoes.json, mas a linha de evidência no INDICE.md da semana não pôde ser escrita. Registre à mão.');
     }
     avisos.push('Alteração local ainda não publicada no GitHub.');
-    return { aprovacao: registro, jaExistia: false, avisos };
+    const calendario = require('./cronograma.cjs').sincronizarComAviso(raiz, avisos, 'Aceite preservado');
+    return { aprovacao: registro, jaExistia: false, calendario, avisos };
   });
 }
 

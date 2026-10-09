@@ -11,7 +11,7 @@ function carregar(rel, imports = {}) {
   const mod = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(ROOT, rel), 'utf8'), {
     module: mod, exports: mod.exports, __dirname: path.dirname(path.join(ROOT, rel)),
-    Date, Intl, Buffer, console, URL,
+    Date, Intl, Buffer, console, URL, structuredClone,
     fetch() { calls.push('fetch'); throw new Error('REDE PROIBIDA'); },
     process: { argv: [], env: new Proxy({}, { get() { calls.push('env'); throw new Error('ENV PROIBIDO'); } }) },
     require: (id) => {
@@ -22,7 +22,9 @@ function carregar(rel, imports = {}) {
   }, { filename: rel });
   return mod.exports;
 }
-const real = carregar('tools/admin-local/marketing/meta-ensaio.cjs', { './catalogo.cjs': catalogo, './aceite-evidencia.cjs': require('../tools/admin-local/marketing/aceite-evidencia.cjs') });
+const evidencia = require('../tools/admin-local/marketing/aceite-evidencia.cjs');
+const cronograma = carregar('tools/admin-local/marketing/cronograma.cjs', { './catalogo.cjs': catalogo, './aceite-evidencia.cjs': evidencia, 'node:fs': fs });
+const real = carregar('tools/admin-local/marketing/meta-ensaio.cjs', { './catalogo.cjs': catalogo, './aceite-evidencia.cjs': evidencia, './cronograma.cjs': cronograma });
 function fixture() {
   const p = { id: 'a'.repeat(16), versao: 'b'.repeat(40), estado: 'aprovados', caminho: 'docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/card.jpg', arquivos: [{ nome: 'card.jpg', tipo: 'imagem' }] };
   const plano = { diaD: '2026-10-09', planejados: [{ id: p.id, versao: p.versao, caminho: p.caminho, data: '2026-10-10', hora: '14:30', canal: 'instagram-feed' }] };

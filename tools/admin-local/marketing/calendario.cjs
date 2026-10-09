@@ -1,10 +1,9 @@
 'use strict';
 // Calendário de publicações do painel local (dono: Flare).
 //
-// docs/marketing/painel/calendario.json guarda só o planejamento: peça,
-// versão, data, hora e canal, mais o dia D quando o autor o declarar. Nenhum
-// arquivo nem legenda é copiado. Só peça aprovada (aquela versão) recebe data;
-// aprovar não inventa data. Planejar NÃO publica nem agenda em rede nenhuma.
+// O manifesto guarda previsão e dia D; calendario.json preserva substituições
+// manuais e recibos pela chave estável. Aceite da versão exata projeta a previsão.
+// Nenhum arquivo ou legenda é copiado. Planejar nunca publica na Meta.
 
 const {
   ErroMarketing,
@@ -28,7 +27,7 @@ function ler(raiz) {
   const dados = lerJson(caminhoPainel(raiz, ARQUIVO), { formato: 1, diaD: null, planejados: [], referenciaFunil: [] });
   if (!Array.isArray(dados.planejados)) dados.planejados = [];
   if (!Array.isArray(dados.referenciaFunil)) dados.referenciaFunil = [];
-  return dados;
+  return require('./cronograma.cjs').projetarSeguro(raiz, dados);
 }
 
 // D+n em dias úteis; D no fim de semana passa para a segunda (FUNIL.md, seção 5).
@@ -70,20 +69,27 @@ function obterCalendario(raiz, mes) {
   const porId = new Map(pecas.map((p) => [p.id, p]));
 
   const itens = [];
+  const aguardandoDiaD = [];
+  const suspensos = [];
   const desatualizados = [];
   for (const plano of dados.planejados) {
     const p = porId.get(plano.id);
-    if (!p || p.versao !== plano.versao || !p.aprovada) {
+    if (!p || p.versao !== plano.versao || !p.aprovada || plano.estado === 'desatualizado') {
       // Peça trocou de versão, saiu do acervo ou perdeu o aceite: o plano não vale mais.
       desatualizados.push({ ...plano, motivo: !p ? 'peça não está mais no acervo' : p.versao !== plano.versao ? 'peça mudou de versão depois do planejamento' : 'peça sem aceite para esta versão' });
       continue;
     }
+    const registro = { data: plano.data, hora: plano.hora || null, canal: plano.canal, observacao: plano.observacao || null, peca: resumoPeca(p),
+      estado: plano.estado || 'planejado', origem: plano.origem || null, dataPrevista: plano.dataPrevista || null, substituicaoManual: plano.substituicaoManual || null };
+    if (plano.estado === 'aguardando dia D') { aguardandoDiaD.push(registro); continue; }
+    if (plano.estado === 'cronograma inválido') { suspensos.push(registro); continue; }
+    if (!plano.data || !['planejado', undefined].includes(plano.estado)) continue;
     if (plano.data.slice(0, 7) !== alvo) continue;
-    itens.push({ data: plano.data, hora: plano.hora || null, canal: plano.canal, observacao: plano.observacao || null, peca: resumoPeca(p) });
+    itens.push(registro);
   }
   itens.sort((a, b) => `${a.data}${a.hora || ''}`.localeCompare(`${b.data}${b.hora || ''}`));
 
-  const planejadosValidos = new Set(dados.planejados.map((c) => `${c.id}:${c.versao}`));
+  const planejadosValidos = new Set(dados.planejados.filter((c) => c.estado === 'aguardando dia D' || (c.data && ['planejado', undefined].includes(c.estado))).map((c) => `${c.id}:${c.versao}`));
   const aprovadosSemData = pecas
     .filter((p) => p.aprovada && p.tipo !== 'texto' && !planejadosValidos.has(`${p.id}:${p.versao}`))
     .map(resumoPeca);
@@ -93,7 +99,8 @@ function obterCalendario(raiz, mes) {
     dataCalculada: dados.diaD && Number.isInteger(r.diasUteis) ? somarDiasUteis(dados.diaD, r.diasUteis) : null,
   }));
 
-  const avisos = [];
+  const avisos = [...(dados.avisosCronograma || [])];
+  if (aprovadosSemData.length) avisos.push(`${aprovadosSemData.length} peça(s) aprovada(s) sem data válida no cronograma; nenhuma data foi inferida.`);
   if (!dados.diaD) avisos.push('Dia D ainda não declarado. Nada da campanha é publicado antes dele (decisão do autor de 25/09/2026).');
   if (desatualizados.length) avisos.push(`${desatualizados.length} planejamento(s) perderam a validade porque a peça mudou ou perdeu o aceite.`);
 
@@ -102,6 +109,8 @@ function obterCalendario(raiz, mes) {
     diaD: dados.diaD,
     canais: CANAIS,
     itens,
+    aguardandoDiaD,
+    suspensos,
     aprovadosSemData,
     desatualizados,
     referenciaFunil,
@@ -146,10 +155,17 @@ function planejar(raiz, corpo = {}) {
       observacao: textoCurto(corpo.observacao, 500) || null,
       planejadoEm: agoraLocalIso(),
     };
+    const cr = require('./cronograma.cjs');
+    const auto = dados.planejados.find((r) => r.id === peca.id && r.versao === peca.versao && r.manifestoId);
+    if (auto) {
+      const substituicaoManual = { data: registro.data, hora: registro.hora, canal: registro.canal, observacao: registro.observacao };
+      Object.assign(registro, auto, substituicaoManual, { substituicaoManual, estado: 'planejado', recibos: [...(auto.recibos || []), { acao: 'substituicao-manual', em: agoraLocalIso() }] });
+    }
     dados.planejados = dados.planejados.filter((c) => c.id !== peca.id);
     dados.planejados.push(registro);
     gravarJsonAtomico(caminhoPainel(raiz, ARQUIVO), dados);
     const avisos = ['Planejamento salvo no painel. Nada foi agendado no Instagram nem na Meta.'];
+    cr.sincronizarComAviso(raiz, avisos, 'Planejamento salvo');
     if (!dados.diaD) avisos.push('O dia D ainda não foi declarado: a data é planejamento, não autorização de publicar.');
     else if (corpo.data < dados.diaD) avisos.push('A data escolhida é anterior ao dia D declarado.');
     return { planejamento: registro, avisos };

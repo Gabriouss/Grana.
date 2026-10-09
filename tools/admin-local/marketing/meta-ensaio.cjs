@@ -52,6 +52,7 @@ function criarEnsaio(deps) {
       const aceite = p && aceites.find((a) => aceiteValido(a, p, agora));
       if (!aceite) negar('sem-evidencia-datada-desta-versao');
       if (!canal) negar('canal-invalido');
+      if (r.estado && r.estado !== 'planejado') negar('cronograma-nao-resolvido');
       if (canal === 'anuncio') negar('anuncio-fora-do-fluxo-organico');
       const arquivos = p?.arquivos || [];
       const jpeg = (a) => a.tipo === 'imagem' && /\.jpe?g$/i.test(a.nome);
@@ -59,7 +60,8 @@ function criarEnsaio(deps) {
       if (canal === 'instagram-feed' && !(arquivos.length >= 1 && arquivos.length <= 10 && arquivos.every(jpeg))) negar('formato-de-midia-nao-validado');
       if (canal === 'reels' && !(arquivos.length === 1 && mp4(arquivos[0]))) negar('formato-de-midia-nao-validado');
       if (canal === 'stories' && !(arquivos.length === 1 && (jpeg(arquivos[0]) || mp4(arquivos[0])))) negar('formato-de-midia-nao-validado');
-      const chave = crypto.createHash('sha256').update(JSON.stringify([id, versao, canal, quandoUtc])).digest('hex');
+      const identidade = r.manifestoId && r.itemId ? [r.manifestoId, r.itemId] : id;
+      const chave = crypto.createHash('sha256').update(JSON.stringify([identidade, versao, canal, quandoUtc])).digest('hex');
       if (vistos.has(chave)) negar('planejamento-duplicado');
       vistos.add(chave);
       return {
@@ -83,7 +85,7 @@ function criarEnsaio(deps) {
 
 const ensaiar = criarEnsaio({
   agora: () => Date.now(),
-  lerPlano: (raiz) => catalogo.lerJson(catalogo.caminhoPainel(raiz, 'calendario.json'), { diaD: null, planejados: [] }),
+  lerPlano: (raiz) => require('./cronograma.cjs').projetarSeguro(raiz, catalogo.lerJson(catalogo.caminhoPainel(raiz, 'calendario.json'), { diaD: null, planejados: [] })),
   pecas: (raiz) => catalogo.montarCatalogo(raiz),
   aceites: (raiz) => catalogo.lerJson(catalogo.caminhoPainel(raiz, 'aprovacoes.json'), { aprovacoes: [] }).aprovacoes || [],
 });

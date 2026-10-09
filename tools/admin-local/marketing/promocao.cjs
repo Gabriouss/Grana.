@@ -40,6 +40,12 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       for (const a of registro.arquivosPromovidos) {
         texto = texto.split(`](${a.origem.slice(base.length)})`).join(`](${a.destino.slice(base.length)})`);
       }
+      // Carrossel usa link da pasta no INDICE; preserve a coluna/token da linha.
+      if (registro.arquivosPromovidos.length > 1) {
+        const de = path.posix.dirname(registro.origem.caminho).slice(base.length);
+        const para = de.replace('/para-aprovacao/', '/aprovados/').replace(/^para-aprovacao\//, 'aprovados/');
+        texto = texto.split(`](${de}/)`).join(`](${para}/)`).split(`](${de})`).join(`](${para})`);
+      }
       const marcador = `<!-- promocao:${registro.id}:${registro.versao} -->`;
       if (!texto.includes(marcador)) texto = texto.trimEnd() + `\n\n${marcador}\n- Promoção ${registro.promovidoEm}: [peça em aprovados](${registro.arquivosPromovidos[0].destino.slice(base.length)}); aceite do autor em ${registro.aprovadoEm}, versão \`${registro.versao}\`. Origem \`${registro.origem.caminho}\`. Nada publicado ou agendado.\n`;
       const tmp = `${indice}.${crypto.randomUUID()}.tmp`; io.writeFileSync(tmp, texto, 'utf8'); io.renameSync(tmp, indice);
@@ -65,9 +71,11 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
           if (a.origem !== origem || a.destino !== origem.replace('/para-aprovacao/', '/aprovados/') || a.sha1 !== p.arquivos[i].sha1) throw new c.ErroMarketing('prova-invalida', 'Confira os arquivos da promoção antes de retomar.', 409);
           return { de: seguro(raiz, origem), sha1: a.sha1 };
         });
-        const avisos = limparOrigem(arquivos);
+        const avisos = [];
         if (!anterior.indice) indicePromocao(raiz, anterior, dados, avisos);
-        return { promocao: anterior, jaExistia: true, avisos };
+        if (anterior.indice) avisos.push(...limparOrigem(arquivos));
+        const calendario = require('./cronograma.cjs').sincronizarComAviso(raiz, avisos, 'Promoção registrada');
+        return { promocao: anterior, jaExistia: true, calendario, avisos };
       }
       const p = pecas.find((v) => v.id === id);
       if (!p) throw new c.ErroMarketing('peca-inexistente', 'Peça não encontrada no acervo.', 404);
@@ -75,6 +83,14 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       if (p.estado !== 'para-aprovacao' || !PREFIXO.test(p.caminho)) throw new c.ErroMarketing('pasta-invalida', 'Só peça de para-aprovacao pode ser promovida.', 409);
       const aceite = dados.aprovacoes.find((a) => aceiteValido(a, p));
       if (!aceite) throw new c.ErroMarketing('sem-aceite', 'A versão precisa do aceite datado do autor antes da promoção.', 409);
+      // A fila usa ID físico. Pedido aberto bloqueia a mudança de caminho: não o deixar órfão.
+      let pedidos;
+      try { pedidos = require('./ajustes-fila.cjs').fila.listar(); }
+      catch { log('promocao-fila-indisponivel'); throw new c.ErroMarketing('fila-indisponivel', 'Confira a fila de ajustes antes de promover.', 503); }
+      if (pedidos.some((r) => r.pecaId === p.id && !['aceito', 'desatualizado'].includes(r.estado)) ||
+        (dados.ajustes || []).some((r) => r.id === p.id && r.versao === p.versao && !['aceito', 'desatualizado'].includes(r.estado))) {
+        throw new c.ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto. Conclua ou confira o pedido antes de promover a peça.', 409);
+      }
       const novoCaminho = p.caminho.replace('/para-aprovacao/', '/aprovados/');
       const arquivos = p.arquivos.map((a) => {
         const origem = path.posix.join(path.posix.dirname(p.caminho), a.nome);
@@ -107,9 +123,11 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         c.gravarJsonAtomico(arq, dados); persistido = true;
         const relida = c.lerJson(arq, {}).aprovacoes?.find((a) => a.id === nova.id && a.versao === nova.versao);
         if (!relida || !aceiteValido(relida, nova) || relida.origem?.id !== p.id || relida.origem?.caminho !== p.caminho) throw new Error('prova-nao-confirmada');
-        const avisos = limparOrigem(arquivos);
+        const avisos = [];
         indicePromocao(raiz, registro, dados, avisos);
-        return { promocao: registro, jaExistia: false, avisos };
+        if (registro.indice) avisos.push(...limparOrigem(arquivos));
+        const calendario = require('./cronograma.cjs').sincronizarComAviso(raiz, avisos, 'Promoção registrada');
+        return { promocao: registro, jaExistia: false, calendario, avisos };
       } catch (e) {
         if (!persistido) {
           for (const a of copiados) {
