@@ -14858,3 +14858,29 @@ A revisão de Codex via Maestri encontrou um defeito de aviso no snapshot anteri
 **E05:** segundo o transcript Beacon visto por Codex via `maestri check Beacon`, às 18h23 Beacon tentou `ajustes-cli ler` com lease expirado/inválido; a CLI retornou `resultado_lease=expirado_ou_invalido` e exit 1. A tentativa não revelou o conteúdo, não renovou o lease, não alterou a fila e não criou estimativa; Beacon foi instruído a pausar às 18h27. Corrige a formulação anterior: houve tentativa, sem leitura bem-sucedida ou mutação.
 
 **Fase 2:** após o push, Compass recebeu a tarefa de abrir a fase e preparar/confirmar ownership; sua resposta via Maestri apresentou a matriz de responsabilidades. É preparação, sem implementação reportada. A Fase 2 ainda não começou como trabalho de implementação; Fases 3 e 4 seguem não iniciadas.
+
+## 10/10/2026 (M1, Claude Code): Fase 2 do fluxo de ajustes commitada e publicada, QA visual PENDENTE
+
+Esta entrada supera o trecho acima que diz que a Fase 2 ainda nao tinha comecado como implementacao. Escrita pelo orquestrador Claude, e nao pelo Ledger nem pelo Quill, por pedido direto do autor ("quero que voce e SO VOCE ajude o time codex com o trabalho do painel admin"), depois que o time Codex inteiro bateu o limite de uso por volta de 12h45, com retorno as 16h40.
+
+**Commits:** `0c98bd6` (backend, trabalho do Harbor: `catalogo.cjs`, `historico.cjs` novo, `rotas.cjs`, testes `admin-familia`, `admin-anterior`, `admin-recusar`, linha `test:admin` do `package.json`) e `14dbae4` (mudanca de tela em commit proprio, regra 14; trabalho do Forge em `aprovacao.js`, `ajustes.js`, `_pecas.js`, do Prism em `estilo.css`, e os dois testes legados de tela ajustados pelo Claude Code). Publicados em `origin/main`.
+
+**O que mudou no painel local:** a Aprovacao vira mesa de demandas em tres secoes (Precisa de voce, Com os agentes, Resolvidas), uma linha por familia de peca; antes e depois no aceite de correcao, com o aceite liberado so depois de conferir a versao anterior; botao Recusar peca (motivo obrigatorio, sucessora opcional), que copia a peca para `historico/`, grava a prova em `docs/marketing/painel/historico.json` e acrescenta linha no `INDICE.md` da semana. Rotas novas: `GET/HEAD /api/marketing/ajustes/:id/anterior` e `POST /api/marketing/pecas/:id/recusar`.
+
+**Fato comprovado nesta sessao:** `npm run test:ci` e `npx tsc --noEmit`, rodados pelo Claude Code na arvore completa antes dos commits, exit 0 (recibos em `E:\Grana-temporarios\2026-10-10-divisao-contas\gate-test-ci.log` e `gate-tsc.log`). O Codex relatou os mesmos gates verdes pelo Sentinel; esse relato nao foi conferido por recibo.
+
+**Achado da revisao de leitura, corrigido antes do commit:** o `fetch` da comparacao em `aprovacao.js` ia sem o cabecalho `X-Grana-Admin`, que `rotas.cjs` exige em todo `/api`; o aceite de correcao ficaria bloqueado para sempre. O Forge corrigiu, e `__tests__/admin-ajustes-tela.cjs` trava. Corrigido tambem o nome de arquivo codificado duas vezes na mesma comparacao, com regressao no mesmo teste.
+
+**Nao verificado (checklist de QA):**
+- [ ] QA visual no navegador: nenhuma tela da Fase 2 foi vista por quem commitou. Larguras 320, 390, 768 e 1440 constam so no parecer do Prism (`relatorio-prism-fase2-visual.md`), sobre fixture.
+- [ ] Pedido HTTP real a `.../anterior` atravessando `tratarApi` com e sem o cabecalho. Os testes cobrem a tela e `lerAnterior` em separado, nao a guarda.
+- [ ] Recusa de ponta a ponta numa peca real.
+- [ ] Migration `20261009100000_admin_ajustes_estados_terminal.sql`: continua so no repositorio, NAO aplicada.
+
+**Em aberto para o autor:** o motivo da recusa e texto livre e vai para `historico.json`, versionado em repositorio PUBLICO (regra 15). A tela rotula "Motivo publico da recusa". Decidir se fica assim ou se o motivo sai do repositorio.
+
+**Em aberto, baixo:** "Reenviar pedido" confirma com o titulo "Tentar entrega novamente" (`ajustes.js`, `agir`); copia interrompida na recusa pode deixar orfao em `historico/` que trava novas tentativas com `destino-existente` (`historico.cjs`). Detalhe em `E:\Grana-temporarios\2026-10-09-painel\parecer-claude-code-fase2-leitura.md`.
+
+**QA do painel com conta ficticia (decisao do autor em 10/10):** o Sentinel abriu `scripts\abrir-painel.cmd` com `APPDATA` apontado para `E:\Grana-temporarios\2026-10-10-sentinel-fase2-qa\appdata`, e a janela pediu cadastro de conta ao autor sem aviso. A conta real, em `%APPDATA%\grana-admin`, nao foi tocada. Decisao: "Pode mandar criar a conta de teste sozinho" e "nao apague a conta ficticia, ela sera usada para futuros testes". O recado foi ao Codex; a conta ainda NAO foi criada (a pasta estava vazia quando o time Codex parou). Senha e TOTP dela nunca entram em log, relatorio, nota ou commit.
+
+**Tambem em 10/10:** o time Claude foi dividido em duas contas, registrado pelo Quill na nota "2026-10-10 - M1 - Divisao de contas do time Claude". As notas "Memoria - 00 Entrada", "Regras e decisoes" e "Pendencias abertas" estao paradas em 02/10 e contradizem o repositorio (HEAD, regras ate a 25, troca dos segredos ja confirmada em 08/10): falta o documentador atualizar. Nota de sessao no vault NAO foi escrita nesta sessao.
