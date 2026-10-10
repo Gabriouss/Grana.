@@ -7,8 +7,49 @@ const curto = (v) => (typeof v === 'string' && v ? v.slice(0, 8) : 'não informa
 // A lista recolhe e abre por escolha da pessoa; recarregar a tela não muda isso nem faz a tela pular.
 const estadoLista = { aberta: false };
 const detalhesDasFilas = new WeakMap();
+const saudeDasFilas = new WeakMap();
+const entregasDasFilas = new WeakMap();
 const POLLING_MS = 15000;
 const SYNC_RECENTE_MS = 60000;
+
+const PEDIDOS_TERMINAIS = new Set(['aceito', 'desatualizado', 'encerrado', 'recusado-pelo-autor']);
+export function pedidoAberto(p) { return !PEDIDOS_TERMINAIS.has(p.estado); }
+export function filaDisponivel(pedidos) { return Array.isArray(pedidos) && saudeDasFilas.get(pedidos) !== false; }
+
+export function situacaoDaDemanda(peca, pedidos) {
+  const meus = ordenarPedidos((pedidos || []).filter((p) => p.pecaId === peca.id));
+  const pedido = meus.find(pedidoAberto) || meus[0];
+  const estado = pedido?.estado;
+  const entregaParada = ['novo', 'falha-de-envio'].includes(estado) && entregasDasFilas.get(pedidos);
+  const proximos = {
+    novo: 'Os agentes aguardam a entrega do pedido.',
+    'em-correcao': 'Os agentes estão corrigindo a peça.',
+    'falha-de-envio': 'Confira a entrega antes de tentar novamente.',
+    'corrigido-aguardando-aceite': 'Revise a correção antes de dar seu aceite.',
+    'aguardando-aprovacao-de-custo': 'Responda sobre o custo pela conversa.',
+    'precisa-de-atencao': 'Confira o pedido que precisa de atenção.',
+    desatualizado: 'Refaça o pedido na versão atual da peça.',
+    encerrado: 'O pedido foi encerrado; confira a decisão da peça.',
+    'recusado-pelo-autor': 'O pedido foi recusado; confira a decisão da peça.',
+  };
+  const comAgentes = ['novo', 'em-correcao', 'falha-de-envio'].includes(estado);
+  const precisa = ['corrigido-aguardando-aceite', 'aguardando-aprovacao-de-custo', 'precisa-de-atencao', 'desatualizado'].includes(estado);
+  const resolvida = !comAgentes && !precisa && (peca.aprovada || peca.estado === 'historico');
+  return {
+    secao: comAgentes ? 'agentes' : resolvida ? 'resolvidas' : 'voce',
+    rotulo: entregaParada || (pedido && (comAgentes || precisa || pedidoAberto(pedido)) ? ESTADOS[estado] || 'Estado não reconhecido' : peca.aprovada ? 'Aprovada nesta versão' : peca.estado === 'historico' ? 'Histórico' : 'Esperando o seu aceite'),
+    proximo: entregaParada ? 'A entrega está parada. Confira os detalhes da fila antes de tentar novamente.' : pedido && !ESTADOS[estado] ? 'Atualize os recibos antes de agir sobre este pedido.' : proximos[estado] || (peca.aprovada ? 'Confira a data no calendário.' : peca.estado === 'historico' ? 'Esta peça está no histórico.' : 'Revise a peça e escolha aprovar, pedir ajuste ou recusar.'),
+    em: peca.recusa?.recusadoEm || pedido?.atualizadoEm || pedido?.criadoEm || peca.aceite?.aprovadoEm || peca.modificadoEm || null,
+    pedido,
+  };
+}
+
+// Atualiza a mesa de demandas com o mesmo GET já usado pelos recibos.
+export function observarPedidos(pedidos, redesenhar) {
+  if (!Array.isArray(pedidos)) return;
+  if (!detalhesDasFilas.has(pedidos)) detalhesDasFilas.set(pedidos, new Set());
+  detalhesDasFilas.get(pedidos).add(redesenhar);
+}
 
 function momentoSeguro(v) {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})$/.test(v) && Number.isFinite(Date.parse(v)) ? v : null;
@@ -45,7 +86,7 @@ export function ordenarPedidos(lista) {
 
 const GRUPOS = [['novo', 'aguardando entrega'], ['em-correcao', 'em correção'], ['corrigido-aguardando-aceite', 'corrigido, aguardando seu aceite'],
   ['falha-de-envio', 'com falha na entrega'], ['aguardando-aprovacao-de-custo', 'pausado para custo'], ['precisa-de-atencao', 'precisando de atenção'],
-  ['aceito', 'aceito'], ['desatualizado', 'desatualizado']];
+  ['aceito', 'aceito'], ['desatualizado', 'desatualizado'], ['encerrado', 'encerrado'], ['recusado-pelo-autor', 'recusado pelo autor']];
 export function resumoPedidos(pedidos) {
   const n = pedidos.length;
   const partes = GRUPOS.map(([estado, rotulo]) => [pedidos.filter((p) => p.estado === estado).length, rotulo]).filter(([c]) => c > 0).map(([c, r]) => `${c} ${r}`);
@@ -55,7 +96,7 @@ export function resumoPedidos(pedidos) {
 // Estado da entrega em poucas palavras, para o selo da peça na lista.
 const CURTO = { novo: ['alerta', 'aguardando entrega'], 'em-correcao': ['neutro', 'entregue'], 'corrigido-aguardando-aceite': ['ok', 'corrigido'],
   'falha-de-envio': ['erro', 'falha na entrega'], 'aguardando-aprovacao-de-custo': ['alerta', 'pausado'], 'precisa-de-atencao': ['erro', 'precisa de atenção'],
-  aceito: ['ok', 'aceito'], desatualizado: ['neutro', 'desatualizado'] };
+  aceito: ['ok', 'aceito'], desatualizado: ['neutro', 'desatualizado'], encerrado: ['neutro', 'encerrado'], 'recusado-pelo-autor': ['neutro', 'recusado pelo autor'] };
 export function seloDoAjuste(pedidos, pecaId) {
   const p = ordenarPedidos((pedidos || []).filter((x) => x.pecaId === pecaId))[0];
   const [nivel, texto] = (p && CURTO[p.estado]) || ['alerta', 'pedido feito'];
@@ -110,21 +151,30 @@ export async function montarFila(raiz, ctx) {
     const d = r.dados;
     if (!d || !Array.isArray(d.pedidos)) throw new Error('fila-invalida');
     pedidos.splice(0, pedidos.length, ...ordenarPedidos(d.pedidos));
+    saudeDasFilas.set(pedidos, true);
+    entregasDasFilas.set(pedidos, situacaoEntrega(d));
     desenhar(d);
-    for (const redesenhar of detalhesDasFilas.get(pedidos) || []) redesenhar();
+    const observadores = detalhesDasFilas.get(pedidos);
+    for (const redesenhar of [...(observadores || [])]) {
+      if (redesenhar.alvo?.isConnected === false) observadores.delete(redesenhar);
+      else redesenhar();
+    }
   }
   function agendar() {
     if (ctx.obsoleta() || typeof setTimeout !== 'function') return;
     setTimeout(async () => {
       if (ctx.obsoleta()) return;
       try { await atualizar(); }
-      catch {
+      catch (err) {
+        console.warn('[ajustes-polling]', err.codigo || 'falha');
         if (!ctx.obsoleta()) {
+          saudeDasFilas.set(pedidos, false);
           // Não apaga o último recibo por falha no GET, nem mostra erro bruto.
           const texto = 'Não foi possível atualizar a sincronização. Os últimos recibos e o estado local continuam visíveis; uma nova conferência será feita.';
           if (avisoFalhaPolling) avisos.removeChild(avisoFalhaPolling);
           avisoFalhaPolling = h('p', { class: 'campo-ajuda quebra', role: 'status', texto });
           avisos.appendChild(avisoFalhaPolling);
+          for (const redesenhar of [...(detalhesDasFilas.get(pedidos) || [])]) redesenhar();
         }
       }
       agendar();
@@ -152,29 +202,31 @@ function tecnico(ctx, d) {
 }
 
 // Seção do detalhe da peça: só os pedidos DELA, com as ações quando cabem.
-export function secaoAjustesDaPeca(ctx, pedidos, pecaId) {
+export function secaoAjustesDaPeca(ctx, pedidos, pecaId, comparacao) {
   const { h } = ctx;
   const meus = ordenarPedidos((pedidos || []).filter((p) => p.pecaId === pecaId));
   if (!meus.length) return null;
   const secao = h('section', { class: 'peca-ajustes', 'aria-label': 'Ajustes pedidos' });
   const redesenhar = () => secao.replaceChildren(h('h3', { texto: 'Ajustes pedidos' }),
-    h('ul', { class: 'pedidos-itens' }, ordenarPedidos(pedidos.filter((p) => p.pecaId === pecaId)).map((p) => linhaPedido(ctx, p, { acoes: true }))));
+    h('ul', { class: 'pedidos-itens' }, ordenarPedidos(pedidos.filter((p) => p.pecaId === pecaId)).map((p) => linhaPedido(ctx, p, { acoes: true, disponivel: filaDisponivel(pedidos), aceitePermitido: !comparacao || (comparacao.pronta && comparacao.pedidoId === p.id) }))));
+  comparacao?.observadores.add(redesenhar);
+  redesenhar.alvo = secao;
   if (!detalhesDasFilas.has(pedidos)) detalhesDasFilas.set(pedidos, new Set());
   detalhesDasFilas.get(pedidos).add(redesenhar);
   redesenhar();
   return secao;
 }
 
-function linhaPedido(ctx, p, { acoes }) {
+function linhaPedido(ctx, p, { acoes, disponivel = true, aceitePermitido = true }) {
   const { h } = ctx;
   const quando = (v) => v ? ctx.formatar.dataHora(v) : 'não informado';
   const aceitar = p.estado === 'corrigido-aguardando-aceite' && /^[a-f0-9]{40}$/.test(p.versaoCorrigida || '') && /^[a-f0-9]{40}$/.test(p.commit || '');
   const retry = p.estado === 'falha-de-envio' && Number.isInteger(p.tentativas) && p.tentativas < 3;
   const bloco = h('div', { class: 'bloco-acao' });
   if (acoes) {
-    for (const [permitida, tipo, rotulo] of [[aceitar, 'aceitar', 'Aceitar versão corrigida'], [retry, 'retry', 'Tentar entrega novamente'], [p.estado === 'precisa-de-atencao', 'encerrar', 'Encerrar pedido']]) {
+    for (const [permitida, tipo, rotulo] of [[aceitar, 'aceitar', 'Aceitar versão corrigida'], [retry, 'retry', 'Tentar entrega novamente'], [p.estado === 'precisa-de-atencao', 'reenviar', 'Reenviar pedido'], [p.estado === 'precisa-de-atencao', 'encerrar', 'Encerrar pedido']]) {
       if (!permitida) continue;
-      const botao = h('button', { class: 'botao', type: 'button', texto: rotulo, onclick: () => agir(ctx, p, tipo, botao) });
+      const botao = h('button', { class: 'botao', type: 'button', texto: rotulo, disabled: !disponivel || (tipo === 'aceitar' && !aceitePermitido), onclick: () => agir(ctx, p, tipo, botao) });
       bloco.appendChild(botao);
     }
   } else {
@@ -189,7 +241,15 @@ function linhaPedido(ctx, p, { acoes }) {
     h('p', { class: 'pedido-titulo quebra', role: 'status', texto: `${nomeDaPeca}${quando(p.criadoEm)} · ${estado}` }),
     espelho ? h('p', { class: 'campo-ajuda quebra', role: 'status', texto: `${espelho}${emEspelho ? ` Recibo em ${quando(emEspelho)}.` : ''}` }) : null,
     p.estado === 'falha-de-envio' ? h('p', { class: 'campo-ajuda quebra', texto: MOTIVOS[p.motivo] || 'Confira o agente antes de repetir: uma falha pode deixar a entrega incerta. O servidor limita as tentativas.' }) : null,
-    p.estado === 'aguardando-aprovacao-de-custo' ? h('p', { class: 'campo-ajuda', texto: 'A ferramenta paga permanece pausada. Nenhum custo é autorizado por esta tela.' }) : null,
+    p.estado === 'aguardando-aprovacao-de-custo' ? h('div', { class: 'demanda-custo' },
+      h('p', { class: 'campo-ajuda', texto: 'A ferramenta paga permanece pausada. Responda sobre o custo pela conversa; nenhum custo é autorizado por esta tela.' }),
+      p.custo ? h('dl', { class: 'lista-chave-valor' },
+        h('dt', { texto: 'Ferramenta' }), h('dd', { texto: p.custo.ferramenta || 'Não informada' }),
+        h('dt', { texto: 'Créditos estimados' }), h('dd', { texto: Number.isFinite(p.custo.creditos) ? String(p.custo.creditos) : 'Não informados' }),
+        h('dt', { texto: 'Valor estimado' }), h('dd', { texto: Number.isFinite(p.custo.valorReais) ? p.custo.valorReais.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não informado' }),
+        h('dt', { texto: 'Cotação usada' }), h('dd', { texto: Number.isFinite(p.custo.cotacao) ? String(p.custo.cotacao) : 'Não informada' }),
+        h('dt', { texto: 'Motivo para não fazer localmente' }), h('dd', { texto: p.custo.motivoNaoLocal || 'Não informado' })) :
+        h('p', { class: 'campo-ajuda', texto: 'Estimativa ainda não informada. Confira pela conversa antes de decidir.' })) : null,
     p.estado === 'corrigido-aguardando-aceite' ? h('p', { class: 'campo-ajuda', texto: 'Revise a peça e a versão corrigida antes de aceitar. Correção pronta não é aceite nem publicação.' }) : null,
     p.aceite ? h('p', { class: 'campo-ajuda', texto: `Aceito em ${quando(p.aceite.em)}. O aceite não comprova publicação.` }) : null,
     bloco,
@@ -231,7 +291,7 @@ export async function agir(ctx, pedido, tipo, botao) {
         return;
       }
     }
-    const confirmado = await ctx.confirmar({ titulo: tipo === 'encerrar' ? 'Confirmar encerramento' : tipo === 'aceitar' ? 'Aceitar esta correção' : 'Tentar entrega novamente',
+    const confirmado = await ctx.confirmar({ titulo: tipo === 'encerrar' ? 'Confirmar encerramento' : tipo === 'aceitar' ? 'Aceitar esta correção' : tipo === 'reenviar' ? 'Reenviar pedido' : 'Tentar entrega novamente',
       texto: tipo === 'encerrar' ? 'O pedido será encerrado localmente. A sincronização remota ainda precisa de confirmação. Nenhum custo é autorizado.' : tipo === 'aceitar' ? 'Confirme somente depois de revisar a versão corrigida. Nada será publicado ou enviado à Meta.' : 'Confira primeiro se o agente recebeu o pedido. Repetir uma entrega incerta pode duplicar trabalho.',
       detalhes: [pedido.pecaTitulo || 'Peça sem nome', `Pedido ${curto(pedido.id)} · versão ${curto(pedido.versaoCorrigida || pedido.versaoAlvo)}`], rotuloBotao: 'Confirmar' });
     if (confirmado !== true) return;

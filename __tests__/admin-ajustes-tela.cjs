@@ -4,6 +4,14 @@ const vm = require('node:vm');
 const node = (tag, attrs = {}, ...children) => ({ tag, attrs, children: children.flat(Infinity).filter(Boolean), appendChild(n) { this.children.push(n); }, replaceChildren(...n) { this.children = n; }, get firstChild() { return this.children[0]; }, removeChild(n) { this.children = this.children.filter((v) => v !== n); }, setAttribute(k,v) { this.attrs[k] = v; }, focus() {} });
 const text = (n) => n == null ? '' : typeof n === 'object' ? [n.attrs?.texto || '', ...(n.children || []).map(text)].join(' ') : String(n);
 const walk = (n) => [n, ...(n.children || []).flatMap(walk)];
+// Carrega o módulo real da tela num escopo próprio, como um ES module, e publica só o que ele exporta.
+// Os imports resolvem pelos exports reais carregados antes: nenhum dublê de _pecas.js nem de ajustes.js.
+function carregarModulo(arquivo, sandbox) {
+  const fonte = fs.readFileSync('tools/admin-local/web/telas/' + arquivo, 'utf8');
+  const nomes = [...fonte.matchAll(/^export (?:async )?(?:function|const) (\w+)/gm)].map((m) => m[1]);
+  const corpo = fonte.replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
+  vm.runInNewContext('(function(){' + corpo + '\n;Object.assign(globalThis,{' + nomes.join(',') + '});})()', sandbox);
+}
 const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8').replace(/export (async )?function /g, '$1function ');
 (async () => {
   let antigo = false, erro = false, confirmado = true, resolver, extra = {};
@@ -30,7 +38,8 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   for (const estado of ['novo', 'em-correcao', 'corrigido-aguardando-aceite', 'aceito', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'desatualizado', 'precisa-de-atencao', 'desconhecido']) {
     pedidos.splice(0, pedidos.length, { ...base, estado });
     const t = await render(); assert.ok(t.includes('Reel de teste · ') && t.includes('Pedido pedido-f'), 'lista pelo nome da peca, id curto'); assert.ok(!t.includes('pedido-ficticio') && !t.includes('a'.repeat(40)) && !t.includes('b'.repeat(40)) && !t.includes('c'.repeat(40)), 'nem id nem SHA inteiros ao autor'); assert.equal(t.includes(base.textoOriginal), false);
-    assert.equal(walk(root).filter((n) => n.tag === 'button').length, ['corrigido-aguardando-aceite', 'falha-de-envio', 'precisa-de-atencao'].includes(estado) ? 1 : 0);
+    // Fase 2: precisa-de-atencao oferece Reenviar e Encerrar; os demais seguem com uma ação ou nenhuma.
+    assert.deepEqual(walk(root).filter((n) => n.tag === 'button').map((n) => n.attrs.texto), { 'corrigido-aguardando-aceite': ['Aceitar versão corrigida'], 'falha-de-envio': ['Tentar entrega novamente'], 'precisa-de-atencao': ['Reenviar pedido', 'Encerrar pedido'] }[estado] || [], estado);
   }
   pedidos.splice(0, pedidos.length, { ...base, estado: 'corrigido-aguardando-aceite' }); await render();
   let b = walk(root).find((n) => n.tag === 'button'); confirmado = false; await b.attrs.onclick(); assert.equal(calls.filter((c) => c[0] === 'POST').length, 0);
@@ -45,14 +54,54 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   assert.equal(fs.readFileSync('tools/admin-local/web/telas/aprovacao.js', 'utf8').includes('vai para o GitHub público'), false);
   antigo = false; erro = false;
   pedidos.splice(0, pedidos.length, { ...base, estado: 'corrigido-aguardando-aceite' });
-  const peca = { id: base.pecaId, versao: base.versaoCorrigida, estado: 'para-aprovacao', tipo: 'imagem', titulo: 'Peça fictícia' };
+  const peca = { id: base.pecaId, versao: base.versaoCorrigida, estado: 'para-aprovacao', tipo: 'imagem', titulo: 'Peça fictícia', arquivos: [{ nome: 'peca-ficticia.png', tipo: 'imagem', url: '/docs/marketing/ficticio/peca-ficticia.png' }] };
   ctx.api = async (url) => ({ dados: url.endsWith('/pecas') ? { pecas: [peca] } : { pedidos } });
   Object.assign(ctx, { params: {}, cabecalho() {}, midia: () => node('img'), selo: (_tipo,t) => node('span',{texto:t}), markdown: (t) => node('p',{texto:t}) });
-  Object.assign(sandbox, { tituloPeca: (p) => p.titulo, rotuloSemana: () => 'semana fictícia', rotuloEstado: (p) => p.estado, trilha: () => node('p') });
-  vm.runInNewContext(fs.readFileSync('tools/admin-local/web/telas/aprovacao.js','utf8').replace(/^import .*\r?\n/gm,'').replace('export async function montar','async function montar'), sandbox);
-  root.replaceChildren(); await vm.runInNewContext('montar(root,ctx)', sandbox);
-  const generico = walk(root).find((n) => n.attrs?.texto === 'Aceite pela fila de ajustes');
-  assert.ok(generico?.attrs.disabled, 'pedido aberto não é contornado pela aprovação genérica');
+  // Fase 2: a Aprovação real monta a mesa de demandas com _pecas.js e ajustes.js reais.
+  // Rede e relógio são do teste: nenhum GET real, e o prazo de 15 s da comparação nunca dispara.
+  const pedidosFetch = []; let responderFetch;
+  const mesa = { ctx, root, console: sandbox.console, AbortController, setTimeout: () => 0, clearTimeout: () => {},
+    URL: { createObjectURL: () => 'blob:ficticio', revokeObjectURL() {} },
+    fetch: (url, opcoes) => { pedidosFetch.push([url, opcoes]); return new Promise((r) => { responderFetch = r; }); } };
+  for (const m of ['_pecas.js', 'ajustes.js', 'aprovacao.js']) carregarModulo(m, mesa);
+  const assentar = () => new Promise((r) => setImmediate(r));
+  const botao = (t) => walk(root).find((n) => n.tag === 'button' && n.attrs.texto === t);
+  const recibo = (t) => walk(root).some((n) => typeof n.textContent === 'string' && n.textContent.includes(t));
+  root.replaceChildren(); await vm.runInNewContext('montar(root,ctx)', mesa);
+  assert.ok(botao('Aceite pela fila de ajustes')?.attrs.disabled, 'pedido aberto não é contornado pela aprovação genérica');
+  assert.equal(botao('Recusar peça')?.attrs.disabled, true, 'pedido aberto bloqueia a recusa');
+  const mesaTexto = text(root);
+  assert.ok(mesaTexto.includes('Precisa de você (1)') && mesaTexto.includes('Com os agentes (0)') && mesaTexto.includes('Resolvidas (0)'), 'toda demanda em exatamente uma das três seções');
+  assert.ok(mesaTexto.includes('Corrigido, aguardando seu aceite') && mesaTexto.includes('Revise a correção antes de dar seu aceite.'), 'um selo de estado e o próximo passo');
+  assert.ok(!mesaTexto.includes(base.id) && !mesaTexto.includes(base.versaoCorrigida) && !mesaTexto.includes(base.textoOriginal), 'mesa sem id, SHA inteiro ou texto privado');
+  // Antes e depois: o aceite só libera depois que a versão anterior foi conferida pela rota protegida.
+  assert.equal(pedidosFetch.length, 1);
+  assert.equal(pedidosFetch[0][0], '/api/marketing/ajustes/' + base.id + '/anterior?arquivo=peca-ficticia.png');
+  assert.equal(pedidosFetch[0][1].headers['X-Grana-Admin'], '1', 'sem este cabeçalho o servidor responde 403 e o aceite nunca libera');
+  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, true, 'aceite bloqueado enquanto a comparação não termina');
+  responderFetch({ ok: true, blob: async () => ({}) }); await assentar();
+  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, false, 'comparação conferida libera o aceite');
+  assert.ok(recibo('Versão anterior conferida'));
+  const postsAntes = calls.filter((c) => c[0] === 'POST').length;
+  root.replaceChildren(); await vm.runInNewContext('montar(root,ctx)', mesa);
+  responderFetch({ ok: false }); await assentar();
+  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, true, 'comparação recusada mantém o aceite bloqueado');
+  assert.ok(recibo('O aceite permanece bloqueado') && botao('Tentar comparação novamente'), 'falha da comparação tem recibo e nova tentativa');
+  assert.equal(calls.filter((c) => c[0] === 'POST').length, postsAntes, 'montar e comparar não gravam nada');
+  // Nome com espaço e acento: o DTO traz `nome` literal e `url` já codificada por segmento. A comparação
+  // manda o nome literal; tirar o nome da url codificaria duas vezes e o servidor recusaria com 400.
+  const nomeLiteral = 'peça fictícia v2.png';
+  peca.arquivos = [{ nome: nomeLiteral, tipo: 'imagem', url: '/docs/marketing/ficticio/' + encodeURIComponent(nomeLiteral) }];
+  assert.notEqual(peca.arquivos[0].url.split('/').pop(), nomeLiteral, 'DTO fiel: a url não carrega o nome literal');
+  root.replaceChildren(); await vm.runInNewContext('montar(root,ctx)', mesa);
+  const pedidoAnterior = new URL(pedidosFetch.at(-1)[0], 'http://painel.invalid');
+  assert.equal(pedidoAnterior.pathname, '/api/marketing/ajustes/' + base.id + '/anterior');
+  assert.equal(pedidoAnterior.searchParams.get('arquivo'), nomeLiteral, 'o servidor recebe o nome literal do DTO');
+  assert.equal(pedidosFetch.at(-1)[1].headers['X-Grana-Admin'], '1');
+  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, true, 'nome com espaço e acento: aceite bloqueado antes do sucesso');
+  responderFetch({ ok: true, blob: async () => ({}) }); await assentar();
+  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, false, 'nome com espaço e acento: aceite liberado só depois do sucesso');
+  assert.equal(calls.filter((c) => c[0] === 'POST').length, postsAntes);
   // Toast de erro: texto humano, sem codigo interno cru; o codigo vai so para o console.
   pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio', tentativas: 1 });
   ctx.api = async () => ({ dados: { pedidos, remoto: { status: 'ausente' } } });
