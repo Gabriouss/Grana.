@@ -240,7 +240,8 @@ function pedidosComTitulo(lista) {
   };
   return lista.map((p) => ({ ...pedidoPublico(p), pecaTitulo: titulo(p.pecaId) }));
 }
-const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover)$/;
+const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover|recusar)$/;
+const ANTERIOR = /^\/api\/marketing\/ajustes\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/anterior$/i;
 const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo']);
 const ACOES_BUILD = {
   '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
@@ -298,6 +299,10 @@ async function tratarAcao(req, res, url, corpo, sessao) {
     if (p === '/api/marketing/cronograma') r = rotaMarketingPost(res, 'cronograma', ['salvarManifesto'], [corpo]);
     else if (p === '/api/marketing/cronograma/vinculo') r = rotaMarketingPost(res, 'cronograma', ['registrarVinculo'], [corpo.pecaId, corpo]);
     else if (m && m[2] === 'promover') r = rotaMarketingPost(res, 'promocao', ['promover'], [m[1], corpo]);
+    else if (m && m[2] === 'recusar') {
+      if (req.method !== 'POST') return responderErro(res, 405, 'metodo-recusado', 'Use POST para recusar.');
+      r = rotaMarketingPost(res, 'historico', ['recusar'], [m[1], corpo]);
+    }
     else if (m) r = rotaMarketingPost(res, 'aprovacoes', m[2] === 'aprovar' ? ['aprovar'] : ['pedirAjuste', 'ajuste'], [m[1], corpo]);
     else if (p === '/api/marketing/calendario') r = rotaMarketingPost(res, 'calendario', ['planejar', 'salvar', 'gravar'], [corpo]);
     else r = rotaMarketingPost(res, 'trafego', ['salvarCampanha', 'salvar', 'gravar'], [corpo]);
@@ -514,6 +519,21 @@ async function tratarApi(req, res, url) {
     }
 
     if (req.method === 'GET' || req.method === 'HEAD') {
+      const anterior = ANTERIOR.exec(p);
+      if (anterior) {
+        try {
+          const fila = marketing('ajustes-fila').fila;
+          const pedido = fila.listar().find((r) => r.id === anterior[1]);
+          if (!pedido) return responderErro(res, 404, 'pedido-inexistente', 'Pedido nao encontrado.');
+          const catalogo = marketing('catalogo');
+          const peca = catalogo.obterPeca(RAIZ_DADOS, pedido.pecaId);
+          const arquivo = catalogo.lerAnterior(RAIZ_DADOS, pedido, peca, { resolver: seg.resolverEstatico, arquivo: url.searchParams.get('arquivo') || undefined });
+          res.writeHead(200, { 'Content-Type': arquivo.mime, ...arquivo.extras, 'Content-Length': arquivo.conteudo.length,
+            'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+          res.end(req.method === 'HEAD' ? undefined : arquivo.conteudo);
+        } catch (e) { erroDeMarketing(res, e); }
+        return;
+      }
       const h = GET[p];
       if (!h) return responderErro(res, 404, 'rota-inexistente', 'Rota não encontrada.');
       return await h(req, res, url);

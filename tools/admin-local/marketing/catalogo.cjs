@@ -141,6 +141,52 @@ function urlServivel(relativoRepo) {
   return '/' + relativoRepo.split('/').map(encodeURIComponent).join('/');
 }
 
+// Familia editorial nao altera identidade fisica, versao ou aceite da peca.
+function familia(caminho) {
+  if (typeof caminho !== 'string' || caminho.includes('\\') || caminho.split('/').some((s) => !s || s === '.' || s === '..')) return null;
+  const m = /^(docs\/marketing\/\d{4}-\d{2}\/semana-\d{2}-\d{4}-\d{2}-\d{2}-a-\d{4}-\d{2}-\d{2})\/(para-aprovacao|aprovados|historico)\/(.+)$/.exec(caminho);
+  if (!m) return null;
+  const editorial = editorialDaPeca(path.posix.basename(caminho), caminho);
+  if (editorial && REELS_EDITORIAIS.some((r) => r.familia === editorial.familia)) return `${m[1]}/editorial/${editorial.familia}`;
+  const dir = path.posix.dirname(m[3]);
+  let nome = path.posix.basename(m[3], path.posix.extname(m[3]));
+  let anterior;
+  do { anterior = nome; nome = nome.replace(/-(?:narrado|capa|v\d+)$/i, ''); } while (nome !== anterior);
+  return `${m[1]}/${dir}/${nome.toLowerCase()}`;
+}
+function agruparFamilias(pecas) {
+  const grupos = new Map();
+  for (const p of pecas) {
+    const chave = p.familia || familia(p.caminho) || p.caminho;
+    if (!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave).push(p);
+  }
+  return [...grupos].map(([chave, itens]) => {
+    const versao = (p) => Number(/-v(\d+)(?:-(?:narrado|capa))*\.[^.]+$/i.exec(p.caminho)?.[1] || 0);
+    const ordem = (a, b) => Number(a.estado === 'historico') - Number(b.estado === 'historico')
+      || versao(b) - versao(a) || (b.modificadoEm || '').localeCompare(a.modificadoEm || '') || a.caminho.localeCompare(b.caminho);
+    const capas = itens.filter((p) => p.capaDe || p.capaOrfa).sort(ordem);
+    const alternativas = itens.filter((p) => !p.capaDe && !p.capaOrfa).sort(ordem);
+    const principal = alternativas.shift() || capas.shift();
+    return { id: idDe(chave), chave, principal, alternativas, capas };
+  });
+}
+function versaoDeArquivos(shas, legenda) {
+  return crypto.createHash('sha1').update(shas.join('\n') + '\nlegenda:' + (legenda || '')).digest('hex');
+}
+function caminhoSeguro(raiz, relativo, io = fs) {
+  const ruim = (s) => !s || s.startsWith('.') || /[\\:\u0000-\u001f\u007f<>"|?*]/.test(s) || /[. ]$/.test(s)
+    || /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\.|$)/i.test(s) || /~\d/.test(s);
+  if (typeof relativo !== 'string' || relativo.normalize('NFKC') !== relativo || relativo.split('/').some(ruim)) throw new ErroMarketing('caminho-invalido', 'Caminho do acervo invalido.', 403);
+  const root = path.resolve(raiz), abs = path.resolve(root, relativo);
+  const dentro = (r, p) => { const rel = path.relative(r, p); return !rel.startsWith('..') && !path.isAbsolute(rel); };
+  if (!dentro(root, abs) || abs === root) throw new ErroMarketing('caminho-invalido', 'Caminho fora do acervo.', 403);
+  for (let cur = abs; cur !== root; cur = path.dirname(cur)) {
+    if (io.existsSync(cur) && (io.lstatSync(cur).isSymbolicLink() || !dentro(io.realpathSync(root), io.realpathSync(cur)))) throw new ErroMarketing('caminho-invalido', 'Links nao sao permitidos no acervo.', 403);
+  }
+  return abs;
+}
+
 function listarSemanas(raiz) {
   const base = path.join(raiz, PASTA_MARKETING);
   const semanas = [];
@@ -192,13 +238,13 @@ function agrupar(arquivosDoDiretorio) {
 // ---------- legendas a partir dos documentos de copy existentes ----------
 
 // Lê COPYS-FINAIS.md da semana: "## C01 · Título" e "### Card estático, C01".
-function lerCopys(raiz, semana) {
+function lerCopys(raiz, semana, ler = fs.readFileSync) {
   const mapa = {};
   for (const estado of ESTADOS) {
     const arq = path.join(raiz, semana.relativo, estado, 'pecas', 'COPYS-FINAIS.md');
     let texto;
     try {
-      texto = fs.readFileSync(arq, 'utf8');
+      texto = ler(arq, 'utf8');
     } catch {
       continue;
     }
@@ -412,9 +458,7 @@ function montarCatalogo(raiz) {
           const legenda = copy && !ehDocCopy ? copy.legenda : null;
           // A legenda entra na versão: mudar só o texto gera versão nova,
           // e o aceite anterior deixa de valer para ela.
-          const versao = crypto.createHash('sha1')
-            .update(shas.join('\n') + '\nlegenda:' + (legenda || ''))
-            .digest('hex');
+          const versao = versaoDeArquivos(shas, legenda);
           const nomeCurto = relNoEstado.replace(/^pecas\//, '');
           const capaArq = !ehCarrossel && primeiro.tipo === 'video' ? capaDoVideo.get(primeiro.nome) : null;
           const editorialCapa = capaArq ? editorialDaPeca(capaArq.nome, relRepo(capaArq)) : null;
@@ -434,6 +478,8 @@ function montarCatalogo(raiz) {
             capaDe: videoDaCapa ? idDe(path.posix.dirname(relPeca) + '/' + videoDaCapa) : null,
             capaOrfa: !ehCarrossel && primeiro.tipo === 'imagem' && /-capa.png$/i.test(primeiro.nome) && !ehCapa,
             caminho: relPeca,
+            familia: familia(relPeca),
+            modificadoEm: new Date(Math.max(...grupo.map((a) => fs.statSync(a.abs).mtimeMs))).toISOString(),
             versao,
             semana: { numero: semana.numero, inicio: semana.inicio, fim: semana.fim, mes: semana.mes },
             estado,
@@ -494,6 +540,7 @@ function montarCatalogo(raiz) {
 function enriquecer(raiz, pecas) {
   const ap = lerJson(caminhoPainel(raiz, 'aprovacoes.json'), { aprovacoes: [], ajustes: [] });
   const cal = lerJson(caminhoPainel(raiz, 'calendario.json'), { planejados: [] });
+  const historico = lerJson(caminhoPainel(raiz, 'historico.json'), { recusas: [] });
   const aprovacoes = Array.isArray(ap.aprovacoes) ? ap.aprovacoes : [];
   const ajustes = Array.isArray(ap.ajustes) ? ap.ajustes : [];
   // Pedidos novos vivem na fila privada (fora do repositório), não em ajustes[]. Pedido
@@ -528,6 +575,8 @@ function enriquecer(raiz, pecas) {
       aprovada,
       estadoEfetivo,
       aceite,
+      recusa: p.estado === 'historico' && Array.isArray(historico.recusas)
+        ? historico.recusas.filter((r) => r.id === p.id && r.versao === p.versao).map((r) => ({ motivo: r.motivo, sucessora: r.sucessora, recusadoEm: r.recusadoEm, evidencia: r.evidencia })).at(-1) || null : null,
       // Aceite dado a uma versão anterior não vale para esta (Sentinel A07).
       aceiteDeVersaoAnterior: aceiteAntigo,
       // Catalogo/feed tambem chegam ao navegador: nunca copiar o texto da fila.
@@ -555,7 +604,7 @@ function listarPecas(raiz, filtros = {}) {
   if (filtros.semana) pecas = pecas.filter((p) => String(p.semana.numero) === String(filtros.semana));
   if (filtros.tipo) pecas = pecas.filter((p) => p.tipo === filtros.tipo);
   const semanas = listarSemanas(raiz).map((s) => ({ numero: s.numero, inicio: s.inicio, fim: s.fim, mes: s.mes }));
-  return { pecas, semanas, total: pecas.length };
+  return { pecas, familias: agruparFamilias(pecas), semanas, total: pecas.length };
 }
 
 function obterPeca(raiz, id) {
@@ -602,6 +651,60 @@ function documento(raiz) {
   return { caminho: rel, markdown: texto, bytes: Buffer.byteLength(texto) };
 }
 
+// Read a bounded historical snapshot; no checkout, temporary files or shell.
+// resolver is the same static-file guard used by the local server.
+function lerAnterior(raiz, pedido, peca, { resolver, executar, arquivo } = {}) {
+  if (!pedido || !peca || pedido.pecaId !== peca.id || pedido.caminho !== peca.caminho
+    || pedido.estado !== 'corrigido-aguardando-aceite' || !/^[0-9a-f]{40}$/.test(pedido.commit || '')
+    || !/^[0-9a-f]{40}$/.test(pedido.versaoAlvo || '') || pedido.versaoCorrigida !== peca.versao) {
+    throw new ErroMarketing('anterior-indisponivel', 'A versao anterior deste pedido nao esta comprovada.', 409);
+  }
+  const selecionado = peca.arquivos.find((a) => a.nome === (arquivo || peca.arquivos[0]?.nome));
+  if (!selecionado || typeof resolver !== 'function') throw new ErroMarketing('arquivo-invalido', 'Arquivo da peca invalido.', 400);
+  const protegido = resolver(selecionado.url);
+  if (!protegido || protegido.publico || !['imagem', 'video', 'texto'].includes(selecionado.tipo)) throw new ErroMarketing('arquivo-recusado', 'Arquivo indisponivel para comparacao.', 403);
+  const rel = path.posix.join(path.posix.dirname(peca.caminho), selecionado.nome);
+  const atualSeguro = caminhoSeguro(raiz, rel);
+  if (!fs.lstatSync(atualSeguro).isFile()) throw new ErroMarketing('arquivo-recusado', 'Arquivo atual nao regular.', 403);
+  const semanaRel = peca.caminho.split('/').slice(0, 4).join('/');
+  if (!familia(peca.caminho) || rel.includes(':') || rel.includes('\\') || rel.split('/').some((p) => p.startsWith('.') || p === '..' || /[\u0000-\u001f\u007f]/.test(p))) throw new ErroMarketing('arquivo-recusado', 'Caminho indisponivel para comparacao.', 403);
+  const run = executar || require('node:child_process').execFileSync;
+  const ref = pedido.commit + '^', prazo = Date.now() + 20000;
+  let bytes = 0;
+  const git = (args, limite) => {
+    if (Date.now() >= prazo) throw new ErroMarketing('anterior-limite', 'A leitura da versao anterior excedeu o limite.', 503);
+    try { return run('git', args, { cwd: raiz, shell: false, windowsHide: true, timeout: Math.max(1, prazo - Date.now()), maxBuffer: limite }); }
+    catch { throw new ErroMarketing('anterior-indisponivel', 'Nao foi possivel ler a versao anterior no Git.', 409); }
+  };
+  const entradas = new Map();
+  for (const linha of String(git(['ls-tree', '-r', '-l', '-z', ref, '--', semanaRel], 1024 * 1024)).split('\0')) {
+    const m = /^(100644|100755|120000) blob ([0-9a-f]{40})\s+(\d+)\t(.+)$/.exec(linha);
+    if (m) entradas.set(m[4], { modo: m[1], bytes: Number(m[3]) });
+  }
+  const conteudos = new Map();
+  function ler(abs, encoding) {
+    const caminho = path.relative(raiz, abs).split(path.sep).join('/');
+    const e = entradas.get(caminho);
+    if (!e || e.modo === '120000') throw new ErroMarketing('anterior-indisponivel', 'Arquivo anterior ausente ou nao regular.', 409);
+    if (e.bytes > 64 * 1024 * 1024 || bytes + e.bytes > 256 * 1024 * 1024) throw new ErroMarketing('anterior-limite', 'Arquivo anterior excede o limite de leitura.', 413);
+    if (!conteudos.has(caminho)) { const b = Buffer.from(git(['show', `${ref}:${caminho}`], 64 * 1024 * 1024)); bytes += b.length; conteudos.set(caminho, b); }
+    const b = conteudos.get(caminho); return encoding ? b.toString(encoding) : b;
+  }
+  const dir = path.posix.dirname(peca.caminho);
+  const arquivos = [...entradas].filter(([p, e]) => path.posix.dirname(p) === dir && e.modo !== '120000')
+    .map(([p]) => ({ nome: path.posix.basename(p), tipo: tipoDoArquivo(p), rel: p })).filter((a) => a.tipo);
+  const grupos = agrupar(arquivos);
+  const grupo = grupos.find((g) => (g.length > 1 ? `${dir}/${g[0].grupo}-*` : g[0].rel) === peca.caminho);
+  if (!grupo || grupo.length > 100 || !grupo.some((a) => a.nome === selecionado.nome)) throw new ErroMarketing('anterior-indisponivel', 'Composicao anterior nao comprovada.', 409);
+  const semana = { relativo: semanaRel };
+  const codigo = codigoDaPeca(peca.caminho.slice(semanaRel.length + 1));
+  const copys = lerCopys(raiz, semana, ler);
+  const legenda = codigo && copys[codigo] && grupo[0].nome !== 'COPYS-FINAIS.md' ? copys[codigo].legenda : null;
+  const shas = grupo.map((a) => crypto.createHash('sha1').update(ler(path.join(raiz, a.rel))).digest('hex'));
+  if (versaoDeArquivos(shas, legenda) !== pedido.versaoAlvo) throw new ErroMarketing('anterior-divergente', 'O commit pai nao corresponde a versao pedida.', 409);
+  return { conteudo: ler(path.join(raiz, rel)), mime: protegido.mime, extras: protegido.extras || {} };
+}
+
 module.exports = {
   ErroMarketing,
   ESTADOS,
@@ -622,4 +725,9 @@ module.exports = {
   obterPeca,
   feed,
   documento,
+  familia,
+  agruparFamilias,
+  versaoDeArquivos,
+  lerAnterior,
+  caminhoSeguro,
 };
