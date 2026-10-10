@@ -14884,3 +14884,25 @@ Esta entrada supera o trecho acima que diz que a Fase 2 ainda nao tinha comecado
 **QA do painel com conta ficticia (decisao do autor em 10/10):** o Sentinel abriu `scripts\abrir-painel.cmd` com `APPDATA` apontado para `E:\Grana-temporarios\2026-10-10-sentinel-fase2-qa\appdata`, e a janela pediu cadastro de conta ao autor sem aviso. A conta real, em `%APPDATA%\grana-admin`, nao foi tocada. Decisao: "Pode mandar criar a conta de teste sozinho" e "nao apague a conta ficticia, ela sera usada para futuros testes". O recado foi ao Codex; a conta ainda NAO foi criada (a pasta estava vazia quando o time Codex parou). Senha e TOTP dela nunca entram em log, relatorio, nota ou commit.
 
 **Tambem em 10/10:** o time Claude foi dividido em duas contas, registrado pelo Quill na nota "2026-10-10 - M1 - Divisao de contas do time Claude". As notas "Memoria - 00 Entrada", "Regras e decisoes" e "Pendencias abertas" estao paradas em 02/10 e contradizem o repositorio (HEAD, regras ate a 25, troca dos segredos ja confirmada em 08/10): falta o documentador atualizar. Nota de sessao no vault NAO foi escrita nesta sessao.
+
+## 10/10/2026 (M1, Claude Code): e-mail corporativo pela Resend, recebimento LIGADO e pendente de MX
+
+Escrita pelo orquestrador Claude por pedido direto do autor ("guarda isso aí na memória do projeto"). Nenhum arquivo de código mudou; a mudança foi de configuração na Resend e no `.env` local da M1.
+
+**Pedido:** e-mails corporativos `contato@`, `suporte@` e `marketing@granaponto.com.br`. Requisito do autor: "A gente precisa receber email também porque o suporte vai se comunicar com o cliente, mandando e recebendo email." O resto foi adiado por ele ("vamos fazer isso aí depois").
+
+**Fato comprovado nesta sessão:**
+- A conta da Resend já existia; o domínio `granaponto.com.br` foi cadastrado lá em 21/08/2026 (região `sa-east-1`) e é o SMTP do Supabase Auth, remetente `nao-responda@granaponto.com.br`.
+- `RESEND_API_KEY` entrou no `.env` da M1 (chave "agentes", Full access). A M2 não tem. `.env` segue ignorado pelo git e pelo `.easignore`.
+- Enviar funciona de qualquer endereço do domínio, sem cadastro por endereço: teste dos três para `delivered@resend.dev`, todos `delivered`.
+- Recebimento ligado pela API da Resend. O domínio passou de `verified` para `partially_verified`; o envio foi retestado depois com `nao-responda@` e entregou.
+
+**Pendente (ação do autor):** criar no Registro.br, cujo DNS não tem API, o registro MX de nome vazio, prioridade 10, servidor `inbound-smtp.sa-east-1.amazonaws.com`. Até lá, e-mail enviado a qualquer `@granaponto.com.br` volta com erro, inclusive resposta de cliente.
+
+**Não verificado (checklist):**
+- [ ] Propagação do MX e teste de recebimento em `contato@` (`GET /emails/receiving`).
+- [ ] Cadastro real de usuário pelo app com o domínio em `partially_verified` (o teste foi direto na API da Resend, não pelo Supabase).
+
+**Em aberto para o autor:** como o suporte responde. A Resend mostra o recebido só no painel, por API e por webhook, sem caixa de resposta. Caminhos: redirecionar para um Gmail e responder pelo "Enviar e-mail como" via SMTP da Resend, ou função que encaminha o evento `email.received`. Redirecionador terceiro é mais um operador de dado de cliente (rever política de privacidade). Falta também dizer para qual Gmail.
+
+**Descartado:** ImprovMX como primeiro passo, trocado pelo recebimento da própria Resend, que não acrescenta terceiro e bastava para o motivo imediato (confirmar a inscrição de um e-mail no programa de startups da Anthropic; elegibilidade não conferida na página oficial). Nota de sessão no vault NÃO foi escrita.
