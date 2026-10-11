@@ -83,11 +83,14 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       const aceite = dados.aprovacoes.find((a) => aceiteValido(a, p));
       if (!aceite) throw new c.ErroMarketing('sem-aceite', 'A versão precisa do aceite datado do autor antes da promoção.', 409);
       // A fila usa ID físico. Pedido aberto bloqueia a mudança de caminho: não o deixar órfão.
-      let pedidos;
-      try { pedidos = require('./ajustes-fila.cjs').fila.listar(); }
+      let pedidos, estadoTerminal;
+      try {
+        const fila = require('./ajustes-fila.cjs');
+        pedidos = fila.fila.listar(); estadoTerminal = fila.estadoTerminal;
+      }
       catch { log('promocao-fila-indisponivel'); throw new c.ErroMarketing('fila-indisponivel', 'Confira a fila de ajustes antes de promover.', 503); }
-      if (pedidos.some((r) => r.pecaId === p.id && !['aceito', 'desatualizado'].includes(r.estado)) ||
-        (dados.ajustes || []).some((r) => r.id === p.id && r.versao === p.versao && !['aceito', 'desatualizado'].includes(r.estado))) {
+      if (pedidos.some((r) => r.pecaId === p.id && !estadoTerminal(r.estado)) ||
+        (dados.ajustes || []).some((r) => r.id === p.id && r.versao === p.versao && !estadoTerminal(r.estado))) {
         throw new c.ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto. Conclua ou confira o pedido antes de promover a peça.', 409);
       }
       const novoCaminho = p.caminho.replace('/para-aprovacao/', '/aprovados/');

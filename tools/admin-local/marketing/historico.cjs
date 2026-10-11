@@ -92,7 +92,24 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
       if (!arquivos.length) throw new c.ErroMarketing('sem-arquivos', 'Peca sem arquivos.', 409);
       const copiados = []; let persistido = false;
       try {
-        for (const a of arquivos) { io.mkdirSync(path.dirname(a.para), { recursive: true }); io.copyFileSync(a.de, a.para, fs.constants.COPYFILE_EXCL); copiados.push(a); if (sha(a.para) !== a.sha1) throw new Error('copia-divergente'); }
+        for (const a of arquivos) {
+          io.mkdirSync(path.dirname(a.para), { recursive: true });
+          // Uma copia parcial nunca ocupa o destino do acervo. O diretorio
+          // exclusivo pertence a esta tentativa; .tmp nao entra no catalogo.
+          const pasta = io.mkdtempSync(path.join(path.dirname(a.para), '.recusa-'));
+          const tmp = path.join(pasta, 'copia.tmp');
+          try {
+            io.copyFileSync(a.de, tmp, fs.constants.COPYFILE_EXCL);
+            if (sha(tmp) !== a.sha1) throw new Error('copia-divergente');
+            // Hard link publica os bytes conferidos sem substituir destino
+            // criado por outro processo entre a validacao e esta etapa.
+            io.linkSync(tmp, a.para);
+            copiados.push(a);
+          } finally {
+            try { if (io.existsSync(tmp)) io.unlinkSync(tmp); io.rmdirSync(pasta); }
+            catch { log('recusa-temporario-pendente'); }
+          }
+        }
         const caminho = p.caminho.replace(/\/(para-aprovacao|aprovados)\//, '/historico/');
         const nova = c.montarCatalogo(raiz).find((p) => p.caminho === caminho);
         if (!nova || nova.versao !== p.versao) throw new Error('destino-divergente');

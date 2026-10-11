@@ -6,6 +6,10 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 const cfg = require('../config.cjs');
 
+// Estados finais do pedido; desconhecidos continuam bloqueando a promocao.
+const ESTADOS_TERMINAIS = Object.freeze(['aceito', 'desatualizado', 'encerrado', 'recusado-pelo-autor']);
+const estadoTerminal = (estado) => ESTADOS_TERMINAIS.includes(estado);
+
 // Characters as the Edge Function and Postgres char_length count them (code points), not
 // UTF-16 units: 1001 emoji are 1001 characters there and 2002 units in .length.
 const caracteres = (s) => [...s].length;
@@ -407,4 +411,4 @@ function iniciarRecepcao() {
   const timer = setInterval(() => void fila.sincronizarRemoto(), 5000); timer.unref(); void fila.sincronizarRemoto(); return () => clearInterval(timer);
 }
 const vigiaEstado = () => require('./ajustes-vigia-estado.cjs').ler(repo.pasta);
-module.exports = { criarFila, repositorioPrivado, fila, iniciarRecepcao, vigiaEstado, classificarSaida, pastaFila: repo.pasta };
+module.exports = { criarFila, repositorioPrivado, fila, iniciarRecepcao, vigiaEstado, classificarSaida, pastaFila: repo.pasta, estadoTerminal };

@@ -25,6 +25,9 @@ export async function montar(raiz, ctx) {
   const ensaio = h('section', { class: 'secao', 'aria-label': 'Ensaio do calendário Meta' });
   raiz.appendChild(ensaio);
   montarEnsaioCalendario(ensaio, ctx);
+  const cronograma = h('section', { class: 'secao', 'aria-label': 'Cronograma editorial' });
+  raiz.appendChild(cronograma);
+  montarCronograma(cronograma, ctx);
   const corpo = h('div', { class: 'tela-corpo' });
   raiz.appendChild(corpo);
   ctx.estado.carregando(corpo, 'Lendo o calendário…');
@@ -102,12 +105,16 @@ export async function montar(raiz, ctx) {
     h('h2', { class: 'secao-titulo', id: 'cal-sem-data-titulo', texto: 'Aprovados sem data' }),
     semData.length
       ? h('ul', { class: 'lista-sem-data' }, semData.map((p) => {
-        const li = h('li', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
+        const li = h('div', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
           h('span', { class: 'cal-item-titulo', texto: p.titulo || p.id }),
           h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }));
+        const item = h('li', {}, li, h('div', { class: 'bloco-acao' }, botaoVinculo(ctx, p)), detalhesCronograma(ctx, p));
+        if (ctx.params.peca === p.id) {
+          item.appendChild(h('p', { class: 'campo-ajuda', role: 'status', texto: 'Peça selecionada após o aceite. Ligue ao cronograma para receber a previsão.' }));
+        }
         li.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/x-grana-peca', p.id); e.dataTransfer.effectAllowed = 'move'; });
-        return li;
+        return item;
       }))
       : h('p', { class: 'texto-fraco', texto: 'Nenhuma peça aprovada sem previsão válida. As previsões vinculadas entram automaticamente no calendário.' }),
     semData.length ? h('p', { class: 'campo-ajuda', texto: 'Arraste para um dia ou use "Escolher data".' }) : null);
@@ -121,7 +128,7 @@ export async function montar(raiz, ctx) {
     corpo.appendChild(ctx.secao('Previsões e entradas no calendário',
       h('p', { class: 'nota-explicativa', texto: 'A previsão vem do cronograma. Uma alteração manual preserva essa origem; o recibo do calendário não comprova publicação na Meta.' }),
       ...entradas.map((i) => h('article', { class: 'secao' },
-        h('h3', { class: 'secao-titulo quebra', texto: i.peca?.titulo || i.peca?.id || 'Peça' }), detalhesCronograma(ctx, i)))));
+        h('h3', { class: 'secao-titulo quebra', texto: i.peca?.titulo || i.peca?.id || 'Peça' }), detalhesCronograma(ctx, i), botaoVinculo(ctx, i.peca)))));
   }
 
   if ((d.desatualizados || []).length) {
@@ -143,6 +150,136 @@ export async function montar(raiz, ctx) {
         { titulo: 'Situação', valor: (r) => r.situacao },
       ], d.referenciaFunil, { legenda: 'Calendário relativo do funil' })));
   }
+}
+
+const SLUG_CRONOGRAMA = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+function manifestoValido(m) {
+  return m && m.formato === 1 && SLUG_CRONOGRAMA.test(m.manifestoId) && Number.isSafeInteger(m.versao) && m.versao > 0 &&
+    m.fuso === 'America/Sao_Paulo' && Array.isArray(m.itens) && Array.isArray(m.removidos);
+}
+function dataValida(data) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data || '')) return false;
+  const d = new Date(`${data}T12:00:00Z`);
+  return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === data;
+}
+function mostrarAvisos(ctx, r) { for (const aviso of r.dados?.avisos || []) ctx.aviso(aviso, 'info'); }
+function erroCronograma(ctx, err) {
+  console.warn('[calendario-cronograma]', err.codigo || 'falha');
+  const passos = {
+    'cronograma-conflito': 'O cronograma mudou. Atualize a tela e escolha novamente antes de salvar.',
+    'linha-cronograma-ausente': 'O índice da semana precisa de uma linha única e da coluna Cronograma ID. Peça aos agentes para preparar o índice e tente novamente.',
+    'vinculo-existente': 'O índice já tem outro vínculo. Peça aos agentes para conferir o registro antes de trocar.',
+    'vinculo-duplicado': 'Outra peça usa este item. Escolha outro item ou peça a correção do vínculo no índice.',
+    'vinculo-invalido': 'A peça, a versão ou o item mudou. Atualize e confira o aceite antes de ligar.',
+    'versao-mudou': 'A peça mudou. Volte à Aprovação e aceite a versão atual.',
+  };
+  if (!ctx.obsoleta()) ctx.aviso(passos[err.codigo] || `A ação não foi confirmada: ${err.message}. Atualize e confira os recibos antes de repetir.`, 'erro');
+}
+
+// Reutiliza a seção e os diálogos do painel; a revisão e os recibos são do servidor.
+export async function montarCronograma(raiz, ctx) {
+  ctx.estado.carregando(raiz, 'Lendo o cronograma…');
+  try {
+    const m = (await ctx.api('/api/marketing/cronograma')).dados;
+    if (ctx.obsoleta()) return;
+    if (m !== null && !manifestoValido(m)) throw new Error('Cronograma indisponível ou inválido. Peça aos agentes para conferir o arquivo.');
+    raiz.replaceChildren(ctx.h('h2', { class: 'secao-titulo', texto: 'Cronograma editorial' }),
+      ctx.h('p', { class: 'campo-ajuda', role: 'status', texto: m
+        ? `${m.itens.length} itens · revisão ${m.versao} · ${m.diaD ? `Dia D: ${ctx.formatar.data(m.diaD)}` : 'Dia D ainda não definido. Defina a data para resolver as previsões relativas.'}`
+        : 'Cronograma ausente. Crie o cronograma e adicione um item antes de ligar a peça aceita.' }));
+    const acao = (tipo, texto) => {
+      const b = ctx.h('button', { class: 'botao botao-fantasma', type: 'button', texto,
+        onclick: () => editarCronograma(ctx, m, tipo, b) });
+      return b;
+    };
+    raiz.appendChild(ctx.h('div', { class: 'bloco-acao' }, m
+      ? [acao('diaD', 'Definir dia D'), acao('item', 'Adicionar item ao cronograma')]
+      : acao('criar', 'Criar cronograma')));
+    for (const r of m?.recibos || []) {
+      if (r.acao === 'dia-d') raiz.appendChild(ctx.h('p', { class: 'campo-ajuda', role: 'status',
+        texto: `Recibo do dia D: ${r.antes || 'não definido'} → ${r.depois || 'não definido'} · ${ctx.formatar.dataHora(r.em)}. Não autoriza publicação na Meta.` }));
+    }
+  } catch (err) {
+    console.warn('[calendario-cronograma-leitura]', err.codigo || 'falha');
+    if (!ctx.obsoleta()) ctx.estado.erro(raiz, err, () => montarCronograma(raiz, ctx));
+  }
+}
+
+export async function editarCronograma(ctx, m, tipo, botao) {
+  if (botao.disabled || ctx.obsoleta()) return;
+  botao.disabled = true;
+  try {
+    const campos = tipo === 'criar' ? [{ nome: 'manifestoId', rotulo: 'Identificador do cronograma', obrigatorio: true, ajuda: 'Letras minúsculas e números separados por hífen. Exemplo: campanha-grana.' }]
+      : tipo === 'diaD' ? [{ nome: 'diaD', rotulo: 'Dia D', tipo: 'date', obrigatorio: true, valor: m.diaD || '' }]
+        : [{ nome: 'itemId', rotulo: 'Identificador do item', obrigatorio: true, ajuda: 'Letras minúsculas e números separados por hífen. Este identificador não poderá ser reutilizado depois da retirada.' },
+          { nome: 'diasUteis', rotulo: 'Dias úteis após o dia D', tipo: 'number', obrigatorio: true, valor: 0, min: 0, max: 3650, passo: 1 },
+          { nome: 'hora', rotulo: 'Horário', tipo: 'time', obrigatorio: true, valor: '19:00' },
+          { nome: 'canal', rotulo: 'Canal', tipo: 'select', valor: 'reels', opcoes: CANAIS.map((c) => ({ valor: c.valor, rotulo: rotuloCanal(c.valor) })) }];
+    const v = await ctx.formulario({ titulo: tipo === 'criar' ? 'Criar cronograma' : tipo === 'diaD' ? 'Definir dia D' : 'Adicionar item ao cronograma',
+      texto: 'Planejamento local. Nenhuma publicação será enviada ou agendada na Meta.', campos, rotuloBotao: 'Conferir' });
+    if (!v || ctx.obsoleta()) return;
+    let novo;
+    if (tipo === 'criar') {
+      if (!SLUG_CRONOGRAMA.test(v.manifestoId || '')) throw new Error('Use um identificador com letras minúsculas e hífens');
+      novo = { formato: 1, manifestoId: v.manifestoId, versao: 1, fuso: 'America/Sao_Paulo', diaD: null, itens: [], removidos: [] };
+    } else {
+      if (!manifestoValido(m)) throw new Error('Releia o cronograma');
+      novo = { ...m, versao: m.versao + 1 };
+      if (tipo === 'diaD') {
+        if (!dataValida(v.diaD)) throw new Error('Informe uma data válida para o dia D');
+        novo.diaD = v.diaD;
+      } else {
+        if (!SLUG_CRONOGRAMA.test(v.itemId || '') || m.itens.some((i) => i.id === v.itemId) || m.removidos.includes(v.itemId) ||
+          !Number.isInteger(v.diasUteis) || v.diasUteis < 0 || v.diasUteis > 3650 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(v.hora || '') || !CANAIS.some((c) => c.valor === v.canal)) throw new Error('Confira identificador único, dias úteis, horário e canal');
+        novo.itens = [...m.itens, { id: v.itemId, dataPrevista: { modo: 'diaD', diasUteis: v.diasUteis, hora: v.hora, canal: v.canal } }];
+      }
+    }
+    const ok = await ctx.confirmar({ titulo: 'Confirmar cronograma', texto: 'Salva o planejamento local e recalcula as previsões das peças aceitas. A Meta continua em ensaio.',
+      detalhes: [novo.manifestoId, tipo === 'diaD' ? `Dia D: ${ctx.formatar.data(novo.diaD)}` : tipo === 'item' ? `${v.itemId} · D+${v.diasUteis}` : 'Cronograma vazio, pronto para receber itens'], rotuloBotao: 'Salvar cronograma' });
+    if (ok !== true || ctx.obsoleta()) return;
+    const r = await ctx.acao('/api/marketing/cronograma', { versaoEsperada: m?.versao || 0, manifesto: novo, confirmacao: true });
+    if (ctx.obsoleta()) return;
+    mostrarAvisos(ctx, r);
+    if (!manifestoValido(r.dados?.manifesto) || r.dados.manifesto.versao !== novo.versao) throw new Error('O servidor não confirmou a revisão salva');
+    ctx.aviso(tipo === 'diaD' ? 'Dia D salvo. Confira o recibo e as previsões atualizadas.' : tipo === 'item' ? 'Item salvo. Agora ligue a peça aceita ao cronograma.' : 'Cronograma criado. Adicione um item para ligar a peça aceita.', 'ok');
+    ctx.recarregar();
+  } catch (err) { erroCronograma(ctx, err); }
+  finally { if (!ctx.obsoleta()) botao.disabled = false; }
+}
+
+function aceiteDaPeca(p) {
+  return p?.reciboAceite?.tipo === 'aceite-autor' && p.reciboAceite.versaoPeca === p.versao &&
+    Number.isFinite(Date.parse(p.reciboAceite.aprovadoEm)) && p.reciboAceite.evidencia === 'aceite pelo autor no painel local';
+}
+function botaoVinculo(ctx, p) {
+  if (!aceiteDaPeca(p) || p.estado !== 'aprovados') return null;
+  const b = ctx.h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ligar ao cronograma', onclick: () => ligarCronograma(ctx, p, b) });
+  return b;
+}
+export async function ligarCronograma(ctx, p, botao) {
+  if (botao.disabled || !aceiteDaPeca(p) || p.estado !== 'aprovados' || ctx.obsoleta()) return;
+  botao.disabled = true;
+  try {
+    const m = (await ctx.api('/api/marketing/cronograma')).dados;
+    if (ctx.obsoleta()) return;
+    if (!manifestoValido(m) || !m.itens.length) throw new Error('Crie o cronograma e adicione um item antes de ligar a peça');
+    const v = await ctx.formulario({ titulo: 'Ligar ao cronograma', texto: `${p.titulo || 'Peça aceita'}. O vínculo será registrado no INDICE.md da semana.`,
+      campos: [{ nome: 'itemId', rotulo: 'Item do cronograma', tipo: 'select', obrigatorio: true, valor: m.itens[0].id,
+        opcoes: m.itens.map((i) => ({ valor: i.id, rotulo: `${m.manifestoId}#${i.id}@${m.versao}` })) }], rotuloBotao: 'Conferir vínculo' });
+    if (!v || ctx.obsoleta()) return;
+    if (!m.itens.some((i) => i.id === v.itemId)) throw new Error('Escolha um item da lista atual');
+    const ok = await ctx.confirmar({ titulo: 'Confirmar vínculo', texto: 'Liga esta versão aceita à previsão local. Nenhuma ação real da Meta será habilitada.',
+      detalhes: [p.titulo || 'Peça aceita', `${m.manifestoId}#${v.itemId}@${m.versao}`], rotuloBotao: 'Ligar ao cronograma' });
+    if (ok !== true || ctx.obsoleta()) return;
+    const r = await ctx.acao('/api/marketing/cronograma/vinculo', { pecaId: p.id, versao: p.versao, versaoEsperada: m.versao, manifestoId: m.manifestoId, itemId: v.itemId });
+    if (ctx.obsoleta()) return;
+    mostrarAvisos(ctx, r);
+    const recibo = r.dados?.cronograma;
+    if (recibo?.manifestoId !== m.manifestoId || recibo.itemId !== v.itemId || recibo.manifestoVersao !== m.versao) throw new Error('O servidor não confirmou o vínculo no índice');
+    ctx.aviso(`Vínculo registrado no INDICE.md: ${m.manifestoId}#${v.itemId}@${m.versao}. Confira a previsão e o recibo do calendário.`, 'ok');
+    ctx.recarregar();
+  } catch (err) { erroCronograma(ctx, err); }
+  finally { if (!ctx.obsoleta()) botao.disabled = false; }
 }
 
 // Leitura independente: falha do ensaio não apaga o calendário editorial.
@@ -254,8 +391,15 @@ export function detalhesCronograma(ctx, previsao) {
   };
   const manual = previsao.substituicaoManual;
   const recibos = (Array.isArray(previsao.recibos) && previsao.recibos.length ? previsao.recibos : previsao.recibo ? [previsao.recibo] : []).filter((r) => r && typeof r === 'object');
+  if (previsao.reciboAceite && !recibos.some((r) => r.tipo === 'aceite-autor')) recibos.push(previsao.reciboAceite);
   return h('div', { class: 'secao-corpo quebra' },
     h('p', { texto: `Data prevista: ${prevista}` }),
+    h('p', { class: 'campo-ajuda', texto: previsao.estado === 'planejado' ? 'Planejada no calendário local. Confira o recibo. A Meta continua em ensaio.'
+      : !origem ? 'Próximo passo: ligue a peça aceita a um item do cronograma. Se o item não existe, adicione-o ao cronograma.'
+        : previsao.estado === 'desatualizado' ? 'Próximo passo: volte à Aprovação e aceite a versão atual.'
+          : ['aguardando dia D', 'aguardando-dia-d'].includes(previsao.estado) ? 'Próximo passo: defina o dia D para resolver a previsão.'
+            : ['duplicado', 'vinculo-invalido', 'vínculo inválido', 'vínculo duplicado', 'cronograma inválido'].includes(previsao.estado) ? 'Próximo passo: peça aos agentes para conferir o item e o vínculo no índice antes de planejar.'
+              : 'Próximo passo: confira a previsão e os recibos antes de seguir.' }),
     origem ? h('p', { class: 'campo-ajuda', texto: `Origem: ${origem.manifestoId || 'manifesto não informado'} · ${origem.itemId || 'item não informado'} · revisão ${origem.manifestoVersao ?? 'não informada'}` }) : h('p', { class: 'campo-ajuda', texto: 'Origem do cronograma não informada.' }),
     p?.modo === 'diaD' && (p.dataResolvida || previsao.dataResolvida) ? h('p', { texto: `Previsão resolvida: ${data(p.dataResolvida || previsao.dataResolvida)}` }) : null,
     estados[previsao.estado] ? ctx.alerta('atencao', estados[previsao.estado]) : previsao.estado && !['resolvido', 'planejado'].includes(previsao.estado) ? ctx.alerta('atencao', `Estado do cronograma: ${previsao.estado}. Confira antes de seguir.`) : null,

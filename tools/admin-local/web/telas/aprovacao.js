@@ -71,7 +71,11 @@ export async function montar(raiz, ctx) {
   const grupoSelecionado = () => familias.find((g) => g.pecas.some((p) => p.id === selecionada?.id));
   const escolher = (p) => { selecionada = p; desenharLista(); desenharDetalhe(); detalhe.focus({ preventScroll: false }); };
   const situacaoFamilia = (grupo) => {
-    const situacoes = grupo.pecas.map((p) => situacaoDaDemanda(p, pedidos));
+    const situacoes = grupo.pecas.map((p) => {
+      const s = situacaoDaDemanda(p, pedidos);
+      return p.aprovada && p.estado === 'para-aprovacao' && s.secao === 'resolvidas'
+        ? { ...s, secao: 'voce', proximo: 'Mova a versão aceita para aprovados e siga ao Calendário.' } : s;
+    });
     return situacoes.find((s) => s.secao === 'voce') || situacoes.find((s) => s.secao === 'agentes') || situacoes[0];
   };
   const seletor = (id, rotulo, opcoes, chave) => h('div', { class: 'campo' }, h('label', { for: id, texto: rotulo }),
@@ -211,8 +215,13 @@ export async function montar(raiz, ctx) {
     const botaoRecusar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Recusar peça',
       disabled: filaIndisponivel || temPedidoAberto || p.estado === 'historico',
       onclick: () => recusarPeca(ctx, p, familiaAtual?.pecas || [p], pedidos, botaoRecusar) });
+    const botaoMover = p.aprovada && p.estado === 'para-aprovacao' ? h('button', {
+      class: 'botao', type: 'button', texto: 'Mover para aprovados', disabled: filaIndisponivel || temPedidoAberto,
+      onclick: () => promoverPeca(ctx, p, botaoMover),
+    }) : null;
     detalhe.appendChild(h('div', { class: 'bloco-acao' }, botaoAprovar, botaoAjuste, botaoRecusar,
-      p.aprovada ? h('a', { class: 'botao botao-fantasma', href: '#/marketing/calendario', texto: 'Marcar data no calendário' }) : null));
+      botaoMover,
+      p.aprovada && p.estado === 'aprovados' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null));
   };
 
   desenharLista();
@@ -322,6 +331,36 @@ export async function recusarPeca(ctx, p, familia, pedidos, botao) {
     console.warn('[aprovacao-recusar]', err.codigo || 'falha');
     if (!ctx.obsoleta()) ctx.aviso(err.codigo === 'versao-mudou' ? 'A peça mudou. Atualize e revise antes de recusar.' : 'A recusa não foi confirmada. Atualize a peça e confira os recibos antes de repetir.', 'erro');
   } finally { if (!ctx.obsoleta()) botao.disabled = false; }
+}
+
+export async function promoverPeca(ctx, p, botao) {
+  if (botao.disabled || !p.aprovada || p.estado !== 'para-aprovacao' || ctx.obsoleta()) return;
+  botao.disabled = true;
+  try {
+    const ok = await ctx.confirmar({ titulo: 'Mover para aprovados',
+      texto: 'Move os arquivos desta versão aceita para aprovados e registra a prova no índice da semana. Depois, escolha o item do cronograma no Calendário. Nada será publicado ou agendado na Meta.',
+      detalhes: [tituloPeca(p)], rotuloBotao: 'Mover para aprovados' });
+    if (ok !== true || ctx.obsoleta()) return;
+    botao.textContent = 'Movendo…';
+    const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/promover`, { versao: p.versao, confirmacao: true });
+    if (ctx.obsoleta()) return;
+    for (const aviso of r.dados?.avisos || []) ctx.aviso(aviso, 'info');
+    const recibo = r.dados?.promocao;
+    if (!/^[a-f0-9]{16}$/.test(recibo?.id || '') || recibo.versao !== p.versao) {
+      ctx.aviso('A resposta não confirmou a peça promovida. Atualize e confira o índice antes de repetir.', 'erro');
+      return;
+    }
+    ctx.aviso(recibo.indice ? `Promoção registrada em ${recibo.indice}. Confira o vínculo e a data no Calendário.`
+      : 'Promoção registrada, mas o recibo no índice está pendente. Confira o índice da semana antes de seguir.', recibo.indice ? 'ok' : 'info');
+    ctx.navegar(`#/marketing/calendario?peca=${encodeURIComponent(recibo.id)}`);
+  } catch (err) {
+    console.warn('[aprovacao-promover]', err.codigo || 'falha');
+    if (!ctx.obsoleta()) ctx.aviso(err.codigo === 'versao-mudou' || err.codigo === 'sem-aceite'
+      ? 'A versão precisa de novo aceite. Atualize e revise a peça antes de mover.'
+      : `A promoção não foi confirmada: ${err.message}. Atualize e confira os recibos antes de repetir.`, 'erro');
+  } finally {
+    if (!ctx.obsoleta()) { botao.disabled = false; botao.textContent = 'Mover para aprovados'; }
+  }
 }
 
 async function aprovar(ctx, p, botao) {

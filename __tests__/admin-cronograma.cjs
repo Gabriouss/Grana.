@@ -10,12 +10,24 @@ let pedidos = [];
 function load(nome) {
   if (mods.has(nome)) return mods.get(nome).exports;
   const m = { exports: {} }; mods.set(nome, m);
+  if (nome === 'ajustes-fila.cjs') {
+    const negar = () => { throw new Error('EFEITO EXTERNO PROIBIDO'); };
+    const imports = { fs: new Proxy({}, { get: () => negar }), path,
+      os: { homedir: () => '/fixture' }, crypto: { randomUUID: negar }, child_process: { execFile: negar },
+      '../config.cjs': {}, './ajustes-remoto.cjs': { remotoDoEnv: () => ({ remoto: null }) } };
+    vm.runInNewContext(fs.readFileSync(path.join(raizMod, nome), 'utf8'), {
+      module: m, exports: m.exports, process: { pid: 123, env: Object.freeze({}) }, Date, structuredClone,
+      console, setInterval: negar, fetch: negar,
+      require: (id) => { assert(Object.hasOwn(imports, id), 'IMPORT PROIBIDO ' + id); return imports[id]; },
+    }, { filename: nome });
+    return m.exports;
+  }
   vm.runInNewContext(fs.readFileSync(path.join(raizMod, nome), 'utf8'), {
     module: m, exports: m.exports, Buffer, Date, Intl, console, structuredClone,
     process: { pid: process.pid, env: new Proxy({}, { get() { throw new Error('ENV PROIBIDO'); } }) },
     fetch() { chamadas.push('Meta'); throw new Error('REDE PROIBIDA'); },
     require: (id) => {
-      if (id === './ajustes-fila.cjs') return { fila: { listar: () => pedidos } };
+      if (id === './ajustes-fila.cjs') return { ...load('ajustes-fila.cjs'), fila: { listar: () => pedidos } };
       if (id.startsWith('./')) return load(id.slice(2));
       if (['fs', 'path', 'crypto', 'node:fs', 'node:path', 'node:crypto'].includes(id)) return require(id);
       throw new Error('IMPORT PROIBIDO ' + id);
@@ -58,7 +70,12 @@ async function fixture(fn, padaria = false, nomes = ['E01.jpg']) {
   };
   try { await fn(h); } finally { assert.equal(path.dirname(path.resolve(dir)), base); assert(path.basename(dir).startsWith('grana-cronograma-')); fs.rmSync(dir, { recursive: true, force: true }); }
 }
-async function test(nome, fn, padaria, nomes) { await fixture(fn, padaria, nomes); grupos++; console.log('OK ' + nome); }
+const filtro = process.argv.find((a) => a.startsWith('--filtro='))?.slice('--filtro='.length);
+async function test(nome, fn, padaria, nomes) {
+  if (filtro && !nome.includes(filtro)) return;
+  if (padaria && process.argv.includes('--sintetico')) { console.log('SKIP fixture real: ' + nome); return; }
+  await fixture(fn, padaria, nomes); grupos++; console.log('OK ' + nome);
+}
 (async () => {
   await test('PADARIA aceite real07/10: aguardando D -> D+4 úteis automaticamente, sem fabricar aceite', async (h) => {
     assert.equal(h.p.id, '44f4151757801600'); assert.equal(h.p.versao, 'bc01c04e92badb8c64de75c15d46eb13e7a920cb');
@@ -196,13 +213,44 @@ async function test(nome, fn, padaria, nomes) { await fixture(fn, padaria, nomes
     const r = cal.obterCalendario(h.dir, '2026-10'); assert.equal(r.itens[0].data, '2026-10-12'); assert(r.avisos.some((s) => s.includes('Feriado nacional')));
     assert.throws(() => cr.validar({ ...m, datasComAviso: [{ data: '2026-02-31', motivo: 'aviso' }] }));
   });
-  await test('pedido aberto bloqueia promoção sem alterar fila/caminho; terminal não bloqueia', async (h) => {
+  await test('promocao-terminais: pedido novo bloqueia sem mutacao; aceito permite', async (h) => {
     await h.iniciar(); await h.aprovar(); pedidos = [{ pecaId: h.p.id, versaoAlvo: h.p.versao, estado: 'novo' }];
     try {
-      await assert.rejects(h.promover(), (e) => e.codigo === 'ajuste-aberto'); assert(fs.existsSync(path.join(h.dir, h.rel))); assert.equal(pedidos[0].estado, 'novo');
+      const antes = [h.rel, path.relative(h.dir, h.indice), 'docs/marketing/painel/aprovacoes.json', 'docs/marketing/painel/cronograma.json', 'docs/marketing/painel/calendario.json']
+        .map((rel) => [rel, fs.readFileSync(path.join(h.dir, rel), 'utf8')]);
+      const filaAntes = JSON.stringify(pedidos), efeitos = [];
+      const io = { ...fs };
+      for (const metodo of ['copyFileSync', 'unlinkSync', 'mkdirSync', 'writeFileSync', 'renameSync']) io[metodo] = (...args) => { efeitos.push(metodo); return fs[metodo](...args); };
+      await assert.rejects(promo.criarPromocao(io)(h.dir, h.p.id, { versao: h.p.versao, confirmacao: true }), (e) => e.codigo === 'ajuste-aberto');
+      assert.deepEqual(efeitos, [], 'pedido novo nao copia, apaga nem escreve');
+      for (const [rel, conteudo] of antes) assert.equal(fs.readFileSync(path.join(h.dir, rel), 'utf8'), conteudo, rel);
+      assert.equal(fs.existsSync(path.join(h.dir, h.rel.replace('/para-aprovacao/', '/aprovados/'))), false);
+      assert.equal(JSON.stringify(pedidos), filaAntes, 'fila nao muda no bloqueio');
       pedidos[0].estado = 'aceito'; await h.promover(); assert(!fs.existsSync(path.join(h.dir, h.rel))); assert.equal(pedidos[0].estado, 'aceito');
     } finally { pedidos = []; }
   });
+  for (const estado of ['encerrado', 'recusado-pelo-autor']) for (const origem of ['fila', 'legado']) {
+    await test(`promocao-terminais: ${estado} em ${origem} permite sem alterar pedido`, async (h) => {
+      await h.iniciar(); await h.aprovar();
+      const arq = path.join(h.painel, 'aprovacoes.json');
+      if (origem === 'fila') pedidos = [{ pecaId: h.p.id, versaoAlvo: h.p.versao, estado }];
+      else {
+        const dados = JSON.parse(fs.readFileSync(arq, 'utf8'));
+        dados.ajustes = [{ id: h.p.id, versao: h.p.versao, estado }];
+        fs.writeFileSync(arq, JSON.stringify(dados));
+      }
+      const filaAntes = JSON.stringify(pedidos), ajustesAntes = JSON.stringify(JSON.parse(fs.readFileSync(arq, 'utf8')).ajustes);
+      try {
+        const r = await h.promover(); assert.equal(r.jaExistia, false);
+        assert(!fs.existsSync(path.join(h.dir, h.rel)));
+        assert(fs.existsSync(path.join(h.dir, r.promocao.caminho)));
+        const dados = JSON.parse(fs.readFileSync(arq, 'utf8'));
+        assert.equal(dados.aprovacoes.length, 2); assert.equal(dados.aprovacoes[1].origem.id, h.p.id);
+        assert.equal(JSON.stringify(dados.ajustes), ajustesAntes); assert.equal(JSON.stringify(pedidos), filaAntes);
+        assert(fs.readFileSync(h.indice, 'utf8').includes(`<!-- promocao:${r.promocao.id}:${h.p.versao} -->`));
+      } finally { pedidos = []; }
+    });
+  }
   await test('recibo real de primeira entrada é persistido uma vez; GET e promoção não inventam outro', async (h) => {
     await h.iniciar(); await h.aprovar();
     const arq = path.join(h.painel, 'calendario.json'), antes = fs.readFileSync(arq, 'utf8');

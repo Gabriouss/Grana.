@@ -64,6 +64,37 @@ function setup(f, opts) {
     await assert.rejects(save(f.dir, h.p.id, h.corpo)); assert.ok(!fs.existsSync(h.registro));
     for (const a of h.p.arquivos) assert.ok(fs.existsSync(path.join(f.media, a.nome)));
   }, ['peca-1.png', 'peca-2.png']);
+  for (const modo of ['interrompida', 'divergente']) await test('copia ' + modo + ' nao deixa orfao e permite retry', async (f) => {
+    const h = setup(f), logs = []; let copiar = 0, publicar = 0;
+    const fn = h.hist.criarHistorico({ ...fs,
+      copyFileSync(de, para, flag) {
+        copiar++; assert.equal(flag, fs.constants.COPYFILE_EXCL);
+        fs.writeFileSync(para, 'fixture parcial', { flag: 'wx' });
+        if (modo === 'interrompida') throw Object.assign(new Error('fixture'), { code: 'EIO' });
+      },
+      linkSync(...args) { publicar++; fs.linkSync(...args); },
+    }, (codigo) => logs.push(codigo));
+    await assert.rejects(fn(f.dir, h.p.id, h.corpo), (e) => e.codigo === 'recusa-falhou');
+    assert.equal(copiar, 1); assert.equal(publicar, 0);
+    assert.ok(fs.existsSync(h.origem)); assert.ok(!fs.existsSync(h.destino)); assert.ok(!fs.existsSync(h.registro));
+    assert.ok(logs.includes('recusa-falhou'));
+    assert.deepEqual(fs.readdirSync(path.dirname(h.destino)), []);
+    assert.equal(h.catalogo.montarCatalogo(f.dir).filter((p) => p.estado === 'historico').length, 0);
+    const retry = await h.hist.recusar(f.dir, h.p.id, h.corpo);
+    assert.equal(retry.jaExistia, false); assert.ok(!fs.existsSync(h.origem));
+    assert.equal(fs.readFileSync(h.destino, 'utf8'), 'fixture peca.png');
+  });
+  await test('destino criado durante staging e preservado sem sobrescrita', async (f) => {
+    const h = setup(f);
+    const fn = h.hist.criarHistorico({ ...fs, linkSync(de, para) {
+      fs.writeFileSync(para, 'fixture de outro processo', { flag: 'wx' });
+      fs.linkSync(de, para);
+    } }, () => {});
+    await assert.rejects(fn(f.dir, h.p.id, h.corpo), (e) => e.codigo === 'recusa-falhou');
+    assert.ok(fs.existsSync(h.origem)); assert.ok(!fs.existsSync(h.registro));
+    assert.equal(fs.readFileSync(h.destino, 'utf8'), 'fixture de outro processo');
+    assert.deepEqual(fs.readdirSync(path.dirname(h.destino)), [h.p.arquivos[0].nome]);
+  });
   await test('indice pendente e falha de limpeza deixam recibo e permitem retomar', async (f) => {
     const h = setup(f); let indiceFalha = true, limpezaFalha = true, copiar = 0;
     const fn = h.hist.criarHistorico({ ...fs, copyFileSync(...a) { copiar++; fs.copyFileSync(...a); }, renameSync(de, para) { if (para === f.indice && indiceFalha) throw new Error('fixture'); fs.renameSync(de, para); }, unlinkSync(abs) { if (abs === h.origem && limpezaFalha) throw new Error('fixture'); fs.unlinkSync(abs); } }, () => {});

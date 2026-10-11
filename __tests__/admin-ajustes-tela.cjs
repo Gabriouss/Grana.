@@ -260,6 +260,13 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
     recarregar: () => {},
   };
   Object.assign(sandbox, { contextoEncerrar, pedidoEncerrar: { ...base, estado: 'precisa-de-atencao' } });
+  sandbox.botaoReenviar = { disabled: false };
+  respostaConfirmacao = false;
+  await vm.runInNewContext('agir(contextoEncerrar,pedidoEncerrar,"reenviar",botaoReenviar)', sandbox);
+  assert.equal(confirmacoesEncerrar.at(-1).titulo, 'Reenviar pedido');
+  assert.equal(postsEncerrar.length, 0, 'cancelar reenvio não grava');
+  confirmacoesEncerrar.length = 0;
+  respostaConfirmacao = true;
   const encerrar = async () => {
     sandbox.botaoEncerrar = { disabled: false };
     await vm.runInNewContext('agir(contextoEncerrar,pedidoEncerrar,"encerrar",botaoEncerrar)', sandbox);
