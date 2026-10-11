@@ -56,6 +56,7 @@ const source=fs.readFileSync('tools/admin-local/web/telas/calendario.js','utf8')
   reject=false;late=true;root.replaceChildren();const promise=render();await Promise.resolve();obsoleta=true;resolver({dados:dto});await promise;
   assert.equal(text(root).includes('Previsões e entradas'),false);
   assert.ok(calls.every((c)=>c.startsWith('/api/marketing/calendario') || c==='/api/marketing/cronograma'));
+  assert.ok(calls.includes('/api/marketing/cronograma'), 'tela não leu o cronograma');
   console.log('admin-calendario-cronograma-integracao: criar vínculo -> aceite real -> DTO real -> tela, semD/resolvido/manual/falha/tardio OK; zero POST/rede/env');
  } finally { assert.equal(path.dirname(path.resolve(dir)),tempBase);assert(path.basename(dir).startsWith('grana-cronograma-tela-'));fs.rmSync(dir,{recursive:true,force:true}); }
 })().catch((e)=>{console.error(e);process.exitCode=1;});
