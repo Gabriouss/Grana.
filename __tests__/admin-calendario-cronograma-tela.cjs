@@ -206,7 +206,9 @@ function achar(root, label) {
   confirms.push(true);await aprovacao.promoverPeca(incompleta,p,botao());assert.equal(navegacoes.length,navAntes);assert.equal(avisos.at(-1).tipo,'erro');
   let resolverPost;const tardia={...contexto,acao:()=>new Promise((r)=>resolverPost=r)};
   forms.push({diaD:'2099-02-01'});confirms.push(true);const salvarTardio=calendario.editarCronograma(tardia,m,'diaD',botao());
-  await Promise.resolve();await Promise.resolve();const antesAvisos=avisos.length,antesRecarga=recargas;
+  for (let i = 0; i < 50 && typeof resolverPost !== 'function'; i++) await new Promise((r) => setImmediate(r));
+  assert.equal(typeof resolverPost, 'function', 'POST tardio não chegou: editarCronograma saiu antes de chamar acao');
+  const antesAvisos=avisos.length,antesRecarga=recargas;
   obsoleta=true;resolverPost({dados:{manifesto:{...m,versao:4,diaD:'2099-02-01'},avisos:['não exibir']}});await salvarTardio;
   assert.equal(avisos.length,antesAvisos);assert.equal(recargas,antesRecarga);obsoleta=false;
   obsoleta=true;await calendario.editarCronograma(contexto,m,'diaD',botao());await aprovacao.promoverPeca(contexto,p,botao());assert.equal(posts().length,n);obsoleta=false;
