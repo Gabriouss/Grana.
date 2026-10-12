@@ -134,7 +134,7 @@ function obterCalendario(raiz, mes) {
 // POST /api/marketing/calendario  { id, versao, data, hora?, canal, observacao? }
 // Com { id, remover: true } tira a peça do calendário.
 function planejar(raiz, corpo = {}) {
-  return serializar(() => {
+  return serializar(raiz, () => {
     const dados = ler(raiz);
     if (corpo.remover === true) {
       const antes = dados.planejados.length;

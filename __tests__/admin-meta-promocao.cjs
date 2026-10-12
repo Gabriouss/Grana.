@@ -17,7 +17,7 @@ function load(nome) {
     require: (id) => {
       if (id === './ajustes-fila.cjs') return { fila: { listar: () => [] } };
       if (id.startsWith('./')) return load(id.slice(2));
-      if (['fs', 'path', 'crypto', 'node:fs', 'node:path', 'node:crypto'].includes(id)) return require(id);
+      if (['fs', 'path', 'crypto', 'node:fs', 'node:path', 'node:crypto', 'node:os'].includes(id)) return require(id);
       throw new Error('IMPORT PROIBIDO ' + id);
     },
   }, { filename: nome });

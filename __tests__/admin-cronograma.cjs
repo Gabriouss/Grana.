@@ -29,7 +29,7 @@ function load(nome) {
     require: (id) => {
       if (id === './ajustes-fila.cjs') return { ...load('ajustes-fila.cjs'), fila: { listar: () => pedidos } };
       if (id.startsWith('./')) return load(id.slice(2));
-      if (['fs', 'path', 'crypto', 'node:fs', 'node:path', 'node:crypto'].includes(id)) return require(id);
+      if (['fs', 'path', 'crypto', 'node:fs', 'node:path', 'node:crypto', 'node:os'].includes(id)) return require(id);
       throw new Error('IMPORT PROIBIDO ' + id);
     },
   }, { filename: nome });
@@ -77,6 +77,187 @@ async function test(nome, fn, padaria, nomes) {
   await fixture(fn, padaria, nomes); grupos++; console.log('OK ' + nome);
 }
 (async () => {
+  await test('ITEM-C bootstrap CRLF, duas peças, retry sem escrita/sincronização e CAS', async (h) => {
+    const antes = '# Semana\r\n\r\n| Legado | Prova |\r\n| --- | --- |\r\n| texto | preservado |\r\n';
+    fs.writeFileSync(h.indice, antes);
+    fs.writeFileSync(path.join(path.dirname(path.join(h.dir, h.rel)), 'E02.jpg'), 'segunda');
+    await cr.salvarManifesto(h.dir, { manifesto: { ...h.manifesto, itens: [...h.manifesto.itens, { id: 'segunda', dataPrevista: { modo: 'diaD', diasUteis: 0 } }] }, versaoEsperada: 0 });
+    const pedido = { versao: h.p.versao, versaoEsperada: 1, manifestoId: h.manifesto.manifestoId, itemId: 'peca-teste' };
+    await cr.registrarVinculo(h.dir, h.p.id, pedido);
+    const texto = fs.readFileSync(h.indice, 'utf8');
+    assert(texto.startsWith(antes)); assert(!/(?<!\r)\n/.test(texto));
+    assert.equal(texto.split('grana-cronograma-vinculos:v1:inicio').length, 2);
+    const calendario = fs.readFileSync(path.join(h.painel, 'calendario.json'));
+    const sincronizar = cr.sincronizar, write = fs.writeFileSync;
+    let sincronizacoes = 0, escritasIndice = 0;
+    cr.sincronizar = () => { sincronizacoes++; throw new Error('RETRY NÃO PODE SINCRONIZAR'); };
+    fs.writeFileSync = (p, ...args) => { if (typeof p === 'string' && p.startsWith(h.indice)) escritasIndice++; return write(p, ...args); };
+    try { await cr.registrarVinculo(h.dir, h.p.id, pedido); }
+    finally { cr.sincronizar = sincronizar; fs.writeFileSync = write; }
+    assert.equal(sincronizacoes, 0); assert.equal(escritasIndice, 0);
+    assert.equal(fs.readFileSync(h.indice, 'utf8'), texto);
+    assert(fs.readFileSync(path.join(h.painel, 'calendario.json')).equals(calendario));
+    const segunda = c.montarCatalogo(h.dir).find((p) => p.caminho.endsWith('E02.jpg'));
+    await cr.registrarVinculo(h.dir, segunda.id, { ...pedido, versao: segunda.versao, itemId: 'segunda' });
+    assert.equal(fs.readFileSync(h.indice, 'utf8').split('grana-cronograma-vinculos:v1:inicio').length, 2);
+    assert.equal(cr.vinculo(h.dir, segunda).itemId, 'segunda');
+    const snapshot = fs.readFileSync(h.indice);
+    await assert.rejects(cr.registrarVinculo(h.dir, h.p.id, { ...pedido, versaoEsperada: 0 }), (e) => e.codigo === 'cronograma-conflito');
+    assert(fs.readFileSync(h.indice).equals(snapshot));
+  });
+  await test('ITEM-C índice ausente, links encoded e célula legada sem reformatar', async (h) => {
+    fs.unlinkSync(h.indice);
+    await h.iniciar(); assert.equal(cr.vinculo(h.dir, h.p).itemId, 'peca-teste');
+    const nome = 'Café (novo).jpg', rel = h.rel.replace('E01.jpg', nome);
+    fs.writeFileSync(path.join(h.dir, rel), 'encoded');
+    const p = c.montarCatalogo(h.dir).find((p) => p.caminho === rel);
+    const m = cr.ler(h.dir); await cr.salvarManifesto(h.dir, { manifesto: { ...m, versao: 2, itens: [...m.itens, { id: 'encoded', dataPrevista: { modo: 'diaD', diasUteis: 0 } }] }, versaoEsperada: 1 });
+    const original = '# Legado\r\n| Peça | Extra | Cronograma ID |\r\n| --- | --- | --- |\r\n| [x](para-aprovacao/pecas/Caf%C3%A9%20%28novo%29.jpg) |  INTATO  |   |\r\n';
+    fs.writeFileSync(h.indice, original);
+    await cr.registrarVinculo(h.dir, p.id, { versao: p.versao, versaoEsperada: 2, manifestoId: m.manifestoId, itemId: 'encoded' });
+    assert.equal(fs.readFileSync(h.indice, 'utf8'), original.replace('|   |\r\n', '|   campanha-teste#encoded@2|\r\n'));
+    assert.equal(cr.vinculo(h.dir, p).itemId, 'encoded');
+    fs.writeFileSync(h.indice, '# Novo\n');
+    await cr.registrarVinculo(h.dir, p.id, { versao: p.versao, versaoEsperada: 2, manifestoId: m.manifestoId, itemId: 'encoded' });
+    assert(fs.readFileSync(h.indice, 'utf8').includes('Caf%C3%A9%20%28novo%29.jpg'));
+    assert.equal(cr.vinculo(h.dir, p).itemId, 'encoded');
+    await ap.aprovar(h.dir, p.id, { versao: p.versao, confirmacao: true });
+    await promo.promover(h.dir, p.id, { versao: p.versao, confirmacao: true });
+    const destino = c.montarCatalogo(h.dir).find((v) => v.caminho === rel.replace('/para-aprovacao/', '/aprovados/'));
+    assert(destino); assert(!fs.existsSync(path.join(h.dir, rel)));
+    const vinculoDestino = cr.vinculo(h.dir, destino);
+    assert(vinculoDestino, 'promoção perdeu o vínculo encoded');
+    assert.equal(vinculoDestino.itemId, 'encoded');
+    assert.equal(fs.readFileSync(h.indice, 'utf8').split('campanha-teste#encoded@2').length, 2);
+  });
+  await test('ITEM-C carrossel com pasta encoded mantém token e links legados na promoção', async (h) => {
+    const pasta = path.join(path.dirname(path.join(h.dir, h.rel)), 'Café novo');
+    fs.mkdirSync(pasta);
+    for (const n of ['E02-01.jpg', 'E02-02.jpg']) fs.writeFileSync(path.join(pasta, n), n);
+    const p = c.montarCatalogo(h.dir).find((p) => p.tipo === 'carrossel'); assert(p);
+    fs.writeFileSync(h.indice, '# Índice\r\n- [Legado](para-aprovacao/pecas/Café novo/)\r\n- [Sem barra](para-aprovacao/pecas/Café novo)\r\n');
+    await cr.salvarManifesto(h.dir, { manifesto: h.manifesto, versaoEsperada: 0 });
+    await cr.registrarVinculo(h.dir, p.id, { versao: p.versao, versaoEsperada: 1, manifestoId: h.manifesto.manifestoId, itemId: 'peca-teste' });
+    await ap.aprovar(h.dir, p.id, { versao: p.versao, confirmacao: true });
+    await promo.promover(h.dir, p.id, { versao: p.versao, confirmacao: true });
+    const destino = c.montarCatalogo(h.dir).find((p) => p.tipo === 'carrossel' && p.estado === 'aprovados'); assert(destino);
+    assert.equal(cr.vinculo(h.dir, destino).itemId, 'peca-teste');
+    const texto = fs.readFileSync(h.indice, 'utf8');
+    assert(texto.includes('](aprovados/pecas/Caf%C3%A9%20novo/)'));
+    assert(texto.includes('[Legado](aprovados/pecas/Café novo/)'));
+    assert(texto.includes('[Sem barra](aprovados/pecas/Café novo)'));
+    assert.equal(texto.split('campanha-teste#peca-teste@1').length, 2);
+    assert(!fs.existsSync(path.join(pasta, 'E02-01.jpg')));
+    assert(!fs.existsSync(path.join(pasta, 'E02-02.jpg')));
+  });
+  await test('ITEM-C ambiguidades e token/versão inválidos sem escrita de dados', async (h) => {
+    await h.iniciar();
+    const header = '| Peça | Cronograma ID |\n| --- | --- |\n';
+    const linha = '| [x](para-aprovacao/pecas/E01.jpg) | |\n';
+    const inicio = '<!-- grana-cronograma-vinculos:v1:inicio -->\n', fim = '<!-- grana-cronograma-vinculos:v1:fim -->\n';
+    const casos = [header + linha + linha, inicio + header + linha, fim + inicio + header + linha,
+      inicio + header + linha + fim + inicio + header + fim, inicio + header + 'prosa\n' + fim,
+      '| Peça | Cronograma ID | Cronograma ID |\n| --- | --- | --- |\n',
+      header + '| [outra](para-aprovacao/pecas/E02.jpg) | |\n',
+      header + '| [x](para-aprovacao/pecas/%2e%2e/E01.jpg) | |\n',
+      header + '| [x](para-aprovacao%2fpecas/E01.jpg) | |\n',
+      inicio + '\n' + header + '\n' + linha + '\nprosa\n' + fim,
+      '| Peça | Cronograma ID |\n\n' + linha];
+    const pedido = { versao: h.p.versao, versaoEsperada: 1, manifestoId: h.manifesto.manifestoId, itemId: 'peca-teste' };
+    for (const texto of casos) {
+      fs.writeFileSync(h.indice, texto);
+      const arquivos = [h.indice, path.join(h.painel, 'cronograma.json'), path.join(h.painel, 'calendario.json'), path.join(h.dir, h.rel)];
+      const antes = arquivos.map((p) => fs.readFileSync(p));
+      await assert.rejects(cr.registrarVinculo(h.dir, h.p.id, pedido), (e) => e.codigo === 'linha-cronograma-ausente');
+      arquivos.forEach((p, i) => assert(fs.readFileSync(p).equals(antes[i])));
+    }
+    fs.writeFileSync(h.indice, header + linha.replace('| |', '| outro#item@1 |'));
+    const antes = fs.readFileSync(h.indice);
+    await assert.rejects(cr.registrarVinculo(h.dir, h.p.id, pedido), (e) => e.codigo === 'vinculo-existente');
+    await assert.rejects(cr.registrarVinculo(h.dir, h.p.id, { ...pedido, versao: 'errada' }), (e) => e.codigo === 'vinculo-invalido');
+    assert(fs.readFileSync(h.indice).equals(antes));
+  });
+  await test('ITEM-C exemplos fenced ignorados, headers independentes e corrida criação exclusiva', async (h) => {
+    await cr.salvarManifesto(h.dir, { manifesto: h.manifesto, versaoEsperada: 0 });
+    const exemplo = '```md\n<!-- grana-cronograma-vinculos:v1:inicio -->\n| Peça | Cronograma ID |\n| --- | --- |\n<!-- grana-cronograma-vinculos:v1:fim -->\n```\n';
+    fs.writeFileSync(h.indice, exemplo);
+    const pedido = { versao: h.p.versao, versaoEsperada: 1, manifestoId: h.manifesto.manifestoId, itemId: 'peca-teste' };
+    await cr.registrarVinculo(h.dir, h.p.id, pedido);
+    assert(fs.readFileSync(h.indice, 'utf8').startsWith(exemplo));
+    fs.appendFileSync(h.indice, '\n| Outra | Cronograma ID |\n| --- | --- |\n| [outro](para-aprovacao/pecas/outro.jpg) | |\n');
+    await cr.registrarVinculo(h.dir, h.p.id, pedido);
+    fs.unlinkSync(h.indice);
+    const link = fs.linkSync;
+    fs.linkSync = (de, para) => { if (para === h.indice) fs.writeFileSync(para, 'CONCORRENTE'); return link(de, para); };
+    try { await assert.rejects(cr.registrarVinculo(h.dir, h.p.id, pedido), (e) => e.code === 'EEXIST'); }
+    finally { fs.linkSync = link; }
+    assert.equal(fs.readFileSync(h.indice, 'utf8'), 'CONCORRENTE');
+    assert(!fs.readdirSync(path.dirname(h.indice)).some((n) => n.endsWith('.tmp')));
+  });
+  await test('ITEM-C dois processos reais: timeout, quatro writers e release não remove dono alheio', async (h) => {
+    const { fork } = require('node:child_process');
+    const worker = `const fs=require('fs'); const c=require(process.argv[2]);
+      c.serializar(process.argv[1], async()=>{fs.writeFileSync(process.argv[1]+'/efeito.txt','dono');process.send({tipo:'dentro'});await new Promise(r=>process.once('message',r));})
+      .then(()=>process.send({tipo:'fim'})).catch(e=>process.send({tipo:'erro',codigo:e.codigo}));`;
+    const iniciar = () => {
+      const child = fork('-e', [worker, h.dir, path.join(raizMod, 'catalogo.cjs')], { silent: true });
+      const mensagens = [], esperas = [];
+      child.on('message', (m) => { const resolve = esperas.shift(); if (resolve) resolve(m); else mensagens.push(m); });
+      return { child, next: () => mensagens.length ? Promise.resolve(mensagens.shift()) : new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { child.kill(); reject(new Error('worker excedeu prazo')); }, 10000);
+        esperas.push((m) => { clearTimeout(timer); resolve(m); });
+      }) };
+    };
+    const dono = iniciar();
+    try {
+      assert.equal((await dono.next()).tipo, 'dentro');
+      const arquivo = path.join(h.dir, '.grana-admin-writer.lock'), bytes = fs.readFileSync(arquivo);
+      const segundo = iniciar();
+      try { assert.equal((await segundo.next()).codigo, 'marketing-trava-ocupada'); }
+      finally { segundo.child.kill(); }
+      assert(fs.readFileSync(arquivo).equals(bytes));
+      // Módulos reais no VM também recusam antes de validar/produzir efeitos de negócio.
+      const AtomicsOriginal = Atomics.wait;
+      Atomics.wait = () => 'timed-out';
+      try {
+        for (const fn of [() => cr.registrarVinculo(h.dir, h.p.id), () => cr.salvarManifesto(h.dir),
+          () => ap.aprovar(h.dir, h.p.id), () => promo.promover(h.dir, h.p.id),
+          () => load('historico.cjs').recusar(h.dir, h.p.id), () => cal.planejar(h.dir), () => load('trafego.cjs').salvarCampanha(h.dir)]) {
+          await assert.rejects(fn(), (e) => e.codigo === 'marketing-trava-ocupada');
+          assert(fs.readFileSync(arquivo).equals(bytes));
+        }
+      } finally { Atomics.wait = AtomicsOriginal; }
+      const alheio = JSON.stringify({ token: 'outro', host: os.hostname(), pid: process.pid });
+      fs.writeFileSync(arquivo, alheio); dono.child.send('liberar');
+      assert.equal((await dono.next()).codigo, 'marketing-trava-perdida');
+      assert.equal(fs.readFileSync(arquivo, 'utf8'), alheio);
+      fs.unlinkSync(arquivo); // Somente residual fictício criado por este teste.
+      await c.serializar(h.dir, () => {}); assert(!fs.existsSync(arquivo));
+      await assert.rejects(c.serializar(h.dir, () => { throw new Error('falha controlada'); }), /falha controlada/);
+      assert(!fs.existsSync(arquivo));
+    } finally { dono.child.kill(); }
+  });
+  await test('ITEM-C staging alheio EEXIST preservado e falha de escrita própria limpa somente seu tmp', async (h) => {
+    await h.iniciar(); fs.writeFileSync(h.indice, '# Índice intacto\r\n');
+    const crypto = require('node:crypto'), uuid = crypto.randomUUID;
+    const tmp = h.indice + '.fixture-colisao.tmp';
+    const pedido = { versao: h.p.versao, versaoEsperada: 1, manifestoId: h.manifesto.manifestoId, itemId: 'peca-teste' };
+    const antes = [h.indice, path.join(h.painel, 'cronograma.json'), path.join(h.painel, 'calendario.json')].map((p) => fs.readFileSync(p));
+    crypto.randomUUID = () => 'fixture-colisao';
+    try {
+      fs.writeFileSync(tmp, 'STAGING DE OUTRO DONO');
+      await assert.rejects(cr.registrarVinculo(h.dir, h.p.id, pedido), (e) => e.code === 'EEXIST');
+      assert.equal(fs.readFileSync(tmp, 'utf8'), 'STAGING DE OUTRO DONO');
+      fs.unlinkSync(tmp);
+      const open = fs.openSync, write = fs.writeFileSync; let fdProprio;
+      fs.openSync = (p, ...args) => { const fd = open(p, ...args); if (p === tmp) fdProprio = fd; return fd; };
+      fs.writeFileSync = (p, ...args) => { if (p === fdProprio) throw Object.assign(new Error('falha própria'), { code: 'EIO' }); return write(p, ...args); };
+      try { await assert.rejects(cr.registrarVinculo(h.dir, h.p.id, pedido), (e) => e.code === 'EIO'); }
+      finally { fs.openSync = open; fs.writeFileSync = write; }
+      assert(!fs.existsSync(tmp));
+      [h.indice, path.join(h.painel, 'cronograma.json'), path.join(h.painel, 'calendario.json')].forEach((p, i) => assert(fs.readFileSync(p).equals(antes[i])));
+    } finally { crypto.randomUUID = uuid; }
+  });
   await test('PADARIA aceite real07/10: aguardando D -> D+4 úteis automaticamente, sem fabricar aceite', async (h) => {
     assert.equal(h.p.id, '44f4151757801600'); assert.equal(h.p.versao, 'bc01c04e92badb8c64de75c15d46eb13e7a920cb');
     const aceiteAntes = fs.readFileSync(path.join(h.painel, 'aprovacoes.json'), 'utf8');

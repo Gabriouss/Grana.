@@ -44,7 +44,7 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
     return { recusa: registro, avisos: [...avisos, 'Nada foi publicado ou agendado.'] };
   }
   return function recusar(raiz, id, corpo = {}) {
-    return c.serializar(() => {
+    return c.serializar(raiz, () => {
       if (corpo.confirmacao !== true) throw new c.ErroMarketing('confirmacao-invalida', 'Confirme a recusa para continuar.', 400);
       if (typeof corpo.motivo !== 'string' || !corpo.motivo.trim() || [...corpo.motivo.trim()].length > 500) throw new c.ErroMarketing('motivo-invalido', 'Informe motivo de 1 a 500 caracteres.', 400);
       if (!/^[0-9a-f]{16}$/.test(id || '') || !/^[0-9a-f]{40}$/.test(corpo.versao || '')) throw new c.ErroMarketing('versao-invalida', 'Peca ou versao invalida.', 400);

@@ -20,7 +20,7 @@ function harness(dir, opts = {}) {
         if (id === './autenticacao.cjs') return { situacaoConta: () => ({ estado: 'ok', geracao: opts.revogada ? 2 : 1 }) };
         if (id === './seguranca.cjs') return seg;
         if (id === 'node:child_process') return { execFileSync: opts.git || (() => { throw new Error('PROCESSO PROIBIDO'); }) };
-        if (['fs', 'node:fs', 'path', 'node:path', 'crypto', 'node:crypto'].includes(id)) return require(id);
+        if (['fs', 'node:fs', 'path', 'node:path', 'crypto', 'node:crypto', 'node:os'].includes(id)) return require(id);
         if (id === 'os') return { homedir: () => '/fixture' };
         if (id.startsWith('./') && base === 'marketing') return load(id.slice(2));
         if (path.isAbsolute(id) && path.dirname(id) === path.join(raiz, 'tools/admin-local/marketing')) return load(path.basename(id));

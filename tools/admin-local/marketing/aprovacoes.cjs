@@ -89,7 +89,7 @@ function anotarNoIndice(raiz, peca, registro) {
 
 // POST /api/marketing/pecas/:id/aprovar  { versao, confirmacao: true }
 function aprovar(raiz, id, corpo = {}) {
-  return serializar(() => {
+  return serializar(raiz, () => {
     if (corpo.confirmacao !== true) {
       throw new ErroMarketing('confirmacao-invalida', 'Confirme o aceite desta versão.', 400);
     }

@@ -36,14 +36,20 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       const base = registro.origem.caminho.split('/').slice(0, 4).join('/') + '/';
       const indice = seguro(raiz, base + 'INDICE.md');
       let texto = io.readFileSync(indice, 'utf8');
+      const trocarLink = (de, para) => {
+        // Preserve links legados literais e o codec usado pelo vínculo novo.
+        texto = texto.split(`](${de})`).join(`](${para})`);
+        const encoded = c.linkDoIndice(de);
+        if (encoded !== de) texto = texto.split(`](${encoded})`).join(`](${c.linkDoIndice(para)})`);
+      };
       for (const a of registro.arquivosPromovidos) {
-        texto = texto.split(`](${a.origem.slice(base.length)})`).join(`](${a.destino.slice(base.length)})`);
+        trocarLink(a.origem.slice(base.length), a.destino.slice(base.length));
       }
       // Carrossel usa link da pasta no INDICE; preserve a coluna/token da linha.
       if (registro.arquivosPromovidos.length > 1) {
         const de = path.posix.dirname(registro.origem.caminho).slice(base.length);
         const para = de.replace('/para-aprovacao/', '/aprovados/').replace(/^para-aprovacao\//, 'aprovados/');
-        texto = texto.split(`](${de}/)`).join(`](${para}/)`).split(`](${de})`).join(`](${para})`);
+        trocarLink(de + '/', para + '/'); trocarLink(de, para);
       }
       const marcador = `<!-- promocao:${registro.id}:${registro.versao} -->`;
       if (!texto.includes(marcador)) texto = texto.trimEnd() + `\n\n${marcador}\n- Promoção ${registro.promovidoEm}: [peça em aprovados](${registro.arquivosPromovidos[0].destino.slice(base.length)}); aceite do autor em ${registro.aprovadoEm}, versão \`${registro.versao}\`. Origem \`${registro.origem.caminho}\`. Nada publicado ou agendado.\n`;
@@ -53,7 +59,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
     } catch { log('promocao-indice-pendente'); avisos.push('Evidência salva no JSON; confira a linha e os links do índice semanal.'); }
   }
   return function promover(raiz, id, corpo = {}) {
-    return c.serializar(() => {
+    return c.serializar(raiz, () => {
       if (corpo.confirmacao !== true) throw new c.ErroMarketing('confirmacao-invalida', 'Confirme a promoção.', 400);
       if (!/^[a-f0-9]{16}$/.test(id) || !/^[a-f0-9]{40}$/.test(corpo.versao)) throw new c.ErroMarketing('versao-invalida', 'Informe a peça e a versão atual.', 400);
       const arq = c.caminhoPainel(raiz, 'aprovacoes.json');

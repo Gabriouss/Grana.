@@ -66,7 +66,7 @@ function totalDe(c) {
 // POST /api/marketing/trafego  cria (sem id) ou edita (com id) uma campanha.
 // { id?, nome, objetivo, publico, orcamentoDiario, periodo:{inicio,fim,relativo?}, pecas:[ids], status, observacoes? }
 function salvarCampanha(raiz, corpo = {}) {
-  return serializar(() => {
+  return serializar(raiz, () => {
     const dados = ler(raiz);
     const nome = textoCurto(corpo.nome, 120);
     if (!nome) throw new ErroMarketing('nome-vazio', 'Dê um nome à campanha.', 400);

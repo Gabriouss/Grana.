@@ -9,13 +9,13 @@ function load(nome) {
  const m = { exports: {} }; mods.set(nome, m);
  vm.runInNewContext(fs.readFileSync(path.join(base, nome), 'utf8'), { module: m, exports: m.exports, Buffer, Date, Intl, console, structuredClone,
   process: { pid: process.pid, env: new Proxy({}, { get() { throw Error('env proibido'); } }) }, fetch: () => { throw Error('rede proibida'); },
-  require: (id) => id === './ajustes-fila.cjs' ? { fila: { listar: () => [] } } : id.startsWith('./') ? load(id.slice(2)) : ['fs','path','crypto','node:fs','node:path','node:crypto'].includes(id) ? require(id) : (() => { throw Error('import proibido '+id); })(),
+  require: (id) => id === './ajustes-fila.cjs' ? { fila: { listar: () => [] } } : id.startsWith('./') ? load(id.slice(2)) : ['fs','path','crypto','node:fs','node:path','node:crypto','node:os'].includes(id) ? require(id) : (() => { throw Error('import proibido '+id); })(),
  }, { filename: nome }); return m.exports;
 }
 const node = (tag, attrs = {}, ...children) => ({ tag, attrs, children: children.flat(Infinity).filter(Boolean), appendChild(v) { this.children.push(v); }, replaceChildren(...v) { this.children=v; },
  get firstChild() { return this.children[0]; }, removeChild(v) { this.children=this.children.filter((c)=>c!==v); }, addEventListener() {}, classList: { add() {}, remove() {} } });
 const text = (n) => n == null ? '' : typeof n === 'object' ? [n.attrs?.texto || '', ...(n.children || []).map(text)].join(' ') : String(n);
-const source=fs.readFileSync('tools/admin-local/web/telas/calendario.js','utf8').replace(/^import .*\n/m,'').replace(/export (async )?function /g,'$1function ');
+const source=fs.readFileSync('tools/admin-local/web/telas/calendario.js','utf8').replace(/^import .*\r?\n/m,'').replace(/export (async )?function /g,'$1function ');
 (async()=>{
  const tempBase=path.resolve(os.tmpdir()), dir=fs.mkdtempSync(path.join(tempBase,'grana-cronograma-tela-'));
  try {

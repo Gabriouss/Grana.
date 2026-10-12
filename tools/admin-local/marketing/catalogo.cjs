@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('node:os');
 
 const PASTA_MARKETING = 'docs/marketing';
 const PASTA_PAINEL = 'docs/marketing/painel';
@@ -51,6 +52,12 @@ function caminhoPainel(raiz, nome) {
   return path.join(raiz, PASTA_PAINEL, nome);
 }
 
+// Codec único para destinos Markdown do índice; recebe caminho local já validado.
+function linkDoIndice(relativo) {
+  return relativo.split('/').map((s) => encodeURIComponent(s).replace(/[!'()*]/g,
+    (v) => '%' + v.charCodeAt(0).toString(16).toUpperCase())).join('/');
+}
+
 function lerJson(arquivo, padrao) {
   let texto;
   try {
@@ -76,8 +83,36 @@ function gravarJsonAtomico(arquivo, dados) {
 
 // Uma escrita por vez no processo, para dois cliques não se atropelarem.
 let fila = Promise.resolve();
-function serializar(fn) {
-  const r = fila.then(() => fn());
+function serializar(raiz, fn) {
+  const r = fila.then(async () => {
+    // Todos os writers cooperantes usam a raiz física, inclusive em portas diferentes.
+    // Não recuperar por idade: um residual exige conferência operacional de host/PID.
+    const arquivo = path.join(fs.realpathSync(raiz), '.grana-admin-writer.lock');
+    const dono = JSON.stringify({ token: crypto.randomUUID(), host: os.hostname(), pid: process.pid, em: agoraLocalIso() });
+    let fd;
+    for (let tentativa = 0; ; tentativa++) {
+      try { fd = fs.openSync(arquivo, 'wx', 0o600); break; }
+      catch (e) {
+        if (e.code !== 'EEXIST') throw new ErroMarketing('marketing-trava-falhou', 'Não foi possível reservar o acervo. Confira a pasta antes de repetir.', 503);
+        if (tentativa >= 80) throw new ErroMarketing('marketing-trava-ocupada', 'O acervo está reservado por outra operação ou por um processo interrompido. O prazo de espera terminou; confira host e PID da trava antes de repetir.', 409);
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+      }
+    }
+    try {
+      // Se esta escrita falhar, o arquivo vazio permanece fail-closed para conferência.
+      fs.writeFileSync(fd, dono, 'utf8');
+    } finally { fs.closeSync(fd); }
+    try { return await fn(); }
+    finally {
+      try {
+        if (fs.readFileSync(arquivo, 'utf8') !== dono) throw new Error('dono mudou');
+        fs.unlinkSync(arquivo);
+      } catch {
+        console.error(JSON.stringify({ codigo: 'marketing-trava-perdida' }));
+        throw new ErroMarketing('marketing-trava-perdida', 'A reserva do acervo mudou ou não pôde ser liberada. Confira os recibos e a trava antes de repetir.', 409);
+      }
+    }
+  });
   fila = r.catch(() => {});
   return r;
 }
@@ -711,6 +746,7 @@ module.exports = {
   agoraLocalIso,
   hojeLocal,
   caminhoPainel,
+  linkDoIndice,
   lerJson,
   gravarJsonAtomico,
   serializar,

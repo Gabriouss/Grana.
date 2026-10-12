@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8').replace(/^import .*\n/m, '').replace(/export (async )?function /g, '$1function ');
+const source = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8').replace(/^import .*\r?\n/m, '').replace(/export (async )?function /g, '$1function ');
 const node = (tag, attrs = {}, ...children) => ({ tag, attrs, children: children.flat(Infinity).filter(Boolean) });
 const text = (n) => n == null ? '' : typeof n === 'object' ? [n.attrs?.texto || '', ...(n.children || []).map(text)].join(' ') : String(n);
 const ctx = { h: node, alerta: (tipo, texto) => node('p', { tipo, texto }), formatar: { data: (s) => s.split('-').reverse().join('/'), dataHora: (s) => `data formatada ${s.slice(0, 10)}` } };
@@ -75,7 +75,7 @@ function achar(root, label) {
    module, exports: module.exports, Buffer, Date, Intl, structuredClone, console,
    process: { pid: process.pid, env: new Proxy({}, { get() { throw Error('Credencial proibida'); } }) }, fetch: redeProibida,
    require: (id) => id === './ajustes-fila.cjs' ? { fila: { listar: () => [] }, estadoTerminal: (s) => ['aceito','desatualizado','encerrado','recusado-pelo-autor'].includes(s) }
-     : id.startsWith('./') ? load(id.slice(2)) : ['fs','path','crypto','node:fs','node:path','node:crypto'].includes(id) ? require(id) : (() => { throw Error('Import proibido '+id); })(),
+     : id.startsWith('./') ? load(id.slice(2)) : ['fs','path','crypto','node:fs','node:path','node:crypto','node:os'].includes(id) ? require(id) : (() => { throw Error('Import proibido '+id); })(),
   }, { filename: nome }); return module.exports;
  }
  function tela(nome) {
