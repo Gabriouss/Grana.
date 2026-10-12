@@ -75,6 +75,12 @@ const estimativa = { ferramenta: 'Ferramenta fictícia', gerado: 'CANARIO_GERADO
   assert.equal(eventos.at(-1).tipo, 'data'); assert.equal(eventos.at(-1).data, '2026-10-20');
   assert(!JSON.stringify(eventos).includes('CANARIO_')); assert(!JSON.stringify(eventos).includes(pedido.id));
   for (let i = 1; i < eventos.length; i++) assert(Date.parse(eventos[i - 1].em) <= Date.parse(eventos[i].em));
+  const semD = dto.trilhaPublica(promovida, [], [], [], [{ ...plano, data: null, planejadoEm: null, recibos: [{ tipo: 'entrada-automatica', em: plano.planejadoEm }] }]);
+  assert.equal(semD.length, 0, 'entrada aguardando D não é data marcada');
+  const historicoDatas = dto.trilhaPublica(promovida, [], [], [], [{ ...plano, planejadoEm: null, recibos: [
+    { tipo: 'data-marcada', em: new Date(agora + 2000).toISOString(), data: '2026-10-20', hora: '19:00', canal: 'reels' },
+    { acao: 'substituicao-manual', em: new Date(agora + 3000).toISOString(), data: '2026-10-21', hora: '20:00', canal: 'stories' }] }]);
+  assert.deepEqual(Array.from(historicoDatas, (v) => v.data), ['2026-10-20', '2026-10-21']);
   console.log('OK catálogo real reúne fila de origem, aceite, promoção e data sem IDs/texto privado');
   console.log('admin-marketing-trilha: módulos reais, zero rede/env/entrega real');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

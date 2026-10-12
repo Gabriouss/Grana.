@@ -47,6 +47,7 @@ function trilhaPublica(p, pedidos, eventos, aprovacoes, planejados) {
   }
   const pedidosDaPeca = pedidos.filter((r) => origens.has(r.pecaId));
   const lista = eventosPublicos(eventos, pedidosDaPeca.map((r) => r.id));
+  const eventosDaFila = new Set(lista);
   // Filas antigas podem ter pedido sem evento; só reconstruir a data do recibo existente.
   for (const r of pedidosDaPeca) if (data(r.criadoEm) && !lista.some((e) => e.tipo === 'pedido' && e.em === r.criadoEm)) lista.push({ tipo: 'pedido', em: data(r.criadoEm) });
   for (const a of aprovacoes.filter((a) => origens.has(a.id))) {
@@ -54,11 +55,14 @@ function trilhaPublica(p, pedidos, eventos, aprovacoes, planejados) {
     if (data(a.promovidoEm)) lista.push({ tipo: 'promocao', em: data(a.promovidoEm) });
   }
   for (const r of planejados.filter((r) => origens.has(r.id))) {
-    const datas = [r.planejadoEm, ...(r.recibos || []).filter((v) => v.tipo === 'entrada-automatica' || v.acao === 'substituicao-manual').map((v) => v.em)];
-    for (const em of datas) if (data(em)) lista.push({ tipo: 'data', em: data(em), data: formato(r.data, /^\d{4}-\d{2}-\d{2}$/), hora: formato(r.hora, /^([01]\d|2[0-3]):[0-5]\d$/), canal: ['instagram-feed', 'stories', 'reels', 'anuncio'].includes(r.canal) ? r.canal : null });
+    const registros = (r.recibos || []).filter((v) => v.tipo === 'data-marcada' || v.acao === 'substituicao-manual');
+    // Legado só fornece a última data e seu recibo; não inventar data para D ainda ausente.
+    if (data(r.planejadoEm) && !registros.some((v) => v.em === r.planejadoEm)) registros.push({ em: r.planejadoEm, data: r.data, hora: r.hora, canal: r.canal });
+    for (const v of registros) if (data(v.em) && formato(v.data, /^\d{4}-\d{2}-\d{2}$/)) lista.push({ tipo: 'data', em: data(v.em), data: v.data, hora: formato(v.hora, /^([01]\d|2[0-3]):[0-5]\d$/), canal: ['instagram-feed', 'stories', 'reels', 'anuncio'].includes(v.canal) ? v.canal : null });
   }
   const vistos = new Set();
-  return lista.sort((a, b) => Date.parse(a.em) - Date.parse(b.em)).filter((e) => { const k = JSON.stringify([e.tipo, e.em, e.custo || null, e.data || null]); if (vistos.has(k)) return false; vistos.add(k); return true; });
+  for (const e of eventosDaFila) vistos.add(JSON.stringify([e.tipo, e.em, e.custo || null, e.data || null]));
+  return lista.sort((a, b) => Date.parse(a.em) - Date.parse(b.em)).filter((e) => { if (eventosDaFila.has(e)) return true; const k = JSON.stringify([e.tipo, e.em, e.custo || null, e.data || null]); if (vistos.has(k)) return false; vistos.add(k); return true; });
 }
 function pedidoPublico(p, pecaAtual, contexto = {}) {
   if (!p || typeof p !== 'object') return null;

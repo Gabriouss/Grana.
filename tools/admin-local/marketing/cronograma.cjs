@@ -260,6 +260,10 @@ function sincronizar(raiz) {
     if (!plano.recibos.some((r) => r.tipo === 'entrada-automatica')) plano.recibos.push({
       id: crypto.randomUUID(), tipo: 'entrada-automatica', em: c.agoraLocalIso(), estado: plano.estado,
     });
+    const anterior = atual.planejados?.find((r) => r.manifestoId && chave(r) === chave(plano));
+    if (plano.estado === 'planejado' && plano.data && (!anterior || anterior.data !== plano.data || anterior.hora !== plano.hora || anterior.canal !== plano.canal)) plano.recibos.push({
+      tipo: 'data-marcada', em: c.agoraLocalIso(), data: plano.data, hora: plano.hora, canal: plano.canal,
+    });
   }
   const base = atual.versaoOperacional || 0;
   const relida = c.lerJson(arq, { versaoOperacional: 0 });

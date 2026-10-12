@@ -184,7 +184,7 @@ function planejar(raiz, corpo = {}) {
     const auto = dados.planejados.find((r) => r.id === peca.id && r.versao === peca.versao && r.manifestoId);
     if (auto) {
       const substituicaoManual = { data: registro.data, hora: registro.hora, canal: registro.canal, observacao: registro.observacao };
-      Object.assign(registro, auto, substituicaoManual, { substituicaoManual, estado: 'planejado', recibos: [...(auto.recibos || []), { acao: 'substituicao-manual', em: agoraLocalIso() }] });
+      Object.assign(registro, auto, substituicaoManual, { planejadoEm: registro.planejadoEm, substituicaoManual, estado: 'planejado', recibos: [...(auto.recibos || []), { acao: 'substituicao-manual', em: registro.planejadoEm, data: registro.data, hora: registro.hora, canal: registro.canal }] });
     }
     dados.planejados = dados.planejados.filter((c) => c.id !== peca.id);
     dados.planejados.push(registro);
