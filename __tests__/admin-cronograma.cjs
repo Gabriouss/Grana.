@@ -77,6 +77,19 @@ async function test(nome, fn, padaria, nomes) {
   await fixture(fn, padaria, nomes); grupos++; console.log('OK ' + nome);
 }
 (async () => {
+  await test('F3 aprovar -> promover -> vincular -> planejada com indice, Meta em ensaio', async (h) => {
+    fs.writeFileSync(h.indice, '# Semana\n');
+    await h.aprovar(); const promocao = await h.promover();
+    const p = c.obterPeca(h.dir, promocao.promocao.id); assert.equal(p.estado, 'aprovados');
+    await cr.salvarManifesto(h.dir, { manifesto: h.manifesto, versaoEsperada: 0 }); await h.declararD();
+    const m = cr.ler(h.dir);
+    await cr.registrarVinculo(h.dir, p.id, { versao: p.versao, versaoEsperada: m.versao, manifestoId: m.manifestoId, itemId: 'peca-teste' });
+    const dto = cal.obterCalendario(h.dir, '2026-10'); assert.equal(dto.itens.length, 1);
+    assert.equal(dto.itens[0].peca.id, p.id); assert.equal(dto.itens[0].estadoCronograma, 'planejado');
+    assert(fs.readFileSync(h.indice, 'utf8').includes('](aprovados/pecas/E01.jpg)'));
+    assert(fs.readFileSync(h.indice, 'utf8').includes('campanha-teste#peca-teste@2'));
+    assert.equal(en.ensaiar(h.dir).realHabilitado, false); assert.equal(en.ensaiar(h.dir).chamadasMeta, 0);
+  });
   await test('ITEM-C bootstrap CRLF, duas peças, retry sem escrita/sincronização e CAS', async (h) => {
     const antes = '# Semana\r\n\r\n| Legado | Prova |\r\n| --- | --- |\r\n| texto | preservado |\r\n';
     fs.writeFileSync(h.indice, antes);
@@ -298,6 +311,7 @@ async function test(nome, fn, padaria, nomes) {
   await test('conteúdo muda: calendário desatualizado e ensaio recusa', async (h) => {
     await h.iniciar(); await h.aprovar(); await h.declararD(); fs.writeFileSync(path.join(h.dir, h.rel), 'nova versão sem aceite');
     const r = cal.obterCalendario(h.dir, '2026-10'); assert.equal(r.itens.length, 0); assert.equal(r.desatualizados.length, 1);
+    assert.equal(r.desatualizados[0].estadoCronograma, 'desatualizado'); assert(r.desatualizados[0].proximoPasso.includes('versão atual'));
     assert(en.ensaiar(h.dir).itens[0].bloqueios.includes('versao-ou-caminho-mudou'));
   });
   await test('item removido mantém aviso e proíbe reciclagem', async (h) => {
@@ -326,10 +340,15 @@ async function test(nome, fn, padaria, nomes) {
     const original = fs.readFileSync(h.indice, 'utf8');
     fs.writeFileSync(h.indice, original.replace('campanha-teste#peca-teste@1', 'campanha-errada#peca-teste@1'));
     assert(cal.obterCalendario(h.dir, '2026-10').avisos.some((s) => s.includes('vínculo inválido')));
+    let dto = cal.obterCalendario(h.dir, '2026-10');
+    assert.equal(dto.suspensos[0].estadoCronograma, 'vínculo inválido'); assert(dto.suspensos[0].proximoPasso.includes('item válido'));
+    assert.equal(dto.aprovadosSemData[0].estadoCronograma, 'vínculo inválido');
     fs.writeFileSync(h.indice, original); const segunda = path.join(path.dirname(path.join(h.dir, h.rel)), 'outra.jpg'); fs.writeFileSync(segunda, 'segunda peça');
     const outra = c.montarCatalogo(h.dir).find((p) => p.caminho.endsWith('/outra.jpg'));
     fs.appendFileSync(h.indice, '\n| Peça | Cronograma ID |\n| --- | --- |\n| [Outra](para-aprovacao/pecas/outra.jpg) | campanha-teste#peca-teste@1 |\n');
     assert(cal.obterCalendario(h.dir, '2026-10').avisos.some((s) => s.includes('vínculo duplicado')));
+    dto = cal.obterCalendario(h.dir, '2026-10');
+    assert.equal(dto.suspensos[0].estadoCronograma, 'vínculo duplicado'); assert(dto.suspensos[0].proximoPasso.includes('outro item'));
     await assert.rejects(cr.registrarVinculo(h.dir, outra.id, { versao: outra.versao, versaoEsperada: 1, manifestoId: 'campanha-teste', itemId: 'peca-teste' }), (e) => e.codigo === 'vinculo-duplicado');
   });
   await test('migração preserva referências legadas e recibo da data manual', async (h) => {

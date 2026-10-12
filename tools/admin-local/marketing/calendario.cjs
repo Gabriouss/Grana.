@@ -45,7 +45,19 @@ function somarDiasUteis(dataIso, n) {
 }
 
 function detalhesPlano(plano) {
+  const estado = plano?.estado || null;
+  const passos = {
+    'vínculo inválido': 'Confira o vínculo no índice e escolha um item válido do cronograma.',
+    'vínculo duplicado': 'Confira as peças ligadas a este item e escolha outro item para uma delas.',
+    desatualizado: 'Atualize a lista e aceite a versão atual antes de planejar.',
+    'cronograma inválido': 'Confira o manifesto e recarregue o calendário.',
+    'sem data no cronograma': 'Escolha um item ativo do cronograma para ligar esta peça.',
+    'aguardando dia D': 'Defina o Dia D para resolver a previsão desta peça.',
+  };
   return {
+    estadoCronograma: estado,
+    motivo: passos[estado] ? estado : null,
+    proximoPasso: passos[estado] || (!plano ? 'Ligue a peça ao cronograma ou escolha uma data.' : null),
     dataPrevista: plano?.dataPrevista || null,
     previsaoResolvida: plano?.dataPrevista ? { data: plano.dataPrevista.dataResolvida, hora: plano.dataPrevista.hora || null, canal: plano.dataPrevista.canal || null } : null,
     origem: plano?.origem || null, substituicaoManual: plano?.substituicaoManual || null,
@@ -89,13 +101,13 @@ function obterCalendario(raiz, mes) {
     const p = porId.get(plano.id);
     if (!p || p.versao !== plano.versao || !p.aprovada || plano.estado === 'desatualizado') {
       // Peça trocou de versão, saiu do acervo ou perdeu o aceite: o plano não vale mais.
-      desatualizados.push({ ...plano, motivo: !p ? 'peça não está mais no acervo' : p.versao !== plano.versao ? 'peça mudou de versão depois do planejamento' : 'peça sem aceite para esta versão' });
+      desatualizados.push({ ...plano, estadoCronograma: 'desatualizado', proximoPasso: !p ? 'Confira o acervo e escolha outra peça.' : 'Atualize a lista e aceite a versão atual antes de planejar.', motivo: !p ? 'peça não está mais no acervo' : p.versao !== plano.versao ? 'peça mudou de versão depois do planejamento' : 'peça sem aceite para esta versão' });
       continue;
     }
     const registro = { data: plano.data, hora: plano.hora || null, canal: plano.canal, observacao: plano.observacao || null, peca: resumoPeca(p),
       estado: plano.estado || 'planejado', reciboAceite: resumoPeca(p).reciboAceite, ...detalhesPlano(plano) };
     if (plano.estado === 'aguardando dia D') { aguardandoDiaD.push(registro); continue; }
-    if (plano.estado === 'cronograma inválido') { suspensos.push(registro); continue; }
+    if (['cronograma inválido', 'vínculo inválido', 'vínculo duplicado', 'sem data no cronograma'].includes(plano.estado)) { suspensos.push(registro); continue; }
     if (!plano.data || !['planejado', undefined].includes(plano.estado)) continue;
     if (plano.data.slice(0, 7) !== alvo) continue;
     itens.push(registro);
