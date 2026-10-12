@@ -831,6 +831,93 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
 .trilha-passo.atual { color: var(--ink); border-color: var(--accent-2); }
 .trilha-passo.atual::before { border-color: var(--accent-2); color: var(--accent-2); }
 
+/* Fase 4: histórico cronológico no detalhe da peça. */
+.demanda-historico {
+  min-width: 0;
+  max-width: 100%;
+  margin-block-start: var(--s-xl);
+}
+.demanda-historico > h3 {
+  margin: 0 0 var(--s-md);
+  color: var(--ink);
+  font-size: var(--t-apoio);
+}
+.demanda-eventos {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border-inline-start: 1px solid var(--rule);
+  list-style: none;
+}
+.demanda-evento {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: var(--s-xs);
+  min-width: 0;
+  padding: 0 var(--s-sm) var(--s-md) var(--s-lg);
+  overflow-wrap: anywhere;
+}
+.demanda-evento::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0.45em;
+  inset-inline-start: -5px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--paper-raised);
+}
+.demanda-evento:last-child { padding-block-end: 0; }
+.demanda-evento-texto {
+  min-width: 0;
+  color: var(--ink);
+  font-size: var(--t-nota);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.demanda-evento-data {
+  display: block;
+  min-width: 0;
+  color: var(--ink-faint);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.demanda-historico > .campo-ajuda {
+  max-width: 72ch;
+  margin: 0;
+  padding: var(--s-md);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--r-md);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.demanda-historico ~ .demanda-atencao.campo-ajuda {
+  max-width: 72ch;
+  margin: var(--s-md) 0 0;
+  padding: var(--s-md);
+  border: 1px solid var(--rule-strong);
+  border-inline-start: 3px solid var(--atencao);
+  border-radius: var(--r-md);
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 768px) {
+  .demanda-evento {
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    column-gap: var(--s-md);
+    row-gap: 0;
+    align-items: baseline;
+  }
+}
+
 /* ── Calendário ───────────────────────────────────────────────────────── */
 
 .calendario {
