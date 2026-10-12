@@ -135,6 +135,19 @@ function rotasOk(extra = {}) {
     assert.ok(!f.chamadas.some((c) => c.url.includes('/attachments')), 'sem anexo, não lista anexos');
   }
 
+  // 4b. marketing@ só envia: sozinho é descartado, acompanhado vai pela outra caixa.
+  {
+    const f = carregar({ rotas: rotasOk({ email: { json: { ...EMAIL, to: ['marketing@granaponto.com.br'], attachments: [] } } }) });
+    const r = await f.chamar(pedido(RECEBIDO));
+    assert.equal(r.status, 200);
+    assert.equal(f.chamadas.filter((c) => c.method === 'POST').length, 0, 'marketing@ sozinho não chega na caixa do autor');
+  }
+  {
+    const f = carregar({ rotas: rotasOk({ email: { json: { ...EMAIL, to: ['marketing@granaponto.com.br'], cc: ['suporte@granaponto.com.br'], attachments: [] } } }) });
+    await f.chamar(pedido(RECEBIDO));
+    assert.match(f.chamadas.find((c) => c.method === 'POST').body.from, /via suporte <suporte@/);
+  }
+
   // 5. Anexos grandes demais: encaminha sem eles e avisa no topo.
   {
     const grande = { json: { data: [{ ...ANEXOS.data[0], size: 30 * 1024 * 1024, download_url: 'https://dl/grande' }] } };

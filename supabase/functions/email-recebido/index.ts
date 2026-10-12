@@ -1,5 +1,7 @@
-// Encaminha o que chega em contato@, suporte@ e marketing@granaponto.com.br
-// para a caixa do autor (EMAIL_ENCAMINHAR_PARA).
+// Encaminha o que chega em contato@ e suporte@granaponto.com.br para a caixa
+// do autor (EMAIL_ENCAMINHAR_PARA). marketing@ só envia: o que chega só para
+// ele é descartado (decisão do autor, 12/10/2026). Endereço desconhecido do
+// domínio entra como contato@, para cliente que errou o endereço ter resposta.
 //
 // A Resend recebe o e-mail (MX do domínio aponta para ela), mas não tem caixa
 // de entrada com resposta: só painel, API e webhook. Esta função é o webhook
@@ -20,7 +22,8 @@ const ENCAMINHAR_PARA = Deno.env.get('EMAIL_ENCAMINHAR_PARA') ?? '';
 
 const API = 'https://api.resend.com';
 const DOMINIO = 'granaponto.com.br';
-const CAIXAS = ['contato', 'suporte', 'marketing'];
+const CAIXAS = ['contato', 'suporte'];
+const SO_ENVIO = ['marketing'];
 const MAX_BODY_BYTES = 256 * 1024;
 const TOLERANCIA_ASSINATURA_S = 5 * 60;
 // A Resend aceita até 40 MB por envio, já com o base64. Acima disto o
@@ -67,12 +70,13 @@ function nomeDe(bruto: string): string {
   return (m?.[1] ?? '').trim();
 }
 
-/** Qual das três caixas recebeu. Sem nenhuma conhecida, vale contato@. */
-export function caixaDestino(e: Recebido): string {
-  for (const bruto of [...lista(e.to), ...lista(e.cc), ...lista(e.received_for)]) {
-    const [usuario, dominio] = enderecoDe(bruto).split('@');
-    if (dominio === DOMINIO && CAIXAS.includes(usuario)) return usuario;
-  }
+/** Qual caixa recebeu. null quando só caixas de envio receberam. */
+export function caixaDestino(e: Recebido): string | null {
+  const nossos = [...lista(e.to), ...lista(e.cc), ...lista(e.received_for)]
+    .map(enderecoDe).filter((x) => x.endsWith(`@${DOMINIO}`)).map((x) => x.split('@')[0]);
+  const caixa = nossos.find((u) => CAIXAS.includes(u));
+  if (caixa) return caixa;
+  if (nossos.length && nossos.every((u) => SO_ENVIO.includes(u))) return null;
   return 'contato';
 }
 
@@ -167,12 +171,13 @@ async function enviar(corpo: Record<string, unknown>, chaveIdem: string, prazo: 
   if (r.status !== 200) throw falhaHttp('envio', r.status, r.corpo);
 }
 
-async function encaminhar(id: string, prazo: number): Promise<void> {
+async function encaminhar(id: string, prazo: number): Promise<boolean> {
   const r = await chamar(`${API}/emails/receiving/${id}`, { headers: auth() }, prazo, (x) => x.json());
   if (r.status !== 200) throw falhaHttp('e-mail recebido', r.status, r.corpo);
   const e = r.corpo as Recebido;
 
   const caixa = caixaDestino(e);
+  if (!caixa) return false;
   const remetente = e.from ?? '';
   const quem = semQuebra(nomeDe(remetente) || enderecoDe(remetente) || 'remetente desconhecido');
   const responderPara = lista(e.reply_to).length ? lista(e.reply_to) : (remetente ? [remetente] : []);
@@ -191,6 +196,7 @@ async function encaminhar(id: string, prazo: number): Promise<void> {
     text: `${topo}\n\n${e.text ?? ''}`,
     attachments: anexos,
   }, `encaminhar/${id}`, prazo);
+  return true;
 }
 
 /** Recibo quando o encaminhamento falha de vez: o e-mail não some em silêncio. */
@@ -242,8 +248,8 @@ Deno.serve(async (req: Request) => {
   if (!id || !/^[A-Za-z0-9-]{8,64}$/.test(id)) return new Response('Invalid email id', { status: 400 });
 
   try {
-    await encaminhar(id, Date.now() + PRAZO_TOTAL_MS);
-    return new Response('ok', { status: 200 });
+    const encaminhado = await encaminhar(id, Date.now() + PRAZO_TOTAL_MS);
+    return new Response(encaminhado ? 'ok' : 'ignored: send-only mailbox', { status: 200 });
   } catch (erro) {
     const motivo = erro instanceof Error ? erro.message : String(erro);
     console.error(JSON.stringify({ codigo: 'email-recebido-falha', id, temporaria: erro instanceof FalhaTemporaria, motivo }));
