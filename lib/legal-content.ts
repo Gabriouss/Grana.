@@ -30,7 +30,7 @@ export type DocumentoLegal = {
   blocos: BlocoLegal[];
 };
 
-const EMAIL_CONTATO = '[gbr.design30@gmail.com](mailto:gbr.design30@gmail.com)';
+const EMAIL_CONTATO = '[contato@granaponto.com.br](mailto:contato@granaponto.com.br)';
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',

@@ -46,7 +46,7 @@ const gerenciamentoConfigurado =
 const destinoGerenciamento = gerenciamentoConfigurado?.startsWith('https://')
   ? gerenciamentoConfigurado
   : null;
-const destinoSuporte = 'mailto:gbr.design30@gmail.com?subject=Ajuda%20com%20a%20cobran%C3%A7a%20do%20Grana.';
+const destinoSuporte = 'mailto:suporte@granaponto.com.br?subject=Ajuda%20com%20a%20cobran%C3%A7a%20do%20Grana.';
 
 export default function AssinarScreen() {
   const { ligado } = useFlags();
